@@ -2,7 +2,7 @@
 
 > Un NPC astuto quiere algo que otro tiene o le impide tener. No lo ataca de frente: habla con otros, siembra rumores, prepara una trampa y espera a que la víctima tome las decisiones que él previó. La víctima (el jugador u otro NPC) puede no darse cuenta hasta el final, o nunca.
 
-Depende de: [npc-psychology.md](npc-psychology.md) (objetivos, utilidad, creencias sobre otros), [causality.md](causality.md) (todo paso es un evento con causas), [heaven-karma.md](heaven-karma.md) (las intrigas generan karma). Se apoya en el futuro sistema de información y rumores.
+Depende de: [npc-psychology.md](npc-psychology.md) (objetivos, utilidad, creencias sobre otros), [causality.md](causality.md) (todo paso es un evento con causas), [heaven-karma.md](heaven-karma.md) (las intrigas generan karma). Se apoya en [information.md](information.md) (rumores, mentiras, fuentes rastreables).
 
 ## Principios
 1. **Nada de guiones.** Una intriga es un plan que un agente ejecuta con las mismas acciones que cualquier otro (hablar, mentir, pagar, esconder, atacar). No hay "evento trampa" escrito a mano; lo que hay es un NPC que decidió mentir sobre un tesoro.

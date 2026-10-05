@@ -123,7 +123,7 @@ interface Memory {
 - **Degradación:** la `salience` cae con el tiempo. Recordar una memoria (pensarla, contarla, ver algo relacionado) la refuerza. Las memorias muy intensas casi no decaen (memorias "flash").
 - **Distorsión:** cada vez que se recuerda o se cuenta, los detalles derivan hacia los esquemas de quien recuerda (el desconfiado recuerda más malicia). Usa `rng.fork("memory", npcId)`, así que es determinista, y se registra para que el inspector muestre "recuerda X, pero pasó Y".
 - **Compresión:** una memoria olvidada no desaparece sin rastro. Queda como resumen (*gist*): "los Zhao nos humillaron". Sus efectos en relaciones y esquemas ya se aplicaron.
-- **Memoria vs conocimiento:** la memoria es episódica ("vi a Wu robar"). Las **creencias** semánticas ("Wu es ladrón", "hay una veta en el Monte Hierro") viven en `sim/knowledge`. Una memoria puede generar creencias. Los rumores y la propagación van en el doc de información.
+- **Memoria vs conocimiento:** la memoria es episódica ("vi a Wu robar"). Las **creencias** semánticas ("Wu es ladrón", "hay una veta en el Monte Hierro") viven en `sim/knowledge`. Una memoria puede generar creencias. Los rumores y la propagación van en [information.md](information.md).
 
 ## 6. Relaciones
 
