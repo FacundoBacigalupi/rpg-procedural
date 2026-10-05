@@ -62,6 +62,22 @@ interface Spirit {
 - La partida termina cuando tu alma **cruza las Fuentes o se disipa**. Ahí se escribe la crónica.
 - **A futuro, con el diseño de cultivo:** volver a ser humano (un cuerpo vacío, una posesión, reconstruir un cuerpo con tesoros), o cultivar como espíritu (camino de los fantasmas cultivadores). Queda abierto para ese doc.
 
+## 3d. Recuerdos de vidas pasadas
+Cruzar las Fuentes implica la sopa del olvido (孟婆汤). Cuánto se resiste combina cuatro mecanismos:
+- **Fuerza del alma:** decide cuánto sobrevive. Un mortal no conserva nada, un alma media conserva sensaciones (miedos sin origen, talentos inexplicables) y un alma muy fuerte conserva recuerdos concretos.
+- **Sellados, no borrados:** lo que sobrevive queda sellado y despierta con disparadores (lugares, personas, llegar al mismo reino de cultivo, estar al borde de la muerte). Primero llega en sueños y fragmentos.
+- **Preparación:** sellos en el alma, jades de memoria o un discípulo que te reconoce mejoran lo que sobrevive. Cuestan y hay que planearlos.
+- **Desafiar al Cielo:** un alma muy fuerte puede intentar rechazar la sopa. Es una rebelión como una tribulación: si falla, el alma queda dañada.
+
+Son memorias con `source: "past-life"`, más distorsionadas que las normales.
+
+## 3e. Si el jugador reencarna: lo que sabe el usuario y lo que sabe el personaje
+El usuario recuerda todo aunque el personaje no. **No se le prohíbe nada** (libertad total), pero el conocimiento se equilibra solo:
+- **El mundo siguió.** Entre la muerte y el renacer pasan décadas o siglos (lo decide la sim). Los tesoros se saquean, las sectas caen, los enemigos mueren o se fortalecen. Además, lo que sabías eran **creencias** de tu vida pasada, no verdades, y quizás eran falsas.
+- **Saber no es poder hacer.** Técnicas, cultivo y habilidades viven en el cuerpo y el alma, no en el usuario. Hay que reentrenar todo. Saber el camino acelera, pero no salta etapas. La sim valida lo que el *personaje* puede hacer, como siempre.
+- **Actuar con lo que sabés es un disparador.** Si tu alma conservó ese recuerdo (sellado), despierta de verdad y el personaje pasa a saberlo. Si no lo conservó, igual podés actuar (ir a la cueva), pero sin los detalles finos (cómo abrir el sello), que hay que redescubrir.
+- **El mundo lo nota.** Un niño que va directo a una cueva escondida o habla de una secta extinta llama la atención: rumores, sospechas de un viejo monstruo reencarnado, y **los enemigos de tu vida pasada pueden estar buscando esas señales**. Usar tu conocimiento es poderoso y peligroso.
+
 ## 4. Consecuencias
 - **Liberar un espíritu** (cumplir su asunto pendiente, vengar su muerte, enterrarlo bien) es un acto con karma positivo, y una fuente de misiones que salen del estado sin escribirlas.
 - **Zonas malditas** cambian el mapa humano: abandono, tabúes, mitos. Purificarlas es una hazaña.
@@ -83,6 +99,5 @@ interface Spirit {
 - Cumplir el objetivo ancla libera al espíritu.
 
 ## Preguntas abiertas
-- **Recuerdos de vidas pasadas:** cómo se conservan según el cultivo (opciones en discusión: umbral por fuerza del alma, despertar por disparadores, técnicas de preparación, resistir las Fuentes como desafío al Cielo).
-- ¿Se puede seguir jugando después de reencarnar?
+- ¿Cuánto tiempo pasa en las Fuentes antes de renacer, y de qué depende?
 - Cultivo de espíritus y volver a ser humano: en el doc de cultivo.

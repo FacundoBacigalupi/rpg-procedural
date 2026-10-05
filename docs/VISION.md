@@ -20,6 +20,12 @@ Es para un solo jugador (el autor). Se prioriza profundidad y realismo sobre div
 8. **Una sola vida.** Sin load. Morir puede no ser el final: si las circunstancias lo permiten, quedás como espíritu (ver [spirits.md](systems/spirits.md)). Cuando tu alma cruza al ciclo o se disipa: crónica (`Li Wei, 16–53, Mortal → Core Formation, fundador de la Escuela del Río Negro, murió en el asedio de Yunshan`) y nuevo mundo.
 9. **Talento oculto.** Stats generados por el seed, no elegidos. Algunos ocultos (suerte, constituciones raras) que se descubren jugando.
 
+10. **Lo que el usuario aprendió en otras partidas no es un truco.** Entre partidas no hay recetas que repetir:
+    - **Cada mundo tiene sus propias leyes.** Reinos, técnicas, qué despierta un talento, qué hierba sirve para qué: todo sale del seed. Lo que funcionaba en el mundo anterior acá puede no existir o funcionar distinto.
+    - **No hay disparadores secretos.** Ninguna acción concreta ("hacer esta maniobra") desbloquea algo. El progreso es continuo y sale de simular cuerpo, qi y aprendizaje. Si entrenar de cierta forma ayuda, es porque tiene sentido en la física de ese mundo, y entender cómo funciona el mundo es habilidad legítima del usuario, como en el ajedrez.
+    - **Los talentos se descubren, no se crean.** Los talentos ocultos se generan al nacer. El entrenamiento puede revelar uno que ya tenías, nunca producir uno que no tenés.
+    - **Las técnicas vienen de una fuente.** Describir en texto una técnica de otra partida no te la da: el parser traduce a acciones del catálogo y la IA nunca crea técnicas ni habilidades. Inventar una técnica propia es posible, pero lo resuelve la sim con la comprensión, la experiencia y el tiempo del personaje, no con lo detallada que sea tu descripción.
+
 ## Escala
 - **Tiempo dinámico:** combate en segundos, conversación en minutos, viaje en horas/días, entrenamiento en meses, cultivo en años, historia en siglos.
 - **Niveles de simulación (LOD) de NPCs:**
