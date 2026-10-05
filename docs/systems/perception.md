@@ -46,7 +46,7 @@ interface AttrEmission {
 
 - Las **acciones** del catálogo traen su perfil: caminar emite poco, correr más, pelear mucho, gritar muchísimo por oído. La **manera** del `ActionPlan` lo modifica: "en silencio", "a escondidas", "a plena vista", "imponiendo el aura".
 - El **cuerpo** emite según su tamaño, su ropa (colores, metal que suena), su olor y sus heridas (sangre).
-- **El aura** emite según el cultivo: intensidad, elemento dominante y "profundidad" (el reino). Usar una técnica emite un pico con la firma de la técnica, que alguien que la conoce puede reconocer.
+- **El aura** emite según el cultivo: intensidad, elemento dominante ([elements.md](elements.md) §10) y "profundidad" (el reino). Usar una técnica emite un pico con la firma de la técnica, que alguien que la conoce puede reconocer.
 - **Las emociones se filtran.** La ira, el miedo o la intención de matar emiten en Vista (cara, tensión) y, en cultivadores, en Esencia (杀气). Ocultarlas cuesta `control` (ver máscaras en npc-psychology).
 
 ## 3. Propagación: el entorno

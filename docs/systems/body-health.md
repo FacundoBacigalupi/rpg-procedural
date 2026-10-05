@@ -204,7 +204,7 @@ interface Pathogen {
 - **Frío:** escalofríos → torpeza (`dexterity` baja) → confusión → hipotermia → muerte. Las extremidades expuestas sufren **congelación**: lesión de parte que puede terminar en amputación de dedos.
 - **Calor:** sudor (pierde agua) → agotamiento → golpe de calor. El esfuerzo con armadura en un desierto mata soldados.
 - **Altitud:** falta de aire en montañas altas (planet-gen): menos `endurance`, mal de altura. Los nacidos allá están adaptados (genoma + aclimatación).
-- **Ambientes del mundo:** qi de fuego, frío yin, miasmas de pantano, aire de un reino secreto. Son entradas del mismo balance (calor, toxinas, `Essence` dañina), no reglas aparte.
+- **Ambientes del mundo:** qi de fuego, frío yin, miasmas de pantano, aire de un reino secreto. Son entradas del mismo balance (calor, toxinas, `Essence` dañina), no reglas aparte. Su efecto lo calcula la física elemental ([elements.md](elements.md) §7).
 
 ## 8. Fatiga y sueño
 - **Fatiga muscular** sube con esfuerzo y baja con descanso; acumulada sin descanso produce lesiones (desgarros, fracturas por estrés).

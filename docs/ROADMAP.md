@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#8, interacciones elementales**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#9, oficios**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -26,7 +26,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 7. [x] **Organizaciones** → [organizations.md](systems/organizations.md): clanes, sectas, gremios; decisiones por facciones internas; nacimiento, cismas y muerte; recursos, aportes y puestos.
 
 ### B. Sistemas nuevos
-8. [ ] **Interacciones elementales** (ampliación de [metaphysics.md](systems/metaphysics.md)): ciclos de generación y destrucción como física común para alquimia, formaciones y combate. Va antes de oficios porque estos la usan.
+8. [x] **Interacciones elementales** → [elements.md](systems/elements.md) (ampliación de [metaphysics.md](systems/metaphysics.md)): ciclos de generación y destrucción como física común para alquimia, formaciones y combate. Va antes de oficios porque estos la usan.
 9. [ ] **Oficios** → `crafts.md`: alquimia con propiedades y toxinas residuales, forja limitada por el metal escaso, formaciones que modifican el campo de qi real, talismanes.
 10. [ ] **Contratos y juramentos** → `contracts.md`: un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
 11. [ ] **Familia y linaje** → `family-lineage.md`: matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
@@ -60,6 +60,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
 - discovery: integración de `pending`, umbrales de iluminación y habituación; tasas de descubrimiento por cultura y caída de dogmas; ruido de observación y ventana de atribución (supersticiones comunes pero no universales).
 - organizations: frecuencia de cismas, sucesiones disputadas y colapsos; vida media por tipo; tamaño a partir del cual aparecen facciones; pesos organización/facción/uno mismo (corrupción común pero no universal).
+- elements: `λ`, `κ`, `ρ` y pérdida de generación (ventaja elemental que importa sin decidir sola); velocidad con que el uso sesga el campo de una celda; frecuencia de raíces mutadas y derivados.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -88,6 +89,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Cultivo ([systems/cultivation.md](systems/cultivation.md)) — borrador
 - [~] Descubrimiento e iluminación ([systems/discovery.md](systems/discovery.md)) — borrador
 - [~] Economía ([systems/economy.md](systems/economy.md)) — borrador
+- [~] Interacciones elementales ([systems/elements.md](systems/elements.md)) — borrador
 - [~] Organizaciones ([systems/organizations.md](systems/organizations.md)) — borrador
 
 ## Fase 0 — Fundamentos
@@ -100,6 +102,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Fase 1 — Vertical slice: una aldea, 20 NPCs, acción libre
 - [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea
+- [ ] Elementos: cinco fases en `content/`, vector elemental del qi de cada celda, `interact` puro con tests de conservación y sin móvil perpetuo ([elements.md](systems/elements.md))
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
@@ -133,6 +136,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
+- [ ] Elementos en el cultivo: absorción por coincidencia, refinamiento por generación, tensión del `elementMix`, daño elemental por órgano, técnicas con vector, sentido de la esencia que lee elementos ([elements.md](systems/elements.md))
 - [ ] Cuerpo y cultivo: daño de meridianos, desviación de qi, toxicidad de píldoras, refinamiento corporal ([body-health.md](systems/body-health.md))
 - [ ] Ley del cultivo (umbrales reales) + escuelas con reinos culturales; absorción con conservación, rupturas, fundamento, técnicas y manuales ([cultivation.md](systems/cultivation.md))
 - [ ] Percepción de nivel de cultivo ajeno (con incertidumbre)
@@ -143,6 +147,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
+- [ ] Campos elementales entre celdas (fronteras, estaciones, sesgo por uso), elementos derivados por condiciones, ecología con afinidad ([elements.md](systems/elements.md))
 - [ ] Tiers de NPC 0–4, materialización coherente con estadísticas
 - [ ] Scheduler multi-escala eficiente
 - [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
@@ -162,6 +167,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Descubrimiento como proceso de riesgo por población; pérdida y redescubrimiento ([discovery.md](systems/discovery.md))
 - [ ] Ciclo de vida de organizaciones en modo agregado (procesos de riesgo de sucesión, cisma, colapso, nacimiento) con legados ([organizations.md](systems/organizations.md))
 - [ ] Eras variables (temprana / dorada / decadente…)
+- [ ] Generador de sistemas elementales por seed con validador; teorías elementales por cultura con dogmas sobre la matriz ([elements.md](systems/elements.md))
 - [ ] Sistemas monetarios que nacen en la historia, acuñación y rebaja de ley, minas que se descubren y agotan, crisis monetarias ([economy.md](systems/economy.md))
 
 ## Fase 8 — Mundo completo
