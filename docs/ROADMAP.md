@@ -7,7 +7,14 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**: cada uno en su rama `docs/<nombre>`, con PR a `develop` (squash + auto-merge), y en el mismo PR se marca acá y se suma a "Diseño". Los sistemas nuevos van en `docs/systems/<nombre>.md`. La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#5, descubrimiento**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+
+**Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
+1. `git switch develop && git pull`, después rama `docs/<nombre>`.
+2. Leer los docs que el ítem toca o de los que depende (la línea "Depende de" de los docs vecinos) y escribir `docs/systems/<nombre>.md` (o ampliar el existente en la parte C) con el formato de siempre: nota de estado, Depende de / Lo usan, Principios, secciones numeradas con interfaces TS, el jugador y el narrador, Escala (LOD), Implementación por fase, Tests, Decisiones (revisables), Preguntas abiertas. Máximo detalle, siempre respetando las reglas de CLAUDE.md (causalidad, conservación, verdad vs creencia, determinismo).
+3. En el mismo PR: marcar el ítem `[x]` acá con el enlace, sumarlo a la sección "Diseño" como borrador, sumar tareas a las fases que corresponda, agregar el doc a la lista de CLAUDE.md, enlazarlo desde los docs que lo mencionaban como "futuro", y pasar las preguntas abiertas de calibración a "Estado del diseño".
+4. Commit (`docs(<área>): ...`), push, `gh pr create --base develop --label design`, y mergear con `gh pr merge <n> --squash --delete-branch` **como comando suelto** (sin `&&` ni pipes). Sin CI en develop.
+5. Contarle al usuario qué quedó y proponer el siguiente ítem. Si hay preguntas de diseño (no de calibración), explicarlas con una recomendación.
 
 ### A. Sistemas base que otros docs ya dan por hechos
 1. [x] **Percepción** → [perception.md](systems/perception.md): canales, emisión, propagación, atención, errores con forma, huellas, lectura de cultivo.
