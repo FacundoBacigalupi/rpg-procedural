@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Cómo se producen, se mueven, se valoran y se consumen las cosas: bienes con procedencia, dinero que existe físicamente (metal acuñado, piedras espirituales), mercados por asentamiento donde el precio sale de agentes que **creen** saber lo que valen las cosas, comercio entre lugares, crédito y usura, subastas, gremios y monopolios, y las crisis que todo eso produce. Es la capa 3 de [causality.md](causality.md): **la escasez es el motor más grande de causalidad**.
 
-Depende de: [causality.md](causality.md) (conservación, presiones, procedencia), [planet-gen.md](planet-gen.md) (suelos, minerales, vetas, piedras espirituales, qi), [living-world.md](living-world.md) (rutas, culturas, el conocimiento es físico), [information.md](information.md) (creencias `price`, frentes de noticias, la información como bien, secretos), [perception.md](perception.md) (ver calidad, detectar falsificaciones, ver quién compra), [npc-psychology.md](npc-psychology.md) (necesidades, utilidad, temperamento, teoría de la mente, deudas en relaciones), [body-health.md](body-health.md) (comida, nutrición, sustancias, medicina con precio), [cultivation.md](cultivation.md) (piedras, píldoras y tesoros como insumos del cultivo; cultivar quema dinero), [discovery.md](discovery.md) (recetas y técnicas como saber; obras con intención). Lo usan: [schemes.md](schemes.md) (sobornos, ruina económica de un rival, robo después de una subasta), [heaven-karma.md](heaven-karma.md) (usura y estafa como karma), [organizations.md](organizations.md), y los futuros oficios, contratos, familia y linaje, estratificación social, ley, estado, guerra y tecnología.
+Depende de: [causality.md](causality.md) (conservación, presiones, procedencia), [planet-gen.md](planet-gen.md) (suelos, minerales, vetas, piedras espirituales, qi), [living-world.md](living-world.md) (rutas, culturas, el conocimiento es físico), [information.md](information.md) (creencias `price`, frentes de noticias, la información como bien, secretos), [perception.md](perception.md) (ver calidad, detectar falsificaciones, ver quién compra), [npc-psychology.md](npc-psychology.md) (necesidades, utilidad, temperamento, teoría de la mente, deudas en relaciones), [body-health.md](body-health.md) (comida, nutrición, sustancias, medicina con precio), [cultivation.md](cultivation.md) (piedras, píldoras y tesoros como insumos del cultivo; cultivar quema dinero), [discovery.md](discovery.md) (recetas y técnicas como saber; obras con intención). Lo usan: [schemes.md](schemes.md) (sobornos, ruina económica de un rival, robo después de una subasta), [heaven-karma.md](heaven-karma.md) (usura y estafa como karma), [organizations.md](organizations.md), [contracts.md](contracts.md), y los futuros oficios, familia y linaje, estratificación social, ley, estado, guerra y tecnología.
 
 ## Principios
 1. **Todo lo que tiene valor es una cosa (o un derecho sobre una cosa).** Bienes, monedas y piedras están en el ledger de conservación: se producen desde insumos concretos, se mueven y se consumen. Nadie gana dinero sin que alguien lo pague, y nadie crea dinero salvo acuñando metal que existe o extrayendo piedras que se formaron.
@@ -48,7 +48,7 @@ interface Lot {
 - **Perecer es un proceso.** Lo perecible se degrada según la curva, el clima (planet-gen) y cómo se guarda (granero seco, bodega fría, caja de jade, anillo de almacenamiento si el mundo lo permite). Lo que se pudre no desaparece del ledger: pasa a desecho (abono, fuente de plagas en body-health §8).
 - **Los ítems únicos** (una espada con nombre, una obra con intención, un anillo de un anciano muerto) son entidades con identidad: se reconocen, tienen historia y pueden llevar karma (heaven-karma) o una reputación propia ("la espada que mató al Carnicero").
 - **La tierra es un bien.** Parcelas con suelo, agua y qi (planet-gen); se compran, se heredan, se arriendan, se pierden por deudas, se confiscan. No se mueve ni se produce: solo cambia de dueño o de calidad (suelos que se agotan: ítem 23).
-- **Los servicios** (curar, enseñar, escoltar, refinar una píldora por encargo) no son lotes: son contratos de trabajo con un resultado (contracts.md, futuro). Su precio se forma igual.
+- **Los servicios** (curar, enseñar, escoltar, refinar una píldora por encargo) no son lotes: son contratos de trabajo con un resultado ([contracts.md](contracts.md)). Su precio se forma igual.
 
 ## 2. Dinero
 Cada cultura tiene uno o más **sistemas monetarios**, que salen de su historia (deep-history): qué metal tenía, quién acuñó primero, si hay un estado que garantice.
@@ -261,7 +261,7 @@ Vender arroz mojado por seco, píldoras de grado bajo por medio, una hierba de d
 - **Comercio a distancia con letras** (§2): un comerciante vende en el sur, cobra con una letra y la cambia en el norte. Las casas de cambio con sucursales son organizaciones con un capital de confianza.
 
 ## 8. Crédito, usura y quiebra
-Prestar es dar algo hoy a cambio de una promesa. El **modelo de compromiso** (quién debe qué, con qué garantía, qué pasa si no cumple, quién lo hace cumplir) es el de contracts.md (futuro), que unifica deudas, vínculos y lazos kármicos. Acá va su lado económico.
+Prestar es dar algo hoy a cambio de una promesa. El **modelo de compromiso** (quién debe qué, con qué garantía, qué pasa si no cumple, quién lo hace cumplir) es el de [contracts.md](contracts.md), que unifica deudas, vínculos y lazos kármicos: un `Loan` es la vista económica de un `Commitment` de tipo préstamo (contracts §13). Acá va su lado económico.
 
 ```ts
 interface Loan {
@@ -283,7 +283,7 @@ interface Loan {
 - **Incumplir** dispara lo que diga el préstamo: se ejecuta el colateral (la tierra pasa al prestamista, el hijo pasa a servir), se cobra a los fiadores, el deudor pierde reputación, huye o termina en **servidumbre por deudas** (estratificación social, futuro). También puede matar al acreedor: las deudas son una presión de causality §1.
 - **Cadenas de deuda.** El que debe a uno y le prestan otros: cuando cae uno, caen los que dependían de que pagara. Las quiebras se contagian por el grafo de deudas.
 - **Empeño.** Dejar un objeto a cambio de dinero, con plazo para recuperarlo. La casa de empeño acumula objetos con historia (y a veces robados): es un lugar donde aparecen cosas.
-- **Deudas que no son plata** (favores, vida, karma) viven en relaciones (npc-psychology §6) y en heaven-karma; contracts.md las une con las de plata.
+- **Deudas que no son plata** (favores, vida, karma) viven en relaciones (npc-psychology §6) y en heaven-karma; [contracts.md](contracts.md) las une con las de plata.
 
 ## 9. Subastas
 Las casas de subastas son instituciones centrales del mundo de los cultivadores: ahí aparecen los tesoros, las píldoras raras y las técnicas, y ahí se cruzan los que no deberían cruzarse.
@@ -399,7 +399,7 @@ Las crisis son las que convierten la economía en historia: dejan memorias, odio
 - El dinero es físico (metal, piedras) o un derecho con emisor (letras, billetes); el crédito crea derechos, no metal.
 - Las piedras espirituales tienen uso real, pierden qi si se guardan mal, se forman lento y se agotan; su inflación y deflación vienen de minas y de consumo.
 - El hogar es la unidad económica básica.
-- El modelo de compromiso de los préstamos (garantías, cumplimiento) se delega en contracts.md; acá queda su lado económico.
+- El modelo de compromiso de los préstamos (garantías, cumplimiento) se delega en [contracts.md](contracts.md); acá queda su lado económico.
 - Las estructuras internas de gremios y casas comerciales se delegan en [organizations.md](organizations.md).
 
 ## Preguntas abiertas

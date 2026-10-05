@@ -136,15 +136,15 @@ interface Relationship {
   trust: number; respect: number; affection: number; fear: number;
   attraction: number; gratitude: number; jealousy: number; resentment: number;
   familiarity: number; dependency: number;
-  debts: DebtRef[];          // deudas concretas (dinero, favores, vida) — van al ledger
-  bonds: BondLabel[];        // parent, child, spouse, master, disciple, sworn_sibling, rival…
+  debts: CommitmentRef[];   // compromisos activos entre los dos (dinero, favores, vida, juramentos): contracts.md
+  bonds: BondLabel[];        // derivados: parentesco + `status` de compromisos (spouse, master, disciple, sworn_sibling…)
   history: EventId[];        // eventos que la moldearon
 }
 ```
 
 - Cada cambio proviene de una interpretación de un evento. No hay deriva aleatoria.
 - **Decaimiento hacia la línea base** por dimensión: `familiarity` decae rápido sin contacto. `resentment` decae lento, y más lento todavía en quien tiene esquemas de venganza.
-- Los **vínculos** (`bonds`) son institucionales o declarados: nacen de eventos como un casamiento, tomar un discípulo o un juramento. Las dimensiones son continuas y pueden contradecir al vínculo: un padre al que se teme y no se quiere.
+- Los **vínculos** (`bonds`) son institucionales o declarados: nacen de eventos como un casamiento, tomar un discípulo o un juramento, que crean compromisos ([contracts.md](contracts.md)). Las dimensiones son continuas y pueden contradecir al vínculo: un padre al que se teme y no se quiere.
 - Las relaciones con **organizaciones** y con el **Cielo** usan la misma estructura. Así funcionan el odio a una secta o la fe.
 - La relación con el jugador **no es especial**.
 
