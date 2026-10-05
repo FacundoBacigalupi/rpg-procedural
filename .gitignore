@@ -1,0 +1,29 @@
+# deps / build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# partidas y bases locales
+saves/
+*.db
+*.sqlite
+*.sqlite-journal
+
+# secretos
+.env
+.env.*
+!.env.example
+
+# logs / sims
+logs/
+*.log
+sim-reports/
+
+# editor / SO
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
