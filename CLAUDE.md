@@ -10,6 +10,8 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/causality.md](docs/systems/causality.md) — **el modelo causal del mundo. Leerlo antes de tocar cualquier sistema de simulación o worldgen.**
 - [docs/systems/heaven-karma.md](docs/systems/heaven-karma.md) — el Cielo como agente-ley, tribulaciones, karma.
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas).
+- [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos.
+- [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Reglas que no se rompen
