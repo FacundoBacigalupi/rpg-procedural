@@ -227,6 +227,48 @@ Las técnicas y los caminos de cultivo pueden modificar la psicología, siempre 
 
 Se modela como modificadores activos `{ source: TechniqueId, originEventId, effects }` sobre temperamento, emociones y valores. El detalle va en el doc de cultivo.
 
+## 9c. Capas de profundidad
+
+Mecánicas que se apoyan en las piezas anteriores y hacen que los NPCs se sientan humanos (o inhumanos) de formas reconocibles.
+
+### Cómo se mienten a sí mismos
+- **Autoengaño dirigido.** La distorsión de la memoria (sección 5) no es ruido aleatorio: está sesgada hacia proteger la **autoimagen**. Quien hizo daño recuerda que el otro empezó, y quien huyó recuerda que fue prudente. Nadie es el villano de su propia historia. El sesgo es mayor con `control` bajo y disonancia alta.
+- **Identidad (autoimagen).** Cada NPC tiene un pequeño conjunto de creencias sobre sí mismo ("soy el genio del clan", "soy justo", "soy un superviviente"), formadas como los esquemas. Un evento que la contradice (ser superado, quedar expuesto) es una **amenaza a la identidad**: emoción intensa y respuesta defensiva (negar, atacar, tramar) o, si es muy fuerte, un quiebre que reescribe la identidad.
+- **Máscaras.** Algunos actúan distinto en público y en privado. La máscara cuesta esfuerzo (`control`) y se agrieta con estrés, alcohol, emociones intensas o cuando el NPC cree que nadie lo ve. El jugador puede percibir las grietas. Es el anciano recto de la secta que en privado es otra cosa.
+
+### Cultura del género
+- **La cara (面子).** Necesidad central y **colectiva**: la cara de un discípulo es la de su maestro, su familia y su secta. Una humillación pública pesa más que una herida física y obliga a responder para recuperarla. El tamaño de la ofensa depende de los testigos y de su estatus. De acá sale el "¿te atrevés a ofender a mi joven maestro?" sin escribirlo.
+- **Rencor entre generaciones.** El odio se hereda como **memoria contada** (`source: "told"`), distorsionada en cada transmisión. "Mataste a mi padre" puede llegar a los nietos como una historia bastante distinta de lo que pasó.
+
+### La longevidad: distancia, no maldad
+Vivir siglos **no vuelve malo a nadie**. Cambia otras cosas:
+
+- **Compresión emocional sin cambio de signo.** Con los años, la intensidad de las emociones baja, pero los valores y el temperamento conservan su dirección. Un inmortal bondadoso sigue siendo bondadoso y uno cruel sigue siendo cruel, nunca más cruel por la edad.
+- **El círculo moral se achica por escala.** El peso que un NPC le da a otro en su utilidad se multiplica por un factor de **distancia**: diferencia de reino de cultivo, diferencia de esperanza de vida y falta de vínculo. Para un ancestro de mil años, un mortal vive y muere en un parpadeo, como una hormiga. Lo que produce es **indiferencia**, no crueldad: no hay motivo para dañarlo, pero tampoco para desviarse por él.
+  - El **bondadoso** distante: ayuda a veces, por capricho o costumbre, como quien corre un insecto del camino. Protege a sus descendientes y protegidos.
+  - El **cruel** distante: no masacra a nadie (no tiene utilidad y el karma pesa en las tribulaciones), pero si un mortal lo molesta, lo aparta sin pensar, aunque eso lo mate.
+- **Anclas.** Los vínculos formados antes (compañero del Dao, hijos, maestro, viejos amigos) **no** se atenúan por distancia. Son lo que mantiene humano a un inmortal. Perderlos todos alimenta el demonio del vacío (`despair`).
+- **El Dao como pasión dominante.** Cuando todo lo demás se aplana, queda el avanzar: curiosidad por el Dao, meditaciones de décadas, reclusión. Los inmortales se retiran del mundo más de lo que lo dominan.
+- **Desesperación al final de la vida.** El peligro real de un viejo monstruo no es el aburrimiento sino la **muerte cercana sin haber avanzado**. Con poca vida restante, la utilidad de las acciones extremas para ganar longevidad (robar un tesoro, poseer un cuerpo joven, sacrificar discípulos) se dispara, sobre todo con valores débiles. Es el arco clásico, y emerge de la utilidad, no de la maldad.
+- **Memoria de siglos.** La memoria tiene capacidad: lo antiguo se comprime en gist y se pierde. Un ancestro puede no recordar el nombre de su bisnieto, pero sí, con todo detalle, la humillación de hace 800 años, porque la saliencia de lo intenso dura.
+
+Freno global: el karma (ver [heaven-karma.md](heaven-karma.md)). Matar mortales en masa crea vínculos kármicos que endurecen la tribulación, así que hasta los inmortales indiferentes tienen motivos para no hacerlo.
+
+### Cómo leen a los demás
+- **Aprenden patrones.** Los NPCs infieren hábitos de las acciones repetidas que perciben ("siempre ayuda a los mendigos", "nunca pelea de noche"). Esas inferencias forman la **reputación** y se propagan como rumores. Cualquiera puede explotarlas, incluidos los intrigantes de [schemes.md](schemes.md).
+- **Teoría de la mente en niveles.** "Creo que él cree que yo sé…". La profundidad del razonamiento recursivo está limitada por `intellect` (1 a 3 niveles). Habilita faroles, dobles engaños y contra-intrigas.
+- **Imitación y legado.** Los NPCs adoptan hábitos y valores de quienes admiran (`respect` + `affection` altos), sobre todo de jóvenes. Un discípulo que te admira copia tu forma de ser. Tu personalidad se propaga, y la crónica la registra.
+
+### Arcos que emergen solos
+- **Pendiente de corrupción y redención.** La disonancia (sección 7) tiene dos salidas: sentir culpa o cambiar los valores para que el acto "estuviera bien". Cada vez que gana la segunda, el umbral para el siguiente mal baja. A la inversa, la culpa sostenida puede volverse un objetivo de expiación.
+- **Secretos.** Cada NPC guarda hechos que lo dañarían si se supieran, con peso y miedo a la exposición. Son materia prima para chantajes e intrigas y se descubren con las mismas mecánicas (huellas, testigos, rumores).
+- **Traumas y disparadores.** Una memoria muy intensa queda ligada a estímulos (un olor, el fuego, un nombre, un lugar). Al percibirlos se reactiva y provoca pánico, ira o evitación. El narrador lo puede mostrar como un recuerdo intrusivo.
+- **Sesgos cognitivos.** Son parte de la interpretación y de la utilidad, no adornos:
+  - Efecto halo: al fuerte, al hermoso o al de alto rango se le cree más.
+  - Sesgo de grupo: los de mi secta o clan son buenos y los otros sospechosos.
+  - Costo hundido: seguir con un método de cultivo fallido porque ya se invirtieron 50 años.
+  - Confirmación: lo que encaja con un esquema se recuerda mejor.
+
 ## 10. Escala: cuánta psicología por tier
 
 Los tiers son los de [VISION.md](../VISION.md).
@@ -247,7 +289,9 @@ Los tiers son los de [VISION.md](../VISION.md).
 - **Fase 1:** temperamento + emociones básicas + relación con el jugador (`trust`, `fear`, `affection`). Alcanza para que la aldea reaccione distinto según quién sea cada uno.
 - **Fase 2:** interpretación completa, memorias (degradación, distorsión, compresión), relaciones multidimensionales, esquemas, diálogo con actos de habla.
 - **Fase 3:** objetivos en capas, utilidad offscreen, crianza → rasgos adquiridos, herencia de temperamento.
-- **Fase 4 (cultivo):** demonios internos, corazón del Dao, pruebas en rupturas.
+- **Fase 2+:** autoimagen, autoengaño dirigido, cara, sesgos y disparadores (extienden interpretación y memoria).
+- **Fase 3:** reputación por patrones, imitación, secretos, pendiente de corrupción, teoría de la mente en niveles.
+- **Fase 4 (cultivo):** demonios internos, corazón del Dao, pruebas en rupturas, longevidad (distancia, anclas, desesperación al final de la vida).
 - **Fase 5 (LOD):** tiers, materialización por biografía sintetizada.
 
 Tests clave:
@@ -255,6 +299,8 @@ Tests clave:
 - Todo esquema, objetivo, relación y demonio tiene causas trazables (sin huérfanos).
 - La interpretación de eventos nunca lee la verdad.
 - Memorias: la saliencia es monótona sin recuerdo y la distorsión está acotada.
+- Longevidad: la edad nunca cambia el signo de valores ni temperamento (solo intensidad y distancia).
+- Sim headless de siglos: los inmortales no producen masacres sin motivo causal.
 
 ## Decisiones tomadas en este borrador (revisables)
 - Temperamento de **6 ejes propios** en lugar de Big Five literal: más legible para el juego y fácil de mapear.

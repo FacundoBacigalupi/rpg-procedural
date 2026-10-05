@@ -10,7 +10,6 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — decisiones cerradas; + intrigas ([systems/schemes.md](systems/schemes.md)).
 2. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
 3. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
-4. [ ] Mergear PRs #2 y #3 de Dependabot (requiere `gh auth refresh -h github.com -s workflow`).
 
 ## Ideas / pendientes sueltos
 - Cerrar las preguntas abiertas de [deep-history.md](systems/deep-history.md) (criterio de "ya no importa", calibración agregado vs individual).
@@ -22,7 +21,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [x] Ramas `main` + `develop` (sin `master`), flujo en [GIT_WORKFLOW.md](GIT_WORKFLOW.md)
 - [x] CI: typecheck/lint/tests, gitleaks, npm audit · Dependabot · CodeQL · secret scanning + push protection
 - [x] Rulesets en `main` y `develop`, opciones de merge, labels, milestones por fase
-- [x] `gh` autenticado
+- [x] `gh` autenticado (con scope `workflow`) · PRs #2 y #3 de Dependabot mergeados
 
 ## Diseño
 - [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
