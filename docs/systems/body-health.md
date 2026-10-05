@@ -226,7 +226,7 @@ interface Substance {
 }
 ```
 
-- **Venenos:** sustancias con curva de dosis. Lentos (se acumulan en `toxins`, ideales para intrigas, schemes) o rápidos. Cada uno daña órganos concretos y deja síntomas que un médico puede reconocer o confundir con una enfermedad. Los antídotos existen solo si alguien los conoce (discovery).
+- **Venenos:** sustancias con curva de dosis. Lentos (se acumulan en `toxins`, ideales para intrigas, schemes) o rápidos. Cada uno daña órganos concretos y deja síntomas que un médico puede reconocer o confundir con una enfermedad. Los antídotos existen solo si alguien los conoce ([discovery.md](discovery.md)).
 - **Alcohol, opio, hierbas recreativas:** efectos agudos (cognición, dolor, coraje) y crónicos (hígado, pulmones).
 - **Adicción = tolerancia + dependencia + abstinencia.** El uso repetido sube la tolerancia (más dosis para el mismo efecto) y la dependencia; sin la sustancia aparece abstinencia (dolor, temblores, ansiedad). Se cruza con npc-psychology: una necesidad nueva compite en la utilidad, y alguien puede vender, robar o traicionar por su dosis. Quien controla el suministro tiene poder (schemes, economía).
 - **Toxicidad de píldoras (丹毒).** Las píldoras de cultivo dejan residuos según su pureza (oficios: alquimia). Se acumulan en el cuerpo, bajan la eficiencia del cultivo y pueden causar desviaciones. Purgarlas cuesta tiempo o recursos. De acá sale el clásico "fundamento inestable por abusar de píldoras".
@@ -243,7 +243,7 @@ interface Substance {
 
 ## 11. Medicina
 ### Medicina mortal
-- **El conocimiento es de la cultura y la época** (discovery, futuro): herbolaria, cirugía, acupuntura, cauterio, sangrías (que pueden empeorar las cosas si es lo que la cultura cree), teorías de humores o de los cinco elementos. Una cultura puede saber limpiar heridas con alcohol y otra no.
+- **El conocimiento es de la cultura y la época** ([discovery.md](discovery.md): priors culturales, errores que funcionan, supersticiones): herbolaria, cirugía, acupuntura, cauterio, sangrías (que pueden empeorar las cosas si es lo que la cultura cree), teorías de humores o de los cinco elementos. Una cultura puede saber limpiar heridas con alcohol y otra no.
 - **Tratamientos concretos** sobre condiciones concretas: limpiar, suturar, entablillar, reducir fracturas, amputar, sangrar, dar hierbas con efectos reales (cada hierba es una `Substance` con efectos y toxicidad).
 - **Diagnóstico como percepción e inferencia.** El médico percibe síntomas (pulso, color, olor, fiebre, relato del paciente) y forma una creencia sobre la enfermedad ([information.md](information.md)): puede equivocarse con forma, según su formación ("es un desequilibrio de fuego" cuando es un veneno). Un buen envenenador cuenta con eso.
 - **El sanador como oficio:** practicantes, curanderos, médicos de corte, monjes, parteras. Tienen habilidad, reputación, precio y límites; el más cercano a la aldea es probablemente el único.
