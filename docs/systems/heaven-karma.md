@@ -1,5 +1,7 @@
 # El Cielo y el Karma
 
+> Nota: este doc describe la **familia xianxia**. Otras familias de mundos cambian estas reglas; ver [metaphysics.md](metaphysics.md).
+
 > Decisión (2026-10-05): **el Cielo existe**, y cultivar es ir en su contra. Romper reinos dispara tribulaciones. **El karma es real** y es parte de la física del mundo.
 
 Ver también [causality.md](causality.md): el karma es el grafo causal hecho metafísica.

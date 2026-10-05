@@ -1,6 +1,6 @@
 # Visión
 
-Un simulador narrativo Xianxia procedural. Te ponen en el cuerpo de un mortal con un talento aleatorio en un mundo generado, y escribís libremente qué hacés. No hay misión principal: la pregunta es **¿qué vas a hacer con esta vida?** (inmortal, comerciante, alquimista, bandido, granjero, líder de secta… o morir a los 17 en una cueva).
+Un simulador narrativo de fantasía procedural, con el xianxia como familia principal: cada mundo genera sus propias leyes (ver [metaphysics.md](systems/metaphysics.md)). Te ponen en el cuerpo de un mortal con un talento aleatorio en un mundo generado, y escribís libremente qué hacés. No hay misión principal: la pregunta es **¿qué vas a hacer con esta vida?** (inmortal, comerciante, alquimista, bandido, granjero, líder de secta… o morir a los 17 en una cueva).
 
 Es para un solo jugador (el autor). Se prioriza profundidad y realismo sobre diversión "de juego"; está bien que sea lento.
 

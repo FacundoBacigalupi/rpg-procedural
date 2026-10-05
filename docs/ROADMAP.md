@@ -28,6 +28,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
 - [~] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — borrador
+- [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
 - [~] Mundo vivo ([systems/living-world.md](systems/living-world.md)) — borrador
 - [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador

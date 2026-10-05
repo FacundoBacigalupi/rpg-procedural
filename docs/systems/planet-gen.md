@@ -91,6 +91,8 @@ No es una simulación física completa: es un modelo que produce formas creíble
 - Esta es la base "mundana". La versión espiritual de cada bioma (bosque espiritual, pantano yin) sale de combinar bioma y qi en la etapa 5.
 
 ### 5. Qi: la capa metafísica
+
+(Describe una fuente de tipo campo ambiental, la de xianxia y otras familias. Si las leyes del mundo eligen otra fuente, esta etapa cambia; ver [metaphysics.md](metaphysics.md).)
 El qi **se deriva de la geología y el clima**, no se pinta encima:
 
 | Fuente | Elemento | Por qué |

@@ -1,4 +1,4 @@
-# rpg-procedural — Simulador de vida Xianxia procedural
+# rpg-procedural — Simulador de vida de fantasía procedural (xianxia como familia principal)
 
 Juego personal (un solo jugador, para el autor). El jugador escribe en texto libre qué hace su personaje; un mundo simulado resuelve la acción; un LLM interpreta la intención y narra el resultado. Una sola vida: cuando tu alma cruza al ciclo (o se disipa), se termina la partida y queda una crónica. Morir puede dejarte como espíritu si las circunstancias lo permiten (ver spirits.md).
 
@@ -15,6 +15,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos.
 - [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
 - [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología.
+- [docs/systems/metaphysics.md](docs/systems/metaphysics.md) — **las leyes de cada mundo varían mucho** (xianxia, magia occidental, pactos, dioses…). El código usa conceptos genéricos (`Essence`, `Practice`, `Law`, `Soul`).
 - [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.
 - [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).

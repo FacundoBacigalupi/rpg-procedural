@@ -1,5 +1,7 @@
 # Espíritus
 
+> Nota: este doc describe la **familia xianxia**. Otras familias de mundos cambian estas reglas; ver [metaphysics.md](metaphysics.md).
+
 > Los espíritus existen, pero ninguno aparece porque sí. Al morir, un alma normalmente vuelve al ciclo del Cielo. Un espíritu es **un alma (o una conciencia) que no volvió porque algo la ancla**, o una conciencia que nació de algo que acumuló qi durante mucho tiempo. Ese "algo" es siempre una causa concreta que se puede descubrir.
 
 Depende de: [heaven-karma.md](heaven-karma.md) (el ciclo del Cielo), [npc-psychology.md](npc-psychology.md) (memoria, objetivos, emociones), [planet-gen.md](planet-gen.md) (qi yin, tesoros naturales).
