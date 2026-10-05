@@ -150,9 +150,10 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - La planet-gen no crea nada artificial (ruinas, tesoros fabricados, reinos secretos): eso es trabajo de la historia. Los tesoros **naturales** sí, por acumulación de qi.
 - Planeta grande: radio 2-4 veces el de la Tierra, con densidad baja (gravedad vivible, metal escaso).
 - Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
+- La frecuencia de tesoros no es un parámetro aparte: sale del qi del planeta (presupuesto de la cosmología, fuerza del Cielo, venas). Un mundo rico en qi está lleno de tesoros y uno en decadencia casi no tiene.
+- Corrientes oceánicas: después del mínimo. Mueven calor (como la corriente del Golfo, que entibia Europa) y las frías crean desiertos costeros (Atacama). Se agregan cuando se refine el clima.
 - La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
 
 ## Preguntas abiertas
-- Calibrar los umbrales de formación de tesoros (qué tan comunes son) con la simulación headless.
-- ¿Corrientes oceánicas en el mínimo o después?
+- Ninguna por ahora.
