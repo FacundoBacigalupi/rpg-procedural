@@ -124,5 +124,8 @@ El ritmo "a lo Lord of the Mysteries" sale de acá: los eventos de fondo ocurren
 ## Crónica: "Lo que nunca supiste"
 Al morir, la crónica tiene una sección que revela las intrigas que te afectaron y nunca descubriste: quién tramó, por qué, qué pasos dio y qué decisiones tuyas había previsto. Se arma desde `WorldTruth` y el grafo causal (los `Scheme` y su `log`), y es el único momento en que el narrador recibe esa información. Incluye también las intrigas que fracasaron sin que te enteraras.
 
+## Decisiones (2026-10-05)
+- **Límite de intrigas por psicología, no por CPU:** un NPC sostiene entre 1 y 3 intrigas activas según inteligencia y ambición, con un techo duro de 5. Las que no entran quedan como **deseos latentes** (motivación sin plan armado) y pueden activarse cuando se cierra una.
+
 ## Preguntas abiertas
-- ¿Cuántas intrigas activas como máximo por NPC (costo de CPU)?
+- Ninguna por ahora.

@@ -309,4 +309,4 @@ Tests clave:
 - Sí al contagio emocional, sí a los demonios que hablan (solo con sus raíces), sí a las técnicas que alteran la psique.
 
 ## Preguntas abiertas
-- ¿Cuántas memorias por NPC de tier 2 (top-N)? Calibrar con la sim headless.
+- Cuántas memorias por NPC de tier 2: se arranca con **20** (top-N por intensidad y relevancia) y se ajusta con la sim headless.

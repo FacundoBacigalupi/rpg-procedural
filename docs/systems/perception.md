@@ -216,6 +216,9 @@ Percibirse a uno mismo usa el mismo modelo, con el cuerpo como fuente:
 - Interior de los sitios como grafo de espacios con aristas por canal, no coordenadas continuas.
 - El campo `visibility` de `Event` (ARCHITECTURE) se reemplaza por perfiles de emisión; los percepts se calculan.
 
+## Decisiones (2026-10-05)
+- **Ciudades grandes por LOD espacial:** el grafo de espacios de una ciudad son barrios agregados; un barrio se abre en calles, patios y edificios cuando hay un agente de tier 3-4 adentro, y se vuelve a cerrar cuando se va.
+- **Objetivo de calibración (sensación buscada):** de noche, sin luz, a 30 pasos casi nadie reconoce una cara; a plena luz, a 30 pasos se reconoce a un conocido casi siempre.
+
 ## Preguntas abiertas
-- Cuántos nodos tiene el grafo de espacios de una ciudad grande: ¿una calle por nodo o barrios agregados que se abren al entrar?
-- Calibración de las curvas de atenuación y del `k` de la sigmoide con la sim headless.
+- Calibración fina de las curvas de atenuación y del `k` de la sigmoide con la sim headless, contra los objetivos de arriba.
