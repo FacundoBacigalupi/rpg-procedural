@@ -102,7 +102,7 @@ Cada asentamiento produce, consume y comercia. **La escasez es el motor más gra
 Los hechos viajan por contactos (comerciantes, viajeros, discípulos, espías) con retraso y distorsión. Que un evento sea conocido o no es parte de la causalidad: una masacre que nadie conoce no genera venganza.
 
 ### Capas 5–6: agentes y organizaciones
-Toman decisiones por utilidad a partir de presiones y creencias (ver VISION). Las organizaciones son agentes compuestos: deciden a través de sus líderes y facciones, no con una IA abstracta. Una secta no "declara la guerra": su anciano ambicioso convence al consejo porque la vena se agota y tiene un rencor personal.
+Toman decisiones por utilidad a partir de presiones y creencias (ver VISION). Las organizaciones son agentes compuestos: deciden a través de sus líderes y facciones, no con una IA abstracta. Una secta no "declara la guerra": su anciano ambicioso convence al consejo porque la vena se agota y tiene un rencor personal. Detalle en [organizations.md](organizations.md).
 
 ### Capa 7: historia y cultura
 Los eventos importantes se vuelven **memoria colectiva**: festivales, odios entre pueblos, tabúes ("no se entra al valle norte"), leyendas (a veces falsas). La cultura cambia el comportamiento de los agentes, y así cierra el ciclo.
