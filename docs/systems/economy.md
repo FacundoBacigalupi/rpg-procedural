@@ -6,12 +6,13 @@ Depende de: [causality.md](causality.md) (conservación, presiones, procedencia)
 
 ## Principios
 1. **Todo lo que tiene valor es una cosa (o un derecho sobre una cosa).** Bienes, monedas y piedras están en el ledger de conservación: se producen desde insumos concretos, se mueven y se consumen. Nadie gana dinero sin que alguien lo pague, y nadie crea dinero salvo acuñando metal que existe o extrayendo piedras que se formaron.
-2. **El precio no es una propiedad del mundo.** Es el resultado de acuerdos entre agentes que deciden según lo que **creen** (Ley 4). La verdad es solo el registro de transacciones que ocurrieron; ningún agente lo consulta. Lo que cada uno tiene son creencias `price` (information §1) con fecha y fuente.
-3. **El valor es subjetivo; la conservación es física.** El valor de un bien para alguien sale de su utilidad (hambre, objetivos, miedo, prestigio). El valor no se conserva (una cosecha mala sube el precio del arroz sin crear arroz); las cantidades sí.
-4. **Oferta y demanda emergen.** No hay curvas escritas: la oferta es lo que alguien produjo y está dispuesto a vender, y la demanda son agentes con necesidades y dinero. Las curvas son lo que el inspector **mide**, no lo que la sim usa.
-5. **La información es ventaja económica.** El comerciante gana porque sabe precios que el otro no sabe, y pierde cuando su creencia está vieja. La asimetría de información (de precios, de calidad, de lo que viene) es la fuente principal de ganancia, de estafa y de crisis.
-6. **Sin tablas de eventos económicos.** No hay "crisis aleatorias": una inflación tiene una mina detrás, una hambruna tiene una sequía, un acaparador o una guerra detrás, y una corrida bancaria tiene un rumor detrás.
-7. **Determinista.** `rng.fork("market", marketId, day)` para el emparejamiento y los empates; `rng.fork("bargain", buyerId, sellerId, eventId)` para el regateo; `rng.fork("trade", merchantId, eventId)` para las decisiones de rutas.
+2. **No hay dinero infinito.** Todo agente (el jugador, cada NPC, cada tienda, cada secta) tiene lo que tiene y nada más: comprar es perder lo que pagás, vender es perder lo que entregás. Un comerciante no compra si no le queda plata, una tienda no repone sin comprarle a alguien, y la plata total de una región solo cambia por fuentes y sumideros físicos (§2b). Ningún ciclo de acciones puede generar riqueza sin que salga de algún lado.
+3. **El precio no es una propiedad del mundo.** Es el resultado de acuerdos entre agentes que deciden según lo que **creen** (Ley 4). La verdad es solo el registro de transacciones que ocurrieron; ningún agente lo consulta. Lo que cada uno tiene son creencias `price` (information §1) con fecha y fuente.
+4. **El valor es subjetivo; la conservación es física.** El valor de un bien para alguien sale de su utilidad (hambre, objetivos, miedo, prestigio). El valor no se conserva (una cosecha mala sube el precio del arroz sin crear arroz); las cantidades sí.
+5. **Oferta y demanda emergen.** No hay curvas escritas: la oferta es lo que alguien produjo y está dispuesto a vender, y la demanda son agentes con necesidades y dinero. Las curvas son lo que el inspector **mide**, no lo que la sim usa.
+6. **La información es ventaja económica.** El comerciante gana porque sabe precios que el otro no sabe, y pierde cuando su creencia está vieja. La asimetría de información (de precios, de calidad, de lo que viene) es la fuente principal de ganancia, de estafa y de crisis.
+7. **Sin tablas de eventos económicos.** No hay "crisis aleatorias": una inflación tiene una mina detrás, una hambruna tiene una sequía, un acaparador o una guerra detrás, y una corrida bancaria tiene un rumor detrás.
+8. **Determinista.** `rng.fork("market", marketId, day)` para el emparejamiento y los empates; `rng.fork("bargain", buyerId, sellerId, eventId)` para el regateo; `rng.fork("trade", merchantId, eventId)` para las decisiones de rutas.
 
 ## 1. Bienes
 Un bien es un **tipo** (en `content/`) y existe en el mundo como **lotes** (fungibles) o **ítems** (únicos).
@@ -89,6 +90,52 @@ Ver §12. Son la moneda del mundo de los cultivadores y, a diferencia del metal,
 
 ### Tipos de cambio
 Entre sistemas monetarios (cobre por plata, plata del reino A por plata del reino B, plata por piedras) el cambio es un precio más, que se forma igual (§5) en las casas de cambio y en los puertos. El cambio entre plata y piedras es el **abismo entre los dos mundos** hecho número: para un campesino, una piedra de grado bajo es un año de trabajo; para un discípulo interno, es una tarde.
+
+## 2b. Nadie tiene infinito: tenencia, fuentes y sumideros
+Todo lo que vale está **en manos de alguien o en algún lugar**: en el bolsillo del jugador, en el cofre del comerciante, en el granero del clan, en el tesoro de la secta, enterrado bajo el piso, en un anillo perdido en una ruina, en la veta todavía sin sacar. No existe un "dinero del mundo" abstracto ni una tienda con fondos sin fondo.
+
+```ts
+interface Holdings {
+  holder: HolderRef;                   // agente, hogar, organización o lugar
+  lots: LotId[];                       // bienes, monedas, piedras, letras: todo es un lote (§1)
+  claims: ClaimId[];                   // lo que le deben (préstamos, letras a cobrar): derechos, no cosas (§2, §8)
+  liabilities: ClaimId[];              // lo que debe
+}
+```
+
+### Comprar es perder, vender es perder
+- Toda transacción es un **intercambio de lotes** entre dos tenencias (§5, `Transaction`): el comprador entrega monedas y recibe el bien; el vendedor al revés. Nada se suma sin restarse de otro lado.
+- **Cada NPC tiene su límite.** El panadero tiene la plata de lo que vendió esta semana menos lo que gastó; el buhonero, lo que trae en el carro y en la bolsa. Si el jugador quiere venderle diez espadas a un herrero de aldea que tiene plata para dos, le compra dos (o ninguna, si no las necesita), o le ofrece trueque, o le paga con una letra contra alguien de la ciudad. Una aldea pobre **no puede pagar** un tesoro: para venderlo hay que ir a donde está la plata.
+- **El que compra mucho de algo paga cada vez menos**, porque su reserva cae a medida que se llena de stock y se vacía de plata (§4). Vender lo mismo una y otra vez en el mismo lugar rinde cada vez menos.
+- **Las tiendas no reponen de la nada.** El stock de una tienda es lo que compró a productores, comerciantes o al jugador. Si nadie le trae hierbas, no hay hierbas. Si el jugador compra todo el arroz, el arroz se acabó hasta la próxima cosecha o el próximo comerciante.
+- **Los precios responden a lo que hace el jugador** igual que a lo que hace cualquiera: comprar mucho sube el precio para él y para todos; vender mucho lo baja. El arbitraje del jugador cierra la diferencia que explota.
+
+### Fuentes y sumideros
+La cantidad total de cada cosa solo cambia por estas vías, todas eventos con causa y todas en el ledger:
+
+| Entra al mundo (fuente) | Sale del mundo (sumidero) |
+|---|---|
+| **Extracción:** metal de una veta, piedras de una mina, sal de una salina, madera, caza, pesca, hierbas (sale de un stock natural finito: planet-gen, ecología) | **Consumo:** comida que se come, medicina que se usa, leña que se quema |
+| **Producción:** cosechas, crías, artesanía (lo nuevo sale de insumos + trabajo + tierra + qi) | **Combustible del cultivo:** piedras, píldoras y tesoros absorbidos (su qi pasa al cultivador y el resto vuelve al ambiente: cultivation §5) |
+| **Formación natural:** tesoros y materiales espirituales que se forman con el tiempo (planet-gen §5) | **Insumo de otra cosa:** el material que se usa en una forja, una formación o una píldora deja de existir como material y pasa a ser parte del producto |
+| **Acuñación:** convierte metal ya extraído en monedas (no agrega metal, cambia el formato) | **Deterioro:** se pudre, se oxida, se rompe, se gasta, pierde qi (§12) |
+| | **Pérdida:** hundido, enterrado con un muerto, olvidado en una ruina (sigue existiendo, pero fuera de la economía hasta que alguien lo encuentre) |
+| | **Destrucción y ofrenda:** quemado en un incendio, en una guerra o en un altar |
+
+- **La plata que circula en una región** es la que se acuñó o llegó, menos la que se fue (comercio, tributos, saqueo), se fundió o se enterró. Una región que importa más de lo que exporta se queda sin plata y pasa al trueque o al crédito.
+- **Una mina nueva es la única forma de "imprimir" piedras**, y es lenta, finita, se pelea y se nota en los precios (§12). Una piedra quemada para cultivar sale del mercado para siempre.
+- **El trabajo agrega valor, no dinero.** Convertir hierbas en una píldora vale más que las hierbas, y quien lo hace puede cobrar más. Pero para cobrarlo alguien tiene que tener la plata y querer pagarla: la ganancia del alquimista es plata que sale del bolsillo de otro.
+- **Prestar no crea plata** (§8): crea un derecho. Si el deudor no paga, el derecho se pierde y la plata no aparece.
+
+### Trucos que no funcionan
+El diseño cierra los bucles clásicos de dinero infinito porque no hay ninguna fuente fuera de la tabla de arriba:
+- **Comprar barato y vender caro en el mismo lugar, una y otra vez:** el vendedor sube su precio a medida que se vacía, el comprador baja el suyo a medida que se llena y se queda sin plata.
+- **Fabricar y vender sin parar:** los insumos se agotan o suben de precio, la demanda se satura y los compradores se quedan sin plata.
+- **Vender botín infinito:** el botín existe solo si alguien lo tenía (Ley 1); los bandidos que matás tienen lo que robaron, no una tabla de botín.
+- **Esperar que la tienda vuelva a tener plata:** solo la tiene si vendió algo a alguien que tenía plata.
+- **Duplicar con letras o billetes:** una letra falsa o duplicada es un fraude que se descubre al cobrarla contra las reservas del emisor.
+
+Hacerse rico es posible, pero **la riqueza siempre sale de algún lado**: de una veta, de una cosecha, del trabajo de otros, de quien perdió, de quien te pagó. Eso es lo que la vuelve una presión causal (envidia, robo, tributos, intrigas) y no un número.
 
 ## 3. Producción
 Producir es una **acción** (del mismo catálogo del jugador) o un proceso de un hogar, taller u organización que convierte insumos en productos con trabajo, herramientas, saber y tiempo.
@@ -333,6 +380,8 @@ Las crisis son las que convierten la economía en historia: dejan memorias, odio
 - **Fase 8:** economía de guerra (metal, levas, saqueo), billetes de estado, corridas.
 
 ## Tests
+- **No hay dinero infinito:** un bot que repite durante miles de turnos los bucles de §2b (comprar y revender, fabricar y vender, vender a la misma tienda) no aumenta la suma de plata y bienes de su región: solo la redistribuye, y su ganancia tiende a cero a medida que se agotan la plata y la demanda de sus contrapartes.
+- Ninguna tenencia baja de cero (las deudas son derechos, no lotes negativos); ninguna tienda repone sin una compra registrada.
 - **Conservación:** en cualquier escenario, la suma de cada bien, de cada metal (en lingotes, monedas y objetos) y del qi de las piedras solo cambia por producción, consumo, deterioro y extracción registrados como eventos.
 - Ninguna transacción sin evento; ningún lote sin `originEventId`; ninguna moneda acuñada sin el metal que la respalda.
 - **Ningún agente lee el `tape`** ni la calidad real para decidir: precios y calidad salen de creencias y percepts.
@@ -344,6 +393,7 @@ Las crisis son las que convierten la economía en historia: dejan memorias, odio
 - Agregado: el precio de referencia en tier 2 coincide en promedio con la mediana de transacciones de simular a los agentes individuales (dentro de una tolerancia).
 
 ## Decisiones tomadas en este borrador (revisables)
+- Todo agente, tienda y organización tiene tenencias finitas; las únicas fuentes y sumideros de bienes, metal y piedras son los físicos de §2b. No hay fondos de tienda infinitos, reposición de la nada ni tablas de botín.
 - El precio no existe como estado: es la mediana medida de transacciones entre agentes que deciden por creencias. Solo el modo agregado guarda un precio de referencia, calibrado contra el individual.
 - Bienes como lotes fungibles con origen y calidad real, e ítems únicos con identidad; la tierra es un bien que no se mueve.
 - El dinero es físico (metal, piedras) o un derecho con emisor (letras, billetes); el crédito crea derechos, no metal.
