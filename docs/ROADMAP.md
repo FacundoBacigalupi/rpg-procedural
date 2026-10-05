@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#10, contratos y juramentos**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#11, familia y linaje**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -28,7 +28,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 ### B. Sistemas nuevos
 8. [x] **Interacciones elementales** → [elements.md](systems/elements.md) (ampliación de [metaphysics.md](systems/metaphysics.md)): ciclos de generación y destrucción como física común para alquimia, formaciones y combate. Va antes de oficios porque estos la usan.
 9. [x] **Oficios** → [crafts.md](systems/crafts.md): alquimia con propiedades y toxinas residuales, forja limitada por el metal escaso, formaciones que modifican el campo de qi real, talismanes.
-10. [ ] **Contratos y juramentos** → `contracts.md`: un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
+10. [x] **Contratos y juramentos** → [contracts.md](systems/contracts.md): un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
 11. [ ] **Familia y linaje** → `family-lineage.md`: matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
 12. [ ] **Estratificación social** → `social-structure.md`: castas, servidumbre, esclavitud, movilidad social, abismo mortal/cultivador; qué acciones tiene cada uno a su alcance.
 13. [ ] **Ley y justicia** → `law.md`: códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
@@ -62,6 +62,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - organizations: frecuencia de cismas, sucesiones disputadas y colapsos; vida media por tipo; tamaño a partir del cual aparecen facciones; pesos organización/facción/uno mismo (corrupción común pero no universal).
 - elements: `λ`, `κ`, `ρ` y pérdida de generación (ventaja elemental que importa sin decidir sola); velocidad con que el uso sesga el campo de una celda; frecuencia de raíces mutadas y derivados.
 - crafts: tasas de estallido y calidad por habilidad; velocidad de aprendizaje y techo por cultivo; duración de cargas y desgaste de artefactos; cuántos momentos de decisión tiene una sesión larga.
+- contracts: umbral de peso para que una promesa llegue al libro del Cielo y peso de la traición; tasas de incumplimiento por tipo y cultura; fuerza de los sellos en el alma frente al portador; cuántas promesas chicas conserva un NPC de tier 2.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -93,6 +94,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Interacciones elementales ([systems/elements.md](systems/elements.md)) — borrador
 - [~] Oficios ([systems/crafts.md](systems/crafts.md)) — borrador
 - [~] Organizaciones ([systems/organizations.md](systems/organizations.md)) — borrador
+- [~] Contratos y juramentos ([systems/contracts.md](systems/contracts.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -115,6 +117,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md))
 - [ ] Narrador (Claude) solo con los percepts del jugador
 - [ ] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md))
+- [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
 - [ ] Muerte → pantalla de crónica
 - [ ] Inspector god-mode básico
 
@@ -125,6 +128,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Conocimiento vs verdad (creencias sobre el jugador)
 - [ ] Creencias `law` como hipótesis con evidencia desde percepts; diario de hipótesis del jugador ([discovery.md](systems/discovery.md))
 - [ ] Diálogo de NPCs condicionado por personalidad/memorias
+- [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -136,6 +140,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Saber popular de hierbas y medicina como prior cultural, herbolario que experimenta, supersticiones con mecanismo, ventana de atribución ([discovery.md](systems/discovery.md))
 - [ ] Rumores (propagación de información con distorsión, reputación por comunidad) ([information.md](systems/information.md))
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
+- [ ] Compromisos: préstamos y garantías (colateral, fiadores, empeño), deudas por norma, herencia de deudas, matrimonio y aprendizaje como `status`, mediación, documentos y tallas como objetos ([contracts.md](systems/contracts.md))
 - [ ] Consejo de aldea como primera organización, bandas de bandidos que nacen del hambre, lealtad como relación con la organización ([organizations.md](systems/organizations.md))
 
 ## Fase 4 — Cultivo
@@ -147,6 +152,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Piedras espirituales como moneda y combustible, cambio plata–piedras, mercado de píldoras y hierbas, casa de subastas ([economy.md](systems/economy.md))
 - [ ] Secta mínima: prueba de ingreso con instrumentos con error, rangos sobre reinos culturales, maestro y discípulo, sueldos y puntos de contribución ([organizations.md](systems/organizations.md))
 - [ ] Alquimia (hornos, fuegos de tierra y propio, tensión, toxicidad residual, señales visibles) y talismanes simples ([crafts.md](systems/crafts.md))
+- [ ] Juramentos ante el Cielo y sobre el corazón del Dao (karma y demonios internos), juramentos de secreto, sellos simples en el alma, maestro–discípulo como compromiso ([contracts.md](systems/contracts.md))
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 
@@ -155,6 +161,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Campos elementales entre celdas (fronteras, estaciones, sesgo por uso), elementos derivados por condiciones, ecología con afinidad ([elements.md](systems/elements.md))
 - [ ] Tiers de NPC 0–4, materialización coherente con estadísticas
 - [ ] Scheduler multi-escala eficiente
+- [ ] Contratos entre comerciantes por rutas, encargos lejanos, venta de créditos, falsificación de documentos ([contracts.md](systems/contracts.md))
 - [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
 
 ## Fase 6 — Organizaciones
@@ -165,6 +172,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Registro de anomalías, herejía y cismas doctrinales, cultura epistémica, archivos y mecenazgo ([discovery.md](systems/discovery.md))
 - [ ] Relaciones entre organizaciones: diplomacia por personas, fuerza ajena como creencia, jerarquías regionales, escalera de conflicto, cismas y absorciones
 - [ ] Forja y refinación de artefactos (inscripciones, vínculo con el dueño, desgaste), formaciones como grafos sobre el campo de qi, salones de oficio, encargos y marcas ([crafts.md](systems/crafts.md))
+- [ ] Tratados, vasallaje y tributo, rehenes, repudio en sucesiones, garantes y árbitros, contratos con bestias y espíritus, talismanes de contrato ([contracts.md](systems/contracts.md))
 - [ ] Gremios, monopolios y cárteles, casas de cambio y letras, sueldos de secta, tributo de protección, mercado negro ([economy.md](systems/economy.md))
 
 ## Fase 7 — Historia procedural
