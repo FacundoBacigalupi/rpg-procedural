@@ -18,6 +18,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/metaphysics.md](docs/systems/metaphysics.md) — **las leyes de cada mundo varían mucho** (xianxia, magia occidental, pactos, dioses…). El código usa conceptos genéricos (`Essence`, `Practice`, `Law`, `Soul`).
 - [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.
 - [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
+- [docs/systems/perception.md](docs/systems/perception.md) — percepción: la única puerta entre la verdad y las creencias (canales, atención, errores, huellas).
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo

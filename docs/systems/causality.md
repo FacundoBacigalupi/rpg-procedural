@@ -177,7 +177,7 @@ Encaja perfecto con la temática y no rompe la regla: no inventa nada, solo **le
 
 ## 8. Implicancias de implementación
 
-- `Event { id, time, type, actors, location, outcome, data, visibility, causes: CauseRef[] }`
+- `Event { id, time, type, actors, location, outcome, data, emissions, causes: CauseRef[] }` (quién lo percibe se calcula: ver [perception.md](perception.md))
 - `CauseRef = { kind: 'event' | 'pressure' | 'belief' | 'state', ref, weight }`
 - Toda entidad tiene `originEventId`.
 - Los sistemas se escriben como **procesos**: `precondiciones(estado) → presión → decisión/tirada → cambios de estado + eventos con causas`.
