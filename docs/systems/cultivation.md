@@ -238,8 +238,8 @@ Cada umbral cruzado aplica sus `effects`, siempre como cambios a sistemas existe
 
 ## 12. Recursos y lugares
 - **Cuevas de cultivo (洞府):** lugares sobre venas o puntos de acumulación. Son escasas, se heredan, se compran, se pelean. Dónde vive un cultivador es una decisión de recursos.
-- **Piedras espirituales, píldoras, hierbas, tesoros, núcleos:** cada uno tiene origen, cantidad y precio ([economy.md](economy.md), crafts). La economía del cultivo es la economía del mundo para la gente con poder.
-- **Formaciones:** concentrar qi, proteger, ocultar. Son artificio (crafts, futuro), consumen piedras y se gastan.
+- **Piedras espirituales, píldoras, hierbas, tesoros, núcleos:** cada uno tiene origen, cantidad y precio ([economy.md](economy.md), [crafts.md](crafts.md)). La economía del cultivo es la economía del mundo para la gente con poder.
+- **Formaciones:** concentrar qi, proteger, ocultar. Son artificio ([crafts.md](crafts.md) §6), consumen piedras y se gastan.
 - **El tiempo como recurso:** una reclusión de diez años es diez años en que el mundo sigue sin vos (tu familia envejece, tus enemigos crecen, tu secta cambia). El mundo no espera.
 
 ## 13. Perder, dispersar y transferir
