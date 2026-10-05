@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Describe la `Practice` de la **familia xianxia** (cultivo interno con reinos y rupturas) sobre las interfaces genéricas de [metaphysics.md](metaphysics.md). Separa la **ley** (cómo funciona el cultivo de verdad en este mundo, generada por el seed) de las **escuelas** (cómo cada secta cree que funciona). Define talento, absorción, reinos, rupturas, técnicas como conocimiento, caminos, recursos, y cómo un espíritu cultiva o vuelve a tener cuerpo.
 
-Depende de: [metaphysics.md](metaphysics.md) (ejes del mundo), [causality.md](causality.md) (el qi se conserva, se consume y se regenera), [planet-gen.md](planet-gen.md) (campo de qi, elementos, venas, tesoros), [heaven-karma.md](heaven-karma.md) (tribulaciones, límite de vida, karma), [body-health.md](body-health.md) (meridianos, dantian, daño, desviación, toxicidad de píldoras), [npc-psychology.md](npc-psychology.md) (corazón del Dao, demonios internos, el cultivo altera la psique), [perception.md](perception.md) (sentidos de Esencia y Alma, leer el cultivo ajeno), [information.md](information.md) (técnicas y manuales como información). Lo usan: [spirits.md](spirits.md), [living-world.md](living-world.md) (bestias que cultivan), [deep-history.md](deep-history.md), [discovery.md](discovery.md), y los futuros economía, organizaciones, oficios y guerra.
+Depende de: [metaphysics.md](metaphysics.md) (ejes del mundo), [causality.md](causality.md) (el qi se conserva, se consume y se regenera), [planet-gen.md](planet-gen.md) (campo de qi, elementos, venas, tesoros), [heaven-karma.md](heaven-karma.md) (tribulaciones, límite de vida, karma), [body-health.md](body-health.md) (meridianos, dantian, daño, desviación, toxicidad de píldoras), [npc-psychology.md](npc-psychology.md) (corazón del Dao, demonios internos, el cultivo altera la psique), [perception.md](perception.md) (sentidos de Esencia y Alma, leer el cultivo ajeno), [information.md](information.md) (técnicas y manuales como información). Lo usan: [spirits.md](spirits.md), [living-world.md](living-world.md) (bestias que cultivan), [deep-history.md](deep-history.md), [discovery.md](discovery.md), [economy.md](economy.md), y los futuros organizaciones, oficios y guerra.
 
 ## Principios
 1. **El reino es cultura; el estado es física.** El mundo no tiene un campo `realm: "Foundation 3"`. Tiene un estado continuo del cuerpo y el alma (cuánta esencia, qué tan densa, qué estructuras se formaron). Los "reinos" con nombre son una clasificación que cada escuela hace encima, y puede estar equivocada.
@@ -118,7 +118,7 @@ Cultivar es una acción larga (horas a años) que mueve esencia de una fuente al
 - **El qi sale de la fuente.** El qi absorbido se resta de la celda (planet-gen) o del objeto. Diez discípulos en la misma cueva compiten por el mismo qi; la secta que crece agota la vena (causality §3). Las sectas ricas tienen **formaciones de concentración** que traen qi de celdas vecinas: también es mover, no crear.
 - **Fuentes:**
   - **Ambiental:** la celda; qi de venas, cuevas, picos; qi celeste según hora y fase lunar (planet-gen).
-  - **Piedras espirituales:** qi cristalizado; se consumen. Son moneda (economy, futuro), así que cultivar quema dinero.
+  - **Piedras espirituales:** qi cristalizado; se consumen. Son moneda ([economy.md](economy.md) §12), así que cultivar quema dinero.
   - **Píldoras:** qi refinado, más rápido pero con toxicidad residual (body-health §9).
   - **Tesoros y frutos:** cantidades grandes y concentradas, a veces con efectos especiales; riesgo de sobrecarga.
   - **Otros seres:** devorar (técnicas demoníacas que absorben el qi o la sangre de otros: rápido, impuro, mucho karma), cultivo dual (§10), núcleos de bestia.
@@ -238,7 +238,7 @@ Cada umbral cruzado aplica sus `effects`, siempre como cambios a sistemas existe
 
 ## 12. Recursos y lugares
 - **Cuevas de cultivo (洞府):** lugares sobre venas o puntos de acumulación. Son escasas, se heredan, se compran, se pelean. Dónde vive un cultivador es una decisión de recursos.
-- **Piedras espirituales, píldoras, hierbas, tesoros, núcleos:** cada uno tiene origen, cantidad y precio (economy, crafts). La economía del cultivo es la economía del mundo para la gente con poder.
+- **Piedras espirituales, píldoras, hierbas, tesoros, núcleos:** cada uno tiene origen, cantidad y precio ([economy.md](economy.md), crafts). La economía del cultivo es la economía del mundo para la gente con poder.
 - **Formaciones:** concentrar qi, proteger, ocultar. Son artificio (crafts, futuro), consumen piedras y se gastan.
 - **El tiempo como recurso:** una reclusión de diez años es diez años en que el mundo sigue sin vos (tu familia envejece, tus enemigos crecen, tu secta cambia). El mundo no espera.
 

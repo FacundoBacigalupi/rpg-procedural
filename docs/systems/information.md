@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Cómo lo que alguien percibió se vuelve **creencia**, cómo las creencias viajan de persona a persona (y por cartas, mapas, pregoneros y espías) y cómo se deforman en el camino. Es la capa 4 de [causality.md](causality.md): una masacre que nadie conoce no genera venganza.
 
-Depende de: [perception.md](perception.md) (de dónde sale todo lo que se sabe de primera mano), [npc-psychology.md](npc-psychology.md) (memoria, confianza, esquemas, teoría de la mente), [living-world.md](living-world.md) (rutas, lenguas, escrituras, el conocimiento es físico). Lo usan: [schemes.md](schemes.md) (cebos, calumnias, rastrear rumores), reputación, mitos, economía, organizaciones, el narrador.
+Depende de: [perception.md](perception.md) (de dónde sale todo lo que se sabe de primera mano), [npc-psychology.md](npc-psychology.md) (memoria, confianza, esquemas, teoría de la mente), [living-world.md](living-world.md) (rutas, lenguas, escrituras, el conocimiento es físico). Lo usan: [schemes.md](schemes.md) (cebos, calumnias, rastrear rumores), reputación, mitos, [economy.md](economy.md), organizaciones, el narrador.
 
 ## Principios
 1. **Creer no es saber.** Cada agente tiene su propio conjunto de creencias, con confianza y fuentes. La verdad está en `WorldTruth` y nadie la consulta.
@@ -160,7 +160,7 @@ El mapa del jugador (y el de cada NPC) es un **conjunto de creencias** `location
 - Hay **informantes, corredores de información y casas de inteligencia** (情报) que la compran, la verifican, la venden y la inventan. Su reputación de exactitud es su capital.
 - **Espías:** agentes de una organización infiltrados en otra. Su lealtad es una relación más (pueden quebrarse, ser comprados o ser dobles). Lo que reportan es lo que creen, con sus sesgos.
 - **Propaganda y censura:** una organización (secta, estado, religión) siembra creencias a propósito con pregoneros, cuentacuentos pagos y edictos, y persigue las que le molestan. Es una intriga a escala de población: se modela con los mismos métodos de schemes, en agregado.
-- Conecta con [economy.md](economy.md) (pendiente): el comerciante gana porque sabe precios que el otro no sabe.
+- Conecta con [economy.md](economy.md): el comerciante gana porque sabe precios que el otro no sabe.
 
 ## 9. Conocimiento colectivo y reputación
 - **Conocimiento colectivo:** cada asentamiento o cultura (tier 0) tiene un conjunto de creencias con la **fracción** que las sostiene: "el valle norte está maldito" (80%), "los Zhao son usureros" (60%), qué hierbas son venenosas, qué se festeja y por qué. Es de donde se muestrean las creencias de los NPCs materializados, y se vuelve memoria colectiva y mito con el tiempo.

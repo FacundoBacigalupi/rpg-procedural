@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#6, economía**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#7, organizaciones**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -22,7 +22,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 3. [x] **Cuerpo y salud** → [body-health.md](systems/body-health.md): cuerpo por partes, heridas que se infectan o dejan secuelas, enfermedades crónicas, nutrición, frío/calor, fatiga, adicciones, envejecimiento, medicina mortal vs alquimia, daño a meridianos.
 4. [x] **Cultivo** → [cultivation.md](systems/cultivation.md) (familia xianxia, con las interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, rupturas, cultivo de espíritus, volver a ser humano.
 5. [x] **Experimentación, descubrimiento e iluminación** → [discovery.md](systems/discovery.md): cómo un agente forma hipótesis sobre las leyes del mundo, prueba, se equivoca y acumula comprensión; dogmas erróneos de escuelas; iluminación (悟) como umbral de un estado acumulado; arte con intención (aprender contemplando una obra).
-6. [ ] **Economía** → `economy.md`: mercados por asentamiento, precios por oferta y demanda, información asimétrica de precios, piedras espirituales como moneda (inflación por minas), crédito y usura, subastas, gremios y monopolios, metal escaso.
+6. [x] **Economía** → [economy.md](systems/economy.md): mercados por asentamiento, precios por oferta y demanda, información asimétrica de precios, piedras espirituales como moneda (inflación por minas), crédito y usura, subastas, gremios y monopolios, metal escaso.
 7. [ ] **Organizaciones** → `organizations.md`: clanes, sectas, gremios; decisiones por facciones internas; nacimiento, cismas y muerte; recursos, aportes y puestos.
 
 ### B. Sistemas nuevos
@@ -59,6 +59,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - body-health: curación, infección y mortalidad.
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
 - discovery: integración de `pending`, umbrales de iluminación y habituación; tasas de descubrimiento por cultura y caída de dogmas; ruido de observación y ventana de atribución (supersticiones comunes pero no universales).
+- economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
 - ¿Qué hay después de la ascensión? (salir del planeta)
@@ -85,6 +86,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Cuerpo y salud ([systems/body-health.md](systems/body-health.md)) — borrador
 - [~] Cultivo ([systems/cultivation.md](systems/cultivation.md)) — borrador
 - [~] Descubrimiento e iluminación ([systems/discovery.md](systems/discovery.md)) — borrador
+- [~] Economía ([systems/economy.md](systems/economy.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -99,6 +101,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
+- [ ] Economía mínima: lotes con origen, inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
 - [ ] Resolución con resultados matizados
 - [ ] Intent parser (Claude) → ActionPlan validado
 - [ ] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md))
@@ -120,7 +123,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Rutinas diarias, NPCs actúan sin el jugador
 - [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
-- [ ] Economía básica: oficios, precios, deudas
+- [ ] Economía básica: hogares con presupuesto, producción agrícola y de oficios, mercado de la aldea con precios por creencias, salarios, crédito de cosecha y usura, calidad percibida y estafa, hambruna con causa ([economy.md](systems/economy.md))
 - [ ] Saber popular de hierbas y medicina como prior cultural, herbolario que experimenta, supersticiones con mecanismo, ventana de atribución ([discovery.md](systems/discovery.md))
 - [ ] Rumores (propagación de información con distorsión, reputación por comunidad) ([information.md](systems/information.md))
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
@@ -130,6 +133,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Cuerpo y cultivo: daño de meridianos, desviación de qi, toxicidad de píldoras, refinamiento corporal ([body-health.md](systems/body-health.md))
 - [ ] Ley del cultivo (umbrales reales) + escuelas con reinos culturales; absorción con conservación, rupturas, fundamento, técnicas y manuales ([cultivation.md](systems/cultivation.md))
 - [ ] Percepción de nivel de cultivo ajeno (con incertidumbre)
+- [ ] Piedras espirituales como moneda y combustible, cambio plata–piedras, mercado de píldoras y hierbas, casa de subastas ([economy.md](systems/economy.md))
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 
@@ -137,21 +141,25 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Múltiples asentamientos, viajes, biomas
 - [ ] Tiers de NPC 0–4, materialización coherente con estadísticas
 - [ ] Scheduler multi-escala eficiente
+- [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
 
 ## Fase 6 — Organizaciones
 - [ ] Clanes, sectas, gremios como entidades con recursos, ideología, facciones internas
 - [ ] Sectas que nacen de eventos (descubridor de técnica → escuela → secta)
 - [ ] Registro de anomalías, herejía y cismas doctrinales, cultura epistémica, archivos y mecenazgo ([discovery.md](systems/discovery.md))
 - [ ] Relaciones entre organizaciones
+- [ ] Gremios, monopolios y cárteles, casas de cambio y letras, sueldos de secta, tributo de protección, mercado negro ([economy.md](systems/economy.md))
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
 - [ ] Simulación histórica rápida (siglos) que deja ruinas, técnicas perdidas, rivalidades
 - [ ] Descubrimiento como proceso de riesgo por población; pérdida y redescubrimiento ([discovery.md](systems/discovery.md))
 - [ ] Eras variables (temprana / dorada / decadente…)
+- [ ] Sistemas monetarios que nacen en la historia, acuñación y rebaja de ley, minas que se descubren y agotan, crisis monetarias ([economy.md](systems/economy.md))
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política
+- [ ] Economía de guerra (metal, levas, saqueo), billetes de estado, corridas ([economy.md](systems/economy.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
 
