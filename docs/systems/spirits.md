@@ -4,11 +4,23 @@
 
 Depende de: [heaven-karma.md](heaven-karma.md) (el ciclo del Cielo), [npc-psychology.md](npc-psychology.md) (memoria, objetivos, emociones), [planet-gen.md](planet-gen.md) (qi yin, tesoros naturales).
 
+## 0. Volverse espíritu es difícil
+Tener un objetivo fuerte o odiar a alguien **no alcanza**. Al morir, las Fuentes Amarillas (黄泉) arrastran el alma hacia el ciclo, y quedarse es **resistir esa fuerza**. Un espíritu se forma solo si se cumplen **todas** estas condiciones a la vez:
+
+1. **Alma con fuerza suficiente.** El alma de un mortal es débil y se dispersa en horas o días. El cultivo (sobre todo el de alma) la fortalece. Por eso casi todos los espíritus fuertes fueron cultivadores.
+2. **Un ancla real**, y de una intensidad enorme: una emoción en el pico de la escala, un objetivo que era el centro de la identidad (no uno más), un objeto preparado, una atadura impuesta.
+3. **Un entorno que lo sostenga:** qi yin, un lugar con qi acumulado, un objeto capaz de contener un alma. Sin sustento, el alma se gasta resistiendo.
+4. **Circunstancias de la muerte que la retengan:**
+   - En contra: ritos funerarios correctos, ser llorado y enterrado, morir en paz.
+   - A favor: morir lejos y sin entierro, por violencia o traición, en un lugar con muchas otras muertes, o sellado.
+
+El resultado no es una tirada: es una comparación determinista entre `fuerza del alma × intensidad del ancla × sustento × circunstancias` y la **atracción de las Fuentes** (que depende de la fuerza del Cielo en ese mundo). El azar solo afina los márgenes. Un mortal común casi nunca queda, y si queda es débil y se desvanece pronto, salvo en una confluencia extrema (una masacre en un valle yin, sin ritos, con cientos de muertos a la vez).
+
 ## 1. Orígenes
 | Tipo | Causa | Qué es |
 |---|---|---|
-| **Espíritu resentido** (怨灵) | Muerte con emoción muy intensa (odio, terror, injusticia) + qi yin en el lugar | El alma queda atada al lugar y a la emoción de su muerte. Fuerza = intensidad × qi yin. |
-| **Asunto pendiente** | Un objetivo muy fuerte sin cumplir al morir (vengarse, proteger a un hijo, entregar un mensaje) | El alma queda atada al **objetivo**. Si se cumple (por ella o por otro), se libera. Sale directamente de los objetivos en capas del modelo psicológico. |
+| **Espíritu resentido** (怨灵) | Muerte con emoción extrema (odio, terror, injusticia) + alma suficiente + qi yin + circunstancias (ver §0) | El alma queda atada al lugar y a la emoción de su muerte. Fuerza = intensidad × qi yin. |
+| **Asunto pendiente** | Un objetivo central para la identidad, sin cumplir, más las demás condiciones de §0 (un objetivo fuerte solo no alcanza) | El alma queda atada al **objetivo**. Si se cumple (por ella o por otro), se libera. Sale directamente de los objetivos en capas del modelo psicológico. |
 | **Remanente de alma** (残魂) | Un cultivador con alma fuerte que, al morir, se refugió en un objeto (anillo, espada, jade) con una técnica | Conserva **memorias y conocimiento reales**: puede enseñar, mentir, negociar o intentar poseer un cuerpo. El clásico "viejo en el anillo" con causa. |
 | **Espíritu de lugar** | Un sitio con mucho qi acumulado durante milenios (un tesoro natural, una montaña, un río viejo) que despierta conciencia | Espíritus de montaña, de río, de árbol antiguo. Están atados al lugar, lo protegen y lo sienten. Si el lugar se agota, se debilitan. |
 | **Espíritu de objeto** (器灵) | Un arma o artefacto usado durante siglos, impregnado del qi y la intención de sus dueños | Tiene la personalidad que le dejaron sus usos (una espada que mató mucho es sanguinaria). Puede elegir dueño o rechazarlo. |
@@ -39,6 +51,17 @@ interface Spirit {
 - Un remanente de alma puede mentir sobre quién fue: su historia es una memoria con autoengaño, como la de cualquier NPC.
 - Los espíritus resentidos recuerdan su muerte como la vivieron, no como fue. Su venganza puede apuntar al culpable equivocado.
 
+## 3b. El ciclo: las Fuentes Amarillas y la reencarnación
+- Las almas que no quedan como espíritus cruzan las **Fuentes Amarillas** y vuelven a nacer. La reencarnación es real.
+- **El karma no se hereda.** Cruzar las Fuentes lava las deudas kármicas: la nueva vida empieza limpia. Lo que **sí queda** está en los demás: quienes te odiaron o te amaron siguen recordándote, y un enemigo longevo puede reconocerte en tu nueva vida aunque vos no lo recuerdes.
+- **Los recuerdos se lavan.** Cuánto sobrevive depende de la fuerza del alma: ver las opciones en las preguntas abiertas.
+- Las almas se conservan: no se crean de la nada. La población de almas en el ciclo es parte del ledger (el Cielo las administra).
+
+## 3c. Tu personaje como espíritu
+- Morir **no siempre termina la partida.** Si se cumplen las condiciones de §0, seguís jugando como espíritu, atado a tu ancla, con las limitaciones de serlo: no podés tocar el mundo físico como antes, te sostenés con qi, te ven solo los que pueden.
+- La partida termina cuando tu alma **cruza las Fuentes o se disipa**. Ahí se escribe la crónica.
+- **A futuro, con el diseño de cultivo:** volver a ser humano (un cuerpo vacío, una posesión, reconstruir un cuerpo con tesoros), o cultivar como espíritu (camino de los fantasmas cultivadores). Queda abierto para ese doc.
+
 ## 4. Consecuencias
 - **Liberar un espíritu** (cumplir su asunto pendiente, vengar su muerte, enterrarlo bien) es un acto con karma positivo, y una fuente de misiones que salen del estado sin escribirlas.
 - **Zonas malditas** cambian el mapa humano: abandono, tabúes, mitos. Purificarlas es una hazaña.
@@ -60,5 +83,6 @@ interface Spirit {
 - Cumplir el objetivo ancla libera al espíritu.
 
 ## Preguntas abiertas
-- **¿Qué pasa con el alma al volver al ciclo?** ¿Reencarnación real (con karma heredado, recuerdos de vidas pasadas en casos raros)? Conecta con el archivo de crónicas de vidas pasadas.
-- **¿Tu personaje puede volverse espíritu al morir?** La regla es una sola vida, así que no sería jugable, pero podría quedar como un espíritu en el mundo para la crónica (o para una partida futura en el mismo mundo).
+- **Recuerdos de vidas pasadas:** cómo se conservan según el cultivo (opciones en discusión: umbral por fuerza del alma, despertar por disparadores, técnicas de preparación, resistir las Fuentes como desafío al Cielo).
+- ¿Se puede seguir jugando después de reencarnar?
+- Cultivo de espíritus y volver a ser humano: en el doc de cultivo.

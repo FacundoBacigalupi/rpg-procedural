@@ -1,6 +1,8 @@
 # rpg-procedural — Simulador de vida Xianxia procedural
 
-Juego personal (un solo jugador, para el autor). El jugador escribe en texto libre qué hace su personaje; un mundo simulado resuelve la acción; un LLM interpreta la intención y narra el resultado. Una sola vida: si morís, se termina la partida y queda una crónica.
+Juego personal (un solo jugador, para el autor). El jugador escribe en texto libre qué hace su personaje; un mundo simulado resuelve la acción; un LLM interpreta la intención y narra el resultado. Una sola vida: cuando tu alma cruza al ciclo (o se disipa), se termina la partida y queda una crónica. Morir puede dejarte como espíritu si las circunstancias lo permiten (ver spirits.md).
+
+**Preferencia de diseño: cuanto más detalle, mejor**, en todos los sistemas. La escala se maneja con LOD (tiers, agregados), no recortando profundidad.
 
 Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/VISION.md](docs/VISION.md) — qué es el juego y sus principios de diseño.

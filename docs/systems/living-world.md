@@ -27,7 +27,13 @@ Cuando la historia profunda crea un pueblo, sus rasgos culturales salen de **dó
 - **Economía → valores:** nómadas del desierto (movilidad, hospitalidad, honor de clan), imperios de río (burocracia, obras hidráulicas, jerarquía), pueblos de montaña (aislamiento, tradición), costeros (comercio, apertura).
 - **Comida, vestimenta, arquitectura** según clima y recursos (madera, piedra, barro).
 - **Valores colectivos** con el mismo catálogo que los NPCs, como sesgo inicial para quienes nacen ahí.
-- **Lenguas** que se separan con el aislamiento: montañas y mares dividen dialectos, y con el tiempo idiomas. Los nombres de lugares salen de esas lenguas (ver planet-gen: los nombres los pone quien nombra).
+- **Lenguas generadas de verdad** (decidido: máximo detalle):
+  - Cada protolengua tiene **fonología** (inventario de sonidos, estructura de sílabas), **raíces** con significado y **morfología** básica (cómo se forman palabras compuestas).
+  - **Evolución:** cuando un pueblo se separa (montañas, mares, migración), su lengua cambia con reglas de cambio fonético a lo largo de los siglos. Las lenguas hermanas se parecen y sus parientes lejanos apenas.
+  - **Contacto:** el comercio y la conquista prestan palabras entre lenguas.
+  - **Nombres con significado:** "Qingshui" significa "agua clara" en esa lengua. Un lugar conserva nombres viejos deformados de pueblos que ya no existen, y eso es una pista arqueológica.
+  - **Escritura:** algunas culturas la inventan (o la heredan); los textos viejos están en lenguas muertas que hay que aprender a leer.
+  - El LLM no inventa palabras: usa las del léxico generado (las traduce o las cita).
 
 ## 4. Los mitos son historia deformada
 - La memoria colectiva usa la **misma mecánica** que la memoria de los NPCs: se transmite contada, se distorsiona y se comprime en gist. A escala de siglos, una batalla real entre dos inmortales se vuelve "el dios dragón contra la diosa del sol".
@@ -66,4 +72,4 @@ Cuando la historia profunda crea un pueblo, sus rasgos culturales salen de **dó
 - Determinismo de la evolución de bestias con el mismo seed.
 
 ## Preguntas abiertas
-- Profundidad de las lenguas: ¿generador de idiomas real (fonología, raíces) o solo estilos de nombres por cultura?
+- Ninguna por ahora.
