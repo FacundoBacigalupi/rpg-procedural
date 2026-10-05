@@ -150,13 +150,13 @@ interface ProductionProcess {
   knowledge?: RecipeId | TechniqueId;  // saber cómo (discovery §8): sin receta no hay proceso
   essence?: number;                    // qi consumido (conservación: sale de la celda o de piedras)
   outputs: OutputFn;                   // cantidad y calidad = f(insumos, habilidad, herramienta, sitio, clima, rng)
-  byproducts?: GoodId[];               // escoria, desechos, toxinas residuales (crafts, futuro)
+  byproducts?: GoodId[];               // escoria, desechos, toxinas residuales (crafts.md)
 }
 ```
 
 - **Agricultura:** el rendimiento sale del suelo, el agua, el clima del año (planet-gen), la técnica (tecnología, futuro), el trabajo y las plagas. Una helada temprana es una mala cosecha con causa.
 - **Extracción:** minas, canteras, bosques, pesca, caza y recolección **sacan de un stock** (veta, población de peces, de bestias, de hierbas: ecología, capa 2). Sobreexplotar agota el stock: suben los precios y bajan los rendimientos, sin que nadie lo decida.
-- **Oficios:** artesanos, herreros, tejedores, alquimistas, forjadores de formaciones. Los oficios espirituales van en crafts.md (futuro); acá solo importa que convierten insumos con precio en productos con precio.
+- **Oficios:** artesanos, herreros, tejedores, alquimistas, forjadores de formaciones. Cómo se hace cada cosa (sesiones por pasos, recetas, habilidad) va en [crafts.md](crafts.md); acá solo importa que convierten insumos con precio en productos con precio.
 - **El saber es un factor de producción.** La receta de una píldora o el secreto del acero templado valen porque pocos los tienen (information §8). Un gremio protege recetas; un espía las roba; una receta que se difunde baja los precios del producto.
 - **Calidad con variación.** La habilidad, la herramienta y la suerte dan calidad distinta: hay buenos y malos herreros, y se nota (para quien sabe mirar).
 
@@ -318,7 +318,7 @@ El metal es el cuello de botella de la tecnología y de la moneda.
 - **Viene de vetas concretas** (planet-gen §6) que se agotan. La cantidad total de cada metal en el mundo es la que se extrajo menos la que se perdió (oxidada, hundida, enterrada con un muerto).
 - **Se recicla:** armas fundidas para hacer monedas, monedas fundidas para hacer campanas, campanas fundidas para la guerra. Cada conversión es un evento y el ledger lo sigue.
 - **Compite entre usos:** herramientas (productividad agrícola), armas (guerra), moneda (comercio), objetos rituales y de prestigio. Una guerra larga deja a los campesinos sin azadas y a los mercados sin cambio.
-- **Metales espirituales** (hierro estelar, oro yin, cobre de fuego) se forman donde el qi transformó la roca (planet-gen §5): son raros, no se pueden fundir con un fuego mortal y valen como tesoros. Detalle en crafts.md (futuro).
+- **Metales espirituales** (hierro estelar, oro yin, cobre de fuego) se forman donde el qi transformó la roca (planet-gen §5): son raros, no se pueden fundir con un fuego mortal y valen como tesoros. Cómo se trabajan: [crafts.md](crafts.md) §5.
 - **La edad del metal de cada cultura** (bronce, hierro, acero) sale de lo que tiene cerca y de lo que descubrió (tecnología, futuro; discovery). Una cultura sin estaño no tiene bronce.
 
 ## 12. Piedras espirituales
