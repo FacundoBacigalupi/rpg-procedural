@@ -20,6 +20,12 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
+## Retomar en un chat nuevo
+1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue y "Estado del diseño" qué queda abierto.
+2. `git status` y `gh pr list` (en Bash, primero `export PATH="$PATH:/c/Program Files/GitHub CLI"`) para ver ramas o PRs a medio camino.
+3. Leer el doc de sistema relevante antes de tocar código.
+4. Al cerrar cualquier cosa: actualizar ROADMAP (y el doc del sistema) **en el mismo PR**, para que el próximo chat tenga el contexto sin depender de la conversación.
+
 ## Reglas que no se rompen
 1. **La IA no es el juego.** El LLM solo (a) traduce texto del jugador a intenciones estructuradas y (b) narra eventos ya resueltos. Nunca decide resultados, nunca crea entidades ni items, nunca modifica el estado.
 2. **La simulación es determinista.** Mismo seed + mismas acciones = mismo mundo. Toda aleatoriedad pasa por el RNG con seed (`src/core/rng`), nunca `Math.random()` ni `Date.now()` dentro de la simulación.

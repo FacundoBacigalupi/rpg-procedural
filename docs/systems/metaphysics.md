@@ -15,7 +15,7 @@ Depende de: [causality.md](causality.md) (las leyes son la capa 0). Condiciona: 
 
 ## Dos niveles: la ley y las escuelas
 - **La ley (verdad):** cómo funciona realmente el poder en ese mundo. La genera el seed y vive en `WorldTruth`.
-- **Las escuelas (conocimiento):** cómo cada civilización **entiende** y sistematiza esa ley. Son descubiertas por la historia, parciales y a veces equivocadas. En un mismo mundo pueden coexistir cultivadores y magos: dos escuelas que acceden a la misma esencia por caminos distintos, y que se creen opuestas. Los "reinos" con nombre (Qi Gathering, Foundation Establishment, o "mago de tercer círculo") son una **clasificación cultural** encima de la ley, no la ley misma.
+- **Las escuelas (conocimiento):** cómo cada civilización **entiende** y sistematiza esa ley. Son descubiertas por la historia, parciales y a veces equivocadas. Dentro de una misma familia hay escuelas rivales (dos sectas que cultivan por caminos distintos, dos órdenes de magos), pero **todas pertenecen a la familia del mundo**: no hay cultivadores y magos occidentales en el mismo mundo. Los "reinos" con nombre (Qi Gathering, Foundation Establishment, o "mago de tercer círculo") son una **clasificación cultural** encima de la ley, no la ley misma.
 
 ## Los ejes que genera el seed
 
@@ -74,7 +74,7 @@ Las reglas de formación de espíritus (resistir la fuerza que se lleva al alma,
 - **Longevidad:** el poder alarga la vida (inmortales) o no (el viejo mago muere a los 80).
 - **Techo de poder:** desde magia baja (un buen mago enciende velas y cura fiebres) hasta poder que parte montañas.
 - **Quién puede usarlo:** todos con entrenamiento, una minoría con talento, solo ciertos linajes, solo los elegidos.
-- **Especies inteligentes:** una (humanos) o varias, surgidas por evolución en ambientes distintos o creadas por poderes (los "elfos" de ese mundo tienen un origen en la historia). También se generan, no se eligen de una lista.
+- **Especies inteligentes:** una (humanos) o varias, surgidas por evolución en ambientes distintos o creadas por poderes (los "elfos" de ese mundo tienen un origen en la historia). También se generan, no se eligen de una lista. **El jugador puede nacer en cualquier especie inteligente del mundo** (incluidas bestias despiertas donde existan), con su cuerpo, longevidad, cultura y forma de relacionarse con el poder.
 
 ## Familias (atractores, no plantillas)
 El seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** que hacen que ciertos paquetes sean coherentes y frecuentes. Las familias son zonas densas del espacio:
@@ -86,9 +86,10 @@ El seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** 
 | **Fantasía oscura / baja** | Vital o otorgada + pactos + sin escalera + corrupción + algo afuera + poder escaso |
 | **Mitológica** | Espiritual (fe) + pactos y rituales + panteón que camina entre mortales |
 | **Rúnica** | Conceptual + artificio + maestría continua + física indiferente |
-| **Mixtas** | Dos o más fuentes y escuelas en conflicto (cultivadores del este contra magos del oeste) |
 
-Cuanto menos frecuente la combinación, más rara la partida. Algunas serán extrañas a propósito.
+- **Xianxia es la familia más común** (la mayoría de los mundos); el resto se reparte entre las demás.
+- **Sin mundos mixtos:** cada mundo pertenece a una sola familia. Dentro de ella, los ejes varían (fuente, costo, ley, almas), así que dos mundos xianxia también se sienten distintos.
+- Cuanto menos frecuente la combinación dentro de una familia, más rara la partida.
 
 ## Coherencia
 Un validador revisa que la combinación tenga sentido y deriva consecuencias:
@@ -114,7 +115,10 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - La conservación de esencia vale en todas las familias.
 - El narrador nunca recibe vocabulario de otra familia.
 
+## Decisiones (2026-10-05)
+- Xianxia es la familia más común. Peso exacto a calibrar (orientativo: ~60%).
+- Sin mundos mixtos: una familia por mundo.
+- Especies no humanas jugables.
+
 ## Preguntas abiertas
-- ¿Qué tan común es xianxia frente al resto (por ejemplo, 50%)?
-- ¿Mundos mixtos frecuentes o raros?
-- ¿Especies no humanas jugables, o el jugador siempre es humano?
+- Peso exacto de cada familia.
