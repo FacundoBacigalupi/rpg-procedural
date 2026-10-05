@@ -43,5 +43,11 @@ Dependabot propone actualizaciones de dependencias contra `develop`.
 - La API key de Claude va en `.env` (ignorado por git). La plantilla está en `.env.example`.
 - Nunca se commitean partidas (`saves/`, `*.db`).
 
-## Límites del plan gratuito (repo privado)
-En un repo privado con cuenta Free, GitHub **no aplica** branch protection ni rulesets, y no ofrece CodeQL ni push protection de secretos. Lo compensamos con disciplina (PRs siempre), gitleaks en CI y Dependabot. Si en algún momento pasás a GitHub Pro (o hacés el repo público), activamos las reglas reales: PR obligatorio, CI obligatorio, sin force-push en `main`/`develop`.
+## Configuración de GitHub (aplicada)
+El repo es **público**.
+- **Rulesets** en `main` (solo merge commit) y `develop` (solo squash): PR obligatorio (0 aprobaciones, porque es un solo dev), checks obligatorios `Typecheck, lint y tests` y `Escaneo de secretos`, sin force-push ni borrado. Nadie puede saltearlos, ni el admin.
+- Merges permitidos: squash y merge commit (rebase desactivado). Las ramas se borran solas al mergear.
+- Seguridad: Dependabot alerts y security updates, secret scanning con push protection, CodeQL (default setup).
+- Actions con permisos de solo lectura por defecto.
+- Labels: `feature`, `bug`, `design`, `chore`, `dependencies`, `area:*`. Milestones: uno por fase del ROADMAP.
+- `gh` está instalado y autenticado (`C:\Program Files\GitHub CLI`), así que Claude puede abrir PRs e issues y consultar el CI. **Los merges los hace el usuario.**

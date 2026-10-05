@@ -7,11 +7,10 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [ ] **Configuración manual en GitHub** (ver "Setup del repo" abajo): default branch `main`, borrar `master`, settings de seguridad.
-2. [ ] **PR `docs/world-model` → `develop`** con los docs de diseño (causalidad, Cielo/karma, historia profunda).
-3. [ ] **Diseño: psicología de NPCs** (`docs/systems/npc-psychology.md`): rasgos innatos/adquiridos, relaciones, memoria, demonios internos.
-4. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
-5. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
+1. [ ] **Mergear PRs pendientes** (usuario): #1–#3 de Dependabot (actions), #4 docs de diseño, y el PR de `chore/repo-settings`.
+2. [ ] **Diseño: psicología de NPCs** (`docs/systems/npc-psychology.md`): rasgos innatos/adquiridos, relaciones, memoria, demonios internos.
+3. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
+4. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
 
 ## Ideas / pendientes sueltos
 - Cerrar las preguntas abiertas de [deep-history.md](systems/deep-history.md) (criterio de "ya no importa", calibración agregado vs individual).
@@ -20,15 +19,10 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - Diseño de información y rumores.
 
 ## Setup del repo
-- [x] Ramas `main` + `develop`, flujo documentado en [GIT_WORKFLOW.md](GIT_WORKFLOW.md)
-- [x] CI: typecheck/lint/tests, gitleaks, npm audit
-- [x] Dependabot (npm + actions → `develop`), plantillas de PR e issues, `.gitattributes`, `.editorconfig`, `.env.example`
-- [ ] **(Manual, GitHub web)** Settings → General → Default branch: `main`. Después borrar `master` (lo puedo hacer yo con `git push origin --delete master`).
-- [ ] **(Manual)** Settings → General → Pull Requests: permitir solo *Squash* y *Merge commit*, activar "Automatically delete head branches".
-- [ ] **(Manual)** Settings → Code security: activar Dependabot alerts y Dependabot security updates.
-- [ ] **(Manual)** Settings → Actions → General: Workflow permissions = "Read repository contents".
-- [ ] (Opcional) Instalar `gh` (`winget install GitHub.cli` + `gh auth login`) para que yo pueda abrir PRs e issues.
-- [ ] (Si pasás a Pro o hacés el repo público) Rulesets en `main` y `develop`: PR obligatorio, CI obligatorio, sin force-push ni borrado.
+- [x] Ramas `main` + `develop` (sin `master`), flujo en [GIT_WORKFLOW.md](GIT_WORKFLOW.md)
+- [x] CI: typecheck/lint/tests, gitleaks, npm audit · Dependabot · CodeQL · secret scanning + push protection
+- [x] Rulesets en `main` y `develop`, opciones de merge, labels, milestones por fase
+- [x] `gh` autenticado
 
 ## Diseño
 - [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
