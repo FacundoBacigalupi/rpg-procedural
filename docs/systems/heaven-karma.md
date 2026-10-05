@@ -23,7 +23,7 @@ Cultivar es **robarle al Cielo**: absorber qi que no te corresponde y estirar un
 | Herramienta | Cuándo | Qué depende de |
 |---|---|---|
 | **Tribulación** | Al romper ciertos reinos (los que cruzan un "umbral de transgresión") | Tamaño del salto, karma acumulado, talento (los genios atraen más atención), atención actual del Cielo sobre la región |
-| **Límite de vida** | Siempre | Reino de cultivo, constitución, técnicas, karma |
+| **Límite de vida** | Siempre | Reino de cultivo, constitución, técnicas, karma (el desgaste del cuerpo es otro reloj: [body-health.md](body-health.md) §10) |
 | **Retribución kármica** | Cuando una deuda kármica es enorme | Modifica tiradas (mala suerte, accidentes) o dispara calamidades contra el deudor. Nunca crea entidades de la nada: usa lo que ya existe (bestias cercanas, enemigos reales, el clima) |
 | **Demonios internos** | En rupturas y meditación profunda | Memorias traumáticas, culpa y deudas kármicas del propio cultivador (enlace con psicología) |
 | **Calamidades** | Desequilibrio grave de qi en una región (sobreexplotación, arrays prohibidos) | Deslaves de qi, sequías espirituales, mutaciones de bestias |

@@ -77,7 +77,7 @@ interface SensorProfile {
 ```
 
 - **Especie** (desde `content/`): las bestias tienen olfato fino, visión nocturna o sentido de temblores; los peces sienten vibraciones; una especie inteligente no humana tiene su propio perfil.
-- **Cuerpo:** la edad baja la vista y el oído; las heridas y secuelas los cambian (un ojo perdido reduce el campo y la profundidad, un oído roto). Sale del doc de cuerpo y salud.
+- **Cuerpo:** la edad baja la vista y el oído; las heridas y secuelas los cambian (un ojo perdido reduce el campo y la profundidad, un oído roto). Sale de [body-health.md](body-health.md) (capacidades, §3).
 - **Aptitud `perception`** del NPC (npc-psychology) multiplica todo.
 - **Cultivo:** abrir meridianos agudiza los sentidos físicos y habilita el sentido de esencia; fortalecer el alma amplía el radio del sentido espiritual. Un cultivador alto escucha una conversación a cien metros y siente un aura a kilómetros.
 - **Habilidades aprendidas:** un rastreador lee huellas que otro no ve, un médico ve la enfermedad en la cara, un alquimista distingue hierbas por el olor. Son hábitos con procedencia, no stats.
