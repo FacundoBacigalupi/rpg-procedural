@@ -7,9 +7,8 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — decisiones cerradas; + intrigas ([systems/schemes.md](systems/schemes.md)).
-2. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
-3. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
+1. [~] **Diseño: generación del planeta** ([systems/planet-gen.md](systems/planet-gen.md)) — borrador, revisar preguntas abiertas (tamaño, cuerpos celestes, lo fantástico).
+2. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
 
 ## Ideas / pendientes sueltos
 - Cerrar las preguntas abiertas de [deep-history.md](systems/deep-history.md) (criterio de "ya no importa", calibración agregado vs individual).
@@ -28,6 +27,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md))
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
+- [~] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
 
 ## Fase 0 — Fundamentos
@@ -39,6 +39,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [ ] Loop CLI: leer input → (stub) → imprimir
 
 ## Fase 1 — Vertical slice: una aldea, 20 NPCs, acción libre
+- [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
