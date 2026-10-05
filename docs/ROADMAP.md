@@ -11,7 +11,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ### A. Sistemas base que otros docs ya dan por hechos
 1. [x] **Percepción** → [perception.md](systems/perception.md): canales, emisión, propagación, atención, errores con forma, huellas, lectura de cultivo.
-2. [ ] **Información y rumores** → `information.md`: propagación con distorsión, canales (postas, palomas, talismanes de mensaje, espías), creencias en `sim/knowledge`, el mapa como creencia (mapas como objetos que envejecen y se falsifican), alfabetización y escrituras.
+2. [x] **Información y rumores** → [information.md](systems/information.md): propagación con distorsión, canales (postas, palomas, talismanes de mensaje, espías), creencias en `sim/knowledge`, el mapa como creencia (mapas como objetos que envejecen y se falsifican), alfabetización y escrituras.
 3. [ ] **Cuerpo y salud** → `body-health.md`: cuerpo por partes, heridas que se infectan o dejan secuelas, enfermedades crónicas, nutrición, frío/calor, fatiga, adicciones, envejecimiento, medicina mortal vs alquimia, daño a meridianos.
 4. [ ] **Cultivo** → `cultivation.md` (familia xianxia, con las interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, rupturas, cultivo de espíritus, volver a ser humano.
 5. [ ] **Experimentación, descubrimiento e iluminación** → `discovery.md`: cómo un agente forma hipótesis sobre las leyes del mundo, prueba, se equivoca y acumula comprensión; dogmas erróneos de escuelas; iluminación (悟) como umbral de un estado acumulado; arte con intención (aprender contemplando una obra).
@@ -52,6 +52,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - spirits: tiempo en las Fuentes antes de renacer.
 - metaphysics: peso exacto de cada familia.
 - perception: tamaño del grafo de espacios en ciudades grandes, calibración de curvas de atenuación.
+- information: tamaño inicial del catálogo de proposiciones e inferencias; distribuciones para todas las creencias o solo algunas.
 
 ## Ideas / pendientes sueltos
 - ¿Qué hay después de la ascensión? (salir del planeta)
@@ -74,6 +75,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
 - [~] Percepción ([systems/perception.md](systems/perception.md)) — borrador
+- [~] Información, creencias y rumores ([systems/information.md](systems/information.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -107,7 +109,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Rutinas diarias, NPCs actúan sin el jugador
 - [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos
 - [ ] Economía básica: oficios, precios, deudas
-- [ ] Rumores (propagación de información con distorsión)
+- [ ] Rumores (propagación de información con distorsión, reputación por comunidad) ([information.md](systems/information.md))
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
 
 ## Fase 4 — Cultivo

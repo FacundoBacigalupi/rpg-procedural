@@ -1,6 +1,6 @@
 # Percepción
 
-> Estado: **borrador de diseño**. Es la **única puerta** entre la verdad del mundo (`WorldTruth`) y lo que cualquier agente cree. Nadie (NPC, jugador, espíritu, bestia) se entera de algo si no lo percibió, lo infirió de algo percibido o se lo contaron. El sistema de información ([information.md](information.md), pendiente) arranca donde termina este.
+> Estado: **borrador de diseño**. Es la **única puerta** entre la verdad del mundo (`WorldTruth`) y lo que cualquier agente cree. Nadie (NPC, jugador, espíritu, bestia) se entera de algo si no lo percibió, lo infirió de algo percibido o se lo contaron. El sistema de información ([information.md](information.md)) arranca donde termina este.
 
 Depende de: [causality.md](causality.md) (Ley 4: se actúa según lo que se cree), [planet-gen.md](planet-gen.md) (terreno, clima, luz, qi ambiental), [metaphysics.md](metaphysics.md) (qué sentidos extra existen en cada mundo). Lo usan: [npc-psychology.md](npc-psychology.md) (interpretación, memorias `witnessed`), [schemes.md](schemes.md) (huellas, "nadie me vio"), [spirits.md](spirits.md) (ver espíritus), el narrador.
 
