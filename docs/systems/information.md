@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Cómo lo que alguien percibió se vuelve **creencia**, cómo las creencias viajan de persona a persona (y por cartas, mapas, pregoneros y espías) y cómo se deforman en el camino. Es la capa 4 de [causality.md](causality.md): una masacre que nadie conoce no genera venganza.
 
-Depende de: [perception.md](perception.md) (de dónde sale todo lo que se sabe de primera mano), [npc-psychology.md](npc-psychology.md) (memoria, confianza, esquemas, teoría de la mente), [living-world.md](living-world.md) (rutas, lenguas, escrituras, el conocimiento es físico). Lo usan: [schemes.md](schemes.md) (cebos, calumnias, rastrear rumores), reputación, mitos, [economy.md](economy.md), organizaciones, el narrador.
+Depende de: [perception.md](perception.md) (de dónde sale todo lo que se sabe de primera mano), [npc-psychology.md](npc-psychology.md) (memoria, confianza, esquemas, teoría de la mente), [living-world.md](living-world.md) (rutas, lenguas, escrituras, el conocimiento es físico). Lo usan: [schemes.md](schemes.md) (cebos, calumnias, rastrear rumores), reputación, mitos, [economy.md](economy.md), [organizations.md](organizations.md), el narrador.
 
 ## Principios
 1. **Creer no es saber.** Cada agente tiene su propio conjunto de creencias, con confianza y fuentes. La verdad está en `WorldTruth` y nadie la consulta.

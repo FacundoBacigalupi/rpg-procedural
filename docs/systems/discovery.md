@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Cómo un agente (NPC, jugador, organización, cultura) llega a **saber cómo funciona el mundo**: forma hipótesis sobre las leyes, junta evidencia, experimenta, se equivoca con forma, inventa cosas nuevas y, en el plano de la comprensión, acumula hasta que algo se rompe y entiende (悟, iluminación). Cubre también los dogmas de las escuelas y el arte con intención (aprender contemplando una obra). Es la pieza que convierte la `WorldTruth` en conocimiento sin que nadie la lea.
 
-Depende de: [causality.md](causality.md) (Ley 4: se actúa según lo que se cree; nada aparece sin causa), [metaphysics.md](metaphysics.md) (la ley vs las escuelas; el costo de experimentar), [perception.md](perception.md) (toda evidencia entra por percepción, incluida la interna), [information.md](information.md) (las hipótesis son creencias `law`; transmisión, textos, secretos), [npc-psychology.md](npc-psychology.md) (curiosidad, intelecto, sesgos, esquemas, corazón del Dao), [cultivation.md](cultivation.md) (umbrales reales vs reinos de escuela, técnicas, insights), [body-health.md](body-health.md) (sustancias, medicina, percepción del propio cuerpo), [living-world.md](living-world.md) (el conocimiento es físico, culturas, mitos). Lo usan: [cultivation.md](cultivation.md) (insights, técnicas nuevas, escuelas que corrigen sus mapeos), [body-health.md](body-health.md) (medicina de cada cultura, antídotos), [heaven-karma.md](heaven-karma.md) (comprender la ley del Cielo), [deep-history.md](deep-history.md) (técnicas perdidas y redescubiertas), y los futuros oficios, organizaciones, tecnología, adivinación y crónica.
+Depende de: [causality.md](causality.md) (Ley 4: se actúa según lo que se cree; nada aparece sin causa), [metaphysics.md](metaphysics.md) (la ley vs las escuelas; el costo de experimentar), [perception.md](perception.md) (toda evidencia entra por percepción, incluida la interna), [information.md](information.md) (las hipótesis son creencias `law`; transmisión, textos, secretos), [npc-psychology.md](npc-psychology.md) (curiosidad, intelecto, sesgos, esquemas, corazón del Dao), [cultivation.md](cultivation.md) (umbrales reales vs reinos de escuela, técnicas, insights), [body-health.md](body-health.md) (sustancias, medicina, percepción del propio cuerpo), [living-world.md](living-world.md) (el conocimiento es físico, culturas, mitos). Lo usan: [cultivation.md](cultivation.md) (insights, técnicas nuevas, escuelas que corrigen sus mapeos), [body-health.md](body-health.md) (medicina de cada cultura, antídotos), [heaven-karma.md](heaven-karma.md) (comprender la ley del Cielo), [deep-history.md](deep-history.md) (técnicas perdidas y redescubiertas), [organizations.md](organizations.md), y los futuros oficios, tecnología, adivinación y crónica.
 
 ## Principios
 1. **La ley es verdad; el saber es hipótesis.** Las leyes del mundo (qué cura una hierba, dónde está un umbral, cómo se vencen los elementos) viven en `WorldTruth`. Ningún agente las consulta. Lo que tiene son **creencias `law`** (information §1) con confianza, fuentes y evidencia.
@@ -162,7 +162,7 @@ Los `dogmas` de un `CultivationSystem` (cultivation §2), y en general las teor�
 ### Cómo se sostienen
 - **Autoridad y textos:** el prior institucional pesa mucho en quien se forma ahí.
 - **Incentivos:** el estatus de la secta, el puesto de los ancianos y los exámenes de rango dependen de la doctrina. Cambiarla cuesta poder a alguien.
-- **Castigo:** la herejía se persigue (organizations, law). Quien duda en voz alta arriesga su lugar.
+- **Castigo:** la herejía se persigue ([organizations.md](organizations.md) §8, law). Quien duda en voz alta arriesga su lugar.
 - **Errores que funcionan** (§5): si la doctrina produce cultivadores razonables, la presión para revisarla es baja.
 
 ### Qué cuestan
@@ -176,7 +176,7 @@ Los mapeos equivocados de cultivation §2 son dogmas con consecuencias concretas
 Cada organización lleva un **registro de anomalías** sobre sus dogmas: observaciones que no cuadran (un discípulo que rompió sin la "segunda barrera", uno que superó el "techo", muertes que la doctrina no explica).
 - Las anomalías se acumulan con saliencia, como las memorias. Mientras son pocas, se explican con las reglas de siempre (talento, suerte, corazón).
 - Cuando pesan más que la autoridad del dogma **para algún miembro con suficiente intelecto, curiosidad y poca atadura de identidad**, ese miembro cambia de hipótesis. Ahí empieza el conflicto: puede callar, convencer, ser castigado, irse.
-- **Herejía → cisma → escuela nueva.** Si el que cambió tiene seguidores y su método funciona mejor, la escuela se parte o nace otra (organizations, futuro). Es el camino "descubridor de técnica → escuela → secta" de la Fase 6. La escuela vieja puede adoptar el cambio décadas después y reescribir su historia (crónicas sesgadas).
+- **Herejía → cisma → escuela nueva.** Si el que cambió tiene seguidores y su método funciona mejor, la escuela se parte o nace otra ([organizations.md](organizations.md) §11). Es el camino "descubridor de técnica → escuela → secta" de la Fase 6. La escuela vieja puede adoptar el cambio décadas después y reescribir su historia (crónicas sesgadas).
 - **El jugador puede estar ahí.** Descubrir que su escuela se equivoca (cultivation §16) es exactamente esto: juntar anomalías, probar, y decidir qué hacer con lo que sabe.
 
 ## 7. Comprensión: insights
@@ -308,7 +308,7 @@ Como el descubrimiento sale del estado (necesidad, materiales, conceptos, observ
   }
   ```
   Una secta con archivos y debate acumula conocimiento rápido y se equivoca menos; una con autoridad fuerte y herejía castigada es estable y se estanca. La cultura epistémica cambia con eventos (un fundador escéptico, un desastre que la doctrina no previó, un emperador que manda compilar).
-- **Oficios del saber.** Eruditos, herbolarios, alquimistas, archiveros, monjes y maestros de secta viven del conocimiento: lo producen, lo guardan, lo venden y lo defienden. Las academias y bibliotecas son organizaciones (organizations, futuro).
+- **Oficios del saber.** Eruditos, herbolarios, alquimistas, archiveros, monjes y maestros de secta viven del conocimiento: lo producen, lo guardan, lo venden y lo defienden. Las academias y bibliotecas son organizaciones ([organizations.md](organizations.md) §13).
 - **Mecenazgo.** Quien tiene recursos paga experimentos (un rey que quiere la píldora de la longevidad, una secta que quiere romper su techo). Lo que se busca depende de lo que el mecenas quiere, y eso dirige qué se descubre en cada época.
 
 ## 14. El jugador y el narrador
