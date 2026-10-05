@@ -121,6 +121,8 @@ El ritmo "a lo Lord of the Mysteries" sale de acá: los eventos de fondo ocurren
 - Conservación: el dinero de los sobornos sale de algún lado.
 - El narrador nunca recibe el `Scheme`.
 
+## Crónica: "Lo que nunca supiste"
+Al morir, la crónica tiene una sección que revela las intrigas que te afectaron y nunca descubriste: quién tramó, por qué, qué pasos dio y qué decisiones tuyas había previsto. Se arma desde `WorldTruth` y el grafo causal (los `Scheme` y su `log`), y es el único momento en que el narrador recibe esa información. Incluye también las intrigas que fracasaron sin que te enteraras.
+
 ## Preguntas abiertas
 - ¿Cuántas intrigas activas como máximo por NPC (costo de CPU)?
-- ¿Cómo se ve en la crónica final? Propuesta: una sección "Lo que nunca supiste", que revela las intrigas que te afectaron.
