@@ -13,6 +13,8 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos.
 - [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
 - [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología.
+- [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.
+- [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Reglas que no se rompen

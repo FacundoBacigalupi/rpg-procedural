@@ -2,6 +2,8 @@
 
 > El seed genera un planeta entero con una física plausible: placas, montañas, ríos, clima, biomas y un campo de qi que **sale de esa geografía**. Cada rasgo del mapa tiene una causa: la cordillera está ahí porque chocaron dos placas, el desierto porque la cordillera le roba la lluvia, la vena de qi de fuego porque hay un volcán sobre un punto caliente.
 
+Lo que pasa sobre este mapa después de generarlo está en [living-world.md](living-world.md) y [spirits.md](spirits.md).
+
 Depende de: [causality.md](causality.md) (capas 0-1, qi como campo físico), [heaven-karma.md](heaven-karma.md) (fuerza del Cielo), [deep-history.md](deep-history.md) (la historia escribe sobre el mapa después).
 
 ## Principios
@@ -51,6 +53,7 @@ interface RegionCell {
     - Nunca dos lunas grandes.
   - Sol y luna dan mareas y estaciones, y en esta metafísica son **fuentes celestes de qi** con elemento propio (sol → fuego/yang, luna → agua/yin). Los eclipses, la luna llena y las conjunciones con una luna pequeña son eventos astronómicos **calculables**: un astrónomo o un cultivador sabio puede predecirlos y aprovecharlos.
 - Presupuesto total de qi del mundo y fuerza del Cielo (ver heaven-karma).
+- **Mareas de qi:** el qi global no es constante. Oscila con ciclos astronómicos largos (excentricidad de la órbita, precesión, conjunciones con la luna), de siglos a milenios. Las eras de "recuperación" y "decadencia" espiritual tienen así una causa física, combinada con el consumo humano. Son ciclos calculables: un sabio puede saber que se viene una marea alta.
 - Balance elemental global: un mundo puede ser rico en metal y pobre en madera.
 
 ### 1. Tectónica simplificada
@@ -115,6 +118,16 @@ El qi **se deriva de la geología y el clima**, no se pinta encima:
 - **Equilibrio y fuerza del Cielo:** el presupuesto global de la etapa 0 escala todo. Un Cielo fuerte significa menos qi libre.
 - **Ledger:** el qi total queda registrado desde acá. La simulación solo lo mueve, consume o regenera desde fuentes.
 
+### 5b. El mundo de abajo y el mar profundo
+- **Subsuelo:** cada celda tiene capas de profundidad (superficie, cuevas, profundo). Las cuevas salen de la roca y el agua. Los **ríos subterráneos** conectan regiones por debajo y los ecosistemas de las profundidades no ven el sol. Las venas más intensas nacen abajo y suben por las fallas: **lo más poderoso del planeta está enterrado**, y bajar es peligroso (qi denso, bestias que nunca vieron humanos, oscuridad).
+- **Mar profundo:** en un planeta tan grande, los océanos son fronteras casi infranqueables para un mortal. Hay dorsales con venas submarinas, bestias abisales y fosas. Cruzar un océano requiere barcos excepcionales o cultivo alto, así que **continentes enteros pueden no saber que el otro existe**. El contacto entre ellos es un evento histórico.
+
+### 5c. Habitabilidad: el qi enferma a los mortales
+El qi muy denso es tóxico para un cuerpo sin meridianos abiertos: fiebre, delirio y muerte con exposición larga. Cada celda tiene una **habitabilidad mortal** que baja con el qi.
+- Las sectas viven en montañas de qi alto y los mortales en tierras de qi bajo: la separación entre los dos mundos sale sola.
+- Los hijos de cultivadores nacidos en zonas de qi alto tienen ventaja (y los que no despiertan sufren).
+- Una marea alta de qi vuelve inhabitables zonas mortales y provoca migraciones. Una baja deja a las sectas sin sustento.
+
 ### 6. Recursos y ecología inicial
 - Minerales y gemas según la roca. Suelos fértiles según el sedimento.
 - **Plantas y bestias** espirituales: poblaciones iniciales por celda según bioma, qi y elemento, desde `content/`. Después las maneja la ecología (capa 2).
@@ -156,6 +169,7 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
 - La frecuencia de tesoros no es un parámetro aparte: sale del qi del planeta (presupuesto de la cosmología, fuerza del Cielo, venas). Un mundo rico en qi está lleno de tesoros y uno en decadencia casi no tiene.
 - Corrientes oceánicas desde el mínimo: dan climas costeros distintos a la misma latitud, desiertos costeros, zonas de pesca y transporte de qi.
+- Mareas de qi por ciclos astronómicos, subsuelo con capas, océanos como fronteras y qi tóxico para mortales.
 - La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
 

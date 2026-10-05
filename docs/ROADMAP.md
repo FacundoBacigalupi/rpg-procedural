@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [~] **Diseño: generación del planeta** ([systems/planet-gen.md](systems/planet-gen.md)) — decisiones cerradas (planeta grande, cielo plausible, tesoros naturales por qi).
+1. [~] **Diseño: generación del planeta** ([systems/planet-gen.md](systems/planet-gen.md)) — decisiones cerradas. + [living-world.md](systems/living-world.md) y [spirits.md](systems/spirits.md).
 2. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
 
 ## Ideas / pendientes sueltos
@@ -28,6 +28,8 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
 - [~] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — borrador
+- [~] Mundo vivo ([systems/living-world.md](systems/living-world.md)) — borrador
+- [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
 
 ## Fase 0 — Fundamentos
