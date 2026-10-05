@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador listo, revisar preguntas abiertas.
+1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — decisiones cerradas; + intrigas ([systems/schemes.md](systems/schemes.md)).
 2. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
 3. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
 4. [ ] Mergear PRs #2 y #3 de Dependabot (requiere `gh auth refresh -h github.com -s workflow`).
@@ -29,6 +29,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md))
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
+- [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -61,6 +62,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos
 - [ ] Economía básica: oficios, precios, deudas
 - [ ] Rumores (propagación de información con distorsión)
+- [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma

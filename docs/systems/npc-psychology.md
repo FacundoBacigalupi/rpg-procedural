@@ -99,6 +99,7 @@ Las emociones son `fear`, `anger`, `sadness`, `joy`, `shame`, `guilt`, `envy` y 
 
 - Modulan las decisiones del momento: con ira se toman más riesgos y con miedo se huye.
 - El **estrés** crónico es un acumulador lento. Si se sostiene, mueve esquemas como un evento formativo.
+- **Contagio emocional:** las emociones **percibidas** en otros entran a la interpretación como un evento más. Su peso depende de `sociability`, de la relación con quien la muestra y de cuántos la muestran. Así se dan el pánico en una batalla, la euforia en un festival o la furia de una turba. Los grupos de tier 0 tienen un humor colectivo que se mueve con la misma regla, en agregado.
 
 ## 5. Memoria episódica
 
@@ -176,6 +177,9 @@ U(a) = Σ_obj  peso(obj) × contribución(a, obj) × P_éxito_creída(a)
 - Elige con `softmax` sobre U usando `rng.fork("decision", npcId)`: casi siempre la mejor opción, a veces la segunda. La temperatura depende de `control`.
 - Planificación simple (encadenar acciones hacia un objetivo) en Fase 3. HTN o GOAP más adelante si hace falta.
 
+### Planes contra otros (intrigas)
+Cuando el objetivo de un NPC choca con otra persona (un rival por el mismo afecto, alguien que tiene el favor que él quiere, un estorbo, una víctima con algo valioso), puede armar un **plan multi-paso** que usa a otros NPCs, información falsa y trampas. Eso está en [schemes.md](schemes.md).
+
 ### Coherencia con valores (disonancia)
 Actuar contra un valor propio, por ejemplo robar valorando `justice`, genera `guilt`, y si se repite mueve esquemas o alimenta un demonio interno. Esto permite caídas morales graduales: alguien que roba por hambre una y otra vez termina creyendo que "el mundo es así".
 
@@ -209,7 +213,19 @@ interface InnerDemon {
 - **Efectos:**
   - En rupturas y tribulaciones: la prueba del demonio interno tiene dificultad `f(strength)`. Fallar provoca desviación de qi, locura (cambios bruscos de esquemas, incluso del temperamento) o la muerte.
   - En el día a día, cuando se activan: emociones intrusivas y decisiones que contradicen la utilidad "racional".
+- **Los demonios hablan.** En meditación profunda, rupturas y tribulaciones, el narrador los manifiesta como voces o visiones. Se arman **solo** con sus raíces reales: las memorias (distorsionadas como las recuerda el dueño), las personas involucradas y la culpa o el odio concretos. El demonio sabe lo mismo que su dueño, nunca la verdad del mundo. Puede mentir, retorcer recuerdos y tentar: lo que dice lo decide la sim (qué raíz ataca, qué ofrece) y el LLM lo verbaliza.
 - **Corazón del Dao (道心):** estabilidad = convicción (claridad de los objetivos núcleo) × coherencia (actuar según los propios valores). Resiste a los demonios. Un cultivador cruel pero coherente puede tener un Dao firme; uno bondadoso que se traiciona, no.
+
+## 9b. El cultivo altera la psique
+
+Las técnicas y los caminos de cultivo pueden modificar la psicología, siempre con procedencia (el evento en que se aprendió o practicó la técnica):
+
+- **Supresión emocional** (estilo 无情道, Dao sin emociones): baja la intensidad de las emociones y el peso de `warmth`. Protege contra ciertos demonios (apego, miedo) pero debilita relaciones y abre otros (vacío, desesperanza).
+- **Amplificación:** técnicas demoníacas o de sangre que aumentan `anger` o el deseo y dan poder a cambio.
+- **Efectos acumulativos:** practicar una técnica durante años mueve esquemas y valores como un evento formativo crónico.
+- **Desviación de qi:** puede provocar cambios bruscos de temperamento.
+
+Se modela como modificadores activos `{ source: TechniqueId, originEventId, effects }` sobre temperamento, emociones y valores. El detalle va en el doc de cultivo.
 
 ## 10. Escala: cuánta psicología por tier
 
@@ -244,9 +260,7 @@ Tests clave:
 - Temperamento de **6 ejes propios** en lugar de Big Five literal: más legible para el juego y fácil de mapear.
 - Esquemas y valores en **catálogo cerrado** (en `content/`), no texto libre generado por LLM, para mantener el determinismo y la inspección.
 - Decisión por **utilidad + softmax**, no árboles de comportamiento.
+- Sí al contagio emocional, sí a los demonios que hablan (solo con sus raíces), sí a las técnicas que alteran la psique.
 
 ## Preguntas abiertas
 - ¿Cuántas memorias por NPC de tier 2 (top-N)? Calibrar con la sim headless.
-- ¿Las emociones se contagian en grupo (pánico, euforia en una batalla)?
-- ¿Los demonios internos pueden "hablar"? Es decir, ¿el narrador los manifiesta como voces o visiones en meditación, a partir de sus raíces reales?
-- ¿Hay rasgos que el cultivo altera (por ejemplo, técnicas que suprimen emociones a cambio de `warmth`)?
