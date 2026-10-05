@@ -36,7 +36,7 @@ type Proposition =
   | { kind: "location"; what: EntityRef | ResourceKind; where: PlaceRef } // "hay una hierba en la cueva"
   | { kind: "price"; good: GoodId; market: PlaceRef }
   | { kind: "route"; from: PlaceRef; to: PlaceRef }               // mapas
-  | { kind: "law"; key: LawKey };                                 // hipótesis sobre las leyes del mundo (ver discovery.md)
+  | { kind: "law"; key: LawKey };                                 // hipótesis sobre las leyes del mundo (ver [discovery.md](discovery.md))
 ```
 
 - **`asOf` importa.** "Wu está en Qingshui" es verdad sobre hace tres meses. Las creencias envejecen: el sistema no las marca falsas, pero el agente con buena teoría de la mente sabe que lo que sabe puede estar viejo.
