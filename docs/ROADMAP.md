@@ -13,7 +13,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 1. [x] **Percepción** → [perception.md](systems/perception.md): canales, emisión, propagación, atención, errores con forma, huellas, lectura de cultivo.
 2. [x] **Información y rumores** → [information.md](systems/information.md): propagación con distorsión, canales (postas, palomas, talismanes de mensaje, espías), creencias en `sim/knowledge`, el mapa como creencia (mapas como objetos que envejecen y se falsifican), alfabetización y escrituras.
 3. [x] **Cuerpo y salud** → [body-health.md](systems/body-health.md): cuerpo por partes, heridas que se infectan o dejan secuelas, enfermedades crónicas, nutrición, frío/calor, fatiga, adicciones, envejecimiento, medicina mortal vs alquimia, daño a meridianos.
-4. [ ] **Cultivo** → `cultivation.md` (familia xianxia, con las interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, rupturas, cultivo de espíritus, volver a ser humano.
+4. [x] **Cultivo** → [cultivation.md](systems/cultivation.md) (familia xianxia, con las interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, rupturas, cultivo de espíritus, volver a ser humano.
 5. [ ] **Experimentación, descubrimiento e iluminación** → `discovery.md`: cómo un agente forma hipótesis sobre las leyes del mundo, prueba, se equivoca y acumula comprensión; dogmas erróneos de escuelas; iluminación (悟) como umbral de un estado acumulado; arte con intención (aprender contemplando una obra).
 6. [ ] **Economía** → `economy.md`: mercados por asentamiento, precios por oferta y demanda, información asimétrica de precios, piedras espirituales como moneda (inflación por minas), crédito y usura, subastas, gremios y monopolios, metal escaso.
 7. [ ] **Organizaciones** → `organizations.md`: clanes, sectas, gremios; decisiones por facciones internas; nacimiento, cismas y muerte; recursos, aportes y puestos.
@@ -50,7 +50,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
 - perception: curvas de atenuación y `k` de la sigmoide.
 - body-health: curación, infección y mortalidad.
-- spirits: cultivo de espíritus y volver a ser humano (se define en cultivation.md).
+- cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
 
 ## Ideas / pendientes sueltos
 - ¿Qué hay después de la ascensión? (salir del planeta)
@@ -75,6 +75,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Percepción ([systems/perception.md](systems/perception.md)) — borrador
 - [~] Información, creencias y rumores ([systems/information.md](systems/information.md)) — borrador
 - [~] Cuerpo y salud ([systems/body-health.md](systems/body-health.md)) — borrador
+- [~] Cultivo ([systems/cultivation.md](systems/cultivation.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -116,7 +117,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
 - [ ] Cuerpo y cultivo: daño de meridianos, desviación de qi, toxicidad de píldoras, refinamiento corporal ([body-health.md](systems/body-health.md))
-- [ ] Reinos y técnicas (base metafísica + sistemas descubiertos por civilización)
+- [ ] Ley del cultivo (umbrales reales) + escuelas con reinos culturales; absorción con conservación, rupturas, fundamento, técnicas y manuales ([cultivation.md](systems/cultivation.md))
 - [ ] Percepción de nivel de cultivo ajeno (con incertidumbre)
 - [ ] Talentos ocultos
 

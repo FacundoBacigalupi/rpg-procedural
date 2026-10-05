@@ -21,6 +21,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/perception.md](docs/systems/perception.md) — percepción: la única puerta entre la verdad y las creencias (canales, atención, errores, huellas).
 - [docs/systems/information.md](docs/systems/information.md) — creencias, rumores y su deformación, medios, mapas como creencia, reputación, secretos.
 - [docs/systems/body-health.md](docs/systems/body-health.md) — cuerpo por partes, heridas, enfermedades y contagio, nutrición, sustancias, envejecimiento, medicina, meridianos.
+- [docs/systems/cultivation.md](docs/systems/cultivation.md) — cultivo: ley (umbrales reales) vs escuelas (reinos culturales), talento, absorción, rupturas, técnicas como conocimiento, caminos, espíritus.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo
