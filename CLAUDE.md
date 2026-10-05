@@ -25,8 +25,9 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo
-1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue y "Estado del diseño" qué queda abierto.
-2. `git status` y `gh pr list` (en Bash, primero `export PATH="$PATH:/c/Program Files/GitHub CLI"`) para ver ramas o PRs a medio camino.
+Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backlog de "▶ Ahora", siguiendo la **receta por ítem** que está ahí mismo.
+1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue (y cómo hacerlo) y "Estado del diseño" qué queda abierto.
+2. `git status` y `gh pr list` para ver ramas o PRs a medio camino (`gh` ya está en el PATH de Bash vía `~/bin/gh`).
 3. Leer el doc de sistema relevante antes de tocar código.
 4. Al cerrar cualquier cosa: actualizar ROADMAP (y el doc del sistema) **en el mismo PR**, para que el próximo chat tenga el contexto sin depender de la conversación.
 
