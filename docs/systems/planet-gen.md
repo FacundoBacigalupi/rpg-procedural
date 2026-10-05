@@ -77,7 +77,11 @@ No es una simulación física completa: es un modelo que produce formas creíble
 - **Temperatura:** insolación por latitud, menos ~6,5 °C por km de altitud, suavizada cerca del mar. Amplitud estacional según la inclinación del eje y la distancia al océano.
 - **Viento:** bandas por latitud (alisios, vientos del oeste, polares), como las celdas de Hadley.
 - **Humedad:** se transporta con el viento desde los océanos. Se descarga al subir montañas, que dejan **sombra de lluvia** del otro lado (desiertos). Monzones simplificados en costas con gran contraste estacional.
-- **Corrientes oceánicas:** opcional, una aproximación por giros que entibia o enfría costas.
+- **Corrientes oceánicas:** giros por cuenca oceánica según los vientos y la rotación del planeta (horario en un hemisferio, antihorario en el otro), desviados por los continentes.
+  - Las corrientes cálidas suben por las costas este de los continentes y llevan calor a latitudes altas (como la corriente del Golfo con Europa).
+  - Las frías bajan por las costas oeste, enfrían el aire y frenan la lluvia: desiertos costeros (Atacama, Namib).
+  - Donde el agua fría sube a la superficie (afloramiento) hay pesca muy rica: pueblos pescadores con causa.
+  - El agua también lleva qi: una corriente cálida que pasa por una vena submarina de fuego lo transporta hacia otras costas.
 
 ### 4. Biomas
 - Clasificación tipo **Whittaker** (temperatura × precipitación) + altitud + suelo, desde `content/biomes.json` validado con Zod.
@@ -140,8 +144,8 @@ La planet-gen **no** crea ruinas, reinos secretos, sellos ni tesoros, porque tod
 
 ## Implementación
 Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), pero conviene adelantar una versión mínima:
-- **Mínimo (antes o durante la Fase 1):** grilla + tectónica + elevación + clima simple + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
-- **Después:** hidrología completa, erosión, anomalías, nivel 1 local, corrientes oceánicas.
+- **Mínimo (antes o durante la Fase 1):** grilla + tectónica + elevación + clima (con corrientes oceánicas) + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
+- **Después:** hidrología completa, erosión, anomalías, nivel 1 local.
 
 ## Decisiones tomadas en este borrador (revisables)
 - Grilla geodésica hexagonal de ~40.000 celdas en nivel 0, con detalle local bajo demanda.
@@ -151,7 +155,7 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - Planeta grande: radio 2-4 veces el de la Tierra, con densidad baja (gravedad vivible, metal escaso).
 - Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
 - La frecuencia de tesoros no es un parámetro aparte: sale del qi del planeta (presupuesto de la cosmología, fuerza del Cielo, venas). Un mundo rico en qi está lleno de tesoros y uno en decadencia casi no tiene.
-- Corrientes oceánicas: después del mínimo. Mueven calor (como la corriente del Golfo, que entibia Europa) y las frías crean desiertos costeros (Atacama). Se agregan cuando se refine el clima.
+- Corrientes oceánicas desde el mínimo: dan climas costeros distintos a la misma latitud, desiertos costeros, zonas de pesca y transporte de qi.
 - La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
 
