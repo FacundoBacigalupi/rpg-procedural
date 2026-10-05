@@ -1,6 +1,8 @@
-# rpg-procedural — Simulador de vida Xianxia procedural
+# rpg-procedural — Simulador de vida de fantasía procedural (xianxia como familia principal)
 
-Juego personal (un solo jugador, para el autor). El jugador escribe en texto libre qué hace su personaje; un mundo simulado resuelve la acción; un LLM interpreta la intención y narra el resultado. Una sola vida: si morís, se termina la partida y queda una crónica.
+Juego personal (un solo jugador, para el autor). El jugador escribe en texto libre qué hace su personaje; un mundo simulado resuelve la acción; un LLM interpreta la intención y narra el resultado. Una sola vida: cuando tu alma cruza al ciclo (o se disipa), se termina la partida y queda una crónica. Morir puede dejarte como espíritu si las circunstancias lo permiten (ver spirits.md).
+
+**Preferencia de diseño: cuanto más detalle, mejor**, en todos los sistemas. La escala se maneja con LOD (tiers, agregados), no recortando profundidad.
 
 Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/VISION.md](docs/VISION.md) — qué es el juego y sus principios de diseño.
@@ -12,7 +14,17 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas).
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos.
 - [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
+- [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología.
+- [docs/systems/metaphysics.md](docs/systems/metaphysics.md) — **las leyes de cada mundo varían mucho** (xianxia, magia occidental, pactos, dioses…). El código usa conceptos genéricos (`Essence`, `Practice`, `Law`, `Soul`).
+- [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.
+- [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
+
+## Retomar en un chat nuevo
+1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue y "Estado del diseño" qué queda abierto.
+2. `git status` y `gh pr list` (en Bash, primero `export PATH="$PATH:/c/Program Files/GitHub CLI"`) para ver ramas o PRs a medio camino.
+3. Leer el doc de sistema relevante antes de tocar código.
+4. Al cerrar cualquier cosa: actualizar ROADMAP (y el doc del sistema) **en el mismo PR**, para que el próximo chat tenga el contexto sin depender de la conversación.
 
 ## Reglas que no se rompen
 1. **La IA no es el juego.** El LLM solo (a) traduce texto del jugador a intenciones estructuradas y (b) narra eventos ya resueltos. Nunca decide resultados, nunca crea entidades ni items, nunca modifica el estado.

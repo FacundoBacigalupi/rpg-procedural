@@ -46,7 +46,7 @@ Dependabot propone actualizaciones de dependencias contra `develop`.
 ## Configuración de GitHub (aplicada)
 El repo es **público**.
 - **Rulesets** en `main` (solo merge commit) y `develop` (solo squash): PR obligatorio (0 aprobaciones, porque es un solo dev), checks obligatorios `Typecheck, lint y tests` y `Escaneo de secretos`, sin force-push ni borrado. Nadie puede saltearlos, ni el admin.
-- Merges permitidos: squash y merge commit (rebase desactivado). Las ramas se borran solas al mergear.
+- Merges permitidos: squash y merge commit (rebase desactivado). Las ramas se borran solas al mergear. **Auto-merge activado:** `gh pr merge <n> --squash --auto` deja el PR mergeándose solo cuando el CI pasa (los runners de GitHub a veces tardan varios minutos en cola).
 - Seguridad: Dependabot alerts y security updates, secret scanning con push protection, CodeQL (default setup).
 - Actions con permisos de solo lectura por defecto.
 - Labels: `feature`, `bug`, `design`, `chore`, `dependencies`, `area:*`. Milestones: uno por fase del ROADMAP.

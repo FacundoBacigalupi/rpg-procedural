@@ -7,15 +7,21 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — decisiones cerradas; + intrigas ([systems/schemes.md](systems/schemes.md)).
-2. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
-3. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
+1. [ ] **Fase 0: scaffold** (TS strict, Vitest, ESLint con reglas de dependencia, scripts npm) — activa los checks de CI. Ver la sección Fase 0 más abajo.
+2. [ ] Diseño de cultivo (familia xianxia primero, con interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, cultivo de espíritus, volver a ser humano.
+3. [ ] Diseño de información y rumores (lo necesitan intrigas, mitos y reputación).
+
+## Estado del diseño (2026-10-05)
+Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. Los docs marcados "borrador" tienen preguntas abiertas menores que se cierran al implementar (calibración con la sim headless):
+- deep-history: criterio de "ya no importa", calibración agregado vs individual, cuánto pasado mostrar.
+- npc-psychology: top-N memorias por NPC de tier 2.
+- schemes: máximo de intrigas activas por NPC.
+- spirits: tiempo en las Fuentes antes de renacer.
+- metaphysics: peso exacto de cada familia.
 
 ## Ideas / pendientes sueltos
-- Cerrar las preguntas abiertas de [deep-history.md](systems/deep-history.md) (criterio de "ya no importa", calibración agregado vs individual).
 - ¿Qué hay después de la ascensión? (salir del planeta)
-- Diseño de cultivo: reinos procedurales, técnicas como objetos de conocimiento.
-- Diseño de información y rumores.
+- Segunda familia de mundo: alta fantasía occidental (Fase 7+).
 
 ## Setup del repo
 - [x] Ramas `main` + `develop` (sin `master`), flujo en [GIT_WORKFLOW.md](GIT_WORKFLOW.md)
@@ -28,6 +34,10 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md))
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
+- [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md))
+- [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
+- [x] Mundo vivo ([systems/living-world.md](systems/living-world.md))
+- [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
 
 ## Fase 0 — Fundamentos
@@ -39,6 +49,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [ ] Loop CLI: leer input → (stub) → imprimir
 
 ## Fase 1 — Vertical slice: una aldea, 20 NPCs, acción libre
+- [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
