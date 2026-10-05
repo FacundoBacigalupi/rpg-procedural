@@ -13,7 +13,7 @@ Depende de: [causality.md](causality.md) (capas 0-1, qi como campo físico), [he
 
 ## Grilla
 - **Geodésica hexagonal** (poliedro de Goldberg: icosaedro subdividido; todas las celdas son hexágonos salvo 12 pentágonos). Las celdas tienen áreas casi iguales y no hay distorsión en los polos.
-- **Nivel 0, regiones:** ~40.000 celdas (subdivisión 64). En un planeta del tamaño de la Tierra cada celda mide ~110 km, que es la escala de "una región": un valle, una porción de cordillera, un lago. Es la grilla que usa la simulación de qi, clima, ecología y demografía.
+- **Nivel 0, regiones:** la cantidad de celdas escala con el radio para que cada una mida ~150-200 km, la escala de "una región": un valle, una porción de cordillera, un lago. En el rango decidido (radio 2-4 veces el de la Tierra) son ~60.000-250.000 celdas (subdivisión ~80-160). Es la grilla que usa la simulación de qi, clima, ecología y demografía.
 - **Nivel 1, local:** cada celda de nivel 0 se subdivide en ~1.000-10.000 hexes de ~1-3 km cuando el jugador (o un NPC de tier alto) está cerca. Se genera con `rng.fork("cell", id)` a partir de los atributos de la madre, respetando sus agregados (la suma del qi local es el qi de la celda, y el promedio de elevación cuadra).
 - **Sitios:** cuevas, claros, aldeas y ruinas son entidades ubicadas en hexes locales, no celdas.
 
@@ -40,8 +40,16 @@ interface RegionCell {
 ## Pipeline
 
 ### 0. Cosmología y leyes (del seed)
-- Radio del planeta, inclinación del eje (estaciones), duración del día y del año.
-- Sol(es) y lunas: dan mareas y estaciones, y en esta metafísica son **fuentes celestes de qi** con elemento propio (sol → fuego/yang, luna → agua/yin). Las conjunciones son eventos astronómicos predecibles: se pueden conocer, calcular y aprovechar.
+- **Radio:** 2-4 veces el de la Tierra (decidido: mundos enormes, donde un mortal tarda años en cruzar un continente). Para que la gravedad siga siendo vivible, la densidad media es menor (menos núcleo de hierro, más roca ligera). Eso tiene consecuencias: **el metal es más escaso y valioso** que en la Tierra, y la gravedad final (≈1-1,5 g) sale de radio × densidad, no se elige suelta.
+- Inclinación del eje (estaciones), duración del día y del año.
+- **Sistema estelar, solo lo físicamente plausible.** Nada de cuerpos "porque sí": cada uno tiene un evento de formación.
+  - **Por defecto: un sol.** Una binaria es posible (los planetas circumbinarios existen) pero rara, con probabilidad baja, y solo con una configuración estable (planeta orbitando lejos de las dos estrellas, con dos soles de colores y tamaños distintos).
+  - **Lunas por su origen:**
+    - Una luna grande por impacto temprano (como la nuestra) es el caso común.
+    - Cero lunas si no hubo impacto.
+    - Lunas extra solo si son pequeñas y capturadas (asteroides), en órbitas que el modelo verifica estables.
+    - Nunca dos lunas grandes.
+  - Sol y luna dan mareas y estaciones, y en esta metafísica son **fuentes celestes de qi** con elemento propio (sol → fuego/yang, luna → agua/yin). Los eclipses, la luna llena y las conjunciones con una luna pequeña son eventos astronómicos **calculables**: un astrónomo o un cultivador sabio puede predecirlos y aprovecharlos.
 - Presupuesto total de qi del mundo y fuerza del Cielo (ver heaven-karma).
 - Balance elemental global: un mundo puede ser rico en metal y pobre en madera.
 
@@ -90,7 +98,16 @@ El qi **se deriva de la geología y el clima**, no se pinta encima:
 
 - **Venas espirituales:** líneas de qi que siguen fallas y raíces de cordilleras. Son las fuentes principales, finitas y con tasa de regeneración.
 - **Flujo:** el qi difunde hacia las celdas vecinas con preferencia "cuesta abajo" (valles, cuencas, cuevas). Se resuelve una vez hasta el equilibrio en la generación y después lo sigue la simulación.
-- **Anomalías:** donde convergen varias venas o hay mucho qi acumulado, aparecen rasgos fantásticos con causa: montañas flotantes, lagos que no se congelan, bosques de piedra. Un lugar raro siempre tiene una razón física y metafísica, y esa razón se puede descubrir.
+- **Anomalías y tesoros naturales (天材地宝):** la acumulación masiva de qi **durante tiempo suficiente** transforma la materia. No se tiran al azar: hay umbrales de concentración × tiempo × elemento, y cuando se cruzan ocurre un **evento de formación natural** con causa (la vena, la cuenca que acumula, los siglos sin que nadie consuma).
+  - **Escala pequeña:** piedras espirituales (qi cristalizado en la roca), hierbas milenarias, manantiales de qi líquido, minerales espirituales.
+  - **Escala grande, la geografía imposible natural:**
+    - Montañas flotantes, donde el qi de tierra invertido anula el peso.
+    - Lagos de agua yin que no se congelan ni reflejan.
+    - Árboles que tocan las nubes.
+    - Mares de nubes estancadas en una cuenca.
+    - Bosques de piedra.
+  - **Consecuencias en cadena:** los tesoros atraen bestias que se alimentan de su qi y terminan custodiándolos (sin guion: van por el qi). Si alguien los cosecha, se corta el proceso, y el qi local cae.
+  - Se generan dos veces: en la planet-gen, con la edad del planeta como "tiempo acumulado", y después de forma continua durante la historia y la partida, cuando una zona sin consumo cruza el umbral. Un lugar raro siempre tiene una razón física y metafísica, y esa razón se puede descubrir.
 - **Equilibrio y fuerza del Cielo:** el presupuesto global de la etapa 0 escala todo. Un Cielo fuerte significa menos qi libre.
 - **Ledger:** el qi total queda registrado desde acá. La simulación solo lo mueve, consume o regenera desde fuentes.
 
@@ -130,10 +147,12 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - Grilla geodésica hexagonal de ~40.000 celdas en nivel 0, con detalle local bajo demanda.
 - Tectónica simplificada (forma creíble), no simulación física.
 - El qi se deriva de la geología y el clima, con venas sobre fallas y elementos según el terreno.
-- La planet-gen no crea nada artificial (ruinas, tesoros, reinos secretos): eso es trabajo de la historia.
+- La planet-gen no crea nada artificial (ruinas, tesoros fabricados, reinos secretos): eso es trabajo de la historia. Los tesoros **naturales** sí, por acumulación de qi.
+- Planeta grande: radio 2-4 veces el de la Tierra, con densidad baja (gravedad vivible, metal escaso).
+- Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
+- La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
 
 ## Preguntas abiertas
-- **Tamaño:** ¿tamaño Tierra o más grande? Los mundos xianxia suelen ser enormes (viajes de años para un mortal). Un radio 2-4 veces el de la Tierra con la misma grilla haría las regiones de ~200-450 km.
-- **Cuerpos celestes:** ¿cantidad de soles y lunas variable por seed? Afecta estaciones, mareas y fuentes de qi.
-- **Lo fantástico:** ¿hasta dónde? Montañas flotantes y lagos imposibles con causa, sí. ¿También geografía imposible a gran escala (un abismo sin fondo, un mar de nubes, un continente partido por una espada antigua)? Esto último saldría de la historia, no de la planet-gen.
+- Calibrar los umbrales de formación de tesoros (qué tan comunes son) con la simulación headless.
+- ¿Corrientes oceánicas en el mínimo o después?
