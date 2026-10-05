@@ -7,10 +7,10 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-1. [ ] **Mergear PRs pendientes** (usuario): #1–#3 de Dependabot (actions), #4 docs de diseño, y el PR de `chore/repo-settings`.
-2. [ ] **Diseño: psicología de NPCs** (`docs/systems/npc-psychology.md`): rasgos innatos/adquiridos, relaciones, memoria, demonios internos.
-3. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
-4. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
+1. [~] **Diseño: psicología de NPCs** ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador listo, revisar preguntas abiertas.
+2. [ ] **Diseño: generación del planeta** (`docs/systems/planet-gen.md`): grilla hexagonal sobre esfera, geología, clima, hidrología, qi.
+3. [ ] **Fase 0: scaffold** (TS, Vitest, ESLint, scripts) — activa los checks de CI.
+4. [ ] Mergear PRs #2 y #3 de Dependabot (requiere `gh auth refresh -h github.com -s workflow`).
 
 ## Ideas / pendientes sueltos
 - Cerrar las preguntas abiertas de [deep-history.md](systems/deep-history.md) (criterio de "ya no importa", calibración agregado vs individual).
@@ -28,6 +28,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md))
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
+- [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)

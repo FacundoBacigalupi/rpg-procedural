@@ -50,4 +50,4 @@ El repo es **público**.
 - Seguridad: Dependabot alerts y security updates, secret scanning con push protection, CodeQL (default setup).
 - Actions con permisos de solo lectura por defecto.
 - Labels: `feature`, `bug`, `design`, `chore`, `dependencies`, `area:*`. Milestones: uno por fase del ROADMAP.
-- `gh` está instalado y autenticado (`C:\Program Files\GitHub CLI`), así que Claude puede abrir PRs e issues y consultar el CI. **Los merges los hace el usuario.**
+- `gh` está instalado y autenticado (`C:\Program Files\GitHub CLI`), así que Claude puede abrir PRs e issues, consultar el CI y mergear (permiso `Bash(gh pr merge *)` en `.claude/settings.local.json`, no versionado). Mergear PRs que tocan `.github/workflows/` requiere que el token de gh tenga el scope `workflow`.
