@@ -52,7 +52,6 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - spirits: tiempo en las Fuentes antes de renacer.
 - metaphysics: peso exacto de cada familia.
 - perception: tamaño del grafo de espacios en ciudades grandes, calibración de curvas de atenuación.
-- information: tamaño inicial del catálogo de proposiciones e inferencias; distribuciones para todas las creencias o solo algunas.
 
 ## Ideas / pendientes sueltos
 - ¿Qué hay después de la ascensión? (salir del planeta)

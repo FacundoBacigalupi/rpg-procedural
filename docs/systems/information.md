@@ -209,6 +209,9 @@ El mapa del jugador (y el de cada NPC) es un **conjunto de creencias** `location
 - El mapa del jugador es un conjunto de creencias; los mapas son objetos con autor y fecha.
 - La reputación es por comunidad, no global.
 
+## Decisiones (2026-10-05)
+- **Catálogo inicial chico:** la Fase 2 arranca con ~8 moldes de proposición y ~10 reglas de inferencia, lo justo para la aldea. El catálogo vive en `content/` y crece cuando un sistema nuevo lo pida, sin romper lo anterior.
+- **Distribución solo donde importa:** guardan distribución completa las creencias sobre el cultivo o el poder de alguien y sobre quién hizo algo (autoría de eventos), y todas las creencias de los NPCs de tier 3-4. El resto guarda **un valor + confianza**. Si una creencia escalar recibe evidencia contradictoria importante, se puede promover a distribución.
+
 ## Preguntas abiertas
-- Tamaño del catálogo de tipos de proposición y de reglas de inferencia para la Fase 2: empezar con pocos y crecer.
-- ¿Todas las creencias con distribución o solo las numéricas y de identidad? (costo de memoria en tier 2)
+- Ninguna por ahora.
