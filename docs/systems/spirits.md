@@ -100,6 +100,8 @@ El usuario recuerda todo aunque el personaje no. **No se le prohíbe nada** (lib
 - Conservación: el qi de un espíritu sale del entorno y vuelve al desvanecerse.
 - Cumplir el objetivo ancla libera al espíritu.
 
+## Decisiones (2026-10-05)
+- **Sin tiempo fijo en las Fuentes.** Hay un mínimo de 49 días (el tránsito, 中阴) y después el alma espera a que se **conciba un cuerpo** en el mundo: nadie renace sin una concepción real (causalidad). Las almas fuertes resisten la atracción y pueden esperar un cuerpo mejor (más afín, mejor linaje, cerca de lo que las ata); las débiles caen en la primera concepción disponible. Si hay pocas concepciones (despoblamiento, guerra), las almas se acumulan y la espera se alarga.
+
 ## Preguntas abiertas
-- ¿Cuánto tiempo pasa en las Fuentes antes de renacer, y de qué depende?
 - Cultivo de espíritus y volver a ser humano: en el doc de cultivo.

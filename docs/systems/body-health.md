@@ -330,6 +330,9 @@ interface EssenceBodyState {
 - Dos relojes de muerte por vejez: desgaste del cuerpo y límite de vida del Cielo.
 - El daño a meridianos y la desviación de qi son estados del cuerpo con causas, no penalizaciones de reglas.
 
+## Decisiones (2026-10-05)
+- **Plan humano detallado en tier 4 (~60 partes):** dedos, ojos, orejas, dientes y órganos por separado. Tier 3 usa zonas (§16).
+- **Objetivos de calibración (sensación buscada):** una herida grave sin tratar mata más o menos a 1 de cada 3 (sobre todo por infección); una herida leve limpia casi nunca mata; un mortal promedio que sobrevive a la infancia llega a los 50-60 años; la mortalidad infantil es alta en mundos con medicina pobre.
+
 ## Preguntas abiertas
-- Cuántas partes tiene el plan humano en tier 4: ¿dedos y órganos individuales (~60 partes) o zonas con órganos (~25)?
-- Calibración de curación, infección y mortalidad para que la vida mortal sea peligrosa sin que el jugador muera de cualquier rasguño.
+- Calibración fina de curación, infección y mortalidad con la sim headless, contra los objetivos de arriba.

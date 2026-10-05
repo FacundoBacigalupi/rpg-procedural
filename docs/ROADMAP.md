@@ -45,14 +45,12 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 - [ ] **Fase 0: scaffold** (TS strict, Vitest, ESLint con reglas de dependencia, scripts npm), que activa los checks de CI. Ver la sección Fase 0 más abajo.
 
 ## Estado del diseño (2026-10-05)
-Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. Los docs marcados "borrador" tienen preguntas abiertas menores que se cierran al implementar (calibración con la sim headless):
-- deep-history: criterio de "ya no importa", calibración agregado vs individual, cuánto pasado mostrar.
-- npc-psychology: top-N memorias por NPC de tier 2.
-- schemes: máximo de intrigas activas por NPC.
-- spirits: tiempo en las Fuentes antes de renacer.
-- metaphysics: peso exacto de cada familia.
-- perception: tamaño del grafo de espacios en ciudades grandes, calibración de curvas de atenuación.
-- body-health: cantidad de partes del plan humano en tier 4, calibración de curación, infección y mortalidad.
+Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. Las preguntas de diseño se respondieron el 2026-10-05; lo que queda es **calibración con la sim headless** (cada doc tiene sus objetivos de sensación):
+- deep-history: reglas agregadas vs individuales.
+- npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
+- perception: curvas de atenuación y `k` de la sigmoide.
+- body-health: curación, infección y mortalidad.
+- spirits: cultivo de espíritus y volver a ser humano (se define en cultivation.md).
 
 ## Ideas / pendientes sueltos
 - ¿Qué hay después de la ascensión? (salir del planeta)

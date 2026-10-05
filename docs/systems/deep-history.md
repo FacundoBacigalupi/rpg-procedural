@@ -51,7 +51,9 @@ Un ser longevo que vive en varias épocas **fuerza más resolución a su alreded
 
 No es fijo: lo decide el seed a partir de la cosmología, con cosas como la edad del planeta, cuándo apareció la vida inteligente y cuándo se descubrió el cultivo. Un mundo joven puede tener 5.000 años de historia relevante, y uno antiguo, cientos de miles (aunque casi todo compactado).
 
+## Decisiones (2026-10-05)
+- **El jugador no ve el pasado profundo directamente.** Solo lo descubre por legados (ruinas, leyendas, seres antiguos, textos) y a través de percepción e información, así que puede llegarle distorsionado o falso.
+- **Criterio de olvido: puntaje de influencia.** Combina (a) cuántos agentes vivos lo recuerdan, (b) si existe algo físico (ruina, objeto, cuerpo, técnica escrita) y (c) cuánto karma sigue abierto. Un hecho se olvida entre épocas cuando los tres llegan a cero; los pesos se calibran con la sim headless.
+
 ## Preguntas abiertas
-- ¿Cuánto detalle mostrarle al jugador del pasado profundo? Propuesta: nada directo. Solo se descubre por legados (ruinas, leyendas, seres antiguos), y quizás con información falsa.
-- Criterio exacto para "esto ya no importa": una propuesta es un puntaje de influencia, que es una función de cuántos agentes vivos lo recuerdan, si existe físicamente y qué karma sigue abierto.
-- ¿Cómo calibrar las reglas agregadas contra las individuales? (ver causality.md §5.1)
+- Calibración de las reglas agregadas contra las individuales (ver causality.md §5.1): es trabajo técnico de la sim headless, no una decisión de diseño.

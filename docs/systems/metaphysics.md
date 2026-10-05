@@ -116,9 +116,9 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - El narrador nunca recibe vocabulario de otra familia.
 
 ## Decisiones (2026-10-05)
-- Xianxia es la familia más común. Peso exacto a calibrar (orientativo: ~60%).
+- Pesos de las familias: xianxia 60%, alta fantasía occidental 15%, fantasía oscura 10%, mitológica 10%, rúnica 5%. Hasta la Fase 7 solo existe xianxia.
 - Sin mundos mixtos: una familia por mundo.
 - Especies no humanas jugables.
 
 ## Preguntas abiertas
-- Peso exacto de cada familia.
+- Ninguna por ahora.
