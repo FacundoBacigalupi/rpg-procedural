@@ -39,7 +39,7 @@ Seis ejes continuos en [-1, 1]. Están fijos desde el nacimiento y solo cambian 
 | `warmth` | Frío, dominante | Empático, cooperativo |
 | `boldness` | Cauto, evita riesgos | Temerario |
 
-Además tiene **aptitudes**: `intellect`, `perception`, `willpower` y `memory`. El talento de cultivo (raíces espirituales) va en el doc de cultivo.
+Además tiene **aptitudes**: `intellect`, `perception`, `willpower` y `memory`. El talento de cultivo (raíces espirituales) va en [cultivation.md](cultivation.md) §3.
 
 **Herencia.** Cada eje sale del promedio de los padres más varianza, usando `rng.fork("genetics")`, con heredabilidad de ~0.5. Los hijos de dos padres impulsivos tienden a serlo, pero no siempre. El evento de nacimiento es el `originEventId` del temperamento.
 
@@ -225,7 +225,7 @@ Las técnicas y los caminos de cultivo pueden modificar la psicología, siempre 
 - **Efectos acumulativos:** practicar una técnica durante años mueve esquemas y valores como un evento formativo crónico.
 - **Desviación de qi:** puede provocar cambios bruscos de temperamento.
 
-Se modela como modificadores activos `{ source: TechniqueId, originEventId, effects }` sobre temperamento, emociones y valores. El detalle va en el doc de cultivo.
+Se modela como modificadores activos `{ source: TechniqueId, originEventId, effects }` sobre temperamento, emociones y valores. El detalle va en [cultivation.md](cultivation.md) (§8, `psyche` de cada técnica).
 
 ## 9c. Capas de profundidad
 

@@ -62,7 +62,7 @@ interface Spirit {
 ## 3c. Tu personaje como espíritu
 - Morir **no siempre termina la partida.** Si se cumplen las condiciones de §0, seguís jugando como espíritu, atado a tu ancla, con las limitaciones de serlo: no podés tocar el mundo físico como antes, te sostenés con qi, te ven solo los que pueden.
 - La partida termina cuando tu alma **cruza las Fuentes o se disipa**. Ahí se escribe la crónica.
-- **A futuro, con el diseño de cultivo:** volver a ser humano (un cuerpo vacío, una posesión, reconstruir un cuerpo con tesoros), o cultivar como espíritu (camino de los fantasmas cultivadores). Queda abierto para ese doc.
+- **A futuro, con el diseño de cultivo:** volver a ser humano (un cuerpo vacío, una posesión, reconstruir un cuerpo con tesoros), o cultivar como espíritu (camino de los fantasmas cultivadores). Definido en [cultivation.md](cultivation.md) §14.
 
 ## 3d. Recuerdos de vidas pasadas
 Cruzar las Fuentes implica la sopa del olvido (孟婆汤). Cuánto se resiste combina cuatro mecanismos:
@@ -104,4 +104,4 @@ El usuario recuerda todo aunque el personaje no. **No se le prohíbe nada** (lib
 - **Sin tiempo fijo en las Fuentes.** Hay un mínimo de 49 días (el tránsito, 中阴) y después el alma espera a que se **conciba un cuerpo** en el mundo: nadie renace sin una concepción real (causalidad). Las almas fuertes resisten la atracción y pueden esperar un cuerpo mejor (más afín, mejor linaje, cerca de lo que las ata); las débiles caen en la primera concepción disponible. Si hay pocas concepciones (despoblamiento, guerra), las almas se acumulan y la espera se alarga.
 
 ## Preguntas abiertas
-- Cultivo de espíritus y volver a ser humano: en el doc de cultivo.
+- Ninguna por ahora (cultivo de espíritus y volver a tener cuerpo: [cultivation.md](cultivation.md) §14).
