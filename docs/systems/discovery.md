@@ -360,7 +360,9 @@ Como el descubrimiento sale del estado (necesidad, materiales, conceptos, observ
 - La iluminación es un umbral de `pending` con disparador y calma; puede ser falsa (fidelidad baja) y se siente igual.
 - Las obras con intención llevan una impronta con esencia del autor, con techo en su profundidad, que se gasta; las copias no la llevan.
 - Los defectos de una técnica inventada son los errores de su autor evaluados por la ley.
-- El jugador puede proponer hipótesis para su personaje; la confianza la mueve solo la evidencia.
+
+## Decisiones (2026-10-05)
+- **Hipótesis del jugador:** el jugador puede proponer hipótesis aunque su personaje no las hubiera generado (`origin: player`, §14); la confianza la mueve solo la evidencia. Se descartó limitar las hipótesis al intelecto del personaje porque castiga pensar, y razonar sobre la física del mundo es habilidad legítima del jugador.
 
 ## Preguntas abiertas
 - Calibración: velocidad de integración de `pending`, umbrales de iluminación por profundidad, habituación por tipo de experiencia.
