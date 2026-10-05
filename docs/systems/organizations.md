@@ -26,7 +26,8 @@ interface Organization {
   charter: Charter;                      // propósito, normas, órganos, reglas de sucesión y de ingreso (§3, §8)
   members: MembershipId[];               // (§2) agregados por rango en tiers bajos (§17)
   positions: PositionId[];               // (§3)
-  organs: OrganId[];                     // consejo de ancianos, asamblea de clan, cabildo del gremio
+  organs: OrganId[];                     // consejo de ancianos, asamblea de clan, cabildo del gremio, o ninguno
+  structure: OrgStructure;               // formal (estatuto) y real (medida); varía por organización (§3b)
   factions: FactionId[];                 // (§5) emergentes, no fijadas por la plantilla
   holdings: HolderRef;                   // tesoro: lotes, tierras, minas, venas, claims (economy §2b)
   sites: SiteId[];                       // montaña, salón ancestral, tiendas, cuevas de cultivo, guaridas
@@ -40,7 +41,7 @@ interface Organization {
 }
 ```
 
-- **La plantilla es un punto de partida, no una jaula.** Define qué puestos, órganos, formas de ingreso y fuentes de ingreso suele tener un tipo, en una cultura dada. Cada instancia se aparta según su historia: una secta que empezó como clan conserva la herencia de sangre en sus puestos; un gremio que se enriqueció se vuelve casa comercial.
+- **La plantilla es un punto de partida, no una jaula.** Ninguna organización está obligada a tener rangos, consejo ni salones (§3b). Define qué puestos, órganos, formas de ingreso y fuentes de ingreso suele tener un tipo, en una cultura dada. Cada instancia se aparta según su historia: una secta que empezó como clan conserva la herencia de sangre en sus puestos; un gremio que se enriqueció se vuelve casa comercial.
 - **Organizaciones anidadas.** Una secta tiene picos (sub-linajes) y sucursales; un clan tiene ramas; un gremio tiene cofradías por ciudad; una secta mayor tiene sectas subordinadas que le pagan tributo; un estado tiene todo lo anterior adentro. `parent` registra el vínculo formal; el real (quién obedece a quién) se ve en las decisiones.
 - **El hogar no es una organización.** Es la unidad económica de economy §3 (presupuesto compartido). Una familia extendida con patrimonio común, salón ancestral y reglas de linaje sí es un **clan**. El paso de una a otra es un evento (un ancestro que se volvió cultivador, una fortuna que hay que proteger, una rama que se separa).
 
@@ -131,6 +132,72 @@ interface Organ {
 - **Legitimidad.** Cada miembro tiene una creencia sobre si el titular de un puesto tiene derecho a ocuparlo. Sube si la regla de selección se cumplió, si da resultados, si tiene el aval de quien importa (el ancestro, el fundador, el Cielo según la doctrina) y si encarna la cara de la organización; baja con derrotas, injusticias percibidas, rumores (un nacimiento dudoso, un asesinato en la sucesión) y con un rival legítimo. La legitimidad media pondera la obediencia (§4) y es la presión que dispara crisis (§12).
 - **Rangos sobre reinos culturales.** En las sectas, los rangos de discípulo se apoyan en los reinos de la escuela (cultivation §2): "para ser discípulo interno hay que estar en la etapa X". Como los reinos son clasificaciones con error, los rangos heredan los errores (el talento atascado en una barrera inventada nunca asciende).
 
+## 3b. Cada organización tiene su propia estructura
+No hay una estructura canónica. La plantilla (§13) es solo la **costumbre** de un tipo en una cultura; cada organización concreta tiene la estructura que le dejaron su fundador, su tamaño, su historia y la gente que la ocupa hoy. Una secta puede ser un maestro con doce discípulos donde todo lo decide él, o una institución milenaria con discípulos externos, internos, del núcleo y personales, ancianos, ancianos supremos, ancestros en reclusión y una docena de salones, o cualquier cosa en el medio. Y la misma organización cambia de forma a lo largo de su vida.
+
+### Ejes de la estructura
+La estructura se describe con ejes continuos. No se eligen al crear la organización: el formal sale del estatuto y el real **se mide** de lo que pasa (quién decide, qué se cumple).
+
+```ts
+interface StructureProfile {
+  concentration: number;      // 0 = asamblea de todos · consejo de iguales · líder que consulta · 1 = una persona decide todo
+  formalization: number;      // costumbre oral y arbitrio ↔ estatuto escrito, procedimientos, registros
+  depth: number;              // niveles de rango: plana (maestro y discípulos) ↔ escalera larga de rangos y títulos
+  differentiation: number;    // todos hacen de todo ↔ salones especializados (disciplina, tesoro, misiones, archivo, diplomacia)
+  rankBasis: Partial<Record<"blood" | "strength" | "seniority" | "merit" | "wealth" | "favor" | "election", number>>;
+  tenure: "life" | "term" | "until_challenged" | "until_retirement_age" | "at_will_of_superior";
+  territorial: number;        // todo desde la sede ↔ ramas, picos o sucursales casi autónomas
+  openness: number;           // cerrada por sangre o juramento ↔ abierta por prueba ↔ cualquiera que pague
+  secrecy: number;            // estructura pública ↔ células donde nadie conoce más que la suya
+}
+
+interface OrgStructure {
+  formal: StructureProfile;   // lo que dice el estatuto (o la costumbre, si no hay estatuto)
+  real: StructureProfile;     // lo que se mide en la práctica (inspector), con su ventana de tiempo
+  originEventId: EventId;     // la fundación o la última reforma
+  changes: EventId[];         // concentraciones, reformas, colapsos (abajo)
+}
+```
+
+- **Formal y real pueden divergir mucho.** El estatuto dice "decide el consejo" y en la práctica nadie vota contra el líder; o al revés, el líder formal es un sello y decide una facción detrás. El real se mide como la fracción de asuntos que pasan por cada órgano, de cuántas decisiones ganó la preferencia de cada persona y de cuántas órdenes de cada uno se cumplen (§3, poder real).
+- **La forma de decidir sale de la estructura real** (§4): en una autocracia, deliberar es convencer al líder; en un colegio de iguales, es votar; en una federación de ramas, es negociar entre ramas; en una cofradía plana, decide quien puede imponerse en el momento o el consenso.
+
+### Algunas configuraciones (ejemplos, no tipos cerrados)
+| Configuración | Cómo se ve | Fortaleza y punto débil |
+|---|---|---|
+| **El fundador autócrata** | Una secta de un solo maestro, una banda, una casa comercial nueva. Todo pasa por él; consejo decorativo o inexistente | Rápida y coherente; frágil cuando él falta, y nadie aprendió a decidir |
+| **El viejo que no suelta** | El líder sigue en el puesto mucho después de que debería, por voluntad propia (abajo) | Continuidad; decisiones postergadas, sucesores que envejecen esperando, facciones que conspiran |
+| **La fuerza abrumadora** | Un ancestro varios umbrales por encima de todos: nadie vota contra él. El consejo existe para cuando está en reclusión, y en esas ventanas el poder se reparte | Nadie se atreve a atacarla; todo depende de que él viva y de que se crea que vive |
+| **La secta tradicional** | Escalera larga de rangos (sirvientes, externos, internos, núcleo, personales, ancianos, ancianos supremos, ancestros), salones especializados, estatuto escrito, consejo con reglas | Estable y resistente a la muerte de cualquiera; lenta, burocrática, corrupción en los intersticios, rangos que se vuelven hereditarios de hecho |
+| **El líder figura** | Título sin poder: un niño heredero con regente, un ancestro senil, un líder elegido por débil | Mantiene la forma; el poder real está en otro lado, y eso es inestable |
+| **El colegio de iguales** | Gremio de maestros, consejo de aldea, socios de una casa comercial | Legitimidad alta; se traba cuando los intereses se separan |
+| **La federación de ramas** | Clan con ramas casi independientes, secta con picos autónomos donde el líder es árbitro | Resiste la pérdida de una rama; en una crisis cada rama tira para su lado |
+| **La cofradía plana** | Hermanos jurados, una banda chica, un grupo de errantes | Lealtad personal intensa; no escala más allá de unos pocos |
+| **Células ocultas** | Culto o sociedad secreta: nadie conoce más que su célula y su contacto | Sobrevive a infiltrados y capturas; coordinar es lento y las órdenes se deforman |
+
+### De dónde sale la estructura
+- **El fundador.** Un fundador dominante (`warmth` baja, `control` alto, valor `power`) centraliza; uno que fundó con compañeros iguales arma un consejo; uno que desconfía de todos no escribe nada y lo guarda en su cabeza. La primera estructura es casi siempre la forma de ser de quien fundó.
+- **La fuerza relativa.** Cuanto más separa el cultivo (o la riqueza, o el control de la fuerza) al de arriba de los demás, más se concentra el poder real, diga lo que diga el estatuto.
+- **La cultura** (living-world §3): un imperio de río trae burocracia y rangos; un pueblo nómada, consejo de clanes; una cultura con prestigio de la antigüedad, gerontocracia.
+- **El tamaño y la atención finita del líder.** El que decide tiene un presupuesto de atención por período (según `control`, `intellect` y el tiempo que pasa en reclusión). Lo que no atiende lo deciden otros de hecho o queda sin decidir. Un autócrata con tres mil discípulos no puede decidirlo todo: aparecen poderes intermedios aunque nadie los haya creado, y con el tiempo se formalizan o se le escapan.
+- **El recurso.** Una vena única en la sede favorece la centralización (quien controla la montaña controla todo); minas, aldeas y sucursales dispersas favorecen la federación.
+- **Las amenazas.** La guerra concentra el poder (hace falta decidir rápido) y rara vez lo devuelve sola.
+- **La historia.** Después de un tirano, el estatuto limita al líder; después de una sucesión sangrienta, se escribe la regla; después de una traición, sube el secreto.
+
+### Cómo cambia (siempre con un evento)
+- **Concentración:** un líder que rompe un umbral muy por encima de los demás, que gana una guerra o que purga a sus rivales vacía el consejo. El estatuto puede seguir igual: lo que cambia es el real.
+- **Dispersión:** muere el autócrata sin un sucesor de su talla, o entra en reclusión larga: el consejo recupera poder, o las facciones se reparten la organización.
+- **Formalización:** una crisis (sucesión, malversación, cisma) produce reglas escritas, salones nuevos o un registro.
+- **Reforma:** un líder que quiere cambiar la estructura (crear salones, abrir el ingreso, quitarle poder a los ancianos) lo intenta como cualquier decisión (§4), contra los que pierden con el cambio.
+- **Osificación:** rangos por mérito que se vuelven hereditarios de hecho, salones que existen solo para dar sueldos, normas que nadie recuerda por qué existen.
+- **Cambio de tipo:** la secta que se vuelve clan, el gremio que se vuelve casa comercial, la banda que se vuelve señorío.
+
+### El líder que no suelta
+Que un líder se quede hasta morir no es una regla de la plantilla: es una **decisión** suya que se renueva cada vez que hay presión para que se vaya.
+- **Lo que lo retiene:** valores `power` y `status`, una identidad atada al puesto ("soy el Maestro de la Secta"), desconfianza de los sucesores, miedo a lo que le pasa sin la protección del puesto (rivales, deudas de sangre), costo hundido, y la desesperación al final de la vida (npc-psychology §9c): soltar el puesto es soltar los recursos que necesita para alargarla.
+- **Lo que lo empuja:** su legitimidad cae a medida que declina (body-health: envejecimiento; npc-psychology: declive cognitivo), con malos resultados, ausencias y decisiones erráticas; los sucesores se impacientan; la costumbre de retiro (si existe) pesa; los aliados externos piden un interlocutor.
+- **Cómo termina:** muere en el puesto (y la sucesión es peor porque nadie se preparó), se retira por fin con condiciones, lo destituye el consejo, lo apartan con un golpe o un veneno, o queda como figura con el título mientras el poder real se mueve a otro.
+
 ## 4. Cómo decide una organización
 La organización no tiene una función de utilidad. Tiene **asuntos**, **gente que propone**, **un órgano que decide** y **gente que ejecuta**.
 
@@ -160,7 +227,7 @@ La organización no tiene una función de utilidad. Tiene **asuntos**, **gente q
    Los pesos salen de la lealtad, los valores (`tradition`, `power`, `family`), `warmth`, la identidad y la cercanía a la sucesión. El "interés de la organización" que cada uno imagina sale de la doctrina, de sus creencias y de sus esquemas: el belicoso cree que a la secta le conviene la guerra.
 2. **Discusión con actos de habla** (npc-psychology §8): argumentar con creencias (y mentiras), apelar a la doctrina, a la tradición, al fundador, a la cara; prometer apoyo a cambio de algo; amenazar; exponer un secreto ajeno; comprar votos. Cada acto mueve las creencias y las utilidades de los demás. Antes de la sesión hay pasillos: las coaliciones se arman afuera.
 3. **Decisión** según la regla del órgano, con los votos de cada uno decididos por utilidad (softmax con `rng.fork("org", …)`). El resultado es un evento `OrgDecision` con causas: quién planteó, qué creencias circularon, quién votó qué, qué favores se movieron.
-4. **Si no hay órgano** (banda, secta de un solo maestro, clan patriarcal), decide el líder con su utilidad, y los demás se limitan a influirlo con actos de habla.
+4. **Si el poder está concentrado** (banda, secta de un solo maestro, clan patriarcal, un ancestro abrumador), decide el líder con su utilidad, y los demás se limitan a influirlo con actos de habla: el consejo, si existe, ratifica. Si el líder no atiende el asunto (atención finita, reclusión), lo decide de hecho quien tenga el poder intermedio, o nadie. Si el poder está repartido entre ramas (federación), el asunto se negocia entre ramas como entre aliados (§10) y obliga solo a las que aceptan. Cuál de estos casos aplica sale de la estructura real (§3b), no del estatuto.
 
 ### Ejecución
 - La decisión se baja como **órdenes** (`Order { from, to, task, deadline, resources, originEventId }`) que entran a los objetivos de cada receptor con un peso:
@@ -395,6 +462,9 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - **Conservación:** los sueldos, regalos y gastos salen del tesoro; un cisma reparte (no duplica) miembros, bienes y manuales; un tesoro saqueado aparece en otra tenencia o como pérdida registrada.
 - Los puntos de contribución son claims: canjearlos descuenta del tesoro; emitir más de lo respaldado baja lo que se puede canjear.
 - **Ningún decisor lee `WorldTruth`:** la fuerza de otra organización y el estado propio se deciden con creencias.
+- Escenario controlado: una organización que crece sin delegar satura la atención del líder, y sube la fracción de asuntos que deciden otros de hecho.
+- Escenario controlado: al morir un autócrata sin sucesor de su talla, la concentración real cae y el consejo o las facciones ganan peso.
+- Dos organizaciones de la misma plantilla y cultura, con fundadores de temperamento opuesto, terminan con estructuras reales distintas.
 - Escenario controlado: con un líder de legitimidad baja, la tasa de órdenes cumplidas baja y sube la de saboteadas.
 - Escenario controlado: una secta que sobreexplota su vena entra en déficit, y eso aparece como asunto en su consejo solo cuando alguien con acceso lo percibe y lo plantea.
 - Escenario controlado: un rumor falso sobre la muerte del ancestro de una secta rival aumenta la probabilidad de guerra contra ella.
@@ -405,6 +475,7 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - La autoridad y la legitimidad son creencias; el poder real se mide por lo que prospera.
 - Las facciones emergen de relaciones y catalizadores; no las fija la plantilla.
 - El tesoro es una tenencia finita; los puntos de contribución son derechos contra él.
+- No hay estructura canónica: cada organización tiene una estructura formal y una real, descritas por ejes continuos (concentración, formalización, profundidad, diferenciación, base del rango, permanencia, territorialidad, apertura, secreto), que salen del fundador, la fuerza relativa, la cultura, el tamaño y la historia, y cambian con eventos (§3b). Que un líder se aferre al puesto es una decisión suya, no una regla de la plantilla.
 - Un solo modelo con plantillas para todos los tipos, incluidos estado y ejército (que se detallan en sus docs).
 - El hogar no es una organización; un clan sí.
 - El karma de lo que hace una organización es de las personas que lo hicieron; la fortuna colectiva queda para el ítem 20.
@@ -413,4 +484,5 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 ## Preguntas abiertas
 - Calibración: frecuencia de cismas, sucesiones disputadas y colapsos por siglo; vida media de sectas, clanes y gremios por tipo y era.
 - Calibración: tamaño a partir del cual aparecen facciones y costo de cohesión por miembro.
+- Calibración: presupuesto de atención de un líder y velocidad con que la estructura real se concentra o se dispersa.
 - Calibración: pesos típicos `w_org`/`w_facción`/`w_self` por temperamento y lealtad, para que la corrupción sea común pero no universal.
