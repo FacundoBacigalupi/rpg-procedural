@@ -101,7 +101,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
-- [ ] Economía mínima: lotes con origen, inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
+- [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
 - [ ] Resolución con resultados matizados
 - [ ] Intent parser (Claude) → ActionPlan validado
 - [ ] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md))
