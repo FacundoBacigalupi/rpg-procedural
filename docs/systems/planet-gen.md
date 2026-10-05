@@ -54,7 +54,7 @@ interface RegionCell {
   - Sol y luna dan mareas y estaciones, y en esta metafísica son **fuentes celestes de qi** con elemento propio (sol → fuego/yang, luna → agua/yin). Los eclipses, la luna llena y las conjunciones con una luna pequeña son eventos astronómicos **calculables**: un astrónomo o un cultivador sabio puede predecirlos y aprovecharlos.
 - Presupuesto total de qi del mundo y fuerza del Cielo (ver heaven-karma).
 - **Mareas de qi:** el qi global no es constante. Oscila con ciclos astronómicos largos (excentricidad de la órbita, precesión, conjunciones con la luna), de siglos a milenios. Las eras de "recuperación" y "decadencia" espiritual tienen así una causa física, combinada con el consumo humano. Son ciclos calculables: un sabio puede saber que se viene una marea alta.
-- Balance elemental global: un mundo puede ser rico en metal y pobre en madera.
+- Balance elemental global: un mundo puede ser rico en metal y pobre en madera. Qué elementos existen y cómo interactúan: [elements.md](elements.md).
 
 ### 1. Tectónica simplificada
 No es una simulación física completa: es un modelo que produce formas creíbles.
@@ -106,6 +106,7 @@ El qi **se deriva de la geología y el clima**, no se pinta encima:
 | Picos altos, cielos despejados | Celeste (sol/luna) | Cercanía a las fuentes celestes |
 
 - **Venas espirituales:** líneas de qi que siguen fallas y raíces de cordilleras. Son las fuentes principales, finitas y con tasa de regeneración.
+- **Fronteras elementales:** celdas vecinas con elementos que se vencen producen nieblas, termas, géiseres o tormentas permanentes; las que se generan en ciclo forman lugares de qi que se alimentan solos ([elements.md](elements.md) §6).
 - **Flujo:** el qi difunde hacia las celdas vecinas con preferencia "cuesta abajo" (valles, cuencas, cuevas). Se resuelve una vez hasta el equilibrio en la generación y después lo sigue la simulación.
 - **Anomalías y tesoros naturales (天材地宝):** la acumulación masiva de qi **durante tiempo suficiente** transforma la materia. No se tiran al azar: hay umbrales de concentración × tiempo × elemento, y cuando se cruzan ocurre un **evento de formación natural** con causa (la vena, la cuenca que acumula, los siglos sin que nadie consuma).
   - **Escala pequeña:** piedras espirituales (qi cristalizado en la roca), hierbas milenarias, manantiales de qi líquido, minerales espirituales.

@@ -2,7 +2,7 @@
 
 > Cada partida es una experiencia muy distinta porque **las leyes del mundo cambian**: de dónde sale el poder, cómo se usa, qué cuesta, qué hay arriba (un Cielo, dioses, nada) y qué pasa al morir. El xianxia es la familia más común, pero no la única: un mundo puede ser de magia y espadas occidental, otro uno de pactos oscuros y magia escasa, otro uno donde los dioses caminan entre los mortales.
 
-Depende de: [causality.md](causality.md) (las leyes son la capa 0). Condiciona: [planet-gen.md](planet-gen.md), [heaven-karma.md](heaven-karma.md), [spirits.md](spirits.md), [npc-psychology.md](npc-psychology.md) (la práctica altera la psique), [living-world.md](living-world.md).
+Depende de: [causality.md](causality.md) (las leyes son la capa 0). Condiciona: [elements.md](elements.md), [planet-gen.md](planet-gen.md), [heaven-karma.md](heaven-karma.md), [spirits.md](spirits.md), [npc-psychology.md](npc-psychology.md) (la práctica altera la psique), [living-world.md](living-world.md).
 
 ## Principio: el motor no es xianxia
 - El código usa conceptos **genéricos**:
@@ -69,6 +69,9 @@ El karma literal existe solo si la ley lo lleva (Cielo, ciertos panteones). En u
 - **Sin alma:** la conciencia es del cuerpo y no queda nada.
 
 Las reglas de formación de espíritus (resistir la fuerza que se lleva al alma, sostenerse con esencia) se adaptan a cada caso. Si no hay alma, no hay espíritus.
+
+### 6b. Elementos
+La esencia tiene formas (elementos) que se generan, se vencen y se transforman entre sí. Qué elementos hay, con qué intensidades y qué derivados nacen es parte de la ley del mundo: cinco fases en la mayoría de los mundos xianxia, otras formas en el resto. La física común que usan cultivo, oficios, combate, cuerpo y clima está en [elements.md](elements.md).
 
 ### 7. Otros ejes
 - **Longevidad:** el poder alarga la vida (inmortales) o no (el viejo mago muere a los 80).

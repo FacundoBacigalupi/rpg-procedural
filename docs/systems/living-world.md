@@ -18,7 +18,7 @@ No hay tabla de catástrofes: cada desastre es la descarga de una presión que e
 - Un desastre deja huella: migraciones, hambre, guerras por recursos, tabúes ("no construyas en el valle"), mitos.
 
 ## 2. Bestias que evolucionan y despiertan
-- **Adaptación por selección:** cada población de bestias tiene rasgos heredables (afinidad elemental, tamaño, resistencia). Generación tras generación, el entorno favorece variantes: cerca de un volcán prosperan los lobos con afinidad al fuego. Las especies regionales **emergen**, no se escriben en una tabla. `content/` solo define los linajes base.
+- **Adaptación por selección:** cada población de bestias tiene rasgos heredables (afinidad elemental según [elements.md](elements.md), tamaño, resistencia). Generación tras generación, el entorno favorece variantes: cerca de un volcán prosperan los lobos con afinidad al fuego. Las especies regionales **emergen**, no se escriben en una tabla. `content/` solo define los linajes base.
 - **Despertar:** una bestia muy longeva con mucho qi puede despertar inteligencia. A partir de ahí es un **agente** con psicología (la misma de [npc-psychology.md](npc-psychology.md), con otros valores y necesidades), cultiva y con el tiempo puede tomar forma humana.
 - **Reinos de bestias:** bestias despiertas que reúnen a otras forman facciones con territorio, intereses y memoria. Recuerdan a los humanos que cazaron a sus crías: las guerras entre humanos y bestias tienen causa.
 

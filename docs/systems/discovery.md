@@ -24,7 +24,7 @@ type LawKey =
   | { kind: "condition"; base: LawKey; factor: ConditionKey }      // ¿funciona solo fresca? ¿solo de noche? ¿solo en raíces de agua?
   | { kind: "threshold"; path: PathId; position: number;
       property: "exists" | "requires" | "ceiling" | "effects" }    // ¿hay una barrera acá? ¿qué pide? ¿hay techo?
-  | { kind: "elementRelation"; a: ElementId; b: ElementId }        // generación, destrucción, neutralidad (ítem 8)
+  | { kind: "elementRelation"; a: ElementId; b: ElementId }        // generación, destrucción, inversión por cantidad (elements.md)
   | { kind: "regularity"; phenomenon: PhenomenonKey; correlate: CorrelateKey }  // el qi sube con la luna llena; las bestias migran con el frío
   | { kind: "siteCause"; site: SiteId }                            // ¿por qué este valle tiene tanto qi?
   | { kind: "process"; recipe: RecipeSketch }                      // ¿qué sale si destilo esto con aquello a este fuego?
@@ -275,7 +275,7 @@ Crear algo nuevo es **buscar en un espacio de diseño** guiado por lo que el age
 - **Iluminación como fuente.** Una iluminación (§8) puede proponer un diseño directamente: el aspecto recién comprendido sugiere piezas que el agente no habría elegido. Así nacen las técnicas que fundan sectas.
 
 ### Recetas y procesos
-- Alquimia, forja, medicina, cocina, agricultura: una receta es un **proceso** (ingredientes, proporciones, fuego, tiempo, orden) cuyo resultado calcula la ley (crafts, futuro; interacciones elementales, ítem 8).
+- Alquimia, forja, medicina, cocina, agricultura: una receta es un **proceso** (ingredientes, proporciones, fuego, tiempo, orden) cuyo resultado calcula la ley (crafts, futuro; [elements.md](elements.md)).
 - Se descubren por experimentación (§4) o por accidente (algo salió distinto y alguien lo notó). Las propiedades no buscadas (toxinas residuales, efectos secundarios) existen aunque el creador no las sepa.
 - **Tecnología mortal** (technology, futuro) usa este mismo mecanismo con el catálogo de procesos mortales: el arado de hierro, el papel, la imprenta.
 
