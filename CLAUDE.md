@@ -23,6 +23,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/body-health.md](docs/systems/body-health.md) — cuerpo por partes, heridas, enfermedades y contagio, nutrición, sustancias, envejecimiento, medicina, meridianos.
 - [docs/systems/cultivation.md](docs/systems/cultivation.md) — cultivo: ley (umbrales reales) vs escuelas (reinos culturales), talento, absorción, rupturas, técnicas como conocimiento, caminos, espíritus.
 - [docs/systems/discovery.md](docs/systems/discovery.md) — descubrimiento: hipótesis sobre las leyes con evidencia, experimentos, errores con forma, dogmas y cismas, insights e iluminación (悟), arte con intención, inventar técnicas y recetas.
+- [docs/systems/economy.md](docs/systems/economy.md) — economía: bienes como lotes con origen, dinero físico (metal, piedras espirituales, letras), precios que salen de creencias, regateo, comercio por rutas, crédito y usura, subastas, gremios, crisis con causa.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo
