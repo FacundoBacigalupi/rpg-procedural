@@ -269,7 +269,7 @@ Comandos:
 `whatif` responde "¿qué habría pasado si esto no ocurría?" corriendo una **rama** de la simulación desde un snapshot anterior al evento, con el evento quitado (o una acción del jugador cambiada).
 
 - **Determinista:** la rama usa los mismos streams del RNG (`rng.fork` por proceso, entidad y tick), así que todo lo que no depende del evento quitado sale igual. La diferencia entre la rama y la historia real es el **efecto causal** del evento.
-- **Solo en herramientas.** Nunca corre durante una partida para decidir nada, ni se le muestra al jugador salvo en el modo inspector. Si la crónica debería usarlo para medir el legado queda como pregunta abierta.
+- **Solo en herramientas.** Nunca corre durante una partida para decidir nada, ni se le muestra al jugador salvo en el modo inspector. La crónica no lo usa por defecto (decisión 8).
 - **Costoso:** corre en modo agregado (LOD bajo) y con horizonte acotado. Sirve para depurar ("¿la hambruna salía igual sin la guerra?") y para calibrar.
 
 ## Tests
@@ -292,7 +292,7 @@ Comandos:
 5. **Tamaño:** un planeta entero (geografía sobre esfera). Salir del planeta queda abierto, posiblemente vía ascensión. `Realm` se modela como entidad dentro de una cosmología mayor para no cerrar la puerta.
 6. **Presiones derivadas, no guardadas como verdad:** cada sistema las calcula con una función pura del estado y se cachean; toda descarga registra la presión con su valor en `causes` (§9).
 7. **Inspector y contrafácticos solo en `tools/`:** leen la verdad, nunca escriben en ella ni corren durante una partida (§10, §11).
+8. **Contrafácticos en la crónica:** no por defecto (es caro y especulativo para el jugador); como mucho, una opción del archivo de vidas que corre en modo agregado (aprobado 2026-10-06).
 
 ## Preguntas abiertas
-- ¿La crónica debería usar contrafácticos para medir el legado ("sin vos, el valle habría...")? Propuesta: no por defecto (es caro y especulativo para el jugador); como mucho, una opción del archivo de vidas que corre en modo agregado.
 - Calibración: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; cuánto baja el umbral una chispa y por cuánto tiempo.

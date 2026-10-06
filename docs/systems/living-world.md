@@ -8,9 +8,9 @@ No hay tabla de catástrofes: cada desastre es la descarga de una presión que e
 | Desastre | Presión que lo causa | Se puede prever |
 |---|---|---|
 | Terremoto | Tensión acumulada en una falla activa (crece con el movimiento de placas) | Sí: fallas conocidas, temblores previos |
-| Erupción | Presión en un volcán activo (punto caliente o borde) | Sí: humo, temblores, animales que huyen |
+| Erupción | Presión en un volcán activo (punto caliente o borde); las grandes dan un invierno volcánico lejos ([planet-gen.md](planet-gen.md) §10) | Sí: humo, temblores, animales que huyen |
 | Tsunami | Terremoto submarino | Minutos u horas antes, si sabés leer el mar |
-| Sequía, inundación | Ciclos climáticos de varios años (oscilaciones del océano, mareas de qi) | Sí, por quien estudió los ciclos |
+| Sequía, inundación | Ciclos climáticos de varios años (oscilaciones del océano, mareas de qi); inundaciones glaciares ([planet-gen.md](planet-gen.md) §8) | Sí, por quien estudió los ciclos |
 | Plaga, epidemia | Densidad de población + rutas comerciales + higiene + cosechas malas | Sí: síntomas que viajan por los caminos |
 | Calamidad de qi | Sobreexplotación de una región (ver heaven-karma) | Sí: el qi baja, las bestias mutan |
 

@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#23, planet-gen: glaciaciones, suelos que se agotan, inviernos volcánicos**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#24, living-world: sucesión ecológica, especies invasoras, migraciones estacionales, domesticación**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -43,7 +43,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 20. [x] [heaven-karma.md](systems/heaven-karma.md) §3-§8: atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
 21. [x] [npc-psychology.md](systems/npc-psychology.md) §10-§17: desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
 22. [x] [causality.md](systems/causality.md) §9-§11 + [schemes.md](systems/schemes.md) §9-§13: mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
-23. [ ] [planet-gen.md](systems/planet-gen.md): glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
+23. [x] [planet-gen.md](systems/planet-gen.md) §8-§12: glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
 24. [ ] [living-world.md](systems/living-world.md): sucesión ecológica, especies invasoras por rutas comerciales, migraciones estacionales, domesticación y contratos con bestias.
 25. [ ] [spirits.md](systems/spirits.md): economía de ofrendas a ancestros; qué pasa cuando un linaje deja de ofrendar.
 26. [ ] [deep-history.md](systems/deep-history.md): arqueología como juego (estratos, datación de objetos, nombres de lugares deformados como pistas).
@@ -58,6 +58,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
 - causality: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; efecto y duración de las chispas.
 - schemes: tasa de intrigas entre organizaciones por par; proporción de free riders; frecuencia con que una profecía usada se vuelve contra el que la usó.
+- planet-gen: largo y amplitud de los ciclos glaciales; tasas de formación y agotamiento de suelos; recarga y explosividad de volcanes; frecuencia de impactos.
 - perception: curvas de atenuación y `k` de la sigmoide.
 - body-health: curación, infección y mortalidad.
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
@@ -93,7 +94,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运) en borrador
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador (§10-§17: etapas, salud mental, declive, sentido y pertenencia, multitudes, sueños, gustos)
-- [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md))
+- [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — §8-§12 (glaciaciones, suelos, volcanes e inviernos volcánicos) en borrador
 - [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
 - [x] Mundo vivo ([systems/living-world.md](systems/living-world.md))
 - [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
@@ -179,6 +180,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] `QiDebt` por sobreexplotación y retribución mínima como inclinación de las tiradas del deudor ([heaven-karma.md](systems/heaven-karma.md) §6)
 - [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
 - [ ] Proyectos cooperativos de aldea y caravanas: participantes con `knownPlan`, pool con conservación, repartos con compromisos, free riders ([schemes.md](systems/schemes.md) §9)
+- [ ] Suelos por parcela con nutrientes que se mueven, agotamiento, barbecho y abono; rendimientos que alimentan la presión de hambre ([planet-gen.md](systems/planet-gen.md) §9)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -215,6 +217,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Control del ancla de reinos secretos por organizaciones, cupos y fichas como bienes, mercados de apertura, relatos y mapas del interior como creencias ([secret-realms.md](systems/secret-realms.md))
 - [ ] Oráculos y salones de adivinación como instituciones, astrólogos de corte, lectura de karma como prueba ([divination.md](systems/divination.md))
 - [ ] Zonas ciegas (reinos, formaciones de ocultamiento, lugares extremos), inclinación a favor de los enemigos del deudor, calamidades como descarga del déficit ([heaven-karma.md](systems/heaven-karma.md) §4, §6)
+- [ ] Suelos agregados por celda, erosión, salinización y desertificación por uso; volcanes con presión, erupciones y ceniza fértil ([planet-gen.md](systems/planet-gen.md) §9, §10)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -253,6 +256,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Reescrituras por régimen, censura, estelas y canciones en la historia agregada; huella causal y legado recordado con el embudo; epílogo hasta que se apague el legado ([chronicle.md](systems/chronicle.md))
 - [ ] Heridas del Cielo en la historia profunda, fuerza del Cielo por era, olas de tribulaciones postergadas al cerrarse una herida ([heaven-karma.md](systems/heaven-karma.md) §1, §4)
 - [ ] Contrafácticos `whatif` en modo agregado y snapshots de presiones para el mapa histórico ([causality.md](systems/causality.md) §10, §11)
+- [ ] Clima de largo plazo por época: glaciaciones, nivel del mar, puentes de tierra, costas y ruinas sumergidas; supervolcanes e impactos ([planet-gen.md](systems/planet-gen.md) §8, §10)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -266,6 +270,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Proyección del futuro con el modelo agregado y forks propios, profecías fabricadas, reacción del Cielo ([divination.md](systems/divination.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
+- [ ] Inviernos volcánicos con aerosol por bandas y sus cadenas (hambre, presagios, legitimidad); estrellas caídas como materiales ([planet-gen.md](systems/planet-gen.md) §10)
 
 ## Fase 9 — Pulido
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica

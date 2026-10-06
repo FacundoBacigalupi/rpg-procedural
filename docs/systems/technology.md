@@ -164,7 +164,7 @@ Merecen sección propia porque mueven el sistema de información entero.
 
 ## 9. Consecuencias y ambiente
 
-- **Recursos:** el carbón de leña tala montes enteros; la minería agota vetas y envenena ríos; el riego mal drenado saliniza; el pastoreo intensivo erosiona. Todo eso es estado del mundo (planet-gen, living-world §1) y produce desastres con causa: deslaves, sequías locales, sedimentación de puertos.
+- **Recursos:** el carbón de leña tala montes enteros; la minería agota vetas y envenena ríos; el riego mal drenado saliniza; el pastoreo intensivo erosiona. Todo eso es estado del mundo ([planet-gen.md](planet-gen.md) §9, living-world §1) y produce desastres con causa: deslaves, sequías locales, sedimentación de puertos.
 - **Enfermedades del oficio:** mineros con pulmones rotos, tintoreros envenenados, herreros sordos, alfareros con plomo (body-health).
 - **Sociales:** los oficios nuevos crean grupos nuevos (fundidores, impresores, mercaderes de papel), destruyen otros (copistas), mueven el estatus (social-structure) y la riqueza (economy). Las innovaciones que ahorran trabajo pueden dejar gente sin sustento y producir revueltas.
 - **Políticas:** el estado que domina una tecnología (hierro, canales, imprenta) gana alcance y fuerza; el que la pierde, se debilita. Las innovaciones militares cambian equilibrios entre vecinos (war).

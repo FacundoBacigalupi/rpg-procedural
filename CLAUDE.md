@@ -14,7 +14,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas).
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos; etapas de vida con períodos sensibles, salud mental con causa y etiqueta cultural (duelo, depresión, trauma, adicción), declive cognitivo, sentido y pertenencia, multitudes por umbrales, sueño que consolida y sueños, gustos personales generados.
 - [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas y proyectos: NPCs que traman contra otros (planes ocultos sobre creencias) o cooperan con versiones distintas del plan; intrigas entre organizaciones; intrigantes que explotan profecías.
-- [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología.
+- [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología; después sigue cambiando: glaciaciones y nivel del mar con puentes de tierra, suelos que se agotan, volcanes e inviernos volcánicos, impactos.
 - [docs/systems/metaphysics.md](docs/systems/metaphysics.md) — **las leyes de cada mundo varían mucho** (xianxia, magia occidental, pactos, dioses…). El código usa conceptos genéricos (`Essence`, `Practice`, `Law`, `Soul`).
 - [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.
 - [docs/systems/spirits.md](docs/systems/spirits.md) — espíritus: almas ancladas, espíritus de lugar y de objetos.
