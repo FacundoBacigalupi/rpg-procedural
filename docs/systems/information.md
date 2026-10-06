@@ -59,6 +59,8 @@ nuevo = combinar(previo, evidencia, peso = credibilidad(fuente) × plausibilidad
 - **Fuentes contadas dos veces.** El que escucha no sabe si dos personas que le dicen lo mismo lo vieron por separado o lo escucharon del mismo chismoso. Si no recuerda las fuentes, las cuenta como independientes: un solo rumor repetido por cinco bocas parece un hecho. Es el efecto "todos lo dicen".
 
 ## 2. Contar: actos de habla con información
+> El catálogo completo de actos de habla y cómo se usan en la conversación: [dialogue.md](dialogue.md) §2.
+
 Compartir es una decisión de la utilidad con los mismos actos de habla del diálogo (npc-psychology §8): contar, preguntar, mentir, exagerar, advertir, presumir, negar, enseñar, callar.
 
 ### Por qué alguien cuenta algo

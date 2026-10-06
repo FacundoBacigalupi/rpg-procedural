@@ -197,6 +197,8 @@ Actuar contra un valor propio, por ejemplo robar valorando `justice`, genera `gu
 
 ## 8. Diálogo
 
+> Diseño completo de la conversación (actos de habla, persuasión, verbalización): [dialogue.md](dialogue.md).
+
 La **simulación** decide el acto de habla: amenazar, mentir, halagar, negarse, contar un secreto, pedir ayuda. Lo elige por utilidad, como cualquier acción. Una mentira es una decisión del sim con un contenido concreto (qué creencia falsa intenta instalar).
 
 El **LLM** solo lo verbaliza. Recibe:

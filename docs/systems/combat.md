@@ -217,12 +217,12 @@ interface FightResolve {
 - **Emisiones durante la pelea:** golpes, gritos, el brillo de una técnica, el olor a sangre (perception §2). Atraen gente y bestias.
 - **Huellas después:** sangre en el piso, armas o pedazos, ropa rasgada, tierra quemada, la firma residual de una técnica que un experto reconoce (perception §9). Son la materia prima de una investigación (law).
 - **Testigos:** recuerdan lo que percibieron, deformado por el miedo y la rapidez (npc-psychology §5): "eran tres", "tenía una espada roja".
-- **Karma y deuda de sangre:** matar crea karma (heaven-karma §2) y, casi siempre, alguien que quiere venganza (familia, secta, maestro).
+- **Karma y deuda de sangre:** matar crea karma (heaven-karma §2) con peso según la causa y la víctima: mínimo en defensa propia o contra alguien con mucho karma negativo, mayor contra un rendido. Casi siempre deja, además, alguien que quiere venganza (familia, secta, maestro), que no mide como el Cielo.
 - **Reputación:** quién ganó, cómo y contra quién viaja como rumor. Ganar con trampa o matar a un rendido también viaja.
 
 ## 17. El jugador y el narrador
 
-- **Ritmo de control:** el jugador da una intención táctica ("lo mantengo a distancia con la lanza y busco el muslo", "desarmarlo sin matarlo", "si saca un cuchillo, me voy") que se ejecuta como plan con sus reflejos y posturas (actions §6). La simulación **pausa y le devuelve el control** en momentos que importan: un hueco claro, una herida propia seria, un rival que se rinde, alguien nuevo que entra, una decisión de matar.
+- **Ritmo de control:** el jugador da una intención táctica ("lo mantengo a distancia con la lanza y busco el muslo", "desarmarlo sin matarlo", "si saca un cuchillo, me voy") que se ejecuta como plan con sus reflejos y posturas (actions §6). La simulación **pausa y le devuelve el control** en momentos que importan **según lo que percibe y cree el personaje** (aprobado 2026-10-06): un hueco que él ve (con su `reading`; el hueco que no ve no pausa, y el que cree ver puede ser una finta), una herida propia que nota (la que no siente por la adrenalina no pausa hasta que la nota), un rival que él entiende que se rinde, alguien nuevo que percibe, una decisión de matar.
 - **La narración es la pelea percibida:** rápida, confusa, con visión de túnel bajo adrenalina. El jugador no recibe "le hiciste un corte de 4 cm en el antebrazo"; recibe lo que su personaje notó, y puede no darse cuenta de que lo hirieron hasta después.
 - **El estado del personaje** después de la pelea (heridas, dolor, cansancio) se cuenta como lo siente él; el inspector muestra la verdad.
 
@@ -261,8 +261,10 @@ interface FightResolve {
 - **Daño solo como heridas** de body-health; capacidades recalculadas por pulso.
 - **Armas y armaduras con propiedades derivadas del objeto** y desgaste con conservación.
 - **Moral individual** con chances creídas que se actualizan por lo percibido; el jugador no tiene barra de moral pero su personaje siente miedo.
-- **Control del jugador por intención táctica** con pausas en momentos importantes.
-- **Hasta ~20 participantes** en este modelo; más allá, war §7.
+- **Control del jugador por intención táctica** con pausas en momentos importantes, disparadas por lo que percibe y cree el personaje, no por la verdad (aprobado 2026-10-06).
+- **Letalidad realista:** peleas cortas entre mortales, heridas que matan días después, pelear siempre es un riesgo serio (aprobado 2026-10-06).
+- **Karma por matar según causa y víctima:** mínimo en defensa propia y contra víctimas con mucho karma negativo; más alto contra rendidos e inocentes indefensos (heaven-karma §2, aprobado 2026-10-06).
+- **Hasta ~20 participantes** en este modelo; más allá, war §7, con el entorno inmediato del jugador como pelea individual dentro de la batalla (aprobado 2026-10-06).
 
 ## Preguntas abiertas
 

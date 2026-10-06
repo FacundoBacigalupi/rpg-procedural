@@ -55,7 +55,7 @@ Orientativo, no exhaustivo (el número final sale del contenido, del orden de 80
 | Movimiento | `move`, `go_to` (con ruta), `follow`, `approach`, `withdraw`, `flee`, `climb`, `swim`, `jump`, `crawl`, `ride`, `fly`, `hide`, `sneak`, `enter`, `leave`, `block_way` | travel, body-health, perception |
 | Manipulación | `take`, `drop`, `put`, `give`, `hand_over`, `open`, `close`, `lock`, `break`, `carry`, `wield`, `sheathe`, `wear`, `remove`, `eat`, `drink`, `apply` (vendaje, ungüento), `use` (objeto con función) | economy (tenencias), body-health, crafts |
 | Percepción | `look`, `search`, `listen`, `smell`, `inspect`, `read`, `track`, `watch` (vigilar por un tiempo), `sense_essence`, `probe_cultivation` | perception, discovery |
-| Social | `speak` (con acto de habla), `gesture`, `bow` y demás etiqueta, `offer`, `accept`, `refuse`, `bargain`, `command`, `request`, `threaten`, `embrace`, `touch` | [dialogue.md] futuro, economy, social-structure |
+| Social | `speak` (con acto de habla), `gesture`, `bow` y demás etiqueta, `offer`, `accept`, `refuse`, `bargain`, `command`, `request`, `threaten`, `embrace`, `touch` | [dialogue.md](dialogue.md), economy, social-structure |
 | Combate | `strike`, `thrust`, `throw`, `shoot`, `parry`, `dodge`, `block`, `grapple`, `disarm`, `feint`, `disengage`, `yield`, `spare`, `finish` | [combat.md](combat.md), body-health, elements |
 | Trabajo | `work_at` (oficio por sesión), `craft_step`, `farm`, `gather`, `hunt`, `fish`, `fell`, `mine`, `build`, `repair`, `cook`, `clean`, `tend` (animales, enfermos) | crafts, economy, living-world, technology |
 | Cuerpo | `rest`, `sleep`, `train`, `treat` (curar a otro), `stretch`, `relieve`, `bathe` | body-health |
@@ -217,7 +217,7 @@ interface IntentDraft {
   risksAccepted?: RiskKey[];
   stripped?: string[];                     // lo que el jugador escribió como resultado deseado y se descartó
   unmapped?: string[];                     // partes que no encajan en ningún verbo
-  speech?: SpeechDraft;                    // si hay diálogo: qué dice el personaje, textual ([dialogue.md] futuro)
+  speech?: SpeechDraft;                    // si hay diálogo: qué dice el personaje, textual ([dialogue.md](dialogue.md))
 }
 ```
 
