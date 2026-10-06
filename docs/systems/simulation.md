@@ -357,7 +357,7 @@ Se puede seguir simulando por detrás (aprobado 2026-10-06) sin romper el determ
 ## 15. Snapshots, log y compactación
 
 - **Log de eventos** (append-only): cada evento con causas y emisiones; es la fuente para replay, crónica e inspector.
-- **Snapshots** del estado completo cada cierto tiempo de mundo y al guardar; replay = último snapshot + acciones del jugador desde ahí ([tooling.md] futuro).
+- **Snapshots** del estado completo cada cierto tiempo de mundo y al guardar; replay = último snapshot + acciones del jugador desde ahí ([tooling.md](tooling.md)).
 - **Compactación** (causality §8): los eventos viejos y de poco peso se resumen en eventos agregados que heredan sus enlaces. Es la misma operación que el olvido entre épocas de deep-history, corrida en tiempo de juego con ventanas más cortas. Lo fijado por percepción del jugador no se compacta mientras el jugador viva (la crónica lo necesita).
 - **Copias descartables:** el inspector y los contrafácticos trabajan sobre un fork del estado (copy-on-write); al terminar se tira.
 

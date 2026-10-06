@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#34, persistencia, inspector y herramientas**). Después del backlog viene la **Fase 0: scaffold**.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#35, modos de juego: realista y novela**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -26,7 +26,7 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 31. [x] **Conversación e influencia** → [dialogue.md](systems/dialogue.md): hablar como acción con estructura (temas, preguntas, pedidos, ofertas, amenazas, mentiras, halagos), persuasión que sale de creencias, relación, cara y utilidad del otro; detectar mentiras; regateo; secretos que se sueltan; lo que el NPC dice vs lo que cree; cómo el LLM pone en palabras una respuesta ya decidida por la sim.
 32. [x] **Narrador y capa LLM** → [narration.md](systems/narration.md): qué recibe el narrador (percepts, creencias y voz del personaje, léxico generado), qué no puede hacer (inventar entidades, revelar la verdad), estilo y tono por situación, memoria de narración y continuidad, validación de la salida, parser de intención (modelo, esquema, aclaraciones), costos, caché y modo sin red.
 33. [x] **Bucle del jugador** → [player-loop.md](systems/player-loop.md): cómo empieza una vida (nacimiento, infancia acelerada, punto de entrada), ritmo de juego (escenas, días, años), saltar tiempo con rutinas y con qué lo interrumpe el mundo, metas propias, diario y hipótesis del jugador, qué ve el jugador de su propio estado, muerte, espíritu y crónica final, comandos fuera del personaje.
-34. [ ] **Persistencia, inspector y herramientas** → `tooling.md`: guardado en SQLite (verdad, creencias, log de eventos), replay desde seed + acciones, versiones del formato, inspector god-mode completo (consultas, comandos de causality §10, mapas), sim headless con métricas y reportes para calibrar, perfiles de rendimiento.
+34. [x] **Persistencia, inspector y herramientas** → [tooling.md](systems/tooling.md): guardado en SQLite (verdad, creencias, log de eventos), replay desde seed + acciones, versiones del formato, inspector god-mode completo (consultas, comandos de causality §10, mapas), sim headless con métricas y reportes para calibrar, perfiles de rendimiento.
 35. [ ] **Modos de juego: realista y novela** → `game-modes.md`: el modo realista como default (todo lo diseñado hasta ahora) y un modo novela que se elige antes de empezar: decidir cosas del personaje (familia, lugar, talento, rasgos, edad de entrada) y **dedos de oro** (金手指) muy configurables (un sistema que muestra stats, alquimia que nunca falla, un abuelo en el anillo, aprendizaje acelerado, suerte de protagonista…). Cada dedo de oro es una entidad del mundo con origen, efectos que aplica la sim como modificadores acotados de la ley o de las tiradas, determinista y con su propia cuenta en el ledger si crea algo; qué pueden percibir los demás y el Cielo; opciones de vida (cargar partida o no); cómo lo narra el narrador; marca en el archivo de vidas. Las reglas que no se rompen siguen valiendo en los dos modos.
 
 ### E. Sistemas del mundo que faltan
@@ -56,6 +56,7 @@ Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos s
 - dialogue: duración de los turnos; pesos de relevancia, credibilidad, entrega y apertura en la persuasión; reacción por presionar; chance de soltar secretos por factor; tasa de detección de mentiras; costo de cara por cambiar de opinión en público; turnos de una charla resumida de tier 2.
 - narration: largo por modo; ventana de texto reciente; cada cuánto resumir; presupuesto de tokens por turno; rigor de la detección de nombres; cantidad de ejemplos del parser.
 - player-loop: largo de los saltos de las viñetas de infancia; qué cuenta como grave para la delegación; cuántos ítems tiene "qué pasó mientras"; tramos de una rutina larga.
+- tooling: intervalo de snapshots; cada cuánto correr invariantes en debug; cuántas copias de respaldo; tamaño de lote de seeds para la suite de calibración; objetivos de rendimiento.
 - simulation: tamaño de las zonas local y regional; histéresis; umbrales y pesos de importancia para tier 3; cupos de tier 2 y 3; cadencias por proceso y resolución; tolerancias agregado–individual; intervalo de snapshots; presupuestos por acción, día saltado y año de historia.
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
@@ -133,6 +134,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Conversación e influencia ([systems/dialogue.md](systems/dialogue.md)) — actos de habla con contenido estructurado; entender con errores; persuasión como cambio de insumos de la utilidad del otro; preguntas, pedidos, amenazas, cara; secretos que se escapan; contenido del jugador con entrega del personaje; verbalización con lista blanca
 - [x] Narrador y capa LLM ([systems/narration.md](systems/narration.md)) — el LLM solo en los bordes; `PlayerView` con marca de tipo como único muro; etiquetas como las nombra el personaje e ids locales; léxico y voz del personaje; salida con referencias marcadas y validador con lista blanca; plantillas y modo sin red; replay sin LLM
 - [x] Bucle del jugador ([systems/player-loop.md](systems/player-loop.md)) — el personaje como un agente más que nace en la población; infancia en viñetas o entrada por edad; turno; ritmo por escala; rutinas con interrupciones solo desde percepts y delegación de lo chico; metas sin marcadores; paneles de creencias; comandos `meta`; morir, espíritu y cruzar
+- [x] Persistencia, inspector y herramientas ([systems/tooling.md](systems/tooling.md)) — un SQLite por vida con la verdad completa; serialización canónica y hash por componente; replay desde seed + planes validados con detector de divergencias; versiones y límite de replay; catálogo del inspector de solo lectura con `at <tick>` y REPL; sim headless con escenarios, lotes y `sim:diff`; calibración con objetivos escritos como sensaciones; invariantes en debug; paquetes de reproducción; herramientas del LLM
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -141,6 +143,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Scheduler mínimo: `ProcessDef` puro con diffs, cola de ítems agendados, fases fijas, contiendas por conflicto de escritura, rng por clave ([simulation.md](systems/simulation.md) §2, §3, §14)
 - [ ] Modelo de `Event` con `causes` + `originEventId` + tests de invariantes (sin huérfanos, conservación)
 - [ ] Persistencia SQLite mínima (guardar/cargar mundo + log de eventos)
+- [ ] Serialización canónica y hash del estado por componente; test de determinismo por hash; replay básico desde seed + planes; validación de `content/` con Zod ([tooling.md](systems/tooling.md) §1-§3, §11)
 - [ ] Loop CLI: leer input → (stub) → imprimir
 - [ ] Loop CLI con stub del turno: leer, parsear a mano, avanzar, imprimir ([player-loop.md](systems/player-loop.md) §3)
 - [ ] Cliente LLM con `MockLLM` e interfaz de trabajos (parser, narrador, verbalizador) ([narration.md](systems/narration.md) §1, §16)
@@ -166,7 +169,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
 - [ ] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
 - [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
-- [ ] Inspector god-mode básico
+- [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
 - [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
 
 ## Fase 2 — Psicología y memoria
@@ -188,6 +191,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Léxico y voz del personaje, memoria de narración y continuidad, modo introspección ([narration.md](systems/narration.md) §4, §6, §7)
 - [ ] Mentiras y su detección, `TopicStack`, persuasión con argumentos y apelaciones, amenazas, halagos e insultos con cara, secretos que se escapan, sonsacar ([dialogue.md](systems/dialogue.md) §3-§11)
 - [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
+- [ ] Inspector: `memories`, `wrong`, `percepts`, `rumor`; métricas de exactitud de creencias en la sim headless ([tooling.md](systems/tooling.md) §5, §6)
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -218,6 +222,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Conversaciones fuera de escena como actos, grupos y oyentes de costado, promesas que crean compromisos, interrogatorios ([dialogue.md](systems/dialogue.md) §7, §12, §15)
 - [ ] Montaje para saltos de tiempo, textos dentro del mundo redactados una vez y guardados con el objeto, sueños narrados ([narration.md](systems/narration.md) §1, §12)
 - [ ] Rutinas con delegación de lo chico, interrupciones configurables, montaje y "qué pasó mientras", metas del personaje, viñetas de infancia ([player-loop.md](systems/player-loop.md) §2, §5-§8)
+- [ ] Escenarios, `sim:batch`, `sim:diff`, reporte HTML, primeros objetivos de calibración en `content/tuning/`, snapshots con diffs y `at <tick>`, paquetes de reproducción ([tooling.md](systems/tooling.md) §5-§7, §9)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -267,6 +272,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Depósitos con estratos y perturbaciones en los sitios de la región, excavar como sesión de oficio, saqueo con contexto destruido ([deep-history.md](systems/deep-history.md) §1, §6-§7)
 - [ ] Worldgen mínimo de pasado para la región inicial: protolengua y una o dos hijas con cambio fonético, topónimos con derivación, secuencia de estilos por cultura ([deep-history.md](systems/deep-history.md) §11, [living-world.md](systems/living-world.md) §3)
 - [ ] Lenguas e intérpretes en la conversación, dialectos que revelan origen, discursos a multitudes ([dialogue.md](systems/dialogue.md) §12, §13)
+- [ ] Mapas PNG del inspector con capas, perfiles de rendimiento y benchmarks, poda de diffs, tamaño del guardado medido ([tooling.md](systems/tooling.md) §1, §5, §12)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -317,6 +323,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Cultos fundados por eventos, santuarios viejos que despiertan espíritus de lugar, ajuar enterrado para la arqueología ([spirits.md](systems/spirits.md) §7, §9, §11)
 - [ ] Estratos de la historia agregada (montículos, horizontes de ceniza), `Assemblage` al compactar, secuencias de estilos por cultura, topónimos en capas con cambio fonético y etimologías populares, cicatrices de qi ([deep-history.md](systems/deep-history.md) §1-§5, §10)
 - [ ] Nueva partida: generación con progreso por épocas sin spoilers, nacimiento del personaje elegido de la población ([player-loop.md](systems/player-loop.md) §1)
+- [ ] Migraciones del formato con límite de replay; contenido huérfano ([tooling.md](systems/tooling.md) §4)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -339,3 +346,4 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica
 - [ ] Archivo de crónicas de vidas pasadas, encadenado de vidas en un mismo mundo por renacimiento ([chronicle.md](systems/chronicle.md))
 - [ ] Fine-tune LoRA propio de un modelo local con ejemplos reales del juego (no salidas de Claude) ([narration.md](systems/narration.md) §1)
+- [ ] Inspector web con mapas interactivos; corpus de pares pedido → texto aprobado para el fine-tune ([tooling.md](systems/tooling.md) §5, §10)

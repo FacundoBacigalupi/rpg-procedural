@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [simulation.md](simulation.md) §3, §12 (`advanceUntil`, modos de avance), [actions.md](actions.md) (planes, posturas, parser), [narration.md](narration.md) (vista del jugador, modos de narración), [perception.md](perception.md) (interrupciones por lo que percibe), [npc-psychology.md](npc-psychology.md) (utilidad, objetivos, etapas de vida, memoria), [family-lineage.md](family-lineage.md) §13 (nacer en una familia), [information.md](information.md) §5, §10 (mapa y diario de creencias), [discovery.md](discovery.md) (diario de hipótesis), [contracts.md](contracts.md) (libro de deudas y promesas), [spirits.md](spirits.md) §0, §3c-§3e (morir, ser espíritu, cruzar), [chronicle.md](chronicle.md) (crónica, epílogo, archivo).
-Lo usan: [tooling.md] futuro (guardado, replay, inspector), la UI (CLI en Fase 1, web en Fase 9).
+Lo usan: [tooling.md](tooling.md) (guardado, replay, inspector), la UI (CLI en Fase 1, web en Fase 9).
 
 ---
 

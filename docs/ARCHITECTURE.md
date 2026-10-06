@@ -77,3 +77,4 @@ Se arranca como **un solo paquete** con estas carpetas. Si crece, se separa en w
 - **Sim headless**: `--seed --years N` → reporte (población, muertes, guerras, quién se hizo poderoso). Base para balancear.
 - **`why <eventId>`**: recorre el grafo causal hacia atrás.
 - **Replay**: re-ejecutar una partida desde seed + log de acciones.
+- Diseño completo (guardado, hash, versiones, catálogo del inspector, calibración, invariantes): [systems/tooling.md](systems/tooling.md).
