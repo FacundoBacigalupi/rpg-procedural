@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#14, estado y política**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#15, guerra**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -32,7 +32,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 11. [x] **Familia y linaje** → [family-lineage.md](systems/family-lineage.md): matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
 12. [x] **Estratificación social** → [social-structure.md](systems/social-structure.md): castas, servidumbre, esclavitud, movilidad social, abismo mortal/cultivador; qué acciones tiene cada uno a su alcance.
 13. [x] **Ley y justicia** → [law.md](systems/law.md): códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
-14. [ ] **Estado y política** → `state.md`: legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
+14. [x] **Estado y política** → [state.md](systems/state.md): legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
 15. [ ] **Guerra** → `war.md`: logística y suministro, moral, asedios, formaciones defensivas, ejércitos mortales vs cultivadores.
 16. [ ] **Tecnología mortal** → `technology.md`: agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
 17. [ ] **Reinos secretos (秘境)** → `secret-realms.md`: bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
@@ -66,6 +66,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - family-lineage: heredabilidad por rasgo (sobre todo la aptitud de cultivo); curva de fertilidad por reino y diferencia de reino; tasas de ilegitimidad, adulterio descubierto y disputas de herencia; dilución y despertar de linajes de sangre; mortalidad materna e infantil.
 - social-structure: tasas de movilidad por puerta; proporción de población no libre por cultura y era; umbrales de resentimiento para fugas, bandidaje y revueltas; peso del cultivo sobre las demás dimensiones (`powerOverrides`); velocidad de erosión de las ideologías de la jerarquía.
 - law: tasas de delito por presión; fracción denunciada y resuelta por jurisdicción; tasa de condenas de inocentes; umbrales de soborno; duración y salida de las vendettas; prima de riesgo del contrabando.
+- state: curva de alcance por distancia y terreno; fuga por escalón de recaudación; envejecimiento de registros y crecimiento de la tierra exenta; duración de dinastías y frecuencia de crisis de sucesión; peso de los presagios en la legitimidad.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -101,6 +102,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Familia y linaje ([systems/family-lineage.md](systems/family-lineage.md)) — borrador
 - [~] Estratificación social ([systems/social-structure.md](systems/social-structure.md)) — borrador
 - [~] Ley y justicia ([systems/law.md](systems/law.md)) — borrador
+- [~] Estado y política ([systems/state.md](systems/state.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -178,6 +180,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Scheduler multi-escala eficiente
 - [ ] Contratos entre comerciantes por rutas, encargos lejanos, venta de créditos, falsificación de documentos ([contracts.md](systems/contracts.md))
 - [ ] Varias jurisdicciones y fronteras de huida, contrabando por rutas, puestos de control, mercado negro regional ([law.md](systems/law.md))
+- [ ] Alcance del estado por celda, magistrado de condado con registro de hogares y recaudación con fugas, edictos como noticias ([state.md](systems/state.md))
 - [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
 
 ## Fase 6 — Organizaciones
@@ -187,6 +190,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, linajes de sangre que despiertan ([family-lineage.md](systems/family-lineage.md))
 - [ ] Rangos de secta y clan sobre el modelo de estatus, cierre de élites, sellos de esclavo ([social-structure.md](systems/social-structure.md))
 - [ ] Jurisdicciones superpuestas (secta, gremio, clan), pedidos de entrega, bandas y gremios de ladrones con su propia justicia ([law.md](systems/law.md))
+- [ ] Estado sobre el modelo de organizaciones: corte con facciones, arreglos trono–secta, dominios de secta ([state.md](systems/state.md))
 - [ ] Sectas que nacen de eventos (descubridor de técnica → escuela → secta)
 - [ ] Registro de anomalías, herejía y cismas doctrinales, cultura epistémica, archivos y mecenazgo ([discovery.md](systems/discovery.md))
 - [ ] Relaciones entre organizaciones: diplomacia por personas, fuerza ajena como creencia, jerarquías regionales, escalera de conflicto, cismas y absorciones
@@ -200,6 +204,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Descubrimiento como proceso de riesgo por población; pérdida y redescubrimiento ([discovery.md](systems/discovery.md))
 - [ ] Ciclo de vida de organizaciones en modo agregado (procesos de riesgo de sucesión, cisma, colapso, nacimiento) con legados ([organizations.md](systems/organizations.md))
 - [ ] Estructuras sociales que nacen en la historia: conquistas que crean castas, ideologías de la jerarquía ([social-structure.md](systems/social-structure.md))
+- [ ] Estados que nacen y caen en la historia (conquistas, secesiones, dinastías) con legados; presagios leídos como juicio ([state.md](systems/state.md))
 - [ ] Eras variables (temprana / dorada / decadente…)
 - [ ] Generador de sistemas elementales por seed con validador; teorías elementales por cultura con dogmas sobre la matriz ([elements.md](systems/elements.md))
 - [ ] Sistemas monetarios que nacen en la historia, acuñación y rebaja de ley, minas que se descubren y agotan, crisis monetarias ([economy.md](systems/economy.md))
@@ -209,6 +214,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Economía de guerra (metal, levas, saqueo), billetes de estado, corridas ([economy.md](systems/economy.md))
 - [ ] Nobleza y exámenes, esclavitud de guerra, revueltas que se vuelven ejércitos, edictos que cambian estatus ([social-structure.md](systems/social-structure.md))
 - [ ] Códigos del estado, magistrados, cárceles, apelaciones, inspectores, edictos que viajan como noticia ([law.md](systems/law.md))
+- [ ] Fiscalidad completa, burocracia con informes deformados, exámenes, sucesiones de trono, rebeliones, señores de la guerra, sistemas de tributo ([state.md](systems/state.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
 

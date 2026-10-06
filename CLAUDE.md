@@ -31,6 +31,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/family-lineage.md](docs/systems/family-lineage.md) — familia y linaje: genoma y herencia de rasgos y talento, deseo, concepción y parto, fertilidad baja en cultivadores, parentesco como verdad y creencia (paternidad, ilegítimos, adopción), matrimonio, crianza, herencia, cultivo dual, clanes, genealogías y linajes de sangre.
 - [docs/systems/social-structure.md](docs/systems/social-structure.md) — estratificación social: posición como haz de dimensiones, estatus como norma cultural reconocida, percibir y falsificar la posición, etiqueta y cara, qué puede hacer cada uno sin menús, abismo mortal/cultivador, servidumbre y esclavitud como compromisos, movilidad, élites, legitimidad y revueltas.
 - [docs/systems/law.md](docs/systems/law.md) — ley y justicia: códigos por cultura, jurisdicciones superpuestas, denuncia y caso, investigación con huellas y testigos, procedimientos y prueba, corrupción emergente, castigos con costo, vendetta contra tribunal, por encima de la ley, contrabando y mercado negro, crimen organizado.
+- [docs/systems/state.md](docs/systems/state.md) — estado y política: el estado como organización con un reclamo, alcance que se gasta con la distancia, registros y catastros vs verdad, impuestos con fugas por escalón, burocracia, exámenes, corte, legitimidad y presagios, dinastías y sucesión, trono y sectas, rebelión y colapso.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo

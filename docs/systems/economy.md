@@ -28,7 +28,7 @@ interface GoodKind {
   fungible: boolean;                  // el arroz sí; una espada con nombre no
   bulk: number;                       // peso y volumen por unidad: decide cuánto cuesta transportarlo
   essence?: number;                   // qi contenido (piedras, hierbas, píldoras): entra al ledger de qi
-  legality?: LegalityRef;             // prohibido, monopolio, gravado (ley y estado, futuros)
+  legality?: LegalityRef;             // prohibido, monopolio, gravado (law.md, state.md)
 }
 
 interface Lot {
@@ -350,7 +350,7 @@ Las crisis son las que convierten la economía en historia: dejan memorias, odio
 ## 14. Rentas, tributos y transferencias
 - **Renta de la tierra:** el arrendatario paga al dueño, en especie o en plata.
 - **Tributo de protección:** las aldeas al pie de una secta le pagan en grano, trabajo o hijos con talento a cambio de protección contra bestias y bandidos. Cuando la protección falla, el tributo se discute (presión).
-- **Impuestos:** del estado, con burocracia y corrupción (state.md, futuro); acá solo como flujo que sale de hogares y mercados.
+- **Impuestos:** del estado, con burocracia y corrupción ([state.md](state.md) §4); acá solo como flujo que sale de hogares y mercados.
 - **Ofrendas** a templos, a ancestros (spirits) y al Cielo: bienes que salen de la economía productiva (se queman, se entierran, se los come el templo).
 - **Robo y saqueo:** también son transferencias (conservación: lo robado sigue existiendo y aparece en otro lado: en la casa de empeño, en el mercado negro, en la cueva del bandido).
 - **Herencia:** la riqueza pasa con la muerte ([family-lineage.md](family-lineage.md)). Un cultivador que muere sin heredero deja un anillo lleno en algún lado: un tesoro con causa.
