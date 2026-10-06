@@ -137,7 +137,7 @@ El qi muy denso es tóxico para un cuerpo sin meridianos abiertos: fiebre, delir
 - Cuevas: según la roca (caliza → kársticas, volcánica → tubos de lava) y el agua.
 
 ### 7. Entrega a la historia profunda
-La planet-gen **no** crea ruinas, reinos secretos, sellos ni tesoros, porque todo eso necesita a alguien que lo haya hecho. Los produce [deep-history.md](deep-history.md) al simular la aparición de la vida inteligente, el cultivo y las civilizaciones sobre este mapa.
+La planet-gen **no** crea ruinas, reinos secretos ([secret-realms.md](secret-realms.md)), sellos ni tesoros, porque todo eso necesita a alguien que lo haya hecho. Los produce [deep-history.md](deep-history.md) al simular la aparición de la vida inteligente, el cultivo y las civilizaciones sobre este mapa.
 
 **Nombres:** los lugares no tienen nombre hasta que una cultura los nombra. Cada cultura usa su propio idioma, y el mismo río puede tener tres nombres según quién te hable. El mapa del jugador muestra los nombres que **su personaje** conoce.
 
@@ -167,7 +167,7 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - Grilla geodésica hexagonal de ~40.000 celdas en nivel 0, con detalle local bajo demanda.
 - Tectónica simplificada (forma creíble), no simulación física.
 - El qi se deriva de la geología y el clima, con venas sobre fallas y elementos según el terreno.
-- La planet-gen no crea nada artificial (ruinas, tesoros fabricados, reinos secretos): eso es trabajo de la historia. Los tesoros **naturales** sí, por acumulación de qi.
+- La planet-gen no crea nada artificial (ruinas, tesoros fabricados, reinos secretos: [secret-realms.md](secret-realms.md)): eso es trabajo de la historia. Los tesoros **naturales** sí, por acumulación de qi.
 - Planeta grande: radio 2-4 veces el de la Tierra, con densidad baja (gravedad vivible, metal escaso).
 - Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
 - La frecuencia de tesoros no es un parámetro aparte: sale del qi del planeta (presupuesto de la cosmología, fuerza del Cielo, venas). Un mundo rico en qi está lleno de tesoros y uno en decadencia casi no tiene.

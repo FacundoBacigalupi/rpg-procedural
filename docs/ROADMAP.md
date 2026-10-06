@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#17, reinos secretos**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#18, adivinación y profecía**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -35,7 +35,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 14. [x] **Estado y política** → [state.md](systems/state.md): legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
 15. [x] **Guerra** → [war.md](systems/war.md): logística y suministro, moral, asedios, formaciones defensivas, ejércitos mortales vs cultivadores.
 16. [x] **Tecnología mortal** → [technology.md](systems/technology.md): agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
-17. [ ] **Reinos secretos (秘境)** → `secret-realms.md`: bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
+17. [x] **Reinos secretos (秘境)** → [secret-realms.md](systems/secret-realms.md): bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
 18. [ ] **Adivinación y profecía** → `divination.md`: lectura ruidosa del grafo causal y de las presiones; profecías que se cumplen solas o provocan lo que querían evitar; lectura de karma.
 19. [ ] **Crónica, epílogo e historiografía** → `chronicle.md`: epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
 
@@ -69,6 +69,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - state: curva de alcance por distancia y terreno; fuga por escalón de recaudación; envejecimiento de registros y crecimiento de la tierra exenta; duración de dinastías y frecuencia de crisis de sucesión; peso de los presagios en la legitimidad.
 - war: consumo diario por persona y animal y pérdida por distancia en el transporte; umbrales de quiebre de moral y contagio; bajas en choque vs persecución; equivalencia mortales–cultivador por umbral (con y sin armas preparadas y formaciones); duración de asedios y epidemias de campamento; peso kármico de las muertes en guerra según contexto.
 - technology: tasas de invención según población, contacto, necesidad y cultura epistémica; velocidad de difusión y umbral de imitación; población mínima por complejidad de oficio; cuánto frena el cultivo a la tecnología mortal; variación de recetas por seed.
+- secret-realms: costo de crear y mantener un bolsillo y vida típica según su reserva; frecuencia de aperturas y duración de ventanas; límites de umbral típicos; mortalidad y botín de expediciones agregadas; cantidad de reinos por región; radio y magnitud del colapso.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -107,6 +108,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Estado y política ([systems/state.md](systems/state.md)) — borrador
 - [~] Guerra ([systems/war.md](systems/war.md)) — borrador
 - [~] Tecnología mortal ([systems/technology.md](systems/technology.md)) — borrador
+- [~] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -177,6 +179,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Salón de disciplina de secta, sello y abolición del cultivo como pena, búsqueda del alma, residuos de qi como prueba ([law.md](systems/law.md))
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
+- [ ] Lugares sellados simples (cuevas de herencia, tumbas) con libro de contenido, detalle diferido con restricciones, llaves y trampas, remanentes de alma como guardianes ([secret-realms.md](systems/secret-realms.md))
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -189,6 +192,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
 - [ ] Bandas y milicias, escaramuzas y emboscadas, consumo diario de una fuerza pequeña, cautivos y rescates simples ([war.md](systems/war.md))
 - [ ] `PopulationTech` por asentamiento, adopción por hogares con utilidad sobre creencias, difusión por rutas ([technology.md](systems/technology.md))
+- [ ] Control del ancla de reinos secretos por organizaciones, cupos y fichas como bienes, mercados de apertura, relatos y mapas del interior como creencias ([secret-realms.md](systems/secret-realms.md))
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -218,6 +222,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Sistemas monetarios que nacen en la historia, acuñación y rebaja de ley, minas que se descubren y agotan, crisis monetarias ([economy.md](systems/economy.md))
 - [ ] Guerras en la historia agregada con consecuencias demográficas, económicas y kármicas; conquistas y anexiones con legados ([war.md](systems/war.md))
 - [ ] Invención y pérdida en la historia agregada, tecnología por cultura según geografía, ruinas con procesos perdidos, desplazamiento por cultivo ([technology.md](systems/technology.md))
+- [ ] Reinos secretos creados por la historia profunda (creadores, propósitos, causas accidentales) con aperturas históricas, saqueos y degradación ([secret-realms.md](systems/secret-realms.md))
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -227,6 +232,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Fiscalidad completa, burocracia con informes deformados, exámenes, sucesiones de trono, rebeliones, señores de la guerra, sistemas de tributo ([state.md](systems/state.md))
 - [ ] Batallas por fases con terreno, asedios completos, epidemias de campamento, refugiados, treguas y tratados, costumbres de guerra, campos de batalla con espíritus ([war.md](systems/war.md))
 - [ ] Imprenta y su efecto en información y exámenes, secretos de oficio y espionaje, represión de sectas, híbridos qi–técnica, consecuencias ambientales ([technology.md](systems/technology.md))
+- [ ] Bolsillos de espacio con grilla interior, campo de qi y ecología cerrada, reglas internas, colapsos como desastres, crear un reino ([secret-realms.md](systems/secret-realms.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
 

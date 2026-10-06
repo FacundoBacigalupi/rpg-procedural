@@ -28,7 +28,7 @@ Al cerrar una época, solo pasa a la siguiente lo que todavía **existe físicam
 | Tipo de legado | Ejemplos | Cómo dura |
 |---|---|---|
 | **Geológico / metafísico** | Cráter de una batalla de inmortales, vena de qi destrozada, sello sobre una bestia, cicatriz en el Cielo | Indefinidamente, se erosiona muy lento |
-| **Objetos** | Ruinas, armas, manuscritos, arrays todavía activos, cadáveres de bestias antiguas | Se degradan con el tiempo; pueden destruirse o ser encontrados |
+| **Objetos** | Ruinas, reinos secretos y lugares sellados ([secret-realms.md](secret-realms.md)), armas, manuscritos, arrays todavía activos, cadáveres de bestias antiguas | Se degradan con el tiempo; pueden destruirse o ser encontrados |
 | **Seres longevos** | Cultivadores de 1.000 años, bestias antiguas, espíritus, almas selladas | **Se siguen simulando** como agentes Tier 3 a través de las épocas |
 | **Conocimiento** | Técnicas, historia escrita, profecías | Mientras haya portadores o registros |
 | **Cultura / memoria colectiva** | Leyendas (cada vez más distorsionadas), religiones, tabúes, odios ancestrales | Se transmite y se deforma |
