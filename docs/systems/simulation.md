@@ -106,7 +106,7 @@ interface ScheduledItem {
 - **Fases en orden fijo.** Dentro de un paso: percibir → decidir → actuar → física → asentar. Dentro de una fase, los procesos corren en un orden canónico (por `ProcessId` y después por `ScopeRef` ordenado por id); como cada uno tira con su propio sub-stream y escribe diffs, el orden solo importa para los conflictos.
 - **Conflictos de escritura.** Si dos diffs tocan lo mismo (dos agentes agarran el mismo lote, dos órdenes sobre la misma tropa), no gana el que se procesó primero: la fase `act` los detecta por `writes` y los resuelve como una **contienda** con iniciativa, que sale del estado (velocidad, distancia, atención, sorpresa) más una tirada con clave `(contest, objeto, tick)`. La contienda es un evento con causas, y el perdedor recibe un resultado ("llegaste tarde: ya lo tenía él").
 - **Cadencias anidadas.** Los procesos de una zona de resolución "mundo" corren por estación, pero si un evento con hora cae adentro (una batalla agendada), el scheduler parte la ventana: corre la estación hasta la batalla, resuelve la batalla y sigue.
-- **Interrupciones.** `advanceUntil(t, interrupts)` avanza hasta `t` o hasta que un predicado sobre los percepts del jugador se cumpla (una amenaza, un mensaje, alguien que le habla). Es lo que usa el bucle del jugador para los saltos de tiempo ([player-loop.md] futuro).
+- **Interrupciones.** `advanceUntil(t, interrupts)` avanza hasta `t` o hasta que un predicado sobre los percepts del jugador se cumpla (una amenaza, un mensaje, alguien que le habla). Es lo que usa el bucle del jugador para los saltos de tiempo ([player-loop.md](player-loop.md)).
 
 ## 4. Las dos resoluciones
 
@@ -300,7 +300,7 @@ El motor ofrece al bucle del jugador tres modos de avance:
 - **Rutina:** el jugador declara qué hace por un período ("cultivo en la cueva hasta la primavera", "trabajo en la herrería todos los días"). La rutina es una política de su agente; el scheduler avanza con `advanceUntil` y las interrupciones que el jugador aceptó más las que nunca se pueden ignorar (lo atacan, lo llaman por su nombre, se le cae la casa).
 - **Pausa:** nada avanza mientras el jugador piensa o escribe. El mundo no corre en tiempo real.
 
-Cuánto de esto ve el jugador, cómo se resume un salto y qué interrupciones elige son tema de [player-loop.md] (futuro).
+Cuánto de esto ve el jugador, cómo se resume un salto y qué interrupciones elige son tema de [player-loop.md](player-loop.md).
 
 ## 13. Presupuesto de cómputo
 

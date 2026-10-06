@@ -15,6 +15,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/combat.md](docs/systems/combat.md) — combate individual: pulsos con preparación, compromiso y hueco; espacio continuo con alcances; intercambio con percepción y contienda; heridas reales sin puntos de vida; armas y armaduras como objetos con desgaste; técnicas que chocan con `interact`; mortal contra cultivador; moral con chances creídas; huir, rendirse, perdonar; rastros y testigos.
 - [docs/systems/dialogue.md](docs/systems/dialogue.md) — conversación e influencia: actos de habla con contenido estructurado, entender con errores (oído, lengua, cultura), persuasión como cambio de insumos de la utilidad del otro, preguntas, pedidos, amenazas y cara, secretos que se escapan, lo dicho vs lo creído, el contenido del jugador con la entrega del personaje, verbalización del LLM con lista blanca.
 - [docs/systems/narration.md](docs/systems/narration.md) — narrador y capa LLM: el LLM solo en los bordes (parser y narración), `PlayerView` como único muro con la verdad, etiquetas e ids locales, léxico y voz del personaje, estilo por modo, memoria de continuidad, salida con referencias marcadas y validador con lista blanca, plantillas y modo sin red, caché y costos, replay sin LLM.
+- [docs/systems/player-loop.md](docs/systems/player-loop.md) — bucle del jugador: el personaje como agente que nace en la población, infancia en viñetas o entrada por edad, el turno, ritmo por escala, rutinas con interrupciones desde percepts y delegación de lo chico, metas sin marcadores, paneles de creencias, comandos fuera del personaje, guardado sin vuelta atrás, morir, espíritu y cruzar.
 - [docs/systems/causality.md](docs/systems/causality.md) — **el modelo causal del mundo. Leerlo antes de tocar cualquier sistema de simulación o worldgen.** Presiones como objeto (fuentes, umbrales, chispas, descargas), inspector con mapa de presiones, contrafácticos.
 - [docs/systems/heaven-karma.md](docs/systems/heaven-karma.md) — el Cielo como agente-ley, tribulaciones, karma, cobro en las Fuentes; atención finita repartida por saliencia, zonas ciegas, tribulación como evento físico que se puede robar, retribución como inclinación acotada de tiradas, mérito (功德), fortuna colectiva (气运) derivada.
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas); arqueología: estratos y perturbaciones, conservación, datación como estimación (incluidos métodos de qi), hipótesis sobre el pasado, topónimos en capas como pistas, excavar, saqueo y antigüedades.
@@ -61,7 +62,7 @@ Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backl
 6. **El mundo no gira alrededor del jugador.** Los NPC y organizaciones actúan aunque el jugador no esté.
 
 ## Stack
-TypeScript (strict) · Node 24 · npm · Vitest · SQLite (`node:sqlite`) · Zod · Claude API (`@anthropic-ai/sdk`) · CLI primero, UI web (Vite + React) más adelante.
+TypeScript (strict) · Node 24 · npm · Vitest · SQLite (`node:sqlite`) · Zod · LLM local por defecto (Ollama o similar), Claude API opcional (`@anthropic-ai/sdk`) · CLI primero, UI web (Vite + React) más adelante.
 
 ## Comandos
 (se completan al crear el scaffold en la Fase 0)

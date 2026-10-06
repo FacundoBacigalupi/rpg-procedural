@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [actions.md](actions.md) (`speak` y los verbos sociales; parser), [information.md](information.md) §1-§3, §7 (creencias, actos de habla con información, mentir, preguntar, secretos), [npc-psychology.md](npc-psychology.md) §7-§9c (utilidad, diálogo, máscara, teoría de la mente), [perception.md](perception.md) §6 (leer emociones y mentiras), [social-structure.md](social-structure.md) §4 (etiqueta y cara), [skills.md](skills.md) (habilidades sociales y lenguas), [contracts.md](contracts.md) (promesas y acuerdos), [economy.md](economy.md) §6 (regateo).
-Lo usan: [narration.md](narration.md) (verbalización de actos de habla), [player-loop.md] futuro, [schemes.md](schemes.md) (engaños y reclutamiento), [law.md](law.md) (interrogatorios, testimonios, juicios), [organizations.md](organizations.md) (deliberación), [state.md](state.md) (corte, audiencias), [divination.md](divination.md) (lecturas en frío).
+Lo usan: [narration.md](narration.md) (verbalización de actos de habla), [player-loop.md](player-loop.md), [schemes.md](schemes.md) (engaños y reclutamiento), [law.md](law.md) (interrogatorios, testimonios, juicios), [organizations.md](organizations.md) (deliberación), [state.md](state.md) (corte, audiencias), [divination.md](divination.md) (lecturas en frío).
 
 ---
 
