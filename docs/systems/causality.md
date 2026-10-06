@@ -2,6 +2,8 @@
 
 > Principio: **en este mundo no ocurren eventos. Ocurren procesos, y los eventos son su rastro.**
 
+> Estado: §1-§8 **decididos**; §9-§11 son una **ampliación en borrador** (2026-10-05): las presiones como objeto con fuentes, umbrales, chispas y descargas; el inspector con mapa de presiones y preguntas al grafo; contrafácticos deterministas solo en herramientas. Lo usan: todos los sistemas de simulación y worldgen.
+
 Un juego procedural normal tiene tablas del tipo "10% de chance de ataque de bandidos". Acá eso está prohibido. Los bandidos atacan porque existen personas concretas que se volvieron bandidos por razones concretas, tienen hambre, saben que esa aldea es débil y está cerca. El dado se tira, pero se tira **sobre una situación**, nunca para crear la situación.
 
 ---
@@ -182,9 +184,103 @@ Encaja perfecto con la temática y no rompe la regla: no inventa nada, solo **le
 - Toda entidad tiene `originEventId`.
 - Los sistemas se escriben como **procesos**: `precondiciones(estado) → presión → decisión/tirada → cambios de estado + eventos con causas`.
 - Ledger de conservación para bienes, dinero y qi por región, con tests de que los totales cuadren.
-- Inspector: comando `why <eventId>` que recorre el grafo causal hacia atrás.
+- Inspector: comando `why <eventId>` que recorre el grafo causal hacia atrás, más el mapa de presiones y los demás comandos de §10.
 - Tests de invariantes: no hay huérfanos, la conservación cuadra, los eventos no tienen causas vacías (salvo el seed), y hay determinismo.
 - El grafo crece mucho, así que hace falta **compactarlo**: los eventos viejos y poco importantes se resumen en eventos agregados que heredan sus enlaces.
+
+---
+
+## 9. Presiones como objeto
+
+La Ley 3 dice que los eventos nacen de presiones. Para que el inspector las muestre y los tests las verifiquen, una presión es un objeto con forma fija, aunque cada sistema la calcule a su manera.
+
+```ts
+type PressureKind =
+  | "hunger" | "debt" | "resentment" | "grievance" | "ambition" | "fear" | "overcrowding"
+  | "qiDepletion" | "qiSurplus" | "succession" | "legitimacy" | "heavenDeficit" | "pathogenLoad"
+  | "priceStress" | "beastHunger" | "faith" | "custom";
+
+interface Pressure {
+  id: PressureId;
+  kind: PressureKind;
+  scope: { kind: "agent" | "household" | "community" | "org" | "cell" | "region"; ref: EntityId };
+  value: number;                         // 0..1, normalizada por tipo
+  trend: number;                          // derivada reciente: sube o baja
+  sources: CauseRef[];                    // de qué sale: eventos, estados, creencias, otras presiones
+  discharges: DischargeRef[];             // procesos que la pueden descargar (motín, migración, robo, guerra, ruptura)
+  lastDischarge?: EventId;
+  system: SystemId;                       // quién la calcula (economy, social-structure, heaven-karma...)
+}
+
+interface DischargeRef {
+  process: ProcessId;                     // el proceso del sistema que la usa como entrada
+  threshold: number;                      // dónde empieza a ser probable
+  hazard: number;                         // probabilidad por tick que el proceso le asigna con el estado actual
+  blockers: CauseRef[];                   // lo que la frena: miedo a la represión, falta de líder, falta de armas
+}
+```
+
+- **Las presiones son derivadas, no verdad aparte.** Cada sistema las calcula con una función pura del estado (hambre de un hogar = reservas, precios, deudas y miembros; resentimiento de una comunidad = relaciones con superiores concretos y con la categoría). Se cachean por tick para el inspector y para los procesos, pero borrarlas y recalcularlas da lo mismo.
+- **Descarga.** Un proceso lee la presión y decide con la forma de la Ley 3: `hazard = f(presión − umbral, personalidad, oportunidad, conocimiento)` con una curva suave (sigmoide por tipo en `content/`). La tirada usa `rng.fork(process, scope, tick)`. El evento que sale guarda en `causes` un `CauseRef { kind: "pressure", ref, weight }` con el valor que tenía en ese momento.
+- **Chispas.** Un evento puntual (una ejecución injusta, un precio que se dispara, un rumor) baja el umbral efectivo por un rato. Así se distingue la causa de fondo (la presión acumulada) del disparador (la chispa), y el inspector muestra los dos.
+- **Alivio.** Descargar baja la presión (el motín consigue granos, la migración vacía bocas), pero no siempre del todo, y la descarga crea presiones nuevas (represión → miedo y agravio).
+- **Presiones que se componen.** Una presión puede tener otras como fuente: el hambre de la región sale del hambre de los hogares; el agravio de una aldea alimenta la legitimidad del estado. El grafo de presiones es parte del grafo causal.
+- **Nadie en el mundo ve una presión.** Los agentes perciben señales (precios, caras, rumores) y forman creencias; lo que deciden lo deciden sobre lo que creen (Ley 4). La adivinación por lectura metafísica puede leer presiones reales ([divination.md](divination.md) §3: el futuro como proyección de presiones).
+
+## 10. El inspector: mapa de presiones y preguntas al grafo
+
+El inspector (`tools/`, modo god) lee la verdad sin restricciones. Nunca corre dentro de la simulación ni la modifica.
+
+```ts
+interface PressureMapQuery {
+  kind?: PressureKind[];
+  area: RegionId | CellId[] | "world";
+  scale: "cell" | "community" | "region";
+  at: Tick;                               // un tick pasado si hay snapshot, o el actual
+}
+
+interface PressureMapCell {
+  ref: EntityId;
+  values: Partial<Record<PressureKind, number>>;
+  trend: Partial<Record<PressureKind, number>>;
+  topDischarges: { process: ProcessId; hazard: number }[];   // lo más probable que pase acá
+}
+```
+
+Comandos:
+
+| Comando | Qué muestra |
+|---|---|
+| `why <eventId>` | El grafo hacia atrás: eventos, presiones, creencias y estados que lo produjeron, con pesos |
+| `effects <eventId>` | El grafo hacia adelante: qué causó, hasta una profundidad |
+| `pressures <área> [tipo]` | El mapa: capas por tipo sobre la grilla hex (calor por valor, flechas por tendencia), con zoom de región a hogar |
+| `pressure <id>` | El árbol de fuentes de una presión y sus descargas posibles con hazard y bloqueos |
+| `hazard <área>` | Lo más probable que pase en ese lugar en el próximo período, ordenado por hazard × impacto |
+| `plans <agente \| org>` | Proyectos e intrigas activas ([schemes.md](schemes.md)), con lo que cada participante sabe |
+| `believes <agente> <hecho>` | Qué cree un agente sobre algo, con fuente y confianza, al lado de la verdad |
+| `whatif <eventId> --years N` | Contrafáctico (§11) |
+| `timeline <área \| entidad>` | Presiones y eventos en el tiempo: cómo subió el hambre antes del motín |
+
+- **Snapshots.** El mapa de un tick pasado necesita snapshots de presiones (cada N ticks y en cada descarga grande); entre medio se interpola o se recalcula desde el log.
+- **Lo mismo para la crónica.** La crónica final ([chronicle.md](chronicle.md)) puede usar el mapa para contar "el valle estaba por estallar cuando llegaste". Es el único momento, fuera del inspector, en que se muestra.
+
+## 11. Contrafácticos
+
+`whatif` responde "¿qué habría pasado si esto no ocurría?" corriendo una **rama** de la simulación desde un snapshot anterior al evento, con el evento quitado (o una acción del jugador cambiada).
+
+- **Determinista:** la rama usa los mismos streams del RNG (`rng.fork` por proceso, entidad y tick), así que todo lo que no depende del evento quitado sale igual. La diferencia entre la rama y la historia real es el **efecto causal** del evento.
+- **Solo en herramientas.** Nunca corre durante una partida para decidir nada, ni se le muestra al jugador salvo en el modo inspector. Si la crónica debería usarlo para medir el legado queda como pregunta abierta.
+- **Costoso:** corre en modo agregado (LOD bajo) y con horizonte acotado. Sirve para depurar ("¿la hambruna salía igual sin la guerra?") y para calibrar.
+
+## Tests
+- Sin huérfanos: todo `originEventId` apunta a un evento que existe (salvo el seed).
+- Conservación: los ledgers de bienes, dinero y qi cuadran por región y en el total.
+- Ningún evento sin causas (salvo el seed y las acciones del jugador, que tienen como causa su intención).
+- Determinismo: mismo seed y mismas acciones → mismo log de eventos, byte a byte.
+- Presiones: recalcular desde el estado da el mismo valor que el caché; toda descarga registra la presión con su valor.
+- Ningún evento de tipo "descarga" ocurre con su presión por debajo del umbral mínimo del tipo (no hay motines sin agravio).
+- Contrafáctico: una rama sin cambios reproduce la historia real exactamente; quitar un evento sin efectos posteriores no cambia nada.
+- El inspector nunca escribe en `WorldTruth`.
 
 ---
 
@@ -194,3 +290,9 @@ Encaja perfecto con la temática y no rompe la regla: no inventa nada, solo **le
 3. **Karma:** sí, literal. Ver [heaven-karma.md](heaven-karma.md).
 4. **El Cielo:** existe como agente-ley; cultivar es rebelarse contra él y las rupturas traen tribulaciones. Ver [heaven-karma.md](heaven-karma.md).
 5. **Tamaño:** un planeta entero (geografía sobre esfera). Salir del planeta queda abierto, posiblemente vía ascensión. `Realm` se modela como entidad dentro de una cosmología mayor para no cerrar la puerta.
+6. **Presiones derivadas, no guardadas como verdad:** cada sistema las calcula con una función pura del estado y se cachean; toda descarga registra la presión con su valor en `causes` (§9).
+7. **Inspector y contrafácticos solo en `tools/`:** leen la verdad, nunca escriben en ella ni corren durante una partida (§10, §11).
+
+## Preguntas abiertas
+- ¿La crónica debería usar contrafácticos para medir el legado ("sin vos, el valle habría...")? Propuesta: no por defecto (es caro y especulativo para el jugador); como mucho, una opción del archivo de vidas que corre en modo agregado.
+- Calibración: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; cuánto baja el umbral una chispa y por cuánto tiempo.

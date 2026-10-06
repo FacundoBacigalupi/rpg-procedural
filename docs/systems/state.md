@@ -121,7 +121,7 @@ interface FiscalSystem {
 - **El cuello de botella es el gobernante:** decide sobre lo que le llega, y lo que le llega lo filtran los que tiene cerca. Controlar el acceso (quién entra a la audiencia, qué memorial se lee) es poder.
 - **Favoritos, regencias y harenes:** un gobernante joven, enfermo o en reclusión deja el poder real en un regente, una emperatriz viuda o un favorito. Las rivalidades entre consortes por la sucesión de sus hijos son facciones de corte (family-lineage §6).
 - **Decidir una política** sigue el modelo de organizations §4: asunto, deliberación con influencias, orden, ejecución con brecha. Una guerra, una reforma fiscal o una amnistía tienen siempre quién las empujó y por qué.
-- **Purgas y conspiraciones** son intrigas (schemes) a escala de corte: acusaciones de traición, golpes de palacio, envenenamientos. Dejan clanes enteros castigados (law §8: castigo a la familia) y deudas de sangre.
+- **Purgas y conspiraciones** son intrigas ([schemes.md](schemes.md) §10) a escala de corte: acusaciones de traición, golpes de palacio, envenenamientos. Dejan clanes enteros castigados (law §8: castigo a la familia) y deudas de sangre.
 
 ## 8. Legitimidad
 - **Fuentes** (por cultura, `content/`): sangre de la casa reinante, mandato del Cielo, aval de una secta o de un templo, elección de nobles o de una asamblea, conquista, ritos cumplidos, y el desempeño: protección contra bestias y bandidos, graneros abiertos en la hambruna, justicia creíble, victorias.

@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#22, causality + schemes: mapa de presiones, proyectos e intrigas entre organizaciones**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#23, planet-gen: glaciaciones, suelos que se agotan, inviernos volcánicos**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -42,7 +42,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 ### C. Ampliaciones de lo que ya hay
 20. [x] [heaven-karma.md](systems/heaven-karma.md) §3-§8: atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
 21. [x] [npc-psychology.md](systems/npc-psychology.md) §10-§17: desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
-22. [ ] [causality.md](systems/causality.md) + [schemes.md](systems/schemes.md): mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
+22. [x] [causality.md](systems/causality.md) §9-§11 + [schemes.md](systems/schemes.md) §9-§13: mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
 23. [ ] [planet-gen.md](systems/planet-gen.md): glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
 24. [ ] [living-world.md](systems/living-world.md): sucesión ecológica, especies invasoras por rutas comerciales, migraciones estacionales, domesticación y contratos con bestias.
 25. [ ] [spirits.md](systems/spirits.md): economía de ofrendas a ancestros; qué pasa cuando un linaje deja de ofrendar.
@@ -56,6 +56,8 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
 - npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
+- causality: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; efecto y duración de las chispas.
+- schemes: tasa de intrigas entre organizaciones por par; proporción de free riders; frecuencia con que una profecía usada se vuelve contra el que la usó.
 - perception: curvas de atenuación y `k` de la sigmoide.
 - body-health: curación, infección y mortalidad.
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
@@ -87,7 +89,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [x] `gh` autenticado (con scope `workflow`) · PRs #2 y #3 de Dependabot mergeados
 
 ## Diseño
-- [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
+- [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md)) — §9-§11 (presiones, inspector, contrafácticos) en borrador
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运) en borrador
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador (§10-§17: etapas, salud mental, declive, sentido y pertenencia, multitudes, sueños, gustos)
@@ -95,7 +97,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
 - [x] Mundo vivo ([systems/living-world.md](systems/living-world.md))
 - [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
-- [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador
+- [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador (§9-§13: proyectos, intrigas entre organizaciones, profecías)
 - [~] Percepción ([systems/perception.md](systems/perception.md)) — borrador
 - [~] Información, creencias y rumores ([systems/information.md](systems/information.md)) — borrador
 - [~] Cuerpo y salud ([systems/body-health.md](systems/body-health.md)) — borrador
@@ -142,6 +144,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
 - [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
 - [ ] Inspector god-mode básico
+- [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
 
 ## Fase 2 — Psicología y memoria
 - [ ] Rasgos innatos + adquiridos
@@ -175,6 +178,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
 - [ ] `QiDebt` por sobreexplotación y retribución mínima como inclinación de las tiradas del deudor ([heaven-karma.md](systems/heaven-karma.md) §6)
 - [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
+- [ ] Proyectos cooperativos de aldea y caravanas: participantes con `knownPlan`, pool con conservación, repartos con compromisos, free riders ([schemes.md](systems/schemes.md) §9)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -230,6 +234,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Textos como objetos en archivos de organizaciones (crónicas de secta, genealogías, memorias) con autor y sesgo; encargar, escribir y quemar ([chronicle.md](systems/chronicle.md))
 - [ ] 气运 derivado de organizaciones (venas + karma y mérito de sus miembros), venas como territorio disputado ([heaven-karma.md](systems/heaven-karma.md) §8)
 - [ ] Multitudes con umbrales y cascadas (motines, linchamientos, estampidas, desbandadas), agravio colectivo, conversiones y modas ([npc-psychology.md](systems/npc-psychology.md) §13, §14, §16)
+- [ ] Intrigas entre organizaciones con órdenes compartimentadas y modelo del gobierno del blanco; intrigantes que explotan profecías; traición desde adentro de expediciones ([schemes.md](systems/schemes.md) §9-§11)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -247,6 +252,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Pronóstico por conocimiento (calendarios, ciclos), presagios naturales en la legitimidad, profecías como legados ([divination.md](systems/divination.md))
 - [ ] Reescrituras por régimen, censura, estelas y canciones en la historia agregada; huella causal y legado recordado con el embudo; epílogo hasta que se apague el legado ([chronicle.md](systems/chronicle.md))
 - [ ] Heridas del Cielo en la historia profunda, fuerza del Cielo por era, olas de tribulaciones postergadas al cerrarse una herida ([heaven-karma.md](systems/heaven-karma.md) §1, §4)
+- [ ] Contrafácticos `whatif` en modo agregado y snapshots de presiones para el mapa histórico ([causality.md](systems/causality.md) §10, §11)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))

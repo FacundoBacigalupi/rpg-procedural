@@ -67,7 +67,7 @@ interface WarAim {
 - **Presiones:** territorio disputado, una mina de piedras espirituales, una sucesión con dos reclamantes, una ofensa a la cara de una secta, una deuda de sangre, hambre que empuja a los nómadas al sur, un estado vecino que se debilita y se ve débil.
 - **Deliberación:** el asunto entra a la organización (organizations §4) y se decide con la utilidad que ven las personas que deciden: lo que esperan ganar, lo que creen que van a perder, su cara, su ambición, las facciones que empujan. Un general ambicioso puede querer la guerra que el tesoro no puede pagar.
 - **Creencias equivocadas:** la mayoría de las guerras perdidas empiezan con una sobreestimación propia o una subestimación del enemigo, porque se decidieron con informes viejos, espías comprados o propaganda creída.
-- **Casus belli:** las culturas que exigen justificación necesitan un pretexto que su gente y sus aliados crean (un tratado roto, un insulto, un presagio). Fabricar uno es una intriga (schemes) más.
+- **Casus belli:** las culturas que exigen justificación necesitan un pretexto que su gente y sus aliados crean (un tratado roto, un insulto, un presagio). Fabricar uno es una intriga más ([schemes.md](schemes.md) §10).
 
 ## 2. Fuerzas armadas
 

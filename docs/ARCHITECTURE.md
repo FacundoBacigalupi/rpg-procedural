@@ -40,7 +40,7 @@ src/
   llm/           # cliente Claude, intent parser, narrador, prompts, mock para tests
   persistence/   # SQLite: guardar/cargar mundo, log de eventos
   ui/cli/        # loop de juego en terminal + comandos de debug
-  tools/         # sim headless, inspector "god mode", reportes
+  tools/         # sim headless, inspector "god mode" (why, mapa de presiones, contrafácticos), reportes
 content/         # datos: biomas, plantas, bestias, reinos, nombres, culturas (validados con Zod)
 docs/systems/    # un doc de diseño por sistema
 tests/           # además de *.test.ts junto al código
