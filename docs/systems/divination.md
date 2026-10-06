@@ -142,7 +142,7 @@ interface BacklashRule {
 
 - **Eventos físicos leídos como mensajes:** eclipses, cometas, terremotos, inundaciones, nacimientos raros, bestias que bajan de las montañas. Tienen causa física (planet-gen, living-world), y las culturas que creen en mensajes del Cielo los leen como juicio (state §8: legitimidad).
 - **El Cielo real no manda presagios** en la familia xianxia (heaven-karma: no elige dinastías ni habla). Pero algunas de sus acciones **sí son visibles**: las nubes de tribulación, la calamidad que cae sobre un sobreexplotador. Son señales verdaderas de algo que está pasando, no del futuro, y se mezclan en la cultura con todo lo demás.
-- **Presagios de batalla y de viaje:** aves, sueños, el estandarte que se cae. Pesan en la moral (war §4) por lo que la gente cree.
+- **Presagios de batalla y de viaje:** aves, sueños (cómo se arman: [npc-psychology.md](npc-psychology.md) §15), el estandarte que se cae. Pesan en la moral (war §4) por lo que la gente cree.
 - **Plantar presagios** es una herramienta política conocida: una piedra inscripta, un "dragón" visto en el río, un cometa interpretado a favor.
 
 ## 8. Adivinos en la sociedad

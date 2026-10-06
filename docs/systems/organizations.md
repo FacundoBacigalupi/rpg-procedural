@@ -195,7 +195,7 @@ interface OrgStructure {
 ### El líder que no suelta
 Que un líder se quede hasta morir no es una regla de la plantilla: es una **decisión** suya que se renueva cada vez que hay presión para que se vaya.
 - **Lo que lo retiene:** valores `power` y `status`, una identidad atada al puesto ("soy el Maestro de la Secta"), desconfianza de los sucesores, miedo a lo que le pasa sin la protección del puesto (rivales, deudas de sangre), costo hundido, y la desesperación al final de la vida (npc-psychology §9c): soltar el puesto es soltar los recursos que necesita para alargarla.
-- **Lo que lo empuja:** su legitimidad cae a medida que declina (body-health: envejecimiento; npc-psychology: declive cognitivo), con malos resultados, ausencias y decisiones erráticas; los sucesores se impacientan; la costumbre de retiro (si existe) pesa; los aliados externos piden un interlocutor.
+- **Lo que lo empuja:** su legitimidad cae a medida que declina (body-health: envejecimiento; [npc-psychology.md](npc-psychology.md) §12: declive cognitivo), con malos resultados, ausencias y decisiones erráticas; los sucesores se impacientan; la costumbre de retiro (si existe) pesa; los aliados externos piden un interlocutor.
 - **Cómo termina:** muere en el puesto (y la sucesión es peor porque nadie se preparó), se retira por fin con condiciones, lo destituye el consejo, lo apartan con un golpe o un veneno, o queda como figura con el título mientras el poder real se mueve a otro.
 
 ## 4. Cómo decide una organización

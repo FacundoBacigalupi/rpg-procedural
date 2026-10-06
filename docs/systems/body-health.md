@@ -196,7 +196,7 @@ interface Pathogen {
 ### No infecciosas
 - **Crónicas:** tisis, artritis, piedras, corazón débil, "mal del azúcar", tumores. Salen del genoma (predisposición), la edad, la dieta, el oficio (pulmón de minero, espalda de cargador, ojos de bordadora) y las sustancias. Avanzan lentamente y pueden controlarse con tratamiento.
 - **Congénitas y hereditarias:** en el genoma; se transmiten por el linaje ([family-lineage.md](family-lineage.md) §1). La consanguinidad de clanes cerrados las concentra.
-- **Mentales con base física:** demencia senil, delirio por fiebre, daño por golpes. Se cruzan con npc-psychology (la psicología usa `cognition` como límite).
+- **Mentales con base física:** demencia senil, delirio por fiebre, daño por golpes. Se cruzan con npc-psychology (la psicología usa `cognition` como límite: [npc-psychology.md](npc-psychology.md) §12, declive cognitivo).
 - **Embarazo y parto:** estado del cuerpo con riesgo real (hemorragia, fiebre puerperal, mala posición) que depende de nutrición, edad, partera y medicina disponible. Es una de las grandes causas de muerte en mundos mortales y un motor de familias y herencias.
 
 ## 7. Frío, calor y ambiente
@@ -284,10 +284,10 @@ interface EssenceBodyState {
 - **Muerte aparente:** comas, catalepsia, técnicas de fingir la muerte. Un observador puede creer que alguien murió (information: creencia falsa) y equivocarse.
 
 ## 14. Cuerpo y mente
-- **Dolor crónico y enfermedad larga** bajan el ánimo, la paciencia y suben el riesgo de adicción (npc-psychology).
+- **Dolor crónico y enfermedad larga** bajan el ánimo, la paciencia y suben el riesgo de adicción y depresión ([npc-psychology.md](npc-psychology.md) §11).
 - **Desfiguración y mutilación** afectan la autoimagen y los esquemas ("soy un monstruo", "ya no sirvo"), y cómo reacciona la gente según su cultura.
 - **Miedo a la muerte**: la consciencia de la propia vejez o de una enfermedad terminal mueve objetivos (buscar longevidad, dejar herencia, reconciliarse, vengarse antes de morir).
-- **Hormonas y edad** modelados de forma gruesa: la adolescencia sube impulsividad; la vejez baja energía y sube la prudencia (o el resentimiento).
+- **Hormonas y edad** modelados de forma gruesa: la adolescencia sube impulsividad; la vejez baja energía y sube la prudencia (o el resentimiento). Las etapas de la mente usan la misma curva de vida ([npc-psychology.md](npc-psychology.md) §10).
 - **Lo psicológico vuelve al cuerpo:** estrés crónico baja `immune` y el sueño; la pena puede matar a un anciano debilitado.
 
 ## 15. El jugador y el narrador

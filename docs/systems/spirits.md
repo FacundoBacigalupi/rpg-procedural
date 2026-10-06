@@ -68,7 +68,7 @@ interface Spirit {
 ## 3d. Recuerdos de vidas pasadas
 Cruzar las Fuentes implica la sopa del olvido (孟婆汤). Cuánto se resiste combina cuatro mecanismos:
 - **Fuerza del alma:** decide cuánto sobrevive. Un mortal no conserva nada, un alma media conserva sensaciones (miedos sin origen, talentos inexplicables) y un alma muy fuerte conserva recuerdos concretos.
-- **Sellados, no borrados:** lo que sobrevive queda sellado y despierta con disparadores (lugares, personas, llegar al mismo reino de cultivo, estar al borde de la muerte). Primero llega en sueños y fragmentos.
+- **Sellados, no borrados:** lo que sobrevive queda sellado y despierta con disparadores (lugares, personas, llegar al mismo reino de cultivo, estar al borde de la muerte). Primero llega en sueños y fragmentos (sueños inyectados: [npc-psychology.md](npc-psychology.md) §15).
 - **Preparación:** sellos en el alma, jades de memoria o un discípulo que te reconoce mejoran lo que sobrevive. Cuestan y hay que planearlos.
 - **Desafiar al Cielo:** un alma muy fuerte puede intentar rechazar la sopa. Es una rebelión como una tribulación: si falla, el alma queda dañada.
 

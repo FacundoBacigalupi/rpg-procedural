@@ -171,7 +171,7 @@ La unidad económica básica es el **hogar** (familia y dependientes): junta ing
 ## 4. Consumo y demanda
 - **Necesidades** (npc-psychology §7, body-health): comida, agua, abrigo, calor, medicina, y para los cultivadores, qi y recursos. Generan demanda **urgente**, que paga lo que haga falta.
 - **Objetivos:** herramientas para trabajar, una dote, el ingreso a una secta, armas para la venganza, píldoras para una ruptura. Generan demanda **planificada**.
-- **Prestigio y gusto:** seda, jade, obras de arte, banquetes, una espada famosa. Generan demanda **social**, que crece con la riqueza y con los valores (`status`, `beauty`) y los gustos personales (ítem 21).
+- **Prestigio y gusto:** seda, jade, obras de arte, banquetes, una espada famosa. Generan demanda **social**, que crece con la riqueza y con los valores (`status`, `beauty`) y los gustos personales ([npc-psychology.md](npc-psychology.md) §16).
 - **Sustancias:** la adicción (body-health §10) genera una demanda que no baja con el precio. Quien controla el suministro tiene poder.
 - **El valor de reserva** de un agente para un bien es lo máximo que pagaría (o lo mínimo que aceptaría por vender) según su utilidad, su presupuesto y lo que cree que cuesta conseguirlo en otro lado:
   ```

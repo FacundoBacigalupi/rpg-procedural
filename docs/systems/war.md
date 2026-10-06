@@ -321,7 +321,7 @@ type SiegeMethod = "blockade" | "assault" | "mining" | "engines" | "formation_br
 - **Refugiados:** gente que huye y llega a otro lado con lo que puede cargar: presión sobre ciudades, precios, enfermedades, conflictos con los locales, mano de obra barata, nuevos barrios.
 - **Epidemias:** ejércitos y refugiados llevan enfermedades (body-health: contagio) por las rutas.
 - **Demografía:** hombres jóvenes muertos, viudas, huérfanos, familias que se rehacen (family-lineage); en agregado, cambia la pirámide de edad de una región por una generación.
-- **Veteranos:** con heridas permanentes, trauma, habilidades militares, quizás sin tierra. Se vuelven guardias, bandidos, maestros de armas, señores locales o mendigos.
+- **Veteranos:** con heridas permanentes, trauma ([npc-psychology.md](npc-psychology.md) §11), habilidades militares, quizás sin tierra. Se vuelven guardias, bandidos, maestros de armas, señores locales o mendigos.
 - **Ascenso y caída social:** la guerra mueve la estructura social (social-structure): plebeyos que ascienden por las armas, nobles arruinados, nuevos señores de la guerra (state §13), esclavizados.
 - **Economía:** deudas del tesoro, moneda rebajada, precios del hierro y el grano, comercio cortado y rutas nuevas, botín que enriquece a unos pocos.
 - **Memoria:** la guerra entra a las creencias como relato, con la versión de cada bando (information), y a la historia profunda como evento de alta relevancia (deep-history) que alimenta odios, mitos y la próxima guerra.
