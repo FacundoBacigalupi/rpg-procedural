@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#21, ampliación de npc-psychology**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#22, causality + schemes: mapa de presiones, proyectos e intrigas entre organizaciones**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -41,7 +41,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ### C. Ampliaciones de lo que ya hay
 20. [x] [heaven-karma.md](systems/heaven-karma.md) §3-§8: atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
-21. [ ] [npc-psychology.md](systems/npc-psychology.md): desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
+21. [x] [npc-psychology.md](systems/npc-psychology.md) §10-§17: desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
 22. [ ] [causality.md](systems/causality.md) + [schemes.md](systems/schemes.md): mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
 23. [ ] [planet-gen.md](systems/planet-gen.md): glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
 24. [ ] [living-world.md](systems/living-world.md): sucesión ecológica, especies invasoras por rutas comerciales, migraciones estacionales, domesticación y contratos con bestias.
@@ -55,6 +55,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. Las preguntas de diseño se respondieron el 2026-10-05; lo que queda es **calibración con la sim headless** (cada doc tiene sus objetivos de sensación):
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
+- npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
 - perception: curvas de atenuación y `k` de la sigmoide.
 - body-health: curación, infección y mortalidad.
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
@@ -89,7 +90,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
 - [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运) en borrador
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
-- [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
+- [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador (§10-§17: etapas, salud mental, declive, sentido y pertenencia, multitudes, sueños, gustos)
 - [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md))
 - [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
 - [x] Mundo vivo ([systems/living-world.md](systems/living-world.md))
@@ -154,6 +155,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
 - [ ] Profecías como creencias con linaje que cambian utilidades, adivinos de calle (ritual, lectura en frío) ([divination.md](systems/divination.md))
 - [ ] Crónica: "lo que nunca supiste" (intrigas y creencias equivocadas) y personas importantes por relación y memoria ([chronicle.md](systems/chronicle.md))
+- [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -172,6 +174,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Catálogo inicial de procesos mortales en `content/` con requisitos físicos y efectos sobre producción, `ProcessKnowledge` por persona, aprendizaje con maestro ([technology.md](systems/technology.md))
 - [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
 - [ ] `QiDebt` por sobreexplotación y retribución mínima como inclinación de las tiradas del deudor ([heaven-karma.md](systems/heaven-karma.md) §6)
+- [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -192,6 +195,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Lugares sellados simples (cuevas de herencia, tumbas) con libro de contenido, detalle diferido con restricciones, llaves y trampas, remanentes de alma como guardianes ([secret-realms.md](systems/secret-realms.md))
 - [ ] Lectura de karma como técnica (ruido, velos, reacción), símbolos e interpretación con vocabularios por cultura ([divination.md](systems/divination.md))
 - [ ] Atención del Cielo finita repartida por saliencia; tribulaciones como eventos con olas, energía del campo, ayudantes e intercepción del rayo; mérito ([heaven-karma.md](systems/heaven-karma.md) §3, §5, §7)
+- [ ] Declive cognitivo y legitimidad; condiciones como raíces de demonios; sueños inyectados ([npc-psychology.md](systems/npc-psychology.md) §11, §12, §15)
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -225,6 +229,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Fuerzas como organizaciones (mando, órdenes con brecha, deserción), logística con líneas de suministro y forrajeo, moral con drivers, guerras de sectas con formaciones ([war.md](systems/war.md))
 - [ ] Textos como objetos en archivos de organizaciones (crónicas de secta, genealogías, memorias) con autor y sesgo; encargar, escribir y quemar ([chronicle.md](systems/chronicle.md))
 - [ ] 气运 derivado de organizaciones (venas + karma y mérito de sus miembros), venas como territorio disputado ([heaven-karma.md](systems/heaven-karma.md) §8)
+- [ ] Multitudes con umbrales y cascadas (motines, linchamientos, estampidas, desbandadas), agravio colectivo, conversiones y modas ([npc-psychology.md](systems/npc-psychology.md) §13, §14, §16)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
