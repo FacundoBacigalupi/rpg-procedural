@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [perception.md](perception.md) (percepts, errores con forma, §11), [information.md](information.md) (creencias del jugador), [actions.md](actions.md) §9, §11 (parser, `IntentDraft`, avisos), [dialogue.md](dialogue.md) §14-§16 (verbalización de actos de habla), [metaphysics.md](metaphysics.md) (vocabulario del mundo), [living-world.md](living-world.md) (léxico generado), [npc-psychology.md](npc-psychology.md) (estado emocional y esquemas del personaje).
-Lo usan: [player-loop.md] futuro (el turno del jugador), [tooling.md] futuro (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md] futuro (nombres y palabras que el narrador cita).
+Lo usan: [player-loop.md](player-loop.md) (el turno del jugador), [tooling.md] futuro (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md] futuro (nombres y palabras que el narrador cita).
 
 ---
 
@@ -46,19 +46,41 @@ texto del jugador
 
 **Trabajos del LLM** (cada uno con su modelo, su prompt y su validador):
 
-| Trabajo | Entrada | Salida | Modelo por defecto |
+| Trabajo | Entrada | Salida | Tamaño de modelo que pide |
 |---|---|---|---|
-| Parser de intención | texto, escena percibida, catálogo relevante | `IntentDraft` | rápido (Haiku 4.5) |
-| Narración de escena | `NarrationRequest` | prosa con referencias marcadas | medio (Sonnet 5.5) |
+| Parser de intención | texto, escena percibida, catálogo relevante | `IntentDraft` | chico (7-8B local) |
+| Narración de escena | `NarrationRequest` | prosa con referencias marcadas | medio (12-14B local) |
 | Verbalización de habla | `VerbalizationRequest` (dialogue §16) | líneas de diálogo | medio, a veces dentro del mismo pedido de narración |
-| Aclaraciones y avisos | candidatos y razones que armó la sim (actions §9) | una pregunta o aviso dentro del mundo | rápido |
+| Aclaraciones y avisos | candidatos y razones que armó la sim (actions §9) | una pregunta o aviso dentro del mundo | chico |
 | Montaje de tiempo saltado | resumen de lo que el personaje vivió en el salto | prosa breve | medio |
 | Textos dentro del mundo | proposiciones de una carta, un libro, una inscripción | el texto del objeto | medio |
 | Sueños | contenido del sueño que decidió la sim (npc-psychology §15) | prosa onírica | medio |
-| Crónica y epílogo | capítulos y hechos de chronicle.md, **con la verdad** | crónica final | grande (Opus 5.5) |
-| Preguntas fuera del personaje | la pregunta y lo que el personaje sabe | respuesta breve | rápido |
+| Crónica y epílogo | capítulos y hechos de chronicle.md, **con la verdad** | crónica final | el mejor disponible |
+| Preguntas fuera del personaje | la pregunta y lo que el personaje sabe | respuesta breve | chico |
 
 Los modelos son configuración, no código: se cambian sin tocar la lógica.
+
+### Proveedores (aprobado 2026-10-06)
+
+```ts
+type LlmProvider =
+  | { kind: "templates" }                                  // plantillas deterministas (§11): siempre disponibles
+  | { kind: "local"; runtime: "ollama" | "llamacpp" | "lmstudio"; model: string; grammar?: boolean }   // modelo abierto en la PC del usuario
+  | { kind: "api"; vendor: string; model: string; maxSpendPerSession?: number };                    // opcional, pago por uso
+
+interface LlmConfig {
+  jobs: Record<LlmJob, LlmProvider[]>;                     // por trabajo, en orden de preferencia; el último siempre es "templates"
+  promptLanguage: "en" | "es";                             // idioma de las instrucciones internas
+  outputLanguage: "es" | "en";                             // idioma de la narración
+}
+```
+
+- **Por defecto todo es local:** modelos abiertos ya hechos, corriendo en la PC del usuario (referencia: RTX 4070 Super de 12 GB, 32 GB de RAM). Parser con un modelo de 7-8B y salida restringida por gramática al esquema JSON; narración con uno de 12-14B cuantizado. Sin costo por uso, sin red.
+- **La API es opcional** por trabajo (por ejemplo, solo para la crónica final), con tope de gasto.
+- **Idioma:** las instrucciones internas van en inglés (los modelos chicos las siguen mejor); el jugador escribe en español y la narración sale en español. Si en el banco de pruebas el español de un modelo sale mal, la narración puede pasar a inglés por configuración.
+- **Banco de pruebas en Fase 1:** las mismas 30-50 escenas narradas con varios modelos locales (y, para comparar, plantillas y alguna API), medidas por tasa de aprobación del validador, latencia y lectura del usuario. El modelo por defecto sale de ahí.
+- **Fine-tune propio después de terminar el juego** (Fase 9): un adaptador LoRA sobre un modelo local de 7-8B, entrenado con cientos de ejemplos reales del juego (pedido → texto aprobado por el validador y por el usuario). **No se entrena con salidas de Claude** (los términos de Anthropic lo restringen); los ejemplos salen de textos del usuario, de salidas de modelos abiertos ya filtradas y de las plantillas.
+- **Nada de esto afecta la simulación:** cambiar de proveedor cambia la prosa, nunca el mundo.
 
 ## 2. El muro: la vista del jugador
 
@@ -104,7 +126,7 @@ interface EntityLabel {
 - **Léxico del personaje:** el subconjunto que él conoce. Un campesino que nunca oyó hablar de reinos de cultivo no dice "Fundación": dice "uno de esos inmortales". Las palabras técnicas se aprenden (skills, information) y entran al léxico cuando el personaje las cree.
 - **Léxico generado** (living-world; language.md futuro): nombres de personas, lugares, plantas y conceptos salen del generador de lenguas. El LLM los cita o usa la traducción que el pedido trae; nunca inventa palabras.
 - **Voz del personaje:** cultura, estrato, oficio y educación tiñen la narración (un herrero nota el temple de una hoja; una cortesana, la tela de una túnica). El estado emocional tiñe el tono, no los hechos: con miedo, la narración es tensa, pero no agrega amenazas que no se percibieron.
-- **Idioma de la narración:** español rioplatense por defecto (configurable). Las lenguas del mundo que el personaje no entiende se narran como sonido o con las palabras sueltas que sí entendió (dialogue §3).
+- **Idioma de la narración:** español por defecto, rioplatense si el modelo lo maneja (configurable; ver Proveedores en §1). Las lenguas del mundo que el personaje no entiende se narran como sonido o con las palabras sueltas que sí entendió (dialogue §3).
 
 ## 5. El pedido de narración
 
@@ -192,7 +214,8 @@ Complementa actions §9:
 
 ## 12. Costos, caché y latencia
 
-- **Prompt caching:** el prefijo fijo (reglas, estilo, vocabulario del mundo, léxico del personaje, voz) se cachea; lo variable va al final.
+- **Local primero:** con modelos locales no hay costo por token; lo que importa es la latencia (modelo chico para el parser, narración en streaming) y no tener la GPU ocupada de más.
+- **Prompt caching:** el prefijo fijo (reglas, estilo, vocabulario del mundo, léxico del personaje, voz) se cachea, tanto en la API como en el runtime local (caché de contexto); lo variable va al final.
 - **Presupuesto por turno** de tokens por trabajo, configurable; el registro de costos va a tooling.
 - **Streaming:** la narración se muestra a medida que llega, pero se valida por párrafos antes de mostrarse; si un párrafo falla, se corta ahí y se reemplaza.
 - **Caché de textos dentro del mundo:** una carta o un libro se redacta una vez y el texto queda guardado con el objeto (las copias heredan el texto con sus cambios, chronicle). Los NPCs leen las proposiciones, no el texto.
@@ -216,12 +239,14 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 
 ## 16. Implementación por fase
 
-- **Fase 0:** cliente LLM con `MockLLM`; interfaz de trabajos; validador vacío.
+- **Fase 0:** cliente LLM con `MockLLM`; interfaz de trabajos y proveedores intercambiables; validador vacío.
 - **Fase 1:** `buildPlayerView` mínimo (percepts nada/vago/identificado, etiquetas simples), narrador de escena y de acción, parser con esquema y aclaraciones, plantillas y modo sin red, lista blanca de nombres, caché del prefijo.
 - **Fase 2:** léxico del personaje, voz por cultura y estrato, memoria de narración y continuidad, modo introspección, verbalización integrada a la escena.
 - **Fase 3:** montaje para saltos de tiempo, textos dentro del mundo, sueños.
 - **Fase 4:** vocabulario de cultivo por escuela; percepción interna y de cultivo narrada con incertidumbre.
-- **Fase 7-8:** crónica y epílogo con modelo grande; léxico generado completo (language.md).
+- **Fase 1 (además):** proveedor local (Ollama o similar) con gramática JSON para el parser; banco de pruebas de modelos.
+- **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo (language.md).
+- **Fase 9:** fine-tune LoRA propio con ejemplos reales del juego.
 
 ## Tests
 
@@ -242,6 +267,12 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 - **Regenerar una vez y después plantilla;** juego completo sin red.
 - **El replay usa planes validados,** no texto.
 - **Crónica e inspector con un constructor de verdad separado.**
+
+## Decisiones (aprobado 2026-10-06)
+- **Segunda persona, presente, con voseo,** configurable.
+- **Lo accionable solo desde la sim; la textura, de la paleta de ambiente** que arma la sim. Todo lo que el narrador menciona existe.
+- **Largo:** corto en acción y diálogo, más largo en lugares nuevos; "más detalle" y "más breve" quedan como preferencia del usuario.
+- **Modelos locales ya hechos por defecto,** proveedor intercambiable por trabajo, API opcional, banco de pruebas en Fase 1 y fine-tune propio al terminar el juego. Instrucciones en inglés; narración en español si el modelo lo maneja bien.
 
 ## Preguntas abiertas
 

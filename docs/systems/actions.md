@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [simulation.md](simulation.md) (scheduler, fases, contiendas, `advanceUntil`), [causality.md](causality.md) (procesos, causas), [information.md](information.md) (creencias: las referencias y la factibilidad se resuelven contra lo que el actor cree), [perception.md](perception.md) (el actor percibe su propio resultado), [body-health.md](body-health.md) §3 (capacidades), [social-structure.md](social-structure.md) §5 (capacidad, medios, contrapartes), [npc-psychology.md](npc-psychology.md) §7 (utilidad sobre el mismo catálogo), [heaven-karma.md](heaven-karma.md) §6 (inclinación de tiradas), [ARCHITECTURE.md](../ARCHITECTURE.md) (contratos `ActionPlan` y `Outcome`).
-Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md](narration.md)), el bucle del jugador ([player-loop.md] futuro), la IA de NPCs y las órdenes de organizaciones (organizations §4).
+Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md](narration.md)), el bucle del jugador ([player-loop.md](player-loop.md)), la IA de NPCs y las órdenes de organizaciones (organizations §4).
 
 ---
 
@@ -97,7 +97,7 @@ type Condition = BeliefCondition | PerceptCondition | TimeCondition | StateOfSel
 
 - **Las condiciones se evalúan sobre lo que el actor percibe y cree**, nunca sobre la verdad: "si nadie mira" quiere decir "si no veo a nadie mirando".
 - **Plantillas** (`content/plans/`): secuencias conocidas como robar en un mercado (observar, acercarse, esperar distracción, `take` encubierto, alejarse), emboscar, regatear, presentarse a un examen. Son **saber cultural**: un NPC solo usa las plantillas que conoce (un ladrón profesional conoce más y mejores). El jugador puede describir su propio plan paso a paso sin plantilla.
-- **Profundidad acotada.** Un plan del jugador se ejecuta hasta su próxima interrupción; los planes largos de verdad (meses) son rutinas (simulation §12) y metas del jugador ([player-loop.md] futuro).
+- **Profundidad acotada.** Un plan del jugador se ejecuta hasta su próxima interrupción; los planes largos de verdad (meses) son rutinas (simulation §12) y metas del jugador ([player-loop.md](player-loop.md)).
 
 ## 4. Referencias: a qué se refiere el actor
 
@@ -236,7 +236,7 @@ interface IntentDraft {
 | Un resultado ("lo convenzo", "encuentro la hierba") | Se convierte en intento (persuadir, buscar); lo descartado va en `stripped` |
 | Acciones de otros ("y él me da la plata") | Se descarta: los otros deciden solos. Se puede convertir en un pedido o una oferta |
 | Hechos del mundo ("hay un río cerca, voy") | Se trata como creencia del jugador: si el personaje no lo cree, se le dice lo que sabe; si va igual, va a buscar un río |
-| Una meta grande ("quiero volverme inmortal") | `kind: "goal"`: entra a las metas del personaje ([player-loop.md] futuro), no es una acción |
+| Una meta grande ("quiero volverme inmortal") | `kind: "goal"`: entra a las metas del personaje ([player-loop.md](player-loop.md)), no es una acción |
 | Algo fuera del catálogo | Se mapea a lo más cercano con aviso, o se rechaza con la razón; se registra en `tools/` como verbo faltante para contenido |
 | Una pregunta al juego ("¿cuánto tiempo pasó?") | `question_ooc`: se responde con lo que el personaje sabe |
 | Comandos (guardar, inspector) | `meta`: fuera del mundo |

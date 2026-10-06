@@ -37,7 +37,7 @@ src/
     actions/     # catálogo de acciones + resolución (tiradas → Event[])
     scheduler/   # avance del tiempo multi-escala y LOD de NPCs (ver docs/systems/simulation.md)
     knowledge/   # qué sabe/cree cada agente (verdad vs creencia)
-  llm/           # cliente Claude, intent parser, narrador, prompts, mock para tests
+  llm/           # proveedores (plantillas, local, API), intent parser, narrador, prompts, mock para tests
   persistence/   # SQLite: guardar/cargar mundo, log de eventos
   ui/cli/        # loop de juego en terminal + comandos de debug
   tools/         # sim headless, inspector "god mode" (why, mapa de presiones, contrafácticos), reportes
@@ -61,7 +61,7 @@ Se arranca como **un solo paquete** con estas carpetas. Si crece, se separa en w
 | Persistencia | SQLite (`node:sqlite`) | Un archivo por partida, consultas sobre miles de NPCs, sin servidor. |
 | RNG | Implementación propia (p.ej. sfc32/xoshiro) con sub-streams por nombre (`rng.fork("weather")`) | Determinismo y que agregar un sistema no cambie las tiradas de otro. |
 | Modelo de datos | Records tipados + sistemas (estilo ECS liviano), entidades por ID | Serializable, fácil de guardar y de inspeccionar. |
-| LLM | Claude API con tool use / structured output | Parser: modelo rápido y barato (Haiku). Narrador: Sonnet. Prompt caching para el contexto del mundo. |
+| LLM | Proveedor intercambiable por trabajo: plantillas, modelo local (Ollama o similar) o API | Por defecto, modelos abiertos locales: parser de 7-8B con salida restringida a JSON, narrador de 12-14B. API opcional (Claude) por trabajo. Fine-tune propio al terminar el juego. Ver [systems/narration.md](systems/narration.md) §1. |
 | LLM en tests | `MockLLM` | La sim se testea sin red ni costo. |
 | UI | CLI primero → web (Vite + React) después | Iterar la simulación sin pelear con UI. |
 
