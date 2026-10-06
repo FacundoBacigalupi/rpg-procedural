@@ -56,7 +56,7 @@ Orientativo, no exhaustivo (el número final sale del contenido, del orden de 80
 | Manipulación | `take`, `drop`, `put`, `give`, `hand_over`, `open`, `close`, `lock`, `break`, `carry`, `wield`, `sheathe`, `wear`, `remove`, `eat`, `drink`, `apply` (vendaje, ungüento), `use` (objeto con función) | economy (tenencias), body-health, crafts |
 | Percepción | `look`, `search`, `listen`, `smell`, `inspect`, `read`, `track`, `watch` (vigilar por un tiempo), `sense_essence`, `probe_cultivation` | perception, discovery |
 | Social | `speak` (con acto de habla), `gesture`, `bow` y demás etiqueta, `offer`, `accept`, `refuse`, `bargain`, `command`, `request`, `threaten`, `embrace`, `touch` | [dialogue.md] futuro, economy, social-structure |
-| Combate | `strike`, `thrust`, `throw`, `shoot`, `parry`, `dodge`, `block`, `grapple`, `disarm`, `feint`, `disengage`, `yield`, `spare`, `finish` | [combat.md] futuro, body-health, elements |
+| Combate | `strike`, `thrust`, `throw`, `shoot`, `parry`, `dodge`, `block`, `grapple`, `disarm`, `feint`, `disengage`, `yield`, `spare`, `finish` | [combat.md](combat.md), body-health, elements |
 | Trabajo | `work_at` (oficio por sesión), `craft_step`, `farm`, `gather`, `hunt`, `fish`, `fell`, `mine`, `build`, `repair`, `cook`, `clean`, `tend` (animales, enfermos) | crafts, economy, living-world, technology |
 | Cuerpo | `rest`, `sleep`, `train`, `treat` (curar a otro), `stretch`, `relieve`, `bathe` | body-health |
 | Mente | `recall`, `think_over`, `hypothesize`, `experiment`, `study`, `memorize`, `write`, `copy`, `plan`, `pray`, `contemplate` | discovery, information, npc-psychology |
@@ -156,7 +156,7 @@ Se evalúan dos veces:
 - **Checkpoints.** Las acciones largas se parten en tramos (cada minuto de un `search`, cada paso de una sesión de oficio, cada hora de un `go_to`). En cada uno el scheduler revisa interrupciones y el actor puede re-decidir.
 - **Interrupciones.** Llegan por: (a) las reglas del plan (`interrupts`, `onEvent`); (b) percepts con saliencia mayor que el foco del actor (alguien grita su nombre, huele humo); (c) acciones de otros que lo afectan (lo agarran, le hablan, lo atacan); (d) su propio cuerpo (desmayo, dolor, un ataque de tos). El jugador recibe el control; un NPC re-decide con su utilidad.
 - **Resultados parciales.** Lo hecho queda: el pozo a medio cavar, la mitad del camino, el lote a medio contar. No hay "acción cancelada sin efectos".
-- **Reflejos.** Algunas reacciones no esperan decisión: esquivar un golpe, soltar algo que quema, cubrirse los ojos. Salen de los hábitos y del entrenamiento del actor ([combat.md] futuro) y corren como plan con `source: "reflex"`, también para el jugador.
+- **Reflejos.** Algunas reacciones no esperan decisión: esquivar un golpe, soltar algo que quema, cubrirse los ojos. Salen de los hábitos y del entrenamiento del actor ([combat.md](combat.md)) y corren como plan con `source: "reflex"`, también para el jugador.
 
 ## 7. Resolución
 
