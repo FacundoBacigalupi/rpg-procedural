@@ -47,7 +47,7 @@ interface Lot {
 - **Lotes que se parten y se juntan.** Vender la mitad de un saco parte el lote (los dos heredan el origen); mezclar arroz de dos campos crea un lote con los dos orígenes. Mezclar es una forma de estafa (arroz con piedras, píldoras buenas con malas).
 - **Perecer es un proceso.** Lo perecible se degrada según la curva, el clima (planet-gen) y cómo se guarda (granero seco, bodega fría, caja de jade, anillo de almacenamiento si el mundo lo permite). Lo que se pudre no desaparece del ledger: pasa a desecho (abono, fuente de plagas en body-health §8).
 - **Los ítems únicos** (una espada con nombre, una obra con intención, un anillo de un anciano muerto) son entidades con identidad: se reconocen, tienen historia y pueden llevar karma (heaven-karma) o una reputación propia ("la espada que mató al Carnicero").
-- **La tierra es un bien.** Parcelas con suelo, agua y qi (planet-gen); se compran, se heredan, se arriendan, se pierden por deudas, se confiscan. No se mueve ni se produce: solo cambia de dueño o de calidad (suelos que se agotan: ítem 23).
+- **La tierra es un bien.** Parcelas con suelo, agua y qi (planet-gen); se compran, se heredan, se arriendan, se pierden por deudas, se confiscan. No se mueve ni se produce: solo cambia de dueño o de calidad (suelos que se agotan y se recuperan: [planet-gen.md](planet-gen.md) §9).
 - **Los servicios** (curar, enseñar, escoltar, refinar una píldora por encargo) no son lotes: son contratos de trabajo con un resultado ([contracts.md](contracts.md)). Su precio se forma igual.
 
 ## 2. Dinero

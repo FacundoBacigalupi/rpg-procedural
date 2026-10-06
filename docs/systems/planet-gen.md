@@ -4,7 +4,9 @@
 
 Lo que pasa sobre este mapa después de generarlo está en [living-world.md](living-world.md) y [spirits.md](spirits.md).
 
-Depende de: [causality.md](causality.md) (capas 0-1, qi como campo físico), [heaven-karma.md](heaven-karma.md) (fuerza del Cielo), [deep-history.md](deep-history.md) (la historia escribe sobre el mapa después).
+> Estado: etapas 0-7 **decididas**; §8-§12 son una **ampliación en borrador** (2026-10-06): el planeta cambia después de generarse. Clima de largo plazo con glaciaciones y nivel del mar movidos por los mismos ciclos que las mareas de qi (puentes de tierra, costas sumergidas), suelos con nutrientes que se forman, se agotan y se degradan, y volcanes con presión que producen inviernos volcánicos, más impactos.
+
+Depende de: [causality.md](causality.md) (capas 0-1, qi como campo físico, presiones), [heaven-karma.md](heaven-karma.md) (fuerza del Cielo), [deep-history.md](deep-history.md) (la historia escribe sobre el mapa después), [elements.md](elements.md) (hielo como derivado, fronteras elementales), [metaphysics.md](metaphysics.md) (qué fuente de poder tiene el mundo). Lo usan: [living-world.md](living-world.md) (desastres, migraciones, especies separadas), [economy.md](economy.md) (tierra y cosechas), [technology.md](technology.md) (agricultura y sus consecuencias), [cultivation.md](cultivation.md) (qi disponible), [secret-realms.md](secret-realms.md) (aperturas por mareas), [divination.md](divination.md) (ciclos y presagios), [state.md](state.md) y [war.md](war.md) (hambre, legitimidad, guerras por tierra), [body-health.md](body-health.md) (hambre y epidemias).
 
 ## Principios
 1. **Causal, no ruido.** El ruido (Perlin/simplex) solo agrega detalle **dentro** de lo que la geología ya decidió. Nunca decide dónde hay un continente o una cordillera.
@@ -12,6 +14,7 @@ Depende de: [causality.md](causality.md) (capas 0-1, qi como campo físico), [he
 3. **Multi-resolución.** Se genera una grilla gruesa del planeta entero. El detalle local se genera **bajo demanda**, coherente con su celda madre (igual que los NPC de tier 1 con las estadísticas).
 4. **El mapa es estado mutable.** La planet-gen produce el mapa inicial. Después la historia lo modifica (cráteres de batallas, venas destruidas, bosques talados, ríos desviados) y cada cambio es un evento.
 5. **Inspeccionable.** Desde el día uno: exportar mapas PNG por capa (elevación, clima, biomas, qi) para mirar el resultado.
+6. **El planeta sigue andando.** Clima, hielo, mar, suelos y volcanes cambian durante la historia y la partida con procesos que conservan agua, nutrientes y presión, usando `rng.fork("planet", proceso, celda, tick)`. Nada cambia sin causa: una era fría tiene su órbita, un campo pobre su historia de cosechas, un año sin verano su volcán.
 
 ## Grilla
 - **Geodésica hexagonal** (poliedro de Goldberg: icosaedro subdividido; todas las celdas son hexágonos salvo 12 pentágonos). Las celdas tienen áreas casi iguales y no hay distorsión en los polos.
@@ -132,7 +135,7 @@ El qi muy denso es tóxico para un cuerpo sin meridianos abiertos: fiebre, delir
 - Una marea alta de qi vuelve inhabitables zonas mortales y provoca migraciones. Una baja deja a las sectas sin sustento.
 
 ### 6. Recursos y ecología inicial
-- Minerales y gemas según la roca. Suelos fértiles según el sedimento.
+- Minerales y gemas según la roca. Suelos iniciales según la roca, el sedimento, el clima y la vegetación (§9).
 - **Plantas y bestias** espirituales: poblaciones iniciales por celda según bioma, qi y elemento, desde `content/`. Después las maneja la ecología (capa 2).
 - Cuevas: según la roca (caliza → kársticas, volcánica → tubos de lava) y el agua.
 
@@ -140,6 +143,147 @@ El qi muy denso es tóxico para un cuerpo sin meridianos abiertos: fiebre, delir
 La planet-gen **no** crea ruinas, reinos secretos ([secret-realms.md](secret-realms.md)), sellos ni tesoros, porque todo eso necesita a alguien que lo haya hecho. Los produce [deep-history.md](deep-history.md) al simular la aparición de la vida inteligente, el cultivo y las civilizaciones sobre este mapa.
 
 **Nombres:** los lugares no tienen nombre hasta que una cultura los nombra. Cada cultura usa su propio idioma, y el mismo río puede tener tres nombres según quién te hable. El mapa del jugador muestra los nombres que **su personaje** conoce.
+
+## 8. Clima de largo plazo: glaciaciones y nivel del mar
+
+El clima de la etapa 3 es el de un momento. A lo largo de milenios cambia, y con él cambian los hielos, las costas y los caminos entre continentes. Las causas son las mismas que mueven las mareas de qi: los ciclos de la órbita.
+
+```ts
+interface GlobalClimateState {
+  epoch: Tick;
+  orbital: { eccentricity: number; obliquity: number; precessionPhase: number };   // los ciclos de la etapa 0
+  qiTide: { phase: number; amplitude: Partial<Record<ElementId, number>> };       // la marea de qi del mismo momento
+  tempOffset: number;                       // °C respecto del clima base de la etapa 3
+  iceVolume: number;                        // agua guardada como hielo sobre tierra
+  seaLevel: number;                         // metros respecto del nivel de la generación
+  aerosolLoad: Float32Array;                // por banda de latitud (§10)
+  causes: CauseRef[];
+}
+
+interface IceCover {                       // por celda de nivel 0
+  cell: CellId;
+  thickness: number;
+  flow: Vec2;                               // el hielo fluye cuesta abajo y talla valles
+  since: Tick;
+}
+
+interface LandBridge {
+  id: LandBridgeId;
+  cells: CellId[];                          // plataforma continental expuesta
+  connects: [LandmassId, LandmassId];
+  opened: Tick;
+  closed?: Tick;
+  originEventId: EventId;                   // el avance glaciar que bajó el mar
+}
+```
+
+- **Forzantes.** La insolación por latitud y estación varía con excentricidad, oblicuidad y precesión (ciclos de decenas a cientos de milenios). Cuando los veranos de las latitudes altas son frescos, la nieve no se derrite del todo y empieza a acumularse.
+- **Acople con el qi (por mundo).** La marea de qi sale de los mismos ciclos. En la familia xianxia el acople es directo: una marea con mucho yin de agua favorece el frío y el hielo (el hielo es el derivado de agua con frío yin extremo, [elements.md](elements.md) §5), y una marea con mucho yang de fuego favorece el calor. Cuánto pesa el acople es un parámetro de la cosmología: en algunos mundos es cero y el clima solo responde a la órbita.
+- **Realimentaciones:** el hielo refleja la luz y enfría más (albedo); el mar más frío guarda menos humedad; al retirarse, el hielo deja tierra oscura que se calienta. Por eso los cambios son lentos al principio y bruscos al final.
+- **Conservación del agua.** Océano + hielo + lagos + agua subterránea es constante. El hielo que crece sobre los continentes sale del mar: el **nivel del mar baja** en proporción, y sube cuando el hielo se derrite. La línea de costa se recalcula desde la elevación y el nivel del mar.
+- **Mar bajo:** se exponen las plataformas continentales.
+  - Aparecen **puentes de tierra** entre continentes e islas. Por ahí cruzan bestias, plantas, pueblos y enfermedades (body-health: choque de poblaciones). Así llegan especies y culturas a lugares que antes no conocían.
+  - Los ríos se alargan sobre la plataforma, y los puertos quedan tierra adentro.
+- **Mar alto:**
+  - Los puentes se cierran. Las poblaciones que quedaron separadas divergen (bestias que evolucionan, lenguas que se separan: [living-world.md](living-world.md) §2, §3).
+  - Las costas se inundan y las ciudades costeras quedan bajo el agua (ruinas sumergidas: [deep-history.md](deep-history.md)). Las islas se parten.
+  - Las culturas lo recuerdan como **el diluvio** o la tierra perdida (living-world §4: los mitos son historia deformada).
+- **Hielo sobre la tierra:**
+  - Los glaciares tallan valles en U, dejan morrenas y lagos al retirarse, y empujan a la gente y las bestias hacia el ecuador.
+  - Un dique de hielo que se rompe vacía un lago de golpe: una **inundación glaciar**, desastre con causa ([living-world.md](living-world.md) §1).
+  - Bajo el hielo, las venas siguen fluyendo sin nadie que consuma. Cuando el hielo se retira, aparecen **tesoros naturales** que se formaron durante milenios (etapa 5).
+- **Escala de tiempo:** un ciclo glacial dura decenas de milenios, así que en una vida mortal el mar casi no se mueve. Lo que sí se ve en una vida son los eventos bruscos (inundaciones glaciares, un puente que se corta en pocas generaciones) y, para un cultivador que vive milenios, la costa de su juventud bajo el agua.
+- **Predecible:** los ciclos son calculables. Una escuela de astrónomos que entiende la órbita puede saber que se viene una era fría (divination: pronóstico por conocimiento); casi nadie lo cree.
+
+## 9. Suelos
+
+El suelo es estado de la celda (nivel 0, agregado) y de cada parcela (nivel 1). Se forma muy lento, se agota rápido y se recupera con trabajo y tiempo.
+
+```ts
+interface SoilState {
+  texture: "sand" | "loam" | "clay" | "silt" | "peat" | "ash" | "rocky";   // de la roca y el sedimento
+  depth: number;                            // cm de suelo útil
+  organic: number;                          // materia orgánica
+  fertility: Partial<Record<NutrientId, number>>;   // nutrientes abstractos por familia (content/)
+  salinity: number;
+  acidity: number;
+  waterCapacity: number;
+  compaction: number;
+  contamination: { kind: ContaminantId; amount: number; originEventId: EventId }[];  // metales de una mina, sangre de una batalla, toxinas
+  qiSaturation: Partial<Record<ElementId, number>>;  // el suelo absorbe qi: tierra espiritual (灵土)
+  history: EventId[];                       // quemas, inundaciones, cosechas, abonos, batallas
+}
+```
+
+- **Formación:** la roca se meteoriza a razón de centímetros por siglo. Hay suelos que se renuevan rápido: la ceniza volcánica (§10) da tierras muy fértiles en pocas décadas, y las crecidas anuales de un río depositan limo cada año. Por eso hay civilizaciones de río y laderas de volcán pobladas a pesar del peligro.
+- **Agotamiento:** cada cosecha se lleva nutrientes según el cultivo. Sin devolverlos, el rendimiento baja año a año. Las hierbas espirituales agotan además el qi del suelo.
+- **Recuperación:** barbecho, abono, estiércol y heces humanas, rotación con leguminosas, ceniza de roza y quema. Cada método es un proceso que hay que conocer ([technology.md](technology.md): agricultura). Los nutrientes se mueven: del suelo a la cosecha, de la cosecha a quien la come, y vuelven al campo o se pierden río abajo. Una ciudad que no devuelve sus desechos al campo vacía los suelos de su región.
+- **Degradación:**
+  - **Erosión:** talar una ladera, sobrepastorear o arar sin terrazas hace que la lluvia se lleve el suelo. Lo perdido no vuelve en una vida, y el sedimento llena los ríos y los puertos aguas abajo.
+  - **Salinización:** el riego sin drenaje en climas secos deja sal. Los campos más ricos de un imperio de canales se vuelven blancos en pocos siglos.
+  - **Compactación y acidez** por mal manejo.
+  - **Contaminación** por minas, curtiembres, batallas con venenos o qi corrupto.
+- **Desertificación:** un borde seco sobreexplotado pierde vegetación, suelo y humedad local, y el desierto avanza con causa.
+- **Suelo espiritual:** donde una vena empapa la tierra durante siglos, el suelo guarda qi (`qiSaturation`) y da hierbas espirituales. Las sectas lo cuidan y lo explotan, y también lo agotan.
+- **Consecuencias:** los rendimientos que caen suben la presión de hambre ([causality.md](causality.md) §9). Desde ahí siguen deudas y pérdida de tierras ([economy.md](economy.md)), migración, abandono de aldeas, guerras por tierra buena y colapsos de estados cuyo grano dependía de suelos que se agotaron.
+- **El suelo como creencia:** nadie ve la fertilidad. El campesino ve el rendimiento, el color, las malezas, y forma hipótesis ("este campo está cansado", "hay que dejarlo descansar cada tres años") con el mecanismo de [discovery.md](discovery.md). El precio de la tierra sale de la calidad **creída** (economy).
+
+## 10. Volcanes, inviernos volcánicos e impactos
+
+```ts
+interface Volcano {
+  id: VolcanoId;
+  cell: CellId;
+  origin: "hotspot" | "subduction" | "rift" | "islandArc";   // de la tectónica (etapa 1)
+  magmaPressure: number;                    // la presión que descarga la erupción (living-world §1)
+  recharge: number;                         // cuánto sube por año según el flujo de la placa o del punto caliente
+  explosivity: number;                      // de la química de la roca: subducción → explosivo, punto caliente → efusivo
+  lastEruption?: EventId;
+  sealedBy?: { by: AgentId | OrgId; eventId: EventId; strength: number };   // un sello de cultivador (living-world §1)
+  fireVein?: VeinId;                        // la vena de fuego que alimenta
+}
+
+interface VolcanicWinter {
+  originEventId: EventId;                   // la erupción (o el impacto)
+  aerosol: number;                          // azufre y polvo en la alta atmósfera
+  bands: number[];                          // bandas de latitud afectadas (vientos de la etapa 3)
+  decay: number;                            // cae a la mitad en ~1 año; los grandes duran 2-3, los colosales una década
+}
+```
+
+- **Erupciones con tamaño.** La presión sube con la recarga y se descarga en una erupción cuyo tamaño depende de cuánto se acumuló y de la explosividad. Un volcán que descarga seguido hace erupciones chicas; uno dormido por siglos acumula una grande.
+- **Efectos locales:** coladas, flujos piroclásticos, lahares, ceniza que mata cosechas y ganado por un año. Después la ceniza da suelo fértil (§9). Además sube el qi de fuego: la vena descarga y se rearma.
+- **Invierno volcánico.** Una erupción explosiva grande lanza azufre a la alta atmósfera, y los vientos lo reparten por bandas de latitud. Baja la temperatura por uno a tres años en medio hemisferio o en todo el planeta:
+  - Heladas en verano y cosechas perdidas lejos del volcán, en tierras que nunca lo vieron.
+  - Hambre, epidemias en cuerpos debilitados, precios que suben, revueltas.
+  - Soles rojos y cielos turbios que las culturas leen como presagios ([divination.md](divination.md) §7) y que erosionan la legitimidad ([state.md](state.md)).
+  - Todo eso se encadena por las mismas presiones de siempre: no hay un evento "año sin verano" escrito.
+- **Supervolcanes:** cámaras de magma enormes que acumulan durante decenas de milenios. Una erupción así es un evento de historia profunda: invierno de una década, colapso de civilizaciones, cuellos de botella de especies.
+- **Sellar un volcán** (living-world §1) no destruye la presión: la retiene (conservación). El sello aguanta mientras dure su fuerza, y si se rompe (el sellador muere, una batalla lo daña, una marea de qi lo debilita) la erupción es más grande que la que se evitó. Es una deuda que hereda quien venga.
+- **Impactos.** Los cuerpos menores del sistema estelar (etapa 0) caen con una frecuencia que sale de cuánto escombro hay en órbitas cruzadas. Hay una población de cuerpos con órbitas calculables, así que es determinista.
+  - Las chicas son **estrellas caídas**: hierro meteórico (metal escaso y valioso en este planeta) y materiales con qi celeste para [crafts.md](crafts.md).
+  - Las grandes, muy raras, dejan un cráter y un invierno de impacto con el mismo modelo de aerosol.
+- **Otras fuentes de aerosol:** incendios forestales gigantes y batallas de inmortales que levantan polvo usan el mismo `aerosolLoad`. Es raro que alcancen escala global.
+
+## 11. El jugador y el narrador
+
+- **Nadie ve el estado global.** El personaje percibe el tiempo de su lugar: el frío fuera de estación, la ceniza, el sol rojo, el campo que rinde menos, la costa que su abuelo recordaba más lejos. El narrador recibe eso, nunca `GlobalClimateState`.
+- **Lo que se sabe es creencia.** Que existe un puente de tierra hacia otro continente está en mapas y relatos ([information.md](information.md) §5). Que el campo está cansado es una hipótesis del campesino. Que el invierno vino de un volcán lejano lo sabe solo quien conoce la causa (o lo cree un astrólogo que lo atribuye al Cielo).
+- **El jugador puede actuar** sobre suelos y volcanes como cualquiera: abonar, dejar en barbecho, terracear, salar el campo de un enemigo, estudiar un volcán, sellarlo si tiene el poder (y heredar el riesgo).
+- **El inspector** muestra la verdad: capas de hielo, nivel del mar y costas por época, suelos por parcela, presión de cada volcán, carga de aerosol por banda (`pressures`, [causality.md](causality.md) §10).
+
+## 12. Paso del tiempo y escala
+
+| Proceso | Paso en la partida | Paso en la historia profunda |
+|---|---|---|
+| Clima global, hielo, nivel del mar | Una vez por año | Por época (cientos a miles de años), con los ciclos orbitales |
+| Puentes de tierra y costas | Al cambiar el nivel del mar más de un umbral | Por época |
+| Suelos | Por estación en parcelas con agricultores de tier 2+; por año en celdas de nivel 0 | Agregado por celda: tendencia según población y técnica |
+| Volcanes | Presión por mes; erupción como evento | Por época, con las grandes registradas como eventos |
+| Aerosoles e inviernos | Por estación | Solo los de supervolcanes e impactos grandes |
+
+- **Coherencia entre niveles:** al generar el nivel 1, las parcelas respetan el suelo agregado de su celda, y la historia de la celda (quemas, inundaciones, siglos de arado) se reparte en las parcelas según el uso.
+- **Lo que se materializa al acercarse** (causality §5.3): el suelo exacto de una parcela, la morrena de un valle, la playa sumergida frente a una aldea. Siempre se respetan los agregados.
 
 ## Rendimiento
 - Objetivo: nivel 0 completo en menos de 10-15 s en Node, una sola vez por partida. Se guarda en SQLite.
@@ -157,11 +301,22 @@ La planet-gen **no** crea ruinas, reinos secretos ([secret-realms.md](secret-rea
 - Cada fuente de qi tiene un rasgo geológico o celeste como causa.
 - Conservación: el nivel 1 respeta los agregados de su celda madre.
 - Rangos sanos en 100 seeds: fracción de tierra, temperatura, sin celdas con valores NaN.
+- Conservación del agua: océano + hielo + lagos + subterránea es constante en todo ciclo glacial; el nivel del mar baja exactamente lo que crece el hielo sobre tierra.
+- Un puente de tierra existe solo si el nivel del mar está por debajo de la plataforma que lo forma, y tiene como causa el avance glaciar.
+- El clima de largo plazo sigue los ciclos orbitales: con acople de qi en cero, la marea de qi no cambia el clima.
+- Suelos: los nutrientes que salen de una parcela entran en la cosecha y siguen su camino (conservación); un suelo no recupera fertilidad sin barbecho, abono, sedimento, ceniza o meteorización.
+- Volcanes: ninguna erupción sin presión acumulada; un volcán sellado conserva su presión y, si el sello cae, erupciona más grande.
+- Invierno volcánico: la caída de temperatura de cada banda se explica por la carga de aerosol de un evento registrado, y decae.
+- Determinismo: mismo seed → mismas eras glaciales, mismas erupciones, mismos suelos tras N años.
 
 ## Implementación
 Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), pero conviene adelantar una versión mínima:
 - **Mínimo (antes o durante la Fase 1):** grilla + tectónica + elevación + clima (con corrientes oceánicas) + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
 - **Después:** hidrología completa, erosión, anomalías, nivel 1 local.
+- **Fase 3:** suelos por parcela con nutrientes, agotamiento, barbecho y abono, rendimientos que alimentan la presión de hambre (§9).
+- **Fase 5:** suelos agregados por celda, erosión y salinización por uso, volcanes con presión y erupciones con efectos locales y ceniza (§9, §10).
+- **Fase 7:** clima de largo plazo por época en la historia profunda: glaciaciones, nivel del mar, puentes de tierra, costas sumergidas; supervolcanes e impactos (§8, §10).
+- **Fase 8:** inviernos volcánicos con aerosol por bandas y sus cadenas (hambre, presagios, legitimidad); estrellas caídas como materiales (§10).
 
 ## Decisiones tomadas en este borrador (revisables)
 - Grilla geodésica hexagonal de ~40.000 celdas en nivel 0, con detalle local bajo demanda.
@@ -176,5 +331,13 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
 
+- **Glaciaciones por ciclos orbitales**, los mismos que mueven las mareas de qi; el acople clima-qi es un parámetro de la cosmología (directo en xianxia, cero en otros mundos).
+- **El nivel del mar sale de la conservación del agua**: hielo sobre tierra baja el mar, y los puentes de tierra y las costas sumergidas salen de ahí.
+- **Suelo como estado con nutrientes que se mueven**: se forma lento, se agota con cosechas, se degrada con mal manejo y se recupera con procesos conocidos; la fertilidad nunca la ve nadie, solo el rendimiento.
+- **Inviernos volcánicos por aerosol** de erupciones grandes, sin evento "año sin verano" escrito: las consecuencias se encadenan por presiones.
+- **Sellar un volcán retiene la presión**, no la destruye.
+- **Impactos deterministas** desde una población de cuerpos con órbitas calculables; las estrellas caídas dan hierro meteórico.
+
 ## Preguntas abiertas
-- Ninguna por ahora.
+- ¿Debe el clima de una vida tener variabilidad anual (años buenos y malos, oscilaciones tipo El Niño) además de los ciclos largos? Propuesta: sí, con oscilaciones oceánicas de pocos años calculadas desde las corrientes (etapa 3), que son las que living-world §1 usa para sequías e inundaciones.
+- Calibración: largo de los ciclos glaciales y su amplitud de nivel del mar; tasas de formación y agotamiento de suelos por textura y cultivo; recarga y explosividad de volcanes; frecuencia de impactos por tamaño.
