@@ -98,6 +98,9 @@ interface FormulaKnowledge {                 // lo que alguien cree que es la f�
 - **Al morir, salen.** Cuando un extraordinario muere, sus características dejan el cuerpo en un tiempo que depende de la secuencia: se condensan en el cadáver (un cristal, un órgano, una mancha) o se van a un objeto cercano, a un animal, a un lugar. Si nadie las recoge, pueden **crear algo**: una criatura, un objeto sellado espontáneo, un lugar maldito.
 - **Las criaturas sobrenaturales** del mundo tienen su característica por la misma regla: nacieron donde una se depositó, o descienden de algo que la tenía. Cazarlas es la fuente honesta de ingredientes, y su población es un recurso finito que se agota (living-world).
 - **Sin pérdidas:** no hay "característica perdida". Lo que nadie encuentra sigue en algún lugar del ledger y puede salir a la luz siglos después en una ruina, un pantano o un objeto subastado (deep-history).
+- **La característica guarda restos de mente.** Lleva una impresión de sus portadores anteriores: deseos, miedos, recuerdos sueltos, la locura de quien perdió el control con ella. Al beberla, eso entra con la poción, suma presión de control (§7) y a veces da pistas reales del pasado (un recuerdo del muerto que fue cierto). Cuantas más manos y pérdidas de control pasó una característica, más carga.
+- **Linajes con sangre de camino** ([family-lineage.md](family-lineage.md) §9): al concebir, una parte pequeña de la característica de un progenitor puede pasar al hijo; sale del progenitor, así que se conserva. Así nacen familias con espiritualidad alta, afinidad por las pociones de su camino y, rara vez, un despertar sin poción. Las familias nobles con un camino heredado se arman sobre esto y sobre sus fórmulas guardadas.
+- **Criar no multiplica.** Una criatura con característica que se reproduce reparte la suya entre las crías. Los criaderos de ingredientes existen, pero cada cría es más pobre que sus padres.
 
 ## 4. Convergencia, vecinos y unicidad
 
@@ -106,6 +109,14 @@ interface FormulaKnowledge {                 // lo que alguien cree que es la f�
 - **Unicidad en la cima.** La secuencia 0 de cada camino tiene una sola plaza. Ocuparla exige reunir la **unicidad** del camino (una concentración de característica que no se divide) y, a menudo, que nadie más la tenga. Quien está arriba quiere que nadie suba demasiado; quien quiere subir necesita que el de arriba caiga. Es una presión con la forma exacta de una guerra de dioses (§10).
 - **La presión de reunión.** Las características de un grupo tienden a reunirse en un solo portador a lo largo de las épocas. Es la **presión de largo plazo** de esta familia (causality): sin nadie que la frene, termina en un ser que se acerca a lo que era antes del origen (§12), y eso suele ser un cataclismo. Los dioses, las iglesias y los sabios lo saben a medias y lo temen.
 
+## 4b. Por encima de la cima: pilares, sedes y razas antiguas
+
+- **Portadores especiales en la secuencia 1.** Un grupo puede tener ángeles que guardan una parte grande de la unicidad o de la autoridad del grupo: casi dioses, con la cima a un paso y pocas plazas.
+- **Pilares.** Quien reúne las cimas de todo un grupo de convergencia queda por encima de los dioses de camino: un ser de grupo, la forma más alta que la ley permite antes de volver al origen (§12). En el presente puede no haber ninguno; en las épocas antiguas hubo varios, y algunos pueden estar dormidos, sellados o muertos con su característica en algún lugar.
+- **Sedes de grupo.** Cada grupo puede tener un lugar de poder: un castillo en el mundo espiritual, un palacio sobre la niebla, un árbol, un río, una puerta. Lo creó el origen o un pilar. Quien la controla tiene autoridad sobre las características del grupo: oye los rezos dirigidos a su dominio, convoca, bendice, percibe a los portadores. Las sedes son entidades del ledger con origen; pueden estar vacías, selladas, disputadas, o en manos de alguien que no sabe lo que tiene. El espacio por encima del mundo espiritual de §8 puede ser una.
+- **Razas antiguas.** En la historia profunda, los caminos suelen haber nacido o pasado por especies antiguas (gigantes, dragones, elfos, sirenas, demonios... generadas por seed, metaphysics §7). Sus ruinas, lenguas (§8b) y restos guardan fórmulas, características y sedes. Algunas sobreviven en el presente, escasas.
+- **Reliquias de fórmulas.** Hay objetos antiguos que guardan las fórmulas de muchos caminos (tablas, libros, piedras grabadas por un pilar o por el origen). Son saber puro, de valor incalculable, y la causa de guerras entre iglesias.
+
 ## 5. Poderes
 
 - **Los poderes son modos de verbos** del catálogo de acciones ([actions.md](actions.md)): percibir con la espiritualidad, ocultarse, engañar los sentidos, controlar el fuego, hablar con los muertos, adivinar, maldecir. Cada secuencia agrega o mejora modos. La sim los resuelve con las mismas operaciones de siempre (`interact` para los efectos elementales, percepción para los sentidos, contienda para lo opuesto).
@@ -113,6 +124,21 @@ interface FormulaKnowledge {                 // lo que alguien cree que es la f�
 - **Coste en espiritualidad.** Los poderes gastan la reserva espiritual (§8). Agotada, el extraordinario queda débil y más expuesto a perder el control.
 - **Armas mortales importan.** En la era industrial (§14) un rifle, un explosivo o una máquina siguen siendo amenazas reales para las secuencias bajas y medias. Los extraordinarios las usan también.
 - **Cuerpo:** subir cambia el cuerpo según el camino: sentidos, resistencia, longevidad creciente desde las secuencias medias, rasgos raros (ojos, temperatura, sombra). Lo lleva body-health como cambios con causa.
+
+## 5b. Poderes sobre conceptos: destino, suerte, tiempo, espacio, identidad y mente
+
+Las secuencias medias y altas de muchos caminos tocan cosas que no son fuego ni carne. La regla es la misma de siempre: **cada poder dice qué estructura de la sim toca, cuánto cuesta, qué se conserva y qué rastro deja** (para que un investigador lo pueda encontrar). El validador de la familia rechaza un poder que no cumpla eso.
+
+- **Suerte y destino:** inclinar tiradas de un blanco, acotado, igual que la retribución del Cielo ([heaven-karma.md](heaven-karma.md) §6). La suerte que se da sale de algún lado: de otro, del propio futuro como deuda que se cobra después, de una característica que se gasta. Leer el destino es proyectar presiones (divination); "cambiar el destino" es cambiar las causas.
+- **Tiempo:** acelerar o frenar el tiempo de una zona chica por un rato (como el `timeRate` de los planos, [cosmology.md](cosmology.md) §1), robarle duración a la acción de otro (el scheduler la alarga o la acorta), detener a alguien un instante. Cuesta espiritualidad y tiene techo por banda. **No se viaja al pasado:** el pasado solo se lee o se proyecta (§8b).
+- **Espacio:** atajos, puertas entre dos lugares conocidos, bolsillos y espacios propios (secret-realms), con energía conservada.
+- **Identidad:** que otros lo perciban a uno como otra persona (percepción con error inducido), robar o prestarse rasgos de identidad, hacerse olvidar (debilitar o desviar las creencias que otros tienen sobre uno). Información y reputación lo leen.
+- **Mente y memoria:** leer, robar, borrar o plantar recuerdos y creencias ([npc-psychology.md](npc-psychology.md) §5). Lo plantado deja inconsistencias que alguien puede notar.
+- **Marionetas:** controlar un cuerpo ajeno por los hilos de su cuerpo espiritual. El controlado actúa con los planes del controlador, en contienda con su voluntad, y quien lo conoce nota que algo no cuadra.
+- **Parasitismo y posesión:** alojar el espíritu en otro cuerpo o en una parte de él (spirits, [cultivation.md](cultivation.md) §14), con riesgo de mezclarse.
+- **Injertar conceptos** (bandas altas): unir dos cosas por una regla local y temporal ("esta puerta lleva a aquel lugar", "este dolor pasa a aquel muñeco", "esta distancia no existe"). Se modela como un **enlace entre entidades** que la sim respeta mientras dura, con costo y duración. Nunca reescribe la ley del mundo.
+- **No morir del todo:** algunos caminos dan formas de volver: renacer desde un fragmento, un cuerpo de repuesto, la característica que guarda la persona, una proyección propia. Siempre con un sustrato físico que se puede encontrar y destruir, con costo, y con algo que se pierde en cada vuelta. No hay resurrección gratis.
+- **Temas físicos:** plagas (body-health: contagio), deseo y emociones (npc-psychology), sueños ajenos (npc-psychology §15), tormentas y mar (weather), fuego, luz y sombras (elements), máquinas (technology). Un camino se arma con modos de verbos que ya existen.
 
 ## 6. Digerir: actuar el papel
 
@@ -151,6 +177,14 @@ interface ControlState {
 - **Frenarla:** digerir, descansar, rituales de calma, objetos que estabilizan, compañía, ayuda de un sacerdote del camino. También medicina y psicología mundanas. Nada de eso es gratis ni seguro.
 - **Muerte del jugador:** perder el control termina la vida como persona. Según la ley del mundo, el alma puede quedar atrapada en la criatura, disiparse o cruzar (spirits); la partida sigue las mismas reglas de morir (player-loop).
 
+## 7b. Anclas y bendecidos
+
+- **Anclas.** Desde las secuencias medias, el peso de la característica y los susurros crecen más rápido de lo que una voluntad sola aguanta. Lo que estabiliza son las **anclas**: personas que creen en uno, lo recuerdan o le rezan con sinceridad. Cada ancla sube el umbral de control según su sinceridad y su vínculo, con techo y pérdida por distancia como la devoción ([spirits.md](spirits.md) §6).
+- **Por eso los altos buscan fieles:** iglesias, cultos, una identidad pública, fama, descendientes que los recuerden. Un dios sin fieles se vuelve loco; un ángel olvidado se deshace en su papel.
+- **Las anclas son creencias en mentes reales.** Si los fieles mueren, se convierten u olvidan, el ancla se pierde. Un rival puede atacar las anclas de otro: perseguir a su culto, borrar su nombre, difundir otra imagen.
+- **El ancla tira hacia lo que creen.** Si los fieles creen algo distinto de lo que uno es, uno deriva hacia esa imagen. Una iglesia que cambia la doctrina cambia a su dios, despacio.
+- **Bendecidos.** El alto puede dar a sus fieles más cercanos una bendición: espiritualidad, suerte inclinada, protección, una marca que otros extraordinarios pueden leer. Sale de su espiritualidad o de su característica (conservación) y los ata: el bendecido es visible para el que bendice, y para sus enemigos.
+
 ## 8. Misticismo
 
 - **Espiritualidad.** Es la esencia de esta familia en la persona: todos tienen un poco, los extraordinarios mucho más. Sirve para percibir lo invisible (ver auras, sentir el peligro), para adivinar y para hacer rituales. Se gasta y se recupera con descanso y sueño.
@@ -164,6 +198,16 @@ interface ControlState {
 - **El mundo espiritual** es una capa superpuesta al mundo físico ([cosmology.md](cosmology.md) §3), con criaturas espirituales, corrientes y profundidades. Los rituales, la adivinación y algunos poderes pasan por ahí. Se puede **proyectar** el espíritu (viaje astral) con riesgo de perderse o de encontrarse con algo.
 - **Sueños:** el sueño (npc-psychology) toca el mundo espiritual. Los sueños pueden traer mensajes reales, ataques, o ser solo sueños. Algunos caminos actúan en sueños ajenos.
 - **Espacios por encima:** un mundo puede tener lugares sellados en el mundo espiritual: un salón antiguo sobre una niebla, una biblioteca fuera del tiempo, que alguien puede encontrar y tomar. Tienen creador y causa (secret-realms) y son raros. En modo novela pueden ser el origen de un dedo de oro (game-modes §4).
+
+## 8b. Formas verdaderas, lenguas místicas, mensajeros y el pasado
+
+- **Formas verdaderas.** Las secuencias altas tienen una forma mítica: lo que la característica hace del cuerpo cuando se suelta. Verla, oírla, o conocer su descripción completa sube la presión de control del que mira según la diferencia de secuencias; los mortales enloquecen o mueren. Es percepción con efecto ([perception.md](perception.md) §1): los canales que llevan la forma son los que dañan.
+- **Lenguas místicas.** Algunas lenguas antiguas (de dioses, de razas antiguas, de la época del origen: [language.md](language.md) §11) pesan en los rituales: un ritual dicho en la lengua que el ser invocado entiende, o en la que nacieron los caminos, es más preciso y llega mejor. Se aprenden con estudio y riesgo, porque sus textos pueden contaminar.
+- **Mensajeros.** Criaturas del mundo espiritual con las que se hacen contratos ([contracts.md](contracts.md), living-world: vínculos con bestias) para llevar cartas y objetos. Se convocan con un ritual, tienen carácter y cobran. Son correo seguro entre extraordinarios, y también una huella.
+- **Proyecciones del pasado.** El mundo guarda una capa con la huella de lo que fue: el registro de eventos de la sim, accesible solo por poderes. Algunos caminos pueden invocar una **proyección** de una persona, una criatura o un objeto del pasado: una figura que repite, por un rato, capacidades limitadas de lo que esa entidad fue en un momento. Se arma desde la verdad registrada y nunca se inventa: si algo no pasó, no hay proyección. Leer esa capa con adivinación da escenas del pasado, con la interpretación sesgada de siempre.
+- **Convocar a otros al espacio.** Quien controla un espacio sellado por encima del mundo espiritual puede llamar a él los espíritus de otros, que asisten en proyección (con un rezo que lo nombra o con un vínculo previo). Así nace una sociedad secreta que se reúne donde nadie más llega, con miembros que no saben quiénes son los demás. Quien convoca puede mostrarse como quiera, y los demás construyen creencias sobre él.
+- **Astros y ciclos.** La luna, ciertos astros o la noche modulan la espiritualidad y algunos caminos ([cosmology.md](cosmology.md) §2). Lunas rojas, eclipses y conjunciones tienen efectos reales cuando la ley del mundo lo dice.
+- **Ocultarse de la adivinación.** Objetos, poderes o la protección de un ser alto dejan a alguien fuera de las lecturas. Eso deja huecos que un buen adivino nota como huecos, y un hueco también es información.
 
 ## 9. Objetos sellados
 
@@ -191,6 +235,8 @@ interface SealedArtifact {
 - **Doctrina vs verdad** ([religion.md](religion.md) §3): lo que la iglesia enseña del dios, de su historia y de los demás dioses es en parte verdad, en parte conveniencia y en parte error. Un dios puede haber usurpado su lugar, puede estar loco, dormido o muerto con una iglesia que no lo sabe.
 - **Límites a los dioses:** ninguno baja a placer. Su intervención directa cuesta (atención, característica, el equilibrio con otros dioses, pactos viejos) y deja rastros. Prefieren ángeles (secuencias 1-2), oráculos y sueños.
 - **Dioses y unicidad:** la cima tiene una plaza, y alguien siempre la quiere. Hay guerras ocultas entre dioses por caminos vecinos, conspiraciones para hacer subir a un candidato, y planes de siglos (schemes) que la sim corre en agregado.
+- **Reinos divinos:** cada dios puede tener un reino propio en el mundo espiritual (un plano `divine`, [cosmology.md](cosmology.md) §1) donde recibe a sus fieles muertos o guarda lo suyo, si la ley de almas del mundo lo permite.
+- **Dioses sellados, dormidos o caídos:** un dios puede estar encerrado por otros, dormido tras una guerra, partido en pedazos o muerto con la característica suelta. Sus cultos esperan su regreso; sus enemigos vigilan el sello (cosmology §9).
 - **Falsos dioses:** cultos que adoran a un extraordinario alto, a un objeto sellado, a un ser que no es lo que dice, o a nada. Pueden funcionar en lo social sin llegar a ningún lado en lo espiritual, o llegar a algo peor.
 
 ## 11. Lo de afuera
@@ -220,6 +266,8 @@ interface SealedArtifact {
   - **reuniones y mercados:** encuentros anónimos con máscaras donde se cambian fórmulas, ingredientes, objetos sellados y favores (economy: mercados con desconfianza alta).
 - **Oficios del misterio:** detectives privados, médicos que atienden heridas raras, anticuarios, prestamistas de objetos, cazadores de recompensas, periodistas que investigan, adivinos de feria (algunos con poder real).
 - **Ley:** el crimen sobrenatural tiene jurisdicción doble: la policía mortal ve un asesinato y la escuadra de la iglesia ve una pérdida de control. Los tribunales de las iglesias juzgan a su modo (law).
+- **Técnica mística:** la era produce híbridos (technology §7): munición hecha con materiales sobrenaturales, máquinas con objetos sellados adentro, caminos ligados a la técnica con su iglesia propia, laboratorios de pociones, fotografía que capta el mundo espiritual.
+- **Lo grande de la era:** imperios coloniales, guerras entre potencias con extraordinarios en los ejércitos (war), smog mortal en las ciudades (technology §9), huelgas y revoluciones (social-structure). Los dioses y las iglesias juegan detrás.
 - **Economía de las características:** ingredientes, fórmulas y objetos son bienes con precios de creencia, falsificaciones y estafas. Matar extraordinarios por sus características es un mercado (law: crimen organizado).
 
 ## 14. Cuando la era no es la típica
@@ -270,9 +318,58 @@ interface SealedArtifact {
 ## 18. Implementación por fase
 
 - **Fases 1-6:** nada propio. Las interfaces genéricas de metaphysics no deben suponer xianxia: progresión por niveles con nombre, costo como presión, esencia conservada en lotes.
-- **Fase 7:** generador de la familia: caminos desde un origen en la historia profunda, secuencias con fórmula, papel, poderes y formas de pérdida; ledger de características; dioses como agentes con plaza; iglesias; era típica industrial con el eje de era. Si se aprueba como segunda familia, entra aquí (Decisiones).
+- **Fase 7** (aprobado 2026-10-06): es la **segunda familia** que se implementa, antes que la occidental. Generador de la familia: caminos desde un origen en la historia profunda, secuencias con fórmula, papel, poderes y formas de pérdida; ledger de características; dioses como agentes con plaza; iglesias; era típica industrial con el eje de era.
 - **Fase 8:** misticismo completo (nombres honoríficos, mundo espiritual, sueños, proyección), objetos sellados, sociedades y reuniones, lo de afuera, épocas con cataclismos, presión de reunión.
 - **Fase 9:** variaciones dentro de la familia, eras no típicas, narración con tono de la familia, dedos de oro de esta familia en modo novela.
+
+## 19. Cobertura de la obra
+
+Todo lo que tiene *Lord of the Mysteries* tiene que poder pasar en un mundo de esta familia, sin nombres propios. Esta tabla dice dónde vive cada cosa. Si aparece un elemento que no está, se agrega acá y en la sección que corresponda.
+
+| Elemento | Dónde vive |
+|---|---|
+| Caminos, secuencias 9→0, nombres de secuencia por cultura | §1 |
+| Pociones, ingredientes principales y auxiliares, rituales al beber | §2 |
+| Fórmulas secretas, falsas, compradas, robadas, heredadas | §2, economy, information |
+| Saltar secuencias, mezclar caminos | §1, §2 |
+| Conservación de características, salida al morir, cadáveres como ingrediente | §3 |
+| Restos de mente en la característica | §3 |
+| Familias con sangre de camino | §3, family-lineage §9 |
+| Ley de convergencia, caminos vecinos, intercambio | §4 |
+| Unicidad, una plaza por cima, guerras de dioses | §4, §10 |
+| Ángeles, reyes de ángeles, pilares por encima de los dioses | §4b |
+| Sedes de grupo (castillos y palacios de poder) | §4b |
+| Razas antiguas con caminos, reliquias con todas las fórmulas | §4b, deep-history |
+| Poderes por banda, armas mortales contra extraordinarios | §5 |
+| Destino, suerte, tiempo, espacio, identidad, mente, marionetas, parasitismo, injertos, volver de la muerte | §5b |
+| Método de actuación, el papel que cambia a la persona | §6 |
+| Pérdida de control, monstruos, mutaciones, locura | §7 |
+| Anclas, fieles que estabilizan, bendecidos | §7b |
+| Espiritualidad, visión espiritual, intuición del peligro | §8 |
+| Adivinación (sueños, péndulo, espejo, cartas), anti-adivinación | §8, §8b, divination |
+| Rituales, nombres honoríficos, rezos que llegan, saber peligroso | §8 |
+| Mundo espiritual, proyección astral, sueños | §8, cosmology §3 |
+| Espacio sellado por encima de la niebla, reuniones de espíritus convocados | §8, §8b |
+| Formas verdaderas que enloquecen | §8b |
+| Lenguas antiguas con peso ritual | §8b, language §11 |
+| Mensajeros del mundo espiritual | §8b, contracts |
+| Proyecciones del pasado, el pasado como capa legible | §8b |
+| Lunas y astros que modulan caminos | §8b, cosmology §2 |
+| Objetos sellados con costo, clasificados y contenidos | §9 |
+| Dioses reales, iglesias, doctrina vs verdad | §10, religion |
+| Reinos divinos; dioses sellados, dormidos, caídos, usurpadores, locos | §10 |
+| Falsos dioses y cultos | §10 |
+| Lo de afuera, corrupción, cultos, barrera | §11, cosmology §10 |
+| Origen de los caminos, épocas con cataclismos, el regreso | §12, deep-history |
+| Era industrial: niebla, vapor, periódicos, policía, clubes, colonias | §13, technology §9b |
+| El secreto ante los mortales y sus filtraciones | §13 |
+| Escuadras de las iglesias, agencias del estado, familias nobles, sociedades secretas | §13, organizations |
+| Reuniones anónimas con máscaras, mercado negro | §13, economy |
+| Detectives, anticuarios, adivinos de feria, cazadores de recompensas | §13 |
+| Doble jurisdicción y tribunales de iglesia | §13, law |
+| Técnica mística, guerras entre potencias, smog, revoluciones | §13, war, technology |
+| Eras no típicas | §14 |
+| Un protagonista transmigrado con un espacio propio sobre la niebla | §16 (modo novela, game-modes §4) |
 
 ## Tests
 
@@ -287,6 +384,17 @@ interface SealedArtifact {
 - **Convergencia:** con todo igual, los extraordinarios de un mismo camino se cruzan más seguido que los de caminos distintos, sin teletransportes.
 - **Sin fuga:** el narrador no recibe la fórmula verdadera, el umbral ni nombres que el personaje no conoce.
 - **Determinismo:** mismo seed, mismas acciones → mismos caminos, mismas pociones, mismas pérdidas de control.
+- **Anclas:** con todo igual, un extraordinario alto con fieles sinceros pierde el control menos que uno sin fieles; si los fieles mueren, la diferencia desaparece.
+- **Proyecciones:** una proyección del pasado solo se puede armar de una entidad con eventos registrados, y sus capacidades no superan las que tuvo.
+- **Poderes conceptuales:** cada poder de §5b declara la estructura que toca, el costo, lo que conserva y el rastro; el validador rechaza los que no.
+- **Cobertura:** cada fila de la tabla de §19 tiene al menos un escenario headless que la muestra pasando en un mundo generado.
+
+## Decisiones (aprobado 2026-10-06)
+- **Peso de la familia: 15%**, la segunda más común (xianxia 50%, misterios 15%, occidental 12%, oscura 9%, mitológica 9%, rúnica 5%).
+- **Segunda familia en implementarse** (Fase 7), antes que la alta fantasía occidental (§18).
+- **Tendencia a la era:** 70% la típica, 25% las vecinas, 5% las raras (technology §9b).
+- **Familia y era se pueden fijar al configurar,** en los dos modos; por defecto salen del seed con sus pesos (game-modes §1).
+- **Todo lo de la obra tiene que ser posible** en la sim, sin nombres propios; la tabla de §19 lo controla.
 
 ## Decisiones tomadas en este borrador (revisables)
 

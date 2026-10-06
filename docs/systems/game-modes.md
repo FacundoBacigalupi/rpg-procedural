@@ -46,7 +46,7 @@ interface NovelSetup {
 }
 ```
 
-- **`WorldConstraints`:** restricciones sobre el mundo y no sobre el personaje: la familia ([metaphysics.md](metaphysics.md)), la era ([technology.md](technology.md) §9b), y ejes sueltos de la ley del mundo. Lo que no se fija sale del seed con sus pesos. Fijar la era no garantiza llegar: la historia corre igual y puede quedar en la más cercana.
+- **`WorldConstraints`** (aprobado 2026-10-06): restricciones sobre el mundo y no sobre el personaje: la familia ([metaphysics.md](metaphysics.md)), la era ([technology.md](technology.md) §9b), y ejes sueltos de la ley del mundo. Lo que no se fija sale del seed con sus pesos. Fijar la era no garantiza llegar: la historia corre igual y puede quedar en la más cercana.
 - **Validación con Zod** y un validador de coherencia contra el mundo (§2.4).
 - **Se guarda como archivo** (`content/setups/` o donde el usuario quiera) para reusar configuraciones.
 - **Forma parte del replay** (tooling §3): mismo seed + mismo setup + mismos planes = mismo mundo. El mundo de una vida en modo novela **no es** el mismo que el del modo realista con la misma seed: los hechos fijados de la configuración cambian lo que pasa desde el momento en que se fijan.

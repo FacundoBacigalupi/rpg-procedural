@@ -196,7 +196,7 @@ interface EraMarker {
 }
 ```
 
-- **Inclinación por familia.** El seed elige la era con `rng.fork("era", seed)` condicionado a la familia:
+- **Inclinación por familia** (aprobado 2026-10-06). El seed elige la era con `rng.fork("era", seed)` condicionado a la familia:
 
 | Familia | Típica (≈70%) | Vecinas (≈25%) | Raras (≈5%) |
 |---|---|---|---|
