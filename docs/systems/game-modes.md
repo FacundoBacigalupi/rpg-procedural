@@ -349,8 +349,8 @@ type EffectAction =
 
 - **Todo pasa por un proceso real.** `modify` solo toca parámetros que los procesos declaran modificables (el ruido de control de una sesión, la velocidad de la curva, la tasa de absorción). `absorb` es una transferencia con conservación: lo que gana el portador lo pierde la víctima.
 - **Las reglas se combinan.** "El arma que crece devorando" es `event: kill` + `absorb: victim.qi` + `modify: item.grade`, con crecimiento por alimentación.
-- **Proyectar (el simulador):** `project` corre la sim sobre una **copia descartable** desde el estado actual, con la política del personaje o con el jugador jugando adentro ("una vida simulada en un sueño"). Lo que el personaje vivió en la copia vuelve como memorias con la fidelidad configurada. Es un pronóstico: el mundo real puede ir distinto, porque el personaje ya no es el mismo después de ver el futuro. Es determinista, y la copia nunca escribe en la verdad.
-- **Volver (regresar al morir, bucles):** `rewind` restaura un snapshot anterior del mundo y le pone al personaje las memorias de lo vivido como creencias. La rama descartada queda en el archivo, y la crónica cuenta todas las vueltas. Tiene topes (cuántas veces, hasta cuándo) y costos configurables.
+- **Proyectar (el simulador):** `project` corre la sim sobre una **copia descartable** desde el estado actual, con la política del personaje o con el jugador jugando adentro ("una vida simulada en un sueño"). Se elige **en cada uso** (aprobado 2026-10-06): jugarla vos adentro, para lo importante, o dejar que la viva el personaje con su política y recibir un resumen (como el montaje de player-loop), para avanzar rápido. Lo que el personaje vivió en la copia vuelve como memorias con la fidelidad configurada. Es un pronóstico: el mundo real puede ir distinto, porque el personaje ya no es el mismo después de ver el futuro. Es determinista, y la copia nunca escribe en la verdad.
+- **Volver (regresar al morir, bucles):** `rewind` restaura un snapshot anterior del mundo y le pone al personaje las memorias de lo vivido como creencias. La rama descartada queda en el archivo, y la crónica cuenta todas las vueltas. Tiene topes y costos configurables; por defecto **3 vueltas con costo creciente**, y se puede configurar como ilimitado (aprobado 2026-10-06).
 
 ### 5.10 Catálogo de tropos
 
@@ -637,6 +637,8 @@ Cada vida guarda en `meta` y en el archivo (chronicle §9):
 - **Guardados:** se eligen al configurar; `one_life` por defecto; cada carga queda en el archivo (§9).
 - **Sin cambio de modo a mitad de una vida** (§9).
 - **Rivales con dedo de oro:** 0 por defecto en todos los presets, configurable (§8).
+- **Volver al morir:** 3 vueltas por defecto, con costo creciente; configurable hasta ilimitado (§5.9).
+- **Simulador:** en cada uso se elige jugar la vida simulada o recibir un resumen (§5.9).
 - **Dedo de oro sin origen elegido:** el mundo elige uno coherente y lo oculta; el personaje lo descubre y la crónica lo revela (§4).
 
 ## Decisiones tomadas en este borrador (revisables)
