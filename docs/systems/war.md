@@ -75,7 +75,7 @@ interface WarAim {
 interface ArmedForce {
   id: ForceId;
   owner: OrgId;                              // el estado, la secta, el señor, el capitán mercenario
-  commander: PersonId;
+  commander: AgentId;
   units: UnitId[];
   location: CellId;
   supply: SupplyState;                       // (§3)
@@ -87,8 +87,8 @@ interface ArmedForce {
 interface Unit {
   id: UnitId;
   kind: UnitKindId;                          // contenido por cultura y era: infantería de levas, arqueros, caballería, carros, discípulos, bestias de guerra, constructos
-  members: PersonId[] | MemberDistribution;  // personas concretas cerca del jugador, distribución en agregado
-  officer?: PersonId;
+  members: AgentId[] | MemberDistribution;  // personas concretas cerca del jugador, distribución en agregado
+  officer?: AgentId;
   equipment: LotId[];                        // armas, armaduras, talismanes, monturas (economy, crafts)
   training: number;                          // 0..1, cuánto practicó maniobras y formación cerrada
   experience: number;                        // batallas vistas (sube la habilidad y también el trauma)
@@ -164,7 +164,7 @@ type MoraleDriver =
   | { kind: "fatigue" }
   | { kind: "losses"; fraction: number }     // compañeros caídos, sobre todo los que vieron caer
   | { kind: "victory" | "defeat"; eventId: EventId }
-  | { kind: "commander"; personId: PersonId; trust: number }
+  | { kind: "commander"; agent: AgentId; trust: number }
   | { kind: "cause"; belief: BeliefId }      // creer en la causa: defender la casa, la fe, la venganza
   | { kind: "fear"; source: EntityRef }      // un cultivador, una bestia, un presagio, una formación desconocida
   | { kind: "home"; pull: number }           // la cosecha, la familia, la distancia

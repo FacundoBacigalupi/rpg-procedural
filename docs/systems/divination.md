@@ -86,7 +86,7 @@ interface FutureReading {
 interface Reading {
   id: ReadingId;
   method: MethodId;
-  reader: PersonId;
+  reader: AgentId;
   propositions: ReadProposition[];           // lo que el motor efectivamente leyó (verdad + ruido + huecos); oculto al jugador
   omen: Omen;                                // cómo se manifestó (§4)
   backlash?: EventId;                        // reacción sufrida (§6)
@@ -100,7 +100,7 @@ interface Omen {
 
 interface Interpretation {
   reading: ReadingId;
-  interpreter: PersonId;                     // puede no ser quien leyó
+  interpreter: AgentId;                     // puede no ser quien leyó
   claims: Belief[];                          // lo que el intérprete concluye y dice (information)
   bias: InterpretationBias[];                // dogma de escuela, interés propio, lo que el cliente quiere oír, miedo
 }

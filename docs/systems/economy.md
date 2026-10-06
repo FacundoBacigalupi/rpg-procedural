@@ -142,7 +142,7 @@ Producir es una **acción** (del mismo catálogo del jugador) o un proceso de un
 
 ```ts
 interface ProductionProcess {
-  id: ProcessId;                       // "cultivar arroz", "fundir hierro", "refinar píldora de reunir qi"
+  id: TechProcessId;                   // "cultivar arroz", "fundir hierro", "refinar píldora de reunir qi"
   inputs: Array<{ good: GoodId; qty: number; qualityReq?: QualityReq }>;
   labor: { skill: SkillId; hours: number; minLevel: number };
   tools?: GoodId[];                    // se gastan (desgaste: el ledger los degrada)

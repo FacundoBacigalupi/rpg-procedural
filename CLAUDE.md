@@ -6,7 +6,7 @@ Juego personal (un solo jugador, para el autor). El jugador escribe en texto lib
 
 Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/VISION.md](docs/VISION.md) — qué es el juego y sus principios de diseño.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — capas, carpetas, reglas de dependencia, modelo de datos.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — capas, carpetas por sistema, reglas de dependencia, **tipos centrales canónicos** (ids, `Event`, `CauseRef`, `PlaceRef`, ítem vs lote, nombres genéricos de la metafísica) y **qué módulo es dueño de cada tipo compartido**. Si un doc de sistema lo contradice en un tipo compartido, manda ARCHITECTURE. Orden de implementación dentro de cada fase.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — **qué sigue** (sección "Ahora"), fases y estado. Si el usuario pregunta con qué seguir, leer esto. Actualizar al cerrar algo.
 - [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) — ramas (`main`, `develop`, `feat/*`…), commits, CI, secretos.
 - [docs/systems/simulation.md](docs/systems/simulation.md) — **el motor**: scheduler por fases con procesos puros, tiempo en ticks, dos ejes de LOD (tier de agente 0-4 y resolución de zona: escena, local, regional, mundo, historia), materialización por ranuras con hechos fijados, puesta al día de dormidos, contrato del modo agregado, presupuesto determinista, la historia y el juego como una sola corrida.

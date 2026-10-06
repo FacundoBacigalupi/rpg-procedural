@@ -96,7 +96,7 @@ interface Opening {
   realm: RealmId;
   cause: "tide" | "celestial" | "key" | "force" | "creator_design" | "decay" | "external_event";
   window: { start: Tick; end: Tick };        // cuánto dura abierta; los que no salen a tiempo quedan adentro hasta la próxima (o mueren)
-  entrants: PersonId[] | EntrantDistribution;
+  entrants: AgentId[] | EntrantDistribution;
   exits: ExitRecord[];                       // quién salió, cuándo, con qué (en verdad)
   originEventId: EventId;
 }

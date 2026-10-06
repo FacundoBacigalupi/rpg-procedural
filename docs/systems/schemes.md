@@ -53,7 +53,7 @@ interface Scheme {
   owner: AgentId;
   target: AgentId;
   goal: GoalId;                 // el objetivo que la motiva (con originEventId)
-  plan: PlanNode;               // árbol: pasos, ramas condicionales, contingencias
+  plan: SchemeStep;             // árbol: pasos, ramas condicionales, contingencias
   targetModel: BeliefRef;       // cómo cree el intrigante que piensa la víctima
   accomplices: AgentId[];       // quiénes participan (y cuánto saben)
   status: "preparing" | "active" | "adapting" | "succeeded" | "failed" | "abandoned" | "exposed";
@@ -61,11 +61,11 @@ interface Scheme {
   log: EventId[];               // eventos que produjo
 }
 
-interface PlanNode {
-  step: ActionTemplate | MethodRef;
+interface SchemeStep {          // envuelve un PlanNode de actions §3 (ARCHITECTURE §6)
+  step: PlanNode | MethodRef;   // lo que se hace: un plan de verbos o un método conocido
   expects?: PredictedReaction;  // qué cree que hará la víctima
-  branches?: Array<{ if: Condition; then: PlanNode }>; // si la víctima hace otra cosa
-  next?: PlanNode;
+  branches?: Array<{ if: Condition; then: SchemeStep }>; // si la víctima hace otra cosa
+  next?: SchemeStep;
 }
 ```
 
@@ -149,7 +149,7 @@ interface Project {
   kind: ProjectKind;
   owner: AgentId | OrgId | FactionId;   // quien lo concibió o la organización que lo decidió
   goal: GoalId;                          // el objetivo que lo motiva (con originEventId)
-  plan: PlanNode;                        // el plan como lo tiene el dueño (sección 3)
+  plan: SchemeStep;                      // el plan como lo tiene el dueño (sección 3)
   participants: Participation[];
   targets: Array<AgentId | OrgId>;       // vacío si no es contra nadie
   secrecy: "open" | "discreet" | "secret" | "compartmented";
@@ -163,7 +163,7 @@ interface Project {
 interface Participation {
   agent: AgentId;
   role: RoleId;                          // líder, financista, guía, músculo, cebo, chivo expiatorio, obrero
-  knownPlan: PlanNode | null;            // lo que este participante cree que es el plan (puede diferir del real)
+  knownPlan: SchemeStep | null;            // lo que este participante cree que es el plan (puede diferir del real)
   believedShare: ShareRef;               // lo que cree que va a recibir
   joinedBy: EventId;                     // invitación, orden, contrato, coacción
   stake: number;                         // lo que aportó y arriesga
