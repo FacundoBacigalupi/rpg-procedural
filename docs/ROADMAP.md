@@ -58,7 +58,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
 - causality: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; efecto y duración de las chispas.
 - schemes: tasa de intrigas entre organizaciones por par; proporción de free riders; frecuencia con que una profecía usada se vuelve contra el que la usó.
-- planet-gen: largo y amplitud de los ciclos glaciales; tasas de formación y agotamiento de suelos; recarga y explosividad de volcanes; frecuencia de impactos.
+- planet-gen: período y amplitud de las oscilaciones oceánicas; largo y amplitud de los ciclos glaciales; tasas de formación y agotamiento de suelos; recarga y explosividad de volcanes; frecuencia de impactos.
 - perception: curvas de atenuación y `k` de la sigmoide.
 - body-health: curación, infección y mortalidad.
 - cultivation: tasas de absorción, dificultad de rupturas y longevidad por umbral (forma de la pirámide de cultivadores).
@@ -180,6 +180,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] `QiDebt` por sobreexplotación y retribución mínima como inclinación de las tiradas del deudor ([heaven-karma.md](systems/heaven-karma.md) §6)
 - [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
 - [ ] Proyectos cooperativos de aldea y caravanas: participantes con `knownPlan`, pool con conservación, repartos con compromisos, free riders ([schemes.md](systems/schemes.md) §9)
+- [ ] Oscilaciones oceánicas de pocos años (años buenos y malos) para la región ([planet-gen.md](systems/planet-gen.md) §3)
 - [ ] Suelos por parcela con nutrientes que se mueven, agotamiento, barbecho y abono; rendimientos que alimentan la presión de hambre ([planet-gen.md](systems/planet-gen.md) §9)
 
 ## Fase 4 — Cultivo

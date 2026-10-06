@@ -88,6 +88,7 @@ No es una simulación física completa: es un modelo que produce formas creíble
   - Las frías bajan por las costas oeste, enfrían el aire y frenan la lluvia: desiertos costeros (Atacama, Namib).
   - Donde el agua fría sube a la superficie (afloramiento) hay pesca muy rica: pueblos pescadores con causa.
   - El agua también lleva qi: una corriente cálida que pasa por una vena submarina de fuego lo transporta hacia otras costas.
+- **Oscilaciones de pocos años** (tipo El Niño): el acople entre los vientos y la temperatura del océano en cada cuenca oscila con un período de 2-7 años, calculado desde las corrientes y los vientos de esta etapa (determinista, con `rng.fork("planet", "oscillation", cuenca)` solo para la fase inicial). Cada fase cambia la lluvia y la temperatura de las costas y del interior conectado: sequía en un lado de la cuenca, lluvias e inundaciones en el otro, pesca que se va con el afloramiento. Es la variabilidad que se nota en una vida (años buenos y malos) y la que [living-world.md](living-world.md) §1 usa para sequías e inundaciones. Se suma a los ciclos largos de §8 y a los inviernos volcánicos de §10.
 
 ### 4. Biomas
 - Clasificación tipo **Whittaker** (temperatura × precipitación) + altitud + suelo, desde `content/biomes.json` validado con Zod.
@@ -304,6 +305,7 @@ interface VolcanicWinter {
 - Conservación del agua: océano + hielo + lagos + subterránea es constante en todo ciclo glacial; el nivel del mar baja exactamente lo que crece el hielo sobre tierra.
 - Un puente de tierra existe solo si el nivel del mar está por debajo de la plataforma que lo forma, y tiene como causa el avance glaciar.
 - El clima de largo plazo sigue los ciclos orbitales: con acople de qi en cero, la marea de qi no cambia el clima.
+- Oscilaciones oceánicas: cada sequía o inundación de pocos años tiene como causa una fase registrada de la oscilación de su cuenca (o un invierno volcánico).
 - Suelos: los nutrientes que salen de una parcela entran en la cosecha y siguen su camino (conservación); un suelo no recupera fertilidad sin barbecho, abono, sedimento, ceniza o meteorización.
 - Volcanes: ninguna erupción sin presión acumulada; un volcán sellado conserva su presión y, si el sello cae, erupciona más grande.
 - Invierno volcánico: la caída de temperatura de cada banda se explica por la carga de aerosol de un evento registrado, y decae.
@@ -313,7 +315,7 @@ interface VolcanicWinter {
 Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), pero conviene adelantar una versión mínima:
 - **Mínimo (antes o durante la Fase 1):** grilla + tectónica + elevación + clima (con corrientes oceánicas) + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
 - **Después:** hidrología completa, erosión, anomalías, nivel 1 local.
-- **Fase 3:** suelos por parcela con nutrientes, agotamiento, barbecho y abono, rendimientos que alimentan la presión de hambre (§9).
+- **Fase 3:** oscilaciones oceánicas de pocos años para la región de la aldea (años buenos y malos); suelos por parcela con nutrientes, agotamiento, barbecho y abono, rendimientos que alimentan la presión de hambre (§9).
 - **Fase 5:** suelos agregados por celda, erosión y salinización por uso, volcanes con presión y erupciones con efectos locales y ceniza (§9, §10).
 - **Fase 7:** clima de largo plazo por época en la historia profunda: glaciaciones, nivel del mar, puentes de tierra, costas sumergidas; supervolcanes e impactos (§8, §10).
 - **Fase 8:** inviernos volcánicos con aerosol por bandas y sus cadenas (hambre, presagios, legitimidad); estrellas caídas como materiales (§10).
@@ -327,6 +329,7 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - Un sol (binaria rara y estable). Lunas según su origen físico, nunca dos grandes.
 - La frecuencia de tesoros no es un parámetro aparte: sale del qi del planeta (presupuesto de la cosmología, fuerza del Cielo, venas). Un mundo rico en qi está lleno de tesoros y uno en decadencia casi no tiene.
 - Corrientes oceánicas desde el mínimo: dan climas costeros distintos a la misma latitud, desiertos costeros, zonas de pesca y transporte de qi.
+- **Variabilidad de pocos años:** oscilaciones oceánicas por cuenca (2-7 años, tipo El Niño) calculadas desde las corrientes de la etapa 3; dan los años buenos y malos de una vida (aprobado 2026-10-06).
 - Mareas de qi por ciclos astronómicos, subsuelo con capas, océanos como fronteras y qi tóxico para mortales.
 - La geografía imposible tiene dos orígenes: natural (acumulación de qi) o histórico (batallas de inmortales, sellos, espadas que parten continentes).
 - Los nombres los ponen las culturas, no el generador.
@@ -339,5 +342,4 @@ Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), per
 - **Impactos deterministas** desde una población de cuerpos con órbitas calculables; las estrellas caídas dan hierro meteórico.
 
 ## Preguntas abiertas
-- ¿Debe el clima de una vida tener variabilidad anual (años buenos y malos, oscilaciones tipo El Niño) además de los ciclos largos? Propuesta: sí, con oscilaciones oceánicas de pocos años calculadas desde las corrientes (etapa 3), que son las que living-world §1 usa para sequías e inundaciones.
-- Calibración: largo de los ciclos glaciales y su amplitud de nivel del mar; tasas de formación y agotamiento de suelos por textura y cultivo; recarga y explosividad de volcanes; frecuencia de impactos por tamaño.
+- Calibración: período y amplitud de las oscilaciones oceánicas por tamaño de cuenca; largo de los ciclos glaciales y su amplitud de nivel del mar; tasas de formación y agotamiento de suelos por textura y cultivo; recarga y explosividad de volcanes; frecuencia de impactos por tamaño.
