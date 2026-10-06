@@ -285,7 +285,7 @@ Cada tipo define las obligaciones típicas, las garantías y ejecutores habitual
 | Tratado: alianza, no agresión, tregua, vasallaje | Organizaciones | Según términos; rehenes e intercambios | Garantía, social, kármico (con rito) | organizations §10, [war.md](war.md) §11 |
 | Rescate | Captor, familia | Pagar; liberar | Garantía (el cautivo) | [war.md](war.md) §10 |
 | Servidumbre por deudas | Acreedor, siervo | Servir hasta pagar (que casi nunca llega) | Tribunal, fuerza, atadura | [social-structure.md](social-structure.md) §7 |
-| Pacto con espíritu o bestia | Persona, espíritu o bestia | Ofrendas, servicio, ayuda en combate | Atadura (contrato de alma), la otra parte | spirits, [living-world.md](living-world.md) §13 |
+| Pacto con espíritu o bestia | Persona, espíritu o bestia | Ofrendas, servicio, ayuda en combate | Atadura (contrato de alma), la otra parte | [spirits.md](spirits.md) §9, [living-world.md](living-world.md) §13 |
 | Pacto con patrón | Persona, patrón | Servicio, fe, sacrificios; poder | Patrón | metaphysics (otras familias) |
 
 ## 12. Organizaciones y compromisos

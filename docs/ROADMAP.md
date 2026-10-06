@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#25, spirits: economía de ofrendas a ancestros**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#26, deep-history: arqueología como juego**, el último). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -45,7 +45,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 22. [x] [causality.md](systems/causality.md) §9-§11 + [schemes.md](systems/schemes.md) §9-§13: mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
 23. [x] [planet-gen.md](systems/planet-gen.md) §8-§12: glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
 24. [x] [living-world.md](systems/living-world.md) §8-§16: poblaciones y redes tróficas, sucesión ecológica y fuego, especies invasoras por rutas comerciales, migraciones estacionales, domesticación y contratos con bestias.
-25. [ ] [spirits.md](systems/spirits.md): economía de ofrendas a ancestros; qué pasa cuando un linaje deja de ofrendar.
+25. [x] [spirits.md](systems/spirits.md) §6-§12: economía de ofrendas a ancestros (ofrendas como física, santuarios, ancestros que se quedan, dioses locales y cultos); qué pasa cuando un linaje deja de ofrendar.
 26. [ ] [deep-history.md](systems/deep-history.md): arqueología como juego (estratos, datación de objetos, nombres de lugares deformados como pistas).
 
 ### Después del backlog
@@ -78,6 +78,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - chronicle: decaimiento de la huella causal por distancia y causas concurrentes; capítulos y puntos de giro según la duración de la vida; puntos de control del epílogo y umbral para seguir más allá del siglo; errores por copia y reescritura por cambio de régimen; tamaño y criterio de "lo que nunca supiste". Cobro en las Fuentes: peso de esencia, años y karma frente a la fuerza del alma (que un cultivador de los primeros umbrales renazca débil y uno alto con mucha deuda se disuelva).
 - heaven-karma: capacidad de atención por fuerza del Cielo y rendimientos decrecientes; techo de la inclinación de tiradas; umbral de déficit de qi para calamidad; descuento por mérito; cierre de heridas del Cielo; fracción del rayo que se puede robar.
 - living-world: velocidad de sucesión por bioma; hazard de incendio por combustible y sequía; establecimiento y latencia de introducciones; crecimiento y respuesta funcional por linaje; generaciones para una raza; pérdida y recuperación de rutas de migración; efecto de la domesticación sobre el núcleo de las bestias espirituales.
+- spirits: qi que aporta un fiel sincero; fuga del `qiPool` según el estado del edificio; siglos para que un santuario despierte un espíritu; `upkeep` por tipo, lugar y hora.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -98,7 +99,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — §8-§12 (glaciaciones, suelos, volcanes e inviernos volcánicos) en borrador
 - [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
 - [x] Mundo vivo ([systems/living-world.md](systems/living-world.md)) — §8-§16 (poblaciones, sucesión y fuego, invasoras, migraciones, domesticación, vínculos con bestias) en borrador
-- [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador
+- [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador; §6-§12 (ofrendas, santuarios, ancestros, dioses locales, abandono, economía de las ofrendas) en borrador
 - [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador (§9-§13: proyectos, intrigas entre organizaciones, profecías)
 - [~] Percepción ([systems/perception.md](systems/perception.md)) — borrador
 - [~] Información, creencias y rumores ([systems/information.md](systems/information.md)) — borrador
@@ -184,6 +185,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Oscilaciones oceánicas de pocos años (años buenos y malos) para la región ([planet-gen.md](systems/planet-gen.md) §3)
 - [ ] Suelos por parcela con nutrientes que se mueven, agotamiento, barbecho y abono; rendimientos que alimentan la presión de hambre ([planet-gen.md](systems/planet-gen.md) §9)
 - [ ] Poblaciones por celda con productividad y red trófica simple; caza, pesca, recolección y tala que agotan stocks; ganado como bien vivo con cuerpo, dueño y zoonosis; sucesión en campos abandonados; fuego con combustible ([living-world.md](systems/living-world.md) §8, §9, §12)
+- [ ] Ofrendas como lotes con destino (quemado, enterrado, comido), gasto de funerales y endeudamiento, oficios de culto (incienso, papel, tablillas) ([spirits.md](systems/spirits.md) §6, §11)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -206,6 +208,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Atención del Cielo finita repartida por saliencia; tribulaciones como eventos con olas, energía del campo, ayudantes e intercepción del rayo; mérito ([heaven-karma.md](systems/heaven-karma.md) §3, §5, §7)
 - [ ] Declive cognitivo y legitimidad; condiciones como raíces de demonios; sueños inyectados ([npc-psychology.md](systems/npc-psychology.md) §11, §12, §15)
 - [ ] Bestias espirituales con núcleo y consumo de qi; bestia compañera con contrato de alma; criar desde la cría con período sensible ([living-world.md](systems/living-world.md) §8, §13)
+- [ ] `qiPool` de santuarios, devoción con sinceridad, `upkeep` de espíritus, ancestros que se quedan con el linaje como ancla ([spirits.md](systems/spirits.md) §6-§8)
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -244,6 +247,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Multitudes con umbrales y cascadas (motines, linchamientos, estampidas, desbandadas), agravio colectivo, conversiones y modas ([npc-psychology.md](systems/npc-psychology.md) §13, §14, §16)
 - [ ] Intrigas entre organizaciones con órdenes compartimentadas y modelo del gobierno del blanco; intrigantes que explotan profecías; traición desde adentro de expediciones ([schemes.md](systems/schemes.md) §9-§11)
 - [ ] Tratados entre comunidades y reinos de bestias, razas secretas de sectas, mercado de bestias y partes protegidas ([living-world.md](systems/living-world.md) §12, §13)
+- [ ] Salones ancestrales con tablillas, tierras de culto como compromiso entre ramas, abandono con etapas (hambre, enojo, tomar) y desenlaces, fantasmas hambrientos ([spirits.md](systems/spirits.md) §7-§11)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -264,6 +268,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Contrafácticos `whatif` en modo agregado y snapshots de presiones para el mapa histórico ([causality.md](systems/causality.md) §10, §11)
 - [ ] Clima de largo plazo por época: glaciaciones, nivel del mar, puentes de tierra, costas y ruinas sumergidas; supervolcanes e impactos ([planet-gen.md](systems/planet-gen.md) §8, §10)
 - [ ] Domesticaciones y razas como eventos de cultura, especiación por aislamiento, intercambios por puentes de tierra, extinciones, sucesión de largo plazo sobre ruinas ([living-world.md](systems/living-world.md) §8-§12)
+- [ ] Cultos fundados por eventos, santuarios viejos que despiertan espíritus de lugar, ajuar enterrado para la arqueología ([spirits.md](systems/spirits.md) §7, §9, §11)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -279,6 +284,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Rivales/genios en otras partes del mundo
 - [ ] Inviernos volcánicos con aerosol por bandas y sus cadenas (hambre, presagios, legitimidad); estrellas caídas como materiales ([planet-gen.md](systems/planet-gen.md) §10)
 - [ ] Intercambio biológico entre continentes al cruzar océanos (cultivos, ganado, malezas, enfermedades) ([living-world.md](systems/living-world.md) §10)
+- [ ] Dioses locales que compiten por fieles, canonización y prohibición de cultos por el estado, dioses que se matan por su qi ([spirits.md](systems/spirits.md) §9)
 
 ## Fase 9 — Pulido
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica
