@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [living-world.md](living-world.md) §3, §4, §5 (la geografía hace a las culturas, mitos, calendarios), [deep-history.md](deep-history.md) (pueblos que se separan, secuencias de estilos, embudo de legados), [npc-psychology.md](npc-psychology.md) §2, §10, §13, §14, §16 (valores y esquemas, períodos sensibles, pertenencia, multitudes, gustos), [information.md](information.md) §1, §3, §9 (creencias, deformación, conocimiento colectivo), [social-structure.md](social-structure.md) §2, §3, §4, §11 (estatus, percibir la posición, etiqueta, género y etnia), [perception.md](perception.md) (marcadores que se ven y se oyen), [technology.md](technology.md) (difusión y prerrequisitos), [economy.md](economy.md) (demanda, comercio), [weather.md](weather.md) §4 (estaciones, calendarios), [planet-gen.md](planet-gen.md) (lo que hay y lo que crece).
-Lo usan: [law.md](law.md) (códigos por cultura), [social-structure.md](social-structure.md) (estatus, etiqueta, normas de género y edad), [property.md](property.md) (formas de tenencia), [family-lineage.md](family-lineage.md) (parentesco, matrimonio, herencia, luto), [settlements.md](settlements.md) §4 (trazados y estilos), [crafts.md](crafts.md) (estilos, recetas, gusto), [spirits.md](spirits.md) (funerales, ofrendas), [dialogue.md](dialogue.md) §10, §13 (cara, humor, malentendidos), [elements.md](elements.md) §9 (teorías culturales), [language.md](language.md), religion (#42), [narration.md](narration.md) (léxico y lo que al personaje le parece normal), [chronicle.md](chronicle.md).
+Lo usan: [law.md](law.md) (códigos por cultura), [social-structure.md](social-structure.md) (estatus, etiqueta, normas de género y edad), [property.md](property.md) (formas de tenencia), [family-lineage.md](family-lineage.md) (parentesco, matrimonio, herencia, luto), [settlements.md](settlements.md) §4 (trazados y estilos), [crafts.md](crafts.md) (estilos, recetas, gusto), [spirits.md](spirits.md) (funerales, ofrendas), [dialogue.md](dialogue.md) §10, §13 (cara, humor, malentendidos), [elements.md](elements.md) §9 (teorías culturales), [language.md](language.md), [religion.md](religion.md), [narration.md](narration.md) (léxico y lo que al personaje le parece normal), [chronicle.md](chronicle.md).
 
 ---
 
@@ -88,7 +88,7 @@ interface Culture {                          // nombre de un racimo de comunidad
 | Saber práctico | Cómo se ara, se pesca, se cura, se cuenta; teorías de los elementos y de la geomancia | technology, elements §9, settlements §4 |
 | Género y edad | Qué puede hacer cada uno, a qué edad | social-structure §11 |
 | Propiedad | Formas de tenencia, prescripción | property §4 |
-| Cosmovisión | Qué hay después de la muerte, qué es el Cielo, quién manda la lluvia | religion (#42), spirits, weather §10 |
+| Cosmovisión | Qué hay después de la muerte, qué es el Cielo, quién manda la lluvia | [religion.md](religion.md), spirits, weather §10 |
 | Calendario | Desde qué evento se cuentan los años, términos solares, días fastos y nefastos | living-world §5, weather §4, divination |
 
 ## 3. De dónde sale cada rasgo
@@ -129,7 +129,7 @@ interface Culture {                          // nombre de un racimo de comunidad
 ## 7. Contacto
 
 - **Préstamo selectivo:** se adopta rápido lo útil y visible (técnicas, cultivos, comidas, armas, palabras) y despacio lo profundo (parentesco, valores, ritos de muerte). Cada préstamo tiene vector: un mercader, un matrimonio, una conquista, un monje (travel §14).
-- **Sincretismo:** dioses que se funden, fiestas que se superponen, el santo del pueblo que es el viejo espíritu del río con otro nombre (religion #42, spirits §9).
+- **Sincretismo:** dioses que se funden, fiestas que se superponen, el santo del pueblo que es el viejo espíritu del río con otro nombre ([religion.md](religion.md) §9, spirits §9).
 - **Mezcla y criollización:** en puertos y fronteras nacen culturas nuevas de dos o más, con su propia identidad.
 - **Aculturación y asimilación:** una minoría adopta la cultura dominante por presión, prestigio, matrimonio o conveniencia. Primero por fuera, después por dentro y al final en la identidad. Puede tardar tres generaciones o no pasar nunca.
 - **Resistencia:** las comunidades amenazadas marcan más sus diferencias (comida, ropa, endogamia), y la diáspora conserva formas que en el lugar de origen ya cambiaron.
