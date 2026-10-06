@@ -72,7 +72,7 @@ Así la era del mundo **tiene causa**: no es un dial aleatorio, es el resultado 
 Nadie conoce la verdad completa. Cada cultura tiene su **interpretación** (religión, filosofía, tabúes), que forma parte de sus creencias. Algunas pueden estar equivocadas. Las sectas pueden tener doctrinas opuestas sobre cómo engañar, apaciguar o desafiar al Cielo.
 
 ### Ascensión
-Romper el último reino del planeta = **dejar el mundo** hacia un plano superior. Es la "salida" del planeta. El diseño deja `Realm` como una entidad dentro de una cosmología mayor, pero **por ahora solo existe un planeta**. Qué hay arriba queda abierto (puede ser el final de la partida, o una continuación).
+Romper el último reino del planeta = **dejar el mundo** hacia un plano superior. Es la "salida" del planeta. El diseño deja `Realm` como una entidad dentro de una cosmología mayor, pero **por ahora solo existe un planeta**. Qué hay arriba, cómo es la ascensión como evento y qué pasa con la partida está en [cosmology.md](cosmology.md) §4-§7: ascender termina la vida en este mundo.
 
 ---
 

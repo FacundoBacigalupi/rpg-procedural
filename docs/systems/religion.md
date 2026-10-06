@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [metaphysics.md](metaphysics.md) (la ley del mundo: panteón, almas, más allás), [heaven-karma.md](heaven-karma.md) §1, §2, §7 (el Cielo, karma, mérito), [spirits.md](spirits.md) §3b, §6, §9 (el ciclo, ofrendas como física, dioses locales y cultos), [culture.md](culture.md) (cosmovisión, ritos, contacto, sincretismo), [information.md](information.md) §1, §3, §9 (creencias colectivas, deformación, reputación), [discovery.md](discovery.md) §6, §8 (dogmas, anomalías, iluminación), [living-world.md](living-world.md) §4, §5 (mitos, creencias sobre el Cielo), [npc-psychology.md](npc-psychology.md) §2, §7, §11, §13, §14 (valores, utilidad, salud mental, sentido y pertenencia, multitudes), [organizations.md](organizations.md) §7, §8, §11, §13 (doctrina, herejía, cismas, templos y monasterios), [language.md](language.md) §7, §11 (tabúes de palabra, lenguas litúrgicas).
-Lo usan: [state.md](state.md) §8, §10 (legitimidad, culto de estado, trono y sectas), [law.md](law.md) (delitos religiosos, fueros del clero), [war.md](war.md) (guerras santas, justificaciones), [economy.md](economy.md) (templos como terratenientes y prestamistas, peregrinaciones), [property.md](property.md) (tenencia de culto), [social-structure.md](social-structure.md) (ideologías de la jerarquía), [family-lineage.md](family-lineage.md) (matrimonio, culto de los ancestros), [divination.md](divination.md) (profecías, oráculos), [cultivation.md](cultivation.md) (escuelas con forma religiosa), [chronicle.md](chronicle.md) (textos sagrados, historias oficiales), cosmology (#43: qué hay de verdad arriba y abajo), [narration.md](narration.md) (lo sagrado según el personaje).
+Lo usan: [state.md](state.md) §8, §10 (legitimidad, culto de estado, trono y sectas), [law.md](law.md) (delitos religiosos, fueros del clero), [war.md](war.md) (guerras santas, justificaciones), [economy.md](economy.md) (templos como terratenientes y prestamistas, peregrinaciones), [property.md](property.md) (tenencia de culto), [social-structure.md](social-structure.md) (ideologías de la jerarquía), [family-lineage.md](family-lineage.md) (matrimonio, culto de los ancestros), [divination.md](divination.md) (profecías, oráculos), [cultivation.md](cultivation.md) (escuelas con forma religiosa), [chronicle.md](chronicle.md) (textos sagrados, historias oficiales), [cosmology.md](cosmology.md) (qué hay de verdad arriba y abajo), [narration.md](narration.md) (lo sagrado según el personaje).
 
 ---
 
@@ -94,7 +94,7 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 - **Errores que funcionan:** una doctrina falsa puede tener efectos buenos por otra vía. "Donar al templo da mérito" no da mérito por la donación, pero si el templo alimenta a los pobres, sostener vidas sí lo da (heaven-karma §7). La gente atribuye el efecto a la doctrina.
 - **Prácticas con efecto real:** algunas prácticas religiosas sirven de verdad, aunque por razones distintas de las que da la doctrina. La meditación calma la mente y ayuda contra los demonios internos (npc-psychology §9); el ayuno purga ciertas toxinas de píldoras (body-health); un santuario viejo acumula qi (spirits §7). La sim resuelve el efecto por la física, no por la fe.
 - **Anomalías y cambio:** como los dogmas de escuela (discovery §6), cada doctrina acumula anomalías (el santo que murió de una enfermedad común, la oración que no paró la sequía). Se explican con reglas de siempre ("falta de fe", "pecado oculto") hasta que pesan más que la autoridad para alguien con seguidores.
-- **El inspector y la crónica** muestran qué doctrinas aciertan (`truthStatus`). El jugador nunca lo ve adentro del personaje.
+- **El inspector y la crónica** muestran qué doctrinas aciertan (`truthStatus`). El personaje nunca lo sabe con certeza (aprobado 2026-10-06): junta evidencia y anomalías como cualquier hipótesis (discovery §2, §3), y su confianza puede subir o bajar, pero nunca se vuelve verdad revelada.
 
 ## 4. Textos sagrados
 
@@ -166,17 +166,17 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 
 - **Escuelas con forma religiosa:** muchas tradiciones de cultivo tienen templos, votos, textos sagrados y jerarquía. La frontera entre secta de cultivo y religión es difusa: un monasterio puede ser las dos cosas (cultivation §2, organizations §13).
 - **Doctrinas sobre el Cielo:** adorarlo, apaciguarlo, desafiarlo, negarlo (living-world §5, heaven-karma §1). La doctrina de una secta sobre el Cielo cambia cómo encaran sus discípulos la tribulación, y puede estar mal.
-- **Mortales que adoran a cultivadores:** un inmortal que pasó volando se vuelve un dios en el valle. Si la ley del mundo deja que la devoción alimente a quien la recibe (metaphysics: fuente espiritual), el cultivador venerado gana algo; si no, solo gana fieles y obligaciones.
+- **Mortales que adoran a cultivadores** (aprobado 2026-10-06): un inmortal que pasó volando se vuelve un dios en el valle. La devoción sincera le da un hilo de esencia, con el mismo techo y la misma pérdida por distancia que las ofrendas (spirits §6). A cambio carga con más atención del Cielo (heaven-karma §3), con lo que sus fieles esperan de él, y con karma si los usa o los abandona en una desgracia que podía evitar.
 - **Cultivadores que explotan la fe:** fundar un culto para tener sirvientes, ofrendas y discípulos, o usar el templo como fachada. Con karma según lo que hagan (heaven-karma).
 - **Religiones contra el cultivo:** doctrinas que ven el cultivo como soberbia o robo al Cielo. Pueden tener razón a su manera (heaven-karma: el cobro en las Fuentes) y pueden perseguir a los que cultivan.
 
 ## 13. Dioses reales según la familia del mundo
 
-- **Familia xianxia base:** no hay un panteón real. Hay espíritus y dioses locales (spirits §9), el Cielo como ley (heaven-karma) y cultivadores muy fuertes. Las religiones grandes hablan de seres que no existen o que son esas cosas con otro nombre.
+- **Familia xianxia base** (aprobado 2026-10-06): no hay un panteón real. Hay espíritus y dioses locales (spirits §9), el Cielo como ley (heaven-karma) y cultivadores muy fuertes. Las religiones grandes hablan de seres que no existen o que son esas cosas con otro nombre.
 - **Familias con panteón** (metaphysics: panteón, mitológica): los dioses son agentes con utilidad, territorio y rivalidades, que viven de la fe y compiten por creyentes. Envían sueños, señales y a veces poder (fuente otorgada). Sus religiones tienen parte de verdad y parte de propaganda de cada dios.
 - **Dios muerto o ausente:** religiones que siguen rezándole a nadie, y restos de su poder que se pueden cosechar.
 - **Algo afuera:** cultos a lo que está más allá del mundo, con poder real y corrupción.
-- Lo que hay de verdad arriba y abajo (planos, inframundos) lo fija cosmology (#43); este doc solo dice cómo lo cree la gente.
+- Lo que hay de verdad arriba y abajo (planos, inframundos) lo fija [cosmology.md](cosmology.md); este doc solo dice cómo lo cree la gente.
 
 ## 14. El jugador y el narrador
 
@@ -187,7 +187,7 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
   - profanar, robar un templo, matar a un dios local (spirits §9);
   - predicar, escribir un texto, fundar un culto, falsificar un milagro, declararse profeta o dejarse adorar;
   - investigar si una doctrina es cierta (discovery), con evidencia y errores.
-- **Lo que descubre puede romperle la fe** o confirmarla. La sim no premia ni castiga la fe del jugador por sí misma: solo lo que hace, y lo que la ley del mundo diga de eso.
+- **Lo que descubre puede romperle la fe** o confirmarla. La sim no premia ni castiga la fe del jugador por sí misma (aprobado 2026-10-06): solo lo que hace, y lo que la ley del mundo diga de eso. La fe sí tiene efectos psicológicos reales, iguales para cualquier creyente: consuelo en el duelo, voluntad ante el miedo, menos demonios internos para quien está en paz con su doctrina (npc-psychology §9, §11).
 - **Panel:** un comando fuera del personaje muestra en qué cree, qué cumple y de qué duda, como creencias, sin corregirlas.
 
 ## 15. Escala (LOD)
@@ -220,6 +220,12 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 - **Sin fuga:** el narrador no recibe `truthStatus` ni la identidad real de un ser venerado que el personaje no conoce.
 - **Conversión con motivo:** cada cambio de religión de un NPC tiene un insumo de utilidad o una creencia nueva registrada.
 - **Persecución con causa:** toda confiscación o prohibición del estado tiene una presión o una facción detrás.
+
+## Decisiones (aprobado 2026-10-06)
+- **Sin panteón real en la familia xianxia base:** espíritus y dioses locales, el Cielo como ley y cultivadores muy fuertes (§13).
+- **La devoción a un cultivador le da un hilo de esencia** con techo, más atención del Cielo, obligaciones y karma si traiciona (§12).
+- **La fe no se premia por sí misma;** sus efectos psicológicos son reales e iguales para todos (§14).
+- **El personaje nunca sabe con certeza si una doctrina es cierta;** la verdad solo en el inspector y la crónica (§3).
 
 ## Decisiones tomadas en este borrador (revisables)
 
