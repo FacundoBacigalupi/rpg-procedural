@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [actions.md](actions.md) (`speak` y los verbos sociales; parser), [information.md](information.md) §1-§3, §7 (creencias, actos de habla con información, mentir, preguntar, secretos), [npc-psychology.md](npc-psychology.md) §7-§9c (utilidad, diálogo, máscara, teoría de la mente), [perception.md](perception.md) §6 (leer emociones y mentiras), [social-structure.md](social-structure.md) §4 (etiqueta y cara), [skills.md](skills.md) (habilidades sociales y lenguas), [contracts.md](contracts.md) (promesas y acuerdos), [economy.md](economy.md) §6 (regateo).
-Lo usan: [narration.md] futuro (verbalización de actos de habla), [player-loop.md] futuro, [schemes.md](schemes.md) (engaños y reclutamiento), [law.md](law.md) (interrogatorios, testimonios, juicios), [organizations.md](organizations.md) (deliberación), [state.md](state.md) (corte, audiencias), [divination.md](divination.md) (lecturas en frío).
+Lo usan: [narration.md](narration.md) (verbalización de actos de habla), [player-loop.md] futuro, [schemes.md](schemes.md) (engaños y reclutamiento), [law.md](law.md) (interrogatorios, testimonios, juicios), [organizations.md](organizations.md) (deliberación), [state.md](state.md) (corte, audiencias), [divination.md](divination.md) (lecturas en frío).
 
 ---
 
@@ -199,14 +199,18 @@ Además, el secreto **se filtra sin decirlo:** una reacción al oír un nombre, 
 3. **El contenido de lo que dice el jugador cuenta; la elocuencia del usuario no.** Los argumentos que elige (a qué objetivo, valor o relación apela, qué evidencia muestra) son los del personaje. Cómo los entrega (claridad, convicción, tono justo) sale de la habilidad social del personaje. Una idea brillante dicha por un personaje torpe pierde fuerza; un argumento flojo no se vuelve bueno porque el texto sea lindo.
 4. **El personaje solo afirma lo que cree.** Si el jugador hace decir al personaje algo que este no cree o no sabe, es una mentira o un farol del personaje, con todo lo que eso trae (riesgo de ser descubierto, `liesTold`). Si el jugador insiste en hechos que el personaje no conoce, el parser lo marca como farol (actions §9).
 5. **Los nombres y títulos** que usa el personaje son los que conoce; si el jugador usa uno que el personaje no sabe, el parser lo trata como descripción ("el viejo") o pregunta.
+6. **El diálogo literal se cita tal cual** (aprobado 2026-10-06): lo que el jugador escribe entre comillas es lo que dice el personaje. Si el personaje habla mal esa lengua, el narrador muestra cómo le salió de verdad (palabras que faltan, errores, acento), porque eso es lo que oyeron los demás.
+7. **El jugador no ve los actos decididos de los NPCs** (aprobado 2026-10-06): no hay "te está mintiendo" ni "está nervioso" salvo que el personaje lo perciba (perception §6), y entonces se narra como sospecha con su confianza. Los actos reales solo los muestra el inspector.
 
 ## 15. Conversaciones fuera de escena
 
 Entre NPCs lejos del jugador, la conversación se resuelve **solo como actos** sin verbalizar: quién contó qué a quién, qué se pidió y se decidió, qué cambió en las relaciones. Si el jugador la escucha (estaba ahí, la espió, se la cuentan), se verbaliza lo que oyó, como lo oyó.
 
+**Escuchar una charla larga** (aprobado 2026-10-06): se narra como resumen de lo que el personaje oyó, con huecos donde no llegó a oír o no entendió. **Las frases clave las elige el personaje, no el usuario:** se destacan las que su atención captó y las que le parecieron importantes según sus creencias, objetivos y miedos. Si no sabe que un nombre importa, ese nombre no se destaca (puede quedar en el resumen o perderse). El jugador puede pedir la versión completa de **lo que oyó**, nunca de lo que se dijo de verdad; y lo que recuerde después pasa por la memoria (npc-psychology) y se degrada como cualquier otro recuerdo.
+
 ## 16. El contrato con el LLM
 
-La verbalización (detalles de prompt y validación en [narration.md] futuro) recibe:
+La verbalización (detalles de prompt y validación en [narration.md](narration.md)) recibe:
 
 ```ts
 interface VerbalizationRequest {
@@ -261,6 +265,12 @@ interface VerbalizationRequest {
 - **Para el jugador, cuenta el contenido y no la elocuencia;** la entrega es del personaje.
 - **Verbalización con lista blanca y plantillas de respaldo.**
 - **Estilo de habla generado y persistente por NPC.**
+
+## Decisiones (aprobado 2026-10-06)
+- **La elocuencia del usuario no cuenta:** solo el contenido (qué argumento, a qué apela, qué evidencia); la entrega sale de la habilidad del personaje.
+- **Sin ver los actos decididos de los NPCs:** solo lo que el personaje percibe, las sospechas como sospechas; los actos reales, en el inspector.
+- **Diálogo literal citado tal cual,** con los errores reales si el personaje habla mal la lengua.
+- **Charlas largas oídas como resumen** con frases clave elegidas por la atención y los intereses del personaje, huecos donde no oyó, y versión completa de lo oído a pedido.
 
 ## Preguntas abiertas
 

@@ -70,7 +70,7 @@ Se arranca como **un solo paquete** con estas carpetas. Si crece, se separa en w
 - `Event`: `{ id, time, type, actors, location, outcome, data, emissions, causes }` — `emissions` es el perfil de lo que el evento emite por cada canal sensorial; quién lo percibe y cuánto se calcula como `Percept`s (ver [systems/perception.md](systems/perception.md)). `causes: CauseRef[]` forma el grafo causal (ver [systems/causality.md](systems/causality.md)).
 - Toda entidad tiene `originEventId`. Bienes, dinero y qi pasan por un ledger de conservación.
 - `Outcome`: `success | partial | failure | failure_unnoticed | failure_suspected | discovered | critical`.
-- Narrador recibe solo los `Percept`s del jugador + contexto que el jugador conoce, nunca eventos crudos.
+- Narrador recibe solo los `Percept`s del jugador + contexto que el jugador conoce, nunca eventos crudos: todo pasa por `buildPlayerView` (ver [systems/narration.md](systems/narration.md)).
 
 ## Herramientas de debug (prioridad alta desde el día 1)
 - **Inspector god-mode**: ver la verdad del mundo, un NPC completo, sus memorias y relaciones, por qué tomó una decisión.
