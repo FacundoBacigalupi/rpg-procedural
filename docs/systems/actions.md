@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [simulation.md](simulation.md) (scheduler, fases, contiendas, `advanceUntil`), [causality.md](causality.md) (procesos, causas), [information.md](information.md) (creencias: las referencias y la factibilidad se resuelven contra lo que el actor cree), [perception.md](perception.md) (el actor percibe su propio resultado), [body-health.md](body-health.md) §3 (capacidades), [social-structure.md](social-structure.md) §5 (capacidad, medios, contrapartes), [npc-psychology.md](npc-psychology.md) §7 (utilidad sobre el mismo catálogo), [heaven-karma.md](heaven-karma.md) §6 (inclinación de tiradas), [ARCHITECTURE.md](../ARCHITECTURE.md) (contratos `ActionPlan` y `Outcome`).
-Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md] futuro), el bucle del jugador ([player-loop.md] futuro), la IA de NPCs y las órdenes de organizaciones (organizations §5).
+Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md] futuro), el bucle del jugador ([player-loop.md] futuro), la IA de NPCs y las órdenes de organizaciones (organizations §4).
 
 ---
 
@@ -184,7 +184,7 @@ type Outcome =
 
 **La forma común de un resolver:**
 1. **Dificultad desde el estado:** lo que hay que vencer (la cerradura, la atención del guardia, la armadura, el precio que el otro cree justo).
-2. **Capacidad efectiva del actor:** habilidad ([skills.md] futuro) × capacidades (body-health §3) × herramienta × condiciones × estado mental (dolor, miedo, concentración) × cultivo.
+2. **Capacidad efectiva del actor:** habilidad ([skills.md](skills.md)) × capacidades (body-health §3) × herramienta × condiciones × estado mental (dolor, miedo, concentración) × cultivo.
 3. **Tirada** con clave `rng.fork("action", actorId, verb, tick)`, y la **inclinación del Cielo** si corresponde (heaven-karma §6: acotada, sobre la tirada, nunca sobre la realidad).
 4. **Contienda** si hay oposición: la otra parte tira con su propia clave y su capacidad (sigilo contra percepción; fuerza contra fuerza). Si dos acciones compiten por lo mismo, es la contienda del scheduler (simulation §3).
 5. **Margen → cambios y eventos**, con la forma de fracaso del factor más débil (§8).
@@ -202,7 +202,7 @@ interface FailureMode {
 ```
 
 - El fracaso se elige por el factor que más restó en esa tirada, no al azar: así es explicable ("te temblaba la mano del frío") y aprendible.
-- Los fracasos producen **experiencia y creencias** (el actor aprende que esa cerradura es difícil, que ese guardia es atento) y alimentan la habilidad ([skills.md] futuro) y el descubrimiento (discovery: errores con forma).
+- Los fracasos producen **experiencia y creencias** (el actor aprende que esa cerradura es difícil, que ese guardia es atento) y alimentan la habilidad ([skills.md](skills.md)) y el descubrimiento (discovery: errores con forma).
 
 ## 9. El parser de intención
 
@@ -245,7 +245,7 @@ interface IntentDraft {
 
 - **Utilidad sobre el catálogo** (npc-psychology §7): los candidatos salen de los objetivos activos, las plantillas conocidas y lo que la escena permite según sus creencias. Se puntúa con utilidad y se elige con softmax.
 - **Planes.** En Fase 3, encadenamiento simple hacia un objetivo con plantillas; HTN o GOAP más adelante si hace falta. Las intrigas (schemes) producen planes multi-paso con el mismo `ActionPlan`.
-- **Órdenes.** Una orden de una organización (organizations §5) llega como `ActionPlan` con `source: "order"` y la brecha de ejecución: el subordinado la reinterpreta con sus creencias, su lealtad y su utilidad (puede cumplirla a medias, mal o no cumplirla).
+- **Órdenes.** Una orden de una organización (organizations §4) llega como `ActionPlan` con `source: "order"` y la brecha de ejecución: el subordinado la reinterpreta con sus creencias, su lealtad y su utilidad (puede cumplirla a medias, mal o no cumplirla).
 - **Rutinas.** Planes `repeat` con interrupciones, para el día del campesino, la guardia del portón o la meditación del cultivador.
 
 ## 11. El jugador y el narrador
@@ -288,9 +288,11 @@ Con la resolución de zona de simulation §4:
 - **`ActionPlan` como árbol** (`seq`, `until`, `repeat`, `if`, `onEvent`, `template`) con condiciones sobre percepciones y creencias del actor.
 - **El parser produce descripciones, la simulación resuelve referencias** contra las creencias del actor; las aclaraciones las arma la simulación.
 - **Factibilidad en dos pasos:** creída al decidir, real al ejecutar; las normas nunca bloquean, solo traen consecuencias.
-- **Confirmar solo lo ambiguo, lo grave e irreversible y lo no mapeado**; el resto se ejecuta directo.
+- **Confirmar solo lo ambiguo, lo grave e irreversible y lo no mapeado**; el resto se ejecuta directo (aprobado 2026-10-06).
 - **Fracasos elegidos por el factor más débil**, no al azar.
-- **Reflejos como planes automáticos** que corren también para el jugador.
+- **Reflejos como planes automáticos** que corren también para el jugador, según su entrenamiento, sin pausar para preguntar; el jugador puede dejar **posturas** propias ("si me atacan, huyo", "si alguien entra, me escondo") como reglas `onEvent` permanentes que se suman a los reflejos (aprobado 2026-10-06).
+- **Fuera del catálogo:** se traduce a la acción más cercana con aviso y se registra el verbo faltante para agregarlo como contenido; solo se rechaza si no hay nada cercano (aprobado 2026-10-06).
+- **Lo que el personaje cree imposible:** aviso desde lo que sabe; si el jugador insiste, se intenta, con riesgo y posibilidad de aprendizaje o descubrimiento (aprobado 2026-10-06).
 
 ## Preguntas abiertas
 

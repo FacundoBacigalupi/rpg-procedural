@@ -200,7 +200,7 @@ interface KnownTechnique {
 }
 ```
 
-- **Aprender** es una acción larga: tiempo × complejidad / (comprensión × calidad de la enseñanza). Un maestro presente enseña mejor que un manual; un manual mal copiado enseña errores.
+- **Aprender** es una acción larga: tiempo × complejidad / (comprensión × calidad de la enseñanza). Un maestro presente enseña mejor que un manual; un manual mal copiado enseña errores. `KnownTechnique` es una entrada de repertorio del modelo general de habilidad ([skills.md](skills.md) §2.2, §10).
 - **Copias y errores.** Cada copia de un manual puede perder, agregar o deformar partes (como los rumores en information.md, pero con texto). Una técnica aprendida de una copia defectuosa funciona hasta que el error importa (toxicidad, techo, desviación en un tramo).
 - **Técnicas incompletas.** Un manual puede cubrir solo los primeros umbrales ("la primera mitad del Sutra del Río"), y la segunda parte es una búsqueda: está en otra secta, en una ruina, en la memoria de un remanente de alma (spirits).
 - **Secretos.** Las técnicas núcleo de una secta son secretos (information: secretos, juramentos). Robarlas o filtrarlas crea karma, enemigos y persecuciones. Las sectas sellan manuales (cifrados, sellos de alma, restricciones que matan a quien lee sin permiso).

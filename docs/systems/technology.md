@@ -72,7 +72,7 @@ interface PopulationTech {                   // en agregado, por asentamiento o 
 }
 ```
 
-- **Saber hacer se aprende haciendo.** Leer un manual da `fidelity` pero poco `skill`; el aprendizaje con un maestro da los dos, despacio. Los oficios con mucho saber tácito (forja, cerámica fina, vidrio) se difunden casi solo con personas.
+- **Saber hacer se aprende haciendo.** Leer un manual da `fidelity` pero poco `skill`; el aprendizaje con un maestro da los dos, despacio. Los oficios con mucho saber tácito (forja, cerámica fina, vidrio) se difunden casi solo con personas. `ProcessKnowledge` es una vista del modelo general de habilidad ([skills.md](skills.md) §10).
 - **Copias con errores.** Cada transmisión puede bajar la fidelidad (information §3): un paso omitido, una proporción mal leída. Los defectos de un proceso se heredan y a veces se vuelven "la forma de hacerlo" de una región.
 
 ### Adoptar
