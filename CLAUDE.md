@@ -28,6 +28,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/crafts.md](docs/systems/crafts.md) — oficios: sesiones por pasos que resuelve la ley, habilidad (control, sentidos, juicio), materiales con origen, fuegos, alquimia, forja y artefactos, formaciones como grafos sobre el campo, talismanes, oficios mortales, recetas con defectos.
 - [docs/systems/organizations.md](docs/systems/organizations.md) — organizaciones: membresía y lealtad, puestos y legitimidad, cómo deciden (asuntos, deliberación, órdenes), facciones emergentes, tesoro finito, maestro y discípulo, relaciones, nacimiento, cismas, sucesión y muerte.
 - [docs/systems/contracts.md](docs/systems/contracts.md) — contratos y juramentos: un solo `Commitment` para deudas, vínculos, tratados y pactos; bases (acuerdo, norma, imposición), garantías, ejecutores que leen creencias (y el Cielo y las ataduras que leen la verdad), incumplir y disputar, juramentos y sellos en el alma, herencia.
+- [docs/systems/family-lineage.md](docs/systems/family-lineage.md) — familia y linaje: genoma y herencia de rasgos y talento, deseo, concepción y parto, fertilidad baja en cultivadores, parentesco como verdad y creencia (paternidad, ilegítimos, adopción), matrimonio, crianza, herencia, cultivo dual, clanes, genealogías y linajes de sangre.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo

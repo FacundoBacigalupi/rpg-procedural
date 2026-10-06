@@ -195,7 +195,7 @@ interface Pathogen {
 
 ### No infecciosas
 - **Crónicas:** tisis, artritis, piedras, corazón débil, "mal del azúcar", tumores. Salen del genoma (predisposición), la edad, la dieta, el oficio (pulmón de minero, espalda de cargador, ojos de bordadora) y las sustancias. Avanzan lentamente y pueden controlarse con tratamiento.
-- **Congénitas y hereditarias:** en el genoma; se transmiten por el linaje (family-lineage, futuro). La consanguinidad de clanes cerrados las concentra.
+- **Congénitas y hereditarias:** en el genoma; se transmiten por el linaje ([family-lineage.md](family-lineage.md) §1). La consanguinidad de clanes cerrados las concentra.
 - **Mentales con base física:** demencia senil, delirio por fiebre, daño por golpes. Se cruzan con npc-psychology (la psicología usa `cognition` como límite).
 - **Embarazo y parto:** estado del cuerpo con riesgo real (hemorragia, fiebre puerperal, mala posición) que depende de nutrición, edad, partera y medicina disponible. Es una de las grandes causas de muerte en mundos mortales y un motor de familias y herencias.
 
