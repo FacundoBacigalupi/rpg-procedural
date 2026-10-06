@@ -177,7 +177,7 @@ Dos necesidades **lentas** se miden en meses: `belonging` y `meaning` (sección 
 Todo objetivo tiene `originEventId`. Por ejemplo, "venganza contra X" nace cuando una memoria con `resentment` alto cruza un umbral que depende de `warmth`, `control` y del esquema `strength_is_worth`. Ningún NPC "decide ser villano" al azar.
 
 ### Utilidad
-Para cada acción candidata, del **mismo catálogo que usa el jugador**:
+Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):
 
 ```
 U(a) = Σ_obj  peso(obj) × contribución(a, obj) × P_éxito_creída(a)

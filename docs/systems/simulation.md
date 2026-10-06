@@ -296,7 +296,7 @@ interface Deferred<T> {
 ## 12. El jugador en el bucle
 
 El motor ofrece al bucle del jugador tres modos de avance:
-- **Acción:** el `ActionPlan` del jugador ([actions.md] futuro) se convierte en una acción de su agente con duración; el scheduler avanza hasta que termina o algo la interrumpe. El mundo avanza el mismo tiempo para todos.
+- **Acción:** el `ActionPlan` del jugador ([actions.md](actions.md)) se convierte en una acción de su agente con duración; el scheduler avanza hasta que termina o algo la interrumpe. El mundo avanza el mismo tiempo para todos.
 - **Rutina:** el jugador declara qué hace por un período ("cultivo en la cueva hasta la primavera", "trabajo en la herrería todos los días"). La rutina es una política de su agente; el scheduler avanza con `advanceUntil` y las interrupciones que el jugador aceptó más las que nunca se pueden ignorar (lo atacan, lo llaman por su nombre, se le cae la casa).
 - **Pausa:** nada avanza mientras el jugador piensa o escribe. El mundo no corre en tiempo real.
 
@@ -317,6 +317,34 @@ interface Budget {
 - **Degradación en orden fijo** cuando una medición pasa el presupuesto: (1) espaciar la cadencia de los tier 3 más lejanos y de menor puntaje; (2) bajar a "world" las zonas regionales pedidas por eventos lejanos; (3) bajar el cupo de tier 3; (4) achicar el radio de la zona local. La escena del jugador nunca se degrada.
 - **La degradación es determinista.** Usa contadores de costo del propio motor (operaciones, entidades procesadas), no el reloj de la máquina: el mismo seed en otra computadora degrada igual. El tiempo real se mide solo en `tools/` para ajustar los presupuestos.
 - **Lo que nunca se recorta:** conservación, causas, hechos fijados, la puesta al día de los pendientes, las tribulaciones y descargas que ya dispararon.
+
+### 13.1 Perfiles de espera: el tiempo tiene que rendir calidad
+
+El criterio general (aprobado 2026-10-06) es que **la calidad de la simulación se compare bien con el tiempo usado**. Por eso no hay un presupuesto único sino tres perfiles:
+
+| Perfil | Cuándo | Objetivo | Qué se hace con el tiempo extra |
+|---|---|---|---|
+| **Acción** | El jugador hizo algo ahora | Rápido: menos de medio segundo de simulación por acción, sin contar el LLM | Nada: se cumple el presupuesto estricto y se usa la simulación por adelantado (§13.2) para que lo lejano ya esté hecho |
+| **Salto** | Rutinas y saltos de tiempo | Puede tardar: se prioriza la calidad, con barra de progreso y resumen parcial | Más resolución: menos degradación, más tier 3 con cadencia fina, zonas regionales más grandes, puesta al día detallada de los conocidos |
+| **Worldgen** | Generar un mundo nuevo | 10 a 15 minutos están bien si el resultado es bueno | Épocas más finas en el embudo, más culturas y lenguas, historia con individuos en más regiones, calibración más larga |
+
+- El perfil cambia **cuánto se degrada**, no las leyes. Como la degradación es determinista (§13), el mismo seed con el mismo perfil da el mismo mundo; el perfil queda registrado en el log de la partida para que el replay sea exacto.
+- El perfil de cada partida se fija al crearla (con valores por defecto), y el de salto se puede ajustar en la partida como opción del jugador ("saltos rápidos" o "saltos detallados"); el cambio es un evento fuera del mundo con su tick.
+
+### 13.2 Simulación por adelantado (mientras el jugador piensa)
+
+Se puede seguir simulando por detrás (aprobado 2026-10-06) sin romper el determinismo, de dos formas que se combinan:
+
+**a) Por cono causal (sin riesgo).** Lo que el jugador haga ahora solo puede llegar lejos a la velocidad del canal más rápido que tiene a su alcance: caminar, un caballo, una espada voladora, un talismán de mensaje, un ave. Una zona a distancia `d` no puede ser afectada por el jugador antes de `ahora + d / v_max`. Entonces un hilo de fondo (`worker_threads` de Node) avanza esas zonas hasta ese horizonte mientras el jugador lee y escribe, y mientras el LLM narra.
+- `v_max` se calcula con los medios **reales** del jugador y de quienes él puede mandar (verdad, no creencia), con margen. Si el jugador consigue una espada voladora, el cono se ensancha y lo especulado más allá del nuevo horizonte se descarta.
+- **Acoplamientos globales.** Algunos procesos conectan todo el mundo de golpe (la atención del Cielo, heaven-karma §3; los frentes de precios agregados). Esos procesos definen **puntos de sincronización** (por ejemplo, cada estación): la especulación no pasa un punto de sincronización que el jugador podría afectar antes de llegar.
+- Como las tiradas salen de claves (§14) y no del orden, el resultado es idéntico a haberlo simulado en el momento. El test de determinismo lo verifica: el log con simulación de fondo y sin ella es igual byte a byte.
+
+**b) Optimista con descarte (para los saltos).** Cuando el jugador está en una rutina o va a saltar tiempo, el fondo simula por adelantado **suponiendo que la rutina sigue**. Si el jugador hace otra cosa, lo especulado que dependía de él se descarta y se recalcula; lo que no dependía (fuera del cono) se conserva. Así un salto de un año empieza con parte del año ya hecho.
+- La especulación trabaja sobre una copia (copy-on-write, §15) y se integra en el commit solo cuando su supuesto se cumplió.
+- El costo de descartar es solo tiempo de cómputo; nunca hay estados intermedios visibles.
+
+**Lo que se ve:** nada. El jugador no nota la simulación de fondo salvo en que las acciones responden rápido y los saltos tardan menos. El inspector muestra el horizonte especulado por zona (`lod --ahead`).
 
 ## 14. Determinismo
 
@@ -366,7 +394,7 @@ Comandos que agrega este sistema (en `tools/`, solo lectura; se suman a los de c
 - **Fase 0:** `core/time` con ticks y conversión a calendario simple; `core/rng` con `fork` por clave; `ProcessDef`, cola de ítems agendados, fases y commit de diffs; contiendas; test de determinismo byte a byte con un proceso de juguete.
 - **Fase 1:** una sola zona (la aldea) en resolución scene/local; todos los individuos tier 2-4; sin agregados; `advanceUntil` con interrupciones simples para el bucle CLI.
 - **Fase 3:** cadencia diaria para la vida offscreen dentro de la región; tier 1 dormidos con puesta al día; primeros modelos agregados (demografía, mercado) con su contrato y test de calibración.
-- **Fase 5:** zonas con las cinco resoluciones y histéresis; asignación de tiers con importancia y cupos; materialización completa con ranuras, biografía sintetizada y hechos fijados; flujos de borde; presupuesto con degradación determinista; `Deferred` general.
+- **Fase 5:** simulación por adelantado por cono causal en un worker y perfiles de espera. Zonas con las cinco resoluciones y histéresis; asignación de tiers con importancia y cupos; materialización completa con ranuras, biografía sintetizada y hechos fijados; flujos de borde; presupuesto con degradación determinista; `Deferred` general.
 - **Fase 7:** resolución "history" con el embudo de épocas, cierre de época con compactación y olvido, transición continua de la historia al presente.
 - **Fase 8:** mundo completo: tier 3 en todos los continentes con cupos, zonas regionales pedidas por eventos lejanos, perfiles de rendimiento y ajuste de presupuestos.
 
@@ -379,6 +407,7 @@ Comandos que agrega este sistema (en `tools/`, solo lectura; se suman a los de c
 - **Calibración:** para cada sistema con agregado, las tasas del modo agregado caen dentro de la tolerancia del modo individual en escenarios de referencia.
 - **Puesta al día:** despertar a un tier 1 a los 5 años o a los 10 (sin nada externo entre medio) da el mismo estado a los 10.
 - **Histéresis:** entrar y salir de una zona repetidamente no materializa personas nuevas cada vez.
+- **Simulación de fondo:** el log de eventos con simulación por adelantado (cono y optimista) es idéntico al log sin ella; ninguna zona especulada pasa su horizonte ni un punto de sincronización.
 - **Presupuesto:** la degradación es la misma en dos máquinas distintas con el mismo seed; la escena del jugador nunca se degrada.
 - **El inspector no escribe:** correr todos los comandos del inspector y la sim headless de calibración no cambia el hash del estado.
 - **Tier 4 no baja:** nadie con vínculo significativo con el jugador pierde resolución.
@@ -389,7 +418,9 @@ Comandos que agrega este sistema (en `tools/`, solo lectura; se suman a los de c
 - **Dos ejes de LOD:** tier de agente (0-4) y resolución de zona (scene, local, regional, world, history). Los "tier" de procesos en los docs de sistema se leen como resolución de zona (§4.3).
 - **Tick = segundo absoluto**, entero; calendarios como cultura.
 - **Quien fue tier 2 o más nunca vuelve a tier 0:** queda como registro dormido con puesta al día.
-- **Tier 4 = vínculo significativo** (familia cercana, maestro, discípulos, pareja, enemigos declarados, compromisos con peso kármico, relación intensa), no cualquiera que el jugador conoció; los demás quedan como tier 1 con su memoria del jugador.
+- **Tier 4 = vínculo significativo** (familia cercana, maestro, discípulos, pareja, enemigos declarados, compromisos con peso kármico, relación intensa), no cualquiera que el jugador conoció; los demás quedan como tier 1 con su memoria del jugador (aprobado 2026-10-06).
+- **Tres perfiles de espera** (acción rápida, salto con calidad primero, worldgen de 10 a 15 minutos): el tiempo tiene que rendir calidad (§13.1, aprobado 2026-10-06).
+- **Simulación por adelantado** por cono causal y optimista con descarte, en `worker_threads`, idéntica a la simulación en el momento (§13.2, aprobado 2026-10-06).
 - **Conflictos de escritura como contiendas** con iniciativa que sale del estado, nunca por orden de procesamiento.
 - **Identidad estable por ranura** en la materialización.
 - **Cantidades conservadas en enteros**, el resto en punto flotante.
@@ -398,4 +429,4 @@ Comandos que agrega este sistema (en `tools/`, solo lectura; se suman a los de c
 
 ## Preguntas abiertas
 
-- Calibración: tamaño de la zona local y de la regional; tiempos de histéresis; umbrales de entrada y salida de tier 3 y pesos del puntaje de importancia; cupos de tier 2 y tier 3; cadencias por proceso y resolución; tolerancias de los tests de calibración agregado–individual; intervalo de snapshots; presupuestos por acción, por día saltado y por año de historia.
+- Calibración: tamaño de la zona local y de la regional; tiempos de histéresis; umbrales de entrada y salida de tier 3 y pesos del puntaje de importancia; cupos de tier 2 y tier 3; cadencias por proceso y resolución; tolerancias de los tests de calibración agregado–individual; intervalo de snapshots; presupuestos por acción, por día saltado y por año de historia en cada perfil; margen de `v_max` y frecuencia de los puntos de sincronización.

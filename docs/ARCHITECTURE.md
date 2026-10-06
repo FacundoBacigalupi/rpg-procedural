@@ -66,7 +66,7 @@ Se arranca como **un solo paquete** con estas carpetas. Si crece, se separa en w
 | UI | CLI primero → web (Vite + React) después | Iterar la simulación sin pelear con UI. |
 
 ## Contratos clave (borrador)
-- `ActionPlan`: `{ goal, duration, steps: [{ verb, target?, manner? }], constraints, risksAccepted }` — `verb` sale de un catálogo cerrado de acciones del simulador. Si el jugador pide algo fuera del catálogo, el parser lo mapea a lo más cercano o lo rechaza, no lo inventa.
+- `ActionPlan`: `{ goal, duration, steps: [{ verb, target?, manner? }], constraints, risksAccepted }` — `verb` sale de un catálogo cerrado de acciones del simulador (forma completa, como árbol de pasos con condiciones, en [actions.md](systems/actions.md) §3). Si el jugador pide algo fuera del catálogo, el parser lo mapea a lo más cercano o lo rechaza, no lo inventa.
 - `Event`: `{ id, time, type, actors, location, outcome, data, emissions, causes }` — `emissions` es el perfil de lo que el evento emite por cada canal sensorial; quién lo percibe y cuánto se calcula como `Percept`s (ver [systems/perception.md](systems/perception.md)). `causes: CauseRef[]` forma el grafo causal (ver [systems/causality.md](systems/causality.md)).
 - Toda entidad tiene `originEventId`. Bienes, dinero y qi pasan por un ledger de conservación.
 - `Outcome`: `success | partial | failure | failure_unnoticed | failure_suspected | discovered | critical`.
