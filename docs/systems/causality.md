@@ -168,7 +168,7 @@ Tus acciones entran al mundo por **los mismos canales** que las de cualquier NPC
 
 En el xianxia, el karma (因果, "causa y efecto") es parte de la metafísica del mundo. Ya que el grafo causal existe, se puede volver **física del mundo**:
 - Los hilos kármicos son los enlaces del grafo entre agentes (deudas, muertes, salvaciones).
-- Ciertas técnicas o cultivadores muy fuertes pueden **percibir** esos hilos (adivinación, detectar quién mató a alguien).
+- Ciertas técnicas o cultivadores muy fuertes pueden **percibir** esos hilos (adivinación, detectar quién mató a alguien: [divination.md](divination.md)).
 - Las tribulaciones celestiales pueden escalar según la deuda kármica acumulada.
 
 Encaja perfecto con la temática y no rompe la regla: no inventa nada, solo **lee** lo que ya pasó.

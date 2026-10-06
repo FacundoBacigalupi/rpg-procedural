@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#18, adivinación y profecía**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#19, crónica, epílogo e historiografía**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -36,7 +36,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 15. [x] **Guerra** → [war.md](systems/war.md): logística y suministro, moral, asedios, formaciones defensivas, ejércitos mortales vs cultivadores.
 16. [x] **Tecnología mortal** → [technology.md](systems/technology.md): agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
 17. [x] **Reinos secretos (秘境)** → [secret-realms.md](systems/secret-realms.md): bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
-18. [ ] **Adivinación y profecía** → `divination.md`: lectura ruidosa del grafo causal y de las presiones; profecías que se cumplen solas o provocan lo que querían evitar; lectura de karma.
+18. [x] **Adivinación y profecía** → [divination.md](systems/divination.md): lectura ruidosa del grafo causal y de las presiones; profecías que se cumplen solas o provocan lo que querían evitar; lectura de karma.
 19. [ ] **Crónica, epílogo e historiografía** → `chronicle.md`: epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
 
 ### C. Ampliaciones de lo que ya hay
@@ -70,6 +70,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - war: consumo diario por persona y animal y pérdida por distancia en el transporte; umbrales de quiebre de moral y contagio; bajas en choque vs persecución; equivalencia mortales–cultivador por umbral (con y sin armas preparadas y formaciones); duración de asedios y epidemias de campamento; peso kármico de las muertes en guerra según contexto.
 - technology: tasas de invención según población, contacto, necesidad y cultura epistémica; velocidad de difusión y umbral de imitación; población mínima por complejidad de oficio; cuánto frena el cultivo a la tecnología mortal; variación de recetas por seed.
 - secret-realms: costo de crear y mantener un bolsillo y vida típica según su reserva; frecuencia de aperturas y duración de ventanas; límites de umbral típicos; mortalidad y botín de expediciones agregadas; cantidad de reinos por región; radio y magnitud del colapso.
+- divination: ruido de la lectura según diferencia de poder, distancia temporal y tamaño del sujeto; horizonte y corridas de la proyección por método y tier; magnitud de la reacción del Cielo; ambigüedad de los vocabularios simbólicos; fracción de profecías que se cumplen solas.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -109,6 +110,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Guerra ([systems/war.md](systems/war.md)) — borrador
 - [~] Tecnología mortal ([systems/technology.md](systems/technology.md)) — borrador
 - [~] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md)) — borrador
+- [~] Adivinación y profecía ([systems/divination.md](systems/divination.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -147,6 +149,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Creencias sobre la posición ajena con errores, etiqueta como norma, ofensas que cuestan cara ([social-structure.md](systems/social-structure.md))
 - [ ] Testigos con memoria deformada y mentiras, acusaciones en el diálogo, culpa por el delito propio ([law.md](systems/law.md))
 - [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
+- [ ] Profecías como creencias con linaje que cambian utilidades, adivinos de calle (ritual, lectura en frío) ([divination.md](systems/divination.md))
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -180,6 +183,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 - [ ] Lugares sellados simples (cuevas de herencia, tumbas) con libro de contenido, detalle diferido con restricciones, llaves y trampas, remanentes de alma como guardianes ([secret-realms.md](systems/secret-realms.md))
+- [ ] Lectura de karma como técnica (ruido, velos, reacción), símbolos e interpretación con vocabularios por cultura ([divination.md](systems/divination.md))
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -193,6 +197,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Bandas y milicias, escaramuzas y emboscadas, consumo diario de una fuerza pequeña, cautivos y rescates simples ([war.md](systems/war.md))
 - [ ] `PopulationTech` por asentamiento, adopción por hogares con utilidad sobre creencias, difusión por rutas ([technology.md](systems/technology.md))
 - [ ] Control del ancla de reinos secretos por organizaciones, cupos y fichas como bienes, mercados de apertura, relatos y mapas del interior como creencias ([secret-realms.md](systems/secret-realms.md))
+- [ ] Oráculos y salones de adivinación como instituciones, astrólogos de corte, lectura de karma como prueba ([divination.md](systems/divination.md))
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -223,6 +228,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Guerras en la historia agregada con consecuencias demográficas, económicas y kármicas; conquistas y anexiones con legados ([war.md](systems/war.md))
 - [ ] Invención y pérdida en la historia agregada, tecnología por cultura según geografía, ruinas con procesos perdidos, desplazamiento por cultivo ([technology.md](systems/technology.md))
 - [ ] Reinos secretos creados por la historia profunda (creadores, propósitos, causas accidentales) con aperturas históricas, saqueos y degradación ([secret-realms.md](systems/secret-realms.md))
+- [ ] Pronóstico por conocimiento (calendarios, ciclos), presagios naturales en la legitimidad, profecías como legados ([divination.md](systems/divination.md))
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -233,6 +239,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Batallas por fases con terreno, asedios completos, epidemias de campamento, refugiados, treguas y tratados, costumbres de guerra, campos de batalla con espíritus ([war.md](systems/war.md))
 - [ ] Imprenta y su efecto en información y exámenes, secretos de oficio y espionaje, represión de sectas, híbridos qi–técnica, consecuencias ambientales ([technology.md](systems/technology.md))
 - [ ] Bolsillos de espacio con grilla interior, campo de qi y ecología cerrada, reglas internas, colapsos como desastres, crear un reino ([secret-realms.md](systems/secret-realms.md))
+- [ ] Proyección del futuro con el modelo agregado y forks propios, profecías fabricadas, reacción del Cielo ([divination.md](systems/divination.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
 
