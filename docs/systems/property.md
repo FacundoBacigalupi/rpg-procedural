@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [economy.md](economy.md) §1, §2b, §8 (la tierra como bien, tenencias, crédito y colateral), [contracts.md](contracts.md) (compromisos, formalidades, ejecutores, disputas, herencia), [family-lineage.md](family-lineage.md) §8 (herencia y partición), [state.md](state.md) §3, §4 (catastros, impuestos), [law.md](law.md) (robo, usurpación, tribunales, prueba), [social-structure.md](social-structure.md) §7 (servidumbre de la tierra; nunca personas como bienes), [information.md](information.md) §1, §4, §7 (creencias, documentos, secretos), [settlements.md](settlements.md) (terrenos y edificios), [planet-gen.md](planet-gen.md) §9 (suelos), [cultivation.md](cultivation.md) (venas de qi, cuevas), [spirits.md](spirits.md) §11 (tierras de culto), [heaven-karma.md](heaven-karma.md) §2 (karma por daño y compromisos rotos), [causality.md](causality.md) (presiones).
-Lo usan: economy (renta, venta de tierra, ejecución de colateral), state (impuestos sobre el catastro, reformas agrarias), law (casos de tierras y robos), war (confiscación, botín, colonos), organizations (patrimonio de clanes y sectas), settlements (quién construye dónde), [travel.md](travel.md) (peajes y derechos de paso), culture (#40: normas de propiedad), chronicle (la tierra que una familia ganó o perdió).
+Lo usan: economy (renta, venta de tierra, ejecución de colateral), state (impuestos sobre el catastro, reformas agrarias), law (casos de tierras y robos), war (confiscación, botín, colonos), organizations (patrimonio de clanes y sectas), settlements (quién construye dónde), [travel.md](travel.md) (peajes y derechos de paso), [culture.md](culture.md) (normas de propiedad), chronicle (la tierra que una familia ganó o perdió).
 
 ---
 

@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [planet-gen.md](planet-gen.md) §0, §3, §8, §10 (órbita y estaciones, temperatura, vientos, humedad, corrientes, oscilaciones de pocos años, clima de largo plazo, aerosoles), [elements.md](elements.md) §6 (campos de qi que oscilan con estaciones y astros), [causality.md](causality.md) §2 (qué puede ser aleatorio), [simulation.md](simulation.md) §4, §6, §9, §14 (resoluciones, materialización con hechos fijados, contrato del modo agregado, determinismo), [living-world.md](living-world.md) §1, §5, §8, §9, §11 (sequías e inundaciones, calendarios, poblaciones, fuego, migraciones), [heaven-karma.md](heaven-karma.md) (calamidades, nubes de tribulación, inclinación de tiradas del entorno), [divination.md](divination.md) §3, §7 (proyección, presagios), [perception.md](perception.md) (visibilidad, ruido, huellas).
-Lo usan: [economy.md](economy.md) (cosechas, perecibles, precios por estación), [travel.md](travel.md) (costo por celda, ríos, pasos, mar, vuelo), [war.md](war.md) (temporada de campaña, barro, niebla, lluvia sobre arcos), [body-health.md](body-health.md) §7 (exposición, enfermedades estacionales), [settlements.md](settlements.md) §7, §9, §10 (deterioro, viento en los incendios, daño por tormentas), [npc-psychology.md](npc-psychology.md) (ánimo por estación, inviernos largos), [state.md](state.md) (sequías que erosionan la legitimidad, rituales de lluvia), culture (#40: fiestas y calendarios), religion (#42: dioses de la lluvia), [chronicle.md](chronicle.md) (los años del hambre).
+Lo usan: [economy.md](economy.md) (cosechas, perecibles, precios por estación), [travel.md](travel.md) (costo por celda, ríos, pasos, mar, vuelo), [war.md](war.md) (temporada de campaña, barro, niebla, lluvia sobre arcos), [body-health.md](body-health.md) §7 (exposición, enfermedades estacionales), [settlements.md](settlements.md) §7, §9, §10 (deterioro, viento en los incendios, daño por tormentas), [npc-psychology.md](npc-psychology.md) (ánimo por estación, inviernos largos), [state.md](state.md) (sequías que erosionan la legitimidad, rituales de lluvia), [culture.md](culture.md) (fiestas y calendarios), religion (#42: dioses de la lluvia), [chronicle.md](chronicle.md) (los años del hambre).
 
 ---
 
@@ -151,6 +151,7 @@ interface QiWeather {
 - **Se mueven y se mezclan con el tiempo mundano:** una tormenta de qi de agua sobre un frente da lluvias torrenciales; una de fuego en verano, incendios; una de trueno, rayos que buscan el metal y a los cultivadores.
 - **Efectos:** desordenan el qi del cuerpo y dañan meridianos de quien no lo resiste (body-health §12), mutan plantas y bestias (living-world §2), desarman formaciones y talismanes, hacen caer a los que vuelan (travel §10), ciegan los sentidos espirituales. También son oportunidad: un cultivador del mismo elemento puede absorber como nunca, si aguanta.
 - **Dejan huella:** hierbas que nacen después de la tormenta, minerales cargados, bestias que despiertan, lugares que quedan con el elemento torcido.
+- **Cuánto pesa el qi** (aprobado 2026-10-06): en la familia xianxia, el qi tiene un efecto chico pero real sobre el tiempo de cada día (elements §6). Las tormentas de qi son raras y locales, salvo con mareas de qi fuertes o catástrofes.
 - **Las nubes de tribulación** (heaven-karma) son un evento físico local que se mezcla con el tiempo del lugar: tapan el sol, juntan el viento y se ven desde lejos.
 
 ## 9. Alterar el tiempo
@@ -158,7 +159,7 @@ interface QiWeather {
 - **Se mueve lo que hay:** llamar la lluvia junta la humedad que ya existe en el aire de la región (no se puede llover en el desierto sin agua que traer); dispersar nubes la manda a otro lado; levantar viento o calmar el mar mueve la energía de un sistema. Lo que llueve acá no llueve abajo: el valle vecino tiene su sequía con causa.
 - **Costo en qi proporcional a la energía y el agua que se mueven:** una niebla en un patio es barata; frenar un tifón está al alcance de muy pocos y los deja vacíos. El reino, el elemento del practicante y el campo del lugar cambian el costo (cultivation, elements).
 - **Formas:** técnicas, artefactos, formaciones que sostienen un clima (el valle de una secta en eterna primavera consume qi sin parar y corre el mal tiempo a sus vecinos), rituales con espíritus o dioses locales que tienen el poder real de hacerlo (spirits), si el mundo los tiene.
-- **Los rituales de lluvia mortales** (求雨) casi nunca tienen efecto físico: son creencia, fiesta, presión política y a veces coincidencia con una lluvia que ya venía (que el pueblo cuenta como milagro).
+- **Los rituales de lluvia mortales** (求雨) (aprobado 2026-10-06) solo tienen efecto físico si los escucha un espíritu o dios local real con poder y qi para hacerlo (spirits), y con el mismo costo y la misma conservación de §9. Si no, son creencia, fiesta, presión política y a veces coincidencia con una lluvia que ya venía, que el pueblo cuenta como milagro.
 - **Consecuencias:** quien hace llover se vuelve importante y odiado a la vez (los de abajo pierden su agua); la gente lo ve y lo cuenta; según la ley de cada mundo, torcer el tiempo a gran escala puede ser desequilibrio que el Cielo nota (heaven-karma: atención, calamidades) y deja karma por los daños que causa río abajo.
 - **El tiempo como arma:** una tormenta sobre un ejército, niebla para una flota, sequía sobre las tierras de un enemigo. Las sectas grandes lo hacen y los estados las contratan o les temen (war, state).
 
@@ -171,7 +172,7 @@ interface QiWeather {
 ## 11. El jugador y el narrador
 
 - **Lo que se siente y se ve:** el personaje percibe el tiempo de su lugar con sus sentidos (frío, viento, el olor a lluvia, las nubes del oeste), nunca el estado de los sistemas. El narrador recibe esa percepción.
-- **El panel** muestra lo que el personaje ve del cielo y su propio pronóstico como creencia ("cree que mañana llueve, por las golondrinas").
+- **El panel** muestra lo que el personaje ve del cielo y su propio pronóstico como creencia ("cree que mañana llueve, por las golondrinas") (aprobado 2026-10-06). Nada de íconos de pronóstico ni datos que el personaje no tenga.
 - **El tiempo da forma a la narración:** el montaje de un viaje o de una estación cuenta la lluvia y el barro porque pasaron, no como decorado.
 - **El jugador puede actuar** sobre el tiempo como cualquiera: guardar agua, adelantar la cosecha, esperar el viento, aprender a leer el cielo y, con poder, mover una tormenta y pagar lo que cueste.
 
@@ -181,10 +182,11 @@ interface QiWeather {
 |---|---|
 | Escena | Por minuto: ráfagas, el comienzo de la lluvia, el rayo, microclima |
 | Local | Por hora en cada celda, con relieve y sistemas que la tocan |
-| Regional | Por hora o día por celda con sistemas sinópticos que se mueven |
+| Regional | Por día por celda con sistemas sinópticos que se mueven |
 | Mundo | Sistemas grandes por día y totales por estación y celda (lluvia, temperatura, días de helada) para cosechas, ríos y fuego |
 | Historia | Anomalías por estación y año (años buenos y malos) y extremos registrados como eventos |
 
+- **Dónde se calcula fino** (aprobado 2026-10-06): por hora solo en escena y en la zona local; en la región, sistemas que se mueven día a día; en el resto del mundo, totales por estación.
 - **Hechos fijados al bajar de escala** (simulation §6): si la historia o el modo agregado ya dijo que ese verano fue de sequía y se perdió la cosecha, el tiempo diario que se genera al acercarse cumple ese total. El detalle se genera condicionado al agregado, nunca lo contradice.
 - **Determinismo** (simulation §14): `rng.fork("weather", región, día)`; las alteraciones (§9) son eventos del estado que cambian los sistemas, no la semilla.
 
@@ -206,6 +208,12 @@ interface QiWeather {
 - **Hechos fijados:** el detalle diario generado al acercarse respeta el total de la estación que ya se usó en agregado.
 - **Alterar el tiempo:** la lluvia llamada en una celda reduce la humedad disponible río abajo en la misma cantidad.
 - **Pronóstico:** la precisión de la proyección cae con el plazo; los refranes con correlación alta aciertan más que los de correlación nula.
+
+## Decisiones (aprobado 2026-10-06)
+- **Resolución:** por hora en escena y local, sistemas diarios en la región, totales por estación en el mundo (§12).
+- **El panel muestra solo lo observado** y el pronóstico propio como creencia (§11).
+- **Qi con efecto chico y real** en el tiempo diario; tormentas de qi raras y locales (§8).
+- **Rituales de lluvia** con efecto solo si hay un espíritu o dios real que pueda y quiera (§9).
 
 ## Decisiones tomadas en este borrador (revisables)
 
