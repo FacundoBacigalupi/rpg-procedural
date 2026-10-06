@@ -32,7 +32,7 @@ interface Cosmos {
 
 interface Plane {
   id: PlaneId;
-  kind: 'mortal-world' | 'upper-realm' | 'cycle' | 'underworld' | 'demonic' | 'divine' | 'elemental' | 'void' | 'lesser-world' | 'outside';
+  kind: 'mortal-world' | 'upper-realm' | 'cycle' | 'underworld' | 'demonic' | 'divine' | 'elemental' | 'spirit-layer' | 'void' | 'lesser-world' | 'outside';  // spirit-layer: capa superpuesta al mundo (familia de los misterios)
   simulated: 'full' | 'aggregate' | 'facts-only';   // el planeta del jugador es el único 'full'
   essence: { stock: number; density: number; kind: EssenceKind };   // cuánto hay y qué tan concentrado
   ceiling: Record<PathId, number>;           // hasta qué umbral se sostiene un ser en este plano
@@ -79,6 +79,7 @@ El cielo que ve cualquiera es la parte del cosmos más cercana y la única que t
 | Fantasía oscura | Mundo, algo afuera que filtra poder y corrupción, quizás un más allá vacío | Pactos, grietas, posesión |
 | Mitológica | Mundo con la montaña o el cielo de los dioses al alcance, inframundo | Dioses que bajan caminando, héroes que suben, viajes al inframundo |
 | Rúnica | Solo el mundo; el resto es física | Ninguno, o grietas que son fenómenos físicos |
+| Misterios ([mysteries.md](mysteries.md)) | Mundo, mundo espiritual superpuesto con profundidades, astral, espacios sellados por encima (opcionales), un más allá según el camino de la muerte, lo de afuera tras la barrera | Proyección del espíritu, rituales y rezos con nombres honoríficos, sueños, filtraciones de lo de afuera, descensos de dioses con costo |
 
 - **Variantes por seed:** dentro de cada familia, los ejes cambian la estructura (un inframundo con economía, un ciclo que rechaza a los cultivadores, un dios muerto con su cadáver en el vacío; metaphysics §5, §6).
 - **Hasta la Fase 7 solo existe xianxia** (metaphysics: decisiones). El resto de la tabla queda como forma a respetar cuando se agreguen las otras familias.
@@ -134,16 +135,17 @@ interface Ascension {
 - **La tribulación de ascensión** es la más grande (heaven-karma §5): visible desde muy lejos, con nubes que se juntan durante días. Se puede preparar (formaciones, artefactos, aliados) y, como toda tribulación, se puede robar o sabotear.
 - **Lo que se lleva:** su cuerpo (si sobrevive), lo que esté atado a su alma y lo que la puerta deje pasar. Casi todo lo demás queda: tesoros, cuevas, discípulos, deudas, enemigos.
 - **Conservación:** la esencia del ascendido y de lo que lleva sale del planeta. Una era con muchas ascensiones empobrece el mundo de qi. La tribulación descarga esencia que vuelve al entorno (heaven-karma §5).
-- **Karma:** el karma neto no se salda al ascender como al cruzar las Fuentes. Si el mundo superior lo lee, viaja con él; si no, queda como deuda en el libro de este mundo, que el Cielo cobra en lo que dejó (su linaje, su secta, sus obras). Qué variante rige es parte de la ley del mundo.
+- **Karma** (aprobado 2026-10-06): el karma neto no se salda al ascender como al cruzar las Fuentes. En la familia xianxia **queda en este mundo**: el Cielo lo cobra en lo que el ascendido dejó (su linaje, su secta, sus obras), así que ascender no es escapar. Que viaje con el ascendido es una variante de otras leyes de mundo.
 - **Fracasos:** morir en la tribulación (y quizás quedar como espíritu, spirits §0), perder el cuerpo y llegar solo como alma, quedar varado en el vacío o abortar a mitad de camino con el cultivo destrozado. Todos dejan huellas.
 - **Consecuencias en el mundo:** una secta sin su patriarca (organizations §12: sucesión), herencias en disputa, enemigos que aprovechan, un vacío de poder en la región (state §10), un mito y a veces un culto (religion §12), un lugar marcado donde el cielo se abrió.
 - **Ascensiones fingidas:** alguien puede simular una ascensión para desaparecer (deudas, enemigos, una tribulación que sabe que no pasa). Sin tribulación ni esencia que sale, quien sepa leerlo nota que no fue real.
-- **Variante oscura por seed:** en algunos mundos la ascensión es una trampa (los de arriba cosechan a los que suben, o la puerta los disuelve). Es una regla de la ley del mundo, rara, y queda en el ledger como cualquier otra. Nadie de abajo lo sabe; un visitante o una reliquia pueden ser la primera pista.
+- **Variante oscura por seed** (aprobado 2026-10-06): en algunos mundos la ascensión es una trampa (los de arriba cosechan a los que suben, o la puerta los disuelve). Existe también en xianxia, rara (alrededor del 5% de esos mundos), y queda en el ledger como cualquier otra regla. Nadie de abajo lo sabe y no hay pistas obvias; un visitante o una reliquia pueden ser la primera, y si nadie la encuentra, la crónica lo revela en "lo que nunca supiste".
 
 ## 8. Visitantes de arriba
 
 - **Bajar cuesta:** el visitante tiene que suprimirse por debajo del techo del planeta, la barrera lo empuja mientras esté y el Cielo de este mundo lo mira con desconfianza (heaven-karma §3: saliencia alta). Por eso casi nunca bajan, y cuando bajan, por poco tiempo o con un cuerpo prestado.
 - **Formas de bajar:** en persona suprimido, un avatar o clon con una fracción de su poder, un mensaje o una voz (sueños, jades que caen), un objeto enviado, o poseer a alguien de abajo (con el costo y el riesgo de spirits §3c).
+- **Muy raros** (aprobado 2026-10-06): unos pocos por milenio en todo el planeta, casi siempre suprimidos o en cuerpos prestados. Son hechos de época, no recursos de trama.
 - **Siempre por una causa:** la sim no manda visitantes por tabla. Vienen por algo que el ledger registra: un ascendido que busca a su linaje o a su enemigo, una facción de arriba que quiere un objeto o una persona de abajo (un cuerpo con una constitución rara, un tesoro que nació en el planeta), un sello que se debilita y que alguien de arriba custodia, una deuda vieja. Mientras la causa no existe, nadie baja.
 - **Ritmo de tiempo:** si el plano superior tiene otro ritmo (`timeRate`), un ascendido que vuelve encuentra un mundo que avanzó más o menos de lo que esperaba. Es un dato que se fija al materializarlo.
 - **Lo que dejan:** un visitante trae información que nadie de abajo tiene (con sus mentiras), objetos por encima del techo (que el mundo empuja a degradarse) y consecuencias. Puede ser el maestro misterioso de una novela o un depredador.
@@ -187,7 +189,7 @@ interface CosmicLedger {
 
 - **El narrador solo cuenta lo que el personaje percibe y cree:** una tribulación de ascensión vista de lejos, la presión del techo en el propio cuerpo, un visitante que habla de "arriba". Nunca describe planos que el personaje no vio.
 - **Libertad total:** el jugador puede investigar el cosmos, buscar reliquias, abrir un sello, cazar a un visitante, preparar su propia ascensión, robar la tribulación de otro, fingir una ascensión o quedarse suprimido protegiendo lo suyo.
-- **Ascender termina la vida en este mundo.** La partida sucede en el planeta. Cuando el personaje asciende, la vida termina como cuando cruza las Fuentes: escena del cruce como la percibe, y después la crónica (chronicle) y el epílogo del mundo sin él.
+- **Ascender termina la vida en este mundo** (aprobado 2026-10-06). La partida sucede en el planeta. Cuando el personaje asciende, la vida termina como cuando cruza las Fuentes: escena del cruce como la percibe, y después la crónica (chronicle) y el epílogo del mundo sin él.
 
 ## 14. Escala (LOD)
 
@@ -216,6 +218,12 @@ interface CosmicLedger {
 - **Techo:** ningún ser del planeta queda por encima del techo sin supresión ni costo.
 - **Astros calculables:** los eclipses y cometas predichos por el modelo ocurren cuando dice.
 - **Sin fuga:** el narrador no recibe nada de un plano que el personaje no percibió.
+
+## Decisiones (aprobado 2026-10-06)
+- **Ascender termina la partida** como cruzar las Fuentes (§13).
+- **En xianxia el karma queda en este mundo** y el Cielo lo cobra en lo que el ascendido dejó; ascender no es escapar (§7).
+- **La ascensión trampa existe en xianxia pero es rara** (~5% de esos mundos), sin pistas obvias, revelada en la crónica (§7).
+- **Visitantes de arriba muy raros:** pocos por milenio, solo con causa, casi siempre suprimidos o en cuerpos prestados; hechos de época (§8).
 
 ## Decisiones tomadas en este borrador (revisables)
 
