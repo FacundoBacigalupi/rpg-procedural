@@ -96,7 +96,7 @@ La posición se **lee**, con errores (perception §6, §7):
 - **Registros del narrador.** El narrador usa los tratamientos que el personaje usaría y recibiría según lo que cree de cada uno ("joven señor", "mayor", "anciano"), y no nombra un rango que el personaje no percibió.
 
 ## 5. Qué puede hacer cada uno
-No hay listas de acciones por estamento. Una acción es posible si se cumplen tres cosas, y cada una se resuelve en la simulación:
+No hay listas de acciones por estamento. Una acción es posible si se cumplen tres cosas, y cada una se resuelve en la simulación (como requisitos, en [actions.md](actions.md) §5):
 1. **Capacidad:** el cuerpo, el cultivo y el saber lo permiten (no podés volar sin el reino, ni leer sin haber aprendido).
 2. **Medios:** tenés lo que hace falta (plata para el soborno, tierra para sembrar, un arma, un caballo, tiempo libre que el siervo no tiene).
 3. **Contrapartes:** las acciones que necesitan a otros (comprar, entrar, casarse, presentarse a examen, ser oído en juicio) dependen de que el otro acepte, y el otro decide con lo que cree de tu posición.
