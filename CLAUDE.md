@@ -10,7 +10,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/ROADMAP.md](docs/ROADMAP.md) — **qué sigue** (sección "Ahora"), fases y estado. Si el usuario pregunta con qué seguir, leer esto. Actualizar al cerrar algo.
 - [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) — ramas (`main`, `develop`, `feat/*`…), commits, CI, secretos.
 - [docs/systems/causality.md](docs/systems/causality.md) — **el modelo causal del mundo. Leerlo antes de tocar cualquier sistema de simulación o worldgen.**
-- [docs/systems/heaven-karma.md](docs/systems/heaven-karma.md) — el Cielo como agente-ley, tribulaciones, karma.
+- [docs/systems/heaven-karma.md](docs/systems/heaven-karma.md) — el Cielo como agente-ley, tribulaciones, karma, cobro en las Fuentes; atención finita repartida por saliencia, zonas ciegas, tribulación como evento físico que se puede robar, retribución como inclinación acotada de tiradas, mérito (功德), fortuna colectiva (气运) derivada.
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas).
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos.
 - [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
