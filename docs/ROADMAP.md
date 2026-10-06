@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#42, religión y doctrinas**). Después del backlog viene la **Fase 0: scaffold**.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#43, cosmología y ascensión**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -36,7 +36,7 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 39. [x] **Clima diario y estaciones** → [weather.md](systems/weather.md): tiempo del día derivado del clima de planet-gen (frentes, lluvias, tormentas, nieve, sequías), estaciones con efecto en cosechas, viajes, guerra y ánimo; pronóstico popular y por adivinación; tormentas de qi; cultivadores que alteran el tiempo y su costo.
 40. [x] **Culturas** → [culture.md](systems/culture.md): la cultura como haz de normas, prácticas y saberes que se transmite y cambia; costumbres (comida, ropa, vivienda, ritos de paso, funerales, fiestas), estética y arte, valores y tabúes, etiqueta, humor; generación desde la geografía y la historia; contacto, préstamo, sincretismo y aculturación; identidad y etnicidad como creencia.
 41. [x] **Lenguas y escritura** → [language.md](systems/language.md): fonología, raíces y morfología; cambio fonético por siglos, lenguas hermanas, préstamos por contacto, pidgins y lenguas francas; nombres de personas y lugares con significado; escrituras que se inventan y se heredan; aprender una lengua, malentendidos e intérpretes; el léxico que usa el narrador. Incluye el worldgen mínimo de la Fase 5 (aprobado 2026-10-06).
-42. [ ] **Religión y doctrinas** → `religion.md`: religiones como sistemas de creencias sobre el mundo, el Cielo, la muerte y la moral; doctrina, clero, textos sagrados, conversión, herejía y sincretismo; cómo se relacionan con los cultos y espíritus reales (spirits §9) y con la verdad metafísica; religión y estado; prácticas de devoción y ascetismo.
+42. [x] **Religión y doctrinas** → [religion.md](systems/religion.md): religiones como sistemas de creencias sobre el mundo, el Cielo, la muerte y la moral; doctrina, clero, textos sagrados, conversión, herejía y sincretismo; cómo se relacionan con los cultos y espíritus reales (spirits §9) y con la verdad metafísica; religión y estado; prácticas de devoción y ascetismo.
 43. [ ] **Cosmología y ascensión** → `cosmology.md`: estructura del cosmos por familia de mundo (planos, inframundo, cielos superiores, otros mundos), qué hay después del último umbral, ascensión como evento físico con costo, visitantes de arriba y de abajo, lo que el jugador nunca va a ver pero el mundo tiene que tener coherente.
 
 ### F. Cierre del diseño
@@ -64,6 +64,7 @@ Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos s
 - weather: cantidad y tamaño de sistemas por región y estación; variabilidad diaria por régimen; costo de qi por agua y energía movidas; frecuencia de tormentas de qi; umbrales de sequía e inundación.
 - culture: velocidad de deriva por dominio; peso de los sesgos de copia; generaciones de asimilación; frecuencia de modas; cuántos rasgos por cultura para que se sientan distintas.
 - language: cambios fonéticos por siglo; siglos de separación hasta la ininteligibilidad; raíces por protolengua; préstamos según la intensidad del contacto; generaciones hasta cambiar de lengua.
+- religion: velocidad de conversión por motivo; peso de la sanción creída; umbral de anomalías para una herejía; frecuencia de milenarismos por presión; riqueza de templos antes de que el estado la mire.
 - simulation: tamaño de las zonas local y regional; histéresis; umbrales y pesos de importancia para tier 3; cupos de tier 2 y 3; cadencias por proceso y resolución; tolerancias agregado–individual; intervalo de snapshots; presupuestos por acción, día saltado y año de historia.
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
@@ -149,6 +150,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Clima diario y estaciones ([systems/weather.md](systems/weather.md)) — capas de lo lento a lo rápido (normales de planet-gen, anomalía de la estación con causa, sistemas de tiempo, tiempo local por relieve, microclima); frentes, ciclones, monzones y olas de frío como entidades que nacen donde pueden, se mueven con el viento y mueren; balance de agua por celda con nieve, suelo, ríos y acuíferos; sequía como presión e inundaciones con diques; estaciones desde la órbita y régimen local; fenología y año agrícola; calendarios culturales como creencia que se desajusta; efectos en cosechas, viaje, guerra, cuerpo, edificios, fuego, percepción y ánimo; pronóstico como proyección (refranes con correlación real, oficio, registros, sentidos de cultivador, adivinación); tormentas de qi con fuente y conservación; alterar el tiempo moviendo agua y energía existentes con costo y daño río abajo; detalle diario condicionado a los agregados
 - [x] Culturas ([systems/culture.md](systems/culture.md)) — rasgos que viven en personas (fuerza, por fuera y por dentro, de quién se aprendieron) con prevalencia por comunidad y `Culture` como racimo con nombre; dominios (comida, ropa, vivienda, parentesco, ritos de paso, funerales, fiestas, normas y tabúes, valores, etiqueta, humor, estética, saber práctico, género, propiedad, cosmovisión, calendario) que leen los demás sistemas; cada rasgo con origen (adaptación, evento, prestigio, invento, deriva, arrastre); transmisión vertical, oblicua y horizontal con sesgos de copia y sanciones informales; modas, generaciones, golpes, imposición, tradiciones inventadas y pérdida; generación desde la geografía y la historia con separación y deriva; préstamo selectivo, sincretismo, criollización, asimilación y resistencia; identidad y etnicidad como creencias con marcas, estereotipos, etnogénesis y pureza falsa; culturas de secta y jianghu; libertad del jugador para adoptar, romper e inventar costumbres
 - [x] Lenguas y escritura ([language.md](systems/language.md)) — lenguas generadas de verdad: fonología con tipología realista y romanización fija, raíces y morfología gruesa, léxico sobre un espacio de conceptos con origen por palabra (heredada, compuesta, prestada, calco, inventada); cambio fonético regular por siglo con excepciones con causa, ramas por separación, sustratos; dialectos como continuo con inteligibilidad calculada y acento que delata; préstamos con vector, prestigio, lenguas francas, pidgins y criollas, cambio de lengua por generaciones; registros, tratamientos, jergas y tabúes de palabra; nombres de personas por partes con significado y quién los usa; topónimos en capas; escrituras inventadas por necesidad, adaptadas y evolucionadas, con soportes y uso esotérico; lenguas muertas y litúrgicas, desciframiento y reconstrucción comparativa; aprender con facetas, errores con forma, intérpretes; el narrador cita o traduce el léxico y nunca inventa; lo que nombra el jugador entra como palabra inventada
+- [x] Religión y doctrinas ([religion.md](systems/religion.md)) — religiones como creencias colectivas que viven en personas (fe, práctica y pertenencia separadas, por fuera y por dentro, pertenencia múltiple); doctrinas como afirmaciones comparables con la ley del mundo, que funcionan aunque estén equivocadas; prácticas con efecto por la física (meditación, ayuno, ascetismo, exorcismo); tipos (popular, de sabios, de revelación, de misterio, de estado, culto a inmortales, milenarista, escéptica); textos sagrados como objetos con canon, lengua sagrada y falsificaciones; clero, especialistas por pago y templos como terratenientes y prestamistas; moral con sanción creída en la utilidad; conversión con motivos, misioneros, apostasía; herejía, cisma, sincretismo y reforma; religión y estado (legitimidad, culto oficial, persecución con causa); profetas, milenarismos y guerras santas; religión y cultivo; dioses reales solo según la familia del mundo
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -193,6 +195,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Tiempo diario por celda en la región de la aldea desde normales y anomalía; estaciones; efecto en cultivos, exposición y percepción ([weather.md](systems/weather.md) §1, §4, §5)
 - [ ] Una cultura de la aldea desde `content/` con los rasgos que leen los demás sistemas ([culture.md](systems/culture.md) §1, §2)
 - [ ] Lengua de la aldea desde `content/` con léxico mínimo, romanización, nombres de personas con significado y el léxico en la lista blanca del validador ([language.md](systems/language.md) §1, §8, §13)
+- [ ] Religión popular de la aldea desde `content/`: ancestros, dios local o su ausencia, una fiesta, tabúes ([religion.md](systems/religion.md) §2, §6)
 
 ## Fase 2 — Psicología y memoria
 - [ ] Rasgos innatos + adquiridos
@@ -217,6 +220,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Temperamento y gustos elegidos; infancia elegida como intenciones del hogar ([game-modes.md](systems/game-modes.md) §2.3)
 - [ ] Rasgos por persona, transmisión en los períodos sensibles, identidad como creencia, sesgo de grupo y sanciones informales ([culture.md](systems/culture.md) §4, §8)
 - [ ] Registros, tratamientos y tabúes de palabra; acento como firma; errores de quien habla mal ([language.md](systems/language.md) §5, §7, §12)
+- [ ] Identidad religiosa por persona y sanción creída en la utilidad; consuelo y culpa ([religion.md](systems/religion.md) §1, §7)
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -253,6 +257,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Viajes de varios días con montaje e interrupciones; posadas; animales de carga y regla del carro; carga como lotes con pérdidas ([travel.md](systems/travel.md) §2, §4-§6, §15)
 - [ ] Balance de agua por celda (suelo, nieve, ríos); sequía como presión; año agrícola atado al tiempo real; ánimo por estación; pronóstico popular con correlación calculada ([weather.md](systems/weather.md) §3-§5, §7)
 - [ ] Fiestas y ritos fuera de escena y en la economía; modas; prevalencias por comunidad ([culture.md](systems/culture.md) §5, §9)
+- [ ] Economía del templo, especialistas por pago, fiestas fuera de escena ([religion.md](systems/religion.md) §5, §6)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -283,6 +288,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Encierros largos de cultivo con alarmas arregladas dentro del mundo; jugar como espíritu ([player-loop.md](systems/player-loop.md) §5, §13)
 - [ ] Talento elegido con genoma condicionado; marco `GoldenFinger` con `reveal`, `craft`, `learning`, `talent`, `body` y reglas compuestas (disparador, condición, acción) con los primeros tropos; mentor como remanente; firma y saliencia ante el Cielo; presets Alquimista divino y Genio celestial ([game-modes.md](systems/game-modes.md) §3-§7, §11)
 - [ ] Tormentas de qi con fuente; alterar el tiempo con costo y desplazamiento del agua ([weather.md](systems/weather.md) §8, §9)
+- [ ] Doctrinas sobre el Cielo y el cultivo en las sectas; meditación y ascetismo con efectos reales ([religion.md](systems/religion.md) §3, §6, §12)
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -343,6 +349,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Tierras de clan, culto, templo y dominio de secta; feudos; cercamientos; usurpación del poderoso; venas y cuevas disputadas ([property.md](systems/property.md) §4, §7, §10, §13)
 - [ ] Vuelo con costo de qi y visibilidad; monturas espirituales; anillos de almacenamiento; fronteras de secta y zonas sin vuelo ([travel.md](systems/travel.md) §5, §6, §10)
 - [ ] Subculturas de sectas, gremios y corte; imposición por edicto y resistencia ([culture.md](systems/culture.md) §5, §11)
+- [ ] Clero como organización, herejía, cisma, conversión con motivos, misioneros, votos ([religion.md](systems/religion.md) §5, §8, §9)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -376,6 +383,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Años buenos y malos en la historia; extremos registrados; calendarios que se desajustan ([weather.md](systems/weather.md) §4, §6, §12)
 - [ ] Culturas generadas desde la geografía y la historia: separación, deriva, sincretismo, asimilación, tradiciones inventadas, secuencias de estilos, etnogénesis ([culture.md](systems/culture.md) §6, §7, §8, §10)
 - [ ] Familias de lenguas completas, préstamos con vector, sustratos, pidgins y criollas, escrituras inventadas y adaptadas, lenguas muertas, desciframiento y reconstrucción ([language.md](systems/language.md) §4, §6, §10, §11)
+- [ ] Religiones desde eventos en la historia profunda, textos y cánones, sincretismos, persecuciones, milenarismos ([religion.md](systems/religion.md) §4, §9, §10, §11)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -398,6 +406,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Mar con vientos, corrientes y monzones; barcos como objetos; naufragios y pecios; piratas; navegación de altura ([travel.md](systems/travel.md) §9)
 - [ ] Ciclones tropicales, monzones y tiempo del mar en todo el planeta; inviernos volcánicos por bandas ([weather.md](systems/weather.md) §2, §1)
 - [ ] Todas las lenguas del mundo con LOD, lenguas estándar, cambio de lengua por prestigio ([language.md](systems/language.md) §5, §6, §15)
+- [ ] Religiones del mundo con LOD, guerras santas, dioses reales en familias con panteón ([religion.md](systems/religion.md) §11, §13)
 
 ## Fase 9 — Pulido
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica

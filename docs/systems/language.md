@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [living-world.md](living-world.md) §3 (la geografía hace a las culturas y sus lenguas), [deep-history.md](deep-history.md) §5 (topónimos en capas, etimologías populares), [culture.md](culture.md) (comunidades, contacto, identidad), [skills.md](skills.md) (las lenguas y escrituras como habilidades con facetas), [perception.md](perception.md) §7 (la voz y el acento como firma), [information.md](information.md) §6 (alfabetización, autenticidad, cifrados), [npc-psychology.md](npc-psychology.md) §10 (períodos sensibles), [simulation.md](simulation.md) (LOD y modo agregado), [technology.md](technology.md) (soportes de escritura, imprenta).
-Lo usan: [dialogue.md](dialogue.md) §3, §13 (entender, intérpretes, malentendidos), [narration.md](narration.md) §4, §9 (léxico generado, validador con lista blanca), [deep-history.md](deep-history.md) §5 (topónimos, reconstrucción), [settlements.md](settlements.md) (nombres en capas), [organizations.md](organizations.md) (nombres de sectas y cargos), [family-lineage.md](family-lineage.md) (apellidos, nombres de generación), [social-structure.md](social-structure.md) (registros, tratamientos), [state.md](state.md) (lengua de la administración, exámenes), [law.md](law.md) (lengua del tribunal), [economy.md](economy.md) (lenguas francas en los mercados), [travel.md](travel.md) (orientarse entre lenguas), [discovery.md](discovery.md) (descifrar, nombrar lo nuevo), [chronicle.md](chronicle.md) (crónicas en lenguas que cambian), religion (#42: lenguas sagradas).
+Lo usan: [dialogue.md](dialogue.md) §3, §13 (entender, intérpretes, malentendidos), [narration.md](narration.md) §4, §9 (léxico generado, validador con lista blanca), [deep-history.md](deep-history.md) §5 (topónimos, reconstrucción), [settlements.md](settlements.md) (nombres en capas), [organizations.md](organizations.md) (nombres de sectas y cargos), [family-lineage.md](family-lineage.md) (apellidos, nombres de generación), [social-structure.md](social-structure.md) (registros, tratamientos), [state.md](state.md) (lengua de la administración, exámenes), [law.md](law.md) (lengua del tribunal), [economy.md](economy.md) (lenguas francas en los mercados), [travel.md](travel.md) (orientarse entre lenguas), [discovery.md](discovery.md) (descifrar, nombrar lo nuevo), [chronicle.md](chronicle.md) (crónicas en lenguas que cambian), [religion.md](religion.md) (lenguas sagradas).
 
 ---
 
@@ -101,7 +101,7 @@ interface Morphology {
 - **Raíces de la protolengua:** una lista básica de conceptos (cuerpo, naturaleza, parentesco, números, verbos básicos) se genera para cada protolengua desde `content/language/concepts`. El resto del léxico se arma con compuestos y derivados, como en una lengua real.
 - **Compuestos con significado:** "qing" (claro) + "shui" (agua) = "Qingshui", con la regla de compuesto de esa lengua. Las palabras nuevas que necesita la sim (una técnica, una secta, una planta recién descubierta) se forman igual (§13).
 - **Cambio de significado:** las palabras se corren con el uso (la palabra para "señor" termina en "usted"; la de "bestia" se vuelve un insulto). Se registran con causa cuando la hay: una conquista vuelve despectiva la palabra del vencido.
-- **La gramática se simula en forma gruesa.** Orden de palabras, clasificadores y honoríficos alcanzan para la morfología de los nombres, para el sabor de las frases citadas y para los errores de quien la habla mal. No se generan textos completos en la lengua: el contenido de lo que se dice es estructurado (dialogue §2).
+- **La gramática se simula en forma gruesa** (aprobado 2026-10-06). Orden de palabras, clasificadores y honoríficos alcanzan para la morfología de los nombres, para el sabor de las frases citadas y para los errores de quien la habla mal. No se generan textos completos en la lengua: solo nombres, palabras sueltas y frases cortas citadas. El contenido de lo que se dice es estructurado (dialogue §2) y el narrador lo da en español.
 
 ## 4. Cambio fonético y lenguas hermanas
 
@@ -146,7 +146,7 @@ interface SoundChange {
 - **Tratamientos y honoríficos:** cómo se nombra a un superior, a un anciano o a un maestro (formas de "usted", títulos, autodesprecio cortés). Son contenido de la cultura con forma en la lengua.
 - **Jergas:** sectas, gremios, ladrones y soldados tienen vocabulario propio. Es marca de pertenencia y a veces un código: quien no la conoce no entiende y queda marcado como de afuera. La jerga de los bajos fondos sirve para hablar delante de la guardia.
 - **Tabúes de palabra:** el nombre de un muerto, de un emperador (避讳), de una bestia temida o de un dios no se dice. Se reemplaza por un rodeo ("el de la montaña") que con el tiempo se vuelve la palabra normal, y la vieja se pierde. Decir la palabra prohibida tiene consecuencias sociales y, si la ley del mundo lo permite, metafísicas (heaven-karma, spirits).
-- **Nombres verdaderos:** en mundos donde la ley lo dice (metaphysics), un nombre puede tener poder real sobre una entidad. Es una regla de la ley del mundo, no de la lengua; la lengua solo da la forma.
+- **Nombres verdaderos y palabras prohibidas con poder** (aprobado 2026-10-06): solo si la ley del mundo lo dice (metaphysics). Es una regla de la ley, no de la lengua; la lengua solo da la forma. En la familia xianxia el poder es acotado: un nombre puede servir como parte de una firma del alma, de un juramento (contracts) o de un talismán dirigido a alguien (crafts), pero saber el nombre de alguien no da poder para dominarlo.
 
 ## 8. Nombres de personas
 
@@ -229,10 +229,10 @@ interface Script {
 ## 13. El jugador y el narrador
 
 - **El jugador escribe en español y el personaje habla su lengua.** El parser traduce la intención a contenido estructurado (dialogue §14). Si el personaje no sabe la lengua del otro, lo que dice sale con sus errores o como gestos; el jugador no puede hacerle decir algo que el personaje no sabe decir.
-- **Lo que el personaje no entiende se narra como sonido** o con las palabras sueltas que sí entendió (narration §4). Una palabra extranjera que el personaje repite sin entender aparece citada, romanizada, sin glosa.
+- **Lo que el personaje no entiende se narra como sonido** o con las palabras sueltas que sí entendió (narration §4), sin subtítulos (aprobado 2026-10-06). Una palabra extranjera que el personaje repite sin entender aparece citada, romanizada, sin glosa. Con la exposición, el personaje aprende palabras sueltas y empieza a adivinar su significado (§12), y las glosas que cree pueden estar mal.
 - **Citar o traducir:** el pedido de narración trae cada nombre y término con su forma romanizada y su glosa en español, y la regla de cuándo usar cada una (los nombres propios se citan; las palabras comunes que el personaje entiende se traducen; las palabras de una cultura ajena que el personaje conoce sin traducción se citan). El narrador no inventa formas ni glosas.
 - **Validador:** todas las formas del léxico generado que el personaje conoce están en la lista blanca (narration §9). Una forma generada que el personaje no conoce es una fuga de información y el validador la rechaza.
-- **Libertad total:** el jugador puede aprender cualquier lengua que exista en el mundo, buscar un maestro, ir a vivir entre hablantes, estudiar una inscripción, inventar una escritura (con la habilidad y el tiempo que eso lleva), ponerle nombre a su hijo, a su espada o a un lugar que descubrió, o inventarse un apodo. Lo que nombra se forma con las raíces de su lengua (si el jugador escribe un nombre propio, la sim lo adapta a la fonología del personaje y lo registra como `coined`). Si el nombre se usa, se difunde por las mismas reglas que cualquier palabra; si no, muere con él.
+- **Libertad total:** el jugador puede aprender cualquier lengua que exista en el mundo, buscar un maestro, ir a vivir entre hablantes, estudiar una inscripción, inventar una escritura (con la habilidad y el tiempo que eso lleva), ponerle nombre a su hijo, a su espada o a un lugar que descubrió, o inventarse un apodo. **Cómo nombra** (aprobado 2026-10-06): el jugador escribe el nombre tal cual y la sim lo adapta a cómo lo pronuncia el personaje, o pide un significado ("ponele 'roca' en mi lengua") y la sim lo forma con las raíces de la lengua del personaje. Los dos entran como `coined`. Si el nombre se usa, se difunde por las mismas reglas que cualquier palabra; si no, muere con él.
 - **Sin glosario del mundo:** el jugador ve las palabras que su personaje conoce y lo que cree que significan. Un comando fuera del personaje muestra ese vocabulario con las glosas creídas, sin corregirlas.
 
 ## 14. Generación
@@ -277,6 +277,12 @@ La generación es determinista: mismo seed y misma historia, mismas lenguas. Tod
 - **Inteligibilidad:** la inteligibilidad entre variantes sube con el contacto y baja con el tiempo de separación.
 - **Sin palabras del LLM:** con un LLM falso que inventa nombres, el validador rechaza toda forma que no esté en el léxico conocido por el personaje.
 - **Sin fuga:** un personaje que no conoce una palabra no la recibe en su `PlayerView`.
+
+## Decisiones (aprobado 2026-10-06)
+- **Sin textos completos en lenguas del mundo:** solo nombres, palabras sueltas y frases cortas citadas; el contenido se narra en español (§3).
+- **Lo que no se entiende se narra como sonido,** con las palabras reconocidas citadas y aprendizaje por exposición; sin subtítulos (§13).
+- **El jugador nombra escribiendo el nombre o pidiendo un significado;** los dos entran como `coined` y se difunden solo si se usan (§13).
+- **Nombres verdaderos según la ley del mundo;** en xianxia, acotados a firmas del alma, juramentos y talismanes, sin dominación por saber un nombre (§7).
 
 ## Decisiones tomadas en este borrador (revisables)
 
