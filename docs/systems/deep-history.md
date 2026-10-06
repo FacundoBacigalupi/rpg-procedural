@@ -242,6 +242,7 @@ Excavar es una **sesión de oficio** ([crafts.md](crafts.md) §1) en un depósit
 - **Mercado de antigüedades** ([economy.md](economy.md)): el precio sale de lo que el comprador cree sobre la edad, el origen y el poder del objeto. Una procedencia ilustre ("de la tumba del Rey Grulla") multiplica el precio, y por eso se inventa.
 - **Falsificaciones** (crafts): pátina inducida, inscripciones nuevas en piedras viejas, piezas armadas con fragmentos de varias, qi residual implantado con una técnica. Detectarlas es datación (§3) con un sospechoso.
 - **Coleccionistas y eruditos:** nobles, sectas y templos compran y estudian. Escriben catálogos y tratados que son textos con autor y sesgo ([chronicle.md](chronicle.md) §2).
+- **Escuelas de historia:** los eruditos forman organizaciones ([organizations.md](organizations.md)) como academias, escuelas de anticuarios y colegios de cronistas de corte. Cada una sostiene hipótesis sobre el pasado como doctrina ([discovery.md](discovery.md) §6: dogmas y cismas): "los Kul fundaron Qingshui" o "la Gran Inundación fue castigo del Cielo". Defienden su versión, entierran la evidencia incómoda o la reinterpretan, y se parten cuando un hallazgo la contradice. Un patrón (la corte, una secta, un clan) financia a la escuela que le conviene. El jugador puede entrar en una escuela, traer evidencia que provoque un cisma o fundar la suya.
 - **Sectas que buscan técnicas perdidas** (living-world §7: las técnicas perdidas son reales). Un rumor de una cueva de herencia mueve expediciones, rivalidades y muertes.
 
 ## 8. El pasado en el presente
@@ -270,9 +271,9 @@ Lo que se encuentra (o se cree encontrar) cambia el mundo:
 
 ## 11. Implementación
 - **Fase 4 (cultivo):** lugares sellados y tumbas simples con contenido diferido (ya está en secret-realms); lectura de qi residual como método de datación.
-- **Fase 5 (región):** depósitos en los sitios de la región, estratos con perturbaciones, excavar como sesión de oficio, saqueo de tumbas con contexto destruido.
+- **Fase 5 (región):** depósitos en los sitios de la región, estratos con perturbaciones, excavar como sesión de oficio, saqueo de tumbas con contexto destruido. **Worldgen mínimo de pasado para la región inicial:** se generan sus lenguas (una protolengua y una o dos hijas con cambios fonéticos), topónimos con derivación y una secuencia de estilos por cultura presente, para que la arqueología funcione desde temprano. La Fase 7 profundiza (más lenguas, más épocas, préstamos, etimologías populares) sin cambiar el formato.
 - **Fase 7 (historia):** estratos generados por la historia agregada (procesos naturales y ocupación, montículos, horizontes de ceniza), `Assemblage` al compactar, secuencias de estilos por cultura, topónimos en capas con cambio fonético y etimologías populares, cicatrices de qi y memoria de cristales.
-- **Fase 8 (mundo completo):** mercado de antigüedades y falsificaciones, eruditos y tratados, arqueología como arma de legitimidad, correlación de calendarios entre culturas.
+- **Fase 8 (mundo completo):** mercado de antigüedades y falsificaciones, eruditos y tratados, escuelas de historia con dogmas y cismas, arqueología como arma de legitimidad, correlación de calendarios entre culturas.
 
 ## Tests
 - Ningún hallazgo sin estrato ni `originEventId`; todo lo materializado es coherente con el `Assemblage` y los legados del estrato.
@@ -290,6 +291,8 @@ Lo que se encuentra (o se cree encontrar) cambia el mundo:
 - **Los topónimos son capas con derivación** (cambio fonético, nombres redundantes, etimologías populares) y son evidencia de lenguas y pueblos desaparecidos.
 - **El contexto se destruye al saquear** y se conserva en registros de excavación como objetos.
 - **En la familia xianxia hay métodos metafísicos de datación** (decaimiento de qi, memoria de cristales, lectura de karma), con sus propios errores.
+- **Worldgen mínimo de lenguas, topónimos y estilos en Fase 5** para la región inicial; la Fase 7 lo profundiza sin cambiar el formato (aprobado 2026-10-06).
+- **Los eruditos de historia forman organizaciones** (academias, escuelas) con hipótesis como doctrina, dogmas y cismas, reutilizando discovery y organizations (aprobado 2026-10-06).
 
 ## Decisiones (2026-10-05)
 - **El jugador no ve el pasado profundo directamente.** Solo lo descubre por legados (ruinas, leyendas, seres antiguos, textos) y a través de percepción e información, así que puede llegarle distorsionado o falso.

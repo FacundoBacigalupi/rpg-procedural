@@ -7,52 +7,48 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **backlog completo**; lo que sigue es la **Fase 0: scaffold**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#27, bucle de simulación y LOD**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
-2. Leer los docs que el ítem toca o de los que depende (la línea "Depende de" de los docs vecinos) y escribir `docs/systems/<nombre>.md` (o ampliar el existente en la parte C) con el formato de siempre: nota de estado, Depende de / Lo usan, Principios, secciones numeradas con interfaces TS, el jugador y el narrador, Escala (LOD), Implementación por fase, Tests, Decisiones (revisables), Preguntas abiertas. Máximo detalle, siempre respetando las reglas de CLAUDE.md (causalidad, conservación, verdad vs creencia, determinismo).
-3. En el mismo PR: marcar el ítem `[x]` acá con el enlace, sumarlo a la sección "Diseño" como borrador, sumar tareas a las fases que corresponda, agregar el doc a la lista de CLAUDE.md, enlazarlo desde los docs que lo mencionaban como "futuro", y pasar las preguntas abiertas de calibración a "Estado del diseño".
+2. Leer los docs que el ítem toca o de los que depende (la línea "Depende de" de los docs vecinos, y [ARCHITECTURE.md](ARCHITECTURE.md) para los ítems técnicos) y escribir `docs/systems/<nombre>.md` con el formato de siempre: nota de estado, Depende de / Lo usan, Principios, secciones numeradas con interfaces TS, el jugador y el narrador, Escala (LOD), Implementación por fase, Tests, Decisiones (revisables), Preguntas abiertas. Máximo detalle, siempre respetando las reglas de CLAUDE.md (causalidad, conservación, verdad vs creencia, determinismo).
+3. En el mismo PR: anotar como "(aprobado <fecha>)" las respuestas del usuario a las preguntas del ítem anterior, marcar el ítem `[x]` acá con el enlace, sumarlo a la sección "Diseño", sumar tareas a las fases que corresponda, agregar el doc a la lista de CLAUDE.md, enlazarlo desde los docs que lo mencionaban como "futuro", y pasar las preguntas abiertas de calibración a "Estado del diseño".
 4. Commit (`docs(<área>): ...`), push, `gh pr create --base develop --label design`, y mergear con `gh pr merge <n> --squash --delete-branch` **como comando suelto** (sin `&&` ni pipes). Sin CI en develop.
 5. Contarle al usuario qué quedó y proponer el siguiente ítem. Si hay preguntas de diseño (no de calibración), explicarlas con una recomendación.
 
-### A. Sistemas base que otros docs ya dan por hechos
-1. [x] **Percepción** → [perception.md](systems/perception.md): canales, emisión, propagación, atención, errores con forma, huellas, lectura de cultivo.
-2. [x] **Información y rumores** → [information.md](systems/information.md): propagación con distorsión, canales (postas, palomas, talismanes de mensaje, espías), creencias en `sim/knowledge`, el mapa como creencia (mapas como objetos que envejecen y se falsifican), alfabetización y escrituras.
-3. [x] **Cuerpo y salud** → [body-health.md](systems/body-health.md): cuerpo por partes, heridas que se infectan o dejan secuelas, enfermedades crónicas, nutrición, frío/calor, fatiga, adicciones, envejecimiento, medicina mortal vs alquimia, daño a meridianos.
-4. [x] **Cultivo** → [cultivation.md](systems/cultivation.md) (familia xianxia, con las interfaces genéricas de [metaphysics.md](systems/metaphysics.md)): reinos procedurales, técnicas como conocimiento, rupturas, cultivo de espíritus, volver a ser humano.
-5. [x] **Experimentación, descubrimiento e iluminación** → [discovery.md](systems/discovery.md): cómo un agente forma hipótesis sobre las leyes del mundo, prueba, se equivoca y acumula comprensión; dogmas erróneos de escuelas; iluminación (悟) como umbral de un estado acumulado; arte con intención (aprender contemplando una obra).
-6. [x] **Economía** → [economy.md](systems/economy.md): mercados por asentamiento, precios por oferta y demanda, información asimétrica de precios, piedras espirituales como moneda (inflación por minas), crédito y usura, subastas, gremios y monopolios, metal escaso.
-7. [x] **Organizaciones** → [organizations.md](systems/organizations.md): clanes, sectas, gremios; decisiones por facciones internas; nacimiento, cismas y muerte; recursos, aportes y puestos.
+### D. La columna técnica: lo que une los sistemas
+Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el tiempo, cómo se pasa de un NPC agregado a uno con cuerpo, qué es exactamente una acción y qué ve el LLM. Van primero porque todo lo demás se apoya en ellas.
 
-### B. Sistemas nuevos
-8. [x] **Interacciones elementales** → [elements.md](systems/elements.md) (ampliación de [metaphysics.md](systems/metaphysics.md)): ciclos de generación y destrucción como física común para alquimia, formaciones y combate. Va antes de oficios porque estos la usan.
-9. [x] **Oficios** → [crafts.md](systems/crafts.md): alquimia con propiedades y toxinas residuales, forja limitada por el metal escaso, formaciones que modifican el campo de qi real, talismanes.
-10. [x] **Contratos y juramentos** → [contracts.md](systems/contracts.md): un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
-11. [x] **Familia y linaje** → [family-lineage.md](systems/family-lineage.md): matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
-12. [x] **Estratificación social** → [social-structure.md](systems/social-structure.md): castas, servidumbre, esclavitud, movilidad social, abismo mortal/cultivador; qué acciones tiene cada uno a su alcance.
-13. [x] **Ley y justicia** → [law.md](systems/law.md): códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
-14. [x] **Estado y política** → [state.md](systems/state.md): legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
-15. [x] **Guerra** → [war.md](systems/war.md): logística y suministro, moral, asedios, formaciones defensivas, ejércitos mortales vs cultivadores.
-16. [x] **Tecnología mortal** → [technology.md](systems/technology.md): agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
-17. [x] **Reinos secretos (秘境)** → [secret-realms.md](systems/secret-realms.md): bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
-18. [x] **Adivinación y profecía** → [divination.md](systems/divination.md): lectura ruidosa del grafo causal y de las presiones; profecías que se cumplen solas o provocan lo que querían evitar; lectura de karma.
-19. [x] **Crónica, epílogo e historiografía** → [chronicle.md](systems/chronicle.md): epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
+27. [ ] **Bucle de simulación y LOD** → `simulation.md`: scheduler multi-escala (pasos por tier, eventos con hora, colas), orden determinista dentro de un paso, tiers 0-4 con qué se simula en cada uno, materialización y desmaterialización coherentes con las estadísticas (y con lo que el jugador ya vio), modo agregado vs individual y su calibración, presupuesto de cómputo por paso, saltos de tiempo largos, snapshots. Unifica las secciones "Escala (LOD)" de todos los docs.
+28. [ ] **Acciones e intenciones** → `actions.md`: catálogo de acciones primitivas y compuestas (en `content/`), `ActionPlan` y su validación, precondiciones desde el estado y desde las creencias del actor, duración, interrupción y acciones largas, acciones que fallan con forma, acciones de NPCs con el mismo catálogo, qué hace el parser con lo ambiguo, lo imposible y lo que el personaje no sabe que es imposible.
+29. [ ] **Habilidades y aprendizaje** → `skills.md`: el modelo común de saber hacer (combate, oficios, sociales, cuerpo, estudio): práctica percibida, maestros, libros, techo por talento y cuerpo, olvido por desuso, transferencia entre habilidades vecinas, conocimiento tácito vs explícito. Generaliza lo que ya está en crafts §2, cultivation y technology.
+30. [ ] **Combate individual** → `combat.md`: duelos y peleas chicas como intercambios con tiempo, distancia y posición; cuerpo por partes y heridas reales; armas y armaduras como objetos; artes marciales y técnicas de cultivo con su costo; mortal contra cultivador; percepción en la pelea (leer al rival, fintas, sorpresa); huir, rendirse, perdonar; moral individual; huellas y testigos. War.md cubre las batallas; esto es la escala de una persona.
+31. [ ] **Conversación e influencia** → `dialogue.md`: hablar como acción con estructura (temas, preguntas, pedidos, ofertas, amenazas, mentiras, halagos), persuasión que sale de creencias, relación, cara y utilidad del otro; detectar mentiras; regateo; secretos que se sueltan; lo que el NPC dice vs lo que cree; cómo el LLM pone en palabras una respuesta ya decidida por la sim.
+32. [ ] **Narrador y capa LLM** → `narration.md`: qué recibe el narrador (percepts, creencias y voz del personaje, léxico generado), qué no puede hacer (inventar entidades, revelar la verdad), estilo y tono por situación, memoria de narración y continuidad, validación de la salida, parser de intención (modelo, esquema, aclaraciones), costos, caché y modo sin red.
+33. [ ] **Bucle del jugador** → `player-loop.md`: cómo empieza una vida (nacimiento, infancia acelerada, punto de entrada), ritmo de juego (escenas, días, años), saltar tiempo con rutinas y con qué lo interrumpe el mundo, metas propias, diario y hipótesis del jugador, qué ve el jugador de su propio estado, muerte, espíritu y crónica final, comandos fuera del personaje.
+34. [ ] **Persistencia, inspector y herramientas** → `tooling.md`: guardado en SQLite (verdad, creencias, log de eventos), replay desde seed + acciones, versiones del formato, inspector god-mode completo (consultas, comandos de causality §10, mapas), sim headless con métricas y reportes para calibrar, perfiles de rendimiento.
 
-### C. Ampliaciones de lo que ya hay
-20. [x] [heaven-karma.md](systems/heaven-karma.md) §3-§8: atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
-21. [x] [npc-psychology.md](systems/npc-psychology.md) §10-§17: desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
-22. [x] [causality.md](systems/causality.md) §9-§11 + [schemes.md](systems/schemes.md) §9-§13: mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
-23. [x] [planet-gen.md](systems/planet-gen.md) §8-§12: glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
-24. [x] [living-world.md](systems/living-world.md) §8-§16: poblaciones y redes tróficas, sucesión ecológica y fuego, especies invasoras por rutas comerciales, migraciones estacionales, domesticación y contratos con bestias.
-25. [x] [spirits.md](systems/spirits.md) §6-§12: economía de ofrendas a ancestros (ofrendas como física, santuarios, ancestros que se quedan, dioses locales y cultos); qué pasa cuando un linaje deja de ofrendar.
-26. [x] [deep-history.md](systems/deep-history.md) §1-§11: arqueología como juego (estratos y perturbaciones, conservación, datación con métodos y errores, hipótesis sobre el pasado, topónimos en capas como pistas, excavar, saqueo y antigüedades, el pasado en el presente).
+### E. Sistemas del mundo que faltan
+35. [ ] **Asentamientos y edificios** → `settlements.md`: dónde y por qué nace un asentamiento, cómo crece y se ordena (barrios, mercado, templo, murallas), edificios como objetos con materiales, dueño, uso y deterioro, infraestructura (pozos, canales, caminos, puentes), incendios y reconstrucción, abandono y ruina.
+36. [ ] **Propiedad y tenencia de la tierra** → `property.md`: propiedad como verdad, creencia y registro; tierras comunales, feudos, arrendamiento y aparcería, tierras de templo y de secta, herencia y partición, usurpación, catastros, cercamientos; la propiedad de objetos (marcas, robo, hallazgos, abandono).
+37. [ ] **Viaje, transporte y mar** → `travel.md`: viajar como sucesión de días con costo, riesgo y encuentros que salen del estado (no tablas); caminos, posadas y postas; animales y carros; ríos y barcos; navegación, corrientes y vientos; puertos, piratas y naufragios; vuelo y espadas voladoras; mapas y perderse; transporte de carga con conservación.
+38. [ ] **Clima diario y estaciones** → `weather.md`: tiempo del día derivado del clima de planet-gen (frentes, lluvias, tormentas, nieve, sequías), estaciones con efecto en cosechas, viajes, guerra y ánimo; pronóstico popular y por adivinación; tormentas de qi; cultivadores que alteran el tiempo y su costo.
+39. [ ] **Culturas** → `culture.md`: la cultura como haz de normas, prácticas y saberes que se transmite y cambia; costumbres (comida, ropa, vivienda, ritos de paso, funerales, fiestas), estética y arte, valores y tabúes, etiqueta, humor; generación desde la geografía y la historia; contacto, préstamo, sincretismo y aculturación; identidad y etnicidad como creencia.
+40. [ ] **Lenguas y escritura** → `language.md`: fonología, raíces y morfología; cambio fonético por siglos, lenguas hermanas, préstamos por contacto, pidgins y lenguas francas; nombres de personas y lugares con significado; escrituras que se inventan y se heredan; aprender una lengua, malentendidos e intérpretes; el léxico que usa el narrador. Incluye el worldgen mínimo de la Fase 5 (aprobado 2026-10-06).
+41. [ ] **Religión y doctrinas** → `religion.md`: religiones como sistemas de creencias sobre el mundo, el Cielo, la muerte y la moral; doctrina, clero, textos sagrados, conversión, herejía y sincretismo; cómo se relacionan con los cultos y espíritus reales (spirits §9) y con la verdad metafísica; religión y estado; prácticas de devoción y ascetismo.
+42. [ ] **Cosmología y ascensión** → `cosmology.md`: estructura del cosmos por familia de mundo (planos, inframundo, cielos superiores, otros mundos), qué hay después del último umbral, ascensión como evento físico con costo, visitantes de arriba y de abajo, lo que el jugador nunca va a ver pero el mundo tiene que tener coherente.
 
-### Después del backlog
-- [ ] **Fase 0: scaffold** (TS strict, Vitest, ESLint con reglas de dependencia, scripts npm), que activa los checks de CI. Ver la sección Fase 0 más abajo.
+### F. Cierre del diseño
+43. [ ] **Modelo de datos unificado y revisión de coherencia** → actualizar [ARCHITECTURE.md](ARCHITECTURE.md): glosario de tipos compartidos (`Entity`, `Event`, `Belief`, `Lot`, `Commitment`, `Pressure`…), qué módulo es dueño de cada uno, contradicciones entre docs resueltas, orden de implementación de las fases revisado con todo lo diseñado.
 
-## Estado del diseño (2026-10-05)
-Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. Las preguntas de diseño se respondieron el 2026-10-05; lo que queda es **calibración con la sim headless** (cada doc tiene sus objetivos de sensación):
+### Hecho: backlog de diseño 1 (2026-10-05 → 2026-10-06)
+Los 26 ítems están escritos y mergeados en `develop` (PRs #9-#43):
+- **A. Sistemas base:** percepción, información y rumores, cuerpo y salud, cultivo, descubrimiento e iluminación, economía, organizaciones.
+- **B. Sistemas nuevos:** elementos, oficios, contratos y juramentos, familia y linaje, estratificación social, ley y justicia, estado y política, guerra, tecnología mortal, reinos secretos, adivinación y profecía, crónica e historiografía.
+- **C. Ampliaciones:** heaven-karma §3-§8, npc-psychology §10-§17, causality §9-§11 + schemes §9-§13, planet-gen §8-§12, living-world §8-§16, spirits §6-§12, deep-history §1-§11 (arqueología).
+
+## Estado del diseño (2026-10-06)
+Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos son **borradores revisables**: las preguntas de diseño se respondieron (quedan como "Decisiones" en cada doc), y lo que queda abierto en ellos es **calibración con la sim headless** (cada doc tiene sus objetivos de sensación). Lo que falta diseñar está en el backlog 2 de arriba (#27-#43):
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
 - npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
@@ -93,34 +89,35 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [x] `gh` autenticado (con scope `workflow`) · PRs #2 y #3 de Dependabot mergeados
 
 ## Diseño
-- [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md)) — §9-§11 (presiones, inspector, contrafácticos) en borrador
-- [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运) en borrador
-- [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador; arqueología (§1-§11: estratos, datación, topónimos, excavar, antigüedades) en borrador
-- [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador (§10-§17: etapas, salud mental, declive, sentido y pertenencia, multitudes, sueños, gustos)
-- [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — §8-§12 (glaciaciones, suelos, volcanes e inviernos volcánicos) en borrador
-- [~] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md)) — borrador
-- [x] Mundo vivo ([systems/living-world.md](systems/living-world.md)) — §8-§16 (poblaciones, sucesión y fuego, invasoras, migraciones, domesticación, vínculos con bestias) en borrador
-- [~] Espíritus ([systems/spirits.md](systems/spirits.md)) — borrador; §6-§12 (ofrendas, santuarios, ancestros, dioses locales, abandono, economía de las ofrendas) en borrador
-- [~] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — borrador (§9-§13: proyectos, intrigas entre organizaciones, profecías)
-- [~] Percepción ([systems/perception.md](systems/perception.md)) — borrador
-- [~] Información, creencias y rumores ([systems/information.md](systems/information.md)) — borrador
-- [~] Cuerpo y salud ([systems/body-health.md](systems/body-health.md)) — borrador
-- [~] Cultivo ([systems/cultivation.md](systems/cultivation.md)) — borrador
-- [~] Descubrimiento e iluminación ([systems/discovery.md](systems/discovery.md)) — borrador
-- [~] Economía ([systems/economy.md](systems/economy.md)) — borrador
-- [~] Interacciones elementales ([systems/elements.md](systems/elements.md)) — borrador
-- [~] Oficios ([systems/crafts.md](systems/crafts.md)) — borrador
-- [~] Organizaciones ([systems/organizations.md](systems/organizations.md)) — borrador
-- [~] Contratos y juramentos ([systems/contracts.md](systems/contracts.md)) — borrador
-- [~] Familia y linaje ([systems/family-lineage.md](systems/family-lineage.md)) — borrador
-- [~] Estratificación social ([systems/social-structure.md](systems/social-structure.md)) — borrador
-- [~] Ley y justicia ([systems/law.md](systems/law.md)) — borrador
-- [~] Estado y política ([systems/state.md](systems/state.md)) — borrador
-- [~] Guerra ([systems/war.md](systems/war.md)) — borrador
-- [~] Tecnología mortal ([systems/technology.md](systems/technology.md)) — borrador
-- [~] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md)) — borrador
-- [~] Adivinación y profecía ([systems/divination.md](systems/divination.md)) — borrador
-- [~] Crónica, epílogo e historiografía ([systems/chronicle.md](systems/chronicle.md)) — borrador
+Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones del backlog 1).
+- [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md)) — §9-§11 (presiones, inspector, contrafácticos)
+- [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运)
+- [x] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — §1-§11 (arqueología: estratos, datación, topónimos, excavar, antigüedades, escuelas de historia)
+- [x] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — §10-§17 (etapas, salud mental, declive, sentido y pertenencia, multitudes, sueños, gustos)
+- [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md)) — §8-§12 (glaciaciones, suelos, volcanes e inviernos volcánicos)
+- [x] Metafísica: leyes por mundo ([systems/metaphysics.md](systems/metaphysics.md))
+- [x] Mundo vivo ([systems/living-world.md](systems/living-world.md)) — §8-§16 (poblaciones, sucesión y fuego, invasoras, migraciones, domesticación, vínculos con bestias)
+- [x] Espíritus ([systems/spirits.md](systems/spirits.md)) — §6-§12 (ofrendas, santuarios, ancestros, dioses locales, abandono, economía de las ofrendas)
+- [x] Intrigas de NPCs ([systems/schemes.md](systems/schemes.md)) — §9-§13 (proyectos, intrigas entre organizaciones, profecías)
+- [x] Percepción ([systems/perception.md](systems/perception.md))
+- [x] Información, creencias y rumores ([systems/information.md](systems/information.md))
+- [x] Cuerpo y salud ([systems/body-health.md](systems/body-health.md))
+- [x] Cultivo ([systems/cultivation.md](systems/cultivation.md))
+- [x] Descubrimiento e iluminación ([systems/discovery.md](systems/discovery.md))
+- [x] Economía ([systems/economy.md](systems/economy.md))
+- [x] Interacciones elementales ([systems/elements.md](systems/elements.md))
+- [x] Oficios ([systems/crafts.md](systems/crafts.md))
+- [x] Organizaciones ([systems/organizations.md](systems/organizations.md))
+- [x] Contratos y juramentos ([systems/contracts.md](systems/contracts.md))
+- [x] Familia y linaje ([systems/family-lineage.md](systems/family-lineage.md))
+- [x] Estratificación social ([systems/social-structure.md](systems/social-structure.md))
+- [x] Ley y justicia ([systems/law.md](systems/law.md))
+- [x] Estado y política ([systems/state.md](systems/state.md))
+- [x] Guerra ([systems/war.md](systems/war.md))
+- [x] Tecnología mortal ([systems/technology.md](systems/technology.md))
+- [x] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md))
+- [x] Adivinación y profecía ([systems/divination.md](systems/divination.md))
+- [x] Crónica, epílogo e historiografía ([systems/chronicle.md](systems/chronicle.md))
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -229,6 +226,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Suelos agregados por celda, erosión, salinización y desertificación por uso; volcanes con presión, erupciones y ceniza fértil ([planet-gen.md](systems/planet-gen.md) §9, §10)
 - [ ] Migraciones estacionales con rutas aprendidas, cuellos de botella y barreras; trashumancia; introducciones por rutas comerciales con latencia; plagas de cultivos; `BeastMind` para monturas y bestias de tier 2-3 ([living-world.md](systems/living-world.md) §10, §11, §13)
 - [ ] Depósitos con estratos y perturbaciones en los sitios de la región, excavar como sesión de oficio, saqueo con contexto destruido ([deep-history.md](systems/deep-history.md) §1, §6-§7)
+- [ ] Worldgen mínimo de pasado para la región inicial: protolengua y una o dos hijas con cambio fonético, topónimos con derivación, secuencia de estilos por cultura ([deep-history.md](systems/deep-history.md) §11, [living-world.md](systems/living-world.md) §3)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -289,7 +287,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Inviernos volcánicos con aerosol por bandas y sus cadenas (hambre, presagios, legitimidad); estrellas caídas como materiales ([planet-gen.md](systems/planet-gen.md) §10)
 - [ ] Intercambio biológico entre continentes al cruzar océanos (cultivos, ganado, malezas, enfermedades) ([living-world.md](systems/living-world.md) §10)
 - [ ] Dioses locales que compiten por fieles, canonización y prohibición de cultos por el estado, dioses que se matan por su qi ([spirits.md](systems/spirits.md) §9)
-- [ ] Mercado de antigüedades y falsificaciones, eruditos y tratados, arqueología como arma de legitimidad, correlación de calendarios ([deep-history.md](systems/deep-history.md) §3, §7-§8)
+- [ ] Mercado de antigüedades y falsificaciones, eruditos y tratados, escuelas de historia con dogmas y cismas, arqueología como arma de legitimidad, correlación de calendarios ([deep-history.md](systems/deep-history.md) §3, §7-§8)
 
 ## Fase 9 — Pulido
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica

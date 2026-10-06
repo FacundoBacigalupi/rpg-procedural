@@ -50,6 +50,7 @@ Cuando la historia profunda crea un pueblo, sus rasgos culturales salen de **dó
   - **Nombres con significado:** "Qingshui" significa "agua clara" en esa lengua. Un lugar conserva nombres viejos deformados de pueblos que ya no existen, y eso es una pista arqueológica ([deep-history.md](deep-history.md) §5: topónimos en capas, nombres redundantes, etimologías populares).
   - **Escritura:** algunas culturas la inventan (o la heredan); los textos viejos están en lenguas muertas que hay que aprender a leer.
   - El LLM no inventa palabras: usa las del léxico generado (las traduce o las cita).
+  - **Desde temprano:** en Fase 5 se genera una versión mínima para la región inicial (una protolengua, una o dos hijas, topónimos con derivación); la Fase 7 la profundiza sin cambiar el formato (aprobado 2026-10-06).
 
 ## 4. Los mitos son historia deformada
 - La memoria colectiva usa la **misma mecánica** que la memoria de los NPCs: se transmite contada, se distorsiona y se comprime en gist. A escala de siglos, una batalla real entre dos inmortales se vuelve "el dios dragón contra la diosa del sol".
@@ -310,7 +311,7 @@ La red trófica conecta cosas que la gente no relaciona:
 ## Implementación
 - **Fase 3:** plagas y hambrunas (demografía + rutas), conocimiento con soporte. Poblaciones por celda con productividad y red trófica simple; caza, pesca, recolección y tala que agotan stocks; ganado como bien vivo con cuerpo, dueño y zoonosis; sucesión en campos abandonados y barbecho; fuego con combustible (§8, §9, §12).
 - **Fase 4:** bestias espirituales con núcleo y consumo de qi; bestia compañera con contrato de alma; criar desde la cría con período sensible (§8, §13).
-- **Fase 5:** rutas por costo mínimo, ciudades en cruces. Migraciones estacionales con rutas aprendidas, cuellos de botella y barreras; trashumancia; introducciones por rutas comerciales con fase de latencia; plagas de cultivos; `BeastMind` para monturas, perros y bestias de tier 2-3 (§10, §11, §13).
+- **Fase 5:** rutas por costo mínimo, ciudades en cruces. Migraciones estacionales con rutas aprendidas, cuellos de botella y barreras; trashumancia; introducciones por rutas comerciales con fase de latencia; plagas de cultivos; `BeastMind` para monturas, perros y bestias de tier 2-3 (§10, §11, §13). Lenguas y topónimos mínimos de la región inicial (§3).
 - **Fase 6:** tratados entre comunidades y reinos de bestias, razas secretas de sectas, mercado de bestias y partes protegidas (§12, §13).
 - **Fase 7 (historia):** desastres geológicos y climáticos, culturas por geografía, mitos y calendarios, religiones, lenguas. Domesticaciones y razas como eventos de cultura; especiación por aislamiento; intercambios por puentes de tierra; extinciones; sucesión de largo plazo sobre ruinas (§8-§12).
 - **Fase 8:** reinos de bestias, evolución de linajes a escala de mundo, intercambio entre continentes al cruzar océanos (§10).
