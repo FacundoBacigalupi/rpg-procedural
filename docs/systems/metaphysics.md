@@ -63,7 +63,8 @@ Siempre hay uno, y es lo que hace que experimentar cueste:
 El karma literal existe solo si la ley lo lleva (Cielo, ciertos panteones). En un mundo de física indiferente no hay karma, solo consecuencias.
 
 ### 6. Almas y muerte
-- **Ciclo con olvido** (las Fuentes Amarillas, reencarnación): ver [spirits.md](spirits.md).
+- **Ciclo con olvido** (las Fuentes Amarillas, reencarnación): ver [spirits.md](spirits.md). El Cielo cobra al cruzar lo que el alma le tomó ([heaven-karma.md](heaven-karma.md), cobro en las Fuentes).
+- **Ciclo que rechaza:** variante dura del anterior: el alma que cultivó no puede cruzar; solo le quedan ser espíritu, evadir el ciclo con un poder ganado o disiparse.
 - **Más allás:** reinos de los muertos gobernados por dioses, juicio, recompensa.
 - **Disolución:** el alma vuelve a la esencia del mundo.
 - **Sin alma:** la conciencia es del cuerpo y no queda nada.

@@ -2,7 +2,7 @@
 
 > Estado: **borrador de diseño**. Dos caras de la memoria: **adentro del mundo**, las crónicas, genealogías, estelas, canciones y memorias que escriben personas con intereses (oficiales, de secta, de familia, populares), que se copian con errores, se censuran, se reescriben con cada dinastía y se queman; y **afuera**, la crónica final para el usuario, que se arma desde la verdad cuando la partida termina: la vida en capítulos elegidos por su huella causal, "lo que nunca supiste", un epílogo simulado (qué fue de tu gente, tus obras, tus enemigos, años y siglos después) y el legado medido dos veces, como lo que causaste y como lo que se recuerda de vos.
 
-Depende de: [causality.md](causality.md) (el grafo causal: la huella de una vida son los eventos que descienden de sus actos), [deep-history.md](deep-history.md) (embudo de relevancia y olvido entre épocas: qué sobrevive del jugador), [information.md](information.md) (creencias, rumores con linaje, reputación colectiva, medios, alfabetización), [living-world.md](living-world.md) (mitos como historia deformada, el conocimiento es físico), [npc-psychology.md](npc-psychology.md) (memorias de los que te conocieron, intensidad emocional, influencia en otros), [schemes.md](schemes.md) (sección "Lo que nunca supiste"), [perception.md](perception.md) (creencias equivocadas que solo la crónica revela), [spirits.md](spirits.md) (fin de partida cuando el alma cruza o se disipa; reencarnación), [family-lineage.md](family-lineage.md) (descendencia y herencia en el epílogo, genealogías), [organizations.md](organizations.md) (archivos y memoria institucional), [state.md](state.md) (crónicas oficiales y propaganda, la nueva dinastía reescribe), [heaven-karma.md](heaven-karma.md) (karma que queda abierto después de la muerte), [technology.md](technology.md) (escritura, papel, imprenta: cuánto y cómo se escribe), [body-health.md](body-health.md) (causa de muerte), [divination.md](divination.md) (profecías cumplidas e incumplidas). Lo usan: [schemes.md](schemes.md) (revelación final de intrigas), [law.md](law.md) (juicios célebres, injusticias recordadas, la verdad del caso al final), [social-structure.md](social-structure.md) (el ascenso o la caída como arco de vida), [family-lineage.md](family-lineage.md) (descendencia en el epílogo), [state.md](state.md) (crónicas oficiales sesgadas), [organizations.md](organizations.md) (crónicas propias de cada organización), [war.md](war.md) (guerras como capítulos, versiones del vencedor), [contracts.md](contracts.md) (promesas que se recuerdan), [discovery.md](discovery.md) (escuelas que reescriben su historia), [technology.md](technology.md) (historiografía y archivos), [secret-realms.md](secret-realms.md) (expediciones como capítulos), [divination.md](divination.md) (profecías en la historia).
+Depende de: [causality.md](causality.md) (el grafo causal: la huella de una vida son los eventos que descienden de sus actos), [deep-history.md](deep-history.md) (embudo de relevancia y olvido entre épocas: qué sobrevive del jugador), [information.md](information.md) (creencias, rumores con linaje, reputación colectiva, medios, alfabetización), [living-world.md](living-world.md) (mitos como historia deformada, el conocimiento es físico), [npc-psychology.md](npc-psychology.md) (memorias de los que te conocieron, intensidad emocional, influencia en otros), [schemes.md](schemes.md) (sección "Lo que nunca supiste"), [perception.md](perception.md) (creencias equivocadas que solo la crónica revela), [spirits.md](spirits.md) (fin de partida cuando el alma cruza o se disipa; el alma renacida como NPC), [cultivation.md](cultivation.md) (§14: seguir en otro cuerpo como poder ganado), [family-lineage.md](family-lineage.md) (descendencia y herencia en el epílogo, genealogías), [organizations.md](organizations.md) (archivos y memoria institucional), [state.md](state.md) (crónicas oficiales y propaganda, la nueva dinastía reescribe), [heaven-karma.md](heaven-karma.md) (karma que queda abierto después de la muerte, cobro en las Fuentes), [technology.md](technology.md) (escritura, papel, imprenta: cuánto y cómo se escribe), [body-health.md](body-health.md) (causa de muerte), [divination.md](divination.md) (profecías cumplidas e incumplidas). Lo usan: [schemes.md](schemes.md) (revelación final de intrigas), [law.md](law.md) (juicios célebres, injusticias recordadas, la verdad del caso al final), [social-structure.md](social-structure.md) (el ascenso o la caída como arco de vida), [family-lineage.md](family-lineage.md) (descendencia en el epílogo), [state.md](state.md) (crónicas oficiales sesgadas), [organizations.md](organizations.md) (crónicas propias de cada organización), [war.md](war.md) (guerras como capítulos, versiones del vencedor), [contracts.md](contracts.md) (promesas que se recuerdan), [discovery.md](discovery.md) (escuelas que reescriben su historia), [technology.md](technology.md) (historiografía y archivos), [secret-realms.md](secret-realms.md) (expediciones como capítulos), [divination.md](divination.md) (profecías en la historia).
 
 ## Principios
 1. **La historia escrita es una creencia con autor.** Adentro del mundo, toda crónica la escribe alguien que sabe lo que sabe, cree lo que cree y quiere lo que quiere. No hay historiadores neutrales; hay fuentes mejores y peores.
@@ -72,7 +72,9 @@ La partida termina cuando el alma del personaje **cruza al ciclo o se disipa** (
 1. Se congela la vida: el personaje y sus memorias quedan como están.
 2. Se arma la **crónica** desde la verdad (§4-§6).
 3. Se corre el **epílogo** (§7).
-4. El usuario elige lo que sigue: un mundo nuevo o, si el alma cruzó al ciclo, renacer en este (spirits §3e).
+4. Se empieza un mundo nuevo. Cruzar las Fuentes siempre es el final (§8).
+
+Si el personaje evita las Fuentes con un poder ganado (espíritu, renacer a propósito, posesión, cuerpo construido: cultivation §14), la partida **no** termina: sigue en el cuerpo nuevo y la crónica espera.
 
 ## 4. La vida en capítulos
 
@@ -147,7 +149,6 @@ interface EpilogueRun {
   fromTick: Tick;                            // la muerte del personaje
   checkpoints: EpilogueCheckpoint[];         // por ejemplo: 1 año, 10 años, 100 años, y más si el legado sobrevive
   tracked: EntityRef[];                      // lo que se sigue con detalle: portadores del legado, personas cercanas, enemigos, organizaciones
-  stopAt?: Tick;                             // límite si el usuario va a renacer en este mundo (§8)
 }
 
 interface EpilogueSection {
@@ -162,17 +163,17 @@ interface EpilogueSection {
 - **El epílogo se corta cuando ya no queda nada tuyo**: cuando ningún portador vive y nadie te recuerda, la última línea lo dice ("trescientos años después, nadie sabe quién fue Li Wei; la escuela del Río Negro enseña su técnica atribuida a un inmortal sin nombre").
 - **Costo:** se corre en modo agregado con detalle solo en lo seguido; los puntos lejanos son baratos porque usan la historia agregada.
 
-## 8. Renacer en el mismo mundo
+## 8. Cruzar es el final
 
-Si el usuario elige renacer en este mundo (spirits §3e), el epílogo choca con el renacimiento: el usuario sabría el futuro.
-- **Regla:** el momento del renacimiento lo decide la simulación (spirits: décadas o siglos). Si el usuario elige renacer, el epílogo **se corta en ese momento**: muestra lo que pasó hasta que el alma vuelve, y nada después.
-- **Lo que ya vio del epílogo es verdad** del mundo hasta ese punto, y el usuario lo sabe aunque el personaje nuevo no (spirits §3e: saber no es poder hacer, y el mundo lo nota).
-- **La elección se hace antes del epílogo**, para que nunca se vea más allá del renacimiento.
+No hay "continuar" gratis (spirits §3e). Cuando el alma cruza las Fuentes, el Cielo cobra lo que tomó (heaven-karma: cobro en las Fuentes) y la sopa borra lo que queda: lo que renace ya no es el personaje. Por eso el epílogo puede mostrar todo sin que el usuario vuelva a ese mundo con lo que sabe.
+- **El cobro es un capítulo:** la crónica cuenta cuánto se le cobró al alma y por qué (esencia, años, deudas, méritos), con fuentes como todo lo demás.
+- **El alma renacida en el epílogo:** si sobrevivió al cobro, el epílogo puede seguirla como un NPC más ("tu alma renació, más débil y sin recuerdos, como hija de un herrero de Lanzhou"). Si se disolvió (形神俱灭), la crónica lo dice.
+- **Seguir es un poder ganado:** espíritu, renacer a propósito, posesión, cuerpo construido o rechazar la sopa (cultivation §14, spirits §3d). Mientras el personaje siga, la partida sigue y la crónica no se escribe.
 
 ## 9. Archivo de vidas
 
 - Cada crónica terminada se guarda: semilla del mundo, personaje, capítulos, legado, epílogo. Es el archivo de vidas pasadas (ROADMAP fase 9).
-- Las vidas en un mismo mundo (por renacimiento) se encadenan: la crónica de la segunda vida puede mostrar cómo se cruzó con el legado de la primera (tu discípulo de entonces, tu tumba saqueada, tu leyenda deformada).
+- Una partida que siguió por un poder ganado es **una sola crónica** con varias partes, una por cuerpo: la crónica muestra cómo cada vida se cruzó con el legado de la anterior (tu discípulo de entonces, tu tumba saqueada, tu leyenda deformada).
 - El archivo es del usuario, no del mundo: ningún personaje lo lee.
 
 ## 10. El jugador y el narrador
@@ -200,7 +201,8 @@ Si el usuario elige renacer en este mundo (spirits §3e), el epílogo choca con 
 - **Huella vs ruido:** un evento con muchos descendientes causales pesados aparece como punto de giro antes que uno de alta violencia sin consecuencias.
 - **Dos legados:** en corridas headless hay vidas con huella grande y recuerdo chico, y al revés.
 - **Epílogo coherente:** el epílogo es idéntico a seguir la simulación sin el personaje desde su muerte.
-- **Corte por renacimiento:** si el usuario elige renacer, ningún hecho del epílogo es posterior al renacimiento.
+- **Sin continuar gratis:** cruzar las Fuentes siempre termina la partida; el alma renacida aparece en el epílogo solo como NPC.
+- **Cobro con fuentes:** el capítulo del cobro coincide con el `SoulToll` calculado por la sim.
 - **Textos sesgados:** una crónica oficial escrita por la dinastía vencedora tiene más afirmaciones falsas sobre la dinastía anterior que unos anales locales del mismo período.
 - **Determinismo:** mismo seed, mismas acciones → misma crónica estructurada y mismo epílogo.
 
@@ -209,7 +211,7 @@ Si el usuario elige renacer en este mundo (spirits §3e), el epílogo choca con 
 - Los capítulos se eligen por huella causal e intensidad en la memoria, no por espectacularidad.
 - El legado se mide dos veces (causado y recordado) y el contraste es parte central de la crónica.
 - El epílogo es la misma simulación sin el personaje, con puntos de control, y termina cuando no queda nada suyo.
-- Si el usuario renace en el mismo mundo, elige antes del epílogo y el epílogo se corta en el renacimiento.
+- Cruzar las Fuentes siempre termina la partida (decidido 2026-10-05); seguir en otro cuerpo es un poder ganado y la partida entera es una sola crónica. El epílogo no se corta.
 - Las crónicas adentro del mundo son objetos con autor, sesgo y copias; leer historia es formar hipótesis con fuentes.
 
 ## Preguntas abiertas

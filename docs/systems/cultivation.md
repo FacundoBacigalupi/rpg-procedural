@@ -267,7 +267,9 @@ Todas las vías cuestan algo real y quedan registradas con sus causas:
 | **Renacer a propósito** | Entrar en una concepción resistiendo las Fuentes (spirits: almas fuertes eligen) | Se renace bebé; los recuerdos quedan sellados y vuelven por disparadores; el karma se lava solo si se cruzan las Fuentes, no si se las evita |
 
 - **El cuerpo nuevo no trae el cultivo viejo.** El alma conserva su fuerza y su comprensión; los meridianos, el dantian y el templado corporal se reconstruyen desde cero (spirits: saber no es poder hacer). Saber el camino acelera mucho.
-- **Para el jugador** es una forma de seguir la partida después de morir como espíritu, siempre que la sim lo permita. No hay "continuar" gratis.
+- **Técnicas de reencarnación preparadas en vida:** sellos en el alma, jades de memoria, un ancla puesta en un linaje o en un lugar, un discípulo que custodia el renacer. Son los caminos para llegar a las vías de arriba sin perder el alma en el intento; se descubren, se aprenden y se pueden sabotear.
+- **Por qué se buscan:** cruzar las Fuentes cobra lo que el alma le tomó al Cielo ([heaven-karma.md](heaven-karma.md), cobro en las Fuentes). Para un cultivador alto, cruzar es perder casi todo o disolverse; evadir es la única forma de seguir siendo él, a costa de que su karma siga abierto.
+- **Para el jugador** estas vías son la única forma de seguir la partida después de morir: cruzar las Fuentes siempre la termina ([spirits.md](spirits.md) §3e). No hay "continuar" gratis.
 
 ## 15. El cultivador en la sociedad y en el tiempo
 - **Reclusión (闭关)** es el estado normal de un cultivador fuerte: desaparece años. Su ausencia es un hecho social (su secta lo cubre, sus enemigos lo aprovechan, sus discípulos lo esperan).
