@@ -116,7 +116,8 @@ interface GoldenFinger {
   name: string;                              // como lo llama el personaje (o como se presenta)
   origin: GoldenFingerOrigin;                // §4: qué es en el mundo
   carrier: Carrier;                          // dónde vive
-  effects: GoldenEffect[];                   // §5
+  effects: GoldenEffect[];                   // §5.1-§5.8: los efectos de uso común
+  rules?: GoldenRule[];                      // §5.9: cualquier otra cosa, compuesta con piezas
   growth?: GrowthRule[];                     // §6: cómo se desbloquea o se fortalece
   costs?: GoldenCost[];                      // §6: lo que cobra (opcional, configurable)
   signature: Signature;                      // §7: qué puede percibir el mundo
@@ -151,7 +152,7 @@ Cada dedo de oro tiene un origen que lo explica en el mundo. Lo elige el usuario
 | **Sistema** | Un espíritu de artefacto de una civilización perdida que se fusionó con tu alma y te habla en su idioma (paneles, misiones, tienda) | Tiene la reserva y los límites de lo que esa civilización guardó; sus misiones salen del mundo (§5.6) |
 
 - **Mundos no xianxia:** el mismo catálogo se traduce con la metafísica del mundo (un familiar, una bendición de un dios con culto real, un grimorio con una mente adentro).
-- **"Sin explicación" no existe.** Si el usuario no quiere elegir origen, el mundo elige uno coherente y lo oculta: el personaje no sabe qué tiene, y la crónica lo revela al final.
+- **"Sin explicación" no existe.** Si el usuario no quiere elegir origen, el mundo elige uno coherente y lo oculta (aprobado 2026-10-06): el personaje no sabe qué tiene y lo va descubriendo como cualquier secreto (pistas, el mentor que miente, un adivino), y la crónica revela la verdad al final.
 
 ## 5. Efectos
 
@@ -303,6 +304,181 @@ interface PastLifeSpec {
 - **Reencarnación:** el alma de alguien de la historia del mundo renace en tu cuerpo, con memorias de su época (que pueden estar desactualizadas: la secta que conocías cayó).
 - **Lo que sabe el usuario y lo que sabe el personaje** se separa como en spirits §3e: el usuario puede saber más; el personaje recuerda lo que su `fidelity` permite.
 
+### 5.9 Composición: disparador, condición, acción (aprobado 2026-10-06: "super variado, para imitar distintas novelas")
+
+Los efectos de §5.1-§5.8 son los más comunes, pero un dedo de oro no está limitado a ellos. Cualquier dedo de oro es una **lista de reglas** armadas con piezas, y cada pieza es un punto de enganche con un proceso que ya existe. Así se puede imitar casi cualquier novela **agregando contenido** en `content/golden-fingers/`, sin tocar código; solo una pieza nueva requiere código.
+
+```ts
+interface GoldenRule {
+  trigger: Trigger;                          // cuándo
+  condition?: Condition;                     // si se cumple qué (sobre la verdad del portador o lo que percibe)
+  action: EffectAction;                      // qué hace
+  bounds?: Bounds;                           // topes por uso, por día, por vida
+  cost?: GoldenCost[];                       // §6
+  cooldown?: Duration;
+  narration?: NarrationHint;                 // cómo se anuncia ("[Ding!]", una voz, nada)
+}
+
+type Trigger =
+  | { kind: "passive" }                      // siempre activo (modificador)
+  | { kind: "command" }                      // el personaje lo invoca (un verbo `use_golden_finger` con modos)
+  | { kind: "interval"; every: Duration }    // cada día, cada luna
+  | { kind: "event"; pattern: EventPattern } // al matar, comer, dormir, fabricar, romper un umbral, regalar, ser humillado, humillar, morir…
+  | { kind: "place"; query: PlaceQuery }     // al llegar a un lugar ("firmar" en un sitio nuevo)
+  | { kind: "percept"; pattern: PerceptPattern } // al ver una técnica, un tesoro, a alguien con destino fuerte
+  | { kind: "threshold"; metric: MetricRef; crosses: number }; // al llegar a fama X, karma X, nivel X
+
+type EffectAction =
+  | { kind: "modify"; target: ProcessParamRef; op: "mul" | "add" | "floor" | "cap" | "set"; value: number } // cualquier parámetro declarado de un proceso
+  | { kind: "perceive"; channel: ChannelSpec }               // un canal de percepción extra (§5.1, §5.7)
+  | { kind: "tilt"; scope: TiltScope[]; magnitude: number }  // inclinar tiradas entre lo posible (§5.4)
+  | { kind: "transfer"; from: LedgerAccountId; to: TargetRef; what: ResourceSpec }   // dar desde una reserva
+  | { kind: "convert"; inputs: ResourceSpec[]; outputs: ResourceSpec[]; rate: number } // cambiar una cosa por otra, con conservación declarada
+  | { kind: "absorb"; from: "victim" | "item" | "beast" | "place"; what: AbsorbSpec }  // quitarle algo a otro (qi, técnica, linaje, años)
+  | { kind: "grant_knowledge"; from: KnowledgeReserveId; pick: PickRule }             // una biblioteca finita en la mente
+  | { kind: "body"; change: BodyChange }                     // body-health
+  | { kind: "soul"; change: SoulChange }                     // dividir, reforzar, sellar
+  | { kind: "agent"; ref: AgentId; bind: BindSpec }          // un compañero que ya existe (espíritu, bestia, clon creado en el evento de origen)
+  | { kind: "realm"; ref: RealmId; op: "enter" | "exit" | "grow" | "move_entrance" }
+  | { kind: "project"; spec: ProjectionSpec }                // simular a futuro sobre una copia (abajo)
+  | { kind: "rewind"; spec: RewindSpec }                     // volver a un punto anterior conservando memorias (abajo)
+  | { kind: "teleport"; to: PlaceRef; cost: ResourceSpec[] }
+  | { kind: "influence"; on: AttitudeRef; magnitude: number } // inclinar actitudes ajenas como un aura (con canal percibible)
+  | { kind: "reveal_ui"; panel: PanelSpec };                 // un panel con datos de un canal (misiones, afinidad, mapa)
+```
+
+- **Todo pasa por un proceso real.** `modify` solo toca parámetros que los procesos declaran modificables (el ruido de control de una sesión, la velocidad de la curva, la tasa de absorción). `absorb` es una transferencia con conservación: lo que gana el portador lo pierde la víctima.
+- **Las reglas se combinan.** "El arma que crece devorando" es `event: kill` + `absorb: victim.qi` + `modify: item.grade`, con crecimiento por alimentación.
+- **Proyectar (el simulador):** `project` corre la sim sobre una **copia descartable** desde el estado actual, con la política del personaje o con el jugador jugando adentro ("una vida simulada en un sueño"). Lo que el personaje vivió en la copia vuelve como memorias con la fidelidad configurada. Es un pronóstico: el mundo real puede ir distinto, porque el personaje ya no es el mismo después de ver el futuro. Es determinista, y la copia nunca escribe en la verdad.
+- **Volver (regresar al morir, bucles):** `rewind` restaura un snapshot anterior del mundo y le pone al personaje las memorias de lo vivido como creencias. La rama descartada queda en el archivo, y la crónica cuenta todas las vueltas. Tiene topes (cuántas veces, hasta cuándo) y costos configurables.
+
+### 5.10 Catálogo de tropos
+
+Cada fila es un preset de reglas en `content/golden-fingers/`, editable. Los nombres son del tropo, no de una novela concreta.
+
+**Información**
+
+| Tropo | Reglas |
+|---|---|
+| Panel de estado | `reveal_ui` + `perceive` sobre uno mismo (§5.1) |
+| Ojo que ve el qi o los defectos | `perceive` del campo de qi, de flujos en meridianos ajenos o de defectos de objetos y técnicas |
+| Identificar tesoros | `percept` de un objeto → `perceive` de calidad, origen y uso |
+| Radar de tesoros | `perceive` con alcance de varias celdas sobre recursos de alto valor |
+| Ver hilos kármicos o el destino | `perceive` de vínculos kármicos y de la proyección de presiones sobre una persona (divination §3) |
+| Premonición | `project` corto (segundos a horas) con fidelidad baja, disparado por peligro |
+| Leer objetos (psicometría) | `perceive` de los eventos que tocaron un objeto (las huellas de perception) |
+| Oír pensamientos superficiales | `perceive` de la emoción y la intención inmediata de quien está cerca |
+| Detector de mentiras | `perceive` de la contradicción entre lo dicho y lo creído (dialogue) |
+| Medidor de afinidad | `reveal_ui` de las relaciones de los demás con vos (npc-psychology) |
+| Valor de las personas | `perceive` del talento ajeno, al ver |
+
+**Progreso**
+
+| Tropo | Reglas |
+|---|---|
+| Experiencia por matar | `event: kill` → `absorb` de qi o de esencia de la víctima |
+| Firmar (签到) | `place` nuevo o `interval` → `transfer` desde la reserva, más en lugares más raros |
+| Gacha o lotería | `command` + costo en puntos → `transfer` de un ítem de la reserva elegido con rng |
+| Logros | `threshold` sobre métricas → `transfer` |
+| Cultivo automático | `passive` → `modify` de la absorción durante el sueño o en toda actividad |
+| Comprensión que fluye | `passive` → `modify` de la comprensión; `event: breakthrough` → un insight |
+| Copiar con la mirada | `percept` de una técnica → `grant_knowledge` con la fidelidad de lo visto |
+| Devorar técnicas | `event: defeat` → `absorb` de una técnica del vencido (la pierde él, o le queda dañada) |
+| Fusión de técnicas | `command` → `convert` de dos técnicas en una nueva (discovery §10, con la ley decidiendo si funciona) |
+| Sistema de vida cotidiana | experiencia por cocinar, cultivar la tierra o pescar → `transfer` y `modify` de habilidades de oficio |
+| Tiempo comprimido | `command` → `realm` de sueño o espacio con `timeRatio` alto (§5.5) |
+| Simulador de vidas | `command` → `project` de años con el jugador jugando adentro; vuelve con memorias |
+
+**Recompensas e intercambio**
+
+| Tropo | Reglas |
+|---|---|
+| Tienda del sistema | `command` → `convert` de puntos en ítems de la reserva (§5.6) |
+| Devolución multiplicada | `event: gift` (regalarle a un discípulo o a alguien) → `transfer` de N veces el valor desde la reserva al portador |
+| Sistema de maestro | `event` de progreso de tus discípulos → `transfer` al maestro |
+| Préstamo de poder | `command` → poder ahora a cambio de un `Commitment` con interés (contracts); el impago tiene ejecutor |
+| Sacrificio para mejorar | `convert` de objetos o qi en grados del artefacto |
+| Sistema de villano | `event` al humillar a un "elegido" o arruinar su plan → `transfer` (necesita rivales, §8) |
+| Fama que da poder | `passive` → `convert` de la devoción y la reputación en qi (como el culto, spirits §6) |
+| Mérito como moneda | `threshold` de mérito (heaven-karma §7) → `transfer` |
+
+**Tiempo y destino**
+
+| Tropo | Reglas |
+|---|---|
+| Regresor | `pastLife` desde una vida archivada (§5.8) |
+| Volver al morir | `event: death` → `rewind` al último punto fijado, con memorias; topes y costo |
+| Rebobinar segundos | `command` → `rewind` corto (segundos), con costo alto de qi o alma |
+| Sueños proféticos | `interval: noche` → `project` en símbolos (divination §4) |
+| Fortuna del protagonista | `tilt` (§5.4) |
+| Torcer el destino | `command` → `tilt` fuerte sobre una persona o un evento proyectado, con costo kármico |
+
+**Compañeros**
+
+| Tropo | Reglas |
+|---|---|
+| Abuelo en el anillo | `agent` remanente (§5.5) |
+| Espíritu del arma | `agent` espíritu de objeto con la personalidad que le dejó su historia |
+| Bestia contratada | `agent` bestia con vínculo (living-world: contratos con bestias) |
+| Demonio sellado en el cuerpo | `agent` con objetivos propios y `soul` compartida; poder a cambio de control |
+| Dios sellado | `agent` de un dios local caído que necesita culto para recuperarse (spirits §9) |
+| Clon o avatar | `agent` creado en el evento de origen con parte de tu alma; lo controlás como un segundo personaje |
+| Invocar héroes del pasado | `command` → `agent` temporal desde un espíritu o remanente real de la historia |
+| Ejército de muertos | `event: kill` → `agent` sometido (espíritus fabricados, con karma) |
+
+**Espacio y lugares**
+
+| Tropo | Reglas |
+|---|---|
+| Mundo de bolsillo que crece | `realm` con `grow` al alimentarlo; hierbas que maduran con su tiempo propio |
+| Granja espiritual | `realm` + `provision` de cultivos con `timeRatio` |
+| Cueva portátil | `realm` con entrada que se mueve con el portador |
+| Volver a casa | `teleport` con costo |
+| Tienda de otra dimensión | `realm` con un comerciante (agente) que comercia con su propio stock |
+| Puerta a otra era | `realm` congelado del pasado del mundo (secret-realms), con gente y objetos de esa época |
+
+**Cuerpo y alma**
+
+| Tropo | Reglas |
+|---|---|
+| Cuerpo inmortal | `body`: regeneración alta; solo muere por destrucción total o del alma |
+| Adaptación | `event: injury` de un tipo → `modify` de la resistencia a ese tipo |
+| Devorar linajes | `absorb` de sangre de bestias → cambios de linaje (family-lineage §9) |
+| Varios dantianes | `body` y `soul` con capacidades extra de cultivo |
+| Alma dividida | `soul`: partes del alma en otros objetos o cuerpos; morir no mata si queda una |
+| Transformación en bestia | `command` → `body` temporal con otra forma |
+| Cuerpo venenoso | `body`: produce veneno y es inmune a venenos |
+| Juventud eterna | `body`: sin envejecimiento visible; la vida sigue contando o no, según la configuración |
+
+**Social**
+
+| Tropo | Reglas |
+|---|---|
+| Aura de carisma | `influence` sobre las actitudes de quienes te perciben (con canal percibible) |
+| Imán de problemas | `tilt` de encuentros con conflicto: los arrogantes te provocan más seguido |
+| Imán de amores | `tilt` de encuentros e `influence` de atracción (npc-psychology) |
+| Rostro sin rastro | velo sobre la memoria ajena: la gente te recuerda mal |
+
+**Saber de otro mundo**
+
+| Tropo | Reglas |
+|---|---|
+| Transmigrador moderno | `grant_knowledge` de procesos (química, medicina, imprenta, pólvora) que **solo funcionan si la ley del mundo los permite** (technology); el resto es conocimiento falso |
+| Biblioteca en la mente | `grant_knowledge` desde una reserva finita de textos con origen |
+| Recuerdos de un juego | `perceive` de un mapa y de datos de "cómo era" el mundo, que pueden estar desactualizados |
+
+**Con precio**
+
+| Tropo | Reglas |
+|---|---|
+| Maldición que da poder | poder alto con `cost` grande (vida, cordura, karma) |
+| Hambre | el poder exige comer cierto recurso, o se debilita |
+| Pacto con un demonio | `Commitment` con una entidad (§4: pacto) que cobra |
+
+- **Combinables:** un setup puede llevar varios dedos de oro, y cada uno varias reglas. El armador muestra choques ("dos efectos `rewind`: se aplica el más restrictivo") y lo que implica cada combinación.
+- **Las mismas restricciones para todos:** conservación con reservas declaradas, `tilt` sin volver posible lo imposible, `project` y `rewind` sobre copias y snapshots, canales de percepción en vez de acceso a la verdad.
+- **Agregar un tropo** es escribir un archivo de reglas. Si necesita un enganche que ningún proceso declara, se agrega el parámetro al proceso (con su test), y queda disponible para todos los tropos.
+
 ## 6. Crecimiento y costos
 
 ```ts
@@ -343,7 +519,7 @@ interface Signature {
 
 ```ts
 interface RivalSpec {
-  count: number;                             // otros agentes con dedo de oro (0 por defecto)
+  count: number;                             // otros agentes con dedo de oro (0 por defecto en todos los presets; aprobado 2026-10-06)
   placement: "anywhere" | "near" | "same_generation";
   power: "weaker" | "similar" | "stronger";
   knownToPlayer: false;                      // nunca: los descubrís como cualquier secreto
@@ -362,10 +538,13 @@ interface LifeRules {
 }
 ```
 
+- **Se elige al configurar; por defecto `one_life`** (aprobado 2026-10-06).
 - **`one_life`:** como el modo realista (player-loop §12).
 - **`checkpoints`:** guardados manuales con un límite (pocos por año de juego, o en lugares concretos). Cargar uno es volver a ese snapshot: la sim es determinista, así que es una rama nueva desde ahí. El archivo guarda cuántas veces se cargó y desde dónde, y la crónica cuenta la rama final.
 - **`free`:** guardar y cargar sin límite, con la misma marca.
 - **Ninguna opción cambia el mundo:** cargar no altera a nadie, solo elige una rama.
+- **El modo no se cambia a mitad de una vida** (aprobado 2026-10-06): si se quieren ventajas, se arranca una vida nueva en modo novela, que puede ser en la misma seed.
+- **Distinto de "volver al morir":** cargar es una opción del usuario; `rewind` (§5.9) es un dedo de oro dentro del mundo, que el personaje vive y recuerda.
 
 ## 10. Narración
 
@@ -395,7 +574,15 @@ interface NovelNarration {
 | **Genio celestial** | Raíz celestial, comprensión alta, rupturas fáciles; el Cielo lo nota |
 | **Regresor** | Memorias de una vida archivada en la misma seed |
 | **Basura que despierta** | Raíz basura medida al nacer; un linaje dormido que despierta con una condición |
-| **Personalizado** | El armador paso a paso |
+| **Firmador** | Firmar en lugares nuevos da recompensas de una reserva; viajar es progresar |
+| **Simulador** | Simula vidas en sueños y vuelve con memorias; el mundo real puede ir distinto |
+| **Volver al morir** | Al morir vuelve al último punto fijado con memorias; pocas vueltas y caras |
+| **Transmigrador** | Saber de procesos de otro mundo que funcionan solo si la ley lo permite |
+| **Maestro de secta** | Recompensas cuando progresan sus discípulos; devolución multiplicada al regalarles |
+| **Villano** | Recompensas por arruinar a los "elegidos" (con rivales activados) |
+| **Arma que devora** | Espíritu del arma que crece absorbiendo lo que mata |
+| **Granjero espiritual** | Mundo de bolsillo con tiempo propio que crece al alimentarlo |
+| **Personalizado** | El armador paso a paso, con todo el catálogo de §5.10 |
 
 - **Armador paso a paso** en la CLI (Fase 7) y en la web (Fase 9): elige origen, efectos, intensidades, costos y firma, y muestra qué implica cada opción ("esto atrae al Cielo", "esto se puede robar").
 - **Archivo de configuración:** se puede escribir el `NovelSetup` a mano como JSON y validarlo.
@@ -425,10 +612,10 @@ Cada vida guarda en `meta` y en el archivo (chronicle §9):
 - **Fase 0:** `mode` en `NewGameSetup` y en `meta`; validador Zod de `NovelSetup` vacío.
 - **Fase 1:** elegir lugar, familia por posición, sexo, nombre y edad de entrada, con búsqueda de nacimiento y biografía sintetizada; marca de modo en la crónica.
 - **Fase 2:** temperamento y gustos elegidos; `upbringing` como intenciones del hogar.
-- **Fase 4:** talento elegido con genoma condicionado; marco `GoldenFinger` con `reveal`, `craft`, `learning`, `talent` y `body`; mentor como remanente (con spirits); firma y saliencia en el Cielo; presets Alquimista divino y Genio celestial.
+- **Fase 4:** talento elegido con genoma condicionado; marco `GoldenFinger` con `reveal`, `craft`, `learning`, `talent` y `body`; reglas compuestas (§5.9) con `passive`, `command`, `event`, `modify`, `perceive`, `transfer` y `absorb`, y los primeros tropos del catálogo; mentor como remanente (con spirits); firma y saliencia en el Cielo; presets Alquimista divino y Genio celestial.
 - **Fase 5:** `space` con reinos secretos; `provision` con ledger; `fortune` con reserva.
 - **Fase 6:** `missions` y tienda con reserva; preset Sistema; rivales con dedo de oro.
-- **Fase 7:** fijar hechos con origen en la historia (linajes, artefactos de reinos caídos); memorias de vidas pasadas y regresión; armador paso a paso en la CLI; `checkpoints` y `free`.
+- **Fase 7:** `project` (simulador, premonición) y `rewind` (volver al morir) sobre copias y snapshots; el resto del catálogo de tropos; fijar hechos con origen en la historia (linajes, artefactos de reinos caídos); memorias de vidas pasadas y regresión; armador paso a paso en la CLI; `checkpoints` y `free`.
 - **Fase 9:** armador web; archivo con marcas y verdad del dedo de oro.
 
 ## Tests
@@ -441,7 +628,16 @@ Cada vida guarda en `meta` y en el archivo (chronicle §9):
 - **Sigue al portador:** un anillo robado da sus efectos al ladrón; uno atado al alma sigue al alma tras la muerte.
 - **Coherencia:** un pedido imposible por la ley del mundo se rechaza con la razón.
 - **Origen:** todo lo fijado por la configuración tiene `originEventId` con `cause: "novel_setup"` o un evento del mundo.
+- **Copias sin escritura:** `project` no cambia el hash de la verdad; `rewind` restaura exactamente el snapshot más las memorias.
+- **Tropos como contenido:** cada tropo de `content/golden-fingers/` valida con Zod y solo usa parámetros que los procesos declaran modificables.
 - **Regresión:** una vida con `pastLife` de una vida archivada arranca con las mismas creencias verdaderas y diverge solo por las acciones.
+
+## Decisiones (aprobado 2026-10-06)
+- **Dedos de oro super variados** para imitar distintas novelas: reglas compuestas con piezas (§5.9) y un catálogo amplio de tropos como contenido (§5.10).
+- **Guardados:** se eligen al configurar; `one_life` por defecto; cada carga queda en el archivo (§9).
+- **Sin cambio de modo a mitad de una vida** (§9).
+- **Rivales con dedo de oro:** 0 por defecto en todos los presets, configurable (§8).
+- **Dedo de oro sin origen elegido:** el mundo elige uno coherente y lo oculta; el personaje lo descubre y la crónica lo revela (§4).
 
 ## Decisiones tomadas en este borrador (revisables)
 
