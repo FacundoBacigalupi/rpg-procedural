@@ -170,6 +170,7 @@ Muchos eventos dejan **huellas** persistentes en el lugar, que son entidades con
 | Residuo de qi de una técnica | Horas a meses según la potencia | El flujo del qi ambiental |
 | Objetos movidos, cerraduras forzadas, polvo alterado | Hasta que alguien los toque | Que alguien acomode |
 | Daño al terreno (cráter, árbol partido, quemadura) | Años o siglos | La erosión, el crecimiento |
+| Estratos, objetos enterrados, cicatrices de qi | Siglos a milenios | Erosión, perturbaciones, saqueo ([deep-history.md](deep-history.md) §1-§2) |
 
 - Leer una huella es percepción (verla) más **inferencia** (saber qué significa). Un rastreador ve más y entiende más que un campesino. El residuo de qi de una técnica revela la escuela, si el observador la conoce.
 - Las huellas son la base para descubrir intrigas, crímenes y batallas viejas (schemes §5, el [law.md](law.md) §5).
