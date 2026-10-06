@@ -120,7 +120,7 @@ Una profecía es una **interpretación dicha** que se vuelve creencia y viaja.
 - **Se cumple sola:** porque la gente actúa como si fuera cierta (el niño exiliado crece con odio, los rebeldes lo encuentran, el ejército lo sigue porque cree en la profecía). El motor no fuerza nada: salen de las acciones.
 - **Provoca lo que quería evitar:** el intento de evitarla produce las condiciones que la cumplen. Son los casos más memorables y entran fuerte a la historia (deep-history).
 - **Se frustra:** muchas no se cumplen. Las culturas tienen formas de explicarlo (se interpretó mal, se cumplió de otra forma, alguien la evitó con virtud), y la memoria colectiva recuerda los aciertos y olvida los fallos (information §9: sesgo de confirmación en reputación).
-- **Fabricadas:** un intrigante puede inventar una profecía, comprar a un adivino o plantar un presagio (enterrar una piedra con una inscripción para que la "encuentren"). Son intrigas (schemes) que funcionan sobre creencias igual que las verdaderas.
+- **Fabricadas:** un intrigante puede inventar una profecía, comprar a un adivino o plantar un presagio (enterrar una piedra con una inscripción para que la "encuentren"). Son intrigas (schemes) que funcionan sobre creencias igual que las verdaderas. Los intrigantes también explotan profecías existentes: apuntarlas a un rival, fabricar al elegido, elegir fechas con presagios calculables ([schemes.md](schemes.md) §11).
 - **Duran:** las profecías grandes se vuelven legados (deep-history: conocimiento) y mitos (living-world §4); pueden esperar siglos a que alguien encaje en ellas o decida encajar.
 
 ## 6. Costo, reacción y velos

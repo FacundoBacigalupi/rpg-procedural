@@ -9,11 +9,11 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — capas, carpetas, reglas de dependencia, modelo de datos.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — **qué sigue** (sección "Ahora"), fases y estado. Si el usuario pregunta con qué seguir, leer esto. Actualizar al cerrar algo.
 - [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) — ramas (`main`, `develop`, `feat/*`…), commits, CI, secretos.
-- [docs/systems/causality.md](docs/systems/causality.md) — **el modelo causal del mundo. Leerlo antes de tocar cualquier sistema de simulación o worldgen.**
+- [docs/systems/causality.md](docs/systems/causality.md) — **el modelo causal del mundo. Leerlo antes de tocar cualquier sistema de simulación o worldgen.** Presiones como objeto (fuentes, umbrales, chispas, descargas), inspector con mapa de presiones, contrafácticos.
 - [docs/systems/heaven-karma.md](docs/systems/heaven-karma.md) — el Cielo como agente-ley, tribulaciones, karma, cobro en las Fuentes; atención finita repartida por saliencia, zonas ciegas, tribulación como evento físico que se puede robar, retribución como inclinación acotada de tiradas, mérito (功德), fortuna colectiva (气运) derivada.
 - [docs/systems/deep-history.md](docs/systems/deep-history.md) — historia por relevancia (embudo + olvido entre épocas).
 - [docs/systems/npc-psychology.md](docs/systems/npc-psychology.md) — temperamento, esquemas, memoria, relaciones, utilidad, demonios internos; etapas de vida con períodos sensibles, salud mental con causa y etiqueta cultural (duelo, depresión, trauma, adicción), declive cognitivo, sentido y pertenencia, multitudes por umbrales, sueño que consolida y sueños, gustos personales generados.
-- [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas: NPCs que traman contra otros (planes ocultos sobre creencias).
+- [docs/systems/schemes.md](docs/systems/schemes.md) — intrigas y proyectos: NPCs que traman contra otros (planes ocultos sobre creencias) o cooperan con versiones distintas del plan; intrigas entre organizaciones; intrigantes que explotan profecías.
 - [docs/systems/planet-gen.md](docs/systems/planet-gen.md) — generación del planeta: grilla hex, tectónica, clima, biomas, qi derivado de la geología.
 - [docs/systems/metaphysics.md](docs/systems/metaphysics.md) — **las leyes de cada mundo varían mucho** (xianxia, magia occidental, pactos, dioses…). El código usa conceptos genéricos (`Essence`, `Practice`, `Law`, `Soul`).
 - [docs/systems/living-world.md](docs/systems/living-world.md) — el mundo vivo: desastres, evolución de bestias, culturas, mitos, rutas, conocimiento.

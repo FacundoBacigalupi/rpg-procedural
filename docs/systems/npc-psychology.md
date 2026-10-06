@@ -577,9 +577,9 @@ Tests clave:
 - **Multitudes por umbrales (cascada)** sobre la decisión individual, sin "mente colmena".
 - **Los sueños no traen información nueva** salvo que haya un agente real que la inyecte (`injected`), y eso es un evento con causa.
 - **Gustos generados** desde temperamento, cuerpo, cultura, exposición, memorias y estatus; nunca sorteados en el vacío.
+- **Efectos mentales sobre el personaje del jugador** (pánico ante un disparador, ansia, abstinencia): nunca bloquean la acción; solo bajan la calidad de ejecución y el narrador describe la lucha interna (aprobado 2026-10-05).
 
 ## Preguntas abiertas
 - Cuántas memorias por NPC de tier 2: se arranca con **20** (top-N por intensidad y relevancia) y se ajusta con la sim headless.
 - Calibración: plasticidad por etapa, prevalencias base de cada condición, tasa de resolución del duelo, distribución de umbrales en multitudes, cuántas fusiones por noche de consolidación.
-- ¿Cuánto puede el personaje del jugador "resistir" un efecto mental (pánico ante un disparador, ansia)? Propuesta: nunca se le bloquea la acción; solo baja la calidad de ejecución y el narrador describe la lucha interna.
 - ¿Existen en algunos mundos tratamientos metafísicos que borran trauma o memoria (técnicas, píldoras de olvido)? Propuesta: sí, como técnicas con costo (se pierden también las memorias ligadas y los esquemas que formaron).
