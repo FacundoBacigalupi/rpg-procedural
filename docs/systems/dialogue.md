@@ -88,7 +88,7 @@ interface Utterance {
 
 Para cada oyente (incluidos los que escuchan de costado):
 1. **Oír:** percepción auditiva con ruido, distancia y volumen (perception §3). Lo que no se oye bien llega incompleto.
-2. **Entender la lengua:** según su habilidad en esa lengua (skills; language.md futuro). Con poca habilidad, entiende palabras sueltas y pierde las proposiciones complejas; con dialecto distinto, se le escapan matices.
+2. **Entender la lengua:** según su habilidad en esa lengua (skills; [language.md](language.md) §12). Con poca habilidad, entiende palabras sueltas y pierde las proposiciones complejas; con dialecto distinto, se le escapan matices.
 3. **Interpretar:** mapear lo oído a actos y proposiciones con su teoría de la mente (npc-psychology) y su cultura. Los pedidos indirectos ("qué frío hace acá…"), las ironías y las amenazas veladas se entienden o no según el nivel de teoría de la mente y la familiaridad con la cultura del que habla.
 4. **Leer al que habla:** emociones, sinceridad, nervios (perception §6). Sale una creencia sobre la intención del hablante, que puede estar equivocada.
 

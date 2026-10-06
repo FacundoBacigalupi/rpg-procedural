@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [living-world.md](living-world.md) §3, §4, §5 (la geografía hace a las culturas, mitos, calendarios), [deep-history.md](deep-history.md) (pueblos que se separan, secuencias de estilos, embudo de legados), [npc-psychology.md](npc-psychology.md) §2, §10, §13, §14, §16 (valores y esquemas, períodos sensibles, pertenencia, multitudes, gustos), [information.md](information.md) §1, §3, §9 (creencias, deformación, conocimiento colectivo), [social-structure.md](social-structure.md) §2, §3, §4, §11 (estatus, percibir la posición, etiqueta, género y etnia), [perception.md](perception.md) (marcadores que se ven y se oyen), [technology.md](technology.md) (difusión y prerrequisitos), [economy.md](economy.md) (demanda, comercio), [weather.md](weather.md) §4 (estaciones, calendarios), [planet-gen.md](planet-gen.md) (lo que hay y lo que crece).
-Lo usan: [law.md](law.md) (códigos por cultura), [social-structure.md](social-structure.md) (estatus, etiqueta, normas de género y edad), [property.md](property.md) (formas de tenencia), [family-lineage.md](family-lineage.md) (parentesco, matrimonio, herencia, luto), [settlements.md](settlements.md) §4 (trazados y estilos), [crafts.md](crafts.md) (estilos, recetas, gusto), [spirits.md](spirits.md) (funerales, ofrendas), [dialogue.md](dialogue.md) §10, §13 (cara, humor, malentendidos), [elements.md](elements.md) §9 (teorías culturales), language (#41), religion (#42), [narration.md](narration.md) (léxico y lo que al personaje le parece normal), [chronicle.md](chronicle.md).
+Lo usan: [law.md](law.md) (códigos por cultura), [social-structure.md](social-structure.md) (estatus, etiqueta, normas de género y edad), [property.md](property.md) (formas de tenencia), [family-lineage.md](family-lineage.md) (parentesco, matrimonio, herencia, luto), [settlements.md](settlements.md) §4 (trazados y estilos), [crafts.md](crafts.md) (estilos, recetas, gusto), [spirits.md](spirits.md) (funerales, ofrendas), [dialogue.md](dialogue.md) §10, §13 (cara, humor, malentendidos), [elements.md](elements.md) §9 (teorías culturales), [language.md](language.md), religion (#42), [narration.md](narration.md) (léxico y lo que al personaje le parece normal), [chronicle.md](chronicle.md).
 
 ---
 
@@ -59,7 +59,7 @@ interface Culture {                          // nombre de un racimo de comunidad
   core: TraitId[];                           // los rasgos que definen el racimo
   parent?: CultureId;                        // de qué cultura se separó
   splitEventId?: EventId;
-  names: { endonym: LexemeRef; exonyms: Record<CultureId, LexemeRef> };   // cómo se llaman y cómo los llaman (language #41)
+  names: { endonym: LexemeRef; exonyms: Record<CultureId, LexemeRef> };   // cómo se llaman y cómo los llaman ([language.md](language.md) §9)
   styleSequence: StyleStageId[];             // secuencia de estilos (deep-history §3)
   originEventId: EventId;
 }
@@ -122,6 +122,7 @@ interface Culture {                          // nombre de un racimo de comunidad
 
 - **En la historia profunda** (deep-history, modo agregado), cada pueblo arranca con los rasgos de su origen y los adapta a donde vive (living-world §3): la economía empuja los valores, el clima y los materiales dan comida, ropa y casa, el terreno da aislamiento o contacto.
 - **Separación:** cuando un pueblo se divide (montañas, mar, migración), sus comunidades derivan por separado, como las lenguas. Culturas hermanas comparten rasgos con variantes distintas; las lejanas, casi nada.
+- **Sin mínimo de diferencias** (aprobado 2026-10-06): las culturas se parecen o se distinguen según su historia y su geografía. Dos vecinos que siempre comerciaron se parecen mucho; dos separados por una montaña durante siglos, poco. No se fuerza un contraste para que se "sientan distintas".
 - **Cada rasgo con su historia:** el generador no sortea "esta cultura come perro" de una tabla: el rasgo existe porque hubo un origen posible (escasez, un evento, contacto) y la deriva lo sostuvo. El RNG con clave `("culture", comunidad, época)` elige entre variantes permitidas.
 - **El embudo guarda lo necesario** (deep-history): por región y época, las culturas presentes con sus rasgos centrales, su secuencia de estilos y sus contactos, para que la arqueología y los mitos tengan respuesta en la verdad.
 
@@ -158,7 +159,7 @@ interface IdentityBelief {                   // una creencia más (information �
 - **Comida:** platos con receta (crafts: cocina) que salen de los ingredientes locales y comerciados; comidas de fiesta, de luto y de pobreza; hospitalidad con reglas (cuántos días se aloja a un extraño, qué se le debe); cultivadores que ayunan de granos (辟谷) y lo leen como pureza.
 - **Ropa:** materiales del lugar y del comercio, cortes por clima, marcas de estatus, edad, estado civil y luto; leyes suntuarias (social-structure §2).
 - **Ritos de paso:** cambian el estatus reconocido (social-structure) y abren derechos: el joven que hizo su rito puede casarse, heredar o ir a la guerra. Saltarse uno tiene costo social.
-- **Funerales:** la forma (entierro, cremación, exposición) decide qué queda para la arqueología y qué pasa con el cuerpo. Si el rito importa para el alma depende de la ley del mundo (spirits §0, §8): en algunos mundos un muerto sin rito tiene más chances de quedarse anclado; en otros, el rito solo consuela a los vivos.
+- **Funerales:** la forma (entierro, cremación, exposición) decide qué queda para la arqueología y qué pasa con el cuerpo. Si el rito importa para el alma depende de la ley del mundo (spirits §0, §8) (aprobado 2026-10-06): en la familia xianxia, un rito bien hecho ayuda un poco a cruzar y su ausencia sube la chance de quedarse anclado; en otros mundos el rito solo consuela a los vivos.
 - **Fiestas:** juntan gente (mercados, romances, peleas, contagios: body-health), mueven la economía (demanda de comida, ropa, incienso) y el ánimo; se fijan en el calendario de la cultura (weather §4).
 
 ## 10. Estética, arte y humor
@@ -178,8 +179,9 @@ interface IdentityBelief {                   // una creencia más (information �
 
 - **El personaje se cría en una cultura:** sus `TraitHolding` vienen de su infancia (player-loop) y deciden qué le parece normal, qué le da asco y qué sabe hacer sin pensar. El narrador describe lo ajeno como ajeno desde esa mirada.
 - **Libertad total:** el jugador puede adoptar costumbres de otro pueblo, romper las suyas, fingir ser de otro lado, inventar un rito o fundar una tradición. Todo con las mismas reglas de transmisión y con las sanciones que correspondan.
+- **Cambiar la cultura de un lugar** (aprobado 2026-10-06): con las mismas palancas que cualquiera (prestigio, instituciones, imposición si tiene poder, discípulos que copian su ejemplo). Es lento, y la gente puede obedecer por fuera y resistir por dentro.
 - **Conocer una cultura es saber:** familiaridad con esa cultura (skills, clave `culture`), conocimiento de sus normas (lo que vio, lo que le contaron) y errores de etiqueta cuando no la conoce. Un extranjero torpe es perdonado o castigado según quién lo vea.
-- **Panel:** lo que el personaje cree de cada pueblo, incluidos sus estereotipos, sin corregirlos.
+- **Sin lista de costumbres propias** (aprobado 2026-10-06): las del personaje se notan en cómo narra el narrador, en lo que le da asco o le parece raro y en cómo reaccionan los demás. Un comando fuera del personaje muestra lo que el personaje cree de cada pueblo, incluidos sus estereotipos, sin corregirlos.
 
 ## 13. Escala (LOD)
 
@@ -209,6 +211,12 @@ interface IdentityBelief {                   // una creencia más (information �
 - **Asimilación:** una minoría con presión y matrimonios mixtos pierde rasgos visibles antes que los profundos.
 - **Separación:** dos comunidades separadas divergen más con el tiempo que dos en contacto.
 - **Secuencia de estilos:** el estilo de una pieza permite ubicarla en su época con el error esperado.
+
+## Decisiones (aprobado 2026-10-06)
+- **Diferencias entre culturas solo desde su historia y geografía,** sin mínimo forzado (§6).
+- **Costumbres propias sin lista:** se notan en la narración y las reacciones; los estereotipos, en un comando fuera del personaje (§12).
+- **El jugador puede cambiar la cultura de un lugar** con las palancas de cualquiera, lento y con resistencia (§12).
+- **Funerales y alma según la ley del mundo;** en xianxia el rito ayuda un poco a cruzar (§9).
 
 ## Decisiones tomadas en este borrador (revisables)
 
