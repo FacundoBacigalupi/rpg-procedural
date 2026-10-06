@@ -67,7 +67,7 @@ interface CultivationSystem {
 - **Escuelas rivales** dentro de la misma familia: una cultiva cuerpo primero, otra alma primero; ambas pueden funcionar con distintos costos. Las disputas doctrinales son conflictos reales (organizaciones, guerra).
 
 ## 3. Talento
-Generado por el genoma (family-lineage, futuro) y a veces por eventos. Casi todo está oculto hasta que se mide o se manifiesta (VISION, principio 9).
+Generado por el genoma ([family-lineage.md](family-lineage.md) §4) y a veces por eventos. Casi todo está oculto hasta que se mide o se manifiesta (VISION, principio 9).
 
 ```ts
 interface Aptitude {

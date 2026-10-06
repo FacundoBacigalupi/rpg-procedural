@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#11, familia y linaje**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#12, estratificación social**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -29,7 +29,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 8. [x] **Interacciones elementales** → [elements.md](systems/elements.md) (ampliación de [metaphysics.md](systems/metaphysics.md)): ciclos de generación y destrucción como física común para alquimia, formaciones y combate. Va antes de oficios porque estos la usan.
 9. [x] **Oficios** → [crafts.md](systems/crafts.md): alquimia con propiedades y toxinas residuales, forja limitada por el metal escaso, formaciones que modifican el campo de qi real, talismanes.
 10. [x] **Contratos y juramentos** → [contracts.md](systems/contracts.md): un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
-11. [ ] **Familia y linaje** → `family-lineage.md`: matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
+11. [x] **Familia y linaje** → [family-lineage.md](systems/family-lineage.md): matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
 12. [ ] **Estratificación social** → `social-structure.md`: castas, servidumbre, esclavitud, movilidad social, abismo mortal/cultivador; qué acciones tiene cada uno a su alcance.
 13. [ ] **Ley y justicia** → `law.md`: códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
 14. [ ] **Estado y política** → `state.md`: legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
@@ -63,6 +63,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - elements: `λ`, `κ`, `ρ` y pérdida de generación (ventaja elemental que importa sin decidir sola); velocidad con que el uso sesga el campo de una celda; frecuencia de raíces mutadas y derivados.
 - crafts: tasas de estallido y calidad por habilidad; velocidad de aprendizaje y techo por cultivo; duración de cargas y desgaste de artefactos; cuántos momentos de decisión tiene una sesión larga.
 - contracts: umbral de peso para que una promesa llegue al libro del Cielo y peso de la traición; tasas de incumplimiento por tipo y cultura; fuerza de los sellos en el alma frente al portador; cuántas promesas chicas conserva un NPC de tier 2.
+- family-lineage: heredabilidad por rasgo (sobre todo la aptitud de cultivo); curva de fertilidad por reino y diferencia de reino; tasas de ilegitimidad, adulterio descubierto y disputas de herencia; dilución y despertar de linajes de sangre; mortalidad materna e infantil.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -95,6 +96,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Oficios ([systems/crafts.md](systems/crafts.md)) — borrador
 - [~] Organizaciones ([systems/organizations.md](systems/organizations.md)) — borrador
 - [~] Contratos y juramentos ([systems/contracts.md](systems/contracts.md)) — borrador
+- [~] Familia y linaje ([systems/family-lineage.md](systems/family-lineage.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -108,7 +110,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea
 - [ ] Elementos: cinco fases en `content/`, vector elemental del qi de cada celda, `interact` puro con tests de conservación y sin móvil perpetuo ([elements.md](systems/elements.md))
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
-- [ ] Jugador con stats generados por seed
+- [ ] Jugador con stats generados por seed, nacido de padres y hogar generados por la sim, genoma mínimo heredado ([family-lineage.md](systems/family-lineage.md))
 - [ ] Catálogo de ~10 acciones (moverse, buscar/recolectar, hablar, trabajar, descansar, robar, pelear, comerciar, observar, esperar)
 - [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
 - [ ] Resolución con resultados matizados
@@ -133,7 +135,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
 - [ ] Rutinas diarias, NPCs actúan sin el jugador
-- [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos
+- [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos: atracción y uniones, matrimonio con normas culturales, concepción y parto, hogares que se arman y se parten, herencia con disputas, paternidad como creencia, enfermedades hereditarias ([family-lineage.md](systems/family-lineage.md))
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
 - [ ] Economía básica: hogares con presupuesto, producción agrícola y de oficios, mercado de la aldea con precios por creencias, salarios, crédito de cosecha y usura, calidad percibida y estafa, hambruna con causa ([economy.md](systems/economy.md))
 - [ ] Medicina y remedios mortales, venenos y antídotos, habilidad que sale de la práctica percibida, aprendices ([crafts.md](systems/crafts.md))
@@ -153,6 +155,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Secta mínima: prueba de ingreso con instrumentos con error, rangos sobre reinos culturales, maestro y discípulo, sueldos y puntos de contribución ([organizations.md](systems/organizations.md))
 - [ ] Alquimia (hornos, fuegos de tierra y propio, tensión, toxicidad residual, señales visibles) y talismanes simples ([crafts.md](systems/crafts.md))
 - [ ] Juramentos ante el Cielo y sobre el corazón del Dao (karma y demonios internos), juramentos de secreto, sellos simples en el alma, maestro–discípulo como compromiso ([contracts.md](systems/contracts.md))
+- [ ] Herencia de la aptitud de cultivo, ambiente prenatal, fertilidad de cultivadores, compañeros del Dao y cultivo dual ([family-lineage.md](systems/family-lineage.md))
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 
@@ -168,6 +171,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
 - [ ] Estructura por organización: formal y real con ejes continuos, atención finita del líder, líderes que no sueltan, concentración y dispersión por eventos ([organizations.md](systems/organizations.md) §3b)
 - [ ] Plantillas (como costumbre, no molde): clan, secta, gremio, casa comercial, templo, sociedad secreta
+- [ ] Clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, linajes de sangre que despiertan ([family-lineage.md](systems/family-lineage.md))
 - [ ] Sectas que nacen de eventos (descubridor de técnica → escuela → secta)
 - [ ] Registro de anomalías, herejía y cismas doctrinales, cultura epistémica, archivos y mecenazgo ([discovery.md](systems/discovery.md))
 - [ ] Relaciones entre organizaciones: diplomacia por personas, fuerza ajena como creencia, jerarquías regionales, escalera de conflicto, cismas y absorciones

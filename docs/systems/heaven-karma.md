@@ -66,6 +66,7 @@ Solo con eventos reales. Algunos ejemplos:
 - Romper un juramento genera un karma fuerte y casi siempre atrae retribución. Cómo los compromisos (juramentos, contratos, vínculos solemnes) alimentan este libro, con peso según solemnidad, consentimiento y sinceridad reales, está en [contracts.md](contracts.md) §9.
 - Tomar discípulos crea un vínculo maestro–discípulo que se hereda en las dos direcciones.
 - Robar la herencia de un muerto te ata a su karma, incluidos sus enemigos.
+- El parentesco de sangre crea vínculos `kinship` desde la concepción, sepan o no los involucrados quién es su padre; cómo se heredan las deudas al linaje está en [family-lineage.md](family-lineage.md) §5 y §8.
 
 ### Cómo se salda
 - Pagar la deuda: devolver el favor o salvar a quien te salvó.
