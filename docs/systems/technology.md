@@ -20,14 +20,14 @@ Depende de: [discovery.md](discovery.md) (la tecnología se descubre con el mism
 Un **proceso** es una forma de transformar el mundo que la ley permite y que alguien puede aprender. Es contenido del mundo (en `content/`, por familia de mundo, con variantes por seed), no una entrada de menú.
 
 ```ts
-interface ProcessDef {
-  id: ProcessId;
+interface TechProcessDef {               // no confundir con ProcessDef del scheduler (ARCHITECTURE §6)
+  id: TechProcessId;
   domain: TechDomain;                        // agricultura, metalurgia, escritura... (§3)
   requires: {
     materials: MaterialReq[];                // cobre y estaño, arcilla con tal composición, fibras, salitre
     energy?: { kind: EnergyKind; temperature?: number; power?: number };  // un horno que llegue a 1100°, un molino
     concepts: ConceptId[];                   // ideas previas: la rueda, la palanca, la fermentación, el número posicional
-    tools: ProcessId[];                      // herramientas que a su vez son productos de otros procesos
+    tools: TechProcessId[];                      // herramientas que a su vez son productos de otros procesos
     scale?: number;                          // personas o capital mínimo para que funcione (un alto horno no lo opera una familia)
   };
   steps: CraftStepTemplate[];                // se resuelve como una sesión de crafts (§1 de crafts): pasos, habilidad, defectos
@@ -53,8 +53,8 @@ type TechDomain =
 ### Saber cómo
 ```ts
 interface ProcessKnowledge {
-  holder: PersonId;
-  process: ProcessId;
+  holder: AgentId;
+  process: TechProcessId;
   fidelity: number;                          // cuánto de la receta real conoce; la parte que falta o está errada produce defectos (discovery §5)
   skill: number;                             // práctica: control, sentidos, juicio (crafts §1)
   source: EventId;                           // la invención, el aprendizaje con un maestro, el manual leído, el espionaje
@@ -62,7 +62,7 @@ interface ProcessKnowledge {
 }
 
 interface PopulationTech {                   // en agregado, por asentamiento o celda
-  process: ProcessId;
+  process: TechProcessId;
   knownBy: number;                           // fracción de la población (o de los hogares del oficio) que lo sabe hacer
   adoptedBy: number;                         // fracción que lo usa
   meanFidelity: number;
@@ -121,7 +121,7 @@ type TechEffect =
   | { kind: "copy_cost"; medium: MediumKind; factor: number }              // escritura, papel, imprenta
   | { kind: "energy"; source: EnergyKind; output: number }
   | { kind: "material"; produces: MaterialId; quality: Fn }
-  | { kind: "craft_unlock"; process: ProcessId }                            // habilita otros procesos
+  | { kind: "craft_unlock"; process: TechProcessId }                            // habilita otros procesos
   | { kind: "custom"; system: SystemId; param: string; fn: Fn };
 ```
 
@@ -191,7 +191,7 @@ interface EraTarget {
 
 interface EraMarker {
   kind: "process-adopted" | "concept" | "institution" | "settlement-size" | "literacy" | "energy";
-  ref: string;                               // un ProcessId, una forma de estado, un tamaño de ciudad...
+  ref: string;                               // un TechProcessId, una forma de estado, un tamaño de ciudad...
   threshold: number;                         // fracción de adopción o valor mínimo
 }
 ```

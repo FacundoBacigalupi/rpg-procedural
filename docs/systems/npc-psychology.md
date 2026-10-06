@@ -116,11 +116,11 @@ Las emociones son `fear`, `anger`, `sadness`, `joy`, `shame`, `guilt`, `envy` y 
 ```ts
 interface Memory {
   id: MemoryId;
-  owner: NpcId;
+  owner: AgentId;
   eventId: EventId;          // el evento real (la verdad), para el inspector
   perceived: PerceivedEvent; // lo que el NPC cree que pasó (puede diferir)
   source: "witnessed" | "told" | "inferred";
-  toldBy?: NpcId;
+  toldBy?: AgentId;
   intensity: number;         // emocional, al formarse
   valence: number;           // -1..1
   salience: number;          // decae; si baja de un umbral → se comprime
@@ -214,7 +214,7 @@ El LLM nunca decide qué sabe o qué quiere el NPC.
 
 ```ts
 interface InnerDemon {
-  owner: NpcId;
+  owner: AgentId;
   theme: "hatred" | "guilt" | "fear" | "obsession" | "regret" | "desire" | "despair";
   strength: number;
   roots: Array<MemoryId | KarmicBondId | SchemaKey>;  // de qué se alimenta

@@ -83,7 +83,7 @@ Piezas discretas que se saben o no: un movimiento de un estilo, una receta, una 
 
 ```ts
 interface RepertoireEntry {
-  piece: PieceRef;                           // MoveId | RecipeId | TechniqueId | ProcessId | FormulaId…
+  piece: PieceRef;                           // MoveId | RecipeId | TechniqueId | TechProcessId | FormulaId…
   version: CopyRef;                          // la versión aprendida, con sus fallas
   understanding: number;                     // lo explícito: entiende el porqué
   proficiency: number;                       // lo tácito: lo ejecuta bien

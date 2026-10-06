@@ -20,7 +20,7 @@ Depende de: [causality.md](causality.md) (el grafo causal: la huella de una vida
 interface HistoricalText {
   id: TextId;
   kind: TextKind;                            // ver tabla
-  author: PersonId | OrgId;                  // o "anónimo" con un autor verdadero que existe
+  author: AgentId | OrgId;                  // o "anónimo" con un autor verdadero que existe
   patron?: AgentId;                          // quien lo encargó o lo paga
   subject: EntityRef[];                      // de qué o de quién trata
   claims: Belief[];                          // lo que afirma (information): verdad, error o mentira, cada una con su relación con la verdad
@@ -80,7 +80,7 @@ Si el personaje evita las Fuentes con un poder ganado (espíritu, renacer a prop
 
 ```ts
 interface Chronicle {
-  subject: PersonId;                         // el personaje
+  subject: AgentId;                         // el personaje
   epitaph: string;                           // la línea resumen (VISION: "Li Wei, 16–53, Mortal → Núcleo Dorado, fundador de...")
   chapters: ChronicleChapter[];
   neverKnew: NeverKnewEntry[];               // §5
@@ -94,7 +94,7 @@ interface ChronicleChapter {
   span: { from: Tick; to: Tick };
   title: ChapterTitleSeed;                   // semilla estructurada (lugar, rol, giro) que el narrador convierte en título
   turningPoints: EventId[];                  // los eventos con más huella causal o más intensidad en la memoria del personaje
-  people: PersonId[];                        // quiénes importaron en ese tramo
+  people: AgentId[];                        // quiénes importaron en ese tramo
   arc: ArcSummary;                           // cambios de posición (social-structure), umbral (cultivation), lugar, organización, relaciones
 }
 ```

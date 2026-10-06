@@ -40,7 +40,7 @@ interface SequenceDef {
 }
 
 interface Extraordinary {                    // una persona con poder de camino
-  person: PersonId;
+  person: AgentId;
   pathway: PathwayId;
   sequence: number;                          // la más alta que bebió y sobrevivió
   held: CharacteristicId[];                  // las características que lleva en el cuerpo y el espíritu
@@ -77,7 +77,7 @@ interface PotionFormula {
 }
 
 interface FormulaKnowledge {                 // lo que alguien cree que es la fórmula
-  holder: PersonId | OrgId;
+  holder: AgentId | OrgId;
   pathway: PathwayId; level: number;
   believed: PotionFormula;                   // puede estar incompleta, mal copiada o falsificada a propósito
   fidelity: number;                          // cuánto coincide con la verdadera; la sim lo sabe, el portador no

@@ -17,7 +17,7 @@ Una creencia es una **proposición** de un catálogo cerrado de tipos (en `conte
 ```ts
 interface Belief {
   id: BeliefId;
-  holder: AgentId;                       // NPC, jugador, organización (ver §9)
+  holder: AgentId | OrgId;               // NPC, jugador, organización (ver §9)
   prop: Proposition;                     // sobre qué es
   value: Distribution<unknown>;          // p.ej. reino: {QG8: .3, QG9: .6, FE1: .1}; vivo: {true: .9}
   confidence: number;                    // derivado de la distribución, para decidir rápido

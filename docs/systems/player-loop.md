@@ -22,16 +22,7 @@ Lo usan: [tooling.md](tooling.md) (guardado, replay, inspector), la UI (CLI en F
 
 ## 1. Empezar una partida
 
-```ts
-interface NewGameSetup {
-  seed: Seed;                                // al azar o elegido por el usuario
-  worldConstraints?: WorldConstraint[];      // opcionales, sobre el mundo (familia metafísica, era, tamaño), nunca sobre el personaje
-  entry: EntryMode;                          // §2
-  mode: "realistic" | "novel";            // §16; en modo novela, además: elecciones del personaje y dedos de oro (game-modes.md)
-  narration: StyleSettings;                  // narration §7
-  llm: LlmConfig;                            // narration §1
-}
-```
+La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
 2. **Elegir el nacimiento** (modo realista; el modo novela en §16): el personaje es **una persona que nace en el mundo simulado**, no un molde que se pone encima. Se elige un nacimiento real de la simulación con el rng de la partida, con un peso que refleja la población (la mayoría nace mortal, en una aldea, pobre). El usuario no elige familia, talento, lugar ni rasgos (VISION, principios 3 y 9).
