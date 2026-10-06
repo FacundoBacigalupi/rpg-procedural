@@ -55,7 +55,8 @@ interface Spirit {
 
 ## 3b. El ciclo: las Fuentes Amarillas y la reencarnación
 - Las almas que no quedan como espíritus cruzan las **Fuentes Amarillas** y vuelven a nacer. La reencarnación es real.
-- **El karma no se hereda.** Cruzar las Fuentes lava las deudas kármicas: la nueva vida empieza limpia. Lo que **sí queda** está en los demás: quienes te odiaron o te amaron siguen recordándote, y un enemigo longevo puede reconocerte en tu nueva vida aunque vos no lo recuerdes.
+- **El Cielo cobra al cruzar:** se le muele al alma lo que tomó (esencia refinada, años de más, karma neto) y vuelve al ciclo. Un mortal pasa casi entero; un cultivador alto puede disolverse del todo ([heaven-karma.md](heaven-karma.md), cobro en las Fuentes).
+- **El karma no se hereda.** Cruzar las Fuentes salda las deudas kármicas, porque se cobran en el alma: la nueva vida empieza limpia (y más débil, si debía mucho). Lo que **sí queda** está en los demás: quienes te odiaron o te amaron siguen recordándote, y un enemigo longevo puede reconocerte en tu nueva vida aunque vos no lo recuerdes.
 - **Los recuerdos se lavan.** Cuánto sobrevive depende de la fuerza del alma: ver las opciones en las preguntas abiertas.
 - Las almas se conservan: no se crean de la nada. La población de almas en el ciclo es parte del ledger (el Cielo las administra).
 
@@ -73,8 +74,12 @@ Cruzar las Fuentes implica la sopa del olvido (孟婆汤). Cuánto se resiste co
 
 Son memorias con `source: "past-life"`, más distorsionadas que las normales.
 
-## 3e. Si el jugador reencarna: lo que sabe el usuario y lo que sabe el personaje
-El usuario recuerda todo aunque el personaje no. **No se le prohíbe nada** (libertad total), pero el conocimiento se equilibra solo:
+## 3e. Si el jugador sigue en otro cuerpo: lo que sabe el usuario y lo que sabe el personaje
+**Cruzar las Fuentes siempre termina la partida.** El alma que renace después del cobro y de la sopa ya no es el personaje: es un NPC más, que puede aparecer en el epílogo ([chronicle.md](chronicle.md) §8). No hay "continuar" gratis.
+
+El jugador solo sigue en un cuerpo nuevo si lo **ganó**: evitar las Fuentes con una de las vías de [cultivation.md](cultivation.md) §14 (renacer a propósito, posesión, cuerpo vacío, cuerpo construido), o cruzarlas rechazando la sopa (§3d), que es una rebelión con su propio riesgo. Todas se preparan en vida, cuestan y el mundo las puede impedir (te sellan el alma, te destruyen el jade, matan a quien te iba a reconocer).
+
+En ese caso, el usuario recuerda todo aunque el personaje no. **No se le prohíbe nada** (libertad total), pero el conocimiento se equilibra solo:
 - **El mundo siguió.** Entre la muerte y el renacer pasan décadas o siglos (lo decide la sim). Los tesoros se saquean, las sectas caen, los enemigos mueren o se fortalecen. Además, lo que sabías eran **creencias** de tu vida pasada, no verdades, y quizás eran falsas.
 - **Saber no es poder hacer.** Técnicas, cultivo y habilidades viven en el cuerpo y el alma, no en el usuario. Hay que reentrenar todo. Saber el camino acelera, pero no salta etapas. La sim valida lo que el *personaje* puede hacer, como siempre.
 - **Actuar con lo que sabés es un disparador.** Si tu alma conservó ese recuerdo (sellado), despierta de verdad y el personaje pasa a saberlo. Si no lo conservó, igual podés actuar (ir a la cueva), pero sin los detalles finos (cómo abrir el sello), que hay que redescubrir.

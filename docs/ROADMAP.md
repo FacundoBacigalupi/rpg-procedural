@@ -71,7 +71,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - technology: tasas de invención según población, contacto, necesidad y cultura epistémica; velocidad de difusión y umbral de imitación; población mínima por complejidad de oficio; cuánto frena el cultivo a la tecnología mortal; variación de recetas por seed.
 - secret-realms: costo de crear y mantener un bolsillo y vida típica según su reserva; frecuencia de aperturas y duración de ventanas; límites de umbral típicos; mortalidad y botín de expediciones agregadas; cantidad de reinos por región; radio y magnitud del colapso.
 - divination: ruido de la lectura según diferencia de poder, distancia temporal y tamaño del sujeto; horizonte y corridas de la proyección por método y tier; magnitud de la reacción del Cielo; ambigüedad de los vocabularios simbólicos; fracción de profecías que se cumplen solas.
-- chronicle: decaimiento de la huella causal por distancia y causas concurrentes; capítulos y puntos de giro según la duración de la vida; puntos de control del epílogo y umbral para seguir más allá del siglo; errores por copia y reescritura por cambio de régimen; tamaño y criterio de "lo que nunca supiste".
+- chronicle: decaimiento de la huella causal por distancia y causas concurrentes; capítulos y puntos de giro según la duración de la vida; puntos de control del epílogo y umbral para seguir más allá del siglo; errores por copia y reescritura por cambio de régimen; tamaño y criterio de "lo que nunca supiste". Cobro en las Fuentes: peso de esencia, años y karma frente a la fuerza del alma (que un cultivador de los primeros umbrales renazca débil y uno alto con mucha deuda se disuelva).
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -173,6 +173,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
+- [ ] Cobro en las Fuentes al cruzar (esencia, años, karma neto, mérito) y vías para seguir en otro cuerpo como poderes ganados ([heaven-karma.md](systems/heaven-karma.md), [cultivation.md](systems/cultivation.md) §14)
 - [ ] Elementos en el cultivo: absorción por coincidencia, refinamiento por generación, tensión del `elementMix`, daño elemental por órgano, técnicas con vector, sentido de la esencia que lee elementos ([elements.md](systems/elements.md))
 - [ ] Cuerpo y cultivo: daño de meridianos, desviación de qi, toxicidad de píldoras, refinamiento corporal ([body-health.md](systems/body-health.md))
 - [ ] Ley del cultivo (umbrales reales) + escuelas con reinos culturales; absorción con conservación, rupturas, fundamento, técnicas y manuales ([cultivation.md](systems/cultivation.md))

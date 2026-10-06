@@ -26,7 +26,27 @@ Cultivar es **robarle al Cielo**: absorber qi que no te corresponde y estirar un
 | **Límite de vida** | Siempre | Reino de cultivo, constitución, técnicas, karma (el desgaste del cuerpo es otro reloj: [body-health.md](body-health.md) §10) |
 | **Retribución kármica** | Cuando una deuda kármica es enorme | Modifica tiradas (mala suerte, accidentes) o dispara calamidades contra el deudor. Nunca crea entidades de la nada: usa lo que ya existe (bestias cercanas, enemigos reales, el clima) |
 | **Demonios internos** | En rupturas y meditación profunda | Memorias traumáticas, culpa y deudas kármicas del propio cultivador (enlace con psicología) |
+| **Cobro en las Fuentes** | Cuando un alma cruza las Fuentes Amarillas | Esencia refinada, años de más y karma neto del alma (ver abajo) |
 | **Calamidades** | Desequilibrio grave de qi en una región (sobreexplotación, arrays prohibidos) | Deslaves de qi, sequías espirituales, mutaciones de bestias |
+
+### El cobro en las Fuentes
+Cruzar las Fuentes Amarillas (spirits §3b) es **saldar la cuenta con el Cielo**. Antes de volver a nacer, al alma se le **muele lo que no era suyo**, y lo molido vuelve al ciclo (conservación: el qi y la sustancia del alma no desaparecen, vuelven al Cielo y al mundo).
+
+```ts
+interface SoulToll {
+  refinedEssence: number;      // esencia que el cultivo fijó en el alma por encima de lo mortal
+  stolenYears: number;         // años vividos más allá del límite natural
+  netKarma: number;            // deudas menos méritos (功德) todavía abiertos en el libro
+  total: number;               // lo que se cobra, en la misma unidad que la fuerza del alma
+}
+```
+
+- **Gradual, sin frontera:** un mortal pasa casi entero (no tomó nada). Un cultivador de los primeros umbrales pierde parte del alma: renace más débil y sin recuerdos. Uno alto, con mucho robado y mucha deuda, puede **disolverse del todo** (形神俱灭): si el cobro alcanza la fuerza del alma, no queda nada que renazca.
+- **El mérito descuenta:** las deudas saldadas en vida y los méritos (vidas salvadas, deudas de vida a favor, obras para el ciclo) bajan el cobro. Un cultivador que pagó lo que debía pasa mejor que uno que lo robó todo.
+- **Lo que sobrevive renace:** la fuerza que queda después del cobro decide cuánto resiste la sopa del olvido (spirits §3d). Por eso los recuerdos de vidas pasadas son raros en los cultivadores fuertes: pagan con eso.
+- **Solo se cobra a quien cruza.** El alma que evita las Fuentes (espíritu anclado, renacer a propósito, posesión, cuerpo construido: cultivation §14) no paga, pero tampoco salda: su karma sigue abierto y su cuenta crece. Por eso los cultivadores fuertes temen la muerte y buscan técnicas de evasión, méritos o maneras de saldar antes de morir: es un motor de sus decisiones (npc-psychology: utilidad).
+- **Creencias, no verdad:** las culturas creen cosas distintas sobre las Fuentes (que el mérito se compra con ofrendas, que los inmortales no mueren nunca, que el juicio lo hace un rey de los infiernos). Lo que un NPC cree es lo que guía su conducta; la regla real se puede descubrir (discovery).
+- **Variante por mundo:** en algunos mundos el ciclo **rechaza** a los cultivadores (metaphysics §6): el alma que cultivó no puede cruzar y solo le quedan ser espíritu, evadir o disiparse.
 
 ### La fuerza del Cielo varía por mundo (y explica la era)
 El estado del Cielo es una **variable del seed que también evoluciona**:
