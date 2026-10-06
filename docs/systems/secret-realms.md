@@ -183,7 +183,7 @@ interface RealmLedger {
 - **La salida es el momento peligroso:** afuera esperan maestros, rivales y bandidos que saben que los que salen traen tesoros y están cansados. Las emboscadas en la salida son parte de la historia de cada reino.
 - **Mercados de apertura:** cada apertura atrae comerciantes, mercenarios, guías que dicen conocer el interior, vendedores de mapas (verdaderos, viejos o falsos), compradores de botín, prestamistas que financian expediciones contra parte de lo que salga (economy, contracts).
 - **Información:** los relatos de los que salieron son la fuente principal sobre el interior (information): exagerados, interesados, con zonas inventadas y peligros escondidos para que otros mueran. Un mapa del interior es una creencia con fecha (information §5), y el reino cambió desde entonces.
-- **El Cielo adentro:** la barrera debilita la percepción del Cielo hacia adentro (heaven-karma); el karma se registra igual (lee la verdad), pero las tribulaciones no llegan hasta que el cultivador sale. Romper un umbral adentro no evita la tribulación: la posterga, y algunos creen que la agrava.
+- **El Cielo adentro:** la barrera debilita la percepción del Cielo hacia adentro ([heaven-karma.md](heaven-karma.md) §4: zonas ciegas); el karma se registra igual (lee la verdad), pero las tribulaciones no llegan hasta que el cultivador sale. Romper un umbral adentro no evita la tribulación: la posterga, y algunos creen que la agrava.
 
 ## 10. El jugador y el narrador
 - **El jugador se entera de un reino** como de cualquier cosa: rumores de una apertura, un mapa viejo heredado, una ficha que le dio su secta, un jade de un muerto, una grieta que encuentra en una cueva. Puede llegar tarde, con información falsa, o ser el único que sabe.

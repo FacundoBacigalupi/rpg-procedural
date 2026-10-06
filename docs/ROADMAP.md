@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#20, ampliación de heaven-karma**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#21, ampliación de npc-psychology**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -40,7 +40,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 19. [x] **Crónica, epílogo e historiografía** → [chronicle.md](systems/chronicle.md): epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
 
 ### C. Ampliaciones de lo que ya hay
-20. [ ] [heaven-karma.md](systems/heaven-karma.md): atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
+20. [x] [heaven-karma.md](systems/heaven-karma.md) §3-§8: atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
 21. [ ] [npc-psychology.md](systems/npc-psychology.md): desarrollo por etapas, salud mental (depresión, estrés postraumático, adicción), declive cognitivo, necesidad de sentido y pertenencia, psicología de multitudes, sueños que consolidan memorias, gustos personales generados.
 22. [ ] [causality.md](systems/causality.md) + [schemes.md](systems/schemes.md): mapa de presiones en el inspector; generalizar `Scheme` a proyectos (planes cooperativos); intrigas entre organizaciones; intrigantes que explotan profecías.
 23. [ ] [planet-gen.md](systems/planet-gen.md): glaciaciones y nivel del mar ligados a las mareas de qi (puentes de tierra), suelos que se agotan, inviernos volcánicos.
@@ -72,6 +72,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - secret-realms: costo de crear y mantener un bolsillo y vida típica según su reserva; frecuencia de aperturas y duración de ventanas; límites de umbral típicos; mortalidad y botín de expediciones agregadas; cantidad de reinos por región; radio y magnitud del colapso.
 - divination: ruido de la lectura según diferencia de poder, distancia temporal y tamaño del sujeto; horizonte y corridas de la proyección por método y tier; magnitud de la reacción del Cielo; ambigüedad de los vocabularios simbólicos; fracción de profecías que se cumplen solas.
 - chronicle: decaimiento de la huella causal por distancia y causas concurrentes; capítulos y puntos de giro según la duración de la vida; puntos de control del epílogo y umbral para seguir más allá del siglo; errores por copia y reescritura por cambio de régimen; tamaño y criterio de "lo que nunca supiste". Cobro en las Fuentes: peso de esencia, años y karma frente a la fuerza del alma (que un cultivador de los primeros umbrales renazca débil y uno alto con mucha deuda se disuelva).
+- heaven-karma: capacidad de atención por fuerza del Cielo y rendimientos decrecientes; techo de la inclinación de tiradas; umbral de déficit de qi para calamidad; descuento por mérito; cierre de heridas del Cielo; fracción del rayo que se puede robar.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -86,7 +87,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Diseño
 - [x] Modelo causal del mundo ([systems/causality.md](systems/causality.md))
-- [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md))
+- [x] El Cielo y el karma ([systems/heaven-karma.md](systems/heaven-karma.md)) — §3-§8 (atención, zonas ciegas, tribulación física, inclinación, mérito, 气运) en borrador
 - [~] Historia profunda por relevancia ([systems/deep-history.md](systems/deep-history.md)) — borrador
 - [~] Psicología de NPCs ([systems/npc-psychology.md](systems/npc-psychology.md)) — borrador
 - [x] Generación del planeta ([systems/planet-gen.md](systems/planet-gen.md))
@@ -170,6 +171,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Consejo de aldea como primera organización, bandas de bandidos que nacen del hambre, lealtad como relación con la organización ([organizations.md](systems/organizations.md))
 - [ ] Catálogo inicial de procesos mortales en `content/` con requisitos físicos y efectos sobre producción, `ProcessKnowledge` por persona, aprendizaje con maestro ([technology.md](systems/technology.md))
 - [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
+- [ ] `QiDebt` por sobreexplotación y retribución mínima como inclinación de las tiradas del deudor ([heaven-karma.md](systems/heaven-karma.md) §6)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -189,6 +191,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 - [ ] Lugares sellados simples (cuevas de herencia, tumbas) con libro de contenido, detalle diferido con restricciones, llaves y trampas, remanentes de alma como guardianes ([secret-realms.md](systems/secret-realms.md))
 - [ ] Lectura de karma como técnica (ruido, velos, reacción), símbolos e interpretación con vocabularios por cultura ([divination.md](systems/divination.md))
+- [ ] Atención del Cielo finita repartida por saliencia; tribulaciones como eventos con olas, energía del campo, ayudantes e intercepción del rayo; mérito ([heaven-karma.md](systems/heaven-karma.md) §3, §5, §7)
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -203,6 +206,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] `PopulationTech` por asentamiento, adopción por hogares con utilidad sobre creencias, difusión por rutas ([technology.md](systems/technology.md))
 - [ ] Control del ancla de reinos secretos por organizaciones, cupos y fichas como bienes, mercados de apertura, relatos y mapas del interior como creencias ([secret-realms.md](systems/secret-realms.md))
 - [ ] Oráculos y salones de adivinación como instituciones, astrólogos de corte, lectura de karma como prueba ([divination.md](systems/divination.md))
+- [ ] Zonas ciegas (reinos, formaciones de ocultamiento, lugares extremos), inclinación a favor de los enemigos del deudor, calamidades como descarga del déficit ([heaven-karma.md](systems/heaven-karma.md) §4, §6)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -220,6 +224,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Gremios, monopolios y cárteles, casas de cambio y letras, sueldos de secta, tributo de protección, mercado negro ([economy.md](systems/economy.md))
 - [ ] Fuerzas como organizaciones (mando, órdenes con brecha, deserción), logística con líneas de suministro y forrajeo, moral con drivers, guerras de sectas con formaciones ([war.md](systems/war.md))
 - [ ] Textos como objetos en archivos de organizaciones (crónicas de secta, genealogías, memorias) con autor y sesgo; encargar, escribir y quemar ([chronicle.md](systems/chronicle.md))
+- [ ] 气运 derivado de organizaciones (venas + karma y mérito de sus miembros), venas como territorio disputado ([heaven-karma.md](systems/heaven-karma.md) §8)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -236,6 +241,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Reinos secretos creados por la historia profunda (creadores, propósitos, causas accidentales) con aperturas históricas, saqueos y degradación ([secret-realms.md](systems/secret-realms.md))
 - [ ] Pronóstico por conocimiento (calendarios, ciclos), presagios naturales en la legitimidad, profecías como legados ([divination.md](systems/divination.md))
 - [ ] Reescrituras por régimen, censura, estelas y canciones en la historia agregada; huella causal y legado recordado con el embudo; epílogo hasta que se apague el legado ([chronicle.md](systems/chronicle.md))
+- [ ] Heridas del Cielo en la historia profunda, fuerza del Cielo por era, olas de tribulaciones postergadas al cerrarse una herida ([heaven-karma.md](systems/heaven-karma.md) §1, §4)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))

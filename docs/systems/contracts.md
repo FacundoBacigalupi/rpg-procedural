@@ -167,7 +167,7 @@ interface EnforcerRef {
 | **Organización** | Creencias de sus decisores | Las penas de sus normas (organizations §8): multa, expulsión, muerte; arbitraje entre miembros | Solo sobre miembros o sobre quien le teme; decide por asuntos y facciones (organizations §4) |
 | **Tribunal** | Prueba: documentos, testigos, huellas ([law.md](law.md) §5) | Sentencia: pagar, servir, prisión, castigo; ejecutada por la fuerza del estado | Cuesta, tarda, se compra; no alcanza a quien está por encima de la ley |
 | **Garantía** | Nada: se ejecuta por estar en manos de alguien | Colateral, empeño, rehén, fiador | Solo lo que se dejó en garantía |
-| **Kármico** | La verdad (el libro del Cielo) | Retribución con las herramientas del Cielo (heaven-karma §1): suerte, tribulaciones más duras, demonios internos | Solo en mundos con karma; la atención del Cielo es finita (ítem 20 del backlog); no actúa en el momento |
+| **Kármico** | La verdad (el libro del Cielo) | Retribución con las herramientas del Cielo (heaven-karma §1): suerte, tribulaciones más duras, demonios internos | Solo en mundos con karma; la atención del Cielo es finita ([heaven-karma.md](heaven-karma.md) §3); no actúa en el momento |
 | **Atadura** | Lo que el mecanismo puede ver (§8) | Dolor, sello del cultivo, muerte, pérdida del poder prestado | Existe solo donde la ley la permite; cuesta esencia; se rompe con poder suficiente |
 | **Patrón** | Lo que el patrón percibe o sabe por su naturaleza | Retira el poder, cobra, castiga (otras familias de mundo) | El patrón es un agente con sus propios intereses (metaphysics) |
 

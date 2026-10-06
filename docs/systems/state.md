@@ -207,7 +207,7 @@ interface SectArrangement {
 - El estado es una organización con plantilla propia; no hay otro motor.
 - El régimen se describe con ejes continuos, no con tipos.
 - El alcance es verdad calculada; el reclamo y los registros son creencias.
-- El Cielo no elige dinastías en la familia xianxia; el mandato es interpretación cultural.
+- El Cielo no elige dinastías en la familia xianxia; el mandato es interpretación cultural. El 气运 de una nación es derivado (venas y deudas de su gente: [heaven-karma.md](heaven-karma.md) §8), y lo que los observadores de la corte leen son esas señales con interpretación cultural.
 - No hay ciclo dinástico programado: las caídas son descargas de presiones.
 - El estado nunca obliga a un cultivador fuerte por la fuerza mortal; negocia.
 

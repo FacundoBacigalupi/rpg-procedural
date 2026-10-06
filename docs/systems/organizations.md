@@ -425,7 +425,8 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 
 ## 15. Organizaciones y el Cielo
 - Una organización no tiene alma ni karma propio por defecto: el karma es entre agentes (heaven-karma §2), y lo que hace una organización lo hacen personas. Las deudas de sangre "de la secta" son la suma de los vínculos de quienes ordenaron y ejecutaron, más la memoria de los que las cobran.
-- La **fortuna colectiva** (气运) de organizaciones y naciones es una ampliación pendiente (ítem 20 del backlog, heaven-karma); este doc deja `Organization` lista para que se le agregue.
+- La **fortuna colectiva** (气运) de organizaciones y naciones es derivada, no un estado propio ([heaven-karma.md](heaven-karma.md) §8): la tierra que controla (venas) más la suma del karma y el mérito de quienes la sostienen y actúan en su nombre.
+- La sobreexplotación ordenada por una organización genera `QiDebt` repartida entre quienes ordenaron y ejecutaron ([heaven-karma.md](heaven-karma.md) §6).
 
 ## 16. El jugador y el narrador
 - **Entrar:** presentarse a una prueba, conseguir una recomendación, casarse en un clan, jurar en una banda. Todo son acciones del catálogo resueltas por la sim; nadie lo acepta por ser el jugador.
@@ -478,7 +479,7 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - No hay estructura canónica: cada organización tiene una estructura formal y una real, descritas por ejes continuos (concentración, formalización, profundidad, diferenciación, base del rango, permanencia, territorialidad, apertura, secreto), que salen del fundador, la fuerza relativa, la cultura, el tamaño y la historia, y cambian con eventos (§3b). Que un líder se aferre al puesto es una decisión suya, no una regla de la plantilla.
 - Un solo modelo con plantillas para todos los tipos, incluidos estado y ejército (que se detallan en sus docs).
 - El hogar no es una organización; un clan sí.
-- El karma de lo que hace una organización es de las personas que lo hicieron; la fortuna colectiva queda para el ítem 20.
+- El karma de lo que hace una organización es de las personas que lo hicieron; la fortuna colectiva es derivada ([heaven-karma.md](heaven-karma.md) §8).
 - El jugador lidera con órdenes, propuestas y políticas permanentes, no con un menú de gestión.
 
 ## Preguntas abiertas
