@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [planet-gen.md](planet-gen.md) (relieve, hidrología, suelos, qi, desastres), [living-world.md](living-world.md) §1, §6, §9 (desastres, rutas, sucesión y fuego), [economy.md](economy.md) §5-§7 (mercados, comercio, lotes con origen), [perception.md](perception.md) §3 (grafo de espacios), [simulation.md](simulation.md) §4-§6 (zonas, tiers, materialización), [state.md](state.md) §3, §11 (registros, obras públicas), [war.md](war.md) §9 (fortificaciones y asedios), [crafts.md](crafts.md) (sesiones de oficio, formaciones), [technology.md](technology.md) (construcción), [deep-history.md](deep-history.md) §1 (estratos, montículos), [spirits.md](spirits.md) §7 (santuarios), [family-lineage.md](family-lineage.md) §7 (el hogar), [elements.md](elements.md) (fuego y agua con magnitud).
-Lo usan: property (#37: quién es dueño de la tierra y los edificios), travel (#38: caminos, posadas, puertos), weather (#39: daño por clima), culture (#40: estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
+Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edificios), travel (#38: caminos, posadas, puertos), weather (#39: daño por clima), culture (#40: estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
 
 ---
 
@@ -120,7 +120,7 @@ type LayoutPattern =
 ```
 
 - **Qué va dónde** sale de normas culturales (culture #40: el templo en alto, las curtiembres río abajo y a sotavento, los cementerios afuera de las murallas), de precios (los oficios sucios donde el suelo es barato), de la ley (barrios de extranjeros, toques de queda) y del qi (el mejor punto de la vena para la secta o el palacio).
-- **Geomancia (风水):** es una teoría cultural sobre el lugar (discovery §6) con parte de verdad: hay flujos de qi reales en el campo (planet-gen, elements), y la teoría acierta en algunos y erra en otros. Una ciudad trazada con buena geomancia puede ganar algo real y mucho de creencia.
+- **Geomancia (风水):** es una teoría cultural sobre el lugar (discovery §6) con parte de verdad: hay flujos de qi reales en el campo (planet-gen, elements), y la teoría acierta en algunos y erra en otros. Una ciudad trazada con buena geomancia puede ganar algo real y mucho de creencia (aprobado 2026-10-06): el efecto real es chico y solo existe cuando la teoría coincide con el flujo verdadero; el resto (precio del suelo, prestigio, la idea de que un lugar trae mala suerte) es creencia y mueve conductas igual.
 - **Lo planificado se desordena:** un trazado en cuadrícula se llena de construcciones ilegales, patios subdivididos y callejones si la autoridad no controla.
 
 ## 5. Edificios
@@ -131,10 +131,10 @@ interface Building {
   type: BuildingTypeId;                      // content/buildings/: casa de campesino, patio de cuatro alas, taller, posada, templo…
   settlement?: SettlementId;                 // o suelto: una cabaña en el bosque, una torre de vigía
   district?: DistrictId;
-  plot: PlotRef;                             // el terreno (property #37)
+  plot: ParcelId;                            // el terreno ([property.md](property.md) §3)
   spaces: SpaceGraphRef;                     // por dentro: cuartos, patios, puertas (perception §3)
   components: BuildingComponent[];           // §5.1
-  owner: OwnerRef;                           // property #37; puede ser distinto de quien lo usa
+  owner: OwnerRef;                           // derechos en [property.md](property.md); puede ser distinto de quien lo usa
   occupants: AgentId[];                      // quién vive o trabaja ahí
   uses: BuildingUse[];                       // vivienda, taller, tienda, depósito, culto, administración, cultivo…
   fixtures: FixtureId[];                     // fogón, kang, horno, fragua, pozo propio, altar, caldero de alquimia
@@ -250,6 +250,7 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 
 - **Llegar a una ciudad:** los percepts dependen de por dónde se entra y de lo que se ve: la muralla, el olor del barrio de curtiembres, el ruido del mercado. El narrador nombra con el léxico del personaje ("un patio de cuatro alas", "la casa grande del terrateniente").
 - **Vivir en un lugar:** alquilar un cuarto, comprar una casa, construir la propia, repararla, perderla en un incendio. Todo con los verbos de siempre (actions) y las sesiones de oficio.
+- **Construir de punta a punta** (aprobado 2026-10-06): el personaje puede levantar su casa, su taller o su cueva de cultivo él mismo: conseguir el terreno y los materiales, contratar o hacer el trabajo, y fallar (defectos, plata que no alcanza, un vecino que reclama el terreno). Usa las mismas sesiones de oficio que los NPCs.
 - **Los paneles** muestran lo que el personaje cree de su casa y su barrio, nunca el estado real de los componentes (un cimiento malo se descubre cuando falla o cuando un albañil lo revisa).
 
 ## 18. Escala (LOD)
@@ -263,7 +264,8 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 | Historia | Nodos que nacen, crecen, se queman, se abandonan | Estilos, capas y ruinas |
 
 - **Materialización** (simulation §6): al entrar a un barrio, sus edificios se sintetizan desde el stock (tipo, edad, estado, dueño) respetando los hechos fijados ("la posada donde dormiste sigue ahí").
-- **Incendios en agregado:** hazard por barrio según densidad, materiales, sequía y viento; un incendio grande se resuelve como evento con daño por tipo.
+- **Incendios en agregado** (aprobado 2026-10-06): lejos del jugador, cada barrio tiene un riesgo según densidad, materiales, sequía y viento, y un incendio grande se resuelve como un solo evento con daño por tipo de edificio. Casa por casa solo en escena y local.
+- **Detalle de los edificios** (aprobado 2026-10-06): componentes, materiales y defectos individuales solo en los edificios cerca del jugador o de agentes de tier 3-4; el resto es stock por barrio que se materializa al entrar.
 
 ## 19. Implementación por fase
 
@@ -283,6 +285,12 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 - **Infraestructura sin mantenedor:** un dique sin mantenimiento llega a fallar; con mantenimiento, no por esa causa.
 - **Agregado contra individual:** incendios por año, tasa de deterioro y crecimiento por migración coinciden con tolerancia entre los dos modos (simulation §9).
 - **Ruinas:** un asentamiento abandonado deja un sitio con estratos y edificios degradándose; reocuparlo apila capas.
+
+## Decisiones (aprobado 2026-10-06)
+- **Edificios individuales solo donde importan;** el resto como stock por barrio que se materializa (§18).
+- **El jugador puede construir de punta a punta** con las mismas sesiones de oficio que los NPCs (§17).
+- **Incendios lejanos en agregado** por barrio; casa por casa solo cerca del jugador (§18).
+- **Geomancia con un efecto real chico** cuando acierta, y mucho efecto de creencia (§4).
 
 ## Decisiones tomadas en este borrador (revisables)
 
