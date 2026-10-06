@@ -81,6 +81,9 @@ La esencia tiene formas (elementos) que se generan, se vencen y se transforman e
 - **Quién puede usarlo:** todos con entrenamiento, una minoría con talento, solo ciertos linajes, solo los elegidos.
 - **Especies inteligentes:** una (humanos) o varias, surgidas por evolución en ambientes distintos o creadas por poderes (los "elfos" de ese mundo tienen un origen en la historia). También se generan, no se eligen de una lista. **El jugador puede nacer en cualquier especie inteligente del mundo** (incluidas bestias despiertas donde existan), con su cuerpo, longevidad, cultura y forma de relacionarse con el poder.
 
+### 8. Era de la humanidad
+En qué momento de su historia está la civilización más avanzada cuando empieza la partida: tribal, bronce, imperial antigua, medieval, moderna temprana, industrial o industrial tardía. El seed la elige **inclinada por la familia** (cada familia tiende a su era típica, que es la más divertida para ella) y la historia la alcanza por causas, sin poner nada a mano. El detalle está en [technology.md](technology.md) §9b.
+
 ## Familias (atractores, no plantillas)
 El seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** que hacen que ciertos paquetes sean coherentes y frecuentes. Las familias son zonas densas del espacio:
 
@@ -91,10 +94,12 @@ El seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** 
 | **Fantasía oscura / baja** | Vital o otorgada + pactos + sin escalera + corrupción + algo afuera + poder escaso |
 | **Mitológica** | Espiritual (fe) + pactos y rituales + panteón que camina entre mortales |
 | **Rúnica** | Conceptual + artificio + maestría continua + física indiferente |
+| **Misterios** ([mysteries.md](mysteries.md)) | Espiritualidad + características conservadas + pociones por caminos y secuencias digeridas actuando + pérdida de control + panteón en la cima + algo afuera; era típica industrial |
 
 - **Xianxia es la familia más común** (la mayoría de los mundos); el resto se reparte entre las demás.
 - **Sin mundos mixtos:** cada mundo pertenece a una sola familia. Dentro de ella, los ejes varían (fuente, costo, ley, almas), así que dos mundos xianxia también se sienten distintos.
 - Cuanto menos frecuente la combinación dentro de una familia, más rara la partida.
+- **Cada familia tiende a su era:** xianxia a la imperial antigua, la alta fantasía occidental y la rúnica a la medieval, la fantasía oscura a la moderna temprana, la mitológica a la de bronce, la de los misterios a la industrial ([technology.md](technology.md) §9b).
 
 ## Coherencia
 Un validador revisa que la combinación tenga sentido y deriva consecuencias:
@@ -102,6 +107,8 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - Si los dioses viven de la fe, buscan creyentes: religiones activas, misioneros, guerras santas.
 - Si el poder es vital, cultivar implica matar o sangrar: estigma, leyes, cazadores.
 - Si no hay alma, la muerte es definitiva y los NPCs le temen distinto (la psicología lee las leyes).
+- Si el poder está hecho de algo conservado con una sola plaza en la cima (los caminos de [mysteries.md](mysteries.md)), hay guerra por la cima y presión de reunión a lo largo de las épocas.
+- Si la era pedida pide procesos que la ley del mundo no permite (vapor en un mundo donde el fuego no hace presión), la era se ajusta a la más cercana posible.
 
 ## Lo que cambia según la familia
 - **planet-gen:** la etapa 5 calcula las fuentes elegidas (un campo geológico, uno celeste o ninguno). Los tesoros naturales y la toxicidad para mortales existen si la fuente es ambiental.
@@ -111,7 +118,7 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 
 ## Implementación
 - **Fases 1-4:** solo la familia xianxia, pero con interfaces genéricas (`Essence`, `Practice`, `Law`, `Soul`) para no casarse con ella.
-- **Fase 7 (worldgen completo):** el generador de leyes con los ejes y el validador. Segunda familia: alta fantasía occidental.
+- **Fase 7 (worldgen completo):** el generador de leyes con los ejes y el validador, y el eje de era. Segunda familia: alta fantasía occidental, o la de los misterios si se aprueba ([mysteries.md](mysteries.md)).
 - **Después:** el resto de los ejes y familias, de a una.
 
 ## Tests
@@ -125,6 +132,8 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - Sin mundos mixtos: una familia por mundo.
 - Especies no humanas jugables.
 - **Inframundo con economía como variante de mundo** (aprobado 2026-10-06): no está en el xianxia base, donde el papel quemado no llega a nadie.
+- **Familia de los misterios** (borrador 2026-10-06, [mysteries.md](mysteries.md)): se suma a la tabla; su peso entre las familias y si pasa a ser la segunda en implementarse quedan para aprobar.
+- **Era de la humanidad como eje del seed** (borrador 2026-10-06): cada familia tiende a su era típica (technology §9b).
 
 ## Preguntas abiertas
 - Ninguna por ahora.

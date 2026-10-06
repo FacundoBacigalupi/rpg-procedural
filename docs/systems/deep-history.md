@@ -52,7 +52,7 @@ Un ser longevo que vive en varias épocas **fuerza más resolución a su alreded
 
 ## Cuánto tiempo hacia atrás
 
-No es fijo: lo decide el seed a partir de la cosmología, con cosas como la edad del planeta, cuándo apareció la vida inteligente y cuándo se descubrió el cultivo. Un mundo joven puede tener 5.000 años de historia relevante, y uno antiguo, cientos de miles (aunque casi todo compactado).
+No es fijo: lo decide el seed a partir de la cosmología, con cosas como la edad del planeta, cuándo apareció la vida inteligente y cuándo se descubrió el cultivo. Un mundo joven puede tener 5.000 años de historia relevante, y uno antiguo, cientos de miles (aunque casi todo compactado). La **era** que el seed busca ([technology.md](technology.md) §9b) también pesa: la historia humana corre hasta que el núcleo más avanzado llega a esa era, y ese momento es el presente.
 
 ---
 

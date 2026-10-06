@@ -169,6 +169,55 @@ Merecen sección propia porque mueven el sistema de información entero.
 - **Sociales:** los oficios nuevos crean grupos nuevos (fundidores, impresores, mercaderes de papel), destruyen otros (copistas), mueven el estatus (social-structure) y la riqueza (economy). Las innovaciones que ahorran trabajo pueden dejar gente sin sustento y producir revueltas.
 - **Políticas:** el estado que domina una tecnología (hierro, canales, imprenta) gana alcance y fuerza; el que la pierde, se debilita. Las innovaciones militares cambian equilibrios entre vecinos (war).
 
+## 9b. La era de la humanidad: un eje del seed
+
+La **era** describe en qué punto está la civilización más avanzada del mundo cuando empieza la partida. Es parte del seed, igual que la familia del mundo, y **cada familia tiende a su era típica** porque es la más divertida para ella: xianxia con imperios antiguos de burocracia y sectas en las montañas, la familia de los misterios con ciudades industriales de niebla y vapor ([mysteries.md](mysteries.md) §13).
+
+```ts
+type Era =
+  | "tribal"            // bandas y aldeas, piedra y cobre, sin estado
+  | "bronze"            // primeras ciudades y reinos, bronce, escritura temprana
+  | "ancient-imperial"  // imperios con burocracia, hierro, papel, exámenes o legiones, grandes obras
+  | "medieval"          // reinos fragmentados, señoríos, castillos, gremios, monasterios
+  | "early-modern"      // pólvora, imprenta, navegación de altura, bancos, estados centralizados
+  | "industrial"        // vapor, ferrocarril, fábricas, periódicos, policía, ciudades enormes
+  | "late-industrial";  // electricidad, telégrafo y teléfono, fotografía, química industrial
+
+interface EraTarget {
+  era: Era;
+  source: "family-tendency" | "setup";       // inclinada por la familia, o fijada en la configuración (game-modes §1)
+  markers: EraMarker[];                      // qué tiene que cumplir el núcleo más avanzado para estar en esa era
+}
+
+interface EraMarker {
+  kind: "process-adopted" | "concept" | "institution" | "settlement-size" | "literacy" | "energy";
+  ref: string;                               // un ProcessId, una forma de estado, un tamaño de ciudad...
+  threshold: number;                         // fracción de adopción o valor mínimo
+}
+```
+
+- **Inclinación por familia.** El seed elige la era con `rng.fork("era", seed)` condicionado a la familia:
+
+| Familia | Típica (≈70%) | Vecinas (≈25%) | Raras (≈5%) |
+|---|---|---|---|
+| Xianxia | Imperial antigua | Bronce, medieval | Tribal, moderna temprana, industrial |
+| Alta fantasía occidental | Medieval | Imperial antigua, moderna temprana | Tribal, bronce, industrial |
+| Fantasía oscura | Moderna temprana | Medieval, industrial | Imperial antigua |
+| Mitológica | Bronce | Tribal, imperial antigua | Medieval |
+| Rúnica | Medieval | Imperial antigua, tribal | Moderna temprana |
+| Misterios | Industrial | Moderna temprana, industrial tardía | Medieval |
+
+- **La era es un objetivo de la corrida histórica, no un decorado.** Nada se pone a mano: todos los procesos se descubren, se adoptan y se pierden en la historia agregada con las reglas de este doc. Lo que el seed fija antes de correr la historia son las **perillas** que hacen probable llegar a la era:
+  - **cuánto dura la historia humana** (deep-history: cuánto tiempo hacia atrás);
+  - **qué permite la ley del mundo** (§1: `worldLaw`): una era industrial pide que el vapor y la pólvora funcionen;
+  - **cuánto deprime el poder sobrenatural a la técnica** (§7): desplazamiento y represión bajos para eras altas, altos para eras bajas;
+  - **condiciones de partida:** recursos cerca de las cunas, cantidad y separación de las culturas, frecuencia de cataclismos.
+- **El presente se elige cuando se llega.** La historia corre hasta que el núcleo más avanzado cumple los `markers` de la era pedida, con un máximo. Ese momento es el presente de la partida. Si la historia no llega (colapsos, plagas, un cultivo que lo aplastó todo), el presente es el momento más cercano y el mundo queda en la era que realmente alcanzó: la era es una tendencia, no una garantía.
+- **La era es desigual.** El objetivo vale para el núcleo más avanzado; las periferias van atrás, hay pueblos tribales al lado de imperios y ruinas de eras más avanzadas que cayeron (§8). El jugador puede nacer en cualquier parte.
+- **Lo que lee la era:** settlements (tamaño y forma de las ciudades), state (formas de estado, burocracia, policía), economy (dinero, bancos, bolsas), information (prensa, correo, telégrafo), war (armas y ejércitos), law (procedimientos, policía), social-structure (clases), culture (ropa, ritos), language (escrituras y alfabetización), y el narrador (vocabulario y tono).
+- **Poder y era se cruzan.** Un mundo xianxia industrial existe si la historia lo produce: sectas que no reprimieron la técnica, o que la usan (§7: híbridos). Un mundo de los misterios medieval tiene los mismos caminos con otra sociedad ([mysteries.md](mysteries.md) §14).
+- **Sin eras modernas por ahora.** El catálogo llega a la industrial tardía (Decisiones).
+
 ## 10. El jugador y el narrador
 - **El jugador sabe lo que sabe su personaje.** Su `ProcessKnowledge` es la de alguien de su mundo, su cultura y su oficio. Puede aprender, robar, comprar o inventar procesos con el mecanismo de discovery: hipótesis, materiales, experimentos, fallas.
 - **El saber del autor no es del personaje.** El jugador humano sabe cosas del mundo real; puede proponer una hipótesis ("mezclo salitre, azufre y carbón"), y el personaje puede intentarla como experimento si tiene los materiales y una razón plausible de pensarla. El resultado lo decide la ley **de este mundo** (que puede tener otra química), la ejecución sale de la habilidad del personaje, y lograr algo útil pide pruebas, tiempo y errores. Nunca hay atajos: el LLM no "sabe" que funciona ni da recetas ganadoras (Decisiones).
@@ -184,7 +233,7 @@ Merecen sección propia porque mueven el sistema de información entero.
 ## Implementación
 - **Fase 3:** catálogo inicial de procesos mortales en `content/` (agricultura, alimentos, metalurgia básica, cerámica, textiles, escritura) con requisitos y efectos sobre producción; `ProcessKnowledge` por persona; aprendizaje con maestro.
 - **Fase 5:** `PopulationTech` por asentamiento, adopción por hogares con utilidad sobre creencias, difusión por rutas y comerciantes.
-- **Fase 7:** invención y pérdida en la historia agregada; tecnología distinta por cultura según geografía; ruinas con procesos perdidos; desplazamiento por cultivo según la era.
+- **Fase 7:** invención y pérdida en la historia agregada; tecnología distinta por cultura según geografía; ruinas con procesos perdidos; desplazamiento por cultivo según la era; eje de era con perillas y elección del presente al cumplir los marcadores (§9b).
 - **Fase 8:** imprenta y su efecto en información y exámenes; secretos de oficio y espionaje; monopolios; represión de sectas; híbridos qi–técnica; consecuencias ambientales.
 
 ## Tests
@@ -197,6 +246,7 @@ Merecen sección propia porque mueven el sistema de información entero.
 - **Desplazamiento:** con todo igual, una región con mucho riego por formaciones de secta construye menos canales.
 - **Conservación:** los procesos consumen sus materiales y su energía; nada se produce sin insumos.
 - **Determinismo:** mismo seed, mismas acciones → mismas invenciones, difusiones y pérdidas.
+- **Era:** en miles de seeds, la era alcanzada coincide con la pedida en la gran mayoría; cuando no coincide, la historia registra la causa (colapso, represión, falta de recursos).
 
 ## Decisiones tomadas en este borrador (revisables)
 - No hay árbol tecnológico: hay procesos con prerrequisitos físicos y conceptuales, y lo posible depende de la geografía y la ley del mundo.
@@ -205,6 +255,8 @@ Merecen sección propia porque mueven el sistema de información entero.
 - El catálogo de procesos varía por seed dentro de lo que permite la metafísica, así que el saber del mundo real no es una receta segura.
 - El jugador puede proponer hipótesis que vienen de su propio saber, pero el personaje las prueba como experimentos y el resultado lo decide la ley del mundo.
 - Los efectos de la tecnología cambian parámetros de sistemas existentes (producción, transporte, información), no dan bonos.
+- La era de la humanidad es un eje del seed inclinado por la familia; se alcanza por causas en la historia, y el presente se elige cuando se llega (§9b).
+- El catálogo de eras llega a la industrial tardía; no hay eras modernas (§9b).
 
 ## Preguntas abiertas
 - Calibración: tasas de invención según población, contacto, necesidad y cultura epistémica.
