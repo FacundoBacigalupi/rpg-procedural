@@ -4,8 +4,8 @@
 
 > Estado: **borrador** (2026-10-06).
 
-Depende de: [living-world.md](living-world.md) §6, §10, §11, §13 (rutas, especies que viajan, migraciones, vínculos con bestias), [planet-gen.md](planet-gen.md) (relieve, ríos, vientos, corrientes, monzones), [settlements.md](settlements.md) §8 (caminos, puentes, puertos, posadas), [economy.md](economy.md) §1, §7, §16 (lotes, comercio, caravanas, flujos agregados), [information.md](information.md) §4, §5 (noticias que viajan, mapas como creencia), [perception.md](perception.md) (quién ve a quién), [body-health.md](body-health.md) (cansancio, nutrición, exposición, enfermedades), [war.md](war.md) §3, §6 (logística, marcha), [crafts.md](crafts.md) (vehículos, barcos, espadas voladoras, formaciones), [cultivation.md](cultivation.md) §11 (vuelo y almacenamiento si el mundo los permite), [simulation.md](simulation.md) §4, §10, §12 (zonas, trayectos, cono causal), [player-loop.md](player-loop.md) §4-§7 (ritmo, rutinas, interrupciones, delegación), [contracts.md](contracts.md) (escolta, pasaje, flete), [law.md](law.md) (bandidaje, contrabando, peajes), [state.md](state.md) (postas, salvoconductos, aduanas), [property.md](property.md) (peajes y derechos de paso).
-Lo usan: economy (costo de ruta), war (marcha y suministro), information (velocidad de las noticias), body-health (epidemias por rutas), weather (#39: clima del camino), culture (#40: contacto entre culturas), chronicle (los viajes de una vida).
+Depende de: [living-world.md](living-world.md) §6, §10, §11, §13 (rutas, especies que viajan, migraciones, vínculos con bestias), [planet-gen.md](planet-gen.md) (relieve, ríos, vientos, corrientes, monzones), [settlements.md](settlements.md) §8 (caminos, puentes, puertos, posadas), [economy.md](economy.md) §1, §7, §16 (lotes, comercio, caravanas, flujos agregados), [information.md](information.md) §4, §5 (noticias que viajan, mapas como creencia), [perception.md](perception.md) (quién ve a quién), [body-health.md](body-health.md) (cansancio, nutrición, exposición, enfermedades), [war.md](war.md) §3, §6 (logística, marcha), [crafts.md](crafts.md) (vehículos, barcos, espadas voladoras, formaciones), [cultivation.md](cultivation.md) §11 (vuelo y almacenamiento si el mundo los permite), [simulation.md](simulation.md) §4, §10, §13.2 (zonas, trayectos, cono causal), [player-loop.md](player-loop.md) §4-§7 (ritmo, rutinas, interrupciones, delegación), [contracts.md](contracts.md) (escolta, pasaje, flete), [law.md](law.md) (bandidaje, contrabando, peajes), [state.md](state.md) (postas, salvoconductos, aduanas), [property.md](property.md) (peajes y derechos de paso).
+Lo usan: economy (costo de ruta), war (marcha y suministro), information (velocidad de las noticias), body-health (epidemias por rutas), [weather.md](weather.md) (clima del camino), culture (#40: contacto entre culturas), chronicle (los viajes de una vida).
 
 ---
 
@@ -18,6 +18,7 @@ Lo usan: economy (costo de ruta), war (marcha y suministro), information (veloci
 5. **La carga se conserva.** Lo que se lleva sale de una tenencia y llega a otra, menos lo que se comió, se pudrió, se rompió o se robó.
 6. **El mar es otro terreno**, con vientos, corrientes y estaciones de planet-gen, y su propio saber.
 7. **El vuelo cambia el mapa, no lo borra.** Volar cuesta, se ve y tiene lugares donde no se puede o no se debe.
+8. **Libertad total, con consecuencias** (aprobado 2026-10-06). Los caminos son la opción barata, no la única: se puede ir a cualquier celda en cualquier dirección, meterse al monte, al pantano o a la montaña, o entrar a una zona a buscar lo que sea. No hay paredes invisibles; los límites son físicos (un acantilado pide trepar, un río pide vadear o nadar, el mar pide barco) y el precio es real (perderse, lastimarse, quedarse sin comida, cruzarse con lo que vive ahí) (§11).
 
 ---
 
@@ -81,11 +82,13 @@ Un encuentro no se tira de una tabla: se busca **quién y qué está en el mismo
 - **Naturaleza:** crecidas, deslaves, tormentas, nieve, calor; vienen de planet-gen y weather.
 - **Espíritus y lugares raros:** un paso embrujado por una masacre (spirits §1), la niebla de una formación vieja, la entrada de un reino secreto que se abre (secret-realms).
 - **Ejércitos:** una guerra cercana llena los caminos de soldados, desertores y requisas.
+- **Fuera del camino** (§11): cambia quién está. Menos gente y más naturaleza: la fauna real de cada celda (living-world: poblaciones y redes tróficas), territorios de bestias que el camino rodeaba, cazadores y leñadores, ermitaños, prófugos escondidos, cultivadores en retiro que no quieren ser encontrados, ruinas, espíritus de lugar. La tasa sale de las densidades de cada celda, igual que en el camino.
 
 **Cómo se resuelve:**
 - En escena y local, los agentes están materializados y se cruzan de verdad en el espacio. Quién ve a quién primero sale de la percepción (perception §5): una emboscada es que te vieron antes.
 - En regional, por cada tramo y día se calcula la tasa de cruce con lo que hay (cuántos bandidos activos cerca, cuánta caza tiene la bestia, cuánto tráfico), y el RNG con clave `(segmento, día, viaje)` decide si se cruzan. Si se cruzan, se materializa la entidad real que ya existía en agregado, con su historia.
 - **Nunca se inventa:** si no hay bandidos en la región, no hay asalto; si el jugador elimina a la banda, el camino queda limpio hasta que otra banda se forme o llegue.
+- **Frecuencia** (aprobado 2026-10-06): se calibra en la sim headless para que el camino sea peligroso pero no una lotería. Un viaje regional típico tiene pocas incidencias y la mayoría no son violentas (otros viajeros, controles, clima); los asaltos se concentran donde hay pobreza, tráfico rico y poca autoridad.
 
 ## 4. Posadas, postas y paradas
 
@@ -152,6 +155,7 @@ interface Ship {
 ```
 
 - **Navegar sale de planet-gen:** vientos por bandas de latitud y monzones, corrientes por cuenca. Un buen marino planea con la estación: hay meses para ir y meses para volver. Los barcos de vela no van contra el viento sin bordear, y algunos tipos no pueden.
+- **Qué decide el jugador** (aprobado 2026-10-06): la ruta, la estación, el barco y la tripulación (contratarla, mandarla). La sim resuelve vientos, rumbo y errores de estima día a día; no se manejan velas y timón a mano, salvo cuando algo cae a escena (una tormenta, un abordaje, una costa desconocida de noche).
 - **Costear o cruzar:** costear es más seguro y más lento, y depende de conocer la costa; cruzar mar abierto pide saber de estrellas, corrientes, brújula (technology) o técnicas, con errores de estima que se acumulan.
 - **Naufragio como proceso:** la tormenta (weather) pega sobre la condición real del barco y la pericia de la tripulación. Un casco con defectos se abre; uno bueno con mala tripulación se da vuelta. El naufragio deja un pecio con carga (deep-history: tesoros sumergidos) y sobrevivientes en costas que pueden no conocer.
 - **El cuerpo en el mar:** agua dulce, comida que se pudre, escorbuto en viajes largos (body-health: nutrición), enfermedades en barcos llenos.
@@ -166,9 +170,32 @@ interface Ship {
 - **Zonas sin vuelo:** formaciones que lo prohíben, reinos secretos (`no_flight`), regiones de qi caótico, tormentas de qi.
 - **Llevar a otros:** cargar pasajeros o carga gasta más; las sectas tienen barcos voladores o bestias grandes para mover discípulos y bienes.
 - **Formaciones de teletransporte:** obras de formación (crafts) con extremos fijos, que consumen piedras espirituales por uso y tienen alcance limitado. Pueden fallar si se descuidan, se custodian y cobran. Son raras y caras, y las construyó alguien en la historia (living-world §6).
-- **El abismo:** un viaje de un mes para un mortal es una tarde para un cultivador avanzado. Eso cambia quién puede llegar a tiempo y qué tan lejos llega una consecuencia (simulation §12: cono causal).
+- **Cuánto domina el vuelo** (aprobado 2026-10-06): es muy rápido, pero visible y caro. La guerra y el comercio grueso siguen yendo por tierra y agua, porque volar con carga cuesta muchísimo qi; las sectas tienen rutas aéreas fijas, barcos voladores para lo que vale la pena y tratados de paso entre ellas (contracts).
+- **El abismo:** un viaje de un mes para un mortal es una tarde para un cultivador avanzado. Eso cambia quién puede llegar a tiempo y qué tan lejos llega una consecuencia (simulation §13.2: cono causal).
 
-## 11. Orientarse y perderse
+## 11. Fuera del camino, orientarse y perderse
+
+### 11.1 Ir a campo traviesa (aprobado 2026-10-06)
+
+- **Cualquier dirección:** el plan puede ser un rumbo ("al norte por el monte hasta el río"), un punto creído ("la cueva que vi desde la cresta") o un destino sin camino conocido. `go_to` acepta celdas y rumbos, no solo nodos de ruta (actions). `Journey.position` ya admite `offRoute`.
+- **El costo de cada celda** sale de planet-gen y living-world: pendiente, vegetación (pradera, bosque abierto, selva, matorral espinoso, bambú), suelo (barro, roca suelta, arena, nieve, hielo), agua (arroyos, pantanos, ríos para vadear), altura y clima del día (weather). Abrirse paso en selva puede ser un par de kilómetros por día; una pradera, casi como un camino.
+- **Los medios se filtran solos:** los carros no salen del camino, las mulas pasan donde un caballo no, los porteadores pasan casi por todos lados, un cultivador que vuela ignora el suelo pero no la niebla ni las zonas sin vuelo.
+- **Obstáculos físicos con sus verbos:** acantilados (`climb`, con cuerda o rodeando), ríos (`swim`, vado, balsa improvisada con `build`), grietas, cuevas, nieve profunda. Cada uno es una acción con riesgo real (caídas, ahogo, hipotermia).
+- **Mantener el rumbo depende de la habilidad:** cada tramo acumula un error de dirección según orientación, visibilidad, hitos, terreno y cansancio. Un buen rastreador con sol y picos a la vista llega derecho; un novato en la selva con niebla camina en círculos sin saberlo (§11.3).
+- **Huellas propias:** pasar deja rastro (perception: huellas) que otros pueden seguir y que uno puede usar para volver. Marcar árboles o apilar piedras es una acción. Si mucha gente repite el mismo paso, ahí nace un sendero (§1).
+
+### 11.2 Entrar a buscar (aprobado 2026-10-06)
+
+- **Explorar una zona con un propósito** es una rutina (player-loop §5) hecha de los verbos de siempre: `search`, `track`, `gather`, `hunt`, `fish`, `mine`, `fell`, `look`, `sense_essence` (actions). "Entro al bosque a buscar hierbas hasta que se acabe la comida o encuentre ginseng de cien años" es un plan con condición de corte.
+- **Solo se encuentra lo que hay:** hierbas, minerales, animales y bestias son poblaciones y depósitos reales de cada celda (living-world, planet-gen, crafts: materiales con origen). Al buscar se materializan con su origen y su historia; si nadie los puso ahí, no están.
+- **Encontrar depende del que busca:** saber qué buscar y dónde (una hierba que crece a la sombra junto al agua), sentidos, rastreo, sentir el qi, la estación y la suerte de la tirada. El que no conoce la planta pasa al lado sin verla o junta la parecida venenosa (perception: errores con forma).
+- **Cazar y buscar bestias:** seguir huellas, leer excrementos y marcas de territorio, esperar en el abrevadero, poner trampas. La presa también percibe, huye o caza al cazador; una bestia espiritual vieja sabe que la siguen.
+- **Lo que se saca se pierde allá:** la población de la hierba baja, el venado no vuelve a ese valle, la veta se agota. Otros recolectores y cazadores compiten por lo mismo y recuerdan quién se lo llevó.
+- **No todo es de nadie** (property): el bosque puede ser comunal con reglas, coto de caza de un señor o dominio de una secta. Sacar sin derecho es robo o caza furtiva si alguien lo ve o lo descubre después.
+- **Lo que no se buscaba también aparece:** ruinas, una cueva con huesos, la entrada de un reino secreto, el campamento de alguien que se esconde. Todo existía antes de que el personaje llegara.
+- **Lo descubierto entra al mapa creído:** con la fecha, lo que se vio y lo que se supuso. Se le puede poner nombre, guardarlo en secreto o vender la ubicación.
+
+### 11.3 Orientarse y perderse
 
 - **El mapa de cada uno es creencia** (information §5): lo que recorrió, lo que le contaron, el mapa que compró. Cada viajero decide con su mapa.
 - **Orientarse es una habilidad** (skills: facetas de orientación y lectura del terreno): sol, estrellas, ríos, picos, marcas en los árboles. Niebla, bosque denso, desierto y noche la ponen a prueba.
@@ -197,6 +224,8 @@ Noticias y rumores (information §4), enfermedades (body-health), especies (livi
 ## 15. El jugador y el narrador
 
 - **Viajar se juega como una rutina** (player-loop §5): el personaje sigue el plan día por día con delegación de lo chico (dónde acampar, qué comer), y el viaje se narra como montaje por tramos.
+- **Montaje por defecto** (aprobado 2026-10-06): un viaje largo sin incidentes pasa en un turno; se corta solo si hay un encuentro o algo que el personaje note. Un ajuste permite que pregunte en cada bifurcación o parada para quien quiera más control.
+- **Lo mismo a campo traviesa y explorando** (§11): el montaje sigue por celdas, con cortes por hallazgos, huellas frescas, un ruido, un cambio de clima o la comida que se acaba.
 - **Se cae a escena** cuando hay un encuentro o algo que el personaje percibe como importante (player-loop §6): una figura en el camino, humo adelante, el guía que mira raro.
 - **El mapa del panel** es el mapa creído, con niebla, trazos dudosos y la fecha de lo que se vio (information §5).
 - **El narrador** nombra lugares y caminos con el léxico del personaje y nunca revela que está perdido si el personaje no lo percibió.
@@ -215,7 +244,7 @@ Noticias y rumores (information §4), enfermedades (body-health), especies (livi
 
 ## 17. Implementación por fase
 
-- **Fase 1:** caminar entre la aldea y lugares cercanos por tramos con costo; acampar; cansancio y comida.
+- **Fase 1:** caminar entre la aldea y lugares cercanos por tramos con costo; salir del camino al monte cercano con costo por celda; buscar, recolectar y cazar lo que hay; acampar; cansancio y comida.
 - **Fase 3:** viajes de varios días con montaje e interrupciones; posadas; animales de carga; carga como lotes con pérdidas.
 - **Fase 5:** red de rutas regional con peajes, controles y salvoconductos; encuentros desde el estado (bandidos, bestias, viajeros); caravanas y escolta; perderse y guías; ríos y barcas; flujos agregados por ruta.
 - **Fase 6:** vuelo de cultivadores con costo y visibilidad; monturas espirituales; anillos de almacenamiento; fronteras de secta.
@@ -228,8 +257,17 @@ Noticias y rumores (information §4), enfermedades (body-health), especies (livi
 - **Conservación:** la carga que llega es la que salió menos consumo, pérdidas y robos registrados.
 - **Regla del carro:** la carga útil de un convoy cae con la distancia por el forraje consumido.
 - **Determinismo:** misma seed, mismo plan → mismos encuentros y mismo día de llegada.
+- **Campo traviesa:** se llega a cualquier celda alcanzable; el error de rumbo crece con menos habilidad y peor visibilidad; lo recolectado baja la población de la celda.
+- **Solo lo que hay:** buscar en una celda sin la hierba nunca la encuentra.
 - **Perderse:** con niebla y baja orientación, la posición creída se separa de la real y se corrige al percibir un hito.
 - **Agregado contra individual:** pérdidas por ruta y tiempos de viaje coinciden con tolerancia entre los dos modos.
+
+## Decisiones (aprobado 2026-10-06)
+- **Libertad total:** viajar a cualquier celda fuera de los caminos y entrar a buscar lo que sea, con costo por terreno, rumbo según la habilidad y encuentros de lo que vive ahí (§11).
+- **Montaje por defecto** con cortes por encuentro o percepción; ajuste para preguntar en cada bifurcación (§15).
+- **Navegación:** el jugador decide ruta, estación, barco y tripulación; la sim resuelve el día a día; tormentas y abordajes caen a escena (§9).
+- **Encuentros calibrados** para un camino peligroso pero no una lotería (§3).
+- **Vuelo rápido, visible y caro;** el grueso de la guerra y el comercio sigue por tierra y agua (§10).
 
 ## Decisiones tomadas en este borrador (revisables)
 
