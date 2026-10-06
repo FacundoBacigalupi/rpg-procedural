@@ -158,7 +158,7 @@ El qi de cada celda tiene su vector, y las celdas interactúan con sus vecinas e
 - **Ciclo de generación en el paisaje.** Una cuenca donde el bosque (madera) rodea un volcán (fuego) rodeado de llanura (tierra) es un lugar de qi que se alimenta solo: lo buscan las sectas y lo marcan los geománticos.
 - **Estaciones y astros.** El vector de cada celda oscila con `celestial`: un lugar de fuego es más fuerte en verano y a mediodía, uno de agua en invierno y en luna llena. Las conjunciones raras (planet-gen §1) amplifican un elemento en todo el planeta por días: ventanas de ruptura, de forja y de alquimia que se calculan con astronomía.
 - **El uso cambia el campo.** Una secta de fuego que absorbe fuego durante siglos deja su montaña sesgada hacia lo que no consume (la tierra y el metal crecen en proporción). Una batalla de técnicas de agua deja la celda húmeda y fría. Una masacre deja yin (spirits).
-- **Ecología.** Plantas y bestias espirituales prosperan donde el vector del lugar resuena con el suyo y lo modifican al consumir (living-world: adaptación). Un pantano de veneno con bestias de veneno es estable porque se alimentan entre sí.
+- **Ecología.** Plantas y bestias espirituales prosperan donde el vector del lugar resuena con el suyo y lo modifican al consumir ([living-world.md](living-world.md) §8: poblaciones y selección). Un pantano de veneno con bestias de veneno es estable porque se alimentan entre sí.
 - **Clima.** El qi elemental intenso empuja al clima mundano a través de la firma física (un lugar de fuego denso es más seco y caliente que su latitud). El efecto es pequeño salvo en anomalías, pero existe y es descubrible.
 
 ## 7. El cuerpo y los elementos

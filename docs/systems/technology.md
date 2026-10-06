@@ -89,7 +89,7 @@ La adopción es una decisión de utilidad (npc-psychology, economy) de un hogar,
 | Dominio | Ejemplos de procesos | Qué cambia |
 |---|---|---|
 | **Agricultura** | Azada, arado de madera y de hierro, arado de vertedera, riego por canales y norias, terrazas, rotación, barbecho, abono, selección de semillas, cultivos nuevos traídos de lejos | Rendimiento por superficie y por trabajador, qué tierras se pueden cultivar, cuánta gente sostiene una celda (economy §3) |
-| **Ganadería** | Domesticación, cría selectiva, collera y yugo, herraduras, ordeñe, lana | Fuerza de tiro, transporte, abono, guerra montada, enfermedades compartidas con animales (body-health) |
+| **Ganadería** | Domesticación (living-world §12: proceso de generaciones sobre una especie que lo permite), cría selectiva, collera y yugo, herraduras, ordeñe, lana | Fuerza de tiro, transporte, abono, guerra montada, enfermedades compartidas con animales (body-health) |
 | **Alimentos** | Fermentación, salazón, ahumado, molienda, conservas, destilación | Almacenamiento (resistencia a hambrunas), comercio de largo alcance, raciones de guerra |
 | **Metalurgia** | Cobre nativo, fundición, bronce, hierro de forja, acero por cementación, crisol, temple, alto horno, fundición de hierro | Herramientas, armas, dinero de metal (economy §11), dependencia de minas y carbón |
 | **Cerámica y vidrio** | Alfarería, torno, hornos de alta temperatura, vidriado, porcelana, vidrio | Almacenar, cocinar, comerciar bienes de lujo, lentes |
