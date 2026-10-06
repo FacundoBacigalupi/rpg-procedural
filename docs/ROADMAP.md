@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#13, ley y justicia**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#14, estado y política**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -31,7 +31,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 10. [x] **Contratos y juramentos** → [contracts.md](systems/contracts.md): un modelo único para deudas, matrimonios, maestro–discípulo, alianzas y pactos, con cumplimiento social, legal o kármico (unifica `debts`, `bonds` y `KarmicBond`).
 11. [x] **Familia y linaje** → [family-lineage.md](systems/family-lineage.md): matrimonio y alianzas, sexualidad, hijos ilegítimos, herencias y disputas, cultivo dual, fertilidad baja en cultivadores, genealogías de clan.
 12. [x] **Estratificación social** → [social-structure.md](systems/social-structure.md): castas, servidumbre, esclavitud, movilidad social, abismo mortal/cultivador; qué acciones tiene cada uno a su alcance.
-13. [ ] **Ley y justicia** → `law.md`: códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
+13. [x] **Ley y justicia** → [law.md](systems/law.md): códigos por cultura, crímenes, investigación (huellas), jueces corruptos, castigos, sectas por encima de la ley, vendetta vs tribunal, reglas internas de secta, contrabando y mercado negro.
 14. [ ] **Estado y política** → `state.md`: legitimidad, impuestos, burocracia, exámenes imperiales, crisis de sucesión, relación trono–secta.
 15. [ ] **Guerra** → `war.md`: logística y suministro, moral, asedios, formaciones defensivas, ejércitos mortales vs cultivadores.
 16. [ ] **Tecnología mortal** → `technology.md`: agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
@@ -65,6 +65,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - contracts: umbral de peso para que una promesa llegue al libro del Cielo y peso de la traición; tasas de incumplimiento por tipo y cultura; fuerza de los sellos en el alma frente al portador; cuántas promesas chicas conserva un NPC de tier 2.
 - family-lineage: heredabilidad por rasgo (sobre todo la aptitud de cultivo); curva de fertilidad por reino y diferencia de reino; tasas de ilegitimidad, adulterio descubierto y disputas de herencia; dilución y despertar de linajes de sangre; mortalidad materna e infantil.
 - social-structure: tasas de movilidad por puerta; proporción de población no libre por cultura y era; umbrales de resentimiento para fugas, bandidaje y revueltas; peso del cultivo sobre las demás dimensiones (`powerOverrides`); velocidad de erosión de las ideologías de la jerarquía.
+- law: tasas de delito por presión; fracción denunciada y resuelta por jurisdicción; tasa de condenas de inocentes; umbrales de soborno; duración y salida de las vendettas; prima de riesgo del contrabando.
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -99,6 +100,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Contratos y juramentos ([systems/contracts.md](systems/contracts.md)) — borrador
 - [~] Familia y linaje ([systems/family-lineage.md](systems/family-lineage.md)) — borrador
 - [~] Estratificación social ([systems/social-structure.md](systems/social-structure.md)) — borrador
+- [~] Ley y justicia ([systems/law.md](systems/law.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -122,6 +124,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Narrador (Claude) solo con los percepts del jugador
 - [ ] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md))
 - [ ] Estatus mínimo de aldea (campesinos, terrateniente, sirvientes), marcas visibles y rango percibido, deferencia en la utilidad del diálogo ([social-structure.md](systems/social-structure.md))
+- [ ] Huellas mínimas (sangre, objetos movidos), testigos, robo y pelea con reclamo de la víctima y reputación ([law.md](systems/law.md))
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
 - [ ] Muerte → pantalla de crónica
 - [ ] Inspector god-mode básico
@@ -134,6 +137,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Creencias `law` como hipótesis con evidencia desde percepts; diario de hipótesis del jugador ([discovery.md](systems/discovery.md))
 - [ ] Diálogo de NPCs condicionado por personalidad/memorias
 - [ ] Creencias sobre la posición ajena con errores, etiqueta como norma, ofensas que cuestan cara ([social-structure.md](systems/social-structure.md))
+- [ ] Testigos con memoria deformada y mentiras, acusaciones en el diálogo, culpa por el delito propio ([law.md](systems/law.md))
 - [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
 
 ## Fase 3 — Vida offscreen, familias y economía
@@ -148,6 +152,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
 - [ ] Compromisos: préstamos y garantías (colateral, fiadores, empeño), deudas por norma, herencia de deudas, matrimonio y aprendizaje como `status`, mediación, documentos y tallas como objetos ([contracts.md](systems/contracts.md))
 - [ ] Estatus como normas en `content/` (derechos, deberes, protecciones, capacidad), servidumbre por deudas, movilidad por matrimonio, deuda y riqueza, resentimiento por comunidad ([social-structure.md](systems/social-structure.md))
+- [ ] Consejo de ancianos como jurisdicción: `Case`, investigación simple, compensación y castigos; vendettas entre familias; rastreo de lotes robados en casas de empeño ([law.md](systems/law.md))
 - [ ] Consejo de aldea como primera organización, bandas de bandidos que nacen del hambre, lealtad como relación con la organización ([organizations.md](systems/organizations.md))
 
 ## Fase 4 — Cultivo
@@ -162,6 +167,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Juramentos ante el Cielo y sobre el corazón del Dao (karma y demonios internos), juramentos de secreto, sellos simples en el alma, maestro–discípulo como compromiso ([contracts.md](systems/contracts.md))
 - [ ] Herencia de la aptitud de cultivo, ambiente prenatal, fertilidad de cultivadores, compañeros del Dao y cultivo dual ([family-lineage.md](systems/family-lineage.md))
 - [ ] Abismo mortal/cultivador: presión del cultivo como señal social, sirvientes de secta, familias elevadas por un hijo cultivador, tributo de aldeas a sectas ([social-structure.md](systems/social-structure.md))
+- [ ] Salón de disciplina de secta, sello y abolición del cultivo como pena, búsqueda del alma, residuos de qi como prueba ([law.md](systems/law.md))
 - [ ] Talentos ocultos (descubiertos por percepción interna e hipótesis sobre uno mismo)
 - [ ] Hipótesis sobre umbrales, dogmas de escuela, insights con `pending` e iluminación, contemplación de obras con intención, variantes y técnicas nuevas evaluadas por la ley ([discovery.md](systems/discovery.md))
 
@@ -171,6 +177,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Tiers de NPC 0–4, materialización coherente con estadísticas
 - [ ] Scheduler multi-escala eficiente
 - [ ] Contratos entre comerciantes por rutas, encargos lejanos, venta de créditos, falsificación de documentos ([contracts.md](systems/contracts.md))
+- [ ] Varias jurisdicciones y fronteras de huida, contrabando por rutas, puestos de control, mercado negro regional ([law.md](systems/law.md))
 - [ ] Comerciantes que arbitrajean por rutas, caravanas, peajes, precios que viajan como noticias, modo agregado de mercados calibrado contra el individual ([economy.md](systems/economy.md))
 
 ## Fase 6 — Organizaciones
@@ -179,6 +186,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Plantillas (como costumbre, no molde): clan, secta, gremio, casa comercial, templo, sociedad secreta
 - [ ] Clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, linajes de sangre que despiertan ([family-lineage.md](systems/family-lineage.md))
 - [ ] Rangos de secta y clan sobre el modelo de estatus, cierre de élites, sellos de esclavo ([social-structure.md](systems/social-structure.md))
+- [ ] Jurisdicciones superpuestas (secta, gremio, clan), pedidos de entrega, bandas y gremios de ladrones con su propia justicia ([law.md](systems/law.md))
 - [ ] Sectas que nacen de eventos (descubridor de técnica → escuela → secta)
 - [ ] Registro de anomalías, herejía y cismas doctrinales, cultura epistémica, archivos y mecenazgo ([discovery.md](systems/discovery.md))
 - [ ] Relaciones entre organizaciones: diplomacia por personas, fuerza ajena como creencia, jerarquías regionales, escalera de conflicto, cismas y absorciones
@@ -200,6 +208,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
 - [ ] Economía de guerra (metal, levas, saqueo), billetes de estado, corridas ([economy.md](systems/economy.md))
 - [ ] Nobleza y exámenes, esclavitud de guerra, revueltas que se vuelven ejércitos, edictos que cambian estatus ([social-structure.md](systems/social-structure.md))
+- [ ] Códigos del estado, magistrados, cárceles, apelaciones, inspectores, edictos que viajan como noticia ([law.md](systems/law.md))
 - [ ] Eventos mundiales que ocurren sin el jugador
 - [ ] Rivales/genios en otras partes del mundo
 

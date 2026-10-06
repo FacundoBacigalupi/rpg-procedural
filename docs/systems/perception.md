@@ -172,7 +172,7 @@ Muchos eventos dejan **huellas** persistentes en el lugar, que son entidades con
 | Daño al terreno (cráter, árbol partido, quemadura) | Años o siglos | La erosión, el crecimiento |
 
 - Leer una huella es percepción (verla) más **inferencia** (saber qué significa). Un rastreador ve más y entiende más que un campesino. El residuo de qi de una técnica revela la escuela, si el observador la conoce.
-- Las huellas son la base para descubrir intrigas, crímenes y batallas viejas (schemes §5, el futuro doc de ley y justicia).
+- Las huellas son la base para descubrir intrigas, crímenes y batallas viejas (schemes §5, el [law.md](law.md) §5).
 - **Borrar huellas** es una acción (limpiar, quemar, dispersar el qi) que deja sus propias huellas si no se hace bien.
 
 ## 10. Percepción interna
