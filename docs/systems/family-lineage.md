@@ -39,7 +39,7 @@ interface Genome {
 - **Orientación y deseo** son rasgos innatos con distribución generada por especie (no un binario fijo), más lo que la historia y la cultura moldean. `attraction` es una dimensión de la relación (npc-psychology §6) que sube con lo que a cada uno le atrae (rasgos físicos, estatus, fuerza, carácter, familiaridad) y con la interacción.
 - **Normas culturales sobre el deseo** (`content/`): qué uniones son aceptables (entre clases, entre sectas, del mismo sexo, antes del matrimonio, con viudas), qué es tabú (incesto en grados que cada cultura define), qué es escándalo y qué se tolera en silencio. Romper una norma no es imposible: es caro (cara, reputación, castigo) y se esconde (information §7: secretos).
 - **Relaciones fuera del matrimonio:** amantes, concubinas (cuando son institución, §6), prostitución (un servicio con precio: economy), romances prohibidos entre sectas rivales. Generan celos (`jealousy`), secretos, chantaje e intrigas (schemes: rival afectivo).
-- **Violencia sexual** existe en el mundo como crimen con consecuencias reales (trauma en npc-psychology, vendetta, ley, karma), se registra como evento y **nunca se narra de forma explícita** ni se ofrece como acción al jugador.
+- **Violencia sexual** existe en el mundo como crimen con consecuencias reales (trauma en npc-psychology, vendetta, ley, karma) y se registra como evento. La cometen NPCs, y **también puede cometerla el personaje del jugador si el jugador lo escribe**: el juego no ofrece menús de opciones, así que nunca aparece como sugerencia, pero el intérprete no la bloquea. Se resuelve como cualquier acción (resistencia, testigos, fuerza relativa) y **nunca se narra de forma explícita**: el narrador cuenta el hecho con elipsis y se queda en lo que deja (§13). **Límite duro:** si la víctima es menor según su especie, el intérprete rechaza la intención y la acción no ocurre.
 - **Decidir una unión** es una acción con utilidad: atracción, afecto, necesidad social, objetivos (un hijo, una alianza, un ascenso), riesgo creído (escándalo, castigo, embarazo) y valores.
 
 ## 3. Concepción, embarazo y parto
@@ -194,6 +194,7 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - **Casarte, tener hijos y criarlos** son acciones con el mismo modelo que los NPCs: con quién (y si la familia lo acepta), la dote, la residencia, la crianza que les das (que forma lo adquirido de tus hijos).
 - **Una sola vida.** Al morir, el jugador **no** continúa como su hijo (VISION, principio 8). Su descendencia aparece en el epílogo y en la crónica (ítem 19 del backlog): qué fue de ellos, qué heredaron, qué recuerdan de él.
 - **El narrador** recibe solo el árbol que cree el personaje y lo que percibe; nunca la paternidad real ni el genoma. Lo íntimo se narra con elipsis.
+- **Si el personaje comete violencia sexual** (§2), las consecuencias son las del mundo, sin atajos ni indulgencia: la víctima la recuerda con trauma y deseo de venganza (npc-psychology), se vuelve rumor si hubo testigos o si ella habla (information), la ley de la cultura y de las sectas la castiga (contracts, organizations), deja una deuda kármica pesada que alimenta tribulaciones y demonios internos (heaven-karma), y puede dejar un embarazo con su propia historia (§3, §5). El narrador no la describe; cuenta el antes, el después y lo que cambia.
 
 ## 14. Escala (LOD)
 - **Tier 3-4:** individuos con genoma completo, uniones, concepciones, embarazos y partos como eventos, crianza día a día.
@@ -226,7 +227,7 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - La aptitud de cultivo se hereda poco; el ambiente prenatal (incluida la esencia de la madre) suma con costo real para ella.
 - La fertilidad baja de los cultivadores es ley del mundo con mecanismo (densidad y compatibilidad de esencia), variable por mundo.
 - Matrimonio, adopción y deber filial son compromisos de contracts.md; las formas de matrimonio y las reglas de herencia son normas culturales en `content/`.
-- Lo íntimo existe como eventos con consecuencias y se narra con elipsis; la violencia sexual existe como crimen y nunca se narra explícita ni se ofrece como acción al jugador.
+- Lo íntimo existe como eventos con consecuencias y se narra con elipsis. La violencia sexual existe como crimen: el jugador puede hacer que su personaje la cometa (nunca se le sugiere) y carga con todas las consecuencias, pero nunca se narra explícita, y la intención se rechaza si la víctima es menor (decisión del usuario, 2026-10-05).
 - Al morir, el jugador no continúa como su descendiente; los hijos aparecen en el epílogo y la crónica.
 
 ## Preguntas abiertas
