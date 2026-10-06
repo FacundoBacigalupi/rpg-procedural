@@ -92,7 +92,7 @@ Consecuencias que salen solas, sin escribirlas:
 - Un lugar con qi inusual está ahí porque hay algo debajo, y ese algo es descubrible.
 
 ### Capa 2: ecología con poblaciones
-Plantas y bestias tienen poblaciones por región que crecen, compiten y se comen. Las bestias espirituales necesitan qi y presas.
+Plantas y bestias tienen poblaciones por región que crecen, compiten y se comen. Las bestias espirituales necesitan qi y presas. Modelo completo (poblaciones, sucesión, invasoras, migraciones, domesticación): [living-world.md](living-world.md) §8-§14.
 - Si los aldeanos sobrerecolectan hierbas, las hierbas desaparecen y suben los precios.
 - Si cazan al depredador, los herbívoros arrasan cultivos.
 - Si el qi sube, aparecen bestias más fuertes migrando desde otras zonas, que antes no podían vivir ahí.
@@ -198,7 +198,7 @@ La Ley 3 dice que los eventos nacen de presiones. Para que el inspector las mues
 type PressureKind =
   | "hunger" | "debt" | "resentment" | "grievance" | "ambition" | "fear" | "overcrowding"
   | "qiDepletion" | "qiSurplus" | "succession" | "legitimacy" | "heavenDeficit" | "pathogenLoad"
-  | "priceStress" | "beastHunger" | "faith" | "custom";
+  | "priceStress" | "beastHunger" | "fuel" | "faith" | "custom";
 
 interface Pressure {
   id: PressureId;

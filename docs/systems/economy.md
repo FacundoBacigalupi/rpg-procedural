@@ -155,7 +155,7 @@ interface ProductionProcess {
 ```
 
 - **Agricultura:** el rendimiento sale del suelo, el agua, el clima del año (planet-gen), la técnica ([technology.md](technology.md)), el trabajo y las plagas. Una helada temprana es una mala cosecha con causa.
-- **Extracción:** minas, canteras, bosques, pesca, caza y recolección **sacan de un stock** (veta, población de peces, de bestias, de hierbas: ecología, capa 2). Sobreexplotar agota el stock: suben los precios y bajan los rendimientos, sin que nadie lo decida.
+- **Extracción:** minas, canteras, bosques, pesca, caza y recolección **sacan de un stock** (veta, población de peces, de bestias, de hierbas: ecología, [living-world.md](living-world.md) §8). Sobreexplotar agota el stock: suben los precios y bajan los rendimientos, sin que nadie lo decida.
 - **Oficios:** artesanos, herreros, tejedores, alquimistas, forjadores de formaciones. Cómo se hace cada cosa (sesiones por pasos, recetas, habilidad) va en [crafts.md](crafts.md); acá solo importa que convierten insumos con precio en productos con precio.
 - **El saber es un factor de producción.** La receta de una píldora o el secreto del acero templado valen porque pocos los tienen (information §8). Un gremio protege recetas; un espía las roba; una receta que se difunde baja los precios del producto.
 - **Calidad con variación.** La habilidad, la herramienta y la suerte dan calidad distinta: hay buenos y malos herreros, y se nota (para quien sabe mirar).

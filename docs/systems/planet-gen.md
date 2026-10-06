@@ -183,7 +183,7 @@ interface LandBridge {
 - **Realimentaciones:** el hielo refleja la luz y enfría más (albedo); el mar más frío guarda menos humedad; al retirarse, el hielo deja tierra oscura que se calienta. Por eso los cambios son lentos al principio y bruscos al final.
 - **Conservación del agua.** Océano + hielo + lagos + agua subterránea es constante. El hielo que crece sobre los continentes sale del mar: el **nivel del mar baja** en proporción, y sube cuando el hielo se derrite. La línea de costa se recalcula desde la elevación y el nivel del mar.
 - **Mar bajo:** se exponen las plataformas continentales.
-  - Aparecen **puentes de tierra** entre continentes e islas. Por ahí cruzan bestias, plantas, pueblos y enfermedades (body-health: choque de poblaciones). Así llegan especies y culturas a lugares que antes no conocían.
+  - Aparecen **puentes de tierra** entre continentes e islas. Por ahí cruzan bestias, plantas, pueblos y enfermedades (body-health: choque de poblaciones). Así llegan especies y culturas a lugares que antes no conocían ([living-world.md](living-world.md) §10).
   - Los ríos se alargan sobre la plataforma, y los puertos quedan tierra adentro.
 - **Mar alto:**
   - Los puentes se cierran. Las poblaciones que quedaron separadas divergen (bestias que evolucionan, lenguas que se separan: [living-world.md](living-world.md) §2, §3).

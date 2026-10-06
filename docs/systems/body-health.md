@@ -168,7 +168,7 @@ La infección no es una tirada aparte: el nivel de contaminación sale de qué l
 
 ## 6. Enfermedades
 ### Patógenos como entidades
-Cada enfermedad infecciosa es un `Pathogen` con `originEventId`, no una entrada de tabla. Nace de algo: un reservorio animal (zoonosis desde una población de bestias de living-world), una mutación de otro patógeno, una maldición o un qi corrupto que el mundo permita (metaphysics), un cadáver de algo poderoso.
+Cada enfermedad infecciosa es un `Pathogen` con `originEventId`, no una entrada de tabla. Nace de algo: un reservorio animal (zoonosis desde una población de bestias o de ganado: [living-world.md](living-world.md) §8, §12), una mutación de otro patógeno, una maldición o un qi corrupto que el mundo permita (metaphysics), un cadáver de algo poderoso.
 
 ```ts
 interface Pathogen {
