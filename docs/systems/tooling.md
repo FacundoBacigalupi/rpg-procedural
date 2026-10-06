@@ -74,7 +74,7 @@ interface ReplayInput {
 
 ## 5. Inspector
 
-Solo lectura, en `tools/`, sobre una copia descartable cuando hace falta resolver algo. Usarlo con una vida en curso marca la vida (player-loop §11).
+Solo lectura, en `tools/`, sobre una copia descartable cuando hace falta resolver algo. Usarlo con una vida en curso marca la vida (player-loop §11), **en los dos modos**: en modo novela el personaje tiene ventajas, pero sigue sin saber la verdad ([game-modes.md](game-modes.md)). La marca se pone solo si se abre el inspector.
 
 **Catálogo** (cada sistema agrega los suyos; los ya definidos se listan con su doc):
 
@@ -146,8 +146,8 @@ Una violación detiene la corrida y genera un paquete de reproducción.
 - **Grabaciones:** las llamadas al LLM se pueden grabar y reproducir (fixtures) para tests sin red.
 - **Registro del validador:** cada salida rechazada con el pedido y la razón, para mejorar prompts.
 - **Costos y latencia** por trabajo y por proveedor (relevante si se usa API; con modelos locales, latencia y uso de GPU).
-- **Banco de pruebas de modelos** (narration §1): corpus de escenas en `content/llm/bench/`; corre cada proveedor, mide tasa de aprobación y latencia, y arma una vista lado a lado para que el usuario lea y elija.
-- **Corpus para el fine-tune futuro:** se guardan pares pedido → texto aprobado (por el validador y, si el usuario marca, por gusto), listos para la Fase 9.
+- **Banco de pruebas de modelos** (narration §1): corpus de escenas en `content/llm/bench/`; corre cada proveedor, mide tasa de aprobación y latencia, y arma una vista **lado a lado** para que el usuario lea y elija. La tasa de aprobación solo descarta los que fallan; la prosa la juzga el usuario.
+- **Corpus para el fine-tune futuro:** se guardan pares pedido → texto aprobado por el validador, listos para la Fase 9. Con `meta me gustó` el usuario marca el último texto narrado (o `meta no me gustó`), y esos pares entran con prioridad (o como ejemplos negativos).
 
 ## 11. Contenido
 
@@ -165,7 +165,7 @@ Una violación detiene la corrida y genera un paquete de reproducción.
 ## 13. Respaldo
 
 - **Copias automáticas** rotativas del guardado (las últimas N sesiones), solo para corrupción del archivo.
-- **Restaurar una copia** es una acción `meta` explícita, con confirmación, y la vida queda marcada como "restaurada": no es un "cargar partida" encubierto.
+- **Restaurar una copia** se permite siempre, aunque el archivo no esté roto: es una acción `meta` explícita, con confirmación, y la vida queda marcada como "restaurada" (con cuántas veces y desde qué momento). No es un "cargar partida" encubierto: la marca queda en el archivo de vidas.
 
 ## 14. Implementación por fase
 
@@ -185,6 +185,12 @@ Una violación detiene la corrida y genera un paquete de reproducción.
 - **Migraciones:** cada migración convierte un guardado de prueba de la versión anterior y el resultado pasa los invariantes.
 - **Detector de divergencias:** un proceso con un error de orden inyectado se detecta en el paso y proceso correctos.
 - **Contenido:** un `content/` con una referencia rota no arranca.
+
+## Decisiones (aprobado 2026-10-06)
+- **Restaurar copias de respaldo:** siempre permitido, con confirmación y la marca "restaurada" en el archivo de vidas.
+- **Marca de inspector en los dos modos:** también en modo novela, porque las ventajas no son saber la verdad. Solo aparece si se abre el inspector.
+- **Banco de pruebas lado a lado:** el usuario lee y elige el modelo de narración; la tasa de aprobación solo descarta.
+- **`meta me gustó` / `meta no me gustó`:** marcan textos narrados para el corpus del fine-tune.
 
 ## Decisiones tomadas en este borrador (revisables)
 
