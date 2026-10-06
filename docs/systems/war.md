@@ -230,7 +230,7 @@ interface EngagementSide {
 - **Las bajas son heridas.** No hay "puntos de vida de unidad": lo que sale de una batalla es gente herida por parte del cuerpo (body-health), muertos, cautivos y dispersos. En agregado, una distribución de heridas por tipo de arma; cerca del jugador, heridas concretas en personas concretas. Los heridos después se infectan, se curan o mueren según los médicos que haya.
 - **La mayoría muere en la huida.** Las bajas grandes llegan cuando una unidad se rompe y la persiguen; mientras aguanta en formación, pierde poco. Por eso la moral (§4) decide más batallas que la fuerza bruta.
 - **El ganador es quien se queda con el campo**, con lo que eso trae: los heridos del enemigo, el equipo abandonado, los muertos para enterrar o saquear. Una victoria puede ser tan cara que deja al vencedor sin capacidad de seguir.
-- **Duelos:** en culturas que los tienen, campeones o cultivadores pelean antes o en lugar de la batalla; el resultado pesa en la moral de los dos lados (y a veces decide la guerra, si los dos lados lo creen así).
+- **Duelos:** en culturas que los tienen, campeones o cultivadores pelean antes o en lugar de la batalla; el resultado pesa en la moral de los dos lados (y a veces decide la guerra, si los dos lados lo creen así). El duelo en sí, y la pelea del entorno inmediato del jugador dentro de una batalla, se resuelven con [combat.md](combat.md).
 
 ## 8. Mortales y cultivadores
 

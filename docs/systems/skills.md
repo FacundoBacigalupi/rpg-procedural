@@ -6,7 +6,7 @@
 
 Depende de: [actions.md](actions.md) §7 (la habilidad es un factor de cada resolución), [perception.md](perception.md) (se aprende solo de lo percibido), [npc-psychology.md](npc-psychology.md) (aptitudes, plasticidad por etapa, memoria, sueño que consolida, motivación), [body-health.md](body-health.md) §3 (capacidades, techo corporal, envejecimiento), [family-lineage.md](family-lineage.md) §4 (talento heredado), [information.md](information.md) (el saber explícito son creencias; manuales como medios).
 Generaliza: crafts §1 (`CraftSkill`), cultivation §8 (`KnownTechnique`: comprensión y competencia), technology §2 (`ProcessKnowledge`: fidelidad y práctica).
-Lo usan: todos los resolvers de acciones, [combat.md] futuro (estilos y reflejos), [dialogue.md] futuro (habilidades sociales), [language.md] futuro (lenguas y escrituras con este modelo), organizations §9 (maestro y discípulo), economy (el oficio como medio de vida), social-structure (exámenes y certificaciones), discovery (insights y descubrimientos que se vuelven saber).
+Lo usan: todos los resolvers de acciones, [combat.md](combat.md) (estilos y reflejos), [dialogue.md] futuro (habilidades sociales), [language.md] futuro (lenguas y escrituras con este modelo), organizations §9 (maestro y discípulo), economy (el oficio como medio de vida), social-structure (exámenes y certificaciones), discovery (insights y descubrimientos que se vuelven saber).
 
 ---
 
@@ -331,7 +331,10 @@ Con los tiers de simulation §4:
 - **Aprendizaje desde la autopercepción**, con vicios cuando el feedback está equivocado.
 - **Techo oculto** que sale de aptitudes, cuerpo, edad y cultivo.
 - **Oxidación con pico** y recuperación rápida.
-- **El jugador no ve números**, solo la autoimagen de su personaje y lo que otros le dicen.
+- **El jugador no ve números**, solo la autoimagen de su personaje y lo que otros le dicen; la verdad queda para el inspector (aprobado 2026-10-06).
+- **Tiempos realistas** (meses para competente, años para vivir del oficio, décadas para maestro); la jugabilidad la dan los saltos y las rutinas, y el talento y el maestro pesan mucho (aprobado 2026-10-06).
+- **Vicios activos desde la Fase 3** (aprobado 2026-10-06).
+- **Lenguas y escrituras con este mismo modelo** y facetas propias; language.md define solo el contenido (aprobado 2026-10-06).
 
 ## Preguntas abiertas
 
