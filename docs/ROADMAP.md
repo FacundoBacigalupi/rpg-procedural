@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** **El backlog de diseño 2 está completo** (2026-10-06, #27-#45). Lo que sigue es la **Fase 0: fundamentos** (más abajo), con [ARCHITECTURE.md](ARCHITECTURE.md) como mapa de carpetas y tipos.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** **El backlog de diseño 2 está completo** (2026-10-06, #27-#45). Antes de la Fase 0 queda **#46, la revisión del stack técnico** (decisión del usuario sobre la propuesta de [ARCHITECTURE.md](ARCHITECTURE.md) §7). Después, la **Fase 0: fundamentos** (más abajo), con ARCHITECTURE como mapa de carpetas, tipos y herramientas.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -43,6 +43,8 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 
 ### F. Cierre del diseño
 45. [x] **Modelo de datos unificado y revisión de coherencia** → [ARCHITECTURE.md](ARCHITECTURE.md): glosario de tipos compartidos (`Entity`, `Event`, `Belief`, `Lot`, `Commitment`, `Pressure`…), qué módulo es dueño de cada uno, contradicciones entre docs resueltas, orden de implementación de las fases revisado con todo lo diseñado.
+
+46. [ ] **Revisión del stack técnico** → [ARCHITECTURE.md](ARCHITECTURE.md) §7: análisis de cada pieza contra lo que pide el diseño (determinismo entre versiones, rendimiento de worldgen e historia, LLM local en 12 GB, herramientas visuales). Propuesta: TypeScript con datos en columnas y válvula Rust → WASM; Node 24 sin `tsx`; RNG por contador; `core/math` determinista; Zod 4 con JSON Schema para el LLM; un modelo local residente; web mínima al cierre de la Fase 1; spike de H3 para la grilla; Biome + dependency-cruiser; fast-check; CI en Windows y Linux. Al aprobarse: ajustar las tareas de la Fase 0, la línea de stack de CLAUDE.md y narration §1.
 
 ### Hecho: backlog de diseño 1 (2026-10-05 → 2026-10-06)
 Los 26 ítems están escritos y mergeados en `develop` (PRs #9-#43):
@@ -161,7 +163,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Modelo de datos unificado y revisión de coherencia ([ARCHITECTURE.md](ARCHITECTURE.md)) — capas con el juego como capa propia (`game/`: turno, setup, `PlayerView`, crónica final); carpetas por sistema dentro de `sim/` y `families/<familia>/` como único lugar con lo específico de cada familia (el resto habla de `Essence`, `Practice`, `Law`, `Soul`); reglas de dependencia sin ciclos y efectos cruzados solo por el scheduler; tipos centrales canónicos (`Id<K>` con contadores deterministas, `AgentId` como único id de persona, `Party`, `HolderRef`, `PlaceRef`, `Tick`, `Event` con `tick`/`kind`/`place`, `CauseRef` como unión, `EntityBase` con `originEventId`, ítem contra lote, ECS liviano por componentes); glosario de dueños de cada tipo compartido; contradicciones resueltas (`TechProcessDef`, `SchemeStep`, `NewGameSetup` de game-modes, `Belief.holder` con organizaciones); orden de implementación dentro de cada fase con los sistemas de fondo en su forma real desde la Fase 1 y la interfaz de metafísica pensada para dos familias
 
 ## Fase 0 — Fundamentos
-- [ ] Scaffold: TS strict, Vitest, ESLint (con `no-restricted-imports` por capa e `import/no-cycle`), scripts npm, GitHub Actions (typecheck + lint + tests), carpetas de [ARCHITECTURE.md](ARCHITECTURE.md) §2
+- [ ] Scaffold con las herramientas que fije #46 ([ARCHITECTURE.md](ARCHITECTURE.md) §7): TS strict, tests, lint con las reglas de capas, scripts npm, GitHub Actions (typecheck + lint + tests), carpetas de ARCHITECTURE §2
 - [ ] `core/ids` (`Id<K>` con contadores deterministas por tipo), `core/types` (`Event`, `CauseRef`, `PlaceRef`, `Party`, `EntityBase`) y `core/ledger` con igualdad exacta ([ARCHITECTURE.md](ARCHITECTURE.md) §4)
 - [ ] `core/rng` con seed y sub-streams + test de determinismo
 - [ ] `core/time`: ticks absolutos en segundos, conversión a calendario simple ([simulation.md](systems/simulation.md) §1)

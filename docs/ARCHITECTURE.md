@@ -127,7 +127,7 @@ core ← worldgen ← sim ← game ← llm / persistence ← ui / tools
 - `game` puede leer `llm` y `persistence` solo por interfaces inyectadas (el turno se testea con `MockLLM` y una base en memoria).
 - **Entre carpetas de `sim/`** no hay ciclos: un sistema lee los tipos de otro desde su `index.ts`, pero **los efectos cruzados pasan por el scheduler** (diffs, eventos y presiones), no por llamadas directas que mutan estado ajeno.
 - `families/*` depende de `metaphysics/`; nada fuera de `families/` importa una familia concreta.
-- Se fuerza con ESLint (`no-restricted-imports` y `import/no-cycle`) desde la Fase 0.
+- Se fuerza con dependency-cruiser desde la Fase 0 (§7.10).
 
 ## 4. Tipos centrales (canónicos)
 
@@ -313,21 +313,98 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | Carpetas `sim/npc` y `sim/cultivation` | `sim/mind` y `sim/families/xianxia` (§2). |
 | Dos tareas de "Loop CLI" casi iguales en la Fase 0 | Una sola: el stub del turno (player-loop §3). |
 
-## 7. Decisiones técnicas
+## 7. Decisiones técnicas (revisión del stack, 2026-10-06)
 
-| Tema | Decisión | Por qué |
+> **Estado: propuesta pendiente de aprobación (#46 del ROADMAP).** Antes de la Fase 0 se revisó cada pieza contra lo que pide el diseño: una simulación determinista enorme (planeta de 2-4× la Tierra, historia de siglos en modo agregado, miles de agentes materializados), replay byte a byte, un LLM local en una RTX 4070 Super de 12 GB, Windows como plataforma principal, y un proyecto de años que escribe sobre todo Claude.
+
+### 7.1 Lo que pide el diseño (los criterios)
+
+1. **Determinismo fuerte:** el mismo seed y los mismos planes dan el mismo log, también después de actualizar Node y en otra máquina (replay de vidas viejas, tooling §3).
+2. **Rendimiento en lo numérico:** worldgen (tectónica, clima, erosión, ~40.000 celdas de nivel 0 con detalle local), historia agregada de siglos, y sim por adelantado en workers (simulation §13).
+3. **Un modelo de datos enorme y cambiante:** cientos de tipos, esquemas de `content/`, migraciones. Pesa más la velocidad de iteración y los tipos fuertes que el último 20% de rendimiento.
+4. **El LLM local como cuello de botella de la latencia**, no la sim.
+5. **Herramientas visuales** (mapas, inspector, paneles de creencias) que ayudan a depurar desde temprano.
+
+### 7.2 Lenguaje: TypeScript se queda, con dos válvulas
+
+| Opción | A favor | En contra |
 |---|---|---|
-| Lenguaje | TypeScript strict, Node 24 | Tipos fuertes para modelos de datos grandes; Zod para validar salidas del LLM y `content/`; mismo lenguaje para la futura UI web. |
-| Tests | Vitest | Rápido, TS nativo, snapshots para determinismo. |
-| Persistencia | SQLite (`node:sqlite`), un archivo por vida | Consultas sobre miles de agentes sin servidor; la verdad completa queda guardada (tooling §1). |
-| RNG | Propio (sfc32 o xoshiro) con `fork` por clave | Determinismo; agregar un sistema no cambia las tiradas de otro. |
-| Ids | Contadores por tipo, sin RNG | Mismo motivo que el RNG por clave. |
-| Modelo de datos | Records tipados + sistemas (ECS liviano), componentes por sistema | Serializable, hasheable y migrable por partes. |
-| Colecciones | `Map` con claves ordenadas al iterar; nada de `for...in` sobre objetos en la sim | El orden de iteración es parte del determinismo. |
-| Números | `number` con redondeo explícito en los ledgers (enteros en la unidad mínima) | La conservación se testea con igualdad exacta. |
-| LLM | Proveedor intercambiable por trabajo: plantillas, modelo local, API | Por defecto, modelos locales: parser 7-8B con JSON restringido, narrador 12-14B. API opcional. Ver narration §1. |
-| LLM en tests | `MockLLM` | La sim y el turno se testean sin red ni costo. |
-| UI | CLI primero → web (Vite + React) | Iterar la simulación sin pelear con UI. |
+| **TypeScript (Node)** | Iteración rápida; tipos estructurales ideales para un modelo de datos grande; Zod; el mismo lenguaje para la UI web; la sim pura puede correr en un Web Worker. | 2-5× más lento que Rust en numérico; objetos pesados en memoria; floats trascendentes sin garantía entre versiones del motor. |
+| Rust | Rendimiento, memoria, determinismo fácil, ECS maduro. | Iteración mucho más lenta sobre un modelo de datos que va a cambiar cientos de veces; compilación lenta; la UI web igual necesita TS. |
+| C# / .NET (o Godot) | Buen rendimiento, ecosistema de juegos. | Sin ventaja clara para un juego de texto con UI web; Zod y tipos estructurales no tienen equivalente igual de cómodo. |
+| Python | Prototipado, ciencia de datos. | Lento sin NumPy; tipos débiles para este tamaño. |
+
+**Decisión propuesta: TypeScript**, porque el criterio 3 domina y el 4 dice que la sim no es el cuello de botella del turno. Las dos válvulas para el criterio 2:
+- **Datos en columnas** (`TypedArray`, structure-of-arrays) para lo masivo: celdas del planeta, poblaciones agregadas, campos de esencia y clima. Objetos solo para lo materializado.
+- **Núcleos en Rust → WASM** si el perfil lo pide (erosión, clima, modelos agregados). WASM tiene floats IEEE deterministas y la libm va compilada adentro, así que además resuelve el determinismo de las trascendentes en esos núcleos. Criterio: un núcleo numérico que se lleve más del 30% del tiempo de worldgen o de la historia, medido en la sim headless.
+
+### 7.3 Runtime: Node 24, sin `tsx`
+
+- **Node 24 corre `.ts` directo** (type stripping nativo). Con `erasableSyntaxOnly` en el tsconfig (sin `enum`, `namespace` ni parameter properties: se usan uniones de literales, que el diseño ya usa) no hace falta ni `tsx` ni build: `node src/ui/cli/main.ts`. `tsc --noEmit` solo verifica tipos.
+- **Bun y Deno** se descartan: Bun trae SQLite y test runner propios, pero cambia de motor (JavaScriptCore), con otro rendimiento y otras trascendentes; Deno no aporta nada que Node 24 no tenga. Una sola plataforma de referencia es parte del determinismo.
+- **Versión fijada:** `.nvmrc` y `engines` en `package.json`; el guardado registra la versión de Node y del motor (tooling §4).
+
+### 7.4 Determinismo: más estricto que el borrador
+
+- **RNG por contador** (stateless): `draw(seed, key, n)` con un mezclador de 32 bits (estilo PCG-hash o *squares*) sobre el hash de la clave. Encaja con las claves por tupla que ya usa todo el diseño (`rng.fork("materialize", populationId, slot, epoch)`): no hay estado que guardar ni que pasar entre workers, y la misma clave da lo mismo en cualquier hilo. `sfc32` queda para flujos largos dentro de una clave (worldgen).
+- **`core/math` propio** para la sim: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con polinomios en suma, resta, multiplicación, división y `Math.sqrt` (que IEEE garantiza redondeadas igual en todos lados). `Math.exp` y compañía quedan prohibidas en `sim/` y `worldgen/` por lint. Así una actualización de V8 no rompe el replay de una vida vieja (el borrador aceptaba "lo mismo en el mismo Node").
+- **CI con dos plataformas** (Windows y Linux) que comparan el hash del log de un escenario: el usuario juega en Windows.
+- **Ids en paralelo:** si una fase corre en workers, las entidades nuevas reciben su id al asentar (fase *settle*), en orden de clave, nunca dentro del worker.
+
+### 7.5 Persistencia
+
+- **`node:sqlite`** se queda (sin dependencias nativas que compilar en Windows), detrás de una interfaz chica en `persistence/` para poder cambiar a `better-sqlite3` si aparece un problema: es todavía un módulo joven de Node.
+- **Componentes como JSON canónico** con hash por componente (pregunta 3); **snapshots comprimidos con zstd** (`node:zlib`). MessagePack o CBOR solo si el tamaño medido en la Fase 5 lo pide: el JSON se lee a ojo en el inspector.
+- **DuckDB, más adelante y opcional,** para analizar lotes grandes de la sim headless (calibración de la Fase 3 en adelante): lee SQLite y Parquet directo. No entra a la Fase 0.
+
+### 7.6 Validación y contenido: Zod 4
+
+- **Zod 4** (más rápido y liviano que el 3) y **`z.toJSONSchema()`**: el mismo esquema que valida el `IntentDraft` se manda como JSON Schema al servidor del LLM local para restringir la salida (Ollama, llama.cpp y LM Studio lo aceptan). Un esquema, tres usos: tipo, validación y gramática.
+- **Contenido en JSON** (o TS cuando necesita lógica) validado al cargar; los tipos de lo que entra de afuera salen de `z.infer` (pregunta 2).
+
+### 7.7 LLM local: un modelo residente
+
+- **Una interfaz compatible con OpenAI** (`/v1/chat/completions` con `response_format`), que hablan Ollama, el servidor de llama.cpp y LM Studio; los extras de cada runtime (gramáticas GBNF, ranuras de caché de llama.cpp) van como opciones del proveedor. `fetch` directo, sin SDK.
+- **Ollama para empezar** (instalación simple en Windows, cambio de modelo con un comando); **servidor de llama.cpp** cuando haga falta control fino: gramáticas propias, caché del prefijo por ranura, decodificación especulativa.
+- **Revisión de narration §1:** 12 GB no entran un parser de 7-8B y un narrador de 12-14B cargados a la vez (unos 5 GB + 9 GB más la caché de contexto). Cambiar de modelo en cada turno cuesta segundos. **Propuesta: un solo modelo residente de 12-14B para los dos trabajos** (el parser con salida restringida por esquema) y medir en el banco de pruebas si un parser chico aparte vale el cambio. El fine-tune de la Fase 9 se hace sobre el modelo que gane.
+- Los modelos concretos se eligen en el banco de pruebas de la Fase 1, no acá: cambian cada pocos meses.
+
+### 7.8 Interfaz: la web antes
+
+- **La CLI queda como herramienta** (pruebas, scripts, REPL del inspector) y para jugar en la Fase 1a.
+- **Propuesta: una UI web local mínima desde el cierre de la Fase 1** (no en la Fase 9): servidor Node local + Vite + React con chat, panel del personaje, bitácora y un mapa. Los paneles de creencias, la crónica y sobre todo los mapas del inspector (presiones, LOD, tiers) se ven y se depuran mucho mejor en el navegador que en PNG sueltos. Sin Electron ni Tauri: el navegador alcanza para un juego personal.
+- **Mapas:** canvas 2D al principio; deck.gl o PixiJS si hace falta (deck.gl dibuja hexágonos de H3 directo, ver §7.9).
+
+### 7.9 La grilla del planeta: evaluar H3
+
+- planet-gen pide una geodésica hexagonal de ~40.000 celdas de nivel 0 con subdivisión local. **H3** (`h3-js`) es exactamente eso ya hecho y probado: su resolución 3 tiene unas 41.000 celdas, con jerarquía de 16 niveles (que encaja con las resoluciones de zona del LOD), vecinos, distancias, anillos y rellenado de polígonos. El tamaño del planeta solo cambia la escala en metros.
+- **Costo:** los hijos de una celda H3 no cubren exactamente al padre (la contención es aproximada), y la apertura es 7 (1 → 7 → 49 → 343 → 2.401 hijos) en lugar de un número libre.
+- **Propuesta:** un spike de un día en la Fase 1 (tarea de planet-gen mínima) que compare H3 con una Goldberg propia. Si la contención aproximada no rompe la conservación por celda (el ledger se lleva por celda hija), se usa H3.
+
+### 7.10 Calidad del código
+
+- **Biome** (formato y lint en una sola herramienta rápida) en lugar de ESLint + Prettier.
+- **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, y prohibiciones (`Math.random`, `Date`, `Math.exp` y compañía, `node:*` dentro de `sim/` y `worldgen/`). Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
+- **Vitest** se queda; se suma **fast-check** para tests por propiedades: la conservación (ledgers), el determinismo (mismo seed, cualquier orden de inserción) y `interact` sin móvil perpetuo son propiedades, no ejemplos.
+- **npm** se queda: pnpm solo aporta cuando haya workspaces.
+
+### 7.11 Tabla final (propuesta)
+
+| Tema | Decisión | Cambio respecto del borrador |
+|---|---|---|
+| Lenguaje | TypeScript strict | — (con datos en columnas y válvula Rust → WASM) |
+| Runtime | Node 24 con type stripping, versión fijada | sin `tsx` ni build |
+| RNG | por contador con claves; `sfc32` para flujos | antes: solo `sfc32`/xoshiro con `fork` |
+| Matemática | `core/math` determinista | antes: `Math.*` en el mismo Node |
+| Ids | contadores por tipo, asignados al asentar | se aclara el caso con workers |
+| Persistencia | `node:sqlite` tras interfaz, JSON canónico, zstd | — (DuckDB opcional más adelante) |
+| Validación | Zod 4 + `z.toJSONSchema` para el LLM | Zod 3 → 4 |
+| LLM | interfaz OpenAI-compatible; Ollama → llama.cpp; un modelo residente | antes: dos modelos (7-8B + 12-14B) |
+| UI | CLI de herramienta; web local mínima al cierre de la Fase 1 | antes: web en la Fase 9 |
+| Grilla | H3 si pasa el spike | antes: Goldberg propia |
+| Lint | Biome + dependency-cruiser | antes: ESLint |
+| Tests | Vitest + fast-check | se suma fast-check |
+| CI | typecheck, lint, tests y hash de determinismo en Windows y Linux | se suma la segunda plataforma |
 
 ## 8. Orden de implementación revisado
 
@@ -345,7 +422,7 @@ Fase 5  zonas y LOD completos → región: varios asentamientos, rutas, estado l
 Fase 6  organizaciones completas → estado, clanes, sectas que nacen, diplomacia
 Fase 7  worldgen completo + resolución history → historia que deja ruinas y lenguas → families/mysteries → era como eje
 Fase 8  mundo completo: naciones, guerra, cosmología y ascensión
-Fase 9  UI web, archivo de vidas, fine-tune, eras no típicas
+Fase 9  UI web completa, archivo de vidas, fine-tune, eras no típicas (la web mínima entra al cierre de la Fase 1: §7.8)
 ```
 
 - **Regla para la Fase 1:** los sistemas "de fondo" (cultura, lengua, religión, clima, cielo) entran con su **forma real** (los tipos de este doc y sus esquemas en `content/`) aunque la profundidad sea mínima. Así las fases siguientes agregan procesos sin migrar datos.
@@ -365,4 +442,5 @@ Fase 9  UI web, archivo de vidas, fine-tune, eras no típicas
 1. **¿Partir la Fase 1 en hitos jugables?** Tiene 31 tareas. Propuesta: **1a "el turno"** (planet mínimo, una casa y un claro, cuerpo, percepción, ~10 verbos, parser, `PlayerView`, narrador, inspector: se puede jugar un día solo); **1b "la aldea vive"** (20 agentes, economía y oficio, estatus, propiedad, fiado, robo y reclamo, pelea y conversación mínimas); **1c "la aldea tiene mundo"** (cultura, lengua, religión, clima, cielo, salir al monte, modo novela mínimo, crónica al morir). *Recomendación: sí; cada hito termina con algo que se juega.*
 2. **Tipos de `content/` y de las salidas del LLM: ¿desde Zod o escritos a mano?** *Recomendación: el esquema Zod es la fuente y el tipo sale con `z.infer` para todo lo que entra de afuera (`content/`, parser, guardados); el estado de la sim usa interfaces escritas a mano, que son más legibles y no necesitan validarse en cada tick.*
 3. **Cómo se guardan los componentes en SQLite.** *Recomendación: una tabla por componente con `id`, JSON canónico y hash, más columnas indexadas solo para lo que consulta el inspector (lugar, tier, dueño); así el hash por componente de tooling §2 sale gratis y migrar es reescribir JSON.*
-4. **Cómo se corre TypeScript.** *Recomendación: `tsx` para `npm run dev` y `npm run sim`, `tsc --noEmit` para el typecheck y sin paso de build hasta la UI web; Vitest ya corre TS directo.*
+4. **Cómo se corre TypeScript.** *Recomendación: Node 24 con type stripping nativo (sin `tsx` ni build), `tsc --noEmit` para el typecheck; ver §7.3.*
+5. **El stack revisado de §7** (RNG por contador, `core/math` propio, Zod 4, un modelo LLM residente, web mínima al cierre de la Fase 1, spike de H3, Biome + dependency-cruiser, fast-check, CI en dos plataformas). *Recomendación: aprobar la tabla de §7.11 entera; cada punto se puede discutir suelto.*
