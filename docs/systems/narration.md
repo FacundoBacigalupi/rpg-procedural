@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [perception.md](perception.md) (percepts, errores con forma, §11), [information.md](information.md) (creencias del jugador), [actions.md](actions.md) §9, §11 (parser, `IntentDraft`, avisos), [dialogue.md](dialogue.md) §14-§16 (verbalización de actos de habla), [metaphysics.md](metaphysics.md) (vocabulario del mundo), [living-world.md](living-world.md) (léxico generado), [npc-psychology.md](npc-psychology.md) (estado emocional y esquemas del personaje).
-Lo usan: [player-loop.md](player-loop.md) (el turno del jugador), [tooling.md] futuro (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md] futuro (nombres y palabras que el narrador cita).
+Lo usan: [player-loop.md](player-loop.md) (el turno del jugador), [tooling.md](tooling.md) (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md] futuro (nombres y palabras que el narrador cita).
 
 ---
 
