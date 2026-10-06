@@ -27,7 +27,7 @@ interface NewGameSetup {
   seed: Seed;                                // al azar o elegido por el usuario
   worldConstraints?: WorldConstraint[];      // opcionales, sobre el mundo (familia metafísica, era, tamaño), nunca sobre el personaje
   entry: EntryMode;                          // §2
-  mode: "realistic" | "novel";            // §16; en modo novela, además: elecciones del personaje y dedos de oro (game-modes.md futuro)
+  mode: "realistic" | "novel";            // §16; en modo novela, además: elecciones del personaje y dedos de oro (game-modes.md)
   narration: StyleSettings;                  // narration §7
   llm: LlmConfig;                            // narration §1
 }
@@ -159,11 +159,13 @@ Paneles (en CLI, comandos; en la web, pestañas). **Ninguno muestra números de 
 | `interrupciones`, `delegación`, `posturas` | ver y editar las reglas |
 | `ayuda` | cómo se escribe, qué comandos hay; nunca qué conviene hacer |
 | `inspector` | el modo dios de tooling.md (§11) |
+| `me gustó` / `no me gustó` | marca el último texto narrado para el corpus del fine-tune ([tooling.md](tooling.md) §10, aprobado 2026-10-06) |
+| `restaurar` | recupera una copia de respaldo, con confirmación y marca "restaurada" ([tooling.md](tooling.md) §13) |
 | `abandonar` | termina la vida sin morir: se archiva como "vida sin terminar" con crónica parcial |
 
 ## 11. El inspector durante la partida
 
-El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisar la simulación, y usarlo con una vida en curso arruina la información limitada. Se puede abrir, con una confirmación, y la vida queda marcada en el archivo como "vista con inspector".
+El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisar la simulación, y usarlo con una vida en curso arruina la información limitada. Se puede abrir, con una confirmación, y la vida queda marcada en el archivo como "vista con inspector". La marca vale **también en modo novela** (aprobado 2026-10-06): las ventajas del personaje no son saber la verdad.
 
 ## 12. Sesiones y guardado
 
@@ -197,7 +199,7 @@ El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisa
 
 ## 16. Modo realista y modo novela
 
-Todo este documento describe el **modo realista**, el de por defecto. El **modo novela** (VISION, principio 11; diseño completo en [game-modes.md] futuro) se elige en `NewGameSetup` y cambia solo el arranque y lo que el personaje trae:
+Todo este documento describe el **modo realista**, el de por defecto. El **modo novela** (VISION, principio 11; diseño completo en [game-modes.md](game-modes.md)) se elige en `NewGameSetup` y cambia solo el arranque y lo que el personaje trae:
 - **Elecciones del personaje antes de empezar:** familia, lugar, talento, rasgos, edad de entrada. Se resuelven **eligiendo o forzando un nacimiento** que cumpla lo pedido dentro del mundo simulado (o, si no existe, fijando esos hechos en la generación con su propio evento de origen), nunca pegando un personaje sin historia.
 - **Dedos de oro:** entidades del mundo con origen y efectos aplicados por la sim.
 - **El bucle es el mismo:** turno, rutinas, interrupciones y paneles funcionan igual; un dedo de oro que "muestra stats" agrega un panel con la verdad que ese dedo de oro revela, y nada más.
