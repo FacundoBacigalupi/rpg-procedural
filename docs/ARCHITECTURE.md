@@ -35,7 +35,7 @@ src/
     org/         # familias, clanes, sectas, naciones como entidades que actúan
     cultivation/ # reinos, técnicas, afinidades
     actions/     # catálogo de acciones + resolución (tiradas → Event[])
-    scheduler/   # avance del tiempo multi-escala y LOD de NPCs
+    scheduler/   # avance del tiempo multi-escala y LOD de NPCs (ver docs/systems/simulation.md)
     knowledge/   # qué sabe/cree cada agente (verdad vs creencia)
   llm/           # cliente Claude, intent parser, narrador, prompts, mock para tests
   persistence/   # SQLite: guardar/cargar mundo, log de eventos

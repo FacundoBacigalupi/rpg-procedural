@@ -518,7 +518,7 @@ interface Preference {
 
 ## 18. Escala: cuánta psicología por tier
 
-Los tiers son los de [VISION.md](../VISION.md).
+Los tiers son los de [VISION.md](../VISION.md); su asignación, la materialización y la puesta al día están en [simulation.md](simulation.md) §4-§8.
 
 | Tier | Qué se guarda | Cómo se actualiza |
 |---|---|---|
