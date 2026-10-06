@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#19, crónica, epílogo e historiografía**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
+**Backlog de diseño** (acordado el 2026-10-05). Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-05: **#20, ampliación de heaven-karma**). La **Fase 0 (scaffold)** se puede intercalar en cualquier momento si se quiere empezar a codear.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -37,7 +37,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 16. [x] **Tecnología mortal** → [technology.md](systems/technology.md): agricultura, metalurgia, escritura, imprenta; difusión de innovaciones con el modelo de información.
 17. [x] **Reinos secretos (秘境)** → [secret-realms.md](systems/secret-realms.md): bolsillos dimensionales con creador, que se abren con las mareas de qi, saqueados antes y degradándose por dentro.
 18. [x] **Adivinación y profecía** → [divination.md](systems/divination.md): lectura ruidosa del grafo causal y de las presiones; profecías que se cumplen solas o provocan lo que querían evitar; lectura de karma.
-19. [ ] **Crónica, epílogo e historiografía** → `chronicle.md`: epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
+19. [x] **Crónica, epílogo e historiografía** → [chronicle.md](systems/chronicle.md): epílogo simulado N años después de morir; crónicas in-world sesgadas; el legado como lo que se recuerda de vos.
 
 ### C. Ampliaciones de lo que ya hay
 20. [ ] [heaven-karma.md](systems/heaven-karma.md): atención del Cielo como recurso finito, zonas ciegas, robar el rayo de una tribulación ajena, el Cielo inclina tiradas a favor de los enemigos de quien sobreexplota, fortuna colectiva (气运) de organizaciones y naciones.
@@ -71,6 +71,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - technology: tasas de invención según población, contacto, necesidad y cultura epistémica; velocidad de difusión y umbral de imitación; población mínima por complejidad de oficio; cuánto frena el cultivo a la tecnología mortal; variación de recetas por seed.
 - secret-realms: costo de crear y mantener un bolsillo y vida típica según su reserva; frecuencia de aperturas y duración de ventanas; límites de umbral típicos; mortalidad y botín de expediciones agregadas; cantidad de reinos por región; radio y magnitud del colapso.
 - divination: ruido de la lectura según diferencia de poder, distancia temporal y tamaño del sujeto; horizonte y corridas de la proyección por método y tier; magnitud de la reacción del Cielo; ambigüedad de los vocabularios simbólicos; fracción de profecías que se cumplen solas.
+- chronicle: decaimiento de la huella causal por distancia y causas concurrentes; capítulos y puntos de giro según la duración de la vida; puntos de control del epílogo y umbral para seguir más allá del siglo; errores por copia y reescritura por cambio de régimen; tamaño y criterio de "lo que nunca supiste".
 - economy: velocidad de ajuste de precios en el modo agregado (`k_bien`) contra el individual; tasas de interés y quiebras de hogares; formación y fuga de piedras espirituales y cambio plata–piedras; frecuencia de hambrunas y crisis monetarias.
 
 ## Ideas / pendientes sueltos
@@ -111,6 +112,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [~] Tecnología mortal ([systems/technology.md](systems/technology.md)) — borrador
 - [~] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md)) — borrador
 - [~] Adivinación y profecía ([systems/divination.md](systems/divination.md)) — borrador
+- [~] Crónica, epílogo e historiografía ([systems/chronicle.md](systems/chronicle.md)) — borrador
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -136,7 +138,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Estatus mínimo de aldea (campesinos, terrateniente, sirvientes), marcas visibles y rango percibido, deferencia en la utilidad del diálogo ([social-structure.md](systems/social-structure.md))
 - [ ] Huellas mínimas (sangre, objetos movidos), testigos, robo y pelea con reclamo de la víctima y reputación ([law.md](systems/law.md))
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
-- [ ] Muerte → pantalla de crónica
+- [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
 - [ ] Inspector god-mode básico
 
 ## Fase 2 — Psicología y memoria
@@ -150,6 +152,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Testigos con memoria deformada y mentiras, acusaciones en el diálogo, culpa por el delito propio ([law.md](systems/law.md))
 - [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
 - [ ] Profecías como creencias con linaje que cambian utilidades, adivinos de calle (ritual, lectura en frío) ([divination.md](systems/divination.md))
+- [ ] Crónica: "lo que nunca supiste" (intrigas y creencias equivocadas) y personas importantes por relación y memoria ([chronicle.md](systems/chronicle.md))
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -166,6 +169,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Consejo de ancianos como jurisdicción: `Case`, investigación simple, compensación y castigos; vendettas entre familias; rastreo de lotes robados en casas de empeño ([law.md](systems/law.md))
 - [ ] Consejo de aldea como primera organización, bandas de bandidos que nacen del hambre, lealtad como relación con la organización ([organizations.md](systems/organizations.md))
 - [ ] Catálogo inicial de procesos mortales en `content/` con requisitos físicos y efectos sobre producción, `ProcessKnowledge` por persona, aprendizaje con maestro ([technology.md](systems/technology.md))
+- [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -214,6 +218,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Tratados, vasallaje y tributo, rehenes, repudio en sucesiones, garantes y árbitros, contratos con bestias y espíritus, talismanes de contrato ([contracts.md](systems/contracts.md))
 - [ ] Gremios, monopolios y cárteles, casas de cambio y letras, sueldos de secta, tributo de protección, mercado negro ([economy.md](systems/economy.md))
 - [ ] Fuerzas como organizaciones (mando, órdenes con brecha, deserción), logística con líneas de suministro y forrajeo, moral con drivers, guerras de sectas con formaciones ([war.md](systems/war.md))
+- [ ] Textos como objetos en archivos de organizaciones (crónicas de secta, genealogías, memorias) con autor y sesgo; encargar, escribir y quemar ([chronicle.md](systems/chronicle.md))
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -229,6 +234,7 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 - [ ] Invención y pérdida en la historia agregada, tecnología por cultura según geografía, ruinas con procesos perdidos, desplazamiento por cultivo ([technology.md](systems/technology.md))
 - [ ] Reinos secretos creados por la historia profunda (creadores, propósitos, causas accidentales) con aperturas históricas, saqueos y degradación ([secret-realms.md](systems/secret-realms.md))
 - [ ] Pronóstico por conocimiento (calendarios, ciclos), presagios naturales en la legitimidad, profecías como legados ([divination.md](systems/divination.md))
+- [ ] Reescrituras por régimen, censura, estelas y canciones en la historia agregada; huella causal y legado recordado con el embudo; epílogo hasta que se apague el legado ([chronicle.md](systems/chronicle.md))
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -245,4 +251,4 @@ Todo el diseño base está escrito en `docs/systems/` y mergeado en `develop`. L
 
 ## Fase 9 — Pulido
 - [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica
-- [ ] Archivo de crónicas de vidas pasadas
+- [ ] Archivo de crónicas de vidas pasadas, encadenado de vidas en un mismo mundo por renacimiento ([chronicle.md](systems/chronicle.md))
