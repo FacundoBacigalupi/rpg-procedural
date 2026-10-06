@@ -291,7 +291,7 @@ Comandos:
 2. **Historia:** no es un número fijo de años; se simula por relevancia, como un embudo de resolución creciente con olvido entre épocas. Ver [deep-history.md](deep-history.md).
 3. **Karma:** sí, literal. Ver [heaven-karma.md](heaven-karma.md).
 4. **El Cielo:** existe como agente-ley; cultivar es rebelarse contra él y las rupturas traen tribulaciones. Ver [heaven-karma.md](heaven-karma.md).
-5. **Tamaño:** un planeta entero (geografía sobre esfera). Salir del planeta queda abierto, posiblemente vía ascensión. `Realm` se modela como entidad dentro de una cosmología mayor para no cerrar la puerta.
+5. **Tamaño:** un planeta entero (geografía sobre esfera). Salir del planeta es la ascensión ([cosmology.md](cosmology.md)). `Realm` se modela como entidad dentro de una cosmología mayor para no cerrar la puerta.
 6. **Presiones derivadas, no guardadas como verdad:** cada sistema las calcula con una función pura del estado y se cachean; toda descarga registra la presión con su valor en `causes` (§9).
 7. **Inspector y contrafácticos solo en `tools/`:** leen la verdad, nunca escriben en ella ni corren durante una partida (§10, §11).
 8. **Contrafácticos en la crónica:** no por defecto (es caro y especulativo para el jugador); como mucho, una opción del archivo de vidas que corre en modo agregado (aprobado 2026-10-06).
