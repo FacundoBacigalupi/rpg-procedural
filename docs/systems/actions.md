@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [simulation.md](simulation.md) (scheduler, fases, contiendas, `advanceUntil`), [causality.md](causality.md) (procesos, causas), [information.md](information.md) (creencias: las referencias y la factibilidad se resuelven contra lo que el actor cree), [perception.md](perception.md) (el actor percibe su propio resultado), [body-health.md](body-health.md) §3 (capacidades), [social-structure.md](social-structure.md) §5 (capacidad, medios, contrapartes), [npc-psychology.md](npc-psychology.md) §7 (utilidad sobre el mismo catálogo), [heaven-karma.md](heaven-karma.md) §6 (inclinación de tiradas), [ARCHITECTURE.md](../ARCHITECTURE.md) (contratos `ActionPlan` y `Outcome`).
-Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md] futuro), el bucle del jugador ([player-loop.md] futuro), la IA de NPCs y las órdenes de organizaciones (organizations §4).
+Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, economy, law, cultivation, travel…), el parser de intención y el narrador ([narration.md](narration.md)), el bucle del jugador ([player-loop.md] futuro), la IA de NPCs y las órdenes de organizaciones (organizations §4).
 
 ---
 
