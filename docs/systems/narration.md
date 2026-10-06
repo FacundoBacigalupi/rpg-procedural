@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [perception.md](perception.md) (percepts, errores con forma, §11), [information.md](information.md) (creencias del jugador), [actions.md](actions.md) §9, §11 (parser, `IntentDraft`, avisos), [dialogue.md](dialogue.md) §14-§16 (verbalización de actos de habla), [metaphysics.md](metaphysics.md) (vocabulario del mundo), [living-world.md](living-world.md) (léxico generado), [npc-psychology.md](npc-psychology.md) (estado emocional y esquemas del personaje).
-Lo usan: [player-loop.md](player-loop.md) (el turno del jugador), [tooling.md](tooling.md) (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md] futuro (nombres y palabras que el narrador cita).
+Lo usan: [player-loop.md](player-loop.md) (el turno del jugador), [tooling.md](tooling.md) (costos, caché, fixtures), [chronicle.md](chronicle.md) (crónica final y epílogo), [language.md](language.md) (nombres y palabras que el narrador cita).
 
 ---
 
@@ -124,7 +124,7 @@ interface EntityLabel {
 
 - **Vocabulario del mundo** (metaphysics): cada familia metafísica trae su juego de términos (qi o maná, secta u orden, ruptura o ascenso). El narrador recibe solo los términos de este mundo.
 - **Léxico del personaje:** el subconjunto que él conoce. Un campesino que nunca oyó hablar de reinos de cultivo no dice "Fundación": dice "uno de esos inmortales". Las palabras técnicas se aprenden (skills, information) y entran al léxico cuando el personaje las cree.
-- **Léxico generado** (living-world; language.md futuro): nombres de personas, lugares, plantas y conceptos salen del generador de lenguas. El LLM los cita o usa la traducción que el pedido trae; nunca inventa palabras.
+- **Léxico generado** (living-world; [language.md](language.md) §13): nombres de personas, lugares, plantas y conceptos salen del generador de lenguas. El LLM los cita o usa la traducción que el pedido trae; nunca inventa palabras.
 - **Voz del personaje:** cultura, estrato, oficio y educación tiñen la narración (un herrero nota el temple de una hoja; una cortesana, la tela de una túnica). El estado emocional tiñe el tono, no los hechos: con miedo, la narración es tensa, pero no agrega amenazas que no se percibieron.
 - **Idioma de la narración:** español por defecto, rioplatense si el modelo lo maneja (configurable; ver Proveedores en §1). Las lenguas del mundo que el personaje no entiende se narran como sonido o con las palabras sueltas que sí entendió (dialogue §3).
 
@@ -245,7 +245,7 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 - **Fase 3:** montaje para saltos de tiempo, textos dentro del mundo, sueños.
 - **Fase 4:** vocabulario de cultivo por escuela; percepción interna y de cultivo narrada con incertidumbre.
 - **Fase 1 (además):** proveedor local (Ollama o similar) con gramática JSON para el parser; banco de pruebas de modelos.
-- **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo (language.md).
+- **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo ([language.md](language.md)).
 - **Fase 9:** fine-tune LoRA propio con ejemplos reales del juego.
 
 ## Tests

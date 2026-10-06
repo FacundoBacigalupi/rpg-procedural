@@ -25,7 +25,7 @@ Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edifici
 ```ts
 interface Settlement {
   id: SettlementId;
-  names: PlaceNameId[];                      // en capas, por lengua y época (deep-history §11, language #41)
+  names: PlaceNameId[];                      // en capas, por lengua y época (deep-history §5, [language.md](language.md) §9)
   cells: CellId[];                           // celdas hex que ocupa (y su territorio cercano en `hinterland`)
   hinterland: CellId[];                      // campos, bosques, pastos y canteras de los que vive
   anchors: SettlementAnchor[];               // §2: por qué hay gente acá
