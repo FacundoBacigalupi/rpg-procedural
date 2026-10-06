@@ -226,7 +226,7 @@ con `k_bien` según qué tan rápido reacciona ese bien (la comida reacciona rá
 - **Los precios viajan como noticias** (frentes de information §4), con el retraso de las rutas. Un comerciante que llega primero con la noticia de una mala cosecha compra antes de que suba.
 
 ### Mercado negro
-Bienes prohibidos (venenos, técnicas demoníacas, objetos robados, personas), bienes de monopolio fuera del canal oficial (sal de contrabando) y todo lo que evita impuestos. Tiene sus propios lugares (el patio de atrás de la posada, la feria de medianoche), su propia red de confianza (hay que conocer a alguien) y precios con prima de riesgo. Detalle en law.md (futuro).
+Bienes prohibidos (venenos, técnicas demoníacas, objetos robados, personas), bienes de monopolio fuera del canal oficial (sal de contrabando) y todo lo que evita impuestos. Tiene sus propios lugares (el patio de atrás de la posada, la feria de medianoche), su propia red de confianza (hay que conocer a alguien) y precios con prima de riesgo. Detalle en [law.md](law.md) §12.
 
 ## 6. Regateo, calidad y estafa
 ### Regateo
