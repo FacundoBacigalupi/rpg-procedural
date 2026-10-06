@@ -93,7 +93,12 @@ KarmicBond {
 
 ### Cómo se crea
 Solo con eventos reales. Algunos ejemplos:
-- Matar a alguien deja una deuda de sangre con la víctima, y por extensión con su linaje y su maestro.
+- Matar a alguien deja una deuda de sangre con la víctima, y por extensión con su linaje y su maestro. **El peso depende de la causa y de la víctima** (aprobado 2026-10-06):
+  - matar por codicia o por gusto pesa entero;
+  - en defensa propia o de otros, el peso es mínimo;
+  - si la víctima carga mucho karma negativo (asesino, tirano, ladrón de vidas), el peso también es mínimo, porque el Cielo no castiga cobrar una deuda que ya existía; si no fuera así, habría que perdonar a todos, y eso es más peligroso;
+  - rematar a quien se rindió o a un indefenso inocente pesa más que el caso base.
+  El Cielo pesa con la **verdad** de la causa y del karma de la víctima, no con lo que el matador cree: quien mata a un inocente creyéndolo culpable carga la deuda completa.
 - Salvar una vida crea una deuda de vida a tu favor.
 - Romper un juramento genera un karma fuerte y casi siempre atrae retribución. Cómo los compromisos (juramentos, contratos, vínculos solemnes) alimentan este libro, con peso según solemnidad, consentimiento y sinceridad reales, está en [contracts.md](contracts.md) §9.
 - Tomar discípulos crea un vínculo maestro–discípulo que se hereda en las dos direcciones.

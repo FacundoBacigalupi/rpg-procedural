@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#31, conversación e influencia**). Después del backlog viene la **Fase 0: scaffold**.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#32, narrador y capa LLM**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -23,7 +23,7 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 28. [x] **Acciones e intenciones** → [actions.md](systems/actions.md): catálogo de acciones primitivas y compuestas (en `content/`), `ActionPlan` y su validación, precondiciones desde el estado y desde las creencias del actor, duración, interrupción y acciones largas, acciones que fallan con forma, acciones de NPCs con el mismo catálogo, qué hace el parser con lo ambiguo, lo imposible y lo que el personaje no sabe que es imposible.
 29. [x] **Habilidades y aprendizaje** → [skills.md](systems/skills.md): el modelo común de saber hacer (combate, oficios, sociales, cuerpo, estudio): práctica percibida, maestros, libros, techo por talento y cuerpo, olvido por desuso, transferencia entre habilidades vecinas, conocimiento tácito vs explícito. Generaliza lo que ya está en crafts §2, cultivation y technology.
 30. [x] **Combate individual** → [combat.md](systems/combat.md): duelos y peleas chicas como intercambios con tiempo, distancia y posición; cuerpo por partes y heridas reales; armas y armaduras como objetos; artes marciales y técnicas de cultivo con su costo; mortal contra cultivador; percepción en la pelea (leer al rival, fintas, sorpresa); huir, rendirse, perdonar; moral individual; huellas y testigos. War.md cubre las batallas; esto es la escala de una persona.
-31. [ ] **Conversación e influencia** → `dialogue.md`: hablar como acción con estructura (temas, preguntas, pedidos, ofertas, amenazas, mentiras, halagos), persuasión que sale de creencias, relación, cara y utilidad del otro; detectar mentiras; regateo; secretos que se sueltan; lo que el NPC dice vs lo que cree; cómo el LLM pone en palabras una respuesta ya decidida por la sim.
+31. [x] **Conversación e influencia** → [dialogue.md](systems/dialogue.md): hablar como acción con estructura (temas, preguntas, pedidos, ofertas, amenazas, mentiras, halagos), persuasión que sale de creencias, relación, cara y utilidad del otro; detectar mentiras; regateo; secretos que se sueltan; lo que el NPC dice vs lo que cree; cómo el LLM pone en palabras una respuesta ya decidida por la sim.
 32. [ ] **Narrador y capa LLM** → `narration.md`: qué recibe el narrador (percepts, creencias y voz del personaje, léxico generado), qué no puede hacer (inventar entidades, revelar la verdad), estilo y tono por situación, memoria de narración y continuidad, validación de la salida, parser de intención (modelo, esquema, aclaraciones), costos, caché y modo sin red.
 33. [ ] **Bucle del jugador** → `player-loop.md`: cómo empieza una vida (nacimiento, infancia acelerada, punto de entrada), ritmo de juego (escenas, días, años), saltar tiempo con rutinas y con qué lo interrumpe el mundo, metas propias, diario y hipótesis del jugador, qué ve el jugador de su propio estado, muerte, espíritu y crónica final, comandos fuera del personaje.
 34. [ ] **Persistencia, inspector y herramientas** → `tooling.md`: guardado en SQLite (verdad, creencias, log de eventos), replay desde seed + acciones, versiones del formato, inspector god-mode completo (consultas, comandos de causality §10, mapas), sim headless con métricas y reportes para calibrar, perfiles de rendimiento.
@@ -52,6 +52,7 @@ Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos s
 - actions: número final de verbos y modos; checkpoints por verbo; umbral de saliencia para interrumpir; curvas de margen a `Outcome`; peso de los modos en duración y emisiones; frecuencia de confirmaciones.
 - skills: tasas y curvas por dominio; tiempos por tramo; oxidación tácita y explícita; transferencia e interferencia; fijación de vicios; sesgos de autoimagen; dispersión por ocupación.
 - combat: largo del pulso; tiempos por arma y movimiento; sangrado y shock en pelea; gasto de aire; peso de la sorpresa; umbrales de quiebre; brecha mortal–cultivador por umbral; duración típica; frecuencia de pausas.
+- dialogue: duración de los turnos; pesos de relevancia, credibilidad, entrega y apertura en la persuasión; reacción por presionar; chance de soltar secretos por factor; tasa de detección de mentiras; costo de cara por cambiar de opinión en público; turnos de una charla resumida de tier 2.
 - simulation: tamaño de las zonas local y regional; histéresis; umbrales y pesos de importancia para tier 3; cupos de tier 2 y 3; cadencias por proceso y resolución; tolerancias agregado–individual; intervalo de snapshots; presupuestos por acción, día saltado y año de historia.
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
@@ -126,6 +127,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Acciones e intenciones ([systems/actions.md](systems/actions.md)) — catálogo cerrado de verbos con modos, `ActionPlan` como árbol, referencias contra creencias, factibilidad en dos pasos, fracasos por el factor más débil, parser que descarta resultados
 - [x] Habilidades y aprendizaje ([systems/skills.md](systems/skills.md)) — un modelo para todo saber hacer: facetas, repertorio y familiaridad; tácito vs explícito; aprender de lo percibido, con maestros y manuales; techo oculto; vicios; oxidación con pico; transferencia; autoimagen como creencia
 - [x] Combate individual ([systems/combat.md](systems/combat.md)) — pulsos con preparación, compromiso y hueco; espacio continuo; intercambio con percepción y contienda; heridas reales sin puntos de vida; armas y armaduras como objetos; técnicas con `interact`; moral con chances creídas; cómo termina; rastros
+- [x] Conversación e influencia ([systems/dialogue.md](systems/dialogue.md)) — actos de habla con contenido estructurado; entender con errores; persuasión como cambio de insumos de la utilidad del otro; preguntas, pedidos, amenazas, cara; secretos que se escapan; contenido del jugador con entrega del personaje; verbalización con lista blanca
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -152,6 +154,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md))
 - [ ] Estatus mínimo de aldea (campesinos, terrateniente, sirvientes), marcas visibles y rango percibido, deferencia en la utilidad del diálogo ([social-structure.md](systems/social-structure.md))
 - [ ] Pelea mortal: posiciones y alcances, pulsos con `windup`/`commit`/`recovery`, intercambio con percepción y contienda, heridas por parte, aire, huida y rendición, pausas del jugador ([combat.md](systems/combat.md))
+- [ ] Conversación mínima: `greet`, `tell`, `ask`, `request`, `offer`, `accept`, `refuse`, `farewell`; NPC que contesta desde sus creencias o dice "no sé"; verbalización con lista blanca y plantillas de respaldo; `SpeechStyle` mínimo ([dialogue.md](systems/dialogue.md) §2, §5, §16)
 - [ ] Huellas mínimas (sangre, objetos movidos), testigos, robo y pelea con reclamo de la víctima y reputación ([law.md](systems/law.md))
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
 - [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
@@ -173,6 +176,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Factibilidad creída con avisos desde lo que sabe el personaje, actos de habla como argumento de `speak`, referencias a entidades fantasma ([actions.md](systems/actions.md) §4, §5)
 - [ ] Autoimagen y opinión ajena de la habilidad como creencias, saber explícito como creencias del dominio, aprender mirando ([skills.md](systems/skills.md) §2.4, §3.2, §9)
 - [ ] Leer al rival, fintas, chances creídas y quiebre en la pelea; trauma y culpa después de matar ([combat.md](systems/combat.md) §5, §11)
+- [ ] Mentiras y su detección, `TopicStack`, persuasión con argumentos y apelaciones, amenazas, halagos e insultos con cara, secretos que se escapan, sonsacar ([dialogue.md](systems/dialogue.md) §3-§11)
 - [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
 
 ## Fase 3 — Vida offscreen, familias y economía
@@ -201,6 +205,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Suelos por parcela con nutrientes que se mueven, agotamiento, barbecho y abono; rendimientos que alimentan la presión de hambre ([planet-gen.md](systems/planet-gen.md) §9)
 - [ ] Poblaciones por celda con productividad y red trófica simple; caza, pesca, recolección y tala que agotan stocks; ganado como bien vivo con cuerpo, dueño y zoonosis; sucesión en campos abandonados; fuego con combustible ([living-world.md](systems/living-world.md) §8, §9, §12)
 - [ ] Ofrendas como lotes con destino (quemado, enterrado, comido), gasto de funerales y endeudamiento, oficios de culto (incienso, papel, tablillas) ([spirits.md](systems/spirits.md) §6, §11)
+- [ ] Conversaciones fuera de escena como actos, grupos y oyentes de costado, promesas que crean compromisos, interrogatorios ([dialogue.md](systems/dialogue.md) §7, §12, §15)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -248,6 +253,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Migraciones estacionales con rutas aprendidas, cuellos de botella y barreras; trashumancia; introducciones por rutas comerciales con latencia; plagas de cultivos; `BeastMind` para monturas y bestias de tier 2-3 ([living-world.md](systems/living-world.md) §10, §11, §13)
 - [ ] Depósitos con estratos y perturbaciones en los sitios de la región, excavar como sesión de oficio, saqueo con contexto destruido ([deep-history.md](systems/deep-history.md) §1, §6-§7)
 - [ ] Worldgen mínimo de pasado para la región inicial: protolengua y una o dos hijas con cambio fonético, topónimos con derivación, secuencia de estilos por cultura ([deep-history.md](systems/deep-history.md) §11, [living-world.md](systems/living-world.md) §3)
+- [ ] Lenguas e intérpretes en la conversación, dialectos que revelan origen, discursos a multitudes ([dialogue.md](systems/dialogue.md) §12, §13)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -273,6 +279,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Intrigas entre organizaciones con órdenes compartimentadas y modelo del gobierno del blanco; intrigantes que explotan profecías; traición desde adentro de expediciones ([schemes.md](systems/schemes.md) §9-§11)
 - [ ] Tratados entre comunidades y reinos de bestias, razas secretas de sectas, mercado de bestias y partes protegidas ([living-world.md](systems/living-world.md) §12, §13)
 - [ ] Salones ancestrales con tablillas, tierras de culto como compromiso entre ramas, abandono con etapas (hambre, enojo, tomar) y desenlaces, fantasmas hambrientos ([spirits.md](systems/spirits.md) §7-§11)
+- [ ] Deliberación de organizaciones y audiencias formales como conversaciones de registro alto ([dialogue.md](systems/dialogue.md) §10)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)

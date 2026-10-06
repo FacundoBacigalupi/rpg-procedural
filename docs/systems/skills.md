@@ -6,7 +6,7 @@
 
 Depende de: [actions.md](actions.md) §7 (la habilidad es un factor de cada resolución), [perception.md](perception.md) (se aprende solo de lo percibido), [npc-psychology.md](npc-psychology.md) (aptitudes, plasticidad por etapa, memoria, sueño que consolida, motivación), [body-health.md](body-health.md) §3 (capacidades, techo corporal, envejecimiento), [family-lineage.md](family-lineage.md) §4 (talento heredado), [information.md](information.md) (el saber explícito son creencias; manuales como medios).
 Generaliza: crafts §1 (`CraftSkill`), cultivation §8 (`KnownTechnique`: comprensión y competencia), technology §2 (`ProcessKnowledge`: fidelidad y práctica).
-Lo usan: todos los resolvers de acciones, [combat.md](combat.md) (estilos y reflejos), [dialogue.md] futuro (habilidades sociales), [language.md] futuro (lenguas y escrituras con este modelo), organizations §9 (maestro y discípulo), economy (el oficio como medio de vida), social-structure (exámenes y certificaciones), discovery (insights y descubrimientos que se vuelven saber).
+Lo usan: todos los resolvers de acciones, [combat.md](combat.md) (estilos y reflejos), [dialogue.md](dialogue.md) (habilidades sociales), [language.md] futuro (lenguas y escrituras con este modelo), organizations §9 (maestro y discípulo), economy (el oficio como medio de vida), social-structure (exámenes y certificaciones), discovery (insights y descubrimientos que se vuelven saber).
 
 ---
 
