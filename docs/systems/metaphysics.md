@@ -66,6 +66,7 @@ El karma literal existe solo si la ley lo lleva (Cielo, ciertos panteones). En u
 - **Ciclo con olvido** (las Fuentes Amarillas, reencarnación): ver [spirits.md](spirits.md). El Cielo cobra al cruzar lo que el alma le tomó ([heaven-karma.md](heaven-karma.md), cobro en las Fuentes).
 - **Ciclo que rechaza:** variante dura del anterior: el alma que cultivó no puede cruzar; solo le quedan ser espíritu, evadir el ciclo con un poder ganado o disiparse.
 - **Más allás:** reinos de los muertos gobernados por dioses, juicio, recompensa.
+- **Inframundo con economía:** variante de los anteriores. Existe un lugar real de los muertos, con su burocracia y su mercado, y las ofrendas quemadas **sí llegan**: el papel moneda y los bienes de papel se convierten allá en algo que los muertos usan. Las familias que ofrendan mantienen a sus muertos, y los muertos sin descendientes son pobres. Es una ley de ese mundo; en la familia xianxia base, las ofrendas no alcanzan a las almas del ciclo ([spirits.md](spirits.md) §6).
 - **Disolución:** el alma vuelve a la esencia del mundo.
 - **Sin alma:** la conciencia es del cuerpo y no queda nada.
 
@@ -123,6 +124,7 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - Pesos de las familias: xianxia 60%, alta fantasía occidental 15%, fantasía oscura 10%, mitológica 10%, rúnica 5%. Hasta la Fase 7 solo existe xianxia.
 - Sin mundos mixtos: una familia por mundo.
 - Especies no humanas jugables.
+- **Inframundo con economía como variante de mundo** (aprobado 2026-10-06): no está en el xianxia base, donde el papel quemado no llega a nadie.
 
 ## Preguntas abiertas
 - Ninguna por ahora.
