@@ -234,7 +234,7 @@ Cada umbral cruzado aplica sus `effects`, siempre como cambios a sistemas existe
 - **Sentidos:** radios de Esencia y Alma (perception §1), sentir qi ambiental, leer el cultivo ajeno.
 - **Técnicas posibles:** volar (en el umbral que el mundo defina), proyectar qi, guardar cosas en espacios (anillos de almacenamiento si el mundo lo permite), ataques del alma.
 - **Psique:** la distancia de escala (npc-psychology: el círculo moral se achica), la paciencia de quien vive siglos, la soledad.
-- **El poder en combate** (guerra, futuro) se calcula de todo eso junto: umbrales, esencia disponible, técnicas y dominio, comprensión, cuerpo, equipo, estado. Ganarle a alguien de un umbral más alto es posible con mejor técnica, emboscada o un tesoro; dos umbrales arriba casi nunca.
+- **El poder en combate** ([war.md](war.md) §8) se calcula de todo eso junto: umbrales, esencia disponible, técnicas y dominio, comprensión, cuerpo, equipo, estado. Ganarle a alguien de un umbral más alto es posible con mejor técnica, emboscada o un tesoro; dos umbrales arriba casi nunca.
 
 ## 12. Recursos y lugares
 - **Cuevas de cultivo (洞府):** lugares sobre venas o puntos de acumulación. Son escasas, se heredan, se compran, se pelean. Dónde vive un cultivador es una decisión de recursos.
