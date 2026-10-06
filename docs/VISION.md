@@ -35,6 +35,7 @@ Es para un solo jugador (el autor). Se prioriza profundidad y realismo sobre div
   - Tier 2 — NPC activo en la zona del jugador.
   - Tier 3 — NPC importante (líderes, genios, cultivadores fuertes), siempre simulado.
   - Tier 4 — NPC conectado al jugador (persistente, máxima resolución).
+  - Asignación, zonas de resolución y materialización: [systems/simulation.md](systems/simulation.md).
   - Un NPC con el que interactuás nunca vuelve a desaparecer.
 
 ## Ejemplo de inicio

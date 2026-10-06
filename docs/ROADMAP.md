@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#27, bucle de simulación y LOD**). Después del backlog viene la **Fase 0: scaffold**.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#28, acciones e intenciones**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -19,7 +19,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 ### D. La columna técnica: lo que une los sistemas
 Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el tiempo, cómo se pasa de un NPC agregado a uno con cuerpo, qué es exactamente una acción y qué ve el LLM. Van primero porque todo lo demás se apoya en ellas.
 
-27. [ ] **Bucle de simulación y LOD** → `simulation.md`: scheduler multi-escala (pasos por tier, eventos con hora, colas), orden determinista dentro de un paso, tiers 0-4 con qué se simula en cada uno, materialización y desmaterialización coherentes con las estadísticas (y con lo que el jugador ya vio), modo agregado vs individual y su calibración, presupuesto de cómputo por paso, saltos de tiempo largos, snapshots. Unifica las secciones "Escala (LOD)" de todos los docs.
+27. [x] **Bucle de simulación y LOD** → [simulation.md](systems/simulation.md): scheduler multi-escala (pasos por tier, eventos con hora, colas), orden determinista dentro de un paso, tiers 0-4 con qué se simula en cada uno, materialización y desmaterialización coherentes con las estadísticas (y con lo que el jugador ya vio), modo agregado vs individual y su calibración, presupuesto de cómputo por paso, saltos de tiempo largos, snapshots. Unifica las secciones "Escala (LOD)" de todos los docs.
 28. [ ] **Acciones e intenciones** → `actions.md`: catálogo de acciones primitivas y compuestas (en `content/`), `ActionPlan` y su validación, precondiciones desde el estado y desde las creencias del actor, duración, interrupción y acciones largas, acciones que fallan con forma, acciones de NPCs con el mismo catálogo, qué hace el parser con lo ambiguo, lo imposible y lo que el personaje no sabe que es imposible.
 29. [ ] **Habilidades y aprendizaje** → `skills.md`: el modelo común de saber hacer (combate, oficios, sociales, cuerpo, estudio): práctica percibida, maestros, libros, techo por talento y cuerpo, olvido por desuso, transferencia entre habilidades vecinas, conocimiento tácito vs explícito. Generaliza lo que ya está en crafts §2, cultivation y technology.
 30. [ ] **Combate individual** → `combat.md`: duelos y peleas chicas como intercambios con tiempo, distancia y posición; cuerpo por partes y heridas reales; armas y armaduras como objetos; artes marciales y técnicas de cultivo con su costo; mortal contra cultivador; percepción en la pelea (leer al rival, fintas, sorpresa); huir, rendirse, perdonar; moral individual; huellas y testigos. War.md cubre las batallas; esto es la escala de una persona.
@@ -49,6 +49,7 @@ Los 26 ítems están escritos y mergeados en `develop` (PRs #9-#43):
 
 ## Estado del diseño (2026-10-06)
 Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos son **borradores revisables**: las preguntas de diseño se respondieron (quedan como "Decisiones" en cada doc), y lo que queda abierto en ellos es **calibración con la sim headless** (cada doc tiene sus objetivos de sensación). Lo que falta diseñar está en el backlog 2 de arriba (#27-#43):
+- simulation: tamaño de las zonas local y regional; histéresis; umbrales y pesos de importancia para tier 3; cupos de tier 2 y 3; cadencias por proceso y resolución; tolerancias agregado–individual; intervalo de snapshots; presupuestos por acción, día saltado y año de historia.
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
 - npc-psychology (ampliación): plasticidad por etapa, prevalencias base y resolución del duelo, distribución de umbrales en multitudes, fusiones por noche de consolidación.
@@ -118,11 +119,13 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Reinos secretos ([systems/secret-realms.md](systems/secret-realms.md))
 - [x] Adivinación y profecía ([systems/divination.md](systems/divination.md))
 - [x] Crónica, epílogo e historiografía ([systems/chronicle.md](systems/chronicle.md))
+- [x] Bucle de simulación y LOD ([systems/simulation.md](systems/simulation.md)) — scheduler por fases, dos ejes de LOD (tier de agente y resolución de zona), materialización por ranuras, puesta al día, contrato del modo agregado, presupuesto determinista
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
 - [ ] `core/rng` con seed y sub-streams + test de determinismo
-- [ ] `core/time`: calendario, avance multi-escala
+- [ ] `core/time`: ticks absolutos en segundos, conversión a calendario simple ([simulation.md](systems/simulation.md) §1)
+- [ ] Scheduler mínimo: `ProcessDef` puro con diffs, cola de ítems agendados, fases fijas, contiendas por conflicto de escritura, rng por clave ([simulation.md](systems/simulation.md) §2, §3, §14)
 - [ ] Modelo de `Event` con `causes` + `originEventId` + tests de invariantes (sin huérfanos, conservación)
 - [ ] Persistencia SQLite mínima (guardar/cargar mundo + log de eventos)
 - [ ] Loop CLI: leer input → (stub) → imprimir
@@ -163,7 +166,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
-- [ ] Rutinas diarias, NPCs actúan sin el jugador
+- [ ] Rutinas diarias, NPCs actúan sin el jugador; tier 1 dormidos con puesta al día; primeros modelos agregados con test de calibración ([simulation.md](systems/simulation.md) §7-§9)
 - [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos: atracción y uniones, matrimonio con normas culturales, concepción y parto, hogares que se arman y se parten, herencia con disputas, paternidad como creencia, enfermedades hereditarias ([family-lineage.md](systems/family-lineage.md))
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
 - [ ] Economía básica: hogares con presupuesto, producción agrícola y de oficios, mercado de la aldea con precios por creencias, salarios, crédito de cosecha y usura, calidad percibida y estafa, hambruna con causa ([economy.md](systems/economy.md))
@@ -212,8 +215,8 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
 - [ ] Campos elementales entre celdas (fronteras, estaciones, sesgo por uso), elementos derivados por condiciones, ecología con afinidad ([elements.md](systems/elements.md))
-- [ ] Tiers de NPC 0–4, materialización coherente con estadísticas
-- [ ] Scheduler multi-escala eficiente
+- [ ] Zonas con cinco resoluciones e histéresis; tiers de agente 0–4 con importancia y cupos; materialización por ranuras con biografía sintetizada y hechos fijados; puesta al día de dormidos; flujos de borde; `Deferred` general ([simulation.md](systems/simulation.md) §4-§11)
+- [ ] Scheduler multi-escala con presupuesto y degradación determinista; contrato `AggregateModel` con tests de calibración ([simulation.md](systems/simulation.md) §9, §13)
 - [ ] Contratos entre comerciantes por rutas, encargos lejanos, venta de créditos, falsificación de documentos ([contracts.md](systems/contracts.md))
 - [ ] Varias jurisdicciones y fronteras de huida, contrabando por rutas, puestos de control, mercado negro regional ([law.md](systems/law.md))
 - [ ] Alcance del estado por celda, magistrado de condado con registro de hogares y recaudación con fugas, edictos como noticias ([state.md](systems/state.md))
@@ -252,6 +255,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
+- [ ] Resolución "history" con el embudo de épocas y transición continua de la historia al presente en el mismo scheduler ([simulation.md](systems/simulation.md) §16)
 - [ ] Simulación histórica rápida (siglos) que deja ruinas, técnicas perdidas, rivalidades
 - [ ] Descubrimiento como proceso de riesgo por población; pérdida y redescubrimiento ([discovery.md](systems/discovery.md))
 - [ ] Ciclo de vida de organizaciones en modo agregado (procesos de riesgo de sucesión, cisma, colapso, nacimiento) con legados ([organizations.md](systems/organizations.md))

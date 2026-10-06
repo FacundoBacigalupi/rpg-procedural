@@ -148,6 +148,8 @@ No hay un "generador de historia" separado con eventos inventados. La historia s
 Las reglas agregadas tienen que ser **coherentes** con las individuales (p.ej. la tasa de bandidaje agregada ≈ lo que resultaría de simular individuos con esa escasez). Se puede calibrar corriendo ambas versiones y comparando.
 
 ### 5.2 Materialización consistente
+(El algoritmo, las ranuras y los hechos fijados están en [simulation.md](simulation.md) §6-§8.)
+
 Cuando el jugador llega a una zona que existía solo como estadística, se generan individuos que **respeten el pasado registrado**:
 - Si hubo una hambruna hace 20 años, la pirámide de edades tiene un hueco y algunos tienen rasgos adquiridos por esa hambruna.
 - Si la aldea odia al Filo de Hierro, ese odio está en sus creencias.
