@@ -161,7 +161,7 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - **El libro del linaje es una creencia escrita.** Registra lo que el clan quiere recordar: omite bastardos y desterrados, inventa un ancestro ilustre (una entidad fantasma, information §1), corrige la paternidad que conviene. Falsificar una genealogía para entrar a un clan o reclamar un título es una intriga posible.
 - **Ramas.** Línea principal y ramas secundarias, con derechos distintos (organizations §13: clan). Una rama se separa con un evento (una disputa, una migración, un ancestro que fundó otra casa) y lleva consigo su parte (o no).
 - **Nombres de generación** (字辈) y nombres de clan en `content/` por cultura; dicen a qué generación pertenece alguien sin preguntar.
-- **El salón ancestral** guarda las tablillas, recibe ofrendas (spirits; economía de ofrendas en el ítem 25 del backlog) y es donde se juran los compromisos más solemnes del clan.
+- **El salón ancestral** guarda las tablillas, recibe ofrendas ([spirits.md](spirits.md) §6-§11: qué reciben de verdad, ancestros que se quedan, qué pasa si el linaje deja de ofrendar) y es donde se juran los compromisos más solemnes del clan.
 - **Consanguinidad.** Los clanes cerrados (para no repartir la sangre, la tierra o un secreto) concentran recesivos: más enfermedades hereditarias y, a veces, constituciones raras. La cultura puede prohibir o promover casarse entre primos.
 
 ### Linajes de sangre
@@ -181,7 +181,7 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - **Duelo** (npc-psychology: emociones, memoria intensa) y **luto** como norma cultural: años de luto, prohibición de casarse, ropa, retiro de un cargo. Romper el luto es una falta social.
 - **Huérfanos y viudas** cambian de hogar, de posición y de recursos; son los momentos donde la familia muestra si es una red o un depredador (el tío que se queda con la tierra de los sobrinos).
 - **El cultivador que sobrevive a los suyos:** ve envejecer y morir a esposa mortal, hijos y nietos (npc-psychology: anclas). Algunos se apartan del mundo; otros cuidan a sus descendientes durante siglos como ancestro protector; otros los usan.
-- **Ancestros que siguen ahí:** un ancestro en reclusión o como espíritu (spirits) es parte de la familia: se le ofrenda, se le consulta, se le teme.
+- **Ancestros que siguen ahí:** un ancestro en reclusión o como espíritu ([spirits.md](spirits.md) §8) es parte de la familia: se le ofrenda, se le consulta, se le teme.
 
 ## 12. Otras especies y casos raros
 - **Especies** (metaphysics §7): la reproducción, la gestación, la fertilidad y la herencia son por especie (`content/`). Uniones entre especies son fértiles solo si la ley lo permite; de ahí salen los mestizos y los linajes de sangre de bestia.

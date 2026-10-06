@@ -266,7 +266,7 @@ type MeritKind =
 
 - **Qué hace:** descuenta en el cobro de las Fuentes (§1), amortigua tribulaciones (menos energía en las olas de castigo, no en las de templado) y reduce la inclinación de las tiradas por deudas.
 - **Lee la verdad:** cuenta el acto y sus consecuencias reales, no la fama. Salvar a alguien para usarlo pesa menos (sinceridad real, como en contracts §9); el santo de fama que en secreto masacró tiene la cuenta que tiene.
-- **No se compra:** las ofrendas, los templos y las donaciones valen solo si sostienen vidas de verdad. Muchas culturas creen otra cosa (comprar mérito, perdones), y ese mercado de creencias es parte de la economía religiosa (living-world: religiones).
+- **No se compra:** las ofrendas, los templos y las donaciones valen solo si sostienen vidas de verdad. Muchas culturas creen otra cosa (comprar mérito, perdones), y ese mercado de creencias es parte de la economía religiosa (living-world: religiones; [spirits.md](spirits.md) §11).
 - **No se transfiere:** el mérito de un ancestro no limpia a los nietos; las deudas enormes sí pasan al linaje (§2). Es asimétrico a propósito: el Cielo cobra más fácil que lo que paga.
 - **Visible a medias:** en algunos mundos el mérito grande se percibe (un aura dorada para quien ve karma); en otros es invisible. Parámetro del mundo (metaphysics).
 

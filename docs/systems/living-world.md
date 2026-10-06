@@ -34,7 +34,9 @@ No hay tabla de catástrofes: cada desastre es la descarga de una presión que e
 ## 2. Bestias que evolucionan y despiertan
 - **Adaptación por selección:** cada población de bestias tiene rasgos heredables (afinidad elemental según [elements.md](elements.md), tamaño, resistencia). Generación tras generación, el entorno favorece variantes: cerca de un volcán prosperan los lobos con afinidad al fuego. Las especies regionales **emergen**, no se escriben en una tabla. `content/` solo define los linajes base. El modelo de poblaciones está en §8.
 - **Despertar:** una bestia muy longeva con mucho qi puede despertar inteligencia. A partir de ahí es un **agente** con psicología (la misma de [npc-psychology.md](npc-psychology.md), con otros valores y necesidades), cultiva y con el tiempo puede tomar forma humana.
+- **Domesticadas que despiertan:** una bestia de una raza domesticada (§12) también puede despertar, pero más rara vez: la cría para mansedumbre y producción debilita el núcleo. La que despierta recuerda cómo la trataron (su `BeastMind`, §13, pasa a ser su memoria de agente): el buey que despierta en un establo cruel trae una deuda; el que despierta en una casa que lo quiso, un vínculo.
 - **Reinos de bestias:** bestias despiertas que reúnen a otras forman facciones con territorio, intereses y memoria. Recuerdan a los humanos que cazaron a sus crías: las guerras entre humanos y bestias tienen causa. Sus tratados con humanos son compromisos (§13).
+- **Culturas de bestias:** los reinos de bestias forman culturas con **lengua propia** (generada con el mismo generador de §3, con fonología propia de la especie), normas propias (por ejemplo, si reconocen deudas de gratitud con humanos, si el territorio se hereda, qué es una ofensa) y sus propios nombres de lugares. Negociar con ellos exige aprender la lengua o un intérprete; los malentendidos tienen forma.
 
 ## 3. La geografía hace a las culturas
 Cuando la historia profunda crea un pueblo, sus rasgos culturales salen de **dónde vive y qué le pasó**:
@@ -336,6 +338,8 @@ La red trófica conecta cosas que la gente no relaciona:
 - **Las rutas de migración de las especies sociales se aprenden** y se pierden con los viejos.
 - **Domesticar es un proceso de generaciones** sobre una población concreta y deja una raza con origen; el ganado es un bien vivo con cuerpo.
 - **Bestias no despiertas con `BeastMind`** (aprendizaje y apego), despiertas como agentes completos; los vínculos con unas y los contratos con otras salen de la misma psicología y de contracts.
+- **Las bestias domesticadas pueden despertar**, con menor probabilidad, y recuerdan cómo las trataron (aprobado 2026-10-06).
+- **Las bestias despiertas forman culturas con lengua generada**, normas y toponimia propias; negociar exige la lengua o un intérprete (aprobado 2026-10-06).
 
 ## Preguntas abiertas
 - Calibración: velocidad de sucesión por bioma y clima; curva de hazard de incendio por combustible y sequía; probabilidad de establecimiento por propágulos y duración de la latencia; tasas de crecimiento y respuesta funcional por linaje; generaciones necesarias para una raza; cuánto tarda una manada en perder o rehacer una ruta; efecto de la domesticación sobre el núcleo de las bestias espirituales.
