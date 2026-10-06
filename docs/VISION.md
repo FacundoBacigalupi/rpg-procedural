@@ -27,6 +27,8 @@ Es para un solo jugador (el autor). Se prioriza profundidad y realismo sobre div
     - **Los talentos se descubren, no se crean.** Los talentos ocultos se generan al nacer. El entrenamiento puede revelar uno que ya tenías, nunca producir uno que no tenés.
     - **Las técnicas vienen de una fuente.** Describir en texto una técnica de otra partida no te la da: el parser traduce a acciones del catálogo y la IA nunca crea técnicas ni habilidades. Inventar una técnica propia es posible, pero lo resuelve la sim con la comprensión, la experiencia y el tiempo del personaje, no con lo detallada que sea tu descripción.
 
+11. **Dos modos de juego: realista y novela** (pedido 2026-10-06; diseño en [game-modes.md] futuro, ROADMAP #35). Todo lo de arriba es el **modo realista**, que es el de por defecto. El **modo novela** se elige antes de empezar y permite jugar como en una novela de cultivo: decidir cosas del personaje (familia, lugar, talento, rasgos) y sumarle **dedos de oro** (金手指) configurables, como un sistema que muestra stats o una alquimia que nunca falla. Relaja los principios 8 a 10 para esa partida, pero no las reglas del motor: el dedo de oro es una entidad del mundo con origen y efectos que aplica la simulación (determinista, con causas, con conservación), el LLM sigue sin decidir nada, la verdad sigue separada de las creencias y el mundo sigue sin girar alrededor del jugador salvo en lo que el dedo de oro haga explícitamente. La partida queda marcada como novela en el archivo de vidas.
+
 ## Escala
 - **Tiempo dinámico:** combate en segundos, conversación en minutos, viaje en horas/días, entrenamiento en meses, cultivo en años, historia en siglos.
 - **Niveles de simulación (LOD) de NPCs:**

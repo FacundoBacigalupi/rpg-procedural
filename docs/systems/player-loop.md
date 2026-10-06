@@ -27,13 +27,14 @@ interface NewGameSetup {
   seed: Seed;                                // al azar o elegido por el usuario
   worldConstraints?: WorldConstraint[];      // opcionales, sobre el mundo (familia metafísica, era, tamaño), nunca sobre el personaje
   entry: EntryMode;                          // §2
+  mode: "realistic" | "novel";            // §16; en modo novela, además: elecciones del personaje y dedos de oro (game-modes.md futuro)
   narration: StyleSettings;                  // narration §7
   llm: LlmConfig;                            // narration §1
 }
 ```
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
-2. **Elegir el nacimiento:** el personaje es **una persona que nace en el mundo simulado**, no un molde que se pone encima. Se elige un nacimiento real de la simulación con el rng de la partida, con un peso que refleja la población (la mayoría nace mortal, en una aldea, pobre). El usuario no elige familia, talento, lugar ni rasgos (VISION, principios 3 y 9).
+2. **Elegir el nacimiento** (modo realista; el modo novela en §16): el personaje es **una persona que nace en el mundo simulado**, no un molde que se pone encima. Se elige un nacimiento real de la simulación con el rng de la partida, con un peso que refleja la población (la mayoría nace mortal, en una aldea, pobre). El usuario no elige familia, talento, lugar ni rasgos (VISION, principios 3 y 9).
 3. **El personaje pasa a tier 4** desde el nacimiento y su zona a resolución de escena; el resto del mundo sigue su LOD.
 
 ## 2. Infancia y punto de entrada
@@ -194,6 +195,13 @@ El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisa
 - **Fase 7:** generación del mundo con progreso por épocas; elección del nacimiento desde la población histórica.
 - **Fase 9:** UI web con paneles; archivo de vidas con marca de inspector.
 
+## 16. Modo realista y modo novela
+
+Todo este documento describe el **modo realista**, el de por defecto. El **modo novela** (VISION, principio 11; diseño completo en [game-modes.md] futuro) se elige en `NewGameSetup` y cambia solo el arranque y lo que el personaje trae:
+- **Elecciones del personaje antes de empezar:** familia, lugar, talento, rasgos, edad de entrada. Se resuelven **eligiendo o forzando un nacimiento** que cumpla lo pedido dentro del mundo simulado (o, si no existe, fijando esos hechos en la generación con su propio evento de origen), nunca pegando un personaje sin historia.
+- **Dedos de oro:** entidades del mundo con origen y efectos aplicados por la sim.
+- **El bucle es el mismo:** turno, rutinas, interrupciones y paneles funcionan igual; un dedo de oro que "muestra stats" agrega un panel con la verdad que ese dedo de oro revela, y nada más.
+
 ## Tests
 
 - **Mismo agente:** el personaje del jugador corre los mismos procesos que un NPC (un test lista los procesos de un NPC tier 4 y del jugador y deben coincidir).
@@ -203,9 +211,16 @@ El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisa
 - **Sin vuelta atrás:** no hay API para cargar un estado anterior en modo juego.
 - **Paneles sin verdad:** con un mundo de prueba lleno de secretos (un robo no notado, un padre falso, un veneno lento), ningún panel muestra la verdad.
 
+## Decisiones (aprobado 2026-10-06)
+- **Entrada por defecto:** nacer y jugar la infancia en viñetas desde los 5-6 años; entrar a una edad fija queda como opción.
+- **Elegir el mundo:** seed por defecto, con parámetros opcionales solo sobre el mundo (familia metafísica, era, tamaño). En modo realista nunca sobre el personaje; en modo novela, sí (§16).
+- **Inspector con una vida en curso:** se puede abrir con confirmación; la vida queda marcada como "vista con inspector".
+- **Delegación por defecto `normal`:** lo chico lo decide el personaje con su carácter; prometer, pelear, gastar mucho o irse interrumpe. Configurable a `minimal` o `wide`.
+- **Modo novela** como opción explícita antes de empezar (§16), con su propio doc.
+
 ## Decisiones tomadas en este borrador (revisables)
 
-- **El personaje es un nacimiento real** de la población, elegido con rng y pesos realistas.
+- **El personaje es un nacimiento real** de la población, elegido con rng y pesos realistas (en modo realista).
 - **Interrupciones solo desde percepts,** con un núcleo fijo que no se apaga.
 - **Delegación de lo chico** a la utilidad del propio personaje; lo grande siempre interrumpe.
 - **Metas como objetivos del personaje,** sin marcadores ni recompensas.
