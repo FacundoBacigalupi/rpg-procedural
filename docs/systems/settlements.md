@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [planet-gen.md](planet-gen.md) (relieve, hidrología, suelos, qi, desastres), [living-world.md](living-world.md) §1, §6, §9 (desastres, rutas, sucesión y fuego), [economy.md](economy.md) §5-§7 (mercados, comercio, lotes con origen), [perception.md](perception.md) §3 (grafo de espacios), [simulation.md](simulation.md) §4-§6 (zonas, tiers, materialización), [state.md](state.md) §3, §11 (registros, obras públicas), [war.md](war.md) §9 (fortificaciones y asedios), [crafts.md](crafts.md) (sesiones de oficio, formaciones), [technology.md](technology.md) (construcción), [deep-history.md](deep-history.md) §1 (estratos, montículos), [spirits.md](spirits.md) §7 (santuarios), [family-lineage.md](family-lineage.md) §7 (el hogar), [elements.md](elements.md) (fuego y agua con magnitud).
-Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edificios), travel (#38: caminos, posadas, puertos), weather (#39: daño por clima), culture (#40: estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
+Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edificios), [travel.md](travel.md) (caminos, posadas, puertos), weather (#39: daño por clima), culture (#40: estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
 
 ---
 
@@ -194,7 +194,7 @@ interface Work {
 - **Agua:** los pozos llegan al acuífero que da la hidrología de planet-gen; se secan en sequía, se salinizan o se envenenan (a propósito o por las letrinas). Las cisternas guardan lluvia y los acueductos traen agua de lejos.
 - **Saneamiento:** letrinas, aguas negras y basura. La densidad sin saneamiento dispara el contagio (body-health). Juntar los desechos como abono es parte de la economía. Las ratas y los perros de la basura vienen solos (living-world §12: comensales).
 - **Diques y canales:** protegen e irrigan, pero crean presiones: un río encauzado sedimenta y sube su lecho, y el dique tiene que subir con él. Si se descuida, la inundación es más grande que si nunca se hubiera encauzado.
-- **Caminos y puentes:** hacen las rutas (living-world §6, travel #38). Un puente caído desvía el comercio, y con él la suerte de un pueblo.
+- **Caminos y puentes:** hacen las rutas (living-world §6, [travel.md](travel.md) §1). Un puente caído desvía el comercio, y con él la suerte de un pueblo.
 - **Murallas y puertas:** defienden (war §9), cobran peajes, cierran de noche y filtran quién entra. Mantenerlas cuesta mucho, y por eso muchas ciudades tienen murallas en mal estado justo cuando llega la guerra.
 - **Graneros:** reserva pública o privada contra el hambre. Su contenido es verdad, y lo registrado es otra cosa (state §3): un granero "lleno" en los libros puede estar vacío por robo.
 - **Quién mantiene:** la obra decae si su mantenedor se debilita. Cuando el estado colapsa, los diques se descuidan y una inundación llega años después: la causa queda en el grafo.

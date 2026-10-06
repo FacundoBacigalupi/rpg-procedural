@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [economy.md](economy.md) §1, §2b, §8 (la tierra como bien, tenencias, crédito y colateral), [contracts.md](contracts.md) (compromisos, formalidades, ejecutores, disputas, herencia), [family-lineage.md](family-lineage.md) §8 (herencia y partición), [state.md](state.md) §3, §4 (catastros, impuestos), [law.md](law.md) (robo, usurpación, tribunales, prueba), [social-structure.md](social-structure.md) §7 (servidumbre de la tierra; nunca personas como bienes), [information.md](information.md) §1, §4, §7 (creencias, documentos, secretos), [settlements.md](settlements.md) (terrenos y edificios), [planet-gen.md](planet-gen.md) §9 (suelos), [cultivation.md](cultivation.md) (venas de qi, cuevas), [spirits.md](spirits.md) §11 (tierras de culto), [heaven-karma.md](heaven-karma.md) §2 (karma por daño y compromisos rotos), [causality.md](causality.md) (presiones).
-Lo usan: economy (renta, venta de tierra, ejecución de colateral), state (impuestos sobre el catastro, reformas agrarias), law (casos de tierras y robos), war (confiscación, botín, colonos), organizations (patrimonio de clanes y sectas), settlements (quién construye dónde), travel (#38: peajes y derechos de paso), culture (#40: normas de propiedad), chronicle (la tierra que una familia ganó o perdió).
+Lo usan: economy (renta, venta de tierra, ejecución de colateral), state (impuestos sobre el catastro, reformas agrarias), law (casos de tierras y robos), war (confiscación, botín, colonos), organizations (patrimonio de clanes y sectas), settlements (quién construye dónde), [travel.md](travel.md) (peajes y derechos de paso), culture (#40: normas de propiedad), chronicle (la tierra que una familia ganó o perdió).
 
 ---
 
@@ -84,7 +84,7 @@ type Encumbrance =
 | **Pastos, bosques, pesquerías** | §7 | Casi siempre comunales o con derechos de uso por temporada |
 | **Muebles** | §12 | Lotes e ítems de economy |
 | **Animales** | living-world §13 | Ganado con marca; bestias vinculadas por contrato (que tienen su propia voluntad) |
-| **Puestos de mercado, rutas, peajes** | economy §5, travel | El derecho a cobrar en un puente o vender en una esquina |
+| **Puestos de mercado, rutas, peajes** | economy §5, [travel.md](travel.md) §1 | El derecho a cobrar en un puente o vender en una esquina |
 | **Tumbas** | spirits | Inviolables por norma casi en todos lados; profanarlas es crimen (law) y ofensa a los ancestros |
 | **Territorio** | state, organizations | Reclamo de soberanía o de dominio de secta, que no es propiedad de la tierra pero la cubre |
 
@@ -123,7 +123,7 @@ interface Boundary {
 
 ## 4. Formas de tenencia
 
-Catálogo en `content/tenure/`, por cultura. Cada forma es una combinación de incidentes, cargas, normas de herencia y ejecutores.
+Catálogo en `content/tenure/`, por cultura; todas las formas de la tabla entran desde el principio como contenido opcional por cultura, incluida la de dos dueños en un campo (aprobado 2026-10-06). Cada forma es una combinación de incidentes, cargas, normas de herencia y ejecutores.
 
 | Forma | Quién tiene qué | Presiones típicas |
 |---|---|---|
@@ -163,7 +163,7 @@ type AcquisitionBasis =
 
 - **Vender tierra es un compromiso con formalidades** (contracts §3): escritura, testigos, un intermediario que garantiza (中人), a veces el permiso del clan (los parientes tienen derecho de preferencia), el impuesto de transferencia y el sello oficial. Muchos venden con escritura privada sin sello para no pagar: el registro del estado se atrasa.
 - **El precio sale de creencias** (economy §5): lo que cada uno cree que rinde, la seguridad, la cercanía, el prestigio, la geomancia (settlements §4). En una hambruna la tierra se regala; en una paz larga se paga cara.
-- **La prescripción** existe solo si la cultura la tiene: veinte años de arar sin que nadie reclame pueden hacer dueño al ocupante, y el heredero que vuelve del exilio encuentra su campo perdido por la ley.
+- **La prescripción** existe solo si la cultura la tiene, con los años como dato en `content/` (aprobado 2026-10-06): veinte años de arar sin que nadie reclame pueden hacer dueño al ocupante, y el heredero que vuelve del exilio encuentra su campo perdido por la ley.
 - **Conquistar o confiscar** cambia la posesión de golpe y el registro después (o nunca). Los antiguos dueños siguen creyendo que la tierra es suya, y sus hijos también: una presión de restitución que puede durar generaciones.
 
 ## 6. Arriendo y aparcería
@@ -233,7 +233,7 @@ type RecordRef =
 
 ## 13. Entre cultivadores
 
-- **La norma de la fuerza:** entre cultivadores muchas culturas tienen una norma tácita de que el tesoro es de quien lo puede tomar y retener, y de que matar por un tesoro es normal (杀人夺宝). Es una norma, no una ley del mundo: hay sectas que la condenan y regiones donde un tratado entre sectas la limita.
+- **La norma de la fuerza:** entre cultivadores muchas culturas tienen una norma tácita de que el tesoro es de quien lo puede tomar y retener, y de que matar por un tesoro es normal (杀人夺宝). Es una norma, no una ley del mundo: hay sectas que la condenan y regiones donde un tratado entre sectas la limita. Su fuerza varía por mundo y por región (aprobado 2026-10-06): dura en zonas sin ley, atenuada donde hay tratados o un estado fuerte, así que cada seed da un mundo más duro o más civilizado.
 - **Venas y cuevas:** las reclaman sectas, clanes y solitarios. El reclamo se sostiene con formaciones, guardias y reputación. Una vena sin dueño fuerte atrae disputas.
 - **Dominios de secta y el estado:** la secta cobra tributo y el estado impuestos sobre la misma aldea; quién cobra de verdad depende del poder relativo (state: trono y sectas).
 - **El Cielo no lee títulos.** El karma no sigue escrituras ni normas culturales: sigue el daño hecho y los compromisos rotos (heaven-karma §2). Quitarle la tierra a una viuda con un papel legal pesa igual que quitársela con una espada.
@@ -246,7 +246,7 @@ type RecordRef =
 
 ## 15. El jugador y el narrador
 
-- **"Mío" es lo que el personaje cree.** Los paneles muestran lo que el personaje cree tener y en qué se basa ("la escritura está en el cofre", "lo heredé de mi padre"). Si la escritura es falsa o la tierra se vendió dos veces, no lo sabe.
+- **"Mío" es lo que el personaje cree.** Los paneles muestran lo que el personaje cree tener y en qué se basa ("la escritura está en el cofre", "lo heredé de mi padre"). Si la escritura es falsa o la tierra se vendió dos veces, no lo sabe, y el panel no avisa (aprobado 2026-10-06): lo descubre como cualquier secreto.
 - **Acciones:** comprar, vender, arrendar, prendar, desmontar baldío, poner mojones, mudar un mojón de noche, falsificar, denunciar, pleitear, ocupar, cercar, robar, reclamar lo robado. Todo con los verbos del catálogo (actions) y las sesiones de oficio y diálogo.
 - **El narrador** nunca dice "esto es tuyo" por fuera de las creencias del personaje, y nombra las formas de tenencia con el léxico de su cultura.
 
@@ -279,6 +279,12 @@ type RecordRef =
 - **Concentración:** con malas cosechas seguidas y crédito agrícola, la tierra se concentra; con reforma, se reparte (calibración).
 - **Determinismo:** misma seed → mismas particiones, ventas y disputas.
 - **Narrador:** el `PlayerView` no incluye derechos que el personaje no cree.
+
+## Decisiones (aprobado 2026-10-06)
+- **Todas las formas de tenencia como contenido por cultura,** incluida la de dos dueños en un campo (§4).
+- **Prescripción según la cultura,** con los años en `content/` (§5).
+- **La norma de la fuerza entre cultivadores** varía por mundo y región (§13).
+- **El panel muestra lo que el personaje cree tener** y en qué se basa, sin avisar errores (§15).
 
 ## Decisiones tomadas en este borrador (revisables)
 
