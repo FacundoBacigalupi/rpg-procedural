@@ -24,7 +24,7 @@ Cada estímulo viaja por uno o más canales. Los dos últimos son genéricos (`E
 | **Esencia** (sentido del qi) | Auras: presencia, intensidad, elemento, técnica que se usa, intención asesina (杀气) | Radio del receptor, cae con la distancia | Qi ambiental denso (como ruido), formaciones, supresión de aura |
 | **Alma** (sentido espiritual, 神识) | Presencia de almas y espíritus, emociones fuertes, la "firma" de un alma | Radio que escala con la fuerza del alma; atraviesa paredes | Sellos, técnicas de ocultamiento del alma, yin denso |
 
-- **Karma** no es un canal sensorial. Solo lo leen técnicas específicas de adivinación ([heaven-karma.md](heaven-karma.md)) y va en el doc de adivinación.
+- **Karma** no es un canal sensorial. Solo lo leen técnicas específicas de adivinación ([heaven-karma.md](heaven-karma.md)) y va en [divination.md](divination.md).
 - En un mundo sin esencia ambiental (ver metaphysics), el canal Esencia no existe o cambia de forma (sentir el mana de un hechizo, oler la sangre de un pacto). Si no hay alma, no hay canal Alma.
 
 ## 2. Emisión: qué produce cada cosa
