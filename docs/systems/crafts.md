@@ -68,7 +68,7 @@ interface CraftSkill {
   specialties: Partial<Record<ProductClass, number>>;  // familiaridad con tipos de producto (píldoras de curación, sables)
 }
 ```
-- **Sale de la práctica.** Cada sesión deposita experiencia en lo que el artesano **percibió** del proceso (no aprende de lo que no vio). Fracasar y entender por qué enseña más que acertar sin saber. Hay rendimiento decreciente con la repetición de lo mismo y saltos con lo nuevo.
+- **Sale de la práctica.** Cada sesión deposita experiencia en lo que el artesano **percibió** del proceso (no aprende de lo que no vio). Fracasar y entender por qué enseña más que acertar sin saber. Hay rendimiento decreciente con la repetición de lo mismo y saltos con lo nuevo. `CraftSkill` es una vista del modelo general de habilidad ([skills.md](skills.md) §10).
 - **Los aspectos ayudan.** Un alquimista con comprensión del fuego (discovery §7) controla mejor el fuego y lo lee mejor; un forjador con comprensión del filo forja filos que cortan más allá de su metal (intención, discovery §9).
 - **El cultivo cambia la mano.** Un cultivador puede poner esencia propia en el trabajo, controlar un fuego espiritual y sentir la esencia de los materiales. Los oficios espirituales **piden** umbrales mínimos (no se puede sostener fuego propio sin esencia suficiente) y su techo crece con el cultivo.
 - **Aprendices.** El aprendiz aprende mirando (percepts del trabajo del maestro), haciendo pasos bajo supervisión (el maestro corrige antes del desastre) y con el tiempo con sesiones propias. Un buen maestro es el que deja fracasar barato (organizations §9).
