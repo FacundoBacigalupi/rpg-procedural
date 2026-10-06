@@ -118,7 +118,7 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 
 ## Implementación
 - **Fases 1-4:** solo la familia xianxia, pero con interfaces genéricas (`Essence`, `Practice`, `Law`, `Soul`) para no casarse con ella.
-- **Fase 7 (worldgen completo):** el generador de leyes con los ejes y el validador, y el eje de era. Segunda familia: alta fantasía occidental, o la de los misterios si se aprueba ([mysteries.md](mysteries.md)).
+- **Fase 7 (worldgen completo):** el generador de leyes con los ejes y el validador, y el eje de era. Segunda familia: la de los misterios ([mysteries.md](mysteries.md), aprobado 2026-10-06); después, alta fantasía occidental.
 - **Después:** el resto de los ejes y familias, de a una.
 
 ## Tests
@@ -128,12 +128,12 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 - El narrador nunca recibe vocabulario de otra familia.
 
 ## Decisiones (2026-10-05)
-- Pesos de las familias: xianxia 60%, alta fantasía occidental 15%, fantasía oscura 10%, mitológica 10%, rúnica 5%. Hasta la Fase 7 solo existe xianxia.
+- Pesos de las familias (aprobado 2026-10-06): xianxia 50%, misterios 15%, alta fantasía occidental 12%, fantasía oscura 9%, mitológica 9%, rúnica 5%. Hasta la Fase 7 solo existe xianxia.
 - Sin mundos mixtos: una familia por mundo.
 - Especies no humanas jugables.
 - **Inframundo con economía como variante de mundo** (aprobado 2026-10-06): no está en el xianxia base, donde el papel quemado no llega a nadie.
-- **Familia de los misterios** (borrador 2026-10-06, [mysteries.md](mysteries.md)): se suma a la tabla; su peso entre las familias y si pasa a ser la segunda en implementarse quedan para aprobar.
-- **Era de la humanidad como eje del seed** (borrador 2026-10-06): cada familia tiende a su era típica (technology §9b).
+- **Familia de los misterios** (aprobado 2026-10-06) ([mysteries.md](mysteries.md)): 15% de los mundos y segunda familia en implementarse.
+- **Era de la humanidad como eje del seed** (aprobado 2026-10-06): cada familia tiende a su era típica, 70% la típica, 25% las vecinas, 5% las raras (technology §9b).
 
 ## Preguntas abiertas
 - Ninguna por ahora.
