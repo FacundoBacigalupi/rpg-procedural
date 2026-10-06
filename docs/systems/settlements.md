@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [planet-gen.md](planet-gen.md) (relieve, hidrología, suelos, qi, desastres), [living-world.md](living-world.md) §1, §6, §9 (desastres, rutas, sucesión y fuego), [economy.md](economy.md) §5-§7 (mercados, comercio, lotes con origen), [perception.md](perception.md) §3 (grafo de espacios), [simulation.md](simulation.md) §4-§6 (zonas, tiers, materialización), [state.md](state.md) §3, §11 (registros, obras públicas), [war.md](war.md) §9 (fortificaciones y asedios), [crafts.md](crafts.md) (sesiones de oficio, formaciones), [technology.md](technology.md) (construcción), [deep-history.md](deep-history.md) §1 (estratos, montículos), [spirits.md](spirits.md) §7 (santuarios), [family-lineage.md](family-lineage.md) §7 (el hogar), [elements.md](elements.md) (fuego y agua con magnitud).
-Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edificios), [travel.md](travel.md) (caminos, posadas, puertos), [weather.md](weather.md) (daño por clima), culture (#40: estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
+Lo usan: [property.md](property.md) (quién es dueño de la tierra y los edificios), [travel.md](travel.md) (caminos, posadas, puertos), [weather.md](weather.md) (daño por clima), [culture.md](culture.md) (estilos y normas de uso del espacio), organizations (sedes), law (cárceles, tribunales), chronicle (ruinas y legados).
 
 ---
 

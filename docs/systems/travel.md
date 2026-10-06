@@ -5,7 +5,7 @@
 > Estado: **borrador** (2026-10-06).
 
 Depende de: [living-world.md](living-world.md) §6, §10, §11, §13 (rutas, especies que viajan, migraciones, vínculos con bestias), [planet-gen.md](planet-gen.md) (relieve, ríos, vientos, corrientes, monzones), [settlements.md](settlements.md) §8 (caminos, puentes, puertos, posadas), [economy.md](economy.md) §1, §7, §16 (lotes, comercio, caravanas, flujos agregados), [information.md](information.md) §4, §5 (noticias que viajan, mapas como creencia), [perception.md](perception.md) (quién ve a quién), [body-health.md](body-health.md) (cansancio, nutrición, exposición, enfermedades), [war.md](war.md) §3, §6 (logística, marcha), [crafts.md](crafts.md) (vehículos, barcos, espadas voladoras, formaciones), [cultivation.md](cultivation.md) §11 (vuelo y almacenamiento si el mundo los permite), [simulation.md](simulation.md) §4, §10, §13.2 (zonas, trayectos, cono causal), [player-loop.md](player-loop.md) §4-§7 (ritmo, rutinas, interrupciones, delegación), [contracts.md](contracts.md) (escolta, pasaje, flete), [law.md](law.md) (bandidaje, contrabando, peajes), [state.md](state.md) (postas, salvoconductos, aduanas), [property.md](property.md) (peajes y derechos de paso).
-Lo usan: economy (costo de ruta), war (marcha y suministro), information (velocidad de las noticias), body-health (epidemias por rutas), [weather.md](weather.md) (clima del camino), culture (#40: contacto entre culturas), chronicle (los viajes de una vida).
+Lo usan: economy (costo de ruta), war (marcha y suministro), information (velocidad de las noticias), body-health (epidemias por rutas), [weather.md](weather.md) (clima del camino), [culture.md](culture.md) (contacto entre culturas), chronicle (los viajes de una vida).
 
 ---
 

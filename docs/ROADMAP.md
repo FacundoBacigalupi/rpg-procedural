@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#40, culturas**). Después del backlog viene la **Fase 0: scaffold**.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** (al 2026-10-06: **#41, lenguas y escritura**). Después del backlog viene la **Fase 0: scaffold**.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -34,7 +34,7 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 37. [x] **Propiedad y tenencia de la tierra** → [property.md](systems/property.md): propiedad como verdad, creencia y registro; tierras comunales, feudos, arrendamiento y aparcería, tierras de templo y de secta, herencia y partición, usurpación, catastros, cercamientos; la propiedad de objetos (marcas, robo, hallazgos, abandono).
 38. [x] **Viaje, transporte y mar** → [travel.md](systems/travel.md): viajar como sucesión de días con costo, riesgo y encuentros que salen del estado (no tablas); caminos, posadas y postas; animales y carros; ríos y barcos; navegación, corrientes y vientos; puertos, piratas y naufragios; vuelo y espadas voladoras; mapas y perderse; transporte de carga con conservación.
 39. [x] **Clima diario y estaciones** → [weather.md](systems/weather.md): tiempo del día derivado del clima de planet-gen (frentes, lluvias, tormentas, nieve, sequías), estaciones con efecto en cosechas, viajes, guerra y ánimo; pronóstico popular y por adivinación; tormentas de qi; cultivadores que alteran el tiempo y su costo.
-40. [ ] **Culturas** → `culture.md`: la cultura como haz de normas, prácticas y saberes que se transmite y cambia; costumbres (comida, ropa, vivienda, ritos de paso, funerales, fiestas), estética y arte, valores y tabúes, etiqueta, humor; generación desde la geografía y la historia; contacto, préstamo, sincretismo y aculturación; identidad y etnicidad como creencia.
+40. [x] **Culturas** → [culture.md](systems/culture.md): la cultura como haz de normas, prácticas y saberes que se transmite y cambia; costumbres (comida, ropa, vivienda, ritos de paso, funerales, fiestas), estética y arte, valores y tabúes, etiqueta, humor; generación desde la geografía y la historia; contacto, préstamo, sincretismo y aculturación; identidad y etnicidad como creencia.
 41. [ ] **Lenguas y escritura** → `language.md`: fonología, raíces y morfología; cambio fonético por siglos, lenguas hermanas, préstamos por contacto, pidgins y lenguas francas; nombres de personas y lugares con significado; escrituras que se inventan y se heredan; aprender una lengua, malentendidos e intérpretes; el léxico que usa el narrador. Incluye el worldgen mínimo de la Fase 5 (aprobado 2026-10-06).
 42. [ ] **Religión y doctrinas** → `religion.md`: religiones como sistemas de creencias sobre el mundo, el Cielo, la muerte y la moral; doctrina, clero, textos sagrados, conversión, herejía y sincretismo; cómo se relacionan con los cultos y espíritus reales (spirits §9) y con la verdad metafísica; religión y estado; prácticas de devoción y ascetismo.
 43. [ ] **Cosmología y ascensión** → `cosmology.md`: estructura del cosmos por familia de mundo (planos, inframundo, cielos superiores, otros mundos), qué hay después del último umbral, ascensión como evento físico con costo, visitantes de arriba y de abajo, lo que el jugador nunca va a ver pero el mundo tiene que tener coherente.
@@ -62,6 +62,7 @@ Los 28 docs de `docs/systems/` están escritos y mergeados en `develop`. Todos s
 - property: velocidad de concentración por crédito y malas cosechas; años de prescripción por cultura; frecuencia de disputas de límites; brecha de registro por calidad del estado.
 - travel: velocidades por medio y terreno; consumo diario por persona y animal; tasas de cruce con bandidos y bestias; costo de qi del vuelo por reino; frecuencia de naufragios.
 - weather: cantidad y tamaño de sistemas por región y estación; variabilidad diaria por régimen; costo de qi por agua y energía movidas; frecuencia de tormentas de qi; umbrales de sequía e inundación.
+- culture: velocidad de deriva por dominio; peso de los sesgos de copia; generaciones de asimilación; frecuencia de modas; cuántos rasgos por cultura para que se sientan distintas.
 - simulation: tamaño de las zonas local y regional; histéresis; umbrales y pesos de importancia para tier 3; cupos de tier 2 y 3; cadencias por proceso y resolución; tolerancias agregado–individual; intervalo de snapshots; presupuestos por acción, día saltado y año de historia.
 - deep-history: reglas agregadas vs individuales.
 - npc-psychology: top-N memorias por NPC de tier 2 (arranca en 20).
@@ -145,6 +146,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Propiedad y tenencia de la tierra ([systems/property.md](systems/property.md)) — tres capas que divergen (posesión, creencia, registro); derechos como haz de incidentes con varios titulares sobre un mismo objeto; parcelas con límites que son memoria y mojones; formas de tenencia como contenido por cultura (plena, comunal, de linaje, de culto, de templo, dominio de secta, feudo, reparto del estado, arriendo, aparcería, dos dueños en un campo, venta con recompra, ocupación, pastoreo estacional); adquisición con formalidades y prescripción según la norma; comunales con reglas y cercamientos; partición por herencia; escrituras y catastros como objetos falsificables; disputas y usurpación del poderoso; concentración de la tierra como presión y reformas; muebles con marcas, robo, hallazgos y abandono; norma de la fuerza entre cultivadores; el Cielo no lee títulos
 - [x] Viaje, transporte y mar ([systems/travel.md](systems/travel.md)) — el viaje como días de mundo con costo, desgaste y salud; red de rutas que nace del uso con tramos, cuellos de botella, peajes y estaciones; `Journey` común a jugador, NPCs, caravanas y ejércitos; encuentros como cruces de entidades que ya existen (bandidos que decidieron, bestias por territorio, viajeros del flujo agregado), nunca tablas; posadas, postas y campamentos; animales y vehículos con la regla del carro; carga como lotes con pérdidas con causa y anillos de almacenamiento; salvoconductos, controles y cierres; ríos con corriente, crecidas y esclusas; mar con vientos, monzones y corrientes, barcos como objetos, naufragios como proceso, pecios y piratas; vuelo visible con costo y zonas prohibidas, teletransporte raro y caro; orientarse y perderse con posición creída; viajar como rutina con montaje e interrupciones; libertad total a campo traviesa y para entrar a buscar
 - [x] Clima diario y estaciones ([systems/weather.md](systems/weather.md)) — capas de lo lento a lo rápido (normales de planet-gen, anomalía de la estación con causa, sistemas de tiempo, tiempo local por relieve, microclima); frentes, ciclones, monzones y olas de frío como entidades que nacen donde pueden, se mueven con el viento y mueren; balance de agua por celda con nieve, suelo, ríos y acuíferos; sequía como presión e inundaciones con diques; estaciones desde la órbita y régimen local; fenología y año agrícola; calendarios culturales como creencia que se desajusta; efectos en cosechas, viaje, guerra, cuerpo, edificios, fuego, percepción y ánimo; pronóstico como proyección (refranes con correlación real, oficio, registros, sentidos de cultivador, adivinación); tormentas de qi con fuente y conservación; alterar el tiempo moviendo agua y energía existentes con costo y daño río abajo; detalle diario condicionado a los agregados
+- [x] Culturas ([systems/culture.md](systems/culture.md)) — rasgos que viven en personas (fuerza, por fuera y por dentro, de quién se aprendieron) con prevalencia por comunidad y `Culture` como racimo con nombre; dominios (comida, ropa, vivienda, parentesco, ritos de paso, funerales, fiestas, normas y tabúes, valores, etiqueta, humor, estética, saber práctico, género, propiedad, cosmovisión, calendario) que leen los demás sistemas; cada rasgo con origen (adaptación, evento, prestigio, invento, deriva, arrastre); transmisión vertical, oblicua y horizontal con sesgos de copia y sanciones informales; modas, generaciones, golpes, imposición, tradiciones inventadas y pérdida; generación desde la geografía y la historia con separación y deriva; préstamo selectivo, sincretismo, criollización, asimilación y resistencia; identidad y etnicidad como creencias con marcas, estereotipos, etnogénesis y pureza falsa; culturas de secta y jianghu; libertad del jugador para adoptar, romper e inventar costumbres
 
 ## Fase 0 — Fundamentos
 - [ ] Scaffold: TS strict, Vitest, ESLint (con reglas de dependencia), scripts npm, GitHub Actions (typecheck + tests)
@@ -187,6 +189,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Parcelas de la aldea con dueño, forma de tenencia y escritura o testigos; posesión, creencia y registro separados; robo de muebles con reclamo ([property.md](systems/property.md) §1, §3, §12)
 - [ ] Caminar por tramos con costo entre la aldea y lugares cercanos; salir al monte con costo por celda y rumbo según la habilidad; buscar, recolectar y cazar solo lo que hay; acampar; cansancio y comida del camino ([travel.md](systems/travel.md) §1, §2, §4, §12)
 - [ ] Tiempo diario por celda en la región de la aldea desde normales y anomalía; estaciones; efecto en cultivos, exposición y percepción ([weather.md](systems/weather.md) §1, §4, §5)
+- [ ] Una cultura de la aldea desde `content/` con los rasgos que leen los demás sistemas ([culture.md](systems/culture.md) §1, §2)
 
 ## Fase 2 — Psicología y memoria
 - [ ] Rasgos innatos + adquiridos
@@ -209,6 +212,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
 - [ ] Inspector: `memories`, `wrong`, `percepts`, `rumor`; métricas de exactitud de creencias en la sim headless ([tooling.md](systems/tooling.md) §5, §6)
 - [ ] Temperamento y gustos elegidos; infancia elegida como intenciones del hogar ([game-modes.md](systems/game-modes.md) §2.3)
+- [ ] Rasgos por persona, transmisión en los períodos sensibles, identidad como creencia, sesgo de grupo y sanciones informales ([culture.md](systems/culture.md) §4, §8)
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -244,6 +248,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Venta, arriendo y aparcería como compromisos; prendas que se ejecutan; herencia con partición; comunales con reglas; mojones y disputas de límites ([property.md](systems/property.md) §4-§10)
 - [ ] Viajes de varios días con montaje e interrupciones; posadas; animales de carga y regla del carro; carga como lotes con pérdidas ([travel.md](systems/travel.md) §2, §4-§6, §15)
 - [ ] Balance de agua por celda (suelo, nieve, ríos); sequía como presión; año agrícola atado al tiempo real; ánimo por estación; pronóstico popular con correlación calculada ([weather.md](systems/weather.md) §3-§5, §7)
+- [ ] Fiestas y ritos fuera de escena y en la economía; modas; prevalencias por comunidad ([culture.md](systems/culture.md) §5, §9)
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -301,6 +306,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Catastros con brecha, concentración de la tierra como presión con métricas en la sim headless, parcelas materializadas desde agregados ([property.md](systems/property.md) §9, §11, §16)
 - [ ] Red regional con peajes, controles y salvoconductos; encuentros desde el estado con tasas de cruce; caravanas y escolta; perderse y guías; ríos y barcas; flujos agregados por ruta ([travel.md](systems/travel.md) §1, §3, §7, §8, §11, §13, §16)
 - [ ] Sistemas de tiempo que se mueven por la región; tiempo local por relieve; inundaciones con diques; detalle diario condicionado a los agregados ([weather.md](systems/weather.md) §2, §3, §12)
+- [ ] Culturas vecinas, extranjeros, marcas que se perciben, errores de etiqueta, préstamos con vector ([culture.md](systems/culture.md) §7, §8, §12)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -331,6 +337,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Montañas de secta con formaciones, pueblos bajo protección, obras públicas con mantenedor (diques que sedimentan, canales, graneros, murallas) ([settlements.md](systems/settlements.md) §8, §14)
 - [ ] Tierras de clan, culto, templo y dominio de secta; feudos; cercamientos; usurpación del poderoso; venas y cuevas disputadas ([property.md](systems/property.md) §4, §7, §10, §13)
 - [ ] Vuelo con costo de qi y visibilidad; monturas espirituales; anillos de almacenamiento; fronteras de secta y zonas sin vuelo ([travel.md](systems/travel.md) §5, §6, §10)
+- [ ] Subculturas de sectas, gremios y corte; imposición por edicto y resistencia ([culture.md](systems/culture.md) §5, §11)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -362,6 +369,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Reformas, conquistas y repartos en la historia; restituciones que duran generaciones ([property.md](systems/property.md) §5, §11)
 - [ ] Rutas que nacen y mueren en la historia; formaciones de teletransporte construidas por la historia ([travel.md](systems/travel.md) §1, §10)
 - [ ] Años buenos y malos en la historia; extremos registrados; calendarios que se desajustan ([weather.md](systems/weather.md) §4, §6, §12)
+- [ ] Culturas generadas desde la geografía y la historia: separación, deriva, sincretismo, asimilación, tradiciones inventadas, secuencias de estilos, etnogénesis ([culture.md](systems/culture.md) §6, §7, §8, §10)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
