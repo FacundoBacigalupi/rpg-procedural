@@ -317,6 +317,33 @@
     "evidence": 1
   },
   {
+    "id": "give",
+    "name": "dar",
+    "domain": "social",
+    "args": [
+      { "role": "to", "kind": "person", "required": true },
+      { "role": "what", "kind": "text", "required": false }
+    ],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.1 },
+      { "kind": "position", "near": "to" },
+      { "kind": "means", "holder": "self", "what": "goods" }
+    ],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 60 },
+    "checkpoint": 30,
+    "emissions": { "sight": 0.5, "sound": 0.2 },
+    "resolver": "give",
+    "ease": 3,
+    "failureModes": [
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "take",
     "name": "tomar",
     "domain": "manipulation",

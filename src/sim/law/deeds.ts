@@ -6,7 +6,8 @@
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 
-export type DeedKind = "theft" | "assault";
+/** `default`: no devolvió lo que le fiaron y el acreedor lo reclamó (contracts, fiado). */
+export type DeedKind = "theft" | "assault" | "default";
 
 /** Cómo lo supo: lo vio, lo oyó (sin ver), se lo contaron. */
 export type DeedVia = "saw" | "heard" | "told";
@@ -52,10 +53,29 @@ export function deedsBy(known: KnownDeeds | undefined, who: AgentId): readonly D
   return (known?.deeds ?? []).filter((d) => d.by === who);
 }
 
-/** El hecho más grave que `knower` sabe de `who` (el robo pesa menos que herir a alguien). */
+const GRAVITY: readonly DeedKind[] = ["assault", "theft", "default"];
+
+/** El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber). */
 export function worstDeed(known: KnownDeeds | undefined, who: AgentId): Deed | null {
   const by = deedsBy(known, who);
-  return by.find((d) => d.kind === "assault") ?? by[0] ?? null;
+  for (const kind of GRAVITY) {
+    const found = by.find((d) => d.kind === kind);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Olvida lo que se sabía de que `by` no le pagó a `victim`: pagó, y la aldea lo sabe. */
+export function clearDefault(
+  known: KnownDeeds | undefined,
+  by: AgentId,
+  victim: AgentId,
+): KnownDeeds | undefined {
+  if (!known) return known;
+  const kept = known.deeds.filter(
+    (d) => !(d.kind === "default" && d.by === by && d.victim === victim),
+  );
+  return kept.length === known.deeds.length ? known : { deeds: kept };
 }
 
 /**

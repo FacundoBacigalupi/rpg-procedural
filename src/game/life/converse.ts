@@ -6,6 +6,7 @@
 
 import {
   type AgentId,
+  type Duration,
   type EntityRef,
   type HolderRef,
   holderAccount,
@@ -14,6 +15,8 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
+  CREDIT,
+  type Credit,
   callName,
   decideReply,
   deleteComponent,
@@ -27,6 +30,7 @@ import {
   KNOWN_DEEDS,
   type Lexicon,
   LOCATION,
+  liveBetween,
   PERSON,
   PERSON_NAME,
   type ProcessContext,
@@ -64,6 +68,8 @@ export interface ConverseOptions {
   readonly statuses: readonly StatusDef[];
   readonly lines: readonly SpeechLine[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Ticks por día de mundo (los plazos del fiado se cuentan en días). */
+  readonly day: Duration;
 }
 
 export const replyKey = (from: AgentId, at: Tick) => `reply:${from}:${at}`;
@@ -92,6 +98,22 @@ export function listenTo(
         reason: { kind: "state", entity: listener, key },
       },
     ],
+  };
+}
+
+/** Lo que `speaker` le debe a `me` y si ya venció: lo que decide si se le vuelve a fiar. */
+function owesOf(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  speaker: AgentId,
+  now: Tick,
+  day: Duration,
+): { grams: number; overdue: boolean } {
+  const rows = truth.ids(CREDIT).map((id) => ({ id, credit: truth.get(CREDIT, id) as Credit }));
+  const live = liveBetween(rows, speaker, me);
+  return {
+    grams: live.reduce((sum, r) => sum + r.credit.owed, 0),
+    overdue: live.some((r) => r.credit.status === "defaulted" || now > r.credit.due),
   };
 }
 
@@ -167,6 +189,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       PENDING.name,
       HEARD.name,
       KNOWN_DEEDS.name,
+      CREDIT.name,
       PERSON.name,
       PERSON_NAME.name,
       LOCATION.name,
@@ -212,6 +235,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return { where: o.spaces.spaces.find((s) => s.key === at?.space)?.kind ?? "open" };
           },
           heard: truth.get(HEARD, me)?.claims ?? [],
+          owes: owesOf(truth, me, speaker, ctx.now, o.day),
           reproach: worstDeed(truth.get(KNOWN_DEEDS, me), speaker)?.kind ?? null,
           nameOf: (id) => givenName(truth, id) ?? "ese",
           goodName: (id) => goodById(id)?.name ?? id,
@@ -252,6 +276,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             text: reply.text,
             reply: reply.line,
           },
+          // Un pedido fiado: el proceso del crédito abre la deuda con este dato.
+          ...(reply.give?.credit && good
+            ? { credit: { unit: goodUnit(good), grams: reply.give.grams } }
+            : {}),
         },
         emissions: { sight: speak?.emissions.sight ?? 0, sound: speak?.emissions.sound ?? 0 },
         causes: [reason],

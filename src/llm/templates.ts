@@ -209,6 +209,22 @@ function outcome(
           with: ref(e.with),
         });
       break;
+    case "give":
+      if (e.gave === undefined)
+        say(e.to === undefined ? "outcome.give.nothing" : "outcome.give.nothing_to", {
+          to: ref(e.to),
+        });
+      else {
+        const kilos = e.gave.grams / 1000;
+        const grams =
+          e.gave.grams >= 1000 ? `${Number(kilos.toFixed(1))} kilos` : `${e.gave.grams} gramos`;
+        say(e.to === undefined ? "outcome.give.done_anyone" : "outcome.give.done", {
+          to: ref(e.to),
+          what: good(e.gave.good),
+          grams,
+        });
+      }
+      break;
     case "take": {
       if (e.got.length === 0) {
         if (e.from !== undefined) say("outcome.take.nothing_from", { from: ref(e.from) });

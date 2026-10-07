@@ -34,6 +34,7 @@ import {
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
 import { converseProcess } from "./converse.ts";
+import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
@@ -133,7 +134,10 @@ export function lifeWorld(
           statuses: parts.statuses,
           lines: parts.speech,
           placeOf: placeOf(parts, village),
+          day: parts.clock.day,
         }),
+        creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         spoilageProcess({
           goods: parts.goods,
           clock: parts.clock,
