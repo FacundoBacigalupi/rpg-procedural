@@ -54,6 +54,7 @@ import {
   SPEECH_LINES,
   STATUSES,
   seedBodies,
+  seedParcels,
   seedPersonNames,
   seedPlaceNames,
   seedSettlement,
@@ -62,6 +63,7 @@ import {
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  TENURES,
   TRAITS,
   type Trait,
   type VillagePopulation,
@@ -326,6 +328,14 @@ export function createLife(
     now: pop.now,
     households: pop.households,
     defs: statuses,
+  });
+  // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
+  seedParcels(truth, ids, log, {
+    seed,
+    pop,
+    site,
+    tenures: content.all(TENURES),
+    standing,
   });
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca

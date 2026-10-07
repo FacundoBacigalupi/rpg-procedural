@@ -1,0 +1,29 @@
+[
+  {
+    "id": "freehold",
+    "name": "propiedad plena",
+    "culture": "village",
+    "incidents": ["possess", "use", "fruits", "exclude", "alienate", "bequeath", "pledge", "build"],
+    "heritable": true,
+    "alienable": true,
+    "record": "witnesses"
+  },
+  {
+    "id": "tenancy",
+    "name": "uso por arriendo de palabra",
+    "culture": "village",
+    "incidents": ["possess", "use", "fruits"],
+    "heritable": false,
+    "alienable": false,
+    "record": "witnesses"
+  },
+  {
+    "id": "commons",
+    "name": "tierra comunal",
+    "culture": "village",
+    "incidents": ["use", "graze", "gather", "pass"],
+    "heritable": false,
+    "alienable": false,
+    "record": "custom"
+  }
+]

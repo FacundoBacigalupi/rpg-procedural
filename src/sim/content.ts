@@ -11,6 +11,7 @@ import { SPEECH_LINES } from "./dialogue/index.ts";
 import { GOODS } from "./economy/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
+import { TENURES } from "./property/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
 import { STATUSES } from "./social/index.ts";
@@ -35,4 +36,5 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   RECIPES,
   STATUSES,
   SPEECH_LINES,
+  TENURES,
 ] as readonly ContentKind[];
