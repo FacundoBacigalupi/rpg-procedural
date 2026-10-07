@@ -315,7 +315,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 ## 7. Decisiones técnicas (revisión del stack, 2026-10-06)
 
-> **Estado: propuesta pendiente de aprobación (#46 del ROADMAP).** Antes de la Fase 0 se revisó cada pieza contra lo que pide el diseño: una simulación determinista enorme (planeta de 2-4× la Tierra, historia de siglos en modo agregado, miles de agentes materializados), replay byte a byte, un LLM local en una RTX 4070 Super de 12 GB, Windows como plataforma principal, y un proyecto de años que escribe sobre todo Claude.
+> **Estado: aprobado 2026-10-06 (#46 del ROADMAP).** Antes de la Fase 0 se revisó cada pieza contra lo que pide el diseño: una simulación determinista enorme (planeta de 2-4× la Tierra, historia de siglos en modo agregado, miles de agentes materializados), replay byte a byte, un LLM local en una RTX 4070 Super de 12 GB, Windows como plataforma principal, y un proyecto de años que escribe sobre todo Claude.
 
 ### 7.1 Lo que pide el diseño (los criterios)
 
@@ -388,7 +388,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 - **Vitest** se queda; se suma **fast-check** para tests por propiedades: la conservación (ledgers), el determinismo (mismo seed, cualquier orden de inserción) y `interact` sin móvil perpetuo son propiedades, no ejemplos.
 - **npm** se queda: pnpm solo aporta cuando haya workspaces.
 
-### 7.11 Tabla final (propuesta)
+### 7.11 Tabla final (aprobado 2026-10-06)
 
 | Tema | Decisión | Cambio respecto del borrador |
 |---|---|---|
@@ -437,10 +437,10 @@ Fase 9  UI web completa, archivo de vidas, fine-tune, eras no típicas (la web m
 - **Replay**: re-ejecutar una partida desde seed + planes validados, con detector de divergencias.
 - Diseño completo (guardado, hash, versiones, catálogo del inspector, calibración, invariantes): [systems/tooling.md](systems/tooling.md).
 
-## Preguntas abiertas
+## Decisiones (aprobado 2026-10-06)
 
-1. **¿Partir la Fase 1 en hitos jugables?** Tiene 31 tareas. Propuesta: **1a "el turno"** (planet mínimo, una casa y un claro, cuerpo, percepción, ~10 verbos, parser, `PlayerView`, narrador, inspector: se puede jugar un día solo); **1b "la aldea vive"** (20 agentes, economía y oficio, estatus, propiedad, fiado, robo y reclamo, pelea y conversación mínimas); **1c "la aldea tiene mundo"** (cultura, lengua, religión, clima, cielo, salir al monte, modo novela mínimo, crónica al morir). *Recomendación: sí; cada hito termina con algo que se juega.*
-2. **Tipos de `content/` y de las salidas del LLM: ¿desde Zod o escritos a mano?** *Recomendación: el esquema Zod es la fuente y el tipo sale con `z.infer` para todo lo que entra de afuera (`content/`, parser, guardados); el estado de la sim usa interfaces escritas a mano, que son más legibles y no necesitan validarse en cada tick.*
-3. **Cómo se guardan los componentes en SQLite.** *Recomendación: una tabla por componente con `id`, JSON canónico y hash, más columnas indexadas solo para lo que consulta el inspector (lugar, tier, dueño); así el hash por componente de tooling §2 sale gratis y migrar es reescribir JSON.*
-4. **Cómo se corre TypeScript.** *Recomendación: Node 24 con type stripping nativo (sin `tsx` ni build), `tsc --noEmit` para el typecheck; ver §7.3.*
-5. **El stack revisado de §7** (RNG por contador, `core/math` propio, Zod 4, un modelo LLM residente, web mínima al cierre de la Fase 1, spike de H3, Biome + dependency-cruiser, fast-check, CI en dos plataformas). *Recomendación: aprobar la tabla de §7.11 entera; cada punto se puede discutir suelto.*
+1. **Fase 1 en tres hitos jugables:** 1a "el turno" (jugar un día solo), 1b "la aldea vive" (20 agentes, economía, robo y reclamo), 1c "la aldea tiene mundo" (monte, clima, cielo, crónica al morir, web mínima). El reparto de tareas está en el ROADMAP.
+2. **Zod 4 es la fuente de los tipos de lo que entra de afuera** (`content/`, parser, guardados) con `z.infer`; el estado de la sim usa interfaces escritas a mano.
+3. **SQLite con una tabla por componente:** `id`, JSON canónico y hash, más columnas indexadas solo para lo que consulta el inspector.
+4. **Node 24 corre los `.ts` directo** (type stripping con `erasableSyntaxOnly`), `tsc --noEmit` para el typecheck, sin `tsx` ni build hasta la web.
+5. **El stack de §7.11 entero.**

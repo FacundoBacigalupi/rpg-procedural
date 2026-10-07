@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** **El backlog de diseño 2 está completo** (2026-10-06, #27-#45). Antes de la Fase 0 queda **#46, la revisión del stack técnico** (decisión del usuario sobre la propuesta de [ARCHITECTURE.md](ARCHITECTURE.md) §7). Después, la **Fase 0: fundamentos** (más abajo), con ARCHITECTURE como mapa de carpetas, tipos y herramientas.
+**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** **El backlog de diseño 2 está completo** (2026-10-06, #27-#45). La revisión del stack (#46) está aprobada. **Lo que sigue es la Fase 0: fundamentos** (más abajo), de a una tarea por rama `feat/<nombre>` con tests, siguiendo el "Flujo de trabajo por feature" de CLAUDE.md; [ARCHITECTURE.md](ARCHITECTURE.md) es el mapa de carpetas, tipos y herramientas.
 
 **Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `docs/<nombre>`.
@@ -44,7 +44,7 @@ Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el 
 ### F. Cierre del diseño
 45. [x] **Modelo de datos unificado y revisión de coherencia** → [ARCHITECTURE.md](ARCHITECTURE.md): glosario de tipos compartidos (`Entity`, `Event`, `Belief`, `Lot`, `Commitment`, `Pressure`…), qué módulo es dueño de cada uno, contradicciones entre docs resueltas, orden de implementación de las fases revisado con todo lo diseñado.
 
-46. [ ] **Revisión del stack técnico** → [ARCHITECTURE.md](ARCHITECTURE.md) §7: análisis de cada pieza contra lo que pide el diseño (determinismo entre versiones, rendimiento de worldgen e historia, LLM local en 12 GB, herramientas visuales). Propuesta: TypeScript con datos en columnas y válvula Rust → WASM; Node 24 sin `tsx`; RNG por contador; `core/math` determinista; Zod 4 con JSON Schema para el LLM; un modelo local residente; web mínima al cierre de la Fase 1; spike de H3 para la grilla; Biome + dependency-cruiser; fast-check; CI en Windows y Linux. Al aprobarse: ajustar las tareas de la Fase 0, la línea de stack de CLAUDE.md y narration §1.
+46. [x] **Revisión del stack técnico** (aprobado 2026-10-06) → [ARCHITECTURE.md](ARCHITECTURE.md) §7: análisis de cada pieza contra lo que pide el diseño (determinismo entre versiones, rendimiento de worldgen e historia, LLM local en 12 GB, herramientas visuales). Propuesta: TypeScript con datos en columnas y válvula Rust → WASM; Node 24 sin `tsx`; RNG por contador; `core/math` determinista; Zod 4 con JSON Schema para el LLM; un modelo local residente; web mínima al cierre de la Fase 1; spike de H3 para la grilla; Biome + dependency-cruiser; fast-check; CI en Windows y Linux. Aplicado: tareas de la Fase 0, Fase 1 en hitos 1a/1b/1c con la web mínima en 1c, stack de CLAUDE.md y narration §1.
 
 ### Hecho: backlog de diseño 1 (2026-10-05 → 2026-10-06)
 Los 26 ítems están escritos y mergeados en `develop` (PRs #9-#43):
@@ -161,52 +161,63 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [x] Cosmología y ascensión ([cosmology.md](systems/cosmology.md)) — el cosmos como grafo de planos y enlaces con barreras y costos de cruce; solo el planeta se simula completo y los demás planos son agregados con hechos fijados y un ledger de esencia y almas que cierra; el cielo visible calculable (sol, lunas, estrellas con constelaciones por cultura, planetas, cometas, meteoritos, precesión); estructura por familia y el cosmos xianxia base (mundo mortal, Cielo local, ciclo, mundo superior, vacío, mundos menores, opcionales por seed); la barrera del mundo que pone el techo, con lugares delgados y daños de época; qué hacer al llegar al techo (ascender, suprimirse, romper); la ascensión como evento físico con tribulación, conservación, fracasos, consecuencias, fingimientos y variante trampa; visitantes de arriba solo con causa y suprimidos; filtraciones, sellos y grietas; ascender termina la partida
 - [x] Familia de los misterios y era de la humanidad ([mysteries.md](systems/mysteries.md), [technology.md](systems/technology.md) §9b) — familia de mundos al estilo *Lord of the Mysteries* con la mecánica y sin los nombres: caminos generados por seed con secuencias 9→0, fórmulas como saber secreto con fidelidad, pociones como oficio, características conservadas que salen de los muertos, se atraen y tienen una sola plaza en la cima, vecinos con intercambio, presión de reunión como motor de cataclismos; digerir actuando el papel; pérdida de control como presión con causas; poderes como modos de verbos; misticismo (espiritualidad, adivinación, rituales, nombres honoríficos que llegan de verdad, mundo espiritual, sueños, espacios sellados); objetos sellados que cobran; dioses reales en la cima con iglesias; lo de afuera y su corrupción; épocas por cataclismos; sociedad industrial con el secreto como decisión de organizaciones; ampliado con restos de mente en las características, linajes de camino, pilares y sedes de grupo, razas antiguas, poderes conceptuales con estructura, costo y rastro, anclas y bendecidos, formas verdaderas, lenguas místicas, mensajeros, proyecciones del pasado y una tabla de cobertura de la obra (§19). La era de la humanidad como eje del seed: cada familia tiende a su era típica, la historia la alcanza por causas y el presente se elige al llegar
 - [x] Modelo de datos unificado y revisión de coherencia ([ARCHITECTURE.md](ARCHITECTURE.md)) — capas con el juego como capa propia (`game/`: turno, setup, `PlayerView`, crónica final); carpetas por sistema dentro de `sim/` y `families/<familia>/` como único lugar con lo específico de cada familia (el resto habla de `Essence`, `Practice`, `Law`, `Soul`); reglas de dependencia sin ciclos y efectos cruzados solo por el scheduler; tipos centrales canónicos (`Id<K>` con contadores deterministas, `AgentId` como único id de persona, `Party`, `HolderRef`, `PlaceRef`, `Tick`, `Event` con `tick`/`kind`/`place`, `CauseRef` como unión, `EntityBase` con `originEventId`, ítem contra lote, ECS liviano por componentes); glosario de dueños de cada tipo compartido; contradicciones resueltas (`TechProcessDef`, `SchemeStep`, `NewGameSetup` de game-modes, `Belief.holder` con organizaciones); orden de implementación dentro de cada fase con los sistemas de fondo en su forma real desde la Fase 1 y la interfaz de metafísica pensada para dos familias
+- [x] Revisión del stack técnico ([ARCHITECTURE.md](ARCHITECTURE.md) §7) — TypeScript con datos en columnas y válvula Rust → WASM medida; Node 24 con `.ts` nativo; RNG por contador y `core/math` propio para que el replay sobreviva a actualizaciones de Node; `node:sqlite` tras interfaz con tabla por componente y zstd; Zod 4 como fuente de tipos externos y de la restricción de salida del LLM; un modelo local residente para parser y narrador; web mínima al cierre de la Fase 1; spike de H3; Biome + dependency-cruiser + fast-check; CI en Windows y Linux
 
 ## Fase 0 — Fundamentos
-- [ ] Scaffold con las herramientas que fije #46 ([ARCHITECTURE.md](ARCHITECTURE.md) §7): TS strict, tests, lint con las reglas de capas, scripts npm, GitHub Actions (typecheck + lint + tests), carpetas de ARCHITECTURE §2
-- [ ] `core/ids` (`Id<K>` con contadores deterministas por tipo), `core/types` (`Event`, `CauseRef`, `PlaceRef`, `Party`, `EntityBase`) y `core/ledger` con igualdad exacta ([ARCHITECTURE.md](ARCHITECTURE.md) §4)
-- [ ] `core/rng` con seed y sub-streams + test de determinismo
+Herramientas y tipos según [ARCHITECTURE.md](ARCHITECTURE.md) §4 y §7 (aprobado 2026-10-06).
+- [ ] Scaffold: Node 24 fijado (`.nvmrc`, `engines`), TS strict con `erasableSyntaxOnly` y `.ts` corriendo nativo (sin `tsx` ni build), `tsc --noEmit`, Vitest + fast-check, Biome, dependency-cruiser (capas, ciclos entre carpetas de `sim/`, `families/` aislado, prohibidos `Math.random`, `Date`, `Math.exp` y compañía y `node:*` en `sim/` y `worldgen/`), scripts npm, GitHub Actions (typecheck + lint + tests) en Windows y Linux, carpetas de ARCHITECTURE §2
+- [ ] `core/ids` (`Id<K>` con contadores deterministas por tipo, asignados al asentar), `core/types` (`Event`, `CauseRef`, `PlaceRef`, `Party`, `EntityBase`) y `core/ledger` en enteros con igualdad exacta y tests por propiedades ([ARCHITECTURE.md](ARCHITECTURE.md) §4)
+- [ ] `core/rng`: RNG por contador `draw(seed, key, n)` con claves por tupla, `sfc32` para flujos largos; tests de determinismo, de independencia entre claves y de distribución ([ARCHITECTURE.md](ARCHITECTURE.md) §7.4)
+- [ ] `core/math` determinista: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con operaciones básicas y `Math.sqrt`; tests de error contra `Math.*` y valores dorados fijos ([ARCHITECTURE.md](ARCHITECTURE.md) §7.4)
 - [ ] `core/time`: ticks absolutos en segundos, conversión a calendario simple ([simulation.md](systems/simulation.md) §1)
 - [ ] Scheduler mínimo: `ProcessDef` puro con diffs, cola de ítems agendados, fases fijas, contiendas por conflicto de escritura, rng por clave ([simulation.md](systems/simulation.md) §2, §3, §14)
 - [ ] Modelo de `Event` con `causes` + `originEventId` + tests de invariantes (sin huérfanos, conservación)
-- [ ] Persistencia SQLite mínima (guardar/cargar mundo + log de eventos)
-- [ ] Serialización canónica y hash del estado por componente; test de determinismo por hash; replay básico desde seed + planes; validación de `content/` con Zod ([tooling.md](systems/tooling.md) §1-§3, §11)
+- [ ] Persistencia: `node:sqlite` detrás de una interfaz, una tabla por componente con id, JSON canónico y hash, columnas indexadas para el inspector, log de eventos, snapshots con zstd ([tooling.md](systems/tooling.md) §1, [ARCHITECTURE.md](ARCHITECTURE.md) §7.5)
+- [ ] Serialización canónica y hash del estado por componente; test de determinismo por hash en las dos plataformas del CI; replay básico desde seed + planes; carga de `content/` validada con Zod 4 y tipos externos con `z.infer` ([tooling.md](systems/tooling.md) §1-§3, §11)
 - [ ] Loop CLI con stub del turno: leer, parsear a mano, avanzar, imprimir ([player-loop.md](systems/player-loop.md) §3)
-- [ ] `mode` en `NewGameSetup` y en `meta`; validador Zod de `NovelSetup` ([game-modes.md](systems/game-modes.md) §1)
-- [ ] Cliente LLM con `MockLLM` e interfaz de trabajos (parser, narrador, verbalizador) ([narration.md](systems/narration.md) §1, §16)
+- [ ] `mode` en `NewGameSetup` y en `meta`; esquema Zod de `NovelSetup` ([game-modes.md](systems/game-modes.md) §1)
+- [ ] Cliente LLM: interfaz compatible con OpenAI por `fetch`, `MockLLM`, trabajos (parser, narrador, verbalizador), `z.toJSONSchema` del `IntentDraft` como restricción de salida ([narration.md](systems/narration.md) §1, §16)
 
 ## Fase 1 — Vertical slice: una aldea, 20 NPCs, acción libre
-- [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea
-- [ ] Elementos: cinco fases en `content/`, vector elemental del qi de cada celda, `interact` puro con tests de conservación y sin móvil perpetuo ([elements.md](systems/elements.md))
+Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo que se juega. Los sistemas de fondo entran con su forma real aunque la profundidad sea mínima ([ARCHITECTURE.md](ARCHITECTURE.md) §8).
+
+### Hito 1a — El turno: jugar un día solo
+- [ ] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea; spike de un día H3 contra Goldberg propia con la conservación por celda como criterio ([ARCHITECTURE.md](ARCHITECTURE.md) §7.9)
 - [ ] Aldea + bosque cercano hardcodeados/semigenerados
 - [ ] Jugador con stats generados por seed, nacido de padres y hogar generados por la sim, genoma mínimo heredado ([family-lineage.md](systems/family-lineage.md))
 - [ ] Catálogo de ~10 verbos en `content/actions/` (moverse, buscar/recolectar, hablar, trabajar, descansar, robar como plantilla, pelear, comerciar, observar, esperar); `ActionPlan` con `seq` y `until`; referencias con aclaración; requisitos de capacidad y medios; `Outcome` con autopercepción; fracasos por factor ([actions.md](systems/actions.md))
-- [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
 - [ ] Resolución con resultados matizados
-- [ ] Sesión de oficio mínima (cocina o herrería de aldea): pasos con ruido de control, física simple, producto con calidad y origen ([crafts.md](systems/crafts.md))
 - [ ] Habilidades de los ~10 verbos con facetas `execution`/`reading`/`judgment`, aprendizaje por práctica desde la autopercepción con techo ([skills.md](systems/skills.md))
-- [ ] Intent parser (modelo local con gramática JSON) → ActionPlan validado; banco de pruebas de modelos locales ([narration.md](systems/narration.md) §1)
+- [ ] Intent parser (modelo local residente con salida restringida por el JSON Schema de Zod) → ActionPlan validado; Ollama primero; banco de pruebas de modelos locales que mide también si un parser chico aparte vale el cambio de modelo ([narration.md](systems/narration.md) §1)
 - [ ] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md))
 - [ ] Narrador (modelo local) solo con los percepts del jugador: `buildPlayerView` con marca de tipo, etiquetas, salida con referencias marcadas, validador con lista blanca, plantillas y parser sin red, caché del prefijo ([narration.md](systems/narration.md) §2-§5, §9-§12)
 - [ ] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md))
+- [ ] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
+- [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
+- [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
+- [ ] Aldea inicial con anclas, edificios con componentes, materiales con origen, dueños, contenido y grafo de espacios; un pozo y un camino ([settlements.md](systems/settlements.md) §1, §2, §5, §8)
+- [ ] Lengua de la aldea desde `content/` con léxico mínimo, romanización, nombres de personas con significado y el léxico en la lista blanca del validador ([language.md](systems/language.md) §1, §8, §13)
+
+### Hito 1b — La aldea vive: 20 agentes, economía, robo y reclamo
+- [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
+- [ ] Sesión de oficio mínima (cocina o herrería de aldea): pasos con ruido de control, física simple, producto con calidad y origen ([crafts.md](systems/crafts.md))
 - [ ] Estatus mínimo de aldea (campesinos, terrateniente, sirvientes), marcas visibles y rango percibido, deferencia en la utilidad del diálogo ([social-structure.md](systems/social-structure.md))
 - [ ] Pelea mortal: posiciones y alcances, pulsos con `windup`/`commit`/`recovery`, intercambio con percepción y contienda, heridas por parte, aire, huida y rendición, pausas del jugador ([combat.md](systems/combat.md))
 - [ ] Conversación mínima: `greet`, `tell`, `ask`, `request`, `offer`, `accept`, `refuse`, `farewell`; NPC que contesta desde sus creencias o dice "no sé"; verbalización con lista blanca y plantillas de respaldo; `SpeechStyle` mínimo ([dialogue.md](systems/dialogue.md) §2, §5, §16)
 - [ ] Huellas mínimas (sangre, objetos movidos), testigos, robo y pelea con reclamo de la víctima y reputación ([law.md](systems/law.md))
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
-- [ ] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
-- [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
-- [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
-- [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
-- [ ] Modo novela mínimo: elegir lugar, posición de la familia, sexo, nombre y edad de entrada, con búsqueda de nacimiento y biografía sintetizada; marca de modo en la crónica ([game-modes.md](systems/game-modes.md) §2)
-- [ ] Aldea inicial con anclas, edificios con componentes, materiales con origen, dueños, contenido y grafo de espacios; un pozo y un camino ([settlements.md](systems/settlements.md) §1, §2, §5, §8)
 - [ ] Parcelas de la aldea con dueño, forma de tenencia y escritura o testigos; posesión, creencia y registro separados; robo de muebles con reclamo ([property.md](systems/property.md) §1, §3, §12)
+- [ ] Una cultura de la aldea desde `content/` con los rasgos que leen los demás sistemas ([culture.md](systems/culture.md) §1, §2)
+
+### Hito 1c — La aldea tiene mundo: monte, clima, cielo, crónica al morir, web
+- [ ] Elementos: cinco fases en `content/`, vector elemental del qi de cada celda, `interact` puro con tests de conservación y sin móvil perpetuo ([elements.md](systems/elements.md))
+- [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
+- [ ] Modo novela mínimo: elegir lugar, posición de la familia, sexo, nombre y edad de entrada, con búsqueda de nacimiento y biografía sintetizada; marca de modo en la crónica ([game-modes.md](systems/game-modes.md) §2)
 - [ ] Caminar por tramos con costo entre la aldea y lugares cercanos; salir al monte con costo por celda y rumbo según la habilidad; buscar, recolectar y cazar solo lo que hay; acampar; cansancio y comida del camino ([travel.md](systems/travel.md) §1, §2, §4, §12)
 - [ ] Tiempo diario por celda en la región de la aldea desde normales y anomalía; estaciones; efecto en cultivos, exposición y percepción ([weather.md](systems/weather.md) §1, §4, §5)
-- [ ] Una cultura de la aldea desde `content/` con los rasgos que leen los demás sistemas ([culture.md](systems/culture.md) §1, §2)
-- [ ] Lengua de la aldea desde `content/` con léxico mínimo, romanización, nombres de personas con significado y el léxico en la lista blanca del validador ([language.md](systems/language.md) §1, §8, §13)
 - [ ] Religión popular de la aldea desde `content/`: ancestros, dios local o su ausencia, una fiesta, tabúes ([religion.md](systems/religion.md) §2, §6)
 - [ ] Sol y luna con días, fases y estaciones calculables; catálogo mínimo de estrellas ([cosmology.md](systems/cosmology.md) §2)
+- [ ] UI web local mínima: servidor Node local + Vite + React con chat, panel del personaje, bitácora y un mapa en canvas; la CLI queda como herramienta ([ARCHITECTURE.md](ARCHITECTURE.md) §7.8)
 
 ## Fase 2 — Psicología y memoria
 - [ ] Rasgos innatos + adquiridos
@@ -425,7 +436,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 - [ ] Misticismo de la familia de los misterios: nombres honoríficos, mundo espiritual, objetos sellados, sociedades, lo de afuera, presión de reunión, pilares y sedes, poderes conceptuales, proyecciones del pasado; escenarios headless de la tabla de cobertura ([mysteries.md](systems/mysteries.md) §4b, §5b, §8, §8b, §9, §11, §12, §19)
 
 ## Fase 9 — Pulido
-- [ ] UI web (Vite + React): chat + mapa + panel del personaje + crónica
+- [ ] UI web completa (sobre la web mínima del hito 1c): mapas interactivos, crónica, paneles de creencias e inspector
 - [ ] Archivo de crónicas de vidas pasadas, encadenado de vidas en un mismo mundo por renacimiento ([chronicle.md](systems/chronicle.md))
 - [ ] Fine-tune LoRA propio de un modelo local con ejemplos reales del juego (no salidas de Claude) ([narration.md](systems/narration.md) §1)
 - [ ] Armador web del modo novela; archivo de vidas con marcas y la verdad del dedo de oro ([game-modes.md](systems/game-modes.md) §11, §12)
