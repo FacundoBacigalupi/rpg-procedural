@@ -178,7 +178,15 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - `llm/grammar`: un parser de comandos sin red que saca 36 de los 39 ejemplos.
 
   Falta: las aclaraciones del parser y la memoria de continuidad (Fase 2), y medir `--swap` con el narrador ([narration.md](systems/narration.md) §16)
-- [ ] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md))
+- [x] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md)) — `sim/body`:
+  - plan humano por zonas (tier 3) y fisiología en `content/body-plans/`, comidas silvestres en `content/foods/`;
+  - `Body` en la tabla `body.state`: sangre, déficit de agua, glucógeno → grasa → músculo, fatiga, deuda de sueño, sepsis, conciencia y heridas;
+  - `injure` con el rng del golpe: gravedad, arteria, hueso, órgano, suciedad y virulencia; `treat` para limpiar, vendar y entablillar;
+  - `advanceBody` por subpasos: coágulo, regeneración, carrera entre la infección y la reparación, sepsis, cicatrices, desmayo y muerte por exanguinación, deshidratación, inanición, sepsis o trauma cerebral, cada una citando sus heridas;
+  - `capabilitiesOf` (0-1 por función) y `bodySigns` (síntomas sin números) para las demás capas;
+  - el proceso `body.physiology` en la fase `physics`, que emite `body.*` y cierra la entidad al morir.
+
+  Calibrado contra los objetivos de body-health: una herida grave sin tratar mata a ~1 de cada 3 (más por sepsis que por sangre) y una leve limpia casi nunca. Queda para el bucle del jugador: los verbos comer, beber y curar; pasar de verbo a actividad; enchufar `injure` en la resolución de golpes y percances; percepts internos desde `bodySigns`; llamar a `seedBodies`; y que las capacidades lleguen a `attempt` y al techo de las habilidades ([body-health.md](systems/body-health.md) §Implementación)
 - [ ] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
 - [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
 - [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
