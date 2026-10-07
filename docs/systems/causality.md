@@ -189,6 +189,7 @@ Encaja perfecto con la temática y no rompe la regla: no inventa nada, solo **le
 - Inspector: comando `why <eventId>` que recorre el grafo causal hacia atrás, más el mapa de presiones y los demás comandos de §10.
 - Tests de invariantes: no hay huérfanos, la conservación cuadra, los eventos no tienen causas vacías (salvo el seed), y hay determinismo.
 - El grafo crece mucho, así que hace falta **compactarlo**: los eventos viejos y poco importantes se resumen en eventos agregados que heredan sus enlaces.
+- **Hecho en la Fase 0:** `EventLog` (core/events) valida causas al recibir cada evento; las entidades llevan su ficha (`ENTITY`) con origen y fin; los procesos crean con ids provisionales que el scheduler resuelve, así nada se crea sin su evento; los asientos del ledger van por un evento del mismo resultado; `checkInvariants` (sim/world) cubre huérfanos, causas de estado, actores y conservación. Falta validar causas de presión y de creencia (con sim/causality y sim/knowledge) y la compactación.
 
 ---
 

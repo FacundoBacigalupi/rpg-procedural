@@ -33,7 +33,7 @@ Conventional Commits: `tipo(scope): descripción`
 
 ## CI (`.github/workflows/ci.yml`)
 Corre **solo** en push y PR a `main` (desde 2026-10-05: los runners de GitHub tardaban demasiado en tomar los jobs y frenaban cada PR a `develop`). En `develop` la verificación es local (`npm run typecheck && npm run lint && npm test`). El merge `develop` → `main` de cada hito sí pasa por el CI completo:
-- typecheck + lint + tests (se saltean hasta que exista `package.json`)
+- typecheck + lint + tests en una matriz Windows + Linux (el usuario juega en Windows; Linux confirma que el determinismo no depende de la plataforma). El job `Typecheck, lint y tests` agrupa la matriz y es el check obligatorio del ruleset.
 - escaneo de secretos con gitleaks
 - `npm audit` en PRs
 

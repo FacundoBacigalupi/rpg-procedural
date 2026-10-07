@@ -41,10 +41,11 @@ Jugador (texto)
 ```
 src/
   core/                # sin dependencias
-    rng/               # PRNG con seed y fork por clave (sfc32 o xoshiro)
+    rng/               # RNG por contador draw(seed, key, n), fork por tupla, sfc32 para flujos largos
+    math/              # exp, log, pow, trigonometría y cuantil normal deterministas (ports de fdlibm)
     ids/               # Id<K>, contadores deterministas por tipo, EntityRef
-    time/              # Tick, Duration, calendario base (los calendarios culturales son creencia: weather §6)
-    types/             # Event, CauseRef, PlaceRef, Distribution, Ledger, Brand
+    time/              # Tick, PlanetClock, calendario de la verdad, fases, ventanas por escala (los calendarios culturales son creencia: weather §6)
+    types/             # Event, CauseRef, PlaceRef, HolderRef, Party, EntityBase
     ledger/            # conservación: bienes, dinero, esencia, almas (causality, cosmology §6)
     canon/             # serialización canónica y hash (tooling §2)
     schema/            # helpers de Zod y carga validada de content/
@@ -127,7 +128,7 @@ core ← worldgen ← sim ← game ← llm / persistence ← ui / tools
 - `game` puede leer `llm` y `persistence` solo por interfaces inyectadas (el turno se testea con `MockLLM` y una base en memoria).
 - **Entre carpetas de `sim/`** no hay ciclos: un sistema lee los tipos de otro desde su `index.ts`, pero **los efectos cruzados pasan por el scheduler** (diffs, eventos y presiones), no por llamadas directas que mutan estado ajeno.
 - `families/*` depende de `metaphysics/`; nada fuera de `families/` importa una familia concreta.
-- Se fuerza con dependency-cruiser desde la Fase 0 (§7.10).
+- Se fuerza desde la Fase 0 (§7.10): dependency-cruiser para los imports (`.dependency-cruiser.cjs`) y Biome para los globales prohibidos (`biome.json`, `lint/determinism.grit`).
 
 ## 4. Tipos centrales (canónicos)
 
@@ -178,6 +179,8 @@ type Duration = number;    // segundos
 type Time = Tick;          // alias: algunos docs dicen Time; es lo mismo
 ```
 
+Implementado en `core/time` (Fase 0): los ticks son enteros seguros; el día, el año trópico y las lunas vienen en un `PlanetClock` que calcula planet-gen y se guarda con el mundo. El calendario de la verdad cuenta días desde la medianoche del meridiano 0 y años trópicos exactos (un día es del año en que cae su medianoche; los bisiestos salen solos). Las escalas (`TimeScale`) cortan el tiempo en ventanas con índice (`windowIndex`), que es lo que entra en la clave del rng de los procesos. La hora local de cada lugar y la posición del sol en el cielo son de planet-gen; los calendarios de las culturas son creencia.
+
 ### 4.3 Eventos y causas
 
 ```ts
@@ -204,7 +207,10 @@ type CauseRef =
 
 - **Toda entidad tiene `originEventId: EventId`** (o `{ kind: "seed" }` como causa del evento de origen).
 - **Los eventos son inmutables.** Corregir algo es un evento nuevo con causa.
+- **El registro (`core/events`, `EventLog`)** es de solo agregado y en orden de id. Al entrar valida que el evento tenga causas (las condiciones iniciales citan `{ kind: "seed" }`), y que las causas que son eventos ya estén y no sean posteriores: el grafo no tiene ciclos por construcción. Da `causesOf`/`effectsOf` y los conos `ancestors`/`descendants` para `why` y `effects`.
+- **Los procesos no reparten ids:** lo que crean lo nombran con ids provisionales (`ctx.newId("agent")` → `agent:~0`; `draftEvent(i)` → el evento `i` del mismo resultado). Al asentar, el scheduler reparte los reales en orden canónico, solo a las corridas que sobreviven a las contiendas, y los reemplaza en todo el resultado; así una entidad nueva apunta a su evento de origen en el mismo paso (`createEntity`, `endEntity`). Los asientos del ledger que devuelve un proceso van siempre por uno de sus eventos.
 - **`Outcome`** es el de actions §7 (manda sobre la lista vieja `success | partial | ...`).
+- **En el código `Event` es genérico** (`Event<TOutcome, TEmissions>`): `core` no puede importar `Outcome` (sim/actions) ni `EmissionProfile` (sim/perception), así que `sim` fija los tipos concretos con un alias.
 
 ### 4.4 La entidad base
 
@@ -218,6 +224,8 @@ interface EntityBase {
 }
 ```
 
+La ficha vive en la tabla `entity` de `sim/world` (`ENTITY`); todo otro componente exige que su entidad tenga ficha. `checkInvariants` (sim/world) revisa sin huérfanos, fichas coherentes con sus eventos de origen y de fin, actores y causas de estado que existen y ya existían, y el ledger auditado con cada asiento por un evento real de su tick.
+
 El modelo es un **ECS liviano**: cada sistema guarda sus componentes en su propia tabla por id (el `Body` de un agente, su `Mind`, sus `Skills`, su `PracticeState`), en lugar de un objeto gigante. Así cada sistema serializa, hashea y migra lo suyo (tooling §2).
 
 ### 4.5 Bienes: ítem o lote
@@ -225,6 +233,13 @@ El modelo es un **ECS liviano**: cada sistema guarda sus componentes en su propi
 - **`Lot`** (economy §1): lo fungible y a granel (arroz, cobre, hierbas, piedras espirituales de grado común). Se parte y se junta, conserva el origen.
 - **`Item`**: lo que tiene identidad (una espada con nombre, un manual, una tablilla, un artefacto sellado, una característica de los misterios suelta). Es una entidad con `ItemId`, materiales con origen y su propia historia.
 - **Pasar de uno a otro** es un evento: forjar una espada consume lotes y crea un ítem; fundir el ítem crea lotes. Los dos pasan por el ledger.
+
+### 4.5b El ledger (`core/ledger`)
+
+- **Doble entrada en enteros seguros.** Cada transferencia es `{unit, from, to, amount}` con `amount` entero positivo en la unidad mínima que elige el sistema (gramos, granos de cobre, micro-unidades de esencia). Nada de floats: la igualdad es exacta y un desborde es un error.
+- **Asientos atómicos por evento** (`post({tick, eventId, transfers})`): entra todo o nada. Se valida el neto por cuenta, así que dentro de un asiento lo que entra puede volver a salir.
+- **Cuentas:** las internas son las claves canónicas de un titular (`holderKey`: `agent:12`, `building:3/store`, `carried:journey:4`) y nunca quedan en negativo. Las externas (`ext:<nombre>`) son las fuentes y sumideros de economy y cosmology: se declaran al crear el ledger con las unidades que pueden mover, y una no declarada no existe. Por construcción, cada unidad suma 0 sobre todas las cuentas.
+- **Diario** de solo agregado (`seq, tick, eventId, unit, from, to, amount`), que es la tabla `ledger` de tooling; `Ledger.fromJournal` reconstruye los saldos y `audit()` comprueba las invariantes en debug. `totalsBy(unit, grupo)` audita la conservación por región, plano o asentamiento.
 
 ### 4.6 Lo genérico de la metafísica
 
@@ -293,6 +308,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `NewGameSetup`, `NovelSetup`, `EntryMode`, `Routine`, `PlayerGoal` | `game` | game-modes §1, player-loop |
 | `PlayerView`, `LocalLabel` | `game/view` | narration §2 |
 | `FinalChronicle`, `Legacy`, `Epilogue` | `game/final-chronicle` | chronicle §3-§9 |
+| `IntentDraft`, `DraftPlanNode`, `RefDescription` (borradores del parser, sin ids) | `sim/actions` | actions §4, §9 |
 | `NarrationPrefs`, `StyleSettings`, `LlmConfig`, `NarrationRequest` | `llm` | narration |
 | `SaveMeta`, `ReplayLog` | `persistence` | tooling |
 
@@ -302,7 +318,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 |---|---|
 | `ProcessDef` en simulation (proceso del scheduler) y en technology (técnica mortal) | El del scheduler queda `ProcessDef`; el de technology pasa a **`TechProcessDef`**. |
 | `PlanNode` en actions (árbol de plan) y en schemes (paso de intriga con `expects`/`branches`) | El de actions queda `PlanNode`; el de schemes pasa a **`SchemeStep`**, que envuelve un `PlanNode` y le agrega la predicción de la víctima. |
-| `NewGameSetup` en player-loop y en game-modes, con campos distintos | Manda **game-modes §1** (`WorldConstraints`, `mode`, `novel`, `NarrationPrefs`); player-loop lo referencia. `StyleSettings` es lo que `NarrationPrefs` produce para cada pedido al narrador. |
+| `NewGameSetup` en player-loop y en game-modes, con campos distintos | Manda **game-modes §1** (`WorldConstraints`, `mode`, `novel`, `NarrationPrefs`); player-loop lo referencia. `StyleSettings` es lo que `NarrationPrefs` produce para cada pedido al narrador. En código, `game/setup` tiene la parte que lee la simulación (`GameSetup`, y `NewGameSetup` = seed + `GameSetup`), que va al replay; `narration` y `llm` son de la capa `llm` y la UI los junta (game no puede importar llm). |
 | `AgentId`, `PersonId`, `NpcId` para lo mismo | **`AgentId`** en todos lados. |
 | `Belief.holder: AgentId` pero las organizaciones también creen | **`AgentId \| OrgId`** (information §9). |
 | `Time` y `Tick` | `Time` es alias de `Tick`. |
@@ -346,8 +362,8 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 ### 7.4 Determinismo: más estricto que el borrador
 
-- **RNG por contador** (stateless): `draw(seed, key, n)` con un mezclador de 32 bits (estilo PCG-hash o *squares*) sobre el hash de la clave. Encaja con las claves por tupla que ya usa todo el diseño (`rng.fork("materialize", populationId, slot, epoch)`): no hay estado que guardar ni que pasar entre workers, y la misma clave da lo mismo en cualquier hilo. `sfc32` queda para flujos largos dentro de una clave (worldgen).
-- **`core/math` propio** para la sim: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con polinomios en suma, resta, multiplicación, división y `Math.sqrt` (que IEEE garantiza redondeadas igual en todos lados). `Math.exp` y compañía quedan prohibidas en `sim/` y `worldgen/` por lint. Así una actualización de V8 no rompe el replay de una vida vieja (el borrador aceptaba "lo mismo en el mismo Node").
+- **RNG por contador** (stateless): `draw(seed, key, n)` con un mezclador de 32 bits (estilo PCG-hash o *squares*) sobre el hash de la clave. Encaja con las claves por tupla que ya usa todo el diseño (`rng.fork("materialize", populationId, slot, epoch)`): no hay estado que guardar ni que pasar entre workers, y la misma clave da lo mismo en cualquier hilo. `sfc32` queda para flujos largos dentro de una clave (worldgen). Implementado (Fase 0): la clave es un hash de 64 bits de la tupla, independiente de la semilla (se guarda en `Deferred.rngKey`); cada primitiva (`float`, `int`, `chance`, `pick`, `weighted`, `shuffle`) consume una cantidad fija de sorteos, sin rechazo, para que inclinar pesos (heaven-karma §6) no corra las tiradas que siguen; los valores dorados de `rng.test.ts` no se cambian sin migración, porque rompen el replay.
+- **`core/math` propio** para la sim: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con polinomios en suma, resta, multiplicación, división y `Math.sqrt` (que IEEE garantiza redondeadas igual en todos lados). `Math.exp` y compañía quedan prohibidas en `sim/` y `worldgen/` por lint. Así una actualización de V8 no rompe el replay de una vida vieja (el borrador aceptaba "lo mismo en el mismo Node"). Implementado (Fase 0): ports de fdlibm, casi todos bit a bit iguales a V8 hoy (pero fijos aunque V8 cambie), más `tan`, `atan`, `asin`, `acos`, `log2`, `log10`, `hypot`, `logistic` y `normalQuantile`; la trigonometría acepta |x| < `TRIG_MAX` (≈ 2^20·π/2) y tira `RangeError` más allá, así que los ciclos largos (días, estaciones, órbitas) reducen la fase con `mod` antes de llamar. Las distribuciones continuas y de conteo (`normal`, `exponential`, `logNormal`, `poisson`, `binomial`) viven en `Random` y consumen 2 sorteos fijos cada una; sus valores dorados están en `math.test.ts`.
 - **CI con dos plataformas** (Windows y Linux) que comparan el hash del log de un escenario: el usuario juega en Windows.
 - **Ids en paralelo:** si una fase corre en workers, las entidades nuevas reciben su id al asentar (fase *settle*), en orden de clave, nunca dentro del worker.
 
@@ -355,12 +371,14 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 - **`node:sqlite`** se queda (sin dependencias nativas que compilar en Windows), detrás de una interfaz chica en `persistence/` para poder cambiar a `better-sqlite3` si aparece un problema: es todavía un módulo joven de Node.
 - **Componentes como JSON canónico** con hash por componente (pregunta 3); **snapshots comprimidos con zstd** (`node:zlib`). MessagePack o CBOR solo si el tamaño medido en la Fase 5 lo pide: el JSON se lee a ojo en el inspector.
+- **Hecho en la Fase 0:** `persistence/driver.ts` es la interfaz (`SqlDriver`: `exec`, `run`, `get`, `all`, `transaction`, `close`), con las filas tipadas donde se leen; `core/canon` tiene `canonicalJson`, y desde la tarea del replay también `sha256Hex` y `canonicalHash` en TypeScript puro (para el hash del estado, tooling §2; `persistence/` sigue usando `node:crypto`, con el mismo resultado); `LifeStore` guarda y carga la vida entera y los snapshots con `zstdCompressSync`. Detalle del esquema en tooling §1.
 - **DuckDB, más adelante y opcional,** para analizar lotes grandes de la sim headless (calibración de la Fase 3 en adelante): lee SQLite y Parquet directo. No entra a la Fase 0.
 
 ### 7.6 Validación y contenido: Zod 4
 
 - **Zod 4** (más rápido y liviano que el 3) y **`z.toJSONSchema()`**: el mismo esquema que valida el `IntentDraft` se manda como JSON Schema al servidor del LLM local para restringir la salida (Ollama, llama.cpp y LM Studio lo aceptan). Un esquema, tres usos: tipo, validación y gramática.
 - **Contenido en JSON** (o TS cuando necesita lógica) validado al cargar; los tipos de lo que entra de afuera salen de `z.infer` (pregunta 2).
+- **Hecho en la Fase 0:** `core/schema` reexporta `z` y tiene `defineContent`, `loadContent` (puro: recibe lo ya parseado) y `Content`; `persistence/content.ts` (`loadContentDir`) lee los archivos. Las referencias entre tipos las declara cada tipo con su función `refs`, y una rota impide arrancar. Detalle en tooling §11.
 
 ### 7.7 LLM local: un modelo residente
 
@@ -368,6 +386,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 - **Ollama para empezar** (instalación simple en Windows, cambio de modelo con un comando); **servidor de llama.cpp** cuando haga falta control fino: gramáticas propias, caché del prefijo por ranura, decodificación especulativa.
 - **Revisión de narration §1:** 12 GB no entran un parser de 7-8B y un narrador de 12-14B cargados a la vez (unos 5 GB + 9 GB más la caché de contexto). Cambiar de modelo en cada turno cuesta segundos. **Propuesta: un solo modelo residente de 12-14B para los dos trabajos** (el parser con salida restringida por esquema) y medir en el banco de pruebas si un parser chico aparte vale el cambio. El fine-tune de la Fase 9 se hace sobre el modelo que gane.
 - Los modelos concretos se eligen en el banco de pruebas de la Fase 1, no acá: cambian cada pocos meses.
+- **Hecho en la Fase 0:** `OpenAiCompatibleClient` con `fetch` y errores tipados, `MockLLM`, `LlmJobs` con una cadena de proveedores por trabajo que siempre termina en plantillas, y el `IntentDraft` (en `sim/actions`, porque la sim lo resuelve) con su JSON Schema por `z.toJSONSchema` como restricción de salida.
 
 ### 7.8 Interfaz: la web antes
 
@@ -384,7 +403,9 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 ### 7.10 Calidad del código
 
 - **Biome** (formato y lint en una sola herramienta rápida) en lugar de ESLint + Prettier.
-- **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, y prohibiciones (`Math.random`, `Date`, `Math.exp` y compañía, `node:*` dentro de `sim/` y `worldgen/`). Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
+- **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, `node:*` prohibido dentro de `core/`, `worldgen/` y `sim/`. Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
+- **Los globales prohibidos** (`Math.random`, `Math.exp` y compañía, `**`, `Date`, `performance`, `process`, temporizadores) no son imports, así que los ve Biome: un plugin GritQL para los miembros de `Math` y `**`, y `noRestrictedGlobals` para el resto (respeta el alcance: una variable local llamada igual no salta). Los tests quedan afuera: los de `core/math` comparan contra `Math.*`.
+- **TypeScript 6, no 7** (implementado 2026-10-06): TS 7 (el compilador en Go) todavía no publica API de JavaScript, y dependency-cruiser la necesita para leer los imports de `.ts`. Se pasa a 7 cuando las herramientas lo soporten; el código no cambia.
 - **Vitest** se queda; se suma **fast-check** para tests por propiedades: la conservación (ledgers), el determinismo (mismo seed, cualquier orden de inserción) y `interact` sin móvil perpetuo son propiedades, no ejemplos.
 - **npm** se queda: pnpm solo aporta cuando haya workspaces.
 
