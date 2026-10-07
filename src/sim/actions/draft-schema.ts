@@ -17,8 +17,10 @@ import {
   DraftDuration,
   type DraftPlanNode,
   DraftText,
+  type EntityKind,
   IntentDraft,
-  RefDescription,
+  type RefDescription,
+  RefDescriptionShape,
   SpeechDraft,
 } from "./intent.ts";
 
@@ -125,11 +127,29 @@ export function intentDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraft> {
   });
 }
 
+/** Qué clases de entidad puede nombrar un argumento de cada tipo. */
+const REF_KINDS: Record<"person" | "place" | "thing", readonly [EntityKind, ...EntityKind[]]> = {
+  person: ["person", "group"],
+  place: ["place"],
+  thing: ["object", "lot"],
+};
+
+/**
+ * Una referencia para restringir la salida: con `kind` obligatorio y de la clase que pide el rol.
+ * El borrador genérico lo deja opcional; un modelo chico, si puede, lo saltea.
+ */
+function refSchema(kinds: readonly [EntityKind, ...EntityKind[]]): z.ZodType<RefDescription> {
+  return z.strictObject({
+    ...RefDescriptionShape.shape,
+    kind: z.enum(kinds),
+  }) as unknown as z.ZodType<RefDescription>;
+}
+
 function argSchema(role: string, kind: ArgKind): z.ZodType<DraftArg> {
   const r = z.literal(role);
   if (kind === "duration") return z.strictObject({ role: r, duration: DraftDuration });
   if (kind === "text") return z.strictObject({ role: r, text: DraftText });
-  return z.strictObject({ role: r, ref: RefDescription });
+  return z.strictObject({ role: r, ref: refSchema(REF_KINDS[kind]) });
 }
 
 function oneOf<T>(schemas: readonly z.ZodType<T>[]): z.ZodType<T> {
@@ -183,7 +203,8 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       get body() {
         return node;
       },
-      cond: DraftCondition,
+      // La sim solo usa `is`: en la salida restringida es obligatorio.
+      cond: DraftCondition.required({ is: true }),
     }) as unknown as z.ZodType<DraftPlanNode>,
   ]);
 
@@ -200,7 +221,7 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
     speech: z
       .strictObject({
         text: SpeechDraft.shape.text,
-        to: RefDescription.optional(),
+        to: refSchema(REF_KINDS.person).optional(),
         ...(speakManners.length > 0
           ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
           : {}),

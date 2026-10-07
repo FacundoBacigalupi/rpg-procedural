@@ -29,6 +29,11 @@ export const LlmProvider = z.discriminatedUnion("kind", [
     model: z.string().min(1),
     /** Restringir la salida estructurada con el JSON Schema del esquema Zod. */
     grammar: z.boolean().optional(),
+    /**
+     * Dejar que un modelo con razonamiento (qwen3…) piense antes de contestar. Por defecto no:
+     * con el parser, pensar gasta ~3000 tokens y 25 s por turno contra 1 s sin pensar.
+     */
+    think: z.boolean().optional(),
     /** Si el servidor no está en el puerto de siempre. */
     baseUrl: z.url().optional(),
   }),

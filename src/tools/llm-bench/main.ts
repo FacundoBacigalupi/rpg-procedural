@@ -1,16 +1,18 @@
 // `npm run llm-bench -- --models qwen3:14b,gemma3:12b [--swap qwen3:4b] [--runtime ollama]
-// [--base-url URL] [--repeat N] [--all] [--free] [--record test/fixtures/parser] [--out DIR]`:
+// [--base-url URL] [--repeat N] [--all] [--free] [--think] [--record test/fixtures/parser] [--out DIR]`:
 // corre los ejemplos del parser contra cada modelo local y deja una tabla y un reporte JSON en
 // `sim-reports/llm-bench/`. Con `--swap`, mide el turno alternando narrar con el primer modelo y
 // parsear con el chico (narration §1). Con `--record`, graba las respuestas como fixtures para
-// repetir el banco sin red. Con `--free`, corre también sin salida restringida.
+// repetir el banco sin red. Con `--free`, corre también sin salida restringida. Con `--think`, deja
+// razonar a los modelos que lo hacen (por defecto se apaga, como en el juego).
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import {
   type LlmClient,
   LOCAL_BASE_URLS,
+  NO_THINKING,
   OpenAiCompatibleClient,
   parserSetup,
 } from "../../llm/index.ts";
@@ -34,6 +36,7 @@ const { values } = parseArgs({
     repeat: { type: "string", default: "1" },
     all: { type: "boolean", default: false },
     free: { type: "boolean", default: false },
+    think: { type: "boolean", default: false },
     record: { type: "string" },
     out: { type: "string", default: "sim-reports/llm-bench" },
     timeout: { type: "string", default: "120000" },
@@ -54,8 +57,26 @@ const setup = parserSetup(catalog, examples);
 const cases = benchCases(examples, values.all);
 const now = () => performance.now();
 
+/** A la consola y a `<out>/run.log`, para seguir el avance desde el editor. */
+mkdirSync(values.out, { recursive: true });
+const log = join(values.out, "run.log");
+writeFileSync(log, "");
+function say(text: string): void {
+  console.log(text);
+  appendFileSync(
+    log,
+    `${text}
+`,
+  );
+}
+
 const client = (model: string): LlmClient =>
-  new OpenAiCompatibleClient(model, { baseUrl, model, timeoutMs });
+  new OpenAiCompatibleClient(values.think ? `${model} (think)` : model, {
+    baseUrl,
+    model,
+    timeoutMs,
+    extra: values.think ? undefined : NO_THINKING,
+  });
 
 /** Ollama: saca un modelo de la memoria, para que el arranque en frío se mida de verdad. */
 async function unload(model: string): Promise<void> {
@@ -66,7 +87,7 @@ async function unload(model: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-console.log(`${cases.length} casos, ${setup.shots.length / 2} ejemplos en el prompt, ${baseUrl}`);
+say(`${cases.length} casos, ${setup.shots.length / 2} ejemplos en el prompt, ${baseUrl}`);
 const summaries: ModelSummary[] = [];
 const results: Record<string, unknown> = {};
 const report: {
@@ -82,7 +103,7 @@ const report: {
 for (const model of models) {
   for (const grammar of values.free ? [true, false] : [true]) {
     await unload(model);
-    console.log(`→ ${model}${grammar ? "" : " (sin restringir)"}`);
+    say(`→ ${model}${grammar ? "" : " (sin restringir)"}`);
     const r = await benchModel({
       client: client(model),
       setup,
@@ -90,10 +111,15 @@ for (const model of models) {
       now,
       repeat: Number(values.repeat),
       grammar,
+      onCase: (c) =>
+        say(
+          `  ${c.id.padEnd(28)} ${c.ok ? "válido" : "inválido"} ${c.score?.pass ? "acierta" : "falla  "} ${(c.ms / 1000).toFixed(1)} s` +
+            (c.ok ? "" : `  ${c.problems.join(" | ").slice(0, 160)}`),
+        ),
     });
     summaries.push(r.summary);
     if (r.results.every((c) => c.problems.some((p) => p.endsWith("fetch failed")))) {
-      console.warn(`  sin respuesta de ${baseUrl}: ¿está corriendo ${runtime}?`);
+      say(`  sin respuesta de ${baseUrl}: ¿está corriendo ${runtime}?`);
     }
     results[r.summary.model] = r;
     if (values.record && grammar) {
@@ -106,11 +132,11 @@ for (const model of models) {
     }
   }
 }
-console.log(`\n${formatSummaries(summaries)}`);
+say(`\n${formatSummaries(summaries)}`);
 
 const resident = models[0];
 if (values.swap && resident) {
-  console.log(`\n→ cambio de modelo: narra ${resident}, parsea ${values.swap}`);
+  say(`\n→ cambio de modelo: narra ${resident}, parsea ${values.swap}`);
   const swap = await benchSwap({
     resident: client(resident),
     parser: client(values.swap),
@@ -119,15 +145,14 @@ if (values.swap && resident) {
     now,
   });
   report.swap = swap;
-  console.log(
+  say(
     `parsear con ${resident}: ${(swap.sameMs / 1000).toFixed(2)} s (${swap.samePass}/${swap.cases} bien)\n` +
       `parsear con ${values.swap}: ${(swap.swapMs / 1000).toFixed(2)} s (${swap.swapPass}/${swap.cases} bien)\n` +
       `costo del cambio por turno: ${(swap.penaltyMs / 1000).toFixed(2)} s`,
   );
 }
 
-mkdirSync(values.out, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const file = join(values.out, `bench-${stamp}.json`);
 writeFileSync(file, `${JSON.stringify(report, null, 2)}\n`);
-console.log(`\nreporte: ${file}`);
+say(`\nreporte: ${file}`);

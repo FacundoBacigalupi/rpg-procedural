@@ -253,7 +253,20 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
   - **Hablar en una secuencia.** Cuando hablar es un paso de una secuencia, se usa el verbo `speak` con `content`, porque `speech` va antes del plan.
   - **El banco (`npm run llm-bench`).** Puntúa por campo: tipo, pasos, roles, referencias por palabras como `resolveRef`, habla, descartado y sin verbo. Dos borradores que dan el mismo plan valen lo mismo.
   - **El cambio de modelo.** `--swap` alterna una narración del residente con un parseo y compara contra parsear con el mismo residente; la diferencia es el costo del cambio por turno. Para que el residente no se descargue, Ollama tiene que correr con `OLLAMA_KEEP_ALIVE=-1`.
-  - **Pendiente:** correrlo con modelos reales y decidir el modelo por defecto.
+  - **Resultados (2026-10-07, RTX 4070 Super 12 GB, Ollama):**
+
+    | modelo | válido | acierta | medio | p95 | tok/s |
+    |---|---|---|---|---|---|
+    | qwen3:4b | 100% | 73% | 0,74 s | 1,59 s | 120 |
+    | qwen3:14b | 100% | 63% | 1,08 s | 2,15 s | 44 |
+    | gemma3:12b (antes de los arreglos) | 97% | 57% | 2,06 s | 6,43 s | 28 |
+
+    - **Razonamiento apagado.** qwen3 piensa antes de contestar: ~3000 tokens y 25-30 s por parseo. El cliente local manda `reasoning_effort: "none"` (`NO_THINKING` en `llm/jobs`); `think: false` no hace nada en la API compatible con OpenAI. `think: true` en el proveedor (o `--think` en el banco) lo vuelve a prender.
+    - **Tope de tokens.** `PARSER_MAX_TOKENS = 768`: el ejemplo más largo son ~150 tokens, y sin tope la salida restringida a veces entraba en bucle hasta el timeout.
+    - **Esquema estructural más estricto que el genérico:** la clase de cada referencia (`person`/`group`, `place`, `object`/`lot` según el rol) y el `is` de `until` son obligatorios. Los modelos los omitían.
+    - **Ejemplos que más rindieron:** uno con un verbo sin sus roles opcionales (los modelos inventaban "espero 1 segundo"; la regla escrita sola no alcanzó) y uno con `speak` con destinatario y contenido en un solo paso. Con eso el 4b pasó de 60% a 73% y el 14b de 57% a 63%.
+    - **Decisión:** qwen3:14b residente para parser y narración, como estaba aprobado. El 4b parsea mejor y 3 veces más rápido, y 2,5 + 9,3 GB podrían entrar juntos en 12 GB; si `--swap` (sin medir todavía) da un costo chico, el parser pasa al 4b.
+    - **Fallas que quedan:** `until` con una hora del día sale como duración fija; el parentesco va como rasgo y no como `relation`; `unmapped` con palabras que sí se mapearon. Parte es el puntaje estricto, no el modelo.
 - **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo ([language.md](language.md)).
 - **Fase 9:** fine-tune LoRA propio con ejemplos reales del juego.
 

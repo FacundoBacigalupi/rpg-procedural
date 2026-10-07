@@ -118,6 +118,21 @@ describe("el borrador según el catálogo", () => {
     expect(structural.safeParse(draft).success).toBe(false);
   });
 
+  it("la salida restringida pide lo que el genérico deja opcional: la clase y la condición", () => {
+    const noKind = moveTo([{ role: "to", ref: { text: "el bosque", features: ["bosque"] } }]);
+    const wrongKind = moveTo([{ role: "to", ref: { ...forest, kind: "person" } }]);
+    const noIs = {
+      kind: "plan",
+      plan: {
+        kind: "until",
+        body: { kind: "do", verb: "wait", args: [] },
+        cond: { kind: "time", text: "hasta que anochezca" },
+      },
+    };
+    expect(checked.safeParse(noKind).success).toBe(true);
+    for (const d of [noKind, wrongKind, noIs]) expect(structural.safeParse(d).success).toBe(false);
+  });
+
   it("el JSON Schema sale del esquema estructural y es determinista", () => {
     const a = JSON.stringify(intentDraftJsonSchemaFor(catalog));
     const b = JSON.stringify(
