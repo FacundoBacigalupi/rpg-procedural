@@ -32,6 +32,7 @@ import {
   PERSON,
   PLACE,
   PLANS,
+  PRESSURE_CURVES,
   SKILLS,
   SkillCatalog,
   seedBodies,
@@ -144,7 +145,16 @@ export function resumeParts(
   anchor: ResumeAnchor,
 ): Pick<
   LifeParts,
-  "seed" | "clock" | "map" | "spaces" | "catalog" | "skills" | "traits" | "plans" | "foods"
+  | "seed"
+  | "clock"
+  | "map"
+  | "spaces"
+  | "catalog"
+  | "skills"
+  | "traits"
+  | "plans"
+  | "foods"
+  | "pressureCurves"
 > {
   return {
     seed,
@@ -156,6 +166,7 @@ export function resumeParts(
     traits: content.all(TRAITS),
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
+    pressureCurves: content.all(PRESSURE_CURVES),
   };
 }
 
@@ -251,7 +262,22 @@ export function createLife(
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 
   const world = lifeWorld(
-    { seed, clock, truth, ids, log, ledger, map, spaces, catalog, skills, traits, plans, foods },
+    {
+      seed,
+      clock,
+      truth,
+      ids,
+      log,
+      ledger,
+      map,
+      spaces,
+      catalog,
+      skills,
+      traits,
+      plans,
+      foods,
+      pressureCurves: content.all(PRESSURE_CURVES),
+    },
     pop.player,
     terrain.village,
     { now: pop.now, seq: 0, queue: [] },

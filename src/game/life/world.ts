@@ -19,6 +19,7 @@ import {
   type FoodDef,
   LOCATION,
   type LocalMap,
+  type PressureCurve,
   type ReadonlyWorldTruth,
   Scheduler,
   type SchedulerState,
@@ -47,6 +48,7 @@ export interface LifeWorld {
   readonly traits: readonly Trait[];
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
+  readonly pressureCurves: readonly PressureCurve[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
