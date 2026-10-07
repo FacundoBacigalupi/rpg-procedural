@@ -1,0 +1,94 @@
+[
+  {
+    "id": "human",
+    "species": "human",
+    "name": "Humano",
+    "zones": [
+      {
+        "id": "head",
+        "name": "cabeza",
+        "size": 0.1,
+        "functions": { "consciousness": 1, "speech": 0.6, "sight": 1, "hearing": 1 },
+        "vital": { "kind": "brain", "lethal": 0.85 },
+        "vessel": 0.05,
+        "bone": 0.3,
+        "contamination": 0.15
+      },
+      {
+        "id": "neck",
+        "name": "cuello",
+        "size": 0.04,
+        "functions": { "speech": 0.4, "breathing": 0.3, "circulation": 0.2 },
+        "vessel": 0.35,
+        "bone": 0.05,
+        "contamination": 0.2
+      },
+      {
+        "id": "chest",
+        "name": "pecho",
+        "size": 0.2,
+        "functions": { "breathing": 0.7, "circulation": 0.8, "strength": 0.15 },
+        "vital": { "kind": "organ", "lethal": 0.75 },
+        "vessel": 0.1,
+        "bone": 0.25,
+        "contamination": 0.25
+      },
+      {
+        "id": "abdomen",
+        "name": "vientre",
+        "size": 0.14,
+        "functions": { "strength": 0.15, "locomotion": 0.1 },
+        "vital": { "kind": "organ", "lethal": 0.7 },
+        "vessel": 0.08,
+        "bone": 0.05,
+        "contamination": 0.55
+      },
+      {
+        "id": "left_arm",
+        "name": "brazo izquierdo",
+        "size": 0.12,
+        "functions": { "manipulation": 0.5, "strength": 0.2 },
+        "vessel": 0.06,
+        "bone": 0.3,
+        "contamination": 0.3
+      },
+      {
+        "id": "right_arm",
+        "name": "brazo derecho",
+        "size": 0.12,
+        "functions": { "manipulation": 0.5, "strength": 0.2 },
+        "vessel": 0.06,
+        "bone": 0.3,
+        "contamination": 0.3
+      },
+      {
+        "id": "left_leg",
+        "name": "pierna izquierda",
+        "size": 0.14,
+        "functions": { "locomotion": 0.45, "strength": 0.15 },
+        "vessel": 0.1,
+        "bone": 0.3,
+        "contamination": 0.35
+      },
+      {
+        "id": "right_leg",
+        "name": "pierna derecha",
+        "size": 0.14,
+        "functions": { "locomotion": 0.45, "strength": 0.15 },
+        "vessel": 0.1,
+        "bone": 0.3,
+        "contamination": 0.35
+      }
+    ],
+    "physiology": {
+      "refMassKg": 55,
+      "bloodPerKg": 0.07,
+      "kcalPerKgDay": 25,
+      "waterPerDay": 2.4,
+      "glycogenKcal": 1800,
+      "fatFraction": 0.18,
+      "muscleKcal": 22000,
+      "lethalDehydration": 0.15
+    }
+  }
+]

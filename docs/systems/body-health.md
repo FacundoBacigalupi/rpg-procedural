@@ -305,6 +305,17 @@ interface EssenceBodyState {
 
 ## Implementación
 - **Fase 1:** plan corporal humano por zonas, sangre, hambre y sed simples, fatiga y sueño, heridas (corte, contundente, punción) con sangrado y curación, infección simple, muerte con causa. Capacidades derivadas para la resolución de acciones.
+  - **Hecho (2026-10-07), `src/sim/body`:**
+    - **Plan y comida:** el plan humano tiene 8 zonas. Cada zona trae el tamaño, el aporte a cada función (la suma por función es ≤ 1), su parte vital (`brain` mata desde gravedad 0,85; `organ` da sangrado interno), vaso, hueso y suciedad. La fisiología va por plan (55 kg de referencia, 7 % de sangre, 25 kcal/kg/día, 2,4 L de agua por día, muerte al 15 % de la masa en agua). Las comidas traen kcal y agua por gramo.
+    - **Herir:** gravedad = fuerza × daño del tipo × (0,75 + 0,5·rng). Puede abrir una arteria si es filoso y la gravedad pasa de 0,3, con chance vaso × gravedad × 2. El hueso se rompe con chance hueso × gravedad × (½ si es filoso, 1,5 si es contundente). La suciedad sale de la zona y del objeto, y un golpe que no abre la piel deja entrar el 10 %. La virulencia es lognormal, con mediana 0,1/h y σ 0,6. Un golpe en la cabeza deja sin sentido gravedad × 2 h.
+    - **Fisiología:** se avanza en subpasos de 5 a 60 min.
+      - **Sangre:** el sangrado se coagula con τ de 0,5 h el venoso, 6 h el arterial y 3 h el interno. Vendar deja pasar el 25 % de lo de afuera. La sangre se regenera 0,4 %/h. Con menos del 70 % aturde, con menos del 60 % desmaya y con menos del 50 % mata.
+      - **Infección:** sigue una logística cerrada con tasa virulencia × (0,3 + gravedad) × (1 − reparación). Por eso cerrar a tiempo gana la carrera y limpiar (suciedad ×0,2, carga ×0,3) nunca sube el riesgo. Pasado 0,25 la herida está infectada y alimenta la sepsis, que cae 0,4 %/h y mata a 1.
+      - **Reservas:** el gasto sigue la actividad; se consume el glucógeno, después la grasa y al final el músculo. Sin agua se muere en 3-4 días y sin comida en 40-110 según la grasa.
+      - **Curación:** una herida tarda 2 + 20·gravedad días, más 25 si hay hueso entablillado o 45 si no. Desde gravedad 0,3 deja cicatriz.
+    - **Capacidades y síntomas:** son 0-1 por función: lo que conserva cada zona por lo sistémico (sangre, sed, sueño, fiebre, aturdimiento). Los síntomas son etiquetas generales o por zona, sin números.
+    - **Proceso:** `body.physiology` corre en la fase `physics`, por escena en escena, por hora en local y por día más lejos. Toda muerte es un `body.died` con su causa fisiológica: cita las heridas, o el estado `body.water`/`body.food`, y cierra la entidad.
+    - **Tests:** determinismo, cadena causal hasta el golpe, orden de las reservas, monotonía del sangrado y de limpiar con fast-check, y la calibración sobre 400 seeds. Una herida grave sin tratar mata al ~33 %, 2:1 por sepsis sobre sangre; una leve limpia, al 0 %.
 - **Fase 2:** dolor y su efecto en la psicología, cicatrices y secuelas como rasgos, envejecimiento por capacidades.
 - **Fase 3:** nutrientes crónicos, frío y calor con ropa y refugio, sustancias y adicciones, enfermedades infecciosas con contagio por eventos, médicos y diagnóstico como creencia, embarazo y parto, epidemias en agregado.
 - **Fase 4 (cultivo):** `EssenceBodyState`: meridianos, reservorio, constituciones, daño de fundamento, desviación de qi, toxicidad de píldoras, refinamiento corporal, curación con qi.

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "forage",
+    "name": "raíces, hojas y frutos del monte",
+    "kcalPerGram": 0.9,
+    "waterPerGram": 0.7
+  },
+  {
+    "id": "gleanings",
+    "name": "espigas que quedaron en el rastrojo",
+    "kcalPerGram": 3.3,
+    "waterPerGram": 0.12
+  },
+  {
+    "id": "shellfish",
+    "name": "almejas y caracoles de agua",
+    "kcalPerGram": 0.8,
+    "waterPerGram": 0.78
+  }
+]

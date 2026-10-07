@@ -4,6 +4,7 @@
 import type { ContentKind } from "../core/index.ts";
 import { BIOMES } from "../worldgen/index.ts";
 import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
+import { BODY_PLANS, FOODS } from "./body/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { SKILLS } from "./skills/index.ts";
 
@@ -12,6 +13,8 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   TRAITS,
   DEMOGRAPHY,
   SKILLS,
+  BODY_PLANS,
+  FOODS,
   ACTIONS,
   PLANS,
   PARSER_EXAMPLES,
