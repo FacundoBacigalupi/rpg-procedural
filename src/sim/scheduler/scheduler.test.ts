@@ -345,6 +345,28 @@ describe("cola de ítems", () => {
     expect(log).toEqual([`first@${DAY}`, `later@${DAY}`]);
   });
 
+  it("un proceso perceive por evento corre al cerrar el paso, con lo que se asentó, y solo si hubo eventos", () => {
+    const seen: string[][] = [];
+    const watcher = def(
+      "perc.watch",
+      (ctx) => {
+        seen.push(ctx.recent.map((e) => e.kind));
+        return {};
+      },
+      { phase: "perceive", cadence: { local: "onEvent" } },
+    );
+    const w = world(1, [grow, watcher], [S1, S2]);
+    w.scheduler.advanceTo(DAY * 2);
+    expect(seen).toHaveLength(2); // un paso por día, dos días
+    expect(seen.every((kinds) => kinds.length === 2 && kinds.every((k) => k === "grow"))).toBe(
+      true,
+    );
+    const quiet = world(1, [watcher], [S1]);
+    seen.length = 0;
+    quiet.scheduler.advanceTo(DAY);
+    expect(seen).toEqual([]);
+  });
+
   it("agendar en el pasado o a un proceso desconocido es un error", () => {
     const back = def("t.back", (ctx) => ({
       schedule: [{ at: ctx.now, phase: "perceive", process: "t.back", scope: "world", reason }],

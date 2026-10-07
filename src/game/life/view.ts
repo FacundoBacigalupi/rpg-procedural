@@ -3,7 +3,7 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import type { AgentId } from "../../core/index.ts";
+import type { AgentId, PlanetClock, Tick } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
 import {
   ATTENTION,
@@ -19,6 +19,7 @@ import {
   PLACE,
   perceive,
   presenceStimulus,
+  type ReadonlyWorldTruth,
   sensorAcuity,
   spaceLight,
   watching,
@@ -30,7 +31,10 @@ import {
   type SelfCue,
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
+import { acquaintances, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
+
+export { acquaintances, playerObserver, type Witness };
 
 const CUES: Readonly<Record<string, SelfCue>> = {
   hungry: "hungry",
@@ -50,41 +54,6 @@ const CUES: Readonly<Record<string, SelfCue>> = {
 };
 
 /** Cómo llama el personaje a su gente: la relación que sabe que tiene (sin nombres todavía). */
-export function acquaintances(w: LifeWorld): Map<AgentId, Acquaintance> {
-  const me = w.truth.get(PERSON, w.player);
-  const out = new Map<AgentId, Acquaintance>();
-  if (!me) return out;
-  const sexed = (id: AgentId | null, female: string, male: string) => {
-    const p = id ? w.truth.get(PERSON, id) : undefined;
-    return p?.sex === "female" ? female : male;
-  };
-  if (me.mother) out.set(me.mother, { relation: "madre" });
-  if (me.father) out.set(me.father, { relation: "padre" });
-  if (me.spouse) out.set(me.spouse, { relation: sexed(me.spouse, "esposa", "esposo") });
-  for (const id of w.truth.ids(PERSON) as AgentId[]) {
-    if (id === w.player || out.has(id)) continue;
-    const p = w.truth.get(PERSON, id);
-    if (!p) continue;
-    if (p.household === me.household) out.set(id, { relation: sexed(id, "hermana", "hermano") });
-  }
-  return out;
-}
-
-/** El personaje como observador (perception §2): su lugar, sus sentidos por edad, su gente. */
-export function playerObserver(w: LifeWorld, attention: number = ATTENTION.relaxed): Observer {
-  const me = w.truth.get(PERSON, w.player);
-  const at = w.truth.get(LOCATION, w.player);
-  if (!me || !at) throw new Error("el personaje no tiene persona o lugar");
-  const age = (w.scheduler.now - me.born) / w.clock.year;
-  return {
-    id: w.player,
-    at,
-    acuity: sensorAcuity(age),
-    attention,
-    familiar: new Map([...acquaintances(w).keys()].map((id) => [id, 0.9])),
-  };
-}
-
 /** Mirando a propósito se ve más (perception §4); si no, está relajado. */
 function attentionOf(steps: readonly StepRecord[]): number {
   const looked = steps.findLast((s) => s.verb === "look");
@@ -129,7 +98,7 @@ export function playerView(
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);
-  const observer = playerObserver(w, attentionOf(steps));
+  const observer = playerObserver(w, attentionOf(steps), now);
   const rng = Rng.root(w.seed).fork("view", now);
   const percepts: Percept[] = [];
   for (const id of living(w.truth)) {
