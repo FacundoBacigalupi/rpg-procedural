@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { STUB_ENGINE, type StubPlan, type StubSetup, stubReplayGame } from "../../game/index.ts";
+import {
+  defaultGameSetup,
+  type GameMode,
+  STUB_ENGINE,
+  type StubPlan,
+  type StubSetup,
+  stubReplayGame,
+} from "../../game/index.ts";
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { checkInvariants, hashState } from "../../sim/index.ts";
 import { type ReplayInput, replay, replayInputFromStore } from "../../tools/index.ts";
@@ -21,9 +28,15 @@ function memory(): LifeStore {
   return LifeStore.open(db);
 }
 
-async function session(store: LifeStore, lines: readonly string[], seed = 5): Promise<string> {
+async function session(
+  store: LifeStore,
+  lines: readonly string[],
+  seed = 5,
+  mode: GameMode = "realistic",
+): Promise<string> {
   let out = "";
-  await runCli(feed(lines), (t) => (out += t), store, { seed, setup: { villagers: 4 } });
+  const setup = { villagers: 4, game: defaultGameSetup(mode) };
+  await runCli(feed(lines), (t) => (out += t), store, { seed, setup });
   return out;
 }
 
@@ -42,7 +55,7 @@ describe("runCli", () => {
   it("juega, guarda cada turno y el replay llega al mismo estado", async () => {
     const store = memory();
     const out = await session(store, [...SCRIPT, "salir", "esperar"]);
-    expect(out).toMatch(/^Empieza una vida\.\nEstás en la aldea\./);
+    expect(out).toMatch(/^Empieza una vida en modo realista\.\nEstás en la aldea\./);
     expect(out).toContain("Ves a: aldeano 2, aldeano 3, aldeano 4, aldeano 5.");
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain("Fuera del personaje: ayuda, salir.");
@@ -81,6 +94,18 @@ describe("runCli", () => {
     expect(split.load().scheduler).toEqual(straight.load().scheduler);
     expect(split.plans()).toEqual(straight.plans());
     expect(split.checkpoints()).toEqual(straight.checkpoints());
+  });
+
+  it("guarda el modo y no lo cambia a mitad de la vida", async () => {
+    const store = memory();
+    const out = await session(store, ["mirar", "salir"], 5, "novel");
+    expect(out).toMatch(/^Empieza una vida en modo novela\./);
+    expect(store.getMeta("mode")).toBe("novel");
+    expect((store.getMeta("setup") as StubSetup).game.mode).toBe("novel");
+
+    const back = await session(store, ["salir"], 5, "realistic");
+    expect(back).toContain("Esta vida es en modo novela: el modo no se cambia");
+    expect(store.getMeta("mode")).toBe("novel");
   });
 
   it("no sigue una vida de otra versión", async () => {

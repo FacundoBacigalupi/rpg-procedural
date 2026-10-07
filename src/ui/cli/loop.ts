@@ -1,7 +1,7 @@
 // El loop de la CLI (player-loop §3, stub de la Fase 0): leer, parsear a mano, avanzar, imprimir.
 // Cada turno se guarda entero (plan + estado, todo o nada) y deja antes un snapshot con el hash
 // del estado, que es el checkpoint del replay (tooling §3). No hay cargar atrás: si el archivo
-// tiene una vida, se sigue esa (player-loop §12).
+// tiene una vida, se sigue esa (player-loop §12), con el modo con que empezó (game-modes §9).
 
 import { canonicalJson, IdAllocator, type Seed } from "../../core/index.ts";
 import { HELP, parseCommand, STUB_ENGINE, StubSession, type StubSetup } from "../../game/index.ts";
@@ -57,13 +57,22 @@ function open(store: LifeStore, options: CliOptions, write: (text: string) => vo
     }
     const s = store.load();
     write("Seguís donde quedaste.\n");
+    const mode = store.getMeta("mode");
+    if (mode !== options.setup.game.mode) {
+      write(`Esta vida es en modo ${modeName(mode)}: el modo no se cambia a mitad de una vida.\n`);
+    }
     return StubSession.resume(store.getMeta("seed") as Seed, { ...s, ids: new IdAllocator(s.ids) });
   }
   const session = StubSession.create(options.seed, options.setup);
   store.setMeta("seed", options.seed);
   store.setMeta("versions", VERSIONS);
+  store.setMeta("mode", options.setup.game.mode);
   store.setMeta("setup", options.setup);
   store.save(session.state());
-  write("Empieza una vida.\n");
+  write(`Empieza una vida en modo ${modeName(options.setup.game.mode)}.\n`);
   return session;
+}
+
+function modeName(mode: unknown): string {
+  return mode === "novel" ? "novela" : mode === "realistic" ? "realista" : String(mode);
 }

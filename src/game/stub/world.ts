@@ -39,6 +39,7 @@ import {
   table,
   WorldTruth,
 } from "../../sim/index.ts";
+import { type GameSetup, parseGameSetup } from "../setup/index.ts";
 
 export const CLOCK = EARTHLIKE_CLOCK;
 export const DAY = CLOCK.day;
@@ -65,6 +66,8 @@ export const HUT = table<{ readonly owner: AgentId }>("hut");
 export interface StubSetup {
   /** Cuántos aldeanos además del personaje. */
   readonly villagers: number;
+  /** El modo y lo pedido (game-modes §1). El stub lo valida y lo guarda; todavía no lo usa. */
+  readonly game: GameSetup;
 }
 
 /** Cuánto tarda cada plan: el turno avanza hasta ahí (o hasta una interrupción). */
@@ -240,6 +243,7 @@ export function createStubWorld(seed: Seed, setup: StubSetup): StubWorld {
   if (!Number.isSafeInteger(setup.villagers) || setup.villagers < 0 || setup.villagers > 50) {
     throw new RangeError(`cantidad de aldeanos inválida: ${setup.villagers}`);
   }
+  parseGameSetup(setup.game);
   const truth = new WorldTruth();
   const ids = new IdAllocator();
   const log = new EventLog();

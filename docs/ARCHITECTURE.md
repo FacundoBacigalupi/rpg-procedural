@@ -317,7 +317,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 |---|---|
 | `ProcessDef` en simulation (proceso del scheduler) y en technology (técnica mortal) | El del scheduler queda `ProcessDef`; el de technology pasa a **`TechProcessDef`**. |
 | `PlanNode` en actions (árbol de plan) y en schemes (paso de intriga con `expects`/`branches`) | El de actions queda `PlanNode`; el de schemes pasa a **`SchemeStep`**, que envuelve un `PlanNode` y le agrega la predicción de la víctima. |
-| `NewGameSetup` en player-loop y en game-modes, con campos distintos | Manda **game-modes §1** (`WorldConstraints`, `mode`, `novel`, `NarrationPrefs`); player-loop lo referencia. `StyleSettings` es lo que `NarrationPrefs` produce para cada pedido al narrador. |
+| `NewGameSetup` en player-loop y en game-modes, con campos distintos | Manda **game-modes §1** (`WorldConstraints`, `mode`, `novel`, `NarrationPrefs`); player-loop lo referencia. `StyleSettings` es lo que `NarrationPrefs` produce para cada pedido al narrador. En código, `game/setup` tiene la parte que lee la simulación (`GameSetup`, y `NewGameSetup` = seed + `GameSetup`), que va al replay; `narration` y `llm` son de la capa `llm` y la UI los junta (game no puede importar llm). |
 | `AgentId`, `PersonId`, `NpcId` para lo mismo | **`AgentId`** en todos lados. |
 | `Belief.holder: AgentId` pero las organizaciones también creen | **`AgentId \| OrgId`** (information §9). |
 | `Time` y `Tick` | `Time` es alias de `Tick`. |
