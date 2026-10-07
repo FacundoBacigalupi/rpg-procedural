@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContentError, contentId, defineContent, z } from "../core/index.ts";
+import { DEMOGRAPHY, TRAITS } from "../sim/index.ts";
 import { BIOMES } from "../worldgen/index.ts";
 import { loadContentDir } from "./content.ts";
 
@@ -71,8 +72,10 @@ describe("loadContentDir", () => {
   });
 
   it("el content/ del repo carga y valida", () => {
-    const c = loadContentDir("content", [BIOMES]);
+    const c = loadContentDir("content", [BIOMES, TRAITS, DEMOGRAPHY]);
     expect(c.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(c.all(BIOMES).length).toBeGreaterThan(10);
+    expect(c.all(TRAITS).length).toBeGreaterThan(10);
+    expect(c.all(DEMOGRAPHY).length).toBeGreaterThan(0);
   });
 });

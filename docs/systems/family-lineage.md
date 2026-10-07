@@ -204,6 +204,26 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 
 ## Implementación
 - **Fase 1:** el jugador nace con padres y hogar generados por la sim; genoma mínimo (temperamento, aptitudes, talla) heredado de los padres.
+  - **Hecho (Hito 1a, aprobado 2026-10-07):** `sim/family`.
+    - **Genoma mínimo:** solo `additive`, en desvíos del rasgo. Los rasgos y su heredabilidad están en `content/traits/`: los seis ejes de temperamento, las cuatro aptitudes, la talla y la constitución.
+      - Los fundadores reciben A ~ N(0, √h²).
+      - El hijo hereda el promedio de los padres más la segregación, N(0, √(h²/2)), con `fork("genetics", hijo)`.
+      - Lo innato visible (`Innate`, tabla `family.innate`) es A más el ambiente, N(0, √(1−h²)), con `fork("development", id)`.
+      - El genoma no tiene id propio: se guarda con el `AgentId` (tabla `family.genome`), y `parents` es `[madre, padre]`.
+      - Todavía no hay genes discretos, linajes ni mutaciones.
+    - **Pre-corrida de la aldea** (`villagePopulation`):
+      - La aldea se funda 60-80 años antes del presente, en el tick 0 y con el `settlement.founded` de `villageSite` como causa, con 8-12 parejas fundadoras. Son condiciones iniciales: el evento `family.founders_settled` cita al seed.
+      - Desde ahí, año por año, decide muertes por edad y sexo, uniones entre solteros que no son parientes cercanos y nacimientos de las casadas. Los parámetros están en `content/demography/`.
+      - Los parientes cercanos son los que comparten padre o abuelo, y la unión entre ellos está prohibida.
+      - Cada nacimiento cita la unión de los padres. La muerte de parto cita el nacimiento.
+      - La residencia sigue la familia troncal: el primer hijo que se casa se queda en la casa de los padres, y los demás arman hogar con `household.founded`.
+      - Cuando no hay con quién casarse en la aldea, las mujeres se casan afuera (`family.married_out`) y los hombres traen esposa (`person.arrived`, con el seed como causa).
+      - La tierra entra como presión simple: la capacidad sale del rendimiento de los campos, y por encima del 60 % de esa capacidad baja la fecundidad.
+      - Los sucesos de cada año se ordenan por día, así ninguna causa queda después de su efecto.
+    - **El jugador:** un nacimiento de la aldea vivo con 14-16 años al empezar, elegido con `fork("player", "birth")`.
+    - **Siembra en la verdad:** `seedVillage` escribe en `WorldTruth` las fichas, `family.person`, el genoma, lo innato y los hogares.
+    - **Resultado** con el contenido actual (seeds 1-5): 51-83 vivos, 11-24 hogares, 81-147 nacimientos.
+    - **Pendiente de calibración:** la mortalidad y la fecundidad son tablas preindustriales genéricas, y todavía no las varían la cultura, el bioma ni el hambre.
 - **Fase 3:** familias completas: atracción y uniones, matrimonio como compromiso con normas culturales (forma, dote, residencia), concepción, embarazo y parto con riesgo, crianza que forma lo adquirido, hogares que se arman y se parten, herencia de bienes y deudas con disputas, paternidad como creencia, hijos ilegítimos como secretos, enfermedades hereditarias.
 - **Fase 4:** herencia de la aptitud de cultivo y de las raíces por elemento, ambiente prenatal, fertilidad de cultivadores, compañeros del Dao y cultivo dual, sellos sobre la herencia de cultivadores.
 - **Fase 6:** clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, sucesión hereditaria, linajes de sangre que despiertan.
@@ -229,6 +249,10 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - Matrimonio, adopción y deber filial son compromisos de contracts.md; las formas de matrimonio y las reglas de herencia son normas culturales en `content/`.
 - Lo íntimo existe como eventos con consecuencias y se narra con elipsis. La violencia sexual existe como crimen: el jugador puede hacer que su personaje la cometa (nunca se le sugiere) y carga con todas las consecuencias, pero nunca se narra explícita, y la intención se rechaza si la víctima es menor (decisión del usuario, 2026-10-05).
 - Al morir, el jugador no continúa como su descendiente; los hijos aparecen en el epílogo y la crónica.
+- **Aldea inicial por pre-corrida (aprobado 2026-10-07):**
+  - La aldea se funda décadas antes con hogares fundadores, que son condiciones iniciales del seed.
+  - Una pre-corrida demográfica en modo agregado llega hasta el presente.
+  - Todos los demás nacen de alguien o llegan con su evento, y el jugador es uno de esos nacimientos.
 
 ## Preguntas abiertas
 - Calibración: heredabilidad por rasgo (sobre todo de la aptitud de cultivo) para que los clanes cultivadores tengan ventaja sin que el talento sea casta.

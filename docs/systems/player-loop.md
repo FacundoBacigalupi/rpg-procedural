@@ -210,6 +210,10 @@ Todo este documento describe el **modo realista**, el de por defecto. El **modo 
 - **Inspector con una vida en curso:** se puede abrir con confirmación; la vida queda marcada como "vista con inspector".
 - **Delegación por defecto `normal`:** lo chico lo decide el personaje con su carácter; prometer, pelear, gastar mucho o irse interrumpe. Configurable a `minimal` o `wide`.
 - **Modo novela** como opción explícita antes de empezar (§16), con su propio doc.
+- **De dónde sale el personaje en la Fase 1 (aprobado 2026-10-07):**
+  - Es un nacimiento real de la pre-corrida de la aldea (family-lineage §Implementación): sus padres, abuelos y vecinos también tienen causa.
+  - Se elige con rng entre los vivos de 14-16 años al empezar, para la entrada por edad.
+  - La entrada por nacimiento con viñetas usa la misma pre-corrida y llega después.
 
 ## Decisiones tomadas en este borrador (revisables)
 
