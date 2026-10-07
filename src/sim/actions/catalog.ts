@@ -167,6 +167,19 @@ export const ActionDef = z
     failureModes: z.array(z.strictObject({ id: z.enum(FAILURE_MODES), factor: z.enum(FACTORS) })),
     /** Cuán evidente es un fracaso para quien lo hace (0: no se nota; 1: siempre se nota). */
     evidence: Unit,
+    /**
+     * Lo que saca del lugar donde se hace (extracción, economy §2b), por tipo de lugar: el bien y
+     * los gramos por hora con un resultado medio. Sale del stock finito del lugar, no de la nada.
+     */
+    yields: z
+      .array(
+        z.strictObject({
+          at: z.enum(PLACE_KINDS),
+          good: contentId,
+          perHour: z.number().int().positive(),
+        }),
+      )
+      .default([]),
   })
   .superRefine((d, ctx) => {
     const roles = new Set(d.args.map((a) => a.role));
@@ -192,6 +205,9 @@ export const ActionDef = z
       if (!factors.includes(k)) {
         ctx.addIssue({ code: "custom", path: ["failureModes"], message: `falta la forma de ${k}` });
       }
+    }
+    if (d.resolver === "gather" && d.yields.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["yields"], message: "recolectar sin qué sacar" });
     }
     const manners = d.manners.map((m) => m.id);
     if (new Set(manners).size !== manners.length) {

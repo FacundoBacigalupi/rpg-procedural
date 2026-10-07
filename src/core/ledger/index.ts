@@ -119,6 +119,15 @@ export class Ledger {
     return this.#balances.get(account)?.get(unit) ?? 0;
   }
 
+  /** Lo que tiene una cuenta: sus saldos distintos de cero, ordenados por unidad. */
+  holdings(account: LedgerAccount): { unit: LedgerUnit; amount: number }[] {
+    const units = this.#balances.get(account);
+    if (!units) return [];
+    return [...units.keys()]
+      .sort(compareStrings)
+      .map((unit) => ({ unit, amount: units.get(unit) as number }));
+  }
+
   /** Lo que hay de una unidad dentro del mundo: la suma de las cuentas internas. */
   total(unit: LedgerUnit): number {
     let sum = 0;

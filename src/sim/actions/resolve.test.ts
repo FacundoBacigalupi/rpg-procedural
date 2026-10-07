@@ -1,0 +1,494 @@
+import { readFileSync } from "node:fs";
+import fc from "fast-check";
+import { describe, expect, it } from "vitest";
+import {
+  type CauseRef,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  Ledger,
+  ledgerUnit,
+  loadContent,
+  makeId,
+  type PlaceRef,
+  Rng,
+} from "../../core/index.ts";
+import { draftEvent } from "../scheduler/index.ts";
+import { LOCATION, type LocalMap } from "../world/index.ts";
+import {
+  ACTIONS,
+  ActionCatalog,
+  type ActionDef,
+  type ActionResolution,
+  type AttemptActor,
+  degreeOf,
+  isMoney,
+  PLANS,
+  type ResolveInput,
+  resolve,
+} from "./index.ts";
+
+const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
+const content = loadContent(
+  [ACTIONS, PLANS],
+  [
+    { kind: "actions", file: "content/actions/core.json", data: json("content/actions/core.json") },
+    { kind: "plans", file: "content/plans/steal.json", data: json("content/plans/steal.json") },
+  ],
+);
+const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
+const verb = (id: string) => catalog.verb(id) as ActionDef;
+
+const me = makeId("agent", 1);
+const wu = makeId("agent", 2);
+const forestRef: PlaceRef = { kind: "place", place: makeId("place", 1) };
+const intent: CauseRef[] = [{ kind: "event", event: makeId("event", 9) }];
+
+/** Dos filas de seis hexes: cada uno toca a sus vecinos de fila y al de la otra fila. */
+const W = 6;
+const map: LocalMap = {
+  cell: makeId("cell", 1),
+  lonDeg: 0,
+  neighbors: Array.from({ length: 2 * W }, (_, h) => {
+    const row = Math.floor(h / W);
+    const col = h % W;
+    const out: number[] = [];
+    if (col > 0) out.push(h - 1);
+    if (col < W - 1) out.push(h + 1);
+    out.push(row === 0 ? h + W : h - W);
+    return out.sort((a, b) => a - b);
+  }),
+  crossSeconds: Array.from({ length: 2 * W }, () => 600),
+  forest: Array.from({ length: 2 * W }, () => false),
+};
+
+const forage = ledgerUnit("good:forage");
+const coin = ledgerUnit("coin");
+const jade = ledgerUnit("good:jade_pendant");
+const config = { externals: { seed: [forage, coin, jade] } };
+
+function ledgerWith(
+  rows: { holder: HolderRef; unit: ReturnType<typeof ledgerUnit>; amount: number }[],
+) {
+  const ledger = new Ledger(config);
+  rows.forEach((r, i) => {
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", i + 1),
+      transfers: [
+        {
+          unit: r.unit,
+          from: externalAccount("seed"),
+          to: holderAccount(r.holder),
+          amount: r.amount,
+        },
+      ],
+    });
+  });
+  return ledger;
+}
+
+const actor = (extra: Partial<AttemptActor> = {}): AttemptActor => ({
+  id: me,
+  z: {},
+  capabilities: {},
+  hex: 0,
+  ...extra,
+});
+
+function input(
+  verbId: string,
+  node: Partial<ResolveInput["node"]> = {},
+  extra: Partial<ResolveInput> = {},
+): ResolveInput {
+  return {
+    def: verb(verbId),
+    node: { kind: "do", verb: verbId, args: [], manner: [], ...node },
+    planManner: [],
+    actor: actor(),
+    parties: {},
+    scene: { light: 1, terrain: 0, placeKinds: ["village"] },
+    tick: 1000,
+    rng: Rng.root(7),
+    map,
+    ledger: new Ledger(config),
+    place: forestRef,
+    causes: intent,
+    ...extra,
+  };
+}
+
+const many = (n: number, f: (i: number) => ResolveInput): ActionResolution[] =>
+  Array.from({ length: n }, (_, i) => resolve({ ...f(i), tick: i }));
+
+/** Aplica los asientos de una resolución al ledger, como el scheduler. */
+function post(ledger: Ledger, r: ActionResolution, n: number) {
+  for (const p of r.postings) {
+    expect(p.event).toBe(draftEvent(0));
+    ledger.post({ tick: n, eventId: makeId("event", 100 + n), transfers: p.transfers });
+  }
+}
+
+describe("grado", () => {
+  it("crece con el margen, vale 0,5 en el medio y 0 si no se pudo empezar", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -8, max: 8, noNaN: true }),
+        fc.double({ min: 0, max: 4, noNaN: true }),
+        (m, d) => {
+          expect(degreeOf(m + d)).toBeGreaterThanOrEqual(degreeOf(m));
+          expect(degreeOf(m)).toBeGreaterThan(0);
+          expect(degreeOf(m)).toBeLessThan(1);
+        },
+      ),
+    );
+    expect(degreeOf(0)).toBeCloseTo(0.5, 10);
+    expect(degreeOf(null)).toBe(0);
+  });
+
+  it("la plata se distingue de los bienes por la unidad", () => {
+    expect([coin, ledgerUnit("coin:copper"), forage].map(isMoney)).toEqual([true, true, false]);
+  });
+});
+
+describe("resolución", () => {
+  it("es determinista y siempre trae causas, evento y emisiones acotadas", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1e6 }),
+        fc.integer({ min: 0, max: 1e9 }),
+        fc.constantFrom(
+          "move",
+          "look",
+          "gather",
+          "work",
+          "speak",
+          "strike",
+          "trade",
+          "take",
+          "rest",
+        ),
+        (seed, tick, v) => {
+          const i = input(v, v === "take" ? { args: [{ role: "from", entity: wu }] } : {}, {
+            rng: Rng.root(seed),
+            tick,
+            destination: 5,
+            scene: { light: 0.4, terrain: 0.5, placeKinds: ["forest"] },
+            parties: v === "take" ? { from: { id: wu, z: {}, hex: 0 } } : {},
+            ledger: ledgerWith([
+              { holder: forestRef, unit: forage, amount: 5000 },
+              { holder: wu, unit: coin, amount: 30 },
+            ]),
+          });
+          const a = resolve(i);
+          expect(resolve(i)).toEqual(a);
+          const [event] = a.events;
+          expect(event?.kind).toBe(`action.${v}`);
+          expect(event?.causes).toEqual(intent);
+          expect(event?.actors[0]).toBe(me);
+          for (const x of [a.emissions.sight, a.emissions.sound, a.degree]) {
+            expect(x).toBeGreaterThanOrEqual(0);
+            expect(x).toBeLessThanOrEqual(1);
+          }
+          expect(a.seconds).toBeGreaterThan(0);
+        },
+      ),
+    );
+  });
+
+  it("un paso sin causas es un error", () => {
+    expect(() => resolve(input("rest", {}, { causes: [] }))).toThrow(/sin causas/);
+  });
+});
+
+describe("moverse", () => {
+  const go = (extra: Partial<ResolveInput>) =>
+    input(
+      "move",
+      { args: [{ role: "to", entity: makeId("place", 3) }] },
+      { destination: 5, ...extra },
+    );
+
+  it("de día llega, cambia la ubicación y tarda lo del camino o un poco más", () => {
+    const rs = many(200, () => go({}));
+    const ok = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
+    expect(ok.length).toBeGreaterThan(100);
+    for (const r of ok) {
+      expect(r.effect).toMatchObject({ kind: "move", from: 0, to: 5, reached: 5 });
+      expect(r.changes).toEqual([{ op: "set", table: LOCATION.name, id: me, value: { hex: 5 } }]);
+      expect(r.seconds).toBeGreaterThanOrEqual(5 * 600);
+      expect(r.seconds).toBeLessThanOrEqual(5 * 600 * 1.3);
+    }
+  });
+
+  it("de noche se pierde: queda en otro hex, y no sabe en cuál", () => {
+    const rs = many(400, () => go({ scene: { light: 0, terrain: 0, placeKinds: [] } }));
+    const lost = rs.filter(
+      (r) => r.failure === "lost" && r.attempt.margin !== null && r.attempt.margin < -0.5,
+    );
+    expect(lost.length).toBeGreaterThan(20);
+    for (const r of lost) {
+      if (r.effect.kind !== "move") throw new Error("no es move");
+      expect(r.effect.reached).not.toBe(5);
+      expect(r.changes.length === 0).toBe(r.effect.reached === 0);
+      if (r.self.effect.kind !== "move") throw new Error("no es move");
+      // lo notó: no sabe dónde está; no lo notó: cree que llegó
+      expect(r.self.effect.reached).toBe(r.outcome === "failure_unnoticed" ? 5 : null);
+    }
+  });
+
+  it("en terreno malo se cae a mitad de camino y sabe dónde quedó", () => {
+    const rs = many(400, () => go({ scene: { light: 1, terrain: 1, placeKinds: [] } }));
+    const fell = rs.filter((r) => r.failure === "slip" && r.outcome === "failure");
+    expect(fell.length).toBeGreaterThan(10);
+    for (const r of fell) {
+      expect(r.effect).toMatchObject({ reached: 2, stumbled: true });
+      expect(r.self.effect).toEqual(r.effect);
+    }
+  });
+
+  it("sin piernas no sale y tarda lo que tarda en darse cuenta", () => {
+    const r = resolve(go({ actor: actor({ capabilities: { locomotion: 0.05 } }) }));
+    expect(r.failure).toBe("too_weak");
+    expect(r.changes).toEqual([]);
+    expect(r.seconds).toBe(Math.min(5 * 600, verb("move").checkpoint));
+    expect(r.emissions.sight).toBeLessThan(verb("move").emissions.sight);
+  });
+});
+
+describe("recolectar", () => {
+  const forest = { light: 1, terrain: 0, placeKinds: ["forest" as const] };
+
+  it("rinde con el grado y sale del stock del lugar, sin crear nada", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 3000 }),
+        fc.integer({ min: 1, max: 1e6 }),
+        (stock, seed) => {
+          const ledger = ledgerWith(
+            stock > 0 ? [{ holder: forestRef, unit: forage, amount: stock }] : [],
+          );
+          const total = ledger.total(forage);
+          let left = stock;
+          for (let n = 0; n < 6; n++) {
+            const r = resolve(
+              input("gather", {}, { scene: forest, ledger, rng: Rng.root(seed), tick: n }),
+            );
+            if (r.effect.kind !== "gather") throw new Error("no es gather");
+            expect(r.effect.amount).toBeLessThanOrEqual(left);
+            expect(r.self.effect).toEqual(r.effect);
+            if (r.effect.amount === 0) expect(r.failure).toBe("poor_yield");
+            post(ledger, r, n);
+            left -= r.effect.amount;
+            expect(ledger.balance(holderAccount(forestRef), forage)).toBe(left);
+          }
+          expect(ledger.total(forage)).toBe(total);
+          expect(ledger.audit()).toEqual([]);
+        },
+      ),
+    );
+  });
+
+  it("mejor tirada, más rinde", () => {
+    const ledger = ledgerWith([{ holder: forestRef, unit: forage, amount: 1e7 }]);
+    const rs = many(300, () => input("gather", {}, { scene: forest, ledger }));
+    const amount = (r: ActionResolution) => (r.effect.kind === "gather" ? r.effect.amount : 0);
+    const sorted = rs
+      .filter((r) => r.attempt.margin !== null)
+      .sort((a, b) => (a.attempt.margin as number) - (b.attempt.margin as number));
+    const low = sorted.slice(0, 50).reduce((s, r) => s + amount(r), 0);
+    const high = sorted.slice(-50).reduce((s, r) => s + amount(r), 0);
+    expect(high).toBeGreaterThan(low * 2);
+  });
+
+  it("donde no hay qué sacar, no saca", () => {
+    const r = resolve(input("gather", {}, { scene: forest }));
+    expect(r.effect).toMatchObject({ amount: 0 });
+    expect(r.postings).toEqual([]);
+    expect(r.failure).toBe("poor_yield");
+  });
+});
+
+describe("tomar", () => {
+  const steal = (extra: Partial<ResolveInput> = {}, what?: string) =>
+    input(
+      "take",
+      {
+        args: [{ role: "from", entity: wu }, ...(what ? [{ role: "what", text: what }] : [])],
+        manner: ["covert"],
+      },
+      {
+        parties: { from: { id: wu, z: {}, hex: 0 } },
+        ledger: ledgerWith([
+          { holder: wu, unit: coin, amount: 40 },
+          { holder: wu, unit: jade, amount: 1 },
+        ]),
+        ...extra,
+      },
+    );
+
+  it("pasa lo tomado del otro al actor, con lo que nombró o lo que más hay", () => {
+    const rs = many(300, () => steal());
+    const ok = rs.find((r) => r.outcome === "success");
+    expect(ok?.effect).toMatchObject({
+      kind: "take",
+      from: wu,
+      wanted: coin,
+      got: [{ unit: coin, amount: 40 }],
+    });
+    expect(ok?.postings[0]?.transfers).toEqual([
+      { unit: coin, from: holderAccount(wu), to: holderAccount(me), amount: 40 },
+    ]);
+    const named = resolve(steal({}, "el colgante de jade"));
+    expect(named.effect).toMatchObject({ wanted: jade });
+  });
+
+  it("lo que pasa de mano se conserva y nunca deja al otro en negativo", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1e6 }),
+        fc.integer({ min: 0, max: 1e6 }),
+        (seed, tick) => {
+          const i = steal({
+            rng: Rng.root(seed),
+            tick,
+            scene: { light: 0.2, terrain: 0, placeKinds: [] },
+          });
+          const ledger = i.ledger as Ledger;
+          const r = resolve(i);
+          post(ledger, r, 0);
+          expect(ledger.total(coin)).toBe(40);
+          expect(ledger.total(jade)).toBe(1);
+          expect(ledger.audit()).toEqual([]);
+          if (r.effect.kind !== "take") throw new Error("no es take");
+          const got = r.effect.got.reduce((s, g) => s + g.amount, 0);
+          if (r.outcome === "partial") expect(got).toBeLessThanOrEqual(40);
+        },
+      ),
+    );
+  });
+
+  it("a oscuras a veces agarra otra cosa, y un desastre lo deja descubierto", () => {
+    const rs = many(600, () => steal({ scene: { light: 0, terrain: 0, placeKinds: [] } }));
+    const wrong = rs.filter(
+      (r) => r.failure === "wrong_target" && r.attempt.margin !== null && r.attempt.margin < -0.5,
+    );
+    expect(wrong.length).toBeGreaterThan(5);
+    for (const r of wrong) expect(r.effect).toMatchObject({ got: [{ unit: jade, amount: 1 }] });
+    const disaster = rs.filter((r) => r.attempt.margin !== null && r.attempt.margin <= -2.5);
+    for (const r of disaster) expect(r.events[0]?.data).toMatchObject({ noticedBy: [wu] });
+  });
+});
+
+describe("buscar, pegar, hablar, trabajar", () => {
+  it("buscar a quien no está falla con forma y el actor lo sabe", () => {
+    const r = resolve(
+      input(
+        "search",
+        { args: [{ role: "target", entity: wu }] },
+        { parties: { target: { id: wu, z: {}, hex: 4 } } },
+      ),
+    );
+    expect(r).toMatchObject({ outcome: "failure", failure: "not_here" });
+    expect(r.self).toMatchObject({ believed: "failure", effect: { present: false, found: false } });
+  });
+
+  it("si no lo encuentra estando ahí, cree que no está", () => {
+    const rs = many(300, () =>
+      input(
+        "search",
+        { args: [{ role: "target", entity: wu }] },
+        {
+          parties: { target: { id: wu, z: {}, hex: 0 } },
+          scene: { light: 0.1, terrain: 0, placeKinds: [] },
+        },
+      ),
+    );
+    const missed = rs.filter(
+      (r) =>
+        r.effect.kind === "search" &&
+        !r.effect.found &&
+        !r.effect.glimpsed &&
+        r.outcome !== "failure_unnoticed",
+    );
+    expect(missed.length).toBeGreaterThan(0);
+    for (const r of missed) {
+      expect(r.effect).toMatchObject({ present: true });
+      expect(r.self.effect).toMatchObject({ present: false });
+    }
+  });
+
+  it("pegar: un roce es más débil que un golpe limpio, y un golpe suena", () => {
+    const rs = many(400, () =>
+      input(
+        "strike",
+        { args: [{ role: "target", entity: wu }] },
+        { parties: { target: { id: wu, z: {}, hex: 0 } } },
+      ),
+    );
+    const force = (r: ActionResolution) => (r.effect.kind === "strike" ? r.effect.force : -1);
+    const clean = rs.filter(
+      (r) => r.effect.kind === "strike" && r.effect.hit && !r.effect.glancing,
+    );
+    const glance = rs.filter((r) => r.effect.kind === "strike" && r.effect.glancing);
+    expect(clean.length).toBeGreaterThan(0);
+    expect(glance.length).toBeGreaterThan(0);
+    expect(Math.min(...clean.map(force))).toBeGreaterThan(Math.max(...glance.map(force)));
+    const miss = rs.filter((r) => r.effect.kind === "strike" && !r.effect.hit);
+    for (const r of miss) expect(force(r)).toBe(0);
+    if (miss[0] && clean[0])
+      expect(clean[0].emissions.sound).toBeGreaterThan(miss[0].emissions.sound);
+  });
+
+  it("hablar: la claridad sigue al grado; trabajar rinde según la tirada", () => {
+    const talk = resolve(
+      input(
+        "speak",
+        {
+          args: [
+            { role: "to", entity: wu },
+            { role: "content", text: "hola" },
+          ],
+        },
+        { parties: { to: { id: wu, z: {}, hex: 0 } } },
+      ),
+    );
+    if (talk.effect.kind !== "speak") throw new Error("no es speak");
+    if (talk.effect.delivered) expect(talk.effect.clarity).toBe(talk.degree);
+    expect(talk.effect.text).toBe("hola");
+
+    const fields = { light: 1, terrain: 0, placeKinds: ["fields" as const] };
+    const rs = many(200, () =>
+      input("work", { args: [{ role: "for", seconds: 3600 }] }, { scene: fields }),
+    );
+    for (const r of rs) {
+      if (r.effect.kind !== "work") throw new Error("no es work");
+      expect(r.effect.effectiveSeconds).toBeLessThanOrEqual(1.5 * r.seconds);
+      expect(r.effect.effectiveSeconds).toBe(Math.round(r.seconds * Math.min(1.5, 2 * r.degree)));
+    }
+  });
+
+  it("lo que no notó que le salió mal lo cree bien: la verdad y lo creído se separan", () => {
+    const rs = many(600, () =>
+      input(
+        "speak",
+        {
+          args: [
+            { role: "to", entity: wu },
+            { role: "content", text: "te debo" },
+          ],
+        },
+        { parties: { to: { id: wu, z: {}, hex: 0 } }, actor: actor({ z: { sociability: -1.5 } }) },
+      ),
+    );
+    const fooled = rs.filter((r) => r.outcome === "failure_unnoticed");
+    expect(fooled.length).toBeGreaterThan(0);
+    for (const r of fooled) {
+      expect(r.self.believed).toBe("success");
+      if (r.effect.kind !== "speak" || r.self.effect.kind !== "speak")
+        throw new Error("no es speak");
+      expect(r.self.effect.delivered).toBe(true);
+      expect(r.self.effect.clarity).toBeGreaterThan(r.effect.clarity);
+    }
+  });
+});
