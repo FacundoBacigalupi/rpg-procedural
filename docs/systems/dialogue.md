@@ -246,6 +246,10 @@ interface VerbalizationRequest {
 - **Fase 5:** lenguas e intérpretes, dialectos que revelan origen, discursos a multitudes.
 - **Fase 6:** deliberación de organizaciones y audiencias formales como conversaciones con registro alto.
 
+### Implementado (2026-10-07, Hito 1b)
+
+Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` no están; el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).
