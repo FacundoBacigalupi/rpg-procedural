@@ -181,6 +181,13 @@ function outcome(
         );
       }
       if (e.offBalance) say("outcome.strike.off_balance");
+      if (e.fight) {
+        const f = e.fight;
+        const target = ref(e.target);
+        if (f.mine === "standing" && f.theirs === "standing") say("outcome.strike.fight.parted");
+        else if (f.mine === "standing") say(`outcome.strike.fight.foe_${f.theirs}`, { target });
+        else say(`outcome.strike.fight.mine_${f.mine}`, { target });
+      }
       break;
     }
     case "trade":

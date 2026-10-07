@@ -191,6 +191,38 @@
     "lines": ["Tirás un golpe al aire."]
   },
   {
+    "id": "outcome.strike.fight.parted",
+    "lines": ["Se separan jadeando, sin que ninguno gane.", "Nadie puede más y la pelea se corta."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_down",
+    "lines": ["{target} cae y no se levanta.", "{target} queda en el suelo."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_fled",
+    "lines": ["{target} se suelta y sale corriendo.", "{target} te da la espalda y huye."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_yielded",
+    "lines": ["{target} levanta las manos: se rinde.", "{target} se rinde y deja de defenderse."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_down",
+    "lines": ["Los golpes te tumban y todo se va apagando."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_dead",
+    "lines": ["Algo cede adentro tuyo y ya no hay nada más."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_fled",
+    "lines": ["Te das vuelta y salís corriendo de {target}."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_yielded",
+    "lines": ["Levantás las manos y le pedís a {target} que pare."]
+  },
+  {
     "id": "outcome.strike.off_balance",
     "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]
   },
