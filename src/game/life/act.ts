@@ -57,12 +57,15 @@ import {
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
+  rankOf,
   resolve,
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
   type SpaceGraph,
+  STATUS,
   type StateChange,
+  type StatusDef,
   setActivity,
   setComponent,
   spaceLight,
@@ -109,6 +112,7 @@ export interface ActOptions {
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly RecipeDef[];
+  readonly statuses: readonly StatusDef[];
   readonly clock: PlanetClock;
 }
 
@@ -229,6 +233,7 @@ function marketOf(
   other: EntityRef | null,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
+  const otherStatus = other === null ? undefined : truth.get(STATUS, other);
   return {
     priceCopperPerKg: new Map(
       o.goods.flatMap((g) =>
@@ -242,6 +247,10 @@ function marketOf(
         : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
     harvestGramsPerHour: HARVEST_GRAMS_PER_HOUR,
     harvestGood: HARVEST_GOOD,
+    ranks: {
+      actor: rankOf(truth.get(STATUS, me), o.statuses),
+      other: rankOf(otherStatus, o.statuses),
+    },
   };
 }
 

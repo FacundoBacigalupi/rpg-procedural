@@ -8,6 +8,7 @@ import type { AgentId, Event, EventId, PlanetClock, Rng } from "../../core/index
 import {
   ATTENTION,
   actionStimulus,
+  attireLook,
   daylight,
   LOCATION,
   type LocalMap,
@@ -18,6 +19,8 @@ import {
   perceive,
   type ReadonlyWorldTruth,
   type SpaceGraph,
+  STATUS,
+  type StatusDef,
   table,
 } from "../../sim/index.ts";
 import { playerObserver } from "./witness.ts";
@@ -40,6 +43,7 @@ export interface PerceiveOptions {
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly clock: PlanetClock;
+  readonly statuses: readonly StatusDef[];
 }
 
 /** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
@@ -108,7 +112,11 @@ export function perceiveEvents(
           tick: e.tick,
           actor: who,
           at,
-          look: { sex: p.sex, ageYears: (e.tick - p.born) / o.clock.year },
+          look: {
+            sex: p.sex,
+            ageYears: (e.tick - p.born) / o.clock.year,
+            ...attireLook(truth.get(STATUS, who), o.statuses),
+          },
           verb: e.kind,
           emissions: { sight: em.sight ?? 0, sound: em.sound ?? 0 },
           ...(words === undefined ? {} : { words }),

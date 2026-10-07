@@ -12,6 +12,7 @@ import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
+import { STATUSES } from "./social/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
   BIOMES,
@@ -31,4 +32,5 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   LANGUAGES,
   CONCEPTS,
   RECIPES,
+  STATUSES,
 ] as readonly ContentKind[];

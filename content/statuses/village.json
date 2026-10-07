@@ -1,0 +1,29 @@
+[
+  {
+    "id": "landholder",
+    "name": "terrateniente",
+    "culture": "village",
+    "role": "holder",
+    "rank": 2,
+    "wealth": 2,
+    "attire": "fine"
+  },
+  {
+    "id": "peasant",
+    "name": "campesino libre",
+    "culture": "village",
+    "role": "common",
+    "rank": 1,
+    "wealth": 1,
+    "attire": "plain"
+  },
+  {
+    "id": "servant",
+    "name": "sirviente",
+    "culture": "village",
+    "role": "dependent",
+    "rank": 0,
+    "wealth": 0.7,
+    "attire": "worn"
+  }
+]

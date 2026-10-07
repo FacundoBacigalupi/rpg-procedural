@@ -43,6 +43,7 @@ import {
   type StateChange,
   setComponent,
 } from "../scheduler/index.ts";
+import { deferenceEdge } from "../social/index.ts";
 import { hexPath, LOCATION, type LocalMap } from "../world/index.ts";
 import {
   type Attempt,
@@ -94,6 +95,10 @@ export interface Market {
   readonly harvestGramsPerHour?: number | undefined;
   /** La unidad que rinde el campo. */
   readonly harvestGood?: LedgerUnit | undefined;
+  /** El rango ritual de cada parte, si lo tiene: de ahí sale la deferencia en el trato. */
+  readonly ranks?:
+    | { readonly actor: number | undefined; readonly other: number | undefined }
+    | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -642,7 +647,8 @@ const trade: Resolver = (c) => {
   const m = c.roll.margin;
   // Cerrar mal también es cerrar: la torpeza deja un mal trato; la duda o la falta de algo, ninguno.
   const deal = m !== null && (m >= PARTIAL_MARGIN || c.roll.failure === "clumsy");
-  const edge = deal ? round3(0.3 * (2 * c.degree - 1)) : 0;
+  const lean = deferenceEdge(c.input.market?.ranks?.actor, c.input.market?.ranks?.other);
+  const edge = deal ? round3(Math.max(-0.3, Math.min(0.3, 0.3 * (2 * c.degree - 1) + lean))) : 0;
   const idle = (closed: boolean): VerbEffect => ({
     kind: "trade",
     with: other,

@@ -11,16 +11,19 @@
 // los percepts después) y el léxico va ordenado.
 
 import { type AgentId, compareStrings, type EntityRef } from "../../core/index.ts";
-import type {
-  BelievedOutcome,
-  Channel,
-  FactorKey,
-  Figure,
-  Percept,
-  PerceptDetail,
-  PlaceKind,
-  SelfReport,
-  SpaceKind,
+import {
+  type Attire,
+  type BelievedOutcome,
+  type Channel,
+  type FactorKey,
+  type Figure,
+  type Percept,
+  type PerceptDetail,
+  type PlaceKind,
+  type SelfReport,
+  type SpaceKind,
+  type Standing,
+  standingOf,
 } from "../../sim/index.ts";
 
 declare const viewBrand: unique symbol;
@@ -71,6 +74,10 @@ export interface LocalLabel {
   readonly relation?: string;
   /** Lo que vio de su figura. */
   readonly figure?: Figure;
+  /** Cómo viste, si lo alcanzó a ver (social-structure §3). */
+  readonly attire?: Attire;
+  /** La posición que deduce de la ropa, sin saber más (no el estatus real). */
+  readonly standing?: Standing;
   /** Lo reconoció: sabe quién es. */
   readonly known: boolean;
   /** Cuán seguro está de lo que leyó (de quién es, o de que hay alguien). */
@@ -258,7 +265,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
   const byEntity = new Map<EntityRef, string>();
   const words = new Set<string>(input.lexicon ?? []);
 
-  const known = (entity: EntityRef, certainty: Certainty, figure?: Figure): string => {
+  const known = (
+    entity: EntityRef,
+    certainty: Certainty,
+    figure?: Figure,
+    attire?: Attire,
+  ): string => {
     const hit = byEntity.get(entity);
     if (hit !== undefined) return hit;
     const localId = `e${labels.length + 1}`;
@@ -268,6 +280,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       ...(a?.name !== undefined ? { name: a.name } : {}),
       ...(a?.relation !== undefined ? { relation: a.relation } : {}),
       ...(figure !== undefined ? { figure } : {}),
+      ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
       known: true,
       certainty,
     });
@@ -276,9 +289,15 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     return localId;
   };
 
-  const stranger = (certainty: Certainty, figure?: Figure): string => {
+  const stranger = (certainty: Certainty, figure?: Figure, attire?: Attire): string => {
     const localId = `e${labels.length + 1}`;
-    labels.push({ localId, ...(figure !== undefined ? { figure } : {}), known: false, certainty });
+    labels.push({
+      localId,
+      ...(figure !== undefined ? { figure } : {}),
+      ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
+      known: false,
+      certainty,
+    });
     return localId;
   };
 
@@ -299,11 +318,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       throw new RangeError(`percept ${p.id} es de ${p.observer}, no del jugador`);
     }
     const figure = p.fields.figure?.value as Figure | undefined;
+    const attire = p.fields.attire?.value as Attire | undefined;
     const identity = p.fields.identity;
     const who =
       identity !== undefined && isAgent(identity.value)
-        ? known(identity.value, certaintyOf(identity.confidence), figure)
-        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure);
+        ? known(identity.value, certaintyOf(identity.confidence), figure, attire)
+        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure, attire);
     const action = p.fields.action?.value;
     const said = p.fields.words?.value;
     percepts.push({

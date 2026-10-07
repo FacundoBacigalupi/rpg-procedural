@@ -6,6 +6,7 @@
 import { Rng } from "../../core/index.ts";
 import {
   ATTENTION,
+  attireLook,
   BODY_STATE,
   bodySigns,
   daylight,
@@ -17,6 +18,7 @@ import {
   PLACE,
   perceive,
   presenceStimulus,
+  STATUS,
   spaceLight,
   watching,
 } from "../../sim/index.ts";
@@ -102,7 +104,11 @@ export function playerView(
         presenceStimulus({
           id,
           at: l,
-          look: { sex: p.sex, ageYears: (now - p.born) / w.clock.year },
+          look: {
+            sex: p.sex,
+            ageYears: (now - p.born) / w.clock.year,
+            ...attireLook(w.truth.get(STATUS, id), w.statuses),
+          },
           tick: now,
         }),
         [observer],

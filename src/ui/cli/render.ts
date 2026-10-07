@@ -91,6 +91,7 @@ export function renderCharacter(p: CharacterPanel): string {
       ? "Te sentís bien."
       : `Cómo te sentís: ${[...general, ...zones].join("; ")}.`,
   );
+  if (p.status !== undefined) lines.push(`En la aldea sos ${p.status}.`);
   if (p.family.length > 0) {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
