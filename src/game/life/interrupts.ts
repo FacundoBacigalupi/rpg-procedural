@@ -5,19 +5,9 @@
 // Las configurables por el usuario y la delegación llegan con las rutinas (Fase 3).
 
 import type { AgentId, Event, EventId, Tick } from "../../core/index.ts";
-import { Rng } from "../../core/index.ts";
-import {
-  ATTENTION,
-  actionStimulus,
-  BODY_STATE,
-  bodySigns,
-  daylight,
-  LOCATION,
-  localHour,
-  PERSON,
-  perceive,
-} from "../../sim/index.ts";
-import { acquaintances, playerObserver } from "./view.ts";
+import { BODY_STATE, bodySigns } from "../../sim/index.ts";
+import { perceivedDetail } from "./perceive.ts";
+import { acquaintances } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
 
 export type InterruptKind =
@@ -70,32 +60,9 @@ function touches(e: Event, me: AgentId): boolean {
   return e.kind === "action.strike";
 }
 
-/** Si el personaje ve u oye el evento de `who` (perception, con el rng del evento). */
-function perceives(w: LifeWorld, e: Event, who: AgentId, words?: string | null): boolean {
-  const at = w.truth.get(LOCATION, who);
-  const p = w.truth.get(PERSON, who);
-  if (!at || !p) return false;
-  const em = (e.emissions ?? {}) as { sight?: number; sound?: number };
-  const percepts = perceive(
-    actionStimulus({
-      event: e.id,
-      tick: e.tick,
-      actor: who,
-      at,
-      look: { sex: p.sex, ageYears: (e.tick - p.born) / w.clock.year },
-      verb: e.kind,
-      emissions: { sight: em.sight ?? 0, sound: em.sound ?? 0 },
-      ...(words === undefined ? {} : { words }),
-    }),
-    [playerObserver(w, ATTENTION.relaxed)],
-    {
-      graph: w.spaces,
-      forest: w.map.forest,
-      daylight: daylight(localHour(w.clock, e.tick, w.map.lonDeg)),
-    },
-    Rng.root(w.seed).fork("interrupt", e.id),
-  );
-  return percepts.some((x) => x.detail !== "vague");
+/** Si el personaje ve u oye el evento: lo dice lo que quedó guardado en la fase `perceive`. */
+function perceives(w: LifeWorld, e: Event): boolean {
+  return perceivedDetail(w.truth, w.player, e.id) === "clear";
 }
 
 /**
@@ -116,11 +83,11 @@ export function fixedInterrupt(
     if (!who || who === me) continue;
     if (e.kind === "action.speak") {
       const data = e.data as { effect?: { to?: string | null; text?: string | null } } | null;
-      if (data?.effect?.to === me && perceives(w, e, who, data.effect.text ?? null)) {
+      if (data?.effect?.to === me && perceives(w, e)) {
         return { kind: "spoken_to", tick: e.tick, event: e.id, who };
       }
     }
-    if (e.kind === "body.died" && close.has(who) && perceives(w, e, who)) {
+    if (e.kind === "body.died" && close.has(who) && perceives(w, e)) {
       return { kind: "death_seen", tick: e.tick, event: e.id, who };
     }
   }

@@ -28,6 +28,7 @@ import {
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
+import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
 
 export { PLAYER } from "./player.ts";
@@ -85,6 +86,12 @@ export function lifeWorld(
       log: parts.log,
       ledger: parts.ledger,
       processes: [
+        perceiveProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+        }),
         bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) }),
         actProcess({
           map: parts.map,

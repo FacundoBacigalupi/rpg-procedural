@@ -9,6 +9,7 @@ import {
   holderAccount,
   loadContent,
   makeId,
+  Rng,
 } from "../../core/index.ts";
 import { GAME_CONTENT_KINDS } from "../../game/index.ts";
 import {
@@ -17,6 +18,9 @@ import {
   inventoryPanel,
   Life,
   living,
+  PERCEPTS,
+  perceiveEvents,
+  remember,
 } from "../../game/life/index.ts";
 import { parseCommand } from "../../llm/index.ts";
 import {
@@ -141,7 +145,19 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     });
     const here = w.truth.get(LOCATION, life.player);
     if (!here) throw new Error("sin lugar");
+    // Lo que el personaje percibió del paso queda guardado y de ahí lee la interrupción.
+    const witness = (e: Event) => {
+      w.truth.set(PERCEPTS, life.player, { recent: [] });
+      const seen = perceiveEvents(
+        { player: life.player, map: w.map, spaces: w.spaces, clock: w.clock },
+        w.truth,
+        [e],
+        Rng.root(w.seed).fork("test"),
+      );
+      w.truth.set(PERCEPTS, life.player, remember(w.truth, life.player, seen));
+    };
     w.truth.set(LOCATION, mother, here);
+    witness(died());
     expect(fixedInterrupt(w, [died()], new Set())).toMatchObject({
       kind: "death_seen",
       who: mother,
@@ -150,6 +166,7 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
       (_, hex) => hex !== here.hex && !w.map.neighbors[here.hex]?.includes(hex),
     );
     w.truth.set(LOCATION, mother, { hex: far });
+    witness(died());
     expect(fixedInterrupt(w, [died()], new Set())).toBeNull();
   }, 120_000);
 
