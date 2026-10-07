@@ -312,8 +312,20 @@ interface VolcanicWinter {
 - Determinismo: mismo seed → mismas eras glaciales, mismas erupciones, mismos suelos tras N años.
 
 ## Implementación
+
+**Hecho (Fase 1, Hito 1a, 2026-10-06) — `src/worldgen/planet/`:** la versión mínima de las etapas 0-5c.
+- `grid.ts`: la grilla (ARCHITECTURE §7.9); nivel 0 a ~175 km por celda (`frequencyFor`), `refine` para el nivel 1.
+- `generate.ts`: cosmología del seed (radio 2-4 Tierras, gravedad, inclinación, día, fracción de tierra, presupuesto de esencia), pipeline con una rama del RNG por etapa, `RegionCell` armada desde los arreglos (columnas por capa, no objetos), `pickVillageSite` entre las celdas más habitables, `planetDigest` para el determinismo.
+- `tectonics.ts`: 8-20 placas por relleno con heap, polos de Euler, corteza continental/oceánica, bordes convergentes/divergentes/transformantes con su efecto en la elevación, puntos calientes, volcanes, roca y mineralización; nivel del mar por cuantil de área. Eventos: `planet.formed`, `planet.plate_formed`, `planet.plate_boundary`, `planet.hotspot`, `planet.volcano`, `planet.climate_settled`, `planet.drainage_formed`.
+- `climate.ts`: temperatura por latitud, inclinación, altura y corrientes costeras (cálidas, frías con afloramiento); bandas de viento; humedad advectada desde el mar con lluvia orográfica y reciclado sobre tierra (las sombras de lluvia salen solas).
+- `hydrology.ts`: relleno por prioridad desde el mar (todo camino río abajo llega al mar sin ciclos), lagos en las depresiones hondas, caudal por escorrentía de Budyko, ríos grandes.
+- `biomes.ts` + `content/biomes/whittaker.json`: 17 biomas por temperatura, lluvia y altura, validados con Zod; un test verifica que cubren todo el espacio.
+- `essence.ts`: siete fuentes genéricas con su evento causa (geotermal, mineral, biótica, hídrica, sedimentaria, telúrica, celeste); cada familia de mundo dirá a qué elemento corresponde cada una (metaphysics §2). La esencia baja por las pendientes y el presupuesto entero se reparte por resto mayor: Σ celdas = presupuesto exacto, Σ fuentes = celda, Σ regeneración = presupuesto/100.
+- **Herramienta:** `npm run worldgen -- --seed N [--out maps] [--width 1024] [--frequency N]` deja un PNG equirectangular por capa (elevación, placas, roca, biomas, temperatura, lluvia, ríos, esencia, habitabilidad, con la aldea marcada) y `summary.json` (`src/tools/worldgen/`). Un planeta de 150-250 mil celdas tarda ~3 s.
+- **Calibración pendiente:** (1) los interiores continentales salen muy secos (media en tierra ~200 mm/año, mucho desierto): con radios de 2-4 Tierras los continentes son enormes y la humedad no llega; falta evaporación de lagos y ríos, monzones y celdas convectivas. (2) Hay muchos mares epicontinentales: corteza continental bajo el nivel del mar sin conexión al océano, que hoy cuenta como mar; tendrían que ser lagos salados o cuencas secas según el balance de agua. (3) Sin erosión ni hidrología de detalle todavía.
+
 Encaja en la **Fase 5** (región y LOD) y la **Fase 7** (worldgen completo), pero conviene adelantar una versión mínima:
-- **Mínimo (antes o durante la Fase 1):** grilla + tectónica + elevación + clima (con corrientes oceánicas) + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
+- **Mínimo (hecho, ver arriba):** grilla + tectónica + elevación + clima (con corrientes oceánicas) + biomas + qi básico + exportar PNG. Sirve para ubicar la aldea en un lugar real del planeta en vez de en el vacío.
 - **Después:** hidrología completa, erosión, anomalías, nivel 1 local.
 - **Fase 3:** oscilaciones oceánicas de pocos años para la región de la aldea (años buenos y malos); suelos por parcela con nutrientes, agotamiento, barbecho y abono, rendimientos que alimentan la presión de hambre (§9).
 - **Fase 5:** suelos agregados por celda, erosión y salinización por uso, volcanes con presión y erupciones con efectos locales y ceniza (§9, §10).
