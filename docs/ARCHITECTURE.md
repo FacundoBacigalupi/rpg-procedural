@@ -139,7 +139,7 @@ Viven en `core/types` y `core/ids`. Todos los docs de sistema los usan con estos
 ```ts
 type Id<K extends EntityKind> = string & { readonly __kind: K };   // "agent:1042", asignado por contador determinista
 type EntityKind =
-  | "agent" | "org" | "household" | "item" | "lot" | "place" | "building" | "settlement"
+  | "agent" | "org" | "household" | "item" | "lot" | "place" | "building" | "work" | "settlement"
   | "cell" | "zone" | "plane" | "realm" | "spirit" | "text" | "commitment" | "case"
   | "pressure" | "belief" | "memory" | "event" | "journey" | "force" | "scheme" | "lineage";
 

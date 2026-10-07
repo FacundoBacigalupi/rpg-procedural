@@ -7,6 +7,7 @@ import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
 import { BODY_PLANS, FOODS } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
+import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
@@ -20,4 +21,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   ACTIONS,
   PLANS,
   PARSER_EXAMPLES,
+  MATERIALS,
+  BUILDING_TYPES,
+  WORK_TYPES,
 ] as readonly ContentKind[];

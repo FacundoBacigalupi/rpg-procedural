@@ -1,0 +1,38 @@
+[
+  {
+    "id": "timber",
+    "name": "madera de monte",
+    "source": "forest",
+    "gramsPerM2": 18000,
+    "decayPerYear": 0.04,
+    "wall": "wood_wall",
+    "fuel": 1
+  },
+  {
+    "id": "thatch",
+    "name": "paja y caña de los campos",
+    "source": "fields",
+    "gramsPerM2": 4000,
+    "decayPerYear": 0.12,
+    "wall": "paper_wall",
+    "fuel": 1.4
+  },
+  {
+    "id": "clay",
+    "name": "adobe de barro y paja",
+    "source": "ground",
+    "gramsPerM2": 120000,
+    "decayPerYear": 0.03,
+    "wall": "wood_wall",
+    "fuel": 0
+  },
+  {
+    "id": "stone",
+    "name": "piedra suelta del lugar",
+    "source": "ground",
+    "gramsPerM2": 300000,
+    "decayPerYear": 0.004,
+    "wall": "stone_wall",
+    "fuel": 0
+  }
+]
