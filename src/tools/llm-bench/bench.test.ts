@@ -206,6 +206,22 @@ describe("gramática de comandos sin red", () => {
     expect(pass).toBeGreaterThanOrEqual(35);
   });
 
+  it("comer, beber y curar", () => {
+    const verbOf = (text: string) => {
+      const d = parseCommand(text, catalog);
+      expect(d && setup.schema.safeParse(d).success, text).toBe(true);
+      return d?.kind === "act" && d.plan?.kind === "do" ? d.plan : null;
+    };
+    expect(verbOf("como algo")?.verb).toBe("eat");
+    expect(verbOf("como mijo")?.args).toEqual([{ role: "what", text: "mijo" }]);
+    expect(verbOf("tomo agua")?.verb).toBe("drink");
+    expect(verbOf("bebo")?.verb).toBe("drink");
+    expect(verbOf("tomo la jarra")?.verb).toBe("take");
+    expect(verbOf("me curo")?.verb).toBe("tend");
+    expect(verbOf("vendo la herida")?.verb).toBe("tend");
+    expect(verbOf("curo a Wu")?.args[0]?.role).toBe("target");
+  });
+
   it("sin modelo, el parser cae a la gramática", async () => {
     const jobs = new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
     const r = await parseIntentOrGrammar(jobs, setup, { text: "voy a la plaza" }, catalog);

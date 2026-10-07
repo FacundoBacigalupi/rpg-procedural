@@ -107,5 +107,20 @@
     "capabilities": { "manipulation": 1 },
     "tacitness": 0.9,
     "curve": { "rate": 0.0015, "k": 3 }
+  },
+  {
+    "id": "medicine",
+    "name": "curar heridas",
+    "domain": "body",
+    "facets": ["execution", "knowledge", "judgment"],
+    "aptitudes": [
+      { "trait": "control", "weight": 0.4 },
+      { "trait": "intellect", "weight": 0.4 },
+      { "trait": "perception", "weight": 0.2 }
+    ],
+    "capabilities": { "manipulation": 1 },
+    "tacitness": 0.5,
+    "curve": { "rate": 0.0013, "k": 3 },
+    "upbringing": { "fromAge": 8, "hoursPerYear": 8, "ease": 0 }
   }
 ]

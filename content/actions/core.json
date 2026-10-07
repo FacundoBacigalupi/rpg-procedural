@@ -363,5 +363,81 @@
       { "id": "too_weak", "factor": "capability" }
     ],
     "evidence": 0.8
+  },
+  {
+    "id": "eat",
+    "name": "comer",
+    "domain": "body",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [{ "id": "fast", "duration": 0.5 }],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handL": "partial", "handR": "full" },
+    "duration": { "kind": "fixed", "seconds": 1200 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "resolver": "eat",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "drink",
+    "name": "beber",
+    "domain": "body",
+    "args": [],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.1 },
+      { "kind": "position", "at": ["village", "water"] }
+    ],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 60 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "resolver": "drink",
+    "ease": 3,
+    "failureModes": [
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "tend",
+    "name": "curar",
+    "domain": "body",
+    "args": [{ "role": "target", "kind": "person", "required": false }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.5 },
+      { "id": "fast", "duration": 0.5, "ease": -0.6 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "position", "near": "target" }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "full" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 120,
+    "emissions": { "sight": 0.3, "sound": 0.1 },
+    "resolver": "tend",
+    "ease": 0.8,
+    "factors": {
+      "light": 0.6,
+      "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "intellect", "weight": 0.2 }]
+    },
+    "skill": {
+      "id": "medicine",
+      "facets": { "execution": 0.5, "knowledge": 0.3, "judgment": 0.2 }
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "clumsy", "factor": "light" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.7
   }
 ]

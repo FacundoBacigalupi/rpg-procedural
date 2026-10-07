@@ -63,6 +63,9 @@
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
   { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
+  { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
+  { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
+  { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
   { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
 
@@ -233,6 +236,36 @@
   { "id": "cue.position", "lines": ["No estás bien parado para eso.", "Estás mal ubicado."] },
   { "id": "cue.means", "lines": ["Te falta con qué.", "No tenés lo que hace falta."] },
 
+  {
+    "id": "outcome.eat.own",
+    "lines": ["Comés {what} de lo que llevabas.", "Te comés {what} que tenías encima."]
+  },
+  {
+    "id": "outcome.eat.larder",
+    "lines": ["Comés {what} de la casa.", "Te servís {what} de lo que hay guardado."]
+  },
+  {
+    "id": "outcome.eat.nothing",
+    "lines": ["Buscás qué comer, pero no hay nada.", "No encontrás nada para comer."]
+  },
+  { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
+  { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
+  {
+    "id": "outcome.tend.self",
+    "lines": ["Te curás lo mejor que podés.", "Te atendés la herida con cuidado."]
+  },
+  {
+    "id": "outcome.tend.self_failed",
+    "lines": ["Intentás curarte, pero no te sale.", "Te tocás la herida y lo empeorás."]
+  },
+  {
+    "id": "outcome.tend.other",
+    "lines": ["Le curás las heridas a {who}.", "Atendés a {who} con cuidado."]
+  },
+  {
+    "id": "outcome.tend.other_failed",
+    "lines": ["Intentás curar a {who}, pero no te sale.", "Las manos no te ayudan con {who}."]
+  },
   { "id": "self.hungry", "lines": ["Tenés hambre."] },
   { "id": "self.thirsty", "lines": ["Tenés sed."] },
   { "id": "self.tired", "lines": ["Estás cansado."] },

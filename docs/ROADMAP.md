@@ -187,7 +187,25 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - el proceso `body.physiology` en la fase `physics`, que emite `body.*` y cierra la entidad al morir.
 
   Calibrado contra los objetivos de body-health: una herida grave sin tratar mata a ~1 de cada 3 (más por sepsis que por sangre) y una leve limpia casi nunca. Queda para el bucle del jugador: los verbos comer, beber y curar; pasar de verbo a actividad; enchufar `injure` en la resolución de golpes y percances; percepts internos desde `bodySigns`; llamar a `seedBodies`; y que las capacidades lleguen a `attempt` y al techo de las habilidades ([body-health.md](systems/body-health.md) §Implementación)
-- [ ] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
+- [x] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
+  **Hecho (2026-10-07):** el stub de la Fase 0 se reemplazó por la vida real (`src/game/life/`). `createLife` arma planeta → aldea → pre-corrida → el personaje (de 14-16 años, entrada `age`), siembra lugares, ubicaciones, cuerpos y habilidades, un mapa local con tiempos de cruce y las despensas de grano por hogar (provisorias, con su evento y su asiento). El proceso `life.act` (fase `act`) ejecuta el `ActionPlan` hoja por hoja con `resolve`: aplica comer/beber/curar y los percances o golpes al cuerpo, deja aprender a las habilidades y agenda la hoja siguiente. `Life.turn` avanza hasta que el plan termina, se interrumpe o el personaje muere; `Life.submit` + `advanceTo` es lo mismo que rehace `lifeReplayGame`. `playerView` arma la `PlayerView` desde lo que percibe (presencia de la gente por perception, signos del cuerpo, pasos propios) con un resumen que evita multitudes de frases. La CLI lee con la gramática sin red, arma el plan con `planFromDraft` contra lo que el personaje conoce (familia por relación y lugares por lo que son) y narra con plantillas; guarda cada turno y el replay da el mismo hash. También se arreglaron los tests y ejemplos del parser de `eat`/`drink`/`tend`.
+  **Cierre (2026-10-07):**
+  - **La aldea vive:** el proceso `life.routine` (fase `act`, cada hora) le da a la gente un día de aldea hasta que decida con su utilidad (Fase 2). Duermen de 21 a 5 en su casa y desde los 10 años trabajan de 8 a 18 en el campo más cercano. Comen tres veces de la despensa del hogar, con el evento `routine.ate` y su asiento hacia `eaten`; la ración va a la medida del cuerpo y solo se come si alcanza para todas las bocas de la casa, así dos que comen en la misma fase no dejan el saldo en negativo. Beben lo que les falta.
+  - **Despensas:** pasan a ~10 meses de grano por boca (`LARDER_PER_MEMBER_G`, provisorio hasta la cosecha de economy).
+  - **Esfuerzo de los verbos:** cada paso del personaje pone la actividad del cuerpo según el verbo (`activityOf`: trabajar y pegar `heavy`, andar y recolectar `moderate`, descansar de noche es dormir). Así se cansa y duerme de verdad.
+  - **Interrupciones fijas** (`fixedInterrupt`), siempre desde lo que el personaje percibe: un golpe de otro lo siente siempre; que le hablen o que muera alguien cercano, solo si lo ve o lo oye (perception, con `actionStimulus`); y un signo grave nuevo del cuerpo (`ALARMING_SIGNS` sobre `bodySigns`). `TurnReport.interrupt` dice qué fue.
+  - **Paneles en la CLI** (`personaje`, `inventario`, `bitácora`, sin que pase el tiempo). `characterPanel` e `inventoryPanel` en `game/life/panels.ts` no sacan ningún número de la verdad: el cuerpo va como signos, las habilidades como cuánto las practicó y los bienes a ojo.
+  - **Bitácora:** la tabla `narration` del guardado (aditiva, sin cambio de `FORMAT_VERSION`; no entra al hash ni al replay).
+
+  **Queda para después:**
+  - el parser y el narrador con el modelo local en la CLI (`parseIntentOrGrammar`, `narrate`);
+  - la gramática de «hablo con mi madre» (hoy lo toma como texto dicho);
+  - `known` y el inventario desde creencias (Fase 2, information);
+  - la rutina reemplazada por la decisión de los NPC (Fase 2, npc-psychology);
+  - el viaje casa ↔ campo, que hoy es instantáneo a la hora en punto;
+  - no regenerar el planeta en cada `resume` (cachear lo derivado del seed);
+  - la autoimagen de las habilidades en el panel (skills §9);
+  - calibrar `MAX_CLEAR_PERCEPTS` y `ALARMING_SIGNS`.
 - [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
 - [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
 - [ ] Aldea inicial con anclas, edificios con componentes, materiales con origen, dueños, contenido y grafo de espacios; un pozo y un camino ([settlements.md](systems/settlements.md) §1, §2, §5, §8)
