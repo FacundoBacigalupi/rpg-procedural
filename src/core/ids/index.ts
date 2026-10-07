@@ -11,6 +11,7 @@ export const ENTITY_KINDS = [
   "place",
   "building",
   "work",
+  "parcel",
   "settlement",
   "cell",
   "zone",
@@ -46,6 +47,7 @@ export type LotId = Id<"lot">; // bien a granel
 export type PlaceId = Id<"place">; // lugar con nombre: claro, cueva, cruce, tramo de camino
 export type BuildingId = Id<"building">;
 export type WorkId = Id<"work">; // infraestructura: pozo, camino, puente, dique (settlements §8)
+export type ParcelId = Id<"parcel">; // terreno con límites y derechos (property §3)
 export type SettlementId = Id<"settlement">;
 export type CellId = Id<"cell">; // celda hex de planet-gen
 export type ZoneId = Id<"zone">;
