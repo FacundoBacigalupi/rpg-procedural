@@ -28,6 +28,7 @@ import {
   deleteComponent,
   draftEvent,
   ENTITY,
+  type EventDraft,
   type FoodDef,
   FRESH_CURSOR,
   type GoodDef,
@@ -45,6 +46,7 @@ import {
   type Nutrition,
   nearestHex,
   nodeAt,
+  opposingSkill,
   PERSON,
   PLACE,
   type PlanCursor,
@@ -75,6 +77,7 @@ import {
   treat,
   verbSkill,
 } from "../../sim/index.ts";
+import { canFight, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -280,7 +283,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       id,
       z: p && n ? standardize(n, o.traits, p.sex) : {},
       hex: truth.get(LOCATION, id)?.hex ?? e.hex,
-      skill: 0,
+      skill: opposingSkill(o.skills, truth.get(SKILL_STATE, id), node.verb),
     };
   };
   const parties: ResolveInput["parties"] = Object.fromEntries(
@@ -365,18 +368,49 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     nextBody = injure(bodyPlan, nextBody, mishap, input.rng.fork("injure")).body;
     bodyTouched = true;
   }
-  const blow = blowFromStrike(eff, draftEvent(0), ctx.now);
-  const targetId = "target" in eff ? eff.target : null;
-  if (blow && targetId) {
-    const tb = truth.get(BODY_STATE, targetId as AgentId);
-    if (tb) {
-      changes.push(
-        setComponent(
-          BODY_STATE,
-          targetId as AgentId,
-          injure(bodyPlan, tb, blow, input.rng.fork("hit")).body,
-        ),
-      );
+  // Un golpe contra alguien vivo es el comienzo de una pelea (combat §1): corre hasta que alguien
+  // no puede o no quiere seguir. Contra quien ya no está en pie queda el golpe suelto.
+  const targetId = "target" in eff ? (eff.target as AgentId | null) : null;
+  const extraEvents: EventDraft[] = [];
+  let fightSeconds = 0;
+  let record: StepRecord["self"] = r.self;
+  if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
+    const fight = strikeFight({
+      truth,
+      me,
+      myBody: nextBody,
+      target: targetId,
+      plans: e.plans,
+      skills: o.skills,
+      traits: o.traits,
+      intent: [...state.plan.manner, ...node.manner].includes("fast") ? "drive_off" : "subdue",
+      light: e.light,
+      start: ctx.now,
+      rng: input.rng.fork("fight"),
+      cause: draftEvent(0),
+      place: input.place,
+    });
+    nextBody = fight.myBody;
+    bodyTouched = true;
+    changes.push(...fight.changes);
+    extraEvents.push(fight.event);
+    fightSeconds = fight.seconds;
+    if (r.self.effect.kind === "strike") {
+      record = { ...r.self, effect: { ...r.self.effect, fight: fight.gist } };
+    }
+  } else {
+    const blow = blowFromStrike(eff, draftEvent(0), ctx.now);
+    if (blow && targetId) {
+      const tb = truth.get(BODY_STATE, targetId);
+      if (tb) {
+        changes.push(
+          setComponent(
+            BODY_STATE,
+            targetId,
+            injure(bodyPlan, tb, blow, input.rng.fork("hit")).body,
+          ),
+        );
+      }
     }
   }
   if (bodyTouched) changes.push(setComponent(BODY_STATE, me, nextBody));
@@ -394,19 +428,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   );
   if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
 
-  const record: StepRecord = { verb: node.verb, at: ctx.now, self: r.self };
+  const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
   const lastBelieved = r.self.believed;
-  const end = ctx.now + r.seconds;
+  const end = ctx.now + Math.max(r.seconds, fightSeconds);
   changes.push(
     setComponent(PLAN_STATE, me, {
       ...state,
       cursor,
       lastBelieved,
-      steps: [...state.steps, record],
+      steps: [...state.steps, stepRecord],
     }),
   );
   return {
-    events: r.events,
+    events: [...r.events, ...extraEvents],
     changes,
     postings: r.postings,
     schedule: [

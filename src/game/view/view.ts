@@ -16,6 +16,7 @@ import {
   type BelievedOutcome,
   type Channel,
   type FactorKey,
+  type FightGist,
   type Figure,
   type Percept,
   type PerceptDetail,
@@ -132,6 +133,7 @@ export type EffectView =
       readonly hit: boolean;
       readonly glancing: boolean;
       readonly offBalance: boolean;
+      readonly fight?: FightGist;
     }
   | {
       readonly kind: "trade";
@@ -404,6 +406,7 @@ function effectView(
         hit: e.hit,
         glancing: e.glancing,
         offBalance: e.offBalance,
+        ...(e.fight ? { fight: e.fight } : {}),
       };
     case "trade": {
       const w = target(e.with).target;

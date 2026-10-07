@@ -196,6 +196,8 @@ export type VerbEffect =
       readonly force: number;
       /** Quedó desequilibrado: el otro tiene un hueco (combat). */
       readonly offBalance: boolean;
+      /** La pelea que siguió, si la hubo (la pone `game` con `sim/combat`; el resolver no la sabe). */
+      readonly fight?: FightGist;
     }
   | {
       readonly kind: "trade";
@@ -261,6 +263,18 @@ export type VerbEffect =
       /** 0-1: cuán bien lo hizo. */
       readonly care: number;
     };
+
+/** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
+export type FightSide = "standing" | "down" | "fled" | "yielded";
+
+export interface FightGist {
+  readonly seconds: number;
+  readonly mine: FightSide | "dead";
+  /** El rival: quien lo vio caer no distingue si murió o quedó inconsciente. */
+  readonly theirs: FightSide;
+  readonly woundsTaken: number;
+  readonly woundsDealt: number;
+}
 
 /** Lo que el actor cree de su paso. */
 export interface SelfReport {

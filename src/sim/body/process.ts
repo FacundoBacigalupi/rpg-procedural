@@ -46,9 +46,12 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
       const from = Math.max(ctx.now - ctx.window, 0);
       const tickOf = (at: number) => Math.min(ctx.now, Math.max(from, at));
 
-      // Murió de un golpe (la cabeza): el cuerpo ya lo dice, falta cerrar la entidad.
+      // Murió en el acto (la cabeza) o en una pelea que ya lo avanzó: el cuerpo ya lo dice, falta
+      // cerrar la entidad. Las causas son las heridas de la zona que mata (o todas las abiertas).
       if (body.death) {
-        const wounds = body.wounds.filter((w) => w.zone === "head" && w.stage !== "healed");
+        const open = body.wounds.filter((w) => w.stage !== "healed");
+        const wounds =
+          body.death.cause === "brain_trauma" ? open.filter((w) => w.zone === "head") : open;
         const event: EventDraft = {
           kind: "body.died",
           actors: [me],
