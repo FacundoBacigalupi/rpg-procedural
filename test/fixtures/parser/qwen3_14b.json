@@ -1,0 +1,271 @@
+{
+  "model": "qwen3:14b",
+  "contentHash": "346c70ee3f2ad6ca5ca313f192b3da7a551c97cf0207fbb1480f979e3346e94c",
+  "cases": [
+    {
+      "id": "again",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"gather\",\"args\":[{\"role\":\"what\",\"text\":\"hongos\"}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "drink-jug",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"drink\",\"args\":[]},\"unmapped\":[\"agua del cántaro\"]}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "eat-meal",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"eat\",\"args\":[{\"role\":\"what\",\"text\":\"grano\"}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "find-strip",
+      "raw": [
+        "{\"kind\":\"act\",\"stripped\":[\"encuentro la hierba de la vida\"]}",
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"gather\",\"args\":[{\"role\":\"what\",\"text\":\"la hierba de la vida\"}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "goal-revenge",
+      "raw": [
+        "{\"kind\":\"goal\",\"text\":\"vengar a mi padre\"}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "look",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"look\",\"args\":[]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "look-careful",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"look\",\"args\":[]},\"manner\":[],\"unmapped\":[\"con mucha atención\"]}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "market-ask",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"seq\",\"steps\":[{\"kind\":\"do\",\"verb\":\"move\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"el mercado\",\"kind\":\"place\",\"features\":[\"mercado\"]}}]},{\"kind\":\"do\",\"verb\":\"speak\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"la vendedora\",\"kind\":\"person\",\"features\":[\"vendedora de arroz\"]}}],\"manner\":[]},{\"kind\":\"do\",\"verb\":\"speak\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"la vendedora\",\"kind\":\"person\",\"features\":[\"vendedora de arroz\"]}}],\"manner\":[]\n}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "meditate-unmapped",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"rest\",\"args\":[{\"role\":\"for\",\"duration\":{\"amount\":1,\"unit\":\"hour\"}}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "meta-inspector",
+      "raw": [
+        "{\"kind\":\"meta\",\"text\":\"abrir el inspector\"}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "ooc-time",
+      "raw": [
+        "{\"kind\":\"question_ooc\",\"text\":\"¿cuánto tiempo pasó desde que salí de casa?\"}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "other-acts-strip",
+      "raw": [
+        "{\"kind\":\"act\",\"stripped\":[\"me la da\"],\"speech\":{\"text\":\"Plata, por favor.\",\"to\":{\"text\":\"el mercader\",\"kind\":\"person\",\"features\":[\"mercader\"]}}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "persuade-strip",
+      "raw": [
+        "{\"kind\":\"act\",\"stripped\":[\"me preste la azada\"],\"speech\":{\"text\":\"¿Me puedes prestar la azada?\",\"to\":{\"text\":\"tu vecino Wu\",\"kind\":\"person\",\"features\":[\"vecino\",\"azada\"]}}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "rest-nap",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"rest\",\"args\":[{\"role\":\"for\",\"duration\":{\"amount\":2,\"unit\":\"hour\"}}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "run-well",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"move\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"el pozo\",\"kind\":\"place\",\"features\":[\"pozo\"]}}],\"manner\":[\"fast\"]},\"unmapped\":[\"corro\"]}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "say-wu",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"speak\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"Wu\",\"kind\":\"person\",\"features\":[\"vecino\",\"azada\"]}}],\"manner\":[]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "search-father",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"search\",\"args\":[{\"role\":\"target\",\"ref\":{\"text\":\"mi padre\",\"kind\":\"person\",\"features\":[],\"relation\":{\"to\":\"self\",\"rel\":\"padre\"}}}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "shout",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"speak\",\"args\":[{\"role\":\"content\",\"text\":\"¡auxilio!\"}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "sleep-dawn",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"until\",\"body\":{\"kind\":\"do\",\"verb\":\"rest\",\"args\":[]},\"cond\":{\"kind\":\"time\",\"text\":\"hasta que amanezca\",\"is\":{\"kind\":\"light\"}}}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "strike-bigger",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"strike\",\"args\":[{\"role\":\"target\",\"ref\":{\"text\":\"el más grande de los dos\",\"kind\":\"person\",\"features\":[\"alto\",\"ancho\"]}}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "strike-careful",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"strike\",\"args\":[{\"role\":\"target\",\"ref\":{\"text\":\"el bandido\",\"kind\":\"person\",\"features\":[\"bandido\",\"cuchillo\"]}}],\"manner\":[\"careful\"]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "strike-drunk",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"strike\",\"args\":[{\"role\":\"target\",\"ref\":{\"text\":\"el borracho\",\"kind\":\"person\",\"features\":[\"borracho\"]}}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "take-basket",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"take\",\"args\":[{\"role\":\"from\",\"ref\":{\"text\":\"la mesa\",\"kind\":\"person\",\"features\":[]}}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "take-sleeping",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"template\",\"template\":\"steal\",\"params\":{\"victim\":{\"role\":\"victim\",\"ref\":{\"text\":\"el viejo\",\"kind\":\"person\",\"features\":[\"viejo\",\"puesto de té\"]}}}},\"manner\":[],\"stripped\":[\"despacito\",\"que duerme\"]}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "tend-self",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"tend\",\"args\":[],\"manner\":[]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "trade-smith",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"trade\",\"args\":[{\"role\":\"with\",\"ref\":{\"text\":\"el herrero\",\"kind\":\"person\",\"features\":[\"herrero\"]}}],\"manner\":[]},\"unmapped\":[\"hongos\",\"cuchillo\"]}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "uncle-ask",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"seq\",\"steps\":[{\"kind\":\"do\",\"verb\":\"move\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"la casa de mi tío Bo\",\"kind\":\"place\",\"features\":[\"casa de mi tío Bo\"],\"relation\":{\"to\":\"self\",\"rel\":\"tío\"}}}]}]}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "until-found",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"until\",\"body\":{\"kind\":\"do\",\"verb\":\"search\",\"args\":[{\"role\":\"target\",\"ref\":{\"text\":\"hongos\",\"kind\":\"person\",\"features\":[]}}]},\"cond\":{\"kind\":\"self\",\"text\":\"hasta encontrar algo\",\"is\":{\"kind\":\"succeeded\"}}}}"
+      ],
+      "ok": true,
+      "pass": false
+    },
+    {
+      "id": "wait-dark",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"until\",\"body\":{\"kind\":\"do\",\"verb\":\"wait\",\"args\":[]},\"cond\":{\"kind\":\"time\",\"text\":\"hasta que anochezca\",\"is\":{\"kind\":\"dark\"}}}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "wait-hidden",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"wait\",\"args\":[],\"manner\":[\"covert\"]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "wait-then-go",
+      "raw": [
+        "{\"kind\":\"plan\",\"plan\":{\"kind\":\"seq\",\"steps\":[{\"kind\":\"do\",\"verb\":\"wait\",\"args\":[{\"role\":\"for\",\"duration\":{\"amount\":0.5,\"unit\":\"hour\"}}]},{\"kind\":\"do\",\"verb\":\"move\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"el pozo\",\"kind\":\"place\",\"features\":[\"pozo\"]}}]}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "walk-careful",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"move\",\"args\":[{\"role\":\"to\",\"ref\":{\"text\":\"el puente\",\"kind\":\"place\",\"features\":[\"puente\"]}}],\"manner\":[\"careful\"]}}"
+      ],
+      "ok": true,
+      "pass": true
+    },
+    {
+      "id": "work-hours",
+      "raw": [
+        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"work\",\"args\":[{\"role\":\"for\",\"duration\":{\"amount\":4,\"unit\":\"hour\"}}]}}"
+      ],
+      "ok": true,
+      "pass": true
+    }
+  ]
+}

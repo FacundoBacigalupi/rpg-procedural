@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Fase 1, Hito 1b** (más abajo). La Fase 0 está cerrada en `main` como `v0.0.1` y el Hito 1a como `v0.1.1`. Se hace **de a una tarea**, en orden: la siguiente es **el primer `[ ]` del Hito 1b** (economía mínima). Pendiente menor del 1a: grabar los fixtures del parser con `npm run llm-bench -- --record test/fixtures/parser` (hoy el test de repetición sin red se saltea). El diseño está completo (backlogs 1 y 2, #1-#46; historial abajo) y quedó en `main` como `v0.0.0`.
+**Fase 1, Hito 1b** (más abajo). La Fase 0 está cerrada en `main` como `v0.0.1` y el Hito 1a como `v0.1.1`. Se hace **de a una tarea**, en orden: la siguiente es **el primer `[ ]` del Hito 1b** (economía mínima). Los fixtures del parser (`test/fixtures/parser/qwen3_14b.json`, grabados con `llm-bench --record`) ya están y el test de repetición sin red corre. El diseño está completo (backlogs 1 y 2, #1-#46; historial abajo) y quedó en `main` como `v0.0.0`.
 
 **Receta por tarea de código** (lo que hay que hacer cuando el usuario dice "continuá"):
 1. `git switch develop && git pull`, después rama `feat/<nombre>`.
