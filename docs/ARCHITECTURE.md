@@ -44,7 +44,7 @@ src/
     rng/               # RNG por contador draw(seed, key, n), fork por tupla, sfc32 para flujos largos
     math/              # exp, log, pow, trigonometría y cuantil normal deterministas (ports de fdlibm)
     ids/               # Id<K>, contadores deterministas por tipo, EntityRef
-    time/              # Tick, Duration, calendario base (los calendarios culturales son creencia: weather §6)
+    time/              # Tick, PlanetClock, calendario de la verdad, fases, ventanas por escala (los calendarios culturales son creencia: weather §6)
     types/             # Event, CauseRef, PlaceRef, HolderRef, Party, EntityBase
     ledger/            # conservación: bienes, dinero, esencia, almas (causality, cosmology §6)
     canon/             # serialización canónica y hash (tooling §2)
@@ -178,6 +178,8 @@ type Tick = number;        // segundos absolutos desde el origen del mundo (simu
 type Duration = number;    // segundos
 type Time = Tick;          // alias: algunos docs dicen Time; es lo mismo
 ```
+
+Implementado en `core/time` (Fase 0): los ticks son enteros seguros; el día, el año trópico y las lunas vienen en un `PlanetClock` que calcula planet-gen y se guarda con el mundo. El calendario de la verdad cuenta días desde la medianoche del meridiano 0 y años trópicos exactos (un día es del año en que cae su medianoche; los bisiestos salen solos). Las escalas (`TimeScale`) cortan el tiempo en ventanas con índice (`windowIndex`), que es lo que entra en la clave del rng de los procesos. La hora local de cada lugar y la posición del sol en el cielo son de planet-gen; los calendarios de las culturas son creencia.
 
 ### 4.3 Eventos y causas
 
