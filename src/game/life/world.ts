@@ -27,11 +27,13 @@ import {
   type SchedulerState,
   type SkillCatalog,
   type SpaceGraph,
+  type SpeechLine,
   type StatusDef,
   type Trait,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
+import { converseProcess } from "./converse.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -55,6 +57,7 @@ export interface LifeWorld {
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
+  readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
@@ -115,6 +118,14 @@ export function lifeWorld(
           recipes: parts.recipes,
           statuses: parts.statuses,
           clock: parts.clock,
+        }),
+        converseProcess({
+          spaces: parts.spaces,
+          catalog: parts.catalog,
+          goods: parts.goods,
+          statuses: parts.statuses,
+          lines: parts.speech,
+          placeOf: placeOf(parts, village),
         }),
         spoilageProcess({
           goods: parts.goods,

@@ -77,6 +77,7 @@ import {
   treat,
   verbSkill,
 } from "../../sim/index.ts";
+import { listenTo, PENDING } from "./converse.ts";
 import { canFight, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
@@ -167,7 +168,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     representation: "individual",
     phase: "act",
     reads: [PLAN_STATE.name, ENTITY.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name],
-    writes: [PLAN_STATE.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name],
+    writes: [PLAN_STATE.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name, PENDING.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const state = ctx.truth.get(PLAN_STATE, me);
@@ -431,6 +432,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
   const lastBelieved = r.self.believed;
   const end = ctx.now + Math.max(r.seconds, fightSeconds);
+  // Si le habló a alguien en persona, el oyente contesta cuando termina de oír (converse).
+  const heard =
+    eff.kind === "speak" && eff.delivered && eff.to !== null
+      ? listenTo(me, eff.to, eff.text, eff.clarity, ctx.now, end)
+      : { changes: [], schedule: [] };
+  changes.push(...heard.changes);
   changes.push(
     setComponent(PLAN_STATE, me, {
       ...state,
@@ -451,6 +458,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         scope: me,
         reason: { kind: "state", entity: me, key: planKey(state.seq) },
       },
+      ...heard.schedule,
     ],
   };
 }

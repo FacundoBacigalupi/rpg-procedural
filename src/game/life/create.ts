@@ -51,6 +51,7 @@ import {
   ROTTED,
   SKILLS,
   SkillCatalog,
+  SPEECH_LINES,
   STATUSES,
   seedBodies,
   seedPersonNames,
@@ -181,6 +182,7 @@ export function resumeParts(
   | "goods"
   | "recipes"
   | "statuses"
+  | "speech"
   | "pressureCurves"
 > {
   return {
@@ -195,6 +197,7 @@ export function resumeParts(
     goods: content.all(GOODS),
     recipes: content.all(RECIPES),
     statuses: content.all(STATUSES),
+    speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
   };
 }
@@ -387,6 +390,7 @@ export function createLife(
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
       statuses: content.all(STATUSES),
+      speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
     },
     pop.player,

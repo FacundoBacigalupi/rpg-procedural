@@ -1,0 +1,75 @@
+[
+  {
+    "id": "greet",
+    "lines": ["Buenas.", "Hola, ¿cómo andás?", "Qué tal."],
+    "formal": ["Buen día tenga.", "Que le vaya bien."]
+  },
+  {
+    "id": "farewell",
+    "lines": ["Andá con cuidado.", "Hasta luego.", "Nos vemos."],
+    "formal": ["Que le vaya bien."]
+  },
+  {
+    "id": "ask.unclear",
+    "lines": ["¿De quién me hablás?", "No te entendí, ¿por quién preguntás?"]
+  },
+  {
+    "id": "ask.at.room",
+    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."]
+  },
+  { "id": "ask.at.yard", "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."] },
+  {
+    "id": "ask.at.street",
+    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."]
+  },
+  { "id": "ask.at.square", "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."] },
+  {
+    "id": "ask.at.open",
+    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."]
+  },
+  { "id": "ask.dead", "lines": ["{name} ya no está entre nosotros.", "A {name} lo perdimos."] },
+  {
+    "id": "ask.heard_dead",
+    "lines": ["Dicen que {name} murió.", "Me contaron que a {name} se lo llevó la muerte."]
+  },
+  {
+    "id": "ask.unknown",
+    "lines": ["No sé dónde anda {name}.", "Ni idea de {name}, hace rato que no lo veo."]
+  },
+  {
+    "id": "tell.dead",
+    "lines": [
+      "Qué desgracia lo de {name}. Gracias por avisarme.",
+      "¿{name}? No lo sabía... qué pena."
+    ]
+  },
+  {
+    "id": "tell.alive",
+    "lines": [
+      "Menos mal lo de {name}. Gracias por contarme.",
+      "Me alegra saber que {name} sigue bien."
+    ]
+  },
+  {
+    "id": "tell.doubt",
+    "lines": [
+      "Eso de {name} no me cierra, yo sé otra cosa.",
+      "No te creo lo de {name}; no es lo que yo sé."
+    ]
+  },
+  {
+    "id": "request.unclear",
+    "lines": ["¿Qué necesitás, exactamente?", "No te entiendo qué me pedís."]
+  },
+  {
+    "id": "request.stranger",
+    "lines": ["No te conozco como para darte {what}.", "Con {what} no puedo ayudarte."],
+    "formal": ["Perdone, no puedo darle {what}."]
+  },
+  {
+    "id": "request.short",
+    "lines": ["Ando justo de {what}, perdoname.", "No me sobra {what}, no puedo."]
+  },
+  { "id": "request.give", "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."] },
+  { "id": "other", "lines": ["Mm.", "Ajá.", "Te escucho."] }
+]
