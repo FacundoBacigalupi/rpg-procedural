@@ -63,7 +63,9 @@ describe("runCli", () => {
     const out = await session(store, [...SCRIPT, "salir", "espero"]);
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
-    expect(out).toContain("Fuera del personaje: ayuda, salir.");
+    expect(out).toContain(
+      "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
+    );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
 
@@ -95,6 +97,20 @@ describe("runCli", () => {
     expect(split.load().scheduler).toEqual(straight.load().scheduler);
     expect(split.plans()).toEqual(straight.plans());
     expect(split.checkpoints()).toEqual(straight.checkpoints());
+  }, 300_000);
+
+  it("los paneles no pasan el tiempo y la bitácora guarda lo narrado", async () => {
+    const store = memory();
+    const out = await session(store, ["personaje", "inventario", "espero una hora", "bitácora"]);
+    expect(out).toContain("Tenés ");
+    expect(out).toContain("En la despensa:");
+    expect(store.plans()).toHaveLength(1);
+    const journal = store.narrations();
+    expect(journal).toHaveLength(2);
+    expect(out).toContain(journal[1]?.text as string);
+    // Al volver no se repite la escena inicial en la bitácora.
+    await session(store, ["salir"]);
+    expect(store.narrations()).toHaveLength(2);
   }, 300_000);
 
   it("guarda el modo y no lo cambia a mitad de la vida", async () => {

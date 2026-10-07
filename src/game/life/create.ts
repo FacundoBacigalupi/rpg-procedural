@@ -63,6 +63,9 @@ export interface LifeOptions {
 }
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
+/** Gramos de grano por persona en la despensa al empezar. */
+export const LARDER_PER_MEMBER_G = 200_000;
+
 export interface LifeTerrain {
   /** Dónde pasan los eventos de la aldea. */
   readonly village: PlaceRef;
@@ -170,8 +173,9 @@ export function createLife(
   const foods = content.all(FOODS);
   const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
   const ledger = new Ledger({ externals: { [EATEN]: units, seed: units } });
-  // Despensas de arranque: un mes de grano por boca. Lo reemplazan las existencias de la
-  // aldea cuando settlements las dé (ROADMAP: aldea inicial con edificios y dueños).
+  // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
+  // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
+  // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
   const grain = ledgerUnit("good:grain");
   if (foods.some((f) => f.id === "grain")) {
     const stocked = ids.next("event");
@@ -195,7 +199,7 @@ export function createLife(
           unit: grain,
           from: externalAccount("seed"),
           to: holderAccount(h.id),
-          amount: h.members.length * 20_000,
+          amount: h.members.length * LARDER_PER_MEMBER_G,
         })),
     });
   }

@@ -16,6 +16,8 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  characterPanel,
+  inventoryPanel,
   knownEntities,
   LIFE_ENGINE,
   Life,
@@ -28,7 +30,15 @@ import {
 import { parseCommand, renderView, TemplateBook } from "../../llm/index.ts";
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../../persistence/index.ts";
 import { type ActionPlan, planFromDraft } from "../../sim/index.ts";
-import { elapsed, plain, renderStatus } from "./render.ts";
+import {
+  elapsed,
+  plain,
+  renderCharacter,
+  renderInterrupt,
+  renderInventory,
+  renderJournal,
+  renderStatus,
+} from "./render.ts";
 
 export const VERSIONS = { engine: LIFE_ENGINE, content: "none", format: FORMAT_VERSION };
 
@@ -39,11 +49,14 @@ export interface CliOptions {
   readonly content: Content;
 }
 
+/** Cuántas entradas de la bitácora muestra el comando (las últimas). */
+export const JOURNAL_SHOWN = 10;
+
 export const HELP = [
   "Escribí lo que hace tu personaje, en tus palabras:",
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
-  "Fuera del personaje: ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
 ].join("\n");
 
 export async function runCli(
@@ -60,7 +73,9 @@ export async function runCli(
     const rng = Rng.root(seed).fork("narration", at);
     return plain(renderView(view, book, rng));
   };
-  write(`${narrate(null, life.now)}\n${renderStatus(life.now)}\n> `);
+  const intro = narrate(null, life.now);
+  if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
+  write(`${intro}\n${renderStatus(life.now)}\n> `);
 
   for await (const line of lines) {
     const draft = line.trim() === "" ? null : parseCommand(line, life.world.catalog);
@@ -73,9 +88,22 @@ export async function runCli(
       continue;
     }
     if (draft.kind === "meta") {
-      if (/^salir/i.test(draft.text ?? "")) {
+      const text = draft.text ?? "";
+      if (/^salir/i.test(text)) {
         write("La vida queda guardada.\n");
         return;
+      }
+      if (/^personaje/i.test(text)) {
+        write(`${renderCharacter(characterPanel(life.world))}\n> `);
+        continue;
+      }
+      if (/^inventario/i.test(text)) {
+        write(`${renderInventory(inventoryPanel(life.world))}\n> `);
+        continue;
+      }
+      if (/^bit[aá]cora/i.test(text)) {
+        write(`${renderJournal(store.narrations(JOURNAL_SHOWN))}\n> `);
+        continue;
       }
       write(`${HELP}\n> `);
       continue;
@@ -115,9 +143,12 @@ export async function runCli(
     store.saveSnapshot(life.state());
     const report = life.turn(plan, seq);
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
-    write(
-      `${narrate(report, report.to)}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}\n`,
-    );
+    const told = [
+      narrate(report, report.to),
+      ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
+    ].join("\n");
+    store.appendNarration(report.to, told);
+    write(`${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}\n`);
     if (report.over) {
       write("Tu vida terminó.\n");
       return;

@@ -16,6 +16,7 @@ import {
 import type { GameSetup } from "../setup/index.ts";
 import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } from "./act.ts";
 import { createLife, type LifeOptions, type LifeTerrain } from "./create.ts";
+import { alarmingSigns, fixedInterrupt, type Interrupt } from "./interrupts.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
@@ -57,6 +58,8 @@ export interface TurnReport {
   readonly from: Tick;
   readonly to: Tick;
   readonly interrupted: boolean;
+  /** Lo que lo cortó, si algo lo cortó (player-loop §6): siempre algo que el personaje percibió. */
+  readonly interrupt: Interrupt | null;
   /** Los pasos del plan que se hicieron, con la autopercepción de cada uno. */
   readonly steps: readonly StepRecord[];
   /** Los eventos del personaje y de su cuerpo durante el turno. */
@@ -164,18 +167,23 @@ export class Life {
     this.submit(plan, seq);
     const events: Event[] = [];
     const cap = from + MAX_TURN_DAYS * w.clock.day;
+    const known = alarmingSigns(w);
+    let interrupt: Interrupt | null = null;
     const result = w.scheduler.advanceUntil(cap, (report) => {
       for (const e of report.events) {
         if (e.actors.includes(this.player)) events.push(e);
       }
       if (!this.alive) return true;
-      return w.truth.get(PLAN_STATE, this.player)?.done ?? true;
+      if (w.truth.get(PLAN_STATE, this.player)?.done ?? true) return true;
+      interrupt = fixedInterrupt(w, report.events, known);
+      return interrupt !== null;
     });
     const state = w.truth.get(PLAN_STATE, this.player);
     return {
       from,
       to: result.now,
       interrupted: result.interrupted && !(state?.done ?? true),
+      interrupt,
       steps: state?.steps ?? [],
       events,
       over: !this.alive,

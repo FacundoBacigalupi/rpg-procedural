@@ -50,7 +50,7 @@ const CUES: Readonly<Record<string, SelfCue>> = {
 };
 
 /** Cómo llama el personaje a su gente: la relación que sabe que tiene (sin nombres todavía). */
-function acquaintances(w: LifeWorld): Map<AgentId, Acquaintance> {
+export function acquaintances(w: LifeWorld): Map<AgentId, Acquaintance> {
   const me = w.truth.get(PERSON, w.player);
   const out = new Map<AgentId, Acquaintance>();
   if (!me) return out;
@@ -68,6 +68,21 @@ function acquaintances(w: LifeWorld): Map<AgentId, Acquaintance> {
     if (p.household === me.household) out.set(id, { relation: sexed(id, "hermana", "hermano") });
   }
   return out;
+}
+
+/** El personaje como observador (perception §2): su lugar, sus sentidos por edad, su gente. */
+export function playerObserver(w: LifeWorld, attention: number = ATTENTION.relaxed): Observer {
+  const me = w.truth.get(PERSON, w.player);
+  const at = w.truth.get(LOCATION, w.player);
+  if (!me || !at) throw new Error("el personaje no tiene persona o lugar");
+  const age = (w.scheduler.now - me.born) / w.clock.year;
+  return {
+    id: w.player,
+    at,
+    acuity: sensorAcuity(age),
+    attention,
+    familiar: new Map([...acquaintances(w).keys()].map((id) => [id, 0.9])),
+  };
 }
 
 /** Mirando a propósito se ve más (perception §4); si no, está relajado. */
@@ -109,19 +124,12 @@ export function playerView(
   const at = w.truth.get(LOCATION, w.player);
   const body = w.truth.get(BODY_STATE, w.player);
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
-  const age = (now - me.born) / w.clock.year;
   const hour = localHour(w.clock, now, w.map.lonDeg);
   const day = daylight(hour);
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);
-  const observer: Observer = {
-    id: w.player,
-    at,
-    acuity: sensorAcuity(age),
-    attention: attentionOf(steps),
-    familiar: new Map([...acq.keys()].map((id) => [id, 0.9])),
-  };
+  const observer = playerObserver(w, attentionOf(steps));
   const rng = Rng.root(w.seed).fork("view", now);
   const percepts: Percept[] = [];
   for (const id of living(w.truth)) {

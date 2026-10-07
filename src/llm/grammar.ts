@@ -465,7 +465,8 @@ function pieces(text: string): { sep: string; text: string }[] {
   return out;
 }
 
-const META = /^(?:guardar|cargar|salir|abrir el inspector|inspector|ayuda|men[uú])\b/i;
+const META =
+  /^(?:guardar|cargar|salir|abrir el inspector|inspector|ayuda|men[uú]|personaje|inventario|bit[aá]cora)\b/i;
 const GOAL = /^(?:quiero|mi meta es|sueño con|alg[uú]n d[ií]a (?:voy a|quiero))\s+(.+)$/i;
 
 /**

@@ -9,7 +9,6 @@ import type {
   PlaceRef,
   PlanetClock,
   Seed,
-  Tick,
 } from "../../core/index.ts";
 import { makeId, Rng } from "../../core/index.ts";
 import {
@@ -26,13 +25,12 @@ import {
   type SkillCatalog,
   type SpaceGraph,
   type Trait,
-  table,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
+import { routineProcess } from "./routine.ts";
 
-/** El personaje del jugador: el agente que el usuario maneja (player-loop §1). */
-export const PLAYER = table<{ readonly since: Tick }>("player");
+export { PLAYER } from "./player.ts";
 
 export interface LifeWorld {
   readonly seed: Seed;
@@ -97,6 +95,14 @@ export function lifeWorld(
           bodyPlans: parts.plans,
           foods: parts.foods,
           clock: parts.clock,
+        }),
+        routineProcess({
+          map: parts.map,
+          spaces: parts.spaces,
+          bodyPlans: parts.plans,
+          foods: parts.foods,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
         }),
       ],
       resolution: "local",

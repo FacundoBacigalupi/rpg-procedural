@@ -16,6 +16,7 @@ import {
 import {
   type ActionCatalog,
   type ActionPlan,
+  type Activity,
   advance,
   BODY_STATE,
   type Body,
@@ -56,6 +57,7 @@ import {
   type SkillCatalog,
   type SpaceGraph,
   type StateChange,
+  setActivity,
   setComponent,
   spaceLight,
   standardize,
@@ -104,6 +106,29 @@ export interface ActOptions {
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
 
+/** El esfuerzo de cada verbo para el cuerpo (body-health: carga por actividad). */
+const VERB_ACTIVITY: Readonly<Record<string, Activity>> = {
+  move: "moderate",
+  gather: "moderate",
+  search: "light",
+  work: "heavy",
+  strike: "heavy",
+  take: "light",
+  tend: "light",
+  speak: "light",
+  look: "light",
+  eat: "rest",
+  drink: "rest",
+  wait: "rest",
+  rest: "rest",
+};
+
+/** Descansar de noche es dormir. */
+export function activityOf(verb: string, hour: number): Activity {
+  const a = VERB_ACTIVITY[verb] ?? "light";
+  return verb === "rest" && (hour >= 21 || hour < 5) ? "sleep" : a;
+}
+
 function placesOf(truth: ReadonlyWorldTruth) {
   return truth.ids(PLACE).flatMap((id) => {
     const place = truth.get(PLACE, id);
@@ -147,9 +172,16 @@ export function actProcess(o: ActOptions): ProcessDef {
         lastBelieved: state.lastBelieved,
       });
       if (cursor.path === null) {
-        return { changes: [setComponent(PLAN_STATE, me, { ...state, cursor, done: true })] };
+        const changes: StateChange[] = [
+          setComponent(PLAN_STATE, me, { ...state, cursor, done: true }),
+        ];
+        const body = ctx.truth.get(BODY_STATE, me);
+        if (body && body.activity !== "rest") {
+          changes.push(setComponent(BODY_STATE, me, setActivity(body, "rest")));
+        }
+        return { changes };
       }
-      return step(ctx, o, { me, state, cursor, foods, plans, hex, light });
+      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour });
     },
   };
 }
@@ -162,6 +194,7 @@ interface StepEnv {
   readonly plans: ReadonlyMap<string, BodyPlanDef>;
   readonly hex: number;
   readonly light: number;
+  readonly hour: number;
 }
 
 function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
@@ -242,8 +275,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const r = resolve(input);
 
   // Lo que el paso le hace al cuerpo (body-health): comer, beber, curar, golpes y percances.
-  let nextBody: Body = body;
-  let bodyTouched = false;
+  let nextBody: Body = setActivity(body, activityOf(node.verb, e.hour));
+  let bodyTouched = nextBody !== body;
   const changes: StateChange[] = [...r.changes];
   const eff = r.effect;
   if (eff.kind === "eat") {
