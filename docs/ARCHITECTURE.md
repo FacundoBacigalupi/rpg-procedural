@@ -308,6 +308,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `NewGameSetup`, `NovelSetup`, `EntryMode`, `Routine`, `PlayerGoal` | `game` | game-modes §1, player-loop |
 | `PlayerView`, `LocalLabel` | `game/view` | narration §2 |
 | `FinalChronicle`, `Legacy`, `Epilogue` | `game/final-chronicle` | chronicle §3-§9 |
+| `IntentDraft`, `DraftPlanNode`, `RefDescription` (borradores del parser, sin ids) | `sim/actions` | actions §4, §9 |
 | `NarrationPrefs`, `StyleSettings`, `LlmConfig`, `NarrationRequest` | `llm` | narration |
 | `SaveMeta`, `ReplayLog` | `persistence` | tooling |
 
@@ -385,6 +386,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 - **Ollama para empezar** (instalación simple en Windows, cambio de modelo con un comando); **servidor de llama.cpp** cuando haga falta control fino: gramáticas propias, caché del prefijo por ranura, decodificación especulativa.
 - **Revisión de narration §1:** 12 GB no entran un parser de 7-8B y un narrador de 12-14B cargados a la vez (unos 5 GB + 9 GB más la caché de contexto). Cambiar de modelo en cada turno cuesta segundos. **Propuesta: un solo modelo residente de 12-14B para los dos trabajos** (el parser con salida restringida por esquema) y medir en el banco de pruebas si un parser chico aparte vale el cambio. El fine-tune de la Fase 9 se hace sobre el modelo que gane.
 - Los modelos concretos se eligen en el banco de pruebas de la Fase 1, no acá: cambian cada pocos meses.
+- **Hecho en la Fase 0:** `OpenAiCompatibleClient` con `fetch` y errores tipados, `MockLLM`, `LlmJobs` con una cadena de proveedores por trabajo que siempre termina en plantillas, y el `IntentDraft` (en `sim/actions`, porque la sim lo resuelve) con su JSON Schema por `z.toJSONSchema` como restricción de salida.
 
 ### 7.8 Interfaz: la web antes
 

@@ -239,7 +239,7 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 
 ## 16. Implementación por fase
 
-- **Fase 0:** cliente LLM con `MockLLM`; interfaz de trabajos y proveedores intercambiables; validador vacío.
+- **Fase 0 (hecha):** cliente LLM con `MockLLM`; interfaz de trabajos y proveedores intercambiables; validador vacío. En código: `llm/client` (`OpenAiCompatibleClient`), `llm/config` (`LlmConfig` con cadena por trabajo que termina en `templates`), `llm/jobs` (`LlmJobs`: regenerar una vez con el error, pasar al siguiente proveedor si está caído), `llm/parser` (`parseIntent` con el JSON Schema del `IntentDraft`) y `llm/narrator` (`narrate`, `verbalize`).
 - **Fase 1:** `buildPlayerView` mínimo (percepts nada/vago/identificado, etiquetas simples), narrador de escena y de acción, parser con esquema y aclaraciones, plantillas y modo sin red, lista blanca de nombres, caché del prefijo.
 - **Fase 2:** léxico del personaje, voz por cultura y estrato, memoria de narración y continuidad, modo introspección, verbalización integrada a la escena.
 - **Fase 3:** montaje para saltos de tiempo, textos dentro del mundo, sueños.
