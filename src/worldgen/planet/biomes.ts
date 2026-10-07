@@ -27,6 +27,8 @@ export const Biome = z.strictObject({
   productivity: z.number().min(0).max(1),
   /** Qué tan bien viven mortales sin técnica especial [0, 1]. */
   habitability: z.number().min(0).max(1),
+  /** Fracción de la tierra cubierta por bosque [0, 1]: la reparte el nivel 1 (worldgen/local). */
+  treeCover: z.number().min(0).max(1),
 });
 export type Biome = z.infer<typeof Biome>;
 

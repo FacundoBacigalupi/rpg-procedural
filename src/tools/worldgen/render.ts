@@ -35,7 +35,7 @@ export function pixelCells(grid: Grid, width: number, height: number): Int32Arra
   return out;
 }
 
-function mix(a: Rgb, b: Rgb, t: number): Rgb {
+export function mix(a: Rgb, b: Rgb, t: number): Rgb {
   const u = Math.min(1, Math.max(0, t));
   return [
     Math.round(a[0] + (b[0] - a[0]) * u),
@@ -45,7 +45,7 @@ function mix(a: Rgb, b: Rgb, t: number): Rgb {
 }
 
 /** Rampa por tramos: `stops` ordenados por valor. */
-function ramp(stops: readonly (readonly [number, Rgb])[], v: number): Rgb {
+export function ramp(stops: readonly (readonly [number, Rgb])[], v: number): Rgb {
   const first = stops[0] as readonly [number, Rgb];
   if (v <= first[0]) return first[1];
   for (let i = 1; i < stops.length; i++) {
@@ -67,7 +67,7 @@ function palette(i: number): Rgb {
   return [64 + (h & 127), 64 + ((h >> 8) & 127), 64 + ((h >> 16) & 127)];
 }
 
-const ELEVATION: readonly (readonly [number, Rgb])[] = [
+export const ELEVATION: readonly (readonly [number, Rgb])[] = [
   [-7000, [8, 20, 60]],
   [-2000, [20, 60, 130]],
   [-1, [70, 130, 190]],

@@ -304,6 +304,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `Chronicle` (dentro del mundo) | `sim/chronicles` | chronicle |
 | `GoldenFinger`, `TropeRule` | `sim/modes` | game-modes |
 | `RegionCell`, `Biome` | `worldgen/planet` | planet-gen |
+| `LocalPatch`, `LocalTerrain`, `VillageSite`, `SiteAnchor` | `worldgen/local` | planet-gen (nivel 1), settlements §2.1 |
 | `Era`, `EraTarget`, `EraMarker` | `worldgen/law` (lee `sim/technology`) | technology §9b |
 | `NewGameSetup`, `NovelSetup`, `EntryMode`, `Routine`, `PlayerGoal` | `game` | game-modes §1, player-loop |
 | `PlayerView`, `LocalLabel` | `game/view` | narration §2 |
@@ -401,7 +402,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
   1. **Determinismo:** la geometría de `h3-js` usa la trigonometría de `Math` (compilada de C con Emscripten), que no está garantizada igual entre versiones de V8; el replay se rompería con una actualización de Node (§7.3).
   2. **Conservación por celda:** el 6,49 % de las celdas de resolución 7 tienen el centro fuera de su padre de resolución 3. La contención aproximada obliga a decidir a mano a quién pertenece cada hija, y el ledger por celda (esencia, agua, población) queda atado a esa convención.
   3. **Apertura fija de 7** (1 → 7 → 49 → 343 → 2.401): el nivel 1 tiene que medir ~1-3 km sobre celdas de ~175 km de planetas de radio variable, y con 7 no se puede elegir.
-- **Lo hecho (`src/worldgen/planet/grid.ts`):** icosaedro de frecuencia `n` (10n²+2 celdas, 12 pentágonos), ids canónicos por vértice (esquinas, aristas, interiores) que no dependen del orden de recorrido, vecinos ordenados por ángulo, áreas esféricas que suman 1, `locate` por caminata codiciosa (igual a la fuerza bruta en 20.000 puntos) y `refine(c, k)`: el nivel 1 es la red a frecuencia `n·k` y cada vértice fino es de la celda gruesa más cercana (empates al índice menor). Es una **partición exacta**: cada hija tiene un solo padre, así `apportion` del padre a sus hijas conserva al entero. Toda la trigonometría pasa por `core/math`. `k` es libre.
+- **Lo hecho (`src/worldgen/planet/grid.ts`):** icosaedro de frecuencia `n` (10n²+2 celdas, 12 pentágonos), ids canónicos por vértice (esquinas, aristas, interiores) que no dependen del orden de recorrido, vecinos ordenados por ángulo, áreas esféricas que suman 1, `locate` por caminata codiciosa (igual a la fuerza bruta en 20.000 puntos) y `refine(c, k)`: el nivel 1 es la red a frecuencia `n·k` y cada vértice fino es de la celda gruesa más cercana (empates al índice menor). Es una **partición exacta**: cada hija tiene un solo padre, así `apportion` del padre a sus hijas conserva al entero. Toda la trigonometría pasa por `core/math`. `k` es libre; el juego usa uno fijo por planeta (`localFactor`, ~2 km por hex) y `Lattice.neighborsAt` da los vecinos finos cruzando caras (`worldgen/local`).
 
 ### 7.10 Calidad del código
 

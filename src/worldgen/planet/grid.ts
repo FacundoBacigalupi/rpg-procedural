@@ -91,6 +91,16 @@ const EDGES: readonly (readonly [number, number])[] = (() => {
 })();
 const EDGE_INDEX = new Map<number, number>(EDGES.map(([a, b], e) => [a * 12 + b, e]));
 
+/** Los seis pasos de la red en coordenadas de cara. */
+const STEPS: readonly (readonly [number, number])[] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, -1],
+  [-1, 1],
+];
+
 function edgeOf(u: number, v: number): number {
   const e = EDGE_INDEX.get(Math.min(u, v) * 12 + Math.max(u, v));
   if (e === undefined) throw new Error(`no hay arista ${u}-${v}`);
@@ -152,6 +162,52 @@ export class Lattice {
     // Interiores por filas: i de 1 a n-2, j de 1 a n-1-i.
     const before = ((i - 1) * (2 * n - 2 - i)) / 2; // Σ_{r=1}^{i-1} (n-1-r)
     return 12 + 30 * (n - 1) + (f * (n - 1) * (n - 2)) / 2 + before + (j - 1);
+  }
+
+  /**
+   * Los vecinos del vértice (cara, i, j), con los de las caras de al lado cuando está en una
+   * arista o una esquina: 6, o 5 en las esquinas. Ids canónicos, ordenados.
+   */
+  neighbors(f: number, i: number, j: number): number[] {
+    return this.neighborsAt(f, i, j).map((x) => x.id);
+  }
+
+  /** Como `neighbors`, con una forma de escribir cada vecino en la red. */
+  neighborsAt(f: number, i: number, j: number): { id: number; at: [number, number, number] }[] {
+    const n = this.n;
+    const out = new Map<number, [number, number, number]>();
+    for (const [g, a, b] of this.#representations(f, i, j)) {
+      for (const [di, dj] of STEPS) {
+        const I = a + di;
+        const J = b + dj;
+        if (I < 0 || J < 0 || I + J > n) continue;
+        const id = this.id(g, I, J);
+        if (!out.has(id)) out.set(id, [g, I, J]);
+      }
+    }
+    return [...out.entries()].sort((x, y) => x[0] - y[0]).map(([id, at]) => ({ id, at }));
+  }
+
+  /** El mismo vértice escrito en cada cara que lo contiene. */
+  #representations(f: number, i: number, j: number): [number, number, number][] {
+    const n = this.n;
+    const w = this.#where(f, i, j);
+    if (w.kind === "inner") return [[f, i, j]];
+    // Los pesos de las esquinas del icosaedro en este punto; en cada cara, i es el peso de B y
+    // j el de C.
+    const weights = new Map<number, number>();
+    if (w.kind === "corner") weights.set(w.c, n);
+    else {
+      const [a, b] = EDGES[w.e] as readonly [number, number];
+      weights.set(a, n - w.t);
+      weights.set(b, w.t);
+    }
+    const out: [number, number, number][] = [];
+    FACES.forEach(([A, B, C], g) => {
+      if (![...weights.keys()].every((k) => k === A || k === B || k === C)) return;
+      out.push([g, weights.get(B) ?? 0, weights.get(C) ?? 0]);
+    });
+    return out;
   }
 
   position(f: number, i: number, j: number): Vec3 {
@@ -373,7 +429,7 @@ export class Grid {
     if (!Number.isSafeInteger(k) || k < 1) throw new RangeError(`factor inválido: ${k}`);
     const n = this.lattice.n;
     const fine = new Lattice(n * k);
-    const out = new Map<number, Vec3>();
+    const out = new Map<number, { center: Vec3; at: readonly [number, number, number] }>();
     for (let f = 0; f < 20; f++) {
       for (let i = 0; i < n; i++) {
         for (let j = 0; i + j < n; j++) {
@@ -389,7 +445,7 @@ export class Grid {
         }
       }
     }
-    return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([id, center]) => ({ id, center }));
+    return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([id, v]) => ({ id, ...v }));
   }
 
   /**
@@ -404,7 +460,7 @@ export class Grid {
     k: number,
     dir: 1 | -1,
     c: number,
-    out: Map<number, Vec3>,
+    out: Map<number, { center: Vec3; at: readonly [number, number, number] }>,
   ): void {
     for (let a = 0; a <= k; a++) {
       for (let b = 0; a + b <= k; b++) {
@@ -413,7 +469,7 @@ export class Grid {
         const id = fine.id(f, I, J);
         if (out.has(id)) continue;
         const p = fine.position(f, I, J);
-        if (this.locate(p, c) === c) out.set(id, p);
+        if (this.locate(p, c) === c) out.set(id, { center: p, at: [f, I, J] });
       }
     }
   }
@@ -423,6 +479,8 @@ export interface FineCell {
   /** Id canónico del vértice en la red a frecuencia `n·k`. */
   readonly id: number;
   readonly center: Vec3;
+  /** Una forma de escribirlo en la red fina (cara, i, j), para `Lattice.neighbors`. */
+  readonly at: readonly [number, number, number];
 }
 
 function unit(v: Vec3): Vec3 {
