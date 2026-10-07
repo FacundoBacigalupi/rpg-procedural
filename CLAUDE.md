@@ -80,7 +80,7 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 - `npm run typecheck` (`tsc`, sin emitir) · `npm run lint` (Biome + dependency-cruiser) · `npm run format` (Biome con `--write`) · `npm test` (Vitest) · `npm run test:watch`.
 - `npm run dev`: la CLI (`node src/ui/cli/main.ts`, `.ts` nativo).
 - Más adelante: `npm run sim -- --seed 123 --years 50` (simulación headless + reporte).
-- Si Vitest dice "failed to find the runner" en Windows, es el cwd con la unidad en minúscula (`c:`): correr desde `C:devpg-procedural`.
+- Si Vitest dice "failed to find the runner" en Windows, es el cwd con la unidad en minúscula (`c:\`): correr desde `C:\dev\rpg-procedural` (en Bash, `cd /c/dev/rpg-procedural`).
 
 ## Flujo de trabajo por feature
 1. Mirar ROADMAP → elegir la siguiente tarea.
