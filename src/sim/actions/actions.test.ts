@@ -349,6 +349,36 @@ describe("del borrador al plan", () => {
     });
   });
 
+  it("hablarle a quien cree en otro hex antepone ir a ese lugar", () => {
+    const known = village.map((k) =>
+      k.ref === wu
+        ? { ...k, present: false, at: 7 }
+        : k.ref === forest
+          ? { ...k, hexes: [7, 8] }
+          : k,
+    );
+    const draft = act(undefined, { speech: { text: "Hola", to: desc("Wu") } });
+    const r = planFromDraft(draft, { ...ctx, known, here: 3 });
+    expect(r.kind === "plan" && r.plan.root).toEqual({
+      kind: "seq",
+      steps: [
+        { kind: "do", verb: "move", args: [{ role: "to", entity: forest }], manner: [] },
+        {
+          kind: "do",
+          verb: "speak",
+          args: [
+            { role: "to", entity: wu },
+            { role: "content", text: "Hola" },
+          ],
+          manner: [],
+        },
+      ],
+    });
+    // En el mismo hex, o sin saber dónde está, no hay desplazamiento.
+    const same = planFromDraft(draft, { ...ctx, known, here: 7 });
+    expect(same.kind === "plan" && same.plan.root.kind).toBe("do");
+  });
+
   it("hablar sin decir a quién: al único presente, o se pregunta", () => {
     const hi = act(undefined, { speech: { text: "Buen día" } });
     const r = planFromDraft(hi, ctx);

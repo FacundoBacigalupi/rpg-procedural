@@ -58,6 +58,8 @@ export interface DraftContext {
   readonly known: readonly KnownEntity[];
   readonly clock: PlanetClock;
   readonly causes: readonly CauseRef[];
+  /** El hex donde está el actor: si la persona nombrada cree que está en otro, primero va. */
+  readonly here?: number | undefined;
 }
 
 /** El tipo de entidad que cada clase de argumento acepta. */
@@ -136,7 +138,14 @@ function convert(node: DraftPlanNode, at: string, w: Walk): PlanNode | null {
         const v = argValue(a, spec.kind, `${at}.${a.role}`, w);
         if (v) args.push(v);
       }
-      return { kind: "do", verb: node.verb, args, manner: [...(node.manner ?? [])] };
+      const step: PlanNode = {
+        kind: "do",
+        verb: node.verb,
+        args,
+        manner: [...(node.manner ?? [])],
+      };
+      const trip = node.verb === "speak" ? tripToListener(args, w) : null;
+      return trip ? { kind: "seq", steps: [trip, step] } : step;
     }
     case "seq": {
       const steps = node.steps
@@ -173,6 +182,23 @@ function convert(node: DraftPlanNode, at: string, w: Walk): PlanNode | null {
       w.problems.push(`${at}: ${node.kind} todavía no se ejecuta (Fase 3)`);
       return null;
   }
+}
+
+/**
+ * «Hablo con mi madre» es ir a donde cree que está y hablarle (actions §4): si el destinatario no
+ * está en el hex del actor y hay un lugar conocido que contiene el hex donde lo cree, el plan
+ * antepone el desplazamiento a ese lugar.
+ */
+function tripToListener(args: readonly ArgValue[], w: Walk): PlanNode | null {
+  const here = w.ctx.here;
+  const to = args.find((a) => a.role === "to");
+  if (here === undefined || !to || !("entity" in to)) return null;
+  const who = w.ctx.known.find((k) => k.kind === "person" && k.ref === to.entity);
+  if (who?.at === undefined || who.at === here) return null;
+  const at = who.at;
+  const place = w.ctx.known.find((k) => k.kind === "place" && k.hexes?.includes(at));
+  if (!place) return null;
+  return { kind: "do", verb: "move", args: [{ role: "to", entity: place.ref }], manner: [] };
 }
 
 function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | null {

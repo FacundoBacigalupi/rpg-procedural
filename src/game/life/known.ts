@@ -63,6 +63,7 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
       features: [],
       relations: [],
       present: here !== undefined && p.hexes.includes(here.hex),
+      hexes: p.hexes,
       via: [],
     });
   }
@@ -85,6 +86,8 @@ function person(
     features: [],
     relations: [{ rel, of: "self" }],
     present: !!here && !!at && at.hex === here.hex && at.space === here.space,
+    // Provisorio: lo que cree es la verdad hasta que llegue `sim/knowledge` (Fase 2).
+    at: at?.hex,
     via: [],
   };
 }
