@@ -1,0 +1,137 @@
+// Sim headless (tooling §6, §8, §9): corre una vida sin jugador durante N años, con los
+// invariantes cada cierto tramo, y devuelve un reporte JSON con métricas. Si un invariante se
+// viola, la corrida se detiene y arma el paquete de reproducción (`repro.json`) con lo mínimo para
+// rehacer el fallo desde el seed. Nunca llama al LLM.
+
+import { type Content, canonicalJson, type Seed, type Tick } from "../../core/index.ts";
+import { LIFE_ENGINE, Life, type LifeSetup, optionsOf } from "../../game/index.ts";
+import { checkInvariants, ENTITY, type StateHash } from "../../sim/index.ts";
+
+export interface SimOptions {
+  readonly seed: Seed;
+  readonly content: Content;
+  readonly setup: LifeSetup;
+  /** Años de mundo a correr desde el tick actual. */
+  readonly years: number;
+  /** Cada cuántos días de mundo se corren los invariantes. */
+  readonly checkEveryDays?: number;
+  /** Reloj de pared, inyectado para que el rendimiento quede fuera de la sim (regla 2). */
+  readonly now?: () => number;
+}
+
+export const CHECK_EVERY_DAYS = 30;
+
+export interface ReproPackage {
+  readonly kind: "invariant" | "narrator" | "manual";
+  readonly versions: { engine: string; content: string; format: number };
+  readonly seed: Seed;
+  readonly setup: LifeSetup;
+  /** Los planes del jugador hasta el fallo (la sim headless no tiene). */
+  readonly plans: readonly unknown[];
+  readonly tick: Tick;
+  readonly problems: readonly string[];
+}
+
+export interface SimReport {
+  readonly seed: Seed;
+  readonly years: number;
+  readonly from: Tick;
+  readonly to: Tick;
+  readonly stoppedEarly: boolean;
+  readonly checks: number;
+  readonly metrics: {
+    readonly events: number;
+    readonly eventsByKind: Readonly<Record<string, number>>;
+    readonly agentsAlive: number;
+    readonly agentsDead: number;
+    readonly deathsByCause: Readonly<Record<string, number>>;
+    readonly playerAlive: boolean;
+    readonly ledgerProblems: number;
+  };
+  readonly performance: { readonly wallMs: number; readonly msPerWorldDay: number };
+  readonly hash: StateHash;
+  readonly repro?: ReproPackage;
+}
+
+function tally(counts: Map<string, number>, key: string): void {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
+}
+
+function sorted(counts: Map<string, number>): Record<string, number> {
+  return Object.fromEntries([...counts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+}
+
+export function runSim(options: SimOptions): SimReport {
+  const { seed, content, setup, years } = options;
+  const wall = options.now ?? (() => performance.now());
+  const started = wall();
+  const life = Life.create(seed, content, optionsOf(setup));
+  const w = life.world;
+  const from = life.now;
+  const target = from + Math.round(years * w.clock.year);
+  const step = Math.round((options.checkEveryDays ?? CHECK_EVERY_DAYS) * w.clock.day);
+  const versions = { engine: LIFE_ENGINE, content: content.hash, format: 1 };
+
+  let checks = 0;
+  let repro: ReproPackage | undefined;
+  while (life.now < target) {
+    life.advanceTo(Math.min(target, life.now + step));
+    const problems = checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger });
+    checks++;
+    if (problems.length > 0) {
+      repro = {
+        kind: "invariant",
+        versions,
+        seed,
+        setup,
+        plans: [],
+        tick: life.now,
+        problems: problems.slice(0, 50),
+      };
+      break;
+    }
+  }
+
+  const byKind = new Map<string, number>();
+  const causes = new Map<string, number>();
+  for (const e of w.log.all()) {
+    tally(byKind, e.kind);
+    if (e.kind === "body.died") tally(causes, String((e.data as { cause?: unknown })?.cause));
+  }
+  let alive = 0;
+  let dead = 0;
+  for (const id of w.truth.ids(ENTITY)) {
+    if (!id.startsWith("agent:")) continue;
+    if (w.truth.get(ENTITY, id)?.endedAt === undefined) alive++;
+    else dead++;
+  }
+  const wallMs = wall() - started;
+  const worldDays = (life.now - from) / w.clock.day;
+
+  return {
+    seed,
+    years,
+    from,
+    to: life.now,
+    stoppedEarly: repro !== undefined,
+    checks,
+    metrics: {
+      events: w.log.all().length,
+      eventsByKind: sorted(byKind),
+      agentsAlive: alive,
+      agentsDead: dead,
+      deathsByCause: sorted(causes),
+      playerAlive: life.alive,
+      ledgerProblems: w.ledger.audit().length,
+    },
+    performance: { wallMs, msPerWorldDay: worldDays > 0 ? wallMs / worldDays : 0 },
+    hash: life.hash(),
+    ...(repro ? { repro } : {}),
+  };
+}
+
+/** El reporte sin lo que depende del reloj de pared: lo que se compara entre corridas. */
+export function deterministicPart(report: SimReport): string {
+  const { performance: _p, ...rest } = report;
+  return canonicalJson(rest);
+}
