@@ -7,9 +7,12 @@ import {
   type Content,
   EARTHLIKE_CLOCK,
   EventLog,
+  externalAccount,
   type HouseholdId,
+  holderAccount,
   IdAllocator,
   Ledger,
+  ledgerUnit,
   makeId,
   type PlaceRef,
   type Seed,
@@ -20,7 +23,9 @@ import {
   ActionCatalog,
   BODY_PLANS,
   DEMOGRAPHY,
+  EATEN,
   ENTITY,
+  FOODS,
   houseKey,
   LOCATION,
   type LocalMap,
@@ -59,6 +64,8 @@ export interface LifeOptions {
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
 export interface LifeTerrain {
+  /** Dónde pasan los eventos de la aldea. */
+  readonly village: PlaceRef;
   readonly planet: Planet;
   readonly site: VillageSite;
   readonly map: LocalMap;
@@ -89,7 +96,8 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     ),
     ...(options.playerAge === undefined ? {} : { playerAge: options.playerAge }),
   });
-  return { planet, site, map: localMapOf(planet, site), population };
+  const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
+  return { village, planet, site, map: localMapOf(planet, site), population };
 }
 
 /** Los contadores de ids siguen a lo que ya existe, para que lo nuevo no choque. */
@@ -159,14 +167,32 @@ export function createLife(
   const households = pop.households.filter((h) => h.end === null).map((h) => h.id);
   const spaces = villageSpaces({ hex: site.hex, households });
   const ids = idsAfter(truth, log);
-  const ledger = new Ledger({ externals: {} });
+  const foods = content.all(FOODS);
+  const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
+  const ledger = new Ledger({ externals: { [EATEN]: units, seed: units } });
+  // Despensas de arranque: un mes de grano por boca. Lo reemplazan las existencias de la
+  // aldea cuando settlements las dé (ROADMAP: aldea inicial con edificios y dueños).
+  const grain = ledgerUnit("good:grain");
+  if (foods.some((f) => f.id === "grain")) {
+    ledger.post({
+      tick: pop.now,
+      eventId: pop.foundersEvent,
+      transfers: pop.households
+        .filter((h) => h.end === null)
+        .map((h) => ({
+          unit: grain,
+          from: externalAccount("seed"),
+          to: holderAccount(h.id),
+          amount: h.members.length * 20_000,
+        })),
+    });
+  }
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 
-  const village: PlaceRef = { kind: "settlement", settlement };
   const world = lifeWorld(
-    { seed, clock, truth, ids, log, ledger, map, spaces, catalog, skills, traits, plans },
+    { seed, clock, truth, ids, log, ledger, map, spaces, catalog, skills, traits, plans, foods },
     pop.player,
-    village,
+    terrain.village,
     { now: pop.now, seq: 0, queue: [] },
   );
   return { world, terrain };

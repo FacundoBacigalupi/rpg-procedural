@@ -17,6 +17,7 @@ import {
   type BodyPlanDef,
   bodyProcess,
   ENTITY,
+  type FoodDef,
   LOCATION,
   type LocalMap,
   type ReadonlyWorldTruth,
@@ -28,6 +29,7 @@ import {
   table,
   type WorldTruth,
 } from "../../sim/index.ts";
+import { actProcess } from "./act.ts";
 
 /** El personaje del jugador: el agente que el usuario maneja (player-loop §1). */
 export const PLAYER = table<{ readonly since: Tick }>("player");
@@ -45,6 +47,7 @@ export interface LifeWorld {
   readonly skills: SkillCatalog;
   readonly traits: readonly Trait[];
   readonly plans: readonly BodyPlanDef[];
+  readonly foods: readonly FoodDef[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -83,7 +86,19 @@ export function lifeWorld(
       ids: parts.ids,
       log: parts.log,
       ledger: parts.ledger,
-      processes: [bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) })],
+      processes: [
+        bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) }),
+        actProcess({
+          map: parts.map,
+          spaces: parts.spaces,
+          catalog: parts.catalog,
+          skills: parts.skills,
+          traits: parts.traits,
+          bodyPlans: parts.plans,
+          foods: parts.foods,
+          clock: parts.clock,
+        }),
+      ],
       resolution: "local",
       scopes: (kind, t) => (kind === "agent" ? living(t) : []),
     },
