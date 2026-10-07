@@ -15,6 +15,16 @@ import {
 } from "./client.ts";
 import type { LlmConfig, LlmJob, LlmProvider } from "./config.ts";
 
+/**
+ * El JSON de una salida estructurada: sin el razonamiento que algunos modelos locales escriben antes
+ * (`<think>…</think>`) ni el cerco de Markdown cuando el runtime no restringe la salida.
+ */
+export function jsonPayload(text: string): string {
+  const t = text.replace(/^\s*<think>[\s\S]*?<\/think>/, "").trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(t);
+  return fenced?.[1] ?? t;
+}
+
 /** Problemas de una salida de texto; vacío es que pasa. */
 export type TextValidator = (text: string) => readonly string[];
 
@@ -74,7 +84,7 @@ export class LlmJobs {
     return this.#run(job, request, jsonSchema, (text) => {
       let raw: unknown;
       try {
-        raw = JSON.parse(text);
+        raw = JSON.parse(jsonPayload(text));
       } catch {
         return { problems: ["the answer is not valid JSON"] };
       }

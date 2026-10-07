@@ -1,12 +1,25 @@
-// El parser de intención (narration §10, actions §9): texto del jugador → `IntentDraft`, con la
-// salida restringida por el JSON Schema del mismo esquema Zod que la valida. Las instrucciones van
-// en inglés (los modelos chicos las siguen mejor); el jugador escribe en español.
+// El parser de intención (narration §10, actions §9): texto del jugador → `IntentDraft`. La salida
+// va restringida por el JSON Schema estructural del catálogo (una variante por verbo con sus roles
+// y modos) y se valida con el borrador más el control del catálogo, cuyos errores vuelven al
+// modelo si hay que regenerar (`draft-schema.ts` en la sim). Las instrucciones van en inglés (los
+// modelos chicos las siguen mejor); el jugador escribe en español.
 //
-// Fase 0: el contexto es texto (la escena percibida y los verbos posibles ya redactados). En la
-// Fase 1 sale de `PlayerView` y del catálogo de `content/`, con ejemplos de
-// `content/llm/parser-examples/`.
+// El prompt tiene un prefijo fijo (reglas, verbos del catálogo y ejemplos resueltos de
+// `content/llm/parser-examples/`) que se arma una vez por catálogo con `parserSetup` y que el
+// runtime puede cachear (narration §12); lo variable (escena, intenciones recientes, el texto) va
+// al final. La escena todavía es texto: sale de `PlayerView` cuando llegue el narrador.
 
-import { IntentDraft, intentDraftJsonSchema } from "../sim/index.ts";
+import type { z } from "../core/index.ts";
+import {
+  type ActionCatalog,
+  type ActionDef,
+  type IntentDraft,
+  intentDraftFor,
+  intentDraftJsonSchemaFor,
+  type ParserExample,
+  type PlanTemplate,
+} from "../sim/index.ts";
+import type { LlmMessage } from "./client.ts";
 import type { JobResult, LlmJobs } from "./jobs.ts";
 
 export interface ParserInput {
@@ -14,32 +27,67 @@ export interface ParserInput {
   readonly text: string;
   /** La escena como la percibe el personaje, con etiquetas; nunca la verdad. */
   readonly scene?: string | undefined;
-  /** Los verbos posibles en la escena (claves del catálogo), con una línea de qué hacen. */
-  readonly verbs?: readonly { readonly id: string; readonly gloss: string }[] | undefined;
   /** Las últimas intenciones del jugador, para entender "otra vez" o "lo mismo con él". */
   readonly recent?: readonly string[] | undefined;
 }
 
-export const PARSER_SYSTEM = [
+/** Lo que no cambia entre turnos con un mismo catálogo: el prefijo del prompt y los esquemas. */
+export interface ParserSetup {
+  readonly system: string;
+  /** Los ejemplos resueltos, como pares pedido-respuesta. */
+  readonly shots: readonly LlmMessage[];
+  readonly schema: z.ZodType<IntentDraft>;
+  readonly jsonSchema: { readonly name: string; readonly schema: Record<string, unknown> };
+}
+
+export const PARSER_RULES = [
   "You translate what the player writes into a structured intent for a simulated world.",
   "The player writes in Spanish about what their character does. You only describe the attempt:",
-  '- Never decide outcomes. If the player writes a result ("I convince him", "I find the herb"),',
-  "  turn it into the attempt (persuade, search) and put the discarded result in `stripped`.",
-  '- Never make other people act. "And he gives me the money" becomes a request or is stripped.',
-  "- Refer to people, things and places by description (`text` and `features`), in the player's",
-  "  words; never invent names or ids.",
-  "- Use only verbs from the list when one is given; whatever fits no verb goes to `unmapped`.",
-  '- Big life goals are `kind: "goal"`; questions to the game are `question_ooc`; game commands',
-  "  are `meta`. Those carry `text` and no plan.",
-  "- What the character says aloud goes in `speech.text`, verbatim.",
+  '- Never decide outcomes. If the player writes a result ("lo convenzo", "encuentro la hierba"),',
+  "  turn it into the attempt and put the discarded words in `stripped`.",
+  '- Never make other people act. "y me la da" is stripped; at most the character asks for it.',
+  "- Refer to people, things and places by description: `text` in the player's words and",
+  "  `features` with the words that tell it apart. Never invent names or ids.",
+  '- "mi padre", "mi casa": put the relation in `relation` with `to: "self"`.',
+  "- Use only the verbs, roles, manners and templates listed below. Whatever has no verb goes to",
+  "  `unmapped`; if part of it fits a verb, use the closest verb for that part.",
+  "- If the character only talks, use `speech` with the exact words and `to` when said. When",
+  "  talking is one step of a sequence, use the `speak` verb with `content` instead.",
+  "- One action is `act`; a sequence (`seq`) or a repetition until something (`until`) is `plan`.",
+  "  An `until` condition must say what it is in `is`: dark (nightfall), light (dawn), succeeded",
+  "  (until it works / finds something) or elapsed (a duration).",
+  '- Big life goals are `kind: "goal"`; questions to the game about the game are `question_ooc`;',
+  "  game commands (save, inspector, quit) are `meta`. Those carry `text` and no plan.",
   "Answer only with the JSON object.",
 ].join("\n");
 
-function userMessage(input: ParserInput): string {
+const ARG_HELP: Record<string, string> = {
+  person: 'ref (a person: {"role","ref":{"text","kind":"person","features"}})',
+  place: 'ref (a place: {"role","ref":{"text","kind":"place","features"}})',
+  thing: 'ref (a thing: {"role","ref":{"text","kind":"object","features"}})',
+  duration: 'duration ({"role","duration":{"amount","unit"}})',
+  text: 'text ({"role","text"})',
+};
+
+function verbLine(v: ActionDef): string {
+  const args =
+    v.args.length === 0
+      ? "no arguments"
+      : v.args
+          .map((a) => `${a.role}${a.required ? "" : "?"}: ${ARG_HELP[a.kind] ?? a.kind}`)
+          .join("; ");
+  const manners = v.manners.length > 0 ? ` Manners: ${v.manners.map((m) => m.id).join(", ")}.` : "";
+  return `- ${v.id} ("${v.name}"): ${args}.${manners}`;
+}
+
+function templateLine(t: PlanTemplate): string {
+  const params = t.params.map((p) => `${p.id}: ${ARG_HELP[p.kind] ?? p.kind}`).join("; ");
+  return `- ${t.id} ("${t.name}"): params ${params}.`;
+}
+
+/** El mensaje variable de cada turno; los ejemplos resueltos usan el mismo formato. */
+export function parserUserMessage(input: ParserInput): string {
   const parts: string[] = [];
-  if (input.verbs && input.verbs.length > 0) {
-    parts.push(`Verbs:\n${input.verbs.map((v) => `- ${v.id}: ${v.gloss}`).join("\n")}`);
-  }
   if (input.scene) parts.push(`What the character perceives:\n${input.scene}`);
   if (input.recent && input.recent.length > 0) {
     parts.push(`Recent intents:\n${input.recent.map((r) => `- ${r}`).join("\n")}`);
@@ -48,17 +96,50 @@ function userMessage(input: ParserInput): string {
   return parts.join("\n\n");
 }
 
-export function parseIntent(jobs: LlmJobs, input: ParserInput): Promise<JobResult<IntentDraft>> {
-  return jobs.structured(
-    "parser",
-    IntentDraft,
-    { name: "IntentDraft", schema: intentDraftJsonSchema() },
-    {
-      messages: [
-        { role: "system", content: PARSER_SYSTEM },
-        { role: "user", content: userMessage(input) },
-      ],
-      temperature: 0,
-    },
-  );
+/** Arma el prefijo fijo y los esquemas para un catálogo; los ejemplos `shot` van como pares. */
+export function parserSetup(
+  catalog: ActionCatalog,
+  examples: readonly ParserExample[] = [],
+): ParserSetup {
+  const verbs = catalog.verbs.map(verbLine).join("\n");
+  const templates = catalog.templates.map(templateLine).join("\n");
+  const system = [
+    PARSER_RULES,
+    `Verbs (in \`do\` nodes: {"kind":"do","verb","args","manner"?}):\n${verbs}`,
+    ...(templates
+      ? [`Templates (known plans: {"kind":"template","template","params"}):\n${templates}`]
+      : []),
+  ].join("\n\n");
+  const shots = examples
+    .filter((e) => e.shot)
+    .flatMap((e): LlmMessage[] => [
+      { role: "user", content: parserUserMessage(e) },
+      { role: "assistant", content: JSON.stringify(e.expect) },
+    ]);
+  return {
+    system,
+    shots,
+    schema: intentDraftFor(catalog),
+    jsonSchema: { name: "IntentDraft", schema: intentDraftJsonSchemaFor(catalog) },
+  };
+}
+
+/** Los mensajes de un pedido: el prefijo fijo primero, lo de este turno al final. */
+export function parserMessages(setup: ParserSetup, input: ParserInput): LlmMessage[] {
+  return [
+    { role: "system", content: setup.system },
+    ...setup.shots,
+    { role: "user", content: parserUserMessage(input) },
+  ];
+}
+
+export function parseIntent(
+  jobs: LlmJobs,
+  setup: ParserSetup,
+  input: ParserInput,
+): Promise<JobResult<IntentDraft>> {
+  return jobs.structured("parser", setup.schema, setup.jsonSchema, {
+    messages: parserMessages(setup, input),
+    temperature: 0,
+  });
 }

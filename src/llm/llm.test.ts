@@ -1,9 +1,20 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { z } from "../core/index.ts";
+import { EARTHLIKE_CLOCK, loadContent, makeId, z } from "../core/index.ts";
+import {
+  ACTIONS,
+  ActionCatalog,
+  PARSER_EXAMPLES,
+  PLANS,
+  planFromDraft,
+  SKILLS,
+  TRAITS,
+} from "../sim/index.ts";
 import {
   DEFAULT_NARRATION,
   type Fetch,
   type JobLogEntry,
+  jsonPayload,
   LLM_JOBS,
   LlmConfig,
   LlmError,
@@ -16,8 +27,9 @@ import {
   OpenAiCompatibleClient,
   offlineLlmConfig,
   openAiClientFactory,
-  PARSER_SYSTEM,
+  PARSER_RULES,
   parseIntent,
+  parserSetup,
   verbalize,
 } from "./index.ts";
 
@@ -155,37 +167,153 @@ describe("LlmJobs", () => {
   });
 });
 
+const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
+const content = loadContent(
+  [ACTIONS, PLANS, SKILLS, TRAITS, PARSER_EXAMPLES],
+  [
+    ["actions", "content/actions/core.json"],
+    ["plans", "content/plans/steal.json"],
+    ["skills", "content/skills/core.json"],
+    ["traits", "content/traits/human.json"],
+    ["llm/parser-examples", "content/llm/parser-examples/core.json"],
+  ].map(([kind, file]) => ({
+    kind: kind as string,
+    file: file as string,
+    data: json(file as string),
+  })),
+);
+const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
+const examples = content.all(PARSER_EXAMPLES);
+const setup = parserSetup(catalog, examples);
+
 describe("parseIntent", () => {
-  it("manda el esquema del IntentDraft y devuelve el borrador validado", async () => {
+  it("el prefijo fijo lleva las reglas, los verbos del catálogo y los ejemplos resueltos", () => {
+    expect(setup.system.startsWith(PARSER_RULES)).toBe(true);
+    expect(setup.system).toMatch(/- move \("moverse"\): to: ref \(a place/);
+    expect(setup.system).toMatch(/Manners: careful, fast, covert\./);
+    expect(setup.system).toMatch(/- look \("observar"\): no arguments\./);
+    expect(setup.system).toMatch(/- steal \("robar"\): params victim: ref \(a person/);
+    const shots = examples.filter((e) => e.shot);
+    expect(shots.length).toBeGreaterThan(3);
+    expect(setup.shots).toHaveLength(shots.length * 2);
+    expect(setup.shots[1]?.content).toBe(JSON.stringify(shots[0]?.expect));
+  });
+
+  it("restringe la salida al catálogo: verbos y roles como literales", () => {
+    const schema = JSON.stringify(setup.jsonSchema.schema);
+    for (const v of catalog.verbs) expect(schema).toContain(`{"type":"string","const":"${v.id}"}`);
+    expect(schema).toContain('"const":"steal"');
+    expect(schema).not.toContain('"repeat"');
+    expect(schema).not.toContain('"onEvent"');
+  });
+
+  it("manda el prefijo, lo de este turno al final, y devuelve el borrador validado", async () => {
     const draft = {
       kind: "act",
-      plan: {
-        kind: "do",
-        verb: "talk",
-        args: [{ role: "to", ref: { text: "el viejo", features: ["viejo"] } }],
+      speech: {
+        text: "¿Vio a mi hermana?",
+        to: { text: "el viejo", kind: "person", features: ["viejo"] },
       },
-      stripped: ["y me cuenta todo"],
-      speech: { text: "¿Viste a mi hermana?" },
+      stripped: ["me cuenta todo"],
     };
     const m = new MockLLM([JSON.stringify(draft)]);
-    const r = await parseIntent(jobsWith({ m }, [local("m")]), {
+    const r = await parseIntent(jobsWith({ m }, [local("m")]), setup, {
       text: "le pregunto al viejo si vio a mi hermana y me cuenta todo",
       scene: "Un viejo junto a un puesto de té.",
-      verbs: [{ id: "talk", gloss: "hablarle a alguien" }],
+      recent: ["ir a la plaza"],
     });
     expect(r).toMatchObject({ ok: true, value: draft });
     const call = m.calls[0];
     expect(call?.schema?.name).toBe("IntentDraft");
     expect(call?.temperature).toBe(0);
-    expect(call?.messages[0]).toEqual({ role: "system", content: PARSER_SYSTEM });
-    expect(call?.messages[1]?.content).toMatch(/Verbs:\n- talk: hablarle a alguien/);
-    expect(call?.messages[1]?.content).toMatch(/Player: le pregunto al viejo/);
+    expect(call?.messages[0]).toEqual({ role: "system", content: setup.system });
+    expect(call?.messages.slice(1, -1)).toEqual(setup.shots);
+    expect(call?.messages.at(-1)?.content).toBe(
+      "What the character perceives:\nUn viejo junto a un puesto de té.\n\nRecent intents:\n- ir a la plaza\n\nPlayer: le pregunto al viejo si vio a mi hermana y me cuenta todo",
+    );
+  });
+
+  it("un verbo o un rol fuera del catálogo vuelve al modelo con el error explicado", async () => {
+    const bad = { kind: "act", plan: { kind: "do", verb: "fly", args: [] } };
+    const badRole = {
+      kind: "act",
+      plan: { kind: "do", verb: "move", args: [{ role: "where", text: "al bosque" }] },
+    };
+    const good = {
+      kind: "act",
+      plan: {
+        kind: "do",
+        verb: "move",
+        args: [{ role: "to", ref: { text: "el bosque", kind: "place", features: ["bosque"] } }],
+      },
+    };
+    const m = new MockLLM([JSON.stringify(bad), JSON.stringify(badRole)]);
+    const r = await parseIntent(jobsWith({ m }, [local("m")]), setup, { text: "vuelo al bosque" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.problems.join("\n")).toMatch(/unknown verb "fly"/);
+      expect(r.problems.join("\n")).toMatch(/move has no role "where" \(roles: to\)/);
+    }
+    expect(m.calls[1]?.messages.at(-1)?.content).toMatch(/unknown verb "fly"/);
+
+    const ok = new MockLLM([
+      `<think>es moverse</think>\n\`\`\`json\n${JSON.stringify(good)}\n\`\`\``,
+    ]);
+    const r2 = await parseIntent(jobsWith({ ok }, [local("ok")]), setup, { text: "voy al bosque" });
+    expect(r2).toMatchObject({ ok: true, value: good });
   });
 
   it("un borrador que declara resultados o inventa campos no pasa", async () => {
     const m = new MockLLM(['{"kind":"act","outcome":"lo convencés"}', '{"kind":"act"}']);
-    const r = await parseIntent(jobsWith({ m }, [local("m")]), { text: "lo convenzo" });
+    const r = await parseIntent(jobsWith({ m }, [local("m")]), setup, { text: "lo convenzo" });
     expect(r.ok).toBe(false);
+  });
+
+  it("del texto al plan validado: parser, después referencias contra lo conocido", async () => {
+    const draft = examples.find((e) => e.id === "shot-gather-until")?.expect;
+    const m = new MockLLM([JSON.stringify(draft)]);
+    const r = await parseIntent(jobsWith({ m }, [local("m")]), setup, {
+      text: "voy al bosque y junto hierbas hasta que oscurezca",
+    });
+    if (!r.ok) throw new Error(r.problems.join("\n"));
+    const me = makeId("agent", 1);
+    const forest = makeId("place", 1);
+    const plan = planFromDraft(r.value, {
+      actor: me,
+      source: "player",
+      catalog,
+      known: [
+        {
+          ref: forest,
+          kind: "place",
+          names: ["el bosque"],
+          features: ["pinos"],
+          relations: [],
+          present: false,
+          via: [],
+        },
+      ],
+      clock: EARTHLIKE_CLOCK,
+      causes: [],
+    });
+    expect(plan.kind).toBe("plan");
+    if (plan.kind === "plan") {
+      expect(plan.plan.root).toMatchObject({
+        kind: "seq",
+        steps: [
+          { kind: "do", verb: "move", args: [{ role: "to", entity: forest }] },
+          { kind: "until", body: { kind: "do", verb: "gather" }, cond: { kind: "dark" } },
+        ],
+      });
+    }
+  });
+});
+
+describe("jsonPayload", () => {
+  it("saca el razonamiento y el cerco de Markdown", () => {
+    expect(jsonPayload('<think>\nhmm\n</think>\n{"a":1}')).toBe('{"a":1}');
+    expect(jsonPayload('```json\n{"a":1}\n```')).toBe('{"a":1}');
+    expect(jsonPayload(' {"a":1} ')).toBe('{"a":1}');
   });
 });
 
