@@ -131,6 +131,16 @@ describe("runCli", () => {
     expect(store.narrations()).toHaveLength(2);
   }, 300_000);
 
+  it("el inspector no pasa el tiempo, no toca el estado y marca la vida", async () => {
+    const store = memory();
+    expect(store.getMeta("inspected")).toBeUndefined();
+    const out = await session(store, ["inspector tables", "god invariants"]);
+    expect(out).toContain("body.state");
+    expect(out).toContain("Sin violaciones.");
+    expect(store.plans()).toHaveLength(0);
+    expect(store.getMeta("inspected")).toBe(true);
+  }, 300_000);
+
   it("guarda el modo y no lo cambia a mitad de la vida", async () => {
     const store = memory();
     const out = await session(store, ["miro", "salir"], 5, "novel");
