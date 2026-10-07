@@ -4,8 +4,9 @@
 // hay cargar atrás: si el archivo tiene una vida, se sigue esa (player-loop §12), con el modo con
 // que empezó (game-modes §9).
 //
-// El parser de acá es la gramática sin red (narration §11); el modelo local se enchufa por
-// `parseIntentOrGrammar` cuando la CLI tenga la configuración del LLM.
+// El LLM es opcional (`options.llm`): el parser prueba primero el modelo y cae a la gramática sin
+// red, y el narrador cae a las plantillas (narration §11). Sin `llm` todo va por la cadena
+// `templates`, así que el juego es el mismo con o sin red.
 
 import {
   type Content,
@@ -16,6 +17,8 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  AMBIENCE,
+  ambienceOf,
   characterPanel,
   inventoryPanel,
   knownEntities,
@@ -27,12 +30,27 @@ import {
   playerView,
   type TurnReport,
 } from "../../game/index.ts";
-import { parseCommand, renderView, TemplateBook } from "../../llm/index.ts";
+import {
+  DEFAULT_NARRATION,
+  LlmJobs,
+  narrate,
+  narrationRequest,
+  offlineLlmConfig,
+  parseCommand,
+  parseIntentOrGrammar,
+  parserSetup,
+  styleOf,
+  TemplateBook,
+} from "../../llm/index.ts";
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../../persistence/index.ts";
-import { type ActionPlan, planFromDraft } from "../../sim/index.ts";
+import {
+  type ActionPlan,
+  type IntentDraft,
+  PARSER_EXAMPLES,
+  planFromDraft,
+} from "../../sim/index.ts";
 import {
   elapsed,
-  plain,
   renderCharacter,
   renderInterrupt,
   renderInventory,
@@ -47,7 +65,12 @@ export interface CliOptions {
   readonly seed: Seed;
   readonly setup: LifeSetup;
   readonly content: Content;
+  /** Los trabajos del LLM; sin esto, todo sale de la gramática y las plantillas. */
+  readonly llm?: LlmJobs | undefined;
 }
+
+/** Cuántas intenciones anteriores ve el parser para entender «otra vez». */
+export const RECENT_INTENTS = 3;
 
 /** Cuántas entradas de la bitácora muestra el comando (las últimas). */
 export const JOURNAL_SHOWN = 10;
@@ -68,20 +91,47 @@ export async function runCli(
   const life = open(store, options, write);
   const book = new TemplateBook(options.content.all(NARRATION_TEMPLATES));
   const seed = store.getMeta("seed") as Seed;
-  const narrate = (report: TurnReport | null, at: Tick): string => {
+  const jobs =
+    options.llm ?? new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
+  const catalog = life.world.catalog;
+  const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
+  const ambience = options.content.all(AMBIENCE);
+  const recent: string[] = [];
+  let scene = "";
+  const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
     const view = playerView(life.world, report?.steps ?? [], { intro: report === null });
-    const rng = Rng.root(seed).fork("narration", at);
-    return plain(renderView(view, book, rng));
+    const request = narrationRequest(
+      view,
+      styleOf(DEFAULT_NARRATION, "es"),
+      ambienceOf(view.scene, ambience),
+    );
+    const told = await narrate(jobs, request, {
+      templates: book,
+      rng: Rng.root(seed).fork("narration", at),
+    });
+    scene = told.text;
+    return told.text;
   };
-  const intro = narrate(null, life.now);
+  const intro = await tell(null, life.now);
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
-  write(`${intro}\n${renderStatus(life.now)}\n> `);
+  write(`${intro}
+${renderStatus(life.now)}\n> `);
 
   for await (const line of lines) {
-    const draft = line.trim() === "" ? null : parseCommand(line, life.world.catalog);
     if (line.trim() === "") {
       write("> ");
       continue;
+    }
+    // Los comandos fuera del personaje no pasan por el modelo.
+    let draft: IntentDraft | null = parseCommand(line, catalog);
+    if (draft?.kind !== "meta") {
+      const parsed = await parseIntentOrGrammar(
+        jobs,
+        parser,
+        { text: line, scene, recent },
+        catalog,
+      );
+      draft = parsed.ok ? parsed.draft : null;
     }
     if (draft === null) {
       write("Eso todavía no se entiende. Escribí «ayuda».\n> ");
@@ -143,8 +193,10 @@ export async function runCli(
     store.saveSnapshot(life.state());
     const report = life.turn(plan, seq);
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
+    recent.push(line.trim());
+    if (recent.length > RECENT_INTENTS) recent.shift();
     const told = [
-      narrate(report, report.to),
+      await tell(report, report.to),
       ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
     ].join("\n");
     store.appendNarration(report.to, told);

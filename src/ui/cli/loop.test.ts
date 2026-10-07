@@ -10,6 +10,14 @@ import {
   type LifeSetup,
   lifeReplayGame,
 } from "../../game/index.ts";
+import {
+  type LlmConfig,
+  LlmError,
+  LlmJobs,
+  type LlmProvider,
+  MockLLM,
+  offlineLlmConfig,
+} from "../../llm/index.ts";
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { checkInvariants, hashState } from "../../sim/index.ts";
 import { type ReplayInput, replay, replayInputFromStore } from "../../tools/index.ts";
@@ -47,11 +55,21 @@ async function session(
   lines: readonly string[],
   seed = 5,
   mode: GameMode = "realistic",
+  llm?: LlmJobs,
 ): Promise<string> {
   let out = "";
   const setup: LifeSetup = { game: defaultGameSetup(mode) };
-  await runCli(feed(lines), (t) => (out += t), store, { seed, setup, content });
+  await runCli(feed(lines), (t) => (out += t), store, { seed, setup, content, llm });
   return out;
+}
+
+/** Un modelo (de mentira) para el parser y el narrador, con las plantillas detrás. */
+function jobsWith(client: MockLLM): LlmJobs {
+  const local: LlmProvider = { kind: "local", runtime: "ollama", model: "mock" };
+  const chain = [local, { kind: "templates" } as const];
+  const base = offlineLlmConfig();
+  const config: LlmConfig = { ...base, jobs: { ...base.jobs, parser: chain, narrator: chain } };
+  return new LlmJobs({ config, clientFor: (p) => (p.kind === "local" ? client : undefined) });
 }
 
 const SCRIPT = ["miro alrededor", "espero dos horas", "volar", "ayuda", "", "como", "descanso"];
@@ -130,6 +148,51 @@ describe("runCli", () => {
     await session(store, ["salir"]);
     store.setMeta("versions", { ...VERSIONS, engine: `${LIFE_ENGINE}-viejo` });
     await expect(session(store, [])).rejects.toThrow(/otra versión/);
+  }, 300_000);
+});
+
+describe("runCli con el modelo", () => {
+  const WAIT = JSON.stringify({
+    kind: "act",
+    plan: {
+      kind: "do",
+      verb: "wait",
+      args: [{ role: "for", duration: { amount: 2, unit: "hour" } }],
+    },
+  });
+
+  it("el parser usa al modelo; si el narrador no valida, narran las plantillas", async () => {
+    // La gramática no entiende «aguardo un par de horitas»: solo el modelo lo lee como esperar.
+    const model = new MockLLM((req) =>
+      req.schema ? WAIT : "Texto sin ninguna referencia marcada.",
+    );
+    const store = memory();
+    const out = await session(
+      store,
+      ["aguardo un par de horitas", "salir"],
+      5,
+      "realistic",
+      jobsWith(model),
+    );
+    expect(out).toContain("Pasan 2 horas.");
+    expect(out).not.toContain("Eso todavía no se entiende");
+    expect(out).not.toContain("Texto sin ninguna referencia");
+    expect(store.plans()).toHaveLength(1);
+    // El pedido del parser lleva la escena que ya vio el jugador y el texto de este turno.
+    const parse = model.calls.find((c) => c.schema);
+    expect(parse?.messages.at(-1)?.content).toContain("Player: aguardo un par de horitas");
+    expect(parse?.messages.at(-1)?.content).toContain("What the character perceives:");
+  }, 300_000);
+
+  it("con el modelo caído, la gramática y las plantillas dan el mismo turno que sin red", async () => {
+    const down = new MockLLM(() => new LlmError("network", "fetch failed"));
+    const withModel = memory();
+    const offline = memory();
+    const lines = ["espero dos horas", "como", "salir"];
+    const a = await session(withModel, lines, 5, "realistic", jobsWith(down));
+    const b = await session(offline, lines);
+    expect(a).toEqual(b);
+    expect(withModel.checkpoints()).toEqual(offline.checkpoints());
   }, 300_000);
 });
 
