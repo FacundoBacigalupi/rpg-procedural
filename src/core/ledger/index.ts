@@ -92,6 +92,11 @@ export class Ledger {
     this.#externals = externals;
   }
 
+  /** Las fuentes y sumideros con que se armó: se guardan para rehacerlo. */
+  get config(): LedgerConfig {
+    return this.#config;
+  }
+
   /** Reconstruye un ledger aplicando un diario en orden (replay, verificación). */
   static fromJournal(config: LedgerConfig, journal: readonly JournalEntry[]): Ledger {
     const ledger = new Ledger(config);
