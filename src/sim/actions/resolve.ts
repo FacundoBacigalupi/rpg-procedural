@@ -35,6 +35,7 @@ import {
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
+import { notorietyEdge } from "../law/index.ts";
 import {
   draftEvent,
   type EventDraft,
@@ -99,6 +100,8 @@ export interface Market {
   readonly ranks?:
     | { readonly actor: number | undefined; readonly other: number | undefined }
     | undefined;
+  /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
+  readonly fame?: number | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -662,7 +665,10 @@ const trade: Resolver = (c) => {
   // Cerrar mal también es cerrar: la torpeza deja un mal trato; la duda o la falta de algo, ninguno.
   const deal = m !== null && (m >= PARTIAL_MARGIN || c.roll.failure === "clumsy");
   const lean = deferenceEdge(c.input.market?.ranks?.actor, c.input.market?.ranks?.other);
-  const edge = deal ? round3(Math.max(-0.3, Math.min(0.3, 0.3 * (2 * c.degree - 1) + lean))) : 0;
+  const shun = notorietyEdge(c.input.market?.fame ?? 0);
+  const edge = deal
+    ? round3(Math.max(-0.3, Math.min(0.3, 0.3 * (2 * c.degree - 1) + lean + shun)))
+    : 0;
   const idle = (closed: boolean): VerbEffect => ({
     kind: "trade",
     with: other,

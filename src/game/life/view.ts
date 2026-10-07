@@ -3,7 +3,7 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { Rng } from "../../core/index.ts";
+import { Rng, type Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -12,17 +12,22 @@ import {
   daylight,
   houseKey,
   LOCATION,
+  type Location,
   localHour,
   PERSON,
   type Percept,
   PLACE,
   perceive,
   presenceStimulus,
+  type ReadonlyWorldTruth,
   STATUS,
   spaceLight,
+  TRACE,
+  traceStrength,
+  traceVisible,
   watching,
 } from "../../sim/index.ts";
-import { buildPlayerView, type PlayerView, type SelfCue } from "../view/index.ts";
+import { buildPlayerView, type PlayerView, type SceneMark, type SelfCue } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -48,6 +53,18 @@ const CUES: Readonly<Record<string, SelfCue>> = {
 
 /** Cómo llama el personaje a su gente: la relación que sabe que tiene (sin nombres todavía). */
 /** Mirando a propósito se ve más (perception §4); si no, está relajado. */
+/** Las huellas que se ven donde está el personaje: con luz, y mientras no se hayan borrado. */
+function marksAt(truth: ReadonlyWorldTruth, at: Location, now: Tick, light: number): SceneMark[] {
+  if (light < 0.3) return [];
+  return truth.ids(TRACE).flatMap((id) => {
+    const t = truth.get(TRACE, id);
+    if (!t || t.at.hex !== at.hex || t.at.space !== at.space || !traceVisible(t, now)) return [];
+    return [
+      { kind: t.kind, age: traceStrength(t, now) > 0.5 ? ("fresh" as const) : ("old" as const) },
+    ];
+  });
+}
+
 function attentionOf(steps: readonly StepRecord[]): number {
   const looked = steps.findLast((s) => s.verb === "look");
   const effect = looked?.self.effect;
@@ -140,6 +157,7 @@ export function playerView(
       familiar: !options.intro,
       hour,
       light: node ? spaceLight(node, day) : day,
+      marks: marksAt(w.truth, at, now, node ? spaceLight(node, day) : day),
     },
     percepts: digest(percepts),
     steps: steps.map((s) => ({ verb: s.verb, self: s.self })),

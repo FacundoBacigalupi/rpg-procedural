@@ -4,6 +4,7 @@
 // la casa y quien pide es de la familia. La función es pura: devuelve qué decir y qué pasa.
 
 import type { AgentId, Rng } from "../../core/index.ts";
+import type { DeedKind } from "../law/index.ts";
 import type { SpeechAct } from "./acts.ts";
 import type { HeardClaim } from "./knowledge.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
@@ -24,6 +25,8 @@ export interface ReplyInput {
   /** Lo que el oyente sabe de primera mano de `id`: dónde está (clave de lugar) o si murió. */
   readonly direct: (id: AgentId) => { readonly where: string } | { readonly dead: true } | null;
   readonly heard: readonly HeardClaim[];
+  /** Lo peor que el oyente sabe que hizo quien habla (law §2): enfría el trato y cierra pedidos. */
+  readonly reproach?: DeedKind | null;
   /** Cómo llama el oyente a `id` y a un bien. */
   readonly nameOf: (id: AgentId) => string;
   readonly goodName: (good: string) => string;
@@ -52,7 +55,7 @@ export function decideReply(i: ReplyInput, at: number): Reply {
   const a = i.act;
   switch (a.kind) {
     case "greet":
-      return say("greet");
+      return say(i.reproach ? `greet.cold.${i.reproach}` : "greet");
     case "farewell":
       return say("farewell");
     case "ask": {
@@ -78,6 +81,7 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     case "request": {
       if (a.good === null) return say("request.unclear");
       const what = i.goodName(a.good);
+      if (i.reproach) return say(`request.refuse.${i.reproach}`, { what });
       const spare = i.held(a.good) - i.members * RESERVE_GRAMS_PER_MEMBER;
       if (!i.kin) return say("request.stranger", { what });
       if (spare < GIFT_GRAMS) return say("request.short", { what });

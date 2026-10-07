@@ -34,6 +34,7 @@ import {
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
 import { converseProcess } from "./converse.ts";
+import { deedsProcess } from "./deeds.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -100,6 +101,12 @@ export function lifeWorld(
       processes: [
         perceiveProcess({
           player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          statuses: parts.statuses,
+        }),
+        deedsProcess({
           map: parts.map,
           spaces: parts.spaces,
           clock: parts.clock,

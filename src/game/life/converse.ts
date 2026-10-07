@@ -24,6 +24,7 @@ import {
   goodUnit,
   HEARD,
   hear,
+  KNOWN_DEEDS,
   type Lexicon,
   LOCATION,
   PERSON,
@@ -41,6 +42,7 @@ import {
   setComponent,
   table,
   understand,
+  worstDeed,
 } from "../../sim/index.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
@@ -161,7 +163,15 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "decide",
-    reads: [PENDING.name, HEARD.name, PERSON.name, PERSON_NAME.name, LOCATION.name, ENTITY.name],
+    reads: [
+      PENDING.name,
+      HEARD.name,
+      KNOWN_DEEDS.name,
+      PERSON.name,
+      PERSON_NAME.name,
+      LOCATION.name,
+      ENTITY.name,
+    ],
     writes: [PENDING.name, HEARD.name],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
@@ -202,6 +212,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return { where: o.spaces.spaces.find((s) => s.key === at?.space)?.kind ?? "open" };
           },
           heard: truth.get(HEARD, me)?.claims ?? [],
+          reproach: worstDeed(truth.get(KNOWN_DEEDS, me), speaker)?.kind ?? null,
           nameOf: (id) => givenName(truth, id) ?? "ese",
           goodName: (id) => goodById(id)?.name ?? id,
           held: (id) => {

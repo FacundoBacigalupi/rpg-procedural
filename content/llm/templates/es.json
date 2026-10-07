@@ -15,6 +15,14 @@
     "id": "scene.room",
     "lines": ["Estás bajo techo, entre paredes de barro.", "Estás adentro, en un cuarto."]
   },
+  {
+    "id": "mark.blood.fresh",
+    "lines": ["Hay sangre fresca en el suelo.", "El suelo está manchado de sangre reciente."]
+  },
+  {
+    "id": "mark.blood.old",
+    "lines": ["Quedan manchas oscuras de sangre seca.", "Se ve una mancha vieja, de sangre."]
+  },
   { "id": "scene.home", "lines": ["Estás en tu casa.", "Estás en casa, entre tus cosas."] },
   { "id": "scene.yard", "lines": ["Estás en un patio.", "Estás en el patio, a cielo abierto."] },
   {

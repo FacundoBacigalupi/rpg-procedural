@@ -38,6 +38,7 @@ import {
   INNATE,
   ingest,
   injure,
+  KNOWN_DEEDS,
   LOCATION,
   type LocalMap,
   learnFromAttempt,
@@ -46,6 +47,7 @@ import {
   type Nutrition,
   nearestHex,
   nodeAt,
+  notoriety,
   opposingSkill,
   PERSON,
   PLACE,
@@ -167,7 +169,14 @@ export function actProcess(o: ActOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "act",
-    reads: [PLAN_STATE.name, ENTITY.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name],
+    reads: [
+      PLAN_STATE.name,
+      KNOWN_DEEDS.name,
+      ENTITY.name,
+      LOCATION.name,
+      BODY_STATE.name,
+      SKILL_STATE.name,
+    ],
     writes: [PLAN_STATE.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name, PENDING.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -251,6 +260,10 @@ function marketOf(
         : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
     harvestGramsPerHour: HARVEST_GRAMS_PER_HOUR,
     harvestGood: HARVEST_GOOD,
+    fame: notoriety(
+      truth.ids(PERSON).flatMap((id) => (id === me ? [] : [truth.get(KNOWN_DEEDS, id)])),
+      me,
+    ),
     ranks: {
       actor: rankOf(truth.get(STATUS, me), o.statuses),
       other: rankOf(otherStatus, o.statuses),
