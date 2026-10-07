@@ -139,7 +139,7 @@ Viven en `core/types` y `core/ids`. Todos los docs de sistema los usan con estos
 ```ts
 type Id<K extends EntityKind> = string & { readonly __kind: K };   // "agent:1042", asignado por contador determinista
 type EntityKind =
-  | "agent" | "org" | "household" | "item" | "lot" | "place" | "building" | "settlement"
+  | "agent" | "org" | "household" | "item" | "lot" | "place" | "building" | "work" | "settlement"
   | "cell" | "zone" | "plane" | "realm" | "spirit" | "text" | "commitment" | "case"
   | "pressure" | "belief" | "memory" | "event" | "journey" | "force" | "scheme" | "lineage";
 
@@ -276,7 +276,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `Lot`, `GoodId`, `Money`, `Market`, `Price` | `sim/economy` | economy |
 | `Tenure`, `RightBundle`, `Deed` | `sim/property` | property |
 | `Commitment`, `Oath` | `sim/contracts` | contracts |
-| `Genome`, `Household`, `Kinship` | `sim/family` | family-lineage |
+| `Genome`, `Household`, `Kinship` | `sim/family` | family-lineage. El genoma se guarda por `AgentId`, sin `GenomeId`. También son de este módulo `Innate`, `Trait` y `Demography` (con su contenido en `content/traits/` y `content/demography/`) y las tablas `family.*`. |
 | `Position`, `StatusNorm`, `Face` | `sim/social` | social-structure |
 | `CultureTrait`, `Prevalence` | `sim/culture` | culture |
 | `Language`, `Lexicon`, `Script` | `sim/language` | language |
@@ -304,6 +304,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `Chronicle` (dentro del mundo) | `sim/chronicles` | chronicle |
 | `GoldenFinger`, `TropeRule` | `sim/modes` | game-modes |
 | `RegionCell`, `Biome` | `worldgen/planet` | planet-gen |
+| `LocalPatch`, `LocalTerrain`, `VillageSite`, `SiteAnchor` | `worldgen/local` | planet-gen (nivel 1), settlements §2.1 |
 | `Era`, `EraTarget`, `EraMarker` | `worldgen/law` (lee `sim/technology`) | technology §9b |
 | `NewGameSetup`, `NovelSetup`, `EntryMode`, `Routine`, `PlayerGoal` | `game` | game-modes §1, player-loop |
 | `PlayerView`, `LocalLabel` | `game/view` | narration §2 |
@@ -392,13 +393,16 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 - **La CLI queda como herramienta** (pruebas, scripts, REPL del inspector) y para jugar en la Fase 1a.
 - **Propuesta: una UI web local mínima desde el cierre de la Fase 1** (no en la Fase 9): servidor Node local + Vite + React con chat, panel del personaje, bitácora y un mapa. Los paneles de creencias, la crónica y sobre todo los mapas del inspector (presiones, LOD, tiers) se ven y se depuran mucho mejor en el navegador que en PNG sueltos. Sin Electron ni Tauri: el navegador alcanza para un juego personal.
-- **Mapas:** canvas 2D al principio; deck.gl o PixiJS si hace falta (deck.gl dibuja hexágonos de H3 directo, ver §7.9).
+- **Mapas:** canvas 2D al principio; deck.gl o PixiJS si hace falta (la grilla es una Goldberg propia, ver §7.9: se dibuja con polígonos o por píxel como `npm run worldgen`).
 
-### 7.9 La grilla del planeta: evaluar H3
+### 7.9 La grilla del planeta: Goldberg propia (spike hecho, 2026-10-06)
 
-- planet-gen pide una geodésica hexagonal de ~40.000 celdas de nivel 0 con subdivisión local. **H3** (`h3-js`) es exactamente eso ya hecho y probado: su resolución 3 tiene unas 41.000 celdas, con jerarquía de 16 niveles (que encaja con las resoluciones de zona del LOD), vecinos, distancias, anillos y rellenado de polígonos. El tamaño del planeta solo cambia la escala en metros.
-- **Costo:** los hijos de una celda H3 no cubren exactamente al padre (la contención es aproximada), y la apertura es 7 (1 → 7 → 49 → 343 → 2.401 hijos) en lugar de un número libre.
-- **Propuesta:** un spike de un día en la Fase 1 (tarea de planet-gen mínima) que compare H3 con una Goldberg propia. Si la contención aproximada no rompe la conservación por celda (el ledger se lleva por celda hija), se usa H3.
+- planet-gen pide una geodésica hexagonal con subdivisión local. Se evaluó **H3** (`h3-js`): resolución 3 con ~41.000 celdas, jerarquía de 16 niveles, vecinos y anillos ya hechos.
+- **Spike y resultado: se descarta H3.** Tres razones medidas:
+  1. **Determinismo:** la geometría de `h3-js` usa la trigonometría de `Math` (compilada de C con Emscripten), que no está garantizada igual entre versiones de V8; el replay se rompería con una actualización de Node (§7.3).
+  2. **Conservación por celda:** el 6,49 % de las celdas de resolución 7 tienen el centro fuera de su padre de resolución 3. La contención aproximada obliga a decidir a mano a quién pertenece cada hija, y el ledger por celda (esencia, agua, población) queda atado a esa convención.
+  3. **Apertura fija de 7** (1 → 7 → 49 → 343 → 2.401): el nivel 1 tiene que medir ~1-3 km sobre celdas de ~175 km de planetas de radio variable, y con 7 no se puede elegir.
+- **Lo hecho (`src/worldgen/planet/grid.ts`):** icosaedro de frecuencia `n` (10n²+2 celdas, 12 pentágonos), ids canónicos por vértice (esquinas, aristas, interiores) que no dependen del orden de recorrido, vecinos ordenados por ángulo, áreas esféricas que suman 1, `locate` por caminata codiciosa (igual a la fuerza bruta en 20.000 puntos) y `refine(c, k)`: el nivel 1 es la red a frecuencia `n·k` y cada vértice fino es de la celda gruesa más cercana (empates al índice menor). Es una **partición exacta**: cada hija tiene un solo padre, así `apportion` del padre a sus hijas conserva al entero. Toda la trigonometría pasa por `core/math`. `k` es libre; el juego usa uno fijo por planeta (`localFactor`, ~2 km por hex) y `Lattice.neighborsAt` da los vecinos finos cruzando caras (`worldgen/local`).
 
 ### 7.10 Calidad del código
 
@@ -422,7 +426,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | Validación | Zod 4 + `z.toJSONSchema` para el LLM | Zod 3 → 4 |
 | LLM | interfaz OpenAI-compatible; Ollama → llama.cpp; un modelo residente | antes: dos modelos (7-8B + 12-14B) |
 | UI | CLI de herramienta; web local mínima al cierre de la Fase 1 | antes: web en la Fase 9 |
-| Grilla | H3 si pasa el spike | antes: Goldberg propia |
+| Grilla | Goldberg propia con nivel 1 por refinamiento exacto | spike: H3 descartado (§7.9) |
 | Lint | Biome + dependency-cruiser | antes: ESLint |
 | Tests | Vitest + fast-check | se suma fast-check |
 | CI | typecheck, lint, tests y hash de determinismo en Windows y Linux | se suma la segunda plataforma |

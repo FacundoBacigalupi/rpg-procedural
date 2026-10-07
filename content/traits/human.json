@@ -1,0 +1,136 @@
+[
+  {
+    "id": "reactivity",
+    "species": "human",
+    "name": "Reactividad",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "sociability",
+    "species": "human",
+    "name": "Sociabilidad",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "curiosity",
+    "species": "human",
+    "name": "Curiosidad",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "control",
+    "species": "human",
+    "name": "Control",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "warmth",
+    "species": "human",
+    "name": "Calidez",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "boldness",
+    "species": "human",
+    "name": "Audacia",
+    "group": "temperament",
+    "mean": 0,
+    "sd": 0.4,
+    "min": -1,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "intellect",
+    "species": "human",
+    "name": "Intelecto",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.5
+  },
+  {
+    "id": "perception",
+    "species": "human",
+    "name": "Percepción",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.45
+  },
+  {
+    "id": "willpower",
+    "species": "human",
+    "name": "Voluntad",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.4
+  },
+  {
+    "id": "memory",
+    "species": "human",
+    "name": "Memoria",
+    "group": "aptitude",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.45
+  },
+  {
+    "id": "height",
+    "species": "human",
+    "name": "Talla adulta",
+    "group": "body",
+    "unit": "cm",
+    "mean": 154,
+    "maleShift": 11,
+    "sd": 6,
+    "min": 125,
+    "max": 200,
+    "heritability": 0.8
+  },
+  {
+    "id": "constitution",
+    "species": "human",
+    "name": "Constitución",
+    "group": "body",
+    "mean": 0.5,
+    "sd": 0.15,
+    "min": 0,
+    "max": 1,
+    "heritability": 0.6
+  }
+]

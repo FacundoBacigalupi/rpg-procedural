@@ -1,0 +1,257 @@
+[
+  {
+    "id": "ice-sheet",
+    "name": "Casquete de hielo",
+    "where": "land",
+    "temperature": {
+      "max": -10
+    },
+    "priority": 50,
+    "color": "#f4f8fb",
+    "productivity": 0,
+    "habitability": 0,
+    "treeCover": 0
+  },
+  {
+    "id": "alpine",
+    "name": "Alta montaña",
+    "where": "land",
+    "elevation": {
+      "min": 3500
+    },
+    "priority": 40,
+    "color": "#9a8f86",
+    "productivity": 0.1,
+    "habitability": 0.1,
+    "treeCover": 0.05
+  },
+  {
+    "id": "tundra",
+    "name": "Tundra",
+    "where": "land",
+    "temperature": {
+      "max": 0
+    },
+    "priority": 30,
+    "color": "#b8c4b0",
+    "productivity": 0.15,
+    "habitability": 0.2,
+    "treeCover": 0.03
+  },
+  {
+    "id": "boreal-forest",
+    "name": "Taiga",
+    "where": "land",
+    "temperature": {
+      "min": 0,
+      "max": 6
+    },
+    "precipitation": {
+      "min": 300
+    },
+    "priority": 20,
+    "color": "#4f6e4a",
+    "productivity": 0.45,
+    "habitability": 0.45,
+    "treeCover": 0.7
+  },
+  {
+    "id": "cold-steppe",
+    "name": "Estepa fría",
+    "where": "land",
+    "temperature": {
+      "min": 0,
+      "max": 6
+    },
+    "precipitation": {
+      "max": 300
+    },
+    "priority": 20,
+    "color": "#b5ad84",
+    "productivity": 0.25,
+    "habitability": 0.4,
+    "treeCover": 0.06
+  },
+  {
+    "id": "temperate-desert",
+    "name": "Desierto templado",
+    "where": "land",
+    "temperature": {
+      "min": 6,
+      "max": 20
+    },
+    "precipitation": {
+      "max": 250
+    },
+    "priority": 20,
+    "color": "#d6c49a",
+    "productivity": 0.08,
+    "habitability": 0.2,
+    "treeCover": 0.02
+  },
+  {
+    "id": "temperate-grassland",
+    "name": "Pradera templada",
+    "where": "land",
+    "temperature": {
+      "min": 6,
+      "max": 20
+    },
+    "precipitation": {
+      "min": 250,
+      "max": 600
+    },
+    "priority": 20,
+    "color": "#a9b96a",
+    "productivity": 0.5,
+    "habitability": 0.85,
+    "treeCover": 0.12
+  },
+  {
+    "id": "temperate-forest",
+    "name": "Bosque templado",
+    "where": "land",
+    "temperature": {
+      "min": 6,
+      "max": 20
+    },
+    "precipitation": {
+      "min": 600,
+      "max": 1500
+    },
+    "priority": 20,
+    "color": "#5e8c4a",
+    "productivity": 0.7,
+    "habitability": 0.9,
+    "treeCover": 0.65
+  },
+  {
+    "id": "temperate-rainforest",
+    "name": "Bosque lluvioso templado",
+    "where": "land",
+    "temperature": {
+      "min": 6,
+      "max": 20
+    },
+    "precipitation": {
+      "min": 1500
+    },
+    "priority": 20,
+    "color": "#2f6b4f",
+    "productivity": 0.85,
+    "habitability": 0.6,
+    "treeCover": 0.85
+  },
+  {
+    "id": "hot-desert",
+    "name": "Desierto cálido",
+    "where": "land",
+    "temperature": {
+      "min": 20
+    },
+    "precipitation": {
+      "max": 300
+    },
+    "priority": 20,
+    "color": "#e3c27d",
+    "productivity": 0.05,
+    "habitability": 0.15,
+    "treeCover": 0.01
+  },
+  {
+    "id": "savanna",
+    "name": "Sabana",
+    "where": "land",
+    "temperature": {
+      "min": 20
+    },
+    "precipitation": {
+      "min": 300,
+      "max": 1000
+    },
+    "priority": 20,
+    "color": "#c2b45a",
+    "productivity": 0.55,
+    "habitability": 0.75,
+    "treeCover": 0.2
+  },
+  {
+    "id": "tropical-dry-forest",
+    "name": "Bosque tropical seco",
+    "where": "land",
+    "temperature": {
+      "min": 20
+    },
+    "precipitation": {
+      "min": 1000,
+      "max": 1800
+    },
+    "priority": 20,
+    "color": "#7f9a3e",
+    "productivity": 0.75,
+    "habitability": 0.8,
+    "treeCover": 0.5
+  },
+  {
+    "id": "tropical-rainforest",
+    "name": "Selva tropical",
+    "where": "land",
+    "temperature": {
+      "min": 20
+    },
+    "precipitation": {
+      "min": 1800
+    },
+    "priority": 20,
+    "color": "#1f6b2a",
+    "productivity": 1,
+    "habitability": 0.55,
+    "treeCover": 0.9
+  },
+  {
+    "id": "sea-ice",
+    "name": "Banquisa",
+    "where": "ocean",
+    "temperature": {
+      "max": -2
+    },
+    "priority": 30,
+    "color": "#dce9f2",
+    "productivity": 0.05,
+    "habitability": 0,
+    "treeCover": 0
+  },
+  {
+    "id": "shelf-sea",
+    "name": "Mar de plataforma",
+    "where": "ocean",
+    "elevation": {
+      "min": -1000
+    },
+    "priority": 10,
+    "color": "#4f86b8",
+    "productivity": 0.5,
+    "habitability": 0,
+    "treeCover": 0
+  },
+  {
+    "id": "deep-ocean",
+    "name": "Océano profundo",
+    "where": "ocean",
+    "priority": 0,
+    "color": "#1d3f6e",
+    "productivity": 0.15,
+    "habitability": 0,
+    "treeCover": 0
+  },
+  {
+    "id": "lake",
+    "name": "Lago",
+    "where": "lake",
+    "priority": 0,
+    "color": "#5a9bd0",
+    "productivity": 0.4,
+    "habitability": 0,
+    "treeCover": 0
+  }
+]

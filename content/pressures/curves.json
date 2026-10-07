@@ -1,0 +1,10 @@
+[
+  {
+    "id": "hunger",
+    "name": "hambre de un hogar",
+    "floor": 0.15,
+    "threshold": 0.6,
+    "steepness": 8,
+    "maxHazard": 0.05
+  }
+]

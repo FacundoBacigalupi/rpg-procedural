@@ -245,6 +245,50 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 - **Fase 3:** montaje para saltos de tiempo, textos dentro del mundo, sueños.
 - **Fase 4:** vocabulario de cultivo por escuela; percepción interna y de cultivo narrada con incertidumbre.
 - **Fase 1 (además):** proveedor local (Ollama o similar) con gramática JSON para el parser; banco de pruebas de modelos.
+  - **Hecho, el parser.** Hay dos esquemas por catálogo, y los tests verifican que acepten y rechacen lo mismo:
+    - `structuralDraftFor` va como `response_format`. Es una variante de `do` por verbo, con sus roles, el tipo de argumento y los modos como literales, más las plantillas. Solo admite `do`, `seq`, `until` y `template`. El JSON Schema tiene menos de 20k caracteres.
+    - `intentDraftFor` es el `IntentDraft` más `draftCatalogProblems`. Una unión no explica por qué rechaza, este sí: "move has no role \"where\" (roles: to)". Ese mensaje vuelve al modelo cuando regenera.
+  - **El prompt.** Las reglas van en inglés y el texto del jugador en español. El orden es: reglas, una línea por verbo con roles y modos, las plantillas, los ejemplos `shot` como pares usuario/asistente, y al final la escena, las intenciones recientes y el texto. Todo menos lo del final es fijo por catálogo y se puede cachear.
+  - **Las respuestas.** Pueden traer `<think>` o un cerco Markdown; `jsonPayload` los saca antes de parsear.
+  - **Hablar en una secuencia.** Cuando hablar es un paso de una secuencia, se usa el verbo `speak` con `content`, porque `speech` va antes del plan.
+  - **El banco (`npm run llm-bench`).** Puntúa por campo: tipo, pasos, roles, referencias por palabras como `resolveRef`, habla, descartado y sin verbo. Dos borradores que dan el mismo plan valen lo mismo.
+  - **El cambio de modelo.** `--swap` alterna una narración del residente con un parseo y compara contra parsear con el mismo residente; la diferencia es el costo del cambio por turno. Para que el residente no se descargue, Ollama tiene que correr con `OLLAMA_KEEP_ALIVE=-1`.
+  - **Resultados (2026-10-07, RTX 4070 Super 12 GB, Ollama):**
+
+    | modelo | válido | acierta | medio | p95 | tok/s |
+    |---|---|---|---|---|---|
+    | qwen3:4b | 100% | 73% | 0,74 s | 1,59 s | 120 |
+    | qwen3:14b | 100% | 63% | 1,08 s | 2,15 s | 44 |
+    | gemma3:12b (antes de los arreglos) | 97% | 57% | 2,06 s | 6,43 s | 28 |
+
+    - **Razonamiento apagado.** qwen3 piensa antes de contestar: ~3000 tokens y 25-30 s por parseo. El cliente local manda `reasoning_effort: "none"` (`NO_THINKING` en `llm/jobs`); `think: false` no hace nada en la API compatible con OpenAI. `think: true` en el proveedor (o `--think` en el banco) lo vuelve a prender.
+    - **Tope de tokens.** `PARSER_MAX_TOKENS = 768`: el ejemplo más largo son ~150 tokens, y sin tope la salida restringida a veces entraba en bucle hasta el timeout.
+    - **Esquema estructural más estricto que el genérico:** la clase de cada referencia (`person`/`group`, `place`, `object`/`lot` según el rol) y el `is` de `until` son obligatorios. Los modelos los omitían.
+    - **Ejemplos que más rindieron:** uno con un verbo sin sus roles opcionales (los modelos inventaban "espero 1 segundo"; la regla escrita sola no alcanzó) y uno con `speak` con destinatario y contenido en un solo paso. Con eso el 4b pasó de 60% a 73% y el 14b de 57% a 63%.
+    - **Decisión:** qwen3:14b residente para parser y narración, como estaba aprobado. El 4b parsea mejor y 3 veces más rápido, y 2,5 + 9,3 GB podrían entrar juntos en 12 GB; si `--swap` (sin medir todavía) da un costo chico, el parser pasa al 4b.
+    - **Fallas que quedan:** `until` con una hora del día sale como duración fija; el parentesco va como rasgo y no como `relation`; `unmapped` con palabras que sí se mapearon. Parte es el puntaje estricto, no el modelo.
+- **Fase 1, el narrador (hecho):**
+  - **La vista.** `game/view` tiene `buildPlayerView(ViewInput)`, que arma una `PlayerView` con marca de tipo: sin la marca no se compila. Parte de los percepts del jugador (tira si llega uno de otra mente), de los `SelfReport` de sus pasos, de la escena y de los conocidos (nombre y relación).
+    - Cada conocido tiene una sola etiqueta `eN`. Un desconocido tiene una etiqueta nueva en cada percept, porque el personaje no sabe si es el mismo.
+    - La figura va estructurada (`{sex, age}`), no como una frase. La seguridad va en tres bandas (`sure`/`likely`/`unsure`) y la luz y la hora como bandas.
+    - No pasan ids reales, errores, confianzas, márgenes ni factores. Un test lo verifica sobre el JSON.
+    - En Fase 1 la vista no lleva creencias ni lo oído de segunda mano: eso entra con el bucle del jugador.
+  - **El pedido.** `llm/narration` tiene `narrationRequest(view, style, ambience)`, que calcula el modo (escena/acción), lo que hay que nombrar (`mustMention`: las etiquetas de los resultados y los percepts claros) y lo que se puede nombrar.
+    - `narratorSystem(style)` depende solo del estilo, así que el prefijo se cachea igual entre turnos (hay un test de eso).
+    - El pedido de cada turno va como JSON en el mensaje del usuario.
+    - Las texturas de ambiente salen de `content/llm/ambience/` con `ambienceOf`, que filtra por tipo de lugar, espacio, adentro, hora y luz.
+  - **El validador.** `llm/validate` tiene `validateNarration`. Revisa las marcas `{{eN|palabras}}` (formato e ids existentes) y la lista blanca: una mayúscula fuera de inicio de oración tiene que estar en el léxico, en los nombres de las etiquetas o entre comillas. También revisa:
+    - que no se filtren nombres del mundo (`worldNames`) ni cifras que no estén citadas;
+    - que una marca no lleve el nombre de otra etiqueta;
+    - que estén todas las de `mustMention`;
+    - que no aparezcan palabras de meta-juego (jugador, tirada, HP…);
+    - el largo, según modo × detalle.
+
+    Los problemas van en inglés y vuelven al modelo cuando regenera.
+  - **El narrador.** `narrate(jobs, request, {templates, rng})` pide, valida y regenera una vez. Si no pasa, o si no hay modelo, cae a las plantillas. Devuelve el texto sin marcas, el texto marcado y de dónde salió.
+  - **Las plantillas.** Están en `content/llm/templates/es.json`, en segunda persona, presente y con voseo. `llm/templates` (`TemplateBook`, `renderView`) arma el mismo formato marcado, así que pasa por el mismo validador: un test lo corre sobre todos los efectos, percepts y señales del cuerpo con 3 seeds. Las variantes las elige el rng con la clave del turno, así el replay da la misma prosa.
+  - **El parser sin red.** `llm/grammar` (`parseCommand`) es una gramática de comandos en español. Entiende verbos del catálogo, secuencias con "y"/"después", "hasta que…", duraciones, modos, referencias ("mi tío" como `relation`), habla citada o con "que", metas y preguntas fuera del personaje. Saca 36 de los 39 ejemplos del parser; los que faltan necesitan la escena o las intenciones recientes. `parseIntentOrGrammar` la usa cuando la cadena del trabajo llega a las plantillas, validando con el mismo esquema.
+  - **Falta:** las aclaraciones del parser, la memoria de continuidad y medir `--swap` con el narrador real.
 - **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo ([language.md](language.md)).
 - **Fase 9:** fine-tune LoRA propio con ejemplos reales del juego.
 

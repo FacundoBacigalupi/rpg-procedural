@@ -1,0 +1,8 @@
+[
+  {
+    "id": "grain",
+    "name": "grano de la cosecha (mijo, arroz o trigo según la tierra)",
+    "kcalPerGram": 3.4,
+    "waterPerGram": 0.12
+  }
+]

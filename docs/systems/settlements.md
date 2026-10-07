@@ -73,6 +73,7 @@ type SettlementAnchor =
   | { kind: "market"; market: MarketId };                   // la feria que se volvió permanente
 ```
 
+- **Implementado (Fase 1, Hito 1a):** la aldea inicial sale del terreno real (decisión aprobada 2026-10-06): `worldgen/local/site.ts` puntúa los hexes de la celda que eligió `pickVillageSite` y devuelve las anclas que el terreno puede dar (`water` de río, arroyo, laguna, mar o napa; `farmland`; `resource` madera; `harbor`), cada una con su evento causa del planeta, y el evento `settlement.founded` con esas causas. Las anclas que vienen de la historia (secta, mercado, estado) llegan con la Fase 7. Ver planet-gen §Implementación.
 - **Cada ancla tiene fuerza** (cuánta gente sostiene) y **se puede perder** (el río cambia de cauce, la mina se agota, la secta se muda, la ruta se desvía). La fuerza total de las anclas da la capacidad del lugar (§3).
 
 ### 2.2 Fundar
@@ -275,6 +276,15 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 - **Fase 6:** montañas de secta con formaciones, obras públicas del estado (diques, canales, graneros, murallas), pueblos bajo protección.
 - **Fase 7:** fundación, crecimiento, decaimiento y abandono en la historia; ruinas con estratos y reuso de materiales; mitos de fundación.
 - **Fase 8:** ciudades grandes con LOD de barrios completo, nómadas y campamentos.
+
+## Implementación
+
+**Fase 1 (hecha): la aldea inicial** — `src/sim/settlements/`.
+- `defs.ts`: `MATERIALS`, `BUILDING_TYPES` y `WORK_TYPES` (content `materials`, `buildings`, `works`). Un material dice de dónde sale (`forest`, `fields` o `ground`: solo se usan los que el sitio tiene cerca), gramos por m², desgaste anual y qué barrera hace como pared. Un edificio tiene cuartos (el primero es el principal) y componentes (`foundation`, `walls`, `roof`, `door`) con materiales posibles y pesos; las viviendas se eligen por `minMembers` del hogar (la más grande que le cabe), las comunales por `perPeople`. El pozo lleva piedra y litros por día; el camino no lleva masa.
+- `tables.ts`: `SETTLEMENT` (`layout`, anclas con causa), `BUILDING` (tipo, posición en metros desde la plaza, dueño, mantenedor, hogar, grafo con entrada y puerta, componentes con materiales de origen, condición, calidad y defectos) y `WORK`.
+- `seed.ts`: `seedSettlement` en el armado de la vida. Orden: comunales (con los fundadores), una casa por hogar vivo (en el tick en que el hogar llegó), pozo y caminos. Cada obra es un evento `settlement.materials_gathered` (causas: el evento del ancla que dio el material y el origen del dueño) más `settlement.built`; los caminos nacen de `settlement.path_worn`. Los gramos salen de la fuente externa `seed` del ledger a la cuenta del edificio (o del asentamiento, para el pozo). Todo con `fork("settlement", …, id)` del seed, sin estado fuera de la verdad.
+- `spaces.ts`: `settlementSpaces` deriva el grafo de los edificios vivos (plaza + cuartos; la puerta a la plaza es el vano de las casas o la puerta cerrada del granero). Sin edificios guardados cae a `villageSpaces`, así los guardados anteriores siguen andando.
+- Decisiones: los edificios están todos desde el principio (los hogares que llegaron antes tienen casa más vieja); la condición de cada componente es `exp(-desgaste × años desde la última reparación)` con la última reparación sorteada dentro del ciclo del tipo; el 20 % de los componentes trae un defecto oculto que ningún sistema lee todavía.
 
 ## Tests
 

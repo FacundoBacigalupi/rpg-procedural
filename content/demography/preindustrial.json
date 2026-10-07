@@ -1,0 +1,45 @@
+[
+  {
+    "id": "human.preindustrial-village",
+    "species": "human",
+    "name": "Aldea agrícola preindustrial",
+    "maleBirthRatio": 0.512,
+    "mortality": [
+      { "fromAge": 0, "female": 0.17, "male": 0.19 },
+      { "fromAge": 1, "female": 0.035, "male": 0.037 },
+      { "fromAge": 5, "female": 0.008, "male": 0.008 },
+      { "fromAge": 15, "female": 0.009, "male": 0.011 },
+      { "fromAge": 40, "female": 0.015, "male": 0.018 },
+      { "fromAge": 55, "female": 0.03, "male": 0.035 },
+      { "fromAge": 65, "female": 0.06, "male": 0.07 },
+      { "fromAge": 75, "female": 0.13, "male": 0.15 },
+      { "fromAge": 85, "female": 0.27, "male": 0.3 }
+    ],
+    "fertility": [
+      { "fromAge": 15, "rate": 0.2 },
+      { "fromAge": 20, "rate": 0.3 },
+      { "fromAge": 25, "rate": 0.28 },
+      { "fromAge": 30, "rate": 0.24 },
+      { "fromAge": 35, "rate": 0.18 },
+      { "fromAge": 40, "rate": 0.09 },
+      { "fromAge": 45, "rate": 0.01 },
+      { "fromAge": 50, "rate": 0 }
+    ],
+    "maternalDeath": 0.01,
+    "union": {
+      "women": { "from": 16, "to": 45 },
+      "men": { "from": 18, "to": 60 },
+      "rate": 0.4,
+      "preferredGap": 4,
+      "outsideRate": 0.15,
+      "outsideFrom": { "women": 20, "men": 23 }
+    },
+    "founding": {
+      "yearsAgo": { "min": 60, "max": 80 },
+      "households": { "min": 8, "max": 12 },
+      "wifeAge": { "min": 16, "max": 30 },
+      "husbandAge": { "min": 18, "max": 35 }
+    },
+    "land": { "peoplePerFarmHex": 6, "minCapacity": 40, "crowdingFrom": 0.6 }
+  }
+]

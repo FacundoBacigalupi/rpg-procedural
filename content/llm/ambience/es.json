@@ -1,0 +1,37 @@
+[
+  {
+    "id": "fields.day",
+    "when": { "placeKinds": ["fields"], "light": ["bright", "dim"] },
+    "phrases": ["olor a tierra removida", "el viento mueve los tallos", "un grillo en algún lado"]
+  },
+  {
+    "id": "forest.dark",
+    "when": { "placeKinds": ["forest"], "light": ["dark"] },
+    "phrases": ["ramas que crujen", "olor a hojas húmedas", "el bosque cerrado"]
+  },
+  {
+    "id": "forest.day",
+    "when": { "placeKinds": ["forest"], "light": ["bright", "dim"] },
+    "phrases": ["luz que se cuela entre las hojas", "olor a resina", "pájaros entre las copas"]
+  },
+  {
+    "id": "indoor",
+    "when": { "indoor": true },
+    "phrases": ["olor a humo viejo", "el piso de tierra apisonada"]
+  },
+  {
+    "id": "night",
+    "when": { "times": ["night"] },
+    "phrases": ["perros que ladran a lo lejos", "el frío de la noche"]
+  },
+  {
+    "id": "village.day",
+    "when": { "placeKinds": ["village"], "indoor": false, "light": ["bright"] },
+    "phrases": ["gallinas que escarban", "humo de los fogones", "voces que llegan de las casas"]
+  },
+  {
+    "id": "water",
+    "when": { "placeKinds": ["water"] },
+    "phrases": ["el rumor del agua", "olor a barro de orilla"]
+  }
+]

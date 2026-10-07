@@ -1,0 +1,945 @@
+[
+  {
+    "id": "shot-move",
+    "shot": true,
+    "text": "voy al bosque",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "move",
+        "args": [
+          {
+            "role": "to",
+            "ref": {
+              "text": "el bosque",
+              "kind": "place",
+              "features": ["bosque"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "shot-wait-bare",
+    "shot": true,
+    "text": "me siento a esperar",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "wait",
+        "args": []
+      }
+    },
+    "notes": "los roles opcionales que el jugador no nombra quedan afuera: sin duración inventada"
+  },
+  {
+    "id": "shot-go-tell",
+    "shot": true,
+    "text": "voy a la herrería y le digo al herrero que necesito un cuchillo",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "la herrería",
+                  "kind": "place",
+                  "features": ["herrería"]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "do",
+            "verb": "speak",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "el herrero",
+                  "kind": "person",
+                  "features": ["herrero"]
+                }
+              },
+              {
+                "role": "content",
+                "text": "Necesito un cuchillo."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "notes": "hablar en una secuencia: un solo paso speak con destinatario y contenido juntos"
+  },
+  {
+    "id": "shot-ask-strip",
+    "shot": true,
+    "text": "le pregunto al viejo del puesto de té si vio a mi hermana y me cuenta todo",
+    "scene": "Estás en la plaza. Un viejo de barba gris atiende un puesto de té. Dos chicos juegan cerca del pozo.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Vio a mi hermana?",
+        "to": {
+          "text": "el viejo del puesto de té",
+          "kind": "person",
+          "features": ["viejo", "puesto de té"]
+        }
+      },
+      "stripped": ["me cuenta todo"]
+    },
+    "notes": "solo habla: va en speech; el resultado deseado se descarta"
+  },
+  {
+    "id": "shot-gather-until",
+    "shot": true,
+    "text": "voy al bosque y junto hierbas hasta que oscurezca",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "el bosque",
+                  "kind": "place",
+                  "features": ["bosque"]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "until",
+            "body": {
+              "kind": "do",
+              "verb": "gather",
+              "args": [
+                {
+                  "role": "what",
+                  "text": "hierbas"
+                }
+              ]
+            },
+            "cond": {
+              "kind": "time",
+              "text": "hasta que oscurezca",
+              "is": {
+                "kind": "dark"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "shot-goal",
+    "shot": true,
+    "text": "quiero llegar a ser inmortal",
+    "expect": {
+      "kind": "goal",
+      "text": "llegar a ser inmortal"
+    }
+  },
+  {
+    "id": "shot-steal",
+    "shot": true,
+    "text": "le robo la bolsa al mercader sin que me vea",
+    "scene": "Estás en el mercado. Una vendedora de arroz grita precios; un mercader gordo cuenta monedas junto a su carro.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "template",
+        "template": "steal",
+        "params": {
+          "victim": {
+            "role": "victim",
+            "ref": {
+              "text": "el mercader",
+              "kind": "person",
+              "features": ["mercader"]
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "shot-fly",
+    "shot": true,
+    "text": "vuelo hasta la montaña",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "move",
+        "args": [
+          {
+            "role": "to",
+            "ref": {
+              "text": "la montaña",
+              "kind": "place",
+              "features": ["montaña"]
+            }
+          }
+        ]
+      },
+      "unmapped": ["volando"]
+    },
+    "notes": "fuera del catálogo: lo más cercano y lo que sobra en unmapped"
+  },
+  {
+    "id": "shot-meta",
+    "shot": true,
+    "text": "guardar partida",
+    "expect": {
+      "kind": "meta",
+      "text": "guardar partida"
+    }
+  },
+  {
+    "id": "look",
+    "text": "miro alrededor",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "look",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "look-careful",
+    "text": "observo con mucha atención la plaza",
+    "scene": "Estás en la plaza. Un viejo de barba gris atiende un puesto de té. Dos chicos juegan cerca del pozo.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "look",
+        "args": [],
+        "manner": ["careful"]
+      }
+    }
+  },
+  {
+    "id": "search-father",
+    "text": "busco a mi padre",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "search",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "mi padre",
+              "kind": "person",
+              "features": [],
+              "relation": {
+                "to": "self",
+                "rel": "padre"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "notes": "relación con el personaje"
+  },
+  {
+    "id": "work-hours",
+    "text": "trabajo la tierra cuatro horas",
+    "scene": "Estás en el campo de tu familia. El sol está alto.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "work",
+        "args": [
+          {
+            "role": "for",
+            "duration": {
+              "amount": 4,
+              "unit": "hour"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "rest-nap",
+    "text": "me tiro a dormir una siesta de dos horas",
+    "scene": "Estás en tu casa, en la estera.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "rest",
+        "args": [
+          {
+            "role": "for",
+            "duration": {
+              "amount": 2,
+              "unit": "hour"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "wait-dark",
+    "text": "espero hasta que anochezca",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "until",
+        "body": {
+          "kind": "do",
+          "verb": "wait",
+          "args": []
+        },
+        "cond": {
+          "kind": "time",
+          "text": "hasta que anochezca",
+          "is": {
+            "kind": "dark"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wait-hidden",
+    "text": "me quedo escondido esperando",
+    "scene": "Estás detrás del granero. Se oyen pasos en el camino.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "wait",
+        "args": [],
+        "manner": ["covert"]
+      }
+    }
+  },
+  {
+    "id": "strike-drunk",
+    "text": "le pego una piña al borracho",
+    "scene": "En la taberna, un borracho te empuja y se ríe.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "strike",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "el borracho",
+              "kind": "person",
+              "features": ["borracho"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "strike-bigger",
+    "text": "le pego al más grande de los dos",
+    "scene": "Dos hombres te cierran el paso en el camino: uno alto y ancho, otro flaco con un palo.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "strike",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "el más grande",
+              "kind": "person",
+              "features": ["grande"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "strike-careful",
+    "text": "lo ataco con cuidado, buscando un hueco",
+    "scene": "Un bandido con un cuchillo te mira desde el borde del camino.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "strike",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "el bandido",
+              "kind": "person",
+              "features": ["bandido"]
+            }
+          }
+        ],
+        "manner": ["careful"]
+      }
+    }
+  },
+  {
+    "id": "trade-smith",
+    "text": "le ofrezco al herrero cambiarle hongos por un cuchillo",
+    "scene": "Estás en la herrería. El herrero martilla una hoz.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "trade",
+        "args": [
+          {
+            "role": "with",
+            "ref": {
+              "text": "el herrero",
+              "kind": "person",
+              "features": ["herrero"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "take-basket",
+    "text": "agarro la canasta",
+    "scene": "Estás en la cocina. Hay una canasta vacía sobre la mesa.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "take",
+        "args": [
+          {
+            "role": "what",
+            "text": "la canasta"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "take-sleeping",
+    "text": "le saco despacito la plata al viejo que duerme",
+    "scene": "El viejo del puesto de té dormita en su banco; su bolsa cuelga del cinto.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "take",
+        "args": [
+          {
+            "role": "from",
+            "ref": {
+              "text": "el viejo",
+              "kind": "person",
+              "features": ["viejo"]
+            }
+          },
+          {
+            "role": "what",
+            "text": "la plata"
+          }
+        ],
+        "manner": ["covert"]
+      }
+    }
+  },
+  {
+    "id": "run-well",
+    "text": "corro hasta el pozo",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "move",
+        "args": [
+          {
+            "role": "to",
+            "ref": {
+              "text": "el pozo",
+              "kind": "place",
+              "features": ["pozo"]
+            }
+          }
+        ],
+        "manner": ["fast"]
+      }
+    }
+  },
+  {
+    "id": "walk-careful",
+    "text": "camino despacio y con cuidado hasta el puente",
+    "scene": "Estás en la orilla del río; el puente de tablas está a unos cien pasos.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "move",
+        "args": [
+          {
+            "role": "to",
+            "ref": {
+              "text": "el puente",
+              "kind": "place",
+              "features": ["puente"]
+            }
+          }
+        ],
+        "manner": ["careful"]
+      }
+    }
+  },
+  {
+    "id": "market-ask",
+    "text": "voy al mercado y le pregunto a la vendedora cuánto cuesta el arroz",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "el mercado",
+                  "kind": "place",
+                  "features": ["mercado"]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "do",
+            "verb": "speak",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "la vendedora",
+                  "kind": "person",
+                  "features": ["vendedora"]
+                }
+              },
+              {
+                "role": "content",
+                "text": "¿Cuánto cuesta el arroz?"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "notes": "hablar como paso de una secuencia: el verbo speak con content, no speech"
+  },
+  {
+    "id": "persuade-strip",
+    "text": "lo convenzo de que me preste la azada",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa, con una azada al lado.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Me prestás la azada?",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        }
+      },
+      "stripped": ["lo convenzo"]
+    }
+  },
+  {
+    "id": "other-acts-strip",
+    "text": "le pido plata al mercader y me la da",
+    "scene": "Estás en el mercado. Una vendedora de arroz grita precios; un mercader gordo cuenta monedas junto a su carro.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Me das algo de plata?",
+        "to": {
+          "text": "el mercader",
+          "kind": "person",
+          "features": ["mercader"]
+        }
+      },
+      "stripped": ["me la da"]
+    },
+    "notes": "los otros deciden solos"
+  },
+  {
+    "id": "find-strip",
+    "text": "encuentro la hierba de la vida",
+    "scene": "Estás en el bosque, entre pinos. Hay hongos al pie de los troncos y se oye un arroyo.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "gather",
+        "args": [
+          {
+            "role": "what",
+            "text": "la hierba de la vida"
+          }
+        ]
+      },
+      "stripped": ["encuentro la hierba de la vida"]
+    }
+  },
+  {
+    "id": "ooc-time",
+    "text": "¿cuánto tiempo pasó desde que salí de casa?",
+    "expect": {
+      "kind": "question_ooc",
+      "text": "¿cuánto tiempo pasó desde que salí de casa?"
+    }
+  },
+  {
+    "id": "meta-inspector",
+    "text": "abrir el inspector",
+    "expect": {
+      "kind": "meta",
+      "text": "abrir el inspector"
+    }
+  },
+  {
+    "id": "goal-revenge",
+    "text": "algún día voy a vengar a mi padre",
+    "expect": {
+      "kind": "goal",
+      "text": "vengar a mi padre"
+    }
+  },
+  {
+    "id": "meditate-unmapped",
+    "text": "medito para absorber el qi del cielo y la tierra",
+    "scene": "Estás sentado en tu estera, de noche.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "rest",
+        "args": []
+      },
+      "unmapped": ["meditar para absorber el qi"]
+    }
+  },
+  {
+    "id": "say-wu",
+    "text": "le digo a Wu: \"mañana vamos al río\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa, con una azada al lado.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Mañana vamos al río.",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        }
+      }
+    }
+  },
+  {
+    "id": "shout",
+    "text": "grito \"¡auxilio!\"",
+    "scene": "Estás solo en el camino del bosque; algo se mueve entre los arbustos.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¡Auxilio!"
+      }
+    }
+  },
+  {
+    "id": "again",
+    "text": "otra vez",
+    "scene": "Estás en el bosque, entre pinos. Hay hongos al pie de los troncos y se oye un arroyo.",
+    "recent": ["juntar hongos en el bosque"],
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "gather",
+        "args": [
+          {
+            "role": "what",
+            "text": "hongos"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "until-found",
+    "text": "sigo buscando hongos hasta encontrar algo",
+    "scene": "Estás en el bosque, entre pinos. Hay hongos al pie de los troncos y se oye un arroyo.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "until",
+        "body": {
+          "kind": "do",
+          "verb": "gather",
+          "args": [
+            {
+              "role": "what",
+              "text": "hongos"
+            }
+          ]
+        },
+        "cond": {
+          "kind": "self",
+          "text": "hasta encontrar algo",
+          "is": {
+            "kind": "succeeded"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "uncle-ask",
+    "text": "voy a la casa de mi tío Bo y le pido que me enseñe a cazar",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "la casa de mi tío Bo",
+                  "kind": "place",
+                  "features": ["casa", "tío Bo"]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "do",
+            "verb": "speak",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "mi tío Bo",
+                  "kind": "person",
+                  "features": ["Bo"]
+                }
+              },
+              {
+                "role": "content",
+                "text": "¿Me enseñás a cazar?"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "wait-then-go",
+    "text": "espero media hora y después voy al pozo",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "wait",
+            "args": [
+              {
+                "role": "for",
+                "duration": {
+                  "amount": 30,
+                  "unit": "minute"
+                }
+              }
+            ]
+          },
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "el pozo",
+                  "kind": "place",
+                  "features": ["pozo"]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "sleep-dawn",
+    "text": "me voy a dormir hasta que amanezca",
+    "scene": "Estás en tu casa; afuera ya es de noche.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "until",
+        "body": {
+          "kind": "do",
+          "verb": "rest",
+          "args": []
+        },
+        "cond": {
+          "kind": "time",
+          "text": "hasta que amanezca",
+          "is": {
+            "kind": "light"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "eat-meal",
+    "text": "me siento a comer",
+    "scene": "Estás en tu casa, a la hora de comer. Hay grano guardado y un cántaro de agua.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "eat",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "drink-jug",
+    "text": "bebo agua del cántaro",
+    "scene": "Estás en tu casa, a la hora de comer. Hay grano guardado y un cántaro de agua.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "drink",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "tend-self",
+    "text": "me limpio la herida con cuidado",
+    "scene": "Estás en tu casa; te cortaste la mano trabajando.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "tend",
+        "args": [],
+        "manner": ["careful"]
+      }
+    }
+  },
+  {
+    "id": "shot-rest-dawn",
+    "shot": true,
+    "text": "descanso hasta que salga el sol",
+    "scene": "Estás en tu casa; afuera ya es de noche.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "until",
+        "body": {
+          "kind": "do",
+          "verb": "rest",
+          "args": []
+        },
+        "cond": {
+          "kind": "time",
+          "text": "hasta que salga el sol",
+          "is": {
+            "kind": "light"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "shot-search-mother",
+    "shot": true,
+    "text": "busco a mi madre",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "search",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "mi madre",
+              "kind": "person",
+              "features": [],
+              "relation": {
+                "to": "self",
+                "rel": "madre"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "notes": "parentesco va en relation, no en features"
+  }
+]

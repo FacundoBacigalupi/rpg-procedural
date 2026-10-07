@@ -1,0 +1,19 @@
+[
+  {
+    "id": "well",
+    "name": "pozo de piedra",
+    "kind": "well",
+    "material": "stone",
+    "grams": 2400000,
+    "litersPerDay": 4000,
+    "repairYears": 8,
+    "decayPerYear": 0.01
+  },
+  {
+    "id": "dirt-road",
+    "name": "camino de tierra",
+    "kind": "road",
+    "repairYears": 2,
+    "decayPerYear": 0.08
+  }
+]

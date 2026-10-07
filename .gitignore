@@ -19,6 +19,7 @@ saves/
 logs/
 *.log
 sim-reports/
+maps/
 
 # editor / SO
 .vscode/*

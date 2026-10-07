@@ -185,7 +185,7 @@ export interface PostingDraft {
 }
 
 /** Lo que un proceso puede leer del ledger. */
-export type ReadonlyLedger = Pick<Ledger, "balance" | "total">;
+export type ReadonlyLedger = Pick<Ledger, "balance" | "holdings" | "total">;
 
 export interface ProcessResult {
   readonly changes?: readonly StateChange[];
@@ -211,6 +211,11 @@ export interface ProcessContext {
   readonly rng: Rng;
   /** El ítem que disparó la corrida, si fue agendada. */
   readonly item: ScheduledItem | undefined;
+  /**
+   * Los eventos que se asentaron en este paso, para los procesos `perceive` con cadencia
+   * `onEvent` (corren al cerrar el paso, solo si hubo alguno); vacío para todo lo demás.
+   */
+  readonly recent: readonly Event[];
   /** Un id provisional para algo que esta corrida crea (ver `isDraftRef`). */
   newId<K extends Exclude<EntityKind, "event">>(kind: K): Id<K>;
 }

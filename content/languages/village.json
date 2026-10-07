@@ -1,0 +1,48 @@
+[
+  {
+    "id": "village.hills",
+    "name": "lengua de las colinas",
+    "consonants": [
+      { "id": "p", "rom": "p", "weight": 3, "coda": false },
+      { "id": "t", "rom": "t", "weight": 4, "coda": false },
+      { "id": "k", "rom": "k", "weight": 4, "coda": false },
+      { "id": "b", "rom": "b", "weight": 2, "coda": false },
+      { "id": "d", "rom": "d", "weight": 2, "coda": false },
+      { "id": "g", "rom": "g", "weight": 2, "coda": false },
+      { "id": "m", "rom": "m", "weight": 4, "coda": false },
+      { "id": "n", "rom": "n", "weight": 5, "coda": true },
+      { "id": "ng", "rom": "ng", "weight": 2, "coda": true },
+      { "id": "s", "rom": "s", "weight": 3, "coda": false },
+      { "id": "sh", "rom": "sh", "weight": 2, "coda": false },
+      { "id": "ch", "rom": "ch", "weight": 2, "coda": false },
+      { "id": "h", "rom": "h", "weight": 3, "coda": false },
+      { "id": "l", "rom": "l", "weight": 3, "coda": false },
+      { "id": "r", "rom": "r", "weight": 2, "coda": true },
+      { "id": "y", "rom": "y", "weight": 2, "coda": false },
+      { "id": "w", "rom": "w", "weight": 2, "coda": false },
+      { "id": "z", "rom": "z", "weight": 1, "coda": false }
+    ],
+    "vowels": [
+      { "id": "a", "rom": "a", "weight": 5 },
+      { "id": "e", "rom": "e", "weight": 4 },
+      { "id": "i", "rom": "i", "weight": 4 },
+      { "id": "o", "rom": "o", "weight": 4 },
+      { "id": "u", "rom": "u", "weight": 4 },
+      { "id": "ai", "rom": "ai", "weight": 1 },
+      { "id": "ao", "rom": "ao", "weight": 1 },
+      { "id": "ei", "rom": "ei", "weight": 1 },
+      { "id": "ou", "rom": "ou", "weight": 1 }
+    ],
+    "consonantCount": { "min": 11, "max": 15 },
+    "vowelCount": { "min": 5, "max": 7 },
+    "templates": [
+      { "onset": true, "coda": false, "weight": 6 },
+      { "onset": true, "coda": true, "weight": 4 },
+      { "onset": false, "coda": false, "weight": 1 },
+      { "onset": false, "coda": true, "weight": 0.5 }
+    ],
+    "rootSyllables": [0.7, 0.3],
+    "compound": { "headFirst": false },
+    "names": { "order": "family-first", "compoundGivenChance": 0.55 }
+  }
+]

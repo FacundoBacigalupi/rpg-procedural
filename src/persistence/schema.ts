@@ -6,7 +6,7 @@
 // Diferencias con el borrador de tooling §1: la ficha `entities` es el componente `entity` (una
 // tabla de componente más, con índices por origen y fin); el ledger guarda transferencias (de,
 // a, cantidad) y no filas de débito y crédito, porque así lo rehace `Ledger.fromJournal`.
-// Creencias, memorias, diffs y narración llegan con sus tareas.
+// Creencias, memorias y diffs llegan con sus tareas; la narración es la bitácora (texto plano).
 
 import type { SqlDriver } from "./driver.ts";
 
@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS player_plans (
   tick             INTEGER NOT NULL,
   plan             TEXT NOT NULL,
   source_text_hash TEXT
+) STRICT;
+
+-- La bitácora (player-loop §9, narration §14): el texto ya narrado, para releer. No es estado:
+-- el replay no la necesita y no entra al hash.
+CREATE TABLE IF NOT EXISTS narration (
+  seq  INTEGER PRIMARY KEY,
+  tick INTEGER NOT NULL,
+  text TEXT NOT NULL
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS snapshots (

@@ -1,6 +1,6 @@
 # Percepción
 
-> Estado: **borrador de diseño**. Es la **única puerta** entre la verdad del mundo (`WorldTruth`) y lo que cualquier agente cree. Nadie (NPC, jugador, espíritu, bestia) se entera de algo si no lo percibió, lo infirió de algo percibido o se lo contaron. El sistema de información ([information.md](information.md)) arranca donde termina este.
+> Estado: **diseño; Fase 1 implementada** (ver §Implementación). Es la **única puerta** entre la verdad del mundo (`WorldTruth`) y lo que cualquier agente cree. Nadie (NPC, jugador, espíritu, bestia) se entera de algo si no lo percibió, lo infirió de algo percibido o se lo contaron. El sistema de información ([information.md](information.md)) arranca donde termina este.
 
 Depende de: [causality.md](causality.md) (Ley 4: se actúa según lo que se cree), [planet-gen.md](planet-gen.md) (terreno, clima, luz, qi ambiental), [metaphysics.md](metaphysics.md) (qué sentidos extra existen en cada mundo). Lo usan: [npc-psychology.md](npc-psychology.md) (interpretación, memorias `witnessed`), [schemes.md](schemes.md) (huellas, "nadie me vio"), [spirits.md](spirits.md) (ver espíritus), el narrador.
 
@@ -195,7 +195,19 @@ Percibirse a uno mismo usa el mismo modelo, con el cuerpo como fuente:
 - Las huellas viejas sin observadores cercanos no se recalculan cada tick: guardan su momento de origen y se evalúan cuando alguien llega (detalle diferido de causality §5.3).
 
 ## Implementación
-- **Fase 1:** Vista y Oído, grafo de espacios mínimo para la aldea, luz por hora del día, ruido de fondo, niveles nada/vago/identificado. El narrador ya recibe percepts.
+- **Fase 1:** Vista y Oído, grafo de espacios mínimo para la aldea, luz por hora del día, ruido de fondo, niveles nada/vago/identificado. El narrador ya recibe percepts. **Hecho (2026-10-07):**
+  - `sim/world/spaces.ts` tiene el grafo de espacios. Cada nodo lleva área, si es interior, cuánta luz del día entra, luz propia, ruido de fondo y cuánto deja ver la vegetación. Las aristas tienen una barrera (`open`, `doorway`, `door_closed`, `paper_wall`, `wood_wall`, `stone_wall`) con cuánto pasa de cada canal.
+  - `spaceReach` busca el camino que más deja pasar. La distancia sale del área: dentro de un espacio es medio lado; al cruzar, medio lado de cada uno.
+  - Quien está en un hex sin espacio está en el campo abierto de ese hex: un nodo implícito de 1 km², unido sin barrera a los espacios al aire libre del hex. El bosque corta la vista.
+  - `villageSpaces` arma la aldea mínima: una plaza de 40 × 40 m y una casa de madera de un cuarto por hogar, con un vano a la plaza y el fuego del hogar como luz. `Location` ganó `space`. Settlements (§5, §8) la reemplaza por edificios con puertas que tienen estado.
+  - `sim/perception` tiene `Percept`, `Stimulus`, `Observer` y `Medium`. `channelGain` multiplica caída con la distancia (`1 / (1 + (d/D)²)`, con D = 20 m para la vista y 15 m para el oído), paso, luz donde está la fuente, agudeza y atención, y divide por el ruido donde está el que escucha.
+  - Cada dato se lee con `logistic(2 · ln(Σ señal / legibilidad))`: los canales suman evidencia antes del logaritmo. Un dato puede pedir otro antes (`requires`: para ver la cara hay que notar a alguien). Reconocer divide la legibilidad por la familiaridad; sin conocer a la persona, la identidad se lee como `null` (una cara desconocida).
+  - Hay tres niveles: `vague`, `clear` (se vio bien, pero no se reconoció) e `identified`.
+  - `presenceStimulus` es una persona que está; `actionStimulus` es un paso resuelto con sus emisiones, y la voz delata a quien habla.
+  - `sensorAcuity` aplica edad y aptitud. `ATTENTION` y `watching` dan la atención (la de `observe`).
+  - La tirada es `fork("perception", fuente, tick, observador)`, con un sorteo por dato aunque no se lea.
+  - Calibración medida: a 22 m se reconoce a un conocido el 95 % de las veces de día y el 5 % de noche; a 50 m de día, el 66 %. Una charla se entiende a 15 m en la plaza el 85 % de las veces y a 30 m, el 48 %.
+  - **La fase `perceive` (hecho 2026-10-07):** el scheduler corre los procesos `perceive` con cadencia `onEvent` al cerrar cada paso con eventos, y reciben en `ctx.recent` lo que se asentó. `life.perceive` convierte los pasos de otros y las muertes en percepts del personaje (`fork` del rng por evento) y los guarda en `life.percepts` (los últimos 40); las interrupciones fijas leen de ahí. **Pendiente:** percepción de los NPC y de la presencia como percepts guardados (Fase 2-3). Sin luna ni clima: la noche es siempre sin luna (cosmology §2, weather).
 - **Fase 2:** atributos separados con legibilidad, errores con forma, percepción social (emociones, mentiras), atención y saliencia, huellas simples.
 - **Fase 3:** olfato y viento, huellas completas, rastreo, borrar huellas.
 - **Fase 4 (cultivo):** sentidos de Esencia y Alma, lectura de cultivo con incertidumbre, supresión e inflado de aura, firma de técnica, percepción interna de meridianos.

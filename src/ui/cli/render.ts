@@ -1,82 +1,129 @@
-// Texto del stub: lo que en la Fase 1 hace el narrador con plantillas (narration §13). Solo lee
-// la vista del personaje, nunca el mundo.
+// Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
+// plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { formatTick, type Tick } from "../../core/index.ts";
-import {
-  CLOCK,
-  HUT_COST,
-  type SeenEvent,
-  type StubView,
-  type TurnReport,
-} from "../../game/index.ts";
+import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../../core/index.ts";
+import type { CharacterPanel, Interrupt, InventoryPanel } from "../../game/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
-  [CLOCK.day, "día", "días"],
+  [EARTHLIKE_CLOCK.day, "día", "días"],
   [3600, "hora", "horas"],
   [60, "minuto", "minutos"],
 ];
 
-/** "pasan 2 días y 3 horas", "pasa un minuto". */
+/** "Pasan 2 días y 3 horas.", "Pasa un minuto." */
 export function elapsed(seconds: number): string {
   const parts: string[] = [];
   let rest = seconds;
   for (const [size, one, many] of UNITS) {
     const n = Math.floor(rest / size);
     rest -= n * size;
-    if (n > 0 && parts.length < 2)
+    if (n > 0 && parts.length < 2) {
       parts.push(n === 1 ? `un${one === "hora" ? "a" : ""} ${one}` : `${n} ${many}`);
+    }
   }
-  if (parts.length === 0) return "no pasa nada de tiempo";
+  if (parts.length === 0) return "No pasa nada de tiempo.";
   const verb = parts.length === 1 && /^una? /.test(parts[0] as string) ? "Pasa" : "Pasan";
   return `${verb} ${parts.join(" y ")}.`;
 }
 
-function capital(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+export function renderStatus(now: Tick): string {
+  return `— ${formatTick(EARTHLIKE_CLOCK, now)}`;
 }
 
-function amountOf(data: unknown): number {
-  return (data as { amount: number }).amount;
+/** Quita las marcas `{{e1|tu madre}}` de la narración: queda el texto que se lee. */
+export function plain(text: string): string {
+  return text.replace(/\{\{[^|}]*\|([^}]*)\}\}/g, "$1");
 }
 
-export function describe(e: SeenEvent): string {
-  const [a = "alguien", b = "alguien"] = e.actors;
-  switch (e.kind) {
-    case "gift": {
-      const n = amountOf(e.data);
-      const coins = n === 1 ? "una moneda" : `${n} monedas`;
-      if (a === "vos") return `Le das ${coins} a ${b}.`;
-      if (b === "vos") return `${capital(a)} te regala ${coins}.`;
-      return `${capital(a)} le regala ${coins} a ${b}.`;
-    }
-    case "build":
-      return a === "vos" ? "Terminás una choza." : `${capital(a)} levanta una choza.`;
-    case "build-failed":
-      return `No te alcanzan las monedas para una choza (cuesta ${HUT_COST}).`;
-    case "give-failed": {
-      const d = e.data as { reason: string; to: string };
-      return d.reason === "coins" ? "No tenés tantas monedas." : `No encontrás a ${d.to}.`;
-    }
-    default:
-      return `(${e.kind})`;
+// --- Paneles (player-loop §9): el texto de lo que arma `game` sin números de la verdad ---
+
+const SIGNS: Readonly<Record<string, string>> = {
+  pale: "estás pálido",
+  dizzy: "la cabeza te da vueltas",
+  thirsty: "tenés sed",
+  parched: "tenés la boca seca de sed",
+  hungry: "tenés hambre",
+  starving: "el hambre ya te debilita",
+  wasting: "estás flaco, se te van las fuerzas",
+  tired: "estás cansado",
+  exhausted: "estás agotado",
+  sleepy: "tenés sueño",
+  feverish: "tenés fiebre",
+  limping: "rengueás",
+  bleeding: "sangra",
+  bleeding_heavily: "sangra mucho",
+  in_pain: "duele",
+  wound_hot: "la herida está caliente",
+  bone_broken: "algo está roto",
+};
+
+const PRACTICE: Readonly<Record<CharacterPanel["skills"][number]["practice"], string>> = {
+  never_much: "poco",
+  some: "algunas veces",
+  a_lot: "mucho",
+  all_life: "toda la vida",
+};
+
+const AMOUNT: Readonly<Record<InventoryPanel["carried"][number]["amount"], string>> = {
+  a_little: "un poco de",
+  some: "algo de",
+  plenty: "bastante",
+};
+
+const LASTS: Readonly<Record<InventoryPanel["larder"][number]["lasts"], string>> = {
+  empty: "casi no queda",
+  days: "alcanza para unos días",
+  weeks: "alcanza para unas semanas",
+  months: "alcanza para unos meses",
+  a_year: "alcanza hasta la próxima cosecha",
+};
+
+export function renderCharacter(p: CharacterPanel): string {
+  const lines = [
+    `Tenés ${p.ageYears} años. ${p.where.home ? "Estás en tu casa." : "Estás fuera de tu casa."}`,
+  ];
+  const general = p.body.general.map((s) => SIGNS[s] ?? s);
+  const zones = p.body.zones.map(
+    (z) => `${z.zone}: ${z.signs.map((s) => SIGNS[s] ?? s).join(", ")}`,
+  );
+  lines.push(
+    general.length + zones.length === 0
+      ? "Te sentís bien."
+      : `Cómo te sentís: ${[...general, ...zones].join("; ")}.`,
+  );
+  if (p.family.length > 0) {
+    lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
-}
-
-export function renderView(v: StubView): string {
-  const huts = v.huts === 0 ? "ninguna choza" : v.huts === 1 ? "una choza" : `${v.huts} chozas`;
-  const people = v.people.length === 0 ? "nadie" : v.people.join(", ");
-  return [`Estás en la aldea. Tenés ${v.purse} monedas y ${huts}.`, `Ves a: ${people}.`].join("\n");
-}
-
-export function renderStatus(now: Tick, v: StubView): string {
-  return `— ${formatTick(CLOCK, now)} · ${v.purse} monedas`;
-}
-
-export function renderTurn(r: TurnReport, look: boolean): string {
-  const lines = r.seen.map(describe);
-  lines.push(elapsed(r.to - r.from));
-  if (r.interrupted) lines.push("Te interrumpen.");
-  if (look) lines.push(renderView(r.view));
-  lines.push(renderStatus(r.to, r.view));
+  if (p.skills.length > 0) {
+    lines.push("Lo que hiciste en tu vida:");
+    for (const s of p.skills) lines.push(`  ${s.name}: ${PRACTICE[s.practice]}`);
+  }
   return lines.join("\n");
+}
+
+export function renderInventory(p: InventoryPanel): string {
+  const lines = [
+    p.carried.length === 0
+      ? "No llevás nada encima."
+      : `Llevás encima: ${p.carried.map((c) => `${AMOUNT[c.amount]} ${c.good}`).join(", ")}.`,
+  ];
+  if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
+  for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
+  return lines.join("\n");
+}
+
+const INTERRUPTS: Readonly<Record<Interrupt["kind"], string>> = {
+  attacked: "Algo te saca de lo que hacías: te atacan.",
+  spoken_to: "Algo te saca de lo que hacías: te hablan.",
+  body_alarm: "Dejás lo que hacías: algo en tu cuerpo no anda bien.",
+  death_seen: "Dejás lo que hacías: alguien de los tuyos acaba de morir delante tuyo.",
+};
+
+export function renderInterrupt(i: Interrupt): string {
+  return INTERRUPTS[i.kind];
+}
+
+export function renderJournal(entries: readonly { tick: Tick; text: string }[]): string {
+  if (entries.length === 0) return "La bitácora está vacía.";
+  return entries.map((e) => `${renderStatus(e.tick)}\n${e.text}`).join("\n\n");
 }

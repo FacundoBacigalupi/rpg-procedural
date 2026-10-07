@@ -1,0 +1,138 @@
+// La fase `perceive` del personaje (perception.md, player-loop §3): al cerrar cada paso, lo que
+// otros hicieron y el personaje pudo ver u oír queda guardado como percepts. El bucle (las
+// interrupciones fijas) lee de ahí y no vuelve a percibir por su cuenta, así que lo que cortó un
+// turno es exactamente lo que quedó en su cabeza. Los NPC todavía no perciben (llegan con su
+// decisión, Fase 3): cada uno sería una corrida más por evento.
+
+import type { AgentId, Event, EventId, PlanetClock, Rng } from "../../core/index.ts";
+import {
+  ATTENTION,
+  actionStimulus,
+  daylight,
+  LOCATION,
+  type LocalMap,
+  localHour,
+  PERSON,
+  type Percept,
+  type ProcessDef,
+  perceive,
+  type ReadonlyWorldTruth,
+  type SpaceGraph,
+  table,
+} from "../../sim/index.ts";
+import { playerObserver } from "./witness.ts";
+
+export const PERCEIVE_PROCESS = "life.perceive";
+
+/** Cuántos percepts recientes guarda el personaje (los más viejos pasan a ser memoria: Fase 2). */
+export const KEPT_PERCEPTS = 40;
+
+export interface Percepts {
+  /** En orden de llegada; el último es el más nuevo. */
+  readonly recent: readonly Percept[];
+}
+
+/** Lo que el personaje percibió, guardado en su entidad. */
+export const PERCEPTS = table<Percepts>("life.percepts");
+
+export interface PerceiveOptions {
+  readonly player: AgentId;
+  readonly map: LocalMap;
+  readonly spaces: SpaceGraph;
+  readonly clock: PlanetClock;
+}
+
+/** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
+function perceivable(kind: string): boolean {
+  return kind.startsWith("action.") || kind === "body.died";
+}
+
+export function perceiveProcess(o: PerceiveOptions): ProcessDef {
+  return {
+    id: PERCEIVE_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [PERCEPTS.name, PERSON.name, LOCATION.name],
+    writes: [PERCEPTS.name],
+    run(ctx) {
+      const fresh = perceiveEvents(o, ctx.truth, ctx.recent, ctx.rng);
+      if (fresh.length === 0) return {};
+      return {
+        changes: [
+          {
+            op: "set",
+            table: PERCEPTS.name,
+            id: o.player,
+            value: remember(ctx.truth, o.player, fresh),
+          },
+        ],
+      };
+    },
+  };
+}
+
+/** Lo que el personaje guarda después de percibir `fresh`: lo anterior más lo nuevo, con tope. */
+export function remember(
+  truth: ReadonlyWorldTruth,
+  player: AgentId,
+  fresh: readonly Percept[],
+): Percepts {
+  const before = truth.get(PERCEPTS, player)?.recent ?? [];
+  return { recent: [...before, ...fresh].slice(-KEPT_PERCEPTS) };
+}
+
+/** Lo que el personaje ve u oye de `events` (cada uno tira con el rng forkeado por su id). */
+export function perceiveEvents(
+  o: PerceiveOptions,
+  truth: ReadonlyWorldTruth,
+  events: readonly Event[],
+  rng: Rng,
+): Percept[] {
+  const out: Percept[] = [];
+  for (const e of events) {
+    const who = e.actors[0] as AgentId | undefined;
+    if (!who || who === o.player || !perceivable(e.kind)) continue;
+    const at = truth.get(LOCATION, who);
+    const p = truth.get(PERSON, who);
+    if (!at || !p) continue;
+    const em = (e.emissions ?? {}) as { sight?: number; sound?: number };
+    const data = e.data as { effect?: { text?: string | null } } | null;
+    const words = e.kind === "action.speak" ? (data?.effect?.text ?? null) : undefined;
+    out.push(
+      ...perceive(
+        actionStimulus({
+          event: e.id,
+          tick: e.tick,
+          actor: who,
+          at,
+          look: { sex: p.sex, ageYears: (e.tick - p.born) / o.clock.year },
+          verb: e.kind,
+          emissions: { sight: em.sight ?? 0, sound: em.sound ?? 0 },
+          ...(words === undefined ? {} : { words }),
+        }),
+        [playerObserver({ ...o, truth }, ATTENTION.relaxed, e.tick)],
+        {
+          graph: o.spaces,
+          forest: o.map.forest,
+          daylight: daylight(localHour(o.clock, e.tick, o.map.lonDeg)),
+        },
+        rng.fork(e.id),
+      ),
+    );
+  }
+  return out;
+}
+
+/** Cuánto supo el personaje del evento, o `null` si no le llegó nada. */
+export function perceivedDetail(
+  truth: ReadonlyWorldTruth,
+  player: AgentId,
+  event: EventId,
+): Percept["detail"] | null {
+  const found = truth.get(PERCEPTS, player)?.recent.filter((p) => p.sourceEventId === event);
+  if (!found || found.length === 0) return null;
+  return found.some((p) => p.detail !== "vague") ? "clear" : "vague";
+}

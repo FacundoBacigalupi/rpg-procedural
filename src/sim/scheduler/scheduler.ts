@@ -8,7 +8,8 @@
 //
 // Lo que este scheduler todavía no hace (llega con su tarea): zonas con resoluciones distintas
 // (ahora hay una sola para todo el mundo), partir ventanas cuando un ítem cae adentro, procesos
-// "onEvent" disparados por eventos (ahora corren solo si se los agenda), presupuesto, materializar
+// "onEvent" disparados por eventos (salvo los de la fase `perceive`, que corren al cerrar el paso
+// con lo que se asentó; el resto corre solo si se lo agenda), presupuesto, materializar
 // y el caché de presiones.
 
 import {
@@ -113,6 +114,7 @@ interface RunSpec {
   readonly window: number;
   readonly windowIndex: number | undefined;
   readonly item: ScheduledItem | undefined;
+  readonly recent: readonly Event[];
   readonly rngParts: readonly (string | number)[];
 }
 
@@ -252,6 +254,7 @@ export class Scheduler {
               window,
               windowIndex: index,
               item: undefined,
+              recent: [],
               rngParts: [def.system, def.id, scope, index],
             });
           }
@@ -272,6 +275,7 @@ export class Scheduler {
             window: 0,
             windowIndex: undefined,
             item: head,
+            recent: [],
             rngParts: [def.system, def.id, head.scope, "at", t, n],
           });
         }
@@ -283,6 +287,34 @@ export class Scheduler {
         );
         const runs = specs.map((spec) => this.#run(spec, t, phase));
         this.#commit(runs, t, phase, events, contests);
+      }
+      // Lo percibido en este paso (perception): los procesos `perceive` por evento corren al
+      // cerrarlo, con lo que se asentó, así que quien interrumpe un turno ya lo tiene guardado.
+      const settled = [...events];
+      if (settled.length > 0) {
+        const specs: RunSpec[] = [];
+        for (const def of this.#defs.values()) {
+          if (def.phase !== "perceive" || def.cadence[this.#o.resolution] !== "onEvent") continue;
+          for (const scope of this.#scopesOf(def)) {
+            specs.push({
+              def,
+              scope,
+              window: 0,
+              windowIndex: undefined,
+              item: undefined,
+              recent: settled,
+              rngParts: [def.system, def.id, scope, "event", t],
+            });
+          }
+        }
+        specs.sort((a, b) => compareStrings(a.def.id, b.def.id) || compareScopes(a.scope, b.scope));
+        this.#commit(
+          specs.map((spec) => this.#run(spec, t, "perceive")),
+          t,
+          "perceive",
+          events,
+          contests,
+        );
       }
     } finally {
       this.#stepping = undefined;
@@ -312,6 +344,7 @@ export class Scheduler {
       ledger: this.#o.ledger,
       rng: this.#o.rng.fork(...spec.rngParts),
       item: spec.item,
+      recent: spec.recent,
       newId<K extends EntityKind>(kind: K): Id<K> {
         if ((kind as EntityKind) === "event") {
           throw new SchedulerError("los eventos se nombran con draftEvent, no con newId");

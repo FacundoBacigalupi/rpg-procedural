@@ -1,0 +1,25 @@
+[
+  {
+    "id": "steal",
+    "name": "robar",
+    "params": [{ "id": "victim", "kind": "person" }],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "look", "args": [] },
+        {
+          "kind": "do",
+          "verb": "wait",
+          "args": [{ "role": "for", "seconds": 120 }],
+          "manner": ["covert"]
+        },
+        {
+          "kind": "do",
+          "verb": "take",
+          "args": [{ "role": "from", "param": "victim" }],
+          "manner": ["covert"]
+        }
+      ]
+    }
+  }
+]

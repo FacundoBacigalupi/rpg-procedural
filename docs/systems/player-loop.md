@@ -181,7 +181,13 @@ El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisa
 ## 15. Implementación por fase
 
 - **Fase 0:** loop CLI con stub: leer, parsear a mano, avanzar, imprimir. **Hecho** (`src/game/stub/`, `src/ui/cli/`): el plan entra al personaje como componente `intent` más un ítem agendado para cuando termina (la forma en que el replay también lo aplica: enviar en su tick y avanzar); solo las esperas se interrumpen, cuando alguien se mete con el personaje; cada turno se guarda entero (plan + estado) y deja un snapshot con su hash como checkpoint. Todo lo del stub (aldea, verbos, etiquetas `aldeano N`) se reemplaza en la Fase 1.
-- **Fase 1:** entrada por edad (`age`) con escena inicial desde creencias; turno completo con parser y narrador; planes con `until`; interrupciones fijas; muerte con crónica mínima; guardado automático sin cargar atrás; paneles mínimos (personaje, inventario creído, bitácora).
+- **Fase 1:** **hecho el mínimo** (`src/game/life/`, `src/ui/cli/`).
+  - **Entrada y turno:** el personaje entra por edad (`age`, 14-16 años) desde la pre-corrida. `Life.turn` mete el plan como el componente `life.plan` y el proceso `life.act` ejecuta hoja por hoja; cada hoja agenda la siguiente al terminar la anterior.
+  - **Interrupciones fijas** (`interrupts.ts`, §6), siempre desde percepts: un golpe lo siente siempre; que le hablen o la muerte de alguien cercano, solo si perception dice que lo vio u oyó; un signo grave nuevo del cuerpo lo nota por `bodySigns`. Las configurables quedan para la Fase 3.
+  - **Guardado:** se guarda cada turno sin cargar atrás, y el replay da el mismo hash.
+  - **Paneles** (`panels.ts`, §9): personaje (cuerpo como signos, gente por relación, habilidades por cuánto las practicó), inventario creído (a ojo; hasta la Fase 2 es lo que tiene, redondeado) y bitácora (tabla `narration`).
+  - **La gente de la aldea** sigue una rutina fija (`routine.ts`: duerme, trabaja en el campo, come de la despensa con su asiento), que reemplaza la decisión de los NPC hasta la Fase 2. El personaje no tiene rutina: decide.
+  - **Falta:** el parser y el narrador con el modelo local en la CLI, planes con `until` desde texto libre y la muerte con crónica mínima (Hito 1c).
 - **Fase 2:** diario de creencias e hipótesis, personas, libro de deudas y promesas, `qué sé de X`, recuento al volver.
 - **Fase 3:** rutinas con delegación, interrupciones configurables, montaje y "qué pasó mientras", metas del personaje, viñetas de infancia (`born`).
 - **Fase 4:** encierros largos de cultivo con alarmas arregladas en el mundo; espíritu como modo de juego.
@@ -210,6 +216,10 @@ Todo este documento describe el **modo realista**, el de por defecto. El **modo 
 - **Inspector con una vida en curso:** se puede abrir con confirmación; la vida queda marcada como "vista con inspector".
 - **Delegación por defecto `normal`:** lo chico lo decide el personaje con su carácter; prometer, pelear, gastar mucho o irse interrumpe. Configurable a `minimal` o `wide`.
 - **Modo novela** como opción explícita antes de empezar (§16), con su propio doc.
+- **De dónde sale el personaje en la Fase 1 (aprobado 2026-10-07):**
+  - Es un nacimiento real de la pre-corrida de la aldea (family-lineage §Implementación): sus padres, abuelos y vecinos también tienen causa.
+  - Se elige con rng entre los vivos de 14-16 años al empezar, para la entrada por edad.
+  - La entrada por nacimiento con viñetas usa la misma pre-corrida y llega después.
 
 ## Decisiones tomadas en este borrador (revisables)
 

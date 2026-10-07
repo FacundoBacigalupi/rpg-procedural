@@ -1,0 +1,60 @@
+[
+  {
+    "id": "cottage",
+    "name": "casa de un cuarto",
+    "tenure": "household",
+    "minMembers": 1,
+    "repairYears": 3,
+    "rooms": [
+      { "id": "main", "kind": "room", "area": 30, "daylight": 0.25, "lamp": 0.1, "noise": 0.02 }
+    ],
+    "components": [
+      { "part": "foundation", "area": 30, "materials": [{ "material": "stone", "weight": 1 }] },
+      {
+        "part": "walls",
+        "area": 60,
+        "materials": [{ "material": "timber", "weight": 3 }, { "material": "clay", "weight": 1 }]
+      },
+      { "part": "roof", "area": 36, "materials": [{ "material": "thatch", "weight": 1 }] },
+      { "part": "door", "area": 2, "materials": [{ "material": "timber", "weight": 1 }] }
+    ]
+  },
+  {
+    "id": "farmhouse",
+    "name": "casa de labranza con depósito y patio",
+    "tenure": "household",
+    "minMembers": 5,
+    "repairYears": 3,
+    "rooms": [
+      { "id": "main", "kind": "room", "area": 36, "daylight": 0.25, "lamp": 0.1, "noise": 0.02 },
+      { "id": "store", "kind": "room", "area": 16, "daylight": 0.05, "lamp": 0, "noise": 0.01 },
+      { "id": "yard", "kind": "yard", "area": 60, "daylight": 1, "lamp": 0, "noise": 0.03 }
+    ],
+    "components": [
+      { "part": "foundation", "area": 52, "materials": [{ "material": "stone", "weight": 1 }] },
+      {
+        "part": "walls",
+        "area": 110,
+        "materials": [{ "material": "timber", "weight": 2 }, { "material": "clay", "weight": 1 }]
+      },
+      { "part": "roof", "area": 66, "materials": [{ "material": "thatch", "weight": 1 }] },
+      { "part": "door", "area": 4, "materials": [{ "material": "timber", "weight": 1 }] }
+    ]
+  },
+  {
+    "id": "granary",
+    "name": "granero comunal",
+    "tenure": "community",
+    "perPeople": 60,
+    "repairYears": 4,
+    "rooms": [
+      { "id": "main", "kind": "room", "area": 48, "daylight": 0.02, "lamp": 0, "noise": 0.01 }
+    ],
+    "components": [
+      { "part": "foundation", "area": 48, "materials": [{ "material": "stone", "weight": 1 }] },
+      { "part": "walls", "area": 90, "materials": [{ "material": "timber", "weight": 1 }] },
+      { "part": "roof", "area": 56, "materials": [{ "material": "thatch", "weight": 1 }] },
+      { "part": "door", "area": 3, "materials": [{ "material": "timber", "weight": 1 }] }
+    ]
+  }
+]

@@ -272,6 +272,22 @@ export class LifeStore {
       }));
   }
 
+  /** Agrega a la bitácora lo que se narró (player-loop §9). */
+  appendNarration(tick: Tick, text: string): void {
+    this.#db.run("INSERT INTO narration (tick, text) VALUES (?, ?)", tick, text);
+  }
+
+  /** Lo último de la bitácora, en orden (las `last` entradas más recientes; sin tope, todas). */
+  narrations(last?: number): { tick: Tick; text: string }[] {
+    const rows = this.#db.all<{ tick: Tick; text: string }>(
+      last === undefined
+        ? "SELECT tick, text FROM narration ORDER BY seq"
+        : "SELECT tick, text FROM (SELECT seq, tick, text FROM narration ORDER BY seq DESC LIMIT ?) ORDER BY seq",
+      ...(last === undefined ? [] : [last]),
+    );
+    return rows.map((r) => ({ tick: r.tick, text: r.text }));
+  }
+
   // --- Consultas del inspector (solo lectura, sobre lo guardado) ---
 
   /** Ids con un componente cuyo campo vale `value`, en orden canónico; usa el índice si se declaró. */

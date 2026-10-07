@@ -15,6 +15,16 @@ import {
 } from "./client.ts";
 import type { LlmConfig, LlmJob, LlmProvider } from "./config.ts";
 
+/**
+ * El JSON de una salida estructurada: sin el razonamiento que algunos modelos locales escriben antes
+ * (`<think>…</think>`) ni el cerco de Markdown cuando el runtime no restringe la salida.
+ */
+export function jsonPayload(text: string): string {
+  const t = text.replace(/^\s*<think>[\s\S]*?<\/think>/, "").trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(t);
+  return fenced?.[1] ?? t;
+}
+
 /** Problemas de una salida de texto; vacío es que pasa. */
 export type TextValidator = (text: string) => readonly string[];
 
@@ -74,7 +84,7 @@ export class LlmJobs {
     return this.#run(job, request, jsonSchema, (text) => {
       let raw: unknown;
       try {
-        raw = JSON.parse(text);
+        raw = JSON.parse(jsonPayload(text));
       } catch {
         return { problems: ["the answer is not valid JSON"] };
       }
@@ -181,6 +191,9 @@ export interface ClientFactoryOptions {
   readonly timeoutMs?: number | undefined;
 }
 
+/** Apaga el razonamiento por la interfaz compatible con OpenAI (Ollama lo respeta; `think` no). */
+export const NO_THINKING = { reasoning_effort: "none" } as const;
+
 /** Arma los clientes reales por la interfaz compatible con OpenAI. */
 export function openAiClientFactory(
   options: ClientFactoryOptions = {},
@@ -198,6 +211,7 @@ export function openAiClientFactory(
         model: p.model,
         fetch: options.fetch,
         timeoutMs: options.timeoutMs,
+        extra: p.think ? undefined : NO_THINKING,
       });
     } else {
       const apiKey = options.apiKey?.(p.vendor);
