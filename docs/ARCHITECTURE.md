@@ -276,7 +276,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 | `Lot`, `GoodId`, `Money`, `Market`, `Price` | `sim/economy` | economy |
 | `Tenure`, `RightBundle`, `Deed` | `sim/property` | property |
 | `Commitment`, `Oath` | `sim/contracts` | contracts |
-| `Genome`, `Household`, `Kinship` | `sim/family` | family-lineage |
+| `Genome`, `Household`, `Kinship` | `sim/family` | family-lineage. El genoma se guarda por `AgentId`, sin `GenomeId`. También son de este módulo `Innate`, `Trait` y `Demography` (con su contenido en `content/traits/` y `content/demography/`) y las tablas `family.*`. |
 | `Position`, `StatusNorm`, `Face` | `sim/social` | social-structure |
 | `CultureTrait`, `Prevalence` | `sim/culture` | culture |
 | `Language`, `Lexicon`, `Script` | `sim/language` | language |

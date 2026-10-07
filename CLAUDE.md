@@ -79,7 +79,7 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 - `npm run check`: typecheck + lint + tests, lo que se corre antes de cada PR.
 - `npm run typecheck` (`tsc`, sin emitir) · `npm run lint` (Biome + dependency-cruiser) · `npm run format` (Biome con `--write`) · `npm test` (Vitest) · `npm run test:watch`.
 - `npm run dev`: la CLI (`node src/ui/cli/main.ts`, `.ts` nativo). Opciones: `npm run dev -- --seed 42 --mode realista|novela --villagers 6 --save saves/vida.sqlite`; si el archivo ya tiene una vida, se sigue esa (por ahora es el stub del turno de la Fase 0).
-- `npm run worldgen -- --seed 42 [--out maps] [--width 1024]`: genera el planeta y deja un PNG por capa, `local.png` (la celda de la aldea a ~2 km por hex) y `summary.json` en `maps/seed-42/` (ignorado por git).
+- `npm run worldgen -- --seed 42 [--out maps] [--width 1024]`: genera el planeta y deja un PNG por capa, `local.png` (la celda de la aldea a ~2 km por hex) y `summary.json` (con la gente de la aldea y el jugador que sale de la pre-corrida) en `maps/seed-42/` (ignorado por git).
 - Más adelante: `npm run sim -- --seed 123 --years 50` (simulación headless + reporte).
 - Si Vitest dice "failed to find the runner" en Windows, es el cwd con la unidad en minúscula (`c:\`): correr desde `C:\dev\rpg-procedural` (en Bash, `cd /c/dev/rpg-procedural`).
 
