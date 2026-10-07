@@ -180,7 +180,7 @@ El inspector (tooling.md) ve la verdad. Es una herramienta del autor para revisa
 
 ## 15. Implementación por fase
 
-- **Fase 0:** loop CLI con stub: leer, parsear a mano, avanzar, imprimir.
+- **Fase 0:** loop CLI con stub: leer, parsear a mano, avanzar, imprimir. **Hecho** (`src/game/stub/`, `src/ui/cli/`): el plan entra al personaje como componente `intent` más un ítem agendado para cuando termina (la forma en que el replay también lo aplica: enviar en su tick y avanzar); solo las esperas se interrumpen, cuando alguien se mete con el personaje; cada turno se guarda entero (plan + estado) y deja un snapshot con su hash como checkpoint. Todo lo del stub (aldea, verbos, etiquetas `aldeano N`) se reemplaza en la Fase 1.
 - **Fase 1:** entrada por edad (`age`) con escena inicial desde creencias; turno completo con parser y narrador; planes con `until`; interrupciones fijas; muerte con crónica mínima; guardado automático sin cargar atrás; paneles mínimos (personaje, inventario creído, bitácora).
 - **Fase 2:** diario de creencias e hipótesis, personas, libro de deudas y promesas, `qué sé de X`, recuento al volver.
 - **Fase 3:** rutinas con delegación, interrupciones configurables, montaje y "qué pasó mientras", metas del personaje, viñetas de infancia (`born`).

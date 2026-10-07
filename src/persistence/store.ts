@@ -222,11 +222,33 @@ export class LifeStore {
   }
 
   /** Lo que entra al replay (tooling §3): el plan validado, nunca el texto. */
-  appendPlan(tick: Tick, plan: unknown, sourceTextHash?: string): number {
-    const seq = Number(
+  /** El número que le toca al próximo plan. */
+  nextPlanSeq(): number {
+    return Number(
       this.#db.get<{ seq: number }>("SELECT coalesce(max(seq), -1) + 1 AS seq FROM player_plans")
         ?.seq,
     );
+  }
+
+  /**
+   * Un turno entero, todo o nada: el plan del jugador (con el número que ya usó la sim) y el
+   * estado al que llevó. Si se corta a la mitad, la vida queda como antes del turno.
+   */
+  saveTurn(
+    state: LifeState,
+    turn: { seq: number; tick: Tick; plan: unknown; sourceTextHash?: string },
+  ): void {
+    this.#write(() => {
+      const seq = this.appendPlan(turn.tick, turn.plan, turn.sourceTextHash);
+      if (seq !== turn.seq) {
+        throw new PersistenceError(`el plan #${turn.seq} no es el que sigue (#${seq})`);
+      }
+      this.#save(state);
+    });
+  }
+
+  appendPlan(tick: Tick, plan: unknown, sourceTextHash?: string): number {
+    const seq = this.nextPlanSeq();
     this.#db.run(
       "INSERT INTO player_plans (seq, tick, plan, source_text_hash) VALUES (?, ?, ?, ?)",
       seq,
