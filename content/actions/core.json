@@ -114,7 +114,12 @@
       { "id": "not_here", "factor": "position" },
       { "id": "too_weak", "factor": "capability" }
     ],
-    "evidence": 0.4
+    "evidence": 0.4,
+    "yields": [
+      { "at": "forest", "good": "forage", "perHour": 400 },
+      { "at": "fields", "good": "gleanings", "perHour": 250 },
+      { "at": "water", "good": "shellfish", "perHour": 300 }
+    ]
   },
   {
     "id": "work",

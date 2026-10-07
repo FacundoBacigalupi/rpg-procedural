@@ -63,6 +63,23 @@ function applyAll(ledger: Ledger, ps: readonly Posting[]): number {
 }
 
 describe("Ledger: propiedades", () => {
+  it("lo que tiene una cuenta coincide con sus saldos, ordenado por unidad", () => {
+    fc.assert(
+      fc.property(postings, (ps) => {
+        const ledger = new Ledger(config);
+        applyAll(ledger, ps);
+        for (const account of accounts) {
+          const held = ledger.holdings(account);
+          expect(held.map((h) => h.unit)).toEqual([...held.map((h) => h.unit)].sort());
+          for (const unit of units) {
+            const row = held.find((h) => h.unit === unit);
+            expect(row?.amount ?? 0).toBe(ledger.balance(account, unit));
+          }
+        }
+      }),
+    );
+  });
+
   it("después de cualquier secuencia la auditoría da limpio", () => {
     fc.assert(
       fc.property(postings, (ps) => {

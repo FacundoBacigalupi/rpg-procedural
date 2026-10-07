@@ -185,7 +185,7 @@ export interface PostingDraft {
 }
 
 /** Lo que un proceso puede leer del ledger. */
-export type ReadonlyLedger = Pick<Ledger, "balance" | "total">;
+export type ReadonlyLedger = Pick<Ledger, "balance" | "holdings" | "total">;
 
 export interface ProcessResult {
   readonly changes?: readonly StateChange[];
