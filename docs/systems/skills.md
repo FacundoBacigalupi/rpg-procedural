@@ -310,6 +310,30 @@ Con los tiers de simulation §4:
 - **Fase 5:** muestreo coherente al materializar; distribuciones regionales.
 - **Fase 6:** estilos y escuelas como organizaciones con secretos, linajes y certificaciones; robo de estilos.
 
+## Implementación
+
+**Hecho (Fase 1, Hito 1a, 2026-10-07) — `src/sim/skills/`:** habilidades de los verbos, techo, curva y aprender de lo percibido.
+- `content/skills/core.json`: 8 habilidades (`wayfinding`, `observation`, `foraging`, `farming`, `conversation`, `brawling`, `bargaining`, `sleight`), todas con facetas `execution`/`reading`/`judgment`. Cada una tiene aptitudes (rasgos innatos con peso), capacidades del cuerpo que pesan en el techo, tacitez, curva (`rate` por hora, `k`) y `upbringing` opcional (desde qué edad, horas por año y cuán fácil es la tarea típica de un chico de la aldea). `catalog.ts` valida con Zod y `refs` hacia `traits`. `SkillCatalog` cruza con los verbos y falla al cargar si un verbo pide una faceta que su habilidad no tiene.
+- En `content/actions/core.json` cada verbo nombra su habilidad, los pesos de facetas e `intensity`: cuántas horas de práctica vale una hora del verbo. Un golpe vale 60, robar 10 y comerciar 2. La contienda nombra la habilidad del otro: `strike` → `brawling` (lectura y mano), sigilo de `take` → `observation` (lectura).
+- **Niveles** de 0 a 1 (~0,25 competente, ~0,5 oficial, ~0,75 maestro) en `SKILL_STATE` (`skills.state`, por agente), con `peak` y horas. En la tirada (`attempt.ts`) la habilidad entrenada suma `SKILL_SPAN = 2,5` desvíos por nivel al factor `skill`, además de la aptitud cruda. El otro de una contienda suma lo mismo con la suya.
+- **Techo oculto** (`ceilingOf`), recalculado y nunca guardado. Es aptitud × cuerpo × edad:
+  - Aptitud: `0,7 + 0,12·talento`, con talento = Σw·z/√Σw².
+  - Cuerpo: Π capacidad^peso, solo para `execution`/`endurance`.
+  - Edad (`ageFactor`): madura de los 3 a los 20 años. La mano baja 1,2 %/año después de los 40, la lectura 0,6 %/año después de los 55 y el juicio no baja.
+  - Si el nivel quedó arriba del techo (perdió una mano, envejeció), la práctica lo baja hacia él (`OVER_CEILING_DECAY`). El pico queda.
+- **Curva:** la forma cerrada de dL/dh = g·(1 − L/C)^k, con g = `rate` × talento (±25 %/desvío) × plasticidad de la edad (1,4 de chico, 1 a los 25, 0,6 a los 70) × feedback × ajuste. Un tramo largo da lo mismo que muchos cortos y nunca pasa el techo. Con práctica ideal da ~0,25 a las 1000 horas y ~0,55 a las 6000.
+- **Aprender de lo percibido** (`learnFromAttempt`): el feedback sale solo de la autopercepción del `Attempt`.
+  - Un fracaso entendido (con `cues` y no creído éxito) enseña 1, y ×1,4 a leer y a juzgar. Un fracaso no entendido enseña 0,5, uno sospechado 0,25 y uno no notado 0.
+  - Un éxito enseña 0,6, un parcial notado 0,9 y un parcial creído éxito 0,3.
+  - Faltar un requisito no es práctica.
+  - **El borde:** el `Attempt` trae ahora `expected` (el margen sin ruido menos la oposición esperada) y `challengeFit` es una campana en `LEARNING_EDGE = 0,5` desvíos. La rutina fácil enseña cada vez menos y queda por debajo de la práctica en el borde.
+  - Devuelve el `Skills` nuevo o `null`. **El turno lo escribe** con el evento del paso (`setComponent(SKILL_STATE, actor, …)`) y calcula `AttemptActor.skill`/`AttemptParty.skill` con `verbSkill`/`opposingSkill`. `resolve` no lo hace solo, porque actions no importa skills.
+- **Siembra** (`upbringingSkills`, `seedSkills`): cada persona viva de la aldea practicó mes a mes, desde `fromAge`, con su talento, su plasticidad y su techo de cada edad. La tarea se vuelve más fácil a medida que mejora. Sin azar.
+  - A los 15 años queda ~0,3 en lo cotidiano y a los 30 ~0,4. A los 60 llega a ~0,47 y a los 80 la mano baja.
+  - Pelear y regatear quedan casi en cero si no se practican.
+  - `seedSkills` todavía no se llama desde el armado de la partida: lo enchufa el bucle del jugador.
+- **Pendiente:** autoimagen, mirar y maestros (Fases 2 y 3), vicios, oxidación con pico, transferencia, repertorio y familiaridades. La calibración (`LEARNING_WIDTH`, tasas, techos) sigue abierta.
+
 ## Tests
 
 - **Solo lo percibido enseña:** con el mismo resultado real, un actor que no percibió su error no aprende de él; uno que lo percibió sí.

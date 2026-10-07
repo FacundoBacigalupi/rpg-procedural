@@ -1,0 +1,111 @@
+[
+  {
+    "id": "wayfinding",
+    "name": "orientarse y andar",
+    "domain": "survival",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [{ "trait": "perception", "weight": 0.5 }, { "trait": "memory", "weight": 0.5 }],
+    "capabilities": { "locomotion": 1 },
+    "tacitness": 0.7,
+    "curve": { "rate": 0.0016, "k": 3 },
+    "upbringing": { "fromAge": 2, "hoursPerYear": 900, "ease": 1 }
+  },
+  {
+    "id": "observation",
+    "name": "mirar y buscar",
+    "domain": "survival",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "perception", "weight": 0.8 },
+      { "trait": "curiosity", "weight": 0.2 }
+    ],
+    "tacitness": 0.6,
+    "curve": { "rate": 0.0015, "k": 3 },
+    "upbringing": { "fromAge": 2, "hoursPerYear": 600, "ease": 0.8 }
+  },
+  {
+    "id": "foraging",
+    "name": "recolectar",
+    "domain": "survival",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "perception", "weight": 0.5 },
+      { "trait": "intellect", "weight": 0.3 },
+      { "trait": "memory", "weight": 0.2 }
+    ],
+    "capabilities": { "manipulation": 0.6, "locomotion": 0.4 },
+    "tacitness": 0.5,
+    "curve": { "rate": 0.0016, "k": 3 },
+    "upbringing": { "fromAge": 5, "hoursPerYear": 250, "ease": 0.4 }
+  },
+  {
+    "id": "farming",
+    "name": "trabajo del campo",
+    "domain": "craft",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "constitution", "weight": 0.5 },
+      { "trait": "control", "weight": 0.3 },
+      { "trait": "intellect", "weight": 0.2 }
+    ],
+    "capabilities": { "strength": 0.6, "manipulation": 0.4 },
+    "tacitness": 0.7,
+    "curve": { "rate": 0.0012, "k": 3 },
+    "upbringing": { "fromAge": 7, "hoursPerYear": 600, "ease": 0.6 }
+  },
+  {
+    "id": "conversation",
+    "name": "conversar",
+    "domain": "social",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "sociability", "weight": 0.5 },
+      { "trait": "warmth", "weight": 0.3 },
+      { "trait": "intellect", "weight": 0.2 }
+    ],
+    "capabilities": { "speech": 1 },
+    "tacitness": 0.8,
+    "curve": { "rate": 0.0014, "k": 3 },
+    "upbringing": { "fromAge": 2, "hoursPerYear": 500, "ease": 1 }
+  },
+  {
+    "id": "brawling",
+    "name": "pelear a mano",
+    "domain": "combat",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "constitution", "weight": 0.5 },
+      { "trait": "perception", "weight": 0.3 },
+      { "trait": "control", "weight": 0.2 }
+    ],
+    "capabilities": { "strength": 0.6, "locomotion": 0.4 },
+    "tacitness": 0.8,
+    "curve": { "rate": 0.0016, "k": 3 },
+    "upbringing": { "fromAge": 5, "hoursPerYear": 20, "ease": 0 }
+  },
+  {
+    "id": "bargaining",
+    "name": "regatear",
+    "domain": "social",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "intellect", "weight": 0.5 },
+      { "trait": "sociability", "weight": 0.3 },
+      { "trait": "perception", "weight": 0.2 }
+    ],
+    "capabilities": { "speech": 1 },
+    "tacitness": 0.6,
+    "curve": { "rate": 0.0014, "k": 3 },
+    "upbringing": { "fromAge": 9, "hoursPerYear": 15, "ease": 0 }
+  },
+  {
+    "id": "sleight",
+    "name": "manos ligeras",
+    "domain": "craft",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [{ "trait": "control", "weight": 0.5 }, { "trait": "perception", "weight": 0.5 }],
+    "capabilities": { "manipulation": 1 },
+    "tacitness": 0.9,
+    "curve": { "rate": 0.0015, "k": 3 }
+  }
+]

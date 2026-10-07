@@ -3,4 +3,5 @@
 export * from "./actions/index.ts";
 export * from "./family/index.ts";
 export * from "./scheduler/index.ts";
+export * from "./skills/index.ts";
 export * from "./world/index.ts";

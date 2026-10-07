@@ -13,7 +13,9 @@ import {
   type PlaceRef,
   Rng,
 } from "../../core/index.ts";
+import { TRAITS } from "../family/index.ts";
 import { draftEvent } from "../scheduler/index.ts";
+import { SKILLS } from "../skills/index.ts";
 import { LOCATION, type LocalMap } from "../world/index.ts";
 import {
   ACTIONS,
@@ -30,9 +32,11 @@ import {
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
-  [ACTIONS, PLANS],
+  [ACTIONS, PLANS, SKILLS, TRAITS],
   [
     { kind: "actions", file: "content/actions/core.json", data: json("content/actions/core.json") },
+    { kind: "skills", file: "content/skills/core.json", data: json("content/skills/core.json") },
+    { kind: "traits", file: "content/traits/human.json", data: json("content/traits/human.json") },
     { kind: "plans", file: "content/plans/steal.json", data: json("content/plans/steal.json") },
   ],
 );
