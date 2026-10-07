@@ -1,7 +1,8 @@
 // El espacio mínimo de la Fase 1: los lugares con nombre de la aldea (sus anclas: la aldea, los
 // campos, el bosque, el agua) y en qué hex del nivel 1 (~2 km) está cada agente. Alcanza para
 // moverse, para saber quién está con quién y para la luz del día. El grafo de espacios de la
-// aldea (perception §3, settlements §8) y los tramos de viaje (travel §1) lo afinan después.
+// aldea (`spaces.ts`, perception §3) dice dónde está cada uno adentro del sitio; los tramos de
+// viaje (travel §1) llegan después.
 
 import type {
   CellId,
@@ -10,6 +11,7 @@ import type {
   PlaceRef,
   PlanetClock,
   SettlementId,
+  SpaceKey,
   Tick,
 } from "../../core/index.ts";
 import { floorDiv } from "../../core/index.ts";
@@ -26,9 +28,11 @@ export interface PlaceRecord {
   readonly detail?: string;
 }
 
-/** Dónde está un agente: el hex del parche local. */
+/** Dónde está un agente: el hex del parche local y, adentro de un sitio, el espacio. */
 export interface Location {
   readonly hex: number;
+  /** El espacio del grafo del sitio (`spaces.ts`); sin él, el campo abierto del hex. */
+  readonly space?: SpaceKey;
 }
 
 /** Los lugares son entidades (`place:n`, y el asentamiento mismo para la aldea). */

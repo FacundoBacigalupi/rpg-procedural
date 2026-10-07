@@ -2,8 +2,8 @@
 // en su propia tabla, por id de entidad (el `Body` de un agente, su `Mind`, el stock de un granero).
 // Los procesos leen por `ReadonlyWorldTruth` y escriben solo con diffs que aplica el scheduler.
 //
-// Por ahora es solo el almacén; las celdas, los lugares, el grafo de espacios y la materialización
-// por ranuras (simulation §6, perception §3) llegan con sus tareas.
+// Por ahora es solo el almacén; los lugares están en `space.ts` y el grafo de espacios en
+// `spaces.ts`. Las celdas y la materialización por ranuras (simulation §6) llegan con sus tareas.
 
 import { compareIds, compareStrings, type EntityBase, type EntityRef } from "../../core/index.ts";
 
