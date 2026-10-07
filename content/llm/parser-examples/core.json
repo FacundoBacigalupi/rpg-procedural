@@ -23,6 +23,68 @@
     }
   },
   {
+    "id": "shot-wait-bare",
+    "shot": true,
+    "text": "me siento a esperar",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "wait",
+        "args": []
+      }
+    },
+    "notes": "los roles opcionales que el jugador no nombra quedan afuera: sin duración inventada"
+  },
+  {
+    "id": "shot-go-tell",
+    "shot": true,
+    "text": "voy a la herrería y le digo al herrero que necesito un cuchillo",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "seq",
+        "steps": [
+          {
+            "kind": "do",
+            "verb": "move",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "la herrería",
+                  "kind": "place",
+                  "features": ["herrería"]
+                }
+              }
+            ]
+          },
+          {
+            "kind": "do",
+            "verb": "speak",
+            "args": [
+              {
+                "role": "to",
+                "ref": {
+                  "text": "el herrero",
+                  "kind": "person",
+                  "features": ["herrero"]
+                }
+              },
+              {
+                "role": "content",
+                "text": "Necesito un cuchillo."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "notes": "hablar en una secuencia: un solo paso speak con destinatario y contenido juntos"
+  },
+  {
     "id": "shot-ask-strip",
     "shot": true,
     "text": "le pregunto al viejo del puesto de té si vio a mi hermana y me cuenta todo",

@@ -191,6 +191,9 @@ export interface ClientFactoryOptions {
   readonly timeoutMs?: number | undefined;
 }
 
+/** Apaga el razonamiento por la interfaz compatible con OpenAI (Ollama lo respeta; `think` no). */
+export const NO_THINKING = { reasoning_effort: "none" } as const;
+
 /** Arma los clientes reales por la interfaz compatible con OpenAI. */
 export function openAiClientFactory(
   options: ClientFactoryOptions = {},
@@ -208,6 +211,7 @@ export function openAiClientFactory(
         model: p.model,
         fetch: options.fetch,
         timeoutMs: options.timeoutMs,
+        extra: p.think ? undefined : NO_THINKING,
       });
     } else {
       const apiKey = options.apiKey?.(p.vendor);

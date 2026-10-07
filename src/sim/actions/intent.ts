@@ -36,7 +36,8 @@ export interface RefDescription {
 export const DraftText = z.string().trim().min(1).max(500);
 const text = DraftText;
 
-export const RefDescription: z.ZodType<RefDescription> = z.strictObject({
+/** El objeto con su forma, para derivar variantes (la de la salida restringida pide `kind`). */
+export const RefDescriptionShape = z.strictObject({
   text,
   kind: EntityKind.optional(),
   features: z.array(text).max(16),
@@ -47,6 +48,7 @@ export const RefDescription: z.ZodType<RefDescription> = z.strictObject({
   },
   quantity: QuantitySpec.optional(),
 });
+export const RefDescription: z.ZodType<RefDescription> = RefDescriptionShape;
 
 export const DraftDuration = z.strictObject({
   amount: z.number().positive(),

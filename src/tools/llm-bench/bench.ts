@@ -93,6 +93,8 @@ export interface BenchOptions {
   readonly repeat?: number | undefined;
   /** Sin salida restringida, para ver cuánto aporta el JSON Schema. */
   readonly grammar?: boolean | undefined;
+  /** Se llama después de cada caso, para ver el avance. */
+  readonly onCase?: ((r: CaseResult) => void) | undefined;
 }
 
 /** Los casos que se puntúan: los ejemplos que no van en el prompt. */
@@ -170,7 +172,11 @@ export async function benchModel(
   if (first) coldMs = (await runCase(client, o.setup, first, o.now, o.grammar)).ms;
   const results: CaseResult[] = [];
   for (let k = 0; k < (o.repeat ?? 1); k++) {
-    for (const e of o.examples) results.push(await runCase(client, o.setup, e, o.now, o.grammar));
+    for (const e of o.examples) {
+      const r = await runCase(client, o.setup, e, o.now, o.grammar);
+      results.push(r);
+      o.onCase?.(r);
+    }
   }
   const name = o.grammar === false ? `${o.client.name} (free)` : o.client.name;
   return { results, summary: summarize(name, results, coldMs) };

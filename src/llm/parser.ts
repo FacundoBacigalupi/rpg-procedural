@@ -51,6 +51,8 @@ export const PARSER_RULES = [
   '- "mi padre", "mi casa": put the relation in `relation` with `to: "self"`.',
   "- Use only the verbs, roles, manners and templates listed below. Whatever has no verb goes to",
   "  `unmapped`; if part of it fits a verb, use the closest verb for that part.",
+  "- Roles marked ? are optional: include them only when the player says them. Never fill in a",
+  "  duration, a place or a thing the player did not mention.",
   "- If the character only talks, use `speech` with the exact words and `to` when said. When",
   "  talking is one step of a sequence, use the `speak` verb with `content` instead.",
   "- One action is `act`; a sequence (`seq`) or a repetition until something (`until`) is `plan`.",
@@ -133,6 +135,12 @@ export function parserMessages(setup: ParserSetup, input: ParserInput): LlmMessa
   ];
 }
 
+/**
+ * Tope de tokens del borrador: el ejemplo más largo tiene 342 caracteres (~150 tokens). Sin tope, un modelo que con
+ * la salida restringida se queda emitiendo espacios sigue hasta el timeout.
+ */
+export const PARSER_MAX_TOKENS = 768;
+
 export function parseIntent(
   jobs: LlmJobs,
   setup: ParserSetup,
@@ -141,5 +149,6 @@ export function parseIntent(
   return jobs.structured("parser", setup.schema, setup.jsonSchema, {
     messages: parserMessages(setup, input),
     temperature: 0,
+    maxTokens: PARSER_MAX_TOKENS,
   });
 }
