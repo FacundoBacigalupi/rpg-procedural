@@ -64,5 +64,6 @@ export function lifePressures(w: LifeWorld): Pressure[] {
       now: w.scheduler.now,
     }),
     w.pressureCurves,
+    { truth: w.truth, now: w.scheduler.now },
   );
 }

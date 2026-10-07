@@ -11,6 +11,7 @@ import {
   isExternal,
   type LedgerAccount,
   ledgerUnit,
+  type PressureId,
   parseId,
 } from "../../core/index.ts";
 import { type Life, lifePressures, playerView } from "../../game/index.ts";
@@ -143,7 +144,15 @@ function find(life: Life, text: string): string {
 }
 
 function line(e: Event): string {
-  const causes = e.causes.map((c) => (c.kind === "event" ? c.event : c.kind)).join(", ");
+  const causes = e.causes
+    .map((c) =>
+      c.kind === "event"
+        ? c.event
+        : c.kind === "pressure"
+          ? `${c.pressure}=${(c.weight ?? 0).toFixed(2)}`
+          : c.kind,
+    )
+    .join(", ");
   return `${e.id} t${e.tick} ${e.kind} [${e.actors.join(" ")}] ← ${causes}`;
 }
 
@@ -225,11 +234,25 @@ function pressure(life: Life, kind: string, id: string): string {
   if (!p) return `No hay una presión ${kind} en ${id}.`;
   return [
     pressureLine(p),
+    ...(p.id ? [dischargeHistory(life, p.id)] : ["nunca la citó un evento."]),
     `calculada por ${p.system}; fuentes:`,
     ...p.sources.map((s) => `  ${s.kind === "state" ? `${s.entity}.${s.key}` : s.kind}`),
     p.discharges.length ? "descargas:" : "sin descargas posibles todavía (ningún proceso la usa).",
     ...p.discharges.map((d) => `  ${d.process}: umbral ${d.threshold}, hazard ${d.hazard}`),
   ].join("\n");
+}
+
+/** Cada evento que la citó, con el valor que tenía en ese momento. */
+function dischargeHistory(life: Life, id: PressureId): string {
+  const rows = life.world.log
+    .all()
+    .flatMap((e) => e.causes.map((c) => ({ e, c })))
+    .filter(({ c }) => c.kind === "pressure" && c.pressure === id)
+    .map(({ e, c }) => {
+      const value = c.kind === "pressure" ? (c.weight ?? 0) : 0;
+      return `  t${e.tick} ${e.id} ${e.kind} con valor ${value.toFixed(2)}`;
+    });
+  return [`${id}: citada por ${rows.length} eventos:`, ...rows.slice(-INSPECT_LIMIT)].join("\n");
 }
 
 function hazard(life: Life): string {
