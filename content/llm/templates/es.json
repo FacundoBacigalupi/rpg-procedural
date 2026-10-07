@@ -68,6 +68,10 @@
     "lines": ["{who} guarda algo en la casa.", "Ves a {who} guardando algo."]
   },
   { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
+  {
+    "id": "percept.action.cook",
+    "lines": ["{who} cocina.", "Ves a {who} atendiendo el fuego."]
+  },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
@@ -283,6 +287,25 @@
   {
     "id": "outcome.eat.nothing",
     "lines": ["Buscás qué comer, pero no hay nada.", "No encontrás nada para comer."]
+  },
+  {
+    "id": "outcome.cook.good",
+    "lines": ["Sacás {what} dorado y en su punto.", "Te sale {what} como tiene que ser."]
+  },
+  {
+    "id": "outcome.cook.fair",
+    "lines": [
+      "Sacás {what}, aunque no del todo parejo.",
+      "El {what} sale pasable, con algún defecto."
+    ]
+  },
+  {
+    "id": "outcome.cook.poor",
+    "lines": ["Sacás {what} que no te convence.", "El {what} te sale mal."]
+  },
+  {
+    "id": "outcome.cook.nothing",
+    "lines": ["No tenés con qué cocinar.", "Sin insumos suficientes, no encendés el fuego."]
   },
   { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },

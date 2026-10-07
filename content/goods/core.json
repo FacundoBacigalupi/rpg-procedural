@@ -12,6 +12,13 @@
     "halfLifeDays": 900
   },
   {
+    "id": "flatbread",
+    "name": "pan plano",
+    "form": "good",
+    "priceCopperPerKg": 14,
+    "halfLifeDays": 4
+  },
+  {
     "id": "gleanings",
     "name": "espigas rebuscadas",
     "form": "good",

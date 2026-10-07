@@ -890,6 +890,19 @@
     }
   },
   {
+    "id": "cook-flatbread",
+    "text": "horneo pan con el grano de la despensa",
+    "scene": "Estás en tu casa; hay un horno de barro y grano guardado.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "cook",
+        "args": [{ "role": "what", "text": "pan con el grano de la despensa" }]
+      }
+    }
+  },
+  {
     "id": "tend-self",
     "text": "me limpio la herida con cuidado",
     "scene": "Estás en tu casa; te cortaste la mano trabajando.",

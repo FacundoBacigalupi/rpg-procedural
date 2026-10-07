@@ -23,6 +23,7 @@ import {
   logistic,
   type PlaceRef,
 } from "../../core/index.ts";
+import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
 import {
   askPerKg,
   bidPerKg,
@@ -77,6 +78,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly market?: Market | undefined;
   /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
   readonly unitNames?: ReadonlyMap<LedgerUnit, string> | undefined;
+  /** Las recetas que conoce el mundo: sin ellas, `cook` no tiene qué hacer. */
+  readonly recipes?: readonly RecipeDef[] | undefined;
 }
 
 /** Lo que el resolver sabe de la economía de la aldea (economy §1, §4): precios base y casas. */
@@ -105,6 +108,11 @@ export interface Nutrition {
  * aplica con `ingest`). Quien arma el ledger declara este sumidero con las unidades de comida.
  */
 export const EATEN = "eaten";
+/**
+ * Por donde pasa lo que se cocina: los insumos se van acá y el producto sale de acá. Las dos
+ * puntas quedan en el diario del evento de cocinar; el agua que absorbe la masa no se cuenta.
+ */
+export const COOKED = "cooked";
 /** Cuánto busca comer alguien en una comida (kcal): un plato de grano cocido, más o menos. */
 export const MEAL_KCAL = 800;
 /** Cuánto toma de una vez del pozo, del río o del cántaro (litros). */
@@ -222,6 +230,24 @@ export type VerbEffect =
     }
   | { readonly kind: "drink"; readonly liters: number }
   | {
+      readonly kind: "cook";
+      /** La receta que intentó (null si no hay o no tenía con qué). */
+      readonly recipe: string | null;
+      /** De quién eran los insumos y adónde vuelve lo cocinado. */
+      readonly from: HolderRef | null;
+      /** Lo que salió, en el ledger (null si no se cocinó nada). */
+      readonly good: LedgerUnit | null;
+      readonly grams: number;
+      /** Los gramos de insumo que se gastaron. */
+      readonly used: number;
+      /** 0-1: la calidad del producto (la verdad; lo creído la reemplaza por `perceived`). */
+      readonly quality: number;
+      /** 0-1: la calidad que el cocinero cree que le salió, juzgada con sus sentidos. */
+      readonly perceived: number;
+      /** Cómo quedó: a punto, crudo, pasado o quemado. */
+      readonly state: "done" | "raw" | "dry" | "burnt" | null;
+    }
+  | {
       readonly kind: "tend";
       /** A quién curó (él mismo si no nombra a nadie). */
       readonly target: EntityRef;
@@ -280,6 +306,15 @@ interface VerbResult {
     /** De dónde sale cuando no es un titular (la cosecha viene de afuera del ledger). */
     source?: LedgerAccount;
   }[];
+  /**
+   * El oficio reemplaza a la tirada: el resultado es lo que quedó de la sesión, y de ahí aprende
+   * quien lo hizo (crafts §1: se cocina, no se tira).
+   */
+  readonly verdict?: {
+    outcome: Outcome;
+    failure: FailureModeId | null;
+    believed: BelievedOutcome;
+  };
   /** El mundo corrige la tirada: lo buscado no estaba, no quedaba nada que sacar. */
   readonly override?: { outcome: Outcome; failure: FailureModeId; believed: BelievedOutcome };
   /** Quienes además lo notaron (el robo que sale muy mal). */
@@ -327,16 +362,18 @@ export function resolve(input: ResolveInput): ActionResolution {
   const run = RESOLVE[def.resolver];
   const truth = run(ctx);
 
-  const outcome = truth.override?.outcome ?? roll.outcome;
-  const failure = truth.override?.failure ?? roll.failure;
-  const believed = truth.override?.believed ?? roll.believed;
+  const verdict = truth.override ?? truth.verdict;
+  const outcome = verdict?.outcome ?? roll.outcome;
+  const failure = truth.override?.failure ?? truth.verdict?.failure ?? roll.failure;
+  const believed = verdict?.believed ?? roll.believed;
   const noticedBy = unique([...roll.noticedBy, ...(truth.noticedBy ?? [])]);
 
   // Lo creído: si el actor no notó que falló (o que salió a medias), cree el efecto de un
   // resultado bueno; si no, ve lo que pasó. Recolectar es la excepción: lo juntado se ve.
   const fooled =
     (outcome === "failure_unnoticed" || (roll.outcome === "partial" && believed === "success")) &&
-    def.resolver !== "gather";
+    def.resolver !== "gather" &&
+    def.resolver !== "cook";
   const selfEffect = fooled
     ? run({
         ...ctx,
@@ -396,7 +433,8 @@ export function resolve(input: ResolveInput): ActionResolution {
       : [];
 
   return {
-    attempt: roll,
+    // El oficio aprende de lo que salió de la sesión, no de la tirada que no se usó.
+    attempt: truth.verdict ? { ...roll, outcome, failure, believed } : roll,
     outcome,
     failure,
     degree: ctx.degree,
@@ -419,6 +457,10 @@ function believedView(effect: VerbEffect): VerbEffect {
   if (effect.kind === "search" && !effect.found && !effect.glimpsed) {
     // No lo encontró: cree que no está, esté o no.
     return { ...effect, present: false };
+  }
+  if (effect.kind === "cook") {
+    // Ve cuánto sacó, pero la calidad la juzga con sus sentidos, no con la verdad.
+    return { ...effect, quality: effect.perceived, state: null };
   }
   return effect;
 }
@@ -881,6 +923,134 @@ const store: Resolver = (c) => {
   };
 };
 
+/** Calidad mínima para decir que salió bien, y para decir que salió a medias. */
+const COOK_GOOD = 0.7;
+const COOK_PASSABLE = 0.35;
+/** Menos que esta fracción de la tanda no vale el fuego. */
+const COOK_MIN_BATCH = 0.25;
+
+const cook: Resolver = (c) => {
+  const none: VerbResult = {
+    effect: {
+      kind: "cook",
+      recipe: null,
+      from: null,
+      good: null,
+      grams: 0,
+      used: 0,
+      quality: 0,
+      perceived: 0,
+      state: null,
+    },
+    seconds: c.nominal,
+  };
+  if (c.roll.unmet) return none;
+  const noMeans: VerbResult = {
+    ...none,
+    seconds: Math.min(c.nominal, 60),
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  };
+  const recipes = c.input.recipes ?? [];
+  const what = argText(c, "what");
+  const words = what === null ? [] : refTokens(what);
+  const named = recipes.filter((r) => {
+    const tokens = refTokens(`${r.id.replace(/_/g, " ")} ${r.name}`);
+    return words.some((w) => tokens.includes(w));
+  });
+  const recipe = named[0] ?? recipes[0];
+  if (!recipe) return noMeans;
+
+  // Los insumos: de lo que lleva encima si le alcanza, y si no, de la despensa de la casa.
+  const actorId = c.input.actor.id as HolderRef;
+  const stock = (holder: HolderRef | undefined): number | null => {
+    if (holder === undefined) return null;
+    const held = c.input.ledger.holdings(holderAccount(holder));
+    const scales = recipe.inputs.map(
+      (i) => (held.find((h) => h.unit === recipeUnit(i.good))?.amount ?? 0) / i.grams,
+    );
+    return Math.min(1, ...scales);
+  };
+  const own = stock(actorId);
+  const larder = stock(c.input.larder);
+  const from = (own ?? 0) >= COOK_MIN_BATCH ? actorId : (c.input.larder ?? null);
+  const scale = from === actorId ? own : larder;
+  if (from === null || scale === null || scale < COOK_MIN_BATCH) return noMeans;
+
+  const s = runSession({
+    recipe,
+    hands: handsOf(c.input.actor.skill ?? 0, c.input.actor.z),
+    rng: c.rng,
+    who: c.input.actor.id,
+    tick: c.input.tick,
+  });
+  const used = recipe.inputs.map((i) => ({
+    unit: recipeUnit(i.good),
+    amount: Math.floor(i.grams * scale),
+  }));
+  const inGrams = used.reduce((sum, u) => sum + u.amount, 0);
+  const outUnit = recipeUnit(recipe.output.good);
+  const grams = Math.floor(inGrams * s.yield);
+  const state: "done" | "raw" | "dry" | "burnt" =
+    s.work.scorch >= 0.4
+      ? "burnt"
+      : s.work.doneness < 0.85
+        ? "raw"
+        : s.work.doneness > 1.25
+          ? "dry"
+          : "done";
+  const grade = (q: number): "success" | "partial" | "failure" =>
+    q >= COOK_GOOD ? "success" : q >= COOK_PASSABLE ? "partial" : "failure";
+  const truth = grade(s.quality);
+  const believed = grade(s.perceivedQuality);
+  const outcome: Outcome =
+    truth === "failure" && believed === "success"
+      ? "failure_unnoticed"
+      : truth === "failure" && believed === "partial"
+        ? "failure_suspected"
+        : truth;
+  return {
+    effect: {
+      kind: "cook",
+      recipe: recipe.id,
+      from,
+      good: outUnit,
+      grams,
+      used: inGrams,
+      quality: round3(s.quality),
+      perceived: round3(s.perceivedQuality),
+      state,
+    },
+    seconds: s.seconds,
+    verdict: {
+      outcome,
+      failure: truth === "success" ? null : state === "burnt" ? "poor_yield" : "clumsy",
+      believed,
+    },
+    transfers: [
+      ...used.map((u) => ({
+        from,
+        unit: u.unit,
+        amount: u.amount,
+        to: externalAccount(COOKED),
+      })),
+      {
+        from,
+        unit: outUnit,
+        amount: grams,
+        source: externalAccount(COOKED),
+        to: holderAccount(from),
+      },
+    ],
+    // El horno hace ruido y humo, no más.
+    loud: 1.2,
+  };
+};
+
+/** La unidad del ledger de un bien de receta (`good:<id>`). */
+function recipeUnit(good: string): LedgerUnit {
+  return ledgerUnit(`good:${good}`);
+}
+
 const drink: Resolver = (c) => ({
   // El agua del pozo o del río no se cuenta en el ledger todavía (weather §4 la llevará).
   effect: { kind: "drink", liters: c.roll.unmet ? 0 : DRINK_LITERS },
@@ -911,6 +1081,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   take,
   store,
   eat,
+  cook,
   drink,
   tend,
 };

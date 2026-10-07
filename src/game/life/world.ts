@@ -22,6 +22,7 @@ import {
   type LocalMap,
   type PressureCurve,
   type ReadonlyWorldTruth,
+  type RecipeDef,
   Scheduler,
   type SchedulerState,
   type SkillCatalog,
@@ -51,6 +52,7 @@ export interface LifeWorld {
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
+  readonly recipes: readonly RecipeDef[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
@@ -107,6 +109,7 @@ export function lifeWorld(
           bodyPlans: parts.plans,
           foods: parts.foods,
           goods: parts.goods,
+          recipes: parts.recipes,
           clock: parts.clock,
         }),
         spoilageProcess({

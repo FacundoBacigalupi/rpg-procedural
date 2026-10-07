@@ -13,6 +13,7 @@ import {
   type PlaceRef,
   Rng,
 } from "../../core/index.ts";
+import { RecipeDef } from "../crafts/index.ts";
 import { TRAITS } from "../family/index.ts";
 import { draftEvent } from "../scheduler/index.ts";
 import { SKILLS } from "../skills/index.ts";
@@ -809,5 +810,103 @@ describe("comerciar y cosechar", () => {
     }
     expect(ledger.audit()).toEqual([]);
     expect(ledger.balance(holderAccount(me), grain)).toBeGreaterThan(0);
+  });
+});
+
+describe("cocinar", () => {
+  const grain = ledgerUnit("good:grain");
+  const bread = ledgerUnit("good:flatbread");
+  const house = makeId("household", 1) as unknown as HolderRef;
+  const recipe = RecipeDef.parse({
+    id: "flatbread",
+    name: "pan plano",
+    craft: "cooking",
+    inputs: [{ good: "grain", grams: 400 }],
+    output: { good: "flatbread", ratio: 1.3 },
+    prepMinutes: 20,
+    heat: { target: 220, minutes: 25, scorchAt: 280 },
+  });
+  const cookConfig = {
+    externals: { seed: [grain, bread], cooked: [grain, bread] },
+  };
+  const stocked = (holder: HolderRef, amount: number) => {
+    const ledger = new Ledger(cookConfig);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [
+        { unit: grain, from: externalAccount("seed"), to: holderAccount(holder), amount },
+      ],
+    });
+    return ledger;
+  };
+  const cooking = (ledger: Ledger, skill = 0.5) =>
+    input(
+      "cook",
+      { args: [{ role: "what", text: "pan" }] },
+      {
+        actor: actor({ capabilities: { manipulation: 1 }, skill }),
+        ledger,
+        larder: house,
+        recipes: [recipe],
+      },
+    );
+
+  it("gasta los insumos de la despensa y deja el pan ahí, sin crear ni perder nada de más", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1e6 }),
+        fc.integer({ min: 400, max: 5000 }),
+        (seed, have) => {
+          const ledger = stocked(house, have);
+          const r = resolve({ ...cooking(ledger), rng: Rng.root(seed) });
+          expect(r.effect).toMatchObject({ kind: "cook", recipe: "flatbread" });
+          post(ledger, r, 1);
+          expect(ledger.audit()).toEqual([]);
+          expect(ledger.balance(holderAccount(house), grain)).toBe(have - 400);
+          const eff = r.effect;
+          if (eff.kind !== "cook") throw new Error("no cocinó");
+          expect(ledger.balance(holderAccount(house), bread)).toBe(eff.grams);
+          // El producto nunca pesa más que lo que la receta rinde.
+          expect(eff.grams).toBeLessThanOrEqual(Math.floor(400 * recipe.output.ratio));
+        },
+      ),
+      { numRuns: 40 },
+    );
+  });
+
+  it("es determinista y el evento queda con la calidad y las causas", () => {
+    const a = resolve(cooking(stocked(house, 1000)));
+    const b = resolve(cooking(stocked(house, 1000)));
+    expect(a).toEqual(b);
+    expect(a.events[0]?.causes).toEqual(intent);
+    expect(a.events[0]?.data).toMatchObject({ verb: "cook", effect: { kind: "cook" } });
+  });
+
+  it("sin insumos suficientes falla por falta de medios y no mueve nada", () => {
+    const r = resolve(cooking(stocked(house, 50)));
+    expect(r.postings).toEqual([]);
+    expect(r.failure).toBe("no_means");
+  });
+
+  it("el cocinero juzga la calidad con sus sentidos: lo creído no es la verdad", () => {
+    const rs = many(40, () => cooking(stocked(house, 1000), 0.05));
+    const differs = rs.some(
+      (r) =>
+        r.effect.kind === "cook" &&
+        r.self.effect.kind === "cook" &&
+        r.self.effect.quality !== r.effect.quality,
+    );
+    expect(differs).toBe(true);
+    for (const r of rs) {
+      if (r.self.effect.kind === "cook") expect(r.self.effect.state).toBeNull();
+    }
+  });
+
+  it("aprende de lo que le salió: el resultado sale de la sesión, no de la tirada", () => {
+    const rs = many(40, () => cooking(stocked(house, 1000), 0.9));
+    const good = rs.filter((r) => r.effect.kind === "cook" && r.effect.quality >= 0.7);
+    expect(good.length).toBeGreaterThan(20);
+    for (const r of good) expect(r.attempt.outcome).toBe(r.outcome);
   });
 });

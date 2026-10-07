@@ -158,6 +158,14 @@ export type EffectView =
     }
   | { readonly kind: "drink"; readonly drank: boolean }
   | {
+      readonly kind: "cook";
+      /** Lo que sacó (null si no cocinó nada). */
+      readonly good: string | null;
+      readonly grams: number;
+      /** Cómo le pareció que quedó, por lo que alcanza a juzgar con sus sentidos. */
+      readonly looks: "good" | "fair" | "poor";
+    }
+  | {
       readonly kind: "tend";
       readonly target?: string;
       readonly self: boolean;
@@ -418,6 +426,13 @@ function effectView(
       };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
+    case "cook":
+      return {
+        kind: "cook",
+        good: e.good,
+        grams: Math.round(e.grams),
+        looks: e.quality >= 0.7 ? "good" : e.quality >= 0.35 ? "fair" : "poor",
+      };
     case "tend": {
       const self = e.target === player;
       return { kind: "tend", ...(self ? {} : target(e.target)), self, done: e.done };

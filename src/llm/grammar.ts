@@ -419,6 +419,16 @@ const VERBS: readonly {
       return { node: act("store", what ? [{ role: "what", text: what }] : []) };
     },
   },
+  {
+    // Cocinar: "cocino pan", "horneo pan plano", "me pongo a cocinar".
+    re: /^(?:cocino|cocinar|horneo|hornear|amaso|amasar|me pongo a (?:cocinar|hornear))\b/i,
+    build: (rest) => {
+      const what = nounPhrase(
+        rest.replace(MANNER_WORDS, " ").replace(/^\s*(?:algo|la comida)\s*$/i, ""),
+      );
+      return { node: act("cook", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
 ];
 
 function mannersOf(text: string, verb: string, catalog: ActionCatalog | undefined): string[] {

@@ -70,6 +70,7 @@ export const RESOLVERS = [
   "take",
   "store",
   "eat",
+  "cook",
   "drink",
   "tend",
 ] as const;
