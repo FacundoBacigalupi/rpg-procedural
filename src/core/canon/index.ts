@@ -7,9 +7,12 @@
 // Solo acepta datos: null, booleanos, números finitos, strings, arrays y objetos planos. Una
 // propiedad `undefined` se omite (es lo mismo que no tenerla); cualquier otra cosa (NaN, Map,
 // funciones, clases, `undefined` dentro de un array) es un error, porque no volvería igual.
-// El hash del estado vive en `persistence/`, que puede usar `node:crypto`.
+// `canonicalHash` es el SHA-256 de ese texto: la huella de un dato (tooling §2).
 
 import { compareStrings } from "../ids/index.ts";
+import { sha256Hex } from "./sha256.ts";
+
+export { sha256Hex } from "./sha256.ts";
 
 export class CanonError extends Error {
   override name = "CanonError";
@@ -19,6 +22,11 @@ export function canonicalJson(value: unknown): string {
   const out: string[] = [];
   write(value, out, "$");
   return out.join("");
+}
+
+/** SHA-256 en hexadecimal del JSON canónico. */
+export function canonicalHash(value: unknown): string {
+  return sha256Hex(canonicalJson(value));
 }
 
 /** Copia profunda que normaliza al valor que se lee de vuelta de `canonicalJson`. */

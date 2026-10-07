@@ -27,7 +27,13 @@ import {
   parseId,
   type Tick,
 } from "../core/index.ts";
-import { ENTITY, type SchedulerState, WorldTruth } from "../sim/index.ts";
+import {
+  ENTITY,
+  hashState,
+  type SchedulerState,
+  type StateHash,
+  WorldTruth,
+} from "../sim/index.ts";
 import type { SqlDriver } from "./driver.ts";
 import {
   componentTable,
@@ -167,11 +173,12 @@ export class LifeStore {
       };
       const json = canonicalJson(body);
       this.#db.run(
-        "INSERT OR REPLACE INTO snapshots (tick, kind, blob, hash) VALUES (?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO snapshots (tick, kind, blob, hash, state_hash) VALUES (?, ?, ?, ?, ?)",
         body.tick,
         kind,
         zstdCompressSync(json),
         sha256(json),
+        canonicalJson(hashState(state)),
       );
     });
   }
@@ -180,6 +187,16 @@ export class LifeStore {
     return this.#db
       .all<{ tick: Tick; kind: string }>("SELECT tick, kind FROM snapshots ORDER BY tick, kind")
       .map((r) => ({ tick: r.tick, kind: r.kind }));
+  }
+
+  /** El hash del estado en cada snapshot del tipo pedido: lo que el replay compara. */
+  checkpoints(kind = "full"): { tick: Tick; hash: StateHash }[] {
+    return this.#db
+      .all<{ tick: Tick; state_hash: string }>(
+        "SELECT tick, state_hash FROM snapshots WHERE kind = ? ORDER BY tick",
+        kind,
+      )
+      .map((r) => ({ tick: r.tick, hash: JSON.parse(r.state_hash) as StateHash }));
   }
 
   /** Rehace el mundo como estaba en un snapshot. */

@@ -6,5 +6,6 @@ export * from "./ids/index.ts";
 export * from "./ledger/index.ts";
 export * from "./math/index.ts";
 export * from "./rng/index.ts";
+export * from "./schema/index.ts";
 export * from "./time/index.ts";
 export * from "./types/index.ts";

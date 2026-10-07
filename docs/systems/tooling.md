@@ -49,6 +49,7 @@ narration       (seq, tick, mode, text, request_hash)           -- bitácora y m
 - **Canónica:** claves ordenadas, ids ordenados, enteros para las cantidades conservadas, flotantes con representación que vuelve exacta (simulation §14).
 - **Hash del estado:** SHA-256 por tipo de componente y uno total. Se calcula en cada snapshot y, en modo debug, en cada turno.
 - **Sirve para:** el test de determinismo (comparar hashes, no archivos), el detector de divergencias del replay (§3) y comprobar que las herramientas no escriben (el hash no cambia después de usar el inspector).
+- **Hecho en la Fase 0:** `hashState` (`sim/world/hash.ts`) da una parte por tipo de componente (`c:<nombre>`, el hash canónico de las filas `[id, valor]` en orden de id) más `events`, `ledger` (fuentes y diario), `ids` y `scheduler`; el total es el hash canónico del mapa de partes. El SHA-256 es TypeScript puro (`core/canon/sha256.ts`) para poder hashear dentro de la sim; `persistence/` sigue usando `node:crypto` para los hashes por componente, con el mismo resultado. Los hashes de oro de la aldea de prueba (`sim/scheduler/state-hash.test.ts`) corren en Windows y Linux en el CI de cada PR a `main`.
 
 ## 3. Replay
 
@@ -65,6 +66,7 @@ interface ReplayInput {
 - **El texto no se reproduce:** la narración guardada se muestra tal cual; el LLM no participa del replay (narration §10).
 - **Detector de divergencias:** el replay compara el hash en cada checkpoint con el guardado; ante la primera diferencia busca el paso y el proceso cuyo diff cambió (por bisección sobre los hashes de diffs) y lo reporta.
 - **No es para jugar:** en modo juego no hay API para volver a un estado anterior (player-loop §12).
+- **Hecho en la Fase 0** (`src/tools/replay/`): el replay no sabe armar un mundo; el juego entra por `ReplayGame` (`versions`, `start(seed, setup)`) y `ReplayRun` (`advanceTo`, `submit`, `hash`). Un checkpoint en el tick t es el estado después de `advanceTo(t)` y antes de aplicar los planes de t, que es cuando el juego guarda el snapshot. Para en la primera divergencia y devuelve el tick y las partes del hash que difieren; la bisección por proceso llega cuando haya hashes de diffs. `replayInputFromStore` lee `seed`, `versions` y `setup` de `meta`, los planes de `player_plans` y los checkpoints de `snapshots.state_hash`.
 
 ## 4. Versiones y migraciones
 
@@ -155,6 +157,7 @@ Una violación detiene la corrida y genera un paquete de reproducción.
 - **Validación con Zod** de todo `content/` al compilar y al arrancar; referencias cruzadas (una receta que pide una hierba que no existe) son error.
 - **Verbos faltantes** que registra el parser (actions §9) y nombres de contenido huérfano, en un reporte.
 - **Lint de contenido:** valores fuera de rango, entradas sin uso.
+- **Hecho en la Fase 0:** cada tipo es una carpeta de `content/` (anidadas valen: `families/xianxia/realms`) declarada con `defineContent(nombre, esquema, refs)` en `core/schema`; el tipo TypeScript sale del esquema con `z.infer`. Cada `.json` es una lista de entradas con `id` único en el tipo. `loadContent` junta todos los problemas antes de fallar; el lector de archivos está en `persistence/content.ts`. `Content.hash` (hash canónico de todo, sin importar el reparto en archivos) es la versión del contenido de §4. Formato en `content/README.md`.
 
 ## 12. Rendimiento
 
