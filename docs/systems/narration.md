@@ -48,8 +48,8 @@ texto del jugador
 
 | Trabajo | Entrada | Salida | Tamaño de modelo que pide |
 |---|---|---|---|
-| Parser de intención | texto, escena percibida, catálogo relevante | `IntentDraft` | chico (7-8B local) |
-| Narración de escena | `NarrationRequest` | prosa con referencias marcadas | medio (12-14B local) |
+| Parser de intención | texto, escena percibida, catálogo relevante | `IntentDraft` | el modelo residente con salida restringida (un 7-8B aparte solo si el banco de pruebas lo justifica) |
+| Narración de escena | `NarrationRequest` | prosa con referencias marcadas | el modelo residente (12-14B local) |
 | Verbalización de habla | `VerbalizationRequest` (dialogue §16) | líneas de diálogo | medio, a veces dentro del mismo pedido de narración |
 | Aclaraciones y avisos | candidatos y razones que armó la sim (actions §9) | una pregunta o aviso dentro del mundo | chico |
 | Montaje de tiempo saltado | resumen de lo que el personaje vivió en el salto | prosa breve | medio |
@@ -75,11 +75,11 @@ interface LlmConfig {
 }
 ```
 
-- **Por defecto todo es local:** modelos abiertos ya hechos, corriendo en la PC del usuario (referencia: RTX 4070 Super de 12 GB, 32 GB de RAM). Parser con un modelo de 7-8B y salida restringida por gramática al esquema JSON; narración con uno de 12-14B cuantizado. Sin costo por uso, sin red.
+- **Por defecto todo es local:** modelos abiertos ya hechos, corriendo en la PC del usuario (referencia: RTX 4070 Super de 12 GB, 32 GB de RAM). **Un solo modelo residente de 12-14B cuantizado para parser y narración** (aprobado 2026-10-06, ARCHITECTURE §7.7): en 12 GB no entran dos modelos cargados a la vez y cambiar de modelo en cada turno cuesta segundos. El parser usa el mismo modelo con la salida restringida por el JSON Schema que sale del esquema Zod (`z.toJSONSchema`). El banco de pruebas mide si un parser chico aparte vale el cambio. Proveedores por una interfaz compatible con OpenAI: Ollama primero, servidor de llama.cpp cuando haga falta control fino (gramáticas, caché del prefijo por ranura). Sin costo por uso, sin red.
 - **La API es opcional** por trabajo (por ejemplo, solo para la crónica final), con tope de gasto.
 - **Idioma:** las instrucciones internas van en inglés (los modelos chicos las siguen mejor); el jugador escribe en español y la narración sale en español. Si en el banco de pruebas el español de un modelo sale mal, la narración puede pasar a inglés por configuración.
 - **Banco de pruebas en Fase 1:** las mismas 30-50 escenas narradas con varios modelos locales (y, para comparar, plantillas y alguna API), medidas por tasa de aprobación del validador, latencia y lectura del usuario. El modelo por defecto sale de ahí.
-- **Fine-tune propio después de terminar el juego** (Fase 9): un adaptador LoRA sobre un modelo local de 7-8B, entrenado con cientos de ejemplos reales del juego (pedido → texto aprobado por el validador y por el usuario). **No se entrena con salidas de Claude** (los términos de Anthropic lo restringen); los ejemplos salen de textos del usuario, de salidas de modelos abiertos ya filtradas y de las plantillas.
+- **Fine-tune propio después de terminar el juego** (Fase 9): un adaptador LoRA sobre el modelo local que gane el banco de pruebas, entrenado con cientos de ejemplos reales del juego (pedido → texto aprobado por el validador y por el usuario). **No se entrena con salidas de Claude** (los términos de Anthropic lo restringen); los ejemplos salen de textos del usuario, de salidas de modelos abiertos ya filtradas y de las plantillas.
 - **Nada de esto afecta la simulación:** cambiar de proveedor cambia la prosa, nunca el mundo.
 
 ## 2. El muro: la vista del jugador
@@ -273,6 +273,7 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 - **Lo accionable solo desde la sim; la textura, de la paleta de ambiente** que arma la sim. Todo lo que el narrador menciona existe.
 - **Largo:** corto en acción y diálogo, más largo en lugares nuevos; "más detalle" y "más breve" quedan como preferencia del usuario.
 - **Modelos locales ya hechos por defecto,** proveedor intercambiable por trabajo, API opcional, banco de pruebas en Fase 1 y fine-tune propio al terminar el juego. Instrucciones en inglés; narración en español si el modelo lo maneja bien.
+- **Un modelo residente para parser y narración** (2026-10-06, revisión del stack): ver §1.
 
 ## Preguntas abiertas
 

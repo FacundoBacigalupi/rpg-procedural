@@ -73,7 +73,7 @@ Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backl
 6. **El mundo no gira alrededor del jugador.** Los NPC y organizaciones actúan aunque el jugador no esté.
 
 ## Stack
-TypeScript (strict) · Node 24 · npm · Vitest · SQLite (`node:sqlite`) · Zod · LLM local por defecto (Ollama o similar), Claude API opcional (`@anthropic-ai/sdk`) · CLI primero, UI web (Vite + React) más adelante.
+TypeScript (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (sin `tsx` ni build) · npm · Vitest + fast-check · Biome + dependency-cruiser · SQLite (`node:sqlite` tras interfaz) · Zod 4 · RNG por contador y `core/math` determinista · LLM local residente por interfaz compatible con OpenAI (Ollama primero, llama.cpp después), API opcional · CLI como herramienta, UI web local mínima al cierre de la Fase 1 (Vite + React). Detalle y porqués en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
 
 ## Comandos
 (se completan al crear el scaffold en la Fase 0)
