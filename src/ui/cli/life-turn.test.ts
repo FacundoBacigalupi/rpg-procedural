@@ -2,10 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
+import { GAME_CONTENT_KINDS } from "../../game/index.ts";
+import { Life } from "../../game/life/index.ts";
 import { parseCommand } from "../../llm/index.ts";
 import { type ActionPlan, checkInvariants, planFromDraft } from "../../sim/index.ts";
-import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { Life } from "./life.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

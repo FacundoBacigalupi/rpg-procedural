@@ -849,5 +849,45 @@
         }
       }
     }
+  },
+  {
+    "id": "eat-meal",
+    "text": "me siento a comer",
+    "scene": "Estás en tu casa, a la hora de comer. Hay grano guardado y un cántaro de agua.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "eat",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "drink-jug",
+    "text": "bebo agua del cántaro",
+    "scene": "Estás en tu casa, a la hora de comer. Hay grano guardado y un cántaro de agua.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "drink",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "tend-self",
+    "text": "me limpio la herida con cuidado",
+    "scene": "Estás en tu casa; te cortaste la mano trabajando.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "tend",
+        "args": [],
+        "manner": ["careful"]
+      }
+    }
   }
 ]

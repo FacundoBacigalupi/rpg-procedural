@@ -13,12 +13,45 @@ import {
   type StateHash,
   type WorldTruth,
 } from "../../sim/index.ts";
+import type { GameSetup } from "../setup/index.ts";
 import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } from "./act.ts";
 import { createLife, type LifeOptions, type LifeTerrain } from "./create.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
 export const MAX_TURN_DAYS = 30;
+
+/** Lo que se elige antes de empezar y entra al replay como el seed (tooling §3). */
+export interface LifeSetup {
+  readonly game: GameSetup;
+  /** Frecuencia de la grilla del planeta; sin ella, la del planeta real. */
+  readonly frequency?: number;
+}
+
+/** Las versiones del motor para el replay (tooling §4): la del formato la pone quien guarda. */
+export const LIFE_ENGINE = "life-1";
+
+/** La vida como juego del replay (tools/replay), sin importarlo: misma forma. */
+export function lifeReplayGame(
+  content: Content,
+  versions: { engine: string; content: string; format: number },
+) {
+  return {
+    versions,
+    start(seed: Seed, setup: LifeSetup) {
+      const life = Life.create(seed, content, optionsOf(setup));
+      return {
+        advanceTo: (t: Tick) => life.advanceTo(t),
+        submit: (plan: ActionPlan, seq: number) => life.submit(plan, seq),
+        hash: () => life.hash(),
+      };
+    },
+  };
+}
+
+export function optionsOf(setup: LifeSetup): LifeOptions {
+  return setup.frequency === undefined ? {} : { frequency: setup.frequency };
+}
 
 export interface TurnReport {
   readonly from: Tick;

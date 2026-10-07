@@ -174,9 +174,21 @@ export function createLife(
   // aldea cuando settlements las dé (ROADMAP: aldea inicial con edificios y dueños).
   const grain = ledgerUnit("good:grain");
   if (foods.some((f) => f.id === "grain")) {
+    const stocked = ids.next("event");
+    log.append({
+      id: stocked,
+      tick: pop.now,
+      kind: "settlement.stocked",
+      actors: [],
+      place: terrain.village,
+      data: null,
+      emissions: {},
+      causes: [{ kind: "event", event: pop.foundersEvent }],
+      resolution: "local",
+    });
     ledger.post({
       tick: pop.now,
-      eventId: pop.foundersEvent,
+      eventId: stocked,
       transfers: pop.households
         .filter((h) => h.end === null)
         .map((h) => ({
