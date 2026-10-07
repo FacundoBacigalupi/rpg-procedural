@@ -337,6 +337,26 @@ const VERBS: readonly {
     },
   },
   {
+    re: /^(?:como|comer|almuerzo|almorzar|ceno|cenar|desayuno|desayunar|me como)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " ").replace(/^algo\b/i, ""));
+      return { node: act("eat", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
+    // "tomo agua" es beber; "tomo la jarra" sigue siendo agarrar (más abajo).
+    re: /^(?:bebo|beber|tomo\s+(?:un\s+(?:poco\s+de\s+)?|algo\s+de\s+)?agua|tomar\s+agua|me\s+tomo\s+(?:un\s+)?(?:trago|vaso)(?:\s+de\s+agua)?)\b/i,
+    build: () => ({ node: act("drink", []) }),
+  },
+  {
+    // Curar(se), vendar(se), limpiar la herida: el verbo `tend`.
+    re: /^(?:me\s+curo|me\s+vendo|curo|curar(?:me)?|vendo\s+(?:la|las|mi|mis|su|sus)\s+herida|vendar(?:me)?|limpio\s+(?:la|las|mi|mis|su|sus)\s+herida|atiendo|atender)/i,
+    build: (rest) => {
+      const p = personAfterA(rest.replace(MANNER_WORDS, " "));
+      return { node: act("tend", p ? [{ role: "target", ref: p.ref }] : []) };
+    },
+  },
+  {
     re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle)\b/i,
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));

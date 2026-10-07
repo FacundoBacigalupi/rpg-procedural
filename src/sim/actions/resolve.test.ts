@@ -496,3 +496,71 @@ describe("buscar, pegar, hablar, trabajar", () => {
     }
   });
 });
+
+describe("comer, beber, curar", () => {
+  const grain = ledgerUnit("good:grain");
+  const house = makeId("household", 1);
+  const foods = new Map([
+    [grain, { kcalPerGram: 3.4, waterPerGram: 0.12 }],
+    [forage, { kcalPerGram: 0.6, waterPerGram: 0.8 }],
+  ]);
+  const eatConfig = { externals: { seed: [forage, grain, coin], eaten: [forage, grain] } };
+  const stocked = (rows: { holder: HolderRef; unit: typeof grain; amount: number }[]) => {
+    const ledger = new Ledger(eatConfig);
+    rows.forEach((r, i) => {
+      ledger.post({
+        tick: 0,
+        eventId: makeId("event", i + 1),
+        transfers: [
+          { unit: r.unit, from: externalAccount("seed"), to: holderAccount(r.holder), amount: r.amount },
+        ],
+      });
+    });
+    return ledger;
+  };
+
+  it("come lo que lleva encima antes que la despensa, y lo comido sale del ledger", () => {
+    const ledger = stocked([
+      { holder: me, unit: forage, amount: 300 },
+      { holder: house, unit: grain, amount: 5000 },
+    ]);
+    const r = resolve(input("eat", {}, { foods, larder: house, ledger }));
+    expect(r.effect).toMatchObject({ kind: "eat", good: forage, from: me, grams: 300 });
+    if (r.effect.kind !== "eat") throw new Error("no es eat");
+    expect(r.effect.kcal).toBe(180);
+    post(ledger, r, 1);
+    expect(ledger.audit()).toEqual([]);
+    expect(ledger.balance(externalAccount("eaten"), forage)).toBe(300);
+  });
+
+  it("sin nada propio come de la despensa una comida, no todo", () => {
+    const ledger = stocked([{ holder: house, unit: grain, amount: 5000 }]);
+    const r = resolve(input("eat", {}, { foods, larder: house, ledger }));
+    if (r.effect.kind !== "eat") throw new Error("no es eat");
+    expect(r.effect.from).toBe(house);
+    expect(r.effect.grams).toBe(Math.ceil(800 / 3.4));
+    expect(r.postings[0]?.transfers[0]).toMatchObject({
+      from: holderAccount(house),
+      to: externalAccount("eaten"),
+    });
+  });
+
+  it("sin comida falla por falta de medios y no mueve nada", () => {
+    const r = resolve(input("eat", {}, { foods, larder: house, ledger: stocked([]) }));
+    expect(r.outcome).toBe("failure");
+    expect(r.failure).toBe("no_means");
+    expect(r.postings).toEqual([]);
+  });
+
+  it("beber da agua; curar sin objetivo es curarse, y bien hecho cuida con el grado", () => {
+    const d = resolve(input("drink"));
+    expect(d.effect).toEqual({ kind: "drink", liters: 0.75 });
+    const rs = many(200, () => input("tend"));
+    for (const r of rs) {
+      if (r.effect.kind !== "tend") throw new Error("no es tend");
+      expect(r.effect.target).toBe(me);
+      expect(r.effect.care).toBe(r.effect.done ? r.degree : 0);
+    }
+    expect(rs.some((r) => r.effect.kind === "tend" && r.effect.done)).toBe(true);
+  });
+});

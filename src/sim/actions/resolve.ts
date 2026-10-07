@@ -14,8 +14,10 @@
 import {
   type CauseRef,
   type EntityRef,
+  externalAccount,
   type HolderRef,
   holderAccount,
+  type LedgerAccount,
   type LedgerUnit,
   ledgerUnit,
   logistic,
@@ -56,7 +58,28 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly place: PlaceRef;
   /** Por qué: las causas del plan (la intención, las creencias que la sostienen). */
   readonly causes: readonly CauseRef[];
+  /** Lo que se come, por unidad del ledger (`good:<id>`): lo pone quien carga `content/foods`. */
+  readonly foods?: ReadonlyMap<LedgerUnit, Nutrition>;
+  /** La despensa del hogar del actor: de ahí come si no lleva nada encima. */
+  readonly larder?: HolderRef | undefined;
 }
+
+/** Lo que da un gramo de comida. */
+export interface Nutrition {
+  readonly kcalPerGram: number;
+  /** Litros de agua por gramo. */
+  readonly waterPerGram: number;
+}
+
+/**
+ * Adonde va lo que se come: deja el mundo como bien y entra al cuerpo como kcal y agua (body lo
+ * aplica con `ingest`). Quien arma el ledger declara este sumidero con las unidades de comida.
+ */
+export const EATEN = "eaten";
+/** Cuánto busca comer alguien en una comida (kcal): un plato de grano cocido, más o menos. */
+export const MEAL_KCAL = 800;
+/** Cuánto toma de una vez del pozo, del río o del cántaro (litros). */
+export const DRINK_LITERS = 0.75;
 
 export interface Holding {
   readonly unit: LedgerUnit;
@@ -146,6 +169,26 @@ export type VerbEffect =
       /** Lo que quería llevarse. */
       readonly wanted: LedgerUnit | null;
       readonly got: readonly Holding[];
+    }
+  | {
+      readonly kind: "eat";
+      readonly good: LedgerUnit | null;
+      /** De quién era lo que comió: lo suyo o la despensa de la casa. */
+      readonly from: HolderRef | null;
+      readonly grams: number;
+      readonly kcal: number;
+      /** Litros de agua que trae la comida. */
+      readonly water: number;
+    }
+  | { readonly kind: "drink"; readonly liters: number }
+  | {
+      readonly kind: "tend";
+      /** A quién curó (él mismo si no nombra a nadie). */
+      readonly target: EntityRef;
+      /** Si lo llegó a hacer bien: body limpia, venda o entablilla la peor herida. */
+      readonly done: boolean;
+      /** 0-1: cuán bien lo hizo. */
+      readonly care: number;
     };
 
 /** Lo que el actor cree de su paso. */
@@ -188,7 +231,13 @@ interface VerbResult {
   readonly effect: VerbEffect;
   readonly seconds: number;
   readonly changes?: readonly StateChange[];
-  readonly transfers?: readonly { from: HolderRef; unit: LedgerUnit; amount: number }[];
+  readonly transfers?: readonly {
+    from: HolderRef;
+    unit: LedgerUnit;
+    amount: number;
+    /** Adonde va; si no, al actor. */
+    to?: LedgerAccount;
+  }[];
   /** El mundo corrige la tirada: lo buscado no estaba, no quedaba nada que sacar. */
   readonly override?: { outcome: Outcome; failure: FailureModeId; believed: BelievedOutcome };
   /** Quienes además lo notaron (el robo que sale muy mal). */
@@ -297,7 +346,7 @@ export function resolve(input: ResolveInput): ActionResolution {
             transfers: transfers.map((t) => ({
               unit: t.unit,
               from: holderAccount(t.from),
-              to: holderAccount(actor.id as HolderRef),
+              to: t.to ?? holderAccount(actor.id as HolderRef),
               amount: t.amount,
             })),
           },
@@ -537,6 +586,64 @@ const take: Resolver = (c) => {
   };
 };
 
+const eat: Resolver = (c) => {
+  const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
+  const edible = (holder: HolderRef | undefined) =>
+    holder === undefined
+      ? []
+      : c.input.ledger.holdings(holderAccount(holder)).filter((h) => foods.has(h.unit));
+  const own = edible(c.input.actor.id as HolderRef);
+  // Lo que lleva encima primero; si no tiene nada, la despensa de la casa.
+  const from: HolderRef | null =
+    own.length > 0 ? (c.input.actor.id as HolderRef) : (c.input.larder ?? null);
+  const pool = own.length > 0 ? own : edible(c.input.larder);
+  const row = pickWanted(pool, argText(c, "what"));
+  const empty: VerbEffect = { kind: "eat", good: null, from, grams: 0, kcal: 0, water: 0 };
+  if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
+  if (!row || from === null) {
+    return {
+      effect: empty,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  const n = foods.get(row.unit) as Nutrition;
+  const grams = Math.min(
+    row.amount,
+    n.kcalPerGram > 0 ? Math.ceil(MEAL_KCAL / n.kcalPerGram) : row.amount,
+  );
+  const effect: VerbEffect = {
+    kind: "eat",
+    good: row.unit,
+    from,
+    grams,
+    kcal: Math.round(grams * n.kcalPerGram),
+    water: round3(grams * n.waterPerGram),
+  };
+  return {
+    effect,
+    seconds: c.nominal,
+    transfers: [{ from, unit: row.unit, amount: grams, to: externalAccount(EATEN) }],
+  };
+};
+
+const drink: Resolver = (c) => ({
+  // El agua del pozo o del río no se cuenta en el ledger todavía (weather §4 la llevará).
+  effect: { kind: "drink", liters: c.roll.unmet ? 0 : DRINK_LITERS },
+  seconds: c.nominal,
+});
+
+const tend: Resolver = (c) => {
+  const target = argEntity(c, "target") ?? c.input.actor.id;
+  const m = c.roll.margin;
+  const done = m !== null && m >= PARTIAL_MARGIN;
+  return {
+    effect: { kind: "tend", target, done, care: done ? c.degree : 0 },
+    // Si sale mal, se deja antes.
+    seconds: done ? c.nominal : c.nominal / 2,
+  };
+};
+
 const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   none,
   move,
@@ -548,6 +655,9 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   strike,
   trade,
   take,
+  eat,
+  drink,
+  tend,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

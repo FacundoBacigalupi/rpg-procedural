@@ -77,8 +77,10 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
     const l = id === undefined ? undefined : labels.get(id);
     return l ? `{{${l.localId}|${surface(l)}}}` : first("who.vague");
   };
-  const good = (unit: string | null): string =>
-    unit !== null && book.has(`good.${unit}`) ? first(`good.${unit}`) : first("good.unknown");
+  const good = (unit: string | null): string => {
+    const id = unit === null ? null : `good.${unit.replace(/^good:/, "")}`;
+    return id !== null && book.has(id) ? first(id) : first("good.unknown");
+  };
 
   const s = view.scene;
   const arrived = view.outcomes.some((o) => o.effect.kind === "move" && o.effect.arrived === true);
@@ -139,8 +141,8 @@ function outcome(
       }
       break;
     case "gather": {
-      const what =
-        e.good !== null && book.has(`good.${e.good}`) ? good(e.good) : (e.what ?? good(null));
+      const known = e.good !== null && book.has(`good.${e.good.replace(/^good:/, "")}`);
+      const what = known ? good(e.good) : (e.what ?? good(null));
       if (e.amount <= 0 || e.good === null) say("outcome.gather.none");
       else
         say(o.believed === "success" ? "outcome.gather.some" : "outcome.gather.little", { what });
@@ -196,6 +198,17 @@ function outcome(
       }
       break;
     }
+    case "eat":
+      if (e.grams <= 0 || e.good === null) say("outcome.eat.nothing");
+      else say(e.fromLarder ? "outcome.eat.larder" : "outcome.eat.own", { what: good(e.good) });
+      break;
+    case "drink":
+      say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
+      break;
+    case "tend":
+      if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
+      else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });
+      break;
   }
   const cue = o.cues[0];
   if (o.believed !== "success" && cue !== undefined) say(`cue.${cue}`);

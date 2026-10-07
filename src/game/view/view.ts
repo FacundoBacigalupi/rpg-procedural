@@ -137,7 +137,16 @@ export type EffectView =
       readonly kind: "take";
       readonly from?: string;
       readonly got: readonly { readonly good: string; readonly amount: number }[];
-    };
+    }
+  | {
+      readonly kind: "eat";
+      readonly good: string | null;
+      /** De la despensa de la casa (no de lo que llevaba encima). */
+      readonly fromLarder: boolean;
+      readonly grams: number;
+    }
+  | { readonly kind: "drink"; readonly drank: boolean }
+  | { readonly kind: "tend"; readonly target?: string; readonly self: boolean; readonly done: boolean };
 
 export interface OutcomeView {
   readonly verb: string;
@@ -257,7 +266,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     verb: step.verb,
     believed: step.self.believed,
     cues: [...step.self.cues],
-    effect: effectView(step.self, target),
+    effect: effectView(step.self, target, input.player),
   }));
 
   const percepts: PerceptView[] = [];
@@ -308,6 +317,7 @@ function sceneView(s: SceneInput): SceneView {
 function effectView(
   self: SelfReport,
   target: (ref: EntityRef | null | undefined) => { target?: string },
+  player: AgentId,
 ): EffectView {
   const e = self.effect;
   switch (e.kind) {
@@ -367,6 +377,19 @@ function effectView(
         ...(from !== undefined ? { from } : {}),
         got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
       };
+    }
+    case "eat":
+      return {
+        kind: "eat",
+        good: e.good,
+        fromLarder: e.from !== null && e.from !== player,
+        grams: Math.round(e.grams),
+      };
+    case "drink":
+      return { kind: "drink", drank: e.liters > 0 };
+    case "tend": {
+      const self = e.target === player;
+      return { kind: "tend", ...(self ? {} : target(e.target)), self, done: e.done };
     }
   }
 }
