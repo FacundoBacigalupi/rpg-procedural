@@ -47,6 +47,7 @@ import { FORMAT_VERSION, type LifeStore, sha256 } from "../../persistence/index.
 import {
   type ActionPlan,
   type IntentDraft,
+  LOCATION,
   PARSER_EXAMPLES,
   planFromDraft,
 } from "../../sim/index.ts";
@@ -178,6 +179,7 @@ ${renderStatus(life.now)}\n> `);
       known: knownEntities(life.world),
       clock: life.world.clock,
       causes: [{ kind: "state", entity: life.player, key: "intent" }],
+      here: life.world.truth.get(LOCATION, life.player)?.hex,
     });
     if (made.kind === "clarify") {
       const labels = made.refs.flatMap((r) =>

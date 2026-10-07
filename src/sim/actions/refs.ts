@@ -26,6 +26,10 @@ export interface KnownEntity {
   readonly relations: readonly { readonly rel: string; readonly of: EntityRef | "self" }[];
   /** Lo percibe ahora: lo que está en la escena pesa más que lo que recuerda (§4). */
   readonly present: boolean;
+  /** Dónde cree el actor que está una persona (hex): para ir a buscarla antes de hablarle. */
+  readonly at?: number | undefined;
+  /** Los hexes que cubre un lugar conocido: para saber a cuál ir. */
+  readonly hexes?: readonly number[] | undefined;
   /** Las creencias de donde sale (vacío hasta que llegue `sim/knowledge`). */
   readonly via: readonly BeliefId[];
 }
