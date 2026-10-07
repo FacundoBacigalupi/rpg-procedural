@@ -245,6 +245,15 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 - **Fase 3:** montaje para saltos de tiempo, textos dentro del mundo, sueños.
 - **Fase 4:** vocabulario de cultivo por escuela; percepción interna y de cultivo narrada con incertidumbre.
 - **Fase 1 (además):** proveedor local (Ollama o similar) con gramática JSON para el parser; banco de pruebas de modelos.
+  - **Hecho, el parser.** Hay dos esquemas por catálogo, y los tests verifican que acepten y rechacen lo mismo:
+    - `structuralDraftFor` va como `response_format`. Es una variante de `do` por verbo, con sus roles, el tipo de argumento y los modos como literales, más las plantillas. Solo admite `do`, `seq`, `until` y `template`. El JSON Schema tiene menos de 20k caracteres.
+    - `intentDraftFor` es el `IntentDraft` más `draftCatalogProblems`. Una unión no explica por qué rechaza, este sí: "move has no role \"where\" (roles: to)". Ese mensaje vuelve al modelo cuando regenera.
+  - **El prompt.** Las reglas van en inglés y el texto del jugador en español. El orden es: reglas, una línea por verbo con roles y modos, las plantillas, los ejemplos `shot` como pares usuario/asistente, y al final la escena, las intenciones recientes y el texto. Todo menos lo del final es fijo por catálogo y se puede cachear.
+  - **Las respuestas.** Pueden traer `<think>` o un cerco Markdown; `jsonPayload` los saca antes de parsear.
+  - **Hablar en una secuencia.** Cuando hablar es un paso de una secuencia, se usa el verbo `speak` con `content`, porque `speech` va antes del plan.
+  - **El banco (`npm run llm-bench`).** Puntúa por campo: tipo, pasos, roles, referencias por palabras como `resolveRef`, habla, descartado y sin verbo. Dos borradores que dan el mismo plan valen lo mismo.
+  - **El cambio de modelo.** `--swap` alterna una narración del residente con un parseo y compara contra parsear con el mismo residente; la diferencia es el costo del cambio por turno. Para que el residente no se descargue, Ollama tiene que correr con `OLLAMA_KEEP_ALIVE=-1`.
+  - **Pendiente:** correrlo con modelos reales y decidir el modelo por defecto.
 - **Fase 7-8:** crónica y epílogo con el mejor modelo disponible; léxico generado completo ([language.md](language.md)).
 - **Fase 9:** fine-tune LoRA propio con ejemplos reales del juego.
 

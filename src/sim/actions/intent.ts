@@ -32,7 +32,9 @@ export interface RefDescription {
   readonly quantity?: QuantitySpec | undefined;
 }
 
-const text = z.string().trim().min(1).max(500);
+/** Un texto del borrador: lo que dijo el jugador, recortado. */
+export const DraftText = z.string().trim().min(1).max(500);
+const text = DraftText;
 
 export const RefDescription: z.ZodType<RefDescription> = z.strictObject({
   text,

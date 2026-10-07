@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm test",
     "dev": "node src/ui/cli/main.ts",
-    "worldgen": "node src/tools/worldgen/main.ts"
+    "worldgen": "node src/tools/worldgen/main.ts",
+    "llm-bench": "node src/tools/llm-bench/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
