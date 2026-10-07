@@ -3,7 +3,6 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import type { AgentId, PlanetClock, Tick } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
 import {
   ATTENTION,
@@ -13,23 +12,15 @@ import {
   houseKey,
   LOCATION,
   localHour,
-  type Observer,
   PERSON,
   type Percept,
   PLACE,
   perceive,
   presenceStimulus,
-  type ReadonlyWorldTruth,
-  sensorAcuity,
   spaceLight,
   watching,
 } from "../../sim/index.ts";
-import {
-  type Acquaintance,
-  buildPlayerView,
-  type PlayerView,
-  type SelfCue,
-} from "../view/index.ts";
+import { buildPlayerView, type PlayerView, type SelfCue } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
