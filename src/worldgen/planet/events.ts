@@ -11,7 +11,12 @@ import {
 } from "../../core/index.ts";
 
 export class PlanetEvents {
-  readonly list: Event[] = [];
+  readonly list: Event[];
+
+  /** Sigue la numeración de `before` (los eventos del planeta, para lo que se genera después). */
+  constructor(before: readonly Event[] = []) {
+    this.list = [...before];
+  }
 
   add(kind: string, place: PlaceRef, causes: readonly CauseRef[], data: unknown = {}): EventId {
     const id = makeId("event", this.list.length + 1);

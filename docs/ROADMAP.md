@@ -155,7 +155,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 
 ### Hito 1a — El turno: jugar un día solo
 - [x] Planet-gen mínima (grilla, tectónica, clima, biomas, qi, PNG) para ubicar la aldea; spike de un día H3 contra Goldberg propia con la conservación por celda como criterio ([ARCHITECTURE.md](ARCHITECTURE.md) §7.9) — Goldberg propia (H3 descartado: trigonometría no determinista, 6,5 % de hijas fuera del padre, apertura fija); `npm run worldgen` deja los mapas; calibración del clima pendiente ([planet-gen.md](systems/planet-gen.md) §Implementación)
-- [ ] Aldea + bosque cercano hardcodeados/semigenerados
+- [x] Aldea + bosque cercano semigenerados desde la celda real del planeta a nivel 1 (`worldgen/local`: terreno a ~2 km por hex, sitio con anclas y causas, `local.png`)
 - [ ] Jugador con stats generados por seed, nacido de padres y hogar generados por la sim, genoma mínimo heredado ([family-lineage.md](systems/family-lineage.md))
 - [ ] Catálogo de ~10 verbos en `content/actions/` (moverse, buscar/recolectar, hablar, trabajar, descansar, robar como plantilla, pelear, comerciar, observar, esperar); `ActionPlan` con `seq` y `until`; referencias con aclaración; requisitos de capacidad y medios; `Outcome` con autopercepción; fracasos por factor ([actions.md](systems/actions.md))
 - [ ] Resolución con resultados matizados
