@@ -13,8 +13,8 @@ import {
   ledgerUnit,
   parseId,
 } from "../../core/index.ts";
-import { type Life, playerView } from "../../game/index.ts";
-import { checkInvariants, ENTITY } from "../../sim/index.ts";
+import { type Life, lifePressures, playerView } from "../../game/index.ts";
+import { checkInvariants, ENTITY, type Pressure } from "../../sim/index.ts";
 
 /** Cuántos eventos lista como máximo cada comando que recorre el registro. */
 export const INSPECT_LIMIT = 40;
@@ -27,9 +27,6 @@ const LATER: Readonly<Record<string, string>> = {
   believes: "Fase 2 (creencias)",
   wrong: "Fase 2 (creencias)",
   percepts: "Fase 2 (percepts de los NPC)",
-  pressures: "Hito 1a (Pressure como objeto)",
-  pressure: "Hito 1a (Pressure como objeto)",
-  hazard: "Hito 1a (Pressure como objeto)",
   rumor: "Fase 2 (información)",
 };
 
@@ -37,6 +34,7 @@ export const INSPECTOR_HELP = [
   "Inspector (solo lectura; marca la vida como inspeccionada):",
   "  tables · entity <id> · find <texto> · origin <id> · why <evento> · effects <evento>",
   "  timeline [n] · body <agente> · view · ledger <cuenta> · invariants · hash",
+  "  pressures [tipo] · pressure <tipo> <id> · hazard",
 ].join("\n");
 
 export function inspect(life: Life, line: string): string {
@@ -71,6 +69,12 @@ export function inspect(life: Life, line: string): string {
       return invariants(life);
     case "hash":
       return show(life.hash());
+    case "pressures":
+      return pressures(life, arg);
+    case "pressure":
+      return args[0] && args[1] ? pressure(life, args[0], args[1]) : "pressure <tipo> <id>";
+    case "hazard":
+      return hazard(life);
     default: {
       const later = LATER[cmd.toLowerCase()];
       return later
@@ -200,6 +204,41 @@ function invariants(life: Life): string {
   return problems.length === 0
     ? "Sin violaciones."
     : [`${problems.length} violaciones:`, ...problems.slice(0, INSPECT_LIMIT)].join("\n");
+}
+
+function pressureLine(p: Pressure): string {
+  const trend = p.trend === 0 ? "" : ` (${p.trend > 0 ? "sube" : "baja"})`;
+  return `${p.kind}@${p.scope.ref} ${p.value.toFixed(2)}${trend}`;
+}
+
+function pressures(life: Life, kind: string | undefined): string {
+  const rows = lifePressures(life.world).filter((p) => !kind || p.kind === kind);
+  if (rows.length === 0) return kind ? `No hay presiones de tipo ${kind}.` : "No hay presiones.";
+  return rows
+    .sort((a, b) => b.value - a.value)
+    .map(pressureLine)
+    .join("\n");
+}
+
+function pressure(life: Life, kind: string, id: string): string {
+  const p = lifePressures(life.world).find((x) => x.kind === kind && x.scope.ref === id);
+  if (!p) return `No hay una presión ${kind} en ${id}.`;
+  return [
+    pressureLine(p),
+    `calculada por ${p.system}; fuentes:`,
+    ...p.sources.map((s) => `  ${s.kind === "state" ? `${s.entity}.${s.key}` : s.kind}`),
+    p.discharges.length ? "descargas:" : "sin descargas posibles todavía (ningún proceso la usa).",
+    ...p.discharges.map((d) => `  ${d.process}: umbral ${d.threshold}, hazard ${d.hazard}`),
+  ].join("\n");
+}
+
+function hazard(life: Life): string {
+  const rows = lifePressures(life.world).flatMap((p) => p.discharges.map((d) => ({ p, d })));
+  if (rows.length === 0) return "Ninguna presión tiene descargas posibles todavía.";
+  return rows
+    .sort((a, b) => b.d.hazard - a.d.hazard)
+    .map(({ p, d }) => `${d.process} ← ${pressureLine(p)}: hazard ${d.hazard.toFixed(4)}`)
+    .join("\n");
 }
 
 export type { AgentId };

@@ -35,6 +35,8 @@ describe("inspector", () => {
       "view",
       "invariants",
       "hash",
+      "pressures",
+      "hazard",
       "mind",
       "nada",
     ]) {
@@ -47,6 +49,17 @@ describe("inspector", () => {
     expect(inspect(life, `entity ${life.player}`)).toContain("# body.state");
     expect(inspect(life, `origin ${life.player}`)).toContain("nace en");
     expect(inspect(life, "entity agent:99999")).toContain("No hay");
+  });
+
+  it("muestra el hambre de los hogares con su fuente y sin descargas todavía", () => {
+    const all = inspect(life, "pressures hunger");
+    expect(all).toMatch(/^hunger@household:\d+ \d\.\d\d/);
+    const id = all.split(" ")[0]?.split("@")[1] ?? "";
+    const one = inspect(life, `pressure hunger ${id}`);
+    expect(one).toContain(`${id}.larder`);
+    expect(one).toContain("sin descargas posibles");
+    expect(inspect(life, "pressure hunger household:99999")).toContain("No hay");
+    expect(life.hash()).toEqual(before);
   });
 
   it("dice cuándo llegan los comandos de sistemas que faltan", () => {

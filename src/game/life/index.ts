@@ -6,6 +6,7 @@ export * from "./life.ts";
 export * from "./map.ts";
 export * from "./panels.ts";
 export * from "./perceive.ts";
+export * from "./pressures.ts";
 export * from "./routine.ts";
 export * from "./view.ts";
 export * from "./world.ts";

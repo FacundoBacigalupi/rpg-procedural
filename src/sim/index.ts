@@ -2,6 +2,7 @@
 // Pura: sin IO, sin reloj, sin Math.random; los efectos cruzados pasan por el scheduler.
 export * from "./actions/index.ts";
 export * from "./body/index.ts";
+export * from "./causality/index.ts";
 export * from "./content.ts";
 export * from "./family/index.ts";
 export * from "./perception/index.ts";
