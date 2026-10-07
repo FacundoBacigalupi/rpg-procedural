@@ -6,6 +6,7 @@ import { BIOMES } from "../worldgen/index.ts";
 import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
 import { BODY_PLANS, FOODS } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
+import { GOODS } from "./economy/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
@@ -18,6 +19,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   SKILLS,
   BODY_PLANS,
   FOODS,
+  GOODS,
   PRESSURE_CURVES,
   ACTIONS,
   PLANS,

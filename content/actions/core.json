@@ -283,12 +283,14 @@
     "id": "trade",
     "name": "comerciar",
     "domain": "social",
-    "args": [{ "role": "with", "kind": "person", "required": true }],
+    "args": [
+      { "role": "with", "kind": "person", "required": true },
+      { "role": "what", "kind": "text", "required": false }
+    ],
     "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
     "requires": [
       { "kind": "capability", "cap": "speech", "min": 0.3 },
-      { "kind": "position", "near": "with" },
-      { "kind": "means", "holder": "self", "what": "goods" }
+      { "kind": "position", "near": "with" }
     ],
     "occupies": { "voice": "full", "handL": "partial", "mind": "full" },
     "duration": { "kind": "fixed", "seconds": 900 },

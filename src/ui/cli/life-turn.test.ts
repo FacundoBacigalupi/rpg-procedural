@@ -100,7 +100,10 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     const ate = w.log.all().filter((e) => e.kind === "routine.ate");
     expect(ate.length).toBeGreaterThan(0);
     expect(ate.some((e) => e.actors.includes(life.player))).toBe(false);
-    expect(larder()).toBeLessThan(before);
+    // La despensa cambia por lo que se come, lo que se cosecha y lo que se pudre; nada más.
+    const harvested = w.log.all().filter((e) => e.kind === "routine.harvested");
+    expect(harvested.length).toBeGreaterThan(0);
+    expect(larder()).not.toBe(before);
     const plan = w.plans[0];
     if (!plan) throw new Error("sin plan corporal");
     for (const id of living(w.truth)) {
@@ -197,6 +200,9 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     expect(JSON.stringify(rest)).not.toMatch(/\d/);
     const inventory = inventoryPanel(life.world);
     expect(inventory.larder.length).toBeGreaterThan(0);
-    expect(JSON.stringify(inventory)).not.toMatch(/\d/);
+    // Las monedas se cuentan con la mano: es lo único exacto; lo demás se estima.
+    const { coins, ...estimated } = inventory;
+    expect(Number.isInteger(coins)).toBe(true);
+    expect(JSON.stringify(estimated)).not.toMatch(/\d/);
   }, 120_000);
 });

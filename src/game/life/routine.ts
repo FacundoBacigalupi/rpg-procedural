@@ -27,6 +27,9 @@ import {
   ENTITY,
   type EventDraft,
   type FoodDef,
+  HARVEST,
+  HARVEST_GOOD,
+  HARVEST_GRAMS_PER_HOUR,
   houseKey,
   ingest,
   LOCATION,
@@ -141,6 +144,30 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       }
 
       let next = setActivity(body, want.activity);
+      // Trabajar la tierra rinde: una hora de campo es grano para la despensa del hogar (fuente
+      // externa `harvest`; economy §1). Cuánto rinde es calibración abierta (ROADMAP Hito 1c).
+      if (want.at === "fields" && there) {
+        const ev = draftEvent(events.length);
+        events.push({
+          kind: "routine.harvested",
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: { good: HARVEST_GOOD, grams: HARVEST_GRAMS_PER_HOUR },
+          emissions: { sight: 0.3, sound: 0.1 },
+          causes: [{ kind: "state", entity: me, key: "routine" }],
+        });
+        postings.push({
+          event: ev,
+          transfers: [
+            {
+              from: externalAccount(HARVEST),
+              to: holderAccount(person.household as unknown as HolderRef),
+              unit: HARVEST_GOOD,
+              amount: HARVEST_GRAMS_PER_HOUR,
+            },
+          ],
+        });
+      }
       // Comer: una ración a la medida del cuerpo, de lo que haya en la despensa del hogar. Solo
       // si alcanza para todos los de la casa: dos que comen en la misma fase no pueden dejar el
       // saldo en negativo (scheduler, asientos por fase).

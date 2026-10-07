@@ -180,7 +180,17 @@ function outcome(
       break;
     }
     case "trade":
-      if (e.with === undefined)
+      if (e.moved !== undefined && e.deal) {
+        const kilos = e.moved.grams / 1000;
+        const grams =
+          e.moved.grams >= 1000 ? `${Number(kilos.toFixed(1))} kilos` : `${e.moved.grams} gramos`;
+        say(`outcome.trade.${e.moved.direction}.${e.terms}`, {
+          with: ref(e.with),
+          what: good(e.moved.good),
+          grams,
+          coins: `${e.moved.coins} ${e.moved.coins === 1 ? "moneda" : "monedas"}`,
+        });
+      } else if (e.with === undefined)
         say(e.deal ? "outcome.trade.deal_anyone" : "outcome.trade.no_deal_anyone");
       else
         say(e.deal ? `outcome.trade.deal.${e.terms}` : "outcome.trade.no_deal", {

@@ -209,6 +209,30 @@
     "id": "outcome.trade.no_deal",
     "lines": ["No llegás a un acuerdo con {with}.", "No te ponés de acuerdo con {with}."]
   },
+  {
+    "id": "outcome.trade.buy.good",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.buy.fair",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.buy.poor",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}, aunque te lo cobran caro."]
+  },
+  {
+    "id": "outcome.trade.sell.good",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.sell.fair",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.sell.poor",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}, aunque te pagan poco."]
+  },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
   { "id": "outcome.take.got", "lines": ["Te llevás {what}.", "Agarrás {what}."] },
