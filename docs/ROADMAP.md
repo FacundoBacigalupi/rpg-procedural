@@ -13,7 +13,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 1. `git switch develop && git pull`, después rama `feat/<nombre>`.
 2. Leer el doc de sistema que la tarea cita y [ARCHITECTURE.md](ARCHITECTURE.md) (§4 tipos, §7 herramientas). Si el doc no alcanza, se completa en el mismo PR.
 3. Tests primero cuando se pueda; uno de determinismo si toca la sim; fast-check para conservación y propiedades. `npm run check` (typecheck + lint + tests) tiene que pasar.
-4. En el mismo PR: marcar la tarea `[x]` acá con lo que quedó, actualizar el doc del sistema si la implementación decidió algo, y los comandos de CLAUDE.md si cambian.
+4. En el mismo PR: marcar la tarea `[x]` acá con lo que quedó (**todo lo que quede para después tiene que caer en un ítem `[ ]` existente o nuevo**, nombrado, para que no se pierda), actualizar el doc del sistema si la implementación decidió algo, y los comandos de CLAUDE.md si cambian.
 5. Commit (`feat(<scope>): ...`), push, `gh pr create --base develop --label feature`, y mergear con `gh pr merge <n> --squash --delete-branch` **como comando suelto**. Sin CI en develop: la verificación es local.
 6. Al cerrar una fase o un hito: PR `develop` → `main` con `gh pr merge <n> --merge --auto` y tag `v0.<fase>.<n>` sobre el merge commit ([GIT_WORKFLOW.md](GIT_WORKFLOW.md)).
 
@@ -169,7 +169,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   `npm run llm-bench` (`tools/llm-bench`) mide, por campo, si el borrador sale válido, si sale al primer intento y si se parece al esperado. También mide la latencia en frío, p50 y p95, y tokens/s. Con `--swap` mide cuánto cuesta por turno alternar entre el narrador residente y un parser chico; con `--free` corre sin salida restringida, y con `--record` graba fixtures que se repiten sin red.
 
   **Banco corrido (2026-10-07, RTX 4070 Super, Ollama 0.40, 30 casos, 9 ejemplos en el prompt):** qwen3:4b 100% válido, 73% acierta, 0,74 s por parseo; qwen3:14b 100% válido, 63% acierta, 1,08 s; gemma3:12b (línea base) 57% y 2 s. Lo que lo hizo andar: apagar el razonamiento de qwen3 (`reasoning_effort: "none"`; con razonamiento son 25 s por turno, `--think` lo vuelve a prender), un tope de 768 tokens (la salida restringida podía quedar en bucle), la clase de la referencia y el `is` de `until` obligatorios en el esquema estructural, y dos ejemplos que muestran roles opcionales vacíos y un `speak` con destinatario y contenido juntos. **Modelo por defecto: qwen3:14b residente** para parser y narración; el 4b parsea mejor y 3 veces más rápido, pero **el costo del cambio (`--swap`) sigue sin medir** (la corrida coincidió con una pantalla azul de la PC; se mide cuando exista el narrador). Fallas que quedan: `until` con hora ("hasta que amanezca") sale como duración fija, parentesco como rasgo en vez de `relation`, `unmapped` de más. `npm run worldgen` vuelve a andar: carga todo `CONTENT_KINDS` ([narration.md](systems/narration.md) §10, §16)
-- [x] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md)) — `sim/world/spaces.ts`: grafo de espacios con barreras por canal, campo abierto implícito por hex y la aldea mínima (plaza y una casa por hogar); `sim/perception`: estímulos de presencia y de paso, ganancia por canal (distancia, paso, luz, ruido, agudeza, atención), lectura dato por dato con legibilidad y familiaridad, niveles `vague`/`clear`/`identified`, calibrado contra el objetivo de los 30 pasos. Falta el proceso de la fase `perceive` (los eventos del paso anterior no llegan todavía a los procesos): entra con el bucle del jugador ([perception.md](systems/perception.md) §Implementación)
+- [x] Percepción mínima (vista y oído, grafo de espacios de la aldea, luz) ([perception.md](systems/perception.md)) — `sim/world/spaces.ts`: grafo de espacios con barreras por canal, campo abierto implícito por hex y la aldea mínima (plaza y una casa por hogar); `sim/perception`: estímulos de presencia y de paso, ganancia por canal (distancia, paso, luz, ruido, agudeza, atención), lectura dato por dato con legibilidad y familiaridad, niveles `vague`/`clear`/`identified`, calibrado contra el objetivo de los 30 pasos. Falta el proceso de la fase `perceive` (los eventos del paso anterior no llegan todavía a los procesos): tiene su ítem abajo ([perception.md](systems/perception.md) §Implementación)
 - [x] Narrador (modelo local) solo con los percepts del jugador: `buildPlayerView` con marca de tipo, etiquetas, salida con referencias marcadas, validador con lista blanca, plantillas y parser sin red, caché del prefijo ([narration.md](systems/narration.md) §2-§5, §9-§12). Lo que se hizo:
   - `game/view`: `PlayerView` con marca de tipo, etiquetas locales (un desconocido tiene una nueva en cada percept), figura estructurada y efectos como los cree el personaje.
   - `llm/narration`: el pedido, con `mustMention` y ambiente desde `content/llm/ambience/`, y el prompt de sistema fijo por estilo, que se cachea.
@@ -177,7 +177,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - `narrate`: regenera una vez y si no cae a las plantillas (`content/llm/templates/`, voseo).
   - `llm/grammar`: un parser de comandos sin red que saca 36 de los 39 ejemplos.
 
-  Falta: las aclaraciones del parser y la memoria de continuidad (Fase 2), y medir `--swap` con el narrador ([narration.md](systems/narration.md) §16)
+  Falta: las aclaraciones del parser y la memoria de continuidad (Fase 2, ítems de actions y narration), y medir `--swap` con el narrador (ítem del modelo local en la CLI, abajo) ([narration.md](systems/narration.md) §16)
 - [x] Cuerpo mínimo: heridas con sangrado e infección, hambre, sed, fatiga, muerte con causa ([body-health.md](systems/body-health.md)) — `sim/body`:
   - plan humano por zonas (tier 3) y fisiología en `content/body-plans/`, comidas silvestres en `content/foods/`;
   - `Body` en la tabla `body.state`: sangre, déficit de agua, glucógeno → grasa → músculo, fatiga, deuda de sueño, sepsis, conciencia y heridas;
@@ -186,7 +186,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - `capabilitiesOf` (0-1 por función) y `bodySigns` (síntomas sin números) para las demás capas;
   - el proceso `body.physiology` en la fase `physics`, que emite `body.*` y cierra la entidad al morir.
 
-  Calibrado contra los objetivos de body-health: una herida grave sin tratar mata a ~1 de cada 3 (más por sepsis que por sangre) y una leve limpia casi nunca. Queda para el bucle del jugador: los verbos comer, beber y curar; pasar de verbo a actividad; enchufar `injure` en la resolución de golpes y percances; percepts internos desde `bodySigns`; llamar a `seedBodies`; y que las capacidades lleguen a `attempt` y al techo de las habilidades ([body-health.md](systems/body-health.md) §Implementación)
+  Calibrado contra los objetivos de body-health: una herida grave sin tratar mata a ~1 de cada 3 (más por sepsis que por sangre) y una leve limpia casi nunca. Lo que quedaba para el bucle del jugador ya está hecho ahí: los verbos comer, beber y curar; pasar de verbo a actividad; enchufar `injure` en la resolución de golpes y percances; percepts internos desde `bodySigns`; llamar a `seedBodies`; y que las capacidades lleguen a `attempt` y al techo de las habilidades ([body-health.md](systems/body-health.md) §Implementación)
 - [x] Bucle del jugador mínimo: entrada por edad con escena inicial desde creencias, turno completo, interrupciones fijas, guardado automático sin cargar atrás, paneles de personaje, inventario creído y bitácora ([player-loop.md](systems/player-loop.md) §2-§4, §6, §9, §12)
   **Hecho (2026-10-07):** el stub de la Fase 0 se reemplazó por la vida real (`src/game/life/`). `createLife` arma planeta → aldea → pre-corrida → el personaje (de 14-16 años, entrada `age`), siembra lugares, ubicaciones, cuerpos y habilidades, un mapa local con tiempos de cruce y las despensas de grano por hogar (provisorias, con su evento y su asiento). El proceso `life.act` (fase `act`) ejecuta el `ActionPlan` hoja por hoja con `resolve`: aplica comer/beber/curar y los percances o golpes al cuerpo, deja aprender a las habilidades y agenda la hoja siguiente. `Life.turn` avanza hasta que el plan termina, se interrumpe o el personaje muere; `Life.submit` + `advanceTo` es lo mismo que rehace `lifeReplayGame`. `playerView` arma la `PlayerView` desde lo que percibe (presencia de la gente por perception, signos del cuerpo, pasos propios) con un resumen que evita multitudes de frases. La CLI lee con la gramática sin red, arma el plan con `planFromDraft` contra lo que el personaje conoce (familia por relación y lugares por lo que son) y narra con plantillas; guarda cada turno y el replay da el mismo hash. También se arreglaron los tests y ejemplos del parser de `eat`/`drink`/`tend`.
   **Cierre (2026-10-07):**
@@ -197,25 +197,20 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - **Paneles en la CLI** (`personaje`, `inventario`, `bitácora`, sin que pase el tiempo). `characterPanel` e `inventoryPanel` en `game/life/panels.ts` no sacan ningún número de la verdad: el cuerpo va como signos, las habilidades como cuánto las practicó y los bienes a ojo.
   - **Bitácora:** la tabla `narration` del guardado (aditiva, sin cambio de `FORMAT_VERSION`; no entra al hash ni al replay).
 
-  **Queda para después:**
-  - el parser y el narrador con el modelo local en la CLI (`parseIntentOrGrammar`, `narrate`);
-  - la gramática de «hablo con mi madre» (hoy lo toma como texto dicho);
-  - `known` y el inventario desde creencias (Fase 2, information);
-  - la rutina reemplazada por la decisión de los NPC (Fase 2, npc-psychology);
-  - el viaje casa ↔ campo, que hoy es instantáneo a la hora en punto;
-  - no regenerar el planeta en cada `resume` (cachear lo derivado del seed);
-  - la autoimagen de las habilidades en el panel (skills §9);
-  - calibrar `MAX_CLEAR_PERCEPTS` y `ALARMING_SIGNS`.
+  **Lo que quedó para después tiene su ítem:** el modelo local en la CLI, «hablo con mi madre» y la fase `perceive` (abajo, Hito 1a); retomar sin regenerar el planeta (Hito 1a); el viaje casa ↔ campo (Hito 1c, travel); calibrar `MAX_CLEAR_PERCEPTS` y `ALARMING_SIGNS` (Hito 1c, calibración); `known` y el inventario desde creencias, y la autoimagen en el panel (Fase 2); la rutina reemplazada por la decisión de los NPC (Fase 3, rutinas diarias).
+- [ ] El modelo local en la CLI: `parseIntentOrGrammar` y `narrate` enchufados al loop con la configuración del LLM (`--llm`, modelo, URL), caída a la gramática y las plantillas si no hay red; medir `--swap` con el narrador de verdad; arreglar las fallas que dejó el banco (`until` con hora como «hasta que amanezca», parentesco como rasgo en vez de `relation`, `unmapped` de más) y que «hablo con mi madre» sea ir a hablarle, también en la gramática ([narration.md](systems/narration.md) §1, §10, §16)
+- [ ] La fase `perceive` como proceso: el scheduler les pasa los eventos del paso anterior y quedan percepts guardados del personaje (y de los NPC presentes); `playerView` y `fixedInterrupt` leen de ahí en vez de percibir por su cuenta ([perception.md](systems/perception.md) §Implementación)
+- [ ] Retomar sin regenerar el planeta: cachear lo que sale del seed (planeta, nivel 1 de la aldea) con su hash, para que `resume` no tarde ([tooling.md](systems/tooling.md) §3)
 - [ ] Inspector god-mode básico: `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno en transacción ([tooling.md](systems/tooling.md) §1, §5, §6, §8)
 - [ ] `Pressure` como objeto (fuentes, umbral, descargas) y comandos del inspector `why`, `effects`, `pressures`, `hazard` ([causality.md](systems/causality.md) §9, §10)
 - [ ] Aldea inicial con anclas, edificios con componentes, materiales con origen, dueños, contenido y grafo de espacios; un pozo y un camino ([settlements.md](systems/settlements.md) §1, §2, §5, §8)
 - [ ] Lengua de la aldea desde `content/` con léxico mínimo, romanización, nombres de personas con significado y el léxico en la lista blanca del validador ([language.md](systems/language.md) §1, §8, §13)
 
 ### Hito 1b — La aldea vive: 20 agentes, economía, robo y reclamo
-- [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre ([economy.md](systems/economy.md))
+- [ ] Economía mínima: lotes con origen, tenencias finitas para todos (sin fondos ni reposición infinita), inventarios, moneda de cobre y trueque, comerciar con regateo simple, comida que se pudre; `trade` mueve los bienes del trato y `work` rinde algo (hoy deja solo segundos efectivos); las despensas dejan de ser el stock provisorio `LARDER_PER_MEMBER_G` del armado ([economy.md](systems/economy.md))
 - [ ] Sesión de oficio mínima (cocina o herrería de aldea): pasos con ruido de control, física simple, producto con calidad y origen ([crafts.md](systems/crafts.md))
 - [ ] Estatus mínimo de aldea (campesinos, terrateniente, sirvientes), marcas visibles y rango percibido, deferencia en la utilidad del diálogo ([social-structure.md](systems/social-structure.md))
-- [ ] Pelea mortal: posiciones y alcances, pulsos con `windup`/`commit`/`recovery`, intercambio con percepción y contienda, heridas por parte, aire, huida y rendición, pausas del jugador ([combat.md](systems/combat.md))
+- [ ] Pelea mortal: posiciones y alcances, pulsos con `windup`/`commit`/`recovery`, intercambio con percepción y contienda, heridas por parte, aire, huida y rendición, pausas del jugador; el rival usa su habilidad en la contienda (hoy `partyOf` en `life.act` le pone 0) ([combat.md](systems/combat.md))
 - [ ] Conversación mínima: `greet`, `tell`, `ask`, `request`, `offer`, `accept`, `refuse`, `farewell`; NPC que contesta desde sus creencias o dice "no sé"; verbalización con lista blanca y plantillas de respaldo; `SpeechStyle` mínimo ([dialogue.md](systems/dialogue.md) §2, §5, §16)
 - [ ] Huellas mínimas (sangre, objetos movidos), testigos, robo y pelea con reclamo de la víctima y reputación ([law.md](systems/law.md))
 - [ ] Fiado de aldea como primer compromiso (deudas de palabra, la otra parte y la reputación como ejecutores) ([contracts.md](systems/contracts.md))
@@ -226,10 +221,11 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Elementos: cinco fases en `content/`, vector elemental del qi de cada celda, `interact` puro con tests de conservación y sin móvil perpetuo ([elements.md](systems/elements.md))
 - [ ] Muerte → pantalla de crónica mínima: epitafio, causa real de muerte y su cadena, capítulos por cortes de vida ([chronicle.md](systems/chronicle.md))
 - [ ] Modo novela mínimo: elegir lugar, posición de la familia, sexo, nombre y edad de entrada, con búsqueda de nacimiento y biografía sintetizada; marca de modo en la crónica ([game-modes.md](systems/game-modes.md) §2)
-- [ ] Caminar por tramos con costo entre la aldea y lugares cercanos; salir al monte con costo por celda y rumbo según la habilidad; buscar, recolectar y cazar solo lo que hay; acampar; cansancio y comida del camino ([travel.md](systems/travel.md) §1, §2, §4, §12)
-- [ ] Tiempo diario por celda en la región de la aldea desde normales y anomalía; estaciones; efecto en cultivos, exposición y percepción ([weather.md](systems/weather.md) §1, §4, §5)
+- [ ] Caminar por tramos con costo entre la aldea y lugares cercanos; salir al monte con costo por celda y rumbo según la habilidad; buscar, recolectar y cazar solo lo que hay; acampar; cansancio y comida del camino; el ir y venir de la rutina (casa ↔ campo) con su tiempo en vez de saltar a la hora en punto; nivel 1 de las celdas vecinas cuando se sale de la de la aldea ([travel.md](systems/travel.md) §1, §2, §4, §12)
+- [ ] Tiempo diario por celda en la región de la aldea desde normales y anomalía; estaciones; efecto en cultivos, exposición y percepción (perception hoy toma toda noche sin luna ni nubes) ([weather.md](systems/weather.md) §1, §4, §5)
 - [ ] Religión popular de la aldea desde `content/`: ancestros, dios local o su ausencia, una fiesta, tabúes ([religion.md](systems/religion.md) §2, §6)
 - [ ] Sol y luna con días, fases y estaciones calculables; catálogo mínimo de estrellas ([cosmology.md](systems/cosmology.md) §2)
+- [ ] Pasada de calibración de la Fase 1 con la sim headless, contra objetivos escritos: clima de planet-gen (interiores continentales muy secos, mares epicontinentales sin conexión; [planet-gen.md](systems/planet-gen.md) §Implementación), mortalidad y fecundidad de la pre-corrida variando con bioma y hambre ([family-lineage.md](systems/family-lineage.md) §Implementación), `LEARNING_WIDTH`, tasas y techos de skills, `MAX_CLEAR_PERCEPTS` y `ALARMING_SIGNS` del bucle, la rutina y el consumo de las despensas en un año
 - [ ] UI web local mínima: servidor Node local + Vite + React con chat, panel del personaje, bitácora y un mapa en canvas; la CLI queda como herramienta ([ARCHITECTURE.md](ARCHITECTURE.md) §7.8)
 
 ## Fase 2 — Psicología y memoria
@@ -244,10 +240,10 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Promesas en el diálogo, creencias sobre compromisos, culpa por incumplir, libro de deudas y promesas del jugador ([contracts.md](systems/contracts.md))
 - [ ] Profecías como creencias con linaje que cambian utilidades, adivinos de calle (ritual, lectura en frío) ([divination.md](systems/divination.md))
 - [ ] Crónica: "lo que nunca supiste" (intrigas y creencias equivocadas) y personas importantes por relación y memoria ([chronicle.md](systems/chronicle.md))
-- [ ] Factibilidad creída con avisos desde lo que sabe el personaje, actos de habla como argumento de `speak`, referencias a entidades fantasma ([actions.md](systems/actions.md) §4, §5)
-- [ ] Autoimagen y opinión ajena de la habilidad como creencias, saber explícito como creencias del dominio, aprender mirando ([skills.md](systems/skills.md) §2.4, §3.2, §9)
+- [ ] Factibilidad creída con avisos desde lo que sabe el personaje, actos de habla como argumento de `speak`, referencias a entidades fantasma; aclaraciones del parser cuando la referencia es ambigua ([actions.md](systems/actions.md) §4, §5, [narration.md](systems/narration.md) §16)
+- [ ] Autoimagen y opinión ajena de la habilidad como creencias, saber explícito como creencias del dominio, aprender mirando; el panel `personaje` muestra la autoimagen en vez de las horas de práctica ([skills.md](systems/skills.md) §2.4, §3.2, §9)
 - [ ] Leer al rival, fintas, chances creídas y quiebre en la pelea; trauma y culpa después de matar ([combat.md](systems/combat.md) §5, §11)
-- [ ] Paneles de creencias, hipótesis, personas y deudas; `qué sé de X`; recuento al volver ([player-loop.md](systems/player-loop.md) §9, §10, §12)
+- [ ] Paneles de creencias, hipótesis, personas y deudas; `qué sé de X`; recuento al volver; lo que el personaje conoce (`knownEntities`) y el panel `inventario` salen de sus creencias y no de la verdad redondeada (un robo que no notó sigue figurando) ([player-loop.md](systems/player-loop.md) §9, §10, §12)
 - [ ] Léxico y voz del personaje, memoria de narración y continuidad, modo introspección ([narration.md](systems/narration.md) §4, §6, §7)
 - [ ] Mentiras y su detección, `TopicStack`, persuasión con argumentos y apelaciones, amenazas, halagos e insultos con cara, secretos que se escapan, sonsacar ([dialogue.md](systems/dialogue.md) §3-§11)
 - [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
@@ -259,14 +255,14 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
-- [ ] NPCs con el mismo catálogo de verbos, plantillas de plan en `content/plans/`, recursos del cuerpo y concurrencia, interrupciones y resultados parciales ([actions.md](systems/actions.md) §3, §6, §10)
-- [ ] Rutinas diarias, NPCs actúan sin el jugador; tier 1 dormidos con puesta al día; primeros modelos agregados con test de calibración ([simulation.md](systems/simulation.md) §7-§9)
+- [ ] NPCs con el mismo catálogo de verbos, plantillas de plan en `content/plans/`, recursos del cuerpo y concurrencia, interrupciones y resultados parciales; los nodos `repeat`, `if` y `onEvent` del plan (hoy `planFromDraft` los rechaza) ([actions.md](systems/actions.md) §3, §6, §10)
+- [ ] Rutinas diarias, NPCs actúan sin el jugador (reemplaza la rutina fija `life.routine` del Hito 1a); tier 1 dormidos con puesta al día; primeros modelos agregados con test de calibración ([simulation.md](systems/simulation.md) §7-§9)
 - [ ] Familias, herencia de rasgos, crianza → rasgos adquiridos: atracción y uniones, matrimonio con normas culturales, concepción y parto, hogares que se arman y se parten, herencia con disputas, paternidad como creencia, enfermedades hereditarias ([family-lineage.md](systems/family-lineage.md))
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
 - [ ] Economía básica: hogares con presupuesto, producción agrícola y de oficios, mercado de la aldea con precios por creencias, salarios, crédito de cosecha y usura, calidad percibida y estafa, hambruna con causa ([economy.md](systems/economy.md))
 - [ ] Medicina y remedios mortales, venenos y antídotos, habilidad que sale de la práctica percibida, aprendices ([crafts.md](systems/crafts.md))
 - [ ] Armas y armaduras como objetos con desgaste, estilos y repertorio de combate, prácticas, peleas de hasta ~20, contienda resumida calibrada para NPCs lejanos ([combat.md](systems/combat.md) §6, §9, §14, §18)
-- [ ] Maestros con métodos de enseñanza, manuales con tacitez, oxidación con pico, transferencia e interferencia, vicios, distribuciones de habilidad por ocupación; `CraftSkill` y `ProcessKnowledge` como vistas ([skills.md](systems/skills.md) §3-§8, §10, §13)
+- [ ] Maestros con métodos de enseñanza, manuales con tacitez, oxidación con pico, transferencia e interferencia, vicios, distribuciones de habilidad por ocupación, repertorio y familiaridades; `CraftSkill` y `ProcessKnowledge` como vistas ([skills.md](systems/skills.md) §3-§8, §10, §13)
 - [ ] Saber popular de hierbas y medicina como prior cultural, herbolario que experimenta, supersticiones con mecanismo, ventana de atribución ([discovery.md](systems/discovery.md))
 - [ ] Rumores (propagación de información con distorsión, reputación por comunidad) ([information.md](systems/information.md))
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
@@ -362,7 +358,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Estilos y escuelas con secretos, linajes de saber y certificaciones; robo de estilos ([skills.md](systems/skills.md) §6)
 - [ ] Duelos pactados, desafíos con cara, escenarios de vida o muerte; la pelea del jugador dentro de una batalla ([combat.md](systems/combat.md) §13, §14)
 - [ ] Plantillas (como costumbre, no molde): clan, secta, gremio, casa comercial, templo, sociedad secreta
-- [ ] Clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, linajes de sangre que despiertan ([family-lineage.md](systems/family-lineage.md))
+- [ ] Clanes con genealogías como documentos, ramas, salón ancestral, matrimonios de alianza, linajes de sangre que despiertan; genes discretos y mutaciones sobre el genoma aditivo de la Fase 1 ([family-lineage.md](systems/family-lineage.md))
 - [ ] Rangos de secta y clan sobre el modelo de estatus, cierre de élites, sellos de esclavo ([social-structure.md](systems/social-structure.md))
 - [ ] Jurisdicciones superpuestas (secta, gremio, clan), pedidos de entrega, bandas y gremios de ladrones con su propia justicia ([law.md](systems/law.md))
 - [ ] Estado sobre el modelo de organizaciones: corte con facciones, arreglos trono–secta, dominios de secta ([state.md](systems/state.md))

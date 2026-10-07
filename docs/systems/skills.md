@@ -331,8 +331,8 @@ Con los tiers de simulation §4:
 - **Siembra** (`upbringingSkills`, `seedSkills`): cada persona viva de la aldea practicó mes a mes, desde `fromAge`, con su talento, su plasticidad y su techo de cada edad. La tarea se vuelve más fácil a medida que mejora. Sin azar.
   - A los 15 años queda ~0,3 en lo cotidiano y a los 30 ~0,4. A los 60 llega a ~0,47 y a los 80 la mano baja.
   - Pelear y regatear quedan casi en cero si no se practican.
-  - `seedSkills` todavía no se llama desde el armado de la partida: lo enchufa el bucle del jugador.
-- **Pendiente:** autoimagen, mirar y maestros (Fases 2 y 3), vicios, oxidación con pico, transferencia, repertorio y familiaridades. La calibración (`LEARNING_WIDTH`, tasas, techos) sigue abierta.
+  - `seedSkills` se llama desde el armado de la vida (`game/life/create.ts`).
+- **Pendiente:** autoimagen, mirar y maestros (Fases 2 y 3), vicios, oxidación con pico, transferencia, repertorio y familiaridades. La calibración (`LEARNING_WIDTH`, tasas, techos) sigue abierta: ítem de calibración del Hito 1c en el ROADMAP.
 
 ## Tests
 

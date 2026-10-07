@@ -207,7 +207,7 @@ Percibirse a uno mismo usa el mismo modelo, con el cuerpo como fuente:
   - `sensorAcuity` aplica edad y aptitud. `ATTENTION` y `watching` dan la atención (la de `observe`).
   - La tirada es `fork("perception", fuente, tick, observador)`, con un sorteo por dato aunque no se lea.
   - Calibración medida: a 22 m se reconoce a un conocido el 95 % de las veces de día y el 5 % de noche; a 50 m de día, el 66 %. Una charla se entiende a 15 m en la plaza el 85 % de las veces y a 30 m, el 48 %.
-  - **Queda para el bucle del jugador:** el proceso de la fase `perceive` que convierte los eventos del paso anterior en percepts (el scheduler todavía no les pasa los eventos recientes a los procesos) y dónde se guardan los percepts del jugador. Sin luna ni clima: la noche es siempre sin luna (cosmology §2, weather).
+  - **Pendiente (ítem propio en el Hito 1a; el bucle del jugador percibe por su cuenta con `actionStimulus` mientras tanto):** el proceso de la fase `perceive` que convierte los eventos del paso anterior en percepts (el scheduler todavía no les pasa los eventos recientes a los procesos) y dónde se guardan los percepts del jugador. Sin luna ni clima: la noche es siempre sin luna (cosmology §2, weather).
 - **Fase 2:** atributos separados con legibilidad, errores con forma, percepción social (emociones, mentiras), atención y saliencia, huellas simples.
 - **Fase 3:** olfato y viento, huellas completas, rastreo, borrar huellas.
 - **Fase 4 (cultivo):** sentidos de Esencia y Alma, lectura de cultivo con incertidumbre, supresión e inflado de aura, firma de técnica, percepción interna de meridianos.
