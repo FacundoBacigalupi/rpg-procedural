@@ -41,7 +41,7 @@ Jugador (texto)
 ```
 src/
   core/                # sin dependencias
-    rng/               # PRNG con seed y fork por clave (sfc32 o xoshiro)
+    rng/               # RNG por contador draw(seed, key, n), fork por tupla, sfc32 para flujos largos
     ids/               # Id<K>, contadores deterministas por tipo, EntityRef
     time/              # Tick, Duration, calendario base (los calendarios culturales son creencia: weather §6)
     types/             # Event, CauseRef, PlaceRef, HolderRef, Party, EntityBase
@@ -354,7 +354,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 ### 7.4 Determinismo: más estricto que el borrador
 
-- **RNG por contador** (stateless): `draw(seed, key, n)` con un mezclador de 32 bits (estilo PCG-hash o *squares*) sobre el hash de la clave. Encaja con las claves por tupla que ya usa todo el diseño (`rng.fork("materialize", populationId, slot, epoch)`): no hay estado que guardar ni que pasar entre workers, y la misma clave da lo mismo en cualquier hilo. `sfc32` queda para flujos largos dentro de una clave (worldgen).
+- **RNG por contador** (stateless): `draw(seed, key, n)` con un mezclador de 32 bits (estilo PCG-hash o *squares*) sobre el hash de la clave. Encaja con las claves por tupla que ya usa todo el diseño (`rng.fork("materialize", populationId, slot, epoch)`): no hay estado que guardar ni que pasar entre workers, y la misma clave da lo mismo en cualquier hilo. `sfc32` queda para flujos largos dentro de una clave (worldgen). Implementado (Fase 0): la clave es un hash de 64 bits de la tupla, independiente de la semilla (se guarda en `Deferred.rngKey`); cada primitiva (`float`, `int`, `chance`, `pick`, `weighted`, `shuffle`) consume una cantidad fija de sorteos, sin rechazo, para que inclinar pesos (heaven-karma §6) no corra las tiradas que siguen; los valores dorados de `rng.test.ts` no se cambian sin migración, porque rompen el replay.
 - **`core/math` propio** para la sim: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con polinomios en suma, resta, multiplicación, división y `Math.sqrt` (que IEEE garantiza redondeadas igual en todos lados). `Math.exp` y compañía quedan prohibidas en `sim/` y `worldgen/` por lint. Así una actualización de V8 no rompe el replay de una vida vieja (el borrador aceptaba "lo mismo en el mismo Node").
 - **CI con dos plataformas** (Windows y Linux) que comparan el hash del log de un escenario: el usuario juega en Windows.
 - **Ids en paralelo:** si una fase corre en workers, las entidades nuevas reciben su id al asentar (fase *settle*), en orden de clave, nunca dentro del worker.
