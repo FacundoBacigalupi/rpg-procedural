@@ -44,7 +44,7 @@ src/
     rng/               # PRNG con seed y fork por clave (sfc32 o xoshiro)
     ids/               # Id<K>, contadores deterministas por tipo, EntityRef
     time/              # Tick, Duration, calendario base (los calendarios culturales son creencia: weather §6)
-    types/             # Event, CauseRef, PlaceRef, Distribution, Ledger, Brand
+    types/             # Event, CauseRef, PlaceRef, HolderRef, Party, EntityBase
     ledger/            # conservación: bienes, dinero, esencia, almas (causality, cosmology §6)
     canon/             # serialización canónica y hash (tooling §2)
     schema/            # helpers de Zod y carga validada de content/
@@ -205,6 +205,7 @@ type CauseRef =
 - **Toda entidad tiene `originEventId: EventId`** (o `{ kind: "seed" }` como causa del evento de origen).
 - **Los eventos son inmutables.** Corregir algo es un evento nuevo con causa.
 - **`Outcome`** es el de actions §7 (manda sobre la lista vieja `success | partial | ...`).
+- **En el código `Event` es genérico** (`Event<TOutcome, TEmissions>`): `core` no puede importar `Outcome` (sim/actions) ni `EmissionProfile` (sim/perception), así que `sim` fija los tipos concretos con un alias.
 
 ### 4.4 La entidad base
 
@@ -225,6 +226,13 @@ El modelo es un **ECS liviano**: cada sistema guarda sus componentes en su propi
 - **`Lot`** (economy §1): lo fungible y a granel (arroz, cobre, hierbas, piedras espirituales de grado común). Se parte y se junta, conserva el origen.
 - **`Item`**: lo que tiene identidad (una espada con nombre, un manual, una tablilla, un artefacto sellado, una característica de los misterios suelta). Es una entidad con `ItemId`, materiales con origen y su propia historia.
 - **Pasar de uno a otro** es un evento: forjar una espada consume lotes y crea un ítem; fundir el ítem crea lotes. Los dos pasan por el ledger.
+
+### 4.5b El ledger (`core/ledger`)
+
+- **Doble entrada en enteros seguros.** Cada transferencia es `{unit, from, to, amount}` con `amount` entero positivo en la unidad mínima que elige el sistema (gramos, granos de cobre, micro-unidades de esencia). Nada de floats: la igualdad es exacta y un desborde es un error.
+- **Asientos atómicos por evento** (`post({tick, eventId, transfers})`): entra todo o nada. Se valida el neto por cuenta, así que dentro de un asiento lo que entra puede volver a salir.
+- **Cuentas:** las internas son las claves canónicas de un titular (`holderKey`: `agent:12`, `building:3/store`, `carried:journey:4`) y nunca quedan en negativo. Las externas (`ext:<nombre>`) son las fuentes y sumideros de economy y cosmology: se declaran al crear el ledger con las unidades que pueden mover, y una no declarada no existe. Por construcción, cada unidad suma 0 sobre todas las cuentas.
+- **Diario** de solo agregado (`seq, tick, eventId, unit, from, to, amount`), que es la tabla `ledger` de tooling; `Ledger.fromJournal` reconstruye los saldos y `audit()` comprueba las invariantes en debug. `totalsBy(unit, grupo)` audita la conservación por región, plano o asentamiento.
 
 ### 4.6 Lo genérico de la metafísica
 
