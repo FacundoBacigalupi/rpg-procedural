@@ -4,6 +4,7 @@
 // la casa y quien pide es de la familia. La función es pura: devuelve qué decir y qué pasa.
 
 import type { AgentId, Rng } from "../../core/index.ts";
+import { CREDIT_LIMIT_GRAMS } from "../contracts/index.ts";
 import type { DeedKind } from "../law/index.ts";
 import type { SpeechAct } from "./acts.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -27,6 +28,8 @@ export interface ReplyInput {
   readonly heard: readonly HeardClaim[];
   /** Lo peor que el oyente sabe que hizo quien habla (law §2): enfría el trato y cierra pedidos. */
   readonly reproach?: DeedKind | null;
+  /** Lo que quien habla le debe ya al oyente de lo que pide, y si algo de eso está vencido. */
+  readonly owes?: { readonly grams: number; readonly overdue: boolean };
   /** Cómo llama el oyente a `id` y a un bien. */
   readonly nameOf: (id: AgentId) => string;
   readonly goodName: (good: string) => string;
@@ -42,7 +45,7 @@ export interface Reply {
   readonly line: string;
   readonly text: string;
   /** Un pedido concedido: cuánto de qué sale de la casa del oyente. */
-  readonly give?: { readonly good: string; readonly grams: number };
+  readonly give?: { readonly good: string; readonly grams: number; readonly credit?: boolean };
   /** Lo que el oyente toma como dicho (queda en `Heard`, con duda si choca con lo que sabe). */
   readonly accepted?: HeardClaim;
 }
@@ -83,9 +86,20 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       const what = i.goodName(a.good);
       if (i.reproach) return say(`request.refuse.${i.reproach}`, { what });
       const spare = i.held(a.good) - i.members * RESERVE_GRAMS_PER_MEMBER;
-      if (!i.kin) return say("request.stranger", { what });
+      if (i.kin) {
+        if (spare < GIFT_GRAMS) return say("request.short", { what });
+        return { ...say("request.give", { what }), give: { good: a.good, grams: GIFT_GRAMS } };
+      }
+      // A un vecino no se le regala: se le fía (contracts, fiado), si no debe ya de más.
+      const owes = i.owes ?? { grams: 0, overdue: false };
+      if (owes.overdue) return say("request.refuse.owes", { what });
+      if (owes.grams + GIFT_GRAMS > CREDIT_LIMIT_GRAMS)
+        return say("request.refuse.limit", { what });
       if (spare < GIFT_GRAMS) return say("request.short", { what });
-      return { ...say("request.give", { what }), give: { good: a.good, grams: GIFT_GRAMS } };
+      return {
+        ...say("request.credit", { what }),
+        give: { good: a.good, grams: GIFT_GRAMS, credit: true },
+      };
     }
     case "other":
       return say("other");

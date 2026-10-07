@@ -440,6 +440,32 @@
     }
   },
   {
+    "id": "give-back-grain",
+    "text": "le devuelvo el grano a Tomás",
+    "scene": "Tomás, el vecino, está en la puerta de su casa. Le debés un saco de grano.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "give",
+        "args": [
+          {
+            "role": "to",
+            "ref": {
+              "text": "Tomás",
+              "kind": "person",
+              "features": ["Tomás"]
+            }
+          },
+          {
+            "role": "what",
+            "text": "el grano"
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "take-basket",
     "text": "agarro la canasta",
     "scene": "Estás en la cocina. Hay una canasta vacía sobre la mesa.",

@@ -80,6 +80,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly market?: Market | undefined;
   /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
   readonly unitNames?: ReadonlyMap<LedgerUnit, string> | undefined;
+  /** Lo que el actor le debe al destinatario de `give`, por unidad: «le devuelvo» paga eso. */
+  readonly owed?: ReadonlyMap<LedgerUnit, number> | undefined;
   /** Las recetas que conoce el mundo: sin ellas, `cook` no tiene qué hacer. */
   readonly recipes?: readonly RecipeDef[] | undefined;
 }
@@ -215,6 +217,13 @@ export type VerbEffect =
       /** Gramos del bien que cambiaron de mano y monedas que fueron al otro lado. */
       readonly grams: number;
       readonly coins: number;
+    }
+  | {
+      readonly kind: "give";
+      readonly to: EntityRef | null;
+      /** Lo que pasó de un bolsillo al otro (nada si no llevaba o no estaba). */
+      readonly good: LedgerUnit | null;
+      readonly grams: number;
     }
   | {
       readonly kind: "take";
@@ -1094,6 +1103,51 @@ const tend: Resolver = (c) => {
   };
 };
 
+/**
+ * Pasa algo de su bolsillo al del otro: lo que nombra (con cantidad si la dice) o, si no, lo que
+ * le debe; y si no le debe nada, lo que más lleva. «Le devuelvo el grano» salda la deuda y no más.
+ */
+const give: Resolver = (c) => {
+  const to = argEntity(c, "to");
+  const what = argText(c, "what");
+  const none = (): VerbResult => ({
+    effect: { kind: "give", to, good: null, grams: 0 },
+    seconds: Math.min(c.nominal, 60),
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  });
+  if (c.roll.unmet)
+    return { effect: { kind: "give", to, good: null, grams: 0 }, seconds: c.nominal };
+  if (to === null) return none();
+  const carried = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => h.amount > 0);
+  const words = what === null ? [] : refTokens(what);
+  const named = carried.filter((h) =>
+    words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)),
+  );
+  const owed = c.input.owed ?? new Map<LedgerUnit, number>();
+  const debts = carried.filter((h) => (owed.get(h.unit) ?? 0) > 0);
+  const pool = named.length > 0 ? named : debts.length > 0 ? debts : carried;
+  const row = pickWanted(pool, null);
+  if (!row) return none();
+  const asked = gramsIn(what, 0);
+  const due = owed.get(row.unit) ?? 0;
+  const grams = Math.floor(Math.min(row.amount, asked > 0 ? asked : due > 0 ? due : row.amount));
+  if (grams <= 0) return none();
+  return {
+    effect: { kind: "give", to, good: row.unit, grams },
+    seconds: c.nominal,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        to: holderAccount(to as HolderRef),
+        unit: row.unit,
+        amount: grams,
+      },
+    ],
+  };
+};
+
 const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   none,
   move,
@@ -1104,6 +1158,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   speak,
   strike,
   trade,
+  give,
   take,
   store,
   eat,

@@ -99,6 +99,10 @@ export function offenseOf(
   if (e.kind === "combat.fight" && second) {
     return { kind: "assault", by: first, victim: second, noticedBy: [second] };
   }
+  if (e.kind === "law.default" && second) {
+    // El acreedor es quien reclama: sabe quién le debe.
+    return { kind: "default", by: first, victim: second, noticedBy: [second] };
+  }
   const eff = data?.effect;
   if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
     const from = eff.from;

@@ -160,6 +160,12 @@ export type EffectView =
       };
     }
   | {
+      readonly kind: "give";
+      readonly to?: string;
+      /** Lo que dio, si dio algo. */
+      readonly gave?: { readonly good: string; readonly grams: number };
+    }
+  | {
       readonly kind: "take";
       readonly from?: string;
       readonly got: readonly { readonly good: string; readonly amount: number }[];
@@ -435,6 +441,16 @@ function effectView(
                 coins: e.coins,
               },
             }
+          : {}),
+      };
+    }
+    case "give": {
+      const to = target(e.to).target;
+      return {
+        kind: "give",
+        ...(to !== undefined ? { to } : {}),
+        ...(e.good !== null && e.grams > 0
+          ? { gave: { good: e.good as string, grams: Math.round(e.grams) } }
           : {}),
       };
     }

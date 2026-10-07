@@ -357,6 +357,22 @@ const VERBS: readonly {
     },
   },
   {
+    // Dar y devolver: "le devuelvo el grano a mi tío", "le pago lo que le debo". "Le doy un golpe"
+    // sigue siendo pegar (más abajo).
+    re: /^(?:le\s+)?(?:devuelvo|devolver|pago|pagar|doy|dar|entrego|entregar|regalo|regalar)\b(?!\s+(?:un|una)\s+(?:golpe|trompada|pi[ñn]a|cachetada|bofetada|patada|paliza|pu[ñn]etazo|palo|empuj[oó]n|sopapo))/i,
+    build: (rest) => {
+      const clean = rest.replace(MANNER_WORDS, " ");
+      const p = personAfterA(clean);
+      const what = nounPhrase(
+        (p ? p.before : clean).replace(/^\s*(?:todo\s+)?lo\s+que\s+(?:le\s+)?debo\b.*$/i, ""),
+      );
+      const args: DraftArg[] = [];
+      if (p) args.push({ role: "to", ref: p.ref });
+      if (what) args.push({ role: "what", text: what });
+      return { node: act("give", args) };
+    },
+  },
+  {
     re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle)\b/i,
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));

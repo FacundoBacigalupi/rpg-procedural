@@ -92,7 +92,17 @@ describe("contestar", () => {
       grams: GIFT_GRAMS,
     });
     expect(decideReply({ ...req, held: () => rich - 1 }, 0).line).toBe("request.short");
-    expect(decideReply({ ...req, held: () => rich, kin: false }, 0).line).toBe("request.stranger");
+    const neighbor = decideReply({ ...req, held: () => rich, kin: false }, 0);
+    expect(neighbor.line).toBe("request.credit");
+    expect(neighbor.give).toEqual({ good: "grain", grams: GIFT_GRAMS, credit: true });
+    const owing = { grams: 800, overdue: false };
+    expect(decideReply({ ...req, held: () => rich, kin: false, owes: owing }, 0).line).toBe(
+      "request.refuse.limit",
+    );
+    const late = { grams: 300, overdue: true };
+    expect(decideReply({ ...req, held: () => rich, kin: false, owes: late }, 0).line).toBe(
+      "request.refuse.owes",
+    );
   });
 
   it("a quien sabe que robó o pegó no le da ni de familia, y lo saluda frío", () => {

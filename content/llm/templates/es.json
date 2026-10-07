@@ -72,6 +72,10 @@
   { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
+  {
+    "id": "percept.action.give",
+    "lines": ["{who} le da algo a alguien.", "Ves a {who} pasándole algo a otro."]
+  },
   { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
   {
     "id": "percept.action.store",
@@ -285,6 +289,16 @@
   },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
+  {
+    "id": "outcome.give.done",
+    "lines": ["Le das {grams} de {what} a {to}.", "Le pasás {grams} de {what} a {to}."]
+  },
+  { "id": "outcome.give.done_anyone", "lines": ["Dejás {grams} de {what}."] },
+  {
+    "id": "outcome.give.nothing_to",
+    "lines": ["No tenés qué darle a {to}.", "Con las manos vacías, no le podés dar nada a {to}."]
+  },
+  { "id": "outcome.give.nothing", "lines": ["No tenés qué dar."] },
   { "id": "outcome.take.got", "lines": ["Te llevás {what}.", "Agarrás {what}."] },
   {
     "id": "outcome.take.got_from",

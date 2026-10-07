@@ -178,6 +178,14 @@ function effects(): { verb: string; effect: VerbEffect }[] {
     }
   }
   const unit = (u: string) => u as never;
+  for (const to of [mother, null]) {
+    for (const gave of [undefined, { good: "good:grain", grams: 500 }]) {
+      out.push({
+        verb: "give",
+        effect: { kind: "give", to, good: gave ? unit(gave.good) : null, grams: gave?.grams ?? 0 },
+      });
+    }
+  }
   for (const from of [mother, makeId("household", 1)]) {
     for (const got of [
       [],

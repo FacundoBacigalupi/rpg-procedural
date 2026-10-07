@@ -23,6 +23,7 @@ import {
   type BodyPlanDef,
   blowFromMishap,
   blowFromStrike,
+  CREDIT,
   capabilitiesOf,
   daylight,
   deleteComponent,
@@ -80,6 +81,7 @@ import {
   verbSkill,
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
+import { debtsTo } from "./credit.ts";
 import { canFight, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
@@ -172,6 +174,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     reads: [
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
+      CREDIT.name,
       ENTITY.name,
       LOCATION.name,
       BODY_STATE.name,
@@ -346,6 +349,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     foods: e.foods,
     unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
+    owed: node.verb === "give" ? debtsTo(truth, me, parties["to"]?.id ?? null) : undefined,
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
