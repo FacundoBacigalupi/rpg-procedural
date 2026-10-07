@@ -37,17 +37,13 @@
     },
     {
       "id": "goal-revenge",
-      "raw": [
-        "{\"kind\":\"goal\",\"text\":\"vengar a mi padre\"}"
-      ],
+      "raw": ["{\"kind\":\"goal\",\"text\":\"vengar a mi padre\"}"],
       "ok": true,
       "pass": true
     },
     {
       "id": "look",
-      "raw": [
-        "{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"look\",\"args\":[]}}"
-      ],
+      "raw": ["{\"kind\":\"act\",\"plan\":{\"kind\":\"do\",\"verb\":\"look\",\"args\":[]}}"],
       "ok": true,
       "pass": true
     },
@@ -77,9 +73,7 @@
     },
     {
       "id": "meta-inspector",
-      "raw": [
-        "{\"kind\":\"meta\",\"text\":\"abrir el inspector\"}"
-      ],
+      "raw": ["{\"kind\":\"meta\",\"text\":\"abrir el inspector\"}"],
       "ok": true,
       "pass": true
     },
