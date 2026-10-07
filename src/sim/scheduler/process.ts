@@ -6,15 +6,21 @@ import {
   compareIds,
   compareStrings,
   type Duration,
+  type EntityBase,
+  type EntityKind,
   type EntityRef,
   type Event,
+  type EventId,
+  type Id,
+  type Ledger,
   type PlaceRef,
   type Rng,
   type Tick,
   type TimeScale,
+  type Transfer,
   type ZoneResolution,
 } from "../../core/index.ts";
-import type { ReadonlyWorldTruth, Table } from "../world/index.ts";
+import { ENTITY, type ReadonlyWorldTruth, type Table } from "../world/index.ts";
 
 /** "economy.market.clear", "body.wound.heal": empieza con el id del sistema. */
 export type ProcessId = string;
@@ -100,6 +106,43 @@ export function changeKey(change: StateChange): string {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Ids provisionales
+
+/**
+ * Un proceso no reparte ids: lo que crea lo nombra con ids provisionales (`agent:~0`, `event:~1`),
+ * válidos solo dentro de su resultado. Al asentar, el scheduler reparte los ids reales en orden
+ * canónico (solo a las corridas que sobreviven a las contiendas) y los reemplaza en todo el
+ * resultado: cambios, eventos e ítems. Así la entidad nueva puede apuntar a su evento de origen y
+ * el evento puede tener a la entidad como actor.
+ */
+const DRAFT = /^([a-z]+):~(0|[1-9][0-9]*)$/;
+
+export function isDraftRef(value: string): boolean {
+  return DRAFT.test(value);
+}
+
+export function parseDraftRef(value: string): { kind: string; n: number } | undefined {
+  const m = DRAFT.exec(value);
+  return m ? { kind: m[1] as string, n: Number(m[2]) } : undefined;
+}
+
+/** El evento `index` de `events` del mismo resultado, para citarlo como causa u origen. */
+export function draftEvent(index: number): EventId {
+  if (!Number.isSafeInteger(index) || index < 0) throw new RangeError(`índice inválido: ${index}`);
+  return `event:~${index}` as EventId;
+}
+
+/** La ficha de una entidad nueva: sale del evento `origin` (normalmente un `draftEvent`) en `at`. */
+export function createEntity(id: EntityRef, origin: EventId, at: Tick): StateChange {
+  return setComponent<EntityBase>(ENTITY, id, { id, originEventId: origin, createdAt: at });
+}
+
+/** La entidad termina (muerte, destrucción, disolución) por `end`, y queda para la historia. */
+export function endEntity(base: EntityBase, end: EventId, at: Tick): StateChange {
+  return setComponent<EntityBase>(ENTITY, base.id, { ...base, endedAt: at, endEventId: end });
+}
+
+// ---------------------------------------------------------------------------------------------
 // Eventos, revisiones agendadas, contiendas
 
 /**
@@ -130,9 +173,24 @@ export interface ContestClaim {
   readonly actor?: EntityRef;
 }
 
+/**
+ * Un asiento del ledger por uno de los eventos del mismo resultado (causality ley 2: nada se mueve
+ * sin un evento que lo explique). Los asientos de una fase se aplican en orden canónico; dos
+ * corridas que gastan del mismo saldo en la misma fase pueden dejarlo en negativo, y eso es un
+ * error: lo que se disputa (el lote, la bolsa) va como componente, para que haya contienda.
+ */
+export interface PostingDraft {
+  readonly event: EventId; // un draftEvent de este resultado
+  readonly transfers: readonly Transfer[];
+}
+
+/** Lo que un proceso puede leer del ledger. */
+export type ReadonlyLedger = Pick<Ledger, "balance" | "total">;
+
 export interface ProcessResult {
   readonly changes?: readonly StateChange[];
   readonly events?: readonly EventDraft[];
+  readonly postings?: readonly PostingDraft[];
   readonly schedule?: readonly ScheduleRequest[];
   readonly contest?: ContestClaim;
 }
@@ -147,10 +205,14 @@ export interface ProcessContext {
   readonly resolution: ZoneResolution;
   readonly phase: Phase;
   readonly truth: ReadonlyWorldTruth;
+  /** Los saldos de conservación, si el mundo tiene ledger (al cerrar la fase anterior). */
+  readonly ledger: ReadonlyLedger | undefined;
   /** Ya forkeado por clave: (sistema, proceso, alcance, ventana) o (…, "at", tick, n). */
   readonly rng: Rng;
   /** El ítem que disparó la corrida, si fue agendada. */
   readonly item: ScheduledItem | undefined;
+  /** Un id provisional para algo que esta corrida crea (ver `isDraftRef`). */
+  newId<K extends Exclude<EntityKind, "event">>(kind: K): Id<K>;
 }
 
 export interface ProcessDef {

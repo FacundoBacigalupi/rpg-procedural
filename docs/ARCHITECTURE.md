@@ -207,6 +207,8 @@ type CauseRef =
 
 - **Toda entidad tiene `originEventId: EventId`** (o `{ kind: "seed" }` como causa del evento de origen).
 - **Los eventos son inmutables.** Corregir algo es un evento nuevo con causa.
+- **El registro (`core/events`, `EventLog`)** es de solo agregado y en orden de id. Al entrar valida que el evento tenga causas (las condiciones iniciales citan `{ kind: "seed" }`), y que las causas que son eventos ya estén y no sean posteriores: el grafo no tiene ciclos por construcción. Da `causesOf`/`effectsOf` y los conos `ancestors`/`descendants` para `why` y `effects`.
+- **Los procesos no reparten ids:** lo que crean lo nombran con ids provisionales (`ctx.newId("agent")` → `agent:~0`; `draftEvent(i)` → el evento `i` del mismo resultado). Al asentar, el scheduler reparte los reales en orden canónico, solo a las corridas que sobreviven a las contiendas, y los reemplaza en todo el resultado; así una entidad nueva apunta a su evento de origen en el mismo paso (`createEntity`, `endEntity`). Los asientos del ledger que devuelve un proceso van siempre por uno de sus eventos.
 - **`Outcome`** es el de actions §7 (manda sobre la lista vieja `success | partial | ...`).
 - **En el código `Event` es genérico** (`Event<TOutcome, TEmissions>`): `core` no puede importar `Outcome` (sim/actions) ni `EmissionProfile` (sim/perception), así que `sim` fija los tipos concretos con un alias.
 
@@ -221,6 +223,8 @@ interface EntityBase {
   endEventId?: EventId;
 }
 ```
+
+La ficha vive en la tabla `entity` de `sim/world` (`ENTITY`); todo otro componente exige que su entidad tenga ficha. `checkInvariants` (sim/world) revisa sin huérfanos, fichas coherentes con sus eventos de origen y de fin, actores y causas de estado que existen y ya existían, y el ledger auditado con cada asiento por un evento real de su tick.
 
 El modelo es un **ECS liviano**: cada sistema guarda sus componentes en su propia tabla por id (el `Body` de un agente, su `Mind`, sus `Skills`, su `PracticeState`), en lugar de un objeto gigante. Así cada sistema serializa, hashea y migra lo suyo (tooling §2).
 
