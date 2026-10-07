@@ -50,6 +50,7 @@ import {
   PARSER_EXAMPLES,
   planFromDraft,
 } from "../../sim/index.ts";
+import { INSPECTOR_HELP, inspect } from "../../tools/index.ts";
 import {
   elapsed,
   renderCharacter,
@@ -154,6 +155,13 @@ ${renderStatus(life.now)}\n> `);
       }
       if (/^bit[aá]cora/i.test(text)) {
         write(`${renderJournal(store.narrations(JOURNAL_SHOWN))}\n> `);
+        continue;
+      }
+      if (/^(?:abrir el )?(?:inspector|god)\b/i.test(text)) {
+        // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
+        store.setMeta("inspected", true);
+        const rest = text.replace(/^(?:abrir el )?\S+\s*/i, "");
+        write(`${rest === "" ? INSPECTOR_HELP : inspect(life, rest)}\n> `);
         continue;
       }
       write(`${HELP}\n> `);
