@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContentError, contentId, defineContent, z } from "../core/index.ts";
+import { BIOMES } from "../worldgen/index.ts";
 import { loadContentDir } from "./content.ts";
 
 const HERBS = defineContent("herbs", z.strictObject({ id: contentId, potency: z.number() }));
@@ -69,7 +70,9 @@ describe("loadContentDir", () => {
     expect(problems[1]).toMatch(/herbs\/b\.json\[0\]\.potency: /);
   });
 
-  it("el content/ del repo carga (vacío por ahora)", () => {
-    expect(loadContentDir("content", []).hash).toMatch(/^[0-9a-f]{64}$/);
+  it("el content/ del repo carga y valida", () => {
+    const c = loadContentDir("content", [BIOMES]);
+    expect(c.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(c.all(BIOMES).length).toBeGreaterThan(10);
   });
 });
