@@ -2,3 +2,4 @@
 // Usa llm y persistence solo por interfaces inyectadas.
 export * from "./setup/index.ts";
 export * from "./stub/index.ts";
+export * from "./view/index.ts";

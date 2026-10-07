@@ -9,6 +9,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { GAME_CONTENT_KINDS } from "../../game/index.ts";
 import {
   type LlmClient,
   LOCAL_BASE_URLS,
@@ -17,7 +18,7 @@ import {
   parserSetup,
 } from "../../llm/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
-import { ACTIONS, ActionCatalog, CONTENT_KINDS, PARSER_EXAMPLES, PLANS } from "../../sim/index.ts";
+import { ACTIONS, ActionCatalog, PARSER_EXAMPLES, PLANS } from "../../sim/index.ts";
 import {
   benchCases,
   benchModel,
@@ -50,7 +51,7 @@ const models = (values.models ?? "").split(",").filter((m) => m.length > 0);
 if (models.length === 0) throw new Error("falta --models (por ejemplo: --models qwen3:14b)");
 const timeoutMs = Number(values.timeout);
 
-const content = loadContentDir("content", CONTENT_KINDS);
+const content = loadContentDir("content", GAME_CONTENT_KINDS);
 const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 const examples = content.all(PARSER_EXAMPLES);
 const setup = parserSetup(catalog, examples);

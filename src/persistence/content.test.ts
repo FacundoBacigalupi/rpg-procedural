@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContentError, contentId, defineContent, z } from "../core/index.ts";
-import { ACTIONS, CONTENT_KINDS, PARSER_EXAMPLES, PLANS, TRAITS } from "../sim/index.ts";
+import { GAME_CONTENT_KINDS } from "../game/index.ts";
+import { ACTIONS, PARSER_EXAMPLES, PLANS, TRAITS } from "../sim/index.ts";
 import { BIOMES } from "../worldgen/index.ts";
 import { loadContentDir } from "./content.ts";
 
@@ -72,7 +73,7 @@ describe("loadContentDir", () => {
   });
 
   it("el content/ del repo carga y valida", () => {
-    const c = loadContentDir("content", CONTENT_KINDS);
+    const c = loadContentDir("content", GAME_CONTENT_KINDS);
     expect(c.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(c.all(BIOMES).length).toBeGreaterThan(10);
     expect(c.all(TRAITS).length).toBeGreaterThan(10);

@@ -7,8 +7,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { EARTHLIKE_CLOCK, floorDiv } from "../../core/index.ts";
+import { GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
-import { CONTENT_KINDS, DEMOGRAPHY, TRAITS, villagePopulation } from "../../sim/index.ts";
+import { DEMOGRAPHY, TRAITS, villagePopulation } from "../../sim/index.ts";
 import { BIOMES, generatePlanet, regionCell, villageSite } from "../../worldgen/index.ts";
 import { renderLocal } from "./local.ts";
 import { encodePng } from "./png.ts";
@@ -29,7 +30,7 @@ if (!Number.isSafeInteger(seed) || seed < 0) throw new Error(`seed inválido: ${
 const width = Number(values.width);
 const frequency = values.frequency === undefined ? undefined : Number(values.frequency);
 
-const content = loadContentDir("content", CONTENT_KINDS);
+const content = loadContentDir("content", GAME_CONTENT_KINDS);
 const started = performance.now();
 const planet = generatePlanet({ seed, biomes: content.all(BIOMES), frequency });
 const elapsed = performance.now() - started;
