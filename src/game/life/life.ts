@@ -11,6 +11,7 @@ import {
   hashState,
   type SchedulerState,
   type StateHash,
+  settlementSpaces,
   type WorldTruth,
 } from "../../sim/index.ts";
 import type { GameSetup } from "../setup/index.ts";
@@ -134,7 +135,8 @@ export class Life {
       const resumed = lifeWorld(parts, world.player, terrain.village, saved.scheduler);
       return new Life(resumed, anchorOf(terrain), terrain);
     }
-    const parts: LifeParts = { ...resumeParts(seed, content, anchor), ...saved };
+    const spaces = settlementSpaces(saved.truth, anchor.hex, anchor.households);
+    const parts: LifeParts = { ...resumeParts(seed, content, anchor), spaces, ...saved };
     const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
     return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }

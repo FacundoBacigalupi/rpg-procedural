@@ -22,6 +22,7 @@ import {
   ACTIONS,
   ActionCatalog,
   BODY_PLANS,
+  BUILDING_TYPES,
   DEMOGRAPHY,
   EATEN,
   ENTITY,
@@ -29,6 +30,7 @@ import {
   houseKey,
   LOCATION,
   type LocalMap,
+  MATERIALS,
   PERSON,
   PLACE,
   PLANS,
@@ -36,13 +38,16 @@ import {
   SKILLS,
   SkillCatalog,
   seedBodies,
+  seedSettlement,
   seedSkills,
   seedVillage,
+  settlementSpaces,
+  settlementUnits,
   TRAITS,
   type Trait,
   type VillagePopulation,
   villagePopulation,
-  villageSpaces,
+  WORK_TYPES,
   WorldTruth,
 } from "../../sim/index.ts";
 import {
@@ -145,22 +150,12 @@ export function resumeParts(
   anchor: ResumeAnchor,
 ): Pick<
   LifeParts,
-  | "seed"
-  | "clock"
-  | "map"
-  | "spaces"
-  | "catalog"
-  | "skills"
-  | "traits"
-  | "plans"
-  | "foods"
-  | "pressureCurves"
+  "seed" | "clock" | "map" | "catalog" | "skills" | "traits" | "plans" | "foods" | "pressureCurves"
 > {
   return {
     seed,
     clock: EARTHLIKE_CLOCK,
     map: anchor.map,
-    spaces: villageSpaces({ hex: anchor.hex, households: anchor.households }),
     catalog: new ActionCatalog(content.all(ACTIONS), content.all(PLANS)),
     skills: new SkillCatalog(content.all(SKILLS), content.all(ACTIONS)),
     traits: content.all(TRAITS),
@@ -223,12 +218,22 @@ export function createLife(
     clock,
   );
 
-  const households = pop.households.filter((h) => h.end === null).map((h) => h.id);
-  const spaces = villageSpaces({ hex: site.hex, households });
   const ids = idsAfter(truth, log);
   const foods = content.all(FOODS);
   const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
-  const ledger = new Ledger({ externals: { [EATEN]: units, seed: units } });
+  const materials = content.all(MATERIALS);
+  const ledger = new Ledger({
+    externals: { [EATEN]: units, seed: [...units, ...settlementUnits(materials)] },
+  });
+  // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
+  seedSettlement(truth, ids, log, ledger, {
+    seed,
+    pop,
+    site,
+    map,
+    content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
+  });
+  const spaces = settlementSpaces(truth, site.hex);
   // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
   // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
   // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
