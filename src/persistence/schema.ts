@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS snapshots (
   kind TEXT NOT NULL,
   blob BLOB NOT NULL,
   hash TEXT NOT NULL,
+  -- El hash del estado (tooling §2) en ese tick: los checkpoints del replay.
+  state_hash TEXT NOT NULL,
   PRIMARY KEY (tick, kind)
 ) STRICT;
 `;

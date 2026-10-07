@@ -370,13 +370,14 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 - **`node:sqlite`** se queda (sin dependencias nativas que compilar en Windows), detrás de una interfaz chica en `persistence/` para poder cambiar a `better-sqlite3` si aparece un problema: es todavía un módulo joven de Node.
 - **Componentes como JSON canónico** con hash por componente (pregunta 3); **snapshots comprimidos con zstd** (`node:zlib`). MessagePack o CBOR solo si el tamaño medido en la Fase 5 lo pide: el JSON se lee a ojo en el inspector.
-- **Hecho en la Fase 0:** `persistence/driver.ts` es la interfaz (`SqlDriver`: `exec`, `run`, `get`, `all`, `transaction`, `close`), con las filas tipadas donde se leen; `core/canon` tiene `canonicalJson` (puro, sin hash: el SHA-256 usa `node:crypto` desde `persistence/`); `LifeStore` guarda y carga la vida entera y los snapshots con `zstdCompressSync`. Detalle del esquema en tooling §1.
+- **Hecho en la Fase 0:** `persistence/driver.ts` es la interfaz (`SqlDriver`: `exec`, `run`, `get`, `all`, `transaction`, `close`), con las filas tipadas donde se leen; `core/canon` tiene `canonicalJson`, y desde la tarea del replay también `sha256Hex` y `canonicalHash` en TypeScript puro (para el hash del estado, tooling §2; `persistence/` sigue usando `node:crypto`, con el mismo resultado); `LifeStore` guarda y carga la vida entera y los snapshots con `zstdCompressSync`. Detalle del esquema en tooling §1.
 - **DuckDB, más adelante y opcional,** para analizar lotes grandes de la sim headless (calibración de la Fase 3 en adelante): lee SQLite y Parquet directo. No entra a la Fase 0.
 
 ### 7.6 Validación y contenido: Zod 4
 
 - **Zod 4** (más rápido y liviano que el 3) y **`z.toJSONSchema()`**: el mismo esquema que valida el `IntentDraft` se manda como JSON Schema al servidor del LLM local para restringir la salida (Ollama, llama.cpp y LM Studio lo aceptan). Un esquema, tres usos: tipo, validación y gramática.
 - **Contenido en JSON** (o TS cuando necesita lógica) validado al cargar; los tipos de lo que entra de afuera salen de `z.infer` (pregunta 2).
+- **Hecho en la Fase 0:** `core/schema` reexporta `z` y tiene `defineContent`, `loadContent` (puro: recibe lo ya parseado) y `Content`; `persistence/content.ts` (`loadContentDir`) lee los archivos. Las referencias entre tipos las declara cada tipo con su función `refs`, y una rota impide arrancar. Detalle en tooling §11.
 
 ### 7.7 LLM local: un modelo residente
 

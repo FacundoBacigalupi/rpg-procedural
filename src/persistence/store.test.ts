@@ -5,7 +5,7 @@ import fc from "fast-check";
 import { afterEach, describe, expect, it } from "vitest";
 import { type AgentId, CanonError, IdAllocator, makeId } from "../core/index.ts";
 import { DAY, HUT, resumeVillage, village } from "../sim/scheduler/village.fixture.ts";
-import { checkInvariants, ENTITY, table } from "../sim/world/index.ts";
+import { checkInvariants, ENTITY, hashState, table } from "../sim/world/index.ts";
 import { openSqlite, type SqlDriver } from "./driver.ts";
 import { componentTable, FORMAT_VERSION, fieldExpr } from "./schema.ts";
 import { type LifeState, LifeStore, PersistenceError } from "./store.ts";
@@ -184,6 +184,10 @@ describe("LifeStore", () => {
         ]);
         const snap = store.loadSnapshot(10 * DAY);
         expect(dump(snap)).toEqual(at10);
+        // Cada snapshot guarda el hash del estado de su tick: los checkpoints del replay.
+        const checkpoints = store.checkpoints();
+        expect(checkpoints.map((c) => c.tick)).toEqual([10 * DAY, 25 * DAY]);
+        expect(checkpoints[0]?.hash).toEqual(hashState(snap));
         expect(checkInvariants(snap)).toEqual([]);
         // Desde el snapshot se llega al mismo presente.
         const again = resume(seed, snap);
