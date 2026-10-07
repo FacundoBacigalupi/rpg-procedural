@@ -127,7 +127,7 @@ core ← worldgen ← sim ← game ← llm / persistence ← ui / tools
 - `game` puede leer `llm` y `persistence` solo por interfaces inyectadas (el turno se testea con `MockLLM` y una base en memoria).
 - **Entre carpetas de `sim/`** no hay ciclos: un sistema lee los tipos de otro desde su `index.ts`, pero **los efectos cruzados pasan por el scheduler** (diffs, eventos y presiones), no por llamadas directas que mutan estado ajeno.
 - `families/*` depende de `metaphysics/`; nada fuera de `families/` importa una familia concreta.
-- Se fuerza con dependency-cruiser desde la Fase 0 (§7.10).
+- Se fuerza desde la Fase 0 (§7.10): dependency-cruiser para los imports (`.dependency-cruiser.cjs`) y Biome para los globales prohibidos (`biome.json`, `lint/determinism.grit`).
 
 ## 4. Tipos centrales (canónicos)
 
@@ -384,7 +384,9 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 ### 7.10 Calidad del código
 
 - **Biome** (formato y lint en una sola herramienta rápida) en lugar de ESLint + Prettier.
-- **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, y prohibiciones (`Math.random`, `Date`, `Math.exp` y compañía, `node:*` dentro de `sim/` y `worldgen/`). Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
+- **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, `node:*` prohibido dentro de `core/`, `worldgen/` y `sim/`. Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
+- **Los globales prohibidos** (`Math.random`, `Math.exp` y compañía, `**`, `Date`, `performance`, `process`, temporizadores) no son imports, así que los ve Biome: un plugin GritQL para los miembros de `Math` y `**`, y `noRestrictedGlobals` para el resto (respeta el alcance: una variable local llamada igual no salta). Los tests quedan afuera: los de `core/math` comparan contra `Math.*`.
+- **TypeScript 6, no 7** (implementado 2026-10-06): TS 7 (el compilador en Go) todavía no publica API de JavaScript, y dependency-cruiser la necesita para leer los imports de `.ts`. Se pasa a 7 cuando las herramientas lo soporten; el código no cambia.
 - **Vitest** se queda; se suma **fast-check** para tests por propiedades: la conservación (ledgers), el determinismo (mismo seed, cualquier orden de inserción) y `interact` sin móvil perpetuo son propiedades, no ejemplos.
 - **npm** se queda: pnpm solo aporta cuando haya workspaces.
 

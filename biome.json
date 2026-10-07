@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "includes": ["**", "!docs", "!**/package-lock.json"] },
+  "formatter": { "useEditorconfig": true, "lineWidth": 100 },
+  "linter": {
+    "rules": {
+      "preset": "recommended",
+      "style": { "noNonNullAssertion": "error" }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/core/**", "src/worldgen/**", "src/sim/**", "!**/*.test.ts"],
+      "plugins": ["./lint/determinism.grit"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "Date": "Reloj real dentro del código puro: el tiempo es el Tick de la sim (ARCHITECTURE §3).",
+                  "performance": "Reloj real dentro del código puro (ARCHITECTURE §3).",
+                  "process": "Entorno del proceso dentro del código puro (ARCHITECTURE §3).",
+                  "setTimeout": "Temporizador real dentro del código puro (ARCHITECTURE §3).",
+                  "setInterval": "Temporizador real dentro del código puro (ARCHITECTURE §3).",
+                  "setImmediate": "Temporizador real dentro del código puro (ARCHITECTURE §3).",
+                  "queueMicrotask": "Asincronía dentro del código puro (ARCHITECTURE §3).",
+                  "crypto": "Azar o hash del motor dentro del código puro: usar core/rng y core/canon (ARCHITECTURE §7.4).",
+                  "fetch": "IO dentro del código puro (ARCHITECTURE §3)."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

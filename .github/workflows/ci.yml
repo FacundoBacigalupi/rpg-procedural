@@ -15,27 +15,32 @@ concurrency:
 
 jobs:
   check:
-    name: Typecheck, lint y tests
-    runs-on: ubuntu-latest
+    name: Typecheck, lint y tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # El usuario juega en Windows; Linux confirma que el determinismo no depende de la plataforma.
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      - name: Detectar proyecto Node
-        id: node
-        run: |
-          if [ -f package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "Sin package.json todavía: se saltean los checks."; fi
       - uses: actions/setup-node@v7
-        if: steps.node.outputs.present == 'true'
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
-      - if: steps.node.outputs.present == 'true'
-        run: npm ci
-      - if: steps.node.outputs.present == 'true'
-        run: npm run typecheck
-      - if: steps.node.outputs.present == 'true'
-        run: npm run lint
-      - if: steps.node.outputs.present == 'true'
-        run: npm test
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  # Check obligatorio del ruleset de main: agrupa la matriz bajo el nombre de siempre.
+  check-summary:
+    name: Typecheck, lint y tests
+    if: always()
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.check.result }}" = "success"
 
   secrets:
     name: Escaneo de secretos
@@ -55,5 +60,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: npm audit
-        run: |
-          if [ -f package-lock.json ]; then npm audit --audit-level=high; else echo "Sin package-lock.json todavía."; fi
+        run: npm audit --audit-level=high

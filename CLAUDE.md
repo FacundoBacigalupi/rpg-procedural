@@ -73,11 +73,14 @@ Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backl
 6. **El mundo no gira alrededor del jugador.** Los NPC y organizaciones actúan aunque el jugador no esté.
 
 ## Stack
-TypeScript (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (sin `tsx` ni build) · npm · Vitest + fast-check · Biome + dependency-cruiser · SQLite (`node:sqlite` tras interfaz) · Zod 4 · RNG por contador y `core/math` determinista · LLM local residente por interfaz compatible con OpenAI (Ollama primero, llama.cpp después), API opcional · CLI como herramienta, UI web local mínima al cierre de la Fase 1 (Vite + React). Detalle y porqués en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
+TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (sin `tsx` ni build) · npm · Vitest + fast-check · Biome + dependency-cruiser · SQLite (`node:sqlite` tras interfaz) · Zod 4 · RNG por contador y `core/math` determinista · LLM local residente por interfaz compatible con OpenAI (Ollama primero, llama.cpp después), API opcional · CLI como herramienta, UI web local mínima al cierre de la Fase 1 (Vite + React). Detalle y porqués en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
 
 ## Comandos
-(se completan al crear el scaffold en la Fase 0)
-- `npm run typecheck` · `npm test` · `npm run dev` (CLI) · `npm run sim -- --seed 123 --years 50` (simulación headless + reporte)
+- `npm run check`: typecheck + lint + tests, lo que se corre antes de cada PR.
+- `npm run typecheck` (`tsc`, sin emitir) · `npm run lint` (Biome + dependency-cruiser) · `npm run format` (Biome con `--write`) · `npm test` (Vitest) · `npm run test:watch`.
+- `npm run dev`: la CLI (`node src/ui/cli/main.ts`, `.ts` nativo).
+- Más adelante: `npm run sim -- --seed 123 --years 50` (simulación headless + reporte).
+- Si Vitest dice "failed to find the runner" en Windows, es el cwd con la unidad en minúscula (`c:`): correr desde `C:devpg-procedural`.
 
 ## Flujo de trabajo por feature
 1. Mirar ROADMAP → elegir la siguiente tarea.
