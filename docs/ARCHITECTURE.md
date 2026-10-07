@@ -141,7 +141,7 @@ type Id<K extends EntityKind> = string & { readonly __kind: K };   // "agent:104
 type EntityKind =
   | "agent" | "org" | "household" | "item" | "lot" | "place" | "building" | "work" | "settlement"
   | "cell" | "zone" | "plane" | "realm" | "spirit" | "text" | "commitment" | "case"
-  | "pressure" | "belief" | "memory" | "event" | "journey" | "force" | "scheme" | "lineage";
+  | "pressure" | "belief" | "memory" | "event" | "journey" | "force" | "scheme" | "lineage" | "trace";
 
 type AgentId = Id<"agent">;          // toda persona, también el jugador; bestias y espíritus que deciden
 type OrgId = Id<"org">;              // familias extensas, clanes, sectas, gremios, estados, bandas

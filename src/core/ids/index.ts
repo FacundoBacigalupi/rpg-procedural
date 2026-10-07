@@ -28,6 +28,7 @@ export const ENTITY_KINDS = [
   "force",
   "scheme",
   "lineage",
+  "trace",
 ] as const;
 
 export type EntityKind = (typeof ENTITY_KINDS)[number];
@@ -62,6 +63,7 @@ export type JourneyId = Id<"journey">;
 export type ForceId = Id<"force">;
 export type SchemeId = Id<"scheme">;
 export type LineageId = Id<"lineage">;
+export type TraceId = Id<"trace">;
 
 /** Cualquier entidad; el tipo se lee del prefijo. */
 export type EntityRef = Id<EntityKind>;

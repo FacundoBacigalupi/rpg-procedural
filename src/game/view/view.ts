@@ -52,9 +52,19 @@ export interface SceneInput {
   readonly hour: number;
   /** Luz donde está, 0-1 (`spaceLight`). */
   readonly light: number;
+  /** Huellas a la vista donde está (ya filtradas por luz y por cuánto quedan). */
+  readonly marks?: readonly SceneMark[];
+}
+
+/** Una huella a la vista en el lugar (perception §9): qué es y cuán vieja parece. */
+export interface SceneMark {
+  readonly kind: "blood";
+  readonly age: "fresh" | "old";
 }
 
 export interface SceneView {
+  /** Huellas que se ven donde está (con luz para verlas). */
+  readonly marks: readonly SceneMark[];
   readonly placeKinds: readonly PlaceKind[];
   readonly space: SpaceKind;
   readonly indoor: boolean;
@@ -357,6 +367,7 @@ function sceneView(s: SceneInput): SceneView {
     familiar: s.familiar,
     time: timeOfDay(s.hour),
     light: lightBand(s.light),
+    marks: [...(s.marks ?? [])],
   };
 }
 

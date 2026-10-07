@@ -10,6 +10,7 @@ export * from "./dialogue/index.ts";
 export * from "./economy/index.ts";
 export * from "./family/index.ts";
 export * from "./language/index.ts";
+export * from "./law/index.ts";
 export * from "./perception/index.ts";
 export * from "./scheduler/index.ts";
 export * from "./settlements/index.ts";

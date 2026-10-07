@@ -95,6 +95,17 @@ describe("contestar", () => {
     expect(decideReply({ ...req, held: () => rich, kin: false }, 0).line).toBe("request.stranger");
   });
 
+  it("a quien sabe que robó o pegó no le da ni de familia, y lo saluda frío", () => {
+    const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
+    const req = input({ act: { kind: "request", good: "grain" }, held: () => rich });
+    const refused = decideReply({ ...req, reproach: "theft" }, 0);
+    expect(refused.line).toBe("request.refuse.theft");
+    expect(refused.give).toBeUndefined();
+    expect(decideReply({ ...req, reproach: "assault" }, 0).line).toBe("request.refuse.assault");
+    expect(decideReply(input({ reproach: "assault" }), 0).line).toBe("greet.cold.assault");
+    expect(decideReply({ ...req, reproach: null }, 0).give).toBeDefined();
+  });
+
   it("es determinista", () => {
     const a = input({ act: { kind: "greet" } });
     expect(decideReply(a, 0)).toEqual(decideReply(a, 0));

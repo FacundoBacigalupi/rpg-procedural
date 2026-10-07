@@ -93,6 +93,7 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);
   }
+  for (const m of s.marks) say(`mark.${m.kind}.${m.age}`);
 
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
