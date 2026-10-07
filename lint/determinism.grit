@@ -1,0 +1,35 @@
+language js
+
+or {
+  `Math.$fn` where {
+    $fn <: or {
+      `random`,
+      `exp`,
+      `expm1`,
+      `log`,
+      `log1p`,
+      `log2`,
+      `log10`,
+      `pow`,
+      `sin`,
+      `cos`,
+      `tan`,
+      `asin`,
+      `acos`,
+      `atan`,
+      `atan2`,
+      `sinh`,
+      `cosh`,
+      `tanh`,
+      `asinh`,
+      `acosh`,
+      `atanh`,
+      `cbrt`,
+      `hypot`
+    },
+    register_diagnostic(span=$fn, message="No es determinista entre versiones del motor: usar core/math o core/rng (ARCHITECTURE §7.4).")
+  },
+  `$a ** $b` as $e where {
+    register_diagnostic(span=$e, message="`**` usa la pow del motor: usar core/math (ARCHITECTURE §7.4).")
+  }
+}

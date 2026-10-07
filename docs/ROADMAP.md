@@ -7,14 +7,18 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**Backlog de diseño 2** (acordado el 2026-10-06). El primer backlog (#1-#26) está completo: los 28 docs de sistema están escritos. Antes de la Fase 0 se completa el diseño de lo que falta: la columna técnica que une los sistemas (bucle de simulación, acciones, narrador, persistencia) y los sistemas del mundo que todavía no tienen doc. La idea es que el diseño quede **lo más completo posible**; los detalles finos (números, formas exactas de las interfaces) se ajustan al implementar. Se hace **de a un ítem**, en orden: el siguiente es **el primer `[ ]` de la lista** **El backlog de diseño 2 está completo** (2026-10-06, #27-#45). La revisión del stack (#46) está aprobada. **Lo que sigue es la Fase 0: fundamentos** (más abajo), de a una tarea por rama `feat/<nombre>` con tests, siguiendo el "Flujo de trabajo por feature" de CLAUDE.md; [ARCHITECTURE.md](ARCHITECTURE.md) es el mapa de carpetas, tipos y herramientas.
+**Fase 0: fundamentos** (más abajo). El diseño está completo (backlogs 1 y 2, #1-#46; historial abajo) y quedó en `main` como `v0.0.0`. Se hace **de a una tarea**, en orden: la siguiente es **el primer `[ ]` de la Fase 0**.
 
-**Receta por ítem** (lo que hay que hacer cuando el usuario dice "continuá"):
-1. `git switch develop && git pull`, después rama `docs/<nombre>`.
-2. Leer los docs que el ítem toca o de los que depende (la línea "Depende de" de los docs vecinos, y [ARCHITECTURE.md](ARCHITECTURE.md) para los ítems técnicos) y escribir `docs/systems/<nombre>.md` con el formato de siempre: nota de estado, Depende de / Lo usan, Principios, secciones numeradas con interfaces TS, el jugador y el narrador, Escala (LOD), Implementación por fase, Tests, Decisiones (revisables), Preguntas abiertas. Máximo detalle, siempre respetando las reglas de CLAUDE.md (causalidad, conservación, verdad vs creencia, determinismo).
-3. En el mismo PR: anotar como "(aprobado <fecha>)" las respuestas del usuario a las preguntas del ítem anterior, marcar el ítem `[x]` acá con el enlace, sumarlo a la sección "Diseño", sumar tareas a las fases que corresponda, agregar el doc a la lista de CLAUDE.md, enlazarlo desde los docs que lo mencionaban como "futuro", y pasar las preguntas abiertas de calibración a "Estado del diseño".
-4. Commit (`docs(<área>): ...`), push, `gh pr create --base develop --label design`, y mergear con `gh pr merge <n> --squash --delete-branch` **como comando suelto** (sin `&&` ni pipes). Sin CI en develop.
-5. Contarle al usuario qué quedó y proponer el siguiente ítem. Si hay preguntas de diseño (no de calibración), explicarlas con una recomendación.
+**Receta por tarea de código** (lo que hay que hacer cuando el usuario dice "continuá"):
+1. `git switch develop && git pull`, después rama `feat/<nombre>`.
+2. Leer el doc de sistema que la tarea cita y [ARCHITECTURE.md](ARCHITECTURE.md) (§4 tipos, §7 herramientas). Si el doc no alcanza, se completa en el mismo PR.
+3. Tests primero cuando se pueda; uno de determinismo si toca la sim; fast-check para conservación y propiedades. `npm run check` (typecheck + lint + tests) tiene que pasar.
+4. En el mismo PR: marcar la tarea `[x]` acá con lo que quedó, actualizar el doc del sistema si la implementación decidió algo, y los comandos de CLAUDE.md si cambian.
+5. Commit (`feat(<scope>): ...`), push, `gh pr create --base develop --label feature`, y mergear con `gh pr merge <n> --squash --delete-branch` **como comando suelto**. Sin CI en develop: la verificación es local.
+6. Al cerrar una fase o un hito: PR `develop` → `main` con `gh pr merge <n> --merge --auto` y tag `v0.<fase>.<n>` sobre el merge commit ([GIT_WORKFLOW.md](GIT_WORKFLOW.md)).
+
+## Historial del diseño
+**Backlog de diseño 2** (acordado el 2026-10-06, completo el mismo día, #27-#46). Columna técnica que une los sistemas y los sistemas del mundo que faltaban, más el modelo de datos unificado y la revisión del stack.
 
 ### D. La columna técnica: lo que une los sistemas
 Los docs de sistema asumen piezas que nadie diseñó todavía: quién avanza el tiempo, cómo se pasa de un NPC agregado a uno con cuerpo, qué es exactamente una acción y qué ve el LLM. Van primero porque todo lo demás se apoya en ellas.
@@ -165,7 +169,7 @@ Docs escritos (todos borradores revisables; entre paréntesis, las ampliaciones 
 
 ## Fase 0 — Fundamentos
 Herramientas y tipos según [ARCHITECTURE.md](ARCHITECTURE.md) §4 y §7 (aprobado 2026-10-06).
-- [ ] Scaffold: Node 24 fijado (`.nvmrc`, `engines`), TS strict con `erasableSyntaxOnly` y `.ts` corriendo nativo (sin `tsx` ni build), `tsc --noEmit`, Vitest + fast-check, Biome, dependency-cruiser (capas, ciclos entre carpetas de `sim/`, `families/` aislado, prohibidos `Math.random`, `Date`, `Math.exp` y compañía y `node:*` en `sim/` y `worldgen/`), scripts npm, GitHub Actions (typecheck + lint + tests) en Windows y Linux, carpetas de ARCHITECTURE §2
+- [x] Scaffold (2026-10-06): Node 24.19 fijado (`.nvmrc`, `engines`); TypeScript 6 strict con `erasableSyntaxOnly`, `noUncheckedIndexedAccess` y `exactOptionalPropertyTypes`, `.ts` corriendo nativo; Vitest + fast-check; Biome con un plugin GritQL (`lint/determinism.grit`) y `noRestrictedGlobals` que prohíben `Math.random`, las trascendentes, `**`, `Date`, `performance`, `process` y temporizadores en `core/`, `worldgen/` y `sim/` (con test de las reglas en `test/lint-rules.test.ts`); dependency-cruiser con las capas de ARCHITECTURE §3, sin ciclos, sistemas de `sim/` solo por su `index.ts`, `families/` aislado, sin `node:*` en el código puro ni dependencias de test en `src/`; CI con matriz Windows + Linux; carpetas de las capas (las de cada sistema se crean con su tarea)
 - [ ] `core/ids` (`Id<K>` con contadores deterministas por tipo, asignados al asentar), `core/types` (`Event`, `CauseRef`, `PlaceRef`, `Party`, `EntityBase`) y `core/ledger` en enteros con igualdad exacta y tests por propiedades ([ARCHITECTURE.md](ARCHITECTURE.md) §4)
 - [ ] `core/rng`: RNG por contador `draw(seed, key, n)` con claves por tupla, `sfc32` para flujos largos; tests de determinismo, de independencia entre claves y de distribución ([ARCHITECTURE.md](ARCHITECTURE.md) §7.4)
 - [ ] `core/math` determinista: `exp`, `log`, `pow`, `sin`, `cos`, `atan2` con operaciones básicas y `Math.sqrt`; tests de error contra `Math.*` y valores dorados fijos ([ARCHITECTURE.md](ARCHITECTURE.md) §7.4)
