@@ -370,6 +370,7 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 
 - **`node:sqlite`** se queda (sin dependencias nativas que compilar en Windows), detrás de una interfaz chica en `persistence/` para poder cambiar a `better-sqlite3` si aparece un problema: es todavía un módulo joven de Node.
 - **Componentes como JSON canónico** con hash por componente (pregunta 3); **snapshots comprimidos con zstd** (`node:zlib`). MessagePack o CBOR solo si el tamaño medido en la Fase 5 lo pide: el JSON se lee a ojo en el inspector.
+- **Hecho en la Fase 0:** `persistence/driver.ts` es la interfaz (`SqlDriver`: `exec`, `run`, `get`, `all`, `transaction`, `close`), con las filas tipadas donde se leen; `core/canon` tiene `canonicalJson` (puro, sin hash: el SHA-256 usa `node:crypto` desde `persistence/`); `LifeStore` guarda y carga la vida entera y los snapshots con `zstdCompressSync`. Detalle del esquema en tooling §1.
 - **DuckDB, más adelante y opcional,** para analizar lotes grandes de la sim headless (calibración de la Fase 3 en adelante): lee SQLite y Parquet directo. No entra a la Fase 0.
 
 ### 7.6 Validación y contenido: Zod 4
