@@ -610,7 +610,7 @@ Cada vida guarda en `meta` y en el archivo (chronicle §9):
 
 ## 15. Implementación por fase
 
-- **Fase 0:** `mode` en `NewGameSetup` y en `meta`; validador Zod de `NovelSetup` vacío.
+- **Fase 0 (hecho):** `mode` en `NewGameSetup` y en `meta`; validador Zod de `NovelSetup` vacío (`src/game/setup/`). Del personaje solo se aceptan `species`, `sex`, `name` y `entryAge`; los demás campos y cualquier dedo de oro se rechazan hasta su fase, para que una configuración nunca pida algo que el mundo ignore en silencio. `narration: NarrationPrefs` y `llm: LlmConfig` son de la capa `llm`: no cambian el mundo, no van al replay y la UI los junta con el setup.
 - **Fase 1:** elegir lugar, familia por posición, sexo, nombre y edad de entrada, con búsqueda de nacimiento y biografía sintetizada; marca de modo en la crónica.
 - **Fase 2:** temperamento y gustos elegidos; `upbringing` como intenciones del hogar.
 - **Fase 4:** talento elegido con genoma condicionado; marco `GoldenFinger` con `reveal`, `craft`, `learning`, `talent` y `body`; reglas compuestas (§5.9) con `passive`, `command`, `event`, `modify`, `perceive`, `transfer` y `absorb`, y los primeros tropos del catálogo; mentor como remanente (con spirits); firma y saliencia en el Cielo; presets Alquimista divino y Genio celestial.

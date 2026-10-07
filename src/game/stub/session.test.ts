@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { holderAccount, IdAllocator, makeId } from "../../core/index.ts";
 import { checkInvariants } from "../../sim/index.ts";
+import { defaultGameSetup } from "../setup/index.ts";
 import { StubSession } from "./session.ts";
 import { COIN, DAY, HUT_COST, type StubPlan } from "./world.ts";
 
@@ -17,7 +18,7 @@ const plans = fc.array(plan, { maxLength: 12 });
 const seeds = fc.nat({ max: 0xffffffff });
 
 function play(seed: number, list: readonly StubPlan[]) {
-  const s = StubSession.create(seed, { villagers: 5 });
+  const s = StubSession.create(seed, { villagers: 5, game: defaultGameSetup() });
   const turns = list.map((p, seq) => ({ tick: s.now, plan: p, report: s.turn(p, seq) }));
   return { s, turns };
 }
@@ -39,7 +40,7 @@ describe("StubSession", () => {
     fc.assert(
       fc.property(seeds, plans, (seed, list) => {
         const { s, turns } = play(seed, list);
-        const again = StubSession.create(seed, { villagers: 5 });
+        const again = StubSession.create(seed, { villagers: 5, game: defaultGameSetup() });
         turns.forEach((t, seq) => {
           again.advanceTo(t.tick);
           again.submit(t.plan, seq);
@@ -85,7 +86,7 @@ describe("StubSession", () => {
   });
 
   it("la choza cuesta lo suyo y el regalo pasa de bolsa a bolsa", () => {
-    const s = StubSession.create(1, { villagers: 3 });
+    const s = StubSession.create(1, { villagers: 3, game: defaultGameSetup() });
     const start = s.view().purse;
     const r = s.turn({ verb: "build" }, 0);
     const built = r.seen.find((e) => e.actors[0] === "vos");
@@ -114,7 +115,7 @@ describe("StubSession", () => {
   });
 
   it("un regalo a nadie o sin plata falla con forma", () => {
-    const s = StubSession.create(2, { villagers: 2 });
+    const s = StubSession.create(2, { villagers: 2, game: defaultGameSetup() });
     const nobody = s.turn({ verb: "give", to: makeId("agent", 40), amount: 1 }, 0);
     expect(nobody.seen.find((e) => e.actors[0] === "vos")).toMatchObject({
       kind: "give-failed",
