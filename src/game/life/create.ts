@@ -23,21 +23,28 @@ import {
   ActionCatalog,
   BODY_PLANS,
   BUILDING_TYPES,
+  CONCEPTS,
   DEMOGRAPHY,
   EATEN,
   ENTITY,
   FOODS,
+  generateLanguage,
   houseKey,
+  LANGUAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
   PERSON,
   PLACE,
   PLANS,
+  type PlaceFeature,
+  type PlaceToName,
   PRESSURE_CURVES,
   SKILLS,
   SkillCatalog,
   seedBodies,
+  seedPersonNames,
+  seedPlaceNames,
   seedSettlement,
   seedSkills,
   seedVillage,
@@ -184,6 +191,7 @@ export function createLife(
   const settlement = pop.settlement as SettlementId;
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
   let place = 0;
+  const named: PlaceToName[] = [];
   for (const a of site.anchors) {
     if (a.kind === "harbor") continue;
     const id = makeId("place", ++place);
@@ -195,7 +203,23 @@ export function createLife(
       hexes,
       ...(a.kind === "water" ? { detail: a.source } : {}),
     });
+    const feature: PlaceFeature =
+      a.kind === "water" ? a.source : kind === "fields" ? "fields" : "forest";
+    named.push({ id, feature, event: a.cause });
   }
+
+  // La lengua de la aldea: sus nombres de gente y de lugar salen de su léxico (language §8, §9).
+  const language = generateLanguage(
+    seed,
+    required(content.get(LANGUAGES, "village.hills"), "lengua village.hills"),
+    content.all(CONCEPTS),
+  );
+  seedPersonNames(truth, language, seed);
+  const main = named.find((p) => !["fields", "forest"].includes(p.feature)) ?? named[0];
+  seedPlaceNames(truth, language, seed, [
+    ...(main ? [{ id: settlement, feature: main.feature, event: pop.foundedEvent }] : []),
+    ...named,
+  ]);
 
   // Cada vivo empieza en su casa; el personaje también.
   for (const id of truth.ids(PERSON) as AgentId[]) {

@@ -5,6 +5,7 @@ export * from "./body/index.ts";
 export * from "./causality/index.ts";
 export * from "./content.ts";
 export * from "./family/index.ts";
+export * from "./language/index.ts";
 export * from "./perception/index.ts";
 export * from "./scheduler/index.ts";
 export * from "./settlements/index.ts";

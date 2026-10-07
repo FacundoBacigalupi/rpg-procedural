@@ -1,0 +1,208 @@
+[
+  {
+    "id": "clear",
+    "es": "claro",
+    "pos": "adj",
+    "name": {
+      "male": 3,
+      "female": 4,
+      "place": 3
+    }
+  },
+  {
+    "id": "calm",
+    "es": "tranquilo",
+    "pos": "adj",
+    "name": {
+      "male": 2,
+      "female": 4,
+      "place": 3
+    }
+  },
+  {
+    "id": "strong",
+    "es": "fuerte",
+    "pos": "adj",
+    "name": {
+      "male": 5
+    }
+  },
+  {
+    "id": "firm",
+    "es": "firme",
+    "pos": "adj",
+    "name": {
+      "male": 4,
+      "female": 1,
+      "place": 2
+    }
+  },
+  {
+    "id": "bright",
+    "es": "brillante",
+    "pos": "adj",
+    "name": {
+      "male": 3,
+      "female": 4,
+      "place": 2
+    }
+  },
+  {
+    "id": "old",
+    "es": "antiguo",
+    "pos": "adj",
+    "name": {
+      "place": 3
+    }
+  },
+  {
+    "id": "new",
+    "es": "nuevo",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "place": 3
+    }
+  },
+  {
+    "id": "high",
+    "es": "alto",
+    "pos": "adj",
+    "name": {
+      "male": 2,
+      "place": 3
+    }
+  },
+  {
+    "id": "deep",
+    "es": "profundo",
+    "pos": "adj",
+    "name": {
+      "male": 2,
+      "female": 1,
+      "place": 3
+    }
+  },
+  {
+    "id": "sweet",
+    "es": "dulce",
+    "pos": "adj",
+    "name": {
+      "female": 4,
+      "place": 1
+    }
+  },
+  {
+    "id": "gentle",
+    "es": "manso",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "female": 5,
+      "place": 1
+    }
+  },
+  {
+    "id": "long",
+    "es": "largo",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "place": 2
+    }
+  },
+  {
+    "id": "true",
+    "es": "verdadero",
+    "pos": "adj",
+    "name": {
+      "male": 3,
+      "female": 2
+    }
+  },
+  {
+    "id": "good",
+    "es": "bueno",
+    "pos": "adj",
+    "name": {
+      "male": 3,
+      "female": 3
+    }
+  },
+  {
+    "id": "brave",
+    "es": "valiente",
+    "pos": "adj",
+    "name": {
+      "male": 5
+    }
+  },
+  {
+    "id": "loyal",
+    "es": "leal",
+    "pos": "adj",
+    "name": {
+      "male": 4,
+      "female": 2
+    }
+  },
+  {
+    "id": "patient",
+    "es": "paciente",
+    "pos": "adj",
+    "name": {
+      "male": 2,
+      "female": 3
+    }
+  },
+  {
+    "id": "swift",
+    "es": "veloz",
+    "pos": "adj",
+    "name": {
+      "male": 3,
+      "female": 1,
+      "place": 1
+    }
+  },
+  {
+    "id": "white",
+    "es": "blanco",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "female": 3,
+      "place": 3
+    }
+  },
+  {
+    "id": "green",
+    "es": "verde",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "female": 3,
+      "place": 3
+    }
+  },
+  {
+    "id": "red",
+    "es": "rojo",
+    "pos": "adj",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "place": 2
+    }
+  },
+  {
+    "id": "small",
+    "es": "pequeño",
+    "pos": "adj",
+    "name": {
+      "female": 2,
+      "place": 2
+    }
+  }
+]
