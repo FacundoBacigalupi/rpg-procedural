@@ -512,7 +512,12 @@ describe("comer, beber, curar", () => {
         tick: 0,
         eventId: makeId("event", i + 1),
         transfers: [
-          { unit: r.unit, from: externalAccount("seed"), to: holderAccount(r.holder), amount: r.amount },
+          {
+            unit: r.unit,
+            from: externalAccount("seed"),
+            to: holderAccount(r.holder),
+            amount: r.amount,
+          },
         ],
       });
     });

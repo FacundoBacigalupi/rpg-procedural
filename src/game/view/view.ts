@@ -146,7 +146,12 @@ export type EffectView =
       readonly grams: number;
     }
   | { readonly kind: "drink"; readonly drank: boolean }
-  | { readonly kind: "tend"; readonly target?: string; readonly self: boolean; readonly done: boolean };
+  | {
+      readonly kind: "tend";
+      readonly target?: string;
+      readonly self: boolean;
+      readonly done: boolean;
+    };
 
 export interface OutcomeView {
   readonly verb: string;

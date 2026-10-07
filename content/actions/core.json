@@ -428,7 +428,10 @@
       "light": 0.6,
       "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "intellect", "weight": 0.2 }]
     },
-    "skill": { "id": "medicine", "facets": { "execution": 0.5, "knowledge": 0.3, "judgment": 0.2 } },
+    "skill": {
+      "id": "medicine",
+      "facets": { "execution": 0.5, "knowledge": 0.3, "judgment": 0.2 }
+    },
     "failureModes": [
       { "id": "clumsy", "factor": "skill" },
       { "id": "clumsy", "factor": "light" },
