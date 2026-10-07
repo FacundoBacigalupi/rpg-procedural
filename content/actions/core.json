@@ -1,0 +1,330 @@
+[
+  {
+    "id": "move",
+    "name": "moverse",
+    "domain": "movement",
+    "args": [{ "role": "to", "kind": "place", "required": true }],
+    "manners": [
+      { "id": "careful", "duration": 1.3, "ease": 0.5 },
+      { "id": "fast", "duration": 0.7, "ease": -0.5, "emissions": 1.5 },
+      { "id": "covert", "duration": 1.4, "ease": -0.2, "stealth": 1, "emissions": 0.4 }
+    ],
+    "requires": [{ "kind": "capability", "cap": "locomotion", "min": 0.3 }],
+    "occupies": { "legs": "full" },
+    "duration": { "kind": "path", "role": "to" },
+    "checkpoint": 600,
+    "emissions": { "sight": 0.5, "sound": 0.2 },
+    "resolver": "move",
+    "ease": 1.8,
+    "factors": {
+      "light": 0.8,
+      "terrain": 0.6,
+      "skill": [{ "trait": "perception", "weight": 0.3 }, { "trait": "memory", "weight": 0.2 }]
+    },
+    "failureModes": [
+      { "id": "lost", "factor": "skill" },
+      { "id": "lost", "factor": "light" },
+      { "id": "slip", "factor": "terrain" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "look",
+    "name": "observar",
+    "domain": "perception",
+    "args": [],
+    "manners": [{ "id": "careful", "duration": 3, "ease": 0.7 }],
+    "requires": [],
+    "occupies": { "eyes": "full" },
+    "duration": { "kind": "fixed", "seconds": 60 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.1, "sound": 0 },
+    "resolver": "observe",
+    "ease": 1,
+    "factors": {
+      "light": 1,
+      "skill": [{ "trait": "perception", "weight": 0.8 }, { "trait": "curiosity", "weight": 0.2 }]
+    },
+    "failureModes": [{ "id": "missed", "factor": "light" }, { "id": "missed", "factor": "skill" }],
+    "evidence": 0.3
+  },
+  {
+    "id": "search",
+    "name": "buscar",
+    "domain": "perception",
+    "args": [{ "role": "target", "kind": "person", "required": true }],
+    "manners": [
+      { "id": "careful", "duration": 2, "ease": 0.6 },
+      { "id": "fast", "duration": 0.5, "ease": -0.6 }
+    ],
+    "requires": [{ "kind": "capability", "cap": "locomotion", "min": 0.2 }],
+    "occupies": { "eyes": "full", "legs": "partial" },
+    "duration": { "kind": "fixed", "seconds": 1800 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.5, "sound": 0.3 },
+    "resolver": "search",
+    "ease": 0.8,
+    "factors": {
+      "light": 0.8,
+      "terrain": 0.5,
+      "skill": [{ "trait": "perception", "weight": 0.6 }, { "trait": "memory", "weight": 0.2 }]
+    },
+    "failureModes": [
+      { "id": "missed", "factor": "skill" },
+      { "id": "missed", "factor": "light" },
+      { "id": "missed", "factor": "terrain" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "gather",
+    "name": "recolectar",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.5 },
+      { "id": "fast", "duration": 0.6, "ease": -0.6 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "position", "at": ["forest", "fields", "water"] }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "partial" },
+    "duration": { "kind": "fixed", "seconds": 7200 },
+    "checkpoint": 900,
+    "emissions": { "sight": 0.4, "sound": 0.2 },
+    "resolver": "gather",
+    "ease": 0.5,
+    "factors": {
+      "light": 0.7,
+      "terrain": 0.3,
+      "skill": [
+        { "trait": "perception", "weight": 0.5 },
+        { "trait": "intellect", "weight": 0.2 },
+        { "trait": "control", "weight": 0.2 }
+      ]
+    },
+    "failureModes": [
+      { "id": "poor_yield", "factor": "skill" },
+      { "id": "poor_yield", "factor": "light" },
+      { "id": "slip", "factor": "terrain" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.4
+  },
+  {
+    "id": "work",
+    "name": "trabajar",
+    "domain": "work",
+    "args": [{ "role": "for", "kind": "duration", "required": false }],
+    "manners": [{ "id": "careful", "ease": 0.4 }, { "id": "fast", "ease": -0.5 }],
+    "requires": [
+      { "kind": "capability", "cap": "strength", "min": 0.2 },
+      { "kind": "position", "at": ["fields"] }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "legs": "partial" },
+    "duration": { "kind": "arg", "role": "for", "default": 14400, "max": 43200 },
+    "checkpoint": 1800,
+    "emissions": { "sight": 0.6, "sound": 0.4 },
+    "resolver": "work",
+    "ease": 1,
+    "factors": {
+      "light": 0.7,
+      "skill": [{ "trait": "constitution", "weight": 0.5 }, { "trait": "control", "weight": 0.3 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "poor_yield", "factor": "light" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.5
+  },
+  {
+    "id": "rest",
+    "name": "descansar",
+    "domain": "body",
+    "args": [{ "role": "for", "kind": "duration", "required": false }],
+    "manners": [],
+    "requires": [],
+    "occupies": { "legs": "full", "mind": "partial" },
+    "duration": { "kind": "arg", "role": "for", "default": 28800, "max": 57600 },
+    "checkpoint": 1800,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "resolver": "none",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 1
+  },
+  {
+    "id": "wait",
+    "name": "esperar",
+    "domain": "time",
+    "args": [{ "role": "for", "kind": "duration", "required": false }],
+    "manners": [{ "id": "covert", "stealth": 1, "emissions": 0.3 }],
+    "requires": [],
+    "occupies": {},
+    "duration": { "kind": "arg", "role": "for", "default": 3600, "max": 31536000 },
+    "checkpoint": 600,
+    "emissions": { "sight": 0.2, "sound": 0 },
+    "resolver": "none",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 1
+  },
+  {
+    "id": "speak",
+    "name": "hablar",
+    "domain": "social",
+    "args": [
+      { "role": "to", "kind": "person", "required": true },
+      { "role": "content", "kind": "text", "required": false }
+    ],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.4 },
+      { "id": "covert", "duration": 1.2, "stealth": 0.8, "emissions": 0.3 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "speech", "min": 0.3 },
+      { "kind": "position", "near": "to" }
+    ],
+    "occupies": { "voice": "full", "mind": "partial" },
+    "duration": { "kind": "fixed", "seconds": 300 },
+    "checkpoint": 30,
+    "emissions": { "sight": 0.3, "sound": 0.6 },
+    "resolver": "speak",
+    "ease": 1.5,
+    "factors": {
+      "nerve": 0.3,
+      "skill": [{ "trait": "sociability", "weight": 0.5 }, { "trait": "warmth", "weight": 0.3 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.5
+  },
+  {
+    "id": "strike",
+    "name": "golpear",
+    "domain": "combat",
+    "args": [{ "role": "target", "kind": "person", "required": true }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.3 },
+      { "id": "fast", "duration": 0.7, "ease": -0.3 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "strength", "min": 0.1 },
+      { "kind": "position", "near": "target" }
+    ],
+    "occupies": { "handR": "full", "legs": "partial", "eyes": "full" },
+    "duration": { "kind": "fixed", "seconds": 5 },
+    "checkpoint": 1,
+    "emissions": { "sight": 0.9, "sound": 0.5 },
+    "resolver": "strike",
+    "ease": 0.4,
+    "factors": {
+      "light": 0.5,
+      "nerve": 0.6,
+      "skill": [
+        { "trait": "constitution", "weight": 0.5 },
+        { "trait": "reactivity", "weight": -0.2 }
+      ]
+    },
+    "contest": {
+      "against": "target",
+      "oppose": [
+        { "trait": "perception", "weight": 0.5 },
+        { "trait": "constitution", "weight": 0.3 }
+      ]
+    },
+    "failureModes": [
+      { "id": "missed", "factor": "skill" },
+      { "id": "missed", "factor": "light" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "trade",
+    "name": "comerciar",
+    "domain": "social",
+    "args": [{ "role": "with", "kind": "person", "required": true }],
+    "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
+    "requires": [
+      { "kind": "capability", "cap": "speech", "min": 0.3 },
+      { "kind": "position", "near": "with" },
+      { "kind": "means", "holder": "self", "what": "goods" }
+    ],
+    "occupies": { "voice": "full", "handL": "partial", "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 900 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.4, "sound": 0.5 },
+    "resolver": "trade",
+    "ease": 0.5,
+    "factors": {
+      "nerve": 0.2,
+      "skill": [{ "trait": "intellect", "weight": 0.3 }, { "trait": "sociability", "weight": 0.4 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "take",
+    "name": "tomar",
+    "domain": "manipulation",
+    "args": [
+      { "role": "from", "kind": "person", "required": false },
+      { "role": "what", "kind": "text", "required": false }
+    ],
+    "manners": [
+      { "id": "covert", "duration": 2, "ease": -0.3, "stealth": 1, "emissions": 0.3 },
+      { "id": "careful", "duration": 1.5, "ease": 0.3 },
+      { "id": "fast", "duration": 0.5, "ease": -0.4, "emissions": 1.5 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "position", "near": "from" },
+      { "kind": "means", "holder": "from", "what": "goods" }
+    ],
+    "occupies": { "handR": "full", "eyes": "partial" },
+    "duration": { "kind": "fixed", "seconds": 30 },
+    "checkpoint": 5,
+    "emissions": { "sight": 0.6, "sound": 0.2 },
+    "resolver": "take",
+    "ease": 0.6,
+    "factors": {
+      "nerve": 0.5,
+      "light": 0.3,
+      "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "perception", "weight": 0.3 }]
+    },
+    "contest": {
+      "against": "from",
+      "oppose": [{ "trait": "perception", "weight": 1 }],
+      "stealth": true
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "wrong_target", "factor": "light" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.8
+  }
+]

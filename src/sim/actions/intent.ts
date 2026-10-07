@@ -46,22 +46,41 @@ export const RefDescription: z.ZodType<RefDescription> = z.strictObject({
   quantity: QuantitySpec.optional(),
 });
 
-/** Un argumento de un verbo: su papel ("target", "tool", "to") y a qué se refiere. */
-export const DraftArg = z.strictObject({ role: contentId, ref: RefDescription });
-export type DraftArg = z.infer<typeof DraftArg>;
-
-/** Una condición en palabras del jugador ("si nadie mira", "hasta que anochezca"). */
-export const DraftCondition = z.strictObject({
-  kind: z.enum(["belief", "percept", "time", "self"]),
-  text,
-});
-export type DraftCondition = z.infer<typeof DraftCondition>;
-
 export const DraftDuration = z.strictObject({
   amount: z.number().positive(),
   unit: z.enum(["second", "minute", "hour", "day", "week", "month", "year"]),
 });
 export type DraftDuration = z.infer<typeof DraftDuration>;
+
+/**
+ * Un argumento de un verbo: su papel ("target", "tool", "to") y a qué se refiere, cuánto dura
+ * ("dos horas", para los verbos con argumento de duración) o un texto libre ("hierbas").
+ */
+export const DraftArg = z.union([
+  z.strictObject({ role: contentId, ref: RefDescription }),
+  z.strictObject({ role: contentId, duration: DraftDuration }),
+  z.strictObject({ role: contentId, text }),
+]);
+export type DraftArg = z.infer<typeof DraftArg>;
+
+/**
+ * Una condición en palabras del jugador ("si nadie mira", "hasta que anochezca"). Si el parser
+ * la reconoce, la manda también normalizada en `is`; la sim solo usa `is` (no adivina el texto).
+ */
+export const DraftCondition = z.strictObject({
+  kind: z.enum(["belief", "percept", "time", "self"]),
+  text,
+  is: z
+    .discriminatedUnion("kind", [
+      z.strictObject({ kind: z.literal("dark") }),
+      z.strictObject({ kind: z.literal("light") }),
+      /** "hasta encontrar algo", "hasta que me salga". */
+      z.strictObject({ kind: z.literal("succeeded") }),
+      z.strictObject({ kind: z.literal("elapsed"), duration: DraftDuration }),
+    ])
+    .optional(),
+});
+export type DraftCondition = z.infer<typeof DraftCondition>;
 
 /** Como `PlanNode` (actions §3), con descripciones en vez de referencias. */
 export type DraftPlanNode =
