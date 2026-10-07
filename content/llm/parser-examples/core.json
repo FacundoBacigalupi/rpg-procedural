@@ -889,5 +889,57 @@
         "manner": ["careful"]
       }
     }
+  },
+  {
+    "id": "shot-rest-dawn",
+    "shot": true,
+    "text": "descanso hasta que salga el sol",
+    "scene": "Estás en tu casa; afuera ya es de noche.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "until",
+        "body": {
+          "kind": "do",
+          "verb": "rest",
+          "args": []
+        },
+        "cond": {
+          "kind": "time",
+          "text": "hasta que salga el sol",
+          "is": {
+            "kind": "light"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "shot-search-mother",
+    "shot": true,
+    "text": "busco a mi madre",
+    "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "search",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "mi madre",
+              "kind": "person",
+              "features": [],
+              "relation": {
+                "to": "self",
+                "rel": "madre"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "notes": "parentesco va en relation, no en features"
   }
 ]
