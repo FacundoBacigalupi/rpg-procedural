@@ -249,6 +249,8 @@ interface Recipe {
 
 ## Implementación
 - **Fase 1:** sesiones mínimas con el modelo común para un oficio mortal (cocina o herrería de aldea): pasos, ruido de control, física simple, producto con calidad y origen. Encaja con la economía mínima.
+  - **Hecho (2026-10-07, cocina):** `src/sim/crafts/` (`recipe.ts`: `RecipeDef` y `RECIPES` desde `content/recipes/`; `session.ts`: `runSession`, `readWork`, `decide`, `judge`, `qualityOf`, `handsOf`). El `WorkState` es temperatura, cocción y quemado; el artesano solo ve `PerceivedWork` (lectura con ruido según sentidos) y su fuego sale de lo percibido; el pulso (control) mueve el fuego, el horno tiene inercia y el calor cuece y quema. La mano (`Hands`: control, sentidos, juicio) sale del nivel de la habilidad `cooking` y de los rasgos innatos. El verbo `cook` (`resolver: "cook"`) arma la sesión, pasa insumos y producto por el sumidero/fuente `ext:cooked` y devuelve un `verdict` que reemplaza a la tirada para el aprendizaje. La calidad y el estado (`done`/`raw`/`dry`/`burnt`) quedan en el evento `action.cook`; lo creído por el jugador lleva la calidad juzgada y no el estado.
+  - **Todavía no:** combustible, calidad por lote, defectos de receta, herrería, varios pasos y aprendices (ROADMAP, Hito 1b, «Oficios, lo que falta»). Constantes de la sesión sin calibrar (Hito 1c).
 - **Fase 3:** medicina y remedios mortales, venenos y antídotos conocidos por la aldea; habilidad que sale de la práctica; aprendices.
 - **Fase 4:** alquimia con hornos, fuegos (tierra, propio), tensión, toxicidad residual y señales; talismanes simples; mercado de píldoras.
 - **Fase 5-6:** forja y refinación de artefactos con inscripciones y vínculo; formaciones como grafos sobre el campo; salones de secta, gremios, encargos, marcas.

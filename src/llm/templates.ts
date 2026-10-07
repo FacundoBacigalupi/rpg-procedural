@@ -219,6 +219,10 @@ function outcome(
           what: [...new Set(e.got.map((g) => good(g.good)))].join(" y "),
         });
       break;
+    case "cook":
+      if (e.grams <= 0 || e.good === null) say("outcome.cook.nothing");
+      else say(`outcome.cook.${e.looks}`, { what: good(e.good) });
+      break;
     case "drink":
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
       break;

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "flatbread",
+    "name": "pan plano",
+    "craft": "cooking",
+    "inputs": [{ "good": "grain", "grams": 400 }],
+    "output": { "good": "flatbread", "ratio": 1.3 },
+    "prepMinutes": 20,
+    "heat": { "target": 220, "minutes": 25, "scorchAt": 280 }
+  }
+]

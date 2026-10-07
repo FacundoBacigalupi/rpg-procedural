@@ -390,6 +390,38 @@
     "evidence": 1
   },
   {
+    "id": "cook",
+    "name": "cocinar",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "position", "at": ["village"] }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "partial" },
+    "duration": { "kind": "fixed", "seconds": 2700 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.3, "sound": 0.2 },
+    "resolver": "cook",
+    "ease": 1,
+    "factors": {
+      "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "perception", "weight": 0.3 }]
+    },
+    "skill": {
+      "id": "cooking",
+      "facets": { "execution": 0.5, "reading": 0.3, "judgment": 0.2 },
+      "intensity": 4
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 0.6
+  },
+  {
     "id": "eat",
     "name": "comer",
     "domain": "body",

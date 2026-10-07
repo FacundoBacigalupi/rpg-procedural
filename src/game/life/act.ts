@@ -55,6 +55,7 @@ import {
   placeAt,
   placeRefOf,
   type ReadonlyWorldTruth,
+  type RecipeDef,
   type ResolveInput,
   resolve,
   type SelfReport,
@@ -107,6 +108,7 @@ export interface ActOptions {
   readonly bodyPlans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
+  readonly recipes: readonly RecipeDef[];
   readonly clock: PlanetClock;
 }
 
@@ -121,6 +123,7 @@ const VERB_ACTIVITY: Readonly<Record<string, Activity>> = {
   strike: "heavy",
   take: "light",
   store: "light",
+  cook: "moderate",
   tend: "light",
   speak: "light",
   look: "light",
@@ -317,6 +320,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     foods: e.foods,
     unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
+    recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
         ? marketOf(truth, o, me, parties["with"]?.id ?? null)

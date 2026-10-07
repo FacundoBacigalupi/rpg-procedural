@@ -4,6 +4,7 @@ export * from "./actions/index.ts";
 export * from "./body/index.ts";
 export * from "./causality/index.ts";
 export * from "./content.ts";
+export * from "./crafts/index.ts";
 export * from "./economy/index.ts";
 export * from "./family/index.ts";
 export * from "./language/index.ts";

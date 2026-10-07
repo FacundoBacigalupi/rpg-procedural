@@ -6,6 +6,7 @@ import { BIOMES } from "../worldgen/index.ts";
 import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
 import { BODY_PLANS, FOODS } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
+import { RECIPES } from "./crafts/index.ts";
 import { GOODS } from "./economy/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
@@ -29,4 +30,5 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   WORK_TYPES,
   LANGUAGES,
   CONCEPTS,
+  RECIPES,
 ] as readonly ContentKind[];

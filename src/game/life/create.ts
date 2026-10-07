@@ -26,6 +26,7 @@ import {
   BODY_PLANS,
   BUILDING_TYPES,
   CONCEPTS,
+  COOKED,
   COPPER,
   DEMOGRAPHY,
   EATEN,
@@ -46,6 +47,7 @@ import {
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
+  RECIPES,
   ROTTED,
   SKILLS,
   SkillCatalog,
@@ -175,6 +177,7 @@ export function resumeParts(
   | "plans"
   | "foods"
   | "goods"
+  | "recipes"
   | "pressureCurves"
 > {
   return {
@@ -187,6 +190,7 @@ export function resumeParts(
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
     goods: content.all(GOODS),
+    recipes: content.all(RECIPES),
     pressureCurves: content.all(PRESSURE_CURVES),
   };
 }
@@ -196,6 +200,7 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   return {
     externals: {
+      [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
       [ROTTED]: units,
@@ -366,6 +371,7 @@ export function createLife(
       plans,
       foods,
       goods: content.all(GOODS),
+      recipes: content.all(RECIPES),
       pressureCurves: content.all(PRESSURE_CURVES),
     },
     pop.player,
