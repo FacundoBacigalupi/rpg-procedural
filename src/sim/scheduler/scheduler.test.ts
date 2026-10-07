@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EARTHLIKE_CLOCK,
   type Event,
+  EventLog,
   IdAllocator,
   makeId,
   Rng,
@@ -59,7 +60,14 @@ const grow = def(
     return {
       changes: [addToField(STOCK, s, "amount", n)],
       events: [
-        { kind: "grow", actors: [s], place: place(s), data: { n }, emissions: {}, causes: [] },
+        {
+          kind: "grow",
+          actors: [s],
+          place: place(s),
+          data: { n },
+          emissions: {},
+          causes: [{ kind: "state", entity: s, key: "stock" }],
+        },
       ],
     };
   },
@@ -80,6 +88,7 @@ function world(
   state?: SchedulerState,
   truth = seeded(settlements),
   ids = new IdAllocator(),
+  log = new EventLog(),
 ) {
   const scheduler = new Scheduler(
     {
@@ -87,13 +96,14 @@ function world(
       clock: EARTHLIKE_CLOCK,
       truth,
       ids,
+      log,
       processes,
       resolution: "local",
       scopes: (kind, t) => (kind === "settlement" ? [...t.ids(STOCK)].reverse() : []),
     },
     state,
   );
-  return { truth, ids, scheduler };
+  return { truth, ids, log, scheduler };
 }
 
 function seeded(settlements: readonly SettlementId[]) {
@@ -260,7 +270,9 @@ describe("determinismo", () => {
         const saved = JSON.parse(JSON.stringify(first.scheduler.state())) as SchedulerState;
         const truth = new WorldTruth();
         for (const r of first.truth.rows()) truth.setRaw(r.table, r.id, r.value);
-        const second = world(seed, procs, [], saved, truth, new IdAllocator(first.ids.state()));
+        const log = EventLog.from(first.log.all());
+        const ids = new IdAllocator(first.ids.state());
+        const second = world(seed, procs, [], saved, truth, ids, log);
         const tail = runFor(second, 10 * DAY);
         expect({ rows: tail.rows, events: [...head.events, ...tail.events] }).toEqual(all);
       }),
@@ -403,7 +415,7 @@ describe("diffs y conflictos", () => {
           place: place(S1),
           data: null,
           emissions: {},
-          causes: [],
+          causes: [{ kind: "seed" }],
         },
       ],
     }));
@@ -431,7 +443,14 @@ describe("contiendas", () => {
       (ctx) => ({
         changes: [setComponent(STOCK, S1, { amount: value })],
         events: [
-          { kind: "grab", actors: [], place: place(S1), data: value, emissions: {}, causes: [] },
+          {
+            kind: "grab",
+            actors: [],
+            place: place(S1),
+            data: value,
+            emissions: {},
+            causes: [{ kind: "seed" }],
+          },
         ],
         schedule: [{ at: ctx.now + 1, phase: "act", process: "t.after", scope: "world", reason }],
         contest: { initiative, place: place(S1), actor: makeId("agent", value) },

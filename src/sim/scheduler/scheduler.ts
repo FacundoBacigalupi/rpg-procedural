@@ -14,8 +14,16 @@
 import {
   assertTick,
   compareStrings,
+  type EntityKind,
+  type EntityRef,
   type Event,
+  type EventId,
+  type EventLog,
+  EventLogError,
+  type Id,
   type IdAllocator,
+  type Ledger,
+  LedgerError,
   type PlanetClock,
   type Rng,
   type Tick,
@@ -36,6 +44,7 @@ import {
   type ProcessDef,
   type ProcessId,
   type ProcessResult,
+  parseDraftRef,
   phaseIndex,
   type ScheduledItem,
   type ScheduleRequest,
@@ -54,7 +63,11 @@ export interface SchedulerOptions {
   readonly rng: Rng;
   readonly clock: PlanetClock;
   readonly truth: WorldTruth;
+  /** Adonde van los eventos asentados; valida causas al recibirlos. */
+  readonly log: EventLog;
   readonly ids: IdAllocator;
+  /** El ledger de conservación; sin él, un proceso no puede devolver asientos. */
+  readonly ledger?: Ledger;
   readonly processes: readonly ProcessDef[];
   /** Una sola resolución para todo el mundo hasta que lleguen las zonas (Fase 5). */
   readonly resolution: ZoneResolution;
@@ -104,7 +117,11 @@ interface RunSpec {
 }
 
 interface Run extends RunSpec {
-  readonly result: ProcessResult;
+  result: ProcessResult;
+  /** El tipo de cada id provisional que pidió, en orden (`agent:~0` es el primero). */
+  readonly drafts: readonly EntityKind[];
+  /** Los ids reales de sus eventos, una vez repartidos. */
+  eventIds: readonly EventId[];
   alive: boolean;
 }
 
@@ -283,6 +300,7 @@ export class Scheduler {
   }
 
   #run(spec: RunSpec, t: Tick, phase: Phase): Run {
+    const drafts: EntityKind[] = [];
     const ctx: ProcessContext = {
       now: t,
       window: spec.window,
@@ -291,12 +309,20 @@ export class Scheduler {
       resolution: this.#o.resolution,
       phase,
       truth: this.#o.truth,
+      ledger: this.#o.ledger,
       rng: this.#o.rng.fork(...spec.rngParts),
       item: spec.item,
+      newId<K extends EntityKind>(kind: K): Id<K> {
+        if ((kind as EntityKind) === "event") {
+          throw new SchedulerError("los eventos se nombran con draftEvent, no con newId");
+        }
+        drafts.push(kind);
+        return `${kind}:~${drafts.length - 1}` as Id<K>;
+      },
     };
     const result = spec.def.run(ctx);
     this.#checkResult(spec, result, t, phase);
-    return { ...spec, result, alive: true };
+    return { ...spec, result, drafts, eventIds: [], alive: true };
   }
 
   #checkResult(spec: RunSpec, result: ProcessResult, t: Tick, phase: Phase): void {
@@ -316,6 +342,9 @@ export class Scheduler {
       }
     }
     for (const r of result.schedule ?? []) this.#checkItem({ ...r, seq: 0 }, t, phase);
+    if (result.postings?.length && !this.#o.ledger) {
+      throw new SchedulerError(`${def.id} devuelve asientos y el mundo no tiene ledger`);
+    }
   }
 
   /** Un ítem tiene que ir a un proceso conocido y al futuro (o a una fase posterior de este paso). */
@@ -338,6 +367,7 @@ export class Scheduler {
     const touches = new Map<string, { runs: number[]; exclusive: boolean }>();
     runs.forEach((run, i) => {
       for (const c of run.result.changes ?? []) {
+        if (parseDraftRef(c.id)) continue; // lo que se crea ahora no lo disputa nadie
         const key = changeKey(c);
         let entry = touches.get(key);
         if (!entry) {
@@ -409,24 +439,72 @@ export class Scheduler {
       });
     }
 
+    // Ids reales: primero los eventos de las contiendas, después cada corrida viva en orden, con sus
+    // entidades y sus eventos. Los provisionales se reemplazan en todo el resultado.
+    const { ids, log } = this.#o;
+    const settled: Event[] = contestEvents.map((e) => ({ id: ids.next("event"), ...e }));
+    for (const run of runs) {
+      if (!run.alive) continue;
+      const real = new Map<string, EntityRef>();
+      run.drafts.forEach((kind, n) => {
+        real.set(`${kind}:~${n}`, ids.next(kind));
+      });
+      run.eventIds = (run.result.events ?? []).map((_, n) => {
+        const id = ids.next("event");
+        real.set(`event:~${n}`, id);
+        return id;
+      });
+      run.result = resolveDrafts(run.result, real, run.def.id);
+    }
+
     const truth = this.#o.truth;
     for (const run of runs) {
       if (!run.alive) continue;
       for (const c of run.result.changes ?? []) applyChange(truth, c, run.def.id);
     }
 
-    for (const e of contestEvents) events.push({ id: this.#o.ids.next("event"), ...e });
     for (const run of runs) {
       if (!run.alive) continue;
-      for (const draft of run.result.events ?? []) {
-        events.push({
-          ...draft,
-          id: this.#o.ids.next("event"),
-          tick: draft.tick ?? t,
+      (run.result.events ?? []).forEach((draft, n) => {
+        const { tick, ...rest } = draft;
+        settled.push({
+          ...rest,
+          id: run.eventIds[n] as EventId,
+          tick: tick ?? t,
           resolution: this.#o.resolution,
         });
+      });
+    }
+    for (const e of settled) {
+      try {
+        log.append(e);
+      } catch (err) {
+        if (!(err instanceof EventLogError)) throw err;
+        throw new SchedulerError(`evento rechazado por el registro: ${err.message}`);
+      }
+      events.push(e);
+    }
+
+    const ledger = this.#o.ledger;
+    for (const run of runs) {
+      if (!run.alive || !ledger) continue;
+      for (const p of run.result.postings ?? []) {
+        const n = run.eventIds.indexOf(p.event);
+        const e = log.get(p.event);
+        if (n < 0 || !e) {
+          throw new SchedulerError(
+            `${run.def.id}: asiento por ${p.event}, que no es un evento suyo`,
+          );
+        }
+        try {
+          ledger.post({ tick: e.tick, eventId: e.id, transfers: p.transfers });
+        } catch (err) {
+          if (!(err instanceof LedgerError)) throw err;
+          throw new SchedulerError(`${run.def.id}: asiento rechazado: ${err.message}`);
+        }
       }
     }
+
     for (const run of runs) {
       if (!run.alive) continue;
       for (const r of run.result.schedule ?? []) this.#queue.push({ ...r, seq: this.#seq++ });
@@ -468,4 +546,28 @@ function splitKey(key: string, runs: readonly Run[]): [string, StateChange["id"]
 function actorOf(claim: ContestClaim, scope: ScopeRef): StateChange["id"][] {
   if (claim.actor !== undefined) return [claim.actor];
   return scope === "world" ? [] : [scope];
+}
+
+/** Reemplaza los ids provisionales por los reales en todo el resultado de una corrida. */
+function resolveDrafts(
+  result: ProcessResult,
+  real: ReadonlyMap<string, EntityRef>,
+  by: ProcessId,
+): ProcessResult {
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string") {
+      if (!parseDraftRef(v)) return v;
+      const id = real.get(v);
+      if (id === undefined) throw new SchedulerError(`${by} usa ${v}, que no pidió ni emitió`);
+      return id;
+    }
+    if (Array.isArray(v)) return v.map(walk);
+    if (v !== null && typeof v === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v)) out[k] = walk(x);
+      return out;
+    }
+    return v;
+  };
+  return walk(result) as ProcessResult;
 }
