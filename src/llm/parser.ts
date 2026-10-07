@@ -20,6 +20,7 @@ import {
   type PlanTemplate,
 } from "../sim/index.ts";
 import type { LlmMessage } from "./client.ts";
+import { parseCommand } from "./grammar.ts";
 import type { JobResult, LlmJobs } from "./jobs.ts";
 
 export interface ParserInput {
@@ -151,4 +152,33 @@ export function parseIntent(
     temperature: 0,
     maxTokens: PARSER_MAX_TOKENS,
   });
+}
+
+export type ParsedIntent =
+  | { readonly ok: true; readonly draft: IntentDraft; readonly source: "llm" | "grammar" }
+  | { readonly ok: false; readonly problems: readonly string[] };
+
+/**
+ * El parser con su respaldo sin red (narration §11): si la cadena del trabajo llega a las
+ * plantillas, el borrador sale de la gramática de comandos, validado con el mismo esquema. Si
+ * tampoco la gramática lo entiende, el turno pide que se reformule.
+ */
+export async function parseIntentOrGrammar(
+  jobs: LlmJobs,
+  setup: ParserSetup,
+  input: ParserInput,
+  catalog?: ActionCatalog,
+): Promise<ParsedIntent> {
+  const r = await parseIntent(jobs, setup, input);
+  if (r.ok) return { ok: true, draft: r.value, source: "llm" };
+  const draft = parseCommand(input.text, catalog);
+  const checked = draft === null ? null : setup.schema.safeParse(draft);
+  if (checked?.success) return { ok: true, draft: checked.data, source: "grammar" };
+  return {
+    ok: false,
+    problems: [
+      ...r.problems,
+      draft === null ? "grammar: no se entiende" : "grammar: borrador inválido",
+    ],
+  };
 }

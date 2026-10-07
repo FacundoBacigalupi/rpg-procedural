@@ -22,7 +22,6 @@ import {
   type LlmProvider,
   localLlmConfig,
   MockLLM,
-  narrate,
   narratorSystem,
   OpenAiCompatibleClient,
   offlineLlmConfig,
@@ -30,6 +29,7 @@ import {
   PARSER_RULES,
   parseIntent,
   parserSetup,
+  styleOf,
   verbalize,
 } from "./index.ts";
 
@@ -319,27 +319,23 @@ describe("jsonPayload", () => {
 
 describe("narrador y verbalizador", () => {
   it("el prompt fijo lleva persona, tiempo y voseo", () => {
-    const s = narratorSystem(DEFAULT_NARRATION, "es");
+    const s = narratorSystem(styleOf(DEFAULT_NARRATION, "es"));
     expect(s).toMatch(/Rioplatense Spanish, second person, present tense, with voseo/);
-    expect(narratorSystem({ ...DEFAULT_NARRATION, voseo: true }, "en")).not.toMatch(/voseo/);
+    expect(narratorSystem(styleOf({ ...DEFAULT_NARRATION, voseo: true }, "en"))).not.toMatch(
+      /voseo/,
+    );
   });
 
-  it("narrar y verbalizar pasan por sus trabajos", async () => {
-    const m = new MockLLM(["Llueve sobre la aldea.", "—No la vi, muchacho."]);
+  it("verbalizar pasa por su trabajo", async () => {
+    const m = new MockLLM(["—No la vi, muchacho."]);
     const jobs = jobsWith({ m }, [local("m")]);
-    const n = await narrate(jobs, {
-      perceived: "lluvia",
-      prefs: DEFAULT_NARRATION,
-      language: "es",
-    });
     const v = await verbalize(jobs, {
       speaker: "el viejo",
       content: "deny(seen sister)",
       language: "es",
     });
-    expect(n).toMatchObject({ ok: true, value: "Llueve sobre la aldea." });
     expect(v).toMatchObject({ ok: true, value: "—No la vi, muchacho." });
-    expect(m.calls[1]?.messages[1]?.content).toBe("Speaker: el viejo\nContent: deny(seen sister)");
+    expect(m.calls[0]?.messages[1]?.content).toBe("Speaker: el viejo\nContent: deny(seen sister)");
   });
 });
 

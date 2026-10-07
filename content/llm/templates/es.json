@@ -1,0 +1,253 @@
+[
+  { "id": "figure.female.child", "lines": ["una nena"] },
+  { "id": "figure.female.youth", "lines": ["una muchacha"] },
+  { "id": "figure.female.adult", "lines": ["una mujer"] },
+  { "id": "figure.female.elder", "lines": ["una vieja"] },
+  { "id": "figure.male.child", "lines": ["un nene"] },
+  { "id": "figure.male.youth", "lines": ["un muchacho"] },
+  { "id": "figure.male.adult", "lines": ["un hombre"] },
+  { "id": "figure.male.elder", "lines": ["un viejo"] },
+  { "id": "who.vague", "lines": ["alguien"] },
+
+  {
+    "id": "scene.room",
+    "lines": ["Estás bajo techo, entre paredes de barro.", "Estás adentro, en un cuarto."]
+  },
+  { "id": "scene.home", "lines": ["Estás en tu casa.", "Estás en casa, entre tus cosas."] },
+  { "id": "scene.yard", "lines": ["Estás en un patio.", "Estás en el patio, a cielo abierto."] },
+  {
+    "id": "scene.street",
+    "lines": ["Estás en una calle de la aldea.", "Estás en la calle, entre las casas."]
+  },
+  { "id": "scene.square", "lines": ["Estás en la plaza.", "Estás en la plaza de la aldea."] },
+  { "id": "scene.open", "lines": ["Estás a campo abierto.", "Estás afuera, lejos de las casas."] },
+  { "id": "time.night", "lines": ["Es de noche."] },
+  { "id": "time.dawn", "lines": ["Está amaneciendo.", "Clarea."] },
+  { "id": "time.morning", "lines": ["Es de mañana."] },
+  { "id": "time.midday", "lines": ["Es mediodía.", "El sol está alto."] },
+  { "id": "time.afternoon", "lines": ["Es de tarde."] },
+  { "id": "time.dusk", "lines": ["Está atardeciendo.", "Cae la tarde."] },
+
+  {
+    "id": "percept.vague.sight",
+    "lines": [
+      "Algo se mueve cerca, sin que llegues a ver qué es: {who}, quizás.",
+      "Te parece ver a {who}, apenas una sombra."
+    ]
+  },
+  {
+    "id": "percept.vague.sound",
+    "lines": ["Oís a {who} moverse, sin verlo.", "Un ruido te dice que hay {who} cerca."]
+  },
+  { "id": "percept.presence", "lines": ["Ves a {who}.", "Está {who} ahí."] },
+  {
+    "id": "percept.action.move",
+    "lines": ["Ves a {who} que pasa caminando.", "{who} va de un lado a otro."]
+  },
+  {
+    "id": "percept.action.look",
+    "lines": ["{who} mira alrededor.", "Ves a {who} mirando con atención."]
+  },
+  {
+    "id": "percept.action.search",
+    "lines": ["{who} busca algo, o a alguien.", "Ves a {who} buscando."]
+  },
+  {
+    "id": "percept.action.gather",
+    "lines": ["{who} junta algo del suelo.", "Ves a {who} recolectando."]
+  },
+  { "id": "percept.action.work", "lines": ["{who} trabaja.", "Ves a {who} trabajando."] },
+  { "id": "percept.action.rest", "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."] },
+  { "id": "percept.action.wait", "lines": ["{who} espera, quieto.", "Ves a {who} esperando."] },
+  { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
+  { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
+  { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
+  { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
+  { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
+  { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
+
+  { "id": "outcome.none", "lines": ["Hacés lo que te propusiste."] },
+  { "id": "outcome.move.arrived", "lines": ["Llegás.", "Llegás adonde ibas."] },
+  {
+    "id": "outcome.move.short",
+    "lines": ["Todavía no llegás: te queda camino.", "Avanzás, pero no llegás todavía."]
+  },
+  { "id": "outcome.move.lost", "lines": ["No sabés bien dónde estás.", "Perdiste el rumbo."] },
+  {
+    "id": "outcome.stumbled",
+    "lines": [
+      "En un momento das un mal paso y casi te caés.",
+      "Tropezás y te cuesta recuperar el equilibrio."
+    ]
+  },
+  {
+    "id": "outcome.look.success",
+    "lines": ["Mirás alrededor con calma.", "Te tomás un momento para mirar bien."]
+  },
+  {
+    "id": "outcome.look.partial",
+    "lines": ["Mirás alrededor, aunque no ves todo lo que querrías."]
+  },
+  { "id": "outcome.look.failure", "lines": ["Mirás, pero casi no distinguís nada."] },
+  { "id": "outcome.look.unsure", "lines": ["Mirás alrededor, sin saber si se te escapa algo."] },
+  { "id": "outcome.search.found", "lines": ["Encontrás a {target}.", "Ahí está {target}."] },
+  {
+    "id": "outcome.search.glimpsed",
+    "lines": [
+      "Te parece ver a {target}, pero lo perdés de vista.",
+      "Por un momento creés ver a {target}."
+    ]
+  },
+  {
+    "id": "outcome.search.missed",
+    "lines": ["Buscás a {target}, pero no aparece.", "No hay rastro de {target}."]
+  },
+  {
+    "id": "outcome.search.missed_anyone",
+    "lines": ["Buscás, pero no encontrás a quien buscabas."]
+  },
+  {
+    "id": "outcome.gather.some",
+    "lines": ["Juntás {what}, una buena cantidad.", "Volvés con {what}: no está mal."]
+  },
+  {
+    "id": "outcome.gather.little",
+    "lines": ["Juntás un poco de {what}, no mucho.", "Apenas conseguís algo de {what}."]
+  },
+  {
+    "id": "outcome.gather.none",
+    "lines": ["Buscás, pero no juntás nada.", "Te vas con las manos vacías."]
+  },
+  {
+    "id": "outcome.work.success",
+    "lines": ["Trabajás y el trabajo rinde.", "Le das al trabajo y sale bien."]
+  },
+  {
+    "id": "outcome.work.partial",
+    "lines": ["Trabajás, aunque rinde menos de lo que esperabas."]
+  },
+  { "id": "outcome.work.failure", "lines": ["Trabajás, pero no sale nada derecho."] },
+  { "id": "outcome.work.unsure", "lines": ["Trabajás, sin saber bien cuánto adelantaste."] },
+  {
+    "id": "outcome.work.hurt",
+    "lines": ["En un descuido te lastimás.", "Te hacés daño trabajando."]
+  },
+  {
+    "id": "outcome.rest.success",
+    "lines": ["Descansás y te hace bien.", "Dormís un rato y te levantás mejor."]
+  },
+  { "id": "outcome.rest.partial", "lines": ["Descansás a medias, sin terminar de aflojar."] },
+  { "id": "outcome.rest.failure", "lines": ["Intentás descansar, pero no hay caso."] },
+  { "id": "outcome.rest.unsure", "lines": ["Descansás un rato."] },
+  { "id": "outcome.wait.success", "lines": ["Esperás.", "Dejás pasar el tiempo."] },
+  { "id": "outcome.wait.partial", "lines": ["Esperás, inquieto."] },
+  { "id": "outcome.wait.failure", "lines": ["Te cuesta quedarte quieto esperando."] },
+  { "id": "outcome.wait.unsure", "lines": ["Esperás."] },
+  {
+    "id": "outcome.speak.to",
+    "lines": ["Le decís a {to}: «{text}»", "Te dirigís a {to}: «{text}»"]
+  },
+  { "id": "outcome.speak.said", "lines": ["Decís: «{text}»"] },
+  { "id": "outcome.speak.to_silent", "lines": ["Le hablás a {to}."] },
+  { "id": "outcome.speak.silent", "lines": ["Hablás."] },
+  {
+    "id": "outcome.speak.unheard",
+    "lines": ["No sabés si te oyeron.", "Te parece que nadie te escuchó."]
+  },
+  {
+    "id": "outcome.strike.hit",
+    "lines": ["Le pegás a {target} de lleno.", "Tu golpe le da a {target}."]
+  },
+  {
+    "id": "outcome.strike.glancing",
+    "lines": ["Le das a {target}, pero de refilón.", "Apenas rozás a {target}."]
+  },
+  {
+    "id": "outcome.strike.missed",
+    "lines": ["Le tirás un golpe a {target} y no le das.", "{target} esquiva tu golpe."]
+  },
+  {
+    "id": "outcome.strike.held",
+    "lines": [
+      "Amagás contra {target}, pero no terminás de tirarte.",
+      "Te frenás antes de pegarle a {target}."
+    ]
+  },
+  {
+    "id": "outcome.strike.missed_anyone",
+    "lines": ["Tirás un golpe al aire."]
+  },
+  {
+    "id": "outcome.strike.off_balance",
+    "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]
+  },
+  {
+    "id": "outcome.trade.deal.good",
+    "lines": [
+      "Cerrás el trato con {with}, y te parece que salís ganando.",
+      "Hacés negocio con {with}; te fue bien."
+    ]
+  },
+  {
+    "id": "outcome.trade.deal.fair",
+    "lines": [
+      "Cerrás el trato con {with}, parejo.",
+      "Hacés negocio con {with}, sin ganar ni perder."
+    ]
+  },
+  {
+    "id": "outcome.trade.deal.poor",
+    "lines": [
+      "Cerrás el trato con {with}, aunque sentís que perdiste.",
+      "Hacés negocio con {with}; no te convence lo que sacaste."
+    ]
+  },
+  {
+    "id": "outcome.trade.no_deal",
+    "lines": ["No llegás a un acuerdo con {with}.", "No te ponés de acuerdo con {with}."]
+  },
+  { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
+  { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
+  { "id": "outcome.take.got", "lines": ["Te llevás {what}.", "Agarrás {what}."] },
+  {
+    "id": "outcome.take.got_from",
+    "lines": ["Le sacás {what} a {from}.", "Te quedás con {what} de {from}."]
+  },
+  {
+    "id": "outcome.take.nothing_from",
+    "lines": ["No conseguís sacarle nada a {from}.", "{from} no te deja llevarte nada."]
+  },
+  {
+    "id": "outcome.take.nothing",
+    "lines": ["No conseguís llevarte nada.", "Te quedás con las manos vacías."]
+  },
+
+  {
+    "id": "cue.skill",
+    "lines": ["Sentís que te falta oficio.", "No terminás de saber cómo hacerlo."]
+  },
+  { "id": "cue.light", "lines": ["Casi no se ve.", "La poca luz no ayuda."] },
+  { "id": "cue.terrain", "lines": ["El suelo no ayuda.", "El terreno es malo."] },
+  { "id": "cue.nerve", "lines": ["Te tiemblan las manos.", "Los nervios te juegan en contra."] },
+  { "id": "cue.capability", "lines": ["El cuerpo no te da para más.", "No te da la fuerza."] },
+  { "id": "cue.position", "lines": ["No estás bien parado para eso.", "Estás mal ubicado."] },
+  { "id": "cue.means", "lines": ["Te falta con qué.", "No tenés lo que hace falta."] },
+
+  { "id": "self.hungry", "lines": ["Tenés hambre."] },
+  { "id": "self.thirsty", "lines": ["Tenés sed."] },
+  { "id": "self.tired", "lines": ["Estás cansado."] },
+  { "id": "self.hurt", "lines": ["Te duele el cuerpo."] },
+  { "id": "self.bleeding", "lines": ["Estás sangrando."] },
+  { "id": "self.sick", "lines": ["Te sentís mal, afiebrado."] },
+  { "id": "self.cold", "lines": ["Tenés frío."] },
+
+  { "id": "good.forage", "lines": ["hongos y hierbas"] },
+  { "id": "good.gleanings", "lines": ["espigas sueltas"] },
+  { "id": "good.shellfish", "lines": ["almejas"] },
+  { "id": "good.coin", "lines": ["unas monedas"] },
+  { "id": "good.grain", "lines": ["grano"] },
+  { "id": "good.rice", "lines": ["arroz"] },
+  { "id": "good.unknown", "lines": ["algo"] },
+
+  { "id": "nothing", "lines": ["No pasa nada que notes.", "Todo sigue igual."] }
+]

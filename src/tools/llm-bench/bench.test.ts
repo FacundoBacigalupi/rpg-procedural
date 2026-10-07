@@ -1,12 +1,19 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MockLLM, parserSetup } from "../../llm/index.ts";
+import { GAME_CONTENT_KINDS } from "../../game/index.ts";
+import {
+  LlmJobs,
+  MockLLM,
+  offlineLlmConfig,
+  parseCommand,
+  parseIntentOrGrammar,
+  parserSetup,
+} from "../../llm/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import {
   ACTIONS,
   ActionCatalog,
-  CONTENT_KINDS,
   type IntentDraft,
   PARSER_EXAMPLES,
   PLANS,
@@ -21,7 +28,7 @@ import {
 } from "./bench.ts";
 import { scoreDraft } from "./score.ts";
 
-const content = loadContentDir("content", CONTENT_KINDS);
+const content = loadContentDir("content", GAME_CONTENT_KINDS);
 const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 const examples = content.all(PARSER_EXAMPLES);
 const setup = parserSetup(catalog, examples);
@@ -183,5 +190,25 @@ describe("fixtures grabadas", () => {
           expect(r.score?.pass ?? false, `${f} ${r.id}`).toBe(byId.get(r.id)?.pass);
       }
     }
+  });
+});
+
+describe("gramática de comandos sin red", () => {
+  it("entiende casi todos los ejemplos del parser, con borradores que pasan el esquema", () => {
+    let pass = 0;
+    for (const e of examples) {
+      const draft = parseCommand(e.text, catalog);
+      if (draft === null) continue;
+      expect(setup.schema.safeParse(draft).success, e.id).toBe(true);
+      if (scoreDraft(e.expect, draft).pass) pass++;
+    }
+    // Lo que falta necesita contexto (la escena, las intenciones recientes): eso es del modelo.
+    expect(pass).toBeGreaterThanOrEqual(35);
+  });
+
+  it("sin modelo, el parser cae a la gramática", async () => {
+    const jobs = new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
+    const r = await parseIntentOrGrammar(jobs, setup, { text: "voy a la plaza" }, catalog);
+    expect(r.ok && r.source).toBe("grammar");
   });
 });

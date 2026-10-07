@@ -1,56 +1,55 @@
-// Narrador y verbalizador (narration §5, §7; dialogue §16), en su forma de la Fase 0: el pedido
-// llega ya redactado en texto y la salida pasa por el validador vacío. En la Fase 1 el pedido es
-// `NarrationRequest` sobre `PlayerView` (el único muro con la verdad), con referencias marcadas y
-// lista blanca; la firma de estos trabajos cambia ahí.
+// Narrador y verbalizador (narration §5-§7, §11; dialogue §16). El narrador recibe un
+// `NarrationRequest` armado desde `PlayerView` (el único muro con la verdad): el prompt fijo va
+// primero y se cachea, el pedido en JSON al final. La salida trae las referencias marcadas, pasa
+// por el validador con lista blanca y, si el modelo no está o falla dos veces, la narración sale
+// de las plantillas. El jugador lee el texto sin marcas.
 
-import type { NarrationPrefs } from "./config.ts";
+import type { Rng } from "../core/index.ts";
+import type { PlayerView } from "../game/index.ts";
 import { acceptAll, type JobResult, type LlmJobs, type TextValidator } from "./jobs.ts";
+import { type NarrationRequest, narratorSystem, narratorUserMessage } from "./narration.ts";
+import { renderView, type TemplateBook } from "./templates.ts";
+import { type NarrationCheck, stripMarks, validateNarration } from "./validate.ts";
 
-const PERSON = {
-  second: "second person",
-  first: "first person",
-  third: "third person",
-} as const;
-
-const DETAIL = {
-  brief: "Keep it short: one or two sentences.",
-  normal: "Keep it to a short paragraph.",
-  rich: "You may write up to three paragraphs.",
-} as const;
-
-/** Las reglas fijas del narrador: el prefijo que se cachea (narration §12). */
-export function narratorSystem(prefs: NarrationPrefs, language: "es" | "en"): string {
-  const lang = language === "es" ? "Rioplatense Spanish" : "English";
-  return [
-    "You narrate a life in a simulated fantasy world to the person who plays it.",
-    `Write in ${lang}, ${PERSON[prefs.person]}, ${prefs.tense} tense${language === "es" && prefs.voseo ? ", with voseo" : ""}.`,
-    "Narrate only what the request says the character perceived. Never add people, objects,",
-    "places, names or numbers that are not in the request. Never decide outcomes, never",
-    "foreshadow, never talk to the player as a game.",
-    DETAIL[prefs.detail],
-  ].join("\n");
+export interface NarrateOptions extends NarrationCheck {
+  readonly templates: TemplateBook;
+  /** Elige las variantes de las plantillas: `fork("narration", tick)`. */
+  readonly rng: Rng;
 }
 
-export interface NarrateInput {
-  /** Lo percibido, ya redactado desde la vista del jugador. */
-  readonly perceived: string;
-  readonly prefs: NarrationPrefs;
-  readonly language: "es" | "en";
-  readonly validate?: TextValidator | undefined;
+export interface Narration {
+  /** Lo que lee el jugador. */
+  readonly text: string;
+  /** Con las referencias marcadas, para la memoria de continuidad y los tests. */
+  readonly marked: string;
+  readonly source: "llm" | "templates";
+  /** Por qué no se usó el modelo, si no se usó. */
+  readonly problems: readonly string[];
 }
 
-export function narrate(jobs: LlmJobs, input: NarrateInput): Promise<JobResult<string>> {
-  return jobs.text(
+/** Narra un turno. Solo acepta un pedido armado sobre `PlayerView`: nunca la verdad. */
+export async function narrate(
+  jobs: LlmJobs,
+  request: NarrationRequest & { readonly view: PlayerView },
+  options: NarrateOptions,
+): Promise<Narration> {
+  const result = await jobs.text(
     "narrator",
     {
       messages: [
-        { role: "system", content: narratorSystem(input.prefs, input.language) },
-        { role: "user", content: input.perceived },
+        { role: "system", content: narratorSystem(request.style) },
+        { role: "user", content: narratorUserMessage(request) },
       ],
       temperature: 0.7,
     },
-    input.validate ?? acceptAll,
+    (text) => validateNarration(text.trim(), request, options),
   );
+  if (result.ok) {
+    const marked = result.value.trim();
+    return { text: stripMarks(marked), marked, source: "llm", problems: [] };
+  }
+  const marked = renderView(request.view, options.templates, options.rng);
+  return { text: stripMarks(marked), marked, source: "templates", problems: result.problems };
 }
 
 export interface VerbalizeInput {
