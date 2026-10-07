@@ -69,7 +69,11 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
   const surface = (l: LocalLabel): string => {
     if (l.name !== undefined) return l.name;
     if (l.relation !== undefined) return `tu ${l.relation}`;
-    if (l.figure !== undefined) return first(`figure.${l.figure.sex}.${l.figure.age}`);
+    if (l.figure !== undefined) {
+      const figure = first(`figure.${l.figure.sex}.${l.figure.age}`);
+      const dress = l.attire !== undefined && book.has(`attire.${l.attire}`);
+      return dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+    }
     return first("who.vague");
   };
   /** La referencia marcada a una etiqueta, o "alguien" sin marca si no hay a quién. */

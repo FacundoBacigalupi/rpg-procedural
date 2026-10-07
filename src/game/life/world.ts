@@ -27,6 +27,7 @@ import {
   type SchedulerState,
   type SkillCatalog,
   type SpaceGraph,
+  type StatusDef,
   type Trait,
   type WorldTruth,
 } from "../../sim/index.ts";
@@ -53,6 +54,7 @@ export interface LifeWorld {
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly RecipeDef[];
+  readonly statuses: readonly StatusDef[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
@@ -98,6 +100,7 @@ export function lifeWorld(
           map: parts.map,
           spaces: parts.spaces,
           clock: parts.clock,
+          statuses: parts.statuses,
         }),
         bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) }),
         actProcess({
@@ -110,6 +113,7 @@ export function lifeWorld(
           foods: parts.foods,
           goods: parts.goods,
           recipes: parts.recipes,
+          statuses: parts.statuses,
           clock: parts.clock,
         }),
         spoilageProcess({

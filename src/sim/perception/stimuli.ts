@@ -11,6 +11,8 @@ import type { AttrEmission, Stimulus } from "./percept.ts";
 export interface Look {
   readonly sex: Sex;
   readonly ageYears: number;
+  /** Cómo viste, si se lo ve (social-structure §3): la marca de posición más legible. */
+  readonly attire?: string;
 }
 
 export type AgeBand = "child" | "youth" | "adult" | "elder";
@@ -34,10 +36,24 @@ export const BODY = { sight: 1, sound: 0.01 } as const;
 export const LEGIBILITY = {
   presence: { sight: 0.001, sound: 0.3 },
   figure: { sight: 0.03 },
+  attire: { sight: 0.05 },
   identity: { sight: 0.1, sound: 8 },
   action: { sight: 0.02, sound: 0.6 },
   words: { sound: 2.5 },
 } as const;
+
+/** La ropa, si se la ve: una marca de posición que se lee con la vista y a poca distancia. */
+function attireOf(look: Look): AttrEmission[] {
+  if (look.attire === undefined) return [];
+  return [
+    {
+      key: "attire",
+      value: look.attire,
+      requires: "presence",
+      signal: { sight: { intensity: BODY.sight, legibility: LEGIBILITY.attire.sight } },
+    },
+  ];
+}
 
 function figureOf(look: Look): Figure {
   return { sex: look.sex, age: ageBand(look.ageYears) };
@@ -73,6 +89,7 @@ export function presenceStimulus(person: {
       signal: { sight: { intensity: BODY.sight, legibility: LEGIBILITY.identity.sight } },
     },
   ];
+  attributes.push(...attireOf(person.look));
   return {
     source: { entity: person.id },
     tick: person.tick,
@@ -139,6 +156,7 @@ export function actionStimulus(a: ActionSight): Stimulus {
       },
     },
   ];
+  attributes.push(...attireOf(a.look));
   if (speaking) {
     attributes.push({
       key: "words",

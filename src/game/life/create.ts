@@ -51,11 +51,13 @@ import {
   ROTTED,
   SKILLS,
   SkillCatalog,
+  STATUSES,
   seedBodies,
   seedPersonNames,
   seedPlaceNames,
   seedSettlement,
   seedSkills,
+  seedStatus,
   seedVillage,
   settlementSpaces,
   settlementUnits,
@@ -178,6 +180,7 @@ export function resumeParts(
   | "foods"
   | "goods"
   | "recipes"
+  | "statuses"
   | "pressureCurves"
 > {
   return {
@@ -191,6 +194,7 @@ export function resumeParts(
     foods: content.all(FOODS),
     goods: content.all(GOODS),
     recipes: content.all(RECIPES),
+    statuses: content.all(STATUSES),
     pressureCurves: content.all(PRESSURE_CURVES),
   };
 }
@@ -311,6 +315,16 @@ export function createLife(
     content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
   });
   const spaces = settlementSpaces(truth, site.hex);
+  // Quién es quién: el estatus de cada hogar, con su causa; de él sale cuánto tenía al empezar.
+  const statuses = content.all(STATUSES);
+  const standing = seedStatus(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    households: pop.households,
+    defs: statuses,
+  });
+  const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
   // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
   // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
@@ -337,7 +351,7 @@ export function createLife(
           unit: grain,
           from: externalAccount("seed"),
           to: holderAccount(h.id),
-          amount: h.members.length * LARDER_PER_MEMBER_G,
+          amount: Math.round(h.members.length * LARDER_PER_MEMBER_G * wealthOf(h.id)),
         }))
         .concat(
           pop.households
@@ -347,7 +361,7 @@ export function createLife(
                 unit: COPPER,
                 from: externalAccount("seed"),
                 to: holderAccount(m as unknown as HolderRef),
-                amount: COINS_PER_PERSON,
+                amount: Math.round(COINS_PER_PERSON * wealthOf(h.id)),
               })),
             ),
         ),
@@ -372,6 +386,7 @@ export function createLife(
       foods,
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
+      statuses: content.all(STATUSES),
       pressureCurves: content.all(PRESSURE_CURVES),
     },
     pop.player,

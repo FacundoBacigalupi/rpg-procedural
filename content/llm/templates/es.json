@@ -7,6 +7,8 @@
   { "id": "figure.male.youth", "lines": ["un muchacho"] },
   { "id": "figure.male.adult", "lines": ["un hombre"] },
   { "id": "figure.male.elder", "lines": ["un viejo"] },
+  { "id": "attire.fine", "lines": ["de ropa fina", "con buena ropa"] },
+  { "id": "attire.worn", "lines": ["de ropa gastada y remendada", "con ropa raída"] },
   { "id": "who.vague", "lines": ["alguien"] },
 
   {

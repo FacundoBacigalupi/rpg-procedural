@@ -12,4 +12,5 @@ export * from "./perception/index.ts";
 export * from "./scheduler/index.ts";
 export * from "./settlements/index.ts";
 export * from "./skills/index.ts";
+export * from "./social/index.ts";
 export * from "./world/index.ts";

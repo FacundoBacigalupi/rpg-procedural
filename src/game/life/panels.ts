@@ -19,6 +19,7 @@ import {
   PERSON,
   PLACE,
   SKILL_STATE,
+  STATUS,
 } from "../../sim/index.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -43,6 +44,8 @@ export interface CharacterPanel {
     readonly general: readonly string[];
     readonly zones: readonly { readonly zone: string; readonly signs: readonly string[] }[];
   };
+  /** Su lugar en la aldea, como lo sabe él (social-structure §13). */
+  readonly status?: string;
   /** Su gente, por la relación que sabe que tiene, y si vive (de lo que sabe). */
   readonly family: readonly { readonly relation: string }[];
   /** Lo que sabe hacer, por cuánto lo practicó (sin niveles). */
@@ -74,6 +77,8 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
   const plan = w.plans.find((p) => p.id === body.plan);
   const signs = plan ? bodySigns(plan, body) : { general: [], zones: [] };
+  const mine = w.truth.get(STATUS, w.player);
+  const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;
   const zoneName = (id: string) => plan?.zones.find((z) => z.id === id)?.name ?? id;
   const alive = new Set(living(w.truth));
   const skills = Object.entries(w.truth.get(SKILL_STATE, w.player) ?? {})
@@ -90,6 +95,7 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   return {
     ageYears: Math.floor((w.scheduler.now - me.born) / w.clock.year),
     sex: me.sex,
+    ...(statusName === undefined ? {} : { status: statusName }),
     where: { home: at.space === houseKey(me.household), placeKinds: places },
     body: {
       general: signs.general,

@@ -35,7 +35,14 @@ export const CHANNELS = ["sight", "sound"] as const;
 export type Channel = (typeof CHANNELS)[number];
 
 /** Los datos que se pueden leer de un estímulo. */
-export const PERCEPT_KEYS = ["presence", "figure", "identity", "action", "words"] as const;
+export const PERCEPT_KEYS = [
+  "presence",
+  "figure",
+  "attire",
+  "identity",
+  "action",
+  "words",
+] as const;
 export type PerceptKey = (typeof PERCEPT_KEYS)[number];
 
 /**
