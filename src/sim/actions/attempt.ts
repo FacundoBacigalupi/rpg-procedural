@@ -6,7 +6,8 @@
 //
 // Todo va en desvíos: los rasgos llegan estandarizados (`standardize`), la facilidad del verbo y
 // de los modos suma, cada factor suma o resta y la tirada es una normal. Un margen de 0 es una
-// moneda al aire.
+// moneda al aire. El factor `skill` junta la aptitud cruda (rasgos innatos) y lo practicado (el
+// nivel efectivo de la habilidad del verbo, que calcula `sim/skills` y llega en `actor.skill`).
 
 import type { EntityRef, Rng, Tick } from "../../core/index.ts";
 import type { Innate, Sex, Trait } from "../family/index.ts";
@@ -36,6 +37,8 @@ export const SUCCESS_MARGIN = 0.5;
 export const PARTIAL_MARGIN = -0.5;
 /** Un factor que resta al menos esto deja una pista que el actor puede percibir. */
 export const CUE_THRESHOLD = 0.5;
+/** Cuántos desvíos suma una habilidad en nivel 1 (skills §11; calibración abierta). */
+export const SKILL_SPAN = 2.5;
 
 export interface AttemptActor {
   readonly id: EntityRef;
@@ -44,6 +47,8 @@ export interface AttemptActor {
   /** Capacidades del cuerpo, 0-1; las que faltan valen 1 (body-health §3, Fase 1). */
   readonly capabilities: Readonly<Partial<Record<CapabilityKey, number>>>;
   readonly hex: number;
+  /** Nivel efectivo, 0-1, de la habilidad que usa el verbo (`sim/skills`); sin ella, 0. */
+  readonly skill?: number;
 }
 
 /** Otra parte del paso (el blanco, la contraparte), por su rol. */
@@ -51,6 +56,8 @@ export interface AttemptParty {
   readonly id: EntityRef;
   readonly z: Readonly<Record<string, number>>;
   readonly hex: number;
+  /** Nivel efectivo, 0-1, de la habilidad que pone en contra (`contest.skill`); sin ella, 0. */
+  readonly skill?: number;
 }
 
 export interface Scene {
@@ -87,6 +94,11 @@ export interface Attempt {
   readonly outcome: Outcome;
   /** null si no se tiró (faltó un requisito). */
   readonly margin: number | null;
+  /**
+   * El margen esperado sin el azar (la oposición con su media): cuán difícil era el paso para el
+   * actor. Lo usa el aprendizaje (skills §3.1: se aprende más cerca del borde).
+   */
+  readonly expected: number | null;
   readonly factors: readonly FactorValue[];
   readonly failure: FailureModeId | null;
   /** El requisito que faltó, si fue eso. */
@@ -201,6 +213,7 @@ export function attempt(input: AttemptInput): Attempt {
     return {
       outcome: "failure",
       margin: null,
+      expected: null,
       factors: [],
       failure: def.failureModes.find((m) => m.factor === factor)?.id ?? null,
       unmet,
@@ -216,7 +229,8 @@ export function attempt(input: AttemptInput): Attempt {
   const push = (factor: FactorKey, value: number) => {
     if (value !== 0) factors.push({ factor, value });
   };
-  push("skill", weighted(actor.z, f.skill));
+  const skill = weighted(actor.z, f.skill) + SKILL_SPAN * (actor.skill ?? 0);
+  push("skill", skill);
   push("light", -2 * f.light * (1 - scene.light));
   push("terrain", -2 * f.terrain * scene.terrain);
   push("nerve", f.nerve * (actor.z["boldness"] ?? 0));
@@ -226,7 +240,8 @@ export function attempt(input: AttemptInput): Attempt {
   }
 
   const ease = def.ease + manners.reduce((s, m) => s + m.ease, 0);
-  let margin = ease + factors.reduce((s, x) => s + x.value, 0) + rng.normal();
+  let expected = ease + factors.reduce((s, x) => s + x.value, 0);
+  let margin = expected + rng.normal();
 
   // Contienda (§7.4): el otro tira con su propia clave.
   const noticedBy: EntityRef[] = [];
@@ -234,14 +249,13 @@ export function attempt(input: AttemptInput): Attempt {
   const opp = c && entityOf(node, c.against) !== undefined ? input.parties[c.against] : undefined;
   if (c && opp) {
     const oRng = input.rng.fork("action", actor.id, def.id, input.tick, "oppose", opp.id);
-    const opposition = weighted(opp.z, c.oppose) + oRng.normal();
+    const against = weighted(opp.z, c.oppose) + SKILL_SPAN * (opp.skill ?? 0);
+    const opposition = against + oRng.normal();
+    if (!c.stealth) expected -= against;
     if (c.stealth) {
       // Perder la de sigilo no hace fallar: hace que el otro lo note.
       const stealth =
-        manners.reduce((s, m) => s + m.stealth, 0) +
-        1.5 * (1 - scene.light) +
-        weighted(actor.z, f.skill) +
-        rng.normal();
+        manners.reduce((s, m) => s + m.stealth, 0) + 1.5 * (1 - scene.light) + skill + rng.normal();
       if (opposition > stealth) noticedBy.push(opp.id);
     } else {
       margin -= opposition;
@@ -285,7 +299,7 @@ export function attempt(input: AttemptInput): Attempt {
   }
   if (noticedBy.length > 0 && (truth === "success" || truth === "partial")) outcome = "discovered";
 
-  return { outcome, margin, factors, failure, unmet: null, noticedBy, believed, cues };
+  return { outcome, margin, expected, factors, failure, unmet: null, noticedBy, believed, cues };
 }
 
 function clamp01(x: number): number {

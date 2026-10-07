@@ -106,7 +106,7 @@ const Requirement = z.union([
 ]);
 export type Requirement = z.infer<typeof Requirement>;
 
-/** Rasgo innato que hace de habilidad hasta que lleguen las habilidades (skills.md). */
+/** Rasgo innato que pesa en la tirada (la aptitud cruda, aparte de lo practicado). */
 const TraitWeight = z.strictObject({ trait: contentId, weight: z.number() });
 
 const FactorSpec = z.strictObject({
@@ -116,7 +116,7 @@ const FactorSpec = z.strictObject({
   terrain: Unit.default(0),
   /** Cuánto pesa el nervio (el temperamento audaz o tímido). */
   nerve: Unit.default(0),
-  /** Rasgos que hacen de habilidad, en desvíos por desvío. */
+  /** Rasgos innatos que pesan como aptitud cruda, en desvíos por desvío. */
   skill: z.array(TraitWeight).default([]),
 });
 
@@ -126,6 +126,10 @@ const Contest = z.strictObject({
   oppose: z.array(TraitWeight).min(1),
   /** Si la contienda es de sigilo: perderla es que el otro lo note, no que falle. */
   stealth: z.boolean().default(false),
+  /** La habilidad practicada que el otro pone en contra, con sus facetas (como `skill`). */
+  skill: z
+    .strictObject({ id: contentId, facets: z.record(contentId, z.number().positive()) })
+    .optional(),
 });
 
 const DurationModel = z.discriminatedUnion("kind", [
@@ -163,6 +167,18 @@ export const ActionDef = z
     /** Facilidad base en desvíos: 0 es una moneda al aire, 1 sale casi siempre. */
     ease: z.number(),
     factors: FactorSpec.default({ light: 0, terrain: 0, nerve: 0, skill: [] }),
+    /**
+     * La habilidad practicada que usa (skills §11): el id en `content/skills/`, cuánto pesa cada
+     * faceta (se normalizan) y cuántas horas de práctica vale una hora del verbo (un golpe enseña
+     * más por segundo que una mañana de arar). Pesa en el factor `skill` y el verbo la entrena.
+     */
+    skill: z
+      .strictObject({
+        id: contentId,
+        facets: z.record(contentId, z.number().positive()),
+        intensity: z.number().positive().default(1),
+      })
+      .optional(),
     contest: Contest.optional(),
     failureModes: z.array(z.strictObject({ id: z.enum(FAILURE_MODES), factor: z.enum(FACTORS) })),
     /** Cuán evidente es un fracaso para quien lo hace (0: no se nota; 1: siempre se nota). */
@@ -199,7 +215,10 @@ export const ActionDef = z
     }
     // Todo lo que puede hacer fallar el paso tiene que tener forma (§8).
     const needs = new Set<FactorKey>(d.requires.map((r) => r.kind));
-    if (d.factors.skill.length > 0) needs.add("skill");
+    if (d.factors.skill.length > 0 || d.skill) needs.add("skill");
+    if (d.skill && Object.keys(d.skill.facets).length === 0) {
+      ctx.addIssue({ code: "custom", path: ["skill", "facets"], message: "sin facetas" });
+    }
     for (const k of ["light", "terrain", "nerve"] as const) if (d.factors[k] > 0) needs.add(k);
     for (const k of needs) {
       if (!factors.includes(k)) {
@@ -216,7 +235,10 @@ export const ActionDef = z
   });
 export type ActionDef = z.infer<typeof ActionDef>;
 
-export const ACTIONS = defineContent("actions", ActionDef);
+export const ACTIONS = defineContent("actions", ActionDef, (a) => [
+  ...(a.skill ? [{ kind: "skills", id: a.skill.id, at: "skill.id" }] : []),
+  ...(a.contest?.skill ? [{ kind: "skills", id: a.contest.skill.id, at: "contest.skill.id" }] : []),
+]);
 
 // ---------------------------------------------------------------------------------------------
 // Plantillas de plan (§3): secuencias conocidas con parámetros, saber cultural.

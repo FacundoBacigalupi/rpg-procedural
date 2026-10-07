@@ -21,6 +21,10 @@
       "terrain": 0.6,
       "skill": [{ "trait": "perception", "weight": 0.3 }, { "trait": "memory", "weight": 0.2 }]
     },
+    "skill": {
+      "id": "wayfinding",
+      "facets": { "execution": 0.3, "reading": 0.4, "judgment": 0.3 }
+    },
     "failureModes": [
       { "id": "lost", "factor": "skill" },
       { "id": "lost", "factor": "light" },
@@ -46,6 +50,7 @@
       "light": 1,
       "skill": [{ "trait": "perception", "weight": 0.8 }, { "trait": "curiosity", "weight": 0.2 }]
     },
+    "skill": { "id": "observation", "facets": { "reading": 0.8, "judgment": 0.2 } },
     "failureModes": [{ "id": "missed", "factor": "light" }, { "id": "missed", "factor": "skill" }],
     "evidence": 0.3
   },
@@ -69,6 +74,10 @@
       "light": 0.8,
       "terrain": 0.5,
       "skill": [{ "trait": "perception", "weight": 0.6 }, { "trait": "memory", "weight": 0.2 }]
+    },
+    "skill": {
+      "id": "observation",
+      "facets": { "execution": 0.2, "reading": 0.5, "judgment": 0.3 }
     },
     "failureModes": [
       { "id": "missed", "factor": "skill" },
@@ -107,6 +116,7 @@
         { "trait": "control", "weight": 0.2 }
       ]
     },
+    "skill": { "id": "foraging", "facets": { "execution": 0.3, "reading": 0.4, "judgment": 0.3 } },
     "failureModes": [
       { "id": "poor_yield", "factor": "skill" },
       { "id": "poor_yield", "factor": "light" },
@@ -141,6 +151,7 @@
       "light": 0.7,
       "skill": [{ "trait": "constitution", "weight": 0.5 }, { "trait": "control", "weight": 0.3 }]
     },
+    "skill": { "id": "farming", "facets": { "execution": 0.6, "reading": 0.2, "judgment": 0.2 } },
     "failureModes": [
       { "id": "clumsy", "factor": "skill" },
       { "id": "poor_yield", "factor": "light" },
@@ -207,6 +218,10 @@
       "nerve": 0.3,
       "skill": [{ "trait": "sociability", "weight": 0.5 }, { "trait": "warmth", "weight": 0.3 }]
     },
+    "skill": {
+      "id": "conversation",
+      "facets": { "execution": 0.4, "reading": 0.3, "judgment": 0.3 }
+    },
     "failureModes": [
       { "id": "clumsy", "factor": "skill" },
       { "id": "hesitate", "factor": "nerve" },
@@ -247,7 +262,13 @@
       "oppose": [
         { "trait": "perception", "weight": 0.5 },
         { "trait": "constitution", "weight": 0.3 }
-      ]
+      ],
+      "skill": { "id": "brawling", "facets": { "reading": 0.6, "execution": 0.4 } }
+    },
+    "skill": {
+      "id": "brawling",
+      "facets": { "execution": 0.5, "reading": 0.3, "judgment": 0.2 },
+      "intensity": 60
     },
     "failureModes": [
       { "id": "missed", "factor": "skill" },
@@ -278,6 +299,11 @@
     "factors": {
       "nerve": 0.2,
       "skill": [{ "trait": "intellect", "weight": 0.3 }, { "trait": "sociability", "weight": 0.4 }]
+    },
+    "skill": {
+      "id": "bargaining",
+      "facets": { "execution": 0.2, "reading": 0.4, "judgment": 0.4 },
+      "intensity": 2
     },
     "failureModes": [
       { "id": "clumsy", "factor": "skill" },
@@ -320,7 +346,13 @@
     "contest": {
       "against": "from",
       "oppose": [{ "trait": "perception", "weight": 1 }],
-      "stealth": true
+      "stealth": true,
+      "skill": { "id": "observation", "facets": { "reading": 1 } }
+    },
+    "skill": {
+      "id": "sleight",
+      "facets": { "execution": 0.6, "reading": 0.3, "judgment": 0.1 },
+      "intensity": 10
     },
     "failureModes": [
       { "id": "clumsy", "factor": "skill" },

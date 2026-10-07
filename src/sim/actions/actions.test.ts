@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { EARTHLIKE_CLOCK, type EntityRef, loadContent, makeId, Rng } from "../../core/index.ts";
+import { TRAITS } from "../family/index.ts";
+import { SKILLS } from "../skills/index.ts";
 import {
   ACTIONS,
   ActionCatalog,
@@ -31,9 +33,11 @@ import {
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
-  [ACTIONS, PLANS],
+  [ACTIONS, PLANS, SKILLS, TRAITS],
   [
     { kind: "actions", file: "content/actions/core.json", data: json("content/actions/core.json") },
+    { kind: "skills", file: "content/skills/core.json", data: json("content/skills/core.json") },
+    { kind: "traits", file: "content/traits/human.json", data: json("content/traits/human.json") },
     { kind: "plans", file: "content/plans/steal.json", data: json("content/plans/steal.json") },
   ],
 );
@@ -109,9 +113,11 @@ describe("catálogo", () => {
     steal[0].root.steps[0].verb = "fly";
     expect(() =>
       loadContent(
-        [ACTIONS, PLANS],
+        [ACTIONS, PLANS, SKILLS, TRAITS],
         [
           { kind: "actions", file: "a.json", data: json("content/actions/core.json") },
+          { kind: "skills", file: "s.json", data: json("content/skills/core.json") },
+          { kind: "traits", file: "t.json", data: json("content/traits/human.json") },
           { kind: "plans", file: "p.json", data: steal },
         ],
       ),
