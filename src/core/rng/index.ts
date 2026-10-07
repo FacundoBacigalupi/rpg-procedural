@@ -11,6 +11,8 @@
 // La clave y el estado del mezclador son de 64 bits (dos carriles de 32) para que dos claves
 // distintas no compartan flujo; cada sorteo da 32 bits.
 
+import { exp, log, normalQuantile, pow, sqrt } from "../math/index.ts";
+
 /** Semilla del mundo: entero seguro no negativo. */
 export type Seed = number;
 
@@ -124,7 +126,9 @@ export function draw(seed: Seed, key: RngKey, n: number): number {
 
 /**
  * Lo que se puede sacar de cualquier fuente de 32 bits. Todas consumen una cantidad fija de
- * `u32()`: `float`, `int`, `chance`, `pick` y `weighted` usan 2; `shuffle` usa 2 por elemento menos uno.
+ * `u32()`: `float`, `int`, `chance`, `pick`, `weighted` y las distribuciones (`normal`,
+ * `exponential`, `logNormal`, `poisson`, `binomial`, todas por inversión) usan 2; `shuffle` usa
+ * 2 por elemento menos uno.
  */
 export abstract class Random {
   abstract u32(): number;
@@ -134,6 +138,13 @@ export abstract class Random {
     const hi = this.u32() >>> 5; // 27 bits
     const lo = this.u32() >>> 6; // 26 bits
     return (hi * 67108864 + lo) / TWO_53;
+  }
+
+  /** Uniforme en (0, 1), sin los extremos: para cuantiles y logaritmos. */
+  protected open01(): number {
+    const hi = this.u32() >>> 5;
+    const lo = this.u32() >>> 6;
+    return (hi * 67108864 + lo + 0.5) / TWO_53;
   }
 
   /** Entero uniforme en [min, max], ambos incluidos. Sesgo ≤ rango / 2^53. */
@@ -179,6 +190,77 @@ export abstract class Random {
       if (target < acc) return i;
     }
     return last; // redondeo en el último tramo
+  }
+
+  /** Normal por el cuantil (Acklam, error relativo < 1.2e-9). */
+  normal(mean = 0, sd = 1): number {
+    if (!(sd >= 0) || !Number.isFinite(mean) || !Number.isFinite(sd)) {
+      throw new RangeError(`normal inválida: media ${mean}, desvío ${sd}`);
+    }
+    return mean + sd * normalQuantile(this.open01());
+  }
+
+  /** Tiempo hasta el próximo suceso con tasa `rate` por unidad. */
+  exponential(rate: number): number {
+    if (!(rate > 0) || !Number.isFinite(rate)) throw new RangeError(`tasa inválida: ${rate}`);
+    return -log(this.open01()) / rate;
+  }
+
+  /** e^N(mu, sigma): tamaños, riquezas, duraciones con cola larga. */
+  logNormal(mu: number, sigma: number): number {
+    return exp(this.normal(mu, sigma));
+  }
+
+  /**
+   * Cantidad de sucesos con media `lambda`. Exacta por inversión hasta lambda = 30; por encima,
+   * normal redondeada (la diferencia ya no se ve en agregados).
+   */
+  poisson(lambda: number): number {
+    if (!(lambda >= 0) || !Number.isFinite(lambda))
+      throw new RangeError(`lambda inválida: ${lambda}`);
+    const u = this.open01();
+    if (lambda === 0) return 0;
+    if (lambda > 30) return Math.max(0, Math.round(lambda + sqrt(lambda) * normalQuantile(u)));
+    let pk = exp(-lambda);
+    let cdf = pk;
+    let k = 0;
+    const cap = Math.ceil(lambda + 40);
+    while (u > cdf && k < cap) {
+      k++;
+      pk *= lambda / k;
+      cdf += pk;
+    }
+    return k;
+  }
+
+  /**
+   * Éxitos en `n` intentos con probabilidad `p`. Exacta por inversión mientras la media del lado
+   * menor sea ≤ 30; por encima, normal redondeada y acotada a [0, n].
+   */
+  binomial(n: number, p: number): number {
+    if (!Number.isSafeInteger(n) || n < 0) throw new RangeError(`n inválido: ${n}`);
+    if (!(p >= 0 && p <= 1)) throw new RangeError(`probabilidad inválida: ${p}`);
+    const u = this.open01();
+    if (n === 0 || p === 0) return 0;
+    if (p === 1) return n;
+    const flip = p > 0.5;
+    const q = flip ? 1 - p : p;
+    let k: number;
+    if (n * q > 30) {
+      const z = normalQuantile(u);
+      k = Math.min(n, Math.max(0, Math.round(n * q + sqrt(n * q * (1 - q)) * z)));
+    } else {
+      const ratio = q / (1 - q);
+      let pk = pow(1 - q, n);
+      let cdf = pk;
+      k = 0;
+      while (u > cdf && k < n) {
+        pk *= ((n - k) / (k + 1)) * ratio;
+        k++;
+        cdf += pk;
+      }
+    }
+    return flip ? n - k : k;
   }
 
   /** Copia mezclada (Fisher-Yates). */
