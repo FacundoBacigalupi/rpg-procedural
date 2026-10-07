@@ -267,6 +267,14 @@ La generación es determinista: mismo seed y misma historia, mismas lenguas. Tod
 - **Fase 7:** familias completas en la historia profunda, préstamos con vector, sustratos, pidgins y criollas, escrituras inventadas y adaptadas, lenguas muertas y litúrgicas, desciframiento y reconstrucción comparativa. Sin cambiar el formato de la Fase 5.
 - **Fase 8:** todas las lenguas del mundo con LOD, lenguas estándar de los estados, cambio de lengua por prestigio a escala mundial.
 
+## Implementación (Fase 1, 2026-10-07)
+
+- **Contenido:** `content/languages/` (la especificación: inventario con pesos y romanización, formas de sílaba, orden de los compuestos, reglas de nombres) y `content/language-concepts/` (72 conceptos con su glosa en castellano y con qué peso entran en nombres de varón, de mujer, de linaje y de lugar).
+- **`sim/language`:** `generateLanguage(seed, spec, concepts)` sortea la fonología (qué consonantes y vocales tiene esta lengua de las del inventario) y una raíz por concepto, todas juntas en orden de concepto para que no choquen; los compuestos (`Language.compound`) son función de sus partes y no dependen del orden de los pedidos. La lengua no se guarda: se rehace del seed.
+- **Nombres:** `seedPersonNames` (apellido del padre o uno nuevo para quien llega, nombre de pila de uno o dos elementos sin repetir en la casa) y `seedPlaceNames` (modificador + cabeza según lo que el lugar es) escriben `PERSON_NAME` y `PLACE_NAME` en la verdad, con las raíces, el significado y el evento de origen de cada parte.
+- **Lista blanca:** `acquaintances` trae el nombre de pila de los conocidos, `knownWords` el apellido de su gente y los nombres de los lugares, y `playerView` los pone en `lexicon`; `knownEntities` los suma a los nombres que el parser entiende. Un desconocido sigue sin nombre en la vista.
+- **Todavía no:** facetas de la habilidad de lengua (entender, hablar, acento) y el comando fuera del personaje con el vocabulario creído (Fase 2, junto con registros y tratamientos); nombre de leche, de cortesía y de generación; cambio fonético y dialectos (Fase 5); el jugador que nombra algo (`coined`).
+
 ## Tests
 
 - **Determinismo:** mismo seed, mismas lenguas, mismo léxico y mismos nombres; las palabras perezosas dan la misma forma sin importar en qué orden se pidieron.

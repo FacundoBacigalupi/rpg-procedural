@@ -1,0 +1,465 @@
+[
+  {
+    "id": "water",
+    "es": "agua",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3
+    }
+  },
+  {
+    "id": "river",
+    "es": "río",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "family": 1,
+      "place": 2
+    },
+    "feature": "river"
+  },
+  {
+    "id": "stream",
+    "es": "arroyo",
+    "pos": "noun",
+    "name": {
+      "female": 2,
+      "place": 2
+    },
+    "feature": "stream"
+  },
+  {
+    "id": "lake",
+    "es": "lago",
+    "pos": "noun",
+    "name": {
+      "female": 1,
+      "place": 2
+    },
+    "feature": "lake"
+  },
+  {
+    "id": "sea",
+    "es": "mar",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "place": 2
+    },
+    "feature": "sea"
+  },
+  {
+    "id": "well",
+    "es": "pozo",
+    "pos": "noun",
+    "name": {
+      "family": 3,
+      "place": 2
+    },
+    "feature": "groundwater"
+  },
+  {
+    "id": "mountain",
+    "es": "montaña",
+    "pos": "noun",
+    "name": {
+      "male": 3,
+      "female": 1,
+      "family": 2,
+      "place": 1
+    }
+  },
+  {
+    "id": "hill",
+    "es": "colina",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "family": 2,
+      "place": 1
+    }
+  },
+  {
+    "id": "valley",
+    "es": "valle",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "place": 1
+    }
+  },
+  {
+    "id": "stone",
+    "es": "piedra",
+    "pos": "noun",
+    "name": {
+      "male": 3,
+      "female": 1,
+      "family": 3
+    }
+  },
+  {
+    "id": "forest",
+    "es": "bosque",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "place": 2
+    },
+    "feature": "forest"
+  },
+  {
+    "id": "tree",
+    "es": "árbol",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "family": 2
+    }
+  },
+  {
+    "id": "pine",
+    "es": "pino",
+    "pos": "noun",
+    "name": {
+      "male": 2,
+      "female": 1,
+      "family": 3
+    }
+  },
+  {
+    "id": "bamboo",
+    "es": "bambú",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3,
+      "family": 2
+    }
+  },
+  {
+    "id": "willow",
+    "es": "sauce",
+    "pos": "noun",
+    "name": {
+      "female": 3,
+      "family": 2
+    }
+  },
+  {
+    "id": "field",
+    "es": "campo",
+    "pos": "noun",
+    "name": {
+      "family": 3,
+      "place": 2
+    },
+    "feature": "fields"
+  },
+  {
+    "id": "grain",
+    "es": "grano",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1,
+      "family": 2
+    }
+  },
+  {
+    "id": "flower",
+    "es": "flor",
+    "pos": "noun",
+    "name": {
+      "female": 5
+    }
+  },
+  {
+    "id": "lotus",
+    "es": "loto",
+    "pos": "noun",
+    "name": {
+      "female": 5
+    }
+  },
+  {
+    "id": "plum",
+    "es": "ciruelo",
+    "pos": "noun",
+    "name": {
+      "female": 3,
+      "family": 2
+    }
+  },
+  {
+    "id": "jade",
+    "es": "jade",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 4
+    }
+  },
+  {
+    "id": "iron",
+    "es": "hierro",
+    "pos": "noun",
+    "name": {
+      "male": 3,
+      "family": 3
+    }
+  },
+  {
+    "id": "sun",
+    "es": "sol",
+    "pos": "noun",
+    "name": {
+      "male": 3,
+      "female": 1
+    }
+  },
+  {
+    "id": "moon",
+    "es": "luna",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 5
+    }
+  },
+  {
+    "id": "star",
+    "es": "estrella",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 4
+    }
+  },
+  {
+    "id": "wind",
+    "es": "viento",
+    "pos": "noun",
+    "name": {
+      "male": 2,
+      "female": 1
+    }
+  },
+  {
+    "id": "cloud",
+    "es": "nube",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3
+    }
+  },
+  {
+    "id": "rain",
+    "es": "lluvia",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3
+    }
+  },
+  {
+    "id": "snow",
+    "es": "nieve",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 2
+    }
+  },
+  {
+    "id": "fire",
+    "es": "fuego",
+    "pos": "noun",
+    "name": {
+      "male": 2
+    }
+  },
+  {
+    "id": "earth",
+    "es": "tierra",
+    "pos": "noun",
+    "name": {
+      "male": 2,
+      "female": 1,
+      "family": 2
+    }
+  },
+  {
+    "id": "road",
+    "es": "camino",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "family": 2
+    }
+  },
+  {
+    "id": "bridge",
+    "es": "puente",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  },
+  {
+    "id": "ford",
+    "es": "vado",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  },
+  {
+    "id": "mill",
+    "es": "molino",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  },
+  {
+    "id": "tiger",
+    "es": "tigre",
+    "pos": "noun",
+    "name": {
+      "male": 4,
+      "family": 2
+    }
+  },
+  {
+    "id": "crane",
+    "es": "grulla",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3,
+      "family": 3
+    }
+  },
+  {
+    "id": "deer",
+    "es": "ciervo",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 2,
+      "family": 3
+    }
+  },
+  {
+    "id": "fox",
+    "es": "zorro",
+    "pos": "noun",
+    "name": {
+      "family": 2
+    }
+  },
+  {
+    "id": "sparrow",
+    "es": "gorrión",
+    "pos": "noun",
+    "name": {
+      "female": 2,
+      "family": 2
+    }
+  },
+  {
+    "id": "ox",
+    "es": "buey",
+    "pos": "noun",
+    "name": {
+      "male": 2,
+      "family": 3
+    }
+  },
+  {
+    "id": "spring",
+    "es": "primavera",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 4
+    }
+  },
+  {
+    "id": "autumn",
+    "es": "otoño",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 3
+    }
+  },
+  {
+    "id": "winter",
+    "es": "invierno",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 1
+    }
+  },
+  {
+    "id": "summer",
+    "es": "verano",
+    "pos": "noun",
+    "name": {
+      "male": 1,
+      "female": 2
+    }
+  },
+  {
+    "id": "dawn",
+    "es": "alba",
+    "pos": "noun",
+    "name": {
+      "male": 2,
+      "female": 3
+    }
+  },
+  {
+    "id": "night",
+    "es": "noche",
+    "pos": "noun",
+    "name": {
+      "female": 1
+    }
+  },
+  {
+    "id": "smith",
+    "es": "herrero",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  },
+  {
+    "id": "weaver",
+    "es": "tejedor",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  },
+  {
+    "id": "shepherd",
+    "es": "pastor",
+    "pos": "noun",
+    "name": {
+      "family": 3
+    }
+  }
+]

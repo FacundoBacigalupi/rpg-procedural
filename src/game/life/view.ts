@@ -31,10 +31,10 @@ import {
   type SelfCue,
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
-import { acquaintances, playerObserver, type Witness } from "./witness.ts";
+import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
-export { acquaintances, playerObserver, type Witness };
+export { acquaintances, knownWords, playerObserver, type Witness };
 
 const CUES: Readonly<Record<string, SelfCue>> = {
   hungry: "hungry",
@@ -147,6 +147,7 @@ export function playerView(
     percepts: digest(percepts),
     steps: steps.map((s) => ({ verb: s.verb, self: s.self })),
     acquaintances: acq,
+    lexicon: knownWords(w),
     self: [...cues],
   });
 }

@@ -3,7 +3,15 @@
 // ahora es lo que se sabe de nacimiento y de vivir ahí. Los nombres propios llegan con language.
 
 import type { AgentId, EntityRef } from "../../core/index.ts";
-import { type KnownEntity, LOCATION, PERSON, PLACE } from "../../sim/index.ts";
+import {
+  callName,
+  type KnownEntity,
+  LOCATION,
+  PERSON,
+  PERSON_NAME,
+  PLACE,
+  PLACE_NAME,
+} from "../../sim/index.ts";
 import { type LifeWorld, living } from "./world.ts";
 
 /** Cómo se dice cada lugar en castellano (provisorio hasta `language`). */
@@ -42,7 +50,11 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
   for (const id of w.truth.ids(PLACE)) {
     const p = w.truth.get(PLACE, id);
     if (!p) continue;
-    const names = PLACE_NAMES[p.detail ?? p.kind] ?? PLACE_NAMES[p.kind] ?? [];
+    const proper = w.truth.get(PLACE_NAME, id)?.form;
+    const names = [
+      ...(PLACE_NAMES[p.detail ?? p.kind] ?? PLACE_NAMES[p.kind] ?? []),
+      ...(proper === undefined ? [] : [proper]),
+    ];
     if (names.length === 0) continue;
     out.push({
       ref: id as EntityRef,
@@ -65,10 +77,11 @@ function person(
   here: { hex: number; space?: string | undefined } | undefined,
 ): KnownEntity {
   const at = w.truth.get(LOCATION, id);
+  const given = callName(w.truth.get(PERSON_NAME, id) ?? { language: "", parts: [] });
   return {
     ref: id,
     kind: "person",
-    names,
+    names: given === undefined ? names : [...names, given],
     features: [],
     relations: [{ rel, of: "self" }],
     present: !!here && !!at && at.hex === here.hex && at.space === here.space,
