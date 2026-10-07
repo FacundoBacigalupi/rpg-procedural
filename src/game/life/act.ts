@@ -120,6 +120,7 @@ const VERB_ACTIVITY: Readonly<Record<string, Activity>> = {
   work: "heavy",
   strike: "heavy",
   take: "light",
+  store: "light",
   tend: "light",
   speak: "light",
   look: "light",
@@ -314,6 +315,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],
     foods: e.foods,
+    unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
     market:
       node.verb === "trade" || node.verb === "work"

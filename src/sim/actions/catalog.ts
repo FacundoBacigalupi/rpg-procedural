@@ -68,6 +68,7 @@ export const RESOLVERS = [
   "strike",
   "trade",
   "take",
+  "store",
   "eat",
   "drink",
   "tend",

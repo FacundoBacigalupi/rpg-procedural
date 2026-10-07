@@ -877,6 +877,19 @@
     }
   },
   {
+    "id": "store-grain",
+    "text": "guardo el grano que traje en la despensa",
+    "scene": "Estás en tu casa; volviste del campo con un saco de grano al hombro.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "store",
+        "args": [{ "role": "what", "text": "el grano que traje" }]
+      }
+    }
+  },
+  {
     "id": "tend-self",
     "text": "me limpio la herida con cuidado",
     "scene": "Estás en tu casa; te cortaste la mano trabajando.",

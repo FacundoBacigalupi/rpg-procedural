@@ -367,6 +367,29 @@
     "evidence": 0.8
   },
   {
+    "id": "store",
+    "name": "guardar",
+    "domain": "body",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.1 },
+      { "kind": "position", "at": ["village"] }
+    ],
+    "occupies": { "handL": "partial", "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 300 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.2, "sound": 0.1 },
+    "resolver": "store",
+    "ease": 3,
+    "failureModes": [
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "eat",
     "name": "comer",
     "domain": "body",

@@ -24,6 +24,7 @@ import {
   lifeTerrain,
   type ResumeAnchor,
   resumeParts,
+  withDeclaredExternals,
 } from "./create.ts";
 import { alarmingSigns, fixedInterrupt, type Interrupt } from "./interrupts.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
@@ -129,6 +130,7 @@ export class Life {
     options: LifeOptions = {},
     anchor?: ResumeAnchor,
   ): Life {
+    saved = { ...saved, ledger: withDeclaredExternals(saved.ledger, content) };
     if (anchor === undefined) {
       const { world, terrain } = createLife(seed, content, options);
       const parts: LifeParts = { ...world, ...saved };

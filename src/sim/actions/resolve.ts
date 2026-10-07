@@ -75,6 +75,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly larder?: HolderRef | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
   readonly market?: Market | undefined;
+  /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
+  readonly unitNames?: ReadonlyMap<LedgerUnit, string> | undefined;
 }
 
 /** Lo que el resolver sabe de la economía de la aldea (economy §1, §4): precios base y casas. */
@@ -212,6 +214,11 @@ export type VerbEffect =
       readonly kcal: number;
       /** Litros de agua que trae la comida. */
       readonly water: number;
+    }
+  | {
+      readonly kind: "store";
+      /** Lo que dejó en la despensa de la casa (nada si no llevaba o no podía). */
+      readonly got: readonly Holding[];
     }
   | { readonly kind: "drink"; readonly liters: number }
   | {
@@ -687,15 +694,13 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
   const wantGrams = gramsIn(what);
   const names = (rows: readonly Holding[]) => {
     const words = what === null ? [] : refTokens(what);
-    return rows.some((h) =>
-      words.some((w) => refTokens(h.unit.replace(/^[a-z]+:/, "").replace(/_/g, " ")).includes(w)),
-    );
+    return rows.some((h) => words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)));
   };
   const sells = myGoods.length > 0 && (yourGoods.length === 0 || names(myGoods));
   const buyerCoinsOf = (rows: readonly Holding[]) => coinsOf(rows);
 
   if (sells) {
-    const row = pickWanted(myGoods, what) as Holding;
+    const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
     const base = mk.priceCopperPerKg.get(row.unit) as number;
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
@@ -737,7 +742,7 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
   }
 
   if (yourGoods.length === 0 || coinsOf(myRows) === 0) return null;
-  const row = pickWanted(yourGoods, what) as Holding;
+  const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
   const base = mk.priceCopperPerKg.get(row.unit) as number;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
@@ -774,7 +779,7 @@ const take: Resolver = (c) => {
   const fromEntity = argEntity(c, "from");
   const from: HolderRef = (fromEntity as HolderRef | null) ?? c.input.place;
   const held = c.input.ledger.holdings(holderAccount(from));
-  const wantedRow = pickWanted(held, argText(c, "what"));
+  const wantedRow = pickWanted(held, argText(c, "what"), c.input.unitNames);
   const wanted = wantedRow?.unit ?? null;
   const effect = (got: Holding[]): VerbEffect => ({ kind: "take", from, wanted, got });
   if (c.roll.unmet || !wantedRow) return { effect: effect([]), seconds: c.nominal };
@@ -814,7 +819,7 @@ const eat: Resolver = (c) => {
   const from: HolderRef | null =
     own.length > 0 ? (c.input.actor.id as HolderRef) : (c.input.larder ?? null);
   const pool = own.length > 0 ? own : edible(c.input.larder);
-  const row = pickWanted(pool, argText(c, "what"));
+  const row = pickWanted(pool, argText(c, "what"), c.input.unitNames);
   const empty: VerbEffect = { kind: "eat", good: null, from, grams: 0, kcal: 0, water: 0 };
   if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
   if (!row || from === null) {
@@ -841,6 +846,38 @@ const eat: Resolver = (c) => {
     effect,
     seconds: c.nominal,
     transfers: [{ from, unit: row.unit, amount: grams, to: externalAccount(EATEN) }],
+  };
+};
+
+/** Deja en la despensa de la casa lo que lleva encima (lo que nombra, o todo lo que sea bien). */
+const store: Resolver = (c) => {
+  const larder = c.input.larder;
+  const what = argText(c, "what");
+  const carried = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => !isMoney(h.unit) && h.amount > 0);
+  const words = what === null ? [] : refTokens(what);
+  const named = carried.filter((h) =>
+    words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)),
+  );
+  const rows = words.length > 0 && named.length > 0 ? named : carried;
+  if (c.roll.unmet) return { effect: { kind: "store", got: [] }, seconds: c.nominal };
+  if (larder === undefined || rows.length === 0) {
+    return {
+      effect: { kind: "store", got: [] },
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return {
+    effect: { kind: "store", got: rows },
+    seconds: c.nominal,
+    transfers: rows.map((r) => ({
+      from: c.input.actor.id as HolderRef,
+      unit: r.unit,
+      amount: r.amount,
+      to: holderAccount(larder),
+    })),
   };
 };
 
@@ -872,6 +909,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   strike,
   trade,
   take,
+  store,
   eat,
   drink,
   tend,
@@ -885,15 +923,26 @@ export function isMoney(unit: LedgerUnit): boolean {
   return unit === "coin" || unit.startsWith("coin:");
 }
 
+/** Las palabras con que se puede nombrar una unidad: su id y su nombre en la lengua del jugador. */
+function unitTokens(unit: LedgerUnit, names?: ReadonlyMap<LedgerUnit, string>): string[] {
+  const id = refTokens(unit.replace(/^[a-z]+:/, "").replace(/_/g, " "));
+  const name = names?.get(unit);
+  return name === undefined ? id : [...id, ...refTokens(name)];
+}
+
 /**
  * Lo que quiere llevarse: lo que nombra (por palabras, contra el nombre de la unidad) o, si no
  * nombra nada que haya, lo que más hay. Determinista: desempata por unidad.
  */
-function pickWanted(held: readonly Holding[], what: string | null): Holding | undefined {
+function pickWanted(
+  held: readonly Holding[],
+  what: string | null,
+  names?: ReadonlyMap<LedgerUnit, string>,
+): Holding | undefined {
   if (held.length === 0) return undefined;
   const words = what === null ? [] : refTokens(what);
   const named = held.filter((h) => {
-    const unit = refTokens(h.unit.replace(/^[a-z]+:/, "").replace(/_/g, " "));
+    const unit = unitTokens(h.unit, names);
     return words.some((w) => unit.includes(w));
   });
   const pool = named.length > 0 ? named : held;
