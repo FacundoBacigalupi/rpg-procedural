@@ -297,5 +297,11 @@ Comandos:
 7. **Inspector y contrafácticos solo en `tools/`:** leen la verdad, nunca escriben en ella ni corren durante una partida (§10, §11).
 8. **Contrafácticos en la crónica:** no por defecto (es caro y especulativo para el jugador); como mucho, una opción del archivo de vidas que corre en modo agregado (aprobado 2026-10-06).
 
+## Implementación
+- **Registro de presiones citadas** (`sim/world/pressure-record.ts`, `sim/causality/cite.ts`): una presión sigue siendo derivada y no se guarda, pero cuando un evento la cita nace una entidad `pressure:N` (ficha con `originEventId` = el primer evento que la cita) con un componente `PRESSURE` (tipo, alcance, cuántas descargas, última). `citePressure(ctx, lectura, evento)` devuelve la causa `{ kind: "pressure", pressure, weight: valor }` (el valor del momento va en el peso) y los cambios para el mismo resultado que el evento; una por tipo y alcance. `readPressures` pone `id` a las ya registradas.
+- **Invariantes** (`checkInvariants`): toda causa de presión apunta a una presión registrada que ya existía, trae el valor 0..1, la presión nace de un evento que la cita y su conteo y última descarga coinciden con el registro.
+- **Chispas** (`Spark`, tabla `pressure.sparks` en la entidad del alcance): fuerza que decae linealmente hasta `expiresAt`; `sparkOf` combina las vivas sin pasar de 1 y `withHazards` las pasa a `hazardOf`; `addSpark` descarta las vencidas.
+- **Inspector:** `pressure <tipo> <id>` muestra el historial de descargas con el valor de cada una y `why`/`timeline` muestran `pressure:N=valor` entre las causas. Los snapshots periódicos para `at <tick>` quedan para el ítem del inspector con `at` ([ROADMAP](../ROADMAP.md)).
+
 ## Preguntas abiertas
 - Calibración: intervalo de snapshots de presiones; curvas de hazard por tipo de descarga; cuánto baja el umbral una chispa y por cuánto tiempo.
