@@ -152,6 +152,10 @@ export type EffectView =
       readonly fromLarder: boolean;
       readonly grams: number;
     }
+  | {
+      readonly kind: "store";
+      readonly got: readonly { readonly good: string; readonly amount: number }[];
+    }
   | { readonly kind: "drink"; readonly drank: boolean }
   | {
       readonly kind: "tend";
@@ -406,6 +410,11 @@ function effectView(
         good: e.good,
         fromLarder: e.from !== null && e.from !== player,
         grams: Math.round(e.grams),
+      };
+    case "store":
+      return {
+        kind: "store",
+        got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
       };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };

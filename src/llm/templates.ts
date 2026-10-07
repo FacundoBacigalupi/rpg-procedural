@@ -212,6 +212,13 @@ function outcome(
       if (e.grams <= 0 || e.good === null) say("outcome.eat.nothing");
       else say(e.fromLarder ? "outcome.eat.larder" : "outcome.eat.own", { what: good(e.good) });
       break;
+    case "store":
+      if (e.got.length === 0) say("outcome.store.nothing");
+      else
+        say("outcome.store.done", {
+          what: [...new Set(e.got.map((g) => good(g.good)))].join(" y "),
+        });
+      break;
     case "drink":
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
       break;

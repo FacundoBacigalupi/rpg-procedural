@@ -667,6 +667,60 @@ describe("comerciar y cosechar", () => {
     expect(deals.length).toBeGreaterThan(0);
   });
 
+  it("lo que el jugador nombra en su lengua elige el bien: «grano» es good:grain aunque haya más forraje", () => {
+    const forage = ledgerUnit("good:forage");
+    const names = new Map([
+      [grain, "grano de la cosecha"],
+      [forage, "frutos y raíces del monte"],
+    ]);
+    const both = {
+      ...tradeConfig,
+      externals: { ...tradeConfig.externals, seed: [grain, forage, copper] },
+    };
+    const rich = () => {
+      const ledger = new Ledger(both);
+      [
+        { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+        { holder: theirs as unknown as HolderRef, unit: forage, amount: 900_000 },
+        { holder: me, unit: copper, amount: 50 },
+      ].forEach((r, i) => {
+        ledger.post({
+          tick: 0,
+          eventId: makeId("event", i + 1),
+          transfers: [
+            {
+              unit: r.unit,
+              from: externalAccount("seed"),
+              to: holderAccount(r.holder),
+              amount: r.amount,
+            },
+          ],
+        });
+      });
+      return ledger;
+    };
+    const wide = {
+      ...market,
+      priceCopperPerKg: new Map([
+        [grain, 6],
+        [forage, 2],
+      ]),
+    };
+    const goods = (what: string) =>
+      many(80, () => trading(rich(), what, { market: wide, unitNames: names })).flatMap((r) =>
+        r.effect.kind === "trade" && r.effect.direction === "buy" ? [r.effect] : [],
+      );
+    const byName = goods("2 kilos de grano");
+    expect(byName.length).toBeGreaterThan(0);
+    for (const e of byName) {
+      expect(e.good).toBe(grain);
+      expect(e.grams).toBeLessThanOrEqual(2000);
+    }
+    const forageDeals = goods("frutos del monte");
+    expect(forageDeals.length).toBeGreaterThan(0);
+    for (const e of forageDeals) expect(e.good).toBe(forage);
+  });
+
   it("sin monedas o sin nada que vender no hay trato: falla por falta de medios", () => {
     const poor = stock([{ holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 }]);
     const none = stock([{ holder: me, unit: copper, amount: 50 }]);
@@ -684,6 +738,49 @@ describe("comerciar y cosechar", () => {
       { holder: me, unit: copper, amount: 50 },
     ]);
     for (const r of many(60, () => trading(tight))) expect(r.postings).toEqual([]);
+  });
+
+  it("guardar pasa lo que lleva a la despensa de la casa, sin crear ni perder nada", () => {
+    const storing = (what: string | null, ledger: Ledger) =>
+      input(
+        "store",
+        { args: what === null ? [] : [{ role: "what", text: what }] },
+        {
+          actor: actor({ capabilities: { manipulation: 1 } }),
+          ledger,
+          larder: mine as unknown as HolderRef,
+          unitNames: new Map([[grain, "grano de la cosecha"]]),
+        },
+      );
+    const ledger = stock([
+      { holder: me, unit: grain, amount: 4000 },
+      { holder: me, unit: copper, amount: 12 },
+    ]);
+    const r = resolve(storing("el grano", ledger));
+    expect(r.effect).toMatchObject({ kind: "store" });
+    post(ledger, r, 1);
+    expect(ledger.audit()).toEqual([]);
+    expect(ledger.balance(holderAccount(me), grain)).toBe(0);
+    expect(ledger.balance(holderAccount(mine as unknown as HolderRef), grain)).toBe(4000);
+    // La plata no se guarda como si fuera un bien: sigue en el bolsillo.
+    expect(ledger.balance(holderAccount(me), copper)).toBe(12);
+  });
+
+  it("guardar sin nada encima falla por falta de medios y no mueve nada", () => {
+    const ledger = stock([{ holder: me, unit: copper, amount: 12 }]);
+    const r = resolve(
+      input(
+        "store",
+        {},
+        {
+          actor: actor({ capabilities: { manipulation: 1 } }),
+          ledger,
+          larder: mine as unknown as HolderRef,
+        },
+      ),
+    );
+    expect(r.postings).toEqual([]);
+    expect(r.failure).toBe("no_means");
   });
 
   it("trabajar el campo rinde grano de afuera del ledger y queda en el bolsillo", () => {

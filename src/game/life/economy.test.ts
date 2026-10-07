@@ -45,3 +45,34 @@ describe("economía mínima en la aldea", () => {
     expect(run()).toEqual(run());
   }, 120_000);
 });
+
+describe("migración de vidas guardadas antes de la economía", () => {
+  it("suma las fuentes y sumideros que faltan sin tocar un saldo", async () => {
+    const { Ledger } = await import("../../core/index.ts");
+    const { withDeclaredExternals } = await import("./create.ts");
+    const life = Life.create(7, content);
+    const w = life.world;
+    const { harvest, rotted, ...old } = w.ledger.config.externals;
+    expect(harvest).toBeDefined();
+    expect(rotted).toBeDefined();
+    const oldLedger = Ledger.fromJournal({ externals: old }, w.ledger.journal());
+    expect(() =>
+      oldLedger.post({
+        tick: 0,
+        eventId: "event:99999" as never,
+        transfers: [
+          { unit: grain, from: externalAccount("harvest"), to: externalAccount("seed"), amount: 1 },
+        ],
+      }),
+    ).toThrow();
+    const migrated = withDeclaredExternals(oldLedger, content);
+    expect(Object.keys(migrated.config.externals).sort()).toEqual(
+      Object.keys(w.ledger.config.externals).sort(),
+    );
+    expect(migrated.total(copper)).toBe(w.ledger.total(copper));
+    expect(migrated.total(grain)).toBe(w.ledger.total(grain));
+    expect(migrated.audit()).toEqual([]);
+    // Lo que ya declara todo no se rehace.
+    expect(withDeclaredExternals(w.ledger, content)).toBe(w.ledger);
+  }, 120_000);
+});

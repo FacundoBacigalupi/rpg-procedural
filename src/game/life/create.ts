@@ -13,6 +13,7 @@ import {
   holderAccount,
   IdAllocator,
   Ledger,
+  type LedgerConfig,
   ledgerUnit,
   makeId,
   type PlaceRef,
@@ -190,6 +191,38 @@ export function resumeParts(
   };
 }
 
+/** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
+export function ledgerConfigOf(content: Content): LedgerConfig {
+  const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
+  return {
+    externals: {
+      [EATEN]: units,
+      [HARVEST]: [HARVEST_GOOD],
+      [ROTTED]: units,
+      seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
+    },
+  };
+}
+
+/**
+ * Migra el ledger de una vida guardada antes de que existieran algunas fuentes o sumideros
+ * (`harvest`, `rotted`, ...): suma las unidades que faltan y rehace el ledger con el mismo diario,
+ * así el saldo no cambia. Si ya declara todo, devuelve el mismo.
+ */
+export function withDeclaredExternals(ledger: Ledger, content: Content): Ledger {
+  const have = ledger.config.externals;
+  const merged: Record<string, string[]> = {};
+  let changed = false;
+  for (const [name, units] of Object.entries(ledgerConfigOf(content).externals)) {
+    const known = new Set(have[name] ?? []);
+    const missing = units.filter((u) => !known.has(u));
+    if (missing.length > 0) changed = true;
+    merged[name] = [...(have[name] ?? []), ...missing];
+  }
+  for (const [name, units] of Object.entries(have)) merged[name] ??= [...units];
+  return changed ? Ledger.fromJournal({ externals: merged }, ledger.journal()) : ledger;
+}
+
 export function createLife(
   seed: Seed,
   content: Content,
@@ -262,16 +295,8 @@ export function createLife(
 
   const ids = idsAfter(truth, log);
   const foods = content.all(FOODS);
-  const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
   const materials = content.all(MATERIALS);
-  const ledger = new Ledger({
-    externals: {
-      [EATEN]: units,
-      [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: units,
-      seed: [...units, COPPER, ...settlementUnits(materials)],
-    },
-  });
+  const ledger = new Ledger(ledgerConfigOf(content));
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
   seedSettlement(truth, ids, log, ledger, {
     seed,

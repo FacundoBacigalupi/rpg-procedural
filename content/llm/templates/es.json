@@ -63,6 +63,10 @@
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
   { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
+  {
+    "id": "percept.action.store",
+    "lines": ["{who} guarda algo en la casa.", "Ves a {who} guardando algo."]
+  },
   { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
@@ -260,6 +264,14 @@
   { "id": "cue.position", "lines": ["No estás bien parado para eso.", "Estás mal ubicado."] },
   { "id": "cue.means", "lines": ["Te falta con qué.", "No tenés lo que hace falta."] },
 
+  {
+    "id": "outcome.store.done",
+    "lines": ["Dejás {what} en la despensa de la casa.", "Guardás {what} con lo demás de la casa."]
+  },
+  {
+    "id": "outcome.store.nothing",
+    "lines": ["No llevás nada para guardar.", "No tenés nada encima que guardar."]
+  },
   {
     "id": "outcome.eat.own",
     "lines": ["Comés {what} de lo que llevabas.", "Te comés {what} que tenías encima."]
