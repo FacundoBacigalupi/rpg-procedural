@@ -2,4 +2,5 @@
 export * from "./hash.ts";
 export * from "./invariants.ts";
 export * from "./space.ts";
+export * from "./spaces.ts";
 export * from "./truth.ts";
