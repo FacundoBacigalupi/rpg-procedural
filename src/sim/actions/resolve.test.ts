@@ -569,3 +569,148 @@ describe("comer, beber, curar", () => {
     expect(rs.some((r) => r.effect.kind === "tend" && r.effect.done)).toBe(true);
   });
 });
+
+describe("comerciar y cosechar", () => {
+  const grain = ledgerUnit("good:grain");
+  const copper = ledgerUnit("coin:copper");
+  const mine = makeId("household", 1);
+  const theirs = makeId("household", 2);
+  const foods = new Map([[grain, { kcalPerGram: 3.4, waterPerGram: 0.12 }]]);
+  const market = {
+    priceCopperPerKg: new Map([[grain, 6]]),
+    ownMembers: 3,
+    other: { larder: theirs as unknown as HolderRef, members: 4 },
+    harvestGramsPerHour: 150,
+    harvestGood: grain,
+  };
+  const tradeConfig = { externals: { seed: [grain, copper], harvest: [grain] } };
+  const stock = (rows: { holder: HolderRef; unit: typeof grain; amount: number }[]) => {
+    const ledger = new Ledger(tradeConfig);
+    rows
+      .filter((r) => r.amount > 0)
+      .forEach((r, i) => {
+        ledger.post({
+          tick: 0,
+          eventId: makeId("event", i + 1),
+          transfers: [
+            {
+              unit: r.unit,
+              from: externalAccount("seed"),
+              to: holderAccount(r.holder),
+              amount: r.amount,
+            },
+          ],
+        });
+      });
+    return ledger;
+  };
+  const trading = (ledger: Ledger, what: string | null = null, extra: Partial<ResolveInput> = {}) =>
+    input(
+      "trade",
+      {
+        args: [
+          { role: "with", entity: wu },
+          ...(what === null ? [] : [{ role: "what", text: what } as const]),
+        ],
+      },
+      {
+        actor: actor({ capabilities: { speech: 1 } }),
+        parties: { with: { id: wu, z: {}, hex: 0, skill: 0 } },
+        ledger,
+        foods,
+        larder: mine as unknown as HolderRef,
+        market,
+        ...extra,
+      },
+    );
+
+  it("comprar mueve grano de la despensa del otro y monedas al otro, sin crear nada", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 60 }),
+        fc.integer({ min: 1, max: 30 }),
+        (coins, kilos) => {
+          const ledger = stock([
+            { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+            { holder: me, unit: copper, amount: coins },
+          ]);
+          const before = ledger.total(copper);
+          for (const r of many(40, () => trading(ledger, `${kilos} kilos`))) {
+            if (r.effect.kind !== "trade" || r.effect.direction !== "buy") continue;
+            expect(r.effect.grams).toBeLessThanOrEqual(kilos * 1000);
+            expect(r.effect.coins).toBeLessThanOrEqual(coins);
+            // El vendedor no se queda sin los 60 días de comida de su casa.
+            expect(600_000 - r.effect.grams).toBeGreaterThanOrEqual((60 * 2400 * 4) / 3.4 - 1);
+            const copy = stock([
+              { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+              { holder: me, unit: copper, amount: coins },
+            ]);
+            post(copy, r, 1);
+            expect(copy.audit()).toEqual([]);
+            expect(copy.total(copper)).toBe(before);
+            expect(copy.balance(holderAccount(me), grain)).toBe(r.effect.grams);
+          }
+        },
+      ),
+      { numRuns: 20 },
+    );
+  });
+
+  it("con monedas y un vecino con sobra, comprar cierra tratos de verdad", () => {
+    const ledger = stock([
+      { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+      { holder: me, unit: copper, amount: 50 },
+    ]);
+    const deals = many(80, () => trading(ledger, "5 kilos")).filter(
+      (r) => r.effect.kind === "trade" && r.effect.direction === "buy",
+    );
+    expect(deals.length).toBeGreaterThan(0);
+  });
+
+  it("sin monedas o sin nada que vender no hay trato: falla por falta de medios", () => {
+    const poor = stock([{ holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 }]);
+    const none = stock([{ holder: me, unit: copper, amount: 50 }]);
+    for (const ledger of [poor, none]) {
+      for (const r of many(60, () => trading(ledger))) {
+        expect(r.postings).toEqual([]);
+        if (r.effect.kind === "trade") expect(r.effect.grams).toBe(0);
+      }
+    }
+  });
+
+  it("nadie vende lo que necesita para comer los próximos meses", () => {
+    const tight = stock([
+      { holder: theirs as unknown as HolderRef, unit: grain, amount: 100_000 },
+      { holder: me, unit: copper, amount: 50 },
+    ]);
+    for (const r of many(60, () => trading(tight))) expect(r.postings).toEqual([]);
+  });
+
+  it("trabajar el campo rinde grano de afuera del ledger y queda en el bolsillo", () => {
+    const ledger = stock([]);
+    const rs = many(60, () =>
+      input(
+        "work",
+        {},
+        {
+          actor: actor({ capabilities: { strength: 1 } }),
+          scene: { light: 1, terrain: 0, placeKinds: ["fields"] },
+          ledger,
+          market,
+        },
+      ),
+    );
+    const paid = rs.filter((r) => r.postings.length > 0);
+    expect(paid.length).toBeGreaterThan(0);
+    for (const r of paid) {
+      expect(r.postings[0]?.transfers[0]).toMatchObject({
+        from: externalAccount("harvest"),
+        to: holderAccount(me),
+        unit: grain,
+      });
+      post(ledger, r, 1);
+    }
+    expect(ledger.audit()).toEqual([]);
+    expect(ledger.balance(holderAccount(me), grain)).toBeGreaterThan(0);
+  });
+});

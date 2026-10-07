@@ -8,6 +8,7 @@ import {
   EARTHLIKE_CLOCK,
   EventLog,
   externalAccount,
+  type HolderRef,
   type HouseholdId,
   holderAccount,
   IdAllocator,
@@ -24,11 +25,15 @@ import {
   BODY_PLANS,
   BUILDING_TYPES,
   CONCEPTS,
+  COPPER,
   DEMOGRAPHY,
   EATEN,
   ENTITY,
   FOODS,
+  GOODS,
   generateLanguage,
+  HARVEST,
+  HARVEST_GOOD,
   houseKey,
   LANGUAGES,
   LOCATION,
@@ -40,6 +45,7 @@ import {
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
+  ROTTED,
   SKILLS,
   SkillCatalog,
   seedBodies,
@@ -77,7 +83,9 @@ export interface LifeOptions {
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
 /** Gramos de grano por persona en la despensa al empezar. */
-export const LARDER_PER_MEMBER_G = 200_000;
+export const LARDER_PER_MEMBER_G = 100_000;
+/** Monedas de cobre por persona al empezar (de la economía previa a la corrida; economy §2). */
+export const COINS_PER_PERSON = 40;
 
 export interface LifeTerrain {
   /** Dónde pasan los eventos de la aldea. */
@@ -157,7 +165,16 @@ export function resumeParts(
   anchor: ResumeAnchor,
 ): Pick<
   LifeParts,
-  "seed" | "clock" | "map" | "catalog" | "skills" | "traits" | "plans" | "foods" | "pressureCurves"
+  | "seed"
+  | "clock"
+  | "map"
+  | "catalog"
+  | "skills"
+  | "traits"
+  | "plans"
+  | "foods"
+  | "goods"
+  | "pressureCurves"
 > {
   return {
     seed,
@@ -168,6 +185,7 @@ export function resumeParts(
     traits: content.all(TRAITS),
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
+    goods: content.all(GOODS),
     pressureCurves: content.all(PRESSURE_CURVES),
   };
 }
@@ -247,7 +265,12 @@ export function createLife(
   const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
   const materials = content.all(MATERIALS);
   const ledger = new Ledger({
-    externals: { [EATEN]: units, seed: [...units, ...settlementUnits(materials)] },
+    externals: {
+      [EATEN]: units,
+      [HARVEST]: [HARVEST_GOOD],
+      [ROTTED]: units,
+      seed: [...units, COPPER, ...settlementUnits(materials)],
+    },
   });
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
   seedSettlement(truth, ids, log, ledger, {
@@ -285,7 +308,19 @@ export function createLife(
           from: externalAccount("seed"),
           to: holderAccount(h.id),
           amount: h.members.length * LARDER_PER_MEMBER_G,
-        })),
+        }))
+        .concat(
+          pop.households
+            .filter((h) => h.end === null)
+            .flatMap((h) =>
+              h.members.map((m) => ({
+                unit: COPPER,
+                from: externalAccount("seed"),
+                to: holderAccount(m as unknown as HolderRef),
+                amount: COINS_PER_PERSON,
+              })),
+            ),
+        ),
     });
   }
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
@@ -305,6 +340,7 @@ export function createLife(
       traits,
       plans,
       foods,
+      goods: content.all(GOODS),
       pressureCurves: content.all(PRESSURE_CURVES),
     },
     pop.player,

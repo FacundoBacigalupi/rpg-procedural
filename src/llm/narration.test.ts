@@ -161,7 +161,19 @@ function effects(): { verb: string; effect: VerbEffect }[] {
   for (const w of [other, null]) {
     for (const deal of [true, false]) {
       for (const edge of [-0.2, 0, 0.2]) {
-        out.push({ verb: "trade", effect: { kind: "trade", with: w, deal, edge } });
+        out.push({
+          verb: "trade",
+          effect: {
+            kind: "trade",
+            with: w,
+            deal,
+            edge,
+            direction: null,
+            good: null,
+            grams: 0,
+            coins: 0,
+          },
+        });
       }
     }
   }

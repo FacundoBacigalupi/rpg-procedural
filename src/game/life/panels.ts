@@ -12,6 +12,7 @@ import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   BODY_STATE,
   bodySigns,
+  COPPER,
   houseKey,
   LOCATION,
   MEAL_KCAL,
@@ -53,6 +54,8 @@ export interface CharacterPanel {
 }
 
 export interface InventoryPanel {
+  /** Monedas de cobre que lleva (se cuentan, no se estiman). */
+  readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
 }
@@ -130,10 +133,10 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
     (id) => w.truth.get(PERSON, id)?.household === me.household,
   ).length;
   return {
-    carried: holdings(w.player as HolderRef).map((h) => ({
-      good: name(h.unit),
-      amount: amountOf(h.amount),
-    })),
+    coins: holdings(w.player as HolderRef).find((h) => h.unit === COPPER)?.amount ?? 0,
+    carried: holdings(w.player as HolderRef)
+      .filter((h) => h.unit !== COPPER)
+      .map((h) => ({ good: name(h.unit), amount: amountOf(h.amount) })),
     larder: holdings(me.household as unknown as HolderRef).map((h) => ({
       good: name(h.unit),
       lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),

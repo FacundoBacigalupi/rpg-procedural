@@ -132,6 +132,13 @@ export type EffectView =
       readonly deal: boolean;
       /** Cómo cree que le fue con el precio. */
       readonly terms: "good" | "fair" | "poor";
+      /** Lo que se movió, si se movió algo: compró o vendió tanto del bien por tantas monedas. */
+      readonly moved?: {
+        readonly direction: "buy" | "sell";
+        readonly good: string;
+        readonly grams: number;
+        readonly coins: number;
+      };
     }
   | {
       readonly kind: "take";
@@ -373,6 +380,16 @@ function effectView(
         ...(w !== undefined ? { with: w } : {}),
         deal: e.deal,
         terms: termsOf(e.edge),
+        ...(e.direction !== null && e.good !== null
+          ? {
+              moved: {
+                direction: e.direction,
+                good: e.good as string,
+                grams: e.grams,
+                coins: e.coins,
+              },
+            }
+          : {}),
       };
     }
     case "take": {

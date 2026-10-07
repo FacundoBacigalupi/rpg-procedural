@@ -30,6 +30,10 @@ import {
   ENTITY,
   type FoodDef,
   FRESH_CURSOR,
+  type GoodDef,
+  goodUnit,
+  HARVEST_GOOD,
+  HARVEST_GRAMS_PER_HOUR,
   INNATE,
   ingest,
   injure,
@@ -37,6 +41,7 @@ import {
   type LocalMap,
   learnFromAttempt,
   localHour,
+  type Market,
   type Nutrition,
   nearestHex,
   nodeAt,
@@ -101,6 +106,7 @@ export interface ActOptions {
   readonly traits: readonly Trait[];
   readonly bodyPlans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
+  readonly goods: readonly GoodDef[];
   readonly clock: PlanetClock;
 }
 
@@ -197,6 +203,44 @@ interface StepEnv {
   readonly hour: number;
 }
 
+/** Cuántos comen de la despensa de ese hogar. */
+function membersOf(truth: ReadonlyWorldTruth, household: string): number {
+  return Math.max(
+    1,
+    truth
+      .ids(PERSON)
+      .filter(
+        (id) =>
+          truth.get(PERSON, id)?.household === household &&
+          truth.get(ENTITY, id)?.endedAt === undefined,
+      ).length,
+  );
+}
+
+/** Los precios y las casas que `trade` y `work` necesitan para mover bienes (economy §4). */
+function marketOf(
+  truth: ReadonlyWorldTruth,
+  o: ActOptions,
+  me: AgentId,
+  other: EntityRef | null,
+): Market {
+  const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
+  return {
+    priceCopperPerKg: new Map(
+      o.goods.flatMap((g) =>
+        g.priceCopperPerKg === undefined ? [] : [[goodUnit(g), g.priceCopperPerKg] as const],
+      ),
+    ),
+    ownMembers: membersOf(truth, truth.get(PERSON, me)?.household ?? ""),
+    other:
+      otherHome === undefined
+        ? undefined
+        : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
+    harvestGramsPerHour: HARVEST_GRAMS_PER_HOUR,
+    harvestGood: HARVEST_GOOD,
+  };
+}
+
 function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const { me, state, cursor } = e;
   const truth = ctx.truth;
@@ -271,6 +315,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],
     foods: e.foods,
     larder: person.household as unknown as HolderRef,
+    market:
+      node.verb === "trade" || node.verb === "work"
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null)
+        : undefined,
   };
   const r = resolve(input);
 
