@@ -15,7 +15,15 @@ import {
 } from "../../sim/index.ts";
 import type { GameSetup } from "../setup/index.ts";
 import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } from "./act.ts";
-import { createLife, type LifeOptions, type LifeTerrain } from "./create.ts";
+import {
+  anchorOf,
+  createLife,
+  type LifeOptions,
+  type LifeTerrain,
+  lifeTerrain,
+  type ResumeAnchor,
+  resumeParts,
+} from "./create.ts";
 import { alarmingSigns, fixedInterrupt, type Interrupt } from "./interrupts.ts";
 import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
@@ -79,29 +87,56 @@ export interface LifeState {
 
 export class Life {
   readonly #w: LifeWorld;
-  readonly terrain: LifeTerrain;
+  readonly #anchor: ResumeAnchor;
+  #terrain: LifeTerrain | (() => LifeTerrain);
 
-  private constructor(w: LifeWorld, terrain: LifeTerrain) {
+  private constructor(
+    w: LifeWorld,
+    anchor: ResumeAnchor,
+    terrain: LifeTerrain | (() => LifeTerrain),
+  ) {
     this.#w = w;
-    this.terrain = terrain;
+    this.#anchor = anchor;
+    this.#terrain = terrain;
+  }
+
+  /** El planeta y la pre-corrida; al retomar una vida se generan recién cuando alguien los pide. */
+  get terrain(): LifeTerrain {
+    if (typeof this.#terrain === "function") this.#terrain = this.#terrain();
+    return this.#terrain;
+  }
+
+  /** Lo que se guarda con la vida para retomarla sin regenerar el planeta. */
+  get anchor(): ResumeAnchor {
+    return this.#anchor;
   }
 
   static create(seed: Seed, content: Content, options: LifeOptions = {}): Life {
     const { world, terrain } = createLife(seed, content, options);
-    return new Life(world, terrain);
+    return new Life(world, anchorOf(terrain), terrain);
   }
 
-  /** Sigue una vida guardada: lo derivado del seed se rehace, el estado viene de la base. */
+  /**
+   * Sigue una vida guardada: el catálogo se rehace del contenido y el estado viene de la base.
+   * Con el ancla (la que guardó la vida) no se genera el planeta; sin ella (guardados viejos) se
+   * regenera del seed.
+   */
   static resume(
     seed: Seed,
     content: Content,
     saved: Pick<LifeWorld, "truth" | "ids" | "log" | "ledger"> & { scheduler: SchedulerState },
     options: LifeOptions = {},
+    anchor?: ResumeAnchor,
   ): Life {
-    const { world, terrain } = createLife(seed, content, options);
-    const parts: LifeParts = { ...world, ...saved };
-    const resumed = lifeWorld(parts, world.player, terrain.village, saved.scheduler);
-    return new Life(resumed, terrain);
+    if (anchor === undefined) {
+      const { world, terrain } = createLife(seed, content, options);
+      const parts: LifeParts = { ...world, ...saved };
+      const resumed = lifeWorld(parts, world.player, terrain.village, saved.scheduler);
+      return new Life(resumed, anchorOf(terrain), terrain);
+    }
+    const parts: LifeParts = { ...resumeParts(seed, content, anchor), ...saved };
+    const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
+    return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }
 
   get player(): AgentId {

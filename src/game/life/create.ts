@@ -53,7 +53,7 @@ import {
   villageSite,
 } from "../../worldgen/index.ts";
 import { localMapOf } from "./map.ts";
-import { type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
+import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 export interface LifeOptions {
   /** Menos celdas para los tests (frecuencia de la grilla); por defecto la del planeta real. */
@@ -112,6 +112,51 @@ function idsAfter(truth: WorldTruth, log: EventLog): IdAllocator {
     next[kind] = Math.max(next[kind] ?? 1, Number(n) + 1);
   }
   return new IdAllocator(next);
+}
+
+/**
+ * Lo mínimo del terreno que hace falta para seguir una vida guardada: el mapa local, el hex de
+ * la aldea, los hogares vivos al empezar (de ahí salen los espacios) y quién es el personaje.
+ * Se guarda con la vida para que retomar no regenere el planeta; es JSON puro.
+ */
+export interface ResumeAnchor {
+  readonly map: LocalMap;
+  readonly hex: number;
+  readonly households: readonly HouseholdId[];
+  readonly player: AgentId;
+  readonly village: PlaceRef;
+}
+
+export function anchorOf(terrain: LifeTerrain): ResumeAnchor {
+  return {
+    map: terrain.map,
+    hex: terrain.site.hex,
+    households: terrain.population.households.filter((h) => h.end === null).map((h) => h.id),
+    player: terrain.population.player,
+    village: terrain.village,
+  };
+}
+
+/** Lo derivado del seed y del contenido que no se guarda, sin tocar el planeta. */
+export function resumeParts(
+  seed: Seed,
+  content: Content,
+  anchor: ResumeAnchor,
+): Pick<
+  LifeParts,
+  "seed" | "clock" | "map" | "spaces" | "catalog" | "skills" | "traits" | "plans" | "foods"
+> {
+  return {
+    seed,
+    clock: EARTHLIKE_CLOCK,
+    map: anchor.map,
+    spaces: villageSpaces({ hex: anchor.hex, households: anchor.households }),
+    catalog: new ActionCatalog(content.all(ACTIONS), content.all(PLANS)),
+    skills: new SkillCatalog(content.all(SKILLS), content.all(ACTIONS)),
+    traits: content.all(TRAITS),
+    plans: content.all(BODY_PLANS),
+    foods: content.all(FOODS),
+  };
 }
 
 export function createLife(

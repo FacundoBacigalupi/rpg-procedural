@@ -28,6 +28,7 @@ import {
   NARRATION_TEMPLATES,
   optionsOf,
   playerView,
+  type ResumeAnchor,
   type TurnReport,
 } from "../../game/index.ts";
 import {
@@ -227,6 +228,7 @@ function open(store: LifeStore, options: CliOptions, write: (text: string) => vo
       options.content,
       { ...s, ids: new IdAllocator(s.ids) },
       optionsOf(setup),
+      (store.getMeta("anchor") as ResumeAnchor | undefined) ?? undefined,
     );
   }
   const life = Life.create(options.seed, options.content, optionsOf(options.setup));
@@ -234,6 +236,7 @@ function open(store: LifeStore, options: CliOptions, write: (text: string) => vo
   store.setMeta("versions", VERSIONS);
   store.setMeta("mode", options.setup.game.mode);
   store.setMeta("setup", options.setup);
+  store.setMeta("anchor", life.anchor);
   store.save(life.state());
   write(`Empieza una vida en modo ${modeName(options.setup.game.mode)}.\n`);
   return life;
