@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent } from "../../core/index.ts";
+import { type ContentSource, IdAllocator, loadContent } from "../../core/index.ts";
 import {
   BODY_STATE,
   checkInvariants,
@@ -12,6 +12,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { createLife } from "./create.ts";
+import { Life } from "./life.ts";
 import { living, PLAYER } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -60,4 +61,21 @@ describe("la vida real", () => {
     expect(hashState(state(again))).toEqual(hashState(state(world)));
     expect(checkInvariants({ truth: world.truth, log: world.log })).toEqual([]);
   }, 120_000);
+});
+
+describe("retomar una vida", () => {
+  it("con el ancla guardada da la misma vida que regenerando el planeta, sin generarlo", () => {
+    const options = { frequency: 8 };
+    const life = Life.create(7, content, options);
+    const anchor = JSON.parse(JSON.stringify(life.anchor)) as typeof life.anchor;
+    const { truth, log, ledger, ids, scheduler } = life.state();
+    const saved = { truth, log, ledger, ids: new IdAllocator(ids), scheduler };
+    const cached = Life.resume(7, content, saved, options, anchor);
+    const regenerated = Life.resume(7, content, saved, options);
+    expect(cached.hash()).toEqual(regenerated.hash());
+    expect(cached.anchor).toEqual(regenerated.anchor);
+    expect(cached.player).toBe(life.player);
+    // El planeta sigue ahí si alguien lo pide.
+    expect(cached.terrain.site.hex).toBe(anchor.hex);
+  }, 600_000);
 });
