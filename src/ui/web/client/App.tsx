@@ -140,8 +140,20 @@ export function App() {
                 key={o.id}
                 type="button"
                 disabled={busy}
-                onClick={() => play("/api/choose", { id: o.id }, o.label)}
+                className={`tone-${o.tone}`}
+                title={o.toneLabel}
+                aria-label={`${o.label} (${o.toneLabel})`}
+                onClick={() => {
+                  if (
+                    o.confirm &&
+                    !window.confirm(`${o.label}
+(${o.toneLabel}). ¿Seguro?`)
+                  )
+                    return;
+                  play("/api/choose", { id: o.id }, o.label);
+                }}
               >
+                <span className={`icon icon-${o.icon}`} aria-hidden="true" />
                 {o.label}
               </button>
             ))}

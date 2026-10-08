@@ -8,7 +8,16 @@ export interface Panels {
   /** Lo que se nota del lugar, por canal. */
   readonly environment: string;
   /** Las opciones sugeridas; `choose` manda el `id`. */
-  readonly options: readonly { readonly id: string; readonly label: string }[];
+  readonly options: readonly {
+    readonly id: string;
+    readonly label: string;
+    /** Tono (`SuggestionTone`), clave de ícono y etiqueta accesible: viajan aparte de la etiqueta. */
+    readonly tone: string;
+    readonly icon: string;
+    readonly toneLabel: string;
+    /** Las graves piden un segundo toque. */
+    readonly confirm: boolean;
+  }[];
 }
 
 /** Una entrada de la narración guardada: `seq` ordena y sirve para pedir las anteriores. */

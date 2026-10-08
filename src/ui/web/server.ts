@@ -4,7 +4,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { characterPanel, inventoryPanel } from "../../game/index.ts";
+import { characterPanel, inventoryPanel, TONE_ICON, TONE_LABEL } from "../../game/index.ts";
 import {
   renderCharacter,
   renderEnvironment,
@@ -25,7 +25,14 @@ export function panelsOf(session: Session): Panels {
     inventory: renderInventory(inventoryPanel(w)),
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(session.environment()),
-    options: session.suggested().map((o) => ({ id: o.id, label: renderSuggestion(o) })),
+    options: session.suggested().map((o) => ({
+      id: o.id,
+      label: renderSuggestion(o),
+      tone: o.tone,
+      icon: TONE_ICON[o.tone],
+      toneLabel: TONE_LABEL[o.tone],
+      confirm: o.confirm,
+    })),
   };
 }
 

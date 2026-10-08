@@ -2,13 +2,14 @@
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
 import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
-import type {
-  CharacterPanel,
-  EnvironmentItem,
-  HypothesesPanel,
-  Interrupt,
-  InventoryPanel,
-  Suggestion,
+import {
+  type CharacterPanel,
+  type EnvironmentItem,
+  type HypothesesPanel,
+  type Interrupt,
+  type InventoryPanel,
+  type Suggestion,
+  TONE_MARK,
 } from "../game/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
@@ -162,6 +163,12 @@ const SUGGESTION_LABELS: Readonly<Record<Suggestion["kind"], string>> = {
 export function renderSuggestion(s: Suggestion): string {
   const label = SUGGESTION_LABELS[s.kind];
   return s.with === undefined ? label : `${label} tu ${s.with}`;
+}
+
+/** La opción con su marca de tono para la CLI (`[?]`, `[!]`, `[~]`, `[x]`); las corrientes van sin marca. */
+export function renderSuggestionMarked(s: Suggestion): string {
+  const mark = TONE_MARK[s.tone];
+  return mark === "" ? renderSuggestion(s) : `${mark} ${renderSuggestion(s)}`;
 }
 
 const ENVIRONMENT: Readonly<Record<EnvironmentItem["kind"], string>> = {
