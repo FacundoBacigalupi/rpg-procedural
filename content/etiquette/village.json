@@ -1,0 +1,29 @@
+[
+  {
+    "id": "village.address_formal",
+    "name": "hablarle de usted a quien está arriba",
+    "culture": "village",
+    "act": "address",
+    "owedBy": "lower",
+    "minGap": 1,
+    "severity": 0.3
+  },
+  {
+    "id": "village.greet_first",
+    "name": "saludar primero a quien está arriba",
+    "culture": "village",
+    "act": "greet",
+    "owedBy": "lower",
+    "minGap": 1,
+    "severity": 0.2
+  },
+  {
+    "id": "village.uncover_before_landholder",
+    "name": "descubrirse ante el que manda en la aldea",
+    "culture": "village",
+    "act": "greet",
+    "owedBy": "lower",
+    "minGap": 2,
+    "severity": 0.4
+  }
+]
