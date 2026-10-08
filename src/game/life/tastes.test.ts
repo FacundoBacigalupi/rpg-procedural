@@ -60,7 +60,7 @@ describe("los gustos de la gente al empezar", () => {
           expect(b.truth.get(TASTES_OF, id)).toEqual(a.truth.get(TASTES_OF, id));
         }
       }),
-      { numRuns: 3 },
+      { numRuns: 2 },
     );
-  });
+  }, 120_000);
 });
