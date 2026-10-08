@@ -74,6 +74,24 @@ describe("lo que los vecinos creen del personaje", () => {
     );
   }, 180_000);
 
+  it("los vecinos también se perciben entre sí: cada uno cree dónde está el otro", () => {
+    const life = Life.create(7, content);
+    const t = life.world.truth;
+    life.advanceTo(life.now + life.world.clock.day * 3);
+    const folks = living(t).filter((x) => x !== life.player);
+    let found = 0;
+    for (const a of folks) {
+      for (const b of folks) {
+        const bel = a === b ? undefined : believed(t.get(BELIEFS, a), b, "at");
+        if (!bel) continue;
+        found++;
+        expect(bel.sources[0]?.kind).toBe("percept");
+        expect(bel.asOf).toBeLessThanOrEqual(life.now);
+      }
+    }
+    expect(found).toBeGreaterThan(0);
+  }, 180_000);
+
   it("las creencias son de gente viva con ficha y el mundo sigue consistente", () => {
     const life = Life.create(7, content);
     life.advanceTo(life.now + life.world.clock.day * 3);
