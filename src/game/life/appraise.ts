@@ -16,6 +16,7 @@ import {
   appraiseLoss,
   appraiseRearing,
   type BondDef,
+  contactGain,
   type Deltas,
   type DimensionDef,
   defaultDeltas,
@@ -45,6 +46,7 @@ import {
   setComponent,
   spareDeltas,
   stageAt,
+  TALK_FAMILIARITY,
   tendDeltas,
   tradeDeltas,
 } from "../../sim/index.ts";
@@ -125,6 +127,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             if (def.stimulus) apply(doer, e, [{ stimulus: def.stimulus, blame: null }]);
           }
         }
+        if (e.kind === "action.speak") talked(e, truth, rel, move);
         const lent = lentIn(e);
         if (lent) {
           move(lent.creditor, lent.debtor, e, lendDeltas("lender"));
@@ -248,6 +251,26 @@ function fightAppraisals(
         ? finishDeltas()
         : fightDeltas(facts, mind, innate),
     );
+  }
+}
+
+/** Una charla entregada: ambos se conocen un poco más, cada quien según lo que ya se conocía. */
+function talked(
+  e: Event,
+  truth: ReadonlyWorldTruth,
+  rel: (from: AgentId, to: AgentId, e: Event) => ReturnType<typeof relationship>,
+  move: (from: AgentId, to: AgentId, e: Event, deltas: Deltas) => void,
+): void {
+  const [a, b] = e.actors as [AgentId | undefined, AgentId | undefined];
+  const eff = (e.data as { effect?: { kind?: string; delivered?: boolean } } | null)?.effect;
+  if (!a || !b || a === b || eff?.kind !== "speak" || eff.delivered === false) return;
+  if (!alive(truth, a) || !alive(truth, b)) return;
+  for (const [from, to] of [
+    [a, b],
+    [b, a],
+  ] as const) {
+    const gain = contactGain(TALK_FAMILIARITY, rel(from, to, e).dims.familiarity);
+    if (gain > 0) move(from, to, e, { familiarity: gain });
   }
 }
 
