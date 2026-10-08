@@ -18,6 +18,8 @@ import {
   inventoryPanel,
   Life,
   living,
+  MAX_CLEAR_PERCEPTS,
+  playerView,
   PERCEPTS,
   perceiveEvents,
   remember,
@@ -212,4 +214,31 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     expect(Number.isInteger(coins)).toBe(true);
     expect(JSON.stringify(estimated)).not.toMatch(/\d/);
   }, 120_000);
+});
+
+describe("calibración del bucle (Hito 1c)", () => {
+  it("esperando de hora en hora en casa: pocas alarmas, solo de sed, y la escena entra en el tope", () => {
+    const life = Life.create(7, content);
+    const day = life.world.clock.day;
+    const start = life.now;
+    const alarms: string[] = [];
+    let crowded = 0;
+    let turns = 0;
+    while (life.alive && life.now - start < 3 * day) {
+      const r = life.turn(planOf(life, "espero una hora"), turns + 1);
+      turns++;
+      if (r.interrupt?.kind === "body_alarm") {
+        alarms.push(...(r.interrupt.signs ?? []));
+        life.turn(planOf(life, "bebo"), turns + 1000);
+      }
+      const view = playerView(life.world, r.steps);
+      expect(view.percepts.length).toBeLessThanOrEqual(MAX_CLEAR_PERCEPTS + 1);
+      if (view.percepts.length >= MAX_CLEAR_PERCEPTS) crowded++;
+    }
+    // Medido en 4 seeds × 4 días: ~2 alarmas por día, todas de sed (un jugador que no bebe).
+    expect(alarms.length).toBeLessThanOrEqual(3 * 3);
+    expect(new Set(alarms)).toEqual(new Set(["parched"]));
+    // El tope solo aprieta en las escenas más llenas (la casa con toda la familia).
+    expect(crowded).toBeLessThan(turns / 2);
+  }, 240_000);
 });
