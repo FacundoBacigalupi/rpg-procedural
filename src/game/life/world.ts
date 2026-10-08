@@ -52,6 +52,7 @@ import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
+import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
 
 export { living } from "./living.ts";
@@ -157,6 +158,12 @@ export function lifeWorld(
           traits: parts.traits,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,
+        }),
+        testifyProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          traits: parts.traits,
+          placeOf: placeOf(parts, village),
         }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
