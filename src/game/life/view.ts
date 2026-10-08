@@ -3,11 +3,15 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { Rng, type Tick } from "../../core/index.ts";
+import { type AgentId, Rng, type Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
+  BELIEFS,
+  type Beliefs,
   BODY_STATE,
+  beliefConfidenceAt,
+  believed,
   bodySigns,
   houseKey,
   LOCATION,
@@ -21,6 +25,7 @@ import {
   type ReadonlyWorldTruth,
   rainBetween,
   STATUS,
+  sameValue,
   skyLight,
   spaceLight,
   TRACE,
@@ -101,6 +106,37 @@ function digest(percepts: readonly Percept[]): Percept[] {
   return [...clear, ...vague];
 }
 
+/** Confianza mínima (ya envejecida) para dar por reconocido a alguien que cree que está acá. */
+export const RECOGNIZED_CONFIDENCE = 0.2;
+
+/**
+ * Quién es lo que se ve sale de lo que el personaje cree (player-loop §9): si lo vio y lo
+ * reconoció hace poco (`knowing` lo guarda en sus `BELIEFS`), lo reconoce; si no, es alguien de
+ * cara no reconocida (figura y ropa se leen igual, pero sin identidad). Solo al mirar a propósito
+ * (o en la primera escena) reconoce al instante y la mirada se queda con la lectura directa.
+ */
+export function recognizedFromBeliefs(
+  percept: Percept,
+  beliefs: Beliefs | undefined,
+  at: Location,
+  now: Tick,
+): Percept {
+  const who = percept.fields.identity;
+  if (who === undefined || who.value === null || typeof who.value !== "string") return percept;
+  const b = believed(beliefs, who.value as AgentId, "at");
+  if (
+    b !== undefined &&
+    typeof b.value !== "boolean" &&
+    sameValue(b.value, at) &&
+    beliefConfidenceAt(b, now) >= RECOGNIZED_CONFIDENCE
+  ) {
+    return percept;
+  }
+  const { identity: _dropped, ...fields } = percept.fields;
+  const detail = fields.figure !== undefined || fields.words !== undefined ? "clear" : "vague";
+  return { ...percept, detail, fields };
+}
+
 export interface PlayerViewOptions {
   /** Es la primera escena de la sesión: se describe el lugar aunque lo conozca (narration §7). */
   readonly intro?: boolean;
@@ -125,29 +161,31 @@ export function playerView(
   const acq = acquaintances(w);
   const observer = playerObserver(w, attentionOf(steps), now);
   const rng = Rng.root(w.seed).fork("view", now);
+  // Reconoce por lo que cree (BELIEFS); al mirar a propósito o en la primera escena, al instante.
+  const mine = w.truth.get(BELIEFS, w.player);
+  const glancing = options.intro === true || steps.some((s) => s.verb === "look");
   const percepts: Percept[] = [];
   for (const id of living(w.truth)) {
     if (id === w.player) continue;
     const p = w.truth.get(PERSON, id);
     const l = w.truth.get(LOCATION, id);
     if (!p || !l) continue;
-    percepts.push(
-      ...perceive(
-        presenceStimulus({
-          id,
-          at: l,
-          look: {
-            sex: p.sex,
-            ageYears: (now - p.born) / w.clock.year,
-            ...attireLook(w.truth.get(STATUS, id), w.statuses),
-          },
-          tick: now,
-        }),
-        [observer],
-        { graph: w.spaces, forest: w.map.forest, daylight: day },
-        rng,
-      ),
+    const seen = perceive(
+      presenceStimulus({
+        id,
+        at: l,
+        look: {
+          sex: p.sex,
+          ageYears: (now - p.born) / w.clock.year,
+          ...attireLook(w.truth.get(STATUS, id), w.statuses),
+        },
+        tick: now,
+      }),
+      [observer],
+      { graph: w.spaces, forest: w.map.forest, daylight: day },
+      rng,
     );
+    percepts.push(...(glancing ? seen : seen.map((s) => recognizedFromBeliefs(s, mine, l, now))));
   }
 
   // Lo que otros dijeron mientras pasaba el turno (la respuesta de quien te escuchó).
