@@ -72,6 +72,8 @@ export const PracticeDef = z.strictObject({
   goods: z.array(contentId).default([]),
   /** Cada cuántos días se hace; falta si depende de un hecho (una muerte, una cosecha). */
   everyDays: z.number().positive().optional(),
+  /** Gravedad creída de romperla (0-1): el castigo que se espera (§7); 0 si no hay sanción. */
+  sanction: z.number().min(0).max(1).default(0),
   /** Qué creen que consigue: la creencia, no el efecto real (spirits §6 lo resuelve por la física). */
   believedEffect: z.string().min(1),
   /** Qué hace de verdad por la gente (consuelo, cohesión, cara), sin tocar la ley del mundo. */
