@@ -57,6 +57,21 @@ export const Demography = z.strictObject({
     /** Desde qué fracción de la capacidad empieza a bajar la fecundidad. */
     crowdingFrom: z.number().min(0).lt(1),
   }),
+  /**
+   * El hambre: la cosecha del año (media 1, desvío log `sigma`) contra las bocas, con graneros
+   * de `storeYears` años de consumo. Lo que falta es hambre [0, 1]: multiplica la mortalidad
+   * por tramo de edad y baja la fecundidad hasta `fertilityLoss`.
+   */
+  hunger: z.strictObject({
+    sigma: z.number().min(0),
+    /** Fracción de la capacidad de la tierra que una cosecha media alimenta (semilla, diezmo, pérdidas). */
+    feedable: z.number().gt(0).max(1),
+    storeYears: z.number().min(0),
+    fertilityLoss: Prob,
+    mortality: z
+      .array(z.strictObject({ fromAge: z.number().int().min(0), factor: z.number().min(1) }))
+      .refine((xs) => ascending(xs) && xs[0]?.fromAge === 0, "tramos desordenados o sin el de 0"),
+  }),
 });
 export type Demography = z.infer<typeof Demography>;
 

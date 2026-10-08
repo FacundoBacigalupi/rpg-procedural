@@ -172,6 +172,25 @@ describe("pre-corrida de la aldea", () => {
     }
   }, 120_000);
 
+  it("los años flacos existen, son minoría y cada muerte de hambre cita el suyo", () => {
+    let lean = 0;
+    let starved = 0;
+    let deaths = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const v = village(seed);
+      const log = EventLog.from(v.events);
+      lean += v.events.filter((e) => e.kind === "family.lean_year").length;
+      for (const e of v.events.filter((e) => e.kind === "person.died")) {
+        deaths++;
+        if ((e.data as { of?: string }).of !== "hunger") continue;
+        starved++;
+        expect(log.ancestors(e.id).some((a) => log.get(a)?.kind === "family.lean_year")).toBe(true);
+      }
+    }
+    expect(lean).toBeGreaterThan(0);
+    expect(starved).toBeLessThan(deaths * 0.4);
+  }, 240_000);
+
   it("mismo seed, misma aldea", () => {
     const planet = generatePlanet({ seed: 2, biomes: content.all(BIOMES) });
     const again = villagePopulation({ seed: 2, site: villageSite(planet), traits, demography });
