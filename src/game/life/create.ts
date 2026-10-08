@@ -75,6 +75,7 @@ import {
   seedCulture,
   seedMinds,
   seedParcels,
+  seedPeopleCulture,
   seedPersonNames,
   seedPlaceNames,
   seedRelations,
@@ -385,12 +386,20 @@ export function createLife(
   // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
   const culture = content.all(CULTURES).find((c) => c.id === "village");
   if (!culture) throw new Error("falta contenido: cultura village");
-  seedCulture(truth, ids, log, {
+  const community = seedCulture(truth, ids, log, {
     settlement,
     place: terrain.village,
     now: pop.now,
     foundersEvent: pop.foundersEvent,
     culture,
+    traits: content.all(CULTURE_TRAITS),
+  });
+  // Lo que cada uno sigue de ella: los hijos copian a sus padres (culture §4).
+  seedPeopleCulture(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    community,
     traits: content.all(CULTURE_TRAITS),
   });
   // La religión popular, parte de esa cultura: ancestros, el pozo, una fiesta, tabúes (religion §2, §6).
