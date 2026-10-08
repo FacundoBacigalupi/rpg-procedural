@@ -15,9 +15,11 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
+  type BondDef,
   CREDIT,
   type Credit,
   callName,
+  type DimensionDef,
   decideReply,
   deleteComponent,
   dominantVariant,
@@ -32,12 +34,15 @@ import {
   type Lexicon,
   LOCATION,
   liveBetween,
+  MIND,
   PERSON,
   PERSON_NAME,
   type ProcessContext,
   type ProcessDef,
+  RELATIONS,
   type ReadonlyWorldTruth,
   rankOf,
+  relationship,
   type ScheduleRequest,
   type SpaceGraph,
   type SpeechLine,
@@ -68,6 +73,9 @@ export interface ConverseOptions {
   readonly catalog: ActionCatalog;
   readonly goods: readonly GoodDef[];
   readonly statuses: readonly StatusDef[];
+  /** Las dimensiones y vínculos para leer lo que el oyente siente por quien habla. */
+  readonly dims: readonly DimensionDef[];
+  readonly bonds: readonly BondDef[];
   readonly lines: readonly SpeechLine[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por día de mundo (los plazos del fiado se cuentan en días). */
@@ -196,6 +204,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       PENDING.name,
       HEARD.name,
       KNOWN_DEEDS.name,
+      RELATIONS.name,
+      MIND.name,
       CREDIT.name,
       PERSON.name,
       PERSON_NAME.name,
@@ -236,8 +246,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           act: understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity),
           speaker,
           listener: me,
-          kin: householdOf(truth, speaker) === home,
-          formal: above,
+          feel: relationship(truth.get(RELATIONS, me), speaker, ctx.now, {
+            dims: o.dims,
+            bonds: o.bonds,
+            schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
+          }).dims,
+          rankAbove: above,
           direct: (id) => {
             if (householdOf(truth, id) !== home && !sameSpot(truth, id, me)) return null;
             if (!alive(truth, id)) return { dead: true };

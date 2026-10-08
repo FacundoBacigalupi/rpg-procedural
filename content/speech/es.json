@@ -129,6 +129,14 @@
     "formal": ["No le daré {what}; no cumplió con lo anterior."]
   },
   {
+    "id": "request.refuse.grudge",
+    "lines": [
+      "¿{what}? De vos no quiero ni verte.",
+      "No te doy {what}. Entre vos y yo hay cuentas."
+    ],
+    "formal": ["No le daré {what}; no confío en usted."]
+  },
+  {
     "id": "request.refuse.theft",
     "lines": [
       "¿Darte {what}? Ni loco, después de lo que hiciste.",

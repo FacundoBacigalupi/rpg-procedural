@@ -148,6 +148,8 @@ export function lifeWorld(
           catalog: parts.catalog,
           goods: parts.goods,
           statuses: parts.statuses,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
           lines: parts.speech,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,

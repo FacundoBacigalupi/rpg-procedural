@@ -17,6 +17,10 @@ import {
   LOCATION,
   PERSON,
   PERSON_NAME,
+  RELATION_BONDS,
+  RELATION_DIMS,
+  RELATIONS,
+  relationship,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -102,14 +106,35 @@ describe("hablar con alguien de la casa", () => {
     const report = life.turn(say(me, other, "Dame un poco de grano"), 1);
     const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
     const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
-    expect(["request.give", "request.short"]).toContain(line);
-    if (line === "request.give") {
+    expect(["request.give", "request.credit", "request.short"]).toContain(line);
+    if (line === "request.give" || line === "request.credit") {
       expect(w.ledger.balance(mine, grain)).toBeGreaterThan(got0);
       expect(w.ledger.balance(larder, grain)).toBeLessThan(stock);
     }
     expect(w.ledger.total(grain)).toBe(before);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 60_000);
+
+  it("el rencor del oyente cierra el pedido aunque sea de la casa", () => {
+    const { life, w, me, other } = scene(7);
+    const dims = {
+      dims: content.all(RELATION_DIMS),
+      bonds: content.all(RELATION_BONDS),
+      schemaStrength: () => 0,
+    };
+    const rel = relationship(w.truth.get(RELATIONS, other), me, life.now, dims);
+    const toward = { ...(w.truth.get(RELATIONS, other)?.toward ?? {}) };
+    toward[me] = { ...rel, dims: { ...rel.dims, resentment: 0.8 } };
+    const row = w.truth.get(RELATIONS, other);
+    w.truth.set(RELATIONS, other, {
+      toward,
+      originEventId: row?.originEventId ?? (w.log.all()[0]?.id as never),
+    });
+    const report = life.turn(say(me, other, "Dame un poco de grano"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
+    expect(line).toBe("request.refuse.grudge");
   }, 60_000);
 
   it("no toma como dicho lo que contradice lo que ve", () => {
