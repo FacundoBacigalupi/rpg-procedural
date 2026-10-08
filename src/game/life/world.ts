@@ -44,6 +44,7 @@ import { companyProcess } from "./company.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
+import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
@@ -190,6 +191,16 @@ export function lifeWorld(
           habits: parts.habits,
         }),
         companyProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+        }),
+        knowingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
         }),

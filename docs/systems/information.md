@@ -194,6 +194,8 @@ El mapa del jugador (y el de cada NPC) es un **conjunto de creencias** `location
 - **Fase 6:** espías, corredores de información, propaganda, secretos de organizaciones con niveles de acceso, cifrados.
 - **Fase 7:** conocimiento colectivo → mitos a escala de siglos.
 
+- **Hecho (2026-10-08), primer paso de la Fase 2:** `sim/knowledge` con el almacén `BELIEFS` (una creencia por proposición y por quien cree, sin `BeliefId`: la clave es `kind:subject:attr`), `revise`/`learn`, decaimiento perezoso de confianza y saliencia, y `isMistaken` contra la verdad. Proposiciones: `attr` `at` y `alive` de una persona. El proceso `life.knowing` (hora, fase `perceive`) hace que los vecinos que ven al personaje se formen creencias sobre él; se quedan falsas cuando se va. Faltan los demás moldes, la inferencia, `told` y los rumores (Fase 3).
+
 ## Tests
 - Determinismo: mismo seed y mismas acciones dan las mismas creencias y los mismos rumores deformados.
 - Ninguna creencia sin fuente (percept, inferencia, transmisión o texto), y ninguna transmisión sin un evento de comunicación con un medio físico.
