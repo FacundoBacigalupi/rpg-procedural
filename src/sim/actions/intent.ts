@@ -168,10 +168,31 @@ export const DraftPlanNode: z.ZodType<DraftPlanNode> = z.discriminatedUnion("kin
   }),
 ]);
 
+/**
+ * Lo que el jugador quiere lograr al hablar, como acto de habla declarado (dialogue §2, actions §4):
+ * saludar, preguntar por alguien, pedir algo, contar que alguien murió o sigue vivo, prometer.
+ * Es la intención del que habla, no lo que el oyente va a entender: ese entiende las palabras.
+ */
+export const DraftAct = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("greet") }),
+  z.strictObject({ kind: z.literal("farewell") }),
+  z.strictObject({ kind: z.literal("ask"), about: RefDescription.optional() }),
+  z.strictObject({ kind: z.literal("request"), what: text.optional() }),
+  z.strictObject({
+    kind: z.literal("tell"),
+    about: RefDescription,
+    claim: z.enum(["dead", "alive"]),
+  }),
+  z.strictObject({ kind: z.literal("promise"), what: text.optional() }),
+]);
+export type DraftAct = z.infer<typeof DraftAct>;
+
 /** Lo que dice el personaje, textual (dialogue §14): la sim arma el acto de habla. */
 export const SpeechDraft = z.strictObject({
   text: z.string().trim().min(1).max(2000),
   to: RefDescription.optional(),
+  /** El acto que declara (opcional: sin él, el oyente entiende solo las palabras). */
+  act: DraftAct.optional(),
   manner: z.array(contentId).max(8).optional(),
 });
 export type SpeechDraft = z.infer<typeof SpeechDraft>;

@@ -222,6 +222,23 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       .strictObject({
         text: SpeechDraft.shape.text,
         to: refSchema(REF_KINDS.person).optional(),
+        act: z
+          .discriminatedUnion("kind", [
+            z.strictObject({ kind: z.literal("greet") }),
+            z.strictObject({ kind: z.literal("farewell") }),
+            z.strictObject({
+              kind: z.literal("ask"),
+              about: refSchema(REF_KINDS.person).optional(),
+            }),
+            z.strictObject({ kind: z.literal("request"), what: DraftText.optional() }),
+            z.strictObject({
+              kind: z.literal("tell"),
+              about: refSchema(REF_KINDS.person),
+              claim: z.enum(["dead", "alive"]),
+            }),
+            z.strictObject({ kind: z.literal("promise"), what: DraftText.optional() }),
+          ])
+          .optional(),
         ...(speakManners.length > 0
           ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
           : {}),

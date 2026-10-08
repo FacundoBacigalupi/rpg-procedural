@@ -59,6 +59,7 @@ import {
   SUCCESS_MARGIN,
 } from "./attempt.ts";
 import type { FactorKey, FailureModeId } from "./catalog.ts";
+import type { SpeakAct } from "./plan.ts";
 import { refTokens } from "./refs.ts";
 
 /** Lo que pesa en el rumbo de un tramo: la visibilidad y los hitos que se ven (travel §11.3). */
@@ -208,6 +209,8 @@ export type VerbEffect =
       /** Cuán claro salió, 0-1: dialogue lo usa para lo que el otro entiende. */
       readonly clarity: number;
       readonly text: string | null;
+      /** El acto que declaró quien habla (dialogue §2): su intención, no lo que el otro entiende. */
+      readonly act?: SpeakAct | null;
     }
   | {
       readonly kind: "strike";
@@ -743,7 +746,14 @@ const speak: Resolver = (c) => {
   const m = c.roll.margin;
   const delivered = m !== null && !(m < PARTIAL_MARGIN && c.roll.failure === "hesitate");
   return {
-    effect: { kind: "speak", to, delivered, clarity: delivered ? c.degree : 0, text },
+    effect: {
+      kind: "speak",
+      to,
+      delivered,
+      clarity: delivered ? c.degree : 0,
+      text,
+      act: actOf(c, "content"),
+    },
     // Si no lo dijo, se fue antes.
     seconds: delivered ? c.nominal : c.nominal / 3,
   };
@@ -1334,6 +1344,11 @@ function argEntity(c: Ctx, role: string): EntityRef | null {
 function argText(c: Ctx, role: string): string | null {
   const a = c.input.node.args.find((x) => x.role === role);
   return a && "text" in a ? a.text : null;
+}
+
+function actOf(c: Ctx, role: string): SpeakAct | null {
+  const a = c.input.node.args.find((x) => x.role === role);
+  return a && "text" in a ? (a.act ?? null) : null;
 }
 
 function unique<T>(xs: readonly T[]): T[] {
