@@ -248,6 +248,7 @@ export function resumeParts(
   | "goods"
   | "recipes"
   | "statuses"
+  | "cultureTraits"
   | "speech"
   | "pressureCurves"
   | "schemas"
@@ -269,6 +270,7 @@ export function resumeParts(
     goods: content.all(GOODS),
     recipes: content.all(RECIPES),
     statuses: content.all(STATUSES),
+    cultureTraits: content.all(CULTURE_TRAITS),
     speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
     schemas: content.all(SCHEMAS),
@@ -557,6 +559,7 @@ export function createLife(
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
       statuses: content.all(STATUSES),
+      cultureTraits: content.all(CULTURE_TRAITS),
       speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
       schemas: content.all(SCHEMAS),

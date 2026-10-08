@@ -35,6 +35,7 @@ import {
   type StageDef,
   type StatusDef,
   type Trait,
+  type TraitDef,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
@@ -77,6 +78,7 @@ export interface LifeWorld {
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
+  readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly schemas: readonly SchemaDef[];
@@ -122,6 +124,7 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           statuses: parts.statuses,
+          cultureTraits: parts.cultureTraits,
         }),
         deedsProcess({
           map: parts.map,

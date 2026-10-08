@@ -4,6 +4,7 @@ export * from "./create.ts";
 export * from "./divine.ts";
 export * from "./environment.ts";
 export * from "./hypotheses.ts";
+export * from "./identity.ts";
 export * from "./interrupts.ts";
 export * from "./known.ts";
 export * from "./life.ts";
