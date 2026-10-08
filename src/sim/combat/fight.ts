@@ -34,6 +34,12 @@ export interface FighterInput {
   readonly z: Readonly<Record<string, number>>;
   /** 0-1: el nivel de pelea (la habilidad de `brawling`). */
   readonly skill: number;
+  /** 0-1: el ojo entrenado (faceta `reading`); si falta, se usa `skill`. Solo en peleas con lectura. */
+  readonly eye?: number;
+  /** 0-1: familiaridad con el estilo de los rivales (skills §2.3). Solo en peleas con lectura. */
+  readonly familiarity?: number;
+  /** 0-1: cuánto esconde su nivel (combat §5). Solo en peleas con lectura. */
+  readonly hides?: number;
   readonly intent: FightIntent;
   readonly at: Vec2;
   /** No sabe que lo van a atacar: no se defiende hasta que lo golpean o ve venir un golpe. */
@@ -174,6 +180,9 @@ interface State {
   caps: BodyCapabilities;
   readonly z: Readonly<Record<string, number>>;
   readonly skill: number;
+  readonly eye: number;
+  readonly familiarity: number;
+  readonly hides: number;
   readonly intent: FightIntent;
   at: Vec2;
   phase: Phase;
@@ -267,6 +276,9 @@ export function runFight(input: FightInput): FightResult {
       caps: capabilitiesOf(f.plan, body),
       z: f.z,
       skill: clamp01(f.skill),
+      eye: clamp01(f.eye ?? f.skill),
+      familiarity: clamp01(f.familiarity ?? 0),
+      hides: clamp01(f.hides ?? 0),
       intent: f.intent,
       at: f.at,
       phase: "ready",
@@ -454,7 +466,12 @@ export function runFight(input: FightInput): FightResult {
             // Preparación falsa: gasta tiempo y el defensor la compra o la lee (combat §5).
             const res = resolveFeint(
               { skill: s.skill },
-              { sight: rival.caps.sight, skill: rival.skill, alert: rival.alert },
+              {
+                sight: rival.caps.sight,
+                skill: rival.eye,
+                alert: rival.alert,
+                familiarity: rival.familiarity,
+              },
               input.light,
               input.rng.fork("fight", base + pulse, s.id, "feint"),
             );
@@ -607,12 +624,13 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
         rival.caps.cognition) /
       4;
     s.read = readRival(
-      { sight: s.caps.sight, skill: s.skill },
+      { sight: s.caps.sight, skill: s.eye, familiarity: s.familiarity },
       {
         power: powerOf(rival),
         breath: rival.breath,
         hurt: clamp01(1 - base),
         fear: clamp01(1 - 2 * rival.odds),
+        hides: rival.hides,
       },
       input.light,
       input.rng.fork("fight", t, s.id, "read"),
