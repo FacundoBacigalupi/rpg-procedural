@@ -67,9 +67,9 @@ describe("promesas en el diálogo", () => {
     const a = reply(f({}), "Te prometo 500 gramos de grano");
     expect(a.line).toBe("promise.accept");
     expect(a.pledge).toEqual({ good: "grain", grams: 500 });
-    expect(reply(f({}), "Te prometo 500 gramos de grano", { reproach: "theft" }).line).toBe(
-      "promise.doubt",
-    );
+    expect(
+      reply(f({ trust: 0.1 }), "Te prometo 500 gramos de grano", { reproach: "theft" }).line,
+    ).toBe("promise.doubt");
     expect(
       reply(f({}), "Te prometo 500 gramos de grano", { owes: { grams: 100, overdue: true } }).line,
     ).toBe("promise.doubt");

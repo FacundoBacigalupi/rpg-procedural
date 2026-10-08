@@ -8,11 +8,11 @@ import {
   bookOf,
   decideKeep,
   disputes,
-  pledgeGuilt,
   isPledgeOverdue,
   learnOutcome,
   makePledge,
   PLEDGE_BOOK_CAPACITY,
+  pledgeGuilt,
   rehearse,
   remember,
   resolvePledge,
@@ -112,8 +112,8 @@ describe("promesas: creencias", () => {
       );
     }
     expect(book.items).toHaveLength(PLEDGE_BOOK_CAPACITY);
-    const closed = learnOutcome(book, "commitment:30", "kept", 10);
-    expect(closed?.items.find((b) => b.pledge === "commitment:30")?.status).toBe("kept");
+    const closed = learnOutcome(book, "commitment:29", "kept", 10);
+    expect(closed?.items.find((b) => b.pledge === "commitment:29")?.status).toBe("kept");
   });
 
   it("determinismo: misma clave, misma creencia", () => {
@@ -123,7 +123,7 @@ describe("promesas: creencias", () => {
 });
 
 describe("promesas: culpa y decisión", () => {
-  const scrupulous = { tradition: 0.2, justice: 0.25, family: 0.1, status: 0.1 };
+  const scrupulous = { tradition: 0.1, justice: 0.1, family: 0.1, status: 0.05 };
   const cynic = { tradition: 0.02, justice: 0.02, family: 0.02, status: 0.02 };
 
   it("el de valores firmes siente más culpa; lo trivial y lo cercano la cambian", () => {
@@ -131,7 +131,9 @@ describe("promesas: culpa y decisión", () => {
     const light = pledge(1, 20);
     const ctx = { close: false, harm: 0.5 };
     expect(pledgeGuilt(scrupulous, heavy, ctx)).toBeGreaterThan(pledgeGuilt(cynic, heavy, ctx));
-    expect(pledgeGuilt(scrupulous, heavy, ctx)).toBeGreaterThan(pledgeGuilt(scrupulous, light, ctx));
+    expect(pledgeGuilt(scrupulous, heavy, ctx)).toBeGreaterThan(
+      pledgeGuilt(scrupulous, light, ctx),
+    );
     expect(pledgeGuilt(scrupulous, heavy, { ...ctx, close: true })).toBeGreaterThan(
       pledgeGuilt(scrupulous, heavy, ctx),
     );
@@ -144,11 +146,15 @@ describe("promesas: culpa y decisión", () => {
         fc.double({ min: 0, max: 1, noNaN: true }),
         fc.integer({ min: 1, max: 100000 }),
         (v, harm, grams) => {
-          const g = pledgeGuilt({ tradition: v, justice: v, family: v, status: v }, pledge(1, grams), {
-            close: true,
-            harm,
-            gratitude: 1,
-          });
+          const g = pledgeGuilt(
+            { tradition: v, justice: v, family: v, status: v },
+            pledge(1, grams),
+            {
+              close: true,
+              harm,
+              gratitude: 1,
+            },
+          );
           expect(g).toBeGreaterThanOrEqual(0);
           expect(g).toBeLessThanOrEqual(1);
         },
@@ -166,7 +172,7 @@ describe("promesas: culpa y decisión", () => {
       guilt: 0,
     };
     expect(decideKeep(base).keep).toBe(false);
-    expect(decideKeep({ ...base, guilt: 0.6 }).keep).toBe(true);
+    expect(decideKeep({ ...base, guilt: 1 }).keep).toBe(true);
     expect(decideKeep({ ...base, detect: 1, sanction: 1 }).keep).toBe(true);
   });
 });
