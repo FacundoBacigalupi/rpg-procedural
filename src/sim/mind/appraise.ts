@@ -5,11 +5,12 @@
 // peligroso se sorprende menos de que le peguen) y lo que confirma lo que cree pesa más.
 //
 // Hoy interpreta peleas y la muerte de un familiar; el hambre, la crianza y el resto de los
-// eventos llegan con los ítems siguientes. Las emociones y los cambios de relación
-// (`relationshipDeltas`) quedan fuera de este paso.
+// eventos llegan con los ítems siguientes. Las emociones quedan fuera de este paso; los cambios
+// de relación (`relationshipDeltas`) de peleas, remates y perdones salen de `fightDeltas` y afines.
 
 import type { AgentId } from "../../core/index.ts";
 import type { Innate } from "../family/index.ts";
+import type { Deltas } from "../relations/index.ts";
 import type { FormativeStimulus, Mind } from "./mind.ts";
 
 export interface Appraised {
@@ -187,4 +188,74 @@ export function appraiseRearing(facts: RearingFacts, mind: Mind, innate: Innate)
     });
   }
   return out;
+}
+
+/** Cambios de relación de una pelea: lo que `me` siente por el rival según lo que vivió. */
+export const FIGHT_RESENTMENT = 0.6;
+export const FIGHT_FEAR = 0.5;
+export const FIGHT_DISTRUST = 0.5;
+export const FIGHT_COLD = 0.4;
+/** Contacto: cada pelea, perdón o remate sostiene un poco la familiaridad. */
+export const FIGHT_FAMILIARITY = 0.05;
+/** El remate a quien se rindió pesa esta fracción de una herida máxima, en las cuatro dimensiones. */
+export const FINISH_SHOCK = 0.9;
+/** Lo que deja ser perdonado: gratitud y alivio. */
+export const SPARED_GRATITUDE = 0.4;
+export const SPARED_RELIEF = 0.15;
+
+function rounded(d: Deltas): Deltas {
+  return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, round(v as number)]));
+}
+
+/** Cómo cambia lo que `me` siente por `foe` tras una pelea (pura; los esquemas y la audacia filtran). */
+export function fightDeltas(facts: FightFacts, mind: Mind, innate: Innate): Deltas {
+  const w = clamp01(facts.worst);
+  const bold = 1 - 0.5 * Math.max(0, innate["boldness"] ?? 0);
+  if (facts.role === "aggressor") {
+    // Quien perdió aprende a respetar y a temer; quien ganó apenas se mueve.
+    if (!facts.standing) {
+      return rounded({
+        familiarity: FIGHT_FAMILIARITY,
+        respect: 0.1,
+        fear: 0.2 * bold,
+        resentment: 0.1,
+      });
+    }
+    return rounded({ familiarity: FIGHT_FAMILIARITY, affection: -0.1 * w * (facts.kin ? 2 : 1) });
+  }
+  if (w <= 0) return rounded({ familiarity: FIGHT_FAMILIARITY });
+  const wary = 1 - EXPECTED_DAMPING * strength(mind, "people_are_untrustworthy");
+  const kin = facts.kin ? 1.5 : 1;
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    resentment: 0.15 + FIGHT_RESENTMENT * w,
+    trust: -(0.1 + FIGHT_DISTRUST * w) * wary * kin,
+    affection: -(0.1 + FIGHT_COLD * w) * kin,
+    fear: (0.1 + FIGHT_FEAR * w) * bold * (facts.standing ? 0.5 : 1),
+  });
+}
+
+/** Lo que siente por quien lo remató el que se había rendido. */
+export function finishDeltas(): Deltas {
+  const s = FINISH_SHOCK;
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    resentment: 0.6 * s,
+    trust: -0.6 * s,
+    affection: -0.5 * s,
+    fear: 0.7 * s,
+  });
+}
+
+/** Lo que siente por quien lo perdonó el que se había rendido, y quien perdona por el perdonado. */
+export function spareDeltas(role: "spared" | "sparer"): Deltas {
+  if (role === "sparer") return rounded({ familiarity: FIGHT_FAMILIARITY, respect: 0.05 });
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    gratitude: SPARED_GRATITUDE,
+    trust: 0.1,
+    respect: 0.1,
+    fear: -SPARED_RELIEF,
+    resentment: -SPARED_RELIEF,
+  });
 }
