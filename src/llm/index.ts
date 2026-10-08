@@ -12,3 +12,4 @@ export * from "./narrator.ts";
 export * from "./parser.ts";
 export * from "./templates.ts";
 export * from "./validate.ts";
+export * from "./voice.ts";

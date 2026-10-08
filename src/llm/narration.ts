@@ -7,6 +7,7 @@
 import type { LocalLabel, PlayerView } from "../game/index.ts";
 import type { NarrationPrefs } from "./config.ts";
 import type { ContinuityView } from "./continuity.ts";
+import { type LexiconView, MOOD_TONE, REGISTER_TONE, type VoiceView } from "./voice.ts";
 
 export type NarrationMode = "scene" | "action" | "dialogue" | "introspection";
 
@@ -27,6 +28,10 @@ export interface NarrationRequest {
   readonly style: StyleSettings;
   /** Lo ya narrado y cómo se nombró a cada uno (narration §6); falta en el primer turno. */
   readonly continuity?: ContinuityView;
+  /** Cómo habla y mira el personaje (narration §4); falta si no se conoce. */
+  readonly voice?: VoiceView;
+  /** Los términos técnicos que conoce y los que dice con otras palabras. */
+  readonly vocabulary?: LexiconView;
 }
 
 /** El modo sale de lo que pasó: un golpe es acción; lo dicho, diálogo; el resto, escena. */
@@ -73,8 +78,11 @@ export function narrationRequest(
   view: PlayerView,
   style: StyleSettings,
   ambience: readonly string[] = [],
+  character: { readonly voice?: VoiceView; readonly vocabulary?: LexiconView } = {},
 ): NarrationRequest {
   return {
+    ...(character.voice !== undefined ? { voice: character.voice } : {}),
+    ...(character.vocabulary !== undefined ? { vocabulary: character.vocabulary } : {}),
     view,
     mode: narrationMode(view),
     mustMention: mustMentionOf(view),
@@ -117,6 +125,10 @@ export function narratorSystem(style: StyleSettings): string {
     "- `thoughts` are what the character remembers, ponders or feels (mode `introspection`): write",
     "  it from inside, quiet and slow, with little description of the surroundings. Say only the",
     "  `mood` given; do not invent memories, causes or facts about the person they think of.",
+    "- `vocabulary.use` are the technical words the character knows. For each `vocabulary.avoid`",
+    "  entry, never write its `term`: say what the character sees (`say`) instead.",
+    "- `voice` is how the character speaks and notices: `register` sets the words, `trade` what they",
+    "  notice first, `mood` colors only the tone. Never add facts because of the mood.",
     "- `ambience` are textures you may use; you may also leave them out.",
     "- Quote heard words exactly as in `words` or `text`.",
     DETAIL[style.detail],
@@ -150,6 +162,16 @@ export function narratorUserMessage(request: NarrationRequest): string {
     lexicon: v.lexicon,
     mustMention: request.mustMention,
     ambience: request.ambience,
+    ...(request.voice !== undefined
+      ? {
+          voice: {
+            ...request.voice,
+            register: REGISTER_TONE[request.voice.register],
+            ...(request.voice.mood !== undefined ? { mood: MOOD_TONE[request.voice.mood] } : {}),
+          },
+        }
+      : {}),
+    ...(request.vocabulary !== undefined ? { vocabulary: request.vocabulary } : {}),
     ...(request.continuity !== undefined ? { continuity: request.continuity } : {}),
   });
 }
