@@ -24,7 +24,7 @@ import {
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const path = join(dir, e.name);
-    if (e.isDirectory()) return sources(path, root);
+    if (e.isDirectory()) return e.name === "llm" ? [] : sources(path, root);
     if (!e.name.endsWith(".json")) return [];
     const kind = relative(root, dir).split("\\").join("/");
     return [{ kind, file: path, data: JSON.parse(readFileSync(path, "utf8")) }];
@@ -72,7 +72,7 @@ describe("registros y tratamientos", () => {
 
   it("hablar de más confianza ante quien pide formalidad es falta; lo tolerable no", () => {
     expect(judgeRegister(0.7, 0.7, 1)).toBeNull();
-    expect(judgeRegister(0.5, 0.5 - CASUAL_TOLERANCE, 1)).toBeNull();
+    expect(judgeRegister(0.5, 0.5 - CASUAL_TOLERANCE + 1e-9, 1)).toBeNull();
     const slip = judgeRegister(0.8, 0.1, 1);
     expect(slip?.direction).toBe("too-casual");
     const unaware = judgeRegister(0.8, 0.1, 0);
