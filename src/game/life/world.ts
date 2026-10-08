@@ -49,6 +49,7 @@ import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
+import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { upbringingProcess } from "./upbringing.ts";
@@ -191,6 +192,15 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           habits: parts.habits,
+        }),
+        sleepProcess({
+          clock: parts.clock,
+          seed: parts.seed,
+          schemas: parts.schemas,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          ambientOf: ambientOf(parts),
+          placeOf: placeOf(parts, village),
         }),
         observeProcess({ clock: parts.clock, map: parts.map }),
         companyProcess({
