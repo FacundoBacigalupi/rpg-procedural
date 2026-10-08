@@ -30,6 +30,7 @@ import {
 } from "../../sim/index.ts";
 import { buildPlayerView, type PlayerView, type SceneMark, type SelfCue } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
+import { PERCEPTS } from "./perceive.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -103,6 +104,8 @@ function digest(percepts: readonly Percept[]): Percept[] {
 export interface PlayerViewOptions {
   /** Es la primera escena de la sesión: se describe el lugar aunque lo conozca (narration §7). */
   readonly intro?: boolean;
+  /** Lo que se dijo cerca desde este tick (lo guardado por la fase `perceive`) entra en la escena. */
+  readonly heardSince?: Tick;
 }
 
 export function playerView(
@@ -145,6 +148,15 @@ export function playerView(
         rng,
       ),
     );
+  }
+
+  // Lo que otros dijeron mientras pasaba el turno (la respuesta de quien te escuchó).
+  if (options.heardSince !== undefined) {
+    const since = options.heardSince;
+    for (const p of w.truth.get(PERCEPTS, w.player)?.recent ?? []) {
+      const said = p.fields.words?.value;
+      if (p.tick > since && typeof said === "string" && said.length > 0) percepts.push(p);
+    }
   }
 
   const plan = w.plans.find((p) => p.id === body.plan);

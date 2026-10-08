@@ -129,3 +129,21 @@ describe("hablar con alguien de la casa", () => {
     expect(run()).toEqual(run());
   }, 60_000);
 });
+
+describe("hablarle a alguien sin decir nada", () => {
+  it("el oyente lo toma como un saludo y contesta", () => {
+    const { life, me, other } = scene(7);
+    const report = life.turn(
+      {
+        actor: me,
+        source: "player",
+        root: { kind: "do", verb: "speak", args: [{ role: "to", entity: other }], manner: [] },
+        manner: [],
+        causes: [{ kind: "state", entity: me, key: "intent" }],
+      },
+      1,
+    );
+    const reply = report.events.find((e) => e.kind === "action.speak" && e.actors[0] === other);
+    expect((reply?.data as { effect: { reply: string } } | undefined)?.effect.reply).toBe("greet");
+  }, 60_000);
+});

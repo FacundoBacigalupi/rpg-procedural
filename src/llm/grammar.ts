@@ -213,7 +213,8 @@ function speakClause(raw: string, ctx: Ctx): Clause | null {
   if (!SPEAK.test(t)) return null;
   const pide = /^le\s+pido\b/i.test(t);
   const asks = /^le\s+pregunto\b/i.test(t);
-  let rest = t.replace(SPEAK, "").trim();
+  // "hablo con X": el "con" se queda para que se lea a quién.
+  let rest = t.replace(SPEAK, (m) => (/\bcon$/i.test(m) ? "con" : "")).trim();
   // A quién: "al herrero", "a la vendedora", "con Wu".
   let to: RefDescription | undefined;
   const addressee = /^(?:al|a la|a los|a las|a|con)\s+/i.exec(rest);

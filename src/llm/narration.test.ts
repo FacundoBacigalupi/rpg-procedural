@@ -401,3 +401,14 @@ describe("narrador", () => {
     expect(narratorUserMessage(request)).not.toMatch(/agent:|place:|mistaken|confidence/);
   });
 });
+
+describe("hablo con alguien", () => {
+  it("lee a quién y no toma el nombre como lo dicho", async () => {
+    const { parseCommand } = await import("./grammar.ts");
+    const draft = parseCommand("hablo con mi padre");
+    expect(draft?.kind).toBe("act");
+    const speech = draft && "speech" in draft ? draft.speech : undefined;
+    expect(speech?.text).toBe("…");
+    expect(speech?.to?.relation?.rel).toBe("padre");
+  });
+});
