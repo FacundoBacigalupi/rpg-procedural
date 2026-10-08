@@ -84,9 +84,11 @@ import {
   seedSettlement,
   seedSkills,
   seedStatus,
+  seedTastes,
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  TASTES,
   TENURES,
   type TemperamentSpec,
   TRAITS,
@@ -451,6 +453,15 @@ export function createLife(
       yearTicks: clock.year,
       stages: content.all(LIFE_STAGES),
     },
+  });
+  // Qué le gusta y qué rechaza a cada uno: temperamento, cuerpo, cultura y lo conocido de chico (§16).
+  seedTastes(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    defs: content.all(TASTES),
+    taboos: villageFaith.practices.filter((p) => p.kind === "taboo"),
   });
   // Lo que cada uno siente por su parentela y su casa (npc-psychology §6).
   seedRelations(truth, ids, log, {

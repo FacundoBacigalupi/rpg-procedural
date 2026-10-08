@@ -29,6 +29,10 @@ export const TasteDef = z.strictObject({
   novelty: z.number().min(0).max(1).default(0),
   /** Es un pasatiempo en grupo (lo lee `sociability`). */
   social: z.boolean().default(false),
+  /** 0-1: cuán corriente es en una comunidad mortal común (lo que se come o se hace en la aldea). */
+  common: z.number().min(0).max(1).default(0),
+  /** Bienes que lo componen: si una práctica vedada de la comunidad los toca, lo veda. */
+  goods: z.array(contentId).default([]),
 });
 export type TasteDef = z.infer<typeof TasteDef>;
 export const TASTES = defineContent("tastes", TasteDef);
