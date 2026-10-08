@@ -129,6 +129,7 @@ export function lifeWorld(
           statuses: parts.statuses,
           clock: parts.clock,
           seed: parts.seed,
+          player,
         }),
         converseProcess({
           spaces: parts.spaces,

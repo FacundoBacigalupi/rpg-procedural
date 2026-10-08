@@ -211,6 +211,20 @@
     "lines": ["Se separan jadeando, sin que ninguno gane.", "Nadie puede más y la pelea se corta."]
   },
   {
+    "id": "outcome.strike.fight.paused_wounded",
+    "lines": [
+      "Un golpe te llega y te hace doler; la pelea sigue y {target} está ahí, delante.",
+      "Te duele donde te pegó {target}, y no terminó."
+    ]
+  },
+  {
+    "id": "outcome.strike.fight.paused_foe_fleeing",
+    "lines": [
+      "{target} empieza a retroceder, como para irse; la pelea no terminó.",
+      "{target} da un paso atrás y otro, a punto de huir."
+    ]
+  },
+  {
     "id": "outcome.strike.fight.foe_down",
     "lines": ["{target} cae y no se levanta.", "{target} queda en el suelo."]
   },

@@ -194,7 +194,9 @@ function outcome(
       if (e.fight) {
         const f = e.fight;
         const target = ref(e.target);
-        if (f.mine === "standing" && f.theirs === "standing") say("outcome.strike.fight.parted");
+        if (f.paused) say(`outcome.strike.fight.paused_${f.paused}`, { target });
+        else if (f.mine === "standing" && f.theirs === "standing")
+          say("outcome.strike.fight.parted");
         else if (f.mine === "standing") say(`outcome.strike.fight.foe_${f.theirs}`, { target });
         else say(`outcome.strike.fight.mine_${f.mine}`, { target });
       }
