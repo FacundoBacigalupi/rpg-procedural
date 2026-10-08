@@ -1,0 +1,669 @@
+[
+  {
+    "id": "rice-polished",
+    "name": "arroz blanco",
+    "category": "cereal",
+    "kcalPerGram": 3.5,
+    "waterPerGram": 0.12,
+    "proteinPerGram": 0.07,
+    "fatPerGram": 0.006,
+    "micronutrients": {
+      "thiamine": 0.07,
+      "niacin": 1.6,
+      "iron": 0.8
+    }
+  },
+  {
+    "id": "rice-husked",
+    "name": "arroz integral",
+    "category": "cereal",
+    "kcalPerGram": 3.6,
+    "waterPerGram": 0.12,
+    "proteinPerGram": 0.075,
+    "fatPerGram": 0.027,
+    "micronutrients": {
+      "thiamine": 0.4,
+      "niacin": 5,
+      "iron": 1.5
+    }
+  },
+  {
+    "id": "wheat",
+    "name": "trigo",
+    "category": "cereal",
+    "kcalPerGram": 3.4,
+    "waterPerGram": 0.12,
+    "proteinPerGram": 0.13,
+    "fatPerGram": 0.02,
+    "micronutrients": {
+      "thiamine": 0.4,
+      "niacin": 5,
+      "iron": 3.5
+    }
+  },
+  {
+    "id": "maize",
+    "name": "maíz seco",
+    "category": "cereal",
+    "kcalPerGram": 3.6,
+    "waterPerGram": 0.12,
+    "proteinPerGram": 0.09,
+    "fatPerGram": 0.04,
+    "micronutrients": {
+      "thiamine": 0.4,
+      "niacin": 1.5,
+      "iron": 2.7
+    }
+  },
+  {
+    "id": "barley",
+    "name": "cebada",
+    "category": "cereal",
+    "kcalPerGram": 3.5,
+    "waterPerGram": 0.12,
+    "proteinPerGram": 0.12,
+    "fatPerGram": 0.022,
+    "micronutrients": {
+      "thiamine": 0.2,
+      "niacin": 4.6,
+      "iron": 2.5
+    }
+  },
+  {
+    "id": "millet",
+    "name": "mijo",
+    "category": "cereal",
+    "kcalPerGram": 3.7,
+    "waterPerGram": 0.09,
+    "proteinPerGram": 0.11,
+    "fatPerGram": 0.04,
+    "micronutrients": {
+      "thiamine": 0.4,
+      "niacin": 4.7,
+      "iron": 3
+    }
+  },
+  {
+    "id": "potato",
+    "name": "papa",
+    "category": "tuber",
+    "kcalPerGram": 0.77,
+    "waterPerGram": 0.79,
+    "proteinPerGram": 0.02,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminC": 20,
+      "iron": 0.8,
+      "niacin": 1.1
+    },
+    "seasons": ["autumn", "winter"]
+  },
+  {
+    "id": "sweet-potato",
+    "name": "batata",
+    "category": "tuber",
+    "kcalPerGram": 0.86,
+    "waterPerGram": 0.77,
+    "proteinPerGram": 0.016,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminA": 0.7,
+      "vitaminC": 2.4,
+      "iron": 0.6
+    },
+    "seasons": ["autumn", "winter"]
+  },
+  {
+    "id": "taro",
+    "name": "taro",
+    "category": "tuber",
+    "kcalPerGram": 1.12,
+    "waterPerGram": 0.7,
+    "proteinPerGram": 0.015,
+    "fatPerGram": 0.002,
+    "micronutrients": {
+      "vitaminC": 4.5,
+      "iron": 0.6
+    }
+  },
+  {
+    "id": "cassava",
+    "name": "mandioca",
+    "category": "tuber",
+    "kcalPerGram": 1.6,
+    "waterPerGram": 0.6,
+    "proteinPerGram": 0.014,
+    "fatPerGram": 0.003,
+    "micronutrients": {
+      "vitaminC": 21,
+      "iron": 0.3
+    }
+  },
+  {
+    "id": "lentil",
+    "name": "lentejas",
+    "category": "legume",
+    "kcalPerGram": 3.5,
+    "waterPerGram": 0.1,
+    "proteinPerGram": 0.25,
+    "fatPerGram": 0.01,
+    "micronutrients": {
+      "iron": 7,
+      "thiamine": 0.9,
+      "niacin": 2.6,
+      "calcium": 56
+    }
+  },
+  {
+    "id": "soybean",
+    "name": "soja",
+    "category": "legume",
+    "kcalPerGram": 4,
+    "waterPerGram": 0.08,
+    "proteinPerGram": 0.36,
+    "fatPerGram": 0.2,
+    "micronutrients": {
+      "iron": 15,
+      "thiamine": 0.9,
+      "niacin": 1.6,
+      "calcium": 277
+    }
+  },
+  {
+    "id": "chickpea",
+    "name": "garbanzos",
+    "category": "legume",
+    "kcalPerGram": 3.6,
+    "waterPerGram": 0.1,
+    "proteinPerGram": 0.2,
+    "fatPerGram": 0.06,
+    "micronutrients": {
+      "iron": 6,
+      "thiamine": 0.5,
+      "niacin": 1.5,
+      "calcium": 105
+    }
+  },
+  {
+    "id": "apple",
+    "name": "manzana",
+    "category": "fruit",
+    "kcalPerGram": 0.52,
+    "waterPerGram": 0.86,
+    "proteinPerGram": 0.003,
+    "fatPerGram": 0.002,
+    "micronutrients": {
+      "vitaminC": 5
+    },
+    "seasons": ["autumn", "winter"]
+  },
+  {
+    "id": "citrus",
+    "name": "naranja y limón",
+    "category": "fruit",
+    "kcalPerGram": 0.47,
+    "waterPerGram": 0.87,
+    "proteinPerGram": 0.009,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminC": 53,
+      "calcium": 40
+    },
+    "seasons": ["winter", "spring"]
+  },
+  {
+    "id": "mango",
+    "name": "mango",
+    "category": "fruit",
+    "kcalPerGram": 0.6,
+    "waterPerGram": 0.83,
+    "proteinPerGram": 0.008,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "vitaminC": 36,
+      "vitaminA": 0.054
+    },
+    "seasons": ["spring", "summer"],
+    "biomes": ["tropical-rainforest", "tropical-dry-forest", "savanna"]
+  },
+  {
+    "id": "dried-dates",
+    "name": "dátiles secos",
+    "category": "fruit",
+    "kcalPerGram": 2.8,
+    "waterPerGram": 0.2,
+    "proteinPerGram": 0.02,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "iron": 1,
+      "niacin": 2,
+      "calcium": 64
+    },
+    "biomes": ["hot-desert", "temperate-desert"]
+  },
+  {
+    "id": "wild-berries",
+    "name": "bayas del monte",
+    "category": "wild",
+    "kcalPerGram": 0.5,
+    "waterPerGram": 0.86,
+    "proteinPerGram": 0.007,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "vitaminC": 30,
+      "vitaminA": 0.003,
+      "iron": 0.6
+    },
+    "seasons": ["summer", "autumn"],
+    "biomes": ["temperate-forest", "boreal-forest", "temperate-rainforest"]
+  },
+  {
+    "id": "cabbage",
+    "name": "repollo",
+    "category": "vegetable",
+    "kcalPerGram": 0.25,
+    "waterPerGram": 0.92,
+    "proteinPerGram": 0.013,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminC": 36,
+      "calcium": 40,
+      "iron": 0.5
+    },
+    "seasons": ["summer", "autumn", "winter"]
+  },
+  {
+    "id": "carrot",
+    "name": "zanahoria",
+    "category": "vegetable",
+    "kcalPerGram": 0.41,
+    "waterPerGram": 0.88,
+    "proteinPerGram": 0.009,
+    "fatPerGram": 0.002,
+    "micronutrients": {
+      "vitaminA": 0.84,
+      "vitaminC": 6
+    },
+    "seasons": ["autumn", "winter"]
+  },
+  {
+    "id": "leafy-greens",
+    "name": "hojas verdes (espinaca, acelga)",
+    "category": "vegetable",
+    "kcalPerGram": 0.23,
+    "waterPerGram": 0.91,
+    "proteinPerGram": 0.029,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "iron": 2.7,
+      "vitaminA": 0.47,
+      "vitaminC": 28,
+      "calcium": 99
+    },
+    "seasons": ["spring", "summer", "autumn"]
+  },
+  {
+    "id": "onion",
+    "name": "cebolla",
+    "category": "vegetable",
+    "kcalPerGram": 0.4,
+    "waterPerGram": 0.89,
+    "proteinPerGram": 0.011,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminC": 7,
+      "calcium": 23
+    }
+  },
+  {
+    "id": "pumpkin",
+    "name": "zapallo",
+    "category": "vegetable",
+    "kcalPerGram": 0.26,
+    "waterPerGram": 0.92,
+    "proteinPerGram": 0.01,
+    "fatPerGram": 0.001,
+    "micronutrients": {
+      "vitaminA": 0.4,
+      "vitaminC": 9
+    },
+    "seasons": ["autumn", "winter"]
+  },
+  {
+    "id": "chili",
+    "name": "ají",
+    "category": "condiment",
+    "kcalPerGram": 0.4,
+    "waterPerGram": 0.88,
+    "proteinPerGram": 0.02,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "vitaminC": 144,
+      "vitaminA": 0.05
+    },
+    "seasons": ["summer", "autumn"]
+  },
+  {
+    "id": "pork",
+    "name": "cerdo",
+    "category": "meat",
+    "kcalPerGram": 2.4,
+    "waterPerGram": 0.55,
+    "proteinPerGram": 0.17,
+    "fatPerGram": 0.25,
+    "micronutrients": {
+      "thiamine": 0.9,
+      "niacin": 4.5,
+      "iron": 0.9
+    }
+  },
+  {
+    "id": "beef",
+    "name": "vaca",
+    "category": "meat",
+    "kcalPerGram": 2.4,
+    "waterPerGram": 0.6,
+    "proteinPerGram": 0.2,
+    "fatPerGram": 0.17,
+    "micronutrients": {
+      "iron": 2.6,
+      "niacin": 4.5,
+      "thiamine": 0.07
+    }
+  },
+  {
+    "id": "mutton",
+    "name": "cordero",
+    "category": "meat",
+    "kcalPerGram": 2.9,
+    "waterPerGram": 0.55,
+    "proteinPerGram": 0.17,
+    "fatPerGram": 0.25,
+    "micronutrients": {
+      "iron": 1.6,
+      "niacin": 6,
+      "thiamine": 0.1
+    }
+  },
+  {
+    "id": "chicken",
+    "name": "pollo",
+    "category": "meat",
+    "kcalPerGram": 1.6,
+    "waterPerGram": 0.7,
+    "proteinPerGram": 0.21,
+    "fatPerGram": 0.09,
+    "micronutrients": {
+      "niacin": 8,
+      "iron": 0.9,
+      "thiamine": 0.07
+    }
+  },
+  {
+    "id": "venison",
+    "name": "carne de monte",
+    "category": "meat",
+    "kcalPerGram": 1.15,
+    "waterPerGram": 0.74,
+    "proteinPerGram": 0.22,
+    "fatPerGram": 0.025,
+    "micronutrients": {
+      "iron": 3.4,
+      "niacin": 6,
+      "thiamine": 0.2
+    },
+    "biomes": ["temperate-forest", "boreal-forest", "temperate-grassland", "cold-steppe"]
+  },
+  {
+    "id": "liver",
+    "name": "hígado",
+    "category": "meat",
+    "kcalPerGram": 1.35,
+    "waterPerGram": 0.7,
+    "proteinPerGram": 0.2,
+    "fatPerGram": 0.04,
+    "micronutrients": {
+      "iron": 6.5,
+      "vitaminA": 6.5,
+      "niacin": 12,
+      "thiamine": 0.2
+    }
+  },
+  {
+    "id": "dried-meat",
+    "name": "carne seca",
+    "category": "meat",
+    "kcalPerGram": 2.9,
+    "waterPerGram": 0.2,
+    "proteinPerGram": 0.5,
+    "fatPerGram": 0.1,
+    "micronutrients": {
+      "iron": 4,
+      "niacin": 12,
+      "thiamine": 0.2
+    }
+  },
+  {
+    "id": "salt-pork",
+    "name": "cerdo salado",
+    "category": "meat",
+    "kcalPerGram": 3.5,
+    "waterPerGram": 0.2,
+    "proteinPerGram": 0.1,
+    "fatPerGram": 0.55,
+    "micronutrients": {
+      "thiamine": 0.4,
+      "niacin": 2
+    }
+  },
+  {
+    "id": "fresh-fish",
+    "name": "pescado fresco",
+    "category": "fish",
+    "kcalPerGram": 1.1,
+    "waterPerGram": 0.76,
+    "proteinPerGram": 0.2,
+    "fatPerGram": 0.04,
+    "micronutrients": {
+      "niacin": 4,
+      "iodine": 0.03,
+      "vitaminA": 0.03
+    },
+    "biomes": ["shelf-sea", "lake"]
+  },
+  {
+    "id": "dried-fish",
+    "name": "pescado seco",
+    "category": "fish",
+    "kcalPerGram": 2.9,
+    "waterPerGram": 0.15,
+    "proteinPerGram": 0.6,
+    "fatPerGram": 0.05,
+    "micronutrients": {
+      "niacin": 10,
+      "iodine": 0.1,
+      "calcium": 200
+    }
+  },
+  {
+    "id": "seaweed",
+    "name": "algas secas",
+    "category": "wild",
+    "kcalPerGram": 1.2,
+    "waterPerGram": 0.1,
+    "proteinPerGram": 0.2,
+    "fatPerGram": 0.01,
+    "micronutrients": {
+      "iodine": 3,
+      "iron": 6,
+      "calcium": 700
+    },
+    "biomes": ["shelf-sea"]
+  },
+  {
+    "id": "milk",
+    "name": "leche",
+    "category": "dairy",
+    "kcalPerGram": 0.62,
+    "waterPerGram": 0.87,
+    "proteinPerGram": 0.033,
+    "fatPerGram": 0.035,
+    "micronutrients": {
+      "calcium": 120,
+      "vitaminA": 0.05
+    }
+  },
+  {
+    "id": "cheese",
+    "name": "queso",
+    "category": "dairy",
+    "kcalPerGram": 3.5,
+    "waterPerGram": 0.37,
+    "proteinPerGram": 0.25,
+    "fatPerGram": 0.28,
+    "micronutrients": {
+      "calcium": 700,
+      "vitaminA": 0.3
+    }
+  },
+  {
+    "id": "butter",
+    "name": "manteca",
+    "category": "dairy",
+    "kcalPerGram": 7.2,
+    "waterPerGram": 0.16,
+    "proteinPerGram": 0.001,
+    "fatPerGram": 0.81,
+    "micronutrients": {
+      "vitaminA": 0.7
+    }
+  },
+  {
+    "id": "yogurt",
+    "name": "yogur",
+    "category": "dairy",
+    "kcalPerGram": 0.6,
+    "waterPerGram": 0.88,
+    "proteinPerGram": 0.035,
+    "fatPerGram": 0.03,
+    "micronutrients": {
+      "calcium": 120
+    }
+  },
+  {
+    "id": "egg",
+    "name": "huevo",
+    "category": "egg",
+    "kcalPerGram": 1.4,
+    "waterPerGram": 0.75,
+    "proteinPerGram": 0.13,
+    "fatPerGram": 0.1,
+    "micronutrients": {
+      "vitaminA": 0.16,
+      "iron": 1.8,
+      "calcium": 56
+    }
+  },
+  {
+    "id": "honey",
+    "name": "miel",
+    "category": "sweet",
+    "kcalPerGram": 3,
+    "waterPerGram": 0.17,
+    "micronutrients": {
+      "iron": 0.4
+    }
+  },
+  {
+    "id": "sugar",
+    "name": "azúcar",
+    "category": "sweet",
+    "kcalPerGram": 3.9,
+    "waterPerGram": 0
+  },
+  {
+    "id": "salt",
+    "name": "sal",
+    "category": "condiment",
+    "kcalPerGram": 0,
+    "waterPerGram": 0
+  },
+  {
+    "id": "spices",
+    "name": "especias",
+    "category": "condiment",
+    "kcalPerGram": 2.5,
+    "waterPerGram": 0.1,
+    "proteinPerGram": 0.1,
+    "fatPerGram": 0.1,
+    "micronutrients": {
+      "iron": 12
+    }
+  },
+  {
+    "id": "ale",
+    "name": "cerveza floja",
+    "category": "drink",
+    "kcalPerGram": 0.3,
+    "waterPerGram": 0.92,
+    "proteinPerGram": 0.005,
+    "micronutrients": {
+      "niacin": 0.6,
+      "thiamine": 0.01
+    }
+  },
+  {
+    "id": "tea",
+    "name": "té",
+    "category": "drink",
+    "kcalPerGram": 0.01,
+    "waterPerGram": 1
+  },
+  {
+    "id": "mushrooms",
+    "name": "hongos",
+    "category": "wild",
+    "kcalPerGram": 0.3,
+    "waterPerGram": 0.92,
+    "proteinPerGram": 0.03,
+    "fatPerGram": 0.004,
+    "micronutrients": {
+      "niacin": 4,
+      "iron": 0.5
+    },
+    "seasons": ["summer", "autumn"],
+    "biomes": ["temperate-forest", "boreal-forest", "temperate-rainforest"]
+  },
+  {
+    "id": "walnuts",
+    "name": "nueces",
+    "category": "wild",
+    "kcalPerGram": 6.5,
+    "waterPerGram": 0.04,
+    "proteinPerGram": 0.15,
+    "fatPerGram": 0.65,
+    "micronutrients": {
+      "thiamine": 0.34,
+      "iron": 2.9,
+      "calcium": 98
+    },
+    "seasons": ["autumn"],
+    "biomes": ["temperate-forest"]
+  },
+  {
+    "id": "chestnuts",
+    "name": "castañas",
+    "category": "wild",
+    "kcalPerGram": 2,
+    "waterPerGram": 0.5,
+    "proteinPerGram": 0.02,
+    "fatPerGram": 0.02,
+    "micronutrients": {
+      "vitaminC": 40,
+      "thiamine": 0.2,
+      "iron": 0.9
+    },
+    "seasons": ["autumn"],
+    "biomes": ["temperate-forest", "temperate-rainforest"]
+  }
+]
