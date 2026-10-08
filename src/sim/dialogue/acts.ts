@@ -104,18 +104,18 @@ const SHORT_UTTERANCE_WORDS = 6;
 
 // El léxico de razones (dialogue §6): las frases con que se da un motivo, no un orden.
 const REASON_RELATION =
-  /(hazlo por|hacelo por|por el bien de|piensa en|pensa en|hazlo pensando en)/;
+  /\b(hazlo por|hacelo por|por el bien de|piensa en|pensa en|hazlo pensando en)\b/;
 const REASON_NORM =
-  /(es la costumbre|es costumbre|se acostumbra|es lo que se hace|asi se hace|es la tradicion|es lo correcto|es lo justo)/;
+  /\b(es la costumbre|es costumbre|se acostumbra|es lo que se hace|asi se hace|es la tradicion|es lo correcto|es lo justo)\b/;
 const REASON_FEAR =
-  /(te van a matar|te vas a morir|vas a morir|te va a pasar algo|es peligroso|corres peligro|te van a hacer dano|te va a ir mal)/;
+  /\b(te van a matar|te vas a morir|vas a morir|te va a pasar algo|es peligroso|corres peligro|te van a hacer dano|te va a ir mal)\b/;
 const REASON_FACE =
-  /(quedas mal|quedaras mal|que van a decir|que diran|tu honor|tu nombre|tu fama|te vas a avergonzar|por tu reputacion)/;
+  /\b(quedas mal|quedaras mal|que van a decir|que diran|tu honor|tu nombre|tu fama|te vas a avergonzar|por tu reputacion)\b/;
 const REASON_AUTHORITY =
-  /(lo manda|lo ordena|lo dice el (anciano|jefe|senor|maestro|sacerdote)|lo dijo el (anciano|jefe|senor|maestro|sacerdote)|es una orden)/;
+  /\b(lo manda|lo ordena|lo dice el (anciano|jefe|senor|maestro|sacerdote)|lo dijo el (anciano|jefe|senor|maestro|sacerdote)|es una orden)\b/;
 const REASON_RECIPROCITY =
-  /(me debes|me lo debes|te ayude|te hice un favor|acordate de lo que hice|despues de todo lo que hice)/;
-const AUTHORITY_SOURCE = /(anciano|jefe|senor|maestro|sacerdote)/;
+  /\b(me debes|me lo debes|te ayude|te hice un favor|acordate de lo que hice|despues de todo lo que hice)\b/;
+const AUTHORITY_SOURCE = /\b(anciano|jefe|senor|maestro|sacerdote)\b/;
 
 /** La razón que se da en `norm` (ya normalizado), o null si no da ninguna. */
 function reasonIn(norm: string, who: AgentId | null): ArgueReason | null {
