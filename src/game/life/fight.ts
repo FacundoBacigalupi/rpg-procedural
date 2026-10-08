@@ -17,11 +17,13 @@ import {
   type FightIntent,
   type FightSnapshot,
   INNATE,
+  levelOf,
   PERSON,
   type ReadonlyWorldTruth,
   runFight,
   SKILL_STATE,
   type SkillCatalog,
+  type Skills,
   type StateChange,
   setComponent,
   standardize,
@@ -115,6 +117,12 @@ export function atMyMercy(
   );
 }
 
+/** El ojo entrenado de alguien para pelear: la faceta `reading` de la habilidad del golpe (skills §2). */
+function fightEye(catalog: SkillCatalog, skills: Skills | undefined, verb: string): number {
+  const use = catalog.forVerb(verb);
+  return use ? levelOf(skills?.[use.skill.id], "reading") : 0;
+}
+
 const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
   standing: "standing",
   down: "down",
@@ -141,6 +149,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         body: i.myBody,
         z: z(i.me),
         skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
+        eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
         intent: i.intent,
         at: { x: 0, y: 0 },
       },
@@ -151,6 +160,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         body: theirBody,
         z: z(i.target),
         skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
         intent: "drive_off",
         at: { x: 0.7, y: 0 },
         unaware: theirBody.activity === "sleep",
@@ -160,6 +170,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     light: i.light,
     rng: i.rng,
     cause: i.resume?.event ?? i.cause,
+    // Con lectura (combat §5, §11): chances creídas, quiebre desde lo leído y fintas.
+    reading: true,
     ...(i.control ? { control: i.me } : {}),
     ...(i.resume ? { resume: i.resume.snapshot } : {}),
   });
