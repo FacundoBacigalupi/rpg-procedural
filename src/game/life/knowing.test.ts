@@ -54,22 +54,17 @@ describe("lo que los vecinos creen del personaje", () => {
     const life = Life.create(7, content);
     const t = life.world.truth;
     const other = housemate(life);
-    // Los dos en el mismo lugar, una hora: lo ve.
+    // Un día de convivencia: lo ve.
+    life.advanceTo(life.now + life.world.clock.day);
     const here = t.get(LOCATION, other);
     if (!here) throw new Error("sin lugar");
-    t.set(LOCATION, life.player, here);
-    life.advanceTo(life.now + life.world.clock.day / 12);
     const seen = believed(t.get(BELIEFS, other), life.player, "at");
     expect(seen).toBeDefined();
     // El personaje se va a otro hex; el otro se queda. Nadie le avisa.
-    const far = t
-      .ids(LOCATION)
-      .map((id) => t.get(LOCATION, id)?.hex ?? 0)
-      .find((h) => h !== here.hex);
-    if (far === undefined) throw new Error("sin otro hex");
+    const far = here.hex + 1;
     t.set(LOCATION, life.player, { hex: far });
     const before = life.now;
-    life.advanceTo(before + life.world.clock.day / 24 / 2);
+    life.advanceTo(before + life.world.clock.day / 24);
     const still = believed(t.get(BELIEFS, other), life.player, "at");
     expect(still?.value).toEqual(seen?.value);
     expect(still && isMistaken(t, still)).toBe(true);
