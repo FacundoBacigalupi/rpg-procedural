@@ -22,6 +22,10 @@ import {
   ambienceOf,
   buildChronicle,
   characterPanel,
+  DEFAULT_SUGGESTIONS,
+  type EnvironmentItem,
+  type EnvironmentMemory,
+  environmentPanel,
   inventoryPanel,
   knownEntities,
   LIFE_ENGINE,
@@ -33,6 +37,8 @@ import {
   playerView,
   type ResumeAnchor,
   renderChronicle,
+  type Suggestion,
+  suggestions,
   type TurnReport,
 } from "../game/index.ts";
 import {
@@ -65,6 +71,7 @@ import {
   renderInventory,
   renderJournal,
   renderStatus,
+  renderSuggestion,
 } from "./render.ts";
 
 export const VERSIONS = { engine: LIFE_ENGINE, content: "none", format: FORMAT_VERSION };
@@ -106,6 +113,12 @@ export interface Session {
   /** Lo que se muestra al abrir: los avisos y la escena. */
   readonly opening: string;
   say(line: string): Promise<Reply>;
+  /** Las opciones sugeridas de ahora (`all`: todas, para «ver más»). */
+  suggested(all?: boolean): Suggestion[];
+  /** Juega la opción sugerida con ese id, sin pasar por el parser. */
+  choose(id: string): Promise<Reply>;
+  /** Lo que se nota del lugar ahora, con la habituación al día. */
+  environment(): EnvironmentItem[];
 }
 
 export async function openSession(store: LifeStore, options: SessionOptions): Promise<Session> {
@@ -119,6 +132,8 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
   const recent: string[] = [];
+  const habituation: EnvironmentMemory = new Map();
+  let attended = false;
   let scene = "";
   const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
     const view = playerView(life.world, report?.steps ?? [], { intro: report === null });
@@ -137,6 +152,56 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const intro = await tell(null, life.now);
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
   const opening = `${notices.join("")}${intro}\n${renderStatus(life.now)}`;
+
+  /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
+  const play = async (draft: IntentDraft, line: string): Promise<Reply> => {
+    const made = planFromDraft(draft, {
+      actor: life.player,
+      source: "player",
+      catalog: life.world.catalog,
+      known: knownEntities(life.world),
+      clock: life.world.clock,
+      causes: [{ kind: "state", entity: life.player, key: "intent" }],
+      here: life.world.truth.get(LOCATION, life.player)?.hex,
+    });
+    if (made.kind === "clarify") {
+      const labels = made.refs.flatMap((r) =>
+        r.resolved.status === "ambiguous" ? r.resolved.clarify.map((o) => o.label) : [],
+      );
+      return {
+        text: `No queda claro a quién o qué te referís${labels.length ? ` (${labels.join(", ")})` : ""}. Probá de nuevo.`,
+      };
+    }
+    if (made.kind === "unknown") {
+      return { text: "No sabés de qué hablás: no conocés eso todavía." };
+    }
+    if (made.kind === "invalid") {
+      return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
+    }
+    const plan: ActionPlan = made.plan;
+    attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
+    const tick = life.now;
+    const seq = store.nextPlanSeq();
+    store.saveSnapshot(life.state());
+    const report = life.turn(plan, seq);
+    store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
+    recent.push(line.trim());
+    if (recent.length > RECENT_INTENTS) recent.shift();
+    const told = [
+      await tell(report, report.to),
+      ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
+    ].join("\n");
+    store.appendNarration(report.to, told);
+    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}`;
+    if (report.over) {
+      return {
+        text: `${text}\nTu vida terminó.\n\n${endingOf(life, store)}`,
+        end: "dead",
+        turn: true,
+      };
+    }
+    return { text, turn: true };
+  };
 
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
@@ -170,53 +235,18 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     if (draft.kind !== "act" && draft.kind !== "plan") {
       return { text: "Eso todavía no lo entiendo como algo que hace tu personaje." };
     }
-    const made = planFromDraft(draft, {
-      actor: life.player,
-      source: "player",
-      catalog: life.world.catalog,
-      known: knownEntities(life.world),
-      clock: life.world.clock,
-      causes: [{ kind: "state", entity: life.player, key: "intent" }],
-      here: life.world.truth.get(LOCATION, life.player)?.hex,
-    });
-    if (made.kind === "clarify") {
-      const labels = made.refs.flatMap((r) =>
-        r.resolved.status === "ambiguous" ? r.resolved.clarify.map((o) => o.label) : [],
-      );
-      return {
-        text: `No queda claro a quién o qué te referís${labels.length ? ` (${labels.join(", ")})` : ""}. Probá de nuevo.`,
-      };
-    }
-    if (made.kind === "unknown") {
-      return { text: "No sabés de qué hablás: no conocés eso todavía." };
-    }
-    if (made.kind === "invalid") {
-      return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
-    }
-    const plan: ActionPlan = made.plan;
-    const tick = life.now;
-    const seq = store.nextPlanSeq();
-    store.saveSnapshot(life.state());
-    const report = life.turn(plan, seq);
-    store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
-    recent.push(line.trim());
-    if (recent.length > RECENT_INTENTS) recent.shift();
-    const told = [
-      await tell(report, report.to),
-      ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
-    ].join("\n");
-    store.appendNarration(report.to, told);
-    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}`;
-    if (report.over) {
-      return {
-        text: `${text}\nTu vida terminó.\n\n${endingOf(life, store)}`,
-        end: "dead",
-        turn: true,
-      };
-    }
-    return { text, turn: true };
+    return play(draft, line);
   };
-  return { life, store, opening, say };
+
+  const suggested = (all = false) => suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS);
+  const choose = async (id: string): Promise<Reply> => {
+    // Se vuelve a armar la lista: si el cuerpo o la hora cambiaron, la opción puede ya no estar.
+    const picked = suggestions(life.world).find((x) => x.id === id);
+    if (picked === undefined) return { text: "Esa opción ya no está." };
+    return play(picked.draft, renderSuggestion(picked));
+  };
+  const environment = () => environmentPanel(life.world, habituation, { attended });
+  return { life, store, opening, say, suggested, choose, environment };
 }
 
 /** La crónica final desde la verdad (chronicle §3): lo único que se le muestra de ella al jugador. */
