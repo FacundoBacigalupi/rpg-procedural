@@ -10,10 +10,11 @@
 // peso de la malicia, el miedo que infla la seguridad, el cansancio que corta la cadena).
 // Comparar con la verdad es cosa del inspector (`inferenceAccuracy`).
 //
-// Alcance de este paso: motor y reglas por defecto. Cablearlo a `BELIEFS` (hoy solo `at` y `alive`),
+// Alcance de este paso: motor y reglas como contenido (`content/inference/`, con quién las conoce).
+// Cablearlo a `BELIEFS` (hoy solo `at` y `alive`),
 // a las memorias y al comando "pensar" queda en sub-ítems del ROADMAP.
 
-import { compareStrings } from "../../core/index.ts";
+import { compareStrings, contentId, defineContent, z } from "../../core/index.ts";
 
 /** Un hecho de un catálogo de predicados con argumentos (ids, lugares, cosas) como texto. */
 export interface Fact {
@@ -340,56 +341,95 @@ export function inferenceAccuracy(
   return { total: inferences.length, checked, wrong, confidentlyWrong };
 }
 
-const pat = (pred: string, ...args: string[]): Pattern => ({ pred, args });
+/** Una cantidad de habilidad o de esquema que hace falta para conocer una regla. */
+const unit = z.number().min(0).max(1);
+
+const PatternDef = z.strictObject({
+  pred: z.string().regex(/^[a-z][a-z0-9_]*$/),
+  args: z.array(z.string().regex(/^(\?[a-z][a-z0-9_]*|[a-z][a-z0-9_.-]*)$/)).min(1),
+});
 
 /**
- * Reglas por defecto (a pasar a `content/inference/` con Zod: sub-ítem). Los predicados son los
- * que ya existen en la sim: quién entró, qué falta, quién come con quién, qué se ve arder.
+ * Quién conoce la regla: `common` es sentido común de cualquiera; el resto es saber de oficio
+ * (nivel mínimo de una habilidad) o de mentalidad (fuerza mínima de un esquema). Basta con una.
  */
-export const DEFAULT_INFERENCE_RULES: readonly InferenceRule[] = [
-  {
-    id: "theft-from-access",
-    premises: [pat("entered", "?who", "?place"), pat("missing", "?thing", "?place")],
-    conclusion: pat("took", "?who", "?thing"),
-    reliability: 0.65,
-    abductive: true,
-    tone: "malice",
-    exclusive: false,
-  },
-  {
-    id: "grievance-from-theft",
-    premises: [pat("took", "?who", "?thing"), pat("owner", "?thing", "?owner")],
-    conclusion: pat("wronged", "?owner", "?who"),
-    reliability: 0.9,
-    abductive: false,
-    tone: "neutral",
-    exclusive: false,
-  },
-  {
-    id: "poison-from-meal",
-    premises: [pat("sick", "?victim"), pat("ate_with", "?victim", "?host")],
-    conclusion: pat("poisoned_by", "?victim", "?host"),
-    reliability: 0.4,
-    abductive: true,
-    tone: "malice",
-    exclusive: true,
-  },
-  {
-    id: "fire-from-smoke",
-    premises: [pat("smoke_seen", "?place")],
-    conclusion: pat("fire_at", "?place"),
-    reliability: 0.7,
-    abductive: true,
-    tone: "danger",
-    exclusive: false,
-  },
-  {
-    id: "danger-from-fire",
-    premises: [pat("fire_at", "?place"), pat("lives_at", "?who", "?place")],
-    conclusion: pat("endangered", "?who"),
-    reliability: 0.85,
-    abductive: false,
-    tone: "danger",
-    exclusive: false,
-  },
-];
+const KnownByDef = z.strictObject({
+  common: z.boolean().default(false),
+  skills: z.array(z.strictObject({ skill: contentId, min: unit })).default([]),
+  schemas: z.array(z.strictObject({ schema: contentId, min: unit })).default([]),
+});
+
+const variables = (ps: readonly { args: readonly string[] }[]) =>
+  new Set(ps.flatMap((p) => p.args.filter((a) => a.startsWith("?"))));
+
+export const InferenceRuleDef = z
+  .strictObject({
+    id: contentId,
+    premises: z.array(PatternDef).min(1),
+    conclusion: PatternDef,
+    reliability: unit,
+    abductive: z.boolean(),
+    tone: z.enum(["neutral", "malice", "danger"]),
+    exclusive: z.boolean().default(false),
+    knownBy: KnownByDef,
+  })
+  .superRefine((r, ctx) => {
+    const bound = variables(r.premises);
+    for (const v of variables([r.conclusion])) {
+      if (!bound.has(v)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["conclusion"],
+          message: `la variable ${v} no está en ninguna premisa`,
+        });
+      }
+    }
+    const k = r.knownBy;
+    if (!k.common && k.skills.length === 0 && k.schemas.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["knownBy"], message: "nadie la conoce" });
+    }
+  });
+export type InferenceRuleDef = z.infer<typeof InferenceRuleDef>;
+
+export const INFERENCE_RULES = defineContent("inference", InferenceRuleDef, (r) => [
+  ...r.knownBy.skills.map((s, i) => ({
+    kind: "skills",
+    id: s.skill,
+    at: `knownBy.skills.${i}.skill`,
+  })),
+  ...r.knownBy.schemas.map((s, i) => ({
+    kind: "schemas",
+    id: s.schema,
+    at: `knownBy.schemas.${i}.schema`,
+  })),
+]);
+
+/** La regla sin sus datos de saber, lista para `infer`. */
+export const toRule = (d: InferenceRuleDef): InferenceRule => ({
+  id: d.id,
+  premises: d.premises,
+  conclusion: d.conclusion,
+  reliability: d.reliability,
+  abductive: d.abductive,
+  tone: d.tone,
+  exclusive: d.exclusive,
+});
+
+/** Lo que de alguien decide qué reglas conoce: habilidades 0-1 y fuerza de sus esquemas 0-1. */
+export interface RuleKnowers {
+  readonly skills: Readonly<Record<string, number>>;
+  readonly schemas: Readonly<Record<string, number>>;
+}
+
+/** Ids de las reglas que conoce quien tiene este saber y esta mentalidad, ordenados. */
+export function knownRules(defs: readonly InferenceRuleDef[], who: RuleKnowers): string[] {
+  return defs
+    .filter(
+      (d) =>
+        d.knownBy.common ||
+        d.knownBy.skills.some((s) => (who.skills[s.skill] ?? 0) >= s.min) ||
+        d.knownBy.schemas.some((s) => (who.schemas[s.schema] ?? 0) >= s.min),
+    )
+    .map((d) => d.id)
+    .sort(compareStrings);
+}

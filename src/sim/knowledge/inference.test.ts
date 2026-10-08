@@ -1,21 +1,40 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { type ContentSource, loadContent } from "../../core/index.ts";
+import { CONTENT_KINDS } from "../content.ts";
 import {
   chainLimit,
   confidenceBand,
-  DEFAULT_INFERENCE_RULES,
   type Fact,
   factKey,
   INFERENCE_CAP,
+  INFERENCE_RULES,
   type Inference,
   infer,
   inferenceAccuracy,
+  knownRules,
   type Premise,
   type Reasoner,
   thinkAbout,
+  toRule,
 } from "./inference.ts";
 
-const ALL = DEFAULT_INFERENCE_RULES.map((r) => r.id);
+function sources(dir: string, root = dir): ContentSource[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory()) return e.name === "llm" ? [] : sources(path, root);
+    if (!e.name.endsWith(".json")) return [];
+    const kind = relative(root, dir).split("\\").join("/");
+    return [{ kind, file: path, data: JSON.parse(readFileSync(path, "utf8")) }];
+  });
+}
+
+const content = loadContent(CONTENT_KINDS, sources("content"));
+const DEFS = content.all(INFERENCE_RULES);
+const DEFAULT_INFERENCE_RULES = DEFS.map(toRule);
+const ALL = DEFS.map((r) => r.id);
 const mind = (over: Partial<Reasoner> = {}): Reasoner => ({
   intellect: 0.7,
   rules: ALL,
@@ -235,6 +254,43 @@ describe("propiedades", () => {
     fc.assert(
       fc.property(reasonerArb, (who) => {
         expect(infer([], DEFAULT_INFERENCE_RULES, who)).toEqual([]);
+      }),
+    );
+  });
+});
+
+describe("reglas como contenido", () => {
+  it("cargan, y toda variable de la conclusión sale de las premisas", () => {
+    expect(DEFS.length).toBeGreaterThanOrEqual(5);
+    for (const d of DEFS) {
+      const bound = new Set(d.premises.flatMap((q) => q.args));
+      for (const a of d.conclusion.args) if (a.startsWith("?")) expect(bound.has(a)).toBe(true);
+    }
+  });
+
+  it("cada quien conoce según su saber y su mentalidad", () => {
+    const none = knownRules(DEFS, { skills: {}, schemas: {} });
+    expect(none).toContain("fire-from-smoke");
+    expect(none).not.toContain("poison-from-meal");
+    const healer = knownRules(DEFS, { skills: { medicine: 0.5 }, schemas: {} });
+    expect(healer).toContain("poison-from-meal");
+    const wary = knownRules(DEFS, { skills: {}, schemas: { people_are_untrustworthy: 0.8 } });
+    expect(wary).toContain("poison-from-meal");
+    const weak = knownRules(DEFS, { skills: { medicine: 0.1 }, schemas: {} });
+    expect(weak).not.toContain("poison-from-meal");
+  });
+
+  it("es monótono en el saber y no depende del orden", () => {
+    fc.assert(
+      fc.property(fc.nat(100), fc.nat(100), (a, b) => {
+        const lo = Math.min(a, b) / 100;
+        const hi = Math.max(a, b) / 100;
+        const low = new Set(knownRules(DEFS, { skills: { medicine: lo }, schemas: {} }));
+        const high = new Set(knownRules(DEFS, { skills: { medicine: hi }, schemas: {} }));
+        for (const id of low) expect(high.has(id)).toBe(true);
+        expect(knownRules([...DEFS].reverse(), { skills: { medicine: hi }, schemas: {} })).toEqual(
+          [...high].sort(),
+        );
       }),
     );
   });
