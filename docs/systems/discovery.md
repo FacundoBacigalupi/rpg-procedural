@@ -339,6 +339,12 @@ Como el descubrimiento sale del estado (necesidad, materiales, conceptos, observ
 - **Fase 6 (organizaciones):** registro de anomalías por organización, herejía, cismas y escuelas nuevas; cultura epistémica; archivos; mecenazgo.
 - **Fase 7 (historia):** descubrimiento como proceso de riesgo por población, pérdida y redescubrimiento, conceptos que se inventan, evolución de la cultura epistémica.
 
+### Implementado (Fase 2, primer caso)
+- `sim/discovery/law.ts`. El catálogo arranca con **una** ley, `LawKey = { kind: "regularity"; phenomenon: "field_yield" }` (de qué depende el rinde de una hora de campo; la sim ya lo hace depender de la estación). Se aparta del borrador en que el correlato **no** está en la clave sino en la afirmación: la clave es la pregunta, cada `LawClaim` una respuesta (`none`, `depends { on: season | moon, high }`, `moral`). Las hipótesis llevan su `claim` embebido (no hay `HypothesisId` aparte: el id sale de la afirmación).
+- La situación percibida es el tramo del año que se siente (4 tramos, según el hemisferio, no el calendario) y el de la luna; el resultado es poco/algo/mucho con ruido de percepción. La verdad nunca pasa: solo los gramos que cosechó.
+- `P(observación | h)` son tres tablas fijas (`predict`); sesgo de confirmación sobre el dominante; la hipótesis `moral` (no falsable) conserva su peso. La generación («condición oculta») elige del catálogo la que mejor explica el ledger propio.
+- Diario: `hypothesesPanel` (peso en palabras, origen, últimas observaciones, anomalías) y el comando `hipótesis`.
+
 ## Tests
 - Determinismo: mismo seed y mismas acciones dan las mismas hipótesis, observaciones, iluminaciones e invenciones.
 - **Ningún agente lee la ley:** la actualización de hipótesis usa solo la situación y el resultado percibidos.
