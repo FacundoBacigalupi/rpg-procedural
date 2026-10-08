@@ -26,6 +26,7 @@ import {
   type AttemptActor,
   degreeOf,
   isMoney,
+  legOf,
   PLANS,
   type ResolveInput,
   resolve,
@@ -214,16 +215,38 @@ describe("moverse", () => {
       { destination: 5, ...extra },
     );
 
-  it("de día llega, cambia la ubicación y tarda lo del camino o un poco más", () => {
+  it("de día camina un tramo, cambia la ubicación y tarda lo del tramo o un poco más", () => {
     const rs = many(200, () => go({}));
     const ok = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
     expect(ok.length).toBeGreaterThan(100);
     for (const r of ok) {
-      expect(r.effect).toMatchObject({ kind: "move", from: 0, to: 5, reached: 5 });
-      expect(r.changes).toEqual([{ op: "set", table: LOCATION.name, id: me, value: { hex: 5 } }]);
-      expect(r.seconds).toBeGreaterThanOrEqual(5 * 600);
-      expect(r.seconds).toBeLessThanOrEqual(5 * 600 * 1.3);
+      // 600 s por hex y tramos de 1800 s: tres hexes de los cinco.
+      expect(r.effect).toMatchObject({ kind: "move", from: 0, to: 5, reached: 3, onTheWay: true });
+      expect(r.changes).toEqual([{ op: "set", table: LOCATION.name, id: me, value: { hex: 3 } }]);
+      expect(r.seconds).toBeGreaterThanOrEqual(3 * 600);
+      expect(r.seconds).toBeLessThanOrEqual(3 * 600 * 1.3);
     }
+  });
+
+  it("los tramos siguen desde donde quedó y suman el camino entero", () => {
+    let hex = 0;
+    let total = 0;
+    for (let leg = 0; leg < 5 && hex !== 5; leg++) {
+      const r = resolve(go({ actor: actor({ hex }) }));
+      if (r.effect.kind !== "move" || r.effect.reached === null) throw new Error("no es move");
+      expect(r.effect.reached).not.toBe(hex);
+      hex = r.effect.reached;
+      total += r.seconds;
+      expect(r.effect.onTheWay === true).toBe(hex !== 5);
+    }
+    expect(hex).toBe(5);
+    expect(total).toBeGreaterThanOrEqual(5 * 600);
+  });
+
+  it("un tramo tiene al menos un hex aunque pase de la media hora", () => {
+    const slow = { ...map, crossSeconds: map.crossSeconds.map(() => 9000) };
+    expect(legOf(slow, [1, 2, 3])).toEqual([1]);
+    expect(legOf(map, [])).toEqual([]);
   });
 
   it("de noche se pierde: queda en otro hex, y no sabe en cuál", () => {
@@ -247,7 +270,7 @@ describe("moverse", () => {
     const fell = rs.filter((r) => r.failure === "slip" && r.outcome === "failure");
     expect(fell.length).toBeGreaterThan(10);
     for (const r of fell) {
-      expect(r.effect).toMatchObject({ reached: 2, stumbled: true });
+      expect(r.effect).toMatchObject({ reached: 1, stumbled: true });
       expect(r.self.effect).toEqual(r.effect);
     }
   });

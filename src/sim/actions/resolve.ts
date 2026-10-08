@@ -152,6 +152,8 @@ export type VerbEffect =
       readonly reached: number | null;
       /** Se cayó o se torció algo en el camino (body lo lee cuando llegue). */
       readonly stumbled: boolean;
+      /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
+      readonly onTheWay?: boolean;
     }
   | {
       readonly kind: "observe";
@@ -376,10 +378,11 @@ export function resolve(input: ResolveInput): ActionResolution {
       .some((h) => isMoney(h.unit) === (what === "money"));
   const roll = attempt({ ...input, has });
 
-  const path =
+  const fullPath =
     def.resolver === "move" && input.destination !== undefined
       ? hexPath(input.map, actor.hex, input.destination)
       : [];
+  const path = legOf(input.map, fullPath);
   const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0), 0);
   const nominal = actionDuration(def, node, input.planManner, pathSeconds);
   const ctx: Ctx = {
@@ -501,6 +504,21 @@ function believedView(effect: VerbEffect): VerbEffect {
 
 const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal });
 
+/** Cuánto se camina de una vez: el viaje se parte en tramos que se pueden interrumpir (travel §2). */
+export const LEG_SECONDS = 1800;
+
+/** El primer tramo de un camino: hexes hasta juntar `LEG_SECONDS` de marcha, al menos uno. */
+export function legOf(map: LocalMap, path: readonly number[]): number[] {
+  const leg: number[] = [];
+  let seconds = 0;
+  for (const h of path) {
+    leg.push(h);
+    seconds += map.crossSeconds[h] ?? 0;
+    if (seconds >= LEG_SECONDS) break;
+  }
+  return leg;
+}
+
 const move: Resolver = (c) => {
   const { roll, path, rng, degree } = c;
   const from = c.input.actor.hex;
@@ -512,6 +530,8 @@ const move: Resolver = (c) => {
     reached,
     stumbled,
   });
+  // El tramo termina donde termina el camino recortado; si no es el destino, sigue.
+  const legEnd = path.length === 0 ? from : (path[path.length - 1] as number);
   const at = (hex: number): StateChange[] =>
     hex === from ? [] : [setComponent(LOCATION, c.input.actor.id, { hex })];
 
@@ -524,7 +544,12 @@ const move: Resolver = (c) => {
     // Llega. Peor tirada, más lento; a medias, la forma dice por qué tardó.
     const slow = m >= SUCCESS_MARGIN ? 1 + 0.3 * (1 - degree) : roll.failure === "slip" ? 1.5 : 1.6;
     const stumbled = m < SUCCESS_MARGIN && roll.failure === "slip";
-    return { effect: effect(to, stumbled), seconds: c.nominal * slow, changes: at(to) };
+    const onTheWay = !stumbled && legEnd !== to;
+    return {
+      effect: { ...effect(legEnd, stumbled), ...(onTheWay ? { onTheWay } : {}) },
+      seconds: c.nominal * slow,
+      changes: at(legEnd),
+    };
   }
   if (roll.failure === "slip") {
     // Se cae a mitad de camino y se queda ahí, golpeado.

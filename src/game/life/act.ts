@@ -99,6 +99,8 @@ export interface PlanState {
   readonly lastBelieved: string | null;
   readonly steps: readonly StepRecord[];
   readonly done: boolean;
+  /** Terminó un tramo de camino: el próximo paso repite la misma hoja sin avanzar el cursor. */
+  readonly resume?: boolean;
 }
 
 export const PLAN_STATE = table<PlanState>("life.plan");
@@ -196,11 +198,13 @@ export function actProcess(o: ActOptions): ProcessDef {
       const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
       const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
       const light = node ? spaceLight(node, daylight(hour)) : daylight(hour);
-      const cursor = advance(state.plan.root, state.cursor, {
-        now: ctx.now,
-        dark: light < 0.2,
-        lastBelieved: state.lastBelieved,
-      });
+      const cursor = state.resume
+        ? state.cursor
+        : advance(state.plan.root, state.cursor, {
+            now: ctx.now,
+            dark: light < 0.2,
+            lastBelieved: state.lastBelieved,
+          });
       if (cursor.path === null) {
         const changes: StateChange[] = [
           setComponent(PLAN_STATE, me, { ...state, cursor, done: true }),
@@ -446,6 +450,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   );
   if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
 
+  // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
+  const resume = eff.kind === "move" && eff.onTheWay === true;
   const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
   const lastBelieved = r.self.believed;
   const end = ctx.now + Math.max(r.seconds, fightSeconds);
@@ -460,7 +466,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...state,
       cursor,
       lastBelieved,
-      steps: [...state.steps, stepRecord],
+      steps: resume ? state.steps : [...state.steps, stepRecord],
+      ...(resume ? { resume } : {}),
     }),
   );
   return {
