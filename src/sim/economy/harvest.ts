@@ -24,8 +24,10 @@ export const DRY_FLOOR = 0.35;
 export const HAIL_MIN_MM = 12;
 /** Máxima del día (°C) desde la que la lluvia fuerte es de convección. */
 export const HAIL_MIN_MAX_C = 20;
-/** Chance de granizo en un día que cumple lo anterior. */
+/** Chance de granizo en un día que cumple lo anterior, con la máxima justo en `HAIL_MIN_MAX_C`. */
 export const HAIL_CHANCE = 0.2;
+/** Con esta máxima (°C) o más el hielo se derrite antes de llegar al suelo: no hay granizo. */
+export const HAIL_MELT_C = 32;
 /** Fracción del campo que arrasa el día del granizo; después se recupera linealmente. */
 export const HAIL_LOSS = 0.6;
 /** Días hasta que el campo vuelve a rendir lo de antes. */
@@ -51,6 +53,12 @@ export function soilWater(recent: readonly DayWeather[]): number {
 /** ¿Pudo caer granizo ese día? Lluvia fuerte con calor; el azar solo elige entre esos días. */
 export function hailPossible(w: DayWeather): boolean {
   return w.precip.kind === "rain" && w.precip.mm >= HAIL_MIN_MM && w.tempMaxC >= HAIL_MIN_MAX_C;
+}
+
+/** Chance de granizo de un día posible: baja linealmente hasta cero a `HAIL_MELT_C`. */
+export function hailChance(w: DayWeather): number {
+  const warm = clamp((HAIL_MELT_C - w.tempMaxC) / (HAIL_MELT_C - HAIL_MIN_MAX_C), 0, 1);
+  return HAIL_CHANCE * warm;
 }
 
 /** Cuánto del campo sigue en pie (0-1) `ago` días después de un granizo (0 = el mismo día). */
@@ -90,7 +98,7 @@ export function harvestSeason(
   const hailed = (d: number): boolean => {
     let h = hails.get(d);
     if (h === undefined) {
-      h = hailPossible(at(d)) && rng.fork("hail", n.cell, d).float() < HAIL_CHANCE;
+      h = hailPossible(at(d)) && rng.fork("hail", n.cell, d).float() < hailChance(at(d));
       hails.set(d, h);
     }
     return h;

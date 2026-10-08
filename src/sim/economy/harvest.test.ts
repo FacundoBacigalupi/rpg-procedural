@@ -3,8 +3,11 @@ import { EARTHLIKE_CLOCK, Rng } from "../../core/index.ts";
 import { dailyWeather } from "../weather/index.ts";
 import type { ClimateNormals } from "../world/index.ts";
 import {
+  HAIL_CHANCE,
   HAIL_LOSS,
+  HAIL_MELT_C,
   HAIL_RECOVERY_DAYS,
+  hailChance,
   hailPossible,
   hailStanding,
   harvestSeason,
@@ -87,5 +90,26 @@ describe("cosecha por estación", () => {
     // determinista
     const g = harvestSeason(tropics, clock, Rng.root(3));
     expect(days.map(g)).toEqual(days.map(f));
+  });
+
+  it("calibración: el granizo se derrite con calor y es raro en el trópico", () => {
+    const w = dailyWeather(temperate, clock, 0, Rng.root(3));
+    const storm = { ...w, precip: { kind: "rain" as const, mm: 30 } };
+    expect(hailChance({ ...storm, tempMaxC: 20 })).toBeCloseTo(HAIL_CHANCE, 9);
+    expect(hailChance({ ...storm, tempMaxC: HAIL_MELT_C })).toBe(0);
+    expect(hailChance({ ...storm, tempMaxC: 26 })).toBeLessThan(HAIL_CHANCE);
+    // esperados por año (suma de chances) en 20 años: templado < 1, trópico < 4
+    const perYear = (n: ClimateNormals) => {
+      const rng = Rng.root(1);
+      let sum = 0;
+      for (let d = 0; d < 20 * YEAR_DAYS; d++) {
+        const day = dailyWeather(n, clock, d, rng);
+        if (hailPossible(day)) sum += hailChance(day);
+      }
+      return sum / 20;
+    };
+    expect(perYear(temperate)).toBeLessThan(1);
+    expect(perYear(tropics)).toBeLessThan(4);
+    expect(perYear(tropics)).toBeGreaterThan(0);
   });
 });
