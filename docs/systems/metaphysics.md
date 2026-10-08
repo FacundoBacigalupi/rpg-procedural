@@ -137,3 +137,14 @@ Un validador revisa que la combinación tenga sentido y deriva consecuencias:
 
 ## Preguntas abiertas
 - Ninguna por ahora.
+
+## Ampliación (2026-10-08): sabor de mundo, arquetipos de poder y estatus visible
+
+Ideas del autor: el mundo puede ser de espadas y magia, de elementos con chi, de pactos, de academias, de bestias compañeras, con o sin sistema visible. Se resuelve con ejes que el seed elige, no con listas cerradas.
+
+- **Ejes del poder** (combinables): fuente (qi ambiental, mana, pacto, dios, cuerpo, linaje, objeto), canal (meridianos, círculos o runas, palabras, gestos, varita, sellos, cartas o invocación), forma (elementos, sellos, aura, bestias, cuerpo reforzado), límite y costo (esencia, años, alma, deudas), cómo se aprende (maestro, academia, manual, pacto, despertar) y si se hereda. Un generador por ejes más **presets nombrados** como puntos de partida: cultivo, círculos y runas, hechicería con academia, bending de elementos, pactos, magia con sistema de niveles, auras con reglas, invocación y bestias.
+- **Estatus visible (ley del mundo).** Parámetros: qué tan universal es (todos, algunos, nadie), a qué edad se despierta y con qué ceremonia, qué muestra (nivel, atributos, habilidades, clase) y si se puede inspeccionar, ocultar o falsificar. Es una vista derivada de la verdad con umbrales de la ley, no una tabla aparte: la sim no depende de ella.
+- **Clases.** En los mundos con estatus visible puede haber clases que otorga el sistema (con lista amplia: combate, magia, producción, servicio). En los demás, la clase es una etiqueta cultural derivada de lo que hacés y sabés (skills, organizations).
+- **Organizaciones del sabor:** gremios de encargos con escala de rangos del mundo, academias y órdenes (organizations).
+
+Fase 7 (el eje entra en el pipeline de worldgen); estatus visible y clases otorgadas en Fase 4; presets de modo en Fase 9.

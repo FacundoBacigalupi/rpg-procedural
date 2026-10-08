@@ -344,3 +344,7 @@ La red trófica conecta cosas que la gente no relaciona:
 
 ## Preguntas abiertas
 - Calibración: velocidad de sucesión por bioma y clima; curva de hazard de incendio por combustible y sequía; probabilidad de establecimiento por propágulos y duración de la latencia; tasas de crecimiento y respuesta funcional por linaje; generaciones necesarias para una raza; cuánto tarda una manada en perder o rehacer una ruta; efecto de la domesticación sobre el núcleo de las bestias espirituales.
+
+## Ampliación (2026-10-08): mundos de domadores
+
+Sobre los vínculos y contratos con bestias (§11-§13): captura o pacto según la ley del mundo (una `Practice`), entrenamiento como aprendizaje de la bestia, compañeros que acompañan y combaten, evolución y crianza como cambios de raza con origen, y el costo de vivir con ellas (comida, lealtad, miedo). Es una combinación de sistemas existentes más una `Practice`, no un sistema nuevo. Fase 5 (`BeastMind`) y Fase 7 (la ley de captura).

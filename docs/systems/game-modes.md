@@ -655,3 +655,7 @@ Cada vida guarda en `meta` y en el archivo (chronicle §9):
 ## Preguntas abiertas
 
 - Calibración: intensidades por defecto de cada efecto en los presets; techo de la reserva de suerte; cuántos guardados da `checkpoints`; cuánta saliencia suma un dedo de oro `foreign`.
+
+## Ampliación (2026-10-08): presets de sabor de mundo
+
+Presets del armador de modo novela que fijan los ejes de metaphysics (ampliación 2026-10-08): "domador de bestias" (bestias despiertas, vínculo como compañero, equipos), "aventurero" (gremio con rangos, bestias que amenazan, academias), "académico de la magia", "con sistema" (estatus visible desde cierta edad). Son combinaciones de parámetros y dedos de oro, no reglas aparte. Fase 9.
