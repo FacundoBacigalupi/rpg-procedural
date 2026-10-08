@@ -70,3 +70,30 @@ export function walkingFactor(w: DayWeather): number {
     1 + wet + (w.windMs >= GALE_MS ? GALE_EXTRA : 0) + (w.tempMaxC <= COLD_MAX_C ? COLD_EXTRA : 0)
   );
 }
+
+/** Tope de días que se miran hacia atrás al sumar la lluvia (una huella más vieja ya no se ve). */
+const RAIN_LOOKBACK_DAYS = 60;
+
+/**
+ * Milímetros de lluvia (o aguanieve) caídos en el lugar entre `from` y `to`, para lo que la lluvia
+ * lava a la intemperie (huellas, sangre). La nieve no lava: tapa y guarda.
+ */
+export function rainBetween(
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+  from: Tick,
+  to: Tick,
+): number {
+  if (to <= from) return 0;
+  const shift = Math.round((map.lonDeg / 360) * clock.day);
+  const last = dayOf(clock, to + shift);
+  const first = Math.max(dayOf(clock, from + shift), last - RAIN_LOOKBACK_DAYS);
+  const root = Rng.root(seed);
+  let mm = 0;
+  for (let d = first; d <= last; d++) {
+    const w = dailyWeather(map.climate, clock, d, root);
+    if (w.precip.kind === "rain" || w.precip.kind === "sleet") mm += w.precip.mm;
+  }
+  return mm;
+}

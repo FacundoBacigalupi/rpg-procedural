@@ -19,6 +19,7 @@ import {
   perceive,
   presenceStimulus,
   type ReadonlyWorldTruth,
+  rainBetween,
   STATUS,
   skyLight,
   spaceLight,
@@ -54,13 +55,24 @@ const CUES: Readonly<Record<string, SelfCue>> = {
 /** Cómo llama el personaje a su gente: la relación que sabe que tiene (sin nombres todavía). */
 /** Mirando a propósito se ve más (perception §4); si no, está relajado. */
 /** Las huellas que se ven donde está el personaje: con luz, y mientras no se hayan borrado. */
-function marksAt(truth: ReadonlyWorldTruth, at: Location, now: Tick, light: number): SceneMark[] {
+function marksAt(
+  truth: ReadonlyWorldTruth,
+  at: Location,
+  now: Tick,
+  light: number,
+  rainSince: (made: Tick) => number,
+): SceneMark[] {
   if (light < 0.3) return [];
   return truth.ids(TRACE).flatMap((id) => {
     const t = truth.get(TRACE, id);
-    if (!t || t.at.hex !== at.hex || t.at.space !== at.space || !traceVisible(t, now)) return [];
+    if (!t || t.at.hex !== at.hex || t.at.space !== at.space) return [];
+    const rain = t.at.space === undefined ? rainSince(t.made) : 0;
+    if (!traceVisible(t, now, rain)) return [];
     return [
-      { kind: t.kind, age: traceStrength(t, now) > 0.5 ? ("fresh" as const) : ("old" as const) },
+      {
+        kind: t.kind,
+        age: traceStrength(t, now, rain) > 0.5 ? ("fresh" as const) : ("old" as const),
+      },
     ];
   });
 }
@@ -157,7 +169,9 @@ export function playerView(
       familiar: !options.intro,
       hour,
       light: node ? spaceLight(node, day) : day,
-      marks: marksAt(w.truth, at, now, node ? spaceLight(node, day) : day),
+      marks: marksAt(w.truth, at, now, node ? spaceLight(node, day) : day, (made) =>
+        rainBetween(w.map, w.clock, w.seed, made, now),
+      ),
     },
     percepts: digest(percepts),
     steps: steps.map((s) => ({ verb: s.verb, self: s.self })),

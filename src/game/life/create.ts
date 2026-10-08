@@ -61,6 +61,8 @@ import {
   ROTTED,
   SKILLS,
   SkillCatalog,
+  SOIL,
+  SOIL_START,
   SPEECH_LINES,
   STATUSES,
   type StatusDef,
@@ -288,6 +290,7 @@ export function createLife(
   // Los lugares con nombre salen de las anclas del sitio, con la causa que ya traen.
   const settlement = pop.settlement as SettlementId;
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
+  truth.set(SOIL, settlement, { fertility: SOIL_START, seen: 0 });
   let place = 0;
   const named: PlaceToName[] = [];
   for (const a of site.anchors) {

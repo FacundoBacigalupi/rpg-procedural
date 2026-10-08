@@ -4,7 +4,7 @@
 // guarda lo justo para que la reserva no toque cero, más un margen de granero.
 
 import type { PlanetClock } from "../../core/index.ts";
-import { HARVEST_GRAMS_PER_HOUR } from "../../sim/economy/index.ts";
+import { HARVEST_GRAMS_PER_HOUR, SOIL_START } from "../../sim/economy/index.ts";
 import { ROUTINE } from "./routine.ts";
 
 /** Gramos de grano que come por día una boca promedio (adultos y chicos; ~2300 kcal). */
@@ -14,7 +14,8 @@ export const LARDER_MARGIN_DAYS = 30;
 
 /**
  * Gramos que necesita un hogar para no quedarse sin comida en el próximo año, dados los años de
- * sus miembros y el factor de cosecha de cada día (media 1 sobre el año; `harvestSeason`).
+ * sus miembros, el suelo en su punto de asiento y el factor de cosecha de cada día (media 1 sobre
+ * el año; `harvestSeason`).
  */
 export function larderNeeded(
   ages: readonly number[],
@@ -29,7 +30,9 @@ export function larderNeeded(
   let balance = 0;
   let lowest = 0;
   for (let i = 0; i < days; i++) {
-    balance += workers * hoursPerDay * HARVEST_GRAMS_PER_HOUR * factorOfDay(startDay + i) - eaten;
+    balance +=
+      workers * hoursPerDay * HARVEST_GRAMS_PER_HOUR * SOIL_START * factorOfDay(startDay + i) -
+      eaten;
     lowest = Math.min(lowest, balance);
   }
   return Math.round(-lowest + ages.length * GRAIN_EATEN_PER_PERSON_DAY_G * LARDER_MARGIN_DAYS);

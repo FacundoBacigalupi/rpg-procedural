@@ -26,17 +26,24 @@ export const TRACE_HALF_LIFE: Readonly<Record<TraceKind, number>> = {
   blood: 36 * 3600,
 };
 
+/** Milímetros de lluvia que le sacan la mitad a una huella a la intemperie. */
+export const TRACE_WASH_MM = 6;
+
 /** Debajo de esto ya no se ve a simple vista. */
 export const TRACE_VISIBLE = 0.1;
 
-/** Cuánto se nota la huella en `now`. */
-export function traceStrength(t: Trace, now: Tick): number {
+/**
+ * Cuánto se nota la huella en `now`. `rainMm` es la lluvia caída en el lugar desde que se hizo:
+ * lava lo que está a la intemperie (`at.space` sin definir) y no toca lo que quedó adentro.
+ */
+export function traceStrength(t: Trace, now: Tick, rainMm = 0): number {
   const age = Math.max(0, now - t.made);
-  return t.strength * pow(0.5, age / TRACE_HALF_LIFE[t.kind]);
+  const washed = t.at.space === undefined ? pow(0.5, Math.max(0, rainMm) / TRACE_WASH_MM) : 1;
+  return t.strength * pow(0.5, age / TRACE_HALF_LIFE[t.kind]) * washed;
 }
 
-export function traceVisible(t: Trace, now: Tick): boolean {
-  return traceStrength(t, now) >= TRACE_VISIBLE;
+export function traceVisible(t: Trace, now: Tick, rainMm = 0): boolean {
+  return traceStrength(t, now, rainMm) >= TRACE_VISIBLE;
 }
 
 /** La mancha que deja una pelea: la herida más grave (0-1) y una base por haber sangrado. */

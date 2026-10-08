@@ -9,7 +9,7 @@ import {
   ledgerUnit,
   loadContent,
 } from "../../core/index.ts";
-import { type ActionPlan, ENTITY, LOCATION, PERSON } from "../../sim/index.ts";
+import { type ActionPlan, ENTITY, LOCATION, PERSON, SOIL, SOIL_START } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { Life } from "./index.ts";
 import { living } from "./world.ts";
@@ -182,5 +182,27 @@ describe("calibración de despensas y rutina (Hito 1c, paso 3)", () => {
     }
     // Siempre queda al menos una semana de comida por boca (~0,7 kg por día).
     expect(lowest).toBeGreaterThan(7 * 700);
+  }, 300_000);
+});
+
+describe("suelo del campo (Hito 1c, cierre PR b)", () => {
+  it("en un año de rutina la fertilidad queda cerca de donde empezó y el acumulado cuenta lo cosechado", () => {
+    const life = Life.create(3, content);
+    const w = life.world;
+    const [id] = w.truth.ids(SOIL);
+    if (id === undefined) throw new Error("la aldea no tiene suelo");
+    const start = w.truth.get(SOIL, id)?.fertility ?? 0;
+    expect(start).toBeCloseTo(SOIL_START, 10);
+    life.advanceTo(life.now + w.clock.year);
+    const soil = w.truth.get(SOIL, id);
+    expect(soil?.fertility).toBeGreaterThan(0.6);
+    expect(soil?.fertility).toBeLessThanOrEqual(1);
+    let harvested = 0;
+    for (const e of w.log.all()) {
+      if (e.kind === "routine.harvested") harvested += (e.data as { grams?: number }).grams ?? 0;
+    }
+    // Lo anotado es lo cosechado, salvo el día en curso que todavía no se contó.
+    expect(soil?.seen).toBeLessThanOrEqual(harvested);
+    expect(soil?.seen).toBeGreaterThan(0.9 * harvested);
   }, 300_000);
 });
