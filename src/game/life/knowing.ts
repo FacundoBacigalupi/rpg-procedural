@@ -49,6 +49,8 @@ export interface KnowingOptions {
 
 /** Piso de lo conocido: un vecino reconoce al personaje aunque casi no hayan hablado. */
 const KNOWN_VILLAGER = 0.6;
+/** Cada cuántas horas los vecinos se miran entre sí (el costo crece con el cuadrado de la gente). */
+const NPC_PASS_HOURS = 12;
 
 export function knowingProcess(o: KnowingOptions): ProcessDef {
   return {
@@ -81,9 +83,15 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
         byHex.set(there.hex, list);
       }
       const changes: StateChange[] = [];
+      const npcPass = Math.floor(ctx.now / 3_600) % NPC_PASS_HOURS === 0;
       // Lo que cada uno cree ya acumulado en esta pasada (un observador ve a varios sujetos).
       const staged = new Map<AgentId, Beliefs | undefined>();
       const beliefsOf = (id: AgentId) => (staged.has(id) ? staged.get(id) : truth.get(BELIEFS, id));
+      const medium = {
+        graph: o.spaces,
+        forest: o.map.forest,
+        daylight: skyLight(o.map, o.clock, o.seed, ctx.now),
+      };
       const hexes = [...byHex.keys()].sort((x, y) => x - y);
       for (const hex of hexes) {
         const here = byHex.get(hex) ?? [];
@@ -91,6 +99,8 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
         const watchers = here.filter((id) => id !== o.player);
         if (watchers.length === 0) continue;
         for (const subject of here) {
+          // Entre vecinos alcanza mirarse cada pocas horas; al personaje lo miran cada hora.
+          if (subject !== o.player && !npcPass) continue;
           const me = truth.get(PERSON, subject);
           const at = truth.get(LOCATION, subject);
           if (!me || !at) continue;
@@ -107,17 +117,21 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
                 : activity === "heavy" || activity === "moderate"
                   ? ATTENTION.absorbed
                   : ATTENTION.relaxed;
-            const dims = relationship(truth.get(RELATIONS, id), subject, ctx.now, {
-              dims: o.dims,
-              bonds: o.bonds,
-              schemaStrength: () => 0,
-            }).dims;
+            // La relación solo se consulta por el personaje; entre vecinos rige el piso de conocidos.
+            const familiarity =
+              subject === o.player
+                ? relationship(truth.get(RELATIONS, id), subject, ctx.now, {
+                    dims: o.dims,
+                    bonds: o.bonds,
+                    schemaStrength: () => 0,
+                  }).dims.familiarity
+                : 0;
             observers.push({
               id,
               at: there,
               acuity: sensorAcuity((ctx.now - p.born) / o.clock.year),
               attention,
-              familiar: new Map([[subject, Math.max(KNOWN_VILLAGER, dims.familiarity)]]),
+              familiar: new Map([[subject, Math.max(KNOWN_VILLAGER, familiarity)]]),
             });
           }
           if (observers.length === 0) continue;
@@ -133,11 +147,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
               tick: ctx.now,
             }),
             observers,
-            {
-              graph: o.spaces,
-              forest: o.map.forest,
-              daylight: skyLight(o.map, o.clock, o.seed, ctx.now),
-            },
+            medium,
             ctx.rng,
           );
           for (const pc of percepts) {

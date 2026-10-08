@@ -77,20 +77,19 @@ describe("lo que los vecinos creen del personaje", () => {
   it("los vecinos también se perciben entre sí: cada uno cree dónde está el otro", () => {
     const life = Life.create(7, content);
     const t = life.world.truth;
-    life.advanceTo(life.now + life.world.clock.day);
-    const home = t.get(PERSON, life.player)?.household;
-    const mates = living(t).filter(
-      (x) => x !== life.player && t.get(PERSON, x)?.household === home,
-    );
-    const pairs = mates.flatMap((a) => mates.filter((b) => b !== a).map((b) => [a, b] as const));
-    if (pairs.length === 0) return;
-    const known = pairs.filter(([a, b]) => believed(t.get(BELIEFS, a), b, "at") !== undefined);
-    expect(known.length).toBeGreaterThan(0);
-    for (const [a, b] of known) {
-      const bel = believed(t.get(BELIEFS, a), b, "at");
-      expect(bel?.sources[0]?.kind).toBe("percept");
-      expect(bel?.asOf).toBeLessThanOrEqual(life.now);
+    life.advanceTo(life.now + life.world.clock.day * 3);
+    const folks = living(t).filter((x) => x !== life.player);
+    let found = 0;
+    for (const a of folks) {
+      for (const b of folks) {
+        const bel = a === b ? undefined : believed(t.get(BELIEFS, a), b, "at");
+        if (!bel) continue;
+        found++;
+        expect(bel.sources[0]?.kind).toBe("percept");
+        expect(bel.asOf).toBeLessThanOrEqual(life.now);
+      }
     }
+    expect(found).toBeGreaterThan(0);
   }, 180_000);
 
   it("las creencias son de gente viva con ficha y el mundo sigue consistente", () => {
