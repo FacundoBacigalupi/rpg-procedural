@@ -98,7 +98,7 @@ import {
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
-import { atMyMercy, canFight, strikeFight } from "./fight.ts";
+import { atMyMercy, canFight, FIGHT_STATE, livePause, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -141,6 +141,8 @@ export interface ActOptions {
   readonly statuses: readonly StatusDef[];
   readonly clock: PlanetClock;
   readonly seed: Seed;
+  /** El personaje del jugador: sus peleas se pausan para que decida (combat §16). */
+  readonly player: AgentId;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -222,6 +224,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       BODY_STATE.name,
       SKILL_STATE.name,
       YIELDED.name,
+      FIGHT_STATE.name,
     ],
     writes: [
       PLAN_STATE.name,
@@ -230,6 +233,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       SKILL_STATE.name,
       PENDING.name,
       YIELDED.name,
+      FIGHT_STATE.name,
     ],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -496,6 +500,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       record = { ...r.self, effect: { ...r.self.effect, finished: true } };
     }
   } else if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
+    // Si la pelea quedó pausada contra el mismo rival y sigue caliente, esto la retoma.
+    const resumed = livePause(truth, me, targetId, ctx.now);
     const fight = strikeFight({
       truth,
       me,
@@ -510,6 +516,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       rng: input.rng.fork("fight"),
       cause: draftEvent(0),
       place: input.place,
+      ...(me === o.player ? { control: true } : {}),
+      ...(resumed ? { resume: resumed } : {}),
     });
     nextBody = fight.myBody;
     bodyTouched = true;

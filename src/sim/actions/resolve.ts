@@ -312,6 +312,8 @@ export interface FightGist {
   readonly theirs: FightSide;
   readonly woundsTaken: number;
   readonly woundsDealt: number;
+  /** La pelea sigue: lo que notó que le pide decidir (combat §16). */
+  readonly paused?: "wounded" | "foe_fleeing";
 }
 
 /** Lo que el actor cree de su paso. */

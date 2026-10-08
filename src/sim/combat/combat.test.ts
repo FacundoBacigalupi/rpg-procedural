@@ -3,7 +3,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type EventId, loadContent, makeId, Rng } from "../../core/index.ts";
 import { BODY_PLANS, type BodyPlanDef, newBody } from "../body/index.ts";
-import { type FighterInput, type FightIntent, runFight } from "./index.ts";
+import { type FighterInput, type FightIntent, PAUSE_MIN_PULSES, runFight } from "./index.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -140,5 +140,70 @@ describe("pelea mortal", () => {
     const b = r.fighters.find((f) => f.id === B);
     expect(b?.woundsTaken).toBeGreaterThan(0);
     expect(b?.body.wounds.length).toBe(b?.woundsTaken);
+  });
+});
+
+describe("pausas del jugador entre pulsos", () => {
+  const duel = (seed: number, control?: AgentId) => {
+    const fs = [fighter(A, "a", 0), fighter(B, "b", 0.7)];
+    return runFight({
+      fighters: fs,
+      start: 0,
+      light: 1,
+      rng: Rng.root(seed),
+      cause,
+      ...(control ? { control } : {}),
+    });
+  };
+
+  /** Sigue una pelea pausada hasta el final, devolviendo los tramos. */
+  const follow = (seed: number) => {
+    const slices = [duel(seed, A)];
+    let fs = [fighter(A, "a", 0), fighter(B, "b", 0.7)];
+    for (let last = slices[0]; last?.paused && slices.length < 40; last = slices.at(-1)) {
+      const { snapshot } = last.paused;
+      fs = fs.map((f) => ({
+        ...f,
+        body: last.fighters.find((x) => x.id === f.id)?.body ?? f.body,
+      }));
+      slices.push(
+        runFight({
+          fighters: fs,
+          start: snapshot.next,
+          light: 1,
+          rng: Rng.root(seed),
+          cause,
+          control: A,
+          resume: snapshot,
+        }),
+      );
+    }
+    return slices;
+  };
+
+  it("sin control no pausa nunca", () => {
+    for (let seed = 1; seed <= 30; seed++) expect(duel(seed).paused).toBeUndefined();
+  });
+
+  it("pausa cuando el jugador siente una herida y retomada llega al mismo final", () => {
+    let paused = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const slices = follow(seed);
+      const whole = duel(seed);
+      if (slices.length > 1) paused++;
+      const last = slices.at(-1);
+      expect(last?.paused).toBeUndefined();
+      expect(last?.end).toBe(whole.end);
+      expect(last?.fighters.map((f) => f.outcome)).toEqual(whole.fighters.map((f) => f.outcome));
+      expect(slices.reduce((n, s) => n + s.seconds, 0)).toBe(whole.seconds);
+    }
+    expect(paused).toBeGreaterThan(5);
+  });
+
+  it("nunca pausa antes de PAUSE_MIN_PULSES ni cuando no hay quien decida", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = duel(seed, A);
+      if (r.paused) expect(r.seconds).toBeGreaterThanOrEqual(PAUSE_MIN_PULSES);
+    }
   });
 });
