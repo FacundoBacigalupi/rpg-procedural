@@ -136,7 +136,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   let attended = false;
   let scene = "";
   const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
-    const view = playerView(life.world, report?.steps ?? [], { intro: report === null });
+    const view = playerView(life.world, report?.steps ?? [], {
+      intro: report === null,
+      ...(report ? { heardSince: report.from } : {}),
+    });
     const request = narrationRequest(
       view,
       styleOf(DEFAULT_NARRATION, "es"),

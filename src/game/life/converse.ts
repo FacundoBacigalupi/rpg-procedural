@@ -74,6 +74,9 @@ export interface ConverseOptions {
   readonly day: Duration;
 }
 
+/** Lo que se entiende de hablarle a alguien sin decirle nada en particular: un saludo. */
+export const BARE_ADDRESS = "Hola";
+
 export const replyKey = (from: AgentId, at: Tick) => `reply:${from}:${at}`;
 
 /** Lo que el paso `speak` deja hecho para que el oyente conteste cuando termine de oír. */
@@ -85,12 +88,14 @@ export function listenTo(
   at: Tick,
   end: Tick,
 ): { changes: StateChange[]; schedule: ScheduleRequest[] } {
-  if (text === null || !listener.startsWith("agent:") || listener === speaker) {
+  if (!listener.startsWith("agent:") || listener === speaker) {
     return { changes: [], schedule: [] };
   }
   const key = replyKey(speaker, at);
   return {
-    changes: [setComponent(PENDING, listener, { from: speaker, text, clarity, key })],
+    changes: [
+      setComponent(PENDING, listener, { from: speaker, text: text ?? BARE_ADDRESS, clarity, key }),
+    ],
     schedule: [
       {
         at: end,

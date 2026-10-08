@@ -19,9 +19,9 @@ import {
   Life,
   living,
   MAX_CLEAR_PERCEPTS,
-  playerView,
   PERCEPTS,
   perceiveEvents,
+  playerView,
   remember,
 } from "../../game/life/index.ts";
 import { parseCommand } from "../../llm/index.ts";
@@ -216,7 +216,7 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
   }, 120_000);
 });
 
-describe("calibración del bucle (Hito 1c)", () => {
+describe("calibraciÃ³n del bucle (Hito 1c)", () => {
   it("esperando de hora en hora en casa: pocas alarmas, solo de sed, y la escena entra en el tope", () => {
     const life = Life.create(7, content);
     const day = life.world.clock.day;
@@ -235,10 +235,10 @@ describe("calibración del bucle (Hito 1c)", () => {
       expect(view.percepts.length).toBeLessThanOrEqual(MAX_CLEAR_PERCEPTS + 1);
       if (view.percepts.length >= MAX_CLEAR_PERCEPTS) crowded++;
     }
-    // Medido en 4 seeds × 4 días: ~2 alarmas por día, todas de sed (un jugador que no bebe).
+    // Medido en 4 seeds Ã— 4 dÃ­as: ~2 alarmas por dÃ­a, todas de sed (un jugador que no bebe).
     expect(alarms.length).toBeLessThanOrEqual(3 * 3);
     expect(new Set(alarms)).toEqual(new Set(["parched"]));
-    // El tope solo aprieta en las escenas más llenas (la casa con toda la familia).
+    // El tope solo aprieta en las escenas mÃ¡s llenas (la casa con toda la familia).
     expect(crowded).toBeLessThan(turns / 2);
   }, 240_000);
 });
