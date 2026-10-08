@@ -131,10 +131,10 @@ describe("adivinos y consultas en la aldea", () => {
         );
         expect(out?.events[0]?.kind).toBe(READING_EVENT);
         expect(out?.events[0]?.causes[0]).toEqual({ kind: "event", event: cause });
-        const valueOf = (who: AgentId) =>
-          (out?.changes.find((c) => c.id === who) as { value: unknown }).value;
-        const mine = valueOf(diviner) as { items: { id: string; hops: number }[] };
-        const theirs = valueOf(client) as {
+        const changeOf = (who: AgentId) =>
+          ((out?.changes ?? []).find((c) => c.id === who) as unknown as { value: unknown }).value;
+        const mine = changeOf(diviner) as { items: { id: string; hops: number }[] };
+        const theirs = changeOf(client) as {
           items: { id: string; hops: number; claim: { subject: string } }[];
         };
         expect(mine.items[0]?.id).toBe(prophecyId(cause));
