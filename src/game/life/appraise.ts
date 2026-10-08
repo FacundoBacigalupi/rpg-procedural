@@ -4,7 +4,8 @@
 // `form` y mueve los esquemas citando el evento. Quien lo vive lo sabe por haber estado ahí o por
 // ser de la casa del muerto: los NPC todavía no perciben a distancia (Fase 3).
 //
-// No interpreta todavía el hambre ni la crianza, ni escribe cambios de relación.
+// También lleva los hábitos: cada acción registrada los refuerza (`sim/mind/habits.ts`).
+// No escribe todavía cambios de relación.
 
 import type { AgentId, Event, PlanetClock } from "../../core/index.ts";
 import {
@@ -16,6 +17,9 @@ import {
   type DimensionDef,
   ENTITY,
   form,
+  HABITS,
+  type HabitDef,
+  habitsFed,
   INNATE,
   MIND,
   type Mind,
@@ -23,6 +27,7 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  reinforceAll,
   relationship,
   type SchemaDef,
   type StageDef,
@@ -39,6 +44,7 @@ export interface AppraiseOptions {
   readonly stages: readonly StageDef[];
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
+  readonly habits: readonly HabitDef[];
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -60,11 +66,12 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [MIND.name, INNATE.name, PERSON.name, ENTITY.name, RELATIONS.name],
-    writes: [MIND.name],
+    reads: [MIND.name, INNATE.name, PERSON.name, ENTITY.name, RELATIONS.name, HABITS.name],
+    writes: [MIND.name, HABITS.name],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
+      const habits = new Map<AgentId, ReturnType<typeof reinforceAll>["habits"]>();
       const apply = (id: AgentId, e: Event, items: ReturnType<typeof appraiseLoss>) => {
         const person = truth.get(PERSON, id);
         const innate = truth.get(INNATE, id);
@@ -84,6 +91,16 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           schemaStrength: (s) => truth.get(MIND, from)?.schemas[s]?.strength ?? 0,
         });
       for (const e of ctx.recent) {
+        const fed = habitsFed(o.habits, e.kind);
+        const doer = e.actors[0] as AgentId | undefined;
+        if (fed.length > 0 && doer && alive(truth, doer) && truth.get(PERSON, doer)) {
+          const r = reinforceAll(habits.get(doer) ?? truth.get(HABITS, doer), fed, e.tick, e.id);
+          habits.set(doer, r.habits);
+          // Un hábito que se asienta deja su marca, una sola vez, como un evento vivido.
+          for (const def of r.settled) {
+            if (def.stimulus) apply(doer, e, [{ stimulus: def.stimulus, blame: null }]);
+          }
+        }
         if (e.kind === "combat.fight" || e.kind === "combat.finish") {
           fightAppraisals(e, truth, apply, rel);
         } else if (e.kind === "mind.hardship") {
@@ -116,7 +133,10 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           }
         }
       }
-      const changes: StateChange[] = [...minds].map(([id, m]) => setComponent(MIND, id, m));
+      const changes: StateChange[] = [
+        ...[...minds].map(([id, m]) => setComponent(MIND, id, m)),
+        ...[...habits].map(([id, h]) => setComponent(HABITS, id, h)),
+      ];
       return changes.length === 0 ? {} : { changes };
     },
   };

@@ -1,0 +1,71 @@
+[
+  {
+    "id": "farming",
+    "species": "human",
+    "name": "Trabajar la tierra",
+    "verbs": ["work"],
+    "kinds": ["routine.harvested"],
+    "gain": 0.02,
+    "halfLifeDays": 90,
+    "stimulus": { "theme": "success", "intensity": 0.3 }
+  },
+  {
+    "id": "foraging",
+    "species": "human",
+    "name": "Recoger y rastrear",
+    "verbs": ["gather", "search"],
+    "gain": 0.04,
+    "halfLifeDays": 60
+  },
+  {
+    "id": "brawling",
+    "species": "human",
+    "name": "Meterse en peleas",
+    "verbs": ["strike"],
+    "gain": 0.1,
+    "halfLifeDays": 120,
+    "stimulus": { "theme": "violence", "intensity": 0.3 }
+  },
+  {
+    "id": "generosity",
+    "species": "human",
+    "name": "Dar sin que se lo pidan",
+    "verbs": ["give"],
+    "gain": 0.08,
+    "halfLifeDays": 90,
+    "stimulus": { "theme": "kindness", "intensity": 0.3 }
+  },
+  {
+    "id": "taking",
+    "species": "human",
+    "name": "Quedarse con lo ajeno",
+    "verbs": ["take"],
+    "gain": 0.06,
+    "halfLifeDays": 90
+  },
+  {
+    "id": "tending",
+    "species": "human",
+    "name": "Cuidar de otros",
+    "verbs": ["tend"],
+    "gain": 0.08,
+    "halfLifeDays": 90,
+    "stimulus": { "theme": "care", "intensity": 0.3 }
+  },
+  {
+    "id": "cooking",
+    "species": "human",
+    "name": "Cocinar",
+    "verbs": ["cook"],
+    "gain": 0.05,
+    "halfLifeDays": 90
+  },
+  {
+    "id": "trading",
+    "species": "human",
+    "name": "Comerciar",
+    "verbs": ["trade"],
+    "gain": 0.08,
+    "halfLifeDays": 120
+  }
+]

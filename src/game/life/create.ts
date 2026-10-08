@@ -40,6 +40,7 @@ import {
   FOODS,
   GOODS,
   generateLanguage,
+  HABITS_CONTENT,
   HARVEST,
   HARVEST_GOOD,
   type Household,
@@ -231,6 +232,7 @@ export function resumeParts(
   | "stages"
   | "relationDims"
   | "relationBonds"
+  | "habits"
 > {
   return {
     seed,
@@ -250,6 +252,7 @@ export function resumeParts(
     stages: content.all(LIFE_STAGES),
     relationDims: content.all(RELATION_DIMS),
     relationBonds: content.all(RELATION_BONDS),
+    habits: content.all(HABITS_CONTENT),
   };
 }
 
@@ -506,6 +509,7 @@ export function createLife(
       stages: content.all(LIFE_STAGES),
       relationDims: content.all(RELATION_DIMS),
       relationBonds: content.all(RELATION_BONDS),
+      habits: content.all(HABITS_CONTENT),
     },
     pop.player,
     terrain.village,
