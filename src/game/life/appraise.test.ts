@@ -5,10 +5,14 @@ import { type AgentId, type ContentSource, type EventId, loadContent } from "../
 import {
   type ActionPlan,
   appraiseFight,
+  appraiseHardship,
   appraiseLoss,
+  appraiseRearing,
   BODY_STATE,
   type Body,
+  careOf,
   checkInvariants,
+  harshChance,
   LOCATION,
   MIND,
   type Mind,
@@ -198,4 +202,85 @@ describe("la aldea interpreta lo que vive", () => {
     };
     expect(run()).toEqual(run());
   }, 120_000);
+});
+
+describe("interpretar el hambre y la crianza", () => {
+  it("el hambre pesa más cuanto más agotada está la reserva y no marca al que come bien", () => {
+    const thin = appraiseHardship(0.3, mindWith({}))[0]?.stimulus.intensity ?? 0;
+    const lean = appraiseHardship(0.6, mindWith({}))[0]?.stimulus.intensity ?? 0;
+    expect(thin).toBeGreaterThan(lean);
+    expect(appraiseHardship(1, mindWith({}))).toEqual([]);
+    expect(appraiseHardship(0.3, mindWith({}))[0]?.stimulus.theme).toBe("hardship");
+    const used = appraiseHardship(0.3, mindWith({ world_is_dangerous: 1 }))[0];
+    expect(used?.stimulus.intensity).toBeLessThan(thin);
+  });
+
+  it("el cuidado, el abandono y la mano dura son temas distintos", () => {
+    const themes = (care: number, harsh: number) =>
+      appraiseRearing({ caregiver: FOE, care, harsh }, mindWith({}), calm).map(
+        (a) => a.stimulus.theme,
+      );
+    expect(themes(0.8, 0)).toEqual(["care"]);
+    expect(themes(-0.8, 0)).toEqual(["neglect"]);
+    expect(themes(0, 0)).toEqual([]);
+    expect(themes(0.8, 0.5)).toEqual(["care", "violence"]);
+    const [hit] = appraiseRearing({ caregiver: FOE, care: 0, harsh: 0.5 }, mindWith({}), calm);
+    expect(hit?.blame).toBe(FOE);
+  });
+
+  it("cuida más el cálido y querido de una casa holgada, y es más duro el frío de una apretada", () => {
+    expect(careOf(0.8, 0.8, 0)).toBeGreaterThan(careOf(-0.5, 0.1, 0));
+    expect(careOf(0.5, 0.5, 0)).toBeGreaterThan(careOf(0.5, 0.5, 1));
+    expect(harshChance(0.8, -0.8, 1)).toBeGreaterThan(harshChance(-0.8, 0.8, 0));
+  });
+});
+
+describe("la aldea cría a sus chicos", () => {
+  const rearing = (seed: number) => {
+    const life = Life.create(seed, content);
+    life.advanceTo(life.now + 100 * 86_400);
+    return { life, events: life.world.log.all().filter((e) => e.kind === "family.rearing") };
+  };
+
+  it("cada temporada los chicos viven su crianza, citada como causa de lo que cambia", () => {
+    const { life, events } = rearing(10);
+    const w = life.world;
+    expect(events.length).toBeGreaterThan(0);
+    for (const e of events) {
+      const child = e.actors[0] as AgentId;
+      const born = w.truth.get(PERSON, child)?.born ?? 0;
+      expect((e.tick - born) / w.clock.year).toBeLessThan(12);
+    }
+    const cited = events.some((e) =>
+      Object.values(w.truth.get(MIND, e.actors[0] as AgentId)?.schemas ?? {}).some((h) =>
+        h.causes.includes(e.id),
+      ),
+    );
+    expect(cited).toBe(true);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
+  it("un chico sin nadie en la casa queda abandonado", () => {
+    const life = Life.create(10, content);
+    const w = life.world;
+    const child = living(w.truth).find((id) => {
+      const p = w.truth.get(PERSON, id);
+      return p && (life.now - p.born) / w.clock.year < 12 && id !== life.player;
+    }) as AgentId;
+    const home = w.truth.get(PERSON, child)?.household;
+    for (const id of living(w.truth)) {
+      if (id !== child && w.truth.get(PERSON, id)?.household === home) {
+        const b = w.truth.get(BODY_STATE, id) as Body;
+        w.truth.set(BODY_STATE, id, { ...b, death: { cause: "brain_trauma", at: life.now } } as Body);
+      }
+    }
+    life.advanceTo(life.now + 100 * 86_400);
+    const mine = w.log.all().find((e) => e.kind === "family.rearing" && e.actors[0] === child);
+    const care = (mine?.data as { care?: number } | null)?.care ?? 0;
+    expect(care).toBeLessThan(-0.2);
+  }, 120_000);
+
+  it("es determinista", () => {
+    expect(rearing(10).life.hash()).toEqual(rearing(10).life.hash());
+  }, 240_000);
 });

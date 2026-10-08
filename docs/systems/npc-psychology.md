@@ -79,7 +79,7 @@ Cada evento que el NPC vive y le resulta **intenso** puede mover esquemas y valo
 
 - **Plasticidad**: alta en la infancia y baja en la adultez. Para un cultivador de 800 años es casi nula, salvo traumas enormes. Esto da que los viejos sean "duros" y que los traumas infantiles marquen de por vida.
 - **Susceptibilidad**: por ejemplo, alta `reactivity` amplifica los eventos negativos.
-- **Crianza**: los padres son la mayor fuente de eventos formativos tempranos (cuidado, abandono, violencia, enseñanza). La crianza no es un modificador abstracto: son **eventos de crianza** que la simulación genera según cómo son los padres y su situación (pobreza, guerra, deudas).
+- **Crianza** *(implementada: eventos `family.rearing` por temporada, ver `game/life/upbringing.ts`)*: los padres son la mayor fuente de eventos formativos tempranos (cuidado, abandono, violencia, enseñanza). La crianza no es un modificador abstracto: son **eventos de crianza** que la simulación genera según cómo son los padres y su situación (pobreza, guerra, deudas).
 
 **Ejemplo.** Al padre de Li Wei lo hiere un discípulo de una secta, y la familia queda endeudada con los Zhao.
 - El evento se interpreta con su temperamento (`boldness` alto, `warmth` medio).

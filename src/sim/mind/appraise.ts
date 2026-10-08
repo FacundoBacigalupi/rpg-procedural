@@ -99,3 +99,81 @@ export function appraiseLoss(closeness: number): Appraised[] {
     { stimulus: { theme: "loss", intensity: round(LOSS_FLOOR + LOSS_SPAN * c) }, blame: null },
   ];
 }
+
+/** Fracción de la grasa de referencia por debajo de la cual el hambre ya es carencia prolongada. */
+export const HARDSHIP_FAT_START = 0.7;
+/** Cuánto más abajo llega la intensidad plena (la reserva de grasa casi agotada). */
+export const HARDSHIP_FAT_SPAN = 0.5;
+/** Edad vivida (años) hasta la que la crianza forma: después la casa deja de criar. */
+export const REARING_AGE = 12;
+/** Peso de cada insumo del cuidado de quien cría (calidez, cariño por el chico, penuria de la casa). */
+export const CARE_WARMTH = 0.5;
+export const CARE_AFFECTION = 0.4;
+export const CARE_STRAIN = 0.6;
+export const CARE_BASE = 0.1;
+/** Cuánto vale el cuidado de alguien que no es de la sangre del chico, contra el de un padre. */
+export const CARE_STRANGER = 0.6;
+/** Cuidado de un chico que no tiene a nadie en la casa que lo críe. */
+export const CARE_ABANDONED = -0.8;
+/** Chance por temporada de mano dura: base y lo que suman la audacia, la frialdad y la penuria. */
+export const HARSH_BASE = 0.05;
+export const HARSH_BOLD = 0.1;
+export const HARSH_COLD = 0.1;
+export const HARSH_STRAIN = 0.3;
+export const HARSH_MAX = 0.6;
+
+/** Cómo vive el hambre prolongada quien la pasa (`fatRatio`: grasa que le queda / la de referencia). */
+export function appraiseHardship(fatRatio: number, mind: Mind): Appraised[] {
+  const depletion = clamp01((HARDSHIP_FAT_START - fatRatio) / HARDSHIP_FAT_SPAN);
+  if (depletion < 0.1) return [];
+  const damped = depletion * (1 - EXPECTED_DAMPING * strength(mind, "world_is_dangerous"));
+  return [{ stimulus: { theme: "hardship", intensity: round(clamp01(damped)) }, blame: null }];
+}
+
+/** Cuánto cuida alguien a un chico (-1 a 1): su calidez, su cariño por él y cuánto aprieta la casa. */
+export function careOf(warmth: number, affection: number, strain: number): number {
+  const x = CARE_WARMTH * warmth + CARE_AFFECTION * affection - CARE_STRAIN * clamp01(strain);
+  return Math.min(1, Math.max(-1, x + CARE_BASE));
+}
+
+/** Chance de mano dura en una temporada de quien cría: más en el audaz, el frío y la casa apretada. */
+export function harshChance(boldness: number, warmth: number, strain: number): number {
+  const x =
+    HARSH_BASE +
+    HARSH_BOLD * Math.max(0, boldness) +
+    HARSH_COLD * Math.max(0, -warmth) +
+    HARSH_STRAIN * clamp01(strain);
+  return Math.min(HARSH_MAX, Math.max(0, x));
+}
+
+export interface RearingFacts {
+  /** Quién crió al chico esta temporada (null: nadie en la casa). */
+  readonly caregiver: AgentId | null;
+  /** Cuánto lo cuidó (-1 a 1, de `careOf`). */
+  readonly care: number;
+  /** Gravedad (0-1) de la mano dura de esa temporada (0: ninguna). */
+  readonly harsh: number;
+}
+
+/** Cómo vive un chico la crianza de una temporada: cuidado o abandono, y la mano dura si hubo. */
+export function appraiseRearing(facts: RearingFacts, mind: Mind, innate: Innate): Appraised[] {
+  const out: Appraised[] = [];
+  const care = Math.min(1, Math.max(-1, facts.care));
+  if (care >= 0.2) {
+    out.push({ stimulus: { theme: "care", intensity: round(0.6 * care) }, blame: null });
+  } else if (care <= -0.2) {
+    const felt = -care * (1 - EXPECTED_DAMPING * strength(mind, "people_are_untrustworthy"));
+    out.push({ stimulus: { theme: "neglect", intensity: round(clamp01(felt)) }, blame: null });
+  }
+  const harsh = clamp01(facts.harsh);
+  if (harsh > 0) {
+    const bold = 1 - BOLD_DAMPING * Math.max(0, innate["boldness"] ?? 0);
+    const hurt = clamp01(FIGHT_FLOOR + FIGHT_SPAN * harsh);
+    const damped = clamp01(hurt * (1 - EXPECTED_DAMPING * strength(mind, "world_is_dangerous")));
+    out.push({
+      stimulus: { theme: "violence", intensity: round(damped * bold) },
+      blame: facts.caregiver,
+    });
+  }
+  return out;
+}
