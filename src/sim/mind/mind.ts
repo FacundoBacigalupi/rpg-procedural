@@ -51,6 +51,7 @@ export const THEMES = [
   "injustice",
   "calamity",
   "blessing",
+  "guilt",
 ] as const;
 export type Theme = (typeof THEMES)[number];
 
@@ -64,6 +65,7 @@ const PAINFUL: ReadonlySet<Theme> = new Set([
   "failure",
   "injustice",
   "calamity",
+  "guilt",
 ]);
 
 const Weights = <K extends string>(keys: readonly [K, ...K[]]) =>

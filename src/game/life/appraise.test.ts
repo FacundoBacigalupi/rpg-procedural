@@ -5,6 +5,7 @@ import { type AgentId, type ContentSource, type EventId, loadContent } from "../
 import {
   type ActionPlan,
   appraiseFight,
+  appraiseGuilt,
   appraiseHardship,
   appraiseLoss,
   appraiseRearing,
@@ -14,7 +15,9 @@ import {
   checkInvariants,
   fightDeltas,
   finishDeltas,
+  form,
   harshChance,
+  LIFE_STAGES,
   LOCATION,
   MIND,
   type Mind,
@@ -159,6 +162,40 @@ describe("interpretar una pérdida", () => {
     expect(near).toBeGreaterThan(far);
     expect(appraiseLoss(0.9)[0]?.stimulus.theme).toBe("loss");
     expect(appraiseLoss(0)).toEqual([]);
+  });
+
+  it("un rito consuela: baja el dolor sin borrarlo y sin consuelo no cambia nada", () => {
+    const bare = appraiseLoss(0.9)[0]?.stimulus.intensity ?? 0;
+    expect(appraiseLoss(0.9, 0)[0]?.stimulus.intensity).toBe(bare);
+    const eased = appraiseLoss(0.9, 0.8)[0]?.stimulus.intensity ?? 0;
+    expect(eased).toBeLessThan(bare);
+    expect(eased).toBeGreaterThan(0);
+    expect(appraiseLoss(0.9, 1)[0]?.stimulus.intensity ?? 0).toBeLessThan(eased);
+  });
+});
+
+describe("interpretar la culpa de romper un tabú", () => {
+  it("es un estímulo `guilt` de la intensidad dada, sin culpar a nadie", () => {
+    const [a] = appraiseGuilt(0.6);
+    expect(a?.stimulus).toEqual({ theme: "guilt", intensity: 0.6 });
+    expect(a?.blame).toBeNull();
+  });
+
+  it("lo que no pesó no deja marca y se acota a 0-1", () => {
+    expect(appraiseGuilt(0)).toEqual([]);
+    expect(appraiseGuilt(0.01)).toEqual([]);
+    expect(appraiseGuilt(3)[0]?.stimulus.intensity).toBe(1);
+  });
+
+  it("forma esquemas: quien se cree indigno o cree en un Cielo justo se carga más", () => {
+    const stage = content.all(LIFE_STAGES)[0];
+    if (!stage) throw new Error("sin etapa");
+    const stimulus = appraiseGuilt(0.8)[0]?.stimulus;
+    if (!stimulus) throw new Error("sin estímulo");
+    const ctx = { schemas: content.all(SCHEMAS), stage, innate: calm, event: EVENT };
+    const { changes } = form(mindWith({}), stimulus, ctx);
+    expect(changes.find((c) => c.schema === "i_am_unworthy")?.delta ?? 0).toBeGreaterThan(0);
+    expect(changes.find((c) => c.schema === "heaven_is_just")?.delta ?? 0).toBeGreaterThan(0);
   });
 });
 

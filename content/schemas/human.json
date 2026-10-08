@@ -60,7 +60,8 @@
       "violence": 0.3,
       "care": -0.5,
       "kindness": -0.3,
-      "success": -0.3
+      "success": -0.3,
+      "guilt": 0.3
     },
     "values": { "status": 0.3, "pleasure": 0.1 }
   },
@@ -69,7 +70,13 @@
     "species": "human",
     "name": "El Cielo es justo",
     "lean": { "control": 0.1, "reactivity": -0.1 },
-    "effects": { "blessing": 0.5, "plenty": 0.3, "injustice": -0.5, "calamity": -0.4 },
+    "effects": {
+      "blessing": 0.5,
+      "plenty": 0.3,
+      "injustice": -0.5,
+      "calamity": -0.4,
+      "guilt": 0.3
+    },
     "values": { "justice": 0.4, "tradition": 0.3 }
   },
   {
