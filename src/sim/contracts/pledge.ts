@@ -134,7 +134,7 @@ export interface PledgeBelief {
 export interface PledgeBook {
   readonly items: readonly PledgeBelief[];
 }
-export const PLEDGE_BOOK = table<PledgeBook>("contracts.pledge-book");
+export const PLEDGE_BOOK = table<PledgeBook>("contracts.pledge_book");
 
 /** Cuántas promesas guarda cada persona antes de olvidar las más viejas y chicas (§15). */
 export const PLEDGE_BOOK_CAPACITY = 24;
@@ -266,7 +266,7 @@ export interface GuiltContext {
 }
 
 /** Cuánto pesa en la conciencia romper `p` (0-1), según los valores de quien promete. */
-export function guiltOf(
+export function pledgeGuilt(
   values: Readonly<Partial<Record<ValueId, number>>>,
   p: Pledge,
   ctx: GuiltContext,

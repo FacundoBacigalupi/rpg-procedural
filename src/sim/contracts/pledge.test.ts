@@ -8,7 +8,7 @@ import {
   bookOf,
   decideKeep,
   disputes,
-  guiltOf,
+  pledgeGuilt,
   isPledgeOverdue,
   learnOutcome,
   makePledge,
@@ -130,10 +130,10 @@ describe("promesas: culpa y decisión", () => {
     const heavy = pledge(1, 3000);
     const light = pledge(1, 20);
     const ctx = { close: false, harm: 0.5 };
-    expect(guiltOf(scrupulous, heavy, ctx)).toBeGreaterThan(guiltOf(cynic, heavy, ctx));
-    expect(guiltOf(scrupulous, heavy, ctx)).toBeGreaterThan(guiltOf(scrupulous, light, ctx));
-    expect(guiltOf(scrupulous, heavy, { ...ctx, close: true })).toBeGreaterThan(
-      guiltOf(scrupulous, heavy, ctx),
+    expect(pledgeGuilt(scrupulous, heavy, ctx)).toBeGreaterThan(pledgeGuilt(cynic, heavy, ctx));
+    expect(pledgeGuilt(scrupulous, heavy, ctx)).toBeGreaterThan(pledgeGuilt(scrupulous, light, ctx));
+    expect(pledgeGuilt(scrupulous, heavy, { ...ctx, close: true })).toBeGreaterThan(
+      pledgeGuilt(scrupulous, heavy, ctx),
     );
   });
 
@@ -144,7 +144,7 @@ describe("promesas: culpa y decisión", () => {
         fc.double({ min: 0, max: 1, noNaN: true }),
         fc.integer({ min: 1, max: 100000 }),
         (v, harm, grams) => {
-          const g = guiltOf({ tradition: v, justice: v, family: v, status: v }, pledge(1, grams), {
+          const g = pledgeGuilt({ tradition: v, justice: v, family: v, status: v }, pledge(1, grams), {
             close: true,
             harm,
             gratitude: 1,
