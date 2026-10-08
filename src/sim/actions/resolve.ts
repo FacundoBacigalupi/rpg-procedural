@@ -209,6 +209,13 @@ export type VerbEffect =
       readonly offBalance: boolean;
       /** La pelea que siguió, si la hubo (la pone `game` con `sim/combat`; el resolver no la sabe). */
       readonly fight?: FightGist;
+      /** Lo remató estando a su merced (la pone `game`: el resolver no sabe de rendiciones). */
+      readonly finished?: boolean;
+    }
+  | {
+      /** Perdonar a quien se rindió: dejarlo ir. */
+      readonly kind: "spare";
+      readonly target: EntityRef | null;
     }
   | {
       readonly kind: "trade";
@@ -721,6 +728,11 @@ const strike: Resolver = (c) => {
   };
 };
 
+const spare: Resolver = (c) => ({
+  effect: { kind: "spare", target: argEntity(c, "target") },
+  seconds: c.nominal,
+});
+
 const trade: Resolver = (c) => {
   const other = argEntity(c, "with");
   const m = c.roll.margin;
@@ -1223,6 +1235,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   work,
   speak,
   strike,
+  spare,
   trade,
   give,
   take,

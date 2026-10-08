@@ -71,6 +71,10 @@
   { "id": "percept.action.wait", "lines": ["{who} espera, quieto.", "Ves a {who} esperando."] },
   { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
+  {
+    "id": "percept.action.spare",
+    "lines": ["{who} baja la mano y deja ir a alguien.", "Ves a {who} perdonar a otro."]
+  },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
   {
     "id": "percept.action.give",
@@ -234,6 +238,18 @@
     "id": "outcome.strike.fight.mine_yielded",
     "lines": ["Levantás las manos y le pedís a {target} que pare."]
   },
+  {
+    "id": "outcome.strike.finished",
+    "lines": [
+      "{target} no se defiende, y descargás el golpe igual.",
+      "Rematás a {target}, que ya se había rendido."
+    ]
+  },
+  {
+    "id": "outcome.spare.done",
+    "lines": ["Bajás la mano: a {target} lo dejás ir.", "Le perdonás la vida a {target}."]
+  },
+  { "id": "outcome.spare.anyone", "lines": ["No hay a quién perdonar."] },
   {
     "id": "outcome.strike.off_balance",
     "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]

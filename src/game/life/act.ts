@@ -32,6 +32,7 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  FINISH_FORCE,
   type FoodDef,
   FRESH_CURSOR,
   fieldFertility,
@@ -88,10 +89,11 @@ import {
   verbSkill,
   walkingFactor,
   weatherAt,
+  YIELDED,
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
-import { canFight, strikeFight } from "./fight.ts";
+import { atMyMercy, canFight, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -194,8 +196,16 @@ export function actProcess(o: ActOptions): ProcessDef {
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      YIELDED.name,
     ],
-    writes: [PLAN_STATE.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name, PENDING.name],
+    writes: [
+      PLAN_STATE.name,
+      LOCATION.name,
+      BODY_STATE.name,
+      SKILL_STATE.name,
+      PENDING.name,
+      YIELDED.name,
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const state = ctx.truth.get(PLAN_STATE, me);
@@ -418,7 +428,48 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const extraEvents: EventDraft[] = [];
   let fightSeconds = 0;
   let record: StepRecord["self"] = r.self;
-  if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
+  const merciful = targetId !== null && atMyMercy(truth, me, targetId, ctx.now);
+  if (eff.kind === "spare" && targetId && merciful) {
+    // Perdonar: lo deja ir. Queda en lo que los testigos vieron, no en un castigo.
+    changes.push(deleteComponent(YIELDED, targetId));
+    extraEvents.push({
+      kind: "combat.spare",
+      actors: [me, targetId],
+      place: input.place,
+      data: {},
+      emissions: { sight: 0.6, sound: 0.3 },
+      causes: [{ kind: "event", event: draftEvent(0) }],
+    });
+  } else if (eff.kind === "strike" && eff.committed && targetId && merciful) {
+    // Rematar a quien se rindió: no hay pelea, hay un golpe a alguien que no se defiende.
+    const tb = truth.get(BODY_STATE, targetId);
+    if (tb) {
+      changes.push(
+        setComponent(
+          BODY_STATE,
+          targetId,
+          injure(
+            bodyPlan,
+            tb,
+            { kind: "blunt", force: FINISH_FORCE, zone: "head", cause: draftEvent(0), at: ctx.now },
+            input.rng.fork("finish"),
+          ).body,
+        ),
+        deleteComponent(YIELDED, targetId),
+      );
+    }
+    extraEvents.push({
+      kind: "combat.finish",
+      actors: [me, targetId],
+      place: input.place,
+      data: {},
+      emissions: { sight: 1, sound: 0.6 },
+      causes: [{ kind: "event", event: draftEvent(0) }],
+    });
+    if (r.self.effect.kind === "strike") {
+      record = { ...r.self, effect: { ...r.self.effect, finished: true } };
+    }
+  } else if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
     const fight = strikeFight({
       truth,
       me,
