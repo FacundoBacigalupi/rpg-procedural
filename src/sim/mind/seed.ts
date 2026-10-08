@@ -1,7 +1,8 @@
 // La mente de cada vivo al empezar (npc-psychology §1-§2, Fase 2): los esquemas de base salen de su
 // temperamento (`baselineSchemas`) con una variación propia por `rng.fork("psyche", id)`. La
-// historia de cada uno antes del juego no se simula: la causa de todo lo de base es el evento de
-// la siembra, que cuelga de la fundación.
+// historia de cada uno antes del juego sale de la pre-corrida (`history.ts`: las muertes de su
+// parentela, vividas a la edad que tenía); la causa de lo de base es el evento de la siembra, que
+// cuelga de la fundación.
 
 import {
   type AgentId,
@@ -12,8 +13,9 @@ import {
   Rng,
   type Tick,
 } from "../../core/index.ts";
-import { INNATE, PERSON } from "../family/index.ts";
+import { INNATE, type Innate, PERSON } from "../family/index.ts";
 import { ENTITY, type WorldTruth } from "../world/index.ts";
+import { applyFoundersHistory, type FoundersHistoryInput } from "./history.ts";
 import { baselineSchemas, MIND, type Mind, type SchemaDef } from "./mind.ts";
 
 export interface SeedMindsInput {
@@ -22,6 +24,8 @@ export interface SeedMindsInput {
   readonly place: PlaceRef;
   readonly foundersEvent: EventId;
   readonly schemas: readonly SchemaDef[];
+  /** La pre-corrida: con ella, los adultos llegan marcados por lo que vivieron (sin ella, de base). */
+  readonly history?: Omit<FoundersHistoryInput, "schemas">;
 }
 
 /** Variación personal de la fuerza de base de un esquema (desvío). */
@@ -50,6 +54,7 @@ export function seedMinds(
     resolution: "local",
   });
   const root = Rng.root(input.seed);
+  const minds = new Map<AgentId, Mind>();
   for (const id of alive) {
     const innate = truth.get(INNATE, id);
     if (!innate) continue;
@@ -58,7 +63,15 @@ export function seedMinds(
     const schemas: Mind["schemas"] = Object.fromEntries(
       Object.entries(base).map(([k, strength]) => [k, { strength, causes: [event] }]),
     );
-    truth.set(MIND, id, { schemas, formative: [], originEventId: event });
+    minds.set(id, { schemas, formative: [], originEventId: event });
   }
+  const lived = input.history
+    ? applyFoundersHistory(
+        minds,
+        { ...input.history, schemas: input.schemas },
+        (id) => truth.get(INNATE, id) as Innate,
+      )
+    : minds;
+  for (const [id, mind] of lived) truth.set(MIND, id, mind);
   return event;
 }
