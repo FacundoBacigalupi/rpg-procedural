@@ -46,6 +46,7 @@ import {
   harvestSeason,
   houseKey,
   LANGUAGES,
+  LIFE_STAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
@@ -226,6 +227,10 @@ export function resumeParts(
   | "statuses"
   | "speech"
   | "pressureCurves"
+  | "schemas"
+  | "stages"
+  | "relationDims"
+  | "relationBonds"
 > {
   return {
     seed,
@@ -241,6 +246,10 @@ export function resumeParts(
     statuses: content.all(STATUSES),
     speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
+    schemas: content.all(SCHEMAS),
+    stages: content.all(LIFE_STAGES),
+    relationDims: content.all(RELATION_DIMS),
+    relationBonds: content.all(RELATION_BONDS),
   };
 }
 
@@ -493,6 +502,10 @@ export function createLife(
       statuses: content.all(STATUSES),
       speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
+      schemas: content.all(SCHEMAS),
+      stages: content.all(LIFE_STAGES),
+      relationDims: content.all(RELATION_DIMS),
+      relationBonds: content.all(RELATION_BONDS),
     },
     pop.player,
     terrain.village,
