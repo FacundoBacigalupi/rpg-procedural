@@ -156,6 +156,8 @@ export type VerbEffect =
       readonly stumbled: boolean;
       /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
       readonly onTheWay?: boolean;
+      /** Se torció del rumbo sin notarlo: el hex donde cree estar (`reached` es donde está). */
+      readonly believedAt?: number;
     }
   | {
       readonly kind: "observe";
@@ -487,9 +489,13 @@ export function resolve(input: ResolveInput): ActionResolution {
 
 /** Lo que el actor ve de un efecto cuando sabe cómo le fue: todo, salvo dónde quedó si se perdió. */
 function believedView(effect: VerbEffect): VerbEffect {
+  if (effect.kind === "move" && effect.believedAt !== undefined) {
+    // Se torció del rumbo sin notarlo: cree estar donde iba.
+    return { ...effect, reached: effect.believedAt };
+  }
   if (effect.kind === "move" && effect.reached !== effect.to) {
-    // Se cayó en el camino: sabe dónde está. Se perdió: no.
-    return effect.stumbled ? effect : { ...effect, reached: null };
+    // A mitad de viaje sabe dónde está; se cayó: también. Se perdió: no.
+    return effect.stumbled || effect.onTheWay ? effect : { ...effect, reached: null };
   }
   if (effect.kind === "search" && !effect.found && !effect.glimpsed) {
     // No lo encontró: cree que no está, esté o no.
@@ -522,6 +528,15 @@ export function legOf(map: LocalMap, path: readonly number[], walk = 1): number[
   return leg;
 }
 
+/** Chance máxima de torcer el rumbo en un tramo a medias (se multiplica por `1 - grado`). */
+export const VEER_CHANCE = 0.6;
+
+/** Un vecino de `hex` que no sea el destino ni el camino recto; si no hay, sigue en `hex`. */
+function veerFrom(c: Ctx, hex: number, to: number): number {
+  const options = (c.input.map.neighbors[hex] ?? []).filter((n) => n !== to && !c.path.includes(n));
+  return options.length > 0 ? c.rng.pick([...options].sort((a, b) => a - b)) : hex;
+}
+
 const move: Resolver = (c) => {
   const { roll, path, rng, degree } = c;
   const from = c.input.actor.hex;
@@ -548,10 +563,20 @@ const move: Resolver = (c) => {
     const slow = m >= SUCCESS_MARGIN ? 1 + 0.3 * (1 - degree) : roll.failure === "slip" ? 1.5 : 1.6;
     const stumbled = m < SUCCESS_MARGIN && roll.failure === "slip";
     const onTheWay = !stumbled && legEnd !== to;
+    // Rumbo: un tramo que sale a medias en un viaje que sigue puede torcerse un hex sin que
+    // el caminante lo note; el próximo tramo parte de donde está de verdad (travel §11.1).
+    const veer =
+      onTheWay && m < SUCCESS_MARGIN && rng.float() < VEER_CHANCE * (1 - degree)
+        ? veerFrom(c, legEnd, to)
+        : legEnd;
     return {
-      effect: { ...effect(legEnd, stumbled), ...(onTheWay ? { onTheWay } : {}) },
+      effect: {
+        ...effect(veer, stumbled),
+        ...(onTheWay ? { onTheWay } : {}),
+        ...(veer !== legEnd ? { believedAt: legEnd } : {}),
+      },
       seconds: c.nominal * slow,
-      changes: at(legEnd),
+      changes: at(veer),
     };
   }
   if (roll.failure === "slip") {
