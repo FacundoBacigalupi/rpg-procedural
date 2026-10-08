@@ -66,6 +66,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
   /** El hex adonde va `move` (el del lugar del argumento, ya elegido por quien arma el paso). */
   readonly destination?: number | undefined;
+  /** Cuánto más cuesta caminar hoy por el tiempo (1 = seco y templado; `walkingFactor`). */
+  readonly walkFactor?: number | undefined;
   /** Lo que tiene cada titular: de acá sale qué hay para tomar, ofrecer o sacar del lugar. */
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -382,8 +384,9 @@ export function resolve(input: ResolveInput): ActionResolution {
     def.resolver === "move" && input.destination !== undefined
       ? hexPath(input.map, actor.hex, input.destination)
       : [];
-  const path = legOf(input.map, fullPath);
-  const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0), 0);
+  const walk = input.walkFactor ?? 1;
+  const path = legOf(input.map, fullPath, walk);
+  const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0) * walk, 0);
   const nominal = actionDuration(def, node, input.planManner, pathSeconds);
   const ctx: Ctx = {
     input,
@@ -508,12 +511,12 @@ const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal })
 export const LEG_SECONDS = 1800;
 
 /** El primer tramo de un camino: hexes hasta juntar `LEG_SECONDS` de marcha, al menos uno. */
-export function legOf(map: LocalMap, path: readonly number[]): number[] {
+export function legOf(map: LocalMap, path: readonly number[], walk = 1): number[] {
   const leg: number[] = [];
   let seconds = 0;
   for (const h of path) {
     leg.push(h);
-    seconds += map.crossSeconds[h] ?? 0;
+    seconds += (map.crossSeconds[h] ?? 0) * walk;
     if (seconds >= LEG_SECONDS) break;
   }
   return leg;
