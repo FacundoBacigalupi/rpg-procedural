@@ -177,17 +177,30 @@ export function baselineSchemas(
   return out;
 }
 
-/** Los valores de alguien, normalizados a suma 1: temperamento + esquemas (§2). */
+/** El sesgo de valores de una cultura (rasgo `values.bias`): solo los parámetros que son valores. */
+export function valueBias(
+  params: Readonly<Record<string, number>>,
+): Partial<Record<ValueId, number>> {
+  const out: Partial<Record<ValueId, number>> = {};
+  for (const id of VALUE_IDS) if (params[id] !== undefined) out[id] = params[id];
+  return out;
+}
+
+/**
+ * Los valores de alguien, normalizados a suma 1: temperamento + esquemas (§2), más el sesgo de la
+ * cultura en que se crió (`bias`, culture §2).
+ */
 export function valuesOf(
   valueDefs: readonly ValueDef[],
   schemaDefs: readonly SchemaDef[],
   mind: Mind,
   innate: Innate,
+  bias: Partial<Record<ValueId, number>> = {},
 ): Record<ValueId, number> {
   const raw = {} as Record<ValueId, number>;
   let total = 0;
   for (const v of valueDefs) {
-    let w = v.base;
+    let w = v.base + (bias[v.id] ?? 0);
     for (const axis of TEMPERAMENT_AXES) w += (v.temperament[axis] ?? 0) * (innate[axis] ?? 0);
     for (const d of schemaDefs) w += (d.values[v.id] ?? 0) * (mind.schemas[d.id]?.strength ?? 0);
     raw[v.id] = Math.max(VALUE_FLOOR, w);

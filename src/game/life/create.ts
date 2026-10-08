@@ -411,6 +411,12 @@ export function createLife(
     place: terrain.village,
     foundersEvent: pop.foundersEvent,
     schemas: content.all(SCHEMAS),
+    history: {
+      people: pop.people,
+      events: pop.events,
+      yearTicks: clock.year,
+      stages: content.all(LIFE_STAGES),
+    },
   });
   // Lo que cada uno siente por su parentela y su casa (npc-psychology §6).
   seedRelations(truth, ids, log, {

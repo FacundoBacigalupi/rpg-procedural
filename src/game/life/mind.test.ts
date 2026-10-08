@@ -16,6 +16,7 @@ import {
   stageAt,
   VALUE_IDS,
   VALUES,
+  valueBias,
   valuesOf,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -142,6 +143,18 @@ describe("los valores", () => {
   });
 });
 
+describe("el sesgo de la cultura en los valores", () => {
+  it("empuja los valores que nombra y sigue sumando 1", () => {
+    const bias = valueBias({ family: 0.4, tradition: 0.3, nonsense: 9 });
+    expect(Object.keys(bias).sort()).toEqual(["family", "tradition"]);
+    const plain = valuesOf(values, schemas, flat, calm);
+    const biased = valuesOf(values, schemas, flat, calm, bias);
+    expect(biased.family).toBeGreaterThan(plain.family);
+    expect(biased.tradition).toBeGreaterThan(plain.tradition);
+    expect(Object.values(biased).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 2);
+  });
+});
+
 describe("la mente de la aldea", () => {
   const w = Life.create(7, content).world;
   const alive = (w.truth.ids(PERSON) as AgentId[]).filter((id) => w.truth.get(MIND, id));
@@ -151,7 +164,7 @@ describe("la mente de la aldea", () => {
     for (const id of alive) {
       const m = w.truth.get(MIND, id) as Mind;
       for (const s of schemas)
-        expect(m.schemas[s.id]?.causes, `${id} ${s.id}`).toEqual([m.originEventId]);
+        expect(m.schemas[s.id]?.causes[0], `${id} ${s.id}`).toBe(m.originEventId);
     }
     const warmth = (id: AgentId) => w.truth.get(INNATE, id)?.["warmth"] ?? 0;
     const trust = (id: AgentId) =>
@@ -160,6 +173,44 @@ describe("la mente de la aldea", () => {
     const half = Math.floor(sorted.length / 2);
     const mean = (xs: AgentId[]) => xs.reduce((a, id) => a + trust(id), 0) / xs.length;
     expect(mean(sorted.slice(0, half))).toBeGreaterThan(mean(sorted.slice(half)));
+  });
+
+  it("quien perdió a un pariente lo lleva marcado, con la muerte como causa", () => {
+    const died = new Map(
+      w.log
+        .all()
+        .filter((e) => e.kind === "person.died")
+        .map((e) => [e.id, e.actors[0] as AgentId]),
+    );
+    const marked = alive.filter((id) => {
+      const m = w.truth.get(MIND, id) as Mind;
+      return Object.values(m.schemas).some((h) => h.causes.some((c) => died.has(c)));
+    });
+    expect(marked.length).toBeGreaterThan(0);
+    // Las causas de la marca son muertes de parientes: madre, padre, hijo, hermano o cónyuge.
+    for (const id of marked) {
+      const p = w.truth.get(PERSON, id) as { mother: AgentId | null; father: AgentId | null };
+      const m = w.truth.get(MIND, id) as Mind;
+      const causes = new Set(Object.values(m.schemas).flatMap((h) => h.causes));
+      const kin = [...causes].filter((c) => died.has(c)).map((c) => died.get(c) as AgentId);
+      expect(kin.length).toBeGreaterThan(0);
+      for (const k of kin) {
+        const other = w.truth.get(PERSON, k) as { mother: AgentId | null; father: AgentId | null };
+        const related =
+          p.mother === k ||
+          p.father === k ||
+          other.mother === id ||
+          other.father === id ||
+          (p.mother !== null && p.mother === other.mother) ||
+          (p.father !== null && p.father === other.father) ||
+          w.log
+            .all()
+            .some(
+              (e) => e.kind === "family.union" && e.actors.includes(id) && e.actors.includes(k),
+            );
+        expect(related, `${id} y ${k}`).toBe(true);
+      }
+    }
   });
 
   it("es determinista y no rompe invariantes", () => {
