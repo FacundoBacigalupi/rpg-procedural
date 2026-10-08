@@ -1,0 +1,101 @@
+[
+  {
+    "id": "village-folk",
+    "name": "la costumbre de la aldea",
+    "kind": "folk",
+    "culture": "village",
+    "doctrines": [
+      "ancestors-watch",
+      "offerings-feed-dead",
+      "heaven-sees-the-proud",
+      "well-keeps-the-village",
+      "grain-is-owed"
+    ],
+    "sacredBeings": [
+      {
+        "id": "house-ancestors",
+        "name": "los mayores de la casa",
+        "kind": "ancestors",
+        "believed": "cuidan a los suyos desde la tablilla y se enojan si se los olvida",
+        "truth": "none",
+        "where": "la tablilla de cada casa, junto al hogar"
+      },
+      {
+        "id": "old-well",
+        "name": "el dueño del pozo viejo",
+        "kind": "place_spirit",
+        "believed": "da agua mientras se lo respeta; no tiene cara ni nombre",
+        "truth": "none",
+        "where": "el pozo del medio de la aldea"
+      },
+      {
+        "id": "heaven",
+        "name": "el Cielo",
+        "kind": "heaven",
+        "believed": "mira desde arriba y cobra a los soberbios",
+        "truth": "none",
+        "where": "ninguno: se lo nombra mirando arriba"
+      }
+    ],
+    "practices": [
+      {
+        "id": "hearth-offering",
+        "name": "la ración para la tablilla",
+        "kind": "offering",
+        "to": "house-ancestors",
+        "goods": ["grain"],
+        "everyDays": 15,
+        "believedEffect": "los mayores comen lo que se les deja y protegen la casa",
+        "socialEffect": "la casa se junta, los chicos aprenden los nombres de los muertos y quién fue quién"
+      },
+      {
+        "id": "well-cup",
+        "name": "el primer balde del año al pozo",
+        "kind": "offering",
+        "to": "old-well",
+        "goods": [],
+        "everyDays": 365,
+        "believedEffect": "el dueño del pozo no lo seca",
+        "socialEffect": "toda la aldea se junta una vez al año y se repara lo que haga falta en el brocal"
+      },
+      {
+        "id": "harvest-thanks",
+        "name": "la fiesta de la cosecha",
+        "kind": "festival",
+        "to": "house-ancestors",
+        "trait": "festival.harvest",
+        "goods": ["grain"],
+        "believedEffect": "los mayores bendicen la próxima siembra",
+        "socialEffect": "se reparte el grano entre casas, se pagan favores y se arreglan peleas del año"
+      },
+      {
+        "id": "no-first-sheaf",
+        "name": "no se toca la primera gavilla",
+        "kind": "taboo",
+        "goods": ["grain"],
+        "believedEffect": "quien la come antes de tiempo trae mala cosecha a todos",
+        "socialEffect": "frena que alguien se adelante al reparto y deja a la vista a quien lo hace"
+      },
+      {
+        "id": "wake-for-the-dead",
+        "name": "el velorio de un día",
+        "kind": "rite",
+        "to": "house-ancestors",
+        "goods": [],
+        "believedEffect": "el muerto sale de la casa sin quedarse pegado a ella",
+        "socialEffect": "la aldea acompaña a la familia, y el duelo tiene un tiempo y un lugar"
+      },
+      {
+        "id": "read-the-swallows",
+        "name": "mirar a las golondrinas",
+        "kind": "divination",
+        "goods": [],
+        "believedEffect": "las golondrinas avisan cuándo sembrar y cuándo viene el frío",
+        "socialEffect": "ordena el calendario de siembra sin que nadie tenga que mandarlo"
+      }
+    ],
+    "adherence": { "belonging": 0.98, "belief": 0.7 },
+    "exclusive": false,
+    "because": "es lo que trajeron los fundadores de sus lugares, y cada generación le agregó algo después de una mala cosecha"
+  }
+]
