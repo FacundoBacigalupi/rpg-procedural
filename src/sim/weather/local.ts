@@ -71,6 +71,25 @@ export function walkingFactor(w: DayWeather): number {
   );
 }
 
+// Calibración abierta a la pasada de calibración del Hito 1c (travel §11.3).
+/** Cuánto suma a la chance de torcer el rumbo la falta de luz (0 de día claro, todo de noche cerrada). */
+const DARK_VEER = 1;
+/** Lo que suma el bosque denso, que tapa el cielo y los hitos. */
+const FOREST_VEER = 0.5;
+/** Lo que suma la lluvia, el aguanieve o la nieve cayendo. */
+const PRECIP_VEER = 0.25;
+/** Con menos luz que esto (0-1) no se distingue un hito a lo lejos. */
+export const LANDMARK_MIN_LIGHT = 0.15;
+
+/**
+ * Cuánto más fácil es torcer el rumbo sin notarlo (1 = día claro y campo abierto): la noche, el
+ * bosque denso y la lluvia o la nieve (travel §11.3). `light` es la luz de afuera, 0-1.
+ */
+export function bearingFactor(w: DayWeather, light: number, forested: boolean): number {
+  const dark = 1 - Math.min(1, Math.max(0, light));
+  return 1 + DARK_VEER * dark + (forested ? FOREST_VEER : 0) + (w.precip.mm > 0 ? PRECIP_VEER : 0);
+}
+
 /** Tope de días que se miran hacia atrás al sumar la lluvia (una huella más vieja ya no se ve). */
 const RAIN_LOOKBACK_DAYS = 60;
 

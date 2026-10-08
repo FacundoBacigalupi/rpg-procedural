@@ -14,15 +14,18 @@ import {
   type PlanetClock,
   Rng,
   type Seed,
+  type Tick,
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type ActionPlan,
   type Activity,
   advance,
+  type Bearing,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  bearingFactor,
   blowFromMishap,
   blowFromStrike,
   CREDIT,
@@ -45,6 +48,7 @@ import {
   ingest,
   injure,
   KNOWN_DEEDS,
+  LANDMARK_MIN_LIGHT,
   LOCATION,
   type LocalMap,
   learnFromAttempt,
@@ -80,6 +84,7 @@ import {
   setActivity,
   setComponent,
   skyBrightness,
+  skyLight,
   skyObserverOf,
   spaceLight,
   standardize,
@@ -170,6 +175,26 @@ function placesOf(truth: ReadonlyWorldTruth) {
     const place = truth.get(PLACE, id);
     return place ? [{ id, place }] : [];
   });
+}
+
+/** Qué tan fácil es torcer el rumbo ahora y qué hitos (la aldea, el agua) se distinguen (travel §11.3). */
+function bearingOf(
+  o: ActOptions,
+  places: ReturnType<typeof placesOf>,
+  hex: number,
+  now: Tick,
+): Bearing {
+  const light = skyLight(o.map, o.clock, o.seed, now);
+  const factor = bearingFactor(weatherAt(o.map, o.clock, o.seed, now), light, !!o.map.forest[hex]);
+  const landmarks = new Set<number>();
+  if (light >= LANDMARK_MIN_LIGHT) {
+    for (const { place } of places) {
+      if (place.kind === "village" || place.kind === "water") {
+        for (const h of place.hexes as readonly number[]) landmarks.add(h);
+      }
+    }
+  }
+  return { factor, landmarks };
 }
 
 export function actProcess(o: ActOptions): ProcessDef {
@@ -379,6 +404,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       def.resolver === "move"
         ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now))
         : undefined,
+    bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],

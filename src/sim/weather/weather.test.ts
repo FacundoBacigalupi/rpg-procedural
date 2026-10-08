@@ -3,7 +3,7 @@ import type { Seed, Tick } from "../../core/index.ts";
 import { EARTHLIKE_CLOCK, Rng } from "../../core/index.ts";
 import type { ClimateNormals, LocalMap } from "../world/index.ts";
 import { dailyWeather, seasonWave, skyClearness, tempAt, yearPhase } from "./daily.ts";
-import { rainBetween, walkingFactor } from "./local.ts";
+import { bearingFactor, rainBetween, walkingFactor } from "./local.ts";
 
 const clock = EARTHLIKE_CLOCK;
 const YEAR_DAYS = Math.round(clock.year / clock.day);
@@ -137,6 +137,27 @@ describe("walkingFactor", () => {
     expect(snow).toBeGreaterThan(rain);
     expect(walkingFactor({ ...base, windMs: 14 })).toBeGreaterThan(1);
     expect(walkingFactor({ ...base, tempMaxC: -15 })).toBeGreaterThan(1);
+  });
+});
+
+describe("bearingFactor", () => {
+  const dry = dailyWeather(temperate, clock, 100, Rng.root(1 as never));
+  const clear = { ...dry, precip: { kind: "none" as const, mm: 0 } };
+
+  it("de día claro y a campo abierto no suma nada", () => {
+    expect(bearingFactor(clear, 1, false)).toBe(1);
+  });
+
+  it("la oscuridad, el bosque y la precipitación suman, y se acumulan", () => {
+    const night = bearingFactor(clear, 0, false);
+    const forest = bearingFactor(clear, 1, true);
+    const rain = bearingFactor({ ...clear, precip: { kind: "rain", mm: 5 } }, 1, false);
+    expect(night).toBeGreaterThan(1);
+    expect(forest).toBeGreaterThan(1);
+    expect(rain).toBeGreaterThan(1);
+    expect(bearingFactor({ ...clear, precip: { kind: "rain", mm: 5 } }, 0, true)).toBeGreaterThan(
+      Math.max(night, forest, rain),
+    );
   });
 });
 

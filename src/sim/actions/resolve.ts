@@ -61,6 +61,17 @@ import {
 import type { FactorKey, FailureModeId } from "./catalog.ts";
 import { refTokens } from "./refs.ts";
 
+/** Lo que pesa en el rumbo de un tramo: la visibilidad y los hitos que se ven (travel §11.3). */
+export interface Bearing {
+  /** Multiplica la chance de torcer el rumbo (`bearingFactor`; 1 = día claro, campo abierto). */
+  readonly factor: number;
+  /** Hexes con un hito a la vista (la aldea, el agua); vacío si no hay luz para verlos. */
+  readonly landmarks: ReadonlySet<number>;
+}
+
+/** A cuántos hexes se distingue un hito. */
+export const LANDMARK_SIGHT_HEXES = 2;
+
 /** Lo que el mundo le da al resolver además de lo que necesita la tirada. */
 export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
@@ -68,6 +79,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly destination?: number | undefined;
   /** Cuánto más cuesta caminar hoy por el tiempo (1 = seco y templado; `walkingFactor`). */
   readonly walkFactor?: number | undefined;
+  /** Qué tan fácil es torcer el rumbo hoy (1 = día claro; `bearingFactor`) y qué hitos se ven. */
+  readonly bearing?: Bearing | undefined;
   /** Lo que tiene cada titular: de acá sale qué hay para tomar, ofrecer o sacar del lugar. */
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -538,6 +551,30 @@ export function legOf(map: LocalMap, path: readonly number[], walk = 1): number[
 /** Chance máxima de torcer el rumbo en un tramo a medias (se multiplica por `1 - grado`). */
 export const VEER_CHANCE = 0.6;
 
+/** Tope de la chance de torcer el rumbo, por mal que esté la visibilidad. */
+const MAX_VEER = 0.95;
+
+/** ¿Hay un hito a la vista desde `hex` (a `LANDMARK_SIGHT_HEXES` pasos como mucho)? */
+function landmarkNear(c: Ctx, hex: number): boolean {
+  const marks = c.input.bearing?.landmarks;
+  if (!marks || marks.size === 0) return false;
+  let ring = [hex];
+  const seen = new Set(ring);
+  for (let d = 0; ; d++) {
+    if (ring.some((h) => marks.has(h))) return true;
+    if (d === LANDMARK_SIGHT_HEXES) return false;
+    const next: number[] = [];
+    for (const h of ring) {
+      for (const n of c.input.map.neighbors[h] ?? []) {
+        if (seen.has(n)) continue;
+        seen.add(n);
+        next.push(n);
+      }
+    }
+    ring = next;
+  }
+}
+
 /** Un vecino de `hex` que no sea el destino ni el camino recto; si no hay, sigue en `hex`. */
 function veerFrom(c: Ctx, hex: number, to: number): number {
   const options = (c.input.map.neighbors[hex] ?? []).filter((n) => n !== to && !c.path.includes(n));
@@ -572,15 +609,17 @@ const move: Resolver = (c) => {
     const onTheWay = !stumbled && legEnd !== to;
     // Rumbo: un tramo que sale a medias en un viaje que sigue puede torcerse un hex sin que
     // el caminante lo note; el próximo tramo parte de donde está de verdad (travel §11.1).
+    // La noche, el bosque y la lluvia lo hacen más probable; si ve un hito donde quedó, sabe
+    // dónde está y no hay creencia equivocada.
+    const chance = Math.min(MAX_VEER, VEER_CHANCE * (c.input.bearing?.factor ?? 1) * (1 - degree));
     const veer =
-      onTheWay && m < SUCCESS_MARGIN && rng.float() < VEER_CHANCE * (1 - degree)
-        ? veerFrom(c, legEnd, to)
-        : legEnd;
+      onTheWay && m < SUCCESS_MARGIN && rng.float() < chance ? veerFrom(c, legEnd, to) : legEnd;
+    const lost = veer !== legEnd && !landmarkNear(c, veer);
     return {
       effect: {
         ...effect(veer, stumbled),
         ...(onTheWay ? { onTheWay } : {}),
-        ...(veer !== legEnd ? { believedAt: legEnd } : {}),
+        ...(lost ? { believedAt: legEnd } : {}),
       },
       seconds: c.nominal * slow,
       changes: at(veer),
