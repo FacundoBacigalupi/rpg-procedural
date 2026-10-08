@@ -92,6 +92,8 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 5. `develop` → `main` solo al cerrar un hito, con tag. Nunca commitear directo a `main` ni `develop`.
 
 ## Convenciones
+- Finales de línea **LF** siempre (Biome falla con CRLF). En Windows no editar con Python en modo texto (escribe CRLF): usar Edit/Write, o `newline="
+"`. Arreglo: `sed -i 's/$//' <archivos>`.
 - Código e identificadores en inglés; docs y conversación en español.
 - Commits: Conventional Commits (`feat(npc): ...`, `fix(sim): ...`).
 - Datos de contenido (biomas, hierbas, reinos de cultivo, nombres) en `content/` como JSON/TS validado con Zod, no hardcodeado en la lógica.
