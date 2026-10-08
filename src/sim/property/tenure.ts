@@ -34,4 +34,6 @@ export const TenureDef = z.strictObject({
 });
 export type TenureDef = z.infer<typeof TenureDef>;
 
-export const TENURES = defineContent("tenure", TenureDef);
+export const TENURES = defineContent("tenure", TenureDef, (t) => [
+  { kind: "cultures", id: t.culture, at: "culture" },
+]);

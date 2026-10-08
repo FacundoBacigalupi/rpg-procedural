@@ -7,6 +7,7 @@ import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
 import { BODY_PLANS, FOODS } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
 import { RECIPES } from "./crafts/index.ts";
+import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
 import { SPEECH_LINES } from "./dialogue/index.ts";
 import { GOODS } from "./economy/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
@@ -37,4 +38,6 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   STATUSES,
   SPEECH_LINES,
   TENURES,
+  CULTURE_TRAITS,
+  CULTURES,
 ] as readonly ContentKind[];

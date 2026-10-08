@@ -203,6 +203,12 @@ interface IdentityBelief {                   // una creencia más (information �
 - **Fase 6:** subculturas de sectas, gremios y corte; imposición por edicto y resistencia.
 - **Fase 7:** generación desde la geografía y la historia; separación y deriva; sincretismo, asimilación, tradiciones inventadas; secuencias de estilos; etnogénesis.
 
+## Implementación (Fase 1, 2026-10-07)
+
+- `sim/culture`: `TraitDef` en `content/culture-traits/` (dominio, variantes, saliencia, tenacidad, `readBy`, comidas requeridas con referencia validada) y `CultureDef` en `content/cultures/` (por rasgo: peso de cada variante, números, **origen** y la razón que la gente le da). `seedCulture` (en `create`, con causa en el evento de los fundadores) escribe `COMMUNITY_CULTURE` por asentamiento: prevalencia normalizada por rasgo. Lectores: `dominantVariant`, `traitParam`, `villageCulture`. Los `StatusDef` y `TenureDef` ahora referencian su cultura (una cultura inexistente impide arrancar).
+- La aldea trae 17 rasgos de 17 dominios. **Hoy los lee** `etiquette.address` (`by_rank`: el oyente trata de usted a quien tiene más rango; `uniform` lo apaga). El resto está declarado con su `readBy` y lo irán leyendo los sistemas que les toquen (funerales y luto con familia/espíritus, fiesta con economía y clima, valores con psicología, normas de robo con ley, residencia con familia).
+- Falta: `TraitHolding` por persona y transmisión (Fase 2), cambio y modas (Fase 3), culturas vecinas y marcas percibidas (Fase 5).
+
 ## Tests
 
 - **Todo rasgo tiene origen** y sus requisitos se cumplen (no hay cocina de arroz sin arroz ni comercio que lo traiga).
