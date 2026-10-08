@@ -73,6 +73,7 @@
         "name": "no se toca la primera gavilla",
         "kind": "taboo",
         "goods": ["grain"],
+        "sanction": 0.5,
         "believedEffect": "quien la come antes de tiempo trae mala cosecha a todos",
         "socialEffect": "frena que alguien se adelante al reparto y deja a la vista a quien lo hace"
       },
