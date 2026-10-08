@@ -248,7 +248,7 @@ interface VerbalizationRequest {
 
 ### Implementado (2026-10-07, Hito 1b)
 
-Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` no están; el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
+Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` están en su forma mínima (`sim/dialogue/offers.ts`: el oyente valúa con el precio de contenido, acepta, contraofrece o rechaza; la contraoferta aún no queda abierta en el mundo); el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
 
 ### Implementado (2026-10-08): personalidad y memorias en la respuesta
 

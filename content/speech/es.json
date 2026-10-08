@@ -190,5 +190,68 @@
     "id": "promise.vague",
     "lines": ["¿Qué cosa me prometés, exactamente?", "Decime bien qué es lo que prometés."],
     "formal": ["¿Qué es, exactamente, lo que promete?"]
+  },
+  {
+    "id": "offer.unclear",
+    "lines": ["¿Qué me proponés, exactamente?", "No entiendo qué querés cambiar."],
+    "formal": ["¿Qué es, exactamente, lo que propone?"]
+  },
+  {
+    "id": "offer.unvalued",
+    "lines": [
+      "No sé cuánto vale {what}. Así no te puedo decir.",
+      "Con {what} no sé qué hacer; no sé qué vale."
+    ]
+  },
+  {
+    "id": "offer.short",
+    "lines": [
+      "No me alcanza para ese trato con {what}.",
+      "No puedo con {what}; no lo tengo, o no me sobra."
+    ],
+    "formal": ["No me es posible ese trato con {what}."]
+  },
+  {
+    "id": "offer.gift",
+    "lines": ["Bueno, si me lo das, lo recibo. Gracias.", "Eso sí lo acepto, gracias."],
+    "formal": ["Lo acepto, se lo agradezco."]
+  },
+  {
+    "id": "offer.accept",
+    "lines": ["Trato hecho.", "Está bien, cambiamos {what}."],
+    "formal": ["Trato hecho, entonces."]
+  },
+  {
+    "id": "offer.counter",
+    "lines": [
+      "Te doy {kilos} kilos de {what}, no más. ¿Querés?",
+      "Por eso, {kilos} kilos de {what}. Lo toma o lo deja."
+    ],
+    "formal": ["Por eso puedo darle {kilos} kilos de {what}. ¿Le parece?"]
+  },
+  {
+    "id": "offer.refuse.price",
+    "lines": ["Ese precio no me sirve por {what}.", "No, por {what} eso es muy poco."],
+    "formal": ["Ese precio no me conviene."]
+  },
+  {
+    "id": "offer.refuse.grudge",
+    "lines": ["Contigo no trato {what}. Ya sabes por qué.", "No hago trato con vos."],
+    "formal": ["No haré tratos con usted."]
+  },
+  {
+    "id": "accept.thanks",
+    "lines": ["Entonces cerramos.", "Bien, así lo hacemos."],
+    "formal": ["Entonces, queda cerrado."]
+  },
+  {
+    "id": "refuse.ack",
+    "lines": ["Como quieras.", "Está bien, no hay trato."],
+    "formal": ["Como guste."]
+  },
+  {
+    "id": "answer.nothing",
+    "lines": ["¿Qué cosa? No te propuse nada.", "No sé de qué hablás."],
+    "formal": ["No sé a qué se refiere."]
   }
 ]

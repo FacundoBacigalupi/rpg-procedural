@@ -16,7 +16,21 @@ export type SpeechAct =
   | { readonly kind: "tell"; readonly about: AgentId; readonly claim: "dead" | "alive" }
   /** Quien habla promete devolver o dar `good` (cuántos gramos si lo dijo; null si no). */
   | { readonly kind: "promise"; readonly good: string | null; readonly grams: number | null }
+  /** Una propuesta de intercambio (dialogue §2): lo que quien habla da y lo que quiere (null: nada). */
+  | {
+      readonly kind: "offer";
+      readonly give: ExchangeTerm | null;
+      readonly want: ExchangeTerm | null;
+    }
+  /** Acepta o rechaza la propuesta abierta entre los dos (la que el oyente dejó planteada). */
+  | { readonly kind: "accept" | "refuse" }
   | { readonly kind: "other" };
+
+/** Un término de intercambio: cuántos gramos de qué bien (dialogue §2, `ExchangeTerm`). */
+export interface ExchangeTerm {
+  readonly good: string;
+  readonly grams: number;
+}
 
 /** Con qué palabras puede nombrar el oyente a alguien o algo. */
 export interface Lexicon {
@@ -48,11 +62,27 @@ const PROMISE =
   /\b(te prometo|te juro|te doy mi palabra|palabra que|te lo devuelvo|te lo pago|te devuelvo|te pago|cuenta conmigo)\b/;
 const AMOUNT = /\b(\d{1,6}) ?(kilos?|kg|gramos?|g)\b/;
 
+const OFFER_GIVES = /\b(te ofrezco|te propongo|te doy|te cambio|te vendo|te dejo|trueque)\b/;
+const OFFER_BUYS = /\b(te compro|te pago)\b/;
+const SWAP = / (por|a cambio de) /;
+const ACCEPT = /\b(acepto|trato hecho|de acuerdo|me parece bien|hecho|dale|esta bien)\b/;
+const REFUSE = /\b(no acepto|no gracias|olvidalo|no me interesa|ni hablar|no quiero)\b/;
+const SHORT_UTTERANCE_WORDS = 6;
+
 function mentions(norm: string, names: readonly string[]): boolean {
   return names.some((n) => {
     const w = normalize(n);
     return w.length > 0 && new RegExp(`(^| )${w}( |$)`).test(norm);
   });
+}
+
+/** El bien y la cantidad (mil gramos si no dice) que nombra un tramo de frase. */
+function termIn(seg: string, lex: Lexicon): ExchangeTerm | null {
+  const good = lex.goods.find((g) => mentions(seg, g.names))?.id;
+  if (good === undefined) return null;
+  const m = AMOUNT.exec(seg);
+  const grams = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : 1000;
+  return { good, grams };
 }
 
 /** Lo que el oyente entiende de `text`; con `clarity` baja, solo capta lo grueso (dialogue §5). */
@@ -68,10 +98,21 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
     const n = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : null;
     return { kind: "promise", good: blur ? null : good, grams: blur ? null : n };
   }
+  const gives = OFFER_GIVES.test(norm);
+  if (gives || OFFER_BUYS.test(norm)) {
+    // "te doy A por B": quien habla da A y quiere B; "te compro A por B": quiere A y da B.
+    const [left = "", right = ""] = norm.split(SWAP).filter((_p, i) => i !== 1);
+    const a = blur ? null : termIn(left, lex);
+    const b = blur ? null : termIn(right, lex);
+    return gives ? { kind: "offer", give: a, want: b } : { kind: "offer", give: b, want: a };
+  }
   if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };
   }
+  const brief = norm.split(" ").length <= SHORT_UTTERANCE_WORDS;
+  if (REFUSE.test(norm) && brief) return { kind: "refuse" };
+  if (ACCEPT.test(norm) && brief) return { kind: "accept" };
   if (FAREWELL.test(norm)) return { kind: "farewell" };
   if (GREET.test(norm)) return { kind: "greet" };
   return { kind: "other" };
