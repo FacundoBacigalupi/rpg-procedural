@@ -112,6 +112,12 @@ export interface VillagePopulationInput {
    * de la pedida. Si nadie cumple, tira `NoSuchBirth`.
    */
   readonly playerFits?: (p: Person, aliveHouseholds: readonly Household[]) => boolean;
+  /**
+   * Cuánto encaja un candidato con lo pedido, en (0, 1] (`temperamentFit`, game-modes §2.2 paso 1):
+   * entre los que cumplen las condiciones duras gana el de mayor `encaje / (1 + distancia de edad)`;
+   * el empate lo rompe el RNG de la búsqueda. Sin él gana la edad más cercana.
+   */
+  readonly playerFit?: (p: Person) => number;
 }
 
 /** Años de diferencia con la edad pedida que todavía se aceptan al buscar un nacimiento. */
@@ -599,8 +605,11 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
       `nadie de la aldea (${pool.length} nativos) cumple lo pedido a ${playerAge.min}-${playerAge.max} años`,
     );
   }
-  const best = Math.min(...wanted.map(distance));
-  const player = root.fork("player", "birth").pick(wanted.filter((p) => distance(p) === best)).id;
+  const fit = input.playerFit;
+  const score = (p: Person) => (fit ? fit(p) : 1) / (1 + (fit ? distance(p) : 0));
+  const best = fit ? Math.max(...wanted.map(score)) : Math.min(...wanted.map(distance));
+  const ties = wanted.filter((p) => (fit ? score(p) === best : distance(p) === best));
+  const player = root.fork("player", "birth").pick(ties).id;
 
   const freezeHousehold = (h: MutableHousehold): Household => ({
     ...h,

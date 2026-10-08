@@ -87,9 +87,12 @@ import {
   settlementSpaces,
   settlementUnits,
   TENURES,
+  type TemperamentSpec,
   TRAITS,
   type Trait,
+  temperamentFit,
   type VillagePopulation,
+  validateTemperament,
   villagePopulation,
   WORK_TYPES,
   WorldTruth,
@@ -110,6 +113,8 @@ import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 export interface BirthQuery {
   readonly sex?: "female" | "male";
   readonly position?: "holder" | "common" | "dependent";
+  /** Rangos por eje de temperamento: pesan en la búsqueda (paso 1, §2.2), no la cortan. */
+  readonly temperament?: TemperamentSpec;
 }
 
 export interface LifeOptions {
@@ -159,7 +164,16 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
   };
   const planet = generatePlanet(planetOptions);
   const site = villageSite(planet);
-  const birth = options.birth ? birthFilter(options.birth, content.all(STATUSES)) : undefined;
+  const query = options.birth;
+  const hard = query !== undefined && (query.sex !== undefined || query.position !== undefined);
+  const birth = hard ? birthFilter(query, content.all(STATUSES)) : undefined;
+  const wish = query?.temperament;
+  if (wish !== undefined) {
+    const problems = validateTemperament(wish, content.all(TRAITS));
+    if (problems.length > 0) {
+      throw new Error(`temperamento pedido inválido: ${problems.join("; ")}`);
+    }
+  }
   const population = villagePopulation({
     seed,
     site,
@@ -170,6 +184,9 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     ),
     ...(options.playerAge === undefined ? {} : { playerAge: options.playerAge }),
     ...(birth ? { playerFits: birth } : {}),
+    ...(wish && Object.keys(wish).length > 0
+      ? { playerFit: (p: Person) => temperamentFit(p.innate, wish) }
+      : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
   return { village, planet, site, map: localMapOf(planet, site), population };
