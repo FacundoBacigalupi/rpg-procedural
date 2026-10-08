@@ -1,7 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, externalAccount, ledgerUnit, loadContent } from "../../core/index.ts";
+import {
+  type ContentSource,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  ledgerUnit,
+  loadContent,
+} from "../../core/index.ts";
+import { ENTITY, PERSON } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { Life } from "./index.ts";
 
@@ -74,5 +82,44 @@ describe("migración de vidas guardadas antes de la economía", () => {
     expect(migrated.audit()).toEqual([]);
     // Lo que ya declara todo no se rehace.
     expect(withDeclaredExternals(w.ledger, content)).toBe(w.ledger);
+  }, 120_000);
+});
+
+describe("calibración de despensas y rutina (Hito 1c, paso 3)", () => {
+  // Medido en 3 seeds × 1 año (2026-10-08): ningún hogar baja de ~78 kg por boca (unos 100 días
+  // de comida), la cosecha rinde 1,1-1,3 veces lo comido y las reservas suben ~50 kg por boca al
+  // año sin tope. El tope y la estacionalidad llegan con la cosecha por estación (Economía).
+  it("la cosecha de la rutina cubre lo comido sin vaciar ni desbordar las despensas", () => {
+    const life = Life.create(3, content);
+    const w = life.world;
+    const larders = (): number[] => {
+      const homes = new Map<string, number>();
+      for (const id of w.truth.ids(PERSON)) {
+        if (w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+        const h = w.truth.get(PERSON, id)?.household;
+        if (h !== undefined) homes.set(h, (homes.get(h) ?? 0) + 1);
+      }
+      return [...homes].map(
+        ([h, n]) => w.ledger.balance(holderAccount(h as unknown as HolderRef), grain) / n,
+      );
+    };
+    const before = larders();
+    life.advanceTo(life.now + 40 * w.clock.day);
+    const after = larders();
+    // Nadie queda con menos de un mes de comida (~0,75 kg por día por boca).
+    expect(Math.min(...after)).toBeGreaterThan(30 * 750);
+    let harvested = 0;
+    let ate = 0;
+    for (const e of w.log.all()) {
+      const g = (e.data as { grams?: number } | null)?.grams ?? 0;
+      if (e.kind === "routine.harvested") harvested += g;
+      if (e.kind === "routine.ate") ate += g;
+    }
+    expect(harvested / ate).toBeGreaterThan(0.9);
+    expect(harvested / ate).toBeLessThan(1.6);
+    // Las reservas por boca no se vacían ni se disparan en 40 días.
+    const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    expect(total(after) / total(before)).toBeGreaterThan(0.8);
+    expect(total(after) / total(before)).toBeLessThan(1.3);
   }, 120_000);
 });
