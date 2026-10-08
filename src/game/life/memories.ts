@@ -66,6 +66,7 @@ interface Effect {
   readonly edge?: number;
   readonly done?: boolean;
   readonly care?: number;
+  readonly judged?: { readonly verdict?: string; readonly certain?: boolean };
 }
 
 /** Lo que cada parte guarda de un evento, según el papel que tuvo. */
@@ -83,6 +84,24 @@ export function livedFrom(e: Event): Lived[] {
             { who: second, experience: { ...base(e, [actor]), intensity: 0.7, valence: 0.8 } },
           ]
         : [];
+    case "action.speak": {
+      // Quien oyó creyó descubrir una mentira: lo guarda; el acusado lo vive como afrenta si era
+      // sincero y como un susto si mentía (CaughtLie en memoria, dialogue §4).
+      const eff = (e.data as { effect?: Effect } | null)?.effect;
+      if (eff?.kind !== "speak" || eff.judged?.verdict !== "caught" || !actor || !second) return [];
+      const sure = eff.judged.certain === true;
+      return [
+        { who: actor, experience: { ...base(e, [second]), intensity: 0.5, valence: -0.5 } },
+        {
+          who: second,
+          experience: {
+            ...base(e, [actor]),
+            intensity: sure ? 0.4 : 0.55,
+            valence: sure ? -0.3 : -0.5,
+          },
+        },
+      ];
+    }
     case "household.repaid":
       return actor && second
         ? [

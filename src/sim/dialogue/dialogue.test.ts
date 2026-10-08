@@ -113,6 +113,46 @@ describe("contestar", () => {
     });
   });
 
+  it("con señales claras de mentira acusa y no toma lo contado; un sincero tranquilo es creído", () => {
+    const tell = input({ act: { kind: "tell", about: bruno, claim: "dead" } });
+    const liar = {
+      lying: true,
+      control: 0,
+      nerves: 1,
+      insight: 1,
+      familiarity: 1,
+      conflict: 1,
+      implausibility: 1,
+      trust: 0,
+      wariness: 1,
+    };
+    const honest = {
+      lying: false,
+      control: 0.5,
+      nerves: 0,
+      insight: 0.5,
+      familiarity: 0.5,
+      conflict: 0,
+      implausibility: 0,
+      trust: 0.8,
+      wariness: 0,
+    };
+    fc.assert(
+      fc.property(fc.nat(), (seed) => {
+        const rng = Rng.root(seed);
+        const caught = decideReply({ ...tell, detect: liar, rng }, 3);
+        expect(caught.line).toBe("tell.caught");
+        expect(caught.accepted).toBeUndefined();
+        expect(caught.judgement?.trustDelta).toBeLessThan(0);
+        expect(caught.caught).toEqual({ liar: bruno, by: ana, at: 3, certain: true });
+        const ok = decideReply({ ...tell, detect: honest, rng }, 3);
+        expect(ok.line).toBe("tell.dead");
+        expect(ok.accepted?.claim).toBe("dead");
+        expect(ok.caught).toBeUndefined();
+      }),
+    );
+  });
+
   it("da solo a la familia y solo lo que sobra después de la reserva", () => {
     const req = input({ act: { kind: "request", good: "grain" } });
     const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
