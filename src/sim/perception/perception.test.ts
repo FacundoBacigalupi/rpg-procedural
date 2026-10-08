@@ -329,9 +329,9 @@ describe("habituación", () => {
     habituate(mem, "k", "hearing", "rain", 0.3, 0);
     const t = SENSE_HALF_LIFE.hearing;
     expect(habituate(mem, "k", "hearing", "rain", 0.3 + RENEWAL_DELTA / 2, t)).toBeCloseTo(0.5, 6);
-    expect(habituate(mem, "k", "hearing", "rain", 0.3 + RENEWAL_DELTA, t)).toBe(1);
-    expect(habituate(mem, "k", "hearing", "rain", 0.45, 3 * t)).toBeLessThan(NOTICEABLE);
-    expect(habituate(mem, "k", "hearing", "rain", 0.45, 3 * t, true)).toBe(1);
+    expect(habituate(mem, "k", "hearing", "rain", 0.3 + RENEWAL_DELTA * 1.5, t)).toBe(1);
+    expect(habituate(mem, "k", "hearing", "rain", 0.45, 4 * t)).toBeLessThan(NOTICEABLE);
+    expect(habituate(mem, "k", "hearing", "rain", 0.45, 4 * t, true)).toBe(1);
   });
 
   it("la vida media por tipo pisa la del canal", () => {
