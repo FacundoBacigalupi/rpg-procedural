@@ -23,6 +23,45 @@ const SECONDS_PER_YEAR = 31_557_600;
 const LAKE_MIN_DEPTH = 120;
 const RIVER_BASIN = 10;
 
+/** Una cuenca bajo el nivel del mar es océano solo si mide al menos esta fracción de la mayor. */
+const OCEAN_MIN_SHARE = 0.1;
+
+/**
+ * Los mares epicontinentales (celdas bajo el nivel del mar sin conexión con un océano) son lagos
+ * endorreicos: siguen evaporando, así que el clima los trata como agua, pero la biota y los ríos
+ * los ven como lago y no como mar. Su profundidad es lo que les falta para el nivel del mar.
+ */
+function markInlandSeas(
+  grid: Grid,
+  elevation: Float64Array,
+  lake: Uint8Array,
+  lakeDepth: Float64Array,
+): void {
+  const comp = new Int32Array(grid.size).fill(-1);
+  const members: number[][] = [];
+  for (let c = 0; c < grid.size; c++) {
+    if (comp[c] !== -1 || (elevation[c] as number) > 0) continue;
+    const cells = [c];
+    comp[c] = members.length;
+    for (let i = 0; i < cells.length; i++) {
+      for (const m of grid.neighborsOf(cells[i] as number)) {
+        if (comp[m] !== -1 || (elevation[m] as number) > 0) continue;
+        comp[m] = members.length;
+        cells.push(m);
+      }
+    }
+    members.push(cells);
+  }
+  const biggest = members.reduce((n, cells) => Math.max(n, cells.length), 0);
+  for (const cells of members) {
+    if (cells.length >= OCEAN_MIN_SHARE * biggest) continue;
+    for (const c of cells) {
+      lake[c] = 1;
+      lakeDepth[c] = -(elevation[c] as number);
+    }
+  }
+}
+
 export function hydrology(
   grid: Grid,
   elevation: Float64Array,
@@ -58,6 +97,7 @@ export function hydrology(
 
   const lake = new Uint8Array(size);
   const lakeDepth = new Float64Array(size);
+  markInlandSeas(grid, elevation, lake, lakeDepth);
   for (const c of order) {
     const depth = (filled[c] as number) - (elevation[c] as number);
     if (depth > LAKE_MIN_DEPTH) {
