@@ -9,7 +9,15 @@ import {
   ledgerUnit,
   loadContent,
 } from "../../core/index.ts";
-import { type ActionPlan, ENTITY, LOCATION, PERSON, SOIL, SOIL_START } from "../../sim/index.ts";
+import {
+  type ActionPlan,
+  ENTITY,
+  LOCATION,
+  PERSON,
+  PLACE,
+  SOIL,
+  SOIL_START,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { Life } from "./index.ts";
 import { living } from "./world.ts";
@@ -205,4 +213,44 @@ describe("suelo del campo (Hito 1c, cierre PR b)", () => {
     expect(soil?.seen).toBeLessThanOrEqual(harvested);
     expect(soil?.seen).toBeGreaterThan(0.9 * harvested);
   }, 300_000);
+});
+
+describe("el verbo work y la tierra (Hito 1c, cierre PR b)", () => {
+  /** El personaje trabaja dos horas el campo; devuelve el grano que se llevó. */
+  function grainFromWork(fertility: number): number {
+    const life = Life.create(3, content);
+    const w = life.world;
+    const me = life.player;
+    const [soil] = w.truth.ids(SOIL);
+    if (soil === undefined) throw new Error("la aldea no tiene suelo");
+    w.truth.set(SOIL, soil, { fertility, seen: w.truth.get(SOIL, soil)?.seen ?? 0 });
+    const fields = w.truth.ids(PLACE).flatMap((id) => {
+      const p = w.truth.get(PLACE, id);
+      return p?.kind === "fields" ? [...p.hexes] : [];
+    });
+    if (fields[0] === undefined) throw new Error("la aldea no tiene campos");
+    w.truth.set(LOCATION, me, { hex: fields[0] });
+    const before = w.ledger.balance(holderAccount(me as unknown as HolderRef), grain);
+    const plan: ActionPlan = {
+      actor: me,
+      source: "player",
+      root: {
+        kind: "do",
+        verb: "work",
+        args: [{ role: "for", seconds: 2 * 3600 }],
+        manner: [],
+      },
+      manner: [],
+      causes: [{ kind: "state", entity: me, key: "intent" }],
+    };
+    life.turn(plan, 1);
+    return w.ledger.balance(holderAccount(me as unknown as HolderRef), grain) - before;
+  }
+
+  it("rinde según la fertilidad del suelo: la misma hora en tierra cansada da menos grano", () => {
+    const rich = grainFromWork(1);
+    const tired = grainFromWork(0.3);
+    expect(rich).toBeGreaterThan(0);
+    expect(tired).toBeLessThan(rich * 0.5);
+  }, 240_000);
 });
