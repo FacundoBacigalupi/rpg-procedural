@@ -7,12 +7,14 @@
   },
   {
     "id": "gleanings",
+    "category": "cereal",
     "name": "espigas que quedaron en el rastrojo",
     "kcalPerGram": 3.3,
     "waterPerGram": 0.12
   },
   {
     "id": "shellfish",
+    "category": "fish",
     "name": "almejas y caracoles de agua",
     "kcalPerGram": 0.8,
     "waterPerGram": 0.78
