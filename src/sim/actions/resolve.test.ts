@@ -274,6 +274,19 @@ describe("moverse", () => {
     );
   });
 
+  it("la noche, el bosque y la lluvia tuercen más el rumbo, y un hito a la vista lo corrige", () => {
+    const lost = (bearing: ResolveInput["bearing"]) =>
+      many(800, () => go({ bearing })).filter(
+        (r) => r.effect.kind === "move" && r.effect.believedAt !== undefined,
+      ).length;
+    const clear = lost({ factor: 1, landmarks: new Set() });
+    const dark = lost({ factor: 2.75, landmarks: new Set() });
+    expect(dark).toBeGreaterThan(clear);
+    // Con la aldea a la vista desde cualquier hex, torcerse no deja creer nada equivocado.
+    const seen = lost({ factor: 2.75, landmarks: new Set(map.neighbors.map((_, h) => h)) });
+    expect(seen).toBe(0);
+  });
+
   it("un tramo tiene al menos un hex aunque pase de la media hora", () => {
     const slow = { ...map, crossSeconds: map.crossSeconds.map(() => 9000) };
     expect(legOf(slow, [1, 2, 3])).toEqual([1]);
