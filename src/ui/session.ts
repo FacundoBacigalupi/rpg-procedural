@@ -21,8 +21,10 @@ import {
   AMBIENCE,
   ambienceOf,
   beliefViewOf,
+  believedConcepts,
   buildChronicle,
   characterPanel,
+  characterVoiceData,
   DEFAULT_SUGGESTIONS,
   type EnvironmentItem,
   type EnvironmentMemory,
@@ -33,6 +35,7 @@ import {
   LIFE_ENGINE,
   Life,
   type LifeSetup,
+  lexiconOf,
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
@@ -42,8 +45,10 @@ import {
   type Suggestion,
   suggestions,
   type TurnReport,
+  WORLD_LEXICON,
 } from "../game/index.ts";
 import {
+  characterLexicon,
   DEFAULT_NARRATION,
   LlmJobs,
   narrate,
@@ -54,6 +59,7 @@ import {
   parserSetup,
   styleOf,
   TemplateBook,
+  voiceOf,
 } from "../llm/index.ts";
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../persistence/index.ts";
 import {
@@ -127,6 +133,9 @@ export interface Session {
   environment(): EnvironmentItem[];
 }
 
+/** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
+const WORLD_FAMILY = "xianxia";
+
 /** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
 const WARN_WEIGHT = 0.5;
 
@@ -140,6 +149,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const catalog = life.world.catalog;
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
+  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
   const recent: string[] = [];
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
@@ -155,6 +165,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       view,
       styleOf(DEFAULT_NARRATION, "es"),
       ambienceOf(view.scene, ambience),
+      {
+        voice: voiceOf(characterVoiceData(life.world.truth, life.world.skills, life.player)),
+        vocabulary: characterLexicon(lexicon, believedConcepts(life.world.truth, life.player)),
+      },
     );
     const told = await narrate(jobs, request, {
       templates: book,

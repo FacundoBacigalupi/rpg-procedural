@@ -1,0 +1,74 @@
+[
+  {
+    "id": "xianxia.qi",
+    "family": "xianxia",
+    "concept": "law.qi",
+    "term": "qi",
+    "plain": "ese aliento invisible que dicen que corre por las cosas",
+    "technical": true
+  },
+  {
+    "id": "xianxia.cultivation",
+    "family": "xianxia",
+    "concept": "practice.cultivation",
+    "term": "cultivo",
+    "plain": "esas prácticas de los que buscan volverse más que gente",
+    "technical": true
+  },
+  {
+    "id": "xianxia.cultivator",
+    "family": "xianxia",
+    "concept": "practice.cultivation",
+    "term": "cultivador",
+    "plain": "uno de esos inmortales, o que se creen tales",
+    "technical": true
+  },
+  {
+    "id": "xianxia.foundation",
+    "family": "xianxia",
+    "concept": "realm.foundation",
+    "term": "establecimiento de la base",
+    "plain": "un primer escalón que dicen que dan los que practican",
+    "technical": true
+  },
+  {
+    "id": "xianxia.meridians",
+    "family": "xianxia",
+    "concept": "body.meridians",
+    "term": "meridianos",
+    "plain": "unos caminos que los médicos de afuera dicen que hay bajo la piel",
+    "technical": true
+  },
+  {
+    "id": "xianxia.spirit-stone",
+    "family": "xianxia",
+    "concept": "good.spirit-stone",
+    "term": "piedra espiritual",
+    "plain": "una piedra rara que dicen que vale mucho para los de arriba",
+    "technical": true
+  },
+  {
+    "id": "xianxia.sect",
+    "family": "xianxia",
+    "concept": "org.sect",
+    "term": "secta",
+    "plain": "una casa de gente que practica junta, en lo alto",
+    "technical": true
+  },
+  {
+    "id": "xianxia.harvest",
+    "family": "xianxia",
+    "concept": "skill.farming",
+    "term": "cosecha",
+    "plain": "lo que se levanta del campo",
+    "technical": false
+  },
+  {
+    "id": "xianxia.medicine",
+    "family": "xianxia",
+    "concept": "skill.medicine",
+    "term": "emplasto",
+    "plain": "una pasta de hierbas para las heridas",
+    "technical": true
+  }
+]
