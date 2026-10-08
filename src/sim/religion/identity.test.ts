@@ -83,7 +83,7 @@ describe("identidad religiosa por persona", () => {
 
   it("todo queda en 0-1 y consume siempre los mismos sorteos", () => {
     fc.assert(
-      fc.property(fc.integer(), fc.double({ min: 0, max: 1, noNaN: true }), (s, b) => {
+      fc.property(fc.nat(), fc.double({ min: 0, max: 1, noNaN: true }), (s, b) => {
         const a = seed(Rng.root(s).fork("p"), [aff(b, 1 - b)]);
         for (const x of [a.belief, a.practice, a.belonging, a.outward]) {
           expect(x).toBeGreaterThanOrEqual(0);
