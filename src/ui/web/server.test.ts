@@ -80,3 +80,24 @@ describe("API web", { timeout: 60_000 }, () => {
     expect((await fetch(`${base}/api/nada`)).status).toBe(404);
   });
 });
+
+describe("opciones sugeridas y entorno", { timeout: 60_000 }, () => {
+  it("ofrece opciones y jugar una pasa el tiempo sin el parser", async () => {
+    const base = await serve();
+    const state = (await (await fetch(`${base}/api/state`)).json()) as WebState;
+    expect(state.options.length).toBeGreaterThan(0);
+    expect(state.options.length).toBeLessThanOrEqual(4);
+    expect(state.environment.length).toBeGreaterThan(0);
+    const wait = state.options.find((o) => o.id === "look") ?? state.options[0];
+    const res = await post(`${base}/api/choose`, { id: wait?.id });
+    const said = (await res.json()) as SayResponse;
+    expect(res.status).toBe(200);
+    expect(said.now).not.toBe(state.now);
+  });
+
+  it("una opción que ya no está no hace nada", async () => {
+    const base = await serve();
+    const said = (await (await post(`${base}/api/choose`, { id: "nope" })).json()) as SayResponse;
+    expect(said.text).toContain("ya no está");
+  });
+});

@@ -5,7 +5,14 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { characterPanel, inventoryPanel } from "../../game/index.ts";
-import { renderCharacter, renderInventory, renderJournal, renderStatus } from "../render.ts";
+import {
+  renderCharacter,
+  renderEnvironment,
+  renderInventory,
+  renderJournal,
+  renderStatus,
+  renderSuggestion,
+} from "../render.ts";
 import { JOURNAL_SHOWN, type Session } from "../session.ts";
 import type { Panels, SayResponse, WebState } from "./api.ts";
 
@@ -17,6 +24,8 @@ export function panelsOf(session: Session): Panels {
     character: renderCharacter(characterPanel(w)),
     inventory: renderInventory(inventoryPanel(w)),
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
+    environment: renderEnvironment(session.environment()),
+    options: session.suggested().map((o) => ({ id: o.id, label: renderSuggestion(o) })),
   };
 }
 
@@ -51,19 +60,22 @@ export function apiHandler(session: Session) {
       send(res, 200, state);
       return true;
     }
-    if (path === "/api/say" && req.method === "POST") {
-      let line: unknown;
+    const turnRoutes = { "/api/say": "line", "/api/choose": "id" } as const;
+    const field = path === undefined ? undefined : turnRoutes[path as keyof typeof turnRoutes];
+    if (field !== undefined && req.method === "POST") {
+      let value: unknown;
       try {
-        line = (JSON.parse(await readBody(req)) as { line?: unknown }).line;
+        value = (JSON.parse(await readBody(req)) as Record<string, unknown>)[field];
       } catch {
         send(res, 400, { error: "cuerpo inválido" });
         return true;
       }
-      if (typeof line !== "string" || line.trim() === "") {
-        send(res, 400, { error: "falta la línea" });
+      if (typeof value !== "string" || value.trim() === "") {
+        send(res, 400, { error: `falta ${field}` });
         return true;
       }
-      const run = queue.then(() => session.say(line as string));
+      const text = value;
+      const run = queue.then(() => (field === "line" ? session.say(text) : session.choose(text)));
       queue = run.catch(() => undefined);
       try {
         const reply = await run;

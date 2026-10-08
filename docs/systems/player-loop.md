@@ -243,3 +243,8 @@ Ideas del autor: el juego es denso en decisiones, así que el jugador siempre pu
 - **Panel de entorno.** Estados del lugar por canal sensorial (vista, oído, olfato, tacto, gusto, qi/alma) como íconos con una saliencia que decae por habituación y se renueva ante un cambio brusco o al atender a propósito ("huelo el aire" lo fija mientras se siga atendiendo). Al irse del lugar o cambiar la causa, desaparece. El modelo está en perception (ampliación 2026-10-08); la narración no repite lo que ya está en el panel.
 
 Fase: opciones sugeridas y panel de entorno en la UI mínima (Hito 1c); pensar con inferencia cuando existan creencias con evidencia (Fase 2).
+
+### Implementación (Hito 1c)
+
+- **Opciones:** `suggestions(world, limit?)` en `game/life/suggest.ts`. Fuentes de hoy: sed, hambre, herida, sueño/noche, trabajo de día, hablar con quien de su casa está presente, mirar y esperar. Cada una es un `IntentDraft` validado con `planFromDraft`; el `id` es estable (`talk:madre`) y `choose` re-arma la lista antes de jugar. Las etiquetas son plantillas de `ui/render.ts`.
+- **Entorno:** `environmentPanel(world, memory, {attended})` en `game/life/environment.ts`. Vidas medias: olfato 5 min, oído 20 min, tacto 45 min, vista 4 h; se muestra con saliencia ≥ 0,25. Cambiar de lugar o de estado reinicia; mirar a propósito reinicia todo. Calibración pendiente.

@@ -13,6 +13,7 @@ interface Line {
 const TABS = [
   ["character", "Personaje"],
   ["inventory", "Inventario"],
+  ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;
 
@@ -54,12 +55,17 @@ export function App() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const line = input.trim();
-    if (line === "" || busy || over) return;
+    if (line === "") return;
     setInput("");
+    await play("/api/say", { line }, line);
+  }
+
+  async function play(path: string, body: unknown, shown: string) {
+    if (busy || over) return;
     setBusy(true);
-    setLines((l) => [...l, { who: "you", text: line }]);
+    setLines((l) => [...l, { who: "you", text: shown }]);
     try {
-      const r = await call<SayResponse>("/api/say", { line });
+      const r = await call<SayResponse>(path, body);
       setLines((l) => [...l, { who: "world", text: r.text }]);
       setPanels(r);
       if (r.end !== null) setOver(true);
@@ -83,6 +89,20 @@ export function App() {
           ))}
           <div ref={bottom} />
         </div>
+        {!over && panels && panels.options.length > 0 && (
+          <div className="options">
+            {panels.options.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                disabled={busy}
+                onClick={() => play("/api/choose", { id: o.id }, o.label)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
         <form onSubmit={submit}>
           <input
             value={input}

@@ -1,5 +1,6 @@
 export * from "./act.ts";
 export * from "./create.ts";
+export * from "./environment.ts";
 export * from "./interrupts.ts";
 export * from "./known.ts";
 export * from "./life.ts";
@@ -8,5 +9,6 @@ export * from "./panels.ts";
 export * from "./perceive.ts";
 export * from "./pressures.ts";
 export * from "./routine.ts";
+export * from "./suggest.ts";
 export * from "./view.ts";
 export * from "./world.ts";
