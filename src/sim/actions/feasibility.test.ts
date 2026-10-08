@@ -144,10 +144,17 @@ describe("factibilidad creída", () => {
     expect(assessPlan(plan(seq([mv(forest), g])), catalog, view())).toEqual([]);
     // Ir a un sitio que no conoce borra la posición creída: no se avisa de lo que no se sabe.
     expect(assessPlan(plan(seq([mv(lin), g])), catalog, view())).toEqual([]);
-    // Ir a los campos y recolectar: ahí no hay qué.
-    expect(assessPlan(plan(seq([mv(fields), g])), catalog, view()).map((x) => x.kind)).toEqual([
+    // Ir al bosque y arar: ahí no hay campo; en los campos sí.
+    const till: ActionPlan["root"] = {
+      kind: "do",
+      verb: "work",
+      args: [{ role: "for", seconds: 3600 }],
+      manner: [],
+    };
+    expect(assessPlan(plan(seq([mv(forest), till])), catalog, view()).map((x) => x.kind)).toEqual([
       "wrong_place",
     ]);
+    expect(assessPlan(plan(seq([mv(fields), till])), catalog, view())).toEqual([]);
   });
 
   it("es determinista y bloquea justo bajo el mínimo del cuerpo (propiedad)", () => {
@@ -256,7 +263,7 @@ describe("referencias fantasma, actos de habla y aclaraciones", () => {
 
   it("la aclaración se pregunta con lo que el personaje percibió", () => {
     const twins = [
-      known(wu, ["Wu"], { features: ["viejo", "vende té"], present: true }),
+      known(wu, ["Wu"], { features: ["viejo", "vende té"] }),
       known(lin, ["Lin"], { features: ["viejo", "duerme detrás"] }),
     ];
     const r = planFromDraft(

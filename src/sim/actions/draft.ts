@@ -324,7 +324,10 @@ function speakAct(act: DraftAct, at: string, w: Walk): SpeakAct | undefined {
       return { kind: act.kind, what: act.what ?? null };
     case "ask": {
       if (!act.about) return { kind: "ask", about: null };
-      const r = resolveRef({ ...act.about, kind: "person" }, personsKnown(w));
+      const r = resolveRef(
+        { ...act.about, features: act.about.features ?? [], kind: "person" },
+        personsKnown(w),
+      );
       if (r.status === "unique" || r.status === "phantom") {
         if (r.status === "phantom") w.phantoms.push(`${at}.about`);
         return { kind: "ask", about: r.chosen };
@@ -336,7 +339,10 @@ function speakAct(act: DraftAct, at: string, w: Walk): SpeakAct | undefined {
       return { kind: "ask", about: null };
     }
     case "tell": {
-      const r = resolveRef({ ...act.about, kind: "person" }, personsKnown(w));
+      const r = resolveRef(
+        { ...act.about, features: act.about.features ?? [], kind: "person" },
+        personsKnown(w),
+      );
       if (r.status === "unique" || r.status === "phantom") {
         if (r.status === "phantom") w.phantoms.push(`${at}.about`);
         return { kind: "tell", about: r.chosen, claim: act.claim };
