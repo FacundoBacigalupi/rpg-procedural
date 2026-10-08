@@ -7,7 +7,8 @@
 //
 // Quien cría son los padres vivos de la casa; si no hay, otro adulto de la casa (cuida menos); si
 // no hay nadie, el chico queda abandonado. La mano dura es lo único al azar: tira sobre lo que la
-// situación del que cría permite. No escribe golpes en el cuerpo del chico todavía.
+// situación del que cría permite. La mano dura hiere de verdad: una herida contundente en
+// `BODY_STATE` del chico (brazos, piernas o torso) con el evento de la crianza como causa.
 
 import type { AgentId, EntityRef, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
@@ -18,10 +19,14 @@ import {
   CARE_STRANGER,
   careOf,
   type DimensionDef,
+  draftEvent,
   type FoodDef,
   HARDSHIP_FAT_START,
+  HARSH_FORCE,
+  HARSH_ZONES,
   harshChance,
   INNATE,
+  injure,
   MIND,
   PERSON,
   type ProcessDef,
@@ -30,6 +35,8 @@ import {
   type ReadonlyWorldTruth,
   readPressures,
   relationship,
+  type StateChange,
+  setComponent,
 } from "../../sim/index.ts";
 import { living } from "./living.ts";
 import { householdHungerSource } from "./pressures.ts";
@@ -58,7 +65,7 @@ export function upbringingProcess(o: UpbringingOptions): ProcessDef {
     representation: "individual",
     phase: "settle",
     reads: [BODY_STATE.name, PERSON.name, INNATE.name, MIND.name, RELATIONS.name],
-    writes: [],
+    writes: [BODY_STATE.name],
     run(ctx) {
       const truth = ctx.truth;
       const me = ctx.scope as unknown as AgentId;
@@ -66,6 +73,7 @@ export function upbringingProcess(o: UpbringingOptions): ProcessDef {
       if (!person) return {};
       const place = o.placeOf(truth, me);
       const events: NonNullable<ReturnType<ProcessDef["run"]>["events"]>[number][] = [];
+      const changes: StateChange[] = [];
 
       const body = truth.get(BODY_STATE, me);
       const plan = body ? o.bodyPlans.find((p) => p.id === body.plan) : undefined;
@@ -125,6 +133,18 @@ export function upbringingProcess(o: UpbringingOptions): ProcessDef {
           }
           care = (share * total) / givers.length;
         }
+        if (harshBy !== null && body && plan && body.death === null) {
+          const blowRng = ctx.rng.fork("harsh-blow", harshBy);
+          const zone = blowRng.pick(HARSH_ZONES);
+          const blow = {
+            kind: "blunt",
+            force: HARSH_FORCE * harsh,
+            zone,
+            cause: draftEvent(events.length),
+            at: ctx.now,
+          } as const;
+          changes.push(setComponent(BODY_STATE, me, injure(plan, body, blow, blowRng).body));
+        }
         events.push({
           kind: "family.rearing",
           actors: harshBy ? [me, harshBy] : [me],
@@ -139,7 +159,7 @@ export function upbringingProcess(o: UpbringingOptions): ProcessDef {
           causes: [{ kind: "state", entity: me, key: "rearing" }],
         });
       }
-      return events.length === 0 ? {} : { events };
+      return events.length === 0 ? {} : { events, changes };
     },
   };
 }
