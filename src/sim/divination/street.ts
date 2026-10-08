@@ -143,7 +143,7 @@ const CLAIM_BY_CONCERN: Readonly<
   ambition: { good: "greatness", bad: "ruin" },
 };
 
-export interface Utterance {
+export interface StreetUtterance {
   readonly claim: ProphecyClaim;
   /** Cuánto de lo dicho es relleno que le serviría a cualquiera (efecto Barnum), 0-1. */
   readonly vagueness: number;
@@ -163,7 +163,7 @@ export function interpret(
   client: AgentId,
   clientWant: number,
   rng: Rng,
-): Utterance {
+): StreetUtterance {
   const r = rng.fork("interpret");
   const lean =
     omenTone(method, omen) + 0.5 * diviner.school + clamp01(diviner.flattery) * clientWant;
@@ -182,7 +182,7 @@ export function interpret(
 export interface Consultation {
   readonly omen: Omen;
   readonly reading: ColdReading;
-  readonly utterance: Utterance;
+  readonly utterance: StreetUtterance;
 }
 
 /**
