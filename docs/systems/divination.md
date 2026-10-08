@@ -169,6 +169,8 @@ interface BacklashRule {
 
 ## Implementación
 - **Fase 2:** profecías como creencias con linaje (information) que cambian utilidades de NPCs; adivinos de calle (ritual, lectura en frío).
+  - Hecho (parte pura, `src/sim/divination/`): la profecía es `HeardProphecy` por persona (`PROPHECY_BELIEFS`) con raíz inmutable (quién, método, evento), linaje de saltos y crédito; el id sale del evento de la primera vez que se dijo. Claims de catálogo cerrado: `greatness`, `ruin`, `death`, `fortune` sobre un sujeto. Contar la deforma (más intensa según el dramatismo, a veces escala) y el crédito sale de credulidad × confianza en quien cuenta − pérdida por salto; lo bueno sobre uno mismo se cree de más. `prophecyPull` da los insumos de utilidad (miedo, esperanza, hostilidad, devoción, valores movidos) y `prophecyDeltas` el cambio de relación con el sujeto. Adivinos de calle: `castOmen` (ritual, sin verdad, torcido por lo que se quiere oír), `coldRead` (señales visibles + pregunta, ruido según perspicacia), `interpret` (adulación y escuela), fama con fallos recordados a medias.
+  - Pendiente (ROADMAP): sembrar adivinos y consultas en el juego, contar en el diálogo, leer `prophecyPull` desde la utilidad, cumplimiento y fama.
 - **Fase 4:** lectura de karma como técnica (proposiciones con ruido, velos, reacción); símbolos e interpretación con vocabularios por cultura en `content/`.
 - **Fase 6:** oráculos y salones de adivinación como instituciones; astrólogos de corte bajo presión política; lectura de karma como prueba (law).
 - **Fase 7:** pronóstico por conocimiento (calendarios, ciclos) como discovery; presagios naturales en la legitimidad; profecías como legados en la historia agregada.
