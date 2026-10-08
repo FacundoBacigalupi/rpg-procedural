@@ -8,6 +8,10 @@
 import { contentId, defineContent, z } from "../../core/index.ts";
 import { PLACE_KINDS } from "../world/index.ts";
 
+/** Lo que está en juego al hacer el verbo (player-loop «Tono de las opciones»): sale del catálogo. */
+export const ACTION_STAKES = ["none", "harm", "lethal", "crime"] as const;
+export type ActionStakes = (typeof ACTION_STAKES)[number];
+
 export const ACTION_DOMAINS = [
   "movement",
   "manipulation",
@@ -158,6 +162,8 @@ export const ActionDef = z
     id: contentId,
     name: z.string().min(1),
     domain: z.enum(ACTION_DOMAINS),
+    /** Qué se juega: herir, matar o delinquir tiñe la opción sugerida (no hay lista de palabras). */
+    stakes: z.enum(ACTION_STAKES).default("none"),
     args: z.array(ArgSpec).max(6),
     manners: z.array(MannerSpec).default([]),
     requires: z.array(Requirement).default([]),

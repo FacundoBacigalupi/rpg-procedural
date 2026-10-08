@@ -7,6 +7,13 @@ import { GAME_CONTENT_KINDS } from "../index.ts";
 import { type EnvironmentMemory, environmentPanel, HALF_LIFE, NOTICEABLE } from "./environment.ts";
 import { Life } from "./index.ts";
 import { DEFAULT_SUGGESTIONS, suggestions } from "./suggest.ts";
+import {
+  gravest,
+  isUncertain,
+  needsConfirmation,
+  SUGGESTION_TONES,
+  suggestionTone,
+} from "./tone.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -69,4 +76,35 @@ describe("panel de entorno", () => {
     expect(again.length).toBeGreaterThan(0);
     expect(again.every((i) => i.salience === 1)).toBe(true);
   }, 120_000);
+});
+
+describe("tono de las opciones", () => {
+  const verb = (over: object) => ({ stakes: "none", ease: 1.5, ...over }) as never;
+  const skilled = { skill: { id: "x", facets: {}, intensity: 1 } };
+
+  it("cada opción trae tono y confirmación coherentes", () => {
+    const life = Life.create(7, content);
+    for (const s of suggestions(life.world)) {
+      expect(SUGGESTION_TONES).toContain(s.tone);
+      expect(s.confirm).toBe(needsConfirmation(s.tone));
+    }
+  });
+
+  it("gana el más grave y lo grave no se aplaca por saber hacerlo", () => {
+    expect(gravest("social", "violent", "risky")).toBe("violent");
+    const lethal = verb({ stakes: "lethal", ...skilled });
+    const skills = { x: { facets: {}, hours: 9999, lastPracticed: null } };
+    expect(suggestionTone("routine", [lethal], skills)).toBe("violent");
+    expect(suggestionTone("routine", [verb({ stakes: "crime" })], undefined)).toBe("illicit");
+    expect(suggestionTone("routine", [verb({ stakes: "harm" })], undefined)).toBe("risky");
+    expect(suggestionTone("need", [verb({})], undefined)).toBe("need");
+  });
+
+  it("la incertidumbre sale de la poca práctica en un verbo difícil", () => {
+    const hard = verb({ ease: 0.5, ...skilled });
+    expect(isUncertain(hard, undefined)).toBe(true);
+    expect(isUncertain(hard, { x: { facets: {}, hours: 50, lastPracticed: null } })).toBe(false);
+    expect(isUncertain(verb({ ease: 1.5, ...skilled }), undefined)).toBe(false);
+    expect(suggestionTone("routine", [hard], undefined)).toBe("uncertain");
+  });
 });

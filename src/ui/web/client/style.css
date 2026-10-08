@@ -146,3 +146,60 @@ aside pre {
   color: var(--muted);
   text-align: center;
 }
+
+/* Tono de las opciones: color + ícono + etiqueta, nunca solo color. */
+.options button .icon::before {
+  display: inline-block;
+  margin-right: 0.35em;
+}
+.icon-dot::before {
+  content: "\00b7";
+}
+.icon-speech::before {
+  content: "\1f4ac";
+}
+.icon-drop::before {
+  content: "\1f4a7";
+}
+.icon-cloud::before {
+  content: "\2601";
+}
+.icon-warning::before {
+  content: "\26a0";
+}
+.icon-scales::before {
+  content: "\2696";
+}
+.icon-skull::before {
+  content: "\2620";
+}
+.options button.tone-routine {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.options button.tone-need {
+  border-color: #c98a1a;
+}
+.options button.tone-social {
+  border-color: #3a74c4;
+}
+.options button.tone-uncertain {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.options button.tone-risky {
+  border-color: #e0701a;
+}
+.options button.tone-illicit {
+  border-color: #8a4bc4;
+}
+.options button.tone-violent {
+  border-color: #c4302b;
+  color: #c4302b;
+}
+@media (prefers-color-scheme: dark) {
+  .options button.tone-violent {
+    color: #ff7a73;
+    border-color: #ff7a73;
+  }
+}

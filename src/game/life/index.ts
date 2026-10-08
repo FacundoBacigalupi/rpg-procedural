@@ -11,5 +11,6 @@ export * from "./perceive.ts";
 export * from "./pressures.ts";
 export * from "./routine.ts";
 export * from "./suggest.ts";
+export * from "./tone.ts";
 export * from "./view.ts";
 export * from "./world.ts";

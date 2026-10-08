@@ -17,9 +17,12 @@ import {
   LOCATION,
   localHour,
   PERSON,
+  type PlanNode,
   planFromDraft,
+  SKILL_STATE,
 } from "../../sim/index.ts";
 import { knownEntities } from "./known.ts";
+import { needsConfirmation, type SuggestionTone, suggestionTone } from "./tone.ts";
 import type { LifeWorld } from "./world.ts";
 
 export type SuggestionKind =
@@ -42,6 +45,36 @@ export interface Suggestion {
   /** 0-1: cuánto se impone; ordena la lista. */
   readonly salience: number;
   readonly draft: IntentDraft;
+  /** Qué clase de cosa es, de un vistazo (player-loop «Tono de las opciones»). */
+  readonly tone: SuggestionTone;
+  /** Las graves piden un segundo toque antes de jugarse. */
+  readonly confirm: boolean;
+}
+
+/** El tono base de cada clase de opción, antes de mirar el catálogo. */
+const BASE_TONE: Readonly<Record<SuggestionKind, SuggestionTone>> = {
+  drink: "need",
+  eat: "need",
+  tend: "need",
+  sleep: "need",
+  rest: "routine",
+  work: "routine",
+  talk: "social",
+  look: "routine",
+  wait: "routine",
+};
+
+function verbsOf(node: PlanNode): string[] {
+  switch (node.kind) {
+    case "do":
+      return [node.verb];
+    case "seq":
+      return node.steps.flatMap(verbsOf);
+    case "until":
+      return verbsOf(node.body);
+    default:
+      return [];
+  }
 }
 
 /** Cuántas opciones se muestran sin pedir más. */
@@ -80,6 +113,8 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
       kind,
       salience,
       draft,
+      tone: BASE_TONE[kind],
+      confirm: false,
       ...(extra.with ? { with: extra.with } : {}),
     });
 
@@ -134,7 +169,8 @@ export function suggestions(w: LifeWorld, limit?: number): Suggestion[] {
   const me = w.truth.get(PERSON, w.player);
   if (!me) return [];
   const known = knownEntities(w);
-  const feasible = candidates(w, w.scheduler.now).filter((s) => {
+  const skills = w.truth.get(SKILL_STATE, w.player);
+  const toned = candidates(w, w.scheduler.now).flatMap((s): Suggestion[] => {
     const made = planFromDraft(s.draft, {
       actor: w.player,
       source: "player",
@@ -144,8 +180,11 @@ export function suggestions(w: LifeWorld, limit?: number): Suggestion[] {
       causes: [{ kind: "state", entity: w.player, key: "intent" }],
       here,
     });
-    return made.kind === "plan";
+    if (made.kind !== "plan") return [];
+    const verbs = verbsOf(made.plan.root).map((v) => w.catalog.verb(v));
+    const tone = suggestionTone(BASE_TONE[s.kind], verbs, skills);
+    return [{ ...s, tone, confirm: needsConfirmation(tone) }];
   });
-  const sorted = feasible.sort((a, b) => b.salience - a.salience || (a.id < b.id ? -1 : 1));
+  const sorted = toned.sort((a, b) => b.salience - a.salience || (a.id < b.id ? -1 : 1));
   return limit === undefined ? sorted : sorted.slice(0, limit);
 }
