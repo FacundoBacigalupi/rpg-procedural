@@ -2,4 +2,5 @@
 // (ARCHITECTURE §5).
 
 export * from "./belief.ts";
+export * from "./inference.ts";
 export * from "./truth.ts";
