@@ -51,7 +51,10 @@ describe("gustos básicos", () => {
     expect(generateTastes(defs, base({ culture: { familiar: {} } }), Rng.root(3))).toEqual([]);
     const tried = generateTastes(
       defs,
-      base({ culture: { familiar: {} }, exposure: { spicy: { count: 5 } } }),
+      base({
+        culture: { familiar: {} },
+        exposure: { spicy: { count: 12, outcome: 0.8, childhood: true } },
+      }),
       Rng.root(3),
     );
     expect(tried.map((p) => p.item)).toEqual(["spicy"]);
