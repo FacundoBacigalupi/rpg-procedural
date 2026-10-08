@@ -5,7 +5,8 @@
 // ser de la casa del muerto: los NPC todavía no perciben a distancia (Fase 3).
 //
 // También lleva los hábitos: cada acción registrada los refuerza (`sim/mind/habits.ts`).
-// También mueve las relaciones (`RELATIONS`) de quienes pelearon, remataron o perdonaron.
+// También mueve las relaciones (`RELATIONS`) de quienes pelearon, remataron o perdonaron, y de
+// quienes se dieron, comerciaron, se curaron, se fiaron, se devolvieron o no se pagaron.
 
 import type { AgentId, Event, PlanetClock } from "../../core/index.ts";
 import {
@@ -17,14 +18,17 @@ import {
   type BondDef,
   type Deltas,
   type DimensionDef,
+  defaultDeltas,
   ENTITY,
   fightDeltas,
   finishDeltas,
   form,
+  giveDeltas,
   HABITS,
   type HabitDef,
   habitsFed,
   INNATE,
+  lendDeltas,
   MIND,
   type Mind,
   PERSON,
@@ -34,13 +38,18 @@ import {
   type Relations,
   reinforceAll,
   relationship,
+  repaidDeltas,
   type SchemaDef,
   type StageDef,
   type StateChange,
   setComponent,
   spareDeltas,
   stageAt,
+  tendDeltas,
+  tradeDeltas,
 } from "../../sim/index.ts";
+
+import { creditRows } from "./credit.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
 
@@ -116,6 +125,11 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             if (def.stimulus) apply(doer, e, [{ stimulus: def.stimulus, blame: null }]);
           }
         }
+        const lent = lentIn(e);
+        if (lent) {
+          move(lent.creditor, lent.debtor, e, lendDeltas("lender"));
+          move(lent.debtor, lent.creditor, e, lendDeltas("borrower"));
+        }
         if (e.kind === "combat.fight" || e.kind === "combat.finish") {
           fightAppraisals(e, truth, apply, rel, move);
         } else if (e.kind === "combat.spare") {
@@ -123,6 +137,30 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           if (sparer && spared) {
             move(spared, sparer, e, spareDeltas("spared"));
             move(sparer, spared, e, spareDeltas("sparer"));
+          }
+        } else if (
+          e.kind === "action.give" ||
+          e.kind === "action.trade" ||
+          e.kind === "action.tend"
+        ) {
+          dealings(e, truth, move);
+        } else if (e.kind === "household.repaid") {
+          const [debtor, creditor] = e.actors as [AgentId | undefined, AgentId | undefined];
+          if (debtor && creditor) {
+            move(creditor, debtor, e, repaidDeltas("creditor"));
+            move(debtor, creditor, e, repaidDeltas("debtor"));
+          }
+        } else if (e.kind === "law.default") {
+          const [debtor, creditor] = e.actors as [AgentId | undefined, AgentId | undefined];
+          if (debtor && creditor) {
+            const empty = { schemas: {}, formative: [], originEventId: e.id };
+            move(
+              creditor,
+              debtor,
+              e,
+              defaultDeltas("creditor", truth.get(MIND, creditor) ?? empty),
+            );
+            move(debtor, creditor, e, defaultDeltas("debtor", empty));
           }
         } else if (e.kind === "mind.hardship") {
           const id = e.actors[0] as AgentId | undefined;
@@ -210,5 +248,61 @@ function fightAppraisals(
         ? finishDeltas()
         : fightDeltas(facts, mind, innate),
     );
+  }
+}
+
+/** Un fiado concedido, de palabra (`action.speak`) o por el hogar (`household.borrowed`). */
+function lentIn(e: Event): { creditor: AgentId; debtor: AgentId } | null {
+  if (e.kind !== "action.speak" && e.kind !== "household.borrowed") return null;
+  if (!(e.data as { credit?: unknown } | null)?.credit) return null;
+  const [creditor, debtor] = e.actors as [AgentId | undefined, AgentId | undefined];
+  return creditor && debtor ? { creditor, debtor } : null;
+}
+
+interface DealingData {
+  readonly effect?: {
+    readonly kind?: string;
+    readonly to?: string;
+    readonly with?: string;
+    readonly target?: string;
+    readonly good?: string | null;
+    readonly grams?: number;
+    readonly deal?: boolean;
+    readonly edge?: number;
+    readonly done?: boolean;
+    readonly care?: number;
+  };
+}
+
+/** Dar, comerciar y curar: lo que cada parte siente por la otra según lo que pasó de verdad. */
+function dealings(
+  e: Event,
+  truth: ReadonlyWorldTruth,
+  move: (from: AgentId, to: AgentId, e: Event, deltas: Deltas) => void,
+): void {
+  const actor = e.actors[0] as AgentId | undefined;
+  const eff = (e.data as DealingData | null)?.effect;
+  if (!actor || !eff) return;
+  if (eff.kind === "give" && eff.to && eff.good && (eff.grams ?? 0) > 0) {
+    const to = eff.to as AgentId;
+    // Era una devolución si el que da le debía (o le debió) algo de eso al que recibe.
+    const repayment = creditRows(truth).some(
+      (r) => r.credit.debtor === actor && r.credit.creditor === to && r.credit.unit === eff.good,
+    );
+    move(to, actor, e, giveDeltas("receiver", eff.grams ?? 0, repayment));
+    move(actor, to, e, giveDeltas("giver", eff.grams ?? 0, repayment));
+  } else if (
+    eff.kind === "trade" &&
+    eff.deal &&
+    eff.with &&
+    (eff as { direction?: string | null }).direction != null
+  ) {
+    const other = eff.with as AgentId;
+    move(actor, other, e, tradeDeltas("actor", eff.edge ?? 0));
+    move(other, actor, e, tradeDeltas("other", eff.edge ?? 0));
+  } else if (eff.kind === "tend" && eff.done && eff.target && eff.target !== actor) {
+    const cared = eff.target as AgentId;
+    move(cared, actor, e, tendDeltas("cared", eff.care ?? 0));
+    move(actor, cared, e, tendDeltas("carer", eff.care ?? 0));
   }
 }
