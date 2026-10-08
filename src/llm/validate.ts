@@ -5,6 +5,7 @@
 // regenere (jobs.ts); si tampoco pasa, el narrador usa las plantillas.
 
 import type { NarrationRequest } from "./narration.ts";
+import { unknownTermsIn } from "./voice.ts";
 
 /** Una referencia marcada: `{{e3|el viejo}}`. */
 const MARK = /\{\{(e\d+)\|([^{}|]+)\}\}/g;
@@ -130,6 +131,12 @@ export function validateNarration(
     const leak = new Set(check.worldNames.flatMap(words).filter((w) => !known.has(w)));
     for (const w of new Set(words(plain))) {
       if (leak.has(w)) problems.push(`"${w}" is not something the character knows`);
+    }
+  }
+  // El léxico del personaje (narration §4): lo técnico que no cree no sale de su boca ni de su ojo.
+  if (request.vocabulary !== undefined) {
+    for (const u of unknownTermsIn(plain, request.vocabulary, quoted)) {
+      problems.push(`"${u.term}" is a term the character does not know: say "${u.say}" instead`);
     }
   }
   // Las cantidades que pasaron de mano (gramos, kilos, monedas) también son cifras del pedido.
