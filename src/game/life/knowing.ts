@@ -33,6 +33,7 @@ import {
   setComponent,
   skyLight,
 } from "../../sim/index.ts";
+import { playerObserver } from "./witness.ts";
 
 export const KNOWING_PROCESS = "life.knowing";
 
@@ -95,18 +96,34 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       const hexes = [...byHex.keys()].sort((x, y) => x - y);
       for (const hex of hexes) {
         const here = byHex.get(hex) ?? [];
-        // El personaje no observa: sus creencias salen de su propio ítem (jugador).
-        const watchers = here.filter((id) => id !== o.player);
-        if (watchers.length === 0) continue;
+        // El personaje también observa: lo que percibe de los presentes queda en sus propias
+        // creencias (player-loop §9); la vista sigue mirando aparte hasta el próximo ítem.
+        const watchers = here;
+        if (watchers.length < 2) continue;
         for (const subject of here) {
-          // Entre vecinos alcanza mirarse cada pocas horas; al personaje lo miran cada hora.
-          if (subject !== o.player && !npcPass) continue;
+          // Entre vecinos alcanza mirarse cada pocas horas; al personaje lo miran cada hora y él
+          // mira a todos cada hora.
           const me = truth.get(PERSON, subject);
           const at = truth.get(LOCATION, subject);
           if (!me || !at) continue;
           const observers: Observer[] = [];
           for (const id of watchers) {
             if (id === subject) continue;
+            if (!npcPass && subject !== o.player && id !== o.player) continue;
+            if (id === o.player) {
+              const mine = playerObserver(
+                { truth, player: o.player, clock: o.clock },
+                ATTENTION.relaxed,
+                ctx.now,
+              );
+              observers.push({
+                ...mine,
+                familiar: new Map([
+                  [subject, Math.max(KNOWN_VILLAGER, mine.familiar.get(subject) ?? 0)],
+                ]),
+              });
+              continue;
+            }
             const p = truth.get(PERSON, id);
             const there = truth.get(LOCATION, id);
             if (!p || !there) continue;

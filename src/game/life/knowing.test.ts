@@ -92,6 +92,18 @@ describe("lo que los vecinos creen del personaje", () => {
     expect(found).toBeGreaterThan(0);
   }, 180_000);
 
+  it("el personaje guarda en sus creencias a los presentes que reconoce", () => {
+    const life = Life.create(7, content);
+    const t = life.world.truth;
+    const other = housemate(life);
+    life.advanceTo(life.now + life.world.clock.day);
+    const at = believed(t.get(BELIEFS, life.player), other, "at");
+    expect(at).toBeDefined();
+    expect(at?.sources[0]?.kind).toBe("percept");
+    expect(believed(t.get(BELIEFS, life.player), other, "alive")?.value).toBe(true);
+    expect(believed(t.get(BELIEFS, life.player), life.player, "at")).toBeUndefined();
+  }, 180_000);
+
   it("las creencias son de gente viva con ficha y el mundo sigue consistente", () => {
     const life = Life.create(7, content);
     life.advanceTo(life.now + life.world.clock.day * 3);
