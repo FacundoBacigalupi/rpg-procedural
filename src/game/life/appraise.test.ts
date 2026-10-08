@@ -205,7 +205,7 @@ describe("la aldea interpreta lo que vive", () => {
 });
 
 describe("interpretar el hambre y la crianza", () => {
-  it("el hambre pesa más cuanto más agotada está la reserva y no marca al que come bien", () => {
+  it("el hambre pesa mÃ¡s cuanto mÃ¡s agotada estÃ¡ la reserva y no marca al que come bien", () => {
     const thin = appraiseHardship(0.3, mindWith({}))[0]?.stimulus.intensity ?? 0;
     const lean = appraiseHardship(0.6, mindWith({}))[0]?.stimulus.intensity ?? 0;
     expect(thin).toBeGreaterThan(lean);
@@ -228,14 +228,14 @@ describe("interpretar el hambre y la crianza", () => {
     expect(hit?.blame).toBe(FOE);
   });
 
-  it("cuida más el cálido y querido de una casa holgada, y es más duro el frío de una apretada", () => {
+  it("cuida mÃ¡s el cÃ¡lido y querido de una casa holgada, y es mÃ¡s duro el frÃ­o de una apretada", () => {
     expect(careOf(0.8, 0.8, 0)).toBeGreaterThan(careOf(-0.5, 0.1, 0));
     expect(careOf(0.5, 0.5, 0)).toBeGreaterThan(careOf(0.5, 0.5, 1));
     expect(harshChance(0.8, -0.8, 1)).toBeGreaterThan(harshChance(-0.8, 0.8, 0));
   });
 });
 
-describe("la aldea cría a sus chicos", () => {
+describe("la aldea crÃ­a a sus chicos", () => {
   const rearing = (seed: number) => {
     const life = Life.create(seed, content);
     life.advanceTo(life.now + 100 * 86_400);
@@ -271,7 +271,10 @@ describe("la aldea cría a sus chicos", () => {
     for (const id of living(w.truth)) {
       if (id !== child && w.truth.get(PERSON, id)?.household === home) {
         const b = w.truth.get(BODY_STATE, id) as Body;
-        w.truth.set(BODY_STATE, id, { ...b, death: { cause: "brain_trauma", at: life.now } } as Body);
+        w.truth.set(BODY_STATE, id, {
+          ...b,
+          death: { cause: "brain_trauma", at: life.now },
+        } as Body);
       }
     }
     life.advanceTo(life.now + 100 * 86_400);
@@ -279,6 +282,23 @@ describe("la aldea cría a sus chicos", () => {
     const care = (mine?.data as { care?: number } | null)?.care ?? 0;
     expect(care).toBeLessThan(-0.2);
   }, 120_000);
+
+  it("la mano dura hiere de verdad: una herida del chico con la crianza como causa", () => {
+    let checked = 0;
+    for (const seed of [10, 11, 12]) {
+      const { life, events } = rearing(seed);
+      for (const e of events) {
+        const data = e.data as { harsh?: number } | null;
+        if (!data?.harsh || e.actors.length < 2) continue;
+        const child = e.actors[0] as AgentId;
+        const wound = life.world.truth.get(BODY_STATE, child)?.wounds.find((w) => w.cause === e.id);
+        expect(wound?.kind).toBe("blunt");
+        expect(wound?.zone).not.toBe("head");
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, 360_000);
 
   it("es determinista", () => {
     expect(rearing(10).life.hash()).toEqual(rearing(10).life.hash());

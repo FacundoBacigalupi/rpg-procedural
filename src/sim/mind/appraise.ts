@@ -100,20 +100,20 @@ export function appraiseLoss(closeness: number): Appraised[] {
   ];
 }
 
-/** FracciÛn de la grasa de referencia por debajo de la cual el hambre ya es carencia prolongada. */
+/** Fracci√≥n de la grasa de referencia por debajo de la cual el hambre ya es carencia prolongada. */
 export const HARDSHIP_FAT_START = 0.7;
-/** Cu·nto m·s abajo llega la intensidad plena (la reserva de grasa casi agotada). */
+/** Cu√°nto m√°s abajo llega la intensidad plena (la reserva de grasa casi agotada). */
 export const HARDSHIP_FAT_SPAN = 0.5;
-/** Edad vivida (aÒos) hasta la que la crianza forma: despuÈs la casa deja de criar. */
+/** Edad vivida (a√±os) hasta la que la crianza forma: despu√©s la casa deja de criar. */
 export const REARING_AGE = 12;
-/** Peso de cada insumo del cuidado de quien crÌa (calidez, cariÒo por el chico, penuria de la casa). */
+/** Peso de cada insumo del cuidado de quien cr√≠a (calidez, cari√±o por el chico, penuria de la casa). */
 export const CARE_WARMTH = 0.5;
 export const CARE_AFFECTION = 0.4;
 export const CARE_STRAIN = 0.6;
 export const CARE_BASE = 0.1;
-/** Cu·nto vale el cuidado de alguien que no es de la sangre del chico, contra el de un padre. */
+/** Cu√°nto vale el cuidado de alguien que no es de la sangre del chico, contra el de un padre. */
 export const CARE_STRANGER = 0.6;
-/** Cuidado de un chico que no tiene a nadie en la casa que lo crÌe. */
+/** Cuidado de un chico que no tiene a nadie en la casa que lo cr√≠e. */
 export const CARE_ABANDONED = -0.8;
 /** Chance por temporada de mano dura: base y lo que suman la audacia, la frialdad y la penuria. */
 export const HARSH_BASE = 0.05;
@@ -121,8 +121,19 @@ export const HARSH_BOLD = 0.1;
 export const HARSH_COLD = 0.1;
 export const HARSH_STRAIN = 0.3;
 export const HARSH_MAX = 0.6;
+/** Fuerza del golpe (0-1) de una mano dura de gravedad 1; la gravedad la escala. */
+export const HARSH_FORCE = 0.5;
+/** D√≥nde pega quien corrige: brazos, piernas y torso, nunca la cabeza ni el cuello. */
+export const HARSH_ZONES = [
+  "left_arm",
+  "right_arm",
+  "left_leg",
+  "right_leg",
+  "chest",
+  "abdomen",
+] as const;
 
-/** CÛmo vive el hambre prolongada quien la pasa (`fatRatio`: grasa que le queda / la de referencia). */
+/** C√≥mo vive el hambre prolongada quien la pasa (`fatRatio`: grasa que le queda / la de referencia). */
 export function appraiseHardship(fatRatio: number, mind: Mind): Appraised[] {
   const depletion = clamp01((HARDSHIP_FAT_START - fatRatio) / HARDSHIP_FAT_SPAN);
   if (depletion < 0.1) return [];
@@ -130,13 +141,13 @@ export function appraiseHardship(fatRatio: number, mind: Mind): Appraised[] {
   return [{ stimulus: { theme: "hardship", intensity: round(clamp01(damped)) }, blame: null }];
 }
 
-/** Cu·nto cuida alguien a un chico (-1 a 1): su calidez, su cariÒo por Èl y cu·nto aprieta la casa. */
+/** Cu√°nto cuida alguien a un chico (-1 a 1): su calidez, su cari√±o por √©l y cu√°nto aprieta la casa. */
 export function careOf(warmth: number, affection: number, strain: number): number {
   const x = CARE_WARMTH * warmth + CARE_AFFECTION * affection - CARE_STRAIN * clamp01(strain);
   return Math.min(1, Math.max(-1, x + CARE_BASE));
 }
 
-/** Chance de mano dura en una temporada de quien crÌa: m·s en el audaz, el frÌo y la casa apretada. */
+/** Chance de mano dura en una temporada de quien cr√≠a: m√°s en el audaz, el fr√≠o y la casa apretada. */
 export function harshChance(boldness: number, warmth: number, strain: number): number {
   const x =
     HARSH_BASE +
@@ -147,15 +158,15 @@ export function harshChance(boldness: number, warmth: number, strain: number): n
 }
 
 export interface RearingFacts {
-  /** QuiÈn criÛ al chico esta temporada (null: nadie en la casa). */
+  /** Qui√©n cri√≥ al chico esta temporada (null: nadie en la casa). */
   readonly caregiver: AgentId | null;
-  /** Cu·nto lo cuidÛ (-1 a 1, de `careOf`). */
+  /** Cu√°nto lo cuid√≥ (-1 a 1, de `careOf`). */
   readonly care: number;
   /** Gravedad (0-1) de la mano dura de esa temporada (0: ninguna). */
   readonly harsh: number;
 }
 
-/** CÛmo vive un chico la crianza de una temporada: cuidado o abandono, y la mano dura si hubo. */
+/** C√≥mo vive un chico la crianza de una temporada: cuidado o abandono, y la mano dura si hubo. */
 export function appraiseRearing(facts: RearingFacts, mind: Mind, innate: Innate): Appraised[] {
   const out: Appraised[] = [];
   const care = Math.min(1, Math.max(-1, facts.care));
