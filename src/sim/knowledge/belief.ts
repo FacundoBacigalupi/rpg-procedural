@@ -67,7 +67,7 @@ export interface Beliefs {
 export const BELIEFS = table<Beliefs>("knowledge.beliefs");
 
 /** Cuántas creencias guarda cada persona (las de menor saliencia se olvidan). */
-export const BELIEF_CAPACITY = 40;
+export const BELIEF_CAPACITY = 100;
 export const MAX_SOURCES = 4;
 /** Vida media de la confianza, en horas: dónde está alguien envejece rápido; que vive, despacio. */
 export const CONFIDENCE_HALF_LIFE_HOURS: Readonly<Record<AttrKey, number>> = {
