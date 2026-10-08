@@ -482,3 +482,43 @@ describe("infancia en la aldea", () => {
     expect(seed().rows()).toEqual(truth.rows());
   });
 });
+
+describe("calibración (Hito 1c)", () => {
+  const meanLevel = (s: SkillState | undefined, id: string) => {
+    const facets = skill(id).facets;
+    return facets.reduce((sum, f) => sum + levelOf(s, f), 0) / facets.length;
+  };
+
+  it("práctica ideal de un adulto promedio: competente al año de oficio, oficial tras décadas", () => {
+    const def = skill("farming");
+    const at = (hours: number) => {
+      let st: SkillState | undefined;
+      for (let i = 0; i < 100; i++) {
+        st = practice(def, st, adult, {
+          weights: { execution: 1 / 3, reading: 1 / 3, judgment: 1 / 3 },
+          hours: hours / 100,
+          feedback: { execution: 0.8, reading: 0.8, judgment: 0.8 },
+          fit: 1,
+          tick: 0,
+        });
+      }
+      return meanLevel(st, "farming");
+    };
+    expect(at(1000)).toBeGreaterThan(0.15);
+    expect(at(1000)).toBeLessThan(0.3);
+    expect(at(6000)).toBeGreaterThan(0.4);
+    expect(at(6000)).toBeLessThan(0.6);
+  });
+
+  it("el campesino de la aldea es competente de joven y se estanca en oficial", () => {
+    const at = (age: number) =>
+      meanLevel(
+        upbringingSkills(catalog, {}, 0, Math.round(age * YEAR), EARTHLIKE_CLOCK)["farming"],
+        "farming",
+      );
+    expect(at(20)).toBeGreaterThan(0.25);
+    expect(at(20)).toBeLessThan(0.45);
+    expect(at(45)).toBeLessThan(0.55);
+    expect(at(45) - at(20)).toBeLessThan(at(20) - at(12));
+  });
+});
