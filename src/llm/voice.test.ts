@@ -57,7 +57,7 @@ describe("léxico del personaje", () => {
     expect(peasant.use).toEqual(["qi"]);
     expect(peasant.avoid.map((a) => a.term)).toEqual(["núcleo dorado", "Fundación"]);
     const adept = characterLexicon(WORLD, new Set(["realm.foundation"]));
-    expect(adept.use).toEqual(["Fundación", "qi"]);
+    expect(adept.use).toEqual(["qi", "Fundación"]);
     expect(adept.avoid.map((a) => a.term)).toEqual(["núcleo dorado"]);
   });
 
@@ -84,7 +84,7 @@ describe("léxico del personaje", () => {
       validateNarration("Pasa uno de esos inmortales, con esa luz que llevan adentro.", req),
     ).toEqual([]);
     // Sin léxico en el pedido no hay restricción.
-    expect(validateNarration("Habla de la Fundación.", narrationRequest(view, style))).toEqual([]);
+    expect(validateNarration("Habla de la fundación.", narrationRequest(view, style))).toEqual([]);
   });
 
   it("no confunde una palabra más larga con el término", () => {
