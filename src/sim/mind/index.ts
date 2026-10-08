@@ -3,5 +3,6 @@
 export * from "./appraise.ts";
 export * from "./habits.ts";
 export * from "./history.ts";
+export * from "./memory.ts";
 export * from "./mind.ts";
 export * from "./seed.ts";

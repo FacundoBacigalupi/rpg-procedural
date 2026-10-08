@@ -7,9 +7,11 @@
 // También lleva los hábitos: cada acción registrada los refuerza (`sim/mind/habits.ts`).
 // También mueve las relaciones (`RELATIONS`) de quienes pelearon, remataron o perdonaron, y de
 // quienes se dieron, comerciaron, se curaron, se fiaron, se devolvieron o no se pagaron.
+// Y guarda lo vivido como memoria episódica (`MEMORIES`, `sim/mind/memory.ts`; `memories.ts`).
 
 import type { AgentId, Event, PlanetClock } from "../../core/index.ts";
 import {
+  addMemory,
   applyDeltas,
   appraiseFight,
   appraiseHardship,
@@ -24,12 +26,15 @@ import {
   fightDeltas,
   finishDeltas,
   form,
+  formMemory,
   giveDeltas,
   HABITS,
   type HabitDef,
   habitsFed,
   INNATE,
   lendDeltas,
+  MEMORIES,
+  type Memories,
   MIND,
   type Mind,
   PERSON,
@@ -52,6 +57,7 @@ import {
 } from "../../sim/index.ts";
 
 import { creditRows } from "./credit.ts";
+import { type Lived, livedFrom, lossLived } from "./memories.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
 
@@ -83,8 +89,16 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [MIND.name, INNATE.name, PERSON.name, ENTITY.name, RELATIONS.name, HABITS.name],
-    writes: [MIND.name, HABITS.name, RELATIONS.name],
+    reads: [
+      MIND.name,
+      INNATE.name,
+      PERSON.name,
+      ENTITY.name,
+      RELATIONS.name,
+      HABITS.name,
+      MEMORIES.name,
+    ],
+    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -116,7 +130,14 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         const next = applyDeltas(rel(from, to, e), deltas, e.id);
         rels.set(from, { ...base, toward: { ...base.toward, [to]: { ...next, updated: e.tick } } });
       };
+      const mems = new Map<AgentId, Memories>();
+      const note = (l: Lived) => {
+        if (!alive(truth, l.who) || !truth.get(PERSON, l.who)) return;
+        const m = formMemory(l.experience);
+        mems.set(l.who, addMemory(mems.get(l.who) ?? truth.get(MEMORIES, l.who), m, m.at));
+      };
       for (const e of ctx.recent) {
+        for (const l of livedFrom(e)) note(l);
         const fed = habitsFed(o.habits, e.kind);
         const doer = e.actors[0] as AgentId | undefined;
         if (fed.length > 0 && doer && alive(truth, doer) && truth.get(PERSON, doer)) {
@@ -192,6 +213,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             const r = rel(id, dead, e);
             if (r.bonds.length === 0) continue;
             apply(id, e, appraiseLoss(closeness(r)));
+            note(lossLived(e, id, dead, closeness(r)));
           }
         }
       }
@@ -199,6 +221,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...minds].map(([id, m]) => setComponent(MIND, id, m)),
         ...[...habits].map(([id, h]) => setComponent(HABITS, id, h)),
         ...[...rels].map(([id, r]) => setComponent(RELATIONS, id, r)),
+        ...[...mems].map(([id, m]) => setComponent(MEMORIES, id, m)),
       ];
       return changes.length === 0 ? {} : { changes };
     },
