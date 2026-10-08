@@ -1,4 +1,5 @@
 // Punto de entrada de la CLI: `npm run dev -- [--seed N] [--mode realista|novela]
+// [--sex mujer|hombre] [--age N] [--familia terrateniente|campesina|sirviente] (modo novela)
 // [--frequency N] [--save archivo] [--llm modelo [--runtime ollama] [--llm-url URL] [--think]]`.
 // Sin `--save` la vida va a `saves/vida.sqlite`; si ese archivo ya tiene una, se sigue esa.
 // Con `--llm`, un modelo local lee y narra (con la gramática y las plantillas de respaldo si no
@@ -9,7 +10,13 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline";
 import { parseArgs } from "node:util";
-import { defaultGameSetup, GAME_CONTENT_KINDS, type GameMode } from "../../game/index.ts";
+import {
+  defaultGameSetup,
+  GAME_CONTENT_KINDS,
+  type GameMode,
+  type GameSetup,
+  parseGameSetup,
+} from "../../game/index.ts";
 import {
   LlmConfig,
   LlmJobs,
@@ -26,6 +33,9 @@ const { values } = parseArgs({
     seed: { type: "string" },
     mode: { type: "string", default: "realista" },
     frequency: { type: "string" },
+    sex: { type: "string" },
+    age: { type: "string" },
+    familia: { type: "string" },
     save: { type: "string", default: "saves/vida.sqlite" },
     llm: { type: "string" },
     runtime: { type: "string", default: "ollama" },
@@ -40,6 +50,37 @@ if (!Number.isSafeInteger(seed) || seed < 0) throw new Error(`seed inválido: ${
 const modes: Readonly<Record<string, GameMode>> = { realista: "realistic", novela: "novel" };
 const mode = modes[values.mode];
 if (!mode) throw new Error(`modo inválido: ${values.mode} (realista o novela)`);
+
+/** El personaje que se pide en modo novela (game-modes §2.1); en el realista no se elige nada. */
+function gameSetup(): GameSetup {
+  const asked = values.sex ?? values.age ?? values.familia;
+  if (asked === undefined) return defaultGameSetup(mode as GameMode);
+  if (mode !== "novel") throw new Error("elegir al personaje es del modo novela (--mode novela)");
+  const sexes: Record<string, "female" | "male"> = { mujer: "female", hombre: "male" };
+  const positions: Record<string, "holder" | "common" | "dependent"> = {
+    terrateniente: "holder",
+    campesina: "common",
+    sirviente: "dependent",
+  };
+  const sex = values.sex === undefined ? undefined : sexes[values.sex];
+  const position = values.familia === undefined ? undefined : positions[values.familia];
+  if (values.sex !== undefined && !sex) throw new Error(`--sex: mujer u hombre (${values.sex})`);
+  if (values.familia !== undefined && !position) {
+    throw new Error(`--familia: terrateniente, campesina o sirviente (${values.familia})`);
+  }
+  const base = defaultGameSetup("novel");
+  return parseGameSetup({
+    ...base,
+    novel: {
+      ...base.novel,
+      character: {
+        ...(sex ? { sex } : {}),
+        ...(values.age === undefined ? {} : { entryAge: Number(values.age) }),
+        ...(position ? { family: { position } } : {}),
+      },
+    },
+  });
+}
 
 const runtime = values.runtime as keyof typeof LOCAL_BASE_URLS;
 if (!(runtime in LOCAL_BASE_URLS)) throw new Error(`runtime desconocido: ${values.runtime}`);
@@ -70,7 +111,7 @@ try {
     seed,
     content: loadContentDir("content", GAME_CONTENT_KINDS),
     llm: values.llm === undefined ? undefined : llmJobs(values.llm),
-    setup: { game: defaultGameSetup(mode), ...(frequency === undefined ? {} : { frequency }) },
+    setup: { game: gameSetup(), ...(frequency === undefined ? {} : { frequency }) },
   });
 } finally {
   rl.close();

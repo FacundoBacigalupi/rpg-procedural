@@ -23,6 +23,7 @@ import {
 import {
   ACTIONS,
   ActionCatalog,
+  assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
   CONCEPTS,
@@ -38,12 +39,14 @@ import {
   generateLanguage,
   HARVEST,
   HARVEST_GOOD,
+  type Household,
   houseKey,
   LANGUAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
   PERSON,
+  type Person,
   PLACE,
   PLANS,
   type PlaceFeature,
@@ -55,6 +58,7 @@ import {
   SkillCatalog,
   SPEECH_LINES,
   STATUSES,
+  type StatusDef,
   seedBodies,
   seedCulture,
   seedParcels,
@@ -85,7 +89,15 @@ import {
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
+/** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
+export interface BirthQuery {
+  readonly sex?: "female" | "male";
+  readonly position?: "holder" | "common" | "dependent";
+}
+
 export interface LifeOptions {
+  /** El personaje pedido (modo novela); sin él, sale de la pre-corrida como en el realista. */
+  readonly birth?: BirthQuery;
   /** Menos celdas para los tests (frecuencia de la grilla); por defecto la del planeta real. */
   readonly frequency?: number;
   /** Entre qué edades sale el personaje de la pre-corrida (player-loop §2). */
@@ -112,6 +124,17 @@ function required<T>(x: T | undefined, what: string): T {
   return x;
 }
 
+/** Las condiciones duras de una búsqueda de nacimiento (la edad la pone `playerAge`). */
+function birthFilter(q: BirthQuery, defs: readonly StatusDef[]) {
+  return (p: Person, alive: readonly Household[]): boolean => {
+    if (q.sex !== undefined && p.sex !== q.sex) return false;
+    if (q.position === undefined) return true;
+    const seats = alive.map((h) => ({ id: h.id, members: h.members.length, since: h.since }));
+    const status = assignStatuses(seats, defs).get(p.household)?.status;
+    return defs.find((d) => d.id === status)?.role === q.position;
+  };
+}
+
 /** El terreno y la pre-corrida de la aldea de este seed. */
 export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions = {}): LifeTerrain {
   const planetOptions: PlanetOptions = {
@@ -121,6 +144,7 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
   };
   const planet = generatePlanet(planetOptions);
   const site = villageSite(planet);
+  const birth = options.birth ? birthFilter(options.birth, content.all(STATUSES)) : undefined;
   const population = villagePopulation({
     seed,
     site,
@@ -130,6 +154,7 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
       "demography human.preindustrial-village",
     ),
     ...(options.playerAge === undefined ? {} : { playerAge: options.playerAge }),
+    ...(birth ? { playerFits: birth } : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
   return { village, planet, site, map: localMapOf(planet, site), population };
