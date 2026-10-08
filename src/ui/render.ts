@@ -64,11 +64,12 @@ const SIGNS: Readonly<Record<string, string>> = {
   bone_broken: "algo está roto",
 };
 
-const PRACTICE: Readonly<Record<CharacterPanel["skills"][number]["practice"], string>> = {
-  never_much: "poco",
-  some: "algunas veces",
-  a_lot: "mucho",
-  all_life: "toda la vida",
+const STANDING: Readonly<Record<CharacterPanel["skills"][number]["standing"], string>> = {
+  hardly: "casi nada",
+  novice: "recién empezás",
+  competent: "te defendés",
+  skilled: "sabés bastante",
+  master: "sos de los buenos",
 };
 
 const AMOUNT: Readonly<Record<InventoryPanel["carried"][number]["amount"], string>> = {
@@ -103,8 +104,10 @@ export function renderCharacter(p: CharacterPanel): string {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
   if (p.skills.length > 0) {
-    lines.push("Lo que hiciste en tu vida:");
-    for (const s of p.skills) lines.push(`  ${s.name}: ${PRACTICE[s.practice]}`);
+    lines.push("Lo que creés saber hacer:");
+    for (const s of p.skills) {
+      lines.push(`  ${s.name}: ${STANDING[s.standing]}${s.sure ? "" : " (o eso creés)"}`);
+    }
   }
   return lines.join("\n");
 }
