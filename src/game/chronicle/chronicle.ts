@@ -7,6 +7,7 @@
 import { type AgentId, type Event, type EventId, parseId, type Tick } from "../../core/index.ts";
 import { BODY_STATE, callName, type DeathCause, PERSON, PERSON_NAME } from "../../sim/index.ts";
 import type { LifeWorld } from "../life/index.ts";
+import { type ImportantPerson, importantPeople, type NeverKnewEntry, neverKnew } from "./people.ts";
 
 /** Eventos del personaje que parten la vida en capítulos. */
 const TURNING_KINDS: ReadonlySet<string> = new Set([
@@ -56,6 +57,10 @@ export interface Chronicle {
   readonly marks: ChronicleMarks;
   readonly death: DeathRecord;
   readonly chapters: readonly ChronicleChapter[];
+  /** Quienes más pesaron, por relación y por memoria (§4). */
+  readonly people: readonly ImportantPerson[];
+  /** Lo que el personaje creyó mal o nunca vio, contra la verdad (§5). */
+  readonly neverKnew: readonly NeverKnewEntry[];
   /** Todo lo que la crónica afirma apunta a estos eventos. */
   readonly sources: readonly EventId[];
 }
@@ -82,7 +87,15 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
 
   const mine = w.log.all().filter((e) => e.actors.includes(me) && e.id !== died.id);
   const chapters = chaptersOf(w, me, mine, entered, died);
-  const cited = new Set<EventId>([died.id, ...chain, ...chapters.flatMap((c) => c.turningPoints)]);
+  const people = importantPeople(w, me, died.tick);
+  const unknown = neverKnew(w, me, people, died.tick);
+  const cited = new Set<EventId>([
+    died.id,
+    ...chain,
+    ...chapters.flatMap((c) => c.turningPoints),
+    ...people.flatMap((p) => p.memories),
+    ...unknown.map((u) => u.event),
+  ]);
   const nameData = w.truth.get(PERSON_NAME, me);
   return {
     subject: me,
@@ -93,6 +106,8 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
     marks,
     death,
     chapters,
+    people,
+    neverKnew: unknown,
     sources: [...cited].sort(byNumber),
   };
 }
