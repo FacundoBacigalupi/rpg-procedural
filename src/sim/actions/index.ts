@@ -8,6 +8,7 @@ export * from "./catalog.ts";
 export * from "./draft.ts";
 export * from "./draft-schema.ts";
 export * from "./examples.ts";
+export * from "./feasibility.ts";
 export * from "./intent.ts";
 export * from "./plan.ts";
 export * from "./purpose.ts";

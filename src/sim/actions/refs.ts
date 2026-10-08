@@ -32,6 +32,12 @@ export interface KnownEntity {
   readonly hexes?: readonly number[] | undefined;
   /** Las creencias de donde sale (vacío hasta que llegue `sim/knowledge`). */
   readonly via: readonly BeliefId[];
+  /**
+   * La creencia apunta a algo que no existe (el tesoro que te mintieron, el maestro que murió sin
+   * que lo supieras). Lo marca el juego contra la verdad: el actor nunca lo ve, para él es una
+   * entidad como cualquier otra y recién se entera al fracasar (actions §4).
+   */
+  readonly phantom?: boolean | undefined;
 }
 
 export interface RefCandidate {
@@ -62,7 +68,17 @@ export type ResolvedRef =
       readonly candidates: readonly RefCandidate[];
       readonly clarify: readonly ClarifyOption[];
     }
-  | { readonly status: "unknown"; readonly desc: RefDescription; readonly candidates: readonly [] };
+  | { readonly status: "unknown"; readonly desc: RefDescription; readonly candidates: readonly [] }
+  /**
+   * Única para el actor, pero lo que cree no existe: la acción se intenta con esa referencia y el
+   * fracaso es cómo se entera. Solo el juego y el inspector ven esta diferencia.
+   */
+  | {
+      readonly status: "phantom";
+      readonly desc: RefDescription;
+      readonly chosen: EntityRef;
+      readonly candidates: readonly RefCandidate[];
+    };
 
 /** Cuánto pesa estar en la escena frente a recordar. */
 export const PRESENT_BONUS = 0.25;
@@ -143,7 +159,8 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
     if (desc.relation.to === "self") relTo = "self";
     else {
       const inner = resolveRef(desc.relation.to, known);
-      if (inner.status !== "unique") return { status: "unknown", desc, candidates: [] };
+      if (inner.status !== "unique" && inner.status !== "phantom")
+        return { status: "unknown", desc, candidates: [] };
       relTo = inner.chosen;
     }
   }
@@ -175,12 +192,8 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
   const best = (scored[0] as (typeof scored)[number]).score;
   const close = scored.filter((s) => best - s.score < AMBIGUITY_GAP);
   if (close.length === 1) {
-    return {
-      status: "unique",
-      desc,
-      chosen: (close[0] as (typeof close)[number]).e.ref,
-      candidates,
-    };
+    const only = (close[0] as (typeof close)[number]).e;
+    return { status: only.phantom ? "phantom" : "unique", desc, chosen: only.ref, candidates };
   }
   return { status: "ambiguous", desc, candidates, clarify: clarifyOptions(close.map((s) => s.e)) };
 }
@@ -202,4 +215,21 @@ export function clarifyOptions(es: readonly KnownEntity[]): ClarifyOption[] {
 
 function sameWords(a: string, b: string): boolean {
   return refTokens(a).join(" ") === refTokens(b).join(" ");
+}
+
+/**
+ * La pregunta de aclaración en términos del personaje (§4): los rasgos que percibió de cada
+ * candidato, sin ids ni nada que no sepa. El LLM puede redactarla mejor; esta es la versión sin red.
+ */
+export function clarifyQuestion(options: readonly ClarifyOption[]): string {
+  const say = (o: ClarifyOption) => {
+    const traits = o.distinguishing.filter((d) => d !== o.label).slice(0, 2);
+    const base = traits.length > 0 ? `${o.label} (${traits.join(", ")})` : o.label;
+    return o.present ? `${base}, el que tenés delante` : base;
+  };
+  const parts = options.map(say);
+  if (parts.length === 0) return "¿A cuál te referís?";
+  if (parts.length === 1) return `¿Te referís a ${parts[0]}?`;
+  const last = parts[parts.length - 1];
+  return `¿A cuál te referís: ${parts.slice(0, -1).join(", ")} o ${last}?`;
 }

@@ -297,6 +297,8 @@ Con la resolución de zona de simulation §4:
   - **Ledger:** `holdings(cuenta)` y `isMoney` (la unidad `coin` o `coin:*`) responden qué hay para tomar y quién tiene con qué.
 - Los lugares (`PLACE_KINDS`, `space.place`, `space.location`, mapa local) pasaron a `sim/world/space.ts`, donde ARCHITECTURE pone el espacio.
 
+**Hecho (Fase 2, 2026-10-08) — factibilidad creída:** `feasibility.ts` (`assessPlan` contra un `BeliefView`: cuerpo sentido, autoimagen, posición y tenencia creídas; avisos con `blocks` para NPC), referencias fantasma (`KnownEntity.phantom` → estado `phantom`, se usa como única y queda en `DraftResult.phantoms`), acto de habla declarado en `speak.content` (`DraftAct` → `SpeakAct`) y `clarifyQuestion`. El juego avisa antes del primer intento y si el jugador repite lo mismo, lo intenta. Ítems abiertos en el ROADMAP.
+
 ## Tests
 
 - **Ningún resultado desde el texto:** para un corpus de frases con resultados ("lo mato", "encuentro", "me da"), el parser nunca produce cambios de estado y siempre llena `stripped`.

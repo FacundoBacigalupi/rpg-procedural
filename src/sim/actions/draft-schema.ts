@@ -222,6 +222,15 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       .strictObject({
         text: SpeechDraft.shape.text,
         to: refSchema(REF_KINDS.person).optional(),
+        // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
+        act: z
+          .strictObject({
+            kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
+            about: z.strictObject({ text: DraftText }).optional(),
+            claim: z.enum(["dead", "alive"]).optional(),
+            what: DraftText.optional(),
+          })
+          .optional(),
         ...(speakManners.length > 0
           ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
           : {}),

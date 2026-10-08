@@ -20,6 +20,7 @@ import {
 import {
   AMBIENCE,
   ambienceOf,
+  beliefViewOf,
   buildChronicle,
   characterPanel,
   DEFAULT_SUGGESTIONS,
@@ -57,12 +58,15 @@ import {
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../persistence/index.ts";
 import {
   type ActionPlan,
+  assessPlan,
   callName,
+  clarifyQuestion,
   type IntentDraft,
   LOCATION,
   PARSER_EXAMPLES,
   PERSON_NAME,
   planFromDraft,
+  renderWarnings,
 } from "../sim/index.ts";
 import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
 import {
@@ -123,6 +127,9 @@ export interface Session {
   environment(): EnvironmentItem[];
 }
 
+/** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
+const WARN_WEIGHT = 0.5;
+
 export async function openSession(store: LifeStore, options: SessionOptions): Promise<Session> {
   const notices: string[] = [];
   const life = open(store, options, notices);
@@ -134,6 +141,8 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
   const recent: string[] = [];
+  // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
+  let warned = "";
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
@@ -160,21 +169,21 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
   const play = async (draft: IntentDraft, line: string): Promise<Reply> => {
+    const known = knownEntities(life.world);
     const made = planFromDraft(draft, {
       actor: life.player,
       source: "player",
       catalog: life.world.catalog,
-      known: knownEntities(life.world),
+      known,
       clock: life.world.clock,
       causes: [{ kind: "state", entity: life.player, key: "intent" }],
       here: life.world.truth.get(LOCATION, life.player)?.hex,
     });
     if (made.kind === "clarify") {
-      const labels = made.refs.flatMap((r) =>
-        r.resolved.status === "ambiguous" ? r.resolved.clarify.map((o) => o.label) : [],
-      );
+      // La pregunta es del personaje: con lo que percibió de cada candidato (actions §4).
+      const first = made.refs.find((r) => r.resolved.status === "ambiguous")?.resolved;
       return {
-        text: `No queda claro a quién o qué te referís${labels.length ? ` (${labels.join(", ")})` : ""}. Probá de nuevo.`,
+        text: `${first?.status === "ambiguous" ? clarifyQuestion(first.clarify) : "¿A cuál te referís?"} Probá de nuevo con más detalle.`,
       };
     }
     if (made.kind === "unknown") {
@@ -184,6 +193,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
     }
     const plan: ActionPlan = made.plan;
+    // Factibilidad creída: avisa desde lo que el personaje cree y, si insiste, se intenta.
+    const heads = assessPlan(plan, life.world.catalog, beliefViewOf(life.world, known)).filter(
+      (w) => w.weight >= WARN_WEIGHT,
+    );
+    const key = JSON.stringify(plan.root);
+    if (heads.length > 0 && warned !== key) {
+      warned = key;
+      return { text: `${renderWarnings(heads)}. Si igual querés intentarlo, repetilo.` };
+    }
+    warned = "";
     attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
     const tick = life.now;
     const seq = store.nextPlanSeq();
