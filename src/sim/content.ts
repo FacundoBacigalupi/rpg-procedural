@@ -15,7 +15,7 @@ import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { INFERENCE_RULES } from "./knowledge/index.ts";
 import { ADDRESSES, CONCEPTS, LANGUAGES, REGISTERS, TABOOS } from "./language/index.ts";
-import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, VALUES } from "./mind/index.ts";
+import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, TASTES, VALUES } from "./mind/index.ts";
 import { TENURES } from "./property/index.ts";
 import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
 import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
@@ -61,4 +61,5 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   RELATION_DIMS,
   RELATION_BONDS,
   HABITS_CONTENT,
+  TASTES,
 ] as readonly ContentKind[];

@@ -1,0 +1,115 @@
+[
+  {
+    "id": "spicy",
+    "species": "human",
+    "domain": "food.flavor",
+    "name": "lo picante",
+    "temperament": { "boldness": 0.8 },
+    "body": { "spice": -0.8 }
+  },
+  {
+    "id": "bitter",
+    "species": "human",
+    "domain": "food.flavor",
+    "name": "lo amargo",
+    "temperament": { "control": 0.3, "curiosity": 0.3 },
+    "body": { "bitter": -1 },
+    "acquiredTaste": true
+  },
+  {
+    "id": "sweet",
+    "species": "human",
+    "domain": "food.flavor",
+    "name": "lo dulce",
+    "temperament": { "reactivity": 0.3, "warmth": 0.2 },
+    "body": { "bitter": 0.2 }
+  },
+  {
+    "id": "salty",
+    "species": "human",
+    "domain": "food.flavor",
+    "name": "lo salado",
+    "temperament": {}
+  },
+  {
+    "id": "sour",
+    "species": "human",
+    "domain": "food.flavor",
+    "name": "lo ácido",
+    "temperament": { "boldness": 0.4, "curiosity": 0.3 }
+  },
+  {
+    "id": "tea",
+    "species": "human",
+    "domain": "food.drink",
+    "name": "el té",
+    "temperament": { "control": 0.5 },
+    "body": { "bitter": -0.4 },
+    "acquiredTaste": true
+  },
+  {
+    "id": "rice-wine",
+    "species": "human",
+    "domain": "food.drink",
+    "name": "el vino de arroz",
+    "temperament": { "sociability": 0.5, "control": -0.3 },
+    "acquiredTaste": true,
+    "social": true
+  },
+  {
+    "id": "fermented",
+    "species": "human",
+    "domain": "food.dish",
+    "name": "lo fermentado",
+    "temperament": { "curiosity": 0.5 },
+    "novelty": 0.5,
+    "acquiredTaste": true
+  },
+  {
+    "id": "go",
+    "species": "human",
+    "domain": "pastime",
+    "name": "el go",
+    "temperament": { "control": 0.6, "reactivity": -0.3 },
+    "social": true
+  },
+  {
+    "id": "flute",
+    "species": "human",
+    "domain": "pastime",
+    "name": "la flauta",
+    "temperament": { "warmth": 0.3, "control": 0.3 },
+    "body": { "ear": 0.8 }
+  },
+  {
+    "id": "gambling",
+    "species": "human",
+    "domain": "pastime",
+    "name": "las apuestas",
+    "temperament": { "boldness": 0.7, "control": -0.5 },
+    "social": true
+  },
+  {
+    "id": "fishing",
+    "species": "human",
+    "domain": "pastime",
+    "name": "pescar",
+    "temperament": { "reactivity": -0.5, "sociability": -0.3 }
+  },
+  {
+    "id": "wandering",
+    "species": "human",
+    "domain": "pastime",
+    "name": "andar por los caminos",
+    "temperament": { "curiosity": 0.6, "boldness": 0.4 },
+    "novelty": 0.6
+  },
+  {
+    "id": "storytelling",
+    "species": "human",
+    "domain": "pastime",
+    "name": "contar historias",
+    "temperament": { "sociability": 0.6, "warmth": 0.3 },
+    "social": true
+  }
+]
