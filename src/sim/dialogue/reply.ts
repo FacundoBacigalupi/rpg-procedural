@@ -282,6 +282,10 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     }
     case "refuse":
       return say(i.open ? "refuse.ack" : "answer.nothing");
+    case "argue":
+      // Pesar la razón contra lo que le importa al oyente es del cableado (`persuade`); hasta
+      // entonces se la toma como charla.
+      return say("other");
     case "other":
       return say("other");
   }
