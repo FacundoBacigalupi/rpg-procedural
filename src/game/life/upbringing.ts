@@ -27,6 +27,7 @@ import {
   harshChance,
   INNATE,
   injure,
+  kinBonds,
   MIND,
   PERSON,
   type ProcessDef,
@@ -46,6 +47,41 @@ export const UPBRINGING_PROCESS = "life.upbringing";
 export const CAREGIVER_AGE = 16;
 /** kcal de un kilo de grasa (la referencia de reservas de `newBody`). */
 const KCAL_PER_KG_FAT = 7700;
+
+/** Cuánto del cuidado de un padre da un pariente de otra casa (menos que uno de la casa: está lejos). */
+export const CARE_RELATIVE = 0.5;
+
+/** Adultos vivos de otra casa con parentesco con `child`: padres, abuelos, hermanos, tíos. */
+function kinOutside(
+  truth: ReadonlyWorldTruth,
+  child: AgentId,
+  household: EntityRef,
+  now: number,
+  year: number,
+): AgentId[] {
+  const person = (id: AgentId) => truth.get(PERSON, id);
+  const parentsOf = (id: AgentId) =>
+    [person(id)?.mother, person(id)?.father].filter((x): x is AgentId => !!x);
+  const mine = parentsOf(child);
+  const unclesAunts = new Set(
+    mine.flatMap((p) => {
+      const grand = parentsOf(p);
+      return living(truth).filter((x) => x !== p && parentsOf(x).some((g) => grand.includes(g)));
+    }),
+  );
+  return living(truth)
+    .filter((id) => {
+      const p = person(id);
+      if (!p || id === child || (p.household as unknown as EntityRef) === household) return false;
+      if ((now - p.born) / year < CAREGIVER_AGE) return false;
+      const bonds = kinBonds(child, id, person);
+      return (
+        bonds.some((b) => b === "parent" || b === "grandparent" || b === "sibling") ||
+        unclesAunts.has(id)
+      );
+    })
+    .sort();
+}
 
 export interface UpbringingOptions {
   readonly clock: PlanetClock;
@@ -109,8 +145,13 @@ export function upbringingProcess(o: UpbringingOptions): ProcessDef {
             !parents.includes(id) &&
             (ctx.now - (truth.get(PERSON, id)?.born ?? ctx.now)) / o.clock.year >= CAREGIVER_AGE,
         );
-        const givers = parents.length > 0 ? parents : adults;
-        const share = parents.length > 0 ? 1 : CARE_STRANGER;
+        // Sin padres ni adultos en la casa, lo cría un pariente que vive aparte.
+        const relatives =
+          parents.length === 0 && adults.length === 0
+            ? kinOutside(truth, me, person.household as unknown as EntityRef, ctx.now, o.clock.year)
+            : [];
+        const givers = parents.length > 0 ? parents : adults.length > 0 ? adults : relatives;
+        const share = parents.length > 0 ? 1 : relatives.length > 0 ? CARE_RELATIVE : CARE_STRANGER;
         let care = CARE_ABANDONED;
         let harsh = 0;
         let harshBy: AgentId | null = null;
