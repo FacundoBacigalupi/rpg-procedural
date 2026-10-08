@@ -105,8 +105,10 @@ describe("contestar por un secreto", () => {
       );
     const outcomes = (state: KeeperState) =>
       Array.from({ length: 30 }, (_v, s) => keep(state, s).secret?.result.outcome);
-    expect(outcomes(TIGHT).filter((o) => o === "revealed").length).toBeLessThan(5);
-    expect(outcomes(LOOSE).filter((o) => o === "revealed").length).toBeGreaterThan(15);
+    const leaked = (state: KeeperState) =>
+      outcomes(state).filter((o) => o === "revealed" || o === "partial").length;
+    expect(leaked(TIGHT)).toBeLessThan(5);
+    expect(leaked(LOOSE)).toBeGreaterThan(20);
   });
 
   it("revelar deja lo dicho para quien preguntó; las otras salidas no", () => {
