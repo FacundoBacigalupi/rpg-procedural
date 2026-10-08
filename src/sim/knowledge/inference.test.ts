@@ -233,9 +233,9 @@ describe("propiedades", () => {
 
   it("sin evidencia no hay conclusiones", () => {
     fc.assert(
-      fc.property(reasonerArb, (who) =>
-        expect(infer([], DEFAULT_INFERENCE_RULES, who)).toEqual([]),
-      ),
+      fc.property(reasonerArb, (who) => {
+        expect(infer([], DEFAULT_INFERENCE_RULES, who)).toEqual([]);
+      }),
     );
   });
 });
