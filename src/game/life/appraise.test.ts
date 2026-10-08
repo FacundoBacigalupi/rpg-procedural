@@ -17,6 +17,7 @@ import {
   MIND,
   type Mind,
   PERSON,
+  type PersonRecord,
   SCHEMAS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -268,19 +269,49 @@ describe("la aldea cría a sus chicos", () => {
       return p && (life.now - p.born) / w.clock.year < 12 && id !== life.player;
     }) as AgentId;
     const home = w.truth.get(PERSON, child)?.household;
+    const kill = (id: AgentId) => {
+      const b = w.truth.get(BODY_STATE, id) as Body;
+      w.truth.set(BODY_STATE, id, { ...b, death: { cause: "brain_trauma", at: life.now } } as Body);
+    };
+    const person = (id: AgentId) => w.truth.get(PERSON, id);
     for (const id of living(w.truth)) {
-      if (id !== child && w.truth.get(PERSON, id)?.household === home) {
-        const b = w.truth.get(BODY_STATE, id) as Body;
-        w.truth.set(BODY_STATE, id, {
-          ...b,
-          death: { cause: "brain_trauma", at: life.now },
-        } as Body);
-      }
+      const adult = (life.now - (person(id)?.born ?? life.now)) / w.clock.year >= 16;
+      if (id !== child && (person(id)?.household === home || adult)) kill(id);
     }
     life.advanceTo(life.now + 100 * 86_400);
     const mine = w.log.all().find((e) => e.kind === "family.rearing" && e.actors[0] === child);
     const care = (mine?.data as { care?: number } | null)?.care ?? 0;
     expect(care).toBeLessThan(-0.2);
+  }, 120_000);
+
+  it("un huérfano de la casa lo cría un pariente que vive aparte", () => {
+    const life = Life.create(10, content);
+    const w = life.world;
+    const person = (id: AgentId) => w.truth.get(PERSON, id);
+    const child = living(w.truth).find((id) => {
+      const p = person(id);
+      return p && (life.now - p.born) / w.clock.year < 12 && id !== life.player;
+    }) as AgentId;
+    const home = person(child)?.household;
+    const uncle = living(w.truth).find((id) => {
+      const p = person(id);
+      return p && p.household !== home && (life.now - p.born) / w.clock.year >= 20 && id !== child;
+    }) as AgentId;
+    const kill = (id: AgentId) => {
+      const b = w.truth.get(BODY_STATE, id) as Body;
+      w.truth.set(BODY_STATE, id, { ...b, death: { cause: "brain_trauma", at: life.now } } as Body);
+    };
+    for (const id of living(w.truth)) {
+      const adult = (life.now - (person(id)?.born ?? life.now)) / w.clock.year >= 16;
+      if (id !== child && id !== uncle && (person(id)?.household === home || adult)) kill(id);
+    }
+    const p = person(child) as PersonRecord;
+    w.truth.set(PERSON, child, { ...p, father: uncle, mother: null });
+    life.advanceTo(life.now + 100 * 86_400);
+    const mine = w.log.all().find((e) => e.kind === "family.rearing" && e.actors[0] === child);
+    const data = mine?.data as { caregivers?: AgentId[]; care?: number } | null;
+    expect(data?.caregivers).toEqual([uncle]);
+    expect(data?.care).toBeGreaterThan(-0.2);
   }, 120_000);
 
   it("la mano dura hiere de verdad: una herida del chico con la crianza como causa", () => {
