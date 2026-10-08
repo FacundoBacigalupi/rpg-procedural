@@ -161,6 +161,7 @@ export function lifeWorld(
           bodyPlans: parts.plans,
           foods: parts.foods,
           clock: parts.clock,
+          seed: parts.seed,
           placeOf: placeOf(parts, village),
         }),
       ],

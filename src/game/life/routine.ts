@@ -17,6 +17,8 @@ import {
   ledgerUnit,
   type PlaceRef,
   type PlanetClock,
+  Rng,
+  type Seed,
 } from "../../core/index.ts";
 import {
   type Activity,
@@ -30,6 +32,8 @@ import {
   HARVEST,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
+  harvestSeason,
+  dayOf,
   houseKey,
   ingest,
   LOCATION,
@@ -74,6 +78,7 @@ export interface RoutineOptions {
   readonly bodyPlans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly clock: PlanetClock;
+  readonly seed: Seed;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -95,6 +100,8 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
   const foods = o.foods
     .filter((f) => f.kcalPerGram > 0)
     .map((f) => ({ unit: ledgerUnit(`good:${f.id}`), food: f }));
+  // El rinde de la hora depende del día del año (calor, helada, lluvia reciente).
+  const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
   const nutrition = new Map<LedgerUnit, FoodDef>(foods.map((f) => [f.unit, f.food]));
 
   return {
@@ -145,14 +152,17 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
 
       let next = setActivity(body, want.activity);
       // Trabajar la tierra rinde: una hora de campo es grano para la despensa del hogar (fuente
-      // externa `harvest`; economy §1). Cuánto rinde es calibración abierta (ROADMAP Hito 1c).
-      if (want.at === "fields" && there) {
+      // externa `harvest`; economy §1), según la estación del día: en invierno o con helada el
+      // campo no da y la hora no deja asiento.
+      const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
+      const grams = Math.round(HARVEST_GRAMS_PER_HOUR * season(day));
+      if (want.at === "fields" && there && grams > 0) {
         const ev = draftEvent(events.length);
         events.push({
           kind: "routine.harvested",
           actors: [me],
           place: o.placeOf(truth, me),
-          data: { good: HARVEST_GOOD, grams: HARVEST_GRAMS_PER_HOUR },
+          data: { good: HARVEST_GOOD, grams },
           emissions: { sight: 0.3, sound: 0.1 },
           causes: [{ kind: "state", entity: me, key: "routine" }],
         });
@@ -163,7 +173,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
               from: externalAccount(HARVEST),
               to: holderAccount(person.household as unknown as HolderRef),
               unit: HARVEST_GOOD,
-              amount: HARVEST_GRAMS_PER_HOUR,
+              amount: grams,
             },
           ],
         });
