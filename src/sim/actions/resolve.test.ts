@@ -55,6 +55,15 @@ const W = 6;
 const map: LocalMap = {
   cell: makeId("cell", 1),
   lonDeg: 0,
+  climate: {
+    cell: "c:0",
+    latDeg: 40,
+    annualMeanC: 12,
+    seasonalRangeC: 20,
+    annualPrecipMm: 700,
+    windEast: 1,
+    windNorth: 0,
+  },
   neighbors: Array.from({ length: 2 * W }, (_, h) => {
     const row = Math.floor(h / W);
     const col = h % W;

@@ -199,6 +199,10 @@ interface QiWeather {
 - **Fase 7:** anomalías por año en la historia; extremos registrados; calendarios culturales que se desajustan; mitos de grandes tormentas.
 - **Fase 8:** ciclones tropicales, monzones y tiempo del mar en todo el planeta; inviernos volcánicos que reparten aerosol por bandas.
 
+## Estado de la implementación (Fase 1)
+
+`src/sim/weather/`: `dailyWeather(normales, reloj, día, rng, anomalía?)` es una función pura del día (sin estado: `rng.fork("weather", celda, ...)`), con la fase del año del reloj (0 = equinoccio de primavera del norte, retraso térmico de 0,04 años, estaciones invertidas en el sur), lluvia en bloques de 3 días que respeta el total anual, tipo de precipitación por temperatura, nubes, viento y curva horaria (`tempAt`). `skyLight` baja la luz de día por nubes y lluvia; el cuerpo sube sed con calor y hambre con frío. Todavía no hay estacionalidad de la lluvia por régimen, sistemas que se mueven ni balance de agua (ver ROADMAP).
+
 ## Tests
 
 - **Coherencia con el clima:** sobre muchos años, el promedio de los días generados coincide con las normales de planet-gen más las anomalías, con tolerancia.

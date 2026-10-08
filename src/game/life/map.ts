@@ -31,5 +31,14 @@ export function localMapOf(planet: Planet, site: VillageSite): LocalMap {
     neighbors: patch.neighbors,
     crossSeconds,
     forest: patch.hexes.map((_, h) => tr.forest[h] === 1),
+    climate: {
+      cell: String(planet.grid.cellId(patch.cell)),
+      latDeg: ((planet.grid.lat[patch.cell] as number) * 180) / Math.PI,
+      annualMeanC: planet.climate.temperature[patch.cell] as number,
+      seasonalRangeC: planet.climate.seasonalRange[patch.cell] as number,
+      annualPrecipMm: planet.climate.precipitation[patch.cell] as number,
+      windEast: planet.climate.windEast[patch.cell] as number,
+      windNorth: planet.climate.windNorth[patch.cell] as number,
+    },
   };
 }

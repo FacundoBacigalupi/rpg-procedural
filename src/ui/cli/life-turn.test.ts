@@ -152,7 +152,14 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     const witness = (e: Event) => {
       w.truth.set(PERCEPTS, life.player, { recent: [] });
       const seen = perceiveEvents(
-        { player: life.player, map: w.map, spaces: w.spaces, clock: w.clock, statuses: w.statuses },
+        {
+          player: life.player,
+          map: w.map,
+          spaces: w.spaces,
+          clock: w.clock,
+          seed: w.seed,
+          statuses: w.statuses,
+        },
         w.truth,
         [e],
         Rng.root(w.seed).fork("test"),

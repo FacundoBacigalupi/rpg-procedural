@@ -15,6 +15,7 @@ import type {
   Tick,
 } from "../../core/index.ts";
 import { floorDiv } from "../../core/index.ts";
+import type { ClimateNormals } from "../weather/daily.ts";
 import { table } from "./truth.ts";
 
 export const PLACE_KINDS = ["village", "water", "fields", "forest"] as const;
@@ -52,6 +53,8 @@ export interface LocalMap {
   /** Segundos que se tarda en cruzar cada hex caminando (terreno, pendiente, bosque). */
   readonly crossSeconds: readonly number[];
   readonly forest: readonly boolean[];
+  /** Las normales de la celda: de acá sale el tiempo de cada día (`sim/weather`). */
+  readonly climate: ClimateNormals;
 }
 
 /** El camino más corto en hexes de `from` a `to` (sin `from`, con `to`); vacío si son el mismo. */
