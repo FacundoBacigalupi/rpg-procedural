@@ -55,6 +55,7 @@ import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
+import { standingProcess } from "./standing.ts";
 import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
 
@@ -239,6 +240,17 @@ export function lifeWorld(
           statuses: parts.statuses,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
+        }),
+        standingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          placeOf: placeOf(parts, village),
         }),
         routineProcess({
           map: parts.map,

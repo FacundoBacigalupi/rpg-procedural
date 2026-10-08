@@ -26,6 +26,7 @@ import {
   type Body,
   type BodyPlanDef,
   bearingFactor,
+  beliefAbout,
   blowFromMishap,
   blowFromStrike,
   CREDIT,
@@ -79,6 +80,7 @@ import {
   type SkillCatalog,
   SOIL,
   type SpaceGraph,
+  STANDING_BELIEFS,
   STATUS,
   type StateChange,
   type StatusDef,
@@ -219,6 +221,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     reads: [
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
+      STANDING_BELIEFS.name,
       CREDIT.name,
       SOIL.name,
       ENTITY.name,
@@ -312,7 +315,6 @@ function marketOf(
   harvestGramsPerHour: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
-  const otherStatus = other === null ? undefined : truth.get(STATUS, other);
   return {
     priceCopperPerKg: new Map(
       o.goods.flatMap((g) =>
@@ -332,7 +334,11 @@ function marketOf(
     ),
     ranks: {
       actor: rankOf(truth.get(STATUS, me), o.statuses),
-      other: rankOf(otherStatus, o.statuses),
+      // La posición del otro es lo que el actor CREE de él, no su STATUS (social-structure §3).
+      other:
+        other === null
+          ? undefined
+          : beliefAbout(truth.get(STANDING_BELIEFS, me), other as AgentId)?.rank,
     },
   };
 }
