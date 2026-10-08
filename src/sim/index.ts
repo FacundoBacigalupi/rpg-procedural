@@ -17,6 +17,7 @@ export * from "./law/index.ts";
 export * from "./mind/index.ts";
 export * from "./perception/index.ts";
 export * from "./property/index.ts";
+export * from "./relations/index.ts";
 export * from "./religion/index.ts";
 export * from "./scheduler/index.ts";
 export * from "./settlements/index.ts";

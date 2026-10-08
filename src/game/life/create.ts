@@ -57,6 +57,8 @@ import {
   type PlaceToName,
   PRESSURE_CURVES,
   RECIPES,
+  RELATION_BONDS,
+  RELATION_DIMS,
   RELIGIONS,
   ROTTED,
   SCHEMAS,
@@ -73,6 +75,7 @@ import {
   seedParcels,
   seedPersonNames,
   seedPlaceNames,
+  seedRelations,
   seedReligion,
   seedSettlement,
   seedSkills,
@@ -396,6 +399,15 @@ export function createLife(
     place: terrain.village,
     foundersEvent: pop.foundersEvent,
     schemas: content.all(SCHEMAS),
+  });
+  // Lo que cada uno siente por su parentela y su casa (npc-psychology §6).
+  seedRelations(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    dims: content.all(RELATION_DIMS),
+    bonds: content.all(RELATION_BONDS),
   });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {

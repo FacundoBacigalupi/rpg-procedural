@@ -1,0 +1,78 @@
+[
+  {
+    "id": "parent",
+    "name": "Mi padre o mi madre",
+    "initial": {
+      "trust": 0.35,
+      "respect": 0.3,
+      "affection": 0.4,
+      "fear": 0.1,
+      "gratitude": 0.2,
+      "familiarity": 0.9,
+      "dependency": 0.4
+    },
+    "floor": { "familiarity": 0.5, "affection": 0.1 }
+  },
+  {
+    "id": "child",
+    "name": "Mi hijo o mi hija",
+    "initial": {
+      "trust": 0.3,
+      "respect": 0.05,
+      "affection": 0.6,
+      "familiarity": 0.9,
+      "dependency": 0.1
+    },
+    "floor": { "familiarity": 0.5, "affection": 0.2 }
+  },
+  {
+    "id": "sibling",
+    "name": "Mi hermano o mi hermana",
+    "initial": {
+      "trust": 0.3,
+      "respect": 0.1,
+      "affection": 0.35,
+      "jealousy": 0.05,
+      "familiarity": 0.85,
+      "dependency": 0.1
+    },
+    "floor": { "familiarity": 0.45, "affection": 0.05 }
+  },
+  {
+    "id": "spouse",
+    "name": "Mi cónyuge",
+    "initial": {
+      "trust": 0.4,
+      "respect": 0.2,
+      "affection": 0.4,
+      "attraction": 0.3,
+      "familiarity": 0.95,
+      "dependency": 0.3
+    },
+    "floor": { "familiarity": 0.6 }
+  },
+  {
+    "id": "grandparent",
+    "name": "Mi abuelo o mi abuela",
+    "initial": {
+      "trust": 0.25,
+      "respect": 0.3,
+      "affection": 0.3,
+      "familiarity": 0.6,
+      "gratitude": 0.1
+    },
+    "floor": { "familiarity": 0.3 }
+  },
+  {
+    "id": "grandchild",
+    "name": "Mi nieto o mi nieta",
+    "initial": { "trust": 0.2, "affection": 0.4, "familiarity": 0.6 },
+    "floor": { "familiarity": 0.3 }
+  },
+  {
+    "id": "housemate",
+    "name": "Vive en mi casa",
+    "initial": { "trust": 0.1, "familiarity": 0.5 },
+    "floor": { "familiarity": 0.4 }
+  }
+]

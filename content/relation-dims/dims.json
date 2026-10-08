@@ -1,0 +1,18 @@
+[
+  { "id": "trust", "name": "Confianza", "baseline": 0.05, "halfLifeDays": 900 },
+  { "id": "respect", "name": "Respeto", "baseline": 0, "halfLifeDays": 900 },
+  { "id": "affection", "name": "Afecto", "baseline": 0, "halfLifeDays": 600 },
+  { "id": "fear", "name": "Miedo", "baseline": 0, "halfLifeDays": 120 },
+  { "id": "attraction", "name": "Atracción", "baseline": 0, "halfLifeDays": 300 },
+  { "id": "gratitude", "name": "Gratitud", "baseline": 0, "halfLifeDays": 240 },
+  { "id": "jealousy", "name": "Celos", "baseline": 0, "halfLifeDays": 150 },
+  {
+    "id": "resentment",
+    "name": "Resentimiento",
+    "baseline": 0,
+    "halfLifeDays": 700,
+    "slowedBy": { "schema": "people_are_untrustworthy", "factor": 3 }
+  },
+  { "id": "familiarity", "name": "Familiaridad", "baseline": 0, "halfLifeDays": 60 },
+  { "id": "dependency", "name": "Dependencia", "baseline": 0, "halfLifeDays": 400 }
+]
