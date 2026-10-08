@@ -244,6 +244,17 @@ Ideas del autor: el juego es denso en decisiones, así que el jugador siempre pu
 
 Fase: opciones sugeridas y panel de entorno en la UI mínima (Hito 1c); pensar con inferencia cuando existan creencias con evidencia (Fase 2).
 
+### Tono de las opciones: color e ícono según lo que está en juego (2026-10-08)
+
+Idea del autor: que de un vistazo se note qué clase de cosa es cada opción. Lo corriente, gris; lo grave, rojo con calavera; lo que el personaje no sabe cómo va a salir, nublado.
+
+- **Cada `Suggestion` lleva un `tone`** además de `kind`: `routine` (gris, sin ícono o uno neutro), `need` (ámbar, ícono del cuerpo: gota, comida, venda, luna), `social` (azul, globo de diálogo), `uncertain` (nublada: apagada, borde punteado y una nube o «?»), `risky` (naranja, advertencia), `violent` (rojo, calavera) y `illicit` (violeta, balanza o máscara: delito, secreto, robo). Un solo tono por opción; si cabe en dos, gana el más grave (`violent` > `illicit` > `risky` > `uncertain` > `need` > `social` > `routine`).
+- **Sale del catálogo y de lo que el personaje cree, no de la UI.** Cada modo de verbo en `content/` declara su `stakes` (`none`, `harm`, `lethal`, `crime`…) y lo grave sale de ahí: atacar con intención de matar es `violent` y no de una lista de palabras. `uncertain` sale de la **propia incertidumbre del actor**: poca familiaridad con el verbo o la faceta (skills §familiaridad), creencias de poca confianza sobre el objetivo o el lugar, o un margen de resultado ancho según lo que cree. Es «no sé cómo va a salir», no el resultado real. Un peligro que no vio no tiñe nada de rojo (regla 4): la trampa invisible no vuelve riesgosa la opción de caminar, y una acción mortal con la que el personaje es muy diestro y de resultado previsible sigue siendo `violent` (lo grave no se vuelve gris por saber hacerlo).
+- **Presentación.** La capa de datos manda el `tone` y una clave de ícono; la UI la mapea a color e ícono (paleta clara y oscura). Nunca solo color: el ícono y una etiqueta accesible (`title`/`aria-label`: «peligroso», «incierto») llevan lo mismo, para daltonismo y para la CLI, que usa el ícono o una marca de texto (`[!]`, `[?]`, `[x]`).
+- **Las opciones graves piden un segundo toque.** Elegir una opción `violent` o `illicit` pasa por la confirmación de checkpoint de acciones (actions §confirmaciones) con el mismo color. Escribir lo mismo a mano no se tiñe antes de mandarlo (no se adelanta el análisis al jugador), pero la confirmación aparece igual, con el mismo tono.
+- **Con el LLM y sin red.** El tono no lo decide el modelo: solo redacta la etiqueta; el tono viaja aparte, así que sin red sale igual.
+- **Calibración pendiente:** el umbral de familiaridad y de ancho de margen a partir del cual una opción pasa a `uncertain`, y qué modos son `risky` frente a `violent`.
+
 ### Implementación (Hito 1c)
 
 - **Opciones:** `suggestions(world, limit?)` en `game/life/suggest.ts`. Fuentes de hoy: sed, hambre, herida, sueño/noche, trabajo de día, hablar con quien de su casa está presente, mirar y esperar. Cada una es un `IntentDraft` validado con `planFromDraft`; el `id` es estable (`talk:madre`) y `choose` re-arma la lista antes de jugar. Las etiquetas son plantillas de `ui/render.ts`.

@@ -136,3 +136,13 @@ aside pre {
   gap: 0.4rem;
   padding: 0.4rem 0;
 }
+
+.lines .when {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+}
+.lines p.older {
+  color: var(--muted);
+  text-align: center;
+}

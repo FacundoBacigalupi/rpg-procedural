@@ -11,8 +11,23 @@ export interface Panels {
   readonly options: readonly { readonly id: string; readonly label: string }[];
 }
 
+/** Una entrada de la narración guardada: `seq` ordena y sirve para pedir las anteriores. */
+export interface HistoryEntry {
+  readonly seq: number;
+  readonly when: string;
+  readonly text: string;
+}
+
+/** Una página de la narración, en orden; `more`: hay entradas más viejas. */
+export interface History {
+  readonly entries: readonly HistoryEntry[];
+  readonly more: boolean;
+}
+
 export interface WebState extends Panels {
   readonly opening: string;
+  /** Lo último que se narró: al reabrir la página la charla sigue por acá. */
+  readonly history: History;
 }
 
 export interface SayResponse extends Panels {
