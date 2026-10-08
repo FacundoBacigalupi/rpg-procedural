@@ -51,6 +51,7 @@ import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
+import { pledgeProcess } from "./pledges.ts";
 import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
@@ -173,6 +174,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        pledgeProcess({ goods: parts.goods }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
           foods: parts.foods,
