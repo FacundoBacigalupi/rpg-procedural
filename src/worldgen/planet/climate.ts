@@ -206,7 +206,9 @@ export function climate(grid: Grid, elevation: Float64Array, opts: ClimateOption
   // --- Humedad y lluvia --------------------------------------------------------------------------
   const ADVECT = 0.85;
   const hopScale = opts.kmPerHop / 175;
-  const RECYCLE = 0.3;
+  // Fracción de la lluvia sobre tierra que sale del aire; el resto vuelve (evapotranspiración,
+  // lagos, ríos). Calibrado en 8 seeds: media en tierra 500-640 mm y 23-32 % de tierra seca.
+  const LAND_RAIN_LOSS = 0.04;
   const passes = Math.max(30, 3 * grid.lattice.n);
   const average = Math.max(5, Math.floor(passes / 6));
   const rate = new Float64Array(size);
@@ -244,7 +246,7 @@ export function climate(grid: Grid, elevation: Float64Array, opts: ClimateOption
       if (ocean(c)) m = Math.max(m, evap[c] as number);
       const r = (rate[c] as number) * m;
       // Sobre tierra, parte de la lluvia vuelve al aire (evapotranspiración): se recicla.
-      next[c] = m - (ocean(c) ? r : RECYCLE * r);
+      next[c] = m - (ocean(c) ? r : LAND_RAIN_LOSS * r);
       if (counting) rain[c] = (rain[c] as number) + r / average;
     }
     M = next;
