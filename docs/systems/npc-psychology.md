@@ -589,3 +589,6 @@ Tests clave:
 ## Ampliación (2026-10-08): decisiones de niño con consecuencias
 
 Las viñetas de la infancia (player-loop) son decisiones reales dentro de los períodos sensibles: cada una mueve temperamento, esquemas y habilidades, y también deja consecuencias que aparecen años después (una promesa hecha, un vínculo, una deuda de favor, una herida mal curada). Los adultos del entorno reaccionan según lo que perciben del niño. Fase 3, junto con crianza.
+
+## Implementación (2026-10-08): lo adquirido
+`sim/mind` guarda por persona `Mind` (`MIND`): esquemas con `strength` y `causes` (los últimos 12 eventos) y los eventos formativos de períodos sensibles. Los valores **no se guardan**: `valuesOf` los deriva de lo innato y los esquemas (suma 1, piso 0,02). Las etapas son contenido por edad vivida en años (`young-adult` con guion, los ids de contenido son minúsculas). `FORMATION_RATE` 0,25, `SENSITIVE_BOOST` 2, y la reactividad amplifica solo los temas que duelen. La siembra no simula la historia previa: esquemas de base = 0,25 + empuje del temperamento + variación (desvío 0,05). Calibración pendiente: esas constantes y las plasticidades por etapa.

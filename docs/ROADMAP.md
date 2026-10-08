@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**La Fase 1 está cerrada** (Hitos 1a, 1b y 1c hechos; en `main` como `v0.1.3`, 1a `v0.1.1`, 1b `v0.1.2`). Todo lo que quedó pendiente de la Fase 1 porque depende de sistemas posteriores se pasó a su fase como ítem `Heredado de la Fase 1:` (Fase 2 y Fase 3). **Lo que sigue: Fase 2, el primer ítem `[ ]` de la lista (hoy «Rasgos innatos + adquiridos»).** Si el usuario dice «continuá», es ese ítem y nada más.
+**La Fase 1 está cerrada** (Hitos 1a, 1b y 1c hechos; en `main` como `v0.1.3`, 1a `v0.1.1`, 1b `v0.1.2`). Todo lo que quedó pendiente de la Fase 1 porque depende de sistemas posteriores se pasó a su fase como ítem `Heredado de la Fase 1:` (Fase 2 y Fase 3). **Lo que sigue: Fase 2, el primer ítem `[ ]` de la lista (hoy «Relaciones multidimensionales»).** Si el usuario dice «continuá», es ese ítem y nada más.
 
 ### Cómo se trabaja (una sesión = un ítem)
 El usuario abre **una sesión nueva por ítem** para no gastar contexto, así que cada ítem tiene que entrar en una sesión y terminar sin ambigüedad.
@@ -261,7 +261,8 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [x] Cierre de la Fase 1, PR (c), calibración del viaje (2026-10-08): `walkingFactor` medido en 5 climas × 20 años (trópico, templado, taiga, estepa, polar): media +2 a +7 %, p90 +6 a +17 %, p99 +26 a +43 %, máximo +90 % (nieve honda); el día típico casi no frena y el peor se nota. Rumbo: `VEER_CHANCE` × `bearingFactor` da ~0,38 en una tirada a medias de día claro con grado 0,4, y llega al tope 0,95 de noche con lluvia en el bosque. Sin cambios de constantes (`MUD_*`, `SNOW_*`, `GALE_*`, `COLD_*`, `DARK_VEER`, `FOREST_VEER`, `PRECIP_VEER`, `VEER_CHANCE`); las fija el test «calibración del tiempo de marcha» de `weather.test.ts`. **Queda:** medir el rumbo con viajes reales de larga distancia cuando haya mapa regional (Fase 3/5) y niebla propia (weather)
 
 ## Fase 2 — Psicología y memoria
-- [ ] Rasgos innatos + adquiridos
+- [x] Rasgos innatos + adquiridos (2026-10-08): `sim/mind` — esquemas (8, `content/schemas/`) con fuerza y los eventos que los formaron (`MIND`), valores derivados de temperamento + esquemas (`valuesOf`, 11 valores, `content/values/`), etapas de vida por edad vivida con plasticidad y esquemas sensibles (`content/life-stages/`), y la formación `Δ = intensidad × plasticidad × sensible × susceptibilidad × efecto` (`form`; el trauma de intensidad ≥ 0,9 no lo amortigua del todo la edad). `seedMinds` siembra la aldea desde el temperamento (`INNATE`) con variación por `rng.fork("psyche", id)`; la causa de lo de base es el evento `mind.seeded`. Tests en `game/life/mind.test.ts`. Los temas del evento los dice quien llama: nada llama aún a `form`.
+- [ ] Heredado de «Rasgos innatos + adquiridos»: appraisal — que los eventos percibidos de la vida (hambre, pelea, muerte de un familiar, crianza) se interpreten con temperamento y esquemas y llamen a `form`; los hábitos salen de las acciones registradas; los esquemas y valores del adulto fundador salen de una historia simulada y no solo de su temperamento; cultura de origen en los valores ([npc-psychology.md](systems/npc-psychology.md) §2, §3)
 - [ ] Relaciones multidimensionales
 - [ ] Memorias de eventos con intensidad, confianza, degradación
 - [ ] Conocimiento vs verdad (creencias sobre el jugador)

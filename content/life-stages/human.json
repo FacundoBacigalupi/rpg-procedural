@@ -1,0 +1,50 @@
+[
+  {
+    "id": "infancy",
+    "species": "human",
+    "name": "Infancia",
+    "fromAge": 0,
+    "plasticity": 1,
+    "sensitive": ["people_are_untrustworthy", "i_am_unworthy", "world_is_dangerous"]
+  },
+  {
+    "id": "childhood",
+    "species": "human",
+    "name": "Niñez",
+    "fromAge": 4,
+    "plasticity": 0.8,
+    "sensitive": ["family_first", "effort_pays", "heaven_is_just"]
+  },
+  {
+    "id": "adolescence",
+    "species": "human",
+    "name": "Adolescencia",
+    "fromAge": 12,
+    "plasticity": 0.6,
+    "sensitive": ["strength_is_worth", "i_am_unworthy"]
+  },
+  {
+    "id": "young-adult",
+    "species": "human",
+    "name": "Adultez joven",
+    "fromAge": 18,
+    "plasticity": 0.35,
+    "sensitive": ["effort_pays", "strength_is_worth"]
+  },
+  {
+    "id": "adult",
+    "species": "human",
+    "name": "Adultez",
+    "fromAge": 30,
+    "plasticity": 0.12,
+    "sensitive": []
+  },
+  {
+    "id": "elder",
+    "species": "human",
+    "name": "Vejez",
+    "fromAge": 60,
+    "plasticity": 0.08,
+    "sensitive": []
+  }
+]

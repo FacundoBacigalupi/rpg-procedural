@@ -59,6 +59,7 @@ import {
   RECIPES,
   RELIGIONS,
   ROTTED,
+  SCHEMAS,
   SKILLS,
   SkillCatalog,
   SOIL,
@@ -68,6 +69,7 @@ import {
   type StatusDef,
   seedBodies,
   seedCulture,
+  seedMinds,
   seedParcels,
   seedPersonNames,
   seedPlaceNames,
@@ -386,6 +388,14 @@ export function createLife(
     foundersEvent: pop.foundersEvent,
     religion,
     doctrines: content.all(DOCTRINES),
+  });
+  // Lo adquirido de cada mente: esquemas de base desde el temperamento (npc-psychology §1-§2).
+  seedMinds(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    schemas: content.all(SCHEMAS),
   });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {
