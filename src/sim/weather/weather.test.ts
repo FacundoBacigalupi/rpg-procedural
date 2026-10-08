@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EARTHLIKE_CLOCK, Rng } from "../../core/index.ts";
-import {
-  type ClimateNormals,
-  dailyWeather,
-  seasonWave,
-  skyClearness,
-  tempAt,
-  yearPhase,
-} from "./daily.ts";
+import type { ClimateNormals } from "../world/index.ts";
+import { dailyWeather, seasonWave, skyClearness, tempAt, yearPhase } from "./daily.ts";
 
 const clock = EARTHLIKE_CLOCK;
 const YEAR_DAYS = Math.round(clock.year / clock.day);

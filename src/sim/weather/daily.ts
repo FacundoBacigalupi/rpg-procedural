@@ -18,22 +18,7 @@ import {
   sqrt,
   type Tick,
 } from "../../core/index.ts";
-
-/** Lo que planet-gen sabe de una celda (`Climate` en la posición de la celda). */
-export interface ClimateNormals {
-  /** Clave estable para el RNG (el `CellId` en texto). */
-  readonly cell: string;
-  readonly latDeg: number;
-  /** Media anual, °C. */
-  readonly annualMeanC: number;
-  /** Mes más cálido menos mes más frío, °C. */
-  readonly seasonalRangeC: number;
-  /** mm por año (agua equivalente). */
-  readonly annualPrecipMm: number;
-  /** Viento dominante en la base (este, norte); solo importa la dirección. */
-  readonly windEast: number;
-  readonly windNorth: number;
-}
+import type { ClimateNormals } from "../world/index.ts";
 
 /** Años buenos y malos con causa (weather §1 `SeasonalAnomaly`); sin él, el año normal. */
 export interface Anomaly {
