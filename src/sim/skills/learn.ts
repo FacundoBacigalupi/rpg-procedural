@@ -14,6 +14,7 @@ import { type ActionDef, type Attempt, SKILL_SPAN, standardize } from "../action
 import { INNATE, PERSON, type Trait } from "../family/index.ts";
 import { ENTITY, type WorldTruth } from "../world/index.ts";
 import type { FacetKey, SkillCatalog, SkillDef } from "./catalog.ts";
+import { SELF_IMAGES, seedSelfImages } from "./selfimage.ts";
 import {
   effectiveLevel,
   type Learner,
@@ -196,6 +197,8 @@ export function seedSkills(
     const innate = truth.get(INNATE, id);
     if (!person || !innate) continue;
     const z = standardize(innate, traits, person.sex);
-    truth.set(SKILL_STATE, id, upbringingSkills(catalog, z, person.born, now, clock));
+    const skills = upbringingSkills(catalog, z, person.born, now, clock);
+    truth.set(SKILL_STATE, id, skills);
+    truth.set(SELF_IMAGES, id, seedSelfImages(catalog, skills, z, now));
   }
 }

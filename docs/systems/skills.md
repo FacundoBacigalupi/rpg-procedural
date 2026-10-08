@@ -332,7 +332,8 @@ Con los tiers de simulation §4:
   - A los 15 años queda ~0,3 en lo cotidiano y a los 30 ~0,4. A los 60 llega a ~0,47 y a los 80 la mano baja.
   - Pelear y regatear quedan casi en cero si no se practican.
   - `seedSkills` se llama desde el armado de la vida (`game/life/create.ts`).
-- **Pendiente:** autoimagen, mirar y maestros (Fases 2 y 3), vicios, oxidación con pico, transferencia, repertorio y familiaridades. La calibración (`LEARNING_WIDTH`, tasas, techos) sigue abierta: ítem de calibración del Hito 1c en el ROADMAP.
+- **Autoimagen (Fase 2, 2026-10-08):** `selfimage.ts`, tabla `SELF_IMAGES` por agente y habilidad: estimación `{level, spread}`, muestras y fuente `own_results`. Cada paso la revisa con lo que el actor *cree* que pasó (`Attempt.believed`) contra la chance que esperaba (`RESULT_SWING`), más el sesgo de temperamento y de principiante (`selfBias`); la siembra la arranca en el nivel real más el sesgo (`seedSelfImages`). El panel `personaje` la muestra en palabras (`skillStandingOf`) y no las horas. Falta que las decisiones la usen, la opinión ajena, el saber explícito y mirar (ítems del ROADMAP).
+- **Pendiente:** mirar y maestros (Fases 2 y 3), vicios, oxidación con pico, transferencia, repertorio y familiaridades. La calibración (`LEARNING_WIDTH`, tasas, techos) sigue abierta: ítem de calibración del Hito 1c en el ROADMAP.
 
 ## Tests
 

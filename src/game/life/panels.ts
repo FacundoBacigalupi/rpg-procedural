@@ -1,7 +1,7 @@
 // Los paneles del personaje (player-loop §9): lo que el usuario puede consultar fuera del turno sin
 // que el tiempo pase. Como la `PlayerView`, son un muro con la verdad: ningún número del mundo sale
-// de acá. El cuerpo va como signos (`bodySigns`), la habilidad como cuánto lo hizo (la autoimagen
-// como creencia llega con skills §9) y los bienes como los estima a ojo.
+// de acá. El cuerpo va como signos (`bodySigns`), la habilidad como se ve a sí mismo (su autoimagen,
+// skills §9: puede errar; las horas de práctica y el nivel real no salen) y los bienes como los estima a ojo.
 //
 // En la Fase 1 no hay todavía creencias de inventario (information, Fase 2): lo que "cree tener"
 // es lo que tiene, redondeado como lo estimaría él. Cuando haya creencias, un robo que no notó
@@ -18,20 +18,24 @@ import {
   MEAL_KCAL,
   PERSON,
   PLACE,
+  SELF_IMAGES,
   SKILL_STATE,
+  type SkillStanding,
   STATUS,
+  seedSelfImage,
+  skillStandingOf,
 } from "../../sim/index.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
-
-/** Cuánto hizo algo, como lo recuerda. */
-export type Practice = "never_much" | "some" | "a_lot" | "all_life";
 
 /** Cuánto hay de algo a ojo. */
 export type Amount = "a_little" | "some" | "plenty";
 
 /** Para cuánto alcanza la despensa, a ojo. */
 export type Lasts = "empty" | "days" | "weeks" | "months" | "a_year";
+
+/** Dispersión de la autoimagen desde la cual está seguro de lo que cree. */
+const SURE_SPREAD = 0.1;
 
 export interface CharacterPanel {
   /** Los años que sabe que tiene. */
@@ -48,11 +52,13 @@ export interface CharacterPanel {
   readonly status?: string;
   /** Su gente, por la relación que sabe que tiene, y si vive (de lo que sabe). */
   readonly family: readonly { readonly relation: string }[];
-  /** Lo que sabe hacer, por cuánto lo practicó (sin niveles). */
+  /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
     readonly name: string;
-    readonly practice: Practice;
+    readonly standing: SkillStanding;
+    /** Si ya se conoce lo bastante como para estar seguro. */
+    readonly sure: boolean;
   }[];
 }
 
@@ -61,13 +67,6 @@ export interface InventoryPanel {
   readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
-}
-
-function practiceOf(hours: number): Practice {
-  if (hours >= 5000) return "all_life";
-  if (hours >= 500) return "a_lot";
-  if (hours >= 30) return "some";
-  return "never_much";
 }
 
 export function characterPanel(w: LifeWorld): CharacterPanel {
@@ -81,12 +80,22 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;
   const zoneName = (id: string) => plan?.zones.find((z) => z.id === id)?.name ?? id;
   const alive = new Set(living(w.truth));
+  const images = w.truth.get(SELF_IMAGES, w.player);
   const skills = Object.entries(w.truth.get(SKILL_STATE, w.player) ?? {})
-    .map(([id, s]) => ({
-      id,
-      name: w.skills.skill(id)?.name ?? id,
-      practice: practiceOf(s.hours),
-    }))
+    .flatMap(([id, s]) => {
+      const def = w.skills.skill(id);
+      // Una vida sin autoimagen guardada (anterior a este modelo) se ve como lo siembra la infancia.
+      const image = images?.[id] ?? (def ? seedSelfImage(def, s, {}, w.scheduler.now) : undefined);
+      if (!image) return [];
+      return [
+        {
+          id,
+          name: def?.name ?? id,
+          standing: skillStandingOf(image.estimate.level),
+          sure: image.estimate.spread <= SURE_SPREAD,
+        },
+      ];
+    })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

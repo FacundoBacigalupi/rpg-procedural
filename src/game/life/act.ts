@@ -73,6 +73,7 @@ import {
   type ResolveInput,
   rankOf,
   resolve,
+  SELF_IMAGES,
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
@@ -91,6 +92,7 @@ import {
   type Trait,
   table,
   treat,
+  updateSelfImage,
   verbSkill,
   walkingFactor,
   weatherAt,
@@ -223,6 +225,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      SELF_IMAGES.name,
       YIELDED.name,
       FIGHT_STATE.name,
     ],
@@ -231,6 +234,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      SELF_IMAGES.name,
       PENDING.name,
       YIELDED.name,
       FIGHT_STATE.name,
@@ -556,6 +560,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ctx.now,
   );
   if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
+  // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
+  const image = updateSelfImage(
+    o.skills,
+    truth.get(SELF_IMAGES, me),
+    skills,
+    z,
+    node.verb,
+    r.attempt,
+    ctx.now,
+  );
+  if (image) changes.push(setComponent(SELF_IMAGES, me, image));
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
   const resume = eff.kind === "move" && eff.onTheWay === true;
