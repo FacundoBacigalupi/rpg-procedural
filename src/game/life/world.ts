@@ -153,6 +153,7 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           lines: parts.speech,
+          traits: parts.traits,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,
         }),

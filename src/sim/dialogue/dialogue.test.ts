@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import type { EventId, PlaceRef } from "../../core/index.ts";
 import { type AgentId, Rng } from "../../core/index.ts";
+import { addMemory, formMemory } from "../mind/index.ts";
 import type { Vector } from "../relations/index.ts";
 import { understand } from "./acts.ts";
+import { clampTemper, NO_RECOLLECTION, recollect } from "./disposition.ts";
 import { hear } from "./knowledge.ts";
 import { SpeechLine } from "./lines.ts";
 import {
@@ -170,8 +174,113 @@ describe("contestar", () => {
     expect(decideReply({ ...req, reproach: null }, 0).give).toBeDefined();
   });
 
+  it("el temperamento mueve los umbrales: el cálido da antes, el reactivo se ofende antes", () => {
+    const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
+    const req = input({ act: { kind: "request", good: "grain" }, held: () => rich });
+    const mild = { ...STRANGER, affection: 0.3, trust: 0.15 }; // calidez ≈ 0,195: justo bajo el umbral
+    const cold = { warmth: -1, reactivity: 0 };
+    const kind = { warmth: 1, reactivity: 0 };
+    expect(decideReply({ ...req, feel: mild, temper: cold }, 0).line).toBe("request.credit");
+    expect(decideReply({ ...req, feel: mild, temper: kind }, 0).line).toBe("request.give");
+    const sore = { ...KIN, resentment: 0.35 };
+    expect(holdsGrudge(sore)).toBe(false);
+    expect(holdsGrudge(sore, 1)).toBe(true);
+    expect(decideReply({ ...req, feel: sore, temper: { warmth: 0, reactivity: 1 } }, 0).line).toBe(
+      "request.refuse.grudge",
+    );
+  });
+
+  it("lo que recuerda de quien habla cambia el saludo y el pedido sin tocar la relación", () => {
+    const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
+    const req = input({ act: { kind: "request", good: "grain" }, held: () => rich });
+    const fond = { bias: 0.8, vivid: 0.6, count: 3 };
+    const sour = { bias: -0.8, vivid: 0.6, count: 3 };
+    expect(decideReply(input({ recollection: fond }), 0).line).toBe("greet.fond");
+    expect(decideReply(input({ recollection: sour }), 0).line).toBe("greet.wary");
+    expect(decideReply(input({ recollection: { ...sour, vivid: 0.05 } }), 0).line).toBe("greet");
+    expect(decideReply({ ...req, recollection: sour }, 0).line).toBe("request.refuse.remembered");
+    // Un recuerdo grato acerca a quien la relación sola dejaba en el fiado.
+    const mild = { ...STRANGER, affection: 0.3, trust: 0.15 };
+    expect(decideReply({ ...req, feel: mild }, 0).line).toBe("request.credit");
+    expect(decideReply({ ...req, feel: mild, recollection: fond }, 0).line).toBe("request.give");
+    // El saludo frío por una falta conocida manda sobre el recuerdo grato.
+    expect(decideReply(input({ recollection: fond, reproach: "theft" }), 0).line).toBe(
+      "greet.cold.theft",
+    );
+  });
+
   it("es determinista", () => {
     const a = input({ act: { kind: "greet" } });
     expect(decideReply(a, 0)).toEqual(decideReply(a, 0));
+  });
+});
+
+describe("recordar a quien habla", () => {
+  const PLACE = { kind: "none" } as unknown as PlaceRef;
+  let n = 0;
+  const mem = (who: AgentId, intensity: number, valence: number, at = 0) =>
+    formMemory({
+      eventId: `event:${++n}` as EventId,
+      kind: "combat.fight",
+      with: [who],
+      place: PLACE,
+      at,
+      intensity,
+      valence,
+    });
+
+  it("sin memorias de esa persona no hay nada que recordar", () => {
+    expect(recollect(undefined, bruno, 0)).toEqual(NO_RECOLLECTION);
+    const other = addMemory(undefined, mem(ana, 0.9, -0.9), 0);
+    expect(recollect(other, bruno, 0)).toEqual(NO_RECOLLECTION);
+  });
+
+  it("el tono sigue la valencia, pesa más lo intenso y se apaga con el tiempo", () => {
+    const bad = addMemory(undefined, mem(bruno, 0.9, -0.9), 0);
+    const r = recollect(bad, bruno, 0);
+    expect(r.bias).toBeLessThan(-0.5);
+    expect(r.vivid).toBeGreaterThan(0.5);
+    const mixed = addMemory(
+      addMemory(undefined, mem(bruno, 0.9, -0.9), 0),
+      mem(bruno, 0.1, 0.9),
+      0,
+    );
+    expect(recollect(mixed, bruno, 0).bias).toBeLessThan(0);
+    const day = 86_400;
+    const later = recollect(addMemory(undefined, mem(bruno, 0.2, -0.9), 0), bruno, 400 * day);
+    expect(Math.abs(later.bias)).toBeLessThan(Math.abs(recollect(bad, bruno, 0).bias));
+  });
+
+  it("también cuenta lo ya olvidado, comprimido en resumen", () => {
+    let m = addMemory(undefined, mem(bruno, 0.1, -0.8), 0);
+    for (let i = 0; i < 25; i++) m = addMemory(m, mem(ana, 0.5, 0.5, 1), 1);
+    expect(m.gists.some((g) => g.with.includes(bruno))).toBe(true);
+    expect(recollect(m, bruno, 1).count).toBeGreaterThan(0);
+  });
+
+  it("siempre está acotado, y el temperamento también", () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            i: fc.double({ min: 0, max: 1, noNaN: true }),
+            v: fc.double({ min: -1, max: 1, noNaN: true }),
+          }),
+          { maxLength: 30 },
+        ),
+        fc.integer({ min: 0, max: 400 }),
+        (xs, days) => {
+          let m = undefined as ReturnType<typeof addMemory> | undefined;
+          for (const x of xs) m = addMemory(m, mem(bruno, x.i, x.v), 0);
+          const r = recollect(m, bruno, days * 86_400);
+          expect(r.bias).toBeGreaterThanOrEqual(-1);
+          expect(r.bias).toBeLessThanOrEqual(1);
+          expect(r.vivid).toBeGreaterThanOrEqual(0);
+          expect(r.vivid).toBeLessThanOrEqual(1);
+        },
+      ),
+    );
+    expect(clampTemper(9)).toBe(1);
+    expect(clampTemper(-9)).toBe(-1);
   });
 });

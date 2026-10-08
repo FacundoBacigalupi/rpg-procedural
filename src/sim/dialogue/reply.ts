@@ -9,6 +9,7 @@ import { CREDIT_LIMIT_GRAMS } from "../contracts/index.ts";
 import type { DeedKind } from "../law/index.ts";
 import type { Vector } from "../relations/index.ts";
 import type { SpeechAct } from "./acts.ts";
+import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import type { HeardClaim } from "./knowledge.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
 
@@ -42,6 +43,10 @@ export interface ReplyInput {
   readonly reproach?: DeedKind | null;
   /** Lo que quien habla le debe ya al oyente de lo que pide, y si algo de eso está vencido. */
   readonly owes?: { readonly grams: number; readonly overdue: boolean };
+  /** Temperamento del oyente (calidez, reactividad); sin él, neutro. */
+  readonly temper?: Temper;
+  /** Lo que el oyente recuerda de quien habla (`recollect`); sin él, nada. */
+  readonly recollection?: Recollection;
   /** Cómo llama el oyente a `id` y a un bien. */
   readonly nameOf: (id: AgentId) => string;
   readonly goodName: (good: string) => string;
@@ -52,14 +57,34 @@ export interface ReplyInput {
   readonly rng: Rng;
 }
 
+/** Cuánto suma a la calidez el tono de lo que se recuerda de quien habla (bias -1..1). */
+export const MEMORY_WARMTH = 0.25;
+/** Cuánto baja el umbral de dar sin cuenta un temperamento cálido (y sube uno frío). */
+export const GENEROSITY_SHIFT = 0.08;
+/** Cuánto bajan los umbrales de rencor un temperamento reactivo (y suben en uno calmo). */
+export const TOUCHY_SHIFT = 0.12;
+/** Tono y vividez de la memoria desde los que pesa en el trato (saludo, rencor). */
+export const FOND_BIAS = 0.4;
+export const FOND_VIVID = 0.2;
+export const WARY_BIAS = -0.4;
+/** Tono y vividez desde los que un recuerdo doloroso cierra los pedidos, aunque la relación no. */
+export const GRIEVANCE_BIAS = -0.5;
+export const GRIEVANCE_VIVID = 0.25;
+
 /** Qué tanto quiere el oyente a quien habla: afecto, confianza, gratitud y dependencia. */
 export function warmth(f: Vector): number {
   return 0.5 * f.affection + 0.3 * f.trust + 0.1 * f.gratitude + 0.1 * f.dependency;
 }
 
-/** Rencor o desconfianza que cierra los pedidos. */
-export function holdsGrudge(f: Vector): boolean {
-  return f.resentment >= GRUDGE_RESENTMENT || f.trust <= GRUDGE_DISTRUST;
+/** Rencor o desconfianza que cierra los pedidos; el reactivo (`reactivity` > 0) lo siente antes. */
+export function holdsGrudge(f: Vector, reactivity = 0): boolean {
+  const shift = TOUCHY_SHIFT * reactivity;
+  return f.resentment >= GRUDGE_RESENTMENT - shift || f.trust <= GRUDGE_DISTRUST + shift;
+}
+
+/** Un recuerdo doloroso y vívido de quien pide: cierra el pedido aunque la relación esté al día. */
+export function holdsGrievance(r: Recollection): boolean {
+  return r.bias <= GRIEVANCE_BIAS && r.vivid >= GRIEVANCE_VIVID;
 }
 
 /** Se le habla de usted a quien se respeta (o tiene rango) y no se conoce tanto como para tutearlo. */
@@ -86,9 +111,14 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     text: sayLine(i.lines, line, params, i.rng.fork(line), isFormal(i.feel, i.rankAbove)),
   });
   const a = i.act;
+  const temper = i.temper ?? NEUTRAL_TEMPER;
+  const memory = i.recollection ?? NO_RECOLLECTION;
   switch (a.kind) {
     case "greet":
-      return say(i.reproach ? `greet.cold.${i.reproach}` : "greet");
+      if (i.reproach) return say(`greet.cold.${i.reproach}`);
+      if (memory.bias >= FOND_BIAS && memory.vivid >= FOND_VIVID) return say("greet.fond");
+      if (memory.bias <= WARY_BIAS && memory.vivid >= FOND_VIVID) return say("greet.wary");
+      return say("greet");
     case "farewell":
       return say("farewell");
     case "ask": {
@@ -115,9 +145,11 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       if (a.good === null) return say("request.unclear");
       const what = i.goodName(a.good);
       if (i.reproach) return say(`request.refuse.${i.reproach}`, { what });
-      if (holdsGrudge(i.feel)) return say("request.refuse.grudge", { what });
+      if (holdsGrudge(i.feel, temper.reactivity)) return say("request.refuse.grudge", { what });
+      if (holdsGrievance(memory)) return say("request.refuse.remembered", { what });
       const spare = i.held(a.good) - i.members * RESERVE_GRAMS_PER_MEMBER;
-      if (warmth(i.feel) >= FREE_GIFT_WARMTH) {
+      const felt = warmth(i.feel) + MEMORY_WARMTH * memory.bias;
+      if (felt >= FREE_GIFT_WARMTH - GENEROSITY_SHIFT * temper.warmth) {
         if (spare < GIFT_GRAMS) return say("request.short", { what });
         return { ...say("request.give", { what }), give: { good: a.good, grams: GIFT_GRAMS } };
       }

@@ -11,10 +11,13 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionPlan,
+  addMemory,
   callName,
   checkInvariants,
+  formMemory,
   HEARD,
   LOCATION,
+  MEMORIES,
   PERSON,
   PERSON_NAME,
   RELATION_BONDS,
@@ -135,6 +138,28 @@ describe("hablar con alguien de la casa", () => {
     const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
     const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
     expect(line).toBe("request.refuse.grudge");
+  }, 60_000);
+
+  it("un recuerdo doloroso y vívido del personaje enfría el saludo y cierra el pedido", () => {
+    const wary = (text: string) => {
+      const { life, w, me, other } = scene(7);
+      const first = w.log.all()[0];
+      const m = formMemory({
+        eventId: first?.id as never,
+        kind: "combat.fight",
+        with: [me],
+        place: first?.place as never,
+        at: life.now,
+        intensity: 0.9,
+        valence: -0.9,
+      });
+      w.truth.set(MEMORIES, other, addMemory(w.truth.get(MEMORIES, other), m, life.now));
+      const report = life.turn(say(me, other, text), 1);
+      const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+      return (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
+    };
+    expect(wary("Hola")).toBe("greet.wary");
+    expect(wary("Dame un poco de grano")).toBe("request.refuse.remembered");
   }, 60_000);
 
   it("no toma como dicho lo que contradice lo que ve", () => {
