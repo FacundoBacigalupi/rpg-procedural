@@ -241,8 +241,10 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [x] Lint de dependencias arreglado (2026-10-07): `ClimateNormals` pasó a `sim/world/space.ts` (junto a `LocalMap`, que lo contiene) y `ambientOf` recibe un recorte propio (`AmbientParts`) en vez de importar `LifeParts`; `npm run check` verde
 - [x] Sol y luna con días, fases y estaciones calculables; catálogo mínimo de estrellas — `sim/sky`: `sunAt` (declinación por la fase del año y la inclinación del eje, ángulo horario por longitud, altura, fracción de día con noche y sol de medianoche polares), `sunriseSunset`, `moonAt` (fase por período sinódico, iluminación, altura; órbita en la eclíptica), `skyBrightness` (sol por altura con crepúsculo de -8° a +8°, y de noche el piso más las lunas, de a `FULL_MOON_LIGHT` = 0,2 como máximo) y `starCatalog(seed)` (400 estrellas con brillo de cola larga) con `visibleStars` (tiempo sidéreo local; la luz del momento esconde las tenues). `ClimateNormals.axialTiltDeg` viene de la cosmología del planeta. `skyLight` (clima) y el «oscuro» del plan (`life.act`) leen `skyBrightness` en vez de la curva por hora: ahora el invierno oscurece antes y las noches de luna llena se ven. **Queda con ítem:** eclipses, planetas errantes, cometas, lluvias de meteoros y precesión (Fase 7); constelaciones por cultura (culture/language, Fase 2); orientarse por las estrellas (travel, «Viaje, lo que falta»); mareas de qi por ciclo astronómico (planet-gen); calibrar `FULL_MOON_LIGHT` y el crepúsculo en la pasada de calibración ([cosmology.md](systems/cosmology.md) §2)
 - [ ] **(en curso)** Pasada de calibración de la Fase 1 con la sim headless, contra objetivos escritos: clima de planet-gen (interiores continentales muy secos, mares epicontinentales sin conexión; [planet-gen.md](systems/planet-gen.md) §Implementación), mortalidad y fecundidad de la pre-corrida variando con bioma y hambre ([family-lineage.md](systems/family-lineage.md) §Implementación), `LEARNING_WIDTH`, tasas y techos de skills, `MAX_CLEAR_PERCEPTS` y `ALARMING_SIGNS` del bucle, la rutina y el consumo de las despensas en un año
-  **Avance (2026-10-07):** primera corrida de 3 seeds × 5 años (~20 s por año de mundo). Encontrado y arreglado: el agua del cuerpo no escalaba con la masa (`waterPerDay` fijo en 2,4 L), así que los bebés de la pre-corrida morían de sed la primera noche (3 en seed 1); ahora `advanceBody` la escala por `massKg / refMassKg` y hay un test. Ahora solo muere de sed el jugador inactivo (esperado: no hay plan). **Cosecha ajustada (2026-10-08):** `HARVEST_GRAMS_PER_HOUR` baja de 150 a 110 g/h. Seed 1, 3 años: con 70 g/h mueren 7 de hambre; con 110 no muere nadie de hambre (queda 1 de sed, el jugador inactivo) y el excedente es moderado. Provisorio hasta la cosecha por estación y suelo (Economía, lo que falta). **Falta medir:** natalidad y mortalidad por bioma; skills, percepción, clima de planet-gen. **Demografía de la pre-corrida (2026-10-08):** la mortalidad infantil medida era 4-10 % por un error de muestreo (el bebé no corría riesgo hasta el año siguiente); corregido, 13-22 % en 12 seeds ([family-lineage.md](systems/family-lineage.md) §Implementación). Falta que varíen con bioma y hambre. El test `body.test.ts` «limpiar nunca sube la infección» fallaba de vez en cuando: era un artefacto del test (si los dos mueren de sepsis el mismo día, el sucio muere antes y queda congelado con menos infección que el limpio); ahora deja de comparar cuando muere cualquiera.
+  **Avance (2026-10-07):** primera corrida de 3 seeds × 5 años (~20 s por año de mundo). Encontrado y arreglado: el agua del cuerpo no escalaba con la masa (`waterPerDay` fijo en 2,4 L), así que los bebés de la pre-corrida morían de sed la primera noche (3 en seed 1); ahora `advanceBody` la escala por `massKg / refMassKg` y hay un test. Ahora solo muere de sed el jugador inactivo (esperado: no hay plan). **Cosecha ajustada (2026-10-08):** `HARVEST_GRAMS_PER_HOUR` baja de 150 a 110 g/h. Seed 1, 3 años: con 70 g/h mueren 7 de hambre; con 110 no muere nadie de hambre (queda 1 de sed, el jugador inactivo) y el excedente es moderado. Provisorio hasta la cosecha por estación y suelo (Economía, lo que falta). **Falta medir:** natalidad y mortalidad por bioma; skills, percepción, clima de planet-gen. **Demografía de la pre-corrida (2026-10-08):** la mortalidad infantil medida era 4-10 % por un error de muestreo (el bebé no corría riesgo hasta el año siguiente); corregido, 13-22 % en 12 seeds ([family-lineage.md](systems/family-lineage.md) §Implementación). El hambre ya entra (años flacos con causa, ver family-lineage); falta que varíen con el bioma. El test `body.test.ts` «limpiar nunca sube la infección» fallaba de vez en cuando: era un artefacto del test (si los dos mueren de sepsis el mismo día, el sucio muere antes y queda congelado con menos infección que el limpio); ahora deja de comparar cuando muere cualquiera.
 - [ ] UI web local mínima: servidor Node local + Vite + React con chat, panel del personaje, bitácora y un mapa en canvas; la CLI queda como herramienta ([ARCHITECTURE.md](ARCHITECTURE.md) §7.8)
+- [ ] Opciones sugeridas por la sim (cantidad variable, por saliencia, con rutina y delegar) y panel de entorno con íconos por canal ([player-loop.md](systems/player-loop.md), ampliación 2026-10-08), en la UI mínima
+- [ ] Catálogo de alimentos con nutrientes, conservación y estacionalidad; el hambre pasa a ser de nutrientes ([body-health.md](systems/body-health.md), ampliación 2026-10-08)
 
 ## Fase 2 — Psicología y memoria
 - [ ] Rasgos innatos + adquiridos
@@ -268,6 +270,9 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Rasgos por persona, transmisión en los períodos sensibles, identidad como creencia, sesgo de grupo y sanciones informales ([culture.md](systems/culture.md) §4, §8)
 - [ ] Registros, tratamientos y tabúes de palabra; acento como firma; errores de quien habla mal ([language.md](systems/language.md) §5, §7, §12)
 - [ ] Identidad religiosa por persona y sanción creída en la utilidad; consuelo y culpa ([religion.md](systems/religion.md) §1, §7)
+- [ ] Pensar con inferencia: el personaje deduce de su evidencia lo que el jugador quizá no vio, con confianza y errores con forma ([player-loop.md](systems/player-loop.md), ampliación 2026-10-08)
+- [ ] La intención declarada del plan se percibe y se malinterpreta ([actions.md](systems/actions.md), ampliación 2026-10-08)
+- [ ] Habituación por canal con vidas medias; los percepts se renuevan con el cambio ([perception.md](systems/perception.md), ampliación 2026-10-08)
 
 ## Fase 3 — Vida offscreen, familias y economía
 - [ ] IA de utilidad: objetivos en capas que compiten
@@ -306,6 +311,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Balance de agua por celda (suelo, nieve, ríos); sequía como presión; año agrícola atado al tiempo real; ánimo por estación; pronóstico popular con correlación calculada ([weather.md](systems/weather.md) §3-§5, §7)
 - [ ] Fiestas y ritos fuera de escena y en la economía; modas; prevalencias por comunidad ([culture.md](systems/culture.md) §5, §9)
 - [ ] Economía del templo, especialistas por pago, fiestas fuera de escena ([religion.md](systems/religion.md) §5, §6)
+- [ ] Decisiones de niño con consecuencias a años ([npc-psychology.md](systems/npc-psychology.md)); cocina como oficio con variación cultural ([body-health.md](systems/body-health.md)); clases derivadas de lo que se hace ([skills.md](systems/skills.md)) — ampliaciones 2026-10-08
 
 ## Fase 4 — Cultivo
 - [ ] Raíces espirituales, afinidades, meridianos, alma
@@ -338,6 +344,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Tormentas de qi con fuente; alterar el tiempo con costo y desplazamiento del agua ([weather.md](systems/weather.md) §8, §9)
 - [ ] Doctrinas sobre el Cielo y el cultivo en las sectas; meditación y ascetismo con efectos reales ([religion.md](systems/religion.md) §3, §6, §12)
 - [ ] Techo del planeta, presión y supresión; tribulación de ascensión y ascender como final; salida de esencia en el ledger ([cosmology.md](systems/cosmology.md) §5, §6, §7)
+- [ ] Estatus visible como ley del mundo (universalidad, edad de despertar, qué muestra, inspección y falsificación) y clases otorgadas por el sistema ([metaphysics.md](systems/metaphysics.md), ampliación 2026-10-08)
 
 ## Fase 5 — Región y LOD
 - [ ] Múltiples asentamientos, viajes, biomas
@@ -367,6 +374,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Sistemas de tiempo que se mueven por la región; tiempo local por relieve; inundaciones con diques; detalle diario condicionado a los agregados ([weather.md](systems/weather.md) §2, §3, §12)
 - [ ] Culturas vecinas, extranjeros, marcas que se perciben, errores de etiqueta, préstamos con vector ([culture.md](systems/culture.md) §7, §8, §12)
 - [ ] Dialectos de la región, lengua franca del mercado, intérpretes, leer y escribir con una escritura ([language.md](systems/language.md) §5, §6, §10, §12)
+- [ ] Mundos de domadores: entrenamiento, compañeros que combaten, evolución y crianza de bestias ([living-world.md](systems/living-world.md), ampliación 2026-10-08)
 
 ## Fase 6 — Organizaciones
 - [ ] Modelo completo de organizaciones: membresía y lealtad, puestos y órganos con legitimidad, decisión por asuntos → deliberación → órdenes con brecha de ejecución, facciones emergentes, tesoro finito con corrupción y huellas, normas y disciplina, sucesión y crisis ([organizations.md](systems/organizations.md))
@@ -399,6 +407,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Vuelo con costo de qi y visibilidad; monturas espirituales; anillos de almacenamiento; fronteras de secta y zonas sin vuelo ([travel.md](systems/travel.md) §5, §6, §10)
 - [ ] Subculturas de sectas, gremios y corte; imposición por edicto y resistencia ([culture.md](systems/culture.md) §5, §11)
 - [ ] Clero como organización, herejía, cisma, conversión con motivos, misioneros, votos ([religion.md](systems/religion.md) §5, §8, §9)
+- [ ] Gremio de encargos con rangos configurables por mundo, academias y órdenes de caballeros ([organizations.md](systems/organizations.md), ampliación 2026-10-08)
 
 ## Fase 7 — Historia procedural
 - [ ] Pipeline completo de worldgen (cosmología → … → NPCs)
@@ -435,6 +444,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Religiones desde eventos en la historia profunda, textos y cánones, sincretismos, persecuciones, milenarismos ([religion.md](systems/religion.md) §4, §9, §10, §11)
 - [ ] Ascensiones y visitas en la historia, daños a la barrera, grietas y sellos, cometas en las crónicas, mundo superior en agregado ([cosmology.md](systems/cosmology.md) §2, §5, §8, §9, §11)
 - [ ] Eje de era: perillas de la historia por familia y presente al cumplir los marcadores ([technology.md](systems/technology.md) §9b); generador de la familia de los misterios como segunda familia ([mysteries.md](systems/mysteries.md) §1-§7b, §10)
+- [ ] Ejes del poder del mundo (fuente, canal, forma, límite, aprendizaje, herencia) en el pipeline de worldgen, con presets nombrados; ley de captura de bestias ([metaphysics.md](systems/metaphysics.md), ampliación 2026-10-08)
 
 ## Fase 8 — Mundo completo
 - [ ] Naciones, guerras, política (estado y ejército sobre el modelo de [organizations.md](systems/organizations.md))
@@ -468,3 +478,4 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Armador web del modo novela; archivo de vidas con marcas y la verdad del dedo de oro ([game-modes.md](systems/game-modes.md) §11, §12)
 - [ ] Inspector web con mapas interactivos; corpus de pares pedido → texto aprobado para el fine-tune ([tooling.md](systems/tooling.md) §5, §10)
 - [ ] Eras no típicas y variaciones dentro de la familia de los misterios; dedos de oro de esa familia en modo novela ([mysteries.md](systems/mysteries.md) §14, §15, §16)
+- [ ] Presets de sabor de mundo en el armador de modo novela: domador, aventurero, académico, con sistema ([game-modes.md](systems/game-modes.md), ampliación 2026-10-08)

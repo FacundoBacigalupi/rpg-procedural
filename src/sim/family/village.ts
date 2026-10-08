@@ -138,7 +138,7 @@ type Happening =
   | { day: number; order: 1; kind: "birth"; mother: AgentId }
   | { day: number; order: 2; kind: "death"; person: AgentId }
   /** Muere el bebé que nace ese mismo año de `mother` (a lo sumo hay uno por año). */
-  | { day: number; order: 2; kind: "infant-death"; mother: AgentId };
+  | { day: number; order: 2; kind: "infant-death"; mother: AgentId; hunger: boolean };
 
 export function villagePopulation(input: VillagePopulationInput): VillagePopulation {
   const { seed, site, traits, demography: demo } = input;
@@ -361,6 +361,9 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
   for (const h of households.values()) patchActors(events, h.origin, h.members);
 
   // --- La pre-corrida: un año por vuelta.
+  const hungry = demo.hunger;
+  /** Grano guardado de años buenos, en personas-año. */
+  let store = 0;
   for (let y = 0; y < years; y++) {
     const start = yearStart(y);
     const days = daysInYear(clock, y);
@@ -368,16 +371,41 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
     const living = [...people.values()].filter((p) => p.end === null);
     const happenings: Happening[] = [];
 
+    // La cosecha del año contra las bocas: lo que falta después de los graneros es hambre
+    // (family-lineage §3: la fecundidad cae con el hambre; economy: una hambruna tiene una causa).
+    const harvest = r.logNormal(-(hungry.sigma * hungry.sigma) / 2, hungry.sigma);
+    const need = living.length;
+    const balance = capacity * hungry.feedable * harvest - need + store;
+    const hunger = balance < 0 && need > 0 ? Math.min(1, -balance / need) : 0;
+    store = balance < 0 ? 0 : Math.min(balance, hungry.storeYears * need);
+    const lean =
+      hunger > 0.02
+        ? emit(start, "family.lean_year", [], because(site.foundedEvent), {
+            harvest: Math.round(harvest * 100) / 100,
+            hunger: Math.round(hunger * 100) / 100,
+          })
+        : null;
+    // El riesgo de un tramo de edad sube con el hambre; `share` es cuánto de él es del hambre.
+    const hungerRisk = (age: number, base: number) => {
+      const f = band(hungry.mortality, age)?.factor ?? 1;
+      const risk = Math.min(1, base * (1 + hunger * (f - 1)));
+      return { risk, share: risk > 0 ? (risk - base) / risk : 0 };
+    };
+    const byHunger = new Set<AgentId>();
+
     const deathDay = new Map<AgentId, number>();
     for (const p of living) {
       const age = ageAt(p, start);
       const q = band(demo.mortality, age);
+      if (!q) continue;
+      const h = hungerRisk(age, q[p.sex]);
       // Al bebé del año anterior le queda lo que falta de su primer año de riesgo.
-      const risk = q && (age < 1 ? 1 - pow(1 - q[p.sex], 1 - age) : q[p.sex]);
-      if (q && risk !== undefined && r.chance(risk)) {
+      const risk = age < 1 ? 1 - pow(1 - h.risk, 1 - age) : h.risk;
+      if (r.chance(risk)) {
         const day = r.int(0, days - 1);
         deathDay.set(p.id, day);
         happenings.push({ day, order: 2, kind: "death", person: p.id });
+        if (lean && h.share > 0 && r.chance(h.share)) byHunger.add(p.id);
       }
     }
     const aliveOn = (id: AgentId, day: number) => (deathDay.get(id) ?? days) > day;
@@ -389,7 +417,10 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
       crowding <= from ? 1 : Math.max(0, Math.min(1, (1 - crowding) / (1 - from)));
     for (const w of living) {
       if (w.sex !== "female" || w.spouse === null || w.unionAt >= start) continue;
-      const rate = (band(demo.fertility, ageAt(w, start))?.rate ?? 0) * fertilityFactor;
+      const rate =
+        (band(demo.fertility, ageAt(w, start))?.rate ?? 0) *
+        fertilityFactor *
+        (1 - hungry.fertilityLoss * hunger);
       if (!r.chance(rate)) continue;
       const day = r.int(0, days - 1);
       if (!aliveOn(w.id, day)) continue;
@@ -398,10 +429,17 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
       // decide acá (el resto, al empezar el siguiente).
       const q0 = band(demo.mortality, 0);
       if (q0) {
-        const risk = 1 - pow(1 - (q0.female + q0.male) / 2, (days - day) / days);
-        if (r.chance(risk)) {
+        const h = hungerRisk(0, (q0.female + q0.male) / 2);
+        if (r.chance(1 - pow(1 - h.risk, (days - day) / days))) {
           const dead = r.int(day, days - 1);
-          happenings.push({ day: dead, order: 2, kind: "infant-death", mother: w.id });
+          const byHungerToo = lean !== null && h.share > 0 && r.chance(h.share);
+          happenings.push({
+            day: dead,
+            order: 2,
+            kind: "infant-death",
+            mother: w.id,
+            hunger: byHungerToo,
+          });
         }
       }
     }
@@ -452,10 +490,14 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
         case "death": {
           const p = person(h.person);
           if (p.end !== null) break;
-          const ev = emit(tick, "person.died", [p.id], because(p.origin), {
-            age: ageAt(p, tick),
-            of: "natural",
-          });
+          const starved = lean !== null && byHunger.has(p.id);
+          const ev = emit(
+            tick,
+            "person.died",
+            [p.id],
+            because(p.origin, ...(starved && lean ? [lean] : [])),
+            { age: ageAt(p, tick), of: starved ? "hunger" : "natural" },
+          );
           endPerson(p, tick, ev, "died");
           break;
         }
@@ -463,10 +505,13 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
           const childId = newborn.get(h.mother);
           const child = childId === undefined ? undefined : person(childId);
           if (!child || child.end !== null) break;
-          const ev = emit(tick, "person.died", [child.id], because(child.origin), {
-            age: ageAt(child, tick),
-            of: "natural",
-          });
+          const ev = emit(
+            tick,
+            "person.died",
+            [child.id],
+            because(child.origin, ...(h.hunger && lean ? [lean] : [])),
+            { age: ageAt(child, tick), of: h.hunger ? "hunger" : "natural" },
+          );
           endPerson(child, tick, ev, "died");
           break;
         }

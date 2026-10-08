@@ -323,3 +323,7 @@ Con la resolución de zona de simulation §4:
 ## Preguntas abiertas
 
 - Calibración: número final de verbos y de modos; granularidad de checkpoints por verbo; umbral de saliencia para interrumpir; curvas de margen a `Outcome`; cuánto pesan los modos en duración y emisiones; frecuencia de confirmaciones aceptable para el jugador.
+
+## Ampliación (2026-10-08): la intención se percibe
+
+La intención declarada del `ActionPlan` (por qué, para quién) no es un adorno: los demás pueden leerla, malinterpretarla o suponerla a partir de la acción y el contexto (perception, dialogue). Una misma acción con otra intención se juzga distinto (law, social-structure). El parser conserva la intención como dato del plan; el narrador no la inventa. Fase 2.

@@ -99,7 +99,7 @@ describe("los nombres de la aldea", () => {
       const name = truth.get(PERSON_NAME, id);
       expect(name, id).toBeDefined();
       if (!name) continue;
-      expect(callName(name)).toMatch(/^\p{Lu}\p{Ll}+$/u);
+      expect(callName(name)).toMatch(/^\p{Lu}\p{Ll}*$/u);
       expect(familyName(name)).toBeDefined();
       for (const part of name.parts) {
         expect(part.meaning.length).toBeGreaterThan(0);

@@ -363,3 +363,7 @@ Con los tiers de simulation §4:
 ## Preguntas abiertas
 
 - Calibración: tasas de aprendizaje y forma de las curvas por dominio; tiempos reales por tramo; oxidación tácita y explícita; pesos de transferencia e interferencia; fuerza de fijación de los vicios; tamaño de los sesgos de autoimagen; dispersión de las distribuciones por ocupación.
+
+## Ampliación (2026-10-08): clases derivadas
+
+Una "clase" u oficio (herrero, cocinero, mercader, mago, caballero) es una etiqueta derivada de lo que alguien hace y sabe, no una elección cerrada. Se muestra en el panel y se usa en reputación, gremios y estatus. Mundos con sistema visible (metaphysics) pueden otorgar clases formales; la lista incluye las de producción. Fase 3 (derivadas) y Fase 4 (otorgadas).
