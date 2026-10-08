@@ -2,13 +2,19 @@
 // personaje, el inventario y la bitácora. Todo el texto lo arma el servidor desde la `PlayerView`;
 // acá no se interpreta nada del mundo.
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import type { Panels, SayResponse, WebState } from "../api.ts";
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { History, Panels, SayResponse, WebState } from "../api.ts";
 
 interface Line {
   readonly who: "you" | "world";
   readonly text: string;
+  /** De la narración guardada: cuándo fue y su lugar en la bitácora. */
+  readonly when?: string;
+  readonly seq?: number;
 }
+
+const fromHistory = (h: History): Line[] =>
+  h.entries.map((e) => ({ who: "world", text: e.text, when: e.when, seq: e.seq }));
 
 const TABS = [
   ["character", "Personaje"],
@@ -36,21 +42,51 @@ export function App() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
+  const [more, setMore] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  // Al subir se piden entradas más viejas: se recuerda la altura para que la vista no salte.
+  const prepended = useRef<number | null>(null);
+  const loading = useRef(false);
 
   useEffect(() => {
     call<WebState>("/api/state")
       .then((s) => {
-        setLines([{ who: "world", text: s.opening }]);
+        const past = fromHistory(s.history);
+        setLines(past.length > 0 ? past : [{ who: "world", text: s.opening }]);
+        setMore(s.history.more);
         setPanels(s);
       })
       .catch((e: unknown) => setLines([{ who: "world", text: `No se pudo abrir la vida: ${e}` }]));
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: baja al final cada vez que hay una línea nueva
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reacciona a las líneas, no a las refs
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (prepended.current !== null && el) {
+      el.scrollTop = el.scrollHeight - prepended.current;
+      prepended.current = null;
+    } else {
+      bottom.current?.scrollIntoView({ block: "end" });
+    }
   }, [lines]);
+
+  async function loadOlder() {
+    const el = box.current;
+    const oldest = lines.find((l) => l.seq !== undefined)?.seq;
+    if (!el || !more || loading.current || oldest === undefined) return;
+    loading.current = true;
+    try {
+      const h = await call<History>(`/api/history?before=${oldest}`);
+      prepended.current = el.scrollHeight;
+      setLines((l) => [...fromHistory(h), ...l]);
+      setMore(h.more);
+    } catch {
+      // sin red local no hay más historia: se reintenta al volver a subir
+    } finally {
+      loading.current = false;
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -80,10 +116,18 @@ export function App() {
     <div className="layout">
       <main className="chat">
         <header>{panels?.now ?? "…"}</header>
-        <div className="lines">
+        <div
+          className="lines"
+          ref={box}
+          onScroll={(e) => {
+            if (e.currentTarget.scrollTop < 80) void loadOlder();
+          }}
+        >
+          {more && <p className="older">…</p>}
           {lines.map((l, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: la lista solo crece al final
-            <p key={i} className={l.who}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: las líneas nuevas van al final y las viejas al principio, sin reordenar
+            <p key={l.seq ?? `n${i}`} className={l.who}>
+              {l.when && <span className="when">{`— ${l.when}\n`}</span>}
               {l.text}
             </p>
           ))}

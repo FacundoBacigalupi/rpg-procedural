@@ -7,7 +7,7 @@ import { type ContentSource, loadContent } from "../../core/index.ts";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { openSession } from "../session.ts";
-import type { SayResponse, WebState } from "./api.ts";
+import type { History, SayResponse, WebState } from "./api.ts";
 import { apiHandler } from "./server.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -61,6 +61,23 @@ describe("API web", { timeout: 60_000 }, () => {
     expect(said.text).toMatch(/Pasa/);
     expect(said.now).not.toBe(state.now);
     expect(said.journal.length).toBeGreaterThan(0);
+  });
+
+  it("el estado trae lo último narrado y se pide más hacia atrás", async () => {
+    const base = await serve();
+    for (let i = 0; i < 14; i++) await post(`${base}/api/say`, { line: "espero una hora" });
+    const state = (await (await fetch(`${base}/api/state`)).json()) as WebState;
+    const { entries, more } = state.history;
+    expect(entries).toHaveLength(12);
+    expect(more).toBe(true);
+    const last = entries.at(-1);
+    expect(last?.text).toMatch(/\S/);
+    const first = entries[0]?.seq ?? 0;
+    const older = (await (await fetch(`${base}/api/history?before=${first}`)).json()) as History;
+    expect(older.entries.length).toBeGreaterThan(0);
+    expect(older.entries.every((e) => e.seq < first)).toBe(true);
+    expect(older.more).toBe(false);
+    expect((await fetch(`${base}/api/history`)).status).toBe(400);
   });
 
   it("un comando fuera del personaje no pasa el tiempo", async () => {
