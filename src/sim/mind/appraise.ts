@@ -345,6 +345,16 @@ export function tendDeltas(role: "carer" | "cared", care: number): Deltas {
   });
 }
 
+/** Contacto: una charla suma esta familiaridad a cada parte (con rendimiento decreciente). */
+export const TALK_FAMILIARITY = 0.03;
+/** Contacto: cada hora compartiendo un mismo lugar suma esta familiaridad (con rendimiento decreciente). */
+export const COMPANY_FAMILIARITY = 0.004;
+
+/** Lo que suma el contacto a una familiaridad ya `current` (0-1): cuanto más se conocen, menos rinde. */
+export function contactGain(gain: number, current: number): number {
+  return round(gain * (1 - clamp01(current)));
+}
+
 /** Cambios por un préstamo concedido (`household.borrowed`). */
 export function lendDeltas(role: "lender" | "borrower"): Deltas {
   if (role === "lender") return rounded({ familiarity: FIGHT_FAMILIARITY, trust: LEND_TRUST });

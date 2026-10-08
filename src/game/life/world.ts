@@ -40,6 +40,7 @@ import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
+import { companyProcess } from "./company.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
@@ -185,6 +186,10 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           habits: parts.habits,
+        }),
+        companyProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
         }),
         routineProcess({
           map: parts.map,
