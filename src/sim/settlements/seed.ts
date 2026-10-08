@@ -4,7 +4,7 @@
 // los campos y al monte. Cada edificio sale de materiales con origen (un evento de recolección
 // con causa en el ancla que los dio), con desgaste y defectos ocultos que el dueño no ve, y los
 // gramos entran al ledger desde la fuente externa `seed`: lo que hay en la aldea al empezar no
-// aparece de la nada, viene declarado (ROADMAP: Hito 1b lo cambia por lotes con economy).
+// aparece de la nada, viene declarado (los lotes con origen llegan con el comercio entre asentamientos, Fase 5).
 //
 // Todo pasa en eventos del pasado (`history`): una casa se levanta cuando el hogar llega a la
 // aldea, el granero y el pozo con los fundadores.

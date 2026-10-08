@@ -53,6 +53,7 @@ export const FAILURE_MODES = [
   "too_weak", // el cuerpo no da
   "not_here", // lo buscado o la contraparte no está
   "no_means", // no tiene con qué (o el otro no tiene nada)
+  "no_deal", // hay con qué, pero no se ponen de acuerdo en el precio
 ] as const;
 export type FailureModeId = (typeof FAILURE_MODES)[number];
 

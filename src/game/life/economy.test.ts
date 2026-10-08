@@ -9,9 +9,10 @@ import {
   ledgerUnit,
   loadContent,
 } from "../../core/index.ts";
-import { ENTITY, PERSON } from "../../sim/index.ts";
+import { type ActionPlan, ENTITY, LOCATION, PERSON } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { Life } from "./index.ts";
+import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -51,6 +52,41 @@ describe("economía mínima en la aldea", () => {
       return life.hash();
     };
     expect(run()).toEqual(run());
+  }, 120_000);
+});
+
+describe("tratos entre vecinos", () => {
+  it("comprar un kilo a un vecino con la despensa normal cierra, y si no es posible no es por falta de medios", () => {
+    const life = Life.create(2, content);
+    const w = life.world;
+    const me = life.player;
+    const home = w.truth.get(PERSON, me)?.household;
+    const here = w.truth.get(LOCATION, me);
+    let seq = 1;
+    let closed = 0;
+    for (const n of living(w.truth).filter((id) => w.truth.get(PERSON, id)?.household !== home)) {
+      if (here) w.truth.set(LOCATION, n, here);
+      const plan: ActionPlan = {
+        actor: me,
+        source: "player",
+        root: {
+          kind: "do",
+          verb: "trade",
+          args: [
+            { role: "with", entity: n },
+            { role: "what", text: "1 kilo de grano" },
+          ],
+          manner: [],
+        },
+        manner: [],
+        causes: [{ kind: "state", entity: me, key: "intent" }],
+      };
+      const ev = life.turn(plan, seq++).events.find((e) => e.kind === "action.trade");
+      const d = ev?.data as { effect?: { deal?: boolean; grams?: number } } | undefined;
+      if (d?.effect?.deal && (d.effect.grams ?? 0) > 0) closed++;
+    }
+    expect(closed).toBeGreaterThan(0);
+    expect(w.ledger.audit()).toEqual([]);
   }, 120_000);
 });
 

@@ -34,13 +34,16 @@ import {
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
+import { borrowProcess, repayProcess } from "./borrow.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
+import { living } from "./living.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 
+export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
 
 export interface LifeWorld {
@@ -67,15 +70,6 @@ export interface LifeWorld {
 }
 
 export type LifeParts = Omit<LifeWorld, "scheduler" | "player">;
-
-export function living(truth: ReadonlyWorldTruth): AgentId[] {
-  return truth
-    .ids(ENTITY)
-    .filter(
-      (id): id is AgentId =>
-        id.startsWith("agent:") && truth.get(ENTITY, id)?.endedAt === undefined,
-    );
-}
 
 /** El lugar de un evento de alguien: la aldea si está en su hex, si no la celda. */
 function placeOf(parts: LifeParts, village: PlaceRef) {
@@ -145,6 +139,17 @@ export function lifeWorld(
         }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        borrowProcess({
+          foods: parts.foods,
+          curves: parts.pressureCurves,
+          player,
+          placeOf: placeOf(parts, village),
+        }),
+        repayProcess({
+          foods: parts.foods,
+          player,
+          placeOf: placeOf(parts, village),
+        }),
         spoilageProcess({
           goods: parts.goods,
           clock: parts.clock,

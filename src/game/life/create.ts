@@ -393,7 +393,7 @@ export function createLife(
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
   // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
-  // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
+  // aldea cuando haya cosecha por estación y suelo (ROADMAP: Hito 1c, clima).
   const grain = ledgerUnit("good:grain");
   if (foods.some((f) => f.id === "grain")) {
     const stocked = ids.next("event");
