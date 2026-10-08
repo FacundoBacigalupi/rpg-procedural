@@ -1,0 +1,87 @@
+[
+  {
+    "id": "five_phases",
+    "name": "cinco fases",
+    "family": "five_phases",
+    "elements": [
+      {
+        "id": "wood",
+        "name": "madera",
+        "physical": {
+          "heat": 0.1,
+          "moisture": 0.3,
+          "rigidity": -0.2,
+          "motion": 0.4,
+          "vitality": 0.9
+        },
+        "geologicalSources": ["biotic"],
+        "bodyAffinity": ["liver", "tendons"]
+      },
+      {
+        "id": "fire",
+        "name": "fuego",
+        "physical": {
+          "heat": 1,
+          "moisture": -0.7,
+          "rigidity": -0.3,
+          "motion": 0.7,
+          "vitality": 0.2
+        },
+        "geologicalSources": ["geothermal"],
+        "bodyAffinity": ["heart"]
+      },
+      {
+        "id": "earth",
+        "name": "tierra",
+        "physical": { "heat": 0, "moisture": 0, "rigidity": 0.5, "motion": -0.6, "vitality": 0.3 },
+        "geologicalSources": ["sedimentary", "telluric"],
+        "bodyAffinity": ["spleen", "muscle"]
+      },
+      {
+        "id": "metal",
+        "name": "metal",
+        "physical": {
+          "heat": -0.2,
+          "moisture": -0.2,
+          "rigidity": 1,
+          "motion": 0.3,
+          "vitality": -0.3
+        },
+        "geologicalSources": ["mineral", "celestial"],
+        "bodyAffinity": ["lungs", "skin"]
+      },
+      {
+        "id": "water",
+        "name": "agua",
+        "physical": {
+          "heat": -0.8,
+          "moisture": 1,
+          "rigidity": -0.5,
+          "motion": 0.2,
+          "vitality": 0.4
+        },
+        "geologicalSources": ["hydric"],
+        "bodyAffinity": ["kidneys", "bones"]
+      }
+    ],
+    "G": [
+      [0, 0.8, 0, 0, 0],
+      [0, 0, 0.8, 0, 0],
+      [0, 0, 0, 0.8, 0],
+      [0, 0, 0, 0, 0.8],
+      [0.8, 0, 0, 0, 0]
+    ],
+    "K": [
+      [0, 0, 0.7, 0, 0],
+      [0, 0, 0, 0.7, 0],
+      [0, 0, 0, 0, 0.7],
+      [0.7, 0, 0, 0, 0],
+      [0, 0.7, 0, 0, 0]
+    ],
+    "insultRatio": 3,
+    "inversionStrength": 0.85,
+    "generationLoss": 0.25,
+    "overcomeCost": 0.6,
+    "resonance": 0.5
+  }
+]

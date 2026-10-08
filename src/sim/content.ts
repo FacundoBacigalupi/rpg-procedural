@@ -10,6 +10,7 @@ import { RECIPES } from "./crafts/index.ts";
 import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
 import { SPEECH_LINES } from "./dialogue/index.ts";
 import { GOODS } from "./economy/index.ts";
+import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
 import { TENURES } from "./property/index.ts";
@@ -40,4 +41,5 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   TENURES,
   CULTURE_TRAITS,
   CULTURES,
+  ELEMENT_SYSTEMS,
 ] as readonly ContentKind[];
