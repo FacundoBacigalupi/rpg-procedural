@@ -19,7 +19,7 @@ import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
 import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
-import { STATUSES } from "./social/index.ts";
+import { ETIQUETTE, STATUSES } from "./social/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
   BIOMES,
@@ -40,6 +40,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   CONCEPTS,
   RECIPES,
   STATUSES,
+  ETIQUETTE,
   SPEECH_LINES,
   TENURES,
   CULTURE_TRAITS,
