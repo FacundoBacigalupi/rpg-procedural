@@ -9,6 +9,7 @@
 // `templates`, así que el juego es el mismo con o sin red.
 
 import {
+  type AgentId,
   type Content,
   canonicalJson,
   IdAllocator,
@@ -19,6 +20,7 @@ import {
 import {
   AMBIENCE,
   ambienceOf,
+  buildChronicle,
   characterPanel,
   inventoryPanel,
   knownEntities,
@@ -27,8 +29,10 @@ import {
   type LifeSetup,
   NARRATION_TEMPLATES,
   optionsOf,
+  PLAYER,
   playerView,
   type ResumeAnchor,
+  renderChronicle,
   type TurnReport,
 } from "../../game/index.ts";
 import {
@@ -46,9 +50,11 @@ import {
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../../persistence/index.ts";
 import {
   type ActionPlan,
+  callName,
   type IntentDraft,
   LOCATION,
   PARSER_EXAMPLES,
+  PERSON_NAME,
   planFromDraft,
 } from "../../sim/index.ts";
 import { INSPECTOR_HELP, inspect } from "../../tools/index.ts";
@@ -214,11 +220,25 @@ ${renderStatus(life.now)}\n> `);
     store.appendNarration(report.to, told);
     write(`${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}\n`);
     if (report.over) {
-      write("Tu vida terminó.\n");
+      write(`Tu vida terminó.\n\n${endingOf(life, store)}\n`);
       return;
     }
     write("> ");
   }
+}
+
+/** La crónica final desde la verdad (chronicle §3): lo único que la CLI le muestra de ella al jugador. */
+function endingOf(life: Life, store: LifeStore): string {
+  const w = life.world;
+  const chronicle = buildChronicle(w, w.truth.get(PLAYER, life.player)?.since ?? 0, {
+    mode: String(store.getMeta("mode") ?? "realista"),
+    inspected: store.getMeta("inspected") === true,
+  });
+  const nameOf = (id: string) => {
+    const n = w.truth.get(PERSON_NAME, id as AgentId);
+    return (n && callName(n)) ?? "alguien";
+  };
+  return renderChronicle(chronicle, w.clock, (id) => w.log.get(id), nameOf);
 }
 
 function open(store: LifeStore, options: CliOptions, write: (text: string) => void): Life {
