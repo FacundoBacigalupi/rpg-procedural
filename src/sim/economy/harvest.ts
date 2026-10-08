@@ -20,6 +20,16 @@ export const SOIL_DAYS = 10;
 export const SOIL_FULL_MM = 25;
 /** Con el suelo seco rinde esta fracción (el riego y las napas aguantan algo). */
 export const DRY_FLOOR = 0.35;
+/** Una lluvia así de fuerte (mm en el día) con calor de tormenta puede venir con granizo. */
+export const HAIL_MIN_MM = 12;
+/** Máxima del día (°C) desde la que la lluvia fuerte es de convección. */
+export const HAIL_MIN_MAX_C = 20;
+/** Chance de granizo en un día que cumple lo anterior. */
+export const HAIL_CHANCE = 0.2;
+/** Fracción del campo que arrasa el día del granizo; después se recupera linealmente. */
+export const HAIL_LOSS = 0.6;
+/** Días hasta que el campo vuelve a rendir lo de antes. */
+export const HAIL_RECOVERY_DAYS = 4;
 /** Piso del promedio anual al normalizar, para que un clima sin verano no divida por casi cero. */
 const MIN_MEAN = 0.05;
 
@@ -38,9 +48,24 @@ export function soilWater(recent: readonly DayWeather[]): number {
   return DRY_FLOOR + (1 - DRY_FLOOR) * clamp(mm / SOIL_FULL_MM, 0, 1);
 }
 
+/** ¿Pudo caer granizo ese día? Lluvia fuerte con calor; el azar solo elige entre esos días. */
+export function hailPossible(w: DayWeather): boolean {
+  return w.precip.kind === "rain" && w.precip.mm >= HAIL_MIN_MM && w.tempMaxC >= HAIL_MIN_MAX_C;
+}
+
+/** Cuánto del campo sigue en pie (0-1) `ago` días después de un granizo (0 = el mismo día). */
+export function hailStanding(ago: number): number {
+  return 1 - HAIL_LOSS * Math.max(0, 1 - ago / HAIL_RECOVERY_DAYS);
+}
+
 /** Factor crudo de un día (sin normalizar) a partir del tiempo de ese día y de los previos. */
-export function rawHarvest(day: DayWeather, previous: readonly DayWeather[]): number {
-  return growthOf(day) * soilWater([day, ...previous]);
+export function rawHarvest(
+  day: DayWeather,
+  previous: readonly DayWeather[],
+  hailAgo?: number,
+): number {
+  const standing = hailAgo === undefined ? 1 : hailStanding(hailAgo);
+  return growthOf(day) * soilWater([day, ...previous]) * standing;
 }
 
 /**
@@ -61,10 +86,25 @@ export function harvestSeason(
     }
     return w;
   };
+  const hails = new Map<number, boolean>();
+  const hailed = (d: number): boolean => {
+    let h = hails.get(d);
+    if (h === undefined) {
+      h = hailPossible(at(d)) && rng.fork("hail", n.cell, d).float() < HAIL_CHANCE;
+      hails.set(d, h);
+    }
+    return h;
+  };
+  /** Días desde el último granizo que todavía pesa, o nada. */
+  const hailAgoAt = (d: number): number | undefined => {
+    for (let ago = 0; ago < HAIL_RECOVERY_DAYS; ago++) if (hailed(d - ago)) return ago;
+    return undefined;
+  };
   const rawAt = (d: number) =>
     rawHarvest(
       at(d),
       Array.from({ length: SOIL_DAYS - 1 }, (_, i) => at(d - 1 - i)),
+      hailAgoAt(d),
     );
   const yearDays = Math.round(clock.year / clock.day);
   let sum = 0;
