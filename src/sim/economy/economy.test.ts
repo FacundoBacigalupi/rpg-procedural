@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { gramsIn, rotFraction, strike } from "./index.ts";
+import { askPerKg, bidPerKg, gramsIn, rotFraction, strike } from "./index.ts";
 
 describe("economía mínima", () => {
   it("la mitad se pudre a la vida media", () => {
@@ -44,6 +44,19 @@ describe("economía mínima", () => {
           return d.grams <= Math.min(want, avail) && d.coins <= coins && d.coins >= 1;
         },
       ),
+    );
+  });
+
+  it("quien casi no carga comida paga de más por llevársela, y eso cierra el trato con un vecino que le sobra", () => {
+    // Vecino con la despensa llena (pide poco) y comprador con la suya llena pero sin nada encima.
+    const ask = askPerKg(6, 150);
+    expect(bidPerKg(6, 300, 30)).toBeLessThan(ask); // con comida encima, no hay zona
+    expect(bidPerKg(6, 300, 0)).toBeGreaterThan(ask); // sin nada encima, sí
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 400, noNaN: true }), (days) => {
+        // Cargar menos nunca baja la oferta.
+        expect(bidPerKg(6, days, 0)).toBeGreaterThanOrEqual(bidPerKg(6, days, 30));
+      }),
     );
   });
 

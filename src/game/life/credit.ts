@@ -112,17 +112,22 @@ export function creditProcess(o: CreditOptions): ProcessDef {
   };
 }
 
-/** Un pedido fiado que el vecino concedió (lo anota `converse` en el evento). */
+/** Un pedido fiado que el vecino concedió (lo anota `converse` o `borrowProcess` en el evento). */
 function lentBy(e: Event) {
-  if (e.kind !== "action.speak") return null;
+  if (e.kind !== "action.speak" && e.kind !== "household.borrowed") return null;
   const data = e.data as { credit?: { unit: LedgerUnit; grams: number } } | null;
   const [creditor, debtor] = e.actors as AgentId[];
   if (!data?.credit || !creditor || !debtor) return null;
   return { creditor, debtor, unit: data.credit.unit, grams: data.credit.grams };
 }
 
-/** Un `give` que pasó algo de verdad al otro. */
+/** Un `give` que pasó algo de verdad al otro, o la devolución de un hogar. */
 function paidIn(e: Event) {
+  if (e.kind === "household.repaid") {
+    const pay = (e.data as { payment?: { unit: LedgerUnit; grams: number } } | null)?.payment;
+    const [payer, to] = e.actors as AgentId[];
+    return payer && to && pay ? { payer, to, unit: pay.unit, grams: pay.grams } : null;
+  }
   if (e.kind !== "action.give") return null;
   const eff = (
     e.data as { effect?: { kind?: string; to?: string; good?: LedgerUnit; grams?: number } } | null

@@ -721,12 +721,12 @@ const trade: Resolver = (c) => {
     };
   }
   const found = bargain(c, other, mk, edge);
-  if (!found) {
-    // No hay trato posible: uno no tiene con qué, o el otro no vende lo que le sobra.
+  if (typeof found === "string") {
+    // Sin trato: o no hay con qué (nada que dar, o sin monedas), o hay pero no coinciden en el precio.
     return {
       effect: idle(false),
       seconds: c.nominal / 2,
-      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+      override: { outcome: "failure", failure: found, believed: "failure" },
     };
   }
   return {
@@ -773,7 +773,12 @@ interface Bargain {
  * que le queda para comer: nadie vende lo que necesita en los próximos meses ni compra de más. Si
  * el actor nombra lo que tiene encima, vende; si no, compra lo que el otro puede dar.
  */
-function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | null {
+function bargain(
+  c: Ctx,
+  other: EntityRef,
+  mk: Market,
+  edge: number,
+): Bargain | "no_means" | "no_deal" {
   const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
   const me = c.input.actor.id as HolderRef;
   const you = other as HolderRef;
@@ -824,13 +829,16 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
       maxPerKg: bidPerKg(
         base,
         foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
+        foodDays(yourPocket, foods, mk.other?.members ?? 1),
       ),
       edge,
       availableGrams: Math.min(row.amount, spare),
       buyerCoins: buyerCoinsOf(yourPocket),
       actorBuys: false,
     });
-    if (!deal) return null;
+    if (!deal)
+      return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
+
     return {
       direction: "sell",
       unit: row.unit,
@@ -843,7 +851,7 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
     };
   }
 
-  if (yourGoods.length === 0 || coinsOf(myRows) === 0) return null;
+  if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
   const base = mk.priceCopperPerKg.get(row.unit) as number;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
@@ -856,13 +864,18 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
   const deal = strikeDeal({
     wantGrams,
     askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
-    maxPerKg: bidPerKg(base, foodDays(merge(myRows, myLarder), foods, mk.ownMembers)),
+    maxPerKg: bidPerKg(
+      base,
+      foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
+      foodDays(myRows, foods, mk.ownMembers),
+    ),
     edge,
     availableGrams: Math.min(row.amount, spare),
     buyerCoins: coinsOf(myRows),
     actorBuys: true,
   });
-  if (!deal) return null;
+  if (!deal) return spare > 0 ? "no_deal" : "no_means";
+
   // Entrega primero lo que lleva encima y, si no alcanza, lo de la despensa.
   const pocket = yourPocket.find((r) => r.unit === row.unit)?.amount ?? 0;
   const fromPocket = Math.min(pocket, deal.grams);
