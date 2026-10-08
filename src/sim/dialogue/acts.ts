@@ -5,12 +5,17 @@
 
 import type { AgentId } from "../../core/index.ts";
 import type { Appeal } from "./persuasion.ts";
+import type { ElicitTechnique } from "./secrets.ts";
 
 export type SpeechAct =
   | { readonly kind: "greet" }
   | { readonly kind: "farewell" }
-  /** ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). */
-  | { readonly kind: "ask"; readonly about: AgentId | null }
+  /**
+   * ¿Dónde está `about`? (null: no dijo de quién, o de alguien que el oyente no conoce). `via` es
+   * la maniobra con que se pregunta (dialogue §11): sin ella, de frente; si el otro guarda un secreto
+   * sobre `about`, es una pregunta por el secreto.
+   */
+  | { readonly kind: "ask"; readonly about: AgentId | null; readonly via?: ElicitTechnique }
   /** Un pedido de `good` (un id de bien); null si no se entiende qué. */
   | { readonly kind: "request"; readonly good: string | null }
   /** Le cuentan que `about` murió o sigue vivo. */
@@ -91,6 +96,12 @@ export function normalize(text: string): string {
 const GREET = /\b(hola|buen dia|buenos dias|buenas tardes|buenas noches|buenas|saludos|que tal)\b/;
 const FAREWELL = /\b(adios|chau|chao|hasta luego|hasta manana|nos vemos|me voy|que te vaya bien)\b/;
 const ASK = /\b(donde (esta|anda|queda|se metio)|sabes donde|has visto a|viste a)\b/;
+// Sonsacar (dialogue §11): pedir que cuente lo de alguien, y con qué maniobra.
+const PROBE = /\b(contame|cuentame|decime|dime|que sabes de|que pasa con|que hay de|lo de)\b/;
+const VIA_FEIGN =
+  /\b(ya (me )?(contaron|dijeron|se|sabemos)|ya lo se|todos (lo )?saben|ya me entere)\b/;
+const VIA_SIDEWAYS = /\b(de casualidad|por casualidad|de paso|de pasada|por curiosidad)\b/;
+const VIA_TRADE = /\b(yo te cuento|a cambio te cuento|secreto por secreto|te cuento un secreto)\b/;
 const REQUEST =
   /\b(dame|dam[eé]lo|podes darme|me das|me daria[sn]?|necesito|presta(me)?|pasame|regalame|dejame)\b/;
 const DEAD = /\b(murio|esta muert[oa]|fallecio|lo mataron|la mataron)\b/;
@@ -177,6 +188,14 @@ function blurred(r: ArgueReason): ArgueReason {
   return r.kind === "relation" ? { kind: "relation", with: null } : r;
 }
 
+/** La maniobra con que se pregunta, si se nota una (dialogue §11); de frente no lleva marca. */
+function viaOf(norm: string): { readonly via?: ElicitTechnique } {
+  if (VIA_TRADE.test(norm)) return { via: "trade_secret" };
+  if (VIA_FEIGN.test(norm)) return { via: "feign_knowledge" };
+  if (VIA_SIDEWAYS.test(norm)) return { via: "sideways" };
+  return {};
+}
+
 /** Lo que el oyente entiende de `text`; con `clarity` baja, solo capta lo grueso (dialogue §5). */
 export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   const norm = normalize(text);
@@ -202,10 +221,11 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
     const b = blur ? null : termIn(right, lex);
     return gives ? { kind: "offer", give: a, want: b } : { kind: "offer", give: b, want: a };
   }
-  if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who };
+  if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who, ...viaOf(norm) };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };
   }
+  if (who !== null && !blur && PROBE.test(norm)) return { kind: "ask", about: who, ...viaOf(norm) };
   if (INSULT_CUTTING.test(norm)) return { kind: "insult", sting: INSULT_CUTTING_STING };
   if (INSULT_PLAIN.test(norm)) return { kind: "insult", sting: INSULT_PLAIN_STING };
   if (FLATTER_BOLD.test(norm)) return { kind: "flatter", excess: FLATTER_BOLD_EXCESS };

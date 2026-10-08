@@ -46,6 +46,47 @@
     "lines": ["No sé dónde anda {name}.", "Ni idea de {name}, hace rato que no lo veo."]
   },
   {
+    "id": "ask.secret.revealed.dead",
+    "lines": [
+      "Está bien, te lo digo: {name} murió, y no quería que se supiera.",
+      "No sé por qué te lo cuento... pero {name} ya no está."
+    ],
+    "formal": ["Se lo diré: {name} ha muerto, y se prefería callarlo."]
+  },
+  {
+    "id": "ask.secret.revealed.alive",
+    "lines": [
+      "Está bien, te lo digo: {name} vive. No se lo cuentes a nadie.",
+      "No sé por qué te lo cuento... pero {name} está vivo."
+    ],
+    "formal": ["Se lo diré: {name} vive, pero le ruego discreción."]
+  },
+  {
+    "id": "ask.secret.revealed.other",
+    "lines": [
+      "Está bien, te lo cuento. Pero que quede entre nosotros.",
+      "Me ganaste... sí, hay algo de {name}."
+    ]
+  },
+  {
+    "id": "ask.secret.partial",
+    "lines": ["Algo sé de {name}, pero no me pidas más.", "Hay algo de {name}... mejor no sigo."],
+    "formal": ["Algo sé de {name}, pero no diré más."]
+  },
+  {
+    "id": "ask.secret.evaded",
+    "lines": [
+      "¿De {name}? Ni idea, che. ¿Y vos qué andás preguntando?",
+      "Cambiemos de tema, ¿querés?"
+    ],
+    "formal": ["Preferiría hablar de otra cosa."]
+  },
+  {
+    "id": "ask.secret.refused",
+    "lines": ["De eso no hablo.", "No es asunto tuyo, y no insistas."],
+    "formal": ["No hablaré de ese asunto."]
+  },
+  {
     "id": "tell.dead",
     "lines": [
       "Qué desgracia lo de {name}. Gracias por avisarme.",

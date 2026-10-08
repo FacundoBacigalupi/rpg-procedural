@@ -18,6 +18,7 @@ import {
   type ActionCatalog,
   BELIEFS,
   type Belief,
+  BODY_STATE,
   type BondDef,
   beliefConfidenceAt,
   believed,
@@ -54,6 +55,7 @@ import {
   recollect,
   relationship,
   type ScheduleRequest,
+  SECRETS,
   type SpaceGraph,
   type SpeechAct,
   type SpeechLine,
@@ -61,6 +63,7 @@ import {
   type StateChange,
   type StatusDef,
   sameValue,
+  secretAbout,
   setComponent,
   sincerityOf,
   standardize,
@@ -346,6 +349,55 @@ function regardOf(
   };
 }
 
+/**
+ * Lo que el oyente pone al guardar un secreto cuando le preguntan por él (dialogue §7, §11): el
+ * costo de que salga es el del secreto marcado; el dominio de sí y el olfato salen del
+ * temperamento, la emoción de lo reactivo, el cansancio del cuerpo, y confianza y afecto de la
+ * relación; la habilidad de quien sonsaca, de su sociabilidad. Sin secreto sobre ese alguien, nada.
+ */
+function keepOf(
+  truth: ReadonlyWorldTruth,
+  o: ConverseOptions,
+  act: Extract<SpeechAct, { kind: "ask" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick },
+  feel: { trust: number; affection: number },
+  z: Readonly<Record<string, number>>,
+): NonNullable<Parameters<typeof decideReply>[0]["keep"]> | undefined {
+  const { me, speaker, now } = ctx;
+  if (act.about === null) return undefined;
+  const secret = secretAbout(truth.get(SECRETS, me), act.about);
+  if (!secret) return undefined;
+  const innate = truth.get(INNATE, speaker);
+  const sz = innate
+    ? standardize(innate, o.traits, truth.get(PERSON, speaker)?.sex ?? "female")
+    : {};
+  const own = secret.attr === "alive" ? ownBelief(truth, me, act.about, now) : undefined;
+  const side = (x: number) => Math.min(1, Math.max(-1, x));
+  return {
+    state: {
+      stakes: unit(secret.stakes),
+      discipline: unit(0.5 + 0.5 * clampTemper(z["control"] ?? 0)),
+      arousal: unit(KEEP_AROUSAL * Math.max(0, clampTemper(z["reactivity"] ?? 0))),
+      intoxication: 0,
+      fatigue: unit(truth.get(BODY_STATE, me)?.fatigue ?? 0),
+      pain: 0,
+      trust: side(feel.trust),
+      affection: side(feel.affection),
+      believesKnown: 0,
+      insight: unit(0.5 + 0.5 * clampTemper(z["perception"] ?? 0)),
+    },
+    skill: unit(0.4 + 0.2 * clampTemper(sz["sociability"] ?? 0)),
+    salience: KEEP_SALIENCE,
+    offered: KEEP_OFFERED,
+    ...(own && typeof own.value === "boolean" ? { fact: own.value ? "alive" : "dead" } : {}),
+  } as const;
+}
+
+/** Constantes sin calibrar del sonsacar: emoción de lo reactivo, cuánto pega un nombre, secreto ofrecido. */
+const KEEP_AROUSAL = 0.4;
+const KEEP_SALIENCE = 0.8;
+const KEEP_OFFERED = 0.5;
+
 /** Constantes sin calibrar de lo que el oyente cree que puede hacer ante una amenaza. */
 const THREAT_DEMAND_COST = 0.3;
 const THREAT_ESCAPE = 0.4;
@@ -432,6 +484,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       MEMORIES.name,
       INNATE.name,
       CREDIT.name,
+      SECRETS.name,
+      BODY_STATE.name,
       PERSON.name,
       PERSON_NAME.name,
       LOCATION.name,
@@ -512,6 +566,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 ),
               }
             : {}),
+          ...(act.kind === "ask"
+            ? (() => {
+                const keep = keepOf(truth, o, act, { me, speaker, now: ctx.now }, feel, z);
+                return keep ? { keep } : {};
+              })()
+            : {}),
           rankAbove: above,
           temper: {
             warmth: clampTemper(z["warmth"] ?? 0),
@@ -552,6 +612,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       if (reply.accepted) {
         changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
       }
+      // Lo que soltó entero queda como dicho en quien preguntó (con quién y cuándo, no como verdad).
+      if (reply.told) {
+        changes.push(setComponent(HEARD, speaker, hear(truth.get(HEARD, speaker), reply.told)));
+      }
       const good = reply.give ? goodById(reply.give.good) : undefined;
       const regard = regardEffect(reply);
       const event: EventDraft = {
@@ -584,6 +648,19 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 }
               : {}),
             ...(regard ? { regard } : {}),
+            ...(reply.secret
+              ? {
+                  keep: {
+                    about: reply.secret.about,
+                    outcome: reply.secret.result.outcome,
+                    chance: reply.secret.result.chance,
+                    noticedProbing: reply.secret.result.noticedProbing,
+                    trustDelta: reply.secret.result.trustDelta,
+                    wariness: reply.secret.result.wariness,
+                    tell: reply.secret.result.tell,
+                  },
+                }
+              : {}),
           },
           // Un pedido fiado: el proceso del crédito abre la deuda con este dato.
           ...(reply.give?.credit && good

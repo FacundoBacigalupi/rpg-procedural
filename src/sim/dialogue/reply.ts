@@ -28,6 +28,7 @@ import {
   insultOffense,
   judgeFlattery,
 } from "./regard.ts";
+import { askSecret, type KeeperState, type KeepResult } from "./secrets.ts";
 import {
   type ThreatAftermath,
   type ThreatInput,
@@ -96,6 +97,19 @@ export interface ReplyInput {
     readonly flattery?: FlatteryInput;
     readonly insult?: InsultInput;
   };
+  /**
+   * Si el oyente guarda un secreto sobre aquel por quien le preguntan (dialogue §7, §11): su estado
+   * de ese momento, la habilidad de quien sonsaca, cuánto pega el tema y, con `trade_secret`, cuánto
+   * vale el secreto ofrecido. Sin esto la pregunta es una pregunta común.
+   */
+  readonly keep?: {
+    readonly state: KeeperState;
+    readonly skill: number;
+    readonly salience: number;
+    readonly offered?: number;
+    /** Lo que el oyente cree del secreto, si se puede decir en una palabra (vive o murió). */
+    readonly fact?: "dead" | "alive";
+  };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -163,6 +177,10 @@ export interface Reply {
   readonly flattery?: FlatteryResult;
   /** El insulto como ofensa (tamaño, brecha, testigos); qué hace el ofendido es de quien lo cablea. */
   readonly offense?: Offense;
+  /** Lo que el oyente le soltó a quien preguntó: queda como dicho en quien preguntó. */
+  readonly told?: HeardClaim;
+  /** La pregunta por un secreto: cómo la contestó quien lo guarda (`askSecret`) y sobre quién. */
+  readonly secret?: { readonly about: AgentId; readonly result: KeepResult };
   /** Si cree haber sorprendido una mentira: lo que guarda (ver `recordCaught`). */
   readonly caught?: CaughtLie;
 }
@@ -203,6 +221,30 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     case "ask": {
       if (a.about === null) return say("ask.unclear");
       const name = i.nameOf(a.about);
+      if (i.keep) {
+        const result = askSecret(
+          i.keep.state,
+          {
+            technique: a.via ?? "direct",
+            skill: i.keep.skill,
+            ...(i.keep.offered !== undefined ? { offered: i.keep.offered } : {}),
+          },
+          i.keep.salience,
+          i.rng.fork("keep"),
+        );
+        const line =
+          result.outcome === "revealed"
+            ? `ask.secret.revealed.${i.keep.fact ?? "other"}`
+            : `ask.secret.${result.outcome}`;
+        return {
+          ...say(line, { name }),
+          secret: { about: a.about, result },
+          // Lo que soltó entero queda como dicho por él (con quién y cuándo), no como verdad.
+          ...(result.outcome === "revealed" && i.keep.fact
+            ? { told: { about: a.about, claim: i.keep.fact, from: i.listener, at } }
+            : {}),
+        };
+      }
       const seen = i.direct(a.about);
       if (seen && "where" in seen) return say(`ask.at.${seen.where}`, { name });
       if (seen) return say("ask.dead", { name });
