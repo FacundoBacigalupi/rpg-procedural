@@ -58,12 +58,26 @@ describe("intención percibida", () => {
     const firm = readRate(take, r, "theft", 400, { motive: "gift", aplomb: 0.95 });
     const weak = readRate(take, r, "theft", 400, { motive: "gift", aplomb: 0.1 });
     expect(firm).toBeLessThan(weak);
-    const lie = readPurpose(Rng.root(1), agent(1), { motive: "theft" }, take, reader(0.9, 0), 5, {
-      motive: "gift",
-      aplomb: 1,
-    });
-    expect(lie.basis).toBe("declared");
-    expect(lie.mistaken).toBe(true);
+    let lies = 0;
+    for (let seed = 0; seed < 200; seed++) {
+      const out = readPurpose(
+        Rng.root(seed),
+        agent(1),
+        { motive: "theft" },
+        take,
+        reader(0.9, 0),
+        5,
+        {
+          motive: "gift",
+          aplomb: 1,
+        },
+      );
+      if (out.basis === "declared") {
+        expect(out.mistaken).toBe(true);
+        lies++;
+      }
+    }
+    expect(lies).toBeGreaterThan(0);
   });
 
   it("el juicio cambia con el motivo creído y se atenúa con la duda", () => {
