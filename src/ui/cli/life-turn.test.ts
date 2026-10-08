@@ -139,7 +139,7 @@ describe("la aldea vive y el turno se corta por lo que el personaje percibe", ()
     if (!mother) return; // el seed 7 da un personaje con madre; si cambia, el caso no aplica
     const died = (): Event => ({
       id: makeId("event", 999_999),
-      tick: life.now,
+      tick: life.now + 12 * 3600, // mediodía: de noche solo se ve «vago»
       kind: "body.died",
       actors: [mother],
       place: { kind: "cell", cell: w.map.cell },

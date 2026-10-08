@@ -176,7 +176,7 @@ describe("planeta", () => {
   it("hash fijo: si cambia sin querer, cambió la física o el motor (ARCHITECTURE §7.4)", () => {
     // Si el cambio es a propósito (otra física, otro contenido), actualizar el hash.
     expect(planetDigest(planet(1, 6))).toBe(
-      "944f30d2f029b62009eb607af8f37c5a1ce272dc6fbb41f4129560835d4d9fe1",
+      "7d4762ff20cac4bd2c96ea5463c1b9260d41c8695b7e31dba91f08fb967c3d21",
     );
   });
 
@@ -217,6 +217,26 @@ describe("planeta", () => {
       { numRuns: 40 },
     );
   });
+
+  it("calibración: la lluvia en tierra es parecida a la de la Tierra y los interiores no son todo desierto", () => {
+    // Medido a 175 km por celda (8 seeds, 2026-10-08): media en tierra 500-640 mm, 23-32 % bajo 100 mm.
+    for (const seed of [1, 2, 3]) {
+      const p = generatePlanet({ seed, biomes, spacingKm: 175 });
+      let n = 0;
+      let sum = 0;
+      let arid = 0;
+      for (let c = 0; c < p.grid.size; c++) {
+        if ((p.tectonics.elevation[c] as number) <= 0) continue;
+        const P = p.climate.precipitation[c] as number;
+        n++;
+        sum += P;
+        if (P < 100) arid++;
+      }
+      expect(sum / n).toBeGreaterThan(350);
+      expect(sum / n).toBeLessThan(900);
+      expect(arid / n).toBeLessThan(0.4);
+    }
+  }, 60_000);
 
   it("todo río baja hasta el mar sin ciclos", () => {
     for (const seed of [1, 2, 3]) {
