@@ -222,7 +222,8 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
       - Los sucesos de cada año se ordenan por día, así ninguna causa queda después de su efecto.
     - **El jugador:** un nacimiento de la aldea vivo con 14-16 años al empezar, elegido con `fork("player", "birth")`.
     - **Siembra en la verdad:** `seedVillage` escribe en `WorldTruth` las fichas, `family.person`, el genoma, lo innato y los hogares.
-    - **Resultado** con el contenido actual (seeds 1-5): 51-83 vivos, 11-24 hogares, 81-147 nacimientos.
+    - **Primer año de vida (2026-10-08):** el riesgo del primer año corre desde el nacimiento. Antes el bebé no estaba en riesgo hasta el año siguiente y la mortalidad infantil medida era 4-10 % contra el 17-19 % de la tabla. Ahora el tramo que cae en el año del nacimiento se decide al agendar el parto (`infant-death`) y al empezar el año siguiente solo se aplica el resto del primer año.
+    - **Resultado** con el contenido actual (seeds 1-12): 28-73 vivos, mortalidad infantil 13-22 %, natalidad 32-43 ‰ y mortalidad 22-33 ‰ (aldea joven que crece ~0,5 % anual); sin extinciones.
     - **Pendiente de calibración:** la mortalidad y la fecundidad son tablas preindustriales genéricas, y todavía no las varían la cultura, el bioma ni el hambre.
 - **Fase 3:** familias completas: atracción y uniones, matrimonio como compromiso con normas culturales (forma, dote, residencia), concepción, embarazo y parto con riesgo, crianza que forma lo adquirido, hogares que se arman y se parten, herencia de bienes y deudas con disputas, paternidad como creencia, hijos ilegítimos como secretos, enfermedades hereditarias.
 - **Fase 4:** herencia de la aptitud de cultivo y de las raíces por elemento, ambiente prenatal, fertilidad de cultivadores, compañeros del Dao y cultivo dual, sellos sobre la herencia de cultivadores.

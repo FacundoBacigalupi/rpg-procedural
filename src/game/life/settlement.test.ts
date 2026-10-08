@@ -102,7 +102,10 @@ describe("la aldea inicial", () => {
     }
     const again = settlementSpaces(truth, terrain.site.hex);
     expect(again).toEqual(world.spaces);
-    expect(world.spaces.spaces.length).toBeGreaterThan(truth.ids(HOUSEHOLD).length);
+    const aliveHouseholds = truth
+      .ids(HOUSEHOLD)
+      .filter((id) => truth.get(ENTITY, id)?.endedAt === undefined);
+    expect(world.spaces.spaces.length).toBeGreaterThan(aliveHouseholds.length);
   });
 
   it("retomar la vida da el mismo grafo desde lo guardado", () => {

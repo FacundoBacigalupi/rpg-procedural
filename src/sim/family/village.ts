@@ -23,6 +23,7 @@ import {
   makeId,
   type PlaceRef,
   type PlanetClock,
+  pow,
   type Random,
   Rng,
   type Seed,
@@ -135,7 +136,9 @@ type Happening =
   | { day: number; order: 0; kind: "bride"; husband: AgentId }
   | { day: number; order: 0; kind: "married-out"; woman: AgentId }
   | { day: number; order: 1; kind: "birth"; mother: AgentId }
-  | { day: number; order: 2; kind: "death"; person: AgentId };
+  | { day: number; order: 2; kind: "death"; person: AgentId }
+  /** Muere el bebé que nace ese mismo año de `mother` (a lo sumo hay uno por año). */
+  | { day: number; order: 2; kind: "infant-death"; mother: AgentId };
 
 export function villagePopulation(input: VillagePopulationInput): VillagePopulation {
   const { seed, site, traits, demography: demo } = input;
@@ -367,8 +370,11 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
 
     const deathDay = new Map<AgentId, number>();
     for (const p of living) {
-      const q = band(demo.mortality, ageAt(p, start));
-      if (q && r.chance(q[p.sex])) {
+      const age = ageAt(p, start);
+      const q = band(demo.mortality, age);
+      // Al bebé del año anterior le queda lo que falta de su primer año de riesgo.
+      const risk = q && (age < 1 ? 1 - pow(1 - q[p.sex], 1 - age) : q[p.sex]);
+      if (q && risk !== undefined && r.chance(risk)) {
         const day = r.int(0, days - 1);
         deathDay.set(p.id, day);
         happenings.push({ day, order: 2, kind: "death", person: p.id });
@@ -386,7 +392,18 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
       const rate = (band(demo.fertility, ageAt(w, start))?.rate ?? 0) * fertilityFactor;
       if (!r.chance(rate)) continue;
       const day = r.int(0, days - 1);
-      if (aliveOn(w.id, day)) happenings.push({ day, order: 1, kind: "birth", mother: w.id });
+      if (!aliveOn(w.id, day)) continue;
+      happenings.push({ day, order: 1, kind: "birth", mother: w.id });
+      // El primer año de vida corre desde el nacimiento: lo que cae dentro de este año se
+      // decide acá (el resto, al empezar el siguiente).
+      const q0 = band(demo.mortality, 0);
+      if (q0) {
+        const risk = 1 - pow(1 - (q0.female + q0.male) / 2, (days - day) / days);
+        if (r.chance(risk)) {
+          const dead = r.int(day, days - 1);
+          happenings.push({ day: dead, order: 2, kind: "infant-death", mother: w.id });
+        }
+      }
     }
 
     // Uniones entre solteros de la aldea que no son parientes cercanos.
@@ -427,6 +444,7 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
       if (aliveOn(m.id, day)) happenings.push({ day, order: 0, kind: "bride", husband: m.id });
     }
 
+    const newborn = new Map<AgentId, AgentId>();
     happenings.sort((a, b) => a.day - b.day || a.order - b.order || compareHappening(a, b));
     for (const h of happenings) {
       const tick = start + h.day * clock.day;
@@ -439,6 +457,17 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
             of: "natural",
           });
           endPerson(p, tick, ev, "died");
+          break;
+        }
+        case "infant-death": {
+          const childId = newborn.get(h.mother);
+          const child = childId === undefined ? undefined : person(childId);
+          if (!child || child.end !== null) break;
+          const ev = emit(tick, "person.died", [child.id], because(child.origin), {
+            age: ageAt(child, tick),
+            of: "natural",
+          });
+          endPerson(child, tick, ev, "died");
           break;
         }
         case "married-out": {
@@ -491,6 +520,7 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
           const birth = emit(tick, "family.birth", [], because(mother.union));
           const child = newPerson(sex, tick, birth, tick, mother.household, { mother, father });
           patchActors(events, birth, [child.id, mother.id, father.id]);
+          newborn.set(mother.id, child.id);
           if (r.chance(demo.maternalDeath)) {
             const ev = emit(tick, "person.died", [mother.id], because(birth), {
               age: ageAt(mother, tick),
@@ -570,7 +600,7 @@ function compareHappening(a: Happening, b: Happening): number {
         ? h.husband
         : h.kind === "married-out"
           ? h.woman
-          : h.kind === "birth"
+          : h.kind === "birth" || h.kind === "infant-death"
             ? h.mother
             : h.person;
   const ka = Number(key(a).slice(6));

@@ -15,7 +15,7 @@ import { checkInvariants, WorldTruth } from "../world/index.ts";
 import { DEMOGRAPHY } from "./demography.ts";
 import { expressInnate, founderGenome, type Genome, inheritGenome, TRAITS } from "./genome.ts";
 import { seedVillage } from "./tables.ts";
-import { type VillagePopulation, villagePopulation } from "./village.ts";
+import { BIRTH_AGE_SLACK, type VillagePopulation, villagePopulation } from "./village.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -157,8 +157,17 @@ describe("pre-corrida de la aldea", () => {
       expect(player?.end).toBeNull();
       expect(player?.mother).not.toBeNull();
       const age = ageAt(player?.born ?? 0, v.now);
-      expect(age).toBeGreaterThanOrEqual(14);
-      expect(age).toBeLessThanOrEqual(16);
+      // Si nadie nacido en la aldea tiene 14-16, se elige al más cercano a esa edad.
+      const inWindow = v.people.some((p) => {
+        const a = ageAt(p.born, v.now);
+        return p.end === null && p.mother !== null && a >= 14 && a <= 16;
+      });
+      if (inWindow) {
+        expect(age).toBeGreaterThanOrEqual(14);
+        expect(age).toBeLessThanOrEqual(16);
+      } else {
+        expect(Math.abs(age - 15)).toBeLessThanOrEqual(BIRTH_AGE_SLACK + 1);
+      }
       expect(v.households.find((h) => h.id === player?.household)?.members).toContain(v.player);
     }
   }, 120_000);
