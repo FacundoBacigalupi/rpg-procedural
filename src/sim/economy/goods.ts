@@ -42,4 +42,4 @@ export const ROTTED = "rotted";
 /** Lo que rinde el campo (calibración abierta: ROADMAP Hito 1c; después, por estación y suelo). */
 export const HARVEST_GOOD: LedgerUnit = ledgerUnit("good:grain");
 /** Gramos de grano por hora de trabajo medio en el campo. */
-export const HARVEST_GRAMS_PER_HOUR = 150;
+export const HARVEST_GRAMS_PER_HOUR = 110;
