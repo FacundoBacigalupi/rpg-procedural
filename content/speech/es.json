@@ -115,6 +115,64 @@
     "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."]
   },
   {
+    "id": "threat.yield",
+    "lines": [
+      "Está bien, está bien... no hace falta eso. Lo hago.",
+      "No me amenaces. Hago lo que pedís, pero no me gusta."
+    ],
+    "formal": ["Está bien, haré lo que pide. Pero no era necesario."]
+  },
+  {
+    "id": "threat.defy",
+    "lines": ["¿Vos y quién más? No te tengo miedo.", "Probá, a ver si te animás."],
+    "formal": ["Haga lo que tenga que hacer; no le temo."]
+  },
+  {
+    "id": "threat.flee",
+    "lines": ["Se va casi corriendo, sin decir nada más."]
+  },
+  {
+    "id": "threat.call_help",
+    "lines": ["¡Ayuda! ¡Que alguien venga!", "¡Auxilio, me quiere hacer daño!"]
+  },
+  {
+    "id": "threat.denounce",
+    "lines": [
+      "Eso se lo voy a contar a quien corresponda.",
+      "Esto no queda así; voy a hablar con los que mandan."
+    ]
+  },
+  {
+    "id": "threat.stall",
+    "lines": ["Te mira en silencio, con la mandíbula apretada.", "No dice nada, pero no lo olvida."]
+  },
+  {
+    "id": "flatter.pleased",
+    "lines": ["Ah, qué amable sos... gracias.", "Qué cosas decís. Se agradece."],
+    "formal": ["Es muy amable; se lo agradezco."]
+  },
+  {
+    "id": "flatter.flat",
+    "lines": ["Mm, gracias.", "Sí, sí. Gracias."]
+  },
+  {
+    "id": "flatter.hollow",
+    "lines": ["No me vengas con chamuyo, ¿qué querés?", "Tanto elogio me suena a que querés algo."],
+    "formal": ["Tanto elogio me hace pensar que busca algo."]
+  },
+  {
+    "id": "insult.hurt",
+    "lines": [
+      "¿Cómo me dijiste? Eso no te lo perdono tan fácil.",
+      "Cuidá lo que decís, que te estoy escuchando."
+    ],
+    "formal": ["Retire eso que dijo."]
+  },
+  {
+    "id": "insult.shrug",
+    "lines": ["Bah, no te hago caso.", "Decí lo que quieras."]
+  },
+  {
     "id": "other",
     "lines": ["Mm.", "Ajá.", "Te escucho."]
   },

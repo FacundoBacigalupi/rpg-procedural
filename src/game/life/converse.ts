@@ -66,6 +66,7 @@ import {
   standardize,
   type Trait,
   table,
+  threatCredibility,
   understand,
   villageCulture,
   worstDeed,
@@ -289,6 +290,129 @@ function detectionOf(
   };
 }
 
+/**
+ * Lo que el oyente pone para pesar una amenaza, un halago o un insulto (dialogue §9, §10): lo que
+ * cree de la capacidad y la disposición de quien habla sale de la relación (miedo, respeto, trato) y
+ * de lo vivido y sabido de él; la valentía, el orgullo y la vanidad, del temperamento; los testigos,
+ * de la gente que está en el lugar. Sin ley todavía en la aldea: el recurso a la autoridad es chico.
+ */
+function regardOf(
+  truth: ReadonlyWorldTruth,
+  ctx: { me: AgentId; speaker: AgentId },
+  feel: { fear: number; respect: number; trust: number; familiarity: number },
+  recollection: { bias: number },
+  reproach: boolean,
+  z: Readonly<Record<string, number>>,
+  gap: number,
+): NonNullable<Parameters<typeof decideReply>[0]["regard"]> {
+  const { me, speaker } = ctx;
+  const present = truth
+    .ids(PERSON)
+    .map((id) => id as AgentId)
+    .filter((id) => id !== me && id !== speaker && alive(truth, id) && sameSpot(truth, id, me));
+  const witnesses = present.length;
+  const sure = unit(0.3 + 0.7 * feel.familiarity);
+  const bold = clampTemper(z["boldness"] ?? 0);
+  const touchy = clampTemper(z["reactivity"] ?? 0);
+  return {
+    threat: {
+      credibility: threatCredibility({
+        capability: { level: unit(0.4 + 0.5 * feel.fear + 0.2 * feel.respect), confidence: sure },
+        disposition: {
+          level: unit(0.4 + 0.5 * Math.max(0, -recollection.bias) + (reproach ? 0.3 : 0)),
+          confidence: sure,
+        },
+      }),
+      harm: 0,
+      demandCost: THREAT_DEMAND_COST,
+      courage: unit(0.5 + 0.25 * bold + 0.15 * clampTemper(z["willpower"] ?? 0)),
+      pride: unit(0.4 + 0.2 * touchy),
+      witnesses,
+      selfConfidence: unit(0.4 + 0.2 * bold + 0.1 * clampTemper(z["constitution"] ?? 0)),
+      escape: THREAT_ESCAPE,
+      help: unit(THREAT_HELP_BASE + THREAT_HELP_EACH * witnesses),
+      recourse: THREAT_RECOURSE,
+    },
+    vindictiveness: unit(0.5 + 0.25 * touchy - 0.15 * clampTemper(z["warmth"] ?? 0)),
+    flattery: {
+      vanity: unit(0.45 + 0.2 * clampTemper(z["sociability"] ?? 0)),
+      excess: 0,
+      insight: unit(0.5 + 0.5 * clampTemper(z["perception"] ?? 0)),
+      trust: unit(feel.trust),
+      motiveKnown: false,
+      recent: 0,
+    },
+    insult: { sting: 0, truth: INSULT_TRUTH_GUESS, gap, witnesses },
+  };
+}
+
+/** Constantes sin calibrar de lo que el oyente cree que puede hacer ante una amenaza. */
+const THREAT_DEMAND_COST = 0.3;
+const THREAT_ESCAPE = 0.4;
+const THREAT_HELP_BASE = 0.2;
+const THREAT_HELP_EACH = 0.2;
+const THREAT_RECOURSE = 0.2;
+const INSULT_TRUTH_GUESS = 0.2;
+
+/**
+ * Lo que la amenaza, el halago o el insulto dejan en lo que el oyente siente por quien habló
+ * (dialogue §9, §10): deltas de la relación y, en el inspector, qué hizo y cuánta cara se jugó.
+ */
+function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | undefined {
+  if (reply.threat) {
+    const { verdict, aftermath } = reply.threat;
+    return {
+      kind: "threat",
+      response: verdict.response,
+      faceLoss: aftermath.targetFaceLoss,
+      vengeful: aftermath.vengeful,
+      deltas: {
+        fear: aftermath.fearDelta,
+        resentment: aftermath.resentmentDelta,
+        trust: aftermath.trustDelta,
+      },
+    };
+  }
+  if (reply.flattery) {
+    return {
+      kind: "flattery",
+      response: reply.flattery.kind,
+      faceLoss: 0,
+      vengeful: false,
+      deltas: { affection: reply.flattery.warmthDelta, trust: reply.flattery.trustDelta },
+    };
+  }
+  if (reply.offense) {
+    const size = reply.offense.size;
+    return {
+      kind: "insult",
+      response: reply.line,
+      faceLoss: size,
+      vengeful: false,
+      deltas: {
+        resentment: INSULT_RESENTMENT * size,
+        respect: -INSULT_RESPECT * size,
+        affection: -INSULT_AFFECTION * size,
+      },
+    };
+  }
+  return undefined;
+}
+
+/** Lo que cada punto de ofensa le saca al afecto y al respeto, y le suma al rencor (sin calibrar). */
+const INSULT_RESENTMENT = 0.5;
+const INSULT_RESPECT = 0.2;
+const INSULT_AFFECTION = 0.3;
+
+/** Lo que el `action.speak` del oyente deja dicho de una amenaza, un halago o un insulto. */
+export interface RegardEffect {
+  readonly kind: "threat" | "flattery" | "insult";
+  readonly response: string;
+  readonly faceLoss: number;
+  readonly vengeful: boolean;
+  readonly deltas: Readonly<Record<string, number>>;
+}
+
 export function converseProcess(o: ConverseOptions): ProcessDef {
   const speak = o.catalog.verb("speak");
   return {
@@ -371,6 +495,23 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 ),
               }
             : {}),
+          ...(act.kind === "threaten" || act.kind === "flatter" || act.kind === "insult"
+            ? {
+                regard: regardOf(
+                  truth,
+                  { me, speaker },
+                  feel,
+                  recollection,
+                  worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
+                  z,
+                  Math.max(
+                    0,
+                    (rankOf(truth.get(STATUS, me), o.statuses) ?? 0) -
+                      (rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0),
+                  ),
+                ),
+              }
+            : {}),
           rankAbove: above,
           temper: {
             warmth: clampTemper(z["warmth"] ?? 0),
@@ -412,6 +553,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
+      const regard = regardEffect(reply);
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -441,6 +583,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   },
                 }
               : {}),
+            ...(regard ? { regard } : {}),
           },
           // Un pedido fiado: el proceso del crédito abre la deuda con este dato.
           ...(reply.give?.credit && good

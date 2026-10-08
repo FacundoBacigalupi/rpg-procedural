@@ -8,6 +8,7 @@ import type { AgentId, Rng } from "../../core/index.ts";
 import { CREDIT_LIMIT_GRAMS } from "../contracts/index.ts";
 import type { DeedKind } from "../law/index.ts";
 import type { Vector } from "../relations/index.ts";
+import type { Offense } from "../social/index.ts";
 import type { SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -20,6 +21,20 @@ import {
 } from "./lies.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
 import { type Proposal, weighOffer } from "./offers.ts";
+import {
+  type FlatteryInput,
+  type FlatteryResult,
+  type InsultInput,
+  insultOffense,
+  judgeFlattery,
+} from "./regard.ts";
+import {
+  type ThreatAftermath,
+  type ThreatInput,
+  type ThreatVerdict,
+  threatAftermath,
+  weighThreat,
+} from "./threats.ts";
 
 /** Gramos de un bien que se dan de una vez al que lo pide. */
 export const GIFT_GRAMS = 500;
@@ -33,6 +48,8 @@ export const FORMAL_RESPECT = 0.3;
 export const FORMAL_FAMILIARITY = 0.6;
 /** Cuánto suma al respeto que quien habla tenga más rango y la cultura trate por rango. */
 export const RANK_RESPECT = 0.3;
+/** Tamaño de la ofensa desde el que un insulto duele y no se encoge de hombros. */
+export const INSULT_HURT = 0.3;
 /** Gramos por miembro que la casa no regala (la reserva para comer). */
 export const RESERVE_GRAMS_PER_MEMBER = 3000;
 
@@ -69,6 +86,16 @@ export interface ReplyInput {
    * por bueno; con esto lo juzga (`judgeStatement`) y puede dudar o acusar de mentir.
    */
   readonly detect?: DetectionInput;
+  /**
+   * Lo que el oyente pone para pesar una amenaza, un halago o un insulto (dialogue §9, §10): sin
+   * esto los toma como charla. `vindictiveness` (0-1) decide si guarda la venganza.
+   */
+  readonly regard?: {
+    readonly threat?: ThreatInput;
+    readonly vindictiveness?: number;
+    readonly flattery?: FlatteryInput;
+    readonly insult?: InsultInput;
+  };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -130,6 +157,12 @@ export interface Reply {
   readonly pledge?: { readonly good: string | null; readonly grams: number | null };
   /** Cómo juzgó el oyente lo que le contaron (solo si `detect` estaba): confianza y memoria salen de acá. */
   readonly judgement?: LieJudgement;
+  /** La amenaza pesada: qué eligió el oyente y lo que deja en la relación. */
+  readonly threat?: { readonly verdict: ThreatVerdict; readonly aftermath: ThreatAftermath };
+  /** El halago pesado (pleased/flat/hollow y lo que mueve). */
+  readonly flattery?: FlatteryResult;
+  /** El insulto como ofensa (tamaño, brecha, testigos); qué hace el ofendido es de quien lo cablea. */
+  readonly offense?: Offense;
   /** Si cree haber sorprendido una mentira: lo que guarda (ver `recordCaught`). */
   readonly caught?: CaughtLie;
 }
@@ -286,6 +319,25 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       // Pesar la razón contra lo que le importa al oyente es del cableado (`persuade`); hasta
       // entonces se la toma como charla.
       return say("other");
+    case "threaten": {
+      const input = i.regard?.threat;
+      if (!input) return say("other");
+      const verdict = weighThreat({ ...input, harm: a.harm }, i.rng.fork("threat"));
+      const aftermath = threatAftermath(verdict, input, i.regard?.vindictiveness ?? 0);
+      return { ...say(`threat.${verdict.response}`), threat: { verdict, aftermath } };
+    }
+    case "flatter": {
+      const input = i.regard?.flattery;
+      if (!input) return say("other");
+      const flattery = judgeFlattery({ ...input, excess: a.excess });
+      return { ...say(`flatter.${flattery.kind}`), flattery };
+    }
+    case "insult": {
+      const input = i.regard?.insult;
+      if (!input) return say("other");
+      const offense = insultOffense({ ...input, sting: a.sting });
+      return { ...say(offense.size >= INSULT_HURT ? "insult.hurt" : "insult.shrug"), offense };
+    }
     case "other":
       return say("other");
   }

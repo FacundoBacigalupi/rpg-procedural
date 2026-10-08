@@ -298,7 +298,12 @@ function talked(
   const [a, b] = e.actors as [AgentId | undefined, AgentId | undefined];
   const eff = (
     e.data as {
-      effect?: { kind?: string; delivered?: boolean; judged?: { trustDelta?: number } };
+      effect?: {
+        kind?: string;
+        delivered?: boolean;
+        judged?: { trustDelta?: number };
+        regard?: { deltas?: Deltas };
+      };
     } | null
   )?.effect;
   if (!a || !b || a === b || eff?.kind !== "speak" || eff.delivered === false) return;
@@ -306,6 +311,8 @@ function talked(
   // Quien oyó (a) juzgó lo que le contaron: su confianza en quien habló (b) sube o baja.
   const trust = eff.judged?.trustDelta ?? 0;
   if (trust !== 0) move(a, b, e, { trust });
+  // Una amenaza, un halago o un insulto (dialogue §9, §10): lo que dejó en lo que a siente por b.
+  if (eff.regard?.deltas) move(a, b, e, eff.regard.deltas);
   for (const [from, to] of [
     [a, b],
     [b, a],
