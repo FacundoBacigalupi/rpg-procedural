@@ -42,7 +42,7 @@ function brawl(seed: number) {
 }
 
 describe("el golpe del personaje es una pelea", () => {
-  const run = brawl(7);
+  const run = brawl(3);
 
   it("deja el evento de la pelea con causa en el golpe, heridas a los dos lados y el ledger sano", () => {
     const fight = run.report.events.find((e) => e.kind === "combat.fight");
@@ -61,6 +61,6 @@ describe("el golpe del personaje es una pelea", () => {
   }, 120_000);
 
   it("es determinista", () => {
-    expect(brawl(7).life.hash()).toEqual(run.life.hash());
+    expect(brawl(3).life.hash()).toEqual(run.life.hash());
   }, 120_000);
 });

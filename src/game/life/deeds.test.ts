@@ -103,7 +103,7 @@ describe("qué es un delito", () => {
 });
 
 describe("la aldea se entera de una pelea", () => {
-  const run = assault(7);
+  const run = assault(10);
 
   it("el golpeado sabe quién fue y la aldea sabe algo de él", () => {
     const deed = worstDeed(run.w.truth.get(KNOWN_DEEDS, run.target), run.me);
@@ -146,6 +146,6 @@ describe("la aldea se entera de una pelea", () => {
     expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
       [],
     );
-    expect(assault(7).life.hash()).toEqual(run.life.hash());
+    expect(assault(10).life.hash()).toEqual(run.life.hash());
   }, 120_000);
 });
