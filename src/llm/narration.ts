@@ -25,7 +25,7 @@ export interface NarrationRequest {
   /** Texturas sin consecuencias que puede usar (narration Â§8). */
   readonly ambience: readonly string[];
   readonly style: StyleSettings;
-  /** Lo ya narrado y cómo se nombró a cada uno (narration §6); falta en el primer turno. */
+  /** Lo ya narrado y cÃ³mo se nombrÃ³ a cada uno (narration Â§6); falta en el primer turno. */
   readonly continuity?: ContinuityView;
 }
 
