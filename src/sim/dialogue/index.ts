@@ -5,5 +5,7 @@ export * from "./lies.ts";
 export * from "./lines.ts";
 export * from "./offers.ts";
 export * from "./persuasion.ts";
+export * from "./regard.ts";
 export * from "./reply.ts";
+export * from "./threats.ts";
 export * from "./topics.ts";
