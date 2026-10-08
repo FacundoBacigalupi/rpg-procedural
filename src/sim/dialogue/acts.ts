@@ -14,6 +14,8 @@ export type SpeechAct =
   | { readonly kind: "request"; readonly good: string | null }
   /** Le cuentan que `about` murió o sigue vivo. */
   | { readonly kind: "tell"; readonly about: AgentId; readonly claim: "dead" | "alive" }
+  /** Quien habla promete devolver o dar `good` (cuántos gramos si lo dijo; null si no). */
+  | { readonly kind: "promise"; readonly good: string | null; readonly grams: number | null }
   | { readonly kind: "other" };
 
 /** Con qué palabras puede nombrar el oyente a alguien o algo. */
@@ -42,6 +44,10 @@ const DEAD = /\b(murio|esta muert[oa]|fallecio|lo mataron|la mataron)\b/;
 const ALIVE = /\b(esta vivo|esta viva|sigue vivo|sigue viva|esta bien|no murio)\b/;
 const TELL = /\b(te cuento|sabes que|me dijeron que|escuche que|te aviso|ya sabes)\b/;
 
+const PROMISE =
+  /\b(te prometo|te juro|te doy mi palabra|palabra que|te lo devuelvo|te lo pago|te devuelvo|te pago|cuenta conmigo)\b/;
+const AMOUNT = /\b(\d{1,6}) ?(kilos?|kg|gramos?|g)\b/;
+
 function mentions(norm: string, names: readonly string[]): boolean {
   return names.some((n) => {
     const w = normalize(n);
@@ -57,6 +63,11 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   // Con la voz turbia se entiende una cosa u otra, pero no el detalle: ni de quién ni de qué.
   const blur = clarity < 0.35;
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
+  if (PROMISE.test(norm)) {
+    const m = AMOUNT.exec(norm);
+    const n = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : null;
+    return { kind: "promise", good: blur ? null : good, grams: blur ? null : n };
+  }
   if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };

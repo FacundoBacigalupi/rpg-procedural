@@ -172,5 +172,23 @@
       "No te doy {what}. Lo de aquella vez todavía me pesa."
     ],
     "formal": ["No le daré {what}; no he olvidado lo ocurrido."]
+  },
+  {
+    "id": "promise.accept",
+    "lines": [
+      "Está bien, me quedo con tu palabra sobre {what}.",
+      "Bueno, confío en que cumplas con {what}."
+    ],
+    "formal": ["Acepto su palabra sobre {what}."]
+  },
+  {
+    "id": "promise.doubt",
+    "lines": ["Palabras. Ya veremos si cumplís.", "Prometer es fácil. Después hablamos."],
+    "formal": ["Lo veremos cuando llegue el momento."]
+  },
+  {
+    "id": "promise.vague",
+    "lines": ["¿Qué cosa me prometés, exactamente?", "Decime bien qué es lo que prometés."],
+    "formal": ["¿Qué es, exactamente, lo que promete?"]
   }
 ]
