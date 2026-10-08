@@ -43,6 +43,7 @@ const MAX_CHARS = {
   scene: { brief: 350, normal: 900, rich: 2400 },
   action: { brief: 300, normal: 750, rich: 1800 },
   dialogue: { brief: 350, normal: 900, rich: 2000 },
+  introspection: { brief: 300, normal: 700, rich: 1600 },
 } as const;
 const PER_ITEM = 160;
 const MIN_CHARS = 5;
@@ -157,7 +158,8 @@ export function validateNarration(
 
   // 5. Largo.
   const n = plain.trim().length;
-  const items = view.outcomes.length + view.percepts.length + view.self.cues.length;
+  const items =
+    view.outcomes.length + view.percepts.length + view.self.cues.length + view.thoughts.length;
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");
   if (n > max) problems.push(`the narration is too long (${n} characters, at most ${max})`);

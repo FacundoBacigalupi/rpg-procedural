@@ -131,7 +131,15 @@ describe("buildPlayerView", () => {
   });
 
   it("solo buildPlayerView arma una PlayerView", () => {
-    const fake = { self: { cues: [] }, scene, percepts: [], outcomes: [], labels: [], lexicon: [] };
+    const fake = {
+      self: { cues: [] },
+      scene,
+      percepts: [],
+      outcomes: [],
+      thoughts: [],
+      labels: [],
+      lexicon: [],
+    };
     const take = (v: ReturnType<typeof buildPlayerView>) => v.labels.length;
     // @ts-expect-error: sin la marca de tipo no es una PlayerView
     expect(take(fake)).toBe(0);

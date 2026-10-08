@@ -36,6 +36,24 @@ export interface SelfView {
   readonly cues: readonly SelfCue[];
 }
 
+/** Lo que el personaje piensa o siente este turno (narration §7, modo introspección). */
+export type ThoughtKind = "remember" | "ponder" | "feel";
+export type Mood = "grief" | "fear" | "longing" | "guilt" | "calm";
+
+/** Un pensamiento que le sale de la sim (su mente, no la verdad): a quién recuerda y qué siente. */
+export interface ThoughtInput {
+  readonly kind: ThoughtKind;
+  readonly about?: EntityRef;
+  readonly mood?: Mood;
+}
+
+export interface ThoughtView {
+  readonly kind: ThoughtKind;
+  /** Etiqueta local de la persona en que piensa. */
+  readonly about?: string;
+  readonly mood?: Mood;
+}
+
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
 
@@ -217,6 +235,8 @@ export interface PlayerView {
   readonly scene: SceneView;
   readonly percepts: readonly PerceptView[];
   readonly outcomes: readonly OutcomeView[];
+  /** Lo que piensa, recuerda o siente; vacío casi siempre. */
+  readonly thoughts: readonly ThoughtView[];
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -242,6 +262,7 @@ export interface ViewInput {
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
+  readonly thoughts?: readonly ThoughtInput[];
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
 }
@@ -358,11 +379,18 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     });
   }
 
+  const thoughts: ThoughtView[] = (input.thoughts ?? []).map((t) => ({
+    kind: t.kind,
+    ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
+    ...(t.mood !== undefined ? { mood: t.mood } : {}),
+  }));
+
   const view = {
     self: { cues: [...(input.self ?? [])] },
     scene: sceneView(input.scene),
     percepts,
     outcomes,
+    thoughts,
     labels,
     lexicon: [...words].sort(compareStrings),
   };

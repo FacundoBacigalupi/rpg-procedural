@@ -8,7 +8,7 @@ import type { LocalLabel, PlayerView } from "../game/index.ts";
 import type { NarrationPrefs } from "./config.ts";
 import type { ContinuityView } from "./continuity.ts";
 
-export type NarrationMode = "scene" | "action" | "dialogue";
+export type NarrationMode = "scene" | "action" | "dialogue" | "introspection";
 
 /** El estilo de un pedido (narration §7): las preferencias del usuario más el idioma de salida. */
 export interface StyleSettings extends NarrationPrefs {
@@ -38,6 +38,7 @@ export function narrationMode(view: PlayerView): NarrationMode {
   ) {
     return "dialogue";
   }
+  if (view.thoughts.length > 0) return "introspection";
   return "scene";
 }
 
@@ -57,6 +58,7 @@ function outcomeRefs(view: PlayerView): string[] {
 /** Lo que no se puede callar: a quién apuntó el personaje y lo que percibió con claridad. */
 export function mustMentionOf(view: PlayerView): string[] {
   const ids = new Set(outcomeRefs(view));
+  for (const t of view.thoughts) if (t.about !== undefined) ids.add(t.about);
   for (const p of view.percepts) {
     if (p.detail !== "vague" || p.action !== undefined || p.words !== undefined) ids.add(p.who);
   }
@@ -112,6 +114,9 @@ export function narratorSystem(style: StyleSettings): string {
     "  or in a label's `name`.",
     "- `continuity` is text the player already read. Do not repeat it. Keep what `established`",
     "  says about a label (how it was named); change it only if the request shows a change.",
+    "- `thoughts` are what the character remembers, ponders or feels (mode `introspection`): write",
+    "  it from inside, quiet and slow, with little description of the surroundings. Say only the",
+    "  `mood` given; do not invent memories, causes or facts about the person they think of.",
     "- `ambience` are textures you may use; you may also leave them out.",
     "- Quote heard words exactly as in `words` or `text`.",
     DETAIL[style.detail],
@@ -139,6 +144,7 @@ export function narratorUserMessage(request: NarrationRequest): string {
     scene: v.scene,
     self: v.self.cues,
     outcomes: v.outcomes,
+    ...(v.thoughts.length > 0 ? { thoughts: v.thoughts } : {}),
     percepts: v.percepts,
     labels: v.labels.map(labelHint),
     lexicon: v.lexicon,
