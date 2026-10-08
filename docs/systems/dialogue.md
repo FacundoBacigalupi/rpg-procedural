@@ -254,6 +254,10 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `sim/dialogue/disposition.ts` resume lo que el oyente recuerda de quien le habla (`recollect`: memorias de `memoriesAbout` y gists, tono y vividez) y su temperamento (`Temper`: calidez y reactividad). `decideReply` los suma a las dimensiones de la relación: el recuerdo desplaza la calidez, cambia el saludo (`greet.fond`, `greet.wary`) y un agravio vívido cierra el pedido (`request.refuse.remembered`); el temperamento mueve los umbrales de dar sin cuenta y de rencor. Falta: reforzar lo recordado al conversar, contar memorias al ser preguntado y que sociabilidad/honestidad/emoción entren en la elección del acto.
 
+### Implementado (2026-10-08): mentiras y `TopicStack`, parte pura
+
+`sim/dialogue/lies.ts`: la sinceridad se mide contra lo que el hablante cree (`sincerityOf`), no contra la verdad; `suspicion`/`judgeStatement` dan creído, dudado o sorprendido a partir de señales (control y nervios del mentiroso, percepción y familiaridad del oyente), del choque con lo que el oyente ya cree y de su confianza y desconfianza; un sincero también puede ser acusado. `sim/dialogue/topics.ts`: una pila por lado, con preguntas abiertas y referencias que pueden resultar ambiguas. Falta cablearlo (`converse.ts`) y el resto de §6-§11.
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).
