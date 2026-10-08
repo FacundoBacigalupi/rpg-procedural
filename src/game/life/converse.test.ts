@@ -213,3 +213,38 @@ describe("proponer un trato", () => {
     expect(w.ledger.audit()).toEqual([]);
   }, 60_000);
 });
+
+describe("amenazar, halagar e insultar a alguien de la casa", () => {
+  it("el oyente contesta con una línea de amenaza y la relación guarda el miedo o el rencor", () => {
+    const { life, w, me, other } = scene(7);
+    const dims = {
+      dims: content.all(RELATION_DIMS),
+      bonds: content.all(RELATION_BONDS),
+      schemaStrength: () => 0,
+    };
+    const before = relationship(w.truth.get(RELATIONS, other), me, life.now, dims).dims;
+    const report = life.turn(say(me, other, "Te voy a matar"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
+    expect(line?.startsWith("threat.")).toBe(true);
+    const after = relationship(w.truth.get(RELATIONS, other), me, life.now, dims).dims;
+    expect(after.fear + after.resentment).toBeGreaterThan(before.fear + before.resentment);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
+  it("un insulto baja el afecto del oyente", () => {
+    const { life, w, me, other } = scene(7);
+    const dims = {
+      dims: content.all(RELATION_DIMS),
+      bonds: content.all(RELATION_BONDS),
+      schemaStrength: () => 0,
+    };
+    const before = relationship(w.truth.get(RELATIONS, other), me, life.now, dims).dims;
+    const report = life.turn(say(me, other, "Sos un cobarde"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
+    expect(["insult.hurt", "insult.shrug"]).toContain(line);
+    const after = relationship(w.truth.get(RELATIONS, other), me, life.now, dims).dims;
+    expect(after.affection).toBeLessThan(before.affection);
+  }, 120_000);
+});

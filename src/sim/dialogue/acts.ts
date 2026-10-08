@@ -27,6 +27,12 @@ export type SpeechAct =
   | { readonly kind: "accept" | "refuse" }
   /** Un argumento para que el oyente haga o crea algo: a qué apunta (dialogue §6); `persuade` lo pesa. */
   | { readonly kind: "argue"; readonly reason: ArgueReason }
+  /** Una amenaza: cuánto daño promete (0-1: la muerte 1, una paliza 0.5, quedar mal 0.1) (dialogue §9). */
+  | { readonly kind: "threaten"; readonly harm: number }
+  /** Un halago: cuánto exagera (0-1) (dialogue §10). */
+  | { readonly kind: "flatter"; readonly excess: number }
+  /** Un insulto: lo filoso que es (0-1) (dialogue §10). */
+  | { readonly kind: "insult"; readonly sting: number }
   | { readonly kind: "other" };
 
 /**
@@ -102,6 +108,26 @@ const ACCEPT = /\b(acepto|trato hecho|de acuerdo|me parece bien|hecho|dale|esta 
 const REFUSE = /\b(no acepto|no gracias|olvidalo|no me interesa|ni hablar|no quiero)\b/;
 const SHORT_UTTERANCE_WORDS = 6;
 
+// Amenazas, halagos e insultos (dialogue §9, §10): léxico del daño prometido y de lo que se dice.
+const THREAT_DEADLY =
+  /\b(te voy a matar|te mato|o te mato|vas a morir por esto|te vas a morir|te voy a destruir)\b/;
+const THREAT_BEATING =
+  /\b(te voy a (pegar|romper|golpear|cortar)|te rompo|te pego|te golpeo|o te (rompo|pego|golpeo))\b/;
+const THREAT_PAYING =
+  /\b(me las vas a pagar|vas a pagar caro|te voy a hacer pagar|te hago pagar|ay de (vos|ti))\b/;
+const FLATTER_BOLD = /\b(no hay nadie como (vos|tu|ti)|nadie se compara|todos te admiran)\b/;
+const FLATTER_PLAIN =
+  /\b((eres|sos) (el|la) mejor|(eres|sos) (increible|admirable|asombros[oa]|sabi[oa]|valiente|talentos[oa])|que (sabi[oa]|valiente|talentos[oa]|inteligente) (eres|sos)|que bien lo haces)\b/;
+const INSULT_CUTTING =
+  /\b(cobarde|inutil|basura|miserable|no vales nada|sos un[a]? nada|eres un[a]? nada)\b/;
+const INSULT_PLAIN = /\b(idiota|estupid[oa]|imbecil|bestia|asqueros[oa]|maldit[oa]|pedazo de)\b/;
+const THREAT_PAYING_HARM = 0.4;
+const THREAT_BEATING_HARM = 0.5;
+const FLATTER_BOLD_EXCESS = 0.8;
+const FLATTER_PLAIN_EXCESS = 0.5;
+const INSULT_CUTTING_STING = 0.7;
+const INSULT_PLAIN_STING = 0.5;
+
 // El léxico de razones (dialogue §6): las frases con que se da un motivo, no un orden.
 const REASON_RELATION =
   /\b(hazlo por|hacelo por|por el bien de|piensa en|pensa en|hazlo pensando en)\b/;
@@ -158,6 +184,10 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   const good = lex.goods.find((g) => mentions(norm, g.names))?.id ?? null;
   // Con la voz turbia se entiende una cosa u otra, pero no el detalle: ni de quién ni de qué.
   const blur = clarity < 0.35;
+  // Una amenaza gana sobre el pedido que la acompaña («dame el grano o te mato»).
+  if (THREAT_DEADLY.test(norm)) return { kind: "threaten", harm: 1 };
+  if (THREAT_BEATING.test(norm)) return { kind: "threaten", harm: THREAT_BEATING_HARM };
+  if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM };
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
   if (PROMISE.test(norm)) {
     const m = AMOUNT.exec(norm);
@@ -176,6 +206,10 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };
   }
+  if (INSULT_CUTTING.test(norm)) return { kind: "insult", sting: INSULT_CUTTING_STING };
+  if (INSULT_PLAIN.test(norm)) return { kind: "insult", sting: INSULT_PLAIN_STING };
+  if (FLATTER_BOLD.test(norm)) return { kind: "flatter", excess: FLATTER_BOLD_EXCESS };
+  if (FLATTER_PLAIN.test(norm)) return { kind: "flatter", excess: FLATTER_PLAIN_EXCESS };
   const reason = reasonIn(norm, blur ? null : who);
   if (reason !== null) return { kind: "argue", reason: blur ? blurred(reason) : reason };
   const brief = norm.split(" ").length <= SHORT_UTTERANCE_WORDS;
