@@ -9,8 +9,10 @@ import {
   type Interrupt,
   type InventoryPanel,
   type Suggestion,
+  type ThinkResult,
   TONE_MARK,
 } from "../game/index.ts";
+import type { Fact } from "../sim/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -245,6 +247,61 @@ export function renderHypotheses(p: HypothesesPanel): string {
     if (l.anomalies > 0) {
       lines.push(`  Hubo ${l.anomalies} ${l.anomalies === 1 ? "vez" : "veces"} en que no cuadró.`);
     }
+  }
+  return lines.join("\n");
+}
+
+const BAND = {
+  convinced: "Estás convencido de que",
+  likely: "Lo más probable es que",
+  maybe: "Quizá",
+  hunch: "Tenés una corazonada: tal vez",
+} as const;
+
+/** Cómo se dice cada hecho del catálogo de inferencias (los ids los pone `name`). */
+function factText(f: Fact, name: (id: string) => string): string {
+  const [a = "", b = ""] = f.args;
+  switch (f.pred) {
+    case "took":
+      return `${name(a)} se llevó ${name(b)}`;
+    case "wronged":
+      return `${name(a)} fue perjudicado por ${name(b)}`;
+    case "poisoned_by":
+      return `${name(a)} fue envenenado por ${name(b)}`;
+    case "fire_at":
+      return `hay fuego en ${name(a)}`;
+    case "endangered":
+      return `${name(a)} corre peligro`;
+    case "at":
+      return `${name(a)} está en otro lado`;
+    case "alive":
+      return `${name(a)} sigue vivo`;
+    case "dead":
+      return `${name(a)} murió`;
+    default:
+      return `${f.pred.replace(/_/g, " ")} (${f.args.map(name).join(", ")})`;
+  }
+}
+
+/** El comando «pensar sobre X»: lo que concluye, con su seguridad, y cómo está al pensarlo. */
+export function renderThinking(
+  r: ThinkResult,
+  topic: string,
+  name: (id: string) => string,
+): string {
+  const lines: string[] = [];
+  if (r.state.tired) lines.push("Estás cansado y te cuesta encadenar ideas.");
+  if (r.state.afraid) lines.push("Todavía tenés el susto encima y todo te parece peor.");
+  if (r.thoughts.length === 0) {
+    lines.push(
+      r.evidence === 0
+        ? `No tenés mucho con qué pensar sobre ${topic}.`
+        : `Le das vueltas a ${topic} y no se te ocurre nada que no supieras.`,
+    );
+  }
+  for (const t of r.thoughts) {
+    const rival = t.rival === undefined ? "" : ` (o tal vez ${factText(t.rival, name)})`;
+    lines.push(`${BAND[t.band]} ${factText(t.fact, name)}${rival}.`);
   }
   return lines.join("\n");
 }
