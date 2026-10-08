@@ -5,7 +5,14 @@
 
 import { type Content, canonicalJson, type Seed, type Tick } from "../../core/index.ts";
 import { LIFE_ENGINE, Life, type LifeSetup, optionsOf } from "../../game/index.ts";
-import { checkInvariants, ENTITY, type StateHash } from "../../sim/index.ts";
+import {
+  type BeliefAccuracy,
+  beliefAccuracy,
+  checkInvariants,
+  ENTITY,
+  MEMORIES,
+  type StateHash,
+} from "../../sim/index.ts";
 
 export interface SimOptions {
   readonly seed: Seed;
@@ -47,6 +54,9 @@ export interface SimReport {
     readonly deathsByCause: Readonly<Record<string, number>>;
     readonly playerAlive: boolean;
     readonly ledgerProblems: number;
+    /** Exactitud de las creencias de todos al final de la corrida (tooling §6). */
+    readonly beliefs: BeliefAccuracy;
+    readonly memories: { readonly holders: number; readonly items: number; readonly gists: number };
   };
   readonly performance: { readonly wallMs: number; readonly msPerWorldDay: number };
   readonly hash: StateHash;
@@ -105,6 +115,14 @@ export function runSim(options: SimOptions): SimReport {
     if (w.truth.get(ENTITY, id)?.endedAt === undefined) alive++;
     else dead++;
   }
+  const memories = { holders: 0, items: 0, gists: 0 };
+  for (const id of w.truth.ids(MEMORIES)) {
+    const m = w.truth.get(MEMORIES, id);
+    if (!m) continue;
+    memories.holders++;
+    memories.items += m.items.length;
+    memories.gists += m.gists.length;
+  }
   const wallMs = wall() - started;
   const worldDays = (life.now - from) / w.clock.day;
 
@@ -123,6 +141,8 @@ export function runSim(options: SimOptions): SimReport {
       deathsByCause: sorted(causes),
       playerAlive: life.alive,
       ledgerProblems: w.ledger.audit().length,
+      beliefs: beliefAccuracy(w.truth, life.now),
+      memories,
     },
     performance: { wallMs, msPerWorldDay: worldDays > 0 ? wallMs / worldDays : 0 },
     hash: life.hash(),

@@ -14,8 +14,18 @@ import {
   type PressureId,
   parseId,
 } from "../../core/index.ts";
-import { type Life, lifePressures, playerView } from "../../game/index.ts";
-import { checkInvariants, ENTITY, type Pressure } from "../../sim/index.ts";
+import { type Life, lifePressures, PERCEPTS, playerView } from "../../game/index.ts";
+import {
+  BELIEFS,
+  beliefConfidenceAt,
+  checkInvariants,
+  ENTITY,
+  isMistaken,
+  MEMORIES,
+  type Pressure,
+  salient,
+  truthOf,
+} from "../../sim/index.ts";
 
 /** Cuántos eventos lista como máximo cada comando que recorre el registro. */
 export const INSPECT_LIMIT = 40;
@@ -24,17 +34,15 @@ export const INSPECT_LIMIT = 40;
 const LATER: Readonly<Record<string, string>> = {
   mind: "Fase 2 (npc-psychology)",
   decision: "Fase 3 (decisión de los NPC)",
-  memories: "Fase 2 (memorias)",
   believes: "Fase 2 (creencias)",
-  wrong: "Fase 2 (creencias)",
-  percepts: "Fase 2 (percepts de los NPC)",
-  rumor: "Fase 2 (información)",
+  rumor: "Fase 3 (información: rumores con linaje)",
 };
 
 export const INSPECTOR_HELP = [
   "Inspector (solo lectura; marca la vida como inspeccionada):",
   "  tables · entity <id> · find <texto> · origin <id> · why <evento> · effects <evento>",
   "  timeline [n] · body <agente> · view · ledger <cuenta> · invariants · hash",
+  "  memories [agente] · wrong [agente] · percepts [agente] [tick] · rumor <id>",
   "  pressures [tipo] · pressure <tipo> <id> · hazard",
 ].join("\n");
 
@@ -74,6 +82,12 @@ export function inspect(life: Life, line: string): string {
       return pressures(life, arg);
     case "pressure":
       return args[0] && args[1] ? pressure(life, args[0], args[1]) : "pressure <tipo> <id>";
+    case "memories":
+      return memories(life, arg ?? life.player);
+    case "wrong":
+      return wrong(life, arg);
+    case "percepts":
+      return percepts(life, arg ?? life.player, args[1]);
     case "hazard":
       return hazard(life);
     default: {
@@ -262,6 +276,112 @@ function hazard(life: Life): string {
     .sort((a, b) => b.d.hazard - a.d.hazard)
     .map(({ p, d }) => `${d.process} ← ${pressureLine(p)}: hazard ${d.hazard.toFixed(4)}`)
     .join("\n");
+}
+
+function agentArg(life: Life, id: string): AgentId | undefined {
+  const r = ref(id);
+  return r?.startsWith("agent:") && life.world.truth.has(ENTITY, r) ? (r as AgentId) : undefined;
+}
+
+const f2 = (x: number) => x.toFixed(2);
+
+/** Lo que cree que pasó contra lo que pasó (recuerdo vs evento real). */
+function memories(life: Life, id: string): string {
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const mem = life.world.truth.get(MEMORIES, who);
+  if (!mem || (mem.items.length === 0 && mem.gists.length === 0))
+    return `${who} no guarda memorias.`;
+  const now = life.now;
+  const rows = salient(mem, now).map(({ memory: m, salience }) => {
+    const real = life.world.log.get(m.eventId);
+    const differs = real && real.kind !== m.perceived.kind ? ` (real: ${real.kind})` : "";
+    return (
+      `${m.eventId} t${m.at} ${m.perceived.kind}${differs} con [${m.perceived.with.join(" ")}] ` +
+      `${m.source}${m.toldBy ? ` de ${m.toldBy}` : ""} intensidad ${f2(m.intensity)} ` +
+      `valencia ${f2(m.valence)} confianza ${f2(m.confidence)} distorsión ${f2(m.distortion)} ` +
+      `saliencia ${f2(salience)} recordada ${m.recalls}x`
+    );
+  });
+  const gists = mem.gists.map(
+    (g) =>
+      `resumen ${g.kind} con [${g.with.join(" ")}]: ${g.count}x, valencia ${f2(g.valence)}, ` +
+      `pico ${f2(g.peak)}, t${g.first}-t${g.last}, causas ${g.causes.join(" ")}`,
+  );
+  return [`${who}: ${mem.items.length} memorias, ${mem.gists.length} resúmenes`, ...rows, ...gists]
+    .slice(0, INSPECT_LIMIT * 2)
+    .join("\n");
+}
+
+/** Creencias falsas con su origen; sin argumento, cuántas tiene cada uno. */
+function wrong(life: Life, id: string | undefined): string {
+  const truth = life.world.truth;
+  const now = life.now;
+  if (!id) {
+    const rows = truth
+      .ids(BELIEFS)
+      .map((h) => {
+        const items = truth.get(BELIEFS, h)?.items ?? [];
+        return { h, bad: items.filter((b) => isMistaken(truth, b)).length, all: items.length };
+      })
+      .filter((r) => r.bad > 0)
+      .sort((a, b) => b.bad - a.bad || (a.h < b.h ? -1 : 1));
+    return rows.length === 0
+      ? "Nadie cree nada falso."
+      : rows
+          .slice(0, INSPECT_LIMIT)
+          .map((r) => `${r.h}: ${r.bad} falsas de ${r.all}`)
+          .join("\n");
+  }
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const items = truth.get(BELIEFS, who)?.items ?? [];
+  const bad = items.filter((b) => isMistaken(truth, b));
+  if (bad.length === 0) return `${who} no cree nada falso (${items.length} creencias).`;
+  return [
+    `${who}: ${bad.length} falsas de ${items.length}`,
+    ...bad.map((b) => {
+      const src = b.sources
+        .map((s) =>
+          s.kind === "percept"
+            ? `percept ${s.percept} t${s.tick}`
+            : `dicho por ${s.from} t${s.tick}`,
+        )
+        .join("; ");
+      return (
+        `${b.prop.subject}.${b.prop.attr}: cree ${JSON.stringify(b.value)}, es ` +
+        `${JSON.stringify(truthOf(truth, b))}; confianza ${f2(beliefConfidenceAt(b, now))}, ` +
+        `de t${b.asOf}; fuentes: ${src || "ninguna"}`
+      );
+    }),
+  ].join("\n");
+}
+
+/** Los percepts guardados del personaje, con lo que se leyó mal. Los NPC todavía no perciben. */
+function percepts(life: Life, id: string, from: string | undefined): string {
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const recent = life.world.truth.get(PERCEPTS, who)?.recent;
+  if (!recent) {
+    return who === life.player
+      ? "El personaje no percibió nada todavía."
+      : `${who} no guarda percepts: los NPC todavía no perciben (Fase 3, decisión de los NPC).`;
+  }
+  const since = from !== undefined && Number.isFinite(Number(from)) ? Number(from) : 0;
+  const rows = recent
+    .filter((p) => p.tick >= since)
+    .map((p) => {
+      const fields = Object.entries(p.fields)
+        .map(
+          ([k, v]) =>
+            `${k}=${JSON.stringify(v.value)}(${f2(v.confidence)}${v.mistaken ? ", FALSO" : ""})`,
+        )
+        .join(" ");
+      return `${p.id} t${p.tick} ${p.detail} por ${p.channels.join("+")} de ${
+        p.sourceEventId ?? p.sourceEntityId ?? "?"
+      }: ${fields}`;
+    });
+  return rows.length === 0 ? `${who} no tiene percepts desde t${since}.` : rows.join("\n");
 }
 
 export type { AgentId };
