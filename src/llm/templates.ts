@@ -105,6 +105,7 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
       say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
     else if (t.kind === "ponder")
       say(of ? "thought.ponder_of" : "thought.ponder", { who: ref(t.about) });
+    else if (of) say("thought.feel_of", { who: ref(t.about) });
     if (t.mood !== undefined) say(`thought.mood.${t.mood}`);
     else if (t.kind === "feel") say("thought.mood.calm");
   }

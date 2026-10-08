@@ -427,6 +427,10 @@
     "id": "thought.remember_of",
     "lines": ["Te acordás de {who}.", "Pensás en {who} y en otros tiempos."]
   },
+  {
+    "id": "thought.feel_of",
+    "lines": ["{who} te ocupa el ánimo.", "Algo en vos gira en torno a {who}."]
+  },
   { "id": "thought.ponder", "lines": ["Te quedás pensando.", "Das vueltas a lo que pasó."] },
   {
     "id": "thought.ponder_of",
