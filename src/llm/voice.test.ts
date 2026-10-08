@@ -55,7 +55,7 @@ describe("léxico del personaje", () => {
   it("lo técnico entra solo si lo cree; lo común siempre", () => {
     const peasant = characterLexicon(WORLD, new Set());
     expect(peasant.use).toEqual(["qi"]);
-    expect(peasant.avoid.map((a) => a.term)).toEqual(["Fundación", "núcleo dorado"]);
+    expect(peasant.avoid.map((a) => a.term)).toEqual(["núcleo dorado", "Fundación"]);
     const adept = characterLexicon(WORLD, new Set(["realm.foundation"]));
     expect(adept.use).toEqual(["Fundación", "qi"]);
     expect(adept.avoid.map((a) => a.term)).toEqual(["núcleo dorado"]);
@@ -77,8 +77,8 @@ describe("léxico del personaje", () => {
     const req = narrationRequest(view, style, [], { vocabulary });
     const bad = validateNarration("Pasa un cultivador de la fundación, con su núcleo dorado.", req);
     expect(bad).toEqual([
-      '"Fundación" is a term the character does not know: say "uno de esos inmortales" instead',
       '"núcleo dorado" is a term the character does not know: say "esa luz que llevan adentro" instead',
+      '"Fundación" is a term the character does not know: say "uno de esos inmortales" instead',
     ]);
     expect(
       validateNarration("Pasa uno de esos inmortales, con esa luz que llevan adentro.", req),
