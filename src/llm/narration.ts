@@ -6,6 +6,7 @@
 
 import type { LocalLabel, PlayerView } from "../game/index.ts";
 import type { NarrationPrefs } from "./config.ts";
+import type { ContinuityView } from "./continuity.ts";
 
 export type NarrationMode = "scene" | "action" | "dialogue";
 
@@ -24,6 +25,8 @@ export interface NarrationRequest {
   /** Texturas sin consecuencias que puede usar (narration Â§8). */
   readonly ambience: readonly string[];
   readonly style: StyleSettings;
+  /** Lo ya narrado y cómo se nombró a cada uno (narration §6); falta en el primer turno. */
+  readonly continuity?: ContinuityView;
 }
 
 /** El modo sale de lo que pasÃ³: un golpe es acciÃ³n; lo dicho, diÃ¡logo; el resto, escena. */
@@ -107,6 +110,8 @@ export function narratorSystem(style: StyleSettings): string {
     "  {{e2|el viejo}} or {{e1|tu madre}}. Use only the ids in `labels`. Every id in",
     "  `mustMention` has to appear at least once. Names may appear only if they are in `lexicon`",
     "  or in a label's `name`.",
+    "- `continuity` is text the player already read. Do not repeat it. Keep what `established`",
+    "  says about a label (how it was named); change it only if the request shows a change.",
     "- `ambience` are textures you may use; you may also leave them out.",
     "- Quote heard words exactly as in `words` or `text`.",
     DETAIL[style.detail],
@@ -139,5 +144,6 @@ export function narratorUserMessage(request: NarrationRequest): string {
     lexicon: v.lexicon,
     mustMention: request.mustMention,
     ambience: request.ambience,
+    ...(request.continuity !== undefined ? { continuity: request.continuity } : {}),
   });
 }
