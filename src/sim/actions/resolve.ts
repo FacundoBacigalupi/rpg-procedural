@@ -710,9 +710,14 @@ const work: Resolver = (c) => {
   const m = c.roll.margin as number;
   // Un resultado medio rinde el tiempo trabajado; el mejor, la mitad más; un desastre lastima.
   const effectiveSeconds = Math.round(c.nominal * Math.min(1.5, 2 * c.degree));
-  const effect: VerbEffect = { kind: "work", effectiveSeconds, hurt: m <= -CRITICAL_MARGIN };
-  // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
   const mk = c.input.market;
+  const effect: VerbEffect = {
+    kind: "work",
+    effectiveSeconds,
+    hurt: m <= -CRITICAL_MARGIN,
+    ...(mk?.harvestGood && mk.harvestGramsPerHour ? { gramsPerHour: mk.harvestGramsPerHour } : {}),
+  };
+  // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
   const grams =
     mk?.harvestGood && mk.harvestGramsPerHour
       ? Math.floor((mk.harvestGramsPerHour * effectiveSeconds) / 3600)

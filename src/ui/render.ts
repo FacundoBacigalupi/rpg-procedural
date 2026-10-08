@@ -5,6 +5,7 @@ import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
 import type {
   CharacterPanel,
   EnvironmentItem,
+  HypothesesPanel,
   Interrupt,
   InventoryPanel,
   Suggestion,
@@ -184,4 +185,56 @@ const CHANNEL_NAMES: Readonly<Record<EnvironmentItem["channel"], string>> = {
 export function renderEnvironment(items: readonly EnvironmentItem[]): string {
   if (items.length === 0) return "Nada te llama la atención del lugar.";
   return items.map((i) => `${CHANNEL_NAMES[i.channel]}: ${ENVIRONMENT[i.kind]}`).join("\n");
+}
+
+// --- Diario de hipótesis (discovery §14): lo que el personaje cree de cómo anda el mundo ---
+
+const CONFIDENCE: Readonly<
+  Record<HypothesesPanel["laws"][number]["hypotheses"][number]["confidence"], string>
+> = {
+  doubtful: "lo dudás mucho",
+  possible: "puede ser",
+  likely: "lo creés bastante",
+  near_certain: "estás casi seguro",
+};
+
+const SEASONS = ["la primavera", "el verano", "el otoño", "el invierno"];
+const MOONS = ["la luna nueva", "la luna creciente", "la luna llena", "la luna menguante"];
+const OUTCOMES = { poor: "poco", fair: "algo", good: "mucho" } as const;
+
+function claimText(c: HypothesesPanel["laws"][number]["hypotheses"][number]["claim"]): string {
+  if (c.kind === "none") return "no depende de nada: es cuestión de suerte";
+  if (c.kind === "moral") return "es cosa del Cielo, que da y quita según se lo merezca uno";
+  const names = c.on === "season" ? SEASONS : MOONS;
+  const [a, b] = c.high.map((k) => names[k] ?? "?");
+  return c.on === "season"
+    ? `rinde más entre ${a} y ${b}`
+    : `rinde más entre ${a} y ${b}, y menos en el resto del ciclo`;
+}
+
+const SOURCE = { tradition: "", own: " (se te ocurrió a vos)", yours: " (la propusiste)" } as const;
+
+export function renderHypotheses(p: HypothesesPanel): string {
+  if (p.laws.length === 0) return "Todavía no te pusiste a pensar cómo anda el mundo.";
+  const lines: string[] = [];
+  for (const l of p.laws) {
+    lines.push(`Lo que rinde el campo (lo viste ${l.seen} ${l.seen === 1 ? "vez" : "veces"}):`);
+    for (const h of l.hypotheses) {
+      lines.push(`  ${CONFIDENCE[h.confidence]}: ${claimText(h.claim)}${SOURCE[h.source]}`);
+    }
+    if (l.recent.length > 0) {
+      const seen = l.recent.map((o) => {
+        const when = [
+          o.season === undefined ? undefined : `en ${SEASONS[o.season]}`,
+          o.moon === undefined ? undefined : `con ${MOONS[o.moon]}`,
+        ].filter((x) => x !== undefined);
+        return `${OUTCOMES[o.outcome]}${when.length > 0 ? ` ${when.join(" ")}` : ""}`;
+      });
+      lines.push(`  Lo último que anotaste: ${seen.join("; ")}.`);
+    }
+    if (l.anomalies > 0) {
+      lines.push(`  Hubo ${l.anomalies} ${l.anomalies === 1 ? "vez" : "veces"} en que no cuadró.`);
+    }
+  }
+  return lines.join("\n");
 }

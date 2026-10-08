@@ -46,6 +46,7 @@ import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
+import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
 import { soilProcess } from "./soil.ts";
@@ -190,6 +191,7 @@ export function lifeWorld(
           bonds: parts.relationBonds,
           habits: parts.habits,
         }),
+        observeProcess({ clock: parts.clock, map: parts.map }),
         companyProcess({
           dims: parts.relationDims,
           bonds: parts.relationBonds,

@@ -1,6 +1,7 @@
 export * from "./act.ts";
 export * from "./create.ts";
 export * from "./environment.ts";
+export * from "./hypotheses.ts";
 export * from "./interrupts.ts";
 export * from "./known.ts";
 export * from "./life.ts";
