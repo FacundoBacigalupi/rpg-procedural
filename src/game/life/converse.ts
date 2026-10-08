@@ -20,6 +20,7 @@ import {
   callName,
   decideReply,
   deleteComponent,
+  dominantVariant,
   draftEvent,
   ENTITY,
   type EventDraft,
@@ -46,6 +47,7 @@ import {
   setComponent,
   table,
   understand,
+  villageCulture,
   worstDeed,
 } from "../../sim/index.ts";
 
@@ -218,9 +220,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           .filter((id) => householdOf(truth, id as AgentId) === home && alive(truth, id as AgentId))
           .length,
       );
+      // Tratar de usted a quien tiene más rango es una costumbre de la aldea (culture, etiquette).
+      const byRank = dominantVariant(villageCulture(truth), "etiquette.address") !== "uniform";
       const above =
+        byRank &&
         (rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0) >
-        (rankOf(truth.get(STATUS, me), o.statuses) ?? 0);
+          (rankOf(truth.get(STATUS, me), o.statuses) ?? 0);
       const reply = decideReply(
         {
           act: understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity),

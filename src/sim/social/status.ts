@@ -42,7 +42,9 @@ export const StatusDef = z.strictObject({
 });
 export type StatusDef = z.infer<typeof StatusDef>;
 
-export const STATUSES = defineContent("statuses", StatusDef);
+export const STATUSES = defineContent("statuses", StatusDef, (s) => [
+  { kind: "cultures", id: s.culture, at: "culture" },
+]);
 
 /** Un estatus que una comunidad reconoce en alguien, con su causa (§2). */
 export interface StatusHolding {

@@ -1,0 +1,116 @@
+[
+  {
+    "id": "village",
+    "name": "la gente de la aldea",
+    "traits": [
+      {
+        "trait": "food.staple",
+        "variants": { "flatbread": 7, "porridge": 3 },
+        "origin": "adaptation",
+        "because": "el grano se muele en la casa y el horno de barro está en cada patio"
+      },
+      {
+        "trait": "food.meals",
+        "variants": { "two": 8, "three": 2 },
+        "params": { "perDay": 2 },
+        "origin": "adaptation",
+        "because": "el trabajo en el campo no deja parar al mediodía a nadie"
+      },
+      {
+        "trait": "food.hospitality",
+        "variants": { "share_table": 9, "water_only": 1 },
+        "origin": "inertia",
+        "because": "el que llega con hambre se sienta, como se hacía cuando todos eran recién llegados"
+      },
+      {
+        "trait": "dress.rank_marks",
+        "variants": { "by_status": 1 },
+        "origin": "prestige",
+        "because": "el lino fino lo usaba la primera casa y las demás aprendieron a leerlo"
+      },
+      {
+        "trait": "kinship.residence",
+        "variants": { "patrilocal": 8, "new_house": 2 },
+        "origin": "adaptation",
+        "because": "la tierra pasa de padre a hijo y la casa se queda donde está el campo"
+      },
+      {
+        "trait": "rites.coming_of_age",
+        "variants": { "first_harvest": 1 },
+        "params": { "ageYears": 14 },
+        "origin": "adaptation",
+        "because": "desde la primera cosecha entera un hijo rinde como un adulto"
+      },
+      {
+        "trait": "funeral.rite",
+        "variants": { "burial": 9, "cremation": 1 },
+        "params": { "wakeHours": 24 },
+        "origin": "inertia",
+        "because": "los fundadores trajeron la costumbre de sus lugares y se enterraron junto al primer pozo"
+      },
+      {
+        "trait": "funeral.mourning",
+        "variants": { "white_cloth": 1 },
+        "params": { "days": 30 },
+        "origin": "inertia",
+        "because": "se hace así desde que se tiene memoria"
+      },
+      {
+        "trait": "festival.harvest",
+        "variants": { "shared_feast": 6, "thanks_to_ancestors": 4 },
+        "params": { "daysAfterHarvest": 3 },
+        "origin": "event",
+        "because": "una mala cosecha de los primeros años se superó juntando todo y se quiso recordar"
+      },
+      {
+        "trait": "norms.theft",
+        "variants": { "from_neighbor_shame": 8, "from_anyone_shame": 2 },
+        "origin": "adaptation",
+        "because": "donde todos se conocen, el que roba al vecino no vuelve a tener quien le preste"
+      },
+      {
+        "trait": "values.bias",
+        "variants": { "kin_and_land": 8, "own_luck": 2 },
+        "params": { "family": 0.2, "tradition": 0.15, "wealth": 0.05 },
+        "origin": "adaptation",
+        "because": "quien se quedó sin familia en una mala cosecha no sobrevivió"
+      },
+      {
+        "trait": "etiquette.address",
+        "variants": { "by_rank": 1 },
+        "origin": "prestige",
+        "because": "la primera casa se hacía llamar de usted y las demás lo copiaron para no ofender"
+      },
+      {
+        "trait": "humor.target",
+        "variants": { "the_landholder": 5, "the_clumsy": 5 },
+        "origin": "drift",
+        "because": "una burla de taberna que prendió y nadie recuerda quién la dijo"
+      },
+      {
+        "trait": "aesthetics.color",
+        "variants": { "undyed_earth": 8, "indigo": 2 },
+        "origin": "adaptation",
+        "because": "el añil hay que traerlo de lejos y la tierra y el lino crudo hay en la casa"
+      },
+      {
+        "trait": "practical.sowing",
+        "variants": { "by_swallows": 7, "by_moon": 3 },
+        "origin": "adaptation",
+        "because": "las golondrinas vuelven cuando la tierra ya ablandó, y eso se aprendió a fuerza de errar"
+      },
+      {
+        "trait": "gender_age.work",
+        "variants": { "split_field_hearth": 7, "shared": 3 },
+        "origin": "inertia",
+        "because": "así se repartieron las tareas los fundadores y los hijos hicieron lo que vieron"
+      },
+      {
+        "trait": "property.land_norm",
+        "variants": { "household_plots_common_pasture": 1 },
+        "origin": "event",
+        "because": "al fundarse, cada casa tomó el campo que desmontó y se dejó el pasto y el monte para todos"
+      }
+    ]
+  }
+]

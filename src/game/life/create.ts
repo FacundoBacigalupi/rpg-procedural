@@ -28,6 +28,8 @@ import {
   CONCEPTS,
   COOKED,
   COPPER,
+  CULTURE_TRAITS,
+  CULTURES,
   DEMOGRAPHY,
   EATEN,
   ENTITY,
@@ -54,6 +56,7 @@ import {
   SPEECH_LINES,
   STATUSES,
   seedBodies,
+  seedCulture,
   seedParcels,
   seedPersonNames,
   seedPlaceNames,
@@ -328,6 +331,17 @@ export function createLife(
     now: pop.now,
     households: pop.households,
     defs: statuses,
+  });
+  // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
+  const culture = content.all(CULTURES).find((c) => c.id === "village");
+  if (!culture) throw new Error("falta contenido: cultura village");
+  seedCulture(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    culture,
+    traits: content.all(CULTURE_TRAITS),
   });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {
