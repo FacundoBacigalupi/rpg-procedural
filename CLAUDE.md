@@ -58,7 +58,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo
-Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backlog de "▶ Ahora", siguiendo la **receta por ítem** que está ahí mismo.
+Si el usuario dice solo "continuá" (o similar): es el **primer `[ ]` de la fase actual** que nombra "▶ Ahora", siguiendo la **receta por ítem** y las reglas de "Cómo se trabaja" que están ahí mismo. **Una sesión = un ítem**: el usuario abre una sesión nueva por ítem. Si el ítem no entra en una sesión, se parte en sub-ítems en el ROADMAP antes de codear y se hace uno. Al terminar, el ítem queda `[x]` (nunca a medias ni con "queda X" suelto): lo no hecho pasa a ítems `[ ]` con nombre en la fase que corresponda, y "Ahora" apunta al siguiente.
 1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue (y cómo hacerlo) y "Estado del diseño" qué queda abierto.
 2. `git status` y `gh pr list` para ver ramas o PRs a medio camino (`gh` ya está en el PATH de Bash vía `~/bin/gh`).
 3. Leer el doc de sistema relevante antes de tocar código.
@@ -79,6 +79,7 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 - `npm run check`: typecheck + lint + tests, lo que se corre antes de cada PR.
 - `npm run typecheck` (`tsc`, sin emitir) · `npm run lint` (Biome + dependency-cruiser) · `npm run format` (Biome con `--write`) · `npm test` (Vitest) · `npm run test:watch`.
 - `npm run dev`: la CLI (`node src/ui/cli/main.ts`, `.ts` nativo). Opciones: `npm run dev -- --seed 42 --mode realista|novela [--frequency N] --save saves/vida.sqlite [--llm qwen3:14b [--runtime ollama] [--llm-url URL] [--think]]`; si el archivo ya tiene una vida, se sigue esa. Es la vida real (aldea, gente, cuerpo, plan del personaje); lee con la gramática sin red y narra con plantillas, o con el modelo local si se pasa `--llm` (cae a lo anterior si no contesta; generar el planeta tarda unos segundos al empezar y al retomar).
+- `npm run web -- [mismos argumentos que `dev`] [--port 5173]`: la misma vida en el navegador (http://127.0.0.1:5173): chat y paneles de personaje, inventario y bitácora. Servidor Node local con Vite + React en el mismo puerto; la lógica es `src/ui/session.ts`, compartida con la CLI.
 - `npm run worldgen -- --seed 42 [--out maps] [--width 1024]`: genera el planeta y deja un PNG por capa, `local.png` (la celda de la aldea a ~2 km por hex) y `summary.json` (con la gente de la aldea y el jugador que sale de la pre-corrida) en `maps/seed-42/` (ignorado por git).
 - `npm run llm-bench -- --models qwen3:14b[,otro] [--swap qwen3:4b] [--free] [--think] [--repeat N] [--record test/fixtures/parser]`: corre los ejemplos del parser (`content/llm/parser-examples/`) contra modelos locales (Ollama por defecto, `--runtime`/`--base-url` para otros). Imprime una tabla (válido, primer intento, aciertos por campo, latencia) y deja un reporte en `sim-reports/llm-bench/`. `--swap` mide el costo de usar un parser chico aparte del narrador; `--think` deja razonar a qwen3 (por defecto se apaga con `reasoning_effort: "none"`). El avance va a `sim-reports/llm-bench/run.log`.
 - `npm run sim -- --seed 123 --years 50 [--frequency N] [--check-days N] [--out sim-reports]`: sim headless sin jugador, con invariantes cada N días; deja `sim-<seed>.json` y, si algo se viola, `repro-<seed>.json` en `sim-reports/` (ignorado por git).
@@ -92,6 +93,7 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 5. `develop` → `main` solo al cerrar un hito, con tag. Nunca commitear directo a `main` ni `develop`.
 
 ## Convenciones
+- Finales de línea **LF** siempre (Biome falla con CRLF). En Windows no editar con Python en modo texto (escribe CRLF): usar Edit/Write. Arreglo: `npm run format` (Biome reescribe a LF) o `sed -i 's/\r$//' <archivos>`.
 - Código e identificadores en inglés; docs y conversación en español.
 - Commits: Conventional Commits (`feat(npc): ...`, `fix(sim): ...`).
 - Datos de contenido (biomas, hierbas, reinos de cultivo, nombres) en `content/` como JSON/TS validado con Zod, no hardcodeado en la lógica.

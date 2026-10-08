@@ -4,12 +4,11 @@
 // turno es exactamente lo que quedó en su cabeza. Los NPC todavía no perciben (llegan con su
 // decisión, Fase 3): cada uno sería una corrida más por evento.
 
-import type { AgentId, Event, EventId, PlanetClock, Rng } from "../../core/index.ts";
+import type { AgentId, Event, EventId, PlanetClock, Rng, Seed } from "../../core/index.ts";
 import {
   ATTENTION,
   actionStimulus,
   attireLook,
-  daylight,
   LOCATION,
   type LocalMap,
   localHour,
@@ -21,6 +20,7 @@ import {
   type SpaceGraph,
   STATUS,
   type StatusDef,
+  skyLight,
   table,
 } from "../../sim/index.ts";
 import { playerObserver } from "./witness.ts";
@@ -43,6 +43,7 @@ export interface PerceiveOptions {
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly clock: PlanetClock;
+  readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
 }
 
@@ -125,7 +126,7 @@ export function perceiveEvents(
         {
           graph: o.spaces,
           forest: o.map.forest,
-          daylight: daylight(localHour(o.clock, e.tick, o.map.lonDeg)),
+          daylight: skyLight(o.map, o.clock, o.seed, e.tick),
         },
         rng.fork(e.id),
       ),

@@ -71,6 +71,10 @@
   { "id": "percept.action.wait", "lines": ["{who} espera, quieto.", "Ves a {who} esperando."] },
   { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
+  {
+    "id": "percept.action.spare",
+    "lines": ["{who} baja la mano y deja ir a alguien.", "Ves a {who} perdonar a otro."]
+  },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
   {
     "id": "percept.action.give",
@@ -207,6 +211,20 @@
     "lines": ["Se separan jadeando, sin que ninguno gane.", "Nadie puede más y la pelea se corta."]
   },
   {
+    "id": "outcome.strike.fight.paused_wounded",
+    "lines": [
+      "Un golpe te llega y te hace doler; la pelea sigue y {target} está ahí, delante.",
+      "Te duele donde te pegó {target}, y no terminó."
+    ]
+  },
+  {
+    "id": "outcome.strike.fight.paused_foe_fleeing",
+    "lines": [
+      "{target} empieza a retroceder, como para irse; la pelea no terminó.",
+      "{target} da un paso atrás y otro, a punto de huir."
+    ]
+  },
+  {
     "id": "outcome.strike.fight.foe_down",
     "lines": ["{target} cae y no se levanta.", "{target} queda en el suelo."]
   },
@@ -234,6 +252,18 @@
     "id": "outcome.strike.fight.mine_yielded",
     "lines": ["Levantás las manos y le pedís a {target} que pare."]
   },
+  {
+    "id": "outcome.strike.finished",
+    "lines": [
+      "{target} no se defiende, y descargás el golpe igual.",
+      "Rematás a {target}, que ya se había rendido."
+    ]
+  },
+  {
+    "id": "outcome.spare.done",
+    "lines": ["Bajás la mano: a {target} lo dejás ir.", "Le perdonás la vida a {target}."]
+  },
+  { "id": "outcome.spare.anyone", "lines": ["No hay a quién perdonar."] },
   {
     "id": "outcome.strike.off_balance",
     "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]

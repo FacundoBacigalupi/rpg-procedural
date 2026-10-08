@@ -17,12 +17,14 @@ import {
   ledgerUnit,
   makeId,
   type PlaceRef,
+  Rng,
   type Seed,
   type SettlementId,
 } from "../../core/index.ts";
 import {
   ACTIONS,
   ActionCatalog,
+  assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
   CONCEPTS,
@@ -31,6 +33,8 @@ import {
   CULTURE_TRAITS,
   CULTURES,
   DEMOGRAPHY,
+  DOCTRINES,
+  dayOf,
   EATEN,
   ENTITY,
   FOODS,
@@ -38,28 +42,36 @@ import {
   generateLanguage,
   HARVEST,
   HARVEST_GOOD,
+  type Household,
+  harvestSeason,
   houseKey,
   LANGUAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
   PERSON,
+  type Person,
   PLACE,
   PLANS,
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
   RECIPES,
+  RELIGIONS,
   ROTTED,
   SKILLS,
   SkillCatalog,
+  SOIL,
+  SOIL_START,
   SPEECH_LINES,
   STATUSES,
+  type StatusDef,
   seedBodies,
   seedCulture,
   seedParcels,
   seedPersonNames,
   seedPlaceNames,
+  seedReligion,
   seedSettlement,
   seedSkills,
   seedStatus,
@@ -82,10 +94,19 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
+/** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
+export interface BirthQuery {
+  readonly sex?: "female" | "male";
+  readonly position?: "holder" | "common" | "dependent";
+}
+
 export interface LifeOptions {
+  /** El personaje pedido (modo novela); sin él, sale de la pre-corrida como en el realista. */
+  readonly birth?: BirthQuery;
   /** Menos celdas para los tests (frecuencia de la grilla); por defecto la del planeta real. */
   readonly frequency?: number;
   /** Entre qué edades sale el personaje de la pre-corrida (player-loop §2). */
@@ -93,8 +114,6 @@ export interface LifeOptions {
 }
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
-/** Gramos de grano por persona en la despensa al empezar. */
-export const LARDER_PER_MEMBER_G = 100_000;
 /** Monedas de cobre por persona al empezar (de la economía previa a la corrida; economy §2). */
 export const COINS_PER_PERSON = 40;
 
@@ -112,6 +131,17 @@ function required<T>(x: T | undefined, what: string): T {
   return x;
 }
 
+/** Las condiciones duras de una búsqueda de nacimiento (la edad la pone `playerAge`). */
+function birthFilter(q: BirthQuery, defs: readonly StatusDef[]) {
+  return (p: Person, alive: readonly Household[]): boolean => {
+    if (q.sex !== undefined && p.sex !== q.sex) return false;
+    if (q.position === undefined) return true;
+    const seats = alive.map((h) => ({ id: h.id, members: h.members.length, since: h.since }));
+    const status = assignStatuses(seats, defs).get(p.household)?.status;
+    return defs.find((d) => d.id === status)?.role === q.position;
+  };
+}
+
 /** El terreno y la pre-corrida de la aldea de este seed. */
 export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions = {}): LifeTerrain {
   const planetOptions: PlanetOptions = {
@@ -121,6 +151,7 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
   };
   const planet = generatePlanet(planetOptions);
   const site = villageSite(planet);
+  const birth = options.birth ? birthFilter(options.birth, content.all(STATUSES)) : undefined;
   const population = villagePopulation({
     seed,
     site,
@@ -130,6 +161,7 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
       "demography human.preindustrial-village",
     ),
     ...(options.playerAge === undefined ? {} : { playerAge: options.playerAge }),
+    ...(birth ? { playerFits: birth } : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
   return { village, planet, site, map: localMapOf(planet, site), population };
@@ -258,6 +290,7 @@ export function createLife(
   // Los lugares con nombre salen de las anclas del sitio, con la causa que ya traen.
   const settlement = pop.settlement as SettlementId;
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
+  truth.set(SOIL, settlement, { fertility: SOIL_START, seen: 0 });
   let place = 0;
   const named: PlaceToName[] = [];
   for (const a of site.anchors) {
@@ -343,6 +376,17 @@ export function createLife(
     culture,
     traits: content.all(CULTURE_TRAITS),
   });
+  // La religión popular, parte de esa cultura: ancestros, el pozo, una fiesta, tabúes (religion §2, §6).
+  const religion = content.all(RELIGIONS).find((r) => r.culture === culture.id);
+  if (!religion) throw new Error("falta contenido: religión de la cultura village");
+  seedReligion(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    religion,
+    doctrines: content.all(DOCTRINES),
+  });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {
     seed,
@@ -352,9 +396,20 @@ export function createLife(
     standing,
   });
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
-  // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
-  // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
-  // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
+  // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
+  // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
+  const season = harvestSeason(map.climate, clock, Rng.root(seed));
+  const startDay = dayOf(clock, pop.now + Math.round((map.lonDeg / 360) * clock.day));
+  const birthOf = new Map(pop.people.map((p) => [p.id, p.born]));
+  const larderOf = (h: { members: readonly AgentId[]; id: HouseholdId }): number =>
+    Math.round(
+      larderNeeded(
+        h.members.map((m) => (pop.now - (birthOf.get(m) ?? pop.now)) / clock.year),
+        clock,
+        season,
+        startDay,
+      ) * wealthOf(h.id),
+    );
   const grain = ledgerUnit("good:grain");
   if (foods.some((f) => f.id === "grain")) {
     const stocked = ids.next("event");
@@ -378,7 +433,7 @@ export function createLife(
           unit: grain,
           from: externalAccount("seed"),
           to: holderAccount(h.id),
-          amount: Math.round(h.members.length * LARDER_PER_MEMBER_G * wealthOf(h.id)),
+          amount: larderOf(h),
         }))
         .concat(
           pop.households

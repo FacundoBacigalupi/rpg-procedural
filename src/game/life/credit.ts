@@ -11,12 +11,10 @@ import {
   CREDIT,
   type Credit,
   type CreditRow,
-  clearDefault,
   createEntity,
   declareDefault,
   ENTITY,
   isOverdue,
-  KNOWN_DEEDS,
   lend,
   liveBetween,
   type ProcessDef,
@@ -66,13 +64,12 @@ export function creditProcess(o: CreditOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [CREDIT.name, KNOWN_DEEDS.name, ENTITY.name],
-    writes: [CREDIT.name, KNOWN_DEEDS.name, ENTITY.name],
+    reads: [CREDIT.name, ENTITY.name],
+    writes: [CREDIT.name, ENTITY.name],
     run(ctx) {
       const truth = ctx.truth;
       let rows = creditRows(truth);
       const changes: StateChange[] = [];
-      const settledNow: CreditRow[] = [];
       for (const e of ctx.recent) {
         const opened = lentBy(e);
         if (opened) {
@@ -95,16 +92,6 @@ export function creditProcess(o: CreditOptions): ProcessDef {
         for (const row of changed) {
           changes.push(setComponent(CREDIT, row.id as never, row.credit));
           rows = rows.map((r) => (r.id === row.id ? row : r));
-          if (row.credit.status === "settled") settledNow.push(row);
-        }
-      }
-      // Quien salda deja de ser «el que no paga» para todos los que lo sabían.
-      if (settledNow.length > 0) {
-        for (const id of truth.ids(KNOWN_DEEDS)) {
-          const before = truth.get(KNOWN_DEEDS, id);
-          let kept = before;
-          for (const r of settledNow) kept = clearDefault(kept, r.credit.debtor, r.credit.creditor);
-          if (kept && kept !== before) changes.push(setComponent(KNOWN_DEEDS, id, kept));
         }
       }
       return changes.length === 0 ? {} : { changes };
@@ -112,17 +99,51 @@ export function creditProcess(o: CreditOptions): ProcessDef {
   };
 }
 
-/** Un pedido fiado que el vecino concedió (lo anota `converse` en el evento). */
+/**
+ * Las deudas que estos eventos terminan de saldar (se repasan los fiados y pagos en orden, como
+ * hace `creditProcess`). Las lee `deedsProcess` para que la aldea deje de saber que no pagaba:
+ * `KNOWN_DEEDS` lo escribe un solo proceso por paso.
+ */
+export function settledIn(
+  truth: ReadonlyWorldTruth,
+  recent: readonly Event[],
+  day: Duration,
+): CreditRow[] {
+  let rows = creditRows(truth);
+  const settled: CreditRow[] = [];
+  for (const e of recent) {
+    const opened = lentBy(e);
+    if (opened) {
+      const credit = lend(opened.creditor, opened.debtor, opened.unit, opened.grams, e.tick, day);
+      rows = [...rows, { id: `opened:${e.id}`, credit }];
+      continue;
+    }
+    const paid = paidIn(e);
+    if (!paid) continue;
+    for (const row of applyPayment(rows, paid.payer, paid.to, paid.unit, paid.grams, e.id)) {
+      rows = rows.map((r) => (r.id === row.id ? row : r));
+      if (row.credit.status === "settled") settled.push(row);
+    }
+  }
+  return settled;
+}
+
+/** Un pedido fiado que el vecino concedió (lo anota `converse` o `borrowProcess` en el evento). */
 function lentBy(e: Event) {
-  if (e.kind !== "action.speak") return null;
+  if (e.kind !== "action.speak" && e.kind !== "household.borrowed") return null;
   const data = e.data as { credit?: { unit: LedgerUnit; grams: number } } | null;
   const [creditor, debtor] = e.actors as AgentId[];
   if (!data?.credit || !creditor || !debtor) return null;
   return { creditor, debtor, unit: data.credit.unit, grams: data.credit.grams };
 }
 
-/** Un `give` que pasó algo de verdad al otro. */
+/** Un `give` que pasó algo de verdad al otro, o la devolución de un hogar. */
 function paidIn(e: Event) {
+  if (e.kind === "household.repaid") {
+    const pay = (e.data as { payment?: { unit: LedgerUnit; grams: number } } | null)?.payment;
+    const [payer, to] = e.actors as AgentId[];
+    return payer && to && pay ? { payer, to, unit: pay.unit, grams: pay.grams } : null;
+  }
   if (e.kind !== "action.give") return null;
   const eff = (
     e.data as { effect?: { kind?: string; to?: string; good?: LedgerUnit; grams?: number } } | null

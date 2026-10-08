@@ -153,7 +153,14 @@ function deathOf(plan: BodyPlanDef, body: Body): DeathCause | null {
 }
 
 /** Un paso de `h` horas que termina en `at`. */
-function step(plan: BodyPlanDef, body: Body, h: number, at: Tick, out: Happening[]): Body {
+function step(
+  plan: BodyPlanDef,
+  body: Body,
+  h: number,
+  at: Tick,
+  out: Happening[],
+  ambientC: number,
+): Body {
   const ph = plan.physiology;
   const load = ACTIVITY_LOAD[body.activity];
   const scale = body.massKg / ph.refMassKg;
@@ -227,9 +234,20 @@ function step(plan: BodyPlanDef, body: Body, h: number, at: Tick, out: Happening
     wounds.push(w);
   }
 
-  // Agua y energía: la fiebre las gasta más rápido.
-  const water = body.water + (ph.waterPerDay / 24) * load.water * h * (1 + 0.5 * fever);
-  let need = (ph.kcalPerKgDay / 24) * body.massKg * load.kcal * h * (1 + 0.2 * fever);
+  // Agua y energía: la fiebre las gasta más rápido. El agua va a la medida de la masa (un bebé
+  // de 4 kg no pierde los 2,4 L del adulto: se moría de sed en una noche).
+  // El calor da sed y el frío da hambre (weather §5; con ropa de aldea, sin abrigo especial).
+  const heat = 1 + HEAT_WATER * Math.max(0, ambientC - COMFORT_HIGH_C);
+  const chill = 1 + COLD_KCAL * Math.max(0, COMFORT_LOW_C - ambientC);
+  const water =
+    body.water +
+    (ph.waterPerDay / 24) *
+      (body.massKg / ph.refMassKg) *
+      load.water *
+      h *
+      (1 + 0.5 * fever) *
+      heat;
+  let need = (ph.kcalPerKgDay / 24) * body.massKg * load.kcal * h * (1 + 0.2 * fever) * chill;
   let glycogen = body.glycogen;
   let fat = body.fat;
   let muscle = body.muscle;
@@ -285,6 +303,16 @@ function stepSeconds(body: Body): number {
   return 3600;
 }
 
+/** Temperatura que siente el cuerpo (°C) a un tick: afuera con el tiempo del día, adentro amortiguada. */
+export type AmbientTemp = (at: Tick) => number;
+const COMFORT_LOW_C = 10;
+const COMFORT_HIGH_C = 24;
+const COMFORTABLE: AmbientTemp = () => 18;
+/** Más agua por hora por cada grado sobre el confort (calibración abierta, Hito 1c). */
+const HEAT_WATER = 0.03;
+/** Más energía por hora por cada grado bajo el confort. */
+const COLD_KCAL = 0.015;
+
 /**
  * Lleva el cuerpo hasta `to`. Si muere en el camino se detiene ahí, con la causa fisiológica y la
  * cadena (las heridas que lo causaron, o el estado si fue hambre o sed).
@@ -294,12 +322,13 @@ export function advanceBody(
   entity: AgentId,
   body: Body,
   to: Tick,
+  ambient: AmbientTemp = COMFORTABLE,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
   while (b.death === null && b.updatedAt < to) {
     const at = Math.min(to, b.updatedAt + stepSeconds(b));
-    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings);
+    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at));
     const consciousness = consciousnessOf(plan, b, at);
     if (consciousness !== b.consciousness) {
       const why = collapseCauses(plan, entity, b);

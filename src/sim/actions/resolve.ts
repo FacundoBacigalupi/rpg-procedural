@@ -61,11 +61,26 @@ import {
 import type { FactorKey, FailureModeId } from "./catalog.ts";
 import { refTokens } from "./refs.ts";
 
+/** Lo que pesa en el rumbo de un tramo: la visibilidad y los hitos que se ven (travel §11.3). */
+export interface Bearing {
+  /** Multiplica la chance de torcer el rumbo (`bearingFactor`; 1 = día claro, campo abierto). */
+  readonly factor: number;
+  /** Hexes con un hito a la vista (la aldea, el agua); vacío si no hay luz para verlos. */
+  readonly landmarks: ReadonlySet<number>;
+}
+
+/** A cuántos hexes se distingue un hito. */
+export const LANDMARK_SIGHT_HEXES = 2;
+
 /** Lo que el mundo le da al resolver además de lo que necesita la tirada. */
 export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
   /** El hex adonde va `move` (el del lugar del argumento, ya elegido por quien arma el paso). */
   readonly destination?: number | undefined;
+  /** Cuánto más cuesta caminar hoy por el tiempo (1 = seco y templado; `walkingFactor`). */
+  readonly walkFactor?: number | undefined;
+  /** Qué tan fácil es torcer el rumbo hoy (1 = día claro; `bearingFactor`) y qué hitos se ven. */
+  readonly bearing?: Bearing | undefined;
   /** Lo que tiene cada titular: de acá sale qué hay para tomar, ofrecer o sacar del lugar. */
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -152,6 +167,10 @@ export type VerbEffect =
       readonly reached: number | null;
       /** Se cayó o se torció algo en el camino (body lo lee cuando llegue). */
       readonly stumbled: boolean;
+      /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
+      readonly onTheWay?: boolean;
+      /** Se torció del rumbo sin notarlo: el hex donde cree estar (`reached` es donde está). */
+      readonly believedAt?: number;
     }
   | {
       readonly kind: "observe";
@@ -203,6 +222,13 @@ export type VerbEffect =
       readonly offBalance: boolean;
       /** La pelea que siguió, si la hubo (la pone `game` con `sim/combat`; el resolver no la sabe). */
       readonly fight?: FightGist;
+      /** Lo remató estando a su merced (la pone `game`: el resolver no sabe de rendiciones). */
+      readonly finished?: boolean;
+    }
+  | {
+      /** Perdonar a quien se rindió: dejarlo ir. */
+      readonly kind: "spare";
+      readonly target: EntityRef | null;
     }
   | {
       readonly kind: "trade";
@@ -286,6 +312,8 @@ export interface FightGist {
   readonly theirs: FightSide;
   readonly woundsTaken: number;
   readonly woundsDealt: number;
+  /** La pelea sigue: lo que notó que le pide decidir (combat §16). */
+  readonly paused?: "wounded" | "foe_fleeing";
 }
 
 /** Lo que el actor cree de su paso. */
@@ -376,11 +404,13 @@ export function resolve(input: ResolveInput): ActionResolution {
       .some((h) => isMoney(h.unit) === (what === "money"));
   const roll = attempt({ ...input, has });
 
-  const path =
+  const fullPath =
     def.resolver === "move" && input.destination !== undefined
       ? hexPath(input.map, actor.hex, input.destination)
       : [];
-  const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0), 0);
+  const walk = input.walkFactor ?? 1;
+  const path = legOf(input.map, fullPath, walk);
+  const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0) * walk, 0);
   const nominal = actionDuration(def, node, input.planManner, pathSeconds);
   const ctx: Ctx = {
     input,
@@ -481,9 +511,13 @@ export function resolve(input: ResolveInput): ActionResolution {
 
 /** Lo que el actor ve de un efecto cuando sabe cómo le fue: todo, salvo dónde quedó si se perdió. */
 function believedView(effect: VerbEffect): VerbEffect {
+  if (effect.kind === "move" && effect.believedAt !== undefined) {
+    // Se torció del rumbo sin notarlo: cree estar donde iba.
+    return { ...effect, reached: effect.believedAt };
+  }
   if (effect.kind === "move" && effect.reached !== effect.to) {
-    // Se cayó en el camino: sabe dónde está. Se perdió: no.
-    return effect.stumbled ? effect : { ...effect, reached: null };
+    // A mitad de viaje sabe dónde está; se cayó: también. Se perdió: no.
+    return effect.stumbled || effect.onTheWay ? effect : { ...effect, reached: null };
   }
   if (effect.kind === "search" && !effect.found && !effect.glimpsed) {
     // No lo encontró: cree que no está, esté o no.
@@ -501,6 +535,54 @@ function believedView(effect: VerbEffect): VerbEffect {
 
 const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal });
 
+/** Cuánto se camina de una vez: el viaje se parte en tramos que se pueden interrumpir (travel §2). */
+export const LEG_SECONDS = 1800;
+
+/** El primer tramo de un camino: hexes hasta juntar `LEG_SECONDS` de marcha, al menos uno. */
+export function legOf(map: LocalMap, path: readonly number[], walk = 1): number[] {
+  const leg: number[] = [];
+  let seconds = 0;
+  for (const h of path) {
+    leg.push(h);
+    seconds += (map.crossSeconds[h] ?? 0) * walk;
+    if (seconds >= LEG_SECONDS) break;
+  }
+  return leg;
+}
+
+/** Chance máxima de torcer el rumbo en un tramo a medias (se multiplica por `1 - grado`). */
+export const VEER_CHANCE = 0.6;
+
+/** Tope de la chance de torcer el rumbo, por mal que esté la visibilidad. */
+const MAX_VEER = 0.95;
+
+/** ¿Hay un hito a la vista desde `hex` (a `LANDMARK_SIGHT_HEXES` pasos como mucho)? */
+function landmarkNear(c: Ctx, hex: number): boolean {
+  const marks = c.input.bearing?.landmarks;
+  if (!marks || marks.size === 0) return false;
+  let ring = [hex];
+  const seen = new Set(ring);
+  for (let d = 0; ; d++) {
+    if (ring.some((h) => marks.has(h))) return true;
+    if (d === LANDMARK_SIGHT_HEXES) return false;
+    const next: number[] = [];
+    for (const h of ring) {
+      for (const n of c.input.map.neighbors[h] ?? []) {
+        if (seen.has(n)) continue;
+        seen.add(n);
+        next.push(n);
+      }
+    }
+    ring = next;
+  }
+}
+
+/** Un vecino de `hex` que no sea el destino ni el camino recto; si no hay, sigue en `hex`. */
+function veerFrom(c: Ctx, hex: number, to: number): number {
+  const options = (c.input.map.neighbors[hex] ?? []).filter((n) => n !== to && !c.path.includes(n));
+  return options.length > 0 ? c.rng.pick([...options].sort((a, b) => a - b)) : hex;
+}
+
 const move: Resolver = (c) => {
   const { roll, path, rng, degree } = c;
   const from = c.input.actor.hex;
@@ -512,6 +594,8 @@ const move: Resolver = (c) => {
     reached,
     stumbled,
   });
+  // El tramo termina donde termina el camino recortado; si no es el destino, sigue.
+  const legEnd = path.length === 0 ? from : (path[path.length - 1] as number);
   const at = (hex: number): StateChange[] =>
     hex === from ? [] : [setComponent(LOCATION, c.input.actor.id, { hex })];
 
@@ -524,7 +608,24 @@ const move: Resolver = (c) => {
     // Llega. Peor tirada, más lento; a medias, la forma dice por qué tardó.
     const slow = m >= SUCCESS_MARGIN ? 1 + 0.3 * (1 - degree) : roll.failure === "slip" ? 1.5 : 1.6;
     const stumbled = m < SUCCESS_MARGIN && roll.failure === "slip";
-    return { effect: effect(to, stumbled), seconds: c.nominal * slow, changes: at(to) };
+    const onTheWay = !stumbled && legEnd !== to;
+    // Rumbo: un tramo que sale a medias en un viaje que sigue puede torcerse un hex sin que
+    // el caminante lo note; el próximo tramo parte de donde está de verdad (travel §11.1).
+    // La noche, el bosque y la lluvia lo hacen más probable; si ve un hito donde quedó, sabe
+    // dónde está y no hay creencia equivocada.
+    const chance = Math.min(MAX_VEER, VEER_CHANCE * (c.input.bearing?.factor ?? 1) * (1 - degree));
+    const veer =
+      onTheWay && m < SUCCESS_MARGIN && rng.float() < chance ? veerFrom(c, legEnd, to) : legEnd;
+    const lost = veer !== legEnd && !landmarkNear(c, veer);
+    return {
+      effect: {
+        ...effect(veer, stumbled),
+        ...(onTheWay ? { onTheWay } : {}),
+        ...(lost ? { believedAt: legEnd } : {}),
+      },
+      seconds: c.nominal * slow,
+      changes: at(veer),
+    };
   }
   if (roll.failure === "slip") {
     // Se cae a mitad de camino y se queda ahí, golpeado.
@@ -668,6 +769,11 @@ const strike: Resolver = (c) => {
   };
 };
 
+const spare: Resolver = (c) => ({
+  effect: { kind: "spare", target: argEntity(c, "target") },
+  seconds: c.nominal,
+});
+
 const trade: Resolver = (c) => {
   const other = argEntity(c, "with");
   const m = c.roll.margin;
@@ -696,12 +802,12 @@ const trade: Resolver = (c) => {
     };
   }
   const found = bargain(c, other, mk, edge);
-  if (!found) {
-    // No hay trato posible: uno no tiene con qué, o el otro no vende lo que le sobra.
+  if (typeof found === "string") {
+    // Sin trato: o no hay con qué (nada que dar, o sin monedas), o hay pero no coinciden en el precio.
     return {
       effect: idle(false),
       seconds: c.nominal / 2,
-      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+      override: { outcome: "failure", failure: found, believed: "failure" },
     };
   }
   return {
@@ -748,7 +854,12 @@ interface Bargain {
  * que le queda para comer: nadie vende lo que necesita en los próximos meses ni compra de más. Si
  * el actor nombra lo que tiene encima, vende; si no, compra lo que el otro puede dar.
  */
-function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | null {
+function bargain(
+  c: Ctx,
+  other: EntityRef,
+  mk: Market,
+  edge: number,
+): Bargain | "no_means" | "no_deal" {
   const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
   const me = c.input.actor.id as HolderRef;
   const you = other as HolderRef;
@@ -799,13 +910,16 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
       maxPerKg: bidPerKg(
         base,
         foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
+        foodDays(yourPocket, foods, mk.other?.members ?? 1),
       ),
       edge,
       availableGrams: Math.min(row.amount, spare),
       buyerCoins: buyerCoinsOf(yourPocket),
       actorBuys: false,
     });
-    if (!deal) return null;
+    if (!deal)
+      return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
+
     return {
       direction: "sell",
       unit: row.unit,
@@ -818,7 +932,7 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
     };
   }
 
-  if (yourGoods.length === 0 || coinsOf(myRows) === 0) return null;
+  if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
   const base = mk.priceCopperPerKg.get(row.unit) as number;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
@@ -831,13 +945,18 @@ function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | 
   const deal = strikeDeal({
     wantGrams,
     askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
-    maxPerKg: bidPerKg(base, foodDays(merge(myRows, myLarder), foods, mk.ownMembers)),
+    maxPerKg: bidPerKg(
+      base,
+      foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
+      foodDays(myRows, foods, mk.ownMembers),
+    ),
     edge,
     availableGrams: Math.min(row.amount, spare),
     buyerCoins: coinsOf(myRows),
     actorBuys: true,
   });
-  if (!deal) return null;
+  if (!deal) return spare > 0 ? "no_deal" : "no_means";
+
   // Entrega primero lo que lleva encima y, si no alcanza, lo de la despensa.
   const pocket = yourPocket.find((r) => r.unit === row.unit)?.amount ?? 0;
   const fromPocket = Math.min(pocket, deal.grams);
@@ -1157,6 +1276,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   work,
   speak,
   strike,
+  spare,
   trade,
   give,
   take,

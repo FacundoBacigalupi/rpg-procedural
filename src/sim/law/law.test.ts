@@ -106,4 +106,14 @@ describe("huellas", () => {
     expect(traceVisible(t, 3600 as Tick)).toBe(true);
     expect(traceVisible(t, (7 * 86_400) as Tick)).toBe(false);
   });
+
+  it("la lluvia lava lo de afuera y no toca lo de adentro", () => {
+    const out = trace(bloodStrength(0.8));
+    const inside: Trace = { ...out, at: { hex: 1, space: "house:1" } };
+    const now = 3600 as Tick;
+    expect(traceVisible(out, now, 0)).toBe(true);
+    expect(traceVisible(out, now, 30)).toBe(false);
+    expect(traceStrength(out, now, 6)).toBeCloseTo(traceStrength(out, now, 0) / 2, 10);
+    expect(traceStrength(inside, now, 30)).toBe(traceStrength(inside, now, 0));
+  });
 });

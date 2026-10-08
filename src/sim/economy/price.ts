@@ -17,7 +17,7 @@ function clamp(x: number, lo: number, hi: number): number {
 /** Cuánto sube o baja el precio pedido según lo que le sobra de comida a quien vende. */
 export function scarcityFactor(daysOfFood: number): number {
   const t = clamp((daysOfFood - KEEP_DAYS) / (300 - KEEP_DAYS), 0, 1);
-  return 1.5 - 0.65 * t; // 1,5 al borde de lo que guarda; 0,85 con la despensa llena
+  return 1.35 - 0.5 * t; // 1,35 al borde de lo que guarda; 0,85 con la despensa llena
 }
 
 /** Lo que pide por kilo quien vende (monedas, sin redondear). */
@@ -25,10 +25,17 @@ export function askPerKg(base: number, sellerDays: number): number {
   return base * scarcityFactor(sellerDays);
 }
 
-/** Lo que ofrece por kilo quien compra: más cuanto menos tiene guardado. */
-export function bidPerKg(base: number, buyerDays: number): number {
+/** Días de comida encima por debajo de los cuales quien compra paga de más por llevársela. */
+export const CARRY_DAYS = 30;
+
+/**
+ * Lo que ofrece por kilo quien compra: más cuanto menos tiene guardado, y un sobreprecio por la
+ * comodidad de llevársela ya si casi no carga comida (`carryDays`, la que lleva encima).
+ */
+export function bidPerKg(base: number, buyerDays: number, carryDays = CARRY_DAYS): number {
   const need = clamp(1 - buyerDays / WANT_DAYS, 0, 1);
-  return base * (0.7 + 0.5 * need);
+  const portable = 0.5 * clamp(1 - carryDays / CARRY_DAYS, 0, 1);
+  return base * (0.7 + 0.5 * need + portable);
 }
 
 export interface Deal {

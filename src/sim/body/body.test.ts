@@ -108,6 +108,13 @@ describe("reservas", () => {
     expect(body.fat).toBe(fresh().fat);
   });
 
+  it("el agua va a la medida de la masa: un bebé no se deshidrata en una noche", () => {
+    const baby = newBody(plan, 4, 0);
+    const { body } = advanceBody(plan, me, setActivity(baby, "sleep"), 9 * HOUR);
+    expect(body.death).toBeNull();
+    expect(body.water).toBeLessThan(0.4 * plan.physiology.lethalDehydration * 4);
+  });
+
   it("sin comer se vacía el glucógeno, después la grasa, después el músculo, y muere de hambre", () => {
     let body = fresh();
     let prev = body;
@@ -229,6 +236,9 @@ describe("heridas e infección", () => {
             dirty = ingest(plan, advanceBody(plan, me, dirty, dirty.updatedAt + DAY).body, 1800, 3);
             clean = ingest(plan, advanceBody(plan, me, clean, clean.updatedAt + DAY).body, 1800, 3);
             const i = (b: Body) => b.wounds[0]?.infection ?? 0;
+            // Quien muere queda congelado en su instante: si los dos mueren el mismo día, el sucio
+            // (que muere antes) se queda con menos infección que el limpio, que siguió unas horas.
+            if (dirty.death || clean.death) break;
             if (dirty.wounds[0]?.stage !== "healed" && clean.wounds[0]?.stage !== "healed") {
               expect(i(clean)).toBeLessThanOrEqual(i(dirty) + 1e-9);
             }
@@ -431,5 +441,15 @@ describe("en el scheduler", () => {
       // La cadena llega hasta el golpe que la empezó.
       expect(a.log.ancestors(d.id).some((e) => a.log.get(e)?.kind === "strike")).toBe(true);
     }
+  });
+
+  it("el calor da más sed y el frío más hambre que el confort", () => {
+    const run = (c: number) => advanceBody(plan, me, fresh(), DAY, () => c).body;
+    const mild = run(18);
+    const hot = run(36);
+    const cold = run(-5);
+    expect(hot.water).toBeGreaterThan(mild.water);
+    expect(cold.glycogen + cold.fat).toBeLessThan(mild.glycogen + mild.fat);
+    expect(advanceBody(plan, me, fresh(), DAY).body).toEqual(mild);
   });
 });

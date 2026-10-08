@@ -29,7 +29,7 @@ Conventional Commits: `tipo(scope): descripción`
 - Ejemplo: `feat(core): RNG con seed y sub-streams`
 
 ## Versionado
-`v0.<fase>.<n>` hasta que el juego sea jugable de punta a punta. Por ejemplo, terminar la Fase 1 es `v0.1.0`.
+`v0.<fase>.<n>` hasta que el juego sea jugable de punta a punta; `<n>` cuenta los hitos y cierres de esa fase (Fase 1: `v0.1.1`, `v0.1.2` y `v0.1.3` al cerrarla; Fase 2: `v0.2.x`).
 
 ## CI (`.github/workflows/ci.yml`)
 Corre **solo** en push y PR a `main` (desde 2026-10-05: los runners de GitHub tardaban demasiado en tomar los jobs y frenaban cada PR a `develop`). En `develop` la verificación es local (`npm run typecheck && npm run lint && npm test`). El merge `develop` → `main` de cada hito sí pasa por el CI completo:

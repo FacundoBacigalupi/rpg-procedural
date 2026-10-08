@@ -47,8 +47,46 @@ export interface FightInput {
   readonly rng: Rng;
   /** El evento que arrancó la pelea: causa de cada herida. */
   readonly cause: EventId;
-  /** Tope de pulsos antes de que se separen (calibración abierta). */
+  /** Tope de pulsos antes de que se separen (calibración abierta); cuenta la pelea entera. */
   readonly maxPulses?: number;
+  /**
+   * El peleador que maneja el jugador: la pelea se pausa cuando algo que él percibe lo pide
+   * (combat §16) y devuelve en `paused` con qué retomarla.
+   */
+  readonly control?: AgentId;
+  /** Retomar una pelea pausada: lo que cada uno traía y los pulsos que ya corrieron. */
+  readonly resume?: FightSnapshot;
+}
+
+/** Lo que de cada peleador no sale de su cuerpo ni de su carácter: sirve para retomar. */
+export interface FighterSnapshot {
+  readonly id: AgentId;
+  readonly at: Vec2;
+  readonly phase: Phase;
+  readonly until: Tick;
+  readonly target: AgentId | null;
+  readonly breath: number;
+  readonly balance: number;
+  readonly alert: boolean;
+  readonly woundsTaken: number;
+  readonly landed: number;
+  readonly odds: number;
+}
+
+export interface FightSnapshot {
+  /** Pulsos que ya corrieron en toda la pelea. */
+  readonly pulses: number;
+  /** El tick del próximo pulso. */
+  readonly next: Tick;
+  readonly fighters: readonly FighterSnapshot[];
+}
+
+/** Por qué se pausó: lo que el peleador de `control` nota (combat §16, el jugador no ve la verdad). */
+export type PauseReason = "wounded" | "foe_fleeing";
+
+export interface FightPause {
+  readonly reason: PauseReason;
+  readonly snapshot: FightSnapshot;
 }
 
 export type FighterOutcome = "standing" | "down" | "dead" | "fled" | "yielded";
@@ -93,6 +131,8 @@ export interface FightResult {
   readonly seconds: number;
   readonly end: FightEnd;
   readonly log: readonly FightLogEntry[];
+  /** La pelea sigue y quien la maneja tiene que decidir: no es un final. */
+  readonly paused?: FightPause;
 }
 
 /** Alcance de un puño, metros. */
@@ -103,6 +143,10 @@ export const STRIDE = 1.5;
 export const ESCAPE_DISTANCE = 14;
 /** Pulsos por defecto antes de separarse (un minuto y medio: las peleas reales son cortas). */
 export const MAX_PULSES = 90;
+/** Severidad desde la que una herida propia se nota en plena pelea y no la tapa la adrenalina (calibración abierta). */
+export const PAIN_NOTICE = 0.2;
+/** Pulsos mínimos entre dos pausas, para no pedirle una decisión por golpe (calibración abierta). */
+export const PAUSE_MIN_PULSES = 3;
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const dist = (a: Vec2, b: Vec2) => hypot(a.x - b.x, a.y - b.y);
@@ -193,7 +237,8 @@ function oddsOf(s: State, rival: State, light: number): number {
 
 /** Hace la pelea. Las entradas no se tocan: el resultado trae los cuerpos nuevos. */
 export function runFight(input: FightInput): FightResult {
-  const maxPulses = input.maxPulses ?? MAX_PULSES;
+  const base = input.resume?.pulses ?? 0;
+  const maxPulses = (input.maxPulses ?? MAX_PULSES) - base;
   const states = new Map<AgentId, State>();
   for (const f of [...input.fighters].sort((a, b) => (a.id < b.id ? -1 : 1))) {
     const body = setActivity(f.body, "heavy");
@@ -219,6 +264,20 @@ export function runFight(input: FightInput): FightResult {
       odds: 0.5,
     });
   }
+  for (const saved of input.resume?.fighters ?? []) {
+    const s = states.get(saved.id);
+    if (!s) continue;
+    s.at = saved.at;
+    s.phase = saved.phase;
+    s.until = saved.until;
+    s.target = saved.target;
+    s.breath = saved.breath;
+    s.balance = saved.balance;
+    s.alert = saved.alert;
+    s.woundsTaken = saved.woundsTaken;
+    s.landed = saved.landed;
+    s.odds = saved.odds;
+  }
   const order = [...states.values()];
   const log: FightLogEntry[] = [];
   const foes = (s: State) => order.filter((o) => o.side !== s.side && active(o));
@@ -226,6 +285,9 @@ export function runFight(input: FightInput): FightResult {
 
   let pulse = 0;
   let end: FightEnd = "decided";
+  let paused: PauseReason | null = null;
+  let noticed: PauseReason | null = null;
+  const control = input.control === undefined ? undefined : states.get(input.control);
   for (; hostile(); pulse++) {
     if (pulse >= maxPulses) {
       end = "separated";
@@ -263,7 +325,7 @@ export function runFight(input: FightInput): FightResult {
         a.target = null;
         continue;
       }
-      const rng = input.rng.fork("fight", pulse, a.id, "exchange");
+      const rng = input.rng.fork("fight", base + pulse, a.id, "exchange");
       const frozen = snapshot.get(d.id) as { phase: Phase; alert: boolean };
       const inReach = dist(a.at, d.at) <= FIST_REACH * 1.25;
       // Ver venir el golpe (§4.3): la vista, la luz, lo que se nota y el ojo de quien defiende.
@@ -303,7 +365,7 @@ export function runFight(input: FightInput): FightResult {
     }
     for (const b of blows.sort((x, y) => (x.from.id < y.from.id ? -1 : 1))) {
       if (b.to.body.death) continue;
-      const rng = input.rng.fork("fight", pulse, b.from.id, "blow");
+      const rng = input.rng.fork("fight", base + pulse, b.from.id, "blow");
       const aimed = b.from.skill > 0.35 && rng.chance(b.from.skill);
       const zones = AIM[b.from.intent];
       const zone = aimed ? Object.keys(zones)[rng.weighted(Object.values(zones))] : undefined;
@@ -383,6 +445,27 @@ export function runFight(input: FightInput): FightResult {
     for (const s of order) {
       if (s.phase === "recover" && s.until <= t + 1) s.phase = "ready";
     }
+
+    // 4. Lo que nota quien maneja el jugador pide una decisión (combat §16): una herida que
+    // siente o un rival que empieza a huir. Lo que no percibe no pausa.
+    if (control && active(control) && hostile()) {
+      for (const l of log) {
+        if (l.t !== t) continue;
+        if (l.kind === "hit" && l.target === control.id && (l.severity ?? 0) >= PAIN_NOTICE) {
+          noticed ??= "wounded";
+        } else if (l.kind === "flee" && l.actor !== control.id) {
+          const sees = clamp01(control.caps.sight * (0.3 + 0.7 * input.light));
+          if (input.rng.fork("fight", t, control.id, "pause").chance(sees)) {
+            noticed ??= "foe_fleeing";
+          }
+        }
+      }
+      if (noticed && pulse + 1 >= PAUSE_MIN_PULSES) {
+        paused = noticed;
+        pulse++;
+        break;
+      }
+    }
   }
 
   // El tiempo que pasó de verdad: hasta el último pulso resuelto.
@@ -398,6 +481,30 @@ export function runFight(input: FightInput): FightResult {
     seconds: pulse,
     end,
     log,
+    ...(paused
+      ? {
+          paused: {
+            reason: paused,
+            snapshot: {
+              pulses: base + pulse,
+              next: finish,
+              fighters: order.map((s) => ({
+                id: s.id,
+                at: s.at,
+                phase: s.phase,
+                until: s.until,
+                target: s.target,
+                breath: s.breath,
+                balance: s.balance,
+                alert: s.alert,
+                woundsTaken: s.woundsTaken,
+                landed: s.landed,
+                odds: s.odds,
+              })),
+            },
+          },
+        }
+      : {}),
   };
 }
 

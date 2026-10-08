@@ -1,8 +1,14 @@
 // Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../../core/index.ts";
-import type { CharacterPanel, Interrupt, InventoryPanel } from "../../game/index.ts";
+import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
+import type {
+  CharacterPanel,
+  EnvironmentItem,
+  Interrupt,
+  InventoryPanel,
+  Suggestion,
+} from "../game/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -132,4 +138,50 @@ export function renderInterrupt(i: Interrupt): string {
 export function renderJournal(entries: readonly { tick: Tick; text: string }[]): string {
   if (entries.length === 0) return "La bitácora está vacía.";
   return entries.map((e) => `${renderStatus(e.tick)}\n${e.text}`).join("\n\n");
+}
+
+// --- Opciones sugeridas y entorno (player-loop, ampliación 2026-10-08) ---
+// Las etiquetas salen de plantillas; con red las redactaría el narrador con lista blanca.
+
+const SUGGESTION_LABELS: Readonly<Record<Suggestion["kind"], string>> = {
+  drink: "Beber",
+  eat: "Comer",
+  tend: "Atenderte la herida",
+  sleep: "Dormir hasta que amanezca",
+  rest: "Descansar una hora",
+  work: "Trabajar unas horas",
+  talk: "Hablar con",
+  look: "Mirar alrededor",
+  wait: "Esperar una hora",
+};
+
+export function renderSuggestion(s: Suggestion): string {
+  const label = SUGGESTION_LABELS[s.kind];
+  return s.with === undefined ? label : `${label} tu ${s.with}`;
+}
+
+const ENVIRONMENT: Readonly<Record<EnvironmentItem["kind"], string>> = {
+  dark: "está oscuro",
+  dim: "hay poca luz",
+  bright: "hay mucha luz",
+  rain: "se oye la lluvia",
+  snow: "cae nieve",
+  wind: "se oye el viento",
+  freezing: "hace un frío que duele",
+  cold: "hace frío",
+  cool: "está fresco",
+  warm: "hace calor",
+  hot: "el calor aprieta",
+};
+
+const CHANNEL_NAMES: Readonly<Record<EnvironmentItem["channel"], string>> = {
+  sight: "vista",
+  hearing: "oído",
+  touch: "tacto",
+  smell: "olfato",
+};
+
+export function renderEnvironment(items: readonly EnvironmentItem[]): string {
+  if (items.length === 0) return "Nada te llama la atención del lugar.";
+  return items.map((i) => `${CHANNEL_NAMES[i.channel]}: ${ENVIRONMENT[i.kind]}`).join("\n");
 }

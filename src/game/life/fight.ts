@@ -5,14 +5,17 @@
 
 import type { AgentId, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import {
+  atMercyOf,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  deleteComponent,
   ENTITY,
   type EventDraft,
   type FighterOutcome,
   type FightGist,
   type FightIntent,
+  type FightSnapshot,
   INNATE,
   PERSON,
   type ReadonlyWorldTruth,
@@ -23,8 +26,35 @@ import {
   setComponent,
   standardize,
   type Trait,
+  table,
   verbSkill,
+  YIELDED,
+  type Yielded,
 } from "../../sim/index.ts";
+
+/** Una pelea pausada del personaje: contra quién y con qué retomarla (combat §16). */
+export interface PausedFight {
+  readonly foe: AgentId;
+  readonly snapshot: FightSnapshot;
+  /** El evento de la pelea que arrancó, causa de las heridas que siguen. */
+  readonly event: EventId;
+}
+
+export const FIGHT_STATE = table<PausedFight>("combat.fight_state");
+
+/** Cuánto aguanta la pausa: pasado esto la pelea se enfrió y se separaron (calibración abierta). */
+export const PAUSE_WINDOW = 30;
+
+/** La pelea pausada que sigue viva contra `foe`, si la hay. */
+export function livePause(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  foe: AgentId,
+  now: Tick,
+): PausedFight | undefined {
+  const p = truth.get(FIGHT_STATE, me);
+  return p && p.foe === foe && now - p.snapshot.next <= PAUSE_WINDOW ? p : undefined;
+}
 
 export interface StrikeFightInput {
   readonly truth: ReadonlyWorldTruth;
@@ -42,6 +72,10 @@ export interface StrikeFightInput {
   /** El evento del golpe: causa de cada herida y del evento de la pelea. */
   readonly cause: EventId;
   readonly place: PlaceRef;
+  /** Quien maneja el jugador: la pelea se pausa cuando él nota algo que pide decidir. */
+  readonly control?: boolean;
+  /** Retomar una pelea pausada. */
+  readonly resume?: PausedFight;
 }
 
 export interface StrikeFight {
@@ -62,6 +96,22 @@ export function canFight(truth: ReadonlyWorldTruth, target: AgentId): boolean {
     body !== undefined &&
     body.death === null &&
     body.consciousness !== "unconscious"
+  );
+}
+
+/** Si `target` sigue a merced de `me`. */
+export function atMyMercy(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  target: AgentId,
+  now: Tick,
+): boolean {
+  const body = truth.get(BODY_STATE, target);
+  return (
+    truth.get(ENTITY, target)?.endedAt === undefined &&
+    body !== undefined &&
+    body.death === null &&
+    atMercyOf(truth.get(YIELDED, target) as Yielded | undefined, me, now)
   );
 }
 
@@ -109,7 +159,9 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     start: i.start,
     light: i.light,
     rng: i.rng,
-    cause: i.cause,
+    cause: i.resume?.event ?? i.cause,
+    ...(i.control ? { control: i.me } : {}),
+    ...(i.resume ? { resume: i.resume.snapshot } : {}),
   });
   const mine = result.fighters.find((f) => f.id === i.me);
   const theirs = result.fighters.find((f) => f.id === i.target);
@@ -121,6 +173,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     place: i.place,
     data: {
       end: result.end,
+      ...(result.paused ? { paused: result.paused.reason } : {}),
       seconds: result.seconds,
       outcomes: { [i.me]: mine.outcome, [i.target]: theirs.outcome },
       hits: result.log
@@ -133,7 +186,31 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   return {
     seconds: result.seconds,
     myBody: mine.body,
-    changes: [setComponent(BODY_STATE, i.target, theirs.body)],
+    changes: [
+      setComponent(BODY_STATE, i.target, theirs.body),
+      // Pausada: queda guardada para retomarla; si no, se limpia lo que hubiera.
+      ...(result.paused
+        ? [
+            setComponent(FIGHT_STATE, i.me, {
+              foe: i.target,
+              snapshot: result.paused.snapshot,
+              event: i.resume?.event ?? i.cause,
+            }),
+          ]
+        : i.truth.get(FIGHT_STATE, i.me)
+          ? [deleteComponent(FIGHT_STATE, i.me)]
+          : []),
+      // Quien se rinde queda a merced del que ganó: rematarlo o perdonarlo es de ahora en más.
+      ...(theirs.outcome === "yielded" && mine.outcome === "standing"
+        ? [
+            setComponent(YIELDED, i.target, {
+              to: i.me,
+              at: i.start + result.seconds,
+              event: i.cause,
+            }),
+          ]
+        : []),
+    ],
     event,
     gist: {
       seconds: result.seconds,
@@ -141,6 +218,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
       theirs: theirs.outcome === "dead" ? "down" : (SIDE[theirs.outcome] as FightGist["theirs"]),
       woundsTaken: mine.woundsTaken,
       woundsDealt: hits(i.me),
+      ...(result.paused ? { paused: result.paused.reason } : {}),
     },
   };
 }

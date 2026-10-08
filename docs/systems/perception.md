@@ -235,3 +235,7 @@ Percibirse a uno mismo usa el mismo modelo, con el cuerpo como fuente:
 
 ## Preguntas abiertas
 - Calibración fina de las curvas de atenuación y del `k` de la sigmoide con la sim headless, contra los objetivos de arriba.
+
+## Ampliación (2026-10-08): habituación y panel de entorno
+
+Cada percept sostenido en el tiempo (un olor, un ruido de fondo, la luz) tiene una `salience` que decae con una vida media por canal: el olfato se habitúa en minutos, el oído más lento, la vista casi nada. Se renueva con un cambio (cambia la intensidad, aparece algo nuevo) o con atención deliberada del jugador. Lo habituado sigue ahí: el personaje deja de notarlo pero un percept fuerte lo vuelve a poner. El panel de entorno (player-loop) es solo la lista de percepts con saliencia alta, agrupados por canal, y es parte de `PlayerView`: nunca contiene verdad que el personaje no perciba. Calibración: vidas medias por canal y por tipo de estímulo.

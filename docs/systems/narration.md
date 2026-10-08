@@ -322,3 +322,7 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 ## Preguntas abiertas
 
 - Calibración: largo por modo; tamaño de la ventana de texto reciente; cada cuánto resumir; presupuesto de tokens por turno; qué tan estricta es la detección de nombres; cuántos ejemplos de parser hacen falta.
+
+## Ampliación (2026-10-08): no repetir lo que ya está en el panel
+
+El `NarrationRequest` recibe qué estados de ambiente ya están en el panel de entorno (player-loop) y el narrador solo los menciona si cambian o si la escena gira alrededor de ellos. Menos tokens y menos descripciones repetidas. Las etiquetas de las opciones sugeridas y el monólogo de "pensar" usan el mismo muro: solo lo que el personaje cree.

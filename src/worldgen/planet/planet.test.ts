@@ -176,7 +176,7 @@ describe("planeta", () => {
   it("hash fijo: si cambia sin querer, cambió la física o el motor (ARCHITECTURE §7.4)", () => {
     // Si el cambio es a propósito (otra física, otro contenido), actualizar el hash.
     expect(planetDigest(planet(1, 6))).toBe(
-      "944f30d2f029b62009eb607af8f37c5a1ce272dc6fbb41f4129560835d4d9fe1",
+      "7d4762ff20cac4bd2c96ea5463c1b9260d41c8695b7e31dba91f08fb967c3d21",
     );
   });
 
@@ -217,6 +217,56 @@ describe("planeta", () => {
       { numRuns: 40 },
     );
   });
+
+  it("calibración: la lluvia en tierra es parecida a la de la Tierra y los interiores no son todo desierto", () => {
+    // Medido a 175 km por celda (8 seeds, 2026-10-08): media en tierra 500-640 mm, 23-32 % bajo 100 mm.
+    for (const seed of [1, 2, 3]) {
+      const p = generatePlanet({ seed, biomes, spacingKm: 175 });
+      let n = 0;
+      let sum = 0;
+      let arid = 0;
+      for (let c = 0; c < p.grid.size; c++) {
+        if ((p.tectonics.elevation[c] as number) <= 0) continue;
+        const P = p.climate.precipitation[c] as number;
+        n++;
+        sum += P;
+        if (P < 100) arid++;
+      }
+      expect(sum / n).toBeGreaterThan(350);
+      expect(sum / n).toBeLessThan(900);
+      expect(arid / n).toBeLessThan(0.4);
+    }
+  }, 60_000);
+
+  it("calibración: el mar es la cuenca grande y los mares sin salida son lagos", () => {
+    // Antes había ~100 componentes de mar por seed (4-28 % de las celdas de océano); ahora las
+    // cuencas bajo el nivel del mar menores al 10 % de la mayor son lagos endorreicos.
+    for (const seed of [1, 2, 3]) {
+      const p = generatePlanet({ seed, biomes, spacingKm: 175 });
+      const e = p.tectonics.elevation;
+      const sea = (c: number) => (e[c] as number) <= 0 && !p.hydrology.lake[c];
+      const seen = new Uint8Array(p.grid.size);
+      const sizes: number[] = [];
+      let inland = 0;
+      for (let c = 0; c < p.grid.size; c++) {
+        if ((e[c] as number) <= 0 && p.hydrology.lake[c]) inland++;
+        if (seen[c] || !sea(c)) continue;
+        const cells = [c];
+        seen[c] = 1;
+        for (let i = 0; i < cells.length; i++) {
+          for (const m of p.grid.neighborsOf(cells[i] as number)) {
+            if (seen[m] || !sea(m)) continue;
+            seen[m] = 1;
+            cells.push(m);
+          }
+        }
+        sizes.push(cells.length);
+      }
+      const biggest = Math.max(...sizes);
+      for (const s of sizes) expect(s).toBeGreaterThanOrEqual(0.1 * biggest);
+      expect(inland).toBeGreaterThan(0);
+    }
+  }, 60_000);
 
   it("todo río baja hasta el mar sin ciclos", () => {
     for (const seed of [1, 2, 3]) {

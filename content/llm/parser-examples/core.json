@@ -466,6 +466,28 @@
     }
   },
   {
+    "id": "spare-yielded",
+    "text": "lo perdono, que se vaya",
+    "scene": "Tomás está en el suelo, con las manos arriba. Se rindió.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "spare",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "Tomás",
+              "kind": "person",
+              "features": ["Tomás"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "take-basket",
     "text": "agarro la canasta",
     "scene": "Estás en la cocina. Hay una canasta vacía sobre la mesa.",

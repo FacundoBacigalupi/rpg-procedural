@@ -1,0 +1,342 @@
+[
+  {
+    "id": "rice-polished",
+    "name": "arroz blanco",
+    "form": "good",
+    "priceCopperPerKg": 9,
+    "halfLifeDays": 1200
+  },
+  {
+    "id": "rice-husked",
+    "name": "arroz integral",
+    "form": "good",
+    "priceCopperPerKg": 8,
+    "halfLifeDays": 500
+  },
+  {
+    "id": "wheat",
+    "name": "trigo",
+    "form": "good",
+    "priceCopperPerKg": 6,
+    "halfLifeDays": 900
+  },
+  {
+    "id": "maize",
+    "name": "maíz seco",
+    "form": "good",
+    "priceCopperPerKg": 5,
+    "halfLifeDays": 900
+  },
+  {
+    "id": "barley",
+    "name": "cebada",
+    "form": "good",
+    "priceCopperPerKg": 5,
+    "halfLifeDays": 900
+  },
+  {
+    "id": "millet",
+    "name": "mijo",
+    "form": "good",
+    "priceCopperPerKg": 5,
+    "halfLifeDays": 900
+  },
+  {
+    "id": "potato",
+    "name": "papa",
+    "form": "good",
+    "priceCopperPerKg": 4,
+    "halfLifeDays": 120
+  },
+  {
+    "id": "sweet-potato",
+    "name": "batata",
+    "form": "good",
+    "priceCopperPerKg": 5,
+    "halfLifeDays": 60
+  },
+  {
+    "id": "taro",
+    "name": "taro",
+    "form": "good",
+    "priceCopperPerKg": 4,
+    "halfLifeDays": 30
+  },
+  {
+    "id": "cassava",
+    "name": "mandioca",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 3
+  },
+  {
+    "id": "lentil",
+    "name": "lentejas",
+    "form": "good",
+    "priceCopperPerKg": 12,
+    "halfLifeDays": 1500
+  },
+  {
+    "id": "soybean",
+    "name": "soja",
+    "form": "good",
+    "priceCopperPerKg": 12,
+    "halfLifeDays": 1500
+  },
+  {
+    "id": "chickpea",
+    "name": "garbanzos",
+    "form": "good",
+    "priceCopperPerKg": 12,
+    "halfLifeDays": 1500
+  },
+  {
+    "id": "apple",
+    "name": "manzana",
+    "form": "good",
+    "priceCopperPerKg": 8,
+    "halfLifeDays": 90
+  },
+  {
+    "id": "citrus",
+    "name": "naranja y limón",
+    "form": "good",
+    "priceCopperPerKg": 14,
+    "halfLifeDays": 30
+  },
+  {
+    "id": "mango",
+    "name": "mango",
+    "form": "good",
+    "priceCopperPerKg": 9,
+    "halfLifeDays": 4
+  },
+  {
+    "id": "dried-dates",
+    "name": "dátiles secos",
+    "form": "good",
+    "priceCopperPerKg": 22,
+    "halfLifeDays": 300
+  },
+  {
+    "id": "wild-berries",
+    "name": "bayas del monte",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 3
+  },
+  {
+    "id": "cabbage",
+    "name": "repollo",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 25
+  },
+  {
+    "id": "carrot",
+    "name": "zanahoria",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 60
+  },
+  {
+    "id": "leafy-greens",
+    "name": "hojas verdes (espinaca, acelga)",
+    "form": "good",
+    "priceCopperPerKg": 4,
+    "halfLifeDays": 3
+  },
+  {
+    "id": "onion",
+    "name": "cebolla",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 150
+  },
+  {
+    "id": "pumpkin",
+    "name": "zapallo",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 120
+  },
+  {
+    "id": "chili",
+    "name": "ají",
+    "form": "good",
+    "priceCopperPerKg": 10,
+    "halfLifeDays": 7
+  },
+  {
+    "id": "pork",
+    "name": "cerdo",
+    "form": "good",
+    "priceCopperPerKg": 28,
+    "halfLifeDays": 2
+  },
+  {
+    "id": "beef",
+    "name": "vaca",
+    "form": "good",
+    "priceCopperPerKg": 30,
+    "halfLifeDays": 2
+  },
+  {
+    "id": "mutton",
+    "name": "cordero",
+    "form": "good",
+    "priceCopperPerKg": 26,
+    "halfLifeDays": 2
+  },
+  {
+    "id": "chicken",
+    "name": "pollo",
+    "form": "good",
+    "priceCopperPerKg": 20,
+    "halfLifeDays": 2
+  },
+  {
+    "id": "venison",
+    "name": "carne de monte",
+    "form": "good",
+    "priceCopperPerKg": 15,
+    "halfLifeDays": 2
+  },
+  {
+    "id": "liver",
+    "name": "hígado",
+    "form": "good",
+    "priceCopperPerKg": 12,
+    "halfLifeDays": 1
+  },
+  {
+    "id": "dried-meat",
+    "name": "carne seca",
+    "form": "good",
+    "priceCopperPerKg": 60,
+    "halfLifeDays": 300
+  },
+  {
+    "id": "salt-pork",
+    "name": "cerdo salado",
+    "form": "good",
+    "priceCopperPerKg": 40,
+    "halfLifeDays": 200
+  },
+  {
+    "id": "fresh-fish",
+    "name": "pescado fresco",
+    "form": "good",
+    "priceCopperPerKg": 10,
+    "halfLifeDays": 1
+  },
+  {
+    "id": "dried-fish",
+    "name": "pescado seco",
+    "form": "good",
+    "priceCopperPerKg": 35,
+    "halfLifeDays": 250
+  },
+  {
+    "id": "seaweed",
+    "name": "algas secas",
+    "form": "good",
+    "priceCopperPerKg": 18,
+    "halfLifeDays": 400
+  },
+  {
+    "id": "milk",
+    "name": "leche",
+    "form": "good",
+    "priceCopperPerKg": 6,
+    "halfLifeDays": 1.5
+  },
+  {
+    "id": "cheese",
+    "name": "queso",
+    "form": "good",
+    "priceCopperPerKg": 40,
+    "halfLifeDays": 120
+  },
+  {
+    "id": "butter",
+    "name": "manteca",
+    "form": "good",
+    "priceCopperPerKg": 45,
+    "halfLifeDays": 30
+  },
+  {
+    "id": "yogurt",
+    "name": "yogur",
+    "form": "good",
+    "priceCopperPerKg": 8,
+    "halfLifeDays": 5
+  },
+  {
+    "id": "egg",
+    "name": "huevo",
+    "form": "good",
+    "priceCopperPerKg": 18,
+    "halfLifeDays": 25
+  },
+  {
+    "id": "honey",
+    "name": "miel",
+    "form": "good",
+    "priceCopperPerKg": 70
+  },
+  {
+    "id": "sugar",
+    "name": "azúcar",
+    "form": "good",
+    "priceCopperPerKg": 60
+  },
+  {
+    "id": "salt",
+    "name": "sal",
+    "form": "good",
+    "priceCopperPerKg": 8
+  },
+  {
+    "id": "spices",
+    "name": "especias",
+    "form": "good",
+    "priceCopperPerKg": 400,
+    "halfLifeDays": 600
+  },
+  {
+    "id": "ale",
+    "name": "cerveza floja",
+    "form": "good",
+    "priceCopperPerKg": 6,
+    "halfLifeDays": 20
+  },
+  {
+    "id": "tea",
+    "name": "té",
+    "form": "good",
+    "priceCopperPerKg": 30,
+    "halfLifeDays": 500
+  },
+  {
+    "id": "mushrooms",
+    "name": "hongos",
+    "form": "good",
+    "priceCopperPerKg": 6,
+    "halfLifeDays": 3
+  },
+  {
+    "id": "walnuts",
+    "name": "nueces",
+    "form": "good",
+    "priceCopperPerKg": 40,
+    "halfLifeDays": 200
+  },
+  {
+    "id": "chestnuts",
+    "name": "castañas",
+    "form": "good",
+    "priceCopperPerKg": 12,
+    "halfLifeDays": 40
+  }
+]

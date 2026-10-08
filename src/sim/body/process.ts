@@ -14,7 +14,7 @@ import {
   setComponent,
 } from "../scheduler/index.ts";
 import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
-import { advanceBody, type Happening } from "./physiology.ts";
+import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { BODY_STATE } from "./state.ts";
 
@@ -22,6 +22,8 @@ export interface BodyProcessOptions {
   readonly plans: readonly BodyPlanDef[];
   /** Dónde está el cuerpo, para el lugar de los eventos (lo arma `game` con el mapa local). */
   placeOf(truth: ReadonlyWorldTruth, who: AgentId): PlaceRef;
+  /** La temperatura que siente el cuerpo según dónde está (weather §5); sin ella, 18 °C parejos. */
+  ambientOf?(truth: ReadonlyWorldTruth, who: AgentId): AmbientTemp;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -67,7 +69,13 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
       }
 
       if (body.updatedAt >= ctx.now) return {};
-      const { body: next, happenings } = advanceBody(plan, me, body, ctx.now);
+      const { body: next, happenings } = advanceBody(
+        plan,
+        me,
+        body,
+        ctx.now,
+        o.ambientOf?.(ctx.truth, me),
+      );
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
       const changes: StateChange[] = [setComponent(BODY_STATE, me, next)];
       const died = happenings.findIndex((h) => h.kind === "died");

@@ -280,6 +280,22 @@
     "evidence": 1
   },
   {
+    "id": "spare",
+    "name": "perdonar",
+    "domain": "social",
+    "args": [{ "role": "target", "kind": "person", "required": true }],
+    "manners": [],
+    "requires": [{ "kind": "position", "near": "target" }],
+    "occupies": {},
+    "duration": { "kind": "fixed", "seconds": 5 },
+    "checkpoint": 5,
+    "emissions": { "sight": 0.6, "sound": 0.3 },
+    "resolver": "spare",
+    "ease": 3,
+    "failureModes": [{ "id": "not_here", "factor": "position" }],
+    "evidence": 1
+  },
+  {
     "id": "trade",
     "name": "comerciar",
     "domain": "social",

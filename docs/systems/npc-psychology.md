@@ -585,3 +585,7 @@ Tests clave:
 - Cuántas memorias por NPC de tier 2: se arranca con **20** (top-N por intensidad y relevancia) y se ajusta con la sim headless.
 - Calibración: plasticidad por etapa, prevalencias base de cada condición, tasa de resolución del duelo, distribución de umbrales en multitudes, cuántas fusiones por noche de consolidación.
 - ¿Existen en algunos mundos tratamientos metafísicos que borran trauma o memoria (técnicas, píldoras de olvido)? Propuesta: sí, como técnicas con costo (se pierden también las memorias ligadas y los esquemas que formaron).
+
+## Ampliación (2026-10-08): decisiones de niño con consecuencias
+
+Las viñetas de la infancia (player-loop) son decisiones reales dentro de los períodos sensibles: cada una mueve temperamento, esquemas y habilidades, y también deja consecuencias que aparecen años después (una promesa hecha, un vínculo, una deuda de favor, una herida mal curada). Los adultos del entorno reaccionan según lo que perciben del niño. Fase 3, junto con crianza.

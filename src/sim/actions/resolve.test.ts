@@ -26,6 +26,7 @@ import {
   type AttemptActor,
   degreeOf,
   isMoney,
+  legOf,
   PLANS,
   type ResolveInput,
   resolve,
@@ -54,6 +55,16 @@ const W = 6;
 const map: LocalMap = {
   cell: makeId("cell", 1),
   lonDeg: 0,
+  climate: {
+    cell: "c:0",
+    latDeg: 40,
+    axialTiltDeg: 23.4,
+    annualMeanC: 12,
+    seasonalRangeC: 20,
+    annualPrecipMm: 700,
+    windEast: 1,
+    windNorth: 0,
+  },
   neighbors: Array.from({ length: 2 * W }, (_, h) => {
     const row = Math.floor(h / W);
     const col = h % W;
@@ -214,16 +225,78 @@ describe("moverse", () => {
       { destination: 5, ...extra },
     );
 
-  it("de día llega, cambia la ubicación y tarda lo del camino o un poco más", () => {
+  it("de día camina un tramo, cambia la ubicación y tarda lo del tramo o un poco más", () => {
     const rs = many(200, () => go({}));
     const ok = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
     expect(ok.length).toBeGreaterThan(100);
     for (const r of ok) {
-      expect(r.effect).toMatchObject({ kind: "move", from: 0, to: 5, reached: 5 });
-      expect(r.changes).toEqual([{ op: "set", table: LOCATION.name, id: me, value: { hex: 5 } }]);
-      expect(r.seconds).toBeGreaterThanOrEqual(5 * 600);
-      expect(r.seconds).toBeLessThanOrEqual(5 * 600 * 1.3);
+      // 600 s por hex y tramos de 1800 s: tres hexes de los cinco.
+      expect(r.effect).toMatchObject({ kind: "move", from: 0, to: 5, reached: 3, onTheWay: true });
+      expect(r.changes).toEqual([{ op: "set", table: LOCATION.name, id: me, value: { hex: 3 } }]);
+      expect(r.seconds).toBeGreaterThanOrEqual(3 * 600);
+      expect(r.seconds).toBeLessThanOrEqual(3 * 600 * 1.3);
     }
+  });
+
+  it("los tramos siguen desde donde quedó y suman el camino entero", () => {
+    let hex = 0;
+    let total = 0;
+    for (let leg = 0; leg < 5 && hex !== 5; leg++) {
+      const r = resolve(go({ actor: actor({ hex }) }));
+      if (r.effect.kind !== "move" || r.effect.reached === null) throw new Error("no es move");
+      expect(r.effect.reached).not.toBe(hex);
+      hex = r.effect.reached;
+      total += r.seconds;
+      expect(r.effect.onTheWay === true).toBe(hex !== 5);
+    }
+    expect(hex).toBe(5);
+    expect(total).toBeGreaterThanOrEqual(5 * 600);
+  });
+
+  it("un tramo a medias puede torcer el rumbo sin que el caminante lo note", () => {
+    const rs = many(600, () => go({}));
+    const veered = rs.filter((r) => r.effect.kind === "move" && r.effect.believedAt !== undefined);
+    expect(veered.length).toBeGreaterThan(0);
+    for (const r of veered) {
+      if (r.effect.kind !== "move" || r.self.effect.kind !== "move") throw new Error("no es move");
+      expect(r.effect.reached).not.toBe(r.effect.believedAt);
+      expect(r.effect.onTheWay).toBe(true);
+      // Cree estar donde iba; la ubicación real es donde quedó.
+      expect(r.self.effect.reached).toBe(r.effect.believedAt);
+      expect(r.changes).toEqual([
+        { op: "set", table: LOCATION.name, id: me, value: { hex: r.effect.reached } },
+      ]);
+    }
+    // Un tramo bien hecho nunca se tuerce.
+    const good = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
+    expect(good.every((r) => r.effect.kind === "move" && r.effect.believedAt === undefined)).toBe(
+      true,
+    );
+  });
+
+  it("la noche, el bosque y la lluvia tuercen más el rumbo, y un hito a la vista lo corrige", () => {
+    const lost = (bearing: ResolveInput["bearing"]) =>
+      many(800, () => go({ bearing })).filter(
+        (r) => r.effect.kind === "move" && r.effect.believedAt !== undefined,
+      ).length;
+    const clear = lost({ factor: 1, landmarks: new Set() });
+    const dark = lost({ factor: 2.75, landmarks: new Set() });
+    expect(dark).toBeGreaterThan(clear);
+    // Con la aldea a la vista desde cualquier hex, torcerse no deja creer nada equivocado.
+    const seen = lost({ factor: 2.75, landmarks: new Set(map.neighbors.map((_, h) => h)) });
+    expect(seen).toBe(0);
+  });
+
+  it("un tramo tiene al menos un hex aunque pase de la media hora", () => {
+    const slow = { ...map, crossSeconds: map.crossSeconds.map(() => 9000) };
+    expect(legOf(slow, [1, 2, 3])).toEqual([1]);
+    expect(legOf(map, [])).toEqual([]);
+  });
+
+  it("con barro o nieve el tramo abarca menos hexes", () => {
+    const flat = { ...map, crossSeconds: map.crossSeconds.map(() => 600) };
+    expect(legOf(flat, [1, 2, 3, 4, 5])).toHaveLength(3);
+    expect(legOf(flat, [1, 2, 3, 4, 5], 1.5)).toHaveLength(2);
   });
 
   it("de noche se pierde: queda en otro hex, y no sabe en cuál", () => {
@@ -247,7 +320,7 @@ describe("moverse", () => {
     const fell = rs.filter((r) => r.failure === "slip" && r.outcome === "failure");
     expect(fell.length).toBeGreaterThan(10);
     for (const r of fell) {
-      expect(r.effect).toMatchObject({ reached: 2, stumbled: true });
+      expect(r.effect).toMatchObject({ reached: 1, stumbled: true });
       expect(r.self.effect).toEqual(r.effect);
     }
   });

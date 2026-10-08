@@ -233,3 +233,18 @@ Todo este documento describe el **modo realista**, el de por defecto. El **modo 
 ## Preguntas abiertas
 
 - Calibración: largo de cada salto de las viñetas de infancia; qué cuenta como "grave" para la delegación; cuántos ítems tiene "qué pasó mientras"; cada cuánto se parte una rutina larga en tramos.
+
+## Ampliación (2026-10-08): ayudas para decidir sin quitar libertad
+
+Ideas del autor: el juego es denso en decisiones, así que el jugador siempre puede escribir lo que quiera, pero nunca se queda sin qué hacer.
+
+- **Opciones sugeridas.** Una lista de acciones que la sim arma con la misma utilidad que usan los NPC (npc-psychology): urgencias del cuerpo, rutinas, metas, deberes, oportunidades y peligros percibidos. Cada una es un `ActionPlan` ya validado y factible según lo que el personaje cree; elegirla se salta el parser. El LLM solo redacta la etiqueta (narration, lista blanca) y sin red salen de plantillas. **La cantidad no es fija:** por defecto 3 a 5, ordenadas por saliencia, con "ver más" y una opción de ocultarlas o de delegar en una rutina. Nunca muestran lo que el personaje no sabe (regla 4): una trampa no vista no aparece como "evitar la trampa".
+- **Pensar.** El comando "pensar sobre X" o "¿qué hago con X?" consulta solo creencias, memorias, esquemas y habilidades del personaje y devuelve un monólogo en su voz. Además de recordar lo que el jugador ya sabía, el personaje **infiere**: junta evidencia dispersa (percepts, rumores, memorias) y llega a conclusiones que el jugador quizá no vio, con grados de confianza y a veces equivocadas (un sesgo del temperamento, una pista falsa). Una inferencia es una creencia nueva con procedencia "razonamiento" y la evidencia citada; depende de inteligencia, conocimiento y estado (cansancio, miedo). No inventa hechos: combina los que ya están en su cabeza, con la lógica de discovery para hipótesis.
+- **Panel de entorno.** Estados del lugar por canal sensorial (vista, oído, olfato, tacto, gusto, qi/alma) como íconos con una saliencia que decae por habituación y se renueva ante un cambio brusco o al atender a propósito ("huelo el aire" lo fija mientras se siga atendiendo). Al irse del lugar o cambiar la causa, desaparece. El modelo está en perception (ampliación 2026-10-08); la narración no repite lo que ya está en el panel.
+
+Fase: opciones sugeridas y panel de entorno en la UI mínima (Hito 1c); pensar con inferencia cuando existan creencias con evidencia (Fase 2).
+
+### Implementación (Hito 1c)
+
+- **Opciones:** `suggestions(world, limit?)` en `game/life/suggest.ts`. Fuentes de hoy: sed, hambre, herida, sueño/noche, trabajo de día, hablar con quien de su casa está presente, mirar y esperar. Cada una es un `IntentDraft` validado con `planFromDraft`; el `id` es estable (`talk:madre`) y `choose` re-arma la lista antes de jugar. Las etiquetas son plantillas de `ui/render.ts`.
+- **Entorno:** `environmentPanel(world, memory, {attended})` en `game/life/environment.ts`. Vidas medias: olfato 5 min, oído 20 min, tacto 45 min, vista 4 h; se muestra con saliencia ≥ 0,25. Cambiar de lugar o de estado reinicia; mirar a propósito reinicia todo. Calibración pendiente.

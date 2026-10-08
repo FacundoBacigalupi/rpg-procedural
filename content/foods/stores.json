@@ -1,12 +1,14 @@
 [
   {
     "id": "grain",
+    "category": "cereal",
     "name": "grano de la cosecha (mijo, arroz o trigo según la tierra)",
     "kcalPerGram": 3.4,
     "waterPerGram": 0.12
   },
   {
     "id": "flatbread",
+    "category": "cereal",
     "name": "pan plano de la casa",
     "kcalPerGram": 2.7,
     "waterPerGram": 0.3

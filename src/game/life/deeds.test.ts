@@ -17,13 +17,17 @@ import {
   LOCATION,
   notoriety,
   PERSON,
+  rainBetween,
   TRACE,
+  type Trace,
   traceStrength,
+  traceVisible,
   worstDeed,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { offenseOf } from "./deeds.ts";
 import { Life } from "./life.ts";
+import { playerView } from "./view.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -103,7 +107,7 @@ describe("qué es un delito", () => {
 });
 
 describe("la aldea se entera de una pelea", () => {
-  const run = assault(7);
+  const run = assault(10);
 
   it("el golpeado sabe quién fue y la aldea sabe algo de él", () => {
     const deed = worstDeed(run.w.truth.get(KNOWN_DEEDS, run.target), run.me);
@@ -146,6 +150,51 @@ describe("la aldea se entera de una pelea", () => {
     expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
       [],
     );
-    expect(assault(7).life.hash()).toEqual(run.life.hash());
+    expect(assault(10).life.hash()).toEqual(run.life.hash());
   }, 120_000);
+});
+
+describe("la lluvia lava la sangre de una pelea a la intemperie", () => {
+  /** La pelea en el campo (sin `space`), con la mancha hecha `ago` segundos antes de «ahora». */
+  function fightOutdoors(seed: number, ago: number) {
+    const life = Life.create(seed, content);
+    const w = life.world;
+    const me = life.player;
+    const home = w.truth.get(PERSON, me)?.household;
+    const target = living(w.truth).find((id) => w.truth.get(PERSON, id)?.household !== home);
+    const here = w.truth.get(LOCATION, me);
+    if (!target || !here) throw new Error("sin vecino o sin lugar");
+    const spot = { hex: here.hex };
+    w.truth.set(LOCATION, me, spot);
+    w.truth.set(LOCATION, target, spot);
+    life.turn(strikePlan(me, target as AgentId), 1);
+    const id = w.truth.ids(TRACE).find((t) => w.truth.get(TRACE, t)?.kind === "blood");
+    const trace = id === undefined ? undefined : w.truth.get(TRACE, id);
+    if (id === undefined || !trace) throw new Error("la pelea no dejó sangre");
+    w.truth.set(TRACE, id, { ...trace, strength: 1, made: (w.scheduler.now - ago) as Tick });
+    return { w, bloodSeen: () => playerView(w, []).scene.marks.some((m) => m.kind === "blood") };
+  }
+
+  /** Cuánto atrás hay que poner la mancha para que haya llovido encima y sin lluvia aún se vea. */
+  function rainyAgo(seed: number): number {
+    const probe = Life.create(seed, content).world;
+    const now = probe.scheduler.now;
+    const t = { kind: "blood", strength: 1, made: 0 as Tick, at: { hex: 0 } } as Trace;
+    for (let h = 1; h <= 96; h++) {
+      const ago = h * 3600;
+      const made = (now - ago) as Tick;
+      const rain = rainBetween(probe.map, probe.clock, probe.seed, made, now);
+      if (traceVisible({ ...t, made }, now) && !traceVisible({ ...t, made }, now, rain)) return ago;
+    }
+    throw new Error("en esa seed no llovió lo suficiente en los primeros 4 días");
+  }
+
+  const SEED = 10;
+
+  it("con la misma edad, la mancha de afuera se ve en seco y se borra si llovió encima", () => {
+    const ago = rainyAgo(SEED);
+    const dry = fightOutdoors(SEED, 0);
+    expect(dry.bloodSeen()).toBe(true);
+    expect(fightOutdoors(SEED, ago).bloodSeen()).toBe(false);
+  }, 240_000);
 });

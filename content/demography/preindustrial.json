@@ -40,6 +40,18 @@
       "wifeAge": { "min": 16, "max": 30 },
       "husbandAge": { "min": 18, "max": 35 }
     },
-    "land": { "peoplePerFarmHex": 6, "minCapacity": 40, "crowdingFrom": 0.6 }
+    "land": { "peoplePerFarmHex": 6, "minCapacity": 40, "crowdingFrom": 0.6 },
+    "hunger": {
+      "sigma": 0.35,
+      "feedable": 0.6,
+      "storeYears": 0.3,
+      "fertilityLoss": 0.5,
+      "mortality": [
+        { "fromAge": 0, "factor": 4 },
+        { "fromAge": 5, "factor": 2.5 },
+        { "fromAge": 15, "factor": 2 },
+        { "fromAge": 50, "factor": 3.5 }
+      ]
+    }
   }
 ]

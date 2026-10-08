@@ -487,3 +487,7 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - Calibración: tamaño a partir del cual aparecen facciones y costo de cohesión por miembro.
 - Calibración: presupuesto de atención de un líder y velocidad con que la estructura real se concentra o se dispersa.
 - Calibración: pesos típicos `w_org`/`w_facción`/`w_self` por temperamento y lealtad, para que la corrupción sea común pero no universal.
+
+## Ampliación (2026-10-08): gremio de encargos, rangos y academias
+
+Plantilla de organización "gremio de encargos": los encargos son contratos reales (contracts) que ponen NPCs u organizaciones; el gremio verifica con error, cobra comisión y asciende por rangos. La **escala de rangos la define el mundo** (letras F a S y más allá —SS, SSS, SSS+—, números, metales, colores) y se apoya en pruebas que miden con error (pruebas de ingreso). Aparece emergente donde hay bestias o bandidos que amenazan y una economía que paga, no por decreto. Las academias de magia y las órdenes de caballeros usan la misma plantilla con enseñanza o servicio feudal en lugar de encargos. Fase 6.

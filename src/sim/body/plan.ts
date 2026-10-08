@@ -85,17 +85,84 @@ export type BodyPlanDef = z.infer<typeof BodyPlanDef>;
 
 export const BODY_PLANS = defineContent("body-plans", BodyPlanDef);
 
-export const FoodDef = z.strictObject({
-  /** El id del bien (el mismo que nombran los `yields` de los verbos). */
-  id: contentId,
-  name: z.string().min(1),
-  kcalPerGram: z.number().min(0),
-  /** Litros de agua por gramo. */
-  waterPerGram: z.number().min(0).max(1),
-});
+/**
+ * Los micronutrientes que importan (body-health: pocos, cada uno con una carencia reconocible).
+ * `dailyMg`: lo que un adulto necesita por día; `deficiency`: cómo se llama lo que pasa sin él.
+ */
+export const MICRONUTRIENTS = {
+  vitaminC: { dailyMg: 75, deficiency: "escorbuto" },
+  iron: { dailyMg: 14, deficiency: "anemia" },
+  iodine: { dailyMg: 0.15, deficiency: "bocio" },
+  vitaminA: { dailyMg: 0.8, deficiency: "ceguera nocturna" },
+  thiamine: { dailyMg: 1.2, deficiency: "beriberi" },
+  niacin: { dailyMg: 15, deficiency: "pelagra" },
+  calcium: { dailyMg: 1000, deficiency: "raquitismo" },
+} as const;
+export type Micronutrient = keyof typeof MICRONUTRIENTS;
+const MICRONUTRIENT_IDS = Object.keys(MICRONUTRIENTS) as [Micronutrient, ...Micronutrient[]];
+
+export const FOOD_CATEGORIES = [
+  "cereal",
+  "tuber",
+  "legume",
+  "fruit",
+  "vegetable",
+  "meat",
+  "fish",
+  "dairy",
+  "egg",
+  "sweet",
+  "condiment",
+  "drink",
+  "wild",
+] as const;
+export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
+
+export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
+export type FoodSeason = (typeof SEASONS)[number];
+
+export const FoodDef = z
+  .strictObject({
+    /** El id del bien (el mismo que nombran los `yields` de los verbos). */
+    id: contentId,
+    name: z.string().min(1),
+    category: z.enum(FOOD_CATEGORIES).default("wild"),
+    kcalPerGram: z.number().min(0),
+    /** Litros de agua por gramo. */
+    waterPerGram: z.number().min(0).max(1),
+    /** Gramos de proteína y de grasa por gramo de comida. */
+    proteinPerGram: z.number().min(0).max(1).default(0),
+    fatPerGram: z.number().min(0).max(1).default(0),
+    /** Miligramos de cada micronutriente por 100 g. */
+    micronutrients: z.partialRecord(z.enum(MICRONUTRIENT_IDS), z.number().positive()).default({}),
+    /** Estaciones en que se consigue fresca; vacío = todo el año (almacenada o de cría). */
+    seasons: z.array(z.enum(SEASONS)).default([]),
+    /** Biomas donde se da; vacío = donde se la cultive o lleve el comercio. */
+    biomes: z.array(contentId).default([]),
+  })
+  .superRefine((f, ctx) => {
+    if (f.proteinPerGram + f.fatPerGram + f.waterPerGram > 1.0001) {
+      ctx.addIssue({ code: "custom", message: "proteína + grasa + agua pasan de 1 g por g" });
+    }
+    // 4 kcal/g de proteína y de lo que queda (hidratos, fibra), 9 de grasa.
+    const rest = Math.max(0, 1 - f.waterPerGram - f.proteinPerGram - f.fatPerGram);
+    const ceiling = 4 * f.proteinPerGram + 9 * f.fatPerGram + 4 * rest;
+    if (f.kcalPerGram > ceiling + 0.01) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kcalPerGram"],
+        message: `${f.kcalPerGram} kcal/g pasa del máximo ${ceiling.toFixed(2)} que dan sus macros`,
+      });
+    }
+    if (new Set(f.seasons).size !== f.seasons.length) {
+      ctx.addIssue({ code: "custom", path: ["seasons"], message: "estaciones repetidas" });
+    }
+  });
 export type FoodDef = z.infer<typeof FoodDef>;
 
-export const FOODS = defineContent("foods", FoodDef);
+export const FOODS = defineContent("foods", FoodDef, (f) =>
+  f.biomes.map((id, n) => ({ kind: "biomes", id, at: `biomes.${n}` })),
+);
 
 /** Las zonas de un plan, por id. */
 export function zoneOf(plan: BodyPlanDef, id: string): ZoneDef {

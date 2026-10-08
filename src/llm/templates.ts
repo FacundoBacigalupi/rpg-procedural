@@ -166,7 +166,16 @@ function outcome(
       else say("outcome.speak.silent");
       if (!e.delivered) say("outcome.speak.unheard");
       break;
+    case "spare":
+      say(e.target === undefined ? "outcome.spare.anyone" : "outcome.spare.done", {
+        target: ref(e.target),
+      });
+      break;
     case "strike": {
+      if (e.finished) {
+        say("outcome.strike.finished", { target: ref(e.target) });
+        break;
+      }
       if (e.target === undefined && !e.hit) say("outcome.strike.missed_anyone");
       else {
         const target = ref(e.target);
@@ -185,7 +194,9 @@ function outcome(
       if (e.fight) {
         const f = e.fight;
         const target = ref(e.target);
-        if (f.mine === "standing" && f.theirs === "standing") say("outcome.strike.fight.parted");
+        if (f.paused) say(`outcome.strike.fight.paused_${f.paused}`, { target });
+        else if (f.mine === "standing" && f.theirs === "standing")
+          say("outcome.strike.fight.parted");
         else if (f.mine === "standing") say(`outcome.strike.fight.foe_${f.theirs}`, { target });
         else say(`outcome.strike.fight.mine_${f.mine}`, { target });
       }

@@ -1,24 +1,38 @@
 // Las presiones de la aldea (causality §9). Por ahora una: el hambre de cada hogar, que sale de
 // cuántos días de comida quedan en su despensa para las bocas que tiene. Es una función pura del
-// estado; nada se guarda. Las descargas (migrar, pedir fiado, robar, saquear) las declara cada
-// proceso cuando exista (Hito 1b), y entonces aparecen en `discharges`.
+// estado; nada se guarda. Las descargas las declara cada proceso que existe: hoy pedir fiado a un
+// vecino (borrow.ts); migrar, robar y saquear entran cuando existan esos procesos.
 
-import { type HolderRef, holderAccount, type LedgerUnit, ledgerUnit } from "../../core/index.ts";
+import {
+  type HolderRef,
+  holderAccount,
+  type LedgerUnit,
+  ledgerUnit,
+  type Tick,
+} from "../../core/index.ts";
 import {
   type FoodDef,
   HOUSEHOLD,
   MEAL_KCAL,
   PERSON,
   type Pressure,
+  type PressureCurve,
   type PressureReading,
   type PressureSource,
+  type ReadonlyLedger,
+  type ReadonlyWorldTruth,
   readPressures,
   withHazards,
 } from "../../sim/index.ts";
-import { type LifeWorld, living } from "./world.ts";
+import { living } from "./living.ts";
 
 /** Con más días de comida que esto, la despensa no preocupa. */
 export const HUNGER_HORIZON_DAYS = 90;
+
+/** El proceso que descarga el hambre pidiendo fiado (ver borrow.ts). */
+export const BORROW_PROCESS = "life.borrow";
+/** Desde dónde el hambre empieza a empujar a pedir (coincide con la curva de content/pressures). */
+export const BORROW_THRESHOLD = 0.6;
 
 const MEALS_PER_DAY = 3;
 
@@ -47,7 +61,9 @@ export function householdHungerSource(foods: readonly FoodDef[]): PressureSource
             scope: { kind: "household", ref: id },
             value: Math.min(1, Math.max(0, 1 - days / HUNGER_HORIZON_DAYS)),
             sources: [{ kind: "state", entity: id, key: "larder" }],
-            discharges: [],
+            discharges: [
+              { process: BORROW_PROCESS, threshold: BORROW_THRESHOLD, hazard: 0, blockers: [] },
+            ],
             system: "economy",
           },
         ];
@@ -56,7 +72,16 @@ export function householdHungerSource(foods: readonly FoodDef[]): PressureSource
   };
 }
 
-export function lifePressures(w: LifeWorld): Pressure[] {
+/** Lo que hace falta del mundo de la vida para leer sus presiones (sin depender de world.ts). */
+export interface PressureWorld {
+  readonly truth: ReadonlyWorldTruth;
+  readonly ledger: ReadonlyLedger;
+  readonly foods: readonly FoodDef[];
+  readonly pressureCurves: readonly PressureCurve[];
+  readonly scheduler: { readonly now: Tick };
+}
+
+export function lifePressures(w: PressureWorld): Pressure[] {
   return withHazards(
     readPressures([householdHungerSource(w.foods)], {
       truth: w.truth,

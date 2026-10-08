@@ -39,6 +39,24 @@ export interface Location {
 export const PLACE = table<PlaceRecord>("space.place");
 export const LOCATION = table<Location>("space.location");
 
+/** Lo que planet-gen sabe de una celda (`Climate` en la posición de la celda). */
+export interface ClimateNormals {
+  /** Clave estable para el RNG (el `CellId` en texto). */
+  readonly cell: string;
+  readonly latDeg: number;
+  /** Inclinación del eje del planeta, grados: con la latitud fija el sol y las estaciones. */
+  readonly axialTiltDeg: number;
+  /** Media anual, °C. */
+  readonly annualMeanC: number;
+  /** Mes más cálido menos mes más frío, °C. */
+  readonly seasonalRangeC: number;
+  /** mm por año (agua equivalente). */
+  readonly annualPrecipMm: number;
+  /** Viento dominante en la base (este, norte); solo importa la dirección. */
+  readonly windEast: number;
+  readonly windNorth: number;
+}
+
 /**
  * El terreno local que leen los procesos: datos derivados del seed (como el contenido), no
  * estado. Lo arma `game` desde el sitio de worldgen; los tests, a mano.
@@ -52,6 +70,8 @@ export interface LocalMap {
   /** Segundos que se tarda en cruzar cada hex caminando (terreno, pendiente, bosque). */
   readonly crossSeconds: readonly number[];
   readonly forest: readonly boolean[];
+  /** Las normales de la celda: de acá sale el tiempo de cada día (`sim/weather`). */
+  readonly climate: ClimateNormals;
 }
 
 /** El camino más corto en hexes de `from` a `to` (sin `from`, con `to`); vacío si son el mismo. */

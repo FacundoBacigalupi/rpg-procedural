@@ -223,6 +223,14 @@ interface ElementTheory {
 - **Fase 6-7:** teorías elementales por cultura, dogmas y cismas sobre la matriz, correspondencias.
 - **Fase 7 (worldgen completo):** el seed genera la familia del sistema y el grafo (incluidos los generados) con su validador; elementos del Cielo.
 
+### Estado (Hito 1c)
+`src/sim/elements/` y `content/elements/five-phases.json` (tipo `elements`):
+- `ElementSystemDef` (Zod) con el validador de §1 (nadie vence ni es vencido por todos, todo nace de algo, cada fuente de planet-gen llega a un elemento, `generationLoss > 0`) y `varySystem`, que deja la forma y mueve las intensidades (`G`, `K`, `λ`, `ρ`, `κ`, pérdida) por seed. Vectores como arreglos en el orden de `elements`.
+- `interact(active, passive, ctx, law)`: duelo por par con inversión 相侮 (`λ`, `ρ`), generación con pérdida limitada por el `volume` del contenedor, resonancia como carga (no suma cantidad), ruido de control con `Rng`, subpasos (hasta 64) y ninguna fuente da más de lo que tiene. `tension` y ruptura del contenedor (suelta todo lo del pasivo). Conserva: antes = después + `released`.
+- La generación **no corre en `clash`** (un escudo de agua no alimenta madera mientras choca). Sin polaridad ni derivados todavía; `causes` no está (lo agrega quien emite el evento).
+- `cellElements`: el vector de una celda sale de la esencia por fuente de planet-gen y suma exacto su `level`. Mapeo de cinco fases: biótica→madera, geotérmica→fuego, sedimentaria y telúrica→tierra, mineral y celestial→metal, hídrica→agua.
+- Calibración pendiente: `ρ` (0,85) y los demás valores de `five-phases.json`; la física de lo disuelto es la suma de firmas y todavía no distingue vapor.
+
 ## Tests
 - **Conservación:** en todo `interact`, `total(activo) + total(pasivo)` antes = después + `released`. Sin excepción, en miles de casos aleatorios (con seed).
 - **Sin móvil perpetuo:** ninguna secuencia de generaciones devuelve más esencia que la que entró; validado sobre los sistemas generados.

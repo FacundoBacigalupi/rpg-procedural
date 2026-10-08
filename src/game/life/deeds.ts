@@ -5,18 +5,19 @@
 // para nadie (el caso nace de una creencia) y no hay quién reclame. Las peleas además dejan
 // sangre en el lugar (huella), que se borra sola con las horas.
 
-import type { AgentId, Event, PlanetClock, Rng, Tick } from "../../core/index.ts";
+import type { AgentId, Event, PlanetClock, Rng, Seed, Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   actionStimulus,
   attireLook,
   BODY_STATE,
   bloodStrength,
+  CREDIT,
+  clearDefault,
   createEntity,
   type Deed,
   type DeedKind,
   type DeedVia,
-  daylight,
   ENTITY,
   KNOWN_DEEDS,
   LOCATION,
@@ -34,8 +35,10 @@ import {
   type StatusDef,
   sensorAcuity,
   setComponent,
+  skyLight,
   TRACE,
 } from "../../sim/index.ts";
+import { settledIn } from "./credit.ts";
 
 export const DEEDS_PROCESS = "life.deeds";
 
@@ -43,6 +46,7 @@ export interface DeedsOptions {
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly clock: PlanetClock;
+  readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
 }
 
@@ -96,7 +100,7 @@ export function offenseOf(
     effect?: { kind?: string; from?: string; got?: readonly unknown[] };
     noticedBy?: readonly string[];
   } | null;
-  if (e.kind === "combat.fight" && second) {
+  if ((e.kind === "combat.fight" || e.kind === "combat.finish") && second) {
     return { kind: "assault", by: first, victim: second, noticedBy: [second] };
   }
   if (e.kind === "law.default" && second) {
@@ -152,7 +156,7 @@ function witnessesOf(
     {
       graph: o.spaces,
       forest: o.map.forest,
-      daylight: daylight(localHour(o.clock, e.tick, o.map.lonDeg)),
+      daylight: skyLight(o.map, o.clock, o.seed, e.tick),
     },
     rng.fork(e.id),
   );
@@ -179,6 +183,7 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
     phase: "perceive",
     reads: [
       KNOWN_DEEDS.name,
+      CREDIT.name,
       PERSON.name,
       LOCATION.name,
       ENTITY.name,
@@ -237,6 +242,16 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
               }),
             );
           }
+        }
+      }
+      // Quien salda deja de ser «el que no paga» para todos los que lo sabían (credit.ts).
+      const settled = settledIn(truth, ctx.recent, o.clock.day);
+      if (settled.length > 0) {
+        for (const id of truth.ids(KNOWN_DEEDS)) {
+          const before = knows.get(id as AgentId) ?? truth.get(KNOWN_DEEDS, id);
+          let kept = before;
+          for (const r of settled) kept = clearDefault(kept, r.credit.debtor, r.credit.creditor);
+          if (kept && kept !== before) knows.set(id as AgentId, kept);
         }
       }
       for (const [id, value] of knows) changes.push(setComponent(KNOWN_DEEDS, id, value));

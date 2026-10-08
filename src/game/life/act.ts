@@ -12,34 +12,43 @@ import {
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
+  Rng,
+  type Seed,
+  type Tick,
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type ActionPlan,
   type Activity,
   advance,
+  type Bearing,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  bearingFactor,
   blowFromMishap,
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
-  daylight,
+  dayOf,
   deleteComponent,
   draftEvent,
   ENTITY,
   type EventDraft,
+  FINISH_FORCE,
   type FoodDef,
   FRESH_CURSOR,
+  fieldFertility,
   type GoodDef,
   goodUnit,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
+  harvestSeason,
   INNATE,
   ingest,
   injure,
   KNOWN_DEEDS,
+  LANDMARK_MIN_LIGHT,
   LOCATION,
   type LocalMap,
   learnFromAttempt,
@@ -67,22 +76,29 @@ import {
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
+  SOIL,
   type SpaceGraph,
   STATUS,
   type StateChange,
   type StatusDef,
   setActivity,
   setComponent,
+  skyBrightness,
+  skyLight,
+  skyObserverOf,
   spaceLight,
   standardize,
   type Trait,
   table,
   treat,
   verbSkill,
+  walkingFactor,
+  weatherAt,
+  YIELDED,
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
-import { canFight, strikeFight } from "./fight.ts";
+import { atMyMercy, canFight, FIGHT_STATE, livePause, strikeFight } from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -99,6 +115,8 @@ export interface PlanState {
   readonly lastBelieved: string | null;
   readonly steps: readonly StepRecord[];
   readonly done: boolean;
+  /** Terminó un tramo de camino: el próximo paso repite la misma hoja sin avanzar el cursor. */
+  readonly resume?: boolean;
 }
 
 export const PLAN_STATE = table<PlanState>("life.plan");
@@ -122,6 +140,9 @@ export interface ActOptions {
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
   readonly clock: PlanetClock;
+  readonly seed: Seed;
+  /** El personaje del jugador: sus peleas se pausan para que decida (combat §16). */
+  readonly player: AgentId;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -158,11 +179,33 @@ function placesOf(truth: ReadonlyWorldTruth) {
   });
 }
 
+/** Qué tan fácil es torcer el rumbo ahora y qué hitos (la aldea, el agua) se distinguen (travel §11.3). */
+function bearingOf(
+  o: ActOptions,
+  places: ReturnType<typeof placesOf>,
+  hex: number,
+  now: Tick,
+): Bearing {
+  const light = skyLight(o.map, o.clock, o.seed, now);
+  const factor = bearingFactor(weatherAt(o.map, o.clock, o.seed, now), light, !!o.map.forest[hex]);
+  const landmarks = new Set<number>();
+  if (light >= LANDMARK_MIN_LIGHT) {
+    for (const { place } of places) {
+      if (place.kind === "village" || place.kind === "water") {
+        for (const h of place.hexes as readonly number[]) landmarks.add(h);
+      }
+    }
+  }
+  return { factor, landmarks };
+}
+
 export function actProcess(o: ActOptions): ProcessDef {
   const foods = new Map<LedgerUnit, Nutrition>(
     o.foods.map((f) => [GOOD(f.id), { kcalPerGram: f.kcalPerGram, waterPerGram: f.waterPerGram }]),
   );
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
+  const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
 
   return {
     id: ACT_PROCESS,
@@ -175,12 +218,23 @@ export function actProcess(o: ActOptions): ProcessDef {
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
       CREDIT.name,
+      SOIL.name,
       ENTITY.name,
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      YIELDED.name,
+      FIGHT_STATE.name,
     ],
-    writes: [PLAN_STATE.name, LOCATION.name, BODY_STATE.name, SKILL_STATE.name, PENDING.name],
+    writes: [
+      PLAN_STATE.name,
+      LOCATION.name,
+      BODY_STATE.name,
+      SKILL_STATE.name,
+      PENDING.name,
+      YIELDED.name,
+      FIGHT_STATE.name,
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const state = ctx.truth.get(PLAN_STATE, me);
@@ -194,13 +248,16 @@ export function actProcess(o: ActOptions): ProcessDef {
       const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
       const space = ctx.truth.get(LOCATION, me)?.space;
       const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
+      const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
       const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
-      const light = node ? spaceLight(node, daylight(hour)) : daylight(hour);
-      const cursor = advance(state.plan.root, state.cursor, {
-        now: ctx.now,
-        dark: light < 0.2,
-        lastBelieved: state.lastBelieved,
-      });
+      const light = node ? spaceLight(node, sky) : sky;
+      const cursor = state.resume
+        ? state.cursor
+        : advance(state.plan.root, state.cursor, {
+            now: ctx.now,
+            dark: light < 0.2,
+            lastBelieved: state.lastBelieved,
+          });
       if (cursor.path === null) {
         const changes: StateChange[] = [
           setComponent(PLAN_STATE, me, { ...state, cursor, done: true }),
@@ -211,7 +268,7 @@ export function actProcess(o: ActOptions): ProcessDef {
         }
         return { changes };
       }
-      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour });
+      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour, season });
     },
   };
 }
@@ -223,6 +280,7 @@ interface StepEnv {
   readonly foods: ReadonlyMap<LedgerUnit, Nutrition>;
   readonly plans: ReadonlyMap<string, BodyPlanDef>;
   readonly hex: number;
+  readonly season: (day: number) => number;
   readonly light: number;
   readonly hour: number;
 }
@@ -247,6 +305,7 @@ function marketOf(
   o: ActOptions,
   me: AgentId,
   other: EntityRef | null,
+  harvestGramsPerHour: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
   const otherStatus = other === null ? undefined : truth.get(STATUS, other);
@@ -261,7 +320,7 @@ function marketOf(
       otherHome === undefined
         ? undefined
         : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
-    harvestGramsPerHour: HARVEST_GRAMS_PER_HOUR,
+    harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
     fame: notoriety(
       truth.ids(PERSON).flatMap((id) => (id === me ? [] : [truth.get(KNOWN_DEEDS, id)])),
@@ -320,6 +379,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
 
   const z = standardize(innate, o.traits, person.sex);
   const here = placeAt(places, e.hex);
+  const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
+  const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * fieldFertility(truth);
   const input: ResolveInput = {
     def,
     node,
@@ -343,6 +404,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     rng: ctx.rng.fork("act", state.seq, (cursor.path as number[]).join(".")),
     map: o.map,
     destination,
+    walkFactor:
+      def.resolver === "move"
+        ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now))
+        : undefined,
+    bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],
@@ -353,7 +419,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null)
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate)
         : undefined,
   };
   const r = resolve(input);
@@ -392,7 +458,50 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const extraEvents: EventDraft[] = [];
   let fightSeconds = 0;
   let record: StepRecord["self"] = r.self;
-  if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
+  const merciful = targetId !== null && atMyMercy(truth, me, targetId, ctx.now);
+  if (eff.kind === "spare" && targetId && merciful) {
+    // Perdonar: lo deja ir. Queda en lo que los testigos vieron, no en un castigo.
+    changes.push(deleteComponent(YIELDED, targetId));
+    extraEvents.push({
+      kind: "combat.spare",
+      actors: [me, targetId],
+      place: input.place,
+      data: {},
+      emissions: { sight: 0.6, sound: 0.3 },
+      causes: [{ kind: "event", event: draftEvent(0) }],
+    });
+  } else if (eff.kind === "strike" && eff.committed && targetId && merciful) {
+    // Rematar a quien se rindió: no hay pelea, hay un golpe a alguien que no se defiende.
+    const tb = truth.get(BODY_STATE, targetId);
+    if (tb) {
+      changes.push(
+        setComponent(
+          BODY_STATE,
+          targetId,
+          injure(
+            bodyPlan,
+            tb,
+            { kind: "blunt", force: FINISH_FORCE, zone: "head", cause: draftEvent(0), at: ctx.now },
+            input.rng.fork("finish"),
+          ).body,
+        ),
+        deleteComponent(YIELDED, targetId),
+      );
+    }
+    extraEvents.push({
+      kind: "combat.finish",
+      actors: [me, targetId],
+      place: input.place,
+      data: {},
+      emissions: { sight: 1, sound: 0.6 },
+      causes: [{ kind: "event", event: draftEvent(0) }],
+    });
+    if (r.self.effect.kind === "strike") {
+      record = { ...r.self, effect: { ...r.self.effect, finished: true } };
+    }
+  } else if (eff.kind === "strike" && eff.committed && targetId && canFight(truth, targetId)) {
+    // Si la pelea quedó pausada contra el mismo rival y sigue caliente, esto la retoma.
+    const resumed = livePause(truth, me, targetId, ctx.now);
     const fight = strikeFight({
       truth,
       me,
@@ -407,6 +516,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       rng: input.rng.fork("fight"),
       cause: draftEvent(0),
       place: input.place,
+      ...(me === o.player ? { control: true } : {}),
+      ...(resumed ? { resume: resumed } : {}),
     });
     nextBody = fight.myBody;
     bodyTouched = true;
@@ -446,6 +557,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   );
   if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
 
+  // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
+  const resume = eff.kind === "move" && eff.onTheWay === true;
   const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
   const lastBelieved = r.self.believed;
   const end = ctx.now + Math.max(r.seconds, fightSeconds);
@@ -460,7 +573,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...state,
       cursor,
       lastBelieved,
-      steps: [...state.steps, stepRecord],
+      steps: resume ? state.steps : [...state.steps, stepRecord],
+      ...(resume ? { resume } : {}),
     }),
   );
   return {

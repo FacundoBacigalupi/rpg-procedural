@@ -348,3 +348,9 @@ interface EssenceBodyState {
 
 ## Preguntas abiertas
 - Calibración fina de curación, infección y mortalidad con la sim headless, contra los objetivos de arriba.
+
+## Ampliación (2026-10-08): variedad de comidas
+
+Catálogo de alimentos en `content/` (cereales, tubérculos, legumbres, frutas, hortalizas, carne, pescado, lácteos, huevos, miel, condimentos, bebidas) con nutrientes (energía, proteína, grasa, micronutrientes), conservación, estacionalidad y bioma. La dieta mezcla alimentos y las carencias (escorbuto, anemia, bocio) salen de lo que falta, no de una etiqueta; el hambre de la pre-corrida (family-lineage) pasa de faltar grano a faltar nutrientes. Platos y recetas son un oficio de cocina con variaciones culturales (culture, crafts). Primero el catálogo (Hito 1c); la cocina en Fase 3.
+
+**Implementado (catálogo):** `FoodDef` en `sim/body/plan.ts` y datos en `content/foods/` (49 alimentos nuevos, con su bien en `content/goods/catalog.json`). Siete micronutrientes (`MICRONUTRIENTS`) con necesidad diaria y carencia: C → escorbuto, hierro → anemia, yodo → bocio, A → ceguera nocturna, tiamina → beriberi, niacina → pelagra, calcio → raquitismo. Decisiones: el arroz blanco casi no tiene tiamina frente al integral, el maíz poca niacina disponible, el yodo está en el mar (pescado, algas) y el cítrico es la fruta de invierno, así que las carencias salen de lo que la región y la estación dan. Falta el lado del cuerpo: acumular la dieta y que la carencia dé síntomas (Fase 3).

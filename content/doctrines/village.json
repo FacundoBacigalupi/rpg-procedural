@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ancestors-watch",
+    "claim": "los muertos de la casa siguen cerca y miran cómo viven los suyos",
+    "topic": "death",
+    "centrality": 0.8,
+    "source": "tradition",
+    "truthStatus": "partly",
+    "whyTruth": "casi todas las almas vuelven al ciclo; un ancestro que se queda es raro y necesita un ancla (spirits §0, §8)"
+  },
+  {
+    "id": "offerings-feed-dead",
+    "claim": "lo que se deja en la tablilla alimenta a los muertos",
+    "topic": "ritual-efficacy",
+    "centrality": 0.6,
+    "source": "tradition",
+    "truthStatus": "false",
+    "whyTruth": "las ofrendas son física: casi nunca llegan a nadie (spirits §6)"
+  },
+  {
+    "id": "heaven-sees-the-proud",
+    "claim": "el Cielo mira al soberbio y le manda el rayo",
+    "topic": "heaven",
+    "centrality": 0.5,
+    "source": "inference",
+    "truthStatus": "partly",
+    "whyTruth": "la atención del Cielo va por saliencia, no por soberbia (heaven-karma §3)"
+  },
+  {
+    "id": "well-keeps-the-village",
+    "claim": "el pozo viejo tiene dueño y se lo respeta o la aldea se seca",
+    "topic": "gods",
+    "centrality": 0.4,
+    "source": "miracle",
+    "truthStatus": "unknowable",
+    "whyTruth": "no hay un espíritu de lugar cargado en la celda de la aldea; el agua depende del acuífero"
+  },
+  {
+    "id": "grain-is-owed",
+    "claim": "la primera gavilla de la cosecha se debe a los que sembraron antes",
+    "topic": "morality",
+    "centrality": 0.5,
+    "source": "tradition",
+    "truthStatus": "unknowable",
+    "whyTruth": "es una norma, no una afirmación sobre el mundo: ordena el reparto y la cohesión sin tocar la ley"
+  }
+]
