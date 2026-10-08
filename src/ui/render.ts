@@ -1,8 +1,8 @@
 // Texto de la CLI: el tiempo que pasa, la línea de estado y los paneles. La narración sale del narrador (con
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
-import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../../core/index.ts";
-import type { CharacterPanel, Interrupt, InventoryPanel } from "../../game/index.ts";
+import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
+import type { CharacterPanel, Interrupt, InventoryPanel } from "../game/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],

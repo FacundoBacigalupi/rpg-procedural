@@ -21,8 +21,8 @@ import {
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { checkInvariants, hashState } from "../../sim/index.ts";
 import { type ReplayInput, replay, replayInputFromStore } from "../../tools/index.ts";
+import { elapsed, plain } from "../render.ts";
 import { runCli, VERSIONS } from "./loop.ts";
-import { elapsed, plain } from "./render.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
