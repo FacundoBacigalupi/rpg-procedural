@@ -191,6 +191,29 @@ describe("pre-corrida de la aldea", () => {
     expect(starved).toBeLessThan(deaths * 0.4);
   }, 240_000);
 
+  it("calibración: la aldea de un bioma pobre es más chica y pasa más hambre que la de uno rico", () => {
+    // Misma aldea, solo cambia el rendimiento del campo (productividad del bioma × hexes de campo).
+    const withYield = (seed: number, yieldValue: number) => {
+      const site = villageSite(generatePlanet({ seed, biomes: content.all(BIOMES) }));
+      const anchors = site.anchors.map((a) =>
+        a.kind === "farmland" ? { ...a, yield: yieldValue } : a,
+      );
+      const v = villagePopulation({ seed, site: { ...site, anchors }, traits, demography });
+      const alive = v.people.filter((p) => !p.end).length;
+      const lean = v.events.filter((e) => e.kind === "family.lean_year").length;
+      return { alive, lean, capacity: v.capacity };
+    };
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const poor = SEEDS.map((s) => withYield(s, 2));
+    const rich = SEEDS.map((s) => withYield(s, 18));
+    // El piso de capacidad es el mismo para todos los pobres: una aldea de desierto o tundra no
+    // baja de ahí, pero pasa más años flacos.
+    expect(poor.every((r) => r.capacity === demography.land.minCapacity)).toBe(true);
+    expect(mean(rich.map((r) => r.capacity))).toBeGreaterThan(demography.land.minCapacity * 2);
+    expect(mean(poor.map((r) => r.alive))).toBeLessThan(mean(rich.map((r) => r.alive)));
+    expect(mean(poor.map((r) => r.lean))).toBeGreaterThan(mean(rich.map((r) => r.lean)));
+  }, 240_000);
+
   it("mismo seed, misma aldea", () => {
     const planet = generatePlanet({ seed: 2, biomes: content.all(BIOMES) });
     const again = villagePopulation({ seed: 2, site: villageSite(planet), traits, demography });
