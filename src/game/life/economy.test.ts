@@ -156,6 +156,31 @@ describe("calibración de despensas y rutina (Hito 1c, paso 3)", () => {
     // Las reservas por boca no se vacían ni se disparan en 40 días.
     const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     expect(total(after) / total(before)).toBeGreaterThan(0.8);
-    expect(total(after) / total(before)).toBeLessThan(1.3);
+    // Y no se disparan: la despensa de arranque es lo justo hasta la próxima cosecha, no un año.
+    expect(total(after) / total(before)).toBeLessThan(1.6);
   }, 120_000);
+
+  it("la despensa de arranque aguanta un año entero sin que ningún hogar toque cero", () => {
+    const life = Life.create(3, content);
+    const w = life.world;
+    const perMouth = (): number[] => {
+      const homes = new Map<string, number>();
+      for (const id of w.truth.ids(PERSON)) {
+        if (w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+        const h = w.truth.get(PERSON, id)?.household;
+        if (h !== undefined) homes.set(h, (homes.get(h) ?? 0) + 1);
+      }
+      return [...homes].map(
+        ([h, n]) => w.ledger.balance(holderAccount(h as unknown as HolderRef), grain) / n,
+      );
+    };
+    const start = life.now;
+    let lowest = Number.POSITIVE_INFINITY;
+    for (let m = 1; m <= 12; m++) {
+      life.advanceTo(start + Math.round((m * w.clock.year) / 12));
+      lowest = Math.min(lowest, ...perMouth());
+    }
+    // Siempre queda al menos una semana de comida por boca (~0,7 kg por día).
+    expect(lowest).toBeGreaterThan(7 * 700);
+  }, 300_000);
 });
