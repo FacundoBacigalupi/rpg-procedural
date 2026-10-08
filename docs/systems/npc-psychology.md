@@ -93,6 +93,8 @@ Todo lo anterior apunta al mismo evento.
 ### Hábitos y habilidades
 Son lo que hizo repetidamente (cazar, mentir, meditar). Salen de las acciones registradas, no se asignan.
 
+*Implementado (Fase 2, `sim/mind/habits.ts`):* un hábito es una fuerza 0-1 por persona que cada repetición del verbo (o del evento de rutina) sube con rendimiento decreciente y que se enfría sola con una vida media; al asentarse deja una vez su estímulo formativo. Contenido en `content/habits/`. Hoy hay 8 (sembrar, recoger, pelear, dar, tomar, cuidar, cocinar, comerciar); mentir y meditar esperan sus verbos.
+
 ## 3. Interpretación (appraisal)
 
 Es el paso clave: **el mismo evento produce efectos distintos en NPCs distintos.**

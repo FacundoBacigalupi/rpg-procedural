@@ -19,6 +19,7 @@ import {
   type DimensionDef,
   type FoodDef,
   type GoodDef,
+  type HabitDef,
   LOCATION,
   type LocalMap,
   type PressureCurve,
@@ -75,6 +76,7 @@ export interface LifeWorld {
   readonly stages: readonly StageDef[];
   readonly relationDims: readonly DimensionDef[];
   readonly relationBonds: readonly BondDef[];
+  readonly habits: readonly HabitDef[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -182,6 +184,7 @@ export function lifeWorld(
           stages: parts.stages,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
+          habits: parts.habits,
         }),
         routineProcess({
           map: parts.map,
