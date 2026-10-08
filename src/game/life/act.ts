@@ -12,6 +12,7 @@ import {
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
+  Rng,
   type Seed,
 } from "../../core/index.ts";
 import {
@@ -26,16 +27,19 @@ import {
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
+  dayOf,
   deleteComponent,
   draftEvent,
   ENTITY,
   type EventDraft,
   type FoodDef,
   FRESH_CURSOR,
+  fieldFertility,
   type GoodDef,
   goodUnit,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
+  harvestSeason,
   INNATE,
   ingest,
   injure,
@@ -67,6 +71,7 @@ import {
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
+  SOIL,
   type SpaceGraph,
   STATUS,
   type StateChange,
@@ -170,6 +175,8 @@ export function actProcess(o: ActOptions): ProcessDef {
     o.foods.map((f) => [GOOD(f.id), { kcalPerGram: f.kcalPerGram, waterPerGram: f.waterPerGram }]),
   );
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
+  // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
+  const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
 
   return {
     id: ACT_PROCESS,
@@ -182,6 +189,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
       CREDIT.name,
+      SOIL.name,
       ENTITY.name,
       LOCATION.name,
       BODY_STATE.name,
@@ -221,7 +229,7 @@ export function actProcess(o: ActOptions): ProcessDef {
         }
         return { changes };
       }
-      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour });
+      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour, season });
     },
   };
 }
@@ -233,6 +241,7 @@ interface StepEnv {
   readonly foods: ReadonlyMap<LedgerUnit, Nutrition>;
   readonly plans: ReadonlyMap<string, BodyPlanDef>;
   readonly hex: number;
+  readonly season: (day: number) => number;
   readonly light: number;
   readonly hour: number;
 }
@@ -257,6 +266,7 @@ function marketOf(
   o: ActOptions,
   me: AgentId,
   other: EntityRef | null,
+  harvestGramsPerHour: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
   const otherStatus = other === null ? undefined : truth.get(STATUS, other);
@@ -271,7 +281,7 @@ function marketOf(
       otherHome === undefined
         ? undefined
         : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
-    harvestGramsPerHour: HARVEST_GRAMS_PER_HOUR,
+    harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
     fame: notoriety(
       truth.ids(PERSON).flatMap((id) => (id === me ? [] : [truth.get(KNOWN_DEEDS, id)])),
@@ -330,6 +340,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
 
   const z = standardize(innate, o.traits, person.sex);
   const here = placeAt(places, e.hex);
+  const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
+  const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * fieldFertility(truth);
   const input: ResolveInput = {
     def,
     node,
@@ -367,7 +379,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null)
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate)
         : undefined,
   };
   const r = resolve(input);
