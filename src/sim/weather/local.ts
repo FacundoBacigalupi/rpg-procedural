@@ -2,7 +2,7 @@
 // saber de normales ni de días. El RNG sale de la semilla del mundo y de la celda, no del jugador.
 
 import { type PlanetClock, Rng, type Seed, type Tick } from "../../core/index.ts";
-import { daylight, type LocalMap, localHour } from "../world/space.ts";
+import { daylight, type LocalMap, localHour } from "../world/index.ts";
 import {
   type Anomaly,
   type DayWeather,

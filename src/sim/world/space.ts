@@ -15,7 +15,6 @@ import type {
   Tick,
 } from "../../core/index.ts";
 import { floorDiv } from "../../core/index.ts";
-import type { ClimateNormals } from "../weather/daily.ts";
 import { table } from "./truth.ts";
 
 export const PLACE_KINDS = ["village", "water", "fields", "forest"] as const;
@@ -39,6 +38,22 @@ export interface Location {
 /** Los lugares son entidades (`place:n`, y el asentamiento mismo para la aldea). */
 export const PLACE = table<PlaceRecord>("space.place");
 export const LOCATION = table<Location>("space.location");
+
+/** Lo que planet-gen sabe de una celda (`Climate` en la posición de la celda). */
+export interface ClimateNormals {
+  /** Clave estable para el RNG (el `CellId` en texto). */
+  readonly cell: string;
+  readonly latDeg: number;
+  /** Media anual, °C. */
+  readonly annualMeanC: number;
+  /** Mes más cálido menos mes más frío, °C. */
+  readonly seasonalRangeC: number;
+  /** mm por año (agua equivalente). */
+  readonly annualPrecipMm: number;
+  /** Viento dominante en la base (este, norte); solo importa la dirección. */
+  readonly windEast: number;
+  readonly windNorth: number;
+}
 
 /**
  * El terreno local que leen los procesos: datos derivados del seed (como el contenido), no
