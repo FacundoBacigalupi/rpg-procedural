@@ -1,6 +1,7 @@
 export * from "./act.ts";
 export * from "./beliefs.ts";
 export * from "./create.ts";
+export * from "./divine.ts";
 export * from "./environment.ts";
 export * from "./hypotheses.ts";
 export * from "./interrupts.ts";
