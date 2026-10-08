@@ -105,6 +105,20 @@ export interface VillagePopulationInput {
   readonly settlement?: SettlementId;
   /** Entre qué edades se elige al jugador (player-loop §2, entrada por edad). */
   readonly playerAge?: { readonly min: number; readonly max: number };
+  /**
+   * Condiciones duras sobre quién puede ser el jugador (modo novela, game-modes §2.2, paso 1:
+   * buscar un nacimiento real). Con ella la edad también es dura: hasta `BIRTH_AGE_SLACK` años
+   * de la pedida. Si nadie cumple, tira `NoSuchBirth`.
+   */
+  readonly playerFits?: (p: Person, aliveHouseholds: readonly Household[]) => boolean;
+}
+
+/** Años de diferencia con la edad pedida que todavía se aceptan al buscar un nacimiento. */
+export const BIRTH_AGE_SLACK = 2;
+
+/** Nadie de la población cumple lo pedido: el modo novela lo rechaza con esta razón (§2.4). */
+export class NoSuchBirth extends Error {
+  override name = "NoSuchBirth";
 }
 
 type MutablePerson = { -readonly [K in keyof Person]: Person[K] } & { unionAt: Tick };
@@ -500,8 +514,18 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
     const a = ageAt(p, now);
     return a < playerAge.min ? playerAge.min - a : a > playerAge.max ? a - playerAge.max : 0;
   };
-  const best = Math.min(...pool.map(distance));
-  const player = root.fork("player", "birth").pick(pool.filter((p) => distance(p) === best)).id;
+  const fits = input.playerFits;
+  const aliveHouseholds = [...households.values()].filter((h) => h.end === null);
+  const wanted = fits
+    ? pool.filter((p) => distance(p) <= BIRTH_AGE_SLACK && fits(p, aliveHouseholds))
+    : pool;
+  if (wanted.length === 0) {
+    throw new NoSuchBirth(
+      `nadie de la aldea (${pool.length} nativos) cumple lo pedido a ${playerAge.min}-${playerAge.max} años`,
+    );
+  }
+  const best = Math.min(...wanted.map(distance));
+  const player = root.fork("player", "birth").pick(wanted.filter((p) => distance(p) === best)).id;
 
   const freezeHousehold = (h: MutableHousehold): Household => ({
     ...h,

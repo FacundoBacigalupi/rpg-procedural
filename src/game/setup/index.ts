@@ -37,12 +37,21 @@ export const WorldConstraints = z.strictObject({
 });
 export type WorldConstraints = z.infer<typeof WorldConstraints>;
 
-/** Lo que se puede elegir del personaje en la Fase 0 (game-modes §2.1). */
+/** El lugar de la familia en la aldea: el de arriba, el de la mayoría, el que depende (social-structure §1). */
+export const FamilyPosition = z.enum(["holder", "common", "dependent"]);
+export type FamilyPosition = z.infer<typeof FamilyPosition>;
+
+/**
+ * Lo que se puede elegir del personaje (game-modes §2.1): sexo, edad de entrada y posición de la
+ * familia se buscan entre los nacimientos de la aldea (§2.2, paso 1). El nombre, la especie, el
+ * lugar y el resto esperan a su fase (ROADMAP).
+ */
 export const CharacterSpec = z.strictObject({
   species: contentId.optional(),
   sex: z.enum(["female", "male"]).optional(),
   name: z.string().trim().min(1).max(60).optional(),
   entryAge: Age.optional(),
+  family: z.strictObject({ position: FamilyPosition.optional() }).optional(),
 });
 export type CharacterSpec = z.infer<typeof CharacterSpec>;
 
