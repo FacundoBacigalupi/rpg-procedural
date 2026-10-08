@@ -238,6 +238,36 @@ describe("planeta", () => {
     }
   }, 60_000);
 
+  it("calibración: el mar es la cuenca grande y los mares sin salida son lagos", () => {
+    // Antes había ~100 componentes de mar por seed (4-28 % de las celdas de océano); ahora las
+    // cuencas bajo el nivel del mar menores al 10 % de la mayor son lagos endorreicos.
+    for (const seed of [1, 2, 3]) {
+      const p = generatePlanet({ seed, biomes, spacingKm: 175 });
+      const e = p.tectonics.elevation;
+      const sea = (c: number) => (e[c] as number) <= 0 && !p.hydrology.lake[c];
+      const seen = new Uint8Array(p.grid.size);
+      const sizes: number[] = [];
+      let inland = 0;
+      for (let c = 0; c < p.grid.size; c++) {
+        if ((e[c] as number) <= 0 && p.hydrology.lake[c]) inland++;
+        if (seen[c] || !sea(c)) continue;
+        const cells = [c];
+        seen[c] = 1;
+        for (let i = 0; i < cells.length; i++) {
+          for (const m of p.grid.neighborsOf(cells[i] as number)) {
+            if (seen[m] || !sea(m)) continue;
+            seen[m] = 1;
+            cells.push(m);
+          }
+        }
+        sizes.push(cells.length);
+      }
+      const biggest = Math.max(...sizes);
+      for (const s of sizes) expect(s).toBeGreaterThanOrEqual(0.1 * biggest);
+      expect(inland).toBeGreaterThan(0);
+    }
+  }, 60_000);
+
   it("todo río baja hasta el mar sin ciclos", () => {
     for (const seed of [1, 2, 3]) {
       const p = planet(seed, 16);

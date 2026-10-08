@@ -112,7 +112,7 @@ export function generatePlanet(opts: PlanetOptions): Planet {
   const biome = new Uint16Array(grid.size);
   for (let c = 0; c < grid.size; c++) {
     const e = tect.elevation[c] as number;
-    const where = e <= 0 ? "ocean" : hy.lake[c] ? "lake" : "land";
+    const where = hy.lake[c] ? "lake" : e <= 0 ? "ocean" : "land";
     const b = classifyBiome(ordered, {
       where,
       temperature: cl.temperature[c] as number,
