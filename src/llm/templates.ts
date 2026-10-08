@@ -88,7 +88,8 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
 
   const s = view.scene;
   const arrived = view.outcomes.some((o) => o.effect.kind === "move" && o.effect.arrived === true);
-  const idle = view.outcomes.length === 0 && view.percepts.length === 0;
+  const idle =
+    view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
   if (!s.familiar || arrived || idle) {
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);
@@ -98,6 +99,15 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
   for (const c of view.self.cues) say(`self.${c}`);
+  for (const t of view.thoughts) {
+    const of = t.about !== undefined;
+    if (t.kind === "remember")
+      say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
+    else if (t.kind === "ponder")
+      say(of ? "thought.ponder_of" : "thought.ponder", { who: ref(t.about) });
+    if (t.mood !== undefined) say(`thought.mood.${t.mood}`);
+    else if (t.kind === "feel") say("thought.mood.calm");
+  }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
   return out.join(" ");
 }

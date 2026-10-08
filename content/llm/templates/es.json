@@ -419,6 +419,34 @@
   { "id": "self.sick", "lines": ["Te sentís mal, afiebrado."] },
   { "id": "self.cold", "lines": ["Tenés frío."] },
 
+  {
+    "id": "thought.remember",
+    "lines": ["Te quedás un rato recordando.", "Algo del pasado te vuelve a la cabeza."]
+  },
+  {
+    "id": "thought.remember_of",
+    "lines": ["Te acordás de {who}.", "Pensás en {who} y en otros tiempos."]
+  },
+  { "id": "thought.ponder", "lines": ["Te quedás pensando.", "Das vueltas a lo que pasó."] },
+  {
+    "id": "thought.ponder_of",
+    "lines": ["Le das vueltas a lo de {who}.", "No podés dejar de pensar en {who}."]
+  },
+  {
+    "id": "thought.mood.grief",
+    "lines": ["Sentís un peso en el pecho.", "La pena te aprieta la garganta."]
+  },
+  {
+    "id": "thought.mood.fear",
+    "lines": ["Un miedo sordo te recorre.", "Se te hace un nudo en el estómago."]
+  },
+  { "id": "thought.mood.longing", "lines": ["Los extrañás.", "Te invade la nostalgia."] },
+  { "id": "thought.mood.guilt", "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."] },
+  {
+    "id": "thought.mood.calm",
+    "lines": ["Por un rato estás en paz.", "Todo está quieto dentro tuyo."]
+  },
+
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },
   { "id": "good.shellfish", "lines": ["almejas"] },
