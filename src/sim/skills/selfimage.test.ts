@@ -61,7 +61,7 @@ describe("autoimagen de la habilidad", () => {
       skillLevel(farming, st["farming"]) + selfBias(farming, st["farming"], {}),
       5,
     );
-    expect(SELF_IMAGES.name).toBe("skills.selfImage");
+    expect(SELF_IMAGES.name).toBe("skills.self_image");
   });
 
   it("el audaz se sobreestima y el reactivo se subestima", () => {

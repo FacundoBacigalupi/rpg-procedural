@@ -26,7 +26,7 @@ export interface SelfImage {
 export type SelfImages = Readonly<Record<string, SelfImage>>;
 
 /** La tabla de autoimagen en la verdad, por `AgentId` (el que cree). */
-export const SELF_IMAGES = table<SelfImages>("skills.selfImage");
+export const SELF_IMAGES = table<SelfImages>("skills.self_image");
 
 /** Cuánto mueve la estimación un resultado mejor o peor que lo esperado (calibración abierta). */
 export const RESULT_SWING = 0.25;
