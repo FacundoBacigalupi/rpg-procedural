@@ -1,6 +1,7 @@
 // Lo adquirido de la mente: esquemas, valores y la formación por eventos (npc-psychology).
 
 export * from "./appraise.ts";
+export * from "./consolidation.ts";
 export * from "./habits.ts";
 export * from "./history.ts";
 export * from "./memory.ts";
