@@ -51,8 +51,8 @@ describe("modo novela: buscar un nacimiento real", () => {
 
   it("es determinista", () => {
     const game = novel({ sex: who?.sex, entryAge });
-    const a = Life.create(3, content, { frequency: 8, ...optionsOf({ game }) });
-    const b = Life.create(3, content, { frequency: 8, ...optionsOf({ game }) });
+    const a = Life.create(7, content, { frequency: 8, ...optionsOf({ game }) });
+    const b = Life.create(7, content, { frequency: 8, ...optionsOf({ game }) });
     expect(a.world.player).toBe(b.world.player);
     expect(a.hash()).toEqual(b.hash());
   }, 120_000);
