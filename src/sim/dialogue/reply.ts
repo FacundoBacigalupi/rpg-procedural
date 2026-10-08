@@ -103,6 +103,25 @@ export interface Reply {
   readonly give?: { readonly good: string; readonly grams: number; readonly credit?: boolean };
   /** Lo que el oyente toma como dicho (queda en `Heard`, con duda si choca con lo que sabe). */
   readonly accepted?: HeardClaim;
+  /** Una promesa que el oyente toma por hecha: la anota en su libro (contracts `believePledge`). */
+  readonly pledge?: { readonly good: string | null; readonly grams: number | null };
+}
+
+/** Confianza desde la que el oyente da por buena una promesa de quien habla. */
+export const PROMISE_CREDENCE = 0.3;
+
+/**
+ * Cuánto le cree el oyente a una promesa de quien habla (0-1): su confianza y respeto, menos el
+ * resentimiento y lo que lo traicionó o le debe vencido; lo vivido con esa persona suma o resta.
+ */
+export function credence(
+  f: Vector,
+  memory: Recollection,
+  opts: { readonly overdue?: boolean; readonly reproach?: boolean } = {},
+): number {
+  const base = 0.5 + 0.6 * f.trust + 0.2 * f.respect - 0.5 * f.resentment + 0.2 * memory.bias;
+  const hit = (opts.overdue ? 0.35 : 0) + (opts.reproach ? 0.3 : 0);
+  return Math.round(Math.min(1, Math.max(0, base - hit)) * 1e6) / 1e6;
 }
 
 export function decideReply(i: ReplyInput, at: number): Reply {
@@ -163,6 +182,16 @@ export function decideReply(i: ReplyInput, at: number): Reply {
         ...say("request.credit", { what }),
         give: { good: a.good, grams: GIFT_GRAMS, credit: true },
       };
+    }
+    case "promise": {
+      if (a.good === null && a.grams === null) return say("promise.vague");
+      const trust = credence(i.feel, memory, {
+        overdue: i.owes?.overdue === true,
+        reproach: Boolean(i.reproach),
+      });
+      if (trust < PROMISE_CREDENCE) return say("promise.doubt");
+      const what = a.good === null ? "eso" : i.goodName(a.good);
+      return { ...say("promise.accept", { what }), pledge: { good: a.good, grams: a.grams } };
     }
     case "other":
       return say("other");
