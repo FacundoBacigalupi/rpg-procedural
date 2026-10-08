@@ -253,6 +253,27 @@ describe("moverse", () => {
     expect(total).toBeGreaterThanOrEqual(5 * 600);
   });
 
+  it("un tramo a medias puede torcer el rumbo sin que el caminante lo note", () => {
+    const rs = many(600, () => go({}));
+    const veered = rs.filter((r) => r.effect.kind === "move" && r.effect.believedAt !== undefined);
+    expect(veered.length).toBeGreaterThan(0);
+    for (const r of veered) {
+      if (r.effect.kind !== "move" || r.self.effect.kind !== "move") throw new Error("no es move");
+      expect(r.effect.reached).not.toBe(r.effect.believedAt);
+      expect(r.effect.onTheWay).toBe(true);
+      // Cree estar donde iba; la ubicación real es donde quedó.
+      expect(r.self.effect.reached).toBe(r.effect.believedAt);
+      expect(r.changes).toEqual([
+        { op: "set", table: LOCATION.name, id: me, value: { hex: r.effect.reached } },
+      ]);
+    }
+    // Un tramo bien hecho nunca se tuerce.
+    const good = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
+    expect(good.every((r) => r.effect.kind === "move" && r.effect.believedAt === undefined)).toBe(
+      true,
+    );
+  });
+
   it("un tramo tiene al menos un hex aunque pase de la media hora", () => {
     const slow = { ...map, crossSeconds: map.crossSeconds.map(() => 9000) };
     expect(legOf(slow, [1, 2, 3])).toEqual([1]);
