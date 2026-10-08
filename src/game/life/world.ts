@@ -33,6 +33,7 @@ import {
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
+import { ambientOf } from "./ambient.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
@@ -105,15 +106,21 @@ export function lifeWorld(
           map: parts.map,
           spaces: parts.spaces,
           clock: parts.clock,
+          seed: parts.seed,
           statuses: parts.statuses,
         }),
         deedsProcess({
           map: parts.map,
           spaces: parts.spaces,
           clock: parts.clock,
+          seed: parts.seed,
           statuses: parts.statuses,
         }),
-        bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) }),
+        bodyProcess({
+          plans: parts.plans,
+          placeOf: placeOf(parts, village),
+          ambientOf: ambientOf(parts),
+        }),
         actProcess({
           map: parts.map,
           spaces: parts.spaces,

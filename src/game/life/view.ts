@@ -9,7 +9,6 @@ import {
   attireLook,
   BODY_STATE,
   bodySigns,
-  daylight,
   houseKey,
   LOCATION,
   type Location,
@@ -21,6 +20,7 @@ import {
   presenceStimulus,
   type ReadonlyWorldTruth,
   STATUS,
+  skyLight,
   spaceLight,
   TRACE,
   traceStrength,
@@ -104,7 +104,7 @@ export function playerView(
   const body = w.truth.get(BODY_STATE, w.player);
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
   const hour = localHour(w.clock, now, w.map.lonDeg);
-  const day = daylight(hour);
+  const day = skyLight(w.map, w.clock, w.seed, now);
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);

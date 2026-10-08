@@ -5,7 +5,7 @@
 // para nadie (el caso nace de una creencia) y no hay quién reclame. Las peleas además dejan
 // sangre en el lugar (huella), que se borra sola con las horas.
 
-import type { AgentId, Event, PlanetClock, Rng, Tick } from "../../core/index.ts";
+import type { AgentId, Event, PlanetClock, Rng, Seed, Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   actionStimulus,
@@ -16,7 +16,6 @@ import {
   type Deed,
   type DeedKind,
   type DeedVia,
-  daylight,
   ENTITY,
   KNOWN_DEEDS,
   LOCATION,
@@ -34,6 +33,7 @@ import {
   type StatusDef,
   sensorAcuity,
   setComponent,
+  skyLight,
   TRACE,
 } from "../../sim/index.ts";
 
@@ -43,6 +43,7 @@ export interface DeedsOptions {
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly clock: PlanetClock;
+  readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
 }
 
@@ -152,7 +153,7 @@ function witnessesOf(
     {
       graph: o.spaces,
       forest: o.map.forest,
-      daylight: daylight(localHour(o.clock, e.tick, o.map.lonDeg)),
+      daylight: skyLight(o.map, o.clock, o.seed, e.tick),
     },
     rng.fork(e.id),
   );

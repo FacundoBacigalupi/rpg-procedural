@@ -432,4 +432,14 @@ describe("en el scheduler", () => {
       expect(a.log.ancestors(d.id).some((e) => a.log.get(e)?.kind === "strike")).toBe(true);
     }
   });
+
+  it("el calor da más sed y el frío más hambre que el confort", () => {
+    const run = (c: number) => advanceBody(plan, me, fresh(), DAY, () => c).body;
+    const mild = run(18);
+    const hot = run(36);
+    const cold = run(-5);
+    expect(hot.water).toBeGreaterThan(mild.water);
+    expect(cold.glycogen + cold.fat).toBeLessThan(mild.glycogen + mild.fat);
+    expect(advanceBody(plan, me, fresh(), DAY).body).toEqual(mild);
+  });
 });
