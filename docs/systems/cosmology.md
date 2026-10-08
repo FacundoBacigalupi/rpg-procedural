@@ -205,7 +205,7 @@ interface CosmicLedger {
 
 ## 15. Implementación por fase
 
-- **Fase 1:** sol y luna con días, fases y estaciones calculables; estrellas como catálogo mínimo (weather, calendarios).
+- **Fase 1:** sol y luna con días, fases y estaciones calculables; estrellas como catálogo mínimo (weather, calendarios). *Hecho en `sim/sky`:* órbitas circulares, el sol por la eclíptica a ritmo parejo (sin ecuación del tiempo), lunas en el plano de la eclíptica, sin refracción; la luz del cielo es el sol por altura más las lunas por fase y altura (las más chicas pesan `1/(1+i)`), y las estrellas salen del seed con tiempo sidéreo local.
 - **Fase 4:** techo del planeta y presión al llegar a él; supresión; tribulación de ascensión y ascender como final de la partida; ledger de esencia con la salida de las ascensiones.
 - **Fase 7:** ascensiones y visitas en la historia profunda, daños a la barrera, grietas y sellos, cometas y conjunciones en las crónicas, mundo superior en agregado.
 - **Fase 8:** cosmos completo de la familia xianxia con planos opcionales por seed (reino demoníaco, algo afuera, inframundo con economía); estructura de las demás familias cuando entren.

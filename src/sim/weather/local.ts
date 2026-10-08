@@ -2,7 +2,8 @@
 // saber de normales ni de días. El RNG sale de la semilla del mundo y de la celda, no del jugador.
 
 import { type PlanetClock, Rng, type Seed, type Tick } from "../../core/index.ts";
-import { daylight, type LocalMap, localHour } from "../world/index.ts";
+import { NIGHT_FLOOR, skyBrightness, skyObserverOf } from "../sky/index.ts";
+import { type LocalMap, localHour } from "../world/index.ts";
 import {
   type Anomaly,
   type DayWeather,
@@ -11,9 +12,6 @@ import {
   skyClearness,
   tempAt,
 } from "./daily.ts";
-
-/** Piso de luz de la noche: el mismo que `daylight` (la luna llega con cosmology §2). */
-const NIGHT_FLOOR = 0.05;
 
 /** El día de un tick en el lugar (el día cambia a la medianoche local). */
 export function weatherAt(
@@ -33,11 +31,11 @@ export function outdoorTempC(map: LocalMap, clock: PlanetClock, seed: Seed, tick
 }
 
 /**
- * Luz del día afuera (0-1) con el cielo: las nubes y la lluvia le quitan a la parte que da el sol,
- * y de noche no cambia nada.
+ * Luz afuera (0-1) con el cielo: las nubes y la lluvia le quitan a la parte que dan el sol y la
+ * luna (`skyBrightness`); el piso de la noche no cambia.
  */
 export function skyLight(map: LocalMap, clock: PlanetClock, seed: Seed, tick: Tick): number {
-  const base = daylight(localHour(clock, tick, map.lonDeg));
+  const base = skyBrightness(clock, skyObserverOf(map), tick);
   const w = weatherAt(map, clock, seed, tick);
   return NIGHT_FLOOR + (base - NIGHT_FLOOR) * skyClearness(w);
 }

@@ -25,7 +25,6 @@ import {
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
-  daylight,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -73,6 +72,8 @@ import {
   type StatusDef,
   setActivity,
   setComponent,
+  skyBrightness,
+  skyObserverOf,
   spaceLight,
   standardize,
   type Trait,
@@ -196,8 +197,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
       const space = ctx.truth.get(LOCATION, me)?.space;
       const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
+      const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
       const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
-      const light = node ? spaceLight(node, daylight(hour)) : daylight(hour);
+      const light = node ? spaceLight(node, sky) : sky;
       const cursor = state.resume
         ? state.cursor
         : advance(state.plan.root, state.cursor, {

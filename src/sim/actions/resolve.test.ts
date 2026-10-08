@@ -58,6 +58,7 @@ const map: LocalMap = {
   climate: {
     cell: "c:0",
     latDeg: 40,
+    axialTiltDeg: 23.4,
     annualMeanC: 12,
     seasonalRangeC: 20,
     annualPrecipMm: 700,

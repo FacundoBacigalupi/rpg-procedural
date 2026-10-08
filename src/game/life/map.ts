@@ -34,6 +34,7 @@ export function localMapOf(planet: Planet, site: VillageSite): LocalMap {
     climate: {
       cell: String(planet.grid.cellId(patch.cell)),
       latDeg: ((planet.grid.lat[patch.cell] as number) * 180) / Math.PI,
+      axialTiltDeg: planet.cosmology.axialTiltDeg,
       annualMeanC: planet.climate.temperature[patch.cell] as number,
       seasonalRangeC: planet.climate.seasonalRange[patch.cell] as number,
       annualPrecipMm: planet.climate.precipitation[patch.cell] as number,
