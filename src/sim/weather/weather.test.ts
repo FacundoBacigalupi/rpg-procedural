@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EARTHLIKE_CLOCK, Rng } from "../../core/index.ts";
 import type { ClimateNormals } from "../world/index.ts";
 import { dailyWeather, seasonWave, skyClearness, tempAt, yearPhase } from "./daily.ts";
+import { walkingFactor } from "./local.ts";
 
 const clock = EARTHLIKE_CLOCK;
 const YEAR_DAYS = Math.round(clock.year / clock.day);
@@ -115,5 +116,25 @@ describe("tiempo diario", () => {
     expect(tempAt(w, 15)).toBeGreaterThan(tempAt(w, 3));
     expect(skyClearness({ ...w, cloud: 0, precip: { kind: "none", mm: 0 } })).toBe(1);
     expect(skyClearness({ ...w, cloud: 1, precip: { kind: "rain", mm: 5 } })).toBeLessThan(0.5);
+  });
+});
+
+describe("walkingFactor", () => {
+  const dry = dailyWeather(temperate, clock, 100, Rng.root(1 as never));
+  const base = { ...dry, precip: { kind: "none" as const, mm: 0 }, windMs: 2, tempMaxC: 15 };
+
+  it("un día seco y templado no frena", () => {
+    expect(walkingFactor(base)).toBe(1);
+  });
+
+  it("la lluvia, la nieve, el viento y el frío frenan, con tope", () => {
+    const rain = walkingFactor({ ...base, precip: { kind: "rain", mm: 20 } });
+    const flood = walkingFactor({ ...base, precip: { kind: "rain", mm: 500 } });
+    const snow = walkingFactor({ ...base, precip: { kind: "snow", mm: 15 } });
+    expect(rain).toBeGreaterThan(1);
+    expect(flood).toBeLessThanOrEqual(1.4);
+    expect(snow).toBeGreaterThan(rain);
+    expect(walkingFactor({ ...base, windMs: 14 })).toBeGreaterThan(1);
+    expect(walkingFactor({ ...base, tempMaxC: -15 })).toBeGreaterThan(1);
   });
 });

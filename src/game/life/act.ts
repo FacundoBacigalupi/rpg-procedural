@@ -12,6 +12,7 @@ import {
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
+  type Seed,
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
@@ -80,6 +81,8 @@ import {
   table,
   treat,
   verbSkill,
+  walkingFactor,
+  weatherAt,
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
@@ -125,6 +128,7 @@ export interface ActOptions {
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
   readonly clock: PlanetClock;
+  readonly seed: Seed;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -349,6 +353,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     rng: ctx.rng.fork("act", state.seq, (cursor.path as number[]).join(".")),
     map: o.map,
     destination,
+    walkFactor:
+      def.resolver === "move"
+        ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now))
+        : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],

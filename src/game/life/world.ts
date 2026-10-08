@@ -127,6 +127,7 @@ export function lifeWorld(
           recipes: parts.recipes,
           statuses: parts.statuses,
           clock: parts.clock,
+          seed: parts.seed,
         }),
         converseProcess({
           spaces: parts.spaces,

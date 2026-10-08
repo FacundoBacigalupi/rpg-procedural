@@ -259,6 +259,12 @@ describe("moverse", () => {
     expect(legOf(map, [])).toEqual([]);
   });
 
+  it("con barro o nieve el tramo abarca menos hexes", () => {
+    const flat = { ...map, crossSeconds: map.crossSeconds.map(() => 600) };
+    expect(legOf(flat, [1, 2, 3, 4, 5])).toHaveLength(3);
+    expect(legOf(flat, [1, 2, 3, 4, 5], 1.5)).toHaveLength(2);
+  });
+
   it("de noche se pierde: queda en otro hex, y no sabe en cuál", () => {
     const rs = many(400, () => go({ scene: { light: 0, terrain: 0, placeKinds: [] } }));
     const lost = rs.filter(
