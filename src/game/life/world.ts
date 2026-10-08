@@ -17,6 +17,7 @@ import {
   type BondDef,
   bodyProcess,
   type DimensionDef,
+  type DivinationMethodDef,
   type FoodDef,
   type GoodDef,
   type HabitDef,
@@ -44,6 +45,7 @@ import { companyProcess } from "./company.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
+import { consultProcess, divinersProcess } from "./divine.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
@@ -82,6 +84,7 @@ export interface LifeWorld {
   readonly relationDims: readonly DimensionDef[];
   readonly relationBonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
+  readonly divinations: readonly DivinationMethodDef[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -210,6 +213,16 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         observeProcess({ clock: parts.clock, map: parts.map }),
+        divinersProcess({
+          methods: parts.divinations,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+        }),
+        consultProcess({
+          methods: parts.divinations,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+        }),
         companyProcess({
           dims: parts.relationDims,
           bonds: parts.relationBonds,
