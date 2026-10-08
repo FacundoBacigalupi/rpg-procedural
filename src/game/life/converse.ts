@@ -648,6 +648,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 }
               : {}),
             ...(regard ? { regard } : {}),
+            // Una promesa que tomó por hecha: `life.pledge` abre el compromiso con este dato.
+            ...(reply.pledge ? { pledge: reply.pledge } : {}),
             ...(reply.secret
               ? {
                   keep: {
