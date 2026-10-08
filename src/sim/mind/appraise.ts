@@ -259,3 +259,120 @@ export function spareDeltas(role: "spared" | "sparer"): Deltas {
     resentment: -SPARED_RELIEF,
   });
 }
+
+/** Trato y ayuda: lo que deja dar, comerciar, cuidar, fiar y devolver en cada parte. */
+export const GIFT_GRATITUDE = 0.5;
+export const GIFT_TRUST = 0.15;
+export const GIFT_AFFECTION = 0.1;
+/** Gramos de un regalo que cuentan como «grande» (a esa cantidad o más, el efecto es pleno). */
+export const GIFT_FULL_GRAMS = 1000;
+/** Un trato pareja suma confianza; la ventaja de un lado (`edge`, hasta 0,3) enoja al otro. */
+export const TRADE_TRUST = 0.05;
+export const TRADE_SOUR = 1.5;
+/** Curar bien agradece y acerca; el que depende de otro para curarse lo siente. */
+export const TEND_GRATITUDE = 0.6;
+export const TEND_TRUST = 0.2;
+export const TEND_AFFECTION = 0.15;
+export const TEND_DEPENDENCY = 0.1;
+/** Fiar: el que recibe agradece y depende; el que fía confía lo que arriesga. */
+export const LEND_GRATITUDE = 0.3;
+export const LEND_DEPENDENCY = 0.1;
+export const LEND_TRUST = 0.08;
+/** Pagar una deuda: la confianza que gana el acreedor y el alivio del deudor. */
+export const REPAID_TRUST = 0.2;
+export const REPAID_RELIEF = 0.1;
+/** No pagar a tiempo: lo que pierde el acreedor en confianza y gana en resentimiento. */
+export const DEFAULT_RESENTMENT = 0.35;
+export const DEFAULT_TRUST = 0.3;
+
+const share = (grams: number) => clamp01(grams / GIFT_FULL_GRAMS);
+
+/**
+ * Cambios por un `give`. `repayment` si lo dado saldaba una deuda: agradecer menos (era suyo) y
+ * confiar más. Quien da no gana gratitud; sí un poco de cariño por el que ayudó.
+ */
+export function giveDeltas(role: "giver" | "receiver", grams: number, repayment = false): Deltas {
+  const s = 0.3 + 0.7 * share(grams);
+  if (role === "giver") {
+    return rounded({
+      familiarity: FIGHT_FAMILIARITY,
+      affection: repayment ? 0 : GIFT_AFFECTION * s,
+    });
+  }
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    gratitude: GIFT_GRATITUDE * s * (repayment ? 0.3 : 1),
+    trust: GIFT_TRUST * s * (repayment ? 2 : 1),
+    affection: GIFT_AFFECTION * s * (repayment ? 0.5 : 1),
+  });
+}
+
+/**
+ * Cambios por un `trade` cerrado. `edge` es la ventaja del actor sobre lo que el otro cree justo
+ * (-0,3 a 0,3): si el actor sacó ventaja, el otro se siente estafado; si cedió, el otro lo valora.
+ */
+export function tradeDeltas(role: "actor" | "other", edge: number): Deltas {
+  const e = Math.min(0.3, Math.max(-0.3, edge));
+  if (role === "actor") {
+    return rounded({
+      familiarity: FIGHT_FAMILIARITY,
+      trust: TRADE_TRUST,
+      gratitude: Math.max(0, e) * 0.2,
+    });
+  }
+  const sour = Math.max(0, e) * TRADE_SOUR;
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    trust: TRADE_TRUST - sour,
+    resentment: sour * 0.8,
+    gratitude: Math.max(0, -e) * 0.6,
+  });
+}
+
+/** Cambios por cuidar a alguien (`tend`); `care` es cuán bien lo hizo (0-1). */
+export function tendDeltas(role: "carer" | "cared", care: number): Deltas {
+  const c = clamp01(care);
+  if (c <= 0) return rounded({ familiarity: FIGHT_FAMILIARITY });
+  if (role === "carer") {
+    return rounded({ familiarity: FIGHT_FAMILIARITY, affection: TEND_AFFECTION * c });
+  }
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    gratitude: TEND_GRATITUDE * c,
+    trust: TEND_TRUST * c,
+    affection: TEND_AFFECTION * c,
+    dependency: TEND_DEPENDENCY * c,
+  });
+}
+
+/** Cambios por un préstamo concedido (`household.borrowed`). */
+export function lendDeltas(role: "lender" | "borrower"): Deltas {
+  if (role === "lender") return rounded({ familiarity: FIGHT_FAMILIARITY, trust: LEND_TRUST });
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    gratitude: LEND_GRATITUDE,
+    dependency: LEND_DEPENDENCY,
+    trust: LEND_TRUST,
+  });
+}
+
+/** Cambios por la devolución en especie de una deuda (`household.repaid`). */
+export function repaidDeltas(role: "creditor" | "debtor"): Deltas {
+  if (role === "creditor") return rounded({ familiarity: FIGHT_FAMILIARITY, trust: REPAID_TRUST });
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    dependency: -REPAID_RELIEF,
+    trust: 0.05,
+  });
+}
+
+/** Cambios cuando el deudor no pagó a tiempo (`law.default`): el acreedor lo siente; el deudor, poco. */
+export function defaultDeltas(role: "creditor" | "debtor", mind: Mind): Deltas {
+  if (role === "debtor") return rounded({ familiarity: FIGHT_FAMILIARITY, resentment: 0.05 });
+  const wary = 1 - EXPECTED_DAMPING * strength(mind, "people_are_untrustworthy");
+  return rounded({
+    familiarity: FIGHT_FAMILIARITY,
+    resentment: DEFAULT_RESENTMENT,
+    trust: -DEFAULT_TRUST * wary,
+  });
+}
