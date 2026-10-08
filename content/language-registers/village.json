@@ -1,0 +1,23 @@
+[
+  {
+    "id": "village.home",
+    "name": "la casa",
+    "culture": "village",
+    "setting": "home",
+    "formality": 0.05
+  },
+  {
+    "id": "village.market",
+    "name": "el mercado",
+    "culture": "village",
+    "setting": "market",
+    "formality": 0.3
+  },
+  {
+    "id": "village.shrine",
+    "name": "el santuario",
+    "culture": "village",
+    "setting": "temple",
+    "formality": 0.8
+  }
+]
