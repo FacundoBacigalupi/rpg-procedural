@@ -151,5 +151,26 @@
       "No te doy {what}. Me da miedo lo que hacés."
     ],
     "formal": ["No le daré {what}; sé de lo que es capaz."]
+  },
+  {
+    "id": "greet.fond",
+    "lines": ["¡Qué alegría verte! Siempre me acuerdo de lo que hiciste.", "Ah, vos. Pasá, pasá."],
+    "formal": ["Qué gusto verlo. No olvido lo que hizo por mí."]
+  },
+  {
+    "id": "greet.wary",
+    "lines": [
+      "Ah... vos. Ya sabés cómo me quedé la última vez.",
+      "Hola. No me olvidé de lo que pasó."
+    ],
+    "formal": ["Buen día. No he olvidado lo que ocurrió entre nosotros."]
+  },
+  {
+    "id": "request.refuse.remembered",
+    "lines": [
+      "¿{what}? No me olvido de lo que pasó entre nosotros.",
+      "No te doy {what}. Lo de aquella vez todavía me pesa."
+    ],
+    "formal": ["No le daré {what}; no he olvidado lo ocurrido."]
   }
 ]

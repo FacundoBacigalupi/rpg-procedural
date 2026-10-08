@@ -19,6 +19,7 @@ import {
   CREDIT,
   type Credit,
   callName,
+  clampTemper,
   type DimensionDef,
   decideReply,
   deleteComponent,
@@ -30,10 +31,12 @@ import {
   goodUnit,
   HEARD,
   hear,
+  INNATE,
   KNOWN_DEEDS,
   type Lexicon,
   LOCATION,
   liveBetween,
+  MEMORIES,
   MIND,
   PERSON,
   PERSON_NAME,
@@ -42,6 +45,7 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   rankOf,
+  recollect,
   relationship,
   type ScheduleRequest,
   type SpaceGraph,
@@ -50,6 +54,8 @@ import {
   type StateChange,
   type StatusDef,
   setComponent,
+  standardize,
+  type Trait,
   table,
   understand,
   villageCulture,
@@ -77,6 +83,8 @@ export interface ConverseOptions {
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
   readonly lines: readonly SpeechLine[];
+  /** Los rasgos del genoma, para leer el temperamento del oyente. */
+  readonly traits: readonly Trait[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por día de mundo (los plazos del fiado se cuentan en días). */
   readonly day: Duration;
@@ -206,6 +214,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       KNOWN_DEEDS.name,
       RELATIONS.name,
       MIND.name,
+      MEMORIES.name,
+      INNATE.name,
       CREDIT.name,
       PERSON.name,
       PERSON_NAME.name,
@@ -241,6 +251,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         byRank &&
         (rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0) >
           (rankOf(truth.get(STATUS, me), o.statuses) ?? 0);
+      // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
+      const innate = truth.get(INNATE, me);
+      const z = innate ? standardize(innate, o.traits, truth.get(PERSON, me)?.sex ?? "female") : {};
       const reply = decideReply(
         {
           act: understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity),
@@ -252,6 +265,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
           }).dims,
           rankAbove: above,
+          temper: {
+            warmth: clampTemper(z["warmth"] ?? 0),
+            reactivity: clampTemper(z["reactivity"] ?? 0),
+          },
+          recollection: recollect(truth.get(MEMORIES, me), speaker, ctx.now),
           direct: (id) => {
             if (householdOf(truth, id) !== home && !sameSpot(truth, id, me)) return null;
             if (!alive(truth, id)) return { dead: true };

@@ -250,6 +250,10 @@ interface VerbalizationRequest {
 
 Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` no están; el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
 
+### Implementado (2026-10-08): personalidad y memorias en la respuesta
+
+`sim/dialogue/disposition.ts` resume lo que el oyente recuerda de quien le habla (`recollect`: memorias de `memoriesAbout` y gists, tono y vividez) y su temperamento (`Temper`: calidez y reactividad). `decideReply` los suma a las dimensiones de la relación: el recuerdo desplaza la calidez, cambia el saludo (`greet.fond`, `greet.wary`) y un agravio vívido cierra el pedido (`request.refuse.remembered`); el temperamento mueve los umbrales de dar sin cuenta y de rencor. Falta: reforzar lo recordado al conversar, contar memorias al ser preguntado y que sociabilidad/honestidad/emoción entren en la elección del acto.
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).
