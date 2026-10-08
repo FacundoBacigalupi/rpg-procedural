@@ -8,4 +8,5 @@ export * from "./persuasion.ts";
 export * from "./regard.ts";
 export * from "./reply.ts";
 export * from "./threats.ts";
+export * from "./secrets.ts";
 export * from "./topics.ts";
