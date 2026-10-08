@@ -7,7 +7,7 @@ Construcción por capas: cada fase deja algo **jugable o inspeccionable**.
 Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 ## ▶ Ahora (en orden)
-**La Fase 1 está cerrada** (Hitos 1a, 1b y 1c hechos; en `main` como `v0.1.3`, 1a `v0.1.1`, 1b `v0.1.2`). Todo lo que quedó pendiente de la Fase 1 porque depende de sistemas posteriores se pasó a su fase como ítem `Heredado de la Fase 1:` (Fase 2 y Fase 3). **Lo que sigue: Fase 2, el primer ítem `[ ]` de la lista (hoy «Heredado de “Relaciones multidimensionales”», sub-ítem «Que la decisión de los NPC y el diálogo lean las dimensiones en vez de `kin`/`formal`» (los de Fase 3 de esa lista se saltean); salteando los `Heredado de Appraisal` que son de la Fase 3 o de sistemas posteriores).** Si el usuario dice «continuá», es ese ítem y nada más.
+**La Fase 1 está cerrada** (Hitos 1a, 1b y 1c hechos; en `main` como `v0.1.3`, 1a `v0.1.1`, 1b `v0.1.2`). Todo lo que quedó pendiente de la Fase 1 porque depende de sistemas posteriores se pasó a su fase como ítem `Heredado de la Fase 1:` (Fase 2 y Fase 3). **Lo que sigue: Fase 2, el primer ítem `[ ]` de la lista (hoy «Conocimiento vs verdad (creencias sobre el jugador)»; salteando los sub-ítems de Fase 3 de “Relaciones multidimensionales” y los `Heredado de Appraisal` que son de la Fase 3 o de sistemas posteriores).** Si el usuario dice «continuá», es ese ítem y nada más.
 
 ### Cómo se trabaja (una sesión = un ítem)
 El usuario abre **una sesión nueva por ítem** para no gastar contexto, así que cada ítem tiene que entrar en una sesión y terminar sin ambigüedad.
