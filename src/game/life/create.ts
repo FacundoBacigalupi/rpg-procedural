@@ -76,6 +76,7 @@ import {
   seedMinds,
   seedParcels,
   seedPeopleCulture,
+  seedPeopleReligion,
   seedPersonNames,
   seedPlaceNames,
   seedRelations,
@@ -422,13 +423,20 @@ export function createLife(
   // La religión popular, parte de esa cultura: ancestros, el pozo, una fiesta, tabúes (religion §2, §6).
   const religion = content.all(RELIGIONS).find((r) => r.culture === culture.id);
   if (!religion) throw new Error("falta contenido: religión de la cultura village");
-  seedReligion(truth, ids, log, {
+  const villageFaith = seedReligion(truth, ids, log, {
     settlement,
     place: terrain.village,
     now: pop.now,
     foundersEvent: pop.foundersEvent,
     religion,
     doctrines: content.all(DOCTRINES),
+  });
+  // Lo que cada uno cree y cumple de ella: los hijos siguen a sus padres (religion §1).
+  seedPeopleReligion(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    religion: villageFaith,
   });
   // Lo adquirido de cada mente: esquemas de base desde el temperamento (npc-psychology §1-§2).
   seedMinds(truth, ids, log, {
