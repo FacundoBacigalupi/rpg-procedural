@@ -5,17 +5,21 @@
 // ser de la casa del muerto: los NPC todavía no perciben a distancia (Fase 3).
 //
 // También lleva los hábitos: cada acción registrada los refuerza (`sim/mind/habits.ts`).
-// No escribe todavía cambios de relación.
+// También mueve las relaciones (`RELATIONS`) de quienes pelearon, remataron o perdonaron.
 
 import type { AgentId, Event, PlanetClock } from "../../core/index.ts";
 import {
+  applyDeltas,
   appraiseFight,
   appraiseHardship,
   appraiseLoss,
   appraiseRearing,
   type BondDef,
+  type Deltas,
   type DimensionDef,
   ENTITY,
+  fightDeltas,
+  finishDeltas,
   form,
   HABITS,
   type HabitDef,
@@ -27,12 +31,14 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  type Relations,
   reinforceAll,
   relationship,
   type SchemaDef,
   type StageDef,
   type StateChange,
   setComponent,
+  spareDeltas,
   stageAt,
 } from "../../sim/index.ts";
 
@@ -67,7 +73,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
     representation: "individual",
     phase: "perceive",
     reads: [MIND.name, INNATE.name, PERSON.name, ENTITY.name, RELATIONS.name, HABITS.name],
-    writes: [MIND.name, HABITS.name],
+    writes: [MIND.name, HABITS.name, RELATIONS.name],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -84,12 +90,21 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         }
         minds.set(id, next);
       };
+      const rels = new Map<AgentId, Relations>();
       const rel = (from: AgentId, to: AgentId, e: Event) =>
-        relationship(truth.get(RELATIONS, from), to, e.tick, {
+        relationship(rels.get(from) ?? truth.get(RELATIONS, from), to, e.tick, {
           dims: o.dims,
           bonds: o.bonds,
           schemaStrength: (s) => truth.get(MIND, from)?.schemas[s]?.strength ?? 0,
         });
+      // Lo que `from` siente por `to` cambia por `deltas`; cita el evento. Quien no tenía fila la abre.
+      const move = (from: AgentId, to: AgentId, e: Event, deltas: Deltas) => {
+        if (!alive(truth, from) || !truth.get(PERSON, from)) return;
+        const base = rels.get(from) ??
+          truth.get(RELATIONS, from) ?? { toward: {}, originEventId: e.id };
+        const next = applyDeltas(rel(from, to, e), deltas, e.id);
+        rels.set(from, { ...base, toward: { ...base.toward, [to]: { ...next, updated: e.tick } } });
+      };
       for (const e of ctx.recent) {
         const fed = habitsFed(o.habits, e.kind);
         const doer = e.actors[0] as AgentId | undefined;
@@ -102,7 +117,13 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           }
         }
         if (e.kind === "combat.fight" || e.kind === "combat.finish") {
-          fightAppraisals(e, truth, apply, rel);
+          fightAppraisals(e, truth, apply, rel, move);
+        } else if (e.kind === "combat.spare") {
+          const [sparer, spared] = e.actors as [AgentId | undefined, AgentId | undefined];
+          if (sparer && spared) {
+            move(spared, sparer, e, spareDeltas("spared"));
+            move(sparer, spared, e, spareDeltas("sparer"));
+          }
         } else if (e.kind === "mind.hardship") {
           const id = e.actors[0] as AgentId | undefined;
           const ratio = (e.data as { fatRatio?: number } | null)?.fatRatio;
@@ -136,6 +157,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       const changes: StateChange[] = [
         ...[...minds].map(([id, m]) => setComponent(MIND, id, m)),
         ...[...habits].map(([id, h]) => setComponent(HABITS, id, h)),
+        ...[...rels].map(([id, r]) => setComponent(RELATIONS, id, r)),
       ];
       return changes.length === 0 ? {} : { changes };
     },
@@ -152,6 +174,7 @@ function fightAppraisals(
   truth: ReadonlyWorldTruth,
   apply: (id: AgentId, e: Event, items: ReturnType<typeof appraiseLoss>) => void,
   rel: (from: AgentId, to: AgentId, e: Event) => ReturnType<typeof relationship>,
+  move: (from: AgentId, to: AgentId, e: Event, deltas: Deltas) => void,
 ): void {
   const [first, second] = e.actors as [AgentId | undefined, AgentId | undefined];
   if (!first || !second) return;
@@ -168,20 +191,24 @@ function fightAppraisals(
   for (const [me, foe, role] of pairs) {
     if (!alive(truth, me)) continue;
     const r = rel(me, foe, e);
-    apply(
+    const facts = {
+      role,
+      foe,
+      worst: role === "victim" ? worstOn(me) : worstOn(foe),
+      standing: standing(me),
+      kin: r.bonds.length > 0,
+    } as const;
+    const mind = truth.get(MIND, me) ?? { schemas: {}, formative: [], originEventId: e.id };
+    const innate = truth.get(INNATE, me) ?? {};
+    apply(me, e, appraiseFight(facts, mind, innate));
+    // Un remate no es una pelea: el que se rindió y lo golpearon lo vive como traición.
+    move(
       me,
+      foe,
       e,
-      appraiseFight(
-        {
-          role,
-          foe,
-          worst: role === "victim" ? worstOn(me) : worstOn(foe),
-          standing: standing(me),
-          kin: r.bonds.length > 0,
-        },
-        truth.get(MIND, me) ?? { schemas: {}, formative: [], originEventId: e.id },
-        truth.get(INNATE, me) ?? {},
-      ),
+      e.kind === "combat.finish" && role === "victim"
+        ? finishDeltas()
+        : fightDeltas(facts, mind, innate),
     );
   }
 }

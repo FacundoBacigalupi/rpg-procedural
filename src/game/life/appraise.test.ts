@@ -12,13 +12,18 @@ import {
   type Body,
   careOf,
   checkInvariants,
+  fightDeltas,
+  finishDeltas,
   harshChance,
   LOCATION,
   MIND,
   type Mind,
   PERSON,
   type PersonRecord,
+  RELATIONS,
+  type Relations,
   SCHEMAS,
+  spareDeltas,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -111,6 +116,42 @@ describe("interpretar una pelea", () => {
   });
 });
 
+describe("cómo cambia una relación por una pelea", () => {
+  it("el golpeado resiente, desconfía y teme más cuanto peor lo hirieron", () => {
+    const light = fightDeltas({ ...hurt, worst: 0.1 }, mindWith({}), calm);
+    const grave = fightDeltas({ ...hurt, worst: 0.9 }, mindWith({}), calm);
+    expect(grave.resentment ?? 0).toBeGreaterThan(light.resentment ?? 0);
+    expect(grave.trust ?? 0).toBeLessThan(light.trust ?? 0);
+    expect(grave.fear ?? 0).toBeGreaterThan(light.fear ?? 0);
+    expect(grave.affection ?? 0).toBeLessThan(0);
+  });
+
+  it("que pegue uno de la casa duele más en la confianza; el audaz teme menos", () => {
+    const far = fightDeltas(hurt, mindWith({}), calm);
+    const kin = fightDeltas({ ...hurt, kin: true }, mindWith({}), calm);
+    expect(kin.trust ?? 0).toBeLessThan(far.trust ?? 0);
+    const bold = fightDeltas(hurt, mindWith({}), { ...calm, boldness: 1 });
+    expect(bold.fear ?? 0).toBeLessThan(far.fear ?? 0);
+  });
+
+  it("quien perdió pegando respeta y teme; sin herida solo se conocen más", () => {
+    const lost = fightDeltas({ ...hurt, role: "aggressor" }, mindWith({}), calm);
+    expect(lost.respect ?? 0).toBeGreaterThan(0);
+    expect(lost.fear ?? 0).toBeGreaterThan(0);
+    const none = fightDeltas({ ...hurt, worst: 0 }, mindWith({}), calm);
+    expect(Object.keys(none)).toEqual(["familiarity"]);
+  });
+
+  it("el remate hiere la confianza más que una pelea pareja, y el perdón da gratitud", () => {
+    expect(finishDeltas().trust ?? 0).toBeLessThan(
+      fightDeltas(hurt, mindWith({}), calm).trust ?? 0,
+    );
+    const spared = spareDeltas("spared");
+    expect(spared.gratitude ?? 0).toBeGreaterThan(0);
+    expect(spared.resentment ?? 0).toBeLessThan(0);
+  });
+});
+
 describe("interpretar una pérdida", () => {
   it("pesa más cuanto más cercano era", () => {
     const near = appraiseLoss(0.9)[0]?.stimulus.intensity ?? 0;
@@ -154,6 +195,34 @@ describe("la aldea interpreta lo que vive", () => {
     const hits = (fight?.data as { hits?: { to?: string }[] } | null)?.hits ?? [];
     if (hits.some((h) => h.to === target)) {
       expect(dangerous(after)).toBeGreaterThan(dangerous(before));
+    }
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
+  it("la pelea mueve lo que cada uno siente por el otro, citando la pelea", () => {
+    const life = Life.create(10, content);
+    const w = life.world;
+    const me = life.player;
+    const home = w.truth.get(PERSON, me)?.household;
+    const target = living(w.truth).find(
+      (id) => w.truth.get(PERSON, id)?.household !== home,
+    ) as AgentId;
+    const here = w.truth.get(LOCATION, me);
+    if (here) w.truth.set(LOCATION, target, here);
+    const report = life.turn(strikePlan(me, target), 1);
+    const fight = report.events.find((e) => e.kind === "combat.fight");
+    expect(fight).toBeDefined();
+    const toward = (a: AgentId, b: AgentId) =>
+      (w.truth.get(RELATIONS, a) as Relations | undefined)?.toward[b];
+    const theirs = toward(target, me);
+    const mine = toward(me, target);
+    expect(theirs?.history).toContain(fight?.id);
+    expect(mine?.history).toContain(fight?.id);
+    expect(theirs?.dims.familiarity ?? 0).toBeGreaterThan(0);
+    const hits = (fight?.data as { hits?: { to?: string }[] } | null)?.hits ?? [];
+    if (hits.some((h) => h.to === target)) {
+      expect(theirs?.dims.resentment ?? 0).toBeGreaterThan(0.15);
+      expect(theirs?.dims.trust ?? 0).toBeLessThan(0);
     }
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);
