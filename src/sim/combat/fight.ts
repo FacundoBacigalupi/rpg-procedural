@@ -15,6 +15,7 @@ import {
   injure,
   setActivity,
 } from "../body/index.ts";
+import { believedOdds, type RivalRead, readRival, resolveBreak, resolveFeint } from "./reading.ts";
 
 export const FIGHT_INTENTS = ["kill", "subdue", "drive_off", "escape"] as const;
 export type FightIntent = (typeof FIGHT_INTENTS)[number];
@@ -56,6 +57,12 @@ export interface FightInput {
   readonly control?: AgentId;
   /** Retomar una pelea pausada: lo que cada uno traía y los pulsos que ya corrieron. */
   readonly resume?: FightSnapshot;
+  /**
+   * Pelea con lectura (combat §5, §11): cada uno lee al rival con ruido (`readRival`), sus chances
+   * salen de esa lectura (`believedOdds`), se quiebra con `resolveBreak` y puede fintar. Sin esto,
+   * el comportamiento es el de siempre (chances desde la verdad con ruido de vista y `breakAt`).
+   */
+  readonly reading?: boolean;
 }
 
 /** Lo que de cada peleador no sale de su cuerpo ni de su carácter: sirve para retomar. */
@@ -71,6 +78,11 @@ export interface FighterSnapshot {
   readonly woundsTaken: number;
   readonly landed: number;
   readonly odds: number;
+  /** La última lectura del rival y de quién (solo en peleas con lectura). */
+  readonly read?: RivalRead;
+  readonly readOf?: AgentId;
+  /** Ventaja que le dejó una finta comprada para su próximo golpe (0-1). */
+  readonly opening?: number;
 }
 
 export interface FightSnapshot {
@@ -101,7 +113,8 @@ export type FightLogKind =
   | "whiffed"
   | "flee"
   | "yield"
-  | "fell";
+  | "fell"
+  | "feint";
 
 export interface FightLogEntry {
   readonly t: Tick;
@@ -112,7 +125,7 @@ export interface FightLogEntry {
   readonly zone?: string;
   /** Gravedad de la herida (solo `hit`). */
   readonly severity?: number;
-  /** El golpe se vio venir (solo en los intercambios). */
+  /** El golpe se vio venir (en los intercambios); en `feint`, el defensor la leyó como falsa. */
   readonly seen?: boolean;
 }
 
@@ -174,12 +187,16 @@ interface State {
   /** Golpes que metió: lo que ve de su propia pelea. */
   landed: number;
   odds: number;
+  read: RivalRead | null;
+  readOf: AgentId | null;
+  opening: number;
 }
 
 type Action =
   | { readonly kind: "idle" }
   | { readonly kind: "close"; readonly to: AgentId }
   | { readonly kind: "windup"; readonly to: AgentId }
+  | { readonly kind: "feint"; readonly to: AgentId }
   | { readonly kind: "flee"; readonly from: AgentId }
   | { readonly kind: "yield" };
 
@@ -262,6 +279,9 @@ export function runFight(input: FightInput): FightResult {
       woundsTaken: 0,
       landed: 0,
       odds: 0.5,
+      read: null,
+      readOf: null,
+      opening: 0,
     });
   }
   for (const saved of input.resume?.fighters ?? []) {
@@ -277,6 +297,9 @@ export function runFight(input: FightInput): FightResult {
     s.woundsTaken = saved.woundsTaken;
     s.landed = saved.landed;
     s.odds = saved.odds;
+    s.read = saved.read ?? null;
+    s.readOf = saved.readOf ?? null;
+    s.opening = saved.opening ?? 0;
   }
   const order = [...states.values()];
   const log: FightLogEntry[] = [];
@@ -342,7 +365,9 @@ export function runFight(input: FightInput): FightResult {
       // Solo se defiende quien está libre y mira para ese lado (no huyendo, ni en su hueco).
       const free = frozen.phase === "ready" && (frozen.alert || seen);
       const atk = 0.25 + 0.55 * a.skill * edgeOf(a);
-      const def = 0.15 + 0.6 * d.skill * edgeOf(d) * (0.5 + 0.5 * d.balance);
+      // Una finta comprada deja al defensor mal parado para este golpe (combat §5).
+      const def = 0.15 + 0.6 * d.skill * edgeOf(d) * (0.5 + 0.5 * d.balance) - 0.4 * a.opening;
+      a.opening = 0;
       const defended = inReach && seen && free && rng.normal(def - atk, 0.2) > 0;
       const hit = inReach && !defended && rng.chance(clamp01(0.45 + 0.5 * atk * edgeOf(a)));
       a.breath = clamp01(a.breath - 0.1 / Math.max(0.3, a.caps.endurance));
@@ -424,6 +449,30 @@ export function runFight(input: FightInput): FightResult {
           s.target = a.to;
           log.push({ t, kind: "windup", actor: s.id, target: a.to });
           break;
+        case "feint":
+          if (rival) {
+            // Preparación falsa: gasta tiempo y el defensor la compra o la lee (combat §5).
+            const res = resolveFeint(
+              { skill: s.skill },
+              { sight: rival.caps.sight, skill: rival.skill, alert: rival.alert },
+              input.light,
+              input.rng.fork("fight", base + pulse, s.id, "feint"),
+            );
+            s.phase = "recover";
+            s.until = t + res.cost;
+            if (res.outcome === "bought") {
+              rival.balance = clamp01(rival.balance - res.balanceLost);
+              s.opening = res.opening;
+            } else rival.alert = true;
+            log.push({
+              t,
+              kind: "feint",
+              actor: s.id,
+              target: rival.id,
+              seen: res.outcome === "read",
+            });
+          }
+          break;
         case "flee":
           if (rival) {
             s.phase = "fleeing";
@@ -500,6 +549,8 @@ export function runFight(input: FightInput): FightResult {
                 woundsTaken: s.woundsTaken,
                 landed: s.landed,
                 odds: s.odds,
+                ...(s.read && s.readOf ? { read: s.read, readOf: s.readOf } : {}),
+                ...(s.opening > 0 ? { opening: s.opening } : {}),
               })),
             },
           },
@@ -509,7 +560,9 @@ export function runFight(input: FightInput): FightResult {
 }
 
 function rivalOf(a: Action): AgentId {
-  return a.kind === "close" || a.kind === "windup" ? a.to : (a as { from: AgentId }).from;
+  return a.kind === "close" || a.kind === "windup" || a.kind === "feint"
+    ? a.to
+    : (a as { from: AgentId }).from;
 }
 
 function logged(log: readonly FightLogEntry[], actor: AgentId, kind: FightLogKind): boolean {
@@ -542,15 +595,49 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   const rival = visible[0];
   if (!rival) return { kind: "idle" };
 
-  s.odds = oddsOf(s, rival, input.light);
   const rng = input.rng.fork("fight", t, s.id, "decide");
-  // Quebrarse: huye si puede correr, se rinde si no (o si el otro lo alcanzaría).
-  if (s.odds < breakAt(s)) {
-    const quicker = rival.caps.locomotion >= s.caps.locomotion * 1.2;
-    if (s.caps.locomotion > 0.4 && s.breath > 0.1 && (!quicker || rng.chance(0.3))) {
-      return { kind: "flee", from: rival.id };
+  const quicker = rival.caps.locomotion >= s.caps.locomotion * 1.2;
+  const canRun = s.caps.locomotion > 0.4 && s.breath > 0.1;
+  if (input.reading === true) {
+    // Con lectura (§5, §11): cree lo que leyó del rival, no lo que es.
+    const base =
+      (rival.caps.manipulation +
+        rival.caps.locomotion +
+        rival.caps.strength +
+        rival.caps.cognition) /
+      4;
+    s.read = readRival(
+      { sight: s.caps.sight, skill: s.skill },
+      {
+        power: powerOf(rival),
+        breath: rival.breath,
+        hurt: clamp01(1 - base),
+        fear: clamp01(1 - 2 * rival.odds),
+      },
+      input.light,
+      input.rng.fork("fight", t, s.id, "read"),
+    );
+    s.readOf = rival.id;
+    const belief = believedOdds(s.read, {
+      myPower: powerOf(s),
+      landed: s.landed,
+      taken: s.woundsTaken,
+    });
+    s.odds = belief.myOdds;
+    const decision = resolveBreak(
+      { belief, breakAt: breakAt(s), drivers: {}, canRun, cornered: false, foeFaster: quicker },
+      rng.fork("break"),
+    );
+    if (decision.kind === "flee") return { kind: "flee", from: rival.id };
+    if (decision.kind === "yield") return { kind: "yield" };
+    if (decision.kind === "freeze") return { kind: "idle" };
+  } else {
+    s.odds = oddsOf(s, rival, input.light);
+    // Quebrarse: huye si puede correr, se rinde si no (o si el otro lo alcanzaría).
+    if (s.odds < breakAt(s)) {
+      if (canRun && (!quicker || rng.chance(0.3))) return { kind: "flee", from: rival.id };
+      return { kind: "yield" };
     }
-    return { kind: "yield" };
   }
   if (s.phase === "fleeing") s.phase = "ready";
   const d = dist(s.at, rival.at);
@@ -564,5 +651,15 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
   if (s.breath < 0.18 && rng.chance(0.7)) return { kind: "idle" };
   // Se queda un instante si recién perdió el equilibrio.
   if (s.balance < 0.35 && rng.chance(0.5)) return { kind: "idle" };
+  // Con lectura, quien sabe pelear a veces finta a un rival que está libre (§5).
+  if (
+    input.reading === true &&
+    s.skill > 0.4 &&
+    rival.phase === "ready" &&
+    s.opening === 0 &&
+    rng.fork("feint").chance(0.2 * s.skill)
+  ) {
+    return { kind: "feint", to: rival.id };
+  }
   return { kind: "windup", to: rival.id };
 }

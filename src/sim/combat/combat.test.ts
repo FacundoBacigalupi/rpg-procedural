@@ -207,3 +207,39 @@ describe("pausas del jugador entre pulsos", () => {
     }
   });
 });
+
+describe("pelea con lectura", () => {
+  const read = (fs: FighterInput[], seed: number) =>
+    runFight({ fighters: fs, start: 0, light: 1, rng: Rng.root(seed), cause, reading: true });
+
+  it("es determinista, termina y no depende del orden", () => {
+    fc.assert(
+      fc.property(fc.nat(5000), (seed) => {
+        const fs = [fighter(A, "a", 0, { skill: 0.8 }), fighter(B, "b", 0.7)];
+        const x = read(fs, seed);
+        expect(read(fs, seed)).toEqual(x);
+        expect(read([...fs].reverse(), seed)).toEqual(x);
+        expect(x.seconds).toBeLessThanOrEqual(90);
+      }),
+    );
+  });
+
+  it("quien sabe pelear finta y el defensor la compra o la lee", () => {
+    let feints = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = read(
+        [fighter(A, "a", 0, { skill: 1 }), fighter(B, "b", 0.7, { skill: 0.2 })],
+        seed,
+      );
+      feints += r.log.filter((l) => l.kind === "feint").length;
+    }
+    expect(feints).toBeGreaterThan(0);
+  });
+
+  it("sin la opción de lectura no hay fintas", () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const r = fight([fighter(A, "a", 0, { skill: 1 }), fighter(B, "b", 0.7)], seed);
+      expect(r.log.some((l) => l.kind === "feint")).toBe(false);
+    }
+  });
+});
