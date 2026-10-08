@@ -2,8 +2,18 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
-import { type ActionPlan, BODY_STATE, checkInvariants, LOCATION, PERSON } from "../../sim/index.ts";
+import {
+  type ActionPlan,
+  atMercyOf,
+  BODY_STATE,
+  checkInvariants,
+  LOCATION,
+  PERSON,
+  YIELD_WINDOW,
+  YIELDED,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { offenseOf } from "./deeds.ts";
 import { Life } from "./life.ts";
 import { living } from "./world.ts";
 
@@ -63,4 +73,63 @@ describe("el golpe del personaje es una pelea", () => {
   it("es determinista", () => {
     expect(brawl(3).life.hash()).toEqual(run.life.hash());
   }, 120_000);
+});
+
+const sparePlan = (actor: AgentId, target: AgentId): ActionPlan => ({
+  actor,
+  source: "player",
+  root: { kind: "do", verb: "spare", args: [{ role: "target", entity: target }], manner: [] },
+  manner: [],
+  causes: [{ kind: "state", entity: actor, key: "intent" }],
+});
+
+describe("rematar o perdonar a quien se rindió", () => {
+  // Busca una pelea que termine con el rival rendido (depende del seed; el hallazgo es determinista).
+  function yielded() {
+    for (let seed = 1; seed <= 12; seed++) {
+      const run = brawl(seed);
+      if (run.w.truth.get(YIELDED, run.other)?.to === run.me) return { ...run, seed };
+    }
+    throw new Error("ningún seed terminó con alguien rendido");
+  }
+
+  it("la pelea deja al rendido a merced del vencedor", () => {
+    const run = yielded();
+    const y = run.w.truth.get(YIELDED, run.other);
+    expect(y?.to).toBe(run.me);
+    expect(atMercyOf(y, run.me, run.report.to)).toBe(true);
+    expect(atMercyOf(y, run.other, run.report.to)).toBe(false);
+    expect(atMercyOf(y, run.me, (y?.at ?? 0) + YIELD_WINDOW + 1)).toBe(false);
+  }, 240_000);
+
+  it("perdonar lo suelta y queda como evento", () => {
+    const run = yielded();
+    const wounds = run.w.truth.get(BODY_STATE, run.other)?.wounds.length;
+    const report = run.life.turn(sparePlan(run.me, run.other), 1);
+    expect(run.w.truth.get(YIELDED, run.other)).toBeUndefined();
+    expect(report.events.find((e) => e.kind === "combat.spare")?.actors).toEqual([
+      run.me,
+      run.other,
+    ]);
+    expect(run.w.truth.get(BODY_STATE, run.other)?.wounds.length).toBe(wounds);
+  }, 240_000);
+
+  it("rematar es un golpe que no se defiende, con su evento y su delito", () => {
+    const run = yielded();
+    const before = run.w.truth.get(BODY_STATE, run.other)?.wounds.length ?? 0;
+    const report = run.life.turn(strikePlan(run.me, run.other), 1);
+    const finish = report.events.find((e) => e.kind === "combat.finish");
+    if (finish) {
+      expect(report.events.some((e) => e.kind === "combat.fight")).toBe(false);
+      expect(run.w.truth.get(YIELDED, run.other)).toBeUndefined();
+      expect(run.w.truth.get(BODY_STATE, run.other)?.wounds.length ?? 0).toBeGreaterThan(before);
+      expect(offenseOf(finish)?.kind).toBe("assault");
+    } else {
+      // Dudó (el nervio frena el golpe): sigue a su merced y no hubo pelea nueva.
+      expect(run.w.truth.get(YIELDED, run.other)?.to).toBe(run.me);
+    }
+    expect(checkInvariants({ truth: run.w.truth, log: run.w.log, ledger: run.w.ledger })).toEqual(
+      [],
+    );
+  }, 240_000);
 });

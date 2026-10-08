@@ -100,7 +100,7 @@ export function offenseOf(
     effect?: { kind?: string; from?: string; got?: readonly unknown[] };
     noticedBy?: readonly string[];
   } | null;
-  if (e.kind === "combat.fight" && second) {
+  if ((e.kind === "combat.fight" || e.kind === "combat.finish") && second) {
     return { kind: "assault", by: first, victim: second, noticedBy: [second] };
   }
   if (e.kind === "law.default" && second) {

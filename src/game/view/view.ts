@@ -144,6 +144,11 @@ export type EffectView =
       readonly glancing: boolean;
       readonly offBalance: boolean;
       readonly fight?: FightGist;
+      readonly finished?: boolean;
+    }
+  | {
+      readonly kind: "spare";
+      readonly target?: string;
     }
   | {
       readonly kind: "trade";
@@ -424,7 +429,10 @@ function effectView(
         glancing: e.glancing,
         offBalance: e.offBalance,
         ...(e.fight ? { fight: e.fight } : {}),
+        ...(e.finished ? { finished: true } : {}),
       };
+    case "spare":
+      return { kind: "spare", ...target(e.target) };
     case "trade": {
       const w = target(e.with).target;
       return {

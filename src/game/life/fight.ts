@@ -5,6 +5,7 @@
 
 import type { AgentId, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import {
+  atMercyOf,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
@@ -24,6 +25,8 @@ import {
   standardize,
   type Trait,
   verbSkill,
+  YIELDED,
+  type Yielded,
 } from "../../sim/index.ts";
 
 export interface StrikeFightInput {
@@ -62,6 +65,22 @@ export function canFight(truth: ReadonlyWorldTruth, target: AgentId): boolean {
     body !== undefined &&
     body.death === null &&
     body.consciousness !== "unconscious"
+  );
+}
+
+/** Si `target` sigue a merced de `me`. */
+export function atMyMercy(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  target: AgentId,
+  now: Tick,
+): boolean {
+  const body = truth.get(BODY_STATE, target);
+  return (
+    truth.get(ENTITY, target)?.endedAt === undefined &&
+    body !== undefined &&
+    body.death === null &&
+    atMercyOf(truth.get(YIELDED, target) as Yielded | undefined, me, now)
   );
 }
 
@@ -133,7 +152,19 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   return {
     seconds: result.seconds,
     myBody: mine.body,
-    changes: [setComponent(BODY_STATE, i.target, theirs.body)],
+    changes: [
+      setComponent(BODY_STATE, i.target, theirs.body),
+      // Quien se rinde queda a merced del que ganó: rematarlo o perdonarlo es de ahora en más.
+      ...(theirs.outcome === "yielded" && mine.outcome === "standing"
+        ? [
+            setComponent(YIELDED, i.target, {
+              to: i.me,
+              at: i.start + result.seconds,
+              event: i.cause,
+            }),
+          ]
+        : []),
+    ],
     event,
     gist: {
       seconds: result.seconds,

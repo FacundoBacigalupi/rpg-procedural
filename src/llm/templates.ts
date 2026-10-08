@@ -166,7 +166,16 @@ function outcome(
       else say("outcome.speak.silent");
       if (!e.delivered) say("outcome.speak.unheard");
       break;
+    case "spare":
+      say(e.target === undefined ? "outcome.spare.anyone" : "outcome.spare.done", {
+        target: ref(e.target),
+      });
+      break;
     case "strike": {
+      if (e.finished) {
+        say("outcome.strike.finished", { target: ref(e.target) });
+        break;
+      }
       if (e.target === undefined && !e.hit) say("outcome.strike.missed_anyone");
       else {
         const target = ref(e.target);
