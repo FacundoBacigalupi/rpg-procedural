@@ -30,6 +30,7 @@ import {
   ENTITY,
   type EventDraft,
   type FoodDef,
+  fieldFertility,
   HARVEST,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
@@ -46,6 +47,7 @@ import {
   PLACE,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SOIL,
   type SpaceGraph,
   type StateChange,
   setActivity,
@@ -111,7 +113,15 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "act",
-    reads: [PLAYER.name, PLAN_STATE.name, ENTITY.name, PERSON.name, LOCATION.name, BODY_STATE.name],
+    reads: [
+      PLAYER.name,
+      PLAN_STATE.name,
+      SOIL.name,
+      ENTITY.name,
+      PERSON.name,
+      LOCATION.name,
+      BODY_STATE.name,
+    ],
     writes: [LOCATION.name, BODY_STATE.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -155,7 +165,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // externa `harvest`; economy §1), según la estación del día: en invierno o con helada el
       // campo no da y la hora no deja asiento.
       const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
-      const grams = Math.round(HARVEST_GRAMS_PER_HOUR * season(day));
+      const grams = Math.round(HARVEST_GRAMS_PER_HOUR * season(day) * fieldFertility(truth));
       if (want.at === "fields" && there && grams > 0) {
         const ev = draftEvent(events.length);
         events.push({

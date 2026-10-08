@@ -41,6 +41,7 @@ import { deedsProcess } from "./deeds.ts";
 import { living } from "./living.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
+import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 
 export { living } from "./living.ts";
@@ -156,6 +157,7 @@ export function lifeWorld(
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),
+        soilProcess({ clock: parts.clock }),
         routineProcess({
           map: parts.map,
           spaces: parts.spaces,

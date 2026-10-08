@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Seed, Tick } from "../../core/index.ts";
 import { EARTHLIKE_CLOCK, Rng } from "../../core/index.ts";
-import type { ClimateNormals } from "../world/index.ts";
+import type { ClimateNormals, LocalMap } from "../world/index.ts";
 import { dailyWeather, seasonWave, skyClearness, tempAt, yearPhase } from "./daily.ts";
-import { walkingFactor } from "./local.ts";
+import { rainBetween, walkingFactor } from "./local.ts";
 
 const clock = EARTHLIKE_CLOCK;
 const YEAR_DAYS = Math.round(clock.year / clock.day);
@@ -136,5 +137,34 @@ describe("walkingFactor", () => {
     expect(snow).toBeGreaterThan(rain);
     expect(walkingFactor({ ...base, windMs: 14 })).toBeGreaterThan(1);
     expect(walkingFactor({ ...base, tempMaxC: -15 })).toBeGreaterThan(1);
+  });
+});
+
+describe("rainBetween", () => {
+  const map = { cell: "c:1", lonDeg: 0, climate: temperate } as unknown as LocalMap;
+  const seed = 7 as Seed;
+  const day = clock.day;
+
+  it("suma la lluvia de los días y es aditiva", () => {
+    const a = rainBetween(map, clock, seed, 0 as Tick, (10 * day) as Tick);
+    const b = rainBetween(map, clock, seed, (10 * day) as Tick, (20 * day) as Tick);
+    const ab = rainBetween(map, clock, seed, 0 as Tick, (20 * day) as Tick);
+    expect(ab).toBeGreaterThanOrEqual(a);
+    expect(ab).toBeLessThanOrEqual(a + b + 40);
+    expect(rainBetween(map, clock, seed, (5 * day) as Tick, (5 * day) as Tick)).toBe(0);
+  });
+
+  it("un año entero llueve cerca de lo normal y el desierto casi nada", () => {
+    const wet = rainBetween(map, clock, seed, 0 as Tick, (YEAR_DAYS * day) as Tick);
+    expect(wet).toBeGreaterThan(0);
+    const dry = { ...map, climate: desert } as unknown as LocalMap;
+    const short = rainBetween(dry, clock, seed, 0 as Tick, (30 * day) as Tick);
+    expect(short).toBeLessThan(rainBetween(map, clock, seed, 0 as Tick, (120 * day) as Tick));
+  });
+
+  it("no mira más de 60 días atrás", () => {
+    const far = rainBetween(map, clock, seed, 0 as Tick, (400 * day) as Tick);
+    const near = rainBetween(map, clock, seed, (340 * day) as Tick, (400 * day) as Tick);
+    expect(far).toBe(near);
   });
 });
