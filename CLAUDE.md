@@ -58,7 +58,7 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
 ## Retomar en un chat nuevo
-Si el usuario dice solo "continuá" (o similar): es el siguiente ítem del backlog de "▶ Ahora", siguiendo la **receta por ítem** que está ahí mismo.
+Si el usuario dice solo "continuá" (o similar): es el **primer `[ ]` de la fase actual** que nombra "▶ Ahora", siguiendo la **receta por ítem** y las reglas de "Cómo se trabaja" que están ahí mismo. **Una sesión = un ítem**: el usuario abre una sesión nueva por ítem. Si el ítem no entra en una sesión, se parte en sub-ítems en el ROADMAP antes de codear y se hace uno. Al terminar, el ítem queda `[x]` (nunca a medias ni con "queda X" suelto): lo no hecho pasa a ítems `[ ]` con nombre en la fase que corresponda, y "Ahora" apunta al siguiente.
 1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue (y cómo hacerlo) y "Estado del diseño" qué queda abierto.
 2. `git status` y `gh pr list` para ver ramas o PRs a medio camino (`gh` ya está en el PATH de Bash vía `~/bin/gh`).
 3. Leer el doc de sistema relevante antes de tocar código.
