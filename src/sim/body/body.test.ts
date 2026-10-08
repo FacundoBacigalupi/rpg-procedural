@@ -236,6 +236,9 @@ describe("heridas e infección", () => {
             dirty = ingest(plan, advanceBody(plan, me, dirty, dirty.updatedAt + DAY).body, 1800, 3);
             clean = ingest(plan, advanceBody(plan, me, clean, clean.updatedAt + DAY).body, 1800, 3);
             const i = (b: Body) => b.wounds[0]?.infection ?? 0;
+            // Quien muere queda congelado en su instante: si los dos mueren el mismo día, el sucio
+            // (que muere antes) se queda con menos infección que el limpio, que siguió unas horas.
+            if (dirty.death || clean.death) break;
             if (dirty.wounds[0]?.stage !== "healed" && clean.wounds[0]?.stage !== "healed") {
               expect(i(clean)).toBeLessThanOrEqual(i(dirty) + 1e-9);
             }
