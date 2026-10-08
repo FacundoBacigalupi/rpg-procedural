@@ -32,6 +32,7 @@ import {
   CULTURE_TRAITS,
   CULTURES,
   DEMOGRAPHY,
+  DOCTRINES,
   EATEN,
   ENTITY,
   FOODS,
@@ -53,6 +54,7 @@ import {
   type PlaceToName,
   PRESSURE_CURVES,
   RECIPES,
+  RELIGIONS,
   ROTTED,
   SKILLS,
   SkillCatalog,
@@ -64,6 +66,7 @@ import {
   seedParcels,
   seedPersonNames,
   seedPlaceNames,
+  seedReligion,
   seedSettlement,
   seedSkills,
   seedStatus,
@@ -367,6 +370,17 @@ export function createLife(
     foundersEvent: pop.foundersEvent,
     culture,
     traits: content.all(CULTURE_TRAITS),
+  });
+  // La religión popular, parte de esa cultura: ancestros, el pozo, una fiesta, tabúes (religion §2, §6).
+  const religion = content.all(RELIGIONS).find((r) => r.culture === culture.id);
+  if (!religion) throw new Error("falta contenido: religión de la cultura village");
+  seedReligion(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    religion,
+    doctrines: content.all(DOCTRINES),
   });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {

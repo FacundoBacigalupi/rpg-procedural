@@ -14,6 +14,7 @@ import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { CONCEPTS, LANGUAGES } from "./language/index.ts";
 import { TENURES } from "./property/index.ts";
+import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
 import { STATUSES } from "./social/index.ts";
@@ -41,5 +42,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   TENURES,
   CULTURE_TRAITS,
   CULTURES,
+  DOCTRINES,
+  RELIGIONS,
   ELEMENT_SYSTEMS,
 ] as readonly ContentKind[];

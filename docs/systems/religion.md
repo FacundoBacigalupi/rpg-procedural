@@ -212,6 +212,13 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 - **Fase 7:** religiones que nacen de eventos en la historia profunda, textos y cánones, lenguas sagradas, sincretismos, persecuciones de estado, milenarismos.
 - **Fase 8:** religiones del mundo con LOD, guerras santas, dioses reales en familias con panteón.
 
+## Implementación (Fase 1, 2026-10-07)
+
+- `sim/religion`: `DoctrineDef` en `content/doctrines/` (afirmación, tema, centralidad, fuente, `truthStatus` y `whyTruth` para el inspector) y `ReligionDef` en `content/religions/` (cultura de la que sale, doctrinas, seres venerados con `truth: none|spirit`, prácticas `offering|festival|taboo|rite|divination` con `believedEffect` y `socialEffect` separados, adherencia, exclusividad, origen contado). Las referencias a cultura, doctrinas, bienes y rasgos se validan al cargar; `religionProblems` revisa lo interno (ofrenda sin destinatario, ser repetido).
+- `seedReligion` escribe `COMMUNITY_RELIGION` por asentamiento con evento `religion.seeded` colgado de la fundación. No crea espíritus: sembrar creencias no cambia `WorldTruth`. Lectores: `villageReligion`, `practicesOfKind`, `tabooOnGood`.
+- La aldea trae folk con ancestros de la casa, el dueño del pozo y el Cielo (los tres sin nadie de verdad), ración de grano para la tablilla, balde anual al pozo, fiesta de la cosecha, tabú de la primera gavilla, velorio y mirar golondrinas.
+- Falta: identidad por persona (Fase 2), economía y fiestas fuera de escena (Fase 3).
+
 ## Tests
 
 - **Determinismo:** mismo seed, mismas religiones, doctrinas y conversiones.
