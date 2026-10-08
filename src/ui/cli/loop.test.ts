@@ -82,7 +82,7 @@ describe("runCli", () => {
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain(
-      "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
+      "Fuera del personaje (no pasa el tiempo): personaje, inventario, hipótesis, bitácora, ayuda, salir.",
     );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
