@@ -10,6 +10,7 @@ import {
   type EntityRef,
   type HolderRef,
   holderAccount,
+  type LedgerUnit,
   type PlaceRef,
   type Tick,
 } from "../../core/index.ts";
@@ -286,6 +287,14 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return g ? (ctx.ledger?.balance(holderAccount(larder), goodUnit(g)) ?? 0) : 0;
           },
           members,
+          worth: (id) => goodById(id)?.priceCopperPerKg ?? null,
+          speakerHas: (id) => {
+            const g = goodById(id);
+            return g
+              ? (ctx.ledger?.balance(holderAccount(speaker as unknown as HolderRef), goodUnit(g)) ??
+                  0)
+              : 0;
+          },
           lines: o.lines,
           rng: ctx.rng.fork("reply", pending.key),
         },
@@ -326,25 +335,48 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         emissions: { sight: speak?.emissions.sight ?? 0, sound: speak?.emissions.sound ?? 0 },
         causes: [reason],
       };
+      // Un trato cerrado: cada parte pasa lo suyo, de despensa a bolsillo y de bolsillo a despensa.
+      const swaps: { unit: LedgerUnit; from: HolderRef; to: HolderRef; amount: number }[] = [];
+      const mine = larder;
+      const yours = speaker as unknown as HolderRef;
+      for (const [term, from, to] of [
+        [reply.deal?.gives, mine, yours],
+        [reply.deal?.gets, yours, mine],
+      ] as const) {
+        const g = term ? goodById(term.good) : undefined;
+        if (term && g) swaps.push({ unit: goodUnit(g), from, to, amount: term.grams });
+      }
       return {
         changes,
         events: [event],
         postings:
-          reply.give && good
+          swaps.length > 0
             ? [
                 {
                   event: draftEvent(0),
-                  transfers: [
-                    {
-                      unit: goodUnit(good),
-                      from: holderAccount(larder),
-                      to: holderAccount(speaker as unknown as HolderRef),
-                      amount: reply.give.grams,
-                    },
-                  ],
+                  transfers: swaps.map((t) => ({
+                    unit: t.unit,
+                    from: holderAccount(t.from),
+                    to: holderAccount(t.to),
+                    amount: t.amount,
+                  })),
                 },
               ]
-            : [],
+            : reply.give && good
+              ? [
+                  {
+                    event: draftEvent(0),
+                    transfers: [
+                      {
+                        unit: goodUnit(good),
+                        from: holderAccount(larder),
+                        to: holderAccount(speaker as unknown as HolderRef),
+                        amount: reply.give.grams,
+                      },
+                    ],
+                  },
+                ]
+              : [],
       };
     },
   };

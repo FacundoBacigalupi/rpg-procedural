@@ -197,3 +197,19 @@ describe("hablarle a alguien sin decir nada", () => {
     expect((reply?.data as { effect: { reply: string } } | undefined)?.effect.reply).toBe("greet");
   }, 60_000);
 });
+
+describe("proponer un trato", () => {
+  it("una propuesta que el personaje no puede cumplir no mueve nada", () => {
+    const { life, w, me, other, house } = scene(7);
+    const larder = holderAccount(house as unknown as HolderRef);
+    const stock = w.ledger.balance(larder, grain);
+    const before = w.ledger.total(grain);
+    const report = life.turn(say(me, other, "Te doy 900 kilos de grano por 1 kilo de grano"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const line = (reply?.data as { effect: { reply: string } } | undefined)?.effect.reply;
+    expect(["offer.short", "offer.unvalued", "offer.refuse.grudge"]).toContain(line);
+    expect(w.ledger.balance(larder, grain)).toBe(stock);
+    expect(w.ledger.total(grain)).toBe(before);
+    expect(w.ledger.audit()).toEqual([]);
+  }, 60_000);
+});

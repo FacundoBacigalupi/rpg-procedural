@@ -12,6 +12,7 @@ import type { SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import type { HeardClaim } from "./knowledge.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
+import { type Proposal, weighOffer } from "./offers.ts";
 
 /** Gramos de un bien que se dan de una vez al que lo pide. */
 export const GIFT_GRAMS = 500;
@@ -47,6 +48,12 @@ export interface ReplyInput {
   readonly temper?: Temper;
   /** Lo que el oyente recuerda de quien habla (`recollect`); sin él, nada. */
   readonly recollection?: Recollection;
+  /** La propuesta que el oyente dejó planteada y espera que quien habla acepte o rechace. */
+  readonly open?: Proposal;
+  /** Cuánto cree el oyente que vale el kilo de un bien (monedas); sin esto no valúa ofertas. */
+  readonly worth?: (good: string) => number | null;
+  /** Gramos de un bien que quien habla tiene a mano (no puede ofrecer lo que no tiene). */
+  readonly speakerHas?: (good: string) => number;
   /** Cómo llama el oyente a `id` y a un bien. */
   readonly nameOf: (id: AgentId) => string;
   readonly goodName: (good: string) => string;
@@ -103,6 +110,10 @@ export interface Reply {
   readonly give?: { readonly good: string; readonly grams: number; readonly credit?: boolean };
   /** Lo que el oyente toma como dicho (queda en `Heard`, con duda si choca con lo que sabe). */
   readonly accepted?: HeardClaim;
+  /** Un trato cerrado: lo que el oyente recibe y lo que da (mover los bienes es de quien lo cablea). */
+  readonly deal?: Proposal;
+  /** Una contraoferta que el oyente deja planteada (queda abierta hasta que se acepte o rechace). */
+  readonly counter?: Proposal;
   /** Una promesa que el oyente toma por hecha: la anota en su libro (contracts `believePledge`). */
   readonly pledge?: { readonly good: string | null; readonly grams: number | null };
 }
@@ -193,6 +204,52 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       const what = a.good === null ? "eso" : i.goodName(a.good);
       return { ...say("promise.accept", { what }), pledge: { good: a.good, grams: a.grams } };
     }
+    case "offer": {
+      if (a.give === null && a.want === null) return say("offer.unclear");
+      if (a.give === null && a.want !== null) {
+        return decideReply({ ...i, act: { kind: "request", good: a.want.good } }, at);
+      }
+      const what = i.goodName((a.want ?? (a.give as { good: string })).good);
+      if (i.reproach || holdsGrudge(i.feel, temper.reactivity) || holdsGrievance(memory)) {
+        return say("offer.refuse.grudge", { what });
+      }
+      if (i.owes?.overdue) return say("request.refuse.owes", { what });
+      const v = weighOffer({
+        give: a.give,
+        want: a.want,
+        worth: i.worth ?? (() => null),
+        spare: (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER,
+        speakerHas: i.speakerHas ?? (() => 0),
+        felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
+      });
+      switch (v.kind) {
+        case "unvalued":
+          return say("offer.unvalued", { what });
+        case "short":
+          return say("offer.short", { what });
+        case "gift":
+          return { ...say("offer.gift", { what }), deal: v.deal };
+        case "accept":
+          return { ...say("offer.accept", { what }), deal: v.deal };
+        case "counter": {
+          const grams = v.counter.gives?.grams ?? 0;
+          return {
+            ...say("offer.counter", { what, kilos: String(Math.round(grams / 100) / 10) }),
+            counter: v.counter,
+          };
+        }
+        case "reject":
+          return say("offer.refuse.price", { what });
+      }
+      return say("other");
+    }
+    case "accept": {
+      if (!i.open) return say("answer.nothing");
+      if (i.reproach || holdsGrudge(i.feel, temper.reactivity)) return say("answer.nothing");
+      return { ...say("accept.thanks"), deal: i.open };
+    }
+    case "refuse":
+      return say(i.open ? "refuse.ack" : "answer.nothing");
     case "other":
       return say("other");
   }
