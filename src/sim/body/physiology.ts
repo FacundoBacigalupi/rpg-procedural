@@ -234,11 +234,19 @@ function step(
     wounds.push(w);
   }
 
-  // Agua y energía: la fiebre las gasta más rápido.
+  // Agua y energía: la fiebre las gasta más rápido. El agua va a la medida de la masa (un bebé
+  // de 4 kg no pierde los 2,4 L del adulto: se moría de sed en una noche).
   // El calor da sed y el frío da hambre (weather §5; con ropa de aldea, sin abrigo especial).
   const heat = 1 + HEAT_WATER * Math.max(0, ambientC - COMFORT_HIGH_C);
   const chill = 1 + COLD_KCAL * Math.max(0, COMFORT_LOW_C - ambientC);
-  const water = body.water + (ph.waterPerDay / 24) * load.water * h * (1 + 0.5 * fever) * heat;
+  const water =
+    body.water +
+    (ph.waterPerDay / 24) *
+      (body.massKg / ph.refMassKg) *
+      load.water *
+      h *
+      (1 + 0.5 * fever) *
+      heat;
   let need = (ph.kcalPerKgDay / 24) * body.massKg * load.kcal * h * (1 + 0.2 * fever) * chill;
   let glycogen = body.glycogen;
   let fat = body.fat;

@@ -108,6 +108,13 @@ describe("reservas", () => {
     expect(body.fat).toBe(fresh().fat);
   });
 
+  it("el agua va a la medida de la masa: un bebé no se deshidrata en una noche", () => {
+    const baby = newBody(plan, 4, 0);
+    const { body } = advanceBody(plan, me, setActivity(baby, "sleep"), 9 * HOUR);
+    expect(body.death).toBeNull();
+    expect(body.water).toBeLessThan(0.4 * plan.physiology.lethalDehydration * 4);
+  });
+
   it("sin comer se vacía el glucógeno, después la grasa, después el músculo, y muere de hambre", () => {
     let body = fresh();
     let prev = body;
