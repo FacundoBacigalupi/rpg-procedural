@@ -9,7 +9,9 @@
 import type { AgentId, Event, PlanetClock } from "../../core/index.ts";
 import {
   appraiseFight,
+  appraiseHardship,
   appraiseLoss,
+  appraiseRearing,
   type BondDef,
   type DimensionDef,
   ENTITY,
@@ -84,6 +86,22 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       for (const e of ctx.recent) {
         if (e.kind === "combat.fight" || e.kind === "combat.finish") {
           fightAppraisals(e, truth, apply, rel);
+        } else if (e.kind === "mind.hardship") {
+          const id = e.actors[0] as AgentId | undefined;
+          const ratio = (e.data as { fatRatio?: number } | null)?.fatRatio;
+          const mind = id ? truth.get(MIND, id) : undefined;
+          if (id && mind && ratio !== undefined && alive(truth, id)) {
+            apply(id, e, appraiseHardship(ratio, minds.get(id) ?? mind));
+          }
+        } else if (e.kind === "family.rearing") {
+          const [id, by] = e.actors as [AgentId | undefined, AgentId | undefined];
+          const data = (e.data ?? {}) as { care?: number; harsh?: number };
+          const mind = id ? truth.get(MIND, id) : undefined;
+          const innate = id ? truth.get(INNATE, id) : undefined;
+          if (id && mind && innate && alive(truth, id)) {
+            const facts = { caregiver: by ?? null, care: data.care ?? 0, harsh: data.harsh ?? 0 };
+            apply(id, e, appraiseRearing(facts, minds.get(id) ?? mind, innate));
+          }
         } else if (e.kind === "body.died") {
           const dead = e.actors[0] as AgentId | undefined;
           const home = dead ? truth.get(PERSON, dead)?.household : undefined;
