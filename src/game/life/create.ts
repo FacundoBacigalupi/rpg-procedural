@@ -17,6 +17,7 @@ import {
   ledgerUnit,
   makeId,
   type PlaceRef,
+  Rng,
   type Seed,
   type SettlementId,
 } from "../../core/index.ts";
@@ -33,6 +34,7 @@ import {
   CULTURES,
   DEMOGRAPHY,
   DOCTRINES,
+  dayOf,
   EATEN,
   ENTITY,
   FOODS,
@@ -41,6 +43,7 @@ import {
   HARVEST,
   HARVEST_GOOD,
   type Household,
+  harvestSeason,
   houseKey,
   LANGUAGES,
   LOCATION,
@@ -89,6 +92,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
@@ -108,8 +112,6 @@ export interface LifeOptions {
 }
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
-/** Gramos de grano por persona en la despensa al empezar. */
-export const LARDER_PER_MEMBER_G = 100_000;
 /** Monedas de cobre por persona al empezar (de la economía previa a la corrida; economy §2). */
 export const COINS_PER_PERSON = 40;
 
@@ -391,9 +393,20 @@ export function createLife(
     standing,
   });
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
-  // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
-  // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
-  // aldea cuando haya cosecha por estación y suelo (ROADMAP: Hito 1c, clima).
+  // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
+  // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
+  const season = harvestSeason(map.climate, clock, Rng.root(seed));
+  const startDay = dayOf(clock, pop.now + Math.round((map.lonDeg / 360) * clock.day));
+  const birthOf = new Map(pop.people.map((p) => [p.id, p.born]));
+  const larderOf = (h: { members: readonly AgentId[]; id: HouseholdId }): number =>
+    Math.round(
+      larderNeeded(
+        h.members.map((m) => (pop.now - (birthOf.get(m) ?? pop.now)) / clock.year),
+        clock,
+        season,
+        startDay,
+      ) * wealthOf(h.id),
+    );
   const grain = ledgerUnit("good:grain");
   if (foods.some((f) => f.id === "grain")) {
     const stocked = ids.next("event");
@@ -417,7 +430,7 @@ export function createLife(
           unit: grain,
           from: externalAccount("seed"),
           to: holderAccount(h.id),
-          amount: Math.round(h.members.length * LARDER_PER_MEMBER_G * wealthOf(h.id)),
+          amount: larderOf(h),
         }))
         .concat(
           pop.households

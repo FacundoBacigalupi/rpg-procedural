@@ -12,6 +12,8 @@ import {
   attireLook,
   BODY_STATE,
   bloodStrength,
+  CREDIT,
+  clearDefault,
   createEntity,
   type Deed,
   type DeedKind,
@@ -36,6 +38,7 @@ import {
   skyLight,
   TRACE,
 } from "../../sim/index.ts";
+import { settledIn } from "./credit.ts";
 
 export const DEEDS_PROCESS = "life.deeds";
 
@@ -180,6 +183,7 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
     phase: "perceive",
     reads: [
       KNOWN_DEEDS.name,
+      CREDIT.name,
       PERSON.name,
       LOCATION.name,
       ENTITY.name,
@@ -238,6 +242,16 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
               }),
             );
           }
+        }
+      }
+      // Quien salda deja de ser «el que no paga» para todos los que lo sabían (credit.ts).
+      const settled = settledIn(truth, ctx.recent, o.clock.day);
+      if (settled.length > 0) {
+        for (const id of truth.ids(KNOWN_DEEDS)) {
+          const before = knows.get(id as AgentId) ?? truth.get(KNOWN_DEEDS, id);
+          let kept = before;
+          for (const r of settled) kept = clearDefault(kept, r.credit.debtor, r.credit.creditor);
+          if (kept && kept !== before) knows.set(id as AgentId, kept);
         }
       }
       for (const [id, value] of knows) changes.push(setComponent(KNOWN_DEEDS, id, value));

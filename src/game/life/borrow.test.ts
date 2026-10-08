@@ -57,10 +57,16 @@ describe("fiado por hambre", () => {
     life.advanceTo(life.now + 70 * w.clock.day);
     const asked = w.log.all().filter((e) => e.kind === "household.borrowed");
     expect(asked.length).toBeGreaterThan(0);
-    const first = asked[0];
-    const pressure = first?.causes.find((c) => c.kind === "pressure");
-    expect(pressure).toBeDefined();
-    const id = (pressure as { pressure: string }).pressure;
+    // Con despensas justas para llegar a la cosecha, otras casas también pueden pedir: se mira la
+    // del hogar vaciado.
+    const pressureOf = (e: (typeof asked)[number]) =>
+      (e.causes.find((c) => c.kind === "pressure") as { pressure: string } | undefined)?.pressure;
+    const first = asked.find((e) => {
+      const id = pressureOf(e);
+      return id !== undefined && w.truth.get(PRESSURE, id as never)?.scope === home;
+    });
+    expect(first).toBeDefined();
+    const id = pressureOf(first as NonNullable<typeof first>) as string;
     expect(w.truth.get(PRESSURE, id as never)).toMatchObject({ kind: "hunger", scope: home });
     expect(w.truth.get(PRESSURE, id as never)?.discharges).toBeGreaterThan(0);
     const [borrower] = first?.actors.slice(1) ?? [];
