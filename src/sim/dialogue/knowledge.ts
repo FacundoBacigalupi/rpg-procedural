@@ -28,3 +28,30 @@ export function hear(before: Heard | undefined, claim: HeardClaim): Heard {
   const kept = (before?.claims ?? []).filter((c) => c.about !== claim.about);
   return { claims: [...kept, claim].slice(-KEPT_CLAIMS) };
 }
+
+/**
+ * Una creencia propia que su dueño guarda como secreto (dialogue §7): marca la creencia (sobre
+ * quién, qué atributo) con lo que le cuesta que salga, 0-1. El contenido sigue siendo la creencia.
+ */
+export interface Secret {
+  readonly about: AgentId;
+  readonly attr: "at" | "alive";
+  readonly stakes: number;
+}
+
+export interface Secrets {
+  readonly items: readonly Secret[];
+}
+
+/** Los secretos de cada persona, en su entidad. */
+export const SECRETS = table<Secrets>("dialogue.secrets");
+
+/** El secreto de `holder` sobre `about` (el de mayor costo si hay varios), si lo guarda. */
+export function secretAbout(secrets: Secrets | undefined, about: AgentId): Secret | undefined {
+  return (secrets?.items ?? [])
+    .filter((s) => s.about === about)
+    .reduce<Secret | undefined>(
+      (a, s) => (a === undefined || s.stakes > a.stakes ? s : a),
+      undefined,
+    );
+}

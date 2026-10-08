@@ -24,6 +24,7 @@ import {
   RELATION_DIMS,
   RELATIONS,
   relationship,
+  SECRETS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -246,5 +247,30 @@ describe("amenazar, halagar e insultar a alguien de la casa", () => {
     expect(["insult.hurt", "insult.shrug"]).toContain(line);
     const after = relationship(w.truth.get(RELATIONS, other), me, life.now, dims).dims;
     expect(after.affection).toBeLessThan(before.affection);
+  }, 120_000);
+});
+
+describe("sonsacar un secreto a alguien de la casa", () => {
+  it("quien guarda un secreto sobre otro contesta con una línea de secreto, y lo soltado queda como oído", () => {
+    const { life, w, me, other, mates } = scene(7);
+    const about = mates.find((id) => id !== other) ?? me;
+    if (about === me) return;
+    w.truth.set(SECRETS, other, { items: [{ about, attr: "alive", stakes: 0.1 }] });
+    const report = life.turn(
+      say(me, other, `Ya me contaron lo de ${nameOf(w, about)}, contame`),
+      1,
+    );
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const effect = (
+      reply?.data as
+        | { effect: { reply: string; keep?: { outcome: string; about: string } } }
+        | undefined
+    )?.effect;
+    expect(effect?.reply.startsWith("ask.secret.")).toBe(true);
+    expect(effect?.keep?.about).toBe(about);
+    if (effect?.keep?.outcome === "revealed") {
+      expect(w.truth.get(HEARD, me)?.claims.some((c) => c.about === about)).toBe(true);
+    }
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);
 });
