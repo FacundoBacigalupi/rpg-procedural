@@ -258,6 +258,10 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `sim/dialogue/lies.ts`: la sinceridad se mide contra lo que el hablante cree (`sincerityOf`), no contra la verdad; `suspicion`/`judgeStatement` dan creído, dudado o sorprendido a partir de señales (control y nervios del mentiroso, percepción y familiaridad del oyente), del choque con lo que el oyente ya cree y de su confianza y desconfianza; un sincero también puede ser acusado. `sim/dialogue/topics.ts`: una pila por lado, con preguntas abiertas y referencias que pueden resultar ambiguas. Falta cablearlo (`converse.ts`) y el resto de §6-§11.
 
+### Implementado (2026-10-08): persuasión, parte pura
+
+`sim/dialogue/persuasion.ts`: `persuade` mueve la utilidad del oyente en proporción a relevancia (contra `Stakes`, lo que de verdad le importa), credibilidad (claim con evidencia y hablante), entrega (habilidad social con ruido) y apertura (intelecto, terquedad, enojo, posición pública). Ceder con testigos cuesta cara (`faceCostOf`); apelar a la cara la alivia. Insistir o apelar a lo rechazado da reacción adversa (`offended`, confianza abajo, posición más firme). Falta cablearlo a `converse.ts` y al léxico de `understand`.
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).

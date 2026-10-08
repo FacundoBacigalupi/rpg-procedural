@@ -4,5 +4,6 @@ export * from "./knowledge.ts";
 export * from "./lies.ts";
 export * from "./lines.ts";
 export * from "./offers.ts";
+export * from "./persuasion.ts";
 export * from "./reply.ts";
 export * from "./topics.ts";
