@@ -12,12 +12,14 @@ import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   BODY_STATE,
   bodySigns,
+  COPPER,
   houseKey,
   LOCATION,
   MEAL_KCAL,
   PERSON,
   PLACE,
   SKILL_STATE,
+  STATUS,
 } from "../../sim/index.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -42,6 +44,8 @@ export interface CharacterPanel {
     readonly general: readonly string[];
     readonly zones: readonly { readonly zone: string; readonly signs: readonly string[] }[];
   };
+  /** Su lugar en la aldea, como lo sabe él (social-structure §13). */
+  readonly status?: string;
   /** Su gente, por la relación que sabe que tiene, y si vive (de lo que sabe). */
   readonly family: readonly { readonly relation: string }[];
   /** Lo que sabe hacer, por cuánto lo practicó (sin niveles). */
@@ -53,6 +57,8 @@ export interface CharacterPanel {
 }
 
 export interface InventoryPanel {
+  /** Monedas de cobre que lleva (se cuentan, no se estiman). */
+  readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
 }
@@ -71,6 +77,8 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
   const plan = w.plans.find((p) => p.id === body.plan);
   const signs = plan ? bodySigns(plan, body) : { general: [], zones: [] };
+  const mine = w.truth.get(STATUS, w.player);
+  const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;
   const zoneName = (id: string) => plan?.zones.find((z) => z.id === id)?.name ?? id;
   const alive = new Set(living(w.truth));
   const skills = Object.entries(w.truth.get(SKILL_STATE, w.player) ?? {})
@@ -87,6 +95,7 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   return {
     ageYears: Math.floor((w.scheduler.now - me.born) / w.clock.year),
     sex: me.sex,
+    ...(statusName === undefined ? {} : { status: statusName }),
     where: { home: at.space === houseKey(me.household), placeKinds: places },
     body: {
       general: signs.general,
@@ -130,10 +139,10 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
     (id) => w.truth.get(PERSON, id)?.household === me.household,
   ).length;
   return {
-    carried: holdings(w.player as HolderRef).map((h) => ({
-      good: name(h.unit),
-      amount: amountOf(h.amount),
-    })),
+    coins: holdings(w.player as HolderRef).find((h) => h.unit === COPPER)?.amount ?? 0,
+    carried: holdings(w.player as HolderRef)
+      .filter((h) => h.unit !== COPPER)
+      .map((h) => ({ good: name(h.unit), amount: amountOf(h.amount) })),
     larder: holdings(me.household as unknown as HolderRef).map((h) => ({
       good: name(h.unit),
       lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),

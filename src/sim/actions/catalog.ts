@@ -67,8 +67,11 @@ export const RESOLVERS = [
   "speak",
   "strike",
   "trade",
+  "give",
   "take",
+  "store",
   "eat",
+  "cook",
   "drink",
   "tend",
 ] as const;

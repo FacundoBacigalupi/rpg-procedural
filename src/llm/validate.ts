@@ -131,8 +131,17 @@ export function validateNarration(
       if (leak.has(w)) problems.push(`"${w}" is not something the character knows`);
     }
   }
+  // Las cantidades que pasaron de mano (gramos, kilos, monedas) también son cifras del pedido.
+  const figures = view.outcomes.flatMap((o) => {
+    const e = o.effect;
+    const grams =
+      e.kind === "give" ? e.gave?.grams : e.kind === "trade" ? e.moved?.grams : undefined;
+    const coins = e.kind === "trade" ? e.moved?.coins : undefined;
+    return [grams, grams === undefined ? undefined : Number((grams / 1000).toFixed(1)), coins];
+  });
+  const numbers = `${quoted} ${figures.filter((n) => n !== undefined).join(" ")}`;
   for (const d of new Set(plain.match(/\d+/g) ?? [])) {
-    if (!quoted.includes(d)) problems.push(`the number ${d} is not in the request`);
+    if (!numbers.includes(d)) problems.push(`the number ${d} is not in the request`);
   }
 
   // 3. Cobertura.

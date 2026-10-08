@@ -1,0 +1,147 @@
+[
+  {
+    "id": "greet",
+    "lines": ["Buenas.", "Hola, ¿cómo andás?", "Qué tal."],
+    "formal": ["Buen día tenga.", "Que le vaya bien."]
+  },
+  {
+    "id": "farewell",
+    "lines": ["Andá con cuidado.", "Hasta luego.", "Nos vemos."],
+    "formal": ["Que le vaya bien."]
+  },
+  {
+    "id": "ask.unclear",
+    "lines": ["¿De quién me hablás?", "No te entendí, ¿por quién preguntás?"]
+  },
+  {
+    "id": "ask.at.room",
+    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."]
+  },
+  {
+    "id": "ask.at.yard",
+    "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."]
+  },
+  {
+    "id": "ask.at.street",
+    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."]
+  },
+  {
+    "id": "ask.at.square",
+    "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."]
+  },
+  {
+    "id": "ask.at.open",
+    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."]
+  },
+  {
+    "id": "ask.dead",
+    "lines": ["{name} ya no está entre nosotros.", "A {name} lo perdimos."]
+  },
+  {
+    "id": "ask.heard_dead",
+    "lines": ["Dicen que {name} murió.", "Me contaron que a {name} se lo llevó la muerte."]
+  },
+  {
+    "id": "ask.unknown",
+    "lines": ["No sé dónde anda {name}.", "Ni idea de {name}, hace rato que no lo veo."]
+  },
+  {
+    "id": "tell.dead",
+    "lines": [
+      "Qué desgracia lo de {name}. Gracias por avisarme.",
+      "¿{name}? No lo sabía... qué pena."
+    ]
+  },
+  {
+    "id": "tell.alive",
+    "lines": [
+      "Menos mal lo de {name}. Gracias por contarme.",
+      "Me alegra saber que {name} sigue bien."
+    ]
+  },
+  {
+    "id": "tell.doubt",
+    "lines": [
+      "Eso de {name} no me cierra, yo sé otra cosa.",
+      "No te creo lo de {name}; no es lo que yo sé."
+    ]
+  },
+  {
+    "id": "request.unclear",
+    "lines": ["¿Qué necesitás, exactamente?", "No te entiendo qué me pedís."]
+  },
+  {
+    "id": "request.credit",
+    "lines": [
+      "Te lo fío: llevate {what} y me lo devolvés cuando puedas.",
+      "Tomá {what}, pero quedás debiéndomelo, ¿eh?"
+    ],
+    "formal": ["Se lo fío, {what}; me lo devuelve cuando pueda."]
+  },
+  {
+    "id": "request.refuse.owes",
+    "lines": [
+      "Primero pagame lo que ya me debés, después hablamos de {what}.",
+      "Con lo que me debés todavía, ni {what}."
+    ],
+    "formal": ["Antes de {what}, tendría que saldar lo que me debe."]
+  },
+  {
+    "id": "request.refuse.limit",
+    "lines": [
+      "Ya te fié bastante: devolveme algo antes de pedirme más {what}.",
+      "No te puedo fiar más {what} hasta que me pagues."
+    ]
+  },
+  {
+    "id": "request.short",
+    "lines": ["Ando justo de {what}, perdoname.", "No me sobra {what}, no puedo."]
+  },
+  {
+    "id": "request.give",
+    "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."]
+  },
+  {
+    "id": "other",
+    "lines": ["Mm.", "Ajá.", "Te escucho."]
+  },
+  {
+    "id": "greet.cold.theft",
+    "lines": ["Mirá quién anda por acá.", "Ah, vos. Me han contado de vos."],
+    "formal": ["Buen día. Tengo entendido que usted anda en cosas feas."]
+  },
+  {
+    "id": "greet.cold.assault",
+    "lines": ["Ni te me acerques.", "Con vos no quiero problemas."],
+    "formal": ["Buen día. Prefiero que guarde distancia."]
+  },
+  {
+    "id": "greet.cold.default",
+    "lines": ["Ah, vos. Todavía me debés.", "Mirá quién anda por acá, el que no paga."],
+    "formal": ["Buen día. Tengo pendiente una cuenta con usted."]
+  },
+  {
+    "id": "request.refuse.default",
+    "lines": [
+      "¿Más {what}? Si ni me pagaste lo anterior.",
+      "A los que no pagan no les fío {what}."
+    ],
+    "formal": ["No le daré {what}; no cumplió con lo anterior."]
+  },
+  {
+    "id": "request.refuse.theft",
+    "lines": [
+      "¿Darte {what}? Ni loco, después de lo que hiciste.",
+      "A los ladrones no les doy {what}."
+    ],
+    "formal": ["No le daré {what}; sé lo que hizo."]
+  },
+  {
+    "id": "request.refuse.assault",
+    "lines": [
+      "Ni {what} ni nada: sé de lo que sos capaz.",
+      "No te doy {what}. Me da miedo lo que hacés."
+    ],
+    "formal": ["No le daré {what}; sé de lo que es capaz."]
+  }
+]

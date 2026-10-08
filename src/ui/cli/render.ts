@@ -91,6 +91,7 @@ export function renderCharacter(p: CharacterPanel): string {
       ? "Te sentís bien."
       : `Cómo te sentís: ${[...general, ...zones].join("; ")}.`,
   );
+  if (p.status !== undefined) lines.push(`En la aldea sos ${p.status}.`);
   if (p.family.length > 0) {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
@@ -107,6 +108,11 @@ export function renderInventory(p: InventoryPanel): string {
       ? "No llevás nada encima."
       : `Llevás encima: ${p.carried.map((c) => `${AMOUNT[c.amount]} ${c.good}`).join(", ")}.`,
   ];
+  lines.push(
+    p.coins === 0
+      ? "No tenés monedas."
+      : `Tenés ${p.coins} ${p.coins === 1 ? "moneda" : "monedas"} de cobre.`,
+  );
   if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
   for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
   return lines.join("\n");

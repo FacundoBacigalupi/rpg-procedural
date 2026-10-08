@@ -7,11 +7,21 @@
   { "id": "figure.male.youth", "lines": ["un muchacho"] },
   { "id": "figure.male.adult", "lines": ["un hombre"] },
   { "id": "figure.male.elder", "lines": ["un viejo"] },
+  { "id": "attire.fine", "lines": ["de ropa fina", "con buena ropa"] },
+  { "id": "attire.worn", "lines": ["de ropa gastada y remendada", "con ropa raída"] },
   { "id": "who.vague", "lines": ["alguien"] },
 
   {
     "id": "scene.room",
     "lines": ["Estás bajo techo, entre paredes de barro.", "Estás adentro, en un cuarto."]
+  },
+  {
+    "id": "mark.blood.fresh",
+    "lines": ["Hay sangre fresca en el suelo.", "El suelo está manchado de sangre reciente."]
+  },
+  {
+    "id": "mark.blood.old",
+    "lines": ["Quedan manchas oscuras de sangre seca.", "Se ve una mancha vieja, de sangre."]
   },
   { "id": "scene.home", "lines": ["Estás en tu casa.", "Estás en casa, entre tus cosas."] },
   { "id": "scene.yard", "lines": ["Estás en un patio.", "Estás en el patio, a cielo abierto."] },
@@ -62,8 +72,20 @@
   { "id": "percept.action.speak", "lines": ["{who} habla.", "Oís hablar a {who}."] },
   { "id": "percept.action.strike", "lines": ["{who} lanza un golpe.", "Ves a {who} pegar."] },
   { "id": "percept.action.trade", "lines": ["{who} está negociando.", "Ves a {who} regateando."] },
+  {
+    "id": "percept.action.give",
+    "lines": ["{who} le da algo a alguien.", "Ves a {who} pasándole algo a otro."]
+  },
   { "id": "percept.action.take", "lines": ["{who} agarra algo.", "Ves a {who} llevarse algo."] },
+  {
+    "id": "percept.action.store",
+    "lines": ["{who} guarda algo en la casa.", "Ves a {who} guardando algo."]
+  },
   { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
+  {
+    "id": "percept.action.cook",
+    "lines": ["{who} cocina.", "Ves a {who} atendiendo el fuego."]
+  },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
@@ -181,6 +203,38 @@
     "lines": ["Tirás un golpe al aire."]
   },
   {
+    "id": "outcome.strike.fight.parted",
+    "lines": ["Se separan jadeando, sin que ninguno gane.", "Nadie puede más y la pelea se corta."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_down",
+    "lines": ["{target} cae y no se levanta.", "{target} queda en el suelo."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_fled",
+    "lines": ["{target} se suelta y sale corriendo.", "{target} te da la espalda y huye."]
+  },
+  {
+    "id": "outcome.strike.fight.foe_yielded",
+    "lines": ["{target} levanta las manos: se rinde.", "{target} se rinde y deja de defenderse."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_down",
+    "lines": ["Los golpes te tumban y todo se va apagando."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_dead",
+    "lines": ["Algo cede adentro tuyo y ya no hay nada más."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_fled",
+    "lines": ["Te das vuelta y salís corriendo de {target}."]
+  },
+  {
+    "id": "outcome.strike.fight.mine_yielded",
+    "lines": ["Levantás las manos y le pedís a {target} que pare."]
+  },
+  {
     "id": "outcome.strike.off_balance",
     "lines": ["Quedás desequilibrado.", "El impulso te deja mal parado."]
   },
@@ -209,8 +263,42 @@
     "id": "outcome.trade.no_deal",
     "lines": ["No llegás a un acuerdo con {with}.", "No te ponés de acuerdo con {with}."]
   },
+  {
+    "id": "outcome.trade.buy.good",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.buy.fair",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.buy.poor",
+    "lines": ["Le comprás {grams} de {what} a {with} por {coins}, aunque te lo cobran caro."]
+  },
+  {
+    "id": "outcome.trade.sell.good",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.sell.fair",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.sell.poor",
+    "lines": ["Le vendés {grams} de {what} a {with} por {coins}, aunque te pagan poco."]
+  },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
+  {
+    "id": "outcome.give.done",
+    "lines": ["Le das {grams} de {what} a {to}.", "Le pasás {grams} de {what} a {to}."]
+  },
+  { "id": "outcome.give.done_anyone", "lines": ["Dejás {grams} de {what}."] },
+  {
+    "id": "outcome.give.nothing_to",
+    "lines": ["No tenés qué darle a {to}.", "Con las manos vacías, no le podés dar nada a {to}."]
+  },
+  { "id": "outcome.give.nothing", "lines": ["No tenés qué dar."] },
   { "id": "outcome.take.got", "lines": ["Te llevás {what}.", "Agarrás {what}."] },
   {
     "id": "outcome.take.got_from",
@@ -237,6 +325,14 @@
   { "id": "cue.means", "lines": ["Te falta con qué.", "No tenés lo que hace falta."] },
 
   {
+    "id": "outcome.store.done",
+    "lines": ["Dejás {what} en la despensa de la casa.", "Guardás {what} con lo demás de la casa."]
+  },
+  {
+    "id": "outcome.store.nothing",
+    "lines": ["No llevás nada para guardar.", "No tenés nada encima que guardar."]
+  },
+  {
     "id": "outcome.eat.own",
     "lines": ["Comés {what} de lo que llevabas.", "Te comés {what} que tenías encima."]
   },
@@ -247,6 +343,25 @@
   {
     "id": "outcome.eat.nothing",
     "lines": ["Buscás qué comer, pero no hay nada.", "No encontrás nada para comer."]
+  },
+  {
+    "id": "outcome.cook.good",
+    "lines": ["Sacás {what} dorado y en su punto.", "Te sale {what} como tiene que ser."]
+  },
+  {
+    "id": "outcome.cook.fair",
+    "lines": [
+      "Sacás {what}, aunque no del todo parejo.",
+      "El {what} sale pasable, con algún defecto."
+    ]
+  },
+  {
+    "id": "outcome.cook.poor",
+    "lines": ["Sacás {what} que no te convence.", "El {what} te sale mal."]
+  },
+  {
+    "id": "outcome.cook.nothing",
+    "lines": ["No tenés con qué cocinar.", "Sin insumos suficientes, no encendés el fuego."]
   },
   { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },

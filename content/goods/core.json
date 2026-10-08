@@ -1,0 +1,42 @@
+[
+  {
+    "id": "copper",
+    "name": "moneda de cobre",
+    "form": "coin"
+  },
+  {
+    "id": "grain",
+    "name": "grano",
+    "form": "good",
+    "priceCopperPerKg": 6,
+    "halfLifeDays": 900
+  },
+  {
+    "id": "flatbread",
+    "name": "pan plano",
+    "form": "good",
+    "priceCopperPerKg": 14,
+    "halfLifeDays": 4
+  },
+  {
+    "id": "gleanings",
+    "name": "espigas rebuscadas",
+    "form": "good",
+    "priceCopperPerKg": 3,
+    "halfLifeDays": 200
+  },
+  {
+    "id": "forage",
+    "name": "frutos y raíces del monte",
+    "form": "good",
+    "priceCopperPerKg": 2,
+    "halfLifeDays": 6
+  },
+  {
+    "id": "shellfish",
+    "name": "mariscos",
+    "form": "good",
+    "priceCopperPerKg": 5,
+    "halfLifeDays": 1.5
+  }
+]

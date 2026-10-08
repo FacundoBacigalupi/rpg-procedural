@@ -161,11 +161,31 @@ function effects(): { verb: string; effect: VerbEffect }[] {
   for (const w of [other, null]) {
     for (const deal of [true, false]) {
       for (const edge of [-0.2, 0, 0.2]) {
-        out.push({ verb: "trade", effect: { kind: "trade", with: w, deal, edge } });
+        out.push({
+          verb: "trade",
+          effect: {
+            kind: "trade",
+            with: w,
+            deal,
+            edge,
+            direction: null,
+            good: null,
+            grams: 0,
+            coins: 0,
+          },
+        });
       }
     }
   }
   const unit = (u: string) => u as never;
+  for (const to of [mother, null]) {
+    for (const gave of [undefined, { good: "good:grain", grams: 500 }]) {
+      out.push({
+        verb: "give",
+        effect: { kind: "give", to, good: gave ? unit(gave.good) : null, grams: gave?.grams ?? 0 },
+      });
+    }
+  }
   for (const from of [mother, makeId("household", 1)]) {
     for (const got of [
       [],

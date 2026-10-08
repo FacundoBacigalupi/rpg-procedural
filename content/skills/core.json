@@ -54,6 +54,21 @@
     "upbringing": { "fromAge": 7, "hoursPerYear": 600, "ease": 0.6 }
   },
   {
+    "id": "cooking",
+    "name": "cocinar",
+    "domain": "craft",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "control", "weight": 0.4 },
+      { "trait": "perception", "weight": 0.4 },
+      { "trait": "intellect", "weight": 0.2 }
+    ],
+    "capabilities": { "manipulation": 1 },
+    "tacitness": 0.8,
+    "curve": { "rate": 0.0015, "k": 3 },
+    "upbringing": { "fromAge": 6, "hoursPerYear": 300, "ease": 0.5 }
+  },
+  {
     "id": "conversation",
     "name": "conversar",
     "domain": "social",

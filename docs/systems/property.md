@@ -271,6 +271,9 @@ type RecordRef =
 - **Fase 7:** reformas, conquistas y repartos en la historia; restituciones que duran generaciones.
 - **Fase 8:** dos culturas con normas distintas sobre la misma tierra; nómadas y agricultores; territorios de bestias y espíritus.
 
+### Implementado (Fase 1, 2026-10-07)
+`sim/property`: `Parcel` (casa, campo, pastoreo, monte) con `rights` (haz por titular, bajo una forma de `content/tenure/`), `possession` y `PARCEL_BELIEFS` por persona; el titular es `Holder` (agente, hogar, organización o la aldea). Constancia: testigos (vecinos que estuvieron) o costumbre. Sin escrituras, venta ni herencia todavía.
+
 ## Tests
 
 - **Conservación:** la superficie total de la tierra no cambia por transferencias; cada cambio de titular tiene un evento con causa.

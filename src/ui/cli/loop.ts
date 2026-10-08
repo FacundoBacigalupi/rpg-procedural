@@ -82,6 +82,7 @@ export const HELP = [
   "Escribí lo que hace tu personaje, en tus palabras:",
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
+  "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
   "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
 ].join("\n");
 

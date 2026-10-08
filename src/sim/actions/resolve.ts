@@ -23,6 +23,19 @@ import {
   logistic,
   type PlaceRef,
 } from "../../core/index.ts";
+import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
+import {
+  askPerKg,
+  bidPerKg,
+  COPPER,
+  DAILY_KCAL,
+  gramsIn,
+  HARVEST,
+  KEEP_DAYS,
+  strike as strikeDeal,
+  WANT_DAYS,
+} from "../economy/index.ts";
+import { notorietyEdge } from "../law/index.ts";
 import {
   draftEvent,
   type EventDraft,
@@ -31,6 +44,7 @@ import {
   type StateChange,
   setComponent,
 } from "../scheduler/index.ts";
+import { deferenceEdge } from "../social/index.ts";
 import { hexPath, LOCATION, type LocalMap } from "../world/index.ts";
 import {
   type Attempt,
@@ -62,6 +76,34 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly foods?: ReadonlyMap<LedgerUnit, Nutrition>;
   /** La despensa del hogar del actor: de ahí come si no lleva nada encima. */
   readonly larder?: HolderRef | undefined;
+  /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
+  readonly market?: Market | undefined;
+  /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
+  readonly unitNames?: ReadonlyMap<LedgerUnit, string> | undefined;
+  /** Lo que el actor le debe al destinatario de `give`, por unidad: «le devuelvo» paga eso. */
+  readonly owed?: ReadonlyMap<LedgerUnit, number> | undefined;
+  /** Las recetas que conoce el mundo: sin ellas, `cook` no tiene qué hacer. */
+  readonly recipes?: readonly RecipeDef[] | undefined;
+}
+
+/** Lo que el resolver sabe de la economía de la aldea (economy §1, §4): precios base y casas. */
+export interface Market {
+  /** Precio base por kilo (monedas de cobre) de cada bien que se compra y se vende. */
+  readonly priceCopperPerKg: ReadonlyMap<LedgerUnit, number>;
+  /** Personas del hogar del actor, para saber cuántos días de comida le quedan. */
+  readonly ownMembers: number;
+  /** El otro del trato: su despensa y cuántos comen de ella. */
+  readonly other?: { readonly larder: HolderRef | null; readonly members: number } | undefined;
+  /** Cuánto grano rinde una hora de trabajo medio en el campo, en gramos. */
+  readonly harvestGramsPerHour?: number | undefined;
+  /** La unidad que rinde el campo. */
+  readonly harvestGood?: LedgerUnit | undefined;
+  /** El rango ritual de cada parte, si lo tiene: de ahí sale la deferencia en el trato. */
+  readonly ranks?:
+    | { readonly actor: number | undefined; readonly other: number | undefined }
+    | undefined;
+  /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
+  readonly fame?: number | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -76,6 +118,11 @@ export interface Nutrition {
  * aplica con `ingest`). Quien arma el ledger declara este sumidero con las unidades de comida.
  */
 export const EATEN = "eaten";
+/**
+ * Por donde pasa lo que se cocina: los insumos se van acá y el producto sale de acá. Las dos
+ * puntas quedan en el diario del evento de cocinar; el agua que absorbe la masa no se cuenta.
+ */
+export const COOKED = "cooked";
 /** Cuánto busca comer alguien en una comida (kcal): un plato de grano cocido, más o menos. */
 export const MEAL_KCAL = 800;
 /** Cuánto toma de una vez del pozo, del río o del cántaro (litros). */
@@ -154,6 +201,8 @@ export type VerbEffect =
       readonly force: number;
       /** Quedó desequilibrado: el otro tiene un hueco (combat). */
       readonly offBalance: boolean;
+      /** La pelea que siguió, si la hubo (la pone `game` con `sim/combat`; el resolver no la sabe). */
+      readonly fight?: FightGist;
     }
   | {
       readonly kind: "trade";
@@ -162,6 +211,19 @@ export type VerbEffect =
       readonly deal: boolean;
       /** Ventaja sobre el precio que el otro cree justo, -0,3 a 0,3: economy cierra el trato. */
       readonly edge: number;
+      /** Qué hizo el actor en el trato (`null` si no se movió nada). */
+      readonly direction: "buy" | "sell" | null;
+      readonly good: LedgerUnit | null;
+      /** Gramos del bien que cambiaron de mano y monedas que fueron al otro lado. */
+      readonly grams: number;
+      readonly coins: number;
+    }
+  | {
+      readonly kind: "give";
+      readonly to: EntityRef | null;
+      /** Lo que pasó de un bolsillo al otro (nada si no llevaba o no estaba). */
+      readonly good: LedgerUnit | null;
+      readonly grams: number;
     }
   | {
       readonly kind: "take";
@@ -180,7 +242,30 @@ export type VerbEffect =
       /** Litros de agua que trae la comida. */
       readonly water: number;
     }
+  | {
+      readonly kind: "store";
+      /** Lo que dejó en la despensa de la casa (nada si no llevaba o no podía). */
+      readonly got: readonly Holding[];
+    }
   | { readonly kind: "drink"; readonly liters: number }
+  | {
+      readonly kind: "cook";
+      /** La receta que intentó (null si no hay o no tenía con qué). */
+      readonly recipe: string | null;
+      /** De quién eran los insumos y adónde vuelve lo cocinado. */
+      readonly from: HolderRef | null;
+      /** Lo que salió, en el ledger (null si no se cocinó nada). */
+      readonly good: LedgerUnit | null;
+      readonly grams: number;
+      /** Los gramos de insumo que se gastaron. */
+      readonly used: number;
+      /** 0-1: la calidad del producto (la verdad; lo creído la reemplaza por `perceived`). */
+      readonly quality: number;
+      /** 0-1: la calidad que el cocinero cree que le salió, juzgada con sus sentidos. */
+      readonly perceived: number;
+      /** Cómo quedó: a punto, crudo, pasado o quemado. */
+      readonly state: "done" | "raw" | "dry" | "burnt" | null;
+    }
   | {
       readonly kind: "tend";
       /** A quién curó (él mismo si no nombra a nadie). */
@@ -190,6 +275,18 @@ export type VerbEffect =
       /** 0-1: cuán bien lo hizo. */
       readonly care: number;
     };
+
+/** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
+export type FightSide = "standing" | "down" | "fled" | "yielded";
+
+export interface FightGist {
+  readonly seconds: number;
+  readonly mine: FightSide | "dead";
+  /** El rival: quien lo vio caer no distingue si murió o quedó inconsciente. */
+  readonly theirs: FightSide;
+  readonly woundsTaken: number;
+  readonly woundsDealt: number;
+}
 
 /** Lo que el actor cree de su paso. */
 export interface SelfReport {
@@ -237,7 +334,18 @@ interface VerbResult {
     amount: number;
     /** Adonde va; si no, al actor. */
     to?: LedgerAccount;
+    /** De dónde sale cuando no es un titular (la cosecha viene de afuera del ledger). */
+    source?: LedgerAccount;
   }[];
+  /**
+   * El oficio reemplaza a la tirada: el resultado es lo que quedó de la sesión, y de ahí aprende
+   * quien lo hizo (crafts §1: se cocina, no se tira).
+   */
+  readonly verdict?: {
+    outcome: Outcome;
+    failure: FailureModeId | null;
+    believed: BelievedOutcome;
+  };
   /** El mundo corrige la tirada: lo buscado no estaba, no quedaba nada que sacar. */
   readonly override?: { outcome: Outcome; failure: FailureModeId; believed: BelievedOutcome };
   /** Quienes además lo notaron (el robo que sale muy mal). */
@@ -285,16 +393,18 @@ export function resolve(input: ResolveInput): ActionResolution {
   const run = RESOLVE[def.resolver];
   const truth = run(ctx);
 
-  const outcome = truth.override?.outcome ?? roll.outcome;
-  const failure = truth.override?.failure ?? roll.failure;
-  const believed = truth.override?.believed ?? roll.believed;
+  const verdict = truth.override ?? truth.verdict;
+  const outcome = verdict?.outcome ?? roll.outcome;
+  const failure = truth.override?.failure ?? truth.verdict?.failure ?? roll.failure;
+  const believed = verdict?.believed ?? roll.believed;
   const noticedBy = unique([...roll.noticedBy, ...(truth.noticedBy ?? [])]);
 
   // Lo creído: si el actor no notó que falló (o que salió a medias), cree el efecto de un
   // resultado bueno; si no, ve lo que pasó. Recolectar es la excepción: lo juntado se ve.
   const fooled =
     (outcome === "failure_unnoticed" || (roll.outcome === "partial" && believed === "success")) &&
-    def.resolver !== "gather";
+    def.resolver !== "gather" &&
+    def.resolver !== "cook";
   const selfEffect = fooled
     ? run({
         ...ctx,
@@ -345,7 +455,7 @@ export function resolve(input: ResolveInput): ActionResolution {
             event: draftEvent(0),
             transfers: transfers.map((t) => ({
               unit: t.unit,
-              from: holderAccount(t.from),
+              from: t.source ?? holderAccount(t.from),
               to: t.to ?? holderAccount(actor.id as HolderRef),
               amount: t.amount,
             })),
@@ -354,7 +464,8 @@ export function resolve(input: ResolveInput): ActionResolution {
       : [];
 
   return {
-    attempt: roll,
+    // El oficio aprende de lo que salió de la sesión, no de la tirada que no se usó.
+    attempt: truth.verdict ? { ...roll, outcome, failure, believed } : roll,
     outcome,
     failure,
     degree: ctx.degree,
@@ -377,6 +488,10 @@ function believedView(effect: VerbEffect): VerbEffect {
   if (effect.kind === "search" && !effect.found && !effect.glimpsed) {
     // No lo encontró: cree que no está, esté o no.
     return { ...effect, present: false };
+  }
+  if (effect.kind === "cook") {
+    // Ve cuánto sacó, pero la calidad la juzga con sus sentidos, no con la verdad.
+    return { ...effect, quality: effect.perceived, state: null };
   }
   return effect;
 }
@@ -494,9 +609,25 @@ const work: Resolver = (c) => {
   const m = c.roll.margin as number;
   // Un resultado medio rinde el tiempo trabajado; el mejor, la mitad más; un desastre lastima.
   const effectiveSeconds = Math.round(c.nominal * Math.min(1.5, 2 * c.degree));
+  const effect: VerbEffect = { kind: "work", effectiveSeconds, hurt: m <= -CRITICAL_MARGIN };
+  // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
+  const mk = c.input.market;
+  const grams =
+    mk?.harvestGood && mk.harvestGramsPerHour
+      ? Math.floor((mk.harvestGramsPerHour * effectiveSeconds) / 3600)
+      : 0;
+  if (!mk?.harvestGood || grams <= 0) return { effect, seconds: c.nominal };
   return {
-    effect: { kind: "work", effectiveSeconds, hurt: m <= -CRITICAL_MARGIN },
+    effect,
     seconds: c.nominal,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        source: externalAccount(HARVEST),
+        unit: mk.harvestGood,
+        amount: grams,
+      },
+    ],
   };
 };
 
@@ -542,22 +673,190 @@ const trade: Resolver = (c) => {
   const m = c.roll.margin;
   // Cerrar mal también es cerrar: la torpeza deja un mal trato; la duda o la falta de algo, ninguno.
   const deal = m !== null && (m >= PARTIAL_MARGIN || c.roll.failure === "clumsy");
+  const lean = deferenceEdge(c.input.market?.ranks?.actor, c.input.market?.ranks?.other);
+  const shun = notorietyEdge(c.input.market?.fame ?? 0);
+  const edge = deal
+    ? round3(Math.max(-0.3, Math.min(0.3, 0.3 * (2 * c.degree - 1) + lean + shun)))
+    : 0;
+  const idle = (closed: boolean): VerbEffect => ({
+    kind: "trade",
+    with: other,
+    deal: closed,
+    edge: closed ? edge : 0,
+    direction: null,
+    good: null,
+    grams: 0,
+    coins: 0,
+  });
+  const mk = c.input.market;
+  if (!deal || !mk || other === null) {
+    return {
+      effect: idle(deal && (!mk || other === null)),
+      seconds: deal ? c.nominal : c.nominal / 2,
+    };
+  }
+  const found = bargain(c, other, mk, edge);
+  if (!found) {
+    // No hay trato posible: uno no tiene con qué, o el otro no vende lo que le sobra.
+    return {
+      effect: idle(false),
+      seconds: c.nominal / 2,
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
   return {
     effect: {
       kind: "trade",
       with: other,
-      deal,
-      edge: deal ? round3(0.3 * (2 * c.degree - 1)) : 0,
+      deal: true,
+      edge,
+      direction: found.direction,
+      good: found.unit,
+      grams: found.grams,
+      coins: found.coins,
     },
-    seconds: deal ? c.nominal : c.nominal / 2,
+    seconds: c.nominal,
+    transfers: found.transfers,
   };
 };
+
+/** Lo que come una casa en días: cuánta comida tiene (kcal) sobre lo que gasta por día. */
+function foodDays(
+  rows: readonly Holding[],
+  foods: ReadonlyMap<LedgerUnit, Nutrition>,
+  members: number,
+): number {
+  return kcalOf(rows, foods) / (DAILY_KCAL * Math.max(1, members));
+}
+
+function kcalOf(rows: readonly Holding[], foods: ReadonlyMap<LedgerUnit, Nutrition>): number {
+  let kcal = 0;
+  for (const r of rows) kcal += r.amount * (foods.get(r.unit)?.kcalPerGram ?? 0);
+  return kcal;
+}
+
+interface Bargain {
+  readonly direction: "buy" | "sell";
+  readonly unit: LedgerUnit;
+  readonly grams: number;
+  readonly coins: number;
+  readonly transfers: NonNullable<VerbResult["transfers"]>;
+}
+
+/**
+ * El trato entre el actor y el otro (economy §4, §5). Cada parte tiene una reserva que sale de lo
+ * que le queda para comer: nadie vende lo que necesita en los próximos meses ni compra de más. Si
+ * el actor nombra lo que tiene encima, vende; si no, compra lo que el otro puede dar.
+ */
+function bargain(c: Ctx, other: EntityRef, mk: Market, edge: number): Bargain | null {
+  const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
+  const me = c.input.actor.id as HolderRef;
+  const you = other as HolderRef;
+  const rowsOf = (h: HolderRef | null | undefined): Holding[] =>
+    h ? [...c.input.ledger.holdings(holderAccount(h))] : [];
+  const priced = (rows: readonly Holding[]) => rows.filter((r) => mk.priceCopperPerKg.has(r.unit));
+  const coinsOf = (rows: readonly Holding[]) => rows.find((r) => r.unit === COPPER)?.amount ?? 0;
+  const merge = (...lists: Holding[][]): Holding[] => {
+    const sum = new Map<LedgerUnit, number>();
+    for (const l of lists) for (const r of l) sum.set(r.unit, (sum.get(r.unit) ?? 0) + r.amount);
+    return [...sum].map(([unit, amount]) => ({ unit, amount }));
+  };
+  const myRows = rowsOf(me);
+  const myLarder = rowsOf(c.input.larder);
+  const yourPocket = rowsOf(you);
+  const yourLarder = rowsOf(mk.other?.larder);
+  const myGoods = priced(myRows);
+  const yourGoods = priced(merge(yourPocket, yourLarder));
+  const what = argText(c, "what");
+  const wantGrams = gramsIn(what);
+  const names = (rows: readonly Holding[]) => {
+    const words = what === null ? [] : refTokens(what);
+    return rows.some((h) => words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)));
+  };
+  const sells = myGoods.length > 0 && (yourGoods.length === 0 || names(myGoods));
+  const buyerCoinsOf = (rows: readonly Holding[]) => coinsOf(rows);
+
+  if (sells) {
+    const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
+    const base = mk.priceCopperPerKg.get(row.unit) as number;
+    const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
+    const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
+    // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
+    const keep = Math.max(0, KEEP_DAYS * DAILY_KCAL * mk.ownMembers - kcalOf(myLarder, foods));
+    const spare =
+      kcalPerGram > 0 ? Math.max(0, kcalOf(myRows, foods) - keep) / kcalPerGram : row.amount;
+    const room =
+      kcalPerGram > 0
+        ? Math.max(
+            0,
+            WANT_DAYS * DAILY_KCAL * (mk.other?.members ?? 1) -
+              kcalOf(merge(yourPocket, yourLarder), foods),
+          ) / kcalPerGram
+        : row.amount;
+    const deal = strikeDeal({
+      wantGrams: Math.min(wantGrams, room),
+      askPerKg: askPerKg(base, myDays),
+      maxPerKg: bidPerKg(
+        base,
+        foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
+      ),
+      edge,
+      availableGrams: Math.min(row.amount, spare),
+      buyerCoins: buyerCoinsOf(yourPocket),
+      actorBuys: false,
+    });
+    if (!deal) return null;
+    return {
+      direction: "sell",
+      unit: row.unit,
+      grams: deal.grams,
+      coins: deal.coins,
+      transfers: [
+        { from: me, unit: row.unit, amount: deal.grams, to: holderAccount(you) },
+        { from: you, unit: COPPER, amount: deal.coins, to: holderAccount(me) },
+      ],
+    };
+  }
+
+  if (yourGoods.length === 0 || coinsOf(myRows) === 0) return null;
+  const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
+  const base = mk.priceCopperPerKg.get(row.unit) as number;
+  const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
+  const yourMembers = mk.other?.members ?? 1;
+  const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
+  const spare =
+    kcalPerGram > 0
+      ? Math.max(0, kcalOf(merge(yourPocket, yourLarder), foods) - keep) / kcalPerGram
+      : row.amount;
+  const deal = strikeDeal({
+    wantGrams,
+    askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
+    maxPerKg: bidPerKg(base, foodDays(merge(myRows, myLarder), foods, mk.ownMembers)),
+    edge,
+    availableGrams: Math.min(row.amount, spare),
+    buyerCoins: coinsOf(myRows),
+    actorBuys: true,
+  });
+  if (!deal) return null;
+  // Entrega primero lo que lleva encima y, si no alcanza, lo de la despensa.
+  const pocket = yourPocket.find((r) => r.unit === row.unit)?.amount ?? 0;
+  const fromPocket = Math.min(pocket, deal.grams);
+  const fromLarder = deal.grams - fromPocket;
+  const transfers: NonNullable<VerbResult["transfers"]> = [
+    ...(fromPocket > 0 ? [{ from: you, unit: row.unit, amount: fromPocket }] : []),
+    ...(fromLarder > 0 && mk.other?.larder
+      ? [{ from: mk.other.larder, unit: row.unit, amount: fromLarder }]
+      : []),
+    { from: me, unit: COPPER, amount: deal.coins, to: holderAccount(you) },
+  ];
+  return { direction: "buy", unit: row.unit, grams: deal.grams, coins: deal.coins, transfers };
+}
 
 const take: Resolver = (c) => {
   const fromEntity = argEntity(c, "from");
   const from: HolderRef = (fromEntity as HolderRef | null) ?? c.input.place;
   const held = c.input.ledger.holdings(holderAccount(from));
-  const wantedRow = pickWanted(held, argText(c, "what"));
+  const wantedRow = pickWanted(held, argText(c, "what"), c.input.unitNames);
   const wanted = wantedRow?.unit ?? null;
   const effect = (got: Holding[]): VerbEffect => ({ kind: "take", from, wanted, got });
   if (c.roll.unmet || !wantedRow) return { effect: effect([]), seconds: c.nominal };
@@ -597,7 +896,7 @@ const eat: Resolver = (c) => {
   const from: HolderRef | null =
     own.length > 0 ? (c.input.actor.id as HolderRef) : (c.input.larder ?? null);
   const pool = own.length > 0 ? own : edible(c.input.larder);
-  const row = pickWanted(pool, argText(c, "what"));
+  const row = pickWanted(pool, argText(c, "what"), c.input.unitNames);
   const empty: VerbEffect = { kind: "eat", good: null, from, grams: 0, kcal: 0, water: 0 };
   if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
   if (!row || from === null) {
@@ -627,6 +926,166 @@ const eat: Resolver = (c) => {
   };
 };
 
+/** Deja en la despensa de la casa lo que lleva encima (lo que nombra, o todo lo que sea bien). */
+const store: Resolver = (c) => {
+  const larder = c.input.larder;
+  const what = argText(c, "what");
+  const carried = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => !isMoney(h.unit) && h.amount > 0);
+  const words = what === null ? [] : refTokens(what);
+  const named = carried.filter((h) =>
+    words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)),
+  );
+  const rows = words.length > 0 && named.length > 0 ? named : carried;
+  if (c.roll.unmet) return { effect: { kind: "store", got: [] }, seconds: c.nominal };
+  if (larder === undefined || rows.length === 0) {
+    return {
+      effect: { kind: "store", got: [] },
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return {
+    effect: { kind: "store", got: rows },
+    seconds: c.nominal,
+    transfers: rows.map((r) => ({
+      from: c.input.actor.id as HolderRef,
+      unit: r.unit,
+      amount: r.amount,
+      to: holderAccount(larder),
+    })),
+  };
+};
+
+/** Calidad mínima para decir que salió bien, y para decir que salió a medias. */
+const COOK_GOOD = 0.7;
+const COOK_PASSABLE = 0.35;
+/** Menos que esta fracción de la tanda no vale el fuego. */
+const COOK_MIN_BATCH = 0.25;
+
+const cook: Resolver = (c) => {
+  const none: VerbResult = {
+    effect: {
+      kind: "cook",
+      recipe: null,
+      from: null,
+      good: null,
+      grams: 0,
+      used: 0,
+      quality: 0,
+      perceived: 0,
+      state: null,
+    },
+    seconds: c.nominal,
+  };
+  if (c.roll.unmet) return none;
+  const noMeans: VerbResult = {
+    ...none,
+    seconds: Math.min(c.nominal, 60),
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  };
+  const recipes = c.input.recipes ?? [];
+  const what = argText(c, "what");
+  const words = what === null ? [] : refTokens(what);
+  const named = recipes.filter((r) => {
+    const tokens = refTokens(`${r.id.replace(/_/g, " ")} ${r.name}`);
+    return words.some((w) => tokens.includes(w));
+  });
+  const recipe = named[0] ?? recipes[0];
+  if (!recipe) return noMeans;
+
+  // Los insumos: de lo que lleva encima si le alcanza, y si no, de la despensa de la casa.
+  const actorId = c.input.actor.id as HolderRef;
+  const stock = (holder: HolderRef | undefined): number | null => {
+    if (holder === undefined) return null;
+    const held = c.input.ledger.holdings(holderAccount(holder));
+    const scales = recipe.inputs.map(
+      (i) => (held.find((h) => h.unit === recipeUnit(i.good))?.amount ?? 0) / i.grams,
+    );
+    return Math.min(1, ...scales);
+  };
+  const own = stock(actorId);
+  const larder = stock(c.input.larder);
+  const from = (own ?? 0) >= COOK_MIN_BATCH ? actorId : (c.input.larder ?? null);
+  const scale = from === actorId ? own : larder;
+  if (from === null || scale === null || scale < COOK_MIN_BATCH) return noMeans;
+
+  const s = runSession({
+    recipe,
+    hands: handsOf(c.input.actor.skill ?? 0, c.input.actor.z),
+    rng: c.rng,
+    who: c.input.actor.id,
+    tick: c.input.tick,
+  });
+  const used = recipe.inputs.map((i) => ({
+    unit: recipeUnit(i.good),
+    amount: Math.floor(i.grams * scale),
+  }));
+  const inGrams = used.reduce((sum, u) => sum + u.amount, 0);
+  const outUnit = recipeUnit(recipe.output.good);
+  const grams = Math.floor(inGrams * s.yield);
+  const state: "done" | "raw" | "dry" | "burnt" =
+    s.work.scorch >= 0.4
+      ? "burnt"
+      : s.work.doneness < 0.85
+        ? "raw"
+        : s.work.doneness > 1.25
+          ? "dry"
+          : "done";
+  const grade = (q: number): "success" | "partial" | "failure" =>
+    q >= COOK_GOOD ? "success" : q >= COOK_PASSABLE ? "partial" : "failure";
+  const truth = grade(s.quality);
+  const believed = grade(s.perceivedQuality);
+  const outcome: Outcome =
+    truth === "failure" && believed === "success"
+      ? "failure_unnoticed"
+      : truth === "failure" && believed === "partial"
+        ? "failure_suspected"
+        : truth;
+  return {
+    effect: {
+      kind: "cook",
+      recipe: recipe.id,
+      from,
+      good: outUnit,
+      grams,
+      used: inGrams,
+      quality: round3(s.quality),
+      perceived: round3(s.perceivedQuality),
+      state,
+    },
+    seconds: s.seconds,
+    verdict: {
+      outcome,
+      failure: truth === "success" ? null : state === "burnt" ? "poor_yield" : "clumsy",
+      believed,
+    },
+    transfers: [
+      ...used.map((u) => ({
+        from,
+        unit: u.unit,
+        amount: u.amount,
+        to: externalAccount(COOKED),
+      })),
+      {
+        from,
+        unit: outUnit,
+        amount: grams,
+        source: externalAccount(COOKED),
+        to: holderAccount(from),
+      },
+    ],
+    // El horno hace ruido y humo, no más.
+    loud: 1.2,
+  };
+};
+
+/** La unidad del ledger de un bien de receta (`good:<id>`). */
+function recipeUnit(good: string): LedgerUnit {
+  return ledgerUnit(`good:${good}`);
+}
+
 const drink: Resolver = (c) => ({
   // El agua del pozo o del río no se cuenta en el ledger todavía (weather §4 la llevará).
   effect: { kind: "drink", liters: c.roll.unmet ? 0 : DRINK_LITERS },
@@ -644,6 +1103,51 @@ const tend: Resolver = (c) => {
   };
 };
 
+/**
+ * Pasa algo de su bolsillo al del otro: lo que nombra (con cantidad si la dice) o, si no, lo que
+ * le debe; y si no le debe nada, lo que más lleva. «Le devuelvo el grano» salda la deuda y no más.
+ */
+const give: Resolver = (c) => {
+  const to = argEntity(c, "to");
+  const what = argText(c, "what");
+  const none = (): VerbResult => ({
+    effect: { kind: "give", to, good: null, grams: 0 },
+    seconds: Math.min(c.nominal, 60),
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  });
+  if (c.roll.unmet)
+    return { effect: { kind: "give", to, good: null, grams: 0 }, seconds: c.nominal };
+  if (to === null) return none();
+  const carried = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => h.amount > 0);
+  const words = what === null ? [] : refTokens(what);
+  const named = carried.filter((h) =>
+    words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)),
+  );
+  const owed = c.input.owed ?? new Map<LedgerUnit, number>();
+  const debts = carried.filter((h) => (owed.get(h.unit) ?? 0) > 0);
+  const pool = named.length > 0 ? named : debts.length > 0 ? debts : carried;
+  const row = pickWanted(pool, null);
+  if (!row) return none();
+  const asked = gramsIn(what, 0);
+  const due = owed.get(row.unit) ?? 0;
+  const grams = Math.floor(Math.min(row.amount, asked > 0 ? asked : due > 0 ? due : row.amount));
+  if (grams <= 0) return none();
+  return {
+    effect: { kind: "give", to, good: row.unit, grams },
+    seconds: c.nominal,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        to: holderAccount(to as HolderRef),
+        unit: row.unit,
+        amount: grams,
+      },
+    ],
+  };
+};
+
 const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   none,
   move,
@@ -654,8 +1158,11 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   speak,
   strike,
   trade,
+  give,
   take,
+  store,
   eat,
+  cook,
   drink,
   tend,
 };
@@ -668,15 +1175,26 @@ export function isMoney(unit: LedgerUnit): boolean {
   return unit === "coin" || unit.startsWith("coin:");
 }
 
+/** Las palabras con que se puede nombrar una unidad: su id y su nombre en la lengua del jugador. */
+function unitTokens(unit: LedgerUnit, names?: ReadonlyMap<LedgerUnit, string>): string[] {
+  const id = refTokens(unit.replace(/^[a-z]+:/, "").replace(/_/g, " "));
+  const name = names?.get(unit);
+  return name === undefined ? id : [...id, ...refTokens(name)];
+}
+
 /**
  * Lo que quiere llevarse: lo que nombra (por palabras, contra el nombre de la unidad) o, si no
  * nombra nada que haya, lo que más hay. Determinista: desempata por unidad.
  */
-function pickWanted(held: readonly Holding[], what: string | null): Holding | undefined {
+function pickWanted(
+  held: readonly Holding[],
+  what: string | null,
+  names?: ReadonlyMap<LedgerUnit, string>,
+): Holding | undefined {
   if (held.length === 0) return undefined;
   const words = what === null ? [] : refTokens(what);
   const named = held.filter((h) => {
-    const unit = refTokens(h.unit.replace(/^[a-z]+:/, "").replace(/_/g, " "));
+    const unit = unitTokens(h.unit, names);
     return words.some((w) => unit.includes(w));
   });
   const pool = named.length > 0 ? named : held;

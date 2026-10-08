@@ -214,6 +214,7 @@ Sin reglas especiales, solo con lo que ya existe:
 
 ## Implementación
 - **Fase 1:** estatus mínimo de aldea (campesinos libres, un terrateniente, sirvientes), marcas visibles y rango percibido simple en la interacción; deferencia como parte de la utilidad del diálogo.
+  - *Hecho (2026-10-07):* `src/sim/social` y `content/statuses/`; estatus por costumbre de fundación con evento causal, ropa (`fine`/`plain`/`worn`) como único canal visible, posición percibida sin errores, deferencia en el regateo de `trade`. Falta la deferencia en el diálogo (ítem «Conversación mínima»).
 - **Fase 2:** creencias sobre la posición de otros con errores, etiqueta como norma y ofensas que cuestan cara.
 - **Fase 3:** `StatusDef` en `content/` con derechos, deberes, protecciones y capacidad; servidumbre por deudas desde los préstamos; movilidad por matrimonio, deuda y riqueza; resentimiento por comunidad.
 - **Fase 4:** abismo mortal/cultivador: presión del cultivo como señal social, sirvientes de secta, familias elevadas por un hijo cultivador, tributo de aldeas a sectas.

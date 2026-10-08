@@ -17,20 +17,28 @@ import {
   bodyProcess,
   ENTITY,
   type FoodDef,
+  type GoodDef,
   LOCATION,
   type LocalMap,
   type PressureCurve,
   type ReadonlyWorldTruth,
+  type RecipeDef,
   Scheduler,
   type SchedulerState,
   type SkillCatalog,
   type SpaceGraph,
+  type SpeechLine,
+  type StatusDef,
   type Trait,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
+import { converseProcess } from "./converse.ts";
+import { arrearsProcess, creditProcess } from "./credit.ts";
+import { deedsProcess } from "./deeds.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { routineProcess } from "./routine.ts";
+import { householdsOf, spoilageProcess } from "./spoilage.ts";
 
 export { PLAYER } from "./player.ts";
 
@@ -48,6 +56,10 @@ export interface LifeWorld {
   readonly traits: readonly Trait[];
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
+  readonly goods: readonly GoodDef[];
+  readonly recipes: readonly RecipeDef[];
+  readonly statuses: readonly StatusDef[];
+  readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
@@ -93,6 +105,13 @@ export function lifeWorld(
           map: parts.map,
           spaces: parts.spaces,
           clock: parts.clock,
+          statuses: parts.statuses,
+        }),
+        deedsProcess({
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          statuses: parts.statuses,
         }),
         bodyProcess({ plans: parts.plans, placeOf: placeOf(parts, village) }),
         actProcess({
@@ -103,7 +122,26 @@ export function lifeWorld(
           traits: parts.traits,
           bodyPlans: parts.plans,
           foods: parts.foods,
+          goods: parts.goods,
+          recipes: parts.recipes,
+          statuses: parts.statuses,
           clock: parts.clock,
+        }),
+        converseProcess({
+          spaces: parts.spaces,
+          catalog: parts.catalog,
+          goods: parts.goods,
+          statuses: parts.statuses,
+          lines: parts.speech,
+          placeOf: placeOf(parts, village),
+          day: parts.clock.day,
+        }),
+        creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        spoilageProcess({
+          goods: parts.goods,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
         }),
         routineProcess({
           map: parts.map,
@@ -115,7 +153,8 @@ export function lifeWorld(
         }),
       ],
       resolution: "local",
-      scopes: (kind, t) => (kind === "agent" ? living(t) : []),
+      scopes: (kind, t) =>
+        kind === "agent" ? living(t) : kind === "household" ? householdsOf(t) : [],
     },
     start,
   );

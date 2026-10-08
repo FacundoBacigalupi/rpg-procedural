@@ -13,6 +13,7 @@ import {
   type PlaceRef,
   Rng,
 } from "../../core/index.ts";
+import { RecipeDef } from "../crafts/index.ts";
 import { TRAITS } from "../family/index.ts";
 import { draftEvent } from "../scheduler/index.ts";
 import { SKILLS } from "../skills/index.ts";
@@ -567,5 +568,345 @@ describe("comer, beber, curar", () => {
       expect(r.effect.care).toBe(r.effect.done ? r.degree : 0);
     }
     expect(rs.some((r) => r.effect.kind === "tend" && r.effect.done)).toBe(true);
+  });
+});
+
+describe("comerciar y cosechar", () => {
+  const grain = ledgerUnit("good:grain");
+  const copper = ledgerUnit("coin:copper");
+  const mine = makeId("household", 1);
+  const theirs = makeId("household", 2);
+  const foods = new Map([[grain, { kcalPerGram: 3.4, waterPerGram: 0.12 }]]);
+  const market = {
+    priceCopperPerKg: new Map([[grain, 6]]),
+    ownMembers: 3,
+    other: { larder: theirs as unknown as HolderRef, members: 4 },
+    harvestGramsPerHour: 150,
+    harvestGood: grain,
+  };
+  const tradeConfig = { externals: { seed: [grain, copper], harvest: [grain] } };
+  const stock = (rows: { holder: HolderRef; unit: typeof grain; amount: number }[]) => {
+    const ledger = new Ledger(tradeConfig);
+    rows
+      .filter((r) => r.amount > 0)
+      .forEach((r, i) => {
+        ledger.post({
+          tick: 0,
+          eventId: makeId("event", i + 1),
+          transfers: [
+            {
+              unit: r.unit,
+              from: externalAccount("seed"),
+              to: holderAccount(r.holder),
+              amount: r.amount,
+            },
+          ],
+        });
+      });
+    return ledger;
+  };
+  const trading = (ledger: Ledger, what: string | null = null, extra: Partial<ResolveInput> = {}) =>
+    input(
+      "trade",
+      {
+        args: [
+          { role: "with", entity: wu },
+          ...(what === null ? [] : [{ role: "what", text: what } as const]),
+        ],
+      },
+      {
+        actor: actor({ capabilities: { speech: 1 } }),
+        parties: { with: { id: wu, z: {}, hex: 0, skill: 0 } },
+        ledger,
+        foods,
+        larder: mine as unknown as HolderRef,
+        market,
+        ...extra,
+      },
+    );
+
+  it("comprar mueve grano de la despensa del otro y monedas al otro, sin crear nada", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 60 }),
+        fc.integer({ min: 1, max: 30 }),
+        (coins, kilos) => {
+          const ledger = stock([
+            { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+            { holder: me, unit: copper, amount: coins },
+          ]);
+          const before = ledger.total(copper);
+          for (const r of many(40, () => trading(ledger, `${kilos} kilos`))) {
+            if (r.effect.kind !== "trade" || r.effect.direction !== "buy") continue;
+            expect(r.effect.grams).toBeLessThanOrEqual(kilos * 1000);
+            expect(r.effect.coins).toBeLessThanOrEqual(coins);
+            // El vendedor no se queda sin los 60 días de comida de su casa.
+            expect(600_000 - r.effect.grams).toBeGreaterThanOrEqual((60 * 2400 * 4) / 3.4 - 1);
+            const copy = stock([
+              { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+              { holder: me, unit: copper, amount: coins },
+            ]);
+            post(copy, r, 1);
+            expect(copy.audit()).toEqual([]);
+            expect(copy.total(copper)).toBe(before);
+            expect(copy.balance(holderAccount(me), grain)).toBe(r.effect.grams);
+          }
+        },
+      ),
+      { numRuns: 20 },
+    );
+  });
+
+  it("con monedas y un vecino con sobra, comprar cierra tratos de verdad", () => {
+    const ledger = stock([
+      { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+      { holder: me, unit: copper, amount: 50 },
+    ]);
+    const deals = many(80, () => trading(ledger, "5 kilos")).filter(
+      (r) => r.effect.kind === "trade" && r.effect.direction === "buy",
+    );
+    expect(deals.length).toBeGreaterThan(0);
+  });
+
+  it("lo que el jugador nombra en su lengua elige el bien: «grano» es good:grain aunque haya más forraje", () => {
+    const forage = ledgerUnit("good:forage");
+    const names = new Map([
+      [grain, "grano de la cosecha"],
+      [forage, "frutos y raíces del monte"],
+    ]);
+    const both = {
+      ...tradeConfig,
+      externals: { ...tradeConfig.externals, seed: [grain, forage, copper] },
+    };
+    const rich = () => {
+      const ledger = new Ledger(both);
+      [
+        { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+        { holder: theirs as unknown as HolderRef, unit: forage, amount: 900_000 },
+        { holder: me, unit: copper, amount: 50 },
+      ].forEach((r, i) => {
+        ledger.post({
+          tick: 0,
+          eventId: makeId("event", i + 1),
+          transfers: [
+            {
+              unit: r.unit,
+              from: externalAccount("seed"),
+              to: holderAccount(r.holder),
+              amount: r.amount,
+            },
+          ],
+        });
+      });
+      return ledger;
+    };
+    const wide = {
+      ...market,
+      priceCopperPerKg: new Map([
+        [grain, 6],
+        [forage, 2],
+      ]),
+    };
+    const goods = (what: string) =>
+      many(80, () => trading(rich(), what, { market: wide, unitNames: names })).flatMap((r) =>
+        r.effect.kind === "trade" && r.effect.direction === "buy" ? [r.effect] : [],
+      );
+    const byName = goods("2 kilos de grano");
+    expect(byName.length).toBeGreaterThan(0);
+    for (const e of byName) {
+      expect(e.good).toBe(grain);
+      expect(e.grams).toBeLessThanOrEqual(2000);
+    }
+    const forageDeals = goods("frutos del monte");
+    expect(forageDeals.length).toBeGreaterThan(0);
+    for (const e of forageDeals) expect(e.good).toBe(forage);
+  });
+
+  it("sin monedas o sin nada que vender no hay trato: falla por falta de medios", () => {
+    const poor = stock([{ holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 }]);
+    const none = stock([{ holder: me, unit: copper, amount: 50 }]);
+    for (const ledger of [poor, none]) {
+      for (const r of many(60, () => trading(ledger))) {
+        expect(r.postings).toEqual([]);
+        if (r.effect.kind === "trade") expect(r.effect.grams).toBe(0);
+      }
+    }
+  });
+
+  it("nadie vende lo que necesita para comer los próximos meses", () => {
+    const tight = stock([
+      { holder: theirs as unknown as HolderRef, unit: grain, amount: 100_000 },
+      { holder: me, unit: copper, amount: 50 },
+    ]);
+    for (const r of many(60, () => trading(tight))) expect(r.postings).toEqual([]);
+  });
+
+  it("guardar pasa lo que lleva a la despensa de la casa, sin crear ni perder nada", () => {
+    const storing = (what: string | null, ledger: Ledger) =>
+      input(
+        "store",
+        { args: what === null ? [] : [{ role: "what", text: what }] },
+        {
+          actor: actor({ capabilities: { manipulation: 1 } }),
+          ledger,
+          larder: mine as unknown as HolderRef,
+          unitNames: new Map([[grain, "grano de la cosecha"]]),
+        },
+      );
+    const ledger = stock([
+      { holder: me, unit: grain, amount: 4000 },
+      { holder: me, unit: copper, amount: 12 },
+    ]);
+    const r = resolve(storing("el grano", ledger));
+    expect(r.effect).toMatchObject({ kind: "store" });
+    post(ledger, r, 1);
+    expect(ledger.audit()).toEqual([]);
+    expect(ledger.balance(holderAccount(me), grain)).toBe(0);
+    expect(ledger.balance(holderAccount(mine as unknown as HolderRef), grain)).toBe(4000);
+    // La plata no se guarda como si fuera un bien: sigue en el bolsillo.
+    expect(ledger.balance(holderAccount(me), copper)).toBe(12);
+  });
+
+  it("guardar sin nada encima falla por falta de medios y no mueve nada", () => {
+    const ledger = stock([{ holder: me, unit: copper, amount: 12 }]);
+    const r = resolve(
+      input(
+        "store",
+        {},
+        {
+          actor: actor({ capabilities: { manipulation: 1 } }),
+          ledger,
+          larder: mine as unknown as HolderRef,
+        },
+      ),
+    );
+    expect(r.postings).toEqual([]);
+    expect(r.failure).toBe("no_means");
+  });
+
+  it("trabajar el campo rinde grano de afuera del ledger y queda en el bolsillo", () => {
+    const ledger = stock([]);
+    const rs = many(60, () =>
+      input(
+        "work",
+        {},
+        {
+          actor: actor({ capabilities: { strength: 1 } }),
+          scene: { light: 1, terrain: 0, placeKinds: ["fields"] },
+          ledger,
+          market,
+        },
+      ),
+    );
+    const paid = rs.filter((r) => r.postings.length > 0);
+    expect(paid.length).toBeGreaterThan(0);
+    for (const r of paid) {
+      expect(r.postings[0]?.transfers[0]).toMatchObject({
+        from: externalAccount("harvest"),
+        to: holderAccount(me),
+        unit: grain,
+      });
+      post(ledger, r, 1);
+    }
+    expect(ledger.audit()).toEqual([]);
+    expect(ledger.balance(holderAccount(me), grain)).toBeGreaterThan(0);
+  });
+});
+
+describe("cocinar", () => {
+  const grain = ledgerUnit("good:grain");
+  const bread = ledgerUnit("good:flatbread");
+  const house = makeId("household", 1) as unknown as HolderRef;
+  const recipe = RecipeDef.parse({
+    id: "flatbread",
+    name: "pan plano",
+    craft: "cooking",
+    inputs: [{ good: "grain", grams: 400 }],
+    output: { good: "flatbread", ratio: 1.3 },
+    prepMinutes: 20,
+    heat: { target: 220, minutes: 25, scorchAt: 280 },
+  });
+  const cookConfig = {
+    externals: { seed: [grain, bread], cooked: [grain, bread] },
+  };
+  const stocked = (holder: HolderRef, amount: number) => {
+    const ledger = new Ledger(cookConfig);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [
+        { unit: grain, from: externalAccount("seed"), to: holderAccount(holder), amount },
+      ],
+    });
+    return ledger;
+  };
+  const cooking = (ledger: Ledger, skill = 0.5) =>
+    input(
+      "cook",
+      { args: [{ role: "what", text: "pan" }] },
+      {
+        actor: actor({ capabilities: { manipulation: 1 }, skill }),
+        ledger,
+        larder: house,
+        recipes: [recipe],
+      },
+    );
+
+  it("gasta los insumos de la despensa y deja el pan ahí, sin crear ni perder nada de más", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1e6 }),
+        fc.integer({ min: 400, max: 5000 }),
+        (seed, have) => {
+          const ledger = stocked(house, have);
+          const r = resolve({ ...cooking(ledger), rng: Rng.root(seed) });
+          expect(r.effect).toMatchObject({ kind: "cook", recipe: "flatbread" });
+          post(ledger, r, 1);
+          expect(ledger.audit()).toEqual([]);
+          expect(ledger.balance(holderAccount(house), grain)).toBe(have - 400);
+          const eff = r.effect;
+          if (eff.kind !== "cook") throw new Error("no cocinó");
+          expect(ledger.balance(holderAccount(house), bread)).toBe(eff.grams);
+          // El producto nunca pesa más que lo que la receta rinde.
+          expect(eff.grams).toBeLessThanOrEqual(Math.floor(400 * recipe.output.ratio));
+        },
+      ),
+      { numRuns: 40 },
+    );
+  });
+
+  it("es determinista y el evento queda con la calidad y las causas", () => {
+    const a = resolve(cooking(stocked(house, 1000)));
+    const b = resolve(cooking(stocked(house, 1000)));
+    expect(a).toEqual(b);
+    expect(a.events[0]?.causes).toEqual(intent);
+    expect(a.events[0]?.data).toMatchObject({ verb: "cook", effect: { kind: "cook" } });
+  });
+
+  it("sin insumos suficientes falla por falta de medios y no mueve nada", () => {
+    const r = resolve(cooking(stocked(house, 50)));
+    expect(r.postings).toEqual([]);
+    expect(r.failure).toBe("no_means");
+  });
+
+  it("el cocinero juzga la calidad con sus sentidos: lo creído no es la verdad", () => {
+    const rs = many(40, () => cooking(stocked(house, 1000), 0.05));
+    const differs = rs.some(
+      (r) =>
+        r.effect.kind === "cook" &&
+        r.self.effect.kind === "cook" &&
+        r.self.effect.quality !== r.effect.quality,
+    );
+    expect(differs).toBe(true);
+    for (const r of rs) {
+      if (r.self.effect.kind === "cook") expect(r.self.effect.state).toBeNull();
+    }
+  });
+
+  it("aprende de lo que le salió: el resultado sale de la sesión, no de la tirada", () => {
+    const rs = many(40, () => cooking(stocked(house, 1000), 0.9));
+    const good = rs.filter((r) => r.effect.kind === "cook" && r.effect.quality >= 0.7);
+    expect(good.length).toBeGreaterThan(20);
+    for (const r of good) expect(r.attempt.outcome).toBe(r.outcome);
   });
 });

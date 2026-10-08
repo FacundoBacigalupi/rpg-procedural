@@ -1,0 +1,214 @@
+[
+  {
+    "id": "food.staple",
+    "name": "cómo se come el grano",
+    "domain": "food",
+    "variants": [
+      { "id": "flatbread", "name": "pan plano al horno" },
+      { "id": "porridge", "name": "gachas" }
+    ],
+    "salience": 0.7,
+    "stickiness": 0.6,
+    "readBy": ["crafts", "economy", "body"],
+    "requiresFoods": ["grain", "flatbread"]
+  },
+  {
+    "id": "food.meals",
+    "name": "comidas por día",
+    "domain": "food",
+    "variants": [
+      { "id": "two", "name": "dos comidas, una al mediodía y otra al caer la tarde" },
+      { "id": "three", "name": "tres comidas" }
+    ],
+    "salience": 0.3,
+    "stickiness": 0.5,
+    "readBy": ["routine", "body"]
+  },
+  {
+    "id": "food.hospitality",
+    "name": "qué se le ofrece al que llega",
+    "domain": "food",
+    "variants": [
+      { "id": "share_table", "name": "se le sienta a la mesa" },
+      { "id": "water_only", "name": "agua y nada más" }
+    ],
+    "salience": 0.5,
+    "stickiness": 0.7,
+    "readBy": ["dialogue", "social"]
+  },
+  {
+    "id": "dress.rank_marks",
+    "name": "la ropa dice la posición",
+    "domain": "dress",
+    "variants": [
+      { "id": "by_status", "name": "cada estatus viste distinto" },
+      { "id": "plain_for_all", "name": "todos visten igual" }
+    ],
+    "salience": 0.9,
+    "stickiness": 0.5,
+    "readBy": ["perception", "social"]
+  },
+  {
+    "id": "kinship.residence",
+    "name": "dónde vive la pareja",
+    "domain": "kinship",
+    "variants": [
+      { "id": "patrilocal", "name": "en la casa de él" },
+      { "id": "matrilocal", "name": "en la casa de ella" },
+      { "id": "new_house", "name": "en casa nueva" }
+    ],
+    "salience": 0.4,
+    "stickiness": 0.9,
+    "readBy": ["family"]
+  },
+  {
+    "id": "rites.coming_of_age",
+    "name": "cuándo se deja de ser criatura",
+    "domain": "rites_of_passage",
+    "variants": [
+      { "id": "first_harvest", "name": "en la primera cosecha entera que se trabaja" },
+      { "id": "age_fifteen", "name": "a los quince años" }
+    ],
+    "salience": 0.5,
+    "stickiness": 0.9,
+    "readBy": ["family", "player-loop"]
+  },
+  {
+    "id": "funeral.rite",
+    "name": "qué se hace con los muertos",
+    "domain": "funeral",
+    "variants": [
+      { "id": "burial", "name": "entierro en el cementerio de la aldea" },
+      { "id": "cremation", "name": "cremación" }
+    ],
+    "salience": 0.6,
+    "stickiness": 0.95,
+    "readBy": ["spirits", "family", "deep-history"]
+  },
+  {
+    "id": "funeral.mourning",
+    "name": "el luto",
+    "domain": "funeral",
+    "variants": [
+      { "id": "white_cloth", "name": "paño blanco en el brazo" },
+      { "id": "shorn_hair", "name": "pelo corto" }
+    ],
+    "salience": 0.4,
+    "stickiness": 0.9,
+    "readBy": ["family", "npc-psychology"]
+  },
+  {
+    "id": "festival.harvest",
+    "name": "la fiesta de la cosecha",
+    "domain": "festival",
+    "variants": [
+      { "id": "shared_feast", "name": "mesa larga con lo mejor de cada casa" },
+      { "id": "thanks_to_ancestors", "name": "ofrenda a los antepasados y silencio" }
+    ],
+    "salience": 0.7,
+    "stickiness": 0.8,
+    "readBy": ["economy", "weather", "npc-psychology"]
+  },
+  {
+    "id": "norms.theft",
+    "name": "qué es robar",
+    "domain": "norms",
+    "variants": [
+      { "id": "from_neighbor_shame", "name": "al vecino es vergüenza; al forastero, apenas falta" },
+      { "id": "from_anyone_shame", "name": "a quien sea es vergüenza" }
+    ],
+    "salience": 0.3,
+    "stickiness": 0.8,
+    "readBy": ["law", "npc-psychology"]
+  },
+  {
+    "id": "values.bias",
+    "name": "lo que se valora",
+    "domain": "values",
+    "variants": [
+      { "id": "kin_and_land", "name": "la familia y la tierra primero" },
+      { "id": "own_luck", "name": "que cada uno se rebusque" }
+    ],
+    "salience": 0.5,
+    "stickiness": 0.85,
+    "readBy": ["npc-psychology"]
+  },
+  {
+    "id": "etiquette.address",
+    "name": "cómo se habla a quien está arriba",
+    "domain": "etiquette",
+    "variants": [
+      { "id": "by_rank", "name": "de usted a quien tiene más rango" },
+      { "id": "uniform", "name": "de vos a todos" }
+    ],
+    "salience": 0.6,
+    "stickiness": 0.7,
+    "readBy": ["dialogue", "social"]
+  },
+  {
+    "id": "humor.target",
+    "name": "de qué se ríe la gente",
+    "domain": "humor",
+    "variants": [
+      { "id": "the_landholder", "name": "del terrateniente, a sus espaldas" },
+      { "id": "the_clumsy", "name": "del torpe" }
+    ],
+    "salience": 0.2,
+    "stickiness": 0.3,
+    "readBy": ["dialogue"]
+  },
+  {
+    "id": "aesthetics.color",
+    "name": "el color que se aprecia",
+    "domain": "aesthetics",
+    "variants": [
+      { "id": "undyed_earth", "name": "tierra y lino crudo" },
+      { "id": "indigo", "name": "añil" }
+    ],
+    "salience": 0.3,
+    "stickiness": 0.2,
+    "readBy": ["crafts", "economy"]
+  },
+  {
+    "id": "practical.sowing",
+    "name": "cuándo se siembra",
+    "domain": "practical",
+    "variants": [
+      { "id": "by_swallows", "name": "cuando vuelven las golondrinas" },
+      { "id": "by_moon", "name": "por la luna" }
+    ],
+    "salience": 0.1,
+    "stickiness": 0.6,
+    "readBy": ["weather", "technology"]
+  },
+  {
+    "id": "gender_age.work",
+    "name": "quién hace qué",
+    "domain": "gender_age",
+    "variants": [
+      {
+        "id": "split_field_hearth",
+        "name": "los hombres al campo grande, las mujeres a la huerta y al fogón"
+      },
+      { "id": "shared", "name": "todos hacen de todo según la hora" }
+    ],
+    "salience": 0.5,
+    "stickiness": 0.8,
+    "readBy": ["social", "routine"]
+  },
+  {
+    "id": "property.land_norm",
+    "name": "cómo se tiene la tierra",
+    "domain": "property",
+    "variants": [
+      {
+        "id": "household_plots_common_pasture",
+        "name": "campos de cada casa, pastos y monte de todos"
+      },
+      { "id": "all_common", "name": "todo es de todos" }
+    ],
+    "salience": 0.4,
+    "stickiness": 0.9,
+    "readBy": ["property", "law"]
+  }
+]

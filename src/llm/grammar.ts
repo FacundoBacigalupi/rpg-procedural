@@ -357,6 +357,22 @@ const VERBS: readonly {
     },
   },
   {
+    // Dar y devolver: "le devuelvo el grano a mi tío", "le pago lo que le debo". "Le doy un golpe"
+    // sigue siendo pegar (más abajo).
+    re: /^(?:le\s+)?(?:devuelvo|devolver|pago|pagar|doy|dar|entrego|entregar|regalo|regalar)\b(?!\s+(?:un|una)\s+(?:golpe|trompada|pi[ñn]a|cachetada|bofetada|patada|paliza|pu[ñn]etazo|palo|empuj[oó]n|sopapo))/i,
+    build: (rest) => {
+      const clean = rest.replace(MANNER_WORDS, " ");
+      const p = personAfterA(clean);
+      const what = nounPhrase(
+        (p ? p.before : clean).replace(/^\s*(?:todo\s+)?lo\s+que\s+(?:le\s+)?debo\b.*$/i, ""),
+      );
+      const args: DraftArg[] = [];
+      if (p) args.push({ role: "to", ref: p.ref });
+      if (what) args.push({ role: "what", text: what });
+      return { node: act("give", args) };
+    },
+  },
+  {
     re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle)\b/i,
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));
@@ -366,10 +382,15 @@ const VERBS: readonly {
   {
     re: /^(?:le\s+)?(?:ofrezco|comercio|negocio|cambio|regateo|vendo|compro)\b/i,
     build: (rest) => {
-      const w = /^\s*(?:con|al|a la|a)\s+/i.test(rest)
-        ? personAfterA(rest.replace(/^\s*con\s+/i, " a "))
-        : null;
-      return { node: act("trade", w ? [{ role: "with", ref: w.ref }] : []) };
+      const clean = rest.replace(MANNER_WORDS, " ");
+      const p = personAfterA(clean.replace(/^\s*con\s+/i, " a ").replace(/\scon\s/i, " a "));
+      // Lo que se trata es lo que viene antes de la persona: "2 kilos de grano a Wu".
+      const goods = tidy((p ? p.before : clean).replace(/^(?:un\s+poco\s+de|algo\s+de)\s+/i, ""));
+      const what = /^\s*(?:con|al|a la|a)\s/i.test(goods) ? "" : goods;
+      const args: DraftArg[] = [];
+      if (p) args.push({ role: "with", ref: p.ref });
+      if (what) args.push({ role: "what", text: what });
+      return { node: act("trade", args) };
     },
   },
   {
@@ -399,6 +420,29 @@ const VERBS: readonly {
       if (p) args.push({ role: "from", ref: p.ref });
       if (what) args.push({ role: "what", text: what });
       return { node: act("take", args) };
+    },
+  },
+  {
+    // Guardar lo que lleva en la despensa de la casa: "guardo el grano", "dejo todo en la despensa".
+    re: /^(?:guardo|guardar|almaceno|almacenar|dejo\s+(?=.*\b(?:despensa|alacena|granero)\b))/i,
+    build: (rest) => {
+      const what = nounPhrase(
+        rest
+          .replace(MANNER_WORDS, " ")
+          .replace(/\s+(?:en|a)\s+(?:la\s+)?(?:despensa|alacena|casa|granero)\b.*$/i, "")
+          .replace(/^\s*(?:todo|todo lo que llevo)\s*$/i, ""),
+      );
+      return { node: act("store", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
+    // Cocinar: "cocino pan", "horneo pan plano", "me pongo a cocinar".
+    re: /^(?:cocino|cocinar|horneo|hornear|amaso|amasar|me pongo a (?:cocinar|hornear))\b/i,
+    build: (rest) => {
+      const what = nounPhrase(
+        rest.replace(MANNER_WORDS, " ").replace(/^\s*(?:algo|la comida)\s*$/i, ""),
+      );
+      return { node: act("cook", what ? [{ role: "what", text: what }] : []) };
     },
   },
 ];

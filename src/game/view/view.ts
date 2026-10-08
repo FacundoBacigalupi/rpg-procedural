@@ -11,16 +11,20 @@
 // los percepts después) y el léxico va ordenado.
 
 import { type AgentId, compareStrings, type EntityRef } from "../../core/index.ts";
-import type {
-  BelievedOutcome,
-  Channel,
-  FactorKey,
-  Figure,
-  Percept,
-  PerceptDetail,
-  PlaceKind,
-  SelfReport,
-  SpaceKind,
+import {
+  type Attire,
+  type BelievedOutcome,
+  type Channel,
+  type FactorKey,
+  type FightGist,
+  type Figure,
+  type Percept,
+  type PerceptDetail,
+  type PlaceKind,
+  type SelfReport,
+  type SpaceKind,
+  type Standing,
+  standingOf,
 } from "../../sim/index.ts";
 
 declare const viewBrand: unique symbol;
@@ -48,9 +52,19 @@ export interface SceneInput {
   readonly hour: number;
   /** Luz donde está, 0-1 (`spaceLight`). */
   readonly light: number;
+  /** Huellas a la vista donde está (ya filtradas por luz y por cuánto quedan). */
+  readonly marks?: readonly SceneMark[];
+}
+
+/** Una huella a la vista en el lugar (perception §9): qué es y cuán vieja parece. */
+export interface SceneMark {
+  readonly kind: "blood";
+  readonly age: "fresh" | "old";
 }
 
 export interface SceneView {
+  /** Huellas que se ven donde está (con luz para verlas). */
+  readonly marks: readonly SceneMark[];
   readonly placeKinds: readonly PlaceKind[];
   readonly space: SpaceKind;
   readonly indoor: boolean;
@@ -71,6 +85,10 @@ export interface LocalLabel {
   readonly relation?: string;
   /** Lo que vio de su figura. */
   readonly figure?: Figure;
+  /** Cómo viste, si lo alcanzó a ver (social-structure §3). */
+  readonly attire?: Attire;
+  /** La posición que deduce de la ropa, sin saber más (no el estatus real). */
+  readonly standing?: Standing;
   /** Lo reconoció: sabe quién es. */
   readonly known: boolean;
   /** Cuán seguro está de lo que leyó (de quién es, o de que hay alguien). */
@@ -125,6 +143,7 @@ export type EffectView =
       readonly hit: boolean;
       readonly glancing: boolean;
       readonly offBalance: boolean;
+      readonly fight?: FightGist;
     }
   | {
       readonly kind: "trade";
@@ -132,6 +151,19 @@ export type EffectView =
       readonly deal: boolean;
       /** Cómo cree que le fue con el precio. */
       readonly terms: "good" | "fair" | "poor";
+      /** Lo que se movió, si se movió algo: compró o vendió tanto del bien por tantas monedas. */
+      readonly moved?: {
+        readonly direction: "buy" | "sell";
+        readonly good: string;
+        readonly grams: number;
+        readonly coins: number;
+      };
+    }
+  | {
+      readonly kind: "give";
+      readonly to?: string;
+      /** Lo que dio, si dio algo. */
+      readonly gave?: { readonly good: string; readonly grams: number };
     }
   | {
       readonly kind: "take";
@@ -145,7 +177,19 @@ export type EffectView =
       readonly fromLarder: boolean;
       readonly grams: number;
     }
+  | {
+      readonly kind: "store";
+      readonly got: readonly { readonly good: string; readonly amount: number }[];
+    }
   | { readonly kind: "drink"; readonly drank: boolean }
+  | {
+      readonly kind: "cook";
+      /** Lo que sacó (null si no cocinó nada). */
+      readonly good: string | null;
+      readonly grams: number;
+      /** Cómo le pareció que quedó, por lo que alcanza a juzgar con sus sentidos. */
+      readonly looks: "good" | "fair" | "poor";
+    }
   | {
       readonly kind: "tend";
       readonly target?: string;
@@ -239,7 +283,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
   const byEntity = new Map<EntityRef, string>();
   const words = new Set<string>(input.lexicon ?? []);
 
-  const known = (entity: EntityRef, certainty: Certainty, figure?: Figure): string => {
+  const known = (
+    entity: EntityRef,
+    certainty: Certainty,
+    figure?: Figure,
+    attire?: Attire,
+  ): string => {
     const hit = byEntity.get(entity);
     if (hit !== undefined) return hit;
     const localId = `e${labels.length + 1}`;
@@ -249,6 +298,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       ...(a?.name !== undefined ? { name: a.name } : {}),
       ...(a?.relation !== undefined ? { relation: a.relation } : {}),
       ...(figure !== undefined ? { figure } : {}),
+      ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
       known: true,
       certainty,
     });
@@ -257,9 +307,15 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     return localId;
   };
 
-  const stranger = (certainty: Certainty, figure?: Figure): string => {
+  const stranger = (certainty: Certainty, figure?: Figure, attire?: Attire): string => {
     const localId = `e${labels.length + 1}`;
-    labels.push({ localId, ...(figure !== undefined ? { figure } : {}), known: false, certainty });
+    labels.push({
+      localId,
+      ...(figure !== undefined ? { figure } : {}),
+      ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
+      known: false,
+      certainty,
+    });
     return localId;
   };
 
@@ -280,11 +336,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       throw new RangeError(`percept ${p.id} es de ${p.observer}, no del jugador`);
     }
     const figure = p.fields.figure?.value as Figure | undefined;
+    const attire = p.fields.attire?.value as Attire | undefined;
     const identity = p.fields.identity;
     const who =
       identity !== undefined && isAgent(identity.value)
-        ? known(identity.value, certaintyOf(identity.confidence), figure)
-        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure);
+        ? known(identity.value, certaintyOf(identity.confidence), figure, attire)
+        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure, attire);
     const action = p.fields.action?.value;
     const said = p.fields.words?.value;
     percepts.push({
@@ -316,6 +373,7 @@ function sceneView(s: SceneInput): SceneView {
     familiar: s.familiar,
     time: timeOfDay(s.hour),
     light: lightBand(s.light),
+    marks: [...(s.marks ?? [])],
   };
 }
 
@@ -365,6 +423,7 @@ function effectView(
         hit: e.hit,
         glancing: e.glancing,
         offBalance: e.offBalance,
+        ...(e.fight ? { fight: e.fight } : {}),
       };
     case "trade": {
       const w = target(e.with).target;
@@ -373,6 +432,26 @@ function effectView(
         ...(w !== undefined ? { with: w } : {}),
         deal: e.deal,
         terms: termsOf(e.edge),
+        ...(e.direction !== null && e.good !== null
+          ? {
+              moved: {
+                direction: e.direction,
+                good: e.good as string,
+                grams: e.grams,
+                coins: e.coins,
+              },
+            }
+          : {}),
+      };
+    }
+    case "give": {
+      const to = target(e.to).target;
+      return {
+        kind: "give",
+        ...(to !== undefined ? { to } : {}),
+        ...(e.good !== null && e.grams > 0
+          ? { gave: { good: e.good as string, grams: Math.round(e.grams) } }
+          : {}),
       };
     }
     case "take": {
@@ -390,8 +469,20 @@ function effectView(
         fromLarder: e.from !== null && e.from !== player,
         grams: Math.round(e.grams),
       };
+    case "store":
+      return {
+        kind: "store",
+        got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
+      };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
+    case "cook":
+      return {
+        kind: "cook",
+        good: e.good,
+        grams: Math.round(e.grams),
+        looks: e.quality >= 0.7 ? "good" : e.quality >= 0.35 ? "fair" : "poor",
+      };
     case "tend": {
       const self = e.target === player;
       return { kind: "tend", ...(self ? {} : target(e.target)), self, done: e.done };

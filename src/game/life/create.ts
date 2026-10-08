@@ -8,10 +8,12 @@ import {
   EARTHLIKE_CLOCK,
   EventLog,
   externalAccount,
+  type HolderRef,
   type HouseholdId,
   holderAccount,
   IdAllocator,
   Ledger,
+  type LedgerConfig,
   ledgerUnit,
   makeId,
   type PlaceRef,
@@ -24,11 +26,18 @@ import {
   BODY_PLANS,
   BUILDING_TYPES,
   CONCEPTS,
+  COOKED,
+  COPPER,
+  CULTURE_TRAITS,
+  CULTURES,
   DEMOGRAPHY,
   EATEN,
   ENTITY,
   FOODS,
+  GOODS,
   generateLanguage,
+  HARVEST,
+  HARVEST_GOOD,
   houseKey,
   LANGUAGES,
   LOCATION,
@@ -40,16 +49,24 @@ import {
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
+  RECIPES,
+  ROTTED,
   SKILLS,
   SkillCatalog,
+  SPEECH_LINES,
+  STATUSES,
   seedBodies,
+  seedCulture,
+  seedParcels,
   seedPersonNames,
   seedPlaceNames,
   seedSettlement,
   seedSkills,
+  seedStatus,
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  TENURES,
   TRAITS,
   type Trait,
   type VillagePopulation,
@@ -77,7 +94,9 @@ export interface LifeOptions {
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
 /** Gramos de grano por persona en la despensa al empezar. */
-export const LARDER_PER_MEMBER_G = 200_000;
+export const LARDER_PER_MEMBER_G = 100_000;
+/** Monedas de cobre por persona al empezar (de la economía previa a la corrida; economy §2). */
+export const COINS_PER_PERSON = 40;
 
 export interface LifeTerrain {
   /** Dónde pasan los eventos de la aldea. */
@@ -157,7 +176,19 @@ export function resumeParts(
   anchor: ResumeAnchor,
 ): Pick<
   LifeParts,
-  "seed" | "clock" | "map" | "catalog" | "skills" | "traits" | "plans" | "foods" | "pressureCurves"
+  | "seed"
+  | "clock"
+  | "map"
+  | "catalog"
+  | "skills"
+  | "traits"
+  | "plans"
+  | "foods"
+  | "goods"
+  | "recipes"
+  | "statuses"
+  | "speech"
+  | "pressureCurves"
 > {
   return {
     seed,
@@ -168,8 +199,45 @@ export function resumeParts(
     traits: content.all(TRAITS),
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
+    goods: content.all(GOODS),
+    recipes: content.all(RECIPES),
+    statuses: content.all(STATUSES),
+    speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
   };
+}
+
+/** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
+export function ledgerConfigOf(content: Content): LedgerConfig {
+  const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
+  return {
+    externals: {
+      [COOKED]: units,
+      [EATEN]: units,
+      [HARVEST]: [HARVEST_GOOD],
+      [ROTTED]: units,
+      seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
+    },
+  };
+}
+
+/**
+ * Migra el ledger de una vida guardada antes de que existieran algunas fuentes o sumideros
+ * (`harvest`, `rotted`, ...): suma las unidades que faltan y rehace el ledger con el mismo diario,
+ * así el saldo no cambia. Si ya declara todo, devuelve el mismo.
+ */
+export function withDeclaredExternals(ledger: Ledger, content: Content): Ledger {
+  const have = ledger.config.externals;
+  const merged: Record<string, string[]> = {};
+  let changed = false;
+  for (const [name, units] of Object.entries(ledgerConfigOf(content).externals)) {
+    const known = new Set(have[name] ?? []);
+    const missing = units.filter((u) => !known.has(u));
+    if (missing.length > 0) changed = true;
+    merged[name] = [...(have[name] ?? []), ...missing];
+  }
+  for (const [name, units] of Object.entries(have)) merged[name] ??= [...units];
+  return changed ? Ledger.fromJournal({ externals: merged }, ledger.journal()) : ledger;
 }
 
 export function createLife(
@@ -244,11 +312,8 @@ export function createLife(
 
   const ids = idsAfter(truth, log);
   const foods = content.all(FOODS);
-  const units = foods.map((f) => ledgerUnit(`good:${f.id}`));
   const materials = content.all(MATERIALS);
-  const ledger = new Ledger({
-    externals: { [EATEN]: units, seed: [...units, ...settlementUnits(materials)] },
-  });
+  const ledger = new Ledger(ledgerConfigOf(content));
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
   seedSettlement(truth, ids, log, ledger, {
     seed,
@@ -258,6 +323,35 @@ export function createLife(
     content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
   });
   const spaces = settlementSpaces(truth, site.hex);
+  // Quién es quién: el estatus de cada hogar, con su causa; de él sale cuánto tenía al empezar.
+  const statuses = content.all(STATUSES);
+  const standing = seedStatus(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    households: pop.households,
+    defs: statuses,
+  });
+  // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
+  const culture = content.all(CULTURES).find((c) => c.id === "village");
+  if (!culture) throw new Error("falta contenido: cultura village");
+  seedCulture(truth, ids, log, {
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    culture,
+    traits: content.all(CULTURE_TRAITS),
+  });
+  // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
+  seedParcels(truth, ids, log, {
+    seed,
+    pop,
+    site,
+    tenures: content.all(TENURES),
+    standing,
+  });
+  const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que queda de la última cosecha, unos diez meses de grano por boca
   // (~700 g por día, lo que come la rutina). Lo reemplazan las existencias y la cosecha de la
   // aldea cuando settlements y economy las den (ROADMAP: Hito 1b).
@@ -284,8 +378,20 @@ export function createLife(
           unit: grain,
           from: externalAccount("seed"),
           to: holderAccount(h.id),
-          amount: h.members.length * LARDER_PER_MEMBER_G,
-        })),
+          amount: Math.round(h.members.length * LARDER_PER_MEMBER_G * wealthOf(h.id)),
+        }))
+        .concat(
+          pop.households
+            .filter((h) => h.end === null)
+            .flatMap((h) =>
+              h.members.map((m) => ({
+                unit: COPPER,
+                from: externalAccount("seed"),
+                to: holderAccount(m as unknown as HolderRef),
+                amount: Math.round(COINS_PER_PERSON * wealthOf(h.id)),
+              })),
+            ),
+        ),
     });
   }
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
@@ -305,6 +411,10 @@ export function createLife(
       traits,
       plans,
       foods,
+      goods: content.all(GOODS),
+      recipes: content.all(RECIPES),
+      statuses: content.all(STATUSES),
+      speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
     },
     pop.player,

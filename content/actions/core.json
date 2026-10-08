@@ -283,12 +283,14 @@
     "id": "trade",
     "name": "comerciar",
     "domain": "social",
-    "args": [{ "role": "with", "kind": "person", "required": true }],
+    "args": [
+      { "role": "with", "kind": "person", "required": true },
+      { "role": "what", "kind": "text", "required": false }
+    ],
     "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
     "requires": [
       { "kind": "capability", "cap": "speech", "min": 0.3 },
-      { "kind": "position", "near": "with" },
-      { "kind": "means", "holder": "self", "what": "goods" }
+      { "kind": "position", "near": "with" }
     ],
     "occupies": { "voice": "full", "handL": "partial", "mind": "full" },
     "duration": { "kind": "fixed", "seconds": 900 },
@@ -311,6 +313,33 @@
       { "id": "not_here", "factor": "position" },
       { "id": "no_means", "factor": "means" },
       { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "give",
+    "name": "dar",
+    "domain": "social",
+    "args": [
+      { "role": "to", "kind": "person", "required": true },
+      { "role": "what", "kind": "text", "required": false }
+    ],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.1 },
+      { "kind": "position", "near": "to" },
+      { "kind": "means", "holder": "self", "what": "goods" }
+    ],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 60 },
+    "checkpoint": 30,
+    "emissions": { "sight": 0.5, "sound": 0.2 },
+    "resolver": "give",
+    "ease": 3,
+    "failureModes": [
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
     ],
     "evidence": 1
   },
@@ -363,6 +392,61 @@
       { "id": "too_weak", "factor": "capability" }
     ],
     "evidence": 0.8
+  },
+  {
+    "id": "store",
+    "name": "guardar",
+    "domain": "body",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.1 },
+      { "kind": "position", "at": ["village"] }
+    ],
+    "occupies": { "handL": "partial", "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 300 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.2, "sound": 0.1 },
+    "resolver": "store",
+    "ease": 3,
+    "failureModes": [
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "cook",
+    "name": "cocinar",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "position", "at": ["village"] }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "partial" },
+    "duration": { "kind": "fixed", "seconds": 2700 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.3, "sound": 0.2 },
+    "resolver": "cook",
+    "ease": 1,
+    "factors": {
+      "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "perception", "weight": 0.3 }]
+    },
+    "skill": {
+      "id": "cooking",
+      "facets": { "execution": 0.5, "reading": 0.3, "judgment": 0.2 },
+      "intensity": 4
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 0.6
   },
   {
     "id": "eat",

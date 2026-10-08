@@ -321,7 +321,7 @@ Cada tipo define las obligaciones típicas, las garantías y ejecutores habitual
 - **Compresión:** las promesas chicas cumplidas se borran y dejan solo su efecto en la relación (como el gist de una memoria). Los compromisos con peso kármico, con documentos o con disputas abiertas se conservan.
 
 ## Implementación
-- **Fase 1:** el fiado de la aldea como primer compromiso: deudas chicas de palabra entre vecinos, con la otra parte y la reputación como únicos ejecutores; pago como transferencia con causa.
+- **Fase 1 (hecha, 2026-10-07):** el fiado de la aldea como primer compromiso: deudas chicas de palabra entre vecinos, con la otra parte y la reputación como únicos ejecutores; pago como transferencia con causa. `sim/contracts/credit.ts` (`Credit` en `commitment:N`), verbo `give`, procesos `life.credit` y `life.arrears`, `Deed` `default`. Queda para después: chisme del incumplimiento, deudor muerto y herencia, interés y plazos negociados, promesas en el diálogo.
 - **Fase 2:** promesas en el diálogo (proponer, aceptar, prometer), creencias sobre compromisos con deformación, culpa por incumplir según valores, libro de deudas y promesas del jugador.
 - **Fase 3:** préstamos y crédito agrícola sobre este modelo (economy §8), garantías (colateral, fiadores, empeño), deudas por norma (vida, hospitalidad), herencia de deudas, matrimonio y aprendizaje como compromisos de `status`, mediación del consejo de aldea, cadenas de incumplimiento, documentos y tallas como objetos.
 - **Fase 4:** maestro–discípulo y membresía de secta como compromisos, juramentos ante el Cielo y sobre el corazón del Dao (karma y demonios internos), juramentos de secreto, sellos simples en el alma.

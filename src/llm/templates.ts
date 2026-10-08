@@ -69,7 +69,11 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
   const surface = (l: LocalLabel): string => {
     if (l.name !== undefined) return l.name;
     if (l.relation !== undefined) return `tu ${l.relation}`;
-    if (l.figure !== undefined) return first(`figure.${l.figure.sex}.${l.figure.age}`);
+    if (l.figure !== undefined) {
+      const figure = first(`figure.${l.figure.sex}.${l.figure.age}`);
+      const dress = l.attire !== undefined && book.has(`attire.${l.attire}`);
+      return dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+    }
     return first("who.vague");
   };
   /** La referencia marcada a una etiqueta, o "alguien" sin marca si no hay a quién. */
@@ -89,6 +93,7 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);
   }
+  for (const m of s.marks) say(`mark.${m.kind}.${m.age}`);
 
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
@@ -177,15 +182,48 @@ function outcome(
         );
       }
       if (e.offBalance) say("outcome.strike.off_balance");
+      if (e.fight) {
+        const f = e.fight;
+        const target = ref(e.target);
+        if (f.mine === "standing" && f.theirs === "standing") say("outcome.strike.fight.parted");
+        else if (f.mine === "standing") say(`outcome.strike.fight.foe_${f.theirs}`, { target });
+        else say(`outcome.strike.fight.mine_${f.mine}`, { target });
+      }
       break;
     }
     case "trade":
-      if (e.with === undefined)
+      if (e.moved !== undefined && e.deal) {
+        const kilos = e.moved.grams / 1000;
+        const grams =
+          e.moved.grams >= 1000 ? `${Number(kilos.toFixed(1))} kilos` : `${e.moved.grams} gramos`;
+        say(`outcome.trade.${e.moved.direction}.${e.terms}`, {
+          with: ref(e.with),
+          what: good(e.moved.good),
+          grams,
+          coins: `${e.moved.coins} ${e.moved.coins === 1 ? "moneda" : "monedas"}`,
+        });
+      } else if (e.with === undefined)
         say(e.deal ? "outcome.trade.deal_anyone" : "outcome.trade.no_deal_anyone");
       else
         say(e.deal ? `outcome.trade.deal.${e.terms}` : "outcome.trade.no_deal", {
           with: ref(e.with),
         });
+      break;
+    case "give":
+      if (e.gave === undefined)
+        say(e.to === undefined ? "outcome.give.nothing" : "outcome.give.nothing_to", {
+          to: ref(e.to),
+        });
+      else {
+        const kilos = e.gave.grams / 1000;
+        const grams =
+          e.gave.grams >= 1000 ? `${Number(kilos.toFixed(1))} kilos` : `${e.gave.grams} gramos`;
+        say(e.to === undefined ? "outcome.give.done_anyone" : "outcome.give.done", {
+          to: ref(e.to),
+          what: good(e.gave.good),
+          grams,
+        });
+      }
       break;
     case "take": {
       if (e.got.length === 0) {
@@ -201,6 +239,17 @@ function outcome(
     case "eat":
       if (e.grams <= 0 || e.good === null) say("outcome.eat.nothing");
       else say(e.fromLarder ? "outcome.eat.larder" : "outcome.eat.own", { what: good(e.good) });
+      break;
+    case "store":
+      if (e.got.length === 0) say("outcome.store.nothing");
+      else
+        say("outcome.store.done", {
+          what: [...new Set(e.got.map((g) => good(g.good)))].join(" y "),
+        });
+      break;
+    case "cook":
+      if (e.grams <= 0 || e.good === null) say("outcome.cook.nothing");
+      else say(`outcome.cook.${e.looks}`, { what: good(e.good) });
       break;
     case "drink":
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
