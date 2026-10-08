@@ -115,7 +115,9 @@ describe("adivinos y consultas en la aldea", () => {
     apply(seedDiviners(w.truth, o, life.now).changes);
     const diviner = (w.truth.ids(DIVINER_ROLE) as AgentId[])[0];
     if (!diviner) return;
-    const client = (w.truth.ids(PERSON) as AgentId[]).find((id) => id !== diviner) as AgentId;
+    const client = (w.truth.ids(PERSON) as AgentId[]).find(
+      (id) => id !== diviner && w.truth.get(ENTITY, id)?.endedAt === undefined,
+    ) as AgentId;
     const cause = w.log.all()[0]?.id as EventId;
     fc.assert(
       fc.property(fc.nat(), (seed) => {
