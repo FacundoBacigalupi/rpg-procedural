@@ -14,8 +14,9 @@ import { makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type BodyPlanDef,
+  type BondDef,
   bodyProcess,
-  ENTITY,
+  type DimensionDef,
   type FoodDef,
   type GoodDef,
   LOCATION,
@@ -25,15 +26,18 @@ import {
   type RecipeDef,
   Scheduler,
   type SchedulerState,
+  type SchemaDef,
   type SkillCatalog,
   type SpaceGraph,
   type SpeechLine,
+  type StageDef,
   type StatusDef,
   type Trait,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
+import { appraiseProcess } from "./appraise.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
@@ -66,6 +70,10 @@ export interface LifeWorld {
   readonly statuses: readonly StatusDef[];
   readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
+  readonly schemas: readonly SchemaDef[];
+  readonly stages: readonly StageDef[];
+  readonly relationDims: readonly DimensionDef[];
+  readonly relationBonds: readonly BondDef[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -159,6 +167,13 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         soilProcess({ clock: parts.clock }),
+        appraiseProcess({
+          clock: parts.clock,
+          schemas: parts.schemas,
+          stages: parts.stages,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+        }),
         routineProcess({
           map: parts.map,
           spaces: parts.spaces,
