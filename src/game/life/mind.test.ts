@@ -213,6 +213,27 @@ describe("la mente de la aldea", () => {
     }
   });
 
+  it("uniones, hijos propios, llegadas, casa propia y años flacos también marcan, citando el evento", () => {
+    const causeKinds = new Map(w.log.all().map((e) => [e.id, e.kind]));
+    const seen = new Set<string>();
+    for (const id of alive) {
+      const m = w.truth.get(MIND, id) as Mind;
+      for (const h of Object.values(m.schemas)) {
+        for (const c of h.causes) seen.add(causeKinds.get(c) ?? "");
+      }
+    }
+    for (const kind of ["family.union", "family.birth", "family.lean_year"]) {
+      expect(seen.has(kind), kind).toBe(true);
+    }
+    // Un hijo propio marca a su madre o su padre, nunca al hijo.
+    const birth = w.log.all().find((e) => e.kind === "family.birth");
+    const child = birth?.actors[0] as AgentId;
+    if (birth && alive.includes(child)) {
+      const m = w.truth.get(MIND, child) as Mind;
+      expect(Object.values(m.schemas).some((h) => h.causes.includes(birth.id))).toBe(false);
+    }
+  });
+
   it("es determinista y no rompe invariantes", () => {
     const again = Life.create(7, content).world;
     for (const id of alive) expect(again.truth.get(MIND, id)).toEqual(w.truth.get(MIND, id));

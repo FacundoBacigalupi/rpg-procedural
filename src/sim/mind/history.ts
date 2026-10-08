@@ -2,6 +2,8 @@
 // pre-corrida demográfica dejó quién murió y cuándo, y cada sobreviviente lo vivió a la edad que
 // tenía entonces. Se vuelve a pasar por `form` con la etapa de esa edad, así un adulto que perdió
 // a su madre de chico llega a la partida con la marca puesta en vez de con el esquema de base.
+// Además de las muertes de la parentela marcan las uniones, los hijos propios, haber llegado de
+// afuera, irse a casa propia y los años de hambre de la aldea.
 
 import { type AgentId, type Event, type EventId, floorDiv, type Tick } from "../../core/index.ts";
 import type { Person } from "../family/index.ts";
@@ -26,6 +28,16 @@ export type KinRole = keyof typeof KIN_CLOSENESS;
 
 /** Intensidad de la penuria que deja que alguien de la parentela muera de hambre. */
 export const STARVED_KIN_HARDSHIP = 0.5;
+
+/** Intensidad de lo bueno que marca: casarse, tener un hijo, irse a casa propia. */
+export const UNION_CARE = 0.25;
+export const BIRTH_CARE = 0.35;
+export const MOVE_OUT_SUCCESS = 0.2;
+/** Dejar el lugar de uno para casarse en otro. */
+export const ARRIVAL_LOSS = 0.2;
+/** Un año flaco: piso de la penuria y lo que suma el hambre (0-1) de ese año. */
+export const LEAN_YEAR_FLOOR = 0.15;
+export const LEAN_YEAR_SPAN = 0.6;
 
 export interface FoundersHistoryInput {
   readonly people: readonly Person[];
@@ -72,19 +84,65 @@ export function applyFoundersHistory(
   }
   const out = new Map(minds);
   const alive = input.people.filter((p) => p.end === null && minds.has(p.id));
+  const present = (p: Person, tick: Tick) => tick >= p.born && tick >= p.since;
+  /** Quién de los vivos estaba en la aldea cuando pasó, y a quién le tocó. */
+  const lived = (e: Event, ids: readonly AgentId[]) =>
+    alive.filter((p) => ids.includes(p.id) && present(p, e.tick));
+  const mark = (survivor: Person, e: Event, stimuli: readonly FormativeStimulus[]) => {
+    if (stimuli.length === 0) return;
+    out.set(survivor.id, relive(out.get(survivor.id) as Mind, stimuli, e.id, e.tick, survivor));
+  };
   for (const e of input.events) {
-    if (e.kind !== "person.died") continue;
-    const dead = byId.get(e.actors[0] as AgentId);
-    if (!dead) continue;
-    const starved = (e.data as { of?: string } | null)?.of === "hunger";
-    for (const survivor of alive) {
-      // Tiene que haber estado ahí: nacido y en la aldea cuando murió.
-      if (survivor.id === dead.id || e.tick < survivor.born || e.tick < survivor.since) continue;
-      const role = kinRole(survivor, dead, unions);
-      if (!role) continue;
-      const stimuli: FormativeStimulus[] = appraiseLoss(KIN_CLOSENESS[role]).map((a) => a.stimulus);
-      if (starved) stimuli.push({ theme: "hardship", intensity: STARVED_KIN_HARDSHIP });
-      out.set(survivor.id, relive(out.get(survivor.id) as Mind, stimuli, e.id, e.tick, survivor));
+    switch (e.kind) {
+      case "person.died": {
+        const dead = byId.get(e.actors[0] as AgentId);
+        if (!dead) break;
+        const starved = (e.data as { of?: string } | null)?.of === "hunger";
+        for (const survivor of alive) {
+          // Tiene que haber estado ahí: nacido y en la aldea cuando murió.
+          if (survivor.id === dead.id || !present(survivor, e.tick)) continue;
+          const role = kinRole(survivor, dead, unions);
+          if (!role) continue;
+          const stimuli: FormativeStimulus[] = appraiseLoss(KIN_CLOSENESS[role]).map(
+            (a) => a.stimulus,
+          );
+          if (starved) stimuli.push({ theme: "hardship", intensity: STARVED_KIN_HARDSHIP });
+          mark(survivor, e, stimuli);
+        }
+        break;
+      }
+      case "family.union":
+        for (const p of lived(e, e.actors as AgentId[])) {
+          mark(p, e, [{ theme: "care", intensity: UNION_CARE }]);
+        }
+        break;
+      case "family.birth": {
+        // Actores: el hijo, la madre y el padre. Los padres lo viven; el hijo no.
+        const [, ...parents] = e.actors as AgentId[];
+        for (const p of lived(e, parents)) mark(p, e, [{ theme: "care", intensity: BIRTH_CARE }]);
+        break;
+      }
+      case "person.arrived":
+        for (const p of lived(e, e.actors as AgentId[])) {
+          mark(p, e, [{ theme: "loss", intensity: ARRIVAL_LOSS }]);
+        }
+        break;
+      case "household.founded":
+        // Una pareja que se arma casa propia (la fundación y los hogares sin actores no cuentan).
+        if (e.tick <= 0) break;
+        for (const p of lived(e, e.actors as AgentId[])) {
+          mark(p, e, [{ theme: "success", intensity: MOVE_OUT_SUCCESS }]);
+        }
+        break;
+      case "family.lean_year": {
+        const hunger = (e.data as { hunger?: number } | null)?.hunger ?? 0;
+        const intensity = Math.min(1, LEAN_YEAR_FLOOR + LEAN_YEAR_SPAN * hunger);
+        // Los que ya estaban en la aldea pasaron ese año flaco.
+        for (const p of alive) {
+          if (present(p, e.tick)) mark(p, e, [{ theme: "hardship", intensity }]);
+        }
+        break;
+      }
     }
   }
   return out;

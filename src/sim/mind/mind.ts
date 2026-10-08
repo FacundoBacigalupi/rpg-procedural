@@ -248,6 +248,12 @@ export function formationDeltas(
   return out;
 }
 
+/** Tope de causas que conserva la primera (la de base) y se queda con las más recientes. */
+function capCauses(causes: readonly EventId[]): EventId[] {
+  if (causes.length <= MAX_CAUSES) return [...causes];
+  return [causes[0] as EventId, ...causes.slice(-(MAX_CAUSES - 1))];
+}
+
 /** Aplica un evento vivido a una mente y devuelve la nueva (y qué cambió). */
 export function form(
   mind: Mind,
@@ -263,7 +269,7 @@ export function form(
     const counts = Math.abs(c.delta) >= CAUSE_MIN;
     schemas[c.schema] = {
       strength,
-      causes: counts ? [...old.causes, ctx.event].slice(-MAX_CAUSES) : old.causes,
+      causes: counts ? capCauses([...old.causes, ctx.event]) : old.causes,
     };
     if (
       Math.abs(c.delta) >= FORMATIVE_MIN &&
