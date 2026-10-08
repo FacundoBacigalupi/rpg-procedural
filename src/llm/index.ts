@@ -3,6 +3,7 @@
 // y narra lo ya resuelto, desde `PlayerView`.
 export * from "./client.ts";
 export * from "./config.ts";
+export * from "./continuity.ts";
 export * from "./grammar.ts";
 export * from "./jobs.ts";
 export * from "./mock.ts";
