@@ -16,12 +16,21 @@ import {
   actionStimulus,
   channelGain,
   falloff,
+  forgetExcept,
+  type HabituationMemory,
+  habituate,
+  halfLifeOf,
+  KIND_HALF_LIFE,
   type Medium,
+  NOTICEABLE,
   type Observer,
   type PerceptKey,
   perceive,
   presenceStimulus,
+  RENEWAL_DELTA,
   readChance,
+  SENSE_HALF_LIFE,
+  SENSES,
   sensorAcuity,
   watching,
 } from "./index.ts";
@@ -302,5 +311,62 @@ describe("monotonía (perception §Tests)", () => {
     expect(sensorAcuity(30, 1).sight).toBeGreaterThan(sensorAcuity(30).sight);
     expect(watching(0.8)).toBeGreaterThan(ATTENTION.alert);
     expect(ATTENTION.asleep).toBeLessThan(ATTENTION.relaxed);
+  });
+});
+
+describe("habituación", () => {
+  it("decae a la mitad por vida media del canal y el olfato se habitúa antes que la vista", () => {
+    const mem: HabituationMemory = new Map();
+    expect(habituate(mem, "a", "smell", "smoke", 0.5, 0)).toBe(1);
+    expect(habituate(mem, "a", "smell", "smoke", 0.5, SENSE_HALF_LIFE.smell)).toBeCloseTo(0.5, 6);
+    expect(habituate(mem, "b", "sight", "bright", 0.5, 0)).toBe(1);
+    const sight = habituate(mem, "b", "sight", "bright", 0.5, SENSE_HALF_LIFE.smell);
+    expect(sight).toBeGreaterThan(0.9);
+  });
+
+  it("un cambio de intensidad o la atención renuevan; un cambio chico no", () => {
+    const mem: HabituationMemory = new Map();
+    habituate(mem, "k", "hearing", "rain", 0.3, 0);
+    const t = SENSE_HALF_LIFE.hearing;
+    expect(habituate(mem, "k", "hearing", "rain", 0.3 + RENEWAL_DELTA / 2, t)).toBeCloseTo(0.5, 6);
+    expect(habituate(mem, "k", "hearing", "rain", 0.3 + RENEWAL_DELTA * 1.5, t)).toBe(1);
+    expect(habituate(mem, "k", "hearing", "rain", 0.45, 4 * t)).toBeLessThan(NOTICEABLE);
+    expect(habituate(mem, "k", "hearing", "rain", 0.45, 4 * t, true)).toBe(1);
+  });
+
+  it("la vida media por tipo pisa la del canal", () => {
+    expect(halfLifeOf("hearing", "wind")).toBe(KIND_HALF_LIFE["hearing/wind"]);
+    expect(halfLifeOf("hearing", "rain")).toBe(SENSE_HALF_LIFE.hearing);
+  });
+
+  it("olvidar lo que dejó de estar hace que al volver cuente como nuevo", () => {
+    const mem: HabituationMemory = new Map();
+    habituate(mem, "x", "smell", "smoke", 0.5, 0);
+    forgetExcept(mem, new Set());
+    expect(habituate(mem, "x", "smell", "smoke", 0.5, 10 * SENSE_HALF_LIFE.smell)).toBe(1);
+  });
+
+  it("es determinista y la saliencia nunca crece sin cambio", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...SENSES),
+        fc.array(fc.integer({ min: 0, max: 20_000 }), { minLength: 2, maxLength: 12 }),
+        (sense, gaps) => {
+          const run = (): number[] => {
+            const mem: HabituationMemory = new Map();
+            let now = 0;
+            return gaps.map((g) => {
+              now += g;
+              return habituate(mem, "k", sense, "kind", 0.4, now);
+            });
+          };
+          const a = run();
+          expect(run()).toEqual(a);
+          for (let i = 1; i < a.length; i++) expect(a[i] ?? 0).toBeLessThanOrEqual(1);
+          // Sin cambio, nunca vuelve a subir: no hay renovación espontánea.
+          for (let i = 2; i < a.length; i++) expect(a[i] ?? 0).toBeLessThanOrEqual(a[i - 1] ?? 0);
+        },
+      ),
+    );
   });
 });
