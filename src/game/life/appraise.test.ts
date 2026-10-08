@@ -274,16 +274,18 @@ describe("la aldea interpreta lo que vive", () => {
     ) as AgentId;
     for (let i = 0; i < 12; i++) life.turn(strikePlan(me, target), 1);
     const w = life.world;
-    const killed = w.log
-      .all()
-      .find(
-        (e) =>
-          (e.kind === "combat.fight" || e.kind === "combat.finish") &&
-          e.actors[0] === me &&
-          (e.kind === "combat.finish" ||
-            (e.data as { outcomes?: Record<string, string> } | null)?.outcomes?.[target] ===
-              "dead"),
-      );
+    const died = (w.truth.get(BODY_STATE, target) as Body).death !== null;
+    const killed = died
+      ? w.log
+          .all()
+          .filter(
+            (e) =>
+              (e.kind === "combat.fight" || e.kind === "combat.finish") &&
+              e.actors[0] === me &&
+              e.actors[1] === target,
+          )
+          .at(-1)
+      : undefined;
     const mental = w.truth.get(MENTAL, me);
     if (!killed) {
       expect(mental?.kills ?? 0).toBe(0);
