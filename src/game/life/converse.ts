@@ -15,6 +15,10 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ACCUSE_TRUST_BELIEVED,
+  ACCUSE_TRUST_SLANDER,
+  ACCUSE_TRUST_UNBACKED,
+  type AccuseInput,
   type ActionCatalog,
   BELIEFS,
   type Belief,
@@ -26,9 +30,11 @@ import {
   type Credit,
   callName,
   clampTemper,
+  DEFENSE_DELTAS,
   type DetectionInput,
   type DimensionDef,
   decideReply,
+  deedsBy,
   deleteComponent,
   dominantVariant,
   draftEvent,
@@ -42,6 +48,7 @@ import {
   KNOWN_DEEDS,
   type Lexicon,
   LOCATION,
+  learnDeed,
   liveBetween,
   MEMORIES,
   MIND,
@@ -350,6 +357,68 @@ function regardOf(
 }
 
 /**
+ * Lo que el oyente pone para contestar una acusación (dialogue §6, law §5). Como oyente de un
+ * tercero: cuánto confía en quien acusa, cuánto aprecia al acusado y qué sabía de él (su
+ * `KNOWN_DEEDS`); el hecho citado es el que quien acusa conoce de verdad. Como acusado: si de
+ * verdad lo hizo (por ahora, un hecho suyo que alguien guarda con su nombre; la conciencia propia
+ * llega con «culpa cableada»), su honestidad, su orgullo y si sabe algo de quien acusa.
+ */
+function accuseOf(
+  truth: ReadonlyWorldTruth,
+  o: ConverseOptions,
+  act: Extract<SpeechAct, { kind: "accuse" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick },
+  feel: { trust: number; resentment: number },
+  z: Readonly<Record<string, number>>,
+): AccuseInput | undefined {
+  const { me, speaker, now } = ctx;
+  if (act.accused === null) return undefined;
+  if (act.accused === "you") {
+    const victim = act.victim === "speaker" ? speaker : act.victim;
+    const guilty = truth
+      .ids(KNOWN_DEEDS)
+      .some((id) =>
+        deedsBy(truth.get(KNOWN_DEEDS, id), me).some(
+          (d) => d.kind === act.deed && (victim === null || d.victim === victim),
+        ),
+      );
+    return {
+      as: "accused",
+      defense: {
+        guilty,
+        honesty: unit(0.5 + 0.25 * clampTemper(z["willpower"] ?? 0)),
+        justification: unit(ACCUSED_EXCUSE_BASE + ACCUSED_EXCUSE_GRUDGE * feel.resentment),
+        pride: unit(0.4 + 0.2 * clampTemper(z["reactivity"] ?? 0)),
+        counterable: worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
+      },
+    };
+  }
+  const accused = act.accused;
+  const toward = relationship(truth.get(RELATIONS, me), accused, now, {
+    dims: o.dims,
+    bonds: o.bonds,
+    schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
+  }).dims;
+  return {
+    as: "hearer",
+    accused,
+    cited:
+      deedsBy(truth.get(KNOWN_DEEDS, speaker), accused).find((d) => d.kind === act.deed) ?? null,
+    view: {
+      trustInAccuser: unit(0.5 + 0.5 * feel.trust),
+      affinityToAccused: Math.min(1, Math.max(-1, toward.affection)),
+      ownKnowledge: worstDeed(truth.get(KNOWN_DEEDS, me), accused) ?? null,
+      gullibility: unit(0.5 - 0.2 * clampTemper(z["perception"] ?? 0)),
+      stake: unit(toward.resentment),
+    },
+  };
+}
+
+/** Constantes sin calibrar: la excusa de base del acusado y cuánto la alimenta el rencor a quien acusa. */
+const ACCUSED_EXCUSE_BASE = 0.2;
+const ACCUSED_EXCUSE_GRUDGE = 0.5;
+
+/**
  * Lo que el oyente pone al guardar un secreto cuando le preguntan por él (dialogue §7, §11): el
  * costo de que salga es el del secreto marcado; el dominio de sí y el olfato salen del
  * temperamento, la emoción de lo reactivo, el cansancio del cuerpo, y confianza y afecto de la
@@ -434,6 +503,7 @@ function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | und
       deltas: { affection: reply.flattery.warmthDelta, trust: reply.flattery.trustDelta },
     };
   }
+  if (reply.accusation) return accusationEffect(reply.accusation, reply.line);
   if (reply.offense) {
     const size = reply.offense.size;
     return {
@@ -451,6 +521,29 @@ function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | und
   return undefined;
 }
 
+/**
+ * Lo que una acusación deja en lo que el oyente siente por quien acusó: como oyente de un tercero
+ * confía más si le creyó y menos si olió calumnia o iba sin respaldo; como acusado, según cómo se
+ * defendió (dialogue §6).
+ */
+function accusationEffect(
+  a: NonNullable<ReturnType<typeof decideReply>["accusation"]>,
+  line: string,
+): RegardEffect {
+  const base = { kind: "accusation", response: line, faceLoss: 0, vengeful: false } as const;
+  if (a.defense) return { ...base, deltas: { ...DEFENSE_DELTAS[a.defense] } };
+  const verdict = a.heard?.verdict;
+  const trust =
+    verdict === "slander"
+      ? ACCUSE_TRUST_SLANDER
+      : a.unbacked
+        ? ACCUSE_TRUST_UNBACKED
+        : verdict === "doubt"
+          ? 0
+          : ACCUSE_TRUST_BELIEVED;
+  return { ...base, deltas: { trust } };
+}
+
 /** Lo que cada punto de ofensa le saca al afecto y al respeto, y le suma al rencor (sin calibrar). */
 const INSULT_RESENTMENT = 0.5;
 const INSULT_RESPECT = 0.2;
@@ -458,7 +551,7 @@ const INSULT_AFFECTION = 0.3;
 
 /** Lo que el `action.speak` del oyente deja dicho de una amenaza, un halago o un insulto. */
 export interface RegardEffect {
-  readonly kind: "threat" | "flattery" | "insult";
+  readonly kind: "threat" | "flattery" | "insult" | "accusation";
   readonly response: string;
   readonly faceLoss: number;
   readonly vengeful: boolean;
@@ -491,7 +584,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       LOCATION.name,
       ENTITY.name,
     ],
-    writes: [PENDING.name, HEARD.name],
+    writes: [PENDING.name, HEARD.name, KNOWN_DEEDS.name],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
       const pending = ctx.truth.get(PENDING, me);
@@ -566,6 +659,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 ),
               }
             : {}),
+          ...(act.kind === "accuse"
+            ? (() => {
+                const accuse = accuseOf(truth, o, act, { me, speaker, now: ctx.now }, feel, z);
+                return accuse ? { accuse } : {};
+              })()
+            : {}),
           ...(act.kind === "ask"
             ? (() => {
                 const keep = keepOf(truth, o, act, { me, speaker, now: ctx.now }, feel, z);
@@ -616,6 +715,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       if (reply.told) {
         changes.push(setComponent(HEARD, speaker, hear(truth.get(HEARD, speaker), reply.told)));
       }
+      // Una acusación creída con hecho citado: el hecho queda como contado (no pisa lo que vio).
+      const learned = reply.accusation?.heard?.learned;
+      if (learned) {
+        changes.push(setComponent(KNOWN_DEEDS, me, learnDeed(truth.get(KNOWN_DEEDS, me), learned)));
+      }
       const good = reply.give ? goodById(reply.give.good) : undefined;
       const regard = regardEffect(reply);
       const event: EventDraft = {
@@ -648,6 +752,23 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 }
               : {}),
             ...(regard ? { regard } : {}),
+            // La acusación y su huella: sin respaldo quien acusa no conocía ningún hecho así.
+            ...(reply.accusation
+              ? {
+                  accusation: {
+                    accused: reply.accusation.accused,
+                    deed: reply.accusation.kind,
+                    unbacked: reply.accusation.unbacked,
+                    ...(reply.accusation.heard
+                      ? {
+                          verdict: reply.accusation.heard.verdict,
+                          belief: reply.accusation.heard.belief,
+                        }
+                      : {}),
+                    ...(reply.accusation.defense ? { defense: reply.accusation.defense } : {}),
+                  },
+                }
+              : {}),
             // Una promesa que tomó por hecha: `life.pledge` abre el compromiso con este dato.
             ...(reply.pledge ? { pledge: reply.pledge } : {}),
             ...(reply.secret

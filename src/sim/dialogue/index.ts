@@ -1,3 +1,4 @@
+export * from "./accusations.ts";
 export * from "./acts.ts";
 export * from "./disposition.ts";
 export * from "./form.ts";

@@ -9,6 +9,12 @@ import { CREDIT_LIMIT_GRAMS } from "../contracts/index.ts";
 import type { DeedKind } from "../law/index.ts";
 import type { Vector } from "../relations/index.ts";
 import type { Offense } from "../social/index.ts";
+import {
+  type AccuseInput,
+  type AccuseOutcome,
+  decideDefense,
+  hearAccusation,
+} from "./accusations.ts";
 import type { SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -110,6 +116,11 @@ export interface ReplyInput {
     /** Lo que el oyente cree del secreto, si se puede decir en una palabra (vive o murió). */
     readonly fact?: "dead" | "alive";
   };
+  /**
+   * Lo que el oyente pone para contestar una acusación (dialogue §6): como oyente de un tercero
+   * (pesa con `weighAccusation`) o como acusado (se defiende). Sin esto la toma como charla.
+   */
+  readonly accuse?: AccuseInput;
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -183,6 +194,8 @@ export interface Reply {
   readonly secret?: { readonly about: AgentId; readonly result: KeepResult };
   /** Si cree haber sorprendido una mentira: lo que guarda (ver `recordCaught`). */
   readonly caught?: CaughtLie;
+  /** La acusación pesada: cómo cayó en el oyente o cómo se defendió el acusado, y si iba sin respaldo. */
+  readonly accusation?: AccuseOutcome;
 }
 
 /** Confianza desde la que el oyente da por buena una promesa de quien habla. */
@@ -379,6 +392,30 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       if (!input) return say("other");
       const offense = insultOffense({ ...input, sting: a.sting });
       return { ...say(offense.size >= INSULT_HURT ? "insult.hurt" : "insult.shrug"), offense };
+    }
+    case "accuse": {
+      const input = i.accuse;
+      if (!input || a.accused === null) return say(input ? "accuse.unclear" : "other");
+      if (input.as === "accused") {
+        const defense = decideDefense(input.defense, i.rng.fork("defense"));
+        return {
+          ...say(`accuse.${defense}`),
+          accusation: { accused: "listener", kind: a.deed, unbacked: false, defense },
+        };
+      }
+      const accusation = {
+        accuser: i.speaker,
+        accused: input.accused,
+        kind: a.deed,
+        victim: a.victim === "speaker" ? i.speaker : a.victim,
+        event: input.cited?.event ?? null,
+        certainty: a.certainty,
+      };
+      const heard = hearAccusation(accusation, input.view, input.cited);
+      return {
+        ...say(`accuse.${heard.verdict}`, { name: i.nameOf(input.accused) }),
+        accusation: { accused: input.accused, kind: a.deed, unbacked: input.cited === null, heard },
+      };
     }
     case "other":
       return say("other");
