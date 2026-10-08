@@ -314,7 +314,11 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [ ] Léxico del personaje (subconjunto del vocabulario del mundo que cree) y voz por cultura, estrato, oficio y ánimo en el pedido y el validador
   - [ ] Modo `introspection` en `NarrationMode` (sale de la sim: pensar, recordar), con plantillas y largo propio
 - [ ] Mentiras y su detección, `TopicStack`, persuasión con argumentos y apelaciones, amenazas, halagos e insultos con cara, secretos que se escapan, sonsacar ([dialogue.md](systems/dialogue.md) §3-§11)
-- [ ] Consolidación nocturna de memorias (fusiones, refuerzo de esquemas, calidad del sueño) y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
+- [~] Consolidación nocturna de memorias y gustos básicos ([npc-psychology.md](systems/npc-psychology.md) §15, §16)
+  - [x] Consolidación nocturna, parte pura (2026-10-08): `sim/mind/consolidation.ts` — `sleepQuality` (horas contra necesidad, incomodidad, miedo, pesadillas), `consolidate` (refuerza hasta 3 memorias por intensidad × relevancia, degrada las triviales, funde un par parecido con distorsión y gist, más fundiciones y distorsión con mala noche, confirmaciones de esquema hacia donde ya se inclina) y `applySchemaUpdates`; devuelve el `ConsolidationPass`. Tests en `sim/mind/consolidation.test.ts`. Pendiente de correr por el coordinador.
+  - [ ] Cablear la consolidación al sueño: proceso nocturno para tier 2+ al terminar de dormir (calidad desde `sim/body`: frío, dolor, miedo; `rng.fork("psyche", npc, night)`), que escriba `MEMORIES`/`MIND`, relevancia desde los objetivos y tema de cada memoria, y la pasada como evento con causas
+  - [ ] Dormir sobre un problema (juntar dos memorias en una hipótesis, discovery), meditación que reemplaza parte de la consolidación y `Dream` con contenido y pesadillas (§15)
+  - [ ] Gustos básicos (§16): `Preference` generada desde temperamento, cuerpo, cultura y exposición (comida, pasatiempos), que el narrador pueda mencionar
 - [ ] Inspector: `memories`, `wrong`, `percepts`, `rumor`; métricas de exactitud de creencias en la sim headless ([tooling.md](systems/tooling.md) §5, §6)
 - [ ] Temperamento y gustos elegidos; infancia elegida como intenciones del hogar ([game-modes.md](systems/game-modes.md) §2.3)
 - [ ] Rasgos por persona, transmisión en los períodos sensibles, identidad como creencia, sesgo de grupo y sanciones informales ([culture.md](systems/culture.md) §4, §8)
