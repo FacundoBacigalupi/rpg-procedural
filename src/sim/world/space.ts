@@ -44,6 +44,8 @@ export interface ClimateNormals {
   /** Clave estable para el RNG (el `CellId` en texto). */
   readonly cell: string;
   readonly latDeg: number;
+  /** Inclinación del eje del planeta, grados: con la latitud fija el sol y las estaciones. */
+  readonly axialTiltDeg: number;
   /** Media anual, °C. */
   readonly annualMeanC: number;
   /** Mes más cálido menos mes más frío, °C. */

@@ -9,6 +9,7 @@ const YEAR_DAYS = Math.round(clock.year / clock.day);
 const temperate: ClimateNormals = {
   cell: "c:1",
   latDeg: 45,
+  axialTiltDeg: 23.4,
   annualMeanC: 9,
   seasonalRangeC: 22,
   annualPrecipMm: 800,
