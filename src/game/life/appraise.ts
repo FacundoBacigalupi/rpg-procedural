@@ -17,12 +17,14 @@ import {
   appraiseHardship,
   appraiseLoss,
   appraiseRearing,
+  BODY_STATE,
   type BondDef,
   contactGain,
   type Deltas,
   type DimensionDef,
   defaultDeltas,
   ENTITY,
+  emptyMental,
   fightDeltas,
   finishDeltas,
   form,
@@ -32,11 +34,15 @@ import {
   type HabitDef,
   habitsFed,
   INNATE,
+  killAftermath,
   lendDeltas,
   MEMORIES,
+  MENTAL,
   type Memories,
+  type MentalState,
   MIND,
   type Mind,
+  openCondition,
   PERSON,
   type ProcessDef,
   RELATIONS,
@@ -97,8 +103,10 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       RELATIONS.name,
       HABITS.name,
       MEMORIES.name,
+      MENTAL.name,
+      BODY_STATE.name,
     ],
-    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name],
+    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name, MENTAL.name],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -130,6 +138,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         const next = applyDeltas(rel(from, to, e), deltas, e.id);
         rels.set(from, { ...base, toward: { ...base.toward, [to]: { ...next, updated: e.tick } } });
       };
+      const mentals = new Map<AgentId, MentalState>();
       const mems = new Map<AgentId, Memories>();
       const note = (l: Lived) => {
         if (!alive(truth, l.who) || !truth.get(PERSON, l.who)) return;
@@ -156,6 +165,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         }
         if (e.kind === "combat.fight" || e.kind === "combat.finish") {
           fightAppraisals(e, truth, apply, rel, move);
+          killAppraisals(e, truth, apply, rel, mentals);
         } else if (e.kind === "combat.spare") {
           const [sparer, spared] = e.actors as [AgentId | undefined, AgentId | undefined];
           if (sparer && spared) {
@@ -222,6 +232,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...habits].map(([id, h]) => setComponent(HABITS, id, h)),
         ...[...rels].map(([id, r]) => setComponent(RELATIONS, id, r)),
         ...[...mems].map(([id, m]) => setComponent(MEMORIES, id, m)),
+        ...[...mentals].map(([id, m]) => setComponent(MENTAL, id, m)),
       ];
       return changes.length === 0 ? {} : { changes };
     },
@@ -357,5 +368,69 @@ function dealings(
     const cared = eff.target as AgentId;
     move(cared, actor, e, tendDeltas("cared", eff.care ?? 0));
     move(actor, cared, e, tendDeltas("carer", eff.care ?? 0));
+  }
+}
+
+/**
+ * Quien mató lo carga (combat §11, npc-psychology §11): `killAftermath` pesa la culpa y el trauma con
+ * lo que pasó (si el muerto se defendía, qué tan cerca estaban, cuánta sangre) y con quién es el
+ * que mató; los estímulos pasan por `form` y la condición queda abierta citando el evento, con el
+ * muerto y el lugar como disparadores. La cultura y el apoyo todavía no entran (condena y apoyo en 0).
+ */
+function killAppraisals(
+  e: Event,
+  truth: ReadonlyWorldTruth,
+  apply: (id: AgentId, e: Event, items: ReturnType<typeof appraiseLoss>) => void,
+  rel: (from: AgentId, to: AgentId, e: Event) => ReturnType<typeof relationship>,
+  mentals: Map<AgentId, MentalState>,
+): void {
+  const [first, second] = e.actors as [AgentId | undefined, AgentId | undefined];
+  if (!first || !second) return;
+  const data = (e.data ?? {}) as FightData;
+  const pairs: [AgentId, AgentId, "aggressor" | "victim"][] = [
+    [first, second, "aggressor"],
+    [second, first, "victim"],
+  ];
+  for (const [killer, dead, role] of pairs) {
+    // Un remate solo lo da quien golpea; en una pelea el desenlace dice quién murió.
+    const died =
+      e.kind === "combat.fight"
+        ? data.outcomes?.[dead] === "dead"
+        : role === "aggressor" && truth.get(BODY_STATE, dead)?.death != null;
+    if (!died || !alive(truth, killer) || !truth.get(PERSON, killer)) continue;
+    const innate = truth.get(INNATE, killer) ?? {};
+    const mind = truth.get(MIND, killer);
+    const mental = mentals.get(killer) ?? truth.get(MENTAL, killer) ?? emptyMental(e.id, e.tick);
+    const worst = Math.max(
+      0,
+      ...(data.hits ?? []).filter((h) => h.to === dead).map((h) => h.severity ?? 0),
+    );
+    const result = killAftermath(
+      {
+        defenseless: e.kind === "combat.finish",
+        closeness: closeness(rel(killer, dead, e)),
+        selfDefense: e.kind === "combat.fight" && role === "victim",
+        condemned: 0,
+        hadChoice: e.kind === "combat.finish" ? 1 : role === "aggressor" ? 0.5 : 0.1,
+        gore: worst,
+        priorKills: mental.kills,
+      },
+      {
+        z: innate,
+        schemas: Object.fromEntries(
+          Object.entries(mind?.schemas ?? {}).map(([k, v]) => [k, v.strength]),
+        ),
+      },
+    );
+    apply(
+      killer,
+      e,
+      result.stimuli.map((stimulus) => ({ stimulus, blame: null })),
+    );
+    const trigger = { who: dead, place: e.place };
+    let next: MentalState = { ...mental, kills: mental.kills + 1 };
+    next = openCondition(next, "trauma", result.trauma, e.id, trigger, e.tick);
+    next = openCondition(next, "guilt", result.guilt, e.id, trigger, e.tick);
+    mentals.set(killer, next);
   }
 }
