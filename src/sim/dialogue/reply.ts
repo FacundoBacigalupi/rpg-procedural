@@ -11,6 +11,13 @@ import type { Vector } from "../relations/index.ts";
 import type { SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import type { HeardClaim } from "./knowledge.ts";
+import {
+  type CaughtLie,
+  type DetectionInput,
+  judgeStatement,
+  type LieJudgement,
+  recordCaught,
+} from "./lies.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
 import { type Proposal, weighOffer } from "./offers.ts";
 
@@ -57,6 +64,11 @@ export interface ReplyInput {
   /** Cómo llama el oyente a `id` y a un bien. */
   readonly nameOf: (id: AgentId) => string;
   readonly goodName: (good: string) => string;
+  /**
+   * Lo que el oyente puede leer de quien le cuenta algo (dialogue §3-§4): sin esto toma lo contado
+   * por bueno; con esto lo juzga (`judgeStatement`) y puede dudar o acusar de mentir.
+   */
+  readonly detect?: DetectionInput;
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -116,6 +128,10 @@ export interface Reply {
   readonly counter?: Proposal;
   /** Una promesa que el oyente toma por hecha: la anota en su libro (contracts `believePledge`). */
   readonly pledge?: { readonly good: string | null; readonly grams: number | null };
+  /** Cómo juzgó el oyente lo que le contaron (solo si `detect` estaba): confianza y memoria salen de acá. */
+  readonly judgement?: LieJudgement;
+  /** Si cree haber sorprendido una mentira: lo que guarda (ver `recordCaught`). */
+  readonly caught?: CaughtLie;
 }
 
 /** Confianza desde la que el oyente da por buena una promesa de quien habla. */
@@ -166,6 +182,22 @@ export function decideReply(i: ReplyInput, at: number): Reply {
       const seen = i.direct(a.about);
       const contradicts = seen !== null && "dead" in seen !== (a.claim === "dead");
       if (contradicts) return say("tell.doubt", { name });
+      if (i.detect) {
+        const judgement = judgeStatement(i.detect, i.rng.fork("judge"));
+        if (judgement.verdict !== "believed") {
+          const caught = recordCaught(i.speaker, i.listener, at, judgement);
+          return {
+            ...say(judgement.verdict === "caught" ? "tell.caught" : "tell.doubted", { name }),
+            judgement,
+            ...(caught ? { caught } : {}),
+          };
+        }
+        return {
+          ...say(a.claim === "dead" ? "tell.dead" : "tell.alive", { name }),
+          accepted: { about: a.about, claim: a.claim, from: i.speaker, at },
+          judgement,
+        };
+      }
       return {
         ...say(a.claim === "dead" ? "tell.dead" : "tell.alive", { name }),
         accepted: { about: a.about, claim: a.claim, from: i.speaker, at },

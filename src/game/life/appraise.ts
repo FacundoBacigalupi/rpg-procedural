@@ -285,9 +285,16 @@ function talked(
   move: (from: AgentId, to: AgentId, e: Event, deltas: Deltas) => void,
 ): void {
   const [a, b] = e.actors as [AgentId | undefined, AgentId | undefined];
-  const eff = (e.data as { effect?: { kind?: string; delivered?: boolean } } | null)?.effect;
+  const eff = (
+    e.data as {
+      effect?: { kind?: string; delivered?: boolean; judged?: { trustDelta?: number } };
+    } | null
+  )?.effect;
   if (!a || !b || a === b || eff?.kind !== "speak" || eff.delivered === false) return;
   if (!alive(truth, a) || !alive(truth, b)) return;
+  // Quien oyó (a) juzgó lo que le contaron: su confianza en quien habló (b) sube o baja.
+  const trust = eff.judged?.trustDelta ?? 0;
+  if (trust !== 0) move(a, b, e, { trust });
   for (const [from, to] of [
     [a, b],
     [b, a],

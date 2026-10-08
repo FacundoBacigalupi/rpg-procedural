@@ -186,6 +186,28 @@ describe("qué vive cada quien de un evento", () => {
     expect(victim?.with).toEqual([A]);
   });
 
+  it("una mentira sorprendida queda en la memoria de ambos, más hiriente si era injusta", () => {
+    const speak = (certain: boolean) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: { effect: { kind: "speak", judged: { verdict: "caught", certain } } },
+      }) as unknown as Event;
+    const sure = livedFrom(speak(true));
+    const unjust = livedFrom(speak(false));
+    expect(sure.map((l) => l.who)).toEqual([A, B]);
+    const accused = (l: typeof sure) => l.find((x) => x.who === B)?.experience;
+    expect(accused(unjust)?.valence).toBeLessThan(accused(sure)?.valence ?? -1);
+    const believed = {
+      ...speak(true),
+      data: { effect: { kind: "speak", judged: { verdict: "believed" } } },
+    };
+    expect(livedFrom(believed as unknown as Event)).toEqual([]);
+  });
+
   it("un evento sin memoria no deja nada", () => {
     expect(livedFrom({ ...fight([]), kind: "action.wait" })).toEqual([]);
   });

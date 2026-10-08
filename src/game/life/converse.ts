@@ -16,11 +16,16 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
+  BELIEFS,
+  type Belief,
   type BondDef,
+  beliefConfidenceAt,
+  believed,
   CREDIT,
   type Credit,
   callName,
   clampTemper,
+  type DetectionInput,
   type DimensionDef,
   decideReply,
   deleteComponent,
@@ -50,11 +55,14 @@ import {
   relationship,
   type ScheduleRequest,
   type SpaceGraph,
+  type SpeechAct,
   type SpeechLine,
   STATUS,
   type StateChange,
   type StatusDef,
+  sameValue,
   setComponent,
+  sincerityOf,
   standardize,
   type Trait,
   table,
@@ -200,6 +208,87 @@ function lexiconOf(
   return { people, goods };
 }
 
+/** Lo que `who` cree de si `about` vive: su creencia, o lo que ve de primera mano, o lo que oyó. */
+function ownBelief(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  about: AgentId,
+  now: Tick,
+): Belief | undefined {
+  const held = believed(truth.get(BELIEFS, who), about, "alive");
+  if (held) return held;
+  const known =
+    householdOf(truth, who) === householdOf(truth, about) || sameSpot(truth, who, about)
+      ? alive(truth, about)
+      : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "dead"
+        ? false
+        : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "alive"
+          ? true
+          : undefined;
+  if (known === undefined) return undefined;
+  return {
+    prop: { kind: "attr", subject: about, attr: "alive" },
+    value: known,
+    confidence: 1,
+    asOf: now,
+    learnedAt: now,
+    sources: [],
+    salience: 1,
+    measured: now,
+  };
+}
+
+const unit = (x: number) => Math.min(1, Math.max(0, x));
+
+/**
+ * Lo que el oyente puede leer de quien le cuenta que `about` murió o vive (dialogue §3-§4): si
+ * miente se mide contra lo que el hablante cree, y las señales salen del temperamento de ambos,
+ * de la relación, de lo que el oyente ya cree y de lo que le suena. La habilidad de mentir
+ * todavía no pesa (control sale del temperamento).
+ */
+function detectionOf(
+  truth: ReadonlyWorldTruth,
+  o: ConverseOptions,
+  act: Extract<SpeechAct, { kind: "tell" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick },
+  feel: { trust: number; familiarity: number },
+  recollection: { bias: number },
+  listenerZ: Readonly<Record<string, number>>,
+): DetectionInput {
+  const { me, speaker, now } = ctx;
+  const said = act.claim === "alive";
+  const sincerity = sincerityOf(
+    { value: said, own: ownBelief(truth, speaker, act.about, now) },
+    now,
+  );
+  const innate = truth.get(INNATE, speaker);
+  const sz = innate
+    ? standardize(innate, o.traits, truth.get(PERSON, speaker)?.sex ?? "female")
+    : {};
+  const own = believed(truth.get(BELIEFS, me), act.about, "alive");
+  const beliefClash = own && !sameValue(own.value, said) ? unit(beliefConfidenceAt(own, now)) : 0;
+  const heardClash = (truth.get(HEARD, me)?.claims ?? []).some(
+    (c) => c.about === act.about && c.claim !== act.claim,
+  )
+    ? 0.5
+    : 0;
+  return {
+    lying: sincerity === "lie",
+    control: unit(0.5 + 0.5 * clampTemper(sz["control"] ?? 0)),
+    nerves: unit(0.25 + 0.25 * clampTemper(sz["reactivity"] ?? 0)),
+    insight: unit(0.5 + 0.5 * clampTemper(listenerZ["perception"] ?? 0)),
+    familiarity: unit(feel.familiarity),
+    conflict: Math.max(beliefClash, heardClash),
+    implausibility: act.claim === "dead" ? 0.25 : 0.05,
+    trust: unit(feel.trust),
+    wariness: unit(
+      0.2 +
+        0.3 * Math.max(0, -recollection.bias) +
+        0.2 * Math.max(0, -(listenerZ["warmth"] ?? 0) / 2),
+    ),
+  };
+}
+
 export function converseProcess(o: ConverseOptions): ProcessDef {
   const speak = o.catalog.verb("speak");
   return {
@@ -211,6 +300,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
     phase: "decide",
     reads: [
       PENDING.name,
+      BELIEFS.name,
       HEARD.name,
       KNOWN_DEEDS.name,
       RELATIONS.name,
@@ -255,22 +345,38 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
       const innate = truth.get(INNATE, me);
       const z = innate ? standardize(innate, o.traits, truth.get(PERSON, me)?.sex ?? "female") : {};
+      const act = understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity);
+      const feel = relationship(truth.get(RELATIONS, me), speaker, ctx.now, {
+        dims: o.dims,
+        bonds: o.bonds,
+        schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
+      }).dims;
+      const recollection = recollect(truth.get(MEMORIES, me), speaker, ctx.now);
       const reply = decideReply(
         {
-          act: understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity),
+          act,
           speaker,
           listener: me,
-          feel: relationship(truth.get(RELATIONS, me), speaker, ctx.now, {
-            dims: o.dims,
-            bonds: o.bonds,
-            schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
-          }).dims,
+          feel,
+          ...(act.kind === "tell"
+            ? {
+                detect: detectionOf(
+                  truth,
+                  o,
+                  act,
+                  { me, speaker, now: ctx.now },
+                  feel,
+                  recollection,
+                  z,
+                ),
+              }
+            : {}),
           rankAbove: above,
           temper: {
             warmth: clampTemper(z["warmth"] ?? 0),
             reactivity: clampTemper(z["reactivity"] ?? 0),
           },
-          recollection: recollect(truth.get(MEMORIES, me), speaker, ctx.now),
+          recollection,
           direct: (id) => {
             if (householdOf(truth, id) !== home && !sameSpot(truth, id, me)) return null;
             if (!alive(truth, id)) return { dead: true };
@@ -326,6 +432,15 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             clarity: 1,
             text: reply.text,
             reply: reply.line,
+            ...(reply.judgement
+              ? {
+                  judged: {
+                    verdict: reply.judgement.verdict,
+                    trustDelta: reply.judgement.trustDelta,
+                    certain: reply.judgement.correct,
+                  },
+                }
+              : {}),
           },
           // Un pedido fiado: el proceso del crédito abre la deuda con este dato.
           ...(reply.give?.credit && good

@@ -67,6 +67,19 @@
     ]
   },
   {
+    "id": "tell.caught",
+    "lines": [
+      "Mentís. Lo de {name} no me lo creo.",
+      "Eso de {name} lo decís para engañarme, te conozco."
+    ],
+    "formal": ["No le creo lo de {name}; me parece que miente."]
+  },
+  {
+    "id": "tell.doubted",
+    "lines": ["No sé... lo de {name} me suena raro.", "¿Seguro lo de {name}? No me convence."],
+    "formal": ["No sé si creerle lo de {name}."]
+  },
+  {
     "id": "request.unclear",
     "lines": ["¿Qué necesitás, exactamente?", "No te entiendo qué me pedís."]
   },
