@@ -21,8 +21,10 @@ import {
   STATUS,
   type StatusDef,
   skyLight,
+  type TraitDef,
   table,
 } from "../../sim/index.ts";
+import { ASCRIBED_GROUPS, ascribeFromPercepts } from "./identity.ts";
 import { playerObserver } from "./witness.ts";
 
 export const PERCEIVE_PROCESS = "life.perceive";
@@ -45,6 +47,8 @@ export interface PerceiveOptions {
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
+  /** Rasgos de cultura: con ellos lo visto se vuelve creencia de a qué grupo es cada uno. */
+  readonly cultureTraits?: readonly TraitDef[];
 }
 
 /** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
@@ -60,11 +64,18 @@ export function perceiveProcess(o: PerceiveOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [PERCEPTS.name, PERSON.name, LOCATION.name],
-    writes: [PERCEPTS.name],
+    reads: [PERCEPTS.name, PERSON.name, LOCATION.name, "culture.person", "culture.community"],
+    writes: [PERCEPTS.name, ASCRIBED_GROUPS.name],
     run(ctx) {
       const fresh = perceiveEvents(o, ctx.truth, ctx.recent, ctx.rng);
       if (fresh.length === 0) return {};
+      const ascribed = ascribeFromPercepts(
+        ctx.truth,
+        o.player,
+        fresh,
+        ctx.recent,
+        o.cultureTraits ?? [],
+      );
       return {
         changes: [
           {
@@ -73,6 +84,9 @@ export function perceiveProcess(o: PerceiveOptions): ProcessDef {
             id: o.player,
             value: remember(ctx.truth, o.player, fresh),
           },
+          ...(ascribed
+            ? [{ op: "set" as const, table: ASCRIBED_GROUPS.name, id: o.player, value: ascribed }]
+            : []),
         ],
       };
     },
