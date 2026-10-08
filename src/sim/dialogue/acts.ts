@@ -4,6 +4,7 @@
 // le cuentan. Lo que no encaja es `other`, y el oyente lo toma como charla.
 
 import type { AgentId } from "../../core/index.ts";
+import type { Appeal } from "./persuasion.ts";
 
 export type SpeechAct =
   | { readonly kind: "greet" }
@@ -24,7 +25,39 @@ export type SpeechAct =
     }
   /** Acepta o rechaza la propuesta abierta entre los dos (la que el oyente dejó planteada). */
   | { readonly kind: "accept" | "refuse" }
+  /** Un argumento para que el oyente haga o crea algo: a qué apunta (dialogue §6); `persuade` lo pesa. */
+  | { readonly kind: "argue"; readonly reason: ArgueReason }
   | { readonly kind: "other" };
+
+/**
+ * La razón que se da, tal como se entiende de las palabras (dialogue §6). `face` sin `whose`
+ * apunta a la cara del propio oyente; `relation` sin `with` no se entiende de quién.
+ */
+export type ArgueReason =
+  | { readonly kind: "relation"; readonly with: AgentId | null }
+  | { readonly kind: "norm"; readonly norm: string }
+  | { readonly kind: "fear"; readonly danger: string }
+  | { readonly kind: "face"; readonly whose: AgentId | null }
+  | { readonly kind: "authority"; readonly source: string }
+  | { readonly kind: "reciprocity"; readonly favor: string };
+
+/** El `Appeal` de una razón dicha a `listener`; null si no queda claro a qué apunta. */
+export function appealOf(reason: ArgueReason, listener: AgentId): Appeal | null {
+  switch (reason.kind) {
+    case "relation":
+      return reason.with === null ? null : { kind: "relation", with: reason.with };
+    case "norm":
+      return { kind: "norm", norm: reason.norm };
+    case "fear":
+      return { kind: "fear", danger: reason.danger };
+    case "face":
+      return { kind: "face", whose: reason.whose ?? listener };
+    case "authority":
+      return { kind: "authority", source: reason.source };
+    case "reciprocity":
+      return { kind: "reciprocity", favor: reason.favor };
+  }
+}
 
 /** Un término de intercambio: cuántos gramos de qué bien (dialogue §2, `ExchangeTerm`). */
 export interface ExchangeTerm {
@@ -69,6 +102,34 @@ const ACCEPT = /\b(acepto|trato hecho|de acuerdo|me parece bien|hecho|dale|esta 
 const REFUSE = /\b(no acepto|no gracias|olvidalo|no me interesa|ni hablar|no quiero)\b/;
 const SHORT_UTTERANCE_WORDS = 6;
 
+// El léxico de razones (dialogue §6): las frases con que se da un motivo, no un orden.
+const REASON_RELATION =
+  /(hazlo por|hacelo por|por el bien de|piensa en|pensa en|hazlo pensando en)/;
+const REASON_NORM =
+  /(es la costumbre|es costumbre|se acostumbra|es lo que se hace|asi se hace|es la tradicion|es lo correcto|es lo justo)/;
+const REASON_FEAR =
+  /(te van a matar|te vas a morir|vas a morir|te va a pasar algo|es peligroso|corres peligro|te van a hacer dano|te va a ir mal)/;
+const REASON_FACE =
+  /(quedas mal|quedaras mal|que van a decir|que diran|tu honor|tu nombre|tu fama|te vas a avergonzar|por tu reputacion)/;
+const REASON_AUTHORITY =
+  /(lo manda|lo ordena|lo dice el (anciano|jefe|senor|maestro|sacerdote)|lo dijo el (anciano|jefe|senor|maestro|sacerdote)|es una orden)/;
+const REASON_RECIPROCITY =
+  /(me debes|me lo debes|te ayude|te hice un favor|acordate de lo que hice|despues de todo lo que hice)/;
+const AUTHORITY_SOURCE = /(anciano|jefe|senor|maestro|sacerdote)/;
+
+/** La razón que se da en `norm` (ya normalizado), o null si no da ninguna. */
+function reasonIn(norm: string, who: AgentId | null): ArgueReason | null {
+  if (REASON_FEAR.test(norm)) return { kind: "fear", danger: "death" };
+  if (REASON_FACE.test(norm)) return { kind: "face", whose: null };
+  if (REASON_AUTHORITY.test(norm)) {
+    return { kind: "authority", source: AUTHORITY_SOURCE.exec(norm)?.[1] ?? "command" };
+  }
+  if (REASON_RECIPROCITY.test(norm)) return { kind: "reciprocity", favor: "past_favor" };
+  if (REASON_NORM.test(norm)) return { kind: "norm", norm: "custom" };
+  if (REASON_RELATION.test(norm)) return { kind: "relation", with: who };
+  return null;
+}
+
 function mentions(norm: string, names: readonly string[]): boolean {
   return names.some((n) => {
     const w = normalize(n);
@@ -83,6 +144,11 @@ function termIn(seg: string, lex: Lexicon): ExchangeTerm | null {
   const m = AMOUNT.exec(seg);
   const grams = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : 1000;
   return { good, grams };
+}
+
+/** Con la voz turbia llega que da una razón, pero no el detalle de quién. */
+function blurred(r: ArgueReason): ArgueReason {
+  return r.kind === "relation" ? { kind: "relation", with: null } : r;
 }
 
 /** Lo que el oyente entiende de `text`; con `clarity` baja, solo capta lo grueso (dialogue §5). */
@@ -110,6 +176,8 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };
   }
+  const reason = reasonIn(norm, blur ? null : who);
+  if (reason !== null) return { kind: "argue", reason: blur ? blurred(reason) : reason };
   const brief = norm.split(" ").length <= SHORT_UTTERANCE_WORDS;
   if (REFUSE.test(norm) && brief) return { kind: "refuse" };
   if (ACCEPT.test(norm) && brief) return { kind: "accept" };
