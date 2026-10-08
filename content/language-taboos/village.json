@@ -1,0 +1,12 @@
+[
+  {
+    "id": "village.tiger",
+    "name": "el nombre del tigre",
+    "culture": "village",
+    "kind": "beast",
+    "concepts": ["tiger"],
+    "circumlocution": ["old", "mountain"],
+    "severity": 0.35,
+    "reason": "nombrar a la bestia que baja a las majadas es llamarla"
+  }
+]

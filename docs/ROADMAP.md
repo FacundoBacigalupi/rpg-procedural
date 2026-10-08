@@ -318,7 +318,12 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Inspector: `memories`, `wrong`, `percepts`, `rumor`; métricas de exactitud de creencias en la sim headless ([tooling.md](systems/tooling.md) §5, §6)
 - [ ] Temperamento y gustos elegidos; infancia elegida como intenciones del hogar ([game-modes.md](systems/game-modes.md) §2.3)
 - [ ] Rasgos por persona, transmisión en los períodos sensibles, identidad como creencia, sesgo de grupo y sanciones informales ([culture.md](systems/culture.md) §4, §8)
-- [ ] Registros, tratamientos y tabúes de palabra; acento como firma; errores de quien habla mal ([language.md](systems/language.md) §5, §7, §12)
+- [~] Registros, tratamientos y tabúes de palabra; acento como firma; errores de quien habla mal ([language.md](systems/language.md) §5, §7, §12)
+  - [x] Registros, tratamientos y tabúes de palabra como contenido y funciones puras en `sim/language/register.ts`: formalidad por situación y destinatario, forma de tratamiento hecha con el léxico, falta de registro, tabú con rodeo y su ofensa
+  - [ ] Registros, tratamientos y tabúes en el diálogo: el acto de habla declara registro y tratamiento, el oyente juzga la falta (con la cara de [social-structure.md](systems/social-structure.md) §4) y el narrador recibe la forma de la lista blanca
+  - [ ] Tabúes que nacen en juego (nombre de un muerto o de un soberano) con evento de origen en la verdad, y el rodeo que se vuelve palabra normal
+  - [ ] Acento como firma: variante por comunidad, reconocerlo de oído y fingirlo con la faceta de acento ([language.md](systems/language.md) §5, §12)
+  - [ ] Errores de quien habla mal: salen de la distancia entre lo que sabe y la lengua real (registro, tono, falsos amigos) ([language.md](systems/language.md) §12)
 - [ ] Identidad religiosa por persona y sanción creída en la utilidad; consuelo y culpa ([religion.md](systems/religion.md) §1, §7)
 - [ ] Pensar con inferencia: el personaje deduce de su evidencia lo que el jugador quizá no vio, con confianza y errores con forma ([player-loop.md](systems/player-loop.md), ampliación 2026-10-08)
 - [ ] La intención declarada del plan se percibe y se malinterpreta ([actions.md](systems/actions.md), ampliación 2026-10-08)

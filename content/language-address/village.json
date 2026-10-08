@@ -1,0 +1,50 @@
+[
+  {
+    "id": "village.to_intimate",
+    "name": "el nombre a secas entre íntimos",
+    "culture": "village",
+    "recipient": "intimate",
+    "formality": 0,
+    "concepts": []
+  },
+  {
+    "id": "village.to_peer",
+    "name": "el nombre entre iguales",
+    "culture": "village",
+    "recipient": "peer",
+    "formality": 0,
+    "concepts": []
+  },
+  {
+    "id": "village.to_inferior",
+    "name": "el nombre a quien está abajo",
+    "culture": "village",
+    "recipient": "inferior",
+    "formality": 0,
+    "concepts": []
+  },
+  {
+    "id": "village.to_elder",
+    "name": "«viejo» delante del nombre",
+    "culture": "village",
+    "recipient": "elder",
+    "formality": 0.5,
+    "concepts": ["old"]
+  },
+  {
+    "id": "village.to_superior",
+    "name": "«alto» delante del nombre",
+    "culture": "village",
+    "recipient": "superior",
+    "formality": 0.6,
+    "concepts": ["high"]
+  },
+  {
+    "id": "village.to_master",
+    "name": "«alto viejo» delante del nombre",
+    "culture": "village",
+    "recipient": "master",
+    "formality": 0.7,
+    "concepts": ["high", "old"]
+  }
+]
