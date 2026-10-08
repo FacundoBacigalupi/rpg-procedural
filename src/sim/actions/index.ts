@@ -10,5 +10,6 @@ export * from "./draft-schema.ts";
 export * from "./examples.ts";
 export * from "./intent.ts";
 export * from "./plan.ts";
+export * from "./purpose.ts";
 export * from "./refs.ts";
 export * from "./resolve.ts";

@@ -327,3 +327,5 @@ Con la resolución de zona de simulation §4:
 ## Ampliación (2026-10-08): la intención se percibe
 
 La intención declarada del `ActionPlan` (por qué, para quién) no es un adorno: los demás pueden leerla, malinterpretarla o suponerla a partir de la acción y el contexto (perception, dialogue). Una misma acción con otra intención se juzga distinto (law, social-structure). El parser conserva la intención como dato del plan; el narrador no la inventa. Fase 2.
+
+Implementado (núcleo puro, `sim/actions/purpose.ts`): `Purpose` es verdad del actor y los demás nunca la leen directo; ven el verbo, el contexto y, si lo dijo y lo oyeron, la declaración. `readPurpose` devuelve una `ReadPurpose` con confianza y `mistaken`; el sesgo del lector (sospecha, aprecio) infla los motivos hostiles o los benignos; `purposeWeight` es lo que juzgan law y social-structure, sobre la lectura y no sobre la verdad.
