@@ -45,6 +45,9 @@ import {
   type Suggestion,
   suggestions,
   type TurnReport,
+  thinkOn,
+  topicEntity,
+  topicText,
   WORLD_LEXICON,
 } from "../game/index.ts";
 import {
@@ -67,6 +70,7 @@ import {
   assessPlan,
   callName,
   clarifyQuestion,
+  INFERENCE_RULES,
   type IntentDraft,
   LOCATION,
   PARSER_EXAMPLES,
@@ -84,6 +88,7 @@ import {
   renderJournal,
   renderStatus,
   renderSuggestion,
+  renderThinking,
 } from "./render.ts";
 
 export const VERSIONS = { engine: LIFE_ENGINE, content: "none", format: FORMAT_VERSION };
@@ -108,7 +113,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, hipótesis, bitácora, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo): personaje, inventario, hipótesis, bitácora, pensar sobre X, ayuda, salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -261,6 +266,20 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
       if (/^hip[oó]tesis/i.test(text))
         return { text: renderHypotheses(hypothesesPanel(life.world)) };
+      if (/^(?:pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago)/iu.test(text)) {
+        // Pensar no gasta tiempo: razona sobre lo que cree, no sobre la verdad.
+        const about = topicText(text);
+        if (about === undefined)
+          return { text: "¿Sobre qué querés pensar? Por ejemplo: pensar sobre mi padre." };
+        const ref = topicEntity(about, knownEntities(life.world));
+        if (ref === undefined) return { text: "No sabés lo bastante de eso como para pensarlo." };
+        const name = (id: string) =>
+          callName(
+            life.world.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] },
+          ) ?? "alguien";
+        const result = thinkOn(life.world, options.content.all(INFERENCE_RULES), ref);
+        return { text: renderThinking(result, about, name) };
+      }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
       }
