@@ -37,6 +37,11 @@ describe("inspector", () => {
       "hash",
       "pressures",
       "hazard",
+      "memories",
+      "wrong",
+      `wrong ${life.player}`,
+      "percepts",
+      "rumor x",
       "mind",
       "nada",
     ]) {
@@ -62,7 +67,18 @@ describe("inspector", () => {
     expect(life.hash()).toEqual(before);
   });
 
+  it("memories, wrong y percepts responden con la verdad y no tocan nada", () => {
+    expect(inspect(life, "memories agent:99999")).toContain("No hay");
+    expect(inspect(life, "wrong agent:99999")).toContain("No hay");
+    expect(inspect(life, "percepts agent:99999")).toContain("No hay");
+    expect(inspect(life, "memories")).toMatch(/memorias|no guarda/);
+    expect(inspect(life, "wrong")).toMatch(/falsas|Nadie/);
+    expect(inspect(life, "percepts").length).toBeGreaterThan(0);
+    expect(life.hash()).toEqual(before);
+  });
+
   it("dice cuándo llegan los comandos de sistemas que faltan", () => {
+    expect(inspect(life, "rumor 1")).toContain("Fase 3");
     expect(inspect(life, "mind agent:1")).toContain("Fase 2");
     expect(inspect(life, "invariants")).toBe("Sin violaciones.");
   });

@@ -26,6 +26,12 @@ describe("sim headless", () => {
     expect(r.metrics.agentsAlive).toBeGreaterThan(0);
     expect(r.metrics.ledgerProblems).toBe(0);
     expect(r.metrics.events).toBeGreaterThan(0);
+    const b = r.metrics.beliefs;
+    expect(b.beliefs).toBeGreaterThanOrEqual(b.mistaken);
+    expect(b.mistakenShare).toBeGreaterThanOrEqual(0);
+    expect(b.mistakenShare).toBeLessThanOrEqual(1);
+    expect(b.confidentlyWrong).toBeLessThanOrEqual(b.mistaken);
+    expect(r.metrics.memories.items).toBeGreaterThanOrEqual(0);
   }, 300_000);
 
   it("es determinista: mismo seed, mismo reporte", () => {
