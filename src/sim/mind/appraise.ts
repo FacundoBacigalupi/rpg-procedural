@@ -92,13 +92,37 @@ export function appraiseFight(facts: FightFacts, mind: Mind, innate: Innate): Ap
   return out;
 }
 
-/** Cómo vive la muerte de alguien quien lo quería (0 = nada, 1 = lo más cercano). */
-export function appraiseLoss(closeness: number): Appraised[] {
+/** Cuánto del dolor de una pérdida quita un consuelo pleno (rito, velorio, compañía; a consuelo 1). */
+export const RITE_RELIEF = 0.4;
+
+/**
+ * Cómo vive la muerte de alguien quien lo quería (0 = nada, 1 = lo más cercano). `comfort` (0-1) es
+ * el consuelo del rito que lo acompañó (`comfortOf` de religión): alivia la intensidad, no la borra.
+ */
+export function appraiseLoss(closeness: number, comfort = 0): Appraised[] {
   const c = clamp01(closeness);
   if (c <= 0) return [];
+  const relief = 1 - RITE_RELIEF * clamp01(comfort);
   return [
-    { stimulus: { theme: "loss", intensity: round(LOSS_FLOOR + LOSS_SPAN * c) }, blame: null },
+    {
+      stimulus: { theme: "loss", intensity: round((LOSS_FLOOR + LOSS_SPAN * c) * relief) },
+      blame: null,
+    },
   ];
+}
+
+/** Piso de la culpa que cuenta como estímulo (por debajo es una incomodidad, no una marca). */
+export const GUILT_MIN = 0.05;
+
+/**
+ * Cómo vive haber roto lo que creía prohibido quien lo rompió (npc-psychology §11, religion §7).
+ * `guilt` (0-1) es la intensidad de `guiltAfter` de religión (pesada por su fe y si lo vieron): el
+ * mundo no castiga el tabú, lo castiga lo que él cree. Se culpa a sí mismo: `blame` es null.
+ */
+export function appraiseGuilt(guilt: number): Appraised[] {
+  const g = clamp01(guilt);
+  if (g < GUILT_MIN) return [];
+  return [{ stimulus: { theme: "guilt", intensity: round(g) }, blame: null }];
 }
 
 /** Fracción de la grasa de referencia por debajo de la cual el hambre ya es carencia prolongada. */
