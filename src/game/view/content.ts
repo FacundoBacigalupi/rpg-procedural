@@ -37,11 +37,30 @@ export const NarrationTemplate = z.strictObject({
 export type NarrationTemplate = z.infer<typeof NarrationTemplate>;
 export const NARRATION_TEMPLATES = defineContent("llm/templates", NarrationTemplate);
 
+/**
+ * Una palabra del vocabulario de una familia de mundo (narration §4): el concepto que el
+ * personaje cree o no, la palabra técnica y cómo la diría quien no la conoce. Lo común
+ * (`technical: false`) lo sabe cualquiera de la cultura. Misma forma que `WorldTerm` de `llm`.
+ */
+export const LexiconEntry = z.strictObject({
+  id: contentId,
+  /** La familia metafísica a la que pertenece (`xianxia`, `mysteries`…). */
+  family: contentId,
+  /** `skill.<id>`, `law.<fenómeno>`, o un concepto de la familia (`realm.foundation`). */
+  concept: z.string().trim().min(1),
+  term: z.string().trim().min(1),
+  plain: z.string().trim().min(1),
+  technical: z.boolean(),
+});
+export type LexiconEntry = z.infer<typeof LexiconEntry>;
+export const WORLD_LEXICON = defineContent("llm/lexicon", LexiconEntry);
+
 /** Todo `content/`: lo de la sim más lo del narrador. Quien carga la carpeta entera usa esta. */
 export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   ...CONTENT_KINDS,
   AMBIENCE,
   NARRATION_TEMPLATES,
+  WORLD_LEXICON,
 ] as readonly ContentKind[];
 
 /** La paleta de ambiente de una escena percibida (narration §5, §8): lo que vale, en orden de id. */
