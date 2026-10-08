@@ -140,6 +140,31 @@ describe("walkingFactor", () => {
   });
 });
 
+describe("calibración del tiempo de marcha", () => {
+  // Medido en 5 climas × 20 años (2026-10-08): media +2 a +7 %, p90 +6 a +17 %, p99 +26 a +43 %,
+  // máximo +90 % (nieve honda). Un día cualquiera casi no frena y el peor sí se nota.
+  const climates: ClimateNormals[] = [
+    { ...temperate, latDeg: 5, annualMeanC: 26, seasonalRangeC: 3, annualPrecipMm: 2000 },
+    temperate,
+    { ...temperate, latDeg: 60, annualMeanC: 0, seasonalRangeC: 30, annualPrecipMm: 500 },
+    { ...temperate, latDeg: 48, annualMeanC: 6, seasonalRangeC: 30, annualPrecipMm: 300 },
+    polar,
+  ];
+
+  it("el día típico apenas frena y el peor casi duplica el tiempo", () => {
+    for (const n of climates) {
+      const f = years(n, 10)
+        .map(walkingFactor)
+        .sort((a, b) => a - b);
+      const mean = f.reduce((s, x) => s + x, 0) / f.length;
+      expect(mean).toBeGreaterThan(1.01);
+      expect(mean).toBeLessThan(1.1);
+      expect(f[Math.floor(f.length * 0.99)] as number).toBeLessThan(1.6);
+      expect(f[f.length - 1] as number).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
 describe("bearingFactor", () => {
   const dry = dailyWeather(temperate, clock, 100, Rng.root(1 as never));
   const clear = { ...dry, precip: { kind: "none" as const, mm: 0 } };
