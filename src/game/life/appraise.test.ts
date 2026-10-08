@@ -19,6 +19,7 @@ import {
   harshChance,
   LIFE_STAGES,
   LOCATION,
+  MENTAL,
   MIND,
   type Mind,
   PERSON,
@@ -261,6 +262,38 @@ describe("la aldea interpreta lo que vive", () => {
       expect(theirs?.dims.resentment ?? 0).toBeGreaterThan(0.15);
       expect(theirs?.dims.trust ?? 0).toBeLessThan(0);
     }
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
+  it("quien mata lo carga: condición con causa en el evento, o nada si nadie murió", () => {
+    const life = Life.create(10, content);
+    const me = life.player;
+    const target = living(life.world.truth).find(
+      (id) =>
+        life.world.truth.get(PERSON, id)?.household !== life.world.truth.get(PERSON, me)?.household,
+    ) as AgentId;
+    for (let i = 0; i < 12; i++) life.turn(strikePlan(me, target), 1);
+    const w = life.world;
+    const died = (w.truth.get(BODY_STATE, target) as Body).death !== null;
+    const killed = died
+      ? w.log
+          .all()
+          .filter(
+            (e) =>
+              (e.kind === "combat.fight" || e.kind === "combat.finish") &&
+              e.actors[0] === me &&
+              e.actors[1] === target,
+          )
+          .at(-1)
+      : undefined;
+    const mental = w.truth.get(MENTAL, me);
+    if (!killed) {
+      expect(mental?.kills ?? 0).toBe(0);
+      return;
+    }
+    expect(mental?.kills).toBeGreaterThanOrEqual(1);
+    const origins = mental?.conditions.flatMap((c) => c.originEventIds) ?? [];
+    expect(origins).toContain(killed.id);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);
 

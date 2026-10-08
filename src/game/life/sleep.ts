@@ -29,8 +29,11 @@ import {
   ENTITY,
   type EventDraft,
   MEMORIES,
+  MENTAL,
   type Memory,
   MIND,
+  nightmareCauses,
+  nightmareChance,
   PERSON,
   type ProcessDef,
   RELATIONS,
@@ -39,6 +42,7 @@ import {
   type SchemaDef,
   type StateChange,
   setComponent,
+  settleConditions,
   sleepQuality,
   type Theme,
   table,
@@ -157,8 +161,9 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       RELATIONS.name,
       PERSON.name,
       ENTITY.name,
+      MENTAL.name,
     ],
-    writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name],
+    writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -188,15 +193,23 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       const drop = deleteComponent(SLEEP_STATE, me);
       if (st.hours < MIN_SLEEP_HOURS) return { changes: [drop] };
 
+      // Trauma y culpa de haber matado: una noche mala si la mente los trae, y el tiempo los gasta.
+      const mental = truth.get(MENTAL, me);
+      const night = Math.floor(st.since / o.clock.day);
+      const dreamt =
+        mental !== undefined &&
+        Rng.root(o.seed).fork("nightmare", me, night).float() < nightmareChance(mental);
       const quality = sleepQuality({
         hours: st.hours,
         needHours: NEED_HOURS,
         discomfort: st.hours > 0 ? st.discomfortHours / st.hours : 0,
         fear: st.fear,
+        ...(dreamt && mental
+          ? { nightmares: Math.max(0, ...mental.conditions.map((c) => c.severity)) }
+          : {}),
       });
       const mind = truth.get(MIND, me);
       const rels = truth.get(RELATIONS, me);
-      const night = Math.floor(st.since / o.clock.day);
       const result = consolidate({
         memories: truth.get(MEMORIES, me),
         now: ctx.now,
@@ -250,7 +263,22 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       if (mind && pass.schemaUpdates.length > 0) {
         changes.push(setComponent(MIND, me, applySchemaUpdates(mind, pass.schemaUpdates)));
       }
-      return { events: [event], changes };
+      const events: EventDraft[] = [event];
+      if (mental) {
+        const settled = settleConditions(mental, ctx.now, o.clock.day);
+        changes.push(setComponent(MENTAL, me, settled));
+        if (dreamt) {
+          events.push({
+            kind: "mind.nightmare",
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { night, conditions: mental.conditions.map((c) => c.kind) },
+            emissions: {},
+            causes: nightmareCauses(mental).map((ev) => ({ kind: "event", event: ev }) as const),
+          });
+        }
+      }
+      return { events, changes };
     },
   };
 }
