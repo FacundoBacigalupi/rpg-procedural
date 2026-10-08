@@ -9,6 +9,7 @@
 import type { AgentId, CauseRef, EntityRef, Tick } from "../../core/index.ts";
 import { isId, parseId, z } from "../../core/index.ts";
 import type { ActionCatalog, TemplateNode } from "./catalog.ts";
+import { PURPOSES, type Purpose } from "./purpose.ts";
 
 export type ArgValue =
   | { readonly role: string; readonly entity: EntityRef }
@@ -48,6 +49,8 @@ export interface ActionPlan {
   readonly source: PlanSource;
   /** Para qué, en palabras del actor (la memoria y la narración lo citan). */
   readonly goal?: string | undefined;
+  /** El porqué declarado, en la verdad del actor: los demás lo leen con `readPurpose`. */
+  readonly purpose?: Purpose | undefined;
   readonly root: PlanNode;
   /** Modos para todo el plan; los de cada `do` se suman. */
   readonly manner: readonly string[];
@@ -109,6 +112,7 @@ export const ActionPlanSchema = z.strictObject({
   actor: z.custom<AgentId>((v) => typeof v === "string" && isId("agent", v), "actor inválido"),
   source: z.enum(PLAN_SOURCES),
   goal: z.string().max(500).optional(),
+  purpose: z.strictObject({ motive: z.enum(PURPOSES), forWhom: entityRef.optional() }).optional(),
   root: PlanNodeSchema,
   manner: z.array(z.string()),
   causes: z.array(z.custom<CauseRef>((v) => typeof v === "object" && v !== null)),
