@@ -5,8 +5,8 @@
 // (`productivity`), esto solo reparte el año. Sin estado: sale del tiempo del día, que ya es puro.
 
 import type { PlanetClock, Rng } from "../../core/index.ts";
-import type { ClimateNormals } from "../world/index.ts";
 import { type DayWeather, dailyWeather } from "../weather/index.ts";
+import type { ClimateNormals } from "../world/index.ts";
 
 // Calibración abierta a la pasada de calibración (ROADMAP Hito 1c).
 /** Debajo de esta media diaria (°C) no crece nada; arriba de `GROW_FULL_C`, crece a pleno. */
