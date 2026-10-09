@@ -143,6 +143,7 @@ import {
 import { registerKnowledge } from "./accent.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
+import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
@@ -1147,6 +1148,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       MEMORIES.name,
       INNATE.name,
       CREDIT.name,
+      LOANS.name,
       SECRETS.name,
       PROPHECY_BELIEFS.name,
       BODY_STATE.name,
@@ -1191,6 +1193,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           day: o.day,
           ...(o.year === undefined ? {} : { year: o.year }),
           incomePerDay: incomeOfHousehold(truth, home, Math.floor(ctx.now / o.day)),
+          loans: loansOf(truth, holderAccount(larder)),
         },
         home,
       );
