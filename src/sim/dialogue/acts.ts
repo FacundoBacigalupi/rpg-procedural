@@ -80,6 +80,18 @@ type SpeechBody =
       readonly victim: AgentId | "speaker" | null;
       readonly certainty: number;
     }
+  /**
+   * Un rumor que quien habla pasa (information §3): que `by` hizo `deed` a `victim` («dicen que…»,
+   * «me contaron que…»). Es contar de oídas, no acusar: el oyente lo pesa por quién se lo cuenta.
+   */
+  | {
+      readonly kind: "rumor";
+      readonly deed: AccusedDeed;
+      readonly by: AgentId | null;
+      readonly victim: AgentId | "speaker" | null;
+    }
+  /** «¿Quién te lo dijo?»: pregunta de dónde sabe el oyente lo de `about` (null: lo último que oyó). */
+  | { readonly kind: "source"; readonly about: AgentId | null }
   | { readonly kind: "other" };
 
 /** Lo que anuncia una profecía contada (los mismos de `ProphecyKind`; acá sin depender de divination). */
@@ -315,6 +327,11 @@ const ACCUSE_ME =
 const ACCUSE_SURE = /\b(seguro|estoy seguro|estoy segura|lo vi|te vi|juro|sin duda|se que)\b/;
 const ACCUSE_HEDGE =
   /\b(creo que|me parece|dicen que|capaz|quizas|tal vez|parece que|puede ser que)\b/;
+// Rumores (information §3): pasar de oídas un hecho, y preguntar de dónde se sabe.
+const RUMOR_MARK =
+  /\b(dicen que|se dice que|andan diciendo|me contaron que|me dijeron que|escuche que|oi que|corre el rumor|se comenta que|cuentan que|dice la gente que)\b/;
+const SOURCE_ASK =
+  /\b(quien te (lo )?(dijo|conto|menciono)|de donde (lo )?sacaste|como (lo )?sabes|quien lo dice|quien te dijo)\b/;
 const ACCUSE_SURE_CERTAINTY = 0.9;
 const ACCUSE_PLAIN_CERTAINTY = 0.7;
 const ACCUSE_HEDGE_CERTAINTY = 0.4;
@@ -461,6 +478,18 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
   }
   if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM, ...demand };
   const theft = ACCUSE_THEFT.test(norm);
+  if ((theft || ACCUSE_ASSAULT.test(norm)) && RUMOR_MARK.test(norm)) {
+    // «a Juan»: la víctima; la otra persona nombrada es quien lo hizo (si no dice quién, null).
+    const named = lex.people.filter((p) => mentions(norm, p.names));
+    const victimP = named.find((p) => p.names.some((n) => mentions(norm, [`a ${n}`])));
+    const byP = named.find((p) => p !== victimP);
+    return {
+      kind: "rumor",
+      deed: theft ? "theft" : "assault",
+      by: blur ? null : (byP?.id ?? null),
+      victim: blur ? null : ACCUSE_ME.test(norm) ? "speaker" : (victimP?.id ?? null),
+    };
+  }
   if (theft || ACCUSE_ASSAULT.test(norm)) {
     const you = ACCUSE_SECOND.test(norm);
     return {
@@ -509,6 +538,7 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
       claim: prophecy,
     };
   }
+  if (SOURCE_ASK.test(norm)) return { kind: "source", about: blur ? null : who };
   if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who, ...viaOf(norm) };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {
     return { kind: "tell", about: who, claim: DEAD.test(norm) ? "dead" : "alive" };

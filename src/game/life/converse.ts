@@ -13,6 +13,7 @@ import {
   holderAccount,
   type LedgerUnit,
   type PlaceRef,
+  type Rng,
   type Tick,
 } from "../../core/index.ts";
 import {
@@ -26,6 +27,7 @@ import {
   adjustFace,
   alternativesAmong,
   BELIEFS,
+  BELIEVED_AT,
   type Belief,
   BODY_STATE,
   type BondDef,
@@ -64,12 +66,15 @@ import {
   greets,
   HEARD,
   type HeardProphecy,
+  type HeardRumor,
   hear,
+  hearRumor,
   holdsGrudge,
   honestyShift,
   INNATE,
   KNOWN_DEEDS,
   type KnownDeeds,
+  keepRumor,
   type Language,
   type Lexicon,
   LOCATION,
@@ -95,11 +100,13 @@ import {
   type ReadonlyWorldTruth,
   type Recipient,
   type RegisterDef,
+  RUMORS,
   rankOf,
   recipientBetween,
   recollect,
   relationship,
   respondToOffense,
+  rumorAsKnown,
   type ScheduleRequest,
   SECRETS,
   type SpaceGraph,
@@ -115,7 +122,9 @@ import {
   secretAbout,
   setComponent,
   sincerityOf,
+  sourceOf,
   speechForm,
+  spoken,
   spokenTaboos,
   stakesAt,
   stanceOf,
@@ -132,6 +141,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
+import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
@@ -194,7 +204,18 @@ export function withDeclared(
         return { kind: "request", good: goodOf(declared.what), ...form };
       case "tell": {
         const about = known(declared.about);
-        return about ? { kind: "tell", about, claim: declared.claim, ...form } : heard;
+        if (!about) return heard;
+        // Un rumor de un hecho (`theft`/`assault`): lo que dice de quién lo hizo y a quién.
+        if (declared.claim === "theft" || declared.claim === "assault") {
+          return {
+            kind: "rumor",
+            deed: declared.claim,
+            by: about,
+            victim: known(declared.victim ?? null),
+            ...form,
+          };
+        }
+        return { kind: "tell", about, claim: declared.claim, ...form };
       }
       case "promise": {
         const terms = declaredTerms(declared);
@@ -628,6 +649,89 @@ function detectionOf(
 }
 
 /**
+ * El rumor que el personaje pasa (information §3): solo vale si lo que dice es un hecho que él
+ * conoce (`KNOWN_DEEDS`/`RUMORS`); la raíz es ese evento real, no lo que él escribe. El oyente lo
+ * pesa con `hearRumor` por lo que confía en quien se lo cuenta y lo que quiere al acusado. Sin un
+ * hecho que lo respalde no hay rumor: el oyente lo toma como charla.
+ */
+function rumorOf(
+  truth: ReadonlyWorldTruth,
+  o: ConverseOptions,
+  act: Extract<SpeechAct, { kind: "rumor" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick },
+  feel: { trust: number },
+  listenerZ: Readonly<Record<string, number>>,
+  rng: Rng,
+): { told: HeardRumor; prev: HeardRumor | undefined; heard: HeardRumor } | undefined {
+  const { me, speaker, now } = ctx;
+  const victim = act.victim === "speaker" ? speaker : act.victim;
+  const grounded = candidatesOf(
+    speaker,
+    truth.get(RUMORS, speaker),
+    truth.get(KNOWN_DEEDS, speaker),
+  )
+    .filter(
+      (h) =>
+        h.content.kind === act.deed &&
+        (act.by === null ? h.content.by === null : h.content.by === act.by) &&
+        (victim === null || h.content.victim === victim),
+    )
+    .sort((a, b) => b.at - a.at || (a.root < b.root ? -1 : 1))[0];
+  // A quien se le cuenta que él mismo lo hizo no es un rumor sino una acusación.
+  if (!grounded || grounded.content.by === me) return undefined;
+  const told = spoken(grounded, grounded.content);
+  const prev = truth.get(RUMORS, me)?.items.find((x) => x.root === grounded.root);
+  const doer = told.content.by;
+  const toDoer = doer
+    ? relationship(truth.get(RELATIONS, me), doer, now, {
+        dims: o.dims,
+        bonds: o.bonds,
+        schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
+      }).dims.affection
+    : 0;
+  const heard = hearRumor(
+    prev,
+    told,
+    speaker,
+    me,
+    {
+      trustInTeller: feel.trust,
+      affectionToDoer: toDoer,
+      credulity: unit(0.5 - 0.2 * clampTemper(listenerZ["curiosity"] ?? 0)),
+      attention: unit(0.5 + 0.25 * clampTemper(listenerZ["memory"] ?? 0)),
+    },
+    now,
+    rng,
+  );
+  return { told, prev, heard };
+}
+
+/**
+ * Lo que `me` sabe de dónde le llegó lo de `about` (o lo último que supo): lo vio, se lo dijo
+ * alguien o «dicen que» (`sourceOf`). Solo lo que recuerda, no la cadena real.
+ */
+function sourceKnown(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  about: AgentId | null,
+):
+  | { kind: "saw" }
+  | { kind: "named"; name: string; voices: number }
+  | { kind: "crowd"; voices: number }
+  | undefined {
+  const mine = candidatesOf(me, truth.get(RUMORS, me), truth.get(KNOWN_DEEDS, me)).filter(
+    (h) => about === null || h.content.by === about || h.content.victim === about,
+  );
+  const last = [...mine].sort((a, b) => b.heardAt - a.heardAt || (a.root < b.root ? -1 : 1))[0];
+  if (!last) return undefined;
+  const src = sourceOf(last);
+  if (src.kind === "named") {
+    return { kind: "named", name: givenName(truth, src.teller) ?? "alguien", voices: src.voices };
+  }
+  return src;
+}
+
+/**
  * Lo que el oyente pone para pesar una amenaza, un halago o un insulto (dialogue §9, §10): lo que
  * cree de la capacidad y la disposición de quien habla sale de la relación (miedo, respeto, trato) y
  * de lo vivido y sabido de él; la valentía, el orgullo y la vanidad, del temperamento; los testigos,
@@ -1031,6 +1135,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       BELIEFS.name,
       HEARD.name,
       KNOWN_DEEDS.name,
+      RUMORS.name,
       OWN_DEEDS.name,
       AMENDS.name,
       RELATIONS.name,
@@ -1050,7 +1155,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       STANDING_BELIEFS.name,
       RELIGIOUS_IDENTITY.name,
     ],
-    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name, FACE.name],
+    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name, RUMORS.name, FACE.name],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
       const pending = ctx.truth.get(PENDING, me);
@@ -1146,12 +1251,36 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               ctx.rng.fork("prophecy", pending.key),
             )
           : undefined;
+      const rumor =
+        act.kind === "rumor"
+          ? rumorOf(
+              truth,
+              o,
+              act,
+              { me, speaker, now: ctx.now },
+              feel,
+              z,
+              ctx.rng.fork("hear", pending.key),
+            )
+          : undefined;
+      const hearsayVerdict = rumor
+        ? rumor.prev
+          ? ("known" as const)
+          : rumor.heard.confidence >= BELIEVED_AT
+            ? ("believed" as const)
+            : rumor.heard.confidence >= 0.1
+              ? ("doubted" as const)
+              : ("dismissed" as const)
+        : undefined;
+      const source = act.kind === "source" ? sourceKnown(truth, me, act.about) : undefined;
       const reply = decideReply(
         {
           act,
           speaker,
           listener: me,
           feel,
+          ...(hearsayVerdict ? { hearsay: { verdict: hearsayVerdict } } : {}),
+          ...(source ? { source } : {}),
           ...(prophecy ? { prophecy: { credence: prophecy.heard.credence } } : {}),
           ...(act.kind === "tell"
             ? {
@@ -1298,6 +1427,30 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       const learned = reply.accusation?.heard?.learned;
       if (learned) {
         changes.push(setComponent(KNOWN_DEEDS, me, learnDeed(truth.get(KNOWN_DEEDS, me), learned)));
+      }
+      // Un rumor que el personaje pasa: el oyente lo guarda con su salto y, si lo cree, como hecho `told`.
+      let rumorEvent: EventDraft | undefined;
+      if (rumor) {
+        const { heard, told } = rumor;
+        changes.push(setComponent(RUMORS, me, keepRumor(truth.get(RUMORS, me), heard)));
+        const known = rumorAsKnown(heard, truth.get(KNOWN_DEEDS, me));
+        if (known && known !== truth.get(KNOWN_DEEDS, me)) {
+          changes.push(setComponent(KNOWN_DEEDS, me, known));
+        }
+        rumorEvent = {
+          kind: RUMOR_TOLD_EVENT,
+          actors: [speaker, me],
+          place: o.placeOf(truth, me),
+          data: {
+            deed: heard.root,
+            kind: heard.content.kind,
+            accused: heard.content.by,
+            hops: told.hops,
+            credit: heard.confidence,
+          },
+          emissions: {},
+          causes: [{ kind: "event", event: heard.root as EventId }],
+        };
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
       const regard = regardEffect(reply, witnessesOf(truth, me, speaker));
@@ -1476,6 +1629,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   } satisfies ToldProphecy,
                 }
               : {}),
+            ...(rumor && reply.rumor
+              ? { rumor: { deed: rumor.heard.root, verdict: reply.rumor.verdict } }
+              : {}),
+            ...(source ? { source: source.kind } : {}),
             // Una promesa que tomó por hecha: `life.pledge` abre el compromiso con este dato.
             // Si es callar, de qué: el secreto de más costo que guarda quien lo oyó (o él mismo).
             ...(reply.pledge
@@ -1544,6 +1701,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(offenseEvent ? [offenseEvent] : []),
           ...(inquiryEvent ? [inquiryEvent] : []),
           ...(falseAccusationEvent ? [falseAccusationEvent] : []),
+          ...(rumorEvent ? [rumorEvent] : []),
         ],
         postings:
           swaps.length > 0

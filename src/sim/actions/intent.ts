@@ -182,7 +182,9 @@ export const DraftAct = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("tell"),
     about: RefDescription,
-    claim: z.enum(["dead", "alive"]),
+    claim: z.enum(["dead", "alive", "theft", "assault"]),
+    /** Con `theft`/`assault`: a quién se lo hicieron, si lo dice. */
+    victim: RefDescription.optional(),
   }),
   z.strictObject({
     kind: z.literal("promise"),
