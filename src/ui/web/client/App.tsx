@@ -20,6 +20,7 @@ const TABS = [
   ["character", "Personaje"],
   ["inventory", "Inventario"],
   ["book", "Deudas"],
+  ["people", "Gente"],
   ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;

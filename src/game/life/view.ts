@@ -15,6 +15,7 @@ import {
   bodySigns,
   bookOf,
   COPPER,
+  type Figure,
   houseKey,
   LOCATION,
   type Location,
@@ -54,8 +55,9 @@ import {
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
-import { withImpressions } from "./impressions.ts";
+import { figureText, withImpressions } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
+import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
@@ -386,6 +388,21 @@ export function playerView(
     }
   }
 
+  // Un extraño de figura que ya vio otro día es «el desconocido de ayer».
+  const strangersMine = w.truth.get(STRANGERS, w.player);
+  const seenBefore = new Set<string>();
+  if (strangersMine !== undefined) {
+    for (const p of percepts) {
+      const fig = p.fields.figure?.value as Figure | undefined;
+      if (p.fields.identity === undefined && fig !== undefined) {
+        const text = figureText(fig);
+        if (strangersSeenBefore(strangersMine, text, now, w.clock.day).length > 0) {
+          seenBefore.add(p.id);
+        }
+      }
+    }
+  }
+
   const plan = w.plans.find((p) => p.id === body.plan);
   const signs = plan ? bodySigns(plan, body) : { general: [], zones: [] };
   const cues = new Set<SelfCue>();
@@ -431,6 +448,7 @@ export function playerView(
       ),
     },
     percepts: digest(percepts),
+    ...(seenBefore.size > 0 ? { seenBefore } : {}),
     steps: steps.map((s) => ({
       verb: s.verb,
       self: s.self,

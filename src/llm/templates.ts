@@ -114,7 +114,10 @@ export function renderView(
     if (l.figure !== undefined) {
       const figure = first(`figure.${l.figure.sex}.${l.figure.age}`);
       const dress = l.attire !== undefined && book.has(`attire.${l.attire}`);
-      return dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+      const dressed = dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+      return l.seenBefore === true && book.has("who.seen_before")
+        ? `${dressed} ${first("who.seen_before")}`
+        : dressed;
     }
     return first("who.vague");
   };

@@ -10,6 +10,7 @@
   { "id": "attire.fine", "lines": ["de ropa fina", "con buena ropa"] },
   { "id": "attire.worn", "lines": ["de ropa gastada y remendada", "con ropa raída"] },
   { "id": "who.vague", "lines": ["alguien"] },
+  { "id": "who.seen_before", "lines": ["que ya viste otro día"] },
 
   {
     "id": "scene.room",

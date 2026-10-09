@@ -8,6 +8,7 @@ import {
   bookPanel,
   characterPanel,
   inventoryPanel,
+  peoplePanel,
   TONE_ICON,
   TONE_LABEL,
 } from "../../game/index.ts";
@@ -17,6 +18,7 @@ import {
   renderEnvironment,
   renderInventory,
   renderJournal,
+  renderPeople,
   renderStatus,
   renderSuggestion,
 } from "../render.ts";
@@ -31,6 +33,7 @@ export function panelsOf(session: Session): Panels {
     character: renderCharacter(characterPanel(w)),
     inventory: renderInventory(inventoryPanel(w)),
     book: renderBook(bookPanel(w)),
+    people: renderPeople(peoplePanel(w)),
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(session.environment()),
     options: session.suggested().map((o) => ({
