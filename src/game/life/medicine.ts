@@ -14,6 +14,7 @@ import {
   type EventDraft,
   INFECTION,
   infectionStage,
+  levelOf,
   PATHOGEN,
   type PathogenDef,
   type PathogenTreatment,
@@ -23,6 +24,7 @@ import {
   remedyEffect,
   remedyHarm,
   type SignSet,
+  SKILL_STATE,
   type StateChange,
   setComponent,
   TREATMENT,
@@ -48,9 +50,30 @@ export interface Healer {
   readonly capacity?: number;
 }
 
+/** La escuela de la aldea: lo que sabe y da quien practica el oficio (`medicine`), sin lista de sanadores. */
+export interface HealerSchool {
+  readonly models: readonly ConditionModel[];
+  readonly remedies: readonly RemedyDef[];
+  readonly remedyFor: Readonly<Record<string, string>>;
+  readonly isolation?: number;
+  readonly compliance?: number;
+  readonly capacity?: number;
+  /** Nivel de la habilidad desde el cual la gente lo busca como sanador (por defecto 0.2). */
+  readonly minSkill?: number;
+}
+
+/** El nivel de sanar de alguien: promedio de ejecución, saber y juicio de `medicine` (skills §2). */
+export function healingSkill(state: Parameters<typeof levelOf>[0]): number {
+  return (
+    (levelOf(state, "execution") + levelOf(state, "knowledge") + levelOf(state, "judgment")) / 3
+  );
+}
+
 export interface MedicineOptions {
   readonly clock: PlanetClock;
   readonly healers?: readonly Healer[];
+  /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
+  readonly school?: HealerSchool | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -63,12 +86,33 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PATHOGEN.name, INFECTION.name, TREATMENT.name, ENTITY.name, BODY_STATE.name],
+    reads: [
+      SKILL_STATE.name,
+      PATHOGEN.name,
+      INFECTION.name,
+      TREATMENT.name,
+      ENTITY.name,
+      BODY_STATE.name,
+    ],
     writes: [TREATMENT.name],
     run(ctx) {
-      const healers = (o.healers ?? []).filter(
-        (h) => ctx.truth.get(ENTITY, h.agent)?.endedAt === undefined,
-      );
+      const alive = (a: AgentId) => ctx.truth.get(ENTITY, a)?.endedAt === undefined;
+      const healers = (o.healers ?? []).filter((h) => alive(h.agent));
+      const school = o.school;
+      if (school) {
+        const min = school.minSkill ?? 0.2;
+        const explicit = new Set(healers.map((h) => h.agent));
+        const found: Healer[] = [];
+        for (const id of ctx.truth.ids(SKILL_STATE)) {
+          const agent = id as AgentId;
+          if (explicit.has(agent) || !alive(agent)) continue;
+          const skill = healingSkill(ctx.truth.get(SKILL_STATE, id)?.["medicine"]);
+          if (skill < min) continue;
+          found.push({ ...school, agent, skill });
+        }
+        found.sort((a, b) => b.skill - a.skill || (a.agent < b.agent ? -1 : 1));
+        healers.push(...found);
+      }
       if (healers.length === 0) return {};
       const defs = new Map<string, PathogenDef>();
       for (const id of ctx.truth.ids(PATHOGEN)) {
