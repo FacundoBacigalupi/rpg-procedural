@@ -8,10 +8,13 @@ import type { AgentId } from "../../core/index.ts";
 import {
   LAW_BELIEFS,
   levelOf,
+  MENTAL,
   type ReadonlyWorldTruth,
   SKILL_STATE,
   type SkillCatalog,
   type SkillDef,
+  STATUS,
+  type StatusDef,
   villageCulture,
 } from "../../sim/index.ts";
 import type { LexiconEntry } from "./content.ts";
@@ -45,10 +48,45 @@ export function believedConcepts(truth: ReadonlyWorldTruth, who: AgentId): Set<s
   return out;
 }
 
-/** Datos planos de la voz (misma forma que `VoiceInput` de `llm`, sin ánimo todavía). */
+/** Ánimos que la voz sabe tintear (subconjunto de `VoiceMood` de `llm`). */
+export type VoiceMoodName = "calm" | "fear" | "guilt";
+
+/** Gravedad desde la que una condición mental tiñe la voz. */
+export const MOOD_FROM_SEVERITY = 0.15;
+
+/**
+ * El ánimo de fondo del personaje: la condición mental más grave (trauma tiñe de miedo, culpa de
+ * culpa). Sin condiciones que pasen el umbral no hay ánimo marcado. Empate: el id menor.
+ */
+export function moodOf(truth: ReadonlyWorldTruth, who: AgentId): VoiceMoodName | undefined {
+  const state = truth.get(MENTAL, who);
+  let best: { kind: "trauma" | "guilt"; severity: number } | undefined;
+  for (const c of state?.conditions ?? []) {
+    if (c.severity < MOOD_FROM_SEVERITY) continue;
+    if (best === undefined || c.severity > best.severity) best = c;
+  }
+  return best === undefined ? undefined : best.kind === "trauma" ? "fear" : "guilt";
+}
+
+/**
+ * El estrato desde el estatus que la aldea le reconoce: el que depende es pobre, el de arriba
+ * (terrateniente) pesa como letrado, el resto común. Sin estatus conocido, común.
+ */
+export function stratumOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  statuses: readonly StatusDef[],
+): CharacterVoiceData["stratum"] {
+  const holding = truth.get(STATUS, who);
+  const role = statuses.find((d) => d.id === holding?.status)?.role;
+  return role === "dependent" ? "poor" : role === "holder" ? "learned" : "common";
+}
+
+/** Datos planos de la voz (misma forma que `VoiceInput` de `llm`). */
 export interface CharacterVoiceData {
   readonly culture: string;
   readonly stratum: "poor" | "common" | "learned" | "noble";
+  readonly mood?: VoiceMoodName;
   readonly education: number;
   readonly trade?: { readonly name: string; readonly notices: readonly string[] };
 }
@@ -64,13 +102,14 @@ const NOTICES: Readonly<Partial<Record<SkillDef["domain"], readonly string[]>>> 
 
 /**
  * Cómo habla y mira el personaje: la cultura de su aldea, cuánto estudió (habilidades de estudio
- * y lenguas) y el oficio en que más rinde. El estrato queda `common` hasta que exista la
- * estratificación (social-structure); el ánimo vendrá de `mind.form` (ítem aparte).
+ * y lenguas), el oficio en que más rinde, el estrato desde su estatus y el ánimo desde sus
+ * condiciones mentales.
  */
 export function characterVoiceData(
   truth: ReadonlyWorldTruth,
   skills: SkillCatalog,
   who: AgentId,
+  statuses: readonly StatusDef[] = [],
 ): CharacterVoiceData {
   const state = truth.get(SKILL_STATE, who) ?? {};
   let education = 0;
@@ -90,8 +129,9 @@ export function characterVoiceData(
   }
   return {
     culture: villageCulture(truth)?.name ?? "de la aldea",
-    stratum: "common",
+    stratum: stratumOf(truth, who, statuses),
     education,
+    ...(moodOf(truth, who) !== undefined ? { mood: moodOf(truth, who) as VoiceMoodName } : {}),
     ...(best ? { trade: { name: best.def.name, notices: NOTICES[best.def.domain] ?? [] } } : {}),
   };
 }

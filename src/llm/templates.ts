@@ -13,6 +13,7 @@ import type {
   PerceptView,
   PlayerView,
 } from "../game/index.ts";
+import type { LexiconView } from "./voice.ts";
 
 export class TemplateBook {
   readonly #lines: ReadonlyMap<string, readonly string[]>;
@@ -58,11 +59,51 @@ function capitalize(s: string): string {
   return s.slice(0, at) + s.charAt(at).toUpperCase() + s.slice(at + 1);
 }
 
-export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): string {
+/** Los huecos que llevan palabras citadas (del jugador o de otros): no se reescriben. */
+const QUOTED_SLOTS: ReadonlySet<string> = new Set(["text", "words"]);
+
+/**
+ * Cambia los términos técnicos que el personaje no cree por lo que diría en su lugar (narration
+ * §4), menos lo citado. Las citas se apartan con un marcador antes de reemplazar.
+ */
+function plainTerms(
+  line: string,
+  slots: Slots,
+  vocabulary: LexiconView | undefined,
+  id: string,
+): string {
+  if (vocabulary === undefined || vocabulary.avoid.length === 0) return fill(line, slots, id);
+  const quotes: string[] = [];
+  const held: Record<string, string> = { ...slots };
+  for (const key of QUOTED_SLOTS) {
+    const v = slots[key];
+    if (v !== undefined) {
+      held[key] = `${quotes.length}`;
+      quotes.push(v);
+    }
+  }
+  let text = fill(line, held, id);
+  for (const a of vocabulary.avoid) {
+    const re = new RegExp(`(?<![\\p{L}\\uE000])${escapeRe(a.term)}(?![\\p{L}])`, "giu");
+    text = text.replace(re, a.say);
+  }
+  return text.replace(/(\d+)/g, (_, i: string) => quotes[Number(i)] as string);
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function renderView(
+  view: PlayerView,
+  book: TemplateBook,
+  rng: Rng,
+  vocabulary?: LexiconView,
+): string {
   const labels = new Map(view.labels.map((l) => [l.localId, l]));
   const out: string[] = [];
   const say = (id: string, slots: Slots = {}): void => {
-    out.push(capitalize(fill(rng.pick(book.lines(id)), slots, id)));
+    out.push(capitalize(plainTerms(rng.pick(book.lines(id)), slots, vocabulary, id)));
   };
   const first = (id: string): string => book.lines(id)[0] as string;
 
