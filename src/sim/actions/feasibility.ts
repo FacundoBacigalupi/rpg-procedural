@@ -10,6 +10,8 @@
 
 import type { EntityRef } from "../../core/index.ts";
 import type { PlaceKind } from "../world/index.ts";
+import type { Scene } from "./attempt.ts";
+import { believedChance, RISKY_BELOW } from "./believed.ts";
 import type { ActionCatalog, CapabilityKey, Requirement } from "./catalog.ts";
 import { type ActionPlan, type PlanNode, planLeaves } from "./plan.ts";
 
@@ -31,6 +33,15 @@ export interface BeliefView {
   holds(holder: EntityRef | "self", what: "goods" | "money"): boolean | undefined;
   /** Cómo nombra a alguien o algo, para el aviso. */
   nameOf(ref: EntityRef): string;
+  /**
+   * Quién es y sus rasgos, luz y terreno tal como los siente, para estimar la chance de éxito con
+   * la autoimagen (skills §9). Sin esto no hay aviso de riesgo.
+   */
+  risk?: {
+    readonly id: EntityRef;
+    readonly z: Readonly<Record<string, number>>;
+    readonly scene: Scene;
+  };
 }
 
 export const WARNING_KINDS = [
@@ -41,6 +52,7 @@ export const WARNING_KINDS = [
   "unknown_whereabouts",
   "untrained",
   "unskilled",
+  "risky",
 ] as const;
 export type WarningKind = (typeof WARNING_KINDS)[number];
 
@@ -97,6 +109,23 @@ export function assessPlan(
         push("untrained", false, 0.6, `nunca aprendiste a hacer esto (${def.name})`);
       } else if (s.level < UNSKILLED_BELIEVED) {
         push("unskilled", false, 0.3, `sabés muy poco de esto (${def.name})`);
+      } else if (view.risk) {
+        // La chance que siente con su autoimagen, no la verdadera: quien se cree bueno no se avisa.
+        const caps: Partial<Record<CapabilityKey, number>> = {};
+        for (const r of def.requires) {
+          if (r.kind === "capability") caps[r.cap] = view.capability(r.cap) ?? 1;
+        }
+        const { chance } = believedChance(
+          {
+            def,
+            node,
+            planManner: plan.manner,
+            actor: { id: view.risk.id, z: view.risk.z, capabilities: caps, hex: view.hex },
+            scene: view.risk.scene,
+          },
+          s,
+        );
+        if (chance < RISKY_BELOW) push("risky", false, 0.4, `no creés que te salga (${def.name})`);
       }
     }
     if (def.resolver === "move") {

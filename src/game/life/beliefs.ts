@@ -11,13 +11,16 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   capabilitiesOf,
+  INNATE,
   isMoney,
   type KnownEntity,
   LOCATION,
+  PERSON,
   PLACE,
   SELF_IMAGES,
   SKILL_STATE,
   seedSelfImage,
+  standardize,
 } from "../../sim/index.ts";
 import { knownEntities } from "./known.ts";
 import type { LifeWorld } from "./world.ts";
@@ -40,8 +43,27 @@ export function beliefViewOf(
   const skills = w.truth.get(SKILL_STATE, me);
   const here = w.truth.get(LOCATION, me)?.hex ?? 0;
   const held = w.ledger.holdings(holderAccount(me as unknown as HolderRef));
+  const innate = w.truth.get(INNATE, me);
+  const person = w.truth.get(PERSON, me);
   return {
     hex: here,
+    // Sus rasgos y el lugar como los siente: con esto el aviso de riesgo usa la autoimagen.
+    ...(innate && person
+      ? {
+          risk: {
+            id: me,
+            z: standardize(innate, w.traits, person.sex),
+            scene: {
+              light: 1,
+              terrain: w.map.forest[here] ? 0.6 : 0.1,
+              placeKinds: w.truth.ids(PLACE).flatMap((id) => {
+                const p = w.truth.get(PLACE, id);
+                return p?.hexes.includes(here) ? [p.kind] : [];
+              }),
+            },
+          },
+        }
+      : {}),
     capability: (cap) => (caps ? felt(caps[cap]) : undefined),
     skill: (id) => {
       const state = skills?.[id];
