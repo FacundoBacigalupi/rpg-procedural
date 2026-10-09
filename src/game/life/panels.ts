@@ -7,7 +7,7 @@
 // como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. Mientras nada
 // escriba esa foto (ver ROADMAP), vale lo que tiene.
 
-import type { EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
+import type { AgentId, EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   BODY_STATE,
@@ -174,6 +174,11 @@ function suretyOf(confidence: number): Surety {
 
 /** El libro del personaje: sus deudas de fiado (exactas) y sus promesas como las cree, nunca la verdad. */
 export function bookPanel(w: LifeWorld): BookPanel {
+  return { lines: bookLinesOf(w).map((x) => x.line) };
+}
+
+/** Las líneas del libro con el id de la contraparte, para filtrar por persona (`qué sé de X`). */
+export function bookLinesOf(w: LifeWorld): { readonly ref: AgentId; readonly line: BookLine }[] {
   const now = w.scheduler.now;
   const acq = acquaintances(w);
   const entries = bookOf(
@@ -185,7 +190,7 @@ export function bookPanel(w: LifeWorld): BookPanel {
   );
   const goodName = (unit: LedgerUnit) =>
     w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.name ?? unit.replace(/^good:/, "");
-  const lines = entries.map((e): BookLine => {
+  return entries.map((e) => {
     const t = e.term;
     const what: BookLine["what"] =
       t.kind === "give"
@@ -196,7 +201,7 @@ export function bookPanel(w: LifeWorld): BookPanel {
           ? { kind: "favor", what: t.what }
           : { kind: "silence", about: t.about };
     const a = acq.get(e.other);
-    return {
+    const line: BookLine = {
       kind: e.kind,
       direction: e.direction,
       other: a?.name ?? a?.relation ?? "alguien",
@@ -205,8 +210,8 @@ export function bookPanel(w: LifeWorld): BookPanel {
       sure: suretyOf(e.confidence),
       defaulted: e.status === "defaulted",
     };
+    return { ref: e.other, line };
   });
-  return { lines };
 }
 
 function amountOf(grams: number): Amount {
