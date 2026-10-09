@@ -5,7 +5,7 @@
 // (`productivity`), esto solo reparte el año. Sin estado: sale del tiempo del día, que ya es puro.
 
 import type { PlanetClock, Rng } from "../../core/index.ts";
-import { type DayWeather, dailyWeather } from "../weather/index.ts";
+import { type Anomaly, type DayWeather, dailyWeather } from "../weather/index.ts";
 import type { ClimateNormals } from "../world/index.ts";
 
 // Calibración abierta a la pasada de calibración (ROADMAP Hito 1c).
@@ -84,12 +84,39 @@ export function harvestSeason(
   n: ClimateNormals,
   clock: PlanetClock,
   rng: Rng,
+  anomalyOf?: (day: number) => Anomaly | undefined,
+): (day: number) => number {
+  const yearDays = Math.round(clock.year / clock.day);
+  const rawOf = rawSeason(n, clock, rng, anomalyOf);
+  // El promedio es el de un año sin anomalía: los años buenos y malos (oscilaciones oceánicas,
+  // weather §1) rinden más o menos que el promedio en vez de normalizarse cada uno a 1.
+  const baseRaw = anomalyOf ? rawSeason(n, clock, rng) : rawOf;
+  let sum = 0;
+  for (let d = 0; d < yearDays; d++) sum += baseRaw(d);
+  const mean = Math.max(sum / yearDays, MIN_MEAN);
+  const factors = new Map<number, number>();
+  return (day) => {
+    let f = factors.get(day);
+    if (f === undefined) {
+      f = rawOf(day) / mean;
+      factors.set(day, f);
+    }
+    return f;
+  };
+}
+
+/** El factor crudo de cada día, con su tiempo y granizo guardados. */
+function rawSeason(
+  n: ClimateNormals,
+  clock: PlanetClock,
+  rng: Rng,
+  anomalyOf?: (day: number) => Anomaly | undefined,
 ): (day: number) => number {
   const weather = new Map<number, DayWeather>();
   const at = (d: number): DayWeather => {
     let w = weather.get(d);
     if (!w) {
-      w = dailyWeather(n, clock, d, rng);
+      w = dailyWeather(n, clock, d, rng, anomalyOf?.(d));
       weather.set(d, w);
     }
     return w;
@@ -108,23 +135,10 @@ export function harvestSeason(
     for (let ago = 0; ago < HAIL_RECOVERY_DAYS; ago++) if (hailed(d - ago)) return ago;
     return undefined;
   };
-  const rawAt = (d: number) =>
+  return (d: number) =>
     rawHarvest(
       at(d),
       Array.from({ length: SOIL_DAYS - 1 }, (_, i) => at(d - 1 - i)),
       hailAgoAt(d),
     );
-  const yearDays = Math.round(clock.year / clock.day);
-  let sum = 0;
-  for (let d = 0; d < yearDays; d++) sum += rawAt(d);
-  const mean = Math.max(sum / yearDays, MIN_MEAN);
-  const factors = new Map<number, number>();
-  return (day) => {
-    let f = factors.get(day);
-    if (f === undefined) {
-      f = rawAt(day) / mean;
-      factors.set(day, f);
-    }
-    return f;
-  };
 }
