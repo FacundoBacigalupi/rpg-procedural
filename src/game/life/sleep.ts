@@ -23,6 +23,7 @@ import {
   BODY_STATE,
   type Body,
   type BondDef,
+  COMMUNITY_RELIGION,
   consolidate,
   type DimensionDef,
   deleteComponent,
@@ -37,6 +38,7 @@ import {
   PERSON,
   type ProcessDef,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   recall,
   relationship,
@@ -50,6 +52,7 @@ import {
   vigilantSleepFear,
 } from "../../sim/index.ts";
 import { closeness } from "./appraise.ts";
+import { supportFor } from "./support.ts";
 
 export const SLEEP_PROCESS = "life.consolidate";
 
@@ -165,6 +168,8 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       PERSON.name,
       ENTITY.name,
       MENTAL.name,
+      COMMUNITY_RELIGION.name,
+      RELIGIOUS_IDENTITY.name,
     ],
     writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
     run(ctx) {
@@ -280,7 +285,12 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       }
       const events: EventDraft[] = [event];
       if (mental) {
-        const settled = settleConditions(mental, ctx.now, o.clock.day);
+        const settled = settleConditions(
+          mental,
+          ctx.now,
+          o.clock.day,
+          mental.conditions.length > 0 ? supportFor(truth, me) : 0,
+        );
         changes.push(setComponent(MENTAL, me, settled));
         if (dreamt) {
           events.push({
