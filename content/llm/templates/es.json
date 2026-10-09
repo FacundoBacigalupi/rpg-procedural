@@ -544,6 +544,14 @@
     "id": "taste.reminds_of",
     "lines": ["{what} te recuerda a {who}.", "Con {what} te acordás de {who}."]
   },
+  {
+    "id": "taste.recalls_ill",
+    "lines": ["Con {what} te acordás de cuando te cayó mal.", "{what} te trae un mal recuerdo."]
+  },
+  {
+    "id": "taste.recalls_good",
+    "lines": ["{what} te trae un buen recuerdo.", "Con {what} te acordás de un buen momento."]
+  },
 
   {
     "id": "due.owe.overdue",
