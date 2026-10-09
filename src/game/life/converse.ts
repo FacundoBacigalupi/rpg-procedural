@@ -21,7 +21,9 @@ import {
   ACCUSE_TRUST_UNBACKED,
   type AccuseInput,
   type ActionCatalog,
+  type AddressDef,
   AMENDS,
+  adjustFace,
   BELIEFS,
   type Belief,
   BODY_STATE,
@@ -29,6 +31,7 @@ import {
   beliefAbout,
   beliefConfidenceAt,
   believed,
+  type ConceptDef,
   CREDIT,
   type Credit,
   callName,
@@ -40,11 +43,15 @@ import {
   decideReply,
   deedsBy,
   deleteComponent,
+  demandedFormality,
   didDeed,
   dominantVariant,
   draftEvent,
   ENTITY,
   type EventDraft,
+  FACE,
+  type FormJudgeInput,
+  formalityShift,
   type GoodDef,
   goodUnit,
   HEARD,
@@ -53,12 +60,14 @@ import {
   honestyShift,
   INNATE,
   KNOWN_DEEDS,
+  type Language,
   type Lexicon,
   LOCATION,
   learnDeed,
   liveBetween,
   MEMORIES,
   MIND,
+  normalize,
   OWN_DEEDS,
   PERSON,
   PERSON_NAME,
@@ -67,8 +76,11 @@ import {
   type ProcessDef,
   type Proposal,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
+  type RegisterDef,
   rankOf,
+  recipientBetween,
   recollect,
   relationship,
   type ScheduleRequest,
@@ -76,6 +88,7 @@ import {
   type SpaceGraph,
   type SpeechAct,
   type SpeechLine,
+  type SpokenForm,
   STANDING_BELIEFS,
   STATUS,
   type StateChange,
@@ -84,8 +97,11 @@ import {
   secretAbout,
   setComponent,
   sincerityOf,
+  speechForm,
+  spokenTaboos,
   stanceOf,
   standardize,
+  type TabooDef,
   type Trait,
   table,
   threatCredibility,
@@ -136,6 +152,101 @@ export interface ConverseOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por día de mundo (los plazos del fiado se cuentan en días). */
   readonly day: Duration;
+  /** La lengua y la etiqueta de habla de la aldea; sin esto el acto va sin forma (solo contenido). */
+  readonly form?: ConverseForm;
+}
+
+/**
+ * Con qué se arma y se juzga la forma de lo dicho (dialogue §10, language §7): la lengua de la
+ * aldea hace el tratamiento y las palabras, las glosas dicen qué palabra del texto es qué concepto.
+ */
+export interface ConverseForm {
+  readonly language: Language;
+  readonly concepts: readonly ConceptDef[];
+  readonly registers: readonly RegisterDef[];
+  readonly addresses: readonly AddressDef[];
+  readonly taboos: readonly TabooDef[];
+  readonly culture: string;
+}
+
+/** Lo que la falta de forma le saca al afecto, al respeto y le suma al rencor, por punto de cara (sin calibrar). */
+const FORM_RESENTMENT = 0.4;
+const FORM_RESPECT = 0.2;
+/** Reverencia por los tabúes de quien oye si no tiene fe anotada. */
+const DEFAULT_REVERENCE = 0.5;
+
+/** La gente que está donde ellos hablan, sin contarlos: los testigos de lo dicho. */
+function witnessesOf(truth: ReadonlyWorldTruth, me: AgentId, speaker: AgentId): number {
+  return truth
+    .ids(PERSON)
+    .map((id) => id as AgentId)
+    .filter((id) => id !== me && id !== speaker && alive(truth, id) && sameSpot(truth, id, me))
+    .length;
+}
+
+/**
+ * La forma del acto y cómo la juzga el oyente (dialogue §10): quien habla elige el registro del
+ * lugar, el tratamiento según el rango que cree que tiene el otro y la formalidad que su texto
+ * deja ver; el oyente la mide contra lo que cree que él es para el hablante (su lectura del rango
+ * de quien le habla, no el estatus real) y su reverencia por los tabúes (su fe anotada).
+ */
+function formOf(
+  truth: ReadonlyWorldTruth,
+  f: ConverseForm,
+  ctx: {
+    me: AgentId;
+    speaker: AgentId;
+    text: string;
+    indoor: boolean;
+    hearerRank: number;
+    /** Lo que el oyente cree del rango de quien habla. */
+    readRank: number;
+    speakerRank: number;
+    /** Lo que quien habla cree del rango del oyente. */
+    speakerReads: number;
+  },
+): { spoken: SpokenForm; judge: FormJudgeInput } | undefined {
+  const { me, speaker, text } = ctx;
+  const setting = ctx.indoor ? "home" : "market";
+  const register = f.registers.find((r) => r.culture === f.culture && r.setting === setting);
+  if (!register) return undefined;
+  const kin = householdOf(truth, me) === householdOf(truth, speaker);
+  const norm = normalize(text);
+  const taboos = spokenTaboos(
+    norm,
+    f.taboos,
+    f.culture,
+    (c) => f.concepts.find((x) => x.id === c)?.es,
+  );
+  // Quien habla elige el trato por lo que cree del otro; el oyente juzga por lo que cree que
+  // el otro cree que él es (su propia lectura de quien le habla).
+  const recipient = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
+  const asRecipient = recipientBetween(ctx.readRank, ctx.hearerRank, kin);
+  const used = Math.min(
+    1,
+    Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)),
+  );
+  const spoken = speechForm(f.language, f.addresses, f.taboos, f.culture, {
+    register,
+    recipient,
+    formality: used,
+    given: givenName(truth, me) ?? "",
+    words: taboos.map((t) => t.concepts),
+    knowsTaboos: false,
+  });
+  const faith = truth.get(RELIGIOUS_IDENTITY, me)?.affiliations[0];
+  return {
+    spoken,
+    judge: {
+      register,
+      asRecipient,
+      speakerKnowsRegister: 1,
+      gap: Math.max(0, ctx.hearerRank - ctx.readRank),
+      witnesses: witnessesOf(truth, me, speaker),
+      hearerReverence: faith ? unit(0.5 * faith.belief + 0.5 * faith.practice) : DEFAULT_REVERENCE,
+      speakerKnewTaboos: true,
+    },
+  };
 }
 
 /** Lo que se entiende de hablarle a alguien sin decirle nada en particular: un saludo. */
@@ -682,8 +793,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       PERSON_NAME.name,
       LOCATION.name,
       ENTITY.name,
+      FACE.name,
+      STATUS.name,
+      STANDING_BELIEFS.name,
+      RELIGIOUS_IDENTITY.name,
     ],
-    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name],
+    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name, FACE.name],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
       const pending = ctx.truth.get(PENDING, me);
@@ -716,7 +831,28 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
       const innate = truth.get(INNATE, me);
       const z = innate ? standardize(innate, o.traits, truth.get(PERSON, me)?.sex ?? "female") : {};
-      const act = understand(pending.text, lexiconOf(truth, o, me, speaker), pending.clarity);
+      const theirRank = rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0;
+      // Cómo se lo dijeron: la forma del acto, armada por quien habla y juzgada por el oyente.
+      const here = truth.get(LOCATION, me)?.space;
+      const formed = o.form
+        ? formOf(truth, o.form, {
+            me,
+            speaker,
+            text: pending.text,
+            indoor: o.spaces.spaces.find((s) => s.key === here)?.indoor ?? false,
+            hearerRank: myRank,
+            // Sin lectura del otro se lo supone de su mismo rango (no hay distancia).
+            readRank: readRank ?? myRank,
+            speakerRank: theirRank,
+            speakerReads: beliefAbout(truth.get(STANDING_BELIEFS, speaker), me)?.rank ?? theirRank,
+          })
+        : undefined;
+      const act = understand(
+        pending.text,
+        lexiconOf(truth, o, me, speaker),
+        pending.clarity,
+        formed?.spoken,
+      );
       const feel = relationship(truth.get(RELATIONS, me), speaker, ctx.now, {
         dims: o.dims,
         bonds: o.bonds,
@@ -784,6 +920,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 const keep = keepOf(truth, o, act, { me, speaker, now: ctx.now }, feel, z);
                 return keep ? { keep } : {};
               })()
+            : {}),
+          ...(formed && o.form
+            ? { formJudge: { taboos: o.form.taboos, input: formed.judge } }
             : {}),
           rankAbove: above,
           temper: {
@@ -854,6 +993,35 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
       const regard = regardEffect(reply);
+      // La forma: lo dicho con su registro y tratamiento; la falta le cuesta cara al ofendido (FACE).
+      const judged = reply.form;
+      const formEffect =
+        formed && judged
+          ? {
+              register: formed.spoken.registerId,
+              recipient: formed.spoken.recipient,
+              used: formed.spoken.used,
+              address: formed.spoken.address,
+              words: formed.spoken.words,
+              faceLoss: judged.faceLoss,
+              slip: judged.register
+                ? { norm: judged.register.norm, size: judged.register.size }
+                : null,
+              taboos: judged.taboos,
+              deltas:
+                judged.faceLoss > 0
+                  ? {
+                      resentment: FORM_RESENTMENT * judged.faceLoss,
+                      respect: -FORM_RESPECT * judged.faceLoss,
+                    }
+                  : {},
+            }
+          : undefined;
+      if (judged && judged.faceLoss > 0) {
+        changes.push(
+          setComponent(FACE, me, adjustFace(truth.get(FACE, me), -judged.faceLoss, ctx.now)),
+        );
+      }
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -884,6 +1052,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 }
               : {}),
             ...(regard ? { regard } : {}),
+            ...(formEffect ? { form: formEffect } : {}),
             // La acusación y su huella: sin respaldo quien acusa no conocía ningún hecho así.
             ...(reply.accusation
               ? {

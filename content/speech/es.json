@@ -210,6 +210,11 @@
     "formal": ["Retire eso que dijo."]
   },
   {
+    "id": "form.offended",
+    "lines": ["Así no se me habla.", "Medí esas palabras, que no es modo de dirigirse a uno."],
+    "formal": ["No es modo de dirigirse a mí."]
+  },
+  {
     "id": "insult.shrug",
     "lines": ["Bah, no te hago caso.", "Decí lo que quieras."]
   },

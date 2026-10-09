@@ -4,10 +4,16 @@
 // le cuentan. Lo que no encaja es `other`, y el oyente lo toma como charla.
 
 import type { AgentId } from "../../core/index.ts";
+import type { SpokenForm } from "./form.ts";
 import type { Appeal } from "./persuasion.ts";
 import type { ElicitTechnique } from "./secrets.ts";
 
-export type SpeechAct =
+export type SpeechAct = SpeechBody & {
+  /** La forma en que se dijo (registro, tratamiento, palabras vedadas); sin ella, solo el contenido. */
+  readonly form?: SpokenForm;
+};
+
+type SpeechBody =
   | { readonly kind: "greet" }
   | { readonly kind: "farewell" }
   /**
@@ -263,8 +269,16 @@ function viaOf(norm: string): { readonly via?: ElicitTechnique } {
   return {};
 }
 
-/** Lo que el oyente entiende de `text`; con `clarity` baja, solo capta lo grueso (dialogue §5). */
-export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
+/**
+ * Lo que el oyente entiende de `text`; con `clarity` baja, solo capta lo grueso (dialogue §5). Con
+ * `form` el acto lleva además cómo se dijo (la forma la arma quien habla, `speechForm`).
+ */
+export function understand(text: string, lex: Lexicon, clarity = 1, form?: SpokenForm): SpeechAct {
+  const body = understandBody(text, lex, clarity);
+  return form ? { ...body, form } : body;
+}
+
+function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody {
   const norm = normalize(text);
   const who = lex.people.find((p) => mentions(norm, p.names))?.id ?? null;
   const good = lex.goods.find((g) => mentions(norm, g.names))?.id ?? null;
