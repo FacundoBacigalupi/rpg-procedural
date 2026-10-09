@@ -12,6 +12,7 @@ import {
   beliefConfidenceAt,
   believed,
   intrusionChance,
+  LOCATION,
   MEMORIES,
   MENTAL,
   type Memory,
@@ -34,6 +35,11 @@ export const GRIEF_SALIENCE = 0.3;
 export const GRIEF_INTENSITY = 0.5;
 /** Cuánta de la saliencia del recuerdo es chance de que duela este turno. */
 export const GRIEF_RATE = 0.5;
+/** Un recuerdo alegre que viene solo: saliencia, agrado e intensidad mínimos, y la chance. */
+export const WARM_SALIENCE = 0.3;
+export const WARM_VALENCE = 0.4;
+export const WARM_INTENSITY = 0.4;
+export const WARM_RATE = 0.25;
 /** Desde cuántos días sin ver el turno se cuenta como salto de tiempo. */
 export const MONTAGE_DAYS = 7;
 
@@ -103,6 +109,29 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
     }
   }
 
+  // Volver al sitio que despierta la condición (el campo donde pasó, la casa): sin persona delante.
+  // En esta vida un lugar es la aldea (si el personaje está en un espacio) o la celda abierta.
+  if (mental && !dreamt && out.length === 0) {
+    const at = w.truth.get(LOCATION, me);
+    const inVillage = at?.space !== undefined;
+    const places = mental.conditions
+      .flatMap((c) => c.triggers.flatMap((t) => (t.place ? [t.place] : [])))
+      .filter((p) => (p.kind === "cell") !== inVillage);
+    const here = places[0];
+    if (here) {
+      const cue = { place: here };
+      const chance = intrusionChance(mental, cue);
+      const worst = [...triggeredBy(mental, cue)].sort((a, b) => b.severity - a.severity)[0];
+      if (worst && chance > 0 && rng.fork("intrude-place").float() < chance) {
+        out.push({
+          kind: "remember",
+          mood: worst.kind === "guilt" ? "guilt" : "fear",
+          ...(hazyMemory(memoryOf(worst.originEventIds[0] ?? "")) ? { hazy: true } : {}),
+        });
+      }
+    }
+  }
+
   // La pena por quien cree muerto y todavía pesa en el recuerdo.
   const beliefs = w.truth.get(BELIEFS, me);
   for (const id of [...input.known].sort()) {
@@ -124,6 +153,30 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
   // El susto que sigue encima (el miedo de la última noche mal dormida).
   if ((w.truth.get(SLEEP_STATE, me)?.fear ?? 0) >= FEAR_NOTICE)
     out.push({ kind: "feel", mood: "fear" });
+
+  // Un recuerdo bueno que viene solo: nostalgia por quien no está, calma si está delante.
+  if (out.length === 0 && !dreamt) {
+    const found = [...input.known].sort().flatMap((id) => {
+      const mem = memoriesAbout(memories, id as AgentId, now).find(
+        (s) =>
+          s.salience >= WARM_SALIENCE &&
+          s.memory.valence >= WARM_VALENCE &&
+          s.memory.intensity >= WARM_INTENSITY,
+      );
+      return mem ? [{ id, mem }] : [];
+    });
+    for (const { id, mem } of found) {
+      if (rng.fork("warm", id).float() >= mem.salience * WARM_RATE) continue;
+      const near = input.present.includes(id as AgentId);
+      out.push({
+        kind: "remember",
+        mood: near ? "calm" : "longing",
+        about: id as AgentId,
+        ...(hazyMemory(mem.memory) ? { hazy: true } : {}),
+      });
+      break;
+    }
+  }
 
   const opened = mental?.conditions.some((c) => c.onset > since) === true;
   const mode: SpecialMode | undefined = dreamt
