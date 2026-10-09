@@ -3,7 +3,7 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { type AgentId, Rng, type Tick } from "../../core/index.ts";
+import { type AgentId, type EntityRef, Rng, type Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -151,6 +151,8 @@ export interface PlayerViewOptions {
   readonly intro?: boolean;
   /** Lo que se dijo cerca desde este tick (lo guardado por la fase `perceive`) entra en la escena. */
   readonly heardSince?: Tick;
+  /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
+  readonly onLabel?: (localId: string, entity: EntityRef) => void;
 }
 
 /** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
@@ -273,6 +275,7 @@ export function playerView(
     steps: steps.map((s) => ({ verb: s.verb, self: s.self })),
     acquaintances: acq,
     lexicon: knownWords(w),
+    ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
   });

@@ -292,6 +292,11 @@ export interface ViewInput {
   readonly mode?: SpecialMode;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
+  /**
+   * Avisa a quien arma la vista qué entidad real está detrás de cada etiqueta local reconocida.
+   * Queda del lado del motor (memoria de continuidad): no entra en `PlayerView`.
+   */
+  readonly onLabel?: (localId: string, entity: EntityRef) => void;
 }
 
 export function timeOfDay(hour: number): TimeOfDay {
@@ -357,6 +362,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     });
     if (a?.name !== undefined) words.add(a.name);
     byEntity.set(entity, localId);
+    input.onLabel?.(localId, entity);
     return localId;
   };
 
