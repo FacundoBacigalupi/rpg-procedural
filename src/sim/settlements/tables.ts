@@ -1,7 +1,14 @@
 // Las tablas de settlements en la verdad (ARCHITECTURE §4.4: `sim/settlements` es dueño de
 // `Settlement` y `Building`).
 
-import type { EventId, HolderRef, HouseholdId, SettlementId, SpaceKey } from "../../core/index.ts";
+import type {
+  EntityRef,
+  EventId,
+  HolderRef,
+  HouseholdId,
+  SettlementId,
+  SpaceKey,
+} from "../../core/index.ts";
 import { type Barrier, type SpaceEdge, type SpaceNode, table } from "../world/index.ts";
 
 export const DEFECT_KINDS = ["rot", "crack", "warp", "weak_join"] as const;
@@ -69,7 +76,13 @@ export interface BuildingRecord {
   readonly lastRepair?: EventId;
   /** El incendio en curso (settlements §9); sin él, no arde. */
   readonly fire?: BuildingFire;
+  /** Si el edificio cayó: la causa y qué eligieron levantar los sobrevivientes (settlements §11). */
+  readonly ruin?: { readonly cause: string; readonly rebuild: RebuildChoiceName };
+  /** El edificio caído que este reemplaza (reconstrucción efectiva). */
+  readonly replaces?: EntityRef;
 }
+
+export type RebuildChoiceName = "same" | "better" | "different" | "elsewhere";
 
 export interface WorkRecord {
   readonly type: string;

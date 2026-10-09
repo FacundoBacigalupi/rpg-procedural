@@ -7,12 +7,15 @@
 
 import {
   type BuildingId,
+  cos,
   type EntityRef,
   externalAccount,
   type HolderRef,
   holderAccount,
   type PlanetClock,
   type Seed,
+  sin,
+  TAU,
 } from "../../core/index.ts";
 import {
   BUILDING,
@@ -20,6 +23,7 @@ import {
   type BuildingFire,
   type BuildingRecord,
   collapseCheck,
+  createEntity,
   DEBRIS_SINK,
   type DoorState,
   doorBarrier,
@@ -29,13 +33,19 @@ import {
   fuelLoad,
   GATHERED_SOURCE,
   jammedDoor,
+  LOCATION,
   type LoadInput,
   type LocalMap,
+  laborGrams,
   type MaterialDef,
+  MIN_REBUILD_DAYS,
   materialUnit,
   needsRepair,
   PERSON,
   type ProcessDef,
+  planRebuild,
+  REBUILD_CHOICES,
+  RELOCATE_M,
   type ReadonlyWorldTruth,
   rebuildChoice,
   repairedCondition,
@@ -46,6 +56,7 @@ import {
   type StateChange,
   salvagedGrams,
   setComponent,
+  VILLAGE_SQUARE,
   WORK,
   weatherAt,
   wornCondition,
@@ -68,6 +79,8 @@ export const REPAIR_AGE_YEARS = 14;
 const FULL_USE_OCCUPANTS = 6;
 /** Uso de un edificio comunal (graneros: entra y sale gente de todos los hogares). */
 const COMMUNAL_USE = 0.3;
+/** Qué parte de los adultos de la aldea levanta un edificio comunal caído. */
+const COMMUNAL_CREW = 0.15;
 
 export interface UpkeepOptions {
   readonly clock: PlanetClock;
@@ -105,8 +118,8 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BUILDING.name, PERSON.name, ENTITY.name, WORK.name],
-    writes: [BUILDING.name, ENTITY.name],
+    reads: [BUILDING.name, PERSON.name, ENTITY.name, WORK.name, LOCATION.name],
+    writes: [BUILDING.name, ENTITY.name, LOCATION.name],
     run(ctx) {
       const ids = ctx.truth
         .ids(BUILDING)
@@ -223,7 +236,11 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
             ],
           });
           if (transfers.length > 0) postings.push({ event: draftEvent(k), transfers });
-          changes.push(endEntity(base, draftEvent(k), ctx.now));
+          changes.push(
+            endEntity(base, draftEvent(k), ctx.now),
+            setComponent(BUILDING, id, { ...b, components, ruin: { cause: check.cause, rebuild } }),
+            ...evict(ctx.truth, b),
+          );
           continue;
         }
 
@@ -253,7 +270,18 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
           if (burn.transfers.length > 0)
             postings.push({ event: draftEvent(k), transfers: burn.transfers });
           if (burn.collapsed) {
-            changes.push(endEntity(base, draftEvent(k), ctx.now));
+            const choice = burn.rebuild;
+            changes.push(
+              endEntity(base, draftEvent(k), ctx.now),
+              setComponent(BUILDING, id, {
+                ...burn.record,
+                ruin: {
+                  cause: "fire",
+                  rebuild: REBUILD_CHOICES.find((c) => c === choice) ?? "different",
+                },
+              }),
+              ...evict(ctx.truth, b),
+            );
             continue;
           }
           components = [...burn.record.components];
@@ -378,9 +406,123 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
         };
         changes.push(setComponent(BUILDING, id, next));
       }
+      rebuildRuins(ctx, o, materials, crews, adultsIn, changes, events, postings);
       return { changes, events, postings };
     },
   };
+}
+
+type Out<K extends "events" | "postings"> = NonNullable<ReturnType<ProcessDef["run"]>[K]>[number][];
+
+/**
+ * Reconstrucción efectiva (settlements §7, §11): cada edificio caído que nadie reemplazó lo
+ * levanta su hogar (o la aldea, si era comunal) cuando el trabajo y la materia salvada alcanzan,
+ * en lo que eligieron al caer. Lo salvado sale del depósito de la aldea y lo demás se junta del
+ * monte; el edificio nuevo cita la caída como causa. Sin ledger no se levanta nada.
+ */
+function rebuildRuins(
+  ctx: Parameters<ProcessDef["run"]>[0],
+  o: UpkeepOptions,
+  materials: ReadonlyMap<string, MaterialDef>,
+  crews: ReadonlyMap<string, Crew>,
+  adultsIn: number,
+  changes: StateChange[],
+  events: Out<"events">,
+  postings: Out<"postings">,
+): void {
+  const ledger = ctx.ledger;
+  if (!ledger) return;
+  const all = ctx.truth.ids(BUILDING);
+  const replaced = new Set(all.flatMap((id) => ctx.truth.get(BUILDING, id)?.replaces ?? []));
+  const stock = new Map<string, number>();
+  for (const id of all) {
+    const ruin = ctx.truth.get(BUILDING, id);
+    const base = ctx.truth.get(ENTITY, id);
+    if (!ruin?.ruin || base?.endedAt === undefined || base.endEventId === undefined) continue;
+    if (replaced.has(id)) continue;
+    const own =
+      ruin.household === undefined
+        ? Math.ceil(adultsIn * COMMUNAL_CREW)
+        : (crews.get(ruin.household)?.adults ?? 0);
+    if (own <= 0) continue;
+    const days = (ctx.now - base.endedAt) / o.clock.day;
+    if (days < MIN_REBUILD_DAYS) continue;
+
+    // Componentes del caído con material (lo que ardió por completo hereda el de otro componente).
+    const fallback = ruin.components.find((c) => c.materials.length > 0)?.materials[0];
+    if (!fallback) continue;
+    const old = ruin.components.map((c) =>
+      c.materials.length > 0 ? c : { ...c, materials: [{ ...fallback, grams: 0 }] },
+    );
+    const town: HolderRef = { kind: "settlement", settlement: ruin.settlement };
+    for (const m of new Set(old.flatMap((c) => c.materials.map((l) => l.material)))) {
+      if (!stock.has(m)) stock.set(m, ledger.balance(holderAccount(town), materialUnit(m)));
+    }
+    const k = events.length;
+    const plan = planRebuild({
+      old,
+      choice: ruin.ruin.rebuild,
+      gramsPerM2: (m) => materials.get(m)?.gramsPerM2 ?? 0,
+      stock,
+      labor: laborGrams(own, adultsIn - own, days),
+      built: draftEvent(k),
+    });
+    if (!plan) continue;
+    for (const [m, g] of plan.salvaged) stock.set(m, (stock.get(m) ?? 0) - g);
+
+    const nid = ctx.newId("building");
+    const holder: HolderRef = { kind: "building", building: nid };
+    const transfers = [
+      ...[...plan.salvaged].map(([m, g]) => ({
+        unit: materialUnit(m),
+        from: holderAccount(town),
+        to: holderAccount(holder),
+        amount: g,
+      })),
+      ...[...plan.gathered].map(([m, g]) => ({
+        unit: materialUnit(m),
+        from: externalAccount(GATHERED_SOURCE),
+        to: holderAccount(holder),
+        amount: g,
+      })),
+    ];
+    let at = ruin.at;
+    if (ruin.ruin.rebuild === "elsewhere") {
+      const a = ctx.rng.fork("rebuild", id).stream().float() * TAU;
+      at = { x: Math.round(at.x + RELOCATE_M * cos(a)), y: Math.round(at.y + RELOCATE_M * sin(a)) };
+    }
+    const { fire: _f, ruin: _r, lastRepair: _l, doorState: _d, ...kept } = ruin as BuildingRecord;
+    const rest = restingDoor(ruin.household !== undefined);
+    const sum = (m: ReadonlyMap<string, number>) => [...m.values()].reduce((n, g) => n + g, 0);
+    events.push({
+      kind: "settlement.rebuilt",
+      actors: [],
+      place: { kind: "settlement", settlement: ruin.settlement },
+      data: {
+        building: nid,
+        replaces: id,
+        choice: ruin.ruin.rebuild,
+        cause: ruin.ruin.cause,
+        salvagedGrams: sum(plan.salvaged),
+        gatheredGrams: sum(plan.gathered),
+        days: Math.round(days),
+      },
+      emissions: {},
+      causes: [{ kind: "event", event: base.endEventId }],
+    });
+    if (transfers.length > 0) postings.push({ event: draftEvent(k), transfers });
+    changes.push(
+      createEntity(nid, draftEvent(k), ctx.now),
+      setComponent(BUILDING, nid, {
+        ...kept,
+        at,
+        components: plan.components,
+        builtBy: draftEvent(k),
+        replaces: id,
+        graph: { ...ruin.graph, door: doorBarrier(rest) },
+      }),
+    );
+  }
 }
 
 /** Quita `grams` de las líneas de un componente (las más pesadas primero) y suma las nuevas con su origen. */
@@ -400,4 +542,14 @@ function replaceMass(
     .filter((l) => l.grams > 0);
   const material = c.materials[0]?.material ?? "";
   return [...lines, { material, grams, origin }];
+}
+
+/** Los que estaban dentro cuando el edificio cayó quedan en la plaza (sin heridas todavía). */
+function evict(truth: ReadonlyWorldTruth, b: BuildingRecord): StateChange[] {
+  const keys = new Set<string>(b.graph.spaces.map((s) => s.key));
+  return truth.ids(PERSON).flatMap((id) => {
+    const here = truth.get(LOCATION, id);
+    if (here?.space === undefined || !keys.has(here.space)) return [];
+    return [setComponent(LOCATION, id, { hex: here.hex, space: VILLAGE_SQUARE })];
+  });
 }

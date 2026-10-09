@@ -172,6 +172,8 @@ function gramsOf(components: readonly BuildingComponent[]): number {
 export interface BurnResult {
   readonly record: BuildingRecord;
   readonly collapsed: boolean;
+  /** Qué eligen levantar los sobrevivientes si cayó. */
+  readonly rebuild?: string;
   readonly event: {
     readonly kind: "settlement.burned";
     readonly data: Record<string, unknown>;
@@ -314,6 +316,7 @@ export function burnDay(
   return {
     record,
     collapsed,
+    ...(rebuild !== undefined ? { rebuild } : {}),
     transfers,
     event: {
       kind: "settlement.burned",

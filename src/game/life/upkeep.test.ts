@@ -2,7 +2,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import { BUILDING, checkInvariants } from "../../sim/index.ts";
+import {
+  BUILDING,
+  checkInvariants,
+  ENTITY,
+  LOCATION,
+  PERSON,
+  VILLAGE_SQUARE,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 
@@ -45,6 +52,46 @@ describe("mantenimiento de la aldea", () => {
         ?.components.some((c, i) => c.condition < (b?.components[i]?.condition ?? 0)),
     );
     expect(worn).toBe(true);
+    expect(ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth, log, ledger })).toEqual([]);
+  }, 240_000);
+});
+
+describe("reconstrucción de la aldea", () => {
+  it("el hogar sin casa levanta una nueva con su trabajo, citando la caída, y todo cierra", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const { truth, log, ledger, clock } = life.world;
+    const home = truth.ids(BUILDING).find((id) => truth.get(BUILDING, id)?.household);
+    const record = home && truth.get(BUILDING, home);
+    const base = home && truth.get(ENTITY, home);
+    if (!home || !record || !base) throw new Error("sin casas");
+    const cutoff = life.now - 20 * clock.day;
+    const fall = log
+      .all()
+      .filter((e) => e.tick <= cutoff)
+      .at(-1);
+    if (!fall) throw new Error("sin eventos");
+    // La casa cayó hace tiempo: una ruina chica (poca materia) que su hogar quiere rehacer igual.
+    truth.set(ENTITY, home, { ...base, endedAt: fall.tick, endEventId: fall.id });
+    truth.set(BUILDING, home, {
+      ...record,
+      components: record.components.map((c) => ({ ...c, area: 1 })),
+      ruin: { cause: "rain", rebuild: "same" },
+    });
+    for (const id of truth.ids(PERSON)) {
+      const at = truth.get(LOCATION, id);
+      if (at && at.space === record.graph.spaces[0]?.key)
+        truth.set(LOCATION, id, { hex: at.hex, space: VILLAGE_SQUARE });
+    }
+    life.advanceTo(life.now + 5 * clock.day);
+
+    const rebuilt = log.all().filter((e) => e.kind === "settlement.rebuilt");
+    expect(rebuilt.length).toBe(1);
+    expect(rebuilt[0]?.causes).toEqual([{ kind: "event", event: fall.id }]);
+    const fresh = truth.ids(BUILDING).find((id) => truth.get(BUILDING, id)?.replaces === home);
+    const built = fresh && truth.get(BUILDING, fresh);
+    expect(built?.household).toBe(record.household);
+    expect(truth.get(ENTITY, fresh as never)?.endedAt).toBeUndefined();
     expect(ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth, log, ledger })).toEqual([]);
   }, 240_000);
