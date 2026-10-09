@@ -110,6 +110,7 @@ import {
   YIELDED,
 } from "../../sim/index.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
+import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import {
   atMyMercy,
@@ -694,6 +695,36 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         receiveLot(truth.get(LOT_QUALITY, me), eff.good as string, held, eff.grams, eff.quality),
       ),
     );
+  }
+
+  // Un maestro de la casa que vio la tanda le señala lo que notó y el cocinero lo incorpora (crafts §11).
+  if (eff.kind === "cook" && eff.defects && eff.defects.length > 0) {
+    const fix = masterCorrects({
+      truth,
+      catalog: o.skills,
+      traits: o.traits,
+      plans: e.plans,
+      clock: o.clock,
+      cook: me,
+      verb: node.verb,
+      defects: eff.defects,
+      hex: e.hex,
+      seconds: r.seconds,
+      expected: r.attempt.expected,
+      now: ctx.now,
+      skills: lessons ?? skills,
+    });
+    if (fix) {
+      changes.push(...fix.changes);
+      extraEvents.push({
+        kind: "craft.corrected",
+        actors: [fix.master, me],
+        place: input.place,
+        data: { noticed: fix.noticed.map((d) => d.kind), gain: Math.round(fix.gain * 1000) / 1000 },
+        emissions: { sight: 0.3, sound: 0.5 },
+        causes: [{ kind: "event", event: draftEvent(0) }],
+      });
+    }
   }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.

@@ -23,7 +23,13 @@ import {
   logistic,
   type PlaceRef,
 } from "../../core/index.ts";
-import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
+import {
+  defectsOf,
+  handsOf,
+  type RecipeDef,
+  type RecipeDefect,
+  runSession,
+} from "../crafts/index.ts";
 import {
   askPerKg,
   baseFor,
@@ -318,6 +324,8 @@ export type VerbEffect =
       readonly perceived: number;
       /** Cómo quedó: a punto, crudo, pasado o quemado. */
       readonly state: "done" | "raw" | "dry" | "burnt" | null;
+      /** Los defectos reales de la tanda (crafts §11), del más grave al menos; un maestro nota algunos. */
+      readonly defects?: readonly RecipeDefect[];
     }
   | {
       readonly kind: "tend";
@@ -1284,6 +1292,7 @@ const cook: Resolver = (c) => {
       quality: round3(s.quality),
       perceived: round3(s.perceivedQuality),
       state,
+      defects: defectsOf(recipe, s).map((d) => ({ ...d, severity: round3(d.severity) })),
     },
     seconds: s.seconds,
     verdict: {
