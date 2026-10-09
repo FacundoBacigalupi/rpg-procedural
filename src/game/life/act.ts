@@ -748,6 +748,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           ctx.now,
           end,
           declaredStyle([...state.plan.manner, ...node.manner]),
+          eff.act?.kind,
         )
       : { changes: [], schedule: [] };
   changes.push(...heard.changes);

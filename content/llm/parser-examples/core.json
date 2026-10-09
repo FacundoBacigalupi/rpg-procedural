@@ -756,6 +756,27 @@
     }
   },
   {
+    "id": "say-ask-about",
+    "text": "le pregunto a Wu por Lin: \"¿sabés dónde anda Lin?\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Sabés dónde anda Lin?",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "act": {
+          "kind": "ask",
+          "about": { "text": "Lin", "features": ["Lin"] }
+        }
+      }
+    },
+    "notes": "el acto declarado (ask) y a quién se refiere van en act; el oyente igual entiende por las palabras"
+  },
+  {
     "id": "say-formal",
     "text": "le digo a Wu de usted: \"buen día, ¿me prestaría la azada?\"",
     "scene": "Tu vecino Wu está sentado en la puerta de su casa, con una azada al lado.",

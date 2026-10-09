@@ -104,6 +104,12 @@ export interface ReplyInput {
    */
   readonly detect?: DetectionInput;
   /**
+   * El acto que quien habla declaró querer hacer (su intención): no pisa lo que el oyente entiende
+   * de las palabras, pero si no captó nada («other») y no era eso lo que quería decir, pide que se
+   * lo repitan (dialogue §2, §5).
+   */
+  readonly intended?: SpeechAct["kind"];
+  /**
    * Lo que el oyente pone para pesar una amenaza, un halago o un insulto (dialogue §9, §10): sin
    * esto los toma como charla. `vindictiveness` (0-1) decide si guarda la venganza.
    */
@@ -301,6 +307,11 @@ export function decideReply(i: ReplyInput, at: number): Reply {
   return { ...reply, form: judged };
 }
 
+/** Lo que quiso decir no llegó: el oyente no captó ningún acto y pide que se lo repitan. */
+export function misheard(i: Pick<ReplyInput, "act" | "intended">): boolean {
+  return i.act.kind === "other" && i.intended !== undefined && i.intended !== "other";
+}
+
 function decideBody(i: ReplyInput, at: number): Reply {
   const say = (line: string, params: Params = {}): Reply => ({
     line,
@@ -316,6 +327,7 @@ function decideBody(i: ReplyInput, at: number): Reply {
   const a = i.act;
   const temper = i.temper ?? NEUTRAL_TEMPER;
   const memory = i.recollection ?? NO_RECOLLECTION;
+  if (misheard(i)) return say("misheard");
   switch (a.kind) {
     case "greet":
       if (i.reproach) return say(`greet.cold.${i.reproach}`);

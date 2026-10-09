@@ -14,6 +14,7 @@ import {
   GIFT_GRAMS,
   holdsGrudge,
   isFormal,
+  misheard,
   RESERVE_GRAMS_PER_MEMBER,
   type ReplyInput,
   warmth,
@@ -340,5 +341,14 @@ describe("recordar a quien habla", () => {
     );
     expect(clampTemper(9)).toBe(1);
     expect(clampTemper(-9)).toBe(-1);
+  });
+});
+
+describe("el acto declarado y lo que el oyente entiende", () => {
+  it("pide que se lo repitan solo si no captó nada y quería decir otra cosa", () => {
+    const other = { kind: "other" } as const;
+    expect(misheard({ act: other, intended: "ask" })).toBe(true);
+    expect(misheard({ act: other })).toBe(false);
+    expect(misheard({ act: { kind: "greet" }, intended: "ask" })).toBe(false);
   });
 });

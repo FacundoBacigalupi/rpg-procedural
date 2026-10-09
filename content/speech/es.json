@@ -366,6 +366,11 @@
     "lines": ["Mm.", "Ajá.", "Te escucho."]
   },
   {
+    "id": "misheard",
+    "lines": ["¿Qué? No te oí bien.", "Perdón, ¿qué dijiste?", "Repetime eso, que no te entendí."],
+    "formal": ["Disculpe, no lo oí bien. ¿Qué dijo?"]
+  },
+  {
     "id": "greet.cold.theft",
     "lines": ["Mirá quién anda por acá.", "Ah, vos. Me han contado de vos."],
     "formal": ["Buen día. Tengo entendido que usted anda en cosas feas."]

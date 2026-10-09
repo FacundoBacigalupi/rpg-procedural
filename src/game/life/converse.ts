@@ -145,6 +145,8 @@ export interface PendingSpeech {
   readonly key: string;
   /** La forma de tratar que el hablante declaró («le hablo de usted»); sin ella, la que sale sola. */
   readonly style?: SpeechStyle;
+  /** El acto que declaró querer hacer (su intención); no pisa lo que el oyente entiende. */
+  readonly intended?: SpeechAct["kind"];
 }
 
 /** Lo que el jugador declara de cómo trata al otro (manners `formal` y `casual` de hablar). */
@@ -346,6 +348,7 @@ export function listenTo(
   at: Tick,
   end: Tick,
   style?: SpeechStyle,
+  intended?: SpeechAct["kind"],
 ): { changes: StateChange[]; schedule: ScheduleRequest[] } {
   if (!listener.startsWith("agent:") || listener === speaker) {
     return { changes: [], schedule: [] };
@@ -359,6 +362,7 @@ export function listenTo(
         clarity,
         key,
         ...(style ? { style } : {}),
+        ...(intended ? { intended } : {}),
       }),
     ],
     schedule: [
@@ -1068,6 +1072,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(recount
             ? { recounted: { tone: recountTone(recount.valence), denied: recount.denied } }
             : {}),
+          ...(pending.intended ? { intended: pending.intended } : {}),
           ...(formed && o.form
             ? { formJudge: { taboos: liveTaboos(truth, o.form, ctx.now), input: formed.judge } }
             : {}),
