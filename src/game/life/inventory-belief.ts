@@ -21,7 +21,7 @@ export interface InventoryBelief {
 }
 
 /** Lo que cada persona cree tener, en su entidad. */
-export const INVENTORY_BELIEF = table<InventoryBelief>("life.inventoryBelief");
+export const INVENTORY_BELIEF = table<InventoryBelief>("life.inventory_belief");
 
 const positive = (hs: readonly BelievedHolding[]): BelievedHolding[] =>
   hs
