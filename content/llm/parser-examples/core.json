@@ -756,6 +756,24 @@
     }
   },
   {
+    "id": "say-formal",
+    "text": "le digo a Wu de usted: \"buen día, ¿me prestaría la azada?\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa, con una azada al lado.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Buen día, ¿me prestaría la azada?",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "manner": ["formal"]
+      }
+    },
+    "notes": "la manera de hablar (usted/vos) va en manner; las normas de etiqueta la miden"
+  },
+  {
     "id": "shout",
     "text": "grito \"¡auxilio!\"",
     "scene": "Estás solo en el camino del bosque; algo se mueve entre los arbustos.",

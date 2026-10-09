@@ -42,6 +42,7 @@ import {
 import {
   buildPlayerView,
   type DueView,
+  type OffenseView,
   type PlayerView,
   type SceneMark,
   type SelfCue,
@@ -202,6 +203,39 @@ export const DUE_SOON_DAYS = 3;
  * vez se acuerda (contracts §14). Sale de `bookOf` (deuda de fiado exacta, promesas como las cree),
  * nunca de la verdad de una promesa; a lo prometido en bienes lo dice a ojo, sin gramos.
  */
+/**
+ * Las faltas de etiqueta de este turno en las que el jugador fue parte (`social.offense`): la que
+ * recibió y la que cometió, esta última solo si el otro reaccionó (si la ignoró, no se nota).
+ */
+export function offensesForView(
+  w: LifeWorld,
+  since: Tick,
+  acq: ReadonlyMap<EntityRef, { readonly name?: string; readonly relation?: string }>,
+): readonly OffenseView[] {
+  const out: OffenseView[] = [];
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    if (e.kind !== "social.offense") continue;
+    const [speaker, offended] = e.actors;
+    const d = e.data as { norm?: unknown; response?: unknown } | undefined;
+    if (typeof d?.norm !== "string") continue;
+    const response = d.response === "punish" || d.response === "rebuke" ? d.response : "ignore";
+    const received = offended === w.player;
+    if (!received && !(speaker === w.player && response !== "ignore")) continue;
+    const other = received ? speaker : offended;
+    const a = other === undefined ? undefined : acq.get(other);
+    out.unshift({
+      role: received ? "received" : "caused",
+      who: a?.name ?? a?.relation ?? "alguien",
+      norm: d.norm,
+      response,
+    });
+  }
+  return out;
+}
+
 export function duesForView(w: LifeWorld, rng: Rng): readonly DueView[] {
   const now = w.scheduler.now;
   const entries = bookOf(
@@ -348,5 +382,8 @@ export function playerView(
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
+    ...(options.heardSince !== undefined
+      ? { offenses: offensesForView(w, options.heardSince, acq) }
+      : {}),
   });
 }
