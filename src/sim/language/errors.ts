@@ -5,9 +5,9 @@
 // lengua que suena como otra de la lengua real con otro significado). Todo es puro; el azar viene
 // del `Random` con seed que pasa quien llama, y quien escucha decide qué hace con la ofensa.
 
-import { compareStrings, type Random } from "../../core/index.ts";
+import { compareStrings, contentId, defineContent, type Random, z } from "../../core/index.ts";
 import type { Language } from "./language.ts";
-import { judgeRegister, type RegisterSlip } from "./register.ts";
+import { judgeRegister, type RegisterSlip, type TabooDef } from "./register.ts";
 
 const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
 
@@ -206,4 +206,48 @@ export function intelligibility(plan: SpeechPlan, errors: readonly SpeechError[]
   if (plan.words.length === 0) return 1;
   const lost = errors.filter((e) => e.kind !== "register").length;
   return clamp01(1 - lost / plan.words.length);
+}
+
+/** Un par de palabras que solo se distinguen por el tono, como contenido (`content/language-tone/`). */
+export const ToneContrastDef = z.strictObject({
+  id: contentId,
+  name: z.string().min(1),
+  /** La lengua cuyo tono las separa. */
+  language: contentId,
+  concepts: z.array(contentId).min(1),
+  confusableWith: z.array(contentId).min(1),
+  /** 0-1: lo grave de decir la otra (a veces es una grosería). */
+  offense: z.number().min(0).max(1),
+});
+export type ToneContrastDef = z.infer<typeof ToneContrastDef>;
+export const TONE_CONTRASTS = defineContent("language-tone", ToneContrastDef, (t) => [
+  { kind: "languages", id: t.language, at: "language" },
+]);
+
+/** Los pares de tono de una lengua, listos para `speechErrors`. */
+export function toneContrastsOf(
+  defs: readonly ToneContrastDef[],
+  language: string,
+): ToneContrast[] {
+  return defs
+    .filter((d) => d.language === language)
+    .map((d) => ({
+      concepts: d.concepts,
+      confusableWith: d.confusableWith,
+      offense: d.offense,
+    }));
+}
+
+/**
+ * Lo grosero de un concepto en una cultura (0-1) para `findFalseFriends`: la gravedad del tabú más
+ * grave que lo nombra como palabra vedada suelta; lo demás no ofende.
+ */
+export function tabooRudeness(
+  taboos: readonly TabooDef[],
+  culture: string,
+): (concept: string) => number {
+  return (concept) =>
+    taboos
+      .filter((t) => t.culture === culture && t.concepts.length === 1 && t.concepts[0] === concept)
+      .reduce((m, t) => Math.max(m, t.severity), 0);
 }

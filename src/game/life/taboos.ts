@@ -22,7 +22,10 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  HEARD_WORDS,
+  type HeardWords,
   type Language,
+  learnHeardWords,
   normalize,
   PERSON,
   PERSON_NAME,
@@ -242,6 +245,47 @@ export function bornTaboosSettleProcess(o: { village: PlaceRef }): ProcessDef {
         changes.push(setComponent(BORN_TABOO, id, { ...row, status, settledAt: ctx.now }));
       }
       return changes.length === 0 ? {} : { changes, events };
+    },
+  };
+}
+
+export const HEARD_WORDS_PROCESS = "life.heard_words";
+
+/**
+ * Al compás de los eventos: las palabras de la forma de cada `action.speak` (el tratamiento y las
+ * dichas con rodeo o tabú, `formWhitelist`) pasan al léxico de los dos que hablaron, que es lo que
+ * el narrador puede citar (language §13).
+ */
+export function heardWordsProcess(): ProcessDef {
+  return {
+    id: HEARD_WORDS_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "settle",
+    reads: [HEARD_WORDS.name],
+    writes: [HEARD_WORDS.name],
+    run(ctx) {
+      const next = new Map<EntityRef, HeardWords>();
+      for (const e of ctx.recent) {
+        if (e.kind !== "action.speak") continue;
+        const form = (
+          e.data as {
+            effect?: { form?: { address?: string; words?: readonly { text: string }[] } };
+          } | null
+        )?.effect?.form;
+        if (!form) continue;
+        const said = [form.address ?? "", ...(form.words ?? []).map((w) => w.text)];
+        for (const who of e.actors) {
+          const row = learnHeardWords(next.get(who) ?? ctx.truth.get(HEARD_WORDS, who), said);
+          if (row) next.set(who, row);
+        }
+      }
+      const changes: StateChange[] = [...next].map(([who, row]) =>
+        setComponent(HEARD_WORDS, who, row),
+      );
+      return changes.length === 0 ? {} : { changes };
     },
   };
 }

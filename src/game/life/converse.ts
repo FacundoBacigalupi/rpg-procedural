@@ -120,6 +120,7 @@ import {
   villageCulture,
   worstDeed,
 } from "../../sim/index.ts";
+import { registerKnowledge } from "./accent.ts";
 import { liveTaboos } from "./taboos.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
@@ -301,7 +302,7 @@ function formOf(
     judge: {
       register,
       asRecipient,
-      speakerKnowsRegister: 1,
+      speakerKnowsRegister: registerKnowledge(truth, speaker),
       gap: Math.max(0, ctx.hearerRank - ctx.readRank),
       witnesses: witnessesOf(truth, me, speaker),
       hearerReverence: faith ? unit(0.5 * faith.belief + 0.5 * faith.practice) : DEFAULT_REVERENCE,

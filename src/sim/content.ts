@@ -14,7 +14,14 @@ import { GOODS } from "./economy/index.ts";
 import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { INFERENCE_RULES } from "./knowledge/index.ts";
-import { ADDRESSES, CONCEPTS, LANGUAGES, REGISTERS, TABOOS } from "./language/index.ts";
+import {
+  ADDRESSES,
+  CONCEPTS,
+  LANGUAGES,
+  REGISTERS,
+  TABOOS,
+  TONE_CONTRASTS,
+} from "./language/index.ts";
 import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, TASTES, VALUES } from "./mind/index.ts";
 import { TENURES } from "./property/index.ts";
 import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
@@ -43,6 +50,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   REGISTERS,
   ADDRESSES,
   TABOOS,
+  TONE_CONTRASTS,
   RECIPES,
   STATUSES,
   ETIQUETTE,
