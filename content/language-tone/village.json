@@ -1,0 +1,18 @@
+[
+  {
+    "id": "village.fox_tiger",
+    "name": "el tigre y la zorra",
+    "language": "village.hills",
+    "concepts": ["tiger"],
+    "confusableWith": ["fox"],
+    "offense": 0.1
+  },
+  {
+    "id": "village.well_night",
+    "name": "el pozo y la noche",
+    "language": "village.hills",
+    "concepts": ["well"],
+    "confusableWith": ["night"],
+    "offense": 0
+  }
+]

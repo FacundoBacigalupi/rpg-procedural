@@ -15,10 +15,14 @@ import {
   type SpeechPlan,
   speechErrorOffense,
   speechErrors,
+  TONE_CONTRASTS,
   type ToneContrast,
+  tabooRudeness,
+  toneContrastsOf,
   toneSlipChance,
 } from "./errors.ts";
 import { generateLanguage } from "./language.ts";
+import { TABOOS } from "./register.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -143,5 +147,22 @@ describe("errores de quien habla mal", () => {
     const found = findFalseFriends(a, b);
     for (const f of found) expect(f.nativeConcept).not.toBe(f.targetConcept);
     expect(found).toEqual(findFalseFriends(a, b));
+  });
+});
+
+describe("pares de tono y grosería como contenido", () => {
+  it("los pares de la lengua de la aldea cargan y alimentan speechErrors", () => {
+    const pairs = toneContrastsOf(content.all(TONE_CONTRASTS), "village.hills");
+    expect(pairs.length).toBeGreaterThan(0);
+    const tiger = pairs.find((p) => p.concepts[0] === "tiger");
+    expect(tiger?.confusableWith).toEqual(["fox"]);
+    expect(toneContrastsOf(content.all(TONE_CONTRASTS), "otra")).toEqual([]);
+  });
+
+  it("la grosería sale de la gravedad del tabú que nombra el concepto suelto", () => {
+    const rude = tabooRudeness(content.all(TABOOS), "village");
+    expect(rude("tiger")).toBeGreaterThan(0);
+    expect(rude("water")).toBe(0);
+    expect(tabooRudeness(content.all(TABOOS), "otra")("tiger")).toBe(0);
   });
 });
