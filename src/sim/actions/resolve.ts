@@ -26,12 +26,14 @@ import {
 import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
 import {
   askPerKg,
+  baseFor,
   bidPerKg,
   COPPER,
   DAILY_KCAL,
   gramsIn,
   HARVEST,
   KEEP_DAYS,
+  type PriceBeliefs,
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
@@ -120,6 +122,18 @@ export interface Market {
     | undefined;
   /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
   readonly fame?: number | undefined;
+  /**
+   * Lo que cada parte cree que vale cada bien (`economy/priceMemory`) y el día del mundo: la base
+   * de `askPerKg`/`bidPerKg` de cada una es `baseFor` (lo creído mezclado con el precio de
+   * contenido según su fe). Sin esto, las dos usan el precio de contenido.
+   */
+  readonly beliefs?:
+    | {
+        readonly actor: PriceBeliefs | undefined;
+        readonly other: PriceBeliefs | undefined;
+        readonly day: number;
+      }
+    | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -882,6 +896,11 @@ function kcalOf(rows: readonly Holding[], foods: ReadonlyMap<LedgerUnit, Nutriti
   return kcal;
 }
 
+/** La base de una parte para un bien: lo que cree (con la fe aflojada) o el precio de contenido. */
+function believedBase(mk: Market, who: "actor" | "other", unit: LedgerUnit, ref: number): number {
+  return mk.beliefs === undefined ? ref : baseFor(mk.beliefs[who], unit, ref, mk.beliefs.day);
+}
+
 interface Bargain {
   readonly direction: "buy" | "sell";
   readonly unit: LedgerUnit;
@@ -930,7 +949,9 @@ function bargain(
 
   if (sells) {
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
-    const base = mk.priceCopperPerKg.get(row.unit) as number;
+    const ref = mk.priceCopperPerKg.get(row.unit) as number;
+    const base = believedBase(mk, "actor", row.unit, ref);
+    const buyerBase = believedBase(mk, "other", row.unit, ref);
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
     // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
@@ -949,7 +970,7 @@ function bargain(
       wantGrams: Math.min(wantGrams, room),
       askPerKg: askPerKg(base, myDays),
       maxPerKg: bidPerKg(
-        base,
+        buyerBase,
         foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
         foodDays(yourPocket, foods, mk.other?.members ?? 1),
       ),
@@ -975,7 +996,9 @@ function bargain(
 
   if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
-  const base = mk.priceCopperPerKg.get(row.unit) as number;
+  const ref = mk.priceCopperPerKg.get(row.unit) as number;
+  const base = believedBase(mk, "other", row.unit, ref);
+  const buyerBase = believedBase(mk, "actor", row.unit, ref);
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
   const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
@@ -987,7 +1010,7 @@ function bargain(
     wantGrams,
     askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
     maxPerKg: bidPerKg(
-      base,
+      buyerBase,
       foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
       foodDays(myRows, foods, mk.ownMembers),
     ),

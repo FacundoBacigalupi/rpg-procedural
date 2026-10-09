@@ -3,6 +3,7 @@
 // corre hacia lo observado, y con el tiempo sin ver precios la confianza se afloja. Puro.
 
 import { pow } from "../../core/index.ts";
+import { table } from "../world/index.ts";
 
 export interface PriceBelief {
   /** Monedas por kilo que cree que vale. */
@@ -58,4 +59,37 @@ export function decayBelief(b: PriceBelief, day: number): PriceBelief {
 export function workingBase(b: PriceBelief | undefined, referencePerKg: number): number {
   if (b === undefined) return referencePerKg;
   return b.perKg * b.confidence + referencePerKg * (1 - b.confidence);
+}
+
+/** Lo que cree de precios cada agente, por unidad del ledger (`good:<id>`). */
+export type PriceBeliefs = Readonly<Record<string, PriceBelief>>;
+
+/** Las creencias de precio de cada agente (economy §4): el trato las lee y las corre. */
+export const PRICE_BELIEFS = table<PriceBeliefs>("economy.price_beliefs");
+
+/**
+ * La base de trato de un bien para quien tiene estas creencias: lo creído (con la fe ya aflojada
+ * por los días) mezclado con la referencia del contenido.
+ */
+export function baseFor(
+  beliefs: PriceBeliefs | undefined,
+  unit: string,
+  referencePerKg: number,
+  day: number,
+): number {
+  const b = beliefs?.[unit];
+  return workingBase(b === undefined ? undefined : decayBelief(b, day), referencePerKg);
+}
+
+/** Las creencias después de ver un trato a `seenPerKg` (parte de la referencia si no sabía nada). */
+export function observeDeal(
+  beliefs: PriceBeliefs | undefined,
+  unit: string,
+  seenPerKg: number,
+  referencePerKg: number,
+  day: number,
+): PriceBeliefs {
+  const prev = beliefs?.[unit];
+  const start = prev === undefined ? firstBelief(referencePerKg, day) : decayBelief(prev, day);
+  return { ...beliefs, [unit]: observePrice(start, seenPerKg, day) };
 }

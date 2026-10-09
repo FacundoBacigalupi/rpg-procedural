@@ -60,11 +60,13 @@ import {
   nodeAt,
   notoriety,
   OPINIONS,
+  observeDeal,
   opposingSkill,
   PERSON,
   PLACE,
   type PlanCursor,
   type PlanNode,
+  PRICE_BELIEFS,
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
@@ -244,8 +246,10 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELF_IMAGES.name,
       YIELDED.name,
       FIGHT_STATE.name,
+      PRICE_BELIEFS.name,
     ],
     writes: [
+      PRICE_BELIEFS.name,
       PLAN_STATE.name,
       LOCATION.name,
       BODY_STATE.name,
@@ -327,6 +331,7 @@ function marketOf(
   me: AgentId,
   other: EntityRef | null,
   harvestGramsPerHour: number,
+  day: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
   return {
@@ -335,6 +340,11 @@ function marketOf(
         g.priceCopperPerKg === undefined ? [] : [[goodUnit(g), g.priceCopperPerKg] as const],
       ),
     ),
+    beliefs: {
+      actor: truth.get(PRICE_BELIEFS, me),
+      other: other === null ? undefined : truth.get(PRICE_BELIEFS, other as AgentId),
+      day,
+    },
     ownMembers: membersOf(truth, truth.get(PERSON, me)?.household ?? ""),
     other:
       otherHome === undefined
@@ -443,7 +453,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate)
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate, day)
         : undefined,
   };
   const r = resolve(input);
@@ -624,6 +634,24 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ctx.now,
   );
   if (image) changes.push(setComponent(SELF_IMAGES, me, image));
+
+  // Un trato cerrado se ve: los dos corren lo que creen del bien hacia lo que se pagó (economy §4).
+  if (eff.kind === "trade" && eff.deal && eff.good !== null && eff.grams > 0 && eff.with) {
+    const unit = eff.good as string;
+    const ref = o.goods.find((g) => goodUnit(g) === eff.good)?.priceCopperPerKg;
+    const paid = (eff.coins / eff.grams) * 1000;
+    if (ref !== undefined && paid > 0) {
+      for (const who of [me, eff.with as AgentId]) {
+        changes.push(
+          setComponent(
+            PRICE_BELIEFS,
+            who,
+            observeDeal(truth.get(PRICE_BELIEFS, who), unit, paid, ref, day),
+          ),
+        );
+      }
+    }
+  }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
   const resume = eff.kind === "move" && eff.onTheWay === true;
