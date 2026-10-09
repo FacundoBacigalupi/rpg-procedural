@@ -17,6 +17,7 @@ import {
   houseKey,
   LOCATION,
   MEAL_KCAL,
+  mentionableTastes,
   PERSON,
   PLACE,
   PLEDGE,
@@ -27,6 +28,7 @@ import {
   STATUS,
   seedSelfImage,
   skillStandingOf,
+  TASTES_OF,
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
@@ -57,6 +59,11 @@ export interface CharacterPanel {
   readonly status?: string;
   /** Su gente, por la relación que sabe que tiene, y si vive (de lo que sabe). */
   readonly family: readonly { readonly relation: string }[];
+  /** Lo que sabe que le gusta y lo que rechaza (npc-psychology §16), lo más fuerte primero. */
+  readonly tastes: readonly {
+    readonly name: string;
+    readonly stance: "loves" | "likes" | "dislikes" | "loathes";
+  }[];
   /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
@@ -119,9 +126,19 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
     family: [...acquaintances(w)]
       .filter(([id]) => alive.has(id))
       .flatMap(([, a]) => (a.relation ? [{ relation: a.relation }] : [])),
+    tastes: mentionableTastes(
+      w.truth.get(TASTES_OF, w.player)?.preferences ?? [],
+      w.tastes,
+      PANEL_TASTES,
+      PANEL_TASTE_STRENGTH,
+    ).map((t) => ({ name: t.name, stance: t.stance })),
     skills,
   };
 }
+
+/** Cuántos gustos muestra el panel y desde qué fuerza (los que ya se notan de uno mismo). */
+export const PANEL_TASTES = 6;
+export const PANEL_TASTE_STRENGTH = 0.3;
 
 /** Qué tan seguro está de una entrada del libro. */
 export type Surety = "sure" | "unsure" | "vague";

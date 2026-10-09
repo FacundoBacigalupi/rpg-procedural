@@ -54,6 +54,14 @@ export interface ThoughtView {
   readonly mood?: Mood;
 }
 
+/** Un gusto propio que viene al caso este turno (npc-psychology §16): lo que el personaje sabe de sí. */
+export type TasteStance = "loves" | "likes" | "dislikes" | "loathes";
+export interface TasteView {
+  /** Cómo lo nombra («lo amargo», «el té»): viene del catálogo, el narrador no lo inventa. */
+  readonly name: string;
+  readonly stance: TasteStance;
+}
+
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
 
@@ -245,6 +253,8 @@ export interface PlayerView {
   readonly outcomes: readonly OutcomeView[];
   /** Lo que piensa, recuerda o siente; vacío casi siempre. */
   readonly thoughts: readonly ThoughtView[];
+  /** Gustos propios que vale la pena decir ahora (`mentionableTastes`); vacío casi siempre. */
+  readonly tastes: readonly TasteView[];
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -271,6 +281,7 @@ export interface ViewInput {
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
   readonly thoughts?: readonly ThoughtInput[];
+  readonly tastes?: readonly TasteView[];
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
 }
@@ -399,6 +410,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     percepts,
     outcomes,
     thoughts,
+    tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
     labels,
     lexicon: [...words].sort(compareStrings),
   };

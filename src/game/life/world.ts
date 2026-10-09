@@ -35,6 +35,7 @@ import {
   type SpeechLine,
   type StageDef,
   type StatusDef,
+  type TasteDef,
   type Trait,
   type TraitDef,
   type WorldTruth,
@@ -92,6 +93,8 @@ export interface LifeWorld {
   readonly habits: readonly HabitDef[];
   readonly divinations: readonly DivinationMethodDef[];
   readonly concerns: readonly ConcernWords[];
+  /** El catálogo de gustos: da nombre a lo que `TASTES_OF` guarda por id (npc-psychology §16). */
+  readonly tastes: readonly TasteDef[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }

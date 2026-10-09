@@ -259,6 +259,7 @@ export function resumeParts(
   | "habits"
   | "divinations"
   | "concerns"
+  | "tastes"
 > {
   return {
     seed,
@@ -282,6 +283,7 @@ export function resumeParts(
     habits: content.all(HABITS_CONTENT),
     divinations: content.all(DIVINATION_METHODS),
     concerns: content.all(DIVINATION_CONCERNS),
+    tastes: content.all(TASTES),
   };
 }
 
@@ -572,6 +574,7 @@ export function createLife(
       habits: content.all(HABITS_CONTENT),
       divinations: content.all(DIVINATION_METHODS),
       concerns: content.all(DIVINATION_CONCERNS),
+      tastes: content.all(TASTES),
     },
     pop.player,
     terrain.village,

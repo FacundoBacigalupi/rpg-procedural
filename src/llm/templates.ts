@@ -150,6 +150,7 @@ export function renderView(
     if (t.mood !== undefined) say(`thought.mood.${t.mood}`);
     else if (t.kind === "feel") say("thought.mood.calm");
   }
+  for (const t of view.tastes) say(`taste.${t.stance}`, { what: t.name });
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
   return out.join(" ");
 }

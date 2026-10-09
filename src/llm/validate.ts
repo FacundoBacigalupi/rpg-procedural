@@ -4,6 +4,7 @@
 // del juego); el largo por modo. Los problemas van en inglés porque vuelven al modelo para que
 // regenere (jobs.ts); si tampoco pasa, el narrador usa las plantillas.
 
+import type { TasteView } from "../game/view/index.ts";
 import type { NarrationRequest } from "./narration.ts";
 import { unknownTermsIn } from "./voice.ts";
 
@@ -85,6 +86,42 @@ function words(s: string): string[] {
   return [...s.matchAll(WORD)].map((m) => m[0]);
 }
 
+const LIKING = /\b(?:encant\p{L}*|gust\p{L}*|adora\p{L}*|disfrut\p{L}*|deleit\p{L}*)/iu;
+const DISLIKING = /\b(?:odi\p{L}*|detest\p{L}*|asco|repugn\p{L}*|desagrad\p{L}*|aborrec\p{L}*)/iu;
+const NEGATED = /\bno\s+(?:te\s+|lo\s+|la\s+)?\p{L}*$/iu;
+
+/**
+ * Un gusto propio que la narración da vuelta (narration §6): la oración que nombra el gusto no puede
+ * decir lo contrario de su `stance` (te gusta lo que el personaje aborrece, o al revés).
+ */
+function tasteProblems(plain: string, t: TasteView): string[] {
+  const name = t.name.toLowerCase();
+  const positive = t.stance === "loves" || t.stance === "likes";
+  for (const sentence of plain.split(/(?<=[.!?…])\s+/u)) {
+    const low = sentence.toLowerCase();
+    const at = low.indexOf(name);
+    if (at < 0) continue;
+    const liking = LIKING.exec(low);
+    const disliking = DISLIKING.exec(low);
+    const negated = (m: RegExpExecArray | null) =>
+      m !== null && NEGATED.test(low.slice(0, m.index + m[0].length));
+    // «No soportás» ya es rechazo: soportar no se niega para invertirlo.
+    const endures = /\bsoport\p{L}*/iu.test(low);
+    const up = (liking !== null && !negated(liking)) || (disliking !== null && negated(disliking));
+    const down =
+      endures ||
+      (disliking !== null && !negated(disliking)) ||
+      (liking !== null && negated(liking));
+    if (up === down) continue;
+    if (up !== positive) {
+      return [
+        `the character ${positive ? "likes" : "dislikes"} ${t.name}: do not say the opposite`,
+      ];
+    }
+  }
+  return [];
+}
+
 export function validateNarration(
   text: string,
   request: NarrationRequest,
@@ -152,6 +189,9 @@ export function validateNarration(
     if (!numbers.includes(d)) problems.push(`the number ${d} is not in the request`);
   }
 
+  // 2b. Gustos: lo que se dice de un gusto propio no contradice lo que el personaje siente.
+  for (const t of view.tastes) problems.push(...tasteProblems(plain, t));
+
   // 3. Cobertura.
   for (const id of request.mustMention) {
     if (!ids.includes(id)) problems.push(`${id} has to be mentioned as {{${id}|...}}`);
@@ -166,7 +206,11 @@ export function validateNarration(
   // 5. Largo.
   const n = plain.trim().length;
   const items =
-    view.outcomes.length + view.percepts.length + view.self.cues.length + view.thoughts.length;
+    view.outcomes.length +
+    view.percepts.length +
+    view.self.cues.length +
+    view.thoughts.length +
+    view.tastes.length;
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");
   if (n > max) problems.push(`the narration is too long (${n} characters, at most ${max})`);

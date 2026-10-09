@@ -468,6 +468,11 @@
     "lines": ["Por un rato estás en paz.", "Todo está quieto dentro tuyo."]
   },
 
+  { "id": "taste.loves", "lines": ["Te encanta {what}.", "{what}: lo que más te gusta."] },
+  { "id": "taste.likes", "lines": ["Te gusta {what}.", "{what}: te cae bien."] },
+  { "id": "taste.dislikes", "lines": ["No te gusta {what}.", "{what}: no es lo tuyo."] },
+  { "id": "taste.loathes", "lines": ["No soportás {what}.", "Odiás {what}."] },
+
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },
   { "id": "good.shellfish", "lines": ["almejas"] },
