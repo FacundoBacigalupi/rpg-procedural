@@ -4,6 +4,7 @@
 // forma (§5, §7, §8), y los resolvers que dicen qué cambia cada verbo en el mundo con resultados
 // matizados (§7, §8).
 export * from "./attempt.ts";
+export * from "./believed.ts";
 export * from "./catalog.ts";
 export * from "./draft.ts";
 export * from "./draft-schema.ts";
