@@ -71,6 +71,7 @@ import {
   LOCATION,
   learnDeed,
   liveBetween,
+  looseCounter,
   MEMORIES,
   MIND,
   normalize,
@@ -946,11 +947,17 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             style: pending.style,
           })
         : undefined;
-      const act = understand(
+      // La propuesta que dejó planteada con este mismo interlocutor y sigue vigente.
+      const stored = truth.get(OPEN_DEALS, me);
+      const openWith =
+        stored && stored.with === speaker && ctx.now - stored.at <= o.day ? stored : undefined;
+      const lexicon = lexiconOf(truth, o, me, speaker);
+      // Los términos sueltos de una contraoferta («la mitad», «pero con sal») se leen contra el trato abierto.
+      const act = looseCounter(
         pending.text,
-        lexiconOf(truth, o, me, speaker),
-        pending.clarity,
-        formed?.spoken,
+        understand(pending.text, lexicon, pending.clarity, formed?.spoken),
+        openWith?.deal,
+        lexicon,
       );
       const feel = relationship(truth.get(RELATIONS, me), speaker, ctx.now, {
         dims: o.dims,
@@ -970,10 +977,6 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               ctx.rng.fork("prophecy", pending.key),
             )
           : undefined;
-      // La propuesta que dejó planteada con este mismo interlocutor y sigue vigente.
-      const stored = truth.get(OPEN_DEALS, me);
-      const openWith =
-        stored && stored.with === speaker && ctx.now - stored.at <= o.day ? stored : undefined;
       const reply = decideReply(
         {
           act,

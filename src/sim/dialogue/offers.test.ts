@@ -3,9 +3,17 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type AgentId, Rng } from "../../core/index.ts";
 import type { Vector } from "../relations/index.ts";
-import { understand } from "./acts.ts";
+import { looseCounter, understand } from "./acts.ts";
 import { SpeechLine } from "./lines.ts";
-import { dealHolds, MAX_ROUNDS, type OfferInput, offerMargin, weighOffer } from "./offers.ts";
+import {
+  dealHolds,
+  type Leverage,
+  leverageShift,
+  MAX_ROUNDS,
+  type OfferInput,
+  offerMargin,
+  weighOffer,
+} from "./offers.ts";
 import { decideReply, type ReplyInput } from "./reply.ts";
 
 const ana = "agent:1" as AgentId;
@@ -109,6 +117,41 @@ describe("weighOffer", () => {
         },
       ),
     );
+  });
+});
+
+describe("poder de negociación", () => {
+  const none: Leverage = { alternatives: 0, desperation: 0, face: 0 };
+  it("las alternativas y la cara suben el margen; la desesperación lo baja", () => {
+    expect(offerMargin(0, { ...none, alternatives: 1 })).toBeGreaterThan(offerMargin(0));
+    expect(offerMargin(0, { ...none, face: 1 })).toBeGreaterThan(offerMargin(0));
+    expect(offerMargin(0, { ...none, desperation: 1 })).toBeLessThan(offerMargin(0));
+  });
+  it("el desesperado acepta lo que con alternativas rechazaría", () => {
+    const tight = { ...base, give: { good: "salt", grams: 520 } };
+    expect(weighOffer({ ...tight, leverage: { ...none, desperation: 1 } }).kind).toBe("accept");
+    expect(weighOffer({ ...tight, leverage: { ...none, alternatives: 1 } }).kind).not.toBe(
+      "accept",
+    );
+  });
+  it("el margen sigue acotado con cualquier palanca", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -3, max: 3, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        (f, alternatives, desperation, face) => {
+          const m = offerMargin(f, { alternatives, desperation, face });
+          expect(m).toBeGreaterThanOrEqual(-0.1);
+          expect(m).toBeLessThanOrEqual(0.4);
+        },
+      ),
+    );
+  });
+  it("sin palancas no cambia nada", () => {
+    expect(leverageShift(undefined)).toBe(0);
+    expect(leverageShift(none)).toBe(0);
   });
 });
 
@@ -218,5 +261,38 @@ describe("decideReply con propuestas", () => {
         expect(a).toEqual(b);
       }),
     );
+  });
+});
+
+describe("contraoferta con términos sueltos", () => {
+  // El NPC recibiría 1 kilo de sal y daría 2 de grano.
+  const open = { gets: { good: "salt", grams: 1000 }, gives: { good: "grain", grams: 2000 } };
+  const loose = (text: string) => looseCounter(text, understand(text, lex), open, lex);
+  it("«te doy la mitad» escala lo que da quien habla", () => {
+    expect(loose("Te doy la mitad")).toEqual({
+      kind: "offer",
+      give: { good: "salt", grams: 500 },
+      want: open.gives,
+    });
+  });
+  it("«dame la mitad» escala lo que pide", () => {
+    expect(loose("Dame la mitad")).toEqual({
+      kind: "offer",
+      give: open.gets,
+      want: { good: "grain", grams: 1000 },
+    });
+  });
+  it("«por lo mismo pero con grano» cambia el bien que da", () => {
+    expect(loose("Por lo mismo pero con grano")).toEqual({
+      kind: "offer",
+      give: { good: "grain", grams: 1000 },
+      want: open.gives,
+    });
+  });
+  it("sin trato abierto o sin términos sueltos no toca nada", () => {
+    const act = understand("Te doy la mitad", lex);
+    expect(looseCounter("Te doy la mitad", act, undefined, lex)).toBe(act);
+    const hi = understand("Hola", lex);
+    expect(looseCounter("Hola", hi, open, lex)).toBe(hi);
   });
 });

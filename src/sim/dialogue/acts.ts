@@ -36,7 +36,13 @@ type SpeechBody =
       readonly claim: ProphesyKind;
     }
   /** Quien habla promete devolver o dar `good` (cuántos gramos si lo dijo; null si no). */
-  | { readonly kind: "promise"; readonly good: string | null; readonly grams: number | null }
+  | {
+      readonly kind: "promise";
+      readonly good: string | null;
+      readonly grams: number | null;
+      /** Términos sueltos de la frase («el doble», «en otoño», «cuando pueda»); ausentes si no dijo. */
+      readonly terms?: PromiseTerms;
+    }
   /** Una propuesta de intercambio (dialogue §2): lo que quien habla da y lo que quiere (null: nada). */
   | {
       readonly kind: "offer";
@@ -174,6 +180,61 @@ function prophecyIn(norm: string): ProphesyKind | null {
 
 const PROMISE =
   /\b(te prometo|te juro|te doy mi palabra|palabra que|te lo devuelvo|te lo pago|te devuelvo|te pago|cuenta conmigo)\b/;
+/**
+ * Lo que una promesa dice además de qué y cuánto (contracts §4): un múltiplo del monto, un plazo en
+ * días y cuán precisa es (1: exacta; baja con «más o menos», «cuando pueda»). Todo opcional.
+ */
+export interface PromiseTerms {
+  readonly times?: number;
+  readonly dueDays?: number | null;
+  readonly precision?: number;
+}
+
+const DAYS_PER_SEASON = 90;
+const TIMES_WORDS: readonly [RegExp, number][] = [
+  [/\b(el doble|doble)\b/, 2],
+  [/\b(el triple|triple)\b/, 3],
+  [/\b(la mitad)\b/, 0.5],
+  [/\b(uno y medio|una vez y media)\b/, 1.5],
+];
+const DUE_SEASON =
+  /\b(en|para|despues de|a la|con la) (otono|invierno|primavera|verano|cosecha|siembra)\b/;
+const DUE_UNITS = /\ben (\d{1,3}|un|una|dos|tres) (dias?|semanas?|meses|mes)\b/;
+const DUE_SOON = /\b(pronto|manana|esta semana|en unos dias)\b/;
+const DUE_NEVER = /\b(cuando pueda|algun dia|cuando tenga|cuando me sea posible)\b/;
+const HEDGE = /\b(mas o menos|creo que|tal vez|quiza|capaz|aproximadamente)\b/;
+const SMALL: Record<string, number> = { un: 1, una: 1, dos: 2, tres: 3 };
+
+/** Términos sueltos de una promesa dicha en palabras (texto ya normalizado, sin tildes). */
+export function promiseTerms(norm: string): PromiseTerms | undefined {
+  let times: number | undefined;
+  for (const [re, n] of TIMES_WORDS) if (re.test(norm)) times = n;
+  let dueDays: number | null | undefined;
+  let precision = 1;
+  const units = DUE_UNITS.exec(norm);
+  if (units) {
+    const raw = units[1] as string;
+    const n = SMALL[raw] ?? Number(raw);
+    const u = units[2] as string;
+    dueDays = n * (u.startsWith("dia") ? 1 : u.startsWith("semana") ? 7 : 30);
+  } else if (DUE_SEASON.test(norm)) {
+    dueDays = DAYS_PER_SEASON;
+    precision -= 0.25;
+  } else if (DUE_SOON.test(norm)) {
+    dueDays = 14;
+    precision -= 0.1;
+  } else if (DUE_NEVER.test(norm)) {
+    dueDays = null;
+    precision -= 0.5;
+  }
+  if (HEDGE.test(norm)) precision -= 0.2;
+  const out: { times?: number; dueDays?: number | null; precision?: number } = {};
+  if (times !== undefined) out.times = times;
+  if (dueDays !== undefined) out.dueDays = dueDays;
+  if (precision < 1) out.precision = Math.max(0.1, Math.round(precision * 100) / 100);
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 const AMOUNT = /\b(\d{1,6}) ?(kilos?|kg|gramos?|g)\b/;
 
 const OFFER_GIVES = /\b(te ofrezco|te propongo|te doy|te cambio|te vendo|te dejo|trueque)\b/;
@@ -262,6 +323,53 @@ function termIn(seg: string, lex: Lexicon): ExchangeTerm | null {
   return { good, grams };
 }
 
+const LOOSE_SCALES: readonly [RegExp, number][] = [
+  [/\b(la mitad|mitad)\b/, 0.5],
+  [/\b(un tercio)\b/, 1 / 3],
+  [/\b(el doble|doble)\b/, 2],
+  [/\b(un poco menos|algo menos|menos)\b/, 0.8],
+  [/\b(un poco mas|algo mas|mas)\b/, 1.2],
+];
+const LOOSE_ASKS = /\b(dame|damelo|quiero|pido|pedime|dejame)\b/;
+const LOOSE_SWAP = /\b(pero con|en vez de|en lugar de|mejor con|con)\b (.+)$/;
+
+/**
+ * Una contraoferta con términos sueltos («te doy la mitad», «por lo mismo pero con sal»): se lee
+ * contra la propuesta abierta (`open`, vista de quien contesta: `gets` lo que él recibiría, `gives`
+ * lo que daría) y se vuelve una oferta explícita de quien habla. Sin términos sueltos o sin trato
+ * abierto devuelve el acto tal cual. La escala vale para lo que da quien habla, salvo que pida.
+ */
+export function looseCounter(
+  text: string,
+  act: SpeechAct,
+  open: { readonly gets: ExchangeTerm | null; readonly gives: ExchangeTerm | null } | undefined,
+  lex: Lexicon,
+): SpeechAct {
+  if (!open) return act;
+  const emptyOffer = act.kind === "offer" && act.give === null && act.want === null;
+  if (!emptyOffer && act.kind !== "other" && act.kind !== "request") return act;
+  const norm = normalize(text);
+  const scale = LOOSE_SCALES.find(([re]) => re.test(norm))?.[1];
+  const swap = LOOSE_SWAP.exec(norm);
+  const swapped = swap ? termIn(swap[2] ?? "", lex) : null;
+  if (scale === undefined && swapped === null) return act;
+  const asks = LOOSE_ASKS.test(norm);
+  let give = open.gets;
+  let want = open.gives;
+  if (give === null && want === null) return act;
+  const scaled = (t: ExchangeTerm | null): ExchangeTerm | null =>
+    t === null || scale === undefined
+      ? t
+      : { good: t.good, grams: Math.max(10, Math.round((t.grams * scale) / 10) * 10) };
+  if (asks) want = scaled(want);
+  else give = scaled(give);
+  if (swapped !== null && give !== null) {
+    const said = AMOUNT.test(swap?.[2] ?? "");
+    give = { good: swapped.good, grams: said ? swapped.grams : give.grams };
+  }
+  return { kind: "offer", give, want };
+}
+
 /** Con la voz turbia llega que da una razón, pero no el detalle de quién. */
 function blurred(r: ArgueReason): ArgueReason {
   return r.kind === "relation" ? { kind: "relation", with: null } : r;
@@ -313,7 +421,13 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
   if (PROMISE.test(norm)) {
     const m = AMOUNT.exec(norm);
     const n = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : null;
-    return { kind: "promise", good: blur ? null : good, grams: blur ? null : n };
+    const terms = blur ? undefined : promiseTerms(norm);
+    return {
+      kind: "promise",
+      good: blur ? null : good,
+      grams: blur ? null : n,
+      ...(terms ? { terms } : {}),
+    };
   }
   const gives = OFFER_GIVES.test(norm);
   if (gives || OFFER_BUYS.test(norm)) {

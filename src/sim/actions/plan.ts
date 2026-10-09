@@ -21,7 +21,13 @@ export type SpeakAct =
   | { readonly kind: "ask"; readonly about: EntityRef | null }
   | { readonly kind: "request"; readonly what: string | null }
   | { readonly kind: "tell"; readonly about: EntityRef; readonly claim: "dead" | "alive" }
-  | { readonly kind: "promise"; readonly what: string | null };
+  | {
+      readonly kind: "promise";
+      readonly what: string | null;
+      readonly times?: number | undefined;
+      readonly dueDays?: number | null | undefined;
+      readonly precision?: number | undefined;
+    };
 
 export type ArgValue =
   | { readonly role: string; readonly entity: EntityRef }
@@ -84,7 +90,13 @@ const SpeakActSchema: z.ZodType<SpeakAct> = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("ask"), about: entityRef.nullable() }),
   z.strictObject({ kind: z.literal("request"), what: z.string().max(500).nullable() }),
   z.strictObject({ kind: z.literal("tell"), about: entityRef, claim: z.enum(["dead", "alive"]) }),
-  z.strictObject({ kind: z.literal("promise"), what: z.string().max(500).nullable() }),
+  z.strictObject({
+    kind: z.literal("promise"),
+    what: z.string().max(500).nullable(),
+    times: z.number().positive().max(100).optional(),
+    dueDays: z.number().int().positive().max(3650).nullable().optional(),
+    precision: z.number().min(0).max(1).optional(),
+  }),
 ]);
 
 const ArgValueSchema = z.union([

@@ -345,8 +345,15 @@ function speakAct(act: DraftAct, at: string, w: Walk): SpeakAct | undefined {
     case "farewell":
       return { kind: act.kind };
     case "request":
-    case "promise":
       return { kind: act.kind, what: act.what ?? null };
+    case "promise":
+      return {
+        kind: "promise",
+        what: act.what ?? null,
+        ...(act.times !== undefined ? { times: act.times } : {}),
+        ...(act.dueDays !== undefined ? { dueDays: act.dueDays } : {}),
+        ...(act.precision !== undefined ? { precision: act.precision } : {}),
+      };
     case "ask": {
       if (!act.about) return { kind: "ask", about: null };
       const r = resolveRef(

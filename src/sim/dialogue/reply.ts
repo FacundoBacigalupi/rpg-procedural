@@ -16,7 +16,7 @@ import {
   decideDefense,
   hearAccusation,
 } from "./accusations.ts";
-import type { SpeechAct } from "./acts.ts";
+import type { PromiseTerms, SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import { type FormJudgeInput, type FormJudgement, judgeForm } from "./form.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -87,6 +87,8 @@ export interface ReplyInput {
   readonly rounds?: number;
   /** Cuánto cree el oyente que vale el kilo de un bien (monedas); sin esto no valúa ofertas. */
   readonly worth?: (good: string) => number | null;
+  /** Alternativas creídas y cara en juego del oyente al regatear (contracts §3); la desesperación sale de su despensa. */
+  readonly bargain?: { readonly alternatives: number; readonly face: number };
   /** Gramos de un bien que quien habla tiene a mano (no puede ofrecer lo que no tiene). */
   readonly speakerHas?: (good: string) => number;
   /** Cómo llama el oyente a `id` y a un bien. */
@@ -190,7 +192,11 @@ export interface Reply {
   /** Una contraoferta que el oyente deja planteada (queda abierta hasta que se acepte o rechace). */
   readonly counter?: Proposal;
   /** Una promesa que el oyente toma por hecha: la anota en su libro (contracts `believePledge`). */
-  readonly pledge?: { readonly good: string | null; readonly grams: number | null };
+  readonly pledge?: {
+    readonly good: string | null;
+    readonly grams: number | null;
+    readonly terms?: PromiseTerms;
+  };
   /** Cómo juzgó el oyente lo que le contaron (solo si `detect` estaba): confianza y memoria salen de acá. */
   readonly judgement?: LieJudgement;
   /** La amenaza pesada: qué eligió el oyente y lo que deja en la relación. */
@@ -363,7 +369,14 @@ function decideBody(i: ReplyInput, at: number): Reply {
       });
       if (trust < PROMISE_CREDENCE) return say("promise.doubt");
       const what = a.good === null ? "eso" : i.goodName(a.good);
-      return { ...say("promise.accept", { what }), pledge: { good: a.good, grams: a.grams } };
+      return {
+        ...say("promise.accept", { what }),
+        pledge: {
+          good: a.good,
+          grams: a.grams,
+          ...(a.terms ? { terms: a.terms } : {}),
+        },
+      };
     }
     case "offer": {
       if (a.give === null && a.want === null) return say("offer.unclear");
@@ -382,6 +395,19 @@ function decideBody(i: ReplyInput, at: number): Reply {
         spare: (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER,
         speakerHas: i.speakerHas ?? (() => 0),
         felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
+        leverage: {
+          alternatives: i.bargain?.alternatives ?? 0,
+          face: i.bargain?.face ?? 0,
+          // Desesperado: lo que recibiría le falta a su casa (su despensa bajo la reserva).
+          desperation:
+            a.give === null
+              ? 0
+              : 1 -
+                Math.min(
+                  1,
+                  i.held(a.give.good) / Math.max(1, i.members * RESERVE_GRAMS_PER_MEMBER),
+                ),
+        },
       });
       switch (v.kind) {
         case "unvalued":

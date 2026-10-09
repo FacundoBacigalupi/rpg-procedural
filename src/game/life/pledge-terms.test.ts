@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, Event } from "../../core/index.ts";
 import { extendPledge, isPledgeOverdue, makePledge } from "../../sim/index.ts";
-import { believedOwed, favorDoneIn, leakedIn } from "./pledges.ts";
+import { believedOwed, favorDoneIn, leakedIn, promisedIn } from "./pledges.ts";
 
 const A = "agent:1" as AgentId;
 const B = "agent:2" as AgentId;
@@ -70,5 +70,21 @@ describe("falsos incumplimientos", () => {
     expect(believedOwed(give(300), 500)).toBeNull();
     expect(believedOwed({ kind: "favor", what: "repair" }, 500)).toBeNull();
     expect(believedOwed(undefined, 500)).toBeNull();
+  });
+});
+
+describe("términos sueltos de una promesa dicha", () => {
+  const said = (pledge: unknown) => ev("action.speak", [B, A], { effect: { pledge } });
+  it("el múltiplo escala los gramos y los términos viajan", () => {
+    const p = promisedIn(
+      said({ good: "grain", grams: 1000, terms: { times: 2, dueDays: 90, precision: 0.75 } }),
+    );
+    expect(p?.grams).toBe(2000);
+    expect(p?.terms).toEqual({ times: 2, dueDays: 90, precision: 0.75 });
+  });
+  it("sin términos queda como antes", () => {
+    const p = promisedIn(said({ good: "grain", grams: 1000 }));
+    expect(p?.grams).toBe(1000);
+    expect(p?.terms).toBeUndefined();
   });
 });

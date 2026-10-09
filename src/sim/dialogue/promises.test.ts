@@ -63,6 +63,22 @@ describe("promesas en el diálogo", () => {
     expect(understand("Dame grano, te lo devuelvo", lex).kind).toBe("request");
   });
 
+  it("lee términos sueltos: múltiplo, plazo y vaguedad", () => {
+    const a = understand("Te prometo que te devuelvo 2 kilos de grano, el doble, en otoño", lex);
+    expect(a).toMatchObject({
+      kind: "promise",
+      grams: 2000,
+      terms: { times: 2, dueDays: 90, precision: 0.75 },
+    });
+    expect(
+      understand("Te prometo que te devuelvo 1 kilo de grano en 2 semanas", lex),
+    ).toMatchObject({ terms: { dueDays: 14 } });
+    const vague = understand("Te prometo 3 kilos de grano cuando pueda, mas o menos", lex);
+    expect(vague).toMatchObject({ terms: { dueDays: null } });
+    expect((vague as { terms: { precision: number } }).terms.precision).toBeLessThan(0.5);
+    expect(understand("Te prometo 3 kilos de grano", lex)).not.toHaveProperty("terms");
+  });
+
   it("acepta la palabra de quien se confía, la duda de quien fue traicionado, y pide precisión", () => {
     const a = reply(f({}), "Te prometo 500 gramos de grano");
     expect(a.line).toBe("promise.accept");

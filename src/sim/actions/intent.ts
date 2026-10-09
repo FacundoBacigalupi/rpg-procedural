@@ -184,7 +184,14 @@ export const DraftAct = z.discriminatedUnion("kind", [
     about: RefDescription,
     claim: z.enum(["dead", "alive"]),
   }),
-  z.strictObject({ kind: z.literal("promise"), what: text.optional() }),
+  z.strictObject({
+    kind: z.literal("promise"),
+    what: text.optional(),
+    /** Términos sueltos (contracts §4): múltiplo del monto, plazo en días (null: sin fecha), vaguedad 0-1. */
+    times: z.number().positive().max(100).optional(),
+    dueDays: z.number().int().positive().max(3650).nullable().optional(),
+    precision: z.number().min(0).max(1).optional(),
+  }),
 ]);
 export type DraftAct = z.infer<typeof DraftAct>;
 

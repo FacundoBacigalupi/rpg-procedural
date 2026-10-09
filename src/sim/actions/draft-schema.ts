@@ -237,6 +237,9 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
             about: z.strictObject({ text: DraftText }).optional(),
             claim: z.enum(["dead", "alive"]).optional(),
             what: DraftText.optional(),
+            times: z.number().positive().max(100).optional(),
+            dueDays: z.number().int().positive().max(3650).nullable().optional(),
+            precision: z.number().min(0).max(1).optional(),
           })
           .optional(),
         ...(speakManners.length > 0

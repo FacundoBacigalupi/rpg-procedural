@@ -41,6 +41,36 @@ export interface OfferInput {
   readonly speakerHas: (good: string) => number;
   /** Calidez efectiva del oyente hacia quien propone (`warmth` + recuerdos). */
   readonly felt: number;
+  /** Poder de negociación del oyente (contracts §3); sin esto, neutro. */
+  readonly leverage?: Leverage;
+}
+
+/**
+ * Lo que mueve el margen además de la calidez (contracts §3, economy §8): las alternativas que el
+ * oyente cree tener (0-1: otro le compraría o le vendería lo mismo), su desesperación (0-1: necesita
+ * lo que recibiría) y la cara en juego (0-1: ceder rápido lo dejaría mal ante otros).
+ */
+export interface Leverage {
+  readonly alternatives: number;
+  readonly desperation: number;
+  readonly face: number;
+}
+
+/** Cuánto pesa cada palanca en el margen (sin calibrar). */
+export const ALTERNATIVES_MARGIN = 0.2;
+export const DESPERATION_MARGIN = 0.3;
+export const FACE_MARGIN = 0.1;
+
+const unit = (x: number) => Math.min(1, Math.max(0, Number.isFinite(x) ? x : 0));
+
+/** Cuánto sube (o baja) el margen por el poder de negociación del oyente. */
+export function leverageShift(l: Leverage | undefined): number {
+  if (!l) return 0;
+  return (
+    ALTERNATIVES_MARGIN * unit(l.alternatives) -
+    DESPERATION_MARGIN * unit(l.desperation) +
+    FACE_MARGIN * unit(l.face)
+  );
 }
 
 /** Rondas de contraofertas (propuesta y contrapropuesta) que aguanta el oyente antes de cansarse. */
@@ -61,8 +91,11 @@ export function dealHolds(
   return true;
 }
 
-export function offerMargin(felt: number): number {
-  return Math.min(MAX_MARGIN, Math.max(MIN_MARGIN, BASE_MARGIN - WARMTH_MARGIN * felt));
+export function offerMargin(felt: number, leverage?: Leverage): number {
+  return Math.min(
+    MAX_MARGIN,
+    Math.max(MIN_MARGIN, BASE_MARGIN - WARMTH_MARGIN * felt + leverageShift(leverage)),
+  );
 }
 
 const value = (t: ExchangeTerm, worth: (g: string) => number | null): number | null => {
@@ -83,7 +116,7 @@ export function weighOffer(i: OfferInput): OfferVerdict {
   const got = value(give, i.worth);
   const lost = value(want, i.worth);
   if (got === null || lost === null || lost <= 0) return { kind: "unvalued" };
-  const asked = lost * (1 + offerMargin(i.felt));
+  const asked = lost * (1 + offerMargin(i.felt, i.leverage));
   if (got >= asked) return { kind: "accept", deal: { gets: give, gives: want } };
   if (got >= COUNTER_FLOOR * asked) {
     // Da lo que alcanza a pagar lo recibido, con el margen puesto.
