@@ -91,7 +91,10 @@ export function intrusionProcess(o: IntrusionOptions): ProcessDef {
               kind: "mind.intrusion",
               actors: [me],
               place,
-              data: { kinds: triggeredBy(mental, cue).map((c) => c.kind) },
+              data: {
+                kinds: triggeredBy(mental, cue).map((c) => c.kind),
+                ...("who" in cue ? { who: cue.who } : {}),
+              },
               emissions: {},
               causes: origins.map((ev) => ({ kind: "event", event: ev }) as const),
             });
