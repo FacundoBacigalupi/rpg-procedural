@@ -20,6 +20,7 @@ import {
   appraiseRearing,
   BODY_STATE,
   type BondDef,
+  bornSecret,
   contactGain,
   type Deltas,
   type DimensionDef,
@@ -59,6 +60,8 @@ import {
   rememberOwn,
   repaidDeltas,
   type SchemaDef,
+  SECRETS,
+  type Secrets,
   type StageDef,
   type StateChange,
   setComponent,
@@ -117,8 +120,17 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       MENTAL.name,
       BODY_STATE.name,
       OWN_DEEDS.name,
+      SECRETS.name,
     ],
-    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name, MENTAL.name, OWN_DEEDS.name],
+    writes: [
+      MIND.name,
+      HABITS.name,
+      RELATIONS.name,
+      MEMORIES.name,
+      MENTAL.name,
+      OWN_DEEDS.name,
+      SECRETS.name,
+    ],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -169,6 +181,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         mems.set(l.who, addMemory(mems.get(l.who) ?? truth.get(MEMORIES, l.who), m, m.at));
       };
       const owns = new Map<AgentId, OwnDeeds>();
+      const secrets = new Map<AgentId, Secrets>();
       for (const e of ctx.recent) {
         for (const l of livedFrom(e)) note(l);
         // Quien hizo algo lo sabe, lo haya visto alguien o no: lo anota y lo carga (law §15).
@@ -177,7 +190,23 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           const { by, deed, fatal } = own;
           owns.set(by, rememberOwn(owns.get(by) ?? truth.get(OWN_DEEDS, by), deed));
           // Una muerte la carga `killAppraisals` (culpa y trauma); el resto, acá con `guiltOf`.
-          const guilt = guiltOf(deed, conscienceOf(truth, o, by, deed, e.tick), e.tick);
+          const conscience = conscienceOf(truth, o, by, deed, e.tick, NEW_DEED_FEAR);
+          // Haber matado se guarda como secreto: nadie sabe todavía y el miedo a que se sepa lo sostiene.
+          if (fatal) {
+            secrets.set(
+              by,
+              bornSecret(secrets.get(by) ?? truth.get(SECRETS, by), {
+                about: deed.victim,
+                attr: "alive",
+                harm: deed.harm,
+                moralWeight: conscience.moralWeight,
+                fearOfExposure: conscience.fearOfExposure,
+                at: e.tick,
+                cause: e.id,
+              }),
+            );
+          }
+          const guilt = guiltOf(deed, conscience, e.tick);
           if (!fatal && guilt > 0) {
             apply(by, e, appraiseGuilt(guilt));
             const mental = mentals.get(by) ?? truth.get(MENTAL, by) ?? emptyMental(e.id, e.tick);
@@ -306,6 +335,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...mems].map(([id, m]) => setComponent(MEMORIES, id, m)),
         ...[...mentals].map(([id, m]) => setComponent(MENTAL, id, m)),
         ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
+        ...[...secrets].map(([id, s]) => setComponent(SECRETS, id, s)),
       ];
       return changes.length === 0 ? {} : { changes };
     },
@@ -365,6 +395,8 @@ function fightAppraisals(
 export const LIE_HABIT_KIND = "speak.lie";
 /** Lo que queda del hábito al ser descubierto, y el fracaso que deja (sin calibrar). */
 const LIE_CAUGHT_KEEP = 0.5;
+/** Miedo a que se sepa de lo que acaba de hacer (nadie lo sabe todavía; sin calibrar). */
+const NEW_DEED_FEAR = 0.6;
 const LIE_CAUGHT_STIMULUS = { theme: "failure", intensity: 0.3 } as const;
 
 /**

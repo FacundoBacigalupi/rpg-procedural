@@ -114,6 +114,7 @@ import {
   sincerityOf,
   speechForm,
   spokenTaboos,
+  stakesAt,
   stanceOf,
   standardize,
   type TabooDef,
@@ -695,7 +696,7 @@ function keepOf(
   const side = (x: number) => Math.min(1, Math.max(-1, x));
   return {
     state: {
-      stakes: unit(secret.stakes),
+      stakes: unit(stakesAt(secret, now)),
       discipline: unit(0.5 + 0.5 * clampTemper(z["control"] ?? 0)),
       arousal: unit(KEEP_AROUSAL * Math.max(0, clampTemper(z["reactivity"] ?? 0))),
       intoxication: 0,
