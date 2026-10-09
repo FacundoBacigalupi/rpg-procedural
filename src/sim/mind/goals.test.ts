@@ -6,9 +6,13 @@ import {
   GOAL_PULL,
   goalChanges,
   goalDrives,
+  layerDrives,
+  longGoals,
+  mediumGoals,
   reconcileGoals,
   revengeGoals,
   revengeThreshold,
+  shortGoals,
 } from "./goals.ts";
 import { formMemory, type Memories } from "./memory.ts";
 import type { Mind, SchemaDef, ValueId } from "./mind.ts";
@@ -99,5 +103,45 @@ describe("objetivos como peso de impulsos", () => {
     expect(c.born.map((g) => g.id)).toEqual(["core:power"]);
     expect(c.ended).toEqual([]);
     expect(goalChanges([a, b], [b]).ended.map((g) => g.id)).toEqual(["core:family"]);
+  });
+});
+
+describe("capas derivadas", () => {
+  const mind: Mind = {
+    schemas: { family_first: { strength: 0.8, causes: ["event:5" as EventId] } },
+    formative: [],
+    originEventId: ORIGIN,
+  };
+  const core = coreGoals({ family: 0.4 } as Record<ValueId, number>, [], mind, 0);
+
+  it("el largo sale del núcleo respaldado por un esquema fuerte", () => {
+    const l = longGoals(core, mind, 3);
+    expect(l[0]).toMatchObject({ id: "long:family", layer: "long", parent: "core:family" });
+    expect(longGoals(core, { ...mind, schemas: {} }, 3)).toEqual([]);
+  });
+
+  it("el mediano nace de familia, deuda y rival con memoria; sin memoria no", () => {
+    const rel = { who: A, resentment: 0.4, closeness: 0.7, kin: true, debt: 0.5 };
+    const g = mediumGoals([rel], base, core);
+    expect(g.map((x) => x.id).sort()).toEqual([
+      `medium:debt:${A}`,
+      `medium:kin:${A}`,
+      `medium:rival:${A}`,
+    ]);
+    expect(g.find((x) => x.id === `medium:kin:${A}`)?.parent).toBe("core:family");
+    expect(mediumGoals([rel], { ...base, memories: undefined }, core)).toEqual([]);
+  });
+
+  it("el corto sale de las necesidades que apremian y es determinista", () => {
+    const g = shortGoals({ hunger: 0.9, rest: 0.2, social: 0.6 }, core, ORIGIN, 1);
+    expect(g.map((x) => x.id)).toEqual(["short:hunger", "short:social"]);
+    expect(g[1]?.parent).toBe("core:family");
+    expect(shortGoals({ hunger: 0.9, rest: 0.2, social: 0.6 }, core, ORIGIN, 1)).toEqual(g);
+  });
+
+  it("layerDrives empuja poco", () => {
+    const g = shortGoals({ hunger: 1 }, core, ORIGIN, 1);
+    const d = layerDrives({ needs: {}, values: { safety: 0.1 } }, g);
+    expect(d.values.safety).toBeCloseTo(0.1 + 0.02 * 0.5, 6);
   });
 });
