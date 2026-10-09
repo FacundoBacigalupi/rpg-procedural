@@ -96,6 +96,10 @@
     "id": "percept.action.consult",
     "lines": ["{who} le paga a alguien para que le lea la suerte.", "Ves a {who} consultando."]
   },
+  {
+    "id": "percept.action.ponder",
+    "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
+  },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
   { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
 
