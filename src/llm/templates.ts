@@ -180,6 +180,10 @@ export function renderView(
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");
   }
+  for (const o of view.offenses) {
+    say(`offense.${o.role}.${o.response}`, { who: o.who });
+    if (book.has(`offense.norm.${o.norm}`)) say(`offense.norm.${o.norm}`);
+  }
   for (const r of view.readings) {
     say("reading.cast", { who: r.diviner, instrument: r.instrument, signs: r.signs.join(", ") });
     say(`reading.told.${r.told}.${r.strength}`, { who: r.diviner });
