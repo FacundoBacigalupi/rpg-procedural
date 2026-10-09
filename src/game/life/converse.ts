@@ -8,6 +8,7 @@ import {
   type AgentId,
   type Duration,
   type EntityRef,
+  type EventId,
   type HolderRef,
   holderAccount,
   type LedgerUnit,
@@ -31,6 +32,7 @@ import {
   type Credit,
   callName,
   clampTemper,
+  credulity,
   DEFENSE_DELTAS,
   type DetectionInput,
   type DimensionDef,
@@ -45,6 +47,7 @@ import {
   type GoodDef,
   goodUnit,
   HEARD,
+  type HeardProphecy,
   hear,
   honestyShift,
   INNATE,
@@ -58,6 +61,7 @@ import {
   OWN_DEEDS,
   PERSON,
   PERSON_NAME,
+  PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
   RELATIONS,
@@ -82,7 +86,9 @@ import {
   type Trait,
   table,
   threatCredibility,
+  transmit,
   understand,
+  utter,
   villageCulture,
   worstDeed,
 } from "../../sim/index.ts";
@@ -561,6 +567,75 @@ export interface RegardEffect {
   readonly deltas: Readonly<Record<string, number>>;
 }
 
+/** Constantes sin calibrar de una profecía que quien habla se inventa o no sabe de dónde salió. */
+const SPOKEN_INTENSITY = 0.5;
+const SPOKEN_CONVICTION = 0.35;
+
+/**
+ * Lo que deja en el `action.speak` del oyente una profecía contada (divination §5): ya deformada
+ * por `transmit` con un id de evento provisional (`life.retold` lo corrige con el evento real y
+ * la anota en las creencias de los dos). `fresh`: quien habla no sabía de ninguna así, la dice de
+ * su cabeza y nace con el evento (método `spoken`).
+ */
+export interface ToldProphecy {
+  readonly speaker: AgentId;
+  readonly listener: AgentId;
+  readonly verdict: "believed" | "doubted" | "dismissed";
+  readonly fresh: boolean;
+  /** Lo que quien habla decía antes de contarla (la raíz de una profecía nueva sale de acá). */
+  readonly told: HeardProphecy;
+  readonly heard: HeardProphecy;
+}
+
+/** El evento que todavía no existe cuando se pesa lo contado. */
+const PROVISIONAL = 0 as unknown as EventId;
+
+/**
+ * La profecía que `speaker` le cuenta a `me` (la que él cree o, si no sabe de ninguna así, la que
+ * dice de su cabeza) tal como le llega: credulidad del oyente (curiosidad), confianza en quien
+ * cuenta (la relación) y dramatismo de quien cuenta (su reactividad). Undefined si no se entiende
+ * de quién es.
+ */
+function prophecyOf(
+  truth: ReadonlyWorldTruth,
+  o: ConverseOptions,
+  act: Extract<SpeechAct, { kind: "prophesy" }>,
+  ctx: { me: AgentId; speaker: AgentId; now: Tick },
+  feel: { trust: number },
+  z: Readonly<Record<string, number>>,
+  rng: ProcessContext["rng"],
+): { told: HeardProphecy; heard: HeardProphecy; fresh: boolean } | undefined {
+  if (act.about === null) return undefined;
+  const { me, speaker, now } = ctx;
+  const subject = act.about === "you" ? me : act.about;
+  const known = (truth.get(PROPHECY_BELIEFS, speaker)?.items ?? [])
+    .filter((p) => p.claim.subject === subject && p.claim.kind === act.claim)
+    .sort((a, b) => b.credence - a.credence || (a.id < b.id ? -1 : 1))[0];
+  const told =
+    known ??
+    utter(
+      speaker,
+      { kind: act.claim, subject, intensity: SPOKEN_INTENSITY },
+      "spoken",
+      SPOKEN_CONVICTION,
+      PROVISIONAL,
+      now,
+    );
+  const curious = clampTemper(z["curiosity"] ?? 0);
+  const innate = truth.get(INNATE, speaker);
+  const sz = innate
+    ? standardize(innate, o.traits, truth.get(PERSON, speaker)?.sex ?? "female")
+    : {};
+  const hearer = {
+    id: me,
+    credulity: credulity({ tradition: 0.5 - 0.5 * curious, curiosity: 0.5 + 0.5 * curious }),
+    trustInTeller: Math.min(1, Math.max(-1, feel.trust)),
+  };
+  const drama = unit(0.5 + 0.5 * clampTemper(sz["reactivity"] ?? 0));
+  const heard = transmit(told, speaker, hearer, drama, PROVISIONAL, now, rng);
+  return { told, heard, fresh: known === undefined };
+}
+
 export function converseProcess(o: ConverseOptions): ProcessDef {
   const speak = o.catalog.verb("speak");
   return {
@@ -583,6 +658,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       INNATE.name,
       CREDIT.name,
       SECRETS.name,
+      PROPHECY_BELIEFS.name,
       BODY_STATE.name,
       PERSON.name,
       PERSON_NAME.name,
@@ -628,12 +704,25 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
       }).dims;
       const recollection = recollect(truth.get(MEMORIES, me), speaker, ctx.now);
+      const prophecy =
+        act.kind === "prophesy"
+          ? prophecyOf(
+              truth,
+              o,
+              act,
+              { me, speaker, now: ctx.now },
+              feel,
+              z,
+              ctx.rng.fork("prophecy", pending.key),
+            )
+          : undefined;
       const reply = decideReply(
         {
           act,
           speaker,
           listener: me,
           feel,
+          ...(prophecy ? { prophecy: { credence: prophecy.heard.credence } } : {}),
           ...(act.kind === "tell"
             ? {
                 detect: detectionOf(
@@ -772,6 +861,19 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                       : {}),
                     ...(reply.accusation.defense ? { defense: reply.accusation.defense } : {}),
                   },
+                }
+              : {}),
+            // Una profecía contada: `life.retold` la anota en los dos con el salto en el linaje.
+            ...(prophecy && reply.prophecy
+              ? {
+                  prophecy: {
+                    speaker,
+                    listener: me,
+                    verdict: reply.prophecy.verdict,
+                    fresh: prophecy.fresh,
+                    told: prophecy.told,
+                    heard: prophecy.heard,
+                  } satisfies ToldProphecy,
                 }
               : {}),
             // Una promesa que tomó por hecha: `life.pledge` abre el compromiso con este dato.

@@ -121,6 +121,11 @@ export interface ReplyInput {
    * (pesa con `weighAccusation`) o como acusado (se defiende). Sin esto la toma como charla.
    */
   readonly accuse?: AccuseInput;
+  /**
+   * Cuánto le cree el oyente a la profecía que le cuentan (0-1, ya con credulidad, confianza en
+   * quien cuenta y pérdida por salto: `transmit`). Sin esto la toma como charla.
+   */
+  readonly prophecy?: { readonly credence: number };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -196,7 +201,13 @@ export interface Reply {
   readonly caught?: CaughtLie;
   /** La acusación pesada: cómo cayó en el oyente o cómo se defendió el acusado, y si iba sin respaldo. */
   readonly accusation?: AccuseOutcome;
+  /** Cómo tomó el oyente la profecía que le contaron (solo si `prophecy` estaba). */
+  readonly prophecy?: { readonly verdict: "believed" | "doubted" | "dismissed" };
 }
+
+/** Crédito desde el que el oyente se toma en serio una profecía contada, y desde el que la duda. */
+export const PROPHECY_BELIEVED = 0.45;
+export const PROPHECY_DOUBTED = 0.2;
 
 /** Confianza desde la que el oyente da por buena una promesa de quien habla. */
 export const PROMISE_CREDENCE = 0.3;
@@ -416,6 +427,19 @@ export function decideReply(i: ReplyInput, at: number): Reply {
         ...say(`accuse.${heard.verdict}`, { name: i.nameOf(input.accused) }),
         accusation: { accused: input.accused, kind: a.deed, unbacked: input.cited === null, heard },
       };
+    }
+    case "prophesy": {
+      if (a.about === null) return say("prophesy.unclear");
+      const input = i.prophecy;
+      if (!input) return say("other");
+      const verdict =
+        input.credence >= PROPHECY_BELIEVED
+          ? "believed"
+          : input.credence >= PROPHECY_DOUBTED
+            ? "doubted"
+            : "dismissed";
+      const self = a.about === "you";
+      return { ...say(`prophesy.${verdict}${self ? ".self" : ""}`), prophecy: { verdict } };
     }
     case "other":
       return say("other");
