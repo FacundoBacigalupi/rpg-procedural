@@ -196,6 +196,9 @@ export interface Reply {
     readonly good: string | null;
     readonly grams: number | null;
     readonly terms?: PromiseTerms;
+    /** Un favor prometido (verbo del catálogo) o callar un secreto, en vez de dar. */
+    readonly favor?: string;
+    readonly silence?: true;
   };
   /** Cómo juzgó el oyente lo que le contaron (solo si `detect` estaba): confianza y memoria salen de acá. */
   readonly judgement?: LieJudgement;
@@ -362,7 +365,8 @@ function decideBody(i: ReplyInput, at: number): Reply {
       };
     }
     case "promise": {
-      if (a.good === null && a.grams === null) return say("promise.vague");
+      const service = a.favor !== undefined || a.silence === true;
+      if (a.good === null && a.grams === null && !service) return say("promise.vague");
       const trust = credence(i.feel, memory, {
         overdue: i.owes?.overdue === true,
         reproach: Boolean(i.reproach),
@@ -375,6 +379,8 @@ function decideBody(i: ReplyInput, at: number): Reply {
           good: a.good,
           grams: a.grams,
           ...(a.terms ? { terms: a.terms } : {}),
+          ...(a.favor !== undefined ? { favor: a.favor } : {}),
+          ...(a.silence ? { silence: true as const } : {}),
         },
       };
     }

@@ -1262,7 +1262,25 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 }
               : {}),
             // Una promesa que tomó por hecha: `life.pledge` abre el compromiso con este dato.
-            ...(reply.pledge ? { pledge: reply.pledge } : {}),
+            // Si es callar, de qué: el secreto de más costo que guarda quien lo oyó (o él mismo).
+            ...(reply.pledge
+              ? {
+                  pledge: reply.pledge.silence
+                    ? {
+                        ...reply.pledge,
+                        about: String(
+                          [...(truth.get(SECRETS, me)?.items ?? [])].sort(
+                            (a, b) => b.stakes - a.stakes,
+                          )[0]?.about ?? me,
+                        ),
+                        stakes: [...(truth.get(SECRETS, me)?.items ?? [])].reduce(
+                          (m, s) => Math.max(m, s.stakes),
+                          0,
+                        ),
+                      }
+                    : reply.pledge,
+                }
+              : {}),
             ...(reply.secret
               ? {
                   keep: {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, Event } from "../../core/index.ts";
 import { extendPledge, isPledgeOverdue, makePledge } from "../../sim/index.ts";
-import { believedOwed, favorDoneIn, leakedIn, promisedIn } from "./pledges.ts";
+import { believedOwed, favorDoneIn, leakedIn, promisedIn, promisedServiceIn } from "./pledges.ts";
 
 const A = "agent:1" as AgentId;
 const B = "agent:2" as AgentId;
@@ -86,5 +86,24 @@ describe("términos sueltos de una promesa dicha", () => {
     const p = promisedIn(said({ good: "grain", grams: 1000 }));
     expect(p?.grams).toBe(1000);
     expect(p?.terms).toBeUndefined();
+  });
+});
+
+describe("promesas de favor y de callar dichas", () => {
+  const said = (pledge: unknown) => ev("action.speak", [B, A], { effect: { pledge } });
+  it("el favor prometido viaja con el verbo y no es una promesa de dar", () => {
+    const e = said({ good: null, grams: null, favor: "work" });
+    expect(promisedIn(e)).toBeNull();
+    const s = promisedServiceIn(e);
+    expect(s).toMatchObject({ promisor: A, promisee: B, term: { kind: "favor", what: "work" } });
+  });
+  it("callar toma el secreto y pesa por lo que cuesta, con piso", () => {
+    const heavy = promisedServiceIn(
+      said({ good: null, grams: null, silence: true, about: C, stakes: 0.8 }),
+    );
+    expect(heavy).toMatchObject({ term: { kind: "silence", about: C }, weight: 0.8 });
+    const light = promisedServiceIn(said({ good: null, grams: null, silence: true, stakes: 0 }));
+    expect(light?.weight).toBe(0.3);
+    expect(promisedServiceIn(said({ good: "grain", grams: 100 }))).toBeNull();
   });
 });

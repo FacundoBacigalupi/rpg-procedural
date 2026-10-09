@@ -83,6 +83,58 @@ export function promisedIn(e: Event): {
   return { promisor, promisee, good, grams: scaled, terms };
 }
 
+/** Peso de una promesa de favor (lo que se juega es poco) y piso del de callar. */
+export const FAVOR_WEIGHT = 0.4;
+export const SILENCE_MIN_WEIGHT = 0.3;
+
+/**
+ * Una promesa de favor o de callar que el oyente tomó por hecha (`effect.pledge.favor|silence`):
+ * quién prometió, a quién y el término; null si no es de esas.
+ */
+export function promisedServiceIn(e: Event): {
+  promisor: AgentId;
+  promisee: AgentId;
+  term: PledgeTerm;
+  weight: number;
+  terms: PromiseTerms | undefined;
+} | null {
+  if (e.kind !== "action.speak") return null;
+  const eff = (
+    e.data as {
+      effect?: {
+        pledge?: {
+          favor?: string;
+          silence?: boolean;
+          about?: string;
+          stakes?: number;
+          terms?: PromiseTerms;
+        };
+      };
+    } | null
+  )?.effect?.pledge;
+  const [promisee, promisor] = e.actors as AgentId[];
+  if (!promisee || !promisor || !eff) return null;
+  if (eff.favor) {
+    return {
+      promisor,
+      promisee,
+      term: { kind: "favor", what: eff.favor },
+      weight: FAVOR_WEIGHT,
+      terms: eff.terms,
+    };
+  }
+  if (eff.silence) {
+    return {
+      promisor,
+      promisee,
+      term: { kind: "silence", about: eff.about ?? String(promisee) },
+      weight: Math.max(SILENCE_MIN_WEIGHT, Math.min(1, eff.stakes ?? 0)),
+      terms: eff.terms,
+    };
+  }
+  return null;
+}
+
 /** ¿Este evento es el promitente haciendo el favor prometido al destinatario? (verbo = `what`). */
 export function favorDoneIn(e: Event, p: Pledge): boolean {
   if (p.term.kind !== "favor" || !e.kind.startsWith("action.")) return false;
@@ -148,7 +200,59 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
           ])
           .filter(([, p]) => p.status === "open");
       };
+      const witnessesOf = (promisor: AgentId, promisee: AgentId): AgentId[] => {
+        const spot = truth.get(LOCATION, promisee);
+        return truth
+          .ids(PERSON)
+          .map((id) => id as AgentId)
+          .filter((id) => {
+            const at = truth.get(LOCATION, id);
+            return (
+              id !== promisor &&
+              id !== promisee &&
+              alive(truth, id) &&
+              spot !== undefined &&
+              at !== undefined &&
+              at.hex === spot.hex &&
+              at.space === spot.space
+            );
+          });
+      };
+      const open = (id: string, e: Event, pledge: Pledge) => {
+        changes.push(createEntity(id as never, e.id, e.tick));
+        live.set(id, pledge);
+        for (const [who, role] of [
+          [pledge.promisor, "promisor"],
+          [pledge.promisee, "promisee"],
+        ] as const) {
+          const belief = believePledge(id, pledge, role, ctx.rng.fork("pledge", id, role));
+          const book = remember(bookOf(who), belief, ctx.now);
+          books.set(who, book);
+          changes.push(setComponent(PLEDGE_BOOK, who, book));
+        }
+      };
       for (const e of ctx.recent) {
+        const service = promisedServiceIn(e);
+        if (service) {
+          if (!alive(truth, service.promisor) || !alive(truth, service.promisee)) continue;
+          const id = ctx.newId("commitment");
+          open(id, e, {
+            ...makePledge({
+              promisor: service.promisor,
+              promisee: service.promisee,
+              term: service.term,
+              at: e.tick,
+              weight: service.weight,
+              ...(service.terms?.dueDays !== undefined ? { dueInDays: service.terms.dueDays } : {}),
+              ...(service.terms?.precision !== undefined
+                ? { precision: service.terms.precision }
+                : {}),
+              witnesses: witnessesOf(service.promisor, service.promisee),
+            }),
+            history: [e.id],
+          });
+          continue;
+        }
         const p = promisedIn(e);
         if (!p) {
           // Un favor hecho o un secreto soltado cierra la promesa de favor o de callar.
@@ -238,22 +342,7 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
         }
         const good = o.goods.find((g) => g.id === p.good);
         if (!good || !alive(truth, p.promisor) || !alive(truth, p.promisee)) continue;
-        const spot = truth.get(LOCATION, p.promisee);
-        const witnesses = truth
-          .ids(PERSON)
-          .map((id) => id as AgentId)
-          .filter((id) => {
-            const at = truth.get(LOCATION, id);
-            return (
-              id !== p.promisor &&
-              id !== p.promisee &&
-              alive(truth, id) &&
-              spot !== undefined &&
-              at !== undefined &&
-              at.hex === spot.hex &&
-              at.space === spot.space
-            );
-          });
+        const witnesses = witnessesOf(p.promisor, p.promisee);
         const id = ctx.newId("commitment");
         const grams = p.grams;
         const pledge = {
@@ -269,17 +358,7 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
           }),
           history: [e.id],
         };
-        changes.push(createEntity(id, e.id, e.tick));
-        live.set(id, pledge);
-        for (const [who, role] of [
-          [p.promisor, "promisor"],
-          [p.promisee, "promisee"],
-        ] as const) {
-          const belief = believePledge(id, pledge, role, ctx.rng.fork("pledge", id, role));
-          const book = remember(bookOf(who), belief, ctx.now);
-          books.set(who, book);
-          changes.push(setComponent(PLEDGE_BOOK, who, book));
-        }
+        open(id, e, pledge);
       }
       for (const [id, p] of [...live].sort(([a], [b]) => (a < b ? -1 : 1))) {
         changes.push(setComponent(PLEDGE, id as never, p));
