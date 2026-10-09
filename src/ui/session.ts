@@ -97,6 +97,8 @@ import {
 import {
   INSPECTOR_HELP,
   inspect,
+  narrationRejected,
+  narratorRepro,
   type ReplayInput,
   replayInputFromStore,
   replayLifeAt,
@@ -247,6 +249,21 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       { ...request, continuity: continuityFor(memory, keys, placeKey, hazy) },
       { templates: book, rng: Rng.root(seed).fork("narration", at) },
     );
+    // Si el validador rechazó al modelo, queda el paquete para reproducirlo (tooling §9).
+    if (narrationRejected(told)) {
+      store.setMeta(
+        "repro.narrator",
+        narratorRepro({
+          versions: VERSIONS,
+          seed,
+          setup: store.getMeta("setup") as LifeSetup,
+          plans: store.plans().map((p) => p.plan),
+          tick: at,
+          request,
+          narration: told,
+        }),
+      );
+    }
     // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
     if (thinking === undefined && (report !== null || savedMemory === undefined)) {
       const known = new Map([...keys].filter(([id]) => !hazy.has(id)));

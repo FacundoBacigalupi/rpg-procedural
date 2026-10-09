@@ -46,6 +46,19 @@ export interface ReproPackage {
   readonly plans: readonly unknown[];
   readonly tick: Tick;
   readonly problems: readonly string[];
+  /** Solo en `kind: "narrator"`: lo que vio el narrador y lo que salió (tooling §9). */
+  readonly narrator?: NarratorRepro;
+}
+
+/** La vista, el prompt y la salida de un turno de narración rechazado por el validador. */
+export interface NarratorRepro {
+  /** El `PlayerView` con el que se armó el pedido (nunca la verdad: narration §2). */
+  readonly view: unknown;
+  readonly system: string;
+  readonly user: string;
+  /** Lo que se mostró en su lugar (plantillas) y por qué no se usó el modelo. */
+  readonly output: string;
+  readonly source: "llm" | "templates";
 }
 
 export interface SimReport {
