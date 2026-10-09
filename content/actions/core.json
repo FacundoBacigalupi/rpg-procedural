@@ -255,6 +255,7 @@
     "duration": { "kind": "fixed", "seconds": 5 },
     "checkpoint": 1,
     "emissions": { "sight": 0.9, "sound": 0.5 },
+    "serves": { "justice": 0.2, "power": 0.1 },
     "resolver": "strike",
     "ease": 0.4,
     "factors": {
@@ -298,6 +299,7 @@
     "duration": { "kind": "fixed", "seconds": 5 },
     "checkpoint": 5,
     "emissions": { "sight": 0.6, "sound": 0.3 },
+    "serves": { "justice": 0.2, "family": 0.1 },
     "resolver": "spare",
     "ease": 3,
     "failureModes": [{ "id": "not_here", "factor": "position" }],
@@ -359,6 +361,7 @@
     "duration": { "kind": "fixed", "seconds": 60 },
     "checkpoint": 30,
     "emissions": { "sight": 0.5, "sound": 0.2 },
+    "serves": { "family": 0.2, "social": 0.3, "status": 0.1, "wealth": -0.3 },
     "resolver": "give",
     "ease": 3,
     "failureModes": [
@@ -432,6 +435,7 @@
     "duration": { "kind": "fixed", "seconds": 300 },
     "checkpoint": 60,
     "emissions": { "sight": 0.2, "sound": 0.1 },
+    "serves": { "safety": 0.2, "wealth": 0.1 },
     "resolver": "store",
     "ease": 3,
     "failureModes": [
@@ -455,6 +459,7 @@
     "duration": { "kind": "fixed", "seconds": 2700 },
     "checkpoint": 300,
     "emissions": { "sight": 0.3, "sound": 0.2 },
+    "serves": { "hunger": 0.4, "family": 0.2 },
     "resolver": "cook",
     "ease": 1,
     "factors": {
@@ -570,6 +575,7 @@
     "duration": { "kind": "fixed", "seconds": 900 },
     "checkpoint": 120,
     "emissions": { "sight": 0.3, "sound": 0.4 },
+    "serves": { "knowledge": 0.4, "social": 0.1 },
     "resolver": "consult",
     "ease": 1.5,
     "factors": {
