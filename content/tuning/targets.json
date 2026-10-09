@@ -1,0 +1,29 @@
+[
+  {
+    "id": "no-invariant-break",
+    "feel": "ninguna corrida de 5 años viola un invariante",
+    "metric": "stoppedEarly",
+    "stat": "max",
+    "expect": { "max": 0 },
+    "seeds": "1..5",
+    "years": 5
+  },
+  {
+    "id": "ledger-conserves",
+    "feel": "los bienes y el dinero se conservan: el libro mayor cierra siempre",
+    "metric": "metrics.ledgerProblems",
+    "stat": "max",
+    "expect": { "max": 0 },
+    "seeds": "1..5",
+    "years": 5
+  },
+  {
+    "id": "village-survives",
+    "feel": "la aldea no se apaga en 5 años: quedan vivos al menos unos cuantos",
+    "metric": "metrics.agentsAlive",
+    "stat": "min",
+    "expect": { "min": 5 },
+    "seeds": "1..5",
+    "years": 5
+  }
+]

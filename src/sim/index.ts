@@ -27,5 +27,6 @@ export * from "./settlements/index.ts";
 export * from "./skills/index.ts";
 export * from "./sky/index.ts";
 export * from "./social/index.ts";
+export * from "./tuning/index.ts";
 export * from "./weather/index.ts";
 export * from "./world/index.ts";

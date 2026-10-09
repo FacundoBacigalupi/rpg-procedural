@@ -1,4 +1,4 @@
-// `npm run sim:batch -- --seeds 1..20 --years 5 [--frequency N] [--check-days N] [--out sim-reports] [--html]`:
+// `npm run sim:batch -- --seeds 1..20 --years 5 [--scenario id] [--frequency N] [--check-days N] [--out sim-reports] [--html]`:
 // corre la sim headless en varios seeds y deja `batch.json` (resumen por métrica) y, con `--html`,
 // `batch.html` (tooling §6). Sale con código 1 si alguna corrida se detuvo por un invariante.
 
@@ -10,11 +10,13 @@ import { loadContentDir } from "../../persistence/index.ts";
 import { parseSeeds, runBatch } from "./batch.ts";
 import { diffMetrics } from "./diff.ts";
 import { renderDiffHtml } from "./html.ts";
+import { findScenario, scenarioRun } from "./scenario.ts";
 
 const { values } = parseArgs({
   options: {
     seeds: { type: "string", default: "1..5" },
-    years: { type: "string", default: "1" },
+    years: { type: "string" },
+    scenario: { type: "string" },
     frequency: { type: "string" },
     "check-days": { type: "string" },
     out: { type: "string", default: "sim-reports" },
@@ -22,16 +24,22 @@ const { values } = parseArgs({
   },
 });
 
-const years = Number(values.years);
+const content = loadContentDir("content", GAME_CONTENT_KINDS);
+const frequency = values.frequency === undefined ? undefined : Number(values.frequency);
+const scenario =
+  values.scenario === undefined
+    ? undefined
+    : scenarioRun(findScenario(content, values.scenario), frequency);
+const years = Number(values.years ?? scenario?.years ?? 1);
 if (!(years > 0)) throw new Error(`años inválidos: ${values.years}`);
 const seeds = parseSeeds(values.seeds);
 
 const result = runBatch(seeds, {
   years,
-  content: loadContentDir("content", GAME_CONTENT_KINDS),
-  setup: {
+  content,
+  setup: scenario?.setup ?? {
     game: defaultGameSetup("realistic"),
-    ...(values.frequency === undefined ? {} : { frequency: Number(values.frequency) }),
+    ...(frequency === undefined ? {} : { frequency }),
   },
   ...(values["check-days"] === undefined ? {} : { checkEveryDays: Number(values["check-days"]) }),
 });

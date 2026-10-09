@@ -20,6 +20,7 @@
     "sim": "node src/tools/sim/main.ts",
     "sim:batch": "node src/tools/sim/batch-main.ts",
     "sim:diff": "node src/tools/sim/diff-main.ts",
+    "sim:tune": "node src/tools/sim/tune-main.ts",
     "llm-bench": "node src/tools/llm-bench/main.ts",
     "web": "node src/ui/web/main.ts"
   },
