@@ -19,15 +19,20 @@ import {
   BELIEFS,
   beliefConfidenceAt,
   checkInvariants,
+  diffSnapshots,
   ENTITY,
+  formatSnapshotDiff,
   isMistaken,
   MEMORIES,
   type Pressure,
   salient,
+  snapshotTruth,
   truthOf,
 } from "../../sim/index.ts";
 
 /** Cuántos eventos lista como máximo cada comando que recorre el registro. */
+import type { PastLife } from "./at.ts";
+
 export const INSPECT_LIMIT = 40;
 
 /** Comandos de sistemas que llegan en fases posteriores: nombre → dónde aparecen. */
@@ -44,9 +49,11 @@ export const INSPECTOR_HELP = [
   "  timeline [n] · body <agente> · view · ledger <cuenta> · invariants · hash",
   "  memories [agente] · wrong [agente] · percepts [agente] [tick] · rumor <id>",
   "  pressures [tipo] · pressure <tipo> <id> · hazard",
+  "  at <tick> <comando> (el comando como era en ese tick) · diff <desde> [hasta]",
 ].join("\n");
 
-export function inspect(life: Life, line: string): string {
+/** `past` rehace la vida en un tick pasado (`at`, `diff`); sin él esos comandos avisan. */
+export function inspect(life: Life, line: string, past?: PastLife): string {
   const [cmd = "", ...args] = line.trim().split(/\s+/);
   const arg = args[0];
   switch (cmd.toLowerCase()) {
@@ -90,6 +97,10 @@ export function inspect(life: Life, line: string): string {
       return percepts(life, arg ?? life.player, args[1]);
     case "hazard":
       return hazard(life);
+    case "at":
+      return at(life, args, past);
+    case "diff":
+      return diff(life, args, past);
     default: {
       const later = LATER[cmd.toLowerCase()];
       return later
@@ -97,6 +108,55 @@ export function inspect(life: Life, line: string): string {
         : `Comando desconocido: ${cmd}. Escribí «help».`;
     }
   }
+}
+
+function tickArg(life: Life, text: string | undefined): number | undefined {
+  const t = Number(text);
+  return text !== undefined && Number.isInteger(t) && t >= 0 && t <= life.now ? t : undefined;
+}
+
+function at(life: Life, args: string[], past: PastLife | undefined): string {
+  const rest = args.slice(1).join(" ");
+  if (!args[0] || !rest) return "at <tick> <comando>";
+  if (/^(at|diff)$/i.test(args[1] ?? "")) return "at no se anida.";
+  const t = tickArg(life, args[0]);
+  if (t === undefined) return `El tick tiene que estar entre 0 y ${life.now}.`;
+  if (t === life.now) return inspect(life, rest);
+  if (!past) return "No hay cómo rehacer la vida en un tick pasado.";
+  const then = rewind(past, t);
+  return typeof then === "string"
+    ? then
+    : `[t${t}]
+${inspect(then, rest)}`;
+}
+
+/** La vida en `t`, o el motivo por el que no se pudo rehacer. */
+function rewind(past: PastLife, t: number): Life | string {
+  try {
+    return past(t);
+  } catch (e) {
+    return e instanceof RangeError ? e.message : `No se pudo rehacer t${t}: ${String(e)}`;
+  }
+}
+
+function snapshotOf(life: Life) {
+  const pressures: Record<string, number> = {};
+  for (const p of lifePressures(life.world)) pressures[`${p.kind}@${p.scope.ref}`] = p.value;
+  return snapshotTruth(life.world.truth, life.now, pressures);
+}
+
+function diff(life: Life, args: string[], past: PastLife | undefined): string {
+  const from = tickArg(life, args[0]);
+  const to = args[1] === undefined ? life.now : tickArg(life, args[1]);
+  if (from === undefined || to === undefined || from > to) return "diff <desde> [hasta]";
+  if (from === to) return `diff t${from} → t${to}: nada cambió.`;
+  if (!past) return "No hay cómo rehacer la vida en un tick pasado.";
+  const open = (t: number): Life | string => (t === life.now ? life : rewind(past, t));
+  const a = open(from);
+  const b = open(to);
+  if (typeof a === "string") return a;
+  if (typeof b === "string") return b;
+  return formatSnapshotDiff(diffSnapshots(snapshotOf(a), snapshotOf(b)));
 }
 
 function show(value: unknown): string {

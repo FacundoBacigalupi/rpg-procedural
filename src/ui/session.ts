@@ -94,7 +94,13 @@ import {
   STATUSES,
   unknownNote,
 } from "../sim/index.ts";
-import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
+import {
+  INSPECTOR_HELP,
+  inspect,
+  type ReplayInput,
+  replayInputFromStore,
+  replayLifeAt,
+} from "../tools/index.ts";
 import {
   elapsed,
   renderAbout,
@@ -403,7 +409,13 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
         store.setMeta("inspected", true);
         const rest = text.replace(/^(?:abrir el )?\S+\s*/i, "");
-        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest) };
+        const past = (t: number) =>
+          replayLifeAt(
+            options.content,
+            replayInputFromStore(store).input as ReplayInput<LifeSetup, ActionPlan>,
+            t,
+          );
+        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest, past) };
       }
       return { text: HELP };
     }
