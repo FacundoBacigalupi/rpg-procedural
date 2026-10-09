@@ -78,6 +78,7 @@ import {
   PERSON_NAME,
   planFromDraft,
   renderWarnings,
+  STATUSES,
 } from "../sim/index.ts";
 import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
 import {
@@ -173,7 +174,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       styleOf(DEFAULT_NARRATION, "es"),
       ambienceOf(view.scene, ambience),
       {
-        voice: voiceOf(characterVoiceData(life.world.truth, life.world.skills, life.player)),
+        voice: voiceOf(
+          characterVoiceData(
+            life.world.truth,
+            life.world.skills,
+            life.player,
+            options.content.all(STATUSES),
+          ),
+        ),
         vocabulary: characterLexicon(lexicon, believedConcepts(life.world.truth, life.player)),
       },
     );
