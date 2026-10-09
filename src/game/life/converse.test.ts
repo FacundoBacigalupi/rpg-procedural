@@ -446,3 +446,29 @@ describe("la etiqueta que el jugador declara", () => {
     expect(loss(speakTo(["formal"]))).toBeLessThan(plain);
   }, 120_000);
 });
+
+describe("la pregunta por un hecho es un law.inquiry", () => {
+  it("quien pregunta por alguien en un hecho que conoce abre la consulta y el testigo declara", () => {
+    const { life, w, me, other, mates } = scene(7);
+    const third = mates.find((id) => id !== other);
+    if (!third) return;
+    const deed = {
+      kind: "theft",
+      by: third,
+      victim: me,
+      event: w.log.all()[0]?.id as EventId,
+      at: life.now,
+      via: "saw",
+    } as const;
+    w.truth.set(KNOWN_DEEDS, me, { deeds: [deed] });
+    w.truth.set(KNOWN_DEEDS, other, { deeds: [{ ...deed, by: null }] });
+    const report = life.turn(say(me, other, `¿Sabés dónde está ${nameOf(w, third)}?`), 1);
+    const speech = report.events.find((e) => e.actors[0] === me && e.kind === "action.speak");
+    const inquiry = report.events.find((e) => e.kind === "law.inquiry");
+    expect(inquiry?.actors).toEqual([me, other]);
+    expect((inquiry?.data as { deed: string } | undefined)?.deed).toBe(deed.event);
+    expect(inquiry?.causes.some((c) => c.kind === "event")).toBe(true);
+    expect(speech).toBeDefined();
+    expect(report.events.some((e) => e.kind === "law.testimony")).toBe(true);
+  }, 120_000);
+});

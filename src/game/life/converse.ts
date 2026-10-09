@@ -39,6 +39,7 @@ import {
   credulity,
   DEFAULT_FACE,
   DEFENSE_DELTAS,
+  type Deed,
   type DetectionInput,
   type DimensionDef,
   decideReply,
@@ -64,6 +65,7 @@ import {
   honestyShift,
   INNATE,
   KNOWN_DEEDS,
+  type KnownDeeds,
   type Language,
   type Lexicon,
   LOCATION,
@@ -119,6 +121,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { liveTaboos } from "./taboos.ts";
+import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
 
@@ -206,6 +209,23 @@ function worstOffense(j: FormJudgement): Offense | undefined {
     ...j.taboos.map((t) => ({ norm: t.taboo, size: t.size, gap: 0, witnesses: 0 })),
   ];
   return all.reduce<Offense | undefined>((w, x) => (!w || x.size > w.size ? x : w), undefined);
+}
+
+/**
+ * El hecho por el que pregunta quien pregunta: con una persona de por medio, el último hecho que
+ * conoce en que ella hizo o sufrió algo; sin ella, el último cuyo autor no sabe. Nunca uno que lo
+ * tenga a él por autor ni a quien responde (a quien se acusa no se lo interroga como testigo).
+ */
+export function deedAsked(
+  known: KnownDeeds | undefined,
+  about: AgentId | null,
+  witness: AgentId,
+): Deed | null {
+  const fit = (known?.deeds ?? []).filter((d) =>
+    about === null ? d.by === null : d.by === about || d.victim === about,
+  );
+  const sorted = [...fit].sort((a, b) => b.at - a.at || (a.event < b.event ? -1 : 1));
+  return sorted.find((d) => d.by !== witness) ?? null;
 }
 
 /** La gente que está donde ellos hablan, sin contarlos: los testigos de lo dicho. */
@@ -1120,6 +1140,20 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           causes: [{ kind: "event", event: draftEvent(0) }],
         };
       }
+      // La pregunta por un hecho (law §5): quien pregunta lo hace por uno que conoce y el testigo
+      // contesta en `life.testify` (causa: este acto de habla).
+      const asked =
+        act.kind === "ask" ? deedAsked(truth.get(KNOWN_DEEDS, speaker), act.about, me) : null;
+      const inquiryEvent: EventDraft | undefined = asked
+        ? {
+            kind: INQUIRY_EVENT,
+            actors: [speaker, me],
+            place: o.placeOf(truth, me),
+            data: { deed: asked.event } satisfies InquiryData,
+            emissions: {},
+            causes: [{ kind: "event", event: draftEvent(0) }],
+          }
+        : undefined;
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -1218,7 +1252,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       }
       return {
         changes,
-        events: offenseEvent ? [event, offenseEvent] : [event],
+        events: [
+          event,
+          ...(offenseEvent ? [offenseEvent] : []),
+          ...(inquiryEvent ? [inquiryEvent] : []),
+        ],
         postings:
           swaps.length > 0
             ? [
