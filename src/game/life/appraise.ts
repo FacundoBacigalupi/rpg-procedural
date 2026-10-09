@@ -14,6 +14,7 @@ import {
   addMemory,
   applyDeltas,
   appraiseFight,
+  appraiseGuilt,
   appraiseHardship,
   appraiseLoss,
   appraiseRearing,
@@ -30,6 +31,7 @@ import {
   form,
   formMemory,
   giveDeltas,
+  guiltOf,
   HABITS,
   type HabitDef,
   habitsFed,
@@ -42,6 +44,8 @@ import {
   type MentalState,
   MIND,
   type Mind,
+  OWN_DEEDS,
+  type OwnDeeds,
   openCondition,
   PERSON,
   type ProcessDef,
@@ -50,6 +54,7 @@ import {
   type Relations,
   reinforceAll,
   relationship,
+  rememberOwn,
   repaidDeltas,
   type SchemaDef,
   type StageDef,
@@ -58,10 +63,12 @@ import {
   spareDeltas,
   stageAt,
   TALK_FAMILIARITY,
+  type Trait,
   tendDeltas,
   tradeDeltas,
 } from "../../sim/index.ts";
 
+import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
 import { type Lived, livedFrom, lossLived } from "./memories.ts";
 
@@ -74,6 +81,7 @@ export interface AppraiseOptions {
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
+  readonly traits: readonly Trait[];
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -105,8 +113,9 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       MEMORIES.name,
       MENTAL.name,
       BODY_STATE.name,
+      OWN_DEEDS.name,
     ],
-    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name, MENTAL.name],
+    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name, MENTAL.name, OWN_DEEDS.name],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -145,8 +154,32 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         const m = formMemory(l.experience);
         mems.set(l.who, addMemory(mems.get(l.who) ?? truth.get(MEMORIES, l.who), m, m.at));
       };
+      const owns = new Map<AgentId, OwnDeeds>();
       for (const e of ctx.recent) {
         for (const l of livedFrom(e)) note(l);
+        // Quien hizo algo lo sabe, lo haya visto alguien o no: lo anota y lo carga (law §15).
+        const own = ownDeedOf(truth, e);
+        if (own && alive(truth, own.by) && truth.get(PERSON, own.by)) {
+          const { by, deed, fatal } = own;
+          owns.set(by, rememberOwn(owns.get(by) ?? truth.get(OWN_DEEDS, by), deed));
+          // Una muerte la carga `killAppraisals` (culpa y trauma); el resto, acá con `guiltOf`.
+          const guilt = guiltOf(deed, conscienceOf(truth, o, by, deed, e.tick), e.tick);
+          if (!fatal && guilt > 0) {
+            apply(by, e, appraiseGuilt(guilt));
+            const mental = mentals.get(by) ?? truth.get(MENTAL, by) ?? emptyMental(e.id, e.tick);
+            mentals.set(
+              by,
+              openCondition(
+                mental,
+                "guilt",
+                guilt,
+                e.id,
+                { who: deed.victim, place: e.place },
+                e.tick,
+              ),
+            );
+          }
+        }
         const fed = habitsFed(o.habits, e.kind);
         const doer = e.actors[0] as AgentId | undefined;
         if (fed.length > 0 && doer && alive(truth, doer) && truth.get(PERSON, doer)) {
@@ -233,6 +266,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...rels].map(([id, r]) => setComponent(RELATIONS, id, r)),
         ...[...mems].map(([id, m]) => setComponent(MEMORIES, id, m)),
         ...[...mentals].map(([id, m]) => setComponent(MENTAL, id, m)),
+        ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
       ];
       return changes.length === 0 ? {} : { changes };
     },

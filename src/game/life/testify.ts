@@ -7,6 +7,8 @@
 
 import type { AgentId, Event, EventId, PlaceRef, Rng, Tick } from "../../core/index.ts";
 import {
+  AMENDS,
+  admitsIt,
   type BondDef,
   clampTemper,
   type Deed,
@@ -18,6 +20,7 @@ import {
   KNOWN_DEEDS,
   learnDeed,
   MIND,
+  OWN_DEEDS,
   PERSON,
   type ProcessDef,
   RELATIONS,
@@ -26,6 +29,7 @@ import {
   relationship,
   type StateChange,
   setComponent,
+  stanceOf,
   standardize,
   type Testimony,
   type Trait,
@@ -162,16 +166,30 @@ export function giveTestimony(
   now: Tick,
   rng: Rng,
 ): { changes: StateChange[]; events: EventDraft[]; testimony: Testimony } | null {
+  const mine = truth.get(OWN_DEEDS, witness)?.deeds.find((d) => d.event === inq.deed);
   const deed = truth.get(KNOWN_DEEDS, witness)?.deeds.find((d) => d.event === inq.deed);
-  if (!deed) return null;
-  const p = witnessProfile(truth, o, witness, asker, deed, inq.bribe ?? 0, now);
-  const t = testify(
-    deed,
-    p.recall,
-    p.motives,
-    p.other,
-    rng.fork("testify", witness, asker, inq.deed),
-  );
+  if (!deed && !mine) return null;
+  // Si el hecho es suyo, no declara como testigo: lo reconoce o lo niega según lo que decidió
+  // hacer con su culpa (`AMENDS`), con lo que recuerda de sí, sin deformación.
+  let t: Testimony;
+  if (mine) {
+    const admits = admitsIt(stanceOf(truth.get(AMENDS, witness), mine.event));
+    t = {
+      kind: admits ? mine.kind : null,
+      accused: admits ? witness : null,
+      victim: mine.victim,
+      event: mine.event,
+      at: mine.at,
+      certainty: admits ? 1 : 0.5,
+      lie: { kind: admits ? "none" : "deny", motive: admits ? "none" : "fear", polish: 0.5 },
+      distortion: 0,
+    };
+  } else if (deed) {
+    const p = witnessProfile(truth, o, witness, asker, deed, inq.bribe ?? 0, now);
+    t = testify(deed, p.recall, p.motives, p.other, rng.fork("testify", witness, asker, inq.deed));
+  } else {
+    return null;
+  }
   const told = testimonyAsDeed(t, "told");
   const changes: StateChange[] = [];
   if (told && truth.get(ENTITY, asker)?.endedAt === undefined) {
@@ -220,7 +238,16 @@ export function testifyProcess(o: TestifyOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [KNOWN_DEEDS.name, RELATIONS.name, MIND.name, INNATE.name, PERSON.name, ENTITY.name],
+    reads: [
+      KNOWN_DEEDS.name,
+      OWN_DEEDS.name,
+      AMENDS.name,
+      RELATIONS.name,
+      MIND.name,
+      INNATE.name,
+      PERSON.name,
+      ENTITY.name,
+    ],
     writes: [KNOWN_DEEDS.name],
     run(ctx) {
       const changes: StateChange[] = [];
