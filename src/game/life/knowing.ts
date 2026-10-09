@@ -5,7 +5,7 @@
 // está ahí: la creencia envejece (la confianza decae por horas), no se corrige sola, y puede
 // quedar falsa. Nadie lee la verdad para saber dónde está el personaje.
 
-import type { AgentId, PlanetClock, Seed } from "../../core/index.ts";
+import type { AgentId, PlanetClock, Seed, Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -21,6 +21,7 @@ import {
   MENTAL,
   type Observer,
   PERSON,
+  type Percept,
   type ProcessDef,
   perceive,
   presenceStimulus,
@@ -39,6 +40,7 @@ import { impressionEvidence } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { learnReads, PURPOSE_READS } from "./reading.ts";
 import { playerObserver } from "./witness.ts";
+import { NPC_PERCEPTS } from "./witnessing.ts";
 
 export const KNOWING_PROCESS = "life.knowing";
 
@@ -57,6 +59,26 @@ export interface KnowingOptions {
 export const KNOWN_VILLAGER = 0.6;
 /** Cada cuántas horas los vecinos se miran entre sí (el costo crece con el cuadrado de la gente). */
 const NPC_PASS_HOURS = 12;
+
+/**
+ * Lo que `watcher` vio hacer a alguien que reconoció desde `since`: qué hacía y cómo se lo vio
+ * (figura, ropa, acción). Creencias de un NPC sobre otro.
+ */
+export function learnActions(
+  before: Beliefs | undefined,
+  percepts: readonly Percept[],
+  since: Tick,
+  now: Tick,
+): Beliefs | undefined {
+  let beliefs = before;
+  for (const pc of percepts) {
+    const who = pc.fields.identity?.value;
+    if (pc.tick <= since || pc.fields.action === undefined) continue;
+    if (pc.detail !== "identified" || typeof who !== "string") continue;
+    for (const imp of impressionEvidence(who as AgentId, pc)) beliefs = learn(beliefs, imp, now);
+  }
+  return beliefs;
+}
 
 export function knowingProcess(o: KnowingOptions): ProcessDef {
   return {
@@ -77,6 +99,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       MENTAL.name,
       PURPOSE_READS.name,
       PERCEPTS.name,
+      NPC_PERCEPTS.name,
     ],
     writes: [BELIEFS.name],
     run(ctx) {
@@ -206,6 +229,17 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
           acted = learn(acted, imp, ctx.now);
       }
       if (acted !== beliefsOf(o.player)) staged.set(o.player, acted);
+      // Lo mismo para los vecinos que lo vieron hacer a otro (`life.witnessing`): NPC sobre NPC.
+      for (const watcher of (truth.ids(NPC_PERCEPTS) as AgentId[]).sort()) {
+        if (truth.get(ENTITY, watcher)?.endedAt !== undefined) continue;
+        const learnt = learnActions(
+          beliefsOf(watcher),
+          truth.get(NPC_PERCEPTS, watcher)?.recent ?? [],
+          lastHour,
+          ctx.now,
+        );
+        if (learnt !== beliefsOf(watcher)) staged.set(watcher, learnt);
+      }
       // Lo que el personaje leyó del porqué ajeno se vuelve creencia sobre el actor.
       const reads = truth.get(PURPOSE_READS, o.player)?.recent ?? [];
       if (reads.length > 0) {
