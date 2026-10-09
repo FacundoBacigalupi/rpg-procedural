@@ -276,7 +276,7 @@ function groupKey(truth: Parameters<ProcessDef["run"]>[0]["truth"], id: AgentId)
 }
 
 /** Lo que `id` puede contar: sus rumores creídos y los hechos que sabe, sin repetir raíz. */
-function candidatesOf(
+export function candidatesOf(
   id: AgentId,
   rumors: Rumors | undefined,
   known: KnownDeeds | undefined,

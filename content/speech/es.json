@@ -616,5 +616,56 @@
     "id": "answer.nothing",
     "lines": ["¿Qué cosa? No te propuse nada.", "No sé de qué hablás."],
     "formal": ["No sé a qué se refiere."]
+  },
+  {
+    "id": "rumor.believed",
+    "lines": [
+      "Mirá vos... no me lo esperaba. Lo tendré presente.",
+      "Así que eso se dice. Gracias por contármelo."
+    ],
+    "formal": ["Vaya, no lo sabía. Se lo agradezco."]
+  },
+  {
+    "id": "rumor.doubted",
+    "lines": ["Habladurías, quizá. No sé si creerlo.", "Eso lo dicen por ahí, pero no me consta."],
+    "formal": ["Podría ser, pero no me consta."]
+  },
+  {
+    "id": "rumor.dismissed",
+    "lines": ["Puro chisme. No me hagas caso de esas cosas.", "No me creo eso."],
+    "formal": ["No le doy crédito a eso."]
+  },
+  {
+    "id": "rumor.known",
+    "lines": ["Eso ya lo había oído.", "Sí, ya anda corriendo esa voz."],
+    "formal": ["Eso ya me había llegado."]
+  },
+  {
+    "id": "rumor.idle",
+    "lines": ["Quién sabe... yo de eso no sé nada.", "Si vos lo decís."],
+    "formal": ["Quién sabe. Yo no sé de eso."]
+  },
+  {
+    "id": "source.saw",
+    "lines": ["Lo vi yo mismo.", "Estaba ahí, lo vi con estos ojos."],
+    "formal": ["Lo presencié yo."]
+  },
+  {
+    "id": "source.named",
+    "lines": ["Me lo contó {name}.", "Lo oí de {name}."],
+    "formal": ["Me lo refirió {name}."]
+  },
+  {
+    "id": "source.crowd",
+    "lines": [
+      "Lo dicen por ahí, ya sabés cómo es. No recuerdo quién fue el primero.",
+      "Dicen que... no sabría decirte quién."
+    ],
+    "formal": ["Se comenta por ahí; no recuerdo quién lo dijo."]
+  },
+  {
+    "id": "source.none",
+    "lines": ["¿De qué hablás? No te dije nada.", "No sé a qué te referís."],
+    "formal": ["No sé a qué se refiere."]
   }
 ]

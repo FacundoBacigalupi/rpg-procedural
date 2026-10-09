@@ -143,6 +143,21 @@ export interface ReplyInput {
    */
   readonly prophecy?: { readonly credence: number };
   /**
+   * Cómo pesó el oyente el rumor que le pasan (information §3, `hearRumor`): ya hecho por quien
+   * lo cablea porque necesita el estado y el sorteo. Sin esto el rumor no tiene respaldo (nada
+   * que el oyente pueda ubicar en un hecho real) y lo toma como charla.
+   */
+  readonly hearsay?: { readonly verdict: Hearsay };
+  /**
+   * De dónde sabe el oyente aquello por lo que le preguntan «¿quién te lo dijo?» (`sourceOf`): lo
+   * vio, se lo dijo alguien (el nombre ya como lo llama el oyente) o «dicen que». Sin esto, no sabe
+   * de qué le hablan.
+   */
+  readonly source?:
+    | { readonly kind: "saw" }
+    | { readonly kind: "named"; readonly name: string; readonly voices: number }
+    | { readonly kind: "crowd"; readonly voices: number };
+  /**
    * Lo que el oyente recuerda de aquel por quien le preguntan (memorias propias, no la verdad):
    * el tono con que lo cuenta y si lo niega. Sin esto contesta que no sabe.
    */
@@ -262,9 +277,14 @@ export interface Reply {
   readonly accusation?: AccuseOutcome;
   /** Cómo tomó el oyente la profecía que le contaron (solo si `prophecy` estaba). */
   readonly prophecy?: { readonly verdict: "believed" | "doubted" | "dismissed" };
+  /** Cómo tomó el oyente el rumor que le pasaron (solo si `hearsay` estaba). */
+  readonly rumor?: { readonly verdict: Hearsay };
   /** Cómo juzgó el oyente la forma en que le hablaron (registro y palabras vedadas), si venía. */
   readonly form?: FormJudgement;
 }
+
+/** Qué hizo el oyente con un rumor: lo creyó, lo duda, lo descarta o ya lo había oído. */
+export type Hearsay = "believed" | "doubted" | "dismissed" | "known";
 
 /** Crédito desde el que el oyente se toma en serio una profecía contada, y desde el que la duda. */
 export const PROPHECY_BELIEVED = 0.45;
@@ -406,6 +426,15 @@ function decideBody(i: ReplyInput, at: number): Reply {
         ...say(a.claim === "dead" ? "tell.dead" : "tell.alive", { name }),
         accepted: { about: a.about, claim: a.claim, from: i.speaker, at },
       };
+    }
+    case "rumor": {
+      if (!i.hearsay) return say("rumor.idle");
+      return { ...say(`rumor.${i.hearsay.verdict}`), rumor: { verdict: i.hearsay.verdict } };
+    }
+    case "source": {
+      const s = i.source;
+      if (!s) return say("source.none");
+      return say(`source.${s.kind}`, s.kind === "named" ? { name: s.name } : {});
     }
     case "request": {
       if (a.good === null) return say("request.unclear");

@@ -377,7 +377,16 @@ function speakAct(act: DraftAct, at: string, w: Walk): SpeakAct | undefined {
       );
       if (r.status === "unique" || r.status === "phantom") {
         if (r.status === "phantom") w.phantoms.push(`${at}.about`);
-        return { kind: "tell", about: r.chosen, claim: act.claim };
+        if (act.claim === "dead" || act.claim === "alive" || !act.victim) {
+          return { kind: "tell", about: r.chosen, claim: act.claim };
+        }
+        // Un rumor de un hecho: a quién se lo hicieron, si es alguien que conoce (si no, queda sin decir).
+        const v = resolveRef(
+          { ...act.victim, features: act.victim.features ?? [], kind: "person" },
+          personsKnown(w),
+        );
+        const victim = v.status === "unique" || v.status === "phantom" ? v.chosen : null;
+        return { kind: "tell", about: r.chosen, claim: act.claim, victim };
       }
       (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({
         at: `${at}.about`,
