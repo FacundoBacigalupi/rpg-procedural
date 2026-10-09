@@ -39,8 +39,10 @@ import {
   DIVINATION_CONCERNS,
   DIVINATION_METHODS,
   DOCTRINES,
+  dailyProductivity,
   dayOf,
   EATEN,
+  ECOLOGY,
   ENTITY,
   ETIQUETTE,
   FOODS,
@@ -52,9 +54,11 @@ import {
   type Household,
   harvestSeason,
   houseKey,
+  initialCell,
   LANGUAGES,
   type Language,
   LIFE_STAGES,
+  LINEAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
@@ -66,6 +70,7 @@ import {
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
+  pickTrajectory,
   RECIPES,
   REGISTERS,
   RELATION_BONDS,
@@ -107,6 +112,7 @@ import {
   TENURES,
   type TemperamentSpec,
   TRAITS,
+  TRAJECTORIES,
   type Trait,
   temperamentFit,
   VALUES,
@@ -126,6 +132,7 @@ import {
   villageSite,
 } from "../../worldgen/index.ts";
 import type { ConverseForm } from "./converse.ts";
+import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
@@ -321,6 +328,8 @@ export function resumeParts(
   | "relationDims"
   | "relationBonds"
   | "habits"
+  | "lineages"
+  | "trajectories"
   | "divinations"
   | "concerns"
   | "tastes"
@@ -347,6 +356,8 @@ export function resumeParts(
     relationDims: content.all(RELATION_DIMS),
     relationBonds: content.all(RELATION_BONDS),
     habits: content.all(HABITS_CONTENT),
+    lineages: content.all(LINEAGES),
+    trajectories: content.all(TRAJECTORIES),
     divinations: content.all(DIVINATION_METHODS),
     concerns: content.all(DIVINATION_CONCERNS),
     tastes: content.all(TASTES),
@@ -407,6 +418,29 @@ export function createLife(
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
   truth.set(SOIL, settlement, { fertility: SOIL_START, seen: 0 });
   truth.set(PARCEL_SOIL, settlement, { soil: startingParcel(SOIL_START), seen: 0 });
+  const trajectory = pickTrajectory(content.all(TRAJECTORIES), map.climate.annualPrecipMm);
+  if (trajectory) {
+    const hexes = ecologyHexes(map);
+    const productivity = dailyProductivity({
+      tempMeanC: map.climate.annualMeanC,
+      annualPrecipMm: map.climate.annualPrecipMm,
+      soilFertility: SOIL_START,
+      hexes,
+    });
+    truth.set(ECOLOGY, settlement, {
+      cell: initialCell(content.all(LINEAGES), {
+        annualMeanC: map.climate.annualMeanC,
+        annualPrecipMm: map.climate.annualPrecipMm,
+        hexes,
+        shelter: map.forest.filter(Boolean).length / Math.max(1, map.forest.length),
+        productivity,
+      }),
+      forest: { stage: trajectory.climax, stageAge: 0, fuel: 0.5, trajectory },
+      fireHazard: 0,
+      day: 0,
+      yearDays: 0,
+    });
+  }
   let place = 0;
   const named: PlaceToName[] = [];
   for (const a of site.anchors) {
@@ -654,6 +688,8 @@ export function createLife(
       relationDims: content.all(RELATION_DIMS),
       relationBonds: content.all(RELATION_BONDS),
       habits: content.all(HABITS_CONTENT),
+      lineages: content.all(LINEAGES),
+      trajectories: content.all(TRAJECTORIES),
       divinations: content.all(DIVINATION_METHODS),
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),

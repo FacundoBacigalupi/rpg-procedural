@@ -1,0 +1,41 @@
+[
+  {
+    "id": "steppe",
+    "climax": "grass_shrub",
+    "minMm": 0,
+    "years": {
+      "bare": 10,
+      "pioneer": 3,
+      "grass_shrub": 20,
+      "young_forest": 30,
+      "mature_forest": 80,
+      "old_growth": 200
+    }
+  },
+  {
+    "id": "woodland",
+    "climax": "mature_forest",
+    "minMm": 450,
+    "years": {
+      "bare": 5,
+      "pioneer": 5,
+      "grass_shrub": 15,
+      "young_forest": 40,
+      "mature_forest": 120,
+      "old_growth": 300
+    }
+  },
+  {
+    "id": "wet_forest",
+    "climax": "old_growth",
+    "minMm": 900,
+    "years": {
+      "bare": 3,
+      "pioneer": 4,
+      "grass_shrub": 10,
+      "young_forest": 30,
+      "mature_forest": 100,
+      "old_growth": 300
+    }
+  }
+]

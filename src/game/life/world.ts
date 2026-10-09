@@ -22,6 +22,7 @@ import {
   type FoodDef,
   type GoodDef,
   type HabitDef,
+  type LineageDef,
   LOCATION,
   type LocalMap,
   type PressureCurve,
@@ -38,6 +39,7 @@ import {
   type TasteDef,
   type Trait,
   type TraitDef,
+  type TrajectoryDef,
   type ValueDef,
   type WorldTruth,
 } from "../../sim/index.ts";
@@ -53,6 +55,7 @@ import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { ecologyProcess } from "./ecology.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
@@ -101,6 +104,9 @@ export interface LifeWorld {
   readonly relationDims: readonly DimensionDef[];
   readonly relationBonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
+  /** Linajes silvestres y trayectorias de vegetación de la celda de la aldea (living-world §8, §9). */
+  readonly lineages?: readonly LineageDef[];
+  readonly trajectories?: readonly TrajectoryDef[];
   readonly divinations: readonly DivinationMethodDef[];
   readonly concerns: readonly ConcernWords[];
   /** El catálogo de gustos: da nombre a lo que `TASTES_OF` guarda por id (npc-psychology §16). */
@@ -242,6 +248,13 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         soilProcess({ clock: parts.clock, map: parts.map, seed: parts.seed }),
+        ecologyProcess({
+          clock: parts.clock,
+          map: parts.map,
+          seed: parts.seed,
+          lineages: parts.lineages ?? [],
+          trajectories: parts.trajectories ?? [],
+        }),
         upbringingProcess({
           clock: parts.clock,
           bodyPlans: parts.plans,

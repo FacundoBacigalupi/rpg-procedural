@@ -22,6 +22,7 @@ import {
   TABOOS,
   TONE_CONTRASTS,
 } from "./language/index.ts";
+import { LINEAGES, TRAJECTORIES } from "./living/index.ts";
 import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, TASTES, VALUES } from "./mind/index.ts";
 import { TENURES } from "./property/index.ts";
 import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
@@ -71,6 +72,8 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   RELATION_DIMS,
   RELATION_BONDS,
   HABITS_CONTENT,
+  LINEAGES,
+  TRAJECTORIES,
   TASTES,
   SCENARIOS,
   TUNING_TARGETS,

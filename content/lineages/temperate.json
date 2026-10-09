@@ -1,0 +1,56 @@
+[
+  {
+    "id": "deer",
+    "name": "Ciervo",
+    "kingdom": "herbivore",
+    "growth": 0.004,
+    "mortality": 0.0015,
+    "bodyMass": 60,
+    "maxIntake": 0,
+    "halfSaturation": 1,
+    "efficiency": 0,
+    "habitat": { "minC": 0, "maxC": 22, "minMm": 400 },
+    "density": 3
+  },
+  {
+    "id": "hare",
+    "name": "Liebre",
+    "kingdom": "herbivore",
+    "growth": 0.012,
+    "mortality": 0.005,
+    "bodyMass": 3,
+    "maxIntake": 0,
+    "halfSaturation": 1,
+    "efficiency": 0,
+    "habitat": { "minC": -2, "maxC": 26, "minMm": 250 },
+    "density": 25
+  },
+  {
+    "id": "wolf",
+    "name": "Lobo",
+    "kingdom": "carnivore",
+    "growth": 0,
+    "mortality": 0.0006,
+    "bodyMass": 35,
+    "diet": { "deer": 0.7, "hare": 0.3 },
+    "maxIntake": 0.05,
+    "halfSaturation": 20,
+    "efficiency": 0.25,
+    "habitat": { "minC": -4, "maxC": 20, "minMm": 400 },
+    "density": 0.08
+  },
+  {
+    "id": "fox",
+    "name": "Zorro",
+    "kingdom": "carnivore",
+    "growth": 0,
+    "mortality": 0.001,
+    "bodyMass": 6,
+    "diet": { "hare": 1 },
+    "maxIntake": 0.15,
+    "halfSaturation": 40,
+    "efficiency": 0.3,
+    "habitat": { "minC": -4, "maxC": 28, "minMm": 250 },
+    "density": 0.4
+  }
+]
