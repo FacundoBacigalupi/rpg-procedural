@@ -21,6 +21,7 @@ import {
   Rng,
   type Seed,
   type SettlementId,
+  type Transfer,
 } from "../../core/index.ts";
 import {
   ACTIONS,
@@ -51,6 +52,7 @@ import {
   GATHERED_SOURCE,
   GOODS,
   generateLanguage,
+  goodUnit,
   HABITS_CONTENT,
   HARVEST,
   HARVEST_GOOD,
@@ -144,6 +146,8 @@ import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
+import { ROUTINE } from "./routine.ts";
+import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -253,6 +257,35 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
   return { village, planet, site, map: localMapOf(planet, site), population };
+}
+
+/**
+ * Insumos de arranque de los hogares con oficio (los mismos que `tradeOfHousehold` elige en la
+ * corrida): unas tandas desde la fuente `seed`, poco a propósito.
+ */
+function tradeStock(pop: LifeTerrain["population"], seed: Seed, content: Content): Transfer[] {
+  const recipes = content.all(TRADE_RECIPES);
+  const goods = new Map(content.all(GOODS).map((g) => [g.id, g]));
+  const born = new Map(pop.people.map((p) => [p.id, p.born]));
+  const out: Transfer[] = [];
+  for (const h of pop.households.filter((x) => x.end === null)) {
+    const adults = h.members.filter(
+      (m) => (pop.now - (born.get(m) ?? pop.now)) / EARTHLIKE_CLOCK.year >= ROUTINE.workAge,
+    ).length;
+    const r = tradeOfHousehold(seed, h.id, adults, recipes);
+    if (!r) continue;
+    for (const i of r.inputs) {
+      const def = goods.get(i.good);
+      if (!def) continue;
+      out.push({
+        unit: goodUnit(def),
+        from: externalAccount("seed"),
+        to: holderAccount(h.id),
+        amount: i.amount * TRADE_START_BATCHES,
+      });
+    }
+  }
+  return out;
 }
 
 /** Los contadores de ids siguen a lo que ya existe, para que lo nuevo no choque. */
@@ -695,7 +728,8 @@ export function createLife(
                 amount: Math.round(COINS_PER_PERSON * wealthOf(h.id)),
               })),
             ),
-        ),
+        )
+        .concat(tradeStock(pop, seed, content)),
     });
   }
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));

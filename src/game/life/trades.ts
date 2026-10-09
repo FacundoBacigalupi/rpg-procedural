@@ -16,6 +16,8 @@ import {
   type LedgerAccount,
   type PlaceRef,
   type PlanetClock,
+  Rng,
+  type Seed,
   type Transfer,
 } from "../../core/index.ts";
 import {
@@ -53,11 +55,38 @@ export interface TradeAssignment {
   readonly recipe: string;
 }
 
+/** Parte de los hogares con manos de sobra que se dedican a un oficio (calibración abierta). */
+export const TRADE_HOUSEHOLD_SHARE = 0.12;
+/** Adultos que hacen falta para que un hogar pueda dedicarse a un oficio sin quitarle brazos al campo. */
+export const TRADE_MIN_ADULTS = 2;
+/** Tandas de insumos con las que arranca un hogar con oficio (poco: el resto lo compra o lo gana). */
+export const TRADE_START_BATCHES = 5;
+
+/**
+ * El oficio de un hogar, derivado de la población y no de un escenario: sale de un fork del seed
+ * keyed por el hogar (estable aunque cambie la gente) y solo para hogares con al menos
+ * `TRADE_MIN_ADULTS` adultos. Sin `adults` suficientes no tiene oficio.
+ */
+export function tradeOfHousehold(
+  seed: Seed,
+  household: string,
+  adults: number,
+  recipes: readonly TradeRecipeDef[],
+): TradeRecipeDef | undefined {
+  if (recipes.length === 0 || adults < TRADE_MIN_ADULTS) return undefined;
+  const rng = Rng.root(seed).fork("trade", household);
+  if (!rng.chance(TRADE_HOUSEHOLD_SHARE)) return undefined;
+  const sorted = [...recipes].sort((a, b) => (a.id < b.id ? -1 : 1));
+  return sorted[rng.int(0, sorted.length - 1)];
+}
+
 export interface TradesOptions {
   readonly clock: PlanetClock;
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly TradeRecipeDef[];
   readonly assignments: readonly TradeAssignment[];
+  /** Con seed, los hogares sin asignación explícita reciben oficio de la población (`tradeOfHousehold`). */
+  readonly seed?: Seed;
   /** Jornal de base por día de trabajo, en monedas (calibración abierta). */
   readonly baseWagePerDay?: number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -97,7 +126,7 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
     writes: [TRADE_RECEIPTS.name],
     run(ctx) {
       const ledger = ctx.ledger;
-      if (!ledger || !coinDef || o.assignments.length === 0) return {};
+      if (!ledger || !coinDef || (o.assignments.length === 0 && o.seed === undefined)) return {};
       const coin = goodUnit(coinDef);
       const days = Math.max(1, ctx.window) / o.clock.day;
       const today = Math.floor(ctx.now / o.clock.day);
@@ -128,11 +157,18 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
         }
       };
 
-      const employers = [...o.assignments]
+      const assignments: TradeAssignment[] = [...o.assignments];
+      if (o.assignments.length === 0 && o.seed !== undefined) {
+        for (const [home, list] of adults) {
+          const r = tradeOfHousehold(o.seed, home, list.length, o.recipes);
+          if (r) assignments.push({ household: home, recipe: r.id });
+        }
+      }
+      const employers = assignments
         .filter((a) => recipeOf.has(a.recipe) && (adults.get(a.household)?.length ?? 0) > 0)
         .sort((a, b) => (a.household < b.household ? -1 : a.household > b.household ? 1 : 0));
       if (employers.length === 0) return {};
-      const employerHomes = new Set(o.assignments.map((a) => a.household));
+      const employerHomes = new Set(assignments.map((a) => a.household));
       const pool: { id: AgentId; home: string }[] = [];
       for (const [home, list] of [...adults].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
         if (employerHomes.has(home)) continue;
