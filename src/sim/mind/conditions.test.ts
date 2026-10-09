@@ -7,13 +7,21 @@ import {
   avoided,
   CONDITION_FLOOR,
   emptyMental,
+  falseAlarmChance,
+  hypervigilance,
   intrusionChance,
   intrusionEvents,
+  NUMBING_CAP,
   nightmareCauses,
   nightmareChance,
+  numbedIntensity,
+  numbing,
   openCondition,
   settleConditions,
   severityOf,
+  VIGILANCE_ATTENTION_CAP,
+  vigilantAttention,
+  vigilantSleepFear,
 } from "./conditions.ts";
 
 const EV = (n: number) => `event:${n}` as EventId;
@@ -71,6 +79,32 @@ describe("condiciones mentales", () => {
     expect(intrusionChance(t, { who: "agent:1" as AgentId })).toBe(0);
     expect(intrusionEvents(t, { who: DEAD })).toEqual([EV(1)]);
     expect(intrusionEvents(t, {})).toEqual([]);
+  });
+
+  it("hipervigilancia: sube la atención (no la del dormido), el miedo de dormir y las falsas alarmas", () => {
+    const t = openCondition(emptyMental(EV(1), 0), "trauma", 0.8, EV(1), trigger, 0);
+    const g = openCondition(emptyMental(EV(1), 0), "guilt", 0.8, EV(1), trigger, 0);
+    expect(hypervigilance(t)).toBeCloseTo(0.8, 5);
+    expect(hypervigilance(g)).toBe(0);
+    expect(vigilantAttention(0.8, t)).toBeGreaterThan(0.8);
+    expect(vigilantAttention(0.8, t)).toBeLessThanOrEqual(VIGILANCE_ATTENTION_CAP);
+    expect(vigilantAttention(0.8, undefined)).toBe(0.8);
+    expect(vigilantAttention(0.03, t)).toBe(0.03);
+    expect(vigilantAttention(2, t)).toBe(2);
+    expect(vigilantSleepFear(t)).toBeGreaterThan(0);
+    expect(vigilantSleepFear(undefined)).toBe(0);
+    expect(falseAlarmChance(t)).toBeCloseTo(0.16, 5);
+    expect(falseAlarmChance(g)).toBe(0);
+  });
+
+  it("entumecimiento: baja solo lo positivo, con tope", () => {
+    const t = openCondition(emptyMental(EV(1), 0), "trauma", 0.5, EV(1), trigger, 0);
+    expect(numbing(t)).toBeCloseTo(0.4, 5);
+    expect(numbedIntensity(0.5, 0.6, t)).toBeCloseTo(0.3, 5);
+    expect(numbedIntensity(0.5, -0.6, t)).toBe(0.5);
+    expect(numbedIntensity(0.5, 0.6, undefined)).toBe(0.5);
+    const max = openCondition(t, "trauma", 1, EV(2), trigger, 1);
+    expect(numbing(max)).toBe(NUMBING_CAP);
   });
 
   it("la gravedad siempre queda en 0-1 y settle no la sube (propiedad)", () => {

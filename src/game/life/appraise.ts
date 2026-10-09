@@ -44,6 +44,7 @@ import {
   type MentalState,
   MIND,
   type Mind,
+  numbedIntensity,
   OWN_DEEDS,
   type OwnDeeds,
   openCondition,
@@ -151,7 +152,16 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       const mems = new Map<AgentId, Memories>();
       const note = (l: Lived) => {
         if (!alive(truth, l.who) || !truth.get(PERSON, l.who)) return;
-        const m = formMemory(l.experience);
+        // El entumecimiento apaga lo positivo: lo bueno se vive (y se guarda) con menos intensidad.
+        const ex = l.experience;
+        const m = formMemory({
+          ...ex,
+          intensity: numbedIntensity(
+            ex.intensity,
+            ex.valence,
+            mentals.get(l.who) ?? truth.get(MENTAL, l.who),
+          ),
+        });
         mems.set(l.who, addMemory(mems.get(l.who) ?? truth.get(MEMORIES, l.who), m, m.at));
       };
       const owns = new Map<AgentId, OwnDeeds>();

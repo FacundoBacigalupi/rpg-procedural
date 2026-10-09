@@ -47,6 +47,7 @@ import {
   sleepQuality,
   type Theme,
   table,
+  vigilantSleepFear,
 } from "../../sim/index.ts";
 import { closeness } from "./appraise.ts";
 
@@ -204,7 +205,8 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
         hours: st.hours,
         needHours: NEED_HOURS,
         discomfort: st.hours > 0 ? st.discomfortHours / st.hours : 0,
-        fear: st.fear,
+        // Quien está en guardia duerme con un oído abierto: miedo de fondo (hipervigilancia).
+        fear: Math.max(st.fear, vigilantSleepFear(mental)),
         ...(dreamt && mental
           ? { nightmares: Math.max(0, ...mental.conditions.map((c) => c.severity)) }
           : {}),

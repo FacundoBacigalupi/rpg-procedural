@@ -199,6 +199,58 @@ export function intrusionEvents(state: MentalState | undefined, cue: ConditionCu
   return [...new Set(triggeredBy(state, cue).flatMap((c) => c.originEventIds))].sort();
 }
 
+/** Cuánto sube la atención con hipervigilancia máxima (multiplicador = 1 + esto × vigilancia). */
+export const VIGILANCE_ATTENTION_GAIN = 0.5;
+/** Tope de la atención resultante (la agudeza de mirar a propósito ya llega a 2). */
+export const VIGILANCE_ATTENTION_CAP = 1.5;
+/** Cuánto del miedo de dormir pone la hipervigilancia máxima (duerme con un oído abierto). */
+export const VIGILANCE_SLEEP_FEAR = 0.5;
+/** Chance de falsa alarma por mirada = vigilancia × esto. */
+export const FALSE_ALARM_RATE = 0.2;
+/** Cuánto embota cada tipo las emociones positivas (el trauma apaga; la culpa casi no). */
+const NUMBING_WEIGHT = { trauma: 0.8, guilt: 0.2 } as const;
+/** Tope del entumecimiento: nunca anula del todo lo que se siente. */
+export const NUMBING_CAP = 0.8;
+
+/** Hipervigilancia (0-1): el trauma deja al cuerpo en guardia; la culpa no. */
+export function hypervigilance(state: MentalState | undefined): number {
+  return round(clamp01(severityOf(state, "trauma")));
+}
+
+/** La atención de quien mira, subida por la hipervigilancia (sin tocar al dormido). */
+export function vigilantAttention(attention: number, state: MentalState | undefined): number {
+  const v = hypervigilance(state);
+  if (v === 0 || attention <= 0.1) return attention;
+  const raised = Math.min(VIGILANCE_ATTENTION_CAP, attention * (1 + VIGILANCE_ATTENTION_GAIN * v));
+  return round(Math.max(attention, raised));
+}
+
+/** Miedo de fondo al dormir por estar en guardia (0-1), para la calidad del sueño. */
+export function vigilantSleepFear(state: MentalState | undefined): number {
+  return round(VIGILANCE_SLEEP_FEAR * hypervigilance(state));
+}
+
+/** Chance de que lo ambiguo se lea como amenaza (falso positivo) en una mirada. */
+export function falseAlarmChance(state: MentalState | undefined): number {
+  return round(clamp01(FALSE_ALARM_RATE * hypervigilance(state)));
+}
+
+/** Entumecimiento (0-1, con tope): cuánto se apagan las emociones positivas. */
+export function numbing(state: MentalState | undefined): number {
+  if (!state) return 0;
+  const worst = Math.max(0, ...state.conditions.map((c) => c.severity * NUMBING_WEIGHT[c.kind]));
+  return round(Math.min(NUMBING_CAP, worst));
+}
+
+/** Intensidad de una vivencia tras el entumecimiento: solo baja la de valencia positiva. */
+export function numbedIntensity(
+  intensity: number,
+  valence: number,
+  state: MentalState | undefined,
+): number {
+  return valence > 0 ? round(intensity * (1 - numbing(state))) : intensity;
+}
+
 /** Las causas de lo que se sueña:los eventos que abrieron las condiciones que pesan. */
 export function nightmareCauses(state: MentalState | undefined): EventId[] {
   if (!state) return [];
