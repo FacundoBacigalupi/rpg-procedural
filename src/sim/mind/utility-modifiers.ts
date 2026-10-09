@@ -132,3 +132,30 @@ export function modifyCandidates(candidates: readonly Candidate[], i: ModifierIn
     return shift === 0 ? c : { ...c, mood: r((c.mood ?? 0) + shift) };
   });
 }
+
+/** Verbos que toman algo ajeno: solo ellos pueden chocar con un tabú sobre un bien. */
+export const TAKING_VERBS: ReadonlySet<string> = new Set(["take"]);
+
+/**
+ * El bien que nombra una candidata que toma algo (`take:agent:ana+pan` → `pan`), o `undefined` si el
+ * verbo no toma o no nombra una cosa (hoy `take` no ofrece textos: nadie lo nombra todavía).
+ */
+export function takenGood(c: Candidate): string | undefined {
+  if (!TAKING_VERBS.has(c.verb)) return undefined;
+  let rest = c.id.slice(c.verb.length + 1);
+  if (c.target !== undefined && rest.startsWith(c.target)) rest = rest.slice(c.target.length);
+  rest = rest.replace(/^\+/, "");
+  return rest === "" ? undefined : rest;
+}
+
+/**
+ * El callback `sanction` de `ModifierInputs`: el castigo creído (0-1) de tomar el bien que nombra
+ * la candidata, según `weigh` (p. ej. `sanctionWeight(identidad, religión, bien).penalty`). Sin
+ * bien nombrado, nada; no hay RNG.
+ */
+export function sanctionFor(weigh: (good: string) => number): (c: Candidate) => number {
+  return (c) => {
+    const good = takenGood(c);
+    return good === undefined ? 0 : weigh(good);
+  };
+}

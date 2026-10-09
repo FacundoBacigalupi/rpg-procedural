@@ -57,6 +57,7 @@ import {
   type ProcessDef,
   pantryTexts,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   reconcileGoals,
   relationship,
@@ -67,6 +68,8 @@ import {
   type SkillCatalog,
   STAKES_RISK,
   type StageDef,
+  sanctionFor,
+  sanctionWeight,
   seedSelfImage,
   setComponent,
   shortGoals,
@@ -81,6 +84,7 @@ import {
   verbCandidates,
   verbHabits,
   villageCulture,
+  villageReligion,
 } from "../../sim/index.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -398,6 +402,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),
         values: drives.values,
         mental: truth.get(MENTAL, me),
+        // Tabú creído sobre el bien que toma la candidata (hoy ninguna candidata nombra uno).
+        sanction: sanctionFor(
+          (good) =>
+            sanctionWeight(truth.get(RELIGIOUS_IDENTITY, me), villageReligion(truth), good).penalty,
+        ),
       });
       if (candidates.length === 0) return { changes: goalChange, events: goalEvents };
 
