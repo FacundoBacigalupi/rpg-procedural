@@ -45,7 +45,9 @@ import {
   wagePerDay,
   wageTransfer,
 } from "../../sim/index.ts";
-import { ROUTINE } from "./routine.ts";
+
+/** Igual a ROUTINE.workAge (no se importa routine.ts: ciclo con act.ts). */
+const WORK_AGE = 10;
 
 export const TRADES_PROCESS = "life.trades";
 
@@ -131,7 +133,7 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
       const days = Math.max(1, ctx.window) / o.clock.day;
       const today = Math.floor(ctx.now / o.clock.day);
       const hoursEach = Math.min(WORK_HOURS_PER_DAY, TRADE_FREE_HOURS * days);
-      const adultAge = ROUTINE.workAge;
+      const adultAge = WORK_AGE;
 
       // Adultos vivos por hogar.
       const adults = new Map<string, AgentId[]>();
