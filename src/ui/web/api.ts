@@ -6,6 +6,8 @@ export interface Panels {
   readonly inventory: string;
   /** El libro de deudas y promesas. */
   readonly book: string;
+  /** La gente que conoce y lo que cree de cada una. */
+  readonly people: string;
   readonly journal: string;
   /** Lo que se nota del lugar, por canal. */
   readonly environment: string;

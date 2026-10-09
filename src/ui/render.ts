@@ -11,6 +11,7 @@ import {
   type HypothesesPanel,
   type Interrupt,
   type InventoryPanel,
+  type PeoplePanel,
   type Suggestion,
   type ThinkResult,
   TONE_MARK,
@@ -299,6 +300,30 @@ export function renderAbout(p: AboutPanel): string {
   if (owe.length > 0) lines.push("Le debés:", ...owe.map(entry));
   if (owed.length > 0) lines.push("Te debe:", ...owed.map(entry));
   return lines.join("\n");
+}
+
+/** La gente que conoce y lo que cree de cada una, una línea por persona. */
+export function renderPeople(p: PeoplePanel): string {
+  if (p.people.length === 0) return "No conocés a nadie todavía.";
+  return p.people
+    .map((e) => {
+      const a = e.about;
+      const alive =
+        a.alive === "dead"
+          ? `murió${ABOUT_SURETY[a.aliveSurety]}`
+          : a.alive === "alive"
+            ? `vive${ABOUT_SURETY[a.aliveSurety]}`
+            : "no sabés si vive";
+      const where =
+        a.where.state === "here"
+          ? "está acá"
+          : a.where.state === "elsewhere"
+            ? `no estaba acá ${a.where.daysAgo === 0 ? "hoy" : a.where.daysAgo === 1 ? "ayer" : `hace ${a.where.daysAgo} días`}${ABOUT_SURETY[a.where.surety]}`
+            : "no sabés dónde anda";
+      const rel = e.relation === undefined ? "" : ` (${e.relation})`;
+      return `${e.name}${rel}: ${alive}; ${where}.`;
+    })
+    .join("\n");
 }
 
 const INTERRUPTS: Readonly<Record<Interrupt["kind"], string>> = {
