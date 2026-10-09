@@ -19,6 +19,7 @@ import {
   type Seed,
 } from "../../core/index.ts";
 import {
+  AMENDS,
   applySchemaUpdates,
   BODY_STATE,
   type Body,
@@ -170,6 +171,7 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       MENTAL.name,
       COMMUNITY_RELIGION.name,
       RELIGIOUS_IDENTITY.name,
+      AMENDS.name,
     ],
     writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
     run(ctx) {
