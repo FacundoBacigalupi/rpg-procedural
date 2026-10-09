@@ -22,8 +22,8 @@ import { type Location, table } from "../world/index.ts";
 const HOUR = 3_600;
 const DAY = 86_400;
 
-/** Qué se cree de alguien: dónde está y si vive. */
-export const ATTR_KEYS = ["at", "alive"] as const;
+/** Qué se cree de alguien: dónde está, si vive y qué se propone (el motivo que le leyó a un acto). */
+export const ATTR_KEYS = ["at", "alive", "purpose"] as const;
 export type AttrKey = (typeof ATTR_KEYS)[number];
 
 export interface Proposition {
@@ -32,8 +32,8 @@ export interface Proposition {
   readonly attr: AttrKey;
 }
 
-/** `at` guarda un lugar; `alive`, un booleano. */
-export type BeliefValue = Location | boolean;
+/** `at` guarda un lugar; `alive`, un booleano; `purpose`, el id del motivo creído. */
+export type BeliefValue = Location | boolean | string;
 
 export type BeliefSource =
   | {
@@ -42,7 +42,14 @@ export type BeliefSource =
       readonly tick: Tick;
       readonly event?: EventId;
     }
-  | { readonly kind: "told"; readonly from: AgentId; readonly tick: Tick };
+  | { readonly kind: "told"; readonly from: AgentId; readonly tick: Tick }
+  /** Una conclusión: de qué evidencia citable (refs) y con qué reglas salió. */
+  | {
+      readonly kind: "reasoning";
+      readonly evidence: readonly string[];
+      readonly rules: readonly string[];
+      readonly tick: Tick;
+    };
 
 export interface Belief {
   readonly prop: Proposition;
@@ -73,6 +80,7 @@ export const MAX_SOURCES = 4;
 export const CONFIDENCE_HALF_LIFE_HOURS: Readonly<Record<AttrKey, number>> = {
   at: 6,
   alive: 24 * 14,
+  purpose: 24 * 30,
 };
 /** Vida media de la saliencia (días). */
 export const SALIENCE_HALF_LIFE_DAYS = 30;
@@ -92,6 +100,7 @@ export function propKey(p: Proposition): string {
 
 export function sameValue(a: BeliefValue, b: BeliefValue): boolean {
   if (typeof a === "boolean" || typeof b === "boolean") return a === b;
+  if (typeof a === "string" || typeof b === "string") return a === b;
   return a.hex === b.hex && (a.space ?? "") === (b.space ?? "");
 }
 

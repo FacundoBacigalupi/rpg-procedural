@@ -7,9 +7,12 @@
 
 import type { AgentId, Event, Rng, Tick } from "../../core/index.ts";
 import {
+  type Beliefs,
   type BondDef,
+  believed,
   type DimensionDef,
   INNATE,
+  learn,
   MIND,
   type Purpose,
   type PurposeContext,
@@ -129,4 +132,37 @@ export function rememberReads(
 ): PurposeReads {
   const before = truth.get(PURPOSE_READS, reader)?.recent ?? [];
   return { recent: [...before, ...fresh].slice(-KEPT_READS) };
+}
+
+/** Cuánto atrás mira `learnReads` (dos pasadas de hora, para no perder lo que cayó entre medio). */
+export const READ_WINDOW = 2 * 3_600;
+
+/**
+ * Pasa las lecturas recientes del personaje a sus creencias (information §1): «X se propone M»
+ * con la confianza de la lectura y fuente `reasoning` (de qué la sacó: lo declarado o lo supuesto
+ * por la acción). Una lectura ya incorporada (misma fuente en ese instante) no suma otra vez.
+ */
+export function learnReads(
+  before: Beliefs | undefined,
+  reads: readonly ReadPurpose[],
+  now: Tick,
+): Beliefs | undefined {
+  let beliefs = before;
+  for (const r of reads) {
+    if (r.tick > now || r.tick < now - READ_WINDOW) continue;
+    const prev = believed(beliefs, r.actor, "purpose");
+    if (prev?.sources.some((s) => s.kind === "reasoning" && s.tick === r.tick)) continue;
+    beliefs = learn(
+      beliefs,
+      {
+        prop: { kind: "attr", subject: r.actor, attr: "purpose" },
+        value: r.guessed,
+        confidence: r.confidence,
+        asOf: r.tick,
+        source: { kind: "reasoning", evidence: [`read:${r.basis}`], rules: [], tick: r.tick },
+      },
+      now,
+    );
+  }
+  return beliefs;
 }

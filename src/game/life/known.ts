@@ -121,7 +121,7 @@ export function whereaboutsFromBeliefs(
   now: Tick,
 ): Whereabouts {
   const b = believed(beliefs, id, "at");
-  if (b === undefined || typeof b.value === "boolean") {
+  if (b === undefined || typeof b.value === "boolean" || typeof b.value === "string") {
     return { at: undefined, present: false, believed: false };
   }
   const loc = b.value;

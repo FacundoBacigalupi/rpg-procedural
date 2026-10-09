@@ -70,6 +70,10 @@ export function reasonerOf(w: LifeWorld, defs: readonly InferenceRuleDef[]): Rea
   };
 }
 
+function sourceKind(kind: string | undefined): Premise["kind"] {
+  return kind === "told" ? "told" : kind === "reasoning" ? "inference" : "percept";
+}
+
 /**
  * Las premisas de la cabeza: dónde cree que está alguien y si vive (creencias envejecidas) y lo que
  * tiene delante (heridas a la vista y huellas atadas a un hecho que sabe, `headPremises`).
@@ -85,10 +89,10 @@ export function evidenceOf(w: LifeWorld): Premise[] {
     const fact: Fact =
       b.prop.attr === "alive"
         ? { pred: b.value === true ? "alive" : "dead", args: [subject] }
-        : { pred: "at", args: [subject, String((b.value as { hex: number }).hex)] };
-    return [
-      { fact, confidence, kind: b.sources.at(-1)?.kind === "told" ? "told" : "percept", ref },
-    ];
+        : b.prop.attr === "purpose"
+          ? { pred: "intends", args: [subject, String(b.value)] }
+          : { pred: "at", args: [subject, String((b.value as { hex: number }).hex)] };
+    return [{ fact, confidence, kind: sourceKind(b.sources.at(-1)?.kind), ref }];
   });
   const here = headPremises(w.truth, w.player, now, (made) =>
     rainBetween(w.map, w.clock, w.seed, made, now),
