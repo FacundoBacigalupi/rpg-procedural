@@ -3,9 +3,9 @@
 // de acá. El cuerpo va como signos (`bodySigns`), la habilidad como se ve a sí mismo (su autoimagen,
 // skills §9: puede errar; las horas de práctica y el nivel real no salen) y los bienes como los estima a ojo.
 //
-// En la Fase 1 no hay todavía creencias de inventario (information, Fase 2): lo que "cree tener"
-// es lo que tiene, redondeado como lo estimaría él. Cuando haya creencias, un robo que no notó
-// sigue figurando acá hasta que revisa.
+// Lo que "cree tener" sale de `INVENTORY_BELIEF` (la foto de la última vez que revisó), redondeado
+// como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. Mientras nada
+// escriba esa foto (ver ROADMAP), vale lo que tiene.
 
 import type { HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
@@ -25,6 +25,7 @@ import {
   seedSelfImage,
   skillStandingOf,
 } from "../../sim/index.ts";
+import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -147,12 +148,17 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
   const mouths = living(w.truth).filter(
     (id) => w.truth.get(PERSON, id)?.household === me.household,
   ).length;
+  // Lo que cree tener: la foto de la última vez que revisó. Sin foto (vida anterior o que todavía
+  // no contó nada) vale lo que hay, como lo contaría al mirar.
+  const believed = w.truth.get(INVENTORY_BELIEF, w.player);
+  const carriedNow = believed?.carried ?? holdings(w.player as HolderRef);
+  const larderNow = believed?.larder ?? holdings(me.household as unknown as HolderRef);
   return {
-    coins: holdings(w.player as HolderRef).find((h) => h.unit === COPPER)?.amount ?? 0,
-    carried: holdings(w.player as HolderRef)
+    coins: carriedNow.find((h) => h.unit === COPPER)?.amount ?? 0,
+    carried: carriedNow
       .filter((h) => h.unit !== COPPER)
       .map((h) => ({ good: name(h.unit), amount: amountOf(h.amount) })),
-    larder: holdings(me.household as unknown as HolderRef).map((h) => ({
+    larder: larderNow.map((h) => ({
       good: name(h.unit),
       lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),
     })),
