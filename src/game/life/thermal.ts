@@ -27,6 +27,7 @@ import {
   setComponent,
   stepCore,
   THERMAL,
+  type ThermalEnv,
   thermalDeath,
   weatherAt,
 } from "../../sim/index.ts";
@@ -42,6 +43,11 @@ export interface ThermalOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Lo que lleva puesto cada uno; por defecto, ropa para la estación. */
   readonly clothingOf?: (truth: ReadonlyWorldTruth, who: AgentId, airC: number) => Clothing;
+  /**
+   * Ajusta el ambiente de alguien con lo que la sim sabe de su lugar (fuego cercano con
+   * `fireRadiantC`, reparo del edificio con `shelterOf`). Por defecto no cambia nada.
+   */
+  readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
 }
 
 /** Pasos de cálculo por día (cada uno cubre `day / STEPS_PER_DAY`). */
@@ -50,8 +56,6 @@ const STEPS_PER_DAY = 4;
 const NORMAL_BAND_C = 0.5;
 /** Horas de cada subpaso de `stepCore` (con pasos largos el Euler explícito oscila). */
 const SUBSTEP_H = 0.25;
-/** Masa mínima (kg) a la que se aplica el modelo, calibrado para adultos. */
-const MIN_MASS_KG = 20;
 
 /**
  * La ropa de quien se viste para lo que ve afuera: más abrigo cuanto más frío, y casi nada con
@@ -63,7 +67,7 @@ export function seasonalClothing(airC: number): Clothing {
 }
 
 /** El ambiente de alguien a un tick: afuera con el viento y la lluvia, adentro con reparo. */
-function envOf(day: DayWeather, outC: number, indoor: boolean) {
+function envOf(day: DayWeather, outC: number, indoor: boolean): ThermalEnv {
   // La gente se refugia de la lluvia: el mojado de la ropa queda para el ítem de ropa puesta.
   const rain = 0;
   return indoor
@@ -106,8 +110,6 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const body = ctx.truth.get(BODY_STATE, id);
         const base = ctx.truth.get(ENTITY, id);
         if (!body || !base || base.endedAt !== undefined || body.death) continue;
-        // Los chicos quedan afuera hasta que `stepCore` escale superficie y metabolismo por masa.
-        if (body.massKg < MIN_MASS_KG) continue;
         const space = ctx.truth.get(LOCATION, id)?.space;
         const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
         const indoor = node?.indoor ?? false;
@@ -119,7 +121,8 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
           const outC = outdoorTempC(o.map, o.clock, o.seed, at);
-          const env = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const base0 = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const env = o.refineEnv ? o.refineEnv(ctx.truth, agent, base0) : base0;
           const clothing = (o.clothingOf ?? ((_t, _w, c) => seasonalClothing(c)))(
             ctx.truth,
             agent,

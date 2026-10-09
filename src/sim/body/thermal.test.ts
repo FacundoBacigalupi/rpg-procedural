@@ -3,7 +3,11 @@ import {
   type Clothing,
   CORE_NORMAL_C,
   dexterityFactor,
+  dressed,
+  fireRadiantC,
   frostbitePerHour,
+  heatLossW,
+  shelterOf,
   stepCore,
   TEMPERATE,
   type ThermalEnv,
@@ -43,5 +47,45 @@ describe("balance térmico", () => {
     expect(thermalDeath(27)).toBe("hypothermia");
     expect(thermalDeath(43)).toBe("heatstroke");
     expect(thermalDeath(37)).toBeNull();
+  });
+});
+
+describe("escala por masa, ropa puesta, fuego y refugio", () => {
+  const stepsOf = (kg: number, env: ThermalEnv, c: Clothing, hours: number) => {
+    let core = CORE_NORMAL_C;
+    for (let h = 0; h < hours * 4; h++) core = stepCore(core, kg, env, c, 1, 1, 0.25).coreC;
+    return core;
+  };
+  it("un bebé abrigado en un día templado no se desvía ni muere de calor", () => {
+    const core = stepsOf(4, TEMPERATE, street, 24);
+    expect(core).toBeGreaterThan(36);
+    expect(core).toBeLessThan(38.5);
+    expect(thermalDeath(core)).toBeNull();
+  });
+  it("un bebé en el frío cae más rápido que un adulto", () => {
+    const cold = { ...TEMPERATE, airC: -5, windMs: 4 };
+    expect(stepsOf(4, cold, street, 2)).toBeLessThan(stepsOf(70, cold, street, 2));
+  });
+  it("sobre la masa de referencia nada cambia", () => {
+    expect(heatLossW(TEMPERATE, street, 70)).toBe(heatLossW(TEMPERATE, street, 90));
+  });
+  it("dressed suma aislamiento, toma el mejor cortaviento y superpone la cobertura", () => {
+    const c = dressed([
+      { clo: 0.6, windproof: 0.1, coverage: 0.7 },
+      { clo: 1.5, windproof: 0.7, coverage: 0.5 },
+    ]);
+    expect(c.clo).toBeCloseTo(2.1);
+    expect(c.windproof).toBe(0.7);
+    expect(c.coverage).toBeCloseTo(0.85);
+    expect(dressed([]).clo).toBe(0);
+  });
+  it("el fuego calienta más cerca y no llega lejos; el techo repara más que el campo", () => {
+    expect(fireRadiantC([{ intensity: 1, distanceM: 2 }])).toBeGreaterThan(
+      fireRadiantC([{ intensity: 1, distanceM: 6 }]),
+    );
+    expect(fireRadiantC([{ intensity: 1, distanceM: 30 }])).toBe(0);
+    expect(shelterOf(true, 0)).toBe(1);
+    expect(shelterOf(true, 1)).toBeLessThan(shelterOf(true, 0));
+    expect(shelterOf(false, 1)).toBe(0);
   });
 });
