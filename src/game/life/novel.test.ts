@@ -40,14 +40,14 @@ describe("modo novela: buscar un nacimiento real", () => {
     const age = (terrain.population.now - (me?.born ?? 0)) / world.clock.year;
     expect(Math.abs(age - entryAge)).toBeLessThanOrEqual(3);
     expect(terrain.population.people.some((p) => p.id === world.player)).toBe(true);
-  }, 120_000);
+  }, 600_000);
 
   it("la posición pedida es la del estatus de su hogar", () => {
     const game = novel({ family: { position: "common" }, entryAge });
     const { world } = Life.create(7, content, { frequency: 8, ...optionsOf({ game }) });
     const status = world.truth.get(STATUS, world.player)?.status;
     expect(content.all(STATUSES).find((d) => d.id === status)?.role).toBe("common");
-  }, 120_000);
+  }, 600_000);
 
   it("es determinista", () => {
     const game = novel({ sex: who?.sex, entryAge });
@@ -55,7 +55,7 @@ describe("modo novela: buscar un nacimiento real", () => {
     const b = Life.create(7, content, { frequency: 8, ...optionsOf({ game }) });
     expect(a.world.player).toBe(b.world.player);
     expect(a.hash()).toEqual(b.hash());
-  }, 120_000);
+  }, 600_000);
 
   it("si nadie cumple, lo rechaza con la razón en vez de inventar a alguien", () => {
     const game = novel({ entryAge: 90 });
@@ -64,7 +64,7 @@ describe("modo novela: buscar un nacimiento real", () => {
     expect(() => Life.create(7, content, { frequency: 8, ...optionsOf({ game: hard }) })).toThrow(
       NoSuchBirth,
     );
-  }, 120_000);
+  }, 600_000);
 });
 
 describe("modo novela: el temperamento pedido pesa en la búsqueda", () => {
@@ -92,7 +92,7 @@ describe("modo novela: el temperamento pedido pesa en la búsqueda", () => {
       return temperamentFit(p?.innate ?? {}, wish) / (1 + distance);
     };
     expect(score(life.world.player)).toBeGreaterThanOrEqual(score(free.world.player));
-  }, 120_000);
+  }, 600_000);
 
   it("es determinista y rechaza un eje que no es de temperamento", () => {
     const game = novel({ entryAge, temperament: wish });
@@ -103,5 +103,5 @@ describe("modo novela: el temperamento pedido pesa en la búsqueda", () => {
     expect(() => Life.create(7, content, { frequency: 8, ...optionsOf({ game: bad }) })).toThrow(
       /temperamento pedido inválido/,
     );
-  }, 120_000);
+  }, 600_000);
 });

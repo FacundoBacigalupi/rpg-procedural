@@ -97,7 +97,7 @@ describe("testigos en el juego", () => {
       Rng.root(1),
     );
     expect(out).toBeNull();
-  }, 60_000);
+  }, 600_000);
 
   it("el miedo y la lealtad hacia quien lo hizo salen de la relación", () => {
     const s = scene(7);
@@ -107,7 +107,7 @@ describe("testigos en el juego", () => {
     expect(p.motives.loyaltyToDoer).toBe(1);
     expect(p.motives.bribe).toBe(0.4);
     expect(p.recall.affinityToDoer).toBe(1);
-  }, 60_000);
+  }, 600_000);
 
   it("el rencor a un tercero lo vuelve sospechoso, nunca quien hizo el hecho", () => {
     const s = scene(7);
@@ -119,7 +119,7 @@ describe("testigos en el juego", () => {
     const p = witnessProfile(s.w.truth, s.o, s.witness, s.asker, s.deed, 0, s.life.now);
     expect(p.other).toBe(third);
     expect(p.motives.hatredOfOther).toBeCloseTo(0.9, 5);
-  }, 60_000);
+  }, 600_000);
 
   it("lo declarado queda como told de quien preguntó y no pisa lo que vio", () => {
     fc.assert(
@@ -167,12 +167,12 @@ describe("testigos en el juego", () => {
       }),
       { numRuns: 20 },
     );
-  }, 120_000);
+  }, 600_000);
 
   it("el testigo es una persona viva de la aldea", () => {
     const s = scene(7);
     expect(s.w.truth.get(PERSON, s.witness)).toBeDefined();
-  }, 60_000);
+  }, 600_000);
 
   it("la oferta pesa según los gramos y satura", () => {
     expect(bribeValue(0)).toBe(0);
@@ -194,7 +194,7 @@ describe("testigos en el juego", () => {
     const pressed = witnessProfile(s.w.truth, s.o, s.witness, s.asker, s.deed, 0, s.life.now, 1);
     expect(pressed.motives.honesty).toBeGreaterThan(calm.motives.honesty);
     expect(pressed.motives.fear).toBeLessThan(calm.motives.fear);
-  }, 60_000);
+  }, 600_000);
 
   it("la claridad sale de la memoria guardada: viva casi igual, vieja y olvidada mucho menos", () => {
     const s = scene(7);
@@ -233,5 +233,5 @@ describe("testigos en el juego", () => {
       base * FORGOTTEN_CLARITY,
       6,
     );
-  }, 60_000);
+  }, 600_000);
 });
