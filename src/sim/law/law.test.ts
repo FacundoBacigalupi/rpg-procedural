@@ -58,6 +58,13 @@ describe("lo que se sabe de un hecho", () => {
     expect(worstDeed(k, B)).toBeNull();
     expect(worstDeed(undefined, A)).toBeNull();
   });
+
+  it("lo que quien lo sabe leyó como regalo no cuenta como lo peor; leído como robo, sí", () => {
+    const gift = learnDeed(undefined, deed(1, { read: { weight: 0.8 } }));
+    expect(worstDeed(gift, A)).toBeNull();
+    const theft = learnDeed(undefined, deed(1, { read: { weight: -0.6 } }));
+    expect(worstDeed(theft, A)?.kind).toBe("theft");
+  });
 });
 
 describe("la fama", () => {

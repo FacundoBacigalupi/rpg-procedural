@@ -69,9 +69,13 @@ export function deedsBy(known: KnownDeeds | undefined, who: AgentId): readonly D
 
 const GRAVITY: readonly DeedKind[] = ["assault", "theft", "default"];
 
-/** El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber). */
+/**
+ * El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber).
+ * Un hecho que `knower` leyó como disculpable (`reportable` falso: un regalo, un malentendido) no
+ * cuenta: no lo denuncia ni se lo reprocha.
+ */
 export function worstDeed(known: KnownDeeds | undefined, who: AgentId): Deed | null {
-  const by = deedsBy(known, who);
+  const by = deedsBy(known, who).filter(reportable);
   for (const kind of GRAVITY) {
     const found = by.find((d) => d.kind === kind);
     if (found) return found;

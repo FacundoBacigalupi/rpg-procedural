@@ -175,6 +175,7 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           statuses: parts.statuses,
+          relations: { dims: parts.relationDims, bonds: parts.relationBonds },
         }),
         bodyProcess({
           plans: parts.plans,

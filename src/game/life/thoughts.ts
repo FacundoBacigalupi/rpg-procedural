@@ -15,9 +15,12 @@ import {
   MENTAL,
   type Memory,
   memoriesAbout,
+  mentionableTastes,
+  TASTES_OF,
 } from "../../sim/index.ts";
 import type { SpecialMode, ThoughtInput } from "../view/index.ts";
 import { SLEEP_STATE } from "./sleep.ts";
+import { tasteRecall } from "./taste-recall.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** Cuántos pensamientos pasan a la vista como máximo en un turno. */
@@ -37,6 +40,8 @@ export const WARM_SALIENCE = 0.3;
 export const WARM_VALENCE = 0.4;
 export const WARM_INTENSITY = 0.4;
 export const WARM_RATE = 0.25;
+/** Chance por turno de que un gusto con recuerdo venga solo a la cabeza. */
+export const TASTE_MEMORY_RATE = 0.08;
 /** Desde cuántos días sin ver el turno se cuenta como salto de tiempo. */
 export const MONTAGE_DAYS = 7;
 
@@ -150,6 +155,27 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
         mood: near ? "calm" : "longing",
         about: id as AgentId,
         ...(hazyMemory(mem.memory) ? { hazy: true } : {}),
+      });
+      break;
+    }
+  }
+
+  // Un gusto atado a un recuerdo que viene solo (npc-psychology §16): el olor del guiso que lo
+  // enfermó, el té de aquel buen día. Rara vez; solo si no vino otra cosa.
+  if (out.length === 0 && !dreamt) {
+    const mine = w.truth.get(TASTES_OF, me);
+    const food = mine?.preferences.filter((p) => p.domain.startsWith("food.")) ?? [];
+    const named = mentionableTastes(food, w.tastes, food.length);
+    for (const t of named) {
+      const recalls = tasteRecall(
+        memories?.items ?? [],
+        food.find((p) => p.item === t.item)?.originEventIds ?? [],
+      );
+      if (!recalls || rng.fork("taste", t.item).float() >= TASTE_MEMORY_RATE) continue;
+      out.push({
+        kind: "remember",
+        mood: recalls === "ill" ? "fear" : "calm",
+        taste: { name: t.name, recalls },
       });
       break;
     }

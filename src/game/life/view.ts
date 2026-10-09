@@ -3,14 +3,7 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import {
-  type AgentId,
-  type EntityRef,
-  type EventId,
-  ledgerUnit,
-  Rng,
-  type Tick,
-} from "../../core/index.ts";
+import { type AgentId, type EntityRef, ledgerUnit, Rng, type Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -27,7 +20,6 @@ import {
   type Location,
   localHour,
   MEMORIES,
-  type Memory,
   mentionableTastes,
   PERSON,
   type Percept,
@@ -65,6 +57,7 @@ import { READING_EVENT } from "./divine.ts";
 import { withImpressions } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { stretchOf } from "./stretch.ts";
+import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -215,23 +208,7 @@ export function tastesForView(
   ];
 }
 
-/** Desde cuánto pesa una memoria (valencia) para que el gusto se cuente atado a ella. */
-export const TASTE_RECALL_VALENCE = 0.3;
-
-/**
- * Si el gusto nació de un evento que el personaje todavía recuerda (la intoxicación, el festín),
- * cómo lo recuerda: mal o bien, según la valencia de su memoria. Sin esa memoria, nada.
- */
-export function tasteRecall(
-  items: readonly Pick<Memory, "eventId" | "valence" | "intensity">[],
-  origins: readonly EventId[],
-): "ill" | "good" | undefined {
-  if (origins.length === 0) return undefined;
-  const mine = items
-    .filter((m) => origins.includes(m.eventId) && Math.abs(m.valence) >= TASTE_RECALL_VALENCE)
-    .sort((a, b) => b.intensity - a.intensity)[0];
-  return mine === undefined ? undefined : mine.valence < 0 ? "ill" : "good";
-}
+export { TASTE_RECALL_VALENCE, tasteRecall };
 
 /** Cuántas veces de cada tantas el personaje se acuerda de una deuda a la vista (no en cada turno). */
 export const DUE_NOTICE_CHANCE = 0.3;

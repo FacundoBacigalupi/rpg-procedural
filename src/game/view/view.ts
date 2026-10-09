@@ -76,6 +76,8 @@ export interface ThoughtInput {
   readonly mood?: Mood;
   /** El recuerdo está deformado o borroso: no se cuenta como cierto (narration §7). */
   readonly hazy?: boolean;
+  /** Un gusto propio que viene atado a un recuerdo (cómo lo nombra el catálogo y cómo lo recuerda). */
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
 }
 
 export interface ThoughtView {
@@ -85,6 +87,7 @@ export interface ThoughtView {
   readonly about?: string;
   readonly mood?: Mood;
   readonly hazy?: boolean;
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
 }
 
 /** Un gusto propio que viene al caso este turno (npc-psychology §16): lo que el personaje sabe de sí. */
@@ -166,7 +169,18 @@ export interface StretchView {
   readonly hurt: boolean;
   /** Peleó. */
   readonly fought: boolean;
+  /** Etiquetas locales de los conocidos con los que habló (a los extraños no se los nombra). */
+  readonly spokeWith: readonly string[];
 }
+
+/** Lo que arma quien tiene la verdad: igual que `StretchView`, con las personas en vez de etiquetas. */
+export interface StretchInput extends Omit<StretchView, "spokeWith"> {
+  /** Con quién habló, en orden estable; el muro deja solo a los conocidos. */
+  readonly metWith: readonly AgentId[];
+}
+
+/** Cuántos conocidos como máximo se nombran en un salto. */
+export const STRETCH_NAMED = 3;
 
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
@@ -411,7 +425,7 @@ export interface ViewInput {
   readonly offenses?: readonly OffenseView[];
   readonly readings?: readonly ReadingView[];
   readonly mode?: SpecialMode;
-  readonly stretch?: StretchView;
+  readonly stretch?: StretchInput;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
   /**
@@ -569,6 +583,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
     ...(t.mood !== undefined ? { mood: t.mood } : {}),
     ...(t.hazy === true ? { hazy: true } : {}),
+    ...(t.taste !== undefined ? { taste: t.taste } : {}),
   }));
 
   const view = {
@@ -583,7 +598,19 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined
-      ? { stretch: { ...input.stretch, did: input.stretch.did.map((d) => ({ ...d })) } }
+      ? {
+          stretch: {
+            days: input.stretch.days,
+            did: input.stretch.did.map((d) => ({ ...d })),
+            spoke: input.stretch.spoke,
+            hurt: input.stretch.hurt,
+            fought: input.stretch.fought,
+            spokeWith: input.stretch.metWith
+              .filter((a) => input.acquaintances.has(a))
+              .slice(0, STRETCH_NAMED)
+              .map((a) => known(a, "sure")),
+          },
+        }
       : {}),
     labels,
     lexicon: [...words].sort(compareStrings),

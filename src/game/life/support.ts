@@ -5,11 +5,14 @@
 
 import type { AgentId } from "../../core/index.ts";
 import {
+  AMENDS,
+  type Amends,
   affiliationOf,
   type CommunityReligion,
   type ConditionKind,
   comfortOf,
   ENTITY,
+  type GuiltResponse,
   PERSON,
   practicesOfKind,
   RELIGIOUS_IDENTITY,
@@ -25,11 +28,47 @@ export const SUPPORT_WEIGHTS: Readonly<Record<ConditionKind, { company: number; 
   guilt: { company: 0.2, rite: 0.5 },
 };
 
-/** El apoyo (0-1) de una condición dados la compañía y el consuelo del rito (ambos 0-1). Puro. */
-export function supportOf(kind: ConditionKind, company: number, riteComfort: number): number {
+/**
+ * Cuánto del consuelo del rito le llega a la culpa según lo que decidió hacer con ella: el rito deja
+ * pagar a quien confiesa o repara; quien evita lo recibe a medias y quien desvía casi no (sin
+ * calibrar).
+ */
+export const RITE_FIT: Readonly<Record<GuiltResponse, number>> = {
+  confess: 1,
+  repair: 1,
+  none: 0.7,
+  avoid: 0.6,
+  deflect: 0.3,
+};
+
+/** Lo que decidió hacer con su culpa más pesada (la del mayor `guilt` guardado), o `none`. */
+export function heaviestResponse(amends: Amends | undefined): GuiltResponse {
+  let best: GuiltResponse = "none";
+  let weight = -1;
+  for (const s of Object.values(amends?.byDeed ?? {})) {
+    if (s.guilt > weight) {
+      weight = s.guilt;
+      best = s.response;
+    }
+  }
+  return best;
+}
+
+/**
+ * El apoyo (0-1) de una condición dados la compañía y el consuelo del rito (ambos 0-1). En la culpa,
+ * el rito llega según lo decidido en `AMENDS` (`RITE_FIT`). Puro.
+ */
+export function supportOf(
+  kind: ConditionKind,
+  company: number,
+  riteComfort: number,
+  response: GuiltResponse = "confess",
+): number {
   const w = SUPPORT_WEIGHTS[kind];
+  const fit = kind === "guilt" ? RITE_FIT[response] : 1;
   const x =
-    w.company * Math.min(1, Math.max(0, company)) + w.rite * Math.min(1, Math.max(0, riteComfort));
+    w.company * Math.min(1, Math.max(0, company)) +
+    w.rite * fit * Math.min(1, Math.max(0, riteComfort));
   return Math.min(1, x);
 }
 
@@ -66,5 +105,6 @@ export function supportFor(
 ): (kind: ConditionKind) => number {
   const company = companyOf(truth, me);
   const rite = riteComfortOf(villageReligion(truth), truth.get(RELIGIOUS_IDENTITY, me));
-  return (kind) => supportOf(kind, company, rite);
+  const response = heaviestResponse(truth.get(AMENDS, me));
+  return (kind) => supportOf(kind, company, rite, response);
 }

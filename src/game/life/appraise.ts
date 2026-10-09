@@ -27,12 +27,14 @@ import {
   type DimensionDef,
   defaultDeltas,
   ENTITY,
+  type EventDraft,
   emptyMental,
   fightDeltas,
   finishDeltas,
   form,
   formMemory,
   giveDeltas,
+  guiltAfter,
   guiltOf,
   HABITS,
   type HabitDef,
@@ -69,6 +71,7 @@ import {
   STATUS,
   type StageDef,
   type StateChange,
+  sanctionWeight,
   setComponent,
   spareDeltas,
   stageAt,
@@ -77,6 +80,7 @@ import {
   tendDeltas,
   tradeDeltas,
   type ValueDef,
+  villageReligion,
   weaken,
 } from "../../sim/index.ts";
 
@@ -90,6 +94,7 @@ import {
   witnessLived,
 } from "./memories.ts";
 import { applyTalkMemory, applyTestimony, talkMemoryIn, testimonyMemoryIn } from "./talkmemory.ts";
+import { WAKE_EVENT, wakeOf } from "./wake.ts";
 import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
@@ -155,6 +160,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
     ],
     run(ctx) {
       const truth = ctx.truth;
+      const events: EventDraft[] = [];
       const minds = new Map<AgentId, Mind>();
       const habits = new Map<AgentId, ReturnType<typeof reinforceAll>["habits"]>();
       const apply = (id: AgentId, e: Event, items: ReturnType<typeof appraiseLoss>) => {
@@ -246,7 +252,18 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
               }),
             );
           }
-          const guilt = guiltOf(deed, conscience, e.tick);
+          // Romper un tabú pesa por lo que él cree (miedo y vergüenza) y más si lo vieron.
+          const tabooGuilt = deed.good
+            ? guiltAfter(
+                sanctionWeight(
+                  truth.get(RELIGIOUS_IDENTITY, by),
+                  villageReligion(truth),
+                  deed.good,
+                ),
+                (seen.get(e.id) ?? []).some((p) => p.observer !== by),
+              )
+            : 0;
+          const guilt = Math.max(guiltOf(deed, conscience, e.tick), tabooGuilt);
           if (!fatal && guilt > 0) {
             apply(by, e, appraiseGuilt(guilt));
             const mental = mentals.get(by) ?? truth.get(MENTAL, by) ?? emptyMental(e.id, e.tick);
@@ -384,14 +401,35 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           const dead = e.actors[0] as AgentId | undefined;
           const home = dead ? truth.get(PERSON, dead)?.household : undefined;
           if (!dead || home === undefined) continue;
+          const mourners: { id: AgentId; close: number }[] = [];
           for (const id of truth.ids(PERSON) as AgentId[]) {
             if (id === dead || !alive(truth, id) || truth.get(PERSON, id)?.household !== home) {
               continue;
             }
             const r = rel(id, dead, e);
             if (r.bonds.length === 0) continue;
-            apply(id, e, appraiseLoss(closeness(r)));
-            note(lossLived(e, id, dead, closeness(r)));
+            mourners.push({ id, close: closeness(r) });
+          }
+          // El velorio: la aldea acompaña según su pertenencia y el consuelo alivia el duelo.
+          const wake = wakeOf(
+            truth,
+            dead,
+            mourners.map((m) => m.id),
+            ctx.rng.fork("wake", e.id),
+          );
+          for (const m of mourners) {
+            apply(m.id, e, appraiseLoss(m.close, wake?.comfort.get(m.id) ?? 0));
+            note(lossLived(e, m.id, dead, m.close));
+          }
+          if (wake) {
+            events.push({
+              kind: WAKE_EVENT,
+              actors: [dead, ...wake.attendees],
+              place: e.place,
+              data: { practice: wake.practice, comfort: Object.fromEntries(wake.comfort) },
+              emissions: {},
+              causes: [{ kind: "event", event: e.id }],
+            });
           }
         }
       }
@@ -404,7 +442,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
         ...[...secrets].map(([id, s]) => setComponent(SECRETS, id, s)),
       ];
-      return changes.length === 0 ? {} : { changes };
+      return changes.length === 0 && events.length === 0 ? {} : { changes, events };
     },
   };
 }

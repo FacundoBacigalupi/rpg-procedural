@@ -139,7 +139,9 @@ export function renderView(
     for (const d of stretch.did)
       if (book.has(`stretch.did.${d.verb}`)) say(`stretch.did.${d.verb}`);
     if (stretch.did.some((d) => d.failed > 0)) say("stretch.failed");
-    if (stretch.spoke > 0) say("stretch.spoke");
+    const named = stretch.spokeWith[0];
+    if (named !== undefined) say("stretch.spoke_with", { who: ref(named) });
+    else if (stretch.spoke > 0) say("stretch.spoke");
     if (stretch.fought) say("stretch.fought");
     else if (stretch.hurt) say("stretch.hurt");
   }
@@ -159,6 +161,8 @@ export function renderView(
       continue;
     }
     if (t.kind === "conclude") say("thought.ponder");
+    else if (t.kind === "remember" && t.taste !== undefined)
+      say(`taste.recalls_${t.taste.recalls}`, { what: t.taste.name });
     else if (t.kind === "remember")
       say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
     else if (t.kind === "ponder")

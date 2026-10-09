@@ -114,6 +114,35 @@ const LASTS: Readonly<Record<InventoryPanel["larder"][number]["lasts"], string>>
   a_year: "alcanza hasta la próxima cosecha",
 };
 
+const BURDEN: Readonly<
+  Record<"trauma" | "guilt", Readonly<Record<"light" | "heavy" | "crushing", string>>>
+> = {
+  trauma: {
+    light: "Un sobresalto te queda dentro",
+    heavy: "Lo que viviste te sigue de cerca",
+    crushing: "Lo que viviste no te deja en paz",
+  },
+  guilt: {
+    light: "Algo que hiciste te roza la conciencia",
+    heavy: "Cargás con algo que hiciste",
+    crushing: "Lo que hiciste te aplasta",
+  },
+};
+
+const DEED: Readonly<Record<string, string>> = {
+  theft: "Lo que le sacaste",
+  assault: "Lo que le hiciste",
+  default: "Lo que le debés",
+};
+
+const STANCE: Readonly<Record<"none" | "avoid" | "repair" | "confess" | "deflect", string>> = {
+  none: "lo dejás pasar",
+  avoid: "preferís no cruzártelo",
+  repair: "querés repararlo",
+  confess: "querés confesarlo",
+  deflect: "te das excusas y buscás otro culpable",
+};
+
 export function renderCharacter(p: CharacterPanel): string {
   const lines = [
     `Tenés ${p.ageYears} años. ${p.where.home ? "Estás en tu casa." : "Estás fuera de tu casa."}`,
@@ -144,6 +173,12 @@ export function renderCharacter(p: CharacterPanel): string {
     );
     if (f.practices.length > 0) {
       lines.push(`Lo que se hace: ${f.practices.map((x) => x.name).join(", ")}.`);
+    }
+  }
+  if (p.conscience) {
+    for (const b of p.conscience.burdens) lines.push(`${BURDEN[b.kind][b.weight]}.`);
+    for (const g of p.conscience.guilt) {
+      lines.push(`${DEED[g.deed] ?? "Lo que hiciste"} (${g.other}): ${STANCE[g.stance]}.`);
     }
   }
   if (p.skills.length > 0) {

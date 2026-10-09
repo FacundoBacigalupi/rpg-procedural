@@ -21,6 +21,7 @@ describe("paquete de reproducción del narrador", () => {
       tastes: [],
       dues: [],
       offenses: [],
+      readings: [],
       percepts: [],
       labels: [{ id: "e1", label: "una mujer", kind: "agent" }],
       lexicon: [],

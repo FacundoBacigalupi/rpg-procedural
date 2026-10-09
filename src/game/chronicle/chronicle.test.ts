@@ -3,10 +3,12 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  AMENDS,
   BODY_STATE,
   checkInvariants,
   ENTITY,
   MEMORIES,
+  OWN_DEEDS,
   PERSON,
   RELATIONS,
   strangerDims,
@@ -171,5 +173,31 @@ describe("personas importantes y lo que nunca supiste", { timeout: 60_000 }, () 
     expect(ca.people.map((p) => p.score)).toEqual(
       [...ca.people.map((p) => p.score)].sort((x, y) => y - x),
     );
+  });
+});
+
+describe("la culpa en la crónica", { timeout: 60_000 }, () => {
+  it("cuenta lo que cargó y qué decidió, citando el hecho", () => {
+    const { world, entered } = starved(11);
+    const deed = world.log.all()[0];
+    const victim = world.truth.ids(PERSON).find((id) => id !== world.player) as AgentId;
+    if (!deed) throw new Error("sin eventos");
+    world.truth.set(OWN_DEEDS, world.player, {
+      deeds: [{ kind: "theft", victim, at: deed.tick, event: deed.id, harm: 0.4 }],
+    });
+    world.truth.set(AMENDS, world.player, {
+      byDeed: { [deed.id]: { response: "confess", guilt: 0.8, decided: deed.tick } },
+    });
+    const c = buildChronicle(world, entered, marks);
+    expect(c.guilt.map((g) => g.deed)).toEqual([deed.id]);
+    expect(c.sources).toContain(deed.id);
+    const text = renderChronicle(
+      c,
+      world.clock,
+      (id) => world.log.get(id),
+      () => "Ana",
+    );
+    expect(text).toContain("Lo que cargaste:");
+    expect(text).toContain("un peso enorme");
   });
 });

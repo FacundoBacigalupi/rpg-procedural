@@ -10,15 +10,19 @@
 import type { AgentId, EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
+  AMENDS,
   affiliationOf,
   BODY_STATE,
   bodySigns,
   bookOf,
   COPPER,
+  type GuiltResponse,
   houseKey,
   LOCATION,
   MEAL_KCAL,
+  MENTAL,
   mentionableTastes,
+  OWN_DEEDS,
   PERSON,
   PLACE,
   PLEDGE,
@@ -58,6 +62,18 @@ export function faithLevel(x: number): FaithLevel {
   return "deep";
 }
 
+/** Cuánto pesa una carga mental, en palabras. */
+export type BurdenLevel = "light" | "heavy" | "crushing";
+
+export function burdenLevel(severity: number): BurdenLevel {
+  if (severity < 0.35) return "light";
+  if (severity < 0.7) return "heavy";
+  return "crushing";
+}
+
+/** Desde qué gravedad una condición se nota en el panel. */
+export const BURDEN_FROM = 0.1;
+
 export interface CharacterPanel {
   /** Los años que sabe que tiene. */
   readonly ageYears: number;
@@ -89,6 +105,22 @@ export interface CharacterPanel {
     readonly belonging: FaithLevel;
     /** Las prácticas de su religión (ofrendas, fiestas, tabúes) con su clase, sin pesos. */
     readonly practices: readonly { readonly name: string; readonly kind: string }[];
+  };
+  /**
+   * Cómo se siente por dentro (npc-psychology §11): las cargas que lleva, en palabras, y qué decidió
+   * hacer con cada culpa (sin menú: es lo que ya decidió su conciencia, `AMENDS`). Sin números.
+   */
+  readonly conscience?: {
+    readonly burdens: readonly {
+      readonly kind: "trauma" | "guilt";
+      readonly weight: BurdenLevel;
+    }[];
+    readonly guilt: readonly {
+      readonly deed: string;
+      /** A quién, como lo llama (nombre o relación; «alguien» si no lo ubica). */
+      readonly other: string;
+      readonly stance: GuiltResponse;
+    }[];
   };
   /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
@@ -173,8 +205,28 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
           },
         }
       : {}),
+    ...conscienceOf(w),
     skills,
   };
+}
+
+/**
+ * La carga interior del personaje: condiciones que pesan (desde `BURDEN_FROM`) y, por cada hecho
+ * propio con postura decidida, qué quiere hacer con él. Vacío si no carga nada.
+ */
+function conscienceOf(w: LifeWorld): Pick<CharacterPanel, "conscience"> | Record<string, never> {
+  const burdens = (w.truth.get(MENTAL, w.player)?.conditions ?? [])
+    .filter((c) => c.severity >= BURDEN_FROM)
+    .map((c) => ({ kind: c.kind, weight: burdenLevel(c.severity) }));
+  const amends = w.truth.get(AMENDS, w.player);
+  const known = acquaintances(w);
+  const guilt = (w.truth.get(OWN_DEEDS, w.player)?.deeds ?? []).flatMap((d) => {
+    const stance = amends?.byDeed[d.event];
+    if (!stance || stance.response === "none") return [];
+    const a = known.get(d.victim);
+    return [{ deed: d.kind, other: a?.name ?? a?.relation ?? "alguien", stance: stance.response }];
+  });
+  return burdens.length + guilt.length === 0 ? {} : { conscience: { burdens, guilt } };
 }
 
 /** Cuántos gustos muestra el panel y desde qué fuerza (los que ya se notan de uno mismo). */
