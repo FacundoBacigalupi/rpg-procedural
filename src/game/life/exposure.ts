@@ -24,12 +24,16 @@ import {
   PERSON,
   type PersonInfection,
   type ProcessDef,
+  type Quarantine,
+  quarantinedShared,
   type ReadonlyWorldTruth,
   type Shared,
   type StateChange,
   setComponent,
   sheddingLevel,
+  TREATMENT,
   taintAfter,
+  treatedCourse,
   tryInfect,
   WELL_TAINT,
   WORK,
@@ -88,6 +92,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       ENTITY.name,
       BODY_STATE.name,
       WORK.name,
+      TREATMENT.name,
     ],
     writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, ENTITY.name],
     run(ctx) {
@@ -148,7 +153,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         );
 
       // Quién contagia hoy y desde qué evento, por hogar.
-      type Source = { shed: number; cause: string };
+      type Source = { shed: number; cause: string; quarantine?: Quarantine; healer?: string };
       const byHouse = new Map<string, Map<string, Source>>();
       const stages = new Map<
         string,
@@ -169,7 +174,16 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           if (shed > 0 && house !== undefined && inf.cause !== null) {
             const m = byHouse.get(house) ?? new Map<string, Source>();
             const prev = m.get(def.id);
-            if (!prev || shed > prev.shed) m.set(def.id, { shed, cause: inf.cause });
+            if (!prev || shed > prev.shed) {
+              const tr = ctx.truth
+                .get(TREATMENT, id)
+                ?.treatments.find((t) => t.pathogen === def.id);
+              m.set(def.id, {
+                shed,
+                cause: inf.cause,
+                ...(tr?.quarantine ? { quarantine: tr.quarantine, healer: tr.healer } : {}),
+              });
+            }
             byHouse.set(house, m);
           }
         }
@@ -233,7 +247,18 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           if (s.stage === "recovered" || s.stage === "dead") {
             infections = infections.filter((i) => i !== s.inf);
             changed = true;
-            if (s.stage === "dead") died = s.inf;
+            // Un enfermo tratado con efecto real puede salvarse de un curso fatal (medicina §6).
+            const tr = ctx.truth
+              .get(TREATMENT, id)
+              ?.treatments.find((t) => t.pathogen === s.def.id);
+            const saved =
+              s.stage === "dead" &&
+              tr !== undefined &&
+              tr.effect > 0 &&
+              !ctx.rng
+                .fork("treated", id, s.def.id)
+                .chance(treatedCourse(tr.effect).lethalityFactor);
+            if (s.stage === "dead" && !saved) died = s.inf;
             else {
               const imm = immunityAfter(s.def, tph, ctx.now);
               if (imm) immunities = [...immunities.filter((i) => i.pathogen !== s.def.id), imm];
@@ -254,7 +279,10 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               hours: HOUSEHOLD_DAY.hours * days,
               waterDirt: water ? waterDose(wellWater(water.load)) : 0,
             };
-            const dose = exposureDose(def, src?.shed ?? (water ? 1 : 0), shared);
+            const eff = src?.quarantine
+              ? quarantinedShared(shared, src.quarantine, src.healer === id)
+              : shared;
+            const dose = exposureDose(def, src?.shed ?? (water ? 1 : 0), eff);
             if (dose <= 0) continue;
             const got = tryInfect(
               def,
