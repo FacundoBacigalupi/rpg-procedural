@@ -3,6 +3,7 @@ import {
   endOfDayAdjust,
   householdQuote,
   learnFromDeal,
+  noteSeller,
   recordDeal,
   type TapeEntry,
   tapePrice,
@@ -51,5 +52,14 @@ describe("mercado de la aldea", () => {
     expect(householdQuote(up, "good:grain", 10, 5, 100).ask).toBeGreaterThan(
       householdQuote(down, "good:grain", 10, 5, 100).ask,
     );
+  });
+});
+
+describe("libro del día del vendedor", () => {
+  it("suma lo ofrecido y lo vendido en el mismo día y arranca otro libro al cambiar de día", () => {
+    const a = noteSeller(undefined, 5, "good:grain", 2000, 0);
+    const b = noteSeller(a, 5, "good:grain", 1000, 1000);
+    expect(b.rows["good:grain"]).toEqual({ offeredGrams: 3000, soldGrams: 1000, walkedAway: 1 });
+    expect(noteSeller(b, 6, "good:grain", 500, 500).rows["good:grain"]?.offeredGrams).toBe(500);
   });
 });
