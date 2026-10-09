@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, Event, HolderRef, LedgerUnit, Tick } from "../../core/index.ts";
 import { type Beliefs, type Location, learn } from "../../sim/index.ts";
 import { checkInventory, noticeChange, touchedBy } from "./inventory-belief.ts";
-import { whereaboutsFromBeliefs } from "./known.ts";
+import { believesAlive, whereaboutsFromBeliefs } from "./known.ts";
 
 const who = "agent:7" as AgentId;
 const here: Location = { hex: 5, space: "house" };
@@ -52,6 +52,31 @@ describe("whereaboutsFromBeliefs", () => {
         expect(r.at).toBe(5);
       }),
     );
+  });
+});
+
+describe("believesAlive", () => {
+  function sawAlive(value: boolean, tick: Tick): Beliefs {
+    return learn(
+      undefined,
+      {
+        prop: { kind: "attr", subject: who, attr: "alive" },
+        value,
+        confidence: 0.9,
+        asOf: tick,
+        source: { kind: "percept", percept: "p", tick },
+      },
+      tick,
+    );
+  }
+
+  it("lo cree vivo si lo vio vivo hace poco", () => {
+    expect(believesAlive(sawAlive(true, now), who, now)).toBe(true);
+  });
+
+  it("sin creencia, o creído muerto, no es un fantasma", () => {
+    expect(believesAlive(undefined, who, now)).toBe(false);
+    expect(believesAlive(sawAlive(false, now), who, now)).toBe(false);
   });
 });
 

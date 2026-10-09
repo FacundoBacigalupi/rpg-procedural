@@ -9,6 +9,7 @@ import {
   beliefConfidenceAt,
   believed,
   callName,
+  ENTITY,
   type KnownEntity,
   LOCATION,
   PERSON,
@@ -46,20 +47,25 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
       if (!id) continue;
       if (!alive.has(id)) {
         // Murió y no se enteró: para él sigue vivo (y donde lo vio) hasta que algo se lo corrija.
-        const b = believed(mine, id, "alive");
-        if (b?.value === true && beliefConfidenceAt(b, w.scheduler.now) >= RECOGNIZED_CONFIDENCE) {
+        if (believesAlive(mine, id, w.scheduler.now)) {
           out.push(person(w, id, [name], rel, here, false));
         }
         continue;
       }
       out.push(person(w, id, [name], rel, here));
     }
-    for (const id of living(w.truth)) {
-      const p = w.truth.get(PERSON, id);
-      if (!p || id === w.player || id === me.mother || id === me.father) continue;
+    // Convivientes (hermanos): los vivos y los muertos que el personaje cree vivos (phantom).
+    for (const id of w.truth.ids(ENTITY)) {
+      if (!id.startsWith("agent:")) continue;
+      const agent = id as AgentId;
+      const p = w.truth.get(PERSON, agent);
+      if (!p || agent === w.player || agent === me.mother || agent === me.father) continue;
       if (p.household !== me.household) continue;
       const rel = p.sex === "female" ? "hermana" : "hermano";
-      out.push(person(w, id, [rel], rel, here));
+      if (alive.has(agent)) out.push(person(w, agent, [rel], rel, here));
+      else if (believesAlive(mine, agent, w.scheduler.now)) {
+        out.push(person(w, agent, [rel], rel, here, false));
+      }
     }
   }
   for (const id of w.truth.ids(PLACE)) {
@@ -83,6 +89,12 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
     });
   }
   return out;
+}
+
+/** Pura: el personaje cree vivo a `id` con confianza (envejecida) que todavía pesa. */
+export function believesAlive(beliefs: Beliefs | undefined, id: AgentId, now: Tick): boolean {
+  const b = believed(beliefs, id, "alive");
+  return b?.value === true && beliefConfidenceAt(b, now) >= RECOGNIZED_CONFIDENCE;
 }
 
 type Where = { hex: number; space?: string | undefined };
