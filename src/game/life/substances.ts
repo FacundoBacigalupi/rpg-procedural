@@ -7,6 +7,8 @@
 
 import type { AgentId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
 import {
+  type AcuteEffects,
+  acuteEffects,
   BODY_STATE,
   CLEAN,
   createEntity,
@@ -15,6 +17,7 @@ import {
   type EventDraft,
   endEntity,
   type HeldSubstance,
+  NEUTRAL,
   PERSON,
   PERSON_SUBSTANCE,
   type ProcessDef,
@@ -29,6 +32,23 @@ import {
   substanceDeath,
   dose as takeDose,
 } from "../../sim/index.ts";
+
+/** Lo que alguien tiene en el cuerpo y sus efectos agudos; sin filas, `NEUTRAL` (no cambia nada). */
+export function acuteOf(truth: ReadonlyWorldTruth, who: AgentId): AcuteEffects {
+  const rows = truth.get(PERSON_SUBSTANCE, who as never)?.held;
+  if (!rows || rows.length === 0) return NEUTRAL;
+  const defs = new Map<string, SubstanceDef>();
+  for (const id of truth.ids(SUBSTANCE)) {
+    const rec = truth.get(SUBSTANCE, id);
+    if (rec) defs.set(rec.def.id, rec.def);
+  }
+  const held = [];
+  for (const h of rows) {
+    const def = defs.get(h.substance);
+    if (def) held.push({ def, state: h.state });
+  }
+  return acuteEffects(held);
+}
 
 export const SUBSTANCES_PROCESS = "life.substances";
 
