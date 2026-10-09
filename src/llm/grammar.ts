@@ -214,7 +214,29 @@ const INFINITIVE_LEAD =
 const SPEAK =
   /^(?:le|les)\s+(?:digo|pregunto|pido|cuento|hablo|explico|grito)\b|^(?:hablo|charlo|converso)\s+con\b/i;
 
+/** La forma de tratar que el jugador declara («le hablo de usted»), fuera de las comillas. */
+const FORMAL_STYLE =
+  /\s*,?\s*\b(?:de usted(?:es)?|con respeto|respetuosamente|formalmente|con formalidad)\b\s*,?/i;
+const CASUAL_STYLE =
+  /\s*,?\s*\b(?:de vos|de t[uú]|lo tuteo|la tuteo|con confianza|informalmente)\b\s*,?/i;
+
 function speakClause(raw: string, ctx: Ctx): Clause | null {
+  const split = /["«“]/.exec(raw);
+  const head = split ? raw.slice(0, split.index) : raw;
+  const tail = split ? raw.slice(split.index) : "";
+  const formal = FORMAL_STYLE.test(head);
+  const casual = !formal && CASUAL_STYLE.test(head);
+  const bare = formal
+    ? head.replace(FORMAL_STYLE, " ")
+    : casual
+      ? head.replace(CASUAL_STYLE, " ")
+      : head;
+  const clause = speakBare(tidy(`${bare}${tail}`), ctx);
+  if (!clause?.speech || (!formal && !casual)) return clause;
+  return { ...clause, speech: { ...clause.speech, manner: [formal ? "formal" : "casual"] } };
+}
+
+function speakBare(raw: string, ctx: Ctx): Clause | null {
   const t = tidy(raw);
   // Habla entre comillas: le digo a Wu: "…" / grito "…".
   const q =
@@ -642,7 +664,7 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
       const args: DraftArg[] = [];
       if (c.speech.to) args.push({ role: "to", ref: c.speech.to });
       if (c.speech.text !== "…") args.push({ role: "content", text: c.speech.text });
-      steps.push(act("speak", args));
+      steps.push(act("speak", args, [...(c.speech.manner ?? [])]));
     }
   }
   const plan: DraftPlanNode =

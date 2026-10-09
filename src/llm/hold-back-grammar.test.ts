@@ -45,3 +45,21 @@ describe("«me contengo» suelto fija el modo", () => {
     expect(strikeManner("peleo sin esforzarme")).toEqual(["hold_back"]);
   });
 });
+
+describe("la gramática y la forma de tratar al hablar", () => {
+  const mannerOf = (text: string) => parseCommand(text)?.speech?.manner;
+
+  it.each([
+    ['le hablo de usted al alcalde: "Buen día"', ["formal"]],
+    ['le digo al alcalde de usted: "Buen día"', ["formal"]],
+    ['le digo a Wu de vos: "Buen día"', ["casual"]],
+  ])("«%s» declara la forma", (text, manner) => {
+    expect(mannerOf(text)).toEqual(manner);
+  });
+
+  it("sin la frase no declara forma, y el destinatario sigue siendo la persona", () => {
+    const d = parseCommand('le digo al alcalde: "Buen día"');
+    expect(d?.speech?.manner).toBeUndefined();
+    expect(d?.speech?.to?.text).toMatch(/alcalde/);
+  });
+});

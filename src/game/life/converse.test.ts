@@ -428,3 +428,21 @@ describe("la etiqueta omitida es una ofensa con causa", () => {
     expect(speakTo().offense).toBeUndefined();
   }, 120_000);
 });
+
+describe("la etiqueta que el jugador declara", () => {
+  const speakTo = (manner: string[]) => {
+    const { life, me, hearer } = meet(7, 0);
+    const plan = say(me, hearer, "Dame un poco de grano");
+    const root = plan.root.kind === "do" ? { ...plan.root, manner } : plan.root;
+    const report = life.turn({ ...plan, root }, 1);
+    return report.events.filter((e) => e.kind === "social.offense");
+  };
+
+  it("hablar de usted baja la falta que el oyente toma a mal (o la evita)", () => {
+    const loss = (o: ReturnType<typeof speakTo>) =>
+      o.reduce((t, e) => t + (e.data as { faceLoss: number }).faceLoss, 0);
+    const plain = loss(speakTo([]));
+    expect(plain).toBeGreaterThan(0);
+    expect(loss(speakTo(["formal"]))).toBeLessThan(plain);
+  }, 120_000);
+});

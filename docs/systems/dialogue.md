@@ -266,6 +266,10 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
 
+### Implementado (2026-10-09): la forma que declara el jugador
+
+El jugador elige cómo trata al otro con palabras («le hablo de usted», «le digo de vos»). La gramática las saca de lo previo a las comillas y las deja como maneras `formal` / `casual` del verbo `speak` (`speech.manner`); la sim no interpreta el texto citado. `listenTo` guarda la elección en `PENDING.style` y `formOf` la aplica: `formal` trata al oyente de superior (salvo que sean de una misma casa) y `casual` usa formalidad 0, de modo que `acts.address` queda declarado o no y el oyente mide la norma con su lectura del rango. Falta: que la vista cuente la ofensa recibida o causada (ROADMAP).
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).

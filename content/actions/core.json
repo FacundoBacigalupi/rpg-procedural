@@ -202,7 +202,9 @@
     ],
     "manners": [
       { "id": "careful", "duration": 1.5, "ease": 0.4 },
-      { "id": "covert", "duration": 1.2, "stealth": 0.8, "emissions": 0.3 }
+      { "id": "covert", "duration": 1.2, "stealth": 0.8, "emissions": 0.3 },
+      { "id": "formal", "duration": 1.15 },
+      { "id": "casual", "duration": 0.9 }
     ],
     "requires": [
       { "kind": "capability", "cap": "speech", "min": 0.3 },

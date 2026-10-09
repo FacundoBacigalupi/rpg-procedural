@@ -83,6 +83,7 @@ import {
   RELATIONS,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
+  type Recipient,
   type RegisterDef,
   rankOf,
   recipientBetween,
@@ -127,6 +128,15 @@ export interface PendingSpeech {
   readonly text: string;
   readonly clarity: number;
   readonly key: string;
+  /** La forma de tratar que el hablante declaró («le hablo de usted»); sin ella, la que sale sola. */
+  readonly style?: SpeechStyle;
+}
+
+/** Lo que el jugador declara de cómo trata al otro (manners `formal` y `casual` de hablar). */
+export type SpeechStyle = "formal" | "casual";
+
+export function declaredStyle(manner: readonly string[]): SpeechStyle | undefined {
+  return manner.includes("formal") ? "formal" : manner.includes("casual") ? "casual" : undefined;
 }
 
 export const PENDING = table<PendingSpeech>("life.pending_speech");
@@ -230,6 +240,8 @@ function formOf(
     speakerReads: number;
     /** La lectura del oyente sobre quien habla (rango y confianza); sin ella, la etiqueta no ofende. */
     reading?: { rank: number; confidence: number };
+    /** La forma de tratar que el hablante declaró; pisa la que saldría de su lectura. */
+    style?: SpeechStyle | undefined;
   },
 ): { spoken: SpokenForm; judge: FormJudgeInput } | undefined {
   const { me, speaker, text } = ctx;
@@ -243,12 +255,14 @@ function formOf(
   const taboos = spokenTaboos(norm, live, f.culture, (c) => f.concepts.find((x) => x.id === c)?.es);
   // Quien habla elige el trato por lo que cree del otro; el oyente juzga por lo que cree que
   // el otro cree que él es (su propia lectura de quien le habla).
-  const recipient = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
+  const read = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
+  // «De usted» lo trata como a un superior aunque no lo crea; «de vos», como a un igual.
+  const recipient: Recipient = ctx.style === "formal" && !kin ? "superior" : read;
   const asRecipient = recipientBetween(ctx.readRank, ctx.hearerRank, kin);
-  const used = Math.min(
-    1,
-    Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)),
-  );
+  const used =
+    ctx.style === "casual"
+      ? 0
+      : Math.min(1, Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)));
   const spoken = speechForm(f.language, f.addresses, live, f.culture, {
     register,
     recipient,
@@ -296,6 +310,7 @@ export function listenTo(
   clarity: number,
   at: Tick,
   end: Tick,
+  style?: SpeechStyle,
 ): { changes: StateChange[]; schedule: ScheduleRequest[] } {
   if (!listener.startsWith("agent:") || listener === speaker) {
     return { changes: [], schedule: [] };
@@ -303,7 +318,13 @@ export function listenTo(
   const key = replyKey(speaker, at);
   return {
     changes: [
-      setComponent(PENDING, listener, { from: speaker, text: text ?? BARE_ADDRESS, clarity, key }),
+      setComponent(PENDING, listener, {
+        from: speaker,
+        text: text ?? BARE_ADDRESS,
+        clarity,
+        key,
+        ...(style ? { style } : {}),
+      }),
     ],
     schedule: [
       {
@@ -882,6 +903,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             speakerRank: theirRank,
             speakerReads: beliefAbout(truth.get(STANDING_BELIEFS, speaker), me)?.rank ?? theirRank,
             ...(reading ? { reading } : {}),
+            style: pending.style,
           })
         : undefined;
       const act = understand(
