@@ -120,6 +120,7 @@ export function themeOfMemory(m: Memory): Theme | undefined {
     case "action.trade":
       return m.valence >= 0 ? "success" : "failure";
     case "law.default":
+    case "contract.pledge_broken":
       return "betrayal";
     case "body.died":
       return "loss";

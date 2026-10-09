@@ -227,7 +227,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             move(creditor, debtor, e, repaidDeltas("creditor"));
             move(debtor, creditor, e, repaidDeltas("debtor"));
           }
-        } else if (e.kind === "law.default") {
+        } else if (e.kind === "law.default" || e.kind === "contract.pledge_broken") {
           const [debtor, creditor] = e.actors as [AgentId | undefined, AgentId | undefined];
           if (debtor && creditor) {
             const empty = { schemas: {}, formative: [], originEventId: e.id };
