@@ -5,3 +5,4 @@ export * from "./errors.ts";
 export * from "./language.ts";
 export * from "./names.ts";
 export * from "./register.ts";
+export * from "./taboo-birth.ts";
