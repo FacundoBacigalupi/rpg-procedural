@@ -6,6 +6,7 @@ import {
   type AgentId,
   type Content,
   EARTHLIKE_CLOCK,
+  type EventId,
   EventLog,
   externalAccount,
   type HolderRef,
@@ -28,6 +29,7 @@ import {
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
+  type ChosenTaste,
   CONCEPTS,
   COOKED,
   COPPER,
@@ -69,6 +71,7 @@ import {
   RELATION_DIMS,
   RELIGIONS,
   ROTTED,
+  resolveTastes,
   SCHEMAS,
   SKILLS,
   SkillCatalog,
@@ -97,6 +100,8 @@ import {
   settlementUnits,
   TABOOS,
   TASTES,
+  type TasteDef,
+  type TasteSpec,
   TENURES,
   type TemperamentSpec,
   TRAITS,
@@ -139,6 +144,32 @@ export interface LifeOptions {
   readonly frequency?: number;
   /** Entre qué edades sale el personaje de la pre-corrida (player-loop §2). */
   readonly playerAge?: { readonly min: number; readonly max: number };
+  /** Gustos pedidos del personaje (modo novela): se fijan sobre los que el mundo le generó. */
+  readonly tastes?: readonly TasteSpec[];
+}
+
+/**
+ * Los gustos pedidos contra el catálogo de gustos del contenido (dominio -> objetos). Lo que el
+ * mundo no conoce o se contradice no se ignora en silencio: falla con la razón (game-modes §2.4).
+ * El origen es el evento de fundación hasta que exista la concepción condicionada (ROADMAP).
+ */
+export function chosenTastesOf(
+  specs: readonly TasteSpec[],
+  defs: readonly TasteDef[],
+  origin: EventId,
+): ChosenTaste[] {
+  if (specs.length === 0) return [];
+  const catalog = new Map<string, Set<string>>();
+  for (const d of defs) {
+    const items = catalog.get(d.domain) ?? new Set<string>();
+    items.add(d.id);
+    catalog.set(d.domain, items);
+  }
+  const { tastes, rejected } = resolveTastes(specs, catalog, origin);
+  if (rejected.length > 0) {
+    throw new Error(`gustos pedidos inválidos: ${rejected.map((r) => r.reason).join("; ")}`);
+  }
+  return tastes;
 }
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
@@ -509,12 +540,15 @@ export function createLife(
     },
   });
   // Qué le gusta y qué rechaza a cada uno: temperamento, cuerpo, cultura y lo conocido de chico (§16).
+  const tasteDefs = content.all(TASTES);
+  const chosenTastes = chosenTastesOf(options.tastes ?? [], tasteDefs, pop.foundersEvent);
   seedTastes(truth, ids, log, {
     seed,
+    ...(chosenTastes.length > 0 ? { chosen: new Map([[pop.player, chosenTastes]]) } : {}),
     now: pop.now,
     place: terrain.village,
     foundersEvent: pop.foundersEvent,
-    defs: content.all(TASTES),
+    defs: tasteDefs,
     taboos: villageFaith.practices.filter((p) => p.kind === "taboo"),
   });
   // Lo que cada uno siente por su parentela y su casa (npc-psychology §6).

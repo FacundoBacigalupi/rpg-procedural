@@ -67,6 +67,7 @@ function birthOf(game: LifeSetup["game"]): LifeOptions {
   const age = spec.entryAge ?? (game.entry.kind === "age" ? game.entry.at : undefined);
   return {
     ...(age === undefined ? {} : { playerAge: { min: age, max: age } }),
+    ...(spec.tastes ? { tastes: spec.tastes } : {}),
     // Sin sexo ni posición no hay nada duro que buscar: alcanza con la edad más cercana.
     ...(spec.sex || spec.family?.position || spec.temperament
       ? {

@@ -134,7 +134,7 @@ describe("GameSetup", () => {
     }
   });
 
-  it("el temperamento pide rangos válidos; gustos y crianza se rechazan hasta que se resuelvan", () => {
+  it("el temperamento pide rangos válidos; los gustos pasan y la crianza se rechaza hasta que se resuelva", () => {
     const withChar = (character: object) =>
       parseGameSetup({
         ...defaultGameSetup("novel"),
@@ -143,9 +143,9 @@ describe("GameSetup", () => {
     expect(() => withChar({ temperament: { boldness: { min: 0.8, max: 0.2 } } })).toThrow(
       /temperament/,
     );
-    expect(() => withChar({ tastes: [{ domain: "food", item: "grain", valence: 0.5 }] })).toThrow(
-      /character: todavía no se resuelve|tastes/,
-    );
+    expect(() =>
+      withChar({ tastes: [{ domain: "food", item: "grain", valence: 0.5 }] }),
+    ).not.toThrow();
     expect(() =>
       withChar({ upbringing: { kind: "taught", skill: "farming", by: "father", fromAge: 6 } }),
     ).toThrow(/upbringing|todavía/);
