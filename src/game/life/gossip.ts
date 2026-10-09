@@ -42,6 +42,7 @@ import {
   rumorAsKnown,
   type StateChange,
   setComponent,
+  sourceOf,
   spoken,
   standardize,
   tellDesire,
@@ -88,8 +89,17 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
       const truth = ctx.truth;
       const now = ctx.now;
       // Quien ya está en una conversación este paso no chismea (evita pisar lo que escribe `converse`).
+      // El que le habló al personaje en este paso le puede contar un rumor a él (no a los vecinos).
       const busy = new Set<AgentId>();
-      for (const e of ctx.recent) for (const a of e.actors) busy.add(a as AgentId);
+      const talking = new Set<AgentId>();
+      for (const e of ctx.recent) {
+        const toPlayer = e.kind === "action.speak" && e.actors.includes(o.player);
+        for (const a of e.actors) {
+          if (a === o.player) continue;
+          if (toPlayer) talking.add(a as AgentId);
+          busy.add(a as AgentId);
+        }
+      }
       const groups = new Map<string, AgentId[]>();
       for (const id of truth.ids(PERSON).sort() as AgentId[]) {
         if (id === o.player || busy.has(id)) continue;
@@ -118,10 +128,16 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
         return innate ? standardize(innate, o.traits, truth.get(PERSON, id)?.sex ?? "female") : {};
       };
       const events: EventDraft[] = [];
-      const tellers = [...groups.values()].flat().sort();
-      for (const teller of tellers) {
+      const turns: { teller: AgentId; here: AgentId[]; toPlayer: boolean }[] = [];
+      for (const teller of [...groups.values()].flat().sort()) {
         const here = groups.get(groupKey(truth, teller)) ?? [];
-        if (here.length < 2) continue;
+        if (here.length >= 2) turns.push({ teller, here, toPlayer: false });
+      }
+      for (const teller of [...talking].sort()) {
+        if (truth.get(ENTITY, teller)?.endedAt !== undefined) continue;
+        turns.push({ teller, here: [teller, o.player], toPlayer: true });
+      }
+      for (const { teller, here, toPlayer } of turns) {
         const mine = candidatesOf(teller, rumorsOf(teller), knownOf(teller));
         if (mine.length === 0) continue;
         const zt = z(teller);
@@ -230,6 +246,8 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
             accused: out.content.by,
             hops: said.hops,
             credit: heard.confidence,
+            // Al personaje: lo que él puede decir de dónde lo oyó (nombre o «dicen que»).
+            ...(toPlayer ? { hearsay: true, source: sourceOf(heard) } : {}),
             // Solo para el inspector y los tests: qué cambió al contarlo.
             truthOf: { changes: out.changes },
           },
