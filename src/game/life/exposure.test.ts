@@ -5,6 +5,7 @@ import {
   BODY_STATE,
   ENTITY,
   INFECTION,
+  LOCATION,
   PATHOGEN,
   type PathogenDef,
   PERSON,
@@ -84,5 +85,35 @@ describe("life.exposure", () => {
     expect(out.changes?.some((c) => c.table === INFECTION.name && c.id === b)).toBe(true);
     // Determinista.
     expect(p.run(ctx(t, clock.day * 2))).toEqual(out);
+  });
+});
+
+describe("life.exposure fuera del hogar", () => {
+  const c = "agent:3" as AgentId;
+  it("contagia a quien comparte lugar con un contagioso aunque sea de otro hogar, y no a quien está lejos", () => {
+    const t = world();
+    t.set(
+      ENTITY,
+      c as EntityRef,
+      { id: c, originEventId: "event:1" as EventId, createdAt: 0 } as never,
+    );
+    t.set(PERSON, c as EntityRef, { household: "household:2" } as never);
+    t.set(BODY_STATE, c as EntityRef, { muscle: 0.5 } as never);
+    t.set(PERSON, b as EntityRef, { household: "household:3" } as never);
+    t.set(PATHOGEN, "pathogen:1" as EntityRef, { def: flu, source: "escenario" });
+    t.set(INFECTION, a as EntityRef, {
+      infections: [
+        { pathogen: "flu", exposedAt: 0, dose: 1, fatal: false, cause: "event:9" as EventId },
+      ],
+      immunities: [],
+      ill: [],
+    });
+    t.set(LOCATION, a as EntityRef, { hex: 5, space: "square" });
+    t.set(LOCATION, b as EntityRef, { hex: 5, space: "square" });
+    t.set(LOCATION, c as EntityRef, { hex: 9 });
+    const p = exposureProcess({ clock, placeOf: () => place });
+    const out = p.run(ctx(t, clock.day * 2));
+    expect(out.events?.some((e) => e.kind === "body.infected" && e.actors[0] === b)).toBe(true);
+    expect(out.events?.some((e) => e.actors[0] === c)).toBe(false);
   });
 });

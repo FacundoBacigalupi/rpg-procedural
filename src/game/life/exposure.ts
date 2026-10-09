@@ -5,9 +5,17 @@
 // Ningún patógeno nace sin causa: `seeds` es la única fuente (un escenario, una caravana que llega) y
 // con la tabla de patógenos vacía el proceso no hace nada, así que la aldea por defecto no cambia.
 
-import type { AgentId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  exp,
+  type PlaceRef,
+  type PlanetClock,
+  type Tick,
+} from "../../core/index.ts";
 import {
   BODY_STATE,
+  BUILDING,
   createEntity,
   draftEvent,
   ENTITY,
@@ -19,6 +27,7 @@ import {
   immunityAfter,
   infectionStage,
   isImmune,
+  LOCATION,
   PATHOGEN,
   type PathogenDef,
   PERSON,
@@ -35,6 +44,7 @@ import {
   taintAfter,
   treatedCourse,
   tryInfect,
+  VILLAGE_SQUARE,
   WELL_TAINT,
   WORK,
   waterDose,
@@ -68,6 +78,13 @@ const HOUSEHOLD_DAY: Shared = {
   waterDirt: 0,
   touch: 0.5,
 };
+/** Horas de contacto por día con quien comparte lugar fuera del hogar (foto del día, calibración abierta). */
+const PLACE_HOURS = 2;
+/** Cuántos vecinos de lugar hacen falta para que la cercanía llegue a ~63% (calibración abierta). */
+const CROWD_SCALE = 4;
+/** Ventilación de la plaza y del campo abierto contra la de un cuarto cerrado. */
+const OPEN_AIR = 0.9;
+const ROOM_AIR = 0.3;
 /** Carga que un enfermo suma por día a cada pozo, por peso de la ruta de agua (calibración abierta). */
 const TAINT_PER_DAY = 0.15;
 /** Carga con que un sembrado cae en su pozo. */
@@ -155,6 +172,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       // Quién contagia hoy y desde qué evento, por hogar.
       type Source = { shed: number; cause: string; quarantine?: Quarantine; healer?: string };
       const byHouse = new Map<string, Map<string, Source>>();
+      const byPlace = new Map<string, Map<string, Source>>();
       const stages = new Map<
         string,
         { inf: Infection; def: PathogenDef; stage: string; hours: number }[]
@@ -163,6 +181,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         const mine = ctx.truth.get(INFECTION, id);
         if (!mine) continue;
         const house = ctx.truth.get(PERSON, id)?.household;
+        const here = placeKey(ctx.truth, id);
         const list: { inf: Infection; def: PathogenDef; stage: string; hours: number }[] = [];
         for (const inf of mine.infections) {
           const def = known.get(inf.pathogen);
@@ -171,20 +190,23 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           const stage = infectionStage(def, inf, hours);
           list.push({ inf, def, stage, hours });
           const shed = sheddingLevel(def, stage as never, hours);
-          if (shed > 0 && house !== undefined && inf.cause !== null) {
-            const m = byHouse.get(house) ?? new Map<string, Source>();
-            const prev = m.get(def.id);
-            if (!prev || shed > prev.shed) {
-              const tr = ctx.truth
-                .get(TREATMENT, id)
-                ?.treatments.find((t) => t.pathogen === def.id);
-              m.set(def.id, {
-                shed,
-                cause: inf.cause,
-                ...(tr?.quarantine ? { quarantine: tr.quarantine, healer: tr.healer } : {}),
-              });
+          if (shed > 0 && inf.cause !== null) {
+            const tr = ctx.truth.get(TREATMENT, id)?.treatments.find((t) => t.pathogen === def.id);
+            const src: Source = {
+              shed,
+              cause: inf.cause,
+              ...(tr?.quarantine ? { quarantine: tr.quarantine, healer: tr.healer } : {}),
+            };
+            for (const [key, groups] of [
+              [house, byHouse],
+              [here, byPlace],
+            ] as const) {
+              if (key === undefined) continue;
+              const m = groups.get(key) ?? new Map<string, Source>();
+              const prev = m.get(def.id);
+              if (!prev || shed > prev.shed) m.set(def.id, src);
+              groups.set(key, m);
             }
-            byHouse.set(house, m);
           }
         }
         stages.set(id, list);
@@ -199,11 +221,18 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         const load = taintAfter(t.load, days);
         if (load > 0) taintNow.set(w, { pathogen: t.pathogen, load, cause: t.cause });
       }
-      for (const [, list] of stages) {
+      const settlementOf = householdSettlements(ctx.truth);
+      const wellsFor = (id: string): readonly string[] => {
+        const home = settlementOf.get(ctx.truth.get(PERSON, id as EntityRef)?.household ?? "");
+        if (home === undefined) return wells;
+        const own = wells.filter((w) => ctx.truth.get(WORK, w)?.settlement === home);
+        return own.length > 0 ? own : wells;
+      };
+      for (const [who, list] of stages) {
         for (const s of list) {
           const route = s.def.routes.water ?? 0;
           if (s.stage !== "symptomatic" || route <= 0 || s.inf.cause === null) continue;
-          for (const w of wells) {
+          for (const w of wellsFor(who)) {
             const cur = taintNow.get(w);
             const base = cur && cur.pathogen === s.def.id ? cur : undefined;
             taintNow.set(w, {
@@ -230,13 +259,27 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           changes.push({ op: "delete", table: WELL_TAINT.name, id: w });
         }
       }
-      let dirt: { pathogen: string; load: number; cause: string } | undefined;
-      for (const t of taintNow.values()) if (!dirt || t.load > dirt.load) dirt = t;
+      // Cuánta gente comparte cada lugar hoy: la cercanía sale de la ocupación.
+      const crowd = new Map<string, number>();
+      for (const id of people) {
+        const k = placeKey(ctx.truth, id);
+        if (k !== undefined) crowd.set(k, (crowd.get(k) ?? 0) + 1);
+      }
+      const dirtFor = (id: string) => {
+        let best: { pathogen: string; load: number; cause: string } | undefined;
+        for (const w of wellsFor(id)) {
+          const t = taintNow.get(w);
+          if (t && (!best || t.load > best.load)) best = t;
+        }
+        return best;
+      };
 
       // Cada persona: avanza lo que tiene y tira lo que le llega.
       for (const id of people) {
         const agent = id as AgentId;
         const house = ctx.truth.get(PERSON, id)?.household;
+        const here = placeKey(ctx.truth, id);
+        const dirt = dirtFor(id);
         const mine = ctx.truth.get(INFECTION, id) ?? EMPTY;
         let infections = [...mine.infections];
         let immunities = [...mine.immunities];
@@ -272,17 +315,38 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           for (const def of known.values()) {
             if (infections.some((i) => i.pathogen === def.id)) continue;
             if (isImmune(immunities, def.id, ctx.now)) continue;
-            const src = house === undefined ? undefined : byHouse.get(house)?.get(def.id);
+            const homeSrc = house === undefined ? undefined : byHouse.get(house)?.get(def.id);
+            const placeSrc = here === undefined ? undefined : byPlace.get(here)?.get(def.id);
             const water = dirt && dirt.pathogen === def.id ? dirt : undefined;
             const shared: Shared = {
               ...HOUSEHOLD_DAY,
               hours: HOUSEHOLD_DAY.hours * days,
               waterDirt: water ? waterDose(wellWater(water.load)) : 0,
             };
-            const eff = src?.quarantine
-              ? quarantinedShared(shared, src.quarantine, src.healer === id)
+            const eff = homeSrc?.quarantine
+              ? quarantinedShared(shared, homeSrc.quarantine, homeSrc.healer === id)
               : shared;
-            const dose = exposureDose(def, src?.shed ?? (water ? 1 : 0), eff);
+            let src = homeSrc;
+            let dose = exposureDose(def, homeSrc?.shed ?? (water ? 1 : 0), eff);
+            if (placeSrc && here !== undefined) {
+              const others = Math.max(0, (crowd.get(here) ?? 1) - 1);
+              const open = here.endsWith("|") || here.endsWith(`|${VILLAGE_SQUARE}`);
+              const common: Shared = {
+                hours: PLACE_HOURS * days,
+                closeness: 1 - exp(-others / CROWD_SCALE),
+                ventilation: open ? OPEN_AIR : ROOM_AIR,
+                waterDirt: 0,
+                touch: 0.2,
+              };
+              const eff2 = placeSrc.quarantine
+                ? quarantinedShared(common, placeSrc.quarantine, placeSrc.healer === id)
+                : common;
+              const d2 = exposureDose(def, placeSrc.shed, eff2);
+              if (d2 > dose) {
+                dose = d2;
+                src = placeSrc;
+              }
+            }
             if (dose <= 0) continue;
             const got = tryInfect(
               def,
@@ -359,4 +423,22 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
 function withInfection(truth: ReadonlyWorldTruth, who: AgentId, inf: Infection): PersonInfection {
   const cur = truth.get(INFECTION, who) ?? EMPTY;
   return { ...cur, infections: [...cur.infections, inf] };
+}
+
+/** Dónde está alguien hoy: hex y espacio (vacío es el campo abierto del hex). */
+function placeKey(truth: ReadonlyWorldTruth, who: EntityRef): string | undefined {
+  const loc = truth.get(LOCATION, who as never);
+  return loc ? `${loc.hex}|${loc.space ?? ""}` : undefined;
+}
+
+/** El asentamiento de cada hogar, por el edificio que habita (de ahí sale qué pozo usa). */
+function householdSettlements(truth: ReadonlyWorldTruth): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const id of truth.ids(BUILDING)) {
+    const b = truth.get(BUILDING, id);
+    if (b?.household !== undefined && truth.get(ENTITY, id)?.endedAt === undefined) {
+      out.set(b.household, b.settlement);
+    }
+  }
+  return out;
 }
