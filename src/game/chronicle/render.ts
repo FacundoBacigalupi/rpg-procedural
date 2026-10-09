@@ -11,6 +11,8 @@ const CAUSE: Readonly<Record<string, string>> = {
   sepsis: "murió de una infección que le llegó a la sangre",
   brain_trauma: "murió de un golpe en la cabeza",
   disease: "murió de una enfermedad",
+  hypothermia: "murió de frío",
+  heatstroke: "murió de un golpe de calor",
   unknown: "murió",
 };
 

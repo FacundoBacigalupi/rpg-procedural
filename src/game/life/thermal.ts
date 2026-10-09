@@ -1,0 +1,156 @@
+// Frío y calor cableados a la vida (body-health §7): cada día, a intervalos de unas horas, el núcleo
+// de cada persona se mueve según el aire de donde está (el del día afuera; adentro, el filtrado por
+// paredes y techo), el viento, la lluvia y lo que lleva puesto (`stepCore`). La temperatura vive en
+// `THERMAL`, aparte del `Body`, y solo se guarda mientras se aparta de lo normal: con el clima
+// templado el proceso no escribe nada. Si el núcleo cruza el umbral muere con causa
+// (`hypothermia` / `heatstroke`). Ropa: hasta que haya ítems con aislamiento puestos, la gente se
+// viste para la estación (`seasonalClothing`, calibración abierta).
+
+import type { AgentId, PlaceRef, PlanetClock, Seed } from "../../core/index.ts";
+import {
+  BODY_STATE,
+  type Clothing,
+  CORE_NORMAL_C,
+  type DayWeather,
+  draftEvent,
+  ENTITY,
+  type EventDraft,
+  endEntity,
+  LOCATION,
+  type LocalMap,
+  outdoorTempC,
+  PERSON,
+  type ProcessDef,
+  type ReadonlyWorldTruth,
+  type SpaceGraph,
+  type StateChange,
+  setComponent,
+  stepCore,
+  THERMAL,
+  thermalDeath,
+  weatherAt,
+} from "../../sim/index.ts";
+import { INDOOR_BASE_C, INDOOR_LEAK } from "./ambient.ts";
+
+export const THERMAL_PROCESS = "life.thermal";
+
+export interface ThermalOptions {
+  readonly clock: PlanetClock;
+  readonly map: LocalMap;
+  readonly spaces: SpaceGraph;
+  readonly seed: Seed;
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Lo que lleva puesto cada uno; por defecto, ropa para la estación. */
+  readonly clothingOf?: (truth: ReadonlyWorldTruth, who: AgentId, airC: number) => Clothing;
+}
+
+/** Pasos de cálculo por día (cada uno cubre `day / STEPS_PER_DAY`). */
+const STEPS_PER_DAY = 4;
+/** Por debajo de esta desviación (°C) del núcleo normal no se guarda fila. */
+const NORMAL_BAND_C = 0.5;
+/** Horas de cada subpaso de `stepCore` (con pasos largos el Euler explícito oscila). */
+const SUBSTEP_H = 0.25;
+/** Masa mínima (kg) a la que se aplica el modelo, calibrado para adultos. */
+const MIN_MASS_KG = 20;
+
+/**
+ * La ropa de quien se viste para lo que ve afuera: más abrigo cuanto más frío, y casi nada con
+ * calor. Marcador hasta que la ropa sea ítems puestos con aislamiento.
+ */
+export function seasonalClothing(airC: number): Clothing {
+  const clo = Math.min(3, Math.max(0.5, (24 - airC) / 9));
+  return { clo, windproof: clo > 1.5 ? 0.6 : 0.2, coverage: Math.min(1, 0.4 + clo / 3) };
+}
+
+/** El ambiente de alguien a un tick: afuera con el viento y la lluvia, adentro con reparo. */
+function envOf(day: DayWeather, outC: number, indoor: boolean) {
+  // La gente se refugia de la lluvia: el mojado de la ropa queda para el ítem de ropa puesta.
+  const rain = 0;
+  return indoor
+    ? {
+        airC: INDOOR_BASE_C + INDOOR_LEAK * (outC - INDOOR_BASE_C),
+        windMs: 0,
+        humidity: 0.5,
+        wet: 0,
+        shelter: 1,
+        radiantC: 0,
+      }
+    : {
+        airC: outC,
+        windMs: day.windMs,
+        humidity: day.precip.kind !== "none" ? 0.9 : 0.5,
+        wet: rain,
+        shelter: 0,
+        radiantC: 0,
+      };
+}
+
+export function thermalProcess(o: ThermalOptions): ProcessDef {
+  const stepTicks = o.clock.day / STEPS_PER_DAY;
+  const hours = 24 / STEPS_PER_DAY;
+  return {
+    id: THERMAL_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "settle",
+    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, THERMAL.name, LOCATION.name],
+    writes: [THERMAL.name, ENTITY.name],
+    run(ctx) {
+      const changes: StateChange[] = [];
+      const events: EventDraft[] = [];
+      const window = Math.max(stepTicks, Math.min(ctx.window, o.clock.day));
+      const n = Math.max(1, Math.round(window / stepTicks));
+      for (const id of ctx.truth.ids(PERSON)) {
+        const body = ctx.truth.get(BODY_STATE, id);
+        const base = ctx.truth.get(ENTITY, id);
+        if (!body || !base || base.endedAt !== undefined || body.death) continue;
+        // Los chicos quedan afuera hasta que `stepCore` escale superficie y metabolismo por masa.
+        if (body.massKg < MIN_MASS_KG) continue;
+        const space = ctx.truth.get(LOCATION, id)?.space;
+        const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
+        const indoor = node?.indoor ?? false;
+        const agent = id as AgentId;
+        const had = ctx.truth.get(THERMAL, id);
+        let core = had?.coreC ?? CORE_NORMAL_C;
+        const hydration = Math.max(0, 1 - body.water / Math.max(0.1, 0.05 * body.massKg));
+        let dead: "hypothermia" | "heatstroke" | null = null;
+        for (let k = 0; k < n && dead === null; k++) {
+          const at = ctx.now - (n - 1 - k) * stepTicks;
+          const outC = outdoorTempC(o.map, o.clock, o.seed, at);
+          const env = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const clothing = (o.clothingOf ?? ((_t, _w, c) => seasonalClothing(c)))(
+            ctx.truth,
+            agent,
+            outC,
+          );
+          for (let s = 0; s < hours / SUBSTEP_H && dead === null; s++) {
+            core = stepCore(core, body.massKg, env, clothing, 1, hydration, SUBSTEP_H).coreC;
+            dead = thermalDeath(core);
+          }
+        }
+        if (dead !== null) {
+          const kd = events.length;
+          events.push({
+            kind: "body.died",
+            actors: [agent],
+            place: o.placeOf(ctx.truth, agent),
+            data: { cause: dead, coreC: Math.round(core * 10) / 10 },
+            emissions: { sight: 0.6, sound: 0.2 },
+            causes: [{ kind: "state", entity: agent, key: "body.thermal" }],
+          });
+          changes.push(
+            endEntity(base, draftEvent(kd), ctx.now),
+            setComponent(THERMAL, id, { coreC: core, at: ctx.now }),
+          );
+        } else if (Math.abs(core - CORE_NORMAL_C) > NORMAL_BAND_C) {
+          changes.push(setComponent(THERMAL, id, { coreC: core, at: ctx.now }));
+        } else if (had) {
+          changes.push({ op: "delete", table: THERMAL.name, id });
+        }
+      }
+      return changes.length > 0 || events.length > 0 ? { changes, events } : {};
+    },
+  };
+}

@@ -79,6 +79,7 @@ import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
+import { thermalProcess } from "./thermal.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
@@ -298,6 +299,13 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          placeOf: placeOf(parts, village),
+        }),
+        thermalProcess({
+          clock: parts.clock,
+          map: parts.map,
+          spaces: parts.spaces,
+          seed: parts.seed,
           placeOf: placeOf(parts, village),
         }),
         upkeepProcess({

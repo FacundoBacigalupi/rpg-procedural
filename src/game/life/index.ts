@@ -22,6 +22,7 @@ export * from "./recap.ts";
 export * from "./routine.ts";
 export * from "./sleep.ts";
 export * from "./suggest.ts";
+export * from "./thermal.ts";
 export * from "./think.ts";
 export * from "./tone.ts";
 export * from "./view.ts";
