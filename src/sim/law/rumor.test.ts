@@ -12,6 +12,7 @@ import {
   type Rumors,
   reputationIn,
   rumorCredit,
+  rumorDeformation,
   rumorTree,
   spoken,
   type TellMotives,
@@ -138,6 +139,17 @@ describe("linaje y reputación", () => {
     const l = rumorTree(E1, rumors);
     expect(l.variants.map((v) => v.hops)).toEqual([0, 1, 2]);
     expect(l.variants[2]?.parent).toBe(l.variants[1]?.variant);
+  });
+  it("la deformación crece con los saltos y la dominante se mide contra la raíz", () => {
+    const warped = { kind: "assault", by: null, victim: B, severity: 1.6 } as const;
+    const toD = hearRumor(undefined, spoken(toC, warped), C, D, hear, 12 as Tick, rng(3));
+    const all = new Map(rumors).set(D, keepRumor(undefined, toD));
+    const d = rumorDeformation(rumorTree(E1, all));
+    expect(d.steps.map((s) => s.hops)).toEqual([0, 1, 2, 3]);
+    expect(d.steps[0]?.mean).toBe(0);
+    expect(d.steps[3]?.mean).toBeGreaterThan(0.5);
+    expect(d.dominant?.distance).toBe(0);
+    expect(rumorDeformation(rumorTree(E1, new Map())).dominant).toBeNull();
   });
   it("la reputación es por comunidad", () => {
     const get = (id: AgentId) => rumors.get(id);

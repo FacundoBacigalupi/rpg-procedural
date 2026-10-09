@@ -346,6 +346,65 @@ export function rumorTree(
   return { root, variants };
 }
 
+/** Cuánto se aleja `c` de `truth` (0-1): clase del hecho, autor y gravedad. Solo lectura. */
+export function contentDistance(truth: RumorContent, c: RumorContent): number {
+  const gravity = Math.min(1, Math.abs(c.severity - truth.severity) / (MAX_SEVERITY - 1));
+  return round(
+    0.4 * (c.kind === truth.kind ? 0 : 1) + 0.3 * (c.by === truth.by ? 0 : 1) + 0.3 * gravity,
+  );
+}
+
+export interface DeformationStep {
+  readonly hops: number;
+  readonly versions: number;
+  /** Distancia media a la raíz de las versiones de este salto. */
+  readonly mean: number;
+  readonly max: number;
+}
+
+export interface Deformation {
+  readonly root: EventId;
+  /** La versión de referencia: la de menor salto (lo que vio quien estuvo). */
+  readonly reference: RumorContent | null;
+  /** La versión más sostenida (por confianza sumada) y qué tanto se aleja de la raíz. */
+  readonly dominant: { readonly content: RumorContent; readonly distance: number } | null;
+  readonly steps: readonly DeformationStep[];
+}
+
+/** Métrica de deformación de un árbol (information §9, tooling §6): por salto y de la versión dominante. */
+export function rumorDeformation(tree: RumorTree): Deformation {
+  const first = tree.variants[0];
+  if (!first) return { root: tree.root, reference: null, dominant: null, steps: [] };
+  const ref = first.content;
+  const byHops = new Map<number, number[]>();
+  const weight = new Map<string, { content: RumorContent; w: number }>();
+  for (const v of tree.variants) {
+    const d = contentDistance(ref, v.content);
+    byHops.set(v.hops, [...(byHops.get(v.hops) ?? []), d]);
+    const key = `${v.content.kind}|${v.content.by ?? "-"}|${v.content.severity}`;
+    const prev = weight.get(key);
+    weight.set(key, { content: v.content, w: (prev?.w ?? 0) + v.confidence });
+  }
+  const steps = [...byHops]
+    .sort((a, b) => a[0] - b[0])
+    .map(([hops, ds]) => ({
+      hops,
+      versions: ds.length,
+      mean: round(ds.reduce((s, x) => s + x, 0) / ds.length),
+      max: Math.max(...ds),
+    }));
+  let best: { content: RumorContent; w: number } | null = null;
+  for (const [, x] of [...weight].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    if (best === null || x.w > best.w) best = x;
+  }
+  return {
+    root: tree.root,
+    reference: ref,
+    dominant: best ? { content: best.content, distance: contentDistance(ref, best.content) } : null,
+    steps,
+  };
+}
+
 export interface Reputation {
   /** Cuántos de la comunidad saben algo de `who` (fracción 0-1). */
   readonly fame: number;
