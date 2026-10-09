@@ -79,6 +79,7 @@ import {
   placeAt,
   placeRefOf,
   qualityPriceFactor,
+  RECEIPT_WINDOW_DAYS,
   REFERENCE_QUALITY,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -87,6 +88,7 @@ import {
   receiveLot,
   recordDeal,
   resolve,
+  SALE_RECEIPTS,
   SELF_IMAGES,
   SELLER_DAY,
   type SelfReport,
@@ -113,6 +115,7 @@ import {
   verbSkill,
   walkingFactor,
   weatherAt,
+  withReceipt,
   YIELDED,
 } from "../../sim/index.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
@@ -265,10 +268,12 @@ export function actProcess(o: ActOptions): ProcessDef {
       LOT_QUALITY.name,
       MARKET_TAPE.name,
       SELLER_DAY.name,
+      SALE_RECEIPTS.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
+      SALE_RECEIPTS.name,
       SELLER_DAY.name,
       LOT_QUALITY.name,
       PLAN_STATE.name,
@@ -732,6 +737,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       changes.push(
         setComponent(MARKET_TAPE, market, recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry)),
       );
+      // Lo cobrado es ingreso real del hogar del vendedor (recibo de venta; alimenta su presupuesto).
+      const sellerHome = truth.get(PERSON, seller)?.household;
+      if (sellerHome !== undefined && eff.coins > 0)
+        changes.push(
+          setComponent(SALE_RECEIPTS, sellerHome as never, {
+            receipts: withReceipt(
+              truth.get(SALE_RECEIPTS, sellerHome as never)?.receipts ?? [],
+              day,
+              eff.coins,
+              RECEIPT_WINDOW_DAYS,
+            ),
+          }),
+        );
       // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
       const learners = new Map<AgentId, "party" | "witness">();
       for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {

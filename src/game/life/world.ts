@@ -72,6 +72,7 @@ import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, medicineProcess } from "./medicine.ts";
+import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
@@ -315,6 +316,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
+        neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
           clock: parts.clock,
           goods: parts.goods,
