@@ -17,9 +17,12 @@ import {
   type FightGist,
   type FightIntent,
   type FightSnapshot,
-  familiarityOf,
+  familiarWith,
+  holdBackWish,
   INNATE,
   levelOf,
+  OPINIONS,
+  opinionKey,
   PERSON,
   type ReadonlyWorldTruth,
   rivalKey,
@@ -27,9 +30,11 @@ import {
   SKILL_STATE,
   type SkillCatalog,
   type Skills,
+  STYLE_SHARE,
   type StateChange,
   setComponent,
   standardize,
+  styleKey,
   type Trait,
   table,
   verbSkill,
@@ -106,10 +111,16 @@ export interface StrikeFight {
 export interface Exposure {
   readonly skill: string;
   readonly key: string;
+  /** El estilo del rival (cultura o escuela): también se acostumbra a él. */
+  readonly style?: string;
   readonly hours: number;
 }
 
+import { styleOf } from "./styles.ts";
+
 const DAY_SECONDS = 86400;
+
+const styleExposure = (style: string | undefined) => (style === undefined ? {} : { style });
 
 /** Cuánto del nivel real se pierde al contenerse del todo (calibración abierta). */
 export const HOLD_BACK_COST = 0.2;
@@ -121,7 +132,30 @@ export function exposeSkills(
   now: Tick,
   day = DAY_SECONDS,
 ): Skills {
-  return { ...skills, [e.skill]: exposeTo(skills?.[e.skill], e.key, e.hours, now, day) };
+  const one = exposeTo(skills?.[e.skill], e.key, e.hours, now, day);
+  const both =
+    e.style === undefined ? one : exposeTo(one, styleKey(e.style), e.hours * STYLE_SHARE, now, day);
+  return { ...skills, [e.skill]: both };
+}
+
+/**
+ * Si el rival decide pelear por debajo de su nivel para que el otro se confíe (skills §9): el astuto
+ * y audaz que cree que le sobra, con lo que cree de quien le pega (su opinión ajena). 0 es no.
+ * Sale del rng de la pelea, así que es determinista.
+ */
+function npcHoldBack(i: StrikeFightInput): number {
+  if (i.target === i.me) return 0;
+  const use = i.skills.forVerb("strike");
+  const p = i.truth.get(PERSON, i.target);
+  const n = i.truth.get(INNATE, i.target);
+  if (!use || !p || !n) return 0;
+  const believed = i.truth.get(OPINIONS, i.target)?.[opinionKey(i.me, use.skill.id)];
+  const wish = holdBackWish(
+    standardize(n, i.traits, p.sex),
+    verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+    believed?.estimate.level,
+  );
+  return i.rng.fork("hold-back", i.target).chance(wish.chance) ? wish.amount : 0;
 }
 
 /** La familiaridad de `who` con el estilo de `rival` en la habilidad del golpe. */
@@ -129,11 +163,14 @@ function fightFamiliarity(
   catalog: SkillCatalog,
   skills: Skills | undefined,
   rival: AgentId,
+  style: string | undefined,
   now: Tick,
   day: number,
 ): number {
   const use = catalog.forVerb("strike");
-  return use ? familiarityOf(skills?.[use.skill.id], rivalKey(rival), now, day) : 0;
+  if (!use) return 0;
+  const keys = [rivalKey(rival), ...(style === undefined ? [] : [styleKey(style)])];
+  return familiarWith(skills?.[use.skill.id], keys, now, day);
 }
 
 /** Hay con quién pelear: está vivo, con cuerpo y en pie o dormido (no hace falta rematar a un caído). */
@@ -179,6 +216,7 @@ const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
 
 export function strikeFight(i: StrikeFightInput): StrikeFight {
   const day = i.day ?? DAY_SECONDS;
+  const theirHold = npcHoldBack(i);
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -204,6 +242,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           i.skills,
           i.truth.get(SKILL_STATE, i.me),
           i.target,
+          styleOf(i.truth, i.target),
           i.start,
           day,
         ),
@@ -216,12 +255,16 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         plan: plan(theirBody),
         body: theirBody,
         z: z(i.target),
-        skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        skill:
+          verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike") *
+          (1 - HOLD_BACK_COST * theirHold),
+        hides: theirHold,
         eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
         familiarity: fightFamiliarity(
           i.skills,
           i.truth.get(SKILL_STATE, i.target),
           i.me,
+          styleOf(i.truth, i.me),
           i.start,
           day,
         ),
@@ -265,7 +308,16 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   return {
     seconds: result.seconds,
     myBody: mine.body,
-    ...(strike ? { exposure: { skill: strike.skill.id, key: rivalKey(i.target), hours } } : {}),
+    ...(strike
+      ? {
+          exposure: {
+            skill: strike.skill.id,
+            key: rivalKey(i.target),
+            ...styleExposure(styleOf(i.truth, i.target)),
+            hours,
+          },
+        }
+      : {}),
     changes: [
       setComponent(BODY_STATE, i.target, theirs.body),
       ...(strike
@@ -275,7 +327,12 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
               i.target,
               exposeSkills(
                 i.truth.get(SKILL_STATE, i.target),
-                { skill: strike.skill.id, key: rivalKey(i.me), hours },
+                {
+                  skill: strike.skill.id,
+                  key: rivalKey(i.me),
+                  ...styleExposure(styleOf(i.truth, i.me)),
+                  hours,
+                },
                 i.start + result.seconds,
                 day,
               ),

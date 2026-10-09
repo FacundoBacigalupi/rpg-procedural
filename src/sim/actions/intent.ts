@@ -209,6 +209,26 @@ export const DraftPurpose = z.strictObject({
 });
 export type DraftPurpose = z.infer<typeof DraftPurpose>;
 
+/** Si el borrador usa el verbo en algún paso (para ponerle un modo fijado de antemano). */
+export function draftHasVerb(node: DraftPlanNode | undefined, verb: string): boolean {
+  if (node === undefined) return false;
+  switch (node.kind) {
+    case "do":
+      return node.verb === verb;
+    case "seq":
+      return node.steps.some((s) => draftHasVerb(s, verb));
+    case "until":
+    case "repeat":
+      return draftHasVerb(node.body, verb);
+    case "if":
+      return draftHasVerb(node.then, verb) || draftHasVerb(node.else, verb);
+    case "onEvent":
+      return draftHasVerb(node.react, verb);
+    case "template":
+      return false;
+  }
+}
+
 export const IntentDraft = z
   .strictObject({
     kind: z.enum(["act", "plan", "goal", "question_ooc", "meta"]),

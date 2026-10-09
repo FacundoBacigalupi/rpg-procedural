@@ -81,6 +81,7 @@ import {
   type ClarifyOption,
   callName,
   clarifyQuestion,
+  draftHasVerb,
   INFERENCE_RULES,
   type IntentDraft,
   LOCATION,
@@ -174,6 +175,9 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const ambience = options.content.all(AMBIENCE);
   const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
   const recent: string[] = [];
+  // «Me contengo» suelto (skills §9): mientras esté puesto, los planes que golpean van en modo
+  // `hold_back`. Es de la sesión (se manda en el borrador, así el replay lo ve igual).
+  let holdStance = false;
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
   // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
@@ -344,6 +348,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     if (draft === null) return { text: "Eso todavía no se entiende. Escribí «ayuda»." };
     if (draft.kind === "meta") {
       const text = draft.text ?? "";
+      if (text === "contenerse") {
+        holdStance = true;
+        return {
+          text: "Vas a pelear conteniéndote, sin mostrar todo tu nivel, hasta que lo sueltes.",
+        };
+      }
+      if (text === "no contenerse") {
+        holdStance = false;
+        return { text: "Vas a pelear con todo lo que tenés." };
+      }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
       if (/^personaje/i.test(text)) return { text: renderCharacter(characterPanel(life.world)) };
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
@@ -394,7 +408,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         text: "No sabés cómo ponerlo en términos de lo que viste. Probá con la estación, la luna o «no depende de nada».",
       };
     }
-    return play(draft, line);
+    return play(
+      holdStance && draftHasVerb(draft.plan, "strike")
+        ? { ...draft, manner: [...new Set([...(draft.manner ?? []), "hold_back"])] }
+        : draft,
+      line,
+    );
   };
 
   const suggested = (all = false) => suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS);

@@ -187,6 +187,11 @@ export const FAMILIARITY_HALF_LIFE_DAYS = 60;
 /** La clave de la familiaridad con el estilo de un rival concreto. */
 export const rivalKey = (id: string): string => `rival:${id}`;
 
+/** La clave de la familiaridad con un estilo (de una cultura, una escuela): lo común a muchos. */
+export const styleKey = (id: string): string => `style:${id}`;
+/** Cuánto de la exposición a una persona queda también en su estilo (calibración abierta). */
+export const STYLE_SHARE = 0.5;
+
 /** La familiaridad con `key` al tiempo `now`, ya con lo que se olvidó. `day` = ticks por día. */
 export function familiarityOf(
   state: SkillState | undefined,
@@ -213,4 +218,30 @@ export function exposeTo(
   const level = 1 - (1 - cur) * exp(-FAMILIARITY_RATE * Math.max(0, hours));
   const rest = (base.familiarities ?? []).filter((x) => x.with !== key);
   return { ...base, familiarities: [...rest, { with: key, level, at: now }] };
+}
+
+/** La mayor familiaridad entre varias claves (la persona, su estilo): lo que ayuda a leer al rival. */
+export function familiarWith(
+  state: SkillState | undefined,
+  keys: readonly string[],
+  now: Tick,
+  day: number,
+): number {
+  return keys.reduce((m, k) => Math.max(m, familiarityOf(state, k, now, day)), 0);
+}
+
+/**
+ * Expone a una persona y, si se conoce, a su estilo (con `STYLE_SHARE` de las horas): conocer a
+ * alguien acostumbra también a cómo pelea o trabaja su gente.
+ */
+export function exposeToPerson(
+  state: SkillState | undefined,
+  person: string,
+  style: string | undefined,
+  hours: number,
+  now: Tick,
+  day: number,
+): SkillState {
+  const one = exposeTo(state, rivalKey(person), hours, now, day);
+  return style === undefined ? one : exposeTo(one, styleKey(style), hours * STYLE_SHARE, now, day);
 }
