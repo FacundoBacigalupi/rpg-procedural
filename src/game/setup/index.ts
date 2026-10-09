@@ -56,17 +56,17 @@ export const CharacterSpec = z
     family: z.strictObject({ position: FamilyPosition.optional() }).optional(),
     /** Rangos por eje de temperamento (§2.1): pesan en la búsqueda del nacimiento (§2.2). */
     temperament: TemperamentSpec.optional(),
-    /** Gustos y crianza ya tienen su forma, pero el mundo todavía no los resuelve: se rechazan. */
+    /** Gustos pedidos (§2.1): se fijan sobre los generados; el contenido rechaza lo que no conoce. La crianza tiene forma pero no se resuelve todavía. */
     tastes: z.array(TasteSpec).optional(),
     upbringing: UpbringingSpec.optional(),
   })
   .superRefine((c, ctx) => {
-    for (const key of ["tastes", "upbringing"] as const) {
+    for (const key of ["upbringing"] as const) {
       if (c[key] !== undefined) {
         ctx.addIssue({
           code: "custom",
           path: [key],
-          message: "todavía no se resuelve en la vida (ROADMAP: Cablear gustos y crianza)",
+          message: "todavía no se resuelve en la vida (ROADMAP: Cablear la crianza del setup)",
         });
       }
     }

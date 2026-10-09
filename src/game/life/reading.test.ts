@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type AgentId, type Event, type EventId, makeId, Rng } from "../../core/index.ts";
-import { MIND, WorldTruth } from "../../sim/index.ts";
+import { COMMUNITY_CULTURE, MIND, PERSON_CULTURE, WorldTruth } from "../../sim/index.ts";
+import { ASCRIBED_GROUPS } from "./identity.ts";
 import { purposeContextOf, purposeReaderOf, readWitnessed, rememberReads } from "./reading.ts";
 
 const agent = (n: number) => makeId("agent", n) as AgentId;
@@ -40,6 +41,51 @@ describe("lectura del porqué del testigo", () => {
     } as never);
     const wary = purposeReaderOf(truth, agent(2), agent(1), 10);
     expect(wary.suspicion).toBeGreaterThan(calm.suspicion);
+  });
+
+  it("el grupo que cree que es el actor mueve el aprecio y la sospecha del lector", () => {
+    const truth = new WorldTruth();
+    const origin = makeId("event", 9) as EventId;
+    truth.set(
+      COMMUNITY_CULTURE,
+      "aldea" as never,
+      {
+        culture: "village",
+        name: "aldea",
+        prevalence: { dress: { variants: { wool: 1 } } },
+        originEventId: origin,
+      } as never,
+    );
+    truth.set(PERSON_CULTURE, agent(2), {
+      holdings: { dress: { variant: "wool", shown: "wool" } },
+      identity: [],
+      originEventId: origin,
+    } as never);
+    truth.set(MIND, agent(2), {
+      schemas: { people_are_untrustworthy: { strength: 0.5 } },
+      formative: [],
+      originEventId: origin,
+    } as never);
+    const neutral = purposeReaderOf(truth, agent(2), agent(1), 10);
+    const belief = (group: string) => ({
+      about: {
+        [agent(1)]: {
+          holder: agent(2),
+          about: agent(1),
+          group,
+          confidence: 0.9,
+          basis: ["markers"],
+        },
+      },
+    });
+    truth.set(ASCRIBED_GROUPS, agent(2), belief("village") as never);
+    const kin = purposeReaderOf(truth, agent(2), agent(1), 10);
+    truth.set(ASCRIBED_GROUPS, agent(2), belief("far") as never);
+    const stranger = purposeReaderOf(truth, agent(2), agent(1), 10);
+    expect(kin.regard).toBeGreaterThan(neutral.regard);
+    expect(kin.suspicion).toBeLessThan(neutral.suspicion);
+    expect(stranger.regard).toBeLessThan(neutral.regard);
+    expect(stranger.suspicion).toBeGreaterThan(neutral.suspicion);
   });
 
   it("guarda las últimas lecturas con tope", () => {

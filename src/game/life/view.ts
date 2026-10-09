@@ -181,7 +181,10 @@ export function tastesForView(
   const food = mine.preferences.filter((p) => p.domain.startsWith("food."));
   const [first] = mentionableTastes(food, w.tastes, 1);
   if (!first || !rng.chance(TASTE_NOTICE_CHANCE)) return [];
-  return [{ name: first.name, stance: first.stance }];
+  // Si el gusto viene de alguien que conoce, lo cita como lo llama (nombre o «tu madre»).
+  const who = first.about === undefined ? undefined : acquaintances(w).get(first.about);
+  const reminds = who ? (who.name ?? `tu ${who.relation}`) : undefined;
+  return [{ name: first.name, stance: first.stance, ...(reminds ? { reminds } : {}) }];
 }
 
 /** Cuántas veces de cada tantas el personaje se acuerda de una deuda a la vista (no en cada turno). */

@@ -6,7 +6,14 @@
 // y la exposición, y devuelve las `Preference`. No escribe nada ni toca el mundo. El cableado a la
 // vida (tabla, nacimiento, narrador) es de quien lo llama. Constantes sin calibrar.
 
-import { contentId, defineContent, type EventId, type Rng, z } from "../../core/index.ts";
+import {
+  type AgentId,
+  contentId,
+  defineContent,
+  type EventId,
+  type Rng,
+  z,
+} from "../../core/index.ts";
 import type { Innate } from "../family/index.ts";
 import { TEMPERAMENT_AXES } from "./mind.ts";
 
@@ -46,6 +53,8 @@ export interface Preference {
   /** 0-1: cuánto pesa. */
   readonly strength: number;
   readonly originEventIds: readonly EventId[];
+  /** La persona a quien está ligado («el té amargo de tu abuela»): quien se lo dio de chico. */
+  readonly about?: AgentId;
   /** Gusto adquirido por exposición repetida (té, vino, poesía difícil). */
   readonly acquired: boolean;
 }
@@ -73,6 +82,8 @@ export interface TasteExposure {
   readonly outcome?: number;
   /** Los eventos que lo explican (la comida de la abuela, la intoxicación). */
   readonly events?: readonly EventId[];
+  /** Quién se lo dio o se lo enseñó de chico (la madre que cocinaba): liga el gusto a esa persona. */
+  readonly from?: AgentId;
 }
 
 export interface TasteInput {
@@ -181,6 +192,8 @@ export function generateTastes(
       strength: round(strength),
       originEventIds: exp?.events?.length ? [...exp.events] : [input.origin],
       acquired,
+      // Solo lo bueno de la infancia queda ligado a quien lo dio: el recuerdo cálido.
+      ...(exp?.childhood && exp.from !== undefined && valence > 0 ? { about: exp.from } : {}),
     });
   }
   return out;
@@ -192,6 +205,8 @@ export interface TasteMention {
   readonly domain: string;
   readonly name: string;
   readonly stance: "loves" | "likes" | "dislikes" | "loathes";
+  /** A quién le recuerda, si el gusto viene de una persona. */
+  readonly about?: AgentId;
 }
 
 /** Los gustos que vale la pena mencionar, los más fuertes primero (desempate por id). */
@@ -218,5 +233,6 @@ export function mentionableTastes(
             : p.valence <= -0.6
               ? "loathes"
               : "dislikes",
+      ...(p.about === undefined ? {} : { about: p.about }),
     }));
 }

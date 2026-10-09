@@ -236,3 +236,8 @@ interface IdentityBelief {                   // una creencia más (information �
 ## Preguntas abiertas
 
 - Calibración: velocidad de deriva por dominio; peso de los sesgos de copia; generaciones típicas de asimilación; frecuencia de modas en ciudades; cuántos rasgos por cultura hacen falta para que se sientan distintas.
+
+## Implementación (sesgo de grupo en la lectura, 2026-10-09)
+
+- `game/life/identity.ts`: `ownGroup` (identidad propia o la comunidad que mejor cuadra con lo que sostiene) y `groupBiasToward` (aplica `groupBias` a la creencia adscripta del observador). `purposeReaderOf` (`game/life/reading.ts`) lo suma al aprecio y lo resta a la sospecha con que el personaje lee el porqué de lo que ve, así el recelo hacia el de afuera sale de lo que cree, no de la verdad. Falta: `appraise`/diálogo, estereotipo transmitido y NPC (ver ROADMAP).
+- **Comida a la vista (2026-10-09):** `visibleMarks` suma los dominios de `SEEN_WHILE_DOING` (hoy `food` con comer, cocinar y beber) cuando el evento percibido es esa acción; la comida no se lee al cruzarse. Falta el habla/acento y la adscripción entre NPC.

@@ -65,6 +65,8 @@ export interface TasteView {
   /** Cómo lo nombra («lo amargo», «el té»): viene del catálogo, el narrador no lo inventa. */
   readonly name: string;
   readonly stance: TasteStance;
+  /** A quién le recuerda («tu madre»), si el gusto viene de alguien que conoce. */
+  readonly reminds?: string;
 }
 /**
  * Una deuda o promesa del libro del personaje que vale la pena recordar ahora (contracts §14): solo

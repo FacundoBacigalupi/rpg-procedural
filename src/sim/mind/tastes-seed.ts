@@ -139,13 +139,18 @@ export function seedTastes(
         ),
       );
     }
+    // Lo corriente se conoció de chico en la mesa de la madre: lo bueno queda ligado a ella.
+    const mother = truth.get(PERSON, id)?.mother ?? undefined;
+    const fed: Record<string, TasteExposure> = mother
+      ? Object.fromEntries(Object.entries(exposure).map(([k, e]) => [k, { ...e, from: mother }]))
+      : exposure;
     const generated = generateTastes(
       input.defs,
       {
         innate,
         body: { sensitivities },
         culture: { familiar, forbidden },
-        exposure,
+        exposure: fed,
         origin: event,
       },
       rng,

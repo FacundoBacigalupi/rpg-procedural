@@ -161,3 +161,33 @@ describe("gustos básicos", () => {
     ]);
   });
 });
+
+describe("gusto ligado a una persona", () => {
+  const mother = makeId("agent", 7);
+  const fed = (outcome: number) =>
+    generateTastes(
+      defs,
+      base({
+        innate: { boldness: 1 },
+        exposure: { spicy: { count: 12, childhood: true, outcome, from: mother } },
+      }),
+      Rng.root(3),
+    );
+
+  it("lo bueno de la infancia queda ligado a quien lo dio, y la mención lo cita", () => {
+    const p = find(fed(0.9), "spicy");
+    expect(p?.about).toBe(mother);
+    const [m] = mentionableTastes(p ? [p] : [], defs, 1, 0);
+    expect(m?.about).toBe(mother);
+  });
+
+  it("lo que hizo mal no recuerda a nadie, y sin infancia tampoco", () => {
+    expect(find(fed(-0.9), "spicy")?.about).toBeUndefined();
+    const adult = generateTastes(
+      defs,
+      base({ exposure: { spicy: { count: 12, from: mother } } }),
+      Rng.root(3),
+    );
+    expect(find(adult, "spicy")?.about).toBeUndefined();
+  });
+});

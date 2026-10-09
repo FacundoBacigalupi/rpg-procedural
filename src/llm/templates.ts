@@ -153,7 +153,12 @@ export function renderView(
     else if (t.kind === "feel") say("thought.mood.calm");
     if (t.hazy === true) say("thought.hazy");
   }
-  for (const t of view.tastes) say(`taste.${t.stance}`, { what: t.name });
+  for (const t of view.tastes) {
+    say(`taste.${t.stance}`, { what: t.name });
+    if (t.reminds !== undefined && (t.stance === "loves" || t.stance === "likes")) {
+      say("taste.reminds_of", { what: t.name, who: t.reminds });
+    }
+  }
   for (const d of view.dues) {
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");

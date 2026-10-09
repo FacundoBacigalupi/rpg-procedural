@@ -223,6 +223,7 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 
 - `sim/religion/identity.ts`: `Affiliation` (creencia, práctica, pertenencia, por fuera; `learnedFrom`, `since`, origen) y `ReligiousIdentity` en la tabla `RELIGIOUS_IDENTITY`. `seedAffiliation` parte de la media de la comunidad (o del promedio con los padres) con desvío; cumplir sigue a creer y a pertenecer; mostrar suma la presión de pertenecer, así que quien pertenece sin creer finge.
 - `PracticeDef.sanction` (0-1) es la gravedad creída de romper un tabú. `sanctionWeight(identidad, comunidad, bien)` da miedo (sanción por creencia) y vergüenza (sanción por pertenencia) y su `penalty`, que se resta a la utilidad: no mira `WorldTruth`. `guiltAfter` y `comfortOf` (parte social para todo el que pertenece, parte de fe solo para el que cree) son las intensidades que usarán la mente y el duelo.
+- **Panel del personaje (2026-10-09):** `characterPanel.faith` (`game/life/panels.ts`) dice la religión de la aldea, cuánto cree, cumple y pertenece en palabras (`faithLevel`: ninguna, leve, firme, honda; sin números) y las prácticas de la religión; nunca el `truthStatus`. La culpa y el consuelo viven en el panel cuando existan los eventos que los producen.
 - Falta el cableado (nacer con identidad, utilidad de lo tabú, estímulo `guilt`, alivio del duelo): ver sub-ítems en el ROADMAP.
 
 ## Tests

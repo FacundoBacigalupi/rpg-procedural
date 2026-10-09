@@ -67,7 +67,14 @@ export function perceiveProcess(o: PerceiveOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [PERCEPTS.name, PERSON.name, LOCATION.name, "culture.person", "culture.community"],
+    reads: [
+      PERCEPTS.name,
+      PERSON.name,
+      LOCATION.name,
+      "culture.person",
+      "culture.community",
+      ASCRIBED_GROUPS.name,
+    ],
     writes: [PERCEPTS.name, ASCRIBED_GROUPS.name, PURPOSE_READS.name],
     run(ctx) {
       const fresh = perceiveEvents(o, ctx.truth, ctx.recent, ctx.rng);
