@@ -68,6 +68,7 @@ import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
+import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -120,6 +121,8 @@ export interface LifeWorld {
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
   readonly householdTrades?: readonly TradeAssignment[];
+  /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
+  readonly loanSeeds?: readonly LoanSeed[];
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -303,6 +306,12 @@ export function lifeWorld(
           goods: parts.goods,
           recipes: parts.tradeRecipes ?? [],
           assignments: parts.householdTrades ?? [],
+          placeOf: placeOf(parts, village),
+        }),
+        loansProcess({
+          clock: parts.clock,
+          goods: parts.goods,
+          seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
         }),
         exposureProcess({

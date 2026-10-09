@@ -16,11 +16,13 @@ import {
   goodUnit,
   type HouseholdFlows,
   type HouseholdStanding,
+  type LoanCommitment,
   PERSON,
   type ReadonlyLedger,
   type ReadonlyWorldTruth,
   spendCeiling,
   standing,
+  withLoanPayments,
 } from "../../sim/index.ts";
 
 /** Desde qué edad se cuenta como adulto (la misma que `ADULT_AGE_YEARS`). */
@@ -40,6 +42,8 @@ export interface BudgetEnv {
   /** Ingreso medio por día del hogar (hoy no hay jornales: 0 hasta que existan). */
   readonly incomePerDay?: number;
   readonly fixedPerDay?: number;
+  /** Préstamos activos del hogar: su cuota diaria se suma a los gastos fijos (`withLoanPayments`). */
+  readonly loans?: readonly LoanCommitment[];
 }
 
 /** Los flujos del hogar `home` como los ve el presupuesto: miembros vivos, bolsas, despensa. */
@@ -68,7 +72,7 @@ export function householdFlowsOf(
   coins += balance(home as unknown as HolderRef, coin);
   const perDayKg = Math.max(0.001, adults + children * 0.6 + elders * 0.8) * GRAIN_KG_PER_ADULT_DAY;
   const pantryDays = balance(home as unknown as HolderRef, grain) / 1000 / perDayKg;
-  return {
+  const flows: HouseholdFlows = {
     coins,
     incomePerDay: env.incomePerDay ?? 0,
     fixedPerDay: env.fixedPerDay ?? 0,
@@ -78,6 +82,9 @@ export function householdFlowsOf(
     children,
     elders,
   };
+  return env.loans && env.loans.length > 0
+    ? withLoanPayments(flows, env.loans, Math.floor(env.now / env.day))
+    : flows;
 }
 
 /** Cuántas monedas puede soltar el hogar en un trato: urgente usa todo lo que hay. */
