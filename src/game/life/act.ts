@@ -59,8 +59,10 @@ import {
   learnFromAttempt,
   learnFromDeal,
   localHour,
+  logMeal,
   MARKET_TAPE,
   type Market,
+  MEALS,
   type Nutrition,
   nearestHex,
   nodeAt,
@@ -168,6 +170,8 @@ export function planKey(seq: number): string {
 }
 
 export interface ActOptions {
+  /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
+  readonly logMeals?: boolean;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly catalog: ActionCatalog;
@@ -281,6 +285,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       PLAN_STATE.name,
       LOCATION.name,
       BODY_STATE.name,
+      MEALS.name,
       SKILL_STATE.name,
       SELF_IMAGES.name,
       OPINIONS.name,
@@ -530,6 +535,14 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const eff = r.effect;
   if (eff.kind === "eat") {
     nextBody = ingest(bodyPlan, nextBody, eff.kcal, eff.water);
+    if (o.logMeals && eff.good !== null && eff.grams > 0)
+      changes.push(
+        setComponent(
+          MEALS,
+          me,
+          logMeal(truth.get(MEALS, me), Math.floor(ctx.now / o.clock.day), eff.good, eff.grams),
+        ),
+      );
     bodyTouched = true;
   } else if (eff.kind === "drink") {
     nextBody = ingest(bodyPlan, nextBody, 0, eff.liters);

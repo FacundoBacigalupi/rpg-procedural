@@ -11,22 +11,27 @@ import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
   BODY_NUTRIENTS,
   BODY_STATE,
+  DEFICIENCY_EFFECTS,
   type DietDef,
   deficiencyStage,
   dietDayIntake,
   ENTITY,
   type EventDraft,
   fullStores,
+  MEALS,
+  mealIntake,
   NUTRITION,
   type Nutrient,
   type NutrientProfile,
   type NutrientProfileDef,
   type NutrientStores,
+  needMultiplier,
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
   STORE_DAYS,
   type StateChange,
+  seriousDeficiencyEffects,
   setComponent,
   stepStores,
 } from "../../sim/index.ts";
@@ -45,6 +50,11 @@ export interface NutritionOptions {
   readonly profiles: readonly NutrientProfileDef[];
   /** La dieta de referencia; sin ella el proceso no hace nada. */
   readonly diet: DietDef | undefined;
+  /**
+   * Usar lo realmente comido (`MEALS`) en los días con registro y la necesidad por edad y heridas;
+   * los días sin registro siguen con la dieta de referencia. Apagado por defecto: la aldea no cambia.
+   */
+  readonly useEaten?: boolean;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -67,8 +77,8 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, NUTRITION.name],
-    writes: [NUTRITION.name],
+    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, NUTRITION.name, MEALS.name],
+    writes: [NUTRITION.name, DEFICIENCY_EFFECTS.name],
     run(ctx) {
       if (!intake) return {};
       const changes: StateChange[] = [];
@@ -83,7 +93,24 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
         const hungry = body.glycogen <= 0 && body.fat <= 0;
         const today = hungry ? scaled(intake, STARVING_INTAKE) : intake;
         let stores = before;
-        for (let d = 0; d < days; d++) stores = stepStores(stores, today);
+        const meal = o.useEaten ? ctx.truth.get(MEALS, id) : undefined;
+        const born = ctx.truth.get(PERSON, id)?.born ?? ctx.now - 30 * o.clock.year;
+        const need = o.useEaten
+          ? needMultiplier({
+              ageYears: (ctx.now - born) / o.clock.year,
+              openWounds: body.wounds.filter((w) => w.stage !== "healed").length,
+            })
+          : 1;
+        const lastDay = Math.floor(ctx.now / o.clock.day);
+        for (let d = 0; d < days; d++) {
+          const eaten = meal && meal.day === lastDay - (days - 1 - d) ? meal : undefined;
+          stores = stepStores(stores, eaten ? mealIntake(eaten, profiles) : today, need);
+        }
+        // Solo las carencias serias (etapa franca o peor) publican efectos.
+        const effects = isFull(stores) ? undefined : seriousDeficiencyEffects(stores);
+        if (effects) changes.push(setComponent(DEFICIENCY_EFFECTS, id, effects));
+        else if (ctx.truth.get(DEFICIENCY_EFFECTS, id))
+          changes.push({ op: "delete", table: DEFICIENCY_EFFECTS.name, id });
         if (isFull(stores)) {
           if (had) changes.push({ op: "delete", table: NUTRITION.name, id });
           continue;

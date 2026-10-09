@@ -42,7 +42,9 @@ import {
   type LocalMap,
   type Location,
   localHour,
+  logMeal,
   MEAL_KCAL,
+  MEALS,
   nearestHex,
   needsFrom,
   PERSON,
@@ -87,6 +89,8 @@ const EAT_HUNGER = 0.6;
 const MAX_DRINK_L = 1.5;
 
 export interface RoutineOptions {
+  /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
+  readonly logMeals?: boolean;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -175,6 +179,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     representation: "individual",
     phase: "act",
     reads: [
+      MEALS.name,
       PLAYER.name,
       PLAN_STATE.name,
       NPC_DECISION.name,
@@ -184,7 +189,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       LOCATION.name,
       BODY_STATE.name,
     ],
-    writes: [LOCATION.name, BODY_STATE.name],
+    writes: [LOCATION.name, BODY_STATE.name, MEALS.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -322,6 +327,14 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             ],
           });
           next = ingest(bodyPlan, next, Math.round(grams * f.kcalPerGram), grams * f.waterPerGram);
+          if (o.logMeals)
+            changes.push(
+              setComponent(
+                MEALS,
+                me,
+                logMeal(truth.get(MEALS, me), Math.floor(ctx.now / o.clock.day), row.unit, grams),
+              ),
+            );
         }
       }
       // Beber lo que falta (el agua del pozo no va al ledger todavía, como en `drink`).

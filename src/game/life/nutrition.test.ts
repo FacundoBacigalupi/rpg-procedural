@@ -6,11 +6,14 @@ import {
   BODY_NUTRIENTS,
   BODY_STATE,
   DAILY_NEED,
+  DEFICIENCY_EFFECTS,
   DIETS,
   dietDayIntake,
   ENTITY,
   FOODS,
   fullStores,
+  logMeal,
+  MEALS,
   NUTRIENT_PROFILES,
   NUTRITION,
   PERSON,
@@ -83,5 +86,23 @@ describe("life.nutrition", () => {
     t.set(NUTRITION, a as EntityRef, { stores: { ...fullStores(), vitaminC: 59.9 }, at: 0 });
     const out = p.run(ctx(t, clock.day));
     expect(out.changes?.[0]).toMatchObject({ op: "delete", table: NUTRITION.name });
+  });
+
+  it("con useEaten, lo comido reemplaza la dieta de referencia ese día y no hay efectos sin carencia seria", () => {
+    const p = nutritionProcess({ clock, profiles, diet, useEaten: true, placeOf: () => place });
+    const t = world({ glycogen: 100, fat: 100, wounds: [] });
+    // Un día comiendo solo algo sin perfil: reservas por debajo de lo lleno, sin efectos graves.
+    t.set(MEALS, a as EntityRef, logMeal(undefined, 5, "nada", 100));
+    const out = p.run(ctx(t, clock.day * 5.5));
+    const row = out.changes?.find((c) => c.table === NUTRITION.name);
+    expect(row).toBeDefined();
+    expect(out.changes?.some((c) => c.table === DEFICIENCY_EFFECTS.name)).toBe(false);
+    expect(p.run(ctx(t, clock.day * 5.5))).toEqual(out);
+  });
+
+  it("una carencia seria publica sus efectos", () => {
+    const p = nutritionProcess({ clock, profiles, diet, placeOf: () => place });
+    const out = p.run(ctx(world({ glycogen: 0, fat: 0 }), clock.day * 200, clock.day * 200));
+    expect(out.changes?.some((c) => c.table === DEFICIENCY_EFFECTS.name)).toBe(true);
   });
 });

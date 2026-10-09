@@ -122,6 +122,8 @@ export interface LifeWorld {
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
   readonly nutrientProfiles?: readonly NutrientProfileDef[];
   readonly diets?: readonly DietDef[];
+  /** Lo comido de verdad alimenta las reservas (`MEALS`); apagado por defecto: la aldea no cambia. */
+  readonly eatenNutrition?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -209,6 +211,7 @@ export function lifeWorld(
           ambientOf: ambientOf(parts),
         }),
         actProcess({
+          logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,
           catalog: parts.catalog,
@@ -342,6 +345,7 @@ export function lifeWorld(
           clock: parts.clock,
           profiles: parts.nutrientProfiles ?? [],
           diet: parts.diets?.find((d) => d.id === "village"),
+          useEaten: parts.eatenNutrition === true,
           placeOf: placeOf(parts, village),
         }),
         thermalProcess({
@@ -474,6 +478,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         routineProcess({
+          logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,
           bodyPlans: parts.plans,
