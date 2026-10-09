@@ -4,6 +4,7 @@
 export * from "./catalog.ts";
 export * from "./household.ts";
 export * from "./learn.ts";
+export * from "./lore.ts";
 export * from "./selfimage.ts";
 export * from "./state.ts";
 export * from "./watch.ts";
