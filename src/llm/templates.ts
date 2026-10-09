@@ -6,6 +6,7 @@
 
 import type { Rng } from "../core/index.ts";
 import type {
+  ConclusionView,
   EffectView,
   LocalLabel,
   NarrationTemplate,
@@ -144,7 +145,12 @@ export function renderView(
   for (const c of view.self.cues) say(`self.${c}`);
   for (const t of view.thoughts) {
     const of = t.about !== undefined;
-    if (t.kind === "remember")
+    if (t.kind === "conclude" && t.conclusion !== undefined) {
+      conclusion(t.conclusion, say, ref, book);
+      continue;
+    }
+    if (t.kind === "conclude") say("thought.ponder");
+    else if (t.kind === "remember")
       say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
     else if (t.kind === "ponder")
       say(of ? "thought.ponder_of" : "thought.ponder", { who: ref(t.about) });
@@ -168,6 +174,28 @@ export function renderView(
 }
 
 type Say = (id: string, slots?: Slots) => void;
+
+/** «Quizá X se llevó…», con la seguridad de la banda, el rival si dudó y la evidencia citada. */
+function conclusion(
+  c: ConclusionView,
+  say: Say,
+  ref: (id: string | undefined) => string,
+  book: TemplateBook,
+): void {
+  const slots = (who: readonly string[]): Slots => ({ a: ref(who[0]), b: ref(who[1]) });
+  const fact = (pred: string, who: readonly string[]): string => {
+    const id = `thought.fact.${pred}`;
+    const use = book.has(id) ? id : "thought.fact.unknown";
+    return fill(book.lines(use)[0] as string, slots(who), use);
+  };
+  say(`thought.conclude.${c.band}`, { fact: fact(c.pred, c.who) });
+  if (c.rival !== undefined)
+    say("thought.conclude.rival", { fact: fact(c.rival.pred, c.rival.who) });
+  for (const k of c.because ?? []) {
+    const id = `thought.because.${k}`;
+    if (book.has(id)) say(id);
+  }
+}
 
 function outcome(
   o: OutcomeView,

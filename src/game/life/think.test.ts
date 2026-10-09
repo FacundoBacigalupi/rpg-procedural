@@ -6,7 +6,7 @@ import { INFERENCE_RULES } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { Life } from "./index.ts";
 import { knownEntities } from "./known.ts";
-import { reasonerOf, thinkOn, topicEntity, topicText } from "./think.ts";
+import { reasonerOf, thinkOn, thoughtInputsOf, topicEntity, topicText } from "./think.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -40,4 +40,32 @@ describe("pensar sobre X", () => {
     // Las reglas no se disparan con lo que hoy hay en las creencias: no concluye nada de la nada.
     expect(r.thoughts).toEqual([]);
   }, 120_000);
+});
+
+describe("thoughtInputsOf", () => {
+  it("pasa la conclusión sin cifras y cita la clase de evidencia", () => {
+    const out = thoughtInputsOf({
+      thoughts: [
+        {
+          fact: { pred: "alive", args: ["agent:1"] },
+          band: "maybe",
+          confidence: 0.4,
+          support: ["wound:a:b", "trace:x", "belief:agent:1:alive"],
+        },
+      ],
+      state: { tired: false, afraid: false },
+      evidence: 3,
+    });
+    expect(out).toEqual([
+      {
+        kind: "conclude",
+        conclusion: {
+          pred: "alive",
+          args: ["agent:1"],
+          band: "maybe",
+          because: ["inference", "tracks", "wound"],
+        },
+      },
+    ]);
+  });
 });

@@ -98,3 +98,48 @@ describe("modo introspección", () => {
     expect(validateNarration(long, req).some((p) => p.includes("too long"))).toBe(true);
   });
 });
+
+describe("pensar: la conclusión en la voz del personaje", () => {
+  const conclusion = (c: ThoughtInput["conclusion"]): PlayerView =>
+    thinking([{ kind: "conclude", ...(c ? { conclusion: c } : {}) }]);
+
+  it("pide nombrar a quien nombra el hecho y lleva banda y evidencia", () => {
+    const view = conclusion({
+      pred: "took",
+      args: [mother],
+      band: "likely",
+      because: ["tracks"],
+    });
+    const req = narrationRequest(view, style);
+    expect(req.mode).toBe("introspection");
+    expect(req.mustMention).toEqual(["e1"]);
+    const sent = JSON.parse(narratorUserMessage(req));
+    expect(sent.thoughts[0].conclusion).toMatchObject({
+      pred: "took",
+      who: ["e1"],
+      band: "likely",
+      because: ["tracks"],
+    });
+  });
+
+  it("toda banda con rival y evidencia tiene plantilla y pasa el validador", () => {
+    for (const band of ["convinced", "likely", "maybe", "hunch"] as const) {
+      const view = conclusion({
+        pred: "alive",
+        args: [mother],
+        band,
+        rival: { pred: "dead", args: [mother] },
+        because: ["wound", "tracks"],
+      });
+      const text = renderView(view, book, Rng.root(1).fork("narration", 0));
+      expect(text).toContain("{{e1|");
+      expect(validateNarration(text, narrationRequest(view, style))).toEqual([]);
+    }
+  });
+
+  it("un predicado sin plantilla propia cae a la frase genérica", () => {
+    const view = conclusion({ pred: "algo_raro", args: [mother], band: "hunch" });
+    const text = renderView(view, book, Rng.root(1).fork("narration", 0));
+    expect(text).toContain("algo no cierra");
+  });
+});

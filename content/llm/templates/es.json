@@ -468,6 +468,38 @@
   { "id": "thought.mood.longing", "lines": ["Los extrañás.", "Te invade la nostalgia."] },
   { "id": "thought.mood.guilt", "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."] },
   {
+    "id": "thought.conclude.convinced",
+    "lines": ["Estás convencido de que {fact}.", "Ya no te cabe duda: {fact}."]
+  },
+  {
+    "id": "thought.conclude.likely",
+    "lines": ["Lo más probable es que {fact}.", "Todo apunta a que {fact}."]
+  },
+  { "id": "thought.conclude.maybe", "lines": ["Quizá {fact}.", "A lo mejor {fact}."] },
+  {
+    "id": "thought.conclude.hunch",
+    "lines": ["Tenés una corazonada: tal vez {fact}.", "Algo te dice que quizá {fact}."]
+  },
+  {
+    "id": "thought.conclude.rival",
+    "lines": ["Aunque también podría ser que {fact}.", "O tal vez {fact}."]
+  },
+  { "id": "thought.fact.took", "lines": ["{a} se llevó {b}"] },
+  { "id": "thought.fact.wronged", "lines": ["{a} fue perjudicado por {b}"] },
+  { "id": "thought.fact.poisoned_by", "lines": ["{a} fue envenenado por {b}"] },
+  { "id": "thought.fact.fire_at", "lines": ["hay fuego cerca"] },
+  { "id": "thought.fact.endangered", "lines": ["{a} corre peligro"] },
+  { "id": "thought.fact.at", "lines": ["{a} anda por otro lado"] },
+  { "id": "thought.fact.alive", "lines": ["{a} sigue vivo"] },
+  { "id": "thought.fact.dead", "lines": ["{a} murió"] },
+  { "id": "thought.fact.intends", "lines": ["{a} se trae algo entre manos"] },
+  { "id": "thought.fact.unknown", "lines": ["algo no cierra"] },
+  { "id": "thought.because.wound", "lines": ["Lo dice la herida."] },
+  { "id": "thought.because.tracks", "lines": ["Lo dicen las huellas."] },
+  { "id": "thought.because.seen", "lines": ["Lo viste con tus ojos."] },
+  { "id": "thought.because.told", "lines": ["Es lo que te contaron."] },
+  { "id": "thought.because.inference", "lines": ["Lo sacás de lo que sabés."] },
+  {
     "id": "thought.hazy",
     "lines": ["Pero ya no estás seguro de cómo fue.", "Los detalles se te mezclan."]
   },

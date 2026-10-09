@@ -4,7 +4,7 @@
 // miedo. Devuelve estructura (qué cree, con qué seguridad, de qué evidencia), no texto: la voz es
 // de la UI o del narrador. No pasa el tiempo ni se lee la verdad.
 
-import type { AgentId } from "../../core/index.ts";
+import { type AgentId, compareStrings, type EntityRef } from "../../core/index.ts";
 import {
   BELIEFS,
   BODY_STATE,
@@ -24,6 +24,7 @@ import {
   thinkAbout,
   toRule,
 } from "../../sim/index.ts";
+import type { ThoughtInput } from "../view/index.ts";
 import { headPremises } from "./evidence.ts";
 import { SLEEP_STATE } from "./sleep.ts";
 import type { LifeWorld } from "./world.ts";
@@ -136,4 +137,34 @@ export function topicEntity(
 ): string | undefined {
   const strip = (s: string) => s.toLowerCase().replace(/^(?:el|la|los|las|mi|mis)\s+/u, "");
   return known.find((k) => k.names.some((n) => strip(n) === text))?.ref;
+}
+
+/** La clase de evidencia que cita una referencia de premisa (sin ids ni cifras). */
+function becauseOf(ref: string): string | undefined {
+  if (ref.startsWith("wound:")) return "wound";
+  if (ref.startsWith("trace:")) return "tracks";
+  if (ref.startsWith("belief:")) return "inference";
+  return undefined;
+}
+
+/**
+ * Lo que concluyó al pensar, como pensamientos para el narrador (`PlayerView.thoughts`, modo
+ * introspección): hecho, banda, rival y clases de evidencia citadas. Sin cifras de confianza.
+ */
+export function thoughtInputsOf(result: ThinkResult): ThoughtInput[] {
+  return result.thoughts.map((t) => {
+    const because = [...new Set(t.support.flatMap((s) => becauseOf(s) ?? []))].sort(compareStrings);
+    return {
+      kind: "conclude",
+      conclusion: {
+        pred: t.fact.pred,
+        args: t.fact.args as readonly EntityRef[],
+        band: t.band,
+        ...(t.rival !== undefined
+          ? { rival: { pred: t.rival.pred, args: t.rival.args as readonly EntityRef[] } }
+          : {}),
+        ...(because.length > 0 ? { because } : {}),
+      },
+    };
+  });
 }
