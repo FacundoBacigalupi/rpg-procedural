@@ -4,6 +4,7 @@ export * from "./appraise.ts";
 export * from "./chosen.ts";
 export * from "./conditions.ts";
 export * from "./consolidation.ts";
+export * from "./goals.ts";
 export * from "./habits.ts";
 export * from "./history.ts";
 export * from "./memory.ts";
