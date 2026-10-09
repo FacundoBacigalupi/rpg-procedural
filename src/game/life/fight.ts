@@ -12,6 +12,8 @@ import {
   deleteComponent,
   ENTITY,
   type EventDraft,
+  exposeTo,
+  familiarityOf,
   type FighterOutcome,
   type FightGist,
   type FightIntent,
@@ -20,6 +22,7 @@ import {
   levelOf,
   PERSON,
   type ReadonlyWorldTruth,
+  rivalKey,
   runFight,
   SKILL_STATE,
   type SkillCatalog,
@@ -71,6 +74,8 @@ export interface StrikeFightInput {
   readonly light: number;
   readonly start: Tick;
   readonly rng: Rng;
+  /** Ticks por día, para olvidar la familiaridad (por defecto 86400). */
+  readonly day?: number;
   /** El evento del golpe: causa de cada herida y del evento de la pelea. */
   readonly cause: EventId;
   readonly place: PlaceRef;
@@ -88,6 +93,39 @@ export interface StrikeFight {
   readonly event: EventDraft;
   /** Cómo cree el actor que terminó. */
   readonly gist: FightGist;
+  /** Lo que pelear le enseñó al actor sobre el estilo del rival: aplicar con `exposeSkills`. */
+  readonly exposure?: Exposure;
+}
+
+/** Una exposición a un estilo: qué habilidad, con qué clave y cuántas horas. */
+export interface Exposure {
+  readonly skill: string;
+  readonly key: string;
+  readonly hours: number;
+}
+
+const DAY_SECONDS = 86400;
+
+/** Aplica una exposición a las habilidades de alguien (skills §2.3). */
+export function exposeSkills(
+  skills: Skills | undefined,
+  e: Exposure,
+  now: Tick,
+  day = DAY_SECONDS,
+): Skills {
+  return { ...skills, [e.skill]: exposeTo(skills?.[e.skill], e.key, e.hours, now, day) };
+}
+
+/** La familiaridad de `who` con el estilo de `rival` en la habilidad del golpe. */
+function fightFamiliarity(
+  catalog: SkillCatalog,
+  skills: Skills | undefined,
+  rival: AgentId,
+  now: Tick,
+  day: number,
+): number {
+  const use = catalog.forVerb("strike");
+  return use ? familiarityOf(skills?.[use.skill.id], rivalKey(rival), now, day) : 0;
 }
 
 /** Hay con quién pelear: está vivo, con cuerpo y en pie o dormido (no hace falta rematar a un caído). */
@@ -132,6 +170,7 @@ const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
 };
 
 export function strikeFight(i: StrikeFightInput): StrikeFight {
+  const day = i.day ?? DAY_SECONDS;
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -150,6 +189,13 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         z: z(i.me),
         skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
         eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
+        familiarity: fightFamiliarity(
+          i.skills,
+          i.truth.get(SKILL_STATE, i.me),
+          i.target,
+          i.start,
+          day,
+        ),
         intent: i.intent,
         at: { x: 0, y: 0 },
       },
@@ -161,6 +207,13 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         z: z(i.target),
         skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
         eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        familiarity: fightFamiliarity(
+          i.skills,
+          i.truth.get(SKILL_STATE, i.target),
+          i.me,
+          i.start,
+          day,
+        ),
         intent: "drive_off",
         at: { x: 0.7, y: 0 },
         unaware: theirBody.activity === "sleep",
@@ -195,11 +248,29 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     emissions: { sight: 1, sound: 0.8 },
     causes: [{ kind: "event", event: i.cause }],
   };
+  // Pelear con alguien enseña su estilo a los dos (skills §2.3, combat §5).
+  const strike = i.skills.forVerb("strike");
+  const hours = result.seconds / 3600;
   return {
     seconds: result.seconds,
     myBody: mine.body,
+    ...(strike ? { exposure: { skill: strike.skill.id, key: rivalKey(i.target), hours } } : {}),
     changes: [
       setComponent(BODY_STATE, i.target, theirs.body),
+      ...(strike
+        ? [
+            setComponent(
+              SKILL_STATE,
+              i.target,
+              exposeSkills(
+                i.truth.get(SKILL_STATE, i.target),
+                { skill: strike.skill.id, key: rivalKey(i.me), hours },
+                i.start + result.seconds,
+                day,
+              ),
+            ),
+          ]
+        : []),
       // Pausada: queda guardada para retomarla; si no, se limpia lo que hubiera.
       ...(result.paused
         ? [
