@@ -15,7 +15,13 @@ import {
   speakWord,
   tabooOffense,
 } from "../language/index.ts";
-import { faceLoss, type Offense } from "../social/index.ts";
+import {
+  type EtiquetteNorm,
+  faceLoss,
+  judgeBreach,
+  type Offense,
+  type StandingBelief,
+} from "../social/index.ts";
 import { registerOffense } from "./regard.ts";
 
 /** Lo que quien habla decide de la forma. */
@@ -30,6 +36,16 @@ export interface FormIntent {
   readonly words?: readonly (readonly string[])[];
   /** Si conoce los tabúes de quien escucha. */
   readonly knowsTaboos?: boolean;
+  /** Si abrió saludando (el saludo debido a quien está arriba, social-structure §4). */
+  readonly greeted?: boolean;
+}
+
+/** Lo que el acto declara haber hecho, para que el oyente lo mida contra las normas de etiqueta. */
+export interface DeclaredActs {
+  /** Usó un tratamiento con honorífico («usted»). */
+  readonly address: boolean;
+  /** Saludó. */
+  readonly greet: boolean;
 }
 
 /** La forma del acto, declarada junto al contenido. */
@@ -39,6 +55,8 @@ export interface SpokenForm {
   /** La formalidad realmente usada (0-1). */
   readonly used: number;
   readonly addressId: string | null;
+  /** Los actos de etiqueta que hizo (usted, saludo); sin esto no se mide contra las normas. */
+  readonly acts?: DeclaredActs;
   /** Cómo nombró al otro (honorífico + nombre de pila). */
   readonly address: string;
   /** Palabras que salieron, en orden, con si fueron por rodeo o rompieron un tabú. */
@@ -68,6 +86,7 @@ export function speechForm(
     recipient: intent.recipient,
     used,
     addressId: form?.id ?? null,
+    acts: { address: (form?.concepts.length ?? 0) > 0, greet: intent.greeted ?? false },
     address: renderAddress(language, form, intent.given),
     words,
   };
@@ -86,6 +105,17 @@ export interface FormJudgeInput {
   /** 0-1: cuánto le importan los tabúes al oyente. */
   readonly hearerReverence: number;
   readonly speakerKnewTaboos: boolean;
+  /**
+   * Las normas de etiqueta de la cultura contra lo que el acto declaró (acts): el oyente las
+   * mide con lo que CREE del rango del otro, nunca con la verdad; sin lectura no hay ofensa.
+   */
+  readonly etiquette?: {
+    readonly norms: readonly EtiquetteNorm[];
+    readonly offendedRank: number;
+    readonly believedActor: Pick<StandingBelief, "rank" | "confidence"> | undefined;
+    /** 0-1: cuánto conoce quien habla la etiqueta de este estrato. */
+    readonly actorKnowsEtiquette: number;
+  };
 }
 
 export interface FormJudgement {
@@ -93,6 +123,8 @@ export interface FormJudgement {
   readonly register: Offense | null;
   /** Una por cada palabra vedada que se rompió (tabú y tamaño 0-1). */
   readonly taboos: readonly { readonly taboo: string; readonly size: number }[];
+  /** Las normas de etiqueta omitidas que el oyente tomó por ofensa (usted, saludo debido). */
+  readonly breaches: readonly Offense[];
   /** La cara que pierde el oyente por todo junto (0-1). */
   readonly faceLoss: number;
 }
@@ -116,13 +148,40 @@ export function judgeForm(
       },
     ];
   });
+  const breaches = etiquetteBreaches(form, i);
   const loss =
     (register ? faceLoss(register) : 0) +
+    breaches.reduce((s, b) => s + faceLoss(b), 0) +
     broken.reduce(
       (s, b) => s + faceLoss({ norm: b.taboo, size: b.size, gap: 0, witnesses: i.witnesses }),
       0,
     );
-  return { register, taboos: broken, faceLoss: Math.round(Math.min(1, loss) * 1e6) / 1e6 };
+  return {
+    register,
+    taboos: broken,
+    breaches,
+    faceLoss: Math.round(Math.min(1, loss) * 1e6) / 1e6,
+  };
+}
+
+/** Las normas que el acto declaró no cumplir y que el oyente, por lo que cree del rango, tomó a mal. */
+function etiquetteBreaches(form: SpokenForm, i: FormJudgeInput): Offense[] {
+  const e = i.etiquette;
+  if (!e || !form.acts) return [];
+  const out: Offense[] = [];
+  for (const norm of e.norms) {
+    const done =
+      norm.act === "address" ? form.acts.address : norm.act === "greet" ? form.acts.greet : true;
+    if (done) continue;
+    const offense = judgeBreach(norm, {
+      offendedRank: e.offendedRank,
+      believedActor: e.believedActor,
+      actorKnowsEtiquette: e.actorKnowsEtiquette,
+      witnesses: i.witnesses,
+    });
+    if (offense) out.push(offense);
+  }
+  return out;
 }
 
 /** Lo que suman o restan al registro las marcas del texto (cortesía o grosería), sin calibrar. */

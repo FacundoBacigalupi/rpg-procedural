@@ -15,6 +15,8 @@ import {
   addMemory,
   callName,
   checkInvariants,
+  DEFAULT_FACE,
+  FACE,
   formMemory,
   HEARD,
   KNOWN_DEEDS,
@@ -27,6 +29,8 @@ import {
   RELATIONS,
   relationship,
   SECRETS,
+  STANDING_BELIEFS,
+  STATUS,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -318,5 +322,153 @@ describe("acusar a alguien de la casa", () => {
       expect(w.truth.get(KNOWN_DEEDS, other)?.deeds.some((d) => d.by === third)).toBe(true);
     }
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+});
+
+/** Un extraño de otra casa en el mismo lugar: él (el oyente) campesino, el personaje criado. */
+function meet(seed: number, reading?: number) {
+  const s = scene(seed);
+  const { life, w, me } = s;
+  const home = w.truth.get(PERSON, me)?.household;
+  const hearer = living(w.truth).find(
+    (id) => id !== me && w.truth.get(PERSON, id)?.household !== home,
+  ) as AgentId;
+  const here = w.truth.get(LOCATION, me);
+  if (here) w.truth.set(LOCATION, hearer, here);
+  for (const [id, status] of [
+    [hearer, "peasant"],
+    [me, "servant"],
+  ] as const) {
+    const row = w.truth.get(STATUS, id);
+    if (row) w.truth.set(STATUS, id, { ...row, status });
+  }
+  // Un extraño: sin respeto ni familiaridad, para que el usted solo salga del rango creído.
+  const dims = {
+    dims: content.all(RELATION_DIMS),
+    bonds: content.all(RELATION_BONDS),
+    schemaStrength: () => 0,
+  };
+  const rel = relationship(w.truth.get(RELATIONS, hearer), me, life.now, dims);
+  const toward = { ...(w.truth.get(RELATIONS, hearer)?.toward ?? {}) };
+  toward[me] = {
+    ...rel,
+    dims: { ...rel.dims, respect: 0.1, familiarity: 0.1, resentment: 0, trust: 0.3 },
+  };
+  const row = w.truth.get(RELATIONS, hearer);
+  w.truth.set(RELATIONS, hearer, {
+    toward,
+    originEventId: row?.originEventId ?? (w.log.all()[0]?.id as never),
+  });
+  if (reading !== undefined) {
+    w.truth.set(STANDING_BELIEFS, hearer, {
+      beliefs: [
+        {
+          about: me,
+          rank: reading,
+          confidence: 0.9,
+          basis: "attire",
+          seenAt: life.now,
+          originEventId: w.log.all()[0]?.id as EventId,
+        },
+      ],
+    });
+  }
+  return { ...s, hearer };
+}
+
+const FORMAL_GREETS = ["Buen día tenga.", "Que le vaya bien."];
+
+describe("el usted según la posición creída", () => {
+  const greetBack = (reading?: number) => {
+    const { life, me, hearer } = meet(7, reading);
+    const report = life.turn(say(me, hearer, "Hola"), 1);
+    const reply = report.events.find((e) => e.actors[0] === hearer && e.kind === "action.speak");
+    return (reply?.data as { effect: { text: string } } | undefined)?.effect.text;
+  };
+
+  it("sin lectura del hablante el oyente extraño lo tutea; con lectura de rango alto, de usted", () => {
+    const none = greetBack();
+    const high = greetBack(2);
+    expect(none).toBeDefined();
+    expect(FORMAL_GREETS).not.toContain(none);
+    expect(FORMAL_GREETS).toContain(high);
+  }, 120_000);
+
+  it("el impostor leído como alto recibe el usted aunque en verdad sea de rango bajo", () => {
+    const { w, me } = meet(7, 2);
+    expect(w.truth.get(STATUS, me)?.status).toBe("servant");
+    expect(greetBack(2)).toBeDefined();
+    expect(FORMAL_GREETS).toContain(greetBack(2));
+  }, 120_000);
+});
+
+describe("la etiqueta omitida es una ofensa con causa", () => {
+  const speakTo = (reading?: number) => {
+    const { life, w, me, hearer } = meet(7, reading);
+    const report = life.turn(say(me, hearer, "Dame un poco de grano"), 1);
+    const reply = report.events.find((e) => e.actors[0] === hearer && e.kind === "action.speak");
+    const offense = report.events.find((e) => e.kind === "social.offense");
+    return { w, me, hearer, reply, offense };
+  };
+
+  it("quien cree al otro por debajo lo toma a mal: pierde cara y el evento cita el acto de habla", () => {
+    const { w, me, hearer, reply, offense } = speakTo(0);
+    expect(offense).toBeDefined();
+    expect(offense?.actors).toEqual([me, hearer]);
+    expect(offense?.causes[0]).toEqual({ kind: "event", event: reply?.id });
+    const data = offense?.data as { norm: string; response: string };
+    expect(["ignore", "rebuke", "punish"]).toContain(data.response);
+    expect(w.truth.get(FACE, hearer)?.value ?? DEFAULT_FACE).toBeLessThan(DEFAULT_FACE);
+    if (data.response !== "ignore") {
+      expect(w.truth.get(FACE, me)?.value ?? DEFAULT_FACE).toBeLessThan(DEFAULT_FACE);
+    }
+  }, 120_000);
+
+  it("sin lectura del hablante no hay con qué medir la falta: no hay ofensa", () => {
+    expect(speakTo().offense).toBeUndefined();
+  }, 120_000);
+});
+
+describe("la etiqueta que el jugador declara", () => {
+  const speakTo = (manner: string[]) => {
+    const { life, me, hearer } = meet(7, 0);
+    const plan = say(me, hearer, "Dame un poco de grano");
+    const root = plan.root.kind === "do" ? { ...plan.root, manner } : plan.root;
+    const report = life.turn({ ...plan, root }, 1);
+    return report.events.filter((e) => e.kind === "social.offense");
+  };
+
+  it("hablar de usted baja la falta que el oyente toma a mal (o la evita)", () => {
+    const loss = (o: ReturnType<typeof speakTo>) =>
+      o.reduce((t, e) => t + (e.data as { faceLoss: number }).faceLoss, 0);
+    const plain = loss(speakTo([]));
+    expect(plain).toBeGreaterThan(0);
+    expect(loss(speakTo(["formal"]))).toBeLessThan(plain);
+  }, 120_000);
+});
+
+describe("la pregunta por un hecho es un law.inquiry", () => {
+  it("quien pregunta por alguien en un hecho que conoce abre la consulta y el testigo declara", () => {
+    const { life, w, me, other, mates } = scene(7);
+    const third = mates.find((id) => id !== other);
+    if (!third) return;
+    const deed = {
+      kind: "theft",
+      by: third,
+      victim: me,
+      event: w.log.all()[0]?.id as EventId,
+      at: life.now,
+      via: "saw",
+    } as const;
+    w.truth.set(KNOWN_DEEDS, me, { deeds: [deed] });
+    w.truth.set(KNOWN_DEEDS, other, { deeds: [{ ...deed, by: null }] });
+    const report = life.turn(say(me, other, `¿Sabés dónde está ${nameOf(w, third)}?`), 1);
+    const speech = report.events.find((e) => e.actors[0] === me && e.kind === "action.speak");
+    const inquiry = report.events.find((e) => e.kind === "law.inquiry");
+    expect(inquiry?.actors).toEqual([me, other]);
+    expect((inquiry?.data as { deed: string } | undefined)?.deed).toBe(deed.event);
+    expect(inquiry?.causes.some((c) => c.kind === "event")).toBe(true);
+    expect(speech).toBeDefined();
+    expect(report.events.some((e) => e.kind === "law.testimony")).toBe(true);
   }, 120_000);
 });

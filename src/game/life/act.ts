@@ -102,7 +102,7 @@ import {
   weatherAt,
   YIELDED,
 } from "../../sim/index.ts";
-import { listenTo, PENDING } from "./converse.ts";
+import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
 import {
   atMyMercy,
@@ -638,7 +638,15 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   // Si le habló a alguien en persona, el oyente contesta cuando termina de oír (converse).
   const heard =
     eff.kind === "speak" && eff.delivered && eff.to !== null
-      ? listenTo(me, eff.to, eff.text, eff.clarity, ctx.now, end)
+      ? listenTo(
+          me,
+          eff.to,
+          eff.text,
+          eff.clarity,
+          ctx.now,
+          end,
+          declaredStyle([...state.plan.manner, ...node.manner]),
+        )
       : { changes: [], schedule: [] };
   changes.push(...heard.changes);
   changes.push(

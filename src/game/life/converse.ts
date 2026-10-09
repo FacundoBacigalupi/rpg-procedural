@@ -37,7 +37,9 @@ import {
   callName,
   clampTemper,
   credulity,
+  DEFAULT_FACE,
   DEFENSE_DELTAS,
+  type Deed,
   type DetectionInput,
   type DimensionDef,
   decideReply,
@@ -48,18 +50,22 @@ import {
   dominantVariant,
   draftEvent,
   ENTITY,
+  type EtiquetteNorm,
   type EventDraft,
   FACE,
   type FormJudgeInput,
+  type FormJudgement,
   formalityShift,
   type GoodDef,
   goodUnit,
+  greets,
   HEARD,
   type HeardProphecy,
   hear,
   honestyShift,
   INNATE,
   KNOWN_DEEDS,
+  type KnownDeeds,
   type Language,
   type Lexicon,
   LOCATION,
@@ -68,6 +74,7 @@ import {
   MEMORIES,
   MIND,
   normalize,
+  type Offense,
   OWN_DEEDS,
   PERSON,
   PERSON_NAME,
@@ -78,11 +85,13 @@ import {
   RELATIONS,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
+  type Recipient,
   type RegisterDef,
   rankOf,
   recipientBetween,
   recollect,
   relationship,
+  respondToOffense,
   type ScheduleRequest,
   SECRETS,
   type SpaceGraph,
@@ -112,6 +121,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { liveTaboos } from "./taboos.ts";
+import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
 
@@ -121,6 +131,15 @@ export interface PendingSpeech {
   readonly text: string;
   readonly clarity: number;
   readonly key: string;
+  /** La forma de tratar que el hablante declaró («le hablo de usted»); sin ella, la que sale sola. */
+  readonly style?: SpeechStyle;
+}
+
+/** Lo que el jugador declara de cómo trata al otro (manners `formal` y `casual` de hablar). */
+export type SpeechStyle = "formal" | "casual";
+
+export function declaredStyle(manner: readonly string[]): SpeechStyle | undefined {
+  return manner.includes("formal") ? "formal" : manner.includes("casual") ? "casual" : undefined;
 }
 
 export const PENDING = table<PendingSpeech>("life.pending_speech");
@@ -167,6 +186,8 @@ export interface ConverseForm {
   readonly registers: readonly RegisterDef[];
   readonly addresses: readonly AddressDef[];
   readonly taboos: readonly TabooDef[];
+  /** Las normas de etiqueta de la cultura (usted, saludo debido); sin ellas solo pesa el registro. */
+  readonly etiquette?: readonly EtiquetteNorm[];
   readonly culture: string;
 }
 
@@ -175,6 +196,37 @@ const FORM_RESENTMENT = 0.4;
 const FORM_RESPECT = 0.2;
 /** Reverencia por los tabúes de quien oye si no tiene fe anotada. */
 const DEFAULT_REVERENCE = 0.5;
+
+/** Cara que pierde quien ofendió si el ofendido lo reprende o lo castiga, por punto de cara (sin calibrar). */
+const OFFENDER_SHAME_REBUKED = 0.5;
+const OFFENDER_SHAME_PUNISHED = 1;
+
+/** La peor falta de la forma (registro, etiqueta omitida o palabra vedada), o nada. */
+function worstOffense(j: FormJudgement): Offense | undefined {
+  const all: Offense[] = [
+    ...(j.register ? [j.register] : []),
+    ...j.breaches,
+    ...j.taboos.map((t) => ({ norm: t.taboo, size: t.size, gap: 0, witnesses: 0 })),
+  ];
+  return all.reduce<Offense | undefined>((w, x) => (!w || x.size > w.size ? x : w), undefined);
+}
+
+/**
+ * El hecho por el que pregunta quien pregunta: con una persona de por medio, el último hecho que
+ * conoce en que ella hizo o sufrió algo; sin ella, el último cuyo autor no sabe. Nunca uno que lo
+ * tenga a él por autor ni a quien responde (a quien se acusa no se lo interroga como testigo).
+ */
+export function deedAsked(
+  known: KnownDeeds | undefined,
+  about: AgentId | null,
+  witness: AgentId,
+): Deed | null {
+  const fit = (known?.deeds ?? []).filter((d) =>
+    about === null ? d.by === null : d.by === about || d.victim === about,
+  );
+  const sorted = [...fit].sort((a, b) => b.at - a.at || (a.event < b.event ? -1 : 1));
+  return sorted.find((d) => d.by !== witness) ?? null;
+}
 
 /** La gente que está donde ellos hablan, sin contarlos: los testigos de lo dicho. */
 function witnessesOf(truth: ReadonlyWorldTruth, me: AgentId, speaker: AgentId): number {
@@ -206,6 +258,10 @@ function formOf(
     speakerRank: number;
     /** Lo que quien habla cree del rango del oyente. */
     speakerReads: number;
+    /** La lectura del oyente sobre quien habla (rango y confianza); sin ella, la etiqueta no ofende. */
+    reading?: { rank: number; confidence: number };
+    /** La forma de tratar que el hablante declaró; pisa la que saldría de su lectura. */
+    style?: SpeechStyle | undefined;
   },
 ): { spoken: SpokenForm; judge: FormJudgeInput } | undefined {
   const { me, speaker, text } = ctx;
@@ -219,12 +275,14 @@ function formOf(
   const taboos = spokenTaboos(norm, live, f.culture, (c) => f.concepts.find((x) => x.id === c)?.es);
   // Quien habla elige el trato por lo que cree del otro; el oyente juzga por lo que cree que
   // el otro cree que él es (su propia lectura de quien le habla).
-  const recipient = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
+  const read = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
+  // «De usted» lo trata como a un superior aunque no lo crea; «de vos», como a un igual.
+  const recipient: Recipient = ctx.style === "formal" && !kin ? "superior" : read;
   const asRecipient = recipientBetween(ctx.readRank, ctx.hearerRank, kin);
-  const used = Math.min(
-    1,
-    Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)),
-  );
+  const used =
+    ctx.style === "casual"
+      ? 0
+      : Math.min(1, Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)));
   const spoken = speechForm(f.language, f.addresses, live, f.culture, {
     register,
     recipient,
@@ -232,6 +290,7 @@ function formOf(
     given: givenName(truth, me) ?? "",
     words: taboos.map((t) => t.concepts),
     knowsTaboos: false,
+    greeted: greets(norm),
   });
   const faith = truth.get(RELIGIOUS_IDENTITY, me)?.affiliations[0];
   return {
@@ -244,6 +303,16 @@ function formOf(
       witnesses: witnessesOf(truth, me, speaker),
       hearerReverence: faith ? unit(0.5 * faith.belief + 0.5 * faith.practice) : DEFAULT_REVERENCE,
       speakerKnewTaboos: true,
+      ...(f.etiquette
+        ? {
+            etiquette: {
+              norms: f.etiquette.filter((n) => n.culture === f.culture),
+              offendedRank: ctx.hearerRank,
+              believedActor: ctx.reading,
+              actorKnowsEtiquette: 1,
+            },
+          }
+        : {}),
     },
   };
 }
@@ -261,6 +330,7 @@ export function listenTo(
   clarity: number,
   at: Tick,
   end: Tick,
+  style?: SpeechStyle,
 ): { changes: StateChange[]; schedule: ScheduleRequest[] } {
   if (!listener.startsWith("agent:") || listener === speaker) {
     return { changes: [], schedule: [] };
@@ -268,7 +338,13 @@ export function listenTo(
   const key = replyKey(speaker, at);
   return {
     changes: [
-      setComponent(PENDING, listener, { from: speaker, text: text ?? BARE_ADDRESS, clarity, key }),
+      setComponent(PENDING, listener, {
+        from: speaker,
+        text: text ?? BARE_ADDRESS,
+        clarity,
+        key,
+        ...(style ? { style } : {}),
+      }),
     ],
     schedule: [
       {
@@ -825,7 +901,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // Lo que el oyente cree del rango de quien le habla (`STANDING_BELIEFS`), no la verdad:
       // sin lectura no hay deferencia, y el impostor bien vestido recibe el usted (social §3).
       const myRank = rankOf(truth.get(STATUS, me), o.statuses) ?? 0;
-      const readRank = beliefAbout(truth.get(STANDING_BELIEFS, me), speaker)?.rank;
+      const reading = beliefAbout(truth.get(STANDING_BELIEFS, me), speaker);
+      const readRank = reading?.rank;
       const above = byRank && readRank !== undefined && readRank > myRank;
       // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
       const innate = truth.get(INNATE, me);
@@ -845,6 +922,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             readRank: readRank ?? myRank,
             speakerRank: theirRank,
             speakerReads: beliefAbout(truth.get(STANDING_BELIEFS, speaker), me)?.rank ?? theirRank,
+            ...(reading ? { reading } : {}),
+            style: pending.style,
           })
         : undefined;
       const act = understand(
@@ -1022,6 +1101,59 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           setComponent(FACE, me, adjustFace(truth.get(FACE, me), -judged.faceLoss, ctx.now)),
         );
       }
+      // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
+      // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
+      // cometió pierde cara si se la reprochan.
+      const offense = judged && judged.faceLoss > 0 ? worstOffense(judged) : undefined;
+      let offenseEvent: EventDraft | undefined;
+      if (offense && judged) {
+        const face = truth.get(FACE, me)?.value ?? DEFAULT_FACE;
+        const response = respondToOffense(offense, {
+          offendedRank: myRank,
+          believedActorRank: readRank ?? myRank,
+          face,
+          magnanimity: unit(
+            0.5 + 0.25 * (clampTemper(z["warmth"] ?? 0) - clampTemper(z["reactivity"] ?? 0)),
+          ),
+        });
+        if (response !== "ignore") {
+          const shame =
+            (response === "punish" ? OFFENDER_SHAME_PUNISHED : OFFENDER_SHAME_REBUKED) *
+            judged.faceLoss;
+          changes.push(
+            setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), -shame, ctx.now)),
+          );
+        }
+        offenseEvent = {
+          kind: "social.offense",
+          actors: [speaker, me],
+          place: o.placeOf(truth, me),
+          data: {
+            norm: offense.norm,
+            size: offense.size,
+            gap: offense.gap,
+            witnesses: offense.witnesses,
+            faceLoss: judged.faceLoss,
+            response,
+          },
+          emissions: {},
+          causes: [{ kind: "event", event: draftEvent(0) }],
+        };
+      }
+      // La pregunta por un hecho (law §5): quien pregunta lo hace por uno que conoce y el testigo
+      // contesta en `life.testify` (causa: este acto de habla).
+      const asked =
+        act.kind === "ask" ? deedAsked(truth.get(KNOWN_DEEDS, speaker), act.about, me) : null;
+      const inquiryEvent: EventDraft | undefined = asked
+        ? {
+            kind: INQUIRY_EVENT,
+            actors: [speaker, me],
+            place: o.placeOf(truth, me),
+            data: { deed: asked.event } satisfies InquiryData,
+            emissions: {},
+            causes: [{ kind: "event", event: draftEvent(0) }],
+          }
+        : undefined;
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -1120,7 +1252,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       }
       return {
         changes,
-        events: [event],
+        events: [
+          event,
+          ...(offenseEvent ? [offenseEvent] : []),
+          ...(inquiryEvent ? [inquiryEvent] : []),
+        ],
         postings:
           swaps.length > 0
             ? [
