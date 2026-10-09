@@ -76,6 +76,8 @@ export interface ThoughtInput {
   readonly mood?: Mood;
   /** El recuerdo está deformado o borroso: no se cuenta como cierto (narration §7). */
   readonly hazy?: boolean;
+  /** Un gusto propio que viene atado a un recuerdo (cómo lo nombra el catálogo y cómo lo recuerda). */
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
 }
 
 export interface ThoughtView {
@@ -85,6 +87,7 @@ export interface ThoughtView {
   readonly about?: string;
   readonly mood?: Mood;
   readonly hazy?: boolean;
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
 }
 
 /** Un gusto propio que viene al caso este turno (npc-psychology §16): lo que el personaje sabe de sí. */
@@ -569,6 +572,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
     ...(t.mood !== undefined ? { mood: t.mood } : {}),
     ...(t.hazy === true ? { hazy: true } : {}),
+    ...(t.taste !== undefined ? { taste: t.taste } : {}),
   }));
 
   const view = {

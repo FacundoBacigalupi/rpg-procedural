@@ -159,6 +159,8 @@ export function renderView(
       continue;
     }
     if (t.kind === "conclude") say("thought.ponder");
+    else if (t.kind === "remember" && t.taste !== undefined)
+      say(`taste.recalls_${t.taste.recalls}`, { what: t.taste.name });
     else if (t.kind === "remember")
       say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
     else if (t.kind === "ponder")
