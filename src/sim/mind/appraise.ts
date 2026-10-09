@@ -401,12 +401,12 @@ export function repaidDeltas(role: "creditor" | "debtor"): Deltas {
 }
 
 /** Cambios cuando el deudor no pagó a tiempo (`law.default`): el acreedor lo siente; el deudor, poco. */
-export function defaultDeltas(role: "creditor" | "debtor", mind: Mind): Deltas {
+export function defaultDeltas(role: "creditor" | "debtor", mind: Mind, scale = 1): Deltas {
   if (role === "debtor") return rounded({ familiarity: FIGHT_FAMILIARITY, resentment: 0.05 });
   const wary = 1 - EXPECTED_DAMPING * strength(mind, "people_are_untrustworthy");
   return rounded({
     familiarity: FIGHT_FAMILIARITY,
-    resentment: DEFAULT_RESENTMENT,
-    trust: -DEFAULT_TRUST * wary,
+    resentment: DEFAULT_RESENTMENT * scale,
+    trust: -DEFAULT_TRUST * wary * scale,
   });
 }

@@ -77,6 +77,11 @@ describe("cómo cambia una relación por el trato y la ayuda", () => {
     const lost = defaultDeltas("creditor", blank);
     expect(lost.trust ?? 0).toBeLessThan(0);
     expect(lost.resentment ?? 0).toBeGreaterThan(0);
+    // Lo que se jugaba la promesa escala el golpe.
+    const big = defaultDeltas("creditor", blank, 1.5);
+    const small = defaultDeltas("creditor", blank, 0.5);
+    expect(big.resentment ?? 0).toBeGreaterThan(small.resentment ?? 0);
+    expect(big.trust ?? 0).toBeLessThan(small.trust ?? 0);
   });
 });
 

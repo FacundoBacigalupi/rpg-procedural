@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, Event } from "../../core/index.ts";
 import { extendPledge, isPledgeOverdue, makePledge } from "../../sim/index.ts";
-import { favorDoneIn, leakedIn } from "./pledges.ts";
+import { believedOwed, favorDoneIn, leakedIn } from "./pledges.ts";
 
 const A = "agent:1" as AgentId;
 const B = "agent:2" as AgentId;
@@ -59,5 +59,16 @@ describe("términos de favor y de callar", () => {
     expect(next.extensions).toBe(1);
     expect(isPledgeOverdue(next, now)).toBe(false);
     expect(isPledgeOverdue(next, now + 8 * DAY)).toBe(true);
+  });
+});
+
+describe("falsos incumplimientos", () => {
+  it("reclama solo si cree claramente más de lo prometido, y solo de dar", () => {
+    const give = (grams: number) => ({ kind: "give" as const, unit: "good:grain" as never, grams });
+    expect(believedOwed(give(900), 500)).toBe(900);
+    expect(believedOwed(give(520), 500)).toBeNull();
+    expect(believedOwed(give(300), 500)).toBeNull();
+    expect(believedOwed({ kind: "favor", what: "repair" }, 500)).toBeNull();
+    expect(believedOwed(undefined, 500)).toBeNull();
   });
 });

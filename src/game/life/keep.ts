@@ -98,7 +98,7 @@ function closing(
       kind,
       actors: [p.promisor, p.promisee],
       place,
-      data: { pledge: id, status, ...data },
+      data: { pledge: id, status, weight: p.weight, ...data },
       emissions: {},
       causes: [
         { kind: "state", entity: id as never, key },

@@ -22,6 +22,7 @@ import {
   PLEDGE_BOOK,
   type Pledge,
   type PledgeBook,
+  type PledgeTerm,
   type ProcessDef,
   pledgeLeft,
   type ReadonlyWorldTruth,
@@ -37,6 +38,19 @@ import { paidIn } from "./credit.ts";
 export const PLEDGE_PROCESS = "life.pledge";
 export const PLEDGE_KEPT_EVENT = "contract.pledge_kept";
 export const PLEDGE_BROKEN_EVENT = "contract.pledge_broken";
+export const PLEDGE_DISPUTED_EVENT = "contract.pledge_disputed";
+
+/** Cuánto más de lo prometido tiene que creer el destinatario para reclamar (vaguedad no basta). */
+export const DISPUTE_MARGIN = 1.1;
+
+/**
+ * Los gramos que el destinatario cree que le debían si es claramente más de lo prometido de
+ * verdad (contracts §7, falsos incumplimientos); null si coinciden o no lo recuerda como dar.
+ */
+export function believedOwed(believed: PledgeTerm | undefined, promised: number): number | null {
+  if (!believed || believed.kind !== "give") return null;
+  return believed.grams > promised * DISPUTE_MARGIN ? believed.grams : null;
+}
 
 export interface PledgeOptions {
   readonly goods: readonly GoodDef[];
@@ -149,7 +163,13 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
               place: o.placeOf(truth, cur.promisor),
               data: done
                 ? { pledge: id, status, by: "favor", what: (cur.term as { what: string }).what }
-                : { pledge: id, status, why: "leak", about: (cur.term as { about: string }).about },
+                : {
+                    pledge: id,
+                    status,
+                    why: "leak",
+                    weight: cur.weight,
+                    about: (cur.term as { about: string }).about,
+                  },
               emissions: {},
               causes: [{ kind: "event", event: e.id }],
             });
@@ -176,7 +196,12 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
             const next = deliverPledge(cur, take, e.id);
             live.set(id, next);
             if (next.status !== "kept") continue;
+            // Si el destinatario entendió que le debían más, no da la promesa por cumplida: la
+            // reclama (`disputes`) y el libro suyo sigue abierto.
+            const believed = bookOf(cur.promisee)?.items.find((b) => b.pledge === id)?.term;
+            const claimed = believedOwed(believed, t.grams);
             for (const who of [cur.promisor, cur.promisee]) {
+              if (claimed !== null && who === cur.promisee) continue;
               const book = learnOutcome(bookOf(who), id, "kept", ctx.now);
               if (!book) continue;
               books.set(who, book);
@@ -190,6 +215,16 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
               emissions: {},
               causes: [{ kind: "event", event: e.id }],
             });
+            if (claimed !== null) {
+              events.push({
+                kind: PLEDGE_DISPUTED_EVENT,
+                actors: [cur.promisor, cur.promisee],
+                place: o.placeOf(truth, cur.promisor),
+                data: { pledge: id, promised: t.grams, believed: claimed, unit: t.unit, weight: 0 },
+                emissions: { sound: 0.2 },
+                causes: [{ kind: "event", event: e.id }],
+              });
+            }
           }
           continue;
         }
