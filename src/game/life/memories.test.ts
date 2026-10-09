@@ -24,6 +24,7 @@ import {
   salient,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { shownBy } from "./converse.ts";
 import { Life } from "./life.ts";
 import { FLATTERY_MEMORY_KIND, livedFrom } from "./memories.ts";
 import { living } from "./world.ts";
@@ -290,4 +291,35 @@ describe("la aldea recuerda", () => {
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(run().hash()).toEqual(life.hash());
   }, 360_000);
+});
+
+describe("la demostración de quien amenaza", () => {
+  it("una pelea reciente que lo dejó mal da `shown`; sin ella no", () => {
+    const life = Life.create(7, content);
+    const t = life.world.truth;
+    const [me, foe] = living(t) as AgentId[];
+    expect(shownBy(t, me as AgentId, foe as AgentId, life.now)).toBe(0);
+    const memory = {
+      eventId: "e1" as EventId,
+      perceived: {
+        eventId: "e1" as EventId,
+        kind: "combat.finish",
+        with: [foe as AgentId],
+        place: {} as PlaceRef,
+        at: life.now,
+      },
+      source: "lived",
+      at: life.now,
+      intensity: 0.9,
+      valence: -0.8,
+      confidence: 1,
+      distortion: 0,
+      salience: 0.9,
+      measured: life.now,
+      lastRecalled: life.now,
+      recalls: 0,
+    };
+    t.set(MEMORIES, me as AgentId, { items: [memory as never], gists: [] });
+    expect(shownBy(t, me as AgentId, foe as AgentId, life.now)).toBeGreaterThan(0.3);
+  }, 60_000);
 });

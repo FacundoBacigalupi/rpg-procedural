@@ -21,23 +21,33 @@
   },
   {
     "id": "ask.at.room",
-    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."]
+    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."],
+    "warm": ["{name} está adentro, en la casa; pasá nomás, seguro te recibe."],
+    "dry": ["{name} está adentro. Eso es todo lo que sé."]
   },
   {
     "id": "ask.at.yard",
-    "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."]
+    "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."],
+    "warm": ["{name} está en el patio, andá a verlo."],
+    "dry": ["En el patio. Buscalo vos."]
   },
   {
     "id": "ask.at.street",
-    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."]
+    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."],
+    "warm": ["{name} anda por la calle; si te apurás lo alcanzás."],
+    "dry": ["Por la calle, creo. No me pidas más."]
   },
   {
     "id": "ask.at.square",
-    "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."]
+    "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."],
+    "warm": ["{name} está en la plaza, andá que seguro se alegra."],
+    "dry": ["En la plaza. Nada más."]
   },
   {
     "id": "ask.at.open",
-    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."]
+    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."],
+    "warm": ["{name} salió afuera, a campo abierto; abrigate si vas."],
+    "dry": ["Afuera, a campo abierto. Fijate vos."]
   },
   {
     "id": "ask.dead",
@@ -237,7 +247,9 @@
   {
     "id": "threat.defy",
     "lines": ["¿Vos y quién más? No te tengo miedo.", "Probá, a ver si te animás."],
-    "formal": ["Haga lo que tenga que hacer; no le temo."]
+    "formal": ["Haga lo que tenga que hacer; no le temo."],
+    "warm": ["No puedo creer que me amenaces vos. Hacé lo que quieras, no te temo."],
+    "dry": ["Probá. Te estoy esperando."]
   },
   {
     "id": "threat.flee",
@@ -306,19 +318,25 @@
       "Con razón... no me extraña de {name}.",
       "Lo sospechaba de {name}. Esto no se queda así."
     ],
-    "formal": ["No me sorprende de {name}. Lo tendré presente."]
+    "formal": ["No me sorprende de {name}. Lo tendré presente."],
+    "warm": ["Gracias por contármelo, de {name} yo también lo sospechaba. Algo haremos."],
+    "dry": ["De {name}, sí. No hace falta que me lo expliques."]
   },
   {
     "id": "accuse.weigh",
     "lines": [
       "Qué cosa más fea de {name}... lo voy a tener en cuenta.",
       "Si es cierto lo de {name}, es grave. Voy a averiguar."
-    ]
+    ],
+    "warm": ["Qué pena lo de {name}. Gracias por avisarme, voy a averiguar con cuidado."],
+    "dry": ["Lo de {name}, ya veremos. No prometo nada."]
   },
   {
     "id": "accuse.doubt",
     "lines": ["No sé, de {name} no me lo esperaba. ¿Seguro?", "Eso de {name} cuesta creerlo."],
-    "formal": ["Me cuesta creerlo de {name}."]
+    "formal": ["Me cuesta creerlo de {name}."],
+    "warm": ["Me cuesta creerlo de {name}, pero si lo decís vos, lo pienso."],
+    "dry": ["De {name}, no te creo. Traé algo más que palabras."]
   },
   {
     "id": "accuse.slander",
@@ -330,7 +348,9 @@
   {
     "id": "accuse.confess",
     "lines": ["...Tenés razón. Fui yo. Perdoname.", "Sí. Lo hice y me pesa."],
-    "formal": ["Es cierto. Fui yo, y lo lamento."]
+    "formal": ["Es cierto. Fui yo, y lo lamento."],
+    "warm": ["Tenés razón, fui yo. Con vos no puedo mentir; perdoname."],
+    "dry": ["Fui yo. Ya está dicho."]
   },
   {
     "id": "accuse.justify",
@@ -359,7 +379,9 @@
       "¡¿Yo?! ¿Cómo te atrevés a decir eso?",
       "Eso es falso, y lo sabés. Retirá lo que dijiste."
     ],
-    "formal": ["Eso es falso. Le pido que lo retire."]
+    "formal": ["Eso es falso. Le pido que lo retire."],
+    "warm": ["No puede ser que pienses eso de mí... retiralo, por favor."],
+    "dry": ["Falso. Retirá eso o no hablamos más."]
   },
   {
     "id": "prophesy.unclear",
@@ -371,17 +393,23 @@
       "Si lo dijo el adivino, algo habrá. Lo tendré presente.",
       "Qué cosa. Me da qué pensar."
     ],
-    "formal": ["Si así se dijo, habrá que tenerlo presente."]
+    "formal": ["Si así se dijo, habrá que tenerlo presente."],
+    "warm": ["Gracias por contarme; si lo dijo el adivino, lo voy a tener presente."],
+    "dry": ["Lo dijo el adivino, ya. Lo anoto."]
   },
   {
     "id": "prophesy.doubted",
     "lines": ["Puede ser... los adivinos dicen muchas cosas.", "Quién sabe. Yo lo oigo, nada más."],
-    "formal": ["Quién sabe. Lo escucho, nada más."]
+    "formal": ["Quién sabe. Lo escucho, nada más."],
+    "warm": ["Quién sabe, pero te agradezco que me lo cuentes."],
+    "dry": ["Quién sabe. No me hagas perder el tiempo con eso."]
   },
   {
     "id": "prophesy.dismissed",
     "lines": ["Cuentos de adivino.", "Eso no me lo creo ni un poco."],
-    "formal": ["Perdone, pero no lo creo."]
+    "formal": ["Perdone, pero no lo creo."],
+    "warm": ["Perdoname, pero no me lo creo; no te enojes."],
+    "dry": ["Cuentos. No insistas."]
   },
   {
     "id": "prophesy.believed.self",
@@ -532,7 +560,9 @@
   {
     "id": "offer.accept",
     "lines": ["Trato hecho.", "Está bien, cambiamos {what}."],
-    "formal": ["Trato hecho, entonces."]
+    "formal": ["Trato hecho, entonces."],
+    "warm": ["Trato hecho, y con gusto: de vos me fío."],
+    "dry": ["Trato. Y que sea el último regateo."]
   },
   {
     "id": "offer.counter",
@@ -540,12 +570,16 @@
       "Te doy {kilos} kilos de {what}, no más. ¿Querés?",
       "Por eso, {kilos} kilos de {what}. Lo toma o lo deja."
     ],
-    "formal": ["Por eso puedo darle {kilos} kilos de {what}. ¿Le parece?"]
+    "formal": ["Por eso puedo darle {kilos} kilos de {what}. ¿Le parece?"],
+    "warm": ["Para vos, {kilos} kilos de {what}. Es lo justo, ¿te sirve?"],
+    "dry": ["{kilos} kilos de {what}. Ni uno más."]
   },
   {
     "id": "offer.refuse.price",
     "lines": ["Ese precio no me sirve por {what}.", "No, por {what} eso es muy poco."],
-    "formal": ["Ese precio no me conviene."]
+    "formal": ["Ese precio no me conviene."],
+    "warm": ["Me duele decirte que no, pero ese precio no me conviene."],
+    "dry": ["No. Ese precio no sirve."]
   },
   {
     "id": "offer.refuse.grudge",
