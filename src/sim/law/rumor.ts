@@ -299,6 +299,19 @@ export function rumorAsKnown(
   });
 }
 
+/** De dónde dice alguien que lo sabe: lo vio, se lo dijo fulano, o «dicen que» (information §3). */
+export type RumorSource =
+  | { readonly kind: "saw" }
+  | { readonly kind: "named"; readonly teller: AgentId; readonly voices: number }
+  | { readonly kind: "crowd"; readonly voices: number };
+
+/** La respuesta a «¿quién te lo dijo?»: solo lo que recuerda, no la cadena real. */
+export function sourceOf(h: HeardRumor): RumorSource {
+  if (h.hops === 0) return { kind: "saw" };
+  if (h.teller !== null) return { kind: "named", teller: h.teller, voices: h.voices };
+  return { kind: "crowd", voices: h.voices };
+}
+
 export interface RumorTree {
   readonly root: EventId;
   readonly variants: readonly {

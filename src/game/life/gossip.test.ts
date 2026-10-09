@@ -70,4 +70,42 @@ describe("chisme entre vecinos", () => {
     }
     expect(told).toBe(1);
   }, 60_000);
+
+  it("a quien le habla al personaje le puede contar un rumor, con la fuente que recuerda", () => {
+    const life = Life.create(7, content);
+    const w = life.world;
+    const [teller, player, doer, victim] = living(w.truth) as AgentId[] as [
+      AgentId,
+      AgentId,
+      AgentId,
+      AgentId,
+    ];
+    const root = w.log.all()[0]?.id as EventId;
+    const here = w.truth.get(LOCATION, teller);
+    if (!here) throw new Error("sin lugar");
+    w.truth.set(LOCATION, player, here);
+    w.truth.set(KNOWN_DEEDS, teller, {
+      deeds: [{ kind: "assault", by: doer, victim, event: root, at: 0 as Tick, via: "saw" }],
+    });
+    const proc = gossipProcess({
+      dims: content.all(RELATION_DIMS),
+      bonds: content.all(RELATION_BONDS),
+      traits: content.all(TRAITS),
+      placeOf: () => ({ hex: 0 }) as never,
+      player,
+    });
+    const talk = { kind: "action.speak", actors: [teller, player] };
+    let heard: { data: { hearsay?: boolean; source?: { kind: string } } } | undefined;
+    for (let seed = 0; seed < 60 && !heard; seed++) {
+      const out = proc.run({
+        truth: w.truth,
+        now: life.now,
+        rng: Rng.root(seed),
+        recent: [talk],
+      } as never) as unknown as { events?: { actors: string[]; data: never }[] };
+      heard = out.events?.find((e) => e.actors[1] === player) as never;
+    }
+    expect(heard?.data.hearsay).toBe(true);
+    expect(["named", "crowd"]).toContain(heard?.data.source?.kind);
+  }, 60_000);
 });
