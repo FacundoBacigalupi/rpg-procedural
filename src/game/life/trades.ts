@@ -32,9 +32,11 @@ import {
   PERSON,
   type PostingDraft,
   type ProcessDef,
+  pooledCollection,
   productionTransfers,
   RECEIPT_WINDOW_DAYS,
   type ReadonlyWorldTruth,
+  SALE_RECEIPTS,
   setComponent,
   TRADE_RECEIPTS,
   type TradeRecipeDef,
@@ -91,6 +93,8 @@ export interface TradesOptions {
   readonly seed?: Seed;
   /** Jornal de base por día de trabajo, en monedas (calibración abierta). */
   readonly baseWagePerDay?: number;
+  /** Qué parte de su jornal aporta esta persona a la bolsa común (0 a 1); por defecto `WAGE_POOL_SHARE`. */
+  readonly poolShareOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -103,8 +107,9 @@ export const WAGE_POOL_SHARE = 0.7;
 
 /** El ingreso medio por día de un hogar a partir de sus recibos (para `BudgetEnv.incomePerDay`). */
 export function incomeOfHousehold(truth: ReadonlyWorldTruth, home: string, today: number): number {
-  const book = truth.get(TRADE_RECEIPTS, home as never);
-  return book ? meanIncomePerDay(book.receipts, today, RECEIPT_WINDOW_DAYS) : 0;
+  const wages = truth.get(TRADE_RECEIPTS, home as never)?.receipts ?? [];
+  const sales = truth.get(SALE_RECEIPTS, home as never)?.receipts ?? [];
+  return meanIncomePerDay([...wages, ...sales], today, RECEIPT_WINDOW_DAYS);
 }
 
 export function tradesProcess(o: TradesOptions): ProcessDef {
@@ -124,7 +129,7 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, TRADE_RECEIPTS.name],
+    reads: [PERSON.name, ENTITY.name, TRADE_RECEIPTS.name, SALE_RECEIPTS.name],
     writes: [TRADE_RECEIPTS.name],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -220,14 +225,18 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
           pool.shift();
           const ts = wageTransfer(coin, shop, holderAccount(w.id as unknown as HolderRef), pay);
           wageTransfers.push(...ts);
-          const pooled = Math.floor(pay * WAGE_POOL_SHARE);
-          if (pooled > 0)
-            wageTransfers.push({
-              unit: coin,
-              from: holderAccount(w.id as unknown as HolderRef),
-              to: holderAccount(w.home as unknown as HolderRef),
-              amount: pooled,
-            });
+          // El aporte a la bolsa común sale de `pooledCollection` (conserva) con la parte de la persona.
+          const share = (o.poolShareOf ?? (() => WAGE_POOL_SHARE))(ctx.truth, w.id);
+          wageTransfers.push(
+            ...pooledCollection(coin, holderAccount(w.home as unknown as HolderRef), [
+              {
+                id: w.id,
+                account: holderAccount(w.id as unknown as HolderRef),
+                coins: pay,
+                pooled: share,
+              },
+            ]).transfers,
+          );
           hires.push({ id: w.id, home: w.home, pay });
           hours += hoursEach;
           earnedBy.set(w.home, (earnedBy.get(w.home) ?? 0) + pay);

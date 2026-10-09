@@ -171,6 +171,26 @@ export interface IncomeBook {
   readonly receipts: readonly IncomeReceipt[];
 }
 export const TRADE_RECEIPTS = table<IncomeBook>("economy.trade_receipts");
+/**
+ * Lo cobrado por ventas del producto, por hogar vendedor. Tabla aparte de `TRADE_RECEIPTS`: la
+ * escribe `act` al cerrarse un trato y los jornales los escribe `life.trades` (misma fase, así que
+ * no pueden compartir componente).
+ */
+export const SALE_RECEIPTS = table<IncomeBook>("economy.sale_receipts");
+
+/** Suma un cobro del día a los recibos y descarta los que salieron de la ventana. */
+export function withReceipt(
+  receipts: readonly IncomeReceipt[],
+  day: number,
+  coins: number,
+  windowDays: number,
+): readonly IncomeReceipt[] {
+  const kept = receipts.filter((r) => r.day > day - windowDays);
+  const last = kept[kept.length - 1];
+  if (last !== undefined && last.day === day)
+    return [...kept.slice(0, -1), { day, coins: last.coins + coins }];
+  return [...kept, { day, coins }];
+}
 /** Cuántos días de recibos se guardan y se promedian. */
 export const RECEIPT_WINDOW_DAYS = 30;
 
