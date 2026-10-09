@@ -16,7 +16,7 @@ import {
   decideDefense,
   hearAccusation,
 } from "./accusations.ts";
-import type { SpeechAct } from "./acts.ts";
+import type { PromiseTerms, SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
 import { type FormJudgeInput, type FormJudgement, judgeForm } from "./form.ts";
 import type { HeardClaim } from "./knowledge.ts";
@@ -192,7 +192,11 @@ export interface Reply {
   /** Una contraoferta que el oyente deja planteada (queda abierta hasta que se acepte o rechace). */
   readonly counter?: Proposal;
   /** Una promesa que el oyente toma por hecha: la anota en su libro (contracts `believePledge`). */
-  readonly pledge?: { readonly good: string | null; readonly grams: number | null };
+  readonly pledge?: {
+    readonly good: string | null;
+    readonly grams: number | null;
+    readonly terms?: PromiseTerms;
+  };
   /** Cómo juzgó el oyente lo que le contaron (solo si `detect` estaba): confianza y memoria salen de acá. */
   readonly judgement?: LieJudgement;
   /** La amenaza pesada: qué eligió el oyente y lo que deja en la relación. */
@@ -365,7 +369,14 @@ function decideBody(i: ReplyInput, at: number): Reply {
       });
       if (trust < PROMISE_CREDENCE) return say("promise.doubt");
       const what = a.good === null ? "eso" : i.goodName(a.good);
-      return { ...say("promise.accept", { what }), pledge: { good: a.good, grams: a.grams } };
+      return {
+        ...say("promise.accept", { what }),
+        pledge: {
+          good: a.good,
+          grams: a.grams,
+          ...(a.terms ? { terms: a.terms } : {}),
+        },
+      };
     }
     case "offer": {
       if (a.give === null && a.want === null) return say("offer.unclear");

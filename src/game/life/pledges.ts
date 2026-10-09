@@ -24,6 +24,7 @@ import {
   type PledgeBook,
   type PledgeTerm,
   type ProcessDef,
+  type PromiseTerms,
   pledgeLeft,
   type ReadonlyWorldTruth,
   remember,
@@ -63,16 +64,23 @@ export function promisedIn(e: Event): {
   promisee: AgentId;
   good: string;
   grams: number;
+  terms: PromiseTerms | undefined;
 } | null {
   if (e.kind !== "action.speak") return null;
   const eff = (
-    e.data as { effect?: { pledge?: { good: string | null; grams: number | null } } } | null
+    e.data as {
+      effect?: {
+        pledge?: { good: string | null; grams: number | null; terms?: PromiseTerms };
+      };
+    } | null
   )?.effect;
   const [promisee, promisor] = e.actors as AgentId[];
   if (!promisee || !promisor || !eff?.pledge) return null;
-  const { good, grams } = eff.pledge;
+  const { good, grams, terms } = eff.pledge;
   if (good === null || grams === null || !(grams > 0)) return null;
-  return { promisor, promisee, good, grams };
+  // «El doble» o «la mitad» escalan lo dicho; sin gramos dichos no hay a qué aplicarlo.
+  const scaled = Math.max(1, Math.round(grams * (terms?.times ?? 1)));
+  return { promisor, promisee, good, grams: scaled, terms };
 }
 
 /** ¿Este evento es el promitente haciendo el favor prometido al destinatario? (verbo = `what`). */
@@ -255,6 +263,8 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
             term: { kind: "give", unit: goodUnit(good), grams },
             at: e.tick,
             weight: weightOfGive(grams),
+            ...(p.terms?.dueDays !== undefined ? { dueInDays: p.terms.dueDays } : {}),
+            ...(p.terms?.precision !== undefined ? { precision: p.terms.precision } : {}),
             witnesses,
           }),
           history: [e.id],

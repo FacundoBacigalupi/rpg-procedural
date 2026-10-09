@@ -333,6 +333,7 @@ Cada tipo define las obligaciones típicas, las garantías y ejecutores habitual
 - **Fase 7:** tratados y vendettas heredados en la historia agregada; documentos que sobreviven en ruinas.
 - **Fase 8:** tribunales del estado ([law.md](law.md)), servidumbre por deudas a escala, rescates y treguas en la guerra.
 - **Poder de negociación (2026-10-09):** `Leverage` (alternativas, desesperación, cara) mueve el margen del oyente en `weighOffer` (`sim/dialogue/offers.ts`); `decideReply` deriva la desesperación de la despensa y toma `bargain` opcional. Falta cablear alternativas reales y la mentira sobre otras ofertas.
+- **Términos sueltos (2026-10-09):** `promiseTerms` (múltiplo, plazo, `precision`) se lee de las palabras y abre la promesa con `dueInDays`/`precision`; el `DraftAct` del parser los acepta.
 
 ## Tests
 - **Procedencia:** ningún `Commitment` sin `originEventId`; toda obligación cumplida tiene eventos en `performed`; ningún `KarmicBond` de juramento o traición sin el compromiso y el evento que lo crearon.
