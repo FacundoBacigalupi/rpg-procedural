@@ -70,6 +70,7 @@ import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
+import { marketProcess } from "./market.ts";
 import { type Healer, medicineProcess } from "./medicine.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -311,6 +312,7 @@ export function lifeWorld(
           assignments: parts.householdTrades ?? [],
           placeOf: placeOf(parts, village),
         }),
+        marketProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
           clock: parts.clock,
           goods: parts.goods,

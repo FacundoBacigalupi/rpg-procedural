@@ -276,6 +276,8 @@ export type VerbEffect =
       readonly coins: number;
       /** Calidad real del lote que cambió de mano (0-1); falta si no se movió nada. */
       readonly quality?: number;
+      /** Sin trato por el precio: lo que quien vende sacó a la venta y no vendió (cierre del día). */
+      readonly unsold?: Unsold;
     }
   | {
       readonly kind: "give";
@@ -875,12 +877,14 @@ const trade: Resolver = (c) => {
     };
   }
   const found = bargain(c, other, mk, edge);
-  if (typeof found === "string") {
+  if (typeof found === "string" || "failure" in found) {
     // Sin trato: o no hay con qué (nada que dar, o sin monedas), o hay pero no coinciden en el precio.
+    const failure = typeof found === "string" ? found : found.failure;
+    const unsold = typeof found === "string" ? undefined : found.unsold;
     return {
-      effect: idle(false),
+      effect: unsold === undefined ? idle(false) : { ...idle(false), unsold },
       seconds: c.nominal / 2,
-      override: { outcome: "failure", failure: found, believed: "failure" },
+      override: { outcome: "failure", failure, believed: "failure" },
     };
   }
   return {
@@ -939,6 +943,18 @@ function qualityFactors(
   return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
 }
 
+/** Lo que un vendedor ofreció y no pudo vender (los gramos que tenía a la venta). */
+export interface Unsold {
+  readonly seller: "actor" | "other";
+  readonly good: LedgerUnit;
+  readonly grams: number;
+}
+
+interface NoDeal {
+  readonly failure: "no_deal";
+  readonly unsold?: Unsold;
+}
+
 interface Bargain {
   readonly quality: number;
   readonly direction: "buy" | "sell";
@@ -958,7 +974,7 @@ function bargain(
   other: EntityRef,
   mk: Market,
   edge: number,
-): Bargain | "no_means" | "no_deal" {
+): Bargain | "no_means" | NoDeal {
   const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
   const me = c.input.actor.id as HolderRef;
   const you = other as HolderRef;
@@ -1019,8 +1035,13 @@ function bargain(
       buyerCoins: buyerCoinsOf(yourPocket),
       actorBuys: false,
     });
-    if (!deal)
-      return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
+    if (!deal) {
+      if (!(spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0)) return "no_means";
+      return {
+        failure: "no_deal",
+        unsold: { seller: "actor", good: row.unit, grams: Math.min(row.amount, spare) },
+      };
+    }
 
     return {
       quality: qf.quality,
@@ -1067,7 +1088,13 @@ function bargain(
     buyerCoins: coinsOf(myRows),
     actorBuys: true,
   });
-  if (!deal) return spare > 0 ? "no_deal" : "no_means";
+  if (!deal) {
+    if (!(spare > 0)) return "no_means";
+    return {
+      failure: "no_deal",
+      unsold: { seller: "other", good: row.unit, grams: Math.min(row.amount, spare) },
+    };
+  }
 
   // Entrega primero lo que lleva encima y, si no alcanza, lo de la despensa.
   const pocket = yourPocket.find((r) => r.unit === row.unit)?.amount ?? 0;

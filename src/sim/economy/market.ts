@@ -133,3 +133,40 @@ export function householdQuote(
   const base = baseFor(beliefs, unit, referencePerKg, day);
   return { ask: askPerKg(base, ownDays), bid: bidPerKg(base, ownDays) };
 }
+
+/** Lo que un vendedor lleva del día de mercado en curso, por bien (`good:<id>`), con su día. */
+export interface SellerDayBook {
+  readonly day: number;
+  readonly rows: Readonly<Record<string, SellerDay>>;
+}
+
+/** El libro del día de cada vendedor (la verdad; el vendedor lo siente, no lo lee), por agente. */
+export const SELLER_DAY = table<SellerDayBook>("economy.seller_day");
+
+/**
+ * Anota lo que sacó a la venta y lo que vendió. Un libro de un día anterior sigue vivo hasta que
+ * el cierre lo procese; acá se agrega al día en curso solo si es el mismo día (si no, es otro
+ * libro: lo devuelve el cierre). Puro.
+ */
+export function noteSeller(
+  book: SellerDayBook | undefined,
+  day: number,
+  unit: string,
+  offeredGrams: number,
+  soldGrams: number,
+): SellerDayBook {
+  const base: SellerDayBook = book !== undefined && book.day === day ? book : { day, rows: {} };
+  const prev = base.rows[unit] ?? { offeredGrams: 0, soldGrams: 0, walkedAway: 0 };
+  const walked = soldGrams < offeredGrams ? 1 : 0;
+  return {
+    day,
+    rows: {
+      ...base.rows,
+      [unit]: {
+        offeredGrams: prev.offeredGrams + offeredGrams,
+        soldGrams: prev.soldGrams + soldGrams,
+        walkedAway: prev.walkedAway + walked,
+      },
+    },
+  };
+}

@@ -62,6 +62,7 @@ import {
   type Nutrition,
   nearestHex,
   nodeAt,
+  noteSeller,
   notoriety,
   OPINIONS,
   opposingSkill,
@@ -86,6 +87,7 @@ import {
   recordDeal,
   resolve,
   SELF_IMAGES,
+  SELLER_DAY,
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
@@ -258,10 +260,12 @@ export function actProcess(o: ActOptions): ProcessDef {
       PRICE_BELIEFS.name,
       LOT_QUALITY.name,
       MARKET_TAPE.name,
+      SELLER_DAY.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
+      SELLER_DAY.name,
       LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
@@ -710,6 +714,30 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           ),
         );
       }
+    }
+  }
+
+  // El vendedor lleva el día: lo que sacó a la venta y lo que vendió (cierre en `life.market`).
+  if (eff.kind === "trade" && eff.with) {
+    const other = eff.with as AgentId;
+    const day = Math.floor(ctx.now / o.clock.day);
+    const note = (seller: AgentId, unit: string, offered: number, sold: number) =>
+      changes.push(
+        setComponent(
+          SELLER_DAY,
+          seller,
+          noteSeller(truth.get(SELLER_DAY, seller), day, unit, offered, sold),
+        ),
+      );
+    if (eff.deal && eff.direction !== null && eff.good !== null && eff.grams > 0) {
+      note(eff.direction === "sell" ? me : other, eff.good as string, eff.grams, eff.grams);
+    } else if (eff.unsold !== undefined && eff.unsold.grams > 0) {
+      note(
+        eff.unsold.seller === "actor" ? me : other,
+        eff.unsold.good as string,
+        eff.unsold.grams,
+        0,
+      );
     }
   }
 
