@@ -50,6 +50,7 @@ import {
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
+import { withImpressions } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { thoughtsOf } from "./thoughts.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
@@ -273,7 +274,12 @@ export function playerView(
       { graph: w.spaces, forest: w.map.forest, daylight: day },
       rng,
     );
-    percepts.push(...(glancing ? seen : seen.map((s) => recognizedFromBeliefs(s, mine, l, now))));
+    // Lo no mirado a propósito se lee de lo que cree: quién es y cómo lo vio (figura y ropa).
+    const believedSeen = (s: Percept): Percept => {
+      const r = recognizedFromBeliefs(s, mine, l, now);
+      return r.fields.identity === undefined ? r : withImpressions(r, id, mine, now);
+    };
+    percepts.push(...(glancing ? seen : seen.map(believedSeen)));
   }
 
   // Lo que otros dijeron mientras pasaba el turno (la respuesta de quien te escuchó).

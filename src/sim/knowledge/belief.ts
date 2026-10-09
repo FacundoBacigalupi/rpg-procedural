@@ -23,8 +23,12 @@ const HOUR = 3_600;
 const DAY = 86_400;
 
 /** Qué se cree de alguien: dónde está, si vive y qué se propone (el motivo que le leyó a un acto). */
-export const ATTR_KEYS = ["at", "alive", "purpose"] as const;
+export const ATTR_KEYS = ["at", "alive", "purpose", "figure", "attire", "action"] as const;
 export type AttrKey = (typeof ATTR_KEYS)[number];
+
+/** Los atributos de texto: el valor es una cadena (motivo, figura, ropa, acción) y no un lugar. */
+export const TEXT_ATTRS: readonly AttrKey[] = ["purpose", "figure", "attire", "action"];
+export const isTextAttr = (attr: AttrKey): boolean => TEXT_ATTRS.includes(attr);
 
 export interface Proposition {
   readonly kind: "attr";
@@ -32,7 +36,10 @@ export interface Proposition {
   readonly attr: AttrKey;
 }
 
-/** `at` guarda un lugar; `alive`, un booleano; `purpose`, el id del motivo creído. */
+/**
+ * `at` guarda un lugar; `alive`, un booleano; `purpose`, el id del motivo creído; `figure`
+ * (`sexo:franja`), `attire` (la marca de ropa) y `action` (el verbo que se vio hacer), el texto leído.
+ */
 export type BeliefValue = Location | boolean | string;
 
 export type BeliefSource =
@@ -74,13 +81,17 @@ export interface Beliefs {
 export const BELIEFS = table<Beliefs>("knowledge.beliefs");
 
 /** Cuántas creencias guarda cada persona (las de menor saliencia se olvidan). */
-export const BELIEF_CAPACITY = 100;
+export const BELIEF_CAPACITY = 300;
 export const MAX_SOURCES = 4;
 /** Vida media de la confianza, en horas: dónde está alguien envejece rápido; que vive, despacio. */
 export const CONFIDENCE_HALF_LIFE_HOURS: Readonly<Record<AttrKey, number>> = {
   at: 6,
   alive: 24 * 14,
   purpose: 24 * 30,
+  /** Sexo y edad aparente cambian despacio; la ropa, en días; lo que hacía, en una hora. */
+  figure: 24 * 365,
+  attire: 24 * 3,
+  action: 1,
 };
 /** Vida media de la saliencia (días). */
 export const SALIENCE_HALF_LIFE_DAYS = 30;

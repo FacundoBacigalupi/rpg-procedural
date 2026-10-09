@@ -3,7 +3,7 @@
 
 import type { Tick } from "../../core/index.ts";
 import { ENTITY, LOCATION, type ReadonlyWorldTruth } from "../world/index.ts";
-import { BELIEFS, type Belief, beliefConfidenceAt, sameValue } from "./belief.ts";
+import { BELIEFS, type Belief, beliefConfidenceAt, isTextAttr, sameValue } from "./belief.ts";
 
 /** Lo que es verdad hoy de la proposición de `b`. */
 export function truthOf(
@@ -11,15 +11,16 @@ export function truthOf(
   b: Belief,
 ): boolean | { hex: number; space?: string } | undefined {
   // El porqué de un acto no es un estado del mundo: la verdad vive en el evento y la compara
-  // `ReadPurpose.mistaken`; acá no hay con qué.
-  if (b.prop.attr === "purpose") return undefined;
+  // `ReadPurpose.mistaken`; acá no hay con qué. Figura, ropa y acción son texto leído de un
+  // momento: se comparan con el percept (`mistaken`), no con un estado único.
+  if (isTextAttr(b.prop.attr)) return undefined;
   if (b.prop.attr === "alive") return truth.get(ENTITY, b.prop.subject)?.endedAt === undefined;
   return truth.get(LOCATION, b.prop.subject);
 }
 
 /** ¿Lo que cree difiere de lo que hoy es cierto? (Una creencia vieja y acertada no cuenta.) */
 export function isMistaken(truth: ReadonlyWorldTruth, b: Belief): boolean {
-  if (b.prop.attr === "purpose") return false;
+  if (isTextAttr(b.prop.attr)) return false;
   const real = truthOf(truth, b);
   if (real === undefined) return true;
   return !sameValue(b.value, real);
