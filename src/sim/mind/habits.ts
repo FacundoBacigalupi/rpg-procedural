@@ -143,3 +143,26 @@ export function reinforceAll(
   }
   return { habits: { holds }, settled };
 }
+
+/**
+ * Un golpe que rompe el hábito (ser descubierto mintiendo): la fuerza, enfriada hasta `now`, se
+ * multiplica por `keep` (0-1). Los hábitos que no tenía no se crean.
+ */
+export function weaken(
+  habits: Habits | undefined,
+  defs: readonly HabitDef[],
+  now: Tick,
+  keep: number,
+): Habits {
+  const holds: Record<string, HabitHold> = { ...(habits?.holds ?? {}) };
+  for (const def of defs) {
+    const hold = holds[def.id];
+    if (!hold) continue;
+    holds[def.id] = {
+      ...hold,
+      strength: round(habitStrength(hold, def, now) * Math.min(1, Math.max(0, keep))),
+      updated: now,
+    };
+  }
+  return { holds };
+}

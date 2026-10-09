@@ -67,5 +67,14 @@
     "verbs": ["trade"],
     "gain": 0.08,
     "halfLifeDays": 120
+  },
+  {
+    "id": "lying",
+    "species": "human",
+    "name": "Mentir",
+    "kinds": ["speak.lie"],
+    "gain": 0.1,
+    "halfLifeDays": 120,
+    "stimulus": { "theme": "success", "intensity": 0.2 }
   }
 ]
