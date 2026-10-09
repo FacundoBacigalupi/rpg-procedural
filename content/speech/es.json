@@ -409,6 +409,14 @@
     "formal": ["¿Qué es, exactamente, lo que promete?"]
   },
   {
+    "id": "offer.pitch",
+    "lines": [
+      "Me sobra {give}. Te doy {kilos} kilos si me das {wantKilos} kilos de {want}. ¿Querés?",
+      "¿Cambiamos? {kilos} kilos de {give} por {wantKilos} kilos de {want}."
+    ],
+    "formal": ["Me sobra {give}; le doy {kilos} kilos por {wantKilos} kilos de {want}. ¿Le parece?"]
+  },
+  {
     "id": "offer.unclear",
     "lines": ["¿Qué me proponés, exactamente?", "No entiendo qué querés cambiar."],
     "formal": ["¿Qué es, exactamente, lo que propone?"]
