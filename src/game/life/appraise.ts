@@ -38,6 +38,7 @@ import {
   habitsFed,
   INNATE,
   killAftermath,
+  LOCATION,
   lendDeltas,
   MEMORIES,
   MENTAL,
@@ -51,6 +52,7 @@ import {
   type OwnDeeds,
   openCondition,
   PERSON,
+  type Percept,
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
@@ -62,6 +64,7 @@ import {
   type SchemaDef,
   SECRETS,
   type Secrets,
+  STATUS,
   type StageDef,
   type StateChange,
   setComponent,
@@ -76,7 +79,14 @@ import {
 
 import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
-import { type Lived, livedFrom, lossLived } from "./memories.ts";
+import {
+  type Lived,
+  livedFrom,
+  lossLived,
+  WITNESS_ASLEEP_ENCODING,
+  witnessLived,
+} from "./memories.ts";
+import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
 
@@ -88,6 +98,8 @@ export interface AppraiseOptions {
   readonly bonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
   readonly traits: readonly Trait[];
+  /** Si está, los testigos NPC que no son parte forman memorias de lo que percibieron. */
+  readonly witness?: WitnessingOptions;
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -121,6 +133,8 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       BODY_STATE.name,
       OWN_DEEDS.name,
       SECRETS.name,
+      LOCATION.name,
+      STATUS.name,
     ],
     writes: [
       MIND.name,
@@ -182,8 +196,26 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       };
       const owns = new Map<AgentId, OwnDeeds>();
       const secrets = new Map<AgentId, Secrets>();
+      // Lo que vieron los testigos que no son parte: la misma tirada que guarda `life.witnessing`.
+      const seen = new Map<string, Percept[]>();
+      if (o.witness) {
+        for (const list of npcPerceive(
+          o.witness,
+          truth,
+          ctx.recent,
+          witnessRng(o.witness.seed),
+        ).values()) {
+          for (const p of list) {
+            if (p.sourceEventId)
+              seen.set(p.sourceEventId, [...(seen.get(p.sourceEventId) ?? []), p]);
+          }
+        }
+      }
+      const encodingOf = (id: AgentId) =>
+        truth.get(BODY_STATE, id)?.activity === "sleep" ? WITNESS_ASLEEP_ENCODING : 1;
       for (const e of ctx.recent) {
         for (const l of livedFrom(e)) note(l);
+        for (const l of witnessLived(e, seen.get(e.id) ?? [], encodingOf)) note(l);
         // Quien hizo algo lo sabe, lo haya visto alguien o no: lo anota y lo carga (law §15).
         const own = ownDeedOf(truth, e);
         if (own && alive(truth, own.by) && truth.get(PERSON, own.by)) {

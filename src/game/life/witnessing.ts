@@ -4,7 +4,7 @@
 // (`life.perceive`). Es la entrada de los testigos que no son parte: memorias, creencias de
 // acciones y la ley en el hecho leen de acá, no de la verdad.
 
-import type { AgentId, Event, PlanetClock, Rng, Seed } from "../../core/index.ts";
+import { type AgentId, type Event, type PlanetClock, Rng, type Seed } from "../../core/index.ts";
 import {
   ATTENTION,
   actionStimulus,
@@ -83,7 +83,7 @@ export function witnessingProcess(o: WitnessingOptions): ProcessDef {
     ],
     writes: [NPC_PERCEPTS.name],
     run(ctx) {
-      const fresh = npcPerceive(o, ctx.truth, ctx.recent, ctx.rng);
+      const fresh = npcPerceive(o, ctx.truth, ctx.recent, witnessRng(o.seed));
       if (fresh.size === 0) return {};
       const changes: StateChange[] = [];
       for (const id of [...fresh.keys()].sort()) {
@@ -98,6 +98,11 @@ export function witnessingProcess(o: WitnessingOptions): ProcessDef {
       return { changes };
     },
   };
+}
+
+/** La tirada de los testigos: solo del seed y del evento, así `life.appraise` repite lo mismo que guardó este proceso. */
+export function witnessRng(seed: Seed): Rng {
+  return Rng.root(seed);
 }
 
 /** Lo que perciben los NPC de `events`, por observador (tope de eventos por paso). */

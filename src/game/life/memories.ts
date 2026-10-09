@@ -4,7 +4,7 @@
 // enteran de lejos llegan con el rumor (información, Fase 3). Funciones puras: el proceso las aplica.
 
 import type { AgentId, Event } from "../../core/index.ts";
-import type { Experience } from "../../sim/index.ts";
+import { type Experience, PERCEPT_KEYS, type Percept } from "../../sim/index.ts";
 
 export interface Lived {
   readonly who: AgentId;
@@ -234,4 +234,67 @@ export function lossLived(e: Event, who: AgentId, dead: AgentId, closeness: numb
       valence: -0.9,
     },
   };
+}
+
+/** Qué tan bien vio un testigo: la confianza de lo que leyó, abajo si no supo ni quién ni qué fue. */
+export function perceptClarity(p: Percept): number {
+  const read = PERCEPT_KEYS.flatMap((k) => (p.fields[k] ? [p.fields[k].confidence] : []));
+  if (read.length === 0) return 0;
+  const mean = read.reduce((a, b) => a + b, 0) / read.length;
+  const detail = p.detail === "identified" ? 1 : p.detail === "clear" ? 0.75 : 0.4;
+  return clamp01(mean * detail);
+}
+
+/** Lo que el testigo siente de lo que pasó entre otros, frente a las partes (sin calibrar). */
+export const WITNESS_INTENSITY = 0.5;
+export const WITNESS_VALENCE = 0.6;
+/** Bajo esta claridad el testigo no guarda nada: vio una sombra. */
+export const WITNESS_MIN_CLARITY = 0.15;
+/** Cuánto guarda quien presenció medio dormido (el `encoding` de la memoria). */
+export const WITNESS_ASLEEP_ENCODING = 0.4;
+
+/**
+ * Lo que guardan los testigos que no son parte (perception §12, npc-psychology §5): de lo que
+ * vieron u oyeron (`percepts`, uno por observador) forman una memoria más tenue que la de las
+ * partes, con `clarity` de lo que percibieron (luz, distancia, atención) y `with` solo si
+ * reconocieron a quién. Solo lo memorable: lo que ya tiene vivencia de las partes o una muerte.
+ */
+export function witnessLived(
+  e: Event,
+  percepts: readonly Percept[],
+  encodingOf: (who: AgentId) => number = () => 1,
+): Lived[] {
+  let intensity = 0;
+  let valence = 0;
+  const lived = livedFrom(e);
+  const parties = new Set<string>([...e.actors, ...lived.map((l) => l.who)]);
+  if (e.kind === "body.died") {
+    intensity = 0.5;
+    valence = -0.5;
+  } else if (lived.length > 0) {
+    intensity = Math.max(...lived.map((l) => l.experience.intensity));
+    valence = lived.reduce((s, l) => s + l.experience.valence, 0) / lived.length;
+  } else {
+    return [];
+  }
+  const out: Lived[] = [];
+  for (const p of percepts) {
+    if (parties.has(p.observer)) continue;
+    const clarity = perceptClarity(p);
+    if (clarity < WITNESS_MIN_CLARITY) continue;
+    const knows = p.fields.identity?.value != null;
+    const who = (knows ? e.actors : []).filter((a) => a !== p.observer) as AgentId[];
+    out.push({
+      who: p.observer,
+      experience: {
+        ...base(e, p.detail === "identified" ? who : who.slice(0, 1)),
+        intensity: clamp01(intensity * WITNESS_INTENSITY),
+        valence: Math.min(1, Math.max(-1, valence * WITNESS_VALENCE)),
+        source: "witnessed",
+        clarity,
+        encoding: encodingOf(p.observer),
+      },
+    });
+  }
+  return out;
 }
