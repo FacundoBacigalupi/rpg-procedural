@@ -53,14 +53,18 @@ import {
 } from "../game/index.ts";
 import {
   characterLexicon,
+  continuityFor,
   DEFAULT_NARRATION,
+  EMPTY_MEMORY,
   LlmJobs,
+  type NarrationMemory,
   narrate,
   narrationRequest,
   offlineLlmConfig,
   parseCommand,
   parseIntentOrGrammar,
   parserSetup,
+  remember,
   styleOf,
   TemplateBook,
   voiceOf,
@@ -144,6 +148,9 @@ export interface Session {
 /** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
 const WORLD_FAMILY = "xianxia";
 
+/** La clave de `meta` donde se guarda la memoria de continuidad de la narración. */
+const MEMORY_META = "narration_memory";
+
 /** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
 const WARN_WEIGHT = 0.5;
 
@@ -164,11 +171,28 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
+  // La memoria de continuidad (narration §6) vive con la vida, fuera del estado de la sim: es solo
+  // texto que el jugador ya leyó, así que no entra en el hash ni en el replay.
+  const savedMemory = store.getMeta(MEMORY_META) as NarrationMemory | undefined;
+  let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
   const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
+    const keys = new Map<string, string>();
     const view = playerView(life.world, report?.steps ?? [], {
       intro: report === null,
       ...(report ? { heardSince: report.from } : {}),
+      onLabel: (localId, entity) => keys.set(localId, entity),
     });
+    const loc = life.world.truth.get(LOCATION, life.player);
+    const placeKey =
+      loc === undefined
+        ? undefined
+        : loc.space !== undefined
+          ? `space:${loc.space}`
+          : `hex:${loc.hex}`;
+    // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).
+    const hazy = new Set<string>(
+      (view.thoughts ?? []).flatMap((t) => (t.hazy && t.about !== undefined ? [t.about] : [])),
+    );
     const request = narrationRequest(
       view,
       styleOf(DEFAULT_NARRATION, "es"),
@@ -185,10 +209,24 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         vocabulary: characterLexicon(lexicon, believedConcepts(life.world.truth, life.player)),
       },
     );
-    const told = await narrate(jobs, request, {
-      templates: book,
-      rng: Rng.root(seed).fork("narration", at),
-    });
+    const told = await narrate(
+      jobs,
+      { ...request, continuity: continuityFor(memory, keys, placeKey, hazy) },
+      { templates: book, rng: Rng.root(seed).fork("narration", at) },
+    );
+    // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
+    if (report !== null || savedMemory === undefined) {
+      const known = new Map([...keys].filter(([id]) => !hazy.has(id)));
+      const motifs = request.ambience.filter((line) => told.text.includes(line));
+      memory = remember(memory, {
+        marked: told.marked,
+        text: told.text,
+        keys: known,
+        placeKey,
+        motifs,
+      });
+      store.setMeta(MEMORY_META, memory);
+    }
     scene = told.text;
     return told.text;
   };

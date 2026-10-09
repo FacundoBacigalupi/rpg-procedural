@@ -115,9 +115,12 @@ export function continuityFor(
   memory: NarrationMemory,
   keys: ReadonlyMap<string, string>,
   placeKey?: string,
+  /** Etiquetas cuya descripción vieja no se entrega (un recuerdo deformado no cita el texto viejo). */
+  forget: ReadonlySet<string> = new Set(),
 ): ContinuityView {
   const established: { id: string; phrases: readonly string[] }[] = [];
   for (const [id, key] of [...keys].sort(([a], [b]) => a.localeCompare(b))) {
+    if (forget.has(id)) continue;
     const phrases = memory.descriptions[key];
     if (phrases !== undefined && phrases.length > 0) established.push({ id, phrases });
   }

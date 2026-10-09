@@ -58,6 +58,16 @@ describe("memoria de continuidad", () => {
     expect(continuityFor(mem, keys, "place:1").place).toEqual(["El patio huele a humo."]);
   });
 
+  it("un recuerdo deformado no recibe el texto viejo de esa persona", () => {
+    const mem = remember(EMPTY_MEMORY, {
+      marked: "{{e1|la tía de ojos cansados}} te mira.",
+      text: "La tía de ojos cansados te mira.",
+      keys,
+    });
+    expect(continuityFor(mem, keys).established).toHaveLength(1);
+    expect(continuityFor(mem, keys, undefined, new Set(["e1"])).established).toEqual([]);
+  });
+
   it("es JSON plano y determinista", () => {
     const input = { marked: "{{e1|la tía}} habla.", text: "La tía habla.", keys };
     const a = remember(EMPTY_MEMORY, input);
