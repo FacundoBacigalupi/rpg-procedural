@@ -31,6 +31,7 @@ import {
   isMoney,
   KNOWN_DEEDS,
   learnDeed,
+  MEMORIES,
   MIND,
   OWN_DEEDS,
   PERSON,
@@ -42,6 +43,7 @@ import {
   type Relationship,
   relationship,
   type StateChange,
+  salienceAt,
   setComponent,
   stanceOf,
   standardize,
@@ -108,7 +110,33 @@ export const CLARITY_BY_VIA = { saw: 0.85, heard: 0.5, told: 0.4 } as const;
 /** Resentimiento mínimo hacia alguien para que le cuelgue un hecho de autor desconocido. */
 export const SUSPICION_AT = 0.3;
 
+/** Cuánto de la claridad de la vía cuenta si el recuerdo ya se volvió resumen (se olvidó el detalle). */
+export const FORGOTTEN_CLARITY = 0.3;
+
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+/**
+ * La claridad con que el testigo recuerda hoy `deed`: sin memoria guardada, la de la vía por la
+ * que lo supo; con ella (`MEMORIES`, por el evento real), la vía pesa por la confianza que le
+ * queda, su saliencia hoy y lo que ya se le alejó (`distortion`); y si la memoria se comprimió a
+ * resumen (solo queda un gist que cita el evento), apenas queda `FORGOTTEN_CLARITY` de la vía.
+ */
+export function recallClarity(
+  truth: ReadonlyWorldTruth,
+  witness: AgentId,
+  deed: Deed,
+  now: Tick,
+): number {
+  const base = CLARITY_BY_VIA[deed.via];
+  const mem = truth.get(MEMORIES, witness);
+  const m = mem?.items.find((x) => x.eventId === deed.event);
+  if (m) {
+    const vivid = clamp01(m.confidence) * (0.5 + 0.5 * clamp01(salienceAt(m, now)));
+    return clamp01(base * vivid * (1 - 0.5 * clamp01(m.distortion)));
+  }
+  if (mem?.gists.some((g) => g.causes.includes(deed.event))) return base * FORGOTTEN_CLARITY;
+  return base;
+}
 
 /** Lo que `witness` siente por `to` hoy (extraño si no figura). */
 function feeling(
@@ -174,7 +202,7 @@ export function witnessProfile(
   return {
     recall: {
       now,
-      clarity: CLARITY_BY_VIA[deed.via],
+      clarity: recallClarity(truth, witness, deed, now),
       affinityToDoer: toDoer ? toDoer.affection : 0,
       affinityToVictim: toVictim.affection,
       suspect: suspect?.who ?? null,
@@ -311,6 +339,7 @@ export function testifyProcess(o: TestifyOptions): ProcessDef {
       KNOWN_DEEDS.name,
       OWN_DEEDS.name,
       AMENDS.name,
+      MEMORIES.name,
       RELATIONS.name,
       MIND.name,
       INNATE.name,

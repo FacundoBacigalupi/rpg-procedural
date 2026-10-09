@@ -12,7 +12,9 @@ import {
 } from "../../core/index.ts";
 import {
   type Deed,
+  formMemory,
   KNOWN_DEEDS,
+  MEMORIES,
   PERSON,
   RELATION_BONDS,
   RELATION_DIMS,
@@ -24,7 +26,10 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import {
   bribeValue,
+  CLARITY_BY_VIA,
+  FORGOTTEN_CLARITY,
   giveTestimony,
+  recallClarity,
   TESTIMONY_EVENT,
   type TestifyOptions,
   validOffer,
@@ -189,5 +194,44 @@ describe("testigos en el juego", () => {
     const pressed = witnessProfile(s.w.truth, s.o, s.witness, s.asker, s.deed, 0, s.life.now, 1);
     expect(pressed.motives.honesty).toBeGreaterThan(calm.motives.honesty);
     expect(pressed.motives.fear).toBeLessThan(calm.motives.fear);
+  }, 60_000);
+
+  it("la claridad sale de la memoria guardada: viva casi igual, vieja y olvidada mucho menos", () => {
+    const s = scene(7);
+    const t = s.w.truth;
+    const base = CLARITY_BY_VIA[s.deed.via];
+    expect(recallClarity(t, s.witness, s.deed, s.life.now)).toBe(base);
+    const mem = formMemory({
+      eventId: s.deed.event,
+      kind: "action.take",
+      with: [],
+      place: { hex: 0 } as never,
+      at: s.deed.at,
+      intensity: 0.9,
+      valence: -0.5,
+    });
+    t.set(MEMORIES, s.witness, { items: [mem], gists: [] });
+    const fresh = recallClarity(t, s.witness, s.deed, s.deed.at);
+    expect(fresh).toBeLessThanOrEqual(base);
+    expect(fresh).toBeGreaterThan(base * 0.8);
+    t.set(MEMORIES, s.witness, {
+      items: [],
+      gists: [
+        {
+          kind: "action.take",
+          with: [],
+          count: 1,
+          valence: -0.5,
+          peak: 0.1,
+          first: 0,
+          last: 0,
+          causes: [s.deed.event],
+        },
+      ],
+    });
+    expect(recallClarity(t, s.witness, s.deed, s.life.now)).toBeCloseTo(
+      base * FORGOTTEN_CLARITY,
+      6,
+    );
   }, 60_000);
 });

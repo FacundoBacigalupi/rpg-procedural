@@ -244,3 +244,7 @@ La pregunta de quien habla es la primera fuente: en `life.converse`, si el acto 
 ## Implementado (2026-10-09): acusación y verdad
 
 `life.converse` marca en el efecto del `action.speak` de una acusación `accusation.truthOf.occurred` (`accusationOccurred`: lo hizo de verdad según el `OWN_DEEDS` del acusado; solo lo lee el inspector, ninguna decisión pasa por ahí). Si no ocurrió, emite además el evento `law.false_accusation` (actores [quien acusó, acusado], causa el acto de habla; datos: hecho, víctima, firmeza, quién oyó, `unbacked`): es la huella de la denuncia falsa. Falta que esa huella pese (reputación de quien acusó, caso de ley): ROADMAP.
+
+## Implementado (2026-10-09): el testigo recuerda desde su memoria
+
+`witnessProfile` toma la claridad de `recallClarity`: sin memoria guardada del evento, la de la vía (`saw` 0,85, `heard` 0,5, `told` 0,4); con ella en `MEMORIES`, la vía pesa por la confianza que le queda × (0,5 + 0,5·saliencia hoy) × (1 − 0,5·distorsión); y si solo queda un gist que cita el evento, `FORGOTTEN_CLARITY` (0,3) de la vía. `life.testify` ahora lee `MEMORIES`. Declarar todavía no refuerza ni reescribe el recuerdo (ROADMAP).
