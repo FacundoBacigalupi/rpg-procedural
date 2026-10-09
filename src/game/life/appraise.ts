@@ -347,6 +347,7 @@ function talked(
         delivered?: boolean;
         judged?: { trustDelta?: number };
         regard?: { deltas?: Deltas };
+        form?: { deltas?: Deltas };
         keep?: { trustDelta?: number };
       };
     } | null
@@ -358,6 +359,8 @@ function talked(
   if (trust !== 0) move(a, b, e, { trust });
   // Una amenaza, un halago o un insulto (dialogue §9, §10): lo que dejó en lo que a siente por b.
   if (eff.regard?.deltas) move(a, b, e, eff.regard.deltas);
+  // El registro o la palabra vedada fuera de lugar (dialogue §10): rencor y respeto perdido.
+  if (eff.form?.deltas && Object.keys(eff.form.deltas).length > 0) move(a, b, e, eff.form.deltas);
   // Quien guardaba un secreto y notó que lo sonsacaban confía menos en quien preguntó (dialogue §11).
   const probed = eff.keep?.trustDelta ?? 0;
   if (probed !== 0) move(a, b, e, { trust: probed });

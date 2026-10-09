@@ -6,6 +6,7 @@
 
 import type { AgentId, Rng } from "../../core/index.ts";
 import { CREDIT_LIMIT_GRAMS } from "../contracts/index.ts";
+import type { TabooDef } from "../language/index.ts";
 import type { DeedKind } from "../law/index.ts";
 import type { Vector } from "../relations/index.ts";
 import type { Offense } from "../social/index.ts";
@@ -17,6 +18,7 @@ import {
 } from "./accusations.ts";
 import type { SpeechAct } from "./acts.ts";
 import { NEUTRAL_TEMPER, NO_RECOLLECTION, type Recollection, type Temper } from "./disposition.ts";
+import { type FormJudgeInput, type FormJudgement, judgeForm } from "./form.ts";
 import type { HeardClaim } from "./knowledge.ts";
 import {
   type CaughtLie,
@@ -128,6 +130,8 @@ export interface ReplyInput {
    * quien cuenta y pérdida por salto: `transmit`). Sin esto la toma como charla.
    */
   readonly prophecy?: { readonly credence: number };
+  /** Con qué juzga el oyente la forma del acto (`act.form`): los tabúes de la cultura y lo que cree. */
+  readonly formJudge?: { readonly taboos: readonly TabooDef[]; readonly input: FormJudgeInput };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
   readonly members: number;
@@ -205,6 +209,8 @@ export interface Reply {
   readonly accusation?: AccuseOutcome;
   /** Cómo tomó el oyente la profecía que le contaron (solo si `prophecy` estaba). */
   readonly prophecy?: { readonly verdict: "believed" | "doubted" | "dismissed" };
+  /** Cómo juzgó el oyente la forma en que le hablaron (registro y palabras vedadas), si venía. */
+  readonly form?: FormJudgement;
 }
 
 /** Crédito desde el que el oyente se toma en serio una profecía contada, y desde el que la duda. */
@@ -228,7 +234,29 @@ export function credence(
   return Math.round(Math.min(1, Math.max(0, base - hit)) * 1e6) / 1e6;
 }
 
+/** Líneas de un saludo, despedida o charla que se pisan cuando la forma ofendió. */
+const FORM_SLIP_REPLACES = /^(greet|farewell|other$)/;
+
+/**
+ * La respuesta del oyente. Si el acto trae su forma (`act.form`) y el oyente la puede juzgar
+ * (`formJudge`), el registro y las palabras vedadas pesan como ofensa (dialogue §10): `form` en la
+ * respuesta; un saludo, una despedida o una charla ofendidos se contestan con la queja.
+ */
 export function decideReply(i: ReplyInput, at: number): Reply {
+  const reply = decideBody(i, at);
+  const form = i.act.form;
+  if (!form || !i.formJudge) return reply;
+  const judged = judgeForm(form, i.formJudge.taboos, i.formJudge.input);
+  if (judged.faceLoss <= 0) return { ...reply, form: judged };
+  if (judged.faceLoss >= INSULT_HURT && FORM_SLIP_REPLACES.test(reply.line)) {
+    const line = "form.offended";
+    const text = sayLine(i.lines, line, {}, i.rng.fork(line), isFormal(i.feel, i.rankAbove));
+    return { line, text, form: judged };
+  }
+  return { ...reply, form: judged };
+}
+
+function decideBody(i: ReplyInput, at: number): Reply {
   const say = (line: string, params: Params = {}): Reply => ({
     line,
     text: sayLine(i.lines, line, params, i.rng.fork(line), isFormal(i.feel, i.rankAbove)),
@@ -340,7 +368,7 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     case "offer": {
       if (a.give === null && a.want === null) return say("offer.unclear");
       if (a.give === null && a.want !== null) {
-        return decideReply({ ...i, act: { kind: "request", good: a.want.good } }, at);
+        return decideBody({ ...i, act: { kind: "request", good: a.want.good } }, at);
       }
       const what = i.goodName((a.want ?? (a.give as { good: string })).good);
       if (i.reproach || holdsGrudge(i.feel, temper.reactivity) || holdsGrievance(memory)) {

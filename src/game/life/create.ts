@@ -24,6 +24,7 @@ import {
 import {
   ACTIONS,
   ActionCatalog,
+  ADDRESSES,
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
@@ -49,6 +50,7 @@ import {
   harvestSeason,
   houseKey,
   LANGUAGES,
+  type Language,
   LIFE_STAGES,
   LOCATION,
   type LocalMap,
@@ -61,6 +63,7 @@ import {
   type PlaceToName,
   PRESSURE_CURVES,
   RECIPES,
+  REGISTERS,
   RELATION_BONDS,
   RELATION_DIMS,
   RELIGIONS,
@@ -90,6 +93,7 @@ import {
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  TABOOS,
   TASTES,
   TENURES,
   type TemperamentSpec,
@@ -110,6 +114,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import type { ConverseForm } from "./converse.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
@@ -231,6 +236,25 @@ export function anchorOf(terrain: LifeTerrain): ResumeAnchor {
   };
 }
 
+/** La lengua de la aldea y su etiqueta de habla (se rehace igual del seed y del contenido). */
+function villageForm(seed: Seed, content: Content, language?: Language): ConverseForm {
+  const concepts = content.all(CONCEPTS);
+  return {
+    language:
+      language ??
+      generateLanguage(
+        seed,
+        required(content.get(LANGUAGES, "village.hills"), "lengua village.hills"),
+        concepts,
+      ),
+    concepts,
+    registers: content.all(REGISTERS),
+    addresses: content.all(ADDRESSES),
+    taboos: content.all(TABOOS),
+    culture: "village",
+  };
+}
+
 /** Lo derivado del seed y del contenido que no se guarda, sin tocar el planeta. */
 export function resumeParts(
   seed: Seed,
@@ -260,6 +284,7 @@ export function resumeParts(
   | "divinations"
   | "concerns"
   | "tastes"
+  | "form"
 > {
   return {
     seed,
@@ -284,6 +309,7 @@ export function resumeParts(
     divinations: content.all(DIVINATION_METHODS),
     concerns: content.all(DIVINATION_CONCERNS),
     tastes: content.all(TASTES),
+    form: villageForm(seed, content),
   };
 }
 
@@ -575,6 +601,7 @@ export function createLife(
       divinations: content.all(DIVINATION_METHODS),
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
+      form: villageForm(seed, content, language),
     },
     pop.player,
     terrain.village,

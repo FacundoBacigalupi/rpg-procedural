@@ -46,7 +46,7 @@ import { appraiseProcess } from "./appraise.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { companyProcess } from "./company.ts";
 import { conscienceProcess } from "./conscience.ts";
-import { converseProcess } from "./converse.ts";
+import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess } from "./divine.ts";
@@ -96,6 +96,8 @@ export interface LifeWorld {
   readonly concerns: readonly ConcernWords[];
   /** El catálogo de gustos: da nombre a lo que `TASTES_OF` guarda por id (npc-psychology §16). */
   readonly tastes: readonly TasteDef[];
+  /** La lengua y la etiqueta de habla de la aldea (la forma de lo dicho, dialogue §10). */
+  readonly form?: ConverseForm;
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -173,6 +175,7 @@ export function lifeWorld(
           traits: parts.traits,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,
+          ...(parts.form ? { form: parts.form } : {}),
         }),
         testifyProcess({
           dims: parts.relationDims,

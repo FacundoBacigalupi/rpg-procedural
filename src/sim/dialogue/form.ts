@@ -125,6 +125,62 @@ export function judgeForm(
   return { register, taboos: broken, faceLoss: Math.round(Math.min(1, loss) * 1e6) / 1e6 };
 }
 
+/** Lo que suman o restan al registro las marcas del texto (cortesía o grosería), sin calibrar. */
+export const FORMAL_MARK_SHIFT = 0.3;
+export const CRUDE_MARK_SHIFT = -0.3;
+const FORMAL_MARKS =
+  /\b(usted|senor|senora|don|dona|disculpe|perdone|con su permiso|por favor|si me permite|respetuosamente)\b/;
+const CRUDE_MARKS =
+  /\b(idiota|estupid[oa]|imbecil|cobarde|inutil|basura|maldit[oa]|asqueros[oa]|te mato|callate|largo de aca)\b/;
+
+/** Cuánto corre el texto (ya normalizado) el registro: cortés suma, grosero resta, neutro 0. */
+export function formalityShift(norm: string): number {
+  if (CRUDE_MARKS.test(norm)) return CRUDE_MARK_SHIFT;
+  if (FORMAL_MARKS.test(norm)) return FORMAL_MARK_SHIFT;
+  return 0;
+}
+
+/**
+ * Qué es para el que habla el que escucha, según los rangos que el hablante cree (quien escucha
+ * arriba: superior; igual: par; abajo: inferior); entre los de una misma casa, íntimos.
+ */
+export function recipientBetween(
+  speakerRank: number,
+  hearerRankRead: number,
+  sameHousehold: boolean,
+): Recipient {
+  if (sameHousehold) return "intimate";
+  if (hearerRankRead > speakerRank) return "superior";
+  if (hearerRankRead < speakerRank) return "inferior";
+  return "peer";
+}
+
+/**
+ * Los tabúes de la cultura nombrados en el texto (ya normalizado): todos los conceptos del tabú
+ * aparecen con su glosa en castellano. Lo que el jugador escribió es lo que dijo.
+ */
+export function spokenTaboos(
+  norm: string,
+  taboos: readonly TabooDef[],
+  culture: string,
+  gloss: (concept: string) => string | undefined,
+): TabooDef[] {
+  return taboos.filter((t) => {
+    if (t.culture !== culture) return false;
+    return t.concepts.every((c) => {
+      const g = gloss(c);
+      if (!g) return false;
+      const w = g
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .trim();
+      return w.length > 0 && new RegExp(`(^| )${w}( |$)`).test(norm);
+    });
+  });
+}
+
 /** Las palabras que el narrador puede citar de la forma: el tratamiento y lo dicho, nada más. */
 export function formWhitelist(form: SpokenForm): string[] {
   return [form.address, ...form.words.map((w) => w.text)];
