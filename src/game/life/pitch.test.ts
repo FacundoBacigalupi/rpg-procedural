@@ -97,7 +97,9 @@ describe("ofertas de los NPC al personaje", () => {
     const pitch = w.log
       .all()
       .find((e) => e.kind === "action.speak" && e.actors[0] === npc && e.actors[1] === me);
-    expect((pitch?.data as { effect: { reply: string } }).effect.reply).toBe("offer.pitch");
+    expect((pitch?.data as { effect: { reply: string } } | undefined)?.effect.reply).toBe(
+      "offer.pitch",
+    );
     expect(open?.deal.gives?.good).toBe("grain");
     expect(open?.deal.gets?.good).toBe(extra);
 
