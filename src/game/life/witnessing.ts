@@ -55,8 +55,32 @@ export interface WitnessingOptions {
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
-  /** Tier del NPC (simulation §4); sin tiers todavía, todos los vecinos son de tier 2. */
+  /** Tier del NPC (simulation §4); por defecto `importanceTiers` (cupo de tier 3, el resto tier 2). */
   readonly tierOf?: (id: AgentId, truth: ReadonlyWorldTruth) => WitnessCandidate["tier"];
+}
+
+/** Cupo de agentes de tier 3 en la aldea (simulation §4; sin calibrar). */
+export const TIER3_QUOTA = 8;
+
+/**
+ * Tiers por importancia, una vez por corrida del proceso: tier 3 para los del hogar del
+ * personaje (los que más pesan en su historia; hasta `TIER3_QUOTA`, por id para que sea estable) y
+ * tier 2 para el resto de la aldea. La asignación completa (poder, puesto, centralidad,
+ * histéresis, cupos por región) es de la Fase 5.
+ */
+export function importanceTiers(
+  truth: ReadonlyWorldTruth,
+  player: AgentId,
+): (id: AgentId) => WitnessCandidate["tier"] {
+  const home = truth.get(PERSON, player)?.household;
+  const top = new Set<AgentId>();
+  if (home !== undefined) {
+    for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
+      if (top.size >= TIER3_QUOTA) break;
+      if (id !== player && truth.get(PERSON, id)?.household === home) top.add(id);
+    }
+  }
+  return (id) => (top.has(id) ? 3 : 2);
 }
 
 /** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
@@ -114,6 +138,8 @@ export function npcPerceive(
 ): Map<AgentId, Percept[]> {
   const out = new Map<AgentId, Percept[]>();
   let budget = MAX_EVENTS_PER_STEP;
+  const custom = o.tierOf;
+  const tierOf = custom ? (id: AgentId) => custom(id, truth) : importanceTiers(truth, o.player);
   for (const e of events) {
     if (budget <= 0) break;
     const who = e.actors[0] as AgentId | undefined;
@@ -139,7 +165,7 @@ export function npcPerceive(
       emissions: { sight: em.sight ?? 0, sound: em.sound ?? 0 },
       ...(words === undefined ? {} : { words }),
     });
-    const candidates = neighbours(o, truth, at.hex, who, e.tick);
+    const candidates = neighbours(o, truth, at.hex, who, e.tick, tierOf);
     const percepts = witnessStimulus(
       stimulus,
       candidates,
@@ -166,6 +192,7 @@ function neighbours(
   hex: number,
   actor: AgentId,
   now: number,
+  tierOf: (id: AgentId) => WitnessCandidate["tier"],
 ): WitnessCandidate[] {
   const out: WitnessCandidate[] = [];
   for (const id of truth.ids(PERSON) as AgentId[]) {
@@ -184,7 +211,7 @@ function neighbours(
     const mine = truth.get(PERSON, actor);
     const kin = mine !== undefined && mine.household === p.household;
     out.push({
-      tier: o.tierOf?.(id, truth) ?? 2,
+      tier: tierOf(id),
       observer: {
         id,
         at: there,

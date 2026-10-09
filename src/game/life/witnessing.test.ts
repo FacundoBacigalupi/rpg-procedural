@@ -12,7 +12,14 @@ import {
 import { LOCATION, PERSON } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { NPC_PERCEPTS, npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
+import {
+  importanceTiers,
+  NPC_PERCEPTS,
+  npcPerceive,
+  TIER3_QUOTA,
+  type WitnessingOptions,
+  witnessRng,
+} from "./witnessing.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -66,6 +73,22 @@ describe("life.witnessing con un mundo", () => {
     const again = npcPerceive(o, t, [e], witnessRng(w.seed));
     expect(JSON.stringify([...again])).toEqual(JSON.stringify([...out]));
     expect(t.get(PERSON, near)).toBeDefined();
+  }, 180_000);
+
+  it("el hogar del personaje es de tier 3 (con cupo) y el resto de la aldea de tier 2", () => {
+    const life = Life.create(7, content);
+    const t = life.world.truth;
+    const tierOf = importanceTiers(t, life.player);
+    const home = t.get(PERSON, life.player)?.household;
+    const others = living(t).filter((x) => x !== life.player);
+    const tier3 = others.filter((x) => tierOf(x) === 3);
+    expect(tier3.length).toBeGreaterThan(0);
+    expect(tier3.length).toBeLessThanOrEqual(TIER3_QUOTA);
+    for (const id of others) {
+      const mine = t.get(PERSON, id)?.household === home;
+      if (tierOf(id) === 3) expect(mine).toBe(true);
+      else expect(tierOf(id)).toBe(2);
+    }
   }, 180_000);
 
   it("tras un día, el personaje nunca figura en NPC_PERCEPTS y dos corridas dan el mismo hash", () => {
