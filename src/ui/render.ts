@@ -108,6 +108,12 @@ export function renderCharacter(p: CharacterPanel): string {
   if (p.family.length > 0) {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
+  const taste = (stances: readonly string[]) =>
+    p.tastes.filter((t) => stances.includes(t.stance)).map((t) => t.name);
+  const liked = taste(["loves", "likes"]);
+  const disliked = taste(["dislikes", "loathes"]);
+  if (liked.length > 0) lines.push(`Te gusta: ${liked.join(", ")}.`);
+  if (disliked.length > 0) lines.push(`No te gusta: ${disliked.join(", ")}.`);
   if (p.skills.length > 0) {
     lines.push("Lo que creés saber hacer:");
     for (const s of p.skills) {

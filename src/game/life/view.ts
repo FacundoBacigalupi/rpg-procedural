@@ -17,6 +17,7 @@ import {
   LOCATION,
   type Location,
   localHour,
+  mentionableTastes,
   PERSON,
   type Percept,
   PLACE,
@@ -28,12 +29,19 @@ import {
   sameValue,
   skyLight,
   spaceLight,
+  TASTES_OF,
   TRACE,
   traceStrength,
   traceVisible,
   watching,
 } from "../../sim/index.ts";
-import { buildPlayerView, type PlayerView, type SceneMark, type SelfCue } from "../view/index.ts";
+import {
+  buildPlayerView,
+  type PlayerView,
+  type SceneMark,
+  type SelfCue,
+  type TasteView,
+} from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
@@ -144,6 +152,29 @@ export interface PlayerViewOptions {
   readonly heardSince?: Tick;
 }
 
+/** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
+const TASTING = new Set(["eat", "drink", "cook"]);
+/** Cuántas veces de cada tantas que prueba algo el personaje lo nota (no en cada bocado). */
+export const TASTE_NOTICE_CHANCE = 0.35;
+
+/**
+ * Un gusto de comida del personaje, si probó algo y lo nota esta vez (npc-psychology §16). Sale de
+ * `mentionableTastes` sobre sus propias preferencias; la tirada es de la vista (`rng`, no de la sim).
+ */
+export function tastesForView(
+  w: LifeWorld,
+  steps: readonly StepRecord[],
+  rng: Rng,
+): readonly TasteView[] {
+  if (!steps.some((s) => TASTING.has(s.verb))) return [];
+  const mine = w.truth.get(TASTES_OF, w.player);
+  if (!mine) return [];
+  const food = mine.preferences.filter((p) => p.domain.startsWith("food."));
+  const [first] = mentionableTastes(food, w.tastes, 1);
+  if (!first || !rng.chance(TASTE_NOTICE_CHANCE)) return [];
+  return [{ name: first.name, stance: first.stance }];
+}
+
 export function playerView(
   w: LifeWorld,
   steps: readonly StepRecord[],
@@ -228,5 +259,6 @@ export function playerView(
     acquaintances: acq,
     lexicon: knownWords(w),
     self: [...cues],
+    tastes: tastesForView(w, steps, rng.fork("taste")),
   });
 }
