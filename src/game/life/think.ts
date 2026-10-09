@@ -85,6 +85,8 @@ export function evidenceOf(w: LifeWorld): Premise[] {
   const beliefs = items.flatMap((b): Premise[] => {
     const confidence = beliefConfidenceAt(b, now);
     if (confidence <= 0) return [];
+    // Figura, ropa y acción son impresiones, no premisas de las reglas de inferencia.
+    if (b.prop.attr === "figure" || b.prop.attr === "attire" || b.prop.attr === "action") return [];
     const subject = b.prop.subject;
     const ref = `belief:${subject}:${b.prop.attr}`;
     const fact: Fact =

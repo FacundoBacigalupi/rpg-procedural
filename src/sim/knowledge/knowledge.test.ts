@@ -133,3 +133,35 @@ describe("aprender", () => {
     expect(b?.items.length).toBe(BELIEF_CAPACITY);
   });
 });
+
+describe("atributos de texto: figura, ropa y acción", () => {
+  const text = (attr: "figure" | "attire" | "action", value: string, tick: number): Evidence => ({
+    prop: { kind: "attr", subject: WHO, attr },
+    value,
+    confidence: 0.8,
+    asOf: tick,
+    source: { kind: "percept", percept: `p@${tick}`, tick },
+  });
+
+  it("guardan texto, una creencia por atributo, y lo igual refuerza", () => {
+    let b: Beliefs | undefined;
+    b = learn(b, text("figure", "female:adult", 0), 0);
+    b = learn(b, text("attire", "plain", 0), 0);
+    b = learn(b, text("figure", "female:adult", HOUR), HOUR);
+    expect(b?.items).toHaveLength(2);
+    const fig = b?.items.find((i) => i.prop.attr === "figure");
+    expect(fig?.value).toBe("female:adult");
+    expect(fig?.confidence).toBeGreaterThan(0.8);
+  });
+
+  it("lo distinto con evidencia más fuerte reemplaza, y cada uno envejece a su ritmo", () => {
+    const old = revise(undefined, text("attire", "plain", 0), 0);
+    const next = revise(old, { ...text("attire", "silk", HOUR), confidence: 0.99 }, HOUR);
+    expect(next.value).toBe("silk");
+    const act = revise(undefined, text("action", "chop", 0), 0);
+    const fig = revise(undefined, text("figure", "male:elder", 0), 0);
+    const later = 12 * HOUR;
+    expect(beliefConfidenceAt(act, later)).toBeLessThan(beliefConfidenceAt(fig, later));
+    expect(CONFIDENCE_HALF_LIFE_HOURS.action).toBeLessThan(CONFIDENCE_HALF_LIFE_HOURS.attire);
+  });
+});
