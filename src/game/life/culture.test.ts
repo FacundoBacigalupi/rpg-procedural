@@ -3,14 +3,17 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  COMMUNITY_ACCENT,
   COMMUNITY_CULTURE,
   CULTURE_TRAITS,
   CULTURES,
   checkInvariants,
+  communityAccents,
   cultureProblems,
   dominantVariant,
   ENTITY,
   FOODS,
+  languageRootAccent,
   PERSON,
   PERSON_CULTURE,
   STATUSES,
@@ -75,6 +78,16 @@ describe("la cultura de la aldea inicial", () => {
     expect(e?.causes.length).toBeGreaterThan(0);
     expect(w.truth.ids(COMMUNITY_CULTURE).length).toBe(1);
     expect(w.truth.get(ENTITY, w.truth.ids(COMMUNITY_CULTURE)[0] as never)).toBeDefined();
+  });
+
+  it("la aldea tiene su acento, derivado del de la lengua madre y con evento de origen", () => {
+    const [id] = w.truth.ids(COMMUNITY_ACCENT);
+    const row = id === undefined ? undefined : w.truth.get(COMMUNITY_ACCENT, id);
+    expect(row).toBeDefined();
+    expect(w.log.get(row?.originEventId as never)?.kind).toBe("language.accent_seeded");
+    expect(row?.parent).toEqual(languageRootAccent(7, row?.language as string));
+    expect(row?.accent).not.toEqual(row?.parent);
+    expect(communityAccents(w.truth).length).toBe(1);
   });
 
   it("los lectores ven la variante dominante y los números del rasgo", () => {

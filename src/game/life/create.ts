@@ -77,6 +77,7 @@ import {
   STATUSES,
   type StatusDef,
   seedBodies,
+  seedCommunityAccent,
   seedCulture,
   seedMinds,
   seedParcels,
@@ -101,6 +102,7 @@ import {
   type Trait,
   temperamentFit,
   VALUES,
+  VILLAGE_SEPARATION,
   type VillagePopulation,
   validateTemperament,
   villagePopulation,
@@ -452,6 +454,16 @@ export function createLife(
     foundersEvent: pop.foundersEvent,
     culture,
     traits: content.all(CULTURE_TRAITS),
+  });
+  // Cómo suena su habla: el acento de la lengua madre con la deriva de la separación (language §5).
+  seedCommunityAccent(truth, ids, log, {
+    seed,
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    language: language.id,
+    generations: VILLAGE_SEPARATION,
   });
   // Lo que cada uno sigue de ella: los hijos copian a sus padres (culture §4).
   seedPeopleCulture(truth, ids, log, {
