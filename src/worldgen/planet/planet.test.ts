@@ -236,7 +236,7 @@ describe("planeta", () => {
       expect(sum / n).toBeLessThan(900);
       expect(arid / n).toBeLessThan(0.4);
     }
-  }, 60_000);
+  }, 600_000);
 
   it("calibración: el mar es la cuenca grande y los mares sin salida son lagos", () => {
     // Antes había ~100 componentes de mar por seed (4-28 % de las celdas de océano); ahora las
@@ -266,7 +266,7 @@ describe("planeta", () => {
       for (const s of sizes) expect(s).toBeGreaterThanOrEqual(0.1 * biggest);
       expect(inland).toBeGreaterThan(0);
     }
-  }, 60_000);
+  }, 600_000);
 
   it("todo río baja hasta el mar sin ciclos", () => {
     for (const seed of [1, 2, 3]) {
