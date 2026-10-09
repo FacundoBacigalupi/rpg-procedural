@@ -6,6 +6,8 @@ import type { Vector } from "../relations/index.ts";
 import { looseCounter, understand } from "./acts.ts";
 import { SpeechLine } from "./lines.ts";
 import {
+  alternativesAmong,
+  bargainFace,
   dealHolds,
   type Leverage,
   leverageShift,
@@ -294,5 +296,24 @@ describe("contraoferta con términos sueltos", () => {
     expect(looseCounter("Te doy la mitad", act, undefined, lex)).toBe(act);
     const hi = understand("Hola", lex);
     expect(looseCounter("Hola", hi, open, lex)).toBe(hi);
+  });
+});
+
+describe("alternativas y cara del regateo", () => {
+  const house = (stock: number, members = 2) => ({ stock, members });
+  it("comprando cuentan las casas con de sobra; vendiendo, las que les falta", () => {
+    const houses = [house(9000), house(7000), house(1000)];
+    expect(alternativesAmong(houses, "buy", 3000, 500)).toBeCloseTo(2 / 3);
+    expect(alternativesAmong(houses, "sell", 3000, 500)).toBeCloseTo(1 / 3);
+    expect(alternativesAmong([], "buy", 3000, 500)).toBe(0);
+    expect(
+      alternativesAmong([house(99999), house(99999), house(99999), house(99999)], "buy", 3000, 500),
+    ).toBe(1);
+  });
+  it("la cara pesa con los testigos y baja ante quien tiene más rango", () => {
+    expect(bargainFace(0, 1, 0)).toBe(0);
+    expect(bargainFace(3, 1, 1)).toBe(1);
+    expect(bargainFace(3, 0, 2)).toBe(0.5);
+    expect(bargainFace(9, 5, 0)).toBe(1);
   });
 });

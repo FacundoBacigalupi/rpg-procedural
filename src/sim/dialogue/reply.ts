@@ -88,7 +88,11 @@ export interface ReplyInput {
   /** Cuánto cree el oyente que vale el kilo de un bien (monedas); sin esto no valúa ofertas. */
   readonly worth?: (good: string) => number | null;
   /** Alternativas creídas y cara en juego del oyente al regatear (contracts §3); la desesperación sale de su despensa. */
-  readonly bargain?: { readonly alternatives: number; readonly face: number };
+  readonly bargain?: {
+    /** 0-1, o según el bien y el lado: `buy` (le dan ese bien) o `sell` (se lo piden). */
+    readonly alternatives: number | ((good: string, side: "buy" | "sell") => number);
+    readonly face: number;
+  };
   /** Gramos de un bien que quien habla tiene a mano (no puede ofrecer lo que no tiene). */
   readonly speakerHas?: (good: string) => number;
   /** Cómo llama el oyente a `id` y a un bien. */
@@ -402,7 +406,14 @@ function decideBody(i: ReplyInput, at: number): Reply {
         speakerHas: i.speakerHas ?? (() => 0),
         felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
         leverage: {
-          alternatives: i.bargain?.alternatives ?? 0,
+          alternatives: ((alt) =>
+            typeof alt === "function"
+              ? a.give !== null
+                ? alt(a.give.good, "buy")
+                : a.want !== null
+                  ? alt(a.want.good, "sell")
+                  : 0
+              : (alt ?? 0))(i.bargain?.alternatives),
           face: i.bargain?.face ?? 0,
           // Desesperado: lo que recibiría le falta a su casa (su despensa bajo la reserva).
           desperation:

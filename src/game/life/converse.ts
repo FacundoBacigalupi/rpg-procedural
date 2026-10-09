@@ -24,10 +24,12 @@ import {
   type AddressDef,
   AMENDS,
   adjustFace,
+  alternativesAmong,
   BELIEFS,
   type Belief,
   BODY_STATE,
   type BondDef,
+  bargainFace,
   beliefAbout,
   beliefConfidenceAt,
   believed,
@@ -56,6 +58,7 @@ import {
   type FormJudgeInput,
   type FormJudgement,
   formalityShift,
+  GIFT_GRAMS,
   type GoodDef,
   goodUnit,
   greets,
@@ -85,6 +88,7 @@ import {
   type Proposal,
   RELATIONS,
   RELIGIOUS_IDENTITY,
+  RESERVE_GRAMS_PER_MEMBER,
   type ReadonlyWorldTruth,
   type Recipient,
   type RegisterDef,
@@ -1049,6 +1053,28 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return g ? (ctx.ledger?.balance(holderAccount(larder), goodUnit(g)) ?? 0) : 0;
           },
           members,
+          // El regateo (contracts §3): otras casas con qué tratar y la cara ante los presentes.
+          bargain: {
+            alternatives: (id, side) => {
+              const g = goodById(id);
+              if (!g || !ctx.ledger) return 0;
+              const speakerHome = householdOf(truth, speaker);
+              const crowd = new Map<string, number>();
+              for (const pid of truth.ids(PERSON)) {
+                const h = householdOf(truth, pid as AgentId);
+                if (h === undefined || h === home || h === speakerHome) continue;
+                if (!alive(truth, pid as AgentId)) continue;
+                crowd.set(h, (crowd.get(h) ?? 0) + 1);
+              }
+              const houses = [...crowd].map(([h, n]) => ({
+                members: n,
+                stock:
+                  ctx.ledger?.balance(holderAccount(h as unknown as HolderRef), goodUnit(g)) ?? 0,
+              }));
+              return alternativesAmong(houses, side, RESERVE_GRAMS_PER_MEMBER, GIFT_GRAMS);
+            },
+            face: bargainFace(witnessesOf(truth, me, speaker), myRank, theirRank),
+          },
           worth: (id) => goodById(id)?.priceCopperPerKg ?? null,
           speakerHas: (id) => {
             const g = goodById(id);
