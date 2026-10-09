@@ -5,9 +5,10 @@ import {
   type Accent,
   COMMUNITY_ACCENT,
   type CommunityAccent,
+  SKILL_STATE,
   WorldTruth,
 } from "../../sim/index.ts";
-import { ACCENT_PROCESS, accentProcess, KNOWN_ACCENTS } from "./accent.ts";
+import { ACCENT_PROCESS, accentProcess, KNOWN_ACCENTS, registerKnowledge } from "./accent.ts";
 import { ASCRIBED_GROUPS } from "./identity.ts";
 
 const flat = (x: number): Accent =>
@@ -79,5 +80,20 @@ describe("el acento en la charla", () => {
     const a = JSON.stringify(run(setup(), () => flat(0.8)).changes);
     const b = JSON.stringify(run(setup(), () => flat(0.8)).changes);
     expect(a).toBe(b);
+  });
+});
+
+describe("conocimiento del registro por habilidad", () => {
+  it("quien habla de cuna los conoce del todo; el que aprende, según su faceta de saber", () => {
+    const t = new WorldTruth();
+    expect(registerKnowledge(t, stranger)).toBe(1);
+    t.set(SKILL_STATE, stranger, {
+      speech: {
+        facets: { knowledge: { level: 0.3, peak: 0.3 } },
+        hours: 10,
+        lastPracticed: 1,
+      },
+    });
+    expect(registerKnowledge(t, stranger)).toBeCloseTo(0.3);
   });
 });

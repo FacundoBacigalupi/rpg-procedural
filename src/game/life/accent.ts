@@ -140,3 +140,13 @@ export function accentProcess(o: AccentOptions): ProcessDef {
     },
   };
 }
+
+/**
+ * Cuánto conoce `who` los registros y la cortesía de la lengua que habla (0-1). Quien nunca
+ * aprendió la lengua como ajena (sin fila de `speech`) la habla de cuna y los conoce del todo; el
+ * que la aprende de grande conoce lo que dice su faceta `knowledge` (language §12).
+ */
+export function registerKnowledge(truth: ReadonlyWorldTruth, who: AgentId): number {
+  const speech = truth.get(SKILL_STATE, who)?.["speech"];
+  return speech === undefined ? 1 : Math.min(1, Math.max(0, levelOf(speech, "knowledge")));
+}
