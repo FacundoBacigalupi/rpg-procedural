@@ -38,6 +38,7 @@ import {
   type StageDef,
   type StatusDef,
   type TasteDef,
+  type TradeRecipeDef,
   type Trait,
   type TraitDef,
   type TrajectoryDef,
@@ -78,6 +79,7 @@ import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
+import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { witnessingProcess } from "./witnessing.ts";
@@ -105,6 +107,9 @@ export interface LifeWorld {
   /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
   readonly pathogenSeeds?: readonly PathogenSeed[];
   readonly recipes: readonly RecipeDef[];
+  /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
+  readonly tradeRecipes?: readonly TradeRecipeDef[];
+  readonly householdTrades?: readonly TradeAssignment[];
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -282,6 +287,13 @@ export function lifeWorld(
           seed: parts.seed,
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
+        }),
+        tradesProcess({
+          clock: parts.clock,
+          goods: parts.goods,
+          recipes: parts.tradeRecipes ?? [],
+          assignments: parts.householdTrades ?? [],
+          placeOf: placeOf(parts, village),
         }),
         exposureProcess({
           clock: parts.clock,

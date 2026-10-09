@@ -1,0 +1,23 @@
+[
+  {
+    "id": "bake-flatbread",
+    "name": "hornear pan plano",
+    "hoursPerBatch": 1.5,
+    "inputs": [{ "good": "grain", "amount": 400 }],
+    "output": { "good": "flatbread", "amount": 520 }
+  },
+  {
+    "id": "weave-cloth",
+    "name": "tejer paño",
+    "hoursPerBatch": 6,
+    "inputs": [{ "good": "wool", "amount": 1200 }],
+    "output": { "good": "cloth", "amount": 900 }
+  },
+  {
+    "id": "forge-tools",
+    "name": "herrar herramientas",
+    "hoursPerBatch": 8,
+    "inputs": [{ "good": "iron", "amount": 2000 }],
+    "output": { "good": "tools", "amount": 1500 }
+  }
+]

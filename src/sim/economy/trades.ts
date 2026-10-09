@@ -4,7 +4,15 @@
 // cobrado de verdad (recibos). Todo se expresa como transferencias del ledger: el insumo sale a
 // un sumidero y el producto entra desde una fuente nombrada, el jornal pasa de una bolsa a otra.
 
-import type { LedgerAccount, LedgerUnit, Transfer } from "../../core/index.ts";
+import {
+  contentId,
+  defineContent,
+  type LedgerAccount,
+  type LedgerUnit,
+  type Transfer,
+  z,
+} from "../../core/index.ts";
+import { table } from "../world/index.ts";
 import { poolIncome } from "./budget.ts";
 
 function clamp(x: number, lo: number, hi: number): number {
@@ -141,3 +149,31 @@ export function pooledCollection(
   }
   return { pot, transfers };
 }
+
+/** Una receta de oficio como contenido (`content/trades/`): horas, insumos y producto en gramos. */
+export const TradeRecipeDef = z.strictObject({
+  id: contentId,
+  name: z.string().min(1),
+  /** Horas de trabajo de un lote. */
+  hoursPerBatch: z.number().positive(),
+  inputs: z.array(z.strictObject({ good: contentId, amount: z.number().positive() })).default([]),
+  output: z.strictObject({ good: contentId, amount: z.number().positive() }),
+});
+export type TradeRecipeDef = z.infer<typeof TradeRecipeDef>;
+
+export const TRADE_RECIPES = defineContent("trades", TradeRecipeDef, (r) => [
+  ...r.inputs.map((i, n) => ({ kind: "goods", id: i.good, at: `inputs.${n}.good` })),
+  { kind: "goods", id: r.output.good, at: "output.good" },
+]);
+
+/** Los recibos de un hogar (lo realmente cobrado), solo los últimos días. */
+export interface IncomeBook {
+  readonly receipts: readonly IncomeReceipt[];
+}
+export const TRADE_RECEIPTS = table<IncomeBook>("economy.trade_receipts");
+/** Cuántos días de recibos se guardan y se promedian. */
+export const RECEIPT_WINDOW_DAYS = 30;
+
+/** De dónde sale la materia nueva de un producto de oficio y adónde va lo consumido (ledger). */
+export const WORKSHOP = "workshop";
+export const WORKSHOP_WASTE = "workshop-waste";
