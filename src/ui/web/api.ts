@@ -4,6 +4,8 @@ export interface Panels {
   readonly now: string;
   readonly character: string;
   readonly inventory: string;
+  /** El libro de deudas y promesas. */
+  readonly book: string;
   readonly journal: string;
   /** Lo que se nota del lugar, por canal. */
   readonly environment: string;

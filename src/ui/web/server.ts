@@ -4,8 +4,15 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { characterPanel, inventoryPanel, TONE_ICON, TONE_LABEL } from "../../game/index.ts";
 import {
+  bookPanel,
+  characterPanel,
+  inventoryPanel,
+  TONE_ICON,
+  TONE_LABEL,
+} from "../../game/index.ts";
+import {
+  renderBook,
   renderCharacter,
   renderEnvironment,
   renderInventory,
@@ -23,6 +30,7 @@ export function panelsOf(session: Session): Panels {
     now: renderStatus(session.life.now),
     character: renderCharacter(characterPanel(w)),
     inventory: renderInventory(inventoryPanel(w)),
+    book: renderBook(bookPanel(w)),
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(session.environment()),
     options: session.suggested().map((o) => ({

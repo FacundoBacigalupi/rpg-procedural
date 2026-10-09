@@ -3,6 +3,8 @@
 
 import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
 import {
+  type BookLine,
+  type BookPanel,
   type CharacterPanel,
   type EnvironmentItem,
   type HypothesesPanel,
@@ -128,6 +130,46 @@ export function renderInventory(p: InventoryPanel): string {
   );
   if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
   for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
+  return lines.join("\n");
+}
+
+const SURETY: Readonly<Record<BookLine["sure"], string>> = {
+  sure: "",
+  unsure: " (no estás del todo seguro)",
+  vague: " (lo recordás vagamente)",
+};
+
+function dueText(days: number | null): string {
+  if (days === null) return "sin plazo que recuerdes";
+  if (days === 0) return "para hoy";
+  if (days > 0) return days === 1 ? "para mañana" : `en ${days} días`;
+  return days === -1 ? "vencida desde ayer" : `vencida hace ${-days} días`;
+}
+
+function bookWhat(w: BookLine["what"]): string {
+  if (w.kind === "coins") return `${w.coins} ${w.coins === 1 ? "moneda" : "monedas"} de cobre`;
+  if (w.kind === "good") return `${AMOUNT[w.amount]} ${w.good}`;
+  if (w.kind === "favor") return `un favor (${w.what})`;
+  return `silencio sobre ${w.about}`;
+}
+
+/** El libro de deudas y promesas (contracts §14): lo que debés primero, lo que te deben después. */
+export function renderBook(p: BookPanel): string {
+  if (p.lines.length === 0)
+    return "No le debés nada a nadie ni nadie te debe a vos, que recuerdes.";
+  const lines: string[] = [];
+  for (const dir of ["i-owe", "owed-to-me"] as const) {
+    const mine = p.lines.filter((l) => l.direction === dir);
+    if (mine.length === 0) continue;
+    lines.push(dir === "i-owe" ? "Lo que debés:" : "Lo que te deben:");
+    for (const l of mine) {
+      const how = l.kind === "debt" ? "fiado" : "palabra dada";
+      const late = l.defaulted ? "; ya está en mora" : "";
+      lines.push(
+        `  ${l.other}: ${bookWhat(l.what)}, ${dueText(l.dueInDays)} (${how}${late})${SURETY[l.sure]}`,
+      );
+    }
+  }
   return lines.join("\n");
 }
 

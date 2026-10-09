@@ -22,6 +22,7 @@ import {
   ambienceOf,
   beliefViewOf,
   believedConcepts,
+  bookPanel,
   buildChronicle,
   characterPanel,
   characterVoiceData,
@@ -81,6 +82,7 @@ import {
 import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
 import {
   elapsed,
+  renderBook,
   renderCharacter,
   renderHypotheses,
   renderInterrupt,
@@ -113,7 +115,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, hipótesis, bitácora, pensar sobre X, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, hipótesis, bitácora, pensar sobre X, ayuda, salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -264,6 +266,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
       if (/^personaje/i.test(text)) return { text: renderCharacter(characterPanel(life.world)) };
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
+      if (/^(?:deudas|libro)/iu.test(text)) return { text: renderBook(bookPanel(life.world)) };
       if (/^hip[oó]tesis/i.test(text))
         return { text: renderHypotheses(hypothesesPanel(life.world)) };
       if (/^(?:pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago)/iu.test(text)) {
