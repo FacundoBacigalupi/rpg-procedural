@@ -3,7 +3,14 @@
 // ceden con el tiempo y el apoyo, y se notan: pesadillas al dormir. Cada una guarda el evento que
 // la abrió y su disparador (el rival, el lugar). Funciones puras; el proceso de la vida las aplica.
 
-import { type AgentId, type EventId, type PlaceRef, pow, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EventId,
+  type PlaceRef,
+  placeKey,
+  pow,
+  type Tick,
+} from "../../core/index.ts";
 import { table } from "../world/index.ts";
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -131,7 +138,68 @@ export function nightmareChance(state: MentalState | undefined): number {
   );
 }
 
-/** Las causas de lo que se sueña: los eventos que abrieron las condiciones que pesan. */
+/** Cuánto pesa cada tipo al evitar o al invadir (el trauma más que la culpa). */
+const KIND_WEIGHT = { trauma: 1, guilt: 0.6 } as const;
+/** Tope de la evitación: nunca anula del todo la utilidad de acercarse. */
+export const AVOIDANCE_CAP = 0.9;
+/** Chance de un recuerdo intrusivo al toparse con el disparador = gravedad × esto. */
+export const INTRUSION_RATE = 0.7;
+
+/** Lo que el personaje tiene delante: una persona, un lugar o ambos. */
+export interface ConditionCue {
+  readonly who?: AgentId;
+  readonly place?: PlaceRef;
+}
+
+const samePlace = (a: PlaceRef | undefined, b: PlaceRef | undefined) =>
+  a !== undefined && b !== undefined && placeKey(a) === placeKey(b);
+
+/** Las condiciones que el estímulo despierta: alguno de sus disparadores coincide en persona o lugar. */
+export function triggeredBy(
+  state: MentalState | undefined,
+  cue: ConditionCue,
+): readonly MentalCondition[] {
+  if (!state) return [];
+  return state.conditions.filter((c) =>
+    c.triggers.some(
+      (t) =>
+        (t.who !== undefined && t.who === cue.who) ||
+        (t.place !== undefined && samePlace(t.place, cue.place)),
+    ),
+  );
+}
+
+/**
+ * Evitación (0-1): cuánto castiga la utilidad acercarse al estímulo. Manda la condición más pesada
+ * entre las que dispara; con tope (`AVOIDANCE_CAP`) para que la valentía o la necesidad aún puedan más.
+ */
+export function avoidance(state: MentalState | undefined, cue: ConditionCue): number {
+  const worst = Math.max(
+    0,
+    ...triggeredBy(state, cue).map((c) => c.severity * KIND_WEIGHT[c.kind]),
+  );
+  return round(Math.min(AVOIDANCE_CAP, worst));
+}
+
+/** Aplica la evitación a un valor de utilidad o saliencia positivo de acercarse al estímulo. */
+export const avoided = (value: number, avoid: number): number =>
+  round(value * (1 - clamp01(avoid)));
+
+/** Chance de que el estímulo traiga un recuerdo intrusivo. */
+export function intrusionChance(state: MentalState | undefined, cue: ConditionCue): number {
+  const worst = Math.max(
+    0,
+    ...triggeredBy(state, cue).map((c) => c.severity * KIND_WEIGHT[c.kind]),
+  );
+  return round(clamp01(INTRUSION_RATE * worst));
+}
+
+/** Los eventos que un recuerdo intrusivo trae de vuelta: los que abrieron las condiciones despertadas. */
+export function intrusionEvents(state: MentalState | undefined, cue: ConditionCue): EventId[] {
+  return [...new Set(triggeredBy(state, cue).flatMap((c) => c.originEventIds))].sort();
+}
+
+/** Las causas de lo que se sueña:los eventos que abrieron las condiciones que pesan. */
 export function nightmareCauses(state: MentalState | undefined): EventId[] {
   if (!state) return [];
   return [...new Set(state.conditions.flatMap((c) => c.originEventIds))].sort();

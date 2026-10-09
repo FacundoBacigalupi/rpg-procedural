@@ -38,6 +38,7 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  recall,
   relationship,
   type SchemaDef,
   type StateChange,
@@ -259,7 +260,18 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
         emissions: {},
         causes,
       };
-      const changes: StateChange[] = [drop, setComponent(MEMORIES, me, result.memories)];
+      // La pesadilla es un recuerdo intrusivo: reactiva (refuerza) las memorias de lo que la causó.
+      const woken = new Set(dreamt ? nightmareCauses(mental) : []);
+      const memories =
+        woken.size === 0
+          ? result.memories
+          : {
+              ...result.memories,
+              items: result.memories.items.map((m) =>
+                woken.has(m.eventId) ? recall(m, ctx.now) : m,
+              ),
+            };
+      const changes: StateChange[] = [drop, setComponent(MEMORIES, me, memories)];
       if (mind && pass.schemaUpdates.length > 0) {
         changes.push(setComponent(MIND, me, applySchemaUpdates(mind, pass.schemaUpdates)));
       }

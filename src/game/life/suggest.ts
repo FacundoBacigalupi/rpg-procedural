@@ -8,14 +8,17 @@
 // La cantidad no es fija: hasta `limit` (por defecto `DEFAULT_SUGGESTIONS`), ordenadas por
 // saliencia. Cuando existan metas, deberes y utilidad de NPC (Fase 2/3) entran como fuentes nuevas.
 
-import type { Tick } from "../../core/index.ts";
+import type { AgentId, Tick } from "../../core/index.ts";
 import {
+  avoidance,
+  avoided,
   BODY_STATE,
   bodySigns,
   type DraftArg,
   type IntentDraft,
   LOCATION,
   localHour,
+  MENTAL,
   PERSON,
   type PlanNode,
   planFromDraft,
@@ -101,6 +104,7 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
   const has = (...signs: string[]) => signs.some((s) => felt.has(s));
   const hour = localHour(w.clock, now, w.map.lonDeg);
   const night = hour < 6 || hour >= 21;
+  const mental = w.truth.get(MENTAL, w.player);
   const out: Suggestion[] = [];
   const add = (
     kind: SuggestionKind,
@@ -143,9 +147,10 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
     if (e.kind !== "person" || !e.present) continue;
     const rel = e.relations[0]?.rel;
     if (rel === undefined) continue;
+    // Evitación (npc-psychology §11): acercarse a quien dispara su trauma o su culpa pesa menos.
     add(
       "talk",
-      0.35,
+      avoided(0.35, avoidance(mental, { who: e.ref as AgentId })),
       act("speak", [
         {
           role: "to",
