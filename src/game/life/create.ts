@@ -37,6 +37,7 @@ import {
   CULTURES,
   DEBRIS_SINK,
   DEMOGRAPHY,
+  DIETS,
   DIVINATION_CONCERNS,
   DIVINATION_METHODS,
   DOCTRINES,
@@ -65,6 +66,7 @@ import {
   type LocalMap,
   liveSettlementSpaces,
   MATERIALS,
+  NUTRIENT_PROFILES,
   PARCEL_SOIL,
   PERSON,
   type Person,
@@ -322,6 +324,8 @@ export function resumeParts(
   | "traits"
   | "plans"
   | "foods"
+  | "nutrientProfiles"
+  | "diets"
   | "goods"
   | "recipes"
   | "tradeRecipes"
@@ -352,6 +356,8 @@ export function resumeParts(
     traits: content.all(TRAITS),
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
+    nutrientProfiles: content.all(NUTRIENT_PROFILES),
+    diets: content.all(DIETS),
     goods: content.all(GOODS),
     materials: content.all(MATERIALS),
     recipes: content.all(RECIPES),
@@ -709,6 +715,8 @@ export function createLife(
       traits,
       plans,
       foods,
+      nutrientProfiles: content.all(NUTRIENT_PROFILES),
+      diets: content.all(DIETS),
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
       tradeRecipes: content.all(TRADE_RECIPES),

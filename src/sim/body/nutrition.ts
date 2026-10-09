@@ -5,6 +5,9 @@
 // turbiedad, y de ahÃ­ sale la dosis por litro. Sin IO ni estado: el cableado a `Body`, a la
 // despensa y al pozo queda aparte. Constantes sin calibrar.
 
+import { contentId, defineContent, z } from "../../core/index.ts";
+import { table } from "../world/index.ts";
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export type Nutrient = "protein" | "vitaminC" | "iodine" | "iron" | "vitaminD";
@@ -187,4 +190,63 @@ export function netHydration(liters: number, w: WaterQuality): number {
 /** QuÃ© tan bien se nota que el agua estÃ¡ mala: 0 (no se nota) a 1 (obvia); la turbiedad y la sal avisan, la carga sola no. */
 export function waterWarning(w: WaterQuality): number {
   return clamp01(0.7 * w.turbidity + 0.9 * w.salinity + 0.2 * effectiveLoad(w));
+}
+
+/** El agua de un pozo con la carga de `WELL_TAINT` (sin turbiedad ni tratamiento ni sal). */
+export function wellWater(load: number): WaterQuality {
+  return { ...CLEAN_WATER, load: clamp01(load) };
+}
+
+/**
+ * Las reservas de una persona, aparte del `Body`. Sin fila, las reservas están llenas: solo se
+ * guardan mientras alguna está por debajo de lo lleno.
+ */
+export interface PersonNutrition {
+  readonly stores: NutrientStores;
+  /** Hasta cuándo está calculado. */
+  readonly at: number;
+}
+export const NUTRITION = table<PersonNutrition>("body.nutrition");
+
+const Need = z.number().min(0).max(1000);
+const PerNutrient = z.strictObject({
+  protein: Need.optional(),
+  vitaminC: Need.optional(),
+  iodine: Need.optional(),
+  iron: Need.optional(),
+  vitaminD: Need.optional(),
+});
+
+/** Perfil de nutrientes por kilo de un alimento (el `id` es el del `FoodDef`). */
+export const NutrientProfileDef = z.strictObject({
+  id: contentId,
+  perKg: PerNutrient,
+});
+export type NutrientProfileDef = z.infer<typeof NutrientProfileDef>;
+export const NUTRIENT_PROFILES = defineContent("nutrient-profiles", NutrientProfileDef, (p) => [
+  { kind: "foods", id: p.id, at: "id" },
+]);
+
+/** Una dieta de referencia: qué come por día quien vive de ella, y lo que no es comida (el sol). */
+export const DietDef = z.strictObject({
+  id: contentId,
+  name: z.string().min(1),
+  items: z.array(z.strictObject({ food: contentId, kg: z.number().positive().max(5) })).min(1),
+  background: PerNutrient.default({}),
+});
+export type DietDef = z.infer<typeof DietDef>;
+export const DIETS = defineContent("diets", DietDef, (d) =>
+  d.items.map((it, n) => ({ kind: "foods", id: it.food, at: `items.${n}.food` })),
+);
+
+/** El aporte diario de una dieta con los perfiles dados (alimento sin perfil aporta nada). */
+export function dietDayIntake(
+  diet: DietDef,
+  profiles: ReadonlyMap<string, NutrientProfile>,
+): Record<Nutrient, number> {
+  const t = dietIntake(
+    diet.items.map((it) => ({ kg: it.kg, profile: profiles.get(it.food) ?? {} })),
+  );
+  for (const n of BODY_NUTRIENTS) t[n] += diet.background[n] ?? 0;
+  return t;
 }

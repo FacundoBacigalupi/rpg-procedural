@@ -33,6 +33,8 @@ import {
   tryInfect,
   WELL_TAINT,
   WORK,
+  waterDose,
+  wellWater,
 } from "../../sim/index.ts";
 
 export const EXPOSURE_PROCESS = "life.exposure";
@@ -250,7 +252,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
             const shared: Shared = {
               ...HOUSEHOLD_DAY,
               hours: HOUSEHOLD_DAY.hours * days,
-              waterDirt: water?.load ?? 0,
+              waterDirt: water ? waterDose(wellWater(water.load)) : 0,
             };
             const dose = exposureDose(def, src?.shed ?? (water ? 1 : 0), shared);
             if (dose <= 0) continue;
