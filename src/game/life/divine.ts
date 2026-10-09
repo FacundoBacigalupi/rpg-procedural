@@ -6,18 +6,23 @@
 // le llega al cliente ya contada (`transmit`: se deforma, pierde crédito según la fama del
 // adivino), y queda como evento `divination.reading` con la consulta de causa.
 
-import type {
-  AgentId,
-  Event,
-  EventId,
-  PlaceRef,
-  PlanetClock,
-  Rng,
-  Tick,
+import {
+  type AgentId,
+  type Event,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  type PlaceRef,
+  type PlanetClock,
+  type Rng,
+  type Tick,
 } from "../../core/index.ts";
 import {
+  BODY_STATE,
   type Concern,
+  type ConcernWords,
   clampTemper,
+  concernIn,
   credulity,
   DIVINER_ROLE,
   type DivinationMethodDef,
@@ -26,11 +31,14 @@ import {
   ENTITY,
   type EventDraft,
   INNATE,
+  isMoney,
+  MENTAL,
   PERSON,
   PROPHECY_BELIEFS,
   type ProcessDef,
   type ProphecyBeliefs,
   pickDiviners,
+  type ReadonlyLedger,
   type ReadonlyWorldTruth,
   receive,
   renown,
@@ -53,10 +61,16 @@ export interface ConsultData {
   readonly asked?: Concern;
   /** -1..1: lo que quiere oír (+ lo bueno); sin dato, nada. */
   readonly want?: number;
+  /** 0-1 por preocupación: lo que el adivino le ve encima (cojera, bolsa flaca, nervios). */
+  readonly signals?: Readonly<Partial<Record<Concern, number>>>;
+  /** Lo que dejó en la mano del adivino (el personaje paga; el pago ya pasó por el ledger). */
+  readonly paid?: { readonly unit: string; readonly amount: number };
 }
 
 export interface DivineOptions {
   readonly methods: readonly DivinationMethodDef[];
+  /** Con qué palabras se nombra cada preocupación, para leer lo que el personaje pregunta. */
+  readonly concerns: readonly ConcernWords[];
   readonly clock: PlanetClock;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
@@ -175,7 +189,8 @@ export function consultDiviner(
   if (!method) return null;
   const r = rng.fork("consult", diviner, client, cause);
   const want = Math.max(-1, Math.min(1, data.want ?? 0));
-  const cues = data.asked ? { signals: {}, asked: data.asked } : { signals: {} };
+  const signals = data.signals ?? {};
+  const cues = data.asked ? { signals, asked: data.asked } : { signals };
   const c = streetConsult(method, role, client, cues, want, r);
   // Quien dice una profecía de calle la cree a medias: más cuanto menos halaga.
   const conviction = 0.45 + 0.3 * (1 - role.flattery);
@@ -214,7 +229,81 @@ export function consultDiviner(
   return { changes, events };
 }
 
-function consultOf(e: Event): { client: AgentId; diviner: AgentId; data: ConsultData } | null {
+/** Monedas por debajo de las cuales la bolsa se ve flaca. */
+export const THIN_PURSE_COINS = 20;
+/** Gravedad de herida que ya se nota al caminar (cojera, brazo en cabestrillo). */
+export const LIMP_FROM = 0.3;
+
+/**
+ * Lo que un adivino le ve a alguien a simple vista (divination §4): cojera o vendas (salud), la
+ * bolsa flaca (plata), los nervios de quien carga trauma o culpa (miedo). Es lo que se ve, no lo
+ * que hay: una herida por dentro o una deuda no se ven. El duelo y la familia quedan para cuando
+ * la mente tenga duelo con causa.
+ */
+export function visibleSignals(
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger | undefined,
+  who: AgentId,
+): Partial<Record<Concern, number>> {
+  const out: Partial<Record<Concern, number>> = {};
+  const body = truth.get(BODY_STATE, who);
+  const hurt = Math.max(
+    0,
+    ...(body?.wounds ?? [])
+      .filter((w) => w.stage !== "healed" && w.internal === 0)
+      .map((w) => (w.fracture ? Math.max(w.severity, 0.6) : w.severity)),
+  );
+  if (hurt >= LIMP_FROM) out["health"] = Math.min(1, hurt);
+  if (ledger) {
+    const coins = ledger
+      .holdings(holderAccount(who as unknown as HolderRef))
+      .filter((h) => isMoney(h.unit))
+      .reduce((s, h) => s + h.amount, 0);
+    if (coins < THIN_PURSE_COINS) out["money"] = 1 - coins / THIN_PURSE_COINS;
+  }
+  const nerves = Math.max(0, ...(truth.get(MENTAL, who)?.conditions ?? []).map((c) => c.severity));
+  if (nerves > 0) out["fear"] = Math.min(1, nerves);
+  return out;
+}
+
+/** Lo que dejó dicho un `action.consult` del personaje (resolve): a quién, qué y cuánto pagó. */
+function playedConsult(
+  e: Event,
+  o: DivineOptions,
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger | undefined,
+): { client: AgentId; diviner: AgentId; data: ConsultData } | null {
+  const [client, diviner] = e.actors as AgentId[];
+  const eff = (
+    e.data as {
+      effect?: {
+        kind?: string;
+        delivered?: boolean;
+        asked?: string | null;
+        paid?: { unit: string; amount: number } | null;
+      };
+    } | null
+  )?.effect;
+  if (!client || !diviner || eff?.kind !== "consult" || !eff.delivered) return null;
+  const asked = concernIn(eff.asked ?? null, o.concerns);
+  return {
+    client,
+    diviner,
+    data: {
+      ...(asked ? { asked } : {}),
+      signals: visibleSignals(truth, ledger, client),
+      ...(eff.paid ? { paid: eff.paid } : {}),
+    },
+  };
+}
+
+function consultOf(
+  e: Event,
+  o: DivineOptions,
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger | undefined,
+): { client: AgentId; diviner: AgentId; data: ConsultData } | null {
+  if (e.kind === "action.consult") return playedConsult(e, o, truth, ledger);
   if (e.kind !== CONSULT_EVENT) return null;
   const [client, diviner] = e.actors as AgentId[];
   if (!client || !diviner) return null;
@@ -229,7 +318,14 @@ export function consultProcess(o: DivineOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [DIVINER_ROLE.name, PROPHECY_BELIEFS.name, INNATE.name, ENTITY.name],
+    reads: [
+      DIVINER_ROLE.name,
+      PROPHECY_BELIEFS.name,
+      INNATE.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      MENTAL.name,
+    ],
     writes: [PROPHECY_BELIEFS.name],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -238,7 +334,7 @@ export function consultProcess(o: DivineOptions): ProcessDef {
       const now = new Map<AgentId, ProphecyBeliefs>();
       const beliefs = (who: AgentId) => now.get(who) ?? ctx.truth.get(PROPHECY_BELIEFS, who);
       for (const e of ctx.recent) {
-        const q = consultOf(e);
+        const q = consultOf(e, o, ctx.truth, ctx.ledger);
         if (!q) continue;
         const out = consultDiviner(
           ctx.truth,

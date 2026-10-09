@@ -16,6 +16,7 @@ import {
   type BodyPlanDef,
   type BondDef,
   bodyProcess,
+  type ConcernWords,
   type DimensionDef,
   type DivinationMethodDef,
   type FoodDef,
@@ -89,6 +90,7 @@ export interface LifeWorld {
   readonly relationBonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
   readonly divinations: readonly DivinationMethodDef[];
+  readonly concerns: readonly ConcernWords[];
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -221,11 +223,13 @@ export function lifeWorld(
         observeProcess({ clock: parts.clock, map: parts.map }),
         divinersProcess({
           methods: parts.divinations,
+          concerns: parts.concerns,
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),
         consultProcess({
           methods: parts.divinations,
+          concerns: parts.concerns,
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),

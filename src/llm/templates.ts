@@ -280,6 +280,17 @@ function outcome(
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });
       break;
+    case "consult":
+      if (e.delivered)
+        say(e.with === undefined ? "outcome.consult.sat_anyone" : "outcome.consult.sat", {
+          who: ref(e.with),
+          coins: `${e.paid} ${e.paid === 1 ? "moneda" : "monedas"}`,
+        });
+      else
+        say(e.with === undefined ? "outcome.consult.left_anyone" : "outcome.consult.left", {
+          who: ref(e.with),
+        });
+      break;
   }
   const cue = o.cues[0];
   if (o.believed !== "success" && cue !== undefined) say(`cue.${cue}`);

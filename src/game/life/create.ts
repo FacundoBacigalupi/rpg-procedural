@@ -33,6 +33,7 @@ import {
   CULTURE_TRAITS,
   CULTURES,
   DEMOGRAPHY,
+  DIVINATION_CONCERNS,
   DIVINATION_METHODS,
   DOCTRINES,
   dayOf,
@@ -257,6 +258,7 @@ export function resumeParts(
   | "relationBonds"
   | "habits"
   | "divinations"
+  | "concerns"
 > {
   return {
     seed,
@@ -279,6 +281,7 @@ export function resumeParts(
     relationBonds: content.all(RELATION_BONDS),
     habits: content.all(HABITS_CONTENT),
     divinations: content.all(DIVINATION_METHODS),
+    concerns: content.all(DIVINATION_CONCERNS),
   };
 }
 
@@ -568,6 +571,7 @@ export function createLife(
       relationBonds: content.all(RELATION_BONDS),
       habits: content.all(HABITS_CONTENT),
       divinations: content.all(DIVINATION_METHODS),
+      concerns: content.all(DIVINATION_CONCERNS),
     },
     pop.player,
     terrain.village,

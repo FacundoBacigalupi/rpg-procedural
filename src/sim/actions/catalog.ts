@@ -80,6 +80,7 @@ export const RESOLVERS = [
   "cook",
   "drink",
   "tend",
+  "consult",
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];
 

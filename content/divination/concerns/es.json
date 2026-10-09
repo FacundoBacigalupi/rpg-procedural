@@ -1,0 +1,37 @@
+[
+  {
+    "id": "love",
+    "words": [
+      "amor",
+      "amo",
+      "enamor",
+      "casam",
+      "boda",
+      "novi",
+      "espos",
+      "marid",
+      "pareja",
+      "cortej"
+    ]
+  },
+  {
+    "id": "money",
+    "words": ["plata", "dinero", "moned", "deuda", "cosecha", "negoci", "rique", "pobre", "trabaj"]
+  },
+  {
+    "id": "health",
+    "words": ["salud", "enferm", "herid", "dolor", "fiebre", "cura", "sano", "morir", "muerte"]
+  },
+  {
+    "id": "family",
+    "words": ["famili", "hij", "padre", "madre", "herman", "abuel", "parient", "naci", "embaraz"]
+  },
+  {
+    "id": "fear",
+    "words": ["miedo", "temo", "peligro", "amenaz", "maldic", "sueno", "pesadill", "asust"]
+  },
+  {
+    "id": "ambition",
+    "words": ["futuro", "destino", "poder", "fama", "gloria", "llegar", "lograr", "ascen"]
+  }
+]

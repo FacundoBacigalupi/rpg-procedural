@@ -43,6 +43,40 @@ export const DIVINATION_METHODS = defineContent("divination", DivinationMethodDe
   { kind: "cultures", id: m.culture, at: "culture" },
 ]);
 
+/** Con qué palabras de la lengua se nombra cada preocupación (raíces: «amor» cubre «amores»). */
+export const ConcernWords = z.strictObject({
+  id: z.enum(CONCERNS),
+  words: z.array(z.string().trim().min(1)).min(1),
+});
+export type ConcernWords = z.infer<typeof ConcernWords>;
+export const DIVINATION_CONCERNS = defineContent("divination/concerns", ConcernWords);
+
+const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+/**
+ * La preocupación que nombra lo que el cliente pregunta: la que más palabras suyas aparecen en
+ * el texto (empate: la primera en orden de `CONCERNS`). Sin ninguna, nada: pregunta sin tema.
+ */
+export function concernIn(text: string | null, defs: readonly ConcernWords[]): Concern | undefined {
+  if (text === null) return undefined;
+  const tokens = plain(text)
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 0);
+  let best: Concern | undefined;
+  let top = 0;
+  for (const c of CONCERNS) {
+    const def = defs.find((d) => d.id === c);
+    if (!def) continue;
+    const roots = def.words.map(plain);
+    const hits = tokens.filter((t) => roots.some((r) => t.startsWith(r))).length;
+    if (hits > top) {
+      top = hits;
+      best = c;
+    }
+  }
+  return best;
+}
+
 /** Lo que salió: el método y los símbolos concretos (de su vocabulario). */
 export interface Omen {
   readonly method: string;
