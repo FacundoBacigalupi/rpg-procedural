@@ -111,6 +111,19 @@ export interface DueView {
   readonly sure: boolean;
 }
 /** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
+/**
+ * Una falta de etiqueta en la que el personaje fue parte (social §4): la que recibió o la que
+ * cometió y notó por la reacción del otro. Solo lo que se ve: la norma rota y qué hizo el ofendido.
+ */
+export interface OffenseView {
+  readonly role: "received" | "caused";
+  /** Cómo llama al otro (nombre o relación). */
+  readonly who: string;
+  /** La norma rota (id de la forma de la etiqueta: tuteo, saludo, reverencia...). */
+  readonly norm: string;
+  readonly response: "rebuke" | "punish" | "ignore";
+}
+
 export type SpecialMode = "montage" | "dream" | "aftermath";
 
 /**
@@ -337,6 +350,7 @@ export interface PlayerView {
   readonly tastes: readonly TasteView[];
   /** Una deuda o promesa por vencer o vencida que el personaje recuerda ahora; vacío casi siempre. */
   readonly dues: readonly DueView[];
+  readonly offenses: readonly OffenseView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
   readonly mode?: SpecialMode;
   /** Con el modo `montage`: lo que vivió en el salto. */
@@ -371,6 +385,7 @@ export interface ViewInput {
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
+  readonly offenses?: readonly OffenseView[];
   readonly mode?: SpecialMode;
   readonly stretch?: StretchView;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
@@ -540,6 +555,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     thoughts,
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
     dues: (input.dues ?? []).map((d) => ({ ...d })),
+    offenses: (input.offenses ?? []).map((o) => ({ ...o })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined
       ? { stretch: { ...input.stretch, did: input.stretch.did.map((d) => ({ ...d })) } }

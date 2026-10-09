@@ -234,7 +234,9 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
         act: z
           .strictObject({
             kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
-            about: z.strictObject({ text: DraftText }).optional(),
+            about: z
+              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
+              .optional(),
             claim: z.enum(["dead", "alive"]).optional(),
             what: DraftText.optional(),
             times: z.number().positive().max(100).optional(),

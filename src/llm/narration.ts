@@ -193,6 +193,7 @@ export function narratorUserMessage(request: NarrationRequest): string {
     ...(v.tastes.length > 0 ? { tastes: v.tastes } : {}),
     ...(v.dues.length > 0 ? { dues: v.dues } : {}),
     ...(v.stretch !== undefined ? { stretch: v.stretch } : {}),
+    ...(v.offenses.length > 0 ? { offenses: v.offenses } : {}),
     percepts: v.percepts,
     labels: v.labels.map(labelHint),
     lexicon: v.lexicon,
