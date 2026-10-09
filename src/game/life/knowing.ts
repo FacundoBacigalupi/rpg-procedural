@@ -35,6 +35,8 @@ import {
   skyLight,
   vigilantAttention,
 } from "../../sim/index.ts";
+import { impressionEvidence } from "./impressions.ts";
+import { PERCEPTS } from "./perceive.ts";
 import { learnReads, PURPOSE_READS } from "./reading.ts";
 import { playerObserver } from "./witness.ts";
 
@@ -74,6 +76,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       BELIEFS.name,
       MENTAL.name,
       PURPOSE_READS.name,
+      PERCEPTS.name,
     ],
     writes: [BELIEFS.name],
     run(ctx) {
@@ -184,10 +187,25 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
               source,
             });
             const seenAt = learn(beliefsOf(pc.observer), evidence("at", at), ctx.now);
-            staged.set(pc.observer, learn(seenAt, evidence("alive", true), ctx.now));
+            let next = learn(seenAt, evidence("alive", true), ctx.now);
+            // Cómo se lo vio (figura y ropa) también queda: la vista lo lee de ahí.
+            for (const imp of impressionEvidence(subject, pc)) next = learn(next, imp, ctx.now);
+            staged.set(pc.observer, next);
           }
         }
       }
+      // Lo que vio hacer a alguien que reconoció (los percepts de acción de la última hora)
+      // queda como impresión: qué hacía, y cómo se lo vio.
+      const lastHour = ctx.now - 3_600;
+      let acted = beliefsOf(o.player);
+      for (const pc of truth.get(PERCEPTS, o.player)?.recent ?? []) {
+        const who = pc.fields.identity?.value;
+        if (pc.tick <= lastHour || pc.fields.action === undefined) continue;
+        if (pc.detail !== "identified" || typeof who !== "string") continue;
+        for (const imp of impressionEvidence(who as AgentId, pc))
+          acted = learn(acted, imp, ctx.now);
+      }
+      if (acted !== beliefsOf(o.player)) staged.set(o.player, acted);
       // Lo que el personaje leyó del porqué ajeno se vuelve creencia sobre el actor.
       const reads = truth.get(PURPOSE_READS, o.player)?.recent ?? [];
       if (reads.length > 0) {
