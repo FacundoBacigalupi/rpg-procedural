@@ -66,6 +66,20 @@ export interface TasteView {
   readonly name: string;
   readonly stance: TasteStance;
 }
+/**
+ * Una deuda o promesa del libro del personaje que vale la pena recordar ahora (contracts §14): solo
+ * lo que cree, sin números de la verdad. `what` ya viene dicho («unas monedas», «un favor»).
+ */
+export interface DueView {
+  readonly direction: "i-owe" | "owed-to-me";
+  /** Cómo llama a la otra parte (nombre o relación); el narrador no inventa otro. */
+  readonly who: string;
+  readonly what: string;
+  /** Ya pasó el plazo, o falta poco. */
+  readonly state: "overdue" | "soon";
+  /** Si no está seguro de lo que recuerda, el narrador lo dice borroso. */
+  readonly sure: boolean;
+}
 /** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
 export type SpecialMode = "montage" | "dream" | "aftermath";
 
@@ -270,6 +284,8 @@ export interface PlayerView {
   readonly thoughts: readonly ThoughtView[];
   /** Gustos propios que vale la pena decir ahora (`mentionableTastes`); vacío casi siempre. */
   readonly tastes: readonly TasteView[];
+  /** Una deuda o promesa por vencer o vencida que el personaje recuerda ahora; vacío casi siempre. */
+  readonly dues: readonly DueView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
   readonly mode?: SpecialMode;
   readonly labels: readonly LocalLabel[];
@@ -301,6 +317,7 @@ export interface ViewInput {
   readonly self?: readonly SelfCue[];
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
+  readonly dues?: readonly DueView[];
   readonly mode?: SpecialMode;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
@@ -448,6 +465,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     outcomes,
     thoughts,
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
+    dues: (input.dues ?? []).map((d) => ({ ...d })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     labels,
     lexicon: [...words].sort(compareStrings),

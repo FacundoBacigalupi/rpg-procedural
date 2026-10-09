@@ -230,15 +230,22 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             move(creditor, debtor, e, repaidDeltas("creditor"));
             move(debtor, creditor, e, repaidDeltas("debtor"));
           }
-        } else if (e.kind === "law.default" || e.kind === "contract.pledge_broken") {
+        } else if (
+          e.kind === "law.default" ||
+          e.kind === "contract.pledge_broken" ||
+          e.kind === "contract.pledge_disputed"
+        ) {
           const [debtor, creditor] = e.actors as [AgentId | undefined, AgentId | undefined];
           if (debtor && creditor) {
             const empty = { schemas: {}, formative: [], originEventId: e.id };
+            // Una promesa rota pega según lo que se jugaba: de la mitad a una vez y media un default.
+            const stake = (e.data as { weight?: number } | null)?.weight;
+            const scale = stake === undefined ? 1 : 0.5 + stake;
             move(
               creditor,
               debtor,
               e,
-              defaultDeltas("creditor", truth.get(MIND, creditor) ?? empty),
+              defaultDeltas("creditor", truth.get(MIND, creditor) ?? empty, scale),
             );
             move(debtor, creditor, e, defaultDeltas("debtor", empty));
           }

@@ -154,6 +154,10 @@ export function renderView(
     if (t.hazy === true) say("thought.hazy");
   }
   for (const t of view.tastes) say(`taste.${t.stance}`, { what: t.name });
+  for (const d of view.dues) {
+    say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
+    if (!d.sure) say("due.unsure");
+  }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
   return out.join(" ");
 }

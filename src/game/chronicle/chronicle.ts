@@ -15,6 +15,7 @@ const TURNING_KINDS: ReadonlySet<string> = new Set([
   "body.collapsed",
   "body.wound_infected",
   "law.default",
+  "contract.pledge_broken",
 ]);
 
 /** Cuántos capítulos como máximo y cuánto separa dos cortes. */

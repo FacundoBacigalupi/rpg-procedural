@@ -496,6 +496,36 @@
   { "id": "taste.dislikes", "lines": ["No te gusta {what}.", "{what}: no es lo tuyo."] },
   { "id": "taste.loathes", "lines": ["No soportás {what}.", "Odiás {what}."] },
 
+  {
+    "id": "due.owe.overdue",
+    "lines": [
+      "Le debés {what} a {who} y ya se te pasó el plazo.",
+      "Tenés pendiente {what} para {who}: ya venció."
+    ]
+  },
+  {
+    "id": "due.owe.soon",
+    "lines": [
+      "Pronto vence {what} que le debés a {who}.",
+      "Se acerca el día de darle {what} a {who}."
+    ]
+  },
+  {
+    "id": "due.owed.overdue",
+    "lines": [
+      "{who} te debe {what} y ya venció el plazo.",
+      "{who} se atrasó con {what} que te prometió."
+    ]
+  },
+  {
+    "id": "due.owed.soon",
+    "lines": [
+      "Pronto {who} tendría que darte {what}.",
+      "Se acerca el día en que {who} te debe {what}."
+    ]
+  },
+  { "id": "due.unsure", "lines": ["No lo recordás bien.", "Los detalles se te borronean."] },
+
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },
   { "id": "good.shellfish", "lines": ["almejas"] },

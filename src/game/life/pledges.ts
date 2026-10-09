@@ -22,10 +22,12 @@ import {
   PLEDGE_BOOK,
   type Pledge,
   type PledgeBook,
+  type PledgeTerm,
   type ProcessDef,
   pledgeLeft,
   type ReadonlyWorldTruth,
   remember,
+  resolvePledge,
   type StateChange,
   setComponent,
   weightOfGive,
@@ -35,6 +37,20 @@ import { paidIn } from "./credit.ts";
 
 export const PLEDGE_PROCESS = "life.pledge";
 export const PLEDGE_KEPT_EVENT = "contract.pledge_kept";
+export const PLEDGE_BROKEN_EVENT = "contract.pledge_broken";
+export const PLEDGE_DISPUTED_EVENT = "contract.pledge_disputed";
+
+/** Cuánto más de lo prometido tiene que creer el destinatario para reclamar (vaguedad no basta). */
+export const DISPUTE_MARGIN = 1.1;
+
+/**
+ * Los gramos que el destinatario cree que le debían si es claramente más de lo prometido de
+ * verdad (contracts §7, falsos incumplimientos); null si coinciden o no lo recuerda como dar.
+ */
+export function believedOwed(believed: PledgeTerm | undefined, promised: number): number | null {
+  if (!believed || believed.kind !== "give") return null;
+  return believed.grams > promised * DISPUTE_MARGIN ? believed.grams : null;
+}
 
 export interface PledgeOptions {
   readonly goods: readonly GoodDef[];
@@ -57,6 +73,38 @@ export function promisedIn(e: Event): {
   const { good, grams } = eff.pledge;
   if (good === null || grams === null || !(grams > 0)) return null;
   return { promisor, promisee, good, grams };
+}
+
+/** ¿Este evento es el promitente haciendo el favor prometido al destinatario? (verbo = `what`). */
+export function favorDoneIn(e: Event, p: Pledge): boolean {
+  if (p.term.kind !== "favor" || !e.kind.startsWith("action.")) return false;
+  const verb = (e.data as { verb?: string } | null)?.verb;
+  const outcome = e.outcome;
+  return (
+    verb === p.term.what &&
+    e.actors[0] === p.promisor &&
+    e.actors.includes(p.promisee) &&
+    (outcome === undefined || outcome === "success")
+  );
+}
+
+/**
+ * ¿Este evento es el promitente soltando, ante el personaje, el secreto que prometió callar? Es
+ * la respuesta a una pregunta (`effect.keep`) que lo dijo entero o a medias, a alguien que no es
+ * el destinatario.
+ */
+export function leakedIn(e: Event, p: Pledge): boolean {
+  if (p.term.kind !== "silence" || e.kind !== "action.speak") return false;
+  const [listener, speaker] = e.actors as AgentId[];
+  const keep = (e.data as { effect?: { keep?: { about?: string; outcome?: string } } } | null)
+    ?.effect?.keep;
+  return (
+    speaker === p.promisor &&
+    listener !== p.promisee &&
+    keep !== undefined &&
+    String(keep.about) === p.term.about &&
+    (keep.outcome === "revealed" || keep.outcome === "partial")
+  );
 }
 
 function alive(truth: ReadonlyWorldTruth, id: AgentId): boolean {
@@ -95,6 +143,38 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
       for (const e of ctx.recent) {
         const p = promisedIn(e);
         if (!p) {
+          // Un favor hecho o un secreto soltado cierra la promesa de favor o de callar.
+          let closed = false;
+          for (const [id, cur] of openRows()) {
+            const done = favorDoneIn(e, cur);
+            if (!done && !leakedIn(e, cur)) continue;
+            closed = true;
+            const status = done ? "kept" : "broken";
+            live.set(id, resolvePledge(cur, status, e.id));
+            for (const who of [cur.promisor, cur.promisee]) {
+              const book = learnOutcome(bookOf(who), id, status, ctx.now);
+              if (!book) continue;
+              books.set(who, book);
+              changes.push(setComponent(PLEDGE_BOOK, who, book));
+            }
+            events.push({
+              kind: done ? PLEDGE_KEPT_EVENT : PLEDGE_BROKEN_EVENT,
+              actors: [cur.promisor, cur.promisee],
+              place: o.placeOf(truth, cur.promisor),
+              data: done
+                ? { pledge: id, status, by: "favor", what: (cur.term as { what: string }).what }
+                : {
+                    pledge: id,
+                    status,
+                    why: "leak",
+                    weight: cur.weight,
+                    about: (cur.term as { about: string }).about,
+                  },
+              emissions: {},
+              causes: [{ kind: "event", event: e.id }],
+            });
+          }
+          if (closed) continue;
           // Un `give` del promitente al destinatario cubre (de a poco) lo prometido, como `paidIn`.
           const paid = paidIn(e);
           if (!paid) continue;
@@ -116,7 +196,12 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
             const next = deliverPledge(cur, take, e.id);
             live.set(id, next);
             if (next.status !== "kept") continue;
+            // Si el destinatario entendió que le debían más, no da la promesa por cumplida: la
+            // reclama (`disputes`) y el libro suyo sigue abierto.
+            const believed = bookOf(cur.promisee)?.items.find((b) => b.pledge === id)?.term;
+            const claimed = believedOwed(believed, t.grams);
             for (const who of [cur.promisor, cur.promisee]) {
+              if (claimed !== null && who === cur.promisee) continue;
               const book = learnOutcome(bookOf(who), id, "kept", ctx.now);
               if (!book) continue;
               books.set(who, book);
@@ -130,6 +215,16 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
               emissions: {},
               causes: [{ kind: "event", event: e.id }],
             });
+            if (claimed !== null) {
+              events.push({
+                kind: PLEDGE_DISPUTED_EVENT,
+                actors: [cur.promisor, cur.promisee],
+                place: o.placeOf(truth, cur.promisor),
+                data: { pledge: id, promised: t.grams, believed: claimed, unit: t.unit, weight: 0 },
+                emissions: { sound: 0.2 },
+                causes: [{ kind: "event", event: e.id }],
+              });
+            }
           }
           continue;
         }
