@@ -41,6 +41,19 @@ const FELT: Readonly<Record<string, string>> = {
   dependency: "dependencia",
 };
 
+const GUILT_DEED: Readonly<Record<string, string>> = {
+  theft: "Lo que le sacaste a",
+  assault: "Lo que le hiciste a",
+  default: "Lo que le debías a",
+};
+
+const GUILT_STANCE: Readonly<Record<string, string>> = {
+  avoid: "preferiste no cruzártelo",
+  repair: "quisiste repararlo",
+  confess: "quisiste confesarlo",
+  deflect: "te diste excusas y buscaste otro culpable",
+};
+
 function stepOf(e: Event): string {
   return STEP[e.kind] ?? `lo que hizo (${e.kind.slice(e.kind.indexOf(".") + 1)})`;
 }
@@ -84,6 +97,17 @@ export function renderChronicle(
       const felt = p.feltFor.map((d) => FELT[d] ?? d);
       const how = felt.length > 0 ? ` (${felt.join(", ")})` : "";
       out.push(`  ${nameOf(p.who)}${how}${p.alive ? "" : ", que ya había muerto"}`);
+    }
+  }
+
+  if (c.guilt.length > 0) {
+    out.push("", "Lo que cargaste:");
+    for (const g of c.guilt) {
+      const weight =
+        g.guilt < 0.35 ? "un peso leve" : g.guilt < 0.7 ? "un peso grande" : "un peso enorme";
+      out.push(
+        `  ${GUILT_DEED[g.kind] ?? "Lo que hiciste"} ${nameOf(g.victim)}: ${weight}; ${GUILT_STANCE[g.response]}.`,
+      );
     }
   }
 

@@ -5,7 +5,16 @@
 // fases posteriores.
 
 import { type AgentId, type Event, type EventId, parseId, type Tick } from "../../core/index.ts";
-import { BODY_STATE, callName, type DeathCause, PERSON, PERSON_NAME } from "../../sim/index.ts";
+import {
+  AMENDS,
+  BODY_STATE,
+  callName,
+  type DeathCause,
+  type GuiltResponse,
+  OWN_DEEDS,
+  PERSON,
+  PERSON_NAME,
+} from "../../sim/index.ts";
 import type { LifeWorld } from "../life/index.ts";
 import { type ImportantPerson, importantPeople, type NeverKnewEntry, neverKnew } from "./people.ts";
 
@@ -49,6 +58,17 @@ export interface ChronicleChapter {
   readonly turningPoints: readonly EventId[];
 }
 
+/** Una culpa que el personaje cargó, con lo que decidió hacer con ella (`AMENDS`). */
+export interface GuiltEntry {
+  /** El hecho propio que la causó. */
+  readonly deed: EventId;
+  readonly kind: string;
+  readonly victim: AgentId;
+  readonly response: GuiltResponse;
+  /** 0-1: cuánto pesaba cuando lo decidió. */
+  readonly guilt: number;
+}
+
 export interface Chronicle {
   readonly subject: AgentId;
   readonly name: string;
@@ -62,6 +82,8 @@ export interface Chronicle {
   readonly people: readonly ImportantPerson[];
   /** Lo que el personaje creyó mal o nunca vio, contra la verdad (§5). */
   readonly neverKnew: readonly NeverKnewEntry[];
+  /** Lo que cargó en la conciencia y qué hizo con ello, lo más pesado primero. */
+  readonly guilt: readonly GuiltEntry[];
   /** Todo lo que la crónica afirma apunta a estos eventos. */
   readonly sources: readonly EventId[];
 }
@@ -90,9 +112,11 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
   const chapters = chaptersOf(w, me, mine, entered, died);
   const people = importantPeople(w, me, died.tick);
   const unknown = neverKnew(w, me, people, died.tick);
+  const guilt = guiltOf(w, me);
   const cited = new Set<EventId>([
     died.id,
     ...chain,
+    ...guilt.map((g) => g.deed),
     ...chapters.flatMap((c) => c.turningPoints),
     ...people.flatMap((p) => p.memories),
     ...unknown.map((u) => u.event),
@@ -109,8 +133,27 @@ export function buildChronicle(w: LifeWorld, entered: Tick, marks: ChronicleMark
     chapters,
     people,
     neverKnew: unknown,
+    guilt,
     sources: [...cited].sort(byNumber),
   };
+}
+
+/** Las culpas con postura decidida de los hechos propios de `me`, la más pesada primero. */
+function guiltOf(w: LifeWorld, me: AgentId): GuiltEntry[] {
+  const amends = w.truth.get(AMENDS, me);
+  const out: GuiltEntry[] = [];
+  for (const d of w.truth.get(OWN_DEEDS, me)?.deeds ?? []) {
+    const s = amends?.byDeed[d.event];
+    if (!s || s.response === "none") continue;
+    out.push({
+      deed: d.event,
+      kind: d.kind,
+      victim: d.victim,
+      response: s.response,
+      guilt: s.guilt,
+    });
+  }
+  return out.sort((a, b) => b.guilt - a.guilt || byNumber(a.deed, b.deed));
 }
 
 function chaptersOf(
