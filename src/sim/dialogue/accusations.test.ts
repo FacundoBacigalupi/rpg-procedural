@@ -95,8 +95,15 @@ describe("acusar en el diálogo", () => {
     expect(understand("Te voy a pegar", lex).kind).toBe("threaten");
   });
 
-  it("quien oye un hecho respaldado de alguien confiable cree y guarda el hecho como contado", () => {
-    const r = reply("Carla me robó, lo vi", { as: "hearer", accused: carla, cited, view });
+  it("quien oye un hecho respaldado de alguien confiable lo sopesa, y si ya lo sospechaba cree y guarda el hecho como contado", () => {
+    const plain = reply("Carla me robó, lo vi", { as: "hearer", accused: carla, cited, view });
+    expect(plain.line).toBe("accuse.weigh");
+    const r = reply("Carla me robó, lo vi", {
+      as: "hearer",
+      accused: carla,
+      cited,
+      view: { ...view, ownKnowledge: cited },
+    });
     expect(r.line).toBe("accuse.believe");
     expect(r.accusation?.unbacked).toBe(false);
     expect(r.accusation?.heard?.learned).toMatchObject({
