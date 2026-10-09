@@ -3,6 +3,7 @@
 
 import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
 import {
+  type AboutPanel,
   type BookLine,
   type BookPanel,
   type CharacterPanel,
@@ -176,6 +177,41 @@ export function renderBook(p: BookPanel): string {
       );
     }
   }
+  return lines.join("\n");
+}
+
+const ABOUT_SURETY: Readonly<Record<AboutPanel["aliveSurety"], string>> = {
+  sure: "",
+  unsure: " (no del todo seguro)",
+  vague: " (vagamente)",
+};
+
+/** «Qué sé de X»: lo que cree de esa persona o cosa y lo que le toca del libro. */
+export function renderAbout(p: AboutPanel): string {
+  const lines: string[] = [];
+  if (p.kind === "person") {
+    if (p.alive === "dead") lines.push(`Creés que ${p.name} murió${ABOUT_SURETY[p.aliveSurety]}.`);
+    else if (p.alive === "alive")
+      lines.push(`Creés que ${p.name} está vivo${ABOUT_SURETY[p.aliveSurety]}.`);
+    if (p.where.state === "here") lines.push(`Lo tenés a la vista, acá.`);
+    else if (p.where.state === "elsewhere") {
+      const d = p.where.daysAgo;
+      const when = d === 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`;
+      lines.push(
+        `La última vez que lo viste no estaba acá, fue ${when}${ABOUT_SURETY[p.where.surety]}.`,
+      );
+    } else lines.push("No sabés dónde anda.");
+  } else if (p.where.state === "here") lines.push(`Estás en ${p.name}.`);
+  else lines.push(`Conocés ${p.name}, pero no tenés más para decir.`);
+  const owe = p.book.filter((l) => l.direction === "i-owe");
+  const owed = p.book.filter((l) => l.direction === "owed-to-me");
+  const entry = (l: BookLine) => {
+    const how = l.kind === "debt" ? "fiado" : "palabra dada";
+    const late = l.defaulted ? "; ya está en mora" : "";
+    return `  ${bookWhat(l.what)}, ${dueText(l.dueInDays)} (${how}${late})${SURETY[l.sure]}`;
+  };
+  if (owe.length > 0) lines.push("Le debés:", ...owe.map(entry));
+  if (owed.length > 0) lines.push("Te debe:", ...owed.map(entry));
   return lines.join("\n");
 }
 
