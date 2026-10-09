@@ -46,6 +46,7 @@ import {
   type SceneMark,
   type SelfCue,
   type TasteView,
+  type ThoughtInput,
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
@@ -159,6 +160,8 @@ export interface PlayerViewOptions {
   readonly heardSince?: Tick;
   /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
+  /** Lo que el jugador pidió pensar (`pensar sobre X`): entra como pensamientos de la vista. */
+  readonly thinking?: readonly ThoughtInput[];
 }
 
 /** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
@@ -306,9 +309,10 @@ export function playerView(
           }),
           known: new Set<string>(acq.keys()),
         });
+  const thoughtList = [...(options.thinking ?? []), ...(inner?.thoughts ?? [])];
   return buildPlayerView({
     player: w.player,
-    ...(inner && inner.thoughts.length > 0 ? { thoughts: inner.thoughts } : {}),
+    ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
     ...(inner?.mode ? { mode: inner.mode } : {}),
     scene: {
       placeKinds: places.filter((p) => p.hexes.includes(at.hex)).map((p) => p.kind),

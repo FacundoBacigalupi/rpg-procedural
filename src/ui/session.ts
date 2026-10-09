@@ -48,8 +48,10 @@ import {
   renderChronicle,
   type Suggestion,
   suggestions,
+  type ThoughtInput,
   type TurnReport,
   thinkOn,
+  thoughtInputsOf,
   topicEntity,
   topicText,
   WORLD_LEXICON,
@@ -195,10 +197,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   // texto que el jugador ya leyó, así que no entra en el hash ni en el replay.
   const savedMemory = store.getMeta(MEMORY_META) as NarrationMemory | undefined;
   let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
-  const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
+  const tell = async (
+    report: TurnReport | null,
+    at: Tick,
+    thinking?: readonly ThoughtInput[],
+  ): Promise<string> => {
     const keys = new Map<string, string>();
     const view = playerView(life.world, report?.steps ?? [], {
-      intro: report === null,
+      intro: report === null && thinking === undefined,
+      ...(thinking ? { thinking } : {}),
       ...(report ? { heardSince: report.from } : {}),
       onLabel: (localId, entity) => keys.set(localId, entity),
     });
@@ -235,7 +242,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       { templates: book, rng: Rng.root(seed).fork("narration", at) },
     );
     // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
-    if (report !== null || savedMemory === undefined) {
+    if (thinking === undefined && (report !== null || savedMemory === undefined)) {
       const known = new Map([...keys].filter(([id]) => !hazy.has(id)));
       const motifs = [
         ...request.ambience.filter((line) => told.text.includes(line)),
@@ -250,7 +257,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       });
       store.setMeta(MEMORY_META, memory);
     }
-    scene = told.text;
+    if (thinking === undefined) scene = told.text;
     return told.text;
   };
   const intro = await tell(null, life.now);
@@ -385,7 +392,9 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
             life.world.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] },
           ) ?? "alguien";
         const result = thinkOn(life.world, options.content.all(INFERENCE_RULES), ref);
-        return { text: renderThinking(result, about, name) };
+        const thoughts = thoughtInputsOf(result);
+        if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
+        return { text: await tell(null, life.now, thoughts) };
       }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
