@@ -108,6 +108,8 @@ export const StageDef = z.strictObject({
   plasticity: z.number().min(0).max(1),
   /** Esquemas que en esta etapa se fijan con más fuerza (§10). */
   sensitive: z.array(contentId),
+  /** Cuánto cambia el peso de cada necesidad o valor en la utilidad en esta etapa (1: igual, §7). */
+  drives: z.record(contentId, z.number().min(0).max(3)).optional(),
 });
 export type StageDef = z.infer<typeof StageDef>;
 export const LIFE_STAGES = defineContent("life-stages", StageDef);

@@ -196,6 +196,12 @@ export const ActionDef = z
       })
       .optional(),
     contest: Contest.optional(),
+    /**
+     * A qué impulsos acerca el verbo si sale bien (-1 a 1): necesidades (`hunger`, `thirst`,
+     * `rest`, `safety`, `social`, `pain`) y valores (`wealth`, `family`...). Los lee la utilidad de
+     * los NPC (npc-psychology §7); los ids se validan en `sim/mind`.
+     */
+    serves: z.record(contentId, z.number().min(-1).max(1)).default({}),
     failureModes: z.array(z.strictObject({ id: z.enum(FAILURE_MODES), factor: z.enum(FACTORS) })),
     /** Cuán evidente es un fracaso para quien lo hace (0: no se nota; 1: siempre se nota). */
     evidence: Unit,
