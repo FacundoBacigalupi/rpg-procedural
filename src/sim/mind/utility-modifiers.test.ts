@@ -9,6 +9,7 @@ import {
   memoryPull,
   modifyCandidates,
   moodShift,
+  sanctionFor,
 } from "./utility-modifiers.ts";
 
 const A = "agent:2" as AgentId;
@@ -76,5 +77,28 @@ describe("modificadores de la utilidad", () => {
   it("el entumecimiento achica el placer y la sanción resta", () => {
     const joy: Candidate = { id: "j", verb: "eat", contributes: { pleasure: 1 }, chance: 1 };
     expect(modifyCandidates([joy], { now: 0, sanction: () => 0.5 })[0]?.mood).toBeCloseTo(-0.5, 5);
+  });
+});
+
+describe("sanctionFor", () => {
+  const take = (id: string, target?: string): Candidate => ({
+    id,
+    verb: "take",
+    ...(target === undefined ? {} : { target }),
+    contributes: {},
+    chance: 1,
+  });
+  const weigh = (g: string) => (g === "pan" ? 0.7 : 0);
+
+  it("pesa el bien que nombra la candidata que toma", () => {
+    const s = sanctionFor(weigh);
+    expect(s(take("take:agent:ana+pan", "agent:ana"))).toBe(0.7);
+    expect(s(take("take:agent:ana+sal", "agent:ana"))).toBe(0);
+  });
+
+  it("sin bien nombrado o con otro verbo no pesa nada", () => {
+    const s = sanctionFor(() => 1);
+    expect(s(take("take:agent:ana", "agent:ana"))).toBe(0);
+    expect(s({ ...take("give:agent:ana+pan", "agent:ana"), verb: "give" })).toBe(0);
   });
 });
