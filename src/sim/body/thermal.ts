@@ -3,7 +3,20 @@
 // con el aire (temperatura, viento, mojado, ropa, refugio, fuego) y con el sudor. Sin IO ni
 // estado: el cableado a `Body` y a la vida queda aparte. Constantes sin calibrar.
 
+import { table } from "../world/index.ts";
+
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
+
+/**
+ * La temperatura del núcleo de una persona, aparte del `Body` (como `INFECTION`). Sin fila, el
+ * núcleo está en `CORE_NORMAL_C`: solo se guarda mientras se aparta de lo normal.
+ */
+export interface CoreTemp {
+  readonly coreC: number;
+  /** Hasta cuándo está calculado. */
+  readonly at: number;
+}
+export const THERMAL = table<CoreTemp>("body.thermal");
 
 /** Temperatura normal del núcleo (°C). */
 export const CORE_NORMAL_C = 37;

@@ -125,6 +125,9 @@ function deathCauses(body: Body, entity: AgentId, cause: DeathCause): CauseRef[]
       return [{ kind: "state", entity, key: "body.water" }];
     case "starvation":
       return [{ kind: "state", entity, key: "body.food" }];
+    case "hypothermia":
+    case "heatstroke":
+      return [{ kind: "state", entity, key: "body.thermal" }];
   }
 }
 
