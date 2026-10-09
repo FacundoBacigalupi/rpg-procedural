@@ -3,6 +3,9 @@ import type { AgentId, EventId, PlaceRef } from "../../core/index.ts";
 import {
   CORE_VALUE_MIN,
   coreGoals,
+  GOAL_PULL,
+  goalChanges,
+  goalDrives,
   reconcileGoals,
   revengeGoals,
   revengeThreshold,
@@ -67,5 +70,34 @@ describe("goals", () => {
     const out = reconcileGoals(first ? [first] : [], again ? [again] : []);
     expect(out[0]?.since).toBe(5);
     expect(out[0]?.weight).toBe(0.95);
+  });
+});
+
+describe("objetivos como peso de impulsos", () => {
+  const goal = (id: string, value: ValueId, weight: number) => ({
+    id,
+    layer: "core" as const,
+    kind: "pursue" as const,
+    value,
+    weight,
+    originEventId: ORIGIN,
+    since: 0,
+  });
+
+  it("goalDrives suma al valor perseguido y no toca los demás", () => {
+    const out = goalDrives({ needs: {}, values: { family: 0.2, power: 0.1 } }, [
+      goal("core:family", "family", 0.4),
+    ]);
+    expect(out.values.family).toBeCloseTo(0.2 + GOAL_PULL * 0.4);
+    expect(out.values.power).toBe(0.1);
+  });
+
+  it("goalChanges separa los que nacen de los que terminan", () => {
+    const a = goal("core:family", "family", 0.4);
+    const b = goal("core:power", "power", 0.3);
+    const c = goalChanges([a], [a, b]);
+    expect(c.born.map((g) => g.id)).toEqual(["core:power"]);
+    expect(c.ended).toEqual([]);
+    expect(goalChanges([a, b], [b]).ended.map((g) => g.id)).toEqual(["core:family"]);
   });
 });

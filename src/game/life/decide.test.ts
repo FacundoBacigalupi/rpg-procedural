@@ -29,7 +29,14 @@ import {
   VALUES,
   WorldTruth,
 } from "../../sim/index.ts";
-import { DECIDED_EVENT, type DecideOptions, decideProcess, NPC_DECISION } from "./decide.ts";
+import {
+  DECIDED_EVENT,
+  type DecideOptions,
+  decideProcess,
+  GOAL_EVENT,
+  NPC_DECISION,
+  NPC_GOALS,
+} from "./decide.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -89,7 +96,7 @@ describe("life.decide", () => {
   it("declara lo que lee y lo que escribe, en la fase decide", () => {
     const p = decideProcess(opts);
     expect(p.phase).toBe("decide");
-    expect(p.writes).toEqual([NPC_DECISION.name]);
+    expect(p.writes).toEqual([NPC_DECISION.name, NPC_GOALS.name]);
   });
 
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
@@ -100,7 +107,24 @@ describe("life.decide", () => {
       events?: { kind: string }[];
     };
     expect(out.changes?.length ?? 0).toBeGreaterThan(0);
-    expect(out.events?.[0]?.kind).toBe(DECIDED_EVENT);
+    expect(out.events?.some((e) => e.kind === DECIDED_EVENT)).toBe(true);
+  });
+
+  it("un valor fuerte nace como objetivo con causa y se guarda una sola vez", () => {
+    const p = decideProcess(opts);
+    const truth = world(0.5);
+    truth.set(MIND, A, {
+      schemas: { family_first: { strength: 1, causes: ["event:7" as EventId] } },
+      formative: [],
+      originEventId: "event:1" as EventId,
+    } as never);
+    const out = p.run(ctx(truth, A, 1000)) as unknown as {
+      changes?: { table?: string }[];
+      events?: { kind: string; causes: { event?: string }[] }[];
+    };
+    const goal = out.events?.find((e) => e.kind === GOAL_EVENT);
+    expect(goal?.causes[0]?.event).toBe("event:7");
+    expect(JSON.stringify(out.changes)).toContain(NPC_GOALS.name);
   });
 
   it("el personaje del jugador no decide", () => {
