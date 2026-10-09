@@ -215,6 +215,85 @@ export function frostbitePerHour(env: ThermalEnv, clothing: Clothing): number {
 /** Gravedad desde la que la congelación cuesta dedos (amputación). */
 export const FROSTBITE_AMPUTATION = 0.8;
 
+/** Partes que la congelación lesiona, con cuánto de la exposición recibe cada una. */
+export const FROSTBITE_PARTS = ["hands", "feet", "face"] as const;
+export type FrostbitePart = (typeof FROSTBITE_PARTS)[number];
+const FROSTBITE_EXPOSURE: Readonly<Record<FrostbitePart, number>> = {
+  hands: 1,
+  feet: 0.8,
+  face: 0.5,
+};
+/** Curación por hora de una congelación leve con la piel abrigada. */
+export const FROSTBITE_HEAL_PER_HOUR = 0.01;
+
+/**
+ * Gravedad (0-1) de la congelación por parte, aparte del `Body` (como `THERMAL`): sin fila no hay
+ * lesión. Es una lesión de parte con gravedad acumulada; la amputación la decide quien la aplica.
+ */
+export interface FrostbiteState {
+  readonly hands: number;
+  readonly feet: number;
+  readonly face: number;
+  /** Hasta cuándo está calculado. */
+  readonly at: number;
+}
+export const FROSTBITE = table<FrostbiteState>("body.frostbite");
+
+export const NO_FROSTBITE: FrostbiteState = { hands: 0, feet: 0, face: 0, at: 0 };
+
+/**
+ * Un paso de `hours` horas: la gravedad sube con la exposición (`frostbitePerHour` por la
+ * parte), hasta el doble si el núcleo está frío (vasoconstricción periférica), y baja despacio
+ * cuando la piel está sobre cero (`FROSTBITE_HEAL_PER_HOUR`); lo necrosado no se cura.
+ */
+export function stepFrostbite(
+  state: FrostbiteState,
+  env: ThermalEnv,
+  clothing: Clothing,
+  coreC: number,
+  hours: number,
+  now: number,
+): FrostbiteState {
+  const perHour = frostbitePerHour(env, clothing);
+  const core = 1 + clamp((CORE_NORMAL_C - 1.5 - coreC) / 3, 0, 1);
+  const next = (v: number, part: FrostbitePart): number => {
+    if (v >= FROSTBITE_AMPUTATION) return v;
+    if (perHour > 0) return clamp(v + perHour * FROSTBITE_EXPOSURE[part] * core * hours, 0, 1);
+    return clamp(v - FROSTBITE_HEAL_PER_HOUR * hours, 0, 1);
+  };
+  return {
+    hands: next(state.hands, "hands"),
+    feet: next(state.feet, "feet"),
+    face: next(state.face, "face"),
+    at: now,
+  };
+}
+
+export type FrostbiteStage = "none" | "frostnip" | "superficial" | "deep" | "necrotic";
+
+/** Etapa de una parte por su gravedad. */
+export function frostbiteStage(severity: number): FrostbiteStage {
+  if (severity >= FROSTBITE_AMPUTATION) return "necrotic";
+  if (severity >= 0.5) return "deep";
+  if (severity >= 0.2) return "superficial";
+  if (severity > 0.02) return "frostnip";
+  return "none";
+}
+
+/** Partes con tejido muerto: lo que cuesta dedos o pie, y no vuelve. */
+export function frostbiteAmputations(state: FrostbiteState): FrostbitePart[] {
+  return FROSTBITE_PARTS.filter((p) => frostbiteStage(state[p]) === "necrotic");
+}
+
+/** Destreza (0-1) que deja la congelación de las manos. */
+export function frostbiteHandFactor(state: FrostbiteState): number {
+  return clamp(1 - state.hands * 0.9, 0.1, 1);
+}
+/** Movilidad (0-1) que deja la congelación de los pies. */
+export function frostbiteMobilityFactor(state: FrostbiteState): number {
+  return clamp(1 - state.feet * 0.8, 0.2, 1);
+}
+
 /** Agua por hora (L) que suda en equilibrio, para alimentar la sed del cuerpo. */
 export function sweatLitersPerHour(
   env: ThermalEnv,
