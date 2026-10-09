@@ -120,16 +120,26 @@ export function pitchProcess(o: PitchOptions): ProcessDef {
           (a, b) => b.spare * (b.g.priceCopperPerKg ?? 0) - a.spare * (a.g.priceCopperPerKg ?? 0),
         )[0];
       if (!give) return {};
-      const lot = pitchLot(give.spare);
-      const giveValue = (lot.grams / 1000) * (give.g.priceCopperPerKg ?? 0);
-      const want = tradable
-        .filter((g) => g.id !== give.g.id && stock(g) < reserve)
-        .map((g) => ({
-          g,
-          grams: Math.ceil(((giveValue * (1 + lot.margin)) / (g.priceCopperPerKg ?? 1)) * 100) * 10,
-        }))
-        .filter((w) => w.grams > 0 && yours(w.g) >= w.grams)
-        .sort((a, b) => (a.g.id < b.g.id ? -1 : 1))[0];
+      // Prueba el lote al por mayor y, si el personaje no alcanza a pagarlo, el chico.
+      const wantFor = (lot: { grams: number; margin: number }) => {
+        const giveValue = (lot.grams / 1000) * (give.g.priceCopperPerKg ?? 0);
+        return tradable
+          .filter((g) => g.id !== give.g.id && stock(g) < reserve)
+          .map((g) => ({
+            g,
+            grams:
+              Math.ceil(((giveValue * (1 + lot.margin)) / (g.priceCopperPerKg ?? 1)) * 100) * 10,
+          }))
+          .filter((w) => w.grams > 0 && yours(w.g) >= w.grams)
+          .sort((a, b) => (a.g.id < b.g.id ? -1 : 1))[0];
+      };
+      const big = pitchLot(give.spare);
+      let lot = big;
+      let want = wantFor(big);
+      if (!want && big.grams !== PITCH_GRAMS) {
+        lot = pitchLot(0);
+        want = wantFor(lot);
+      }
       if (!want) return {};
 
       const text = sayLine(
