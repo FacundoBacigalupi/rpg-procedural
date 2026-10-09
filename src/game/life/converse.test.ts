@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AgentId,
   type ContentSource,
+  type EventId,
   type HolderRef,
   holderAccount,
   ledgerUnit,
@@ -16,6 +17,7 @@ import {
   checkInvariants,
   formMemory,
   HEARD,
+  KNOWN_DEEDS,
   LOCATION,
   MEMORIES,
   PERSON,
@@ -270,6 +272,50 @@ describe("sonsacar un secreto a alguien de la casa", () => {
     expect(effect?.keep?.about).toBe(about);
     if (effect?.keep?.outcome === "revealed") {
       expect(w.truth.get(HEARD, me)?.claims.some((c) => c.about === about)).toBe(true);
+    }
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+});
+
+describe("acusar a alguien de la casa", () => {
+  it("el acusado se defiende con una línea de acusación y deja la huella", () => {
+    const { life, w, me, other } = scene(7);
+    const report = life.turn(say(me, other, "Vos me robaste el grano"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const effect = (
+      reply?.data as
+        | { effect: { reply: string; accusation?: { accused: string; unbacked: boolean } } }
+        | undefined
+    )?.effect;
+    expect(effect?.reply.startsWith("accuse.")).toBe(true);
+    expect(effect?.accusation?.accused).toBe("listener");
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
+  it("a un tercero con hecho respaldado lo pesa, y lo creído queda como contado", () => {
+    const { life, w, me, other, mates } = scene(7);
+    const third = mates.find((id) => id !== other);
+    if (!third) return;
+    const deed = {
+      kind: "theft",
+      by: third,
+      victim: me,
+      event: w.log.all()[0]?.id as EventId,
+      at: life.now,
+      via: "saw",
+    } as const;
+    w.truth.set(KNOWN_DEEDS, me, { deeds: [deed] });
+    const report = life.turn(say(me, other, `${nameOf(w, third)} me robó, lo vi`), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const effect = (
+      reply?.data as
+        | { effect: { reply: string; accusation?: { unbacked: boolean; verdict?: string } } }
+        | undefined
+    )?.effect;
+    expect(effect?.reply.startsWith("accuse.")).toBe(true);
+    expect(effect?.accusation?.unbacked).toBe(false);
+    if (effect?.accusation?.verdict === "believe" || effect?.accusation?.verdict === "weigh") {
+      expect(w.truth.get(KNOWN_DEEDS, other)?.deeds.some((d) => d.by === third)).toBe(true);
     }
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);

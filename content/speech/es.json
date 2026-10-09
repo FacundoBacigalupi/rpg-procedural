@@ -214,6 +214,70 @@
     "lines": ["Bah, no te hago caso.", "Decí lo que quieras."]
   },
   {
+    "id": "accuse.unclear",
+    "lines": ["¿De quién hablás? No te sigo.", "¿Quién? Decime bien."],
+    "formal": ["¿De quién habla? No lo sigo."]
+  },
+  {
+    "id": "accuse.believe",
+    "lines": [
+      "Con razón... no me extraña de {name}.",
+      "Lo sospechaba de {name}. Esto no se queda así."
+    ],
+    "formal": ["No me sorprende de {name}. Lo tendré presente."]
+  },
+  {
+    "id": "accuse.weigh",
+    "lines": [
+      "Qué cosa más fea de {name}... lo voy a tener en cuenta.",
+      "Si es cierto lo de {name}, es grave. Voy a averiguar."
+    ]
+  },
+  {
+    "id": "accuse.doubt",
+    "lines": ["No sé, de {name} no me lo esperaba. ¿Seguro?", "Eso de {name} cuesta creerlo."],
+    "formal": ["Me cuesta creerlo de {name}."]
+  },
+  {
+    "id": "accuse.slander",
+    "lines": [
+      "Sin pruebas, eso es calumnia. ¿Qué ganás con hablar así de {name}?",
+      "Mucha lengua y pocas pruebas. No voy a repetir eso de {name}."
+    ]
+  },
+  {
+    "id": "accuse.confess",
+    "lines": ["...Tenés razón. Fui yo. Perdoname.", "Sí. Lo hice y me pesa."],
+    "formal": ["Es cierto. Fui yo, y lo lamento."]
+  },
+  {
+    "id": "accuse.justify",
+    "lines": [
+      "Lo hice, sí, pero tenía mis razones y vos las sabés.",
+      "¿Y qué querías que hiciera, con lo que pasó?"
+    ]
+  },
+  {
+    "id": "accuse.counter",
+    "lines": [
+      "¿Yo? Mirá quién habla, que de vos también se cuentan cosas.",
+      "Antes de acusar, fijate lo que hiciste vos."
+    ]
+  },
+  {
+    "id": "accuse.deny",
+    "lines": ["Yo no fui. No sé de qué me hablás.", "Mentira. Yo no hice nada de eso."],
+    "formal": ["Yo no he hecho tal cosa."]
+  },
+  {
+    "id": "accuse.protest",
+    "lines": [
+      "¡¿Yo?! ¿Cómo te atrevés a decir eso?",
+      "Eso es falso, y lo sabés. Retirá lo que dijiste."
+    ],
+    "formal": ["Eso es falso. Le pido que lo retire."]
+  },
+  {
     "id": "other",
     "lines": ["Mm.", "Ajá.", "Te escucho."]
   },

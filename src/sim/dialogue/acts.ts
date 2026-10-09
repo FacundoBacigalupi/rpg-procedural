@@ -38,7 +38,22 @@ export type SpeechAct =
   | { readonly kind: "flatter"; readonly excess: number }
   /** Un insulto: lo filoso que es (0-1) (dialogue §10). */
   | { readonly kind: "insult"; readonly sting: number }
+  /**
+   * Una acusación (dialogue §6, law §5): que `accused` hizo `deed` (`"you"`: el propio oyente; null:
+   * no se entiende a quién) a `victim` (`"speaker"`: a quien habla; null: no dijo a quién), con
+   * qué firmeza (0-1).
+   */
+  | {
+      readonly kind: "accuse";
+      readonly accused: AgentId | "you" | null;
+      readonly deed: AccusedDeed;
+      readonly victim: AgentId | "speaker" | null;
+      readonly certainty: number;
+    }
   | { readonly kind: "other" };
+
+/** Lo que se acusa de haber hecho (los delitos que la aldea conoce, `DeedKind`). */
+export type AccusedDeed = "theft" | "assault";
 
 /**
  * La razón que se da, tal como se entiende de las palabras (dialogue §6). `face` sin `whose`
@@ -132,6 +147,21 @@ const FLATTER_PLAIN =
 const INSULT_CUTTING =
   /\b(cobarde|inutil|basura|miserable|no vales nada|sos un[a]? nada|eres un[a]? nada)\b/;
 const INSULT_PLAIN = /\b(idiota|estupid[oa]|imbecil|bestia|asqueros[oa]|maldit[oa]|pedazo de)\b/;
+// Acusaciones (dialogue §6): qué se le achaca a quién, a quién se lo hizo y con qué firmeza.
+const ACCUSE_THEFT =
+  /\b(robo|robaste|robaron|ladron|ladrona|hurto|hurtaste|se llevo (mi|mis|el|la|los|las))\b/;
+const ACCUSE_ASSAULT =
+  /\b(me pego|le pego|pegaste|le pegaste|golpeo|golpeaste|hirio|hiriste|lastimo|lastimaste|ataco|atacaste|agredio|agrediste)\b/;
+const ACCUSE_SECOND =
+  /\b(robaste|hurtaste|pegaste|golpeaste|hiriste|lastimaste|atacaste|agrediste|sos un[a]? (ladron|ladrona))\b/;
+const ACCUSE_ME =
+  /\bme (robo|robaste|robaron|hurto|hurtaste|pego|pegaste|golpeo|golpeaste|hirio|hiriste|lastimo|lastimaste|ataco|atacaste|agredio|agrediste)\b/;
+const ACCUSE_SURE = /\b(seguro|estoy seguro|estoy segura|lo vi|te vi|juro|sin duda|se que)\b/;
+const ACCUSE_HEDGE =
+  /\b(creo que|me parece|dicen que|capaz|quizas|tal vez|parece que|puede ser que)\b/;
+const ACCUSE_SURE_CERTAINTY = 0.9;
+const ACCUSE_PLAIN_CERTAINTY = 0.7;
+const ACCUSE_HEDGE_CERTAINTY = 0.4;
 const THREAT_PAYING_HARM = 0.4;
 const THREAT_BEATING_HARM = 0.5;
 const FLATTER_BOLD_EXCESS = 0.8;
@@ -207,6 +237,21 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
   if (THREAT_DEADLY.test(norm)) return { kind: "threaten", harm: 1 };
   if (THREAT_BEATING.test(norm)) return { kind: "threaten", harm: THREAT_BEATING_HARM };
   if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM };
+  const theft = ACCUSE_THEFT.test(norm);
+  if (theft || ACCUSE_ASSAULT.test(norm)) {
+    const you = ACCUSE_SECOND.test(norm);
+    return {
+      kind: "accuse",
+      accused: blur ? null : you ? "you" : who,
+      deed: theft ? "theft" : "assault",
+      victim: blur ? null : ACCUSE_ME.test(norm) ? "speaker" : null,
+      certainty: ACCUSE_SURE.test(norm)
+        ? ACCUSE_SURE_CERTAINTY
+        : ACCUSE_HEDGE.test(norm)
+          ? ACCUSE_HEDGE_CERTAINTY
+          : ACCUSE_PLAIN_CERTAINTY,
+    };
+  }
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
   if (PROMISE.test(norm)) {
     const m = AMOUNT.exec(norm);
