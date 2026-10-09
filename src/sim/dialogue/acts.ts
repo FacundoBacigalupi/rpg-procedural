@@ -20,6 +20,15 @@ export type SpeechAct =
   | { readonly kind: "request"; readonly good: string | null }
   /** Le cuentan que `about` murió o sigue vivo. */
   | { readonly kind: "tell"; readonly about: AgentId; readonly claim: "dead" | "alive" }
+  /**
+   * Le cuentan una profecía (divination §5): que `about` (`"you"`: el propio oyente; null: no se
+   * entiende de quién) llegará lejos, traerá ruina, morirá antes de tiempo o tendrá fortuna.
+   */
+  | {
+      readonly kind: "prophesy";
+      readonly about: AgentId | "you" | null;
+      readonly claim: ProphesyKind;
+    }
   /** Quien habla promete devolver o dar `good` (cuántos gramos si lo dijo; null si no). */
   | { readonly kind: "promise"; readonly good: string | null; readonly grams: number | null }
   /** Una propuesta de intercambio (dialogue §2): lo que quien habla da y lo que quiere (null: nada). */
@@ -51,6 +60,9 @@ export type SpeechAct =
       readonly certainty: number;
     }
   | { readonly kind: "other" };
+
+/** Lo que anuncia una profecía contada (los mismos de `ProphecyKind`; acá sin depender de divination). */
+export type ProphesyKind = "greatness" | "ruin" | "death" | "fortune";
 
 /** Lo que se acusa de haber hecho (los delitos que la aldea conoce, `DeedKind`). */
 export type AccusedDeed = "theft" | "assault";
@@ -122,6 +134,31 @@ const REQUEST =
 const DEAD = /\b(murio|esta muert[oa]|fallecio|lo mataron|la mataron)\b/;
 const ALIVE = /\b(esta vivo|esta viva|sigue vivo|sigue viva|esta bien|no murio)\b/;
 const TELL = /\b(te cuento|sabes que|me dijeron que|escuche que|te aviso|ya sabes)\b/;
+
+// Profecías contadas (divination §5): la marca de que es lo que dijo un adivino o se dice por ahí,
+// qué anuncia y si se le dice al propio oyente.
+const PROPHECY_MARK =
+  /\b(adivin[oa]|profecia|augurio|presagio|oraculo|vaticin\w*|predijo|predijeron|leyeron|dicen que|dijo que|dijeron que|me dijeron que|escuche que)\b/;
+const PROPHECY_GREATNESS =
+  /\b(llegara lejos|llegaras lejos|sera grande|seras grande|grandeza|se elevara|te elevaras|gran destino|sera alguien|seras alguien)\b/;
+const PROPHECY_RUIN =
+  /\b(traera ruina|traeras ruina|traera desgracia|traeras desgracia|ruina|desgracia|maldicion|sera la ruina)\b/;
+const PROPHECY_DEATH =
+  /\b(morira joven|moriras joven|morira pronto|moriras pronto|muerte temprana|morira antes|moriras antes|va a morir joven|vas a morir joven)\b/;
+const PROPHECY_FORTUNE =
+  /\b(tendra fortuna|tendras fortuna|sera rico|seras rico|sera feliz|seras feliz|prosperara|prosperaras|tendra suerte|tendras suerte)\b/;
+const PROPHECY_SECOND =
+  /\b(llegaras|seras|te elevaras|moriras|traeras|tendras|prosperaras|vas a morir|te espera)\b/;
+
+/** Qué anuncia una profecía dicha en `norm`, o null si no anuncia nada. */
+function prophecyIn(norm: string): ProphesyKind | null {
+  if (!PROPHECY_MARK.test(norm)) return null;
+  if (PROPHECY_DEATH.test(norm)) return "death";
+  if (PROPHECY_RUIN.test(norm)) return "ruin";
+  if (PROPHECY_GREATNESS.test(norm)) return "greatness";
+  if (PROPHECY_FORTUNE.test(norm)) return "fortune";
+  return null;
+}
 
 const PROMISE =
   /\b(te prometo|te juro|te doy mi palabra|palabra que|te lo devuelvo|te lo pago|te devuelvo|te pago|cuenta conmigo)\b/;
@@ -265,6 +302,15 @@ export function understand(text: string, lex: Lexicon, clarity = 1): SpeechAct {
     const a = blur ? null : termIn(left, lex);
     const b = blur ? null : termIn(right, lex);
     return gives ? { kind: "offer", give: a, want: b } : { kind: "offer", give: b, want: a };
+  }
+  const prophecy = prophecyIn(norm);
+  if (prophecy !== null) {
+    const second = PROPHECY_SECOND.test(norm);
+    return {
+      kind: "prophesy",
+      about: blur ? null : (who ?? (second ? "you" : null)),
+      claim: prophecy,
+    };
   }
   if (ASK.test(norm)) return { kind: "ask", about: blur ? null : who, ...viaOf(norm) };
   if (who !== null && !blur && (DEAD.test(norm) || (TELL.test(norm) && ALIVE.test(norm)))) {

@@ -49,6 +49,7 @@ import {
   transmit,
   utter,
 } from "../../sim/index.ts";
+import type { ToldProphecy } from "./converse.ts";
 
 export const DIVINERS_PROCESS = "life.diviners";
 export const CONSULT_PROCESS = "life.consult";
@@ -227,6 +228,89 @@ export function consultDiviner(
     },
   ];
   return { changes, events };
+}
+
+export const RETOLD_PROCESS = "life.retold";
+export const RETOLD_EVENT = "divination.retold";
+
+/**
+ * Anota una profecía contada en el diálogo (divination §5): el oyente la guarda como le llegó, con
+ * el salto de quien se la contó en el linaje (el evento real de su respuesta); si quien habla no
+ * sabía de ninguna así, nace ahí con él como raíz (método `spoken`) y la guarda también. Devuelve
+ * null si el evento no trae una profecía contada.
+ */
+export function retellProphecy(
+  e: Event,
+  beliefs: (who: AgentId) => ProphecyBeliefs | undefined,
+): { changes: StateChange[]; events: EventDraft[] } | null {
+  const told = (e.data as { effect?: { kind?: string; prophecy?: ToldProphecy } } | null)?.effect;
+  const p = told?.kind === "speak" ? told.prophecy : undefined;
+  if (!p) return null;
+  let heard = p.heard;
+  const changes: StateChange[] = [];
+  if (p.fresh) {
+    const root = utter(p.speaker, p.told.claim, p.told.root.method, p.told.credence, e.id, e.tick);
+    heard = { ...heard, id: root.id, root: root.root };
+    changes.push(setComponent(PROPHECY_BELIEFS, p.speaker, receive(beliefs(p.speaker), root)));
+  }
+  // El último salto es el de esta conversación: se le pone el evento que ya existe.
+  const lineage = heard.lineage.map((h, i) =>
+    i === heard.lineage.length - 1 ? { ...h, event: e.id } : h,
+  );
+  heard = { ...heard, lineage };
+  changes.push(setComponent(PROPHECY_BELIEFS, p.listener, receive(beliefs(p.listener), heard)));
+  return {
+    changes,
+    events: [
+      {
+        kind: RETOLD_EVENT,
+        actors: [p.speaker, p.listener],
+        place: e.place,
+        data: {
+          prophecy: heard.id,
+          kind: heard.claim.kind,
+          intensity: heard.claim.intensity,
+          credence: heard.credence,
+          hops: heard.hops,
+          verdict: p.verdict,
+          fresh: p.fresh,
+        },
+        emissions: {},
+        causes: [{ kind: "event", event: e.id }],
+      },
+    ],
+  };
+}
+
+/** Las profecías que el personaje o un vecino cuentan en una conversación quedan en el oyente. */
+export function retoldProcess(): ProcessDef {
+  return {
+    id: RETOLD_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [PROPHECY_BELIEFS.name],
+    writes: [PROPHECY_BELIEFS.name],
+    run(ctx) {
+      const changes: StateChange[] = [];
+      const events: EventDraft[] = [];
+      const now = new Map<AgentId, ProphecyBeliefs>();
+      const beliefs = (who: AgentId) => now.get(who) ?? ctx.truth.get(PROPHECY_BELIEFS, who);
+      for (const e of ctx.recent) {
+        if (e.kind !== "action.speak") continue;
+        const out = retellProphecy(e, beliefs);
+        if (!out) continue;
+        for (const ch of out.changes) {
+          if (ch.op === "set") now.set(ch.id as AgentId, ch.value as ProphecyBeliefs);
+        }
+        changes.push(...out.changes);
+        events.push(...out.events);
+      }
+      return changes.length === 0 && events.length === 0 ? {} : { changes, events };
+    },
+  };
 }
 
 /** Monedas por debajo de las cuales la bolsa se ve flaca. */

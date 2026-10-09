@@ -278,6 +278,42 @@
     "formal": ["Eso es falso. Le pido que lo retire."]
   },
   {
+    "id": "prophesy.unclear",
+    "lines": ["¿De quién decís que lo dijeron?", "¿Eso se dijo de quién?"]
+  },
+  {
+    "id": "prophesy.believed",
+    "lines": [
+      "Si lo dijo el adivino, algo habrá. Lo tendré presente.",
+      "Qué cosa. Me da qué pensar."
+    ],
+    "formal": ["Si así se dijo, habrá que tenerlo presente."]
+  },
+  {
+    "id": "prophesy.doubted",
+    "lines": ["Puede ser... los adivinos dicen muchas cosas.", "Quién sabe. Yo lo oigo, nada más."],
+    "formal": ["Quién sabe. Lo escucho, nada más."]
+  },
+  {
+    "id": "prophesy.dismissed",
+    "lines": ["Cuentos de adivino.", "Eso no me lo creo ni un poco."],
+    "formal": ["Perdone, pero no lo creo."]
+  },
+  {
+    "id": "prophesy.believed.self",
+    "lines": ["¿Eso dicen de mí? Me deja pensando.", "Si es cierto, no sé qué hacer con eso."],
+    "formal": ["¿Eso se dice de mí? Me deja pensando."]
+  },
+  {
+    "id": "prophesy.doubted.self",
+    "lines": ["¿De mí? Mmm, no sé qué creer.", "Puede ser, pero no me lo termino de creer."]
+  },
+  {
+    "id": "prophesy.dismissed.self",
+    "lines": ["¿De mí? Pavadas.", "No me vengas con eso."],
+    "formal": ["No me venga con eso, por favor."]
+  },
+  {
     "id": "other",
     "lines": ["Mm.", "Ajá.", "Te escucho."]
   },
