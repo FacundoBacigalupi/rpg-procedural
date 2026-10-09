@@ -38,5 +38,33 @@
     "form": "good",
     "priceCopperPerKg": 5,
     "halfLifeDays": 1.5
+  },
+  {
+    "id": "wool",
+    "name": "lana",
+    "form": "good",
+    "priceCopperPerKg": 18,
+    "halfLifeDays": 1500
+  },
+  {
+    "id": "cloth",
+    "name": "paño",
+    "form": "good",
+    "priceCopperPerKg": 40,
+    "halfLifeDays": 3000
+  },
+  {
+    "id": "iron",
+    "name": "hierro en barras",
+    "form": "good",
+    "priceCopperPerKg": 25,
+    "halfLifeDays": 9000
+  },
+  {
+    "id": "tools",
+    "name": "herramientas de hierro",
+    "form": "good",
+    "priceCopperPerKg": 60,
+    "halfLifeDays": 6000
   }
 ]

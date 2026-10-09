@@ -114,6 +114,7 @@ import {
   type TasteSpec,
   TENURES,
   type TemperamentSpec,
+  TRADE_RECIPES,
   TRAITS,
   TRAJECTORIES,
   type Trait,
@@ -124,6 +125,8 @@ import {
   validateTemperament,
   villagePopulation,
   WORK_TYPES,
+  WORKSHOP,
+  WORKSHOP_WASTE,
   WorldTruth,
 } from "../../sim/index.ts";
 import {
@@ -321,6 +324,7 @@ export function resumeParts(
   | "foods"
   | "goods"
   | "recipes"
+  | "tradeRecipes"
   | "statuses"
   | "cultureTraits"
   | "speech"
@@ -351,6 +355,7 @@ export function resumeParts(
     goods: content.all(GOODS),
     materials: content.all(MATERIALS),
     recipes: content.all(RECIPES),
+    tradeRecipes: content.all(TRADE_RECIPES),
     statuses: content.all(STATUSES),
     cultureTraits: content.all(CULTURE_TRAITS),
     speech: content.all(SPEECH_LINES),
@@ -373,13 +378,28 @@ export function resumeParts(
 /** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
 export function ledgerConfigOf(content: Content): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
+  const tradeUnits = [
+    ...new Set(
+      content
+        .all(TRADE_RECIPES)
+        .flatMap((r) => [r.output.good, ...r.inputs.map((i) => i.good)])
+        .map((g) => ledgerUnit(`good:${g}`)),
+    ),
+  ];
   return {
     externals: {
       [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
       [ROTTED]: units,
-      seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
+      seed: [
+        ...units,
+        ...tradeUnits.filter((u) => !units.includes(u)),
+        COPPER,
+        ...settlementUnits(content.all(MATERIALS)),
+      ],
+      [WORKSHOP]: tradeUnits,
+      [WORKSHOP_WASTE]: tradeUnits,
       [GATHERED_SOURCE]: settlementUnits(content.all(MATERIALS)),
       [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
@@ -691,6 +711,7 @@ export function createLife(
       foods,
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
+      tradeRecipes: content.all(TRADE_RECIPES),
       statuses: content.all(STATUSES),
       cultureTraits: content.all(CULTURE_TRAITS),
       speech: content.all(SPEECH_LINES),

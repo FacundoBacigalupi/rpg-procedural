@@ -147,6 +147,7 @@ import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
+import { incomeOfHousehold } from "./trades.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
 
@@ -1189,6 +1190,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           now: ctx.now,
           day: o.day,
           ...(o.year === undefined ? {} : { year: o.year }),
+          incomePerDay: incomeOfHousehold(truth, home, Math.floor(ctx.now / o.day)),
         },
         home,
       );

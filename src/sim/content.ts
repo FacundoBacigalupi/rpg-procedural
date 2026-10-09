@@ -10,7 +10,7 @@ import { RECIPES } from "./crafts/index.ts";
 import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
 import { SPEECH_LINES } from "./dialogue/index.ts";
 import { DIVINATION_CONCERNS, DIVINATION_METHODS } from "./divination/index.ts";
-import { GOODS } from "./economy/index.ts";
+import { GOODS, TRADE_RECIPES } from "./economy/index.ts";
 import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
 import { INFERENCE_RULES } from "./knowledge/index.ts";
@@ -40,6 +40,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   BODY_PLANS,
   FOODS,
   GOODS,
+  TRADE_RECIPES,
   PRESSURE_CURVES,
   ACTIONS,
   PLANS,
