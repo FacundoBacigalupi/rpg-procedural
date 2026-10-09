@@ -14,7 +14,7 @@ import {
   type PressureId,
   parseId,
 } from "../../core/index.ts";
-import { type Life, lifePressures, PERCEPTS, playerView } from "../../game/index.ts";
+import { type Life, lifePressures, NPC_PERCEPTS, PERCEPTS, playerView } from "../../game/index.ts";
 import {
   BELIEFS,
   beliefConfidenceAt,
@@ -419,15 +419,18 @@ function wrong(life: Life, id: string | undefined): string {
   ].join("\n");
 }
 
-/** Los percepts guardados del personaje, con lo que se leyó mal. Los NPC todavía no perciben. */
+/** Los percepts guardados del personaje (`PERCEPTS`) o de un NPC (`NPC_PERCEPTS`, `life.witnessing`), con lo que se leyó mal. */
 function percepts(life: Life, id: string, from: string | undefined): string {
   const who = agentArg(life, id);
   if (!who) return `No hay un agente ${id}.`;
-  const recent = life.world.truth.get(PERCEPTS, who)?.recent;
+  const recent =
+    who === life.player
+      ? life.world.truth.get(PERCEPTS, who)?.recent
+      : life.world.truth.get(NPC_PERCEPTS, who)?.recent;
   if (!recent) {
     return who === life.player
       ? "El personaje no percibió nada todavía."
-      : `${who} no guarda percepts: los NPC todavía no perciben (Fase 3, decisión de los NPC).`;
+      : `${who} no percibió ninguna acción de otros todavía.`;
   }
   const since = from !== undefined && Number.isFinite(Number(from)) ? Number(from) : 0;
   const rows = recent
