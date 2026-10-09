@@ -35,6 +35,7 @@ import {
   COPPER,
   CULTURE_TRAITS,
   CULTURES,
+  DEBRIS_SINK,
   DEMOGRAPHY,
   DIVINATION_CONCERNS,
   DIVINATION_METHODS,
@@ -46,6 +47,7 @@ import {
   ENTITY,
   ETIQUETTE,
   FOODS,
+  GATHERED_SOURCE,
   GOODS,
   generateLanguage,
   HABITS_CONTENT,
@@ -329,6 +331,7 @@ export function resumeParts(
   | "relationBonds"
   | "habits"
   | "lineages"
+  | "materials"
   | "trajectories"
   | "divinations"
   | "concerns"
@@ -345,6 +348,7 @@ export function resumeParts(
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
     goods: content.all(GOODS),
+    materials: content.all(MATERIALS),
     recipes: content.all(RECIPES),
     statuses: content.all(STATUSES),
     cultureTraits: content.all(CULTURE_TRAITS),
@@ -375,6 +379,8 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       [HARVEST]: [HARVEST_GOOD],
       [ROTTED]: units,
       seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
+      [GATHERED_SOURCE]: settlementUnits(content.all(MATERIALS)),
+      [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
     },
   };
 }
@@ -689,6 +695,7 @@ export function createLife(
       relationBonds: content.all(RELATION_BONDS),
       habits: content.all(HABITS_CONTENT),
       lineages: content.all(LINEAGES),
+      materials,
       trajectories: content.all(TRAJECTORIES),
       divinations: content.all(DIVINATION_METHODS),
       concerns: content.all(DIVINATION_CONCERNS),
