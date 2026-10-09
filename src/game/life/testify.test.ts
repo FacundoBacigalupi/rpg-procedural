@@ -22,7 +22,14 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { giveTestimony, TESTIMONY_EVENT, type TestifyOptions, witnessProfile } from "./testify.ts";
+import {
+  bribeValue,
+  giveTestimony,
+  TESTIMONY_EVENT,
+  type TestifyOptions,
+  validOffer,
+  witnessProfile,
+} from "./testify.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -160,5 +167,27 @@ describe("testigos en el juego", () => {
   it("el testigo es una persona viva de la aldea", () => {
     const s = scene(7);
     expect(s.w.truth.get(PERSON, s.witness)).toBeDefined();
+  }, 60_000);
+
+  it("la oferta pesa según los gramos y satura", () => {
+    expect(bribeValue(0)).toBe(0);
+    expect(bribeValue(10)).toBeCloseTo(0.5, 5);
+    expect(bribeValue(1000)).toBeLessThan(1);
+    expect(bribeValue(20)).toBeGreaterThan(bribeValue(10));
+  });
+
+  it("sin ledger, con un bien que no es dinero o sin saldo no hay soborno", () => {
+    const inq = { deed: "event:1" as EventId, offer: { unit: "good:rice", grams: 5 } };
+    expect(validOffer(inq, "agent:1" as AgentId, undefined)).toBeNull();
+    expect(validOffer({ deed: inq.deed }, "agent:1" as AgentId, undefined)).toBeNull();
+  });
+
+  it("el miedo a quien pregunta sube la honestidad y quita miedo al culpable", () => {
+    const s = scene(7);
+    feel(s, s.deed.by as AgentId, { fear: 0.8 });
+    const calm = witnessProfile(s.w.truth, s.o, s.witness, s.asker, s.deed, 0, s.life.now, 0);
+    const pressed = witnessProfile(s.w.truth, s.o, s.witness, s.asker, s.deed, 0, s.life.now, 1);
+    expect(pressed.motives.honesty).toBeGreaterThan(calm.motives.honesty);
+    expect(pressed.motives.fear).toBeLessThan(calm.motives.fear);
   }, 60_000);
 });

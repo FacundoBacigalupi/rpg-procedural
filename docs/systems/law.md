@@ -232,3 +232,7 @@ Investigar es una secuencia de acciones de personas concretas con habilidad, ses
 ## Implementado (2026-10-09): quién emite `law.inquiry`
 
 La pregunta de quien habla es la primera fuente: en `life.converse`, si el acto entendido es un `ask` y quien pregunta conoce un hecho (`deedAsked`: por la persona nombrada o, sin nombre, el último sin autor conocido; nunca uno que el testigo hizo), el proceso emite `law.inquiry` con el acto de habla como causa y `life.testify` hace declarar al testigo desde lo que recuerda. Valen el jugador y los NPC. Faltan el vecino o la víctima que interroga a los testigos y el juez o alguacil (ROADMAP).
+
+## Implementado (2026-10-09): soborno y presión del interrogatorio
+
+`law.inquiry` puede llevar una `offer` (`{ unit, grams }`) además del `bribe` dado: solo vale si la unidad es dinero y quien pregunta tiene esos gramos en el ledger (`validOffer`), y pesa para el testigo `bribeValue(grams) = g / (g + 10)`. Si el testigo termina mintiendo por ella (`lie.motive = bribe`), `life.testify` asienta el pago de quien preguntó al testigo contra el evento `law.testimony` (que lo cita en `data.paid`); contar la verdad no se paga. La presión sale sola de la relación: el miedo del testigo hacia quien pregunta sube su honestidad (+0,4 por punto) y le quita miedo al culpable (-0,5 por punto), así que amenazar antes de preguntar (dialogue §9 escribe ese miedo en `RELATIONS`) vuelve más veraz al testigo. Constantes sin calibrar.
