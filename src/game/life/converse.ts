@@ -26,6 +26,7 @@ import {
   type Belief,
   BODY_STATE,
   type BondDef,
+  beliefAbout,
   beliefConfidenceAt,
   believed,
   CREDIT,
@@ -75,6 +76,7 @@ import {
   type SpaceGraph,
   type SpeechAct,
   type SpeechLine,
+  STANDING_BELIEFS,
   STATUS,
   type StateChange,
   type StatusDef,
@@ -706,10 +708,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       );
       // Tratar de usted a quien tiene más rango es una costumbre de la aldea (culture, etiquette).
       const byRank = dominantVariant(villageCulture(truth), "etiquette.address") !== "uniform";
-      const above =
-        byRank &&
-        (rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0) >
-          (rankOf(truth.get(STATUS, me), o.statuses) ?? 0);
+      // Lo que el oyente cree del rango de quien le habla (`STANDING_BELIEFS`), no la verdad:
+      // sin lectura no hay deferencia, y el impostor bien vestido recibe el usted (social §3).
+      const myRank = rankOf(truth.get(STATUS, me), o.statuses) ?? 0;
+      const readRank = beliefAbout(truth.get(STANDING_BELIEFS, me), speaker)?.rank;
+      const above = byRank && readRank !== undefined && readRank > myRank;
       // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
       const innate = truth.get(INNATE, me);
       const z = innate ? standardize(innate, o.traits, truth.get(PERSON, me)?.sex ?? "female") : {};
@@ -765,11 +768,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   recollection,
                   worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
                   z,
-                  Math.max(
-                    0,
-                    (rankOf(truth.get(STATUS, me), o.statuses) ?? 0) -
-                      (rankOf(truth.get(STATUS, speaker), o.statuses) ?? 0),
-                  ),
+                  // Sin lectura del otro se lo supone de su mismo rango (no hay distancia).
+                  Math.max(0, myRank - (readRank ?? myRank)),
                 ),
               }
             : {}),
