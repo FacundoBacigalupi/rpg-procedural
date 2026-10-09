@@ -406,6 +406,7 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           goods: parts.goods,
+          habits: parts.habits,
           player,
           placeOf: placeOf(parts, village),
         }),

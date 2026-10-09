@@ -15,5 +15,6 @@ export * from "./tastes-seed.ts";
 export * from "./utility.ts";
 export * from "./utility-beliefs.ts";
 export * from "./utility-inputs.ts";
+export * from "./utility-modifiers.ts";
 export * from "./utility-social.ts";
 export * from "./utility-verbs.ts";
