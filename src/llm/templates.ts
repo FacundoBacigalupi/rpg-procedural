@@ -134,6 +134,15 @@ export function renderView(
     view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
   const inward = view.mode === "dream" || view.mode === "montage";
   if (view.mode !== undefined) say(`mode.${view.mode}`);
+  const stretch = view.stretch;
+  if (stretch !== undefined) {
+    for (const d of stretch.did)
+      if (book.has(`stretch.did.${d.verb}`)) say(`stretch.did.${d.verb}`);
+    if (stretch.did.some((d) => d.failed > 0)) say("stretch.failed");
+    if (stretch.spoke > 0) say("stretch.spoke");
+    if (stretch.fought) say("stretch.fought");
+    else if (stretch.hurt) say("stretch.hurt");
+  }
   if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);

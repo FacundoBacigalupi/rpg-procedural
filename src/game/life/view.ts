@@ -52,6 +52,7 @@ import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { withImpressions } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
+import { stretchOf } from "./stretch.ts";
 import { thoughtsOf } from "./thoughts.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -320,6 +321,9 @@ export function playerView(
     player: w.player,
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
     ...(inner?.mode ? { mode: inner.mode } : {}),
+    ...(inner?.mode === "montage" && options.heardSince !== undefined
+      ? { stretch: stretchOf(steps, w.log.all(), w.player, options.heardSince, now, w.clock.day) }
+      : {}),
     scene: {
       placeKinds: places.filter((p) => p.hexes.includes(at.hex)).map((p) => p.kind),
       space: node?.kind ?? "open",
