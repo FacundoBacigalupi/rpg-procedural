@@ -46,6 +46,9 @@ const MAX_CHARS = {
   action: { brief: 300, normal: 750, rich: 1800 },
   dialogue: { brief: 350, normal: 900, rich: 2000 },
   introspection: { brief: 300, normal: 700, rich: 1600 },
+  montage: { brief: 300, normal: 700, rich: 1600 },
+  dream: { brief: 300, normal: 700, rich: 1400 },
+  aftermath: { brief: 300, normal: 750, rich: 1600 },
 } as const;
 const PER_ITEM = 160;
 const MIN_CHARS = 5;
