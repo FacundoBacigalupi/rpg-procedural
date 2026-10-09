@@ -9,9 +9,9 @@ import {
   ENTITY,
   FRESH_CURSOR,
   hashState,
+  liveSettlementSpaces,
   type SchedulerState,
   type StateHash,
-  settlementSpaces,
   type WorldTruth,
 } from "../../sim/index.ts";
 import type { GameSetup } from "../setup/index.ts";
@@ -157,12 +157,24 @@ export class Life {
     saved = { ...saved, ledger: withDeclaredExternals(saved.ledger, content) };
     if (anchor === undefined) {
       const { world, terrain } = createLife(seed, content, options);
-      const parts: LifeParts = { ...world, ...saved };
+      const spaces = liveSettlementSpaces(
+        saved.truth,
+        terrain.site.hex,
+        [],
+        new Map((world.materials ?? []).map((m) => [m.id, m])),
+      );
+      const parts: LifeParts = { ...world, spaces, ...saved };
       const resumed = lifeWorld(parts, world.player, terrain.village, saved.scheduler);
       return new Life(resumed, anchorOf(terrain), terrain);
     }
-    const spaces = settlementSpaces(saved.truth, anchor.hex, anchor.households);
-    const parts: LifeParts = { ...resumeParts(seed, content, anchor), spaces, ...saved };
+    const base = resumeParts(seed, content, anchor);
+    const spaces = liveSettlementSpaces(
+      saved.truth,
+      anchor.hex,
+      anchor.households,
+      new Map((base.materials ?? []).map((m) => [m.id, m])),
+    );
+    const parts: LifeParts = { ...base, spaces, ...saved };
     const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
     return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }

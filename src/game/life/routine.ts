@@ -36,6 +36,8 @@ import {
   HARVEST_GRAMS_PER_HOUR,
   harvestSeason,
   houseKey,
+  BUILDING,
+  VILLAGE_SQUARE,
   ingest,
   LOCATION,
   type LocalMap,
@@ -156,6 +158,14 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         });
         if (fields.length > 0) there = { hex: nearestHex(o.map, home.hex, fields) };
       }
+      // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
+      // adentro no se sale hasta que la arreglen (settlements §7).
+      if (home && jammedHome(truth, person.household)) {
+        const inside = o.spaces.spaces.find((s) => s.key === here?.space)?.indoor === true;
+        const toHome = there?.space === home.key;
+        if (!inside && toHome) there = { hex: home.hex, space: VILLAGE_SQUARE };
+        else if (inside && !toHome) there = undefined;
+      }
       if (there && (here?.hex !== there.hex || here?.space !== there.space)) {
         changes.push(setComponent(LOCATION, me, there));
       }
@@ -243,4 +253,14 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       return { changes, events, postings };
     },
   };
+}
+
+/** Si la puerta de la casa del hogar está trabada. */
+function jammedHome(truth: ReadonlyWorldTruth, household: unknown): boolean {
+  return truth
+    .ids(BUILDING)
+    .some((id) => {
+      const b = truth.get(BUILDING, id);
+      return b?.household === household && b?.doorState === "jammed";
+    });
 }
