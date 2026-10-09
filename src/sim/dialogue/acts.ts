@@ -42,6 +42,10 @@ type SpeechBody =
       readonly grams: number | null;
       /** Términos sueltos de la frase («el doble», «en otoño», «cuando pueda»); ausentes si no dijo. */
       readonly terms?: PromiseTerms;
+      /** Un favor prometido en vez de bienes («te ayudo»): el verbo del catálogo (contracts §4). */
+      readonly favor?: string;
+      /** Callar un secreto en vez de dar («no le digo a nadie»). */
+      readonly silence?: true;
     }
   /** Una propuesta de intercambio (dialogue §2): lo que quien habla da y lo que quiere (null: nada). */
   | {
@@ -180,6 +184,26 @@ function prophecyIn(norm: string): ProphesyKind | null {
 
 const PROMISE =
   /\b(te prometo|te juro|te doy mi palabra|palabra que|te lo devuelvo|te lo pago|te devuelvo|te pago|cuenta conmigo)\b/;
+const PROMISE_LEAD = /\b(te prometo|te juro|te doy mi palabra|palabra que|cuenta conmigo)\b/;
+const PROMISE_SILENCE =
+  /\b(no (le )?(digo|dire|cuento|contare|voy a decir|voy a contar)( nada)?( a nadie)?|(guardo|guardare) (el|tu) secreto|me callo|no dire nada|ni una palabra)\b/;
+/** Favores que se prometen en palabras y el verbo del catálogo en que se cumplen. */
+const PROMISE_FAVORS: readonly [RegExp, string][] = [
+  [/\b(te ayudo|te ayudare|te echo una mano|te doy una mano)\b/, "work"],
+  [/\b(te acompano|te acompanare)\b/, "move"],
+  [/\b(te defiendo|te defendere|te protejo|te protegere|te cuido)\b/, "strike"],
+];
+
+/** El favor o el callar que una promesa dice (sin bienes de por medio); null si es de dar. */
+export function promisedService(
+  norm: string,
+): { readonly favor: string } | { readonly silence: true } | null {
+  if (!PROMISE_LEAD.test(norm) || AMOUNT.test(norm)) return null;
+  if (PROMISE_SILENCE.test(norm)) return { silence: true };
+  for (const [re, verb] of PROMISE_FAVORS) if (re.test(norm)) return { favor: verb };
+  return null;
+}
+
 /**
  * Lo que una promesa dice además de qué y cuánto (contracts §4): un múltiplo del monto, un plazo en
  * días y cuán precisa es (1: exacta; baja con «más o menos», «cuando pueda»). Todo opcional.
@@ -418,6 +442,11 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
     };
   }
   if (REQUEST.test(norm)) return { kind: "request", good: blur ? null : good };
+  const service = blur ? null : promisedService(norm);
+  if (service) {
+    const terms = promiseTerms(norm);
+    return { kind: "promise", good: null, grams: null, ...service, ...(terms ? { terms } : {}) };
+  }
   if (PROMISE.test(norm)) {
     const m = AMOUNT.exec(norm);
     const n = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : null;

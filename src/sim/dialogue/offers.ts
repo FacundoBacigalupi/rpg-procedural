@@ -73,6 +73,39 @@ export function leverageShift(l: Leverage | undefined): number {
   );
 }
 
+/** Con cuántas casas dispuestas a tratar la alternativa es total (sin calibrar). */
+export const ALTERNATIVE_HOUSES = 3;
+/** Con cuántos testigos la cara en juego al regatear es plena. */
+export const BARGAIN_WITNESSES = 3;
+
+/**
+ * Las alternativas creídas (0-1) al comprar o vender un bien: cuántas otras casas lo tienen de
+ * sobra (`buy`: le podrían vender) o les falta (`sell`: le podrían comprar), según lo que se sabe
+ * de cada una (`stock` en gramos, con su reserva por miembros).
+ */
+export function alternativesAmong(
+  houses: readonly { readonly stock: number; readonly members: number }[],
+  side: "buy" | "sell",
+  reservePerMember: number,
+  minSpare: number,
+): number {
+  let n = 0;
+  for (const h of houses) {
+    const spare = h.stock - h.members * reservePerMember;
+    if (side === "buy" ? spare >= minSpare : spare < 0) n++;
+  }
+  return unit(n / ALTERNATIVE_HOUSES);
+}
+
+/**
+ * La cara en juego (0-1) al ceder en un trato: pesa con los testigos y se duplica si el oyente
+ * no está por debajo de quien propone (a quien tiene rango le cuesta más quedar mal).
+ */
+export function bargainFace(witnesses: number, hearerRank: number, speakerRank: number): number {
+  const seen = unit(Math.max(0, witnesses) / BARGAIN_WITNESSES);
+  return unit(seen * (hearerRank >= speakerRank ? 1 : 0.5));
+}
+
 /** Rondas de contraofertas (propuesta y contrapropuesta) que aguanta el oyente antes de cansarse. */
 export const MAX_ROUNDS = 3;
 

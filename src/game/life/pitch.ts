@@ -42,6 +42,17 @@ export const PITCH_GRAMS = 2 * GIFT_GRAMS;
 export const PITCH_MARGIN = BASE_MARGIN + 0.1;
 /** Con menos que esto de sobra no ofrece nada. */
 const MIN_SPARE = PITCH_GRAMS;
+/** Al por mayor: con tanto de sobra ofrece un lote grande, algo más barato (sin calibrar). */
+export const BULK_SPARE = 6 * PITCH_GRAMS;
+export const BULK_GRAMS = 4 * PITCH_GRAMS;
+export const BULK_DISCOUNT = 0.1;
+
+/** Gramos y margen de lo que ofrece con `spare` gramos de sobra: un lote chico o uno al por mayor. */
+export function pitchLot(spare: number): { grams: number; margin: number } {
+  return spare >= BULK_SPARE
+    ? { grams: BULK_GRAMS, margin: PITCH_MARGIN - BULK_DISCOUNT }
+    : { grams: PITCH_GRAMS, margin: PITCH_MARGIN };
+}
 
 export interface PitchOptions {
   readonly catalog: ActionCatalog;
@@ -109,16 +120,26 @@ export function pitchProcess(o: PitchOptions): ProcessDef {
           (a, b) => b.spare * (b.g.priceCopperPerKg ?? 0) - a.spare * (a.g.priceCopperPerKg ?? 0),
         )[0];
       if (!give) return {};
-      const giveValue = (PITCH_GRAMS / 1000) * (give.g.priceCopperPerKg ?? 0);
-      const want = tradable
-        .filter((g) => g.id !== give.g.id && stock(g) < reserve)
-        .map((g) => ({
-          g,
-          grams:
-            Math.ceil(((giveValue * (1 + PITCH_MARGIN)) / (g.priceCopperPerKg ?? 1)) * 100) * 10,
-        }))
-        .filter((w) => w.grams > 0 && yours(w.g) >= w.grams)
-        .sort((a, b) => (a.g.id < b.g.id ? -1 : 1))[0];
+      // Prueba el lote al por mayor y, si el personaje no alcanza a pagarlo, el chico.
+      const wantFor = (lot: { grams: number; margin: number }) => {
+        const giveValue = (lot.grams / 1000) * (give.g.priceCopperPerKg ?? 0);
+        return tradable
+          .filter((g) => g.id !== give.g.id && stock(g) < reserve)
+          .map((g) => ({
+            g,
+            grams:
+              Math.ceil(((giveValue * (1 + lot.margin)) / (g.priceCopperPerKg ?? 1)) * 100) * 10,
+          }))
+          .filter((w) => w.grams > 0 && yours(w.g) >= w.grams)
+          .sort((a, b) => (a.g.id < b.g.id ? -1 : 1))[0];
+      };
+      const big = pitchLot(give.spare);
+      let lot = big;
+      let want = wantFor(big);
+      if (!want && big.grams !== PITCH_GRAMS) {
+        lot = pitchLot(0);
+        want = wantFor(lot);
+      }
       if (!want) return {};
 
       const text = sayLine(
@@ -126,7 +147,7 @@ export function pitchProcess(o: PitchOptions): ProcessDef {
         "offer.pitch",
         {
           give: give.g.name,
-          kilos: String(Math.round(PITCH_GRAMS / 100) / 10),
+          kilos: String(Math.round(lot.grams / 100) / 10),
           want: want.g.name,
           wantKilos: String(Math.round(want.grams / 100) / 10),
         },
@@ -138,7 +159,7 @@ export function pitchProcess(o: PitchOptions): ProcessDef {
             with: you,
             deal: {
               gets: { good: want.g.id, grams: want.grams },
-              gives: { good: give.g.id, grams: PITCH_GRAMS },
+              gives: { good: give.g.id, grams: lot.grams },
             },
             at: ctx.now,
             rounds: 0,

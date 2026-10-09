@@ -92,6 +92,23 @@ describe("promesas en el diálogo", () => {
     expect(reply(f({}), "Te prometo que todo va a estar bien").line).toBe("promise.vague");
   });
 
+  it("entiende y acepta un favor o callar sin bienes", () => {
+    expect(understand("Te prometo que te ayudo con la cosecha", lex)).toMatchObject({
+      kind: "promise",
+      good: null,
+      favor: "work",
+    });
+    expect(understand("Te juro que no le digo a nadie", lex)).toMatchObject({
+      kind: "promise",
+      silence: true,
+    });
+    expect(understand("Te prometo 2 kilos de grano", lex)).not.toHaveProperty("favor");
+    const a = reply(f({}), "Te prometo que te ayudo con la cosecha");
+    expect(a.line).toBe("promise.accept");
+    expect(a.pledge).toMatchObject({ good: null, grams: null, favor: "work" });
+    expect(reply(f({}), "Te juro que no le digo a nadie").pledge).toMatchObject({ silence: true });
+  });
+
   it("la credulidad está acotada y sube con la confianza", () => {
     fc.assert(
       fc.property(
