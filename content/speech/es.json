@@ -153,7 +153,25 @@
   },
   {
     "id": "request.give",
-    "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."]
+    "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."],
+    "warm": ["Tomá, llevate {what}, lo que necesites.", "Claro que sí, te paso {what}."],
+    "dry": ["Ahí tenés {what}.", "Tomá {what}. Y listo."]
+  },
+  {
+    "id": "request.give.afraid",
+    "lines": [
+      "Está bien, tomá {what}. No quiero problemas.",
+      "Llevate {what}, pero dejame en paz."
+    ],
+    "formal": ["Tome {what}, por favor. No busco problemas."]
+  },
+  {
+    "id": "request.give.grateful",
+    "lines": [
+      "Tomá {what}: te debo una, no me olvido.",
+      "Después de lo que hiciste por mí, llevate {what}."
+    ],
+    "formal": ["Tome {what}; le estoy en deuda."]
   },
   {
     "id": "threat.yield",

@@ -9,11 +9,17 @@ export const SpeechLine = z.strictObject({
   /** Variantes informales (voseo de aldea) y, si hay, formales (a quien está por encima). */
   lines: z.array(z.string().trim().min(1)).min(1),
   formal: z.array(z.string().trim().min(1)).optional(),
+  /** Variantes según la relación: de quien se quiere (`warm`) y de quien se trata con sequedad (`dry`). */
+  warm: z.array(z.string().trim().min(1)).optional(),
+  dry: z.array(z.string().trim().min(1)).optional(),
 });
 export type SpeechLine = z.infer<typeof SpeechLine>;
 export const SPEECH_LINES = defineContent("speech", SpeechLine);
 
 export type Params = Readonly<Record<string, string>>;
+
+/** El tono de la línea sale de la relación: cálido, seco o el de siempre. */
+export type Tone = "plain" | "warm" | "dry";
 
 /** La frase `id` con los huecos llenos; falla fuerte si falta la línea o un hueco. */
 export function sayLine(
@@ -22,10 +28,12 @@ export function sayLine(
   params: Params,
   rng: Random,
   formal = false,
+  tone: Tone = "plain",
 ): string {
   const line = lines.find((l) => l.id === id);
   if (!line) throw new RangeError(`falta la línea de habla "${id}"`);
-  const pool = formal && line.formal ? line.formal : line.lines;
+  const byTone = tone === "warm" ? line.warm : tone === "dry" ? line.dry : undefined;
+  const pool = formal && line.formal ? line.formal : (byTone ?? line.lines);
   const pick = pool[rng.int(0, pool.length - 1)] as string;
   return pick.replace(/\{(\w+)\}/g, (_m, key: string) => {
     const v = params[key];

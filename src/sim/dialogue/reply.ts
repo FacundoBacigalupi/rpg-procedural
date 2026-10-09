@@ -27,7 +27,7 @@ import {
   type LieJudgement,
   recordCaught,
 } from "./lies.ts";
-import { type Params, type SpeechLine, sayLine } from "./lines.ts";
+import { type Params, type SpeechLine, sayLine, type Tone } from "./lines.ts";
 import { dealHolds, MAX_ROUNDS, type Proposal, weighOffer } from "./offers.ts";
 import {
   type FlatteryInput,
@@ -164,6 +164,33 @@ export function warmth(f: Vector): number {
   return 0.5 * f.affection + 0.3 * f.trust + 0.1 * f.gratitude + 0.1 * f.dependency;
 }
 
+/** Miedo desde el que se cede a un pedido, y cuánto lo baja el audaz (y sube el calmo): `reactivity`. */
+export const FEAR_YIELDS = 0.5;
+export const FEAR_SHIFT = 0.1;
+/** Gratitud desde la que se devuelve el favor concediendo el pedido. */
+export const GRATITUDE_RETURNS = 0.4;
+/** Calidez desde la que las líneas suenan cálidas, y desde abajo (o con rencor) secas. */
+export const WARM_TONE = 0.3;
+export const DRY_TONE = 0.0;
+export const DRY_RESENTMENT = 0.2;
+
+/** El oyente le teme a quien habla lo bastante como para ceder (el temerario ya no tanto). */
+export function yieldsToFear(f: Vector, reactivity = 0): boolean {
+  return f.fear >= FEAR_YIELDS - FEAR_SHIFT * reactivity;
+}
+
+/** El oyente le debe un favor a quien habla (gratitud alta sin rencor de por medio). */
+export function returnsFavor(f: Vector): boolean {
+  return f.gratitude >= GRATITUDE_RETURNS && f.resentment < GRUDGE_RESENTMENT;
+}
+
+/** El tono de las líneas sale de la relación y no solo de la formalidad. */
+export function toneOf(f: Vector): Tone {
+  if (warmth(f) >= WARM_TONE) return "warm";
+  if (warmth(f) < DRY_TONE || f.resentment >= DRY_RESENTMENT) return "dry";
+  return "plain";
+}
+
 /** Rencor o desconfianza que cierra los pedidos; el reactivo (`reactivity` > 0) lo siente antes. */
 export function holdsGrudge(f: Vector, reactivity = 0): boolean {
   const shift = TOUCHY_SHIFT * reactivity;
@@ -272,7 +299,14 @@ export function decideReply(i: ReplyInput, at: number): Reply {
 function decideBody(i: ReplyInput, at: number): Reply {
   const say = (line: string, params: Params = {}): Reply => ({
     line,
-    text: sayLine(i.lines, line, params, i.rng.fork(line), isFormal(i.feel, i.rankAbove)),
+    text: sayLine(
+      i.lines,
+      line,
+      params,
+      i.rng.fork(line),
+      isFormal(i.feel, i.rankAbove),
+      toneOf(i.feel),
+    ),
   });
   const a = i.act;
   const temper = i.temper ?? NEUTRAL_TEMPER;
@@ -349,9 +383,25 @@ function decideBody(i: ReplyInput, at: number): Reply {
       if (a.good === null) return say("request.unclear");
       const what = i.goodName(a.good);
       if (i.reproach) return say(`request.refuse.${i.reproach}`, { what });
+      const spare = i.held(a.good) - i.members * RESERVE_GRAMS_PER_MEMBER;
+      // Cede por miedo aunque lo odie: el rencor se traga (el audaz teme menos, el reactivo cede menos).
+      if (yieldsToFear(i.feel, temper.reactivity)) {
+        if (spare < GIFT_GRAMS) return say("request.short", { what });
+        return {
+          ...say("request.give.afraid", { what }),
+          give: { good: a.good, grams: GIFT_GRAMS },
+        };
+      }
       if (holdsGrudge(i.feel, temper.reactivity)) return say("request.refuse.grudge", { what });
       if (holdsGrievance(memory)) return say("request.refuse.remembered", { what });
-      const spare = i.held(a.good) - i.members * RESERVE_GRAMS_PER_MEMBER;
+      // Devuelve el favor: la gratitud pesa lo que un regalo, aunque no haya tanto cariño.
+      if (returnsFavor(i.feel)) {
+        if (spare < GIFT_GRAMS) return say("request.short", { what });
+        return {
+          ...say("request.give.grateful", { what }),
+          give: { good: a.good, grams: GIFT_GRAMS },
+        };
+      }
       const felt = warmth(i.feel) + MEMORY_WARMTH * memory.bias;
       if (felt >= FREE_GIFT_WARMTH - GENEROSITY_SHIFT * temper.warmth) {
         if (spare < GIFT_GRAMS) return say("request.short", { what });

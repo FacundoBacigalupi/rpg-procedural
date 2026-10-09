@@ -174,6 +174,24 @@ describe("contestar", () => {
     );
   });
 
+  it("cede por miedo, devuelve el favor y suena cálido según la relación", () => {
+    const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
+    const req = input({ act: { kind: "request", good: "grain" }, held: () => rich });
+    const afraid = { ...STRANGER, fear: 0.7, resentment: 0.6 };
+    expect(decideReply({ ...req, feel: afraid }, 0).line).toBe("request.give.afraid");
+    expect(decideReply({ ...req, feel: { ...STRANGER, resentment: 0.6 } }, 0).line).toBe(
+      "request.refuse.grudge",
+    );
+    const back = decideReply({ ...req, feel: { ...STRANGER, gratitude: 0.6 } }, 0);
+    expect(back.line).toBe("request.give.grateful");
+    expect(back.give?.grams).toBe(GIFT_GRAMS);
+    const warm = decideReply({ ...req, feel: { ...STRANGER, affection: 0.5, trust: 0.3 } }, 0);
+    expect(warm.line).toBe("request.give");
+    expect(["Tomá, llevate grano, lo que necesites.", "Claro que sí, te paso grano."]).toContain(
+      warm.text,
+    );
+  });
+
   it("da o fía según lo que siente por quien pide, no según el parentesco", () => {
     const rich = 4 * RESERVE_GRAMS_PER_MEMBER + GIFT_GRAMS;
     const req = input({ act: { kind: "request", good: "grain" }, held: () => rich });
