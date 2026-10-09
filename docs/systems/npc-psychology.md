@@ -611,3 +611,7 @@ Las viñetas de la infancia (player-loop) son decisiones reales dentro de los pe
 ## Implementación (2026-10-09): gusto ligado a una persona
 
 `Preference.about` (de `TasteExposure.from`, solo exposición de infancia con valencia positiva) liga el gusto a quien lo dio; `seedTastes` usa a la madre para lo corriente. `TasteMention.about` y `TasteView.reminds` lo llevan al narrador (plantilla `taste.reminds_of`) solo si el personaje conoce a esa persona. Falta ligar a recuerdos puntuales y el modo introspección.
+
+## Implementación (2026-10-09): decisión por utilidad, núcleo y candidatas sociales
+
+`sim/mind/utility.ts` implementa la fórmula de §7 sobre `Candidate` (contribución a impulsos, chance y riesgo creídos, pérdida, ánimo): los impulsos son las necesidades inmediatas con su urgencia (bajo `NEED_FLOOR` no empujan) y los valores de `valuesOf` (escalados por `VALUE_SCALE`). `aversion` sale de la audacia y el miedo del momento; `decideByUtility` hace softmax con temperatura por `control` y una sola tirada de `rng.fork("decision", npc, tick)`. `utility-social.ts` arma ayudar, dar, evitar y vengarse desde las dimensiones, el parentesco y `OtherBelief`. Es puro y nadie lo llama aún: el cableado (candidatas del catálogo, insumos del cuerpo, proceso `life.decide`, objetivos en capas, modificadores) son los sub-ítems (c)-(h) de «IA de utilidad» en el ROADMAP. Constantes sin calibrar.
