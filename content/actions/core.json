@@ -572,5 +572,21 @@
       { "id": "too_weak", "factor": "capability" }
     ],
     "evidence": 0.6
+  },
+  {
+    "id": "ponder",
+    "name": "suponer",
+    "domain": "mind",
+    "args": [{ "role": "about", "kind": "text", "required": true }],
+    "manners": [],
+    "requires": [],
+    "occupies": { "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 600,
+    "emissions": { "sight": 0.05, "sound": 0 },
+    "resolver": "ponder",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 0.2
   }
 ]
