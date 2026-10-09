@@ -49,7 +49,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
-import { consultProcess, divinersProcess, retoldProcess } from "./divine.ts";
+import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
@@ -249,6 +249,13 @@ export function lifeWorld(
           concerns: parts.concerns,
           clock: parts.clock,
           placeOf: placeOf(parts, village),
+        }),
+        visitsProcess({
+          methods: parts.divinations,
+          concerns: parts.concerns,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+          player,
         }),
         companyProcess({
           dims: parts.relationDims,
