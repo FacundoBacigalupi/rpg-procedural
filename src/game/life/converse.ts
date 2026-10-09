@@ -64,6 +64,7 @@ import {
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
+  type Proposal,
   RELATIONS,
   type ReadonlyWorldTruth,
   rankOf,
@@ -104,6 +105,20 @@ export interface PendingSpeech {
 }
 
 export const PENDING = table<PendingSpeech>("life.pending_speech");
+
+/**
+ * La propuesta que alguien dejó planteada (una contraoferta) y espera que `with` acepte, rechace o
+ * conteste con otra (dialogue §8, contracts §3): `gets`/`gives` desde quien la planteó. Vive un
+ * día de mundo; cada contraoferta suma una ronda.
+ */
+export interface OpenDeal {
+  readonly with: AgentId;
+  readonly deal: Proposal;
+  readonly at: Tick;
+  readonly rounds: number;
+}
+
+export const OPEN_DEALS = table<OpenDeal>("life.open_deal");
 
 export interface ConverseOptions {
   readonly spaces: SpaceGraph;
@@ -647,6 +662,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
     phase: "decide",
     reads: [
       PENDING.name,
+      OPEN_DEALS.name,
       BELIEFS.name,
       HEARD.name,
       KNOWN_DEEDS.name,
@@ -665,7 +681,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       LOCATION.name,
       ENTITY.name,
     ],
-    writes: [PENDING.name, HEARD.name, KNOWN_DEEDS.name],
+    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
       const pending = ctx.truth.get(PENDING, me);
@@ -716,6 +732,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               ctx.rng.fork("prophecy", pending.key),
             )
           : undefined;
+      // La propuesta que dejó planteada con este mismo interlocutor y sigue vigente.
+      const stored = truth.get(OPEN_DEALS, me);
+      const openWith =
+        stored && stored.with === speaker && ctx.now - stored.at <= o.day ? stored : undefined;
       const reply = decideReply(
         {
           act,
@@ -777,6 +797,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             const at = truth.get(LOCATION, id);
             return { where: o.spaces.spaces.find((s) => s.key === at?.space)?.kind ?? "open" };
           },
+          ...(openWith ? { open: openWith.deal, rounds: openWith.rounds } : {}),
           heard: truth.get(HEARD, me)?.claims ?? [],
           owes: owesOf(truth, me, speaker, ctx.now, o.day),
           reproach: worstDeed(truth.get(KNOWN_DEEDS, me), speaker)?.kind ?? null,
@@ -802,6 +823,23 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       );
 
       const changes: StateChange[] = [clear];
+      // El regateo: una contraoferta queda abierta (una ronda más); cualquier otra cosa dicha sobre
+      // el trato (aceptar, rechazar, cerrar, rechazar de plano) lo cierra, y uno vencido se descarta.
+      if (reply.counter) {
+        changes.push(
+          setComponent(OPEN_DEALS, me, {
+            with: speaker,
+            deal: reply.counter,
+            at: ctx.now,
+            rounds: (openWith?.rounds ?? 0) + 1,
+          }),
+        );
+      } else if (
+        truth.get(OPEN_DEALS, me) &&
+        (act.kind === "accept" || act.kind === "refuse" || act.kind === "offer")
+      ) {
+        changes.push(deleteComponent(OPEN_DEALS, me));
+      }
       if (reply.accepted) {
         changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
       }

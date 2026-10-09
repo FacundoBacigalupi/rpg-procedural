@@ -26,7 +26,7 @@ import {
   recordCaught,
 } from "./lies.ts";
 import { type Params, type SpeechLine, sayLine } from "./lines.ts";
-import { type Proposal, weighOffer } from "./offers.ts";
+import { dealHolds, MAX_ROUNDS, type Proposal, weighOffer } from "./offers.ts";
 import {
   type FlatteryInput,
   type FlatteryResult,
@@ -81,6 +81,8 @@ export interface ReplyInput {
   readonly recollection?: Recollection;
   /** La propuesta que el oyente dejó planteada y espera que quien habla acepte o rechace. */
   readonly open?: Proposal;
+  /** Cuántas contraofertas lleva ya la propuesta abierta entre los dos (regateo en curso). */
+  readonly rounds?: number;
   /** Cuánto cree el oyente que vale el kilo de un bien (monedas); sin esto no valúa ofertas. */
   readonly worth?: (good: string) => number | null;
   /** Gramos de un bien que quien habla tiene a mano (no puede ofrecer lo que no tiene). */
@@ -363,6 +365,8 @@ export function decideReply(i: ReplyInput, at: number): Reply {
         case "accept":
           return { ...say("offer.accept", { what }), deal: v.deal };
         case "counter": {
+          // Tras varias rondas el oyente se cansa de regatear.
+          if ((i.rounds ?? 0) >= MAX_ROUNDS) return say("offer.refuse.tired", { what });
           const grams = v.counter.gives?.grams ?? 0;
           return {
             ...say("offer.counter", { what, kilos: String(Math.round(grams / 100) / 10) }),
@@ -377,6 +381,13 @@ export function decideReply(i: ReplyInput, at: number): Reply {
     case "accept": {
       if (!i.open) return say("answer.nothing");
       if (i.reproach || holdsGrudge(i.feel, temper.reactivity)) return say("answer.nothing");
+      // Entre la contraoferta y el sí pudo cambiar lo que cada uno tiene a mano.
+      if (
+        i.speakerHas &&
+        !dealHolds(i.open, (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER, i.speakerHas)
+      ) {
+        return say("accept.short");
+      }
       return { ...say("accept.thanks"), deal: i.open };
     }
     case "refuse":
