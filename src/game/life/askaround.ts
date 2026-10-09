@@ -17,8 +17,11 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  type StateChange,
+  setComponent,
   standardize,
   type Trait,
+  table,
 } from "../../sim/index.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
@@ -26,6 +29,14 @@ export const ASK_AROUND_PROCESS = "life.askAround";
 
 /** Segundos desde el hecho durante los que la víctima sigue preguntando (3 días, sin calibrar). */
 export const ASK_WINDOW = 3 * 86_400;
+/** A quién ya le preguntó cada uno por qué hecho (escritor único: `life.askAround`; no toca `law.known_deeds`). */
+export interface AskedWho {
+  readonly asked: readonly { readonly who: AgentId; readonly event: EventId; readonly at: Tick }[];
+}
+export const ASKED = table<AskedWho>("life.asked");
+/** Cuántas preguntas hechas guarda cada uno (las más viejas se olvidan). */
+export const KEPT_ASKED = 12;
+
 /** Chance diaria de que salga a preguntar (sin calibrar). */
 export const ASK_CHANCE = 0.6;
 
@@ -84,9 +95,14 @@ export function whomToAsk(
     );
   if (!mine) return null;
   const known = Object.keys(toward).sort() as AgentId[];
+  // A quien ya le preguntó por este hecho no vuelve a preguntarle.
+  const already = new Set(
+    (truth.get(ASKED, asker)?.asked ?? []).filter((a) => a.event === mine.event).map((a) => a.who),
+  );
   const candidates = known.filter(
     (id) =>
       id !== asker &&
+      !already.has(id) &&
       id !== mine.by &&
       truth.get(PERSON, id) !== undefined &&
       alive(truth, id) &&
@@ -113,8 +129,9 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
       ENTITY.name,
       INNATE.name,
       MEMORIES.name,
+      ASKED.name,
     ],
-    writes: [],
+    writes: [ASKED.name],
     run(ctx) {
       const home = ctx.scope as string;
       const members = (ctx.truth.ids(PERSON) as AgentId[])
@@ -122,6 +139,7 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
         .sort();
       if (members.length === 0 || members.includes(o.player)) return {};
       const events: EventDraft[] = [];
+      const changes: StateChange[] = [];
       for (const asker of members) {
         const plan = whomToAsk(ctx.truth, asker, ctx.now);
         if (!plan) continue;
@@ -136,6 +154,12 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
           (plan.neighbour ? NEIGHBOUR_ASKS : 1);
         if (!rng.chance(chance)) continue;
         const witness = rng.pick(plan.candidates);
+        const before = ctx.truth.get(ASKED, asker)?.asked ?? [];
+        changes.push(
+          setComponent(ASKED, asker, {
+            asked: [...before, { who: witness, event: plan.event, at: ctx.now }].slice(-KEPT_ASKED),
+          }),
+        );
         events.push({
           kind: INQUIRY_EVENT,
           actors: [asker, witness],
@@ -145,7 +169,7 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
           causes: [{ kind: "state", entity: asker as never, key: "law.known_deeds" }],
         });
       }
-      return events.length === 0 ? {} : { events };
+      return events.length === 0 ? {} : { events, changes };
     },
   };
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, type EventId, loadContent } from "../../core/index.ts";
 import { KNOWN_DEEDS, LOCATION, RELATIONS } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { ASK_WINDOW, askChance, whomToAsk } from "./askaround.ts";
+import { ASK_WINDOW, ASKED, askChance, whomToAsk } from "./askaround.ts";
 import { Life } from "./life.ts";
 import { living } from "./world.ts";
 
@@ -41,6 +41,9 @@ describe("la víctima que pregunta alrededor", () => {
     expect(whomToAsk(t, victim as AgentId, at + ASK_WINDOW + 1)).toBeNull();
     // Si el hecho no la tiene de víctima, no sale a preguntar.
     expect(whomToAsk(t, near as AgentId, at)).toBeNull();
+    // A quien ya le preguntó por ese hecho no vuelve a preguntarle.
+    t.set(ASKED, victim as AgentId, { asked: [{ who: near as AgentId, event, at }] });
+    expect(whomToAsk(t, victim as AgentId, at)?.candidates ?? []).not.toContain(near);
   }, 60_000);
 
   it("el vecino sale a preguntar por lo que le contaron solo si lo une un vínculo con la víctima", () => {
