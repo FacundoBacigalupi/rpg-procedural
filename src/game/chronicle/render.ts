@@ -13,6 +13,7 @@ const CAUSE: Readonly<Record<string, string>> = {
   disease: "murió de una enfermedad",
   hypothermia: "murió de frío",
   heatstroke: "murió de un golpe de calor",
+  poison: "murió envenenado",
   unknown: "murió",
 };
 

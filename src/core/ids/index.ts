@@ -31,6 +31,7 @@ export const ENTITY_KINDS = [
   "lineage",
   "trace",
   "pathogen",
+  "substance",
 ] as const;
 
 export type EntityKind = (typeof ENTITY_KINDS)[number];
@@ -68,6 +69,7 @@ export type SchemeId = Id<"scheme">;
 export type LineageId = Id<"lineage">;
 export type TraceId = Id<"trace">;
 export type PathogenId = Id<"pathogen">; // un patógeno concreto, con origen (body-health §6)
+export type SubstanceId = Id<"substance">; // una sustancia concreta, con origen (body-health §9)
 
 /** Cualquier entidad; el tipo se lee del prefijo. */
 export type EntityRef = Id<EntityKind>;
