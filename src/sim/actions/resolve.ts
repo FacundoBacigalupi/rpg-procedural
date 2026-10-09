@@ -23,15 +23,27 @@ import {
   logistic,
   type PlaceRef,
 } from "../../core/index.ts";
-import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
+import {
+  defectsOf,
+  handsOf,
+  type RecipeDef,
+  type RecipeDefect,
+  runSession,
+} from "../crafts/index.ts";
 import {
   askPerKg,
+  baseFor,
   bidPerKg,
   COPPER,
   DAILY_KCAL,
   gramsIn,
   HARVEST,
   KEEP_DAYS,
+  type LotQualities,
+  type PriceBeliefs,
+  perceivedQuality,
+  qualityOfUnit,
+  qualityPriceFactor,
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
@@ -120,6 +132,22 @@ export interface Market {
     | undefined;
   /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
   readonly fame?: number | undefined;
+  /**
+   * Lo que cada parte cree que vale cada bien (`economy/priceMemory`) y el día del mundo: la base
+   * de `askPerKg`/`bidPerKg` de cada una es `baseFor` (lo creído mezclado con el precio de
+   * contenido según su fe). Sin esto, las dos usan el precio de contenido.
+   */
+  readonly beliefs?:
+    | {
+        readonly actor: PriceBeliefs | undefined;
+        readonly other: PriceBeliefs | undefined;
+        readonly day: number;
+      }
+    | undefined;
+  /** La calidad de lo que tiene cada parte (`economy/quality`): sin registro vale la referencia. */
+  readonly lots?:
+    | { readonly actor: LotQualities | undefined; readonly other: LotQualities | undefined }
+    | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -246,6 +274,8 @@ export type VerbEffect =
       /** Gramos del bien que cambiaron de mano y monedas que fueron al otro lado. */
       readonly grams: number;
       readonly coins: number;
+      /** Calidad real del lote que cambió de mano (0-1); falta si no se movió nada. */
+      readonly quality?: number;
     }
   | {
       readonly kind: "give";
@@ -294,6 +324,8 @@ export type VerbEffect =
       readonly perceived: number;
       /** Cómo quedó: a punto, crudo, pasado o quemado. */
       readonly state: "done" | "raw" | "dry" | "burnt" | null;
+      /** Los defectos reales de la tanda (crafts §11), del más grave al menos; un maestro nota algunos. */
+      readonly defects?: readonly RecipeDefect[];
     }
   | {
       readonly kind: "tend";
@@ -861,6 +893,7 @@ const trade: Resolver = (c) => {
       good: found.unit,
       grams: found.grams,
       coins: found.coins,
+      quality: found.quality,
     },
     seconds: c.nominal,
     transfers: found.transfers,
@@ -882,7 +915,32 @@ function kcalOf(rows: readonly Holding[], foods: ReadonlyMap<LedgerUnit, Nutriti
   return kcal;
 }
 
+/** La base de una parte para un bien: lo que cree (con la fe aflojada) o el precio de contenido. */
+function believedBase(mk: Market, who: "actor" | "other", unit: LedgerUnit, ref: number): number {
+  return mk.beliefs === undefined ? ref : baseFor(mk.beliefs[who], unit, ref, mk.beliefs.day);
+}
+
+/**
+ * El precio de un lote según su calidad: quien vende sabe la real; quien compra la percibe con el
+ * error de su ojo (`eye`, 0-1) si el lote tiene calidad registrada. Sin registro, factor 1.
+ */
+function qualityFactors(
+  c: Ctx,
+  mk: Market,
+  sellerIs: "actor" | "other",
+  unit: LedgerUnit,
+  buyerEye: number,
+): { seller: number; buyer: number; quality: number } {
+  const lots = mk.lots?.[sellerIs];
+  if (lots?.[unit] === undefined)
+    return { seller: 1, buyer: 1, quality: qualityOfUnit(lots, unit) };
+  const real = qualityOfUnit(lots, unit);
+  const seen = perceivedQuality(real, buyerEye, c.rng.fork("eye").normal(0, 1));
+  return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
+}
+
 interface Bargain {
+  readonly quality: number;
   readonly direction: "buy" | "sell";
   readonly unit: LedgerUnit;
   readonly grams: number;
@@ -930,7 +988,10 @@ function bargain(
 
   if (sells) {
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
-    const base = mk.priceCopperPerKg.get(row.unit) as number;
+    const ref = mk.priceCopperPerKg.get(row.unit) as number;
+    const qf = qualityFactors(c, mk, "actor", row.unit, 0.5);
+    const base = believedBase(mk, "actor", row.unit, ref) * qf.seller;
+    const buyerBase = believedBase(mk, "other", row.unit, ref) * qf.buyer;
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
     // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
@@ -949,7 +1010,7 @@ function bargain(
       wantGrams: Math.min(wantGrams, room),
       askPerKg: askPerKg(base, myDays),
       maxPerKg: bidPerKg(
-        base,
+        buyerBase,
         foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
         foodDays(yourPocket, foods, mk.other?.members ?? 1),
       ),
@@ -962,6 +1023,7 @@ function bargain(
       return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
 
     return {
+      quality: qf.quality,
       direction: "sell",
       unit: row.unit,
       grams: deal.grams,
@@ -975,7 +1037,16 @@ function bargain(
 
   if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
-  const base = mk.priceCopperPerKg.get(row.unit) as number;
+  const ref = mk.priceCopperPerKg.get(row.unit) as number;
+  const qf = qualityFactors(
+    c,
+    mk,
+    "other",
+    row.unit,
+    handsOf(c.input.actor.skill ?? 0, c.input.actor.z).senses,
+  );
+  const base = believedBase(mk, "other", row.unit, ref) * qf.seller;
+  const buyerBase = believedBase(mk, "actor", row.unit, ref) * qf.buyer;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
   const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
@@ -987,7 +1058,7 @@ function bargain(
     wantGrams,
     askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
     maxPerKg: bidPerKg(
-      base,
+      buyerBase,
       foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
       foodDays(myRows, foods, mk.ownMembers),
     ),
@@ -1009,7 +1080,14 @@ function bargain(
       : []),
     { from: me, unit: COPPER, amount: deal.coins, to: holderAccount(you) },
   ];
-  return { direction: "buy", unit: row.unit, grams: deal.grams, coins: deal.coins, transfers };
+  return {
+    quality: qf.quality,
+    direction: "buy",
+    unit: row.unit,
+    grams: deal.grams,
+    coins: deal.coins,
+    transfers,
+  };
 }
 
 const take: Resolver = (c) => {
@@ -1214,6 +1292,7 @@ const cook: Resolver = (c) => {
       quality: round3(s.quality),
       perceived: round3(s.perceivedQuality),
       state,
+      defects: defectsOf(recipe, s).map((d) => ({ ...d, severity: round3(d.severity) })),
     },
     seconds: s.seconds,
     verdict: {

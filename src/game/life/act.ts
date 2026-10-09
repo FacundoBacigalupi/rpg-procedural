@@ -9,6 +9,7 @@ import {
   type AgentId,
   type EntityRef,
   type HolderRef,
+  holderAccount,
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
@@ -51,6 +52,7 @@ import {
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
+  LOT_QUALITY,
   type LocalMap,
   learnFromAttempt,
   localHour,
@@ -60,21 +62,26 @@ import {
   nodeAt,
   notoriety,
   OPINIONS,
+  observeDeal,
   opposingSkill,
   PERSON,
   PLACE,
   type PlanCursor,
   type PlanNode,
+  PRICE_BELIEFS,
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
   type Purpose,
   placeAt,
   placeRefOf,
+  qualityPriceFactor,
+  REFERENCE_QUALITY,
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
   rankOf,
+  receiveLot,
   resolve,
   SELF_IMAGES,
   type SelfReport,
@@ -103,6 +110,7 @@ import {
   YIELDED,
 } from "../../sim/index.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
+import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import {
   atMyMercy,
@@ -244,8 +252,12 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELF_IMAGES.name,
       YIELDED.name,
       FIGHT_STATE.name,
+      PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
     ],
     writes: [
+      PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
       BODY_STATE.name,
@@ -327,6 +339,7 @@ function marketOf(
   me: AgentId,
   other: EntityRef | null,
   harvestGramsPerHour: number,
+  day: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
   return {
@@ -335,6 +348,15 @@ function marketOf(
         g.priceCopperPerKg === undefined ? [] : [[goodUnit(g), g.priceCopperPerKg] as const],
       ),
     ),
+    lots: {
+      actor: truth.get(LOT_QUALITY, me),
+      other: other === null ? undefined : truth.get(LOT_QUALITY, other as AgentId),
+    },
+    beliefs: {
+      actor: truth.get(PRICE_BELIEFS, me),
+      other: other === null ? undefined : truth.get(PRICE_BELIEFS, other as AgentId),
+      day,
+    },
     ownMembers: membersOf(truth, truth.get(PERSON, me)?.household ?? ""),
     other:
       otherHome === undefined
@@ -443,7 +465,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate)
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate, day)
         : undefined,
   };
   const r = resolve(input);
@@ -624,6 +646,86 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ctx.now,
   );
   if (image) changes.push(setComponent(SELF_IMAGES, me, image));
+
+  // Un trato cerrado se ve: los dos corren lo que creen del bien hacia lo que se pagó (economy §4).
+  if (eff.kind === "trade" && eff.deal && eff.good !== null && eff.grams > 0 && eff.with) {
+    const unit = eff.good as string;
+    const ref = o.goods.find((g) => goodUnit(g) === eff.good)?.priceCopperPerKg;
+    // Lo pagado se normaliza a la calidad de referencia: el bien bueno no sube "el precio del bien".
+    const paid =
+      ((eff.coins / eff.grams) * 1000) / qualityPriceFactor(eff.quality ?? REFERENCE_QUALITY);
+    // El lote cambia de manos con su calidad: se mezcla con lo que el comprador ya tenía.
+    if (eff.quality !== undefined) {
+      const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
+      const heldBy = (h: unknown) => ctx.ledger?.holdings(holderAccount(h as HolderRef)) ?? [];
+      const home = truth.get(PERSON, buyer)?.household;
+      const held = [...heldBy(buyer), ...(home === undefined ? [] : heldBy(home))]
+        .filter((r) => r.unit === eff.good)
+        .reduce((sum, r) => sum + r.amount, 0);
+      changes.push(
+        setComponent(
+          LOT_QUALITY,
+          buyer,
+          receiveLot(truth.get(LOT_QUALITY, buyer), unit, held, eff.grams, eff.quality),
+        ),
+      );
+    }
+    if (ref !== undefined && paid > 0) {
+      for (const who of [me, eff.with as AgentId]) {
+        changes.push(
+          setComponent(
+            PRICE_BELIEFS,
+            who,
+            observeDeal(truth.get(PRICE_BELIEFS, who), unit, paid, ref, day),
+          ),
+        );
+      }
+    }
+  }
+
+  // Lo que cocinó queda con su calidad, mezclada con lo que ya tenía de ese bien (crafts §11).
+  if (eff.kind === "cook" && eff.good !== null && eff.grams > 0 && eff.from !== null) {
+    const held = (ctx.ledger?.holdings(holderAccount(eff.from as HolderRef)) ?? [])
+      .filter((r) => r.unit === eff.good)
+      .reduce((sum, r) => sum + r.amount, 0);
+    changes.push(
+      setComponent(
+        LOT_QUALITY,
+        me,
+        receiveLot(truth.get(LOT_QUALITY, me), eff.good as string, held, eff.grams, eff.quality),
+      ),
+    );
+  }
+
+  // Un maestro de la casa que vio la tanda le señala lo que notó y el cocinero lo incorpora (crafts §11).
+  if (eff.kind === "cook" && eff.defects && eff.defects.length > 0) {
+    const fix = masterCorrects({
+      truth,
+      catalog: o.skills,
+      traits: o.traits,
+      plans: e.plans,
+      clock: o.clock,
+      cook: me,
+      verb: node.verb,
+      defects: eff.defects,
+      hex: e.hex,
+      seconds: r.seconds,
+      expected: r.attempt.expected,
+      now: ctx.now,
+      skills: lessons ?? skills,
+    });
+    if (fix) {
+      changes.push(...fix.changes);
+      extraEvents.push({
+        kind: "craft.corrected",
+        actors: [fix.master, me],
+        place: input.place,
+        data: { noticed: fix.noticed.map((d) => d.kind), gain: Math.round(fix.gain * 1000) / 1000 },
+        emissions: { sight: 0.3, sound: 0.5 },
+        causes: [{ kind: "event", event: draftEvent(0) }],
+      });
+    }
+  }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
   const resume = eff.kind === "move" && eff.onTheWay === true;
