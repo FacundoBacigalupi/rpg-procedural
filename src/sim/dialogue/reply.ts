@@ -87,6 +87,8 @@ export interface ReplyInput {
   readonly rounds?: number;
   /** Cuánto cree el oyente que vale el kilo de un bien (monedas); sin esto no valúa ofertas. */
   readonly worth?: (good: string) => number | null;
+  /** Alternativas creídas y cara en juego del oyente al regatear (contracts §3); la desesperación sale de su despensa. */
+  readonly bargain?: { readonly alternatives: number; readonly face: number };
   /** Gramos de un bien que quien habla tiene a mano (no puede ofrecer lo que no tiene). */
   readonly speakerHas?: (good: string) => number;
   /** Cómo llama el oyente a `id` y a un bien. */
@@ -382,6 +384,19 @@ function decideBody(i: ReplyInput, at: number): Reply {
         spare: (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER,
         speakerHas: i.speakerHas ?? (() => 0),
         felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
+        leverage: {
+          alternatives: i.bargain?.alternatives ?? 0,
+          face: i.bargain?.face ?? 0,
+          // Desesperado: lo que recibiría le falta a su casa (su despensa bajo la reserva).
+          desperation:
+            a.give === null
+              ? 0
+              : 1 -
+                Math.min(
+                  1,
+                  i.held(a.give.good) / Math.max(1, i.members * RESERVE_GRAMS_PER_MEMBER),
+                ),
+        },
       });
       switch (v.kind) {
         case "unvalued":

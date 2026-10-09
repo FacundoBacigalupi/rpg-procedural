@@ -5,7 +5,15 @@ import { type AgentId, Rng } from "../../core/index.ts";
 import type { Vector } from "../relations/index.ts";
 import { understand } from "./acts.ts";
 import { SpeechLine } from "./lines.ts";
-import { dealHolds, MAX_ROUNDS, type OfferInput, offerMargin, weighOffer } from "./offers.ts";
+import {
+  dealHolds,
+  type Leverage,
+  leverageShift,
+  MAX_ROUNDS,
+  type OfferInput,
+  offerMargin,
+  weighOffer,
+} from "./offers.ts";
 import { decideReply, type ReplyInput } from "./reply.ts";
 
 const ana = "agent:1" as AgentId;
@@ -109,6 +117,41 @@ describe("weighOffer", () => {
         },
       ),
     );
+  });
+});
+
+describe("poder de negociación", () => {
+  const none: Leverage = { alternatives: 0, desperation: 0, face: 0 };
+  it("las alternativas y la cara suben el margen; la desesperación lo baja", () => {
+    expect(offerMargin(0, { ...none, alternatives: 1 })).toBeGreaterThan(offerMargin(0));
+    expect(offerMargin(0, { ...none, face: 1 })).toBeGreaterThan(offerMargin(0));
+    expect(offerMargin(0, { ...none, desperation: 1 })).toBeLessThan(offerMargin(0));
+  });
+  it("el desesperado acepta lo que con alternativas rechazaría", () => {
+    const tight = { ...base, give: { good: "salt", grams: 520 } };
+    expect(weighOffer({ ...tight, leverage: { ...none, desperation: 1 } }).kind).toBe("accept");
+    expect(weighOffer({ ...tight, leverage: { ...none, alternatives: 1 } }).kind).not.toBe(
+      "accept",
+    );
+  });
+  it("el margen sigue acotado con cualquier palanca", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -3, max: 3, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        fc.double({ min: -2, max: 2, noNaN: true }),
+        (f, alternatives, desperation, face) => {
+          const m = offerMargin(f, { alternatives, desperation, face });
+          expect(m).toBeGreaterThanOrEqual(-0.1);
+          expect(m).toBeLessThanOrEqual(0.4);
+        },
+      ),
+    );
+  });
+  it("sin palancas no cambia nada", () => {
+    expect(leverageShift(undefined)).toBe(0);
+    expect(leverageShift(none)).toBe(0);
   });
 });
 
