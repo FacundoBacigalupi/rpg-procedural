@@ -12,6 +12,7 @@ import {
   type Amends,
   BODY_STATE,
   type BondDef,
+  COMMUNITY_RELIGION,
   type Conscience,
   clampTemper,
   type DimensionDef,
@@ -26,13 +27,19 @@ import {
   PERSON,
   type ProcessDef,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   relationship,
   respondToGuilt,
+  type SchemaDef,
   type StateChange,
+  sanctionWeight,
   setComponent,
   standardize,
   type Trait,
+  type ValueDef,
+  valuesOf,
+  villageReligion,
 } from "../../sim/index.ts";
 import { offenseOf } from "./deeds.ts";
 
@@ -44,14 +51,51 @@ export interface ConscienceOptions {
   readonly bonds: readonly BondDef[];
   readonly traits: readonly Trait[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Valores y esquemas: sin ellos la conciencia solo sale del temperamento. */
+  readonly values?: readonly ValueDef[];
+  readonly schemas?: readonly SchemaDef[];
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+/** Cuánto de los valores de alguien es moral (justicia y tradición) en el reparto promedio. */
+const MORAL_VALUE_BASE = 0.2;
+/** Cuánto mueve el peso moral que justicia + tradición pasen o no del promedio. */
+const VALUE_MORAL_WEIGHT = 0.5;
+/** Cuánto suma la sanción creída del tabú de la religión que alcanza al bien robado. */
+const TABOO_MORAL_WEIGHT = 0.4;
+
+/**
+ * El peso moral de un hecho para quien lo hizo (npc-psychology §11): el temperamento, sus valores
+ * (justicia y tradición, ya con el sesgo de su cultura en el reparto) y la sanción creída del tabú
+ * de su religión sobre el bien tomado. Puro.
+ */
+export function moralWeightOf(parts: {
+  readonly warmth: number;
+  readonly willpower: number;
+  /** Justicia + tradición del reparto normalizado de valores (0-1); null si no se conoce. */
+  readonly moralShare: number | null;
+  /** Penalidad del tabú creída (0-1), 0 si no hay tabú. */
+  readonly taboo: number;
+}): number {
+  const temper = 0.2 * clampTemper(parts.warmth) + 0.15 * clampTemper(parts.willpower);
+  const values =
+    parts.moralShare === null ? 0 : VALUE_MORAL_WEIGHT * (parts.moralShare - MORAL_VALUE_BASE);
+  return clamp01(0.5 + temper + values + TABOO_MORAL_WEIGHT * parts.taboo);
+}
 
 /** Daño de un hecho propio cuando el evento no lo mide (constantes sin calibrar). */
 const HARM = { theft: 0.4, default: 0.3 } as const;
 /** Cuánto de la excusa le da el rencor que ya le tenía a la víctima. */
 const GRUDGE_EXCUSE = 0.6;
+
+/** El bien de un robo (la primera unidad agarrada), si el evento es una toma. */
+function goodOf(e: Event): { good: string } | Record<string, never> {
+  const got = (e.data as { effect?: { kind?: string; got?: readonly { unit?: string }[] } } | null)
+    ?.effect;
+  const unit = got?.kind === "take" ? got.got?.[0]?.unit : undefined;
+  return unit ? { good: unit } : {};
+}
 
 /** Un hecho propio en `e`, de quien lo hizo: null si el evento no es un delito. */
 export function ownDeedOf(
@@ -84,15 +128,27 @@ export function ownDeedOf(
   }
   return {
     by: off.by,
-    deed: { kind: off.kind, victim: off.victim, at: e.tick, event: e.id, harm },
+    deed: { kind: off.kind, victim: off.victim, at: e.tick, event: e.id, harm, ...goodOf(e) },
     fatal,
   };
+}
+
+function moralShareOf(
+  truth: ReadonlyWorldTruth,
+  o: Pick<ConscienceOptions, "values" | "schemas">,
+  by: AgentId,
+  innate: Parameters<typeof valuesOf>[3] | undefined,
+): number | null {
+  const mind = truth.get(MIND, by);
+  if (!o.values || o.values.length === 0 || !mind || !innate) return null;
+  const v = valuesOf(o.values, o.schemas ?? [], mind, innate);
+  return (v["justice"] ?? 0) + (v["tradition"] ?? 0);
 }
 
 /** La conciencia de `by` ante `d` hoy: de quién es, cuánto quería a la víctima y cuánto teme que se sepa. */
 export function conscienceOf(
   truth: ReadonlyWorldTruth,
-  o: Pick<ConscienceOptions, "dims" | "bonds" | "traits">,
+  o: Pick<ConscienceOptions, "dims" | "bonds" | "traits" | "values" | "schemas">,
   by: AgentId,
   d: OwnDeed,
   now: Tick,
@@ -112,9 +168,14 @@ export function conscienceOf(
         0.3 * rel.dims.familiarity +
         0.2 * rel.dims.dependency,
     ),
-    moralWeight: clamp01(
-      0.5 + 0.2 * clampTemper(z["warmth"] ?? 0) + 0.15 * clampTemper(z["willpower"] ?? 0),
-    ),
+    moralWeight: moralWeightOf({
+      warmth: z["warmth"] ?? 0,
+      willpower: z["willpower"] ?? 0,
+      moralShare: moralShareOf(truth, o, by, innate),
+      taboo: d.good
+        ? sanctionWeight(truth.get(RELIGIOUS_IDENTITY, by), villageReligion(truth), d.good).penalty
+        : 0,
+    }),
     justification: clamp01(GRUDGE_EXCUSE * rel.dims.resentment),
     fearOfExposure: clamp01(fearOfExposure),
   };
@@ -156,6 +217,8 @@ export function conscienceProcess(o: ConscienceOptions): ProcessDef {
       INNATE.name,
       PERSON.name,
       ENTITY.name,
+      COMMUNITY_RELIGION.name,
+      RELIGIOUS_IDENTITY.name,
     ],
     writes: [AMENDS.name],
     run(ctx) {

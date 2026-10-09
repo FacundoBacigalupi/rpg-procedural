@@ -317,3 +317,37 @@ describe("alternativas y cara del regateo", () => {
     expect(bargainFace(9, 5, 0)).toBe(1);
   });
 });
+
+describe("ofertas con monedas", () => {
+  const coinLex = {
+    people: [],
+    goods: [...lex.goods, { id: "copper", names: ["moneda", "monedas", "cobre"], coin: true }],
+  };
+  const worth = (g: string) => (g === "copper" ? 1000 : (PRICE[g] ?? null));
+
+  it("cuenta las monedas en piezas, no en gramos", () => {
+    expect(understand("Te doy 2 kilos de grano por 20 monedas", coinLex)).toEqual({
+      kind: "offer",
+      give: { good: "grain", grams: 2000 },
+      want: { good: "copper", grams: 20 },
+    });
+    expect(understand("Te compro grano por dos monedas", coinLex)).toMatchObject({
+      give: { good: "copper", grams: 2 },
+    });
+  });
+
+  it("valúa la moneda a un cobre por pieza al pesar la oferta", () => {
+    // 2 kilos de grano a 8 = 16 cobres: 20 monedas es de sobra, 10 no.
+    const deal = (coins: number) =>
+      weighOffer({
+        give: { good: "copper", grams: coins },
+        want: { good: "grain", grams: 2000 },
+        worth,
+        spare: () => 100_000,
+        speakerHas: () => 100_000,
+        felt: 0,
+      }).kind;
+    expect(deal(20)).toBe("accept");
+    expect(deal(10)).not.toBe("accept");
+  });
+});

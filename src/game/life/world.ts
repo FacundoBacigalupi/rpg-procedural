@@ -300,6 +300,7 @@ export function lifeWorld(
           bonds: parts.relationBonds,
           habits: parts.habits,
           traits: parts.traits,
+          values: parts.values,
           witness: {
             player,
             map: parts.map,
@@ -313,6 +314,8 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           traits: parts.traits,
+          values: parts.values,
+          schemas: parts.schemas,
           placeOf: placeOf(parts, village),
         }),
         sleepProcess({

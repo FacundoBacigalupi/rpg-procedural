@@ -111,12 +111,13 @@ export function settleConditions(
   state: MentalState,
   now: Tick,
   dayLength: number,
-  support = 0,
+  support: number | ((kind: ConditionKind) => number) = 0,
 ): MentalState {
   const days = Math.max(0, (now - state.updated) / dayLength);
   if (days === 0) return state;
   const conditions = state.conditions.flatMap((c) => {
-    const half = CONDITION_HALF_LIFE_DAYS[c.kind] / (1 + clamp01(support));
+    const s = typeof support === "number" ? support : support(c.kind);
+    const half = CONDITION_HALF_LIFE_DAYS[c.kind] / (1 + clamp01(s));
     const severity = round(c.severity * pow(0.5, days / half));
     return severity < CONDITION_FLOOR
       ? []

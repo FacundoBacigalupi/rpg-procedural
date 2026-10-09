@@ -122,8 +122,25 @@ export interface ExchangeTerm {
 /** Con qué palabras puede nombrar el oyente a alguien o algo. */
 export interface Lexicon {
   readonly people: readonly { readonly id: AgentId; readonly names: readonly string[] }[];
-  readonly goods: readonly { readonly id: string; readonly names: readonly string[] }[];
+  readonly goods: readonly {
+    readonly id: string;
+    readonly names: readonly string[];
+    /** Es moneda: la cantidad se cuenta en piezas y no en gramos (`grams` guarda las piezas). */
+    readonly coin?: boolean;
+  }[];
 }
+
+const COIN_WORDS: Readonly<Record<string, number>> = {
+  una: 1,
+  un: 1,
+  dos: 2,
+  tres: 3,
+  cuatro: 4,
+  cinco: 5,
+  seis: 6,
+  diez: 10,
+};
+const COIN_AMOUNT = /\b(\d{1,6}|una|un|dos|tres|cuatro|cinco|seis|diez) (?:monedas?|cobres?)\b/;
 
 /** Minúsculas, sin tildes ni signos, con espacios simples. */
 export function normalize(text: string): string {
@@ -340,8 +357,14 @@ function mentions(norm: string, names: readonly string[]): boolean {
 
 /** El bien y la cantidad (mil gramos si no dice) que nombra un tramo de frase. */
 function termIn(seg: string, lex: Lexicon): ExchangeTerm | null {
-  const good = lex.goods.find((g) => mentions(seg, g.names))?.id;
+  const found = lex.goods.find((g) => mentions(seg, g.names));
+  const good = found?.id;
   if (good === undefined) return null;
+  if (found?.coin) {
+    // Las monedas se cuentan en piezas («dos monedas»); sin número, una.
+    const c = COIN_AMOUNT.exec(seg)?.[1];
+    return { good, grams: c === undefined ? 1 : (COIN_WORDS[c] ?? Number(c)) };
+  }
   const m = AMOUNT.exec(seg);
   const grams = m ? Number(m[1]) * (m[2]?.startsWith("k") ? 1000 : 1) : 1000;
   return { good, grams };
@@ -384,7 +407,9 @@ export function looseCounter(
   const scaled = (t: ExchangeTerm | null): ExchangeTerm | null =>
     t === null || scale === undefined
       ? t
-      : { good: t.good, grams: Math.max(10, Math.round((t.grams * scale) / 10) * 10) };
+      : lex.goods.find((g) => g.id === t.good)?.coin
+        ? { good: t.good, grams: Math.max(1, Math.round(t.grams * scale)) }
+        : { good: t.good, grams: Math.max(10, Math.round((t.grams * scale) / 10) * 10) };
   if (asks) want = scaled(want);
   else give = scaled(give);
   if (swapped !== null && give !== null) {

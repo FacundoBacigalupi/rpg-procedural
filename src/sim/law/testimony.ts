@@ -306,6 +306,8 @@ export interface OwnDeed {
   readonly event: EventId;
   /** 0-1: cuánto sufrió la víctima por esto (valor robado, herida). */
   readonly harm: number;
+  /** El bien tomado, si fue un robo: la religión puede tener un tabú sobre él. */
+  readonly good?: string;
 }
 
 export interface Conscience {

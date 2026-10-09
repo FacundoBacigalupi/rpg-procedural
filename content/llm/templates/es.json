@@ -575,6 +575,45 @@
   },
   { "id": "due.unsure", "lines": ["No lo recordás bien.", "Los detalles se te borronean."] },
 
+  {
+    "id": "reading.cast",
+    "lines": [
+      "{who} tira {instrument}: caen {signs}.",
+      "{who} echa {instrument} y mira lo que cae: {signs}."
+    ]
+  },
+  {
+    "id": "reading.told.greatness.strong",
+    "lines": ["{who} te dice, sin vacilar, que vas a elevarte por encima de los tuyos."]
+  },
+  {
+    "id": "reading.told.greatness.faint",
+    "lines": ["{who} murmura algo sobre una grandeza que quizá te espera."]
+  },
+  { "id": "reading.told.ruin.strong", "lines": ["{who} te dice, grave, que traerás ruina."] },
+  {
+    "id": "reading.told.ruin.faint",
+    "lines": ["{who} deja caer que algo se podría arruinar a tu alrededor."]
+  },
+  {
+    "id": "reading.told.death.strong",
+    "lines": ["{who} te dice, sin mirarte, que vas a morir antes de tiempo."]
+  },
+  {
+    "id": "reading.told.death.faint",
+    "lines": ["{who} habla de una sombra de muerte, sin decir más."]
+  },
+  {
+    "id": "reading.told.fortune.strong",
+    "lines": ["{who} te dice, sonriendo, que vas a prosperar."]
+  },
+  {
+    "id": "reading.told.fortune.faint",
+    "lines": ["{who} te promete, sin firmeza, algo de buena fortuna."]
+  },
+  { "id": "reading.vague", "lines": ["Son palabras que le servirían a cualquiera."] },
+  { "id": "reading.doubtful", "lines": ["No sabés si creerle."] },
+
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },
   { "id": "good.shellfish", "lines": ["almejas"] },

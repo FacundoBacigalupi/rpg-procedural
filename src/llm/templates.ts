@@ -178,6 +178,12 @@ export function renderView(
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");
   }
+  for (const r of view.readings) {
+    say("reading.cast", { who: r.diviner, instrument: r.instrument, signs: r.signs.join(", ") });
+    say(`reading.told.${r.told}.${r.strength}`, { who: r.diviner });
+    if (r.vague) say("reading.vague");
+    if (r.doubtful) say("reading.doubtful");
+  }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
   return out.join(" ");
 }
