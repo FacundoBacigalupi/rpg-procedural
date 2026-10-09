@@ -107,6 +107,10 @@ export function offenseOf(
     // El acreedor es quien reclama: sabe quién le debe.
     return { kind: "default", by: first, victim: second, noticedBy: [second] };
   }
+  if (e.kind === "contract.pledge_broken" && second) {
+    // La promesa rota es un incumplimiento más: el destinatario sabe quién le falló.
+    return { kind: "default", by: first, victim: second, noticedBy: [second] };
+  }
   const eff = data?.effect;
   if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
     const from = eff.from;

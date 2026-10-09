@@ -5,7 +5,10 @@ import { type AgentId, type ContentSource, loadContent, Rng } from "../../core/i
 import {
   type ActionPlan,
   believePledge,
+  KNOWN_DEEDS,
+  MEMORIES,
   makePledge,
+  OWN_DEEDS,
   PERSON,
   PLEDGE,
   PLEDGE_BOOK,
@@ -78,5 +81,22 @@ describe("cerrar promesas", () => {
     expect(e?.actors).toEqual([me, other]);
     expect(e?.causes.length).toBeGreaterThan(0);
     expect(w.truth.get(PLEDGE_BOOK, other)?.items[0]?.status).toBe("broken");
+  }, 120_000);
+
+  it("la promesa rota queda como hecho conocido, culpa propia y memoria de los dos", () => {
+    const { life, w, me, other, id } = overdue(7);
+    let broke: { id: string } | undefined;
+    for (let i = 0; i < 6 && !broke; i++) {
+      broke = life.turn(rest(me), i + 1).events.find((x) => x.kind === "contract.pledge_broken");
+    }
+    expect(broke).toBeDefined();
+    expect(w.truth.get(PLEDGE, id as never)?.status).toBe("broken");
+    life.turn(rest(me), 9);
+    const known = w.truth.get(KNOWN_DEEDS, other)?.deeds ?? [];
+    expect(known.some((d) => d.kind === "default" && d.by === me && d.victim === other)).toBe(true);
+    expect(w.truth.get(OWN_DEEDS, me)?.deeds.some((d) => d.event === broke?.id)).toBe(true);
+    for (const who of [me, other]) {
+      expect(w.truth.get(MEMORIES, who)?.items.some((m) => m.eventId === broke?.id)).toBe(true);
+    }
   }, 120_000);
 });

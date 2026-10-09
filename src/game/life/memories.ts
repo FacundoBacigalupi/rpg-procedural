@@ -110,6 +110,7 @@ export function livedFrom(e: Event): Lived[] {
           ]
         : [];
     case "law.default":
+    case "contract.pledge_broken":
       return actor && second
         ? [
             { who: actor, experience: { ...base(e, [second]), intensity: 0.3, valence: -0.3 } },
