@@ -45,6 +45,7 @@ import {
   MIND,
   type Mind,
   numbedIntensity,
+  numbedStimulus,
   OWN_DEEDS,
   type OwnDeeds,
   openCondition,
@@ -129,7 +130,9 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         const stage = stageAt(o.stages, (e.tick - person.born) / o.clock.year);
         let next = mind;
         for (const a of items) {
-          next = form(next, a.stimulus, { schemas: o.schemas, stage, innate, event: e.id }).mind;
+          // El entumecimiento también apaga lo bueno que forma la mente.
+          const stimulus = numbedStimulus(a.stimulus, mentals.get(id) ?? truth.get(MENTAL, id));
+          next = form(next, stimulus, { schemas: o.schemas, stage, innate, event: e.id }).mind;
         }
         minds.set(id, next);
       };

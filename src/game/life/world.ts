@@ -51,6 +51,7 @@ import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
@@ -290,6 +291,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           player,
         }),
+        intrusionProcess({ seed: parts.seed, placeOf: placeOf(parts, village) }),
         companyProcess({
           dims: parts.relationDims,
           bonds: parts.relationBonds,

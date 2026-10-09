@@ -12,6 +12,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import { table } from "../world/index.ts";
+import { type FormativeStimulus, PAINFUL } from "./mind.ts";
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -249,6 +250,23 @@ export function numbedIntensity(
   state: MentalState | undefined,
 ): number {
   return valence > 0 ? round(intensity * (1 - numbing(state))) : intensity;
+}
+
+/**
+ * Un estímulo formativo tras el entumecimiento: lo bueno (cuidado, éxito, bendición…) deja menos marca
+ * en los esquemas; lo doloroso entra entero. Así el ánimo de `mind.form` también se apaga.
+ */
+export function numbedStimulus(
+  stimulus: FormativeStimulus,
+  state: MentalState | undefined,
+): FormativeStimulus {
+  if (PAINFUL.has(stimulus.theme)) return stimulus;
+  return { ...stimulus, intensity: round(stimulus.intensity * (1 - numbing(state))) };
+}
+
+/** La utilidad de algo placentero (comer rico, descansar, gustar) tras el entumecimiento. */
+export function pleasureUtility(value: number, state: MentalState | undefined): number {
+  return value > 0 ? round(value * (1 - numbing(state))) : value;
 }
 
 /** Las causas de lo que se sueña:los eventos que abrieron las condiciones que pesan. */
