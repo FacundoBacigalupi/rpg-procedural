@@ -19,6 +19,7 @@ import {
 } from "../../core/index.ts";
 import {
   BODY_STATE,
+  CONCERNS,
   type Concern,
   type ConcernWords,
   clampTemper,
@@ -28,12 +29,14 @@ import {
   type DivinationMethodDef,
   type DiviningCandidate,
   divinerSlots,
+  draftEvent,
   ENTITY,
   type EventDraft,
   INNATE,
   isMoney,
   MENTAL,
   PERSON,
+  type PostingDraft,
   PROPHECY_BELIEFS,
   type ProcessDef,
   type ProphecyBeliefs,
@@ -439,6 +442,144 @@ export function consultProcess(o: DivineOptions): ProcessDef {
         events.push(...out.events);
       }
       return changes.length === 0 && events.length === 0 ? {} : { changes, events };
+    },
+  };
+}
+
+export const VISITS_PROCESS = "life.visits";
+
+/** Desde cuánta preocupación (0-1) alguien se plantea ir al adivino. */
+export const WORRY_FROM = 0.35;
+/** Chance diaria de ir con la preocupación al máximo y curiosidad media (sin calibrar). */
+export const VISIT_HAZARD = 0.12;
+/** Lo que se deja en la mano del adivino: una moneda de la bolsa más gorda (sin calibrar). */
+export const VISIT_FEE = 1;
+/** Días que una persona espera antes de volver a consultar (ya tiene una respuesta que rumiar). */
+export const VISIT_COOLDOWN_DAYS = 20;
+
+/**
+ * Lo que alguien siente que lo preocupa, por lo que cree de sí (divination §8): el cuerpo que
+ * le duele, la bolsa que sabe flaca, los nervios que carga y las profecías sobre sí mismo que
+ * cree (ruina o muerte dan miedo; grandeza o fortuna, ambición). Nada sale de la verdad del
+ * futuro ni de lo que otros saben de él.
+ */
+export function feltWorries(
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger | undefined,
+  who: AgentId,
+): Partial<Record<Concern, number>> {
+  const out = { ...visibleSignals(truth, ledger, who) };
+  for (const p of truth.get(PROPHECY_BELIEFS, who)?.items ?? []) {
+    if (p.claim.subject !== who) continue;
+    const weight = p.credence * p.claim.intensity;
+    const concern: Concern =
+      p.claim.kind === "ruin" || p.claim.kind === "death" ? "fear" : "ambition";
+    out[concern] = Math.min(1, Math.max(out[concern] ?? 0, weight));
+  }
+  return out;
+}
+
+/** La preocupación mayor (empate: el orden de `CONCERNS`) o nada si ninguna llega a `WORRY_FROM`. */
+export function topWorry(
+  worries: Partial<Record<Concern, number>>,
+): { concern: Concern; strength: number } | null {
+  let best: { concern: Concern; strength: number } | null = null;
+  for (const concern of CONCERNS) {
+    const strength = worries[concern] ?? 0;
+    if (strength >= WORRY_FROM && (!best || strength > best.strength)) best = { concern, strength };
+  }
+  return best;
+}
+
+/** Chance diaria de ir: crece con la preocupación y con la curiosidad (fe en lo que se lee). */
+export function visitHazard(strength: number, curiosity: number): number {
+  const over = (strength - WORRY_FROM) / (1 - WORRY_FROM);
+  return Math.max(0, VISIT_HAZARD * (0.4 + 0.6 * over) * (0.75 + 0.25 * curiosity));
+}
+
+/**
+ * Quién va al adivino y cuándo (divination §8): cada día, cada vecino que no es el jugador, ni
+ * adivino, con una preocupación sentida por encima del umbral, plata para pagar y sin una
+ * consulta reciente, tira su chance. Si va, elige al adivino de mejor fama (la que le llega:
+ * `renown`) y el evento `divination.consult` lleva lo que pregunta, lo que ve el adivino y el
+ * pago, que sale de su bolsa a la del adivino por el ledger.
+ */
+export function visitsProcess(o: DivineOptions & { readonly player: AgentId }): ProcessDef {
+  return {
+    id: VISITS_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "act",
+    reads: [
+      DIVINER_ROLE.name,
+      PROPHECY_BELIEFS.name,
+      INNATE.name,
+      ENTITY.name,
+      PERSON.name,
+      BODY_STATE.name,
+      MENTAL.name,
+    ],
+    writes: [],
+    run(ctx) {
+      const ledger = ctx.ledger;
+      if (!ledger) return {};
+      const alive = livingPeople(ctx.truth);
+      const diviners = alive
+        .filter((id) => ctx.truth.get(DIVINER_ROLE, id) !== undefined)
+        .flatMap((id) => {
+          const role = ctx.truth.get(DIVINER_ROLE, id);
+          return role ? [{ id, renown: renown(role.record) }] : [];
+        })
+        .sort((a, b) => b.renown - a.renown || (a.id < b.id ? -1 : 1));
+      if (diviners.length === 0) return {};
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const spent = new Map<AgentId, number>();
+      for (const client of alive) {
+        if (client === o.player || ctx.truth.get(DIVINER_ROLE, client)) continue;
+        const items = ctx.truth.get(PROPHECY_BELIEFS, client)?.items ?? [];
+        if (items.some((p) => ctx.now - p.learnedAt < VISIT_COOLDOWN_DAYS * o.clock.day)) continue;
+        const signals = feltWorries(ctx.truth, ledger, client);
+        const worry = topWorry(signals);
+        if (!worry) continue;
+        const curious = clampTemper(ctx.truth.get(INNATE, client)?.["curiosity"] ?? 0);
+        if (!ctx.rng.fork("visit", client).chance(visitHazard(worry.strength, curious))) continue;
+        const purse = ledger
+          .holdings(holderAccount(client as unknown as HolderRef))
+          .filter((h) => isMoney(h.unit) && h.amount - (spent.get(client) ?? 0) >= VISIT_FEE)
+          .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0];
+        const diviner = diviners.find((d) => d.id !== client);
+        if (!purse || !diviner) continue;
+        const draft = draftEvent(events.length);
+        events.push({
+          kind: CONSULT_EVENT,
+          actors: [client, diviner.id],
+          place: o.placeOf(ctx.truth, diviner.id),
+          data: {
+            asked: worry.concern,
+            want: Math.round(40 * worry.strength) / 100,
+            signals,
+            paid: { unit: purse.unit, amount: VISIT_FEE },
+          } satisfies ConsultData,
+          emissions: {},
+          causes: [{ kind: "state", entity: client, key: `divination.worry.${worry.concern}` }],
+        });
+        postings.push({
+          event: draft,
+          transfers: [
+            {
+              unit: purse.unit,
+              from: holderAccount(client as unknown as HolderRef),
+              to: holderAccount(diviner.id as unknown as HolderRef),
+              amount: VISIT_FEE,
+            },
+          ],
+        });
+        spent.set(client, (spent.get(client) ?? 0) + VISIT_FEE);
+      }
+      return events.length === 0 ? {} : { events, postings };
     },
   };
 }

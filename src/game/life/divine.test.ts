@@ -29,9 +29,29 @@ import {
   type DivineOptions,
   READING_EVENT,
   seedDiviners,
+  topWorry,
   visibleSignals,
+  visitHazard,
+  WORRY_FROM,
 } from "./divine.ts";
 import { Life } from "./life.ts";
+
+describe("quién va al adivino y cuándo", () => {
+  it("solo la preocupación sentida sobre el umbral lleva, y la mayor gana", () => {
+    expect(topWorry({ money: 0.2, health: 0.3 })).toBeNull();
+    expect(topWorry({ money: 0.5, fear: 0.8, health: 0.4 })).toEqual({
+      concern: "fear",
+      strength: 0.8,
+    });
+  });
+
+  it("la chance diaria crece con la preocupación y la curiosidad, y no sale del umbral para abajo", () => {
+    expect(visitHazard(WORRY_FROM, 0)).toBeGreaterThan(0);
+    expect(visitHazard(0.9, 0)).toBeGreaterThan(visitHazard(0.4, 0));
+    expect(visitHazard(0.6, 1)).toBeGreaterThan(visitHazard(0.6, -1));
+    expect(visitHazard(0.1, 0)).toBeLessThan(visitHazard(WORRY_FROM, 0));
+  });
+});
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
