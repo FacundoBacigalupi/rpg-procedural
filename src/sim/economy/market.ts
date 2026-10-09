@@ -119,9 +119,17 @@ export interface HouseholdQuote {
   readonly bid: number;
 }
 
+export interface QuoteOptions {
+  /** Días de comida que lleva encima (sobreprecio por llevársela ya si casi no carga). */
+  readonly carryDays?: number;
+  /** Factor de calidad del lote sobre la base (1 sin calidad registrada). */
+  readonly quality?: number;
+}
+
 /**
  * Lo que un hogar pide y ofrece por kilo de un bien: la base sale de sus creencias (no de la
- * cinta), el pedido sube con la escasez propia y la oferta con la falta propia.
+ * cinta), el pedido sube con la escasez propia y la oferta con la falta propia. `quality`
+ * escala la base y `carryDays` es la comida que lleva encima (el trato de `bargain`).
  */
 export function householdQuote(
   beliefs: PriceBeliefs | undefined,
@@ -129,9 +137,10 @@ export function householdQuote(
   referencePerKg: number,
   day: number,
   ownDays: number,
+  opts: QuoteOptions = {},
 ): HouseholdQuote {
-  const base = baseFor(beliefs, unit, referencePerKg, day);
-  return { ask: askPerKg(base, ownDays), bid: bidPerKg(base, ownDays) };
+  const base = baseFor(beliefs, unit, referencePerKg, day) * (opts.quality ?? 1);
+  return { ask: askPerKg(base, ownDays), bid: bidPerKg(base, ownDays, opts.carryDays) };
 }
 
 /** Lo que un vendedor lleva del día de mercado en curso, por bien (`good:<id>`), con su día. */
