@@ -1,5 +1,6 @@
 export * from "./collapse.ts";
 export * from "./defs.ts";
+export * from "./fire.ts";
 export * from "./seed.ts";
 export * from "./spaces.ts";
 export * from "./tables.ts";
