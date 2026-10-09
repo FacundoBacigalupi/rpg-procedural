@@ -39,6 +39,17 @@ export interface BuildingGraph {
   readonly door: Barrier;
 }
 
+/** Un edificio que arde: cuánto, por qué, y de dónde sale la causa del próximo evento. */
+export interface BuildingFire {
+  readonly intensity: number;
+  readonly cause: "hearth" | "lamp" | "lightning" | "arson" | "war" | "technique" | "spread";
+  /** Gramos de materia que tenía al prenderse (para saber cuánto queda en pie). */
+  readonly grams0: number;
+  readonly since: number;
+  /** El último evento del incendio en este edificio (ignición o último día). */
+  readonly last: EventId;
+}
+
 export interface BuildingRecord {
   readonly type: string;
   readonly settlement: SettlementId;
@@ -56,6 +67,8 @@ export interface BuildingRecord {
   readonly doorState?: "open" | "closed" | "jammed";
   /** El último arreglo: de dónde sale el origen que cita el próximo evento de reparación. */
   readonly lastRepair?: EventId;
+  /** El incendio en curso (settlements §9); sin él, no arde. */
+  readonly fire?: BuildingFire;
 }
 
 export interface WorkRecord {

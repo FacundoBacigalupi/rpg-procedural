@@ -84,6 +84,7 @@ import {
   SCHEMAS,
   SKILLS,
   SkillCatalog,
+  SMOKE_SINK,
   SOIL,
   SOIL_START,
   SPEECH_LINES,
@@ -381,6 +382,7 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
       [GATHERED_SOURCE]: settlementUnits(content.all(MATERIALS)),
       [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
+      [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
     },
   };
 }
