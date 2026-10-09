@@ -19,7 +19,7 @@ import {
   WORKSHOP_WASTE,
   WorldTruth,
 } from "../../sim/index.ts";
-import { incomeOfHousehold, tradesProcess } from "./trades.ts";
+import { incomeOfHousehold, tradeOfHousehold, tradesProcess } from "./trades.ts";
 
 const goods = [
   { id: "copper", name: "cobre", form: "coin" },
@@ -124,5 +124,18 @@ describe("life.trades", () => {
       proc.run({ truth, ledger, now: 5, window: clock.day } as unknown as ProcessContext),
     ).toEqual({});
     expect(incomeOfHousehold(truth, "farm", 5)).toBe(0);
+  });
+});
+
+describe("oficio de un hogar desde la población", () => {
+  const homes = Array.from({ length: 200 }, (_, i) => `household:${i}`);
+  it("es determinista y solo toca a unos pocos hogares con manos de sobra", () => {
+    const a = homes.map((h) => tradeOfHousehold(7, h, 3, recipes)?.id);
+    const b = homes.map((h) => tradeOfHousehold(7, h, 3, recipes)?.id);
+    expect(a).toEqual(b);
+    const n = a.filter((x) => x !== undefined).length;
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(homes.length / 4);
+    expect(homes.every((h) => tradeOfHousehold(7, h, 1, recipes) === undefined)).toBe(true);
   });
 });

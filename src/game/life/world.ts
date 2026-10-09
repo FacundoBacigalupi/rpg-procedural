@@ -310,6 +310,8 @@ export function lifeWorld(
           goods: parts.goods,
           recipes: parts.tradeRecipes ?? [],
           assignments: parts.householdTrades ?? [],
+          // Sin asignaciones explícitas, el oficio de cada hogar sale de la población.
+          ...(parts.householdTrades === undefined ? { seed: parts.seed } : {}),
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
