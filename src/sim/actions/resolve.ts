@@ -303,6 +303,17 @@ export type VerbEffect =
       readonly done: boolean;
       /** 0-1: cuán bien lo hizo. */
       readonly care: number;
+    }
+  | {
+      /** Ir a ver a alguien que lee el futuro y pagarle: lo que pasa después es de `game`. */
+      readonly kind: "consult";
+      readonly with: EntityRef | null;
+      /** Si se sentó a la consulta (la duda o no tener con qué pagar la dejan en la puerta). */
+      readonly delivered: boolean;
+      /** Lo que preguntó, en sus palabras. */
+      readonly asked: string | null;
+      /** Lo que dejó en la mano del adivino. */
+      readonly paid: { readonly unit: LedgerUnit; readonly amount: number } | null;
     };
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
@@ -1282,6 +1293,60 @@ const give: Resolver = (c) => {
   };
 };
 
+/** Cuántas monedas ofreció: el número que dice en `offer` (una si no dice) sin pasar de lo que lleva. */
+function coinsOffered(text: string | null, held: number): number {
+  const m = text === null ? null : /(\d+)/.exec(text);
+  const n = m ? Number(m[1]) : 1;
+  return Math.min(held, Math.max(1, Number.isFinite(n) ? n : 1));
+}
+
+/**
+ * Consultar: pagar al adivino y preguntarle. Sin plata no hay consulta (los adivinos cobran);
+ * si la duda lo frena, se va con la plata en el bolsillo.
+ */
+const consult: Resolver = (c) => {
+  const other = argEntity(c, "with");
+  const asked = argText(c, "about");
+  const purse = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => h.amount > 0 && isMoney(h.unit))
+    .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0];
+  const stay = (seconds: number, override?: VerbResult["override"]): VerbResult => ({
+    effect: { kind: "consult", with: other, delivered: false, asked, paid: null },
+    seconds,
+    ...(override ? { override } : {}),
+  });
+  if (c.roll.unmet) return stay(c.nominal);
+  if (other === null || !purse)
+    return stay(Math.min(c.nominal, 60), {
+      outcome: "failure",
+      failure: "no_means",
+      believed: "failure",
+    });
+  const m = c.roll.margin;
+  if (m === null || (m < PARTIAL_MARGIN && c.roll.failure === "hesitate"))
+    return stay(c.nominal / 3);
+  const amount = coinsOffered(argText(c, "offer"), Math.floor(purse.amount));
+  return {
+    effect: {
+      kind: "consult",
+      with: other,
+      delivered: true,
+      asked,
+      paid: { unit: purse.unit, amount },
+    },
+    seconds: c.nominal,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        to: holderAccount(other as HolderRef),
+        unit: purse.unit,
+        amount,
+      },
+    ],
+  };
+};
+
 const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   none,
   move,
@@ -1300,6 +1365,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   cook,
   drink,
   tend,
+  consult,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

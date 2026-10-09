@@ -218,6 +218,14 @@ export type EffectView =
       readonly target?: string;
       readonly self: boolean;
       readonly done: boolean;
+    }
+  | {
+      readonly kind: "consult";
+      readonly with?: string;
+      /** Si llegó a sentarse a la consulta. */
+      readonly delivered: boolean;
+      /** Monedas que dejó (0 si no pagó). */
+      readonly paid: number;
     };
 
 export interface OutcomeView {
@@ -522,6 +530,15 @@ function effectView(
     case "tend": {
       const self = e.target === player;
       return { kind: "tend", ...(self ? {} : target(e.target)), self, done: e.done };
+    }
+    case "consult": {
+      const w = target(e.with).target;
+      return {
+        kind: "consult",
+        ...(w !== undefined ? { with: w } : {}),
+        delivered: e.delivered,
+        paid: e.paid?.amount ?? 0,
+      };
     }
   }
 }

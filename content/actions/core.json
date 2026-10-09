@@ -539,5 +539,37 @@
       { "id": "too_weak", "factor": "capability" }
     ],
     "evidence": 0.7
+  },
+  {
+    "id": "consult",
+    "name": "consultar",
+    "domain": "esoteric",
+    "args": [
+      { "role": "with", "kind": "person", "required": true },
+      { "role": "about", "kind": "text", "required": false },
+      { "role": "offer", "kind": "text", "required": false }
+    ],
+    "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
+    "requires": [
+      { "kind": "capability", "cap": "speech", "min": 0.3 },
+      { "kind": "position", "near": "with" }
+    ],
+    "occupies": { "voice": "partial", "eyes": "partial", "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 900 },
+    "checkpoint": 120,
+    "emissions": { "sight": 0.3, "sound": 0.4 },
+    "resolver": "consult",
+    "ease": 1.5,
+    "factors": {
+      "nerve": 0.2,
+      "skill": [{ "trait": "sociability", "weight": 0.4 }, { "trait": "curiosity", "weight": 0.2 }]
+    },
+    "failureModes": [
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.6
   }
 ]

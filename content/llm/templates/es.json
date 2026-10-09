@@ -411,6 +411,19 @@
     "id": "outcome.tend.other_failed",
     "lines": ["Intentás curar a {who}, pero no te sale.", "Las manos no te ayudan con {who}."]
   },
+  {
+    "id": "outcome.consult.sat",
+    "lines": [
+      "Te sentás frente a {who} y le dejás {coins}.",
+      "Le pagás {coins} a {who} y esperás a que empiece."
+    ]
+  },
+  { "id": "outcome.consult.sat_anyone", "lines": ["Pagás {coins} y te sentás a consultar."] },
+  {
+    "id": "outcome.consult.left",
+    "lines": ["Te acercás a {who}, pero no te animás a pedir la consulta."]
+  },
+  { "id": "outcome.consult.left_anyone", "lines": ["No encontrás a quién consultar."] },
   { "id": "self.hungry", "lines": ["Tenés hambre."] },
   { "id": "self.thirsty", "lines": ["Tenés sed."] },
   { "id": "self.tired", "lines": ["Estás cansado."] },

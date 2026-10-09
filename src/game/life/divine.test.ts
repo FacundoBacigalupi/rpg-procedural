@@ -10,6 +10,8 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  concernIn,
+  DIVINATION_CONCERNS,
   DIVINATION_METHODS,
   DIVINER_ROLE,
   type DiviningCandidate,
@@ -22,7 +24,13 @@ import {
   type StateChange,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { consultDiviner, type DivineOptions, READING_EVENT, seedDiviners } from "./divine.ts";
+import {
+  consultDiviner,
+  type DivineOptions,
+  READING_EVENT,
+  seedDiviners,
+  visibleSignals,
+} from "./divine.ts";
 import { Life } from "./life.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -83,6 +91,7 @@ describe("adivinos y consultas en la aldea", () => {
   const w = life.world;
   const o: DivineOptions = {
     methods: content.all(DIVINATION_METHODS),
+    concerns: content.all(DIVINATION_CONCERNS),
     clock: w.clock,
     placeOf: () => ({ hex: 0 }) as never,
   };
@@ -170,4 +179,35 @@ describe("adivinos y consultas en la aldea", () => {
       consultDiviner(w.truth, o, a as AgentId, b as AgentId, {}, cause, life.now, Rng.root(1)),
     ).toBeNull();
   }, 60_000);
+});
+
+describe("la consulta del personaje: qué pregunta y qué se le ve", () => {
+  const concerns = content.all(DIVINATION_CONCERNS);
+
+  it("lee el tema de lo que pregunta, sin acentos ni mayúsculas", () => {
+    expect(concernIn("¿Me va a querer? Hablo del AMOR", concerns)).toBe("love");
+    expect(concernIn("Tengo una deuda con el molinero", concerns)).toBe("money");
+    expect(concernIn("¿Mi hijo va a estar bien?", concerns)).toBe("family");
+    expect(concernIn("hola", concerns)).toBeUndefined();
+    expect(concernIn(null, concerns)).toBeUndefined();
+  });
+
+  it("de un sano sin ledger no se le ve nada; la bolsa flaca se ve con ledger", () => {
+    const life = Life.create(7, content);
+    const w = life.world;
+    const ids = w.truth.ids(PERSON) as AgentId[];
+    fc.assert(
+      fc.property(fc.nat(ids.length - 1), (i) => {
+        const who = ids[i] as AgentId;
+        const bare = visibleSignals(w.truth, undefined, who);
+        expect(bare["money"]).toBeUndefined();
+        const seen = visibleSignals(w.truth, w.ledger, who);
+        for (const v of Object.values(seen)) {
+          expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(1);
+        }
+      }),
+      { numRuns: 5 },
+    );
+  }, 120_000);
 });
