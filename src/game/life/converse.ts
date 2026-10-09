@@ -20,6 +20,7 @@ import {
   ACCUSE_TRUST_UNBACKED,
   type AccuseInput,
   type ActionCatalog,
+  AMENDS,
   BELIEFS,
   type Belief,
   BODY_STATE,
@@ -36,6 +37,7 @@ import {
   decideReply,
   deedsBy,
   deleteComponent,
+  didDeed,
   dominantVariant,
   draftEvent,
   ENTITY,
@@ -44,6 +46,7 @@ import {
   goodUnit,
   HEARD,
   hear,
+  honestyShift,
   INNATE,
   KNOWN_DEEDS,
   type Lexicon,
@@ -52,6 +55,7 @@ import {
   liveBetween,
   MEMORIES,
   MIND,
+  OWN_DEEDS,
   PERSON,
   PERSON_NAME,
   type ProcessContext,
@@ -73,6 +77,7 @@ import {
   secretAbout,
   setComponent,
   sincerityOf,
+  stanceOf,
   standardize,
   type Trait,
   table,
@@ -360,8 +365,8 @@ function regardOf(
  * Lo que el oyente pone para contestar una acusación (dialogue §6, law §5). Como oyente de un
  * tercero: cuánto confía en quien acusa, cuánto aprecia al acusado y qué sabía de él (su
  * `KNOWN_DEEDS`); el hecho citado es el que quien acusa conoce de verdad. Como acusado: si de
- * verdad lo hizo (por ahora, un hecho suyo que alguien guarda con su nombre; la conciencia propia
- * llega con «culpa cableada»), su honestidad, su orgullo y si sabe algo de quien acusa.
+ * verdad lo hizo (lo recuerda como propio en `OWN_DEEDS`, lo haya visto alguien o no), su
+ * honestidad (movida por lo que decidió hacer con su culpa), su orgullo y si sabe algo de quien acusa.
  */
 function accuseOf(
   truth: ReadonlyWorldTruth,
@@ -375,18 +380,16 @@ function accuseOf(
   if (act.accused === null) return undefined;
   if (act.accused === "you") {
     const victim = act.victim === "speaker" ? speaker : act.victim;
-    const guilty = truth
-      .ids(KNOWN_DEEDS)
-      .some((id) =>
-        deedsBy(truth.get(KNOWN_DEEDS, id), me).some(
-          (d) => d.kind === act.deed && (victim === null || d.victim === victim),
-        ),
-      );
+    // Lo hizo de verdad si lo recuerda como suyo (`OWN_DEEDS`), lo haya visto alguien o no; y lo
+    // que decidió hacer con su culpa (`AMENDS`) corre su honestidad: confesar la sube, desviar la baja.
+    const own = didDeed(truth.get(OWN_DEEDS, me), act.deed, victim);
+    const guilty = own !== undefined;
+    const shift = own ? honestyShift(stanceOf(truth.get(AMENDS, me), own.event)) : 0;
     return {
       as: "accused",
       defense: {
         guilty,
-        honesty: unit(0.5 + 0.25 * clampTemper(z["willpower"] ?? 0)),
+        honesty: unit(0.5 + 0.25 * clampTemper(z["willpower"] ?? 0) + shift),
         justification: unit(ACCUSED_EXCUSE_BASE + ACCUSED_EXCUSE_GRUDGE * feel.resentment),
         pride: unit(0.4 + 0.2 * clampTemper(z["reactivity"] ?? 0)),
         counterable: worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
@@ -572,6 +575,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       BELIEFS.name,
       HEARD.name,
       KNOWN_DEEDS.name,
+      OWN_DEEDS.name,
+      AMENDS.name,
       RELATIONS.name,
       MIND.name,
       MEMORIES.name,
