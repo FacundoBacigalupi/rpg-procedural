@@ -128,3 +128,8 @@ export function wallBarrier(
   );
   return (heaviest && materials.get(heaviest.material)?.wall) || "wood_wall";
 }
+
+/** La barrera de un tabique entre cuartos según la pared del edificio: solo el papel cierra la vista. */
+export function partitionBarrier(wall: Barrier): Barrier {
+  return wall === "paper_wall" ? "paper_wall" : "doorway";
+}

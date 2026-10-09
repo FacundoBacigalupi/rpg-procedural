@@ -18,6 +18,7 @@ import {
   PERSON,
   SETTLEMENT,
   settlementSpaces,
+  VILLAGE_SQUARE,
   WORK,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -100,12 +101,27 @@ describe("la aldea inicial", () => {
       const at = truth.get(LOCATION, id);
       expect(keys.has(at?.space as string)).toBe(true);
     }
-    const again = settlementSpaces(truth, terrain.site.hex);
-    expect(again).toEqual(world.spaces);
+    const mats = new Map((world.materials ?? []).map((m) => [m.id, m]));
+    const again = settlementSpaces(truth, terrain.site.hex, [], mats);
+    expect({ spaces: world.spaces.spaces, edges: world.spaces.edges }).toEqual(again);
     const aliveHouseholds = truth
       .ids(HOUSEHOLD)
       .filter((id) => truth.get(ENTITY, id)?.endedAt === undefined);
     expect(world.spaces.spaces.length).toBeGreaterThan(aliveHouseholds.length);
+  });
+
+  it("el grafo vivo sigue a la puerta: trabada pasa a door_closed sin rearmar el mundo", () => {
+    const id = truth.ids(BUILDING).find((b) => truth.get(BUILDING, b)?.household !== undefined);
+    const b = id === undefined ? undefined : truth.get(BUILDING, id);
+    expect(b).toBeDefined();
+    if (!id || !b) return;
+    const edge = () =>
+      world.spaces.edges.find((e) => e.a === VILLAGE_SQUARE && e.b === b.graph.entrance);
+    const before = edge()?.barrier;
+    truth.set(BUILDING, id, { ...b, graph: { ...b.graph, door: "door_closed" } });
+    expect(edge()?.barrier).toBe("door_closed");
+    truth.set(BUILDING, id, b);
+    expect(edge()?.barrier).toBe(before);
   });
 
   it("retomar la vida da el mismo grafo desde lo guardado", () => {

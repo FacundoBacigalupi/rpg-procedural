@@ -63,6 +63,7 @@ import {
   LINEAGES,
   LOCATION,
   type LocalMap,
+  liveSettlementSpaces,
   MATERIALS,
   PARCEL_SOIL,
   PERSON,
@@ -104,7 +105,6 @@ import {
   seedStatus,
   seedTastes,
   seedVillage,
-  settlementSpaces,
   settlementUnits,
   startingParcel,
   TABOOS,
@@ -511,7 +511,12 @@ export function createLife(
     map,
     content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
   });
-  const spaces = settlementSpaces(truth, site.hex);
+  const spaces = liveSettlementSpaces(
+    truth,
+    site.hex,
+    [],
+    new Map(materials.map((m) => [m.id, m])),
+  );
   // Quién es quién: el estatus de cada hogar, con su causa; de él sale cuánto tenía al empezar.
   const statuses = content.all(STATUSES);
   const standing = seedStatus(truth, ids, log, {
