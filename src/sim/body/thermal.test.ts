@@ -5,10 +5,16 @@ import {
   dexterityFactor,
   dressed,
   fireRadiantC,
+  frostbiteAmputations,
+  frostbiteHandFactor,
   frostbitePerHour,
+  frostbiteStage,
   heatLossW,
+  NAKED,
+  NO_FROSTBITE,
   shelterOf,
   stepCore,
+  stepFrostbite,
   TEMPERATE,
   type ThermalEnv,
   thermalDeath,
@@ -87,5 +93,29 @@ describe("escala por masa, ropa puesta, fuego y refugio", () => {
     expect(shelterOf(true, 0)).toBe(1);
     expect(shelterOf(true, 1)).toBeLessThan(shelterOf(true, 0));
     expect(shelterOf(false, 1)).toBe(0);
+  });
+  it("la congelación se acumula con el frío, más con el núcleo frío, y termina en amputación", () => {
+    const cold = { ...TEMPERATE, airC: -25, windMs: 5 };
+    let warm = NO_FROSTBITE;
+    let chilled = NO_FROSTBITE;
+    for (let h = 0; h < 6; h++) {
+      warm = stepFrostbite(warm, cold, street, 37, 1, h);
+      chilled = stepFrostbite(chilled, cold, street, 33, 1, h);
+    }
+    expect(chilled.hands).toBeGreaterThan(warm.hands);
+    expect(frostbiteHandFactor(chilled)).toBeLessThan(1);
+    let s = NO_FROSTBITE;
+    for (let h = 0; h < 40; h++) s = stepFrostbite(s, cold, NAKED, 33, 1, h);
+    expect(frostbiteStage(s.hands)).toBe("necrotic");
+    expect(frostbiteAmputations(s)).toContain("hands");
+    expect(stepFrostbite(s, TEMPERATE, street, 37, 10, 50).hands).toBe(s.hands);
+  });
+  it("sin frío no hay congelación y lo leve se cura", () => {
+    expect(stepFrostbite(NO_FROSTBITE, TEMPERATE, street, 37, 24, 1)).toEqual({
+      ...NO_FROSTBITE,
+      at: 1,
+    });
+    const hurt = { ...NO_FROSTBITE, hands: 0.3 };
+    expect(stepFrostbite(hurt, TEMPERATE, street, 37, 10, 2).hands).toBeLessThan(0.3);
   });
 });

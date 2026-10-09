@@ -31,9 +31,6 @@ import {
   runSession,
 } from "../crafts/index.ts";
 import {
-  askPerKg,
-  baseFor,
-  bidPerKg,
   COPPER,
   DAILY_KCAL,
   type DealBudget,
@@ -41,10 +38,13 @@ import {
   DISTRESS_BID_FACTOR,
   gramsIn,
   HARVEST,
+  type HouseholdQuote,
+  householdQuote,
   KEEP_DAYS,
   type LotQualities,
   type PriceBeliefs,
   perceivedQuality,
+  type QuoteOptions,
   qualityOfUnit,
   qualityPriceFactor,
   strainOf,
@@ -944,9 +944,19 @@ function kcalOf(rows: readonly Holding[], foods: ReadonlyMap<LedgerUnit, Nutriti
   return kcal;
 }
 
-/** La base de una parte para un bien: lo que cree (con la fe aflojada) o el precio de contenido. */
-function believedBase(mk: Market, who: "actor" | "other", unit: LedgerUnit, ref: number): number {
-  return mk.beliefs === undefined ? ref : baseFor(mk.beliefs[who], unit, ref, mk.beliefs.day);
+/**
+ * La cotización de una parte para un bien (pedido y oferta por kilo): su base sale de lo que cree
+ * (con la fe aflojada) o del precio de contenido, escalada por la calidad.
+ */
+function quoteOf(
+  mk: Market,
+  who: "actor" | "other",
+  unit: LedgerUnit,
+  ref: number,
+  ownDays: number,
+  opts: QuoteOptions,
+): HouseholdQuote {
+  return householdQuote(mk.beliefs?.[who], unit, ref, mk.beliefs?.day ?? 0, ownDays, opts);
 }
 
 /**
@@ -1032,10 +1042,9 @@ function bargain(
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
     const ref = mk.priceCopperPerKg.get(row.unit) as number;
     const qf = qualityFactors(c, mk, "actor", row.unit, 0.5);
-    const base = believedBase(mk, "actor", row.unit, ref) * qf.seller;
-    const buyerBase = believedBase(mk, "other", row.unit, ref) * qf.buyer;
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
+    const ask = quoteOf(mk, "actor", row.unit, ref, myDays, { quality: qf.seller }).ask;
     // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
     const keep = Math.max(0, KEEP_DAYS * DAILY_KCAL * mk.ownMembers - kcalOf(myLarder, foods));
     const spare =
@@ -1059,10 +1068,12 @@ function bargain(
       : buyerCoinsOf(yourPocket);
     const deal = strikeDeal({
       wantGrams: Math.min(wantGrams, room),
-      askPerKg: askPerKg(base, myDays),
+      askPerKg: ask,
       maxPerKg:
-        bidPerKg(buyerBase, theirDays, foodDays(yourPocket, foods, mk.other?.members ?? 1)) *
-        (theirs ? DISTRESS_BID_FACTOR[theirs.standing] : 1),
+        quoteOf(mk, "other", row.unit, ref, theirDays, {
+          quality: qf.buyer,
+          carryDays: foodDays(yourPocket, foods, mk.other?.members ?? 1),
+        }).bid * (theirs ? DISTRESS_BID_FACTOR[theirs.standing] : 1),
       edge,
       availableGrams: Math.min(row.amount, spare),
       buyerCoins: theirCoins,
@@ -1099,8 +1110,6 @@ function bargain(
     row.unit,
     handsOf(c.input.actor.skill ?? 0, c.input.actor.z).senses,
   );
-  const base = believedBase(mk, "other", row.unit, ref) * qf.seller;
-  const buyerBase = believedBase(mk, "actor", row.unit, ref) * qf.buyer;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
   const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
@@ -1111,13 +1120,22 @@ function bargain(
   const deal = strikeDeal({
     wantGrams,
     askPerKg:
-      askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)) *
-      (theirs ? DISTRESS_ASK_FACTOR[theirs.standing] : 1),
-    maxPerKg: bidPerKg(
-      buyerBase,
+      quoteOf(
+        mk,
+        "other",
+        row.unit,
+        ref,
+        foodDays(merge(yourPocket, yourLarder), foods, yourMembers),
+        { quality: qf.seller },
+      ).ask * (theirs ? DISTRESS_ASK_FACTOR[theirs.standing] : 1),
+    maxPerKg: quoteOf(
+      mk,
+      "actor",
+      row.unit,
+      ref,
       foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
-      foodDays(myRows, foods, mk.ownMembers),
-    ),
+      { quality: qf.buyer, carryDays: foodDays(myRows, foods, mk.ownMembers) },
+    ).bid,
     edge,
     availableGrams: Math.min(row.amount, spare),
     buyerCoins: coinsOf(myRows),

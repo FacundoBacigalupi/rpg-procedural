@@ -16,8 +16,11 @@ import {
   ENTITY,
   type EventDraft,
   endEntity,
+  FROSTBITE,
+  type FrostbiteState,
   LOCATION,
   type LocalMap,
+  NO_FROSTBITE,
   outdoorTempC,
   PERSON,
   type ProcessDef,
@@ -26,6 +29,7 @@ import {
   type StateChange,
   setComponent,
   stepCore,
+  stepFrostbite,
   THERMAL,
   type ThermalEnv,
   thermalDeath,
@@ -47,6 +51,11 @@ export interface ThermalOptions {
    * Ajusta el ambiente de alguien con lo que la sim sabe de su lugar (fuego cercano con
    * `fireRadiantC`, reparo del edificio con `shelterOf`). Por defecto no cambia nada.
    */
+  /**
+   * Opt-in: acumula congelación por parte (`FROSTBITE`, `stepFrostbite`) con la piel bajo cero.
+   * Solo estado: la amputación y los efectos en acciones se cablean aparte. Por defecto apagado.
+   */
+  readonly frostbite?: boolean;
   readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
 }
 
@@ -99,8 +108,8 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, THERMAL.name, LOCATION.name],
-    writes: [THERMAL.name, ENTITY.name],
+    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, THERMAL.name, LOCATION.name, FROSTBITE.name],
+    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -117,6 +126,8 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const had = ctx.truth.get(THERMAL, id);
         let core = had?.coreC ?? CORE_NORMAL_C;
         const hydration = Math.max(0, 1 - body.water / Math.max(0.1, 0.05 * body.massKg));
+        const hadFrost = o.frostbite ? ctx.truth.get(FROSTBITE, id) : undefined;
+        let frost: FrostbiteState | undefined = hadFrost;
         let dead: "hypothermia" | "heatstroke" | null = null;
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
@@ -131,6 +142,9 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
           for (let s = 0; s < hours / SUBSTEP_H && dead === null; s++) {
             core = stepCore(core, body.massKg, env, clothing, 1, hydration, SUBSTEP_H).coreC;
             dead = thermalDeath(core);
+            if (o.frostbite) {
+              frost = stepFrostbite(frost ?? NO_FROSTBITE, env, clothing, core, SUBSTEP_H, at);
+            }
           }
         }
         if (dead !== null) {
@@ -151,6 +165,13 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
           changes.push(setComponent(THERMAL, id, { coreC: core, at: ctx.now }));
         } else if (had) {
           changes.push({ op: "delete", table: THERMAL.name, id });
+        }
+        if (o.frostbite && frost !== hadFrost) {
+          if (frost && (frost.hands > 0 || frost.feet > 0 || frost.face > 0)) {
+            changes.push(setComponent(FROSTBITE, id, { ...frost, at: ctx.now }));
+          } else if (hadFrost) {
+            changes.push({ op: "delete", table: FROSTBITE.name, id });
+          }
         }
       }
       return changes.length > 0 || events.length > 0 ? { changes, events } : {};

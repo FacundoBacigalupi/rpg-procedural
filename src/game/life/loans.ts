@@ -30,6 +30,8 @@ import {
   type LoanCommitment,
   makeLoan,
   outstanding,
+  PARCEL,
+  type Parcel,
   PERSON,
   type PostingDraft,
   type ProcessDef,
@@ -99,8 +101,8 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, LOANS.name],
-    writes: [LOANS.name, ENTITY.name],
+    reads: [PERSON.name, ENTITY.name, LOANS.name, PARCEL.name],
+    writes: [LOANS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || o.seeds.length === 0) return {};
@@ -233,6 +235,39 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           if (res.transfers.length > 0) {
             postings.push({ event: draftEvent(k), transfers: res.transfers });
             apply(res.transfers);
+          }
+          // La tenencia real: la tierra dada en prenda pasa de casa (los bienes sueltos viajan por ledger).
+          const parcels = new Map<string, Parcel>();
+          for (const sz of res.seized) {
+            const p = parcels.get(sz.ref) ?? ctx.truth.get(PARCEL, sz.ref as never);
+            if (!p?.rights.some((rt) => (rt.holder as string) === l.borrower)) continue;
+            const record = {
+              kind: "custom" as const,
+              witnesses: [borrowerMan, lenderMan],
+              event: draftEvent(k) as never,
+            };
+            parcels.set(sz.ref, {
+              ...p,
+              rights: p.rights.map((rt) =>
+                (rt.holder as string) === l.borrower
+                  ? { ...rt, holder: l.lender as never, record }
+                  : rt,
+              ),
+              possession:
+                (p.possession as string | null) === l.borrower ? (l.lender as never) : p.possession,
+            });
+          }
+          for (const [ref, p] of parcels) changes.push(setComponent(PARCEL, ref as never, p));
+          // La mora con pérdida es una deuda sin pagar: alimenta la fama igual que el fiado.
+          if (res.loan.status === "defaulted") {
+            events.push({
+              kind: "law.default",
+              actors: [borrowerMan, lenderMan],
+              place: o.placeOf(ctx.truth, lenderMan),
+              data: { credit: r.id, unit: l.unit, owed: res.loss },
+              emissions: {},
+              causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
+            });
           }
           changes.push(setComponent(LOANS, r.id as never, { ...res.loan, seed: l.seed }));
           continue;
