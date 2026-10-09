@@ -65,6 +65,7 @@ import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
+import { bornTaboosProcess, bornTaboosSettleProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
 
@@ -182,6 +183,16 @@ export function lifeWorld(
           day: parts.clock.day,
           ...(parts.form ? { form: parts.form } : {}),
         }),
+        ...(parts.form
+          ? [
+              bornTaboosProcess({
+                form: parts.form,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+              }),
+              bornTaboosSettleProcess({ village }),
+            ]
+          : []),
         testifyProcess({
           dims: parts.relationDims,
           bonds: parts.relationBonds,
