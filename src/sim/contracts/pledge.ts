@@ -52,6 +52,8 @@ export interface Pledge {
   readonly history: readonly EventId[];
   /** Gramos ya entregados al destinatario, en una promesa de dar (ausente = 0). */
   readonly delivered?: number;
+  /** Veces que el promitente pidió más tiempo para un favor que quiere hacer (ausente = 0). */
+  readonly extensions?: number;
 }
 
 export const PLEDGE = table<Pledge>("contracts.pledge");
@@ -113,6 +115,19 @@ export function deliverPledge(p: Pledge, grams: number, event: EventId): Pledge 
   const delivered = round6((p.delivered ?? 0) + grams);
   const next = { ...p, delivered, history: [...p.history, event] };
   return delivered + 1e-9 >= p.term.grams ? { ...next, status: "kept" as const } : next;
+}
+
+/** Días más que el promitente se da para un favor que quiere hacer, y cuántas veces lo hace. */
+export const PLEDGE_EXTENSION_DAYS = 7;
+export const PLEDGE_MAX_EXTENSIONS = 3;
+
+/** Se da `PLEDGE_EXTENSION_DAYS` más desde `now` (el plazo vuelve a vencer pasada la gracia). */
+export function extendPledge(p: Pledge, now: Tick): Pledge {
+  return {
+    ...p,
+    due: now - PLEDGE_GRACE_DAYS * DAY + PLEDGE_EXTENSION_DAYS * DAY,
+    extensions: (p.extensions ?? 0) + 1,
+  };
 }
 
 export const isPledgeLive = (p: Pledge): boolean => p.status === "open";

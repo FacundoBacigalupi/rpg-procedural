@@ -26,6 +26,7 @@ import {
   pledgeLeft,
   type ReadonlyWorldTruth,
   remember,
+  resolvePledge,
   type StateChange,
   setComponent,
   weightOfGive,
@@ -35,6 +36,7 @@ import { paidIn } from "./credit.ts";
 
 export const PLEDGE_PROCESS = "life.pledge";
 export const PLEDGE_KEPT_EVENT = "contract.pledge_kept";
+export const PLEDGE_BROKEN_EVENT = "contract.pledge_broken";
 
 export interface PledgeOptions {
   readonly goods: readonly GoodDef[];
@@ -57,6 +59,38 @@ export function promisedIn(e: Event): {
   const { good, grams } = eff.pledge;
   if (good === null || grams === null || !(grams > 0)) return null;
   return { promisor, promisee, good, grams };
+}
+
+/** ¿Este evento es el promitente haciendo el favor prometido al destinatario? (verbo = `what`). */
+export function favorDoneIn(e: Event, p: Pledge): boolean {
+  if (p.term.kind !== "favor" || !e.kind.startsWith("action.")) return false;
+  const verb = (e.data as { verb?: string } | null)?.verb;
+  const outcome = e.outcome;
+  return (
+    verb === p.term.what &&
+    e.actors[0] === p.promisor &&
+    e.actors.includes(p.promisee) &&
+    (outcome === undefined || outcome === "success")
+  );
+}
+
+/**
+ * ¿Este evento es el promitente soltando, ante el personaje, el secreto que prometió callar? Es
+ * la respuesta a una pregunta (`effect.keep`) que lo dijo entero o a medias, a alguien que no es
+ * el destinatario.
+ */
+export function leakedIn(e: Event, p: Pledge): boolean {
+  if (p.term.kind !== "silence" || e.kind !== "action.speak") return false;
+  const [listener, speaker] = e.actors as AgentId[];
+  const keep = (e.data as { effect?: { keep?: { about?: string; outcome?: string } } } | null)
+    ?.effect?.keep;
+  return (
+    speaker === p.promisor &&
+    listener !== p.promisee &&
+    keep !== undefined &&
+    String(keep.about) === p.term.about &&
+    (keep.outcome === "revealed" || keep.outcome === "partial")
+  );
 }
 
 function alive(truth: ReadonlyWorldTruth, id: AgentId): boolean {
@@ -95,6 +129,32 @@ export function pledgeProcess(o: PledgeOptions): ProcessDef {
       for (const e of ctx.recent) {
         const p = promisedIn(e);
         if (!p) {
+          // Un favor hecho o un secreto soltado cierra la promesa de favor o de callar.
+          let closed = false;
+          for (const [id, cur] of openRows()) {
+            const done = favorDoneIn(e, cur);
+            if (!done && !leakedIn(e, cur)) continue;
+            closed = true;
+            const status = done ? "kept" : "broken";
+            live.set(id, resolvePledge(cur, status, e.id));
+            for (const who of [cur.promisor, cur.promisee]) {
+              const book = learnOutcome(bookOf(who), id, status, ctx.now);
+              if (!book) continue;
+              books.set(who, book);
+              changes.push(setComponent(PLEDGE_BOOK, who, book));
+            }
+            events.push({
+              kind: done ? PLEDGE_KEPT_EVENT : PLEDGE_BROKEN_EVENT,
+              actors: [cur.promisor, cur.promisee],
+              place: o.placeOf(truth, cur.promisor),
+              data: done
+                ? { pledge: id, status, by: "favor", what: (cur.term as { what: string }).what }
+                : { pledge: id, status, why: "leak", about: (cur.term as { about: string }).about },
+              emissions: {},
+              causes: [{ kind: "event", event: e.id }],
+            });
+          }
+          if (closed) continue;
           // Un `give` del promitente al destinatario cubre (de a poco) lo prometido, como `paidIn`.
           const paid = paidIn(e);
           if (!paid) continue;

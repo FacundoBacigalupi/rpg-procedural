@@ -1,5 +1,5 @@
 // Cerrar las promesas de palabra (contracts §3, §7, §14): una vez por día se repasan las promesas
-// de dar que siguen abiertas. Si una parte murió, la promesa se cierra sin culpable (promitente
+// que siguen abiertas (de dar, de favor y de callar). Si una parte murió, la promesa se cierra sin culpable (promitente
 // muerto: imposible; destinatario muerto: dispensada). Pasados el plazo y la gracia
 // (`isPledgeOverdue`), el promitente decide con `decideKeep` (costo, relación, sanción creída y la
 // culpa de `pledgeGuilt` desde sus valores): si cumple y tiene con qué, entrega (un `action.give`
@@ -7,7 +7,9 @@
 // como cumplida); si cumple y no tiene con qué, queda imposible; si no cumple, queda rota. El
 // personaje no decide acá: lo que no entregó a tiempo es una promesa rota, con la culpa que le
 // toca por sus valores. Cada cierre es un evento con causa y las dos partes anotan el desenlace en
-// su libro (`learnOutcome`). Promesas de favor y de callar: pendientes de otro ítem.
+// su libro (`learnOutcome`). Favor: si quiere cumplir se da una semana más (hasta tres veces; el favor
+// lo cierra `life.pledge` al verlo hecho); callar: pasado el plazo sin que se sepa que lo soltó, queda
+// cumplida (soltarlo lo rompe en `life.pledge`).
 
 import {
   type AgentId,
@@ -23,6 +25,7 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  extendPledge,
   INNATE,
   isPledgeOverdue,
   learnOutcome,
@@ -30,6 +33,7 @@ import {
   PERSON,
   PLEDGE,
   PLEDGE_BOOK,
+  PLEDGE_MAX_EXTENSIONS,
   type Pledge,
   type PledgeBook,
   type PledgeStatus,
@@ -49,8 +53,9 @@ import {
   weightOfGive,
 } from "../../sim/index.ts";
 
+import { PLEDGE_BROKEN_EVENT, PLEDGE_KEPT_EVENT } from "./pledges.ts";
+
 export const KEEP_PROCESS = "life.keep";
-export const PLEDGE_BROKEN_EVENT = "contract.pledge_broken";
 export const PLEDGE_RELEASED_EVENT = "contract.pledge_released";
 export const PLEDGE_IMPOSSIBLE_EVENT = "contract.pledge_impossible";
 
@@ -80,7 +85,7 @@ export const SANCTION_PER_WITNESS = 0.08;
 function closing(
   id: string,
   p: Pledge,
-  status: Exclude<PledgeStatus, "open" | "kept">,
+  status: Exclude<PledgeStatus, "open">,
   kind: string,
   place: PlaceRef,
   key: string,
@@ -151,7 +156,7 @@ export function keepProcess(o: KeepOptions): ProcessDef {
 
       for (const id of [...truth.ids(PLEDGE)].sort()) {
         const p = truth.get(PLEDGE, id as never);
-        if (!p || p.status !== "open" || p.term.kind !== "give") continue;
+        if (!p || p.status !== "open") continue;
         const place = o.placeOf(truth, p.promisor);
 
         if (!alive(p.promisor)) {
@@ -189,9 +194,22 @@ export function keepProcess(o: KeepOptions): ProcessDef {
         const close_ =
           truth.get(PERSON, p.promisor)?.household === truth.get(PERSON, p.promisee)?.household ||
           rel.dims.affection > 0.5;
+        // Callar: pasado el plazo sin que lo soltara, la cumplió (soltarlo la rompe en `life.pledge`).
+        if (p.term.kind === "silence") {
+          close(
+            id,
+            closing(id, p, "kept", PLEDGE_KEPT_EVENT, place, "overdue", {
+              by: "silence",
+              about: p.term.about,
+            }),
+            "kept",
+          );
+          continue;
+        }
         const left = pledgeLeft(p);
-        const worth = weightOfGive(left) * COST_SCALE;
-        const guilt = pledgeGuilt(values, p, { close: close_, harm: weightOfGive(left) });
+        const harm = p.term.kind === "give" ? weightOfGive(left) : p.weight;
+        const worth = harm * COST_SCALE;
+        const guilt = pledgeGuilt(values, p, { close: close_, harm });
         const watchers = p.witnesses.length;
         const decision = decideKeep({
           cost: worth,
@@ -203,9 +221,24 @@ export function keepProcess(o: KeepOptions): ProcessDef {
           sanction: SANCTION_BASE + SANCTION_PER_WITNESS * watchers,
           guilt,
         });
-        const data = { grams: left, guilt, uKeep: decision.uKeep, uBreak: decision.uBreak };
+        const data = {
+          ...(p.term.kind === "give" ? { grams: left } : { what: p.term.what }),
+          guilt,
+          uKeep: decision.uKeep,
+          uBreak: decision.uBreak,
+        };
 
-        if (p.promisor === o.player || !decision.keep) {
+        // Un favor no se entrega: si quiere hacerlo se da más tiempo (no más de unas veces).
+        if (
+          p.term.kind === "favor" &&
+          p.promisor !== o.player &&
+          decision.keep &&
+          (p.extensions ?? 0) < PLEDGE_MAX_EXTENSIONS
+        ) {
+          changes.push(setComponent(PLEDGE, id as never, extendPledge(p, ctx.now)));
+          continue;
+        }
+        if (p.promisor === o.player || !decision.keep || p.term.kind === "favor") {
           close(
             id,
             closing(id, p, "broken", PLEDGE_BROKEN_EVENT, place, "overdue", data),
@@ -215,6 +248,7 @@ export function keepProcess(o: KeepOptions): ProcessDef {
         }
 
         // Quiere cumplir: entrega lo que falta del bolsillo o, si no alcanza, de la despensa.
+        if (p.term.kind !== "give") continue;
         const unit = p.term.unit;
         const house = truth.get(PERSON, p.promisor)?.household;
         const sources = [
