@@ -26,6 +26,7 @@ import {
   believed,
   type Candidate,
   capabilitiesOf,
+  closeness,
   type DimensionDef,
   decideByUtility,
   drivesFor,
@@ -34,8 +35,11 @@ import {
   goodUnit,
   INNATE,
   LOCATION,
+  MEMORIES,
   MIND,
   mergeCandidates,
+  moodFrom,
+  otherBeliefFrom,
   PERSON,
   PLACE,
   type ProcessDef,
@@ -47,6 +51,7 @@ import {
   SELF_IMAGES,
   SKILL_STATE,
   type SkillCatalog,
+  STAKES_RISK,
   type StageDef,
   seedSelfImage,
   setComponent,
@@ -79,8 +84,8 @@ export const NPC_DECISION = table<Decision>("life.decision");
 
 /** A cuántas personas considera como mucho (las que más conoce). */
 export const MAX_KNOWN = 12;
-/** Cuánta necesidad creída se le supone a quien no se sabe cómo está (sin calibrar). */
-export const ASSUMED_NEED = 0.2;
+/** Cuánto afecto/parentesco (`closeness`) hace que alguien le importe (sin calibrar). */
+export const CARES_MIN = 0.3;
 
 export interface DecideOptions {
   readonly clock: PlanetClock;
@@ -118,6 +123,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       MIND.name,
       RELATIONS.name,
       BELIEFS.name,
+      MEMORIES.name,
       LOCATION.name,
       PLACE.name,
       SELF_IMAGES.name,
@@ -143,16 +149,6 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const now = ctx.now;
       const age = (now - person.born) / o.clock.year;
       const culture = villageCulture(truth);
-      const drives = drivesFor({
-        plan,
-        body,
-        valueDefs: o.values,
-        schemaDefs: o.schemas,
-        mind,
-        innate,
-        bias: valueBias(culture?.prevalence["values.bias"]?.params ?? {}),
-        stage: stageAt(o.stages, age),
-      });
 
       // A quién conoce: relaciones, la casa y lo que cree que vive, los que más conoce primero.
       const rels = truth.get(RELATIONS, me);
@@ -190,6 +186,31 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       );
 
       const here = truth.get(LOCATION, me)?.hex ?? 0;
+
+      // El ánimo sale de su memoria (e3): el miedo de lo que le dolió hace poco y las horas desde
+      // que estuvo con alguien que le importa (si hay alguien así acá ahora, no está solo).
+      const memories = truth.get(MEMORIES, me);
+      const cared = new Set(
+        people.filter((p) => closeness(p.rel.dims, p.rel.bonds) >= CARES_MIN).map((p) => p.id),
+      );
+      const mood = moodFrom({
+        memories,
+        now,
+        cares: (who) => cared.has(who),
+        withCompany: [...cared].some((id) => truth.get(LOCATION, id)?.hex === here),
+      });
+      const drives = drivesFor({
+        plan,
+        body,
+        mood,
+        valueDefs: o.values,
+        schemaDefs: o.schemas,
+        mind,
+        innate,
+        bias: valueBias(culture?.prevalence["values.bias"]?.params ?? {}),
+        stage: stageAt(o.stages, age),
+      });
+      const temper = temperOf(innate, mood);
       const caps = capabilitiesOf(plan, body);
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
@@ -216,7 +237,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           if (housemates.has(id)) return truth.get(LOCATION, id)?.hex ?? null;
           return people.some((p) => p.id === id) ? null : undefined;
         },
-        hexesOf: () => undefined,
+        hexesOf: (ref) => truth.get(PLACE, ref)?.hexes,
         placeKindsAt: (hex) =>
           truth.ids(PLACE).flatMap((id) => {
             const p = truth.get(PLACE, id);
@@ -240,7 +261,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         catalog: o.catalog,
         view,
         persons: people.map((p) => p.id as unknown as EntityRef),
-        places: [],
+        // Los lugares con nombre de la aldea que conoce (los vive todos los días).
+        places: truth.ids(PLACE).map((id) => id as unknown as EntityRef),
         texts,
       });
       for (const p of people) {
@@ -248,12 +270,27 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           const alive = believed(beliefs, p.id, "alive");
           return alive ? beliefConfidenceAt(alive, now) : 0.3;
         })();
+        // Lo que la vio hacer: si fue algo de riesgo, la cree peligrosa en proporción.
+        const seen = believed(beliefs, p.id, "action");
+        const seenDef =
+          seen && typeof seen.value === "string"
+            ? o.catalog.verbs.find((v) => v.id === seen.value)
+            : undefined;
+        const seenHarm =
+          seen && seenDef ? STAKES_RISK[seenDef.stakes].risk * beliefConfidenceAt(seen, now) : 0;
         social.push(
           ...socialCandidates({
             target: p.id,
             dims: p.rel.dims,
             bonds: p.rel.bonds,
-            belief: { need: ASSUMED_NEED, threat: Math.max(0, p.rel.dims.fear), confidence },
+            belief: otherBeliefFrom({
+              who: p.id,
+              memories,
+              now,
+              relFear: p.rel.dims.fear,
+              seenHarm,
+              confidence,
+            }),
             means: { surplus: Math.max(0, 1 - (drives.needs.hunger ?? 0) * 2) },
           }),
         );
@@ -265,7 +302,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         candidates,
         drives,
         innate,
-        temperOf(innate),
+        temper,
         ctx.rng.fork("decision", me, now),
       );
       if (!choice) return {};
