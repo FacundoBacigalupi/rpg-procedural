@@ -94,7 +94,15 @@ import {
   STATUSES,
   unknownNote,
 } from "../sim/index.ts";
-import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
+import {
+  INSPECTOR_HELP,
+  inspect,
+  narrationRejected,
+  narratorRepro,
+  type ReplayInput,
+  replayInputFromStore,
+  replayLifeAt,
+} from "../tools/index.ts";
 import {
   elapsed,
   renderAbout,
@@ -241,6 +249,21 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       { ...request, continuity: continuityFor(memory, keys, placeKey, hazy) },
       { templates: book, rng: Rng.root(seed).fork("narration", at) },
     );
+    // Si el validador rechazó al modelo, queda el paquete para reproducirlo (tooling §9).
+    if (narrationRejected(told)) {
+      store.setMeta(
+        "repro.narrator",
+        narratorRepro({
+          versions: VERSIONS,
+          seed,
+          setup: store.getMeta("setup") as LifeSetup,
+          plans: store.plans().map((p) => p.plan),
+          tick: at,
+          request,
+          narration: told,
+        }),
+      );
+    }
     // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
     if (thinking === undefined && (report !== null || savedMemory === undefined)) {
       const known = new Map([...keys].filter(([id]) => !hazy.has(id)));
@@ -403,7 +426,13 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
         store.setMeta("inspected", true);
         const rest = text.replace(/^(?:abrir el )?\S+\s*/i, "");
-        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest) };
+        const past = (t: number) =>
+          replayLifeAt(
+            options.content,
+            replayInputFromStore(store).input as ReplayInput<LifeSetup, ActionPlan>,
+            t,
+          );
+        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest, past) };
       }
       return { text: HELP };
     }
