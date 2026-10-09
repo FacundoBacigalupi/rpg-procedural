@@ -8,6 +8,7 @@ import type { AgentId, PlanetClock, Seed } from "../../core/index.ts";
 import {
   attireLook,
   BELIEFS,
+  doubtAt,
   ENTITY,
   LOCATION,
   type LocalMap,
@@ -45,6 +46,19 @@ export function lookAcuity(data: unknown): number | undefined {
   return typeof fx.acuity === "number" ? fx.acuity : 0;
 }
 
+/** A quién buscó sin encontrarlo ni verlo de pasada, o `undefined` si el evento no fue eso. */
+export function searchedInVain(data: unknown): AgentId | undefined {
+  const fx = (
+    data as {
+      effect?: { kind?: unknown; target?: unknown; found?: unknown; glimpsed?: unknown };
+    } | null
+  )?.effect;
+  if (fx?.kind !== "search" || fx.found !== false || fx.glimpsed !== false) return undefined;
+  return typeof fx.target === "string" && fx.target.startsWith("agent:")
+    ? (fx.target as AgentId)
+    : undefined;
+}
+
 export function lookingProcess(o: LookingOptions): ProcessDef {
   return {
     id: LOOKING_PROCESS,
@@ -57,20 +71,38 @@ export function lookingProcess(o: LookingOptions): ProcessDef {
     writes: [BELIEFS.name],
     run(ctx) {
       const truth = ctx.truth;
+      let beliefs = truth.get(BELIEFS, o.player);
+      const before = beliefs;
+      const done = () =>
+        beliefs === before || beliefs === undefined
+          ? {}
+          : { changes: [setComponent(BELIEFS, o.player, beliefs)] };
       const looked = ctx.recent.filter(
         (e) => e.actors[0] === o.player && lookAcuity(e.data) !== undefined,
       );
       const last = looked.at(-1);
       const mineAt = truth.get(LOCATION, o.player);
-      if (!last || !mineAt) return {};
+      if (!mineAt) return {};
+      // Buscó a alguien y no lo encontró (también cuando no estaba): lo que creía de dónde
+      // estaba se debilita; no sabe adónde fue (information §1, evidencia negativa).
+      for (const e of ctx.recent) {
+        if (e.actors[0] !== o.player) continue;
+        const gone = searchedInVain(e.data);
+        if (gone === undefined) continue;
+        beliefs = doubtAt(beliefs, gone, mineAt, ctx.now, {
+          kind: "reasoning",
+          evidence: [e.id],
+          rules: ["search.absent"],
+          tick: ctx.now,
+        });
+      }
+      if (!last) return done();
       const acuity = lookAcuity(last.data) ?? 0;
       const medium = {
         graph: o.spaces,
         forest: o.map.forest,
         daylight: skyLight(o.map, o.clock, o.seed, ctx.now),
       };
-      let beliefs = truth.get(BELIEFS, o.player);
-      const before = beliefs;
       for (const subject of (truth.ids(PERSON) as AgentId[]).sort()) {
         if (subject === o.player || truth.get(ENTITY, subject)?.endedAt !== undefined) continue;
         const me = truth.get(PERSON, subject);
@@ -119,9 +151,7 @@ export function lookingProcess(o: LookingOptions): ProcessDef {
           for (const imp of impressionEvidence(subject, pc)) beliefs = learn(beliefs, imp, ctx.now);
         }
       }
-      return beliefs === before || beliefs === undefined
-        ? {}
-        : { changes: [setComponent(BELIEFS, o.player, beliefs)] };
+      return done();
     },
   };
 }
