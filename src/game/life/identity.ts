@@ -26,6 +26,20 @@ export const VISIBLE_DOMAINS: readonly TraitDomain[] = [
   "humor",
 ];
 
+/**
+ * Dominios que se leen solo mientras se hace la cosa: cómo se come se ve si se come a la vista
+ * (culture §8), no al cruzarse por la calle. Verbos que cuentan como hacerlo.
+ */
+export const SEEN_WHILE_DOING: Readonly<Partial<Record<TraitDomain, readonly string[]>>> = {
+  food: ["eat", "cook", "drink"],
+};
+
+/** El verbo de un evento de acción (`action.eat` o `data.verb`). */
+function verbOf(e: Event): string {
+  const data = e.data as { verb?: string } | null;
+  return data?.verb ?? e.kind.replace(/^action./, "");
+}
+
 /** Lo que el personaje cree de a qué grupo pertenece cada persona que vio (clave: a quién). */
 export interface AscribedGroups {
   readonly about: Readonly<Record<string, IdentityBelief>>;
@@ -38,11 +52,13 @@ export function visibleMarks(
   truth: ReadonlyWorldTruth,
   who: AgentId,
   traits: readonly TraitDef[],
+  /** Dominios que además se leen ahora porque lo vio hacerlos (comer a la vista). */
+  doing: readonly TraitDomain[] = [],
 ): Record<string, string> {
   const held = truth.get(PERSON_CULTURE, who)?.holdings ?? {};
   const out: Record<string, string> = {};
   for (const t of traits) {
-    if (!VISIBLE_DOMAINS.includes(t.domain)) continue;
+    if (!VISIBLE_DOMAINS.includes(t.domain) && !doing.includes(t.domain)) continue;
     const h = held[t.id];
     if (h) out[t.id] = h.shown;
   }
@@ -75,9 +91,20 @@ export function ascribeFromPercepts(
   let changed = false;
   for (const p of fresh) {
     if (p.detail === "vague" || p.sourceEventId === undefined) continue;
-    const who = byId.get(p.sourceEventId)?.actors[0] as AgentId | undefined;
-    if (!who || who === player) continue;
-    const belief = ascribeGroup(player, who, visibleMarks(truth, who, traits), groups, traits);
+    const source = byId.get(p.sourceEventId);
+    const who = source?.actors[0] as AgentId | undefined;
+    if (!source || !who || who === player) continue;
+    const verb = verbOf(source);
+    const doing = (Object.keys(SEEN_WHILE_DOING) as TraitDomain[]).filter((d) =>
+      SEEN_WHILE_DOING[d]?.includes(verb),
+    );
+    const belief = ascribeGroup(
+      player,
+      who,
+      visibleMarks(truth, who, traits, doing),
+      groups,
+      traits,
+    );
     if (!belief) continue;
     const prev = about[who];
     if (prev && prev.group === belief.group && prev.confidence >= belief.confidence) continue;
