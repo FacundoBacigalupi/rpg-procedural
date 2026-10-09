@@ -128,6 +128,8 @@ function deathCauses(body: Body, entity: AgentId, cause: DeathCause): CauseRef[]
     case "hypothermia":
     case "heatstroke":
       return [{ kind: "state", entity, key: "body.thermal" }];
+    case "poison":
+      return [{ kind: "state", entity, key: "body.substance" }];
   }
 }
 

@@ -77,6 +77,7 @@ import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
+import { type SubstanceDose, substancesProcess } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
@@ -107,6 +108,8 @@ export interface LifeWorld {
   readonly materials?: readonly MaterialDef[];
   /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
   readonly pathogenSeeds?: readonly PathogenSeed[];
+  /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
+  readonly substanceDoses?: readonly SubstanceDose[];
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -299,6 +302,11 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          placeOf: placeOf(parts, village),
+        }),
+        substancesProcess({
+          clock: parts.clock,
+          doses: parts.substanceDoses ?? [],
           placeOf: placeOf(parts, village),
         }),
         thermalProcess({

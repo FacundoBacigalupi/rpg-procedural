@@ -14,4 +14,5 @@ export * from "./plan.ts";
 export * from "./process.ts";
 export * from "./state.ts";
 export * from "./substance.ts";
+export * from "./substance-state.ts";
 export * from "./thermal.ts";
