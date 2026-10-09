@@ -67,7 +67,10 @@ export function drivesOf(def: ActionDef): Partial<Record<UtilityDrive, number>> 
 export function argChoices(def: ActionDef, ctx: VerbContext): ArgValue[][] {
   let combos: ArgValue[][] = [[]];
   for (const a of def.args) {
-    if (!a.required) continue;
+    // Lo opcional solo se prueba con `what` si hay textos (qué dar, qué cocinar).
+    if (!a.required && !(a.kind === "text" && a.role === "what" && ctx.texts?.[def.id]?.length)) {
+      continue;
+    }
     let options: ArgValue[] = [];
     if (a.kind === "person") options = ctx.persons.map((entity) => ({ role: a.role, entity }));
     else if (a.kind === "place") options = ctx.places.map((entity) => ({ role: a.role, entity }));
@@ -169,4 +172,32 @@ function capabilitiesFor(
     if (req.kind === "capability") caps[req.cap] = view.capability(req.cap) ?? 1;
   }
   return caps;
+}
+
+/**
+ * Qué cosas puede nombrar cada verbo con `what`, desde lo que el NPC cree tener (su despensa): comer,
+ * cocinar, guardar, dar y comerciar hablan de lo que hay. Orden fijo por nombre.
+ */
+export function pantryTexts(
+  holdings: readonly { readonly name: string; readonly amount: number }[],
+): Record<string, readonly string[]> {
+  const names = holdings
+    .filter((h) => h.amount > 0)
+    .map((h) => h.name)
+    .sort();
+  if (names.length === 0) return {};
+  return { eat: names, cook: names, give: names, store: names, trade: names };
+}
+
+/**
+ * Une las candidatas del catálogo con las sociales: si el verbo y el objetivo coinciden (`tend` a
+ * alguien, `strike`) y no nombra una cosa, manda la social, que sabe del vínculo; la del catálogo
+ * se descarta. Las que nombran una cosa (`give:ana+pan`) quedan.
+ */
+export function mergeCandidates(
+  fromCatalog: readonly Candidate[],
+  social: readonly Candidate[],
+): Candidate[] {
+  const taken = new Set(social.map((c) => `${c.verb}:${c.target ?? ""}`));
+  return [...fromCatalog.filter((c) => !taken.has(c.id)), ...social];
 }

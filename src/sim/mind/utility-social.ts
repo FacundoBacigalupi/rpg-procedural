@@ -8,6 +8,17 @@
 import { clampDim, type Vector } from "../relations/index.ts";
 import type { Candidate } from "./utility.ts";
 
+/**
+ * Los verbos del catálogo (`content/actions`) que cumple cada candidata social: ayudar es curar,
+ * vengarse es golpear, evitar es irse (`move`, el plan elige adónde) y dar es dar.
+ */
+export const SOCIAL_VERBS = {
+  help: "tend",
+  give: "give",
+  avoid: "move",
+  avenge: "strike",
+} as const;
+
 /** Vínculos de sangre o casa que pesan en la familia como valor. */
 const KIN_WEIGHT: Readonly<Record<string, number>> = {
   parent: 1,
@@ -68,7 +79,7 @@ export function helpCandidate(i: SocialInput): Candidate | undefined {
   const grudge = dims.resentment;
   return {
     id: `help:${i.target}`,
-    verb: "assist",
+    verb: SOCIAL_VERBS.help,
     target: i.target,
     contributes: {
       family: r(near * belief.need),
@@ -88,7 +99,7 @@ export function giveCandidate(i: SocialInput): Candidate | undefined {
   const near = closeness(dims, i.bonds);
   return {
     id: `give:${i.target}`,
-    verb: "give",
+    verb: SOCIAL_VERBS.give,
     target: i.target,
     contributes: {
       family: r(near * belief.need),
@@ -110,7 +121,7 @@ export function avoidCandidate(i: SocialInput): Candidate | undefined {
   if (dread < 0.1) return undefined;
   return {
     id: `avoid:${i.target}`,
-    verb: "move",
+    verb: SOCIAL_VERBS.avoid,
     target: i.target,
     contributes: {
       safety: r(dread * (0.5 + 0.5 * belief.threat)),
@@ -133,7 +144,7 @@ export function avengeCandidate(i: SocialInput): Candidate | undefined {
   const doubt = 1 - belief.confidence;
   return {
     id: `avenge:${i.target}`,
-    verb: "attack",
+    verb: SOCIAL_VERBS.avenge,
     target: i.target,
     contributes: {
       justice: r(0.9 * dims.resentment),

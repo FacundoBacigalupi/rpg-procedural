@@ -5,7 +5,8 @@ import { ACTIONS, ActionCatalog, type BeliefView, PLANS } from "../actions/index
 import { TRAITS } from "../family/index.ts";
 import { SKILLS } from "../skills/index.ts";
 import { rank } from "./utility.ts";
-import { verbCandidates } from "./utility-verbs.ts";
+import { SOCIAL_VERBS, socialCandidates } from "./utility-social.ts";
+import { mergeCandidates, pantryTexts, verbCandidates } from "./utility-verbs.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -40,7 +41,7 @@ describe("verbCandidates", () => {
     const ids = cs.map((c) => c.id);
     expect(ids).toContain("eat:");
     expect(ids).toContain(`search:${wu}`);
-    expect(ids).not.toContain("strike:" + wu);
+    expect(ids).toContain(`strike:${wu}`);
   });
 
   it("no incluye lo que cree imposible", () => {
@@ -65,5 +66,48 @@ describe("verbCandidates", () => {
     const cs = verbCandidates({ catalog, view: view(), persons: [wu], places: [] });
     const [best] = rank(cs, { needs: { hunger: 1 }, values: {} }, { boldness: 0.5 });
     expect(best?.candidate.verb).toBe("eat");
+  });
+});
+
+describe("verbos sociales y textos", () => {
+  it("los verbos sociales existen en el catálogo", () => {
+    const ids = new Set(catalog.verbs.map((v) => v.id));
+    for (const v of Object.values(SOCIAL_VERBS)) expect(ids.has(v)).toBe(true);
+  });
+
+  it("los verbos con what prueban lo que hay en la despensa", () => {
+    const texts = pantryTexts([
+      { name: "pan", amount: 500 },
+      { name: "sal", amount: 0 },
+    ]);
+    const cs = verbCandidates({ catalog, view: view(), persons: [wu], places: [], texts });
+    const ids = cs.map((c) => c.id);
+    expect(ids).toContain("cook:pan");
+    expect(ids).toContain("eat:pan");
+    expect(ids.some((i) => i.endsWith("sal"))).toBe(false);
+    expect(ids).toContain(`give:${wu}+pan`);
+  });
+
+  it("la candidata social reemplaza a la del catálogo con el mismo verbo y objetivo", () => {
+    const base = verbCandidates({ catalog, view: view(), persons: [wu], places: [] });
+    const social = socialCandidates({
+      target: wu as unknown as string,
+      dims: {
+        affection: 0.5,
+        gratitude: 0,
+        fear: 0,
+        resentment: 0,
+        jealousy: 0,
+        familiarity: 0.5,
+      } as never,
+      bonds: [],
+      belief: { need: 0.6, threat: 0, confidence: 0.8 },
+      means: { surplus: 0.8 },
+    });
+    const merged = mergeCandidates(base, social);
+    expect(merged.filter((c) => c.id === `give:${wu}`)).toHaveLength(1);
+    expect(merged.find((c) => c.id === `give:${wu}`)?.contributes.family).toBe(
+      social[1]?.contributes.family,
+    );
   });
 });

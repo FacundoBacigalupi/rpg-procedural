@@ -80,8 +80,8 @@ describe("candidatas sociales", () => {
     const strong = { need: 0, threat: 0.9, confidence: 0.9 };
     const a = rank(socialCandidates(input({ dims: grudge, belief: weak })), drives, bold);
     const b = rank(socialCandidates(input({ dims: grudge, belief: strong })), drives, bold);
-    const uA = a.find((s) => s.candidate.verb === "attack")?.utility ?? 0;
-    const uB = b.find((s) => s.candidate.verb === "attack")?.utility ?? 0;
+    const uA = a.find((s) => s.candidate.verb === "strike")?.utility ?? 0;
+    const uB = b.find((s) => s.candidate.verb === "strike")?.utility ?? 0;
     expect(uA).toBeGreaterThan(uB);
     const loved = rank(
       socialCandidates(
@@ -94,7 +94,7 @@ describe("candidatas sociales", () => {
       drives,
       bold,
     );
-    const uL = loved.find((s) => s.candidate.verb === "attack")?.utility ?? 0;
+    const uL = loved.find((s) => s.candidate.verb === "strike")?.utility ?? 0;
     expect(uL).toBeLessThan(uA);
   });
 });

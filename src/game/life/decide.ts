@@ -6,7 +6,15 @@
 // El personaje del jugador no pasa por acá. Todavía no mueve el cuerpo: la rutina (`life.routine`)
 // sigue siendo quien actúa; que la decisión se vuelva plan es el ítem siguiente.
 
-import type { AgentId, EntityRef, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  type HolderRef,
+  holderAccount,
+  type PlaceRef,
+  type PlanetClock,
+  type Tick,
+} from "../../core/index.ts";
 import {
   type ActionCatalog,
   BELIEFS,
@@ -22,12 +30,16 @@ import {
   decideByUtility,
   drivesFor,
   ENTITY,
+  type GoodDef,
+  goodUnit,
   INNATE,
   LOCATION,
   MIND,
+  mergeCandidates,
   PERSON,
   PLACE,
   type ProcessDef,
+  pantryTexts,
   RELATIONS,
   type ReadonlyWorldTruth,
   relationship,
@@ -81,6 +93,8 @@ export interface DecideOptions {
   readonly stages: readonly StageDef[];
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
+  /** Bienes del mundo: con ellos los verbos con `what` nombran lo que hay en la despensa. */
+  readonly goods?: readonly GoodDef[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
@@ -212,18 +226,29 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         nameOf: () => "alguien",
       };
 
-      const candidates: Candidate[] = verbCandidates({
+      // La despensa que cree tener: la de su casa, que conoce (no hay foto de NPC todavía).
+      const larder = ctx.ledger?.holdings(holderAccount(person.household as unknown as HolderRef));
+      const texts = pantryTexts(
+        (o.goods ?? []).flatMap((g) => {
+          const unit = goodUnit(g);
+          const amount = larder?.find((h) => h.unit === unit)?.amount ?? 0;
+          return g.form === "good" ? [{ name: g.name, amount }] : [];
+        }),
+      );
+      const social: Candidate[] = [];
+      const catalogCandidates: Candidate[] = verbCandidates({
         catalog: o.catalog,
         view,
         persons: people.map((p) => p.id as unknown as EntityRef),
         places: [],
+        texts,
       });
       for (const p of people) {
         const confidence = (() => {
           const alive = believed(beliefs, p.id, "alive");
           return alive ? beliefConfidenceAt(alive, now) : 0.3;
         })();
-        candidates.push(
+        social.push(
           ...socialCandidates({
             target: p.id,
             dims: p.rel.dims,
@@ -233,6 +258,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           }),
         );
       }
+      const candidates = mergeCandidates(catalogCandidates, social);
       if (candidates.length === 0) return {};
 
       const choice = decideByUtility(
