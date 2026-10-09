@@ -41,6 +41,7 @@ import {
   type ValueDef,
   type WorldTruth,
 } from "../../sim/index.ts";
+import { accentProcess } from "./accent.ts";
 import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
@@ -195,6 +196,7 @@ export function lifeWorld(
               }),
               bornTaboosSettleProcess({ village }),
               heardWordsProcess(),
+              accentProcess({ player }),
             ]
           : []),
         testifyProcess({
