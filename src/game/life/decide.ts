@@ -27,11 +27,15 @@ import {
   type Candidate,
   capabilitiesOf,
   closeness,
+  coreGoals,
   type DimensionDef,
   decideByUtility,
   drivesFor,
   ENTITY,
+  type Goal,
   type GoodDef,
+  goalChanges,
+  goalDrives,
   goodUnit,
   INNATE,
   LOCATION,
@@ -46,7 +50,9 @@ import {
   pantryTexts,
   RELATIONS,
   type ReadonlyWorldTruth,
+  reconcileGoals,
   relationship,
+  revengeGoals,
   type SchemaDef,
   SELF_IMAGES,
   SKILL_STATE,
@@ -69,6 +75,7 @@ import {
 
 export const DECIDE_PROCESS = "life.decide";
 export const DECIDED_EVENT = "npc.decided";
+export const GOAL_EVENT = "npc.goal";
 
 /** Lo último que eligió un NPC. */
 export interface Decision {
@@ -81,6 +88,13 @@ export interface Decision {
 }
 
 export const NPC_DECISION = table<Decision>("life.decision");
+
+/** Los objetivos vigentes de un NPC (núcleo y venganza, `sim/mind/goals.ts`). */
+export interface NpcGoals {
+  readonly items: readonly Goal[];
+}
+
+export const NPC_GOALS = table<NpcGoals>("life.goals");
 
 /** A cuántas personas considera como mucho (las que más conoce). */
 export const MAX_KNOWN = 12;
@@ -129,9 +143,10 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SELF_IMAGES.name,
       SKILL_STATE.name,
       NPC_DECISION.name,
+      NPC_GOALS.name,
       "culture.community",
     ],
-    writes: [NPC_DECISION.name],
+    writes: [NPC_DECISION.name, NPC_GOALS.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -211,6 +226,49 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         stage: stageAt(o.stages, age),
       });
       const temper = temperOf(innate, mood);
+
+      // Los objetivos: núcleo desde sus valores y venganza desde el resentimiento con memoria que lo
+      // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.
+      const prevGoals = truth.get(NPC_GOALS, me)?.items ?? [];
+      const goals = reconcileGoals(prevGoals, [
+        ...coreGoals(drives.values as never, o.schemas, mind, now),
+        ...revengeGoals(
+          people.map((p) => ({ who: p.id, resentment: p.rel.dims.resentment ?? 0 })),
+          {
+            memories,
+            now,
+            warmth: innate["warmth"] ?? 0.5,
+            control: innate["control"] ?? 0.5,
+            strengthIsWorth: mind.schemas["strength_is_worth"]?.strength ?? 0,
+          },
+        ),
+      ]);
+      const { born, ended } = goalChanges(prevGoals, goals);
+      const goalEvents = [
+        ...born.map((g) => ({ g, what: "born" as const })),
+        ...ended.map((g) => ({ g, what: "ended" as const })),
+      ].map(({ g, what }) => ({
+        kind: GOAL_EVENT,
+        actors: [me],
+        place: o.placeOf(truth, me),
+        data: {
+          goal: g.id,
+          layer: g.layer,
+          what,
+          weight: g.weight,
+          ...(g.value === undefined ? {} : { value: g.value }),
+          ...(g.target === undefined ? {} : { target: g.target }),
+        },
+        emissions: {},
+        causes: [
+          { kind: "event", event: g.originEventId } as const,
+          ...(what === "ended" ? [{ kind: "state", entity: me, key: "goals" } as const] : []),
+        ],
+      }));
+      const goalChange =
+        born.length + ended.length > 0 || prevGoals.length !== goals.length
+          ? [setComponent(NPC_GOALS, me, { items: goals })]
+          : [];
       const caps = capabilitiesOf(plan, body);
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
@@ -296,16 +354,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         );
       }
       const candidates = mergeCandidates(catalogCandidates, social);
-      if (candidates.length === 0) return {};
+      if (candidates.length === 0) return { changes: goalChange, events: goalEvents };
 
       const choice = decideByUtility(
         candidates,
-        drives,
+        goalDrives(drives, goals),
         innate,
         temper,
         ctx.rng.fork("decision", me, now),
       );
-      if (!choice) return {};
+      if (!choice) return { changes: goalChange, events: goalEvents };
       const c = choice.candidate;
       const decision: Decision = {
         at: now,
@@ -318,10 +376,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const prev = truth.get(NPC_DECISION, me);
       const changed = !prev || prev.verb !== c.verb || prev.target !== c.target;
       return {
-        changes: [setComponent(NPC_DECISION, me, decision)],
-        ...(changed
-          ? {
-              events: [
+        changes: [setComponent(NPC_DECISION, me, decision), ...goalChange],
+        events: [
+          ...goalEvents,
+          ...(changed
+            ? [
                 {
                   kind: DECIDED_EVENT,
                   actors: [me],
@@ -337,9 +396,9 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                   emissions: {},
                   causes: [{ kind: "state", entity: me, key: "utility" } as const],
                 },
-              ],
-            }
-          : {}),
+              ]
+            : []),
+        ],
       };
     },
   };

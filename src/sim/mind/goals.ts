@@ -8,6 +8,7 @@ import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import { compareStrings } from "../../core/index.ts";
 import { type Memories, salienceAt } from "./memory.ts";
 import type { Mind, SchemaDef, ValueId } from "./mind.ts";
+import type { Drives } from "./utility.ts";
 
 export const GOAL_LAYERS = ["core", "long", "medium", "short", "immediate"] as const;
 export type GoalLayer = (typeof GOAL_LAYERS)[number];
@@ -142,4 +143,36 @@ export function reconcileGoals(prev: readonly Goal[], next: readonly Goal[]): Go
         b.weight - a.weight ||
         compareStrings(a.id, b.id),
     );
+}
+
+/** Cuánto suma un objetivo núcleo al peso de su valor en los impulsos (sin calibrar). */
+export const GOAL_PULL = 0.5;
+
+/**
+ * Los objetivos como peso de impulsos: cada `pursue` suma `GOAL_PULL × peso` a su valor, así lo que
+ * se propuso pesa más que el gusto de fondo. La venganza no suma acá: ya entra como candidata
+ * (`avengeCandidate`) con el resentimiento de la relación.
+ */
+export function goalDrives(drives: Drives, goals: readonly Goal[]): Drives {
+  const values: Partial<Record<ValueId, number>> = { ...drives.values };
+  for (const g of goals) {
+    if (g.kind !== "pursue" || g.value === undefined) continue;
+    values[g.value] = r((values[g.value] ?? 0) + GOAL_PULL * g.weight);
+  }
+  return { ...drives, values };
+}
+
+export interface GoalChange {
+  readonly born: readonly Goal[];
+  readonly ended: readonly Goal[];
+}
+
+/** Qué objetivos nacieron y cuáles terminaron entre dos fotos (por id), en el orden de `next`/`prev`. */
+export function goalChanges(prev: readonly Goal[], next: readonly Goal[]): GoalChange {
+  const had = new Set(prev.map((g) => g.id));
+  const has = new Set(next.map((g) => g.id));
+  return {
+    born: next.filter((g) => !had.has(g.id)),
+    ended: prev.filter((g) => !has.has(g.id)),
+  };
 }
