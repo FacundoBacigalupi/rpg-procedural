@@ -67,6 +67,7 @@ interface Effect {
   readonly done?: boolean;
   readonly care?: number;
   readonly judged?: { readonly verdict?: string; readonly certain?: boolean };
+  readonly form?: { readonly faceLoss?: number };
 }
 
 /** Lo que cada parte guarda de un evento, según el papel que tuvo. */
@@ -88,19 +89,36 @@ export function livedFrom(e: Event): Lived[] {
       // Quien oyó creyó descubrir una mentira: lo guarda; el acusado lo vive como afrenta si era
       // sincero y como un susto si mentía (CaughtLie en memoria, dialogue §4).
       const eff = (e.data as { effect?: Effect } | null)?.effect;
-      if (eff?.kind !== "speak" || eff.judged?.verdict !== "caught" || !actor || !second) return [];
-      const sure = eff.judged.certain === true;
-      return [
-        { who: actor, experience: { ...base(e, [second]), intensity: 0.5, valence: -0.5 } },
-        {
-          who: second,
-          experience: {
-            ...base(e, [actor]),
-            intensity: sure ? 0.4 : 0.55,
-            valence: sure ? -0.3 : -0.5,
+      if (eff?.kind !== "speak" || !actor || !second) return [];
+      const out: Lived[] = [];
+      if (eff.judged?.verdict === "caught") {
+        const sure = eff.judged.certain === true;
+        out.push(
+          { who: actor, experience: { ...base(e, [second]), intensity: 0.5, valence: -0.5 } },
+          {
+            who: second,
+            experience: {
+              ...base(e, [actor]),
+              intensity: sure ? 0.4 : 0.55,
+              valence: sure ? -0.3 : -0.5,
+            },
           },
-        },
-      ];
+        );
+      }
+      // La ofensa de forma (dialogue §10): quien oyó la falta guarda lo que perdió de cara, tanto
+      // más vívido cuanto más fue; quien la dijo no registra nada (no la notó o no le pesó).
+      const loss = clamp01(eff.form?.faceLoss ?? 0);
+      if (loss > 0) {
+        out.push({
+          who: actor,
+          experience: {
+            ...base(e, [second]),
+            intensity: clamp01(0.2 + 0.7 * loss),
+            valence: -clamp01(0.4 + 0.5 * loss),
+          },
+        });
+      }
+      return out;
     }
     case "household.repaid":
       return actor && second

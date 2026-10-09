@@ -208,6 +208,25 @@ describe("qué vive cada quien de un evento", () => {
     expect(livedFrom(believed as unknown as Event)).toEqual([]);
   });
 
+  it("una ofensa de forma deja un recuerdo doloroso en el ofendido, más vívido cuanta más cara perdió", () => {
+    const speak = (faceLoss: number) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: { effect: { kind: "speak", form: { faceLoss } } },
+      }) as unknown as Event;
+    const small = livedFrom(speak(0.1));
+    const big = livedFrom(speak(0.8));
+    expect(big.map((l) => l.who)).toEqual([A]);
+    expect(big[0]?.experience.with).toEqual([B]);
+    expect(big[0]?.experience.valence).toBeLessThan(small[0]?.experience.valence ?? -1);
+    expect(big[0]?.experience.intensity).toBeGreaterThan(small[0]?.experience.intensity ?? 1);
+    expect(livedFrom(speak(0))).toEqual([]);
+  });
+
   it("un evento sin memoria no deja nada", () => {
     expect(livedFrom({ ...fight([]), kind: "action.wait" })).toEqual([]);
   });
