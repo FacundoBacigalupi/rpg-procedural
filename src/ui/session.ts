@@ -46,6 +46,7 @@ import {
   peoplePanel,
   playerView,
   type ResumeAnchor,
+  recapOf,
   renderChronicle,
   type Suggestion,
   suggestions,
@@ -114,6 +115,7 @@ import {
   renderInventory,
   renderJournal,
   renderPeople,
+  renderRecap,
   renderStatus,
   renderSuggestion,
   renderThinking,
@@ -291,7 +293,9 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   };
   const intro = await tell(null, life.now);
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
-  const opening = `${notices.join("")}${intro}\n${renderStatus(life.now)}`;
+  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
+  const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
+  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
   const play = async (
@@ -413,6 +417,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const ref = topicEntity(about, knownEntities(life.world));
         if (ref === undefined) return { text: "No sabés nada de eso." };
         return { text: renderAbout(aboutPanel(life.world, ref, about)) };
+      }
+      if (/^(?:recuento|resumen)/iu.test(text)) {
+        const recap = renderRecap(recapOf(life.world));
+        return { text: recap === "" ? "No hay mucho que recordar todavía." : recap };
       }
       if (/^hip[oó]tesis/i.test(text))
         return { text: renderHypotheses(hypothesesPanel(life.world)) };

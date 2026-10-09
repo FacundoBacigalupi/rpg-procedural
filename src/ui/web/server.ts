@@ -7,8 +7,10 @@ import type { AddressInfo } from "node:net";
 import {
   bookPanel,
   characterPanel,
+  hypothesesPanel,
   inventoryPanel,
   peoplePanel,
+  recapOf,
   TONE_ICON,
   TONE_LABEL,
 } from "../../game/index.ts";
@@ -16,9 +18,11 @@ import {
   renderBook,
   renderCharacter,
   renderEnvironment,
+  renderHypotheses,
   renderInventory,
   renderJournal,
   renderPeople,
+  renderRecap,
   renderStatus,
   renderSuggestion,
 } from "../render.ts";
@@ -34,6 +38,8 @@ export function panelsOf(session: Session): Panels {
     inventory: renderInventory(inventoryPanel(w)),
     book: renderBook(bookPanel(w)),
     people: renderPeople(peoplePanel(w)),
+    hypotheses: renderHypotheses(hypothesesPanel(w)),
+    recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(session.environment()),
     options: session.suggested().map((o) => ({

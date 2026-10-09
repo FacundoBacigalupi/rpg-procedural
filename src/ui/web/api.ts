@@ -8,6 +8,10 @@ export interface Panels {
   readonly book: string;
   /** La gente que conoce y lo que cree de cada una. */
   readonly people: string;
+  /** Lo que piensa de cómo anda el mundo (el diario de hipótesis). */
+  readonly hypotheses: string;
+  /** Lo último que hacía y lo último que recuerda. */
+  readonly recap: string;
   readonly journal: string;
   /** Lo que se nota del lugar, por canal. */
   readonly environment: string;

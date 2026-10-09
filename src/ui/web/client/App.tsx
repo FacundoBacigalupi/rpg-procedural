@@ -21,6 +21,8 @@ const TABS = [
   ["inventory", "Inventario"],
   ["book", "Deudas"],
   ["people", "Gente"],
+  ["hypotheses", "Hipótesis"],
+  ["recap", "Recuento"],
   ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;
