@@ -17,6 +17,7 @@ import {
 } from "../../core/index.ts";
 import {
   type ActionCatalog,
+  applyAcute,
   BELIEFS,
   type BeliefView,
   BODY_STATE,
@@ -86,6 +87,7 @@ import {
   villageCulture,
   villageReligion,
 } from "../../sim/index.ts";
+import { acuteOf } from "./substances.ts";
 
 export const DECIDE_PROCESS = "life.decide";
 export const DECIDED_EVENT = "npc.decided";
@@ -226,12 +228,17 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const cared = new Set(
         people.filter((p) => closeness(p.rel.dims, p.rel.bonds) >= CARES_MIN).map((p) => p.id),
       );
-      const mood = moodFrom({
-        memories,
-        now,
-        cares: (who) => cared.has(who),
-        withCompany: [...cared].some((id) => truth.get(LOCATION, id)?.hex === here),
-      });
+      const acute = acuteOf(truth, me);
+      const mood = {
+        ...moodFrom({
+          memories,
+          now,
+          cares: (who) => cared.has(who),
+          withCompany: [...cared].some((id) => truth.get(LOCATION, id)?.hex === here),
+        }),
+        craving: acute.craving,
+        numbing: acute.numbing,
+      };
       const drives = drivesFor({
         plan,
         body,
@@ -310,7 +317,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         born.length + ended.length > 0 || prevGoals.length !== goals.length
           ? [setComponent(NPC_GOALS, me, { items: goals })]
           : [];
-      const caps = capabilitiesOf(plan, body);
+      const caps = applyAcute(capabilitiesOf(plan, body), acute);
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {

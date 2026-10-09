@@ -52,6 +52,27 @@ export interface SubstanceDef {
   /** Horas para que el daño acumulado se repare a la mitad (cuando ya no hay exceso). */
   readonly repairHalfHours: number;
   readonly dependence?: DependenceDef;
+  /** Efectos agudos sobre capacidades y dolor (sin esto la sustancia no baja nada). */
+  readonly acute?: AcuteDef;
+}
+
+type AcuteCap =
+  | "locomotion"
+  | "manipulation"
+  | "speech"
+  | "strength"
+  | "cognition"
+  | "endurance"
+  | "sight"
+  | "hearing";
+
+export interface AcuteDef {
+  /** Pérdida (0-1) de cada capacidad con `effectLevel` 1. */
+  readonly impairs?: Readonly<Partial<Record<AcuteCap, number>>>;
+  /** Fracción del dolor que se deja de sentir con `effectLevel` 1. */
+  readonly numbs?: number;
+  /** Pérdida (0-1) de cada capacidad con abstinencia 1 (manos que tiemblan, mente nublada). */
+  readonly withdrawalImpairs?: Readonly<Partial<Record<AcuteCap, number>>>;
 }
 
 export interface SubstanceState {

@@ -17,7 +17,15 @@ import type { Innate } from "../family/index.ts";
 import { VALUE_IDS, type ValueId } from "./mind.ts";
 
 /** Las necesidades inmediatas que entran a la utilidad (las lentas, `belonging` y `meaning`, aparte). */
-export const NEED_IDS = ["hunger", "thirst", "rest", "safety", "social", "pain"] as const;
+export const NEED_IDS = [
+  "hunger",
+  "thirst",
+  "rest",
+  "safety",
+  "social",
+  "pain",
+  "craving",
+] as const;
 export type NeedId = (typeof NEED_IDS)[number];
 
 /** Lo que una acción puede mover: una necesidad o un valor. */

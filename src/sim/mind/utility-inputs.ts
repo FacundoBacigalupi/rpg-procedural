@@ -16,6 +16,10 @@ export interface MoodInput {
   readonly fear?: number;
   /** Horas desde que estuvo con alguien que le importa. */
   readonly aloneHours?: number;
+  /** 0-1: el ansia de una sustancia (`acuteEffects(...).craving`); sin ella, 0. */
+  readonly craving?: number;
+  /** 0-1: dolor que una sustancia deja de sentir (`acuteEffects(...).numbing`). */
+  readonly numbing?: number;
 }
 
 /** Horas a solas desde las que la compañía apremia del todo (sin calibrar). */
@@ -37,7 +41,9 @@ export function needsFrom(plan: BodyPlanDef, body: Body, mood: MoodInput = {}): 
   const hunger = clamp01(Math.max(0.8 * shortReserve, fatLow));
   const thirst = clamp01(body.water / (THIRST_SEVERE * body.massKg));
   const rest = clamp01(Math.max(body.sleepDebt / SLEEP_DEBT_FULL, body.fatigue));
-  const pain = clamp01(body.wounds.reduce((s, w) => Math.max(s, impairment(w)), 0));
+  const pain = clamp01(
+    body.wounds.reduce((s, w) => Math.max(s, impairment(w)), 0) * (1 - clamp01(mood.numbing ?? 0)),
+  );
   const hurt = clamp01(body.wounds.length === 0 ? 0 : 0.4 * pain + 0.3 * body.sepsis);
   const safety = clamp01(Math.max(mood.fear ?? 0, hurt));
   const social = clamp01((mood.aloneHours ?? 0) / LONELY_HOURS);
@@ -48,6 +54,7 @@ export function needsFrom(plan: BodyPlanDef, body: Body, mood: MoodInput = {}): 
     pain: r(pain),
     safety: r(safety),
     social: r(social),
+    ...((mood.craving ?? 0) > 0 ? { craving: r(clamp01(mood.craving ?? 0)) } : {}),
   };
 }
 

@@ -22,6 +22,7 @@ import {
   type ActionPlan,
   type Activity,
   advance,
+  applyAcute,
   type Bearing,
   BODY_STATE,
   type Body,
@@ -132,6 +133,7 @@ import {
   strikeFight,
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
+import { acuteOf } from "./substances.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
 
@@ -445,7 +447,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const body = truth.get(BODY_STATE, me);
   if (!person || !innate || !body) throw new Error(`${me} no tiene persona, rasgos o cuerpo`);
   const bodyPlan = e.plans.get(body.plan) as BodyPlanDef;
-  const caps = capabilitiesOf(bodyPlan, body);
+  const caps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 
