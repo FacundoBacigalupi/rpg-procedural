@@ -18,8 +18,11 @@ import {
   type FightIntent,
   type FightSnapshot,
   familiarWith,
+  holdBackWish,
   INNATE,
   levelOf,
+  OPINIONS,
+  opinionKey,
   PERSON,
   type ReadonlyWorldTruth,
   rivalKey,
@@ -135,6 +138,26 @@ export function exposeSkills(
   return { ...skills, [e.skill]: both };
 }
 
+/**
+ * Si el rival decide pelear por debajo de su nivel para que el otro se confíe (skills §9): el astuto
+ * y audaz que cree que le sobra, con lo que cree de quien le pega (su opinión ajena). 0 es no.
+ * Sale del rng de la pelea, así que es determinista.
+ */
+function npcHoldBack(i: StrikeFightInput): number {
+  if (i.target === i.me) return 0;
+  const use = i.skills.forVerb("strike");
+  const p = i.truth.get(PERSON, i.target);
+  const n = i.truth.get(INNATE, i.target);
+  if (!use || !p || !n) return 0;
+  const believed = i.truth.get(OPINIONS, i.target)?.[opinionKey(i.me, use.skill.id)];
+  const wish = holdBackWish(
+    standardize(n, i.traits, p.sex),
+    verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+    believed?.estimate.level,
+  );
+  return i.rng.fork("hold-back", i.target).chance(wish.chance) ? wish.amount : 0;
+}
+
 /** La familiaridad de `who` con el estilo de `rival` en la habilidad del golpe. */
 function fightFamiliarity(
   catalog: SkillCatalog,
@@ -193,6 +216,7 @@ const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
 
 export function strikeFight(i: StrikeFightInput): StrikeFight {
   const day = i.day ?? DAY_SECONDS;
+  const theirHold = npcHoldBack(i);
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -231,7 +255,10 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         plan: plan(theirBody),
         body: theirBody,
         z: z(i.target),
-        skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        skill:
+          verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike") *
+          (1 - HOLD_BACK_COST * theirHold),
+        hides: theirHold,
         eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
         familiarity: fightFamiliarity(
           i.skills,

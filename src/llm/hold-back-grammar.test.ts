@@ -25,3 +25,23 @@ describe("la gramática y el nivel escondido en la pelea", () => {
     expect(d?.plan?.kind === "do" && d.plan.args[0]?.role).toBe("target");
   });
 });
+
+describe("«me contengo» suelto fija el modo", () => {
+  it.each(["me contengo", "Me contengo.", "voy a contenerme"])(
+    "«%s» es una orden de contenerse",
+    (text) => {
+      expect(parseCommand(text)).toEqual({ kind: "meta", text: "contenerse" });
+    },
+  );
+
+  it.each(["ya no me contengo", "dejo de contenerme", "voy a pelear en serio"])(
+    "«%s» lo suelta",
+    (text) => {
+      expect(parseCommand(text)).toEqual({ kind: "meta", text: "no contenerse" });
+    },
+  );
+
+  it("con verbo de pelea sigue siendo golpear", () => {
+    expect(strikeManner("peleo sin esforzarme")).toEqual(["hold_back"]);
+  });
+});

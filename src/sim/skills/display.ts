@@ -79,3 +79,38 @@ export function observedLevel(
     ? { level: round(clamp01(trueLevel)), fooled: false }
     : { level: display.shown, fooled: display.gap !== 0 };
 }
+
+/** Cuánto pesa cada rasgo en las ganas de esconder el nivel (calibración abierta). */
+export const HOLD_BACK_BASE = 0.12;
+/** El hueco de nivel sobre el que cree del otro, desde el cual esconderse sale gratis del todo. */
+export const HOLD_BACK_EDGE = 0.3;
+
+export interface HoldBackWish {
+  /** La chance de que decida esconderse en esta pelea, 0-1. */
+  readonly chance: number;
+  /** Cuánto se contiene si lo decide, 0-1 (el `holdBack` de la pelea). */
+  readonly amount: number;
+}
+
+/**
+ * Si un NPC pelea por debajo de su nivel para que el otro se confíe (skills §9): lo hace el astuto
+ * (intelecto y dominio de sí, poca calidez) y el audaz, y solo si cree que le sobra, con lo que
+ * *cree* del otro (`believedRival`, su opinión ajena; sin opinión se arriesga menos). Puro: quien
+ * llama tira con la chance. `z` son los rasgos tipificados de quien decide.
+ */
+export function holdBackWish(
+  z: Readonly<Record<string, number>>,
+  ownLevel: number,
+  believedRival: number | undefined,
+): HoldBackWish {
+  const cunning = ((z["intellect"] ?? 0) + (z["control"] ?? 0)) / 2 - 0.5 * (z["warmth"] ?? 0);
+  let chance = HOLD_BACK_BASE + 0.1 * cunning + 0.05 * (z["boldness"] ?? 0);
+  if (believedRival === undefined) chance *= 0.5;
+  const edge = believedRival === undefined ? 0 : ownLevel - believedRival;
+  if (believedRival !== undefined) {
+    if (edge < 0.05) return { chance: 0, amount: 0 };
+    chance *= clamp01(edge / HOLD_BACK_EDGE);
+  }
+  const amount = clamp01(0.5 + 0.15 * cunning);
+  return { chance: round(clamp01(chance)), amount: round(amount) };
+}

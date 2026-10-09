@@ -119,6 +119,15 @@ const HOLD_BACK_SOURCE =
   "me contengo|conteni[eé]ndome|contuvi[eé]ndome|sin esforzarme|sin ganas|a medias|sin (?:poner|usar) (?:toda )?(?:mi )?(?:fuerza|poder|nivel)|sin mostrar (?:mi nivel|todo lo que s[eé]|lo que valgo)|haci[eé]ndome el (?:d[eé]bil|flojo)";
 
 /** Los modos por palabras; solo se ponen los que el verbo admite en el catálogo. */
+/**
+ * «Me contengo» solo, sin verbo de pelea: fija el modo para las próximas peleas (la sesión lo
+ * agrega a los planes que golpean) hasta que se lo suelte. Es una orden fuera del turno.
+ */
+export const HOLD_STANCE_ON =
+  /^(?:(?:desde ahora|de ahora en m[aá]s)s+)?(?:me contengo|voy a contenerme|me voy a contener|(?:voy a )?(?:me )?contener(?:me)? en las peleas)$/iu;
+export const HOLD_STANCE_OFF =
+  /^(?:dejo de contenerme|ya no me contengo|no me contengo(?: m[aá]s)?|voy a pelear en serio|(?:desde ahora|de ahora en m[aá]s) pelea(?:r[eé]|o) en serio)$/iu;
+
 const MANNERS: readonly { re: RegExp; manner: string }[] = [
   {
     re: /\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio)\b/i,
@@ -580,6 +589,8 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   }
   const consult = consultDraft(text);
   if (consult) return consult;
+  if (HOLD_STANCE_ON.test(text)) return { kind: "meta", text: "contenerse" };
+  if (HOLD_STANCE_OFF.test(text)) return { kind: "meta", text: "no contenerse" };
   const goal = GOAL.exec(text);
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
   // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo

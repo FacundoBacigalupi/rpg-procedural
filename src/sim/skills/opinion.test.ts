@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hearSkill,
+  holdBackWish,
   observeSkill,
   opinionError,
   opinionKey,
@@ -52,5 +53,23 @@ describe("opinión ajena de la habilidad", () => {
 
   it("la clave junta quién y qué habilidad", () => {
     expect(opinionKey("agent:3", "sword")).toBe("agent:3|sword");
+  });
+});
+
+describe("esconder el nivel: la decisión del NPC", () => {
+  const astute = { intellect: 1.5, control: 1, warmth: -0.5, boldness: 0.5 };
+  const kind = { intellect: -1, control: -0.5, warmth: 1.5, boldness: -0.5 };
+
+  it("el astuto se esconde más que el bondadoso y solo si le sobra", () => {
+    const a = holdBackWish(astute, 0.7, 0.3);
+    const k = holdBackWish(kind, 0.7, 0.3);
+    expect(a.chance).toBeGreaterThan(k.chance);
+    expect(holdBackWish(astute, 0.4, 0.5)).toEqual({ chance: 0, amount: 0 });
+  });
+
+  it("sin saber nada del otro se arriesga menos", () => {
+    expect(holdBackWish(astute, 0.7, undefined).chance).toBeLessThan(
+      holdBackWish(astute, 0.9, 0.2).chance,
+    );
   });
 });
