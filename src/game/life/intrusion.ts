@@ -22,6 +22,7 @@ import {
   setComponent,
   triggeredBy,
 } from "../../sim/index.ts";
+import { SLEEP_STATE } from "./sleep.ts";
 
 export const INTRUSION_PROCESS = "life.intrusion";
 /** Qué parte de la chance de intrusión cae en una hora de estar frente al disparador. */
@@ -40,12 +41,22 @@ export function intrusionProcess(o: IntrusionOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, LOCATION.name, MENTAL.name, MEMORIES.name, BODY_STATE.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      LOCATION.name,
+      MENTAL.name,
+      MEMORIES.name,
+      BODY_STATE.name,
+      SLEEP_STATE.name,
+    ],
     writes: [MEMORIES.name],
     run(ctx) {
       const truth = ctx.truth;
       const awake = (id: AgentId) => {
         if (truth.get(ENTITY, id)?.endedAt !== undefined || !truth.get(PERSON, id)) return false;
+        // Quien acaba de despertar tiene la pasada nocturna pendiente (life.consolidate escribe sus memorias).
+        if (truth.get(SLEEP_STATE, id)) return false;
         const body = truth.get(BODY_STATE, id);
         return (
           !!body &&
