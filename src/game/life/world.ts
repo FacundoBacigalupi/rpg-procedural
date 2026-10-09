@@ -67,7 +67,7 @@ import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
-import { bornTaboosProcess, bornTaboosSettleProcess } from "./taboos.ts";
+import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
 
@@ -194,6 +194,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
               }),
               bornTaboosSettleProcess({ village }),
+              heardWordsProcess(),
             ]
           : []),
         testifyProcess({
