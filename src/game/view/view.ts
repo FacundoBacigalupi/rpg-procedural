@@ -39,12 +39,39 @@ export interface SelfView {
 }
 
 /** Lo que el personaje piensa o siente este turno (narration §7, modo introspección). */
-export type ThoughtKind = "remember" | "ponder" | "feel";
+export type ThoughtKind = "remember" | "ponder" | "feel" | "conclude";
 export type Mood = "grief" | "fear" | "longing" | "guilt" | "calm";
+
+/** Qué tan seguro llega a una conclusión (las bandas de `confidenceBand`, sin cifras). */
+export type ConclusionBand = "convinced" | "likely" | "maybe" | "hunch";
+
+/**
+ * Lo que el personaje concluyó al pensar (player-loop «Pensar»): el hecho (predicado del catálogo de
+ * inferencias y las personas que nombra), la banda de seguridad, el hecho rival si dudó entre dos y
+ * la evidencia citada por clase (lo que lo sostiene, no las cifras).
+ */
+export interface ConclusionInput {
+  readonly pred: string;
+  readonly args: readonly EntityRef[];
+  readonly band: ConclusionBand;
+  readonly rival?: { readonly pred: string; readonly args: readonly EntityRef[] };
+  readonly because?: readonly string[];
+}
+
+export interface ConclusionView {
+  readonly pred: string;
+  /** Etiquetas locales de las personas que nombra el hecho, en orden (las demás se omiten). */
+  readonly who: readonly string[];
+  readonly band: ConclusionBand;
+  readonly rival?: { readonly pred: string; readonly who: readonly string[] };
+  readonly because?: readonly string[];
+}
 
 /** Un pensamiento que le sale de la sim (su mente, no la verdad): a quién recuerda y qué siente. */
 export interface ThoughtInput {
   readonly kind: ThoughtKind;
+  /** Solo con `kind: "conclude"`: la conclusión de pensar sobre algo. */
+  readonly conclusion?: ConclusionInput;
   readonly about?: EntityRef;
   readonly mood?: Mood;
   /** El recuerdo está deformado o borroso: no se cuenta como cierto (narration §7). */
@@ -53,6 +80,7 @@ export interface ThoughtInput {
 
 export interface ThoughtView {
   readonly kind: ThoughtKind;
+  readonly conclusion?: ConclusionView;
   /** Etiqueta local de la persona en que piensa. */
   readonly about?: string;
   readonly mood?: Mood;
@@ -453,8 +481,28 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     });
   }
 
+  const conclusionWho = (args: readonly EntityRef[]): string[] =>
+    args.filter(isAgent).map((a) => known(a, "sure"));
   const thoughts: ThoughtView[] = (input.thoughts ?? []).map((t) => ({
     kind: t.kind,
+    ...(t.conclusion !== undefined
+      ? {
+          conclusion: {
+            pred: t.conclusion.pred,
+            who: conclusionWho(t.conclusion.args),
+            band: t.conclusion.band,
+            ...(t.conclusion.rival !== undefined
+              ? {
+                  rival: {
+                    pred: t.conclusion.rival.pred,
+                    who: conclusionWho(t.conclusion.rival.args),
+                  },
+                }
+              : {}),
+            ...(t.conclusion.because !== undefined ? { because: [...t.conclusion.because] } : {}),
+          },
+        }
+      : {}),
     ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
     ...(t.mood !== undefined ? { mood: t.mood } : {}),
     ...(t.hazy === true ? { hazy: true } : {}),

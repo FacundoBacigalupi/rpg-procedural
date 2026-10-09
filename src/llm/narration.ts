@@ -75,7 +75,10 @@ function outcomeRefs(view: PlayerView): string[] {
 /** Lo que no se puede callar: a quién apuntó el personaje y lo que percibió con claridad. */
 export function mustMentionOf(view: PlayerView): string[] {
   const ids = new Set(outcomeRefs(view));
-  for (const t of view.thoughts) if (t.about !== undefined) ids.add(t.about);
+  for (const t of view.thoughts) {
+    if (t.about !== undefined) ids.add(t.about);
+    for (const w of t.conclusion?.who ?? []) ids.add(w);
+  }
   for (const p of view.percepts) {
     if (p.detail !== "vague" || p.action !== undefined || p.words !== undefined) ids.add(p.who);
   }
@@ -140,7 +143,11 @@ export function narratorSystem(style: StyleSettings): string {
     "- `thoughts` are what the character remembers, ponders or feels (mode `introspection`): write",
     "  it from inside, quiet and slow, with little description of the surroundings. Say only the",
     "  `mood` given; do not invent memories, causes or facts about the person they think of. A",
-    "  thought with `hazy: true` is a blurred memory: say it is unclear, never as plain fact.",
+    "  thought with `hazy: true` is a blurred memory: say it is unclear, never as plain fact. A thought",
+    "  of kind `conclude` is what the character worked out: say its `conclusion` (`pred` about the",
+    "  people in `who`) with the certainty of its `band` (convinced, likely, maybe, hunch), as their own",
+    "  inner voice; if there is a `rival`, they also doubt it; `because` is the kind of evidence, cite",
+    "  it in passing. Never add a reason, a fact or a person that is not there, and never say it is true.",
     "- `tastes` are things the character likes or dislikes, each with its `stance`: mention at most",
     "  one, in passing, with that exact feeling. Never invent why they like it or who it recalls.",
     "- `dues` are a debt or promise the character remembers (`direction` i-owe: they owe `who`; owed-to-me:",
