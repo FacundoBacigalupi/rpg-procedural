@@ -25,6 +25,7 @@ describe("lo vivido en un salto", () => {
     expect(s.did[0]).toEqual({ verb: "work", times: 3, failed: 1 });
     expect(s.did.map((d) => d.verb)).not.toContain("wait");
     expect(s.spoke).toBe(1);
+    expect(s.metWith).toEqual(["agent:2"]);
     expect(s.hurt).toBe(true);
     expect(s.fought).toBe(false);
   });

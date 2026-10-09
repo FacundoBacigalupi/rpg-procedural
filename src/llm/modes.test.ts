@@ -59,6 +59,7 @@ describe("montage con lo vivido", () => {
     days: 9,
     did: [{ verb: "work", times: 5, failed: 2 }],
     spoke: 1,
+    spokeWith: [],
     hurt: true,
     fought: false,
   };

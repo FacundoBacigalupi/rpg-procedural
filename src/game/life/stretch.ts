@@ -4,7 +4,7 @@
 // nada de lo que pasó en el mundo sin que él lo viera. Puro sobre sus entradas, no toca el estado.
 
 import type { AgentId, Event, Tick } from "../../core/index.ts";
-import type { StretchView } from "../view/index.ts";
+import type { StretchInput } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 
 /** Cuántos verbos distintos entran en el resumen (los más repetidos). */
@@ -19,7 +19,7 @@ export function stretchOf(
   since: Tick,
   now: Tick,
   dayLength: number,
-): StretchView {
+): StretchInput {
   const tally = new Map<string, { times: number; failed: number }>();
   const spoke = new Set<string>();
   let hurt = false;
@@ -45,6 +45,7 @@ export function stretchOf(
     days: Math.max(1, Math.round((now - since) / dayLength)),
     did,
     spoke: spoke.size,
+    metWith: [...spoke].sort() as AgentId[],
     hurt: hurt || fought,
     fought,
   };

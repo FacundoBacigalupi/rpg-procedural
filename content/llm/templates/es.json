@@ -525,6 +525,10 @@
   { "id": "stretch.did.consult", "lines": ["Preguntás y escuchás lo que te dicen."] },
   { "id": "stretch.failed", "lines": ["No todo te sale bien."] },
   { "id": "stretch.spoke", "lines": ["Hablás con gente por el camino."] },
+  {
+    "id": "stretch.spoke_with",
+    "lines": ["En esos días hablás con {who}.", "Compartís palabras con {who}."]
+  },
   { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
   { "id": "stretch.fought", "lines": ["Hay una pelea en el medio."] },
   {
