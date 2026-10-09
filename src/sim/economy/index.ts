@@ -8,3 +8,4 @@ export * from "./priceMemory.ts";
 export * from "./quality.ts";
 export * from "./soil.ts";
 export * from "./spoilage.ts";
+export * from "./trades.ts";
