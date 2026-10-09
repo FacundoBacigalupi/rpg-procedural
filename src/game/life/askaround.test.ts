@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, type EventId, loadContent } from "../../core/index.ts";
-import { KNOWN_DEEDS, LOCATION } from "../../sim/index.ts";
+import { KNOWN_DEEDS, LOCATION, RELATIONS } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { ASK_WINDOW, askChance, whomToAsk } from "./askaround.ts";
 import { Life } from "./life.ts";
@@ -41,6 +41,39 @@ describe("la víctima que pregunta alrededor", () => {
     expect(whomToAsk(t, victim as AgentId, at + ASK_WINDOW + 1)).toBeNull();
     // Si el hecho no la tiene de víctima, no sale a preguntar.
     expect(whomToAsk(t, near as AgentId, at)).toBeNull();
+  }, 60_000);
+
+  it("el vecino sale a preguntar por lo que le contaron solo si lo une un vínculo con la víctima", () => {
+    const life = Life.create(7, content);
+    const t = life.world.truth;
+    const [victim, near, doer, other] = living(t) as AgentId[];
+    const where = t.get(LOCATION, near as AgentId);
+    if (where) t.set(LOCATION, other as AgentId, where);
+    const event = life.world.log.all()[0]?.id as EventId;
+    const at = life.now;
+    t.set(KNOWN_DEEDS, near as AgentId, {
+      deeds: [
+        { kind: "theft", by: doer as AgentId, victim: victim as AgentId, event, at, via: "told" },
+      ],
+    });
+    const rel = (bonds: string[]) => ({
+      toward: {
+        [victim as string]: {
+          dims: {} as never,
+          bonds,
+          history: [],
+          updated: at,
+        },
+        [other as string]: { dims: {} as never, bonds: [], history: [], updated: at },
+      },
+      originEventId: event,
+    });
+    t.set(RELATIONS, near as AgentId, rel([]));
+    expect(whomToAsk(t, near as AgentId, at)).toBeNull();
+    t.set(RELATIONS, near as AgentId, rel(["sibling"]));
+    const plan = whomToAsk(t, near as AgentId, at);
+    expect(plan?.neighbour).toBe(true);
+    expect(plan?.event).toBe(event);
   }, 60_000);
 
   it("el sociable y el que lo vivió hondo salen más a preguntar que el retraído indiferente", () => {

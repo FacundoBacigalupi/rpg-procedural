@@ -32,6 +32,8 @@ export const ASK_CHANCE = 0.6;
 /** Cuánto suma a la chance la sociabilidad (-1..1) y cuánto la emoción del hecho (sin calibrar). */
 export const ASK_SOCIABILITY = 0.2;
 export const ASK_EMOTION = 0.3;
+/** Qué fracción de esa chance conserva el vecino que pregunta por el hecho de otro (sin calibrar). */
+export const NEIGHBOUR_ASKS = 0.5;
 
 /**
  * La chance de salir a preguntar: la base, más la sociabilidad (el retraído se lo guarda) y cuánto
@@ -68,12 +70,20 @@ export function whomToAsk(
   truth: ReadonlyWorldTruth,
   asker: AgentId,
   now: Tick,
-): { event: EventId; candidates: AgentId[] } | null {
-  const mine = (truth.get(KNOWN_DEEDS, asker)?.deeds ?? [])
-    .filter((d) => d.victim === asker && now - d.at <= ASK_WINDOW && now >= d.at)
-    .sort((a, b) => b.at - a.at || (a.event < b.event ? -1 : 1))[0];
+): { event: EventId; candidates: AgentId[]; neighbour: boolean } | null {
+  const toward = truth.get(RELATIONS, asker)?.toward ?? {};
+  const recent = (truth.get(KNOWN_DEEDS, asker)?.deeds ?? [])
+    .filter((d) => now - d.at <= ASK_WINDOW && now >= d.at)
+    .sort((a, b) => b.at - a.at || (a.event < b.event ? -1 : 1));
+  // Primero el que le hicieron a él; si no, el que le contaron de alguien a quien lo une un vínculo
+  // (parentesco o compromiso): el vecino sin lazo con la víctima no sale a preguntar.
+  const mine =
+    recent.find((d) => d.victim === asker) ??
+    recent.find(
+      (d) => d.via === "told" && d.victim !== asker && (toward[d.victim]?.bonds.length ?? 0) > 0,
+    );
   if (!mine) return null;
-  const known = Object.keys(truth.get(RELATIONS, asker)?.toward ?? {}).sort() as AgentId[];
+  const known = Object.keys(toward).sort() as AgentId[];
   const candidates = known.filter(
     (id) =>
       id !== asker &&
@@ -82,7 +92,9 @@ export function whomToAsk(
       alive(truth, id) &&
       together(truth, asker, id),
   );
-  return candidates.length === 0 ? null : { event: mine.event, candidates };
+  return candidates.length === 0
+    ? null
+    : { event: mine.event, candidates, neighbour: mine.victim !== asker };
 }
 
 export function askAroundProcess(o: AskAroundOptions): ProcessDef {
@@ -119,9 +131,10 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
           ? standardize(innate, o.traits, ctx.truth.get(PERSON, asker)?.sex ?? "female")
           : {};
         const felt = ctx.truth.get(MEMORIES, asker)?.items.find((m) => m.eventId === plan.event);
-        if (!rng.chance(askChance(clampTemper(z["sociability"] ?? 0), felt?.intensity ?? 0.5))) {
-          continue;
-        }
+        const chance =
+          askChance(clampTemper(z["sociability"] ?? 0), felt?.intensity ?? 0.5) *
+          (plan.neighbour ? NEIGHBOUR_ASKS : 1);
+        if (!rng.chance(chance)) continue;
         const witness = rng.pick(plan.candidates);
         events.push({
           kind: INQUIRY_EVENT,
