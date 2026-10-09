@@ -1,5 +1,19 @@
 [
   {
+    "id": "speech",
+    "name": "hablar una lengua ajena",
+    "domain": "language",
+    "facets": ["knowledge", "execution", "accent", "reading"],
+    "aptitudes": [
+      { "trait": "perception", "weight": 0.4 },
+      { "trait": "memory", "weight": 0.4 },
+      { "trait": "sociability", "weight": 0.2 }
+    ],
+    "capabilities": { "speech": 1 },
+    "tacitness": 0.85,
+    "curve": { "rate": 0.0012, "k": 3 }
+  },
+  {
     "id": "wayfinding",
     "name": "orientarse y andar",
     "domain": "survival",

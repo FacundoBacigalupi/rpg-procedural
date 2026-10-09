@@ -7,7 +7,7 @@
 import { contentId, defineContent, z } from "../../core/index.ts";
 import { type ActionDef, CAPABILITIES } from "../actions/index.ts";
 
-/** Las partes de un saber hacer (skills §2.1). La Fase 1 usa las tres primeras. */
+/** Las partes de un saber hacer (skills §2.1). La Fase 1 usa las tres primeras; `accent` es la voz que imita acentos ajenos (language §5). */
 export const FACETS = [
   "execution",
   "reading",
@@ -15,6 +15,7 @@ export const FACETS = [
   "knowledge",
   "endurance",
   "composure",
+  "accent",
 ] as const;
 export type FacetKey = (typeof FACETS)[number];
 
