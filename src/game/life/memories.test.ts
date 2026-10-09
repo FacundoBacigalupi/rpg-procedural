@@ -25,7 +25,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { livedFrom } from "./memories.ts";
+import { FLATTERY_MEMORY_KIND, livedFrom } from "./memories.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -244,6 +244,23 @@ describe("qué vive cada quien de un evento", () => {
     const [victim, threatener] = [lived[0]?.experience, lived[1]?.experience];
     expect(victim?.intensity).toBeGreaterThan(threatener?.intensity ?? 1);
     expect(victim?.valence).toBeLessThan(threatener?.valence ?? -1);
+  });
+
+  it("un halago recibido queda en el oyente con su tipo propio y más amargo si era hueco", () => {
+    const speak = (response: string) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: { effect: { kind: "speak", regard: { kind: "flattery", response } } },
+      }) as unknown as Event;
+    const pleased = livedFrom(speak("pleased"));
+    const hollow = livedFrom(speak("hollow"));
+    expect(pleased.map((l) => l.who)).toEqual([A]);
+    expect(pleased[0]?.experience.kind).toBe(FLATTERY_MEMORY_KIND);
+    expect(hollow[0]?.experience.valence).toBeLessThan(pleased[0]?.experience.valence ?? -1);
   });
 
   it("un evento sin memoria no deja nada", () => {

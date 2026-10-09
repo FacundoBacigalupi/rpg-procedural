@@ -13,6 +13,9 @@ export interface Lived {
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
+/** El tipo de la memoria de un halago recibido (la cuenta del desgaste sale de ahí). */
+export const FLATTERY_MEMORY_KIND = "action.speak.flatter";
+
 function base(e: Event, others: readonly AgentId[]) {
   return { eventId: e.id, kind: e.kind, with: others, place: e.place, at: e.tick } as const;
 }
@@ -70,6 +73,7 @@ interface Effect {
   readonly form?: { readonly faceLoss?: number };
   readonly regard?: {
     readonly kind?: string;
+    readonly response?: string;
     readonly faceLoss?: number;
     readonly deltas?: { readonly fear?: number };
   };
@@ -142,6 +146,20 @@ export function livedFrom(e: Event): Lived[] {
             experience: { ...base(e, [actor]), intensity: 0.3, valence: -0.1 },
           },
         );
+      }
+      // Un halago (§10): el oyente lo guarda con su propio tipo, para que el desgaste de los
+      // halagos repetidos del mismo (`FLATTERY_MEMORY_KIND`) salga de lo que recuerda.
+      if (regard?.kind === "flattery") {
+        const hollow = regard.response === "hollow";
+        out.push({
+          who: actor,
+          experience: {
+            ...base(e, [second]),
+            kind: FLATTERY_MEMORY_KIND,
+            intensity: hollow ? 0.25 : 0.15,
+            valence: hollow ? -0.25 : 0.2,
+          },
+        });
       }
       return out;
     }

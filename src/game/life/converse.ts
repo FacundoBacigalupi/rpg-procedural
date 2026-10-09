@@ -77,6 +77,7 @@ import {
   looseCounter,
   MEMORIES,
   MIND,
+  memoriesAbout,
   normalize,
   type Offense,
   OWN_DEEDS,
@@ -127,6 +128,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
+import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
@@ -532,7 +534,7 @@ function detectionOf(
  */
 function regardOf(
   truth: ReadonlyWorldTruth,
-  ctx: { me: AgentId; speaker: AgentId },
+  ctx: { me: AgentId; speaker: AgentId; now: Tick; dealWith: AgentId | undefined },
   feel: { fear: number; respect: number; trust: number; familiarity: number },
   recollection: { bias: number },
   reproach: boolean,
@@ -540,6 +542,11 @@ function regardOf(
   gap: number,
 ): NonNullable<Parameters<typeof decideReply>[0]["regard"]> {
   const { me, speaker } = ctx;
+  const mind = truth.get(MIND, me);
+  // Los halagos de este mismo que recuerda (el desgaste) y si cree que quiere algo (un trato abierto).
+  const flatteries = memoriesAbout(truth.get(MEMORIES, me), speaker, ctx.now).filter(
+    (s) => s.memory.perceived.kind === FLATTERY_MEMORY_KIND,
+  ).length;
   const present = truth
     .ids(PERSON)
     .map((id) => id as AgentId)
@@ -569,12 +576,18 @@ function regardOf(
     },
     vindictiveness: unit(0.5 + 0.25 * touchy - 0.15 * clampTemper(z["warmth"] ?? 0)),
     flattery: {
-      vanity: unit(0.45 + 0.2 * clampTemper(z["sociability"] ?? 0)),
+      // Vanidad: sociabilidad más lo que su mente cree de sí (vale por su fuerza, o se siente indigno y busca aprobación).
+      vanity: unit(
+        0.45 +
+          0.2 * clampTemper(z["sociability"] ?? 0) +
+          VANITY_SCHEMA * (mind?.schemas["strength_is_worth"]?.strength ?? 0) +
+          VANITY_SCHEMA * (mind?.schemas["i_am_unworthy"]?.strength ?? 0),
+      ),
       excess: 0,
       insight: unit(0.5 + 0.5 * clampTemper(z["perception"] ?? 0)),
       trust: unit(feel.trust),
-      motiveKnown: false,
-      recent: 0,
+      motiveKnown: ctx.dealWith === speaker,
+      recent: flatteries,
     },
     insult: { sting: 0, truth: INSULT_TRUTH_GUESS, gap, witnesses },
   };
@@ -713,6 +726,8 @@ const THREAT_HELP_EACH = 0.2;
 const THREAT_RECOURSE = 0.2;
 const INSULT_TRUTH_GUESS = 0.2;
 const THREAT_FACE_SEVERITY = 0.5;
+/** Cuánto suma a la vanidad la fuerza de un esquema de valía (sin calibrar). */
+const VANITY_SCHEMA = 0.2;
 
 /**
  * Lo que la amenaza, el halago o el insulto dejan en lo que el oyente siente por quien habló
@@ -1017,7 +1032,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             ? {
                 regard: regardOf(
                   truth,
-                  { me, speaker },
+                  { me, speaker, now: ctx.now, dealWith: stored?.with },
                   feel,
                   recollection,
                   worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
