@@ -664,6 +664,7 @@ function regardOf(
           level: unit(0.4 + 0.5 * Math.max(0, -recollection.bias) + (reproach ? 0.3 : 0)),
           confidence: sure,
         },
+        shown: shownBy(truth, me, speaker, ctx.now),
       }),
       harm: 0,
       demandCost: THREAT_DEMAND_COST,
@@ -827,6 +828,26 @@ const THREAT_HELP_EACH = 0.2;
 const THREAT_RECOURSE = 0.2;
 const INSULT_TRUTH_GUESS = 0.2;
 const THREAT_FACE_SEVERITY = 0.5;
+
+/**
+ * La demostración reciente de quien amenaza (dialogue §9): una pelea o remate que el oyente
+ * recuerda con él y que lo dejó mal (valencia negativa) todavía fresca (saliencia): 0-1.
+ */
+export function shownBy(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  speaker: AgentId,
+  now: Tick,
+): number {
+  let best = 0;
+  for (const s of memoriesAbout(truth.get(MEMORIES, me), speaker, now)) {
+    if (s.memory.perceived.kind !== "combat.fight" && s.memory.perceived.kind !== "combat.finish") {
+      continue;
+    }
+    best = Math.max(best, unit(s.salience * Math.max(0, -s.memory.valence)));
+  }
+  return best;
+}
 /** Cuánto suma a la vanidad la fuerza de un esquema de valía (sin calibrar). */
 const VANITY_SCHEMA = 0.2;
 
@@ -851,10 +872,13 @@ function regardEffect(
         trust: aftermath.trustDelta,
       },
       // Quien amenaza gana poco de cara si cedieron (threatFaceDelta «obeyed»).
+      // Si lo desafían y no cumple en el acto, pierde cara (threatFaceDelta «backed_down»).
       faceGain:
         verdict.response === "yield"
           ? threatFaceDelta("obeyed", witnesses, THREAT_FACE_SEVERITY)
-          : 0,
+          : verdict.response === "defy"
+            ? threatFaceDelta("backed_down", witnesses, THREAT_FACE_SEVERITY)
+            : 0,
     };
   }
   if (reply.flattery) {
