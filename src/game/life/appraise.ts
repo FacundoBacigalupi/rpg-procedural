@@ -86,6 +86,7 @@ import {
   WITNESS_ASLEEP_ENCODING,
   witnessLived,
 } from "./memories.ts";
+import { applyTalkMemory, talkMemoryIn } from "./talkmemory.ts";
 import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
@@ -267,6 +268,23 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         }
         if (e.kind === "action.speak") {
           talked(e, truth, rel, move);
+          // Conversar refuerza lo recordado y lo contado queda como memoria de segunda mano.
+          const talk = talkMemoryIn(e);
+          const [heard, asker] = e.actors as [AgentId | undefined, AgentId | undefined];
+          if (talk && heard && asker && alive(truth, heard) && alive(truth, asker)) {
+            const before = {
+              listener: mems.get(heard) ?? truth.get(MEMORIES, heard),
+              asker: mems.get(asker) ?? truth.get(MEMORIES, asker),
+            };
+            const after = applyTalkMemory(before.listener, before.asker, talk, {
+              teller: heard,
+              place: e.place,
+              now: e.tick,
+            });
+            if (after.listener && after.listener !== before.listener)
+              mems.set(heard, after.listener);
+            if (after.asker && after.asker !== before.asker) mems.set(asker, after.asker);
+          }
           const lie = lieTold(e);
           if (lie && alive(truth, lie.liar) && truth.get(PERSON, lie.liar)) {
             const lying = habitsFed(o.habits, LIE_HABIT_KIND);

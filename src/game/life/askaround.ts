@@ -6,14 +6,19 @@
 
 import type { AgentId, EventId, PlaceRef, Tick } from "../../core/index.ts";
 import {
+  clampTemper,
   ENTITY,
   type EventDraft,
+  INNATE,
   KNOWN_DEEDS,
   LOCATION,
+  MEMORIES,
   PERSON,
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  standardize,
+  type Trait,
 } from "../../sim/index.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
@@ -24,7 +29,21 @@ export const ASK_WINDOW = 3 * 86_400;
 /** Chance diaria de que salga a preguntar (sin calibrar). */
 export const ASK_CHANCE = 0.6;
 
+/** Cuánto suma a la chance la sociabilidad (-1..1) y cuánto la emoción del hecho (sin calibrar). */
+export const ASK_SOCIABILITY = 0.2;
+export const ASK_EMOTION = 0.3;
+
+/**
+ * La chance de salir a preguntar: la base, más la sociabilidad (el retraído se lo guarda) y cuánto
+ * le pesó el hecho (la intensidad de su memoria, 0,5 es neutra); entre 0 y 1.
+ */
+export function askChance(sociability: number, emotion: number): number {
+  const x = ASK_CHANCE + ASK_SOCIABILITY * sociability + ASK_EMOTION * (emotion - 0.5);
+  return Math.round(Math.min(1, Math.max(0, x)) * 1e6) / 1e6;
+}
+
 export interface AskAroundOptions {
+  readonly traits: readonly Trait[];
   /** El hogar del jugador queda afuera: lo que hace su personaje lo decide él. */
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -74,7 +93,15 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "decide",
-    reads: [KNOWN_DEEDS.name, RELATIONS.name, LOCATION.name, PERSON.name, ENTITY.name],
+    reads: [
+      KNOWN_DEEDS.name,
+      RELATIONS.name,
+      LOCATION.name,
+      PERSON.name,
+      ENTITY.name,
+      INNATE.name,
+      MEMORIES.name,
+    ],
     writes: [],
     run(ctx) {
       const home = ctx.scope as string;
@@ -87,7 +114,14 @@ export function askAroundProcess(o: AskAroundOptions): ProcessDef {
         const plan = whomToAsk(ctx.truth, asker, ctx.now);
         if (!plan) continue;
         const rng = ctx.rng.fork("askAround", asker);
-        if (!rng.chance(ASK_CHANCE)) continue;
+        const innate = ctx.truth.get(INNATE, asker);
+        const z = innate
+          ? standardize(innate, o.traits, ctx.truth.get(PERSON, asker)?.sex ?? "female")
+          : {};
+        const felt = ctx.truth.get(MEMORIES, asker)?.items.find((m) => m.eventId === plan.event);
+        if (!rng.chance(askChance(clampTemper(z["sociability"] ?? 0), felt?.intensity ?? 0.5))) {
+          continue;
+        }
         const witness = rng.pick(plan.candidates);
         events.push({
           kind: INQUIRY_EVENT,

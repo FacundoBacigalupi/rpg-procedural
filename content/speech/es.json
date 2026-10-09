@@ -46,6 +46,31 @@
     "lines": ["No sé dónde anda {name}.", "Ni idea de {name}, hace rato que no lo veo."]
   },
   {
+    "id": "ask.recalled.good",
+    "lines": [
+      "De {name} me acuerdo con cariño: fue bueno conmigo.",
+      "Lo de {name}, sí, lo recuerdo bien, y fue para bien."
+    ],
+    "formal": ["Recuerdo a {name} con aprecio."]
+  },
+  {
+    "id": "ask.recalled.bad",
+    "lines": [
+      "De {name} prefiero no hablar: lo que pasó me quedó clavado.",
+      "Me acuerdo de {name}, y no con gusto."
+    ],
+    "formal": ["Recuerdo a {name}, y no con agrado."]
+  },
+  {
+    "id": "ask.recalled.plain",
+    "lines": ["Sí, me acuerdo de {name}; nada del otro mundo.", "{name}... algo me acuerdo, sí."]
+  },
+  {
+    "id": "ask.recalled.denied",
+    "lines": ["No sé nada de {name}. Preguntale a otro.", "De {name} no te cuento nada."],
+    "formal": ["No tengo nada que decirle sobre {name}."]
+  },
+  {
     "id": "ask.secret.revealed.dead",
     "lines": [
       "Está bien, te lo digo: {name} murió, y no quería que se supiera.",

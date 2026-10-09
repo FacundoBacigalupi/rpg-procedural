@@ -234,7 +234,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           player,
         }),
-        askAroundProcess({ player, placeOf: placeOf(parts, village) }),
+        askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
         keepProcess({

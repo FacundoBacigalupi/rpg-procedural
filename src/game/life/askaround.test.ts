@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, type EventId, loadContent } from "../../core/index.ts";
 import { KNOWN_DEEDS, LOCATION } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { ASK_WINDOW, whomToAsk } from "./askaround.ts";
+import { ASK_WINDOW, askChance, whomToAsk } from "./askaround.ts";
 import { Life } from "./life.ts";
 import { living } from "./world.ts";
 
@@ -42,4 +42,11 @@ describe("la víctima que pregunta alrededor", () => {
     // Si el hecho no la tiene de víctima, no sale a preguntar.
     expect(whomToAsk(t, near as AgentId, at)).toBeNull();
   }, 60_000);
+
+  it("el sociable y el que lo vivió hondo salen más a preguntar que el retraído indiferente", () => {
+    expect(askChance(1, 0.9)).toBeGreaterThan(askChance(0, 0.5));
+    expect(askChance(0, 0.5)).toBeGreaterThan(askChance(-1, 0.1));
+    expect(askChance(1, 1)).toBeLessThanOrEqual(1);
+    expect(askChance(-1, 0)).toBeGreaterThanOrEqual(0);
+  });
 });

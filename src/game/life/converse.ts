@@ -65,6 +65,7 @@ import {
   HEARD,
   type HeardProphecy,
   hear,
+  holdsGrudge,
   honestyShift,
   INNATE,
   KNOWN_DEEDS,
@@ -131,6 +132,7 @@ import {
 import { registerKnowledge } from "./accent.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
+import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
@@ -997,6 +999,14 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         schemaStrength: (s) => truth.get(MIND, me)?.schemas[s]?.strength ?? 0,
       }).dims;
       const recollection = recollect(truth.get(MEMORIES, me), speaker, ctx.now);
+      // Si le preguntan por alguien, lo que recuerda de esa persona (honestidad del temperamento).
+      const recount =
+        act.kind === "ask" && act.about !== null
+          ? recountOf(truth.get(MEMORIES, me), act.about, ctx.now, {
+              honesty: unit(0.5 + 0.35 * clampTemper(z["willpower"] ?? 0)),
+              grudge: holdsGrudge(feel, clampTemper(z["reactivity"] ?? 0)),
+            })
+          : null;
       const prophecy =
         act.kind === "prophesy"
           ? prophecyOf(
@@ -1054,6 +1064,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 const keep = keepOf(truth, o, act, { me, speaker, now: ctx.now }, feel, z);
                 return keep ? { keep } : {};
               })()
+            : {}),
+          ...(recount
+            ? { recounted: { tone: recountTone(recount.valence), denied: recount.denied } }
             : {}),
           ...(formed && o.form
             ? { formJudge: { taboos: liveTaboos(truth, o.form, ctx.now), input: formed.judge } }
@@ -1118,6 +1131,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       );
 
       const changes: StateChange[] = [clear];
+      const weighed =
+        recollection.count > 0 ? weighedMemories(truth.get(MEMORIES, me), speaker, ctx.now) : [];
+      const counted = recount && reply.line.startsWith("ask.recalled.") ? recount : undefined;
       // El regateo: una contraoferta queda abierta (una ronda más); cualquier otra cosa dicha sobre
       // el trato (aceptar, rechazar, cerrar, rechazar de plano) lo cierra, y uno vencido se descarta.
       if (reply.counter) {
@@ -1288,6 +1304,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               : {}),
             ...(regard ? { regard } : {}),
             ...(formEffect ? { form: formEffect } : {}),
+            // Lo que pesó de lo recordado se refuerza, y lo contado a quien preguntó queda como
+            // memoria suya de segunda mano: lo anota `life.appraise` (único dueño de MEMORIES).
+            ...(weighed.length > 0 ? { recalled: weighed } : {}),
+            ...(counted ? { recounted: counted } : {}),
             // La acusación y su huella: sin respaldo quien acusa no conocía ningún hecho así.
             ...(reply.accusation
               ? {

@@ -136,6 +136,11 @@ export interface ReplyInput {
    * quien cuenta y pérdida por salto: `transmit`). Sin esto la toma como charla.
    */
   readonly prophecy?: { readonly credence: number };
+  /**
+   * Lo que el oyente recuerda de aquel por quien le preguntan (memorias propias, no la verdad):
+   * el tono con que lo cuenta y si lo niega. Sin esto contesta que no sabe.
+   */
+  readonly recounted?: { readonly tone: "good" | "bad" | "plain"; readonly denied: boolean };
   /** Con qué juzga el oyente la forma del acto (`act.form`): los tabúes de la cultura y lo que cree. */
   readonly formJudge?: { readonly taboos: readonly TabooDef[]; readonly input: FormJudgeInput };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
@@ -351,6 +356,15 @@ function decideBody(i: ReplyInput, at: number): Reply {
       if (seen) return say("ask.dead", { name });
       const told = i.heard.find((c) => c.about === a.about);
       if (told?.claim === "dead") return say("ask.heard_dead", { name });
+      // Sin saber dónde anda, cuenta (o niega) lo que recuerda de esa persona.
+      if (i.recounted) {
+        return say(
+          i.recounted.denied ? "ask.recalled.denied" : `ask.recalled.${i.recounted.tone}`,
+          {
+            name,
+          },
+        );
+      }
       return say("ask.unknown", { name });
     }
     case "tell": {
