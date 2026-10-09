@@ -57,6 +57,7 @@ import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
+import { gossipProcess } from "./gossip.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
@@ -221,6 +222,13 @@ export function lifeWorld(
           bonds: parts.relationBonds,
           traits: parts.traits,
           placeOf: placeOf(parts, village),
+        }),
+        gossipProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          traits: parts.traits,
+          placeOf: placeOf(parts, village),
+          player,
         }),
         askAroundProcess({ player, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
