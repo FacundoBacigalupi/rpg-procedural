@@ -1467,6 +1467,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             deed: heard.root,
             kind: heard.content.kind,
             accused: heard.content.by,
+            victim: heard.content.victim,
+            // `life.appraise` forma la memoria `told` del oyente desde este evento.
+            byCharacter: true,
             hops: told.hops,
             credit: heard.confidence,
           },
