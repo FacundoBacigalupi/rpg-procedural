@@ -430,7 +430,7 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: units,
+      [ROTTED]: [...units, ...tradeUnits.filter((u) => !units.includes(u))],
       seed: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),
