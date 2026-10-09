@@ -63,10 +63,10 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-09. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**. No hay agentes corriendo ni worktrees abiertos (solo existen `develop` y `main`).
+Actualizado: 2026-10-09. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`. No hay agentes corriendo ni worktrees abiertos (solo existen `develop` y `main`).
 
-Hecho recientemente: #311–#330 cierre de Fase 2 (diálogo, vida, calibración de peleas con lectura `HIT_WEIGHT` 0,10, timeouts de CI) · #331 el personaje oye rumores · #332 candidatas sociales al catálogo (c2) y textos de la despensa (e5) · #333 grafo de espacios vivo y pared por material.
+Hecho en Fase 3: #331–#349 mergeados a `develop`. Implementado (todo puro y cableado donde corresponde): rumores (personaje oye, `HEARD`→`RUMORS`); ánimo en decisión y creencias de necesidad/peligro; derrumbe de edificios puro y cableado en `upkeep`; objetivos núcleo y venganza puros y cableados en `life.decide`; presupuesto del hogar puro y cableado en `life.trades`; descanso por decisión en la rutina; enfermedades con contagio puras y cableadas en `life.exposure`; oficios y jornales puros; mercado de la aldea puro (sin cableado de decisión).
 
-Siguientes clusters (ver ROADMAP, Fase 3): utilidad (e2 plan por defecto, e3 ánimo, e4 creencias de necesidad/peligro, f, g, h); rumores (contar rumores del personaje, `HEARD`→`RUMORS`, inspector `rumor`); hogares (derrumbe, fuego, verbo de ir/entrar con puerta trabada); economía básica de hogares; rutinas de NPC y familias; luego los «Heredado de Fase 2» al final de la Fase 3.
+Pendientes siguientes (primer `[ ]` no bloqueado de Fase 3): cableado de `life.trades` y `life.market` a decisión; e2b (creencias sobre terceros, agentes de rumor); f3 (presupuesto/ingreso real con viajes y comercio). Luego: epidemias, frío/calor corporal, nutrición, sustancias, médicos; los «Heredado de Fase 2» al final.
 
 Notas: el CI de `main` tarda ~25 min (ubuntu) y los tests lentos tienen timeouts de 600 s; los agentes no corren la suite completa, solo el coordinador (una corrida a la vez, ~5-9 min); si el límite de sesión de la API corta a los agentes, retomarlos con SendMessage.
