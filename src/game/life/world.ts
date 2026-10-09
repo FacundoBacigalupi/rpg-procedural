@@ -56,6 +56,7 @@ import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
+import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
 import { routineProcess } from "./routine.ts";
@@ -194,6 +195,14 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
           player,
+          placeOf: placeOf(parts, village),
+        }),
+        pitchProcess({
+          catalog: parts.catalog,
+          goods: parts.goods,
+          lines: parts.speech,
+          player,
+          day: parts.clock.day,
           placeOf: placeOf(parts, village),
         }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
