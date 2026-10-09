@@ -299,3 +299,5 @@ El jugador elige cómo trata al otro con palabras («le hablo de usted», «le d
 ## Preguntas abiertas
 
 - Calibración: duración de los turnos; pesos de relevancia, credibilidad, entrega y apertura; tamaño de la reacción por presionar; chance de soltar secretos por factor; tasa de detección de mentiras; costo de cara por cambiar de opinión en público; cuántos turnos tiene una charla resumida de tier 2.
+
+**Contraoferta con términos sueltos (2026-10-09):** `looseCounter` resuelve «la mitad», «el doble», «pero con X» contra el trato abierto del oyente antes de que conteste; `life.converse` la aplica si hay `OPEN_DEALS` vigente con ese interlocutor.

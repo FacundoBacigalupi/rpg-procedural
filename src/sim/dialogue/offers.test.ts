@@ -3,7 +3,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type AgentId, Rng } from "../../core/index.ts";
 import type { Vector } from "../relations/index.ts";
-import { understand } from "./acts.ts";
+import { looseCounter, understand } from "./acts.ts";
 import { SpeechLine } from "./lines.ts";
 import {
   dealHolds,
@@ -261,5 +261,38 @@ describe("decideReply con propuestas", () => {
         expect(a).toEqual(b);
       }),
     );
+  });
+});
+
+describe("contraoferta con términos sueltos", () => {
+  // El NPC recibiría 1 kilo de sal y daría 2 de grano.
+  const open = { gets: { good: "salt", grams: 1000 }, gives: { good: "grain", grams: 2000 } };
+  const loose = (text: string) => looseCounter(text, understand(text, lex), open, lex);
+  it("«te doy la mitad» escala lo que da quien habla", () => {
+    expect(loose("Te doy la mitad")).toEqual({
+      kind: "offer",
+      give: { good: "salt", grams: 500 },
+      want: open.gives,
+    });
+  });
+  it("«dame la mitad» escala lo que pide", () => {
+    expect(loose("Dame la mitad")).toEqual({
+      kind: "offer",
+      give: open.gets,
+      want: { good: "grain", grams: 1000 },
+    });
+  });
+  it("«por lo mismo pero con grano» cambia el bien que da", () => {
+    expect(loose("Por lo mismo pero con grano")).toEqual({
+      kind: "offer",
+      give: { good: "grain", grams: 1000 },
+      want: open.gives,
+    });
+  });
+  it("sin trato abierto o sin términos sueltos no toca nada", () => {
+    const act = understand("Te doy la mitad", lex);
+    expect(looseCounter("Te doy la mitad", act, undefined, lex)).toBe(act);
+    const hi = understand("Hola", lex);
+    expect(looseCounter("Hola", hi, open, lex)).toBe(hi);
   });
 });
