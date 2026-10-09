@@ -2,6 +2,7 @@
 export * from "./hash.ts";
 export * from "./invariants.ts";
 export * from "./pressure-record.ts";
+export * from "./snapshot.ts";
 export * from "./space.ts";
 export * from "./spaces.ts";
 export * from "./truth.ts";
