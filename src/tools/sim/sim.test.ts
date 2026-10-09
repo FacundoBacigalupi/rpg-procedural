@@ -32,6 +32,10 @@ describe("sim headless", () => {
     expect(b.mistakenShare).toBeLessThanOrEqual(1);
     expect(b.confidentlyWrong).toBeLessThanOrEqual(b.mistaken);
     expect(r.metrics.memories.items).toBeGreaterThanOrEqual(0);
+    const i = r.metrics.inference;
+    expect(i.checked).toBeLessThanOrEqual(i.total);
+    expect(i.wrong).toBeLessThanOrEqual(i.checked);
+    expect(i.confidentlyWrong).toBeLessThanOrEqual(i.wrong);
   }, 300_000);
 
   it("es determinista: mismo seed, mismo reporte", () => {

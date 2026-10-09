@@ -4,12 +4,21 @@
 // rehacer el fallo desde el seed. Nunca llama al LLM.
 
 import { type Content, canonicalJson, type Seed, type Tick } from "../../core/index.ts";
-import { LIFE_ENGINE, Life, type LifeSetup, optionsOf } from "../../game/index.ts";
+import {
+  addAccuracy,
+  LIFE_ENGINE,
+  Life,
+  type LifeSetup,
+  optionsOf,
+  playerInferenceAccuracy,
+} from "../../game/index.ts";
 import {
   type BeliefAccuracy,
   beliefAccuracy,
   checkInvariants,
   ENTITY,
+  INFERENCE_RULES,
+  type InferenceAccuracy,
   MEMORIES,
   type StateHash,
 } from "../../sim/index.ts";
@@ -56,6 +65,8 @@ export interface SimReport {
     readonly ledgerProblems: number;
     /** Exactitud de las creencias de todos al final de la corrida (tooling §6). */
     readonly beliefs: BeliefAccuracy;
+    /** Conclusiones del personaje contra la verdad, sumadas sobre los chequeos (tooling §6). */
+    readonly inference: InferenceAccuracy;
     readonly memories: { readonly holders: number; readonly items: number; readonly gists: number };
   };
   readonly performance: { readonly wallMs: number; readonly msPerWorldDay: number };
@@ -82,12 +93,15 @@ export function runSim(options: SimOptions): SimReport {
   const step = Math.round((options.checkEveryDays ?? CHECK_EVERY_DAYS) * w.clock.day);
   const versions = { engine: LIFE_ENGINE, content: content.hash, format: 1 };
 
+  const rules = content.all(INFERENCE_RULES);
+  let inference: InferenceAccuracy = { total: 0, checked: 0, wrong: 0, confidentlyWrong: 0 };
   let checks = 0;
   let repro: ReproPackage | undefined;
   while (life.now < target) {
     life.advanceTo(Math.min(target, life.now + step));
     const problems = checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger });
     checks++;
+    inference = addAccuracy(inference, playerInferenceAccuracy(w, rules));
     if (problems.length > 0) {
       repro = {
         kind: "invariant",
@@ -142,6 +156,7 @@ export function runSim(options: SimOptions): SimReport {
       playerAlive: life.alive,
       ledgerProblems: w.ledger.audit().length,
       beliefs: beliefAccuracy(w.truth, life.now),
+      inference,
       memories,
     },
     performance: { wallMs, msPerWorldDay: worldDays > 0 ? wallMs / worldDays : 0 },
