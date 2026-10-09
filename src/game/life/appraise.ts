@@ -94,7 +94,7 @@ import {
   witnessLived,
 } from "./memories.ts";
 import { applyTalkMemory, applyTestimony, talkMemoryIn, testimonyMemoryIn } from "./talkmemory.ts";
-import { WAKE_EVENT, wakeOf } from "./wake.ts";
+import { WAKE_COMFORT, WAKE_EVENT, type WakeComforts, wakeOf, withWakeComfort } from "./wake.ts";
 import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
@@ -148,6 +148,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       STATUS.name,
       COMMUNITY_RELIGION.name,
       RELIGIOUS_IDENTITY.name,
+      WAKE_COMFORT.name,
     ],
     writes: [
       MIND.name,
@@ -157,6 +158,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       MENTAL.name,
       OWN_DEEDS.name,
       SECRETS.name,
+      WAKE_COMFORT.name,
     ],
     run(ctx) {
       const truth = ctx.truth;
@@ -193,6 +195,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         rels.set(from, { ...base, toward: { ...base.toward, [to]: { ...next, updated: e.tick } } });
       };
       const mentals = new Map<AgentId, MentalState>();
+      const wakes = new Map<AgentId, WakeComforts>();
       const mems = new Map<AgentId, Memories>();
       const note = (l: Lived) => {
         if (!alive(truth, l.who) || !truth.get(PERSON, l.who)) return;
@@ -419,6 +422,13 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           );
           for (const m of mourners) {
             apply(m.id, e, appraiseLoss(m.close, wake?.comfort.get(m.id) ?? 0));
+            const went = wake?.comfort.get(m.id);
+            if (went !== undefined) {
+              wakes.set(
+                m.id,
+                withWakeComfort(wakes.get(m.id) ?? truth.get(WAKE_COMFORT, m.id), e.id, dead, went),
+              );
+            }
             note(lossLived(e, m.id, dead, m.close));
           }
           if (wake) {
@@ -441,6 +451,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...mentals].map(([id, m]) => setComponent(MENTAL, id, m)),
         ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
         ...[...secrets].map(([id, s]) => setComponent(SECRETS, id, s)),
+        ...[...wakes].map(([id, w]) => setComponent(WAKE_COMFORT, id, w)),
       ];
       return changes.length === 0 && events.length === 0 ? {} : { changes, events };
     },

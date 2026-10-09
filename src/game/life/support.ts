@@ -13,12 +13,14 @@ import {
   comfortOf,
   ENTITY,
   type GuiltResponse,
+  MENTAL,
   PERSON,
   practicesOfKind,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   villageReligion,
 } from "../../sim/index.ts";
+import { WAKE_COMFORT, wakeComfortFor } from "./wake.ts";
 
 /** Cuántos de la casa a la vez dan la compañía plena. */
 export const FULL_COMPANY = 4;
@@ -106,5 +108,12 @@ export function supportFor(
   const company = companyOf(truth, me);
   const rite = riteComfortOf(villageReligion(truth), truth.get(RELIGIOUS_IDENTITY, me));
   const response = heaviestResponse(truth.get(AMENDS, me));
-  return (kind) => supportOf(kind, company, rite, response);
+  const wakes = truth.get(WAKE_COMFORT, me);
+  const conditions = truth.get(MENTAL, me)?.conditions ?? [];
+  return (kind) => {
+    // Si la condición viene de una muerte con velorio al que fue, manda el consuelo de ese velorio.
+    const c = conditions.find((x) => x.kind === kind);
+    const went = c ? wakeComfortFor(wakes, c) : undefined;
+    return supportOf(kind, company, went ?? rite, response);
+  };
 }
