@@ -1,0 +1,82 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import { describe, expect, it } from "vitest";
+import { type AgentId, type ContentSource, loadContent, Rng } from "../../core/index.ts";
+import {
+  type ActionPlan,
+  believePledge,
+  makePledge,
+  PERSON,
+  PLEDGE,
+  PLEDGE_BOOK,
+  remember,
+} from "../../sim/index.ts";
+import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { Life } from "./life.ts";
+import { living } from "./world.ts";
+
+function sources(dir: string, root = dir): ContentSource[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory()) return sources(path, root);
+    if (!e.name.endsWith(".json")) return [];
+    const kind = relative(root, dir).split("\\").join("/");
+    return [{ kind, file: path, data: JSON.parse(readFileSync(path, "utf8")) }];
+  });
+}
+const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+const rest = (actor: AgentId): ActionPlan => ({
+  actor,
+  source: "player",
+  root: { kind: "do", verb: "rest", args: [], manner: [] },
+  manner: [],
+  causes: [{ kind: "state", entity: actor, key: "intent" }],
+});
+
+const DAY = 86_400;
+
+/** El personaje prometió grano hace mucho y no lo dio: pasada la gracia, la promesa queda rota. */
+function overdue(seed: number) {
+  const life = Life.create(seed, content);
+  const w = life.world;
+  const me = life.player;
+  const house = w.truth.get(PERSON, me)?.household;
+  const other = living(w.truth).find(
+    (id) => id !== me && w.truth.get(PERSON, id)?.household === house,
+  ) as AgentId;
+  const id = "commitment:9999";
+  const at = life.now - 60 * DAY;
+  const pledge = makePledge({
+    promisor: me,
+    promisee: other,
+    term: { kind: "give", unit: "good:grain" as never, grams: 500 },
+    at,
+    dueInDays: 10,
+    weight: 0.3,
+  });
+  w.truth.set(PLEDGE, id as never, pledge);
+  for (const [who, role] of [
+    [me, "promisor"],
+    [other, "promisee"],
+  ] as const) {
+    const belief = believePledge(id, pledge, role, Rng.root(1).fork("t"));
+    w.truth.set(PLEDGE_BOOK, who, remember(undefined, belief, life.now));
+  }
+  return { life, w, me, other, id };
+}
+
+describe("cerrar promesas", () => {
+  it("vencida y pasada la gracia, la del personaje queda rota con evento con causa", () => {
+    const { life, w, me, other, id } = overdue(7);
+    const events = [];
+    for (let i = 0; i < 3 && w.truth.get(PLEDGE, id as never)?.status === "open"; i++) {
+      events.push(...life.turn(rest(me), i + 1).events);
+    }
+    expect(w.truth.get(PLEDGE, id as never)?.status).toBe("broken");
+    const e = events.find((x) => x.kind === "contract.pledge_broken");
+    expect(e?.actors).toEqual([me, other]);
+    expect(e?.causes.length).toBeGreaterThan(0);
+    expect(w.truth.get(PLEDGE_BOOK, other)?.items[0]?.status).toBe("broken");
+  }, 120_000);
+});

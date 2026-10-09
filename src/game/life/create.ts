@@ -100,6 +100,7 @@ import {
   TRAITS,
   type Trait,
   temperamentFit,
+  VALUES,
   type VillagePopulation,
   validateTemperament,
   villagePopulation,
@@ -277,6 +278,7 @@ export function resumeParts(
   | "speech"
   | "pressureCurves"
   | "schemas"
+  | "values"
   | "stages"
   | "relationDims"
   | "relationBonds"
@@ -302,6 +304,7 @@ export function resumeParts(
     speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
     schemas: content.all(SCHEMAS),
+    values: content.all(VALUES),
     stages: content.all(LIFE_STAGES),
     relationDims: content.all(RELATION_DIMS),
     relationBonds: content.all(RELATION_BONDS),
@@ -594,6 +597,7 @@ export function createLife(
       speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
       schemas: content.all(SCHEMAS),
+      values: content.all(VALUES),
       stages: content.all(LIFE_STAGES),
       relationDims: content.all(RELATION_DIMS),
       relationBonds: content.all(RELATION_BONDS),

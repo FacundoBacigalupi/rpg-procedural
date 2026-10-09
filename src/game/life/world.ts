@@ -38,6 +38,7 @@ import {
   type TasteDef,
   type Trait,
   type TraitDef,
+  type ValueDef,
   type WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess } from "./act.ts";
@@ -50,6 +51,7 @@ import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
@@ -88,6 +90,7 @@ export interface LifeWorld {
   readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
   readonly schemas: readonly SchemaDef[];
+  readonly values: readonly ValueDef[];
   readonly stages: readonly StageDef[];
   readonly relationDims: readonly DimensionDef[];
   readonly relationBonds: readonly BondDef[];
@@ -184,7 +187,15 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
-        pledgeProcess({ goods: parts.goods }),
+        pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
+        keepProcess({
+          values: parts.values,
+          schemas: parts.schemas,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          player,
+          placeOf: placeOf(parts, village),
+        }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
           foods: parts.foods,

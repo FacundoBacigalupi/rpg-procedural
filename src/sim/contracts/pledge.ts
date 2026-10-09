@@ -50,6 +50,8 @@ export interface Pledge {
   readonly witnesses: readonly AgentId[];
   readonly status: PledgeStatus;
   readonly history: readonly EventId[];
+  /** Gramos ya entregados al destinatario, en una promesa de dar (ausente = 0). */
+  readonly delivered?: number;
 }
 
 export const PLEDGE = table<Pledge>("contracts.pledge");
@@ -97,15 +99,32 @@ export function isPledgeOverdue(p: Pledge, now: Tick): boolean {
   return p.status === "open" && p.due !== null && now > p.due + PLEDGE_GRACE_DAYS * DAY;
 }
 
+/** Lo que falta entregar de una promesa de dar (0 si no es de dar o ya está cubierta). */
+export function pledgeLeft(p: Pledge): number {
+  return p.term.kind === "give" ? Math.max(0, p.term.grams - (p.delivered ?? 0)) : 0;
+}
+
+/**
+ * Suma `grams` entregados por el promitente (un `give` de verdad); la anota y cita el evento. Si
+ * con eso cubre el término, la promesa queda cumplida (`status: kept`).
+ */
+export function deliverPledge(p: Pledge, grams: number, event: EventId): Pledge {
+  if (p.status !== "open" || p.term.kind !== "give" || !(grams > 0)) return p;
+  const delivered = round6((p.delivered ?? 0) + grams);
+  const next = { ...p, delivered, history: [...p.history, event] };
+  return delivered + 1e-9 >= p.term.grams ? { ...next, status: "kept" as const } : next;
+}
+
 export const isPledgeLive = (p: Pledge): boolean => p.status === "open";
 
 /** Cierra la promesa con el evento que la cumplió, la rompió o la dispensó. */
 export function resolvePledge(
   p: Pledge,
   status: Exclude<PledgeStatus, "open">,
-  event: EventId,
+  event?: EventId,
 ): Pledge {
-  return p.status === "open" ? { ...p, status, history: [...p.history, event] } : p;
+  if (p.status !== "open") return p;
+  return { ...p, status, history: event === undefined ? p.history : [...p.history, event] };
 }
 
 // --- Creencias sobre lo prometido (contracts §4, §14) ---

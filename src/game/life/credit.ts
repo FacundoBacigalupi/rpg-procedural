@@ -138,7 +138,7 @@ function lentBy(e: Event) {
 }
 
 /** Un `give` que pasó algo de verdad al otro, o la devolución de un hogar. */
-function paidIn(e: Event) {
+export function paidIn(e: Event) {
   if (e.kind === "household.repaid") {
     const pay = (e.data as { payment?: { unit: LedgerUnit; grams: number } } | null)?.payment;
     const [payer, to] = e.actors as AgentId[];
