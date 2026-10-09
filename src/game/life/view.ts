@@ -3,7 +3,7 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { type AgentId, type EntityRef, Rng, type Tick } from "../../core/index.ts";
+import { type AgentId, type EntityRef, ledgerUnit, Rng, type Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -13,6 +13,8 @@ import {
   beliefConfidenceAt,
   believed,
   bodySigns,
+  bookOf,
+  COPPER,
   houseKey,
   LOCATION,
   type Location,
@@ -21,6 +23,8 @@ import {
   PERSON,
   type Percept,
   PLACE,
+  PLEDGE,
+  PLEDGE_BOOK,
   perceive,
   presenceStimulus,
   type ReadonlyWorldTruth,
@@ -37,12 +41,14 @@ import {
 } from "../../sim/index.ts";
 import {
   buildPlayerView,
+  type DueView,
   type PlayerView,
   type SceneMark,
   type SelfCue,
   type TasteView,
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
+import { creditRows } from "./credit.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { thoughtsOf } from "./thoughts.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
@@ -178,6 +184,48 @@ export function tastesForView(
   return [{ name: first.name, stance: first.stance }];
 }
 
+/** Cuántas veces de cada tantas el personaje se acuerda de una deuda a la vista (no en cada turno). */
+export const DUE_NOTICE_CHANCE = 0.3;
+/** Días de antelación desde los que una deuda o promesa se siente «por vencer». */
+export const DUE_SOON_DAYS = 3;
+
+/**
+ * La deuda o promesa más urgente del libro del personaje, si ya venció o está por vencer y esta
+ * vez se acuerda (contracts §14). Sale de `bookOf` (deuda de fiado exacta, promesas como las cree),
+ * nunca de la verdad de una promesa; a lo prometido en bienes lo dice a ojo, sin gramos.
+ */
+export function duesForView(w: LifeWorld, rng: Rng): readonly DueView[] {
+  const now = w.scheduler.now;
+  const entries = bookOf(
+    w.player,
+    creditRows(w.truth),
+    w.truth.get(PLEDGE_BOOK, w.player),
+    now,
+    (id) => w.truth.get(PLEDGE, id as EntityRef)?.weight ?? 0.5,
+  ).filter((e) => e.due !== null && (e.due - now) / w.clock.day <= DUE_SOON_DAYS);
+  const first = entries.sort((a, b) => (a.due as number) - (b.due as number))[0];
+  if (!first || !rng.chance(DUE_NOTICE_CHANCE)) return [];
+  const a = acquaintances(w).get(first.other);
+  const t = first.term;
+  const what =
+    t.kind === "favor"
+      ? "un favor"
+      : t.kind === "silence"
+        ? "un secreto"
+        : t.unit === COPPER
+          ? "unas monedas"
+          : `algo de ${w.foods.find((f) => ledgerUnit(`good:${f.id}`) === t.unit)?.name ?? "lo prometido"}`;
+  return [
+    {
+      direction: first.direction,
+      who: a?.name ?? a?.relation ?? "alguien",
+      what,
+      state: (first.due as number) < now ? "overdue" : "soon",
+      sure: first.confidence >= 0.4,
+    },
+  ];
+}
+
 export function playerView(
   w: LifeWorld,
   steps: readonly StepRecord[],
@@ -282,5 +330,6 @@ export function playerView(
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
+    dues: duesForView(w, rng.fork("dues")),
   });
 }

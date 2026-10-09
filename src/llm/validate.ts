@@ -229,7 +229,8 @@ export function validateNarration(
     view.percepts.length +
     view.self.cues.length +
     view.thoughts.length +
-    view.tastes.length;
+    view.tastes.length +
+    view.dues.length;
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");
   if (n > max) problems.push(`the narration is too long (${n} characters, at most ${max})`);

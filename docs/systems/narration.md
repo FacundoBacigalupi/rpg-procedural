@@ -327,3 +327,7 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 ## Ampliación (2026-10-08): no repetir lo que ya está en el panel
 
 El `NarrationRequest` recibe qué estados de ambiente ya están en el panel de entorno (player-loop) y el narrador solo los menciona si cambian o si la escena gira alrededor de ellos. Menos tokens y menos descripciones repetidas. Las etiquetas de las opciones sugeridas y el monólogo de "pensar" usan el mismo muro: solo lo que el personaje cree.
+
+## Ampliación (2026-10-09): deudas y promesas en el `PlayerView`
+
+`PlayerView.dues` (`DueView`: dirección, a quién llama, qué en palabras sin gramos ni fechas, vencida o por vencer, si está seguro) lleva como mucho la deuda o promesa más urgente del libro del personaje, y solo con la chance `DUE_NOTICE_CHANCE` por turno. Sale de `bookOf` (fiado exacto y promesas **como las cree**, nunca de la verdad de una promesa) en `duesForView` (`game/life/view.ts`). Plantillas `due.owe|owed.overdue|soon` y `due.unsure`; el prompt del LLM le pide decir `what` tal cual y borroso si `sure` es falso; el validador solo cuenta la entrada para el largo.
