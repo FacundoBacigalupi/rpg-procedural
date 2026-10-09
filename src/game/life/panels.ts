@@ -7,17 +7,20 @@
 // como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. Mientras nada
 // escriba esa foto (ver ROADMAP), vale lo que tiene.
 
-import type { HolderRef, LedgerUnit } from "../../core/index.ts";
+import type { EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   BODY_STATE,
   bodySigns,
+  bookOf,
   COPPER,
   houseKey,
   LOCATION,
   MEAL_KCAL,
   PERSON,
   PLACE,
+  PLEDGE,
+  PLEDGE_BOOK,
   SELF_IMAGES,
   SKILL_STATE,
   type SkillStanding,
@@ -25,6 +28,7 @@ import {
   seedSelfImage,
   skillStandingOf,
 } from "../../sim/index.ts";
+import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -117,6 +121,75 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
       .flatMap(([, a]) => (a.relation ? [{ relation: a.relation }] : [])),
     skills,
   };
+}
+
+/** Qué tan seguro está de una entrada del libro. */
+export type Surety = "sure" | "unsure" | "vague";
+
+/** Una línea del libro de deudas y promesas, como la lleva el personaje (contracts §14). */
+export interface BookLine {
+  readonly kind: "debt" | "pledge";
+  readonly direction: "i-owe" | "owed-to-me";
+  /** A quién, como lo llama (nombre o relación; «alguien» si no sabe). */
+  readonly other: string;
+  /** Qué: monedas exactas, o el bien a ojo, o un favor/silencio con su texto. */
+  readonly what:
+    | { readonly kind: "coins"; readonly coins: number }
+    | { readonly kind: "good"; readonly good: string; readonly amount: Amount }
+    | { readonly kind: "favor"; readonly what: string }
+    | { readonly kind: "silence"; readonly about: string };
+  /** Días que cree que faltan (negativo: ya pasó); null si no recuerda plazo. */
+  readonly dueInDays: number | null;
+  readonly sure: Surety;
+  /** Una deuda que ya cayó en mora. */
+  readonly defaulted: boolean;
+}
+
+export interface BookPanel {
+  readonly lines: readonly BookLine[];
+}
+
+function suretyOf(confidence: number): Surety {
+  if (confidence >= 0.7) return "sure";
+  if (confidence >= 0.4) return "unsure";
+  return "vague";
+}
+
+/** El libro del personaje: sus deudas de fiado (exactas) y sus promesas como las cree, nunca la verdad. */
+export function bookPanel(w: LifeWorld): BookPanel {
+  const now = w.scheduler.now;
+  const acq = acquaintances(w);
+  const entries = bookOf(
+    w.player,
+    creditRows(w.truth),
+    w.truth.get(PLEDGE_BOOK, w.player),
+    now,
+    (id) => w.truth.get(PLEDGE, id as EntityRef)?.weight ?? 0.5,
+  );
+  const goodName = (unit: LedgerUnit) =>
+    w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.name ?? unit.replace(/^good:/, "");
+  const lines = entries.map((e): BookLine => {
+    const t = e.term;
+    const what: BookLine["what"] =
+      t.kind === "give"
+        ? t.unit === COPPER
+          ? { kind: "coins", coins: Math.round(t.grams) }
+          : { kind: "good", good: goodName(t.unit), amount: amountOf(t.grams) }
+        : t.kind === "favor"
+          ? { kind: "favor", what: t.what }
+          : { kind: "silence", about: t.about };
+    const a = acq.get(e.other);
+    return {
+      kind: e.kind,
+      direction: e.direction,
+      other: a?.name ?? a?.relation ?? "alguien",
+      what,
+      dueInDays: e.due === null ? null : Math.round((e.due - now) / w.clock.day),
+      sure: suretyOf(e.confidence),
+      defaulted: e.status === "defaulted",
+    };
+  });
+  return { lines };
 }
 
 function amountOf(grams: number): Amount {

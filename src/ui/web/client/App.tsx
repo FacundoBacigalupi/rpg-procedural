@@ -19,6 +19,7 @@ const fromHistory = (h: History): Line[] =>
 const TABS = [
   ["character", "Personaje"],
   ["inventory", "Inventario"],
+  ["book", "Deudas"],
   ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;
