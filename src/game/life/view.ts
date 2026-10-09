@@ -44,6 +44,7 @@ import {
   type DueView,
   type OffenseView,
   type PlayerView,
+  type ReadingView,
   type SceneMark,
   type SelfCue,
   type TasteView,
@@ -51,6 +52,7 @@ import {
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
+import { READING_EVENT } from "./divine.ts";
 import { withImpressions } from "./impressions.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { stretchOf } from "./stretch.ts";
@@ -268,6 +270,49 @@ export function duesForView(w: LifeWorld, rng: Rng): readonly DueView[] {
   ];
 }
 
+/** Desde esta intensidad la profecía se dijo con fuerza; desde esta credibilidad el personaje la toma en serio. */
+export const READING_STRONG = 0.6;
+export const READING_CREDENCE = 0.5;
+export const READING_VAGUE = 0.5;
+
+/**
+ * Las lecturas de adivino que el personaje recibió desde `since` (divination §5): los signos que
+ * cayeron y lo que le dijeron, con la fuerza y la vaguedad con que se lo dijeron. No lleva la
+ * verdad ni `read` (lo que el adivino creyó ver).
+ */
+export function readingsForView(w: LifeWorld, since: Tick): readonly ReadingView[] {
+  const out: ReadingView[] = [];
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    if (e.kind !== READING_EVENT || e.actors[1] !== w.player) continue;
+    const d = e.data as
+      | {
+          method?: string;
+          signs?: readonly string[];
+          kind?: ReadingView["told"];
+          intensity?: number;
+          credence?: number;
+          vagueness?: number;
+        }
+      | undefined;
+    const method = w.divinations.find((m) => m.id === d?.method);
+    if (!d || !method || d.kind === undefined) continue;
+    const who = acquaintances(w).get(e.actors[0] as AgentId);
+    out.push({
+      instrument: method.instrument,
+      signs: (d.signs ?? []).map((s) => method.symbols.find((x) => x.id === s)?.name ?? s),
+      diviner: who?.name ?? who?.relation ?? "el adivino",
+      told: d.kind,
+      strength: (d.intensity ?? 0) >= READING_STRONG ? "strong" : "faint",
+      vague: (d.vagueness ?? 0) >= READING_VAGUE,
+      doubtful: (d.credence ?? 1) < READING_CREDENCE,
+    });
+  }
+  return out.reverse();
+}
+
 export function playerView(
   w: LifeWorld,
   steps: readonly StepRecord[],
@@ -383,7 +428,10 @@ export function playerView(
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
     ...(options.heardSince !== undefined
-      ? { offenses: offensesForView(w, options.heardSince, acq) }
+      ? {
+          offenses: offensesForView(w, options.heardSince, acq),
+          readings: readingsForView(w, options.heardSince),
+        }
       : {}),
   });
 }

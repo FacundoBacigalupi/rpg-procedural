@@ -110,6 +110,25 @@ export interface DueView {
   /** Si no está seguro de lo que recuerda, el narrador lo dice borroso. */
   readonly sure: boolean;
 }
+/**
+ * La lectura de un adivino que el personaje fue a ver (divination §5): lo que vio tirar y lo que
+ * le dijeron, nunca si es cierto ni lo que el adivino creyó leer.
+ */
+export interface ReadingView {
+  /** Con qué lee («huesos de gallina»). */
+  readonly instrument: string;
+  /** Los signos que cayeron, como los nombra el oficio. */
+  readonly signs: readonly string[];
+  /** Cómo llama a quien lee (nombre o relación). */
+  readonly diviner: string;
+  /** Lo que anunció: grandeza, ruina, muerte o fortuna, y qué tan fuerte lo dijo. */
+  readonly told: "greatness" | "ruin" | "death" | "fortune";
+  readonly strength: "strong" | "faint";
+  /** Habló en vago (sirve a cualquiera). */
+  readonly vague: boolean;
+  /** El personaje no termina de creerlo. */
+  readonly doubtful: boolean;
+}
 /** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
 /**
  * Una falta de etiqueta en la que el personaje fue parte (social §4): la que recibió o la que
@@ -351,6 +370,8 @@ export interface PlayerView {
   /** Una deuda o promesa por vencer o vencida que el personaje recuerda ahora; vacío casi siempre. */
   readonly dues: readonly DueView[];
   readonly offenses: readonly OffenseView[];
+  /** Las lecturas de adivino de este turno; vacío casi siempre. */
+  readonly readings: readonly ReadingView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
   readonly mode?: SpecialMode;
   /** Con el modo `montage`: lo que vivió en el salto. */
@@ -386,6 +407,7 @@ export interface ViewInput {
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
   readonly offenses?: readonly OffenseView[];
+  readonly readings?: readonly ReadingView[];
   readonly mode?: SpecialMode;
   readonly stretch?: StretchView;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
@@ -556,6 +578,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
     dues: (input.dues ?? []).map((d) => ({ ...d })),
     offenses: (input.offenses ?? []).map((o) => ({ ...o })),
+    readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined
       ? { stretch: { ...input.stretch, did: input.stretch.did.map((d) => ({ ...d })) } }
