@@ -33,3 +33,19 @@ describe("planFor", () => {
     expect(planFor(23, 30, { verb: "rest", at: 900 }, 1000, DAY, sick).activity).toBe("sleep");
   });
 });
+
+describe("planFor: comer decidido", () => {
+  const hungry = { unwell: false, larderLow: false, hungry: true };
+  it("fuera de las comidas, con hambre, saca una ración", () => {
+    expect(planFor(10, 30, { verb: "eat", at: 900 }, 1000, DAY, hungry).eat).toBe(true);
+  });
+  it("a la hora de comer no duplica la rutina", () => {
+    expect(planFor(12, 30, { verb: "eat", at: 900 }, 1000, DAY, hungry).eat).toBeUndefined();
+  });
+  it("sin hambre, de noche o con decisión vieja no come", () => {
+    const d = { verb: "eat", at: 900 };
+    expect(planFor(10, 30, d, 1000, DAY, { ...hungry, hungry: false }).eat).toBeUndefined();
+    expect(planFor(23, 30, d, 1000, DAY, hungry).eat).toBeUndefined();
+    expect(planFor(10, 30, d, 2 * DAY, DAY, hungry).eat).toBeUndefined();
+  });
+});

@@ -80,6 +80,8 @@ const UNWELL_REST = 0.85;
 const UNWELL_PAIN = 0.5;
 /** Días de comida del hogar por debajo de los cuales no se saltea la cosecha. */
 const LARDER_LOW_DAYS = 14;
+/** Desde cuánta hambre una decisión fresca de comer saca una ración fuera de las comidas. */
+const EAT_HUNGER = 0.6;
 
 /** Lo que se bebe de una vez, como mucho: lo que falta, hasta esto. */
 const MAX_DRINK_L = 1.5;
@@ -122,13 +124,28 @@ export function planFor(
   decision: Pick<Decision, "verb" | "at"> | undefined,
   now: number,
   day: number,
-  state: { readonly unwell: boolean; readonly larderLow: boolean } = {
+  state: {
+    readonly unwell: boolean;
+    readonly larderLow: boolean;
+    readonly hungry?: boolean;
+  } = {
     unwell: false,
     larderLow: false,
   },
-): { activity: Activity; at: "home" | "fields"; replaced: boolean } {
+): { activity: Activity; at: "home" | "fields"; replaced: boolean; eat?: true } {
   const base = routineAt(hour, ageYears);
   const fresh = decision !== undefined && now - decision.at < day;
+  // Comer decidido: una ración fuera de las comidas de la rutina (que ya comen a su hora, así
+  // que no se duplica), despierto y con hambre; al comer el hambre baja y no encadena.
+  if (
+    fresh &&
+    decision.verb === "eat" &&
+    state.hungry === true &&
+    base.activity !== "sleep" &&
+    !ROUTINE.meals.includes(Math.floor(hour))
+  ) {
+    return { ...base, replaced: true, eat: true };
+  }
   if (
     fresh &&
     decision.verb === "rest" &&
@@ -203,6 +220,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const want = planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
         unwell,
         larderLow,
+        hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
       });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -263,7 +281,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // Comer: una ración a la medida del cuerpo, de lo que haya en la despensa del hogar. Solo
       // si alcanza para todos los de la casa: dos que comen en la misma fase no pueden dejar el
       // saldo en negativo (scheduler, asientos por fase).
-      if (ROUTINE.meals.includes(hour)) {
+      if (ROUTINE.meals.includes(hour) || want.eat) {
         const larder = person.household as unknown as HolderRef;
         const mouths = truth
           .ids(PERSON)
@@ -288,7 +306,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             kind: "routine.ate",
             actors: [me],
             place: o.placeOf(truth, me),
-            data: { good: row.unit, grams },
+            data: { good: row.unit, grams, ...(want.eat ? { decided: true } : {}) },
             emissions: { sight: 0.2, sound: 0.05 },
             causes: [{ kind: "state", entity: me, key: "routine" }],
           });
