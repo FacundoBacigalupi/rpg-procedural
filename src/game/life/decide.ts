@@ -40,10 +40,14 @@ import {
   HABITS,
   type HabitDef,
   INNATE,
+  kinWeight,
   LOCATION,
+  layerDrives,
+  longGoals,
   MEMORIES,
   MENTAL,
   MIND,
+  mediumGoals,
   mergeCandidates,
   modifyCandidates,
   moodFrom,
@@ -65,6 +69,7 @@ import {
   type StageDef,
   seedSelfImage,
   setComponent,
+  shortGoals,
   socialCandidates,
   stageAt,
   standardize,
@@ -252,6 +257,29 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           },
         ),
       ]);
+      // Capas derivadas (largo, mediano, corto): se recalculan cada vez, no se guardan; solo
+      // empujan un poco los valores (desempatan).
+      const layered = [
+        ...longGoals(goals, mind, now),
+        ...mediumGoals(
+          people.map((p) => ({
+            who: p.id,
+            resentment: p.rel.dims.resentment ?? 0,
+            closeness: closeness(p.rel.dims, p.rel.bonds),
+            kin: kinWeight(p.rel.bonds) > 0,
+            debt: 0,
+          })),
+          {
+            memories,
+            now,
+            warmth: innate["warmth"] ?? 0.5,
+            control: innate["control"] ?? 0.5,
+            strengthIsWorth: mind.schemas["strength_is_worth"]?.strength ?? 0,
+          },
+          goals,
+        ),
+        ...shortGoals(drives.needs, goals, mind.originEventId, now),
+      ];
       const { born, ended } = goalChanges(prevGoals, goals);
       const goalEvents = [
         ...born.map((g) => ({ g, what: "born" as const })),
@@ -375,7 +403,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
 
       const choice = decideByUtility(
         candidates,
-        goalDrives(drives, goals),
+        layerDrives(goalDrives(drives, goals), layered),
         innate,
         temper,
         ctx.rng.fork("decision", me, now),

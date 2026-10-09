@@ -176,3 +176,167 @@ export function goalChanges(prev: readonly Goal[], next: readonly Goal[]): GoalC
     ended: prev.filter((g) => !has.has(g.id)),
   };
 }
+
+// --- Capas derivadas (largo, mediano, corto): se recalculan de la situación, no se guardan. ---
+
+export const MAX_LONG_GOALS = 2;
+export const MAX_MEDIUM_GOALS = 3;
+export const MAX_SHORT_GOALS = 2;
+/** Fuerza del esquema desde la que un valor núcleo se vuelve plan de vida (sin calibrar). */
+export const LONG_SCHEMA_MIN = 0.3;
+export const LONG_FACTOR = 0.8;
+/** Resentimiento desde el que alguien es rival (y por debajo del umbral de venganza). */
+export const RIVAL_MIN = 0.35;
+/** Cercanía desde la que la familia es un objetivo mediano. */
+export const KIN_CLOSE_MIN = 0.4;
+/** Urgencia desde la que una necesidad es un objetivo corto. */
+export const SHORT_NEED_MIN = 0.5;
+/** Empuje por capa a los valores (sin calibrar): chico, solo desempata. */
+export const LAYER_PULL = { long: 0.04, medium: 0.03, short: 0.02 } as const;
+
+const NEED_VALUE: Readonly<Record<string, ValueId>> = {
+  hunger: "safety",
+  thirst: "safety",
+  pain: "safety",
+  safety: "safety",
+  rest: "pleasure",
+  social: "family",
+};
+
+/** El plan largo: los núcleo respaldados por un esquema fuerte, con su causa; cuelgan del núcleo. */
+export function longGoals(core: readonly Goal[], mind: Mind, now: Tick): Goal[] {
+  const out: Goal[] = [];
+  for (const g of core) {
+    if (g.kind !== "pursue" || g.value === undefined) continue;
+    let best: { strength: number; cause: EventId } | undefined;
+    for (const hold of Object.values(mind.schemas)) {
+      const cause = hold.causes[hold.causes.length - 1];
+      if (
+        cause !== undefined &&
+        hold.strength >= LONG_SCHEMA_MIN &&
+        hold.strength > (best?.strength ?? 0)
+      )
+        best = { strength: hold.strength, cause };
+    }
+    if (best === undefined) continue;
+    out.push({
+      id: `long:${g.value}`,
+      layer: "long",
+      kind: "pursue",
+      value: g.value,
+      weight: r(g.weight * LONG_FACTOR * best.strength),
+      originEventId: g.originEventId,
+      parent: g.id,
+      since: now,
+    });
+  }
+  return out
+    .sort((a, b) => b.weight - a.weight || compareStrings(a.id, b.id))
+    .slice(0, MAX_LONG_GOALS);
+}
+
+export interface MediumInput {
+  readonly who: AgentId;
+  readonly resentment: number;
+  /** 0-1: cercanía afectiva. */
+  readonly closeness: number;
+  readonly kin: boolean;
+  /** 0-1: cuánto debe él a esa persona (deuda pendiente). */
+  readonly debt: number;
+}
+
+/** El plan mediano: familia cercana, deudas y rivales; sin memoria con esa persona no nace (regla 5). */
+export function mediumGoals(
+  rels: readonly MediumInput[],
+  s: RevengeSources,
+  core: readonly Goal[],
+): Goal[] {
+  const coreIds = new Set(core.map((g) => g.id));
+  const parentOf = (id: string) => (coreIds.has(id) ? { parent: id } : {});
+  const threshold = revengeThreshold(s);
+  const out: Goal[] = [];
+  for (const rel of [...rels].sort((a, b) => compareStrings(a.who, b.who))) {
+    let origin: { mass: number; id: EventId } | undefined;
+    for (const m of s.memories?.items ?? []) {
+      if (!m.perceived.with.includes(rel.who)) continue;
+      const mass = m.intensity * salienceAt(m, s.now);
+      if (origin === undefined || mass > origin.mass) origin = { mass, id: m.eventId };
+    }
+    if (origin === undefined) continue;
+    const base = {
+      layer: "medium",
+      kind: "pursue",
+      target: rel.who,
+      originEventId: origin.id,
+      since: s.now,
+    } as const;
+    if (rel.kin && rel.closeness >= KIN_CLOSE_MIN)
+      out.push({
+        ...base,
+        id: `medium:kin:${rel.who}`,
+        value: "family",
+        weight: r(0.5 * clamp01(rel.closeness)),
+        ...parentOf("core:family"),
+      });
+    if (rel.debt > 0)
+      out.push({
+        ...base,
+        id: `medium:debt:${rel.who}`,
+        value: "justice",
+        weight: r(0.6 * clamp01(rel.debt)),
+        ...parentOf("core:justice"),
+      });
+    if (rel.resentment >= RIVAL_MIN && rel.resentment < threshold)
+      out.push({
+        ...base,
+        id: `medium:rival:${rel.who}`,
+        value: "status",
+        weight: r(0.5 * clamp01(rel.resentment)),
+        ...parentOf("core:status"),
+      });
+  }
+  return out
+    .sort((a, b) => b.weight - a.weight || compareStrings(a.id, b.id))
+    .slice(0, MAX_MEDIUM_GOALS);
+}
+
+/** El plan corto: las necesidades que apremian, como medio del núcleo de su valor si lo hay. */
+export function shortGoals(
+  needs: Readonly<Partial<Record<string, number>>>,
+  core: readonly Goal[],
+  origin: EventId,
+  now: Tick,
+): Goal[] {
+  const coreIds = new Set(core.map((g) => g.id));
+  const out: Goal[] = [];
+  for (const need of Object.keys(needs).sort(compareStrings)) {
+    const urgency = needs[need] ?? 0;
+    const value = NEED_VALUE[need];
+    if (value === undefined || urgency < SHORT_NEED_MIN) continue;
+    const parent = `core:${value}`;
+    out.push({
+      id: `short:${need}`,
+      layer: "short",
+      kind: "pursue",
+      value,
+      weight: r(0.5 * clamp01(urgency)),
+      originEventId: origin,
+      ...(coreIds.has(parent) ? { parent } : {}),
+      since: now,
+    });
+  }
+  return out
+    .sort((a, b) => b.weight - a.weight || compareStrings(a.id, b.id))
+    .slice(0, MAX_SHORT_GOALS);
+}
+
+/** Empuje chico de las capas derivadas a los valores: desempata, no reemplaza al núcleo. */
+export function layerDrives(drives: Drives, goals: readonly Goal[]): Drives {
+  const values: Partial<Record<ValueId, number>> = { ...drives.values };
+  for (const g of goals) {
+    if (g.kind !== "pursue" || g.value === undefined) continue;
+    if (g.layer !== "long" && g.layer !== "medium" && g.layer !== "short") continue;
+    values[g.value] = r((values[g.value] ?? 0) + LAYER_PULL[g.layer] * g.weight);
+  }
+  return { ...drives, values };
+}
