@@ -7,6 +7,7 @@
 
 import {
   type BuildingId,
+  type EntityRef,
   externalAccount,
   type HolderRef,
   holderAccount,
@@ -16,6 +17,7 @@ import {
 import {
   BUILDING,
   type BuildingComponent,
+  type BuildingFire,
   type BuildingRecord,
   collapseCheck,
   DEBRIS_SINK,
@@ -24,6 +26,7 @@ import {
   draftEvent,
   ENTITY,
   endEntity,
+  fuelLoad,
   GATHERED_SOURCE,
   jammedDoor,
   type LoadInput,
@@ -43,9 +46,17 @@ import {
   type StateChange,
   salvagedGrams,
   setComponent,
+  WORK,
   weatherAt,
   wornCondition,
 } from "../../sim/index.ts";
+import {
+  burnDay,
+  type FireContext,
+  fireDecisions,
+  INITIAL_INTENSITY,
+  settlementEffort,
+} from "./fire.ts";
 
 export const UPKEEP_PROCESS = "life.upkeep";
 
@@ -94,7 +105,7 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BUILDING.name, PERSON.name, ENTITY.name],
+    reads: [BUILDING.name, PERSON.name, ENTITY.name, WORK.name],
     writes: [BUILDING.name, ENTITY.name],
     run(ctx) {
       const ids = ctx.truth
@@ -113,6 +124,17 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
         weight: 0,
       };
       const crews = crewsOf(ctx.truth, o.clock, ctx.now);
+
+      const adultsIn = [...crews.values()].reduce((n, c) => n + c.adults, 0);
+      const fireCtx: FireContext = {
+        truth: ctx.truth,
+        rng: ctx.rng,
+        day,
+        fuelOf: (m) => materials.get(m)?.fuel ?? 0,
+        aliveOf: (h) => (h === undefined ? 0 : (crews.get(h)?.alive ?? 0)),
+        adultsIn: () => adultsIn,
+      };
+      const ignitions = fireDecisions(fireCtx, ids);
 
       const changes: StateChange[] = [];
       const events: NonNullable<ReturnType<ProcessDef["run"]>["events"]>[number][] = [];
@@ -205,9 +227,82 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
           continue;
         }
 
+        // Fuego (settlements §9): un día de incendio, o una chispa nueva que prende hoy.
+        let fireNow: BuildingFire | undefined = b.fire;
+        if (b.fire && base) {
+          const effort = settlementEffort(fireCtx, b.settlement);
+          const k = events.length;
+          const burn = burnDay(
+            fireCtx,
+            ctx.ledger,
+            id,
+            { ...b, components },
+            b.fire,
+            effort,
+            rainMm,
+            k,
+          );
+          events.push({
+            kind: burn.event.kind,
+            actors: [],
+            place: { kind: "settlement", settlement: b.settlement },
+            data: burn.event.data,
+            emissions: {},
+            causes: burn.event.causes,
+          });
+          if (burn.transfers.length > 0)
+            postings.push({ event: draftEvent(k), transfers: burn.transfers });
+          if (burn.collapsed) {
+            changes.push(endEntity(base, draftEvent(k), ctx.now));
+            continue;
+          }
+          components = [...burn.record.components];
+          fireNow = burn.record.fire;
+        } else if (ignitions.has(id)) {
+          const ig = ignitions.get(id);
+          const src =
+            ig?.from === undefined ? undefined : ctx.truth.get(BUILDING, ig.from as EntityRef);
+          if (ig) {
+            const k = events.length;
+            events.push({
+              kind: "settlement.ignited",
+              actors: [],
+              place: { kind: "settlement", settlement: b.settlement },
+              data: {
+                building: id,
+                cause: ig.cause,
+                fuelLoad: Math.round(fuelLoad(components, fireCtx.fuelOf) * 1000) / 1000,
+                ...(ig.from !== undefined ? { from: ig.from } : {}),
+              },
+              emissions: {},
+              causes:
+                src?.fire !== undefined
+                  ? [{ kind: "event", event: src.fire.last }]
+                  : [
+                      {
+                        kind: "state",
+                        entity: id,
+                        key: ig.cause === "lightning" ? "weather.storm" : "fuelLoad",
+                      },
+                    ],
+            });
+            fireNow = {
+              intensity: INITIAL_INTENSITY,
+              cause: ig.cause,
+              grams0: components.reduce(
+                (n, c) => n + c.materials.reduce((t, l) => t + l.grams, 0),
+                0,
+              ),
+              since: ctx.now,
+              last: draftEvent(k),
+            };
+          }
+        }
+
         // Si el que mantiene puede y se acuerda, arregla lo más gastado.
         const canRepair =
-          b.household === undefined || (b.maintainer === b.household && (crew?.adults ?? 0) > 0);
+          fireNow === undefined &&
+          (b.household === undefined || (b.maintainer === b.household && (crew?.adults ?? 0) > 0));
         const worst = needsRepair(components)[0];
         let lastRepair = b.lastRepair;
         if (canRepair && worst) {
@@ -272,8 +367,10 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
             ? rest
             : prev;
 
+        const { fire: _burning, ...still } = b;
         const next: BuildingRecord = {
-          ...b,
+          ...still,
+          ...(fireNow !== undefined ? { fire: fireNow } : {}),
           components,
           doorState,
           ...(lastRepair !== undefined ? { lastRepair } : {}),
