@@ -63,13 +63,10 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-09. Fase en curso: **Fase 3** (la Fase 2 está cerrada en el ROADMAP; falta el PR `develop` → `main` con tag `v0.2.x`).
+Actualizado: 2026-10-09. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**. No hay agentes corriendo ni worktrees abiertos (solo existen `develop` y `main`).
 
-| Slot | Rama | Qué hace | Estado |
-|---|---|---|---|
-| v | — | libre (docs/integración) | libre |
-| w | `feat/utilidad-npc` | IA de utilidad (c) catálogo, (d) insumos, (e) `life.decide` parcial | hecho por el agente, en integración (tests de game/scheduler/persistence) |
-| x | — | libre | libre |
+Hecho recientemente: #311–#330 cierre de Fase 2 (diálogo, vida, calibración de peleas con lectura `HIT_WEIGHT` 0,10, timeouts de CI) · #331 el personaje oye rumores · #332 candidatas sociales al catálogo (c2) y textos de la despensa (e5) · #333 grafo de espacios vivo y pared por material.
 
-Hecho en esta tanda (PR): #305 testigos NPC · #306 núcleo de utilidad · #307 lo visto en las creencias del jugador · #309 memorias de testigos y creencias NPC sobre NPC · #310 snapshots, `at <tick>` y paquete del narrador.
-Siguientes candidatos (clusters): seguimiento de utilidad (c2, e2-e5), rumores (information), hogares que construyen/reparan, economía básica de hogares.
+Siguientes clusters (ver ROADMAP, Fase 3): utilidad (e2 plan por defecto, e3 ánimo, e4 creencias de necesidad/peligro, f, g, h); rumores (contar rumores del personaje, `HEARD`→`RUMORS`, inspector `rumor`); hogares (derrumbe, fuego, verbo de ir/entrar con puerta trabada); economía básica de hogares; rutinas de NPC y familias; luego los «Heredado de Fase 2» al final de la Fase 3.
+
+Notas: el CI de `main` tarda ~25 min (ubuntu) y los tests lentos tienen timeouts de 600 s; los agentes no corren la suite completa, solo el coordinador (una corrida a la vez, ~5-9 min); si el límite de sesión de la API corta a los agentes, retomarlos con SendMessage.
