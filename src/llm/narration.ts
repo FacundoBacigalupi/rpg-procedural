@@ -185,6 +185,7 @@ function labelHint(l: LocalLabel): Record<string, unknown> {
     ...(l.relation !== undefined ? { relation: l.relation } : {}),
     ...(l.figure !== undefined ? { figure: `${l.figure.sex} ${l.figure.age}` } : {}),
     known: l.known,
+    ...(l.seenBefore === true ? { seenBefore: true } : {}),
     certainty: l.certainty,
   };
 }

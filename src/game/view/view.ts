@@ -237,6 +237,8 @@ export interface LocalLabel {
   readonly standing?: Standing;
   /** Lo reconoció: sabe quién es. */
   readonly known: boolean;
+  /** Un extraño de la misma figura que ya vio otro día: «el desconocido de ayer». */
+  readonly seenBefore?: boolean;
   /** Cuán seguro está de lo que leyó (de quién es, o de que hay alguien). */
   readonly certainty: Certainty;
 }
@@ -416,6 +418,8 @@ export interface ViewInput {
   readonly scene: SceneInput;
   /** Los percepts del jugador de este turno, en el orden en que llegaron. */
   readonly percepts: readonly Percept[];
+  /** Ids de los percepts de extraños que el personaje ya vio otro día (`strangersSeenBefore`). */
+  readonly seenBefore?: ReadonlySet<string>;
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
@@ -502,10 +506,16 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     return localId;
   };
 
-  const stranger = (certainty: Certainty, figure?: Figure, attire?: Attire): string => {
+  const stranger = (
+    certainty: Certainty,
+    figure?: Figure,
+    attire?: Attire,
+    seenBefore = false,
+  ): string => {
     const localId = `e${labels.length + 1}`;
     labels.push({
       localId,
+      ...(seenBefore ? { seenBefore: true } : {}),
       ...(figure !== undefined ? { figure } : {}),
       ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
       known: false,
@@ -546,7 +556,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     const who =
       identity !== undefined && isAgent(identity.value)
         ? known(identity.value, certaintyOf(identity.confidence), figure, attire)
-        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure, attire);
+        : stranger(
+            certaintyOf(p.fields.presence?.confidence ?? 0),
+            figure,
+            attire,
+            input.seenBefore?.has(p.id) === true,
+          );
     const action = p.fields.action?.value;
     const said = p.fields.words?.value;
     percepts.push({

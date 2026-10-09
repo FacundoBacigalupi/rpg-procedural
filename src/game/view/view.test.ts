@@ -108,6 +108,15 @@ describe("buildPlayerView", () => {
     expect(v.lexicon).toEqual(["Lan"]);
   });
 
+  it("un extraño ya visto otro día queda marcado como «el desconocido de ayer»", () => {
+    const base = input();
+    const second = base.percepts[1] as Percept;
+    const v = buildPlayerView({ ...base, seenBefore: new Set([second.id]) });
+    expect(v.labels[1]).toMatchObject({ known: false, seenBefore: true });
+    expect(v.labels[2]?.seenBefore).toBeUndefined();
+    expect(buildPlayerView(base).labels[1]?.seenBefore).toBeUndefined();
+  });
+
   it("el efecto de un paso queda como lo cree el personaje", () => {
     const v = buildPlayerView(input());
     expect(v.outcomes).toEqual([
