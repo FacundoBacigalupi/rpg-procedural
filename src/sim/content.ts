@@ -4,7 +4,7 @@
 import type { ContentKind } from "../core/index.ts";
 import { BIOMES } from "../worldgen/index.ts";
 import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
-import { BODY_PLANS, FOODS } from "./body/index.ts";
+import { BODY_PLANS, DIETS, FOODS, NUTRIENT_PROFILES } from "./body/index.ts";
 import { PRESSURE_CURVES } from "./causality/index.ts";
 import { RECIPES } from "./crafts/index.ts";
 import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
@@ -39,6 +39,8 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   SKILLS,
   BODY_PLANS,
   FOODS,
+  NUTRIENT_PROFILES,
+  DIETS,
   GOODS,
   TRADE_RECIPES,
   PRESSURE_CURVES,

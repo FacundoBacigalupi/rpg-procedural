@@ -13,6 +13,7 @@ export * from "./interrupts.ts";
 export * from "./known.ts";
 export * from "./life.ts";
 export * from "./map.ts";
+export * from "./nutrition.ts";
 export * from "./panels.ts";
 export * from "./perceive.ts";
 export * from "./ponder.ts";

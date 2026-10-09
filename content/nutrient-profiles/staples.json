@@ -1,0 +1,14 @@
+[
+  { "id": "grain", "perKg": { "protein": 90, "iron": 0.9 } },
+  { "id": "flatbread", "perKg": { "protein": 75, "iron": 0.7 } },
+  { "id": "gleanings", "perKg": { "protein": 85, "iron": 0.8 } },
+  { "id": "forage", "perKg": { "protein": 20, "vitaminC": 4, "iron": 2 } },
+  { "id": "shellfish", "perKg": { "protein": 140, "iodine": 8, "iron": 8, "vitaminD": 4 } },
+  { "id": "salt", "perKg": { "iodine": 100 } },
+  { "id": "leafy-greens", "perKg": { "protein": 25, "vitaminC": 5, "iron": 3 } },
+  { "id": "citrus", "perKg": { "vitaminC": 40 } },
+  { "id": "fresh-fish", "perKg": { "protein": 190, "iodine": 3, "vitaminD": 12 } },
+  { "id": "liver", "perKg": { "protein": 200, "iron": 20, "vitaminC": 1, "vitaminD": 6 } },
+  { "id": "egg", "perKg": { "protein": 125, "iron": 2, "vitaminD": 2 } },
+  { "id": "seaweed", "perKg": { "protein": 60, "iodine": 60, "iron": 5 } }
+]

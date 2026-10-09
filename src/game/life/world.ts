@@ -17,6 +17,7 @@ import {
   type BondDef,
   bodyProcess,
   type ConcernWords,
+  type DietDef,
   type DimensionDef,
   type DivinationMethodDef,
   type FoodDef,
@@ -26,6 +27,7 @@ import {
   LOCATION,
   type LocalMap,
   type MaterialDef,
+  type NutrientProfileDef,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -67,6 +69,7 @@ import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { lookingProcess } from "./looking.ts";
+import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
@@ -110,6 +113,9 @@ export interface LifeWorld {
   readonly pathogenSeeds?: readonly PathogenSeed[];
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
   readonly substanceDoses?: readonly SubstanceDose[];
+  /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
+  readonly nutrientProfiles?: readonly NutrientProfileDef[];
+  readonly diets?: readonly DietDef[];
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -307,6 +313,12 @@ export function lifeWorld(
         substancesProcess({
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
+          placeOf: placeOf(parts, village),
+        }),
+        nutritionProcess({
+          clock: parts.clock,
+          profiles: parts.nutrientProfiles ?? [],
+          diet: parts.diets?.find((d) => d.id === "village"),
           placeOf: placeOf(parts, village),
         }),
         thermalProcess({

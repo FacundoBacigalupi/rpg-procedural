@@ -1,0 +1,13 @@
+[
+  {
+    "id": "village",
+    "name": "dieta de la aldea: grano, monte, algo del agua y sal; el sol pone la vitamina D",
+    "items": [
+      { "food": "grain", "kg": 0.55 },
+      { "food": "forage", "kg": 0.3 },
+      { "food": "shellfish", "kg": 0.05 },
+      { "food": "salt", "kg": 0.01 }
+    ],
+    "background": { "vitaminD": 0.9 }
+  }
+]
