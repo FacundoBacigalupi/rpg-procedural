@@ -169,6 +169,11 @@ export interface StretchView {
   readonly hurt: boolean;
   /** Peleó. */
   readonly fought: boolean;
+  /**
+   * Lo que el cuerpo sigue sintiendo de las heridas (qué parte y cómo), de la más grave a la menos;
+   * son las señales que el personaje siente (`bodySigns`), nunca el estado real de la herida.
+   */
+  readonly wounds?: readonly { readonly zone: string; readonly sign: string }[];
   /** Etiquetas locales de los conocidos con los que habló (a los extraños no se los nombra). */
   readonly spokeWith: readonly string[];
 }
@@ -620,6 +625,9 @@ export function buildPlayerView(input: ViewInput): PlayerView {
             spoke: input.stretch.spoke,
             hurt: input.stretch.hurt,
             fought: input.stretch.fought,
+            ...(input.stretch.wounds !== undefined && input.stretch.wounds.length > 0
+              ? { wounds: input.stretch.wounds.map((w) => ({ ...w })) }
+              : {}),
             spokeWith: input.stretch.metWith
               .filter((a) => input.acquaintances.has(a))
               .slice(0, STRETCH_NAMED)

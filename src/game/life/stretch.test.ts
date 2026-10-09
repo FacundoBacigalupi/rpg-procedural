@@ -34,4 +34,19 @@ describe("lo vivido en un salto", () => {
     expect(stretchOf([], [ev("combat.strike", 50)], ME, 10, 2000, 1000).fought).toBe(true);
     expect(stretchOf([], [ev("combat.strike", 5)], ME, 10, 2000, 1000).fought).toBe(false);
   });
+
+  it("las heridas sentidas del cuerpo cuentan qué parte y cómo, la peor primero", () => {
+    const zones = [
+      { zone: "left_leg", signs: ["in_pain", "limping"] },
+      { zone: "head", signs: ["bone_broken", "in_pain"] },
+      { zone: "chest", signs: ["pale"] },
+    ];
+    const s = stretchOf([], [], ME, 0, 3000, 1000, zones);
+    expect(s.wounds).toEqual([
+      { zone: "head", sign: "bone_broken" },
+      { zone: "left_leg", sign: "in_pain" },
+    ]);
+    expect(s.hurt).toBe(true);
+    expect(stretchOf([], [], ME, 0, 3000, 1000).wounds).toBeUndefined();
+  });
 });

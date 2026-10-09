@@ -163,7 +163,7 @@ export function narratorSystem(style: StyleSettings): string {
     "  words of the prophecy or anything the diviner did not show.",
     "- Mode `dream`: the character is asleep; broken images of the `thoughts`, nothing new. Mode",
     "  `montage`: time passed; one short paragraph, no scene detail; `stretch` is what the character",
-    "  lived in it (`days`, `did` verbs with `times` and `failed`, `spoke` people, `spokeWith` labels of known people, `hurt`, `fought`):",
+    "  lived in it (`days`, `did` verbs with `times` and `failed`, `spoke` people, `spokeWith` labels of known people, `hurt`, `fought`, `wounds` = body zone and felt sign):",
     "  say only that, in broad strokes, never an amount or a detail that is not there. Mode `aftermath`: after",
     "  something grave; the body, the silence, what is left; no explanation of why.",
     "- `vocabulary.use` are the technical words the character knows. For each `vocabulary.avoid`",
