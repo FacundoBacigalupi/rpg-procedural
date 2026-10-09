@@ -118,6 +118,7 @@ import {
   villageSite,
 } from "../../worldgen/index.ts";
 import type { ConverseForm } from "./converse.ts";
+import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
@@ -623,5 +624,17 @@ export function createLife(
     terrain.village,
     { now: pop.now, seq: 0, queue: [] },
   );
+  const me = truth.get(PERSON, pop.player);
+  if (me) {
+    world.truth.set(
+      INVENTORY_BELIEF,
+      pop.player,
+      checkInventory(
+        world.ledger.holdings(holderAccount(pop.player as unknown as HolderRef)),
+        world.ledger.holdings(holderAccount(me.household as unknown as HolderRef)),
+        pop.now,
+      ),
+    );
+  }
   return { world, terrain };
 }

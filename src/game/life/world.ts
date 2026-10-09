@@ -51,6 +51,7 @@ import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
@@ -281,6 +282,7 @@ export function lifeWorld(
           dims: parts.relationDims,
           bonds: parts.relationBonds,
         }),
+        inventoryProcess({ player }),
         knowingProcess({
           player,
           map: parts.map,
