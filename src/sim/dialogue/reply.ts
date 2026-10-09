@@ -151,6 +151,8 @@ export interface ReplyInput {
   readonly formJudge?: { readonly taboos: readonly TabooDef[]; readonly input: FormJudgeInput };
   /** Gramos de `good` que tiene la casa, y cuántos la componen. */
   readonly held: (good: string) => number;
+  /** Si el bien es moneda: no se aparta reserva de la casa (la bolsa se gasta, no se raciona). */
+  readonly isCoin?: (good: string) => boolean;
   readonly members: number;
   readonly lines: readonly SpeechLine[];
   readonly rng: Rng;
@@ -478,7 +480,7 @@ function decideBody(i: ReplyInput, at: number): Reply {
         give: a.give,
         want: a.want,
         worth: i.worth ?? (() => null),
-        spare: (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER,
+        spare: (g) => i.held(g) - (i.isCoin?.(g) ? 0 : i.members * RESERVE_GRAMS_PER_MEMBER),
         speakerHas: i.speakerHas ?? (() => 0),
         felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
         leverage: {

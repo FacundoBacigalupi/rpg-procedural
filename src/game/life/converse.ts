@@ -206,6 +206,8 @@ export interface ConverseForm {
 }
 
 /** Lo que la falta de forma le saca al afecto, al respeto y le suma al rencor, por punto de cara (sin calibrar). */
+/** Valor por «kilo» de una moneda de cobre: `grams` cuenta piezas, así una pieza vale un cobre. */
+const COIN_WORTH_PER_KILO = 1000;
 const FORM_RESENTMENT = 0.4;
 const FORM_RESPECT = 0.2;
 /** Reverencia por los tabúes de quien oye si no tiene fe anotada. */
@@ -446,9 +448,11 @@ function lexiconOf(
       }
       return [{ id: id as AgentId, names: [...(given ? [given] : []), ...kin] }];
     });
-  const goods = o.goods
-    .filter((g) => g.form === "good")
-    .map((g) => ({ id: g.id, names: [g.name, g.id] }));
+  const goods = o.goods.map((g) =>
+    g.form === "coin"
+      ? { id: g.id, names: ["moneda", "monedas", "cobre", "cobres"], coin: true }
+      : { id: g.id, names: [g.name, g.id] },
+  );
   return { people, goods };
 }
 
@@ -1096,7 +1100,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           goodName: (id) => goodById(id)?.name ?? id,
           held: (id) => {
             const g = goodById(id);
-            return g ? (ctx.ledger?.balance(holderAccount(larder), goodUnit(g)) ?? 0) : 0;
+            if (!g) return 0;
+            // Las monedas están en la bolsa de cada uno; los bienes, en la despensa de la casa.
+            const holder = g.form === "coin" ? (me as unknown as HolderRef) : larder;
+            return ctx.ledger?.balance(holderAccount(holder), goodUnit(g)) ?? 0;
           },
           members,
           // El regateo (contracts §3): otras casas con qué tratar y la cara ante los presentes.
@@ -1121,7 +1128,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             },
             face: bargainFace(witnessesOf(truth, me, speaker), myRank, theirRank),
           },
-          worth: (id) => goodById(id)?.priceCopperPerKg ?? null,
+          // Una moneda de cobre vale un cobre por pieza (`grams` cuenta piezas): mil por «kilo».
+          worth: (id) => {
+            const g = goodById(id);
+            return g?.form === "coin" ? COIN_WORTH_PER_KILO : (g?.priceCopperPerKg ?? null);
+          },
+          isCoin: (id) => goodById(id)?.form === "coin",
           speakerHas: (id) => {
             const g = goodById(id);
             return g
@@ -1396,7 +1408,15 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         [reply.deal?.gets, yours, mine],
       ] as const) {
         const g = term ? goodById(term.good) : undefined;
-        if (term && g) swaps.push({ unit: goodUnit(g), from, to, amount: term.grams });
+        if (!term || !g) continue;
+        // Las monedas salen y entran por la bolsa de quien trata, no por la despensa.
+        const purse = me as unknown as HolderRef;
+        swaps.push({
+          unit: goodUnit(g),
+          from: g.form === "coin" && from === mine ? purse : from,
+          to: g.form === "coin" && to === mine ? purse : to,
+          amount: term.grams,
+        });
       }
       return {
         changes,
