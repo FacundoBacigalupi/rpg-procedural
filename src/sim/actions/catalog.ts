@@ -8,6 +8,10 @@
 import { contentId, defineContent, z } from "../../core/index.ts";
 import { PLACE_KINDS } from "../world/index.ts";
 
+/** Lo que está en juego al hacer el verbo (player-loop «Tono de las opciones»): sale del catálogo. */
+export const ACTION_STAKES = ["none", "harm", "lethal", "crime"] as const;
+export type ActionStakes = (typeof ACTION_STAKES)[number];
+
 export const ACTION_DOMAINS = [
   "movement",
   "manipulation",
@@ -76,6 +80,8 @@ export const RESOLVERS = [
   "cook",
   "drink",
   "tend",
+  "consult",
+  "ponder",
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];
 
@@ -158,6 +164,8 @@ export const ActionDef = z
     id: contentId,
     name: z.string().min(1),
     domain: z.enum(ACTION_DOMAINS),
+    /** Qué se juega: herir, matar o delinquir tiñe la opción sugerida (no hay lista de palabras). */
+    stakes: z.enum(ACTION_STAKES).default("none"),
     args: z.array(ArgSpec).max(6),
     manners: z.array(MannerSpec).default([]),
     requires: z.array(Requirement).default([]),
@@ -188,6 +196,12 @@ export const ActionDef = z
       })
       .optional(),
     contest: Contest.optional(),
+    /**
+     * A qué impulsos acerca el verbo si sale bien (-1 a 1): necesidades (`hunger`, `thirst`,
+     * `rest`, `safety`, `social`, `pain`) y valores (`wealth`, `family`...). Los lee la utilidad de
+     * los NPC (npc-psychology §7); los ids se validan en `sim/mind`.
+     */
+    serves: z.record(contentId, z.number().min(-1).max(1)).default({}),
     failureModes: z.array(z.strictObject({ id: z.enum(FAILURE_MODES), factor: z.enum(FACTORS) })),
     /** Cuán evidente es un fracaso para quien lo hace (0: no se nota; 1: siempre se nota). */
     evidence: Unit,

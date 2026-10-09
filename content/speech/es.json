@@ -2,36 +2,52 @@
   {
     "id": "greet",
     "lines": ["Buenas.", "Hola, ¿cómo andás?", "Qué tal."],
-    "formal": ["Buen día tenga.", "Que le vaya bien."]
+    "formal": ["Buen día tenga.", "Que le vaya bien."],
+    "warm": ["¡Qué alegría verte!", "Hola, querido, ¿cómo andás?"],
+    "dry": ["Mm.", "Hola."]
   },
   {
     "id": "farewell",
     "lines": ["Andá con cuidado.", "Hasta luego.", "Nos vemos."],
-    "formal": ["Que le vaya bien."]
+    "formal": ["Que le vaya bien."],
+    "warm": ["Cuidate mucho, ¿eh? Volvé pronto.", "Que andes bien. Acordate de pasar."],
+    "dry": ["Chau.", "Bueno, andá."]
   },
   {
     "id": "ask.unclear",
-    "lines": ["¿De quién me hablás?", "No te entendí, ¿por quién preguntás?"]
+    "lines": ["¿De quién me hablás?", "No te entendí, ¿por quién preguntás?"],
+    "warm": ["Perdoname, no te seguí: ¿por quién preguntás?"],
+    "dry": ["¿De quién? Hablá claro."]
   },
   {
     "id": "ask.at.room",
-    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."]
+    "lines": ["{name} está adentro, bajo techo.", "{name} anda por la casa."],
+    "warm": ["{name} está adentro, en la casa; pasá nomás, seguro te recibe."],
+    "dry": ["{name} está adentro. Eso es todo lo que sé."]
   },
   {
     "id": "ask.at.yard",
-    "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."]
+    "lines": ["{name} está en el patio.", "A {name} lo vi en el patio."],
+    "warm": ["{name} está en el patio, andá a verlo."],
+    "dry": ["En el patio. Buscalo vos."]
   },
   {
     "id": "ask.at.street",
-    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."]
+    "lines": ["{name} anda por la calle.", "{name} está en la calle, entre las casas."],
+    "warm": ["{name} anda por la calle; si te apurás lo alcanzás."],
+    "dry": ["Por la calle, creo. No me pidas más."]
   },
   {
     "id": "ask.at.square",
-    "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."]
+    "lines": ["{name} está en la plaza.", "A {name} lo dejé en la plaza."],
+    "warm": ["{name} está en la plaza, andá que seguro se alegra."],
+    "dry": ["En la plaza. Nada más."]
   },
   {
     "id": "ask.at.open",
-    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."]
+    "lines": ["{name} anda afuera, a campo abierto.", "{name} salió, fuera de las casas."],
+    "warm": ["{name} salió afuera, a campo abierto; abrigate si vas."],
+    "dry": ["Afuera, a campo abierto. Fijate vos."]
   },
   {
     "id": "ask.dead",
@@ -46,29 +62,118 @@
     "lines": ["No sé dónde anda {name}.", "Ni idea de {name}, hace rato que no lo veo."]
   },
   {
+    "id": "ask.recalled.good",
+    "lines": [
+      "De {name} me acuerdo con cariño: fue bueno conmigo.",
+      "Lo de {name}, sí, lo recuerdo bien, y fue para bien."
+    ],
+    "formal": ["Recuerdo a {name} con aprecio."]
+  },
+  {
+    "id": "ask.recalled.bad",
+    "lines": [
+      "De {name} prefiero no hablar: lo que pasó me quedó clavado.",
+      "Me acuerdo de {name}, y no con gusto."
+    ],
+    "formal": ["Recuerdo a {name}, y no con agrado."]
+  },
+  {
+    "id": "ask.recalled.plain",
+    "lines": ["Sí, me acuerdo de {name}; nada del otro mundo.", "{name}... algo me acuerdo, sí."],
+    "warm": ["Claro que me acuerdo de {name}; contá, ¿qué querés saber?"],
+    "dry": ["{name}. Sí. ¿Y?"]
+  },
+  {
+    "id": "ask.recalled.denied",
+    "lines": ["No sé nada de {name}. Preguntale a otro.", "De {name} no te cuento nada."],
+    "formal": ["No tengo nada que decirle sobre {name}."]
+  },
+  {
+    "id": "ask.secret.revealed.dead",
+    "lines": [
+      "Está bien, te lo digo: {name} murió, y no quería que se supiera.",
+      "No sé por qué te lo cuento... pero {name} ya no está."
+    ],
+    "formal": ["Se lo diré: {name} ha muerto, y se prefería callarlo."]
+  },
+  {
+    "id": "ask.secret.revealed.alive",
+    "lines": [
+      "Está bien, te lo digo: {name} vive. No se lo cuentes a nadie.",
+      "No sé por qué te lo cuento... pero {name} está vivo."
+    ],
+    "formal": ["Se lo diré: {name} vive, pero le ruego discreción."]
+  },
+  {
+    "id": "ask.secret.revealed.other",
+    "lines": [
+      "Está bien, te lo cuento. Pero que quede entre nosotros.",
+      "Me ganaste... sí, hay algo de {name}."
+    ]
+  },
+  {
+    "id": "ask.secret.partial",
+    "lines": ["Algo sé de {name}, pero no me pidas más.", "Hay algo de {name}... mejor no sigo."],
+    "formal": ["Algo sé de {name}, pero no diré más."]
+  },
+  {
+    "id": "ask.secret.evaded",
+    "lines": [
+      "¿De {name}? Ni idea, che. ¿Y vos qué andás preguntando?",
+      "Cambiemos de tema, ¿querés?"
+    ],
+    "formal": ["Preferiría hablar de otra cosa."]
+  },
+  {
+    "id": "ask.secret.refused",
+    "lines": ["De eso no hablo.", "No es asunto tuyo, y no insistas."],
+    "formal": ["No hablaré de ese asunto."]
+  },
+  {
     "id": "tell.dead",
     "lines": [
       "Qué desgracia lo de {name}. Gracias por avisarme.",
       "¿{name}? No lo sabía... qué pena."
-    ]
+    ],
+    "warm": ["Ay, no... {name}. Gracias por decírmelo vos, que me lo contás con cuidado."],
+    "dry": ["Ah. {name}. Bueno, se sabe."]
   },
   {
     "id": "tell.alive",
     "lines": [
       "Menos mal lo de {name}. Gracias por contarme.",
       "Me alegra saber que {name} sigue bien."
-    ]
+    ],
+    "warm": ["¡Qué alegría lo de {name}! Gracias por venir a contármelo."],
+    "dry": ["Ah, {name} sigue por ahí. Bien."]
   },
   {
     "id": "tell.doubt",
     "lines": [
       "Eso de {name} no me cierra, yo sé otra cosa.",
       "No te creo lo de {name}; no es lo que yo sé."
-    ]
+    ],
+    "warm": ["Perdoname, pero lo de {name} no me cierra; yo sé otra cosa."],
+    "dry": ["Lo de {name} no es así. No me hagas perder el tiempo."]
+  },
+  {
+    "id": "tell.caught",
+    "lines": [
+      "Mentís. Lo de {name} no me lo creo.",
+      "Eso de {name} lo decís para engañarme, te conozco."
+    ],
+    "formal": ["No le creo lo de {name}; me parece que miente."]
+  },
+  {
+    "id": "tell.doubted",
+    "lines": ["No sé... lo de {name} me suena raro.", "¿Seguro lo de {name}? No me convence."],
+    "formal": ["No sé si creerle lo de {name}."]
   },
   {
     "id": "request.unclear",
-    "lines": ["¿Qué necesitás, exactamente?", "No te entiendo qué me pedís."]
+    "lines": ["¿Qué necesitás, exactamente?", "No te entiendo qué me pedís."],
+    "warm": ["Decime con calma, ¿qué necesitás?"],
+    "dry": ["¿Qué querés? Al grano."]
   },
   {
     "id": "request.credit",
@@ -76,7 +181,9 @@
       "Te lo fío: llevate {what} y me lo devolvés cuando puedas.",
       "Tomá {what}, pero quedás debiéndomelo, ¿eh?"
     ],
-    "formal": ["Se lo fío, {what}; me lo devuelve cuando pueda."]
+    "formal": ["Se lo fío, {what}; me lo devuelve cuando pueda."],
+    "warm": ["Llevate {what}, y no te apures en devolvérmelo."],
+    "dry": ["Te fío {what}. Lo anoto, y lo devolvés."]
   },
   {
     "id": "request.refuse.owes",
@@ -95,15 +202,241 @@
   },
   {
     "id": "request.short",
-    "lines": ["Ando justo de {what}, perdoname.", "No me sobra {what}, no puedo."]
+    "lines": ["Ando justo de {what}, perdoname.", "No me sobra {what}, no puedo."],
+    "warm": ["Ay, ando justo de {what}; si pudiera te lo daría con gusto."],
+    "dry": ["No hay {what}. Pedile a otro."]
   },
   {
     "id": "request.give",
-    "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."]
+    "lines": ["Tomá, llevate {what}.", "Está bien, te paso {what}."],
+    "warm": ["Tomá, llevate {what}, lo que necesites.", "Claro que sí, te paso {what}."],
+    "dry": ["Ahí tenés {what}.", "Tomá {what}. Y listo."]
+  },
+  {
+    "id": "request.give.afraid",
+    "lines": [
+      "Está bien, tomá {what}. No quiero problemas.",
+      "Llevate {what}, pero dejame en paz."
+    ],
+    "formal": ["Tome {what}, por favor. No busco problemas."]
+  },
+  {
+    "id": "request.give.grateful",
+    "lines": [
+      "Tomá {what}: te debo una, no me olvido.",
+      "Después de lo que hiciste por mí, llevate {what}."
+    ],
+    "formal": ["Tome {what}; le estoy en deuda."]
+  },
+  {
+    "id": "threat.yield",
+    "lines": [
+      "Está bien, está bien... no hace falta eso. Lo hago.",
+      "No me amenaces. Hago lo que pedís, pero no me gusta."
+    ],
+    "formal": ["Está bien, haré lo que pide. Pero no era necesario."]
+  },
+  {
+    "id": "threat.yield.give",
+    "lines": [
+      "Tomá {what}, y dejame en paz. No hacía falta amenazar.",
+      "Está bien, llevate {what}. Pero esto no lo olvido."
+    ],
+    "formal": ["Tome {what}. No era necesario amenazarme."]
+  },
+  {
+    "id": "threat.defy",
+    "lines": ["¿Vos y quién más? No te tengo miedo.", "Probá, a ver si te animás."],
+    "formal": ["Haga lo que tenga que hacer; no le temo."],
+    "warm": ["No puedo creer que me amenaces vos. Hacé lo que quieras, no te temo."],
+    "dry": ["Probá. Te estoy esperando."]
+  },
+  {
+    "id": "threat.flee",
+    "lines": ["Se va casi corriendo, sin decir nada más."]
+  },
+  {
+    "id": "threat.call_help",
+    "lines": ["¡Ayuda! ¡Que alguien venga!", "¡Auxilio, me quiere hacer daño!"]
+  },
+  {
+    "id": "threat.denounce",
+    "lines": [
+      "Eso se lo voy a contar a quien corresponda.",
+      "Esto no queda así; voy a hablar con los que mandan."
+    ]
+  },
+  {
+    "id": "threat.stall",
+    "lines": ["Te mira en silencio, con la mandíbula apretada.", "No dice nada, pero no lo olvida."]
+  },
+  {
+    "id": "flatter.pleased",
+    "lines": ["Ah, qué amable sos... gracias.", "Qué cosas decís. Se agradece."],
+    "formal": ["Es muy amable; se lo agradezco."],
+    "warm": ["Ay, vos siempre tan bueno conmigo. Gracias."],
+    "dry": ["Gracias. No hacía falta."]
+  },
+  {
+    "id": "flatter.flat",
+    "lines": ["Mm, gracias.", "Sí, sí. Gracias."],
+    "warm": ["Gracias, querido, qué detalle."],
+    "dry": ["Ajá."]
+  },
+  {
+    "id": "flatter.hollow",
+    "lines": ["No me vengas con chamuyo, ¿qué querés?", "Tanto elogio me suena a que querés algo."],
+    "formal": ["Tanto elogio me hace pensar que busca algo."]
+  },
+  {
+    "id": "insult.hurt",
+    "lines": [
+      "¿Cómo me dijiste? Eso no te lo perdono tan fácil.",
+      "Cuidá lo que decís, que te estoy escuchando."
+    ],
+    "formal": ["Retire eso que dijo."]
+  },
+  {
+    "id": "form.offended",
+    "lines": ["Así no se me habla.", "Medí esas palabras, que no es modo de dirigirse a uno."],
+    "formal": ["No es modo de dirigirse a mí."]
+  },
+  {
+    "id": "insult.shrug",
+    "lines": ["Bah, no te hago caso.", "Decí lo que quieras."],
+    "warm": ["Estarás de mal humor; no te lo tomo en cuenta."],
+    "dry": ["Seguí, que no me importa."]
+  },
+  {
+    "id": "accuse.unclear",
+    "lines": ["¿De quién hablás? No te sigo.", "¿Quién? Decime bien."],
+    "formal": ["¿De quién habla? No lo sigo."]
+  },
+  {
+    "id": "accuse.believe",
+    "lines": [
+      "Con razón... no me extraña de {name}.",
+      "Lo sospechaba de {name}. Esto no se queda así."
+    ],
+    "formal": ["No me sorprende de {name}. Lo tendré presente."],
+    "warm": ["Gracias por contármelo, de {name} yo también lo sospechaba. Algo haremos."],
+    "dry": ["De {name}, sí. No hace falta que me lo expliques."]
+  },
+  {
+    "id": "accuse.weigh",
+    "lines": [
+      "Qué cosa más fea de {name}... lo voy a tener en cuenta.",
+      "Si es cierto lo de {name}, es grave. Voy a averiguar."
+    ],
+    "warm": ["Qué pena lo de {name}. Gracias por avisarme, voy a averiguar con cuidado."],
+    "dry": ["Lo de {name}, ya veremos. No prometo nada."]
+  },
+  {
+    "id": "accuse.doubt",
+    "lines": ["No sé, de {name} no me lo esperaba. ¿Seguro?", "Eso de {name} cuesta creerlo."],
+    "formal": ["Me cuesta creerlo de {name}."],
+    "warm": ["Me cuesta creerlo de {name}, pero si lo decís vos, lo pienso."],
+    "dry": ["De {name}, no te creo. Traé algo más que palabras."]
+  },
+  {
+    "id": "accuse.slander",
+    "lines": [
+      "Sin pruebas, eso es calumnia. ¿Qué ganás con hablar así de {name}?",
+      "Mucha lengua y pocas pruebas. No voy a repetir eso de {name}."
+    ]
+  },
+  {
+    "id": "accuse.confess",
+    "lines": ["...Tenés razón. Fui yo. Perdoname.", "Sí. Lo hice y me pesa."],
+    "formal": ["Es cierto. Fui yo, y lo lamento."],
+    "warm": ["Tenés razón, fui yo. Con vos no puedo mentir; perdoname."],
+    "dry": ["Fui yo. Ya está dicho."]
+  },
+  {
+    "id": "accuse.justify",
+    "lines": [
+      "Lo hice, sí, pero tenía mis razones y vos las sabés.",
+      "¿Y qué querías que hiciera, con lo que pasó?"
+    ]
+  },
+  {
+    "id": "accuse.counter",
+    "lines": [
+      "¿Yo? Mirá quién habla, que de vos también se cuentan cosas.",
+      "Antes de acusar, fijate lo que hiciste vos."
+    ]
+  },
+  {
+    "id": "accuse.deny",
+    "lines": ["Yo no fui. No sé de qué me hablás.", "Mentira. Yo no hice nada de eso."],
+    "formal": ["Yo no he hecho tal cosa."],
+    "warm": ["No fui yo, te lo juro. Creeme."],
+    "dry": ["No fui yo. Pensá lo que quieras."]
+  },
+  {
+    "id": "accuse.protest",
+    "lines": [
+      "¡¿Yo?! ¿Cómo te atrevés a decir eso?",
+      "Eso es falso, y lo sabés. Retirá lo que dijiste."
+    ],
+    "formal": ["Eso es falso. Le pido que lo retire."],
+    "warm": ["No puede ser que pienses eso de mí... retiralo, por favor."],
+    "dry": ["Falso. Retirá eso o no hablamos más."]
+  },
+  {
+    "id": "prophesy.unclear",
+    "lines": ["¿De quién decís que lo dijeron?", "¿Eso se dijo de quién?"]
+  },
+  {
+    "id": "prophesy.believed",
+    "lines": [
+      "Si lo dijo el adivino, algo habrá. Lo tendré presente.",
+      "Qué cosa. Me da qué pensar."
+    ],
+    "formal": ["Si así se dijo, habrá que tenerlo presente."],
+    "warm": ["Gracias por contarme; si lo dijo el adivino, lo voy a tener presente."],
+    "dry": ["Lo dijo el adivino, ya. Lo anoto."]
+  },
+  {
+    "id": "prophesy.doubted",
+    "lines": ["Puede ser... los adivinos dicen muchas cosas.", "Quién sabe. Yo lo oigo, nada más."],
+    "formal": ["Quién sabe. Lo escucho, nada más."],
+    "warm": ["Quién sabe, pero te agradezco que me lo cuentes."],
+    "dry": ["Quién sabe. No me hagas perder el tiempo con eso."]
+  },
+  {
+    "id": "prophesy.dismissed",
+    "lines": ["Cuentos de adivino.", "Eso no me lo creo ni un poco."],
+    "formal": ["Perdone, pero no lo creo."],
+    "warm": ["Perdoname, pero no me lo creo; no te enojes."],
+    "dry": ["Cuentos. No insistas."]
+  },
+  {
+    "id": "prophesy.believed.self",
+    "lines": ["¿Eso dicen de mí? Me deja pensando.", "Si es cierto, no sé qué hacer con eso."],
+    "formal": ["¿Eso se dice de mí? Me deja pensando."]
+  },
+  {
+    "id": "prophesy.doubted.self",
+    "lines": ["¿De mí? Mmm, no sé qué creer.", "Puede ser, pero no me lo termino de creer."]
+  },
+  {
+    "id": "prophesy.dismissed.self",
+    "lines": ["¿De mí? Pavadas.", "No me vengas con eso."],
+    "formal": ["No me venga con eso, por favor."]
   },
   {
     "id": "other",
-    "lines": ["Mm.", "Ajá.", "Te escucho."]
+    "lines": ["Mm.", "Ajá.", "Te escucho."],
+    "warm": ["Contame, te escucho.", "Seguí, seguí, que me interesa."],
+    "dry": ["Ajá.", "Sí."]
+  },
+  {
+    "id": "misheard",
+    "lines": ["¿Qué? No te oí bien.", "Perdón, ¿qué dijiste?", "Repetime eso, que no te entendí."],
+    "formal": ["Disculpe, no lo oí bien. ¿Qué dijo?"],
+    "warm": ["Perdoname, no te oí bien. ¿Me lo repetís?"],
+    "dry": ["¿Qué? Repetilo."]
   },
   {
     "id": "greet.cold.theft",
@@ -129,6 +462,14 @@
     "formal": ["No le daré {what}; no cumplió con lo anterior."]
   },
   {
+    "id": "request.refuse.grudge",
+    "lines": [
+      "¿{what}? De vos no quiero ni verte.",
+      "No te doy {what}. Entre vos y yo hay cuentas."
+    ],
+    "formal": ["No le daré {what}; no confío en usted."]
+  },
+  {
     "id": "request.refuse.theft",
     "lines": [
       "¿Darte {what}? Ni loco, después de lo que hiciste.",
@@ -143,5 +484,137 @@
       "No te doy {what}. Me da miedo lo que hacés."
     ],
     "formal": ["No le daré {what}; sé de lo que es capaz."]
+  },
+  {
+    "id": "greet.fond",
+    "lines": ["¡Qué alegría verte! Siempre me acuerdo de lo que hiciste.", "Ah, vos. Pasá, pasá."],
+    "formal": ["Qué gusto verlo. No olvido lo que hizo por mí."]
+  },
+  {
+    "id": "greet.wary",
+    "lines": [
+      "Ah... vos. Ya sabés cómo me quedé la última vez.",
+      "Hola. No me olvidé de lo que pasó."
+    ],
+    "formal": ["Buen día. No he olvidado lo que ocurrió entre nosotros."]
+  },
+  {
+    "id": "request.refuse.remembered",
+    "lines": [
+      "¿{what}? No me olvido de lo que pasó entre nosotros.",
+      "No te doy {what}. Lo de aquella vez todavía me pesa."
+    ],
+    "formal": ["No le daré {what}; no he olvidado lo ocurrido."]
+  },
+  {
+    "id": "promise.accept",
+    "lines": [
+      "Está bien, me quedo con tu palabra sobre {what}.",
+      "Bueno, confío en que cumplas con {what}."
+    ],
+    "formal": ["Acepto su palabra sobre {what}."]
+  },
+  {
+    "id": "promise.doubt",
+    "lines": ["Palabras. Ya veremos si cumplís.", "Prometer es fácil. Después hablamos."],
+    "formal": ["Lo veremos cuando llegue el momento."]
+  },
+  {
+    "id": "promise.vague",
+    "lines": ["¿Qué cosa me prometés, exactamente?", "Decime bien qué es lo que prometés."],
+    "formal": ["¿Qué es, exactamente, lo que promete?"]
+  },
+  {
+    "id": "offer.pitch",
+    "lines": [
+      "Me sobra {give}. Te doy {kilos} kilos si me das {wantKilos} kilos de {want}. ¿Querés?",
+      "¿Cambiamos? {kilos} kilos de {give} por {wantKilos} kilos de {want}."
+    ],
+    "formal": ["Me sobra {give}; le doy {kilos} kilos por {wantKilos} kilos de {want}. ¿Le parece?"]
+  },
+  {
+    "id": "offer.unclear",
+    "lines": ["¿Qué me proponés, exactamente?", "No entiendo qué querés cambiar."],
+    "formal": ["¿Qué es, exactamente, lo que propone?"]
+  },
+  {
+    "id": "offer.unvalued",
+    "lines": [
+      "No sé cuánto vale {what}. Así no te puedo decir.",
+      "Con {what} no sé qué hacer; no sé qué vale."
+    ]
+  },
+  {
+    "id": "offer.short",
+    "lines": [
+      "No me alcanza para ese trato con {what}.",
+      "No puedo con {what}; no lo tengo, o no me sobra."
+    ],
+    "formal": ["No me es posible ese trato con {what}."]
+  },
+  {
+    "id": "offer.gift",
+    "lines": ["Bueno, si me lo das, lo recibo. Gracias.", "Eso sí lo acepto, gracias."],
+    "formal": ["Lo acepto, se lo agradezco."]
+  },
+  {
+    "id": "offer.accept",
+    "lines": ["Trato hecho.", "Está bien, cambiamos {what}."],
+    "formal": ["Trato hecho, entonces."],
+    "warm": ["Trato hecho, y con gusto: de vos me fío."],
+    "dry": ["Trato. Y que sea el último regateo."]
+  },
+  {
+    "id": "offer.counter",
+    "lines": [
+      "Te doy {kilos} kilos de {what}, no más. ¿Querés?",
+      "Por eso, {kilos} kilos de {what}. Lo toma o lo deja."
+    ],
+    "formal": ["Por eso puedo darle {kilos} kilos de {what}. ¿Le parece?"],
+    "warm": ["Para vos, {kilos} kilos de {what}. Es lo justo, ¿te sirve?"],
+    "dry": ["{kilos} kilos de {what}. Ni uno más."]
+  },
+  {
+    "id": "offer.refuse.price",
+    "lines": ["Ese precio no me sirve por {what}.", "No, por {what} eso es muy poco."],
+    "formal": ["Ese precio no me conviene."],
+    "warm": ["Me duele decirte que no, pero ese precio no me conviene."],
+    "dry": ["No. Ese precio no sirve."]
+  },
+  {
+    "id": "offer.refuse.grudge",
+    "lines": ["Contigo no trato {what}. Ya sabes por qué.", "No hago trato con vos."],
+    "formal": ["No haré tratos con usted."]
+  },
+  {
+    "id": "offer.refuse.tired",
+    "lines": [
+      "Ya regateamos bastante; con {what} no sigo.",
+      "Basta de vueltas, no hay trato por {what}."
+    ],
+    "formal": ["Ya hemos discutido bastante, no habrá trato."]
+  },
+  {
+    "id": "accept.short",
+    "lines": [
+      "Ahora ya no puedo, ni vos podés cumplir lo que dijimos.",
+      "Se nos fue de las manos: ya no alcanza para ese trato."
+    ],
+    "formal": ["Aquello ya no es posible para ninguno de los dos."]
+  },
+  {
+    "id": "accept.thanks",
+    "lines": ["Entonces cerramos.", "Bien, así lo hacemos."],
+    "formal": ["Entonces, queda cerrado."]
+  },
+  {
+    "id": "refuse.ack",
+    "lines": ["Como quieras.", "Está bien, no hay trato."],
+    "formal": ["Como guste."]
+  },
+  {
+    "id": "answer.nothing",
+    "lines": ["¿Qué cosa? No te propuse nada.", "No sé de qué hablás."],
+    "formal": ["No sé a qué se refiere."]
   }
 ]

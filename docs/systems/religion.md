@@ -217,7 +217,14 @@ Los tipos son tendencias. Una religión puede empezar como culto de misterio, vo
 - `sim/religion`: `DoctrineDef` en `content/doctrines/` (afirmación, tema, centralidad, fuente, `truthStatus` y `whyTruth` para el inspector) y `ReligionDef` en `content/religions/` (cultura de la que sale, doctrinas, seres venerados con `truth: none|spirit`, prácticas `offering|festival|taboo|rite|divination` con `believedEffect` y `socialEffect` separados, adherencia, exclusividad, origen contado). Las referencias a cultura, doctrinas, bienes y rasgos se validan al cargar; `religionProblems` revisa lo interno (ofrenda sin destinatario, ser repetido).
 - `seedReligion` escribe `COMMUNITY_RELIGION` por asentamiento con evento `religion.seeded` colgado de la fundación. No crea espíritus: sembrar creencias no cambia `WorldTruth`. Lectores: `villageReligion`, `practicesOfKind`, `tabooOnGood`.
 - La aldea trae folk con ancestros de la casa, el dueño del pozo y el Cielo (los tres sin nadie de verdad), ración de grano para la tablilla, balde anual al pozo, fiesta de la cosecha, tabú de la primera gavilla, velorio y mirar golondrinas.
-- Falta: identidad por persona (Fase 2), economía y fiestas fuera de escena (Fase 3).
+- Falta: economía y fiestas fuera de escena (Fase 3).
+
+## Implementación (Fase 2, identidad por persona, 2026-10-08)
+
+- `sim/religion/identity.ts`: `Affiliation` (creencia, práctica, pertenencia, por fuera; `learnedFrom`, `since`, origen) y `ReligiousIdentity` en la tabla `RELIGIOUS_IDENTITY`. `seedAffiliation` parte de la media de la comunidad (o del promedio con los padres) con desvío; cumplir sigue a creer y a pertenecer; mostrar suma la presión de pertenecer, así que quien pertenece sin creer finge.
+- `PracticeDef.sanction` (0-1) es la gravedad creída de romper un tabú. `sanctionWeight(identidad, comunidad, bien)` da miedo (sanción por creencia) y vergüenza (sanción por pertenencia) y su `penalty`, que se resta a la utilidad: no mira `WorldTruth`. `guiltAfter` y `comfortOf` (parte social para todo el que pertenece, parte de fe solo para el que cree) son las intensidades que usarán la mente y el duelo.
+- **Panel del personaje (2026-10-09):** `characterPanel.faith` (`game/life/panels.ts`) dice la religión de la aldea, cuánto cree, cumple y pertenece en palabras (`faithLevel`: ninguna, leve, firme, honda; sin números) y las prácticas de la religión; nunca el `truthStatus`. La culpa y el consuelo viven en el panel cuando existan los eventos que los producen.
+- Falta el cableado (nacer con identidad, utilidad de lo tabú, estímulo `guilt`, alivio del duelo): ver sub-ítems en el ROADMAP.
 
 ## Tests
 

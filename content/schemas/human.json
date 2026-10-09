@@ -1,0 +1,91 @@
+[
+  {
+    "id": "world_is_dangerous",
+    "species": "human",
+    "name": "El mundo es peligroso",
+    "harmful": true,
+    "lean": { "boldness": -0.25, "reactivity": 0.2 },
+    "effects": {
+      "violence": 0.8,
+      "loss": 0.4,
+      "hardship": 0.3,
+      "calamity": 0.4,
+      "care": -0.3,
+      "plenty": -0.1
+    },
+    "values": { "safety": 0.5, "power": 0.1 }
+  },
+  {
+    "id": "people_are_untrustworthy",
+    "species": "human",
+    "name": "No se puede confiar en la gente",
+    "harmful": true,
+    "lean": { "warmth": -0.25, "sociability": -0.1 },
+    "effects": { "betrayal": 1, "neglect": 0.5, "violence": 0.2, "kindness": -0.4, "care": -0.3 },
+    "values": { "wealth": 0.2, "freedom": 0.2, "family": 0.1 }
+  },
+  {
+    "id": "strength_is_worth",
+    "species": "human",
+    "name": "Valgo lo que valgo por mi fuerza",
+    "lean": { "boldness": 0.25, "warmth": -0.1 },
+    "effects": { "violence": 0.4, "success": 0.4, "failure": -0.2, "kindness": -0.1 },
+    "values": { "power": 0.5, "status": 0.2 }
+  },
+  {
+    "id": "family_first",
+    "species": "human",
+    "name": "La familia es lo primero",
+    "lean": { "warmth": 0.25, "sociability": 0.1 },
+    "effects": { "care": 0.5, "loss": 0.2, "kindness": 0.2, "neglect": -0.5, "betrayal": -0.2 },
+    "values": { "family": 0.6, "tradition": 0.2 }
+  },
+  {
+    "id": "effort_pays",
+    "species": "human",
+    "name": "El esfuerzo rinde",
+    "lean": { "control": 0.25 },
+    "effects": { "success": 0.5, "plenty": 0.3, "failure": -0.4, "injustice": -0.4 },
+    "values": { "wealth": 0.2, "knowledge": 0.2, "status": 0.1 }
+  },
+  {
+    "id": "i_am_unworthy",
+    "species": "human",
+    "name": "No valgo nada",
+    "harmful": true,
+    "lean": { "reactivity": 0.2, "boldness": -0.1 },
+    "effects": {
+      "neglect": 0.7,
+      "failure": 0.4,
+      "violence": 0.3,
+      "care": -0.5,
+      "kindness": -0.3,
+      "success": -0.3,
+      "guilt": 0.3
+    },
+    "values": { "status": 0.3, "pleasure": 0.1 }
+  },
+  {
+    "id": "heaven_is_just",
+    "species": "human",
+    "name": "El Cielo es justo",
+    "lean": { "control": 0.1, "reactivity": -0.1 },
+    "effects": {
+      "blessing": 0.5,
+      "plenty": 0.3,
+      "injustice": -0.5,
+      "calamity": -0.4,
+      "guilt": 0.3
+    },
+    "values": { "justice": 0.4, "tradition": 0.3 }
+  },
+  {
+    "id": "heaven_is_cruel",
+    "species": "human",
+    "name": "El Cielo es cruel",
+    "harmful": true,
+    "lean": { "reactivity": 0.1, "warmth": -0.1 },
+    "effects": { "calamity": 0.6, "injustice": 0.5, "loss": 0.3, "blessing": -0.4, "plenty": -0.2 },
+    "values": { "immortality": 0.3, "freedom": 0.2, "power": 0.2 }
+  }
+]

@@ -21,6 +21,8 @@ import {
   type Percept,
   type PerceptDetail,
   type PlaceKind,
+  type Purpose,
+  type PurposeId,
   type SelfReport,
   type SpaceKind,
   type Standing,
@@ -35,6 +37,155 @@ export type SelfCue = "hungry" | "thirsty" | "tired" | "hurt" | "bleeding" | "si
 export interface SelfView {
   readonly cues: readonly SelfCue[];
 }
+
+/** Lo que el personaje piensa o siente este turno (narration §7, modo introspección). */
+export type ThoughtKind = "remember" | "ponder" | "feel" | "conclude";
+export type Mood = "grief" | "fear" | "longing" | "guilt" | "calm";
+
+/** Qué tan seguro llega a una conclusión (las bandas de `confidenceBand`, sin cifras). */
+export type ConclusionBand = "convinced" | "likely" | "maybe" | "hunch";
+
+/**
+ * Lo que el personaje concluyó al pensar (player-loop «Pensar»): el hecho (predicado del catálogo de
+ * inferencias y las personas que nombra), la banda de seguridad, el hecho rival si dudó entre dos y
+ * la evidencia citada por clase (lo que lo sostiene, no las cifras).
+ */
+export interface ConclusionInput {
+  readonly pred: string;
+  readonly args: readonly EntityRef[];
+  readonly band: ConclusionBand;
+  readonly rival?: { readonly pred: string; readonly args: readonly EntityRef[] };
+  readonly because?: readonly string[];
+}
+
+export interface ConclusionView {
+  readonly pred: string;
+  /** Etiquetas locales de las personas que nombra el hecho, en orden (las demás se omiten). */
+  readonly who: readonly string[];
+  readonly band: ConclusionBand;
+  readonly rival?: { readonly pred: string; readonly who: readonly string[] };
+  readonly because?: readonly string[];
+}
+
+/** Un pensamiento que le sale de la sim (su mente, no la verdad): a quién recuerda y qué siente. */
+export interface ThoughtInput {
+  readonly kind: ThoughtKind;
+  /** Solo con `kind: "conclude"`: la conclusión de pensar sobre algo. */
+  readonly conclusion?: ConclusionInput;
+  readonly about?: EntityRef;
+  readonly mood?: Mood;
+  /** El recuerdo está deformado o borroso: no se cuenta como cierto (narration §7). */
+  readonly hazy?: boolean;
+  /** Un gusto propio que viene atado a un recuerdo (cómo lo nombra el catálogo y cómo lo recuerda). */
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
+}
+
+export interface ThoughtView {
+  readonly kind: ThoughtKind;
+  readonly conclusion?: ConclusionView;
+  /** Etiqueta local de la persona en que piensa. */
+  readonly about?: string;
+  readonly mood?: Mood;
+  readonly hazy?: boolean;
+  readonly taste?: { readonly name: string; readonly recalls: "ill" | "good" };
+}
+
+/** Un gusto propio que viene al caso este turno (npc-psychology §16): lo que el personaje sabe de sí. */
+export type TasteStance = "loves" | "likes" | "dislikes" | "loathes";
+export interface TasteView {
+  /** Cómo lo nombra («lo amargo», «el té»): viene del catálogo, el narrador no lo inventa. */
+  readonly name: string;
+  readonly stance: TasteStance;
+  /** A quién le recuerda («tu madre»), si el gusto viene de alguien que conoce. */
+  readonly reminds?: string;
+  /** Si nació de algo que recuerda: `ill` (le cayó mal) o `good` (un buen momento). */
+  readonly recalls?: "ill" | "good";
+}
+/**
+ * Una deuda o promesa del libro del personaje que vale la pena recordar ahora (contracts §14): solo
+ * lo que cree, sin números de la verdad. `what` ya viene dicho («unas monedas», «un favor»).
+ */
+export interface DueView {
+  readonly direction: "i-owe" | "owed-to-me";
+  /** Cómo llama a la otra parte (nombre o relación); el narrador no inventa otro. */
+  readonly who: string;
+  readonly what: string;
+  /** Ya pasó el plazo, o falta poco. */
+  readonly state: "overdue" | "soon";
+  /** Si no está seguro de lo que recuerda, el narrador lo dice borroso. */
+  readonly sure: boolean;
+}
+/**
+ * La lectura de un adivino que el personaje fue a ver (divination §5): lo que vio tirar y lo que
+ * le dijeron, nunca si es cierto ni lo que el adivino creyó leer.
+ */
+export interface ReadingView {
+  /** Con qué lee («huesos de gallina»). */
+  readonly instrument: string;
+  /** Los signos que cayeron, como los nombra el oficio. */
+  readonly signs: readonly string[];
+  /** Cómo llama a quien lee (nombre o relación). */
+  readonly diviner: string;
+  /** Lo que anunció: grandeza, ruina, muerte o fortuna, y qué tan fuerte lo dijo. */
+  readonly told: "greatness" | "ruin" | "death" | "fortune";
+  readonly strength: "strong" | "faint";
+  /** Habló en vago (sirve a cualquiera). */
+  readonly vague: boolean;
+  /** El personaje no termina de creerlo. */
+  readonly doubtful: boolean;
+}
+/** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
+/**
+ * Una falta de etiqueta en la que el personaje fue parte (social §4): la que recibió o la que
+ * cometió y notó por la reacción del otro. Solo lo que se ve: la norma rota y qué hizo el ofendido.
+ */
+export interface OffenseView {
+  readonly role: "received" | "caused";
+  /** Cómo llama al otro (nombre o relación). */
+  readonly who: string;
+  /** La norma rota (id de la forma de la etiqueta: tuteo, saludo, reverencia...). */
+  readonly norm: string;
+  readonly response: "rebuke" | "punish" | "ignore";
+}
+
+export type SpecialMode = "montage" | "dream" | "aftermath";
+
+/**
+ * Lo que el personaje vivió en un salto de tiempo (modo `montage`, narration §1): solo cuentas de
+ * lo propio —qué hizo, cuántas veces, cuántas le salieron mal—, nada del mundo que no vio.
+ */
+export interface StretchView {
+  /** Días de mundo que pasaron. */
+  readonly days: number;
+  /** Lo que más hizo (verbo del catálogo), de más a menos veces; el resto se omite. */
+  readonly did: readonly {
+    readonly verb: string;
+    readonly times: number;
+    readonly failed: number;
+  }[];
+  /** Con cuántas personas distintas habló. */
+  readonly spoke: number;
+  /** Se lastimó en el trabajo o en una pelea. */
+  readonly hurt: boolean;
+  /** Peleó. */
+  readonly fought: boolean;
+  /**
+   * Lo que el cuerpo sigue sintiendo de las heridas (qué parte y cómo), de la más grave a la menos;
+   * son las señales que el personaje siente (`bodySigns`), nunca el estado real de la herida.
+   */
+  readonly wounds?: readonly { readonly zone: string; readonly sign: string }[];
+  /** Etiquetas locales de los conocidos con los que habló (a los extraños no se los nombra). */
+  readonly spokeWith: readonly string[];
+}
+
+/** Lo que arma quien tiene la verdad: igual que `StretchView`, con las personas en vez de etiquetas. */
+export interface StretchInput extends Omit<StretchView, "spokeWith"> {
+  /** Con quién habló, en orden estable; el muro deja solo a los conocidos. */
+  readonly metWith: readonly AgentId[];
+}
+
+/** Cuántos conocidos como máximo se nombran en un salto. */
+export const STRETCH_NAMED = 3;
 
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
@@ -91,6 +242,8 @@ export interface LocalLabel {
   readonly standing?: Standing;
   /** Lo reconoció: sabe quién es. */
   readonly known: boolean;
+  /** Un extraño de la misma figura que ya vio otro día: «el desconocido de ayer». */
+  readonly seenBefore?: boolean;
   /** Cuán seguro está de lo que leyó (de quién es, o de que hay alguien). */
   readonly certainty: Certainty;
 }
@@ -200,6 +353,14 @@ export type EffectView =
       readonly target?: string;
       readonly self: boolean;
       readonly done: boolean;
+    }
+  | {
+      readonly kind: "consult";
+      readonly with?: string;
+      /** Si llegó a sentarse a la consulta. */
+      readonly delivered: boolean;
+      /** Monedas que dejó (0 si no pagó). */
+      readonly paid: number;
     };
 
 export interface OutcomeView {
@@ -208,6 +369,14 @@ export interface OutcomeView {
   /** Lo que nota que le jugó en contra (la luz, el terreno, los nervios). */
   readonly cues: readonly FactorKey[];
   readonly effect: EffectView;
+  /** El porqué que el personaje declaró para este paso (su palabra, no una verdad): se cita tal cual. */
+  readonly purpose?: PurposeView;
+}
+
+/** El porqué declarado, con el beneficiario como etiqueta local si es alguien. */
+export interface PurposeView {
+  readonly motive: PurposeId;
+  readonly forWhom?: string;
 }
 
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
@@ -217,6 +386,19 @@ export interface PlayerView {
   readonly scene: SceneView;
   readonly percepts: readonly PerceptView[];
   readonly outcomes: readonly OutcomeView[];
+  /** Lo que piensa, recuerda o siente; vacío casi siempre. */
+  readonly thoughts: readonly ThoughtView[];
+  /** Gustos propios que vale la pena decir ahora (`mentionableTastes`); vacío casi siempre. */
+  readonly tastes: readonly TasteView[];
+  /** Una deuda o promesa por vencer o vencida que el personaje recuerda ahora; vacío casi siempre. */
+  readonly dues: readonly DueView[];
+  readonly offenses: readonly OffenseView[];
+  /** Las lecturas de adivino de este turno; vacío casi siempre. */
+  readonly readings: readonly ReadingView[];
+  /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
+  readonly mode?: SpecialMode;
+  /** Con el modo `montage`: lo que vivió en el salto. */
+  readonly stretch?: StretchView;
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -232,6 +414,8 @@ export interface Acquaintance {
 export interface StepView {
   readonly verb: string;
   readonly self: SelfReport;
+  /** El porqué que declaró el propio jugador; el narrador solo lo cita. */
+  readonly purpose?: Purpose | undefined;
 }
 
 export interface ViewInput {
@@ -239,11 +423,25 @@ export interface ViewInput {
   readonly scene: SceneInput;
   /** Los percepts del jugador de este turno, en el orden en que llegaron. */
   readonly percepts: readonly Percept[];
+  /** Ids de los percepts de extraños que el personaje ya vio otro día (`strangersSeenBefore`). */
+  readonly seenBefore?: ReadonlySet<string>;
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
+  readonly thoughts?: readonly ThoughtInput[];
+  readonly tastes?: readonly TasteView[];
+  readonly dues?: readonly DueView[];
+  readonly offenses?: readonly OffenseView[];
+  readonly readings?: readonly ReadingView[];
+  readonly mode?: SpecialMode;
+  readonly stretch?: StretchInput;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
+  /**
+   * Avisa a quien arma la vista qué entidad real está detrás de cada etiqueta local reconocida.
+   * Queda del lado del motor (memoria de continuidad): no entra en `PlayerView`.
+   */
+  readonly onLabel?: (localId: string, entity: EntityRef) => void;
 }
 
 export function timeOfDay(hour: number): TimeOfDay {
@@ -309,13 +507,20 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     });
     if (a?.name !== undefined) words.add(a.name);
     byEntity.set(entity, localId);
+    input.onLabel?.(localId, entity);
     return localId;
   };
 
-  const stranger = (certainty: Certainty, figure?: Figure, attire?: Attire): string => {
+  const stranger = (
+    certainty: Certainty,
+    figure?: Figure,
+    attire?: Attire,
+    seenBefore = false,
+  ): string => {
     const localId = `e${labels.length + 1}`;
     labels.push({
       localId,
+      ...(seenBefore ? { seenBefore: true } : {}),
       ...(figure !== undefined ? { figure } : {}),
       ...(attire !== undefined ? { attire, standing: standingOf(attire) } : {}),
       known: false,
@@ -333,6 +538,16 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     believed: step.self.believed,
     cues: [...step.self.cues],
     effect: effectView(step.self, target, input.player),
+    ...(step.purpose
+      ? {
+          purpose: {
+            motive: step.purpose.motive,
+            ...(isAgent(step.purpose.forWhom)
+              ? { forWhom: known(step.purpose.forWhom, "sure") }
+              : {}),
+          },
+        }
+      : {}),
   }));
 
   const percepts: PerceptView[] = [];
@@ -346,7 +561,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     const who =
       identity !== undefined && isAgent(identity.value)
         ? known(identity.value, certaintyOf(identity.confidence), figure, attire)
-        : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure, attire);
+        : stranger(
+            certaintyOf(p.fields.presence?.confidence ?? 0),
+            figure,
+            attire,
+            input.seenBefore?.has(p.id) === true,
+          );
     const action = p.fields.action?.value;
     const said = p.fields.words?.value;
     percepts.push({
@@ -358,11 +578,63 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     });
   }
 
+  const conclusionWho = (args: readonly EntityRef[]): string[] =>
+    args.filter(isAgent).map((a) => known(a, "sure"));
+  const thoughts: ThoughtView[] = (input.thoughts ?? []).map((t) => ({
+    kind: t.kind,
+    ...(t.conclusion !== undefined
+      ? {
+          conclusion: {
+            pred: t.conclusion.pred,
+            who: conclusionWho(t.conclusion.args),
+            band: t.conclusion.band,
+            ...(t.conclusion.rival !== undefined
+              ? {
+                  rival: {
+                    pred: t.conclusion.rival.pred,
+                    who: conclusionWho(t.conclusion.rival.args),
+                  },
+                }
+              : {}),
+            ...(t.conclusion.because !== undefined ? { because: [...t.conclusion.because] } : {}),
+          },
+        }
+      : {}),
+    ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
+    ...(t.mood !== undefined ? { mood: t.mood } : {}),
+    ...(t.hazy === true ? { hazy: true } : {}),
+    ...(t.taste !== undefined ? { taste: t.taste } : {}),
+  }));
+
   const view = {
     self: { cues: [...(input.self ?? [])] },
     scene: sceneView(input.scene),
     percepts,
     outcomes,
+    thoughts,
+    tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
+    dues: (input.dues ?? []).map((d) => ({ ...d })),
+    offenses: (input.offenses ?? []).map((o) => ({ ...o })),
+    readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
+    ...(input.mode !== undefined ? { mode: input.mode } : {}),
+    ...(input.mode === "montage" && input.stretch !== undefined
+      ? {
+          stretch: {
+            days: input.stretch.days,
+            did: input.stretch.did.map((d) => ({ ...d })),
+            spoke: input.stretch.spoke,
+            hurt: input.stretch.hurt,
+            fought: input.stretch.fought,
+            ...(input.stretch.wounds !== undefined && input.stretch.wounds.length > 0
+              ? { wounds: input.stretch.wounds.map((w) => ({ ...w })) }
+              : {}),
+            spokeWith: input.stretch.metWith
+              .filter((a) => input.acquaintances.has(a))
+              .slice(0, STRETCH_NAMED)
+              .map((a) => known(a, "sure")),
+          },
+        }
+      : {}),
     labels,
     lexicon: [...words].sort(compareStrings),
   };
@@ -390,6 +662,7 @@ function effectView(
   const e = self.effect;
   switch (e.kind) {
     case "none":
+    case "ponder":
       return { kind: "none" };
     case "move":
       return {
@@ -494,6 +767,15 @@ function effectView(
     case "tend": {
       const self = e.target === player;
       return { kind: "tend", ...(self ? {} : target(e.target)), self, done: e.done };
+    }
+    case "consult": {
+      const w = target(e.with).target;
+      return {
+        kind: "consult",
+        ...(w !== undefined ? { with: w } : {}),
+        delivered: e.delivered,
+        paid: e.paid?.amount ?? 0,
+      };
     }
   }
 }

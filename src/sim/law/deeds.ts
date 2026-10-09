@@ -12,6 +12,15 @@ export type DeedKind = "theft" | "assault" | "default";
 /** Cómo lo supo: lo vio, lo oyó (sin ver), se lo contaron. */
 export type DeedVia = "saw" | "heard" | "told";
 
+/**
+ * La lectura del porqué que acompaña a un hecho: el `purposeWeight` (actions) de lo que leyó quien
+ * guarda el hecho, de -1 (hostil, seguro) a 1 (benigno, seguro). Law no importa actions: el
+ * cableado lo calcula con la lectura (`ReadPurpose`) y se lo da.
+ */
+export interface DeedRead {
+  readonly weight: number;
+}
+
 export interface Deed {
   readonly kind: DeedKind;
   /** Quién lo hizo, si lo reconoció (si no, se sabe que pasó y no quién). */
@@ -21,6 +30,11 @@ export interface Deed {
   readonly event: EventId;
   readonly at: Tick;
   readonly via: DeedVia;
+  /**
+   * Lo que quien guarda el hecho leyó del porqué del actor (actions, `readPurpose`): con esto juzga
+   * si es culpa y cuánta. Sin lectura se juzga por el hecho solo.
+   */
+  readonly read?: DeedRead;
 }
 
 export interface KnownDeeds {
@@ -55,9 +69,13 @@ export function deedsBy(known: KnownDeeds | undefined, who: AgentId): readonly D
 
 const GRAVITY: readonly DeedKind[] = ["assault", "theft", "default"];
 
-/** El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber). */
+/**
+ * El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber).
+ * Un hecho que `knower` leyó como disculpable (`reportable` falso: un regalo, un malentendido) no
+ * cuenta: no lo denuncia ni se lo reprocha.
+ */
 export function worstDeed(known: KnownDeeds | undefined, who: AgentId): Deed | null {
-  const by = deedsBy(known, who);
+  const by = deedsBy(known, who).filter(reportable);
   for (const kind of GRAVITY) {
     const found = by.find((d) => d.kind === kind);
     if (found) return found;
@@ -93,4 +111,33 @@ export const NOTORIETY_EDGE = 0.12;
 
 export function notorietyEdge(fame: number): number {
   return -NOTORIETY_EDGE * Math.min(1, Math.max(0, fame));
+}
+
+/** Desde cuánta culpa leída un hecho se denuncia (law §6): debajo es malentendido o disculpa. */
+export const REPORT_EDGE = 0.5;
+/** El tope de la culpa leída: un daño leído como venganza o robo no pasa de este múltiplo. */
+export const MAX_CULPABILITY = 1.5;
+
+/**
+ * Cuánta culpa le ve a un hecho quien lo juzga, de 0 a `MAX_CULPABILITY`, según el porqué que
+ * leyó y no el que es verdad: 1 sin lectura; el mismo `theft` leído como regalo casi no pesa y
+ * leído como robo seguro pesa más. La duda ya viene en el peso (`purposeWeight` lo atenúa).
+ */
+export function culpability(deed: Pick<Deed, "read">): number {
+  if (deed.read === undefined) return 1;
+  const w = Math.min(1, Math.max(-1, deed.read.weight));
+  return Math.min(MAX_CULPABILITY, Math.max(0, 1 - w));
+}
+
+/** Si quien juzga el hecho lo denunciaría: la culpa que le ve pasa `REPORT_EDGE`. */
+export function reportable(deed: Pick<Deed, "read">): boolean {
+  return culpability(deed) >= REPORT_EDGE;
+}
+
+/**
+ * Cuánto escala la pena por la culpa leída (law §9): la pena base se multiplica por esto, de 0
+ * (se desestima) a `MAX_CULPABILITY`.
+ */
+export function penaltyScale(deed: Pick<Deed, "read">): number {
+  return reportable(deed) ? culpability(deed) : 0;
 }

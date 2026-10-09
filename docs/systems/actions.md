@@ -297,6 +297,10 @@ Con la resolución de zona de simulation §4:
   - **Ledger:** `holdings(cuenta)` y `isMoney` (la unidad `coin` o `coin:*`) responden qué hay para tomar y quién tiene con qué.
 - Los lugares (`PLACE_KINDS`, `space.place`, `space.location`, mapa local) pasaron a `sim/world/space.ts`, donde ARCHITECTURE pone el espacio.
 
+**Hecho (Fase 2, 2026-10-08) — factibilidad creída:** `feasibility.ts` (`assessPlan` contra un `BeliefView`: cuerpo sentido, autoimagen, posición y tenencia creídas; avisos con `blocks` para NPC), referencias fantasma (`KnownEntity.phantom` → estado `phantom`, se usa como única y queda en `DraftResult.phantoms`), acto de habla declarado en `speak.content` (`DraftAct` → `SpeakAct`) y `clarifyQuestion`. El juego avisa antes del primer intento y si el jugador repite lo mismo, lo intenta. Ítems abiertos en el ROADMAP.
+
+**Hecho (2026-10-09) — fantasmas en el juego:** `knownEntities` (`game/life/known.ts`) marca `phantom` a padres y hermanos muertos que el personaje cree vivos (`believesAlive`) y a quien cree acá sin que esté. Falta que `not_here` le corrija la creencia (ROADMAP).
+
 ## Tests
 
 - **Ningún resultado desde el texto:** para un corpus de frases con resultados ("lo mato", "encuentro", "me da"), el parser nunca produce cambios de estado y siempre llena `stripped`.
@@ -327,3 +331,5 @@ Con la resolución de zona de simulation §4:
 ## Ampliación (2026-10-08): la intención se percibe
 
 La intención declarada del `ActionPlan` (por qué, para quién) no es un adorno: los demás pueden leerla, malinterpretarla o suponerla a partir de la acción y el contexto (perception, dialogue). Una misma acción con otra intención se juzga distinto (law, social-structure). El parser conserva la intención como dato del plan; el narrador no la inventa. Fase 2.
+
+Implementado (núcleo puro, `sim/actions/purpose.ts`): `Purpose` es verdad del actor y los demás nunca la leen directo; ven el verbo, el contexto y, si lo dijo y lo oyeron, la declaración. `readPurpose` devuelve una `ReadPurpose` con confianza y `mistaken`; el sesgo del lector (sospecha, aprecio) infla los motivos hostiles o los benignos; `purposeWeight` es lo que juzgan law y social-structure, sobre la lectura y no sobre la verdad.

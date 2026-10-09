@@ -12,6 +12,7 @@
 // para que una configuración vieja nunca diga algo que el mundo ignoró en silencio.
 
 import { contentId, z } from "../../core/index.ts";
+import { TasteSpec, TemperamentSpec, UpbringingSpec } from "../../sim/index.ts";
 
 export const GameMode = z.enum(["realistic", "novel"]);
 export type GameMode = z.infer<typeof GameMode>;
@@ -43,16 +44,33 @@ export type FamilyPosition = z.infer<typeof FamilyPosition>;
 
 /**
  * Lo que se puede elegir del personaje (game-modes §2.1): sexo, edad de entrada y posición de la
- * familia se buscan entre los nacimientos de la aldea (§2.2, paso 1). El nombre, la especie, el
+ * familia se buscan entre los nacimientos de la aldea (§2.2, paso 1), y el temperamento pedido pesa en esa búsqueda. El nombre, la especie, el
  * lugar y el resto esperan a su fase (ROADMAP).
  */
-export const CharacterSpec = z.strictObject({
-  species: contentId.optional(),
-  sex: z.enum(["female", "male"]).optional(),
-  name: z.string().trim().min(1).max(60).optional(),
-  entryAge: Age.optional(),
-  family: z.strictObject({ position: FamilyPosition.optional() }).optional(),
-});
+export const CharacterSpec = z
+  .strictObject({
+    species: contentId.optional(),
+    sex: z.enum(["female", "male"]).optional(),
+    name: z.string().trim().min(1).max(60).optional(),
+    entryAge: Age.optional(),
+    family: z.strictObject({ position: FamilyPosition.optional() }).optional(),
+    /** Rangos por eje de temperamento (§2.1): pesan en la búsqueda del nacimiento (§2.2). */
+    temperament: TemperamentSpec.optional(),
+    /** Gustos pedidos (§2.1): se fijan sobre los generados; el contenido rechaza lo que no conoce. La crianza tiene forma pero no se resuelve todavía. */
+    tastes: z.array(TasteSpec).optional(),
+    upbringing: UpbringingSpec.optional(),
+  })
+  .superRefine((c, ctx) => {
+    for (const key of ["upbringing"] as const) {
+      if (c[key] !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "todavía no se resuelve en la vida (ROADMAP: Cablear la crianza del setup)",
+        });
+      }
+    }
+  });
 export type CharacterSpec = z.infer<typeof CharacterSpec>;
 
 /** Otros agentes con dedo de oro (game-modes §8). */

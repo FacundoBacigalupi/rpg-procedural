@@ -2,13 +2,22 @@
 // plantillas si no hay red, narration §11) desde la `PlayerView`; acá no se lee el mundo.
 
 import { EARTHLIKE_CLOCK, formatTick, type Tick } from "../core/index.ts";
-import type {
-  CharacterPanel,
-  EnvironmentItem,
-  Interrupt,
-  InventoryPanel,
-  Suggestion,
+import {
+  type AboutPanel,
+  type BookLine,
+  type BookPanel,
+  type CharacterPanel,
+  type EnvironmentItem,
+  type HypothesesPanel,
+  type Interrupt,
+  type InventoryPanel,
+  type PeoplePanel,
+  type Recap,
+  type Suggestion,
+  type ThinkResult,
+  TONE_MARK,
 } from "../game/index.ts";
+import type { Fact, PurposeId } from "../sim/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -63,12 +72,35 @@ const SIGNS: Readonly<Record<string, string>> = {
   bone_broken: "algo está roto",
 };
 
-const PRACTICE: Readonly<Record<CharacterPanel["skills"][number]["practice"], string>> = {
-  never_much: "poco",
-  some: "algunas veces",
-  a_lot: "mucho",
-  all_life: "toda la vida",
+const STANDING: Readonly<Record<CharacterPanel["skills"][number]["standing"], string>> = {
+  hardly: "casi nada",
+  novice: "recién empezás",
+  competent: "te defendés",
+  skilled: "sabés bastante",
+  master: "sos de los buenos",
 };
+
+const FAITH_BELIEF: Readonly<Record<NonNullable<CharacterPanel["faith"]>["belief"], string>> = {
+  none: "no creés en nada de eso",
+  faint: "dudás de lo que enseñan",
+  firm: "creés en lo que enseñan",
+  deep: "creés a fondo en lo que enseñan",
+};
+
+const FAITH_PRACTICE: Readonly<Record<NonNullable<CharacterPanel["faith"]>["practice"], string>> = {
+  none: "no cumplís nada",
+  faint: "cumplís poco",
+  firm: "cumplís lo que toca",
+  deep: "no fallás en ninguna práctica",
+};
+
+const FAITH_BELONGING: Readonly<Record<NonNullable<CharacterPanel["faith"]>["belonging"], string>> =
+  {
+    none: "te sentís ajeno a los demás fieles",
+    faint: "te sentís apenas parte",
+    firm: "te sentís parte",
+    deep: "te sentís uno con la gente de tu fe",
+  };
 
 const AMOUNT: Readonly<Record<InventoryPanel["carried"][number]["amount"], string>> = {
   a_little: "un poco de",
@@ -82,6 +114,35 @@ const LASTS: Readonly<Record<InventoryPanel["larder"][number]["lasts"], string>>
   weeks: "alcanza para unas semanas",
   months: "alcanza para unos meses",
   a_year: "alcanza hasta la próxima cosecha",
+};
+
+const BURDEN: Readonly<
+  Record<"trauma" | "guilt", Readonly<Record<"light" | "heavy" | "crushing", string>>>
+> = {
+  trauma: {
+    light: "Un sobresalto te queda dentro",
+    heavy: "Lo que viviste te sigue de cerca",
+    crushing: "Lo que viviste no te deja en paz",
+  },
+  guilt: {
+    light: "Algo que hiciste te roza la conciencia",
+    heavy: "Cargás con algo que hiciste",
+    crushing: "Lo que hiciste te aplasta",
+  },
+};
+
+const DEED: Readonly<Record<string, string>> = {
+  theft: "Lo que le sacaste",
+  assault: "Lo que le hiciste",
+  default: "Lo que le debés",
+};
+
+const STANCE: Readonly<Record<"none" | "avoid" | "repair" | "confess" | "deflect", string>> = {
+  none: "lo dejás pasar",
+  avoid: "preferís no cruzártelo",
+  repair: "querés repararlo",
+  confess: "querés confesarlo",
+  deflect: "te das excusas y buscás otro culpable",
 };
 
 export function renderCharacter(p: CharacterPanel): string {
@@ -101,9 +162,32 @@ export function renderCharacter(p: CharacterPanel): string {
   if (p.family.length > 0) {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }
+  const taste = (stances: readonly string[]) =>
+    p.tastes.filter((t) => stances.includes(t.stance)).map((t) => t.name);
+  const liked = taste(["loves", "likes"]);
+  const disliked = taste(["dislikes", "loathes"]);
+  if (liked.length > 0) lines.push(`Te gusta: ${liked.join(", ")}.`);
+  if (disliked.length > 0) lines.push(`No te gusta: ${disliked.join(", ")}.`);
+  if (p.faith) {
+    const f = p.faith;
+    lines.push(
+      `Tu fe (${f.religion}): ${FAITH_BELIEF[f.belief]}; ${FAITH_PRACTICE[f.practice]}; ${FAITH_BELONGING[f.belonging]}.`,
+    );
+    if (f.practices.length > 0) {
+      lines.push(`Lo que se hace: ${f.practices.map((x) => x.name).join(", ")}.`);
+    }
+  }
+  if (p.conscience) {
+    for (const b of p.conscience.burdens) lines.push(`${BURDEN[b.kind][b.weight]}.`);
+    for (const g of p.conscience.guilt) {
+      lines.push(`${DEED[g.deed] ?? "Lo que hiciste"} (${g.other}): ${STANCE[g.stance]}.`);
+    }
+  }
   if (p.skills.length > 0) {
-    lines.push("Lo que hiciste en tu vida:");
-    for (const s of p.skills) lines.push(`  ${s.name}: ${PRACTICE[s.practice]}`);
+    lines.push("Lo que creés saber hacer:");
+    for (const s of p.skills) {
+      lines.push(`  ${s.name}: ${STANDING[s.standing]}${s.sure ? "" : " (o eso creés)"}`);
+    }
   }
   return lines.join("\n");
 }
@@ -122,6 +206,169 @@ export function renderInventory(p: InventoryPanel): string {
   if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
   for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
   return lines.join("\n");
+}
+
+const SURETY: Readonly<Record<BookLine["sure"], string>> = {
+  sure: "",
+  unsure: " (no estás del todo seguro)",
+  vague: " (lo recordás vagamente)",
+};
+
+function dueText(days: number | null): string {
+  if (days === null) return "sin plazo que recuerdes";
+  if (days === 0) return "para hoy";
+  if (days > 0) return days === 1 ? "para mañana" : `en ${days} días`;
+  return days === -1 ? "vencida desde ayer" : `vencida hace ${-days} días`;
+}
+
+function bookWhat(w: BookLine["what"]): string {
+  if (w.kind === "coins") return `${w.coins} ${w.coins === 1 ? "moneda" : "monedas"} de cobre`;
+  if (w.kind === "good") return `${AMOUNT[w.amount]} ${w.good}`;
+  if (w.kind === "favor") return `un favor (${w.what})`;
+  return `silencio sobre ${w.about}`;
+}
+
+/** El libro de deudas y promesas (contracts §14): lo que debés primero, lo que te deben después. */
+export function renderBook(p: BookPanel): string {
+  if (p.lines.length === 0)
+    return "No le debés nada a nadie ni nadie te debe a vos, que recuerdes.";
+  const lines: string[] = [];
+  for (const dir of ["i-owe", "owed-to-me"] as const) {
+    const mine = p.lines.filter((l) => l.direction === dir);
+    if (mine.length === 0) continue;
+    lines.push(dir === "i-owe" ? "Lo que debés:" : "Lo que te deben:");
+    for (const l of mine) {
+      const how = l.kind === "debt" ? "fiado" : "palabra dada";
+      const late = l.defaulted ? "; ya está en mora" : "";
+      lines.push(
+        `  ${l.other}: ${bookWhat(l.what)}, ${dueText(l.dueInDays)} (${how}${late})${SURETY[l.sure]}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
+const PURPOSE_TEXT: Readonly<Record<PurposeId, string>> = {
+  sustenance: "conseguir de comer",
+  gift: "hacer un regalo",
+  payment: "pagar lo que debe",
+  gain: "sacar provecho",
+  theft: "quedarse con lo ajeno",
+  harm: "hacer daño",
+  defense: "defenderse",
+  revenge: "vengarse",
+  help: "ayudar",
+  curiosity: "curiosear",
+  concealment: "ocultar algo",
+  devotion: "cumplir con su fe",
+  duty: "cumplir con su deber",
+};
+
+const ABOUT_SURETY: Readonly<Record<AboutPanel["aliveSurety"], string>> = {
+  sure: "",
+  unsure: " (no del todo seguro)",
+  vague: " (vagamente)",
+};
+
+/** «Qué sé de X»: lo que cree de esa persona o cosa y lo que le toca del libro. */
+export function renderAbout(p: AboutPanel): string {
+  const lines: string[] = [];
+  if (p.kind === "person") {
+    if (p.alive === "dead") lines.push(`Creés que ${p.name} murió${ABOUT_SURETY[p.aliveSurety]}.`);
+    else if (p.alive === "alive")
+      lines.push(`Creés que ${p.name} está vivo${ABOUT_SURETY[p.aliveSurety]}.`);
+    if (p.where.state === "here") lines.push(`Lo tenés a la vista, acá.`);
+    else if (p.where.state === "elsewhere") {
+      const d = p.where.daysAgo;
+      const when = d === 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`;
+      lines.push(
+        `La última vez que lo viste no estaba acá, fue ${when}${ABOUT_SURETY[p.where.surety]}.`,
+      );
+    } else lines.push("No sabés dónde anda.");
+    if (p.purpose !== undefined)
+      lines.push(
+        `Por lo que le viste hacer, te parece que anda por ${PURPOSE_TEXT[p.purpose.motive]}${ABOUT_SURETY[p.purpose.surety]}.`,
+      );
+  } else if (p.where.state === "here") lines.push(`Estás en ${p.name}.`);
+  else lines.push(`Conocés ${p.name}, pero no tenés más para decir.`);
+  const owe = p.book.filter((l) => l.direction === "i-owe");
+  const owed = p.book.filter((l) => l.direction === "owed-to-me");
+  const entry = (l: BookLine) => {
+    const how = l.kind === "debt" ? "fiado" : "palabra dada";
+    const late = l.defaulted ? "; ya está en mora" : "";
+    return `  ${bookWhat(l.what)}, ${dueText(l.dueInDays)} (${how}${late})${SURETY[l.sure]}`;
+  };
+  if (owe.length > 0) lines.push("Le debés:", ...owe.map(entry));
+  if (owed.length > 0) lines.push("Te debe:", ...owed.map(entry));
+  return lines.join("\n");
+}
+
+const RECAP_DID: Readonly<Record<string, string>> = {
+  work: "trabajando",
+  gather: "juntando lo que da el campo",
+  tend: "atendiendo lo tuyo",
+  cook: "cocinando",
+  eat: "comiendo",
+  rest: "descansando",
+  sleep: "durmiendo",
+  speak: "hablando con alguien",
+  trade: "con tus tratos",
+  move: "yendo de un lado a otro",
+  search: "buscando",
+  consult: "consultando a un adivino",
+};
+
+const RECAP_KIND: readonly [string, string][] = [
+  ["body.died", "la muerte de alguien"],
+  ["combat.", "una pelea"],
+  ["action.give", "un regalo"],
+  ["action.speak", "una charla"],
+  ["action.trade", "un trato"],
+  ["action.take", "algo que se llevaron o que tomaste"],
+  ["divination.", "lo que te dijo un adivino"],
+  ["religion.", "un rito"],
+];
+
+const dayText = (d: number) => (d === 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`);
+
+/** El recuento al volver: lo último que hacías y lo último que recordás. */
+export function renderRecap(r: Recap): string {
+  const lines: string[] = [];
+  if (r.lastDid !== undefined) {
+    const what = RECAP_DID[r.lastDid] ?? "ocupándote de lo tuyo";
+    lines.push(`Lo último que hacías: ${what} (${dayText(r.lastDidDaysAgo ?? 0)}).`);
+  }
+  for (const m of r.recent) {
+    const what = RECAP_KIND.find(([prefix]) => m.kind.startsWith(prefix))?.[1] ?? "algo que pasó";
+    const feel = m.feel === "bad" ? ", y todavía pesa" : m.feel === "good" ? ", y fue bueno" : "";
+    const who = m.with.length > 0 ? ` con ${m.with.join(" y ")}` : "";
+    lines.push(`Recordás ${what}${who}, ${dayText(m.daysAgo)}${feel}.`);
+  }
+  return lines.join("\n");
+}
+
+/** La gente que conoce y lo que cree de cada una, una línea por persona. */
+export function renderPeople(p: PeoplePanel): string {
+  if (p.people.length === 0) return "No conocés a nadie todavía.";
+  return p.people
+    .map((e) => {
+      const a = e.about;
+      const alive =
+        a.alive === "dead"
+          ? `murió${ABOUT_SURETY[a.aliveSurety]}`
+          : a.alive === "alive"
+            ? `vive${ABOUT_SURETY[a.aliveSurety]}`
+            : "no sabés si vive";
+      const where =
+        a.where.state === "here"
+          ? "está acá"
+          : a.where.state === "elsewhere"
+            ? `no estaba acá ${a.where.daysAgo === 0 ? "hoy" : a.where.daysAgo === 1 ? "ayer" : `hace ${a.where.daysAgo} días`}${ABOUT_SURETY[a.where.surety]}`
+            : "no sabés dónde anda";
+      const rel = e.relation === undefined ? "" : ` (${e.relation})`;
+      return `${e.name}${rel}: ${alive}; ${where}.`;
+    })
+    .join("\n");
 }
 
 const INTERRUPTS: Readonly<Record<Interrupt["kind"], string>> = {
@@ -160,6 +407,12 @@ export function renderSuggestion(s: Suggestion): string {
   return s.with === undefined ? label : `${label} tu ${s.with}`;
 }
 
+/** La opción con su marca de tono para la CLI (`[?]`, `[!]`, `[~]`, `[x]`); las corrientes van sin marca. */
+export function renderSuggestionMarked(s: Suggestion): string {
+  const mark = TONE_MARK[s.tone];
+  return mark === "" ? renderSuggestion(s) : `${mark} ${renderSuggestion(s)}`;
+}
+
 const ENVIRONMENT: Readonly<Record<EnvironmentItem["kind"], string>> = {
   dark: "está oscuro",
   dim: "hay poca luz",
@@ -184,4 +437,111 @@ const CHANNEL_NAMES: Readonly<Record<EnvironmentItem["channel"], string>> = {
 export function renderEnvironment(items: readonly EnvironmentItem[]): string {
   if (items.length === 0) return "Nada te llama la atención del lugar.";
   return items.map((i) => `${CHANNEL_NAMES[i.channel]}: ${ENVIRONMENT[i.kind]}`).join("\n");
+}
+
+// --- Diario de hipótesis (discovery §14): lo que el personaje cree de cómo anda el mundo ---
+
+const CONFIDENCE: Readonly<
+  Record<HypothesesPanel["laws"][number]["hypotheses"][number]["confidence"], string>
+> = {
+  doubtful: "lo dudás mucho",
+  possible: "puede ser",
+  likely: "lo creés bastante",
+  near_certain: "estás casi seguro",
+};
+
+const SEASONS = ["la primavera", "el verano", "el otoño", "el invierno"];
+const MOONS = ["la luna nueva", "la luna creciente", "la luna llena", "la luna menguante"];
+const OUTCOMES = { poor: "poco", fair: "algo", good: "mucho" } as const;
+
+function claimText(c: HypothesesPanel["laws"][number]["hypotheses"][number]["claim"]): string {
+  if (c.kind === "none") return "no depende de nada: es cuestión de suerte";
+  if (c.kind === "moral") return "es cosa del Cielo, que da y quita según se lo merezca uno";
+  const names = c.on === "season" ? SEASONS : MOONS;
+  const [a, b] = c.high.map((k) => names[k] ?? "?");
+  return c.on === "season"
+    ? `rinde más entre ${a} y ${b}`
+    : `rinde más entre ${a} y ${b}, y menos en el resto del ciclo`;
+}
+
+const SOURCE = { tradition: "", own: " (se te ocurrió a vos)", yours: " (la propusiste)" } as const;
+
+export function renderHypotheses(p: HypothesesPanel): string {
+  if (p.laws.length === 0) return "Todavía no te pusiste a pensar cómo anda el mundo.";
+  const lines: string[] = [];
+  for (const l of p.laws) {
+    lines.push(`Lo que rinde el campo (lo viste ${l.seen} ${l.seen === 1 ? "vez" : "veces"}):`);
+    for (const h of l.hypotheses) {
+      lines.push(`  ${CONFIDENCE[h.confidence]}: ${claimText(h.claim)}${SOURCE[h.source]}`);
+    }
+    if (l.recent.length > 0) {
+      const seen = l.recent.map((o) => {
+        const when = [
+          o.season === undefined ? undefined : `en ${SEASONS[o.season]}`,
+          o.moon === undefined ? undefined : `con ${MOONS[o.moon]}`,
+        ].filter((x) => x !== undefined);
+        return `${OUTCOMES[o.outcome]}${when.length > 0 ? ` ${when.join(" ")}` : ""}`;
+      });
+      lines.push(`  Lo último que anotaste: ${seen.join("; ")}.`);
+    }
+    if (l.anomalies > 0) {
+      lines.push(`  Hubo ${l.anomalies} ${l.anomalies === 1 ? "vez" : "veces"} en que no cuadró.`);
+    }
+  }
+  return lines.join("\n");
+}
+
+const BAND = {
+  convinced: "Estás convencido de que",
+  likely: "Lo más probable es que",
+  maybe: "Quizá",
+  hunch: "Tenés una corazonada: tal vez",
+} as const;
+
+/** Cómo se dice cada hecho del catálogo de inferencias (los ids los pone `name`). */
+function factText(f: Fact, name: (id: string) => string): string {
+  const [a = "", b = ""] = f.args;
+  switch (f.pred) {
+    case "took":
+      return `${name(a)} se llevó ${name(b)}`;
+    case "wronged":
+      return `${name(a)} fue perjudicado por ${name(b)}`;
+    case "poisoned_by":
+      return `${name(a)} fue envenenado por ${name(b)}`;
+    case "fire_at":
+      return `hay fuego en ${name(a)}`;
+    case "endangered":
+      return `${name(a)} corre peligro`;
+    case "at":
+      return `${name(a)} está en otro lado`;
+    case "alive":
+      return `${name(a)} sigue vivo`;
+    case "dead":
+      return `${name(a)} murió`;
+    default:
+      return `${f.pred.replace(/_/g, " ")} (${f.args.map(name).join(", ")})`;
+  }
+}
+
+/** El comando «pensar sobre X»: lo que concluye, con su seguridad, y cómo está al pensarlo. */
+export function renderThinking(
+  r: ThinkResult,
+  topic: string,
+  name: (id: string) => string,
+): string {
+  const lines: string[] = [];
+  if (r.state.tired) lines.push("Estás cansado y te cuesta encadenar ideas.");
+  if (r.state.afraid) lines.push("Todavía tenés el susto encima y todo te parece peor.");
+  if (r.thoughts.length === 0) {
+    lines.push(
+      r.evidence === 0
+        ? `No tenés mucho con qué pensar sobre ${topic}.`
+        : `Le das vueltas a ${topic} y no se te ocurre nada que no supieras.`,
+    );
+  }
+  for (const t of r.thoughts) {
+    const rival = t.rival === undefined ? "" : ` (o tal vez ${factText(t.rival, name)})`;
+    lines.push(`${BAND[t.band]} ${factText(t.fact, name)}${rival}.`);
+  }
+  return lines.join("\n");
 }

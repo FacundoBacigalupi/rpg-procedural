@@ -275,6 +275,13 @@ La generación es determinista: mismo seed y misma historia, mismas lenguas. Tod
 - **Lista blanca:** `acquaintances` trae el nombre de pila de los conocidos, `knownWords` el apellido de su gente y los nombres de los lugares, y `playerView` los pone en `lexicon`; `knownEntities` los suma a los nombres que el parser entiende. Un desconocido sigue sin nombre en la vista.
 - **Todavía no:** facetas de la habilidad de lengua (entender, hablar, acento) y el comando fuera del personaje con el vocabulario creído (Fase 2, junto con registros y tratamientos); nombre de leche, de cortesía y de generación; cambio fonético y dialectos (Fase 5); el jugador que nombra algo (`coined`).
 
+## Implementación (Fase 2, registros y tabúes, 2026-10-08)
+
+- **Contenido:** `content/language-registers/` (la formalidad que pide cada situación de la cultura: casa, mercado, templo), `content/language-address/` (formas de tratamiento por destinatario y formalidad mínima, hechas con conceptos de la lengua) y `content/language-taboos/` (palabra vedada, rodeo, gravedad y motivo).
+- **`sim/language/register.ts`:** `demandedFormality` (la mayor entre la situación y lo que pide el destinatario), `chooseAddress`/`renderAddress` (la forma más formal que no pasa de lo pedido; el honorífico sale del léxico, no se escribe a mano), `judgeRegister` (quedarse corto es falta; pasarse de ceremonioso se nota menos; la ignorancia honesta atenúa), `speakWord` (quien conoce el tabú da el rodeo; quien no, lo rompe sin saberlo) y `tabooOffense` (crece con testigos y reverencia del oyente).
+- **Todavía no:** el diálogo no declara registro ni tratamiento ni juzga la falta; los tabúes que nacen en juego (nombre de un muerto, de un soberano) con evento de origen; jergas; errores de quien habla mal (ver ROADMAP).
+- **Acento (núcleo puro, `sim/language/accent.ts`):** un acento es un vector de rasgos 0-1; la variante de una comunidad deriva de la madre con una deriva que crece con la raíz de las generaciones de separación (`deriveAccent`). Quien imita produce el medio entre su acento y el ajeno según su faceta (`spokenAccent`) con temblor de voz que crece con la falta de habilidad y la tensión (`utterAccent`). Quien escucha lo percibe con el ruido de su oído (`perceiveAccent`), ubica el origen solo entre los acentos que conoce (`identifyOrigin`: lo ajeno es "no es de acá") y sospecha del que finge según la distancia percibida pasada la diferencia mínima notable (`judgeFake`). Sin cablear a la verdad ni al diálogo (ver ROADMAP).
+
 ## Tests
 
 - **Determinismo:** mismo seed, mismas lenguas, mismo léxico y mismos nombres; las palabras perezosas dan la misma forma sin importar en qué orden se pidieron.

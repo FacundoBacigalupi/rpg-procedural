@@ -6,6 +6,7 @@ import {
   type AgentId,
   type Content,
   EARTHLIKE_CLOCK,
+  type EventId,
   EventLog,
   externalAccount,
   type HolderRef,
@@ -24,31 +25,46 @@ import {
 import {
   ACTIONS,
   ActionCatalog,
+  ADDRESSES,
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
+  type ChosenTaste,
   CONCEPTS,
   COOKED,
   COPPER,
   CULTURE_TRAITS,
   CULTURES,
+  DEBRIS_SINK,
   DEMOGRAPHY,
+  DIVINATION_CONCERNS,
+  DIVINATION_METHODS,
   DOCTRINES,
+  dailyProductivity,
   dayOf,
   EATEN,
+  ECOLOGY,
   ENTITY,
+  ETIQUETTE,
   FOODS,
+  GATHERED_SOURCE,
   GOODS,
   generateLanguage,
+  HABITS_CONTENT,
   HARVEST,
   HARVEST_GOOD,
   type Household,
   harvestSeason,
   houseKey,
+  initialCell,
   LANGUAGES,
+  type Language,
+  LIFE_STAGES,
+  LINEAGES,
   LOCATION,
   type LocalMap,
   MATERIALS,
+  PARCEL_SOIL,
   PERSON,
   type Person,
   PLACE,
@@ -56,9 +72,15 @@ import {
   type PlaceFeature,
   type PlaceToName,
   PRESSURE_CURVES,
+  pickTrajectory,
   RECIPES,
+  REGISTERS,
+  RELATION_BONDS,
+  RELATION_DIMS,
   RELIGIONS,
   ROTTED,
+  resolveTastes,
+  SCHEMAS,
   SKILLS,
   SkillCatalog,
   SOIL,
@@ -67,21 +89,38 @@ import {
   STATUSES,
   type StatusDef,
   seedBodies,
+  seedCommunityAccent,
   seedCulture,
+  seedMinds,
   seedParcels,
+  seedPeopleCulture,
+  seedPeopleReligion,
   seedPersonNames,
   seedPlaceNames,
+  seedRelations,
   seedReligion,
   seedSettlement,
   seedSkills,
   seedStatus,
+  seedTastes,
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  startingParcel,
+  TABOOS,
+  TASTES,
+  type TasteDef,
+  type TasteSpec,
   TENURES,
+  type TemperamentSpec,
   TRAITS,
+  TRAJECTORIES,
   type Trait,
+  temperamentFit,
+  VALUES,
+  VILLAGE_SEPARATION,
   type VillagePopulation,
+  validateTemperament,
   villagePopulation,
   WORK_TYPES,
   WorldTruth,
@@ -94,6 +133,9 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import type { ConverseForm } from "./converse.ts";
+import { ecologyHexes } from "./ecology.ts";
+import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
@@ -102,6 +144,8 @@ import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 export interface BirthQuery {
   readonly sex?: "female" | "male";
   readonly position?: "holder" | "common" | "dependent";
+  /** Rangos por eje de temperamento: pesan en la búsqueda (paso 1, §2.2), no la cortan. */
+  readonly temperament?: TemperamentSpec;
 }
 
 export interface LifeOptions {
@@ -111,6 +155,32 @@ export interface LifeOptions {
   readonly frequency?: number;
   /** Entre qué edades sale el personaje de la pre-corrida (player-loop §2). */
   readonly playerAge?: { readonly min: number; readonly max: number };
+  /** Gustos pedidos del personaje (modo novela): se fijan sobre los que el mundo le generó. */
+  readonly tastes?: readonly TasteSpec[];
+}
+
+/**
+ * Los gustos pedidos contra el catálogo de gustos del contenido (dominio -> objetos). Lo que el
+ * mundo no conoce o se contradice no se ignora en silencio: falla con la razón (game-modes §2.4).
+ * El origen es el evento de fundación hasta que exista la concepción condicionada (ROADMAP).
+ */
+export function chosenTastesOf(
+  specs: readonly TasteSpec[],
+  defs: readonly TasteDef[],
+  origin: EventId,
+): ChosenTaste[] {
+  if (specs.length === 0) return [];
+  const catalog = new Map<string, Set<string>>();
+  for (const d of defs) {
+    const items = catalog.get(d.domain) ?? new Set<string>();
+    items.add(d.id);
+    catalog.set(d.domain, items);
+  }
+  const { tastes, rejected } = resolveTastes(specs, catalog, origin);
+  if (rejected.length > 0) {
+    throw new Error(`gustos pedidos inválidos: ${rejected.map((r) => r.reason).join("; ")}`);
+  }
+  return tastes;
 }
 
 /** Lo que no cambia en la vida: sale del seed y del contenido, no se guarda. */
@@ -151,7 +221,16 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
   };
   const planet = generatePlanet(planetOptions);
   const site = villageSite(planet);
-  const birth = options.birth ? birthFilter(options.birth, content.all(STATUSES)) : undefined;
+  const query = options.birth;
+  const hard = query !== undefined && (query.sex !== undefined || query.position !== undefined);
+  const birth = hard ? birthFilter(query, content.all(STATUSES)) : undefined;
+  const wish = query?.temperament;
+  if (wish !== undefined) {
+    const problems = validateTemperament(wish, content.all(TRAITS));
+    if (problems.length > 0) {
+      throw new Error(`temperamento pedido inválido: ${problems.join("; ")}`);
+    }
+  }
   const population = villagePopulation({
     seed,
     site,
@@ -162,6 +241,9 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     ),
     ...(options.playerAge === undefined ? {} : { playerAge: options.playerAge }),
     ...(birth ? { playerFits: birth } : {}),
+    ...(wish && Object.keys(wish).length > 0
+      ? { playerFit: (p: Person) => temperamentFit(p.innate, wish) }
+      : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
   return { village, planet, site, map: localMapOf(planet, site), population };
@@ -201,6 +283,26 @@ export function anchorOf(terrain: LifeTerrain): ResumeAnchor {
   };
 }
 
+/** La lengua de la aldea y su etiqueta de habla (se rehace igual del seed y del contenido). */
+function villageForm(seed: Seed, content: Content, language?: Language): ConverseForm {
+  const concepts = content.all(CONCEPTS);
+  return {
+    language:
+      language ??
+      generateLanguage(
+        seed,
+        required(content.get(LANGUAGES, "village.hills"), "lengua village.hills"),
+        concepts,
+      ),
+    concepts,
+    registers: content.all(REGISTERS),
+    addresses: content.all(ADDRESSES),
+    taboos: content.all(TABOOS),
+    etiquette: content.all(ETIQUETTE),
+    culture: "village",
+  };
+}
+
 /** Lo derivado del seed y del contenido que no se guarda, sin tocar el planeta. */
 export function resumeParts(
   seed: Seed,
@@ -219,8 +321,22 @@ export function resumeParts(
   | "goods"
   | "recipes"
   | "statuses"
+  | "cultureTraits"
   | "speech"
   | "pressureCurves"
+  | "schemas"
+  | "values"
+  | "stages"
+  | "relationDims"
+  | "relationBonds"
+  | "habits"
+  | "lineages"
+  | "materials"
+  | "trajectories"
+  | "divinations"
+  | "concerns"
+  | "tastes"
+  | "form"
 > {
   return {
     seed,
@@ -232,10 +348,24 @@ export function resumeParts(
     plans: content.all(BODY_PLANS),
     foods: content.all(FOODS),
     goods: content.all(GOODS),
+    materials: content.all(MATERIALS),
     recipes: content.all(RECIPES),
     statuses: content.all(STATUSES),
+    cultureTraits: content.all(CULTURE_TRAITS),
     speech: content.all(SPEECH_LINES),
     pressureCurves: content.all(PRESSURE_CURVES),
+    schemas: content.all(SCHEMAS),
+    values: content.all(VALUES),
+    stages: content.all(LIFE_STAGES),
+    relationDims: content.all(RELATION_DIMS),
+    relationBonds: content.all(RELATION_BONDS),
+    habits: content.all(HABITS_CONTENT),
+    lineages: content.all(LINEAGES),
+    trajectories: content.all(TRAJECTORIES),
+    divinations: content.all(DIVINATION_METHODS),
+    concerns: content.all(DIVINATION_CONCERNS),
+    tastes: content.all(TASTES),
+    form: villageForm(seed, content),
   };
 }
 
@@ -249,6 +379,8 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       [HARVEST]: [HARVEST_GOOD],
       [ROTTED]: units,
       seed: [...units, COPPER, ...settlementUnits(content.all(MATERIALS))],
+      [GATHERED_SOURCE]: settlementUnits(content.all(MATERIALS)),
+      [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
     },
   };
 }
@@ -291,6 +423,30 @@ export function createLife(
   const settlement = pop.settlement as SettlementId;
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
   truth.set(SOIL, settlement, { fertility: SOIL_START, seen: 0 });
+  truth.set(PARCEL_SOIL, settlement, { soil: startingParcel(SOIL_START), seen: 0 });
+  const trajectory = pickTrajectory(content.all(TRAJECTORIES), map.climate.annualPrecipMm);
+  if (trajectory) {
+    const hexes = ecologyHexes(map);
+    const productivity = dailyProductivity({
+      tempMeanC: map.climate.annualMeanC,
+      annualPrecipMm: map.climate.annualPrecipMm,
+      soilFertility: SOIL_START,
+      hexes,
+    });
+    truth.set(ECOLOGY, settlement, {
+      cell: initialCell(content.all(LINEAGES), {
+        annualMeanC: map.climate.annualMeanC,
+        annualPrecipMm: map.climate.annualPrecipMm,
+        hexes,
+        shelter: map.forest.filter(Boolean).length / Math.max(1, map.forest.length),
+        productivity,
+      }),
+      forest: { stage: trajectory.climax, stageAge: 0, fuel: 0.5, trajectory },
+      fireHazard: 0,
+      day: 0,
+      yearDays: 0,
+    });
+  }
   let place = 0;
   const named: PlaceToName[] = [];
   for (const a of site.anchors) {
@@ -368,7 +524,7 @@ export function createLife(
   // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
   const culture = content.all(CULTURES).find((c) => c.id === "village");
   if (!culture) throw new Error("falta contenido: cultura village");
-  seedCulture(truth, ids, log, {
+  const community = seedCulture(truth, ids, log, {
     settlement,
     place: terrain.village,
     now: pop.now,
@@ -376,16 +532,76 @@ export function createLife(
     culture,
     traits: content.all(CULTURE_TRAITS),
   });
+  // Cómo suena su habla: el acento de la lengua madre con la deriva de la separación (language §5).
+  seedCommunityAccent(truth, ids, log, {
+    seed,
+    settlement,
+    place: terrain.village,
+    now: pop.now,
+    foundersEvent: pop.foundersEvent,
+    language: language.id,
+    generations: VILLAGE_SEPARATION,
+  });
+  // Lo que cada uno sigue de ella: los hijos copian a sus padres (culture §4).
+  seedPeopleCulture(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    community,
+    traits: content.all(CULTURE_TRAITS),
+  });
   // La religión popular, parte de esa cultura: ancestros, el pozo, una fiesta, tabúes (religion §2, §6).
   const religion = content.all(RELIGIONS).find((r) => r.culture === culture.id);
   if (!religion) throw new Error("falta contenido: religión de la cultura village");
-  seedReligion(truth, ids, log, {
+  const villageFaith = seedReligion(truth, ids, log, {
     settlement,
     place: terrain.village,
     now: pop.now,
     foundersEvent: pop.foundersEvent,
     religion,
     doctrines: content.all(DOCTRINES),
+  });
+  // Lo que cada uno cree y cumple de ella: los hijos siguen a sus padres (religion §1).
+  seedPeopleReligion(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    religion: villageFaith,
+  });
+  // Lo adquirido de cada mente: esquemas de base desde el temperamento (npc-psychology §1-§2).
+  seedMinds(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    schemas: content.all(SCHEMAS),
+    history: {
+      people: pop.people,
+      events: pop.events,
+      yearTicks: clock.year,
+      stages: content.all(LIFE_STAGES),
+    },
+  });
+  // Qué le gusta y qué rechaza a cada uno: temperamento, cuerpo, cultura y lo conocido de chico (§16).
+  const tasteDefs = content.all(TASTES);
+  const chosenTastes = chosenTastesOf(options.tastes ?? [], tasteDefs, pop.foundersEvent);
+  seedTastes(truth, ids, log, {
+    seed,
+    ...(chosenTastes.length > 0 ? { chosen: new Map([[pop.player, chosenTastes]]) } : {}),
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    defs: tasteDefs,
+    taboos: villageFaith.practices.filter((p) => p.kind === "taboo"),
+  });
+  // Lo que cada uno siente por su parentela y su casa (npc-psychology §6).
+  seedRelations(truth, ids, log, {
+    seed,
+    now: pop.now,
+    place: terrain.village,
+    foundersEvent: pop.foundersEvent,
+    dims: content.all(RELATION_DIMS),
+    bonds: content.all(RELATION_BONDS),
   });
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {
@@ -469,12 +685,38 @@ export function createLife(
       goods: content.all(GOODS),
       recipes: content.all(RECIPES),
       statuses: content.all(STATUSES),
+      cultureTraits: content.all(CULTURE_TRAITS),
       speech: content.all(SPEECH_LINES),
       pressureCurves: content.all(PRESSURE_CURVES),
+      schemas: content.all(SCHEMAS),
+      values: content.all(VALUES),
+      stages: content.all(LIFE_STAGES),
+      relationDims: content.all(RELATION_DIMS),
+      relationBonds: content.all(RELATION_BONDS),
+      habits: content.all(HABITS_CONTENT),
+      lineages: content.all(LINEAGES),
+      materials,
+      trajectories: content.all(TRAJECTORIES),
+      divinations: content.all(DIVINATION_METHODS),
+      concerns: content.all(DIVINATION_CONCERNS),
+      tastes: content.all(TASTES),
+      form: villageForm(seed, content, language),
     },
     pop.player,
     terrain.village,
     { now: pop.now, seq: 0, queue: [] },
   );
+  const me = truth.get(PERSON, pop.player);
+  if (me) {
+    world.truth.set(
+      INVENTORY_BELIEF,
+      pop.player,
+      checkInventory(
+        world.ledger.holdings(holderAccount(pop.player as unknown as HolderRef)),
+        world.ledger.holdings(holderAccount(me.household as unknown as HolderRef)),
+        pop.now,
+      ),
+    );
+  }
   return { world, terrain };
 }

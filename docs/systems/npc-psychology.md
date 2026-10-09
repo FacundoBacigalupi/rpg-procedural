@@ -79,7 +79,7 @@ Cada evento que el NPC vive y le resulta **intenso** puede mover esquemas y valo
 
 - **Plasticidad**: alta en la infancia y baja en la adultez. Para un cultivador de 800 años es casi nula, salvo traumas enormes. Esto da que los viejos sean "duros" y que los traumas infantiles marquen de por vida.
 - **Susceptibilidad**: por ejemplo, alta `reactivity` amplifica los eventos negativos.
-- **Crianza**: los padres son la mayor fuente de eventos formativos tempranos (cuidado, abandono, violencia, enseñanza). La crianza no es un modificador abstracto: son **eventos de crianza** que la simulación genera según cómo son los padres y su situación (pobreza, guerra, deudas).
+- **Crianza** *(implementada: eventos `family.rearing` por temporada, ver `game/life/upbringing.ts`)*: los padres son la mayor fuente de eventos formativos tempranos (cuidado, abandono, violencia, enseñanza). La crianza no es un modificador abstracto: son **eventos de crianza** que la simulación genera según cómo son los padres y su situación (pobreza, guerra, deudas).
 
 **Ejemplo.** Al padre de Li Wei lo hiere un discípulo de una secta, y la familia queda endeudada con los Zhao.
 - El evento se interpreta con su temperamento (`boldness` alto, `warmth` medio).
@@ -92,6 +92,8 @@ Todo lo anterior apunta al mismo evento.
 
 ### Hábitos y habilidades
 Son lo que hizo repetidamente (cazar, mentir, meditar). Salen de las acciones registradas, no se asignan.
+
+*Implementado (Fase 2, `sim/mind/habits.ts`):* un hábito es una fuerza 0-1 por persona que cada repetición del verbo (o del evento de rutina) sube con rendimiento decreciente y que se enfría sola con una vida media; al asentarse deja una vez su estímulo formativo. Contenido en `content/habits/`. Hoy hay 8 (sembrar, recoger, pelear, dar, tomar, cuidar, cocinar, comerciar); mentir y meditar esperan sus verbos.
 
 ## 3. Interpretación (appraisal)
 
@@ -589,3 +591,27 @@ Tests clave:
 ## Ampliación (2026-10-08): decisiones de niño con consecuencias
 
 Las viñetas de la infancia (player-loop) son decisiones reales dentro de los períodos sensibles: cada una mueve temperamento, esquemas y habilidades, y también deja consecuencias que aparecen años después (una promesa hecha, un vínculo, una deuda de favor, una herida mal curada). Los adultos del entorno reaccionan según lo que perciben del niño. Fase 3, junto con crianza.
+
+## Implementación (2026-10-08): lo adquirido
+`sim/mind` guarda por persona `Mind` (`MIND`): esquemas con `strength` y `causes` (los últimos 12 eventos) y los eventos formativos de períodos sensibles. Los valores **no se guardan**: `valuesOf` los deriva de lo innato y los esquemas (suma 1, piso 0,02). Las etapas son contenido por edad vivida en años (`young-adult` con guion, los ids de contenido son minúsculas). `FORMATION_RATE` 0,25, `SENSITIVE_BOOST` 2, y la reactividad amplifica solo los temas que duelen. La siembra no simula la historia previa: esquemas de base = 0,25 + empuje del temperamento + variación (desvío 0,05). Calibración pendiente: esas constantes y las plasticidades por etapa.
+
+## Implementación (2026-10-08): relaciones
+`sim/relations` guarda por persona `Relations` (`RELATIONS`): un `Relationship` por cada otro con vínculo, con las diez dimensiones, los `bonds` (ids de `content/relation-bonds/`, derivados del registro civil: `kinBonds`) y el `history` (últimos 16 eventos). Quien no figura es un extraño, no una fila vacía: una aldea no guarda N² relaciones. El decaimiento no es un proceso sino una lectura: `current` lleva cada dimensión hacia su base (o el piso del vínculo) desde `updated` con vida media en días de mundo, y por eso leer en cualquier orden da lo mismo. `slowedBy` alarga la vida media según la fuerza de un esquema de quien siente. Los valores iniciales de un vínculo suman a la base; el piso nunca supera lo inicial. Calibración pendiente: las vidas medias, los iniciales y los pisos por vínculo.
+
+## Implementación (2026-10-08): appraisal (a)
+`sim/mind/appraise.ts` es la interpretación pura (`appraiseFight`, `appraiseLoss`): recibe el papel de la persona y qué tan grave fue para ella, y devuelve estímulos formativos y a quién culpa; `form` los aplica. Lo ya esperado pesa menos (`EXPECTED_DAMPING` 0,25 por la fuerza del esquema que lo anticipa: `world_is_dangerous` para la violencia, `people_are_untrustworthy` para la traición), el audaz lo toma como desafío (`BOLD_DAMPING` 0,2), y que le pegue alguien con quien tiene un vínculo suma una traición (`BETRAYAL_SHARE` 0,6 de la herida). Quien pega solo aprende algo si se mide por su fuerza (`strength_is_worth` ≥ 0,4): éxito si quedó de pie, fracaso si no. La pérdida es `LOSS_FLOOR` + `LOSS_SPAN` × cercanía (cariño, familiaridad y dependencia leídos de `RELATIONS`). El proceso `life.appraise` (`game/life/appraise.ts`, fase `perceive` por evento, como `deeds`) interpreta `combat.fight`/`combat.finish` para los dos peleadores y `body.died` para los vivos de la casa del muerto con un vínculo hacia él; los NPC no perciben a distancia todavía, así que "lo vivió" es haber estado o ser de la casa. Falta: hambre, crianza, hábitos, emociones, relaciones y la historia previa de los fundadores. Calibración pendiente: todas las constantes de arriba.
+
+## Implementación (2026-10-08): appraisal (d), la historia de los fundadores
+`sim/mind/history.ts` (`applyFoundersHistory`) reusa la pre-corrida demográfica: por cada `person.died` de un pariente de un adulto vivo que ya había nacido y estaba en la aldea, aplica `appraiseLoss(KIN_CLOSENESS[rol])` con `form`, en la etapa de la edad que tenía entonces y citando el evento (padre, madre e hijo 1; cónyuge 0,9; hermano 0,6). Si murió de hambre suma `hardship` (`STARVED_KIN_HARDSHIP` 0,5). `seedMinds` lo corre después de la base. `valuesOf` acepta un `bias` por valor y `valueBias` lo saca de los parámetros del rasgo `values.bias` de la cultura (culture §2). Calibración pendiente: cercanías y la intensidad de la penuria.
+
+## Implementación (2026-10-08): consolidación nocturna (parte pura)
+
+`sim/mind/consolidation.ts`. Una pasada por noche de sueño, pura y de costo lineal en la capacidad de memoria. `sleepQuality` combina horas contra necesidad con incomodidad (35%), miedo (30%) y pesadillas (35%). `consolidate` refuerza hasta `MAX_STRENGTHENED` memorias con puntaje `intensidad × (0,6 + 0,4 × relevancia)` sobre `STRENGTHEN_MIN` (la ganancia escala con la calidad; con calidad bajo `POOR_SLEEP` además las distorsiona), degrada las triviales sin recordar, funde como mucho un par de igual tipo, compañía y signo de valencia (chance de `MERGE_CHANCE_GOOD` a `MERGE_CHANCE_POOR` según la calidad; queda la más intensa con menos confianza y más distorsión, y la otra pasa a gist) y propone confirmaciones de esquema solo en la dirección en que la persona ya se inclina. Siempre saca las mismas tiradas del stream, así el resto de la noche no se corre. Queda sin hacer: el cableado al sueño del cuerpo, los sueños con contenido, la meditación, dormir sobre un problema y los gustos (§16); están en el ROADMAP.
+
+## Implementación (2026-10-09): gusto ligado a una persona
+
+`Preference.about` (de `TasteExposure.from`, solo exposición de infancia con valencia positiva) liga el gusto a quien lo dio; `seedTastes` usa a la madre para lo corriente. `TasteMention.about` y `TasteView.reminds` lo llevan al narrador (plantilla `taste.reminds_of`) solo si el personaje conoce a esa persona. Falta ligar a recuerdos puntuales y el modo introspección.
+
+## Implementación (2026-10-09): decisión por utilidad, núcleo y candidatas sociales
+
+`sim/mind/utility.ts` implementa la fórmula de §7 sobre `Candidate` (contribución a impulsos, chance y riesgo creídos, pérdida, ánimo): los impulsos son las necesidades inmediatas con su urgencia (bajo `NEED_FLOOR` no empujan) y los valores de `valuesOf` (escalados por `VALUE_SCALE`). `aversion` sale de la audacia y el miedo del momento; `decideByUtility` hace softmax con temperatura por `control` y una sola tirada de `rng.fork("decision", npc, tick)`. `utility-social.ts` arma ayudar, dar, evitar y vengarse desde las dimensiones, el parentesco y `OtherBelief`. Es puro y nadie lo llama aún: el cableado (candidatas del catálogo, insumos del cuerpo, proceso `life.decide`, objetivos en capas, modificadores) son los sub-ítems (c)-(h) de «IA de utilidad» en el ROADMAP. Constantes sin calibrar.

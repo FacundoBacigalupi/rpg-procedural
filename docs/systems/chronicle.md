@@ -190,6 +190,7 @@ No hay "continuar" gratis (spirits §3e). Cuando el alma cruza las Fuentes, el C
 ## Implementación
 - **Fase 1:** muerte → pantalla de crónica mínima: epitafio, causa de muerte real y cadena, capítulos por cortes de vida, sin epílogo.
 - **Fase 2:** "Lo que nunca supiste" (intrigas y creencias equivocadas) y personas importantes por relaciones y memoria.
+  - Hecho (Fase 2, parte creencias y memorias): `game/chronicle/people.ts`. Importancia = relación hacia la persona (0,45) + de ella hacia el personaje (0,15) + memorias/gists (0,4) + vínculos (hasta 0,1), tope 5 personas. «Lo que nunca supiste» = muerte de un importante que no figura en sus memorias ni creencias (o que creía viva), pelea de un importante que no vio, y recuerdo con otra gente que la que estuvo; tope 6 por peso (importancia × tipo). Pendiente: intrigas (schemes), casos de law, consecuencias lejanas y lo que tenía al alcance.
 - **Fase 3:** epílogo corto (un año, diez años) con descendencia y herencia (family-lineage).
 - **Fase 6:** textos adentro del mundo como objetos (crónicas de organización, genealogías, memorias) con sesgos; encargar y escribir.
 - **Fase 7:** reescrituras por régimen, censura y quema, estelas y canciones en la historia agregada; huella causal y legado recordado con el embudo de deep-history; epílogo hasta que se apague el legado.

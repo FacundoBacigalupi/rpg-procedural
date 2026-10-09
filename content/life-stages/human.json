@@ -1,0 +1,69 @@
+[
+  {
+    "id": "infancy",
+    "species": "human",
+    "name": "Infancia",
+    "fromAge": 0,
+    "plasticity": 1,
+    "sensitive": ["people_are_untrustworthy", "i_am_unworthy", "world_is_dangerous"],
+    "drives": { "hunger": 1.5, "rest": 1.4, "safety": 1.6, "social": 1.5, "family": 1.8 }
+  },
+  {
+    "id": "childhood",
+    "species": "human",
+    "name": "Niñez",
+    "fromAge": 4,
+    "plasticity": 0.8,
+    "sensitive": ["family_first", "effort_pays", "heaven_is_just"],
+    "drives": {
+      "hunger": 1.2,
+      "rest": 1.2,
+      "social": 1.3,
+      "knowledge": 1.3,
+      "pleasure": 1.3,
+      "wealth": 0.4
+    }
+  },
+  {
+    "id": "adolescence",
+    "species": "human",
+    "name": "Adolescencia",
+    "fromAge": 12,
+    "plasticity": 0.6,
+    "sensitive": ["strength_is_worth", "i_am_unworthy"],
+    "drives": { "social": 1.4, "status": 1.4, "freedom": 1.3, "power": 1.2, "tradition": 0.7 }
+  },
+  {
+    "id": "young-adult",
+    "species": "human",
+    "name": "Adultez joven",
+    "fromAge": 18,
+    "plasticity": 0.35,
+    "sensitive": ["effort_pays", "strength_is_worth"],
+    "drives": { "wealth": 1.2, "status": 1.2, "power": 1.1 }
+  },
+  {
+    "id": "adult",
+    "species": "human",
+    "name": "Adultez",
+    "fromAge": 30,
+    "plasticity": 0.12,
+    "sensitive": []
+  },
+  {
+    "id": "elder",
+    "species": "human",
+    "name": "Vejez",
+    "fromAge": 60,
+    "plasticity": 0.08,
+    "sensitive": [],
+    "drives": {
+      "rest": 1.3,
+      "safety": 1.3,
+      "family": 1.3,
+      "tradition": 1.4,
+      "power": 0.6,
+      "wealth": 0.7
+    }
+  }
+]

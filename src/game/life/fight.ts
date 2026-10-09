@@ -12,19 +12,29 @@ import {
   deleteComponent,
   ENTITY,
   type EventDraft,
+  exposeTo,
   type FighterOutcome,
   type FightGist,
   type FightIntent,
   type FightSnapshot,
+  familiarWith,
+  holdBackWish,
   INNATE,
+  levelOf,
+  OPINIONS,
+  opinionKey,
   PERSON,
   type ReadonlyWorldTruth,
+  rivalKey,
   runFight,
   SKILL_STATE,
   type SkillCatalog,
+  type Skills,
+  STYLE_SHARE,
   type StateChange,
   setComponent,
   standardize,
+  styleKey,
   type Trait,
   table,
   verbSkill,
@@ -69,11 +79,18 @@ export interface StrikeFightInput {
   readonly light: number;
   readonly start: Tick;
   readonly rng: Rng;
+  /** Ticks por día, para olvidar la familiaridad (por defecto 86400). */
+  readonly day?: number;
   /** El evento del golpe: causa de cada herida y del evento de la pelea. */
   readonly cause: EventId;
   readonly place: PlaceRef;
   /** Quien maneja el jugador: la pelea se pausa cuando él nota algo que pide decidir. */
   readonly control?: boolean;
+  /**
+   * 0-1: cuánto se contiene quien pega (pelea por debajo de su nivel, skills §9, combat §5): el
+   * rival lo lee más flojo de lo que es, y contenerse cuesta algo de filo de verdad.
+   */
+  readonly holdBack?: number;
   /** Retomar una pelea pausada. */
   readonly resume?: PausedFight;
 }
@@ -86,6 +103,74 @@ export interface StrikeFight {
   readonly event: EventDraft;
   /** Cómo cree el actor que terminó. */
   readonly gist: FightGist;
+  /** Lo que pelear le enseñó al actor sobre el estilo del rival: aplicar con `exposeSkills`. */
+  readonly exposure?: Exposure;
+}
+
+/** Una exposición a un estilo: qué habilidad, con qué clave y cuántas horas. */
+export interface Exposure {
+  readonly skill: string;
+  readonly key: string;
+  /** El estilo del rival (cultura o escuela): también se acostumbra a él. */
+  readonly style?: string;
+  readonly hours: number;
+}
+
+import { styleOf } from "./styles.ts";
+
+const DAY_SECONDS = 86400;
+
+const styleExposure = (style: string | undefined) => (style === undefined ? {} : { style });
+
+/** Cuánto del nivel real se pierde al contenerse del todo (calibración abierta). */
+export const HOLD_BACK_COST = 0.2;
+
+/** Aplica una exposición a las habilidades de alguien (skills §2.3). */
+export function exposeSkills(
+  skills: Skills | undefined,
+  e: Exposure,
+  now: Tick,
+  day = DAY_SECONDS,
+): Skills {
+  const one = exposeTo(skills?.[e.skill], e.key, e.hours, now, day);
+  const both =
+    e.style === undefined ? one : exposeTo(one, styleKey(e.style), e.hours * STYLE_SHARE, now, day);
+  return { ...skills, [e.skill]: both };
+}
+
+/**
+ * Si el rival decide pelear por debajo de su nivel para que el otro se confíe (skills §9): el astuto
+ * y audaz que cree que le sobra, con lo que cree de quien le pega (su opinión ajena). 0 es no.
+ * Sale del rng de la pelea, así que es determinista.
+ */
+function npcHoldBack(i: StrikeFightInput): number {
+  if (i.target === i.me) return 0;
+  const use = i.skills.forVerb("strike");
+  const p = i.truth.get(PERSON, i.target);
+  const n = i.truth.get(INNATE, i.target);
+  if (!use || !p || !n) return 0;
+  const believed = i.truth.get(OPINIONS, i.target)?.[opinionKey(i.me, use.skill.id)];
+  const wish = holdBackWish(
+    standardize(n, i.traits, p.sex),
+    verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+    believed?.estimate.level,
+  );
+  return i.rng.fork("hold-back", i.target).chance(wish.chance) ? wish.amount : 0;
+}
+
+/** La familiaridad de `who` con el estilo de `rival` en la habilidad del golpe. */
+function fightFamiliarity(
+  catalog: SkillCatalog,
+  skills: Skills | undefined,
+  rival: AgentId,
+  style: string | undefined,
+  now: Tick,
+  day: number,
+): number {
+  const use = catalog.forVerb("strike");
+  if (!use) return 0;
+  const keys = [rivalKey(rival), ...(style === undefined ? [] : [styleKey(style)])];
+  return familiarWith(skills?.[use.skill.id], keys, now, day);
 }
 
 /** Hay con quién pelear: está vivo, con cuerpo y en pie o dormido (no hace falta rematar a un caído). */
@@ -115,6 +200,12 @@ export function atMyMercy(
   );
 }
 
+/** El ojo entrenado de alguien para pelear: la faceta `reading` de la habilidad del golpe (skills §2). */
+function fightEye(catalog: SkillCatalog, skills: Skills | undefined, verb: string): number {
+  const use = catalog.forVerb(verb);
+  return use ? levelOf(skills?.[use.skill.id], "reading") : 0;
+}
+
 const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
   standing: "standing",
   down: "down",
@@ -124,6 +215,8 @@ const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
 };
 
 export function strikeFight(i: StrikeFightInput): StrikeFight {
+  const day = i.day ?? DAY_SECONDS;
+  const theirHold = npcHoldBack(i);
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -140,7 +233,19 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         plan: plan(i.myBody),
         body: i.myBody,
         z: z(i.me),
-        skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
+        skill:
+          verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike") *
+          (1 - HOLD_BACK_COST * Math.min(1, Math.max(0, i.holdBack ?? 0))),
+        hides: i.holdBack ?? 0,
+        eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
+        familiarity: fightFamiliarity(
+          i.skills,
+          i.truth.get(SKILL_STATE, i.me),
+          i.target,
+          styleOf(i.truth, i.target),
+          i.start,
+          day,
+        ),
         intent: i.intent,
         at: { x: 0, y: 0 },
       },
@@ -150,7 +255,19 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         plan: plan(theirBody),
         body: theirBody,
         z: z(i.target),
-        skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        skill:
+          verbSkill(i.skills, i.truth.get(SKILL_STATE, i.target), "strike") *
+          (1 - HOLD_BACK_COST * theirHold),
+        hides: theirHold,
+        eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.target), "strike"),
+        familiarity: fightFamiliarity(
+          i.skills,
+          i.truth.get(SKILL_STATE, i.target),
+          i.me,
+          styleOf(i.truth, i.me),
+          i.start,
+          day,
+        ),
         intent: "drive_off",
         at: { x: 0.7, y: 0 },
         unaware: theirBody.activity === "sleep",
@@ -160,6 +277,8 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     light: i.light,
     rng: i.rng,
     cause: i.resume?.event ?? i.cause,
+    // Con lectura (combat §5, §11): chances creídas, quiebre desde lo leído y fintas.
+    reading: true,
     ...(i.control ? { control: i.me } : {}),
     ...(i.resume ? { resume: i.resume.snapshot } : {}),
   });
@@ -183,11 +302,43 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
     emissions: { sight: 1, sound: 0.8 },
     causes: [{ kind: "event", event: i.cause }],
   };
+  // Pelear con alguien enseña su estilo a los dos (skills §2.3, combat §5).
+  const strike = i.skills.forVerb("strike");
+  const hours = result.seconds / 3600;
   return {
     seconds: result.seconds,
     myBody: mine.body,
+    ...(strike
+      ? {
+          exposure: {
+            skill: strike.skill.id,
+            key: rivalKey(i.target),
+            ...styleExposure(styleOf(i.truth, i.target)),
+            hours,
+          },
+        }
+      : {}),
     changes: [
       setComponent(BODY_STATE, i.target, theirs.body),
+      ...(strike
+        ? [
+            setComponent(
+              SKILL_STATE,
+              i.target,
+              exposeSkills(
+                i.truth.get(SKILL_STATE, i.target),
+                {
+                  skill: strike.skill.id,
+                  key: rivalKey(i.me),
+                  ...styleExposure(styleOf(i.truth, i.me)),
+                  hours,
+                },
+                i.start + result.seconds,
+                day,
+              ),
+            ),
+          ]
+        : []),
       // Pausada: queda guardada para retomarla; si no, se limpia lo que hubiera.
       ...(result.paused
         ? [

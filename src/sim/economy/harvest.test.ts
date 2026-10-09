@@ -113,3 +113,20 @@ describe("cosecha por estación", () => {
     expect(perYear(tropics)).toBeGreaterThan(0);
   });
 });
+
+describe("años buenos y malos por la oscilación", () => {
+  it("un año seco rinde menos que uno mojado, sobre la misma normalización", () => {
+    const dry = harvestSeason(temperate, clock, Rng.root(3), () => ({
+      tempOffsetC: 0,
+      precipFactor: 0.4,
+    }));
+    const wet = harvestSeason(temperate, clock, Rng.root(3), () => ({
+      tempOffsetC: 0,
+      precipFactor: 1.6,
+    }));
+    const total = (f: (d: number) => number) =>
+      mean(Array.from({ length: YEAR_DAYS }, (_, d) => f(d)));
+    expect(total(dry)).toBeLessThan(total(wet));
+    expect(total(harvestSeason(temperate, clock, Rng.root(3)))).toBeCloseTo(1, 5);
+  });
+});

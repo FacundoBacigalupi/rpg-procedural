@@ -10,6 +10,7 @@
   { "id": "attire.fine", "lines": ["de ropa fina", "con buena ropa"] },
   { "id": "attire.worn", "lines": ["de ropa gastada y remendada", "con ropa raída"] },
   { "id": "who.vague", "lines": ["alguien"] },
+  { "id": "who.seen_before", "lines": ["que ya viste otro día"] },
 
   {
     "id": "scene.room",
@@ -92,6 +93,14 @@
   },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
+  {
+    "id": "percept.action.consult",
+    "lines": ["{who} le paga a alguien para que le lea la suerte.", "Ves a {who} consultando."]
+  },
+  {
+    "id": "percept.action.ponder",
+    "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
+  },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
   { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
 
@@ -411,6 +420,19 @@
     "id": "outcome.tend.other_failed",
     "lines": ["Intentás curar a {who}, pero no te sale.", "Las manos no te ayudan con {who}."]
   },
+  {
+    "id": "outcome.consult.sat",
+    "lines": [
+      "Te sentás frente a {who} y le dejás {coins}.",
+      "Le pagás {coins} a {who} y esperás a que empiece."
+    ]
+  },
+  { "id": "outcome.consult.sat_anyone", "lines": ["Pagás {coins} y te sentás a consultar."] },
+  {
+    "id": "outcome.consult.left",
+    "lines": ["Te acercás a {who}, pero no te animás a pedir la consulta."]
+  },
+  { "id": "outcome.consult.left_anyone", "lines": ["No encontrás a quién consultar."] },
   { "id": "self.hungry", "lines": ["Tenés hambre."] },
   { "id": "self.thirsty", "lines": ["Tenés sed."] },
   { "id": "self.tired", "lines": ["Estás cansado."] },
@@ -418,6 +440,249 @@
   { "id": "self.bleeding", "lines": ["Estás sangrando."] },
   { "id": "self.sick", "lines": ["Te sentís mal, afiebrado."] },
   { "id": "self.cold", "lines": ["Tenés frío."] },
+
+  {
+    "id": "thought.remember",
+    "lines": ["Te quedás un rato recordando.", "Algo del pasado te vuelve a la cabeza."]
+  },
+  {
+    "id": "thought.remember_of",
+    "lines": ["Te acordás de {who}.", "Pensás en {who} y en otros tiempos."]
+  },
+  {
+    "id": "thought.feel_of",
+    "lines": ["{who} te ocupa el ánimo.", "Algo en vos gira en torno a {who}."]
+  },
+  { "id": "thought.ponder", "lines": ["Te quedás pensando.", "Das vueltas a lo que pasó."] },
+  {
+    "id": "thought.ponder_of",
+    "lines": ["Le das vueltas a lo de {who}.", "No podés dejar de pensar en {who}."]
+  },
+  {
+    "id": "thought.mood.grief",
+    "lines": ["Sentís un peso en el pecho.", "La pena te aprieta la garganta."]
+  },
+  {
+    "id": "thought.mood.fear",
+    "lines": ["Un miedo sordo te recorre.", "Se te hace un nudo en el estómago."]
+  },
+  { "id": "thought.mood.longing", "lines": ["Los extrañás.", "Te invade la nostalgia."] },
+  { "id": "thought.mood.guilt", "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."] },
+  {
+    "id": "thought.conclude.convinced",
+    "lines": ["Estás convencido de que {fact}.", "Ya no te cabe duda: {fact}."]
+  },
+  {
+    "id": "thought.conclude.likely",
+    "lines": ["Lo más probable es que {fact}.", "Todo apunta a que {fact}."]
+  },
+  { "id": "thought.conclude.maybe", "lines": ["Quizá {fact}.", "A lo mejor {fact}."] },
+  {
+    "id": "thought.conclude.hunch",
+    "lines": ["Tenés una corazonada: tal vez {fact}.", "Algo te dice que quizá {fact}."]
+  },
+  {
+    "id": "thought.conclude.rival",
+    "lines": ["Aunque también podría ser que {fact}.", "O tal vez {fact}."]
+  },
+  { "id": "thought.fact.took", "lines": ["{a} se llevó {b}"] },
+  { "id": "thought.fact.wronged", "lines": ["{a} fue perjudicado por {b}"] },
+  { "id": "thought.fact.poisoned_by", "lines": ["{a} fue envenenado por {b}"] },
+  { "id": "thought.fact.fire_at", "lines": ["hay fuego cerca"] },
+  { "id": "thought.fact.endangered", "lines": ["{a} corre peligro"] },
+  { "id": "thought.fact.at", "lines": ["{a} anda por otro lado"] },
+  { "id": "thought.fact.alive", "lines": ["{a} sigue vivo"] },
+  { "id": "thought.fact.dead", "lines": ["{a} murió"] },
+  { "id": "thought.fact.intends", "lines": ["{a} se trae algo entre manos"] },
+  { "id": "thought.fact.unknown", "lines": ["algo no cierra"] },
+  { "id": "thought.because.wound", "lines": ["Lo dice la herida."] },
+  { "id": "thought.because.tracks", "lines": ["Lo dicen las huellas."] },
+  { "id": "thought.because.seen", "lines": ["Lo viste con tus ojos."] },
+  { "id": "thought.because.told", "lines": ["Es lo que te contaron."] },
+  { "id": "thought.because.inference", "lines": ["Lo sacás de lo que sabés."] },
+  {
+    "id": "thought.hazy",
+    "lines": ["Pero ya no estás seguro de cómo fue.", "Los detalles se te mezclan."]
+  },
+  {
+    "id": "mode.dream",
+    "lines": ["Dormís mal y soñás.", "En el sueño, todo viene a pedazos."]
+  },
+  {
+    "id": "mode.montage",
+    "lines": [
+      "Pasa el tiempo, uno tras otro los días.",
+      "Los días se suceden sin que te des cuenta."
+    ]
+  },
+  { "id": "stretch.did.work", "lines": ["Casi todo ese tiempo se te va en trabajar."] },
+  { "id": "stretch.did.gather", "lines": ["Esos días los pasás juntando lo que da el campo."] },
+  { "id": "stretch.did.tend", "lines": ["Esos días los pasás atendiendo lo tuyo."] },
+  { "id": "stretch.did.cook", "lines": ["Entre una cosa y otra cocinás lo de siempre."] },
+  { "id": "stretch.did.trade", "lines": ["Vas y venís con tus tratos."] },
+  { "id": "stretch.did.move", "lines": ["Pasás buena parte del tiempo yendo de un lado a otro."] },
+  { "id": "stretch.did.rest", "lines": ["Dejás que el cuerpo descanse."] },
+  { "id": "stretch.did.search", "lines": ["Pasás esos días buscando."] },
+  { "id": "stretch.did.consult", "lines": ["Preguntás y escuchás lo que te dicen."] },
+  { "id": "stretch.failed", "lines": ["No todo te sale bien."] },
+  { "id": "stretch.spoke", "lines": ["Hablás con gente por el camino."] },
+  {
+    "id": "stretch.spoke_with",
+    "lines": ["En esos días hablás con {who}.", "Compartís palabras con {who}."]
+  },
+  { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
+  { "id": "stretch.zone.head", "lines": ["la cabeza"] },
+  { "id": "stretch.zone.neck", "lines": ["el cuello"] },
+  { "id": "stretch.zone.chest", "lines": ["el pecho"] },
+  { "id": "stretch.zone.abdomen", "lines": ["la panza"] },
+  { "id": "stretch.zone.left_arm", "lines": ["el brazo izquierdo"] },
+  { "id": "stretch.zone.right_arm", "lines": ["el brazo derecho"] },
+  { "id": "stretch.zone.left_leg", "lines": ["la pierna izquierda"] },
+  { "id": "stretch.zone.right_leg", "lines": ["la pierna derecha"] },
+  {
+    "id": "stretch.wound.in_pain",
+    "lines": ["Te sigue doliendo {zone}.", "Sentís dolorido {zone}."]
+  },
+  { "id": "stretch.wound.bleeding", "lines": ["Te sangra {zone} de a ratos."] },
+  { "id": "stretch.wound.bleeding_heavily", "lines": ["Te sangra {zone} sin parar."] },
+  { "id": "stretch.wound.wound_hot", "lines": ["Sentís caliente e hinchado {zone}."] },
+  { "id": "stretch.wound.bone_broken", "lines": ["Algo se rompió en {zone} y duele al moverlo."] },
+  { "id": "stretch.fought", "lines": ["Hay una pelea en el medio."] },
+  {
+    "id": "mode.aftermath",
+    "lines": ["Después, el silencio.", "Cuando todo termina, queda el cuerpo y la quietud."]
+  },
+  {
+    "id": "thought.mood.calm",
+    "lines": ["Por un rato estás en paz.", "Todo está quieto dentro tuyo."]
+  },
+
+  { "id": "taste.loves", "lines": ["Te encanta {what}.", "{what}: lo que más te gusta."] },
+  { "id": "taste.likes", "lines": ["Te gusta {what}.", "{what}: te cae bien."] },
+  { "id": "taste.dislikes", "lines": ["No te gusta {what}.", "{what}: no es lo tuyo."] },
+  { "id": "taste.loathes", "lines": ["No soportás {what}.", "Odiás {what}."] },
+  {
+    "id": "taste.reminds_of",
+    "lines": ["{what} te recuerda a {who}.", "Con {what} te acordás de {who}."]
+  },
+  {
+    "id": "taste.recalls_ill",
+    "lines": ["Con {what} te acordás de cuando te cayó mal.", "{what} te trae un mal recuerdo."]
+  },
+  {
+    "id": "taste.recalls_good",
+    "lines": ["{what} te trae un buen recuerdo.", "Con {what} te acordás de un buen momento."]
+  },
+
+  {
+    "id": "due.owe.overdue",
+    "lines": [
+      "Le debés {what} a {who} y ya se te pasó el plazo.",
+      "Tenés pendiente {what} para {who}: ya venció."
+    ]
+  },
+  {
+    "id": "due.owe.soon",
+    "lines": [
+      "Pronto vence {what} que le debés a {who}.",
+      "Se acerca el día de darle {what} a {who}."
+    ]
+  },
+  {
+    "id": "due.owed.overdue",
+    "lines": [
+      "{who} te debe {what} y ya venció el plazo.",
+      "{who} se atrasó con {what} que te prometió."
+    ]
+  },
+  {
+    "id": "due.owed.soon",
+    "lines": [
+      "Pronto {who} tendría que darte {what}.",
+      "Se acerca el día en que {who} te debe {what}."
+    ]
+  },
+  { "id": "due.unsure", "lines": ["No lo recordás bien.", "Los detalles se te borronean."] },
+
+  {
+    "id": "reading.cast",
+    "lines": [
+      "{who} tira {instrument}: caen {signs}.",
+      "{who} echa {instrument} y mira lo que cae: {signs}."
+    ]
+  },
+  {
+    "id": "reading.told.greatness.strong",
+    "lines": ["{who} te dice, sin vacilar, que vas a elevarte por encima de los tuyos."]
+  },
+  {
+    "id": "reading.told.greatness.faint",
+    "lines": ["{who} murmura algo sobre una grandeza que quizá te espera."]
+  },
+  { "id": "reading.told.ruin.strong", "lines": ["{who} te dice, grave, que traerás ruina."] },
+  {
+    "id": "reading.told.ruin.faint",
+    "lines": ["{who} deja caer que algo se podría arruinar a tu alrededor."]
+  },
+  {
+    "id": "reading.told.death.strong",
+    "lines": ["{who} te dice, sin mirarte, que vas a morir antes de tiempo."]
+  },
+  {
+    "id": "reading.told.death.faint",
+    "lines": ["{who} habla de una sombra de muerte, sin decir más."]
+  },
+  {
+    "id": "reading.told.fortune.strong",
+    "lines": ["{who} te dice, sonriendo, que vas a prosperar."]
+  },
+  {
+    "id": "reading.told.fortune.faint",
+    "lines": ["{who} te promete, sin firmeza, algo de buena fortuna."]
+  },
+  { "id": "reading.vague", "lines": ["Son palabras que le servirían a cualquiera."] },
+  { "id": "reading.doubtful", "lines": ["No sabés si creerle."] },
+
+  {
+    "id": "offense.received.rebuke",
+    "lines": [
+      "{who} te falta el respeto y vos se lo hacés notar.",
+      "{who} se pasa de la raya con vos."
+    ]
+  },
+  {
+    "id": "offense.received.punish",
+    "lines": ["{who} te faltó el respeto, y vos se lo cobrás.", "No dejás pasar lo de {who}."]
+  },
+  {
+    "id": "offense.received.ignore",
+    "lines": ["{who} no guarda las formas con vos, y lo dejás pasar."]
+  },
+  {
+    "id": "offense.caused.rebuke",
+    "lines": [
+      "{who} te reprende: no guardaste las formas.",
+      "Notás que a {who} le cayó mal tu modo."
+    ]
+  },
+  {
+    "id": "offense.caused.punish",
+    "lines": [
+      "{who} te hace pagar la falta de modales.",
+      "A {who} le sentó muy mal lo que hiciste, y te lo hace sentir."
+    ]
+  },
+  {
+    "id": "offense.caused.ignore",
+    "lines": ["A {who} se le nota el disgusto por tu modo, pero se calla."]
+  },
+  { "id": "offense.norm.village.address_formal", "lines": ["Faltó el usted que se debe."] },
+  { "id": "offense.norm.village.greet_first", "lines": ["Faltó el saludo primero."] },
+  {
+    "id": "offense.norm.village.uncover_before_landholder",
+    "lines": ["Faltó descubrirse ante el que manda."]
+  },
+  { "id": "offense.norm.impostor", "lines": ["Se hizo pasar por más de lo que es."] },
 
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },

@@ -4,17 +4,30 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { characterPanel, inventoryPanel } from "../../game/index.ts";
 import {
+  bookPanel,
+  characterPanel,
+  hypothesesPanel,
+  inventoryPanel,
+  peoplePanel,
+  recapOf,
+  TONE_ICON,
+  TONE_LABEL,
+} from "../../game/index.ts";
+import {
+  renderBook,
   renderCharacter,
   renderEnvironment,
+  renderHypotheses,
   renderInventory,
   renderJournal,
+  renderPeople,
+  renderRecap,
   renderStatus,
   renderSuggestion,
 } from "../render.ts";
 import { JOURNAL_SHOWN, type Session } from "../session.ts";
-import type { Panels, SayResponse, WebState } from "./api.ts";
+import type { History, Panels, SayResponse, WebState } from "./api.ts";
 
 /** Los paneles del personaje con el texto de la CLI, sin números de la verdad (player-loop §9). */
 export function panelsOf(session: Session): Panels {
@@ -23,9 +36,32 @@ export function panelsOf(session: Session): Panels {
     now: renderStatus(session.life.now),
     character: renderCharacter(characterPanel(w)),
     inventory: renderInventory(inventoryPanel(w)),
+    book: renderBook(bookPanel(w)),
+    people: renderPeople(peoplePanel(w)),
+    hypotheses: renderHypotheses(hypothesesPanel(w)),
+    recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(session.environment()),
-    options: session.suggested().map((o) => ({ id: o.id, label: renderSuggestion(o) })),
+    options: session.suggested().map((o) => ({
+      id: o.id,
+      label: renderSuggestion(o),
+      tone: o.tone,
+      icon: TONE_ICON[o.tone],
+      toneLabel: TONE_LABEL[o.tone],
+      confirm: o.confirm,
+    })),
+  };
+}
+
+/** Entradas de narración por página al abrir y al subir. */
+export const HISTORY_PAGE = 12;
+
+/** Una página de la narración guardada, hacia atrás desde `before` (sin él, la última). */
+export function historyOf(session: Session, before?: number): History {
+  const page = session.store.narrationPage(HISTORY_PAGE, before);
+  return {
+    more: page.more,
+    entries: page.entries.map((e) => ({ seq: e.seq, when: renderStatus(e.tick), text: e.text })),
   };
 }
 
@@ -56,8 +92,22 @@ export function apiHandler(session: Session) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
     const path = (req.url ?? "").split("?")[0];
     if (path === "/api/state" && req.method === "GET") {
-      const state: WebState = { opening: session.opening, ...panelsOf(session) };
+      const state: WebState = {
+        opening: session.opening,
+        history: historyOf(session),
+        ...panelsOf(session),
+      };
       send(res, 200, state);
+      return true;
+    }
+    if (path === "/api/history" && req.method === "GET") {
+      const raw = new URL(req.url ?? "", "http://localhost").searchParams.get("before");
+      const before = raw === null ? Number.NaN : Number(raw);
+      if (!Number.isSafeInteger(before)) {
+        send(res, 400, { error: "falta before" });
+        return true;
+      }
+      send(res, 200, historyOf(session, before));
       return true;
     }
     const turnRoutes = { "/api/say": "line", "/api/choose": "id" } as const;

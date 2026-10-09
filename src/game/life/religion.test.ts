@@ -1,14 +1,17 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent } from "../../core/index.ts";
+import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  affiliationOf,
   COMMUNITY_RELIGION,
   checkInvariants,
   DOCTRINES,
   GOODS,
+  PERSON,
   practicesOfKind,
   RELIGIONS,
+  RELIGIOUS_IDENTITY,
   religionProblems,
   tabooOnGood,
   villageCulture,
@@ -87,6 +90,36 @@ describe("la religión de la aldea inicial", () => {
     expect(w.truth.ids(COMMUNITY_RELIGION).length).toBe(1);
     // Ningún ser venerado tiene del otro lado a nadie: la creencia no vuelve verdad nada.
     for (const b of religion?.sacredBeings ?? []) expect(b.truth).toBe("none");
+  });
+
+  it("cada persona tiene una afiliación a la religión de la aldea, con causa", () => {
+    const people = w.truth.ids(PERSON) as AgentId[];
+    expect(people.length).toBeGreaterThan(0);
+    for (const id of people) {
+      const identity = w.truth.get(RELIGIOUS_IDENTITY, id);
+      const aff = affiliationOf(identity, religion?.religion as string);
+      expect(aff, id).toBeDefined();
+      for (const x of [aff?.belief, aff?.practice, aff?.belonging, aff?.outward]) {
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(x).toBeLessThanOrEqual(1);
+      }
+      expect(w.log.get(aff?.originEventId as never)?.kind).toBe("religion.people_seeded");
+    }
+  });
+
+  it("los hijos nombran a sus padres como de quién aprendieron la fe", () => {
+    const people = w.truth.ids(PERSON) as AgentId[];
+    let withParents = 0;
+    for (const id of people) {
+      const rec = w.truth.get(PERSON, id);
+      const aff = affiliationOf(w.truth.get(RELIGIOUS_IDENTITY, id), religion?.religion as string);
+      const known = [rec?.mother, rec?.father].filter(
+        (p): p is AgentId => p != null && people.includes(p),
+      );
+      expect([...(aff?.learnedFrom ?? [])].sort()).toEqual([...known].sort());
+      if (known.length > 0) withParents++;
+    }
+    expect(withParents).toBeGreaterThan(0);
   });
 
   it("es determinista y no rompe los invariantes", () => {

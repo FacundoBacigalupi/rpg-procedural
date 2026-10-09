@@ -1,0 +1,32 @@
+[
+  {
+    "id": "village.bones",
+    "name": "huesos arrojados",
+    "culture": "village",
+    "source": "ritual",
+    "instrument": "huesos de gallina",
+    "casts": 3,
+    "symbols": [
+      { "id": "bones_scattered", "name": "huesos dispersos", "tone": "ominous", "weight": 1 },
+      { "id": "bones_crossed", "name": "dos huesos cruzados", "tone": "ambiguous", "weight": 1.5 },
+      { "id": "bones_aligned", "name": "huesos en hilera", "tone": "auspicious", "weight": 1 },
+      { "id": "bones_cracked", "name": "un hueso quebrado", "tone": "ominous", "weight": 0.8 },
+      { "id": "bones_circle", "name": "huesos en círculo", "tone": "auspicious", "weight": 0.8 },
+      { "id": "bones_apart", "name": "uno lejos de los demás", "tone": "ambiguous", "weight": 1 }
+    ]
+  },
+  {
+    "id": "village.ash",
+    "name": "ceniza del incienso",
+    "culture": "village",
+    "source": "ritual",
+    "instrument": "brasero e incienso",
+    "casts": 2,
+    "symbols": [
+      { "id": "ash_straight", "name": "ceniza que cae derecha", "tone": "auspicious", "weight": 1 },
+      { "id": "ash_bent", "name": "ceniza que se dobla", "tone": "ambiguous", "weight": 1.5 },
+      { "id": "ash_broken", "name": "ceniza que se parte", "tone": "ominous", "weight": 1 },
+      { "id": "ash_smoke_low", "name": "humo que no sube", "tone": "ominous", "weight": 0.7 }
+    ]
+  }
+]

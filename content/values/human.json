@@ -1,0 +1,79 @@
+[
+  {
+    "id": "power",
+    "species": "human",
+    "name": "Poder",
+    "base": 0.5,
+    "temperament": { "boldness": 0.3, "warmth": -0.15 }
+  },
+  {
+    "id": "safety",
+    "species": "human",
+    "name": "Seguridad",
+    "base": 0.6,
+    "temperament": { "boldness": -0.3, "reactivity": 0.15 }
+  },
+  {
+    "id": "family",
+    "species": "human",
+    "name": "Familia",
+    "base": 0.7,
+    "temperament": { "warmth": 0.3, "sociability": 0.15 }
+  },
+  {
+    "id": "knowledge",
+    "species": "human",
+    "name": "Saber",
+    "base": 0.4,
+    "temperament": { "curiosity": 0.35, "control": 0.1 }
+  },
+  {
+    "id": "freedom",
+    "species": "human",
+    "name": "Libertad",
+    "base": 0.4,
+    "temperament": { "curiosity": 0.15, "control": -0.2, "sociability": -0.1 }
+  },
+  {
+    "id": "justice",
+    "species": "human",
+    "name": "Justicia",
+    "base": 0.5,
+    "temperament": { "warmth": 0.15, "control": 0.15 }
+  },
+  {
+    "id": "wealth",
+    "species": "human",
+    "name": "Riqueza",
+    "base": 0.5,
+    "temperament": { "control": 0.1, "warmth": -0.1 }
+  },
+  {
+    "id": "status",
+    "species": "human",
+    "name": "Estatus",
+    "base": 0.4,
+    "temperament": { "sociability": 0.2, "boldness": 0.1 }
+  },
+  {
+    "id": "pleasure",
+    "species": "human",
+    "name": "Placer",
+    "base": 0.4,
+    "temperament": { "control": -0.3, "reactivity": 0.1 }
+  },
+  {
+    "id": "tradition",
+    "species": "human",
+    "name": "Tradición",
+    "base": 0.5,
+    "temperament": { "curiosity": -0.3, "control": 0.1 }
+  },
+  {
+    "id": "immortality",
+    "species": "human",
+    "name": "Inmortalidad",
+    "base": 0.05,
+    "temperament": { "curiosity": 0.05, "boldness": 0.05 }
+  }
+]

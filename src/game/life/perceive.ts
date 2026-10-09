@@ -21,8 +21,11 @@ import {
   STATUS,
   type StatusDef,
   skyLight,
+  type TraitDef,
   table,
 } from "../../sim/index.ts";
+import { ASCRIBED_GROUPS, ascribeFromPercepts } from "./identity.ts";
+import { PURPOSE_READS, type ReaderContent, readWitnessed, rememberReads } from "./reading.ts";
 import { playerObserver } from "./witness.ts";
 
 export const PERCEIVE_PROCESS = "life.perceive";
@@ -45,6 +48,10 @@ export interface PerceiveOptions {
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
+  /** Rasgos de cultura: con ellos lo visto se vuelve creencia de a qué grupo es cada uno. */
+  readonly cultureTraits?: readonly TraitDef[];
+  /** Dimensiones y vínculos de relación: con ellos el aprecio por el actor entra a la lectura. */
+  readonly relations?: ReaderContent;
 }
 
 /** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
@@ -60,19 +67,53 @@ export function perceiveProcess(o: PerceiveOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [PERCEPTS.name, PERSON.name, LOCATION.name],
-    writes: [PERCEPTS.name],
+    reads: [
+      PERCEPTS.name,
+      PERSON.name,
+      LOCATION.name,
+      "culture.person",
+      "culture.community",
+      ASCRIBED_GROUPS.name,
+    ],
+    writes: [PERCEPTS.name, ASCRIBED_GROUPS.name, PURPOSE_READS.name],
     run(ctx) {
       const fresh = perceiveEvents(o, ctx.truth, ctx.recent, ctx.rng);
       if (fresh.length === 0) return {};
+      // Lo que vio con un porqué detrás, lo lee con su sospecha y su aprecio por el actor.
+      const seen = new Set(fresh.map((p) => p.sourceEventId));
+      const reads = ctx.recent.flatMap((e) => {
+        if (!seen.has(e.id)) return [];
+        const r = readWitnessed(ctx.rng.fork("read", e.id), ctx.truth, o.player, e, o.relations);
+        return r === undefined ? [] : [r];
+      });
+      const ascribed = ascribeFromPercepts(
+        ctx.truth,
+        o.player,
+        fresh,
+        ctx.recent,
+        o.cultureTraits ?? [],
+      );
       return {
         changes: [
+          ...(reads.length > 0
+            ? [
+                {
+                  op: "set" as const,
+                  table: PURPOSE_READS.name,
+                  id: o.player,
+                  value: rememberReads(ctx.truth, o.player, reads),
+                },
+              ]
+            : []),
           {
             op: "set",
             table: PERCEPTS.name,
             id: o.player,
             value: remember(ctx.truth, o.player, fresh),
           },
+          ...(ascribed
+            ? [{ op: "set" as const, table: ASCRIBED_GROUPS.name, id: o.player, value: ascribed }]
+            : []),
         ],
       };
     },

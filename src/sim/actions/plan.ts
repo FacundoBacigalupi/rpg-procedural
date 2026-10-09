@@ -9,11 +9,31 @@
 import type { AgentId, CauseRef, EntityRef, Tick } from "../../core/index.ts";
 import { isId, parseId, z } from "../../core/index.ts";
 import type { ActionCatalog, TemplateNode } from "./catalog.ts";
+import { PURPOSES, type Purpose } from "./purpose.ts";
+
+/**
+ * El acto de habla que declara quien habla, con las referencias ya resueltas contra lo que cree
+ * (actions §4, dialogue §2). Es la intención: el oyente entiende las palabras, no este acto.
+ */
+export type SpeakAct =
+  | { readonly kind: "greet" }
+  | { readonly kind: "farewell" }
+  | { readonly kind: "ask"; readonly about: EntityRef | null }
+  | { readonly kind: "request"; readonly what: string | null }
+  | { readonly kind: "tell"; readonly about: EntityRef; readonly claim: "dead" | "alive" }
+  | {
+      readonly kind: "promise";
+      readonly what: string | null;
+      readonly times?: number | undefined;
+      readonly dueDays?: number | null | undefined;
+      readonly precision?: number | undefined;
+    };
 
 export type ArgValue =
   | { readonly role: string; readonly entity: EntityRef }
   | { readonly role: string; readonly seconds: number }
-  | { readonly role: string; readonly text: string };
+  /** Las palabras, y si las dice con un acto declarado (solo el contenido de `speak`). */
+  | { readonly role: string; readonly text: string; readonly act?: SpeakAct | undefined };
 
 /** Condiciones de corte de un `until`, sobre lo que el actor percibe. */
 export type Condition =
@@ -48,6 +68,8 @@ export interface ActionPlan {
   readonly source: PlanSource;
   /** Para qué, en palabras del actor (la memoria y la narración lo citan). */
   readonly goal?: string | undefined;
+  /** El porqué declarado, en la verdad del actor: los demás lo leen con `readPurpose`. */
+  readonly purpose?: Purpose | undefined;
   readonly root: PlanNode;
   /** Modos para todo el plan; los de cada `do` se suman. */
   readonly manner: readonly string[];
@@ -62,10 +84,29 @@ const entityRef = z.custom<EntityRef>(
   "referencia inválida",
 );
 
+const SpeakActSchema: z.ZodType<SpeakAct> = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("greet") }),
+  z.strictObject({ kind: z.literal("farewell") }),
+  z.strictObject({ kind: z.literal("ask"), about: entityRef.nullable() }),
+  z.strictObject({ kind: z.literal("request"), what: z.string().max(500).nullable() }),
+  z.strictObject({ kind: z.literal("tell"), about: entityRef, claim: z.enum(["dead", "alive"]) }),
+  z.strictObject({
+    kind: z.literal("promise"),
+    what: z.string().max(500).nullable(),
+    times: z.number().positive().max(100).optional(),
+    dueDays: z.number().int().positive().max(3650).nullable().optional(),
+    precision: z.number().min(0).max(1).optional(),
+  }),
+]);
+
 const ArgValueSchema = z.union([
   z.strictObject({ role: z.string(), entity: entityRef }),
   z.strictObject({ role: z.string(), seconds: z.number().int().positive() }),
-  z.strictObject({ role: z.string(), text: z.string().max(2000) }),
+  z.strictObject({
+    role: z.string(),
+    text: z.string().max(2000),
+    act: SpeakActSchema.optional(),
+  }),
 ]);
 
 const ConditionSchema: z.ZodType<Condition> = z.discriminatedUnion("kind", [
@@ -109,6 +150,7 @@ export const ActionPlanSchema = z.strictObject({
   actor: z.custom<AgentId>((v) => typeof v === "string" && isId("agent", v), "actor inválido"),
   source: z.enum(PLAN_SOURCES),
   goal: z.string().max(500).optional(),
+  purpose: z.strictObject({ motive: z.enum(PURPOSES), forWhom: entityRef.optional() }).optional(),
   root: PlanNodeSchema,
   manner: z.array(z.string()),
   causes: z.array(z.custom<CauseRef>((v) => typeof v === "object" && v !== null)),

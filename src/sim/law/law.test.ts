@@ -2,12 +2,17 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import {
+  culpability,
   type Deed,
   KEPT_DEEDS,
   learnDeed,
+  MAX_CULPABILITY,
   NOTORIETY_EDGE,
   notoriety,
   notorietyEdge,
+  penaltyScale,
+  REPORT_EDGE,
+  reportable,
   worstDeed,
 } from "./deeds.ts";
 import { bloodStrength, type Trace, traceStrength, traceVisible } from "./traces.ts";
@@ -52,6 +57,13 @@ describe("lo que se sabe de un hecho", () => {
     expect(worstDeed(k, A)?.kind).toBe("assault");
     expect(worstDeed(k, B)).toBeNull();
     expect(worstDeed(undefined, A)).toBeNull();
+  });
+
+  it("lo que quien lo sabe leyó como regalo no cuenta como lo peor; leído como robo, sí", () => {
+    const gift = learnDeed(undefined, deed(1, { read: { weight: 0.8 } }));
+    expect(worstDeed(gift, A)).toBeNull();
+    const theft = learnDeed(undefined, deed(1, { read: { weight: -0.6 } }));
+    expect(worstDeed(theft, A)?.kind).toBe("theft");
   });
 });
 
@@ -115,5 +127,24 @@ describe("huellas", () => {
     expect(traceVisible(out, now, 30)).toBe(false);
     expect(traceStrength(out, now, 6)).toBeCloseTo(traceStrength(out, now, 0) / 2, 10);
     expect(traceStrength(inside, now, 30)).toBe(traceStrength(inside, now, 0));
+  });
+});
+
+describe("juzgar según el porqué leído", () => {
+  it("sin lectura la culpa es plena y el regalo leído la desestima", () => {
+    expect(culpability(deed(1))).toBe(1);
+    const gift = deed(2, { read: { weight: 0.8 } });
+    expect(culpability(gift)).toBeLessThan(REPORT_EDGE);
+    expect(reportable(gift)).toBe(false);
+    expect(penaltyScale(gift)).toBe(0);
+  });
+
+  it("el robo leído pesa más y la duda acerca la culpa a 1", () => {
+    const sure = deed(3, { read: { weight: -0.8 } });
+    const unsure = deed(4, { read: { weight: -0.32 } });
+    expect(culpability(sure)).toBeGreaterThan(culpability(unsure));
+    expect(culpability(unsure)).toBeGreaterThan(1);
+    expect(penaltyScale(sure)).toBeLessThanOrEqual(MAX_CULPABILITY);
+    expect(reportable(sure)).toBe(true);
   });
 });

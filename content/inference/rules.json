@@ -1,0 +1,116 @@
+[
+  {
+    "id": "theft-from-access",
+    "premises": [
+      { "pred": "entered", "args": ["?who", "?place"] },
+      { "pred": "missing", "args": ["?thing", "?place"] }
+    ],
+    "conclusion": { "pred": "took", "args": ["?who", "?thing"] },
+    "reliability": 0.65,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": false,
+    "knownBy": { "common": true }
+  },
+  {
+    "id": "grievance-from-theft",
+    "premises": [
+      { "pred": "took", "args": ["?who", "?thing"] },
+      { "pred": "owner", "args": ["?thing", "?owner"] }
+    ],
+    "conclusion": { "pred": "wronged", "args": ["?owner", "?who"] },
+    "reliability": 0.9,
+    "abductive": false,
+    "tone": "neutral",
+    "exclusive": false,
+    "knownBy": { "common": true }
+  },
+  {
+    "id": "poison-from-meal",
+    "premises": [
+      { "pred": "sick", "args": ["?victim"] },
+      { "pred": "ate_with", "args": ["?victim", "?host"] }
+    ],
+    "conclusion": { "pred": "poisoned_by", "args": ["?victim", "?host"] },
+    "reliability": 0.4,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": true,
+    "knownBy": {
+      "skills": [{ "skill": "medicine", "min": 0.25 }],
+      "schemas": [{ "schema": "people_are_untrustworthy", "min": 0.4 }]
+    }
+  },
+  {
+    "id": "fire-from-smoke",
+    "premises": [{ "pred": "smoke_seen", "args": ["?place"] }],
+    "conclusion": { "pred": "fire_at", "args": ["?place"] },
+    "reliability": 0.7,
+    "abductive": true,
+    "tone": "danger",
+    "exclusive": false,
+    "knownBy": { "common": true }
+  },
+  {
+    "id": "danger-from-fire",
+    "premises": [
+      { "pred": "fire_at", "args": ["?place"] },
+      { "pred": "lives_at", "args": ["?who", "?place"] }
+    ],
+    "conclusion": { "pred": "endangered", "args": ["?who"] },
+    "reliability": 0.85,
+    "abductive": false,
+    "tone": "danger",
+    "exclusive": false,
+    "knownBy": { "common": true }
+  },
+  {
+    "id": "picked-lock-from-clean-entry",
+    "premises": [
+      { "pred": "entered", "args": ["?who", "?place"] },
+      { "pred": "lock_intact", "args": ["?place"] }
+    ],
+    "conclusion": { "pred": "picked_lock", "args": ["?who", "?place"] },
+    "reliability": 0.55,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "lockwork", "min": 0.3 }] }
+  },
+  {
+    "id": "blade-from-clean-wound",
+    "premises": [{ "pred": "clean_edged_wound", "args": ["?victim"] }],
+    "conclusion": { "pred": "cut_by_blade", "args": ["?victim"] },
+    "reliability": 0.75,
+    "abductive": true,
+    "tone": "danger",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "medicine", "min": 0.3 }] }
+  },
+  {
+    "id": "passage-from-fresh-tracks",
+    "premises": [
+      { "pred": "tracks_of", "args": ["?who", "?place"] },
+      { "pred": "tracks_fresh", "args": ["?place"] }
+    ],
+    "conclusion": { "pred": "passed_recently", "args": ["?who", "?place"] },
+    "reliability": 0.7,
+    "abductive": true,
+    "tone": "neutral",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "tracking", "min": 0.3 }] }
+  },
+  {
+    "id": "plot-from-foreknowledge",
+    "premises": [
+      { "pred": "benefits_from", "args": ["?who", "?event"] },
+      { "pred": "knew_beforehand", "args": ["?who", "?event"] }
+    ],
+    "conclusion": { "pred": "plotted", "args": ["?who", "?event"] },
+    "reliability": 0.45,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": true,
+    "knownBy": { "schemas": [{ "schema": "people_are_untrustworthy", "min": 0.5 }] }
+  }
+]

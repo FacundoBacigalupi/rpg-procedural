@@ -6,6 +6,7 @@ import {
   ATTENTION,
   callName,
   familyName,
+  HEARD_WORDS,
   LOCATION,
   type Observer,
   PERSON,
@@ -49,7 +50,7 @@ export function acquaintances(w: Pick<Witness, "truth" | "player">): Map<AgentId
 
 /**
  * Las palabras de su lengua que el personaje conoce y puede citar: su apellido y el de su gente, y
- * el nombre de los lugares de la aldea (language §13). Los nombres de pila de sus conocidos ya
+ * el nombre de los lugares de la aldea (language §13). La forma de habla que dijo u oyó (tratamiento, palabras con rodeo) entra por `HEARD_WORDS`. Los nombres de pila de sus conocidos ya
  * entran por `acquaintances`.
  */
 export function knownWords(w: Pick<Witness, "truth" | "player">): string[] {
@@ -64,6 +65,7 @@ export function knownWords(w: Pick<Witness, "truth" | "player">): string[] {
     const n = w.truth.get(PLACE_NAME, id);
     if (n) words.add(n.form);
   }
+  for (const x of w.truth.get(HEARD_WORDS, w.player)?.words ?? []) words.add(x);
   return [...words];
 }
 

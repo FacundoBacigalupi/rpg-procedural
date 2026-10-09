@@ -1,37 +1,78 @@
 // Los paneles del personaje (player-loop §9): lo que el usuario puede consultar fuera del turno sin
 // que el tiempo pase. Como la `PlayerView`, son un muro con la verdad: ningún número del mundo sale
-// de acá. El cuerpo va como signos (`bodySigns`), la habilidad como cuánto lo hizo (la autoimagen
-// como creencia llega con skills §9) y los bienes como los estima a ojo.
+// de acá. El cuerpo va como signos (`bodySigns`), la habilidad como se ve a sí mismo (su autoimagen,
+// skills §9: puede errar; las horas de práctica y el nivel real no salen) y los bienes como los estima a ojo.
 //
-// En la Fase 1 no hay todavía creencias de inventario (information, Fase 2): lo que "cree tener"
-// es lo que tiene, redondeado como lo estimaría él. Cuando haya creencias, un robo que no notó
-// sigue figurando acá hasta que revisa.
+// Lo que "cree tener" sale de `INVENTORY_BELIEF` (la foto de la última vez que revisó), redondeado
+// como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. La foto se toma al
+// empezar la vida y `inventoryProcess` la corrige al usar sus bienes (comer, dar, comprar, guardar).
 
-import type { HolderRef, LedgerUnit } from "../../core/index.ts";
+import type { AgentId, EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
+  AMENDS,
+  affiliationOf,
   BODY_STATE,
   bodySigns,
+  bookOf,
   COPPER,
+  type GuiltResponse,
   houseKey,
   LOCATION,
   MEAL_KCAL,
+  MENTAL,
+  mentionableTastes,
+  OWN_DEEDS,
   PERSON,
   PLACE,
+  PLEDGE,
+  PLEDGE_BOOK,
+  RELIGIOUS_IDENTITY,
+  SELF_IMAGES,
   SKILL_STATE,
+  type SkillStanding,
   STATUS,
+  seedSelfImage,
+  skillStandingOf,
+  TASTES_OF,
+  villageReligion,
 } from "../../sim/index.ts";
+import { creditRows } from "./credit.ts";
+import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
-
-/** Cuánto hizo algo, como lo recuerda. */
-export type Practice = "never_much" | "some" | "a_lot" | "all_life";
 
 /** Cuánto hay de algo a ojo. */
 export type Amount = "a_little" | "some" | "plenty";
 
 /** Para cuánto alcanza la despensa, a ojo. */
 export type Lasts = "empty" | "days" | "weeks" | "months" | "a_year";
+
+/** Dispersión de la autoimagen desde la cual está seguro de lo que cree. */
+const SURE_SPREAD = 0.1;
+
+/** Cuánto de una dimensión de la fe siente, en palabras. */
+export type FaithLevel = "none" | "faint" | "firm" | "deep";
+
+/** De 0-1 a la palabra con que uno se describe: las raíces de la fe no se cuentan en números. */
+export function faithLevel(x: number): FaithLevel {
+  if (x < 0.15) return "none";
+  if (x < 0.4) return "faint";
+  if (x < 0.75) return "firm";
+  return "deep";
+}
+
+/** Cuánto pesa una carga mental, en palabras. */
+export type BurdenLevel = "light" | "heavy" | "crushing";
+
+export function burdenLevel(severity: number): BurdenLevel {
+  if (severity < 0.35) return "light";
+  if (severity < 0.7) return "heavy";
+  return "crushing";
+}
+
+/** Desde qué gravedad una condición se nota en el panel. */
+export const BURDEN_FROM = 0.1;
 
 export interface CharacterPanel {
   /** Los años que sabe que tiene. */
@@ -48,11 +89,46 @@ export interface CharacterPanel {
   readonly status?: string;
   /** Su gente, por la relación que sabe que tiene, y si vive (de lo que sabe). */
   readonly family: readonly { readonly relation: string }[];
-  /** Lo que sabe hacer, por cuánto lo practicó (sin niveles). */
+  /** Lo que sabe que le gusta y lo que rechaza (npc-psychology §16), lo más fuerte primero. */
+  readonly tastes: readonly {
+    readonly name: string;
+    readonly stance: "loves" | "likes" | "dislikes" | "loathes";
+  }[];
+  /**
+   * Su fe, como la vive él (religion §1): lo que cree, cuánto cumple y cuánto se siente parte, en
+   * palabras, y las prácticas de su religión que conoce. Nunca dice si lo que cree es cierto.
+   */
+  readonly faith?: {
+    readonly religion: string;
+    readonly belief: FaithLevel;
+    readonly practice: FaithLevel;
+    readonly belonging: FaithLevel;
+    /** Las prácticas de su religión (ofrendas, fiestas, tabúes) con su clase, sin pesos. */
+    readonly practices: readonly { readonly name: string; readonly kind: string }[];
+  };
+  /**
+   * Cómo se siente por dentro (npc-psychology §11): las cargas que lleva, en palabras, y qué decidió
+   * hacer con cada culpa (sin menú: es lo que ya decidió su conciencia, `AMENDS`). Sin números.
+   */
+  readonly conscience?: {
+    readonly burdens: readonly {
+      readonly kind: "trauma" | "guilt";
+      readonly weight: BurdenLevel;
+    }[];
+    readonly guilt: readonly {
+      readonly deed: string;
+      /** A quién, como lo llama (nombre o relación; «alguien» si no lo ubica). */
+      readonly other: string;
+      readonly stance: GuiltResponse;
+    }[];
+  };
+  /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
     readonly name: string;
-    readonly practice: Practice;
+    readonly standing: SkillStanding;
+    /** Si ya se conoce lo bastante como para estar seguro. */
+    readonly sure: boolean;
   }[];
 }
 
@@ -61,13 +137,6 @@ export interface InventoryPanel {
   readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
-}
-
-function practiceOf(hours: number): Practice {
-  if (hours >= 5000) return "all_life";
-  if (hours >= 500) return "a_lot";
-  if (hours >= 30) return "some";
-  return "never_much";
 }
 
 export function characterPanel(w: LifeWorld): CharacterPanel {
@@ -81,17 +150,31 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;
   const zoneName = (id: string) => plan?.zones.find((z) => z.id === id)?.name ?? id;
   const alive = new Set(living(w.truth));
+  const images = w.truth.get(SELF_IMAGES, w.player);
   const skills = Object.entries(w.truth.get(SKILL_STATE, w.player) ?? {})
-    .map(([id, s]) => ({
-      id,
-      name: w.skills.skill(id)?.name ?? id,
-      practice: practiceOf(s.hours),
-    }))
+    .flatMap(([id, s]) => {
+      const def = w.skills.skill(id);
+      // Una vida sin autoimagen guardada (anterior a este modelo) se ve como lo siembra la infancia.
+      const image = images?.[id] ?? (def ? seedSelfImage(def, s, {}, w.scheduler.now) : undefined);
+      if (!image) return [];
+      return [
+        {
+          id,
+          name: def?.name ?? id,
+          standing: skillStandingOf(image.estimate.level),
+          sure: image.estimate.spread <= SURE_SPREAD,
+        },
+      ];
+    })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);
     return p?.hexes.includes(at.hex) ? [p.kind] : [];
   });
+  const community = villageReligion(w.truth);
+  const aff = community
+    ? affiliationOf(w.truth.get(RELIGIOUS_IDENTITY, w.player), community.religion)
+    : undefined;
   return {
     ageYears: Math.floor((w.scheduler.now - me.born) / w.clock.year),
     sex: me.sex,
@@ -105,8 +188,123 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
     family: [...acquaintances(w)]
       .filter(([id]) => alive.has(id))
       .flatMap(([, a]) => (a.relation ? [{ relation: a.relation }] : [])),
+    tastes: mentionableTastes(
+      w.truth.get(TASTES_OF, w.player)?.preferences ?? [],
+      w.tastes,
+      PANEL_TASTES,
+      PANEL_TASTE_STRENGTH,
+    ).map((t) => ({ name: t.name, stance: t.stance })),
+    ...(community && aff
+      ? {
+          faith: {
+            religion: community.name,
+            belief: faithLevel(aff.belief),
+            practice: faithLevel(aff.practice),
+            belonging: faithLevel(aff.belonging),
+            practices: community.practices.map((p) => ({ name: p.name, kind: p.kind })),
+          },
+        }
+      : {}),
+    ...conscienceOf(w),
     skills,
   };
+}
+
+/**
+ * La carga interior del personaje: condiciones que pesan (desde `BURDEN_FROM`) y, por cada hecho
+ * propio con postura decidida, qué quiere hacer con él. Vacío si no carga nada.
+ */
+function conscienceOf(w: LifeWorld): Pick<CharacterPanel, "conscience"> | Record<string, never> {
+  const burdens = (w.truth.get(MENTAL, w.player)?.conditions ?? [])
+    .filter((c) => c.severity >= BURDEN_FROM)
+    .map((c) => ({ kind: c.kind, weight: burdenLevel(c.severity) }));
+  const amends = w.truth.get(AMENDS, w.player);
+  const known = acquaintances(w);
+  const guilt = (w.truth.get(OWN_DEEDS, w.player)?.deeds ?? []).flatMap((d) => {
+    const stance = amends?.byDeed[d.event];
+    if (!stance || stance.response === "none") return [];
+    const a = known.get(d.victim);
+    return [{ deed: d.kind, other: a?.name ?? a?.relation ?? "alguien", stance: stance.response }];
+  });
+  return burdens.length + guilt.length === 0 ? {} : { conscience: { burdens, guilt } };
+}
+
+/** Cuántos gustos muestra el panel y desde qué fuerza (los que ya se notan de uno mismo). */
+export const PANEL_TASTES = 6;
+export const PANEL_TASTE_STRENGTH = 0.3;
+
+/** Qué tan seguro está de una entrada del libro. */
+export type Surety = "sure" | "unsure" | "vague";
+
+/** Una línea del libro de deudas y promesas, como la lleva el personaje (contracts §14). */
+export interface BookLine {
+  readonly kind: "debt" | "pledge";
+  readonly direction: "i-owe" | "owed-to-me";
+  /** A quién, como lo llama (nombre o relación; «alguien» si no sabe). */
+  readonly other: string;
+  /** Qué: monedas exactas, o el bien a ojo, o un favor/silencio con su texto. */
+  readonly what:
+    | { readonly kind: "coins"; readonly coins: number }
+    | { readonly kind: "good"; readonly good: string; readonly amount: Amount }
+    | { readonly kind: "favor"; readonly what: string }
+    | { readonly kind: "silence"; readonly about: string };
+  /** Días que cree que faltan (negativo: ya pasó); null si no recuerda plazo. */
+  readonly dueInDays: number | null;
+  readonly sure: Surety;
+  /** Una deuda que ya cayó en mora. */
+  readonly defaulted: boolean;
+}
+
+export interface BookPanel {
+  readonly lines: readonly BookLine[];
+}
+
+function suretyOf(confidence: number): Surety {
+  if (confidence >= 0.7) return "sure";
+  if (confidence >= 0.4) return "unsure";
+  return "vague";
+}
+
+/** El libro del personaje: sus deudas de fiado (exactas) y sus promesas como las cree, nunca la verdad. */
+export function bookPanel(w: LifeWorld): BookPanel {
+  return { lines: bookLinesOf(w).map((x) => x.line) };
+}
+
+/** Las líneas del libro con el id de la contraparte, para filtrar por persona (`qué sé de X`). */
+export function bookLinesOf(w: LifeWorld): { readonly ref: AgentId; readonly line: BookLine }[] {
+  const now = w.scheduler.now;
+  const acq = acquaintances(w);
+  const entries = bookOf(
+    w.player,
+    creditRows(w.truth),
+    w.truth.get(PLEDGE_BOOK, w.player),
+    now,
+    (id) => w.truth.get(PLEDGE, id as EntityRef)?.weight ?? 0.5,
+  );
+  const goodName = (unit: LedgerUnit) =>
+    w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.name ?? unit.replace(/^good:/, "");
+  return entries.map((e) => {
+    const t = e.term;
+    const what: BookLine["what"] =
+      t.kind === "give"
+        ? t.unit === COPPER
+          ? { kind: "coins", coins: Math.round(t.grams) }
+          : { kind: "good", good: goodName(t.unit), amount: amountOf(t.grams) }
+        : t.kind === "favor"
+          ? { kind: "favor", what: t.what }
+          : { kind: "silence", about: t.about };
+    const a = acq.get(e.other);
+    const line: BookLine = {
+      kind: e.kind,
+      direction: e.direction,
+      other: a?.name ?? a?.relation ?? "alguien",
+      what,
+      dueInDays: e.due === null ? null : Math.round((e.due - now) / w.clock.day),
+      sure: suretyOf(e.confidence),
+      defaulted: e.status === "defaulted",
+    };
+    return { ref: e.other, line };
+  });
 }
 
 function amountOf(grams: number): Amount {
@@ -138,12 +336,17 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
   const mouths = living(w.truth).filter(
     (id) => w.truth.get(PERSON, id)?.household === me.household,
   ).length;
+  // Lo que cree tener: la foto de la última vez que revisó. Sin foto (vida anterior o que todavía
+  // no contó nada) vale lo que hay, como lo contaría al mirar.
+  const believed = w.truth.get(INVENTORY_BELIEF, w.player);
+  const carriedNow = believed?.carried ?? holdings(w.player as HolderRef);
+  const larderNow = believed?.larder ?? holdings(me.household as unknown as HolderRef);
   return {
-    coins: holdings(w.player as HolderRef).find((h) => h.unit === COPPER)?.amount ?? 0,
-    carried: holdings(w.player as HolderRef)
+    coins: carriedNow.find((h) => h.unit === COPPER)?.amount ?? 0,
+    carried: carriedNow
       .filter((h) => h.unit !== COPPER)
       .map((h) => ({ good: name(h.unit), amount: amountOf(h.amount) })),
-    larder: holdings(me.household as unknown as HolderRef).map((h) => ({
+    larder: larderNow.map((h) => ({
       good: name(h.unit),
       lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),
     })),

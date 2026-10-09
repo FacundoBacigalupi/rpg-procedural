@@ -19,59 +19,106 @@ import {
 } from "../core/index.ts";
 import {
   AMBIENCE,
+  aboutPanel,
+  aboutTopicText,
   ambienceOf,
+  beliefViewOf,
+  believedConcepts,
+  bookPanel,
   buildChronicle,
   characterPanel,
+  characterVoiceData,
+  claimOfText,
   DEFAULT_SUGGESTIONS,
   type EnvironmentItem,
   type EnvironmentMemory,
   environmentPanel,
+  hypothesesPanel,
   inventoryPanel,
   knownEntities,
   LIFE_ENGINE,
   Life,
   type LifeSetup,
+  lexiconOf,
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
+  peoplePanel,
   playerView,
   type ResumeAnchor,
+  recapOf,
   renderChronicle,
   type Suggestion,
   suggestions,
+  type ThoughtInput,
   type TurnReport,
+  thinkOn,
+  thoughtInputsOf,
+  topicEntity,
+  topicText,
+  WORLD_LEXICON,
 } from "../game/index.ts";
 import {
+  characterLexicon,
+  continuityFor,
   DEFAULT_NARRATION,
+  EMPTY_MEMORY,
   LlmJobs,
+  type NarrationMemory,
   narrate,
   narrationRequest,
   offlineLlmConfig,
   parseCommand,
   parseIntentOrGrammar,
   parserSetup,
+  recurringImages,
+  remember,
   styleOf,
   TemplateBook,
+  voiceOf,
 } from "../llm/index.ts";
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../persistence/index.ts";
 import {
   type ActionPlan,
+  answerClarify,
+  assessPlan,
+  type ClarifyOption,
   callName,
+  clarifyQuestion,
+  draftHasVerb,
+  INFERENCE_RULES,
   type IntentDraft,
   LOCATION,
   PARSER_EXAMPLES,
   PERSON_NAME,
   planFromDraft,
+  renderWarnings,
+  STATUSES,
+  unknownNote,
 } from "../sim/index.ts";
-import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
+import {
+  INSPECTOR_HELP,
+  inspect,
+  narrationRejected,
+  narratorRepro,
+  type ReplayInput,
+  replayInputFromStore,
+  replayLifeAt,
+} from "../tools/index.ts";
 import {
   elapsed,
+  renderAbout,
+  renderBook,
   renderCharacter,
+  renderHypotheses,
   renderInterrupt,
   renderInventory,
   renderJournal,
+  renderPeople,
+  renderRecap,
   renderStatus,
   renderSuggestion,
+  renderThinking,
 } from "./render.ts";
 
 export const VERSIONS = { engine: LIFE_ENGINE, content: "none", format: FORMAT_VERSION };
@@ -96,7 +143,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -121,6 +168,18 @@ export interface Session {
   environment(): EnvironmentItem[];
 }
 
+/** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
+const WORLD_FAMILY = "xianxia";
+
+/** La clave de `meta` donde se guarda la memoria de continuidad de la narración. */
+const MEMORY_META = "narration_memory";
+
+/** La clave de `meta` con la postura de contenerse (skills §9), fuera del hash y del replay. */
+const HOLD_STANCE_META = "hold_stance";
+
+/** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
+const WARN_WEIGHT = 0.5;
+
 export async function openSession(store: LifeStore, options: SessionOptions): Promise<Session> {
   const notices: string[] = [];
   const life = open(store, options, notices);
@@ -131,54 +190,156 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const catalog = life.world.catalog;
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
+  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
   const recent: string[] = [];
+  // «Me contengo» suelto (skills §9): mientras esté puesto, los planes que golpean van en modo
+  // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
+  // del hash, para retomarla con la misma postura.
+  let holdStance = store.getMeta(HOLD_STANCE_META) === true;
+  // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
+  let warned = "";
+  // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
+  // pregunta y los ya descartados. La respuesta elige uno sin reescribir la línea.
+  let pending: {
+    draft: IntentDraft;
+    line: string;
+    options: readonly ClarifyOption[];
+    dropped: readonly ClarifyOption[];
+  } | null = null;
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
-  const tell = async (report: TurnReport | null, at: Tick): Promise<string> => {
-    const view = playerView(life.world, report?.steps ?? [], { intro: report === null });
+  // La memoria de continuidad (narration §6) vive con la vida, fuera del estado de la sim: es solo
+  // texto que el jugador ya leyó, así que no entra en el hash ni en el replay.
+  const savedMemory = store.getMeta(MEMORY_META) as NarrationMemory | undefined;
+  let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
+  const tell = async (
+    report: TurnReport | null,
+    at: Tick,
+    thinking?: readonly ThoughtInput[],
+  ): Promise<string> => {
+    const keys = new Map<string, string>();
+    const view = playerView(life.world, report?.steps ?? [], {
+      intro: report === null && thinking === undefined,
+      ...(thinking ? { thinking } : {}),
+      ...(report ? { heardSince: report.from } : {}),
+      onLabel: (localId, entity) => keys.set(localId, entity),
+    });
+    const loc = life.world.truth.get(LOCATION, life.player);
+    const placeKey =
+      loc === undefined
+        ? undefined
+        : loc.space !== undefined
+          ? `space:${loc.space}`
+          : `hex:${loc.hex}`;
+    // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).
+    const hazy = new Set<string>(
+      (view.thoughts ?? []).flatMap((t) => (t.hazy && t.about !== undefined ? [t.about] : [])),
+    );
     const request = narrationRequest(
       view,
       styleOf(DEFAULT_NARRATION, "es"),
       ambienceOf(view.scene, ambience),
+      {
+        voice: voiceOf(
+          characterVoiceData(
+            life.world.truth,
+            life.world.skills,
+            life.player,
+            options.content.all(STATUSES),
+          ),
+        ),
+        vocabulary: characterLexicon(lexicon, believedConcepts(life.world.truth, life.player)),
+      },
     );
-    const told = await narrate(jobs, request, {
-      templates: book,
-      rng: Rng.root(seed).fork("narration", at),
-    });
-    scene = told.text;
+    const told = await narrate(
+      jobs,
+      { ...request, continuity: continuityFor(memory, keys, placeKey, hazy) },
+      { templates: book, rng: Rng.root(seed).fork("narration", at) },
+    );
+    // Si el validador rechazó al modelo, queda el paquete para reproducirlo (tooling §9).
+    if (narrationRejected(told)) {
+      store.setMeta(
+        "repro.narrator",
+        narratorRepro({
+          versions: VERSIONS,
+          seed,
+          setup: store.getMeta("setup") as LifeSetup,
+          plans: store.plans().map((p) => p.plan),
+          tick: at,
+          request,
+          narration: told,
+        }),
+      );
+    }
+    // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
+    if (thinking === undefined && (report !== null || savedMemory === undefined)) {
+      const known = new Map([...keys].filter(([id]) => !hazy.has(id)));
+      const motifs = [
+        ...request.ambience.filter((line) => told.text.includes(line)),
+        ...recurringImages(memory, told.text),
+      ];
+      memory = remember(memory, {
+        marked: told.marked,
+        text: told.text,
+        keys: known,
+        placeKey,
+        motifs,
+      });
+      store.setMeta(MEMORY_META, memory);
+    }
+    if (thinking === undefined) scene = told.text;
     return told.text;
   };
   const intro = await tell(null, life.now);
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
-  const opening = `${notices.join("")}${intro}\n${renderStatus(life.now)}`;
+  // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
+  const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
+  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
-  const play = async (draft: IntentDraft, line: string): Promise<Reply> => {
+  const play = async (
+    draft: IntentDraft,
+    line: string,
+    dropped: readonly ClarifyOption[] = [],
+  ): Promise<Reply> => {
+    pending = null;
+    // Lo que el jugador descartó al aclarar no vuelve a ser candidato.
+    const gone = new Set(dropped.map((o) => o.ref));
+    const known = knownEntities(life.world).filter((k) => !gone.has(k.ref));
     const made = planFromDraft(draft, {
       actor: life.player,
       source: "player",
       catalog: life.world.catalog,
-      known: knownEntities(life.world),
+      known,
       clock: life.world.clock,
       causes: [{ kind: "state", entity: life.player, key: "intent" }],
       here: life.world.truth.get(LOCATION, life.player)?.hex,
     });
     if (made.kind === "clarify") {
-      const labels = made.refs.flatMap((r) =>
-        r.resolved.status === "ambiguous" ? r.resolved.clarify.map((o) => o.label) : [],
-      );
-      return {
-        text: `No queda claro a quién o qué te referís${labels.length ? ` (${labels.join(", ")})` : ""}. Probá de nuevo.`,
-      };
+      // La pregunta es del personaje: con lo que percibió de cada candidato (actions §4).
+      const first = made.refs.find((r) => r.resolved.status === "ambiguous")?.resolved;
+      if (first?.status !== "ambiguous") return { text: "¿A cuál te referís?" };
+      pending = { draft, line, options: first.clarify, dropped };
+      return { text: `${clarifyQuestion(first.clarify)} Contestá con un rasgo o «el primero».` };
     }
     if (made.kind === "unknown") {
-      return { text: "No sabés de qué hablás: no conocés eso todavía." };
+      return { text: unknownNote(made.refs.map((r) => r.resolved.desc)) };
     }
     if (made.kind === "invalid") {
       return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
     }
     const plan: ActionPlan = made.plan;
+    // Factibilidad creída: avisa desde lo que el personaje cree y, si insiste, se intenta.
+    const heads = assessPlan(plan, life.world.catalog, beliefViewOf(life.world, known)).filter(
+      (w) => w.weight >= WARN_WEIGHT,
+    );
+    const key = JSON.stringify(plan.root);
+    if (heads.length > 0 && warned !== key) {
+      warned = key;
+      return { text: `${renderWarnings(heads)}. Si igual querés intentarlo, repetilo.` };
+    }
+    warned = "";
     attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
     const tick = life.now;
     const seq = store.nextPlanSeq();
@@ -206,6 +367,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
     let draft: IntentDraft | null = parseCommand(line, catalog);
+    if (pending !== null && draft?.kind !== "meta") {
+      // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
+      const chosen = answerClarify(line, pending.options);
+      if (chosen !== undefined) {
+        const { draft: again, line: first, options, dropped } = pending;
+        return play(again, first, [...dropped, ...options.filter((o) => o.ref !== chosen.ref)]);
+      }
+      pending = null;
+    }
     if (draft?.kind !== "meta") {
       const parsed = await parseIntentOrGrammar(
         jobs,
@@ -218,9 +388,58 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     if (draft === null) return { text: "Eso todavía no se entiende. Escribí «ayuda»." };
     if (draft.kind === "meta") {
       const text = draft.text ?? "";
+      if (text === "contenerse") {
+        holdStance = true;
+        store.setMeta(HOLD_STANCE_META, true);
+        return {
+          text: "Vas a pelear conteniéndote, sin mostrar todo tu nivel, hasta que lo sueltes.",
+        };
+      }
+      if (text === "no contenerse") {
+        holdStance = false;
+        store.setMeta(HOLD_STANCE_META, false);
+        return { text: "Vas a pelear con todo lo que tenés." };
+      }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
-      if (/^personaje/i.test(text)) return { text: renderCharacter(characterPanel(life.world)) };
+      if (/^personaje/i.test(text)) {
+        const panel = renderCharacter(characterPanel(life.world));
+        return { text: holdStance ? `${panel}\nPeleás conteniéndote.` : panel };
+      }
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
+      if (/^(?:deudas|libro)/iu.test(text)) return { text: renderBook(bookPanel(life.world)) };
+      if (/^(?:gente|personas|creencias)/iu.test(text))
+        return { text: renderPeople(peoplePanel(life.world)) };
+      if (/^¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)/iu.test(text)) {
+        // Mirar lo que sabe de alguien no gasta tiempo ni lee la verdad.
+        const about = aboutTopicText(text);
+        if (about === undefined)
+          return { text: "¿De quién o de qué? Por ejemplo: qué sé de mi padre." };
+        const ref = topicEntity(about, knownEntities(life.world));
+        if (ref === undefined) return { text: "No sabés nada de eso." };
+        return { text: renderAbout(aboutPanel(life.world, ref, about)) };
+      }
+      if (/^(?:recuento|resumen)/iu.test(text)) {
+        const recap = renderRecap(recapOf(life.world));
+        return { text: recap === "" ? "No hay mucho que recordar todavía." : recap };
+      }
+      if (/^hip[oó]tesis/i.test(text))
+        return { text: renderHypotheses(hypothesesPanel(life.world)) };
+      if (/^(?:pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago)/iu.test(text)) {
+        // Pensar no gasta tiempo: razona sobre lo que cree, no sobre la verdad.
+        const about = topicText(text);
+        if (about === undefined)
+          return { text: "¿Sobre qué querés pensar? Por ejemplo: pensar sobre mi padre." };
+        const ref = topicEntity(about, knownEntities(life.world));
+        if (ref === undefined) return { text: "No sabés lo bastante de eso como para pensarlo." };
+        const name = (id: string) =>
+          callName(
+            life.world.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] },
+          ) ?? "alguien";
+        const result = thinkOn(life.world, options.content.all(INFERENCE_RULES), ref);
+        const thoughts = thoughtInputsOf(result);
+        if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
+        return { text: await tell(null, life.now, thoughts) };
+      }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
       }
@@ -228,25 +447,52 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
         store.setMeta("inspected", true);
         const rest = text.replace(/^(?:abrir el )?\S+\s*/i, "");
-        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest) };
+        const past = (t: number) =>
+          replayLifeAt(
+            options.content,
+            replayInputFromStore(store).input as ReplayInput<LifeSetup, ActionPlan>,
+            t,
+          );
+        return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest, past) };
       }
       return { text: HELP };
     }
     if (draft.kind !== "act" && draft.kind !== "plan") {
       return { text: "Eso todavía no lo entiendo como algo que hace tu personaje." };
     }
-    return play(draft, line);
+    const idea = ponderIdea(draft);
+    if (idea !== undefined && claimOfText(idea) === null) {
+      // Suponer gasta tiempo: si no se deja decir con lo que viste, no se empieza.
+      return {
+        text: "No sabés cómo ponerlo en términos de lo que viste. Probá con la estación, la luna o «no depende de nada».",
+      };
+    }
+    return play(
+      holdStance && draftHasVerb(draft.plan, "strike")
+        ? { ...draft, manner: [...new Set([...(draft.manner ?? []), "hold_back"])] }
+        : draft,
+      line,
+    );
   };
 
   const suggested = (all = false) => suggestions(life.world, all ? undefined : DEFAULT_SUGGESTIONS);
   const choose = async (id: string): Promise<Reply> => {
     // Se vuelve a armar la lista: si el cuerpo o la hora cambiaron, la opción puede ya no estar.
     const picked = suggestions(life.world).find((x) => x.id === id);
+    pending = null;
     if (picked === undefined) return { text: "Esa opción ya no está." };
     return play(picked.draft, renderSuggestion(picked));
   };
   const environment = () => environmentPanel(life.world, habituation, { attended });
   return { life, store, opening, say, suggested, choose, environment };
+}
+
+/** Lo que el jugador supone, si el borrador es solo eso (un `ponder` suelto). */
+function ponderIdea(draft: IntentDraft): string | undefined {
+  const plan = draft.plan;
+  if (plan?.kind !== "do" || plan.verb !== "ponder") return undefined;
+  const arg = plan.args.find((a) => a.role === "about");
+  return arg && "text" in arg ? arg.text : undefined;
 }
 
 /** La crónica final desde la verdad (chronicle §3): lo único que se le muestra de ella al jugador. */

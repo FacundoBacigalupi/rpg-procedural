@@ -114,7 +114,20 @@ const UNTIL: readonly { re: RegExp; cond: (text: string) => DraftCondition }[] =
   },
 ];
 
+/** Esconder el nivel en una pelea («me contengo», «sin esforzarme», «sin mostrar mi nivel»). */
+const HOLD_BACK_SOURCE =
+  "me contengo|conteni[eé]ndome|contuvi[eé]ndome|sin esforzarme|sin ganas|a medias|sin (?:poner|usar) (?:toda )?(?:mi )?(?:fuerza|poder|nivel)|sin mostrar (?:mi nivel|todo lo que s[eé]|lo que valgo)|haci[eé]ndome el (?:d[eé]bil|flojo)";
+
 /** Los modos por palabras; solo se ponen los que el verbo admite en el catálogo. */
+/**
+ * «Me contengo» solo, sin verbo de pelea: fija el modo para las próximas peleas (la sesión lo
+ * agrega a los planes que golpean) hasta que se lo suelte. Es una orden fuera del turno.
+ */
+export const HOLD_STANCE_ON =
+  /^(?:(?:desde ahora|de ahora en m[aá]s)s+)?(?:me contengo|voy a contenerme|me voy a contener|(?:voy a )?(?:me )?contener(?:me)? en las peleas)$/iu;
+export const HOLD_STANCE_OFF =
+  /^(?:dejo de contenerme|ya no me contengo|no me contengo(?: m[aá]s)?|voy a pelear en serio|(?:desde ahora|de ahora en m[aá]s) pelea(?:r[eé]|o) en serio)$/iu;
+
 const MANNERS: readonly { re: RegExp; manner: string }[] = [
   {
     re: /\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio)\b/i,
@@ -125,9 +138,12 @@ const MANNERS: readonly { re: RegExp; manner: string }[] = [
     manner: "careful",
   },
   { re: /\b(?:corro|corriendo|r[aá]pido|a las corridas|apurad[oa])\b/i, manner: "fast" },
+  { re: new RegExp(`\\b(?:${HOLD_BACK_SOURCE})\\b`, "i"), manner: "hold_back" },
 ];
-const MANNER_WORDS =
-  /\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|bien)\b/gi;
+const MANNER_WORDS = new RegExp(
+  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|bien|${HOLD_BACK_SOURCE})\\b`,
+  "gi",
+);
 
 function tidy(s: string): string {
   return s
@@ -198,7 +214,32 @@ const INFINITIVE_LEAD =
 const SPEAK =
   /^(?:le|les)\s+(?:digo|pregunto|pido|cuento|hablo|explico|grito)\b|^(?:hablo|charlo|converso)\s+con\b/i;
 
+/** «lo saludo», «saludo a X», «me despido de X». */
+const RITUAL = /^(?:(?:lo|la|le|los|las)\s+)?(salud[oa]|me\s+despido)\b\s*(.*)$/i;
+
+/** La forma de tratar que el jugador declara («le hablo de usted»), fuera de las comillas. */
+const FORMAL_STYLE =
+  /\s*,?\s*\b(?:de usted(?:es)?|con respeto|respetuosamente|formalmente|con formalidad)\b\s*,?/i;
+const CASUAL_STYLE =
+  /\s*,?\s*\b(?:de vos|de t[uú]|lo tuteo|la tuteo|con confianza|informalmente)\b\s*,?/i;
+
 function speakClause(raw: string, ctx: Ctx): Clause | null {
+  const split = /["«“]/.exec(raw);
+  const head = split ? raw.slice(0, split.index) : raw;
+  const tail = split ? raw.slice(split.index) : "";
+  const formal = FORMAL_STYLE.test(head);
+  const casual = !formal && CASUAL_STYLE.test(head);
+  const bare = formal
+    ? head.replace(FORMAL_STYLE, " ")
+    : casual
+      ? head.replace(CASUAL_STYLE, " ")
+      : head;
+  const clause = speakBare(tidy(`${bare}${tail}`), ctx);
+  if (!clause?.speech || (!formal && !casual)) return clause;
+  return { ...clause, speech: { ...clause.speech, manner: [formal ? "formal" : "casual"] } };
+}
+
+function speakBare(raw: string, ctx: Ctx): Clause | null {
   const t = tidy(raw);
   // Habla entre comillas: le digo a Wu: "…" / grito "…".
   const q =
@@ -210,10 +251,33 @@ function speakClause(raw: string, ctx: Ctx): Clause | null {
     const to = who.length > 0 ? ref(dropPreposition(who), "person") : undefined;
     return { speech: { text: utterance(q[2] as string), ...(to ? { to } : {}) } };
   }
+  // Saludar y despedirse: el acto se declara, las palabras son las de siempre.
+  const ritual = RITUAL.exec(t);
+  if (ritual) {
+    const farewell = /despid/i.test(ritual[1] as string);
+    const who = tidy((ritual[2] ?? "").replace(/^(?:a|de)\s+/i, ""));
+    return {
+      speech: {
+        text: farewell ? "Hasta luego." : "Buenas.",
+        ...(who.length > 0 ? { to: ref(dropPreposition(`a ${who}`), "person") } : {}),
+        act: { kind: farewell ? "farewell" : "greet" },
+      },
+    };
+  }
   if (!SPEAK.test(t)) return null;
   const pide = /^le\s+pido\b/i.test(t);
   const asks = /^le\s+pregunto\b/i.test(t);
-  let rest = t.replace(SPEAK, "").trim();
+  // "hablo con X": el "con" se queda para que se lea a quién.
+  let rest = t.replace(SPEAK, (m) => (/\bcon$/i.test(m) ? "con" : "")).trim();
+  // "le pregunto a X por Y": lo preguntado se separa de a quién.
+  let aboutPhrase: string | undefined;
+  if (asks) {
+    const m = /(?:^|\s+)(?:por(?!\s+qu[eé]\b)|sobre|acerca de)\s+(.+)$/i.exec(rest);
+    if (m) {
+      aboutPhrase = tidy(m[1] as string);
+      rest = tidy(rest.slice(0, m.index));
+    }
+  }
   // A quién: "al herrero", "a la vendedora", "con Wu".
   let to: RefDescription | undefined;
   const addressee = /^(?:al|a la|a los|a las|a|con)\s+/i.exec(rest);
@@ -245,8 +309,18 @@ function speakClause(raw: string, ctx: Ctx): Clause | null {
       : pide && !/^que\b/i.test(t)
         ? `¿Me das ${rest}?`
         : utterance(rest, asks);
+  const declared: SpeechDraft["act"] =
+    aboutPhrase !== undefined
+      ? { kind: "ask", about: ref(aboutPhrase, "person") }
+      : pide && rest.length > 0 && !/^que\b/i.test(t)
+        ? { kind: "request", what: rest }
+        : undefined;
+  const text =
+    aboutPhrase !== undefined && content === undefined
+      ? utterance(`¿Qué sabés de ${aboutPhrase}?`)
+      : (content ?? "…");
   return {
-    speech: { text: content ?? "…", ...(to ? { to } : {}) },
+    speech: { text, ...(to ? { to } : {}), ...(declared ? { act: declared } : {}) },
   };
 }
 
@@ -373,7 +447,7 @@ const VERBS: readonly {
     },
   },
   {
-    re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle)\b/i,
+    re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle|peleo|pelear)\b/i,
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));
       return { node: act("strike", p ? [{ role: "target", ref: p.ref }] : []) };
@@ -510,7 +584,53 @@ function pieces(text: string): { sep: string; text: string }[] {
 }
 
 const META =
-  /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|bit[aá]cora)\b/i;
+  /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
+const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
+const DIVINER =
+  "(?:adivin[oa]s?|vident[ea]s?|or[aá]culo|astr[oó]log[oa]|augur|hechicer[oa]|bruj[oa])";
+const CONSULT_PAY = new RegExp(
+  `^(?:le\\s+)?(?:pago|doy|ofrezco)\\s+(.+?)\\s+(?:a|al)\\s+(?:la\\s+|el\\s+)?(${DIVINER})\\s*(?:y\\s+(?:le\\s+)?(?:pregunto|consulto|pido)\\s+(?:por|sobre|acerca de)\\s+(.+))?$`,
+  "iu",
+);
+const CONSULT_ASK = new RegExp(
+  `^(?:consulto|consultar|pregunto|preguntarle|voy a consultar)\\s+(?:a|al|con)\\s+(?:la\\s+|el\\s+)?(${DIVINER})(?:\\s+(?:por|sobre|acerca de)\\s+(.+))?$`,
+  "iu",
+);
+const CONSULT_READ = new RegExp(
+  `^(?:voy a|quiero|me voy a|busco)\\s+(?:que\\s+me\\s+(?:lea|tire|echen?)\\s+(?:la\\s+suerte|las\\s+cartas|los\\s+huesos|el\\s+destino)|consultar\\s+(?:a\\s+(?:la\\s+|el\\s+)?${DIVINER}|el\\s+or[aá]culo))`,
+  "iu",
+);
+
+/** Consultar a un adivino: con quién, por qué y qué se ofrece (actions.md, divination.md §9). */
+function consultDraft(text: string): IntentDraft | null {
+  const arg = (role: string, t: string | undefined): DraftArg[] =>
+    t && tidy(t).length > 0 ? [{ role, text: tidy(t) }] : [];
+  const pay = CONSULT_PAY.exec(text);
+  if (pay) {
+    return {
+      kind: "act",
+      plan: act("consult", [
+        { role: "with", ref: ref(tidy(pay[2] as string), "person") },
+        ...arg("about", pay[3]),
+        ...arg("offer", pay[1]),
+      ]),
+    };
+  }
+  const ask = CONSULT_ASK.exec(text);
+  if (ask) {
+    return {
+      kind: "act",
+      plan: act("consult", [
+        { role: "with", ref: ref(tidy(ask[1] as string), "person") },
+        ...arg("about", ask[2]),
+      ]),
+    };
+  }
+  if (CONSULT_READ.test(text)) return { kind: "act", plan: act("consult", []) };
+  return null;
+}
+
 const GOAL = /^(?:quiero|mi meta es|sueño con|alg[uú]n d[ií]a (?:voy a|quiero))\s+(.+)$/i;
 
 /**
@@ -524,8 +644,18 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   if (/^¿/.test(text) || (/\?$/.test(text) && !SPEAK.test(text))) {
     return { kind: "question_ooc", text };
   }
+  const consult = consultDraft(text);
+  if (consult) return consult;
+  if (HOLD_STANCE_ON.test(text)) return { kind: "meta", text: "contenerse" };
+  if (HOLD_STANCE_OFF.test(text)) return { kind: "meta", text: "no contenerse" };
   const goal = GOAL.exec(text);
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
+  // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo
+  // es lo decide el juego (discovery §14), acá solo se la reconoce como suponer.
+  const idea = IDEA.exec(text);
+  if (idea && FIELD_TALK.test(idea[1] as string)) {
+    return { kind: "act", plan: act("ponder", [{ role: "about", text: tidy(idea[1] as string) }]) };
+  }
 
   // Un pedazo que no empieza un paso se pega al anterior ("despacio y con cuidado", "el cielo y la
   // tierra"); uno que todavía no se entiende espera al siguiente.
@@ -569,7 +699,7 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
       const args: DraftArg[] = [];
       if (c.speech.to) args.push({ role: "to", ref: c.speech.to });
       if (c.speech.text !== "…") args.push({ role: "content", text: c.speech.text });
-      steps.push(act("speak", args));
+      steps.push(act("speak", args, [...(c.speech.manner ?? [])]));
     }
   }
   const plan: DraftPlanNode =

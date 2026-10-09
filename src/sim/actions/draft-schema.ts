@@ -16,6 +16,7 @@ import {
   DraftCondition,
   DraftDuration,
   type DraftPlanNode,
+  DraftPurpose,
   DraftText,
   type EntityKind,
   IntentDraft,
@@ -214,6 +215,13 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
   return z.strictObject({
     kind: IntentDraft.shape.kind,
     plan: node.optional(),
+    // Plano y chico: el motivo del catálogo cerrado y, si lo dice, para quién (una persona).
+    purpose: z
+      .strictObject({
+        motive: DraftPurpose.shape.motive,
+        forWhom: refSchema(REF_KINDS.person).optional(),
+      })
+      .optional(),
     ...(allManners.length > 0 ? { manner: z.array(ids(allManners)).max(8).optional() } : {}),
     constraints: texts,
     stripped: texts,
@@ -222,6 +230,20 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       .strictObject({
         text: SpeechDraft.shape.text,
         to: refSchema(REF_KINDS.person).optional(),
+        // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
+        act: z
+          .strictObject({
+            kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
+            about: z
+              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
+              .optional(),
+            claim: z.enum(["dead", "alive"]).optional(),
+            what: DraftText.optional(),
+            times: z.number().positive().max(100).optional(),
+            dueDays: z.number().int().positive().max(3650).nullable().optional(),
+            precision: z.number().min(0).max(1).optional(),
+          })
+          .optional(),
         ...(speakManners.length > 0
           ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
           : {}),

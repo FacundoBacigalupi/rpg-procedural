@@ -14,10 +14,12 @@ import {
 } from "../../core/index.ts";
 import type { ActionCatalog, ArgKind } from "./catalog.ts";
 import type {
+  DraftAct,
   DraftArg,
   DraftCondition,
   DraftDuration,
   DraftPlanNode,
+  DraftPurpose,
   EntityKind,
   IntentDraft,
 } from "./intent.ts";
@@ -28,8 +30,10 @@ import {
   expandTemplate,
   type PlanNode,
   type PlanSource,
+  type SpeakAct,
   validatePlan,
 } from "./plan.ts";
+import type { Purpose } from "./purpose.ts";
 import { clarifyOptions, type KnownEntity, type ResolvedRef, resolveRef } from "./refs.ts";
 
 /** Vueltas de un `until` que pidió el jugador si no dijo otra cosa (simulation §12 para más). */
@@ -43,7 +47,15 @@ export interface RefIssue {
 }
 
 export type DraftResult =
-  | { readonly kind: "plan"; readonly plan: ActionPlan }
+  | {
+      readonly kind: "plan";
+      readonly plan: ActionPlan;
+      /**
+       * Dónde del borrador una referencia resolvió a algo que no existe (actions §4): para el
+       * inspector y los tests, nunca para el jugador. El plan se intenta igual y falla al ejecutar.
+       */
+      readonly phantoms: readonly string[];
+    }
   /** Hay que preguntar: a cuál de estos se refiere. */
   | { readonly kind: "clarify"; readonly refs: readonly RefIssue[] }
   /** El personaje no conoce algo nombrado: reformular como buscar o preguntar (§4). */
@@ -73,9 +85,10 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   if (draft.kind !== "act" && draft.kind !== "plan") {
     return { kind: "invalid", problems: [`un ${draft.kind} no es un plan`] };
   }
-  const w: Walk = { ctx, problems: [], ambiguous: [], unknown: [] };
+  const w: Walk = { ctx, problems: [], ambiguous: [], unknown: [], phantoms: [] };
   const steps: PlanNode[] = [];
   if (draft.speech) {
+    const act = draft.speech.act ? speakAct(draft.speech.act, "speech.act", w) : undefined;
     const speak = draft.speech.to
       ? convert(
           {
@@ -89,14 +102,16 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
           },
           "speech",
           w,
+          act,
         )
-      : speakToPresent(draft.speech.text, [...(draft.speech.manner ?? [])], w);
+      : speakToPresent(draft.speech.text, [...(draft.speech.manner ?? [])], w, act);
     if (speak) steps.push(speak);
   }
   if (draft.plan) {
     const root = convert(draft.plan, "plan", w);
     if (root) steps.push(root);
   }
+  const purpose = draft.purpose ? purposeOf(draft.purpose, w) : undefined;
   if (w.problems.length > 0) return { kind: "invalid", problems: w.problems };
   if (w.ambiguous.length > 0) return { kind: "clarify", refs: w.ambiguous };
   if (w.unknown.length > 0) return { kind: "unknown", refs: w.unknown };
@@ -105,12 +120,36 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   const plan: ActionPlan = {
     actor: ctx.actor,
     source: ctx.source,
+    ...(purpose ? { purpose } : {}),
     root,
     manner: [...(draft.manner ?? [])],
     causes: ctx.causes,
   };
   const problems = validatePlan(plan, ctx.catalog);
-  return problems.length > 0 ? { kind: "invalid", problems } : { kind: "plan", plan };
+  return problems.length > 0
+    ? { kind: "invalid", problems }
+    : { kind: "plan", plan, phantoms: w.phantoms };
+}
+
+/**
+ * El porqué declarado, con «para quién» resuelto contra lo que el actor conoce (actions §4). Si el
+ * beneficiario es ambiguo se pregunta; si no se lo conoce el motivo queda sin él (decir «para
+ * alguien que no conozco» no cambia por qué lo hace), y nunca frena el plan.
+ */
+function purposeOf(p: DraftPurpose, w: Walk): Purpose {
+  if (!p.forWhom) return { motive: p.motive };
+  const desc = p.forWhom;
+  const known = w.ctx.known.filter((k) => !desc.kind || k.kind === desc.kind);
+  const r = resolveRef(desc, known);
+  if (r.status === "unique") return { motive: p.motive, forWhom: r.chosen };
+  if (r.status === "phantom") {
+    w.phantoms.push("purpose.forWhom");
+    return { motive: p.motive, forWhom: r.chosen };
+  }
+  if (r.status === "ambiguous") {
+    w.ambiguous.push({ at: "purpose.forWhom", role: "forWhom", resolved: r });
+  }
+  return { motive: p.motive };
 }
 
 interface Walk {
@@ -118,9 +157,15 @@ interface Walk {
   readonly problems: string[];
   readonly ambiguous: RefIssue[];
   readonly unknown: RefIssue[];
+  readonly phantoms: string[];
 }
 
-function convert(node: DraftPlanNode, at: string, w: Walk): PlanNode | null {
+function convert(
+  node: DraftPlanNode,
+  at: string,
+  w: Walk,
+  act?: SpeakAct | undefined,
+): PlanNode | null {
   switch (node.kind) {
     case "do": {
       const def = w.ctx.catalog.verb(node.verb);
@@ -136,7 +181,7 @@ function convert(node: DraftPlanNode, at: string, w: Walk): PlanNode | null {
           continue;
         }
         const v = argValue(a, spec.kind, `${at}.${a.role}`, w);
-        if (v) args.push(v);
+        if (v) args.push(act && node.verb === "speak" && "text" in v ? { ...v, act } : v);
       }
       const step: PlanNode = {
         kind: "do",
@@ -227,6 +272,10 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
   const known = w.ctx.known.filter((k) => kinds.includes(k.kind));
   const r = resolveRef(desc, known);
   if (r.status === "unique") return { role: a.role, entity: r.chosen };
+  if (r.status === "phantom") {
+    w.phantoms.push(at);
+    return { role: a.role, entity: r.chosen };
+  }
   (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({ at, role: a.role, resolved: r });
   return null;
 }
@@ -243,7 +292,12 @@ function condition(c: DraftCondition, at: string, w: Walk): Condition | null {
 }
 
 /** Hablar sin decir a quién: a la única persona presente; si hay varias, se pregunta. */
-function speakToPresent(text: string, manner: string[], w: Walk): PlanNode | null {
+function speakToPresent(
+  text: string,
+  manner: string[],
+  w: Walk,
+  act?: SpeakAct | undefined,
+): PlanNode | null {
   const here = w.ctx.known.filter((k) => k.kind === "person" && k.present);
   const [only] = here;
   if (here.length === 1 && only) {
@@ -252,7 +306,7 @@ function speakToPresent(text: string, manner: string[], w: Walk): PlanNode | nul
       verb: "speak",
       args: [
         { role: "to", entity: only.ref },
-        { role: "content", text },
+        { role: "content", text, ...(act ? { act } : {}) },
       ],
       manner,
     };
@@ -278,6 +332,65 @@ function speakToPresent(text: string, manner: string[], w: Walk): PlanNode | nul
     });
   }
   return null;
+}
+
+/**
+ * El acto de habla declarado, con sus referencias resueltas contra lo que el actor conoce
+ * (actions §4). Preguntar por alguien que no se conoce queda sin `about` (el oyente no sabe a quién
+ * se pregunta); contar algo de alguien no conocido o ambiguo sí frena y pregunta.
+ */
+function speakAct(act: DraftAct, at: string, w: Walk): SpeakAct | undefined {
+  switch (act.kind) {
+    case "greet":
+    case "farewell":
+      return { kind: act.kind };
+    case "request":
+      return { kind: act.kind, what: act.what ?? null };
+    case "promise":
+      return {
+        kind: "promise",
+        what: act.what ?? null,
+        ...(act.times !== undefined ? { times: act.times } : {}),
+        ...(act.dueDays !== undefined ? { dueDays: act.dueDays } : {}),
+        ...(act.precision !== undefined ? { precision: act.precision } : {}),
+      };
+    case "ask": {
+      if (!act.about) return { kind: "ask", about: null };
+      const r = resolveRef(
+        { ...act.about, features: act.about.features ?? [], kind: "person" },
+        personsKnown(w),
+      );
+      if (r.status === "unique" || r.status === "phantom") {
+        if (r.status === "phantom") w.phantoms.push(`${at}.about`);
+        return { kind: "ask", about: r.chosen };
+      }
+      if (r.status === "ambiguous") {
+        w.ambiguous.push({ at: `${at}.about`, role: "about", resolved: r });
+        return undefined;
+      }
+      return { kind: "ask", about: null };
+    }
+    case "tell": {
+      const r = resolveRef(
+        { ...act.about, features: act.about.features ?? [], kind: "person" },
+        personsKnown(w),
+      );
+      if (r.status === "unique" || r.status === "phantom") {
+        if (r.status === "phantom") w.phantoms.push(`${at}.about`);
+        return { kind: "tell", about: r.chosen, claim: act.claim };
+      }
+      (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({
+        at: `${at}.about`,
+        role: "about",
+        resolved: r,
+      });
+      return undefined;
+    }
+  }
+}
+
+function personsKnown(w: Walk): KnownEntity[] {
+  return w.ctx.known.filter((k) => k.kind === "person");
 }
 
 /** Segundos de una duración del jugador, con el día y el año del planeta. */

@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import { GAME_CONTENT_KINDS, Life } from "../../game/index.ts";
+import { replayLifeAt } from "./at.ts";
 import { inspect } from "./inspector.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -37,6 +38,11 @@ describe("inspector", () => {
       "hash",
       "pressures",
       "hazard",
+      "memories",
+      "wrong",
+      `wrong ${life.player}`,
+      "percepts",
+      "rumor x",
       "mind",
       "nada",
     ]) {
@@ -62,7 +68,39 @@ describe("inspector", () => {
     expect(life.hash()).toEqual(before);
   });
 
+  it("memories, wrong y percepts responden con la verdad y no tocan nada", () => {
+    expect(inspect(life, "memories agent:99999")).toContain("No hay");
+    expect(inspect(life, "wrong agent:99999")).toContain("No hay");
+    expect(inspect(life, "percepts agent:99999")).toContain("No hay");
+    expect(inspect(life, "memories")).toMatch(/memorias|no guarda/);
+    expect(inspect(life, "wrong")).toMatch(/falsas|Nadie/);
+    expect(inspect(life, "percepts").length).toBeGreaterThan(0);
+    expect(life.hash()).toEqual(before);
+  });
+
+  it("at y diff rehacen un tick pasado sin tocar la vida", () => {
+    const now = Life.create(7, content);
+    const t0 = now.now;
+    now.advanceTo(t0 + 2880);
+    const h = now.hash();
+    const input = {
+      seed: 7,
+      versions: { engine: "t", content: "t", format: 1 },
+      setup: { game: {} },
+      plans: [],
+    };
+    const past = (t: number) => replayLifeAt(content, input as never, t);
+    expect(past(t0 + 1440).now).toBe(t0 + 1440);
+    expect(inspect(now, `at ${t0 + 1440} hash`, past)).toContain(`[t${t0 + 1440}]`);
+    expect(inspect(now, `at ${t0 + 5000} hash`, past)).toContain("entre 0 y");
+    expect(inspect(now, "at 5 hash", past)).toContain("empieza en");
+    expect(inspect(now, `diff ${t0} ${t0 + 2880}`, past)).toMatch(/^diff t\d+ → t\d+/);
+    expect(inspect(now, "diff 100 100", past)).toContain("nada cambió");
+    expect(now.hash()).toEqual(h);
+  }, 120_000);
+
   it("dice cuándo llegan los comandos de sistemas que faltan", () => {
+    expect(inspect(life, "rumor 1")).toContain("Fase 3");
     expect(inspect(life, "mind agent:1")).toContain("Fase 2");
     expect(inspect(life, "invariants")).toBe("Sin violaciones.");
   });

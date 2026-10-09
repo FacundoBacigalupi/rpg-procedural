@@ -1,16 +1,21 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent } from "../../core/index.ts";
+import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  COMMUNITY_ACCENT,
   COMMUNITY_CULTURE,
   CULTURE_TRAITS,
   CULTURES,
   checkInvariants,
+  communityAccents,
   cultureProblems,
   dominantVariant,
   ENTITY,
   FOODS,
+  languageRootAccent,
+  PERSON,
+  PERSON_CULTURE,
   STATUSES,
   TENURES,
   traitParam,
@@ -75,6 +80,16 @@ describe("la cultura de la aldea inicial", () => {
     expect(w.truth.get(ENTITY, w.truth.ids(COMMUNITY_CULTURE)[0] as never)).toBeDefined();
   });
 
+  it("la aldea tiene su acento, derivado del de la lengua madre y con evento de origen", () => {
+    const [id] = w.truth.ids(COMMUNITY_ACCENT);
+    const row = id === undefined ? undefined : w.truth.get(COMMUNITY_ACCENT, id);
+    expect(row).toBeDefined();
+    expect(w.log.get(row?.originEventId as never)?.kind).toBe("language.accent_seeded");
+    expect(row?.parent).toEqual(languageRootAccent(7, row?.language as string));
+    expect(row?.accent).not.toEqual(row?.parent);
+    expect(communityAccents(w.truth).length).toBe(1);
+  });
+
   it("los lectores ven la variante dominante y los números del rasgo", () => {
     expect(dominantVariant(culture, "etiquette.address")).toBe("by_rank");
     expect(dominantVariant(culture, "funeral.rite")).toBe("burial");
@@ -87,5 +102,54 @@ describe("la cultura de la aldea inicial", () => {
     const again = villageCulture(Life.create(7, content).world.truth);
     expect(again).toEqual(culture);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 30_000);
+});
+
+describe("la cultura de cada persona", () => {
+  const w = Life.create(7, content).world;
+  const people = w.truth.ids(PERSON) as AgentId[];
+
+  it("cada persona de la aldea sigue una variante por rasgo, con la misma lista que la comunidad", () => {
+    const traits = Object.keys(villageCulture(w.truth)?.prevalence ?? {}).sort();
+    expect(people.length).toBeGreaterThan(0);
+    for (const id of people) {
+      const pc = w.truth.get(PERSON_CULTURE, id);
+      expect(Object.keys(pc?.holdings ?? {}).sort(), id).toEqual(traits);
+      expect(w.log.get(pc?.originEventId as never)?.kind).toBe("culture.people_seeded");
+    }
+  });
+
+  it("lo que sigue cada uno es una variante que la comunidad conoce", () => {
+    const community = villageCulture(w.truth);
+    for (const id of people) {
+      for (const [t, h] of Object.entries(w.truth.get(PERSON_CULTURE, id)?.holdings ?? {})) {
+        expect(community?.prevalence[t]?.variants[h.variant], `${id} ${t}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("los hijos que copiaron nombran a un padre como de quien aprendieron", () => {
+    let vertical = 0;
+    for (const id of people) {
+      const rec = w.truth.get(PERSON, id);
+      const parents = [rec?.mother, rec?.father].filter((p): p is AgentId => !!p);
+      for (const h of Object.values(w.truth.get(PERSON_CULTURE, id)?.holdings ?? {})) {
+        if (h.mode === "vertical") {
+          vertical++;
+          expect(parents).toContain(h.learnedFrom[0]);
+        } else {
+          expect(h.mode).toBe("born");
+          expect(h.learnedFrom).toEqual([]);
+        }
+      }
+    }
+    expect(vertical).toBeGreaterThan(0);
+  });
+
+  it("es determinista", () => {
+    const again = Life.create(7, content).world;
+    for (const id of people) {
+      expect(again.truth.get(PERSON_CULTURE, id)).toEqual(w.truth.get(PERSON_CULTURE, id));
+    }
   }, 30_000);
 });

@@ -9,6 +9,7 @@ import {
   type AgentId,
   type EntityRef,
   type HolderRef,
+  holderAccount,
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
@@ -26,6 +27,7 @@ import {
   type Body,
   type BodyPlanDef,
   bearingFactor,
+  beliefAbout,
   blowFromMishap,
   blowFromStrike,
   CREDIT,
@@ -50,6 +52,7 @@ import {
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
+  LOT_QUALITY,
   type LocalMap,
   learnFromAttempt,
   localHour,
@@ -58,26 +61,35 @@ import {
   nearestHex,
   nodeAt,
   notoriety,
+  OPINIONS,
+  observeDeal,
   opposingSkill,
   PERSON,
   PLACE,
   type PlanCursor,
   type PlanNode,
+  PRICE_BELIEFS,
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
+  type Purpose,
   placeAt,
   placeRefOf,
+  qualityPriceFactor,
+  REFERENCE_QUALITY,
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
   rankOf,
+  receiveLot,
   resolve,
+  SELF_IMAGES,
   type SelfReport,
   SKILL_STATE,
   type SkillCatalog,
   SOIL,
   type SpaceGraph,
+  STANDING_BELIEFS,
   STATUS,
   type StateChange,
   type StatusDef,
@@ -91,20 +103,33 @@ import {
   type Trait,
   table,
   treat,
+  updateSelfImage,
   verbSkill,
   walkingFactor,
   weatherAt,
   YIELDED,
 } from "../../sim/index.ts";
-import { listenTo, PENDING } from "./converse.ts";
+import { declaredStyle, listenTo, PENDING } from "./converse.ts";
+import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
-import { atMyMercy, canFight, FIGHT_STATE, livePause, strikeFight } from "./fight.ts";
+import {
+  atMyMercy,
+  canFight,
+  type Exposure,
+  exposeSkills,
+  FIGHT_STATE,
+  livePause,
+  strikeFight,
+} from "./fight.ts";
+import { watchersLearn } from "./watching.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
   readonly verb: string;
   readonly at: number;
   readonly self: SelfReport;
+  /** El porqué que declaró el jugador para el plan: el narrador solo lo cita. */
+  readonly purpose?: Purpose | undefined;
 }
 
 /** El plan del personaje en curso (o terminado, `done`). Verdad de la sim: va a la base. */
@@ -217,20 +242,28 @@ export function actProcess(o: ActOptions): ProcessDef {
     reads: [
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
+      STANDING_BELIEFS.name,
       CREDIT.name,
       SOIL.name,
       ENTITY.name,
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      SELF_IMAGES.name,
       YIELDED.name,
       FIGHT_STATE.name,
+      PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
     ],
     writes: [
+      PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
       BODY_STATE.name,
       SKILL_STATE.name,
+      SELF_IMAGES.name,
+      OPINIONS.name,
       PENDING.name,
       YIELDED.name,
       FIGHT_STATE.name,
@@ -306,15 +339,24 @@ function marketOf(
   me: AgentId,
   other: EntityRef | null,
   harvestGramsPerHour: number,
+  day: number,
 ): Market {
   const otherHome = other === null ? undefined : truth.get(PERSON, other as AgentId)?.household;
-  const otherStatus = other === null ? undefined : truth.get(STATUS, other);
   return {
     priceCopperPerKg: new Map(
       o.goods.flatMap((g) =>
         g.priceCopperPerKg === undefined ? [] : [[goodUnit(g), g.priceCopperPerKg] as const],
       ),
     ),
+    lots: {
+      actor: truth.get(LOT_QUALITY, me),
+      other: other === null ? undefined : truth.get(LOT_QUALITY, other as AgentId),
+    },
+    beliefs: {
+      actor: truth.get(PRICE_BELIEFS, me),
+      other: other === null ? undefined : truth.get(PRICE_BELIEFS, other as AgentId),
+      day,
+    },
     ownMembers: membersOf(truth, truth.get(PERSON, me)?.household ?? ""),
     other:
       otherHome === undefined
@@ -328,7 +370,11 @@ function marketOf(
     ),
     ranks: {
       actor: rankOf(truth.get(STATUS, me), o.statuses),
-      other: rankOf(otherStatus, o.statuses),
+      // La posición del otro es lo que el actor CREE de él, no su STATUS (social-structure §3).
+      other:
+        other === null
+          ? undefined
+          : beliefAbout(truth.get(STANDING_BELIEFS, me), other as AgentId)?.rank,
     },
   };
 }
@@ -419,7 +465,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate)
+        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate, day)
         : undefined,
   };
   const r = resolve(input);
@@ -457,6 +503,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const targetId = "target" in eff ? (eff.target as AgentId | null) : null;
   const extraEvents: EventDraft[] = [];
   let fightSeconds = 0;
+  let exposure: Exposure | undefined;
   let record: StepRecord["self"] = r.self;
   const merciful = targetId !== null && atMyMercy(truth, me, targetId, ctx.now);
   if (eff.kind === "spare" && targetId && merciful) {
@@ -512,8 +559,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       traits: o.traits,
       intent: [...state.plan.manner, ...node.manner].includes("fast") ? "drive_off" : "subdue",
       light: e.light,
+      ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,
       rng: input.rng.fork("fight"),
+      day: o.clock.day,
       cause: draftEvent(0),
       place: input.place,
       ...(me === o.player ? { control: true } : {}),
@@ -524,6 +573,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...fight.changes);
     extraEvents.push(fight.event);
     fightSeconds = fight.seconds;
+    exposure = fight.exposure;
     if (r.self.effect.kind === "strike") {
       record = { ...r.self, effect: { ...r.self.effect, fight: fight.gist } };
     }
@@ -555,17 +605,152 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     r.seconds,
     ctx.now,
   );
-  if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
+  // Pelear le enseñó el estilo del rival (skills §2.3): se suma sobre lo aprendido del paso.
+  const lessons = exposure
+    ? exposeSkills(learned ?? skills, exposure, ctx.now + fightSeconds, o.clock.day)
+    : learned;
+  if (lessons) changes.push(setComponent(SKILL_STATE, me, lessons));
+  // Los presentes que lo vieron aprenden mirando (skills §3.2).
+  if (r.attempt.expected !== null) {
+    changes.push(
+      ...watchersLearn({
+        truth,
+        catalog: o.skills,
+        traits: o.traits,
+        plans: e.plans,
+        clock: o.clock,
+        doer: me,
+        verb: node.verb,
+        doerLevel: input.actor.skill ?? 0,
+        // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
+        except: targetId,
+        rng: input.rng.fork("watch"),
+        hex: e.hex,
+        light: skyLight(o.map, o.clock, o.seed, ctx.now),
+        spaces: o.spaces,
+        forest: o.map.forest,
+        emissions: r.emissions,
+        seconds: r.seconds,
+        now: ctx.now,
+      }),
+    );
+  }
+  // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
+  const image = updateSelfImage(
+    o.skills,
+    truth.get(SELF_IMAGES, me),
+    skills,
+    z,
+    node.verb,
+    r.attempt,
+    ctx.now,
+  );
+  if (image) changes.push(setComponent(SELF_IMAGES, me, image));
+
+  // Un trato cerrado se ve: los dos corren lo que creen del bien hacia lo que se pagó (economy §4).
+  if (eff.kind === "trade" && eff.deal && eff.good !== null && eff.grams > 0 && eff.with) {
+    const unit = eff.good as string;
+    const ref = o.goods.find((g) => goodUnit(g) === eff.good)?.priceCopperPerKg;
+    // Lo pagado se normaliza a la calidad de referencia: el bien bueno no sube "el precio del bien".
+    const paid =
+      ((eff.coins / eff.grams) * 1000) / qualityPriceFactor(eff.quality ?? REFERENCE_QUALITY);
+    // El lote cambia de manos con su calidad: se mezcla con lo que el comprador ya tenía.
+    if (eff.quality !== undefined) {
+      const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
+      const heldBy = (h: unknown) => ctx.ledger?.holdings(holderAccount(h as HolderRef)) ?? [];
+      const home = truth.get(PERSON, buyer)?.household;
+      const held = [...heldBy(buyer), ...(home === undefined ? [] : heldBy(home))]
+        .filter((r) => r.unit === eff.good)
+        .reduce((sum, r) => sum + r.amount, 0);
+      changes.push(
+        setComponent(
+          LOT_QUALITY,
+          buyer,
+          receiveLot(truth.get(LOT_QUALITY, buyer), unit, held, eff.grams, eff.quality),
+        ),
+      );
+    }
+    if (ref !== undefined && paid > 0) {
+      for (const who of [me, eff.with as AgentId]) {
+        changes.push(
+          setComponent(
+            PRICE_BELIEFS,
+            who,
+            observeDeal(truth.get(PRICE_BELIEFS, who), unit, paid, ref, day),
+          ),
+        );
+      }
+    }
+  }
+
+  // Lo que cocinó queda con su calidad, mezclada con lo que ya tenía de ese bien (crafts §11).
+  if (eff.kind === "cook" && eff.good !== null && eff.grams > 0 && eff.from !== null) {
+    const held = (ctx.ledger?.holdings(holderAccount(eff.from as HolderRef)) ?? [])
+      .filter((r) => r.unit === eff.good)
+      .reduce((sum, r) => sum + r.amount, 0);
+    changes.push(
+      setComponent(
+        LOT_QUALITY,
+        me,
+        receiveLot(truth.get(LOT_QUALITY, me), eff.good as string, held, eff.grams, eff.quality),
+      ),
+    );
+  }
+
+  // Un maestro de la casa que vio la tanda le señala lo que notó y el cocinero lo incorpora (crafts §11).
+  if (eff.kind === "cook" && eff.defects && eff.defects.length > 0) {
+    const fix = masterCorrects({
+      truth,
+      catalog: o.skills,
+      traits: o.traits,
+      plans: e.plans,
+      clock: o.clock,
+      cook: me,
+      verb: node.verb,
+      defects: eff.defects,
+      hex: e.hex,
+      seconds: r.seconds,
+      expected: r.attempt.expected,
+      now: ctx.now,
+      skills: lessons ?? skills,
+    });
+    if (fix) {
+      changes.push(...fix.changes);
+      extraEvents.push({
+        kind: "craft.corrected",
+        actors: [fix.master, me],
+        place: input.place,
+        data: { noticed: fix.noticed.map((d) => d.kind), gain: Math.round(fix.gain * 1000) / 1000 },
+        emissions: { sight: 0.3, sound: 0.5 },
+        causes: [{ kind: "event", event: draftEvent(0) }],
+      });
+    }
+  }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
   const resume = eff.kind === "move" && eff.onTheWay === true;
-  const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
+  const stepRecord: StepRecord = {
+    verb: node.verb,
+    at: ctx.now,
+    self: record,
+    ...(state.plan.purpose ? { purpose: state.plan.purpose } : {}),
+  };
   const lastBelieved = r.self.believed;
   const end = ctx.now + Math.max(r.seconds, fightSeconds);
   // Si le habló a alguien en persona, el oyente contesta cuando termina de oír (converse).
   const heard =
     eff.kind === "speak" && eff.delivered && eff.to !== null
-      ? listenTo(me, eff.to, eff.text, eff.clarity, ctx.now, end)
+      ? listenTo(
+          me,
+          eff.to,
+          eff.text,
+          eff.clarity,
+          ctx.now,
+          end,
+          declaredStyle([...state.plan.manner, ...node.manner]),
+          eff.act?.kind,
+          eff.act ?? undefined,
+        )
       : { changes: [], schedule: [] };
   changes.push(...heard.changes);
   changes.push(
@@ -578,7 +763,15 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     }),
   );
   return {
-    events: [...r.events, ...extraEvents],
+    // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
+    events: [
+      ...r.events.map((e) =>
+        state.plan.purpose
+          ? { ...e, data: { ...(e.data as object), purpose: state.plan.purpose } }
+          : e,
+      ),
+      ...extraEvents,
+    ],
     changes,
     postings: r.postings,
     schedule: [

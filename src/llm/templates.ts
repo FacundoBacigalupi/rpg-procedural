@@ -6,6 +6,7 @@
 
 import type { Rng } from "../core/index.ts";
 import type {
+  ConclusionView,
   EffectView,
   LocalLabel,
   NarrationTemplate,
@@ -13,6 +14,7 @@ import type {
   PerceptView,
   PlayerView,
 } from "../game/index.ts";
+import type { LexiconView } from "./voice.ts";
 
 export class TemplateBook {
   readonly #lines: ReadonlyMap<string, readonly string[]>;
@@ -58,11 +60,51 @@ function capitalize(s: string): string {
   return s.slice(0, at) + s.charAt(at).toUpperCase() + s.slice(at + 1);
 }
 
-export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): string {
+/** Los huecos que llevan palabras citadas (del jugador o de otros): no se reescriben. */
+const QUOTED_SLOTS: ReadonlySet<string> = new Set(["text", "words"]);
+
+/**
+ * Cambia los términos técnicos que el personaje no cree por lo que diría en su lugar (narration
+ * §4), menos lo citado. Las citas se apartan con un marcador antes de reemplazar.
+ */
+function plainTerms(
+  line: string,
+  slots: Slots,
+  vocabulary: LexiconView | undefined,
+  id: string,
+): string {
+  if (vocabulary === undefined || vocabulary.avoid.length === 0) return fill(line, slots, id);
+  const quotes: string[] = [];
+  const held: Record<string, string> = { ...slots };
+  for (const key of QUOTED_SLOTS) {
+    const v = slots[key];
+    if (v !== undefined) {
+      held[key] = `${quotes.length}`;
+      quotes.push(v);
+    }
+  }
+  let text = fill(line, held, id);
+  for (const a of vocabulary.avoid) {
+    const re = new RegExp(`(?<![\\p{L}\\uE000])${escapeRe(a.term)}(?![\\p{L}])`, "giu");
+    text = text.replace(re, a.say);
+  }
+  return text.replace(/(\d+)/g, (_, i: string) => quotes[Number(i)] as string);
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function renderView(
+  view: PlayerView,
+  book: TemplateBook,
+  rng: Rng,
+  vocabulary?: LexiconView,
+): string {
   const labels = new Map(view.labels.map((l) => [l.localId, l]));
   const out: string[] = [];
   const say = (id: string, slots: Slots = {}): void => {
-    out.push(capitalize(fill(rng.pick(book.lines(id)), slots, id)));
+    out.push(capitalize(plainTerms(rng.pick(book.lines(id)), slots, vocabulary, id)));
   };
   const first = (id: string): string => book.lines(id)[0] as string;
 
@@ -72,7 +114,10 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
     if (l.figure !== undefined) {
       const figure = first(`figure.${l.figure.sex}.${l.figure.age}`);
       const dress = l.attire !== undefined && book.has(`attire.${l.attire}`);
-      return dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+      const dressed = dress ? `${figure} ${first(`attire.${l.attire}`)}` : figure;
+      return l.seenBefore === true && book.has("who.seen_before")
+        ? `${dressed} ${first("who.seen_before")}`
+        : dressed;
     }
     return first("who.vague");
   };
@@ -88,8 +133,29 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
 
   const s = view.scene;
   const arrived = view.outcomes.some((o) => o.effect.kind === "move" && o.effect.arrived === true);
-  const idle = view.outcomes.length === 0 && view.percepts.length === 0;
-  if (!s.familiar || arrived || idle) {
+  const idle =
+    view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
+  const inward = view.mode === "dream" || view.mode === "montage";
+  if (view.mode !== undefined) say(`mode.${view.mode}`);
+  const stretch = view.stretch;
+  if (stretch !== undefined) {
+    for (const d of stretch.did)
+      if (book.has(`stretch.did.${d.verb}`)) say(`stretch.did.${d.verb}`);
+    if (stretch.did.some((d) => d.failed > 0)) say("stretch.failed");
+    const named = stretch.spokeWith[0];
+    if (named !== undefined) say("stretch.spoke_with", { who: ref(named) });
+    else if (stretch.spoke > 0) say("stretch.spoke");
+    if (stretch.fought) say("stretch.fought");
+    const wound = stretch.wounds?.[0];
+    if (
+      wound !== undefined &&
+      book.has(`stretch.wound.${wound.sign}`) &&
+      book.has(`stretch.zone.${wound.zone}`)
+    ) {
+      say(`stretch.wound.${wound.sign}`, { zone: first(`stretch.zone.${wound.zone}`) });
+    } else if (!stretch.fought && stretch.hurt) say("stretch.hurt");
+  }
+  if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);
   }
@@ -98,11 +164,73 @@ export function renderView(view: PlayerView, book: TemplateBook, rng: Rng): stri
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
   for (const c of view.self.cues) say(`self.${c}`);
+  for (const t of view.thoughts) {
+    const of = t.about !== undefined;
+    if (t.kind === "conclude" && t.conclusion !== undefined) {
+      conclusion(t.conclusion, say, ref, book);
+      continue;
+    }
+    if (t.kind === "conclude") say("thought.ponder");
+    else if (t.kind === "remember" && t.taste !== undefined)
+      say(`taste.recalls_${t.taste.recalls}`, { what: t.taste.name });
+    else if (t.kind === "remember")
+      say(of ? "thought.remember_of" : "thought.remember", { who: ref(t.about) });
+    else if (t.kind === "ponder")
+      say(of ? "thought.ponder_of" : "thought.ponder", { who: ref(t.about) });
+    else if (of) say("thought.feel_of", { who: ref(t.about) });
+    if (t.mood !== undefined) say(`thought.mood.${t.mood}`);
+    else if (t.kind === "feel") say("thought.mood.calm");
+    if (t.hazy === true) say("thought.hazy");
+  }
+  for (const t of view.tastes) {
+    say(`taste.${t.stance}`, { what: t.name });
+    if (t.reminds !== undefined && (t.stance === "loves" || t.stance === "likes")) {
+      say("taste.reminds_of", { what: t.name, who: t.reminds });
+    } else if (t.recalls !== undefined) {
+      say(`taste.recalls_${t.recalls}`, { what: t.name });
+    }
+  }
+  for (const d of view.dues) {
+    say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
+    if (!d.sure) say("due.unsure");
+  }
+  for (const o of view.offenses) {
+    say(`offense.${o.role}.${o.response}`, { who: o.who });
+    if (book.has(`offense.norm.${o.norm}`)) say(`offense.norm.${o.norm}`);
+  }
+  for (const r of view.readings) {
+    say("reading.cast", { who: r.diviner, instrument: r.instrument, signs: r.signs.join(", ") });
+    say(`reading.told.${r.told}.${r.strength}`, { who: r.diviner });
+    if (r.vague) say("reading.vague");
+    if (r.doubtful) say("reading.doubtful");
+  }
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");
   return out.join(" ");
 }
 
 type Say = (id: string, slots?: Slots) => void;
+
+/** «Quizá X se llevó…», con la seguridad de la banda, el rival si dudó y la evidencia citada. */
+function conclusion(
+  c: ConclusionView,
+  say: Say,
+  ref: (id: string | undefined) => string,
+  book: TemplateBook,
+): void {
+  const slots = (who: readonly string[]): Slots => ({ a: ref(who[0]), b: ref(who[1]) });
+  const fact = (pred: string, who: readonly string[]): string => {
+    const id = `thought.fact.${pred}`;
+    const use = book.has(id) ? id : "thought.fact.unknown";
+    return fill(book.lines(use)[0] as string, slots(who), use);
+  };
+  say(`thought.conclude.${c.band}`, { fact: fact(c.pred, c.who) });
+  if (c.rival !== undefined)
+    say("thought.conclude.rival", { fact: fact(c.rival.pred, c.rival.who) });
+  for (const k of c.because ?? []) {
+    const id = `thought.because.${k}`;
+    if (book.has(id)) say(id);
+  }
+}
 
 function outcome(
   o: OutcomeView,
@@ -268,6 +396,17 @@ function outcome(
     case "tend":
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });
+      break;
+    case "consult":
+      if (e.delivered)
+        say(e.with === undefined ? "outcome.consult.sat_anyone" : "outcome.consult.sat", {
+          who: ref(e.with),
+          coins: `${e.paid} ${e.paid === 1 ? "moneda" : "monedas"}`,
+        });
+      else
+        say(e.with === undefined ? "outcome.consult.left_anyone" : "outcome.consult.left", {
+          who: ref(e.with),
+        });
       break;
   }
   const cue = o.cues[0];

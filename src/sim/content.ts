@@ -9,15 +9,28 @@ import { PRESSURE_CURVES } from "./causality/index.ts";
 import { RECIPES } from "./crafts/index.ts";
 import { CULTURE_TRAITS, CULTURES } from "./culture/index.ts";
 import { SPEECH_LINES } from "./dialogue/index.ts";
+import { DIVINATION_CONCERNS, DIVINATION_METHODS } from "./divination/index.ts";
 import { GOODS } from "./economy/index.ts";
 import { ELEMENT_SYSTEMS } from "./elements/index.ts";
 import { DEMOGRAPHY, TRAITS } from "./family/index.ts";
-import { CONCEPTS, LANGUAGES } from "./language/index.ts";
+import { INFERENCE_RULES } from "./knowledge/index.ts";
+import {
+  ADDRESSES,
+  CONCEPTS,
+  LANGUAGES,
+  REGISTERS,
+  TABOOS,
+  TONE_CONTRASTS,
+} from "./language/index.ts";
+import { LINEAGES, TRAJECTORIES } from "./living/index.ts";
+import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, TASTES, VALUES } from "./mind/index.ts";
 import { TENURES } from "./property/index.ts";
+import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
 import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
-import { STATUSES } from "./social/index.ts";
+import { ETIQUETTE, STATUSES } from "./social/index.ts";
+import { SCENARIOS, TUNING_TARGETS } from "./tuning/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
   BIOMES,
@@ -36,13 +49,32 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   WORK_TYPES,
   LANGUAGES,
   CONCEPTS,
+  REGISTERS,
+  ADDRESSES,
+  TABOOS,
+  TONE_CONTRASTS,
   RECIPES,
   STATUSES,
+  ETIQUETTE,
+  DIVINATION_METHODS,
+  DIVINATION_CONCERNS,
   SPEECH_LINES,
+  INFERENCE_RULES,
   TENURES,
   CULTURE_TRAITS,
   CULTURES,
   DOCTRINES,
   RELIGIONS,
   ELEMENT_SYSTEMS,
+  SCHEMAS,
+  VALUES,
+  LIFE_STAGES,
+  RELATION_DIMS,
+  RELATION_BONDS,
+  HABITS_CONTENT,
+  LINEAGES,
+  TRAJECTORIES,
+  TASTES,
+  SCENARIOS,
+  TUNING_TARGETS,
 ] as readonly ContentKind[];

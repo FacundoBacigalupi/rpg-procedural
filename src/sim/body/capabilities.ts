@@ -19,7 +19,7 @@ export interface BodyCapabilities extends Record<CapabilityKey, number> {
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
 
 /** Cuánto le quita una herida a su zona: la gravedad que falta cerrar, y el hueso roto. */
-function impairment(w: Wound): number {
+export function impairment(w: Wound): number {
   if (w.stage === "healed") return 0;
   const tissue = w.severity * (1 - 0.8 * w.repair);
   const bone = w.fracture ? (w.splinted ? 0.5 : 0.85) * (1 - w.repair) : 0;

@@ -202,6 +202,35 @@ function failureBy(def: ActionDef, factors: readonly FactorValue[]): FailureMode
   return worst?.id ?? null;
 }
 
+/**
+ * El margen esperado de un paso sin azar ni oposición: la facilidad del verbo y los modos más cada
+ * factor. `skillLevel` es el nivel (0-1) que se le pone a la habilidad: la verdad al ejecutar
+ * (`actor.skill`), la autoimagen al decidir (skills §9). Lo comparten `attempt` y la chance creída.
+ */
+export function baseMargin(
+  input: Pick<AttemptInput, "def" | "node" | "planManner" | "actor" | "scene">,
+  skillLevel: number,
+): { expected: number; factors: FactorValue[]; skill: number } {
+  const { def, node, actor, scene } = input;
+  const manners = activeManners(def, node, input.planManner);
+  const f = def.factors;
+  const factors: FactorValue[] = [];
+  const push = (factor: FactorKey, value: number) => {
+    if (value !== 0) factors.push({ factor, value });
+  };
+  const skill = weighted(actor.z, f.skill) + SKILL_SPAN * skillLevel;
+  push("skill", skill);
+  push("light", -2 * f.light * (1 - scene.light));
+  push("terrain", -2 * f.terrain * scene.terrain);
+  push("nerve", f.nerve * (actor.z["boldness"] ?? 0));
+  const caps = def.requires.flatMap((r) => (r.kind === "capability" ? [r.cap] : []));
+  if (caps.length > 0) {
+    push("capability", -2 * (1 - Math.min(...caps.map((c) => actor.capabilities[c] ?? 1))));
+  }
+  const ease = def.ease + manners.reduce((s, m) => s + m.ease, 0);
+  return { expected: ease + factors.reduce((s, x) => s + x.value, 0), factors, skill };
+}
+
 export function attempt(input: AttemptInput): Attempt {
   const { def, node, actor, scene } = input;
   const rng = input.rng.fork("action", actor.id, def.id, input.tick);
@@ -224,23 +253,8 @@ export function attempt(input: AttemptInput): Attempt {
   }
 
   const manners = activeManners(def, node, input.planManner);
-  const f = def.factors;
-  const factors: FactorValue[] = [];
-  const push = (factor: FactorKey, value: number) => {
-    if (value !== 0) factors.push({ factor, value });
-  };
-  const skill = weighted(actor.z, f.skill) + SKILL_SPAN * (actor.skill ?? 0);
-  push("skill", skill);
-  push("light", -2 * f.light * (1 - scene.light));
-  push("terrain", -2 * f.terrain * scene.terrain);
-  push("nerve", f.nerve * (actor.z["boldness"] ?? 0));
-  const caps = def.requires.flatMap((r) => (r.kind === "capability" ? [r.cap] : []));
-  if (caps.length > 0) {
-    push("capability", -2 * (1 - Math.min(...caps.map((c) => actor.capabilities[c] ?? 1))));
-  }
-
-  const ease = def.ease + manners.reduce((s, m) => s + m.ease, 0);
-  let expected = ease + factors.reduce((s, x) => s + x.value, 0);
+  const { factors, expected: base, skill } = baseMargin(input, actor.skill ?? 0);
+  let expected = base;
   let margin = expected + rng.normal();
 
   // Contienda (§7.4): el otro tira con su propia clave.

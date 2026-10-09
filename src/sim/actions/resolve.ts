@@ -23,15 +23,27 @@ import {
   logistic,
   type PlaceRef,
 } from "../../core/index.ts";
-import { handsOf, type RecipeDef, runSession } from "../crafts/index.ts";
+import {
+  defectsOf,
+  handsOf,
+  type RecipeDef,
+  type RecipeDefect,
+  runSession,
+} from "../crafts/index.ts";
 import {
   askPerKg,
+  baseFor,
   bidPerKg,
   COPPER,
   DAILY_KCAL,
   gramsIn,
   HARVEST,
   KEEP_DAYS,
+  type LotQualities,
+  type PriceBeliefs,
+  perceivedQuality,
+  qualityOfUnit,
+  qualityPriceFactor,
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
@@ -59,6 +71,7 @@ import {
   SUCCESS_MARGIN,
 } from "./attempt.ts";
 import type { FactorKey, FailureModeId } from "./catalog.ts";
+import type { SpeakAct } from "./plan.ts";
 import { refTokens } from "./refs.ts";
 
 /** Lo que pesa en el rumbo de un tramo: la visibilidad y los hitos que se ven (travel §11.3). */
@@ -119,6 +132,22 @@ export interface Market {
     | undefined;
   /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
   readonly fame?: number | undefined;
+  /**
+   * Lo que cada parte cree que vale cada bien (`economy/priceMemory`) y el día del mundo: la base
+   * de `askPerKg`/`bidPerKg` de cada una es `baseFor` (lo creído mezclado con el precio de
+   * contenido según su fe). Sin esto, las dos usan el precio de contenido.
+   */
+  readonly beliefs?:
+    | {
+        readonly actor: PriceBeliefs | undefined;
+        readonly other: PriceBeliefs | undefined;
+        readonly day: number;
+      }
+    | undefined;
+  /** La calidad de lo que tiene cada parte (`economy/quality`): sin registro vale la referencia. */
+  readonly lots?:
+    | { readonly actor: LotQualities | undefined; readonly other: LotQualities | undefined }
+    | undefined;
 }
 
 /** Lo que da un gramo de comida. */
@@ -208,6 +237,8 @@ export type VerbEffect =
       /** Cuán claro salió, 0-1: dialogue lo usa para lo que el otro entiende. */
       readonly clarity: number;
       readonly text: string | null;
+      /** El acto que declaró quien habla (dialogue §2): su intención, no lo que el otro entiende. */
+      readonly act?: SpeakAct | null;
     }
   | {
       readonly kind: "strike";
@@ -243,6 +274,8 @@ export type VerbEffect =
       /** Gramos del bien que cambiaron de mano y monedas que fueron al otro lado. */
       readonly grams: number;
       readonly coins: number;
+      /** Calidad real del lote que cambió de mano (0-1); falta si no se movió nada. */
+      readonly quality?: number;
     }
   | {
       readonly kind: "give";
@@ -291,6 +324,8 @@ export type VerbEffect =
       readonly perceived: number;
       /** Cómo quedó: a punto, crudo, pasado o quemado. */
       readonly state: "done" | "raw" | "dry" | "burnt" | null;
+      /** Los defectos reales de la tanda (crafts §11), del más grave al menos; un maestro nota algunos. */
+      readonly defects?: readonly RecipeDefect[];
     }
   | {
       readonly kind: "tend";
@@ -300,6 +335,22 @@ export type VerbEffect =
       readonly done: boolean;
       /** 0-1: cuán bien lo hizo. */
       readonly care: number;
+    }
+  | {
+      /** Ir a ver a alguien que lee el futuro y pagarle: lo que pasa después es de `game`. */
+      readonly kind: "consult";
+      readonly with: EntityRef | null;
+      /** Si se sentó a la consulta (la duda o no tener con qué pagar la dejan en la puerta). */
+      readonly delivered: boolean;
+      /** Lo que preguntó, en sus palabras. */
+      readonly asked: string | null;
+      /** Lo que dejó en la mano del adivino. */
+      readonly paid: { readonly unit: LedgerUnit; readonly amount: number } | null;
+    }
+  | {
+      /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
+      readonly kind: "ponder";
+      readonly about: string | null;
     };
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
@@ -535,6 +586,16 @@ function believedView(effect: VerbEffect): VerbEffect {
 
 const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal });
 
+/**
+ * Suponer: darle forma a una idea sobre cómo anda el mundo. El resolver solo deja lo supuesto en
+ * las palabras del jugador; qué hipótesis del catálogo es (o si no se puede formular) lo decide
+ * `game` (discovery §14), y la confianza la mueve solo la evidencia.
+ */
+const ponder: Resolver = (c) => ({
+  effect: { kind: "ponder", about: argText(c, "about") },
+  seconds: c.nominal,
+});
+
 /** Cuánto se camina de una vez: el viaje se parte en tramos que se pueden interrumpir (travel §2). */
 export const LEG_SECONDS = 1800;
 
@@ -710,9 +771,14 @@ const work: Resolver = (c) => {
   const m = c.roll.margin as number;
   // Un resultado medio rinde el tiempo trabajado; el mejor, la mitad más; un desastre lastima.
   const effectiveSeconds = Math.round(c.nominal * Math.min(1.5, 2 * c.degree));
-  const effect: VerbEffect = { kind: "work", effectiveSeconds, hurt: m <= -CRITICAL_MARGIN };
-  // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
   const mk = c.input.market;
+  const effect: VerbEffect = {
+    kind: "work",
+    effectiveSeconds,
+    hurt: m <= -CRITICAL_MARGIN,
+    ...(mk?.harvestGood && mk.harvestGramsPerHour ? { gramsPerHour: mk.harvestGramsPerHour } : {}),
+  };
+  // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
   const grams =
     mk?.harvestGood && mk.harvestGramsPerHour
       ? Math.floor((mk.harvestGramsPerHour * effectiveSeconds) / 3600)
@@ -738,7 +804,14 @@ const speak: Resolver = (c) => {
   const m = c.roll.margin;
   const delivered = m !== null && !(m < PARTIAL_MARGIN && c.roll.failure === "hesitate");
   return {
-    effect: { kind: "speak", to, delivered, clarity: delivered ? c.degree : 0, text },
+    effect: {
+      kind: "speak",
+      to,
+      delivered,
+      clarity: delivered ? c.degree : 0,
+      text,
+      act: actOf(c, "content"),
+    },
     // Si no lo dijo, se fue antes.
     seconds: delivered ? c.nominal : c.nominal / 3,
   };
@@ -820,6 +893,7 @@ const trade: Resolver = (c) => {
       good: found.unit,
       grams: found.grams,
       coins: found.coins,
+      quality: found.quality,
     },
     seconds: c.nominal,
     transfers: found.transfers,
@@ -841,7 +915,32 @@ function kcalOf(rows: readonly Holding[], foods: ReadonlyMap<LedgerUnit, Nutriti
   return kcal;
 }
 
+/** La base de una parte para un bien: lo que cree (con la fe aflojada) o el precio de contenido. */
+function believedBase(mk: Market, who: "actor" | "other", unit: LedgerUnit, ref: number): number {
+  return mk.beliefs === undefined ? ref : baseFor(mk.beliefs[who], unit, ref, mk.beliefs.day);
+}
+
+/**
+ * El precio de un lote según su calidad: quien vende sabe la real; quien compra la percibe con el
+ * error de su ojo (`eye`, 0-1) si el lote tiene calidad registrada. Sin registro, factor 1.
+ */
+function qualityFactors(
+  c: Ctx,
+  mk: Market,
+  sellerIs: "actor" | "other",
+  unit: LedgerUnit,
+  buyerEye: number,
+): { seller: number; buyer: number; quality: number } {
+  const lots = mk.lots?.[sellerIs];
+  if (lots?.[unit] === undefined)
+    return { seller: 1, buyer: 1, quality: qualityOfUnit(lots, unit) };
+  const real = qualityOfUnit(lots, unit);
+  const seen = perceivedQuality(real, buyerEye, c.rng.fork("eye").normal(0, 1));
+  return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
+}
+
 interface Bargain {
+  readonly quality: number;
   readonly direction: "buy" | "sell";
   readonly unit: LedgerUnit;
   readonly grams: number;
@@ -889,7 +988,10 @@ function bargain(
 
   if (sells) {
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
-    const base = mk.priceCopperPerKg.get(row.unit) as number;
+    const ref = mk.priceCopperPerKg.get(row.unit) as number;
+    const qf = qualityFactors(c, mk, "actor", row.unit, 0.5);
+    const base = believedBase(mk, "actor", row.unit, ref) * qf.seller;
+    const buyerBase = believedBase(mk, "other", row.unit, ref) * qf.buyer;
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
     // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
@@ -908,7 +1010,7 @@ function bargain(
       wantGrams: Math.min(wantGrams, room),
       askPerKg: askPerKg(base, myDays),
       maxPerKg: bidPerKg(
-        base,
+        buyerBase,
         foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
         foodDays(yourPocket, foods, mk.other?.members ?? 1),
       ),
@@ -921,6 +1023,7 @@ function bargain(
       return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
 
     return {
+      quality: qf.quality,
       direction: "sell",
       unit: row.unit,
       grams: deal.grams,
@@ -934,7 +1037,16 @@ function bargain(
 
   if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
-  const base = mk.priceCopperPerKg.get(row.unit) as number;
+  const ref = mk.priceCopperPerKg.get(row.unit) as number;
+  const qf = qualityFactors(
+    c,
+    mk,
+    "other",
+    row.unit,
+    handsOf(c.input.actor.skill ?? 0, c.input.actor.z).senses,
+  );
+  const base = believedBase(mk, "other", row.unit, ref) * qf.seller;
+  const buyerBase = believedBase(mk, "actor", row.unit, ref) * qf.buyer;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
   const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
@@ -946,7 +1058,7 @@ function bargain(
     wantGrams,
     askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
     maxPerKg: bidPerKg(
-      base,
+      buyerBase,
       foodDays(merge(myRows, myLarder), foods, mk.ownMembers),
       foodDays(myRows, foods, mk.ownMembers),
     ),
@@ -968,7 +1080,14 @@ function bargain(
       : []),
     { from: me, unit: COPPER, amount: deal.coins, to: holderAccount(you) },
   ];
-  return { direction: "buy", unit: row.unit, grams: deal.grams, coins: deal.coins, transfers };
+  return {
+    quality: qf.quality,
+    direction: "buy",
+    unit: row.unit,
+    grams: deal.grams,
+    coins: deal.coins,
+    transfers,
+  };
 }
 
 const take: Resolver = (c) => {
@@ -1173,6 +1292,7 @@ const cook: Resolver = (c) => {
       quality: round3(s.quality),
       perceived: round3(s.perceivedQuality),
       state,
+      defects: defectsOf(recipe, s).map((d) => ({ ...d, severity: round3(d.severity) })),
     },
     seconds: s.seconds,
     verdict: {
@@ -1267,6 +1387,60 @@ const give: Resolver = (c) => {
   };
 };
 
+/** Cuántas monedas ofreció: el número que dice en `offer` (una si no dice) sin pasar de lo que lleva. */
+function coinsOffered(text: string | null, held: number): number {
+  const m = text === null ? null : /(\d+)/.exec(text);
+  const n = m ? Number(m[1]) : 1;
+  return Math.min(held, Math.max(1, Number.isFinite(n) ? n : 1));
+}
+
+/**
+ * Consultar: pagar al adivino y preguntarle. Sin plata no hay consulta (los adivinos cobran);
+ * si la duda lo frena, se va con la plata en el bolsillo.
+ */
+const consult: Resolver = (c) => {
+  const other = argEntity(c, "with");
+  const asked = argText(c, "about");
+  const purse = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => h.amount > 0 && isMoney(h.unit))
+    .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0];
+  const stay = (seconds: number, override?: VerbResult["override"]): VerbResult => ({
+    effect: { kind: "consult", with: other, delivered: false, asked, paid: null },
+    seconds,
+    ...(override ? { override } : {}),
+  });
+  if (c.roll.unmet) return stay(c.nominal);
+  if (other === null || !purse)
+    return stay(Math.min(c.nominal, 60), {
+      outcome: "failure",
+      failure: "no_means",
+      believed: "failure",
+    });
+  const m = c.roll.margin;
+  if (m === null || (m < PARTIAL_MARGIN && c.roll.failure === "hesitate"))
+    return stay(c.nominal / 3);
+  const amount = coinsOffered(argText(c, "offer"), Math.floor(purse.amount));
+  return {
+    effect: {
+      kind: "consult",
+      with: other,
+      delivered: true,
+      asked,
+      paid: { unit: purse.unit, amount },
+    },
+    seconds: c.nominal,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        to: holderAccount(other as HolderRef),
+        unit: purse.unit,
+        amount,
+      },
+    ],
+  };
+};
+
 const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   none,
   move,
@@ -1285,6 +1459,8 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   cook,
   drink,
   tend,
+  consult,
+  ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 
@@ -1329,6 +1505,11 @@ function argEntity(c: Ctx, role: string): EntityRef | null {
 function argText(c: Ctx, role: string): string | null {
   const a = c.input.node.args.find((x) => x.role === role);
   return a && "text" in a ? a.text : null;
+}
+
+function actOf(c: Ctx, role: string): SpeakAct | null {
+  const a = c.input.node.args.find((x) => x.role === role);
+  return a && "text" in a ? (a.act ?? null) : null;
 }
 
 function unique<T>(xs: readonly T[]): T[] {

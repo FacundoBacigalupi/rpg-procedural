@@ -77,8 +77,9 @@ const village: KnownEntity[] = [
 ];
 
 describe("catálogo", () => {
-  it("el contenido del repo carga: dieciocho verbos y la plantilla de robar", () => {
+  it("el contenido del repo carga: veinte verbos y la plantilla de robar", () => {
     expect(catalog.verbs.map((v) => v.id).sort()).toEqual([
+      "consult",
       "cook",
       "drink",
       "eat",
@@ -86,6 +87,7 @@ describe("catálogo", () => {
       "give",
       "look",
       "move",
+      "ponder",
       "rest",
       "search",
       "spare",
@@ -293,6 +295,28 @@ describe("del borrador al plan", () => {
     kind: "act",
     plan,
     ...extra,
+  });
+
+  it("el porqué declarado pasa al plan con el beneficiario resuelto; sin purpose no hay", () => {
+    const give = { kind: "do" as const, verb: "give", args: [{ role: "to", ref: desc("Wu") }] };
+    const withWhy = planFromDraft(
+      act(give, { purpose: { motive: "gift", forWhom: desc("Wu") } }),
+      ctx,
+    );
+    expect(withWhy.kind === "plan" && withWhy.plan.purpose).toEqual({
+      motive: "gift",
+      forWhom: wu,
+    });
+    const bare = planFromDraft(act(give, { purpose: { motive: "sustenance" } }), ctx);
+    expect(bare.kind === "plan" && bare.plan.purpose).toEqual({ motive: "sustenance" });
+    // Un beneficiario que no conoce no frena el plan: queda el motivo solo.
+    const stranger = planFromDraft(
+      act(give, { purpose: { motive: "gift", forWhom: desc("el herrero") } }),
+      ctx,
+    );
+    expect(stranger.kind === "plan" && stranger.plan.purpose).toEqual({ motive: "gift" });
+    const none = planFromDraft(act(give), ctx);
+    expect(none.kind === "plan" && "purpose" in none.plan).toBe(false);
   });
 
   it("resuelve referencias, pasa duraciones a segundos y expande plantillas", () => {

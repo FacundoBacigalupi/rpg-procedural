@@ -68,6 +68,7 @@
     "duration": { "kind": "fixed", "seconds": 1800 },
     "checkpoint": 300,
     "emissions": { "sight": 0.5, "sound": 0.3 },
+    "serves": { "social": 0.5, "family": 0.2 },
     "resolver": "search",
     "ease": 0.8,
     "factors": {
@@ -105,6 +106,7 @@
     "duration": { "kind": "fixed", "seconds": 7200 },
     "checkpoint": 900,
     "emissions": { "sight": 0.4, "sound": 0.2 },
+    "serves": { "hunger": 0.3, "wealth": 0.4 },
     "resolver": "gather",
     "ease": 0.5,
     "factors": {
@@ -145,6 +147,7 @@
     "duration": { "kind": "arg", "role": "for", "default": 14400, "max": 43200 },
     "checkpoint": 1800,
     "emissions": { "sight": 0.6, "sound": 0.4 },
+    "serves": { "wealth": 0.6, "hunger": 0.2, "tradition": 0.2, "rest": -0.3 },
     "resolver": "work",
     "ease": 1,
     "factors": {
@@ -171,6 +174,7 @@
     "duration": { "kind": "arg", "role": "for", "default": 28800, "max": 57600 },
     "checkpoint": 1800,
     "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": { "rest": 1, "pleasure": 0.2 },
     "resolver": "none",
     "ease": 1,
     "failureModes": [],
@@ -202,7 +206,9 @@
     ],
     "manners": [
       { "id": "careful", "duration": 1.5, "ease": 0.4 },
-      { "id": "covert", "duration": 1.2, "stealth": 0.8, "emissions": 0.3 }
+      { "id": "covert", "duration": 1.2, "stealth": 0.8, "emissions": 0.3 },
+      { "id": "formal", "duration": 1.15 },
+      { "id": "casual", "duration": 0.9 }
     ],
     "requires": [
       { "kind": "capability", "cap": "speech", "min": 0.3 },
@@ -212,6 +218,7 @@
     "duration": { "kind": "fixed", "seconds": 300 },
     "checkpoint": 30,
     "emissions": { "sight": 0.3, "sound": 0.6 },
+    "serves": { "social": 0.6, "family": 0.1 },
     "resolver": "speak",
     "ease": 1.5,
     "factors": {
@@ -237,7 +244,8 @@
     "args": [{ "role": "target", "kind": "person", "required": true }],
     "manners": [
       { "id": "careful", "duration": 1.5, "ease": 0.3 },
-      { "id": "fast", "duration": 0.7, "ease": -0.3 }
+      { "id": "fast", "duration": 0.7, "ease": -0.3 },
+      { "id": "hold_back", "duration": 1.2, "ease": 0.1 }
     ],
     "requires": [
       { "kind": "capability", "cap": "strength", "min": 0.1 },
@@ -312,6 +320,7 @@
     "duration": { "kind": "fixed", "seconds": 900 },
     "checkpoint": 60,
     "emissions": { "sight": 0.4, "sound": 0.5 },
+    "serves": { "wealth": 0.5, "social": 0.2 },
     "resolver": "trade",
     "ease": 0.5,
     "factors": {
@@ -475,6 +484,7 @@
     "duration": { "kind": "fixed", "seconds": 1200 },
     "checkpoint": 300,
     "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": { "hunger": 1, "pleasure": 0.1 },
     "resolver": "eat",
     "ease": 3,
     "failureModes": [
@@ -497,6 +507,7 @@
     "duration": { "kind": "fixed", "seconds": 60 },
     "checkpoint": 60,
     "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": { "thirst": 1 },
     "resolver": "drink",
     "ease": 3,
     "failureModes": [
@@ -522,6 +533,7 @@
     "duration": { "kind": "fixed", "seconds": 600 },
     "checkpoint": 120,
     "emissions": { "sight": 0.3, "sound": 0.1 },
+    "serves": { "family": 0.5, "safety": 0.3, "justice": 0.1 },
     "resolver": "tend",
     "ease": 0.8,
     "factors": {
@@ -539,5 +551,54 @@
       { "id": "too_weak", "factor": "capability" }
     ],
     "evidence": 0.7
+  },
+  {
+    "id": "consult",
+    "name": "consultar",
+    "domain": "esoteric",
+    "args": [
+      { "role": "with", "kind": "person", "required": true },
+      { "role": "about", "kind": "text", "required": false },
+      { "role": "offer", "kind": "text", "required": false }
+    ],
+    "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
+    "requires": [
+      { "kind": "capability", "cap": "speech", "min": 0.3 },
+      { "kind": "position", "near": "with" }
+    ],
+    "occupies": { "voice": "partial", "eyes": "partial", "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 900 },
+    "checkpoint": 120,
+    "emissions": { "sight": 0.3, "sound": 0.4 },
+    "resolver": "consult",
+    "ease": 1.5,
+    "factors": {
+      "nerve": 0.2,
+      "skill": [{ "trait": "sociability", "weight": 0.4 }, { "trait": "curiosity", "weight": 0.2 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.6
+  },
+  {
+    "id": "ponder",
+    "name": "suponer",
+    "domain": "mind",
+    "args": [{ "role": "about", "kind": "text", "required": true }],
+    "manners": [],
+    "requires": [],
+    "occupies": { "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 600,
+    "emissions": { "sight": 0.05, "sound": 0 },
+    "resolver": "ponder",
+    "ease": 1,
+    "failureModes": [],
+    "evidence": 0.2
   }
 ]

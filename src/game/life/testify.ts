@@ -1,0 +1,397 @@
+// Testigos en el juego (law §5): cuando alguien le pregunta a otro por un hecho (`law.inquiry`:
+// un vecino, el alguacil, el personaje), el testigo arma lo que recuerda y lo que siente por los
+// involucrados, y `testify` decide qué cuenta. Lo dicho entra en `KNOWN_DEEDS` de quien preguntó
+// como `told` (no pisa lo que vio) y queda como evento `law.testimony`; la mentira y la deformación
+// van en un campo que solo lee el inspector. El testigo solo usa lo que sabe: su `Deed` guardado,
+// sus relaciones y su temperamento, nunca el evento de la verdad.
+
+import {
+  type AgentId,
+  type Event,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  type LedgerUnit,
+  type PlaceRef,
+  type Rng,
+  type Tick,
+} from "../../core/index.ts";
+import {
+  AMENDS,
+  admitsIt,
+  type BondDef,
+  clampTemper,
+  type Deed,
+  type DeedRecallContext,
+  type DimensionDef,
+  draftEvent,
+  ENTITY,
+  type EventDraft,
+  INNATE,
+  isMoney,
+  KNOWN_DEEDS,
+  learnDeed,
+  MEMORIES,
+  MIND,
+  OWN_DEEDS,
+  PERSON,
+  type PostingDraft,
+  type ProcessDef,
+  RELATIONS,
+  type ReadonlyLedger,
+  type ReadonlyWorldTruth,
+  type Relationship,
+  relationship,
+  type StateChange,
+  salienceAt,
+  setComponent,
+  stanceOf,
+  standardize,
+  type Testimony,
+  type Trait,
+  testify,
+  testimonyAsDeed,
+  type WitnessMotives,
+} from "../../sim/index.ts";
+
+export const TESTIFY_PROCESS = "life.testify";
+export const INQUIRY_EVENT = "law.inquiry";
+export const TESTIMONY_EVENT = "law.testimony";
+
+export interface TestifyOptions {
+  readonly dims: readonly DimensionDef[];
+  readonly bonds: readonly BondDef[];
+  readonly traits: readonly Trait[];
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+}
+
+/** Datos de un `law.inquiry`: el hecho por el que se pregunta y lo que se ofrece por otra versión. */
+export interface InquiryData {
+  /** El evento del hecho (la clave con que el testigo lo guardó). */
+  readonly deed: EventId;
+  /** 0-1: lo que se ofrece por callar o por decir otra cosa, ya en términos de utilidad del testigo. */
+  readonly bribe?: number;
+  /**
+   * Una oferta real de quien pregunta (dialogue §7): dinero que tiene en el ledger. Vale lo que
+   * pesa para el testigo (`bribeValue`) y solo se paga si el testigo termina mintiendo por ella.
+   */
+  readonly offer?: { readonly unit: string; readonly grams: number };
+}
+
+/** Gramos de dinero a los que una oferta pesa la mitad para el testigo (sin calibrar). */
+export const BRIBE_HALF_GRAMS = 10;
+/** Cuánto sube la honestidad del testigo por cada punto de miedo a quien pregunta (sin calibrar). */
+export const PRESSURE_HONESTY = 0.4;
+/** Cuánto del miedo al culpable se lo quita el miedo a quien pregunta, por punto (sin calibrar). */
+export const PRESSURE_RELIEF = 0.5;
+
+/** Lo que pesa para el testigo una oferta de `grams` de dinero (0-1, satura). */
+export function bribeValue(grams: number): number {
+  return grams <= 0 ? 0 : grams / (grams + BRIBE_HALF_GRAMS);
+}
+
+/** La oferta de `inq` si es dinero y `asker` lo tiene de verdad; si no, no hay soborno. */
+export function validOffer(
+  inq: InquiryData,
+  asker: AgentId,
+  ledger: ReadonlyLedger | undefined,
+): { unit: LedgerUnit; grams: number } | null {
+  const offer = inq.offer;
+  if (!offer || !ledger || !(offer.grams > 0) || !isMoney(offer.unit as LedgerUnit)) return null;
+  const held = ledger.balance(
+    holderAccount(asker as unknown as HolderRef),
+    offer.unit as LedgerUnit,
+  );
+  return held >= offer.grams ? { unit: offer.unit as LedgerUnit, grams: offer.grams } : null;
+}
+
+/** Cuánto vio según cómo lo supo (la claridad al formar el recuerdo no se guarda). */
+export const CLARITY_BY_VIA = { saw: 0.85, heard: 0.5, told: 0.4 } as const;
+/** Resentimiento mínimo hacia alguien para que le cuelgue un hecho de autor desconocido. */
+export const SUSPICION_AT = 0.3;
+
+/** Cuánto de la claridad de la vía cuenta si el recuerdo ya se volvió resumen (se olvidó el detalle). */
+export const FORGOTTEN_CLARITY = 0.3;
+
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+/**
+ * La claridad con que el testigo recuerda hoy `deed`: sin memoria guardada, la de la vía por la
+ * que lo supo; con ella (`MEMORIES`, por el evento real), la vía pesa por la confianza que le
+ * queda, su saliencia hoy y lo que ya se le alejó (`distortion`); y si la memoria se comprimió a
+ * resumen (solo queda un gist que cita el evento), apenas queda `FORGOTTEN_CLARITY` de la vía.
+ */
+export function recallClarity(
+  truth: ReadonlyWorldTruth,
+  witness: AgentId,
+  deed: Deed,
+  now: Tick,
+): number {
+  const base = CLARITY_BY_VIA[deed.via];
+  const mem = truth.get(MEMORIES, witness);
+  const m = mem?.items.find((x) => x.eventId === deed.event);
+  if (m) {
+    const vivid = clamp01(m.confidence) * (0.5 + 0.5 * clamp01(salienceAt(m, now)));
+    return clamp01(base * vivid * (1 - 0.5 * clamp01(m.distortion)));
+  }
+  if (mem?.gists.some((g) => g.causes.includes(deed.event))) return base * FORGOTTEN_CLARITY;
+  return base;
+}
+
+/** Lo que `witness` siente por `to` hoy (extraño si no figura). */
+function feeling(
+  truth: ReadonlyWorldTruth,
+  o: TestifyOptions,
+  witness: AgentId,
+  to: AgentId,
+  now: Tick,
+): Relationship {
+  return relationship(truth.get(RELATIONS, witness), to, now, {
+    dims: o.dims,
+    bonds: o.bonds,
+    schemaStrength: (s) => truth.get(MIND, witness)?.schemas[s]?.strength ?? 0,
+  });
+}
+
+/**
+ * A quién le cuelga el hecho el testigo: de entre la gente que conoce (sin el que hizo el hecho,
+ * la víctima, él ni quien pregunta), el que más rencor le despierta si pasa de `SUSPICION_AT`.
+ * Empata por id para que sea determinista.
+ */
+export function suspectOf(
+  truth: ReadonlyWorldTruth,
+  o: TestifyOptions,
+  witness: AgentId,
+  exclude: readonly (AgentId | null)[],
+  now: Tick,
+): { who: AgentId; resentment: number } | null {
+  const known = Object.keys(truth.get(RELATIONS, witness)?.toward ?? {}).sort() as AgentId[];
+  let best: { who: AgentId; resentment: number } | null = null;
+  for (const who of known) {
+    if (who === witness || exclude.includes(who)) continue;
+    if (truth.get(ENTITY, who)?.endedAt !== undefined) continue;
+    const resentment = feeling(truth, o, witness, who, now).dims.resentment;
+    if (resentment >= SUSPICION_AT && (!best || resentment > best.resentment)) {
+      best = { who, resentment };
+    }
+  }
+  return best;
+}
+
+/** El contexto de recuerdo y los motivos de `witness` ante `deed`, desde relaciones y temperamento. */
+export function witnessProfile(
+  truth: ReadonlyWorldTruth,
+  o: TestifyOptions,
+  witness: AgentId,
+  asker: AgentId,
+  deed: Deed,
+  bribe: number,
+  now: Tick,
+  pressure = 0,
+): { recall: DeedRecallContext; motives: WitnessMotives; other: AgentId | null } {
+  const doer = deed.by;
+  const toDoer = doer ? feeling(truth, o, witness, doer, now).dims : null;
+  const toVictim = feeling(truth, o, witness, deed.victim, now).dims;
+  const suspect = suspectOf(truth, o, witness, [doer, deed.victim, asker], now);
+  const innate = truth.get(INNATE, witness);
+  const z = innate
+    ? standardize(innate, o.traits, truth.get(PERSON, witness)?.sex ?? "female")
+    : {};
+  const sameHome =
+    doer !== null && truth.get(PERSON, doer)?.household === truth.get(PERSON, witness)?.household;
+  return {
+    recall: {
+      now,
+      clarity: recallClarity(truth, witness, deed, now),
+      affinityToDoer: toDoer ? toDoer.affection : 0,
+      affinityToVictim: toVictim.affection,
+      suspect: suspect?.who ?? null,
+      bias: clamp01(
+        0.2 + 0.6 * (suspect?.resentment ?? 0) + 0.15 * clampTemper(z["reactivity"] ?? 0),
+      ),
+    },
+    motives: {
+      // La presión de quien pregunta (miedo a él) le gana terreno al miedo al culpable.
+      fear: clamp01((toDoer ? toDoer.fear : 0) - PRESSURE_RELIEF * clamp01(pressure)),
+      loyaltyToDoer: toDoer
+        ? clamp01(
+            0.6 * Math.max(0, toDoer.affection) + 0.4 * toDoer.gratitude + (sameHome ? 0.2 : 0),
+          )
+        : 0,
+      bribe: clamp01(bribe),
+      hatredOfOther: suspect?.resentment ?? 0,
+      honesty: clamp01(
+        0.5 + 0.35 * clampTemper(z["willpower"] ?? 0) + PRESSURE_HONESTY * clamp01(pressure),
+      ),
+      skill: clamp01(0.5 + 0.5 * clampTemper(z["control"] ?? 0)),
+    },
+    other: suspect?.who ?? null,
+  };
+}
+
+/**
+ * Lo que `witness` le declara a `asker` sobre el hecho `inq.deed`. Si no lo conoce, no hay
+ * declaración (no inventa de la nada). Devuelve el cambio en lo que sabe quien preguntó y el
+ * evento; quien niega o calla no deja nada que aprender, pero sí el evento.
+ */
+export function giveTestimony(
+  truth: ReadonlyWorldTruth,
+  o: TestifyOptions,
+  witness: AgentId,
+  asker: AgentId,
+  inq: InquiryData,
+  cause: EventId,
+  now: Tick,
+  rng: Rng,
+  ledger?: ReadonlyLedger,
+): {
+  changes: StateChange[];
+  events: EventDraft[];
+  testimony: Testimony;
+  /** El pago de la oferta, si el testigo mintió por ella (el proceso lo asienta contra el evento 0). */
+  payment: { unit: LedgerUnit; grams: number } | null;
+} | null {
+  const mine = truth.get(OWN_DEEDS, witness)?.deeds.find((d) => d.event === inq.deed);
+  const deed = truth.get(KNOWN_DEEDS, witness)?.deeds.find((d) => d.event === inq.deed);
+  if (!deed && !mine) return null;
+  // Si el hecho es suyo, no declara como testigo: lo reconoce o lo niega según lo que decidió
+  // hacer con su culpa (`AMENDS`), con lo que recuerda de sí, sin deformación.
+  let t: Testimony;
+  let paid: { unit: LedgerUnit; grams: number } | null = null;
+  if (mine) {
+    const admits = admitsIt(stanceOf(truth.get(AMENDS, witness), mine.event));
+    t = {
+      kind: admits ? mine.kind : null,
+      accused: admits ? witness : null,
+      victim: mine.victim,
+      event: mine.event,
+      at: mine.at,
+      certainty: admits ? 1 : 0.5,
+      lie: { kind: admits ? "none" : "deny", motive: admits ? "none" : "fear", polish: 0.5 },
+      distortion: 0,
+    };
+  } else if (deed) {
+    const offer = validOffer(inq, asker, ledger);
+    const pressure = feeling(truth, o, witness, asker, now).dims.fear;
+    const bribe = Math.max(inq.bribe ?? 0, offer ? bribeValue(offer.grams) : 0);
+    const p = witnessProfile(truth, o, witness, asker, deed, bribe, now, pressure);
+    paid = offer;
+    t = testify(deed, p.recall, p.motives, p.other, rng.fork("testify", witness, asker, inq.deed));
+  } else {
+    return null;
+  }
+  // Solo cobra si mintió por la oferta: contar la verdad no se paga.
+  const payment = paid && t.lie.motive === "bribe" && t.lie.kind !== "none" ? paid : null;
+  const told = testimonyAsDeed(t, "told");
+  const changes: StateChange[] = [];
+  if (told && truth.get(ENTITY, asker)?.endedAt === undefined) {
+    const before = truth.get(KNOWN_DEEDS, asker);
+    const after = learnDeed(before, told);
+    if (after !== before) changes.push(setComponent(KNOWN_DEEDS, asker, after));
+  }
+  const events: EventDraft[] = [
+    {
+      kind: TESTIMONY_EVENT,
+      actors: [witness, asker],
+      place: o.placeOf(truth, witness),
+      data: {
+        deed: inq.deed,
+        said: told !== null,
+        paid: payment ? { unit: payment.unit, grams: payment.grams } : null,
+        kind: t.kind,
+        accused: t.accused,
+        certainty: t.certainty,
+        // Solo para el inspector y los tests: nadie del mundo lo ve.
+        truthOf: { lie: t.lie, distortion: t.distortion },
+      },
+      emissions: {},
+      causes: [{ kind: "event", event: cause }],
+    },
+  ];
+  return { changes, events, testimony: t, payment };
+}
+
+function inquiryOf(e: Event): { witness: AgentId; asker: AgentId; data: InquiryData } | null {
+  if (e.kind !== INQUIRY_EVENT) return null;
+  const [asker, witness] = e.actors as AgentId[];
+  const data = e.data as Partial<InquiryData> | null;
+  if (!asker || !witness || !data?.deed) return null;
+  return {
+    asker,
+    witness,
+    data: {
+      deed: data.deed,
+      ...(data.bribe ? { bribe: data.bribe } : {}),
+      ...(data.offer ? { offer: data.offer } : {}),
+    },
+  };
+}
+
+export function testifyProcess(o: TestifyOptions): ProcessDef {
+  return {
+    id: TESTIFY_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [
+      KNOWN_DEEDS.name,
+      OWN_DEEDS.name,
+      AMENDS.name,
+      MEMORIES.name,
+      RELATIONS.name,
+      MIND.name,
+      INNATE.name,
+      PERSON.name,
+      ENTITY.name,
+    ],
+    writes: [KNOWN_DEEDS.name],
+    run(ctx) {
+      const changes: StateChange[] = [];
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      // Varias preguntas en el mismo paso se suman sobre lo que ya aprendió quien preguntó.
+      const learned = new Map<AgentId, ReturnType<typeof learnDeed>>();
+      for (const e of ctx.recent) {
+        const inq = inquiryOf(e);
+        if (!inq) continue;
+        if (ctx.truth.get(ENTITY, inq.witness)?.endedAt !== undefined) continue;
+        const out = giveTestimony(
+          ctx.truth,
+          o,
+          inq.witness,
+          inq.asker,
+          inq.data,
+          e.id,
+          ctx.now,
+          ctx.rng,
+          ctx.ledger,
+        );
+        if (!out) continue;
+        if (out.payment) {
+          postings.push({
+            event: draftEvent(events.length),
+            transfers: [
+              {
+                unit: out.payment.unit,
+                from: holderAccount(inq.asker as unknown as HolderRef),
+                to: holderAccount(inq.witness as unknown as HolderRef),
+                amount: out.payment.grams,
+              },
+            ],
+          });
+        }
+        events.push(...out.events);
+        const told = testimonyAsDeed(out.testimony, "told");
+        if (!told || ctx.truth.get(ENTITY, inq.asker)?.endedAt !== undefined) continue;
+        const before = learned.get(inq.asker) ?? ctx.truth.get(KNOWN_DEEDS, inq.asker);
+        learned.set(inq.asker, learnDeed(before, told));
+      }
+      for (const [id, value] of learned) changes.push(setComponent(KNOWN_DEEDS, id, value));
+      return changes.length === 0 && events.length === 0
+        ? {}
+        : { changes, events, ...(postings.length > 0 ? { postings } : {}) };
+    },
+  };
+}

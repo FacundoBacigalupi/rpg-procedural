@@ -60,19 +60,21 @@ export function lifeReplayGame(
   };
 }
 
-/** Lo que el modo novela pide del personaje: edad de entrada, sexo y posición (game-modes §2). */
+/** Lo que el modo novela pide del personaje: edad de entrada, sexo, posición y temperamento (game-modes §2). */
 function birthOf(game: LifeSetup["game"]): LifeOptions {
   const spec = game.novel?.character;
   if (game.mode !== "novel" || !spec) return {};
   const age = spec.entryAge ?? (game.entry.kind === "age" ? game.entry.at : undefined);
   return {
     ...(age === undefined ? {} : { playerAge: { min: age, max: age } }),
+    ...(spec.tastes ? { tastes: spec.tastes } : {}),
     // Sin sexo ni posición no hay nada duro que buscar: alcanza con la edad más cercana.
-    ...(spec.sex || spec.family?.position
+    ...(spec.sex || spec.family?.position || spec.temperament
       ? {
           birth: {
             ...(spec.sex ? { sex: spec.sex } : {}),
             ...(spec.family?.position ? { position: spec.family.position } : {}),
+            ...(spec.temperament ? { temperament: spec.temperament } : {}),
           },
         }
       : {}),

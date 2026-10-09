@@ -2,9 +2,14 @@
 // y los lugares de la aldea por lo que son. Con `sim/knowledge` (Fase 2) sale de sus creencias; por
 // ahora es lo que se sabe de nacimiento y de vivir ahí. Los nombres propios llegan con language.
 
-import type { AgentId, EntityRef } from "../../core/index.ts";
+import type { AgentId, EntityRef, Tick } from "../../core/index.ts";
 import {
+  BELIEFS,
+  type Beliefs,
+  beliefConfidenceAt,
+  believed,
   callName,
+  ENTITY,
   type KnownEntity,
   LOCATION,
   PERSON,
@@ -12,6 +17,7 @@ import {
   PLACE,
   PLACE_NAME,
 } from "../../sim/index.ts";
+import { RECOGNIZED_CONFIDENCE } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
 
 /** Cómo se dice cada lugar en castellano (provisorio hasta `language`). */
@@ -35,16 +41,31 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
       [me.mother, "madre", "madre"],
       [me.father, "padre", "padre"],
     ];
+    const alive = new Set(living(w.truth));
+    const mine = w.truth.get(BELIEFS, w.player);
     for (const [id, name, rel] of family) {
-      if (!id || !living(w.truth).includes(id)) continue;
+      if (!id) continue;
+      if (!alive.has(id)) {
+        // Murió y no se enteró: para él sigue vivo (y donde lo vio) hasta que algo se lo corrija.
+        if (believesAlive(mine, id, w.scheduler.now)) {
+          out.push(person(w, id, [name], rel, here, false));
+        }
+        continue;
+      }
       out.push(person(w, id, [name], rel, here));
     }
-    for (const id of living(w.truth)) {
-      const p = w.truth.get(PERSON, id);
-      if (!p || id === w.player || id === me.mother || id === me.father) continue;
+    // Convivientes (hermanos): los vivos y los muertos que el personaje cree vivos (phantom).
+    for (const id of w.truth.ids(ENTITY)) {
+      if (!id.startsWith("agent:")) continue;
+      const agent = id as AgentId;
+      const p = w.truth.get(PERSON, agent);
+      if (!p || agent === w.player || agent === me.mother || agent === me.father) continue;
       if (p.household !== me.household) continue;
       const rel = p.sex === "female" ? "hermana" : "hermano";
-      out.push(person(w, id, [rel], rel, here));
+      if (alive.has(agent)) out.push(person(w, agent, [rel], rel, here));
+      else if (believesAlive(mine, agent, w.scheduler.now)) {
+        out.push(person(w, agent, [rel], rel, here, false));
+      }
     }
   }
   for (const id of w.truth.ids(PLACE)) {
@@ -70,24 +91,74 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
   return out;
 }
 
+/** Pura: el personaje cree vivo a `id` con confianza (envejecida) que todavía pesa. */
+export function believesAlive(beliefs: Beliefs | undefined, id: AgentId, now: Tick): boolean {
+  const b = believed(beliefs, id, "alive");
+  return b?.value === true && beliefConfidenceAt(b, now) >= RECOGNIZED_CONFIDENCE;
+}
+
+type Where = { hex: number; space?: string | undefined };
+
+/** Dónde cree el personaje que está alguien, y si lo cree acá y todavía con peso (player-loop §9). */
+export interface Whereabouts {
+  readonly at: number | undefined;
+  readonly present: boolean;
+  /** La creencia ya no sostiene a la persona acá: sirve para distinguir lo visto de lo recordado. */
+  readonly believed: boolean;
+}
+
+/**
+ * Pura: lo que dicen las creencias sobre dónde está `id`. Si cree que está acá con confianza
+ * (envejecida) >= `RECOGNIZED_CONFIDENCE`, está presente; si la creencia es vieja, `at` queda como
+ * el último lugar donde lo vio pero ya no está presente. Sin creencia alguna, `believed` es false y
+ * quien llama decide (hoy: los convivientes se dan por conocidos donde la verdad los pone hasta que
+ * `knowing` los haya visto una vez).
+ */
+export function whereaboutsFromBeliefs(
+  beliefs: Beliefs | undefined,
+  id: AgentId,
+  here: Where | undefined,
+  now: Tick,
+): Whereabouts {
+  const b = believed(beliefs, id, "at");
+  if (b === undefined || typeof b.value === "boolean" || typeof b.value === "string") {
+    return { at: undefined, present: false, believed: false };
+  }
+  const loc = b.value;
+  const fresh = beliefConfidenceAt(b, now) >= RECOGNIZED_CONFIDENCE;
+  return {
+    at: loc.hex,
+    present: fresh && !!here && loc.hex === here.hex && loc.space === here.space,
+    believed: true,
+  };
+}
+
 function person(
   w: LifeWorld,
   id: AgentId,
   names: string[],
   rel: string,
-  here: { hex: number; space?: string | undefined } | undefined,
+  here: Where | undefined,
+  alive = true,
 ): KnownEntity {
-  const at = w.truth.get(LOCATION, id);
+  const truthAt = w.truth.get(LOCATION, id);
+  const truthHere =
+    alive && !!here && !!truthAt && truthAt.hex === here.hex && truthAt.space === here.space;
+  const seen = whereaboutsFromBeliefs(w.truth.get(BELIEFS, w.player), id, here, w.scheduler.now);
   const given = callName(w.truth.get(PERSON_NAME, id) ?? { language: "", parts: [] });
+  // Sin creencia, el conviviente se da por conocido donde está; con creencia manda lo que cree y
+  // `phantom` marca la que la verdad desmiente (se fue, murió sin que lo supiera).
+  const present = seen.believed ? seen.present : truthHere;
   return {
     ref: id,
     kind: "person",
     names: given === undefined ? names : [...names, given],
     features: [],
     relations: [{ rel, of: "self" }],
-    present: !!here && !!at && at.hex === here.hex && at.space === here.space,
-    // Provisorio: lo que cree es la verdad hasta que llegue `sim/knowledge` (Fase 2).
-    at: at?.hex,
+    present,
+    at: seen.believed ? seen.at : truthAt?.hex,
     via: [],
+    ...(seen.believed && seen.present && !truthHere ? { phantom: true } : {}),
+    ...(!alive ? { phantom: true } : {}),
   };
 }

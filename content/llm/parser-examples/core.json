@@ -418,6 +418,29 @@
     }
   },
   {
+    "id": "strike-hold-back",
+    "text": "lo ataco conteniéndome, sin mostrarle mi nivel",
+    "scene": "Un bandido con un cuchillo te mira desde el borde del camino.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "strike",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "el bandido",
+              "kind": "person",
+              "features": ["bandido"]
+            }
+          }
+        ],
+        "manner": ["hold_back"]
+      }
+    }
+  },
+  {
     "id": "trade-smith",
     "text": "le ofrezco al herrero cambiarle hongos por un cuchillo",
     "scene": "Estás en la herrería. El herrero martilla una hoz.",
@@ -733,6 +756,91 @@
     }
   },
   {
+    "id": "say-ask-about",
+    "text": "le pregunto a Wu por Lin: \"¿sabés dónde anda Lin?\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Sabés dónde anda Lin?",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "act": {
+          "kind": "ask",
+          "about": { "text": "Lin", "features": ["Lin"] }
+        }
+      }
+    },
+    "notes": "el acto declarado (ask) y a quién se refiere van en act; el oyente igual entiende por las palabras"
+  },
+  {
+    "id": "say-promise-terms",
+    "text": "le prometo a Wu que le devuelvo el doble del grano en otoño: \"Te lo devuelvo duplicado cuando termine la cosecha\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Te lo devuelvo duplicado cuando termine la cosecha.",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "act": {
+          "kind": "promise",
+          "what": "grano",
+          "times": 2,
+          "dueDays": 90,
+          "precision": 0.75
+        }
+      }
+    },
+    "notes": "los términos de la promesa van en act: times (el doble = 2), dueDays (una estación = 90) y precision (una estación es algo vago, 0.75); si el jugador no los dice, se omiten"
+  },
+  {
+    "id": "say-promise-vague",
+    "text": "le prometo a Wu que le devuelvo lo que me prestó cuando pueda: \"Te lo devuelvo cuando pueda\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Te lo devuelvo cuando pueda.",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "act": {
+          "kind": "promise",
+          "dueDays": null,
+          "precision": 0.5
+        }
+      }
+    },
+    "notes": "«cuando pueda» es una promesa sin fecha (dueDays null) y muy vaga; no se inventa qué se devuelve"
+  },
+  {
+    "id": "say-formal",
+    "text": "le digo a Wu de usted: \"buen día, ¿me prestaría la azada?\"",
+    "scene": "Tu vecino Wu está sentado en la puerta de su casa, con una azada al lado.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Buen día, ¿me prestaría la azada?",
+        "to": {
+          "text": "Wu",
+          "kind": "person",
+          "features": ["Wu"]
+        },
+        "manner": ["formal"]
+      }
+    },
+    "notes": "la manera de hablar (usted/vos) va en manner; las normas de etiqueta la miden"
+  },
+  {
     "id": "shout",
     "text": "grito \"¡auxilio!\"",
     "scene": "Estás solo en el camino del bosque; algo se mueve entre los arbustos.",
@@ -965,6 +1073,26 @@
     }
   },
   {
+    "id": "consult-diviner",
+    "text": "le pago dos monedas a la adivina y le pregunto por mi hijo",
+    "scene": "Estás en la plaza. Una adivina arroja huesos sobre un paño.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "consult",
+        "args": [
+          {
+            "role": "with",
+            "ref": { "text": "la adivina", "kind": "person", "features": ["adivina"] }
+          },
+          { "role": "about", "text": "mi hijo" },
+          { "role": "offer", "text": "dos monedas" }
+        ]
+      }
+    }
+  },
+  {
     "id": "shot-rest-dawn",
     "shot": true,
     "text": "descanso hasta que salga el sol",
@@ -1015,5 +1143,69 @@
       }
     },
     "notes": "parentesco va en relation, no en features"
+  },
+  {
+    "id": "ponder-yield-season",
+    "text": "creo que el campo rinde más en verano",
+    "scene": "Estás en los campos de arroz de la aldea, a media mañana.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "ponder",
+        "args": [{ "role": "about", "text": "el campo rinde más en verano" }]
+      }
+    },
+    "notes": "una idea sobre cómo anda el mundo es suponer, con las palabras del jugador; el juego decide qué hipótesis es"
+  },
+  {
+    "id": "purpose-gift",
+    "text": "le doy el pan a Tomás, de regalo",
+    "scene": "Tomás, el vecino, está en la puerta de su casa. Llevás una hogaza de pan.",
+    "expect": {
+      "kind": "act",
+      "purpose": {
+        "motive": "gift",
+        "forWhom": { "text": "Tomás", "kind": "person", "features": ["Tomás"] }
+      },
+      "plan": {
+        "kind": "do",
+        "verb": "give",
+        "args": [
+          { "role": "to", "ref": { "text": "Tomás", "kind": "person", "features": ["Tomás"] } },
+          { "role": "what", "text": "el pan" }
+        ]
+      }
+    },
+    "notes": "el porqué que el jugador dice va en purpose, con el beneficiario; el verbo sigue siendo give"
+  },
+  {
+    "id": "purpose-sustenance",
+    "text": "como un poco de pan para no desmayarme",
+    "scene": "Estás en tu casa, con hambre. Hay pan sobre la mesa.",
+    "expect": {
+      "kind": "act",
+      "purpose": { "motive": "sustenance" },
+      "plan": {
+        "kind": "do",
+        "verb": "eat",
+        "args": [{ "role": "what", "text": "pan" }]
+      }
+    },
+    "notes": "el motivo sin beneficiario: forWhom queda afuera"
+  },
+  {
+    "id": "purpose-not-said",
+    "text": "agarro el pan de la mesa",
+    "scene": "Estás en tu casa. Hay pan sobre la mesa.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "take",
+        "args": [{ "role": "what", "text": "el pan" }]
+      }
+    },
+    "notes": "si el jugador no dice para qué, no hay purpose: nunca se adivina del verbo"
   }
 ]

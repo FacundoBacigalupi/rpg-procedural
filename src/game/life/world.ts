@@ -14,35 +14,72 @@ import { makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type BodyPlanDef,
+  type BondDef,
   bodyProcess,
-  ENTITY,
+  type ConcernWords,
+  type DimensionDef,
+  type DivinationMethodDef,
   type FoodDef,
   type GoodDef,
+  type HabitDef,
+  type LineageDef,
   LOCATION,
   type LocalMap,
+  type MaterialDef,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
   Scheduler,
   type SchedulerState,
+  type SchemaDef,
   type SkillCatalog,
   type SpaceGraph,
   type SpeechLine,
+  type StageDef,
   type StatusDef,
+  type TasteDef,
   type Trait,
+  type TraitDef,
+  type TrajectoryDef,
+  type ValueDef,
   type WorldTruth,
 } from "../../sim/index.ts";
+import { accentProcess } from "./accent.ts";
 import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
+import { appraiseProcess } from "./appraise.ts";
+import { askAroundProcess } from "./askaround.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
-import { converseProcess } from "./converse.ts";
+import { companyProcess } from "./company.ts";
+import { conscienceProcess } from "./conscience.ts";
+import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
+import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { ecologyProcess } from "./ecology.ts";
+import { gossipProcess } from "./gossip.ts";
+import { intrusionProcess } from "./intrusion.ts";
+import { inventoryProcess } from "./inventory-belief.ts";
+import { keepProcess } from "./keep.ts";
+import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
+import { lookingProcess } from "./looking.ts";
+import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
+import { pitchProcess } from "./pitch.ts";
+import { pledgeProcess } from "./pledges.ts";
+import { ponderProcess } from "./ponder.ts";
 import { routineProcess } from "./routine.ts";
+import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
+import { standingProcess } from "./standing.ts";
+import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
+import { testifyProcess } from "./testify.ts";
+import { upbringingProcess } from "./upbringing.ts";
+import { upkeepProcess } from "./upkeep.ts";
+import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
@@ -62,10 +99,28 @@ export interface LifeWorld {
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
+  /** Los materiales de los edificios (settlements §5): sin ellos no corre el mantenimiento. */
+  readonly materials?: readonly MaterialDef[];
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
+  readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
   readonly pressureCurves: readonly PressureCurve[];
+  readonly schemas: readonly SchemaDef[];
+  readonly values: readonly ValueDef[];
+  readonly stages: readonly StageDef[];
+  readonly relationDims: readonly DimensionDef[];
+  readonly relationBonds: readonly BondDef[];
+  readonly habits: readonly HabitDef[];
+  /** Linajes silvestres y trayectorias de vegetación de la celda de la aldea (living-world §8, §9). */
+  readonly lineages?: readonly LineageDef[];
+  readonly trajectories?: readonly TrajectoryDef[];
+  readonly divinations: readonly DivinationMethodDef[];
+  readonly concerns: readonly ConcernWords[];
+  /** El catálogo de gustos: da nombre a lo que `TASTES_OF` guarda por id (npc-psychology §16). */
+  readonly tastes: readonly TasteDef[];
+  /** La lengua y la etiqueta de habla de la aldea (la forma de lo dicho, dialogue §10). */
+  readonly form?: ConverseForm;
   readonly scheduler: Scheduler;
   readonly player: AgentId;
 }
@@ -103,6 +158,16 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           statuses: parts.statuses,
+          cultureTraits: parts.cultureTraits,
+          relations: { dims: parts.relationDims, bonds: parts.relationBonds },
+        }),
+        witnessingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
         }),
         deedsProcess({
           map: parts.map,
@@ -110,6 +175,7 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           statuses: parts.statuses,
+          relations: { dims: parts.relationDims, bonds: parts.relationBonds },
         }),
         bodyProcess({
           plans: parts.plans,
@@ -136,11 +202,58 @@ export function lifeWorld(
           catalog: parts.catalog,
           goods: parts.goods,
           statuses: parts.statuses,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
           lines: parts.speech,
+          traits: parts.traits,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,
+          ...(parts.form ? { form: parts.form } : {}),
         }),
+        ...(parts.form
+          ? [
+              bornTaboosProcess({
+                form: parts.form,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+              }),
+              bornTaboosSettleProcess({ village }),
+              heardWordsProcess(),
+              accentProcess({ player }),
+            ]
+          : []),
+        testifyProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          traits: parts.traits,
+          placeOf: placeOf(parts, village),
+        }),
+        gossipProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          traits: parts.traits,
+          placeOf: placeOf(parts, village),
+          player,
+        }),
+        askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
+        keepProcess({
+          values: parts.values,
+          schemas: parts.schemas,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          player,
+          placeOf: placeOf(parts, village),
+        }),
+        pitchProcess({
+          catalog: parts.catalog,
+          goods: parts.goods,
+          lines: parts.speech,
+          player,
+          day: parts.clock.day,
+          placeOf: placeOf(parts, village),
+        }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
           foods: parts.foods,
@@ -158,7 +271,134 @@ export function lifeWorld(
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),
-        soilProcess({ clock: parts.clock }),
+        soilProcess({ clock: parts.clock, map: parts.map, seed: parts.seed }),
+        ecologyProcess({
+          clock: parts.clock,
+          map: parts.map,
+          seed: parts.seed,
+          lineages: parts.lineages ?? [],
+          trajectories: parts.trajectories ?? [],
+        }),
+        upkeepProcess({
+          clock: parts.clock,
+          map: parts.map,
+          seed: parts.seed,
+          materials: parts.materials ?? [],
+        }),
+        upbringingProcess({
+          clock: parts.clock,
+          bodyPlans: parts.plans,
+          foods: parts.foods,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          placeOf: placeOf(parts, village),
+        }),
+        appraiseProcess({
+          clock: parts.clock,
+          schemas: parts.schemas,
+          stages: parts.stages,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          habits: parts.habits,
+          traits: parts.traits,
+          values: parts.values,
+          witness: {
+            player,
+            map: parts.map,
+            spaces: parts.spaces,
+            clock: parts.clock,
+            seed: parts.seed,
+            statuses: parts.statuses,
+          },
+        }),
+        conscienceProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          traits: parts.traits,
+          values: parts.values,
+          schemas: parts.schemas,
+          placeOf: placeOf(parts, village),
+        }),
+        sleepProcess({
+          clock: parts.clock,
+          seed: parts.seed,
+          schemas: parts.schemas,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          ambientOf: ambientOf(parts),
+          placeOf: placeOf(parts, village),
+        }),
+        observeProcess({ clock: parts.clock, map: parts.map }),
+        ponderProcess(),
+        divinersProcess({
+          methods: parts.divinations,
+          concerns: parts.concerns,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+        }),
+        retoldProcess(),
+        consultProcess({
+          methods: parts.divinations,
+          concerns: parts.concerns,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+        }),
+        visitsProcess({
+          methods: parts.divinations,
+          concerns: parts.concerns,
+          clock: parts.clock,
+          placeOf: placeOf(parts, village),
+          player,
+        }),
+        intrusionProcess({ seed: parts.seed, placeOf: placeOf(parts, village) }),
+        companyProcess({
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+        }),
+        inventoryProcess({ player }),
+        knowingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+        }),
+        lookingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
+        }),
+        standingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          placeOf: placeOf(parts, village),
+        }),
+        decideProcess({
+          clock: parts.clock,
+          catalog: parts.catalog,
+          skills: parts.skills,
+          traits: parts.traits,
+          bodyPlans: parts.plans,
+          values: parts.values,
+          schemas: parts.schemas,
+          stages: parts.stages,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          player,
+          placeOf: placeOf(parts, village),
+        }),
         routineProcess({
           map: parts.map,
           spaces: parts.spaces,

@@ -29,6 +29,31 @@ const CLOSER: Readonly<Record<string, string>> = {
   death: "hasta el final",
 };
 
+const FELT: Readonly<Record<string, string>> = {
+  trust: "confianza",
+  respect: "respeto",
+  affection: "cariño",
+  fear: "miedo",
+  attraction: "atracción",
+  gratitude: "gratitud",
+  jealousy: "celos",
+  resentment: "rencor",
+  dependency: "dependencia",
+};
+
+const GUILT_DEED: Readonly<Record<string, string>> = {
+  theft: "Lo que le sacaste a",
+  assault: "Lo que le hiciste a",
+  default: "Lo que le debías a",
+};
+
+const GUILT_STANCE: Readonly<Record<string, string>> = {
+  avoid: "preferiste no cruzártelo",
+  repair: "quisiste repararlo",
+  confess: "quisiste confesarlo",
+  deflect: "te diste excusas y buscaste otro culpable",
+};
+
 function stepOf(e: Event): string {
   return STEP[e.kind] ?? `lo que hizo (${e.kind.slice(e.kind.indexOf(".") + 1)})`;
 }
@@ -66,5 +91,40 @@ export function renderChronicle(
     const span = `días ${day(ch.span.from)}–${day(ch.span.to)}`;
     out.push(`Capítulo ${i + 1} (${span}): ${CLOSER[ch.title.closedBy] ?? "hasta un giro"}${who}.`);
   });
+  if (c.people.length > 0) {
+    out.push("", "Quienes más pesaron:");
+    for (const p of c.people) {
+      const felt = p.feltFor.map((d) => FELT[d] ?? d);
+      const how = felt.length > 0 ? ` (${felt.join(", ")})` : "";
+      out.push(`  ${nameOf(p.who)}${how}${p.alive ? "" : ", que ya había muerto"}`);
+    }
+  }
+
+  if (c.guilt.length > 0) {
+    out.push("", "Lo que cargaste:");
+    for (const g of c.guilt) {
+      const weight =
+        g.guilt < 0.35 ? "un peso leve" : g.guilt < 0.7 ? "un peso grande" : "un peso enorme";
+      out.push(
+        `  ${GUILT_DEED[g.kind] ?? "Lo que hiciste"} ${nameOf(g.victim)}: ${weight}; ${GUILT_STANCE[g.response]}.`,
+      );
+    }
+  }
+
+  if (c.neverKnew.length > 0) {
+    out.push("", "Lo que nunca supiste:");
+    for (const u of c.neverKnew) {
+      const who = nameOf(u.who);
+      const others = u.others.map(nameOf).join(", ");
+      const withOthers = others ? ` (con ${others})` : "";
+      if (u.kind === "died_unknown") out.push(`  ${who} murió sin que te enteraras${withOthers}.`);
+      else if (u.kind === "unseen_clash") {
+        out.push(`  ${who} se peleó donde no estabas${withOthers}.`);
+      } else {
+        const said = (u.believedWith ?? []).map(nameOf).join(", ") || "nadie";
+        out.push(`  Recordabas un hecho con ${said}, pero estuvo ${who}${withOthers}.`);
+      }
+    }
+  }
   return out.join("\n");
 }

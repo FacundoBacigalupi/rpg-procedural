@@ -30,6 +30,12 @@ const novel = fc
       sex: opt(fc.constantFrom("female" as const, "male" as const)),
       name: opt(fc.constantFrom("Lin Feng", "Mei")),
       entryAge: opt(fc.integer({ min: 0, max: 100 })),
+      temperament: opt(
+        fc.dictionary(
+          fc.constantFrom("boldness", "reactivity"),
+          fc.record({ min: fc.constant(-0.5), max: fc.double({ min: -0.5, max: 1, noNaN: true }) }),
+        ),
+      ),
     }),
     goldenFingers: fc.constant<unknown[]>([]),
     rivals: opt(
@@ -126,6 +132,23 @@ describe("GameSetup", () => {
       expect(problems).toMatch(/novel\.goldenFingers: los dedos de oro todavía no existen/);
       expect(problems).toMatch(/novel\.rivals\.knownToPlayer/);
     }
+  });
+
+  it("el temperamento pide rangos válidos; los gustos pasan y la crianza se rechaza hasta que se resuelva", () => {
+    const withChar = (character: object) =>
+      parseGameSetup({
+        ...defaultGameSetup("novel"),
+        novel: { ...EMPTY_NOVEL, character },
+      });
+    expect(() => withChar({ temperament: { boldness: { min: 0.8, max: 0.2 } } })).toThrow(
+      /temperament/,
+    );
+    expect(() =>
+      withChar({ tastes: [{ domain: "food", item: "grain", valence: 0.5 }] }),
+    ).not.toThrow();
+    expect(() =>
+      withChar({ upbringing: { kind: "taught", skill: "farming", by: "father", fromAge: 6 } }),
+    ).toThrow(/upbringing|todavía/);
   });
 
   it("rechaza modos y campos desconocidos", () => {

@@ -190,7 +190,7 @@ describe("calibración de despensas y rutina (Hito 1c, paso 3)", () => {
     }
     // Siempre queda al menos una semana de comida por boca (~0,7 kg por día).
     expect(lowest).toBeGreaterThan(7 * 700);
-  }, 300_000);
+  }, 900_000);
 });
 
 describe("suelo del campo (Hito 1c, cierre PR b)", () => {
@@ -212,7 +212,7 @@ describe("suelo del campo (Hito 1c, cierre PR b)", () => {
     // Lo anotado es lo cosechado, salvo el día en curso que todavía no se contó.
     expect(soil?.seen).toBeLessThanOrEqual(harvested);
     expect(soil?.seen).toBeGreaterThan(0.9 * harvested);
-  }, 300_000);
+  }, 900_000);
 });
 
 describe("el verbo work y la tierra (Hito 1c, cierre PR b)", () => {

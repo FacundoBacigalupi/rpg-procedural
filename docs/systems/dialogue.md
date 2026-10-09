@@ -248,7 +248,27 @@ interface VerbalizationRequest {
 
 ### Implementado (2026-10-07, Hito 1b)
 
-Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` no están; el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
+Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pura, `HEARD`, líneas en `content/speech/`) y `game/life/converse.ts` (el oyente contesta con un `action.speak` suyo al terminar de oír). Diferencias con el diseño, a cerrar en Fase 2: el acto lo lee el oyente del texto con léxico, no el parser; `offer`/`accept`/`refuse` están en su forma mínima (`sim/dialogue/offers.ts`: el oyente valúa con el precio de contenido, acepta, contraofrece o rechaza; la contraoferta aún no queda abierta en el mundo); el conocimiento del oyente es directo (casa y escena) más `HEARD`, sin almacén de creencias; la deferencia solo elige la forma de la frase.
+
+### Implementado (2026-10-08): personalidad y memorias en la respuesta
+
+`sim/dialogue/disposition.ts` resume lo que el oyente recuerda de quien le habla (`recollect`: memorias de `memoriesAbout` y gists, tono y vividez) y su temperamento (`Temper`: calidez y reactividad). `decideReply` los suma a las dimensiones de la relación: el recuerdo desplaza la calidez, cambia el saludo (`greet.fond`, `greet.wary`) y un agravio vívido cierra el pedido (`request.refuse.remembered`); el temperamento mueve los umbrales de dar sin cuenta y de rencor. Falta: reforzar lo recordado al conversar, contar memorias al ser preguntado y que sociabilidad/honestidad/emoción entren en la elección del acto.
+
+### Implementado (2026-10-08): mentiras y `TopicStack`, parte pura
+
+`sim/dialogue/lies.ts`: la sinceridad se mide contra lo que el hablante cree (`sincerityOf`), no contra la verdad; `suspicion`/`judgeStatement` dan creído, dudado o sorprendido a partir de señales (control y nervios del mentiroso, percepción y familiaridad del oyente), del choque con lo que el oyente ya cree y de su confianza y desconfianza; un sincero también puede ser acusado. `sim/dialogue/topics.ts`: una pila por lado, con preguntas abiertas y referencias que pueden resultar ambiguas. Falta cablearlo (`converse.ts`) y el resto de §6-§11.
+
+### Implementado (2026-10-08): persuasión, parte pura
+
+`sim/dialogue/persuasion.ts`: `persuade` mueve la utilidad del oyente en proporción a relevancia (contra `Stakes`, lo que de verdad le importa), credibilidad (claim con evidencia y hablante), entrega (habilidad social con ruido) y apertura (intelecto, terquedad, enojo, posición pública). Ceder con testigos cuesta cara (`faceCostOf`); apelar a la cara la alivia. Insistir o apelar a lo rechazado da reacción adversa (`offended`, confianza abajo, posición más firme). Falta cablearlo a `converse.ts` y al léxico de `understand`.
+
+### Implementado (2026-10-09): etiqueta declarada y ofensas con causa
+
+`SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
+
+### Implementado (2026-10-09): la forma que declara el jugador
+
+El jugador elige cómo trata al otro con palabras («le hablo de usted», «le digo de vos»). La gramática las saca de lo previo a las comillas y las deja como maneras `formal` / `casual` del verbo `speak` (`speech.manner`); la sim no interpreta el texto citado. `listenTo` guarda la elección en `PENDING.style` y `formOf` la aplica: `formal` trata al oyente de superior (salvo que sean de una misma casa) y `casual` usa formalidad 0, de modo que `acts.address` queda declarado o no y el oyente mide la norma con su lectura del rango. Falta: que la vista cuente la ofensa recibida o causada (ROADMAP).
 
 ## Tests
 
@@ -279,3 +299,5 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 ## Preguntas abiertas
 
 - Calibración: duración de los turnos; pesos de relevancia, credibilidad, entrega y apertura; tamaño de la reacción por presionar; chance de soltar secretos por factor; tasa de detección de mentiras; costo de cara por cambiar de opinión en público; cuántos turnos tiene una charla resumida de tier 2.
+
+**Contraoferta con términos sueltos (2026-10-09):** `looseCounter` resuelve «la mitad», «el doble», «pero con X» contra el trato abierto del oyente antes de que conteste; `life.converse` la aplica si hay `OPEN_DEALS` vigente con ese interlocutor.

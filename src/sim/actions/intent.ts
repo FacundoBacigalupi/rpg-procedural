@@ -9,6 +9,7 @@
 // `Condition` sobre creencias.
 
 import { contentId, z } from "../../core/index.ts";
+import { PURPOSES } from "./purpose.ts";
 
 export const EntityKind = z.enum(["person", "object", "place", "lot", "group"]);
 export type EntityKind = z.infer<typeof EntityKind>;
@@ -168,17 +169,78 @@ export const DraftPlanNode: z.ZodType<DraftPlanNode> = z.discriminatedUnion("kin
   }),
 ]);
 
+/**
+ * Lo que el jugador quiere lograr al hablar, como acto de habla declarado (dialogue §2, actions §4):
+ * saludar, preguntar por alguien, pedir algo, contar que alguien murió o sigue vivo, prometer.
+ * Es la intención del que habla, no lo que el oyente va a entender: ese entiende las palabras.
+ */
+export const DraftAct = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("greet") }),
+  z.strictObject({ kind: z.literal("farewell") }),
+  z.strictObject({ kind: z.literal("ask"), about: RefDescription.optional() }),
+  z.strictObject({ kind: z.literal("request"), what: text.optional() }),
+  z.strictObject({
+    kind: z.literal("tell"),
+    about: RefDescription,
+    claim: z.enum(["dead", "alive"]),
+  }),
+  z.strictObject({
+    kind: z.literal("promise"),
+    what: text.optional(),
+    /** Términos sueltos (contracts §4): múltiplo del monto, plazo en días (null: sin fecha), vaguedad 0-1. */
+    times: z.number().positive().max(100).optional(),
+    dueDays: z.number().int().positive().max(3650).nullable().optional(),
+    precision: z.number().min(0).max(1).optional(),
+  }),
+]);
+export type DraftAct = z.infer<typeof DraftAct>;
+
 /** Lo que dice el personaje, textual (dialogue §14): la sim arma el acto de habla. */
 export const SpeechDraft = z.strictObject({
   text: z.string().trim().min(1).max(2000),
   to: RefDescription.optional(),
+  /** El acto que declara (opcional: sin él, el oyente entiende solo las palabras). */
+  act: DraftAct.optional(),
   manner: z.array(contentId).max(8).optional(),
 });
 export type SpeechDraft = z.infer<typeof SpeechDraft>;
 
+/**
+ * El porqué que el jugador dijo de su plan («para comer», "se lo regalo", «para vengarme»): uno de
+ * los motivos del catálogo cerrado y, si hay, para quién. Es la palabra del jugador sobre su
+ * personaje, no un resultado: la sim lo guarda en el plan y los demás lo leen con `readPurpose`.
+ */
+export const DraftPurpose = z.strictObject({
+  motive: z.enum(PURPOSES),
+  forWhom: RefDescription.optional(),
+});
+export type DraftPurpose = z.infer<typeof DraftPurpose>;
+
+/** Si el borrador usa el verbo en algún paso (para ponerle un modo fijado de antemano). */
+export function draftHasVerb(node: DraftPlanNode | undefined, verb: string): boolean {
+  if (node === undefined) return false;
+  switch (node.kind) {
+    case "do":
+      return node.verb === verb;
+    case "seq":
+      return node.steps.some((s) => draftHasVerb(s, verb));
+    case "until":
+    case "repeat":
+      return draftHasVerb(node.body, verb);
+    case "if":
+      return draftHasVerb(node.then, verb) || draftHasVerb(node.else, verb);
+    case "onEvent":
+      return draftHasVerb(node.react, verb);
+    case "template":
+      return false;
+  }
+}
+
 export const IntentDraft = z
   .strictObject({
     kind: z.enum(["act", "plan", "goal", "question_ooc", "meta"]),
+    /** Solo si el jugador dice para qué lo hace; nunca se infiere del verbo. */
+    purpose: DraftPurpose.optional(),
     plan: DraftPlanNode.optional(),
     manner: z.array(contentId).max(8).optional(),
     /** "sin matar a nadie", "antes de que anochezca": la sim las normaliza a `Constraint`. */

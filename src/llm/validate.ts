@@ -4,7 +4,10 @@
 // del juego); el largo por modo. Los problemas van en inglés porque vuelven al modelo para que
 // regenere (jobs.ts); si tampoco pasa, el narrador usa las plantillas.
 
+import type { TasteView } from "../game/view/index.ts";
+import { contradictsEstablished, repeatedSentences } from "./continuity.ts";
 import type { NarrationRequest } from "./narration.ts";
+import { unknownTermsIn } from "./voice.ts";
 
 /** Una referencia marcada: `{{e3|el viejo}}`. */
 const MARK = /\{\{(e\d+)\|([^{}|]+)\}\}/g;
@@ -43,6 +46,10 @@ const MAX_CHARS = {
   scene: { brief: 350, normal: 900, rich: 2400 },
   action: { brief: 300, normal: 750, rich: 1800 },
   dialogue: { brief: 350, normal: 900, rich: 2000 },
+  introspection: { brief: 300, normal: 700, rich: 1600 },
+  montage: { brief: 300, normal: 700, rich: 1600 },
+  dream: { brief: 300, normal: 700, rich: 1400 },
+  aftermath: { brief: 300, normal: 750, rich: 1600 },
 } as const;
 const PER_ITEM = 160;
 const MIN_CHARS = 5;
@@ -81,6 +88,42 @@ function properWords(text: string): string[] {
 
 function words(s: string): string[] {
   return [...s.matchAll(WORD)].map((m) => m[0]);
+}
+
+const LIKING = /\b(?:encant\p{L}*|gust\p{L}*|adora\p{L}*|disfrut\p{L}*|deleit\p{L}*)/iu;
+const DISLIKING = /\b(?:odi\p{L}*|detest\p{L}*|asco|repugn\p{L}*|desagrad\p{L}*|aborrec\p{L}*)/iu;
+const NEGATED = /\bno\s+(?:te\s+|lo\s+|la\s+)?\p{L}*$/iu;
+
+/**
+ * Un gusto propio que la narración da vuelta (narration §6): la oración que nombra el gusto no puede
+ * decir lo contrario de su `stance` (te gusta lo que el personaje aborrece, o al revés).
+ */
+function tasteProblems(plain: string, t: TasteView): string[] {
+  const name = t.name.toLowerCase();
+  const positive = t.stance === "loves" || t.stance === "likes";
+  for (const sentence of plain.split(/(?<=[.!?…])\s+/u)) {
+    const low = sentence.toLowerCase();
+    const at = low.indexOf(name);
+    if (at < 0) continue;
+    const liking = LIKING.exec(low);
+    const disliking = DISLIKING.exec(low);
+    const negated = (m: RegExpExecArray | null) =>
+      m !== null && NEGATED.test(low.slice(0, m.index + m[0].length));
+    // «No soportás» ya es rechazo: soportar no se niega para invertirlo.
+    const endures = /\bsoport\p{L}*/iu.test(low);
+    const up = (liking !== null && !negated(liking)) || (disliking !== null && negated(disliking));
+    const down =
+      endures ||
+      (disliking !== null && !negated(disliking)) ||
+      (liking !== null && negated(liking));
+    if (up === down) continue;
+    if (up !== positive) {
+      return [
+        `the character ${positive ? "likes" : "dislikes"} ${t.name}: do not say the opposite`,
+      ];
+    }
+  }
+  return [];
 }
 
 export function validateNarration(
@@ -131,6 +174,12 @@ export function validateNarration(
       if (leak.has(w)) problems.push(`"${w}" is not something the character knows`);
     }
   }
+  // El léxico del personaje (narration §4): lo técnico que no cree no sale de su boca ni de su ojo.
+  if (request.vocabulary !== undefined) {
+    for (const u of unknownTermsIn(plain, request.vocabulary, quoted)) {
+      problems.push(`"${u.term}" is a term the character does not know: say "${u.say}" instead`);
+    }
+  }
   // Las cantidades que pasaron de mano (gramos, kilos, monedas) también son cifras del pedido.
   const figures = view.outcomes.flatMap((o) => {
     const e = o.effect;
@@ -143,6 +192,24 @@ export function validateNarration(
   for (const d of new Set(plain.match(/\d+/g) ?? [])) {
     if (!numbers.includes(d)) problems.push(`the number ${d} is not in the request`);
   }
+
+  // 2a. Continuidad: no repetir lo ya leído ni describir distinto a quien ya se describió.
+  if (request.continuity !== undefined) {
+    for (const s of repeatedSentences(request.continuity.recent, plain)) {
+      problems.push(`do not repeat a sentence the player already read ("${s.slice(0, 40)}…")`);
+    }
+    for (const m of text.matchAll(MARK)) {
+      const est = request.continuity.established.find((e) => e.id === m[1]);
+      if (est !== undefined && contradictsEstablished(est.phrases, m[2] as string)) {
+        problems.push(
+          `${est.id} was already described as "${est.phrases[est.phrases.length - 1]}": keep it`,
+        );
+      }
+    }
+  }
+
+  // 2b. Gustos: lo que se dice de un gusto propio no contradice lo que el personaje siente.
+  for (const t of view.tastes) problems.push(...tasteProblems(plain, t));
 
   // 3. Cobertura.
   for (const id of request.mustMention) {
@@ -157,7 +224,15 @@ export function validateNarration(
 
   // 5. Largo.
   const n = plain.trim().length;
-  const items = view.outcomes.length + view.percepts.length + view.self.cues.length;
+  const items =
+    view.outcomes.length +
+    view.percepts.length +
+    view.self.cues.length +
+    view.thoughts.length +
+    view.tastes.length +
+    view.dues.length +
+    view.readings.length +
+    (view.stretch !== undefined ? view.stretch.did.length + 2 : 0);
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");
   if (n > max) problems.push(`the narration is too long (${n} characters, at most ${max})`);

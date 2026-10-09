@@ -288,6 +288,25 @@ export class LifeStore {
     return rows.map((r) => ({ tick: r.tick, text: r.text }));
   }
 
+  /**
+   * Una página de la bitácora hacia atrás: hasta `limit` entradas anteriores a `before` (sin él, las
+   * últimas), en orden, con su `seq` para pedir la página previa. `more`: quedan entradas más viejas.
+   */
+  narrationPage(
+    limit: number,
+    before?: number,
+  ): { entries: { seq: number; tick: Tick; text: string }[]; more: boolean } {
+    const rows = this.#db.all<{ seq: number; tick: Tick; text: string }>(
+      "SELECT seq, tick, text FROM narration WHERE seq < ? ORDER BY seq DESC LIMIT ?",
+      before ?? Number.MAX_SAFE_INTEGER,
+      limit + 1,
+    );
+    return {
+      entries: rows.slice(0, limit).reverse(),
+      more: rows.length > limit,
+    };
+  }
+
   // --- Consultas del inspector (solo lectura, sobre lo guardado) ---
 
   /** Ids con un componente cuyo campo vale `value`, en orden canónico; usa el índice si se declaró. */

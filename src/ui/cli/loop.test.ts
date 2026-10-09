@@ -16,6 +16,7 @@ import {
   LlmJobs,
   type LlmProvider,
   MockLLM,
+  type NarrationMemory,
   offlineLlmConfig,
 } from "../../llm/index.ts";
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
@@ -82,7 +83,7 @@ describe("runCli", () => {
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain(
-      "Fuera del personaje (no pasa el tiempo): personaje, inventario, bitácora, ayuda, salir.",
+      "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
     );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
@@ -129,6 +130,35 @@ describe("runCli", () => {
     // Al volver no se repite la escena inicial en la bitácora.
     await session(store, ["salir"]);
     expect(store.narrations()).toHaveLength(2);
+  }, 300_000);
+
+  it("la memoria de continuidad se guarda, se retoma igual y no entra en el estado ni el replay", async () => {
+    const store = memory();
+    await session(store, ["espero una hora", "salir"]);
+    const saved = store.getMeta("narration_memory") as NarrationMemory | undefined;
+    expect(saved?.recent.length).toBeGreaterThan(0);
+    const hash = hashState(store.load());
+
+    // Retomar no anota otra vez la escena de apertura ni cambia el estado.
+    await session(store, ["salir"]);
+    expect(store.getMeta("narration_memory")).toEqual(saved);
+    expect(hashState(store.load())).toEqual(hash);
+
+    // Una vida sin memoria guardada llega al mismo estado: la memoria no es verdad del mundo.
+    const bare = memory();
+    await session(bare, ["espero una hora", "salir"]);
+    expect(hashState(bare.load())).toEqual(hash);
+    expect(bare.plans()).toEqual(store.plans());
+
+    // Y el replay desde seed + planes llega al mismo hash.
+    const { input, checkpoints } = replayInputFromStore(store);
+    const report = replay(
+      input as ReplayInput<LifeSetup, never>,
+      lifeReplayGame(content, VERSIONS) as never,
+      { checkpoints, until: store.load().scheduler.now },
+    );
+    expect(report.divergence).toBeUndefined();
+    expect(report.hash).toEqual(hash);
   }, 300_000);
 
   it("el inspector no pasa el tiempo, no toca el estado y marca la vida", async () => {

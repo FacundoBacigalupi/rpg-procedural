@@ -207,7 +207,9 @@ interface IdentityBelief {                   // una creencia más (information �
 
 - `sim/culture`: `TraitDef` en `content/culture-traits/` (dominio, variantes, saliencia, tenacidad, `readBy`, comidas requeridas con referencia validada) y `CultureDef` en `content/cultures/` (por rasgo: peso de cada variante, números, **origen** y la razón que la gente le da). `seedCulture` (en `create`, con causa en el evento de los fundadores) escribe `COMMUNITY_CULTURE` por asentamiento: prevalencia normalizada por rasgo. Lectores: `dominantVariant`, `traitParam`, `villageCulture`. Los `StatusDef` y `TenureDef` ahora referencian su cultura (una cultura inexistente impide arrancar).
 - La aldea trae 17 rasgos de 17 dominios. **Hoy los lee** `etiquette.address` (`by_rank`: el oyente trata de usted a quien tiene más rango; `uniform` lo apaga). El resto está declarado con su `readBy` y lo irán leyendo los sistemas que les toquen (funerales y luto con familia/espíritus, fiesta con economía y clima, valores con psicología, normas de robo con ley, residencia con familia).
-- Falta: `TraitHolding` por persona y transmisión (Fase 2), cambio y modas (Fase 3), culturas vecinas y marcas percibidas (Fase 5).
+- **Fase 2, núcleo puro (`sim/culture/person.ts`):** `PERSON_CULTURE` guarda por persona un `TraitHolding` por rasgo (variante interna, `shown`, firmeza, `learnedFrom`, vía) y sus `IdentityBelief`. Nacer copia a los padres con probabilidad 0,7 ± la tenacidad del rasgo, si no sale de la prevalencia. Aprender pesa por plasticidad, ventana sensible del dominio (`SENSITIVE_WINDOW`), tenacidad, firmeza previa y sesgos de copia (conformidad 0,4, prestigio 0,3, resultado 0,2, contenido 0,1); la imposición cambia solo `shown`. El grupo adscripto sale de las marcas mostradas ponderadas por saliencia; el sesgo de grupo y la sanción informal (chisme, burla, vergüenza, exclusión) usan lo que el observador cree.
+- **Cableado:** `seedPeopleCulture` (`sim/culture/people.ts`) siembra `PERSON_CULTURE` de todos al crear la vida, en orden de nacimiento, con los padres como `learnedFrom`.
+- Falta: transmisión oblicua/horizontal en la vida y cultura de los nacidos en juego (Fase 2), cambio y modas (Fase 3), culturas vecinas y marcas percibidas (Fase 5).
 
 ## Tests
 
@@ -234,3 +236,8 @@ interface IdentityBelief {                   // una creencia más (information �
 ## Preguntas abiertas
 
 - Calibración: velocidad de deriva por dominio; peso de los sesgos de copia; generaciones típicas de asimilación; frecuencia de modas en ciudades; cuántos rasgos por cultura hacen falta para que se sientan distintas.
+
+## Implementación (sesgo de grupo en la lectura, 2026-10-09)
+
+- `game/life/identity.ts`: `ownGroup` (identidad propia o la comunidad que mejor cuadra con lo que sostiene) y `groupBiasToward` (aplica `groupBias` a la creencia adscripta del observador). `purposeReaderOf` (`game/life/reading.ts`) lo suma al aprecio y lo resta a la sospecha con que el personaje lee el porqué de lo que ve, así el recelo hacia el de afuera sale de lo que cree, no de la verdad. Falta: `appraise`/diálogo, estereotipo transmitido y NPC (ver ROADMAP).
+- **Comida a la vista (2026-10-09):** `visibleMarks` suma los dominios de `SEEN_WHILE_DOING` (hoy `food` con comer, cocinar y beber) cuando el evento percibido es esa acción; la comida no se lee al cruzarse. Falta el habla/acento y la adscripción entre NPC.

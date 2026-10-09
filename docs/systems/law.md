@@ -197,7 +197,7 @@ Investigar es una secuencia de acciones de personas concretas con habilidad, ses
 
 ## Implementación
 - **Fase 1:** huellas mínimas (sangre, objetos movidos), testigos que vieron, robo y pelea con consecuencias sociales directas (la víctima reclama, la aldea se entera). **Hecho (2026-10-07):** `sim/law` (`Deed` en `KNOWN_DEEDS`, `notoriety`, `Trace` como entidad `trace:n`) y `game/life/deeds.ts`: al cerrar cada paso, los vecinos que lo perciben (vista u oído, con su atención: dormido casi no se entera) guardan el hecho, con quién fue si lo reconocieron, y lo cuentan a su casa; la víctima de una pelea o a la que agarraron con la mano adentro sabe quién fue. La fama es la fracción de la aldea que sabe algo de alguien: baja el margen del trato (`NOTORIETY_EDGE`) y cierra pedidos y saludos fríos en el diálogo. Las peleas dejan sangre que se borra sola (vida media 36 h) y se ve en la escena. Queda para después: objetos movidos y robo de despensas (necesitan creencias sobre lo que se tiene), reclamo activo de la víctima y legítima defensa (Fase 2-3).
-- **Fase 2:** testigos con memoria deformada y mentiras, acusaciones en el diálogo, culpa por el delito propio.
+- **Fase 2:** testigos con memoria deformada y mentiras, acusaciones en el diálogo, culpa por el delito propio. **Parte pura hecha (2026-10-08):** `sim/law/testimony.ts` (recordar deformado, mentir, declarar, pesar acusaciones, culpa); falta cablearla al juego y al diálogo (ver ROADMAP).
 - **Fase 3:** consejo de ancianos como primera jurisdicción, `Case` con denuncia, investigación simple, compensación y castigos de aldea; vendettas entre familias; casas de empeño y rastreo de lotes robados.
 - **Fase 4:** cultivadores y la ley: salón de disciplina de la secta, sello y abolición del cultivo, búsqueda del alma, residuos de qi como prueba.
 - **Fase 5:** varias jurisdicciones y fronteras; contrabando por rutas, puestos de control, mercado negro regional.
@@ -228,3 +228,23 @@ Investigar es una secuencia de acciones de personas concretas con habilidad, ses
 - Calibración: umbrales de soborno según salario, deudas y valores del juez.
 - Calibración: duración y escalada de las vendettas; con qué frecuencia terminan en compensación, en matrimonio o en exterminio.
 - Calibración: prima de riesgo del mercado negro y del contrabando por ruta según la presión de control.
+
+## Implementado (2026-10-09): quién emite `law.inquiry`
+
+La pregunta de quien habla es la primera fuente: en `life.converse`, si el acto entendido es un `ask` y quien pregunta conoce un hecho (`deedAsked`: por la persona nombrada o, sin nombre, el último sin autor conocido; nunca uno que el testigo hizo), el proceso emite `law.inquiry` con el acto de habla como causa y `life.testify` hace declarar al testigo desde lo que recuerda. Valen el jugador y los NPC. Faltan el vecino o la víctima que interroga a los testigos y el juez o alguacil (ROADMAP).
+
+## Implementado (2026-10-09): soborno y presión del interrogatorio
+
+`law.inquiry` puede llevar una `offer` (`{ unit, grams }`) además del `bribe` dado: solo vale si la unidad es dinero y quien pregunta tiene esos gramos en el ledger (`validOffer`), y pesa para el testigo `bribeValue(grams) = g / (g + 10)`. Si el testigo termina mintiendo por ella (`lie.motive = bribe`), `life.testify` asienta el pago de quien preguntó al testigo contra el evento `law.testimony` (que lo cita en `data.paid`); contar la verdad no se paga. La presión sale sola de la relación: el miedo del testigo hacia quien pregunta sube su honestidad (+0,4 por punto) y le quita miedo al culpable (-0,5 por punto), así que amenazar antes de preguntar (dialogue §9 escribe ese miedo en `RELATIONS`) vuelve más veraz al testigo. Constantes sin calibrar.
+
+## Implementado (2026-10-09): la víctima que pregunta alrededor
+
+`life.askAround` (`game/life/askaround.ts`, fase `decide`, diaria, por hogar sin el del jugador): el NPC que sabe de un hecho en que fue la víctima (`KNOWN_DEEDS`, dentro de 3 días) sale con chance 0,6 a preguntarle a alguien que cree cercano: gente con la que tiene trato (`RELATIONS`), viva, en su mismo lugar, que no sea el autor que él sabe (`whomToAsk`). Es lo que él cree, no quién presenció de verdad. Emite `law.inquiry` (causa: su `KNOWN_DEEDS`) y `life.testify` hace declarar. Falta el vecino sin ser víctima y la memoria de a quién ya preguntó (hoy repite a un testigo por día dentro de la ventana).
+
+## Implementado (2026-10-09): acusación y verdad
+
+`life.converse` marca en el efecto del `action.speak` de una acusación `accusation.truthOf.occurred` (`accusationOccurred`: lo hizo de verdad según el `OWN_DEEDS` del acusado; solo lo lee el inspector, ninguna decisión pasa por ahí). Si no ocurrió, emite además el evento `law.false_accusation` (actores [quien acusó, acusado], causa el acto de habla; datos: hecho, víctima, firmeza, quién oyó, `unbacked`): es la huella de la denuncia falsa. Falta que esa huella pese (reputación de quien acusó, caso de ley): ROADMAP.
+
+## Implementado (2026-10-09): el testigo recuerda desde su memoria
+
+`witnessProfile` toma la claridad de `recallClarity`: sin memoria guardada del evento, la de la vía (`saw` 0,85, `heard` 0,5, `told` 0,4); con ella en `MEMORIES`, la vía pesa por la confianza que le queda × (0,5 + 0,5·saliencia hoy) × (1 − 0,5·distorsión); y si solo queda un gist que cita el evento, `FORGOTTEN_CLARITY` (0,3) de la vía. `life.testify` ahora lee `MEMORIES`. Declarar todavía no refuerza ni reescribe el recuerdo (ROADMAP).

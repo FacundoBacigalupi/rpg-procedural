@@ -4,11 +4,14 @@
 // forma (§5, §7, §8), y los resolvers que dicen qué cambia cada verbo en el mundo con resultados
 // matizados (§7, §8).
 export * from "./attempt.ts";
+export * from "./believed.ts";
 export * from "./catalog.ts";
 export * from "./draft.ts";
 export * from "./draft-schema.ts";
 export * from "./examples.ts";
+export * from "./feasibility.ts";
 export * from "./intent.ts";
 export * from "./plan.ts";
+export * from "./purpose.ts";
 export * from "./refs.ts";
 export * from "./resolve.ts";

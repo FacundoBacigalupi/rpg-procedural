@@ -14,31 +14,46 @@ import {
   type PressureId,
   parseId,
 } from "../../core/index.ts";
-import { type Life, lifePressures, playerView } from "../../game/index.ts";
-import { checkInvariants, ENTITY, type Pressure } from "../../sim/index.ts";
+import { type Life, lifePressures, NPC_PERCEPTS, PERCEPTS, playerView } from "../../game/index.ts";
+import {
+  BELIEFS,
+  beliefConfidenceAt,
+  checkInvariants,
+  diffSnapshots,
+  ENTITY,
+  formatSnapshotDiff,
+  isMistaken,
+  MEMORIES,
+  type Pressure,
+  salient,
+  snapshotTruth,
+  truthOf,
+} from "../../sim/index.ts";
 
 /** Cuántos eventos lista como máximo cada comando que recorre el registro. */
+import type { PastLife } from "./at.ts";
+
 export const INSPECT_LIMIT = 40;
 
 /** Comandos de sistemas que llegan en fases posteriores: nombre → dónde aparecen. */
 const LATER: Readonly<Record<string, string>> = {
   mind: "Fase 2 (npc-psychology)",
   decision: "Fase 3 (decisión de los NPC)",
-  memories: "Fase 2 (memorias)",
   believes: "Fase 2 (creencias)",
-  wrong: "Fase 2 (creencias)",
-  percepts: "Fase 2 (percepts de los NPC)",
-  rumor: "Fase 2 (información)",
+  rumor: "Fase 3 (información: rumores con linaje)",
 };
 
 export const INSPECTOR_HELP = [
   "Inspector (solo lectura; marca la vida como inspeccionada):",
   "  tables · entity <id> · find <texto> · origin <id> · why <evento> · effects <evento>",
   "  timeline [n] · body <agente> · view · ledger <cuenta> · invariants · hash",
+  "  memories [agente] · wrong [agente] · percepts [agente] [tick] · rumor <id>",
   "  pressures [tipo] · pressure <tipo> <id> · hazard",
+  "  at <tick> <comando> (el comando como era en ese tick) · diff <desde> [hasta]",
 ].join("\n");
 
-export function inspect(life: Life, line: string): string {
+/** `past` rehace la vida en un tick pasado (`at`, `diff`); sin él esos comandos avisan. */
+export function inspect(life: Life, line: string, past?: PastLife): string {
   const [cmd = "", ...args] = line.trim().split(/\s+/);
   const arg = args[0];
   switch (cmd.toLowerCase()) {
@@ -74,8 +89,18 @@ export function inspect(life: Life, line: string): string {
       return pressures(life, arg);
     case "pressure":
       return args[0] && args[1] ? pressure(life, args[0], args[1]) : "pressure <tipo> <id>";
+    case "memories":
+      return memories(life, arg ?? life.player);
+    case "wrong":
+      return wrong(life, arg);
+    case "percepts":
+      return percepts(life, arg ?? life.player, args[1]);
     case "hazard":
       return hazard(life);
+    case "at":
+      return at(life, args, past);
+    case "diff":
+      return diff(life, args, past);
     default: {
       const later = LATER[cmd.toLowerCase()];
       return later
@@ -83,6 +108,55 @@ export function inspect(life: Life, line: string): string {
         : `Comando desconocido: ${cmd}. Escribí «help».`;
     }
   }
+}
+
+function tickArg(life: Life, text: string | undefined): number | undefined {
+  const t = Number(text);
+  return text !== undefined && Number.isInteger(t) && t >= 0 && t <= life.now ? t : undefined;
+}
+
+function at(life: Life, args: string[], past: PastLife | undefined): string {
+  const rest = args.slice(1).join(" ");
+  if (!args[0] || !rest) return "at <tick> <comando>";
+  if (/^(at|diff)$/i.test(args[1] ?? "")) return "at no se anida.";
+  const t = tickArg(life, args[0]);
+  if (t === undefined) return `El tick tiene que estar entre 0 y ${life.now}.`;
+  if (t === life.now) return inspect(life, rest);
+  if (!past) return "No hay cómo rehacer la vida en un tick pasado.";
+  const then = rewind(past, t);
+  return typeof then === "string"
+    ? then
+    : `[t${t}]
+${inspect(then, rest)}`;
+}
+
+/** La vida en `t`, o el motivo por el que no se pudo rehacer. */
+function rewind(past: PastLife, t: number): Life | string {
+  try {
+    return past(t);
+  } catch (e) {
+    return e instanceof RangeError ? e.message : `No se pudo rehacer t${t}: ${String(e)}`;
+  }
+}
+
+function snapshotOf(life: Life) {
+  const pressures: Record<string, number> = {};
+  for (const p of lifePressures(life.world)) pressures[`${p.kind}@${p.scope.ref}`] = p.value;
+  return snapshotTruth(life.world.truth, life.now, pressures);
+}
+
+function diff(life: Life, args: string[], past: PastLife | undefined): string {
+  const from = tickArg(life, args[0]);
+  const to = args[1] === undefined ? life.now : tickArg(life, args[1]);
+  if (from === undefined || to === undefined || from > to) return "diff <desde> [hasta]";
+  if (from === to) return `diff t${from} → t${to}: nada cambió.`;
+  if (!past) return "No hay cómo rehacer la vida en un tick pasado.";
+  const open = (t: number): Life | string => (t === life.now ? life : rewind(past, t));
+  const a = open(from);
+  const b = open(to);
+  if (typeof a === "string") return a;
+  if (typeof b === "string") return b;
+  return formatSnapshotDiff(diffSnapshots(snapshotOf(a), snapshotOf(b)));
 }
 
 function show(value: unknown): string {
@@ -262,6 +336,117 @@ function hazard(life: Life): string {
     .sort((a, b) => b.d.hazard - a.d.hazard)
     .map(({ p, d }) => `${d.process} ← ${pressureLine(p)}: hazard ${d.hazard.toFixed(4)}`)
     .join("\n");
+}
+
+function agentArg(life: Life, id: string): AgentId | undefined {
+  const r = ref(id);
+  return r?.startsWith("agent:") && life.world.truth.has(ENTITY, r) ? (r as AgentId) : undefined;
+}
+
+const f2 = (x: number) => x.toFixed(2);
+
+/** Lo que cree que pasó contra lo que pasó (recuerdo vs evento real). */
+function memories(life: Life, id: string): string {
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const mem = life.world.truth.get(MEMORIES, who);
+  if (!mem || (mem.items.length === 0 && mem.gists.length === 0))
+    return `${who} no guarda memorias.`;
+  const now = life.now;
+  const rows = salient(mem, now).map(({ memory: m, salience }) => {
+    const real = life.world.log.get(m.eventId);
+    const differs = real && real.kind !== m.perceived.kind ? ` (real: ${real.kind})` : "";
+    return (
+      `${m.eventId} t${m.at} ${m.perceived.kind}${differs} con [${m.perceived.with.join(" ")}] ` +
+      `${m.source}${m.toldBy ? ` de ${m.toldBy}` : ""} intensidad ${f2(m.intensity)} ` +
+      `valencia ${f2(m.valence)} confianza ${f2(m.confidence)} distorsión ${f2(m.distortion)} ` +
+      `saliencia ${f2(salience)} recordada ${m.recalls}x`
+    );
+  });
+  const gists = mem.gists.map(
+    (g) =>
+      `resumen ${g.kind} con [${g.with.join(" ")}]: ${g.count}x, valencia ${f2(g.valence)}, ` +
+      `pico ${f2(g.peak)}, t${g.first}-t${g.last}, causas ${g.causes.join(" ")}`,
+  );
+  return [`${who}: ${mem.items.length} memorias, ${mem.gists.length} resúmenes`, ...rows, ...gists]
+    .slice(0, INSPECT_LIMIT * 2)
+    .join("\n");
+}
+
+/** Creencias falsas con su origen; sin argumento, cuántas tiene cada uno. */
+function wrong(life: Life, id: string | undefined): string {
+  const truth = life.world.truth;
+  const now = life.now;
+  if (!id) {
+    const rows = truth
+      .ids(BELIEFS)
+      .map((h) => {
+        const items = truth.get(BELIEFS, h)?.items ?? [];
+        return { h, bad: items.filter((b) => isMistaken(truth, b)).length, all: items.length };
+      })
+      .filter((r) => r.bad > 0)
+      .sort((a, b) => b.bad - a.bad || (a.h < b.h ? -1 : 1));
+    return rows.length === 0
+      ? "Nadie cree nada falso."
+      : rows
+          .slice(0, INSPECT_LIMIT)
+          .map((r) => `${r.h}: ${r.bad} falsas de ${r.all}`)
+          .join("\n");
+  }
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const items = truth.get(BELIEFS, who)?.items ?? [];
+  const bad = items.filter((b) => isMistaken(truth, b));
+  if (bad.length === 0) return `${who} no cree nada falso (${items.length} creencias).`;
+  return [
+    `${who}: ${bad.length} falsas de ${items.length}`,
+    ...bad.map((b) => {
+      const src = b.sources
+        .map((s) =>
+          s.kind === "percept"
+            ? `percept ${s.percept} t${s.tick}`
+            : s.kind === "told"
+              ? `dicho por ${s.from} t${s.tick}`
+              : `razonado de ${s.evidence.join(", ") || "nada citado"} t${s.tick}`,
+        )
+        .join("; ");
+      return (
+        `${b.prop.subject}.${b.prop.attr}: cree ${JSON.stringify(b.value)}, es ` +
+        `${JSON.stringify(truthOf(truth, b))}; confianza ${f2(beliefConfidenceAt(b, now))}, ` +
+        `de t${b.asOf}; fuentes: ${src || "ninguna"}`
+      );
+    }),
+  ].join("\n");
+}
+
+/** Los percepts guardados del personaje (`PERCEPTS`) o de un NPC (`NPC_PERCEPTS`, `life.witnessing`), con lo que se leyó mal. */
+function percepts(life: Life, id: string, from: string | undefined): string {
+  const who = agentArg(life, id);
+  if (!who) return `No hay un agente ${id}.`;
+  const recent =
+    who === life.player
+      ? life.world.truth.get(PERCEPTS, who)?.recent
+      : life.world.truth.get(NPC_PERCEPTS, who)?.recent;
+  if (!recent) {
+    return who === life.player
+      ? "El personaje no percibió nada todavía."
+      : `${who} no percibió ninguna acción de otros todavía.`;
+  }
+  const since = from !== undefined && Number.isFinite(Number(from)) ? Number(from) : 0;
+  const rows = recent
+    .filter((p) => p.tick >= since)
+    .map((p) => {
+      const fields = Object.entries(p.fields)
+        .map(
+          ([k, v]) =>
+            `${k}=${JSON.stringify(v.value)}(${f2(v.confidence)}${v.mistaken ? ", FALSO" : ""})`,
+        )
+        .join(" ");
+      return `${p.id} t${p.tick} ${p.detail} por ${p.channels.join("+")} de ${
+        p.sourceEventId ?? p.sourceEntityId ?? "?"
+      }: ${fields}`;
+    });
+  return rows.length === 0 ? `${who} no tiene percepts desde t${since}.` : rows.join("\n");
 }
 
 export type { AgentId };
