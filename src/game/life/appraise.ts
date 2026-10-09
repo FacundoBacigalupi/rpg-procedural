@@ -86,7 +86,7 @@ import {
   WITNESS_ASLEEP_ENCODING,
   witnessLived,
 } from "./memories.ts";
-import { applyTalkMemory, talkMemoryIn } from "./talkmemory.ts";
+import { applyTalkMemory, applyTestimony, talkMemoryIn, testimonyMemoryIn } from "./talkmemory.ts";
 import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
 export const APPRAISE_PROCESS = "life.appraise";
@@ -264,6 +264,16 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           // Un hábito que se asienta deja su marca, una sola vez, como un evento vivido.
           for (const def of r.settled) {
             if (def.stimulus) apply(doer, e, [{ stimulus: def.stimulus, blame: null }]);
+          }
+        }
+        if (e.kind === "law.testimony") {
+          // Declarar refuerza o reescribe el recuerdo del testigo (el único que escribe MEMORIES).
+          const said = testimonyMemoryIn(e);
+          const witness = e.actors[0] as AgentId | undefined;
+          if (said && witness && alive(truth, witness)) {
+            const before = mems.get(witness) ?? truth.get(MEMORIES, witness);
+            const after = applyTestimony(before, said, e.tick);
+            if (after && after !== before) mems.set(witness, after);
           }
         }
         if (e.kind === "action.speak") {

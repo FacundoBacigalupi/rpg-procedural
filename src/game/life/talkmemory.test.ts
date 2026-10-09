@@ -3,6 +3,7 @@ import type { AgentId, Event, EventId, PlaceRef } from "../../core/index.ts";
 import { addMemory, formMemory, type Memories } from "../../sim/index.ts";
 import {
   applyTalkMemory,
+  applyTestimony,
   recountOf,
   recountTone,
   talkMemoryIn,
@@ -81,5 +82,34 @@ describe("la charla y la memoria", () => {
     } as unknown as Event;
     expect(talkMemoryIn(e)?.recalled).toEqual(["event:1"]);
     expect(talkMemoryIn({ data: { effect: { kind: "speak" } } } as unknown as Event)).toBeNull();
+  });
+
+  it("declarar lo refuerza, y declarar una versión falsa lo corre hacia lo dicho", () => {
+    const base = hold(mem("event:1", B, -0.5));
+    const m: Memories = { ...base, items: base.items.map((x) => ({ ...x, confidence: 0.5 })) };
+    const honest = applyTestimony(
+      m,
+      { deed: "event:1" as EventId, said: true, lie: "none", accused: null },
+      200,
+    );
+    expect(honest?.items[0]?.recalls).toBe(1);
+    expect(honest?.items[0]?.confidence).toBeGreaterThan(m.items[0]?.confidence ?? 1);
+    const framed = applyTestimony(
+      m,
+      { deed: "event:1" as EventId, said: true, lie: "frame", accused: C },
+      200,
+    );
+    expect(framed?.items[0]?.distortion).toBeGreaterThan(0);
+    expect(framed?.items[0]?.perceived.with).toEqual([C]);
+    const denied = applyTestimony(
+      m,
+      { deed: "event:1" as EventId, said: false, lie: "deny", accused: null },
+      200,
+    );
+    expect(denied?.items[0]?.perceived.with).toEqual([B]);
+    expect(denied?.items[0]?.distortion).toBe(0);
+    expect(
+      applyTestimony(m, { deed: "event:9" as EventId, said: true, lie: "frame", accused: C }, 200),
+    ).toBe(m);
   });
 });

@@ -160,3 +160,66 @@ export function applyTalkMemory(
     asker: addMemory(asker, toldMemory(r, ctx.teller, ctx.place, ctx.now), ctx.now),
   };
 }
+
+/** Cuánto sube la distorsión de una memoria cada vez que el testigo declara una versión falsa. */
+export const REWRITE_STEP = 0.2;
+/** Cuánto sube la confianza de una memoria que el testigo declaró tal cual la recordaba. */
+export const AFFIRM_STEP = 0.05;
+
+/** Lo que `life.testify` deja en el `law.testimony` sobre la memoria del testigo. */
+export interface TestimonyMemory {
+  readonly deed: EventId;
+  readonly said: boolean;
+  readonly lie: "none" | "deny" | "frame" | "invent";
+  readonly accused: AgentId | null;
+}
+
+/** Lee `TestimonyMemory` de un `law.testimony`. */
+export function testimonyMemoryIn(e: Event): TestimonyMemory | null {
+  if (e.kind !== "law.testimony") return null;
+  const d = e.data as {
+    deed?: unknown;
+    said?: unknown;
+    accused?: unknown;
+    truthOf?: { lie?: { kind?: unknown } };
+  } | null;
+  if (typeof d?.deed !== "string") return null;
+  const lie = d.truthOf?.lie?.kind;
+  return {
+    deed: d.deed as EventId,
+    said: d.said === true,
+    lie: lie === "deny" || lie === "frame" || lie === "invent" ? lie : "none",
+    accused: typeof d.accused === "string" ? (d.accused as AgentId) : null,
+  };
+}
+
+/**
+ * Declarar refuerza o reescribe el recuerdo (npc-psychology §5): contarlo lo recuerda (`recall`);
+ * contarlo tal cual afirma la confianza; contar una versión falsa la va corriendo hacia lo dicho
+ * (`distortion` sube y, si inculpó a otro, `perceived.with` pasa a ser ese). Negar solo lo refuerza
+ * en el silencio: no cambia lo guardado.
+ */
+export function applyTestimony(
+  witness: Memories | undefined,
+  t: TestimonyMemory,
+  now: Tick,
+): Memories | undefined {
+  if (!witness) return witness;
+  let touched = false;
+  const items = witness.items.map((m) => {
+    if (m.eventId !== t.deed) return m;
+    touched = true;
+    const r = recall(m, now);
+    if (!t.said) return r;
+    if (t.lie === "none")
+      return { ...r, confidence: Math.min(1, round(r.confidence + AFFIRM_STEP)) };
+    const rewritten = {
+      ...r,
+      distortion: Math.min(1, round(r.distortion + REWRITE_STEP)),
+    };
+    return t.lie !== "deny" && t.accused
+      ? { ...rewritten, perceived: { ...r.perceived, with: [t.accused] } }
+      : rewritten;
+  });
+  return touched ? { ...witness, items } : witness;
+}
