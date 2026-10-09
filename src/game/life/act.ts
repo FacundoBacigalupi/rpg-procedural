@@ -645,7 +645,15 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     }),
   );
   return {
-    events: [...r.events, ...extraEvents],
+    // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
+    events: [
+      ...r.events.map((e) =>
+        state.plan.purpose
+          ? { ...e, data: { ...(e.data as object), purpose: state.plan.purpose } }
+          : e,
+      ),
+      ...extraEvents,
+    ],
     changes,
     postings: r.postings,
     schedule: [
