@@ -53,6 +53,7 @@ import { companyProcess } from "./company.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
@@ -360,6 +361,20 @@ export function lifeWorld(
           statuses: parts.statuses,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
+          placeOf: placeOf(parts, village),
+        }),
+        decideProcess({
+          clock: parts.clock,
+          catalog: parts.catalog,
+          skills: parts.skills,
+          traits: parts.traits,
+          bodyPlans: parts.plans,
+          values: parts.values,
+          schemas: parts.schemas,
+          stages: parts.stages,
+          dims: parts.relationDims,
+          bonds: parts.relationBonds,
+          player,
           placeOf: placeOf(parts, village),
         }),
         routineProcess({
