@@ -21,6 +21,7 @@ import {
   BODY_STATE,
   type BondDef,
   bornSecret,
+  COMMUNITY_RELIGION,
   contactGain,
   type Deltas,
   type DimensionDef,
@@ -55,6 +56,7 @@ import {
   type Percept,
   type ProcessDef,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   type Relations,
   reinforceAll,
@@ -74,6 +76,7 @@ import {
   type Trait,
   tendDeltas,
   tradeDeltas,
+  type ValueDef,
   weaken,
 } from "../../sim/index.ts";
 
@@ -99,6 +102,8 @@ export interface AppraiseOptions {
   readonly bonds: readonly BondDef[];
   readonly habits: readonly HabitDef[];
   readonly traits: readonly Trait[];
+  /** Valores del mundo: pesan en la conciencia de quien hace daño (conscience.ts). */
+  readonly values?: readonly ValueDef[];
   /** Si está, los testigos NPC que no son parte forman memorias de lo que percibieron. */
   readonly witness?: WitnessingOptions;
 }
@@ -136,6 +141,8 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       SECRETS.name,
       LOCATION.name,
       STATUS.name,
+      COMMUNITY_RELIGION.name,
+      RELIGIOUS_IDENTITY.name,
     ],
     writes: [
       MIND.name,
