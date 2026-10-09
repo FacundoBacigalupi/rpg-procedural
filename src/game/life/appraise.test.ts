@@ -272,7 +272,7 @@ describe("la aldea interpreta lo que vive", () => {
       (id) =>
         life.world.truth.get(PERSON, id)?.household !== life.world.truth.get(PERSON, me)?.household,
     ) as AgentId;
-    for (let i = 0; i < 12; i++) life.turn(strikePlan(me, target), 1);
+    for (let i = 0; i < 12; i++) life.turn(strikePlan(me, target), i + 1);
     const w = life.world;
     const died = (w.truth.get(BODY_STATE, target) as Body).death !== null;
     const killed = died
