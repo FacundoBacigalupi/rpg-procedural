@@ -532,6 +532,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       traits: o.traits,
       intent: [...state.plan.manner, ...node.manner].includes("fast") ? "drive_off" : "subdue",
       light: e.light,
+      ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,
       rng: input.rng.fork("fight"),
       day: o.clock.day,

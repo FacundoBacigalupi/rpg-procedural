@@ -81,6 +81,11 @@ export interface StrikeFightInput {
   readonly place: PlaceRef;
   /** Quien maneja el jugador: la pelea se pausa cuando él nota algo que pide decidir. */
   readonly control?: boolean;
+  /**
+   * 0-1: cuánto se contiene quien pega (pelea por debajo de su nivel, skills §9, combat §5): el
+   * rival lo lee más flojo de lo que es, y contenerse cuesta algo de filo de verdad.
+   */
+  readonly holdBack?: number;
   /** Retomar una pelea pausada. */
   readonly resume?: PausedFight;
 }
@@ -105,6 +110,9 @@ export interface Exposure {
 }
 
 const DAY_SECONDS = 86400;
+
+/** Cuánto del nivel real se pierde al contenerse del todo (calibración abierta). */
+export const HOLD_BACK_COST = 0.2;
 
 /** Aplica una exposición a las habilidades de alguien (skills §2.3). */
 export function exposeSkills(
@@ -187,7 +195,10 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         plan: plan(i.myBody),
         body: i.myBody,
         z: z(i.me),
-        skill: verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
+        skill:
+          verbSkill(i.skills, i.truth.get(SKILL_STATE, i.me), "strike") *
+          (1 - HOLD_BACK_COST * Math.min(1, Math.max(0, i.holdBack ?? 0))),
+        hides: i.holdBack ?? 0,
         eye: fightEye(i.skills, i.truth.get(SKILL_STATE, i.me), "strike"),
         familiarity: fightFamiliarity(
           i.skills,

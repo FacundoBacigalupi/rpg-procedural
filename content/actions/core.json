@@ -237,7 +237,8 @@
     "args": [{ "role": "target", "kind": "person", "required": true }],
     "manners": [
       { "id": "careful", "duration": 1.5, "ease": 0.3 },
-      { "id": "fast", "duration": 0.7, "ease": -0.3 }
+      { "id": "fast", "duration": 0.7, "ease": -0.3 },
+      { "id": "hold_back", "duration": 1.2, "ease": 0.1 }
     ],
     "requires": [
       { "kind": "capability", "cap": "strength", "min": 0.1 },
