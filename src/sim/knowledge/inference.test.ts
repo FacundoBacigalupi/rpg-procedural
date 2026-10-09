@@ -290,13 +290,13 @@ describe("reglas como contenido", () => {
     ]) {
       expect(none).not.toContain(id);
     }
-    expect(knownRules(DEFS, { skills: { sleight: 0.5 }, schemas: {} })).toContain(
+    expect(knownRules(DEFS, { skills: { lockwork: 0.5 }, schemas: {} })).toContain(
       "picked-lock-from-clean-entry",
     );
     expect(knownRules(DEFS, { skills: { medicine: 0.5 }, schemas: {} })).toContain(
       "blade-from-clean-wound",
     );
-    expect(knownRules(DEFS, { skills: { observation: 0.5 }, schemas: {} })).toContain(
+    expect(knownRules(DEFS, { skills: { tracking: 0.5 }, schemas: {} })).toContain(
       "passage-from-fresh-tracks",
     );
     expect(knownRules(DEFS, { skills: {}, schemas: { people_are_untrustworthy: 0.9 } })).toContain(

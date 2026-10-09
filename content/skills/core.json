@@ -151,5 +151,33 @@
     "tacitness": 0.5,
     "curve": { "rate": 0.0013, "k": 3 },
     "upbringing": { "fromAge": 8, "hoursPerYear": 8, "ease": 0 }
+  },
+  {
+    "id": "lockwork",
+    "name": "cerraduras y pasadores",
+    "domain": "craft",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "control", "weight": 0.5 },
+      { "trait": "perception", "weight": 0.3 },
+      { "trait": "intellect", "weight": 0.2 }
+    ],
+    "capabilities": { "manipulation": 1 },
+    "tacitness": 0.7,
+    "curve": { "rate": 0.0014, "k": 3 }
+  },
+  {
+    "id": "tracking",
+    "name": "rastrear",
+    "domain": "survival",
+    "facets": ["execution", "reading", "judgment"],
+    "aptitudes": [
+      { "trait": "perception", "weight": 0.6 },
+      { "trait": "memory", "weight": 0.2 },
+      { "trait": "curiosity", "weight": 0.2 }
+    ],
+    "capabilities": { "locomotion": 0.4 },
+    "tacitness": 0.7,
+    "curve": { "rate": 0.0014, "k": 3 }
   }
 ]

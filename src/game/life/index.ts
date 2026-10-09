@@ -7,6 +7,7 @@ export * from "./divine.ts";
 export * from "./environment.ts";
 export * from "./hypotheses.ts";
 export * from "./identity.ts";
+export * from "./inference-metric.ts";
 export * from "./interrupts.ts";
 export * from "./known.ts";
 export * from "./life.ts";

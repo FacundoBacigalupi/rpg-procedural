@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { BookLine } from "../game/index.ts";
-import { renderBook } from "./render.ts";
+import type { AboutPanel, BookLine } from "../game/index.ts";
+import { renderAbout, renderBook } from "./render.ts";
 
 const line = (over: Partial<BookLine>): BookLine => ({
   kind: "pledge",
@@ -37,5 +37,26 @@ describe("renderBook", () => {
     expect(text).toContain(
       "algo de grano, sin plazo que recuerdes (palabra dada) (lo recordás vagamente)",
     );
+  });
+});
+
+describe("renderAbout con el porqué leído", () => {
+  const panel = (over: Partial<AboutPanel> = {}): AboutPanel => ({
+    kind: "person",
+    name: "Wu",
+    alive: "alive",
+    aliveSurety: "sure",
+    where: { state: "here" },
+    book: [],
+    ...over,
+  });
+
+  it("dice lo que le pareció, con su firmeza, sin afirmarlo", () => {
+    const text = renderAbout(panel({ purpose: { motive: "theft", surety: "unsure" } }));
+    expect(text).toContain("te parece que anda por quedarse con lo ajeno (no del todo seguro)");
+  });
+
+  it("sin lectura no inventa nada", () => {
+    expect(renderAbout(panel())).not.toContain("te parece");
   });
 });

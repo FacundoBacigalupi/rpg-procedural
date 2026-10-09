@@ -17,12 +17,14 @@ import {
   MIND,
   type Premise,
   type Reasoner,
+  rainBetween,
   SKILL_STATE,
   skillLevel,
   type Thought,
   thinkAbout,
   toRule,
 } from "../../sim/index.ts";
+import { headPremises } from "./evidence.ts";
 import { SLEEP_STATE } from "./sleep.ts";
 import type { LifeWorld } from "./world.ts";
 
@@ -68,11 +70,18 @@ export function reasonerOf(w: LifeWorld, defs: readonly InferenceRuleDef[]): Rea
   };
 }
 
-/** Las premisas que hoy salen de las creencias: dónde cree que está alguien y si vive. */
+function sourceKind(kind: string | undefined): Premise["kind"] {
+  return kind === "told" ? "told" : kind === "reasoning" ? "inference" : "percept";
+}
+
+/**
+ * Las premisas de la cabeza: dónde cree que está alguien y si vive (creencias envejecidas) y lo que
+ * tiene delante (heridas a la vista y huellas atadas a un hecho que sabe, `headPremises`).
+ */
 export function evidenceOf(w: LifeWorld): Premise[] {
   const items = w.truth.get(BELIEFS, w.player)?.items ?? [];
   const now = w.scheduler.now;
-  return items.flatMap((b): Premise[] => {
+  const beliefs = items.flatMap((b): Premise[] => {
     const confidence = beliefConfidenceAt(b, now);
     if (confidence <= 0) return [];
     const subject = b.prop.subject;
@@ -80,11 +89,15 @@ export function evidenceOf(w: LifeWorld): Premise[] {
     const fact: Fact =
       b.prop.attr === "alive"
         ? { pred: b.value === true ? "alive" : "dead", args: [subject] }
-        : { pred: "at", args: [subject, String((b.value as { hex: number }).hex)] };
-    return [
-      { fact, confidence, kind: b.sources.at(-1)?.kind === "told" ? "told" : "percept", ref },
-    ];
+        : b.prop.attr === "purpose"
+          ? { pred: "intends", args: [subject, String(b.value)] }
+          : { pred: "at", args: [subject, String((b.value as { hex: number }).hex)] };
+    return [{ fact, confidence, kind: sourceKind(b.sources.at(-1)?.kind), ref }];
   });
+  const here = headPremises(w.truth, w.player, now, (made) =>
+    rainBetween(w.map, w.clock, w.seed, made, now),
+  );
+  return [...beliefs, ...here];
 }
 
 /** Piensa sobre `topic` (el id de una persona o lugar que conoce). */

@@ -35,6 +35,7 @@ import {
   skyLight,
   vigilantAttention,
 } from "../../sim/index.ts";
+import { learnReads, PURPOSE_READS } from "./reading.ts";
 import { playerObserver } from "./witness.ts";
 
 export const KNOWING_PROCESS = "life.knowing";
@@ -72,6 +73,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       RELATIONS.name,
       BELIEFS.name,
       MENTAL.name,
+      PURPOSE_READS.name,
     ],
     writes: [BELIEFS.name],
     run(ctx) {
@@ -185,6 +187,12 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
             staged.set(pc.observer, learn(seenAt, evidence("alive", true), ctx.now));
           }
         }
+      }
+      // Lo que el personaje leyó del porqué ajeno se vuelve creencia sobre el actor.
+      const reads = truth.get(PURPOSE_READS, o.player)?.recent ?? [];
+      if (reads.length > 0) {
+        const learned = learnReads(beliefsOf(o.player), reads, ctx.now);
+        if (learned !== beliefsOf(o.player)) staged.set(o.player, learned);
       }
       for (const id of [...staged.keys()].sort()) {
         const b = staged.get(id);

@@ -345,7 +345,9 @@ function wrong(life: Life, id: string | undefined): string {
         .map((s) =>
           s.kind === "percept"
             ? `percept ${s.percept} t${s.tick}`
-            : `dicho por ${s.from} t${s.tick}`,
+            : s.kind === "told"
+              ? `dicho por ${s.from} t${s.tick}`
+              : `razonado de ${s.evidence.join(", ") || "nada citado"} t${s.tick}`,
         )
         .join("; ");
       return (
