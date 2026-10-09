@@ -8,6 +8,7 @@
 //   `resolveRef`), en el mismo lugar del plan;
 // - speech: si se esperaba habla, la hay (y con destinatario si se esperaba);
 // - stripped y unmapped: si se esperaba descartar algo o dejar algo sin verbo, se hizo, y al revés.
+// - purpose: el mismo motivo declarado (o ninguno, si el jugador no dijo para qué).
 
 import type { DraftArg, DraftPlanNode, IntentDraft, RefDescription } from "../../sim/index.ts";
 import { refTokens } from "../../sim/index.ts";
@@ -20,6 +21,7 @@ export const SCORE_FIELDS = [
   "speech",
   "stripped",
   "unmapped",
+  "purpose",
 ] as const;
 export type ScoreField = (typeof SCORE_FIELDS)[number];
 
@@ -112,6 +114,8 @@ export function scoreDraft(expected: IntentDraft, got: IntentDraft): DraftScore 
     speech,
     stripped: has(expected.stripped) === has(got.stripped),
     unmapped: has(expected.unmapped) === has(got.unmapped),
+    // El porqué: el mismo motivo si se esperaba, y ninguno inventado si no se esperaba.
+    purpose: expected.purpose?.motive === got.purpose?.motive,
   };
   return { ...fields, pass: SCORE_FIELDS.every((f) => fields[f]) };
 }

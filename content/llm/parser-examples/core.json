@@ -1072,5 +1072,55 @@
       }
     },
     "notes": "una idea sobre cómo anda el mundo es suponer, con las palabras del jugador; el juego decide qué hipótesis es"
+  },
+  {
+    "id": "purpose-gift",
+    "text": "le doy el pan a Tomás, de regalo",
+    "scene": "Tomás, el vecino, está en la puerta de su casa. Llevás una hogaza de pan.",
+    "expect": {
+      "kind": "act",
+      "purpose": {
+        "motive": "gift",
+        "forWhom": { "text": "Tomás", "kind": "person", "features": ["Tomás"] }
+      },
+      "plan": {
+        "kind": "do",
+        "verb": "give",
+        "args": [
+          { "role": "to", "ref": { "text": "Tomás", "kind": "person", "features": ["Tomás"] } },
+          { "role": "what", "text": "el pan" }
+        ]
+      }
+    },
+    "notes": "el porqué que el jugador dice va en purpose, con el beneficiario; el verbo sigue siendo give"
+  },
+  {
+    "id": "purpose-sustenance",
+    "text": "como un poco de pan para no desmayarme",
+    "scene": "Estás en tu casa, con hambre. Hay pan sobre la mesa.",
+    "expect": {
+      "kind": "act",
+      "purpose": { "motive": "sustenance" },
+      "plan": {
+        "kind": "do",
+        "verb": "eat",
+        "args": [{ "role": "what", "text": "pan" }]
+      }
+    },
+    "notes": "el motivo sin beneficiario: forWhom queda afuera"
+  },
+  {
+    "id": "purpose-not-said",
+    "text": "agarro el pan de la mesa",
+    "scene": "Estás en tu casa. Hay pan sobre la mesa.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "take",
+        "args": [{ "role": "what", "text": "el pan" }]
+      }
+    },
+    "notes": "si el jugador no dice para qué, no hay purpose: nunca se adivina del verbo"
   }
 ]

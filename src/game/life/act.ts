@@ -67,6 +67,7 @@ import {
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
+  type Purpose,
   placeAt,
   placeRefOf,
   type ReadonlyWorldTruth,
@@ -118,6 +119,8 @@ export interface StepRecord {
   readonly verb: string;
   readonly at: number;
   readonly self: SelfReport;
+  /** El porqué que declaró el jugador para el plan: el narrador solo lo cita. */
+  readonly purpose?: Purpose | undefined;
 }
 
 /** El plan del personaje en curso (o terminado, `done`). Verdad de la sim: va a la base. */
@@ -618,7 +621,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
   const resume = eff.kind === "move" && eff.onTheWay === true;
-  const stepRecord: StepRecord = { verb: node.verb, at: ctx.now, self: record };
+  const stepRecord: StepRecord = {
+    verb: node.verb,
+    at: ctx.now,
+    self: record,
+    ...(state.plan.purpose ? { purpose: state.plan.purpose } : {}),
+  };
   const lastBelieved = r.self.believed;
   const end = ctx.now + Math.max(r.seconds, fightSeconds);
   // Si le habló a alguien en persona, el oyente contesta cuando termina de oír (converse).

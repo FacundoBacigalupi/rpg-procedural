@@ -272,7 +272,11 @@ export function playerView(
       ),
     },
     percepts: digest(percepts),
-    steps: steps.map((s) => ({ verb: s.verb, self: s.self })),
+    steps: steps.map((s) => ({
+      verb: s.verb,
+      self: s.self,
+      ...(s.purpose ? { purpose: s.purpose } : {}),
+    })),
     acquaintances: acq,
     lexicon: knownWords(w),
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),

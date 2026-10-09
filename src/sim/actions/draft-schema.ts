@@ -16,6 +16,7 @@ import {
   DraftCondition,
   DraftDuration,
   type DraftPlanNode,
+  DraftPurpose,
   DraftText,
   type EntityKind,
   IntentDraft,
@@ -214,6 +215,13 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
   return z.strictObject({
     kind: IntentDraft.shape.kind,
     plan: node.optional(),
+    // Plano y chico: el motivo del catálogo cerrado y, si lo dice, para quién (una persona).
+    purpose: z
+      .strictObject({
+        motive: DraftPurpose.shape.motive,
+        forWhom: refSchema(REF_KINDS.person).optional(),
+      })
+      .optional(),
     ...(allManners.length > 0 ? { manner: z.array(ids(allManners)).max(8).optional() } : {}),
     constraints: texts,
     stripped: texts,
