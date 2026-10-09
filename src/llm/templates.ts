@@ -347,6 +347,8 @@ function outcome(
         say(e.deal ? `outcome.trade.deal.${e.terms}` : "outcome.trade.no_deal", {
           with: ref(e.with),
         });
+      if (e.strain !== undefined && e.with !== undefined)
+        say(`outcome.trade.strain.${e.strain}`, { with: ref(e.with) });
       break;
     case "give":
       if (e.gave === undefined)

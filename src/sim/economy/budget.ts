@@ -104,3 +104,33 @@ export function poolIncome(
   }
   return { pot, kept };
 }
+
+/** Cuánto baja lo que pide quien vende estando apretado o en la ruina (necesita monedas ya). */
+export const DISTRESS_ASK_FACTOR: Readonly<Record<HouseholdStanding, number>> = {
+  comfortable: 1,
+  "getting-by": 1,
+  tight: 0.9,
+  broke: 0.75,
+};
+
+/** Cuánto baja lo que ofrece quien compra estando apretado o en la ruina (regatea más duro). */
+export const DISTRESS_BID_FACTOR: Readonly<Record<HouseholdStanding, number>> = {
+  comfortable: 1,
+  "getting-by": 1,
+  tight: 0.9,
+  broke: 0.75,
+};
+
+/** Cómo está un hogar frente a un trato, tal como lo ve el resolvedor de `trade`. */
+export interface DealBudget {
+  /** Tope de gasto de una compra no urgente. */
+  readonly coinCeiling: number;
+  /** Tope de gasto si lo que compra es urgente (comida que falta): todo lo que hay. */
+  readonly urgentCeiling: number;
+  readonly standing: HouseholdStanding;
+}
+
+/** Solo apretado o en la ruina se nota en un trato (lo que narra y lo que mueve el precio). */
+export function strainOf(s: HouseholdStanding): "tight" | "broke" | undefined {
+  return s === "tight" || s === "broke" ? s : undefined;
+}
