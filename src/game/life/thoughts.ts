@@ -11,13 +11,10 @@ import {
   BELIEFS,
   beliefConfidenceAt,
   believed,
-  intrusionChance,
-  LOCATION,
   MEMORIES,
   MENTAL,
   type Memory,
   memoriesAbout,
-  triggeredBy,
 } from "../../sim/index.ts";
 import type { SpecialMode, ThoughtInput } from "../view/index.ts";
 import { SLEEP_STATE } from "./sleep.ts";
@@ -74,11 +71,19 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
 
   // El registro, de atrás para adelante hasta el inicio del turno: pesadilla de la noche.
   let dreamt = false;
+  let intruded: { readonly causes: readonly string[]; readonly who?: AgentId } | undefined;
   const events = w.log.all();
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
     if (!e || e.tick < since) break;
     if (e.kind === "mind.nightmare" && e.actors.includes(me)) dreamt = true;
+    if (e.kind === "mind.intrusion" && e.actors.includes(me) && !intruded) {
+      const who = (e.data as { who?: unknown } | undefined)?.who;
+      intruded = {
+        causes: e.causes.flatMap((c) => (c.kind === "event" ? [c.event] : [])),
+        ...(typeof who === "string" ? { who: who as AgentId } : {}),
+      };
+    }
   }
 
   if (dreamt && mental) {
@@ -91,45 +96,17 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
     });
   }
 
-  // Un recuerdo intrusivo al toparse con quien o con el lugar que lo despierta.
-  if (mental && !dreamt) {
-    for (const who of input.present) {
-      const cue = { who };
-      const chance = intrusionChance(mental, cue);
-      if (chance <= 0 || rng.fork("intrude", who).float() >= chance) continue;
-      const worst = [...triggeredBy(mental, cue)].sort((a, b) => b.severity - a.severity)[0];
-      if (!worst) continue;
-      out.push({
-        kind: "remember",
-        mood: worst.kind === "guilt" ? "guilt" : "fear",
-        ...about(who),
-        ...(hazyMemory(memoryOf(worst.originEventIds[0] ?? "")) ? { hazy: true } : {}),
-      });
-      break;
-    }
-  }
-
-  // Volver al sitio que despierta la condición (el campo donde pasó, la casa): sin persona delante.
-  // En esta vida un lugar es la aldea (si el personaje está en un espacio) o la celda abierta.
-  if (mental && !dreamt && out.length === 0) {
-    const at = w.truth.get(LOCATION, me);
-    const inVillage = at?.space !== undefined;
-    const places = mental.conditions
-      .flatMap((c) => c.triggers.flatMap((t) => (t.place ? [t.place] : [])))
-      .filter((p) => (p.kind === "cell") !== inVillage);
-    const here = places[0];
-    if (here) {
-      const cue = { place: here };
-      const chance = intrusionChance(mental, cue);
-      const worst = [...triggeredBy(mental, cue)].sort((a, b) => b.severity - a.severity)[0];
-      if (worst && chance > 0 && rng.fork("intrude-place").float() < chance) {
-        out.push({
-          kind: "remember",
-          mood: worst.kind === "guilt" ? "guilt" : "fear",
-          ...(hazyMemory(memoryOf(worst.originEventIds[0] ?? "")) ? { hazy: true } : {}),
-        });
-      }
-    }
+  // Un recuerdo intrusivo: lo trajo `intrusionProcess` al toparse con quien o con el lugar que lo
+  // despierta (el evento `mind.intrusion` cita lo que abrió la condición).
+  if (mental && !dreamt && intruded) {
+    const worst = [...mental.conditions].sort((a, b) => b.severity - a.severity)[0];
+    const origin = intruded.causes[0];
+    out.push({
+      kind: "remember",
+      mood: worst?.kind === "guilt" ? "guilt" : "fear",
+      ...about(intruded.who),
+      ...(hazyMemory(origin === undefined ? undefined : memoryOf(origin)) ? { hazy: true } : {}),
+    });
   }
 
   // La pena por quien cree muerto y todavía pesa en el recuerdo.

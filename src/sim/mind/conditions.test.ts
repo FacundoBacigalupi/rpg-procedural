@@ -15,8 +15,10 @@ import {
   nightmareCauses,
   nightmareChance,
   numbedIntensity,
+  numbedStimulus,
   numbing,
   openCondition,
+  pleasureUtility,
   settleConditions,
   severityOf,
   VIGILANCE_ATTENTION_CAP,
@@ -105,6 +107,15 @@ describe("condiciones mentales", () => {
     expect(numbedIntensity(0.5, 0.6, undefined)).toBe(0.5);
     const max = openCondition(t, "trauma", 1, EV(2), trigger, 1);
     expect(numbing(max)).toBe(NUMBING_CAP);
+  });
+
+  it("entumecimiento: apaga lo bueno que forma la mente y lo placentero, no lo doloroso", () => {
+    const t = openCondition(emptyMental(EV(1), 0), "trauma", 0.5, EV(1), trigger, 0);
+    expect(numbedStimulus({ theme: "success", intensity: 0.5 }, t).intensity).toBeCloseTo(0.3, 5);
+    expect(numbedStimulus({ theme: "loss", intensity: 0.5 }, t).intensity).toBe(0.5);
+    expect(numbedStimulus({ theme: "success", intensity: 0.5 }, undefined).intensity).toBe(0.5);
+    expect(pleasureUtility(1, t)).toBeCloseTo(0.6, 5);
+    expect(pleasureUtility(-1, t)).toBe(-1);
   });
 
   it("la gravedad siempre queda en 0-1 y settle no la sube (propiedad)", () => {

@@ -56,7 +56,7 @@ export const THEMES = [
 export type Theme = (typeof THEMES)[number];
 
 /** Los temas que duelen: la reactividad los amplifica. */
-const PAINFUL: ReadonlySet<Theme> = new Set([
+export const PAINFUL: ReadonlySet<Theme> = new Set([
   "neglect",
   "violence",
   "loss",
