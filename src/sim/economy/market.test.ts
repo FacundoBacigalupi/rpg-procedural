@@ -55,6 +55,18 @@ describe("mercado de la aldea", () => {
   });
 });
 
+describe("cotización con calidad y comida encima", () => {
+  it("la calidad escala pedido y oferta, y quien casi no carga comida ofrece más", () => {
+    const plain = householdQuote(undefined, "good:grain", 10, 5, 10);
+    const fine = householdQuote(undefined, "good:grain", 10, 5, 10, { quality: 1.2 });
+    expect(fine.ask).toBeCloseTo(plain.ask * 1.2, 9);
+    expect(fine.bid).toBeCloseTo(plain.bid * 1.2, 9);
+    const bare = householdQuote(undefined, "good:grain", 10, 5, 10, { carryDays: 0 });
+    expect(bare.bid).toBeGreaterThan(plain.bid);
+    expect(bare.ask).toBe(plain.ask);
+  });
+});
+
 describe("libro del día del vendedor", () => {
   it("suma lo ofrecido y lo vendido en el mismo día y arranca otro libro al cambiar de día", () => {
     const a = noteSeller(undefined, 5, "good:grain", 2000, 0);
