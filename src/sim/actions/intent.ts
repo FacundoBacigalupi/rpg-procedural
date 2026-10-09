@@ -9,6 +9,7 @@
 // `Condition` sobre creencias.
 
 import { contentId, z } from "../../core/index.ts";
+import { PURPOSES } from "./purpose.ts";
 
 export const EntityKind = z.enum(["person", "object", "place", "lot", "group"]);
 export type EntityKind = z.infer<typeof EntityKind>;
@@ -197,9 +198,22 @@ export const SpeechDraft = z.strictObject({
 });
 export type SpeechDraft = z.infer<typeof SpeechDraft>;
 
+/**
+ * El porqué que el jugador dijo de su plan («para comer», "se lo regalo", «para vengarme»): uno de
+ * los motivos del catálogo cerrado y, si hay, para quién. Es la palabra del jugador sobre su
+ * personaje, no un resultado: la sim lo guarda en el plan y los demás lo leen con `readPurpose`.
+ */
+export const DraftPurpose = z.strictObject({
+  motive: z.enum(PURPOSES),
+  forWhom: RefDescription.optional(),
+});
+export type DraftPurpose = z.infer<typeof DraftPurpose>;
+
 export const IntentDraft = z
   .strictObject({
     kind: z.enum(["act", "plan", "goal", "question_ooc", "meta"]),
+    /** Solo si el jugador dice para qué lo hace; nunca se infiere del verbo. */
+    purpose: DraftPurpose.optional(),
     plan: DraftPlanNode.optional(),
     manner: z.array(contentId).max(8).optional(),
     /** "sin matar a nadie", "antes de que anochezca": la sim las normaliza a `Constraint`. */

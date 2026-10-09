@@ -19,6 +19,7 @@ import type {
   DraftCondition,
   DraftDuration,
   DraftPlanNode,
+  DraftPurpose,
   EntityKind,
   IntentDraft,
 } from "./intent.ts";
@@ -32,6 +33,7 @@ import {
   type SpeakAct,
   validatePlan,
 } from "./plan.ts";
+import type { Purpose } from "./purpose.ts";
 import { clarifyOptions, type KnownEntity, type ResolvedRef, resolveRef } from "./refs.ts";
 
 /** Vueltas de un `until` que pidió el jugador si no dijo otra cosa (simulation §12 para más). */
@@ -109,6 +111,7 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
     const root = convert(draft.plan, "plan", w);
     if (root) steps.push(root);
   }
+  const purpose = draft.purpose ? purposeOf(draft.purpose, w) : undefined;
   if (w.problems.length > 0) return { kind: "invalid", problems: w.problems };
   if (w.ambiguous.length > 0) return { kind: "clarify", refs: w.ambiguous };
   if (w.unknown.length > 0) return { kind: "unknown", refs: w.unknown };
@@ -117,6 +120,7 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   const plan: ActionPlan = {
     actor: ctx.actor,
     source: ctx.source,
+    ...(purpose ? { purpose } : {}),
     root,
     manner: [...(draft.manner ?? [])],
     causes: ctx.causes,
@@ -125,6 +129,27 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   return problems.length > 0
     ? { kind: "invalid", problems }
     : { kind: "plan", plan, phantoms: w.phantoms };
+}
+
+/**
+ * El porqué declarado, con «para quién» resuelto contra lo que el actor conoce (actions §4). Si el
+ * beneficiario es ambiguo se pregunta; si no se lo conoce el motivo queda sin él (decir «para
+ * alguien que no conozco» no cambia por qué lo hace), y nunca frena el plan.
+ */
+function purposeOf(p: DraftPurpose, w: Walk): Purpose {
+  if (!p.forWhom) return { motive: p.motive };
+  const desc = p.forWhom;
+  const known = w.ctx.known.filter((k) => !desc.kind || k.kind === desc.kind);
+  const r = resolveRef(desc, known);
+  if (r.status === "unique") return { motive: p.motive, forWhom: r.chosen };
+  if (r.status === "phantom") {
+    w.phantoms.push("purpose.forWhom");
+    return { motive: p.motive, forWhom: r.chosen };
+  }
+  if (r.status === "ambiguous") {
+    w.ambiguous.push({ at: "purpose.forWhom", role: "forWhom", resolved: r });
+  }
+  return { motive: p.motive };
 }
 
 interface Walk {

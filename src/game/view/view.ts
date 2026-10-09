@@ -21,6 +21,8 @@ import {
   type Percept,
   type PerceptDetail,
   type PlaceKind,
+  type Purpose,
+  type PurposeId,
   type SelfReport,
   type SpaceKind,
   type Standing,
@@ -247,6 +249,14 @@ export interface OutcomeView {
   /** Lo que nota que le jugó en contra (la luz, el terreno, los nervios). */
   readonly cues: readonly FactorKey[];
   readonly effect: EffectView;
+  /** El porqué que el personaje declaró para este paso (su palabra, no una verdad): se cita tal cual. */
+  readonly purpose?: PurposeView;
+}
+
+/** El porqué declarado, con el beneficiario como etiqueta local si es alguien. */
+export interface PurposeView {
+  readonly motive: PurposeId;
+  readonly forWhom?: string;
 }
 
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
@@ -277,6 +287,8 @@ export interface Acquaintance {
 export interface StepView {
   readonly verb: string;
   readonly self: SelfReport;
+  /** El porqué que declaró el propio jugador; el narrador solo lo cita. */
+  readonly purpose?: Purpose | undefined;
 }
 
 export interface ViewInput {
@@ -387,6 +399,16 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     believed: step.self.believed,
     cues: [...step.self.cues],
     effect: effectView(step.self, target, input.player),
+    ...(step.purpose
+      ? {
+          purpose: {
+            motive: step.purpose.motive,
+            ...(isAgent(step.purpose.forWhom)
+              ? { forWhom: known(step.purpose.forWhom, "sure") }
+              : {}),
+          },
+        }
+      : {}),
   }));
 
   const percepts: PerceptView[] = [];
