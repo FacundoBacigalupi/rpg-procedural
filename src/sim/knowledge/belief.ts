@@ -200,3 +200,33 @@ export function believed(
 ): Belief | undefined {
   return beliefs?.items.find((b) => b.prop.subject === subject && b.prop.attr === attr);
 }
+
+/** Cuánta de la confianza en «está en tal lugar» se pierde al buscar ahí y no encontrarlo. */
+export const ABSENCE_WEIGHT = 0.6;
+
+/**
+ * Buscó a `subject` en `at` y no lo encontró (information §1, evidencia negativa): si creía que
+ * estaba en ese hex, la creencia pierde confianza (`ABSENCE_WEIGHT`) y pasa a ser saliente; no se
+ * inventa un lugar nuevo, porque no sabe dónde está. Si creía otra cosa, no cambia nada. Puro.
+ */
+export function doubtAt(
+  before: Beliefs | undefined,
+  subject: AgentId,
+  at: Location,
+  now: Tick,
+  source: BeliefSource,
+): Beliefs | undefined {
+  const prev = believed(before, subject, "at");
+  if (!before || !prev || typeof prev.value === "boolean" || typeof prev.value === "string") {
+    return before;
+  }
+  if (prev.value.hex !== at.hex) return before;
+  const next: Belief = {
+    ...prev,
+    confidence: round(beliefConfidenceAt(prev, now) * (1 - ABSENCE_WEIGHT)),
+    measured: now,
+    salience: round(Math.max(beliefSalienceAt(prev, now), ABSENCE_WEIGHT)),
+    sources: [...prev.sources, source].slice(-MAX_SOURCES),
+  };
+  return { items: before.items.map((b) => (b === prev ? next : b)) };
+}

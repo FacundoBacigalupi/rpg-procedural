@@ -54,6 +54,26 @@ function view(mode: SpecialMode | undefined, thoughts: readonly ThoughtInput[] =
   });
 }
 
+describe("montage con lo vivido", () => {
+  const stretch = {
+    days: 9,
+    did: [{ verb: "work", times: 5, failed: 2 }],
+    spoke: 1,
+    hurt: true,
+    fought: false,
+  };
+  const base = view("montage");
+
+  it("el resumen llega al narrador solo en montage y las plantillas lo cuentan", () => {
+    const v = { ...base, stretch };
+    const text = renderView(v, book, Rng.root(7 as never).fork("narration", 0));
+    expect(text).toMatch(/trabajar/);
+    expect(text).toMatch(/lastim/);
+    expect(validateNarration(text, narrationRequest(v, style))).toEqual([]);
+    expect(base.stretch).toBeUndefined();
+  });
+});
+
 describe("modos montage, sueño y secuela", () => {
   it("el modo sale de la sim y manda sobre los pensamientos", () => {
     for (const mode of ["montage", "dream", "aftermath"] as const) {

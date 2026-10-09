@@ -113,6 +113,27 @@ export interface DueView {
 /** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
 export type SpecialMode = "montage" | "dream" | "aftermath";
 
+/**
+ * Lo que el personaje vivió en un salto de tiempo (modo `montage`, narration §1): solo cuentas de
+ * lo propio —qué hizo, cuántas veces, cuántas le salieron mal—, nada del mundo que no vio.
+ */
+export interface StretchView {
+  /** Días de mundo que pasaron. */
+  readonly days: number;
+  /** Lo que más hizo (verbo del catálogo), de más a menos veces; el resto se omite. */
+  readonly did: readonly {
+    readonly verb: string;
+    readonly times: number;
+    readonly failed: number;
+  }[];
+  /** Con cuántas personas distintas habló. */
+  readonly spoke: number;
+  /** Se lastimó en el trabajo o en una pelea. */
+  readonly hurt: boolean;
+  /** Peleó. */
+  readonly fought: boolean;
+}
+
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
 
@@ -318,6 +339,8 @@ export interface PlayerView {
   readonly dues: readonly DueView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
   readonly mode?: SpecialMode;
+  /** Con el modo `montage`: lo que vivió en el salto. */
+  readonly stretch?: StretchView;
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -349,6 +372,7 @@ export interface ViewInput {
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
   readonly mode?: SpecialMode;
+  readonly stretch?: StretchView;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
   /**
@@ -517,6 +541,9 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
     dues: (input.dues ?? []).map((d) => ({ ...d })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
+    ...(input.mode === "montage" && input.stretch !== undefined
+      ? { stretch: { ...input.stretch, did: input.stretch.did.map((d) => ({ ...d })) } }
+      : {}),
     labels,
     lexicon: [...words].sort(compareStrings),
   };

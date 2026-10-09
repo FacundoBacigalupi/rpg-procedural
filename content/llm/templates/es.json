@@ -514,6 +514,19 @@
       "Los días se suceden sin que te des cuenta."
     ]
   },
+  { "id": "stretch.did.work", "lines": ["Casi todo ese tiempo se te va en trabajar."] },
+  { "id": "stretch.did.gather", "lines": ["Esos días los pasás juntando lo que da el campo."] },
+  { "id": "stretch.did.tend", "lines": ["Esos días los pasás atendiendo lo tuyo."] },
+  { "id": "stretch.did.cook", "lines": ["Entre una cosa y otra cocinás lo de siempre."] },
+  { "id": "stretch.did.trade", "lines": ["Vas y venís con tus tratos."] },
+  { "id": "stretch.did.move", "lines": ["Pasás buena parte del tiempo yendo de un lado a otro."] },
+  { "id": "stretch.did.rest", "lines": ["Dejás que el cuerpo descanse."] },
+  { "id": "stretch.did.search", "lines": ["Pasás esos días buscando."] },
+  { "id": "stretch.did.consult", "lines": ["Preguntás y escuchás lo que te dicen."] },
+  { "id": "stretch.failed", "lines": ["No todo te sale bien."] },
+  { "id": "stretch.spoke", "lines": ["Hablás con gente por el camino."] },
+  { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
+  { "id": "stretch.fought", "lines": ["Hay una pelea en el medio."] },
   {
     "id": "mode.aftermath",
     "lines": ["Después, el silencio.", "Cuando todo termina, queda el cuerpo y la quietud."]
