@@ -142,6 +142,7 @@ export function lifeWorld(
           seed: parts.seed,
           statuses: parts.statuses,
           cultureTraits: parts.cultureTraits,
+          relations: { dims: parts.relationDims, bonds: parts.relationBonds },
         }),
         deedsProcess({
           map: parts.map,
