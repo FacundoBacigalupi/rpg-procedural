@@ -18,6 +18,7 @@ import {
   LOCATION,
   type LocalMap,
   learn,
+  MENTAL,
   type Observer,
   PERSON,
   type ProcessDef,
@@ -32,6 +33,7 @@ import {
   sensorAcuity,
   setComponent,
   skyLight,
+  vigilantAttention,
 } from "../../sim/index.ts";
 import { playerObserver } from "./witness.ts";
 
@@ -69,6 +71,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       BODY_STATE.name,
       RELATIONS.name,
       BELIEFS.name,
+      MENTAL.name,
     ],
     writes: [BELIEFS.name],
     run(ctx) {
@@ -113,7 +116,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
             if (id === o.player) {
               const mine = playerObserver(
                 { truth, player: o.player, clock: o.clock },
-                ATTENTION.relaxed,
+                vigilantAttention(ATTENTION.relaxed, truth.get(MENTAL, id)),
                 ctx.now,
               );
               observers.push({
@@ -147,7 +150,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
               id,
               at: there,
               acuity: sensorAcuity((ctx.now - p.born) / o.clock.year),
-              attention,
+              attention: vigilantAttention(attention, truth.get(MENTAL, id)),
               familiar: new Map([[subject, Math.max(KNOWN_VILLAGER, familiarity)]]),
             });
           }
