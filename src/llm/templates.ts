@@ -172,6 +172,8 @@ export function renderView(
     say(`taste.${t.stance}`, { what: t.name });
     if (t.reminds !== undefined && (t.stance === "loves" || t.stance === "likes")) {
       say("taste.reminds_of", { what: t.name, who: t.reminds });
+    } else if (t.recalls !== undefined) {
+      say(`taste.recalls_${t.recalls}`, { what: t.name });
     }
   }
   for (const d of view.dues) {

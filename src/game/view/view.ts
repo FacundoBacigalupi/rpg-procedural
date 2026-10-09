@@ -95,6 +95,8 @@ export interface TasteView {
   readonly stance: TasteStance;
   /** A quién le recuerda («tu madre»), si el gusto viene de alguien que conoce. */
   readonly reminds?: string;
+  /** Si nació de algo que recuerda: `ill` (le cayó mal) o `good` (un buen momento). */
+  readonly recalls?: "ill" | "good";
 }
 /**
  * Una deuda o promesa del libro del personaje que vale la pena recordar ahora (contracts §14): solo

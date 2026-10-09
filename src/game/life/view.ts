@@ -3,7 +3,14 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { type AgentId, type EntityRef, ledgerUnit, Rng, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  type EventId,
+  ledgerUnit,
+  Rng,
+  type Tick,
+} from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -19,6 +26,8 @@ import {
   LOCATION,
   type Location,
   localHour,
+  MEMORIES,
+  type Memory,
   mentionableTastes,
   PERSON,
   type Percept,
@@ -192,7 +201,36 @@ export function tastesForView(
   // Si el gusto viene de alguien que conoce, lo cita como lo llama (nombre o «tu madre»).
   const who = first.about === undefined ? undefined : acquaintances(w).get(first.about);
   const reminds = who ? (who.name ?? `tu ${who.relation}`) : undefined;
-  return [{ name: first.name, stance: first.stance, ...(reminds ? { reminds } : {}) }];
+  const recalls = tasteRecall(
+    w.truth.get(MEMORIES, w.player)?.items ?? [],
+    food.find((p) => p.item === first.item)?.originEventIds ?? [],
+  );
+  return [
+    {
+      name: first.name,
+      stance: first.stance,
+      ...(reminds ? { reminds } : {}),
+      ...(recalls ? { recalls } : {}),
+    },
+  ];
+}
+
+/** Desde cuánto pesa una memoria (valencia) para que el gusto se cuente atado a ella. */
+export const TASTE_RECALL_VALENCE = 0.3;
+
+/**
+ * Si el gusto nació de un evento que el personaje todavía recuerda (la intoxicación, el festín),
+ * cómo lo recuerda: mal o bien, según la valencia de su memoria. Sin esa memoria, nada.
+ */
+export function tasteRecall(
+  items: readonly Pick<Memory, "eventId" | "valence" | "intensity">[],
+  origins: readonly EventId[],
+): "ill" | "good" | undefined {
+  if (origins.length === 0) return undefined;
+  const mine = items
+    .filter((m) => origins.includes(m.eventId) && Math.abs(m.valence) >= TASTE_RECALL_VALENCE)
+    .sort((a, b) => b.intensity - a.intensity)[0];
+  return mine === undefined ? undefined : mine.valence < 0 ? "ill" : "good";
 }
 
 /** Cuántas veces de cada tantas el personaje se acuerda de una deuda a la vista (no en cada turno). */

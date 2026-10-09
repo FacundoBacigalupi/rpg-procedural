@@ -170,6 +170,9 @@ const WORLD_FAMILY = "xianxia";
 /** La clave de `meta` donde se guarda la memoria de continuidad de la narración. */
 const MEMORY_META = "narration_memory";
 
+/** La clave de `meta` con la postura de contenerse (skills §9), fuera del hash y del replay. */
+const HOLD_STANCE_META = "hold_stance";
+
 /** Desde qué peso un aviso de factibilidad frena el primer intento (los menores se callan). */
 const WARN_WEIGHT = 0.5;
 
@@ -186,8 +189,9 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
   const recent: string[] = [];
   // «Me contengo» suelto (skills §9): mientras esté puesto, los planes que golpean van en modo
-  // `hold_back`. Es de la sesión (se manda en el borrador, así el replay lo ve igual).
-  let holdStance = false;
+  // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
+  // del hash, para retomarla con la misma postura.
+  let holdStance = store.getMeta(HOLD_STANCE_META) === true;
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
   // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
@@ -380,16 +384,21 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       const text = draft.text ?? "";
       if (text === "contenerse") {
         holdStance = true;
+        store.setMeta(HOLD_STANCE_META, true);
         return {
           text: "Vas a pelear conteniéndote, sin mostrar todo tu nivel, hasta que lo sueltes.",
         };
       }
       if (text === "no contenerse") {
         holdStance = false;
+        store.setMeta(HOLD_STANCE_META, false);
         return { text: "Vas a pelear con todo lo que tenés." };
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
-      if (/^personaje/i.test(text)) return { text: renderCharacter(characterPanel(life.world)) };
+      if (/^personaje/i.test(text)) {
+        const panel = renderCharacter(characterPanel(life.world));
+        return { text: holdStance ? `${panel}\nPeleás conteniéndote.` : panel };
+      }
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
       if (/^(?:deudas|libro)/iu.test(text)) return { text: renderBook(bookPanel(life.world)) };
       if (/^¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)/iu.test(text)) {
