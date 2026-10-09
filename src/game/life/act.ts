@@ -102,7 +102,15 @@ import {
 } from "../../sim/index.ts";
 import { listenTo, PENDING } from "./converse.ts";
 import { debtsTo } from "./credit.ts";
-import { atMyMercy, canFight, FIGHT_STATE, livePause, strikeFight } from "./fight.ts";
+import {
+  atMyMercy,
+  canFight,
+  type Exposure,
+  exposeSkills,
+  FIGHT_STATE,
+  livePause,
+  strikeFight,
+} from "./fight.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -467,6 +475,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const targetId = "target" in eff ? (eff.target as AgentId | null) : null;
   const extraEvents: EventDraft[] = [];
   let fightSeconds = 0;
+  let exposure: Exposure | undefined;
   let record: StepRecord["self"] = r.self;
   const merciful = targetId !== null && atMyMercy(truth, me, targetId, ctx.now);
   if (eff.kind === "spare" && targetId && merciful) {
@@ -524,6 +533,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       light: e.light,
       start: ctx.now,
       rng: input.rng.fork("fight"),
+      day: o.clock.day,
       cause: draftEvent(0),
       place: input.place,
       ...(me === o.player ? { control: true } : {}),
@@ -534,6 +544,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...fight.changes);
     extraEvents.push(fight.event);
     fightSeconds = fight.seconds;
+    exposure = fight.exposure;
     if (r.self.effect.kind === "strike") {
       record = { ...r.self, effect: { ...r.self.effect, fight: fight.gist } };
     }
@@ -565,7 +576,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     r.seconds,
     ctx.now,
   );
-  if (learned) changes.push(setComponent(SKILL_STATE, me, learned));
+  // Pelear le enseñó el estilo del rival (skills §2.3): se suma sobre lo aprendido del paso.
+  const lessons = exposure
+    ? exposeSkills(learned ?? skills, exposure, ctx.now + fightSeconds, o.clock.day)
+    : learned;
+  if (lessons) changes.push(setComponent(SKILL_STATE, me, lessons));
   // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
   const image = updateSelfImage(
     o.skills,
