@@ -965,6 +965,26 @@
     }
   },
   {
+    "id": "consult-diviner",
+    "text": "le pago dos monedas a la adivina y le pregunto por mi hijo",
+    "scene": "Estás en la plaza. Una adivina arroja huesos sobre un paño.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "consult",
+        "args": [
+          {
+            "role": "with",
+            "ref": { "text": "la adivina", "kind": "person", "features": ["adivina"] }
+          },
+          { "role": "about", "text": "mi hijo" },
+          { "role": "offer", "text": "dos monedas" }
+        ]
+      }
+    }
+  },
+  {
     "id": "shot-rest-dawn",
     "shot": true,
     "text": "descanso hasta que salga el sol",

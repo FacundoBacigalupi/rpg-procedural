@@ -92,6 +92,10 @@
   },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
+  {
+    "id": "percept.action.consult",
+    "lines": ["{who} le paga a alguien para que le lea la suerte.", "Ves a {who} consultando."]
+  },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
   { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
 

@@ -565,6 +565,7 @@
       "skill": [{ "trait": "sociability", "weight": 0.4 }, { "trait": "curiosity", "weight": 0.2 }]
     },
     "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
       { "id": "hesitate", "factor": "nerve" },
       { "id": "not_here", "factor": "position" },
       { "id": "no_means", "factor": "means" },
