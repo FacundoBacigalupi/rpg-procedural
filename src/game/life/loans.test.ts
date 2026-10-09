@@ -8,7 +8,15 @@ import {
   ledgerUnit,
   makeId,
 } from "../../core/index.ts";
-import { ENTITY, type GoodDef, PERSON, type ProcessContext, WorldTruth } from "../../sim/index.ts";
+import {
+  ENTITY,
+  type GoodDef,
+  PARCEL,
+  type Parcel,
+  PERSON,
+  type ProcessContext,
+  WorldTruth,
+} from "../../sim/index.ts";
 import { LOANS, type LoanSeed, loansOf, loansProcess } from "./loans.ts";
 
 const goods = [
@@ -87,5 +95,43 @@ describe("life.loans", () => {
     // Segunda corrida el mismo día: la semilla ya es préstamo y la cuota se paga.
     const again = make([seed]).run(ctxOf(truth, ledger, 2));
     expect(again.events?.map((e) => e.kind)).toEqual(["credit.paid"]);
+  });
+
+  it("la mora ejecuta la prenda: la tierra cambia de casa y nace law.default", () => {
+    const { truth, ledger } = setup();
+    const right = (holder: string) => ({
+      holder,
+      incidents: ["alienate"],
+      tenure: "owned",
+      basis: "custom",
+      record: { kind: "custom", witnesses: [], event: makeId("event", 1) },
+    });
+    truth.set(
+      PARCEL,
+      "parcel:1" as never,
+      {
+        rights: [right("poor")],
+        possession: "poor",
+      } as unknown as Parcel,
+    );
+    const s: LoanSeed = {
+      ...seed,
+      guarantors: [],
+      collateral: [{ ref: "parcel:1", believedValue: 100, trueValue: 100, heldBy: "poor" }],
+    };
+    const opened = make([s]).run(ctxOf(truth, ledger, 1));
+    for (const p of opened.postings ?? [])
+      ledger.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+    for (const c of opened.changes ?? []) {
+      const ch = c as { table?: string; id?: string; value?: unknown };
+      if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+    }
+    const r = make([s]).run(ctxOf(truth, ledger, 11));
+    expect(r.events?.map((e) => e.kind)).toEqual(["credit.defaulted", "law.default"]);
+    const ch = (r.changes ?? []).find((c) => (c as { table?: string }).table === PARCEL.name) as
+      | { value: Parcel }
+      | undefined;
+    expect(ch?.value.rights[0]?.holder).toBe("rich");
+    expect(ch?.value.possession).toBe("rich");
   });
 });
