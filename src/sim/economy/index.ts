@@ -1,6 +1,7 @@
 export * from "./budget.ts";
 export * from "./goods.ts";
 export * from "./harvest.ts";
+export * from "./market.ts";
 export * from "./parcel.ts";
 export * from "./parcelField.ts";
 export * from "./price.ts";
