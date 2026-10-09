@@ -54,7 +54,7 @@ export interface KnowingOptions {
 }
 
 /** Piso de lo conocido: un vecino reconoce al personaje aunque casi no hayan hablado. */
-const KNOWN_VILLAGER = 0.6;
+export const KNOWN_VILLAGER = 0.6;
 /** Cada cuántas horas los vecinos se miran entre sí (el costo crece con el cuadrado de la gente). */
 const NPC_PASS_HOURS = 12;
 

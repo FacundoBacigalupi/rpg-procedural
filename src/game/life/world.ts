@@ -61,6 +61,7 @@ import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
+import { lookingProcess } from "./looking.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
@@ -333,6 +334,14 @@ export function lifeWorld(
           statuses: parts.statuses,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
+        }),
+        lookingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
         }),
         standingProcess({
           player,
