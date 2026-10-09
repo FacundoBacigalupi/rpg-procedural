@@ -1,7 +1,7 @@
 // Suelo por parcela (planet-gen §9, nivel 1): nutrientes abstractos que se mueven (suelo -> cosecha ->
 // quien la come -> campo o río), agotamiento por cultivo, barbecho, abono, rotación con leguminosas y
 // la degradación lenta (erosión, sal, compactación). Puro: recibe estado y días, devuelve estado nuevo.
-// Todavía no está conectado a la vida (el suelo único de `soil.ts` sigue alimentando la presión de hambre).
+// La aldea lo usa agregado en `parcelField.ts` (el proceso diario de suelo); falta una parcela por campo real.
 
 import { pow } from "../../core/index.ts";
 

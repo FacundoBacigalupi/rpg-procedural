@@ -241,7 +241,7 @@ export function lifeWorld(
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),
-        soilProcess({ clock: parts.clock }),
+        soilProcess({ clock: parts.clock, map: parts.map, seed: parts.seed }),
         upbringingProcess({
           clock: parts.clock,
           bodyPlans: parts.plans,

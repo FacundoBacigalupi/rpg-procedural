@@ -58,6 +58,7 @@ import {
   LOCATION,
   type LocalMap,
   MATERIALS,
+  PARCEL_SOIL,
   PERSON,
   type Person,
   PLACE,
@@ -98,6 +99,7 @@ import {
   seedVillage,
   settlementSpaces,
   settlementUnits,
+  startingParcel,
   TABOOS,
   TASTES,
   type TasteDef,
@@ -404,6 +406,7 @@ export function createLife(
   const settlement = pop.settlement as SettlementId;
   truth.set(PLACE, settlement, { kind: "village", hexes: [site.hex] });
   truth.set(SOIL, settlement, { fertility: SOIL_START, seen: 0 });
+  truth.set(PARCEL_SOIL, settlement, { soil: startingParcel(SOIL_START), seen: 0 });
   let place = 0;
   const named: PlaceToName[] = [];
   for (const a of site.anchors) {
