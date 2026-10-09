@@ -286,6 +286,11 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 - `spaces.ts`: `settlementSpaces` deriva el grafo de los edificios vivos (plaza + cuartos; la puerta a la plaza es el vano de las casas o la puerta cerrada del granero). Sin edificios guardados cae a `villageSpaces`, así los guardados anteriores siguen andando.
 - Decisiones: los edificios están todos desde el principio (los hogares que llegaron antes tienen casa más vieja); la condición de cada componente es `exp(-desgaste × años desde la última reparación)` con la última reparación sorteada dentro del ciclo del tipo; el 20 % de los componentes trae un defecto oculto que ningún sistema lee todavía.
 
+**Fase 3 (parcial): deterioro y mantenimiento** — `sim/settlements/upkeep.ts` (puro) y `game/life/upkeep.ts` (proceso diario `life.upkeep`).
+- El desgaste diario es la curva del material por año × un multiplicador de lluvia, helada, viento, uso y defectos ocultos (los defectos ahora cuentan). Cada parte tiene su umbral de arreglo (techo 0.6, puerta 0.5, paredes 0.45, cimiento 0.35).
+- Repara el hogar mantenedor si tiene un adulto vivo (14 años o más), con chance diaria; la parte cambiada depende de lo gastado y de la calidad del componente. El material entra del externo `gathered` y lo cambiado sale al externo `debris`; la reparación es un evento `settlement.repaired` causado por la anterior.
+- La puerta tiene `doorState` (`open`/`closed`/`jammed`): gastada y con humedad se traba (barrera `door_closed`), arreglada vuelve a su reposo (casas abiertas, lo comunal cerrado).
+
 ## Tests
 
 - **Anclas:** ningún asentamiento sin al menos un ancla con causa; si se pierden todas, el asentamiento decae.

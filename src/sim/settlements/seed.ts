@@ -64,6 +64,10 @@ export function materialUnit(id: string): LedgerUnit {
 
 /** La fuente externa de la que sale lo que ya existe al empezar. */
 export const SEED_SOURCE = "seed";
+/** De donde sale el material de las reparaciones (el monte, el campo, el suelo del lugar). */
+export const GATHERED_SOURCE = "gathered";
+/** A donde va lo cambiado al reparar (la paja podrida, la viga vieja). */
+export const DEBRIS_SINK = "debris";
 
 export interface SettlementContent {
   readonly materials: readonly MaterialDef[];

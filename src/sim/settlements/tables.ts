@@ -52,6 +52,10 @@ export interface BuildingRecord {
   readonly graph: BuildingGraph;
   readonly components: readonly BuildingComponent[];
   readonly builtBy: EventId;
+  /** El estado de la puerta (sin él, el de reposo del tipo: guardados de antes del mantenimiento). */
+  readonly doorState?: "open" | "closed" | "jammed";
+  /** El último arreglo: de dónde sale el origen que cita el próximo evento de reparación. */
+  readonly lastRepair?: EventId;
 }
 
 export interface WorkRecord {

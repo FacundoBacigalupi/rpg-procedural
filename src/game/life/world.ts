@@ -25,6 +25,7 @@ import {
   type LineageDef,
   LOCATION,
   type LocalMap,
+  type MaterialDef,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -77,6 +78,7 @@ import { standingProcess } from "./standing.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
+import { upkeepProcess } from "./upkeep.ts";
 import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
@@ -97,6 +99,8 @@ export interface LifeWorld {
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
+  /** Los materiales de los edificios (settlements §5): sin ellos no corre el mantenimiento. */
+  readonly materials?: readonly MaterialDef[];
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
@@ -273,6 +277,12 @@ export function lifeWorld(
           seed: parts.seed,
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
+        }),
+        upkeepProcess({
+          clock: parts.clock,
+          map: parts.map,
+          seed: parts.seed,
+          materials: parts.materials ?? [],
         }),
         upbringingProcess({
           clock: parts.clock,
