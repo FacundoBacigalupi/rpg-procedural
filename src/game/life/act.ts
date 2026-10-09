@@ -111,6 +111,7 @@ import {
   livePause,
   strikeFight,
 } from "./fight.ts";
+import { watchersLearn } from "./watching.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -581,6 +582,27 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ? exposeSkills(learned ?? skills, exposure, ctx.now + fightSeconds, o.clock.day)
     : learned;
   if (lessons) changes.push(setComponent(SKILL_STATE, me, lessons));
+  // Los presentes que lo vieron aprenden mirando (skills §3.2).
+  if (r.attempt.expected !== null) {
+    changes.push(
+      ...watchersLearn({
+        truth,
+        catalog: o.skills,
+        traits: o.traits,
+        plans: e.plans,
+        clock: o.clock,
+        doer: me,
+        verb: node.verb,
+        doerLevel: input.actor.skill ?? 0,
+        // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
+        except: targetId,
+        hex: e.hex,
+        light: e.light,
+        seconds: r.seconds,
+        now: ctx.now,
+      }),
+    );
+  }
   // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
   const image = updateSelfImage(
     o.skills,
