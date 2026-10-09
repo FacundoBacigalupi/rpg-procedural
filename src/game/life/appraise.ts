@@ -20,6 +20,7 @@ import {
   appraiseRearing,
   BODY_STATE,
   type BondDef,
+  bornSecret,
   contactGain,
   type Deltas,
   type DimensionDef,
@@ -59,6 +60,8 @@ import {
   rememberOwn,
   repaidDeltas,
   type SchemaDef,
+  SECRETS,
+  type Secrets,
   type StageDef,
   type StateChange,
   setComponent,
@@ -68,6 +71,7 @@ import {
   type Trait,
   tendDeltas,
   tradeDeltas,
+  weaken,
 } from "../../sim/index.ts";
 
 import { conscienceOf, ownDeedOf } from "./conscience.ts";
@@ -116,8 +120,17 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       MENTAL.name,
       BODY_STATE.name,
       OWN_DEEDS.name,
+      SECRETS.name,
     ],
-    writes: [MIND.name, HABITS.name, RELATIONS.name, MEMORIES.name, MENTAL.name, OWN_DEEDS.name],
+    writes: [
+      MIND.name,
+      HABITS.name,
+      RELATIONS.name,
+      MEMORIES.name,
+      MENTAL.name,
+      OWN_DEEDS.name,
+      SECRETS.name,
+    ],
     run(ctx) {
       const truth = ctx.truth;
       const minds = new Map<AgentId, Mind>();
@@ -168,6 +181,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         mems.set(l.who, addMemory(mems.get(l.who) ?? truth.get(MEMORIES, l.who), m, m.at));
       };
       const owns = new Map<AgentId, OwnDeeds>();
+      const secrets = new Map<AgentId, Secrets>();
       for (const e of ctx.recent) {
         for (const l of livedFrom(e)) note(l);
         // Quien hizo algo lo sabe, lo haya visto alguien o no: lo anota y lo carga (law §15).
@@ -176,7 +190,23 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           const { by, deed, fatal } = own;
           owns.set(by, rememberOwn(owns.get(by) ?? truth.get(OWN_DEEDS, by), deed));
           // Una muerte la carga `killAppraisals` (culpa y trauma); el resto, acá con `guiltOf`.
-          const guilt = guiltOf(deed, conscienceOf(truth, o, by, deed, e.tick), e.tick);
+          const conscience = conscienceOf(truth, o, by, deed, e.tick, NEW_DEED_FEAR);
+          // Haber matado se guarda como secreto: nadie sabe todavía y el miedo a que se sepa lo sostiene.
+          if (fatal) {
+            secrets.set(
+              by,
+              bornSecret(secrets.get(by) ?? truth.get(SECRETS, by), {
+                about: deed.victim,
+                attr: "alive",
+                harm: deed.harm,
+                moralWeight: conscience.moralWeight,
+                fearOfExposure: conscience.fearOfExposure,
+                at: e.tick,
+                cause: e.id,
+              }),
+            );
+          }
+          const guilt = guiltOf(deed, conscience, e.tick);
           if (!fatal && guilt > 0) {
             apply(by, e, appraiseGuilt(guilt));
             const mental = mentals.get(by) ?? truth.get(MENTAL, by) ?? emptyMental(e.id, e.tick);
@@ -203,7 +233,25 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             if (def.stimulus) apply(doer, e, [{ stimulus: def.stimulus, blame: null }]);
           }
         }
-        if (e.kind === "action.speak") talked(e, truth, rel, move);
+        if (e.kind === "action.speak") {
+          talked(e, truth, rel, move);
+          const lie = lieTold(e);
+          if (lie && alive(truth, lie.liar) && truth.get(PERSON, lie.liar)) {
+            const lying = habitsFed(o.habits, LIE_HABIT_KIND);
+            const cur = habits.get(lie.liar) ?? truth.get(HABITS, lie.liar);
+            if (lie.caught) {
+              // Descubierto: el hábito se enfría de golpe y queda el fracaso (dialogue §4).
+              habits.set(lie.liar, weaken(cur, lying, e.tick, LIE_CAUGHT_KEEP));
+              apply(lie.liar, e, [{ stimulus: LIE_CAUGHT_STIMULUS, blame: null }]);
+            } else if (lying.length > 0) {
+              const r = reinforceAll(cur, lying, e.tick, e.id);
+              habits.set(lie.liar, r.habits);
+              for (const def of r.settled) {
+                if (def.stimulus) apply(lie.liar, e, [{ stimulus: def.stimulus, blame: null }]);
+              }
+            }
+          }
+        }
         const lent = lentIn(e);
         if (lent) {
           move(lent.creditor, lent.debtor, e, lendDeltas("lender"));
@@ -287,6 +335,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...mems].map(([id, m]) => setComponent(MEMORIES, id, m)),
         ...[...mentals].map(([id, m]) => setComponent(MENTAL, id, m)),
         ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
+        ...[...secrets].map(([id, s]) => setComponent(SECRETS, id, s)),
       ];
       return changes.length === 0 ? {} : { changes };
     },
@@ -340,6 +389,34 @@ function fightAppraisals(
         : fightDeltas(facts, mind, innate),
     );
   }
+}
+
+/** El hábito de mentir se alimenta de este tipo sintético (`content/habits`, campo `kinds`). */
+export const LIE_HABIT_KIND = "speak.lie";
+/** Lo que queda del hábito al ser descubierto, y el fracaso que deja (sin calibrar). */
+const LIE_CAUGHT_KEEP = 0.5;
+/** Miedo a que se sepa de lo que acaba de hacer (nadie lo sabe todavía; sin calibrar). */
+const NEW_DEED_FEAR = 0.6;
+const LIE_CAUGHT_STIMULUS = { theme: "failure", intensity: 0.3 } as const;
+
+/**
+ * Una mentira que el oyente juzgó (dialogue §4): `judged.certain` dice si el veredicto acertó, así
+ * que quien habló mintió si lo descubrieron con acierto (`caught`) o si lo creyeron pese a no
+ * ser cierto (la mentira rinde). Una mentira apenas dudada no mueve el hábito, ni la acusación
+ * equivocada a quien decía la verdad.
+ */
+export function lieTold(e: Event): { liar: AgentId; caught: boolean } | null {
+  const liar = e.actors[1] as AgentId | undefined;
+  const eff = (
+    e.data as {
+      effect?: { kind?: string; judged?: { verdict?: string; certain?: boolean } };
+    } | null
+  )?.effect;
+  if (!liar || eff?.kind !== "speak" || !eff.judged) return null;
+  const { verdict, certain } = eff.judged;
+  if (verdict === "caught" && certain === true) return { liar, caught: true };
+  if (verdict === "believed" && certain === false) return { liar, caught: false };
+  return null;
 }
 
 /** Una charla entregada: ambos se conocen un poco más, cada quien según lo que ya se conocía. */

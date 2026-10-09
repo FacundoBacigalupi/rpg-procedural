@@ -77,6 +77,7 @@ import {
   looseCounter,
   MEMORIES,
   MIND,
+  memoriesAbout,
   normalize,
   type Offense,
   OWN_DEEDS,
@@ -113,12 +114,14 @@ import {
   sincerityOf,
   speechForm,
   spokenTaboos,
+  stakesAt,
   stanceOf,
   standardize,
   type TabooDef,
   type Trait,
   table,
   threatCredibility,
+  threatFaceDelta,
   transmit,
   understand,
   utter,
@@ -126,6 +129,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
+import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
 
@@ -531,7 +535,7 @@ function detectionOf(
  */
 function regardOf(
   truth: ReadonlyWorldTruth,
-  ctx: { me: AgentId; speaker: AgentId },
+  ctx: { me: AgentId; speaker: AgentId; now: Tick; dealWith: AgentId | undefined },
   feel: { fear: number; respect: number; trust: number; familiarity: number },
   recollection: { bias: number },
   reproach: boolean,
@@ -539,6 +543,11 @@ function regardOf(
   gap: number,
 ): NonNullable<Parameters<typeof decideReply>[0]["regard"]> {
   const { me, speaker } = ctx;
+  const mind = truth.get(MIND, me);
+  // Los halagos de este mismo que recuerda (el desgaste) y si cree que quiere algo (un trato abierto).
+  const flatteries = memoriesAbout(truth.get(MEMORIES, me), speaker, ctx.now).filter(
+    (s) => s.memory.perceived.kind === FLATTERY_MEMORY_KIND,
+  ).length;
   const present = truth
     .ids(PERSON)
     .map((id) => id as AgentId)
@@ -568,12 +577,18 @@ function regardOf(
     },
     vindictiveness: unit(0.5 + 0.25 * touchy - 0.15 * clampTemper(z["warmth"] ?? 0)),
     flattery: {
-      vanity: unit(0.45 + 0.2 * clampTemper(z["sociability"] ?? 0)),
+      // Vanidad: sociabilidad más lo que su mente cree de sí (vale por su fuerza, o se siente indigno y busca aprobación).
+      vanity: unit(
+        0.45 +
+          0.2 * clampTemper(z["sociability"] ?? 0) +
+          VANITY_SCHEMA * (mind?.schemas["strength_is_worth"]?.strength ?? 0) +
+          VANITY_SCHEMA * (mind?.schemas["i_am_unworthy"]?.strength ?? 0),
+      ),
       excess: 0,
       insight: unit(0.5 + 0.5 * clampTemper(z["perception"] ?? 0)),
       trust: unit(feel.trust),
-      motiveKnown: false,
-      recent: 0,
+      motiveKnown: ctx.dealWith === speaker,
+      recent: flatteries,
     },
     insult: { sting: 0, truth: INSULT_TRUTH_GUESS, gap, witnesses },
   };
@@ -681,7 +696,7 @@ function keepOf(
   const side = (x: number) => Math.min(1, Math.max(-1, x));
   return {
     state: {
-      stakes: unit(secret.stakes),
+      stakes: unit(stakesAt(secret, now)),
       discipline: unit(0.5 + 0.5 * clampTemper(z["control"] ?? 0)),
       arousal: unit(KEEP_AROUSAL * Math.max(0, clampTemper(z["reactivity"] ?? 0))),
       intoxication: 0,
@@ -711,12 +726,18 @@ const THREAT_HELP_BASE = 0.2;
 const THREAT_HELP_EACH = 0.2;
 const THREAT_RECOURSE = 0.2;
 const INSULT_TRUTH_GUESS = 0.2;
+const THREAT_FACE_SEVERITY = 0.5;
+/** Cuánto suma a la vanidad la fuerza de un esquema de valía (sin calibrar). */
+const VANITY_SCHEMA = 0.2;
 
 /**
  * Lo que la amenaza, el halago o el insulto dejan en lo que el oyente siente por quien habló
  * (dialogue §9, §10): deltas de la relación y, en el inspector, qué hizo y cuánta cara se jugó.
  */
-function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | undefined {
+function regardEffect(
+  reply: ReturnType<typeof decideReply>,
+  witnesses: number,
+): RegardEffect | undefined {
   if (reply.threat) {
     const { verdict, aftermath } = reply.threat;
     return {
@@ -729,6 +750,11 @@ function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | und
         resentment: aftermath.resentmentDelta,
         trust: aftermath.trustDelta,
       },
+      // Quien amenaza gana poco de cara si cedieron (threatFaceDelta «obeyed»).
+      faceGain:
+        verdict.response === "yield"
+          ? threatFaceDelta("obeyed", witnesses, THREAT_FACE_SEVERITY)
+          : 0,
     };
   }
   if (reply.flattery) {
@@ -793,6 +819,8 @@ export interface RegardEffect {
   readonly faceLoss: number;
   readonly vengeful: boolean;
   readonly deltas: Readonly<Record<string, number>>;
+  /** Cara que gana quien habló (amenaza obedecida); no está si no aplica. */
+  readonly faceGain?: number;
 }
 
 /** Constantes sin calibrar de una profecía que quien habla se inventa o no sabe de dónde salió. */
@@ -1005,7 +1033,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             ? {
                 regard: regardOf(
                   truth,
-                  { me, speaker },
+                  { me, speaker, now: ctx.now, dealWith: stored?.with },
                   feel,
                   recollection,
                   worstDeed(truth.get(KNOWN_DEEDS, me), speaker) !== undefined,
@@ -1120,7 +1148,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(setComponent(KNOWN_DEEDS, me, learnDeed(truth.get(KNOWN_DEEDS, me), learned)));
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
-      const regard = regardEffect(reply);
+      const regard = regardEffect(reply, witnessesOf(truth, me, speaker));
       // La forma: lo dicho con su registro y tratamiento; la falta le cuesta cara al ofendido (FACE).
       const judged = reply.form;
       const formEffect =
@@ -1145,11 +1173,13 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   : {},
             }
           : undefined;
-      if (judged && judged.faceLoss > 0) {
-        changes.push(
-          setComponent(FACE, me, adjustFace(truth.get(FACE, me), -judged.faceLoss, ctx.now)),
-        );
+      // La cara de quien oye: la falta de forma y la amenaza o el insulto que lo dejó mal parado.
+      const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0);
+      if (lostFace > 0) {
+        changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
       }
+      // La de quien habló: sube si le cedieron; la vergüenza de la ofensa de forma baja abajo.
+      let speakerFace = regard?.faceGain ?? 0;
       // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
       // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
       // cometió pierde cara si se la reprochan.
@@ -1169,9 +1199,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           const shame =
             (response === "punish" ? OFFENDER_SHAME_PUNISHED : OFFENDER_SHAME_REBUKED) *
             judged.faceLoss;
-          changes.push(
-            setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), -shame, ctx.now)),
-          );
+          speakerFace -= shame;
         }
         offenseEvent = {
           kind: "social.offense",
@@ -1188,6 +1216,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           emissions: {},
           causes: [{ kind: "event", event: draftEvent(0) }],
         };
+      }
+      if (speakerFace !== 0) {
+        changes.push(
+          setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), speakerFace, ctx.now)),
+        );
       }
       // La pregunta por un hecho (law §5): quien pregunta lo hace por uno que conoce y el testigo
       // contesta en `life.testify` (causa: este acto de habla).

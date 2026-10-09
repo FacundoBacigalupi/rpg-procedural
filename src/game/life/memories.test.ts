@@ -25,7 +25,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { livedFrom } from "./memories.ts";
+import { FLATTERY_MEMORY_KIND, livedFrom } from "./memories.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -225,6 +225,42 @@ describe("qué vive cada quien de un evento", () => {
     expect(big[0]?.experience.valence).toBeLessThan(small[0]?.experience.valence ?? -1);
     expect(big[0]?.experience.intensity).toBeGreaterThan(small[0]?.experience.intensity ?? 1);
     expect(livedFrom(speak(0))).toEqual([]);
+  });
+
+  it("una amenaza queda en ambos: vívida en el amenazado, tenue en quien amenazó", () => {
+    const speak = (faceLoss: number) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: {
+          effect: { kind: "speak", regard: { kind: "threat", faceLoss, deltas: { fear: 0.2 } } },
+        },
+      }) as unknown as Event;
+    const lived = livedFrom(speak(0.7));
+    expect(lived.map((l) => l.who)).toEqual([A, B]);
+    const [victim, threatener] = [lived[0]?.experience, lived[1]?.experience];
+    expect(victim?.intensity).toBeGreaterThan(threatener?.intensity ?? 1);
+    expect(victim?.valence).toBeLessThan(threatener?.valence ?? -1);
+  });
+
+  it("un halago recibido queda en el oyente con su tipo propio y más amargo si era hueco", () => {
+    const speak = (response: string) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: { effect: { kind: "speak", regard: { kind: "flattery", response } } },
+      }) as unknown as Event;
+    const pleased = livedFrom(speak("pleased"));
+    const hollow = livedFrom(speak("hollow"));
+    expect(pleased.map((l) => l.who)).toEqual([A]);
+    expect(pleased[0]?.experience.kind).toBe(FLATTERY_MEMORY_KIND);
+    expect(hollow[0]?.experience.valence).toBeLessThan(pleased[0]?.experience.valence ?? -1);
   });
 
   it("un evento sin memoria no deja nada", () => {
