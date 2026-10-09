@@ -548,9 +548,29 @@ function decideBody(i: ReplyInput, at: number): Reply {
     case "threaten": {
       const input = i.regard?.threat;
       if (!input) return say("other");
-      const verdict = weighThreat({ ...input, harm: a.harm }, i.rng.fork("threat"));
-      const aftermath = threatAftermath(verdict, input, i.regard?.vindictiveness ?? 0);
-      return { ...say(`threat.${verdict.response}`), threat: { verdict, aftermath } };
+      // El costo real de la exigencia: cuánto de lo que tiene le piden (lo poco que le sobra pesa más).
+      const demand = a.demand;
+      const heldDemand = demand === undefined ? 0 : i.held(demand);
+      const demandCost =
+        demand === undefined
+          ? input.demandCost
+          : Math.min(1, Math.max(input.demandCost, GIFT_GRAMS / Math.max(GIFT_GRAMS, heldDemand)));
+      const weighed = { ...input, harm: a.harm, demandCost };
+      const verdict = weighThreat(weighed, i.rng.fork("threat"));
+      const aftermath = threatAftermath(verdict, weighed, i.regard?.vindictiveness ?? 0);
+      const threat = { verdict, aftermath };
+      if (verdict.response === "yield" && demand !== undefined) {
+        // Cede lo exigido si le sobra (la reserva de la casa no se toca); si no, no tiene con qué.
+        const what = i.goodName(demand);
+        const spare = heldDemand - i.members * RESERVE_GRAMS_PER_MEMBER;
+        if (spare < GIFT_GRAMS) return { ...say("request.short", { what }), threat };
+        return {
+          ...say("threat.yield.give", { what }),
+          give: { good: demand, grams: GIFT_GRAMS },
+          threat,
+        };
+      }
+      return { ...say(`threat.${verdict.response}`), threat };
     }
     case "flatter": {
       const input = i.regard?.flattery;

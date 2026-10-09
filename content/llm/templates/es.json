@@ -622,6 +622,47 @@
   { "id": "reading.vague", "lines": ["Son palabras que le servirían a cualquiera."] },
   { "id": "reading.doubtful", "lines": ["No sabés si creerle."] },
 
+  {
+    "id": "offense.received.rebuke",
+    "lines": [
+      "{who} te falta el respeto y vos se lo hacés notar.",
+      "{who} se pasa de la raya con vos."
+    ]
+  },
+  {
+    "id": "offense.received.punish",
+    "lines": ["{who} te faltó el respeto, y vos se lo cobrás.", "No dejás pasar lo de {who}."]
+  },
+  {
+    "id": "offense.received.ignore",
+    "lines": ["{who} no guarda las formas con vos, y lo dejás pasar."]
+  },
+  {
+    "id": "offense.caused.rebuke",
+    "lines": [
+      "{who} te reprende: no guardaste las formas.",
+      "Notás que a {who} le cayó mal tu modo."
+    ]
+  },
+  {
+    "id": "offense.caused.punish",
+    "lines": [
+      "{who} te hace pagar la falta de modales.",
+      "A {who} le sentó muy mal lo que hiciste, y te lo hace sentir."
+    ]
+  },
+  {
+    "id": "offense.caused.ignore",
+    "lines": ["A {who} se le nota el disgusto por tu modo, pero se calla."]
+  },
+  { "id": "offense.norm.village.address_formal", "lines": ["Faltó el usted que se debe."] },
+  { "id": "offense.norm.village.greet_first", "lines": ["Faltó el saludo primero."] },
+  {
+    "id": "offense.norm.village.uncover_before_landholder",
+    "lines": ["Faltó descubrirse ante el que manda."]
+  },
+  { "id": "offense.norm.impostor", "lines": ["Se hizo pasar por más de lo que es."] },
+
   { "id": "good.forage", "lines": ["hongos y hierbas"] },
   { "id": "good.gleanings", "lines": ["espigas sueltas"] },
   { "id": "good.shellfish", "lines": ["almejas"] },

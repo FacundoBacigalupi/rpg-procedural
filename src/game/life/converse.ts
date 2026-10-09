@@ -87,6 +87,7 @@ import {
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
+  type PromiseTerms,
   type Proposal,
   RELATIONS,
   RELIGIOUS_IDENTITY,
@@ -102,6 +103,7 @@ import {
   type ScheduleRequest,
   SECRETS,
   type SpaceGraph,
+  type SpeakAct,
   type SpeechAct,
   type SpeechLine,
   type SpokenForm,
@@ -147,6 +149,92 @@ export interface PendingSpeech {
   readonly style?: SpeechStyle;
   /** El acto que declaró querer hacer (su intención); no pisa lo que el oyente entiende. */
   readonly intended?: SpeechAct["kind"];
+  /** El acto declarado completo (con de qué, de quién y los términos): lo que el parser estructuró. */
+  readonly declared?: SpeakAct;
+}
+
+/** Por debajo de esta claridad el oyente no capta el detalle y el acto declarado no le llega. */
+const DECLARED_CLARITY = 0.35;
+
+/**
+ * El acto que el oyente entiende cuando quien habla lo declaró (dialogue §14): las palabras mandan,
+ * pero si no captaron nada (`other`) el oyente toma el acto declarado, y si captaron el mismo tipo
+ * pero sin detalle (de quién, qué bien, los términos de la promesa) se completa con lo declarado.
+ * Con voz turbia no llega nada de eso.
+ */
+export function withDeclared(
+  heard: SpeechAct,
+  declared: SpeakAct | undefined,
+  lex: Lexicon,
+  clarity: number,
+): SpeechAct {
+  if (!declared || clarity < DECLARED_CLARITY) return heard;
+  const goodOf = (what: string | null): string | null => {
+    if (what === null) return null;
+    const norm = normalize(what);
+    const hit = lex.goods.find((g) =>
+      g.names.some((n) => {
+        const w = normalize(n);
+        return w.length > 0 && new RegExp(`(^| )${w}( |$)`).test(norm);
+      }),
+    );
+    return hit?.id ?? null;
+  };
+  const known = (e: EntityRef | null): AgentId | null =>
+    e !== null && lex.people.some((p) => p.id === e) ? (e as AgentId) : null;
+  const form = heard.form ? { form: heard.form } : {};
+  if (heard.kind === "other") {
+    switch (declared.kind) {
+      case "greet":
+      case "farewell":
+        return { kind: declared.kind, ...form };
+      case "ask":
+        return { kind: "ask", about: known(declared.about), ...form };
+      case "request":
+        return { kind: "request", good: goodOf(declared.what), ...form };
+      case "tell": {
+        const about = known(declared.about);
+        return about ? { kind: "tell", about, claim: declared.claim, ...form } : heard;
+      }
+      case "promise": {
+        const terms = declaredTerms(declared);
+        return {
+          kind: "promise",
+          good: goodOf(declared.what),
+          grams: null,
+          ...(terms ? { terms } : {}),
+          ...form,
+        };
+      }
+    }
+  }
+  if (heard.kind === "ask" && declared.kind === "ask" && heard.about === null) {
+    const about = known(declared.about);
+    return about ? { ...heard, about } : heard;
+  }
+  if (heard.kind === "request" && declared.kind === "request" && heard.good === null) {
+    return { ...heard, good: goodOf(declared.what) };
+  }
+  if (heard.kind === "promise" && declared.kind === "promise") {
+    const terms = declaredTerms(declared);
+    return {
+      ...heard,
+      good: heard.good ?? goodOf(declared.what),
+      ...(heard.terms === undefined && terms ? { terms } : {}),
+    };
+  }
+  return heard;
+}
+
+function declaredTerms(p: Extract<SpeakAct, { kind: "promise" }>): PromiseTerms | undefined {
+  if (p.times === undefined && p.dueDays === undefined && p.precision === undefined) {
+    return undefined;
+  }
+  return {
+    ...(p.times !== undefined ? { times: p.times } : {}),
+    ...(p.dueDays !== undefined ? { dueDays: p.dueDays } : {}),
+    ...(p.precision !== undefined ? { precision: p.precision } : {}),
+  };
 }
 
 /** Lo que el jugador declara de cómo trata al otro (manners `formal` y `casual` de hablar). */
@@ -351,6 +439,7 @@ export function listenTo(
   end: Tick,
   style?: SpeechStyle,
   intended?: SpeechAct["kind"],
+  declared?: SpeakAct,
 ): { changes: StateChange[]; schedule: ScheduleRequest[] } {
   if (!listener.startsWith("agent:") || listener === speaker) {
     return { changes: [], schedule: [] };
@@ -365,6 +454,7 @@ export function listenTo(
         key,
         ...(style ? { style } : {}),
         ...(intended ? { intended } : {}),
+        ...(declared ? { declared } : {}),
       }),
     ],
     schedule: [
@@ -997,7 +1087,12 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // Los términos sueltos de una contraoferta («la mitad», «pero con sal») se leen contra el trato abierto.
       const act = looseCounter(
         pending.text,
-        understand(pending.text, lexicon, pending.clarity, formed?.spoken),
+        withDeclared(
+          understand(pending.text, lexicon, pending.clarity, formed?.spoken),
+          pending.declared,
+          lexicon,
+          pending.clarity,
+        ),
         openWith?.deal,
         lexicon,
       );

@@ -214,6 +214,9 @@ const INFINITIVE_LEAD =
 const SPEAK =
   /^(?:le|les)\s+(?:digo|pregunto|pido|cuento|hablo|explico|grito)\b|^(?:hablo|charlo|converso)\s+con\b/i;
 
+/** «lo saludo», «saludo a X», «me despido de X». */
+const RITUAL = /^(?:(?:lo|la|le|los|las)\s+)?(salud[oa]|me\s+despido)\b\s*(.*)$/i;
+
 /** La forma de tratar que el jugador declara («le hablo de usted»), fuera de las comillas. */
 const FORMAL_STYLE =
   /\s*,?\s*\b(?:de usted(?:es)?|con respeto|respetuosamente|formalmente|con formalidad)\b\s*,?/i;
@@ -248,11 +251,33 @@ function speakBare(raw: string, ctx: Ctx): Clause | null {
     const to = who.length > 0 ? ref(dropPreposition(who), "person") : undefined;
     return { speech: { text: utterance(q[2] as string), ...(to ? { to } : {}) } };
   }
+  // Saludar y despedirse: el acto se declara, las palabras son las de siempre.
+  const ritual = RITUAL.exec(t);
+  if (ritual) {
+    const farewell = /despid/i.test(ritual[1] as string);
+    const who = tidy((ritual[2] ?? "").replace(/^(?:a|de)\s+/i, ""));
+    return {
+      speech: {
+        text: farewell ? "Hasta luego." : "Buenas.",
+        ...(who.length > 0 ? { to: ref(dropPreposition(`a ${who}`), "person") } : {}),
+        act: { kind: farewell ? "farewell" : "greet" },
+      },
+    };
+  }
   if (!SPEAK.test(t)) return null;
   const pide = /^le\s+pido\b/i.test(t);
   const asks = /^le\s+pregunto\b/i.test(t);
   // "hablo con X": el "con" se queda para que se lea a quién.
   let rest = t.replace(SPEAK, (m) => (/\bcon$/i.test(m) ? "con" : "")).trim();
+  // "le pregunto a X por Y": lo preguntado se separa de a quién.
+  let aboutPhrase: string | undefined;
+  if (asks) {
+    const m = /(?:^|\s+)(?:por(?!\s+qu[eé]\b)|sobre|acerca de)\s+(.+)$/i.exec(rest);
+    if (m) {
+      aboutPhrase = tidy(m[1] as string);
+      rest = tidy(rest.slice(0, m.index));
+    }
+  }
   // A quién: "al herrero", "a la vendedora", "con Wu".
   let to: RefDescription | undefined;
   const addressee = /^(?:al|a la|a los|a las|a|con)\s+/i.exec(rest);
@@ -284,8 +309,18 @@ function speakBare(raw: string, ctx: Ctx): Clause | null {
       : pide && !/^que\b/i.test(t)
         ? `¿Me das ${rest}?`
         : utterance(rest, asks);
+  const declared: SpeechDraft["act"] =
+    aboutPhrase !== undefined
+      ? { kind: "ask", about: ref(aboutPhrase, "person") }
+      : pide && rest.length > 0 && !/^que\b/i.test(t)
+        ? { kind: "request", what: rest }
+        : undefined;
+  const text =
+    aboutPhrase !== undefined && content === undefined
+      ? utterance(`¿Qué sabés de ${aboutPhrase}?`)
+      : (content ?? "…");
   return {
-    speech: { text: content ?? "…", ...(to ? { to } : {}) },
+    speech: { text, ...(to ? { to } : {}), ...(declared ? { act: declared } : {}) },
   };
 }
 

@@ -156,3 +156,37 @@ describe("contestar a amenazas, halagos e insultos", () => {
     );
   });
 });
+
+describe("amenazas con exigencia", () => {
+  const scared = { ...FEEL, fear: 0.9 };
+  const yielding: ThreatInput = { ...THREAT, courage: 0, pride: 0, credibility: 1 };
+  const grain = { people: [], goods: [{ id: "good:grain", names: ["grano"] }] };
+
+  it("«dame grano o te mato» guarda la exigencia", () => {
+    expect(understand("Dame grano o te mato", grain)).toEqual({
+      kind: "threaten",
+      harm: 1,
+      demand: "good:grain",
+    });
+  });
+
+  it("quien cede entrega lo exigido si le sobra, y si no, dice que no tiene", () => {
+    const act = { kind: "threaten", harm: 1, demand: "good:grain" } as const;
+    const run = (held: number) =>
+      decideReply(
+        input({
+          act,
+          feel: scared,
+          held: () => held,
+          regard: { threat: yielding, vindictiveness: 0.5 },
+        }),
+        0,
+      );
+    const rich = run(100000);
+    expect(rich.line).toBe("threat.yield.give");
+    expect(rich.give).toEqual({ good: "good:grain", grams: 500 });
+    const poor = run(100);
+    expect(poor.give).toBeUndefined();
+    expect(poor.line).toBe("request.short");
+  });
+});
