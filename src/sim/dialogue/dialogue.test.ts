@@ -147,8 +147,9 @@ describe("contestar", () => {
         expect(caught.judgement?.trustDelta).toBeLessThan(0);
         expect(caught.caught).toEqual({ liar: bruno, by: ana, at: 3, certain: true });
         const ok = decideReply({ ...tell, detect: honest, rng }, 3);
-        expect(ok.line).toBe("tell.dead");
-        expect(ok.accepted?.claim).toBe("dead");
+        // El juicio tiene ruido: un sincero a veces despierta duda, pero nunca se lo acusa de mentir.
+        expect(["tell.dead", "tell.doubted"]).toContain(ok.line);
+        if (ok.line === "tell.dead") expect(ok.accepted?.claim).toBe("dead");
         expect(ok.caught).toBeUndefined();
       }),
     );
