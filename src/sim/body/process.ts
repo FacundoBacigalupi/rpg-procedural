@@ -17,6 +17,7 @@ import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
 import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { BODY_STATE } from "./state.ts";
+import { SWEAT } from "./thermal.ts";
 
 export interface BodyProcessOptions {
   readonly plans: readonly BodyPlanDef[];
@@ -35,7 +36,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
     cadence: { scene: "scene", local: "hour", regional: "day", world: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BODY_STATE.name, ENTITY.name],
+    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name],
     writes: [BODY_STATE.name, ENTITY.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -75,6 +76,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
         body,
         ctx.now,
         o.ambientOf?.(ctx.truth, me),
+        ctx.truth.get(SWEAT, me)?.litersPerHour ?? 0,
       );
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
       const changes: StateChange[] = [setComponent(BODY_STATE, me, next)];
