@@ -166,6 +166,15 @@ export function noteCircumlocution(truth: WorldTruth, subject: EntityRef, times 
   truth.set(BORN_TABOO, subject, { ...row, uses: row.uses + Math.floor(times) });
 }
 
+/** En qué se vuelve un tabú vivo hoy (`lexicalized`, `lapsed`), o `undefined` si sigue como está. */
+export function bornTabooVerdict(row: BornTaboo, now: Tick): BornTabooStatus | undefined {
+  if (row.status !== "active") return undefined;
+  const age = now - row.bornAt;
+  if (age >= LEXICALIZE_MIN_YEARS * YEAR && row.uses >= LEXICALIZE_USES) return "lexicalized";
+  if (age >= LAPSE_YEARS * YEAR) return "lapsed";
+  return undefined;
+}
+
 /**
  * Pasa el tiempo sobre los tabúes nacidos: el que se sostuvo (años y usos del rodeo) se vuelve
  * palabra normal y el viejo nombre se pierde; el que casi nadie sostuvo se olvida. Cada cierre es
@@ -182,13 +191,7 @@ export function settleBornTaboos(
   for (const id of truth.ids(BORN_TABOO)) {
     const row = truth.get(BORN_TABOO, id);
     if (!row || row.status !== "active") continue;
-    const age = now - row.bornAt;
-    let status: BornTabooStatus | undefined;
-    if (age >= LEXICALIZE_MIN_YEARS * YEAR && row.uses >= LEXICALIZE_USES) {
-      status = "lexicalized";
-    } else if (age >= LAPSE_YEARS * YEAR) {
-      status = "lapsed";
-    }
+    const status = bornTabooVerdict(row, now);
     if (!status) continue;
     log.append({
       id: ids.next("event"),

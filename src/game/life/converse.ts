@@ -111,6 +111,7 @@ import {
   villageCulture,
   worstDeed,
 } from "../../sim/index.ts";
+import { liveTaboos } from "./taboos.ts";
 
 export const CONVERSE_PROCESS = "life.converse";
 
@@ -197,6 +198,7 @@ function formOf(
     me: AgentId;
     speaker: AgentId;
     text: string;
+    now: Tick;
     indoor: boolean;
     hearerRank: number;
     /** Lo que el oyente cree del rango de quien habla. */
@@ -212,12 +214,9 @@ function formOf(
   if (!register) return undefined;
   const kin = householdOf(truth, me) === householdOf(truth, speaker);
   const norm = normalize(text);
-  const taboos = spokenTaboos(
-    norm,
-    f.taboos,
-    f.culture,
-    (c) => f.concepts.find((x) => x.id === c)?.es,
-  );
+  // Los tabúes de la cultura y los que nacieron de las muertes de la aldea y siguen vivos.
+  const live = liveTaboos(truth, f, ctx.now);
+  const taboos = spokenTaboos(norm, live, f.culture, (c) => f.concepts.find((x) => x.id === c)?.es);
   // Quien habla elige el trato por lo que cree del otro; el oyente juzga por lo que cree que
   // el otro cree que él es (su propia lectura de quien le habla).
   const recipient = recipientBetween(ctx.speakerRank, ctx.speakerReads, kin);
@@ -226,7 +225,7 @@ function formOf(
     1,
     Math.max(0, demandedFormality(register, recipient) + formalityShift(norm)),
   );
-  const spoken = speechForm(f.language, f.addresses, f.taboos, f.culture, {
+  const spoken = speechForm(f.language, f.addresses, live, f.culture, {
     register,
     recipient,
     formality: used,
@@ -839,6 +838,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             me,
             speaker,
             text: pending.text,
+            now: ctx.now,
             indoor: o.spaces.spaces.find((s) => s.key === here)?.indoor ?? false,
             hearerRank: myRank,
             // Sin lectura del otro se lo supone de su mismo rango (no hay distancia).
@@ -922,7 +922,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
               })()
             : {}),
           ...(formed && o.form
-            ? { formJudge: { taboos: o.form.taboos, input: formed.judge } }
+            ? { formJudge: { taboos: liveTaboos(truth, o.form, ctx.now), input: formed.judge } }
             : {}),
           rankAbove: above,
           temper: {
