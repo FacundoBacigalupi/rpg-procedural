@@ -32,6 +32,7 @@ import {
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
+  type DealBudget,
   dayOf,
   deleteComponent,
   draftEvent,
@@ -114,6 +115,7 @@ import {
   weatherAt,
   YIELDED,
 } from "../../sim/index.ts";
+import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
@@ -126,6 +128,8 @@ import {
   livePause,
   strikeFight,
 } from "./fight.ts";
+import { loansOf } from "./loans.ts";
+import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
@@ -341,8 +345,36 @@ function membersOf(truth: ReadonlyWorldTruth, household: string): number {
   );
 }
 
+/** El presupuesto del hogar del otro del trato: su tope de gasto y cómo está. */
+function dealBudgetOf(
+  ctx: ProcessContext,
+  truth: ReadonlyWorldTruth,
+  o: ActOptions,
+  home: string,
+): DealBudget {
+  const flows = householdFlowsOf(
+    truth,
+    {
+      goods: o.goods,
+      ledger: ctx.ledger,
+      now: ctx.now,
+      day: o.clock.day,
+      year: o.clock.year,
+      incomePerDay: incomeOfHousehold(truth, home, Math.floor(ctx.now / o.clock.day)),
+      loans: loansOf(truth, holderAccount(home as unknown as HolderRef)),
+    },
+    home,
+  );
+  return {
+    coinCeiling: coinCeilingOf(flows, false),
+    urgentCeiling: coinCeilingOf(flows, true),
+    standing: standingOf(flows),
+  };
+}
+
 /** Los precios y las casas que `trade` y `work` necesitan para mover bienes (economy §4). */
 function marketOf(
+  ctx: ProcessContext,
   truth: ReadonlyWorldTruth,
   o: ActOptions,
   me: AgentId,
@@ -370,7 +402,12 @@ function marketOf(
     other:
       otherHome === undefined
         ? undefined
-        : { larder: otherHome as unknown as HolderRef, members: membersOf(truth, otherHome) },
+        : {
+            larder: otherHome as unknown as HolderRef,
+            members: membersOf(truth, otherHome),
+            // Solo en los tratos del jugador: el tope de monedas y el apuro del otro (economy §3).
+            budget: me === o.player ? dealBudgetOf(ctx, truth, o, otherHome) : undefined,
+          },
     harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
     fame: notoriety(
@@ -474,7 +511,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
       node.verb === "trade" || node.verb === "work"
-        ? marketOf(truth, o, me, parties["with"]?.id ?? null, harvestRate, day)
+        ? marketOf(ctx, truth, o, me, parties["with"]?.id ?? null, harvestRate, day)
         : undefined,
   };
   const r = resolve(input);

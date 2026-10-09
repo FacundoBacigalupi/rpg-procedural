@@ -36,6 +36,9 @@ import {
   bidPerKg,
   COPPER,
   DAILY_KCAL,
+  type DealBudget,
+  DISTRESS_ASK_FACTOR,
+  DISTRESS_BID_FACTOR,
   gramsIn,
   HARVEST,
   KEEP_DAYS,
@@ -44,6 +47,7 @@ import {
   perceivedQuality,
   qualityOfUnit,
   qualityPriceFactor,
+  strainOf,
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
@@ -121,7 +125,14 @@ export interface Market {
   /** Personas del hogar del actor, para saber cuántos días de comida le quedan. */
   readonly ownMembers: number;
   /** El otro del trato: su despensa y cuántos comen de ella. */
-  readonly other?: { readonly larder: HolderRef | null; readonly members: number } | undefined;
+  readonly other?:
+    | {
+        readonly larder: HolderRef | null;
+        readonly members: number;
+        /** Su presupuesto de hogar: el tope de monedas y cómo está (economy §3); solo en tratos del jugador. */
+        readonly budget?: DealBudget | undefined;
+      }
+    | undefined;
   /** Cuánto grano rinde una hora de trabajo medio en el campo, en gramos. */
   readonly harvestGramsPerHour?: number | undefined;
   /** La unidad que rinde el campo. */
@@ -278,6 +289,8 @@ export type VerbEffect =
       readonly quality?: number;
       /** Sin trato por el precio: lo que quien vende sacó a la venta y no vendió (cierre del día). */
       readonly unsold?: Unsold;
+      /** El otro anda apretado o en la ruina: pesó en el precio o en lo que podía pagar. */
+      readonly strain?: "tight" | "broke";
     }
   | {
       readonly kind: "give";
@@ -849,6 +862,9 @@ const spare: Resolver = (c) => ({
   seconds: c.nominal,
 });
 
+/** Con menos días de comida que esto, el comprador gasta todo lo que tiene (tope urgente). */
+const URGENT_FOOD_DAYS = 7;
+
 const trade: Resolver = (c) => {
   const other = argEntity(c, "with");
   const m = c.roll.margin;
@@ -877,18 +893,27 @@ const trade: Resolver = (c) => {
     };
   }
   const found = bargain(c, other, mk, edge);
+  const strain = mk.other?.budget ? strainOf(mk.other.budget.standing) : undefined;
+  const withStrain = (e: VerbEffect, unsold?: Unsold): VerbEffect =>
+    e.kind === "trade"
+      ? {
+          ...e,
+          ...(unsold === undefined ? {} : { unsold }),
+          ...(strain === undefined ? {} : { strain }),
+        }
+      : e;
   if (typeof found === "string" || "failure" in found) {
     // Sin trato: o no hay con qué (nada que dar, o sin monedas), o hay pero no coinciden en el precio.
     const failure = typeof found === "string" ? found : found.failure;
     const unsold = typeof found === "string" ? undefined : found.unsold;
     return {
-      effect: unsold === undefined ? idle(false) : { ...idle(false), unsold },
+      effect: withStrain(idle(false), unsold),
       seconds: c.nominal / 2,
       override: { outcome: "failure", failure, believed: "failure" },
     };
   }
   return {
-    effect: {
+    effect: withStrain({
       kind: "trade",
       with: other,
       deal: true,
@@ -898,7 +923,7 @@ const trade: Resolver = (c) => {
       grams: found.grams,
       coins: found.coins,
       quality: found.quality,
-    },
+    }),
     seconds: c.nominal,
     transfers: found.transfers,
   };
@@ -1001,6 +1026,7 @@ function bargain(
   };
   const sells = myGoods.length > 0 && (yourGoods.length === 0 || names(myGoods));
   const buyerCoinsOf = (rows: readonly Holding[]) => coinsOf(rows);
+  const theirs = mk.other?.budget;
 
   if (sells) {
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
@@ -1022,21 +1048,28 @@ function bargain(
               kcalOf(merge(yourPocket, yourLarder), foods),
           ) / kcalPerGram
         : row.amount;
+    // El comprador es el otro: no gasta más que su tope (lo urgente, si le falta comida) y, si anda
+    // apretado, regatea más duro.
+    const theirDays = foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1);
+    const theirCoins = theirs
+      ? Math.min(
+          buyerCoinsOf(yourPocket),
+          theirDays < URGENT_FOOD_DAYS ? theirs.urgentCeiling : theirs.coinCeiling,
+        )
+      : buyerCoinsOf(yourPocket);
     const deal = strikeDeal({
       wantGrams: Math.min(wantGrams, room),
       askPerKg: askPerKg(base, myDays),
-      maxPerKg: bidPerKg(
-        buyerBase,
-        foodDays(merge(yourPocket, yourLarder), foods, mk.other?.members ?? 1),
-        foodDays(yourPocket, foods, mk.other?.members ?? 1),
-      ),
+      maxPerKg:
+        bidPerKg(buyerBase, theirDays, foodDays(yourPocket, foods, mk.other?.members ?? 1)) *
+        (theirs ? DISTRESS_BID_FACTOR[theirs.standing] : 1),
       edge,
       availableGrams: Math.min(row.amount, spare),
-      buyerCoins: buyerCoinsOf(yourPocket),
+      buyerCoins: theirCoins,
       actorBuys: false,
     });
     if (!deal) {
-      if (!(spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0)) return "no_means";
+      if (!(spare > 0 && room > 0 && theirCoins > 0)) return "no_means";
       return {
         failure: "no_deal",
         unsold: { seller: "actor", good: row.unit, grams: Math.min(row.amount, spare) },
@@ -1077,7 +1110,9 @@ function bargain(
       : row.amount;
   const deal = strikeDeal({
     wantGrams,
-    askPerKg: askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)),
+    askPerKg:
+      askPerKg(base, foodDays(merge(yourPocket, yourLarder), foods, yourMembers)) *
+      (theirs ? DISTRESS_ASK_FACTOR[theirs.standing] : 1),
     maxPerKg: bidPerKg(
       buyerBase,
       foodDays(merge(myRows, myLarder), foods, mk.ownMembers),

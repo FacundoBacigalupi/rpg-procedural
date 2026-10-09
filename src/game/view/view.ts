@@ -316,6 +316,8 @@ export type EffectView =
         readonly grams: number;
         readonly coins: number;
       };
+      /** El otro anda apretado de plata o en la ruina (se le nota): pesó en el trato. */
+      readonly strain?: "tight" | "broke";
     }
   | {
       readonly kind: "give";
@@ -713,6 +715,7 @@ function effectView(
         ...(w !== undefined ? { with: w } : {}),
         deal: e.deal,
         terms: termsOf(e.edge),
+        ...(e.strain !== undefined ? { strain: e.strain } : {}),
         ...(e.direction !== null && e.good !== null
           ? {
               moved: {

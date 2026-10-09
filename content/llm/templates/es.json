@@ -326,6 +326,14 @@
     "id": "outcome.trade.sell.poor",
     "lines": ["Le vendés {grams} de {what} a {with} por {coins}, aunque te pagan poco."]
   },
+  {
+    "id": "outcome.trade.strain.tight",
+    "lines": ["{with} anda con la plata justa.", "A {with} se le nota el apuro por las monedas."]
+  },
+  {
+    "id": "outcome.trade.strain.broke",
+    "lines": ["{with} no tiene ni un cobre de sobra.", "{with} está en la ruina y se le nota."]
+  },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
   {

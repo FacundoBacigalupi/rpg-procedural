@@ -27,6 +27,7 @@ import {
   degreeOf,
   isMoney,
   legOf,
+  type Market,
   PLANS,
   type ResolveInput,
   resolve,
@@ -739,6 +740,53 @@ describe("comerciar y cosechar", () => {
       (r) => r.effect.kind === "trade" && r.effect.direction === "buy",
     );
     expect(deals.length).toBeGreaterThan(0);
+  });
+
+  it("un vendedor en la ruina o apretado pide menos, y se nota (strain)", () => {
+    const run = (standing: "comfortable" | "tight" | "broke") => {
+      const ledger = stock([
+        { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+        { holder: me, unit: copper, amount: 50 },
+      ]);
+      const mk: Market = {
+        ...market,
+        other: {
+          larder: theirs as unknown as HolderRef,
+          members: 4,
+          budget: { coinCeiling: 0, urgentCeiling: 0, standing },
+        },
+      };
+      const deals = many(80, () => trading(ledger, "5 kilos", { market: mk })).flatMap((r) =>
+        r.effect.kind === "trade" && r.effect.direction === "buy" ? [r.effect] : [],
+      );
+      const perKg = deals.map((d) => d.coins / (d.grams / 1000));
+      return { deals, mean: perKg.reduce((x, y) => x + y, 0) / Math.max(1, perKg.length) };
+    };
+    const ok = run("comfortable");
+    const broke = run("broke");
+    expect(ok.deals.length).toBeGreaterThan(0);
+    expect(broke.deals.length).toBeGreaterThan(0);
+    expect(broke.mean).toBeLessThan(ok.mean);
+    expect(broke.deals.every((d) => d.strain === "broke")).toBe(true);
+    expect(ok.deals.every((d) => d.strain === undefined)).toBe(true);
+  });
+
+  it("un comprador sin tope de monedas no paga: la venta del jugador no cierra", () => {
+    const ledger = stock([
+      { holder: me, unit: grain, amount: 20_000 },
+      { holder: wu as unknown as HolderRef, unit: copper, amount: 100 },
+    ]);
+    const mk: Market = {
+      ...market,
+      other: {
+        larder: theirs as unknown as HolderRef,
+        members: 4,
+        budget: { coinCeiling: 0, urgentCeiling: 0, standing: "broke" },
+      },
+    };
+    for (const r of many(30, () => trading(ledger, "grano", { market: mk }))) {
+      if (r.effect.kind === "trade") expect(r.effect.coins).toBe(0);
+    }
   });
 
   it("lo que el jugador nombra en su lengua elige el bien: «grano» es good:grain aunque haya más forraje", () => {
