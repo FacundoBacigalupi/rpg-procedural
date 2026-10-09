@@ -37,11 +37,15 @@ import {
   goalChanges,
   goalDrives,
   goodUnit,
+  HABITS,
+  type HabitDef,
   INNATE,
   LOCATION,
   MEMORIES,
+  MENTAL,
   MIND,
   mergeCandidates,
+  modifyCandidates,
   moodFrom,
   otherBeliefFrom,
   PERSON,
@@ -70,6 +74,7 @@ import {
   type ValueDef,
   valueBias,
   verbCandidates,
+  verbHabits,
   villageCulture,
 } from "../../sim/index.ts";
 
@@ -114,6 +119,8 @@ export interface DecideOptions {
   readonly bonds: readonly BondDef[];
   /** Bienes del mundo: con ellos los verbos con `what` nombran lo que hay en la despensa. */
   readonly goods?: readonly GoodDef[];
+  /** Definiciones de hábitos: los asentados empujan su verbo en la utilidad. */
+  readonly habits?: readonly HabitDef[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
@@ -138,6 +145,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       RELATIONS.name,
       BELIEFS.name,
       MEMORIES.name,
+      HABITS.name,
+      MENTAL.name,
       LOCATION.name,
       PLACE.name,
       SELF_IMAGES.name,
@@ -353,7 +362,15 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           }),
         );
       }
-      const candidates = mergeCandidates(catalogCandidates, social);
+      // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
+      // esos insumos las candidatas quedan iguales.
+      const candidates = modifyCandidates(mergeCandidates(catalogCandidates, social), {
+        now,
+        memories,
+        habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),
+        values: drives.values,
+        mental: truth.get(MENTAL, me),
+      });
       if (candidates.length === 0) return { changes: goalChange, events: goalEvents };
 
       const choice = decideByUtility(
