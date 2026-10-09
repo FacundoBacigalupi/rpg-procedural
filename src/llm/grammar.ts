@@ -521,6 +521,50 @@ const META =
   /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|hip[oó]tesis|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
+const DIVINER =
+  "(?:adivin[oa]s?|vident[ea]s?|or[aá]culo|astr[oó]log[oa]|augur|hechicer[oa]|bruj[oa])";
+const CONSULT_PAY = new RegExp(
+  `^(?:le\\s+)?(?:pago|doy|ofrezco)\\s+(.+?)\\s+(?:a|al)\\s+(?:la\\s+|el\\s+)?(${DIVINER})\\s*(?:y\\s+(?:le\\s+)?(?:pregunto|consulto|pido)\\s+(?:por|sobre|acerca de)\\s+(.+))?$`,
+  "iu",
+);
+const CONSULT_ASK = new RegExp(
+  `^(?:consulto|consultar|pregunto|preguntarle|voy a consultar)\\s+(?:a|al|con)\\s+(?:la\\s+|el\\s+)?(${DIVINER})(?:\\s+(?:por|sobre|acerca de)\\s+(.+))?$`,
+  "iu",
+);
+const CONSULT_READ = new RegExp(
+  `^(?:voy a|quiero|me voy a|busco)\\s+(?:que\\s+me\\s+(?:lea|tire|echen?)\\s+(?:la\\s+suerte|las\\s+cartas|los\\s+huesos|el\\s+destino)|consultar\\s+(?:a\\s+(?:la\\s+|el\\s+)?${DIVINER}|el\\s+or[aá]culo))`,
+  "iu",
+);
+
+/** Consultar a un adivino: con quién, por qué y qué se ofrece (actions.md, divination.md §9). */
+function consultDraft(text: string): IntentDraft | null {
+  const arg = (role: string, t: string | undefined): DraftArg[] =>
+    t && tidy(t).length > 0 ? [{ role, text: tidy(t) }] : [];
+  const pay = CONSULT_PAY.exec(text);
+  if (pay) {
+    return {
+      kind: "act",
+      plan: act("consult", [
+        { role: "with", ref: ref(tidy(pay[2] as string), "person") },
+        ...arg("about", pay[3]),
+        ...arg("offer", pay[1]),
+      ]),
+    };
+  }
+  const ask = CONSULT_ASK.exec(text);
+  if (ask) {
+    return {
+      kind: "act",
+      plan: act("consult", [
+        { role: "with", ref: ref(tidy(ask[1] as string), "person") },
+        ...arg("about", ask[2]),
+      ]),
+    };
+  }
+  if (CONSULT_READ.test(text)) return { kind: "act", plan: act("consult", []) };
+  return null;
+}
+
 const GOAL = /^(?:quiero|mi meta es|sueño con|alg[uú]n d[ií]a (?:voy a|quiero))\s+(.+)$/i;
 
 /**
@@ -534,6 +578,8 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   if (/^¿/.test(text) || (/\?$/.test(text) && !SPEAK.test(text))) {
     return { kind: "question_ooc", text };
   }
+  const consult = consultDraft(text);
+  if (consult) return consult;
   const goal = GOAL.exec(text);
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
   // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo

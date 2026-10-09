@@ -67,6 +67,7 @@ import {
   parseCommand,
   parseIntentOrGrammar,
   parserSetup,
+  recurringImages,
   remember,
   styleOf,
   TemplateBook,
@@ -232,7 +233,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     // Al retomar, la escena de apertura ya está en la memoria: no se anota dos veces.
     if (report !== null || savedMemory === undefined) {
       const known = new Map([...keys].filter(([id]) => !hazy.has(id)));
-      const motifs = request.ambience.filter((line) => told.text.includes(line));
+      const motifs = [
+        ...request.ambience.filter((line) => told.text.includes(line)),
+        ...recurringImages(memory, told.text),
+      ];
       memory = remember(memory, {
         marked: told.marked,
         text: told.text,

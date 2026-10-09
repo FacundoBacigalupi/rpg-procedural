@@ -2,10 +2,13 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   continuityFor,
+  contradictsEstablished,
   EMPTY_MEMORY,
   markedPhrases,
   RECENT_MAX,
+  recurringImages,
   remember,
+  repeatedSentences,
   SUMMARIES_MAX,
 } from "./continuity.ts";
 
@@ -82,5 +85,35 @@ describe("memoria de continuidad", () => {
           expect(phrases.length).toBeLessThanOrEqual(4);
       }),
     );
+  });
+});
+
+describe("continuidad del texto libre", () => {
+  const mem = remember(EMPTY_MEMORY, {
+    marked: "{{e1|la tía de ojos cansados}} barre el patio.",
+    text: "La tía de ojos cansados barre el patio. Un cuervo negro vigila la pagoda.",
+    keys,
+  });
+
+  it("detecta la imagen que el narrador repite y aún no es motivo", () => {
+    expect(recurringImages(mem, "Otra vez el cuervo negro vigila desde lejos.")).toContain(
+      "cuervo negro vigila",
+    );
+    const noted = remember(mem, { marked: "", text: "x", keys, motifs: ["cuervo negro vigila"] });
+    expect(recurringImages(noted, "El cuervo negro vigila de nuevo.")).toEqual([]);
+  });
+
+  it("marca la oración repetida textual, no la parecida", () => {
+    expect(repeatedSentences(mem.recent, "La tía de ojos cansados barre el patio.")).toHaveLength(
+      1,
+    );
+    expect(repeatedSentences(mem.recent, "La tía barre el patio despacio.")).toEqual([]);
+  });
+
+  it("solo una descripción entera distinta contradice lo establecido", () => {
+    const phrases = ["la tía de ojos cansados"];
+    expect(contradictsEstablished(phrases, "la anciana")).toBe(false);
+    expect(contradictsEstablished(phrases, "la tía cansada")).toBe(false);
+    expect(contradictsEstablished(phrases, "una joven de pelo rojo")).toBe(true);
   });
 });

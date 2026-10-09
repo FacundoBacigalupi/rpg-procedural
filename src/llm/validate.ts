@@ -5,6 +5,7 @@
 // regenere (jobs.ts); si tampoco pasa, el narrador usa las plantillas.
 
 import type { TasteView } from "../game/view/index.ts";
+import { contradictsEstablished, repeatedSentences } from "./continuity.ts";
 import type { NarrationRequest } from "./narration.ts";
 import { unknownTermsIn } from "./voice.ts";
 
@@ -190,6 +191,21 @@ export function validateNarration(
   const numbers = `${quoted} ${figures.filter((n) => n !== undefined).join(" ")}`;
   for (const d of new Set(plain.match(/\d+/g) ?? [])) {
     if (!numbers.includes(d)) problems.push(`the number ${d} is not in the request`);
+  }
+
+  // 2a. Continuidad: no repetir lo ya leído ni describir distinto a quien ya se describió.
+  if (request.continuity !== undefined) {
+    for (const s of repeatedSentences(request.continuity.recent, plain)) {
+      problems.push(`do not repeat a sentence the player already read ("${s.slice(0, 40)}…")`);
+    }
+    for (const m of text.matchAll(MARK)) {
+      const est = request.continuity.established.find((e) => e.id === m[1]);
+      if (est !== undefined && contradictsEstablished(est.phrases, m[2] as string)) {
+        problems.push(
+          `${est.id} was already described as "${est.phrases[est.phrases.length - 1]}": keep it`,
+        );
+      }
+    }
   }
 
   // 2b. Gustos: lo que se dice de un gusto propio no contradice lo que el personaje siente.

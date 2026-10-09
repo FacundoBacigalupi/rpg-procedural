@@ -110,6 +110,56 @@ export function remember(memory: NarrationMemory, input: RememberInput): Narrati
   };
 }
 
+const IMAGE_WORDS = 3;
+
+function contentWords(text: string): string[] {
+  return (text.toLowerCase().match(/[\p{L}\p{M}]+/gu) ?? []).filter((w) => w.length > 3);
+}
+
+/**
+ * Imágenes recurrentes que el narrador inventó (narration §6): tramos de tres palabras con
+ * contenido que el texto nuevo comparte con lo ya mostrado (`recent`) y que todavía no son
+ * motivos. Puro y sin LLM: es comparar texto que el jugador ya leyó con el que va a leer.
+ */
+export function recurringImages(memory: NarrationMemory, text: string, max = 2): string[] {
+  const seen = new Set<string>();
+  for (const old of memory.recent) {
+    const w = contentWords(old);
+    for (let i = 0; i + IMAGE_WORDS <= w.length; i++) {
+      seen.add(w.slice(i, i + IMAGE_WORDS).join(" "));
+    }
+  }
+  const out: string[] = [];
+  const w = contentWords(text);
+  for (let i = 0; i + IMAGE_WORDS <= w.length && out.length < max; i++) {
+    const gram = w.slice(i, i + IMAGE_WORDS).join(" ");
+    if (seen.has(gram) && !memory.motifs.includes(gram) && !out.includes(gram)) out.push(gram);
+  }
+  return out;
+}
+
+/** Las oraciones de `text` que ya estaban, textuales, en lo que el jugador leyó (`recent`). */
+export function repeatedSentences(recent: readonly string[], text: string): string[] {
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  const old = new Set(recent.flatMap((r) => r.split(/(?<=[.!?…])\s+/u).map(norm)));
+  return text
+    .split(/(?<=[.!?…])\s+/u)
+    .map(norm)
+    .filter((s) => s.split(" ").length >= 5 && old.has(s));
+}
+
+/**
+ * Una descripción nueva que no comparte ninguna palabra con cómo ya se nombró a esa figura
+ * (narration §6: lo establecido se respeta). Un nombre corto («el anciano») se deja pasar:
+ * solo una descripción entera distinta contradice.
+ */
+export function contradictsEstablished(phrases: readonly string[], words: string): boolean {
+  const fresh = contentWords(words);
+  if (fresh.length < 2 || phrases.length === 0) return false;
+  const old = new Set(phrases.flatMap(contentWords));
+  return !fresh.some((w) => old.has(w));
+}
+
 /** Lo que se entrega al narrador: por etiqueta local, solo de lo que el motor identifica. */
 export function continuityFor(
   memory: NarrationMemory,
