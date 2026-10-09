@@ -78,6 +78,28 @@ const STANDING: Readonly<Record<CharacterPanel["skills"][number]["standing"], st
   master: "sos de los buenos",
 };
 
+const FAITH_BELIEF: Readonly<Record<NonNullable<CharacterPanel["faith"]>["belief"], string>> = {
+  none: "no creés en nada de eso",
+  faint: "dudás de lo que enseñan",
+  firm: "creés en lo que enseñan",
+  deep: "creés a fondo en lo que enseñan",
+};
+
+const FAITH_PRACTICE: Readonly<Record<NonNullable<CharacterPanel["faith"]>["practice"], string>> = {
+  none: "no cumplís nada",
+  faint: "cumplís poco",
+  firm: "cumplís lo que toca",
+  deep: "no fallás en ninguna práctica",
+};
+
+const FAITH_BELONGING: Readonly<Record<NonNullable<CharacterPanel["faith"]>["belonging"], string>> =
+  {
+    none: "te sentís ajeno a los demás fieles",
+    faint: "te sentís apenas parte",
+    firm: "te sentís parte",
+    deep: "te sentís uno con la gente de tu fe",
+  };
+
 const AMOUNT: Readonly<Record<InventoryPanel["carried"][number]["amount"], string>> = {
   a_little: "un poco de",
   some: "algo de",
@@ -115,6 +137,15 @@ export function renderCharacter(p: CharacterPanel): string {
   const disliked = taste(["dislikes", "loathes"]);
   if (liked.length > 0) lines.push(`Te gusta: ${liked.join(", ")}.`);
   if (disliked.length > 0) lines.push(`No te gusta: ${disliked.join(", ")}.`);
+  if (p.faith) {
+    const f = p.faith;
+    lines.push(
+      `Tu fe (${f.religion}): ${FAITH_BELIEF[f.belief]}; ${FAITH_PRACTICE[f.practice]}; ${FAITH_BELONGING[f.belonging]}.`,
+    );
+    if (f.practices.length > 0) {
+      lines.push(`Lo que se hace: ${f.practices.map((x) => x.name).join(", ")}.`);
+    }
+  }
   if (p.skills.length > 0) {
     lines.push("Lo que creés saber hacer:");
     for (const s of p.skills) {

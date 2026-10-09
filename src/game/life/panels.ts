@@ -10,6 +10,7 @@
 import type { AgentId, EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
+  affiliationOf,
   BODY_STATE,
   bodySigns,
   bookOf,
@@ -22,6 +23,7 @@ import {
   PLACE,
   PLEDGE,
   PLEDGE_BOOK,
+  RELIGIOUS_IDENTITY,
   SELF_IMAGES,
   SKILL_STATE,
   type SkillStanding,
@@ -29,6 +31,7 @@ import {
   seedSelfImage,
   skillStandingOf,
   TASTES_OF,
+  villageReligion,
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
@@ -43,6 +46,17 @@ export type Lasts = "empty" | "days" | "weeks" | "months" | "a_year";
 
 /** Dispersión de la autoimagen desde la cual está seguro de lo que cree. */
 const SURE_SPREAD = 0.1;
+
+/** Cuánto de una dimensión de la fe siente, en palabras. */
+export type FaithLevel = "none" | "faint" | "firm" | "deep";
+
+/** De 0-1 a la palabra con que uno se describe: las raíces de la fe no se cuentan en números. */
+export function faithLevel(x: number): FaithLevel {
+  if (x < 0.15) return "none";
+  if (x < 0.4) return "faint";
+  if (x < 0.75) return "firm";
+  return "deep";
+}
 
 export interface CharacterPanel {
   /** Los años que sabe que tiene. */
@@ -64,6 +78,18 @@ export interface CharacterPanel {
     readonly name: string;
     readonly stance: "loves" | "likes" | "dislikes" | "loathes";
   }[];
+  /**
+   * Su fe, como la vive él (religion §1): lo que cree, cuánto cumple y cuánto se siente parte, en
+   * palabras, y las prácticas de su religión que conoce. Nunca dice si lo que cree es cierto.
+   */
+  readonly faith?: {
+    readonly religion: string;
+    readonly belief: FaithLevel;
+    readonly practice: FaithLevel;
+    readonly belonging: FaithLevel;
+    /** Las prácticas de su religión (ofrendas, fiestas, tabúes) con su clase, sin pesos. */
+    readonly practices: readonly { readonly name: string; readonly kind: string }[];
+  };
   /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
@@ -113,6 +139,10 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
     const p = w.truth.get(PLACE, id);
     return p?.hexes.includes(at.hex) ? [p.kind] : [];
   });
+  const community = villageReligion(w.truth);
+  const aff = community
+    ? affiliationOf(w.truth.get(RELIGIOUS_IDENTITY, w.player), community.religion)
+    : undefined;
   return {
     ageYears: Math.floor((w.scheduler.now - me.born) / w.clock.year),
     sex: me.sex,
@@ -132,6 +162,17 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
       PANEL_TASTES,
       PANEL_TASTE_STRENGTH,
     ).map((t) => ({ name: t.name, stance: t.stance })),
+    ...(community && aff
+      ? {
+          faith: {
+            religion: community.name,
+            belief: faithLevel(aff.belief),
+            practice: faithLevel(aff.practice),
+            belonging: faithLevel(aff.belonging),
+            practices: community.practices.map((p) => ({ name: p.name, kind: p.kind })),
+          },
+        }
+      : {}),
     skills,
   };
 }
