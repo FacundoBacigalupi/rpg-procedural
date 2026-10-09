@@ -240,3 +240,7 @@ La pregunta de quien habla es la primera fuente: en `life.converse`, si el acto 
 ## Implementado (2026-10-09): la víctima que pregunta alrededor
 
 `life.askAround` (`game/life/askaround.ts`, fase `decide`, diaria, por hogar sin el del jugador): el NPC que sabe de un hecho en que fue la víctima (`KNOWN_DEEDS`, dentro de 3 días) sale con chance 0,6 a preguntarle a alguien que cree cercano: gente con la que tiene trato (`RELATIONS`), viva, en su mismo lugar, que no sea el autor que él sabe (`whomToAsk`). Es lo que él cree, no quién presenció de verdad. Emite `law.inquiry` (causa: su `KNOWN_DEEDS`) y `life.testify` hace declarar. Falta el vecino sin ser víctima y la memoria de a quién ya preguntó (hoy repite a un testigo por día dentro de la ventana).
+
+## Implementado (2026-10-09): acusación y verdad
+
+`life.converse` marca en el efecto del `action.speak` de una acusación `accusation.truthOf.occurred` (`accusationOccurred`: lo hizo de verdad según el `OWN_DEEDS` del acusado; solo lo lee el inspector, ninguna decisión pasa por ahí). Si no ocurrió, emite además el evento `law.false_accusation` (actores [quien acusó, acusado], causa el acto de habla; datos: hecho, víctima, firmeza, quién oyó, `unbacked`): es la huella de la denuncia falsa. Falta que esa huella pese (reputación de quien acusó, caso de ley): ROADMAP.

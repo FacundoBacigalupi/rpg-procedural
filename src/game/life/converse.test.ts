@@ -296,6 +296,22 @@ describe("acusar a alguien de la casa", () => {
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);
 
+  it("acusar de lo que no ocurrió deja la huella de denuncia falsa y marca la verdad", () => {
+    const { life, w, me, other } = scene(7);
+    const report = life.turn(say(me, other, "Vos me robaste el grano"), 1);
+    const reply = report.events.find((e) => e.actors[0] === other && e.kind === "action.speak");
+    const effect = (
+      reply?.data as
+        | { effect: { accusation?: { truthOf: { occurred: boolean | null } } } }
+        | undefined
+    )?.effect;
+    expect(effect?.accusation?.truthOf.occurred).toBe(false);
+    const trace = report.events.find((e) => e.kind === "law.false_accusation");
+    expect(trace?.actors).toEqual([me, other]);
+    expect(trace?.causes[0]).toEqual({ kind: "event", event: reply?.id });
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+
   it("a un tercero con hecho respaldado lo pesa, y lo creído queda como contado", () => {
     const { life, w, me, other, mates } = scene(7);
     const third = mates.find((id) => id !== other);
