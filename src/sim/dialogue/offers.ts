@@ -43,6 +43,24 @@ export interface OfferInput {
   readonly felt: number;
 }
 
+/** Rondas de contraofertas (propuesta y contrapropuesta) que aguanta el oyente antes de cansarse. */
+export const MAX_ROUNDS = 3;
+
+/**
+ * Si un trato abierto sigue siendo posible al aceptarlo: el oyente todavía puede dar lo que ofreció
+ * (sin tocar su reserva) y quien acepta todavía tiene lo que prometió (conservación: nadie da lo
+ * que ya no tiene).
+ */
+export function dealHolds(
+  deal: Proposal,
+  spare: (good: string) => number,
+  speakerHas: (good: string) => number,
+): boolean {
+  if (deal.gives !== null && spare(deal.gives.good) < deal.gives.grams) return false;
+  if (deal.gets !== null && speakerHas(deal.gets.good) < deal.gets.grams) return false;
+  return true;
+}
+
 export function offerMargin(felt: number): number {
   return Math.min(MAX_MARGIN, Math.max(MIN_MARGIN, BASE_MARGIN - WARMTH_MARGIN * felt));
 }

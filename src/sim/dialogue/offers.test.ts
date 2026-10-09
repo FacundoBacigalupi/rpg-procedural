@@ -5,7 +5,7 @@ import { type AgentId, Rng } from "../../core/index.ts";
 import type { Vector } from "../relations/index.ts";
 import { understand } from "./acts.ts";
 import { SpeechLine } from "./lines.ts";
-import { type OfferInput, offerMargin, weighOffer } from "./offers.ts";
+import { dealHolds, MAX_ROUNDS, type OfferInput, offerMargin, weighOffer } from "./offers.ts";
 import { decideReply, type ReplyInput } from "./reply.ts";
 
 const ana = "agent:1" as AgentId;
@@ -174,6 +174,41 @@ describe("decideReply con propuestas", () => {
     expect(reply("Trato hecho", { open }).deal).toEqual(open);
     expect(reply("No gracias", { open }).deal).toBeUndefined();
     expect(reply("No gracias", { open }).line).toBe("refuse.ack");
+  });
+  it("el regateo se cansa: tras varias rondas ya no contraofertan", () => {
+    const cheap = "Te doy 1 kilo de grano por 1 kilo de grano";
+    expect(reply(cheap).line).toBe("offer.counter");
+    expect(reply(cheap, { rounds: MAX_ROUNDS }).line).toBe("offer.refuse.tired");
+  });
+  it("aceptar una contraoferta ya no vale si alguno dejó de tener lo prometido", () => {
+    const open = { gets: { good: "salt", grams: 500 }, gives: { good: "grain", grams: 700 } };
+    expect(reply("Trato hecho", { open }).deal).toEqual(open);
+    expect(reply("Trato hecho", { open, speakerHas: () => 0 }).line).toBe("accept.short");
+    expect(reply("Trato hecho", { open, held: () => 0 }).deal).toBeUndefined();
+  });
+  it("dealHolds respeta la reserva y lo que tiene quien acepta", () => {
+    const deal = { gets: { good: "salt", grams: 500 }, gives: { good: "grain", grams: 700 } };
+    expect(
+      dealHolds(
+        deal,
+        () => 700,
+        () => 500,
+      ),
+    ).toBe(true);
+    expect(
+      dealHolds(
+        deal,
+        () => 699,
+        () => 500,
+      ),
+    ).toBe(false);
+    expect(
+      dealHolds(
+        deal,
+        () => 700,
+        () => 499,
+      ),
+    ).toBe(false);
   });
   it("es determinista", () => {
     fc.assert(

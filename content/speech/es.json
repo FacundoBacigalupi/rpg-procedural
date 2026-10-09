@@ -452,6 +452,22 @@
     "formal": ["No haré tratos con usted."]
   },
   {
+    "id": "offer.refuse.tired",
+    "lines": [
+      "Ya regateamos bastante; con {what} no sigo.",
+      "Basta de vueltas, no hay trato por {what}."
+    ],
+    "formal": ["Ya hemos discutido bastante, no habrá trato."]
+  },
+  {
+    "id": "accept.short",
+    "lines": [
+      "Ahora ya no puedo, ni vos podés cumplir lo que dijimos.",
+      "Se nos fue de las manos: ya no alcanza para ese trato."
+    ],
+    "formal": ["Aquello ya no es posible para ninguno de los dos."]
+  },
+  {
     "id": "accept.thanks",
     "lines": ["Entonces cerramos.", "Bien, así lo hacemos."],
     "formal": ["Entonces, queda cerrado."]
