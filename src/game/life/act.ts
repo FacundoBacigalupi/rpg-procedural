@@ -9,6 +9,7 @@ import {
   type AgentId,
   type EntityRef,
   type HolderRef,
+  holderAccount,
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
@@ -51,6 +52,7 @@ import {
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
+  LOT_QUALITY,
   type LocalMap,
   learnFromAttempt,
   localHour,
@@ -73,10 +75,13 @@ import {
   type Purpose,
   placeAt,
   placeRefOf,
+  qualityPriceFactor,
+  REFERENCE_QUALITY,
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
   rankOf,
+  receiveLot,
   resolve,
   SELF_IMAGES,
   type SelfReport,
@@ -247,9 +252,11 @@ export function actProcess(o: ActOptions): ProcessDef {
       YIELDED.name,
       FIGHT_STATE.name,
       PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
+      LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
       BODY_STATE.name,
@@ -340,6 +347,10 @@ function marketOf(
         g.priceCopperPerKg === undefined ? [] : [[goodUnit(g), g.priceCopperPerKg] as const],
       ),
     ),
+    lots: {
+      actor: truth.get(LOT_QUALITY, me),
+      other: other === null ? undefined : truth.get(LOT_QUALITY, other as AgentId),
+    },
     beliefs: {
       actor: truth.get(PRICE_BELIEFS, me),
       other: other === null ? undefined : truth.get(PRICE_BELIEFS, other as AgentId),
@@ -639,7 +650,25 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   if (eff.kind === "trade" && eff.deal && eff.good !== null && eff.grams > 0 && eff.with) {
     const unit = eff.good as string;
     const ref = o.goods.find((g) => goodUnit(g) === eff.good)?.priceCopperPerKg;
-    const paid = (eff.coins / eff.grams) * 1000;
+    // Lo pagado se normaliza a la calidad de referencia: el bien bueno no sube "el precio del bien".
+    const paid =
+      ((eff.coins / eff.grams) * 1000) / qualityPriceFactor(eff.quality ?? REFERENCE_QUALITY);
+    // El lote cambia de manos con su calidad: se mezcla con lo que el comprador ya tenía.
+    if (eff.quality !== undefined) {
+      const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
+      const heldBy = (h: unknown) => ctx.ledger?.holdings(holderAccount(h as HolderRef)) ?? [];
+      const home = truth.get(PERSON, buyer)?.household;
+      const held = [...heldBy(buyer), ...(home === undefined ? [] : heldBy(home))]
+        .filter((r) => r.unit === eff.good)
+        .reduce((sum, r) => sum + r.amount, 0);
+      changes.push(
+        setComponent(
+          LOT_QUALITY,
+          buyer,
+          receiveLot(truth.get(LOT_QUALITY, buyer), unit, held, eff.grams, eff.quality),
+        ),
+      );
+    }
     if (ref !== undefined && paid > 0) {
       for (const who of [me, eff.with as AgentId]) {
         changes.push(
@@ -651,6 +680,20 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         );
       }
     }
+  }
+
+  // Lo que cocinó queda con su calidad, mezclada con lo que ya tenía de ese bien (crafts §11).
+  if (eff.kind === "cook" && eff.good !== null && eff.grams > 0 && eff.from !== null) {
+    const held = (ctx.ledger?.holdings(holderAccount(eff.from as HolderRef)) ?? [])
+      .filter((r) => r.unit === eff.good)
+      .reduce((sum, r) => sum + r.amount, 0);
+    changes.push(
+      setComponent(
+        LOT_QUALITY,
+        me,
+        receiveLot(truth.get(LOT_QUALITY, me), eff.good as string, held, eff.grams, eff.quality),
+      ),
+    );
   }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.

@@ -33,7 +33,11 @@ import {
   gramsIn,
   HARVEST,
   KEEP_DAYS,
+  type LotQualities,
   type PriceBeliefs,
+  perceivedQuality,
+  qualityOfUnit,
+  qualityPriceFactor,
   strike as strikeDeal,
   WANT_DAYS,
 } from "../economy/index.ts";
@@ -133,6 +137,10 @@ export interface Market {
         readonly other: PriceBeliefs | undefined;
         readonly day: number;
       }
+    | undefined;
+  /** La calidad de lo que tiene cada parte (`economy/quality`): sin registro vale la referencia. */
+  readonly lots?:
+    | { readonly actor: LotQualities | undefined; readonly other: LotQualities | undefined }
     | undefined;
 }
 
@@ -260,6 +268,8 @@ export type VerbEffect =
       /** Gramos del bien que cambiaron de mano y monedas que fueron al otro lado. */
       readonly grams: number;
       readonly coins: number;
+      /** Calidad real del lote que cambió de mano (0-1); falta si no se movió nada. */
+      readonly quality?: number;
     }
   | {
       readonly kind: "give";
@@ -875,6 +885,7 @@ const trade: Resolver = (c) => {
       good: found.unit,
       grams: found.grams,
       coins: found.coins,
+      quality: found.quality,
     },
     seconds: c.nominal,
     transfers: found.transfers,
@@ -901,7 +912,27 @@ function believedBase(mk: Market, who: "actor" | "other", unit: LedgerUnit, ref:
   return mk.beliefs === undefined ? ref : baseFor(mk.beliefs[who], unit, ref, mk.beliefs.day);
 }
 
+/**
+ * El precio de un lote según su calidad: quien vende sabe la real; quien compra la percibe con el
+ * error de su ojo (`eye`, 0-1) si el lote tiene calidad registrada. Sin registro, factor 1.
+ */
+function qualityFactors(
+  c: Ctx,
+  mk: Market,
+  sellerIs: "actor" | "other",
+  unit: LedgerUnit,
+  buyerEye: number,
+): { seller: number; buyer: number; quality: number } {
+  const lots = mk.lots?.[sellerIs];
+  if (lots?.[unit] === undefined)
+    return { seller: 1, buyer: 1, quality: qualityOfUnit(lots, unit) };
+  const real = qualityOfUnit(lots, unit);
+  const seen = perceivedQuality(real, buyerEye, c.rng.fork("eye").normal(0, 1));
+  return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
+}
+
 interface Bargain {
+  readonly quality: number;
   readonly direction: "buy" | "sell";
   readonly unit: LedgerUnit;
   readonly grams: number;
@@ -950,8 +981,9 @@ function bargain(
   if (sells) {
     const row = pickWanted(myGoods, what, c.input.unitNames) as Holding;
     const ref = mk.priceCopperPerKg.get(row.unit) as number;
-    const base = believedBase(mk, "actor", row.unit, ref);
-    const buyerBase = believedBase(mk, "other", row.unit, ref);
+    const qf = qualityFactors(c, mk, "actor", row.unit, 0.5);
+    const base = believedBase(mk, "actor", row.unit, ref) * qf.seller;
+    const buyerBase = believedBase(mk, "other", row.unit, ref) * qf.buyer;
     const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
     const myDays = foodDays(merge(myRows, myLarder), foods, mk.ownMembers);
     // Lo que puede entregar: lo que lleva encima, sin tocar lo que guarda para comer.
@@ -983,6 +1015,7 @@ function bargain(
       return spare > 0 && room > 0 && buyerCoinsOf(yourPocket) > 0 ? "no_deal" : "no_means";
 
     return {
+      quality: qf.quality,
       direction: "sell",
       unit: row.unit,
       grams: deal.grams,
@@ -997,8 +1030,15 @@ function bargain(
   if (yourGoods.length === 0 || coinsOf(myRows) === 0) return "no_means";
   const row = pickWanted(yourGoods, what, c.input.unitNames) as Holding;
   const ref = mk.priceCopperPerKg.get(row.unit) as number;
-  const base = believedBase(mk, "other", row.unit, ref);
-  const buyerBase = believedBase(mk, "actor", row.unit, ref);
+  const qf = qualityFactors(
+    c,
+    mk,
+    "other",
+    row.unit,
+    handsOf(c.input.actor.skill ?? 0, c.input.actor.z).senses,
+  );
+  const base = believedBase(mk, "other", row.unit, ref) * qf.seller;
+  const buyerBase = believedBase(mk, "actor", row.unit, ref) * qf.buyer;
   const kcalPerGram = foods.get(row.unit)?.kcalPerGram ?? 0;
   const yourMembers = mk.other?.members ?? 1;
   const keep = KEEP_DAYS * DAILY_KCAL * yourMembers;
@@ -1032,7 +1072,14 @@ function bargain(
       : []),
     { from: me, unit: COPPER, amount: deal.coins, to: holderAccount(you) },
   ];
-  return { direction: "buy", unit: row.unit, grams: deal.grams, coins: deal.coins, transfers };
+  return {
+    quality: qf.quality,
+    direction: "buy",
+    unit: row.unit,
+    grams: deal.grams,
+    coins: deal.coins,
+    transfers,
+  };
 }
 
 const take: Resolver = (c) => {

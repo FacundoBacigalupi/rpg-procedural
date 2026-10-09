@@ -2,6 +2,8 @@
 // la sesión de oficio; el mercado no la ve entera: quien compra la percibe con error según su
 // ojo y paga por lo que cree. Puro: no toca el ledger ni el rng.
 
+import { table } from "../world/index.ts";
+
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
 }
@@ -53,4 +55,37 @@ export function blendQuality(lots: readonly QualityLot[]): number {
     w += l.grams * clamp(l.quality, 0, 1);
   }
   return g === 0 ? 0 : w / g;
+}
+
+/** La calidad de lo que tiene alguien de cada bien (`good:<id>`), mezclada de los lotes que le llegaron. */
+export type LotQualities = Readonly<Record<string, number>>;
+
+/** Calidad por lote de cada agente (economy §1, crafts §11): el ledger guarda gramos, esto la calidad. */
+export const LOT_QUALITY = table<LotQualities>("economy.lot_quality");
+
+/** La calidad que se le supone a un bien sin lote registrado (el precio de contenido es el de esta). */
+export function qualityOfUnit(lots: LotQualities | undefined, unit: string): number {
+  return lots?.[unit] ?? REFERENCE_QUALITY;
+}
+
+/**
+ * Las calidades después de que a quien tiene `heldGrams` de `unit` le llegan `addGrams` de
+ * calidad `quality`: el promedio ponderado (`blendQuality`); lo que ya tenía sin registro vale la
+ * referencia.
+ */
+export function receiveLot(
+  lots: LotQualities | undefined,
+  unit: string,
+  heldGrams: number,
+  addGrams: number,
+  quality: number,
+): LotQualities {
+  const blended = blendQuality([
+    { grams: heldGrams, quality: qualityOfUnit(lots, unit) },
+    { grams: addGrams, quality },
+  ]);
+  return {
+    ...lots,
+    [unit]: Math.round((addGrams > 0 || heldGrams > 0 ? blended : quality) * 1000) / 1000,
+  };
 }
