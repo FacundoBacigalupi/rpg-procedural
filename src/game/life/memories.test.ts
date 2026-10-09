@@ -227,6 +227,25 @@ describe("qué vive cada quien de un evento", () => {
     expect(livedFrom(speak(0))).toEqual([]);
   });
 
+  it("una amenaza queda en ambos: vívida en el amenazado, tenue en quien amenazó", () => {
+    const speak = (faceLoss: number) =>
+      ({
+        id: ev(),
+        kind: "action.speak",
+        tick: 5,
+        actors: [A, B],
+        place: PLACE,
+        data: {
+          effect: { kind: "speak", regard: { kind: "threat", faceLoss, deltas: { fear: 0.2 } } },
+        },
+      }) as unknown as Event;
+    const lived = livedFrom(speak(0.7));
+    expect(lived.map((l) => l.who)).toEqual([A, B]);
+    const [victim, threatener] = [lived[0]?.experience, lived[1]?.experience];
+    expect(victim?.intensity).toBeGreaterThan(threatener?.intensity ?? 1);
+    expect(victim?.valence).toBeLessThan(threatener?.valence ?? -1);
+  });
+
   it("un evento sin memoria no deja nada", () => {
     expect(livedFrom({ ...fight([]), kind: "action.wait" })).toEqual([]);
   });

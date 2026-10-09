@@ -68,6 +68,11 @@ interface Effect {
   readonly care?: number;
   readonly judged?: { readonly verdict?: string; readonly certain?: boolean };
   readonly form?: { readonly faceLoss?: number };
+  readonly regard?: {
+    readonly kind?: string;
+    readonly faceLoss?: number;
+    readonly deltas?: { readonly fear?: number };
+  };
 }
 
 /** Lo que cada parte guarda de un evento, según el papel que tuvo. */
@@ -117,6 +122,26 @@ export function livedFrom(e: Event): Lived[] {
             valence: -clamp01(0.4 + 0.5 * loss),
           },
         });
+      }
+      // Una amenaza o un insulto (dialogue §9, §10): el amenazado/insultado lo guarda tanto más
+      // vívido cuanto más miedo o cara le costó; quien lo dijo guarda haberlo dicho, más tenue.
+      const regard = eff.regard;
+      if (regard && (regard.kind === "threat" || regard.kind === "insult")) {
+        const weight = clamp01(Math.max(regard.faceLoss ?? 0, regard.deltas?.fear ?? 0));
+        out.push(
+          {
+            who: actor,
+            experience: {
+              ...base(e, [second]),
+              intensity: clamp01(0.3 + 0.6 * weight),
+              valence: -clamp01(0.4 + 0.5 * weight),
+            },
+          },
+          {
+            who: second,
+            experience: { ...base(e, [actor]), intensity: 0.3, valence: -0.1 },
+          },
+        );
       }
       return out;
     }

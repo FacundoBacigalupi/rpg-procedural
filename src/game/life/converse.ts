@@ -119,6 +119,7 @@ import {
   type Trait,
   table,
   threatCredibility,
+  threatFaceDelta,
   transmit,
   understand,
   utter,
@@ -711,12 +712,16 @@ const THREAT_HELP_BASE = 0.2;
 const THREAT_HELP_EACH = 0.2;
 const THREAT_RECOURSE = 0.2;
 const INSULT_TRUTH_GUESS = 0.2;
+const THREAT_FACE_SEVERITY = 0.5;
 
 /**
  * Lo que la amenaza, el halago o el insulto dejan en lo que el oyente siente por quien habló
  * (dialogue §9, §10): deltas de la relación y, en el inspector, qué hizo y cuánta cara se jugó.
  */
-function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | undefined {
+function regardEffect(
+  reply: ReturnType<typeof decideReply>,
+  witnesses: number,
+): RegardEffect | undefined {
   if (reply.threat) {
     const { verdict, aftermath } = reply.threat;
     return {
@@ -729,6 +734,11 @@ function regardEffect(reply: ReturnType<typeof decideReply>): RegardEffect | und
         resentment: aftermath.resentmentDelta,
         trust: aftermath.trustDelta,
       },
+      // Quien amenaza gana poco de cara si cedieron (threatFaceDelta «obeyed»).
+      faceGain:
+        verdict.response === "yield"
+          ? threatFaceDelta("obeyed", witnesses, THREAT_FACE_SEVERITY)
+          : 0,
     };
   }
   if (reply.flattery) {
@@ -793,6 +803,8 @@ export interface RegardEffect {
   readonly faceLoss: number;
   readonly vengeful: boolean;
   readonly deltas: Readonly<Record<string, number>>;
+  /** Cara que gana quien habló (amenaza obedecida); no está si no aplica. */
+  readonly faceGain?: number;
 }
 
 /** Constantes sin calibrar de una profecía que quien habla se inventa o no sabe de dónde salió. */
@@ -1120,7 +1132,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(setComponent(KNOWN_DEEDS, me, learnDeed(truth.get(KNOWN_DEEDS, me), learned)));
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
-      const regard = regardEffect(reply);
+      const regard = regardEffect(reply, witnessesOf(truth, me, speaker));
       // La forma: lo dicho con su registro y tratamiento; la falta le cuesta cara al ofendido (FACE).
       const judged = reply.form;
       const formEffect =
@@ -1145,11 +1157,13 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                   : {},
             }
           : undefined;
-      if (judged && judged.faceLoss > 0) {
-        changes.push(
-          setComponent(FACE, me, adjustFace(truth.get(FACE, me), -judged.faceLoss, ctx.now)),
-        );
+      // La cara de quien oye: la falta de forma y la amenaza o el insulto que lo dejó mal parado.
+      const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0);
+      if (lostFace > 0) {
+        changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
       }
+      // La de quien habló: sube si le cedieron; la vergüenza de la ofensa de forma baja abajo.
+      let speakerFace = regard?.faceGain ?? 0;
       // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
       // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
       // cometió pierde cara si se la reprochan.
@@ -1169,9 +1183,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           const shame =
             (response === "punish" ? OFFENDER_SHAME_PUNISHED : OFFENDER_SHAME_REBUKED) *
             judged.faceLoss;
-          changes.push(
-            setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), -shame, ctx.now)),
-          );
+          speakerFace -= shame;
         }
         offenseEvent = {
           kind: "social.offense",
@@ -1188,6 +1200,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           emissions: {},
           causes: [{ kind: "event", event: draftEvent(0) }],
         };
+      }
+      if (speakerFace !== 0) {
+        changes.push(
+          setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), speakerFace, ctx.now)),
+        );
       }
       // La pregunta por un hecho (law §5): quien pregunta lo hace por uno que conoce y el testigo
       // contesta en `life.testify` (causa: este acto de habla).
