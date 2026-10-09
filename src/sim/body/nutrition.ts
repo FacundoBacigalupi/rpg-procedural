@@ -250,3 +250,67 @@ export function dietDayIntake(
   for (const n of BODY_NUTRIENTS) t[n] += diet.background[n] ?? 0;
   return t;
 }
+
+/**
+ * Lo que una persona comió en un día de mundo, por bien y en gramos. Lo escriben quienes comen
+ * (`act`, `routine`) y lo lee el paso diario de nutrición; nadie lo borra: el día siguiente lo
+ * reemplaza. Aparte de `NUTRITION` para no mezclar escritores.
+ */
+export interface MealLog {
+  readonly day: number;
+  readonly eaten: Readonly<Record<string, number>>;
+}
+export const MEALS = table<MealLog>("body.meals");
+
+/** Suma una comida al registro del día (si el registro es de otro día, empieza uno nuevo). */
+export function logMeal(
+  prev: MealLog | undefined,
+  day: number,
+  good: string,
+  grams: number,
+): MealLog {
+  const base = prev && prev.day === day ? prev.eaten : {};
+  return { day, eaten: { ...base, [good]: (base[good] ?? 0) + grams } };
+}
+
+/** Aporte de nutrientes de lo comido (perfiles por kilo; lo que no tiene perfil no aporta). */
+export function mealIntake(
+  log: MealLog,
+  profiles: ReadonlyMap<string, NutrientProfile>,
+): Record<Nutrient, number> {
+  return dietIntake(
+    Object.keys(log.eaten)
+      .sort()
+      .map((good) => ({ kg: (log.eaten[good] ?? 0) / 1000, profile: profiles.get(good) ?? {} })),
+  );
+}
+
+/** Lo que hace crecer la necesidad de nutrientes (`stepStores`' `need`). */
+export interface NeedFactors {
+  readonly ageYears: number;
+  readonly pregnant?: boolean;
+  /** 0-1: esfuerzo físico del día. */
+  readonly strain?: number;
+  /** Heridas abiertas o sangrando (cuenta, no gravedad). */
+  readonly openWounds?: number;
+}
+
+/** Multiplicador de necesidad: niños y adolescentes creciendo, embarazo, esfuerzo y heridas. */
+export function needMultiplier(f: NeedFactors): number {
+  const growing =
+    f.ageYears < 4 ? 0.6 : f.ageYears < 18 ? 1.3 - 0.3 * clamp01((f.ageYears - 4) / 14) : 1;
+  const wounds = 0.05 * Math.min(4, f.openWounds ?? 0);
+  return growing + (f.pregnant ? 0.4 : 0) + 0.3 * clamp01(f.strain ?? 0) + wounds;
+}
+
+/**
+ * Efectos de las carencias que ya importan (etapa franca o peor); `undefined` si ninguna llegó
+ * ahí, para no guardar nada en el caso normal.
+ */
+export function seriousDeficiencyEffects(stores: NutrientStores): DeficiencyEffects | undefined {
+  const serious = BODY_NUTRIENTS.some((n) => deficiency(stores, n) >= 0.5);
+  return serious ? deficiencyEffects(stores) : undefined;
+}
+
+/** Los efectos publicados de quien tiene alguna carencia seria; sin fila, ninguno. */
+export const DEFICIENCY_EFFECTS = table<DeficiencyEffects>("body.deficiency_effects");
