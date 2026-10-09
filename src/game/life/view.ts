@@ -17,6 +17,7 @@ import {
   COPPER,
   type Figure,
   houseKey,
+  INFECTION,
   LOCATION,
   type Location,
   localHour,
@@ -404,7 +405,9 @@ export function playerView(
   }
 
   const plan = w.plans.find((p) => p.id === body.plan);
-  const signs = plan ? bodySigns(plan, body) : { general: [], zones: [] };
+  const signs = plan
+    ? bodySigns(plan, body, (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0)
+    : { general: [], zones: [] };
   const cues = new Set<SelfCue>();
   for (const s of [...signs.general, ...signs.zones.flatMap((z) => z.signs)]) {
     const c = CUES[s];

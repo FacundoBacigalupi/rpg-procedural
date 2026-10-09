@@ -108,7 +108,8 @@ export interface SignReport {
   readonly zones: readonly { readonly zone: string; readonly signs: readonly BodySign[] }[];
 }
 
-export function bodySigns(plan: BodyPlanDef, body: Body): SignReport {
+/** `ill`: tiene una enfermedad con síntomas (body-health §6), que se ve como fiebre. */
+export function bodySigns(plan: BodyPlanDef, body: Body, ill = false): SignReport {
   const general: BodySign[] = [];
   const ph = plan.physiology;
   const scale = body.massKg / ph.refMassKg;
@@ -125,7 +126,7 @@ export function bodySigns(plan: BodyPlanDef, body: Body): SignReport {
   add(body.fatigue > 0.5, "tired");
   add(body.fatigue > 0.85, "exhausted");
   add(body.sleepDebt > 8, "sleepy");
-  add(body.sepsis > 0.15 || body.wounds.some((w) => w.infection > INFECTED), "feverish");
+  add(ill || body.sepsis > 0.15 || body.wounds.some((w) => w.infection > INFECTED), "feverish");
   add(
     capabilitiesOf(plan, body).locomotion < 0.7 && body.consciousness !== "unconscious",
     "limping",

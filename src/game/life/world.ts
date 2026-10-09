@@ -58,6 +58,7 @@ import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
+import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { gossipProcess } from "./gossip.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
@@ -101,6 +102,8 @@ export interface LifeWorld {
   readonly goods: readonly GoodDef[];
   /** Los materiales de los edificios (settlements §5): sin ellos no corre el mantenimiento. */
   readonly materials?: readonly MaterialDef[];
+  /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
+  readonly pathogenSeeds?: readonly PathogenSeed[];
   readonly recipes: readonly RecipeDef[];
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
@@ -279,6 +282,11 @@ export function lifeWorld(
           seed: parts.seed,
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
+        }),
+        exposureProcess({
+          clock: parts.clock,
+          seeds: parts.pathogenSeeds ?? [],
+          placeOf: placeOf(parts, village),
         }),
         upkeepProcess({
           clock: parts.clock,
