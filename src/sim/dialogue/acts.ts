@@ -127,6 +127,12 @@ export function normalize(text: string): string {
 }
 
 const GREET = /\b(hola|buen dia|buenos dias|buenas tardes|buenas noches|buenas|saludos|que tal)\b/;
+
+/** ¿El texto (ya normalizado) abre con un saludo en algún lado? Declara el acto de saludar. */
+export function greets(norm: string): boolean {
+  return GREET.test(norm);
+}
+
 const FAREWELL = /\b(adios|chau|chao|hasta luego|hasta manana|nos vemos|me voy|que te vaya bien)\b/;
 const ASK = /\b(donde (esta|anda|queda|se metio)|sabes donde|has visto a|viste a)\b/;
 // Sonsacar (dialogue §11): pedir que cuente lo de alguien, y con qué maniobra.

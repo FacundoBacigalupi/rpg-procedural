@@ -262,6 +262,10 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `sim/dialogue/persuasion.ts`: `persuade` mueve la utilidad del oyente en proporción a relevancia (contra `Stakes`, lo que de verdad le importa), credibilidad (claim con evidencia y hablante), entrega (habilidad social con ruido) y apertura (intelecto, terquedad, enojo, posición pública). Ceder con testigos cuesta cara (`faceCostOf`); apelar a la cara la alivia. Insistir o apelar a lo rechazado da reacción adversa (`offended`, confianza abajo, posición más firme). Falta cablearlo a `converse.ts` y al léxico de `understand`.
 
+### Implementado (2026-10-09): etiqueta declarada y ofensas con causa
+
+`SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
+
 ## Tests
 
 - **El LLM no agrega hechos:** para un corpus de pedidos de verbalización, ningún texto aceptado contiene entidades, cifras o compromisos fuera de los actos (validación).

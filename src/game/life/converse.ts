@@ -37,6 +37,7 @@ import {
   callName,
   clampTemper,
   credulity,
+  DEFAULT_FACE,
   DEFENSE_DELTAS,
   type DetectionInput,
   type DimensionDef,
@@ -48,12 +49,15 @@ import {
   dominantVariant,
   draftEvent,
   ENTITY,
+  type EtiquetteNorm,
   type EventDraft,
   FACE,
   type FormJudgeInput,
+  type FormJudgement,
   formalityShift,
   type GoodDef,
   goodUnit,
+  greets,
   HEARD,
   type HeardProphecy,
   hear,
@@ -68,6 +72,7 @@ import {
   MEMORIES,
   MIND,
   normalize,
+  type Offense,
   OWN_DEEDS,
   PERSON,
   PERSON_NAME,
@@ -83,6 +88,7 @@ import {
   recipientBetween,
   recollect,
   relationship,
+  respondToOffense,
   type ScheduleRequest,
   SECRETS,
   type SpaceGraph,
@@ -167,6 +173,8 @@ export interface ConverseForm {
   readonly registers: readonly RegisterDef[];
   readonly addresses: readonly AddressDef[];
   readonly taboos: readonly TabooDef[];
+  /** Las normas de etiqueta de la cultura (usted, saludo debido); sin ellas solo pesa el registro. */
+  readonly etiquette?: readonly EtiquetteNorm[];
   readonly culture: string;
 }
 
@@ -175,6 +183,20 @@ const FORM_RESENTMENT = 0.4;
 const FORM_RESPECT = 0.2;
 /** Reverencia por los tabúes de quien oye si no tiene fe anotada. */
 const DEFAULT_REVERENCE = 0.5;
+
+/** Cara que pierde quien ofendió si el ofendido lo reprende o lo castiga, por punto de cara (sin calibrar). */
+const OFFENDER_SHAME_REBUKED = 0.5;
+const OFFENDER_SHAME_PUNISHED = 1;
+
+/** La peor falta de la forma (registro, etiqueta omitida o palabra vedada), o nada. */
+function worstOffense(j: FormJudgement): Offense | undefined {
+  const all: Offense[] = [
+    ...(j.register ? [j.register] : []),
+    ...j.breaches,
+    ...j.taboos.map((t) => ({ norm: t.taboo, size: t.size, gap: 0, witnesses: 0 })),
+  ];
+  return all.reduce<Offense | undefined>((w, x) => (!w || x.size > w.size ? x : w), undefined);
+}
 
 /** La gente que está donde ellos hablan, sin contarlos: los testigos de lo dicho. */
 function witnessesOf(truth: ReadonlyWorldTruth, me: AgentId, speaker: AgentId): number {
@@ -206,6 +228,8 @@ function formOf(
     speakerRank: number;
     /** Lo que quien habla cree del rango del oyente. */
     speakerReads: number;
+    /** La lectura del oyente sobre quien habla (rango y confianza); sin ella, la etiqueta no ofende. */
+    reading?: { rank: number; confidence: number };
   },
 ): { spoken: SpokenForm; judge: FormJudgeInput } | undefined {
   const { me, speaker, text } = ctx;
@@ -232,6 +256,7 @@ function formOf(
     given: givenName(truth, me) ?? "",
     words: taboos.map((t) => t.concepts),
     knowsTaboos: false,
+    greeted: greets(norm),
   });
   const faith = truth.get(RELIGIOUS_IDENTITY, me)?.affiliations[0];
   return {
@@ -244,6 +269,16 @@ function formOf(
       witnesses: witnessesOf(truth, me, speaker),
       hearerReverence: faith ? unit(0.5 * faith.belief + 0.5 * faith.practice) : DEFAULT_REVERENCE,
       speakerKnewTaboos: true,
+      ...(f.etiquette
+        ? {
+            etiquette: {
+              norms: f.etiquette.filter((n) => n.culture === f.culture),
+              offendedRank: ctx.hearerRank,
+              believedActor: ctx.reading,
+              actorKnowsEtiquette: 1,
+            },
+          }
+        : {}),
     },
   };
 }
@@ -825,7 +860,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // Lo que el oyente cree del rango de quien le habla (`STANDING_BELIEFS`), no la verdad:
       // sin lectura no hay deferencia, y el impostor bien vestido recibe el usted (social §3).
       const myRank = rankOf(truth.get(STATUS, me), o.statuses) ?? 0;
-      const readRank = beliefAbout(truth.get(STANDING_BELIEFS, me), speaker)?.rank;
+      const reading = beliefAbout(truth.get(STANDING_BELIEFS, me), speaker);
+      const readRank = reading?.rank;
       const above = byRank && readRank !== undefined && readRank > myRank;
       // Quién es el oyente (temperamento) y qué recuerda de quien le habla (dialogue §5).
       const innate = truth.get(INNATE, me);
@@ -845,6 +881,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             readRank: readRank ?? myRank,
             speakerRank: theirRank,
             speakerReads: beliefAbout(truth.get(STANDING_BELIEFS, speaker), me)?.rank ?? theirRank,
+            ...(reading ? { reading } : {}),
           })
         : undefined;
       const act = understand(
@@ -1022,6 +1059,45 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           setComponent(FACE, me, adjustFace(truth.get(FACE, me), -judged.faceLoss, ctx.now)),
         );
       }
+      // La ofensa con causa (social §4): la peor falta de la forma es un evento propio, con el acto
+      // de habla como causa; el ofendido decide qué hace (ignorar, reprender, castigar) y quien la
+      // cometió pierde cara si se la reprochan.
+      const offense = judged && judged.faceLoss > 0 ? worstOffense(judged) : undefined;
+      let offenseEvent: EventDraft | undefined;
+      if (offense && judged) {
+        const face = truth.get(FACE, me)?.value ?? DEFAULT_FACE;
+        const response = respondToOffense(offense, {
+          offendedRank: myRank,
+          believedActorRank: readRank ?? myRank,
+          face,
+          magnanimity: unit(
+            0.5 + 0.25 * (clampTemper(z["warmth"] ?? 0) - clampTemper(z["reactivity"] ?? 0)),
+          ),
+        });
+        if (response !== "ignore") {
+          const shame =
+            (response === "punish" ? OFFENDER_SHAME_PUNISHED : OFFENDER_SHAME_REBUKED) *
+            judged.faceLoss;
+          changes.push(
+            setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), -shame, ctx.now)),
+          );
+        }
+        offenseEvent = {
+          kind: "social.offense",
+          actors: [speaker, me],
+          place: o.placeOf(truth, me),
+          data: {
+            norm: offense.norm,
+            size: offense.size,
+            gap: offense.gap,
+            witnesses: offense.witnesses,
+            faceLoss: judged.faceLoss,
+            response,
+          },
+          emissions: {},
+          causes: [{ kind: "event", event: draftEvent(0) }],
+        };
+      }
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -1120,7 +1196,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       }
       return {
         changes,
-        events: [event],
+        events: offenseEvent ? [event, offenseEvent] : [event],
         postings:
           swaps.length > 0
             ? [

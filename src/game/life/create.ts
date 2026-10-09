@@ -40,6 +40,7 @@ import {
   dayOf,
   EATEN,
   ENTITY,
+  ETIQUETTE,
   FOODS,
   GOODS,
   generateLanguage,
@@ -255,6 +256,7 @@ function villageForm(seed: Seed, content: Content, language?: Language): Convers
     registers: content.all(REGISTERS),
     addresses: content.all(ADDRESSES),
     taboos: content.all(TABOOS),
+    etiquette: content.all(ETIQUETTE),
     culture: "village",
   };
 }
