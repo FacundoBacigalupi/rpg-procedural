@@ -70,7 +70,6 @@ export function intrusionProcess(o: IntrusionOptions): ProcessDef {
           const mental = truth.get(MENTAL, me);
           if (!mental || mental.conditions.length === 0) continue;
           const memories = truth.get(MEMORIES, me);
-          if (!memories) continue;
           const place = o.placeOf(truth, me);
           // Cada presencia (y el lugar) es un estímulo; la primera que pega trae el recuerdo.
           const cues = [...group.filter((x) => x !== me).map((who) => ({ who })), { place }];
@@ -81,12 +80,15 @@ export function intrusionProcess(o: IntrusionOptions): ProcessDef {
             if (Rng.root(o.seed).fork("intrusion", me, hour, key).float() >= chance) continue;
             const origins = intrusionEvents(mental, cue);
             const woken = new Set(origins);
-            changes.push(
-              setComponent(MEMORIES, me, {
-                ...memories,
-                items: memories.items.map((m) => (woken.has(m.eventId) ? recall(m, ctx.now) : m)),
-              }),
-            );
+            // Sin memorias formadas todavía, la intrusión igual ocurre; solo no hay qué reforzar.
+            if (memories?.items.some((m) => woken.has(m.eventId))) {
+              changes.push(
+                setComponent(MEMORIES, me, {
+                  ...memories,
+                  items: memories.items.map((m) => (woken.has(m.eventId) ? recall(m, ctx.now) : m)),
+                }),
+              );
+            }
             events.push({
               kind: "mind.intrusion",
               actors: [me],
@@ -102,7 +104,7 @@ export function intrusionProcess(o: IntrusionOptions): ProcessDef {
           }
         }
       }
-      return changes.length === 0 ? {} : { changes, events };
+      return events.length === 0 ? {} : { changes, events };
     },
   };
 }
