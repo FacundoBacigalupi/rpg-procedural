@@ -4,8 +4,8 @@
 // skills §9: puede errar; las horas de práctica y el nivel real no salen) y los bienes como los estima a ojo.
 //
 // Lo que "cree tener" sale de `INVENTORY_BELIEF` (la foto de la última vez que revisó), redondeado
-// como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. Mientras nada
-// escriba esa foto (ver ROADMAP), vale lo que tiene.
+// como lo estimaría él: un robo que no notó sigue figurando hasta que revisa. La foto se toma al
+// empezar la vida y `inventoryProcess` la corrige al usar sus bienes (comer, dar, comprar, guardar).
 
 import type { AgentId, EntityRef, HolderRef, LedgerUnit } from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";

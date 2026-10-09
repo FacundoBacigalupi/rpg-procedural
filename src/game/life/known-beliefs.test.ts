@@ -1,8 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { AgentId, LedgerUnit, Tick } from "../../core/index.ts";
+import type { AgentId, Event, HolderRef, LedgerUnit, Tick } from "../../core/index.ts";
 import { type Beliefs, type Location, learn } from "../../sim/index.ts";
-import { checkInventory, noticeChange } from "./inventory-belief.ts";
+import { checkInventory, noticeChange, touchedBy } from "./inventory-belief.ts";
 import { whereaboutsFromBeliefs } from "./known.ts";
 
 const who = "agent:7" as AgentId;
@@ -84,5 +84,27 @@ describe("inventario creído", () => {
     const after = noticeChange(b, "carried", copper, 0, (now + 10) as Tick);
     expect(after.carried).toEqual([{ unit: bread, amount: 800 }]);
     expect(b.carried).toHaveLength(2);
+  });
+});
+
+describe("touchedBy", () => {
+  const bread = "good:bread" as LedgerUnit;
+  const home = "household:1" as unknown as HolderRef;
+  const ev = (effect: object) => ({ data: { effect } }) as unknown as Event;
+
+  it("comer de la despensa toca la despensa, no el bolsillo", () => {
+    expect(touchedBy(ev({ kind: "eat", good: bread, from: home }), home)).toEqual([
+      { unit: bread, carried: false, larder: true },
+    ]);
+  });
+
+  it("comprar toca el bien y las monedas del bolsillo", () => {
+    const t = touchedBy(ev({ kind: "trade", good: bread, coins: 3 }), home);
+    expect(t.map((x) => x.unit)).toEqual([bread, "coin:copper"]);
+    expect(t.every((x) => x.carried && !x.larder)).toBe(true);
+  });
+
+  it("lo que no mueve bienes no toca nada", () => {
+    expect(touchedBy(ev({ kind: "observe", acuity: 1 }), home)).toEqual([]);
   });
 });
