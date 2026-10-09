@@ -1,4 +1,4 @@
-// La decisión de los NPC (npc-psychology §7, Fase 3): cada hora, cada uno puntúa sus candidatas
+// La decisión de los NPC (npc-psychology §7, Fase 3): cada día (cada hora en escena), cada uno puntúa sus candidatas
 // —las del catálogo desde lo que cree (`verbCandidates`) y las sociales desde sus relaciones—
 // con las necesidades de su cuerpo, sus valores con el sesgo de su cultura y la etapa de su vida,
 // y elige con softmax (`decideByUtility`, `rng.fork("decision", npc, tick)`). Lo elegido queda en
@@ -93,7 +93,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
     id: DECIDE_PROCESS,
     system: "life",
     scope: "agent",
-    cadence: { local: "hour", scene: "hour" },
+    cadence: { local: "day", scene: "hour" },
     representation: "individual",
     phase: "decide",
     reads: [
