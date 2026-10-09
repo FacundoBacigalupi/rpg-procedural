@@ -8,12 +8,11 @@
 import type { Tick } from "../../core/index.ts";
 import type { FacetKey, VerbSkill } from "./catalog.ts";
 import {
-  exposeTo,
+  exposeToPerson,
   type Learner,
   levelOf,
   type PracticeDeposit,
   practice,
-  rivalKey,
   type SkillState,
 } from "./state.ts";
 
@@ -38,6 +37,8 @@ export interface Watched {
   readonly doerLevel: number;
   readonly seconds: number;
   readonly tick: Tick;
+  /** El estilo de quien lo hacía (su cultura o escuela), si se lo reconoce: se acostumbra también a él. */
+  readonly style?: string;
 }
 
 /** Lo que mirar enseña: el estado nuevo, o null si no hay nada que aprender. */
@@ -89,5 +90,5 @@ export function learnFromWatching(
     lastPracticed: state?.lastPracticed ?? null,
     hours: state?.hours ?? 0,
   };
-  return exposeTo(kept, rivalKey(w.doer), hours, w.tick, day);
+  return exposeToPerson(kept, w.doer, w.style, hours, w.tick, day);
 }

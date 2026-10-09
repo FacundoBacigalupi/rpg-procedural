@@ -17,7 +17,7 @@ import {
   type FightGist,
   type FightIntent,
   type FightSnapshot,
-  familiarityOf,
+  familiarWith,
   INNATE,
   levelOf,
   PERSON,
@@ -27,9 +27,11 @@ import {
   SKILL_STATE,
   type SkillCatalog,
   type Skills,
+  STYLE_SHARE,
   type StateChange,
   setComponent,
   standardize,
+  styleKey,
   type Trait,
   table,
   verbSkill,
@@ -106,10 +108,16 @@ export interface StrikeFight {
 export interface Exposure {
   readonly skill: string;
   readonly key: string;
+  /** El estilo del rival (cultura o escuela): también se acostumbra a él. */
+  readonly style?: string;
   readonly hours: number;
 }
 
+import { styleOf } from "./styles.ts";
+
 const DAY_SECONDS = 86400;
+
+const styleExposure = (style: string | undefined) => (style === undefined ? {} : { style });
 
 /** Cuánto del nivel real se pierde al contenerse del todo (calibración abierta). */
 export const HOLD_BACK_COST = 0.2;
@@ -121,7 +129,10 @@ export function exposeSkills(
   now: Tick,
   day = DAY_SECONDS,
 ): Skills {
-  return { ...skills, [e.skill]: exposeTo(skills?.[e.skill], e.key, e.hours, now, day) };
+  const one = exposeTo(skills?.[e.skill], e.key, e.hours, now, day);
+  const both =
+    e.style === undefined ? one : exposeTo(one, styleKey(e.style), e.hours * STYLE_SHARE, now, day);
+  return { ...skills, [e.skill]: both };
 }
 
 /** La familiaridad de `who` con el estilo de `rival` en la habilidad del golpe. */
@@ -129,11 +140,14 @@ function fightFamiliarity(
   catalog: SkillCatalog,
   skills: Skills | undefined,
   rival: AgentId,
+  style: string | undefined,
   now: Tick,
   day: number,
 ): number {
   const use = catalog.forVerb("strike");
-  return use ? familiarityOf(skills?.[use.skill.id], rivalKey(rival), now, day) : 0;
+  if (!use) return 0;
+  const keys = [rivalKey(rival), ...(style === undefined ? [] : [styleKey(style)])];
+  return familiarWith(skills?.[use.skill.id], keys, now, day);
 }
 
 /** Hay con quién pelear: está vivo, con cuerpo y en pie o dormido (no hace falta rematar a un caído). */
@@ -204,6 +218,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           i.skills,
           i.truth.get(SKILL_STATE, i.me),
           i.target,
+          styleOf(i.truth, i.target),
           i.start,
           day,
         ),
@@ -222,6 +237,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
           i.skills,
           i.truth.get(SKILL_STATE, i.target),
           i.me,
+          styleOf(i.truth, i.me),
           i.start,
           day,
         ),
@@ -265,7 +281,16 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
   return {
     seconds: result.seconds,
     myBody: mine.body,
-    ...(strike ? { exposure: { skill: strike.skill.id, key: rivalKey(i.target), hours } } : {}),
+    ...(strike
+      ? {
+          exposure: {
+            skill: strike.skill.id,
+            key: rivalKey(i.target),
+            ...styleExposure(styleOf(i.truth, i.target)),
+            hours,
+          },
+        }
+      : {}),
     changes: [
       setComponent(BODY_STATE, i.target, theirs.body),
       ...(strike
@@ -275,7 +300,12 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
               i.target,
               exposeSkills(
                 i.truth.get(SKILL_STATE, i.target),
-                { skill: strike.skill.id, key: rivalKey(i.me), hours },
+                {
+                  skill: strike.skill.id,
+                  key: rivalKey(i.me),
+                  ...styleExposure(styleOf(i.truth, i.me)),
+                  hours,
+                },
                 i.start + result.seconds,
                 day,
               ),

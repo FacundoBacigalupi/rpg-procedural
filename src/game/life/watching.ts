@@ -35,6 +35,7 @@ import {
   vigilantAttention,
   WATCH_MIN_SEEN,
 } from "../../sim/index.ts";
+import { styleOf } from "./styles.ts";
 
 export interface WatchInput {
   readonly truth: ReadonlyWorldTruth;
@@ -117,6 +118,7 @@ export function watchersLearn(i: WatchInput): StateChange[] {
     { graph: i.spaces, forest: i.forest, daylight: i.light },
     i.rng.fork("sight"),
   );
+  const style = styleOf(i.truth, i.doer);
   const out: StateChange[] = [];
   for (const p of percepts) {
     const id = p.observer;
@@ -135,7 +137,14 @@ export function watchersLearn(i: WatchInput): StateChange[] {
         capabilities: capabilitiesOf(plan, body),
         ageYears: age,
       },
-      { doer: i.doer, seen, doerLevel: i.doerLevel, seconds: i.seconds, tick: i.now },
+      {
+        doer: i.doer,
+        seen,
+        doerLevel: i.doerLevel,
+        seconds: i.seconds,
+        tick: i.now,
+        ...(style === undefined ? {} : { style }),
+      },
       i.clock.day,
     );
     if (next)
