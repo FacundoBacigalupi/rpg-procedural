@@ -63,5 +63,54 @@
     "tone": "danger",
     "exclusive": false,
     "knownBy": { "common": true }
+  },
+  {
+    "id": "picked-lock-from-clean-entry",
+    "premises": [
+      { "pred": "entered", "args": ["?who", "?place"] },
+      { "pred": "lock_intact", "args": ["?place"] }
+    ],
+    "conclusion": { "pred": "picked_lock", "args": ["?who", "?place"] },
+    "reliability": 0.55,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "sleight", "min": 0.3 }] }
+  },
+  {
+    "id": "blade-from-clean-wound",
+    "premises": [{ "pred": "clean_edged_wound", "args": ["?victim"] }],
+    "conclusion": { "pred": "cut_by_blade", "args": ["?victim"] },
+    "reliability": 0.75,
+    "abductive": true,
+    "tone": "danger",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "medicine", "min": 0.3 }] }
+  },
+  {
+    "id": "passage-from-fresh-tracks",
+    "premises": [
+      { "pred": "tracks_of", "args": ["?who", "?place"] },
+      { "pred": "tracks_fresh", "args": ["?place"] }
+    ],
+    "conclusion": { "pred": "passed_recently", "args": ["?who", "?place"] },
+    "reliability": 0.7,
+    "abductive": true,
+    "tone": "neutral",
+    "exclusive": false,
+    "knownBy": { "skills": [{ "skill": "observation", "min": 0.3 }] }
+  },
+  {
+    "id": "plot-from-foreknowledge",
+    "premises": [
+      { "pred": "benefits_from", "args": ["?who", "?event"] },
+      { "pred": "knew_beforehand", "args": ["?who", "?event"] }
+    ],
+    "conclusion": { "pred": "plotted", "args": ["?who", "?event"] },
+    "reliability": 0.45,
+    "abductive": true,
+    "tone": "malice",
+    "exclusive": true,
+    "knownBy": { "schemas": [{ "schema": "people_are_untrustworthy", "min": 0.5 }] }
   }
 ]

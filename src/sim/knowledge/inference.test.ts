@@ -280,6 +280,30 @@ describe("reglas como contenido", () => {
     expect(weak).not.toContain("poison-from-meal");
   });
 
+  it("las reglas de oficio las conoce solo quien tiene el oficio o la mentalidad", () => {
+    const none = knownRules(DEFS, { skills: {}, schemas: {} });
+    for (const id of [
+      "picked-lock-from-clean-entry",
+      "blade-from-clean-wound",
+      "passage-from-fresh-tracks",
+      "plot-from-foreknowledge",
+    ]) {
+      expect(none).not.toContain(id);
+    }
+    expect(knownRules(DEFS, { skills: { sleight: 0.5 }, schemas: {} })).toContain(
+      "picked-lock-from-clean-entry",
+    );
+    expect(knownRules(DEFS, { skills: { medicine: 0.5 }, schemas: {} })).toContain(
+      "blade-from-clean-wound",
+    );
+    expect(knownRules(DEFS, { skills: { observation: 0.5 }, schemas: {} })).toContain(
+      "passage-from-fresh-tracks",
+    );
+    expect(knownRules(DEFS, { skills: {}, schemas: { people_are_untrustworthy: 0.9 } })).toContain(
+      "plot-from-foreknowledge",
+    );
+  });
+
   it("es monótono en el saber y no depende del orden", () => {
     fc.assert(
       fc.property(fc.nat(100), fc.nat(100), (a, b) => {
