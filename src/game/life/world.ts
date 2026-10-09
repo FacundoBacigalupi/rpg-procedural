@@ -70,6 +70,7 @@ import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
+import { type Healer, medicineProcess } from "./medicine.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
@@ -112,6 +113,8 @@ export interface LifeWorld {
   readonly materials?: readonly MaterialDef[];
   /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
   readonly pathogenSeeds?: readonly PathogenSeed[];
+  /** Sanadores explícitos (body-health §6): diagnostican y tratan a los enfermos; sin ellos no hacen nada. */
+  readonly healers?: readonly Healer[];
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
   readonly substanceDoses?: readonly SubstanceDose[];
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
@@ -317,6 +320,11 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          placeOf: placeOf(parts, village),
+        }),
+        medicineProcess({
+          clock: parts.clock,
+          healers: parts.healers ?? [],
           placeOf: placeOf(parts, village),
         }),
         substancesProcess({
