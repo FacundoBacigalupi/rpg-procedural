@@ -146,7 +146,14 @@ export function renderView(
     if (named !== undefined) say("stretch.spoke_with", { who: ref(named) });
     else if (stretch.spoke > 0) say("stretch.spoke");
     if (stretch.fought) say("stretch.fought");
-    else if (stretch.hurt) say("stretch.hurt");
+    const wound = stretch.wounds?.[0];
+    if (
+      wound !== undefined &&
+      book.has(`stretch.wound.${wound.sign}`) &&
+      book.has(`stretch.zone.${wound.zone}`)
+    ) {
+      say(`stretch.wound.${wound.sign}`, { zone: first(`stretch.zone.${wound.zone}`) });
+    } else if (!stretch.fought && stretch.hurt) say("stretch.hurt");
   }
   if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);

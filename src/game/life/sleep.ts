@@ -54,6 +54,7 @@ import {
 } from "../../sim/index.ts";
 import { closeness } from "./appraise.ts";
 import { supportFor } from "./support.ts";
+import { WAKE_COMFORT } from "./wake.ts";
 
 export const SLEEP_PROCESS = "life.consolidate";
 
@@ -172,6 +173,7 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       COMMUNITY_RELIGION.name,
       RELIGIOUS_IDENTITY.name,
       AMENDS.name,
+      WAKE_COMFORT.name,
     ],
     writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
     run(ctx) {

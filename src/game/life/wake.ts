@@ -5,7 +5,7 @@
 // más gente acompaña. Lo lee `life.appraise` al `body.died` (alivia el duelo, no lo borra) y deja el
 // evento `religion.wake` con los asistentes. Puro sobre la verdad.
 
-import type { AgentId, Rng } from "../../core/index.ts";
+import type { AgentId, EventId, Rng } from "../../core/index.ts";
 import {
   affiliationOf,
   comfortOf,
@@ -14,10 +14,59 @@ import {
   practicesOfKind,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
+  table,
   villageReligion,
 } from "../../sim/index.ts";
 
 export const WAKE_EVENT = "religion.wake";
+
+/** El consuelo de un velorio al que fue el doliente, con la muerte que lo motivó. */
+export interface WakeComfortItem {
+  readonly event: EventId;
+  /** El muerto: la condición que lo tiene de disparador (trauma tras matarlo, verlo) lo liga. */
+  readonly dead: AgentId;
+  readonly comfort: number;
+}
+
+/** Los velorios a los que fue cada persona (los últimos `WAKE_COMFORT_CAPACITY`). */
+export interface WakeComforts {
+  readonly items: readonly WakeComfortItem[];
+}
+
+export const WAKE_COMFORT = table<WakeComforts>("life.wake_comfort");
+export const WAKE_COMFORT_CAPACITY = 8;
+
+/** Suma el consuelo de un velorio a los que ya tenía; lo más viejo se olvida al llenarse. Puro. */
+export function withWakeComfort(
+  current: WakeComforts | undefined,
+  event: EventId,
+  dead: AgentId,
+  comfort: number,
+): WakeComforts {
+  const rest = (current?.items ?? []).filter((i) => i.event !== event);
+  return { items: [...rest, { event, dead, comfort }].slice(-WAKE_COMFORT_CAPACITY) };
+}
+
+/**
+ * El consuelo del velorio ligado a una condición (el mayor): el de la muerte que la abrió o el del
+ * muerto que es su disparador; undefined si no fue a ninguno. Puro.
+ */
+export function wakeComfortFor(
+  current: WakeComforts | undefined,
+  condition: {
+    readonly originEventIds: readonly EventId[];
+    readonly triggers: readonly { readonly who?: AgentId }[];
+  },
+): number | undefined {
+  let best: number | undefined;
+  for (const i of current?.items ?? []) {
+    const linked =
+      condition.originEventIds.includes(i.event) ||
+      condition.triggers.some((t) => t.who === i.dead);
+    if (linked) best = Math.max(best ?? 0, i.comfort);
+  }
+  return best;
+}
 
 /** Cuántos acompañantes (además del doliente) dan el consuelo pleno. */
 export const FULL_WAKE = 6;

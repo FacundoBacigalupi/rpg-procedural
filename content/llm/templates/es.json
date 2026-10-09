@@ -531,6 +531,22 @@
     "lines": ["En esos días hablás con {who}.", "Compartís palabras con {who}."]
   },
   { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
+  { "id": "stretch.zone.head", "lines": ["la cabeza"] },
+  { "id": "stretch.zone.neck", "lines": ["el cuello"] },
+  { "id": "stretch.zone.chest", "lines": ["el pecho"] },
+  { "id": "stretch.zone.abdomen", "lines": ["la panza"] },
+  { "id": "stretch.zone.left_arm", "lines": ["el brazo izquierdo"] },
+  { "id": "stretch.zone.right_arm", "lines": ["el brazo derecho"] },
+  { "id": "stretch.zone.left_leg", "lines": ["la pierna izquierda"] },
+  { "id": "stretch.zone.right_leg", "lines": ["la pierna derecha"] },
+  {
+    "id": "stretch.wound.in_pain",
+    "lines": ["Te sigue doliendo {zone}.", "Sentís dolorido {zone}."]
+  },
+  { "id": "stretch.wound.bleeding", "lines": ["Te sangra {zone} de a ratos."] },
+  { "id": "stretch.wound.bleeding_heavily", "lines": ["Te sangra {zone} sin parar."] },
+  { "id": "stretch.wound.wound_hot", "lines": ["Sentís caliente e hinchado {zone}."] },
+  { "id": "stretch.wound.bone_broken", "lines": ["Algo se rompió en {zone} y duele al moverlo."] },
   { "id": "stretch.fought", "lines": ["Hay una pelea en el medio."] },
   {
     "id": "mode.aftermath",

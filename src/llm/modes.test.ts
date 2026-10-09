@@ -73,6 +73,16 @@ describe("montage con lo vivido", () => {
     expect(validateNarration(text, narrationRequest(v, style))).toEqual([]);
     expect(base.stretch).toBeUndefined();
   });
+
+  it("las heridas sentidas se cuentan con la parte del cuerpo", () => {
+    const v = {
+      ...base,
+      stretch: { ...stretch, wounds: [{ zone: "left_arm", sign: "bone_broken" }] },
+    };
+    const text = renderView(v, book, Rng.root(7 as never).fork("narration", 0));
+    expect(text).toMatch(/brazo izquierdo/);
+    expect(validateNarration(text, narrationRequest(v, style))).toEqual([]);
+  });
 });
 
 describe("modos montage, sueño y secuela", () => {

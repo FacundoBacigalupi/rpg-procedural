@@ -433,7 +433,17 @@ export function playerView(
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
     ...(inner?.mode ? { mode: inner.mode } : {}),
     ...(inner?.mode === "montage" && options.heardSince !== undefined
-      ? { stretch: stretchOf(steps, w.log.all(), w.player, options.heardSince, now, w.clock.day) }
+      ? {
+          stretch: stretchOf(
+            steps,
+            w.log.all(),
+            w.player,
+            options.heardSince,
+            now,
+            w.clock.day,
+            signs.zones,
+          ),
+        }
       : {}),
     scene: {
       placeKinds: places.filter((p) => p.hexes.includes(at.hex)).map((p) => p.kind),

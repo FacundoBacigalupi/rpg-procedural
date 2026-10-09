@@ -584,7 +584,7 @@ function pieces(text: string): { sep: string; text: string }[] {
 }
 
 const META =
-  /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+  /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const DIVINER =

@@ -12,6 +12,7 @@ import {
   type Interrupt,
   type InventoryPanel,
   type PeoplePanel,
+  type Recap,
   type Suggestion,
   type ThinkResult,
   TONE_MARK,
@@ -299,6 +300,50 @@ export function renderAbout(p: AboutPanel): string {
   };
   if (owe.length > 0) lines.push("Le debés:", ...owe.map(entry));
   if (owed.length > 0) lines.push("Te debe:", ...owed.map(entry));
+  return lines.join("\n");
+}
+
+const RECAP_DID: Readonly<Record<string, string>> = {
+  work: "trabajando",
+  gather: "juntando lo que da el campo",
+  tend: "atendiendo lo tuyo",
+  cook: "cocinando",
+  eat: "comiendo",
+  rest: "descansando",
+  sleep: "durmiendo",
+  speak: "hablando con alguien",
+  trade: "con tus tratos",
+  move: "yendo de un lado a otro",
+  search: "buscando",
+  consult: "consultando a un adivino",
+};
+
+const RECAP_KIND: readonly [string, string][] = [
+  ["body.died", "la muerte de alguien"],
+  ["combat.", "una pelea"],
+  ["action.give", "un regalo"],
+  ["action.speak", "una charla"],
+  ["action.trade", "un trato"],
+  ["action.take", "algo que se llevaron o que tomaste"],
+  ["divination.", "lo que te dijo un adivino"],
+  ["religion.", "un rito"],
+];
+
+const dayText = (d: number) => (d === 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`);
+
+/** El recuento al volver: lo último que hacías y lo último que recordás. */
+export function renderRecap(r: Recap): string {
+  const lines: string[] = [];
+  if (r.lastDid !== undefined) {
+    const what = RECAP_DID[r.lastDid] ?? "ocupándote de lo tuyo";
+    lines.push(`Lo último que hacías: ${what} (${dayText(r.lastDidDaysAgo ?? 0)}).`);
+  }
+  for (const m of r.recent) {
+    const what = RECAP_KIND.find(([prefix]) => m.kind.startsWith(prefix))?.[1] ?? "algo que pasó";
+    const feel = m.feel === "bad" ? ", y todavía pesa" : m.feel === "good" ? ", y fue bueno" : "";
+    const who = m.with.length > 0 ? ` con ${m.with.join(" y ")}` : "";
+    lines.push(`Recordás ${what}${who}, ${dayText(m.daysAgo)}${feel}.`);
+  }
   return lines.join("\n");
 }
 
