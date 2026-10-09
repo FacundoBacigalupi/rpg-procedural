@@ -157,7 +157,7 @@ export interface OddsFacts {
 }
 
 /** Peso de cada golpe visto, de cada caído y de la sorpresa sobre las chances. */
-export const HIT_WEIGHT = 0.06;
+export const HIT_WEIGHT = 0.1;
 export const DOWN_WEIGHT = 0.1;
 export const SURPRISE_WEIGHT = 0.2;
 
