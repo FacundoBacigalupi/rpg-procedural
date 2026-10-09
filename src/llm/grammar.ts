@@ -521,7 +521,8 @@ const META =
   /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|hip[oó]tesis|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
-const DIVINER = "(?:adivin[oa]s?|vident[ea]s?|or[aá]culo|astr[oó]log[oa]|augur|hechicer[oa]|bruj[oa])";
+const DIVINER =
+  "(?:adivin[oa]s?|vident[ea]s?|or[aá]culo|astr[oó]log[oa]|augur|hechicer[oa]|bruj[oa])";
 const CONSULT_PAY = new RegExp(
   `^(?:le\\s+)?(?:pago|doy|ofrezco)\\s+(.+?)\\s+(?:a|al)\\s+(?:la\\s+|el\\s+)?(${DIVINER})\\s*(?:y\\s+(?:le\\s+)?(?:pregunto|consulto|pido)\\s+(?:por|sobre|acerca de)\\s+(.+))?$`,
   "iu",
