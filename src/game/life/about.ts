@@ -3,7 +3,13 @@
 // qué se debe salen de `BELIEFS` y del libro, nunca del estado real. No pasa el tiempo.
 
 import type { AgentId } from "../../core/index.ts";
-import { BELIEFS, beliefConfidenceAt, believed, LOCATION } from "../../sim/index.ts";
+import {
+  BELIEFS,
+  beliefConfidenceAt,
+  believed,
+  LOCATION,
+  type PurposeId,
+} from "../../sim/index.ts";
 import { knownEntities, whereaboutsFromBeliefs } from "./known.ts";
 import { type BookLine, bookLinesOf } from "./panels.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
@@ -26,6 +32,11 @@ export interface AboutPanel {
     | { readonly state: "unknown" };
   /** Las deudas y promesas que lo tocan, como las cree. */
   readonly book: readonly BookLine[];
+  /**
+   * Lo que leyó de para qué hace lo que hace (actions, porqué ajeno): su lectura, con la firmeza que
+   * tiene. Puede estar errada y el panel no lo sabe; la verdad del porqué no sale de acá.
+   */
+  readonly purpose?: { readonly motive: PurposeId; readonly surety: AboutSurety };
 }
 
 function suretyOf(confidence: number): AboutSurety {
@@ -80,6 +91,8 @@ export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel 
     : entity.present
       ? { state: "here" }
       : { state: "unknown" };
+  const read = believed(beliefs, id, "purpose");
+  const readSurety = read === undefined ? 0 : beliefConfidenceAt(read, now);
   return {
     kind: "person",
     name,
@@ -87,5 +100,8 @@ export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel 
     aliveSurety: lives === undefined ? "vague" : suretyOf(beliefConfidenceAt(lives, now)),
     where,
     book,
+    ...(read !== undefined && readSurety > 0
+      ? { purpose: { motive: read.value as PurposeId, surety: suretyOf(readSurety) } }
+      : {}),
   };
 }

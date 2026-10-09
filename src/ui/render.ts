@@ -15,7 +15,7 @@ import {
   type ThinkResult,
   TONE_MARK,
 } from "../game/index.ts";
-import type { Fact } from "../sim/index.ts";
+import type { Fact, PurposeId } from "../sim/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -211,6 +211,22 @@ export function renderBook(p: BookPanel): string {
   return lines.join("\n");
 }
 
+const PURPOSE_TEXT: Readonly<Record<PurposeId, string>> = {
+  sustenance: "conseguir de comer",
+  gift: "hacer un regalo",
+  payment: "pagar lo que debe",
+  gain: "sacar provecho",
+  theft: "quedarse con lo ajeno",
+  harm: "hacer daño",
+  defense: "defenderse",
+  revenge: "vengarse",
+  help: "ayudar",
+  curiosity: "curiosear",
+  concealment: "ocultar algo",
+  devotion: "cumplir con su fe",
+  duty: "cumplir con su deber",
+};
+
 const ABOUT_SURETY: Readonly<Record<AboutPanel["aliveSurety"], string>> = {
   sure: "",
   unsure: " (no del todo seguro)",
@@ -232,6 +248,10 @@ export function renderAbout(p: AboutPanel): string {
         `La última vez que lo viste no estaba acá, fue ${when}${ABOUT_SURETY[p.where.surety]}.`,
       );
     } else lines.push("No sabés dónde anda.");
+    if (p.purpose !== undefined)
+      lines.push(
+        `Por lo que le viste hacer, te parece que anda por ${PURPOSE_TEXT[p.purpose.motive]}${ABOUT_SURETY[p.purpose.surety]}.`,
+      );
   } else if (p.where.state === "here") lines.push(`Estás en ${p.name}.`);
   else lines.push(`Conocés ${p.name}, pero no tenés más para decir.`);
   const owe = p.book.filter((l) => l.direction === "i-owe");
