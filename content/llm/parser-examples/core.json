@@ -1035,5 +1035,19 @@
       }
     },
     "notes": "parentesco va en relation, no en features"
+  },
+  {
+    "id": "ponder-yield-season",
+    "text": "creo que el campo rinde más en verano",
+    "scene": "Estás en los campos de arroz de la aldea, a media mañana.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "ponder",
+        "args": [{ "role": "about", "text": "el campo rinde más en verano" }]
+      }
+    },
+    "notes": "una idea sobre cómo anda el mundo es suponer, con las palabras del jugador; el juego decide qué hipótesis es"
   }
 ]

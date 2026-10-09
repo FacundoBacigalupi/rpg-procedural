@@ -28,6 +28,7 @@ import {
   buildChronicle,
   characterPanel,
   characterVoiceData,
+  claimOfText,
   DEFAULT_SUGGESTIONS,
   type EnvironmentItem,
   type EnvironmentMemory,
@@ -355,6 +356,13 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     if (draft.kind !== "act" && draft.kind !== "plan") {
       return { text: "Eso todavía no lo entiendo como algo que hace tu personaje." };
     }
+    const idea = ponderIdea(draft);
+    if (idea !== undefined && claimOfText(idea) === null) {
+      // Suponer gasta tiempo: si no se deja decir con lo que viste, no se empieza.
+      return {
+        text: "No sabés cómo ponerlo en términos de lo que viste. Probá con la estación, la luna o «no depende de nada».",
+      };
+    }
     return play(draft, line);
   };
 
@@ -367,6 +375,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   };
   const environment = () => environmentPanel(life.world, habituation, { attended });
   return { life, store, opening, say, suggested, choose, environment };
+}
+
+/** Lo que el jugador supone, si el borrador es solo eso (un `ponder` suelto). */
+function ponderIdea(draft: IntentDraft): string | undefined {
+  const plan = draft.plan;
+  if (plan?.kind !== "do" || plan.verb !== "ponder") return undefined;
+  const arg = plan.args.find((a) => a.role === "about");
+  return arg && "text" in arg ? arg.text : undefined;
 }
 
 /** La crónica final desde la verdad (chronicle §3): lo único que se le muestra de ella al jugador. */

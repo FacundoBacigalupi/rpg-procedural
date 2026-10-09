@@ -314,6 +314,11 @@ export type VerbEffect =
       readonly asked: string | null;
       /** Lo que dejó en la mano del adivino. */
       readonly paid: { readonly unit: LedgerUnit; readonly amount: number } | null;
+    }
+  | {
+      /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
+      readonly kind: "ponder";
+      readonly about: string | null;
     };
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
@@ -548,6 +553,16 @@ function believedView(effect: VerbEffect): VerbEffect {
 // Por verbo
 
 const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal });
+
+/**
+ * Suponer: darle forma a una idea sobre cómo anda el mundo. El resolver solo deja lo supuesto en
+ * las palabras del jugador; qué hipótesis del catálogo es (o si no se puede formular) lo decide
+ * `game` (discovery §14), y la confianza la mueve solo la evidencia.
+ */
+const ponder: Resolver = (c) => ({
+  effect: { kind: "ponder", about: argText(c, "about") },
+  seconds: c.nominal,
+});
 
 /** Cuánto se camina de una vez: el viaje se parte en tramos que se pueden interrumpir (travel §2). */
 export const LEG_SECONDS = 1800;
@@ -1366,6 +1381,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   drink,
   tend,
   consult,
+  ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];
 

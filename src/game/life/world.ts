@@ -55,6 +55,7 @@ import { living } from "./living.ts";
 import { observeProcess } from "./observe.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pledgeProcess } from "./pledges.ts";
+import { ponderProcess } from "./ponder.ts";
 import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
@@ -232,6 +233,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         observeProcess({ clock: parts.clock, map: parts.map }),
+        ponderProcess(),
         divinersProcess({
           methods: parts.divinations,
           concerns: parts.concerns,

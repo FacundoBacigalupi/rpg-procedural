@@ -512,6 +512,8 @@ function pieces(text: string): { sep: string; text: string }[] {
 
 const META =
   /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|hip[oó]tesis|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
+const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const GOAL = /^(?:quiero|mi meta es|sueño con|alg[uú]n d[ií]a (?:voy a|quiero))\s+(.+)$/i;
 
 /**
@@ -527,6 +529,12 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   }
   const goal = GOAL.exec(text);
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
+  // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo
+  // es lo decide el juego (discovery §14), acá solo se la reconoce como suponer.
+  const idea = IDEA.exec(text);
+  if (idea && FIELD_TALK.test(idea[1] as string)) {
+    return { kind: "act", plan: act("ponder", [{ role: "about", text: tidy(idea[1] as string) }]) };
+  }
 
   // Un pedazo que no empieza un paso se pega al anterior ("despacio y con cuidado", "el cielo y la
   // tierra"); uno que todavía no se entiende espera al siguiente.

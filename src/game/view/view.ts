@@ -454,6 +454,7 @@ function effectView(
   const e = self.effect;
   switch (e.kind) {
     case "none":
+    case "ponder":
       return { kind: "none" };
     case "move":
       return {
