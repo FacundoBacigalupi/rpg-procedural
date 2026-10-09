@@ -3,7 +3,7 @@
 // precio (`PRICE_BELIEFS`) que se corren con lo que vio, pagó o cobró, y un cierre de día en que el
 // vendedor sube o baja su pedido según cómo le fue. Parte pura: el cableado a la vida es otro ítem.
 
-import { table } from "../world/truth.ts";
+import { table } from "../world/index.ts";
 import { askPerKg, bidPerKg } from "./price.ts";
 import {
   baseFor,
