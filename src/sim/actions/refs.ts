@@ -233,3 +233,59 @@ export function clarifyQuestion(options: readonly ClarifyOption[]): string {
   const last = parts[parts.length - 1];
   return `¿A cuál te referís: ${parts.slice(0, -1).join(", ")} o ${last}?`;
 }
+
+const ORDINALS: readonly (readonly [RegExp, number])[] = [
+  [/\b(?:primer[oa]?|1|uno)\b/u, 0],
+  [/\b(?:segund[oa]|2|dos)\b/u, 1],
+  [/\b(?:tercer[oa]?|3|tres)\b/u, 2],
+  [/\b(?:cuart[oa]|4)\b/u, 3],
+];
+
+/**
+ * La respuesta del jugador a `clarifyQuestion` (§4), sin reescribir la línea: elige por rasgo (lo que
+ * la pregunta mostró de cada candidato), por orden («el primero», «el segundo», «el último»), por
+ * «el que tenés delante» o por el rótulo. Devuelve la opción elegida o `undefined` si no elige a una
+ * sola (entonces la línea se toma como una acción nueva).
+ */
+export function answerClarify(
+  answer: string,
+  options: readonly ClarifyOption[],
+): ClarifyOption | undefined {
+  const text = answer.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+  if (text === "" || options.length === 0) return undefined;
+  if (/\b(?:ultim[oa])\b/u.test(text)) return options[options.length - 1];
+  if (/\b(?:delante|presente|aca|aqui|al lado)\b/u.test(text)) {
+    const here = options.filter((o) => o.present);
+    if (here.length === 1) return here[0];
+  }
+  // Solo un número u ordinal suelto cuenta como orden: «el segundo», no «dos kilos de grano».
+  if (text.split(/\s+/u).length <= 3) {
+    for (const [re, i] of ORDINALS) if (re.test(text) && options[i]) return options[i];
+  }
+  const words = new Set(refTokens(text));
+  let best: ClarifyOption | undefined;
+  let bestScore = 0;
+  let tie = false;
+  for (const o of options) {
+    const bag = new Set(refTokens([o.label, ...o.distinguishing].join(" ")));
+    let score = 0;
+    for (const w of words) if (bag.has(w)) score += 1;
+    if (score > bestScore) {
+      best = o;
+      bestScore = score;
+      tie = false;
+    } else if (score === bestScore && score > 0) tie = true;
+  }
+  return tie ? undefined : best;
+}
+
+/**
+ * Lo desconocido reformulado (§4): el personaje no conoce eso, así que lo que puede hacer es salir a
+ * buscarlo o preguntar a alguien. Sin red; el LLM puede redactarlo mejor.
+ */
+export function unknownNote(descs: readonly RefDescription[]): string {
+  const names = descs.map((d) => d.text.trim()).filter((t) => t !== "");
+  if (names.length === 0) return "No sabés de qué hablás: no conocés eso todavía.";
+  const what = names.map((n) => `«${n}»`).join(" ni ");
+  return `No sabés quién o qué es ${what}: no lo conocés todavía. Podés salir a buscarlo o preguntarle a alguien.`;
+}

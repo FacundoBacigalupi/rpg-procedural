@@ -75,7 +75,9 @@ import {
 import { FORMAT_VERSION, type LifeStore, sha256 } from "../persistence/index.ts";
 import {
   type ActionPlan,
+  answerClarify,
   assessPlan,
+  type ClarifyOption,
   callName,
   clarifyQuestion,
   INFERENCE_RULES,
@@ -86,6 +88,7 @@ import {
   planFromDraft,
   renderWarnings,
   STATUSES,
+  unknownNote,
 } from "../sim/index.ts";
 import { INSPECTOR_HELP, inspect } from "../tools/index.ts";
 import {
@@ -172,6 +175,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const recent: string[] = [];
   // El plan que ya se avisó (actions §5): si el jugador insiste con lo mismo, se intenta.
   let warned = "";
+  // La aclaración que espera respuesta (actions §4): el mismo borrador, los candidatos de la
+  // pregunta y los ya descartados. La respuesta elige uno sin reescribir la línea.
+  let pending: {
+    draft: IntentDraft;
+    line: string;
+    options: readonly ClarifyOption[];
+    dropped: readonly ClarifyOption[];
+  } | null = null;
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
@@ -239,8 +250,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const opening = `${notices.join("")}${intro}\n${renderStatus(life.now)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
-  const play = async (draft: IntentDraft, line: string): Promise<Reply> => {
-    const known = knownEntities(life.world);
+  const play = async (
+    draft: IntentDraft,
+    line: string,
+    dropped: readonly ClarifyOption[] = [],
+  ): Promise<Reply> => {
+    pending = null;
+    // Lo que el jugador descartó al aclarar no vuelve a ser candidato.
+    const gone = new Set(dropped.map((o) => o.ref));
+    const known = knownEntities(life.world).filter((k) => !gone.has(k.ref));
     const made = planFromDraft(draft, {
       actor: life.player,
       source: "player",
@@ -253,12 +271,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     if (made.kind === "clarify") {
       // La pregunta es del personaje: con lo que percibió de cada candidato (actions §4).
       const first = made.refs.find((r) => r.resolved.status === "ambiguous")?.resolved;
-      return {
-        text: `${first?.status === "ambiguous" ? clarifyQuestion(first.clarify) : "¿A cuál te referís?"} Probá de nuevo con más detalle.`,
-      };
+      if (first?.status !== "ambiguous") return { text: "¿A cuál te referís?" };
+      pending = { draft, line, options: first.clarify, dropped };
+      return { text: `${clarifyQuestion(first.clarify)} Contestá con un rasgo o «el primero».` };
     }
     if (made.kind === "unknown") {
-      return { text: "No sabés de qué hablás: no conocés eso todavía." };
+      return { text: unknownNote(made.refs.map((r) => r.resolved.desc)) };
     }
     if (made.kind === "invalid") {
       return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
@@ -301,6 +319,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
     let draft: IntentDraft | null = parseCommand(line, catalog);
+    if (pending !== null && draft?.kind !== "meta") {
+      // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
+      const chosen = answerClarify(line, pending.options);
+      if (chosen !== undefined) {
+        const { draft: again, line: first, options, dropped } = pending;
+        return play(again, first, [...dropped, ...options.filter((o) => o.ref !== chosen.ref)]);
+      }
+      pending = null;
+    }
     if (draft?.kind !== "meta") {
       const parsed = await parseIntentOrGrammar(
         jobs,
@@ -370,6 +397,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const choose = async (id: string): Promise<Reply> => {
     // Se vuelve a armar la lista: si el cuerpo o la hora cambiaron, la opción puede ya no estar.
     const picked = suggestions(life.world).find((x) => x.id === id);
+    pending = null;
     if (picked === undefined) return { text: "Esa opción ya no está." };
     return play(picked.draft, renderSuggestion(picked));
   };
