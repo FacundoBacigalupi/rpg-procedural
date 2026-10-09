@@ -464,6 +464,25 @@
   { "id": "thought.mood.longing", "lines": ["Los extrañás.", "Te invade la nostalgia."] },
   { "id": "thought.mood.guilt", "lines": ["La culpa no te suelta.", "Te pesa lo que hiciste."] },
   {
+    "id": "thought.hazy",
+    "lines": ["Pero ya no estás seguro de cómo fue.", "Los detalles se te mezclan."]
+  },
+  {
+    "id": "mode.dream",
+    "lines": ["Dormís mal y soñás.", "En el sueño, todo viene a pedazos."]
+  },
+  {
+    "id": "mode.montage",
+    "lines": [
+      "Pasa el tiempo, uno tras otro los días.",
+      "Los días se suceden sin que te des cuenta."
+    ]
+  },
+  {
+    "id": "mode.aftermath",
+    "lines": ["Después, el silencio.", "Cuando todo termina, queda el cuerpo y la quietud."]
+  },
+  {
     "id": "thought.mood.calm",
     "lines": ["Por un rato estás en paz.", "Todo está quieto dentro tuyo."]
   },

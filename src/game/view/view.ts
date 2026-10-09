@@ -45,6 +45,8 @@ export interface ThoughtInput {
   readonly kind: ThoughtKind;
   readonly about?: EntityRef;
   readonly mood?: Mood;
+  /** El recuerdo está deformado o borroso: no se cuenta como cierto (narration §7). */
+  readonly hazy?: boolean;
 }
 
 export interface ThoughtView {
@@ -52,6 +54,7 @@ export interface ThoughtView {
   /** Etiqueta local de la persona en que piensa. */
   readonly about?: string;
   readonly mood?: Mood;
+  readonly hazy?: boolean;
 }
 
 /** Un gusto propio que viene al caso este turno (npc-psychology §16): lo que el personaje sabe de sí. */
@@ -61,6 +64,8 @@ export interface TasteView {
   readonly name: string;
   readonly stance: TasteStance;
 }
+/** Modos que salen de lo que pasó en el tiempo y no de los pasos: salto, sueño y secuela. */
+export type SpecialMode = "montage" | "dream" | "aftermath";
 
 export type TimeOfDay = "night" | "dawn" | "morning" | "midday" | "afternoon" | "dusk";
 export type LightBand = "dark" | "dim" | "bright";
@@ -255,6 +260,8 @@ export interface PlayerView {
   readonly thoughts: readonly ThoughtView[];
   /** Gustos propios que vale la pena decir ahora (`mentionableTastes`); vacío casi siempre. */
   readonly tastes: readonly TasteView[];
+  /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
+  readonly mode?: SpecialMode;
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -282,6 +289,7 @@ export interface ViewInput {
   readonly self?: readonly SelfCue[];
   readonly thoughts?: readonly ThoughtInput[];
   readonly tastes?: readonly TasteView[];
+  readonly mode?: SpecialMode;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
 }
@@ -402,6 +410,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     kind: t.kind,
     ...(isAgent(t.about) ? { about: known(t.about, "sure") } : {}),
     ...(t.mood !== undefined ? { mood: t.mood } : {}),
+    ...(t.hazy === true ? { hazy: true } : {}),
   }));
 
   const view = {
@@ -411,6 +420,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     outcomes,
     thoughts,
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
+    ...(input.mode !== undefined ? { mode: input.mode } : {}),
     labels,
     lexicon: [...words].sort(compareStrings),
   };

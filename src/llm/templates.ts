@@ -131,7 +131,9 @@ export function renderView(
   const arrived = view.outcomes.some((o) => o.effect.kind === "move" && o.effect.arrived === true);
   const idle =
     view.outcomes.length === 0 && view.percepts.length === 0 && view.thoughts.length === 0;
-  if (!s.familiar || arrived || idle) {
+  const inward = view.mode === "dream" || view.mode === "montage";
+  if (view.mode !== undefined) say(`mode.${view.mode}`);
+  if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);
     say(`time.${s.time}`);
   }
@@ -149,6 +151,7 @@ export function renderView(
     else if (of) say("thought.feel_of", { who: ref(t.about) });
     if (t.mood !== undefined) say(`thought.mood.${t.mood}`);
     else if (t.kind === "feel") say("thought.mood.calm");
+    if (t.hazy === true) say("thought.hazy");
   }
   for (const t of view.tastes) say(`taste.${t.stance}`, { what: t.name });
   if (out.length === 0 || (idle && view.self.cues.length === 0)) say("nothing");

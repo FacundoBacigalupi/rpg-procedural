@@ -44,6 +44,7 @@ import {
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 import { PERCEPTS } from "./perceive.ts";
+import { thoughtsOf } from "./thoughts.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -240,8 +241,22 @@ export function playerView(
     const p = w.truth.get(PLACE, id);
     return p ? [p] : [];
   });
+  // Lo que le pasa por la cabeza desde que empezó el turno (no en la primera escena).
+  const inner =
+    options.heardSince === undefined
+      ? undefined
+      : thoughtsOf(w, {
+          since: options.heardSince,
+          present: percepts.flatMap((p) => {
+            const who = p.fields.identity?.value;
+            return typeof who === "string" ? [who as AgentId] : [];
+          }),
+          known: new Set<string>(acq.keys()),
+        });
   return buildPlayerView({
     player: w.player,
+    ...(inner && inner.thoughts.length > 0 ? { thoughts: inner.thoughts } : {}),
+    ...(inner?.mode ? { mode: inner.mode } : {}),
     scene: {
       placeKinds: places.filter((p) => p.hexes.includes(at.hex)).map((p) => p.kind),
       space: node?.kind ?? "open",

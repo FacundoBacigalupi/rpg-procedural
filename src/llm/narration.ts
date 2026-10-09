@@ -9,7 +9,14 @@ import type { NarrationPrefs } from "./config.ts";
 import type { ContinuityView } from "./continuity.ts";
 import { type LexiconView, MOOD_TONE, REGISTER_TONE, type VoiceView } from "./voice.ts";
 
-export type NarrationMode = "scene" | "action" | "dialogue" | "introspection";
+export type NarrationMode =
+  | "scene"
+  | "action"
+  | "dialogue"
+  | "introspection"
+  | "montage"
+  | "dream"
+  | "aftermath";
 
 /** El estilo de un pedido (narration §7): las preferencias del usuario más el idioma de salida. */
 export interface StyleSettings extends NarrationPrefs {
@@ -36,6 +43,11 @@ export interface NarrationRequest {
 
 /** El modo sale de lo que pasó: un golpe es acción; lo dicho, diálogo; el resto, escena. */
 export function narrationMode(view: PlayerView): NarrationMode {
+  // El sueño y el salto de tiempo mandan sobre todo; la secuela, salvo que haya golpes o habla.
+  if (view.mode === "dream" || view.mode === "montage") return view.mode;
+  if (view.mode === "aftermath" && !view.outcomes.some((o) => o.effect.kind === "strike")) {
+    return "aftermath";
+  }
   if (view.outcomes.some((o) => o.effect.kind === "strike")) return "action";
   if (
     view.outcomes.some((o) => o.effect.kind === "speak") ||
@@ -124,9 +136,13 @@ export function narratorSystem(style: StyleSettings): string {
     "  says about a label (how it was named); change it only if the request shows a change.",
     "- `thoughts` are what the character remembers, ponders or feels (mode `introspection`): write",
     "  it from inside, quiet and slow, with little description of the surroundings. Say only the",
-    "  `mood` given; do not invent memories, causes or facts about the person they think of.",
+    "  `mood` given; do not invent memories, causes or facts about the person they think of. A",
+    "  thought with `hazy: true` is a blurred memory: say it is unclear, never as plain fact.",
     "- `tastes` are things the character likes or dislikes, each with its `stance`: mention at most",
     "  one, in passing, with that exact feeling. Never invent why they like it or who it recalls.",
+    "- Mode `dream`: the character is asleep; broken images of the `thoughts`, nothing new. Mode",
+    "  `montage`: time passed; one short paragraph, no scene detail. Mode `aftermath`: after",
+    "  something grave; the body, the silence, what is left; no explanation of why.",
     "- `vocabulary.use` are the technical words the character knows. For each `vocabulary.avoid`",
     "  entry, never write its `term`: say what the character sees (`say`) instead.",
     "- `voice` is how the character speaks and notices: `register` sets the words, `trade` what they",
