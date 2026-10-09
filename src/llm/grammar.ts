@@ -114,6 +114,10 @@ const UNTIL: readonly { re: RegExp; cond: (text: string) => DraftCondition }[] =
   },
 ];
 
+/** Esconder el nivel en una pelea («me contengo», «sin esforzarme», «sin mostrar mi nivel»). */
+const HOLD_BACK_SOURCE =
+  "me contengo|conteni[eé]ndome|contuvi[eé]ndome|sin esforzarme|sin ganas|a medias|sin (?:poner|usar) (?:toda )?(?:mi )?(?:fuerza|poder|nivel)|sin mostrar (?:mi nivel|todo lo que s[eé]|lo que valgo)|haci[eé]ndome el (?:d[eé]bil|flojo)";
+
 /** Los modos por palabras; solo se ponen los que el verbo admite en el catálogo. */
 const MANNERS: readonly { re: RegExp; manner: string }[] = [
   {
@@ -125,9 +129,12 @@ const MANNERS: readonly { re: RegExp; manner: string }[] = [
     manner: "careful",
   },
   { re: /\b(?:corro|corriendo|r[aá]pido|a las corridas|apurad[oa])\b/i, manner: "fast" },
+  { re: new RegExp(`\\b(?:${HOLD_BACK_SOURCE})\\b`, "i"), manner: "hold_back" },
 ];
-const MANNER_WORDS =
-  /\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|bien)\b/gi;
+const MANNER_WORDS = new RegExp(
+  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|bien|${HOLD_BACK_SOURCE})\\b`,
+  "gi",
+);
 
 function tidy(s: string): string {
   return s
@@ -374,7 +381,7 @@ const VERBS: readonly {
     },
   },
   {
-    re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle)\b/i,
+    re: /^(?:le|la|lo)?\s*(?:pego|ataco|atacar|golpeo|golpear|le doy|le tiro|pegarle|peleo|pelear)\b/i,
     build: (rest) => {
       const p = personAfterA(rest.replace(MANNER_WORDS, " "));
       return { node: act("strike", p ? [{ role: "target", ref: p.ref }] : []) };

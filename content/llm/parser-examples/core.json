@@ -418,6 +418,29 @@
     }
   },
   {
+    "id": "strike-hold-back",
+    "text": "lo ataco conteniéndome, sin mostrarle mi nivel",
+    "scene": "Un bandido con un cuchillo te mira desde el borde del camino.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "strike",
+        "args": [
+          {
+            "role": "target",
+            "ref": {
+              "text": "el bandido",
+              "kind": "person",
+              "features": ["bandido"]
+            }
+          }
+        ],
+        "manner": ["hold_back"]
+      }
+    }
+  },
+  {
     "id": "trade-smith",
     "text": "le ofrezco al herrero cambiarle hongos por un cuchillo",
     "scene": "Estás en la herrería. El herrero martilla una hoz.",
