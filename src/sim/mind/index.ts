@@ -13,3 +13,4 @@ export * from "./tastes.ts";
 export * from "./tastes-seed.ts";
 export * from "./utility.ts";
 export * from "./utility-social.ts";
+export * from "./utility-verbs.ts";
