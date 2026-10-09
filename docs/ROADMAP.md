@@ -584,7 +584,14 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [ ] Fuego en la aldea: ignición con causa, propagación por el grafo de edificios con `fuelLoad` (el `fuel` de los materiales), viento y cortafuegos, respuesta de vecinos, contenido destruido por el ledger y capa de incendio (settlements §9)
   - [ ] Los gramos de la aldea inicial pasan de la fuente externa `seed` a lotes con origen (economía de materiales, junto con el comercio entre asentamientos)
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
-- [ ] Economía básica: hogares con presupuesto, producción agrícola y de oficios, mercado de la aldea con precios por creencias, salarios, crédito de cosecha y usura, calidad percibida y estafa, hambruna con causa ([economy.md](systems/economy.md))
+- [ ] Economía básica ([economy.md](systems/economy.md)), partida en sub-ítems (uno por sesión):
+  - [x] Presupuesto del hogar puro (2026-10-09): `sim/economy/budget.ts` con `HouseholdFlows`, `foodMouths`, `netPerDay`, `runwayDays`, `standing` (cómodo/ajustado/apretado/en la ruina), `availableCoins` (aparta la reserva de comida), `spendCeiling` (urgente vs no), `savingsPerDay` y `poolIncome` (bolsa común, conserva el total). Test en `budget.test.ts`. Constantes sin calibrar.
+  - [ ] Cablear el presupuesto: hogar derivado de la vida (miembros, monedas, despensa, ingreso medio) y tope de gasto en las compras de los NPC y del jugador
+  - [ ] Producción de oficios por hogar (ingreso por oficio con el ledger) y jornales/salarios como precio del trabajo
+  - [ ] Mercado de la aldea con precios por creencias de cada agente (cinta de transacciones, `PRICE_BELIEFS` por hogar)
+  - [ ] Crédito de cosecha y usura con colateral (sobre `Commitment`), cuota fija en el presupuesto
+  - [ ] Calidad percibida y estafa
+  - [ ] Hambruna con causa (presión de escasez, precios, migración)
 - [ ] Medicina y remedios mortales, venenos y antídotos, habilidad que sale de la práctica percibida, aprendices ([crafts.md](systems/crafts.md))
 - [ ] Armas y armaduras como objetos con desgaste, estilos y repertorio de combate, prácticas, peleas de hasta ~20, contienda resumida calibrada para NPCs lejanos ([combat.md](systems/combat.md) §6, §9, §14, §18)
 - [ ] Maestros con métodos de enseñanza, manuales con tacitez, oxidación con pico, transferencia e interferencia, vicios, distribuciones de habilidad por ocupación, repertorio y familiaridades; `CraftSkill` y `ProcessKnowledge` como vistas ([skills.md](systems/skills.md) §3-§8, §10, §13)
