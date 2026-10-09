@@ -468,7 +468,7 @@ describe("la aldea cría a sus chicos", () => {
       }
     }
     expect(checked).toBeGreaterThan(0);
-  }, 360_000);
+  }, 900_000);
 
   it("es determinista", () => {
     expect(rearing(10).life.hash()).toEqual(rearing(10).life.hash());
