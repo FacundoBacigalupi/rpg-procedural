@@ -588,7 +588,9 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Enfermedades con contagio, médicos, sustancias y adicciones, nutrición, frío/calor ([body-health.md](systems/body-health.md))
 - [ ] Economía básica ([economy.md](systems/economy.md)), partida en sub-ítems (uno por sesión):
   - [x] Presupuesto del hogar puro (2026-10-09): `sim/economy/budget.ts` con `HouseholdFlows`, `foodMouths`, `netPerDay`, `runwayDays`, `standing` (cómodo/ajustado/apretado/en la ruina), `availableCoins` (aparta la reserva de comida), `spendCeiling` (urgente vs no), `savingsPerDay` y `poolIncome` (bolsa común, conserva el total). Test en `budget.test.ts`. Constantes sin calibrar.
-  - [ ] Cablear el presupuesto: hogar derivado de la vida (miembros, monedas, despensa, ingreso medio) y tope de gasto en las compras de los NPC y del jugador
+  - [x] Cablear el presupuesto (2026-10-09): `game/life/budget.ts` deriva el `HouseholdFlows` del hogar (miembros vivos por edad, monedas de las bolsas y la casa, días de despensa de grano, precio de la comida; ingreso y fijos en 0 hasta que existan jornales); en `life.converse` el tope `spendCeiling` limita las monedas que el NPC oyente puede pagar (`coinCeiling` en `ReplyInput`: ofertas y aceptaciones) y `standing` apretado/en la ruina sube el piso de desesperación al recibir (`STANDING_DESPERATION`). Test en `sim/dialogue/budget-reply.test.ts`. Cambia el hash de las vidas con tratos. Constantes sin calibrar.
+  - [ ] Presupuesto: ingreso medio real del hogar (jornales y ventas) y `poolIncome` al cobrar (bolsa común entre miembros, conserva monedas), junto con la producción de oficios
+  - [ ] Presupuesto: tope y `standing` también en las compras del jugador (parser/`trade`) y `standing` como insumo de la narración y de los rumores
   - [ ] Producción de oficios por hogar (ingreso por oficio con el ledger) y jornales/salarios como precio del trabajo
   - [ ] Mercado de la aldea con precios por creencias de cada agente (cinta de transacciones, `PRICE_BELIEFS` por hogar)
   - [ ] Crédito de cosecha y usura con colateral (sobre `Commitment`), cuota fija en el presupuesto

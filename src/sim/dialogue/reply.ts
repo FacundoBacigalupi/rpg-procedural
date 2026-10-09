@@ -168,9 +168,21 @@ export interface ReplyInput {
   readonly held: (good: string) => number;
   /** Si el bien es moneda: no se aparta reserva de la casa (la bolsa se gasta, no se raciona). */
   readonly isCoin?: (good: string) => boolean;
+  /** Tope de monedas que el hogar del oyente puede gastar en este trato (`spendCeiling`). */
+  readonly coinCeiling?: number;
+  /** Cómo está el hogar del oyente (`standing`): apretado o en la ruina, recibir pesa más. */
+  readonly standing?: "comfortable" | "getting-by" | "tight" | "broke";
   readonly members: number;
   readonly lines: readonly SpeechLine[];
   readonly rng: Rng;
+}
+
+/** Piso de desesperación por recibir de un hogar apretado o en la ruina (economy §3). */
+export const STANDING_DESPERATION: Readonly<Record<string, number>> = { tight: 0.3, broke: 0.6 };
+
+/** Lo que el oyente puede soltar de `good`: las monedas, además, nunca pasan del tope del presupuesto. */
+function capCoins(i: ReplyInput, good: string, spare: number): number {
+  return i.isCoin?.(good) && i.coinCeiling !== undefined ? Math.min(spare, i.coinCeiling) : spare;
 }
 
 /** Cuánto suma a la calidez el tono de lo que se recuerda de quien habla (bias -1..1). */
@@ -509,7 +521,8 @@ function decideBody(i: ReplyInput, at: number): Reply {
         give: a.give,
         want: a.want,
         worth: i.worth ?? (() => null),
-        spare: (g) => i.held(g) - (i.isCoin?.(g) ? 0 : i.members * RESERVE_GRAMS_PER_MEMBER),
+        spare: (g) =>
+          capCoins(i, g, i.held(g) - (i.isCoin?.(g) ? 0 : i.members * RESERVE_GRAMS_PER_MEMBER)),
         speakerHas: i.speakerHas ?? (() => 0),
         felt: warmth(i.feel) + MEMORY_WARMTH * memory.bias,
         leverage: {
@@ -526,10 +539,13 @@ function decideBody(i: ReplyInput, at: number): Reply {
           desperation:
             a.give === null
               ? 0
-              : 1 -
-                Math.min(
-                  1,
-                  i.held(a.give.good) / Math.max(1, i.members * RESERVE_GRAMS_PER_MEMBER),
+              : Math.max(
+                  STANDING_DESPERATION[i.standing ?? ""] ?? 0,
+                  1 -
+                    Math.min(
+                      1,
+                      i.held(a.give.good) / Math.max(1, i.members * RESERVE_GRAMS_PER_MEMBER),
+                    ),
                 ),
         },
       });
@@ -562,7 +578,11 @@ function decideBody(i: ReplyInput, at: number): Reply {
       // Entre la contraoferta y el sí pudo cambiar lo que cada uno tiene a mano.
       if (
         i.speakerHas &&
-        !dealHolds(i.open, (g) => i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER, i.speakerHas)
+        !dealHolds(
+          i.open,
+          (g) => capCoins(i, g, i.held(g) - i.members * RESERVE_GRAMS_PER_MEMBER),
+          i.speakerHas,
+        )
       ) {
         return say("accept.short");
       }
