@@ -17,17 +17,22 @@ import {
   createEntity,
   type Deed,
   type DeedKind,
+  type DeedRead,
   type DeedVia,
   ENTITY,
+  INNATE,
   KNOWN_DEEDS,
   LOCATION,
   type LocalMap,
   learnDeed,
   localHour,
+  MIND,
   type Observer,
   PERSON,
   type ProcessDef,
   perceive,
+  purposeWeight,
+  RELATIONS,
   type ReadonlyWorldTruth,
   type SpaceGraph,
   STATUS,
@@ -39,6 +44,8 @@ import {
   TRACE,
 } from "../../sim/index.ts";
 import { settledIn } from "./credit.ts";
+import { ASCRIBED_GROUPS } from "./identity.ts";
+import { PURPOSE_READS, type ReaderContent, readWitnessed } from "./reading.ts";
 
 export const DEEDS_PROCESS = "life.deeds";
 
@@ -48,6 +55,8 @@ export interface DeedsOptions {
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly statuses: readonly StatusDef[];
+  /** Con qué se arma al lector al leer el porqué de un hecho (sin esto, sin aprecio por el actor). */
+  readonly relations?: ReaderContent;
 }
 
 const KNOWN_HOUSEHOLD = 0.95;
@@ -177,6 +186,26 @@ function witnessesOf(
   return [...out].map(([who, k]) => ({ who, ...k }));
 }
 
+/**
+ * Lo que `witness` leyó del porqué del actor (actions, `readPurpose`), como peso para juzgar el hecho
+ * (law §6): la lectura ya guardada en `PURPOSE_READS` si es la de este evento, o la que arma ahora con
+ * su sospecha y su aprecio. Sin porqué en el evento no hay lectura y se juzga por el hecho solo.
+ */
+function readOf(
+  truth: ReadonlyWorldTruth,
+  o: DeedsOptions,
+  e: Event,
+  witness: AgentId,
+  rng: Rng,
+): DeedRead | undefined {
+  const stored = truth
+    .get(PURPOSE_READS, witness)
+    ?.recent.find((r) => r.actor === e.actors[0] && r.tick === e.tick);
+  const read =
+    stored ?? readWitnessed(rng.fork("deedread", e.id, witness), truth, witness, e, o.relations);
+  return read === undefined ? undefined : { weight: Math.round(purposeWeight(read) * 1000) / 1000 };
+}
+
 export function deedsProcess(o: DeedsOptions): ProcessDef {
   return {
     id: DEEDS_PROCESS,
@@ -193,6 +222,13 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
       ENTITY.name,
       BODY_STATE.name,
       STATUS.name,
+      PURPOSE_READS.name,
+      MIND.name,
+      INNATE.name,
+      RELATIONS.name,
+      "culture.person",
+      "culture.community",
+      ASCRIBED_GROUPS.name,
     ],
     writes: [KNOWN_DEEDS.name, TRACE.name, ENTITY.name],
     run(ctx) {
@@ -217,7 +253,10 @@ export function deedsProcess(o: DeedsOptions): ProcessDef {
         if (off.kind === "theft" && home(off.by) === home(off.victim)) continue;
         const base = { kind: off.kind, victim: off.victim, event: e.id, at: e.tick };
         const witnesses = witnessesOf(truth, o, e, off, everyone, ctx.rng);
-        for (const w of witnesses) learn(w.who, { ...base, by: w.by, via: w.via });
+        for (const w of witnesses) {
+          const read = w.by === null ? undefined : readOf(truth, o, e, w.who, ctx.rng);
+          learn(w.who, { ...base, by: w.by, via: w.via, ...(read ? { read } : {}) });
+        }
         // Los que saben quién fue se lo cuentan a su casa.
         for (const w of witnesses.filter((x) => x.by !== null)) {
           for (const kin of everyone) {
