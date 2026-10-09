@@ -55,14 +55,15 @@ import {
   LOT_QUALITY,
   type LocalMap,
   learnFromAttempt,
+  learnFromDeal,
   localHour,
+  MARKET_TAPE,
   type Market,
   type Nutrition,
   nearestHex,
   nodeAt,
   notoriety,
   OPINIONS,
-  observeDeal,
   opposingSkill,
   PERSON,
   PLACE,
@@ -82,6 +83,7 @@ import {
   type ResolveInput,
   rankOf,
   receiveLot,
+  recordDeal,
   resolve,
   SELF_IMAGES,
   type SelfReport,
@@ -100,6 +102,7 @@ import {
   skyObserverOf,
   spaceLight,
   standardize,
+  type TapeEntry,
   type Trait,
   table,
   treat,
@@ -254,9 +257,11 @@ export function actProcess(o: ActOptions): ProcessDef {
       FIGHT_STATE.name,
       PRICE_BELIEFS.name,
       LOT_QUALITY.name,
+      MARKET_TAPE.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
+      MARKET_TAPE.name,
       LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
@@ -671,12 +676,37 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       );
     }
     if (ref !== undefined && paid > 0) {
-      for (const who of [me, eff.with as AgentId]) {
+      const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
+      const seller = buyer === me ? (eff.with as AgentId) : me;
+      // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
+      const entry: TapeEntry = {
+        day,
+        unit,
+        grams: eff.grams,
+        coins: (paid * eff.grams) / 1000,
+        seller,
+        buyer,
+      };
+      const market = here ?? seller;
+      changes.push(
+        setComponent(MARKET_TAPE, market, recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry)),
+      );
+      // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
+      const learners = new Map<AgentId, "party" | "witness">();
+      for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
+        if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+        if (truth.get(LOCATION, id)?.hex !== e.hex) continue;
+        if (truth.get(BODY_STATE, id)?.activity === "sleep") continue;
+        learners.set(id, "witness");
+      }
+      learners.set(me, "party");
+      learners.set(eff.with as AgentId, "party");
+      for (const [who, role] of [...learners].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
         changes.push(
           setComponent(
             PRICE_BELIEFS,
             who,
-            observeDeal(truth.get(PRICE_BELIEFS, who), unit, paid, ref, day),
+            learnFromDeal(truth.get(PRICE_BELIEFS, who), entry, ref, role),
           ),
         );
       }

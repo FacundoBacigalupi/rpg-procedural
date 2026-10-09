@@ -3,6 +3,7 @@
 // precio (`PRICE_BELIEFS`) que se corren con lo que vio, pagó o cobró, y un cierre de día en que el
 // vendedor sube o baja su pedido según cómo le fue. Parte pura: el cableado a la vida es otro ítem.
 
+import { table } from "../world/truth.ts";
 import { askPerKg, bidPerKg } from "./price.ts";
 import {
   baseFor,
@@ -25,6 +26,9 @@ export interface TapeEntry {
 }
 
 export type Tape = readonly TapeEntry[];
+
+/** La cinta de un lugar de mercado (la verdad), por entidad `place:`; sin lugar, la del vendedor. */
+export const MARKET_TAPE = table<Tape>("economy.market_tape");
 
 /** Cuántos días de cinta se guardan (el resto ya es historia agregada). */
 export const TAPE_WINDOW_DAYS = 30;
