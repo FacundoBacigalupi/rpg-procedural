@@ -24,6 +24,7 @@ import {
   type Activity,
   BODY_STATE,
   type BodyPlanDef,
+  BUILDING,
   dayOf,
   draftEvent,
   EATEN,
@@ -36,8 +37,6 @@ import {
   HARVEST_GRAMS_PER_HOUR,
   harvestSeason,
   houseKey,
-  BUILDING,
-  VILLAGE_SQUARE,
   ingest,
   LOCATION,
   type LocalMap,
@@ -45,6 +44,7 @@ import {
   localHour,
   MEAL_KCAL,
   nearestHex,
+  needsFrom,
   PERSON,
   PLACE,
   type ProcessDef,
@@ -54,8 +54,10 @@ import {
   type StateChange,
   setActivity,
   setComponent,
+  VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
+import { type Decision, NPC_DECISION } from "./decide.ts";
 import { PLAYER } from "./player.ts";
 
 export const ROUTINE_PROCESS = "life.routine";
@@ -72,6 +74,12 @@ export const ROUTINE = {
   /** Desde qué edad se va al campo. */
   workAge: 10,
 } as const;
+
+/** Desde cuánta necesidad de descanso o dolor se queda en casa en vez de ir al campo. */
+const UNWELL_REST = 0.85;
+const UNWELL_PAIN = 0.5;
+/** Días de comida del hogar por debajo de los cuales no se saltea la cosecha. */
+const LARDER_LOW_DAYS = 14;
 
 /** Lo que se bebe de una vez, como mucho: lo que falta, hasta esto. */
 const MAX_DRINK_L = 1.5;
@@ -99,6 +107,40 @@ export function routineAt(
   return { activity: ageYears < 3 ? "rest" : "light", at: "home" };
 }
 
+/**
+ * La rutina como plantilla de plan por defecto (actions §3): `routineAt` es lo que hace quien no
+ * decidió otra cosa, y la decisión vigente (`life.decision`, de hoy) la reemplaza cuando gana otra
+ * candidata. Por ahora solo reemplaza el tramo de trabajo: quien elige descansar (`rest`) se queda
+ * en casa en vez de ir al campo, y solo si de verdad está agotado o dolorido (`unwell`) y la
+ * despensa del hogar no está baja (`larderLow`: la cosecha no se saltea con hambre en casa); al
+ * descansar se recupera y deja de cumplirse, así que no encadena días. De noche manda el sueño y el resto de la decisión (comer, beber,
+ * hablar, ayudar) todavía no mueve el cuerpo.
+ */
+export function planFor(
+  hour: number,
+  ageYears: number,
+  decision: Pick<Decision, "verb" | "at"> | undefined,
+  now: number,
+  day: number,
+  state: { readonly unwell: boolean; readonly larderLow: boolean } = {
+    unwell: false,
+    larderLow: false,
+  },
+): { activity: Activity; at: "home" | "fields"; replaced: boolean } {
+  const base = routineAt(hour, ageYears);
+  const fresh = decision !== undefined && now - decision.at < day;
+  if (
+    fresh &&
+    decision.verb === "rest" &&
+    base.at === "fields" &&
+    state.unwell &&
+    !state.larderLow
+  ) {
+    return { activity: "rest", at: "home", replaced: true };
+  }
+  return { ...base, replaced: false };
+}
+
 export function routineProcess(o: RoutineOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   const foods = o.foods
@@ -118,6 +160,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     reads: [
       PLAYER.name,
       PLAN_STATE.name,
+      NPC_DECISION.name,
       SOIL.name,
       ENTITY.name,
       PERSON.name,
@@ -141,7 +184,26 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
 
       const hour = Math.floor(localHour(o.clock, ctx.now, o.map.lonDeg));
       const age = (ctx.now - person.born) / o.clock.year;
-      const want = routineAt(hour, age);
+      const needs = needsFrom(bodyPlan, body);
+      const unwell = (needs.rest ?? 0) >= UNWELL_REST || (needs.pain ?? 0) >= UNWELL_PAIN;
+      let larderLow = false;
+      if (unwell) {
+        const mouths = truth
+          .ids(PERSON)
+          .filter(
+            (id) =>
+              truth.get(PERSON, id)?.household === person.household &&
+              truth.get(ENTITY, id)?.endedAt === undefined,
+          ).length;
+        const kcal = (
+          ctx.ledger?.holdings(holderAccount(person.household as unknown as HolderRef)) ?? []
+        ).reduce((t, h) => t + h.amount * (nutrition.get(h.unit)?.kcalPerGram ?? 0), 0);
+        larderLow = kcal < LARDER_LOW_DAYS * 3 * MEAL_KCAL * Math.max(1, mouths);
+      }
+      const want = planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
+        unwell,
+        larderLow,
+      });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings = [];
@@ -159,7 +221,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         if (fields.length > 0) there = { hex: nearestHex(o.map, home.hex, fields) };
       }
       // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
-      // adentro no se sale hasta que la arreglen (settlements �7).
+      // adentro no se sale hasta que la arreglen (settlements �7).
       if (home && jammedHome(truth, person.household)) {
         const inside = o.spaces.spaces.find((s) => s.key === here?.space)?.indoor === true;
         const toHome = there?.space === home.key;
@@ -255,12 +317,10 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
   };
 }
 
-/** Si la puerta de la casa del hogar est� trabada. */
+/** Si la puerta de la casa del hogar est� trabada. */
 function jammedHome(truth: ReadonlyWorldTruth, household: unknown): boolean {
-  return truth
-    .ids(BUILDING)
-    .some((id) => {
-      const b = truth.get(BUILDING, id);
-      return b?.household === household && b?.doorState === "jammed";
-    });
+  return truth.ids(BUILDING).some((id) => {
+    const b = truth.get(BUILDING, id);
+    return b?.household === household && b?.doorState === "jammed";
+  });
 }
