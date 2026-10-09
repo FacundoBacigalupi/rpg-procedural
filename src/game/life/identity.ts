@@ -8,6 +8,7 @@ import {
   ascribeGroup,
   COMMUNITY_CULTURE,
   type CommunityCulture,
+  groupBias,
   type IdentityBelief,
   PERSON_CULTURE,
   type Percept,
@@ -84,4 +85,46 @@ export function ascribeFromPercepts(
     changed = true;
   }
   return changed ? { about } : undefined;
+}
+
+/**
+ * El grupo al que se siente de pertenecer `who`: su identidad propia si la tiene guardada y, si
+ * no, la comunidad cuya prevalencia mejor cuadra con lo que sostiene (donde se crió). Sin
+ * comunidades ni rasgos, ninguno.
+ */
+export function ownGroup(truth: ReadonlyWorldTruth, who: AgentId): string | undefined {
+  const culture = truth.get(PERSON_CULTURE, who);
+  const own = culture?.identity
+    .filter((b) => b.about === who)
+    .sort((a, b) => b.confidence - a.confidence)[0];
+  if (own) return own.group;
+  const held = Object.entries(culture?.holdings ?? {});
+  if (held.length === 0) return undefined;
+  let best: { group: string; score: number } | undefined;
+  for (const g of communities(truth)) {
+    let score = 0;
+    for (const [trait, h] of held) score += g.prevalence[trait]?.variants[h.variant] ?? 0;
+    if (!best || score > best.score || (score === best.score && g.culture < best.group)) {
+      best = { group: g.culture, score };
+    }
+  }
+  return best?.group;
+}
+
+/**
+ * El sesgo (-1..1) de `holder` hacia `about` por el grupo que cree que es (culture §8): lo que
+ * pesa en su confianza y en su utilidad. Solo cuenta lo adscripto (lo que vio), nunca el grupo
+ * verdadero del otro; sin creencia o sin grupo propio no hay sesgo. `stereotype` es lo que cree
+ * del grupo ajeno.
+ */
+export function groupBiasToward(
+  truth: ReadonlyWorldTruth,
+  holder: AgentId,
+  about: AgentId,
+  stereotype = 0,
+): number {
+  const belief = truth.get(ASCRIBED_GROUPS, holder)?.about[about];
+  const mine = ownGroup(truth, holder);
+  if (!belief || mine === undefined) return 0;
+  return groupBias(mine, belief, stereotype);
 }

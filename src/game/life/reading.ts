@@ -21,6 +21,7 @@ import {
   relationship,
   table,
 } from "../../sim/index.ts";
+import { groupBiasToward } from "./identity.ts";
 
 /** Lo que el personaje leyó de los porqués ajenos, los más nuevos al final. */
 export interface PurposeReads {
@@ -38,6 +39,10 @@ export interface ReaderContent {
   readonly bonds: readonly BondDef[];
 }
 
+/** Cuánto pesa el sesgo de grupo (-1..1) en el aprecio y en la sospecha al leer un porqué. */
+export const GROUP_REGARD = 0.5;
+export const GROUP_SUSPICION = 0.5;
+
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
 }
@@ -52,8 +57,12 @@ export function purposeReaderOf(
 ): PurposeReader {
   const schemas = truth.get(MIND, reader)?.schemas ?? {};
   const warmth = truth.get(INNATE, reader)?.["warmth"] ?? 0.5;
+  // El grupo que cree que es el actor: los suyos inspiran confianza, los de afuera desconfianza.
+  const bias = groupBiasToward(truth, reader, actor);
   const suspicion = clamp(
-    (schemas["people_are_untrustworthy"]?.strength ?? 0) + 0.25 * (0.5 - warmth),
+    (schemas["people_are_untrustworthy"]?.strength ?? 0) +
+      0.25 * (0.5 - warmth) -
+      GROUP_SUSPICION * bias,
     0,
     1,
   );
@@ -69,7 +78,7 @@ export function purposeReaderOf(
           -1,
           1,
         );
-  return { id: reader, regard, suspicion };
+  return { id: reader, regard: clamp(regard + GROUP_REGARD * bias, -1, 1), suspicion };
 }
 
 /** El porqué real que lleva un evento de acción, si el plan lo declaró. */
