@@ -281,6 +281,14 @@ export function lifeWorld(
           bonds: parts.relationBonds,
           habits: parts.habits,
           traits: parts.traits,
+          witness: {
+            player,
+            map: parts.map,
+            spaces: parts.spaces,
+            clock: parts.clock,
+            seed: parts.seed,
+            statuses: parts.statuses,
+          },
         }),
         conscienceProcess({
           dims: parts.relationDims,
