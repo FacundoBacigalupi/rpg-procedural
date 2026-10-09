@@ -44,6 +44,7 @@ import {
 import { actProcess } from "./act.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
+import { askAroundProcess } from "./askaround.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { companyProcess } from "./company.ts";
 import { conscienceProcess } from "./conscience.ts";
@@ -201,6 +202,7 @@ export function lifeWorld(
           traits: parts.traits,
           placeOf: placeOf(parts, village),
         }),
+        askAroundProcess({ player, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
         keepProcess({

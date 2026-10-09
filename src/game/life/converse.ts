@@ -211,6 +211,9 @@ function worstOffense(j: FormJudgement): Offense | undefined {
   return all.reduce<Offense | undefined>((w, x) => (!w || x.size > w.size ? x : w), undefined);
 }
 
+/** La huella de acusar de lo que no ocurrió (law §5). */
+export const FALSE_ACCUSATION_EVENT = "law.false_accusation";
+
 /**
  * El hecho por el que pregunta quien pregunta: con una persona de por medio, el último hecho que
  * conoce en que ella hizo o sufrió algo; sin ella, el último cuyo autor no sabe. Nunca uno que lo
@@ -624,6 +627,22 @@ function accuseOf(
       stake: unit(toward.resentment),
     },
   };
+}
+
+/**
+ * Si lo acusado ocurrió de verdad (la verdad del mundo: el `OWN_DEEDS` del acusado, que es lo que
+ * él hizo, lo haya visto alguien o no). Solo lo leen el inspector y la huella de la denuncia falsa;
+ * ninguna decisión de un NPC pasa por acá. Null si no se entiende a quién se acusa.
+ */
+export function accusationOccurred(
+  truth: ReadonlyWorldTruth,
+  act: Extract<SpeechAct, { kind: "accuse" }>,
+  ctx: { me: AgentId; speaker: AgentId },
+): boolean | null {
+  if (act.accused === null) return null;
+  const accused = act.accused === "you" ? ctx.me : act.accused;
+  const victim = act.victim === "speaker" ? ctx.speaker : act.victim;
+  return didDeed(truth.get(OWN_DEEDS, accused), act.deed, victim) !== undefined;
 }
 
 /** Constantes sin calibrar: la excusa de base del acusado y cuánto la alimenta el rencor a quien acusa. */
@@ -1154,6 +1173,27 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             causes: [{ kind: "event", event: draftEvent(0) }],
           }
         : undefined;
+      // La acusación y la verdad (law §5): quien acusa de lo que no ocurrió deja una huella propia,
+      // con el acto de habla como causa; el inspector la distingue de una acusación cierta.
+      const occurred =
+        act.kind === "accuse" ? accusationOccurred(truth, act, { me, speaker }) : null;
+      const falseAccusationEvent: EventDraft | undefined =
+        act.kind === "accuse" && act.accused !== null && occurred === false && reply.accusation
+          ? {
+              kind: FALSE_ACCUSATION_EVENT,
+              actors: [speaker, act.accused === "you" ? me : act.accused],
+              place: o.placeOf(truth, me),
+              data: {
+                deed: act.deed,
+                victim: act.victim === "speaker" ? speaker : act.victim,
+                certainty: act.certainty,
+                heardBy: me,
+                unbacked: reply.accusation.unbacked,
+              },
+              emissions: {},
+              causes: [{ kind: "event", event: draftEvent(0) }],
+            }
+          : undefined;
       const event: EventDraft = {
         kind: "action.speak",
         actors: [me, speaker],
@@ -1189,6 +1229,8 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             ...(reply.accusation
               ? {
                   accusation: {
+                    // Solo para el inspector: si lo acusado ocurrió de verdad.
+                    truthOf: { occurred },
                     accused: reply.accusation.accused,
                     deed: reply.accusation.kind,
                     unbacked: reply.accusation.unbacked,
@@ -1256,6 +1298,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           event,
           ...(offenseEvent ? [offenseEvent] : []),
           ...(inquiryEvent ? [inquiryEvent] : []),
+          ...(falseAccusationEvent ? [falseAccusationEvent] : []),
         ],
         postings:
           swaps.length > 0
