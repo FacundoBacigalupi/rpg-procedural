@@ -299,6 +299,8 @@ Con la resolución de zona de simulation §4:
 
 **Hecho (Fase 2, 2026-10-08) — factibilidad creída:** `feasibility.ts` (`assessPlan` contra un `BeliefView`: cuerpo sentido, autoimagen, posición y tenencia creídas; avisos con `blocks` para NPC), referencias fantasma (`KnownEntity.phantom` → estado `phantom`, se usa como única y queda en `DraftResult.phantoms`), acto de habla declarado en `speak.content` (`DraftAct` → `SpeakAct`) y `clarifyQuestion`. El juego avisa antes del primer intento y si el jugador repite lo mismo, lo intenta. Ítems abiertos en el ROADMAP.
 
+**Hecho (2026-10-09) — fantasmas en el juego:** `knownEntities` (`game/life/known.ts`) marca `phantom` a padres y hermanos muertos que el personaje cree vivos (`believesAlive`) y a quien cree acá sin que esté. Falta que `not_here` le corrija la creencia (ROADMAP).
+
 ## Tests
 
 - **Ningún resultado desde el texto:** para un corpus de frases con resultados ("lo mato", "encuentro", "me da"), el parser nunca produce cambios de estado y siempre llena `stripped`.
