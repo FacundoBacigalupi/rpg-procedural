@@ -68,6 +68,7 @@ export const DEATH_CAUSES = [
   "starvation",
   "sepsis",
   "brain_trauma",
+  "disease",
 ] as const;
 export type DeathCause = (typeof DEATH_CAUSES)[number];
 

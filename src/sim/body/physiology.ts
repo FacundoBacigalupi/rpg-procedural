@@ -117,6 +117,8 @@ function deathCauses(body: Body, entity: AgentId, cause: DeathCause): CauseRef[]
       const infected = open.filter((w) => w.infection >= SEPSIS_FLOOR);
       return ev(infected.length > 0 ? infected : open);
     }
+    case "disease":
+      return [{ kind: "state", entity, key: "body.infection" }];
     case "brain_trauma":
       return ev(open.filter((w) => w.zone === "head"));
     case "dehydration":

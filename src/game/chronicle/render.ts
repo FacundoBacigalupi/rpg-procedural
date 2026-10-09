@@ -10,6 +10,7 @@ const CAUSE: Readonly<Record<string, string>> = {
   starvation: "murió de hambre",
   sepsis: "murió de una infección que le llegó a la sangre",
   brain_trauma: "murió de un golpe en la cabeza",
+  disease: "murió de una enfermedad",
   unknown: "murió",
 };
 

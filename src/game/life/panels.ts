@@ -18,6 +18,7 @@ import {
   COPPER,
   type GuiltResponse,
   houseKey,
+  INFECTION,
   LOCATION,
   MEAL_KCAL,
   MENTAL,
@@ -145,7 +146,9 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
   const body = w.truth.get(BODY_STATE, w.player);
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
   const plan = w.plans.find((p) => p.id === body.plan);
-  const signs = plan ? bodySigns(plan, body) : { general: [], zones: [] };
+  const signs = plan
+    ? bodySigns(plan, body, (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0)
+    : { general: [], zones: [] };
   const mine = w.truth.get(STATUS, w.player);
   const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;
   const zoneName = (id: string) => plan?.zones.find((z) => z.id === id)?.name ?? id;
