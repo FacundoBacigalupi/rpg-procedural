@@ -29,6 +29,7 @@ import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
 import { ETIQUETTE, STATUSES } from "./social/index.ts";
+import { SCENARIOS, TUNING_TARGETS } from "./tuning/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
   BIOMES,
@@ -71,4 +72,6 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   RELATION_BONDS,
   HABITS_CONTENT,
   TASTES,
+  SCENARIOS,
+  TUNING_TARGETS,
 ] as readonly ContentKind[];

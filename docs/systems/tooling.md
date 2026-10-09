@@ -176,7 +176,7 @@ Una violación detiene la corrida y genera un paquete de reproducción.
 - **Fase 0:** esquema SQLite mínimo (meta, entities, components, events, causes, player_plans), serialización canónica y hash, test de determinismo por hash, replay básico, CI con typecheck y tests, validación de `content/`.
 - **Fase 1:** tabla aditiva `narration` (la bitácora del jugador: tick y texto, sin entrar al hash ni al replay); inspector CLI con `entity`, `why`, `effects`, `mind`, `decision`, `believes`, `view`; sim headless con reporte JSON; invariantes en debug; guardado por turno; banco de pruebas de modelos.
 - **Fase 2:** `memories`, `wrong`, `percepts` y métricas de exactitud de creencias (hechos); `rumor` espera a los rumores con linaje (Fase 3).
-- **Fase 3:** (hechos: `sim:batch`, `sim:diff` y un reporte HTML sin scripts, 2026-10-09; resumen por métrica con media/mín/máx y comparación A/B de reportes o lotes) escenarios, primeros objetivos de calibración, snapshots y diffs con `at <tick>`.
+- **Fase 3:** (hechos: `sim:batch`, `sim:diff` y un reporte HTML sin scripts, 2026-10-09; resumen por métrica con media/mín/máx y comparación A/B de reportes o lotes; escenarios de `content/scenarios/` con `--scenario`; objetivos de `content/tuning/` con `sim:tune`) snapshots y diffs con `at <tick>`.
 - **Fase 5:** mapas PNG, `lod`, `tier`, `budget`, perfiles de rendimiento, poda de diffs y compactación, tamaño del guardado medido.
 - **Fase 7:** `whatif`, `timeline`, migraciones con límite de replay.
 - **Fase 9:** inspector web con mapas interactivos; corpus para el fine-tune.

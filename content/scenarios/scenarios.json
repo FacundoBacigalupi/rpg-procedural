@@ -1,0 +1,23 @@
+[
+  {
+    "id": "baseline",
+    "name": "Aldea de referencia",
+    "description": "La vida por defecto: aldea agrícola, el personaje entra a los 16 sin hacer nada.",
+    "mode": "realistic"
+  },
+  {
+    "id": "adult-start",
+    "name": "Entrada de adulto",
+    "description": "El personaje entra a los 30: la aldea tiene que haber vivido bien hasta entonces.",
+    "mode": "realistic",
+    "entryAge": 30
+  },
+  {
+    "id": "small-planet",
+    "name": "Planeta chico",
+    "description": "Grilla de baja frecuencia: corridas rápidas para probar invariantes en muchos seeds.",
+    "mode": "realistic",
+    "frequency": 8,
+    "years": 2
+  }
+]
