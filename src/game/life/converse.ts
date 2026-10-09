@@ -141,6 +141,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
+import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { liveTaboos } from "./taboos.ts";
@@ -295,6 +296,8 @@ export interface ConverseOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por día de mundo (los plazos del fiado se cuentan en días). */
   readonly day: Duration;
+  /** Duración del año (para separar chicos y viejos en el presupuesto del hogar). */
+  readonly year?: Duration;
   /** La lengua y la etiqueta de habla de la aldea; sin esto el acto va sin forma (solo contenido). */
   readonly form?: ConverseForm;
 }
@@ -1178,6 +1181,17 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           .filter((id) => householdOf(truth, id as AgentId) === home && alive(truth, id as AgentId))
           .length,
       );
+      const budget = householdFlowsOf(
+        truth,
+        {
+          goods: o.goods,
+          ledger: ctx.ledger,
+          now: ctx.now,
+          day: o.day,
+          ...(o.year === undefined ? {} : { year: o.year }),
+        },
+        home,
+      );
       // Tratar de usted a quien tiene más rango es una costumbre de la aldea (culture, etiquette).
       const byRank = dominantVariant(villageCulture(truth), "etiquette.address") !== "uniform";
       // Lo que el oyente cree del rango de quien le habla (`STANDING_BELIEFS`), no la verdad:
@@ -1382,6 +1396,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return g?.form === "coin" ? COIN_WORTH_PER_KILO : (g?.priceCopperPerKg ?? null);
           },
           isCoin: (id) => goodById(id)?.form === "coin",
+          // El presupuesto del hogar: cuánto puede gastar sin tocar la comida y cómo está.
+          coinCeiling: coinCeilingOf(budget, false),
+          standing: standingOf(budget),
           speakerHas: (id) => {
             const g = goodById(id);
             return g

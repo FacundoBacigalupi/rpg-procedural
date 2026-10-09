@@ -208,6 +208,7 @@ export function lifeWorld(
           traits: parts.traits,
           placeOf: placeOf(parts, village),
           day: parts.clock.day,
+          year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
         }),
         ...(parts.form
