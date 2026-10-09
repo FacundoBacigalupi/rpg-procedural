@@ -334,7 +334,7 @@ export function testifyProcess(o: TestifyOptions): ProcessDef {
     scope: "world",
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
-    phase: "decide",
+    phase: "perceive",
     reads: [
       KNOWN_DEEDS.name,
       OWN_DEEDS.name,

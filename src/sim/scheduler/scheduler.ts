@@ -308,13 +308,11 @@ export class Scheduler {
           }
         }
         specs.sort((a, b) => compareStrings(a.def.id, b.def.id) || compareScopes(a.scope, b.scope));
-        this.#commit(
-          specs.map((spec) => this.#run(spec, t, "perceive")),
-          t,
-          "perceive",
-          events,
-          contests,
-        );
+        // Uno tras otro: cada proceso ve lo que dejó el anterior, así dos que aprenden sobre la
+        // misma persona (deeds, testify) se suman en vez de pisarse.
+        for (const spec of specs) {
+          this.#commit([this.#run(spec, t, "perceive")], t, "perceive", events, contests);
+        }
       }
     } finally {
       this.#stepping = undefined;
