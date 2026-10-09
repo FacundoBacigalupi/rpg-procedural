@@ -3,7 +3,7 @@
 // dijeron. Lo dicho queda como dicho (con quién y cuándo), no como verdad: se puede dudar o
 // revisar cuando llega algo mejor.
 
-import type { AgentId, EventId, Tick } from "../../core/index.ts";
+import { type AgentId, type EventId, pow, type Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 
 export interface HeardClaim {
@@ -54,7 +54,7 @@ const DAY_SECONDS = 86_400;
 export function stakesAt(s: Secret, now: Tick): number {
   if (s.since === undefined) return s.stakes;
   const days = Math.max(0, now - s.since) / DAY_SECONDS;
-  return Math.round(s.stakes * 0.5 ** (days / SECRET_HALF_LIFE_DAYS) * 1e6) / 1e6;
+  return Math.round(s.stakes * pow(0.5, days / SECRET_HALF_LIFE_DAYS) * 1e6) / 1e6;
 }
 
 export interface SecretBirth {

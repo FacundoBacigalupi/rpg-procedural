@@ -29,7 +29,11 @@ describe("el grupo que el personaje cree de lo que ve", () => {
   const life = Life.create(7, content);
   const { truth } = life.world;
   const other = truth.ids(PERSON).find((id) => id !== life.player) as AgentId;
-  const event = { id: 99 as unknown as EventId, actors: [other] } as unknown as Event;
+  const event = {
+    id: 99 as unknown as EventId,
+    kind: "action.walk",
+    actors: [other],
+  } as unknown as Event;
   const seen = (detail: "clear" | "vague"): Percept =>
     ({ sourceEventId: event.id, detail }) as unknown as Percept;
 
