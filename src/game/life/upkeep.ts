@@ -17,13 +17,16 @@ import {
   BUILDING,
   type BuildingComponent,
   type BuildingRecord,
+  collapseCheck,
   DEBRIS_SINK,
   type DoorState,
   doorBarrier,
   draftEvent,
   ENTITY,
+  endEntity,
   GATHERED_SOURCE,
   jammedDoor,
+  type LoadInput,
   type LocalMap,
   type MaterialDef,
   materialUnit,
@@ -31,12 +34,14 @@ import {
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  rebuildChoice,
   repairedCondition,
   repairedDefects,
   replacedGrams,
   replacedShare,
   restingDoor,
   type StateChange,
+  salvagedGrams,
   setComponent,
   weatherAt,
   wornCondition,
@@ -90,7 +95,7 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
     representation: "individual",
     phase: "physics",
     reads: [BUILDING.name, PERSON.name, ENTITY.name],
-    writes: [BUILDING.name],
+    writes: [BUILDING.name, ENTITY.name],
     run(ctx) {
       const ids = ctx.truth
         .ids(BUILDING)
@@ -100,6 +105,13 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
       const day = weatherAt(o.map, o.clock, o.seed, ctx.now);
       const rainMm = day.precip.kind === "none" ? 0 : day.precip.mm;
       const exposure = { rainMm, frost: day.tempMinC < 0, windMs: day.windMs };
+      const load: LoadInput = {
+        rainMm: day.precip.kind === "rain" ? day.precip.mm : 0,
+        snowMm: day.precip.kind === "snow" ? day.precip.mm : 0,
+        windMs: day.windMs,
+        quake: 0, // ninguna fuente produce sismos todavía
+        weight: 0,
+      };
       const crews = crewsOf(ctx.truth, o.clock, ctx.now);
 
       const changes: StateChange[] = [];
@@ -120,6 +132,78 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
           const mat = materials.get(c.materials[0]?.material ?? "");
           return mat ? { ...c, condition: wornCondition(c, mat, days, exposure, use) } : c;
         });
+
+        // Derrumbe: parte bajo su umbral de ruina y una carga que no aguanta.
+        const check = collapseCheck(components, load);
+        const base = ctx.truth.get(ENTITY, id);
+        if (check && base && ctx.rng.fork("collapse", id).stream().chance(check.risk)) {
+          const k = events.length;
+          const holder: HolderRef = { kind: "building", building: id as BuildingId };
+          const town: HolderRef = { kind: "settlement", settlement: b.settlement };
+          const meanCondition =
+            components.reduce((s, c) => s + c.condition, 0) / Math.max(1, components.length);
+          const transfers: {
+            unit: ReturnType<typeof materialUnit>;
+            from: ReturnType<typeof holderAccount>;
+            to: ReturnType<typeof holderAccount> | ReturnType<typeof externalAccount>;
+            amount: number;
+          }[] = [];
+          let needed = 0;
+          let salvaged = 0;
+          for (const matId of new Set(
+            components.flatMap((c) => c.materials.map((l) => l.material)),
+          )) {
+            const unit = materialUnit(matId);
+            const has = ctx.ledger?.balance(holderAccount(holder), unit) ?? 0;
+            if (has <= 0) continue;
+            const kept = salvagedGrams(has, meanCondition, check.cause === "quake");
+            needed += has;
+            salvaged += kept;
+            if (kept > 0)
+              transfers.push({
+                unit,
+                from: holderAccount(holder),
+                to: holderAccount(town),
+                amount: kept,
+              });
+            if (has - kept > 0)
+              transfers.push({
+                unit,
+                from: holderAccount(holder),
+                to: externalAccount(DEBRIS_SINK),
+                amount: has - kept,
+              });
+          }
+          const rebuild = rebuildChoice({
+            neededGrams: needed,
+            salvagedGrams: salvaged,
+            savingsGrams: 0,
+            helpGrams: 0,
+            siteUnsafe: check.cause === "quake",
+          });
+          events.push({
+            kind: "settlement.collapsed",
+            actors: [],
+            place: { kind: "settlement", settlement: b.settlement },
+            data: {
+              building: id,
+              part: check.part,
+              cause: check.cause,
+              load: Math.round(check.load * 1000) / 1000,
+              capacity: Math.round(check.capacity * 1000) / 1000,
+              salvagedGrams: salvaged,
+              rebuild,
+            },
+            emissions: {},
+            causes: [
+              { kind: "event", event: b.lastRepair ?? b.builtBy },
+              { kind: "state", entity: id, key: `condition.${check.part}` },
+            ],
+          });
+          if (transfers.length > 0) postings.push({ event: draftEvent(k), transfers });
+          changes.push(endEntity(base, draftEvent(k), ctx.now));
+          continue;
+        }
 
         // Si el que mantiene puede y se acuerda, arregla lo más gastado.
         const canRepair =

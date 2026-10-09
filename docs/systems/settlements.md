@@ -291,6 +291,10 @@ Inundaciones, terremotos, deslaves, tormentas, plagas, asedios y batallas de cul
 - Repara el hogar mantenedor si tiene un adulto vivo (14 años o más), con chance diaria; la parte cambiada depende de lo gastado y de la calidad del componente. El material entra del externo `gathered` y lo cambiado sale al externo `debris`; la reparación es un evento `settlement.repaired` causado por la anterior.
 - La puerta tiene `doorState` (`open`/`closed`/`jammed`): gastada y con humedad se traba (barrera `door_closed`), arreglada vuelve a su reposo (casas abiertas, lo comunal cerrado).
 
+**Fase 3 (parcial): derrumbe con causa** — `sim/settlements/collapse.ts` (puro) y el mismo proceso `life.upkeep`.
+- Una parte cede solo si su condición está bajo el umbral de ruina (techo 0.25, paredes 0.18, cimiento 0.12) y la carga del día (lluvia, nieve, viento sobre 8 m/s, sismo, peso) supera `1.5 × condición`; la chance diaria crece con el exceso. El edificio termina con `settlement.collapsed` (cause = carga dominante); su materia va en parte al depósito de la aldea (salvada) y el resto a `debris`.
+- `rebuildChoice` decide igual/mejor/distinto/en otro lugar con lo salvado, ahorros y ayuda; hoy solo se registra en el evento (la obra nueva y los sismos quedan en el ROADMAP).
+
 ## Tests
 
 - **Anclas:** ningún asentamiento sin al menos un ancla con causa; si se pierden todas, el asentamiento decae.
