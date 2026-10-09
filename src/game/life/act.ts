@@ -600,6 +600,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         doerLevel: input.actor.skill ?? 0,
         // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
         except: targetId,
+        rng: input.rng.fork("watch"),
         hex: e.hex,
         light: e.light,
         seconds: r.seconds,

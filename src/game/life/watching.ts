@@ -2,7 +2,7 @@
 // despiertos, lo ven según su vista, su atención y la luz; lo que ven deposita en su `SKILL_STATE`
 // (`learnFromWatching`). Sin habilidad en el verbo o sin tirada, nadie aprende.
 
-import type { AgentId, PlanetClock, Tick } from "../../core/index.ts";
+import type { AgentId, PlanetClock, Rng, Tick } from "../../core/index.ts";
 import {
   ATTENTION,
   BODY_STATE,
@@ -12,7 +12,11 @@ import {
   INNATE,
   LOCATION,
   learnFromWatching,
+  levelOf,
   MENTAL,
+  OPINIONS,
+  observeSkill,
+  opinionKey,
   PERSON,
   type ReadonlyWorldTruth,
   SKILL_STATE,
@@ -23,6 +27,7 @@ import {
   standardize,
   type Trait,
   vigilantAttention,
+  WATCH_MIN_SEEN,
 } from "../../sim/index.ts";
 
 export interface WatchInput {
@@ -40,6 +45,10 @@ export interface WatchInput {
   readonly except?: AgentId | null;
   readonly light: number;
   readonly seconds: number;
+  /** Para el ruido de lo que cada uno cree haber visto (opinión ajena). */
+  readonly rng: Rng;
+  /** El nivel que mostraba (con la pose); por defecto el efectivo. */
+  readonly shown?: number;
   readonly now: Tick;
 }
 
@@ -81,6 +90,25 @@ export function watchersLearn(i: WatchInput): StateChange[] {
       out.push(
         setComponent(SKILL_STATE, id, { ...i.truth.get(SKILL_STATE, id), [use.skill.id]: next }),
       );
+    // Y se forma una idea de qué tan bueno es quien lo hace (skills §9): con lo que vio, no con la verdad.
+    if (seen >= WATCH_MIN_SEEN) {
+      const mine = i.truth.get(SKILL_STATE, id)?.[use.skill.id];
+      const key = opinionKey(i.doer, use.skill.id);
+      const opinions = i.truth.get(OPINIONS, id);
+      out.push(
+        setComponent(OPINIONS, id, {
+          ...opinions,
+          [key]: observeSkill(
+            opinions?.[key],
+            i.shown ?? i.doerLevel,
+            seen,
+            levelOf(mine, "reading"),
+            i.rng.fork("opinion", id).normal(),
+            i.now,
+          ),
+        }),
+      );
+    }
   }
   return out;
 }
