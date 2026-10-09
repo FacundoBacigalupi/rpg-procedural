@@ -227,6 +227,14 @@
     "formal": ["Está bien, haré lo que pide. Pero no era necesario."]
   },
   {
+    "id": "threat.yield.give",
+    "lines": [
+      "Tomá {what}, y dejame en paz. No hacía falta amenazar.",
+      "Está bien, llevate {what}. Pero esto no lo olvido."
+    ],
+    "formal": ["Tome {what}. No era necesario amenazarme."]
+  },
+  {
     "id": "threat.defy",
     "lines": ["¿Vos y quién más? No te tengo miedo.", "Probá, a ver si te animás."],
     "formal": ["Haga lo que tenga que hacer; no le temo."]

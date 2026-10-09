@@ -58,7 +58,12 @@ type SpeechBody =
   /** Un argumento para que el oyente haga o crea algo: a qué apunta (dialogue §6); `persuade` lo pesa. */
   | { readonly kind: "argue"; readonly reason: ArgueReason }
   /** Una amenaza: cuánto daño promete (0-1: la muerte 1, una paliza 0.5, quedar mal 0.1) (dialogue §9). */
-  | { readonly kind: "threaten"; readonly harm: number }
+  | {
+      readonly kind: "threaten";
+      readonly harm: number;
+      /** Lo que exige a cambio de no cumplirla («dame el grano o…»): el bien, si lo nombró. */
+      readonly demand?: string;
+    }
   /** Un halago: cuánto exagera (0-1) (dialogue §10). */
   | { readonly kind: "flatter"; readonly excess: number }
   /** Un insulto: lo filoso que es (0-1) (dialogue §10). */
@@ -448,9 +453,13 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
   // Con la voz turbia se entiende una cosa u otra, pero no el detalle: ni de quién ni de qué.
   const blur = clarity < 0.35;
   // Una amenaza gana sobre el pedido que la acompaña («dame el grano o te mato»).
-  if (THREAT_DEADLY.test(norm)) return { kind: "threaten", harm: 1 };
-  if (THREAT_BEATING.test(norm)) return { kind: "threaten", harm: THREAT_BEATING_HARM };
-  if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM };
+  // La exigencia que la acompaña (el bien pedido) se conserva: es lo que el amenazado cede o no.
+  const demand = !blur && good !== null && REQUEST.test(norm) ? { demand: good } : {};
+  if (THREAT_DEADLY.test(norm)) return { kind: "threaten", harm: 1, ...demand };
+  if (THREAT_BEATING.test(norm)) {
+    return { kind: "threaten", harm: THREAT_BEATING_HARM, ...demand };
+  }
+  if (THREAT_PAYING.test(norm)) return { kind: "threaten", harm: THREAT_PAYING_HARM, ...demand };
   const theft = ACCUSE_THEFT.test(norm);
   if (theft || ACCUSE_ASSAULT.test(norm)) {
     const you = ACCUSE_SECOND.test(norm);
