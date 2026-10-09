@@ -74,6 +74,7 @@ import { standingProcess } from "./standing.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { upbringingProcess } from "./upbringing.ts";
+import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
@@ -152,6 +153,14 @@ export function lifeWorld(
           statuses: parts.statuses,
           cultureTraits: parts.cultureTraits,
           relations: { dims: parts.relationDims, bonds: parts.relationBonds },
+        }),
+        witnessingProcess({
+          player,
+          map: parts.map,
+          spaces: parts.spaces,
+          clock: parts.clock,
+          seed: parts.seed,
+          statuses: parts.statuses,
         }),
         deedsProcess({
           map: parts.map,
