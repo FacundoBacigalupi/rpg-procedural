@@ -664,6 +664,24 @@
       "Se acerca el día en que {who} te debe {what}."
     ]
   },
+  {
+    "id": "heard_trade.of",
+    "lines": [
+      "Alguien contó que {who} vive de {trade}.",
+      "Te dijeron que {who} se gana la vida con {trade}."
+    ]
+  },
+  {
+    "id": "heard_trade.some",
+    "lines": [
+      "Oíste que en una casa del pueblo viven de {trade}.",
+      "Dicen que unos vecinos se dedican a {trade}."
+    ]
+  },
+  {
+    "id": "heard_trade.unsure",
+    "lines": ["Quién sabe si es cierto.", "No sabés cuánto hay de verdad."]
+  },
   { "id": "due.unsure", "lines": ["No lo recordás bien.", "Los detalles se te borronean."] },
 
   {
