@@ -13,6 +13,7 @@ import {
 } from "../../sim/index.ts";
 import {
   consumeDose,
+  cravingApproachMoves,
   cravingBorrowAsks,
   cravingBorrowMood,
   cravingBuyGoods,
@@ -167,5 +168,22 @@ describe("pedir prestada la sustancia", () => {
   it("el empuje crece con el ansia y con la confianza", () => {
     expect(cravingBorrowMood(1, 1, o)).toBe(1);
     expect(cravingBorrowMood(0.5, 0.5, o)).toBe(0.25);
+  });
+});
+
+describe("ir hacia el prestamista", () => {
+  const ask = { lender: "agent:2", name: "wine", confidence: 0.8 };
+  const o = { minCraving: 0.3, weight: 1, approach: 0.5 };
+  const place = (hex: number) => (hex === 7 ? "place:inn" : undefined);
+  it("va al lugar donde lo cree, no a donde está", () => {
+    const m = cravingApproachMoves([ask], () => 7, 1, place, 1, o);
+    expect(m).toEqual([{ id: "move:place:inn+toward:agent:2", place: "place:inn", mood: 0.4 }]);
+  });
+  it("nada sin opt-in, sin creencia, en el mismo hex o sin lugar", () => {
+    const { approach: _, ...off } = o;
+    expect(cravingApproachMoves([ask], () => 7, 1, place, 1, off)).toEqual([]);
+    expect(cravingApproachMoves([ask], () => undefined, 1, place, 1, o)).toEqual([]);
+    expect(cravingApproachMoves([ask], () => 7, 7, place, 1, o)).toEqual([]);
+    expect(cravingApproachMoves([ask], () => 9, 1, place, 1, o)).toEqual([]);
   });
 });
