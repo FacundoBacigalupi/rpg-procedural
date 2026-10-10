@@ -39,6 +39,7 @@ import {
 } from "../../sim/index.ts";
 
 export const RENTS_PROCESS = "life.rents";
+export const EVICT_AFTER_DAYS = 30;
 
 export interface RentRow {
   readonly seed: string;
@@ -53,6 +54,8 @@ export interface RentRow {
   /** Lo pagado hasta hoy y lo que quedó sin pagar por falta de fondos. */
   readonly paid: number;
   readonly arrears: number;
+  /** Días seguidos sin pagar el canon entero; al llegar a `evictAfterDays` hay desalojo. */
+  readonly missed?: number;
   readonly status: "active" | "fulfilled" | "defaulted";
   readonly commitment: Commitment;
 }
@@ -78,6 +81,8 @@ export interface RentsOptions {
   readonly clock: PlanetClock;
   readonly goods: readonly GoodDef[];
   readonly seeds: readonly RentSeed[];
+  /** Días seguidos de mora tras los que el dueño desaloja (default 30). */
+  readonly evictAfterDays?: number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -281,13 +286,17 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         const arrears = l.arrears + (l.perDay - pay);
         const ended = today + 1 >= l.endDay;
         const total = l.perDay * (l.endDay - l.startDay);
-        const status: RentRow["status"] = !ended
-          ? "active"
-          : paid >= total
-            ? "fulfilled"
-            : "defaulted";
+        const missed = pay >= l.perDay ? 0 : (l.missed ?? 0) + 1;
+        const evict = !ended && missed >= (o.evictAfterDays ?? EVICT_AFTER_DAYS);
+        const status: RentRow["status"] = evict
+          ? "defaulted"
+          : !ended
+            ? "active"
+            : paid >= total
+              ? "fulfilled"
+              : "defaulted";
         if (pay === 0 && status === "active") {
-          changes.push(setComponent(RENTS, r.id as never, { ...l, arrears }));
+          changes.push(setComponent(RENTS, r.id as never, { ...l, arrears, missed }));
           continue;
         }
         events.push({
@@ -308,12 +317,40 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
           postings.push({ event: draftEvent(k), transfers: ts });
           spent.set(sk, (spent.get(sk) ?? 0) + pay);
         }
+        if (status === "defaulted") {
+          // Mora: el dueño la anota (el hecho llega a `deeds` como incumplimiento del arrendatario,
+          // el arrendatario pierde la fama) y recupera la parcela: se acaba el uso y vuelve la posesión.
+          events.push({
+            kind: "property.rent_default",
+            actors: [tenMan, landMan],
+            place: o.placeOf(ctx.truth, tenMan),
+            data: { rent: r.id, parcel: l.parcel, arrears, missed, evicted: true },
+            emissions: {},
+            causes: [
+              { kind: "event" as const, event: l.commitment.originEventId as never },
+              { kind: "state" as const, entity: r.id as unknown as EntityRef, key: "rent" },
+            ],
+          });
+          const parcel = ctx.truth.get(PARCEL, l.parcel as never) as Parcel | undefined;
+          if (parcel) {
+            changes.push(
+              setComponent(PARCEL, l.parcel as never, {
+                ...parcel,
+                rights: parcel.rights.filter(
+                  (x) => !(x.holder === (l.tenant as never) && x.tenure === "lease"),
+                ),
+                possession: l.landlord as never,
+              }),
+            );
+          }
+        }
         const c = l.commitment;
         const ob = c.obligations[0];
         const next: RentRow = {
           ...l,
           paid,
           arrears,
+          missed,
           status,
           commitment: {
             ...c,

@@ -94,7 +94,7 @@ import { ponderProcess } from "./ponder.ts";
 import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { scamDiscoveryProcess } from "./scamdiscovery.ts";
-import { scamEyeOf, scamNeedOf, scamProviders } from "./scampolicy.ts";
+import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -200,6 +200,8 @@ export interface LifeWorld {
    * bajan la gravedad por hora; amputar quita la parte profunda antes de la gangrena). Apagado: nada cambia.
    */
   readonly frostbiteTreatment?: boolean;
+  /** Opt-in (con `frostbite`): la amputación deja `Scar` con `lost` en el `Body` (`body.physiology`) y baja capacidades por zona. Apagado: nada cambia. */
+  readonly amputationScars?: boolean;
   /**
    * Opt-in: bienes que son sustancias de consumo (body-health §9): el verbo `consume` los toma
    * (`life.act`: gasta una unidad y suma una dosis con evento) y `life.decide` lo ofrece con
@@ -339,6 +341,7 @@ export function lifeWorld(
           deficiency: parts.deficiencyEffects === true,
           reopen: parts.reopenWounds === true,
           thermal: parts.coreEffects === true,
+          amputations: parts.frostbite === true && parts.amputationScars === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,
@@ -380,6 +383,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
                 appraisers: scamEyeOf(parts.traits),
+                refund: scamRefundOf(parts.traits, scamNeedOf(parts.plans)),
                 day: parts.clock.day,
               }),
             ]

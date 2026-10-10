@@ -16,6 +16,7 @@ import { Scheduler } from "../scheduler/index.ts";
 import { ENTITY, WorldTruth } from "../world/index.ts";
 import {
   advanceBody,
+  amputationScars,
   type Blow,
   BODY_PLANS,
   BODY_STATE,
@@ -578,5 +579,19 @@ describe("núcleo inconsciente", () => {
     expect(up.body.consciousness).toBe("alert");
     expect(up.happenings.some((h) => h.kind === "came_to")).toBe(true);
     expect(advanceBody(plan, me, fresh(), hour).body.consciousness).toBe("alert");
+  });
+});
+
+describe("amputación como marca", () => {
+  it("las manos perdidas dejan Scar con lost y bajan manipulación, una sola vez", () => {
+    const lost = { lost: [{ part: "hands" as const, at: 5, cause: hit }] };
+    const marks = amputationScars(lost, []);
+    expect(marks.map((m) => m.zone).sort()).toEqual(["left_arm", "right_arm"]);
+    const body = { ...fresh(), scars: marks };
+    expect(amputationScars(lost, body.scars)).toEqual([]);
+    expect(capabilitiesOf(plan, body).manipulation).toBeLessThan(
+      capabilitiesOf(plan, fresh()).manipulation * 0.6,
+    );
+    expect(capabilitiesOf(plan, body).locomotion).toBe(capabilitiesOf(plan, fresh()).locomotion);
   });
 });

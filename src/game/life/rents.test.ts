@@ -18,6 +18,7 @@ import {
   rentIncomePerDay,
   WorldTruth,
 } from "../../sim/index.ts";
+import { offenseOf } from "./deeds.ts";
 import { RENTS, type RentSeed, rentDuePerDay, rentsOf, rentsProcess } from "./rents.ts";
 
 const goods = [{ id: "copper", name: "cobre", form: "coin" }] as unknown as GoodDef[];
@@ -128,5 +129,39 @@ describe("life.rents", () => {
     expect(row?.paid).toBe(4);
     expect(row?.arrears).toBe(5);
     expect(row?.status).toBe("defaulted");
+  });
+
+  it("mora sostenida: evento con causas, desalojo y fama vía deeds", () => {
+    const { truth, ledger } = setup(1);
+    const long: RentSeed = { ...seed, termDays: 50 };
+    const proc = rentsProcess({
+      clock,
+      goods,
+      seeds: [long],
+      evictAfterDays: 2,
+      placeOf: () => ({ kind: "cell" }) as never,
+    });
+    const kinds: string[] = [];
+    let last: ReturnType<typeof proc.run> = {};
+    for (const d of [1, 2, 3]) {
+      last = proc.run(ctxOf(truth, ledger, d));
+      for (const c of last.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === RENTS.name) truth.set(RENTS, ch.id as never, ch.value as never);
+      }
+      kinds.push(...(last.events ?? []).map((e) => e.kind));
+    }
+    expect(kinds).toContain("property.rent_default");
+    const ev = (last.events ?? []).find((e) => e.kind === "property.rent_default");
+    expect(ev?.causes.length).toBe(2);
+    const parcel = (last.changes ?? []).find(
+      (c) => (c as { table?: string }).table === PARCEL.name,
+    ) as { value: Parcel } | undefined;
+    expect(parcel?.value.possession).toBe("owner");
+    const [row] = [...truth.ids(RENTS)].map((id) => truth.get(RENTS, id));
+    expect(row?.status).toBe("defaulted");
+    expect(
+      offenseOf({ kind: "property.rent_default", actors: ["agent:2", "agent:1"] } as never)?.kind,
+    ).toBe("default");
   });
 });

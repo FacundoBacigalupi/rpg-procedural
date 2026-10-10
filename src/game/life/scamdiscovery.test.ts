@@ -20,7 +20,7 @@ const seller = "agent:2" as AgentId;
 const expert = "agent:3" as AgentId;
 const coin = ledgerUnit("coin");
 
-function run(opts: { eyes: Record<string, number>; day: number }) {
+function run(opts: { eyes: Record<string, number>; day: number; refund?: number }) {
   const deal = {
     event: "event:7" as EventId,
     tick: 0 as Tick,
@@ -44,13 +44,13 @@ function run(opts: { eyes: Record<string, number>; day: number }) {
   } as unknown as ReadonlyWorldTruth;
   const rng = {
     fork: () => rng,
-    chance: (p: number) => p > 0.9 || p === APPRAISAL_HAZARD,
+    chance: (p: number) => p > 0.9 || p === APPRAISAL_HAZARD || p === 0.77,
   } as never;
   const ledger = {
-    holdings: (a: unknown) =>
-      JSON.stringify(a).includes(buyer) ? [{ unit: coin, amount: 5 }] : [],
+    holdings: (a: unknown) => [{ unit: coin, amount: JSON.stringify(a).includes(buyer) ? 5 : 3 }],
   } as never;
   const proc = scamDiscoveryProcess({
+    ...(opts.refund !== undefined ? { refund: () => opts.refund as number } : {}),
     placeOf: () => "here" as never,
     eye: (_t, who) => opts.eyes[who] ?? 0,
     appraisers: (_t, who) => opts.eyes[who] ?? 0,
@@ -75,5 +75,21 @@ describe("estafa: descubrimiento por tasador", () => {
     expect(hired.postings?.[0]?.transfers[0]?.amount).toBe(APPRAISAL_FEE);
     const found = hired.events?.find((e) => e.kind === "scam.discovered");
     expect(found?.data["appraiser"]).toBe(expert);
+  });
+
+  it("el comprador reclama el sobreprecio: acepta y devuelve por el ledger, o se niega", () => {
+    const eyes = { [buyer]: 0.3, [expert]: 0.45 };
+    const yes = run({ eyes, day: 0.001, refund: 0.77 });
+    const refunded = yes.events?.find((e) => e.kind === "scam.refunded");
+    expect(refunded).toBeDefined();
+    const back = yes.postings?.[1]?.transfers[0]?.amount ?? 0;
+    expect(back).toBeGreaterThan(0);
+    expect(back).toBeLessThanOrEqual(3);
+    const no = run({ eyes, day: 0.001, refund: 0.1 });
+    expect(no.events?.some((e) => e.kind === "scam.refund_refused")).toBe(true);
+    expect(no.postings).toHaveLength(1);
+    expect(run({ eyes, day: 0.001 }).events?.some((e) => e.kind.startsWith("scam.refund"))).toBe(
+      false,
+    );
   });
 });

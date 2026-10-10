@@ -7,6 +7,7 @@ import type { EventId } from "../../core/index.ts";
 import { exp, pow } from "../../core/math/index.ts";
 import { table } from "../world/index.ts";
 import type { BodyCapabilities } from "./capabilities.ts";
+import type { Scar } from "./state.ts";
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
 
@@ -375,6 +376,39 @@ export interface AmputationFactors {
 export function amputationFactors(a: Amputations | undefined): AmputationFactors {
   const has = (p: FrostbitePart) => a?.lost.some((l) => l.part === p) === true;
   return { manipulation: has("hands") ? 0.35 : 1, locomotion: has("feet") ? 0.4 : 1 };
+}
+
+/** Zonas del cuerpo y gravedad fija que deja cada parte perdida (sin calibrar). */
+export const LOST_PART_ZONES: Readonly<
+  Record<FrostbitePart, readonly { zone: string; severity: number }[]>
+> = {
+  hands: [
+    { zone: "left_arm", severity: 0.65 },
+    { zone: "right_arm", severity: 0.65 },
+  ],
+  feet: [
+    { zone: "left_leg", severity: 0.6 },
+    { zone: "right_leg", severity: 0.6 },
+  ],
+  face: [{ zone: "head", severity: 0.3 }],
+};
+
+/** Las marcas permanentes que faltan en `scars` por las partes perdidas (una por zona, una sola vez). */
+export function amputationScars(a: Amputations | undefined, scars: readonly Scar[]): Scar[] {
+  const out: Scar[] = [];
+  for (const l of a?.lost ?? [])
+    for (const z of LOST_PART_ZONES[l.part]) {
+      if (scars.some((sc) => sc.lost && sc.zone === z.zone && sc.cause === l.cause)) continue;
+      out.push({
+        zone: z.zone,
+        kind: "cut",
+        severity: z.severity,
+        at: l.at,
+        cause: l.cause,
+        lost: true,
+      });
+    }
+  return out;
 }
 
 /** Partes que el estado dice necróticas y que todavía no están registradas como perdidas. */

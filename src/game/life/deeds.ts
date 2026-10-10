@@ -121,6 +121,10 @@ export function offenseOf(
     const heard = (data?.noticedBy ?? []) as AgentId[];
     return { kind: "default", by: first, victim: second, noticedBy: [second, ...heard] };
   }
+  if (e.kind === "property.rent_default" && second) {
+    // La mora de renta: el dueño sabe quién no pagó el canon.
+    return { kind: "default", by: first, victim: second, noticedBy: [second] };
+  }
   if (e.kind === "scam.discovered" && second) {
     // La estafa descubierta es fe rota: se anota como incumplimiento (el comprador sabe quién fue).
     return { kind: "default", by: first, victim: second, noticedBy: [second] };
