@@ -21,6 +21,7 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
+import { MARK_DEFAULT_RENOWN } from "./marks.ts";
 import { SCAM_DISCOVERED, type ScamDiscoveredData } from "./scamdiscovery.ts";
 
 export const MARK_EXPOSURE_PROCESS = "life.mark_exposure";
@@ -51,8 +52,22 @@ export function clearedCount(truth: ReadonlyWorldTruth, copied: AgentId): number
   return truth.get(MARK_CLEARED, copied)?.entries.length ?? 0;
 }
 
+/** Cuánto sube la fama que el mercado le supone al copiado por cada vez que se supo que su marca era falsa (sin calibrar). */
+export const CLEARED_RENOWN_STEP = 0.1;
+/** Con `reach`: chance, confianza y saltos del rumor `fraud` para quien está en otro lugar (sin calibrar). */
+export const FORGERY_FAR_CHANCE = 0.2;
+export const FORGERY_FAR_CONFIDENCE = 0.4;
+export const FORGERY_FAR_HOPS = 2;
+
+/** Fama que el mercado le supone a `who` como marcador: la de base más lo que ganó cada vez que se supo que lo copiaron (0-1). */
+export function clearedRenown(truth: ReadonlyWorldTruth, who: AgentId): number {
+  return Math.min(1, MARK_DEFAULT_RENOWN + CLEARED_RENOWN_STEP * clearedCount(truth, who));
+}
+
 export interface MarkExposureOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares (creencia, nunca la verdad). */
+  readonly reach?: boolean;
 }
 
 function fraudRumor(
@@ -114,7 +129,17 @@ export function markExposureProcess(o: MarkExposureOptions): ProcessDef {
         }
         for (const id of (truth.ids(PERSON) as AgentId[]).sort()) {
           if (id === buyer || id === forger || id === copied || !alive(id)) continue;
-          if (JSON.stringify(o.placeOf(truth, id)) !== here) continue;
+          if (JSON.stringify(o.placeOf(truth, id)) !== here) {
+            if (!o.reach) continue;
+            if (!ctx.rng.fork("forgery_far", e.id, id).chance(FORGERY_FAR_CHANCE)) continue;
+            hears.push({
+              who: id,
+              hops: FORGERY_FAR_HOPS,
+              confidence: FORGERY_FAR_CONFIDENCE,
+              teller: buyer,
+            });
+            continue;
+          }
           if (!ctx.rng.fork("forgery_rumor", e.id, id).chance(FORGERY_NEIGHBOR_CHANCE)) continue;
           hears.push({ who: id, hops: 1, confidence: FORGERY_NEIGHBOR_CONFIDENCE, teller: buyer });
         }

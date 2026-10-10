@@ -64,6 +64,8 @@ export interface MarksOptions {
   readonly skill?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Fama de quien marca (0-1); sin dato, `MARK_DEFAULT_RENOWN`. */
   readonly renown?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Tablas que lee `renown` (para declararlas en `reads`). */
+  readonly renownReads?: readonly string[];
   /**
    * Opt-in: si al repasarla el comprador concluye que la marca falsa es falsa (y antes la creía), emite
    * `scam.discovered` contra quien la forjó (causa en el repaso): `life.appraise` baja su confianza y
@@ -130,7 +132,7 @@ export function marksProcess(o: MarksOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [LOT_MARKS.name, ENTITY.name],
+    reads: [LOT_MARKS.name, ENTITY.name, ...(o.renownReads ?? [])],
     writes: [LOT_MARKS.name],
     run(ctx) {
       const truth = ctx.truth;

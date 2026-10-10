@@ -87,7 +87,7 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { markExposureProcess } from "./markexposure.ts";
+import { clearedRenown, MARK_CLEARED, markExposureProcess } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -318,6 +318,8 @@ export interface LifeWorld {
   readonly marksExpose?: boolean;
   /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado (`life.mark_exposure`). */
   readonly marksGossip?: boolean;
+  /** Opt-in (con `marksGossip`): el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares. */
+  readonly marksReach?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -605,11 +607,19 @@ export function lifeWorld(
                 eye: scamEyeOf(parts.traits),
                 skill: forgeSkillOf(parts.traits),
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
+                ...(parts.marksExpose === true && parts.marksGossip === true
+                  ? { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
+                  : {}),
               }),
             ]
           : []),
         ...(parts.marks === true && parts.marksExpose === true && parts.marksGossip === true
-          ? [markExposureProcess({ placeOf: placeOf(parts, village) })]
+          ? [
+              markExposureProcess({
+                placeOf: placeOf(parts, village),
+                ...(parts.marksReach === true ? { reach: true } : {}),
+              }),
+            ]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [

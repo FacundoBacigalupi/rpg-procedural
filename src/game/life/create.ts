@@ -209,6 +209,8 @@ export interface LifeOptions {
   readonly marksExpose?: boolean;
   /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado. */
   readonly marksGossip?: boolean;
+  /** Opt-in (con `marksGossip`): el rumor `fraud` llega también a gente de otros lugares. */
+  readonly marksReach?: boolean;
   /** Opt-in: contagio de quiebras sobre los préstamos, en esta unidad de deuda (`life.contagion`). Apagado por defecto. */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): efectos del contagio (fama del quebrado y tasa más alta de los acreedores arrastrados). */
@@ -249,6 +251,7 @@ export function optInParts(
   | "marks"
   | "marksExpose"
   | "marksGossip"
+  | "marksReach"
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
@@ -291,6 +294,7 @@ export function optInParts(
     ...(options.marks ? { marks: true } : {}),
     ...(options.marksExpose ? { marksExpose: true } : {}),
     ...(options.marksGossip ? { marksGossip: true } : {}),
+    ...(options.marksReach ? { marksReach: true } : {}),
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
