@@ -31,7 +31,9 @@ import {
   runSession,
 } from "../crafts/index.ts";
 import {
+  believedQuality,
   COPPER,
+  claimedQuality,
   DAILY_KCAL,
   type DealBudget,
   DISTRESS_ASK_FACTOR,
@@ -164,6 +166,17 @@ export interface Market {
   /** La calidad de lo que tiene cada parte (`economy/quality`): sin registro vale la referencia. */
   readonly lots?:
     | { readonly actor: LotQualities | undefined; readonly other: LotQualities | undefined }
+    | undefined;
+  /**
+   * Estafa (economy §6): cuánto infla cada vendedor lo que dice de su lote (0 = honesto) y cuánto
+   * confía en él quien le compra (0-1, por vendedor). El comprador cotiza por lo que cree (`believedQuality`); el
+   * lote que cambia de manos sigue con su calidad real. Sin esto, el comprador solo ve con su ojo.
+   */
+  readonly scam?:
+    | {
+        readonly inflate: { readonly actor: number; readonly other: number };
+        readonly trust: { readonly actor: number; readonly other: number };
+      }
     | undefined;
 }
 
@@ -1002,7 +1015,18 @@ function qualityFactors(
   if (lots?.[unit] === undefined)
     return { seller: 1, buyer: 1, quality: qualityOfUnit(lots, unit) };
   const real = qualityOfUnit(lots, unit);
-  const seen = perceivedQuality(real, buyerEye, c.rng.fork("eye").normal(0, 1));
+  const noise = c.rng.fork("eye").normal(0, 1);
+  const inflate = mk.scam?.inflate[sellerIs] ?? 0;
+  const seen =
+    mk.scam && inflate > 0
+      ? believedQuality(
+          real,
+          claimedQuality(real, inflate),
+          buyerEye,
+          noise,
+          mk.scam.trust[sellerIs],
+        )
+      : perceivedQuality(real, buyerEye, noise);
   return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
 }
 

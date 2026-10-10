@@ -751,6 +751,32 @@ describe("comerciar y cosechar", () => {
     expect(deals.length).toBeGreaterThan(0);
   });
 
+  it("estafa opt-in: el comprador que confía paga por lo que cree y el lote sigue con su calidad real", () => {
+    const run = (scam: Market["scam"]) => {
+      const ledger = stock([
+        { holder: theirs as unknown as HolderRef, unit: grain, amount: 600_000 },
+        { holder: me, unit: copper, amount: 50 },
+      ]);
+      const mk: Market = { ...market, lots: { actor: undefined, other: { [grain]: 0.3 } }, scam };
+      const deals = many(80, () => trading(ledger, "5 kilos", { market: mk })).flatMap((r) =>
+        r.effect.kind === "trade" && r.effect.direction === "buy" && r.effect.deal
+          ? [r.effect]
+          : [],
+      );
+      const perKg = deals.map((d) => d.coins / (d.grams / 1000));
+      return { deals, mean: perKg.reduce((x, y) => x + y, 0) / Math.max(1, perKg.length) };
+    };
+    const honest = run(undefined);
+    const cheated = run({
+      inflate: { actor: 0, other: 0.6 },
+      trust: { actor: 1, other: 1 },
+    });
+    expect(honest.deals.length).toBeGreaterThan(0);
+    expect(cheated.deals.length).toBeGreaterThan(0);
+    expect(cheated.mean).toBeGreaterThan(honest.mean);
+    expect(cheated.deals.every((d) => d.quality === 0.3)).toBe(true);
+  });
+
   it("un vendedor en la ruina o apretado pide menos, y se nota (strain)", () => {
     const run = (standing: "comfortable" | "tight" | "broke") => {
       const ledger = stock([
