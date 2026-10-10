@@ -72,6 +72,7 @@ import {
   learnFromDeal,
   localHour,
   logMeal,
+  lotDose,
   MARKET_TAPE,
   type Market,
   MEALS,
@@ -857,14 +858,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const intakePostings: PostingDraft[] = [];
   if (o.residue && eff.kind === "eat" && eff.good !== null && eff.grams > 0) {
     // Lo preparado por alquimia lleva su propia esencia y pureza (por gramo): pisa lo del contenido.
-    const lot = truth.get(LOT_ESSENCE, me)?.[eff.good];
-    if (lot) {
-      essence = {
-        essence: lot.essence * eff.grams,
-        purity: lot.purity,
-        good: eff.good.replace(/^good:/, ""),
-      };
-    }
+    essence = lotDose(truth.get(LOT_ESSENCE, me), eff.good, eff.grams) ?? essence;
+  } else if (o.residue && eff.kind === "consume" && eff.good !== null && eff.units > 0) {
+    // Lo mismo por unidad: la píldora preparada lleva su esencia y pureza, no las del contenido.
+    essence = lotDose(truth.get(LOT_ESSENCE, me), eff.good, eff.units) ?? essence;
   }
   if (o.residue && essence) {
     // Pureza y sobrecarga de lo ingerido con `Essence`: residuo en `RESIDUE`, heridas o muerte.

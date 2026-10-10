@@ -190,6 +190,25 @@ export function receiveEssenceLot(
   };
 }
 
+/**
+ * Lo ingerido de un lote preparado: `quantity` (gramos si se come, unidades si se consume; la
+ * unidad del libro mayor de ese bien) por la esencia por unidad del lote, con su pureza. Sin lote
+ * o sin cantidad, `undefined` (rige lo del contenido).
+ */
+export function lotDose(
+  lots: LotEssences | undefined,
+  good: string,
+  quantity: number,
+): { readonly essence: number; readonly purity: number; readonly good: string } | undefined {
+  const lot = lots?.[good];
+  if (!lot || !(quantity > 0)) return undefined;
+  return {
+    essence: lot.essence * quantity,
+    purity: lot.purity,
+    good: good.replace(/^good:/, ""),
+  };
+}
+
 /** Qi del lugar relativo a una referencia (la del hogar del cuerpo): 0 = igual, 1 = el doble, -1 = nada. */
 export function relativeQi(level: number, reference: number): number {
   return reference > 0 ? Math.max(-1, level / reference - 1) : 0;
