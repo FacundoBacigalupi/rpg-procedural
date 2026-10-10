@@ -1182,6 +1182,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         appraiseProcess({
+          ...(parts.persistImmediateGoals === true ? { persistEmotionSignals: true } : {}),
           clock: parts.clock,
           schemas: parts.schemas,
           stages: parts.stages,

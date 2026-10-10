@@ -16,6 +16,7 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   ENTITY,
+  EMOTIONS,
   INNATE,
   LIFE_STAGES,
   MEMORIES,
@@ -152,6 +153,46 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("miedo tipado propio con evidencia entra por máximo en la capa inmediata, sin sumar utilidad", () => {
+    const truth = world(0);
+    const signal = {
+      owner: A,
+      emotion: "fear" as const,
+      intensity: 0.8,
+      originEventId: "event:8" as EventId,
+      at: 1000,
+      appraisalTheme: "violence" as const,
+    };
+    truth.set(EMOTIONS, A, { signals: [signal] });
+    const process = decideProcess({ ...opts, persistImmediateGoals: true });
+    const legacy = process.run(ctx(truth, A, 1000));
+    expect(legacy.events?.some((e) => goalData(e).goal === "immediate:fear")).toBe(false);
+    truth.set(EMOTIONS, A, {
+      signals: [{ ...signal, evidence: { kind: "own", event: signal.originEventId } }],
+    });
+    const off = decideProcess(opts).run(ctx(truth, A, 1000));
+    const on = process.run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:fear")).toMatchObject({
+      weight: 0.8,
+      originEventId: "event:8",
+    });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:fear")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "emotions" },
+    ]);
+    truth.set(EMOTIONS, A, {
+      signals: [
+        { ...signal, owner: PLAYER, evidence: { kind: "own", event: signal.originEventId } },
+      ],
+    });
+    applyGoals(truth, process.run(ctx(truth, A, 1100)));
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === "immediate:fear")).toBe(false);
+  });
+
   it("ansia de señal conocida persiste con causa propia y legacy no inventa origen", () => {
     const truth = world(0);
     const cue = {

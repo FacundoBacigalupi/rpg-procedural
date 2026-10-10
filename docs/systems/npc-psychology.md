@@ -136,6 +136,38 @@ evidencia propia en la capa inmediata, y un subítem separado de appraisal
 específico para ira, alegría, vergüenza, envidia y amor. El catálogo de ocho
 emociones ya está tipado; esas cinco todavía no tienen una fuente implementada.
 
+**Persistencia con evidencia (2026-10-10, f3c3b):** `persistImmediateGoals`
+habilita `persistEmotionSignals` en `life.appraise`. Es el único escritor de
+`EMOTIONS` (`mind.emotions`) en `perceive`, con `onEvent` y eventos recientes
+entregados por el scheduler. Guarda miedo por violencia corporal propia y culpa
+del actor de una acción sólo si está consciente y despierto al interpretarlas; no usa el trauma
+inferido de matar como sustituto de haber percibido un peligro propio.
+
+La tristeza exige un percept fresco de NPC con acción `body.died` e identidad
+leídas, con confianza positiva. Usa la relación del observador con la identidad
+percibida, incluso si se equivocó, y conserva el id del percept y del evento
+fuente. No usa pertenencia al hogar real ni memorias de duelo generadas por la
+ruta legacy como prueba de haber sabido una muerte. Recalcula `npcPerceive` con
+el mismo `witnessRng(seed)` y contrato de `life.witnessing`; así usa el percept
+que se asentará al cerrar la fase sin depender del orden lexical entre procesos
+ni agregar un segundo escritor de percepts. Sin `witness`, sin identidad, sin
+acción leída o dormido/inconsciente no agrega una señal de pérdida.
+
+Reconciliar por dueño/emoción/evento conserva el primer momento vivido, evita
+renovar la emoción al entregar dos veces el mismo evento y guarda hasta 24
+señales recientes. El decaimiento es perezoso; al reconciliar se descartan las
+que bajaron de 0,01. Vidas medias provisionales: miedo seis horas, tristeza un día,
+culpa doce horas, escaladas por reactividad. No reconstruye emociones al cargar
+una partida vieja desde memorias o parentescos sin evidencia registrada.
+
+El miedo tipado propio puede registrar `immediate:fear` junto al miedo de memoria,
+tomando el mayor peso y manteniendo una sola identidad; cita el estado emocional
+cuando es su fuente. No añade otro término a utilidad. Tristeza y culpa persisten
+sin inventar una necesidad ni una acción para aliviarlas. **Subítem f3c3d de
+Fase 3:** definir consuelo y reparación según creencias y catálogo de acciones,
+y sólo después convertir tristeza/culpa en motivaciones inmediatas. El appraisal
+de ira, alegría, vergüenza, envidia y amor sigue siendo el subítem separado f3c3c.
+
 ## 5. Memoria episódica
 
 ```ts

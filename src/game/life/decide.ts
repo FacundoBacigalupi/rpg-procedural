@@ -36,6 +36,7 @@ import {
   decideByUtility,
   drivesFor,
   ENTITY,
+  EMOTIONS,
   FROSTBITE,
   feltCompanyNeed,
   feltCravingNeeds,
@@ -308,7 +309,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
-      ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
+      ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion ? [NPC_GOAL_COMPLETIONS.name] : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
@@ -589,6 +590,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             memories,
             goals,
             now,
+            {
+              owner: me,
+              signals: truth.get(EMOTIONS, me)?.signals ?? [],
+              reactivity: Math.min(1, Math.max(0, ((innate["reactivity"] ?? 0) + 1) / 2)),
+            },
           )
         : [];
       const storedGoals =
@@ -631,9 +637,17 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                   key:
                     g.id === "immediate:craving"
                       ? "body.substance"
-                      : g.id === "immediate:fear" || g.id === "immediate:social"
-                        ? "memories"
-                        : "body",
+                      : g.id === "immediate:fear" &&
+                          truth
+                            .get(EMOTIONS, me)
+                            ?.signals.some(
+                              (s) =>
+                                s.evidence !== undefined && s.originEventId === g.originEventId,
+                            )
+                        ? "emotions"
+                        : g.id === "immediate:fear" || g.id === "immediate:social"
+                          ? "memories"
+                          : "body",
                 } as const,
               ]
             : []),

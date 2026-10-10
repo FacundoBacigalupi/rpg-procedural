@@ -23,6 +23,7 @@ import type { Memories } from "./memory.ts";
 import type { ValueId } from "./mind.ts";
 import type { NeedId } from "./utility.ts";
 import { WARM_VALENCE } from "./utility-beliefs.ts";
+import { type EmotionSignal, emotionIntensityAt, EMOTION_HALF_LIFE_TICKS } from "./emotions.ts";
 
 /** Umbral y vida media provisionales; la emoción decae en horas, aunque el recuerdo perdure. */
 export const IMMEDIATE_MIN = 0.5;
@@ -126,6 +127,11 @@ export function immediateGoals(
   memories: Memories | undefined,
   core: readonly Goal[],
   now: Tick,
+  emotions?: {
+    readonly owner: AgentId;
+    readonly signals: readonly EmotionSignal[];
+    readonly reactivity: number;
+  },
 ): Goal[] {
   const signals = new Map<string, { value: ValueId; weight: number; origin: EventId }>();
   const add = (id: string, value: ValueId, weight: number, origin: EventId) => {
@@ -145,6 +151,19 @@ export function immediateGoals(
     const fear =
       m.intensity * -m.valence * m.salience * exp((-LN2 * (now - m.at)) / IMMEDIATE_FEAR_HALF_LIFE);
     add("immediate:fear", "safety", fear, m.eventId);
+  }
+  for (const s of emotions?.signals ?? []) {
+    if (!emotions || s.owner !== emotions.owner || s.emotion !== "fear" || s.evidence === undefined)
+      continue;
+    add(
+      "immediate:fear",
+      "safety",
+      emotionIntensityAt(s, now, {
+        halfLifeTicks: EMOTION_HALF_LIFE_TICKS.fear,
+        reactivity: emotions.reactivity,
+      }),
+      s.originEventId,
+    );
   }
   const coreIds = new Set(core.map((g) => g.id));
   return [...signals]

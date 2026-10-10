@@ -27,6 +27,8 @@ import {
   type DimensionDef,
   defaultDeltas,
   ENTITY,
+  EMOTIONS,
+  type EmotionSignal,
   type EventDraft,
   emptyMental,
   fightDeltas,
@@ -64,6 +66,7 @@ import {
   RUMORS,
   reinforceAll,
   relationship,
+  reconcileEmotionSignals,
   rememberOwn,
   repaidDeltas,
   type SchemaDef,
@@ -86,6 +89,7 @@ import {
 } from "../../sim/index.ts";
 import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
+import { ownEmotionSignals, perceivedLossSignals } from "./emotion-evidence.ts";
 import { grievanceDeltas, grievanceOf } from "./grievance.ts";
 import {
   type Lived,
@@ -121,6 +125,8 @@ export interface AppraiseOptions {
   readonly witness?: WitnessingOptions;
   /** Opt-in: quien se entera de un agravio por rumor mueve su relación con el culpable. */
   readonly rumorGrievance?: boolean;
+  /** Opt-in ligado a persistImmediateGoals: guarda sólo señales con evidencia propia. */
+  readonly persistEmotionSignals?: boolean;
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -160,6 +166,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       RELIGIOUS_IDENTITY.name,
       WAKE_COMFORT.name,
       RUMORS.name,
+      ...(o.persistEmotionSignals ? [EMOTIONS.name] : []),
     ],
     writes: [
       MIND.name,
@@ -170,11 +177,24 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       OWN_DEEDS.name,
       SECRETS.name,
       WAKE_COMFORT.name,
+      ...(o.persistEmotionSignals ? [EMOTIONS.name] : []),
     ],
     run(ctx) {
       const truth = ctx.truth;
       const events: EventDraft[] = [];
       const minds = new Map<AgentId, Mind>();
+      const emotions = new Map<AgentId, EmotionSignal[]>();
+      const recordEmotions = (id: AgentId, signals: readonly EmotionSignal[]) => {
+        if (!o.persistEmotionSignals || signals.length === 0) return;
+        const previous = emotions.get(id) ?? truth.get(EMOTIONS, id)?.signals ?? [];
+        const reactivity = Math.min(
+          1,
+          Math.max(0, ((truth.get(INNATE, id)?.["reactivity"] ?? 0) + 1) / 2),
+        );
+        const next = reconcileEmotionSignals(previous, signals, ctx.now, reactivity);
+        if (next.length !== previous.length || next.some((s, i) => s !== previous[i]))
+          emotions.set(id, next);
+      };
       const habits = new Map<AgentId, ReturnType<typeof reinforceAll>["habits"]>();
       const apply = (id: AgentId, e: Event, items: ReturnType<typeof appraiseLoss>) => {
         const person = truth.get(PERSON, id);
@@ -189,6 +209,24 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
           next = form(next, stimulus, { schemas: o.schemas, stage, innate, event: e.id }).mind;
         }
         minds.set(id, next);
+        const ownBody = truth.get(BODY_STATE, id);
+        const conscious =
+          ownBody !== undefined &&
+          ownBody.consciousness !== "unconscious" &&
+          ownBody.activity !== "sleep";
+        recordEmotions(
+          id,
+          ownEmotionSignals(
+            id,
+            e,
+            items.map((a) => ({
+              ...a,
+              stimulus: numbedStimulus(a.stimulus, mentals.get(id) ?? truth.get(MENTAL, id)),
+            })),
+            ctx.now,
+            conscious,
+          ),
+        );
       };
       const rels = new Map<AgentId, Relations>();
       const rel = (from: AgentId, to: AgentId, e: Event) =>
@@ -242,6 +280,28 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       const encodingOf = (id: AgentId) =>
         truth.get(BODY_STATE, id)?.activity === "sleep" ? WITNESS_ASLEEP_ENCODING : 1;
       for (const e of ctx.recent) {
+        if (o.persistEmotionSignals) {
+          // Se recalcula el mismo percept que witnessing asentará al terminar perceive.
+          // No depende del orden lexical de escritores de la misma fase ni usa lossLived legacy.
+          for (const percept of seen.get(e.id) ?? []) {
+            const body = truth.get(BODY_STATE, percept.observer);
+            if (!body || body.consciousness === "unconscious" || body.activity === "sleep")
+              continue;
+            recordEmotions(
+              percept.observer,
+              perceivedLossSignals(percept, ctx.now, (who) =>
+                closeness(
+                  relationship(truth.get(RELATIONS, percept.observer), who, ctx.now, {
+                    dims: o.dims,
+                    bonds: o.bonds,
+                    schemaStrength: (s) =>
+                      truth.get(MIND, percept.observer)?.schemas[s]?.strength ?? 0,
+                  }),
+                ),
+              ),
+            );
+          }
+        }
         for (const l of livedFrom(e)) note(l);
         for (const l of witnessLived(e, seen.get(e.id) ?? [], encodingOf)) note(l);
         // Quien hizo algo lo sabe, lo haya visto alguien o no: lo anota y lo carga (law §15).
@@ -491,6 +551,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         ...[...owns].map(([id, d]) => setComponent(OWN_DEEDS, id, d)),
         ...[...secrets].map(([id, s]) => setComponent(SECRETS, id, s)),
         ...[...wakes].map(([id, w]) => setComponent(WAKE_COMFORT, id, w)),
+        ...[...emotions].map(([id, signals]) => setComponent(EMOTIONS, id, { signals })),
       ];
       return changes.length === 0 && events.length === 0 ? {} : { changes, events };
     },

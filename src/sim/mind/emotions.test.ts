@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EventId } from "../../core/index.ts";
 import { type Appraised, appraiseFight, appraiseGuilt, appraiseLoss } from "./appraise.ts";
-import { appraisalEmotionSignals, emotionIntensityAt } from "./emotions.ts";
+import {
+  appraisalEmotionSignals,
+  emotionIntensityAt,
+  reconcileEmotionSignals,
+} from "./emotions.ts";
 import type { Mind } from "./mind.ts";
 
 const OWNER = "agent:1" as AgentId;
@@ -10,6 +14,22 @@ const ORIGIN = "event:3" as EventId;
 const mind: Mind = { schemas: {}, formative: [], originEventId: ORIGIN };
 
 describe("emociones propias desde appraisal", () => {
+  it("persistencia deduplica sin renovar el momento y no backfillea señales sin evidencia", () => {
+    const bare = appraisalEmotionSignals(OWNER, appraiseGuilt(0.8), ORIGIN, 1000);
+    expect(reconcileEmotionSignals([], bare, 1000, 0.5)).toEqual([]);
+    const known = bare.map((s) => ({ ...s, evidence: { kind: "own" as const, event: ORIGIN } }));
+    const initial = reconcileEmotionSignals([], known, 1000, 0.5);
+    const repeated = reconcileEmotionSignals(
+      initial,
+      known.map((s) => ({ ...s, at: 2000 })),
+      2000,
+      0.5,
+    );
+    expect(repeated).toEqual(initial);
+    expect(repeated[0]).toBe(initial[0]);
+    expect(reconcileEmotionSignals(initial, [], 1000 + 100 * 86400, 0.5)).toEqual([]);
+  });
+
   it("el mismo golpe produce miedo distinto, con dueño y procedencia del hecho interpretado", () => {
     const facts = { role: "victim", foe: FOE, worst: 0.8, standing: true, kin: false } as const;
     const afraid = appraisalEmotionSignals(
