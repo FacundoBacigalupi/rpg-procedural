@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
+import { Rng } from "../../core/index.ts";
+import { PERSON, PRICE_BELIEFS } from "../../sim/index.ts";
 import {
   distortStanding,
   keepMold,
   MOLD_HINT_MOOD,
+  moldGossipProcess,
   moldHintMood,
   moldKey,
   moldPriceEdge,
@@ -118,5 +121,35 @@ describe("el apuro del vecino como rumor", () => {
     expect(distortStanding(tight, 0.4, 0.9)).toEqual(tight);
     const broke = standingRumor("home:1", "broke");
     expect(distortStanding(broke, 0, 0)).toEqual(broke);
+  });
+});
+
+describe("el precio visto entra como rumor de primera mano", () => {
+  const run = (o: Parameters<typeof moldGossipProcess>[0]) => {
+    const beliefs = { "good:rice": { perKg: 12.3456789, confidence: 0.5, lastSeenDay: 3 } };
+    const truth = {
+      ids: (t: { name: string }) => (t.name === PERSON.name ? ["agent:a"] : []),
+      get: (t: { name: string }) => (t.name === PRICE_BELIEFS.name ? beliefs : undefined),
+    };
+    const proc = moldGossipProcess(o);
+    const out = proc.run({ truth, now: 100, rng: Rng.root(1), recent: [] } as never) as unknown as {
+      changes: { value: { items: { rumor: unknown; hops: number; heardAt: number }[] } }[];
+    };
+    return { proc, out };
+  };
+  const clock = { day: 10 } as never;
+
+  it("con fromPriceBeliefs guarda un price con el mercado visto; apagado, nada", () => {
+    const on = run({ fromPriceBeliefs: { clock, marketOf: () => market } });
+    expect(on.proc.reads).toContain(PRICE_BELIEFS.name);
+    const item = on.out.changes[0]?.value.items[0];
+    expect(item).toBeDefined();
+    expect(item?.rumor).toEqual({ mold: "price", good: "rice", market, amount: 12.345679 });
+    expect(item?.hops).toBe(0);
+    expect(item?.heardAt).toBe(30);
+    expect(run({}).out.changes).toHaveLength(0);
+    expect(
+      run({ fromPriceBeliefs: { clock, marketOf: () => undefined } }).out.changes,
+    ).toHaveLength(0);
   });
 });
