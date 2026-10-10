@@ -222,6 +222,11 @@ export interface LifeWorld {
     readonly sink?: string;
     readonly blanketUnit?: string;
     readonly unsuppliedInsulate?: number;
+    /** Agua tibia: unidad y cantidad por hora de recalentado, insumo aparte de la leña (rinde lo mínimo de las dos). */
+    readonly waterUnit?: string;
+    readonly waterPerHour?: number;
+    /** Desgaste de la manta: unidades que se gastan por hora de uso (fracción; se retiran al sumidero). */
+    readonly blanketWearPerHour?: number;
   };
   /** Opt-in (con `frostbite`): la amputación deja `Scar` con `lost` en el `Body` (`body.physiology`) y baja capacidades por zona. Apagado: nada cambia. */
   readonly amputationScars?: boolean;
