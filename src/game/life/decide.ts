@@ -98,7 +98,14 @@ import {
 import { applyAltitude } from "./altitude.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
-import { MOLD_RUMORS, type MoldHintOptions, moldBuyGoods, moldHintMood } from "./moldgossip.ts";
+import {
+  CRAFTSMAN_VERBS,
+  MOLD_RUMORS,
+  type MoldHintOptions,
+  moldBuyGoods,
+  moldCraftsmen,
+  moldHintMood,
+} from "./moldgossip.ts";
 import {
   acuteOf,
   type BuyCravingOptions,
@@ -503,6 +510,23 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           chance: 0.9,
           loss: STAKES_RISK.none.loss,
         });
+      }
+      // Hogar que cree artesano de un oficio que necesita: contratarlo o comprarle (opt-in `tradeWant`);
+      // solo con los verbos que el catálogo tiene, y el ánimo lo pone `moldHintMood`.
+      if (o.moldHints?.tradeWant) {
+        for (const verb of CRAFTSMAN_VERBS) {
+          if (!o.catalog.verbs.some((v) => v.id === verb)) continue;
+          for (const home of moldCraftsmen(hintBook, o.moldHints)) {
+            catalogCandidates.push({
+              id: `${verb}:${home}`,
+              verb,
+              target: home,
+              contributes: {},
+              chance: 0.6,
+              loss: STAKES_RISK.none.loss,
+            });
+          }
+        }
       }
       for (const p of people) {
         const confidence = (() => {
