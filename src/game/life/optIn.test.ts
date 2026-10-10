@@ -37,4 +37,24 @@ describe("opciones opt-in de la vida", () => {
     expect(on.migration?.staple).toBe("grain");
     expect(on.rumorGrievance).toBe(true);
   });
+
+  it("waterSources llena hexKinds desde el terreno y relationDecay pasa a las partes", () => {
+    expect(optInParts({ waterSources: {} }).waterSources).toEqual({});
+    const terrain = { sea: [1, 0, 0], lake: [0, 1, 0], water: [0, 0, 2] } as never;
+    const parts = optInParts({ waterSources: { open: "stagnant" }, relationDecay: true }, terrain);
+    expect(parts.relationDecay).toBe(true);
+    expect(parts.waterSources?.open).toBe("stagnant");
+    expect([...(parts.waterSources?.hexKinds ?? [])]).toEqual([
+      [0, "sea"],
+      [1, "stagnant"],
+      [2, "river"],
+    ]);
+    const given = new Map([[3, "sea" as const]]);
+    expect(optInParts({ waterSources: { hexKinds: given } }, terrain).waterSources?.hexKinds).toBe(
+      given,
+    );
+    const off = createLife(7, content, { frequency: 8 }).world;
+    expect(off.waterSources).toBeUndefined();
+    expect(off.relationDecay).toBeUndefined();
+  });
 });
