@@ -43,13 +43,16 @@ describe("sim.mind.goal-vacuum", () => {
     expect(goalVacuumFromCompletions([], [completion("short:hunt", 400, "short")], now)).toBe(
       undefined,
     );
-    const continuous = {
+    const continuous: GoalCompletion = {
       ...completion("core:family", 400),
       original: {
-        ...completion("core:family", 400).original,
-        kind: "pursue" as const,
-        target: undefined,
-        value: "family" as Goal["value"],
+        id: "core:family",
+        layer: "core",
+        kind: "pursue",
+        value: "family",
+        weight: 0.7,
+        originEventId: makeId("event", 1),
+        since: 100 as Tick,
       },
     };
     expect(goalVacuumFromCompletions([], [continuous], now)).toBeUndefined();

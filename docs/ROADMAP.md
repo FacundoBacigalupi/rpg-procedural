@@ -11,7 +11,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 **Dónde quedó (2026-10-10):** Fase 3 en curso, trabajando con lotes de 4 agentes Sonnet; todo lo nuevo sale opt-in. `develop` en #439 (lotes 42-52; detalle en HANDOFF §8); detalle de #427–#429 en HANDOFF §8. **Qué sigue:** (1) cerrar Fase 3 con PR `develop`→`main` (`--merge --auto`) y tag `v0.3.0` (comandos sueltos) cuando se decida que lo que queda son ítems de fases posteriores; (2) seguir con los `[ ]` opt-in chicos de la fase (cablear `combineAuthorities` cuando haya consejo de aldea, `norms.interest` en `village` al recalibrar hashes, stalls y suelo como lotes reales, usura ante el tribunal). Al terminar, borrar los worktrees locales `g,h,i,j` y sus ramas `feat/f3-*` (sin node_modules junction: revisar antes).
 
-**Retoma Codex (2026-10-10):** #440–#442 integradas; recuperado el test de `j` y persistidas las capas de objetivos (f3a). Lote en `feat/f3-continuous-batch`: libro de préstamos/deuda creída (f3b1–3), necesidades inmediatas/compañía/ansia (f3c1–2b), cierre por muerte (f2b) y cumplimiento subjetivo puro (f3d1), todos opt-in donde hay cableado. **Siguiente por orden: (f3b4a) Fiado creído**, seguido de servidumbre (f3b4b); agentes continúan en paralelo con emociones tipadas (f3c3) y reconocimiento/vacío de sentido (f3d2–3). Estado real de commits y verificaciones en HANDOFF §8. Coordinador Sol 6.1 Medium; Luna Medium para tareas pequeñas; autorización de PRs y merges en AGENTS.md. Se conservan los worktrees antiguos hasta revisar una limpieza explícita.
+**Retoma Codex (2026-10-10):** #440–#442 integradas; recuperado el test de `j` y persistidas las capas de objetivos (f3a). Lote en `feat/f3-continuous-batch`: libro de préstamos/deuda creída (f3b1–3), necesidades inmediatas/compañía/ansia (f3c1–2b), cierre por muerte (f2b) y cumplimiento subjetivo puro (f3d1), todos opt-in donde hay cableado. **Integrado (2026-10-10, #443):** fiado y servidumbre creídos (f3b4a-b), señales de emoción propias (f3c3a-b, ira por insultos), cumplimiento de venganza (f3d2) y vacío/presión de sentido (f3d3a-b). **Siguiente por orden: (f3c3c) alegría, vergüenza, envidia y amor, (f3d3c) calibrar el vacío, (f3d4) y (f3e).** Ramas locales `feat/f3-goal-debt`, `feat/f3-goals-death` y `feat/f3-immediate-goals` conservan commits sin integrar (versiones previas de estas líneas: medición de deuda en `tools/sim/goal-metrics.ts` y trabajo de `decide`), revisar antes de borrarlas. Estado real de commits y verificaciones en HANDOFF §8. Coordinador Sol 6.1 Medium; Luna Medium para tareas pequeñas; autorización de PRs y merges en AGENTS.md. Se conservan los worktrees antiguos hasta revisar una limpieza explícita.
 
 ### Cómo se trabaja (coordinación continua por lotes)
 **Método vigente por pedido del usuario (2026-10-10):** esta sesión es la coordinadora. Los subagentes reciben ítems de un mismo tema para reutilizar su contexto y, al terminar, reciben más trabajo mientras el coordinador revisa, prueba e integra un lote. No se corta la sesión al cerrar un ítem. Cada ítem sigue siendo pequeño, cerrado sin ambigüedad y con su commit; si no entra, se divide antes de implementar. Esta instrucción reemplaza la antigua regla de una sesión por ítem.
@@ -578,22 +578,22 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
       - [x] (f3b1) `DEBT_BOOK` opt-in aprende términos anunciados y pagos de préstamos por participación consciente, conserva fuentes/confianza e ignora saldos reales y contratos secretos.
       - [x] (f3b2) `debtGoalInputs` proyecta deuda propia creída a objetivos medianos, acotada por monto anunciado y confianza, con origen contractual aunque no haya memoria.
       - [x] (f3b3) Subrogaciones anunciadas opt-in transfieren el derecho conocido al fiador y aprenden sus pagos sin duplicar la deuda original ni leer saldos reales.
-      - [ ] (f3b4a) Fiado como conocimiento contractual: términos y pagos aprendidos por las partes desde eventos propios, sin leer el saldo real de CREDIT para la utilidad.
-      - [ ] (f3b4b) Servidumbre por deuda como conocimiento contractual, con términos y fuentes propios; deuda de trabajo creída en vez de cantidad real.
+      - [x] (f3b4a) Fiado como conocimiento contractual: términos y pagos aprendidos por las partes desde eventos propios, sin leer el saldo real de CREDIT para la utilidad.
+      - [x] (f3b4b) Servidumbre por deuda como conocimiento contractual, con términos y fuentes propios; deuda de trabajo creída en vez de cantidad real.
     - (f3c) Capa inmediata desde necesidades y emociones, partido por señales disponibles (2026-10-10):
       - [x] (f3c1) `persistImmediateGoals` registra necesidades corporales y miedo de memoria propia con causas, refresco y cierre; no duplica utilidad ni consume RNG.
       - [x] (f3c2a) Compañía inmediata desde recuerdos propios de vínculos positivos, con fuente causal y decaimiento.
       - [x] (f3c2b) Dosis y señales propias conservan procedencia opt-in al consumir, comer, beber y tratar; ansia inmediata cita dosis/señales, sin inventar causas para filas antiguas.
       - (f3c3) Emociones tipadas desde appraisal/percepts propios, dividido antes de implementar:
-        - [ ] (f3c3a) Contrato puro de señales propias y decaimiento para miedo, tristeza y culpa desde appraisal existente.
-        - [ ] (f3c3b) Persistir señales desde evidencia percibida propia y proyectarlas a la capa inmediata, opt-in; revisar el gate de pérdida antes de reutilizarlo.
-        - [ ] (f3c3c) Appraisal específico de ira, alegría, vergüenza, envidia y amor desde causas percibidas propias.
+        - [x] (f3c3a) Contrato puro de señales propias y decaimiento para miedo, tristeza y culpa desde appraisal existente.
+        - [x] (f3c3b) Persistir señales desde evidencia percibida propia y proyectarlas a la capa inmediata, opt-in; revisar el gate de pérdida antes de reutilizarlo.
+        - [ ] (f3c3c) Parcial: la ira por insultos personales entendidos ya está (`appraise.ts`); faltan alegría, vergüenza, envidia y amor desde causas percibidas propias.
     - (f3d) Objetivo cumplido y vacío de sentido, partido por contrato (2026-10-10):
       - [x] (f3d1) `goalCompletionsFromBeliefs` reconoce venganza desde creencia propia de muerte con confianza y fuente causal; no consulta la verdad del objetivo.
-      - [ ] (f3d2) Cablear el cumplimiento conocido a cierre/persistencia y evitar regenerar la misma meta mientras el NPC crea cumplida la venganza.
+      - [x] (f3d2) Cablear el cumplimiento conocido a cierre/persistencia y evitar regenerar la misma meta mientras el NPC crea cumplida la venganza.
       - (f3d3) Vacío de sentido desde núcleo cumplido subjetivamente, dividido antes de implementar:
-        - [ ] (f3d3a) Señal pura desde historial de cumplimiento, sin núcleo activo, con tiempos y causas válidos; no sumar todavía a utilidad.
-        - [ ] (f3d3b) Presión lenta de sentido y cableado opt-in a utilidad desde la señal propia.
+        - [x] (f3d3a) Señal pura desde historial de cumplimiento, sin núcleo activo, con tiempos y causas válidos; no sumar todavía a utilidad.
+        - [x] (f3d3b) Presión lenta de sentido y cableado opt-in a utilidad desde la señal propia.
         - [ ] (f3d3c) Calibrar intensidad, evolución y reemplazo del vacío con seeds y evidencia causal.
       - [ ] (f3d4) Cumplimiento de otros objetivos desde evidencia de progreso propio y metas concretas; no cerrar valores continuos por una acción aislada.
     - [ ] (f3e) Calibrar `LAYER_PULL` y activar capas persistidas por defecto solo después de comparar seeds y revisar hashes/replay.
