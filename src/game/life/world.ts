@@ -87,6 +87,7 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
+import { markExposureProcess } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -103,7 +104,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
-import { type PawnLots, pawnProcess } from "./pawn.ts";
+import { type PawnLots, type PawnOpenOptions, pawnOpenProcess, pawnProcess } from "./pawn.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
@@ -114,6 +115,7 @@ import {
   rentsProcess,
   sharecropHarvestProcess,
 } from "./rents.ts";
+import { type ResidueConfig, residueProcess } from "./residue.ts";
 import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -278,6 +280,8 @@ export interface LifeWorld {
   readonly repayDoses?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
+  readonly residue?: ResidueConfig;
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
   readonly drinkSubstance?: ConsumableDef;
   /**
@@ -298,6 +302,8 @@ export interface LifeWorld {
   readonly cravingCues?: boolean;
   /** Opt-in (con `cravingCues`): `life.decide` lee a quién cree presente y el huso del lugar; ver `DecideOptions.cueLocal`. */
   readonly cueLocal?: boolean;
+  /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
+  readonly objectCues?: boolean;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -310,6 +316,8 @@ export interface LifeWorld {
   readonly marks?: boolean;
   /** Opt-in: la marca falsa descubierta dispara `scam.discovered` contra el falsificador (con `marks`). */
   readonly marksExpose?: boolean;
+  /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado (`life.mark_exposure`). */
+  readonly marksGossip?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -317,7 +325,11 @@ export interface LifeWorld {
   /** Opt-in (con `loanContagion` y `loanSeeds`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
-  readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
+  readonly pawn?: {
+    readonly unit: string;
+    readonly lots: PawnLots;
+    readonly open?: PawnOpenOptions;
+  };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
   /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
   readonly creditHeed?: HeedStanding;
@@ -494,6 +506,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.filter ? { filter: parts.filter } : {}),
@@ -565,6 +578,16 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.pawn?.open
+          ? [
+              pawnOpenProcess({
+                unit: parts.pawn.unit,
+                open: parts.pawn.open,
+                placeOf: () => village,
+                day: parts.clock.day,
+              }),
+            ]
+          : []),
         ...(parts.hire
           ? [
               hireProcess({
@@ -584,6 +607,9 @@ export function lifeWorld(
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
               }),
             ]
+          : []),
+        ...(parts.marks === true && parts.marksExpose === true && parts.marksGossip === true
+          ? [markExposureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
@@ -946,6 +972,15 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.residue
+          ? [
+              residueProcess({
+                ...parts.residue,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         upkeepProcess({
           clock: parts.clock,
           map: parts.map,
@@ -1082,6 +1117,9 @@ export function lifeWorld(
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true
             ? { cueLocal: { lonDeg: parts.map.lonDeg } }
+            : {}),
+          ...(parts.cravingCues === true && parts.cueLocal === true && parts.objectCues === true
+            ? { objectCues: true }
             : {}),
           ...(() => {
             const base: MoldHintOptions | undefined = parts.moldHints

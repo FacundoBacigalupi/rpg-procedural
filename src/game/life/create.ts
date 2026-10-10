@@ -150,7 +150,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
-import type { PawnLots } from "./pawn.ts";
+import type { PawnLots, PawnOpenOptions } from "./pawn.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -206,6 +206,8 @@ export interface LifeOptions {
   readonly marks?: boolean;
   /** Opt-in (con `marks` y `scam`): la marca falsa descubierta al repasarla dispara `scam.discovered` contra el falsificador. */
   readonly marksExpose?: boolean;
+  /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado. */
+  readonly marksGossip?: boolean;
   /** Opt-in: contagio de quiebras sobre los préstamos, en esta unidad de deuda (`life.contagion`). Apagado por defecto. */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): efectos del contagio (fama del quebrado y tasa más alta de los acreedores arrastrados). */
@@ -213,9 +215,15 @@ export interface LifeOptions {
   /** Opt-in (con `loanContagion`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
-  readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
+  readonly pawn?: {
+    readonly unit: string;
+    readonly lots: PawnLots;
+    readonly open?: PawnOpenOptions;
+  };
   /** Opt-in: el verbo `hire` se ejecuta (`LifeParts.hire`); apagado por defecto. */
   readonly hire?: LifeParts["hire"];
+  /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
+  readonly residue?: LifeParts["residue"];
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -239,11 +247,13 @@ export function optInParts(
   | "tradeView"
   | "marks"
   | "marksExpose"
+  | "marksGossip"
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
   | "pawn"
   | "hire"
+  | "residue"
   | "tradeNeeds"
 > {
   return {
@@ -279,11 +289,13 @@ export function optInParts(
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
     ...(options.marks ? { marks: true } : {}),
     ...(options.marksExpose ? { marksExpose: true } : {}),
+    ...(options.marksGossip ? { marksGossip: true } : {}),
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
+    ...(options.residue ? { residue: options.residue } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

@@ -16,6 +16,10 @@ export interface ResidueLoad {
   readonly load: number;
   /** Hasta cuándo está calculado (ticks). */
   readonly at: number;
+  /** Desviaciones de cultivo que le causó (opt-in, `life.residue`). */
+  readonly deviations?: number;
+  /** Cuándo fue la última. */
+  readonly lastDeviation?: number;
 }
 export const RESIDUE = table<ResidueLoad>("body.residue");
 

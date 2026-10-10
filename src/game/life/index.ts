@@ -27,6 +27,7 @@ export * from "./ponder.ts";
 export * from "./pressures.ts";
 export * from "./reading.ts";
 export * from "./recap.ts";
+export * from "./residue.ts";
 export * from "./routine.ts";
 export * from "./scamdiscovery.ts";
 export * from "./scampolicy.ts";

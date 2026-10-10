@@ -121,6 +121,10 @@ export interface ConsumableDef {
   readonly route: SubstanceRoute;
   /** Cantidad por dosis (una unidad del bien). */
   readonly amount: number;
+  /** Opt-in (`ResidueConfig`): `Essence` por dosis (por gramo si se come) con la que el cuerpo carga residuo. */
+  readonly essence?: number;
+  /** Pureza (0-1) de lo preparado: la parte impura queda como residuo (por defecto 1). */
+  readonly purity?: number;
 }
 
 /** La dosis de `c` para una cantidad (`amount` por gramo o por litro) de lo ingerido. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, PlanetClock } from "../../core/index.ts";
 import { BELIEFS, cueCraving, LOCATION, learnCues, WorldTruth } from "../../sim/index.ts";
-import { cueLocalOf } from "./cue-local.ts";
+import { cueLocalOf, objectsSeen } from "./cue-local.ts";
 import { cueContextOf } from "./substances.ts";
 
 const clock = { day: 24000 } as unknown as PlanetClock;
@@ -40,6 +40,33 @@ describe("life.cueLocalOf", () => {
 
   it("sin opt-in el entorno sigue siendo el de la verdad", () => {
     expect(cueContextOf(t, me, 6000, clock).people).toEqual(["agent:2"]);
+  });
+
+  it("objectsSeen: solo los bienes que cree tener a mano, sin repetir y ordenados", () => {
+    const have = (g: string) => ({ wine: 2, tea: 0.5, pipe: 1 })[g as "wine"] ?? 0;
+    expect(objectsSeen(["wine", "tea", "pipe", "wine", "x"], have)).toEqual(["pipe", "wine"]);
+    expect(objectsSeen([], have)).toEqual([]);
+  });
+
+  it("ver el objeto sube el ansia por señales; sin verlo, no", () => {
+    const l = cueLocalOf(t, me, 1000, clock, 0);
+    const half = 60 * 24000;
+    const cues = learnCues(
+      [],
+      "wine",
+      cueContextOf(t, me, 6000, clock, { ...l, objects: ["wine"] }),
+      6000,
+      half,
+    ).filter((c) => c.kind === "object");
+    const seen = objectsSeen(["wine"], () => 1);
+    const withSeen = cueCraving(
+      cues,
+      cueContextOf(t, me, 6000, clock, { ...l, objects: seen }),
+      6000,
+      half,
+    );
+    const without = cueCraving(cues, cueContextOf(t, me, 6000, clock, l), 6000, half);
+    expect(withSeen).toBeGreaterThan(without);
   });
 
   it("una señal por objeto se aprende y despierta ansia solo con el objeto", () => {

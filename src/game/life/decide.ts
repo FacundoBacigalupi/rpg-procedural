@@ -96,7 +96,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
-import { cueLocalOf } from "./cue-local.ts";
+import { cueLocalOf, objectsSeen } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -207,6 +207,12 @@ export interface DecideOptions {
    * huso del lugar (`lonDeg`); apagado, el entorno es el de siempre (mismo hex, hora global).
    */
   readonly cueLocal?: { readonly lonDeg: number };
+  /**
+   * Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver en su despensa el objeto que
+   * gatilla el ansia (señal `CueKind` "object") sube el ansia y con ella la utilidad de tomarlo y
+   * de conseguirlo (la compra sigue cayendo con el precio creído); apagado, no cambia.
+   */
+  readonly objectCues?: boolean;
   /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
@@ -321,6 +327,19 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         people.filter((p) => closeness(p.rel.dims, p.rel.bonds) >= CARES_MIN).map((p) => p.id),
       );
       const acute = acuteOf(truth, me);
+      // Opt-in `objectCues`: los consumibles que ve en su despensa gatillan la señal por objeto.
+      const seenObjects = o.objectCues
+        ? objectsSeen(
+            (o.consumables ?? []).map((c) => c.good),
+            (good) => {
+              const g = (o.goods ?? []).find((x) => x.id === good);
+              const held = ctx.ledger?.holdings(
+                holderAccount(person.household as unknown as HolderRef),
+              );
+              return g ? (held?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
+            },
+          )
+        : [];
       const mood = {
         ...moodFrom({
           memories,
@@ -339,7 +358,12 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                   me,
                   now,
                   o.clock,
-                  o.cueLocal ? cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg) : undefined,
+                  o.cueLocal
+                    ? {
+                        ...cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg),
+                        ...(seenObjects.length > 0 ? { objects: seenObjects } : {}),
+                      }
+                    : undefined,
                 ),
                 now,
                 o.clock,

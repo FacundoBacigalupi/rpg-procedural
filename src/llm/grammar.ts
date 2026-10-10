@@ -139,9 +139,10 @@ const MANNERS: readonly { re: RegExp; manner: string }[] = [
   },
   { re: /\b(?:corro|corriendo|r[aá]pido|a las corridas|apurad[oa])\b/i, manner: "fast" },
   { re: new RegExp(`\\b(?:${HOLD_BACK_SOURCE})\\b`, "i"), manner: "hold_back" },
+  { re: /\b(?:en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo)\b/i, manner: "pawn" },
 ];
 const MANNER_WORDS = new RegExp(
-  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|bien|${HOLD_BACK_SOURCE})\\b`,
+  `\\b(?:despacito|a escondidas|sin que (?:me|nos) vea[n]?|escondid[oa]s?|sigilosamente|en silencio|con (?:mucho )?cuidado|con (?:mucha )?atenci[oó]n|despacio|atentamente|corriendo|r[aá]pido|a las corridas|apurad[oa]|en prenda|en empe[ñn]o|como prenda|a cambio de un pr[eé]stamo|bien|${HOLD_BACK_SOURCE})\\b`,
   "gi",
 );
 

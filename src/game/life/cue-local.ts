@@ -34,6 +34,17 @@ export interface CueLocal {
   readonly hourOffset: number;
 }
 
+/**
+ * Los objetos a la vista (puro): de los bienes que remiten a una sustancia, los que cree tener a
+ * mano (`have` >= 1 en lo que ve o lleva). Ver el objeto despierta la señal por objeto (`obj:<bien>`).
+ */
+export function objectsSeen(
+  goods: readonly string[],
+  have: (good: string) => number,
+): readonly string[] {
+  return [...new Set(goods)].filter((g) => have(g) >= 1).sort();
+}
+
 export function cueLocalOf(
   truth: ReadonlyWorldTruth,
   who: AgentId,
