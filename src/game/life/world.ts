@@ -88,7 +88,7 @@ import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
-import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
+import { type BondageTerms, type LoanSeed, loansProcess, type UsuryOptions } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import {
@@ -435,6 +435,8 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
+  /** Opt-in (con `loanSeeds`): préstamos con interés disfrazado donde la cultura lo prohíbe; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: la mora con pÃ©rdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
@@ -900,6 +902,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
+          ...(parts.loanUsury ? { usury: parts.loanUsury } : {}),
           ...(parts.loanBondage
             ? {
                 bondage: {
