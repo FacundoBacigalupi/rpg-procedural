@@ -380,6 +380,13 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
+          ...(parts.waterSources?.netDrink === true
+            ? {
+                drinkQuality: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).drinkQuality,
+              }
+            : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.scam === true
             ? {

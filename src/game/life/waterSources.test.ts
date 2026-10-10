@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveWaterSources, waterAt, waterHooks } from "./waterSources.ts";
+import { hexKindsFromTerrain, resolveWaterSources, waterAt, waterHooks } from "./waterSources.ts";
 
 describe("waterAt", () => {
   it("en el sitio bebe el pozo, y hervirlo mata la carga", () => {
@@ -56,5 +56,19 @@ describe("resolveWaterSources", () => {
     const truth = { get: () => ({ hex: 1 }) } as never;
     expect(h.waterFor(truth, "agent:1" as never, 0, 5).turbidity).toBeLessThan(0.05);
     expect(h.waterFor(truth, "agent:1" as never, 0, 6).turbidity).toBeGreaterThanOrEqual(0.1);
+  });
+});
+
+describe("hexKindsFromTerrain", () => {
+  it("mar, lago y río del terreno; lo seco no entra", () => {
+    const m = hexKindsFromTerrain({
+      sea: Uint8Array.from([1, 0, 0, 0]),
+      lake: Uint8Array.from([0, 1, 0, 0]),
+      water: Uint8Array.from([0, 0, 2, 0]),
+    });
+    expect(m.get(0)).toBe("sea");
+    expect(m.get(1)).toBe("stagnant");
+    expect(m.get(2)).toBe("river");
+    expect(m.has(3)).toBe(false);
   });
 });

@@ -16,6 +16,23 @@ import {
   type WaterTreatment,
   weatherAt,
 } from "../../sim/index.ts";
+import type { LocalTerrain } from "../../worldgen/index.ts";
+
+/**
+ * La fuente de cada hex del parche local desde el terreno de planet-gen (mar, lago, río o arroyo;
+ * los hexes secos no entran y usan `open`). Puro: el mismo terreno da el mismo mapa.
+ */
+export function hexKindsFromTerrain(
+  tr: Pick<LocalTerrain, "sea" | "lake" | "water">,
+): ReadonlyMap<number, WaterSourceKind> {
+  const out = new Map<number, WaterSourceKind>();
+  for (let h = 0; h < tr.sea.length; h++) {
+    if (tr.sea[h] === 1) out.set(h, "sea");
+    else if (tr.lake[h] === 1) out.set(h, "stagnant");
+    else if ((tr.water[h] as number) > 0) out.set(h, "river");
+  }
+  return out;
+}
 
 export interface WaterSourcesConfig {
   /** Fuente de un hex a campo abierto (planet-gen: río, lago, mar); lo que falta usa `open`. */
@@ -32,6 +49,8 @@ export interface WaterSourcesConfig {
    * por llover). Sin él, o sin `now`, nada cambia.
    */
   readonly rainingAt?: (now: number) => boolean;
+  /** Opt-in: el verbo `drink` del jugador usa la hidratación neta (la sal deshidrata) con la fuente de acá. */
+  readonly netDrink?: boolean;
   /** Opt-in: quien arma el mundo lo completa con `rainingFromWeather` (el tiempo de la celda de la aldea). */
   readonly rainFromWeather?: boolean;
 }
