@@ -88,10 +88,12 @@ import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
+  type HouseholdNeeds,
   lookSiteOf,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
+  tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
@@ -303,6 +305,8 @@ export interface LifeWorld {
   readonly moldGossip?: MoldGossipOptions;
   /** Opt-in: la decisión (`life.decide`) suma al ánimo lo que cree de oídas en `MOLD_RUMORS` (`moldHintMood`: ir donde cree que hay algo, comerciar un bien con precio oído); apagado por defecto: no lee la tabla. */
   readonly moldHints?: MoldHintOptions;
+  /** Opt-in: necesidades del hogar; `moldHints.tradeWant` sale de ellas (`tradeWantFromNeeds`) si no trae uno; apagado por defecto. */
+  readonly tradeNeeds?: HouseholdNeeds;
   /** Opt-in: sin `moldHints`, usa `catalogMoldHints(goods)` con `bySide` (comprar y vender se distinguen); apagado por defecto. */
   readonly moldHintsFromCatalog?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
@@ -916,17 +920,17 @@ export function lifeWorld(
           ...(parts.cravingCues === true && parts.cueLocal === true
             ? { cueLocal: { lonDeg: parts.map.lonDeg } }
             : {}),
-          ...(parts.moldHints
-            ? { moldHints: parts.moldHints }
-            : parts.moldHintsFromCatalog === true
-              ? {
-                  moldHints: {
-                    ...catalogMoldHints(parts.goods),
-                    bySide: true,
-                    buyCandidates: true,
-                  },
-                }
-              : {}),
+          ...(() => {
+            const base: MoldHintOptions | undefined = parts.moldHints
+              ? parts.moldHints
+              : parts.moldHintsFromCatalog === true
+                ? { ...catalogMoldHints(parts.goods), bySide: true, buyCandidates: true }
+                : undefined;
+            if (!base) return {};
+            return parts.tradeNeeds && !base.tradeWant
+              ? { moldHints: { ...base, tradeWant: tradeWantFromNeeds(parts.tradeNeeds) } }
+              : { moldHints: base };
+          })(),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         routineProcess({
