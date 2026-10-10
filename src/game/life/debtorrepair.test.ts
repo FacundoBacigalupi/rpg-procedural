@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeId } from "../../core/index.ts";
 import { ENTITY, PERSON, RUMORS, WorldTruth } from "../../sim/index.ts";
-import { debtorRepairProcess, repairDebtorRumors } from "./debtorrepair.ts";
+import { debtorRepairProcess, repairDebtorRumors, restitutionOf } from "./debtorrepair.ts";
 
 const a = (n: number) => makeId("agent", n);
 const stain = (kind: "default" | "fraud", by: number, confidence: number) => ({
@@ -61,5 +61,51 @@ describe("debtorrepair", () => {
     expect(ch[0]?.id).toBe(a(2));
     expect(ch[0]?.value.items[0]?.confidence).toBeCloseTo(0.16, 6);
     expect(r.events?.[0]?.causes).toEqual([{ kind: "event", event: makeId("event", 60) }]);
+  });
+
+  it("restitución: estafa devuelta repara a la víctima y corre la voz; apagado no hace nada", () => {
+    expect(
+      restitutionOf({ kind: "scam.refunded", actors: [a(1), a(2)], data: { paid: { amount: 0 } } }),
+    ).toBeNull();
+    expect(
+      restitutionOf({
+        kind: "credit.usury_ruled",
+        actors: [a(2), a(1)],
+        data: { upheld: true, refund: 3, fine: 0 },
+      }),
+    ).toEqual({ culprit: a(1), victim: a(2) });
+    const truth = new WorldTruth();
+    for (const n of [1, 2, 3]) {
+      truth.set(ENTITY, a(n), {
+        id: a(n),
+        originEventId: makeId("event", 1),
+        createdAt: 0,
+      } as never);
+      truth.set(PERSON, a(n), { household: `h${n}` } as never);
+    }
+    for (const n of [2, 3])
+      truth.set(RUMORS, a(n), { items: [stain("fraud", 1, 0.8)], told: [] } as never);
+    const refunded = {
+      id: makeId("event", 61),
+      tick: 10,
+      kind: "scam.refunded",
+      actors: [a(1), a(2)],
+      data: { paid: { unit: "u", amount: 5 } },
+    } as never;
+    const ctx = {
+      truth,
+      now: 11,
+      recent: [refunded],
+      rng: { fork: () => ({ chance: () => true }) },
+    } as never;
+    const placeOf = (_t: unknown, who: string) =>
+      ({ kind: who === a(3) ? "far" : "cell" }) as never;
+    expect(debtorRepairProcess({ placeOf }).run(ctx)).toEqual({});
+    const r = debtorRepairProcess({ placeOf, restitution: true }).run(ctx);
+    expect(r.events?.map((e) => e.kind)).toEqual([
+      "credit.reputation_repaired",
+      "credit.correction_spread",
+    ]);
+    expect(r.events?.[1]?.causes).toEqual([{ kind: "event", event: makeId("event", 61) }]);
   });
 });

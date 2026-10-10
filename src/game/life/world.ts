@@ -374,6 +374,8 @@ export interface LifeWorld {
   readonly usuryGossip?: boolean;
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
+  /** Opt-in (con `debtorRepair`): devolver lo mal habido (estafa devuelta, reintegro de usura) también repara la fama y corre la voz correctiva. */
+  readonly debtorRepairRestitution?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -697,7 +699,14 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
-        ...(parts.debtorRepair ? [debtorRepairProcess({ placeOf: placeOf(parts, village) })] : []),
+        ...(parts.debtorRepair
+          ? [
+              debtorRepairProcess({
+                placeOf: placeOf(parts, village),
+                ...(parts.debtorRepairRestitution ? { restitution: true } : {}),
+              }),
+            ]
+          : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
