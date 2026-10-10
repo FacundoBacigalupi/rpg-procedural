@@ -16,6 +16,7 @@ import {
 import {
   BODY_STATE,
   BUILDING,
+  type CarrionSource,
   createEntity,
   draftEvent,
   ENTITY,
@@ -35,11 +36,16 @@ import {
   type ProcessDef,
   type Quarantine,
   quarantinedShared,
+  REACH_TAINT,
+  type Reach,
+  type ReachTaint,
   type ReadonlyWorldTruth,
   type Shared,
   type StateChange,
+  seepageLoad,
   setComponent,
   sheddingLevel,
+  stepWatercourse,
   TREATMENT,
   taintAfter,
   treatedCourse,
@@ -74,6 +80,15 @@ export interface ExposureOptions {
    */
   readonly waterFor?: (truth: ReadonlyWorldTruth, who: EntityRef, load: number) => WaterQuality;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Agua corriente (body-health §6), opt-in: tramos de río, fuentes de carga (cadáveres sin enterrar,
+   * fosas) y a qué tramo filtra cada pozo. Sin esto, o sin fuentes ni carga, no hay RNG ni filas.
+   */
+  readonly watercourse?: {
+    readonly reaches: readonly Reach[];
+    readonly sources: (truth: ReadonlyWorldTruth) => readonly CarrionSource[];
+    readonly wellReach: (truth: ReadonlyWorldTruth, well: string) => string | undefined;
+  };
 }
 
 /** Lo que comparten los de un mismo hogar en un dÃ­a (calibraciÃ³n abierta). */
@@ -117,7 +132,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       WORK.name,
       TREATMENT.name,
     ],
-    writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, ENTITY.name],
+    writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, REACH_TAINT.name, ENTITY.name],
     run(ctx) {
       const known = new Map<string, PathogenDef>();
       for (const id of ctx.truth.ids(PATHOGEN)) {
@@ -246,6 +261,42 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               load: Math.min(1, (base?.load ?? 0) + TAINT_PER_DAY * route * days),
               cause: base?.cause ?? s.inf.cause,
             });
+          }
+        }
+      }
+      const wc = o.watercourse;
+      if (wc) {
+        const prev = new Map<string, ReachTaint>();
+        for (const id of ctx.truth.ids(REACH_TAINT)) {
+          const t = ctx.truth.get(REACH_TAINT, id);
+          if (t) prev.set(id, t);
+        }
+        const nowReach = new Map<string, ReachTaint>(prev);
+        let left = Math.max(1, Math.round(days));
+        const sources = wc.sources(ctx.truth).filter((s) => known.has(s.pathogen));
+        let step = prev;
+        while (left-- > 0) {
+          step = stepWatercourse(wc.reaches, step, sources, ctx.now, o.clock.day);
+        }
+        nowReach.clear();
+        for (const [id, t] of step) nowReach.set(id, t);
+        for (const id of new Set([...prev.keys(), ...nowReach.keys()])) {
+          const a = prev.get(id);
+          const b = nowReach.get(id);
+          if (b) {
+            if (!a || a.load !== b.load || a.pathogen !== b.pathogen) {
+              changes.push(setComponent(REACH_TAINT, id as never, b));
+            }
+          } else changes.push({ op: "delete", table: REACH_TAINT.name, id: id as never });
+        }
+        for (const w of wells) {
+          const rid = wc.wellReach(ctx.truth, w);
+          const rt = rid === undefined ? undefined : nowReach.get(rid);
+          const load = seepageLoad(rt);
+          if (!rt || load <= 0 || !known.has(rt.pathogen)) continue;
+          const cur = taintNow.get(w);
+          if (!cur || cur.load < load) {
+            taintNow.set(w, { pathogen: rt.pathogen, load, cause: rt.cause });
           }
         }
       }

@@ -89,9 +89,11 @@ import {
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
+  RUMORS,
   rankOf,
   receiveLot,
   recordDeal,
+  reputationIn,
   resolve,
   SALE_RECEIPTS,
   SELF_IMAGES,
@@ -188,6 +190,11 @@ export interface ActOptions {
   readonly seed: Seed;
   /** El personaje del jugador: sus peleas se pausan para que decida (combat §16). */
   readonly player: AgentId;
+  /**
+   * Opt-in: el trato pesa la reputación de la aldea (`reputationIn`: gravedad y confianza, con
+   * rumores) en vez de solo la fracción que sabe algo. Apagado, el trato es el de siempre.
+   */
+  readonly reputationTrade?: boolean;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -262,6 +269,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     reads: [
       PLAN_STATE.name,
       KNOWN_DEEDS.name,
+      RUMORS.name,
       STANDING_BELIEFS.name,
       CREDIT.name,
       SOIL.name,
@@ -387,6 +395,22 @@ function dealBudgetOf(
   };
 }
 
+/**
+ * La fama que pesa en el trato desde `reputationIn` (information §5): la fracción de la aldea que
+ * sabe algo de `me` por cuánto lo mal cree (gravedad y confianza de lo visto y de los rumores), no
+ * por contar hechos sueltos. Sin agravios conocidos da 0, igual que `notoriety`.
+ */
+export function reputationFameOf(truth: ReadonlyWorldTruth, me: AgentId): number {
+  const village = truth.ids(PERSON) as readonly AgentId[];
+  const rep = reputationIn(
+    village,
+    me,
+    (id) => truth.get(KNOWN_DEEDS, id),
+    (id) => truth.get(RUMORS, id),
+  );
+  return rep.fame * Math.min(1, Math.max(0, -rep.standing));
+}
+
 /** Los precios y las casas que `trade` y `work` necesitan para mover bienes (economy §4). */
 function marketOf(
   ctx: ProcessContext,
@@ -425,10 +449,12 @@ function marketOf(
           },
     harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
-    fame: notoriety(
-      truth.ids(PERSON).flatMap((id) => (id === me ? [] : [truth.get(KNOWN_DEEDS, id)])),
-      me,
-    ),
+    fame: o.reputationTrade
+      ? reputationFameOf(truth, me)
+      : notoriety(
+          truth.ids(PERSON).flatMap((id) => (id === me ? [] : [truth.get(KNOWN_DEEDS, id)])),
+          me,
+        ),
     ranks: {
       actor: rankOf(truth.get(STATUS, me), o.statuses),
       // La posición del otro es lo que el actor CREE de él, no su STATUS (social-structure §3).

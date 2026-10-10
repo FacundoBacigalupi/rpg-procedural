@@ -20,3 +20,4 @@ export * from "./substance-effects.ts";
 export * from "./substance-state.ts";
 export * from "./thermal.ts";
 export * from "./water.ts";
+export * from "./watercourse.ts";

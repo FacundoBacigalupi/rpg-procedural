@@ -109,3 +109,15 @@ describe("chisme entre vecinos", () => {
     expect(["named", "crowd"]).toContain(heard?.data.source?.kind);
   }, 60_000);
 });
+
+describe("la vida con life.gossip activo", () => {
+  it("es determinista y el scheduler no halla escrituras exclusivas en conflicto", () => {
+    const run = () => {
+      const life = Life.create(7, content);
+      // Un SchedulerError por conflicto de escritura (KNOWN_DEEDS/RUMORS/MEMORIES) lanzaría acá.
+      life.advanceTo(life.now + 3 * life.world.clock.day);
+      return life.hash();
+    };
+    expect(run()).toEqual(run());
+  }, 240_000);
+});
