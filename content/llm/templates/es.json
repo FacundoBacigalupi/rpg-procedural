@@ -101,6 +101,10 @@
     "lines": ["{who} le paga a alguien para que le lea la suerte.", "Ves a {who} consultando."]
   },
   {
+    "id": "percept.action.forge",
+    "lines": ["{who} retoca la marca de un lote.", "Ves a {who} trabajando sobre un sello."]
+  },
+  {
     "id": "percept.action.ponder",
     "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
   },

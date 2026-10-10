@@ -417,6 +417,13 @@ export type VerbEffect =
       /** Una idea sobre cómo anda el mundo, en palabras del jugador (discovery §14). */
       readonly kind: "ponder";
       readonly about: string | null;
+    }
+  | {
+      /** Copiar la marca de otro en un lote propio: lo hace `game` (economy §6, `life.marks`). */
+      readonly kind: "forge";
+      readonly of: EntityRef | null;
+      /** El lote que nombró, en sus palabras. */
+      readonly what: string | null;
     };
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
@@ -659,6 +666,15 @@ const none: Resolver = (c) => ({ effect: { kind: "none" }, seconds: c.nominal })
  */
 const ponder: Resolver = (c) => ({
   effect: { kind: "ponder", about: argText(c, "about") },
+  seconds: c.nominal,
+});
+
+/**
+ * Falsificar: el resolver deja de quién copia la marca y qué lote nombró; la fidelidad sale de la
+ * habilidad y de lo que conoce la marca original, y la marca falsa la escribe `game` (`life.marks`).
+ */
+const forge: Resolver = (c) => ({
+  effect: { kind: "forge", of: argEntity(c, "of"), what: argText(c, "what") },
   seconds: c.nominal,
 });
 
@@ -1719,6 +1735,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   drink,
   tend,
   consult,
+  forge,
   ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];

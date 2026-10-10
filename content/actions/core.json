@@ -652,6 +652,34 @@
     "evidence": 0.6
   },
   {
+    "id": "forge",
+    "name": "falsificar",
+    "domain": "manipulation",
+    "args": [
+      { "role": "of", "kind": "person", "required": false },
+      { "role": "what", "kind": "text", "required": false }
+    ],
+    "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.4 }],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.3 }],
+    "occupies": { "handL": "partial", "handR": "full", "eyes": "full" },
+    "duration": { "kind": "fixed", "seconds": 1800 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.2, "sound": 0.1 },
+    "serves": { "wealth": 0.4 },
+    "resolver": "forge",
+    "ease": 1,
+    "factors": {
+      "light": 0.5,
+      "skill": [{ "trait": "control", "weight": 0.5 }, { "trait": "perception", "weight": 0.3 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "clumsy", "factor": "light" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.4
+  },
+  {
     "id": "ponder",
     "name": "suponer",
     "domain": "mind",

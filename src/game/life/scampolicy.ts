@@ -99,6 +99,16 @@ export function scamRefundOf(
   };
 }
 
+/** Qué tan buena mano tiene quien falsifica una marca (0-1): control innato, sin oficio. */
+export function forgeSkillOf(traits: readonly Trait[]) {
+  return (truth: ReadonlyWorldTruth, who: AgentId): number => {
+    const innate = truth.get(INNATE, who);
+    if (!innate) return 0.5;
+    const z = standardize(innate, traits, truth.get(PERSON, who)?.sex ?? "female");
+    return unit(0.4 + 0.1 * (z["control"] ?? 0));
+  };
+}
+
 /** Qué tan fino mira un comprador (0-1): sentidos sin oficio, con el sesgo de su percepción innata (como `handsOf`). */
 export function scamEyeOf(traits: readonly Trait[]) {
   return (truth: ReadonlyWorldTruth, who: AgentId): number => {

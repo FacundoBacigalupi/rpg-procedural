@@ -10,6 +10,7 @@ import {
   FRESH_CURSOR,
   hashState,
   liveSettlementSpaces,
+  type ScenarioLife,
   type SchedulerState,
   type StateHash,
   type WorldTruth,
@@ -40,6 +41,8 @@ export interface LifeSetup {
   readonly frequency?: number;
   /** Opt-in (`--famine`): hambruna y migración de hogares (`LifeOptions.famine|migration`); apagado por defecto. */
   readonly famine?: boolean;
+  /** Opt-in de la vida de un escenario (`ScenarioEntry.life`): pisa a `famine`; sin él, nada cambia. */
+  readonly life?: ScenarioLife;
 }
 
 /** Las versiones del motor para el replay (tooling §4): la del formato la pone quien guarda. */
@@ -89,6 +92,8 @@ export function optionsOf(setup: LifeSetup): LifeOptions {
     ...(setup.frequency === undefined ? {} : { frequency: setup.frequency }),
     ...birthOf(setup.game),
     ...(setup.famine ? { famine: { staple: "grain" }, migration: { staple: "grain" } } : {}),
+    // Subconjunto serializable: `scamFiller` y `loanContagion` son cadenas (unidades del ledger).
+    ...(setup.life ? (setup.life as Partial<LifeOptions>) : {}),
   };
 }
 
