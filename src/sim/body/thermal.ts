@@ -3,7 +3,7 @@
 // con el aire (temperatura, viento, mojado, ropa, refugio, fuego) y con el sudor. Sin IO ni
 // estado: el cableado a `Body` y a la vida queda aparte. Constantes sin calibrar.
 
-import { pow } from "../../core/math/index.ts";
+import { exp, pow } from "../../core/math/index.ts";
 import { table } from "../world/index.ts";
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
@@ -104,6 +104,46 @@ export const TEMPERATE: ThermalEnv = {
   shelter: 0,
   radiantC: 0,
 };
+
+/** Gradiente adiabático medio de la atmósfera (°C por metro de altura). */
+export const LAPSE_RATE_C_PER_M = 0.0065;
+/** Altura de escala de la presión (m): la presión cae a 1/e cada tanto. */
+const PRESSURE_SCALE_M = 8400;
+
+/** Temperatura del aire (°C) a `altitudeM` si a `baseM` es `airC` (aire que baja de temperatura al subir). */
+export function airCAtAltitude(airC: number, baseM: number, altitudeM: number): number {
+  return airC - LAPSE_RATE_C_PER_M * (altitudeM - baseM);
+}
+
+/** Presión relativa (1 al nivel del mar) a una altitud: decae exponencial con la altura. */
+export function relativePressure(altitudeM: number): number {
+  return exp(-Math.max(-500, altitudeM) / PRESSURE_SCALE_M);
+}
+
+/**
+ * Ajusta el ambiente por altitud y por un ambiente de qi: el aire se enfría con el gradiente
+ * adiabático respecto de la altitud de referencia (adentro, filtrado por `leak` 0-1), y
+ * `qiC` (°C equivalentes, negativo enfría y positivo calienta; densidad de qi, formación o lugar)
+ * se suma al calor radiante. Con `altitudeM === baseM` y `qiC === 0` devuelve el mismo ambiente.
+ */
+export function altitudeEnv(
+  env: ThermalEnv,
+  baseM: number,
+  altitudeM: number,
+  qiC: number = 0,
+  leak: number = 1,
+): ThermalEnv {
+  if (altitudeM === baseM && qiC === 0) return env;
+  const delta = airCAtAltitude(0, baseM, altitudeM) * clamp(leak, 0, 1);
+  // El aire ralo arrastra menos: el viento enfría un poco menos por m/s con poca presión.
+  const thin = 0.5 + 0.5 * relativePressure(altitudeM);
+  return {
+    ...env,
+    airC: env.airC + delta,
+    windMs: env.windMs * thin,
+    radiantC: env.radiantC + qiC,
+  };
+}
 
 /** Temperatura que siente la piel: el aire, el viento que no frena la ropa ni el reparo, y el fuego. */
 export function effectiveAirC(env: ThermalEnv, clothing: Clothing): number {

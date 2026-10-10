@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  airCAtAltitude,
+  altitudeEnv,
   type Clothing,
   CORE_NORMAL_C,
   dexterityFactor,
@@ -12,6 +14,7 @@ import {
   heatLossW,
   NAKED,
   NO_FROSTBITE,
+  relativePressure,
   shelterOf,
   stepCore,
   stepFrostbite,
@@ -127,5 +130,23 @@ describe("esfuerzo y sudor", () => {
     const heavy = stepCore(CORE_NORMAL_C, 70, hot, street, 3.4 / 1.2, 1, 1);
     expect(heavy.sweatL).toBeGreaterThan(rest.sweatL);
     expect(heavy.producedW).toBeGreaterThan(rest.producedW);
+  });
+});
+
+describe("altitud y ambiente de qi", () => {
+  it("el aire se enfría con la altura y la presión cae", () => {
+    expect(airCAtAltitude(18, 0, 3000)).toBeCloseTo(18 - 19.5, 5);
+    expect(relativePressure(0)).toBeCloseTo(1, 5);
+    expect(relativePressure(5000)).toBeLessThan(0.6);
+  });
+  it("sin diferencia de altura ni qi devuelve el mismo ambiente", () => {
+    expect(altitudeEnv(TEMPERATE, 300, 300)).toBe(TEMPERATE);
+  });
+  it("en la altura se pierde más calor y el qi frío agrava", () => {
+    const high = altitudeEnv(TEMPERATE, 0, 3000);
+    const qi = altitudeEnv(TEMPERATE, 0, 0, -10);
+    expect(heatLossW(high, street)).toBeGreaterThan(heatLossW(TEMPERATE, street));
+    expect(heatLossW(qi, street)).toBeGreaterThan(heatLossW(TEMPERATE, street));
+    expect(altitudeEnv(TEMPERATE, 0, 3000, 0, 0.1).airC).toBeGreaterThan(high.airC);
   });
 });
