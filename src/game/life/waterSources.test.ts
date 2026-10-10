@@ -13,6 +13,17 @@ describe("waterAt", () => {
     expect(waterAt(cfg, { hex: 7 }, 0).salinity).toBeGreaterThan(0.5);
     expect(waterAt(cfg, { hex: 1 }, 0).load).toBeGreaterThan(0);
   });
+
+  it("con lluvia a campo abierto se bebe lluvia; el mar y el pozo no cambian; sin gancho, igual", () => {
+    const cfg = {
+      hexKinds: new Map([[7, "sea" as const]]),
+      rainingAt: (now: number) => now === 5,
+    };
+    expect(waterAt(cfg, { hex: 1 }, 0, 5).turbidity).toBeLessThan(0.05);
+    expect(waterAt(cfg, { hex: 1 }, 0, 6).turbidity).toBeGreaterThanOrEqual(0.1);
+    expect(waterAt(cfg, { hex: 7 }, 0, 5).salinity).toBeGreaterThan(0.5);
+    expect(waterAt({}, { hex: 1 }, 0, 5)).toEqual(waterAt({}, { hex: 1 }, 0));
+  });
 });
 
 describe("agua hervida con el verbo boil", () => {

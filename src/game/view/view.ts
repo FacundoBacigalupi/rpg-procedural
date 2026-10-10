@@ -360,6 +360,7 @@ export type EffectView =
       readonly got: readonly { readonly good: string; readonly amount: number }[];
     }
   | { readonly kind: "drink"; readonly drank: boolean }
+  | { readonly kind: "boil"; readonly boiled: boolean }
   | {
       readonly kind: "cook";
       /** Lo que sacó (null si no cocinó nada). */
@@ -786,8 +787,8 @@ function effectView(
         got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
       };
     case "boil":
-      // Sin narración propia todavía: el hervor se nota por el tiempo y el gasto, no por un efecto visible.
-      return { kind: "none" };
+      // Hirvió si quemó combustible; el número de gramos no se cuenta.
+      return { kind: "boil", boiled: e.fuel !== null && e.grams > 0 };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
     case "cook":

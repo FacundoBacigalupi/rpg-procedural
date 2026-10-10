@@ -428,6 +428,8 @@
     "lines": ["Te tomás lo que había guardado en la casa.", "Tragás lo que sacás de la despensa."]
   },
   { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
+  { "id": "outcome.boil.done", "lines": ["Ponés el agua al fuego hasta que hierve y la dejás enfriar.", "Hervís el agua un buen rato."] },
+  { "id": "outcome.boil.none", "lines": ["No tenés con qué hervir el agua."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
   {
     "id": "outcome.tend.self",
