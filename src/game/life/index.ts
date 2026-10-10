@@ -10,6 +10,7 @@ export * from "./environment.ts";
 export * from "./exposure.ts";
 export * from "./gathering.ts";
 export * from "./gathering-provider.ts";
+export * from "./hire.ts";
 export * from "./hypotheses.ts";
 export * from "./identity.ts";
 export * from "./inference-metric.ts";

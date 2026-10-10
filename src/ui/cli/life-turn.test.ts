@@ -33,6 +33,7 @@ import {
   LOCATION,
   PERSON,
   planFromDraft,
+  TRADE_RECIPES,
 } from "../../sim/index.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -241,4 +242,14 @@ describe("calibración del bucle (Hito 1c)", () => {
     // El tope solo aprieta en las escenas más llenas (la casa con toda la familia).
     expect(crowded).toBeLessThan(turns / 2);
   }, 240_000);
+
+  it("con las recetas de oficio la vista admite el oficio oído (sin rumor, vacío; mismo resultado)", () => {
+    const life = Life.create(7, content);
+    const recipes = content.all(TRADE_RECIPES);
+    expect(recipes.length).toBeGreaterThan(0);
+    const a = playerView(life.world, [], { heardTrades: recipes });
+    const b = playerView(life.world, [], { heardTrades: recipes });
+    expect(a.heardTrades).toEqual([]);
+    expect(b).toEqual(a);
+  });
 });

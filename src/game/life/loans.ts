@@ -23,13 +23,19 @@ import {
   bondageExpired,
   type Collateral,
   type Commitment,
+  chooseDisguise,
   current,
   type DecayContext,
+  type DisguisedTerms,
+  type DisguiseKind,
+  disguiseInterest,
   draftEvent,
   ENTITY,
   type EnforcementContext,
   type EventDraft,
+  effectiveRate,
   endBondage,
+  estimateDisguise,
   executeDefault,
   type GoodDef,
   type Guarantor,
@@ -60,7 +66,11 @@ import {
 export const LOANS_PROCESS = "life.loans";
 
 /** El préstamo guardado: el compromiso económico y la semilla de la que nació. */
-export type LoanRow = LoanCommitment & { readonly seed: string };
+export type LoanRow = LoanCommitment & {
+  readonly seed: string;
+  /** Con `LoansOptions.usury`: los términos disfrazados con que se pactó (la tasa de la fila es la efectiva real). */
+  readonly disguise?: DisguisedTerms;
+};
 /** Cada préstamo vive en una entidad `commitment:n` con este componente. */
 export const LOANS = table<LoanRow>("economy.loans");
 /**
@@ -133,6 +143,32 @@ export interface LoansOptions {
   readonly contagionCaution?: { readonly rateMarkup: number };
   /** Opt-in: la confianza de RELATIONS se lee con `current` (decaimiento al día de hoy); sin esto, tal cual está guardada. */
   readonly relationDecay?: DecayContext;
+  /** Opt-in: donde la cultura prohíbe el interés, el prestamista lo disfraza y la deuda registra la tasa efectiva real. */
+  readonly usury?: UsuryOptions;
+}
+
+/** Prohibición de usura (economy §8): donde se prohíbe el interés, el prestamista lo disfraza. */
+export interface UsuryOptions {
+  /** Si la cultura del hogar prestamista prohíbe cobrar interés (calculada afuera, de sus normas). */
+  readonly prohibits: (truth: ReadonlyWorldTruth, lenderHome: string) => boolean;
+  /** Disfraces que tiene a mano ese prestamista; sin ninguno no presta con interés. */
+  readonly available: readonly DisguiseKind[];
+  /** Cuánto llama la atención cada disfraz en esa cultura (0-1). */
+  readonly visibility?: Partial<Record<DisguiseKind, number>>;
+  /** Jornal de mercado (valor por día) para el disfraz de trabajo. */
+  readonly wagePerDay?: number;
+  /**
+   * Opt-in: terceros (otros hogares) que tasan el trato; `believedValue` es lo que ese observador cree
+   * que valió lo recibido (error de tasación incluido). Si sospecha, nace `credit.usury_suspected`.
+   */
+  readonly suspicion?: {
+    readonly tolerance?: number;
+    readonly believedValue: (
+      truth: ReadonlyWorldTruth,
+      observer: AgentId,
+      principal: number,
+    ) => number;
+  };
 }
 
 /** Condiciones de la servidumbre por deudas (en la unidad del préstamo; sin calibrar). */
@@ -298,6 +334,19 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           )
             rate += o.contagionCaution.rateMarkup;
         }
+        let disguise: DisguisedTerms | undefined;
+        if (o.usury && rate > 0 && o.usury.prohibits(ctx.truth, s.lender)) {
+          const kind = chooseDisguise(o.usury.available, o.usury.visibility);
+          if (!kind) continue;
+          disguise = disguiseInterest({
+            principal: s.principal,
+            rate,
+            termDays: s.termDays,
+            kind,
+            ...(o.usury.wagePerDay !== undefined ? { wagePerDay: o.usury.wagePerDay } : {}),
+          });
+          rate = effectiveRate(disguise);
+        }
         const id = ctx.newId("commitment");
         const k = events.length;
         const loan = makeLoan({
@@ -322,7 +371,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           originEventId: draftEvent(k),
         });
         if (!loan) continue;
-        const row: LoanRow = { ...loan, seed: s.id };
+        const row: LoanRow = { ...loan, seed: s.id, ...(disguise ? { disguise } : {}) };
         events.push({
           kind: "credit.loaned",
           actors: [lenderMan, borrowerMan],
@@ -334,12 +383,42 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             principal: row.principal,
             rate: row.rate,
             dueDay: row.dueDay,
+            ...(disguise ? { disguise: disguise.kind, statedRate: disguise.statedRate } : {}),
           },
           emissions: {},
           causes: [
             { kind: "state", entity: s.lender as unknown as EntityRef, key: `loan-seed:${s.id}` },
           ],
         });
+        if (disguise && o.usury?.suspicion) {
+          const sus = o.usury.suspicion;
+          for (const oid of [...ctx.truth.ids(PERSON)].sort()) {
+            const p = ctx.truth.get(PERSON, oid);
+            if (!p || p.household === s.lender || p.household === s.borrower) continue;
+            if (ctx.truth.get(ENTITY, oid)?.endedAt !== undefined) continue;
+            const est = estimateDisguise(
+              {
+                kind: disguise.kind,
+                believedReceivedValue: sus.believedValue(ctx.truth, oid as AgentId, s.principal),
+                moneyDue: disguise.moneyDue,
+                giftValue: disguise.giftValue,
+                laborDays: disguise.laborDays,
+                believedWagePerDay: disguise.wagePerDay,
+                termDays: disguise.termDays,
+              },
+              sus.tolerance,
+            );
+            if (!est.suspected) continue;
+            events.push({
+              kind: "credit.usury_suspected",
+              actors: [oid as AgentId, lenderMan],
+              place: o.placeOf(ctx.truth, lenderMan),
+              data: { loan: id, impliedRate: est.impliedRate, excess: est.excess },
+              emissions: {},
+              causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
+            });
+          }
+        }
         const ts = [
           { unit, from: row.lenderAccount, to: row.borrowerAccount, amount: row.principal },
         ];

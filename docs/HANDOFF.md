@@ -63,7 +63,7 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#421**. Tests: 1979 en 275 archivos (último `npm run check` completo verde en #409; el conteo no se re-midió al cerrar #413).
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#426**. Tests: 2061 en 288 archivos (último `npm run check` completo verde en #425; #426 corrió la suite amplia con 11 timeouts por carga de la máquina que pasan en aislado).
 
 **Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`. Sigue igual en #390–#397: 4 agentes Sonnet por lote, el líder integra y corre la suite amplia. Al agotarse los ítems hacibles se pasa a `v0.3.0`.
 
@@ -132,6 +132,11 @@ Desde #398 hasta #409:
 - #419: marcas de lote, contagio de quiebras, candidatas de oficio oído, recolectar con ansia.
 - #420: marcas al lote, servidumbre por deudas, tradeWant por necesidad, pedir prestada la sustancia.
 - #421: servidumbre y contagio cableados, repaso de marcas, rumores has desde la despensa.
+- #422: rescate y abuso de servidumbre, efectos del contagio de préstamos, pedir prestada ejecutado (lote 35, opt-in).
+- #423: ir hacia el prestamista, garantías (restructure/seize puros), abuso por temperamento, devolver dosis (lote 36, opt-in).
+- #424: proceso de garantías, servidumbre sin otro jornal (`onlyWithoutOtherWage`), `life.workout`, mirar un lote a pedido con repaso de marca (lote 37, opt-in).
+- #425: fix de `life.trades` en headless (la podredumbre pasa a la fase physics; crash en la aldea por defecto), verbo forge sobre `life.marks`, `skillWage` desde habilidades de oficio, `ScenarioEntry.life` y escenario `loan-bondage`.
+- #426: `life.workout` ejecuta parcelas en prenda, verbo hire, oficio oído llega a la vista como `heardTrades`, usura disfrazada (parte pura en `contracts/usury.ts`), fix de UTF-8 en `gathering-provider.ts`.
 
 Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuando no quede nada hacible, pasar lo dependiente a su fase, `npm run check`, PR `develop`→`main` y tag `v0.3.0`. Quedan ramas remotas `origin/feat/f3-g|h|i|j` por borrar al final.
 

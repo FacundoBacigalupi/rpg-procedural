@@ -77,6 +77,7 @@ import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
+import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
@@ -306,6 +307,18 @@ export interface LifeWorld {
   readonly loanContagionEffects?: { readonly rateMarkup: number };
   /** Opt-in (con `loanContagion` y `loanSeeds`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
+  /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
+  readonly hire?: {
+    readonly unit: string;
+    readonly baseWage: number;
+    readonly jobDays?: number;
+    readonly distrustPremium?: number;
+    readonly bondage?: {
+      readonly wagePerDay: number;
+      readonly upkeepPerDay: number;
+      readonly maxDays: number;
+    };
+  };
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -523,6 +536,16 @@ export function lifeWorld(
                     (s.collateral ?? []).flatMap((c) => (c.lot ? [[c.ref, c.lot] as const] : [])),
                   ),
                 ),
+              }),
+            ]
+          : []),
+        ...(parts.hire
+          ? [
+              hireProcess({
+                ...parts.hire,
+                placeOf: placeOf(parts, village),
+                day: parts.clock.day,
+                crafts: craftSkillIds(parts.skills),
               }),
             ]
           : []),
