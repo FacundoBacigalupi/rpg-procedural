@@ -3,6 +3,50 @@
 
 import { contentId, defineContent, z } from "../../core/index.ts";
 
+const staple = z.strictObject({ staple: z.string().trim().min(1) });
+
+/**
+ * Subconjunto JSON-serializable de `LifeOptions` (opt-in de la vida): flags, números y cadenas.
+ * Lo que lleva funciones o mapas (`waterSources`, `tradeNeeds`, `skillWage`, `abuse.chance`) queda
+ * fuera: se cablea en código. Sin `life`, la aldea es la de siempre.
+ */
+export const ScenarioLife = z.strictObject({
+  famine: staple
+    .extend({ horizonDays: z.number().gt(0).optional(), refresh: z.boolean().optional() })
+    .optional(),
+  migration: staple.optional(),
+  rumorGrievance: z.boolean().optional(),
+  scam: z.boolean().optional(),
+  scamFiller: z.string().trim().min(1).optional(),
+  relationDecay: z.boolean().optional(),
+  loanBondage: z
+    .strictObject({
+      wagePerDay: z.number().min(0),
+      upkeepPerDay: z.number().min(0),
+      maxDays: z.number().gt(0),
+      ransom: z.boolean().optional(),
+      onlyWithoutOtherWage: z.boolean().optional(),
+    })
+    .optional(),
+  loanBondageAbuse: z.strictObject({ reputationCost: z.number().min(0) }).optional(),
+  swapMaterials: z.boolean().optional(),
+  moldHintsFromCatalog: z.boolean().optional(),
+  tradeView: z
+    .union([
+      z.boolean(),
+      z.strictObject({
+        misread: z.strictObject({ chance: z.number().min(0).max(1) }).optional(),
+        people: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
+  marks: z.boolean().optional(),
+  loanContagion: z.string().trim().min(1).optional(),
+  loanContagionEffects: z.strictObject({ rateMarkup: z.number().min(0) }).optional(),
+  loanWorkout: z.boolean().optional(),
+});
+export type ScenarioLife = z.infer<typeof ScenarioLife>;
+
 /**
  * Un escenario de la sim headless: condiciones de arranque con nombre. Hoy fija lo que `LifeSetup`
  * ya deja elegir (modo, entrada, grilla del planeta); forzar el estado del mundo (hambruna, guerra,
@@ -20,6 +64,8 @@ export const ScenarioEntry = z.strictObject({
   frequency: z.number().int().min(1).optional(),
   /** Años por defecto de la corrida. */
   years: z.number().gt(0).optional(),
+  /** Opt-in de la vida a calibrar (`LifeOptions`, subconjunto serializable); sin él, la aldea por defecto. */
+  life: ScenarioLife.optional(),
 });
 export type ScenarioEntry = z.infer<typeof ScenarioEntry>;
 export const SCENARIOS = defineContent("scenarios", ScenarioEntry);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GAME_CONTENT_KINDS } from "../../game/index.ts";
+import { GAME_CONTENT_KINDS, optionsOf } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { SCENARIOS, TUNING_TARGETS, type TuningTargetEntry } from "../../sim/index.ts";
 import { findScenario, scenarioRun } from "./scenario.ts";
@@ -20,6 +20,19 @@ const target = (over: Partial<TuningTargetEntry>): TuningTargetEntry =>
 const sum = (mean: number, min = mean, max = mean) => ({ mean, min, max, present: 2 });
 
 describe("escenarios", () => {
+  it("`life` pasa los opt-in al setup y las opciones; sin él la aldea no cambia", () => {
+    const plain = scenarioRun(findScenario(content, "baseline"));
+    expect(plain.setup.life).toBeUndefined();
+    expect(optionsOf(plain.setup)).toEqual(optionsOf({ game: plain.setup.game }));
+    const bonded = scenarioRun(findScenario(content, "loan-bondage"));
+    expect(bonded.setup.life?.marks).toBe(true);
+    expect(optionsOf(bonded.setup).loanBondage?.maxDays).toBe(180);
+    expect(optionsOf(bonded.setup).loanContagion).toBe("coin:copper");
+    expect(() =>
+      SCENARIOS.schema.parse({ id: "x", name: "x", description: "x", life: { nope: 1 } }),
+    ).toThrow();
+  });
+
   it("el contenido trae escenarios válidos y los arma como setup", () => {
     expect(content.all(SCENARIOS).length).toBeGreaterThan(0);
     const adult = scenarioRun(findScenario(content, "adult-start"));

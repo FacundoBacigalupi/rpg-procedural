@@ -17,7 +17,14 @@ export function scenarioRun(s: ScenarioEntry, frequency?: number): ScenarioRun {
   const game: GameSetup =
     s.entryAge === undefined ? base : { ...base, entry: { kind: "age", at: s.entryAge } };
   const f = frequency ?? s.frequency;
-  return { setup: { game, ...(f === undefined ? {} : { frequency: f }) }, years: s.years };
+  return {
+    setup: {
+      game,
+      ...(f === undefined ? {} : { frequency: f }),
+      ...(s.life ? { life: s.life } : {}),
+    },
+    years: s.years,
+  };
 }
 
 /** Busca el escenario por id; el error lista los que hay. */

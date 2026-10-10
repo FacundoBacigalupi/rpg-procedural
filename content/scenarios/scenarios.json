@@ -19,5 +19,27 @@
     "mode": "realistic",
     "frequency": 8,
     "years": 2
+  },
+  {
+    "id": "loan-bondage",
+    "name": "Servidumbre por deudas",
+    "description": "Opt-in de préstamos: contagio de quiebras con efectos, servidumbre con abuso y marcas en los lotes.",
+    "mode": "realistic",
+    "frequency": 8,
+    "years": 2,
+    "life": {
+      "marks": true,
+      "loanContagion": "coin:copper",
+      "loanContagionEffects": { "rateMarkup": 0.05 },
+      "loanWorkout": true,
+      "loanBondage": {
+        "wagePerDay": 2,
+        "upkeepPerDay": 1,
+        "maxDays": 180,
+        "ransom": true,
+        "onlyWithoutOtherWage": true
+      },
+      "loanBondageAbuse": { "reputationCost": 0.1 }
+    }
   }
 ]
