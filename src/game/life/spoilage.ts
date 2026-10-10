@@ -49,7 +49,7 @@ export function spoilageProcess(o: SpoilageOptions): ProcessDef {
     scope: "household",
     cadence: { local: "day", scene: "day" },
     representation: "individual",
-    phase: "act",
+    phase: "physics",
     reads: [PERSON.name, ENTITY.name],
     writes: [],
     run(ctx) {

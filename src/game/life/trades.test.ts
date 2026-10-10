@@ -159,3 +159,25 @@ describe("elección de oficio por habilidad y necesidad", () => {
     ).toBeCloseTo((800 * 0.04 - 1000 * 0.018) / 4);
   });
 });
+
+describe("life.trades y el pudrirse", () => {
+  it("la podredumbre corre en physics, después de que el taller gasta el insumo", async () => {
+    // Regresión: en `act` el pudrirse (alfabéticamente antes) rebajaba el grano que `life.trades`
+    // ya había planeado gastar entero con el saldo del principio del paso, y el asiento fallaba.
+    const { spoilageProcess } = await import("./spoilage.ts");
+    const spoil = spoilageProcess({
+      goods,
+      clock: EARTHLIKE_CLOCK,
+      placeOf: () => ({ kind: "cell" }) as never,
+    });
+    const trades = tradesProcess({
+      clock: EARTHLIKE_CLOCK,
+      goods,
+      recipes,
+      assignments: [],
+      placeOf: () => ({ kind: "cell" }) as never,
+    });
+    expect(trades.phase).toBe("act");
+    expect(spoil.phase).toBe("physics");
+  });
+});
