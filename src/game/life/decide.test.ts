@@ -611,6 +611,77 @@ describe("life.decide", () => {
     expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(2);
   });
 
+  it("no atribuye una memoria ambigua de muerte a cada participante", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.7,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(BELIEFS, A, {
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value: false,
+          confidence: 0.95,
+          asOf: 900,
+          learnedAt: 900,
+          measured: 900,
+          salience: 0.9,
+          sources: [{ kind: "told", from: PLAYER, tick: 900 }],
+        },
+      ],
+    } as never);
+    const memory = truth.get(MEMORIES, A)?.items[0];
+    if (!memory) throw new Error("fixture memory missing");
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          ...memory,
+          eventId: "event:12" as EventId,
+          at: 900,
+          measured: 900,
+          perceived: { ...memory.perceived, kind: "body.died", with: [target, PLAYER] },
+        },
+      ],
+      gists: [],
+    });
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    const ambiguous = process.run(ctx(truth, A, 1000));
+    expect(
+      ambiguous.events?.some(
+        (event) =>
+          event.kind === GOAL_EVENT &&
+          goalData(event).goal === goal.id &&
+          (event.data as { reason?: string }).reason === "fulfilled",
+      ),
+    ).toBe(false);
+
+    const deathMemory = truth.get(MEMORIES, A)?.items[0];
+    if (!deathMemory) throw new Error("fixture memory missing");
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          ...deathMemory,
+          perceived: { ...deathMemory.perceived, with: [target] },
+        },
+      ],
+      gists: [],
+    });
+    const identified = process.run(ctx(truth, A, 1001));
+    expect(
+      identified.events?.find(
+        (event) => event.kind === GOAL_EVENT && goalData(event).goal === goal.id,
+      )?.causes,
+    ).toContainEqual({ kind: "event", event: "event:12" });
+  });
+
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
     const p = decideProcess(opts);
     const truth = world(0.5);
