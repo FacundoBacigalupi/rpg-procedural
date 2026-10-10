@@ -167,6 +167,7 @@ function step(
   at: Tick,
   out: Happening[],
   ambientC: number,
+  sweatLph = 0,
 ): Body {
   const ph = plan.physiology;
   const load = ACTIVITY_LOAD[body.activity];
@@ -253,7 +254,8 @@ function step(
       load.water *
       h *
       (1 + 0.5 * fever) *
-      heat;
+      heat +
+    sweatLph * h;
   let need = (ph.kcalPerKgDay / 24) * body.massKg * load.kcal * h * (1 + 0.2 * fever) * chill;
   let glycogen = body.glycogen;
   let fat = body.fat;
@@ -330,12 +332,13 @@ export function advanceBody(
   body: Body,
   to: Tick,
   ambient: AmbientTemp = COMFORTABLE,
+  sweatLph = 0,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
   while (b.death === null && b.updatedAt < to) {
     const at = Math.min(to, b.updatedAt + stepSeconds(b));
-    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at));
+    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph);
     const consciousness = consciousnessOf(plan, b, at);
     if (consciousness !== b.consciousness) {
       const why = collapseCauses(plan, entity, b);

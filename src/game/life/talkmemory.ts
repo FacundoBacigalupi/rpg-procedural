@@ -7,7 +7,9 @@
 import type { AgentId, Event, EventId, PlaceRef, Tick } from "../../core/index.ts";
 import {
   addMemory,
+  type DeedKind,
   formMemory,
+  KIND_WEIGHT,
   type Memories,
   type Memory,
   memoriesAbout,
@@ -158,6 +160,53 @@ export function applyTalkMemory(
   return {
     listener: mine,
     asker: addMemory(asker, toldMemory(r, ctx.teller, ctx.place, ctx.now), ctx.now),
+  };
+}
+
+/** Confianza mínima del oyente para que un rumor le deje memoria (la misma que en `life.gossip`). */
+export const RUMOR_MEMORY_FROM = 0.1;
+
+/**
+ * La memoria `told` que le deja a quien escucha un `rumor.told` que contó el personaje
+ * (`byCharacter`): `converse` no escribe `MEMORIES`, lo forma `life.appraise` desde el evento.
+ * Nada si el evento no es de ese camino, si no lo creyó ni un poco o si ya tenía memoria del hecho.
+ */
+export function rumorToldMemory(
+  e: Event,
+  existing: Memories | undefined,
+): { readonly who: AgentId; readonly memory: Memory } | null {
+  if (e.kind !== "rumor.told") return null;
+  const d = e.data as {
+    byCharacter?: unknown;
+    deed?: unknown;
+    kind?: unknown;
+    accused?: unknown;
+    victim?: unknown;
+    credit?: unknown;
+  } | null;
+  if (d?.byCharacter !== true || typeof d.deed !== "string" || typeof d.victim !== "string")
+    return null;
+  const [teller, who] = e.actors as [AgentId | undefined, AgentId | undefined];
+  const credit = typeof d.credit === "number" ? d.credit : 0;
+  if (!teller || !who || credit < RUMOR_MEMORY_FROM) return null;
+  if (existing?.items.some((m) => m.eventId === d.deed)) return null;
+  const kind = typeof d.kind === "string" ? d.kind : "theft";
+  const weight = KIND_WEIGHT[kind as DeedKind] ?? 0.5;
+  const accused = typeof d.accused === "string" ? (d.accused as AgentId) : null;
+  return {
+    who,
+    memory: formMemory({
+      eventId: d.deed as EventId,
+      kind: `rumor.${kind}`,
+      with: accused ? [accused, d.victim as AgentId] : [d.victim as AgentId],
+      place: e.place,
+      at: e.tick,
+      intensity: round(weight * 0.6),
+      valence: round(-0.3 * weight),
+      source: "told",
+      toldBy: teller,
+      clarity: credit,
+    }),
   };
 }
 

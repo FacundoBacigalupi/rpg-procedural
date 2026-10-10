@@ -93,7 +93,13 @@ import {
   WITNESS_ASLEEP_ENCODING,
   witnessLived,
 } from "./memories.ts";
-import { applyTalkMemory, applyTestimony, talkMemoryIn, testimonyMemoryIn } from "./talkmemory.ts";
+import {
+  applyTalkMemory,
+  applyTestimony,
+  rumorToldMemory,
+  talkMemoryIn,
+  testimonyMemoryIn,
+} from "./talkmemory.ts";
 import { WAKE_COMFORT, WAKE_EVENT, type WakeComforts, wakeOf, withWakeComfort } from "./wake.ts";
 import { npcPerceive, type WitnessingOptions, witnessRng } from "./witnessing.ts";
 
@@ -301,6 +307,19 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             const before = mems.get(witness) ?? truth.get(MEMORIES, witness);
             const after = applyTestimony(before, said, e.tick);
             if (after && after !== before) mems.set(witness, after);
+          }
+        }
+        if (e.kind === "rumor.told") {
+          // El rumor que el personaje le contó a un NPC: la memoria `told` la forma acá.
+          const listener = e.actors[1] as AgentId | undefined;
+          const told = listener
+            ? rumorToldMemory(e, mems.get(listener) ?? truth.get(MEMORIES, listener))
+            : null;
+          if (told && alive(truth, told.who) && truth.get(PERSON, told.who)) {
+            mems.set(
+              told.who,
+              addMemory(mems.get(told.who) ?? truth.get(MEMORIES, told.who), told.memory, e.tick),
+            );
           }
         }
         if (e.kind === "action.speak") {

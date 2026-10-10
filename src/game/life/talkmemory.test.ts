@@ -6,6 +6,7 @@ import {
   applyTestimony,
   recountOf,
   recountTone,
+  rumorToldMemory,
   talkMemoryIn,
   weighedMemories,
 } from "./talkmemory.ts";
@@ -111,5 +112,32 @@ describe("la charla y la memoria", () => {
     expect(
       applyTestimony(m, { deed: "event:9" as EventId, said: true, lie: "frame", accused: C }, 200),
     ).toBe(m);
+  });
+});
+
+describe("la memoria del rumor que cuenta el personaje", () => {
+  const told = (data: Record<string, unknown>): Event =>
+    ({
+      id: "event:9",
+      kind: "rumor.told",
+      tick: 200,
+      actors: [A, B],
+      place: PLACE,
+      data: { deed: "event:5", kind: "theft", accused: C, victim: A, byCharacter: true, ...data },
+    }) as unknown as Event;
+
+  it("forma una memoria told del hecho con el personaje como fuente", () => {
+    const r = rumorToldMemory(told({ credit: 0.7 }), undefined);
+    expect(r?.who).toBe(B);
+    expect(r?.memory.source).toBe("told");
+    expect(r?.memory.toldBy).toBe(A);
+    expect(r?.memory.eventId).toBe("event:5");
+    expect(r?.memory.perceived.with).toEqual([C, A]);
+  });
+
+  it("nada si no lo creyó, si ya lo recordaba o si no viene del personaje", () => {
+    expect(rumorToldMemory(told({ credit: 0.05 }), undefined)).toBeNull();
+    expect(rumorToldMemory(told({ credit: 0.7 }), hold(mem("event:5", C, -0.3)))).toBeNull();
+    expect(rumorToldMemory(told({ credit: 0.7, byCharacter: false }), undefined)).toBeNull();
   });
 });

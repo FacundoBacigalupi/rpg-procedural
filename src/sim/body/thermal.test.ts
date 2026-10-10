@@ -119,3 +119,13 @@ describe("escala por masa, ropa puesta, fuego y refugio", () => {
     expect(stepFrostbite(hurt, TEMPERATE, street, 37, 10, 2).hands).toBeLessThan(0.3);
   });
 });
+
+describe("esfuerzo y sudor", () => {
+  it("el esfuerzo calienta más y suda más que el reposo con calor", () => {
+    const hot = { ...TEMPERATE, airC: 34, humidity: 0.3 };
+    const rest = stepCore(CORE_NORMAL_C, 70, hot, street, 1, 1, 1);
+    const heavy = stepCore(CORE_NORMAL_C, 70, hot, street, 3.4 / 1.2, 1, 1);
+    expect(heavy.sweatL).toBeGreaterThan(rest.sweatL);
+    expect(heavy.producedW).toBeGreaterThan(rest.producedW);
+  });
+});
