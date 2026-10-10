@@ -75,6 +75,19 @@ const insultEvent = (): Event => ({
 });
 
 describe("evidencia propia de emociones", () => {
+  it("la alegría exige éxito propio con evidencia de pelea del dueño como iniciador", () => {
+    const win = [{ stimulus: { theme: "success", intensity: 0.4 }, blame: null }] as const;
+    const mine = { ...event("combat.fight"), actors: [OWNER, DEAD] };
+    expect(ownEmotionSignals(OWNER, mine, win, now, true)[0]).toMatchObject({
+      emotion: "joy",
+      intensity: 0.4,
+      evidence: { kind: "own", event: ORIGIN },
+    });
+    expect(ownEmotionSignals(OWNER, mine, win, now, false)).toEqual([]);
+    expect(ownEmotionSignals(DEAD, mine, win, now, true)).toEqual([]);
+    expect(ownEmotionSignals(OWNER, event("action.speak"), win, now, true)).toEqual([]);
+  });
+
   it("la ira toma el insulto entendido de converse, no intención cruda ni otra emoción del hablante", () => {
     expect(receivedInsultSignals(insultEvent(), now, true)[0]).toMatchObject({
       owner: OWNER,

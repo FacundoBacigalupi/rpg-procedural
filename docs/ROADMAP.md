@@ -589,7 +589,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
         - [x] (f3c3b) Persistir señales desde evidencia percibida propia y proyectarlas a la capa inmediata, opt-in; revisar el gate de pérdida antes de reutilizarlo.
         - (f3c3c) Alegría, vergüenza, envidia y amor (la ira por insultos entendidos ya está), dividido antes de implementar:
           - [x] (f3c3c1) Contratos puros en `emotions.ts`: `appraiseShameEmotion`, `appraiseEnvyEmotion`, `appraiseLoveEmotion`, alegría desde éxito/amabilidad/bendición en `appraisalEmotionSignals` y vidas medias propias; sin RNG ni verdad.
-          - [ ] (f3c3c2) Alegría propia: gate de evidencia en `ownEmotionSignals` desde el éxito de `appraiseFight` (opt-in `persistEmotionSignals`).
+          - [x] (f3c3c2) Alegría propia: `ownEmotionSignals` acepta el éxito de `appraiseFight` del iniciador en `combat.fight` (por `persistEmotionSignals` ya existente), con test de gate.
           - [ ] (f3c3c3) Vergüenza: que `regardEffect` (converse) emita testigos creídos y si el oyente reconoce la falta (verdad del insulto) y gate en `emotion-evidence.ts`.
           - [ ] (f3c3c4) Envidia desde percepts de ventaja ajena (brecha y valor desde riqueza/estatus/valores propios) y amor desde calidez percibida de alguien con afecto previo; gates con `evidence: percept`.
           - [ ] (f3c3c5) Proyectar joy/shame/envy/love a la capa inmediata (`immediate-goals.ts` solo lee miedo hoy).

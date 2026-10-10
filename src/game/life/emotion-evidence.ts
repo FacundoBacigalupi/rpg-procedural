@@ -47,7 +47,7 @@ export function receivedInsultSignals(
   return signal ? [{ ...signal, evidence: { kind: "own" as const, event: event.id } }] : [];
 }
 
-/** Un appraisal legacy no acredita percepción. Solo violencia corporal propia y culpa del actor. */
+/** Un appraisal legacy no acredita percepción. Solo violencia corporal propia, culpa del actor y éxito propio en pelea. */
 export function ownEmotionSignals(
   owner: AgentId,
   event: Event,
@@ -66,7 +66,12 @@ export function ownEmotionSignals(
           event.kind === "family.rearing")) ||
       (a.stimulus.theme === "guilt" &&
         event.actors[0] === owner &&
-        event.kind.startsWith("action.")),
+        event.kind.startsWith("action.")) ||
+      // Alegría: el éxito de una pelea que el dueño inició y terminó de pie (appraiseFight).
+      (a.stimulus.theme === "success" &&
+        a.blame === null &&
+        event.kind === "combat.fight" &&
+        event.actors[0] === owner),
   );
   return appraisalEmotionSignals(owner, own, event.id, now).map((s) => ({
     ...s,
