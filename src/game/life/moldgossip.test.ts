@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
 import {
+  distortStanding,
   keepMold,
   MOLD_HINT_MOOD,
   moldHintMood,
   moldKey,
   moldPriceEdge,
+  standingRumor,
+  standingRumorsOf,
   trustScale,
 } from "./moldgossip.ts";
 
@@ -93,5 +96,27 @@ describe("la decisión lee lo que cree de oídas", () => {
     expect(moldHintMood(sell, book(price(5), 1), { believedPerKg: () => 10 }, at)).toBeGreaterThan(
       0,
     );
+  });
+});
+
+describe("el apuro del vecino como rumor", () => {
+  it("lo visto de primera mano pasa a rumor attr por hogar, sin valor en la clave", () => {
+    const rumors = standingRumorsOf({
+      homes: { "home:2": { standing: "tight", day: 3 }, "home:1": { standing: "broke", day: 4 } },
+    });
+    expect(rumors).toEqual([standingRumor("home:1", "broke"), standingRumor("home:2", "tight")]);
+    expect(moldKey(standingRumor("home:1", "broke"))).toBe(
+      moldKey(standingRumor("home:1", "tight")),
+    );
+    expect(standingRumorsOf(undefined)).toEqual([]);
+  });
+
+  it("quien recuerda poco infla un apretado a ruina; el que recuerda bien o el de ruina no cambian", () => {
+    const tight = standingRumor("home:1", "tight");
+    expect(distortStanding(tight, 0.4, 0.1)).toEqual(standingRumor("home:1", "broke"));
+    expect(distortStanding(tight, 1, 0)).toEqual(tight);
+    expect(distortStanding(tight, 0.4, 0.9)).toEqual(tight);
+    const broke = standingRumor("home:1", "broke");
+    expect(distortStanding(broke, 0, 0)).toEqual(broke);
   });
 });

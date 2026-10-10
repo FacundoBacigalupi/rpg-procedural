@@ -33,7 +33,36 @@ import {
 } from "../../sim/index.ts";
 import { TRADE_VIEW } from "./tradeview.ts";
 
+import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
+
 export const MOLD_GOSSIP_PROCESS = "life.gossip_molds";
+
+/** Cuánto de lo que no recuerda se infla un "apretado" a "en la ruina" al contarlo (sin calibrar). */
+export const STANDING_INFLATE = 0.5;
+
+/** El apuro de un hogar vecino como rumor `attr` (`standing`: "tight" | "broke"). */
+export function standingRumor(home: string, standing: "tight" | "broke"): MoldRumor {
+  return { mold: "attr", about: home, attr: "standing", value: standing };
+}
+
+/** Los rumores de apuro que `book` (lo que vio de primera mano) aporta, en orden por hogar (puro). */
+export function standingRumorsOf(book: NeighborStandings | undefined): readonly MoldRumor[] {
+  const out: MoldRumor[] = [];
+  for (const home of Object.keys(book?.homes ?? {}).sort()) {
+    const v = book?.homes[home];
+    if (v) out.push(standingRumor(home, v.standing));
+  }
+  return out;
+}
+
+/**
+ * Deforma al contarlo (puro): quien recuerda poco infla un apuro "tight" a "broke" si `roll`
+ * (0-1) cae bajo `STANDING_INFLATE * (1 - memory)`. Cualquier otro rumor pasa igual.
+ */
+export function distortStanding(r: MoldRumor, memory: number, roll: number): MoldRumor {
+  if (r.mold !== "attr" || r.attr !== "standing" || r.value !== "tight") return r;
+  return roll < STANDING_INFLATE * (1 - memory) ? { ...r, value: "broke" } : r;
+}
 
 /** Lo que alguien cree de oídas (o vio) de un molde, y de quién lo oyó. */
 export interface HeardMold {
@@ -79,6 +108,12 @@ export interface MoldGossipOptions {
     readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   };
   readonly seeds?: readonly MoldSeed[];
+  /**
+   * Opt-in: lo que cada uno vio del apuro de un hogar vecino (`NEIGHBOR_STANDING`) entra como
+   * rumor `attr` `standing` de primera mano, y al contarlo se puede inflar (`distortStanding`).
+   * Apagado: sin lectura de esa tabla ni cambios.
+   */
+  readonly neighborStanding?: boolean;
   /** Probabilidad por hora de que alguien cuente algo a un vecino (sin calibrar). */
   readonly tellChance?: number;
   /**
@@ -137,6 +172,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       MOLD_RUMORS.name,
       ...(o.fromHeard ? [HEARD.name] : []),
       ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
+      ...(o.neighborStanding ? [NEIGHBOR_STANDING.name] : []),
       ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
     writes: [MOLD_RUMORS.name],
@@ -161,6 +197,26 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           }),
         );
         dirty.add(s.agent);
+      }
+      if (o.neighborStanding) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          for (const rumor of standingRumorsOf(truth.get(NEIGHBOR_STANDING, id))) {
+            const b = bookOf(id);
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+            if (prev && prev.hops === 0 && JSON.stringify(prev.rumor) === JSON.stringify(rumor)) {
+              continue;
+            }
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
+            );
+            dirty.add(id);
+          }
+        }
       }
       if (o.fromHeard) {
         for (const id of truth.ids(PERSON).sort() as AgentId[]) {
@@ -249,10 +305,11 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
                 ? [x.rumor.market]
                 : [],
           );
+          const memory = 0.4 + 0.6 * h.confidence;
           const out = distortMold(
             h.rumor,
             {
-              memory: 0.4 + 0.6 * h.confidence,
+              memory,
               drama: 0.5,
               hurry: 0,
               nearby,
@@ -268,6 +325,9 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
             },
             rng.fork("distort"),
           );
+          const said = o.neighborStanding
+            ? distortStanding(out.rumor, memory, rng.fork("standing").float())
+            : out.rumor;
           books.set(teller, {
             items: mine.items,
             told: [...mine.told, `${moldKey(h.rumor)}|${listener}`].slice(-KEPT_MOLD_TOLD),
@@ -284,7 +344,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           books.set(
             listener,
             keepMold(bookOf(listener), {
-              rumor: out.rumor,
+              rumor: said,
               confidence,
               hops: h.hops + 1,
               heardAt: ctx.now,
@@ -301,8 +361,8 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
               actors: [teller, listener],
               place: o.told.placeOf(truth, teller),
               data: {
-                mold: out.rumor.mold,
-                key: moldKey(out.rumor),
+                mold: said.mold,
+                key: moldKey(said),
                 hops: h.hops + 1,
                 credit: confidence,
               },
