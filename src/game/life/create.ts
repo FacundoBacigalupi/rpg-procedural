@@ -174,16 +174,19 @@ export interface LifeOptions {
   readonly migration?: LifeParts["migration"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
+  /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
+  readonly scam?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
 export function optInParts(
   options: LifeOptions,
-): Pick<LifeParts, "famine" | "migration" | "rumorGrievance"> {
+): Pick<LifeParts, "famine" | "migration" | "rumorGrievance" | "scam"> {
   return {
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
+    ...(options.scam ? { scam: true } : {}),
   };
 }
 
