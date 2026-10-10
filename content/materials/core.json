@@ -6,7 +6,8 @@
     "gramsPerM2": 18000,
     "decayPerYear": 0.04,
     "wall": "wood_wall",
-    "fuel": 1
+    "fuel": 1,
+    "priceCopperPerKg": 0.4
   },
   {
     "id": "thatch",
@@ -15,7 +16,8 @@
     "gramsPerM2": 4000,
     "decayPerYear": 0.12,
     "wall": "paper_wall",
-    "fuel": 1.4
+    "fuel": 1.4,
+    "priceCopperPerKg": 0.2
   },
   {
     "id": "clay",
@@ -24,7 +26,8 @@
     "gramsPerM2": 120000,
     "decayPerYear": 0.03,
     "wall": "wood_wall",
-    "fuel": 0
+    "fuel": 0,
+    "priceCopperPerKg": 0.05
   },
   {
     "id": "stone",
@@ -33,6 +36,7 @@
     "gramsPerM2": 300000,
     "decayPerYear": 0.004,
     "wall": "stone_wall",
-    "fuel": 0
+    "fuel": 0,
+    "priceCopperPerKg": 0.15
   }
 ]

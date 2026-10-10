@@ -41,6 +41,22 @@ describe("reconstrucción", () => {
       }),
     ).toBeUndefined();
   });
+  it("lo que el trabajo no junta se compra con monedas, sin pasarse de la plata", () => {
+    const base = { old: house, choice: "same" as const, gramsPerM2: g, stock: new Map(), built };
+    const need = 11_000; // 10 m2 de madera (1000 g/m2) y 10 m2 de paja (100 g/m2)
+    const price = (m: string) => (m === "timber" ? 2 : 1);
+    // El trabajo cubre 5000 g: faltan 6000 g: la paja (1 cobre/kg) primero y 5000 g de madera (2 cobres/kg) = 11 monedas.
+    const ok = planRebuild({ ...base, labor: need - 6000, coins: 11, pricePerKg: price });
+    expect(ok?.coinsSpent).toBe(11);
+    expect(ok?.bought.get("timber")).toBe(5000);
+    expect(
+      planRebuild({ ...base, labor: need - 6000, coins: 10, pricePerKg: price }),
+    ).toBeUndefined();
+    // Si el trabajo alcanza, no se gasta nada aunque haya plata.
+    const free = planRebuild({ ...base, labor: need, coins: 100, pricePerKg: price });
+    expect(free?.coinsSpent).toBe(0);
+    expect(free?.bought.size).toBe(0);
+  });
   it("lo salvado conserva su origen, lo nuevo el del evento, y los gramos cierran", () => {
     const plan = planRebuild({
       old: house,

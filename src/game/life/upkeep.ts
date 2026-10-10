@@ -6,6 +6,7 @@
 // y el campo) y lo cambiado sale a `debris`; el evento de reparación cita al anterior como causa.
 
 import {
+  type AgentId,
   type BuildingId,
   cos,
   type EntityRef,
@@ -22,9 +23,11 @@ import {
   type BuildingComponent,
   type BuildingFire,
   type BuildingRecord,
+  COPPER,
   collapseCheck,
   createEntity,
   DEBRIS_SINK,
+  DEFAULT_MATERIAL_COPPER_PER_KG,
   type DoorState,
   doorBarrier,
   draftEvent,
@@ -32,6 +35,7 @@ import {
   endEntity,
   fuelLoad,
   GATHERED_SOURCE,
+  gramsBought,
   jammedDoor,
   LOCATION,
   type LoadInput,
@@ -45,7 +49,9 @@ import {
   type ProcessDef,
   planRebuild,
   REBUILD_CHOICES,
+  REBUILD_SAVINGS_SHARE,
   RELOCATE_M,
+  type ReadonlyLedger,
   type ReadonlyWorldTruth,
   rebuildChoice,
   repairedCondition,
@@ -57,6 +63,7 @@ import {
   salvagedGrams,
   setComponent,
   VILLAGE_SQUARE,
+  WAGES_SINK,
   WORK,
   weatherAt,
   wornCondition,
@@ -146,6 +153,7 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
         fuelOf: (m) => materials.get(m)?.fuel ?? 0,
         aliveOf: (h) => (h === undefined ? 0 : (crews.get(h)?.alive ?? 0)),
         adultsIn: () => adultsIn,
+        savingsOf: (b) => savingsGramsOf(ctx.truth, ctx.ledger, b, materials),
       };
       const ignitions = fireDecisions(fireCtx, ids);
 
@@ -212,7 +220,7 @@ export function upkeepProcess(o: UpkeepOptions): ProcessDef {
           const rebuild = rebuildChoice({
             neededGrams: needed,
             salvagedGrams: salvaged,
-            savingsGrams: 0,
+            savingsGrams: savingsGramsOf(ctx.truth, ctx.ledger, { ...b, components }, materials),
             helpGrams: 0,
             siteUnsafe: check.cause === "quake",
           });
@@ -435,6 +443,7 @@ function rebuildRuins(
   const all = ctx.truth.ids(BUILDING);
   const replaced = new Set(all.flatMap((id) => ctx.truth.get(BUILDING, id)?.replaces ?? []));
   const stock = new Map<string, number>();
+  const spent = new Map<string, number>();
   for (const id of all) {
     const ruin = ctx.truth.get(BUILDING, id);
     const base = ctx.truth.get(ENTITY, id);
@@ -459,15 +468,31 @@ function rebuildRuins(
       if (!stock.has(m)) stock.set(m, ledger.balance(holderAccount(town), materialUnit(m)));
     }
     const k = events.length;
+    const pays =
+      ruin.household === undefined ? [] : pursesOf(ctx.truth, ledger, ruin.household, spent);
+    const coins = Math.floor(pays.reduce((n, p) => n + p.coins, 0) * REBUILD_SAVINGS_SHARE);
     const plan = planRebuild({
       old,
       choice: ruin.ruin.rebuild,
       gramsPerM2: (m) => materials.get(m)?.gramsPerM2 ?? 0,
       stock,
       labor: laborGrams(own, adultsIn - own, days),
+      coins,
+      pricePerKg: (m) => materials.get(m)?.priceCopperPerKg ?? DEFAULT_MATERIAL_COPPER_PER_KG,
       built: draftEvent(k),
     });
     if (!plan) continue;
+    // Lo comprado sale de las bolsas del hogar (las más llenas primero) hacia los jornales.
+    const payments: { holder: HolderRef; amount: number }[] = [];
+    let owed = plan.coinsSpent;
+    for (const p of [...pays].sort((a, b) => b.coins - a.coins)) {
+      if (owed <= 0) break;
+      const amount = Math.min(owed, p.coins);
+      if (amount <= 0) continue;
+      owed -= amount;
+      payments.push({ holder: p.holder, amount });
+      spent.set(p.key, (spent.get(p.key) ?? 0) + amount);
+    }
     for (const [m, g] of plan.salvaged) stock.set(m, (stock.get(m) ?? 0) - g);
 
     const nid = ctx.newId("building");
@@ -484,6 +509,12 @@ function rebuildRuins(
         from: externalAccount(GATHERED_SOURCE),
         to: holderAccount(holder),
         amount: g,
+      })),
+      ...payments.map((p) => ({
+        unit: COPPER,
+        from: holderAccount(p.holder),
+        to: externalAccount(WAGES_SINK),
+        amount: p.amount,
       })),
     ];
     let at = ruin.at;
@@ -505,6 +536,8 @@ function rebuildRuins(
         cause: ruin.ruin.cause,
         salvagedGrams: sum(plan.salvaged),
         gatheredGrams: sum(plan.gathered),
+        boughtGrams: sum(plan.bought),
+        coinsSpent: plan.coinsSpent,
         days: Math.round(days),
       },
       emissions: {},
@@ -523,6 +556,53 @@ function rebuildRuins(
       }),
     );
   }
+}
+
+interface Purse {
+  readonly holder: HolderRef;
+  readonly key: string;
+  readonly coins: number;
+}
+
+/** Las bolsas de cobre del hogar (miembros vivos y la casa), menos lo ya gastado hoy en otras obras. */
+function pursesOf(
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger,
+  household: string,
+  spent: ReadonlyMap<string, number>,
+): Purse[] {
+  const holders: { holder: HolderRef; key: string }[] = [
+    { holder: household as unknown as HolderRef, key: household },
+  ];
+  for (const id of truth.ids(PERSON)) {
+    if (truth.get(PERSON, id)?.household !== household) continue;
+    if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    holders.push({ holder: id as AgentId as unknown as HolderRef, key: id });
+  }
+  return holders
+    .map((h) => ({
+      ...h,
+      coins: Math.max(0, ledger.balance(holderAccount(h.holder), COPPER) - (spent.get(h.key) ?? 0)),
+    }))
+    .filter((p) => p.coins > 0);
+}
+
+/**
+ * Cuántos gramos de la materia principal del edificio compraría el hogar con lo que está dispuesto
+ * a gastar (`REBUILD_SAVINGS_SHARE` de sus monedas): los ahorros que entran en `rebuildChoice`.
+ * Sin ledger o sin hogar (comunal), 0.
+ */
+function savingsGramsOf(
+  truth: ReadonlyWorldTruth,
+  ledger: ReadonlyLedger | undefined,
+  b: BuildingRecord,
+  materials: ReadonlyMap<string, MaterialDef>,
+): number {
+  if (!ledger || b.household === undefined) return 0;
+  const coins = pursesOf(truth, ledger, b.household, new Map()).reduce((n, p) => n + p.coins, 0);
+  const main = materials.get(b.components[0]?.materials[0]?.material ?? "");
+  const price = main?.priceCopperPerKg ?? DEFAULT_MATERIAL_COPPER_PER_KG;
+  return gramsBought(Math.floor(coins * REBUILD_SAVINGS_SHARE), price);
 }
 
 /** Quita `grams` de las líneas de un componente (las más pesadas primero) y suma las nuevas con su origen. */
