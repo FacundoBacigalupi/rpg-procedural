@@ -16,6 +16,7 @@ export * from "./physiology.ts";
 export * from "./plan.ts";
 export * from "./process.ts";
 export * from "./state.ts";
+export * from "./stunting.ts";
 export * from "./substance.ts";
 export * from "./substance-effects.ts";
 export * from "./substance-state.ts";
