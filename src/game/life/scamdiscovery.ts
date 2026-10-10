@@ -28,6 +28,7 @@ import {
   type ProcessContext,
   type ProcessDef,
   pendingScams,
+  qualityPriceFactor,
   type ReadonlyWorldTruth,
   SCAM_DEALS,
   SCAM_FOUND,
@@ -49,6 +50,18 @@ export interface ScamDiscoveryOptions {
   readonly day: number;
   /** Ojo de quien puede tasar por paga (0-1, ver `scamEyeOf`); sin esto, no hay tasadores. */
   readonly appraisers?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Chance (0-1) de que el vendedor devuelva el sobreprecio si se lo reclaman; sin esto, no hay reclamo. */
+  readonly refund?: (truth: ReadonlyWorldTruth, seller: AgentId, buyer: AgentId) => number;
+}
+
+export const SCAM_REFUNDED = "scam.refunded";
+export const SCAM_REFUND_REFUSED = "scam.refund_refused";
+
+/** Lo que dicen `scam.refunded` (con `paid`) y `scam.refund_refused`: el trato y lo reclamado. */
+export interface ScamRefundData {
+  readonly deal: EventId;
+  readonly owed: number;
+  readonly paid?: { readonly unit: LedgerUnit; readonly amount: number };
 }
 
 export const SCAM_APPRAISED = "scam.appraised";
@@ -169,6 +182,7 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
             emissions: {},
             causes: [{ kind: "event" as const, event: d.event }],
           });
+          claimRefund(ctx, o, buyer, d, after.overpaid, events, postings);
         }
         if (found.length > 0) {
           const before = truth.get(SCAM_FOUND, buyer)?.events ?? [];
@@ -180,6 +194,69 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
       return events.length === 0 ? {} : { changes, events, postings };
     },
   };
+}
+
+/**
+ * El reclamo del comprador: pide de vuelta el sobreprecio (la parte del pago que corresponde a la
+ * calidad que no era). El vendedor acepta con la chance `o.refund` (su carácter y su necesidad); si
+ * acepta paga, de su bolsa en dinero y hasta donde le alcance, con asiento al ledger y
+ * `scam.refunded`; si no, `scam.refund_refused` y queda el agravio.
+ */
+function claimRefund(
+  ctx: ProcessContext,
+  o: ScamDiscoveryOptions,
+  buyer: AgentId,
+  d: ScamDeal,
+  overpaid: number,
+  events: EventDraft[],
+  postings: PostingDraft[],
+): void {
+  const ledger = ctx.ledger;
+  if (!o.refund || !ledger) return;
+  const owed = Math.floor((d.coins * overpaid) / qualityPriceFactor(d.believed));
+  if (owed < 1) return;
+  const causes = [{ kind: "event" as const, event: d.event }];
+  const place = o.placeOf(ctx.truth, buyer);
+  const willing = o.refund(ctx.truth, d.seller, buyer);
+  const accepts = ctx.rng.fork("refund", d.event, ctx.windowIndex ?? ctx.now).chance(willing);
+  const purse = accepts
+    ? ledger
+        .holdings(holderAccount(d.seller as unknown as HolderRef))
+        .filter((h) => isMoney(h.unit) && h.amount >= 1)
+        .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0]
+    : undefined;
+  if (!purse) {
+    events.push({
+      kind: SCAM_REFUND_REFUSED,
+      actors: [d.seller, buyer],
+      place,
+      data: { deal: d.event, owed } satisfies ScamRefundData,
+      emissions: {},
+      causes,
+    });
+    return;
+  }
+  const amount = Math.min(owed, Math.floor(purse.amount));
+  const draft = draftEvent(events.length);
+  events.push({
+    kind: SCAM_REFUNDED,
+    actors: [d.seller, buyer],
+    place,
+    data: { deal: d.event, owed, paid: { unit: purse.unit, amount } },
+    emissions: {},
+    causes,
+  });
+  postings.push({
+    event: draft,
+    transfers: [
+      {
+        unit: purse.unit,
+        from: holderAccount(d.seller as unknown as HolderRef),
+        to: holderAccount(buyer as unknown as HolderRef),
+        amount,
+      },
+    ],
+  });
 }
 
 /**

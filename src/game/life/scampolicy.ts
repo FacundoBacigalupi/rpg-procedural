@@ -78,6 +78,24 @@ export function scamProviders(o: ScamPolicyOptions) {
   };
 }
 
+/**
+ * Chance de que el vendedor devuelva el sobreprecio al que se lo reclama: su honestidad (carácter)
+ * menos el peso de su necesidad (hambre o deuda). Es el proveedor de `ScamDiscoveryOptions.refund`.
+ */
+export function scamRefundOf(
+  traits: readonly Trait[],
+  need: (truth: ReadonlyWorldTruth, who: AgentId) => number,
+) {
+  return (truth: ReadonlyWorldTruth, seller: AgentId): number => {
+    const innate = truth.get(INNATE, seller);
+    const z = innate
+      ? standardize(innate, traits, truth.get(PERSON, seller)?.sex ?? "female")
+      : undefined;
+    const honesty = unit(0.5 + 0.35 * clampTemper(z?.["willpower"] ?? 0));
+    return unit(honesty * (1 - 0.7 * unit(need(truth, seller))));
+  };
+}
+
 /** Qué tan fino mira un comprador (0-1): sentidos sin oficio, con el sesgo de su percepción innata (como `handsOf`). */
 export function scamEyeOf(traits: readonly Trait[]) {
   return (truth: ReadonlyWorldTruth, who: AgentId): number => {
