@@ -9,11 +9,13 @@ import type {
   AgentId,
   CauseRef,
   EventId,
+  HolderRef,
   PlaceId,
   PlaceRef,
   PlanetClock,
   Tick,
 } from "../../core/index.ts";
+import { holderAccount } from "../../core/index.ts";
 import {
   type BondDef,
   baseFor,
@@ -152,6 +154,16 @@ export interface MoldGossipOptions {
    * (0.5 por defecto) el lugar queda vago. `siteOf` dice qué sitio vio (`undefined` = ninguno).
    * Apagado: no mira eventos ni escribe nada.
    */
+  /**
+   * Opt-in: quien comparte lugar con alguien de otro hogar que tiene en la despensa (libro mayor)
+   * un bien consumible-sustancia, anota un rumor `attr` `has` de primera mano (`about` = esa
+   * persona, `value` = nombre del bien) que alimenta `borrowCraving`; después se cuenta con la
+   * deformación normal. Apagado: no lee el libro mayor ni escribe nada.
+   */
+  readonly fromStash?: {
+    readonly goods: readonly GoodDef[];
+    readonly consumables: readonly { readonly good: string }[];
+  };
   readonly fromLooking?: {
     /** Sin `siteOf`, la vida real pone `lookSiteOf(aldea)`; el proceso solo no ve nada. */
     readonly siteOf?: (
@@ -411,6 +423,40 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
         if (!at) continue;
         const key = `${at.hex}:${at.space ?? ""}`;
         groups.set(key, [...(groups.get(key) ?? []), id]);
+      }
+      if (o.fromStash && ctx.ledger) {
+        const stashGoods = o.fromStash.consumables.flatMap((c) => {
+          const g = o.fromStash?.goods.find((x) => x.id === c.good);
+          return g ? [{ name: g.name, unit: goodUnit(g) }] : [];
+        });
+        const homeOf = (id: AgentId) => truth.get(PERSON, id)?.household;
+        for (const here of groups.values()) {
+          for (const watcher of here) {
+            const mine = homeOf(watcher);
+            for (const other of here) {
+              const home = homeOf(other);
+              if (home === undefined || home === mine) continue;
+              const held = ctx.ledger.holdings(holderAccount(home as unknown as HolderRef));
+              for (const s of stashGoods) {
+                if ((held.find((h) => h.unit === s.unit)?.amount ?? 0) < 1) continue;
+                const rumor: MoldRumor = { mold: "attr", about: other, attr: "has", value: s.name };
+                const b = bookOf(watcher);
+                const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+                if (prev && prev.hops === 0 && JSON.stringify(prev.rumor) === JSON.stringify(rumor))
+                  continue;
+                const rest: MoldBook | undefined = b && {
+                  items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+                  told: b.told,
+                };
+                books.set(
+                  watcher,
+                  keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
+                );
+                dirty.add(watcher);
+              }
+            }
+          }
+        }
       }
       for (const here of groups.values()) {
         if (here.length < 2) continue;

@@ -333,4 +333,35 @@ describe("life.loans", () => {
     expect(enforcerStands([{ lender: 0.1, borrower: 0.4 }])).toBe(false);
     expect(trustNow(undefined, 5)).toBe(0);
   });
+
+  it("con bondage la mora con pérdida abre una servidumbre que se trabaja y termina", () => {
+    const { truth, ledger } = setup();
+    const { guarantors: _g, ...s } = seed;
+    const proc = loansProcess({
+      clock,
+      goods,
+      seeds: [s],
+      placeOf: () => ({ cell: 0 }) as never,
+      bondage: { wagePerDay: 1000, upkeepPerDay: 0, maxDays: 100 },
+    });
+    const apply = (r: ReturnType<typeof proc.run>) => {
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+      return r;
+    };
+    apply(proc.run(ctxOf(truth, ledger, 1)));
+    const d = apply(proc.run(ctxOf(truth, ledger, 11)));
+    expect(d.events?.map((e) => e.kind)).toContain("credit.bonded");
+    const bond = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(bond?.commitment.parent).toBeDefined();
+    const w = apply(proc.run(ctxOf(truth, ledger, 12)));
+    const ev = w.events?.find((e) => e.kind === "credit.bondage_worked");
+    expect(ev?.causes.length).toBeGreaterThan(0);
+    const after = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(after?.commitment.obligations[0]?.performed).toBe(1);
+  });
 });

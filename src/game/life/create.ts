@@ -186,6 +186,8 @@ export interface LifeOptions {
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
   readonly relationDecay?: boolean;
+  /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
+  readonly loanBondage?: LifeParts["loanBondage"];
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
@@ -196,6 +198,8 @@ export interface LifeOptions {
   readonly tradeView?: LifeParts["tradeView"];
   /** Opt-in: los lotes comerciados llevan la marca del vendedor y el comprador la verifica (`life.marks`). Apagado por defecto. */
   readonly marks?: boolean;
+  /** Opt-in: contagio de quiebras sobre los préstamos, en esta unidad de deuda (`life.contagion`). Apagado por defecto. */
+  readonly loanContagion?: string;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -211,10 +215,12 @@ export function optInParts(
   | "scamFiller"
   | "waterSources"
   | "relationDecay"
+  | "loanBondage"
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
   | "marks"
+  | "loanContagion"
   | "tradeNeeds"
 > {
   return {
@@ -227,6 +233,7 @@ export function optInParts(
         }
       : {}),
     ...(options.relationDecay ? { relationDecay: true } : {}),
+    ...(options.loanBondage ? { loanBondage: options.loanBondage } : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
@@ -236,6 +243,7 @@ export function optInParts(
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
     ...(options.marks ? { marks: true } : {}),
+    ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

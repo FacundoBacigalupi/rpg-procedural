@@ -19,6 +19,7 @@ import {
   type Transfer,
 } from "../../core/index.ts";
 import {
+  bondageExpired,
   type Collateral,
   type Commitment,
   current,
@@ -27,6 +28,7 @@ import {
   ENTITY,
   type EnforcementContext,
   type EventDraft,
+  endBondage,
   executeDefault,
   type GoodDef,
   type Guarantor,
@@ -35,6 +37,7 @@ import {
   installmentPerDay,
   type LoanCommitment,
   loanToCommitment,
+  makeBondage,
   makeLoan,
   outstanding,
   PARCEL,
@@ -49,6 +52,7 @@ import {
   type StateChange,
   setComponent,
   table,
+  workBondageDay,
 } from "../../sim/index.ts";
 
 export const LOANS_PROCESS = "life.loans";
@@ -110,8 +114,22 @@ export interface LoansOptions {
    * (`credit.claimed` con `enforcer`) si lo que cree la gente de su alcance los respalda (`enforcerStands`).
    */
   readonly enforcerClaims?: boolean;
+  /**
+   * Opt-in: la mora con pérdida abre una servidumbre (`bondage`, `parent` = el préstamo) donde el
+   * deudor trabaja para el acreedor y cada día abona `wagePerDay - upkeepPerDay` de lo perdido
+   * (`credit.bonded`, `credit.bondage_worked`). Termina `paid`, `term` o `escape` (si el abono es 0,
+   * a mitad de plazo el deudor huye). Sin esto no hay filas, eventos ni RNG nuevos.
+   */
+  readonly bondage?: BondageTerms;
   /** Opt-in: la confianza de RELATIONS se lee con `current` (decaimiento al día de hoy); sin esto, tal cual está guardada. */
   readonly relationDecay?: DecayContext;
+}
+
+/** Condiciones de la servidumbre por deudas (en la unidad del préstamo; sin calibrar). */
+export interface BondageTerms {
+  readonly wagePerDay: number;
+  readonly upkeepPerDay: number;
+  readonly maxDays: number;
 }
 
 /** Confianza de `rel` al tick `now`: con decaimiento si hay contexto, sin él tal cual. */
@@ -446,6 +464,45 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               setComponent(COMMITMENTS, sid as never, sub),
             );
           }
+          // Servidumbre (contracts §2): lo que no se cobró se salda trabajando para el acreedor.
+          if (o.bondage && res.loan.status === "defaulted" && res.loss > 0) {
+            const bid = ctx.newId("commitment");
+            const bond = makeBondage({
+              id: bid as string,
+              creditor: l.lender,
+              debtor: l.borrower,
+              debt: res.loss,
+              wagePerDay: o.bondage.wagePerDay,
+              upkeepPerDay: o.bondage.upkeepPerDay,
+              startDay: today,
+              maxDays: o.bondage.maxDays,
+              basis: "norm",
+              parent: r.id,
+              originEventId: draftEvent(events.length) as unknown as string,
+            });
+            if (bond) {
+              events.push({
+                kind: "credit.bonded",
+                actors: [borrowerMan, lenderMan],
+                place: o.placeOf(ctx.truth, lenderMan),
+                data: { loan: r.id, commitment: bid, debt: res.loss, maxDays: o.bondage.maxDays },
+                emissions: {},
+                causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
+              });
+              changes.push(
+                setComponent(
+                  ENTITY,
+                  bid as never,
+                  {
+                    id: bid,
+                    originEventId: draftEvent(events.length - 1),
+                    createdAt: ctx.now,
+                  } as never,
+                ),
+                setComponent(COMMITMENTS, bid as never, bond),
+              );
+            }
+          }
           continue;
         }
         const due = Math.ceil(installmentPerDay(l, today));
@@ -521,6 +578,62 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               ],
               status: done ? "fulfilled" : "active",
               history: [...c.history, "credit.subrogated_paid"],
+            }),
+          );
+        }
+      }
+
+      // Servidumbre: el deudor trabaja un día; termina pagada, por plazo o huyendo (abono 0 a mitad de plazo).
+      if (o.bondage) {
+        for (const r of commitmentRows(ctx.truth)) {
+          const c = r.commitment;
+          const ob = c.obligations[0];
+          if (c.kind !== "bondage" || c.status !== "active" || !ob || ob.duty.kind !== "work")
+            continue;
+          const creditorMan = firstAlive(ob.creditor);
+          const debtorMan = firstAlive(ob.debtor);
+          if (!creditorMan || !debtorMan) continue;
+          const cause = [
+            { kind: "event" as const, event: c.originEventId as never },
+            { kind: "state" as const, entity: r.id as unknown as EntityRef, key: "bondage" },
+          ];
+          const endWith = (end: "term" | "escape") => {
+            const k = events.length;
+            const done = endBondage(c, end, draftEvent(k) as unknown as string);
+            events.push({
+              kind: "credit.bondage_ended",
+              actors: [debtorMan, creditorMan],
+              place: o.placeOf(ctx.truth, debtorMan),
+              data: { commitment: r.id, parent: c.parent, end, unpaid: done.unpaid },
+              emissions: {},
+              causes: cause,
+            });
+            changes.push(setComponent(COMMITMENTS, r.id as never, done.commitment));
+          };
+          if (bondageExpired(c, today)) {
+            endWith("term");
+            continue;
+          }
+          const half = c.term.startDay + (c.term.endDay - c.term.startDay) / 2;
+          if (ob.duty.creditPerDay <= 0 && today >= half) {
+            endWith("escape");
+            continue;
+          }
+          const w = workBondageDay(c, today);
+          if (w.credited <= 0) continue;
+          const k = events.length;
+          events.push({
+            kind: "credit.bondage_worked",
+            actors: [debtorMan, creditorMan],
+            place: o.placeOf(ctx.truth, debtorMan),
+            data: { commitment: r.id, parent: c.parent, credited: w.credited, paid: w.paid },
+            emissions: {},
+            causes: cause,
+          });
+          changes.push(
+            setComponent(COMMITMENTS, r.id as never, {
+              ...w.commitment,
+              history: [...w.commitment.history, draftEvent(k) as unknown as string],
             }),
           );
         }

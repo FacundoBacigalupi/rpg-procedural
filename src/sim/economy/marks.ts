@@ -70,6 +70,14 @@ export function forgeryDetectChance(fidelity: number, eye: number, familiarity: 
   return clamp(sloppy * (0.4 + 1.2 * sharp), 0, 1);
 }
 
+/**
+ * Chance de tomar por falsa una marca auténtica al mirarla de nuevo (falso positivo): baja con
+ * la familiaridad y con el ojo; sin familiaridad ni ojo ronda el 10 %.
+ */
+export function markFalseAlarmChance(eye: number, familiarity: number): number {
+  return clamp(0.1 * (1 - clamp(familiarity, 0, 1)) * (1 - 0.5 * clamp(eye, 0, 1)), 0, 1);
+}
+
 /** Resultado de verificar: si lo tomó por falsa y si la marca le inspira confianza. */
 export interface MarkVerdict {
   readonly seemsForged: boolean;
@@ -80,7 +88,8 @@ export interface MarkVerdict {
 /**
  * Verifica una marca con la tirada `roll` (0-1) del llamador: la detecta si `roll` cae bajo la
  * chance. Una marca que no se ve falsa se cree según la fama de quien dice ser (`renown`, 0-1).
- * Una auténtica nunca se toma por falsa (el falso positivo no se modela aún).
+ * Con `falseAlarm` (0-1, por defecto 0) una marca no detectada puede igual tomarse por falsa
+ * si `roll` cae en el extremo alto (falso positivo, también sobre las auténticas).
  */
 export function verifyMark(
   mark: LotMark,
@@ -88,7 +97,9 @@ export function verifyMark(
   familiarity: number,
   renown: number,
   roll: number,
+  falseAlarm = 0,
 ): MarkVerdict {
-  const caught = roll < forgeryDetectChance(mark.fidelity, eye, familiarity);
+  const caught =
+    roll < forgeryDetectChance(mark.fidelity, eye, familiarity) || roll >= 1 - falseAlarm;
   return { seemsForged: caught, credence: caught ? 0 : clamp(0.3 + 0.7 * renown, 0, 1) };
 }

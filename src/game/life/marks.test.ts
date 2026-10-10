@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import type { ProcessContext, ReadonlyWorldTruth } from "../../sim/index.ts";
 import { optInParts } from "./create.ts";
-import { LOT_MARKS, MARK_STAMPED, MARK_VERIFIED, marksProcess } from "./marks.ts";
+import { LOT_MARKS, MARK_RECHECKED, MARK_STAMPED, MARK_VERIFIED, marksProcess } from "./marks.ts";
 
 const buyer = "agent:1" as AgentId;
 const seller = "agent:2" as AgentId;
 
-function run(direction: "buy" | "sell", roll: number, deal = true) {
-  const tables: Record<string, Record<string, unknown>> = { [LOT_MARKS.name]: {}, entity: {} };
+function run(direction: "buy" | "sell", roll: number, deal = true, prior?: unknown) {
+  const tables: Record<string, Record<string, unknown>> = {
+    [LOT_MARKS.name]: prior ? { [buyer]: prior } : {},
+    entity: {},
+  };
   const truth = { get: (t: { name: string }, id: string) => tables[t.name]?.[id] } as never;
   const rng = { fork: () => rng, float: () => roll } as never;
   const actor = direction === "buy" ? buyer : seller;
@@ -51,6 +54,22 @@ describe("marcas en el lote", () => {
       expect(r.changes?.[0]?.id).toBe(buyer);
       expect(r.events?.[1]?.data["seemsForged"]).toBe(false);
     }
+  });
+  it("al cerrar otro trato repasa un lote ya recibido, con falso positivo", () => {
+    const old = {
+      event: "event:1",
+      unit: "good:grain",
+      grams: 100,
+      mark: { claimedBy: seller, stampedBy: seller, tick: 1, claimed: 0.6, fidelity: 1 },
+      seemsForged: false,
+      credence: 0.65,
+    };
+    const r = run("buy", 0.999, true, { lots: [old] });
+    expect(r.events?.map((e) => e.kind)).toEqual([MARK_STAMPED, MARK_VERIFIED, MARK_RECHECKED]);
+    expect(r.events?.[2]?.data["seemsForged"]).toBe(true);
+    expect(r.events?.[2]?.data["wasForged"]).toBe(false);
+    const calm = run("buy", 0.5, true, { lots: [old] });
+    expect(calm.events?.[2]?.data["seemsForged"]).toBe(false);
   });
   it("sin trato no hay marca", () => {
     expect(run("buy", 0.5, false).events).toBeUndefined();
