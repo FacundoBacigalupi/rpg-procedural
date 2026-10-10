@@ -22,6 +22,7 @@ import {
   type ActionCatalog,
   type ActionPlan,
   type Activity,
+  AMPUTATIONS,
   advance,
   applyAcute,
   type Bearing,
@@ -45,6 +46,7 @@ import {
   FINISH_FORCE,
   type FoodDef,
   FRESH_CURSOR,
+  FROSTBITE,
   fieldFertility,
   type GoodDef,
   goodUnit,
@@ -144,6 +146,7 @@ import {
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { acuteOf } from "./substances.ts";
+import { applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
 
@@ -206,6 +209,8 @@ export interface ActOptions {
   readonly famineTrade?: boolean;
   /** Opt-in: la altura baja la resistencia al actuar (`applyAltitude`); apagado, no cambia. */
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
+  readonly frostbite?: boolean;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -298,6 +303,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELLER_DAY.name,
       SALE_RECEIPTS.name,
       ACCLIMATIZATION.name,
+      FROSTBITE.name,
+      AMPUTATIONS.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
@@ -498,7 +505,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   if (!person || !innate || !body) throw new Error(`${me} no tiene persona, rasgos o cuerpo`);
   const bodyPlan = e.plans.get(body.plan) as BodyPlanDef;
   const acuteCaps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
-  const caps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
+  const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
+  const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 

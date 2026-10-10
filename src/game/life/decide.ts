@@ -18,6 +18,7 @@ import {
 import {
   ACCLIMATIZATION,
   type ActionCatalog,
+  AMPUTATIONS,
   applyAcute,
   BELIEFS,
   type BeliefView,
@@ -34,6 +35,7 @@ import {
   decideByUtility,
   drivesFor,
   ENTITY,
+  FROSTBITE,
   type Goal,
   type GoodDef,
   goalChanges,
@@ -90,6 +92,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { acuteOf } from "./substances.ts";
+import { applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
 export const DECIDED_EVENT = "npc.decided";
@@ -138,6 +141,8 @@ export interface DecideOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: la altura baja la resistencia creída (`applyAltitude`); apagado, no cambia. */
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Opt-in: la congelación y las amputaciones bajan manos y pies (`applyFrostbite`); apagado, no cambia. */
+  readonly frostbite?: boolean;
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -164,6 +169,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       MENTAL.name,
       LOCATION.name,
       ACCLIMATIZATION.name,
+      FROSTBITE.name,
+      AMPUTATIONS.name,
       PLACE.name,
       SELF_IMAGES.name,
       SKILL_STATE.name,
@@ -323,7 +330,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           ? [setComponent(NPC_GOALS, me, { items: goals })]
           : [];
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
-      const caps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
+      const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
+      const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {

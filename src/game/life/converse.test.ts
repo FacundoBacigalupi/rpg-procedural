@@ -27,6 +27,7 @@ import {
   RELATION_BONDS,
   RELATION_DIMS,
   RELATIONS,
+  RUMORS,
   relationship,
   SECRETS,
   STANDING_BELIEFS,
@@ -486,5 +487,40 @@ describe("la pregunta por un hecho es un law.inquiry", () => {
     expect(inquiry?.causes.some((c) => c.kind === "event")).toBe(true);
     expect(speech).toBeDefined();
     expect(report.events.some((e) => e.kind === "law.testimony")).toBe(true);
+  }, 120_000);
+});
+
+describe("del rumor a «¿quién te lo dijo?»", () => {
+  it("lo que el personaje cuenta queda como rumor en el oyente, y este lo nombra como fuente", () => {
+    const { life, w, me, other, mates } = scene(7);
+    const [third, victim] = mates.filter((id) => id !== other);
+    if (!third || !victim) return;
+    const deed = {
+      kind: "theft",
+      by: third,
+      victim,
+      event: w.log.all()[0]?.id as EventId,
+      at: life.now,
+      via: "saw",
+    } as const;
+    w.truth.set(KNOWN_DEEDS, me, { deeds: [deed] });
+    const effectOf = (report: ReturnType<typeof life.turn>) =>
+      (
+        report.events.find((e) => e.actors[0] === other && e.kind === "action.speak")?.data as
+          | { effect: { reply: string } }
+          | undefined
+      )?.effect;
+    const told = life.turn(
+      say(me, other, `Dicen que ${nameOf(w, third)} le robó a ${nameOf(w, victim)}`),
+      1,
+    );
+    expect(told.events.some((e) => e.kind === "rumor.told")).toBe(true);
+    const mine = w.truth.get(RUMORS, other)?.items.find((x) => x.root === deed.event);
+    expect(mine).toBeDefined();
+    expect(mine?.content.by).toBe(third);
+    const asked = life.turn(say(me, other, "¿Quién te lo dijo?"), 1);
+    expect(effectOf(asked)?.reply.startsWith("source.")).toBe(true);
+    expect(effectOf(asked)?.reply).not.toBe("source.none");
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 120_000);
 });

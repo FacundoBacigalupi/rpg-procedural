@@ -25,12 +25,14 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  type HeldDef,
   INFECTION,
   infectionStage,
   levelOf,
   PATHOGEN,
   type PathogenDef,
   type PathogenTreatment,
+  PERSON_SUBSTANCE,
   type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
@@ -40,7 +42,10 @@ import {
   type SignSet,
   SKILL_STATE,
   type StateChange,
+  SUBSTANCE,
+  type SubstanceDef,
   setComponent,
+  substanceSigns,
   TREATMENT,
 } from "../../sim/index.ts";
 
@@ -114,6 +119,35 @@ export function signsOfBody(plan: BodyPlanDef, body: Body): SignSet {
   return out;
 }
 
+/**
+ * Lo que ve el sanador de las sustancias que el enfermo tiene encima (`substanceSigns`), como pesos
+ * 0-1 de `SignSet`: envenenamiento por etapa, sedación (somnolencia) y abstinencia (temblor).
+ */
+export function signsOfSubstances(held: readonly HeldDef[]): SignSet {
+  const out: Record<string, number> = {};
+  const put = (k: string, v: number) => {
+    out[k] = Math.max(out[k] ?? 0, v);
+  };
+  for (const s of substanceSigns(held)) {
+    if (s.kind === "sedated") put("drowsiness", 0.7);
+    else if (s.kind === "withdrawing") {
+      put("tremor", 0.6);
+      put("restlessness", 0.5);
+    } else if (s.stage === "symptoms") {
+      put("weakness", 0.4);
+      put("dizziness", 0.3);
+    } else if (s.stage === "grave") {
+      put("weakness", 0.7);
+      put("dizziness", 0.6);
+      put("pallor", 0.5);
+    } else if (s.stage === "dying") {
+      put("weakness", 0.9);
+      put("pallor", 0.8);
+    }
+  }
+  return out;
+}
+
 /** Fama del sanador: la fracción de lo que atendió que mejoró (con prior de 1 caso neutro), 0-1. */
 export function healerRenown(treated: number, helped: number): number {
   return (helped + 0.5) / (treated + 1);
@@ -124,10 +158,35 @@ export function healerFee(base: number, skill: number, renown: number): number {
   return Math.round(base * (0.5 + skill) * (1 + Math.min(1, Math.max(0, renown))) * 100) / 100;
 }
 
+function mergeSigns(a: SignSet, b: SignSet): SignSet {
+  const out: Record<string, number> = { ...a };
+  for (const [k, v] of Object.entries(b)) out[k] = Math.max(out[k] ?? 0, v);
+  return out;
+}
+
+/** Los signos de las sustancias que alguien tiene en el cuerpo; sin filas, nada. */
+function heldSigns(truth: ReadonlyWorldTruth, who: string): SignSet {
+  const rows = truth.get(PERSON_SUBSTANCE, who as never)?.held;
+  if (!rows || rows.length === 0) return {};
+  const defs = new Map<string, SubstanceDef>();
+  for (const id of truth.ids(SUBSTANCE)) {
+    const rec = truth.get(SUBSTANCE, id);
+    if (rec) defs.set(rec.def.id, rec.def);
+  }
+  const held: HeldDef[] = [];
+  for (const h of rows) {
+    const def = defs.get(h.substance);
+    if (def) held.push({ def, state: h.state });
+  }
+  return signsOfSubstances(held);
+}
+
 export interface MedicineOptions {
   /** Opt-in: planes de cuerpo; los signos del enfermo salen de `bodySigns` en vez de fijos. */
   readonly plans?: readonly BodyPlanDef[] | undefined;
   readonly clock: PlanetClock;
+  /** Opt-in: a los signos del enfermo se suman los de las sustancias que tiene encima (`PERSON_SUBSTANCE`). */
+  readonly substanceSigns?: boolean | undefined;
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
@@ -152,6 +211,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       TREATMENT.name,
       ENTITY.name,
       BODY_STATE.name,
+      ...(o.substanceSigns ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
     ],
     writes: [TREATMENT.name],
     run(ctx) {
@@ -207,8 +267,11 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           const progress = Math.min(1, Math.max(0, hours / Math.max(1, def.courseHours)));
           const body = o.plans ? ctx.truth.get(BODY_STATE, id) : undefined;
           const plan = body && o.plans?.find((p) => p.id === body.plan);
-          const signs: SignSet =
+          const base: SignSet =
             body && plan ? signsOfBody(plan, body) : { fever: 0.8, weakness: 0.3 + 0.5 * progress };
+          const signs: SignSet = o.substanceSigns
+            ? mergeSigns(base, heldSigns(ctx.truth, id))
+            : base;
           const belief = diagnose(
             signs,
             healer.models,

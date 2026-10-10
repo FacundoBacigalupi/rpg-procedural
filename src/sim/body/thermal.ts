@@ -3,6 +3,7 @@
 // con el aire (temperatura, viento, mojado, ropa, refugio, fuego) y con el sudor. Sin IO ni
 // estado: el cableado a `Body` y a la vida queda aparte. Constantes sin calibrar.
 
+import type { EventId } from "../../core/index.ts";
 import { exp, pow } from "../../core/math/index.ts";
 import { table } from "../world/index.ts";
 
@@ -343,6 +344,42 @@ export function frostbiteHandFactor(state: FrostbiteState): number {
 /** Movilidad (0-1) que deja la congelación de los pies. */
 export function frostbiteMobilityFactor(state: FrostbiteState): number {
   return clamp(1 - state.feet * 0.8, 0.2, 1);
+}
+
+/** Una parte perdida por congelación: permanente, con el evento que la causó. */
+export interface LostPart {
+  readonly part: FrostbitePart;
+  readonly at: number;
+  readonly cause: EventId;
+}
+
+/**
+ * Partes amputadas por congelación, aparte del `Body` y de `FROSTBITE` (herida permanente de la
+ * parte: no se cura ni se borra). Sin fila no hay pérdidas. La escribe `life.thermal`.
+ */
+export interface Amputations {
+  readonly lost: readonly LostPart[];
+}
+export const AMPUTATIONS = table<Amputations>("body.amputations");
+
+/** Multiplicadores de capacidad que dejan las partes perdidas (1 = sin pérdida). */
+export interface AmputationFactors {
+  readonly manipulation: number;
+  readonly locomotion: number;
+}
+
+/** Sin manos queda una fracción de la manipulación; sin pies, de la locomoción. */
+export function amputationFactors(a: Amputations | undefined): AmputationFactors {
+  const has = (p: FrostbitePart) => a?.lost.some((l) => l.part === p) === true;
+  return { manipulation: has("hands") ? 0.35 : 1, locomotion: has("feet") ? 0.4 : 1 };
+}
+
+/** Partes que el estado dice necróticas y que todavía no están registradas como perdidas. */
+export function newAmputations(
+  state: FrostbiteState,
+  had: Amputations | undefined,
+): FrostbitePart[] {
+  return frostbiteAmputations(state).filter((p) => !had?.lost.some((l) => l.part === p));
 }
 
 /** Agua por hora (L) que suda en equilibrio, para alimentar la sed del cuerpo. */

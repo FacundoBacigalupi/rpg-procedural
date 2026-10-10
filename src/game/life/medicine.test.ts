@@ -12,11 +12,20 @@ import {
   type ProcessContext,
   type RemedyDef,
   SKILL_STATE,
+  type SubstanceDef,
+  type SubstanceState,
   TREATMENT,
   WorldTruth,
 } from "../../sim/index.ts";
 import { exposureProcess } from "./exposure.ts";
-import { type Healer, healerFee, healerRenown, medicineProcess, signsOfBody } from "./medicine.ts";
+import {
+  type Healer,
+  healerFee,
+  healerRenown,
+  medicineProcess,
+  signsOfBody,
+  signsOfSubstances,
+} from "./medicine.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const flu: PathogenDef = {
@@ -197,5 +206,41 @@ describe("life.medicine", () => {
     expect(s.weakness).toBe(0.8);
     expect(healerRenown(10, 9)).toBeGreaterThan(healerRenown(10, 2));
     expect(healerFee(10, 0.5, 1)).toBeGreaterThan(healerFee(10, 0.5, 0));
+  });
+});
+
+describe("life.medicine, señales de sustancias", () => {
+  const def = {
+    id: "toxin",
+    routes: { ingest: { bioavailability: 1, halfHours: 1 } },
+    halfLifeHours: 10,
+    ec50: 2,
+    hill: 1,
+    latencyHours: 0,
+    toxicThreshold: 1,
+    damagePerHourAtDouble: 0.1,
+    repairHalfHours: 24,
+  } as unknown as SubstanceDef;
+  const state = (damage: number) =>
+    ({
+      depot: {},
+      blood: 0,
+      site: 0,
+      damage,
+      tolerance: 0,
+      dependence: 0,
+      hoursSinceUse: 0,
+    }) as unknown as SubstanceState;
+
+  it("sin sustancias no hay señales; el envenenamiento sube con la etapa", () => {
+    expect(signsOfSubstances([])).toEqual({});
+    const mild = signsOfSubstances([{ def, state: state(0.1) }]) as { weakness?: number };
+    const grave = signsOfSubstances([{ def, state: state(0.5) }]) as {
+      weakness?: number;
+      pallor?: number;
+    };
+    expect(mild.weakness).toBe(0.4);
+    expect(grave.weakness).toBe(0.7);
+    expect(grave.pallor).toBe(0.5);
   });
 });

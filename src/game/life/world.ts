@@ -100,6 +100,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
+import { type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
@@ -130,6 +131,8 @@ export interface LifeWorld {
   readonly healerSchool?: HealerSchool;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
+  /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
+  readonly healerSubstanceSigns?: boolean;
   /** Remedio a unidad del ledger: darlo gasta un bien real (del sanador o del enfermo); sin existencias no se da. Sin esto, remedios sin costo. */
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
@@ -151,6 +154,14 @@ export interface LifeWorld {
    * baja con la altura. Apagado por defecto: la aldea no cambia, sin filas ni RNG.
    */
   readonly realAltitude?: boolean;
+  /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
+  readonly waterSources?: WaterSourcesConfig;
+  /**
+   * Opt-in: la congelación se acumula por parte (`FROSTBITE`), la necrosis amputa (`AMPUTATIONS`,
+   * evento `body.amputated`) y manos y pies heridos bajan las capacidades de `decide`/`act`.
+   * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
+   */
+  readonly frostbite?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -269,6 +280,7 @@ export function lifeWorld(
           seed: parts.seed,
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -428,6 +440,7 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          ...(parts.waterSources ? { waterFor: waterHooks(parts.waterSources).waterFor } : {}),
           deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
@@ -436,6 +449,7 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          substanceSigns: parts.healerSubstanceSigns === true,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           placeOf: placeOf(parts, village),
         }),
@@ -460,6 +474,7 @@ export function lifeWorld(
           seed: parts.seed,
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
         upkeepProcess({
@@ -584,9 +599,13 @@ export function lifeWorld(
           player,
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,
+          ...(parts.waterSources
+            ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }
+            : {}),
           map: parts.map,
           spaces: parts.spaces,
           bodyPlans: parts.plans,
