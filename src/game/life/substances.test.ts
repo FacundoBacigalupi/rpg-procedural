@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, EventId } from "../../core/index.ts";
-import { Rng } from "../../core/index.ts";
+import { EventLog, IdAllocator, Rng } from "../../core/index.ts";
 import {
   BODY_STATE,
+  draftEvent,
   ENTITY,
   PERSON,
   PERSON_SUBSTANCE,
+  type PersonSubstances,
   type ProcessContext,
+  Scheduler,
   SUBSTANCE,
   type SubstanceDef,
+  TREATMENT,
   WorldTruth,
 } from "../../sim/index.ts";
 import {
@@ -62,6 +66,141 @@ function ctx(truth: WorldTruth, now: number): ProcessContext {
 }
 
 describe("life.substances", () => {
+  it("scheduler resuelve causas de dosis de escenario y tratamiento a ids reales, preservando tiempo causal", () => {
+    const truth = world();
+    const ids = new IdAllocator();
+    const log = new EventLog();
+    const genesis = ids.next("event");
+    log.append({
+      id: genesis,
+      tick: 0,
+      kind: "genesis",
+      actors: [a],
+      place,
+      data: null,
+      emissions: {},
+      causes: [{ kind: "seed" }],
+      resolution: "local",
+    });
+    const treated = ids.next("event");
+    log.append({
+      id: treated,
+      tick: 3600,
+      kind: "body.treated",
+      actors: [a],
+      place,
+      data: null,
+      emissions: {},
+      causes: [{ kind: "event", event: genesis }],
+      resolution: "local",
+    });
+    truth.set(TREATMENT, a, {
+      treatments: [
+        {
+          pathogen: "test",
+          healer: "agent:2",
+          believed: "test",
+          confidence: 1,
+          remedy: "herb",
+          effect: 0.1,
+          harm: 0,
+          quarantine: null,
+          dose: { def: POISON, route: "ingest", amount: 1 },
+          givenAt: 3600,
+          cause: treated,
+        },
+      ],
+    });
+    const p = substancesProcess({
+      clock,
+      placeOf: () => place,
+      causalDoseOrigins: true,
+      treatmentDoses: true,
+      doses: [
+        {
+          def: POISON,
+          who: a,
+          at: 2000,
+          route: "ingest",
+          amount: 1,
+          source: "escenario",
+          cause: genesis,
+        },
+      ],
+    });
+    const scheduler = new Scheduler({
+      rng: Rng.root(7),
+      truth,
+      clock,
+      ids,
+      log,
+      processes: [p],
+      resolution: "local",
+    });
+    scheduler.advanceTo(clock.day);
+    const doses = log.all().filter((e) => e.kind === "body.substance_dosed");
+    expect(doses.map((e) => e.tick)).toEqual([2000, 3600]);
+    expect(doses[1]?.causes).toEqual([{ kind: "event", event: treated }]);
+    expect(truth.get(PERSON_SUBSTANCE, a)?.held[0]?.originEventId).toBe(doses[1]?.id);
+    scheduler.advanceTo(clock.day * 2);
+    expect(truth.get(PERSON_SUBSTANCE, a)?.held[0]?.originEventId).toBe(doses[1]?.id);
+    expect(JSON.stringify(truth.get(PERSON_SUBSTANCE, a))).not.toContain("event:~");
+  });
+
+  it("dosis propia conocida registra causa sólo opt-in y la conserva al metabolizar y podar", () => {
+    const truth = world();
+    truth.set(SUBSTANCE, "substance:1" as EntityRef, { def: POISON, source: "otro consumidor" });
+    const doses = [
+      {
+        def: POISON,
+        who: a,
+        at: 100,
+        route: "ingest" as const,
+        amount: 1,
+        source: "escenario",
+        cause: "event:7",
+      },
+    ];
+    const options = { clock, doses, placeOf: () => place };
+    const off = substancesProcess(options).run(ctx(truth, clock.day));
+    expect(
+      substancesProcess({ ...options, causalDoseOrigins: false }).run(ctx(truth, clock.day)),
+    ).toEqual(off);
+    const on = substancesProcess({ ...options, causalDoseOrigins: true }).run(
+      ctx(truth, clock.day),
+    );
+    expect(on.events?.[0]).toMatchObject({
+      kind: "body.substance_dosed",
+      actors: [a],
+      tick: 100,
+      causes: [{ kind: "event", event: "event:7" }],
+    });
+    const row = on.changes?.find((c) => c.op === "set" && c.table === PERSON_SUBSTANCE.name);
+    const value = row && row.op === "set" ? (row.value as PersonSubstances) : undefined;
+    expect(value?.held[0]?.originEventId).toBe(draftEvent(0));
+    if (!value) throw new Error("dosis sin fila propia");
+    truth.set(PERSON_SUBSTANCE, a, {
+      ...value,
+      held: value.held.map((h) => ({ ...h, originEventId: "event:9" as EventId })),
+      cues: [
+        {
+          substance: POISON.id,
+          kind: "place",
+          key: "hex:0",
+          at: clock.day,
+          strength: 0.6,
+          originEventId: "event:9" as EventId,
+        },
+      ],
+    });
+    const next = substancesProcess({ clock, placeOf: () => place }).run(ctx(truth, clock.day * 2));
+    const nextRow = next.changes?.find((c) => c.op === "set" && c.table === PERSON_SUBSTANCE.name);
+    const nextValue =
+      nextRow && nextRow.op === "set" ? (nextRow.value as PersonSubstances) : undefined;
+    expect(nextValue?.held[0]?.originEventId).toBe("event:9");
+    expect(nextValue?.cues?.[0]?.originEventId).toBe("event:9");
+  });
+
   it("sin dosis ni filas no hace nada", () => {
     const p = substancesProcess({ clock, placeOf: () => place });
     expect(p.run(ctx(world(), clock.day))).toEqual({});
@@ -82,6 +221,73 @@ describe("life.substances", () => {
 
 describe("consumeDose (verbo consume)", () => {
   const consumable = { good: "pipeweed", def: POISON, route: "ingest", amount: 3 } as const;
+  it("sólo una acción de dosis real da procedencia propia a la fila y a señales reforzadas", () => {
+    const truth = world();
+    const learn = { ctx: { hex: 0, people: [], hour: 0 }, clock };
+    const legacy = consumeDose(truth, a, consumable, ctx(truth, 500), place, 1, learn);
+    expect(consumeDose(truth, a, consumable, ctx(truth, 500), place, 1, learn, undefined)).toEqual(
+      legacy,
+    );
+    const intake = consumeDose(
+      truth,
+      a,
+      consumable,
+      ctx(truth, 500),
+      place,
+      1,
+      learn,
+      draftEvent(0),
+    );
+    const row = intake.changes.find((c) => c.op === "set" && c.table === PERSON_SUBSTANCE.name);
+    const value = row && row.op === "set" ? (row.value as PersonSubstances) : undefined;
+    expect(value?.held[0]?.originEventId).toBe(draftEvent(0));
+    expect(value?.cues?.every((c) => c.originEventId === draftEvent(0))).toBe(true);
+    if (!value) throw new Error("dosis sin fila propia");
+    truth.set(PERSON_SUBSTANCE, a, {
+      ...value,
+      held: value.held.map((h) => ({ ...h, originEventId: "event:8" as EventId })),
+      ...(value.cues
+        ? { cues: value.cues.map((c) => ({ ...c, originEventId: "event:8" as EventId })) }
+        : {}),
+    });
+    const reinforced = consumeDose(
+      truth,
+      a,
+      consumable,
+      ctx(truth, 600),
+      place,
+      1,
+      learn,
+      "event:9" as EventId,
+    );
+    const reinforcedRow = reinforced.changes.find(
+      (c) => c.op === "set" && c.table === PERSON_SUBSTANCE.name,
+    );
+    const strengthened =
+      reinforcedRow && reinforcedRow.op === "set"
+        ? (reinforcedRow.value as PersonSubstances)
+        : undefined;
+    expect(strengthened?.held[0]?.originEventId).toBe("event:9");
+    expect(strengthened?.cues?.every((c) => c.originEventId === ("event:9" as EventId))).toBe(true);
+    const rejected = consumeDose(
+      world(),
+      a,
+      { ...consumable, amount: 0 },
+      ctx(world(), 500),
+      place,
+      1,
+      learn,
+      "event:9" as EventId,
+    );
+    const rejectedRow = rejected.changes.find(
+      (c) => c.op === "set" && c.table === PERSON_SUBSTANCE.name,
+    );
+    expect(
+      rejectedRow && rejectedRow.op === "set"
+        ? (rejectedRow.value as PersonSubstances).held[0]?.originEventId
+        : undefined,
+    ).toBeUndefined();
+  });
 
   it("suma la dosis con evento causal la primera vez y no repite el evento", () => {
     const t = world();

@@ -314,6 +314,8 @@ export interface ActOptions {
   };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
+  /** Opt-in: conserva la acción de dosis propia como procedencia. */
+  readonly causalDoseOrigins?: boolean;
   /** Opt-in (con `cravingCues`): las señales de la dosis usan creencias, huso y el objeto tomado; ver `cueLocalOf`. */
   readonly cueLocal?: boolean;
 }
@@ -787,6 +789,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         input.place,
         r.events.length,
         o.cravingCues ? { ctx: doseCueCtx(laced.good), clock: o.clock } : undefined,
+        o.causalDoseOrigins ? draftEvent(0) : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);
@@ -806,6 +809,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         input.place,
         r.events.length,
         o.cravingCues ? { ctx: doseCueCtx(o.drinkSubstance.good), clock: o.clock } : undefined,
+        o.causalDoseOrigins ? draftEvent(0) : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);
@@ -839,6 +843,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         input.place,
         r.events.length,
         o.cravingCues ? { ctx: doseCueCtx(used.good), clock: o.clock } : undefined,
+        o.causalDoseOrigins ? draftEvent(0) : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);

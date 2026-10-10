@@ -18,6 +18,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 5. Trabajar según §2-§5. Al cerrar, actualizar ROADMAP y §8 en el mismo PR.
 
 ## 2. Roles
+**Método vigente para Codex (pedido del usuario, 2026-10-10):** la sesión principal coordina continuamente. Los subagentes conservan su línea temática y reciben nuevas tareas al terminar, incluso mientras el coordinador verifica e integra el lote anterior. El cierre de un ítem no termina la sesión. Pruebas con LLM solo cuando el cambio toque parser, narración o sus contratos. Reemplaza la antigua regla de una sesión por ítem.
+
 - **Coordinador** (una sesión): agrupa ítems en *clusters* temáticos (de cualquier fase), despacha agentes, integra ramas, corre la suite, mantiene «Ahora» y la tabla §7. Es el único que corre tests amplios y mergea.
 - **Agentes** (hasta 3, uno por worktree `C:\dev\rpg-procedural-wt\<slot>`, slots `v`, `w`, `x`): implementan un cluster, **un commit por ítem**, cada ítem cerrado `[x]` en el ROADMAP (lo no hecho pasa a `[ ]` con nombre). No tocan «Ahora» ni este archivo, no hacen push, PR ni merge.
 - Sin Codex/Claude en paralelo, una sola sesión puede hacer los dos roles: elegir un cluster, hacerlo en un worktree e integrarlo.
@@ -68,7 +70,11 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**; `develop` con PRs integradas hasta **#441**. Última verificación completa del subítem f3a en `feat/f3-persist-goal-layers`: typecheck y lint sin errores, **2191 tests aprobados en 309 archivos** (900 s). No se cambiaron hashes dorados. Al retomar, comprobar la integración de esa rama.
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**; `develop` con PRs integradas hasta **#442** (f3a). Última verificación completa de f3a: typecheck y lint sin errores, **2191 tests aprobados en 309 archivos** (900 s). No se cambiaron hashes dorados.
+
+**Lote coordinado actual:** rama raíz `feat/f3-continuous-batch`, desde #442. Integrados f3b1–3 (libro personal de préstamos, proyección a metas y subrogaciones conocidas), f3c1–2b (necesidades, compañía y procedencia personal de ansia), f2b (cierre por muerte) y f3d1 (cumplimiento subjetivo puro). Typecheck y lint aprobados tras corregir tipos de datos de eventos, imports y un literal de test; **75 tests puntuales en 8 archivos aprobados**. Corrida amplia en curso, log ignorado `sim-reports/continuous-wide.log`; no afirmar resultado hasta terminar. Sin prueba con LLM real: no cambió interpretación/narración ni sus contratos.
+
+**Agentes reutilizables:** `persist_goals` (Sol Medium), worktree `sim-reports/codex-panel`, rama `feat/f3-goal-debt`: fiado f3b4a listo en `9695daa`, sigue servidumbre f3b4b. `immediate_goals` (Sol Medium), `sim-reports/codex-immediate`, rama `feat/f3-immediate-goals`: f3c3a puro listo en `e1e92f8`, sigue f3c3b con gates de percepción propia. `panel_tests` (Luna Medium), `sim-reports/codex-hire`, rama `feat/f3-goals-death`: f3d2 listo en `48dd8f7`, sigue señal pura de vacío f3d3a. Estos commits posteriores al lote están pendientes de revisión/integración; verificar siempre `git log/status` al retomar. No correr otra suite amplia mientras la actual siga viva.
 
 **Retoma con Codex (2026-10-10):** PRs #440 (instrucciones/memoria) y #441 (recuperación y cobertura del panel) integradas a `develop`. El usuario autorizó el flujo completo de ramas, push, PR y merges a develop/main según las verificaciones y hitos; autorización persistida en AGENTS.md. `g`, `h`, `i` limpios y sin commits adicionales a #439; el test original sin trackear de `j` se conservó. #441 pasó typecheck, lint y 24 tests en 5 archivos relacionados (sin cambios de producción). Coordinador Sol 6.1 Medium; Luna Medium para tareas pequeñas y Sol Medium para simulación. Se reutiliza el worktree `C:\dev\rpg-procedural\sim-reports\codex-panel` en `feat/f3-persist-goal-layers` para (f3a), persistencia opt-in de objetivos; comprobar su PR antes de comenzar otro ítem. Puestos reales y acciones para dejar lotes en el suelo siguen pendientes.
 

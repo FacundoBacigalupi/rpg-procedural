@@ -113,6 +113,97 @@ Las emociones son `fear`, `anger`, `sadness`, `joy`, `shame`, `guilt`, `envy` y 
 - El **estrés** crónico es un acumulador lento. Si se sostiene, mueve esquemas como un evento formativo.
 - **Contagio emocional:** las emociones **percibidas** en otros entran a la interpretación como un evento más. Su peso depende de `sociability`, de la relación con quien la muestra y de cuántos la muestran. Así se dan el pánico en una batalla, la euforia en un festival o la furia de una turba. Los grupos de tier 0 tienen un humor colectivo que se mueve con la misma regla, en agregado.
 
+**Contrato puro inicial (2026-10-10, f3c3a):** `EmotionSignal` registra dueño,
+emoción, intensidad, `originEventId`, momento vivido y tema del appraisal.
+`appraisalEmotionSignals` sólo interpreta tres temas ya disponibles: violencia
+propia como miedo, pérdida sentida como tristeza y culpa interpretada como culpa.
+Conserva las intensidades que appraisal ya moduló por temperamento, esquemas o
+consuelo; no transforma cualquier experiencia negativa en ira o vergüenza, ni
+supone amor por un cuidado recibido. Repetir un tema del mismo hecho conserva
+su mayor intensidad y no la suma. Sin appraisal de esos temas no genera señales.
+
+`emotionIntensityAt` calcula decaimiento separado de la memoria duradera y de
+las condiciones crónicas; recibe vida media explícita en ticks y reactividad
+normalizada 0-1. Con reactividad 0,5 usa esa vida media; con 0 o 1 la escala por
+0,5 o 1,5 respectivamente (provisional). Un hecho aún no vivido no produce
+intensidad. Este núcleo no persiste ni cambia procesos o decisiones. El llamador
+debe acreditar que el dueño vivió o percibió el appraisal y citar ese hecho:
+la ruta actual de duelo que consulta hogares reales no constituye por sí sola
+un contrato de evidencia para el nuevo cableado.
+
+La división de Fase 3 continúa con persistencia opt-in y consumo de señales con
+evidencia propia en la capa inmediata, y un subítem separado de appraisal
+específico para ira, alegría, vergüenza, envidia y amor. El catálogo de ocho
+emociones ya está tipado. La fuente de ira se implementa en f3c3c1 más abajo;
+alegría, vergüenza, envidia y amor requieren sus subítems propios.
+
+**Persistencia con evidencia (2026-10-10, f3c3b):** `persistImmediateGoals`
+habilita `persistEmotionSignals` en `life.appraise`. Es el único escritor de
+`EMOTIONS` (`mind.emotions`) en `perceive`, con `onEvent` y eventos recientes
+entregados por el scheduler. Guarda miedo por violencia corporal propia y culpa
+del actor de una acción sólo si está consciente y despierto al interpretarlas; no usa el trauma
+inferido de matar como sustituto de haber percibido un peligro propio.
+
+La tristeza exige un percept fresco de NPC con acción `body.died` e identidad
+leídas, con confianza positiva. Usa la relación del observador con la identidad
+percibida, incluso si se equivocó, y conserva el id del percept y del evento
+fuente. No usa pertenencia al hogar real ni memorias de duelo generadas por la
+ruta legacy como prueba de haber sabido una muerte. Recalcula `npcPerceive` con
+el mismo `witnessRng(seed)` y contrato de `life.witnessing`; así usa el percept
+que se asentará al cerrar la fase sin depender del orden lexical entre procesos
+ni agregar un segundo escritor de percepts. Sin `witness`, sin identidad, sin
+acción leída o dormido/inconsciente no agrega una señal de pérdida.
+
+Reconciliar por dueño/emoción/evento conserva el primer momento vivido, evita
+renovar la emoción al entregar dos veces el mismo evento y guarda hasta 24
+señales recientes. El decaimiento es perezoso; al reconciliar se descartan las
+que bajaron de 0,01. Vidas medias provisionales: miedo seis horas, tristeza un día,
+culpa doce horas, escaladas por reactividad. No reconstruye emociones al cargar
+una partida vieja desde memorias o parentescos sin evidencia registrada.
+
+El miedo tipado propio puede registrar `immediate:fear` junto al miedo de memoria,
+tomando el mayor peso y manteniendo una sola identidad; cita el estado emocional
+cuando es su fuente. No añade otro término a utilidad. Tristeza y culpa persisten
+sin inventar una necesidad ni una acción para aliviarlas. **Subítem f3c3d de
+Fase 3:** definir consuelo y reparación según creencias y catálogo de acciones,
+y sólo después convertir tristeza/culpa en motivaciones inmediatas. El appraisal
+de ira, alegría, vergüenza, envidia y amor se divide según sus fuentes
+en los subítems f3c3c descritos a continuación.
+
+**Ira ante insulto comprendido (2026-10-10, f3c3c1):** el núcleo puro
+`appraiseInsultEmotion` necesita insulto entregado y entendido, ofensa sentida
+positiva y autor atribuible distinto del dueño. Guarda `target` con ese autor;
+no transforma tristeza, miedo o cualquier valencia negativa en ira. La intensidad
+es la ofensa que el oyente ya juzgó con sus creencias de rango, testigos y cuánto
+le dolió, sin consultar emociones del hablante ni sus intenciones reales.
+
+El cableado opt-in usa el contrato de la respuesta de `life.converse`:
+`action.speak` con actores `[oyente, hablante]`, entrega efectiva, destinatario
+consistente y respuesta `insult.hurt`/`insult.shrug`, junto a `regard.kind=insult`
+y su `faceLoss`. Una declaración cruda de intención `act.kind=insult` no acredita
+comprensión. `life.appraise` persiste la señal sólo si el oyente está consciente
+y despierto; cita ese evento como experiencia propia. Sigue siendo un único
+escritor de `EMOTIONS`. Vida media provisional de ira: tres horas, escalada por
+reactividad. Este subítem registra la emoción y su autor; no añade venganza,
+agresión ni un nuevo peso de utilidad.
+
+**División restante de f3c3c, por evidencia (Fase 3):**
+
+- **f3c3c2 — Alegría por logro reconocido propio:** existe appraisal de `success`,
+  pero se debe definir qué logro cree haber conseguido el actor y qué le importa;
+  un `outcome` real o cualquier recuerdo positivo no basta.
+- **f3c3c3 — Vergüenza por falta propia reconocida:** hay reproches y pérdida de
+  cara en diálogo, pero debe acreditarse que el dueño recibió el reproche y se
+  atribuyó una falta propia; perder cara por un insulto no implica esa atribución.
+- **f3c3c4 — Envidia por comparación creída concreta:** debe comparar algo que
+  desea con un logro/bien que cree de otra persona, desde creencias propias;
+  no hay hoy una fuente de appraisal que haga esa comparación.
+- **f3c3c5 — Amor desde contacto propio y vínculo sentido:** hay afecto/atracción
+  en la relación propia y eventos de trato, pero una etiqueta de parentesco o
+  pareja no prueba amor; falta definir el contacto percibido que despierta la señal.
+- **f3c3c6 — Ira en riesgo y motivación opt-in:** definir su efecto acotado sobre
+  aversión/riesgo y calibrarlo sin duplicar resentimiento, venganza ni necesidades.
+
 ## 5. Memoria episódica
 
 ```ts
@@ -187,8 +278,67 @@ el fin cita además el estado anterior de los objetivos. Las capas se derivan
 solo del núcleo actualizado y conservan su empuje pequeño en la utilidad, sin
 sumarse otra vez como núcleo. No agrega empuje ni consume RNG adicional:
 solo persiste estado y emite eventos opt-in. Apagado conserva el comportamiento anterior.
-La deuda real, las emociones inmediatas, el cumplimiento y la muerte se tratan
-en los subítems posteriores del ROADMAP; los umbrales siguen sin calibrar.
+La deuda creída se deriva del libro personal contractual (contracts.md); los
+umbrales siguen sin calibrar.
+
+**Cierre por muerte opt-in (2026-10-10, f2b):** `closeGoalsOnDeath` registra
+`npc.goal` de fin y elimina `NPC_GOALS` en `perceive` ante un `body.died` cuyo id
+coincide con `ENTITY.endEventId`. Cita la muerte, el origen de la meta y su estado
+anterior. El proceso se agenda a nivel mundo porque el fallecido deja de decidir;
+no repite cierres ni agrega otro escritor de metas en la fase `decide`.
+
+**Cumplimiento subjetivo puro (2026-10-10, f3d1):**
+`goalCompletionsFromBeliefs` reconoce una venganza desde la creencia propia de
+que el objetivo murió, con confianza mínima 0,6 y fuente de evento perceptivo
+o evidencia propia explícita. Un relato sin evento causal no inventa prueba;
+la verdad del objetivo no participa. Cierre persistido, prevención de
+regeneración y vacío de sentido son los subítems f3d2–3 del ROADMAP.
+
+**Capa inmediata opt-in (2026-10-10, f3c):** `persistImmediateGoals`, independiente
+de `persistGoalLayers`, guarda hambre, sed y descanso sentidos, dolor de heridas
+y miedo desde recuerdos dolorosos propios. Las necesidades corporales citan el
+origen de la persona (seed/nacimiento) y el estado `body`; el dolor cita la herida
+que más contribuye al dolor sentido. El miedo cita el evento recordado y el estado
+`memories`, sin leer emociones ajenas. Conserva identidad, origen y `since`,
+actualiza pesos y registra fines al bajar del umbral. No suma otro empuje a la
+utilidad: necesidades y miedo ya entran en sus insumos. Apagado mantiene el estado
+y los resultados anteriores; no consume RNG adicional.
+
+El núcleo puro `immediateGoals` acepta señales de necesidad con origen explícito;
+sin fuentes no inventa objetivos. El miedo transitorio decae con vida media de
+seis horas desde el evento, separado de la saliencia duradera del recuerdo. Umbral
+0,5 y límite de tres objetivos son provisionales. `appraise` aún no produce las
+ocho emociones tipadas de §4: este cableado cubre solo miedo. Otras emociones y
+ansia requieren sus señales con procedencia, registradas como subítems propios
+de Fase 3 en ROADMAP antes de ampliar el cableado.
+
+**Compañía inmediata (2026-10-10, f3c2):** con `persistImmediateGoals`, la urgencia
+social ya sentida puede crear `immediate:social`. Su origen es el último contacto
+grato que vivió con alguien que le importa según su relación: una memoria propia
+presenciada, con valencia positiva, intensidad y confianza, nunca un relato sobre
+terceros ni un vínculo supuesto. El evento de objetivo cita ese contacto y el
+estado `memories`. Sin evidencia de contacto no crea una procedencia para la
+soledad; si la necesidad baja o la evidencia desaparece, el objetivo termina.
+No duplica el peso social en utilidad.
+
+**Procedencia personal del ansia (2026-10-10, f3c2b):** `persistImmediateGoals`
+también habilita `causalDoseOrigins` al actuar y metabolizar sustancias. Las dosis
+de `consume`, alimentos y bebidas guardan el evento de esa acción propia;
+las dosis explícitas y de tratamientos en `life.substances` emiten un evento
+`body.substance_dosed` por dosis efectivamente aplicada, con causa del tratamiento
+o del estado corporal del receptor. No reutilizan la introducción global de la
+sustancia como prueba de consumo propio. `HeldSubstance.originEventId` conserva
+la última dosis registrada durante el metabolismo. Las señales aprendidas por
+las acciones, si `cravingCues` está activo, guardan la dosis que las reforzó;
+su poda conserva esa procedencia hasta extinguir la señal.
+
+`immediate:craving` solo deriva de abstinencia con dosis registrada o señales
+presentes que tengan su origen propio. El contexto de personas usa las creencias
+del actor; no consulta la presencia real de terceros para justificar el objetivo.
+La urgencia sigue la escala de la etapa de vida usada en utilidad. Las filas
+anteriores sin metadata no reciben una causa ficticia, y no se duplica el empuje
+del ansia. La opción apagada conserva los eventos y la forma anterior de filas,
+incluso con `cravingCues` activo.
 
 ### Utilidad
 Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):
@@ -428,6 +578,8 @@ interface MeaningSource {
 - **`belonging`** baja con el aislamiento, el exilio, la expulsión, la orfandad, la migración y, en los longevos, con sobrevivir a todos. Un déficit alto vuelve a la persona **susceptible a quien le ofrezca un lugar**: sectas, cultos, bandas, un maestro, un amante. La lealtad hacia quien le dio pertenencia es más fuerte que la que nace del interés (organizations: lealtad).
 - **`meaning`** sube con el avance hacia los objetivos núcleo, un rol reconocido, una fe, un oficio dominado, el legado y, para cultivadores, el Dao. Su déficit alimenta la depresión, el demonio de `despair`, actos de riesgo y conversiones.
 - **El vacío del objetivo cumplido.** Al lograr un objetivo núcleo (la venganza consumada, la ruptura soñada) el sentido que daba desaparece. Sin otro que lo reemplace, aparece un vacío: arco clásico del vengador que no sabe qué hacer después, que la utilidad produce sola.
+  El primer helper puro de f3d3 toma solo el historial de cumplimientos subjetivos del núcleo. Un `pursue` derivado de valores sigue siendo una presión continua y no reemplaza por sí solo un ancla concreta cumplida; una venganza u otro núcleo concreto activo sí evita el vacío. Conserva cada causa de cumplimiento y origen con el peso original y el tiempo transcurrido como señal provisional, sin agregarlos ni sumarlos todavía a `meaning` o a la utilidad. Necesidades continuas satisfechas y cumplimientos de otras capas no cuentan como núcleo logrado.
+  El siguiente helper puro traduce esa señal a presión lenta lineal por meses: cada mes es 1/12 del año planetario, la intensidad toma el mayor peso de fuente y la duración hasta saturar se exige al llamador (sin valor por defecto). Devuelve fuentes causales individuales, no crea tabla ni efectos sobre acciones; el dueño y fase de cualquier integración quedan para el contrato de `meaning`.
 - **Identidad de grupo.** Lo que pertenece pesa en la autoimagen: sacrificarse por el clan, morir por la secta, odiar al grupo rival (sesgo de grupo, §9c). Los mártires salen de `identityWeight` alto + amenaza al grupo + un rol que lo pide.
 - **Fe.** Creer en dioses, doctrinas o en el Cielo es un conjunto de creencias (information) con fuerte carga de sentido y pertenencia. Las **conversiones** ocurren cuando la doctrina nueva promete lo que falta (sentido a un desesperado, pertenencia a un desarraigado) y hay alguien que la ofrece con confianza; no son tiradas al azar.
 

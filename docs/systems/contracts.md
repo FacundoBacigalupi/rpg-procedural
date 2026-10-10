@@ -150,6 +150,89 @@ type Guarantee =
 
 ## 6. Quién hace cumplir (ejecutores)
 
+**Libro personal de préstamos (2026-10-10, f3b1):** `LifeOptions.debtKnowledge`
+registra opt-in `life.debt_knowledge` en `perceive`. `DEBT_BOOK` conserva por parte
+los términos que conoció al participar en `credit.loaned` y las actualizaciones
+de `credit.paid` / `credit.defaulted` en las que participa consciente. Los
+representantes del hogar que figuran como actores aprenden; los demás miembros
+y los terceros no reciben información por pertenecer al mismo hogar o existir
+el `Commitment`. No se consulta su saldo actual: la lectura contractual valida
+identidad, origen y partes, y las cantidades salen de los eventos conocidos.
+Un préstamo disfrazado se recuerda por `statedRate`, sin revelar la tasa efectiva.
+Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
+marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
+la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
+unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
+El libro cubre préstamos, subrogaciones, fiado y servidumbre conocidos.
+
+**Proyección a metas (2026-10-10, f3b2):** `life.decide` con `debtKnowledge` lee
+solo el libro propio y deriva `medium:debt:<contraparte>` incluso sin memoria
+episódica: la fuente es el evento contractual que conoce. El peso usa la fracción
+pendiente normalizada por contrato y la confianza 0–1 del recuerdo. Una
+observación propia nace con confianza 1; sus actualizaciones la conservan.
+Para varios contratos con la misma contraparte toma la mayor fracción ponderada,
+con desempate canónico por id; no suma cantidades de unidades distintas.
+Un pago desconocido no reduce la meta aunque el contrato real esté saldado.
+Al conocerse el cumplimiento desaparece; `persistGoalLayers` sigue siendo la
+opción independiente que conserva las capas y registra nacimientos y fines.
+
+**Subrogaciones conocidas (2026-10-10, f3b3):** con `debtKnowledge`, el evento
+existente `credit.defaulted` anuncia en `subrogations` el id del nuevo derecho,
+las partes que participan, sus referencias contractuales y cantidad/unidad/plazo.
+El fiador aprende su desembolso propio aunque no esté entre los actores
+principales del evento. El deudor consciente conoce la nueva obligación y el
+saldo anunciado `loss` del préstamo original, sin contar dos veces lo pagado
+por el fiador. Quien no conoce ese pago conserva su saldo anterior y no recibe
+el derecho nuevo por existir en `COMMITMENTS`. `credit.subrogated_paid` actualiza
+solo los libros de sus partes con `paid` y `left` conocidos: puede corregir un
+saldo viejo, no leer el `performed` actual. Cero pendiente conocido libera la
+meta. Sin la opción, los eventos y el estado real de los préstamos conservan
+exactamente su forma anterior.
+
+**Fiado conocido (2026-10-10, f3b4a):** el cierre `perceive/onEvent` del scheduler
+ejecuta `life.credit` antes de `life.debt_knowledge`. Así el libro puede validar
+el id, origen, unidad y partes de `CREDIT` recién creado por `action.speak` o
+`household.borrowed` y guardar los gramos anunciados por ese acto. No copia
+`CREDIT.principal` ni `CREDIT.owed`, aunque difieran de lo anunciado. El plazo
+queda desconocido si el acto no lo anunció: no se inventa que el NPC conoce la
+norma de treinta días. `action.give` válido y `household.repaid` actualizan los
+fiados conocidos de sus dos participantes por unidad y orden de acuerdo; si
+el pago nombra `payment.credit`, actualiza solo ese contrato conocido. Fallos,
+cantidades cero, unidades ajenas, terceros o contratos secretos no saldan ni
+crean recuerdos. La fuente es el acto real, con protección contra pagos
+repetidos. No añade eventos, ids, RNG ni un segundo escritor del libro.
+
+**Servidumbre conocida (2026-10-10, f3b4b):** `credit.bonded` anuncia con
+`debtKnowledge` los días de trabajo pactados, su unidad, el abono neto diario
+y la unidad de cuenta de la deuda; `debt` y `maxDays` ya eran públicos. El libro
+guarda la obligación en días de trabajo, junto a esos términos conocidos y
+el origen real del contrato. Al conocer la sustitución, la parte cierra el
+préstamo padre que recordaba y anota la obligación laboral; un deudor
+inconsciente conserva su recuerdo anterior, sin duplicar deuda nueva invisible.
+`credit.bondage_worked` descuenta los días equivalentes al abono conocido,
+sin consultar `duty.qty`, `performed` o el jornal actual. El cumplimiento
+anunciado libera la meta. `credit.bondage_ended` conocido cierra por plazo,
+rescate o abuso; la fuga conserva el trabajo pendiente que explica el
+`unpaid` comunicado (con abono cero conserva los días que recordaba).
+El plazo se recuerda como duración máxima desde `openedAt`, sin copiar el
+reloj interno `term.endDay`. Los eventos anteriores sin unidad ni términos
+laborales anunciados no completan el libro por leer la verdad: su recuperación
+requiere una comunicación explícita posterior, como residual de conocimiento
+contractual histórico. Apagado conserva eventos y contabilidad anteriores.
+
+**Dependencia para recuperar términos históricos (2026-10-10, f3b4c):** no hay
+todavía un cauce contractual en `SpeechAct`: `ask` consulta ubicación o secretos
+de personas, `tell` comunica vida/muerte y `promise` crea una obligación nueva.
+El panel de deudas es una consulta de UI, no un acto percibido por otro NPC.
+La recuperación necesita un acto `speak` que identifique el compromiso y
+comunique un snapshot del libro propio del hablante, con comprensión y fuente
+del oyente; una lectura alternativa necesita un documento físico que contenga
+los términos y un proceso de lectura. Hasta ese subítem de Fase 3, las entradas
+históricas desconocidas conservan su ignorancia: no se reconstruyen copiando
+`COMMITMENTS` o `CREDIT`. El núcleo rechaza cantidades negativas o no finitas
+en observaciones, para no aumentar o contaminar deuda subjetiva con un pago
+inválido ni atribuirle una fuente nueva.
+
 ```ts
 interface EnforcerRef {
   kind: "conscience" | "counterparty" | "social" | "organization" | "court" | "guarantee" | "karmic" | "binding" | "patron";

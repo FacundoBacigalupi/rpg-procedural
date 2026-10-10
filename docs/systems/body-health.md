@@ -232,6 +232,16 @@ interface Substance {
 - **Toxicidad de píldoras (丹毒).** Las píldoras de cultivo dejan residuos según su pureza ([crafts.md](crafts.md) §4: la toxicidad es la tensión residual). Se acumulan en el cuerpo, bajan la eficiencia del cultivo y pueden causar desviaciones. Purgarlas cuesta tiempo o recursos. De acá sale el clásico "fundamento inestable por abusar de píldoras".
 - **Sobrecarga de `Essence`:** un mortal que come algo demasiado potente (fruto espiritual, sangre de bestia) puede romperse: fiebre, meridianos quemados, muerte. A veces despierta algo; el resultado depende de su cuerpo, no de la suerte pura.
 
+**Procedencia opt-in de dosis (2026-10-10):** con `persistImmediateGoals`, la vida
+guarda `HeldSubstance.originEventId` por dosis propia y
+`CravingCue.originEventId` por asociación aprendida o reforzada. Consumir, comer
+o beber cita su acción; dosis de escenario y tratamientos crean
+`body.substance_dosed` al entrar en el cuerpo. El metabolismo conserva metadata
+existente y la poda conserva las causas de señales sobrevivientes. No rellena
+filas viejas desde la introducción global de una sustancia; sin la opción,
+los eventos y estados anteriores permanecen iguales. Ver [npc-psychology.md](npc-psychology.md)
+§7 para la capa inmediata del ansia.
+
 ## 10. Envejecimiento y límite de vida
 - **Curva por especie:** crecimiento → madurez → meseta → senescencia. Las capacidades siguen la curva: fuerza y velocidad pico en la juventud adulta, habilidad y juicio más tarde.
 - **Senescencia por sistemas:** vista y oído (perception §4), articulaciones, huesos frágiles (las caídas se vuelven fracturas), inmunidad, memoria. Cada sistema envejece a su ritmo según genoma, desgaste del oficio, heridas viejas y hábitos.

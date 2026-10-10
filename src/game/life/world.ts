@@ -73,6 +73,7 @@ import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
+import { debtKnowledgeProcess } from "./debtknowledge.ts";
 import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
@@ -81,6 +82,7 @@ import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
+import { goalDeathClosureProcess } from "./goal-death.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { hireProcess } from "./hire.ts";
@@ -463,6 +465,12 @@ export interface LifeWorld {
   readonly rumorGrievance?: boolean;
   /** Opt-in: conserva largo/mediano/corto junto al núcleo en NPC_GOALS. */
   readonly persistGoalLayers?: boolean;
+  /** Opt-in: libro personal de términos y pagos conocidos de préstamos Commitment. */
+  readonly debtKnowledge?: boolean;
+  readonly persistImmediateGoals?: boolean;
+  /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
+  readonly closeGoalsOnDeath?: boolean;
+  readonly recognizeGoalCompletion?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -588,6 +596,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.persistImmediateGoals === true ? { causalDoseOrigins: true } : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true ? { cueLocal: true } : {}),
           ...(parts.scam === true
             ? {
@@ -781,6 +790,7 @@ export function lifeWorld(
           : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        ...(parts.debtKnowledge === true ? [debtKnowledgeProcess()] : []),
         ...(parts.lendBorrowed === true && parts.borrowCraving
           ? [
               lendProcess({
@@ -890,6 +900,7 @@ export function lifeWorld(
           : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
+          ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
           seeds: parts.loanSeeds ?? [],
@@ -1071,6 +1082,7 @@ export function lifeWorld(
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
           treatmentDoses: parts.remedyDoses !== undefined,
+          ...(parts.persistImmediateGoals === true ? { causalDoseOrigins: true } : {}),
           placeOf: placeOf(parts, village),
         }),
         nutritionProcess({
@@ -1170,6 +1182,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         appraiseProcess({
+          ...(parts.persistImmediateGoals === true ? { persistEmotionSignals: true } : {}),
           clock: parts.clock,
           schemas: parts.schemas,
           stages: parts.stages,
@@ -1264,6 +1277,9 @@ export function lifeWorld(
         }),
         decideProcess({
           ...(parts.persistGoalLayers === true ? { persistGoalLayers: true } : {}),
+          ...(parts.persistImmediateGoals === true ? { persistImmediateGoals: true } : {}),
+          ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
+          ...(parts.recognizeGoalCompletion === true ? { recognizeGoalCompletion: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,
@@ -1315,6 +1331,9 @@ export function lifeWorld(
           })(),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
+        ...(parts.closeGoalsOnDeath
+          ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
+          : []),
         routineProcess({
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,

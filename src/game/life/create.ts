@@ -186,6 +186,14 @@ export interface LifeOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in: persiste los objetivos largos, medianos y cortos del NPC; apagado por defecto. */
   readonly persistGoalLayers?: boolean;
+  /** Opt-in: las partes recuerdan los préstamos y pagos que participan directamente. */
+  readonly debtKnowledge?: boolean;
+  /** Opt-in: persiste la capa inmediata desde señales con causa; apagado por defecto. */
+  readonly persistImmediateGoals?: boolean;
+  /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
+  readonly closeGoalsOnDeath?: boolean;
+  /** Opt-in: cierra venganzas cuando el NPC cree muerto al blanco y conserva la causa; apagado. */
+  readonly recognizeGoalCompletion?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -331,6 +339,10 @@ export function optInParts(
   | "migration"
   | "rumorGrievance"
   | "persistGoalLayers"
+  | "debtKnowledge"
+  | "persistImmediateGoals"
+  | "closeGoalsOnDeath"
+  | "recognizeGoalCompletion"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -392,6 +404,10 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
+    ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
+    ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
+    ...(options.closeGoalsOnDeath ? { closeGoalsOnDeath: true } : {}),
+    ...(options.recognizeGoalCompletion ? { recognizeGoalCompletion: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),

@@ -3,6 +3,7 @@
 // lo que cada persona tiene en el cuerpo vive en `PERSON_SUBSTANCE`, aparte del `Body`, y solo
 // mientras queda algo (dosis, nivel, daño, tolerancia o dependencia).
 
+import type { EventId } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 import type { SubstanceDef, SubstanceState } from "./substance.ts";
 import type { CravingCue } from "./substance-cues.ts";
@@ -19,6 +20,8 @@ export const SUBSTANCE = table<SubstanceRecord>("body.substance_kind");
 export interface HeldSubstance {
   readonly substance: string;
   readonly state: SubstanceState;
+  /** Opt-in: última dosis propia registrada; ausente en partidas anteriores. */
+  readonly originEventId?: EventId;
 }
 
 export interface PersonSubstances {

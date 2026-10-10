@@ -11,9 +11,11 @@ import {
 import {
   ACTIONS,
   ActionCatalog,
+  BELIEFS,
   BODY_PLANS,
   BODY_STATE,
   type BodyPlanDef,
+  EMOTIONS,
   ENTITY,
   INNATE,
   LIFE_STAGES,
@@ -21,6 +23,7 @@ import {
   MIND,
   newBody,
   PERSON,
+  PERSON_SUBSTANCE,
   PLANS,
   type ProcessContext,
   type ProcessResult,
@@ -33,14 +36,17 @@ import {
   VALUES,
   WorldTruth,
 } from "../../sim/index.ts";
+import { DEBT_BOOK, type DebtBelief, observeDebt } from "./debtknowledge.ts";
 import {
   DECIDED_EVENT,
   type DecideOptions,
   decideProcess,
   GOAL_EVENT,
   NPC_DECISION,
+  NPC_GOAL_COMPLETIONS,
   NPC_GOALS,
 } from "./decide.ts";
+import { COMMITMENTS } from "./loans.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -138,7 +144,7 @@ function layeredWorld() {
 
 function applyGoals(truth: WorldTruth, out: ProcessResult) {
   for (const change of out.changes ?? []) {
-    if (change.op === "set" && change.table === NPC_GOALS.name)
+    if (change.op === "set" && [NPC_GOALS.name, NPC_GOAL_COMPLETIONS.name].includes(change.table))
       truth.setRaw(change.table, change.id, change.value);
   }
 }
@@ -147,6 +153,292 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("miedo tipado propio con evidencia entra por máximo en la capa inmediata, sin sumar utilidad", () => {
+    const truth = world(0);
+    const signal = {
+      owner: A,
+      emotion: "fear" as const,
+      intensity: 0.8,
+      originEventId: "event:8" as EventId,
+      at: 1000,
+      appraisalTheme: "violence" as const,
+    };
+    truth.set(EMOTIONS, A, { signals: [signal] });
+    const process = decideProcess({ ...opts, persistImmediateGoals: true });
+    const legacy = process.run(ctx(truth, A, 1000));
+    expect(legacy.events?.some((e) => goalData(e).goal === "immediate:fear")).toBe(false);
+    truth.set(EMOTIONS, A, {
+      signals: [{ ...signal, evidence: { kind: "own", event: signal.originEventId } }],
+    });
+    const off = decideProcess(opts).run(ctx(truth, A, 1000));
+    const on = process.run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:fear")).toMatchObject({
+      weight: 0.8,
+      originEventId: "event:8",
+    });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:fear")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "emotions" },
+    ]);
+    truth.set(EMOTIONS, A, {
+      signals: [
+        { ...signal, owner: PLAYER, evidence: { kind: "own", event: signal.originEventId } },
+      ],
+    });
+    applyGoals(truth, process.run(ctx(truth, A, 1100)));
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === "immediate:fear")).toBe(false);
+  });
+
+  it("ansia de señal conocida persiste con causa propia y legacy no inventa origen", () => {
+    const truth = world(0);
+    const cue = {
+      substance: "wine",
+      kind: "place" as const,
+      key: "hex:0",
+      strength: 0.6,
+      at: 1000,
+    };
+    truth.set(PERSON_SUBSTANCE, A, { held: [], at: 1000, cues: [cue] });
+    const options = { ...opts, cravingCues: true, persistImmediateGoals: true };
+    const legacy = decideProcess(options).run(ctx(truth, A, 1000));
+    applyGoals(truth, legacy);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === "immediate:craving")).toBe(false);
+    truth.set(PERSON_SUBSTANCE, A, {
+      held: [],
+      at: 1000,
+      cues: [{ ...cue, originEventId: "event:9" as EventId }],
+    });
+    const off = decideProcess({ ...opts, cravingCues: true }).run(ctx(truth, A, 1000));
+    const on = decideProcess(options).run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:craving")).toMatchObject({
+      originEventId: "event:9",
+    });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:craving")?.causes).toEqual([
+      { kind: "event", event: "event:9" },
+      { kind: "state", entity: A, key: "body.substance" },
+    ]);
+    expect(decideProcess(options).reads).toEqual(
+      expect.arrayContaining([PERSON_SUBSTANCE.name, "body.substance_kind"]),
+    );
+  });
+
+  it("compañía inmediata nace de contacto propio recordado y se termina sin evidencia", () => {
+    const truth = world(0);
+    const who = "agent:2" as AgentId;
+    truth.set(RELATIONS, A, {
+      toward: {
+        [who]: {
+          dims: { ...strangerDims([]), affection: 1, familiarity: 1 },
+          bonds: [],
+          history: ["event:8" as EventId],
+          updated: 1000,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    });
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          eventId: "event:8" as EventId,
+          perceived: { kind: "action.talk", with: [who], place: NONE },
+          source: "witnessed",
+          at: 1000,
+          intensity: 0.8,
+          valence: 0.8,
+          confidence: 1,
+          distortion: 0,
+          salience: 1,
+          measured: 1000,
+          lastRecalled: 1000,
+          recalls: 0,
+        },
+      ],
+      gists: [],
+    });
+    const now = 1000 + 72 * 3600;
+    const off = decideProcess(opts).run(ctx(truth, A, now));
+    const p = decideProcess({ ...opts, persistImmediateGoals: true });
+    const out = p.run(ctx(truth, A, now));
+    expect(out.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, out);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:social")).toMatchObject({
+      weight: 1,
+      originEventId: "event:8",
+      since: now,
+    });
+    expect(out.events?.find((e) => goalData(e).goal === "immediate:social")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "memories" },
+    ]);
+    truth.set(MEMORIES, A, { items: [], gists: [] });
+    const end = p.run(ctx(truth, A, now + 3600));
+    expect(end.events?.find((e) => goalData(e).goal === "immediate:social")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "memories" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+  });
+
+  it("la capa inmediata opt-in conserva la decisión y registra causas y cambios de peso", () => {
+    const truth = layeredWorld();
+    truth.set(ENTITY, A, { id: A, originEventId: "event:1" as EventId, createdAt: 0 });
+    const off = decideProcess(opts).run(ctx(truth, A, 1000));
+    expect(
+      decideProcess({ ...opts, persistImmediateGoals: false }).run(ctx(truth, A, 1000)),
+    ).toEqual(off);
+    const p = decideProcess({ ...opts, persistImmediateGoals: true });
+    const on = p.run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    const thirst = truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst");
+    expect(thirst).toMatchObject({ layer: "immediate", originEventId: "event:1", since: 1000 });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:thirst")?.causes).toEqual([
+      { kind: "event", event: "event:1" },
+      { kind: "state", entity: A, key: "body" },
+    ]);
+    expect(p.run(ctx(truth, A, 1100)).events?.filter((e) => e.kind === GOAL_EVENT)).toEqual([]);
+    truth.set(BODY_STATE, A, { ...newBody(plan, 60, 0), water: 2.5 });
+    applyGoals(truth, p.run(ctx(truth, A, 1200)));
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst")).toMatchObject({
+      since: 1000,
+      originEventId: "event:1",
+    });
+    expect(
+      truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst")?.weight,
+    ).not.toBe(thirst?.weight);
+    truth.set(BODY_STATE, A, newBody(plan, 60, 0));
+    const end = p.run(ctx(truth, A, 1300));
+    expect(end.events?.find((e) => goalData(e).goal === "immediate:thirst")?.causes).toEqual([
+      { kind: "event", event: "event:1" },
+      { kind: "state", entity: A, key: "body" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+  });
+
+  it("sin procedencia corporal no inventa un objetivo inmediato de sed", () => {
+    const truth = world(3);
+    const out = decideProcess({ ...opts, persistImmediateGoals: true }).run(ctx(truth, A, 1000));
+    applyGoals(truth, out);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.layer === "immediate")).toBe(false);
+  });
+
+  it("solo su libro opt-in produce metas de deuda con origen, peso actualizado y fin conocido", () => {
+    const truth = world(0);
+    const bookItem: DebtBelief = {
+      commitment: "commitment:1",
+      role: "debtor",
+      other: "agent:2" as AgentId,
+      debtorRef: "h:1",
+      creditorRef: "h:2",
+      unit: "grain",
+      total: 100,
+      remaining: 100,
+      dueDay: 10,
+      status: "active",
+      originEventId: "event:11" as EventId,
+      learnedAt: 900,
+      confidence: 1,
+      sources: ["event:11" as EventId],
+    };
+    const options = { ...opts, persistGoalLayers: true };
+    const on = decideProcess({ ...options, debtKnowledge: true });
+    expect(on.reads).toContain(DEBT_BOOK.name);
+    expect(decideProcess(options).reads).not.toContain(DEBT_BOOK.name);
+    const debtEvent = (out: ProcessResult) =>
+      out.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === "medium:debt:agent:2");
+    truth.set(
+      COMMITMENTS,
+      bookItem.commitment as never,
+      {
+        status: "active",
+        obligations: [{ debtor: "h:1", creditor: "h:2", duty: { qty: 100 }, performed: 0 }],
+      } as never,
+    );
+    truth.set(DEBT_BOOK, PLAYER, { items: [bookItem] });
+    expect(debtEvent(on.run(ctx(truth, A, 1000)))).toBeUndefined();
+    truth.set(DEBT_BOOK, A, { items: [bookItem] });
+    const off = decideProcess(options).run(ctx(truth, A, 1000));
+    expect(decideProcess({ ...options, debtKnowledge: false }).run(ctx(truth, A, 1000))).toEqual(
+      off,
+    );
+    expect(debtEvent(off)).toBeUndefined();
+    const first = on.run(ctx(truth, A, 1000));
+    applyGoals(truth, first);
+    expect(debtEvent(first)).toMatchObject({
+      data: { what: "born", weight: 0.6 },
+      causes: [{ kind: "event", event: bookItem.originEventId }],
+    });
+    expect(truth.has(ENTITY, bookItem.other)).toBe(false);
+    const debt = () => truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "medium:debt:agent:2");
+    expect(debt()).toMatchObject({
+      target: bookItem.other,
+      since: 1000,
+      originEventId: bookItem.originEventId,
+    });
+    truth.set(
+      COMMITMENTS,
+      bookItem.commitment as never,
+      { status: "fulfilled", obligations: [] } as never,
+    );
+    const unknownPayment = on.run(ctx(truth, A, 1100));
+    expect(debtEvent(unknownPayment)).toBeUndefined();
+    expect(debt()?.weight).toBe(0.6);
+    truth.set(
+      DEBT_BOOK,
+      A,
+      observeDebt(truth.get(DEBT_BOOK, A), {
+        kind: "paid",
+        commitment: bookItem.commitment,
+        amount: 50,
+        event: "event:12" as EventId,
+        at: 1200,
+        fulfilled: false,
+      }),
+    );
+    const partial = on.run(ctx(truth, A, 1200));
+    applyGoals(truth, partial);
+    expect(debtEvent(partial)).toBeUndefined();
+    expect(debt()).toMatchObject({
+      weight: 0.3,
+      since: 1000,
+      originEventId: bookItem.originEventId,
+    });
+    truth.set(
+      DEBT_BOOK,
+      A,
+      observeDebt(truth.get(DEBT_BOOK, A), {
+        kind: "paid",
+        commitment: bookItem.commitment,
+        amount: 50,
+        event: "event:13" as EventId,
+        at: 1300,
+        fulfilled: true,
+      }),
+    );
+    const done = on.run(ctx(truth, A, 1300));
+    applyGoals(truth, done);
+    expect(debt()).toBeUndefined();
+    expect(debtEvent(done)).toMatchObject({
+      data: { what: "ended" },
+      causes: [
+        { kind: "event", event: bookItem.originEventId },
+        { kind: "state", entity: A, key: "goals" },
+      ],
+    });
+  });
+
   it("false equivale a omitir la persistencia; encenderla conserva la decisión y el RNG", () => {
     const truth = layeredWorld();
     const off = decideProcess(opts).run(ctx(truth, A, 1000));
@@ -235,6 +527,200 @@ describe("life.decide", () => {
     const p = decideProcess(opts);
     expect(p.phase).toBe("decide");
     expect(p.writes).toEqual([NPC_DECISION.name, NPC_GOALS.name]);
+    expect(p.reads).not.toContain(NPC_GOAL_COMPLETIONS.name);
+    const enabled = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    expect(enabled.reads).toContain(NPC_GOAL_COMPLETIONS.name);
+    expect(enabled.writes).toContain(NPC_GOAL_COMPLETIONS.name);
+  });
+
+  it("cierra una venganza por creencia propia, cita ambas causas y no la regenera", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.7,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(BELIEFS, A, {
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value: false,
+          confidence: 0.95,
+          asOf: 900,
+          learnedAt: 900,
+          measured: 900,
+          salience: 0.9,
+          sources: [{ kind: "percept", percept: "death", tick: 900, event: "event:9" as EventId }],
+        },
+      ],
+    } as never);
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    expect(
+      decideProcess({ ...opts, recognizeGoalCompletion: false }).run(ctx(truth, A, 1000)),
+    ).toEqual(decideProcess(opts).run(ctx(truth, A, 1000)));
+    const first = process.run(ctx(truth, A, 1000));
+    const end = first.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === goal.id);
+    expect(end?.data).toMatchObject({ what: "ended", reason: "fulfilled" });
+    expect(end?.causes).toEqual([
+      { kind: "event", event: goal.originEventId },
+      { kind: "event", event: "event:9" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOALS, A)?.items.some((item) => item.id === goal.id)).toBe(false);
+    expect(process.run(ctx(truth, A, 1100)).events?.filter((e) => e.kind === GOAL_EVENT)).toEqual(
+      [],
+    );
+  });
+
+  it("permite otra instancia tras revisar vivo y cerrar una nueva muerte percibida", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.9,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(RELATIONS, A, {
+      toward: {
+        [target]: {
+          dims: { ...strangerDims([]), resentment: 1, familiarity: 0.8 },
+          bonds: [],
+          history: [],
+          updated: 1000,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    } as never);
+    const belief = (value: boolean, event: string, at: number) => ({
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value,
+          confidence: 0.99,
+          asOf: at,
+          learnedAt: at,
+          measured: at,
+          salience: 1,
+          sources: [{ kind: "percept", percept: "life", tick: at, event: event as EventId }],
+        },
+      ],
+    });
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    truth.set(BELIEFS, A, belief(false, "event:9", 900) as never);
+    const first = process.run(ctx(truth, A, 1000));
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+
+    truth.set(BELIEFS, A, belief(true, "event:10", 1100) as never);
+    truth.set(RELATIONS, A, {
+      toward: {
+        [target]: {
+          dims: { ...strangerDims([]), resentment: 1, familiarity: 0.8 },
+          bonds: [],
+          history: [],
+          updated: 1100,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    } as never);
+    const reopened = process.run(ctx(truth, A, 1200));
+    applyGoals(truth, reopened);
+    const newGoal = truth.get(NPC_GOALS, A)?.items.find((item) => item.id === goal.id);
+    expect(newGoal?.since).toBe(1200);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+
+    truth.set(BELIEFS, A, belief(false, "event:11", 1300) as never);
+    const finishedAgain = process.run(ctx(truth, A, 1400));
+    applyGoals(truth, finishedAgain);
+    expect(
+      finishedAgain.events?.filter(
+        (event) => event.kind === GOAL_EVENT && goalData(event).goal === goal.id,
+      ),
+    ).toHaveLength(1);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(2);
+  });
+
+  it("no atribuye una memoria ambigua de muerte a cada participante", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.7,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(BELIEFS, A, {
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value: false,
+          confidence: 0.95,
+          asOf: 900,
+          learnedAt: 900,
+          measured: 900,
+          salience: 0.9,
+          sources: [{ kind: "told", from: PLAYER, tick: 900 }],
+        },
+      ],
+    } as never);
+    const memory = truth.get(MEMORIES, A)?.items[0];
+    if (!memory) throw new Error("fixture memory missing");
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          ...memory,
+          eventId: "event:12" as EventId,
+          at: 900,
+          measured: 900,
+          perceived: { ...memory.perceived, kind: "body.died", with: [target, PLAYER] },
+        },
+      ],
+      gists: [],
+    });
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    const ambiguous = process.run(ctx(truth, A, 1000));
+    expect(
+      ambiguous.events?.some(
+        (event) =>
+          event.kind === GOAL_EVENT &&
+          goalData(event).goal === goal.id &&
+          (event.data as { reason?: string }).reason === "fulfilled",
+      ),
+    ).toBe(false);
+
+    const deathMemory = truth.get(MEMORIES, A)?.items[0];
+    if (!deathMemory) throw new Error("fixture memory missing");
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          ...deathMemory,
+          perceived: { ...deathMemory.perceived, with: [target] },
+        },
+      ],
+      gists: [],
+    });
+    const identified = process.run(ctx(truth, A, 1001));
+    expect(
+      identified.events?.find(
+        (event) => event.kind === GOAL_EVENT && goalData(event).goal === goal.id,
+      )?.causes,
+    ).toContainEqual({ kind: "event", event: "event:12" });
   });
 
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
