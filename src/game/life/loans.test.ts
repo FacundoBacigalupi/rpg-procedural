@@ -17,7 +17,14 @@ import {
   type ProcessContext,
   WorldTruth,
 } from "../../sim/index.ts";
-import { LOANS, type LoanSeed, loansOf, loansProcess } from "./loans.ts";
+import {
+  COMMITMENTS,
+  commitmentRows,
+  LOANS,
+  type LoanSeed,
+  loansOf,
+  loansProcess,
+} from "./loans.ts";
 
 const goods = [
   { id: "copper", name: "cobre", form: "coin" },
@@ -133,5 +140,45 @@ describe("life.loans", () => {
       | undefined;
     expect(ch?.value.rights[0]?.holder).toBe("rich");
     expect(ch?.value.possession).toBe("rich");
+  });
+
+  it("cada préstamo tiene su Commitment y el fiador que paga queda como acreedor", () => {
+    const { truth, ledger } = setup();
+    const kin = makeId("agent", 3);
+    truth.set(ENTITY, kin, { id: kin, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, kin, { born: -30 * clock.year, household: "kin" } as never);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("kin"), amount: 50000 }],
+    });
+    const s: LoanSeed = { ...seed, guarantors: [{ household: "kin", share: 1 }] };
+    const apply = (r: ReturnType<ReturnType<typeof make>["run"]>) => {
+      for (const p of r.postings ?? [])
+        ledger.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+    };
+    apply(make([s]).run(ctxOf(truth, ledger, 1)));
+    const rows = commitmentRows(truth);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.commitment.kind).toBe("loan");
+    expect(rows[0]?.commitment.enforcers.map((e) => e.kind)).toContain("guarantee");
+    apply(make([s]).run(ctxOf(truth, ledger, 11)));
+    const after = commitmentRows(truth);
+    expect(after.map((r) => r.commitment.kind).sort()).toEqual(["loan", "subrogation"]);
+    const sub = after.find((r) => r.commitment.kind === "subrogation")?.commitment;
+    expect(sub?.parties[0]).toEqual({ ref: "kin", role: "creditor" });
+    expect(sub?.parent).toBe(rows[0]?.id);
+  });
+
+  it("sin semillas no hay filas de Commitment", () => {
+    const { truth, ledger } = setup();
+    make([]).run(ctxOf(truth, ledger, 3));
+    expect(commitmentRows(truth)).toHaveLength(0);
   });
 });
