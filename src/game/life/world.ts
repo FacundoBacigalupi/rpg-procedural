@@ -87,7 +87,8 @@ import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
 import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
-import { scamNeedOf, scamProviders } from "./scampolicy.ts";
+import { scamDiscoveryProcess } from "./scamdiscovery.ts";
+import { scamEyeOf, scamNeedOf, scamProviders } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -331,6 +332,15 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(parts.scam === true
+          ? [
+              scamDiscoveryProcess({
+                placeOf: placeOf(parts, village),
+                eye: scamEyeOf(parts.traits),
+                day: parts.clock.day,
+              }),
+            ]
+          : []),
         converseProcess({
           spaces: parts.spaces,
           catalog: parts.catalog,

@@ -58,6 +58,7 @@ import {
   INNATE,
   ingest,
   injure,
+  isScam,
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
@@ -100,9 +101,11 @@ import {
   rankOf,
   receiveLot,
   recordDeal,
+  recordScamDeal,
   reputationIn,
   resolve,
   SALE_RECEIPTS,
+  SCAM_DEALS,
   SELF_IMAGES,
   SELLER_DAY,
   type SelfReport,
@@ -235,7 +238,8 @@ export interface ActOptions {
    * Opt-in: estafa de calidad (economy §6). `inflate` dice cuánto mejora de lo que es el vendedor
    * lo que ofrece (0 = honesto) y `trust` cuánto le cree el comprador (0-1); el comprador cotiza
    * por `believedQuality` y el lote sigue con su calidad real. Apagado, el comprador ve con su ojo.
-   * Sin descubrimiento todavía (ROADMAP: `scam.discovered`).
+   * Cada trato inflado queda en `SCAM_DEALS` del comprador (con el evento del trato) para que
+   * `life.scam_discovery` lo descubra después.
    */
   readonly scam?: {
     readonly inflate: (truth: ReadonlyWorldTruth, seller: AgentId) => number;
@@ -352,9 +356,10 @@ export function actProcess(o: ActOptions): ProcessDef {
       FROSTBITE.name,
       AMPUTATIONS.name,
       TREATED_WATER.name,
-      ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name] : []),
+      ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name, SCAM_DEALS.name] : []),
     ],
     writes: [
+      ...(o.scam ? [SCAM_DEALS.name] : []),
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
       SALE_RECEIPTS.name,
@@ -892,6 +897,31 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     if (ref !== undefined && paid > 0) {
       const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
       const seller = buyer === me ? (eff.with as AgentId) : me;
+      // Un trato inflado queda registrado con su evento: es lo que después se descubre.
+      if (
+        o.scam &&
+        eff.believed !== undefined &&
+        eff.quality !== undefined &&
+        isScam(eff.quality, eff.believed)
+      ) {
+        changes.push(
+          setComponent(
+            SCAM_DEALS,
+            buyer,
+            recordScamDeal(truth.get(SCAM_DEALS, buyer), {
+              event: draftEvent(0),
+              tick: ctx.now,
+              seller,
+              unit,
+              grams: eff.grams,
+              coins: eff.coins,
+              real: eff.quality,
+              believed: eff.believed,
+              trust: o.scam.trust(truth, buyer, seller, ctx.now),
+            }),
+          ),
+        );
+      }
       // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
       const entry: TapeEntry = {
         day,

@@ -312,6 +312,8 @@ export type VerbEffect =
       readonly coins: number;
       /** Calidad real del lote que cambió de mano (0-1); falta si no se movió nada. */
       readonly quality?: number;
+      /** Con estafa: lo que el comprador creyó del lote al pagar (0-1); solo si el vendedor infló. */
+      readonly believed?: number;
       /** Sin trato por el precio: lo que quien vende sacó a la venta y no vendió (cierre del día). */
       readonly unsold?: Unsold;
       /** El otro anda apretado o en la ruina: pesó en el precio o en lo que podía pagar. */
@@ -967,6 +969,7 @@ const trade: Resolver = (c) => {
       grams: found.grams,
       coins: found.coins,
       quality: found.quality,
+      ...(found.believed !== undefined ? { believed: found.believed } : {}),
     }),
     seconds: c.nominal,
     transfers: found.transfers,
@@ -1021,7 +1024,7 @@ function qualityFactors(
   sellerIs: "actor" | "other",
   unit: LedgerUnit,
   buyerEye: number,
-): { seller: number; buyer: number; quality: number } {
+): { seller: number; buyer: number; quality: number; believed?: number } {
   const lots = mk.lots?.[sellerIs];
   if (lots?.[unit] === undefined)
     return { seller: 1, buyer: 1, quality: qualityOfUnit(lots, unit) };
@@ -1038,7 +1041,12 @@ function qualityFactors(
           mk.scam.trust[sellerIs],
         )
       : perceivedQuality(real, buyerEye, noise);
-  return { seller: qualityPriceFactor(real), buyer: qualityPriceFactor(seen), quality: real };
+  return {
+    seller: qualityPriceFactor(real),
+    buyer: qualityPriceFactor(seen),
+    quality: real,
+    ...(mk.scam && inflate > 0 ? { believed: seen } : {}),
+  };
 }
 
 /** Lo que un vendedor ofreció y no pudo vender (los gramos que tenía a la venta). */
@@ -1055,6 +1063,7 @@ interface NoDeal {
 
 interface Bargain {
   readonly quality: number;
+  readonly believed?: number;
   readonly direction: "buy" | "sell";
   readonly unit: LedgerUnit;
   readonly grams: number;
@@ -1152,6 +1161,7 @@ function bargain(
 
     return {
       quality: qf.quality,
+      ...(qf.believed !== undefined ? { believed: qf.believed } : {}),
       direction: "sell",
       unit: row.unit,
       grams: deal.grams,
@@ -1225,6 +1235,7 @@ function bargain(
   ];
   return {
     quality: qf.quality,
+    ...(qf.believed !== undefined ? { believed: qf.believed } : {}),
     direction: "buy",
     unit: row.unit,
     grams: deal.grams,

@@ -3,7 +3,9 @@
 // La mentira deja huella: el lote existe y se descubre al usarlo, al tasarlo o por un tercero.
 // Puro: no toca el ledger ni el rng (la tirada la pone quien llama).
 
+import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import { exp } from "../../core/math/index.ts";
+import { table } from "../world/index.ts";
 import { perceivedQuality, qualityPriceFactor } from "./quality.ts";
 
 function clamp(x: number, lo: number, hi: number): number {
@@ -128,4 +130,48 @@ export function scamAftermath(real: number, believed: number, trust: number): Sc
     trustDrop: clamp(gap * 2 * (0.5 + t), 0, 1),
     overpaid: Math.max(0, scamMargin(real, believed)),
   };
+}
+
+/** Un trato inflado que quedó sin descubrir: lo que el comprador creyó contra lo que el lote es. */
+export interface ScamDeal {
+  /** El evento del trato (causa de todo lo que venga de descubrirlo). */
+  readonly event: EventId;
+  readonly tick: Tick;
+  readonly seller: AgentId;
+  readonly unit: string;
+  readonly grams: number;
+  readonly coins: number;
+  /** Calidad real del lote (0-1). */
+  readonly real: number;
+  /** Lo que el comprador creyó al pagar (0-1). */
+  readonly believed: number;
+  /** Cuánto le creía al vendedor al cerrar el trato (0-1). */
+  readonly trust: number;
+}
+
+export interface ScamDeals {
+  readonly deals: readonly ScamDeal[];
+}
+
+/** Los tratos inflados de cada comprador que todavía no descubrió (la verdad; él no los lee). Solo escribe `life.act`. */
+export const SCAM_DEALS = table<ScamDeals>("economy.scam_deals");
+
+/** Los tratos que el comprador ya descubrió (por evento del trato), para no descubrirlos dos veces. Solo escribe `life.scam_discovery`. */
+export interface ScamFound {
+  readonly events: readonly EventId[];
+}
+export const SCAM_FOUND = table<ScamFound>("economy.scam_found");
+
+/** Cuántos tratos sin descubrir guarda cada comprador (los más viejos se dan por perdidos). */
+export const KEPT_SCAM_DEALS = 8;
+
+/** Suma un trato inflado, con tope. Puro. */
+export function recordScamDeal(before: ScamDeals | undefined, deal: ScamDeal): ScamDeals {
+  return { deals: [...(before?.deals ?? []), deal].slice(-KEPT_SCAM_DEALS) };
+}
+
+/** Los tratos que `found` ya descubrió (para que el que escribe `SCAM_DEALS` los suelte al registrar otro). */
+export function pendingScams(deals: ScamDeals | undefined, found: ScamFound | undefined) {
+  const done = new Set(found?.events ?? []);
+  return (deals?.deals ?? []).filter((d) => !done.has(d.event));
 }
