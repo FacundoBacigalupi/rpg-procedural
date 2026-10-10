@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentId } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
 import {
+  AMBIENT_TAKEN,
   altitudeEnv,
   ambientIntake,
   ambientQiC,
@@ -15,7 +16,7 @@ import {
   TEMPERATE,
   TRAVEL_CELL,
 } from "../../sim/index.ts";
-import { ambientQiCOf, ambientRelative, essenceLevelOf } from "./ambientQi.ts";
+import { ambientQiCOf, ambientRelative, essenceDebit, essenceLevelOf } from "./ambientQi.ts";
 import { residueProcess } from "./residue.ts";
 
 const who = "agent:1" as AgentId;
@@ -81,5 +82,60 @@ describe("ambientes de qi", () => {
     expect(p.run(ctx(truthAt())).changes ?? []).toHaveLength(0);
     const off = residueProcess({ clock, placeOf: () => place });
     expect(off.run(ctx(truthAt(1)))).toEqual({});
+  });
+});
+
+describe("ambientes de qi, debito al campo", () => {
+  const rowsOf = (changes: readonly unknown[]) =>
+    (changes as { op: string; table: string; value?: { byCell: Record<string, number> } }[]).find(
+      (c) => c.table === AMBIENT_TAKEN.name,
+    );
+
+  it("lo absorbido sale del campo de la celda, con tope y regeneración", () => {
+    const levels = [100, 400];
+    const regen = [0, 36];
+    const ambient = {
+      levelOf: essenceLevelOf(levels, 0),
+      reference: 100,
+      debit: essenceDebit(regen, 0),
+    };
+    const p = residueProcess({ clock, placeOf: () => place, ambient, ledger: true });
+    const ctx = (truth: ReadonlyWorldTruth, days = 10) =>
+      ({ now: 86400 * 10, window: 86400 * days, truth, rng: Rng.root(7).fork("residue") }) as never;
+    const out = p.run(ctx(truthAt(1)));
+    const row = rowsOf(out.changes ?? []);
+    expect(row).toBeDefined();
+    const taken = Object.values(
+      (row as never as { value: { byCell: Record<string, number> } }).value.byCell,
+    )[0] as number;
+    expect(taken).toBeGreaterThan(0);
+    // Lo debitado es exactamente lo que entra al ledger (milésimas).
+    expect(out.postings?.[0]?.transfers[0]?.amount).toBe(Math.round(taken * 1000));
+    expect(JSON.stringify(p.run(ctx(truthAt(1))))).toBe(JSON.stringify(out));
+    // Sin la opción de debito no hay filas de debito.
+    const noDebit = residueProcess({
+      clock,
+      placeOf: () => place,
+      ambient: { levelOf: essenceLevelOf(levels, 0), reference: 100 },
+    });
+    expect(rowsOf(noDebit.run(ctx(truthAt(1))).changes ?? [])).toBeUndefined();
+  });
+
+  it("con el campo casi vacío solo se saca lo que hay", () => {
+    const levels = [100, 100.0005];
+    const ambient = {
+      levelOf: essenceLevelOf(levels, 0),
+      reference: 50,
+      debit: essenceDebit([0, 0], 0),
+    };
+    const p = residueProcess({ clock, placeOf: () => place, ambient });
+    const out = p.run({
+      now: 86400 * 10,
+      window: 86400 * 300,
+      truth: truthAt(1),
+      rng: Rng.root(7).fork("residue"),
+    } as never);
+    const row = rowsOf(out.changes ?? []) as never as { value: { byCell: Record<string, number> } };
+    expect(row.value.byCell["1"]).toBeLessThanOrEqual(100.0005);
   });
 });

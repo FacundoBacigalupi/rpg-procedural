@@ -249,3 +249,17 @@ export function ambientIntake(
     purity: 1 / (1 + 0.25 * over * over),
   };
 }
+
+/**
+ * Lo que una persona le sacó al campo de `Essence` de las celdas del planeta con su absorción
+ * pasiva (opt-in, `AmbientQi.debit`): por celda, lo que todavía no volvió a nacer. El campo del
+ * planeta (`planet.essence.level`) es inmutable; el nivel efectivo de una celda es ese nivel menos
+ * la suma de estas filas. Un solo escritor: `life.residue`. Si la persona muere, la fila se borra
+ * (lo que debía vuelve al campo).
+ */
+export interface AmbientTaken {
+  /** Celda (clave, como texto) a esencia debitada y aún no regenerada. */
+  readonly byCell: Readonly<Record<string, number>>;
+  readonly at: number;
+}
+export const AMBIENT_TAKEN = table<AmbientTaken>("body.ambient_taken");
