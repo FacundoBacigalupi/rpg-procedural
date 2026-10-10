@@ -63,7 +63,7 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#409**. Tests: 1979 en 275 archivos (último `npm run check` completo verde en #409).
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#413**. Tests: 1979 en 275 archivos (último `npm run check` completo verde en #409; el conteo no se re-midió al cerrar #413).
 
 **Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`. Sigue igual en #390–#397: 4 agentes Sonnet por lote, el líder integra y corre la suite amplia. Al agotarse los ítems hacibles se pasa a `v0.3.0`.
 
@@ -121,6 +121,9 @@ Desde #398 hasta #409:
 - #407: narración de amputación/desmayo, lluvia y boil, altitud de viaje, aparcería pura.
 - #408: aparcería cableada, lluvia desde el clima, subrogación cobrable, estafa por tercero.
 - #409: autocuidado de congelación, hexKinds, ejecutores de crédito, sitio visto como rumor.
+- #411: relationDecay y hexKinds cableados, material distinto, compra por moldes, contagio por horas.
+- #412: gatherings desde fiestas y mercado, insumos de congelación, siteOf real, material por parte.
+- #413: mora de aparcería, verbo filtrar, gatherings de paso y templo, swapMaterials cableado.
 
 Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuando no quede nada hacible, pasar lo dependiente a su fase, `npm run check`, PR `develop`→`main` y tag `v0.3.0`. Quedan ramas remotas `origin/feat/f3-g|h|i|j` por borrar al final.
 
