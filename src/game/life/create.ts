@@ -184,6 +184,8 @@ export interface LifeOptions {
   readonly migration?: LifeParts["migration"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
+  /** Opt-in: persiste los objetivos largos, medianos y cortos del NPC; apagado por defecto. */
+  readonly persistGoalLayers?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -328,6 +330,7 @@ export function optInParts(
   | "famine"
   | "migration"
   | "rumorGrievance"
+  | "persistGoalLayers"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -388,6 +391,7 @@ export function optInParts(
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
+    ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
