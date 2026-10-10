@@ -79,7 +79,7 @@ export interface RebuildPlanInput {
    * Opt-in: otros materiales que puede usar un componente en lugar del suyo. Solo cuenta con
    * «distinto»: elige el que menos materia nueva pide (lo salvado primero), luego el más barato.
    */
-  readonly alternatives?: (material: string) => readonly string[];
+  readonly alternatives?: (material: string, part: BuildingComponent["part"]) => readonly string[];
   /** El evento que levanta el edificio nuevo (origen de lo juntado de nuevo). */
   readonly built: EventId;
 }
@@ -97,13 +97,14 @@ export interface RebuildPlan {
 /** El material que menos materia nueva pide (y menos cuesta) entre el del componente y sus alternativas. */
 function swapMaterial(
   n: { area: number; material: string; grams: number },
+  part: BuildingComponent["part"],
   i: RebuildPlanInput,
   budget: ReadonlyMap<string, number>,
   price: (material: string) => number,
 ): { area: number; material: string; grams: number } {
   let best = n;
   let bestKey: readonly [number, number] | undefined;
-  const options = [n.material, ...(i.alternatives?.(n.material) ?? [])];
+  const options = [n.material, ...(i.alternatives?.(n.material, part) ?? [])];
   for (const m of [...new Set(options)].sort((a, b) =>
     a === n.material ? -1 : b === n.material ? 1 : a < b ? -1 : 1,
   )) {
@@ -133,9 +134,11 @@ export function planRebuild(i: RebuildPlanInput): RebuildPlan | undefined {
   const salvaged = new Map<string, number>();
   const gathered = new Map<string, number>();
   let toGather = 0;
-  const picks = need.map((n0) => {
+  const picks = need.map((n0, idx) => {
     const n =
-      i.choice === "different" && i.alternatives ? swapMaterial(n0, i, budget, priceOf) : n0;
+      i.choice === "different" && i.alternatives
+        ? swapMaterial(n0, (i.old[idx] as BuildingComponent).part, i, budget, priceOf)
+        : n0;
     const left = budget.get(n.material) ?? 0;
     const used = Math.min(left, n.grams);
     budget.set(n.material, left - used);

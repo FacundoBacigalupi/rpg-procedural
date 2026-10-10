@@ -1,6 +1,7 @@
 [
   {
     "id": "timber",
+    "parts": ["walls", "roof", "door"],
     "name": "madera de monte",
     "source": "forest",
     "gramsPerM2": 18000,
@@ -11,6 +12,7 @@
   },
   {
     "id": "thatch",
+    "parts": ["roof"],
     "name": "paja y caña de los campos",
     "source": "fields",
     "gramsPerM2": 4000,
@@ -21,6 +23,7 @@
   },
   {
     "id": "clay",
+    "parts": ["foundation", "walls"],
     "name": "adobe de barro y paja",
     "source": "ground",
     "gramsPerM2": 120000,
@@ -31,6 +34,7 @@
   },
   {
     "id": "stone",
+    "parts": ["foundation", "walls"],
     "name": "piedra suelta del lugar",
     "source": "ground",
     "gramsPerM2": 300000,

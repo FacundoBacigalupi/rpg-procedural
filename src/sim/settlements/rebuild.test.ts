@@ -104,4 +104,21 @@ describe("reconstrucción", () => {
     });
     expect(kept?.components[0]?.materials.every((l) => l.material === "timber")).toBe(true);
   });
+  it("las alternativas se piden con la parte del componente", () => {
+    const seen: string[] = [];
+    const g = (m: string) => (m === "thatch" ? 1000 : 10_000);
+    planRebuild({
+      old: house,
+      choice: "different",
+      gramsPerM2: g,
+      stock: new Map(),
+      labor: 1_000_000,
+      alternatives: (m, part) => {
+        seen.push(part);
+        return part === "roof" ? ["thatch"] : [];
+      },
+      built,
+    });
+    expect(seen).toEqual(house.map((c) => c.part));
+  });
 });
