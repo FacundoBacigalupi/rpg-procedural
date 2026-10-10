@@ -55,7 +55,9 @@ import {
   altitudeProcess,
   mapAltitudeOf,
   type TravelAltitude,
+  type TravelCellOptions,
   travelAltitudeOf,
+  travelCellProcess,
 } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
@@ -69,6 +71,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
@@ -112,6 +115,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
+import { householdAuthority, realTrust } from "./patientbonds.ts";
 import {
   type PawnLots,
   type PawnOpenOptions,
@@ -200,6 +204,12 @@ export interface LifeWorld {
     readonly contagionBelief?: Readonly<Record<string, number>>;
     readonly caution?: number;
     readonly secondOpinion?: boolean;
+    /**
+     * Opt-in: la autoridad sale del jefe del hogar real (`householdAuthority`: lo que él cree que se
+     * pega por el respeto del paciente) y la confianza de la relación real (`realTrust`, con la fama
+     * que cree de respaldo). Sin esto, la confianza es la fama creída y no hay autoridad.
+     */
+    readonly realBonds?: boolean;
   };
   /**
    * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
@@ -259,6 +269,8 @@ export interface LifeWorld {
   readonly realAltitude?: boolean;
   /** Opt-in (con `realAltitude`): fuera del parche local la altitud sale de la elevación de la celda recorrida; sin esto, solo el parche. */
   readonly travelAltitude?: TravelAltitude;
+  /** Opt-in (con `realAltitude`): celda por la que pasa quien viaja (la del `Journey`); `life.travel_cell` la escribe en `TRAVEL_CELL` cada día y la borra al llegar al parche. */
+  readonly travelCell?: TravelCellOptions["cellOf"];
   /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: `loansProcess` lee la confianza de RELATIONS con `current` (decaimiento al día); apagado: tal cual guardada. */
@@ -360,6 +372,8 @@ export interface LifeWorld {
   readonly marksReach?: boolean;
   /** Opt-in: el fallo de usura que procede viaja como rumor `fraud` sobre el prestamista y quien pide fiado lo lee (`life.usury_gossip`). */
   readonly usuryGossip?: boolean;
+  /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
+  readonly debtorRepair?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -649,6 +663,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
                 crafts: craftSkillIds(parts.skills),
+                ...(parts.usuryGossip ? { heedFraud: true } : {}),
               }),
             ]
           : []),
@@ -682,6 +697,7 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
+        ...(parts.debtorRepair ? [debtorRepairProcess({ placeOf: placeOf(parts, village) })] : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
@@ -755,6 +771,7 @@ export function lifeWorld(
                 day: parts.clock.day,
                 player,
                 placeOf: placeOf(parts, village),
+                ...(parts.usuryGossip ? { heedFraud: true } : {}),
               }),
             ]
           : []),
@@ -978,7 +995,19 @@ export function lifeWorld(
             ? {
                 patientDecides: {
                   ...parts.patientDecides,
-                  trustOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                  trustOf: parts.patientDecides.realBonds
+                    ? (truth, patient, healer) => realTrust(truth, patient, healer)
+                    : (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                  ...(parts.patientDecides.realBonds
+                    ? {
+                        authorityOf: (truth, patient, pathogen) =>
+                          householdAuthority(truth, patient, pathogen, {
+                            ...(parts.patientDecides?.contagionBelief
+                              ? { contagionBelief: parts.patientDecides.contagionBelief }
+                              : {}),
+                          }),
+                      }
+                    : {}),
                 },
               }
             : {}),
@@ -1075,6 +1104,9 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(altitudeOf && parts.travelCell
+          ? [travelCellProcess({ cellOf: parts.travelCell })]
+          : []),
         ...(altitudeOf
           ? [
               altitudeProcess({

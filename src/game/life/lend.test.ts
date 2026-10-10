@@ -8,6 +8,7 @@ import {
   lend,
   PERSON,
   type ProcessContext,
+  RUMORS,
   type StateChange,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -216,5 +217,44 @@ describe("life.repay_dose (devolver la dosis prestada)", () => {
 
   it("sin la dosis no devuelve nada (el vencimiento hace la mora)", () => {
     expect(runRepay(0)).toEqual({});
+  });
+});
+
+describe("life.lend con el fraude creído (opt-in)", () => {
+  const mk = (heedFraud: boolean) =>
+    lendProcess({
+      goods: [{ id: "poppy", name: "amapola", form: "good" }] as never,
+      dims: [
+        { id: "trust", baseline: 1 },
+        { id: "affection", baseline: 1 },
+      ] as never,
+      bonds: [],
+      day,
+      player: "agent:99" as AgentId,
+      placeOf: () => place,
+      ...(heedFraud ? { heedFraud } : {}),
+    });
+  const yes = (p: ReturnType<typeof mk>) => {
+    let n = 0;
+    for (let now = 200; now < 260; now++) {
+      const truth = world();
+      truth.set(RUMORS, him, {
+        items: [{ content: { kind: "fraud", by: me }, confidence: 1 }],
+        told: [],
+      } as never);
+      const ctx = {
+        now,
+        scope: me,
+        truth,
+        ledger: { balance: () => 3 },
+        rng: Rng.root(1),
+      } as unknown as ProcessContext;
+      if (p.run(ctx).events?.[0]?.kind === "household.borrowed") n++;
+    }
+    return n;
+  };
+  it("el prestamista que cree tramposo a quien pide presta menos; apagado no cambia", () => {
+    expect(yes(mk(false))).toBe(60);
+    expect(yes(mk(true))).toBeLessThan(30);
   });
 });

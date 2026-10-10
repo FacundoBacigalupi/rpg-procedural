@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Tick } from "../../core/index.ts";
 import { holderAccount } from "../../core/index.ts";
-import { PERSON, type ProcessContext, RELATIONS } from "../../sim/index.ts";
+import { PERSON, type ProcessContext, RELATIONS, RUMORS } from "../../sim/index.ts";
 import { optInParts } from "./create.ts";
 import { hireProcess } from "./hire.ts";
 import { COMMITMENTS } from "./loans.ts";
 import { NEIGHBOR_STANDING } from "./neighbors.ts";
 
-function run(coins: number, who: string, bondage = true, heard?: "tight" | "broke") {
+function run(coins: number, who: string, bondage = true, heard?: "tight" | "broke", fraud = false) {
   const people: Record<string, unknown> = {
     "agent:a": { household: "h:a" },
     "agent:b": { household: "h:b" },
@@ -20,9 +20,11 @@ function run(coins: number, who: string, bondage = true, heard?: "tight" | "brok
         ? people[id]
         : t.name === RELATIONS.name
           ? { toward: { "agent:a": { dims: { trust: 1 } } } }
-          : t.name === NEIGHBOR_STANDING.name && id === "agent:a" && heard
-            ? { homes: { "h:b": { standing: heard, day: 0 } } }
-            : undefined,
+          : t.name === RUMORS.name && id === "agent:a" && fraud
+            ? { items: [{ content: { kind: "fraud", by: "agent:b" }, confidence: 1 }] }
+            : t.name === NEIGHBOR_STANDING.name && id === "agent:a" && heard
+              ? { homes: { "h:b": { standing: heard, day: 0 } } }
+              : undefined,
   } as never;
   const ledger = {
     balance: (a: unknown, u: string) =>
@@ -48,6 +50,7 @@ function run(coins: number, who: string, bondage = true, heard?: "tight" | "brok
     baseWage: 10,
     crafts: new Set(),
     jobDays: 3,
+    ...(fraud ? { heedFraud: true } : {}),
     ...(heard ? { heedStanding: { broke: 0.2, tight: 0.6 } } : {}),
     ...(bondage ? { bondage: { wagePerDay: 10, upkeepPerDay: 2, maxDays: 30 } } : {}),
   }).run(ctx) as unknown as {
@@ -67,6 +70,10 @@ describe("contratar a un oficial", () => {
   it("ofrece menos al oficial que cree en la ruina (solo si lo cree)", () => {
     expect(run(100, "agent:b", true, "broke").postings?.[0]?.transfers[0]?.amount).toBe(6);
     expect(run(100, "agent:b", true, "tight").postings?.[0]?.transfers[0]?.amount).toBe(18);
+    expect(run(100, "agent:b").postings?.[0]?.transfers[0]?.amount).toBe(30);
+  });
+  it("ofrece menos al oficial que cree tramposo (solo con heedFraud)", () => {
+    expect(run(100, "agent:b", true, undefined, true).postings?.[0]?.transfers[0]?.amount).toBe(6);
     expect(run(100, "agent:b").postings?.[0]?.transfers[0]?.amount).toBe(30);
   });
   it("resuelve un hogar a una persona suya", () => {
