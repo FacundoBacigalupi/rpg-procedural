@@ -312,5 +312,32 @@ export function seriousDeficiencyEffects(stores: NutrientStores): DeficiencyEffe
   return serious ? deficiencyEffects(stores) : undefined;
 }
 
+/** Días seguidos de desnutrición proteica grave que matan (calibración abierta). */
+export const LETHAL_SEVERE_PROTEIN_DAYS = 90;
+
+/**
+ * Desde cuándo está en la etapa grave de desnutrición proteica (`since`), seguida; sin fila, no lo
+ * está. Aparte de `DEFICIENCY_EFFECTS` y de `NUTRITION`: lo escribe solo `life.nutrition`.
+ */
+export interface SevereProtein {
+  readonly since: number;
+}
+export const SEVERE_PROTEIN = table<SevereProtein>("body.severe_protein");
+
+/** Nuevo `since`: se conserva mientras siga grave, empieza ahora al entrar, `undefined` al salir. */
+export function severeProteinSince(
+  stores: NutrientStores,
+  prev: SevereProtein | undefined,
+  now: number,
+): number | undefined {
+  if (deficiencyStage(stores, "protein") !== "severe") return undefined;
+  return prev?.since ?? now;
+}
+
+/** ¿Lleva la etapa grave el tiempo que mata? `day` es la duración del día en ticks. */
+export function malnutritionDeath(since: number | undefined, now: number, day: number): boolean {
+  return since !== undefined && (now - since) / day >= LETHAL_SEVERE_PROTEIN_DAYS;
+}
+
 /** Los efectos publicados de quien tiene alguna carencia seria; sin fila, ninguno. */
 export const DEFICIENCY_EFFECTS = table<DeficiencyEffects>("body.deficiency_effects");

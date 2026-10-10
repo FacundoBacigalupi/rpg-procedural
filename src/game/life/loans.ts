@@ -19,15 +19,19 @@ import {
 } from "../../core/index.ts";
 import {
   type Collateral,
+  type Commitment,
   draftEvent,
   ENTITY,
+  type EnforcementContext,
   type EventDraft,
   executeDefault,
   type GoodDef,
   type Guarantor,
   goodUnit,
+  guarantorSubrogation,
   installmentPerDay,
   type LoanCommitment,
+  loanToCommitment,
   makeLoan,
   outstanding,
   PARCEL,
@@ -48,6 +52,11 @@ export const LOANS_PROCESS = "life.loans";
 export type LoanRow = LoanCommitment & { readonly seed: string };
 /** Cada préstamo vive en una entidad `commitment:n` con este componente. */
 export const LOANS = table<LoanRow>("economy.loans");
+/**
+ * La vista contractual de cada préstamo (contracts §1) y las subrogaciones de los fiadores que
+ * pagaron (§5), con la misma clave `commitment:N`. Solo la escribe el proceso de préstamos.
+ */
+export const COMMITMENTS = table<Commitment>("contracts.commitment");
 
 /** Un préstamo decidido de antemano: la única fuente de préstamos hasta que los hogares apretados los pidan. */
 export interface LoanSeed {
@@ -72,6 +81,16 @@ export interface LoansOptions {
   readonly goods: readonly GoodDef[];
   readonly seeds: readonly LoanSeed[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Qué ejecutores hay en este mundo (comunidad, tribunal, clan, Cielo); por defecto solo conciencia y contraparte. */
+  readonly enforcement?: EnforcementContext;
+}
+
+export function commitmentRows(
+  truth: ReadonlyWorldTruth,
+): { id: string; commitment: Commitment }[] {
+  return [...truth.ids(COMMITMENTS)]
+    .sort()
+    .map((id) => ({ id: id as string, commitment: truth.get(COMMITMENTS, id) as Commitment }));
 }
 
 export function loanRows(truth: ReadonlyWorldTruth): { id: string; loan: LoanRow }[] {
@@ -94,6 +113,7 @@ const acct = (home: string): LedgerAccount => holderAccount(home as unknown as H
 
 export function loansProcess(o: LoansOptions): ProcessDef {
   const goodDef = new Map(o.goods.map((g) => [g.id, g]));
+  const enf = o.enforcement ? { enforcement: o.enforcement } : {};
   return {
     id: LOANS_PROCESS,
     system: "life",
@@ -101,8 +121,8 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, LOANS.name, PARCEL.name],
-    writes: [LOANS.name, ENTITY.name, PARCEL.name],
+    reads: [PERSON.name, ENTITY.name, LOANS.name, COMMITMENTS.name, PARCEL.name],
+    writes: [LOANS.name, COMMITMENTS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || o.seeds.length === 0) return {};
@@ -197,6 +217,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             } as never,
           ),
           setComponent(LOANS, id as never, row),
+          setComponent(COMMITMENTS, id as never, loanToCommitment(row, enf)),
         );
         opened.push({ id: id as string, loan: row });
       }
@@ -269,7 +290,36 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
             });
           }
-          changes.push(setComponent(LOANS, r.id as never, { ...res.loan, seed: l.seed }));
+          const next: LoanRow = { ...res.loan, seed: l.seed };
+          const parent = loanToCommitment(next, enf);
+          changes.push(
+            setComponent(LOANS, r.id as never, next),
+            setComponent(COMMITMENTS, r.id as never, {
+              ...parent,
+              history: [...parent.history, "credit.defaulted"],
+            }),
+          );
+          // El fiador que pagó queda como acreedor del deudor (subrogación, contracts §5).
+          for (const gp of res.guarantorsPaid) {
+            const sid = ctx.newId("commitment");
+            const sub = guarantorSubrogation(
+              parent,
+              gp.id,
+              gp.amount,
+              sid as string,
+              draftEvent(k) as unknown as string,
+              today,
+            );
+            if (!sub) continue;
+            changes.push(
+              setComponent(
+                ENTITY,
+                sid as never,
+                { id: sid, originEventId: draftEvent(k), createdAt: ctx.now } as never,
+              ),
+              setComponent(COMMITMENTS, sid as never, sub),
+            );
+          }
           continue;
         }
         const due = Math.ceil(installmentPerDay(l, today));
@@ -286,7 +336,11 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         });
         postings.push({ event: draftEvent(k), transfers: pay.transfers });
         apply(pay.transfers);
-        changes.push(setComponent(LOANS, r.id as never, { ...pay.loan, seed: l.seed }));
+        const paidRow: LoanRow = { ...pay.loan, seed: l.seed };
+        changes.push(
+          setComponent(LOANS, r.id as never, paidRow),
+          setComponent(COMMITMENTS, r.id as never, loanToCommitment(paidRow, enf)),
+        );
       }
 
       if (events.length === 0) return {};

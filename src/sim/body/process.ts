@@ -14,6 +14,7 @@ import {
   setComponent,
 } from "../scheduler/index.ts";
 import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
+import { DEFICIENCY_EFFECTS } from "./nutrition.ts";
 import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { BODY_STATE } from "./state.ts";
@@ -25,6 +26,8 @@ export interface BodyProcessOptions {
   placeOf(truth: ReadonlyWorldTruth, who: AgentId): PlaceRef;
   /** La temperatura que siente el cuerpo según dónde está (weather §5); sin ella, 18 °C parejos. */
   ambientOf?(truth: ReadonlyWorldTruth, who: AgentId): AmbientTemp;
+  /** Leer `DEFICIENCY_EFFECTS` (curación e inmune); apagado por defecto: la aldea no cambia. */
+  readonly deficiency?: boolean;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -36,7 +39,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
     cadence: { scene: "scene", local: "hour", regional: "day", world: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name],
+    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name, DEFICIENCY_EFFECTS.name],
     writes: [BODY_STATE.name, ENTITY.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -77,6 +80,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
         ctx.now,
         o.ambientOf?.(ctx.truth, me),
         ctx.truth.get(SWEAT, me)?.litersPerHour ?? 0,
+        o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined,
       );
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
       const changes: StateChange[] = [setComponent(BODY_STATE, me, next)];

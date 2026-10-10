@@ -61,6 +61,7 @@ import {
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   type Relations,
+  RUMORS,
   reinforceAll,
   relationship,
   rememberOwn,
@@ -83,9 +84,9 @@ import {
   villageReligion,
   weaken,
 } from "../../sim/index.ts";
-
 import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
+import { grievanceDeltas, grievanceOf } from "./grievance.ts";
 import {
   type Lived,
   livedFrom,
@@ -117,6 +118,8 @@ export interface AppraiseOptions {
   readonly values?: readonly ValueDef[];
   /** Si está, los testigos NPC que no son parte forman memorias de lo que percibieron. */
   readonly witness?: WitnessingOptions;
+  /** Opt-in: quien se entera de un agravio por rumor mueve su relación con el culpable. */
+  readonly rumorGrievance?: boolean;
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -155,6 +158,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       COMMUNITY_RELIGION.name,
       RELIGIOUS_IDENTITY.name,
       WAKE_COMFORT.name,
+      RUMORS.name,
     ],
     writes: [
       MIND.name,
@@ -308,6 +312,11 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             const after = applyTestimony(before, said, e.tick);
             if (after && after !== before) mems.set(witness, after);
           }
+        }
+        if (e.kind === "rumor.told" && o.rumorGrievance) {
+          const g = grievanceOf(e, truth.get(RUMORS, e.actors[1] as AgentId));
+          const d = g ? grievanceDeltas(g, closeness(rel(g.listener, g.victim, e))) : null;
+          if (g && d) move(g.listener, g.accused, e, d);
         }
         if (e.kind === "rumor.told") {
           // El rumor que el personaje le contó a un NPC: la memoria `told` la forma acá.

@@ -15,10 +15,13 @@ import {
   type DietDef,
   deficiencyStage,
   dietDayIntake,
+  draftEvent,
   ENTITY,
   type EventDraft,
+  endEntity,
   fullStores,
   MEALS,
+  malnutritionDeath,
   mealIntake,
   NUTRITION,
   type Nutrient,
@@ -29,10 +32,12 @@ import {
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SEVERE_PROTEIN,
   STORE_DAYS,
   type StateChange,
   seriousDeficiencyEffects,
   setComponent,
+  severeProteinSince,
   stepStores,
 } from "../../sim/index.ts";
 
@@ -55,6 +60,11 @@ export interface NutritionOptions {
    * los días sin registro siguen con la dieta de referencia. Apagado por defecto: la aldea no cambia.
    */
   readonly useEaten?: boolean;
+  /**
+   * Muerte por desnutrición proteica grave sostenida (`LETHAL_SEVERE_PROTEIN_DAYS`), con causa
+   * `malnutrition` y el estado de nutrición como causa. Apagado por defecto: sin muertes nuevas.
+   */
+  readonly lethal?: boolean;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -78,7 +88,7 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
     representation: "individual",
     phase: "settle",
     reads: [PERSON.name, ENTITY.name, BODY_STATE.name, NUTRITION.name, MEALS.name],
-    writes: [NUTRITION.name, DEFICIENCY_EFFECTS.name],
+    writes: [NUTRITION.name, DEFICIENCY_EFFECTS.name, SEVERE_PROTEIN.name, ENTITY.name],
     run(ctx) {
       if (!intake) return {};
       const changes: StateChange[] = [];
@@ -111,6 +121,29 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
         if (effects) changes.push(setComponent(DEFICIENCY_EFFECTS, id, effects));
         else if (ctx.truth.get(DEFICIENCY_EFFECTS, id))
           changes.push({ op: "delete", table: DEFICIENCY_EFFECTS.name, id });
+        if (o.lethal) {
+          const prevSevere = ctx.truth.get(SEVERE_PROTEIN, id);
+          const since = severeProteinSince(stores, prevSevere, ctx.now);
+          if (since === undefined) {
+            if (prevSevere) changes.push({ op: "delete", table: SEVERE_PROTEIN.name, id });
+          } else if (!prevSevere) changes.push(setComponent(SEVERE_PROTEIN, id, { since }));
+          if (malnutritionDeath(since, ctx.now, o.clock.day)) {
+            events.push({
+              kind: "body.died",
+              actors: [id as AgentId],
+              place: o.placeOf(ctx.truth, id as AgentId),
+              data: {
+                cause: "malnutrition",
+                days: Math.round((ctx.now - (since ?? ctx.now)) / o.clock.day),
+              },
+              emissions: { sight: 0.5, sound: 0.1 },
+              causes: [{ kind: "state", entity: id as AgentId, key: "body.nutrition" }],
+            });
+            changes.push(setComponent(NUTRITION, id, { stores, at: ctx.now }));
+            changes.push(endEntity(base, draftEvent(events.length - 1), ctx.now));
+            continue;
+          }
+        }
         if (isFull(stores)) {
           if (had) changes.push({ op: "delete", table: NUTRITION.name, id });
           continue;

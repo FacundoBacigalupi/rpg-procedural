@@ -16,9 +16,11 @@ import {
   bodySigns,
   bookOf,
   COPPER,
+  type DeedKind,
   type GuiltResponse,
   houseKey,
   INFECTION,
+  KNOWN_DEEDS,
   LOCATION,
   MEAL_KCAL,
   MENTAL,
@@ -29,6 +31,8 @@ import {
   PLEDGE,
   PLEDGE_BOOK,
   RELIGIOUS_IDENTITY,
+  RUMORS,
+  reputationIn,
   SELF_IMAGES,
   SKILL_STATE,
   type SkillStanding,
@@ -123,6 +127,16 @@ export interface CharacterPanel {
       readonly stance: GuiltResponse;
     }[];
   };
+  /**
+   * Su fama en la aldea (information §5), opt-in (`characterPanel(w, { reputation: true })`): solo si
+   * ya se nota (la trata distinto), en palabras y sin números. El apodo sale del hecho que más
+   * gente cuenta de él (`Reputation.dominant`); el que lo nombra es el narrador/render.
+   */
+  readonly reputation?: {
+    readonly fame: "some" | "many" | "everyone";
+    readonly standing: "tainted" | "bad" | "feared";
+    readonly nickname: DeedKind | null;
+  };
   /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
@@ -140,7 +154,14 @@ export interface InventoryPanel {
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
 }
 
-export function characterPanel(w: LifeWorld): CharacterPanel {
+/** Desde qué fracción de la aldea la fama se nota. */
+export const REPUTATION_NOTICED = 0.15;
+
+export interface CharacterPanelOptions {
+  readonly reputation?: boolean;
+}
+
+export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): CharacterPanel {
   const me = w.truth.get(PERSON, w.player);
   const at = w.truth.get(LOCATION, w.player);
   const body = w.truth.get(BODY_STATE, w.player);
@@ -209,7 +230,26 @@ export function characterPanel(w: LifeWorld): CharacterPanel {
         }
       : {}),
     ...conscienceOf(w),
+    ...(opts.reputation ? reputationOf(w) : {}),
     skills,
+  };
+}
+
+/** Su fama desde `reputationIn` (solo lectura): vacío si nadie lo conoce todavía o no lo mal creen. */
+function reputationOf(w: LifeWorld): Pick<CharacterPanel, "reputation"> | Record<string, never> {
+  const rep = reputationIn(
+    w.truth.ids(PERSON) as readonly AgentId[],
+    w.player,
+    (id) => w.truth.get(KNOWN_DEEDS, id),
+    (id) => w.truth.get(RUMORS, id),
+  );
+  if (rep.fame < REPUTATION_NOTICED || rep.standing >= 0) return {};
+  return {
+    reputation: {
+      fame: rep.fame < 0.5 ? "some" : rep.fame < 0.85 ? "many" : "everyone",
+      standing: rep.standing > -0.35 ? "tainted" : rep.standing > -0.7 ? "bad" : "feared",
+      nickname: rep.dominant,
+    },
   };
 }
 
