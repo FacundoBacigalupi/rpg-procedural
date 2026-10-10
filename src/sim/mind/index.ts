@@ -6,6 +6,7 @@ export * from "./conditions.ts";
 export * from "./consolidation.ts";
 export * from "./emotions.ts";
 export * from "./goal-progress.ts";
+export * from "./goal-vacuum.ts";
 export * from "./goals.ts";
 export * from "./habits.ts";
 export * from "./history.ts";
