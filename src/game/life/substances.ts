@@ -36,6 +36,7 @@ import {
   setComponent,
   stepSubstance,
   substanceDeath,
+  TREATMENT,
   dose as takeDose,
 } from "../../sim/index.ts";
 
@@ -167,11 +168,15 @@ export interface SubstanceDose {
   readonly amount: number;
   /** Lo que pasó, en palabras (queda en el evento y en la sustancia). */
   readonly source: string;
+  /** Evento que la causó (el tratamiento, si fue un remedio): causa del `body.substance_introduced`. */
+  readonly cause?: string;
 }
 
 export interface SubstancesOptions {
   readonly clock: PlanetClock;
   readonly doses?: readonly SubstanceDose[];
+  /** Opt-in: los remedios con dosis real (`TREATMENT.dose`) se aplican como dosis, con el tratamiento como causa. */
+  readonly treatmentDoses?: boolean;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -197,12 +202,37 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, SUBSTANCE.name, PERSON_SUBSTANCE.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      SUBSTANCE.name,
+      PERSON_SUBSTANCE.name,
+      ...(o.treatmentDoses ? [TREATMENT.name] : []),
+    ],
     writes: [SUBSTANCE.name, PERSON_SUBSTANCE.name, ENTITY.name],
     run(ctx) {
       const window = Math.max(tph, Math.min(ctx.window, o.clock.day));
       const from = ctx.now - window;
       const dosing = (o.doses ?? []).filter((d) => d.at > from && d.at <= ctx.now);
+      // El tratamiento lo escribe `life.medicine` en la misma fase: se ve al día siguiente, así que
+      // se toman los dados en [from, now) y la dosis entra en la primera hora de la ventana.
+      if (o.treatmentDoses) {
+        for (const id of ctx.truth.ids(TREATMENT)) {
+          for (const t of ctx.truth.get(TREATMENT, id)?.treatments ?? []) {
+            if (!t.dose || t.givenAt < from || t.givenAt >= ctx.now) continue;
+            dosing.push({
+              def: t.dose.def,
+              who: id as AgentId,
+              at: from + 1,
+              route: t.dose.route,
+              amount: t.dose.amount,
+              source: `remedy:${t.remedy ?? "?"}`,
+              cause: t.cause,
+            });
+          }
+        }
+      }
       const holders = new Set<string>(ctx.truth.ids(PERSON_SUBSTANCE));
       for (const d of dosing) holders.add(d.who);
       if (holders.size === 0) return {};
@@ -259,7 +289,9 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
             place: o.placeOf(ctx.truth, d.who),
             data: { substance: d.def.id, source: d.source, route: d.route },
             emissions: {},
-            causes: [{ kind: "state", entity: d.who, key: "body.substance" }],
+            causes: d.cause
+              ? [{ kind: "event", event: d.cause as never }]
+              : [{ kind: "state", entity: d.who, key: "body.substance" }],
           });
           changes.push(
             createEntity(sid, draftEvent(k), ctx.now),

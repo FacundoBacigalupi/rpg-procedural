@@ -9,6 +9,7 @@ import {
   PATHOGEN,
   type PathogenDef,
   PERSON,
+  PERSON_SUBSTANCE,
   type ProcessContext,
   type RemedyDef,
   SKILL_STATE,
@@ -24,10 +25,12 @@ import {
   healerFee,
   healerRenown,
   medicineProcess,
+  type RemedyDose,
   signsOfBody,
   signsOfFrostbite,
   signsOfSubstances,
 } from "./medicine.ts";
+import { substancesProcess } from "./substances.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const flu: PathogenDef = {
@@ -260,5 +263,65 @@ describe("life.medicine, señales de congelación", () => {
     expect(frostbiteCare(dead)).toEqual(["rewarm", "insulate", "amputate"]);
     const lost = { lost: [{ part: "feet" as const, at: 1, cause: "e" as never }] };
     expect((signsOfFrostbite(dead, lost) as Frost).missingPart).toBe(1);
+  });
+});
+
+describe("life.medicine, remedio con dosis real", () => {
+  const herb = {
+    id: "herb",
+    routes: { ingest: { bioavailability: 1, halfHours: 1 } },
+    halfLifeHours: 10,
+    ec50: 0.5,
+    hill: 1,
+    latencyHours: 0,
+    toxicThreshold: 0,
+    damagePerHourAtDouble: 0,
+    repairHalfHours: 24,
+  } as unknown as SubstanceDef;
+  const real: RemedyDose = { def: herb, route: "ingest", amount: 1 };
+  const treat = (doses?: Record<string, RemedyDose>) =>
+    medicineProcess({ clock, healers: [healer], doses, placeOf: () => place }).run(
+      ctx(world(), clock.day * 2),
+    );
+
+  it("opt-in: apagado igual que siempre, encendido deja la dosis y el efecto sale de la sustancia", () => {
+    const off = treat();
+    const on = treat({ tea: real });
+    const row = (o: typeof off) =>
+      (o.changes?.find((c) => c.table === TREATMENT.name) as never as { value: never })?.value as {
+        treatments: { effect: number; dose?: unknown }[];
+      };
+    expect(row(off).treatments[0]?.dose).toBeUndefined();
+    expect(row(on).treatments[0]?.dose).toMatchObject({ route: "ingest", amount: 1 });
+    expect(row(on).treatments[0]?.effect).not.toBe(row(off).treatments[0]?.effect);
+    expect(treat({ tea: real })).toEqual(on);
+  });
+
+  it("life.substances aplica la dosis del tratamiento con el tratamiento como causa", () => {
+    const t = world();
+    t.set(TREATMENT, sick as EntityRef, {
+      treatments: [
+        {
+          pathogen: "flu",
+          healer: doc,
+          believed: "flu",
+          confidence: 1,
+          remedy: "tea",
+          effect: 0.5,
+          harm: 0,
+          quarantine: null,
+          dose: { def: herb, route: "ingest", amount: 1 },
+          givenAt: clock.day,
+          cause: "event:77",
+        },
+      ],
+    });
+    const now = clock.day * 2;
+    const run = (on: boolean) =>
+      substancesProcess({ clock, treatmentDoses: on, placeOf: () => place }).run(ctx(t, now));
+    expect(run(false)).toEqual({});
+    const out = run(true);
+    expect(out.events?.[0]?.causes[0]).toEqual({ kind: "event", event: "event:77" });
+    expect(out.changes?.some((c) => c.table === PERSON_SUBSTANCE.name)).toBe(true);
   });
 });

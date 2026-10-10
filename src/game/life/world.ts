@@ -75,7 +75,7 @@ import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { type Healer, type HealerSchool, medicineProcess } from "./medicine.ts";
+import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
@@ -145,6 +145,8 @@ export interface LifeWorld {
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
   readonly substanceDoses?: readonly SubstanceDose[];
+  /** Remedios con dosis real (remedio a sustancia): el tratamiento deja una dosis en `PERSON_SUBSTANCE`; sin esto, efecto fijo. */
+  readonly remedyDoses?: Readonly<Record<string, RemedyDose>>;
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
   readonly nutrientProfiles?: readonly NutrientProfileDef[];
   readonly diets?: readonly DietDef[];
@@ -512,6 +514,7 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
           altitudeSigns: parts.healerAltitudeSigns === true ? altitudeOf : undefined,
@@ -522,6 +525,7 @@ export function lifeWorld(
         substancesProcess({
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
+          treatmentDoses: parts.remedyDoses !== undefined,
           placeOf: placeOf(parts, village),
         }),
         nutritionProcess({

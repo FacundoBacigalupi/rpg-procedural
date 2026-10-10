@@ -25,11 +25,14 @@ import {
   type Body,
   type BodyPlanDef,
   bodySigns,
+  CLEAN,
   type ConditionModel,
   diagnose,
+  dose,
   draftEvent,
   ENTITY,
   type EventDraft,
+  effectLevel,
   FROSTBITE,
   type FrostbiteState,
   frostbiteAmputations,
@@ -53,7 +56,9 @@ import {
   type StateChange,
   SUBSTANCE,
   type SubstanceDef,
+  type SubstanceRoute,
   setComponent,
+  stepSubstance,
   substanceSigns,
   TREATMENT,
 } from "../../sim/index.ts";
@@ -297,7 +302,28 @@ export interface MedicineOptions {
   readonly school?: HealerSchool | undefined;
   /** Opt-in: id del remedio a la unidad del ledger que gasta (1 por dosis, del sanador o del enfermo). */
   readonly stock?: Readonly<Record<string, string>> | undefined;
+  /**
+   * Opt-in: remedio a sustancia con dosis real. El tratamiento deja el asiento de la dosis y
+   * `life.substances` (con `treatmentDoses`) la aplica a `PERSON_SUBSTANCE`; el efecto sale de
+   * `stepSubstance` (nivel al pico) en vez del efecto fijo. Sin esto, el efecto fijo de siempre.
+   */
+  readonly doses?: Readonly<Record<string, RemedyDose>> | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+}
+
+/** La sustancia en que se vuelve un remedio y cuánto de ella es una dosis. */
+export interface RemedyDose {
+  readonly def: SubstanceDef;
+  readonly route: SubstanceRoute;
+  readonly amount: number;
+}
+
+/** Efecto de una dosis real: el nivel que `stepSubstance` deja en sangre al pico del remedio (0-1). */
+export function substanceRemedyEffect(d: RemedyDose, peakHours: number): number {
+  let st = dose(d.def, CLEAN, d.route, d.amount);
+  const hours = Math.max(1, Math.round(peakHours));
+  for (let h = 0; h < hours; h++) st = stepSubstance(d.def, st, 1);
+  return effectLevel(d.def, st);
 }
 
 export function medicineProcess(o: MedicineOptions): ProcessDef {
@@ -442,8 +468,14 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
                 skill: healer.skill,
               }
             : undefined;
-          const effect = given ? remedyEffect(def, given) : 0;
-          const harm = remedy && given ? remedyHarm(remedy, given.dose) : 0;
+          const real = remedy ? o.doses?.[remedy.id] : undefined;
+          // Con dosis real, el efecto es el nivel de la sustancia (y el daño lo hace ella misma).
+          const effect = given
+            ? real
+              ? Math.min(1, substanceRemedyEffect(real, remedy?.peakHours ?? 1) * healer.skill)
+              : remedyEffect(def, given)
+            : 0;
+          const harm = remedy && given && !real ? remedyHarm(remedy, given.dose) : 0;
           const iso = healer.isolation ?? 0;
           if (spent) {
             postings.push({
@@ -483,6 +515,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
                     separateWater: true,
                   }
                 : null,
+            ...(real ? { dose: { def: real.def, route: real.route, amount: real.amount } } : {}),
             givenAt: ctx.now,
             cause: draftEvent(k + 1),
           });
