@@ -96,6 +96,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
+import { type Labor, laborProcess } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -199,6 +200,14 @@ export interface LifeWorld {
     readonly caution?: number;
     readonly secondOpinion?: boolean;
   };
+  /**
+   * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
+   * tiene `medicine` (por la fama que cree, con `healerFee` si está) si cree el parto riesgoso, y la
+   * habilidad de la partera baja el riesgo (`life.labor`, tabla `LABOR`). Sin esto, nada.
+   */
+  readonly labors?: readonly Labor[];
+  /** Miedo del hogar al parto (se suma al riesgo creído; por defecto 0). */
+  readonly laborCaution?: number;
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -977,6 +986,25 @@ export function lifeWorld(
           deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.labors && parts.labors.length > 0
+          ? [
+              laborProcess({
+                clock: parts.clock,
+                labors: parts.labors,
+                ...(parts.laborCaution !== undefined ? { caution: parts.laborCaution } : {}),
+                ...(parts.healerFee
+                  ? {
+                      fee: {
+                        unit: ledgerUnit(parts.healerFee.unit),
+                        base: parts.healerFee.base,
+                        renownOf: (truth, mother, healer) => renownBelieved(truth, mother, healer),
+                      },
+                    }
+                  : {}),
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         substancesProcess({
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
