@@ -45,6 +45,7 @@ import {
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { REPUTATION_NOTICED } from "./nickname.ts";
+import { deficiencyStagesOf } from "./nutrition.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -171,7 +172,12 @@ export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): 
   if (!me || !at || !body) throw new Error("el personaje no tiene persona, lugar o cuerpo");
   const plan = w.plans.find((p) => p.id === body.plan);
   const signs = plan
-    ? bodySigns(plan, body, (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0)
+    ? bodySigns(
+        plan,
+        body,
+        (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0,
+        deficiencyStagesOf(w.truth, w.player, w.deficiencySigns),
+      )
     : { general: [], zones: [] };
   const mine = w.truth.get(STATUS, w.player);
   const statusName = w.statuses.find((d) => d.id === mine?.status)?.name;

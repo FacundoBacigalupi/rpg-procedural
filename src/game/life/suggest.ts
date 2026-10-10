@@ -25,6 +25,7 @@ import {
   SKILL_STATE,
 } from "../../sim/index.ts";
 import { knownEntities } from "./known.ts";
+import { deficiencyStagesOf } from "./nutrition.ts";
 import { needsConfirmation, type SuggestionTone, suggestionTone } from "./tone.ts";
 import type { LifeWorld } from "./world.ts";
 
@@ -94,7 +95,12 @@ function feelings(w: LifeWorld): ReadonlySet<string> {
   const body = w.truth.get(BODY_STATE, w.player);
   const plan = body && w.plans.find((p) => p.id === body.plan);
   if (!body || !plan) return new Set();
-  const signs = bodySigns(plan, body);
+  const signs = bodySigns(
+    plan,
+    body,
+    false,
+    deficiencyStagesOf(w.truth, w.player, w.deficiencySigns),
+  );
   return new Set([...signs.general, ...signs.zones.flatMap((z) => z.signs)]);
 }
 

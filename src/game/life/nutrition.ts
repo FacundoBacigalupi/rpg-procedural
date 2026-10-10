@@ -7,11 +7,12 @@
 // `content/diets/` hasta que la despensa registre qué se comió de verdad; quien pasa hambre
 // (sin glucógeno ni grasa) come una fracción.
 
-import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
+import type { AgentId, EntityRef, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
   BODY_NUTRIENTS,
   BODY_STATE,
   DEFICIENCY_EFFECTS,
+  type DeficiencyStage,
   type DietDef,
   deficiencyStage,
   dietDayIntake,
@@ -74,6 +75,23 @@ export function profileMap(defs: readonly NutrientProfileDef[]): Map<string, Nut
 }
 
 const isFull = (s: NutrientStores) => BODY_NUTRIENTS.every((n) => s[n] >= STORE_DAYS[n] - FULL_EPS);
+
+/**
+ * Etapas de carencia de alguien para `bodySigns` (opt-in): `undefined` si el opt-in está apagado o
+ * no tiene reservas guardadas (dieta llena), así el resultado es el de siempre.
+ */
+export function deficiencyStagesOf(
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  enabled: boolean | undefined,
+): Partial<Record<Nutrient, DeficiencyStage>> | undefined {
+  if (!enabled) return undefined;
+  const row = truth.get(NUTRITION, who);
+  if (!row) return undefined;
+  const out: Partial<Record<Nutrient, DeficiencyStage>> = {};
+  for (const n of BODY_NUTRIENTS) out[n] = deficiencyStage(row.stores, n);
+  return out;
+}
 
 const RANK = { none: 0, early: 1, overt: 2, severe: 3 } as const;
 

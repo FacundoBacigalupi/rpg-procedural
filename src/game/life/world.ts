@@ -149,6 +149,11 @@ export interface LifeWorld {
   readonly deficiencyEffects?: boolean;
   /** Con `deficiencyEffects`, `reopenWound` reabre heridas viejas (rng con clave); apagado por defecto. */
   readonly reopenWounds?: boolean;
+  /**
+   * Opt-in: las etapas de carencia (`NUTRITION`) suman señales a `bodySigns` en el panel, la vista,
+   * las interrupciones, las sugerencias y los médicos; apagado por defecto: nada cambia.
+   */
+  readonly deficiencySigns?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
@@ -496,6 +501,7 @@ export function lifeWorld(
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
+          deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
         }),
         substancesProcess({
