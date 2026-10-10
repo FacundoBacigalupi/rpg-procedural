@@ -17,12 +17,14 @@ import {
   type PlanetClock,
 } from "../../core/index.ts";
 import {
+  ambientIntake,
   BODY_STATE,
   cultivationEfficiency,
   deviationRisk,
   draftEvent,
   ENTITY,
   type EventDraft,
+  LOCATION,
   NATURAL_PURGE,
   type OverloadBody,
   type OverloadResult,
@@ -37,7 +39,9 @@ import {
   setComponent,
   splitByPurity,
   stepResidue,
+  TRAVEL_CELL,
 } from "../../sim/index.ts";
+import { type AmbientQi, ambientRelative } from "./ambientQi.ts";
 
 /** Unidad de `Essence` del ledger (en milésimas: el residuo es un decimal, el ledger va en enteros). */
 export const ESSENCE_UNIT = "essence";
@@ -80,6 +84,13 @@ export interface ResidueConfig {
    * `deviation-discharge` por el desvío). Apagado: el residuo es solo un número, sin asientos.
    */
   readonly ledger?: boolean;
+  /**
+   * Opt-in: absorción pasiva del qi del lugar (`ambientIntake`): con qi sobre la referencia el
+   * cuerpo toma `Essence` cada día y la parte impura queda como residuo (evento
+   * `body.ambient_absorbed`; con `ledger`, entra por la fuente `essence-intake`). El campo del
+   * planeta solo se lee. Apagado: nada cambia.
+   */
+  readonly ambient?: AmbientQi;
 }
 
 export const residueBodyOf = (
@@ -195,7 +206,13 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, RESIDUE.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      RESIDUE.name,
+      ...(o.ambient ? [LOCATION.name, TRAVEL_CELL.name] : []),
+    ],
     writes: [RESIDUE.name],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -211,10 +228,11 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
         at: number,
         day: number,
         deviationEvent: number | undefined,
+        added = 0,
       ) => {
         if (o.ledger !== true || !ctx.ledger) return;
         const account = holderAccount(who as unknown as HolderRef);
-        const diff = ctx.ledger.balance(account, essence) - target;
+        const diff = ctx.ledger.balance(account, essence) + added - target;
         if (diff <= 0) return;
         const dev = Math.min(diff, Math.round(discharged * ESSENCE_SCALE));
         const purged = diff - dev;
@@ -257,23 +275,63 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
       };
       const days = Math.max(1, Math.min(MAX_DAYS, Math.round(ctx.window / o.clock.day)));
       const today = Math.floor(ctx.now / o.clock.day);
-      for (const id of ctx.truth.ids(RESIDUE)) {
+      // Con qi ambiente también recorre a quien aún no tiene fila (orden por id: determinista).
+      const walk = o.ambient
+        ? [...new Set([...ctx.truth.ids(PERSON), ...ctx.truth.ids(RESIDUE)])].sort(
+            (a, b) => Number(a) - Number(b),
+          )
+        : ctx.truth.ids(RESIDUE);
+      for (const id of walk) {
         const had = ctx.truth.get(RESIDUE, id);
         const base = ctx.truth.get(ENTITY, id);
         const body = ctx.truth.get(BODY_STATE, id);
-        if (!had) continue;
+        if (!had && !o.ambient) continue;
         if (!base || base.endedAt !== undefined || body?.death) {
-          changes.push({ op: "delete", table: RESIDUE.name, id });
-          settle(id as AgentId, 0, 0, "death", ctx.now, today, undefined);
+          if (had) {
+            changes.push({ op: "delete", table: RESIDUE.name, id });
+            settle(id as AgentId, 0, 0, "death", ctx.now, today, undefined);
+          }
           continue;
         }
         const who = id as AgentId;
         const capacity = residueBodyOf(o, ctx.truth, who).capacity;
-        let load = had.load;
-        let deviations = had.deviations ?? 0;
-        let lastDeviation = had.lastDeviation;
+        let load = had?.load ?? 0;
+        let deviations = had?.deviations ?? 0;
+        let lastDeviation = had?.lastDeviation;
         let discharged = 0;
         let firstDeviation: number | undefined;
+        let addedMilli = 0;
+        if (o.ambient) {
+          const rel = ambientRelative(o.ambient, ctx.truth, who);
+          const intake = ambientIntake(rel, capacity, days);
+          const split = splitByPurity(intake.essence, intake.purity);
+          if (split.residue > 0) {
+            load += split.residue;
+            const k = events.length;
+            events.push({
+              kind: "body.ambient_absorbed",
+              actors: [who],
+              place: o.placeOf(ctx.truth, who),
+              data: { relative: rel, essence: intake.essence, purity: intake.purity, days },
+              emissions: {},
+              causes: [{ kind: "state", entity: who, key: "body.ambient_qi" }],
+            });
+            addedMilli = Math.round(split.residue * ESSENCE_SCALE);
+            if (o.ledger === true && addedMilli > 0) {
+              postings.push({
+                event: draftEvent(k),
+                transfers: [
+                  {
+                    unit: essence,
+                    from: externalAccount(ESSENCE_INTAKE),
+                    to: holderAccount(who as unknown as HolderRef),
+                    amount: addedMilli,
+                  },
+                ],
+              });
+            }
+          }
+        }
         for (let d = 0; d < days; d++) {
           load = stepResidue(load, 1, capacity, method).load;
           if (o.deviation !== true) continue;
@@ -305,9 +363,10 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
           ctx.now,
           today,
           firstDeviation,
+          addedMilli,
         );
         if (load > MIN_LOAD) {
-          if (load !== had.load || deviations !== (had.deviations ?? 0)) {
+          if (!had || load !== had.load || deviations !== (had.deviations ?? 0)) {
             changes.push(
               setComponent(RESIDUE, id, {
                 load,
@@ -317,7 +376,7 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
               }),
             );
           }
-        } else changes.push({ op: "delete", table: RESIDUE.name, id });
+        } else if (had) changes.push({ op: "delete", table: RESIDUE.name, id });
       }
       return changes.length > 0 || events.length > 0
         ? { changes, events, ...(postings.length > 0 ? { postings } : {}) }

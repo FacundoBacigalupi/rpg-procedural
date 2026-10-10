@@ -29,6 +29,7 @@ import {
   type LocalMap,
   type MaterialDef,
   type NutrientProfileDef,
+  PERSON,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -58,6 +59,7 @@ import {
   travelAltitudeOf,
 } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
+import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
@@ -87,7 +89,12 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { clearedRenown, MARK_CLEARED, markExposureProcess } from "./markexposure.ts";
+import {
+  believedMarkRenown,
+  clearedRenown,
+  MARK_CLEARED,
+  markExposureProcess,
+} from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -95,6 +102,7 @@ import {
   catalogMoldHints,
   type HouseholdNeeds,
   lookSiteOf,
+  MOLD_RUMORS,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
@@ -289,6 +297,11 @@ export interface LifeWorld {
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
   readonly residue?: ResidueConfig;
+  /**
+   * Opt-in: el qi del lugar (campo de `Essence` de la celda, solo lectura) entra al ambiente
+   * térmico (`qiC`) y, con `residue`, a la absorción pasiva con residuo. Apagado: sin cambios.
+   */
+  readonly ambientQi?: AmbientQi;
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
   readonly drinkSubstance?: ConsumableDef;
   /**
@@ -627,7 +640,12 @@ export function lifeWorld(
                 skill: forgeSkillOf(parts.traits),
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
                 ...(parts.marksExpose === true && parts.marksGossip === true
-                  ? { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
+                  ? parts.moldGossip?.fromForgery
+                    ? {
+                        renown: believedMarkRenown,
+                        renownReads: [MARK_CLEARED.name, MOLD_RUMORS.name, PERSON.name],
+                      }
+                    : { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
                   : {}),
               }),
             ]
@@ -971,7 +989,20 @@ export function lifeWorld(
           spaces: parts.spaces,
           seed: parts.seed,
           placeOf: placeOf(parts, village),
-          ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
+          ...(altitudeOf || parts.ambientQi
+            ? {
+                altitude: {
+                  baseM: parts.map.baseElevationM ?? 0,
+                  altitudeOf: altitudeOf ?? (() => parts.map.baseElevationM ?? 0),
+                  ...(parts.ambientQi
+                    ? {
+                        qiC: (t: ReadonlyWorldTruth, w: AgentId) =>
+                          ambientQiCOf(parts.ambientQi as AmbientQi, t, w),
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.frostbite === true && parts.frostbiteTreatment === true
             ? { frostbiteTreatment: true }
@@ -1005,6 +1036,7 @@ export function lifeWorld(
           ? [
               residueProcess({
                 ...parts.residue,
+                ...(parts.ambientQi ? { ambient: parts.ambientQi } : {}),
                 clock: parts.clock,
                 placeOf: placeOf(parts, village),
               }),

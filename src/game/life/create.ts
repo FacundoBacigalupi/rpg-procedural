@@ -227,6 +227,8 @@ export interface LifeOptions {
   };
   /** Opt-in: el verbo `hire` se ejecuta (`LifeParts.hire`); apagado por defecto. */
   readonly hire?: LifeParts["hire"];
+  /** Opt-in: el fiado por hambre (`life.borrow`) baja el límite según lo que el vecino CREE del apuro del hogar que pide (`LifeParts.creditHeed`); apagado por defecto. */
+  readonly creditHeed?: LifeParts["creditHeed"];
   /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
   readonly residue?: LifeParts["residue"];
 }
@@ -259,6 +261,7 @@ export function optInParts(
   | "loanWorkout"
   | "pawn"
   | "hire"
+  | "creditHeed"
   | "residue"
   | "tradeNeeds"
 > {
@@ -302,6 +305,7 @@ export function optInParts(
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
+    ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };

@@ -98,6 +98,7 @@ export function hireProcess(o: HireOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "settle",
+    withRecent: true,
     reads: [
       PERSON.name,
       ENTITY.name,

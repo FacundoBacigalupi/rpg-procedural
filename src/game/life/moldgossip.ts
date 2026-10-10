@@ -38,6 +38,7 @@ import {
   placeKey,
   RELATIONS,
   type ReadonlyWorldTruth,
+  RUMORS,
   relationship,
   type StateChange,
   setComponent,
@@ -92,6 +93,37 @@ export function renownBelieved(
   const key = moldKey(renownRumor(healer, 0));
   const r = truth.get(MOLD_RUMORS, who)?.items.find((x) => moldKey(x.rumor) === key)?.rumor;
   return r && r.mold === "attr" && typeof r.value === "number" ? r.value : undefined;
+}
+
+/** Cuánto baja la fama que cree alguien de un marcador por cada fraude distinto que oyó de él (sin calibrar). */
+export const FORGERY_RENOWN_DROP = 0.2;
+/** Fama de partida de un marcador sin fraudes oídos (igual que `MARK_DEFAULT_RENOWN`). */
+export const FORGERY_RENOWN_BASE = 0.5;
+
+/**
+ * La fama que `forger` pierde en la cabeza de quien oyó el rumor `fraud` de `RUMORS` (distintos por
+ * raíz): `base` menos `FORGERY_RENOWN_DROP` por cada uno, piso 0. Puro; `undefined` si no oyó ninguno.
+ */
+export function forgeryRenownRumors(
+  items: readonly {
+    readonly root: string;
+    readonly content: { readonly kind: string; readonly by?: unknown };
+  }[],
+): readonly { readonly rumor: MoldRumor; readonly root: string }[] {
+  const by = new Map<string, string[]>();
+  for (const it of items) {
+    if (it.content.kind !== "fraud" || typeof it.content.by !== "string") continue;
+    const roots = by.get(it.content.by) ?? [];
+    if (!roots.includes(it.root)) roots.push(it.root);
+    by.set(it.content.by, roots);
+  }
+  return [...by.keys()].sort().map((f) => ({
+    rumor: renownRumor(
+      f,
+      Math.max(0, FORGERY_RENOWN_BASE - FORGERY_RENOWN_DROP * (by.get(f)?.length ?? 0)),
+    ),
+    root: [...(by.get(f) ?? [])].sort()[0] ?? "",
+  }));
 }
 
 /** Lo que un paciente vio de cada sanador que lo trató: la fama de lo que le pasó a él (puro, orden por id). */
@@ -167,6 +199,12 @@ export interface MoldGossipOptions {
    * no lee `TREATMENT`.
    */
   readonly fromHealing?: boolean;
+  /**
+   * Opt-in (information §4, economy §6): el rumor `fraud` de `RUMORS` (marca falsa descubierta) baja
+   * la fama del falsificador como rumor `attr` `renown` en el libro de quien lo oyó (mismos saltos,
+   * confianza y causa que el fraude), y desde ahí viaja con el chisme de moldes. Apagado: no lee `RUMORS`.
+   */
+  readonly fromForgery?: boolean;
   /** Probabilidad por hora de que alguien cuente algo a un vecino (sin calibrar). */
   readonly tellChance?: number;
   /**
@@ -291,6 +329,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       ...(o.fromPriceBeliefs ? [PRICE_BELIEFS.name] : []),
       ...(o.neighborStanding ? [NEIGHBOR_STANDING.name] : []),
       ...(o.fromHealing ? [TREATMENT.name] : []),
+      ...(o.fromForgery ? [RUMORS.name] : []),
       ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
     writes: [MOLD_RUMORS.name],
@@ -351,6 +390,34 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
             books.set(
               id,
               keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
+            );
+            dirty.add(id);
+          }
+        }
+      }
+      if (o.fromForgery) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          const items = truth.get(RUMORS, id)?.items ?? [];
+          for (const f of forgeryRenownRumors(items)) {
+            const src = items.find((x) => x.root === f.root);
+            if (!src) continue;
+            const b = bookOf(id);
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(f.rumor));
+            if (prev && JSON.stringify(prev.rumor) === JSON.stringify(f.rumor)) continue;
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(f.rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, {
+                rumor: f.rumor,
+                confidence: src.confidence,
+                hops: src.hops,
+                heardAt: ctx.now,
+                teller: src.teller,
+                cause: src.root as EventId,
+              }),
             );
             dirty.add(id);
           }

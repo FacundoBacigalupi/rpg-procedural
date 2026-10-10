@@ -22,6 +22,7 @@ import {
   table,
 } from "../../sim/index.ts";
 import { MARK_DEFAULT_RENOWN } from "./marks.ts";
+import { renownBelieved } from "./moldgossip.ts";
 import { SCAM_DISCOVERED, type ScamDiscoveredData } from "./scamdiscovery.ts";
 
 export const MARK_EXPOSURE_PROCESS = "life.mark_exposure";
@@ -62,6 +63,23 @@ export const FORGERY_FAR_HOPS = 2;
 /** Fama que el mercado le supone a `who` como marcador: la de base más lo que ganó cada vez que se supo que lo copiaron (0-1). */
 export function clearedRenown(truth: ReadonlyWorldTruth, who: AgentId): number {
   return Math.min(1, MARK_DEFAULT_RENOWN + CLEARED_RENOWN_STEP * clearedCount(truth, who));
+}
+
+/**
+ * Con `moldGossip.fromForgery`: la fama que el mercado le supone a `who` como marcador es lo que cree
+ * la gente (promedio de los rumores `renown` de los libros de moldes, creencia, no verdad); si nadie
+ * tiene uno, `clearedRenown`. Puro sobre la verdad.
+ */
+export function believedMarkRenown(truth: ReadonlyWorldTruth, who: AgentId): number {
+  let sum = 0;
+  let n = 0;
+  for (const id of truth.ids(PERSON) as AgentId[]) {
+    const v = renownBelieved(truth, id, who);
+    if (v === undefined) continue;
+    sum += v;
+    n += 1;
+  }
+  return n === 0 ? clearedRenown(truth, who) : sum / n;
 }
 
 export interface MarkExposureOptions {
