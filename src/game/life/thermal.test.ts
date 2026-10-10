@@ -108,7 +108,12 @@ describe("congelación: insumos del cuidado", () => {
     windEast: 1,
     windNorth: 0.3,
   };
-  const run = (grams: number, supplies: boolean) => {
+  const run = (
+    grams: number,
+    supplies: boolean,
+    extra: Record<string, unknown> = {},
+    balance: (unit: string) => number = () => grams,
+  ) => {
     const rows: Record<string, unknown> = {
       [PERSON.name]: {},
       [ENTITY.name]: { id: who },
@@ -128,9 +133,11 @@ describe("congelación: insumos del cuidado", () => {
       frostbite: true,
       frostbiteTreatment: true,
       frostbiteSelfCare: { skillOf: () => 0.5 },
-      ...(supplies ? { frostbiteSupplies: { fuelUnit: "good:wood", fuelGramsPerHour: 100 } } : {}),
+      ...(supplies
+        ? { frostbiteSupplies: { fuelUnit: "good:wood", fuelGramsPerHour: 100, ...extra } }
+        : {}),
     });
-    const ledger = { balance: () => grams };
+    const ledger = { balance: (_a: unknown, u: string) => balance(u) };
     const out = p.run({ truth, ledger, now: clock.day * 10, window: clock.day } as never);
     const set = out.changes?.find((c) => c.table === FROSTBITE.name && c.op === "set");
     return {
@@ -148,6 +155,18 @@ describe("congelación: insumos del cuidado", () => {
     expect(dry.out.postings).toBeUndefined();
     expect(fed.hands).toBeLessThan(dry.hands);
     expect(fed.hands).toBeLessThanOrEqual(free.hands);
+  });
+
+  it("agua tibia aparte y manta que se desgasta", () => {
+    const all = run(5000, true);
+    const noWater = run(5000, true, { waterUnit: "good:water", waterPerHour: 500 }, (u) =>
+      u === "good:water" ? 0 : 5000,
+    );
+    const worn = run(5000, true, { blanketUnit: "good:blanket", blanketWearPerHour: 0.01 });
+    expect(noWater.hands).toBeGreaterThan(all.hands);
+    const units = worn.out.postings?.flatMap((p) => p.transfers.map((t) => t.unit)) ?? [];
+    expect(units).toContain("good:blanket");
+    expect(units).toContain("good:wood");
   });
 });
 

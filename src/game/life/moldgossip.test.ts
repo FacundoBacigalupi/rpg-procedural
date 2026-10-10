@@ -184,6 +184,14 @@ describe("el precio visto entra como rumor de primera mano", () => {
     expect(item?.cause).toBe("ev:1");
     expect(item?.heardAt).toBe(90);
     expect(go({}).changes ?? []).toHaveLength(0);
+    recent[0] = { ...recent[0], data: { glance: { acuity: 0.6 } } } as never;
+    const glance = go({ fromLooking: { siteOf: () => ({ what: "cave", where }) } });
+    expect(glance.changes?.[0]?.value.items[0]?.rumor).toEqual({
+      mold: "location",
+      what: "cave",
+      where,
+      vague: false,
+    });
   });
 });
 

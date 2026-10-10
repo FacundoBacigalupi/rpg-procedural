@@ -117,6 +117,11 @@ export interface ThermalOptions {
     readonly sink?: string;
     readonly blanketUnit?: string;
     readonly unsuppliedInsulate?: number;
+    /** Agua tibia: unidad y cantidad por hora de recalentado, insumo aparte de la leña (rinde lo mínimo de las dos). */
+    readonly waterUnit?: string;
+    readonly waterPerHour?: number;
+    /** Desgaste de la manta: unidades que se gastan por hora de uso (fracción; se retiran al sumidero). */
+    readonly blanketWearPerHour?: number;
   };
   /**
    * Opt-in: el esfuerzo (`Body.activity`, `ACTIVITY_LOAD` relativo al reposo) entra en `stepCore`
@@ -280,53 +285,70 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       const sup = o.frostbiteSupplies;
       const fuelUnit = sup ? ledgerUnit(sup.fuelUnit) : undefined;
       const blanketUnit = sup?.blanketUnit === undefined ? undefined : ledgerUnit(sup.blanketUnit);
+      const waterUnit = sup?.waterUnit === undefined ? undefined : ledgerUnit(sup.waterUnit);
       // Insumos de un cuidado de `hoursCare` horas: lo que se quema sale del paciente y si no del
       // médico (asiento + evento con causa); devuelve cuánto rinden recalentar y aislar (0-1).
       const supply = (patient: EntityRefLike, by: string | undefined, hoursCare: number) => {
         if (!sup || !fuelUnit || !ctx.ledger || hoursCare <= 0) return { rewarm: 1, insulate: 1 };
-        const need = sup.fuelGramsPerHour * hoursCare;
         const holders = [patient as string, ...(by === undefined ? [] : [by])].map((w) =>
           holderAccount(w as unknown as HolderRef),
         );
-        const burn: { from: LedgerAccount; amount: number }[] = [];
-        let left = need;
-        for (const acc of holders) {
-          if (left <= 0) break;
-          const have =
-            ctx.ledger.balance(acc, fuelUnit) - (reserved.get(`${acc}|${fuelUnit}`) ?? 0);
-          const take = Math.min(left, Math.max(0, have));
-          if (take > 0) {
-            burn.push({ from: acc, amount: take });
-            reserved.set(`${acc}|${fuelUnit}`, (reserved.get(`${acc}|${fuelUnit}`) ?? 0) + take);
-            left -= take;
+        // Quema `need` de `unit` (paciente primero, luego médico) con asiento y evento; devuelve lo quemado.
+        const burnUnit = (unit: LedgerUnit, unitName: string, need: number) => {
+          const burn: { from: LedgerAccount; amount: number }[] = [];
+          let left = need;
+          for (const acc of holders) {
+            if (left <= 0) break;
+            const have = ctx.ledger?.balance(acc, unit) ?? 0;
+            const free = have - (reserved.get(`${acc}|${unit}`) ?? 0);
+            const take = Math.min(left, Math.max(0, free));
+            if (take > 0) {
+              burn.push({ from: acc, amount: take });
+              reserved.set(`${acc}|${unit}`, (reserved.get(`${acc}|${unit}`) ?? 0) + take);
+              left -= take;
+            }
           }
-        }
-        const burned = need - left;
-        if (burned > 0) {
-          const ke = events.length;
-          events.push({
-            kind: "body.frostbite_supplied",
-            actors: [patient as AgentId],
-            place: o.placeOf(ctx.truth, patient as AgentId),
-            data: { unit: sup.fuelUnit, grams: Math.round(burned), wanted: Math.round(need) },
-            emissions: { sight: 0.1 },
-            causes: [{ kind: "state", entity: patient as AgentId, key: "body.frostbite" }],
-          });
-          postings.push({
-            event: draftEvent(ke),
-            transfers: burn.map((b) => ({
-              unit: fuelUnit,
-              from: b.from,
-              to: externalAccount(sup.sink ?? BURNED_SINK),
-              amount: b.amount,
-            })),
-          });
+          const burned = need - left;
+          if (burned > 0) {
+            const ke = events.length;
+            events.push({
+              kind: "body.frostbite_supplied",
+              actors: [patient as AgentId],
+              place: o.placeOf(ctx.truth, patient as AgentId),
+              data: { unit: unitName, grams: Math.round(burned * 1000) / 1000, wanted: need },
+              emissions: { sight: 0.1 },
+              causes: [{ kind: "state", entity: patient as AgentId, key: "body.frostbite" }],
+            });
+            postings.push({
+              event: draftEvent(ke),
+              transfers: burn.map((b) => ({
+                unit,
+                from: b.from,
+                to: externalAccount(sup.sink ?? BURNED_SINK),
+                amount: b.amount,
+              })),
+            });
+          }
+          return burned;
+        };
+        const need = sup.fuelGramsPerHour * hoursCare;
+        const burned = burnUnit(fuelUnit, sup.fuelUnit, need);
+        let rewarm = need > 0 ? burned / need : 1;
+        // Agua tibia: insumo aparte; sin ella el recalentado rinde la fracción que hay.
+        if (waterUnit && sup.waterPerHour) {
+          const wNeed = sup.waterPerHour * hoursCare;
+          const wBurned = burnUnit(waterUnit, sup.waterUnit as string, wNeed);
+          rewarm = Math.min(rewarm, wNeed > 0 ? wBurned / wNeed : 1);
         }
         const covered = blanketUnit
           ? ctx.ledger.balance(holderAccount(patient as unknown as HolderRef), blanketUnit) >= 1
           : true;
+        // Desgaste: la manta se gasta una fracción por hora de uso (se retira del ledger, deja de existir).
+        if (blanketUnit && covered && sup.blanketWearPerHour) {
+          burnUnit(blanketUnit, sup.blanketUnit as string, sup.blanketWearPerHour * hoursCare);
+        }
         return {
-          rewarm: need > 0 ? burned / need : 1,
+          rewarm,
           insulate: covered ? 1 : (sup.unsuppliedInsulate ?? 0.4),
         };
       };

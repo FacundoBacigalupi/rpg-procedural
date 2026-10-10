@@ -41,7 +41,7 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
-import { lookAcuity } from "./looking.ts";
+import { glanceAcuity, lookAcuity } from "./looking.ts";
 import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
 import { TRADE_VIEW } from "./tradeview.ts";
 
@@ -374,7 +374,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       }
       if (o.fromLooking) {
         for (const e of ctx.recent) {
-          const acuity = lookAcuity(e.data);
+          const acuity = lookAcuity(e.data) ?? glanceAcuity(e.data);
           const who = e.actors[0] as AgentId | undefined;
           if (acuity === undefined || !who || !truth.get(PERSON, who)) continue;
           const site = o.fromLooking.siteOf?.(truth, who);
