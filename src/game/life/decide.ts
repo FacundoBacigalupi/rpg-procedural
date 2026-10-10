@@ -97,7 +97,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
-import { MOLD_RUMORS, type MoldHintOptions, moldHintMood } from "./moldgossip.ts";
+import { MOLD_RUMORS, type MoldHintOptions, moldBuyGoods, moldHintMood } from "./moldgossip.ts";
 import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
@@ -422,7 +422,20 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         const have = g ? (larder?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
         return g && have >= 1 ? [g.name] : [];
       });
-      const texts = stash.length > 0 ? { ...pantry, consume: stash.sort() } : pantry;
+      const hintBook = o.moldHints ? truth.get(MOLD_RUMORS, me) : undefined;
+      const hintPriced = {
+        beliefs: o.moldHints ? truth.get(PRICE_BELIEFS, me) : undefined,
+        day: Math.floor(now / o.clock.day),
+      };
+      // Lo oído barato que no tiene en la despensa: candidata de compra (opt-in `buyCandidates`).
+      const pantryTrade = new Set(pantry["trade"] ?? []);
+      const buyOnly =
+        o.moldHints && hintBook
+          ? moldBuyGoods(hintBook, o.moldHints, hintPriced).filter((n) => !pantryTrade.has(n))
+          : [];
+      const withBuy =
+        buyOnly.length > 0 ? { ...pantry, trade: [...pantryTrade, ...buyOnly].sort() } : pantry;
+      const texts = stash.length > 0 ? { ...withBuy, consume: stash.sort() } : withBuy;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
         catalog: o.catalog,
@@ -479,19 +492,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
       // esos insumos las candidatas quedan iguales.
       const merged = mergeCandidates(catalogCandidates, social);
-      const hintBook = o.moldHints ? truth.get(MOLD_RUMORS, me) : undefined;
       const hinted =
         o.moldHints && hintBook
           ? merged.map((c) => {
-              // Las candidatas que nombran un bien salen de la despensa: ofrecerlo es vender.
+              // Las que nombran un bien de la despensa ofrecen vender; las de compra, un bien oído barato.
+              const buying = c.verb === "trade" && buyOnly.some((n) => c.id.endsWith(`+${n}`));
               const bump = moldHintMood(
-                c.verb === "trade" ? { ...c, direction: "sell" } : c,
+                c.verb === "trade" ? { ...c, direction: buying ? "buy" : "sell" } : c,
                 hintBook,
                 o.moldHints,
-                {
-                  beliefs: truth.get(PRICE_BELIEFS, me),
-                  day: Math.floor(now / o.clock.day),
-                },
+                hintPriced,
               );
               return bump === 0 ? c : { ...c, mood: r((c.mood ?? 0) + bump) };
             })

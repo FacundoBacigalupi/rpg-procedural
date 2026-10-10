@@ -492,6 +492,11 @@ export interface MoldHintOptions {
    * `believedPerKg`; sin él, o con precio igual al creído, no filtra.
    */
   readonly bySide?: boolean;
+  /**
+   * Opt-in: un bien oído más barato que lo creído se ofrece como candidata `trade` de compra aunque
+   * no esté en la despensa (`moldBuyGoods`). Exige `believedPerKg`.
+   */
+  readonly buyCandidates?: boolean;
 }
 
 /**
@@ -560,4 +565,27 @@ export function moldHintMood(
     best = Math.max(best, use);
   }
   return Math.round(best * MOLD_HINT_MOOD * 1e6) / 1e6;
+}
+
+/**
+ * Bienes (nombre del catálogo) que el NPC oyó baratos frente a lo que cree (puro): candidatos a
+ * comprar aunque no los tenga en la despensa. Exige `buyCandidates`, `believedPerKg` y `priced`;
+ * sin ellos, nada. Orden fijo por nombre, sin repetir.
+ */
+export function moldBuyGoods(
+  book: MoldBook | undefined,
+  o: MoldHintOptions,
+  priced: { readonly beliefs: PriceBeliefs | undefined; readonly day: number } | undefined,
+): string[] {
+  if (!o.buyCandidates || !o.believedPerKg || !priced) return [];
+  const out = new Set<string>();
+  for (const h of book?.items ?? []) {
+    const r = h.rumor;
+    if (r.mold !== "price") continue;
+    const believed = o.believedPerKg(priced.beliefs, r.good, priced.day);
+    if (believed === undefined) continue;
+    if (moldPriceEdge(r.amount, believed).side === "buy")
+      out.add(o.goodName ? o.goodName(r.good) : r.good);
+  }
+  return [...out].sort();
 }

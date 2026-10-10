@@ -816,7 +816,13 @@ export function lifeWorld(
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }
             : parts.moldHintsFromCatalog === true
-              ? { moldHints: { ...catalogMoldHints(parts.goods), bySide: true } }
+              ? {
+                  moldHints: {
+                    ...catalogMoldHints(parts.goods),
+                    bySide: true,
+                    buyCandidates: true,
+                  },
+                }
               : {}),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
