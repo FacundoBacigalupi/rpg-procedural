@@ -15,6 +15,7 @@ import {
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
+import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
 
@@ -25,9 +26,27 @@ export interface SeenSubstanceSign {
   readonly stage?: Exclude<SubstanceStage, "none">;
 }
 
+export type SeenUrge = "faint" | "pressing";
+
+/** Umbral desde el cual las ganas por el entorno se sienten como apremio. */
+export const URGE_PRESSING = 0.3;
+/** Por debajo de esto no se nota. */
+export const URGE_NOTICED = 0.05;
+
+/** Cómo se siente un ansia de señal (número de la verdad -> palabra); sin ganas notables, undefined. */
+export function urgeOf(craving: number): SeenUrge | undefined {
+  if (craving >= URGE_PRESSING) return "pressing";
+  return craving >= URGE_NOTICED ? "faint" : undefined;
+}
+
 export interface SubstancePanel {
   /** Lo que nota de sÃ­ mismo. */
   readonly self: readonly SeenSubstanceSign[];
+  /**
+   * Ganas que le despierta el entorno por costumbre (señales aprendidas), sin decir de qué; solo si
+   * hay señales aprendidas y el entorno de ahora las despierta (opt-in `cravingCues`).
+   */
+  readonly urge?: SeenUrge;
   /** Lo que nota de los que tiene a la vista (mismo lugar), por cÃ³mo los llama; solo si hay seÃ±ales. */
   readonly others: readonly {
     readonly who: string;
@@ -72,5 +91,9 @@ export function substancePanel(w: LifeWorld): SubstancePanel {
       others.push({ who: a?.name ?? a?.relation ?? "alguien", signs });
     }
   }
-  return { self: seenSubstanceSigns(w.truth, w.player), others };
+  const now = w.scheduler.now;
+  const urge = urgeOf(
+    cueCravingOf(w.truth, w.player, cueContextOf(w.truth, w.player, now, w.clock), now, w.clock),
+  );
+  return { self: seenSubstanceSigns(w.truth, w.player), others, ...(urge ? { urge } : {}) };
 }
