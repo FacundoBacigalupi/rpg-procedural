@@ -516,6 +516,8 @@ export function lifeWorld(
                 unit: parts.loanContagion,
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
+                // Valor provisional de una parcela en prenda (a calibrar): 1 unidad por 10 m2.
+                parcelValue: (_ref, parcel) => Math.floor(parcel.area / 10),
                 lots: new Map(
                   (parts.loanSeeds ?? []).flatMap((s) =>
                     (s.collateral ?? []).flatMap((c) => (c.lot ? [[c.ref, c.lot] as const] : [])),
