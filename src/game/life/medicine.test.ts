@@ -9,6 +9,7 @@ import {
   FROSTBITE_ORDERS,
   INFECTION,
   PATHOGEN,
+  PATIENT_BELIEF,
   type PathogenDef,
   PERSON,
   PERSON_SUBSTANCE,
@@ -407,5 +408,54 @@ describe("life.medicine, fama por rumor y cobro", () => {
       ctx(world(), clock.day * 2),
     );
     expect(off.postings).toBeUndefined();
+  });
+});
+
+describe("life.medicine, cuarentena por decisión del paciente", () => {
+  const run = (trust: number | undefined, contagion?: number) =>
+    medicineProcess({
+      clock,
+      healers: [healer],
+      patientDecides: {
+        trustOf: () => trust,
+        ...(contagion === undefined ? {} : { contagionBelief: { flu: contagion } }),
+      },
+      placeOf: () => place,
+    }).run(ctx(world(), clock.day * 2));
+  const treatment = (out: ReturnType<ReturnType<typeof medicineProcess>["run"]>) => {
+    const ch = out.changes?.find((c) => c.table === TREATMENT.name) as unknown as
+      | { value: { treatments: { quarantine: unknown }[] } }
+      | undefined;
+    return ch?.value.treatments[0];
+  };
+
+  it("apagado el aislamiento del sanador se aplica, sin tabla ni evento nuevos", () => {
+    const off = medicineProcess({ clock, healers: [healer], placeOf: () => place }).run(
+      ctx(world(), clock.day * 2),
+    );
+    expect(off.events?.map((e) => e.kind)).toEqual(["body.diagnosed", "body.treated"]);
+    expect(off.changes?.some((c) => c.table === PATIENT_BELIEF.name)).toBe(false);
+    expect(treatment(off)?.quarantine).not.toBeNull();
+  });
+
+  it("el paciente que confía y cree que se pega se aísla, con causa y creencia guardada", () => {
+    const out = run(0.9, 0.9);
+    expect(out.events?.map((e) => e.kind)).toEqual([
+      "body.diagnosed",
+      "body.treated",
+      "body.quarantine_decided",
+    ]);
+    expect(out.events?.[2]?.data).toMatchObject({ quarantined: true, doubts: false });
+    expect(out.events?.[2]?.causes[0]).toMatchObject({ kind: "event" });
+    expect(treatment(out)?.quarantine).not.toBeNull();
+    expect(out.changes?.some((c) => c.table === PATIENT_BELIEF.name)).toBe(true);
+    expect(run(0.9, 0.9)).toEqual(out);
+  });
+
+  it("si no cree que se pega, o desconfía del sanador, no se aísla", () => {
+    expect(treatment(run(0.9, 0))?.quarantine).toBeNull();
+    const doubtful = run(0.1, 0.9);
+    expect(doubtful.events?.[2]?.data).toMatchObject({ doubts: true, quarantined: false });
+    expect(treatment(doubtful)?.quarantine).toBeNull();
   });
 });

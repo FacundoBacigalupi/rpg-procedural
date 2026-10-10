@@ -11,6 +11,7 @@ import {
 import {
   BODY_STATE,
   ENTITY,
+  lotDose,
   pillOf,
   RESIDUE,
   type ReadonlyWorldTruth,
@@ -184,5 +185,15 @@ describe("residuo cableado", () => {
     const mixed = receiveEssenceLot(lots, "good:pill", 10, 10, 4, 0.5);
     expect(mixed["good:pill"]?.essence).toBeCloseTo(3);
     expect(mixed["good:pill"]?.purity).toBeCloseTo((0.9 * 2 + 0.5 * 4) / 6);
+  });
+
+  it("lotDose: por unidad (consume) y por gramo (eat) leen el mismo lote", () => {
+    const lots = receiveEssenceLot(undefined, "good:pill", 0, 5, 2, 0.8);
+    const one = lotDose(lots, "good:pill", 1);
+    expect(one).toEqual({ essence: 2, purity: 0.8, good: "pill" });
+    expect(lotDose(lots, "good:pill", 3)?.essence).toBeCloseTo(6);
+    expect(lotDose(lots, "good:other", 1)).toBeUndefined();
+    expect(lotDose(lots, "good:pill", 0)).toBeUndefined();
+    expect(lotDose(undefined, "good:pill", 1)).toBeUndefined();
   });
 });

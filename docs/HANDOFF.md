@@ -63,7 +63,7 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#432**. Tests: 2136 en 300 archivos (último `npm run check` completo verde en #432).
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#433**. Tests: 2143 en 301 archivos (último `npm run check` completo verde en #433).
 
 **Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`. Sigue igual en #390–#397: 4 agentes Sonnet por lote, el líder integra y corre la suite amplia. Al agotarse los ítems hacibles se pasa a `v0.3.0`.
 
@@ -143,6 +143,7 @@ Desde #398 hasta #409:
 - #430: empeño desde `give` modo `pawn`, residuo cableado (`life.residue`), rumor `fraud` y `MARK_CLEARED`, `objectCues` en decide y panel.
 - #431: residuo con ledger de Essence y esencia/pureza por lote, fama del copiado y alcance del rumor, `TRAVEL_CELL` y altitud, NPC que empeña por decisión (`pawndecide.ts`).
 - #432: fix del scheduler `ProcessDef.withRecent` (procesos `onEvent` fuera de `perceive`: `pawn_open`, `hire`; `life.accent` y `born_taboos_settle` tienen el mismo problema, pendiente por cambiar hashes), tests de Life de fiado y empeño, fraude a moldgossip, caso comunitario por usura, ambientes de qi.
+- #433: la sesión y el web pasan `residue`/`objectCues` al panel (`panelOptionsOf`), `renown` con observador en marcas, diagnóstico como creencia y cuarentena por decisión del paciente, `consume` por unidad lee `LOT_ESSENCE`.
 
 Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuando no quede nada hacible, pasar lo dependiente a su fase, `npm run check`, PR `develop`→`main` y tag `v0.3.0`. Quedan ramas remotas `origin/feat/f3-g|h|i|j` por borrar al final.
 

@@ -43,12 +43,15 @@ import {
   infectionStage,
   levelOf,
   PATHOGEN,
+  PATIENT_BELIEF,
   type PathogenDef,
   type PathogenTreatment,
+  type PatientBeliefRow,
   PERSON_SUBSTANCE,
   type PostingDraft,
   type ProcessContext,
   type ProcessDef,
+  quarantineDecision,
   type ReadonlyWorldTruth,
   type RemedyDef,
   remedyEffect,
@@ -333,6 +336,24 @@ export interface MedicineOptions {
         ) => number | undefined;
       }
     | undefined;
+  /**
+   * Opt-in (body-health §6): la cuarentena es decision del paciente y su hogar, no del sanador. El
+   * sanador solo aconseja (`isolation`); el paciente cree lo que oyo segun la confianza que le
+   * tiene (`trustOf`, prior 0,6) y lo que su cultura cree que se pega (`contagionBelief`: condicion
+   * a 0-1, por defecto 0,5), y se aisla o no (`quarantineDecision`). Guarda la creencia en
+   * `PATIENT_BELIEF` y emite `body.quarantine_decided`. Apagado: el aislamiento del sanador se aplica.
+   */
+  readonly patientDecides?:
+    | {
+        readonly contagionBelief?: Readonly<Record<string, number>>;
+        readonly trustOf?: (
+          truth: ReadonlyWorldTruth,
+          patient: AgentId,
+          healer: AgentId,
+        ) => number | undefined;
+        readonly caution?: number;
+      }
+    | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -441,8 +462,13 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       ...(o.frostbiteOrders ? [FROSTBITE_ORDERS.name] : []),
       ...(o.altitudeSigns ? [ACCLIMATIZATION.name] : []),
       ...(o.fee ? ["law.mold_rumors"] : []),
+      ...(o.patientDecides ? [PATIENT_BELIEF.name] : []),
     ],
-    writes: o.frostbiteOrders ? [TREATMENT.name, FROSTBITE_ORDERS.name] : [TREATMENT.name],
+    writes: [
+      TREATMENT.name,
+      ...(o.frostbiteOrders ? [FROSTBITE_ORDERS.name] : []),
+      ...(o.patientDecides ? [PATIENT_BELIEF.name] : []),
+    ],
     run(ctx) {
       const alive = (a: AgentId) => ctx.truth.get(ENTITY, a)?.endedAt === undefined;
       const healers = (o.healers ?? []).filter((h) => alive(h.agent));
@@ -484,6 +510,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
         const patient = id as AgentId;
         const had = ctx.truth.get(TREATMENT, id)?.treatments ?? [];
         const added: PathogenTreatment[] = [];
+        const heardRows: PatientBeliefRow[] = [];
         for (const inf of mine.infections) {
           const def = defs.get(inf.pathogen);
           if (!def || !mine.ill.includes(def.id)) continue;
@@ -578,7 +605,17 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
               : remedyEffect(def, given)
             : 0;
           const harm = remedy && given && !real ? remedyHarm(remedy, given.dose) : 0;
-          const iso = healer.isolation ?? 0;
+          const pd = o.patientDecides;
+          const decision = pd
+            ? quarantineDecision({
+                trust: pd.trustOf?.(ctx.truth, patient, healer.agent) ?? 0.6,
+                confidence: belief.confidence,
+                contagionBelief: pd.contagionBelief?.[belief.condition] ?? 0.5,
+                advised: healer.isolation ?? 0,
+                ...(pd.caution !== undefined ? { caution: pd.caution } : {}),
+              })
+            : undefined;
+          const iso = decision ? decision.isolation : (healer.isolation ?? 0);
           const transfers: PostingDraft["transfers"][number][] = [];
           if (spent) {
             transfers.push({
@@ -618,6 +655,34 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
             emissions: {},
             causes: [{ kind: "event", event: draftEvent(k) }],
           });
+          if (decision) {
+            events.push({
+              kind: "body.quarantine_decided",
+              actors: [patient, healer.agent],
+              place: o.placeOf(ctx.truth, patient),
+              data: {
+                pathogen: def.id,
+                heard: belief.condition,
+                credence: Math.round(decision.credence * 1000) / 1000,
+                doubts: decision.doubts,
+                quarantined: decision.takes,
+                isolation: Math.round(decision.isolation * 1000) / 1000,
+              },
+              emissions: {},
+              causes: [{ kind: "event", event: draftEvent(k + 1) }],
+            });
+            heardRows.push({
+              pathogen: def.id,
+              healer: healer.agent,
+              heard: belief.condition,
+              credence: decision.credence,
+              doubts: decision.doubts,
+              quarantined: decision.takes,
+              isolation: decision.isolation,
+              decidedAt: ctx.now,
+              cause: draftEvent(k + 2),
+            });
+          }
           added.push({
             pathogen: def.id,
             healer: healer.agent,
@@ -642,6 +707,10 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
         }
         if (added.length > 0) {
           changes.push(setComponent(TREATMENT, id, { treatments: [...had, ...added] }));
+          if (heardRows.length > 0) {
+            const prior = ctx.truth.get(PATIENT_BELIEF, id)?.beliefs ?? [];
+            changes.push(setComponent(PATIENT_BELIEF, id, { beliefs: [...prior, ...heardRows] }));
+          }
         }
       }
       if (events.length === 0) return {};

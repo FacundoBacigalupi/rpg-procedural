@@ -231,6 +231,14 @@ export interface LifeOptions {
   readonly creditHeed?: LifeParts["creditHeed"];
   /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
   readonly residue?: LifeParts["residue"];
+  /** Opt-in: sustancias consumibles (`LifeParts.consumables`); los paneles de la sesión leen de acá los bienes de las señales por objeto. */
+  readonly consumables?: LifeParts["consumables"];
+  /** Opt-in: señales de ansia aprendidas (`LifeParts.cravingCues`). */
+  readonly cravingCues?: boolean;
+  /** Opt-in (con `cravingCues`): las señales leen a quién cree presente y el huso (`LifeParts.cueLocal`). */
+  readonly cueLocal?: boolean;
+  /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): señal por objeto (`LifeParts.objectCues`). */
+  readonly objectCues?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -263,6 +271,10 @@ export function optInParts(
   | "hire"
   | "creditHeed"
   | "residue"
+  | "consumables"
+  | "cravingCues"
+  | "cueLocal"
+  | "objectCues"
   | "tradeNeeds"
 > {
   return {
@@ -307,6 +319,10 @@ export function optInParts(
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
+    ...(options.consumables ? { consumables: options.consumables } : {}),
+    ...(options.cravingCues ? { cravingCues: true } : {}),
+    ...(options.cueLocal ? { cueLocal: true } : {}),
+    ...(options.objectCues ? { objectCues: true } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

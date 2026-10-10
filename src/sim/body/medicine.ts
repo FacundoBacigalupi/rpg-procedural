@@ -305,3 +305,54 @@ export function resolveBirth(risk: BirthRisk, rng: Rng): BirthOutcome {
   const fever = !motherDied && u[3] < risk.puerperalFever;
   return { complication, motherDied, infantDied, fever };
 }
+
+// --- Cuarentena por decisión del paciente ----------------------------------------------------
+
+export interface QuarantineDecisionInput {
+  /** 0-1: cuánto cree el paciente el diagnóstico oído (confianza del sanador por su fama). */
+  readonly trust: number;
+  /** 0-1: la seguridad con que el sanador lo dijo. */
+  readonly confidence: number;
+  /** 0-1: cuánto cree su cultura que esa condición se pega (no la ley del mundo). */
+  readonly contagionBelief: number;
+  /** 0-1: aislamiento que el sanador aconseja. */
+  readonly advised: number;
+  /** 0-1: miedo/precaución del hogar (por defecto 0). */
+  readonly caution?: number;
+}
+
+export interface QuarantineDecision {
+  /** 0-1: cuánto cree el paciente lo que oyó. */
+  readonly credence: number;
+  /** El paciente discrepa: no le cree al sanador (podría buscar otro). */
+  readonly doubts: boolean;
+  /** El hogar se aísla. */
+  readonly takes: boolean;
+  /** 0-1: aislamiento que adopta (0 si no se aísla). */
+  readonly isolation: number;
+}
+
+/** Piso de creencia bajo el cual el paciente discrepa. */
+export const DOUBT_BELOW = 0.3;
+/** Peso mínimo (creído y temido) para que el hogar decida aislarse. */
+export const QUARANTINE_TAKES_FROM = 0.2;
+
+/**
+ * El hogar decide aislarse según lo que cree, no según la verdad: cree el diagnóstico en
+ * proporción a la confianza que le tiene al sanador y a su seguridad; se aísla si cree que se pega
+ * (o tiene miedo) y el aislamiento adoptado crece con ese peso, acotado por lo que se aconsejó.
+ * Puro, sin azar.
+ */
+export function quarantineDecision(i: QuarantineDecisionInput): QuarantineDecision {
+  const credence = clamp01(i.trust) * (0.5 + 0.5 * clamp01(i.confidence));
+  const doubts = credence < DOUBT_BELOW;
+  const fear = Math.max(clamp01(i.contagionBelief), 0.5 * clamp01(i.caution ?? 0));
+  const weight = credence * fear;
+  const takes = !doubts && clamp01(i.advised) > 0 && weight >= QUARANTINE_TAKES_FROM;
+  return {
+    credence,
+    doubts,
+    takes,
+    isolation: takes ? clamp01(i.advised) * clamp01(weight / 0.6) : 0,
+  };
+}

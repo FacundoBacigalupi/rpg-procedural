@@ -82,3 +82,24 @@ export interface PersonTreatment {
 
 /** Aparte de `INFECTION` para que el sanador y el contagio no pisen el mismo componente. */
 export const TREATMENT = table<PersonTreatment>("body.treatment");
+
+export interface PatientBeliefRow {
+  readonly pathogen: string;
+  readonly healer: string;
+  /** La condición que el paciente oyó y cree (creencia, no la verdad). */
+  readonly heard: string;
+  readonly credence: number;
+  readonly doubts: boolean;
+  readonly quarantined: boolean;
+  readonly isolation: number;
+  readonly decidedAt: Tick;
+  /** El evento `body.quarantine_decided`. */
+  readonly cause: string;
+}
+
+export interface PersonPatientBelief {
+  readonly beliefs: readonly PatientBeliefRow[];
+}
+
+/** Lo que el paciente y su hogar creen del diagnóstico y si se aíslan (opt-in; lo escribe `life.medicine`). */
+export const PATIENT_BELIEF = table<PersonPatientBelief>("body.patient_belief");

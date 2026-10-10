@@ -36,7 +36,11 @@ export function panelsOf(session: Session): Panels {
   return {
     now: renderStatus(session.life.now),
     character: renderCharacter(
-      characterPanel(w, { substances: true, ...(session.nickname ? { reputation: true } : {}) }),
+      characterPanel(w, {
+        substances: true,
+        ...session.panelOptions,
+        ...(session.nickname ? { reputation: true } : {}),
+      }),
     ),
     inventory: renderInventory(inventoryPanel(w)),
     book: renderBook(bookPanel(w)),
@@ -44,7 +48,10 @@ export function panelsOf(session: Session): Panels {
     hypotheses: renderHypotheses(hypothesesPanel(w)),
     recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
-    environment: renderEnvironment(session.environment(), substancePanel(w).others),
+    environment: renderEnvironment(
+      session.environment(),
+      substancePanel(w, session.panelOptions).others,
+    ),
     options: session.suggested().map((o) => ({
       id: o.id,
       label: renderSuggestion(o),
