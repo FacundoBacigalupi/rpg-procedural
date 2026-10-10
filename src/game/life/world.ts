@@ -302,6 +302,8 @@ export interface LifeWorld {
   readonly cravingCues?: boolean;
   /** Opt-in (con `cravingCues`): `life.decide` lee a quién cree presente y el huso del lugar; ver `DecideOptions.cueLocal`. */
   readonly cueLocal?: boolean;
+  /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
+  readonly objectCues?: boolean;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -1115,6 +1117,9 @@ export function lifeWorld(
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true
             ? { cueLocal: { lonDeg: parts.map.lonDeg } }
+            : {}),
+          ...(parts.cravingCues === true && parts.cueLocal === true && parts.objectCues === true
+            ? { objectCues: true }
             : {}),
           ...(() => {
             const base: MoldHintOptions | undefined = parts.moldHints

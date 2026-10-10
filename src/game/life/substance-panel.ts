@@ -3,11 +3,12 @@
 // (envenenamiento por etapa, sedaciÃ³n, abstinencia), nunca el id ni el nombre de la sustancia: el
 // personaje ve el efecto, no sabe quÃ© lo causa. Sin nÃºmeros, sin RNG.
 
-import type { AgentId } from "../../core/index.ts";
+import { type AgentId, type HolderRef, holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   ENTITY,
   type HeldDef,
   LOCATION,
+  PERSON,
   PERSON_SUBSTANCE,
   type ReadonlyWorldTruth,
   SUBSTANCE,
@@ -15,7 +16,7 @@ import {
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
-import { cueLocalOf } from "./cue-local.ts";
+import { cueLocalOf, objectsSeen } from "./cue-local.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
@@ -34,7 +35,7 @@ export const URGE_PRESSING = 0.3;
 /** Por debajo de esto no se nota. */
 export const URGE_NOTICED = 0.05;
 
-/** Cómo se siente un ansia de señal (número de la verdad -> palabra); sin ganas notables, undefined. */
+/** Cï¿½mo se siente un ansia de seï¿½al (nï¿½mero de la verdad -> palabra); sin ganas notables, undefined. */
 export function urgeOf(craving: number): SeenUrge | undefined {
   if (craving >= URGE_PRESSING) return "pressing";
   return craving >= URGE_NOTICED ? "faint" : undefined;
@@ -44,8 +45,8 @@ export interface SubstancePanel {
   /** Lo que nota de sÃ­ mismo. */
   readonly self: readonly SeenSubstanceSign[];
   /**
-   * Ganas que le despierta el entorno por costumbre (señales aprendidas), sin decir de qué; solo si
-   * hay señales aprendidas y el entorno de ahora las despierta (opt-in `cravingCues`).
+   * Ganas que le despierta el entorno por costumbre (seï¿½ales aprendidas), sin decir de quï¿½; solo si
+   * hay seï¿½ales aprendidas y el entorno de ahora las despierta (opt-in `cravingCues`).
    */
   readonly urge?: SeenUrge;
   /** Lo que nota de los que tiene a la vista (mismo lugar), por cÃ³mo los llama; solo si hay seÃ±ales. */
@@ -76,7 +77,14 @@ export function seenSubstanceSigns(truth: ReadonlyWorldTruth, who: AgentId): See
   );
 }
 
-export function substancePanel(w: LifeWorld, opts?: { readonly cueLocal?: boolean }): SubstancePanel {
+export function substancePanel(
+  w: LifeWorld,
+  opts?: {
+    readonly cueLocal?: boolean;
+    /** Opt-in (con `cueLocal`): ids de bienes que remiten a una sustancia; ver uno en lo que lleva o en la despensa despierta su seÃ±al. */
+    readonly objectCues?: readonly string[];
+  },
+): SubstancePanel {
   const at = w.truth.get(LOCATION, w.player);
   const known = acquaintances(w);
   const others: { who: string; signs: SeenSubstanceSign[] }[] = [];
@@ -93,6 +101,19 @@ export function substancePanel(w: LifeWorld, opts?: { readonly cueLocal?: boolea
     }
   }
   const now = w.scheduler.now;
+  const house = w.truth.get(PERSON, w.player)?.household;
+  const seen =
+    opts?.cueLocal && opts.objectCues && opts.objectCues.length > 0
+      ? objectsSeen(opts.objectCues, (good) => {
+          const unit = ledgerUnit(`good:${good}`);
+          const amountOf = (h: HolderRef) =>
+            w.ledger.holdings(holderAccount(h)).find((x) => x.unit === unit)?.amount ?? 0;
+          return (
+            amountOf(w.player as HolderRef) +
+            (house === undefined ? 0 : amountOf(house as unknown as HolderRef))
+          );
+        })
+      : [];
   const urge = urgeOf(
     cueCravingOf(
       w.truth,
@@ -102,7 +123,12 @@ export function substancePanel(w: LifeWorld, opts?: { readonly cueLocal?: boolea
         w.player,
         now,
         w.clock,
-        opts?.cueLocal ? cueLocalOf(w.truth, w.player, now, w.clock, w.map.lonDeg) : undefined,
+        opts?.cueLocal
+          ? {
+              ...cueLocalOf(w.truth, w.player, now, w.clock, w.map.lonDeg),
+              ...(seen.length > 0 ? { objects: seen } : {}),
+            }
+          : undefined,
       ),
       now,
       w.clock,

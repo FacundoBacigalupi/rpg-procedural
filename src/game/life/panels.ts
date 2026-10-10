@@ -167,6 +167,8 @@ export interface CharacterPanelOptions {
   readonly substances?: boolean;
   /** Opt-in (con `substances`): el ansia por señales lee a quién cree presente y el huso del lugar. */
   readonly cueLocal?: boolean;
+  /** Opt-in (con `cueLocal`): ids de bienes cuya vista despierta la señal por objeto de una sustancia. */
+  readonly objectCues?: readonly string[];
 }
 
 export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): CharacterPanel {
@@ -245,7 +247,12 @@ export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): 
     ...conscienceOf(w),
     ...(opts.reputation ? reputationOf(w) : {}),
     ...(opts.substances
-      ? { substances: substancePanel(w, { cueLocal: opts.cueLocal === true }) }
+      ? {
+          substances: substancePanel(w, {
+            cueLocal: opts.cueLocal === true,
+            ...(opts.objectCues ? { objectCues: opts.objectCues } : {}),
+          }),
+        }
       : {}),
     skills,
   };
