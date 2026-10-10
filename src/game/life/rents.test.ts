@@ -20,6 +20,7 @@ import {
 } from "../../sim/index.ts";
 import { offenseOf } from "./deeds.ts";
 import {
+  matchRents,
   RENTS,
   type RentSeed,
   rentDuePerDay,
@@ -139,7 +140,7 @@ describe("life.rents", () => {
     expect(row?.status).toBe("defaulted");
   });
 
-  it("mora sostenida: evento con causas, desalojo y fama vía deeds", () => {
+  it("mora sostenida: evento con causas, desalojo y fama vÃ­a deeds", () => {
     const { truth, ledger } = setup(1);
     const long: RentSeed = { ...seed, termDays: 50 };
     const proc = rentsProcess({
@@ -173,7 +174,7 @@ describe("life.rents", () => {
     ).toBe("default");
   });
 
-  it("aparcería: al cosechar el aparcero entrega la parte, con causas, y el resto es atraso", () => {
+  it("aparcerÃ­a: al cosechar el aparcero entrega la parte, con causas, y el resto es atraso", () => {
     const { truth, ledger } = setup(1);
     const GRAIN = ledgerUnit("good:grain");
     const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
@@ -207,7 +208,7 @@ describe("life.rents", () => {
         eventId: makeId("event", 2),
         transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("tenant"), amount: n }],
       });
-    // Con la despensa vacía todo es atraso; con 100 de grano entrega 35 de una cosecha de 100.
+    // Con la despensa vacÃ­a todo es atraso; con 100 de grano entrega 35 de una cosecha de 100.
     const ctx = (recent: unknown[]) =>
       ({ ...ctxOf(truth, ledger, 3), recent }) as unknown as ProcessContext;
     const first = hp.run(ctx([harvest(100)]));
@@ -225,7 +226,7 @@ describe("life.rents", () => {
     expect(second.events?.[0]?.causes.length).toBe(2);
   });
 
-  it("aparcer�a: tras 3 cosechas seguidas con atraso hay mora, evento y desalojo", () => {
+  it("aparcería: tras 3 cosechas seguidas con atraso hay mora, evento y desalojo", () => {
     const { truth, ledger } = setup(1);
     const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
     const crop: RentSeed = { ...seed, good: "grain", kind: "sharecrop", termDays: 50 };
@@ -249,12 +250,36 @@ describe("life.rents", () => {
     };
     const kinds: string[] = [];
     for (let i = 0; i < 4; i++) {
-      const r = hp.run({ ...ctxOf(truth, ledger, 3), recent: [harvest] } as unknown as ProcessContext);
+      const r = hp.run({
+        ...ctxOf(truth, ledger, 3),
+        recent: [harvest],
+      } as unknown as ProcessContext);
       kinds.push(...(r.events ?? []).map((e) => e.kind));
       apply(r);
     }
     expect(kinds.filter((k) => k === "property.rent_default")).toHaveLength(1);
     apply(proc.run(ctxOf(truth, ledger, 4)));
     expect(truth.get(RENTS, id as never)?.status).toBe("defaulted");
+  });
+});
+
+describe("matchRents", () => {
+  it("empareja por fondos, un arriendo por hogar, sin autoarriendo", () => {
+    const offers = [
+      { landlord: "h1", parcel: "parcel:2", good: "copper", askPerDay: 3, termDays: 30 },
+      { landlord: "h1", parcel: "parcel:1", good: "copper", askPerDay: 3, termDays: 30 },
+    ];
+    const seekers = [
+      { tenant: "h1", maxPerDay: 9, funds: 999 },
+      { tenant: "h2", maxPerDay: 3, funds: 50 },
+      { tenant: "h3", maxPerDay: 2, funds: 500 },
+      { tenant: "h4", maxPerDay: 5, funds: 30 },
+    ];
+    const seeds = matchRents(offers, seekers, 10);
+    expect(seeds.map((s) => [s.parcel, s.tenant])).toEqual([
+      ["parcel:1", "h2"],
+      ["parcel:2", "h4"],
+    ]);
+    expect(matchRents(offers, seekers, 10)).toEqual(seeds);
   });
 });
