@@ -190,6 +190,8 @@ export interface LifeOptions {
   readonly debtKnowledge?: boolean;
   /** Opt-in: persiste la capa inmediata desde señales con causa; apagado por defecto. */
   readonly persistImmediateGoals?: boolean;
+  /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
+  readonly closeGoalsOnDeath?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -337,6 +339,7 @@ export function optInParts(
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
+  | "closeGoalsOnDeath"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -400,6 +403,7 @@ export function optInParts(
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
+    ...(options.closeGoalsOnDeath ? { closeGoalsOnDeath: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),

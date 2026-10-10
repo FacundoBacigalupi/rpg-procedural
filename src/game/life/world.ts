@@ -82,6 +82,7 @@ import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
+import { goalDeathClosureProcess } from "./goal-death.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { hireProcess } from "./hire.ts";
@@ -467,6 +468,8 @@ export interface LifeWorld {
   /** Opt-in: libro personal de términos y pagos conocidos de préstamos Commitment. */
   readonly debtKnowledge?: boolean;
   readonly persistImmediateGoals?: boolean;
+  /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
+  readonly closeGoalsOnDeath?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1322,6 +1325,9 @@ export function lifeWorld(
           })(),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
+        ...(parts.closeGoalsOnDeath
+          ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
+          : []),
         routineProcess({
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,
