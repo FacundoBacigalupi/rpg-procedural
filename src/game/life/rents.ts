@@ -27,6 +27,7 @@ import {
   type GoodDef,
   goodUnit,
   PARCEL,
+  type Parcel,
   PERSON,
   type PostingDraft,
   type ProcessDef,
@@ -100,6 +101,23 @@ export function rentsOf(truth: ReadonlyWorldTruth, landlord: string): RentCollec
   return out;
 }
 
+/** El canon diario que el hogar `tenant` paga por arriendos vigentes hoy: gasto fijo de `BudgetEnv.fixedPerDay`. */
+export function rentDuePerDay(truth: ReadonlyWorldTruth, tenant: string, today: number): number {
+  let sum = 0;
+  for (const id of [...truth.ids(RENTS)].sort()) {
+    const r = truth.get(RENTS, id);
+    if (
+      r &&
+      r.status === "active" &&
+      r.tenant === tenant &&
+      today >= r.startDay &&
+      today < r.endDay
+    )
+      sum += r.perDay;
+  }
+  return sum;
+}
+
 function leaseCommitment(
   id: string,
   s: RentSeed,
@@ -148,7 +166,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
     representation: "individual",
     phase: "act",
     reads: [PERSON.name, ENTITY.name, RENTS.name, PARCEL.name],
-    writes: [RENTS.name, ENTITY.name],
+    writes: [RENTS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || o.seeds.length === 0) return {};
@@ -214,7 +232,28 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
             draftEvent(k) as unknown as string,
           ),
         };
+        // El arrendatario recibe el derecho de uso y los frutos y pasa a ocupar la parcela;
+        // la propiedad del dueño queda como está.
+        const parcel = ctx.truth.get(PARCEL, s.parcel as never) as Parcel;
         changes.push(
+          setComponent(PARCEL, s.parcel as never, {
+            ...parcel,
+            rights: [
+              ...parcel.rights,
+              {
+                holder: s.tenant as never,
+                incidents: ["use", "fruits"],
+                tenure: "lease",
+                basis: "custom",
+                record: {
+                  kind: "witnesses",
+                  witnesses: [landMan, tenMan],
+                  event: draftEvent(k) as never,
+                },
+              },
+            ],
+            possession: s.tenant as never,
+          }),
           setComponent(
             ENTITY,
             id as never,
