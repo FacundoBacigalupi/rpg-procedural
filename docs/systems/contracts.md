@@ -220,6 +220,19 @@ laborales anunciados no completan el libro por leer la verdad: su recuperación
 requiere una comunicación explícita posterior, como residual de conocimiento
 contractual histórico. Apagado conserva eventos y contabilidad anteriores.
 
+**Dependencia para recuperar términos históricos (2026-10-10, f3b4c):** no hay
+todavía un cauce contractual en `SpeechAct`: `ask` consulta ubicación o secretos
+de personas, `tell` comunica vida/muerte y `promise` crea una obligación nueva.
+El panel de deudas es una consulta de UI, no un acto percibido por otro NPC.
+La recuperación necesita un acto `speak` que identifique el compromiso y
+comunique un snapshot del libro propio del hablante, con comprensión y fuente
+del oyente; una lectura alternativa necesita un documento físico que contenga
+los términos y un proceso de lectura. Hasta ese subítem de Fase 3, las entradas
+históricas desconocidas conservan su ignorancia: no se reconstruyen copiando
+`COMMITMENTS` o `CREDIT`. El núcleo rechaza cantidades negativas o no finitas
+en observaciones, para no aumentar o contaminar deuda subjetiva con un pago
+inválido ni atribuirle una fuente nueva.
+
 ```ts
 interface EnforcerRef {
   kind: "conscience" | "counterparty" | "social" | "organization" | "court" | "guarantee" | "karmic" | "binding" | "patron";

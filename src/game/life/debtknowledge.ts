@@ -83,6 +83,15 @@ export type DebtObservation =
 /** Núcleo puro: solo lo que una parte recibió, con fuentes y cantidades conocidas. */
 export function observeDebt(book: DebtBook | undefined, observation: DebtObservation): DebtBook {
   const items = book?.items ?? [];
+  const validQuantity = (quantity: number) => Number.isFinite(quantity) && quantity >= 0;
+  const invalid =
+    observation.kind === "opened"
+      ? !validQuantity(observation.belief.total) || !validQuantity(observation.belief.remaining)
+      : observation.kind === "paid"
+        ? !validQuantity(observation.amount) ||
+          (observation.knownRemaining !== undefined && !validQuantity(observation.knownRemaining))
+        : !validQuantity(observation.remaining);
+  if (invalid) return book ?? { items: [] };
   if (observation.kind === "opened") {
     if (items.some((b) => b.commitment === observation.belief.commitment)) return book as DebtBook;
     return {
