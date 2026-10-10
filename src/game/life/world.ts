@@ -71,7 +71,7 @@ import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { type Healer, medicineProcess } from "./medicine.ts";
+import { type Healer, type HealerSchool, medicineProcess } from "./medicine.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -117,6 +117,8 @@ export interface LifeWorld {
   readonly pathogenSeeds?: readonly PathogenSeed[];
   /** Sanadores explícitos (body-health §6): diagnostican y tratan a los enfermos; sin ellos no hacen nada. */
   readonly healers?: readonly Healer[];
+  /** Escuela de sanadores desde las habilidades (`medicine`); sin ella solo cuentan los explícitos. */
+  readonly healerSchool?: HealerSchool;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
   readonly substanceDoses?: readonly SubstanceDose[];
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
@@ -334,6 +336,7 @@ export function lifeWorld(
         medicineProcess({
           clock: parts.clock,
           healers: parts.healers ?? [],
+          school: parts.healerSchool,
           placeOf: placeOf(parts, village),
         }),
         substancesProcess({

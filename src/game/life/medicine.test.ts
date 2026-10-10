@@ -10,6 +10,7 @@ import {
   PERSON,
   type ProcessContext,
   type RemedyDef,
+  SKILL_STATE,
   TREATMENT,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -128,5 +129,28 @@ describe("life.medicine", () => {
         .events?.some((ev) => ev.kind === "body.infected" && ev.actors[0] === kin) ?? false;
     expect(infects(base)).toBe(true);
     expect(infects(quarantined)).toBe(false);
+  });
+
+  it("sanador desde las habilidades: quien tiene medicine atiende, sin lista explícita", () => {
+    const { agent: _a, skill: _s, ...school } = healer;
+    const t = world();
+    const lvl = (v: number) => ({ level: v, peak: v });
+    t.set(SKILL_STATE, doc as EntityRef, {
+      medicine: {
+        facets: { execution: lvl(0.6), knowledge: lvl(0.6), judgment: lvl(0.6) },
+        hours: 100,
+        lastPracticed: null,
+      },
+    });
+    const p = medicineProcess({ clock, school, placeOf: () => place });
+    const out = p.run(ctx(t, clock.day * 2));
+    expect(out.events?.[0]?.actors[0]).toBe(doc);
+    const none = medicineProcess({
+      clock,
+      school: { ...school, minSkill: 0.9 },
+      placeOf: () => place,
+    });
+    expect(none.run(ctx(t, clock.day * 2))).toEqual({});
+    expect(p.run(ctx(t, clock.day * 2))).toEqual(out);
   });
 });
