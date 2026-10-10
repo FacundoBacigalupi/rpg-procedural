@@ -174,6 +174,27 @@ export interface CharacterPanelOptions {
   readonly residue?: ResidueConfig;
 }
 
+/**
+ * Las opciones de paneles que se desprenden de las opciones opt-in de la vida (`LifeOptions`):
+ * residuo, ansia local y señales por objeto (los ids de los consumibles). Sin ninguna activa, vacío:
+ * la salida es la de siempre.
+ */
+export function panelOptionsOf(life: {
+  readonly residue?: ResidueConfig | undefined;
+  readonly consumables?: readonly { readonly good: string }[] | undefined;
+  readonly cravingCues?: boolean | undefined;
+  readonly cueLocal?: boolean | undefined;
+  readonly objectCues?: boolean | undefined;
+}): Pick<CharacterPanelOptions, "cueLocal" | "objectCues" | "residue"> {
+  const cueLocal = life.cravingCues === true && life.cueLocal === true;
+  const goods = (life.consumables ?? []).map((c) => c.good);
+  return {
+    ...(life.residue ? { residue: life.residue } : {}),
+    ...(cueLocal ? { cueLocal: true } : {}),
+    ...(cueLocal && life.objectCues === true && goods.length > 0 ? { objectCues: goods } : {}),
+  };
+}
+
 export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): CharacterPanel {
   const me = w.truth.get(PERSON, w.player);
   const at = w.truth.get(LOCATION, w.player);

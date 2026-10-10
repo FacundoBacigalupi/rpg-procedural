@@ -43,6 +43,7 @@ import {
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
+  panelOptionsOf,
   peoplePanel,
   playerView,
   type ResumeAnchor,
@@ -171,6 +172,8 @@ export interface Session {
   environment(): EnvironmentItem[];
   /** Si el apodo con lugar está encendido (`--nickname`): paneles con fama y apodo, narración que lo cita. */
   readonly nickname: boolean;
+  /** Las opciones de paneles de las opciones opt-in activas de la vida (residuo, ansia local, objetos); vacío por defecto. */
+  readonly panelOptions: ReturnType<typeof panelOptionsOf>;
 }
 
 /** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
@@ -193,6 +196,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const jobs =
     options.llm ?? new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
   const catalog = life.world.catalog;
+  // Las opciones opt-in que la vida tiene activas (en el setup guardado) llegan a los paneles.
+  const panelOptions = panelOptionsOf(
+    optionsOf((store.getMeta("setup") as LifeSetup | undefined) ?? options.setup),
+  );
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
   const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
@@ -412,6 +419,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const panel = renderCharacter(
           characterPanel(life.world, {
             substances: true,
+            ...panelOptions,
             ...(options.nickname ? { reputation: true } : {}),
           }),
         );
@@ -505,6 +513,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     choose,
     environment,
     nickname: options.nickname === true,
+    panelOptions,
   };
 }
 
