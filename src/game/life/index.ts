@@ -7,6 +7,7 @@ export * from "./create.ts";
 export * from "./divine.ts";
 export * from "./environment.ts";
 export * from "./exposure.ts";
+export * from "./gathering.ts";
 export * from "./hypotheses.ts";
 export * from "./identity.ts";
 export * from "./inference-metric.ts";

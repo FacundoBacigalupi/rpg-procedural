@@ -94,6 +94,8 @@ export interface UpkeepOptions {
   readonly map: LocalMap;
   readonly seed: Seed;
   readonly materials: readonly MaterialDef[];
+  /** Opt-in: la reconstrucción «distinta» puede cambiar de material según lo que haya y alcance. */
+  readonly swapMaterials?: boolean;
 }
 
 interface Crew {
@@ -479,6 +481,9 @@ function rebuildRuins(
       labor: laborGrams(own, adultsIn - own, days),
       coins,
       pricePerKg: (m) => materials.get(m)?.priceCopperPerKg ?? DEFAULT_MATERIAL_COPPER_PER_KG,
+      ...(o.swapMaterials
+        ? { alternatives: (m: string) => [...materials.keys()].filter((x) => x !== m) }
+        : {}),
       built: draftEvent(k),
     });
     if (!plan) continue;

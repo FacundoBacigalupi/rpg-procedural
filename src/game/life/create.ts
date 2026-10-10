@@ -137,6 +137,7 @@ import {
 import {
   BIOMES,
   generatePlanet,
+  type LocalTerrain,
   type Planet,
   type PlanetOptions,
   type VillageSite,
@@ -149,6 +150,7 @@ import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
+import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -176,13 +178,30 @@ export interface LifeOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
+  /** Opt-in: fuentes de agua; si no trae `hexKinds`, salen del terreno local (`hexKindsFromTerrain`). */
+  readonly waterSources?: WaterSourcesConfig;
+  /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
+  readonly relationDecay?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
 export function optInParts(
   options: LifeOptions,
-): Pick<LifeParts, "famine" | "migration" | "rumorGrievance" | "scam"> {
+  terrain?: Pick<LocalTerrain, "sea" | "lake" | "water">,
+): Pick<
+  LifeParts,
+  "famine" | "migration" | "rumorGrievance" | "scam" | "waterSources" | "relationDecay"
+> {
   return {
+    ...(options.waterSources
+      ? {
+          waterSources:
+            options.waterSources.hexKinds || !terrain
+              ? options.waterSources
+              : { ...options.waterSources, hexKinds: hexKindsFromTerrain(terrain) },
+        }
+      : {}),
+    ...(options.relationDecay ? { relationDecay: true } : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
@@ -793,7 +812,7 @@ export function createLife(
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),
-      ...optInParts(options),
+      ...optInParts(options, site.terrain),
     },
     pop.player,
     terrain.village,

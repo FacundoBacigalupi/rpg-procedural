@@ -78,4 +78,30 @@ describe("reconstrucción", () => {
     expect(walls.defects[0]?.severity).toBe(0.16);
     expect(plan.components[1]?.defects[0]?.severity).toBe(0);
   });
+  it("«distinto» cambia de material si lo salvado o el costo lo piden; sin opt-in no", () => {
+    const base = {
+      old: house,
+      choice: "different" as const,
+      gramsPerM2: g,
+      stock: new Map([["thatch", 10_000]]),
+      labor: 1_000_000,
+      built,
+    };
+    // Sin opt-in, las paredes siguen en madera.
+    const same = planRebuild(base);
+    expect(same?.components[0]?.materials.every((l) => l.material === "timber")).toBe(true);
+    // Con opt-in, las paredes pasan a paja (hay salvada y pesa 10 veces menos).
+    const swapped = planRebuild({
+      ...base,
+      alternatives: (m) => (m === "timber" ? ["thatch"] : []),
+    });
+    expect(swapped?.components[0]?.materials.every((l) => l.material === "thatch")).toBe(true);
+    // Con «igual» no cambia aunque haya opt-in.
+    const kept = planRebuild({
+      ...base,
+      choice: "same",
+      alternatives: (m) => (m === "timber" ? ["thatch"] : []),
+    });
+    expect(kept?.components[0]?.materials.every((l) => l.material === "timber")).toBe(true);
+  });
 });

@@ -6,6 +6,7 @@ import {
   distortStanding,
   keepMold,
   MOLD_HINT_MOOD,
+  moldBuyGoods,
   moldGossipProcess,
   moldHintMood,
   moldKey,
@@ -182,5 +183,24 @@ describe("el precio visto entra como rumor de primera mano", () => {
     expect(item?.cause).toBe("ev:1");
     expect(item?.heardAt).toBe(90);
     expect(go({}).changes ?? []).toHaveLength(0);
+  });
+});
+
+describe("compra desde lo oído barato", () => {
+  const at = { beliefs: undefined, day: 0 };
+  const book = { items: [heard(5, 1)] } as unknown as Parameters<typeof moldBuyGoods>[0];
+  const o = { believedPerKg: () => 10, buyCandidates: true, goodName: () => "arroz" };
+
+  it("propone el bien oído más barato que lo creído, solo con el opt-in", () => {
+    expect(moldBuyGoods(book, o, at)).toEqual(["arroz"]);
+    expect(moldBuyGoods(book, { ...o, buyCandidates: false }, at)).toEqual([]);
+    expect(moldBuyGoods(book, o, undefined)).toEqual([]);
+  });
+
+  it("no propone lo oído más caro o igual, ni sin precio creído", () => {
+    const dear = { items: [heard(15, 1)] } as unknown as Parameters<typeof moldBuyGoods>[0];
+    expect(moldBuyGoods(dear, o, at)).toEqual([]);
+    expect(moldBuyGoods(book, { ...o, believedPerKg: () => undefined }, at)).toEqual([]);
+    expect(moldBuyGoods(undefined, o, at)).toEqual([]);
   });
 });
