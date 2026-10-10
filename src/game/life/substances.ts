@@ -153,6 +153,19 @@ export function cravingBuyMood(
   return Math.round(((o.weight * Math.min(1, craving)) / (1 + price / ref)) * 1e6) / 1e6;
 }
 
+/** Opt-in de `decide`: sin con quién comprar, el ansia empuja a salir a recolectar la planta con sustancia. */
+export interface GatherCravingOptions {
+  /** Ansia mínima (0-1) para que recolectar entre como candidata. */
+  readonly minCraving: number;
+  /** Peso del empuje con el ansia al máximo. */
+  readonly weight: number;
+}
+
+/** Empuje de ánimo de recolectar lo que se consume (puro): crece con el ansia, sin precio. */
+export function cravingGatherMood(craving: number, o: GatherCravingOptions): number {
+  return Math.round(o.weight * Math.min(1, craving) * 1e6) / 1e6;
+}
+
 /**
  * Tomar una dosis ahora (verbo `consume`): suma la dosis al estado de la persona y, si la
  * sustancia no existía, la crea como entidad con su evento. Lo demás (absorber, metabolizar,

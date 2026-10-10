@@ -15,6 +15,7 @@ import {
   consumeDose,
   cravingBuyGoods,
   cravingBuyMood,
+  cravingGatherMood,
   scaledDose,
   substancesProcess,
 } from "./substances.ts";
@@ -127,5 +128,11 @@ describe("comprar lo que se consume", () => {
     expect(cravingBuyMood(1, undefined, o)).toBe(1);
     expect(cravingBuyMood(1, 10, o)).toBe(0.5);
     expect(cravingBuyMood(0.5, 0, o)).toBe(0.5);
+  });
+  it("recolectar: el empuje crece con el ansia, sin precio", () => {
+    const g = { minCraving: 0.4, weight: 0.8 };
+    expect(cravingGatherMood(1, g)).toBe(0.8);
+    expect(cravingGatherMood(0.5, g)).toBe(0.4);
+    expect(cravingBuyGoods(0.3, [{ name: "bark", have: 0 }], g)).toEqual([]);
   });
 });
