@@ -129,6 +129,10 @@ export interface LifeWorld {
   readonly diets?: readonly DietDef[];
   /** Lo comido de verdad alimenta las reservas (`MEALS`); apagado por defecto: la aldea no cambia. */
   readonly eatenNutrition?: boolean;
+  /** Las carencias publicadas (`DEFICIENCY_EFFECTS`) frenan la curación y la defensa inmune del cuerpo; apagado por defecto. */
+  readonly deficiencyEffects?: boolean;
+  /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
+  readonly malnutritionDeath?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -216,6 +220,7 @@ export function lifeWorld(
           plans: parts.plans,
           placeOf: placeOf(parts, village),
           ambientOf: ambientOf(parts),
+          deficiency: parts.deficiencyEffects === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,
@@ -365,6 +370,7 @@ export function lifeWorld(
           profiles: parts.nutrientProfiles ?? [],
           diet: parts.diets?.find((d) => d.id === "village"),
           useEaten: parts.eatenNutrition === true,
+          lethal: parts.malnutritionDeath === true,
           placeOf: placeOf(parts, village),
         }),
         thermalProcess({

@@ -14,10 +14,12 @@ import {
   fullStores,
   logMeal,
   MEALS,
+  malnutritionDeath,
   NUTRIENT_PROFILES,
   NUTRITION,
   PERSON,
   type ProcessContext,
+  severeProteinSince,
   WorldTruth,
 } from "../../sim/index.ts";
 import { BIOMES } from "../../worldgen/index.ts";
@@ -104,5 +106,19 @@ describe("life.nutrition", () => {
     const p = nutritionProcess({ clock, profiles, diet, placeOf: () => place });
     const out = p.run(ctx(world({ glycogen: 0, fat: 0 }), clock.day * 200, clock.day * 200));
     expect(out.changes?.some((c) => c.table === DEFICIENCY_EFFECTS.name)).toBe(true);
+  });
+});
+
+describe("desnutrición proteica grave (pura)", () => {
+  it("la etapa grave sostenida mata; salir de ella reinicia la cuenta", () => {
+    const empty = { ...fullStores(), protein: 0 };
+    const day = 86400;
+    const since = severeProteinSince(empty, undefined, 1000);
+    expect(since).toBe(1000);
+    expect(severeProteinSince(empty, { since: 500 }, 1000)).toBe(500);
+    expect(severeProteinSince(fullStores(), { since: 500 }, 1000)).toBeUndefined();
+    expect(malnutritionDeath(since, 1000 + 89 * day, day)).toBe(false);
+    expect(malnutritionDeath(since, 1000 + 90 * day, day)).toBe(true);
+    expect(malnutritionDeath(undefined, 1e12, day)).toBe(false);
   });
 });

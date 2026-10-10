@@ -77,6 +77,16 @@ export function immunity(body: Body): number {
   return fed * sleep * (1 - 0.3 * body.fatigue) * (0.6 + 0.4 * body.muscle);
 }
 
+/**
+ * Lo que las carencias de nutrientes le cambian al cuerpo en el paso (`DeficiencyEffects`, body-health
+ * §5): multiplicadores de la curación y de la defensa inmune; 1 = sin efecto.
+ */
+export interface BodyDeficiency {
+  readonly healing: number;
+  readonly immune: number;
+}
+export const NO_BODY_DEFICIENCY: BodyDeficiency = { healing: 1, immune: 1 };
+
 /** Cuán favorable es la herida para lo que entró: la profunda más que la superficial. */
 const depth = (w: Wound) => 0.3 + w.severity;
 
@@ -125,6 +135,8 @@ function deathCauses(body: Body, entity: AgentId, cause: DeathCause): CauseRef[]
       return [{ kind: "state", entity, key: "body.water" }];
     case "starvation":
       return [{ kind: "state", entity, key: "body.food" }];
+    case "malnutrition":
+      return [{ kind: "state", entity, key: "body.nutrition" }];
     case "hypothermia":
     case "heatstroke":
       return [{ kind: "state", entity, key: "body.thermal" }];
@@ -168,11 +180,12 @@ function step(
   out: Happening[],
   ambientC: number,
   sweatLph = 0,
+  fx: BodyDeficiency = NO_BODY_DEFICIENCY,
 ): Body {
   const ph = plan.physiology;
   const load = ACTIVITY_LOAD[body.activity];
   const scale = body.massKg / ph.refMassKg;
-  const immune = immunity(body);
+  const immune = immunity(body) * fx.immune;
 
   // Sangre: lo que sale depende de la presión, que cae con lo perdido.
   const pressure = clamp((body.blood - 0.3) / 0.7, 0, 1);
@@ -207,7 +220,7 @@ function step(
     const effort = body.activity === "moderate" || body.activity === "heavy" ? 0.7 : 1;
     const days = healingDays(w0);
     const repair = clamp(
-      w0.repair + (h / (24 * days)) * Math.max(0, 1 - 3 * mean) * fed * effort,
+      w0.repair + (h / (24 * days)) * Math.max(0, 1 - 3 * mean) * fed * effort * fx.healing,
       0,
       1,
     );
@@ -333,12 +346,13 @@ export function advanceBody(
   to: Tick,
   ambient: AmbientTemp = COMFORTABLE,
   sweatLph = 0,
+  deficiency: BodyDeficiency = NO_BODY_DEFICIENCY,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
   while (b.death === null && b.updatedAt < to) {
     const at = Math.min(to, b.updatedAt + stepSeconds(b));
-    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph);
+    b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph, deficiency);
     const consciousness = consciousnessOf(plan, b, at);
     if (consciousness !== b.consciousness) {
       const why = collapseCauses(plan, entity, b);
