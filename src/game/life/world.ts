@@ -80,7 +80,7 @@ import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { living } from "./living.ts";
-import { type LoanSeed, loansProcess } from "./loans.ts";
+import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { marksProcess } from "./marks.ts";
@@ -323,6 +323,8 @@ export interface LifeWorld {
   };
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
+  /** Opt-in: la mora con pérdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
+  readonly loanBondage?: BondageTerms;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Opt-in: cada tanto arma ofertas y buscadores de arriendo desde el estado (`rentMarketFromState` + `matchRents`). */
@@ -652,6 +654,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
+          ...(parts.loanBondage ? { bondage: parts.loanBondage } : {}),
           ...(parts.relationDecay
             ? {
                 relationDecay: {

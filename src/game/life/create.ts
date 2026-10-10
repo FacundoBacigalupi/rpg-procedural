@@ -186,6 +186,8 @@ export interface LifeOptions {
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
   readonly relationDecay?: boolean;
+  /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
+  readonly loanBondage?: LifeParts["loanBondage"];
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
@@ -211,6 +213,7 @@ export function optInParts(
   | "scamFiller"
   | "waterSources"
   | "relationDecay"
+  | "loanBondage"
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
@@ -227,6 +230,7 @@ export function optInParts(
         }
       : {}),
     ...(options.relationDecay ? { relationDecay: true } : {}),
+    ...(options.loanBondage ? { loanBondage: options.loanBondage } : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
