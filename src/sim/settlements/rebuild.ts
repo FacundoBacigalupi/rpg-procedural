@@ -75,6 +75,11 @@ export interface RebuildPlanInput {
   /** Monedas que el hogar gasta en comprar lo que el trabajo no junta (0 = ninguna) y precio por kilo de cada material. */
   readonly coins?: number;
   readonly pricePerKg?: (material: string) => number;
+  /**
+   * Opt-in: otros materiales que puede usar un componente en lugar del suyo. Solo cuenta con
+   * «distinto»: elige el que menos materia nueva pide (lo salvado primero), luego el más barato.
+   */
+  readonly alternatives?: (material: string) => readonly string[];
   /** El evento que levanta el edificio nuevo (origen de lo juntado de nuevo). */
   readonly built: EventId;
 }
@@ -89,6 +94,32 @@ export interface RebuildPlan {
   readonly coinsSpent: number;
 }
 
+/** El material que menos materia nueva pide (y menos cuesta) entre el del componente y sus alternativas. */
+function swapMaterial(
+  n: { area: number; material: string; grams: number },
+  i: RebuildPlanInput,
+  budget: ReadonlyMap<string, number>,
+  price: (material: string) => number,
+): { area: number; material: string; grams: number } {
+  let best = n;
+  let bestKey: readonly [number, number] | undefined;
+  const options = [n.material, ...(i.alternatives?.(n.material) ?? [])];
+  for (const m of [...new Set(options)].sort((a, b) =>
+    a === n.material ? -1 : b === n.material ? 1 : a < b ? -1 : 1,
+  )) {
+    const gpm = i.gramsPerM2(m);
+    if (gpm <= 0) continue;
+    const grams = Math.round(n.area * gpm);
+    const fresh = Math.max(0, grams - (budget.get(m) ?? 0));
+    const key = [fresh, (fresh / 1000) * price(m)] as const;
+    if (!bestKey || key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) {
+      bestKey = key;
+      best = { area: n.area, material: m, grams };
+    }
+  }
+  return best;
+}
+
 /**
  * Arma el edificio nuevo, o `undefined` si todavía no alcanza: lo salvado no cubre y el trabajo
  * no llega a juntar el resto. Lo salvado conserva el origen del material viejo; lo nuevo, el del
@@ -98,10 +129,13 @@ export interface RebuildPlan {
 export function planRebuild(i: RebuildPlanInput): RebuildPlan | undefined {
   const need = rebuildNeed(i.old, i.choice, i.gramsPerM2);
   const budget = new Map(i.stock);
+  const priceOf = i.pricePerKg ?? (() => DEFAULT_MATERIAL_COPPER_PER_KG);
   const salvaged = new Map<string, number>();
   const gathered = new Map<string, number>();
   let toGather = 0;
-  const picks = need.map((n) => {
+  const picks = need.map((n0) => {
+    const n =
+      i.choice === "different" && i.alternatives ? swapMaterial(n0, i, budget, priceOf) : n0;
     const left = budget.get(n.material) ?? 0;
     const used = Math.min(left, n.grams);
     budget.set(n.material, left - used);
