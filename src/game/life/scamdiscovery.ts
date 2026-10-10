@@ -22,6 +22,7 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  fillerNoticeChance,
   type HeardRumor,
   INNATE,
   isMoney,
@@ -43,6 +44,7 @@ import {
   scamAftermath,
   setComponent,
 } from "../../sim/index.ts";
+import { lookAcuity } from "./looking.ts";
 
 export const SCAM_DISCOVERY_PROCESS = "life.scam_discovery";
 export const SCAM_DISCOVERED = "scam.discovered";
@@ -244,6 +246,64 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
         changes.push(setComponent(RUMORS, who, r));
       }
       return events.length === 0 ? {} : { changes, events, postings };
+    },
+  };
+}
+
+export const FILLER_NOTICE_PROCESS = "life.scam_filler_notice";
+
+export interface FillerNoticeOptions {
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Qué tan fino mira el comprador (0-1, ver `scamEyeOf`); sin dato, 0,5. */
+  readonly eye?: (truth: ReadonlyWorldTruth, buyer: AgentId) => number;
+}
+
+/**
+ * Notar el relleno al mirar (economy §6): cuando el comprador hace `look` y tiene un trato con
+ * relleno sin descubrir, tira `fillerNoticeChance(fracción, ojo)` (RNG con clave: trato y tick);
+ * si lo nota, `scam.noticed` (causa en el trato) y el rumor de la estafa queda en su cabeza (0 saltos).
+ * No cierra el trato: el descubrimiento diario sigue siendo de `life.scam_discovery`. Opt-in.
+ */
+export function fillerNoticeProcess(o: FillerNoticeOptions): ProcessDef {
+  return {
+    id: FILLER_NOTICE_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [SCAM_DEALS.name, SCAM_FOUND.name, ENTITY.name, RUMORS.name],
+    writes: [RUMORS.name],
+    run(ctx) {
+      const truth = ctx.truth;
+      const lookers = new Set<AgentId>();
+      for (const e of ctx.recent) {
+        const who = e.actors[0] as AgentId | undefined;
+        if (who && lookAcuity(e.data) !== undefined) lookers.add(who);
+      }
+      const changes: StateChange[] = [];
+      const events: EventDraft[] = [];
+      for (const buyer of [...lookers].sort()) {
+        if (truth.get(ENTITY, buyer)?.endedAt !== undefined) continue;
+        let rumors = truth.get(RUMORS, buyer);
+        for (const d of pendingScams(truth.get(SCAM_DEALS, buyer), truth.get(SCAM_FOUND, buyer))) {
+          const filler = d.filler ?? 0;
+          if (filler <= 0 || rumors?.items.some((x) => x.root === d.event)) continue;
+          const p = fillerNoticeChance(filler / (d.grams + filler), o.eye?.(truth, buyer) ?? 0.5);
+          if (!ctx.rng.fork("filler_notice", d.event, ctx.now).chance(p)) continue;
+          events.push({
+            kind: SCAM_NOTICED,
+            actors: [d.seller, buyer],
+            place: o.placeOf(truth, buyer),
+            data: { deal: d.event, filler },
+            emissions: {},
+            causes: [{ kind: "event" as const, event: d.event }],
+          });
+          rumors = withScamRumor(rumors, d, buyer, ctx.now, 0, buyer);
+          changes.push(setComponent(RUMORS, buyer, rumors));
+        }
+      }
+      return events.length === 0 ? {} : { changes, events };
     },
   };
 }

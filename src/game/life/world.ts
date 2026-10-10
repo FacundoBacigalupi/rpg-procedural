@@ -106,7 +106,7 @@ import {
   sharecropHarvestProcess,
 } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
-import { scamDiscoveryProcess } from "./scamdiscovery.ts";
+import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
@@ -456,6 +456,14 @@ export function lifeWorld(
                 witnesses: scamEyeOf(parts.traits),
                 refund: scamRefundOf(parts.traits, scamNeedOf(parts.plans)),
                 day: parts.clock.day,
+              }),
+            ]
+          : []),
+        ...(parts.scam === true && parts.scamFiller !== undefined
+          ? [
+              fillerNoticeProcess({
+                placeOf: placeOf(parts, village),
+                eye: scamEyeOf(parts.traits),
               }),
             ]
           : []),

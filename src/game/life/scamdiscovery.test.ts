@@ -11,6 +11,7 @@ import {
 import {
   APPRAISAL_FEE,
   APPRAISAL_HAZARD,
+  fillerNoticeProcess,
   NOTICE_HAZARD,
   SCAM_APPRAISED,
   scamDiscoveryProcess,
@@ -70,6 +71,45 @@ function run(opts: {
     postings?: { transfers: { amount: number }[] }[];
   };
 }
+
+describe("estafa: notar el relleno al mirar", () => {
+  function look(filler: number | undefined, looker: AgentId, chance: boolean) {
+    const deal = {
+      event: "event:7" as EventId,
+      tick: 0 as Tick,
+      seller,
+      unit: "good:grain",
+      grams: 800,
+      coins: 5,
+      real: 0.2,
+      believed: 0.8,
+      trust: 0.5,
+      ...(filler === undefined ? {} : { filler }),
+    };
+    const tables: Record<string, Record<string, unknown>> = {
+      [SCAM_DEALS.name]: { [buyer]: { deals: [deal] } },
+    };
+    const truth = {
+      get: (t: { name: string }, id: string) => tables[t.name]?.[id],
+    } as unknown as ReadonlyWorldTruth;
+    const rng = { fork: () => rng, chance: () => chance } as never;
+    const proc = fillerNoticeProcess({ placeOf: () => "here" as never, eye: () => 0.5 });
+    const recent = [{ actors: [looker], data: { effect: { kind: "observe", acuity: 1 } } }];
+    const ctx = { truth, rng, now: 5 as Tick, recent } as unknown as ProcessContext;
+    return proc.run(ctx) as unknown as {
+      events?: { kind: string; data: Record<string, unknown> }[];
+      changes?: unknown[];
+    };
+  }
+  it("al mirar el comprador nota el relleno: scam.noticed y rumor; sin relleno o sin mirar, nada", () => {
+    const r = look(200, buyer, true);
+    expect(r.events?.map((e) => e.kind)).toEqual(["scam.noticed"]);
+    expect(r.changes).toHaveLength(1);
+    expect(look(200, buyer, false).events).toBeUndefined();
+    expect(look(undefined, buyer, true).events).toBeUndefined();
+    expect(look(200, seller, true).events).toBeUndefined();
+  });
+});
 
 describe("estafa: descubrimiento por tasador", () => {
   it("sin un tasador de mejor ojo no hay cobro; con uno, cobra por el ledger y revela la brecha", () => {
