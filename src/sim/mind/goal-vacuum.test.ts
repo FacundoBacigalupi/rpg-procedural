@@ -15,8 +15,8 @@ const completion = (
   const original: Goal = {
     id,
     layer,
-    kind: "pursue",
-    value: "family",
+    kind: "avenge",
+    target: makeId("agent", 7),
     weight: 0.7,
     originEventId: origin,
     since: 100 as Tick,
@@ -43,6 +43,16 @@ describe("sim.mind.goal-vacuum", () => {
     expect(goalVacuumFromCompletions([], [completion("short:hunt", 400, "short")], now)).toBe(
       undefined,
     );
+    const continuous = {
+      ...completion("core:family", 400),
+      original: {
+        ...completion("core:family", 400).original,
+        kind: "pursue" as const,
+        target: undefined,
+        value: "family" as Goal["value"],
+      },
+    };
+    expect(goalVacuumFromCompletions([], [continuous], now)).toBeUndefined();
   });
 
   it("un pursue continuo no reemplaza el ancla perdida; un núcleo concreto sí", () => {

@@ -38,6 +38,8 @@ export function goalVacuumFromCompletions(
       (completion) =>
         completion.goalId === completion.original.id &&
         completion.original.layer === "core" &&
+        completion.original.kind === "avenge" &&
+        completion.original.target !== undefined &&
         completion.at <= now &&
         completion.original.since <= now &&
         isId("event", completion.cause) &&
