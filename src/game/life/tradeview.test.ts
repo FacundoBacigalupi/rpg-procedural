@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { incomeNeed } from "./tradechoice.ts";
-import { misreadTrade, noticeTrade, tradeBelieved } from "./tradeview.ts";
+import { apprenticeOf, misreadTrade, noticeTrade, tradeBelieved } from "./tradeview.ts";
 
 describe("creer un oficio equivocado", () => {
   const all = ["weave-cloth", "forge-tools", "bake-bread"];
@@ -39,5 +39,13 @@ describe("ocupación de oficio como creencia", () => {
     expect(incomeNeed("comfortable")).toBe(0);
     expect(incomeNeed("getting-by")).toBeLessThan(incomeNeed("tight"));
     expect(incomeNeed("broke")).toBe(1);
+  });
+});
+
+describe("aprendiz tomado por maestro", () => {
+  it("el menor sin oficio en casa se cree aprendiz del maestro presente", () => {
+    expect(apprenticeOf(undefined, [undefined, "forge-tools"])).toBe("forge-tools");
+    expect(apprenticeOf("weave-cloth", ["forge-tools"])).toBe("weave-cloth");
+    expect(apprenticeOf(undefined, [undefined])).toBeUndefined();
   });
 });
