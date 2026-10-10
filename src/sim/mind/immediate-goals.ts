@@ -8,6 +8,15 @@ import {
   LN2,
   type Tick,
 } from "../../core/index.ts";
+import { craving, type SubstanceDef } from "../body/substance.ts";
+import {
+  type CravingCue,
+  type CueContext,
+  cueCraving,
+  cueStrength,
+  cuesOf,
+} from "../body/substance-cues.ts";
+import type { HeldSubstance } from "../body/substance-state.ts";
 import type { Goal } from "./goals.ts";
 import type { Memories } from "./memory.ts";
 import type { ValueId } from "./mind.ts";
@@ -23,6 +32,56 @@ export interface FeltNeed {
   readonly need: NeedId;
   readonly urgency: number;
   readonly originEventId: EventId;
+}
+
+/** Ansia propia con procedencia de dosis o señales aprendidas; filas viejas no aportan causas.
+ * `scale` es el mismo factor de etapa de vida que ya aplica la utilidad.
+ */
+export function feltCravingNeeds(
+  held: readonly HeldSubstance[],
+  defs: readonly SubstanceDef[],
+  cues: readonly CravingCue[],
+  context: CueContext | undefined,
+  now: Tick,
+  halfLifeTicks: number,
+  scale = 1,
+): FeltNeed[] {
+  const out: FeltNeed[] = [];
+  for (const h of held) {
+    if (h.originEventId === undefined) continue;
+    const def = defs.find((d) => d.id === h.substance);
+    if (def)
+      out.push({
+        need: "craving",
+        urgency: craving(def, h.state) * scale,
+        originEventId: h.originEventId,
+      });
+  }
+  if (context) {
+    const here = cuesOf(context);
+    const known = cues
+      .filter(
+        (c) =>
+          c.originEventId !== undefined &&
+          c.at <= now &&
+          here.some((t) => t.kind === c.kind && t.key === c.key),
+      )
+      .sort((a, b) =>
+        compareStrings(`${a.substance}|${a.kind}|${a.key}`, `${b.substance}|${b.kind}|${b.key}`),
+      );
+    const strongest = [...known].sort(
+      (a, b) =>
+        cueStrength(b, now, halfLifeTicks) - cueStrength(a, now, halfLifeTicks) ||
+        compareStrings(a.originEventId as EventId, b.originEventId as EventId),
+    )[0];
+    if (strongest?.originEventId !== undefined)
+      out.push({
+        need: "craving",
+        urgency: cueCraving(known, context, now, halfLifeTicks) * scale,
+        originEventId: strongest.originEventId,
+      });
+  }
+  return out;
 }
 
 /** Fuente de la soledad sentida: su último contacto grato vivido con alguien querido.

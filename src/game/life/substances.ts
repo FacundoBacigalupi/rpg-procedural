@@ -5,7 +5,7 @@
 // `PERSON_SUBSTANCE`, aparte del `Body`. Sin dosis ni filas el proceso no hace nada (ni RNG), así
 // que la aldea por defecto no cambia. Si el daño llega al total, muere con causa `poison`.
 
-import type { AgentId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
+import type { AgentId, EventId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
 import {
   type AcuteEffects,
   acuteEffects,
@@ -292,12 +292,21 @@ export function consumeDose(
   place: PlaceRef,
   eventIndex: number,
   learn?: { readonly ctx: CueContext; readonly clock: PlanetClock },
+  originEventId?: EventId,
 ): { readonly changes: StateChange[]; readonly events: EventDraft[] } {
   const prev = truth.get(PERSON_SUBSTANCE, who as never)?.held ?? [];
-  const cur = prev.find((h) => h.substance === c.def.id)?.state ?? CLEAN;
+  const prior = prev.find((h) => h.substance === c.def.id);
+  const cur = prior?.state ?? CLEAN;
+  const dosed = takeDose(c.def, cur, c.route, c.amount);
+  const doseOrigin = dosed !== cur ? originEventId : undefined;
+  const origin = doseOrigin ?? prior?.originEventId;
   const rows: HeldSubstance[] = [
     ...prev.filter((h) => h.substance !== c.def.id),
-    { substance: c.def.id, state: takeDose(c.def, cur, c.route, c.amount) },
+    {
+      substance: c.def.id,
+      state: dosed,
+      ...(origin === undefined ? {} : { originEventId: origin }),
+    },
   ].sort((a, b) => (a.substance < b.substance ? -1 : 1));
   const now = ctx.now;
   const cues = learn
@@ -307,6 +316,7 @@ export function consumeDose(
         learn.ctx,
         now,
         cueHalfLife(learn.clock),
+        doseOrigin,
       )
     : (truth.get(PERSON_SUBSTANCE, who as never)?.cues ?? []);
   const changes: StateChange[] = [
@@ -354,6 +364,8 @@ export interface SubstancesOptions {
   readonly doses?: readonly SubstanceDose[];
   /** Opt-in: los remedios con dosis real (`TREATMENT.dose`) se aplican como dosis, con el tratamiento como causa. */
   readonly treatmentDoses?: boolean;
+  /** Opt-in: registra cada dosis propia para la capa inmediata. */
+  readonly causalDoseOrigins?: boolean;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -392,13 +404,14 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
       const window = Math.max(tph, Math.min(ctx.window, o.clock.day));
       const from = ctx.now - window;
       const dosing = (o.doses ?? []).filter((d) => d.at > from && d.at <= ctx.now);
+      const doseTicks = new Map<SubstanceDose, Tick>();
       // El tratamiento lo escribe `life.medicine` en la misma fase: se ve al día siguiente, así que
       // se toman los dados en [from, now) y la dosis entra en la primera hora de la ventana.
       if (o.treatmentDoses) {
         for (const id of ctx.truth.ids(TREATMENT)) {
           for (const t of ctx.truth.get(TREATMENT, id)?.treatments ?? []) {
             if (!t.dose || t.givenAt < from || t.givenAt >= ctx.now) continue;
-            dosing.push({
+            const remedyDose: SubstanceDose = {
               def: t.dose.def,
               who: id as AgentId,
               at: from + 1,
@@ -406,7 +419,9 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
               amount: t.dose.amount,
               source: `remedy:${t.remedy ?? "?"}`,
               cause: t.cause,
-            });
+            };
+            dosing.push(remedyDose);
+            doseTicks.set(remedyDose, t.givenAt);
           }
         }
       }
@@ -429,9 +444,12 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
         const agent = pid as AgentId;
         const mine = dosing.filter((d) => d.who === pid);
         const held = new Map<string, SubstanceState>();
+        const origins = new Map<string, EventId>();
+        const originTicks = new Map<string, Tick>();
         const defs = new Map<string, SubstanceDef>();
         for (const h of ctx.truth.get(PERSON_SUBSTANCE, pid as never)?.held ?? []) {
           held.set(h.substance, h.state);
+          if (h.originEventId !== undefined) origins.set(h.substance, h.originEventId);
           const def = known.get(h.substance);
           if (def) defs.set(h.substance, def);
         }
@@ -443,7 +461,27 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
           for (const d of mine) {
             if (d.at > before && d.at <= t) {
               const def = defs.get(d.def.id) ?? d.def;
-              held.set(d.def.id, takeDose(def, held.get(d.def.id) ?? CLEAN, d.route, d.amount));
+              const previous = held.get(d.def.id) ?? CLEAN;
+              const dosed = takeDose(def, previous, d.route, d.amount);
+              held.set(d.def.id, dosed);
+              if (o.causalDoseOrigins && dosed !== previous) {
+                const doseTick = doseTicks.get(d) ?? d.at;
+                if (doseTick >= (originTicks.get(d.def.id) ?? -Infinity)) {
+                  origins.set(d.def.id, draftEvent(events.length));
+                  originTicks.set(d.def.id, doseTick);
+                }
+                events.push({
+                  kind: "body.substance_dosed",
+                  tick: doseTick,
+                  actors: [agent],
+                  place: o.placeOf(ctx.truth, agent),
+                  data: { substance: d.def.id, source: d.source, route: d.route, amount: d.amount },
+                  emissions: {},
+                  causes: d.cause
+                    ? [{ kind: "event", event: d.cause as EventId }]
+                    : [{ kind: "state", entity: agent, key: "body.substance" }],
+                });
+              }
             }
           }
           for (const [sid, st] of held) {
@@ -477,7 +515,11 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
         }
         const rows: HeldSubstance[] = [...held]
           .filter(([, s]) => !isSpent(s))
-          .map(([substance, state]) => ({ substance, state }));
+          .map(([substance, state]) => ({
+            substance,
+            state,
+            ...(origins.has(substance) ? { originEventId: origins.get(substance) as EventId } : {}),
+          }));
         // Las señales aprendidas (opt-in) pasan tal cual, menos las ya olvidadas.
         const cues = pruneCues(
           ctx.truth.get(PERSON_SUBSTANCE, pid as never)?.cues ?? [],

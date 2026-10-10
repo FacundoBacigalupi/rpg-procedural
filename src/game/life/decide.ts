@@ -38,6 +38,7 @@ import {
   ENTITY,
   FROSTBITE,
   feltCompanyNeed,
+  feltCravingNeeds,
   type Goal,
   type GoodDef,
   GROWTH_SEQUELAE,
@@ -62,6 +63,7 @@ import {
   moodFrom,
   otherBeliefFrom,
   PERSON,
+  PERSON_SUBSTANCE,
   PLACE,
   PRICE_BELIEFS,
   type ProcessDef,
@@ -77,6 +79,7 @@ import {
   SKILL_STATE,
   type SkillCatalog,
   STAKES_RISK,
+  SUBSTANCE,
   type StageDef,
   sanctionFor,
   sanctionWeight,
@@ -132,6 +135,7 @@ import {
   cravingGatherMood,
   cueContextOf,
   cueCravingOf,
+  cueHalfLife,
   type GatherCravingOptions,
 } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
@@ -292,6 +296,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
+      ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
@@ -381,6 +386,20 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               ]),
             ].sort()
           : ownSeen;
+      const cravingContext = o.cravingCues
+        ? cueContextOf(
+            truth,
+            me,
+            now,
+            o.clock,
+            o.cueLocal
+              ? {
+                  ...cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg),
+                  ...(seenObjects.length > 0 ? { objects: seenObjects } : {}),
+                }
+              : undefined,
+          )
+        : undefined;
       const mood = {
         ...moodFrom({
           memories,
@@ -388,28 +407,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           cares: (who) => cared.has(who),
           withCompany: [...cared].some((id) => truth.get(LOCATION, id)?.hex === here),
         }),
-        craving: o.cravingCues
-          ? Math.max(
-              acute.craving,
-              cueCravingOf(
-                truth,
-                me,
-                cueContextOf(
-                  truth,
-                  me,
-                  now,
-                  o.clock,
-                  o.cueLocal
-                    ? {
-                        ...cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg),
-                        ...(seenObjects.length > 0 ? { objects: seenObjects } : {}),
-                      }
-                    : undefined,
-                ),
-                now,
-                o.clock,
-              ),
-            )
+        craving: cravingContext
+          ? Math.max(acute.craving, cueCravingOf(truth, me, cravingContext, now, o.clock))
           : acute.craving,
         numbing: acute.numbing,
       };
@@ -477,10 +476,32 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const companyNeed = o.persistImmediateGoals
         ? feltCompanyNeed(memories, now, drives.needs.social ?? 0, (who) => cared.has(who))
         : undefined;
+      const substanceState = o.persistImmediateGoals ? truth.get(PERSON_SUBSTANCE, me) : undefined;
+      const cravingNeeds = o.persistImmediateGoals
+        ? feltCravingNeeds(
+            substanceState?.held ?? [],
+            truth.ids(SUBSTANCE).flatMap((id) => {
+              const record = truth.get(SUBSTANCE, id);
+              return record ? [record.def] : [];
+            }),
+            substanceState?.cues ?? [],
+            cravingContext
+              ? {
+                  ...cravingContext,
+                  people: cueLocalOf(truth, me, now, o.clock, o.cueLocal?.lonDeg ?? 0)
+                    .believedPresent,
+                }
+              : undefined,
+            now,
+            cueHalfLife(o.clock),
+            mood.craving > 0 ? (drives.needs.craving ?? 0) / mood.craving : 0,
+          ).map((n) => ({ ...n, urgency: Math.min(n.urgency, drives.needs.craving ?? 0) }))
+        : [];
       const immediate = o.persistImmediateGoals
         ? immediateGoals(
             [
               ...(companyNeed ? [companyNeed] : []),
+              ...cravingNeeds,
               ...(bodyOrigin === undefined
                 ? []
                 : (["hunger", "thirst", "rest"] as const).map((need) => ({
@@ -534,7 +555,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                   kind: "state",
                   entity: me,
                   key:
-                    g.id === "immediate:fear" || g.id === "immediate:social" ? "memories" : "body",
+                    g.id === "immediate:craving"
+                      ? "body.substance"
+                      : g.id === "immediate:fear" || g.id === "immediate:social"
+                        ? "memories"
+                        : "body",
                 } as const,
               ]
             : []),

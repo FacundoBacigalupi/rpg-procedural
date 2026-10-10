@@ -595,6 +595,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.persistImmediateGoals === true ? { causalDoseOrigins: true } : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true ? { cueLocal: true } : {}),
           ...(parts.scam === true
             ? {
@@ -1080,6 +1081,7 @@ export function lifeWorld(
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
           treatmentDoses: parts.remedyDoses !== undefined,
+          ...(parts.persistImmediateGoals === true ? { causalDoseOrigins: true } : {}),
           placeOf: placeOf(parts, village),
         }),
         nutritionProcess({

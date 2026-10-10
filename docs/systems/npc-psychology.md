@@ -215,10 +215,26 @@ presenciada, con valencia positiva, intensidad y confianza, nunca un relato sobr
 terceros ni un vínculo supuesto. El evento de objetivo cita ese contacto y el
 estado `memories`. Sin evidencia de contacto no crea una procedencia para la
 soledad; si la necesidad baja o la evidencia desaparece, el objetivo termina.
-No duplica el peso social en utilidad. El ansia todavía no tiene procedencia por
-persona en `HeldSubstance`/`CravingCue`: el origen global de una sustancia no
-demuestra un consumo propio. Agregar procedencia por dosis y señal es un subítem
-separado antes de persistir `immediate:craving`.
+No duplica el peso social en utilidad.
+
+**Procedencia personal del ansia (2026-10-10, f3c2b):** `persistImmediateGoals`
+también habilita `causalDoseOrigins` al actuar y metabolizar sustancias. Las dosis
+de `consume`, alimentos y bebidas guardan el evento de esa acción propia;
+las dosis explícitas y de tratamientos en `life.substances` emiten un evento
+`body.substance_dosed` por dosis efectivamente aplicada, con causa del tratamiento
+o del estado corporal del receptor. No reutilizan la introducción global de la
+sustancia como prueba de consumo propio. `HeldSubstance.originEventId` conserva
+la última dosis registrada durante el metabolismo. Las señales aprendidas por
+las acciones, si `cravingCues` está activo, guardan la dosis que las reforzó;
+su poda conserva esa procedencia hasta extinguir la señal.
+
+`immediate:craving` solo deriva de abstinencia con dosis registrada o señales
+presentes que tengan su origen propio. El contexto de personas usa las creencias
+del actor; no consulta la presencia real de terceros para justificar el objetivo.
+La urgencia sigue la escala de la etapa de vida usada en utilidad. Las filas
+anteriores sin metadata no reciben una causa ficticia, y no se duplica el empuje
+del ansia. La opción apagada conserva los eventos y la forma anterior de filas,
+incluso con `cravingCues` activo.
 
 ### Utilidad
 Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):

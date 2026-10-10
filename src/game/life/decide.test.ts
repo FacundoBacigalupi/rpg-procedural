@@ -21,6 +21,7 @@ import {
   MIND,
   newBody,
   PERSON,
+  PERSON_SUBSTANCE,
   PLANS,
   type ProcessContext,
   type ProcessResult,
@@ -149,6 +150,43 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("ansia de señal conocida persiste con causa propia y legacy no inventa origen", () => {
+    const truth = world(0);
+    const cue = {
+      substance: "wine",
+      kind: "place" as const,
+      key: "hex:0",
+      strength: 0.6,
+      at: 1000,
+    };
+    truth.set(PERSON_SUBSTANCE, A, { held: [], at: 1000, cues: [cue] });
+    const options = { ...opts, cravingCues: true, persistImmediateGoals: true };
+    const legacy = decideProcess(options).run(ctx(truth, A, 1000));
+    applyGoals(truth, legacy);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === "immediate:craving")).toBe(false);
+    truth.set(PERSON_SUBSTANCE, A, {
+      held: [],
+      at: 1000,
+      cues: [{ ...cue, originEventId: "event:9" as EventId }],
+    });
+    const off = decideProcess({ ...opts, cravingCues: true }).run(ctx(truth, A, 1000));
+    const on = decideProcess(options).run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:craving")).toMatchObject({
+      originEventId: "event:9",
+    });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:craving")?.causes).toEqual([
+      { kind: "event", event: "event:9" },
+      { kind: "state", entity: A, key: "body.substance" },
+    ]);
+    expect(decideProcess(options).reads).toEqual(
+      expect.arrayContaining([PERSON_SUBSTANCE.name, "body.substance_kind"]),
+    );
+  });
+
   it("compañía inmediata nace de contacto propio recordado y se termina sin evidencia", () => {
     const truth = world(0);
     const who = "agent:2" as AgentId;

@@ -4,6 +4,7 @@
 // (`learnCues`), se extingue con el tiempo sin reforzarse (`cueStrength`) y se lee como ansia
 // (`cueCraving`). Sin señales devuelve 0. Sin calibrar.
 
+import type { EventId } from "../../core/index.ts";
 import { pow } from "../../core/math/index.ts";
 
 export type CueKind = "place" | "person" | "hour" | "object";
@@ -17,6 +18,8 @@ export interface CravingCue {
   /** 0-1 al momento `at`. */
   readonly strength: number;
   readonly at: number;
+  /** Opt-in: dosis propia que enseñó/reforzó esta señal. */
+  readonly originEventId?: EventId;
 }
 
 /** Lo que rodea a alguien en un momento. */
@@ -63,6 +66,7 @@ export function learnCues(
   ctx: CueContext,
   now: number,
   halfLifeTicks: number,
+  originEventId?: EventId,
 ): CravingCue[] {
   const touched = cuesOf(ctx);
   const same = (c: CravingCue, t: { kind: CueKind; key: string }) =>
@@ -72,7 +76,15 @@ export function learnCues(
     const prev = cues.find((c) => same(c, t));
     const s = prev ? cueStrength(prev, now, halfLifeTicks) : 0;
     const strength = Math.round((s + (CUE_CEILING - s) * CUE_GAIN) * 1e6) / 1e6;
-    return { substance, kind: t.kind, key: t.key, strength, at: now };
+    const origin = originEventId ?? prev?.originEventId;
+    return {
+      substance,
+      kind: t.kind,
+      key: t.key,
+      strength,
+      at: now,
+      ...(origin === undefined ? {} : { originEventId: origin }),
+    };
   });
   return [...rest, ...next].sort((a, b) =>
     `${a.substance}|${a.kind}|${a.key}` < `${b.substance}|${b.kind}|${b.key}` ? -1 : 1,

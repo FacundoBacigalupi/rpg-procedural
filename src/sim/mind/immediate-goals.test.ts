@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, PlaceRef } from "../../core/index.ts";
+import { CLEAN, type SubstanceDef } from "../body/substance.ts";
 import { goalChanges, layerDrives, reconcileGoals } from "./goals.ts";
 import {
   feltCompanyNeed,
+  feltCravingNeeds,
   IMMEDIATE_FEAR_HALF_LIFE,
   immediateGoals,
   MAX_IMMEDIATE_GOALS,
@@ -21,6 +23,81 @@ const memory = formMemory({
 });
 
 describe("objetivos inmediatos", () => {
+  it("ansia exige procedencia propia de dosis o señal presente; no inventa metadata de partidas viejas", () => {
+    const def: SubstanceDef = {
+      id: "wine",
+      routes: {},
+      halfLifeHours: 1,
+      ec50: 1,
+      hill: 1,
+      latencyHours: 1,
+      toxicThreshold: 0,
+      damagePerHourAtDouble: 0,
+      repairHalfHours: 1,
+      dependence: {
+        potential: 0.5,
+        tolerancePerUse: 0.1,
+        withdrawalOnsetHours: 1,
+        withdrawalPeakHours: 2,
+        recoveryHalfDays: 20,
+      },
+    };
+    const state = { ...CLEAN, hoursSinceUse: 10, dependence: 1 };
+    const held = { substance: def.id, state };
+    expect(feltCravingNeeds([held], [def], [], undefined, 1000, 1000)).toEqual([]);
+    const signals = feltCravingNeeds(
+      [{ ...held, originEventId: E(8) }],
+      [def],
+      [],
+      undefined,
+      1000,
+      1000,
+    );
+    expect(immediateGoals(signals, undefined, [], 1000)[0]).toMatchObject({
+      id: "immediate:craving",
+      weight: 1,
+      originEventId: E(8),
+    });
+    const context = { hex: 0, people: [], hour: 0 };
+    const cue = {
+      substance: def.id,
+      kind: "place" as const,
+      key: "hex:0",
+      strength: 0.6,
+      at: 1000,
+    };
+    expect(feltCravingNeeds([], [], [cue], context, 1000, 1000)).toEqual([]);
+    expect(
+      immediateGoals(
+        feltCravingNeeds([], [], [{ ...cue, originEventId: E(9) }], context, 1000, 1000),
+        undefined,
+        [],
+        1000,
+      )[0],
+    ).toMatchObject({ weight: 0.6, originEventId: E(9) });
+    expect(
+      feltCravingNeeds(
+        [],
+        [],
+        [{ ...cue, originEventId: E(9) }],
+        { ...context, hex: 1 },
+        1000,
+        1000,
+      ),
+    ).toEqual([]);
+    expect(
+      feltCravingNeeds([], [], [{ ...cue, at: 2000, originEventId: E(9) }], context, 1000, 1000),
+    ).toEqual([]);
+    expect(
+      immediateGoals(
+        feltCravingNeeds([], [], [{ ...cue, originEventId: E(9) }], context, 2000, 1000),
+        undefined,
+        [],
+        2000,
+      ),
+    ).toEqual([]);
+  });
+
   it("compañía cita el contacto grato vivido más reciente, sin inventar vínculos o contactos", () => {
     const who = "agent:2" as AgentId;
     const warm = { ...memory, valence: 0.8, perceived: { ...memory.perceived, with: [who] } };
