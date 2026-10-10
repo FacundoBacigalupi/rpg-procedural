@@ -87,6 +87,7 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
+import { markExposureProcess } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -313,6 +314,8 @@ export interface LifeWorld {
   readonly marks?: boolean;
   /** Opt-in: la marca falsa descubierta dispara `scam.discovered` contra el falsificador (con `marks`). */
   readonly marksExpose?: boolean;
+  /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado (`life.mark_exposure`). */
+  readonly marksGossip?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -602,6 +605,9 @@ export function lifeWorld(
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
               }),
             ]
+          : []),
+        ...(parts.marks === true && parts.marksExpose === true && parts.marksGossip === true
+          ? [markExposureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
