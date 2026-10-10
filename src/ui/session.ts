@@ -94,6 +94,7 @@ import {
   planFromDraft,
   renderWarnings,
   STATUSES,
+  TRADE_RECIPES,
   unknownNote,
 } from "../sim/index.ts";
 import {
@@ -228,6 +229,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(options.nickname ? { nickname: true } : {}),
       ...(thinking ? { thinking } : {}),
       ...(report ? { heardSince: report.from } : {}),
+      heardTrades: options.content.all(TRADE_RECIPES),
       onLabel: (localId, entity) => keys.set(localId, entity),
     });
     const loc = life.world.truth.get(LOCATION, life.player);
