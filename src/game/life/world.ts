@@ -316,6 +316,7 @@ export function lifeWorld(
           ambientOf: ambientOf(parts),
           deficiency: parts.deficiencyEffects === true,
           reopen: parts.reopenWounds === true,
+          thermal: parts.coreEffects === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,

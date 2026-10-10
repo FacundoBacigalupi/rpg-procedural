@@ -19,7 +19,7 @@ import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { reopenOldWounds } from "./reopen.ts";
 import { BODY_STATE } from "./state.ts";
-import { SWEAT } from "./thermal.ts";
+import { SWEAT, THERMAL, thermalUnconscious } from "./thermal.ts";
 
 export interface BodyProcessOptions {
   readonly plans: readonly BodyPlanDef[];
@@ -34,6 +34,12 @@ export interface BodyProcessOptions {
    * herida); apagado por defecto: sin RNG ni eventos nuevos.
    */
   readonly reopen?: boolean;
+  /**
+   * Leer `THERMAL`: con el núcleo en inconsciencia térmica el cuerpo queda `unconscious` (evento
+   * `body.collapsed` con causa `body.thermal`) y se levanta al recuperarse. Apagado por defecto:
+   * sin lecturas, la aldea no cambia.
+   */
+  readonly thermal?: boolean;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -45,7 +51,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
     cadence: { scene: "scene", local: "hour", regional: "day", world: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name, DEFICIENCY_EFFECTS.name],
+    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name, DEFICIENCY_EFFECTS.name, THERMAL.name],
     writes: [BODY_STATE.name, ENTITY.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -87,6 +93,7 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
         o.ambientOf?.(ctx.truth, me),
         ctx.truth.get(SWEAT, me)?.litersPerHour ?? 0,
         o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined,
+        o.thermal === true && thermalUnconscious(ctx.truth.get(THERMAL, me)?.coreC ?? 37),
       );
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
       let after = next;
