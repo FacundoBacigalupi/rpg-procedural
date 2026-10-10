@@ -182,7 +182,9 @@ export function applyFrostbite(
   who: AgentId,
 ): BodyCapabilities {
   const state = truth.get(FROSTBITE, who);
-  const lost = amputationFactors(truth.get(AMPUTATIONS, who));
+  // Con las marcas en el `Body` (`amputationScars`), `capabilitiesOf` ya cuenta lo perdido.
+  const scarred = truth.get(BODY_STATE, who)?.scars.some((sc) => sc.lost) === true;
+  const lost = amputationFactors(scarred ? undefined : truth.get(AMPUTATIONS, who));
   const hands = (state ? frostbiteHandFactor(state) : 1) * lost.manipulation;
   const feet = (state ? frostbiteMobilityFactor(state) : 1) * lost.locomotion;
   if (hands >= 1 && feet >= 1) return caps;

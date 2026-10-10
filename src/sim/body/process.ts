@@ -19,7 +19,7 @@ import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { reopenOldWounds } from "./reopen.ts";
 import { BODY_STATE } from "./state.ts";
-import { SWEAT, THERMAL, thermalUnconscious } from "./thermal.ts";
+import { AMPUTATIONS, amputationScars, SWEAT, THERMAL, thermalUnconscious } from "./thermal.ts";
 
 export interface BodyProcessOptions {
   readonly plans: readonly BodyPlanDef[];
@@ -40,6 +40,12 @@ export interface BodyProcessOptions {
    * sin lecturas, la aldea no cambia.
    */
   readonly thermal?: boolean;
+  /**
+   * Leer `AMPUTATIONS`: cada parte perdida deja `Scar` con `lost` en sus zonas (manos a brazos, pies a
+   * piernas, cara a cabeza) y `capabilitiesOf` las cuenta como daño fijo. Apagado por defecto: sin
+   * lecturas, la aldea no cambia.
+   */
+  readonly amputations?: boolean;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -51,7 +57,14 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
     cadence: { scene: "scene", local: "hour", regional: "day", world: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [BODY_STATE.name, ENTITY.name, SWEAT.name, DEFICIENCY_EFFECTS.name, THERMAL.name],
+    reads: [
+      BODY_STATE.name,
+      ENTITY.name,
+      SWEAT.name,
+      DEFICIENCY_EFFECTS.name,
+      THERMAL.name,
+      AMPUTATIONS.name,
+    ],
     writes: [BODY_STATE.name, ENTITY.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -117,6 +130,10 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
             emissions: {},
             causes: [{ kind: "event", event: w.cause }],
           });
+      }
+      if (o.amputations && !after.death) {
+        const marks = amputationScars(ctx.truth.get(AMPUTATIONS, me), after.scars);
+        if (marks.length > 0) after = { ...after, scars: [...after.scars, ...marks] };
       }
       const changes: StateChange[] = [setComponent(BODY_STATE, me, after)];
       const died = happenings.findIndex((h) => h.kind === "died");

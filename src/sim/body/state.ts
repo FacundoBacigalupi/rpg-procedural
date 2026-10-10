@@ -61,6 +61,8 @@ export interface Scar {
   readonly severity: number;
   readonly at: Tick;
   readonly cause: EventId;
+  /** Parte perdida (amputación): permanente, nunca cierra; `capabilitiesOf` la cuenta como daño fijo de la zona. */
+  readonly lost?: true;
 }
 
 export const DEATH_CAUSES = [

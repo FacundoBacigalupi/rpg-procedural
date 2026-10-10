@@ -36,6 +36,8 @@ function functionOf(plan: BodyPlanDef, body: Body, f: BodyFunction): number {
     if (share === 0) continue;
     let worst = 0;
     for (const w of body.wounds) if (w.zone === zone.id) worst = Math.max(worst, impairment(w));
+    for (const sc of body.scars)
+      if (sc.lost && sc.zone === zone.id) worst = Math.max(worst, sc.severity);
     lost += share * worst;
   }
   return clamp(1 - lost, 0, 1);
