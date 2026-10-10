@@ -91,6 +91,8 @@ describe("contenido", () => {
     const traits = content.all(TRAITS);
     const adult = massOf(plan, { height: 154, constitution: 0.5 }, traits, "female", 30);
     expect(adult).toBeCloseTo(55, 5);
+    const stunted = massOf(plan, { height: 154, constitution: 0.5 }, traits, "female", 30, 0.9);
+    expect(stunted).toBeCloseTo(55 * 0.81, 5);
     expect(massOf(plan, { height: 170, constitution: 0.7 }, traits, "male", 30)).toBeGreaterThan(
       adult,
     );

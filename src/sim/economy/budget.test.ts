@@ -11,6 +11,7 @@ import {
   runwayDays,
   spendCeiling,
   standing,
+  withRentIncome,
 } from "./index.ts";
 
 const base: HouseholdFlows = {
@@ -23,6 +24,19 @@ const base: HouseholdFlows = {
   children: 1,
   elders: 0,
 };
+
+describe("renta cobrada", () => {
+  it("suma al ingreso solo mientras está vigente; sin rentas no cambia nada", () => {
+    const rents = [
+      { perDay: 4, fromDay: 10, untilDay: 20 },
+      { perDay: 1, fromDay: 0 },
+    ];
+    expect(withRentIncome(base, [], 5)).toBe(base);
+    expect(withRentIncome(base, rents, 5).incomePerDay).toBe(base.incomePerDay + 1);
+    expect(withRentIncome(base, rents, 15).incomePerDay).toBe(base.incomePerDay + 5);
+    expect(withRentIncome(base, rents, 20).incomePerDay).toBe(base.incomePerDay + 1);
+  });
+});
 
 describe("presupuesto del hogar", () => {
   it("sin despensa propia la comida se compra y el neto baja", () => {

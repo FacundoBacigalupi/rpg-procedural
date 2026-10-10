@@ -33,6 +33,36 @@ export interface HouseholdFlows {
   readonly elders: number;
 }
 
+/** Una renta que el hogar cobra (arriendo, aparcería, canon): monedas por día en un rango de días. */
+export interface RentCollected {
+  readonly perDay: number;
+  /** Primer día en que se cobra (inclusive). */
+  readonly fromDay: number;
+  /** Día en que deja de cobrarse (exclusive); sin él, sigue. */
+  readonly untilDay?: number;
+}
+
+/** La renta diaria que entra el día `today`: suma de las rentas vigentes (nunca negativa). */
+export function rentIncomePerDay(rents: readonly RentCollected[], today: number): number {
+  let sum = 0;
+  for (const r of rents) {
+    if (today >= r.fromDay && (r.untilDay === undefined || today < r.untilDay)) {
+      sum += Math.max(0, r.perDay);
+    }
+  }
+  return sum;
+}
+
+/** Los flujos con la renta cobrada sumada al ingreso; sin rentas vigentes devuelve los mismos flujos. */
+export function withRentIncome(
+  h: HouseholdFlows,
+  rents: readonly RentCollected[],
+  today: number,
+): HouseholdFlows {
+  const extra = rentIncomePerDay(rents, today);
+  return extra === 0 ? h : { ...h, incomePerDay: h.incomePerDay + extra };
+}
+
 /** Bocas ponderadas: cuántos adultos de comida come el hogar por día. */
 export function foodMouths(h: Pick<HouseholdFlows, "adults" | "children" | "elders">): number {
   return h.adults + CHILD_FOOD_SHARE * h.children + ELDER_FOOD_SHARE * h.elders;

@@ -125,13 +125,16 @@ export function massOf(
   traits: readonly Trait[],
   sex: Sex,
   ageYears: number,
+  /** Talla que dejó el hambre infantil (`heightFactor`); 1 = sin secuela. */
+  heightScale = 1,
 ): number {
   const trait = (id: string): number | undefined => innate[id];
   const height = traits.find((t) => t.id === "height");
   const shift = sex === "male" ? (height?.maleShift ?? 0) : 0;
   const ratio = height ? (trait("height") ?? height.mean + shift) / height.mean : 1;
+  const scaled = ratio * heightScale;
   const build = 1 + 0.4 * ((trait("constitution") ?? 0.5) - 0.5);
-  return plan.physiology.refMassKg * ratio * ratio * build * growth(ageYears);
+  return plan.physiology.refMassKg * scaled * scaled * build * growth(ageYears);
 }
 
 /** Un cuerpo sano, comido y descansado de esa masa. */
