@@ -13,6 +13,8 @@ import {
 } from "../../sim/index.ts";
 import {
   consumeDose,
+  cravingBorrowAsks,
+  cravingBorrowMood,
   cravingBuyGoods,
   cravingBuyMood,
   cravingGatherMood,
@@ -134,5 +136,36 @@ describe("comprar lo que se consume", () => {
     expect(cravingGatherMood(1, g)).toBe(0.8);
     expect(cravingGatherMood(0.5, g)).toBe(0.4);
     expect(cravingBuyGoods(0.3, [{ name: "bark", have: 0 }], g)).toEqual([]);
+  });
+});
+
+describe("pedir prestada la sustancia", () => {
+  const o = { minCraving: 0.4, weight: 1 };
+  const has = (about: string, value: string, confidence: number) => ({
+    rumor: { mold: "attr", about, attr: "has", value } as const,
+    confidence,
+  });
+  const wants = [
+    { name: "tea", have: 0 },
+    { name: "ale", have: 2 },
+  ];
+  it("solo con ansia alta, sin existencias y a conocidos, por lo que cree", () => {
+    const rumors = [
+      has("b", "tea", 0.5),
+      has("a", "tea", 0.4),
+      has("a", "tea", 0.8),
+      has("z", "tea", 1),
+      has("a", "ale", 1),
+    ];
+    const known = new Set(["a", "b"]);
+    expect(cravingBorrowAsks(0.3, wants, rumors, known, o)).toEqual([]);
+    expect(cravingBorrowAsks(0.5, wants, rumors, known, o)).toEqual([
+      { lender: "a", name: "tea", confidence: 0.8 },
+      { lender: "b", name: "tea", confidence: 0.5 },
+    ]);
+  });
+  it("el empuje crece con el ansia y con la confianza", () => {
+    expect(cravingBorrowMood(1, 1, o)).toBe(1);
+    expect(cravingBorrowMood(0.5, 0.5, o)).toBe(0.25);
   });
 });

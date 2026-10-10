@@ -116,6 +116,7 @@ import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
 import {
+  type BorrowCravingOptions,
   type BuyCravingOptions,
   type ConsumableDef,
   type GatherCravingOptions,
@@ -257,6 +258,8 @@ export interface LifeWorld {
   readonly buyCraving?: BuyCravingOptions;
   /** Opt-in (con `consumables`): sin con quién comprar, el ansia empuja a recolectar la planta (`life.decide`); apagado, sin candidata nueva. */
   readonly gatherCraving?: GatherCravingOptions;
+  /** Opt-in (con `consumables` y `moldHints`): sin comercio ni planta, pedir la sustancia a un conocido que se cree que la tiene (`life.decide`); apagado, sin candidata nueva. */
+  readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -914,6 +917,7 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
+          ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),

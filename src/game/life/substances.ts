@@ -21,6 +21,7 @@ import {
   type HeldSubstance,
   LOCATION,
   learnCues,
+  type MoldRumor,
   NEUTRAL,
   PERSON,
   PERSON_SUBSTANCE,
@@ -164,6 +165,69 @@ export interface GatherCravingOptions {
 /** Empuje de ánimo de recolectar lo que se consume (puro): crece con el ansia, sin precio. */
 export function cravingGatherMood(craving: number, o: GatherCravingOptions): number {
   return Math.round(o.weight * Math.min(1, craving) * 1e6) / 1e6;
+}
+
+/** Opt-in de `decide`: sin comercio ni planta, el ansia empuja a pedirle la sustancia a un conocido que se cree que la tiene. */
+export interface BorrowCravingOptions {
+  /** Ansia mínima (0-1) para que pedir prestado entre como candidata. */
+  readonly minCraving: number;
+  /** Peso del empuje con el ansia al máximo, a plena confianza en el rumor. */
+  readonly weight: number;
+}
+
+/** A quién pedirle qué (puro): `lender` es el id como texto; `name` el bien tal como lo nombra el catálogo. */
+export interface BorrowAsk {
+  readonly lender: string;
+  readonly name: string;
+  /** 0-1: cuánto cree el rumor. */
+  readonly confidence: number;
+}
+
+/**
+ * Pedidos posibles de una sustancia (puro): ansia alta, sin existencias, y un rumor `attr` `has`
+ * de que `lender` tiene ese bien (lo que CREE, no lo que hay). Sin repetir; orden por bien y persona.
+ */
+export function cravingBorrowAsks(
+  craving: number,
+  wants: readonly { readonly name: string; readonly have: number }[],
+  rumors: readonly { readonly rumor: MoldRumor; readonly confidence: number }[],
+  known: ReadonlySet<string>,
+  o: BorrowCravingOptions,
+): BorrowAsk[] {
+  if (craving < o.minCraving) return [];
+  const names = new Set(wants.filter((w) => w.have < 1).map((w) => w.name));
+  const best = new Map<string, BorrowAsk>();
+  for (const { rumor: r, confidence } of rumors) {
+    if (r.mold !== "attr" || r.attr !== "has" || typeof r.value !== "string") continue;
+    if (!names.has(r.value) || !known.has(r.about)) continue;
+    const key = `${r.value}|${r.about}`;
+    const prev = best.get(key);
+    if (!prev || confidence > prev.confidence) {
+      best.set(key, { lender: r.about, name: r.value, confidence });
+    }
+  }
+  const out = [...best.values()];
+  return out.sort((a, b) =>
+    a.name === b.name
+      ? a.lender < b.lender
+        ? -1
+        : a.lender > b.lender
+          ? 1
+          : 0
+      : a.name < b.name
+        ? -1
+        : 1,
+  );
+}
+
+/** Empuje de ánimo de pedir prestado (puro): crece con el ansia y con la confianza en el rumor (0-1). */
+export function cravingBorrowMood(
+  craving: number,
+  confidence: number,
+  o: BorrowCravingOptions,
+): number {
+  const c = Math.min(1, Math.max(0, confidence));
+  return Math.round(o.weight * Math.min(1, craving) * c * 1e6) / 1e6;
 }
 
 /**
