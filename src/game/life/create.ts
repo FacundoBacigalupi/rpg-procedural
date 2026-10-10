@@ -204,6 +204,8 @@ export interface LifeOptions {
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): efectos del contagio (fama del quebrado y tasa más alta de los acreedores arrastrados). */
   readonly loanContagionEffects?: LifeParts["loanContagionEffects"];
+  /** Opt-in (con `loanContagion`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
+  readonly loanWorkout?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -227,6 +229,7 @@ export function optInParts(
   | "marks"
   | "loanContagion"
   | "loanContagionEffects"
+  | "loanWorkout"
   | "tradeNeeds"
 > {
   return {
@@ -254,6 +257,7 @@ export function optInParts(
     ...(options.marks ? { marks: true } : {}),
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
+    ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }
