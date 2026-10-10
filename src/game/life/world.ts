@@ -104,7 +104,14 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
-import { type PawnLots, type PawnOpenOptions, pawnOpenProcess, pawnProcess } from "./pawn.ts";
+import {
+  type PawnLots,
+  type PawnOpenOptions,
+  type PawnWantOptions,
+  pawnOpenProcess,
+  pawnProcess,
+} from "./pawn.ts";
+import { pawnDecideProcess } from "./pawndecide.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
@@ -331,6 +338,8 @@ export interface LifeWorld {
     readonly unit: string;
     readonly lots: PawnLots;
     readonly open?: PawnOpenOptions;
+    /** Opt-in (con `open` y `moldHints`): el NPC en apuro empeña por decisión (`decide` `pawnWant` + `life.pawn_decide`). */
+    readonly want?: PawnWantOptions;
   };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
   /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
@@ -587,6 +596,16 @@ export function lifeWorld(
                 open: parts.pawn.open,
                 placeOf: () => village,
                 day: parts.clock.day,
+              }),
+            ]
+          : []),
+        ...(parts.pawn?.open && parts.pawn.want
+          ? [
+              pawnDecideProcess({
+                goods: parts.goods,
+                day: parts.clock.day,
+                player,
+                placeOf: placeOf(parts, village),
               }),
             ]
           : []),
@@ -1122,6 +1141,7 @@ export function lifeWorld(
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
+          ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),

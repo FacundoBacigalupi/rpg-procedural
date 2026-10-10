@@ -150,7 +150,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
-import type { PawnLots, PawnOpenOptions } from "./pawn.ts";
+import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
@@ -222,6 +222,8 @@ export interface LifeOptions {
     readonly unit: string;
     readonly lots: PawnLots;
     readonly open?: PawnOpenOptions;
+    /** Opt-in (con `open` y `moldHints`): el NPC en apuro empeña por decisión (`decide` `pawnWant` + `life.pawn_decide`). */
+    readonly want?: PawnWantOptions;
   };
   /** Opt-in: el verbo `hire` se ejecuta (`LifeParts.hire`); apagado por defecto. */
   readonly hire?: LifeParts["hire"];

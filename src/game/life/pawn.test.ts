@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tick } from "../../core/index.ts";
-import { holderAccount } from "../../core/index.ts";
+import { holderAccount, Rng } from "../../core/index.ts";
 import { openPawn, type ProcessContext } from "../../sim/index.ts";
 import { COMMITMENTS } from "./loans.ts";
 import { pawnOpenProcess, pawnProcess } from "./pawn.ts";
@@ -107,5 +107,50 @@ describe("abrir el empeño desde el verbo give", () => {
     expect(r.events?.[0]?.kind).toBe("credit.pawn_refused");
     expect(r.postings?.[0]?.transfers[0]?.amount).toBe(1);
     expect(open([], 80).events).toBeUndefined();
+  });
+});
+
+describe("empeño con plazos por carácter y tasación con error", () => {
+  it("terms pisa advance/rate y appraise recibe una tirada con clave", () => {
+    const truth = {
+      ids: () => [],
+      get: (t: { name: string }, id: string) => (t.name.includes("person") ? { id } : undefined),
+    } as never;
+    const ledger = {
+      balance: (a: unknown, u: string) =>
+        a === holderAccount("p:b" as never) && u === "coin" ? 500 : 0,
+    };
+    const seen: number[] = [];
+    const ctx = {
+      truth,
+      ledger,
+      now: 5 as Tick,
+      rng: Rng.root(3),
+      recent: [
+        {
+          id: "e1",
+          kind: "action.give",
+          actors: ["p:a", "p:b"],
+          data: { manner: ["pawn"], effect: { kind: "give", to: "p:b", good: "ring", grams: 1 } },
+        },
+      ],
+      newId: () => "commitment:9",
+    } as unknown as ProcessContext;
+    const r = pawnOpenProcess({
+      unit: "coin",
+      placeOf: () => "here" as never,
+      day: DAY,
+      open: {
+        advance: 0.5,
+        appraise: (_t, _b, _u, _n, rng) => {
+          seen.push(rng.float());
+          return 200;
+        },
+        terms: () => ({ advance: 0.25, rate: 0.2 }),
+      },
+    }).run(ctx) as unknown as { events?: { data: { advance?: number; owed?: number } }[] };
+    expect(seen.length).toBe(1);
+    expect(r.events?.[0]?.data.advance).toBe(50);
+    expect(r.events?.[0]?.data.owed).toBe(60);
   });
 });

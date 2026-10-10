@@ -96,6 +96,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
+import { creditRows } from "./credit.ts";
 import { cueLocalOf, objectsSeen } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
@@ -106,6 +107,7 @@ import {
   moldCraftsmen,
   moldHintMood,
 } from "./moldgossip.ts";
+import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -200,6 +202,12 @@ export interface DecideOptions {
    * crece con el ansia y con la confianza en el rumor. Apagado, no cambia.
    */
   readonly borrowCraving?: BorrowCravingOptions;
+  /**
+   * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
+   * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
+   * que ese conocido tiene efectivo; `life.pawn_decide` la ejecuta. Apagado, no cambia.
+   */
+  readonly pawnWant?: PawnWantOptions;
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
   /**
@@ -564,6 +572,35 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               o.borrowCraving,
             )
           : [];
+      // En apuro con un lote que cree valioso: empeñarlo al que cree con efectivo (opt-in `pawnWant`).
+      const pawnNeed =
+        o.pawnWant && hintBook && ctx.ledger
+          ? pawnDistress(
+              drives.needs.hunger ?? 0,
+              pawnDebtOf(
+                creditRows(truth).map((x) => ({
+                  debtor: x.credit.debtor as string,
+                  owed: x.credit.owed,
+                  settled: x.credit.status === "settled",
+                })),
+                me as string,
+              ),
+              o.pawnWant,
+            )
+          : 0;
+      const pawnAsks =
+        o.pawnWant && hintBook && ctx.ledger
+          ? pawnWants(
+              pawnNeed,
+              ctx.ledger.holdings(holderAccount(me as unknown as HolderRef)).flatMap((h) => {
+                const g = (o.goods ?? []).find((x) => goodUnit(x) === h.unit);
+                return g ? [{ unit: h.unit as string, name: g.name, amount: h.amount }] : [];
+              }),
+              hintBook.items,
+              new Set(people.map((p) => p.id as string)),
+              o.pawnWant,
+            )
+          : [];
       const texts = stash.length > 0 ? { ...withGather, consume: stash.sort() } : withGather;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
@@ -634,6 +671,17 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             means: { surplus: Math.max(0, 1 - (drives.needs.hunger ?? 0) * 2) },
           }),
         );
+      }
+      for (const w of pawnAsks.slice(0, 3)) {
+        catalogCandidates.push({
+          id: `give:${w.broker}+pawn:${w.name}`,
+          verb: "give",
+          target: w.broker as unknown as EntityRef,
+          contributes: { hunger: 0.4 },
+          chance: 0.6,
+          loss: STAKES_RISK.none.loss,
+          mood: pawnWantMood(pawnNeed, w.confidence, o.pawnWant as PawnWantOptions),
+        });
       }
       for (const ask of craveBorrow) {
         catalogCandidates.push({
