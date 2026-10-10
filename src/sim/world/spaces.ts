@@ -47,6 +47,8 @@ export interface SpaceNode {
   readonly roof?: boolean;
   readonly openness?: number;
   readonly wall?: "cave" | "stone" | "wood" | "hide" | "paper";
+  /** Opt-in (body-health §7): altura (m) del piso del espacio sobre el suelo del hex (torre, loft). */
+  readonly heightM?: number;
 }
 
 /** Qué separa dos espacios. */

@@ -17,6 +17,7 @@ import {
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  type SpaceGraph,
   type StateChange,
   setComponent,
   stepAcclimatization,
@@ -26,12 +27,20 @@ export const ALTITUDE_PROCESS = "life.altitude";
 
 /**
  * Altitud real (m) de quien está: la elevación del hex de planet-gen donde está (`LOCATION.hex`,
- * `LocalMap.elevationM`). Lectura simple y determinista; sin elevación en el mapa o sin lugar, 0.
+ * `LocalMap.elevationM`). Con `spaces`, suma la altura del piso del espacio (`SpaceNode.heightM`:
+ * torre, loft). Lectura simple y determinista; sin elevación en el mapa o sin lugar, 0.
  */
-export function mapAltitudeOf(map: LocalMap): (truth: ReadonlyWorldTruth, who: AgentId) => number {
+export function mapAltitudeOf(
+  map: LocalMap,
+  spaces?: SpaceGraph,
+): (truth: ReadonlyWorldTruth, who: AgentId) => number {
+  const heights = new Map<string, number>();
+  for (const s of spaces?.spaces ?? []) if (s.heightM) heights.set(s.key, s.heightM);
   return (truth, who) => {
-    const hex = truth.get(LOCATION, who)?.hex;
-    return hex === undefined ? 0 : (map.elevationM?.[hex] ?? 0);
+    const at = truth.get(LOCATION, who);
+    if (at === undefined) return 0;
+    const floor = at.space === undefined ? 0 : (heights.get(at.space) ?? 0);
+    return (map.elevationM?.[at.hex] ?? 0) + floor;
   };
 }
 

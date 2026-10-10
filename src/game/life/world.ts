@@ -283,7 +283,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
-  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map) : undefined;
+  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map, parts.spaces) : undefined;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
