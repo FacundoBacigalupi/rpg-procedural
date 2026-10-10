@@ -91,7 +91,7 @@ import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
-import { type SubstanceDose, substancesProcess } from "./substances.ts";
+import { type ConsumableDef, type SubstanceDose, substancesProcess } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
@@ -166,6 +166,12 @@ export interface LifeWorld {
    * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
    */
   readonly frostbite?: boolean;
+  /**
+   * Opt-in: bienes que son sustancias de consumo (body-health §9): el verbo `consume` los toma
+   * (`life.act`: gasta una unidad y suma una dosis con evento) y `life.decide` lo ofrece con
+   * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
+   */
+  readonly consumables?: readonly ConsumableDef[];
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -286,6 +292,7 @@ export function lifeWorld(
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
+          ...(parts.consumables ? { consumables: parts.consumables } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -607,6 +614,7 @@ export function lifeWorld(
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
+          ...(parts.consumables ? { consumables: parts.consumables } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

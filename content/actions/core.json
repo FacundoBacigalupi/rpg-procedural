@@ -499,6 +499,26 @@
     "evidence": 1
   },
   {
+    "id": "consume",
+    "name": "tomar",
+    "domain": "body",
+    "args": [{ "role": "what", "kind": "text", "required": true }],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 300 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": { "craving": 1 },
+    "resolver": "consume",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "drink",
     "name": "beber",
     "domain": "body",

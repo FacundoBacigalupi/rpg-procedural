@@ -5,12 +5,13 @@ import {
   BODY_STATE,
   ENTITY,
   PERSON,
+  PERSON_SUBSTANCE,
   type ProcessContext,
   SUBSTANCE,
   type SubstanceDef,
   WorldTruth,
 } from "../../sim/index.ts";
-import { substancesProcess } from "./substances.ts";
+import { consumeDose, substancesProcess } from "./substances.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const place = { kind: "cell", cell: "cell:1" } as never;
@@ -66,5 +67,22 @@ describe("life.substances", () => {
     expect(r.events?.map((e) => e.kind)).toEqual(["body.substance_introduced", "body.died"]);
     expect(r.events?.[1]?.data).toMatchObject({ cause: "poison" });
     expect(r.changes?.some((c) => c.table === SUBSTANCE.name)).toBe(true);
+  });
+});
+
+describe("consumeDose (verbo consume)", () => {
+  const consumable = { good: "pipeweed", def: POISON, route: "ingest", amount: 3 } as const;
+
+  it("suma la dosis con evento causal la primera vez y no repite el evento", () => {
+    const t = world();
+    const first = consumeDose(t, a, consumable, ctx(t, 500), place, 1);
+    expect(first.events.map((e) => e.kind)).toEqual(["body.substance_introduced"]);
+    expect(first.changes.some((c) => c.table === PERSON_SUBSTANCE.name)).toBe(true);
+    expect(first.changes.some((c) => c.table === SUBSTANCE.name)).toBe(true);
+    const sid = "substance:~0" as EntityRef;
+    t.set(SUBSTANCE, sid, { def: POISON, source: "consume:pipeweed" } as never);
+    const second = consumeDose(t, a, consumable, ctx(t, 600), place, 0);
+    expect(second.events).toEqual([]);
+    expect(second.changes.some((c) => c.table === SUBSTANCE.name)).toBe(false);
   });
 });

@@ -110,6 +110,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly foods?: ReadonlyMap<LedgerUnit, Nutrition>;
   /** La despensa del hogar del actor: de ahí come si no lleva nada encima. */
   readonly larder?: HolderRef | undefined;
+  /** Opt-in: las unidades que son sustancias de consumo (`consume`: una unidad, una dosis); sin esto no hay qué tomar. */
+  readonly consumables?: ReadonlySet<LedgerUnit> | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
   readonly market?: Market | undefined;
   /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
@@ -321,6 +323,14 @@ export type VerbEffect =
       readonly kcal: number;
       /** Litros de agua que trae la comida. */
       readonly water: number;
+    }
+  | {
+      readonly kind: "consume";
+      /** La sustancia que tomó (null si no tenía o no pudo). */
+      readonly good: LedgerUnit | null;
+      readonly from: HolderRef | null;
+      /** Unidades gastadas: cada una es una dosis. */
+      readonly units: number;
     }
   | {
       readonly kind: "store";
@@ -1262,6 +1272,39 @@ const eat: Resolver = (c) => {
   };
 };
 
+/** Toma una sustancia de consumo: lo que lleva encima o la despensa de la casa; gasta una unidad. */
+const consume: Resolver = (c) => {
+  const kinds = c.input.consumables ?? new Set<LedgerUnit>();
+  const usable = (holder: HolderRef | undefined) =>
+    holder === undefined
+      ? []
+      : c.input.ledger
+          .holdings(holderAccount(holder))
+          .filter((h) => kinds.has(h.unit) && h.amount >= 1);
+  const own = usable(c.input.actor.id as HolderRef);
+  const from: HolderRef | null =
+    own.length > 0 ? (c.input.actor.id as HolderRef) : (c.input.larder ?? null);
+  const row = pickWanted(
+    own.length > 0 ? own : usable(c.input.larder),
+    argText(c, "what"),
+    c.input.unitNames,
+  );
+  const empty: VerbEffect = { kind: "consume", good: null, from, units: 0 };
+  if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
+  if (!row || from === null) {
+    return {
+      effect: empty,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return {
+    effect: { kind: "consume", good: row.unit, from, units: 1 },
+    seconds: c.nominal,
+    transfers: [{ from, unit: row.unit, amount: 1, to: externalAccount(EATEN) }],
+  };
+};
+
 /** Deja en la despensa de la casa lo que lleva encima (lo que nombra, o todo lo que sea bien). */
 const store: Resolver = (c) => {
   const larder = c.input.larder;
@@ -1554,6 +1597,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   take,
   store,
   eat,
+  consume,
   cook,
   drink,
   tend,

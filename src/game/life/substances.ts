@@ -20,6 +20,7 @@ import {
   NEUTRAL,
   PERSON,
   PERSON_SUBSTANCE,
+  type ProcessContext,
   type ProcessDef,
   type ReadonlyWorldTruth,
   type StateChange,
@@ -51,6 +52,60 @@ export function acuteOf(truth: ReadonlyWorldTruth, who: AgentId): AcuteEffects {
 }
 
 export const SUBSTANCES_PROCESS = "life.substances";
+
+/** Una unidad del ledger que es una sustancia de consumo: tomarla es una dosis (opt-in en `ActOptions`). */
+export interface ConsumableDef {
+  /** Id del bien (`GoodDef.id`) que se gasta al tomarla. */
+  readonly good: string;
+  readonly def: SubstanceDef;
+  readonly route: SubstanceRoute;
+  /** Cantidad por dosis (una unidad del bien). */
+  readonly amount: number;
+}
+
+/**
+ * Tomar una dosis ahora (verbo `consume`): suma la dosis al estado de la persona y, si la
+ * sustancia no existía, la crea como entidad con su evento. Lo demás (absorber, metabolizar,
+ * dañar) lo sigue haciendo `life.substances`. `eventIndex` es el lugar que tendrá el evento
+ * `body.substance_introduced` en la lista final de eventos del paso.
+ */
+export function consumeDose(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  c: ConsumableDef,
+  ctx: Pick<ProcessContext, "now" | "newId">,
+  place: PlaceRef,
+  eventIndex: number,
+): { readonly changes: StateChange[]; readonly events: EventDraft[] } {
+  const prev = truth.get(PERSON_SUBSTANCE, who as never)?.held ?? [];
+  const cur = prev.find((h) => h.substance === c.def.id)?.state ?? CLEAN;
+  const rows: HeldSubstance[] = [
+    ...prev.filter((h) => h.substance !== c.def.id),
+    { substance: c.def.id, state: takeDose(c.def, cur, c.route, c.amount) },
+  ].sort((a, b) => (a.substance < b.substance ? -1 : 1));
+  const now = ctx.now;
+  const changes: StateChange[] = [
+    setComponent(PERSON_SUBSTANCE, who as never, { held: rows, at: now }),
+  ];
+  const events: EventDraft[] = [];
+  const known = truth.ids(SUBSTANCE).some((id) => truth.get(SUBSTANCE, id)?.def.id === c.def.id);
+  if (!known) {
+    events.push({
+      kind: "body.substance_introduced",
+      actors: [who],
+      place,
+      data: { substance: c.def.id, source: `consume:${c.good}`, route: c.route },
+      emissions: {},
+      causes: [{ kind: "state", entity: who, key: "body.substance" }],
+    });
+    const sid = ctx.newId("substance");
+    changes.push(
+      createEntity(sid, draftEvent(eventIndex), now),
+      setComponent(SUBSTANCE, sid, { def: c.def, source: `consume:${c.good}` }),
+    );
+  }
+  return { changes, events };
+}
 
 /** Una dosis explícita: quién la toma, cuándo, por qué vía y qué la trajo. */
 export interface SubstanceDose {
