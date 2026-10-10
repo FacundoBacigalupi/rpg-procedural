@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
-import { PERSON, PLACE, PRICE_BELIEFS } from "../../sim/index.ts";
+import { ENTITY, LOCATION, PERSON, PLACE, PRICE_BELIEFS } from "../../sim/index.ts";
 import {
   distortStanding,
   keepMold,
@@ -192,6 +192,54 @@ describe("el precio visto entra como rumor de primera mano", () => {
       where,
       vague: false,
     });
+  });
+});
+
+describe("fromStash: ver que otro hogar tiene una sustancia", () => {
+  const persons: Record<string, { household: string }> = {
+    "agent:a": { household: "h1" },
+    "agent:b": { household: "h2" },
+  };
+  const run = (o: Parameters<typeof moldGossipProcess>[0], amount: number) => {
+    const truth = {
+      ids: (t: { name: string }) => (t.name === PERSON.name ? Object.keys(persons) : []),
+      get: (t: { name: string }, id: string) =>
+        t.name === PERSON.name
+          ? persons[id]
+          : t.name === LOCATION.name
+            ? { hex: 1 }
+            : t.name === ENTITY.name
+              ? {}
+              : undefined,
+    };
+    const ledger = { holdings: () => [{ unit: "good:tea", amount }] };
+    return moldGossipProcess(o).run({
+      truth,
+      now: 5,
+      rng: Rng.root(1),
+      recent: [],
+      ledger,
+    } as never) as unknown as {
+      changes?: { id: string; value: { items: { rumor: unknown; hops: number }[] } }[];
+    };
+  };
+  const fromStash = {
+    goods: [{ id: "tea", name: "té", form: "good" }] as never,
+    consumables: [{ good: "tea" }],
+  };
+
+  it("anota un has de primera mano de la persona del otro hogar; apagado o sin existencias, nada", () => {
+    const out = run({ fromStash }, 2);
+    const mine = out.changes?.find((c) => c.id === "agent:a");
+    expect(mine?.value.items[0]?.rumor).toEqual({
+      mold: "attr",
+      about: "agent:b",
+      attr: "has",
+      value: "té",
+    });
+    expect(mine?.value.items[0]?.hops).toBe(0);
+    expect(run({}, 2).changes ?? []).toHaveLength(0);
+    expect(run({ fromStash }, 0).changes ?? []).toHaveLength(0);
   });
 });
 
