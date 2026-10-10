@@ -17,6 +17,7 @@ import {
   type PlanetClock,
 } from "../../core/index.ts";
 import {
+  AMBIENT_TAKEN,
   ambientIntake,
   BODY_STATE,
   cultivationEfficiency,
@@ -35,13 +36,14 @@ import {
   type PurgeMethod,
   RESIDUE,
   type ReadonlyWorldTruth,
+  relativeQi,
   type StateChange,
   setComponent,
   splitByPurity,
   stepResidue,
   TRAVEL_CELL,
 } from "../../sim/index.ts";
-import { type AmbientQi, ambientRelative } from "./ambientQi.ts";
+import { type AmbientQi, ambientDrain, ambientRelative } from "./ambientQi.ts";
 
 /** Unidad de `Essence` del ledger (en milésimas: el residuo es un decimal, el ledger va en enteros). */
 export const ESSENCE_UNIT = "essence";
@@ -212,8 +214,9 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
       BODY_STATE.name,
       RESIDUE.name,
       ...(o.ambient ? [LOCATION.name, TRAVEL_CELL.name] : []),
+      ...(o.ambient?.debit ? [AMBIENT_TAKEN.name] : []),
     ],
-    writes: [RESIDUE.name],
+    writes: [RESIDUE.name, ...(o.ambient?.debit ? [AMBIENT_TAKEN.name] : [])],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -281,12 +284,38 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
             (a, b) => Number(a) - Number(b),
           )
         : ctx.truth.ids(RESIDUE);
+      // Debito al campo (opt-in): lo repuesto por `regen` baja el drenaje de cada celda y el resto
+      // de las filas se reparte en proporción; `rows` lleva lo nuevo de esta corrida.
+      const debit = o.ambient?.debit;
+      const rows = new Map<AgentId, Record<string, number>>();
+      const drain = new Map<number, number>();
+      if (debit) {
+        const yearDays = o.clock.year / o.clock.day;
+        const before = ambientDrain(ctx.truth);
+        const factor = new Map<number, number>();
+        for (const [cell, d] of before) {
+          const left = Math.max(0, d - (debit.regenPerYear(cell) * days) / yearDays);
+          factor.set(cell, d > 0 ? left / d : 1);
+          drain.set(cell, left);
+        }
+        for (const id of ctx.truth.ids(AMBIENT_TAKEN)) {
+          const row = ctx.truth.get(AMBIENT_TAKEN, id);
+          if (!row) continue;
+          const next: Record<string, number> = {};
+          for (const k of Object.keys(row.byCell)) {
+            const v = (row.byCell[k] as number) * (factor.get(Number(k)) ?? 1);
+            if (v > 1e-9) next[k] = v;
+          }
+          rows.set(id as AgentId, next);
+        }
+      }
       for (const id of walk) {
         const had = ctx.truth.get(RESIDUE, id);
         const base = ctx.truth.get(ENTITY, id);
         const body = ctx.truth.get(BODY_STATE, id);
         if (!had && !o.ambient) continue;
         if (!base || base.endedAt !== undefined || body?.death) {
+          rows.delete(id as AgentId);
           if (had) {
             changes.push({ op: "delete", table: RESIDUE.name, id });
             settle(id as AgentId, 0, 0, "death", ctx.now, today, undefined);
@@ -302,9 +331,27 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
         let firstDeviation: number | undefined;
         let addedMilli = 0;
         if (o.ambient) {
-          const rel = ambientRelative(o.ambient, ctx.truth, who);
+          const cell = debit?.cellOf(ctx.truth, who);
+          const raw = o.ambient.levelOf(ctx.truth, who);
+          // Con debito, el nivel efectivo es el del campo menos lo que ya se le sacó.
+          const rel =
+            debit && cell !== undefined && raw !== undefined
+              ? relativeQi(raw - (drain.get(cell) ?? 0), o.ambient.reference)
+              : ambientRelative(o.ambient, ctx.truth, who);
           const intake = ambientIntake(rel, capacity, days);
-          const split = splitByPurity(intake.essence, intake.purity);
+          let split = splitByPurity(intake.essence, intake.purity);
+          if (debit && cell !== undefined && raw !== undefined && split.residue > 0) {
+            // Lo que sale del campo es lo que entra al cuerpo; no se saca más que lo que hay.
+            const avail = Math.max(0, raw - (drain.get(cell) ?? 0));
+            const k = Math.min(1, avail / split.residue);
+            split = { useful: split.useful * k, residue: split.residue * k };
+            if (split.residue > 0) {
+              drain.set(cell, (drain.get(cell) ?? 0) + split.residue);
+              const mine = rows.get(who) ?? {};
+              mine[String(cell)] = (mine[String(cell)] ?? 0) + split.residue;
+              rows.set(who, mine);
+            }
+          }
           if (split.residue > 0) {
             load += split.residue;
             const k = events.length;
@@ -312,7 +359,13 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
               kind: "body.ambient_absorbed",
               actors: [who],
               place: o.placeOf(ctx.truth, who),
-              data: { relative: rel, essence: intake.essence, purity: intake.purity, days },
+              data: {
+                relative: rel,
+                essence: intake.essence,
+                purity: intake.purity,
+                days,
+                ...(debit ? { cell, debited: split.residue } : {}),
+              },
               emissions: {},
               causes: [{ kind: "state", entity: who, key: "body.ambient_qi" }],
             });
@@ -377,6 +430,19 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
             );
           }
         } else if (had) changes.push({ op: "delete", table: RESIDUE.name, id });
+      }
+      if (debit) {
+        for (const id of [...new Set([...ctx.truth.ids(AMBIENT_TAKEN), ...rows.keys()])].sort(
+          (a, b) => Number(a) - Number(b),
+        )) {
+          const had = ctx.truth.get(AMBIENT_TAKEN, id);
+          const mine = rows.get(id as AgentId);
+          if (!mine || Object.keys(mine).length === 0) {
+            if (had) changes.push({ op: "delete", table: AMBIENT_TAKEN.name, id });
+          } else if (!had || JSON.stringify(had.byCell) !== JSON.stringify(mine)) {
+            changes.push(setComponent(AMBIENT_TAKEN, id, { byCell: mine, at: ctx.now }));
+          }
+        }
       }
       return changes.length > 0 || events.length > 0
         ? { changes, events, ...(postings.length > 0 ? { postings } : {}) }

@@ -352,6 +352,17 @@ export interface MedicineOptions {
           healer: AgentId,
         ) => number | undefined;
         readonly caution?: number;
+        /**
+         * Segunda opinion: el enfermo que discrepa (`doubts` en `PATIENT_BELIEF`) llama a otro
+         * sanador (distinto de los que ya oyo) y su diagnostico reemplaza al primero. Una sola vez.
+         */
+        readonly secondOpinion?: boolean;
+        /** Autoridad (jefe del hogar, aldea): 0-1 de aislamiento impuesto o recomendado, insumo de la decision. */
+        readonly authorityOf?: (
+          truth: ReadonlyWorldTruth,
+          patient: AgentId,
+          pathogen: string,
+        ) => number | undefined;
       }
     | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -509,22 +520,34 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
         if (ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
         const patient = id as AgentId;
         const had = ctx.truth.get(TREATMENT, id)?.treatments ?? [];
+        const replaced = new Set<string>();
         const added: PathogenTreatment[] = [];
         const heardRows: PatientBeliefRow[] = [];
         for (const inf of mine.infections) {
           const def = defs.get(inf.pathogen);
           if (!def || !mine.ill.includes(def.id)) continue;
-          if (had.some((t) => t.pathogen === def.id)) continue;
+          const priorHeard = (ctx.truth.get(PATIENT_BELIEF, id)?.beliefs ?? []).filter(
+            (b) => b.pathogen === def.id,
+          );
+          const second =
+            o.patientDecides?.secondOpinion === true &&
+            priorHeard.length === 1 &&
+            priorHeard[0]?.doubts === true;
+          if (had.some((t) => t.pathogen === def.id) && !second) continue;
           const hours = (ctx.now - inf.exposedAt) / tph;
           if (infectionStage(def, inf, hours) !== "symptomatic") continue;
           const free = healers.filter(
-            (h) => h.agent !== patient && (taken.get(h.agent) ?? 0) < (h.capacity ?? 3),
+            (h) =>
+              h.agent !== patient &&
+              (taken.get(h.agent) ?? 0) < (h.capacity ?? 3) &&
+              !priorHeard.some((b) => b.healer === h.agent),
           );
           const fee = o.fee;
           const believed = (h: Healer) => fee?.renownOf(ctx.truth, patient, h.agent) ?? 0.5;
           const healer = fee ? [...free].sort((a, b) => believed(b) - believed(a))[0] : free[0];
           if (!healer) continue;
           taken.set(healer.agent, (taken.get(healer.agent) ?? 0) + 1);
+          if (second) replaced.add(def.id);
 
           const progress = Math.min(1, Math.max(0, hours / Math.max(1, def.courseHours)));
           const body = o.plans ? ctx.truth.get(BODY_STATE, id) : undefined;
@@ -612,6 +635,9 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
                 confidence: belief.confidence,
                 contagionBelief: pd.contagionBelief?.[belief.condition] ?? 0.5,
                 advised: healer.isolation ?? 0,
+                ...(pd.authorityOf
+                  ? { authority: pd.authorityOf(ctx.truth, patient, def.id) ?? 0 }
+                  : {}),
                 ...(pd.caution !== undefined ? { caution: pd.caution } : {}),
               })
             : undefined;
@@ -706,7 +732,11 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           });
         }
         if (added.length > 0) {
-          changes.push(setComponent(TREATMENT, id, { treatments: [...had, ...added] }));
+          changes.push(
+            setComponent(TREATMENT, id, {
+              treatments: [...had.filter((t) => !replaced.has(t.pathogen)), ...added],
+            }),
+          );
           if (heardRows.length > 0) {
             const prior = ctx.truth.get(PATIENT_BELIEF, id)?.beliefs ?? [];
             changes.push(setComponent(PATIENT_BELIEF, id, { beliefs: [...prior, ...heardRows] }));

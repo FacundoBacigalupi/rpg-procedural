@@ -459,3 +459,65 @@ describe("life.medicine, cuarentena por decisión del paciente", () => {
     expect(treatment(doubtful)?.quarantine).toBeNull();
   });
 });
+
+describe("life.medicine, segunda opinion y autoridad", () => {
+  const doc2 = "agent:4" as AgentId;
+  const second: Healer = { ...healer, agent: doc2 };
+  const mk = (extra: object) =>
+    medicineProcess({
+      clock,
+      healers: [healer, second],
+      patientDecides: { trustOf: (_t, _p, h) => (h === doc ? 0.1 : 0.9), ...extra },
+      placeOf: () => place,
+    });
+  const w = () => {
+    const t = world();
+    t.set(
+      ENTITY,
+      doc2 as EntityRef,
+      { id: doc2, originEventId: "event:1" as EventId, createdAt: 0 } as never,
+    );
+    return t;
+  };
+
+  const apply = (t: WorldTruth, changes: readonly unknown[] | undefined) => {
+    for (const c of (changes ?? []) as { table: string; value: never }[]) {
+      if (c.table === TREATMENT.name) t.set(TREATMENT, sick as EntityRef, c.value);
+      else if (c.table === PATIENT_BELIEF.name) t.set(PATIENT_BELIEF, sick as EntityRef, c.value);
+    }
+  };
+
+  it("el que discrepa llama a otro sanador, una sola vez, y reemplaza el tratamiento", () => {
+    const t = w();
+    const p = mk({ secondOpinion: true });
+    const first = p.run(ctx(t, clock.day * 2));
+    expect(first.events?.[2]?.data).toMatchObject({ doubts: true });
+    apply(t, first.changes);
+    const out = p.run(ctx(t, clock.day * 2 + 3600));
+    const ev = out.events?.find((e) => e.kind === "body.quarantine_decided");
+    expect(ev?.actors).toEqual([sick, doc2]);
+    expect(ev?.data).toMatchObject({ doubts: false, quarantined: true });
+    const tr = out.changes?.find((c) => c.table === TREATMENT.name) as unknown as {
+      value: { treatments: unknown[] };
+    };
+    expect(tr.value.treatments).toHaveLength(1);
+    apply(t, out.changes);
+    expect(p.run(ctx(t, clock.day * 2 + 7200))).toEqual({});
+  });
+
+  it("apagado no hay segunda opinion", () => {
+    const t = w();
+    const p = mk({});
+    const first = p.run(ctx(t, clock.day * 2));
+    apply(t, first.changes);
+    expect(p.run(ctx(t, clock.day * 2 + 3600))).toEqual({});
+  });
+
+  it("la autoridad impone el aislamiento aunque dude del sanador", () => {
+    const out = mk({ authorityOf: () => 0.8 }).run(ctx(w(), clock.day * 2));
+    expect(out.events?.find((e) => e.kind === "body.quarantine_decided")?.data).toMatchObject({
+      doubts: true,
+      quarantined: true,
+    });
+  });
+});

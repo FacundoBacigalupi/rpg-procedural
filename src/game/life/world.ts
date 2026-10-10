@@ -96,6 +96,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
+import { type Labor, laborProcess } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -153,6 +154,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
+import { usuryGossipProcess } from "./usurygossip.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -190,6 +192,23 @@ export interface LifeWorld {
    * fama que cree (rumor `renown` de su libro) y le paga `healerFee` (base `base`, en `unit`) con asiento.
    */
   readonly healerFee?: { readonly unit: string; readonly base: number };
+  /**
+   * Opt-in (body-health §6): la cuarentena la decide el paciente (`patientDecides`); la confianza en el
+   * sanador sale de la fama que cree (`renownBelieved`); con `secondOpinion` el que discrepa llama a otro.
+   */
+  readonly patientDecides?: {
+    readonly contagionBelief?: Readonly<Record<string, number>>;
+    readonly caution?: number;
+    readonly secondOpinion?: boolean;
+  };
+  /**
+   * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
+   * tiene `medicine` (por la fama que cree, con `healerFee` si está) si cree el parto riesgoso, y la
+   * habilidad de la partera baja el riesgo (`life.labor`, tabla `LABOR`). Sin esto, nada.
+   */
+  readonly labors?: readonly Labor[];
+  /** Miedo del hogar al parto (se suma al riesgo creído; por defecto 0). */
+  readonly laborCaution?: number;
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -339,6 +358,8 @@ export interface LifeWorld {
   readonly marksGossip?: boolean;
   /** Opt-in (con `marksGossip`): el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares. */
   readonly marksReach?: boolean;
+  /** Opt-in: el fallo de usura que procede viaja como rumor `fraud` sobre el prestamista y quien pide fiado lo lee (`life.usury_gossip`). */
+  readonly usuryGossip?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -660,6 +681,7 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
@@ -770,6 +792,7 @@ export function lifeWorld(
           player,
           placeOf: placeOf(parts, village),
           ...(parts.creditHeed ? { heedStanding: parts.creditHeed } : {}),
+          ...(parts.usuryGossip ? { heedFraud: true } : {}),
         }),
         repayProcess({
           foods: parts.foods,
@@ -951,6 +974,14 @@ export function lifeWorld(
                 },
               }
             : {}),
+          ...(parts.patientDecides
+            ? {
+                patientDecides: {
+                  ...parts.patientDecides,
+                  trustOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                },
+              }
+            : {}),
           doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
@@ -960,6 +991,25 @@ export function lifeWorld(
           deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.labors && parts.labors.length > 0
+          ? [
+              laborProcess({
+                clock: parts.clock,
+                labors: parts.labors,
+                ...(parts.laborCaution !== undefined ? { caution: parts.laborCaution } : {}),
+                ...(parts.healerFee
+                  ? {
+                      fee: {
+                        unit: ledgerUnit(parts.healerFee.unit),
+                        base: parts.healerFee.base,
+                        renownOf: (truth, mother, healer) => renownBelieved(truth, mother, healer),
+                      },
+                    }
+                  : {}),
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         substancesProcess({
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
