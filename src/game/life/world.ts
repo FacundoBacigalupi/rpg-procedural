@@ -190,6 +190,15 @@ export interface LifeWorld {
    * fama que cree (rumor `renown` de su libro) y le paga `healerFee` (base `base`, en `unit`) con asiento.
    */
   readonly healerFee?: { readonly unit: string; readonly base: number };
+  /**
+   * Opt-in (body-health §6): la cuarentena la decide el paciente (`patientDecides`); la confianza en el
+   * sanador sale de la fama que cree (`renownBelieved`); con `secondOpinion` el que discrepa llama a otro.
+   */
+  readonly patientDecides?: {
+    readonly contagionBelief?: Readonly<Record<string, number>>;
+    readonly caution?: number;
+    readonly secondOpinion?: boolean;
+  };
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -948,6 +957,14 @@ export function lifeWorld(
                   unit: ledgerUnit(parts.healerFee.unit),
                   base: parts.healerFee.base,
                   renownOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                },
+              }
+            : {}),
+          ...(parts.patientDecides
+            ? {
+                patientDecides: {
+                  ...parts.patientDecides,
+                  trustOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
                 },
               }
             : {}),

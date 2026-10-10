@@ -319,6 +319,11 @@ export interface QuarantineDecisionInput {
   readonly advised: number;
   /** 0-1: miedo/precaución del hogar (por defecto 0). */
   readonly caution?: number;
+  /**
+   * 0-1: lo que impone o recomienda la autoridad (jefe del hogar, aldea, estado). Sube el aislamiento
+   * aconsejado y el peso del miedo, y pesa aunque el paciente dude del sanador (por defecto 0).
+   */
+  readonly authority?: number;
 }
 
 export interface QuarantineDecision {
@@ -346,13 +351,15 @@ export const QUARANTINE_TAKES_FROM = 0.2;
 export function quarantineDecision(i: QuarantineDecisionInput): QuarantineDecision {
   const credence = clamp01(i.trust) * (0.5 + 0.5 * clamp01(i.confidence));
   const doubts = credence < DOUBT_BELOW;
-  const fear = Math.max(clamp01(i.contagionBelief), 0.5 * clamp01(i.caution ?? 0));
-  const weight = credence * fear;
-  const takes = !doubts && clamp01(i.advised) > 0 && weight >= QUARANTINE_TAKES_FROM;
+  const auth = clamp01(i.authority ?? 0);
+  const fear = Math.max(clamp01(i.contagionBelief), 0.5 * clamp01(i.caution ?? 0), auth);
+  const weight = Math.max(credence * fear, auth);
+  const advised = Math.max(clamp01(i.advised), auth);
+  const takes = (!doubts || auth > 0) && advised > 0 && weight >= QUARANTINE_TAKES_FROM;
   return {
     credence,
     doubts,
     takes,
-    isolation: takes ? clamp01(i.advised) * clamp01(weight / 0.6) : 0,
+    isolation: takes ? advised * clamp01(weight / 0.6) : 0,
   };
 }
