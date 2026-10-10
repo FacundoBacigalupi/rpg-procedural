@@ -71,6 +71,7 @@ import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from ".
 import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
+import { gatheringsFor } from "./gathering-provider.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { intrusionProcess } from "./intrusion.ts";
@@ -150,6 +151,8 @@ export interface LifeWorld {
   readonly healerFrostbiteSigns?: boolean;
   /** Opt-in (con `frostbite`; con `frostbiteTreatment` se ejecuta): el sanador escribe el pedido de cuidado de la congelación. */
   readonly healerFrostbiteOrders?: boolean;
+  /** Opt-in: el contagio usa reuniones con horas reales (fiesta del calendario, mercado); ver `gatheringsFor`. */
+  readonly gatheringContact?: boolean;
   /** Opt-in (con `realAltitude`): el sanador también ve los signos del mal de altura. */
   readonly healerAltitudeSigns?: boolean;
   /** Opt-in (con `realAltitude`): la aclimatación escala con el genoma (`constitution`). */
@@ -612,6 +615,9 @@ export function lifeWorld(
               }
             : {}),
           deficiency: parts.deficiencyEffects === true,
+          ...(parts.gatheringContact
+            ? { gatherings: gatheringsFor({ clock: parts.clock, rng: Rng.root(parts.seed) }) }
+            : {}),
           placeOf: placeOf(parts, village),
         }),
         medicineProcess({
