@@ -6,6 +6,7 @@
 export * from "./capabilities.ts";
 export * from "./disease.ts";
 export * from "./epidemic.ts";
+export * from "./hearth.ts";
 export * from "./injury.ts";
 export * from "./medicine.ts";
 export * from "./nutrition.ts";
