@@ -295,6 +295,8 @@ export interface LifeWorld {
   readonly marks?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
+  /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
+  readonly loanContagionEffects?: { readonly rateMarkup: number };
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -487,7 +489,13 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.loanContagion !== undefined
-          ? [contagionProcess({ unit: parts.loanContagion, placeOf: placeOf(parts, village) })]
+          ? [
+              contagionProcess({
+                unit: parts.loanContagion,
+                placeOf: placeOf(parts, village),
+                ...(parts.loanContagionEffects ? { fame: true } : {}),
+              }),
+            ]
           : []),
         ...(parts.marks === true
           ? [marksProcess({ placeOf: placeOf(parts, village), eye: scamEyeOf(parts.traits) })]
@@ -661,6 +669,9 @@ export function lifeWorld(
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
           ...(parts.loanBondage ? { bondage: parts.loanBondage } : {}),
+          ...(parts.loanContagion !== undefined && parts.loanContagionEffects
+            ? { contagionCaution: parts.loanContagionEffects }
+            : {}),
           ...(parts.relationDecay
             ? {
                 relationDecay: {

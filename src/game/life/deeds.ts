@@ -108,6 +108,7 @@ export function offenseOf(
   const data = e.data as {
     effect?: { kind?: string; from?: string; got?: readonly unknown[] };
     noticedBy?: readonly string[];
+    creditors?: readonly string[];
   } | null;
   if ((e.kind === "combat.fight" || e.kind === "combat.finish") && second) {
     return { kind: "assault", by: first, victim: second, noticedBy: [second] };
@@ -120,6 +121,11 @@ export function offenseOf(
     // El reclamo ante la comunidad: los vecinos que le creyeron al acreedor saben quién no pagó.
     const heard = (data?.noticedBy ?? []) as AgentId[];
     return { kind: "default", by: first, victim: second, noticedBy: [second, ...heard] };
+  }
+  if (e.kind === "credit.contagion" && data?.creditors?.length) {
+    // El hogar que cae por sus propios activos deja sin cobrar a sus acreedores: lo saben (fama del quebrado).
+    const owed = data.creditors as AgentId[];
+    return { kind: "default", by: first, victim: owed[0] as AgentId, noticedBy: owed };
   }
   if (e.kind === "property.rent_default" && second) {
     // La mora de renta: el dueño sabe quién no pagó el canon.

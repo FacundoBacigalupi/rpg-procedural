@@ -68,6 +68,9 @@ export const LOANS = table<LoanRow>("economy.loans");
  */
 export const COMMITMENTS = table<Commitment>("contracts.commitment");
 
+/** Si el hogar (anotado en su primer vivo) estaba caído la última vez que se calculó el contagio. Solo escribe `life.contagion`. */
+export const CONTAGION_STATE = table<{ readonly failed: boolean }>("life.contagion_state");
+
 /** Un préstamo decidido de antemano: la única fuente de préstamos hasta que los hogares apretados los pidan. */
 export interface LoanSeed {
   readonly id: string;
@@ -122,6 +125,11 @@ export interface LoansOptions {
    * a mitad de plazo el deudor huye). Sin esto no hay filas, eventos ni RNG nuevos.
    */
   readonly bondage?: BondageTerms;
+  /**
+   * Opt-in (con `life.contagion`): el prestamista arrastrado por una quiebra ajena (caído, o con un
+   * deudor activo caído) cobra `rateMarkup` más de tasa en lo que abre mientras dure; el caído no presta.
+   */
+  readonly contagionCaution?: { readonly rateMarkup: number };
   /** Opt-in: la confianza de RELATIONS se lee con `current` (decaimiento al día de hoy); sin esto, tal cual está guardada. */
   readonly relationDecay?: DecayContext;
 }
@@ -206,7 +214,15 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, LOANS.name, COMMITMENTS.name, PARCEL.name, RELATIONS.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      LOANS.name,
+      COMMITMENTS.name,
+      PARCEL.name,
+      RELATIONS.name,
+      ...(o.contagionCaution ? [CONTAGION_STATE.name] : []),
+    ],
     writes: [
       LOANS.name,
       COMMITMENTS.name,
@@ -243,6 +259,10 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       const rows = loanRows(ctx.truth);
       const known = new Set(rows.map((r) => r.loan.seed));
 
+      const failedHome = (home: string): boolean => {
+        const m = firstAlive(home);
+        return m !== undefined && ctx.truth.get(CONTAGION_STATE, m)?.failed === true;
+      };
       // Abrir: las semillas cuyo día llegó y que todavía no son préstamo.
       const opened: { id: string; loan: LoanRow }[] = [];
       for (const s of [...o.seeds].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
@@ -253,6 +273,19 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         if (!def || !lenderMan || !borrowerMan) continue;
         const unit = goodUnit(def);
         if (bal(acct(s.lender), unit) < s.principal) continue;
+        let rate = s.rate;
+        if (o.contagionCaution) {
+          if (failedHome(s.lender)) continue;
+          if (
+            rows.some(
+              (r) =>
+                r.loan.status === "active" &&
+                r.loan.lender === s.lender &&
+                failedHome(r.loan.borrower),
+            )
+          )
+            rate += o.contagionCaution.rateMarkup;
+        }
         const id = ctx.newId("commitment");
         const k = events.length;
         const loan = makeLoan({
@@ -263,7 +296,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           borrowerAccount: acct(s.borrower),
           unit,
           requested: s.principal,
-          rate: s.rate,
+          rate,
           startDay: today,
           dueDay: today + s.termDays,
           collateral: (s.collateral ?? []).map(({ lot: _lot, ...c }) => ({
