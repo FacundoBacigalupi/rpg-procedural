@@ -94,7 +94,12 @@ export interface ExposureOptions {
    * Calidad del agua que bebe cada quien, con la carga del pozo (turbiedad, tratamiento);
    * sin esto es `wellWater(load)`, como siempre.
    */
-  readonly waterFor?: (truth: ReadonlyWorldTruth, who: EntityRef, load: number) => WaterQuality;
+  readonly waterFor?: (
+    truth: ReadonlyWorldTruth,
+    who: EntityRef,
+    load: number,
+    now?: Tick,
+  ) => WaterQuality;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Leer `DEFICIENCY_EFFECTS` (`immune` sube la chance de infectarse); apagado por defecto. */
   readonly deficiency?: boolean;
@@ -451,7 +456,9 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               hours: HOUSEHOLD_DAY.hours * days,
               waterDirt: water
                 ? waterDose(
-                    o.waterFor ? o.waterFor(ctx.truth, id, water.load) : wellWater(water.load),
+                    o.waterFor
+                      ? o.waterFor(ctx.truth, id, water.load, ctx.now)
+                      : wellWater(water.load),
                   )
                 : 0,
             };

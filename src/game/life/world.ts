@@ -113,7 +113,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
-import { type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
+import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
@@ -563,7 +563,13 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
-          ...(parts.waterSources ? { waterFor: waterHooks(parts.waterSources).waterFor } : {}),
+          ...(parts.waterSources
+            ? {
+                waterFor: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).waterFor,
+              }
+            : {}),
           deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
@@ -767,7 +773,11 @@ export function lifeWorld(
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
-            ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }
+            ? {
+                drinkQuality: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).drinkQuality,
+              }
             : {}),
           map: parts.map,
           spaces: parts.spaces,

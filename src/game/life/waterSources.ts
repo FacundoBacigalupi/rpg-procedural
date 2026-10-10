@@ -3,9 +3,10 @@
 // estancada; por defecto río, sin tratar). Puro y sin azar: arma los ganchos `drinkQuality` de la
 // rutina y `waterFor` de la exposición. Sin config no se usa y la aldea por defecto no cambia.
 
-import type { AgentId, EntityRef } from "../../core/index.ts";
+import type { AgentId, EntityRef, PlanetClock, Seed } from "../../core/index.ts";
 import {
   LOCATION,
+  type LocalMap,
   type ReadonlyWorldTruth,
   sourceWater,
   TREATED_WATER,
@@ -13,6 +14,7 @@ import {
   type WaterQuality,
   type WaterSourceKind,
   type WaterTreatment,
+  weatherAt,
 } from "../../sim/index.ts";
 
 export interface WaterSourcesConfig {
@@ -30,6 +32,8 @@ export interface WaterSourcesConfig {
    * por llover). Sin él, o sin `now`, nada cambia.
    */
   readonly rainingAt?: (now: number) => boolean;
+  /** Opt-in: quien arma el mundo lo completa con `rainingFromWeather` (el tiempo de la celda de la aldea). */
+  readonly rainFromWeather?: boolean;
 }
 
 /** El agua que bebe quien está en `hex` (con o sin sitio) con la carga `load` del pozo. */
@@ -59,7 +63,35 @@ export function waterHooks(cfg: WaterSourcesConfig) {
         ? treatWater(base, t.treatment)
         : base;
     },
-    waterFor: (truth: ReadonlyWorldTruth, who: EntityRef, load: number): WaterQuality =>
-      waterAt(cfg, truth.get(LOCATION, who), load),
+    waterFor: (
+      truth: ReadonlyWorldTruth,
+      who: EntityRef,
+      load: number,
+      now?: number,
+    ): WaterQuality => waterAt(cfg, truth.get(LOCATION, who), load, now),
   };
+}
+
+/**
+ * `rainingAt` armado desde el tiempo del día en la celda de la aldea (`dailyWeather` vía `weatherAt`):
+ * llueve si la precipitación es `rain` (ni nieve ni aguanieve). Puro: mismo mapa, reloj y seed, mismo día.
+ */
+export function rainingFromWeather(
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+): (now: number) => boolean {
+  return (now) => weatherAt(map, clock, seed, now).precip.kind === "rain";
+}
+
+/** La config lista para los ganchos: con `rainFromWeather` y sin `rainingAt` propio, llueve según el tiempo. */
+export function resolveWaterSources(
+  cfg: WaterSourcesConfig,
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+): WaterSourcesConfig {
+  return cfg.rainFromWeather === true && cfg.rainingAt === undefined
+    ? { ...cfg, rainingAt: rainingFromWeather(map, clock, seed) }
+    : cfg;
 }
