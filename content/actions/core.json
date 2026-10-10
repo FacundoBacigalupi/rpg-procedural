@@ -147,7 +147,7 @@
     "duration": { "kind": "arg", "role": "for", "default": 14400, "max": 43200 },
     "checkpoint": 1800,
     "emissions": { "sight": 0.6, "sound": 0.4 },
-    "serves": { "wealth": 0.6, "hunger": 0.2, "tradition": 0.2, "rest": -0.3 },
+    "serves": { "wealth": 0.6, "hunger": 0.2, "tradition": 0.2, "rest": -0.3, "meaning": 0.3 },
     "resolver": "work",
     "ease": 1,
     "factors": {

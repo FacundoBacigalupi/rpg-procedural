@@ -723,6 +723,40 @@ describe("life.decide", () => {
     ).toContainEqual({ kind: "event", event: "event:12" });
   });
 
+  it("el vacío de una venganza cumplida presiona meaning solo con la opción", () => {
+    const year = 365 * 86_400;
+    const make = () => {
+      const truth = layeredWorld();
+      truth.set(NPC_GOAL_COMPLETIONS, A, {
+        items: [
+          {
+            goalId: "core:avenge:agent:2",
+            cause: "event:9" as EventId,
+            at: 1000 - year,
+            original: {
+              id: "core:avenge:agent:2",
+              layer: "core",
+              kind: "avenge",
+              target: "agent:2" as AgentId,
+              weight: 0.8,
+              originEventId: "event:8" as EventId,
+              since: 100,
+            },
+          },
+        ],
+      });
+      return truth;
+    };
+    const base = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    const on = decideProcess({ ...opts, recognizeGoalCompletion: true, meaningPressure: true });
+    expect(on.reads).toContain(NPC_GOAL_COMPLETIONS.name);
+    expect(on.run(ctx(make(), A, 1000))).toEqual(on.run(ctx(make(), A, 1000)));
+    const u = (p: typeof on) =>
+      p.run(ctx(make(), A, 1000)).changes?.find((c) => c.table === NPC_DECISION.name);
+    expect(u(on)).toBeDefined();
+    expect(u(decideProcess({ ...opts, meaningPressure: false }))).toEqual(u(base));
+  });
+
   it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {
     const truth = layeredWorld();
     const goal = {

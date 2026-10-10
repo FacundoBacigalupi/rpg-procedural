@@ -16,7 +16,10 @@ import { expectedGain } from "../actions/index.ts";
 import type { Innate } from "../family/index.ts";
 import { VALUE_IDS, type ValueId } from "./mind.ts";
 
-/** Las necesidades inmediatas que entran a la utilidad (las lentas, `belonging` y `meaning`, aparte). */
+/**
+ * Las necesidades que entran a la utilidad. `meaning` es lenta y solo aparece con el vacío de
+ * sentido (opt-in en `life.decide`); `belonging` sigue aparte.
+ */
 export const NEED_IDS = [
   "hunger",
   "thirst",
@@ -25,6 +28,7 @@ export const NEED_IDS = [
   "social",
   "pain",
   "craving",
+  "meaning",
 ] as const;
 export type NeedId = (typeof NEED_IDS)[number];
 

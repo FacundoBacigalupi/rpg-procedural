@@ -9,12 +9,14 @@
 import {
   type AgentId,
   type Duration,
+  daysInYear,
   type EntityRef,
   type HolderRef,
   holderAccount,
   type PlaceRef,
   type PlanetClock,
   type Tick,
+  toCalendar,
 } from "../../core/index.ts";
 import {
   ACCLIMATIZATION,
@@ -29,6 +31,7 @@ import {
   beliefConfidenceAt,
   believed,
   type Candidate,
+  calibratedMeaningPressure,
   capabilitiesOf,
   closeness,
   coreGoals,
@@ -51,6 +54,7 @@ import {
   goalCompletionsFromBeliefs,
   goalCompletionsFromProgress,
   goalDrives,
+  goalVacuumFromCompletions,
   goodUnit,
   HABITS,
   type HabitDef,
@@ -197,6 +201,8 @@ export interface DecideOptions {
    * declara cuáles tienen final (un valor continuo no se infiere) y `evidenceOf` extrae, de las
    * memorias propias, las evidencias con su evento; la acción aislada no basta (`goal-progress-evidence`).
    */
+  /** Opt-in: el vacío por venganza cumplida sube la necesidad lenta `meaning` (necesita el historial). */
+  readonly meaningPressure?: boolean;
   readonly goalProgress?: {
     readonly concrete: (goal: Goal) => boolean;
     readonly evidenceOf: (goal: Goal, memories: Memories | undefined) => GoalProgressEvidence[];
@@ -324,7 +330,9 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_GOALS.name,
       ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
-      ...(o.recognizeGoalCompletion || o.goalProgress ? [NPC_GOAL_COMPLETIONS.name] : []),
+      ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
+        ? [NPC_GOAL_COMPLETIONS.name]
+        : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
@@ -444,7 +452,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : acute.craving,
         numbing: acute.numbing,
       };
-      const drives = drivesFor({
+      const baseDrives = drivesFor({
         plan,
         body,
         mood,
@@ -461,9 +469,22 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.
       const prevGoals = truth.get(NPC_GOALS, me)?.items ?? [];
       const completionHistory =
-        o.recognizeGoalCompletion || o.goalProgress
+        o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
           ? (truth.get(NPC_GOAL_COMPLETIONS, me)?.items ?? [])
           : [];
+      // Opt-in: el vacío de un núcleo cumplido (venganza consumada) presiona `meaning` despacio.
+      const yearTicks = daysInYear(o.clock, toCalendar(o.clock, now).year) * o.clock.day;
+      const meaning = o.meaningPressure
+        ? calibratedMeaningPressure(
+            goalVacuumFromCompletions(prevGoals, completionHistory, now),
+            now,
+            yearTicks,
+          )
+        : undefined;
+      const drives: typeof baseDrives =
+        meaning && meaning.pressure > 0
+          ? { ...baseDrives, needs: { ...baseDrives.needs, meaning: meaning.pressure } }
+          : baseDrives;
       const deathEvidence = o.recognizeGoalCompletion
         ? (memories?.items ?? [])
             .filter(

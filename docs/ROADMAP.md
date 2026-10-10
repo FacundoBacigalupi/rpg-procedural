@@ -600,7 +600,8 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
       - (f3d3) Vacío de sentido desde núcleo cumplido subjetivamente, dividido antes de implementar:
         - [x] (f3d3a) Señal pura desde historial de cumplimiento, sin núcleo activo, con tiempos y causas válidos; no sumar todavía a utilidad.
         - [x] (f3d3b) Presión lenta de sentido (helper puro `meaningPressureFromVacuum`); el cableado a la utilidad no se hizo y pasa a (f3d3d).
-        - [ ] (f3d3d) Cablear la presión de sentido (`calibratedMeaningPressure`) a la utilidad en `life.decide`, opt-in, desde el historial `NPC_GOAL_COMPLETIONS`.
+        - [x] (f3d3d) `DecideOptions.meaningPressure` (opt-in) deriva el vacío del historial `NPC_GOAL_COMPLETIONS` y suma la necesidad lenta `meaning` (nueva en `NEED_IDS`) a los impulsos; solo `work` la sirve en `content/actions/core.json`. Sin la opción no cambia nada.
+        - [ ] (f3d3e) Verbos que sirven `meaning` (estudio, oficio, culto, enseñar) en `content/actions/` y reemplazo con causa (núcleo nuevo) pasado a `calibratedMeaningPressure`; hoy solo `work` y sin alivio gradual.
         - [x] (f3d3c) `sim/mind/meaning-calibration.ts` fija rampa 9 meses, meseta 24, habituación a piso 0.4 en 48 y alivio gradual de 4 meses por un núcleo nuevo con causa; `tools/sim/meaning-vacuum.ts` lo mide en seeds 1..20 (pico medio 0.80, 0.32 a los 8 años, reemplazo apaga a 0). Puro; sin cablear a la utilidad por defecto.
       - (f3d4) Cumplimiento de otros objetivos desde evidencia de progreso propio, partido:
         - [x] (f3d4a) `sim/mind/goal-progress-evidence.ts` (puro): `goalCompletionsFromProgress` cierra solo metas que el llamador declara concretas, con ≥3 evidencias propias de causa distinta, progreso acumulado pleno (tope 0.34 por evidencia) y lapso mínimo; un `pursue` núcleo o una acción aislada nunca cierran.

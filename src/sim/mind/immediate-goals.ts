@@ -109,7 +109,8 @@ export function feltCompanyNeed(
   return warm ? { need: "social", urgency, originEventId: warm.eventId } : undefined;
 }
 
-const VALUE: Readonly<Record<NeedId, ValueId>> = {
+/** `meaning` no tiene objetivo inmediato: es una presión lenta, no una urgencia sentida. */
+const VALUE: Readonly<Partial<Record<NeedId, ValueId>>> = {
   hunger: "safety",
   thirst: "safety",
   pain: "safety",
@@ -153,7 +154,10 @@ export function immediateGoals(
     )
       signals.set(id, { value, weight: w, origin });
   };
-  for (const n of needs) add(`immediate:${n.need}`, VALUE[n.need], n.urgency, n.originEventId);
+  for (const n of needs) {
+    const value = VALUE[n.need];
+    if (value !== undefined) add(`immediate:${n.need}`, value, n.urgency, n.originEventId);
+  }
   for (const m of memories?.items ?? []) {
     if (m.at > now || m.valence >= 0) continue;
     const fear =
