@@ -92,6 +92,7 @@ import { creditRows } from "./credit.ts";
 import {
   ownEmotionSignals,
   perceivedLossSignals,
+  perceivedLoveSignals,
   receivedInsultSignals,
 } from "./emotion-evidence.ts";
 import { grievanceDeltas, grievanceOf } from "./grievance.ts";
@@ -313,6 +314,20 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
                       truth.get(MIND, percept.observer)?.schemas[s]?.strength ?? 0,
                   }),
                 ),
+              ),
+            );
+            recordEmotions(
+              percept.observer,
+              perceivedLoveSignals(
+                percept,
+                ctx.now,
+                (who) =>
+                  relationship(truth.get(RELATIONS, percept.observer), who, ctx.now, {
+                    dims: o.dims,
+                    bonds: o.bonds,
+                    schemaStrength: (s) =>
+                      truth.get(MIND, percept.observer)?.schemas[s]?.strength ?? 0,
+                  }).dims.affection ?? 0,
               ),
             );
           }

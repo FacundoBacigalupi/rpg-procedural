@@ -5,6 +5,7 @@ import {
   appraisalEmotionSignals,
   appraiseInsultEmotion,
   appraiseLoss,
+  appraiseLoveEmotion,
   type EmotionSignal,
   type Percept,
 } from "../../sim/index.ts";
@@ -47,7 +48,7 @@ export function receivedInsultSignals(
   return signal ? [{ ...signal, evidence: { kind: "own" as const, event: event.id } }] : [];
 }
 
-/** Un appraisal legacy no acredita percepción. Solo violencia corporal propia y culpa del actor. */
+/** Un appraisal legacy no acredita percepción. Solo violencia corporal propia, culpa del actor y éxito propio en pelea. */
 export function ownEmotionSignals(
   owner: AgentId,
   event: Event,
@@ -66,7 +67,12 @@ export function ownEmotionSignals(
           event.kind === "family.rearing")) ||
       (a.stimulus.theme === "guilt" &&
         event.actors[0] === owner &&
-        event.kind.startsWith("action.")),
+        event.kind.startsWith("action.")) ||
+      // Alegría: el éxito de una pelea que el dueño inició y terminó de pie (appraiseFight).
+      (a.stimulus.theme === "success" &&
+        a.blame === null &&
+        event.kind === "combat.fight" &&
+        event.actors[0] === owner),
   );
   return appraisalEmotionSignals(owner, own, event.id, now).map((s) => ({
     ...s,
@@ -104,4 +110,42 @@ export function perceivedLossSignals(
   return appraisalEmotionSignals(percept.observer, appraisal, percept.sourceEventId, now).map(
     (s) => ({ ...s, evidence: { kind: "percept" as const, percept: percept.id } }),
   );
+}
+
+/** Calidez que se lee de cada acción de cuidado vista (no de la intención del actor). */
+const WARM_ACTIONS: Readonly<Record<string, number>> = { "action.give": 0.6, "action.tend": 0.8 };
+
+/** Amor desde una acción cálida vista de alguien identificado al que el observador ya quiere.
+ * La identidad es la leída (aunque errónea); sin cariño previo propio, o sin lectura, no nace.
+ */
+export function perceivedLoveSignals(
+  percept: Percept,
+  now: Tick,
+  affectionFor: (who: AgentId) => number,
+): EmotionSignal[] {
+  const who = percept.fields.identity?.value;
+  const action = percept.fields.action;
+  const identity = percept.fields.identity;
+  const warmth = typeof action?.value === "string" ? WARM_ACTIONS[action.value] : undefined;
+  if (
+    !percept.sourceEventId ||
+    percept.tick > now ||
+    typeof who !== "string" ||
+    !who.startsWith("agent:") ||
+    warmth === undefined ||
+    !action ||
+    action.confidence <= 0 ||
+    !identity ||
+    identity.confidence <= 0
+  )
+    return [];
+  const signal = appraiseLoveEmotion(percept.observer, {
+    beloved: who as AgentId,
+    affection: affectionFor(who as AgentId),
+    warmth,
+    confidence: Math.min(action.confidence, identity.confidence),
+    originEventId: percept.sourceEventId,
+    at: now,
+  });
+  return signal ? [{ ...signal, evidence: { kind: "percept" as const, percept: percept.id } }] : [];
 }

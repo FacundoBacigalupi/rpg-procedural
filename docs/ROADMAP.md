@@ -587,7 +587,13 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
       - (f3c3) Emociones tipadas desde appraisal/percepts propios, dividido antes de implementar:
         - [x] (f3c3a) Contrato puro de señales propias y decaimiento para miedo, tristeza y culpa desde appraisal existente.
         - [x] (f3c3b) Persistir señales desde evidencia percibida propia y proyectarlas a la capa inmediata, opt-in; revisar el gate de pérdida antes de reutilizarlo.
-        - [ ] (f3c3c) Parcial: la ira por insultos personales entendidos ya está (`appraise.ts`); faltan alegría, vergüenza, envidia y amor desde causas percibidas propias.
+        - (f3c3c) Alegría, vergüenza, envidia y amor (la ira por insultos entendidos ya está), dividido antes de implementar:
+          - [x] (f3c3c1) Contratos puros en `emotions.ts`: `appraiseShameEmotion`, `appraiseEnvyEmotion`, `appraiseLoveEmotion`, alegría desde éxito/amabilidad/bendición en `appraisalEmotionSignals` y vidas medias propias; sin RNG ni verdad.
+          - [x] (f3c3c2) Alegría propia: `ownEmotionSignals` acepta el éxito de `appraiseFight` del iniciador en `combat.fight` (por `persistEmotionSignals` ya existente), con test de gate.
+          - [ ] (f3c3c3) Vergüenza: que `regardEffect` (converse) emita testigos creídos y si el oyente reconoce la falta (verdad del insulto) y gate en `emotion-evidence.ts`.
+          - [x] (f3c3c4a) Amor desde percepts: `perceivedLoveSignals` (acción de cuidado vista de alguien identificado con cariño previo propio, identidad leída), cableado en `appraiseProcess` bajo `persistEmotionSignals`.
+          - [ ] (f3c3c4b) Envidia desde percepts: falta que el percept lleve la ventaja ajena (qué ganó y cuánto); hoy solo hay acción e identidad, sin magnitud para `appraiseEnvyEmotion`.
+          - [x] (f3c3c5) `immediateGoals` proyecta señales propias con evidencia de miedo, alegría (placer), vergüenza y envidia (estatus) y amor (familia) con su vida media; ira y tristeza siguen sin proyección (valor por definir).
     - (f3d) Objetivo cumplido y vacío de sentido, partido por contrato (2026-10-10):
       - [x] (f3d1) `goalCompletionsFromBeliefs` reconoce venganza desde creencia propia de muerte con confianza y fuente causal; no consulta la verdad del objetivo.
       - [x] (f3d2) Cablear el cumplimiento conocido a cierre/persistencia y evitar regenerar la misma meta mientras el NPC crea cumplida la venganza.

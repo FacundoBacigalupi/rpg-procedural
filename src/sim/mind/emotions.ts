@@ -54,6 +54,10 @@ export const EMOTION_HALF_LIFE_TICKS = {
   sadness: 24 * 3600,
   guilt: 12 * 3600,
   anger: 3 * 3600,
+  joy: 8 * 3600,
+  shame: 18 * 3600,
+  envy: 48 * 3600,
+  love: 14 * 24 * 3600,
 } as const;
 
 export interface InsultEmotionInput {
@@ -92,6 +96,110 @@ export function appraiseInsultEmotion(
   };
 }
 
+export interface ShameInput {
+  /** Cara perdida que el dueño juzgó en el hecho (0-1). */
+  readonly faceLoss: number;
+  /** Si el dueño reconoce la falta como suya (verdad del insulto, tabú propio roto); sin eso es ira, no vergüenza. */
+  readonly acknowledged: boolean;
+  /** Testigos que el dueño cree que lo vieron. */
+  readonly witnesses: number;
+  readonly originEventId: EventId;
+  readonly at: Tick;
+}
+/** Testigos creídos desde los que la exposición pesa por completo. */
+export const SHAME_WITNESS_CAP = 4;
+/** Fracción de la cara perdida que queda como vergüenza sin testigos. */
+export const SHAME_PRIVATE_SHARE = 0.5;
+
+/** Vergüenza por una falta propia reconocida; crece con los testigos que el dueño cree. No tiene objetivo. */
+export function appraiseShameEmotion(owner: AgentId, i: ShameInput): EmotionSignal | undefined {
+  const seen =
+    Math.min(Math.max(0, Math.floor(i.witnesses)), SHAME_WITNESS_CAP) / SHAME_WITNESS_CAP;
+  const intensity = round(
+    clamp01(i.faceLoss) * (SHAME_PRIVATE_SHARE + (1 - SHAME_PRIVATE_SHARE) * seen),
+  );
+  if (!i.acknowledged || !Number.isFinite(intensity) || intensity <= 0) return undefined;
+  return {
+    owner,
+    emotion: "shame",
+    intensity,
+    originEventId: i.originEventId,
+    at: i.at,
+    appraisalTheme: "failure",
+  };
+}
+
+export interface EnvyInput {
+  readonly rival?: AgentId | undefined;
+  /** Ventaja del otro que el dueño percibió (0-1). */
+  readonly perceivedGain: number;
+  /** Confianza de esa lectura (0-1); lo mal leído pesa menos. */
+  readonly confidence: number;
+  /** Cuánto cree el dueño que le falta eso, frente al otro (0-1). */
+  readonly gap: number;
+  /** Cuánto le importa esa dimensión al dueño (0-1, de sus valores). */
+  readonly valued: number;
+  readonly originEventId: EventId;
+  readonly at: Tick;
+}
+
+/** Envidia: el bien ajeno percibido, que el dueño valora y cree que le falta. Exige un rival distinto. */
+export function appraiseEnvyEmotion(owner: AgentId, i: EnvyInput): EmotionSignal | undefined {
+  const intensity = round(
+    clamp01(i.perceivedGain) * clamp01(i.confidence) * clamp01(i.gap) * clamp01(i.valued),
+  );
+  if (i.rival === undefined || i.rival === owner || !Number.isFinite(intensity) || intensity <= 0)
+    return undefined;
+  return {
+    owner,
+    emotion: "envy",
+    intensity,
+    originEventId: i.originEventId,
+    at: i.at,
+    appraisalTheme: "failure",
+    target: i.rival,
+  };
+}
+
+export interface LoveInput {
+  readonly beloved?: AgentId | undefined;
+  /** Cariño que el dueño ya siente por la persona (0-1, su propia relación). */
+  readonly affection: number;
+  /** Calidez que percibió en el hecho (0-1). */
+  readonly warmth: number;
+  readonly confidence: number;
+  readonly originEventId: EventId;
+  readonly at: Tick;
+}
+/** Parte de la intensidad que pone el cariño previo; el resto, la calidez del momento. */
+export const LOVE_AFFECTION_SHARE = 0.6;
+
+/** Amor: cariño propio hacia alguien identificado, reavivado por calidez percibida. Sin cariño no nace. */
+export function appraiseLoveEmotion(owner: AgentId, i: LoveInput): EmotionSignal | undefined {
+  const affection = clamp01(i.affection);
+  const intensity = round(
+    affection *
+      (LOVE_AFFECTION_SHARE + (1 - LOVE_AFFECTION_SHARE) * clamp01(i.warmth)) *
+      clamp01(i.confidence),
+  );
+  if (
+    i.beloved === undefined ||
+    i.beloved === owner ||
+    !Number.isFinite(intensity) ||
+    intensity <= 0
+  )
+    return undefined;
+  return {
+    owner,
+    emotion: "love",
+    intensity,
+    originEventId: i.originEventId,
+    at: i.at,
+    appraisalTheme: "kindness",
+    target: i.beloved,
+  };
+}
+
 /** Reconcilia por dueño/emoción/hecho: no rejuvenece una respuesta repitiendo el evento. */
 export function reconcileEmotionSignals(
   previous: readonly EmotionSignal[],
@@ -124,6 +232,9 @@ const EMOTION_OF: Readonly<Partial<Record<Theme, EmotionId>>> = {
   violence: "fear",
   loss: "sadness",
   guilt: "guilt",
+  success: "joy",
+  kindness: "joy",
+  blessing: "joy",
 };
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
