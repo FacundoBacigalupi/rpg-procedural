@@ -56,8 +56,46 @@ export function repairDebtorRumors(
   return { items, told: rumors.told };
 }
 
+export const SCAM_REFUNDED_EVENT = "scam.refunded";
+export const USURY_RULED_EVENT = "credit.usury_ruled";
+export const CORRECTION_SPREAD_EVENT = "credit.correction_spread";
+
+/** Restitución: la víctima, los vecinos y el boca a boca (segundo salto, de cualquier lugar) conservan (sin calibrar). */
+export const RESTITUTION_VICTIM_KEEPS = 0.3;
+export const RESTITUTION_NEIGHBOR_KEEPS = 0.65;
+export const RESTITUTION_SPREAD_KEEPS = 0.85;
+export const RESTITUTION_SPREAD_CHANCE = 0.15;
+
+/**
+ * Pura: si el evento es una restitución de lo mal habido, devuelve quién restituye y a quién
+ * (estafa devuelta con `paid.amount > 0`; fallo de usura que procede con `refund + fine > 0`).
+ */
+export function restitutionOf(e: {
+  kind: string;
+  actors: readonly (AgentId | undefined)[];
+  data: unknown;
+}): { culprit: AgentId; victim: AgentId } | null {
+  const [first, second] = e.actors;
+  if (!first || !second) return null;
+  const d = e.data as {
+    paid?: { amount?: number };
+    upheld?: boolean;
+    refund?: number;
+    fine?: number;
+  };
+  if (e.kind === SCAM_REFUNDED_EVENT)
+    return (d.paid?.amount ?? 0) > 0 ? { culprit: first, victim: second } : null;
+  if (e.kind === USURY_RULED_EVENT)
+    return d.upheld === true && (d.refund ?? 0) + (d.fine ?? 0) > 0
+      ? { culprit: second, victim: first }
+      : null;
+  return null;
+}
+
 export interface DebtorRepairOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: también repara la fama de quien devuelve lo mal habido (estafa o usura) y corre la voz. */
+  readonly restitution?: boolean;
 }
 
 export function debtorRepairProcess(o: DebtorRepairOptions): ProcessDef {
@@ -76,6 +114,55 @@ export function debtorRepairProcess(o: DebtorRepairOptions): ProcessDef {
       const events: EventDraft[] = [];
       const next = new Map<AgentId, Rumors>();
       for (const e of ctx.recent) {
+        const rest = o.restitution ? restitutionOf(e as never) : null;
+        if (rest) {
+          const alive = (id: AgentId) => truth.get(ENTITY, id)?.endedAt === undefined;
+          const here = JSON.stringify(o.placeOf(truth, rest.culprit));
+          const keeps = new Map<AgentId, number>();
+          if (alive(rest.victim)) keeps.set(rest.victim, RESTITUTION_VICTIM_KEEPS);
+          for (const id of (truth.ids(PERSON) as AgentId[]).sort()) {
+            if (id === rest.culprit || keeps.has(id) || !alive(id)) continue;
+            const near = JSON.stringify(o.placeOf(truth, id)) === here;
+            const fork = ctx.rng.fork("restitution_repair", e.id, id);
+            if (near) {
+              if (!fork.chance(REPAIR_NEIGHBOR_CHANCE)) continue;
+              keeps.set(id, RESTITUTION_NEIGHBOR_KEEPS);
+            } else if (fork.chance(RESTITUTION_SPREAD_CHANCE)) {
+              keeps.set(id, RESTITUTION_SPREAD_KEEPS);
+            }
+          }
+          let repaired = 0;
+          let spread = 0;
+          for (const [who, k] of keeps) {
+            const before = next.get(who) ?? truth.get(RUMORS, who);
+            if (debtorStains(before, rest.culprit) === 0) continue;
+            const after = repairDebtorRumors(before, rest.culprit, k);
+            if (!after) continue;
+            next.set(who, after);
+            if (k === RESTITUTION_SPREAD_KEEPS) spread++;
+            else repaired++;
+          }
+          const cause = [{ kind: "event" as const, event: e.id }];
+          if (repaired > 0)
+            events.push({
+              kind: "credit.reputation_repaired",
+              actors: [rest.culprit, rest.victim],
+              place: o.placeOf(truth, rest.culprit),
+              data: { restitution: e.kind, holders: repaired },
+              emissions: {},
+              causes: cause,
+            });
+          if (spread > 0)
+            events.push({
+              kind: CORRECTION_SPREAD_EVENT,
+              actors: [rest.culprit, rest.victim],
+              place: o.placeOf(truth, rest.culprit),
+              data: { restitution: e.kind, holders: spread },
+              emissions: {},
+              causes: cause,
+            });
+          continue;
+        }
         if (e.kind !== LOAN_PAID_EVENT) continue;
         if ((e.data as { status?: string }).status !== "repaid") continue;
         const [debtor, lender] = e.actors as (AgentId | undefined)[];

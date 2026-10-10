@@ -188,6 +188,12 @@ export interface LifeOptions {
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
   readonly relationDecay?: boolean;
+  /** Opt-in: préstamos de cosecha decididos de antemano (`LifeParts.loanSeeds`); sin semillas no hay préstamos. */
+  readonly loanSeeds?: LifeParts["loanSeeds"];
+  /** Opt-in: ejecutores de los préstamos (`LifeParts.loanEnforcement`). */
+  readonly loanEnforcement?: LifeParts["loanEnforcement"];
+  /** Opt-in (con `loanSeeds`): usura disfrazada y caso comunitario (`LifeParts.loanUsury`). */
+  readonly loanUsury?: LifeParts["loanUsury"];
   /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
   readonly loanBondage?: Omit<NonNullable<LifeParts["loanBondage"]>, "skillWage"> & {
     /** `true`: el jornal sale del mejor oficio del deudor (`skillWageOf`); o una función propia. */
@@ -254,6 +260,9 @@ export function optInParts(
   | "scamFiller"
   | "waterSources"
   | "relationDecay"
+  | "loanSeeds"
+  | "loanEnforcement"
+  | "loanUsury"
   | "loanBondage"
   | "loanBondageAbuse"
   | "loanBondageSkillWage"
@@ -300,6 +309,9 @@ export function optInParts(
     ...(options.loanBondage && options.loanBondageAbuse
       ? { loanBondageAbuse: options.loanBondageAbuse }
       : {}),
+    ...(options.loanSeeds ? { loanSeeds: options.loanSeeds } : {}),
+    ...(options.loanEnforcement ? { loanEnforcement: options.loanEnforcement } : {}),
+    ...(options.loanUsury ? { loanUsury: options.loanUsury } : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),

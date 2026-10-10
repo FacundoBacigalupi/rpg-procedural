@@ -88,7 +88,7 @@ import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
-import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
+import { type BondageTerms, type LoanSeed, loansProcess, type UsuryOptions } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import {
@@ -374,6 +374,8 @@ export interface LifeWorld {
   readonly usuryGossip?: boolean;
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
+  /** Opt-in (con `debtorRepair`): devolver lo mal habido (estafa devuelta, reintegro de usura) tambiÃ©n repara la fama y corre la voz correctiva. */
+  readonly debtorRepairRestitution?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -433,6 +435,8 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
+  /** Opt-in (con `loanSeeds`): préstamos con interés disfrazado donde la cultura lo prohíbe; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: la mora con pÃ©rdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
@@ -697,7 +701,14 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
-        ...(parts.debtorRepair ? [debtorRepairProcess({ placeOf: placeOf(parts, village) })] : []),
+        ...(parts.debtorRepair
+          ? [
+              debtorRepairProcess({
+                placeOf: placeOf(parts, village),
+                ...(parts.debtorRepairRestitution ? { restitution: true } : {}),
+              }),
+            ]
+          : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
@@ -891,6 +902,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
+          ...(parts.loanUsury ? { usury: parts.loanUsury } : {}),
           ...(parts.loanBondage
             ? {
                 bondage: {

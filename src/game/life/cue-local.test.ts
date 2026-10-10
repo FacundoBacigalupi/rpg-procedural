@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, PlanetClock } from "../../core/index.ts";
 import { BELIEFS, cueCraving, LOCATION, learnCues, WorldTruth } from "../../sim/index.ts";
-import { cueLocalOf, objectsSeen } from "./cue-local.ts";
+import { cueLocalOf, objectsInView, objectsSeen, peopleInView } from "./cue-local.ts";
 import { cueContextOf } from "./substances.ts";
 
 const clock = { day: 24000 } as unknown as PlanetClock;
@@ -46,6 +46,18 @@ describe("life.cueLocalOf", () => {
     const have = (g: string) => ({ wine: 2, tea: 0.5, pipe: 1 })[g as "wine"] ?? 0;
     expect(objectsSeen(["wine", "tea", "pipe", "wine", "x"], have)).toEqual(["pipe", "wine"]);
     expect(objectsSeen([], have)).toEqual([]);
+  });
+
+  it("peopleInView: solo quien de verdad está en el mismo lugar (no lo que cree)", () => {
+    expect(peopleInView(t, me)).toEqual(["agent:2"]);
+    expect(peopleInView(new WorldTruth(), me)).toEqual([]);
+  });
+
+  it("objectsInView: suma lotes a la vista de otros y puestos, sin repetir", () => {
+    const carried = (g: string) => (g === "wine" ? 1 : 0);
+    const stall = (g: string) => (g === "tea" || g === "wine" ? 3 : 0);
+    expect(objectsInView(["wine", "tea", "pipe"], [carried, stall])).toEqual(["tea", "wine"]);
+    expect(objectsInView(["wine"], [])).toEqual([]);
   });
 
   it("ver el objeto sube el ansia por señales; sin verlo, no", () => {
