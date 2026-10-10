@@ -8,6 +8,7 @@
 
 import type { AgentId, PlaceRef, PlanetClock, Seed } from "../../core/index.ts";
 import {
+  ACTIVITY_LOAD,
   BODY_STATE,
   type Clothing,
   CORE_NORMAL_C,
@@ -27,6 +28,7 @@ import {
   type ReadonlyWorldTruth,
   type SpaceGraph,
   type StateChange,
+  SWEAT,
   setComponent,
   stepCore,
   stepFrostbite,
@@ -56,6 +58,13 @@ export interface ThermalOptions {
    * Solo estado: la amputación y los efectos en acciones se cablean aparte. Por defecto apagado.
    */
   readonly frostbite?: boolean;
+  /**
+   * Opt-in: el esfuerzo (`Body.activity`, `ACTIVITY_LOAD` relativo al reposo) entra en `stepCore`
+   * como `activityKcal` y el sudor sostenido va a `SWEAT` (el cuerpo lo suma a la sed). Usa la
+   * actividad al momento del paso (una vez por día), no el promedio del día. Por defecto apagado:
+   * activityKcal 1 y sin sudor extra, la aldea no cambia.
+   */
+  readonly effort?: boolean;
   readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
 }
 
@@ -65,6 +74,8 @@ const STEPS_PER_DAY = 4;
 const NORMAL_BAND_C = 0.5;
 /** Horas de cada subpaso de `stepCore` (con pasos largos el Euler explícito oscila). */
 const SUBSTEP_H = 0.25;
+/** Por debajo de este sudor (L/h) no se guarda fila. */
+const MIN_SWEAT_LPH = 0.005;
 
 /**
  * La ropa de quien se viste para lo que ve afuera: más abrigo cuanto más frío, y casi nada con
@@ -108,8 +119,16 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, THERMAL.name, LOCATION.name, FROSTBITE.name],
-    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      THERMAL.name,
+      LOCATION.name,
+      FROSTBITE.name,
+      SWEAT.name,
+    ],
+    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name, SWEAT.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -129,6 +148,10 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const hadFrost = o.frostbite ? ctx.truth.get(FROSTBITE, id) : undefined;
         let frost: FrostbiteState | undefined = hadFrost;
         let dead: "hypothermia" | "heatstroke" | null = null;
+        const kcal = o.effort ? ACTIVITY_LOAD[body.activity].kcal / ACTIVITY_LOAD.rest.kcal : 1;
+        const hadSweat = o.effort ? ctx.truth.get(SWEAT, id) : undefined;
+        let sweatL = 0;
+        let sweatH = 0;
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
           const outC = outdoorTempC(o.map, o.clock, o.seed, at);
@@ -140,7 +163,10 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
             outC,
           );
           for (let s = 0; s < hours / SUBSTEP_H && dead === null; s++) {
-            core = stepCore(core, body.massKg, env, clothing, 1, hydration, SUBSTEP_H).coreC;
+            const st = stepCore(core, body.massKg, env, clothing, kcal, hydration, SUBSTEP_H);
+            core = st.coreC;
+            sweatL += st.sweatL;
+            sweatH += SUBSTEP_H;
             dead = thermalDeath(core);
             if (o.frostbite) {
               frost = stepFrostbite(frost ?? NO_FROSTBITE, env, clothing, core, SUBSTEP_H, at);
@@ -165,6 +191,14 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
           changes.push(setComponent(THERMAL, id, { coreC: core, at: ctx.now }));
         } else if (had) {
           changes.push({ op: "delete", table: THERMAL.name, id });
+        }
+        if (o.effort) {
+          const lph = dead === null && sweatH > 0 ? sweatL / sweatH : 0;
+          if (lph >= MIN_SWEAT_LPH) {
+            changes.push(setComponent(SWEAT, id, { litersPerHour: lph, at: ctx.now }));
+          } else if (hadSweat) {
+            changes.push({ op: "delete", table: SWEAT.name, id });
+          }
         }
         if (o.frostbite && frost !== hadFrost) {
           if (frost && (frost.hands > 0 || frost.feet > 0 || frost.face > 0)) {

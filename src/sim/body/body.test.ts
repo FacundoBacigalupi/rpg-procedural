@@ -99,6 +99,13 @@ describe("contenido", () => {
 });
 
 describe("reservas", () => {
+  it("el sudor sostenido suma agua perdida y sin sudor no cambia nada", () => {
+    const base = advanceBody(plan, me, fresh(), DAY).body.water;
+    const same = advanceBody(plan, me, fresh(), DAY, undefined, 0).body.water;
+    const sweaty = advanceBody(plan, me, fresh(), DAY, undefined, 0.1).body.water;
+    expect(same).toBe(base);
+    expect(sweaty - base).toBeCloseTo(2.4, 1);
+  });
   it("un día sano en reposo no pasa nada y gasta lo esperable", () => {
     const { body, happenings } = advanceBody(plan, me, fresh(), DAY);
     expect(happenings).toEqual([]);

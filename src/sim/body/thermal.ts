@@ -19,6 +19,17 @@ export interface CoreTemp {
 }
 export const THERMAL = table<CoreTemp>("body.thermal");
 
+/**
+ * Sudor sostenido (L/h), aparte del `Body` y de `THERMAL`: lo calcula `life.thermal` con el esfuerzo
+ * y lo lee el proceso del cuerpo como pérdida extra de agua (sed). Sin fila no hay sudor extra.
+ */
+export interface SweatRate {
+  readonly litersPerHour: number;
+  /** Hasta cuándo está calculado. */
+  readonly at: number;
+}
+export const SWEAT = table<SweatRate>("body.sweat");
+
 /** Temperatura normal del núcleo (°C). */
 export const CORE_NORMAL_C = 37;
 /** Temperatura de la piel que el aire enfría o calienta (°C). */
