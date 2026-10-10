@@ -3,7 +3,11 @@ import type { AgentId, EventId } from "../../core/index.ts";
 import { type Appraised, appraiseFight, appraiseGuilt, appraiseLoss } from "./appraise.ts";
 import {
   appraisalEmotionSignals,
+  appraiseEnvyEmotion,
   appraiseInsultEmotion,
+  appraiseLoveEmotion,
+  appraiseShameEmotion,
+  EMOTION_HALF_LIFE_TICKS,
   emotionIntensityAt,
   reconcileEmotionSignals,
 } from "./emotions.ts";
@@ -110,12 +114,10 @@ describe("emociones propias desde appraisal", () => {
 
   it("sin evidencia interpretada no inventa emociones; otros temas no se equiparan a emoción", () => {
     expect(appraisalEmotionSignals(OWNER, [], ORIGIN, 1000)).toEqual([]);
-    const unsupported: Appraised[] = ["betrayal", "success", "failure", "neglect", "care"].map(
-      (theme) => ({
-        stimulus: { theme: theme as Appraised["stimulus"]["theme"], intensity: 1 },
-        blame: FOE,
-      }),
-    );
+    const unsupported: Appraised[] = ["betrayal", "failure", "neglect", "care"].map((theme) => ({
+      stimulus: { theme: theme as Appraised["stimulus"]["theme"], intensity: 1 },
+      blame: FOE,
+    }));
     expect(appraisalEmotionSignals(OWNER, unsupported, ORIGIN, 1000)).toEqual([]);
   });
 
@@ -146,5 +148,82 @@ describe("emociones propias desde appraisal", () => {
     expect(() => emotionIntensityAt(signal, 1000, { ...decay, halfLifeTicks: 0 })).toThrow(
       RangeError,
     );
+  });
+});
+
+describe("alegría, vergüenza, envidia y amor", () => {
+  const base = { originEventId: ORIGIN, at: 1000 };
+  it("alegría nace de éxito, amabilidad o bendición propios y no de temas dolorosos", () => {
+    const joy = appraisalEmotionSignals(
+      OWNER,
+      [{ stimulus: { theme: "success", intensity: 0.4 }, blame: null }],
+      ORIGIN,
+      1000,
+    );
+    expect(joy).toMatchObject([{ emotion: "joy", intensity: 0.4, appraisalTheme: "success" }]);
+    expect(
+      appraisalEmotionSignals(
+        OWNER,
+        [{ stimulus: { theme: "failure", intensity: 0.4 }, blame: null }],
+        ORIGIN,
+        1000,
+      ),
+    ).toEqual([]);
+  });
+
+  it("vergüenza exige reconocer la falta y crece con testigos creídos", () => {
+    const input = { faceLoss: 0.8, acknowledged: true, witnesses: 0, ...base };
+    expect(appraiseShameEmotion(OWNER, input)?.intensity).toBe(0.4);
+    expect(appraiseShameEmotion(OWNER, { ...input, witnesses: 9 })?.intensity).toBe(0.8);
+    expect(appraiseShameEmotion(OWNER, { ...input, acknowledged: false })).toBeUndefined();
+    expect(appraiseShameEmotion(OWNER, { ...input, faceLoss: 0 })).toBeUndefined();
+    expect(appraiseShameEmotion(OWNER, input)?.target).toBeUndefined();
+  });
+
+  it("envidia necesita rival ajeno, lectura confiable, carencia creída y valor", () => {
+    const input = { rival: FOE, perceivedGain: 0.8, confidence: 0.5, gap: 1, valued: 0.5, ...base };
+    expect(appraiseEnvyEmotion(OWNER, input)).toMatchObject({
+      emotion: "envy",
+      intensity: 0.2,
+      target: FOE,
+    });
+    for (const bad of [
+      { rival: undefined },
+      { rival: OWNER },
+      { gap: 0 },
+      { valued: 0 },
+      { confidence: 0 },
+      { perceivedGain: Number.NaN },
+    ])
+      expect(appraiseEnvyEmotion(OWNER, { ...input, ...bad })).toBeUndefined();
+  });
+
+  it("amor requiere cariño previo hacia alguien identificado; la calidez lo reaviva", () => {
+    const input = { beloved: FOE, affection: 0.5, warmth: 1, confidence: 1, ...base };
+    expect(appraiseLoveEmotion(OWNER, input)).toMatchObject({
+      emotion: "love",
+      intensity: 0.5,
+      target: FOE,
+    });
+    expect(appraiseLoveEmotion(OWNER, { ...input, warmth: 0 })?.intensity).toBe(0.3);
+    expect(appraiseLoveEmotion(OWNER, { ...input, affection: 0 })).toBeUndefined();
+    expect(appraiseLoveEmotion(OWNER, { ...input, beloved: undefined })).toBeUndefined();
+    expect(appraiseLoveEmotion(OWNER, { ...input, beloved: OWNER })).toBeUndefined();
+  });
+
+  it("cada emoción nueva persiste con evidencia y decae con su vida media", () => {
+    const signal = appraiseLoveEmotion(OWNER, {
+      beloved: FOE,
+      affection: 1,
+      warmth: 1,
+      confidence: 1,
+      ...base,
+    });
+    if (!signal) throw new Error("sin amor");
+    const own = { ...signal, evidence: { kind: "own" as const, event: ORIGIN } };
+    expect(reconcileEmotionSignals([], [own], 1000, 0.5)).toHaveLength(1);
+    expect(reconcileEmotionSignals([], [signal], 1000, 0.5)).toEqual([]);
+    for (const e of ["joy", "shame", "envy", "love"] as const)
+      expect(EMOTION_HALF_LIFE_TICKS[e]).toBeGreaterThan(0);
   });
 });

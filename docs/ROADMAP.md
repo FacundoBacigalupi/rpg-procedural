@@ -587,7 +587,12 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
       - (f3c3) Emociones tipadas desde appraisal/percepts propios, dividido antes de implementar:
         - [x] (f3c3a) Contrato puro de señales propias y decaimiento para miedo, tristeza y culpa desde appraisal existente.
         - [x] (f3c3b) Persistir señales desde evidencia percibida propia y proyectarlas a la capa inmediata, opt-in; revisar el gate de pérdida antes de reutilizarlo.
-        - [ ] (f3c3c) Parcial: la ira por insultos personales entendidos ya está (`appraise.ts`); faltan alegría, vergüenza, envidia y amor desde causas percibidas propias.
+        - (f3c3c) Alegría, vergüenza, envidia y amor (la ira por insultos entendidos ya está), dividido antes de implementar:
+          - [x] (f3c3c1) Contratos puros en `emotions.ts`: `appraiseShameEmotion`, `appraiseEnvyEmotion`, `appraiseLoveEmotion`, alegría desde éxito/amabilidad/bendición en `appraisalEmotionSignals` y vidas medias propias; sin RNG ni verdad.
+          - [ ] (f3c3c2) Alegría propia: gate de evidencia en `ownEmotionSignals` desde el éxito de `appraiseFight` (opt-in `persistEmotionSignals`).
+          - [ ] (f3c3c3) Vergüenza: que `regardEffect` (converse) emita testigos creídos y si el oyente reconoce la falta (verdad del insulto) y gate en `emotion-evidence.ts`.
+          - [ ] (f3c3c4) Envidia desde percepts de ventaja ajena (brecha y valor desde riqueza/estatus/valores propios) y amor desde calidez percibida de alguien con afecto previo; gates con `evidence: percept`.
+          - [ ] (f3c3c5) Proyectar joy/shame/envy/love a la capa inmediata (`immediate-goals.ts` solo lee miedo hoy).
     - (f3d) Objetivo cumplido y vacío de sentido, partido por contrato (2026-10-10):
       - [x] (f3d1) `goalCompletionsFromBeliefs` reconoce venganza desde creencia propia de muerte con confianza y fuente causal; no consulta la verdad del objetivo.
       - [x] (f3d2) Cablear el cumplimiento conocido a cierre/persistencia y evitar regenerar la misma meta mientras el NPC crea cumplida la venganza.
