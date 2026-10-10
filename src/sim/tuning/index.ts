@@ -11,6 +11,8 @@ const staple = z.strictObject({ staple: z.string().trim().min(1) });
  * fuera: se cablea en código. Sin `life`, la aldea es la de siempre.
  */
 export const ScenarioLife = z.strictObject({
+  persistGoalLayers: z.boolean().optional(),
+  debtKnowledge: z.boolean().optional(),
   famine: staple
     .extend({ horizonDays: z.number().gt(0).optional(), refresh: z.boolean().optional() })
     .optional(),

@@ -11,6 +11,24 @@ export interface ScenarioRun {
   readonly years: number | undefined;
 }
 
+/** Flags pedidos por la herramienta: conserva el setup exacto si no se suministran. */
+export function goalMeasurementSetup(
+  setup: LifeSetup,
+  flags: { readonly persistGoalLayers?: boolean; readonly debtKnowledge?: boolean },
+): LifeSetup {
+  if (flags.persistGoalLayers === undefined && flags.debtKnowledge === undefined) return setup;
+  return {
+    ...setup,
+    life: {
+      ...setup.life,
+      ...(flags.persistGoalLayers === undefined
+        ? {}
+        : { persistGoalLayers: flags.persistGoalLayers }),
+      ...(flags.debtKnowledge === undefined ? {} : { debtKnowledge: flags.debtKnowledge }),
+    },
+  };
+}
+
 /** El setup de la vida que arma el escenario; `frequency` pisa al del escenario si se pasa. */
 export function scenarioRun(s: ScenarioEntry, frequency?: number): ScenarioRun {
   const base = defaultGameSetup(s.mode);

@@ -8,13 +8,17 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
-import { findScenario, scenarioRun } from "./scenario.ts";
+import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
 import { runSim } from "./sim.ts";
 
 const { values } = parseArgs({
   options: {
     seed: { type: "string" },
     years: { type: "string" },
+    days: { type: "string" },
+    "persist-goal-layers": { type: "boolean" },
+    "debt-knowledge": { type: "boolean" },
+    "goal-report": { type: "boolean" },
     scenario: { type: "string" },
     frequency: { type: "string" },
     "check-days": { type: "string" },
@@ -36,11 +40,16 @@ if (!(years > 0)) throw new Error(`años inválidos: ${values.years}`);
 const report = runSim({
   seed,
   years,
+  ...(values["goal-report"] === true ? { goalReport: true } : {}),
+  ...(values.days === undefined ? {} : { days: Number(values.days) }),
   content,
-  setup: scenario?.setup ?? {
-    game: defaultGameSetup("realistic"),
-    ...(frequency === undefined ? {} : { frequency }),
-  },
+  setup: goalMeasurementSetup(
+    scenario?.setup ?? {
+      game: defaultGameSetup("realistic"),
+      ...(frequency === undefined ? {} : { frequency }),
+    },
+    { persistGoalLayers: values["persist-goal-layers"], debtKnowledge: values["debt-knowledge"] },
+  ),
   ...(values["check-days"] === undefined ? {} : { checkEveryDays: Number(values["check-days"]) }),
 });
 
@@ -52,7 +61,7 @@ if (repro) {
 }
 const m = report.metrics;
 process.stdout.write(
-  `seed ${seed}: ${years} años, ${m.events} eventos, ${m.agentsAlive} vivos y ${m.agentsDead} muertos, ` +
+  `seed ${seed}: ${report.years} años, ${m.events} eventos, ${m.agentsAlive} vivos y ${m.agentsDead} muertos, ` +
     `${report.checks} chequeos, ${Math.round(report.performance.wallMs)} ms\n`,
 );
 if (repro) {

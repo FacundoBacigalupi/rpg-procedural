@@ -233,6 +233,42 @@ históricas desconocidas conservan su ignorancia: no se reconstruyen copiando
 en observaciones, para no aumentar o contaminar deuda subjetiva con un pago
 inválido ni atribuirle una fuente nueva.
 
+**Medición de metas y deuda (2026-10-10, f3e; preparación):** conservar
+`LAYER_PULL` (`long: 0.04`, `medium: 0.03`, `short: 0.02`) y defaults. Medir con
+el harness headless existente y flags `persistGoalLayers` / `debtKnowledge`:
+seeds `7,11,23`, frecuencia 4, treinta días, cuatro combinaciones apagado/apagado,
+encendido/apagado, apagado/encendido y encendido/encendido. Ejecutar secuencialmente
+después de la suite amplia; comenzar con un seed y un día y registrar duración
+antes de ampliar. Repetir una combinación con seed y flags iguales: su reporte
+determinista debe coincidir, excluyendo reloj de pared.
+
+Muestrear diariamente decisiones nuevas (verbo, utilidad y alternativas), libros
+propios (entradas activas, razón pendiente ponderada por confianza) y metas por
+capa. Auditar fuentes del libro y causas de `npc.goal` contra el log; contar
+nacimientos/fines por capa. `npc.decided` solo registra cambios, por eso no
+equivale a frecuencia de elecciones. El reporte de tooling puede comparar
+con verdad para auditoría; la utilidad y narración siguen leyendo conocimiento.
+No sumar cantidades de unidades distintas ni reportar razones no finitas.
+Persistir metas agrega eventos y desplaza ids que pueden entrar a percepción:
+no se exige trayectoria idéntica entre flags distintos, sí replay con flags
+iguales. Si una combinación no produce deuda conocida, no calibra su empuje:
+registrar exposición cero y preparar un escenario con préstamo realmente
+decidido, sin construir deudas retrospectivamente para fabricar la medición.
+Esta preparación no fija tolerancias subjetivas ni modifica parámetros; el
+coordinador ejecutará y evaluará los lotes como siguiente paso de f3e.
+
+Punto de corrida listo: `npm.cmd run sim -- --seed 7 --frequency 4 --days 1
+--goal-report --persist-goal-layers --debt-knowledge --out sim-reports/goals-smoke`.
+Después, `npm.cmd run sim:batch -- --seeds 7,11,23 --frequency 4 --days 30
+--goal-report --out sim-reports/goals-00`, agregando solo
+`--persist-goal-layers` para `goals-10`, solo `--debt-knowledge` para `goals-01`
+y ambos para `goals-11`. Ejecutar cada comando en una llamada separada. Comparar
+los `batch.json` con `sim:diff`; los campos `metrics.goals` incluyen exposición
+acumulada a deuda para distinguir «se saldó durante el período» de «nunca hubo».
+`--goal-report` mide también el control 00 sin activar mecanismos de simulación.
+No se agregan entradas a `content/scenarios/`: los escenarios existentes pasan
+los flags opcionales del schema, manteniendo el hash del contenido base.
+
 ```ts
 interface EnforcerRef {
   kind: "conscience" | "counterparty" | "social" | "organization" | "court" | "guarantee" | "karmic" | "binding" | "patron";

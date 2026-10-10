@@ -33,6 +33,12 @@ import {
   rumorTree,
   type StateHash,
 } from "../../sim/index.ts";
+import {
+  type GoalMetrics,
+  type GoalSample,
+  sampleGoalMetrics,
+  summarizeGoalMetrics,
+} from "./goal-metrics.ts";
 
 /** Resumen de `rumorDeformation` sobre todos los hechos que circulan como rumor. */
 export interface RumorDeformationMetric {
@@ -86,6 +92,10 @@ export interface SimOptions {
   readonly setup: LifeSetup;
   /** Años de mundo a correr desde el tick actual. */
   readonly years: number;
+  /** Duración en días planetarios; cuando se pide, reemplaza `years` sin alterar el setup. */
+  readonly days?: number;
+  /** Auditoría de metas incluso con ambos flags de simulación apagados (control A/B). */
+  readonly goalReport?: boolean;
   /** Cada cuántos días de mundo se corren los invariantes. */
   readonly checkEveryDays?: number;
   /** Reloj de pared, inyectado para que el rendimiento quede fuera de la sim (regla 2). */
@@ -125,6 +135,13 @@ export interface SimReport {
   readonly to: Tick;
   readonly stoppedEarly: boolean;
   readonly checks: number;
+  readonly goalMeasurement?: {
+    readonly engine: string;
+    readonly content: string;
+    readonly setup: LifeSetup;
+    readonly checkEveryDays: number;
+    readonly days?: number;
+  };
   readonly metrics: {
     readonly events: number;
     readonly eventsByKind: Readonly<Record<string, number>>;
@@ -140,6 +157,8 @@ export interface SimReport {
     readonly memories: { readonly holders: number; readonly items: number; readonly gists: number };
     /** Deformación de los rumores al final de la corrida (tooling §6, information §9). */
     readonly rumorDeformation: RumorDeformationMetric;
+    /** Sólo con flags de metas/deuda: medición opt-in de libros, decisiones y fuentes. */
+    readonly goals?: GoalMetrics;
   };
   readonly performance: { readonly wallMs: number; readonly msPerWorldDay: number };
   readonly hash: StateHash;
@@ -155,22 +174,37 @@ function sorted(counts: Map<string, number>): Record<string, number> {
 }
 
 export function runSim(options: SimOptions): SimReport {
-  const { seed, content, setup, years } = options;
+  const { seed, content, setup } = options;
+  if (options.days !== undefined && (!Number.isSafeInteger(options.days) || options.days <= 0))
+    throw new RangeError("days debe ser entero positivo");
   const wall = options.now ?? (() => performance.now());
   const started = wall();
   const life = Life.create(seed, content, optionsOf(setup));
   const w = life.world;
   const from = life.now;
-  const target = from + Math.round(years * w.clock.year);
-  const step = Math.round((options.checkEveryDays ?? CHECK_EVERY_DAYS) * w.clock.day);
+  const years =
+    options.days === undefined ? options.years : (options.days * w.clock.day) / w.clock.year;
+  const target =
+    from +
+    Math.round(options.days === undefined ? years * w.clock.year : options.days * w.clock.day);
+  const measureGoals =
+    options.goalReport === true ||
+    setup.life?.persistGoalLayers === true ||
+    setup.life?.debtKnowledge === true;
+  const step = Math.round(
+    (options.checkEveryDays ?? (measureGoals ? 1 : CHECK_EVERY_DAYS)) * w.clock.day,
+  );
   const versions = { engine: LIFE_ENGINE, content: content.hash, format: 1 };
 
   const rules = content.all(INFERENCE_RULES);
   let inference: InferenceAccuracy = { total: 0, checked: 0, wrong: 0, confidentlyWrong: 0 };
   let checks = 0;
   let repro: ReproPackage | undefined;
+  const goalSamples: GoalSample[] = [];
   while (life.now < target) {
+    const since = life.now;
     life.advanceTo(Math.min(target, life.now + step));
+    if (measureGoals) goalSamples.push(sampleGoalMetrics(w.truth, w.log.all(), since, life.now));
     const problems = checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger });
     checks++;
     inference = addAccuracy(inference, playerInferenceAccuracy(w, rules));
@@ -221,6 +255,17 @@ export function runSim(options: SimOptions): SimReport {
     to: life.now,
     stoppedEarly: repro !== undefined,
     checks,
+    ...(measureGoals
+      ? {
+          goalMeasurement: {
+            engine: LIFE_ENGINE,
+            content: content.hash,
+            setup,
+            checkEveryDays: step / w.clock.day,
+            ...(options.days === undefined ? {} : { days: options.days }),
+          },
+        }
+      : {}),
     metrics: {
       events: w.log.all().length,
       eventsByKind: sorted(byKind),
@@ -233,6 +278,9 @@ export function runSim(options: SimOptions): SimReport {
       inference,
       memories,
       rumorDeformation: rumorDeformationMetric(holders),
+      ...(measureGoals
+        ? { goals: summarizeGoalMetrics(goalSamples, w.log.all(), from, life.now) }
+        : {}),
     },
     performance: { wallMs, msPerWorldDay: worldDays > 0 ? wallMs / worldDays : 0 },
     hash: life.hash(),
