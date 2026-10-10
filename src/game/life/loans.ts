@@ -21,6 +21,8 @@ import {
 import {
   type Collateral,
   type Commitment,
+  current,
+  type DecayContext,
   draftEvent,
   ENTITY,
   type EnforcementContext,
@@ -43,6 +45,7 @@ import {
   payLoan,
   RELATIONS,
   type ReadonlyWorldTruth,
+  type Relationship,
   type StateChange,
   setComponent,
   table,
@@ -102,6 +105,33 @@ export interface LoansOptions {
    * (`SUBROGATION_DAYS` días de plazo) con lo que el deudor tenga, por el ledger (`credit.subrogated_paid`).
    */
   readonly repaySubrogation?: boolean;
+  /**
+   * Opt-in: con `enforcement.court` / `enforcement.organization`, esos ejecutores reclaman la deuda
+   * (`credit.claimed` con `enforcer`) si lo que cree la gente de su alcance los respalda (`enforcerStands`).
+   */
+  readonly enforcerClaims?: boolean;
+  /** Opt-in: la confianza de RELATIONS se lee con `current` (decaimiento al día de hoy); sin esto, tal cual está guardada. */
+  readonly relationDecay?: DecayContext;
+}
+
+/** Confianza de `rel` al tick `now`: con decaimiento si hay contexto, sin él tal cual. */
+export function trustNow(rel: Relationship | undefined, now: number, decay?: DecayContext): number {
+  if (!rel) return 0;
+  return (decay ? current(rel, now, decay) : rel).dims.trust ?? 0;
+}
+
+/**
+ * Pura: un ejecutor que lee creencias respalda al acreedor si, entre quienes tienen opinión
+ * (confianza distinta de cero en alguno de los dos), al menos `threshold` (0-1) le creen más a él.
+ */
+export function enforcerStands(
+  views: readonly { readonly lender: number; readonly borrower: number }[],
+  threshold = 0.5,
+): boolean {
+  const opined = views.filter((v) => v.lender !== 0 || v.borrower !== 0);
+  if (opined.length === 0) return false;
+  const pro = opined.filter((v) => v.lender > v.borrower).length;
+  return pro / opined.length >= threshold;
 }
 
 /** En cuántos días el deudor original devuelve al fiador lo que este puso (constante sin calibrar). */
@@ -335,7 +365,8 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               if (!p || p.household === l.lender || p.household === l.borrower) return false;
               if (ctx.truth.get(ENTITY, id)?.endedAt !== undefined) return false;
               const toward = ctx.truth.get(RELATIONS, id)?.toward;
-              const trustIn = (who: AgentId) => toward?.[who as string]?.dims.trust ?? 0;
+              const trustIn = (who: AgentId) =>
+                trustNow(toward?.[who as string], ctx.now, o.relationDecay);
               return trustIn(lenderMan) > trustIn(borrowerMan);
             }) as AgentId[];
             if (listeners.length > 0) {
@@ -349,6 +380,37 @@ export function loansProcess(o: LoansOptions): ProcessDef {
                   owed: res.loss,
                   noticedBy: listeners,
                 },
+                emissions: {},
+                causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
+              });
+            }
+          }
+          // Tribunal y clan/organización (contracts §6): reclaman si la gente que los rodea le cree al acreedor.
+          if (res.loan.status === "defaulted" && o.enforcerClaims && o.enforcement) {
+            const views = [...ctx.truth.ids(PERSON)]
+              .sort()
+              .filter((id) => {
+                const p = ctx.truth.get(PERSON, id);
+                if (!p || p.household === l.lender || p.household === l.borrower) return false;
+                return ctx.truth.get(ENTITY, id)?.endedAt === undefined;
+              })
+              .map((id) => {
+                const toward = ctx.truth.get(RELATIONS, id)?.toward;
+                return {
+                  lender: trustNow(toward?.[lenderMan as string], ctx.now, o.relationDecay),
+                  borrower: trustNow(toward?.[borrowerMan as string], ctx.now, o.relationDecay),
+                };
+              });
+            for (const [kind, who] of [
+              ["organization", o.enforcement.organization],
+              ["court", o.enforcement.court],
+            ] as const) {
+              if (who === undefined || !enforcerStands(views)) continue;
+              events.push({
+                kind: "credit.claimed",
+                actors: [borrowerMan, lenderMan],
+                place: o.placeOf(ctx.truth, lenderMan),
+                data: { loan: r.id, enforcer: { kind, who }, owed: res.loss },
                 emissions: {},
                 causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
               });

@@ -258,7 +258,12 @@ export interface LifeWorld {
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
-  readonly loanEnforcement?: { readonly community: string };
+  readonly loanEnforcement?: {
+    readonly community: string;
+    /** Opt-in: tribunal y/o clan que reclaman la mora según lo que cree la gente (`enforcerClaims`). */
+    readonly court?: string;
+    readonly organization?: string;
+  };
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
@@ -536,7 +541,19 @@ export function lifeWorld(
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
           ...(parts.loanEnforcement
-            ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
+            ? {
+                enforcement: {
+                  community: parts.loanEnforcement.community,
+                  ...(parts.loanEnforcement.court ? { court: parts.loanEnforcement.court } : {}),
+                  ...(parts.loanEnforcement.organization
+                    ? { organization: parts.loanEnforcement.organization }
+                    : {}),
+                },
+                communityClaim: true,
+                ...(parts.loanEnforcement.court || parts.loanEnforcement.organization
+                  ? { enforcerClaims: true }
+                  : {}),
+              }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
         }),

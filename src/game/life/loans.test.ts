@@ -21,10 +21,12 @@ import {
 import {
   COMMITMENTS,
   commitmentRows,
+  enforcerStands,
   LOANS,
   type LoanSeed,
   loansOf,
   loansProcess,
+  trustNow,
 } from "./loans.ts";
 
 const goods = [
@@ -316,5 +318,19 @@ describe("life.loans", () => {
     const { truth, ledger } = setup();
     make([]).run(ctxOf(truth, ledger, 3));
     expect(commitmentRows(truth)).toHaveLength(0);
+  });
+
+  it("enforcerStands: respalda al acreedor si la mayoría con opinión le cree más a él", () => {
+    expect(enforcerStands([])).toBe(false);
+    expect(enforcerStands([{ lender: 0, borrower: 0 }])).toBe(false);
+    expect(
+      enforcerStands([
+        { lender: 0.5, borrower: 0.1 },
+        { lender: 0.2, borrower: 0.4 },
+        { lender: 0, borrower: 0 },
+      ]),
+    ).toBe(true);
+    expect(enforcerStands([{ lender: 0.1, borrower: 0.4 }])).toBe(false);
+    expect(trustNow(undefined, 5)).toBe(0);
   });
 });
