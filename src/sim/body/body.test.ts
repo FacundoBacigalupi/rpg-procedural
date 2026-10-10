@@ -26,11 +26,13 @@ import {
   bodyProcess,
   bodySigns,
   capabilitiesOf,
+  DEFICIENCY_EFFECTS,
   type DeathCause,
   FOODS,
   ingest,
   injure,
   massOf,
+  NO_DEFICIENCY,
   newBody,
   reopenOldWounds,
   setActivity,
@@ -487,5 +489,78 @@ describe("carencias en los signos y heridas que se reabren", () => {
     expect(reopenOldWounds(body, 0, 86_400, 100, Rng.root(5)).body).toBe(body);
     const open = { ...body, wounds: [{ ...w, stage: "fresh" as const }] };
     expect(reopenOldWounds(open, 1, 86_400, 100, Rng.root(5)).reopened).toEqual([]);
+  });
+});
+
+describe("heridas que se reabren en el scheduler", () => {
+  function run(seed: number, opts: { deficiency: boolean; reopen: boolean; chance: number }) {
+    const truth = new WorldTruth();
+    const ids = new IdAllocator();
+    const log = new EventLog();
+    const place = { kind: "settlement", settlement: makeId("settlement", 1) } as const;
+    const genesis = ids.next("event");
+    log.append({
+      id: genesis,
+      tick: 0,
+      kind: "genesis",
+      actors: [],
+      place,
+      data: null,
+      emissions: {},
+      causes: [{ kind: "seed" }],
+      resolution: "local",
+    });
+    const id = ids.next("agent");
+    truth.set(ENTITY, id, { id, originEventId: genesis, createdAt: 0 });
+    const hurt = injure(
+      plan,
+      newBody(plan, 55, 0),
+      blow({ force: 0.4, cause: genesis, zone: "left_leg" }),
+      Rng.root(1),
+    );
+    const old = { ...hurt.wound, stage: "healing" as const, repair: 0.8, bleeding: 0 };
+    truth.set(BODY_STATE, id, { ...hurt.body, wounds: [old] });
+    truth.set(DEFICIENCY_EFFECTS, id, { ...NO_DEFICIENCY, reopenWound: opts.chance });
+    const scheduler = new Scheduler({
+      rng: Rng.root(seed),
+      clock: EARTHLIKE_CLOCK,
+      truth,
+      ids,
+      log,
+      processes: [
+        bodyProcess({
+          plans: [plan],
+          placeOf: () => place,
+          deficiency: opts.deficiency,
+          reopen: opts.reopen,
+        }),
+      ],
+      resolution: "local",
+      scopes: (kind, t) => (kind === "agent" ? (t.ids(BODY_STATE) as AgentId[]) : []),
+    });
+    scheduler.advanceTo(2 * DAY);
+    return { truth, log, id, genesis };
+  }
+  const reopened = (r: ReturnType<typeof run>) =>
+    r.log.all().filter((e) => e.kind === "body.wound_reopened");
+
+  it("con chance 1 reabre la herida vieja con un evento que cita la herida original; es determinista", () => {
+    const a = run(3, { deficiency: true, reopen: true, chance: 1 });
+    const b = run(3, { deficiency: true, reopen: true, chance: 1 });
+    const evs = reopened(a);
+    expect(evs.length).toBeGreaterThan(0);
+    for (const e of evs) {
+      expect(e.actors).toEqual([a.id]);
+      expect(e.causes).toEqual([{ kind: "event", event: a.genesis }]);
+    }
+    expect(a.truth.get(BODY_STATE, a.id)?.wounds[0]?.stage).not.toBe("healing");
+    expect(JSON.stringify(a.truth.rows())).toBe(JSON.stringify(b.truth.rows()));
+    expect(JSON.stringify(a.log.all())).toBe(JSON.stringify(b.log.all()));
+  });
+
+  it("apagado (sin opt-in o chance 0) no deja eventos de reapertura ni tira el rng", () => {
+    expect(reopened(run(3, { deficiency: true, reopen: false, chance: 1 }))).toEqual([]);
+    expect(reopened(run(3, { deficiency: false, reopen: true, chance: 1 }))).toEqual([]);
+    expect(reopened(run(3, { deficiency: true, reopen: true, chance: 0 }))).toEqual([]);
   });
 });

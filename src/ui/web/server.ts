@@ -11,6 +11,7 @@ import {
   inventoryPanel,
   peoplePanel,
   recapOf,
+  substancePanel,
   TONE_ICON,
   TONE_LABEL,
 } from "../../game/index.ts";
@@ -41,7 +42,7 @@ export function panelsOf(session: Session): Panels {
     hypotheses: renderHypotheses(hypothesesPanel(w)),
     recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
-    environment: renderEnvironment(session.environment()),
+    environment: renderEnvironment(session.environment(), substancePanel(w).others),
     options: session.suggested().map((o) => ({
       id: o.id,
       label: renderSuggestion(o),

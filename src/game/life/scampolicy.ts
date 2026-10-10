@@ -3,14 +3,19 @@
 // siente por el vendedor (`RELATIONS`). Son los proveedores de `ActOptions.scam`; opt-in, sin
 // filas, RNG ni eventos propios.
 
-import type { AgentId } from "../../core/index.ts";
+import type { AgentId, Tick } from "../../core/index.ts";
 import {
+  BODY_STATE,
+  type BodyPlanDef,
   type BondDef,
+  CREDIT_LIMIT_GRAMS,
   clampTemper,
   type DimensionDef,
   INNATE,
   inflateFor,
+  liveBetween,
   MIND,
+  needsFrom,
   PERSON,
   RELATIONS,
   type ReadonlyWorldTruth,
@@ -19,15 +24,32 @@ import {
   type Trait,
   trustFromRelation,
 } from "../../sim/index.ts";
+import { creditRows } from "./credit.ts";
 
 export interface ScamPolicyOptions {
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
   readonly traits: readonly Trait[];
-  /** Tick actual de la corrida (para el decaimiento de la relación). */
-  readonly now: (truth: ReadonlyWorldTruth) => number;
-  /** Necesidad 0-1 de quien vende (hambre, deuda). Sin dato, 0. */
+  /** Necesidad 0-1 de quien vende (hambre, deuda; ver `scamNeedOf`). Sin dato, 0. */
   readonly need?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+}
+
+/** Lo que adeuda vivo (en gramos) con el que la necesidad por deuda llega a 1: dos veces el tope del fiado. */
+export const SCAM_DEBT_FULL = 2 * CREDIT_LIMIT_GRAMS;
+
+/**
+ * La necesidad de quien vende: la mayor entre su hambre (`needsFrom` del cuerpo) y el peso de lo
+ * que debe (deudas vivas del `CREDIT`, contra `SCAM_DEBT_FULL`). Sin cuerpo ni deudas, 0.
+ */
+export function scamNeedOf(bodyPlans: readonly BodyPlanDef[]) {
+  const plans = new Map(bodyPlans.map((p) => [p.id, p]));
+  return (truth: ReadonlyWorldTruth, who: AgentId): number => {
+    const body = truth.get(BODY_STATE, who);
+    const plan = body ? plans.get(body.plan) : undefined;
+    const hunger = body && plan ? (needsFrom(plan, body).hunger ?? 0) : 0;
+    const owed = liveBetween(creditRows(truth), who).reduce((t, r) => t + r.credit.owed, 0);
+    return Math.max(hunger, unit(owed / SCAM_DEBT_FULL));
+  };
 }
 
 const unit = (x: number) => Math.min(1, Math.max(0, x));
@@ -45,8 +67,8 @@ export function scamProviders(o: ScamPolicyOptions) {
         need: o.need?.(truth, seller) ?? 0,
       });
     },
-    trust(truth: ReadonlyWorldTruth, buyer: AgentId, seller: AgentId): number {
-      const rel = relationship(truth.get(RELATIONS, buyer), seller, o.now(truth) as never, {
+    trust(truth: ReadonlyWorldTruth, buyer: AgentId, seller: AgentId, now: Tick): number {
+      const rel = relationship(truth.get(RELATIONS, buyer), seller, now as never, {
         dims: o.dims,
         bonds: o.bonds,
         schemaStrength: (s) => truth.get(MIND, buyer)?.schemas[s]?.strength ?? 0,

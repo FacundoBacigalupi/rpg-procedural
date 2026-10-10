@@ -70,6 +70,7 @@ import {
   MARKET_TAPE,
   type Market,
   MEALS,
+  MIND,
   type Nutrition,
   nearestHex,
   nodeAt,
@@ -91,6 +92,7 @@ import {
   qualityPriceFactor,
   RECEIPT_WINDOW_DAYS,
   REFERENCE_QUALITY,
+  RELATIONS,
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
@@ -237,7 +239,12 @@ export interface ActOptions {
    */
   readonly scam?: {
     readonly inflate: (truth: ReadonlyWorldTruth, seller: AgentId) => number;
-    readonly trust: (truth: ReadonlyWorldTruth, buyer: AgentId, seller: AgentId) => number;
+    readonly trust: (
+      truth: ReadonlyWorldTruth,
+      buyer: AgentId,
+      seller: AgentId,
+      now: Tick,
+    ) => number;
   };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
@@ -345,6 +352,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       FROSTBITE.name,
       AMPUTATIONS.name,
       TREATED_WATER.name,
+      ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name] : []),
     ],
     writes: [
       PRICE_BELIEFS.name,
@@ -517,8 +525,8 @@ function marketOf(
               other: o.scam.inflate(truth, other as AgentId),
             },
             trust: {
-              actor: o.scam.trust(truth, other as AgentId, me),
-              other: o.scam.trust(truth, me, other as AgentId),
+              actor: o.scam.trust(truth, other as AgentId, me, ctx.now),
+              other: o.scam.trust(truth, me, other as AgentId, ctx.now),
             },
           },
         }

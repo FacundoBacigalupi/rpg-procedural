@@ -25,6 +25,7 @@ export * from "./recap.ts";
 export * from "./routine.ts";
 export * from "./scampolicy.ts";
 export * from "./sleep.ts";
+export * from "./substance-panel.ts";
 export * from "./substances.ts";
 export * from "./suggest.ts";
 export * from "./thermal.ts";

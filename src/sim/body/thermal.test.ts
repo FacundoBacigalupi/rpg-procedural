@@ -16,6 +16,7 @@ import {
   NO_FROSTBITE,
   relativePressure,
   shelterOf,
+  shelterOfSpace,
   stepCore,
   stepFrostbite,
   TEMPERATE,
@@ -148,5 +149,16 @@ describe("altitud y ambiente de qi", () => {
     expect(heatLossW(high, street)).toBeGreaterThan(heatLossW(TEMPERATE, street));
     expect(heatLossW(qi, street)).toBeGreaterThan(heatLossW(TEMPERATE, street));
     expect(altitudeEnv(TEMPERATE, 0, 3000, 0, 0.1).airC).toBeGreaterThan(high.airC);
+  });
+});
+
+describe("reparo del espacio", () => {
+  it("puerta cerrada abriga más que abierta, la piedra más que el papel, y sin techo menos", () => {
+    const closed = shelterOfSpace({ roof: true, openness: 0, wall: "stone" });
+    const open = shelterOfSpace({ roof: true, openness: 1, wall: "stone" });
+    expect(closed).toBeGreaterThan(open);
+    expect(shelterOfSpace({ roof: true, openness: 0, wall: "paper" })).toBeLessThan(closed);
+    expect(shelterOfSpace({ roof: false, openness: 0, wall: "stone" })).toBeLessThanOrEqual(0.5);
+    expect(shelterOfSpace({ roof: true, openness: 0 })).toBe(1);
   });
 });

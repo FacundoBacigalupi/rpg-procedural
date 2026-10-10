@@ -58,6 +58,7 @@ import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
 import { figureText, withImpressions } from "./impressions.ts";
 import { playerNickname } from "./nickname.ts";
+import { deficiencyStagesOf } from "./nutrition.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
@@ -420,7 +421,12 @@ export function playerView(
 
   const plan = w.plans.find((p) => p.id === body.plan);
   const signs = plan
-    ? bodySigns(plan, body, (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0)
+    ? bodySigns(
+        plan,
+        body,
+        (w.truth.get(INFECTION, w.player)?.ill.length ?? 0) > 0,
+        deficiencyStagesOf(w.truth, w.player, w.deficiencySigns),
+      )
     : { general: [], zones: [] };
   const cues = new Set<SelfCue>();
   for (const s of [...signs.general, ...signs.zones.flatMap((z) => z.signs)]) {

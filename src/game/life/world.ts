@@ -87,6 +87,7 @@ import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
 import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
+import { scamNeedOf, scamProviders } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -148,6 +149,11 @@ export interface LifeWorld {
   readonly deficiencyEffects?: boolean;
   /** Con `deficiencyEffects`, `reopenWound` reabre heridas viejas (rng con clave); apagado por defecto. */
   readonly reopenWounds?: boolean;
+  /**
+   * Opt-in: las etapas de carencia (`NUTRITION`) suman señales a `bodySigns` en el panel, la vista,
+   * las interrupciones, las sugerencias y los médicos; apagado por defecto: nada cambia.
+   */
+  readonly deficiencySigns?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
@@ -182,6 +188,12 @@ export interface LifeWorld {
   readonly boil?: BoilOptions;
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
+  /**
+   * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
+   * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
+   * Apagado por defecto: sin filas, RNG ni eventos nuevos.
+   */
+  readonly scam?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -308,6 +320,16 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.scam === true
+            ? {
+                scam: scamProviders({
+                  dims: parts.relationDims,
+                  bonds: parts.relationBonds,
+                  traits: parts.traits,
+                  need: scamNeedOf(parts.plans),
+                }),
+              }
+            : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -479,6 +501,7 @@ export function lifeWorld(
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
+          deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
         }),
         substancesProcess({

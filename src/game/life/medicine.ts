@@ -54,6 +54,7 @@ import {
   substanceSigns,
   TREATMENT,
 } from "../../sim/index.ts";
+import { deficiencyStagesOf } from "./nutrition.ts";
 
 export const MEDICINE_PROCESS = "life.medicine";
 /** Sumidero externo de los remedios dados. */
@@ -97,8 +98,12 @@ export function healingSkill(state: Parameters<typeof levelOf>[0]): number {
 }
 
 /** Lo que ve el sanador en el cuerpo del enfermo (`bodySigns`), como pesos 0-1 de `SignSet`. */
-export function signsOfBody(plan: BodyPlanDef, body: Body): SignSet {
-  const r = bodySigns(plan, body, true);
+export function signsOfBody(
+  plan: BodyPlanDef,
+  body: Body,
+  stages?: Parameters<typeof bodySigns>[3],
+): SignSet {
+  const r = bodySigns(plan, body, true, stages);
   const out: Record<string, number> = {};
   const put = (k: string, v: number) => {
     out[k] = Math.max(out[k] ?? 0, v);
@@ -242,6 +247,8 @@ function heldSigns(truth: ReadonlyWorldTruth, who: string): SignSet {
 export interface MedicineOptions {
   /** Opt-in: planes de cuerpo; los signos del enfermo salen de `bodySigns` en vez de fijos. */
   readonly plans?: readonly BodyPlanDef[] | undefined;
+  /** Opt-in (con `plans`): el sanador ve también los signos de las etapas de carencia. */
+  readonly deficiencySigns?: boolean | undefined;
   readonly clock: PlanetClock;
   /** Opt-in: a los signos del enfermo se suman los de las sustancias que tiene encima (`PERSON_SUBSTANCE`). */
   readonly substanceSigns?: boolean | undefined;
@@ -329,7 +336,9 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           const body = o.plans ? ctx.truth.get(BODY_STATE, id) : undefined;
           const plan = body && o.plans?.find((p) => p.id === body.plan);
           const base: SignSet =
-            body && plan ? signsOfBody(plan, body) : { fever: 0.8, weakness: 0.3 + 0.5 * progress };
+            body && plan
+              ? signsOfBody(plan, body, deficiencyStagesOf(ctx.truth, id, o.deficiencySigns))
+              : { fever: 0.8, weakness: 0.3 + 0.5 * progress };
           const withSubs: SignSet = o.substanceSigns
             ? mergeSigns(base, heldSigns(ctx.truth, id))
             : base;
