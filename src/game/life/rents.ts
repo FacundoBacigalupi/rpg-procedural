@@ -71,8 +71,13 @@ export interface ShareRow {
   readonly paid: number;
   readonly arrears: number;
   readonly harvests: number;
+  /** Cosechas seguidas que cerraron con atraso; al llegar a `evictAfterHarvests` hay mora. */
+  readonly missedHarvests?: number;
+  /** Mora ya declarada (`property.rent_default`); `life.rents` desaloja al verla. */
+  readonly defaulted?: boolean;
 }
 export const SHARES = table<ShareRow>("economy.sharecrop");
+const EVICT_AFTER_HARVESTS = 3;
 export const SHARES_PROCESS = "life.rents.harvest";
 
 /** Cada arriendo vive en una entidad `commitment:n` con este componente. Solo lo escribe `life.rents`. */
@@ -189,7 +194,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, RENTS.name, PARCEL.name],
+    reads: [PERSON.name, ENTITY.name, RENTS.name, PARCEL.name, SHARES.name],
     writes: [RENTS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -309,8 +314,35 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         if (!landMan || !tenMan) continue;
         if (l.share) {
           // AparcerÃ­a: sin canon diario; se liquida al cosechar. Al vencer cierra segÃºn el atraso.
+          const sh = ctx.truth.get(SHARES, r.id as never);
+          if (sh?.defaulted) {
+            // Mora de aparcería declarada al cosechar: se acaba el uso y vuelve la posesión.
+            const parcel = ctx.truth.get(PARCEL, l.parcel as never) as Parcel | undefined;
+            if (parcel)
+              changes.push(
+                setComponent(PARCEL, l.parcel as never, {
+                  ...parcel,
+                  rights: parcel.rights.filter(
+                    (x) => !(x.holder === (l.tenant as never) && x.tenure === "lease"),
+                  ),
+                  possession: l.landlord as never,
+                }),
+              );
+            changes.push(
+              setComponent(RENTS, r.id as never, {
+                ...l,
+                status: "defaulted",
+                arrears: sh.arrears,
+                commitment: {
+                  ...l.commitment,
+                  status: "defaulted",
+                  history: [...l.commitment.history, "rent.defaulted"],
+                },
+              }),
+            );
+            continue;
+          }
           if (today + 1 >= l.endDay) {
-            const sh = ctx.truth.get(SHARES, r.id as never);
             changes.push(
               setComponent(RENTS, r.id as never, {
                 ...l,
@@ -432,6 +464,8 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
  */
 export function sharecropHarvestProcess(o: {
   readonly placeOf: RentsOptions["placeOf"];
+  /** Cosechas seguidas con atraso tras las que hay mora (default 3). */
+  readonly evictAfterHarvests?: number;
 }): ProcessDef {
   return {
     id: SHARES_PROCESS,
@@ -461,6 +495,7 @@ export function sharecropHarvestProcess(o: {
         for (const r of rows) {
           const l = r.rent;
           if (l.tenant !== home || l.unit !== d.good || !l.share) continue;
+          if (ctx.truth.get(SHARES, r.id as never)?.defaulted) continue;
           const prior = state.get(r.id) ??
             ctx.truth.get(SHARES, r.id as never) ?? {
               harvested: 0,
@@ -486,11 +521,15 @@ export function sharecropHarvestProcess(o: {
             tenant: acct(l.tenant),
             landlord: acct(l.landlord),
           });
+          const missedHarvests = s.arrears > 0 ? (prior.missedHarvests ?? 0) + 1 : 0;
+          const mora = missedHarvests >= (o.evictAfterHarvests ?? EVICT_AFTER_HARVESTS);
           state.set(r.id, {
             harvested: prior.harvested + d.grams,
             paid: prior.paid + s.paid,
             arrears: s.arrears,
             harvests: prior.harvests + 1,
+            missedHarvests,
+            ...(mora ? { defaulted: true } : {}),
           });
           if (s.paid > 0) {
             postings.push({ event: draftEvent(events.length), transfers: [...s.transfers] });
@@ -507,6 +546,25 @@ export function sharecropHarvestProcess(o: {
               { kind: "event" as const, event: l.commitment.originEventId as never },
             ],
           });
+          if (mora && landMan) {
+            events.push({
+              kind: "property.rent_default",
+              actors: [who as AgentId, landMan],
+              place: o.placeOf(ctx.truth, who as AgentId),
+              data: {
+                rent: r.id,
+                parcel: l.parcel,
+                arrears: s.arrears,
+                missed: missedHarvests,
+                evicted: true,
+              },
+              emissions: {},
+              causes: [
+                { kind: "event" as const, event: e.id },
+                { kind: "event" as const, event: l.commitment.originEventId as never },
+              ],
+            });
+          }
         }
       }
       for (const [id, v] of state) changes.push(setComponent(SHARES, id as never, v));

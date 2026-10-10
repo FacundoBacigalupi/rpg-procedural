@@ -224,4 +224,37 @@ describe("life.rents", () => {
     expect(ledger.total(GRAIN)).toBe(total);
     expect(second.events?.[0]?.causes.length).toBe(2);
   });
+
+  it("aparcería: tras 3 cosechas seguidas con atraso hay mora, evento y desalojo", () => {
+    const { truth, ledger } = setup(1);
+    const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
+    const crop: RentSeed = { ...seed, good: "grain", kind: "sharecrop", termDays: 50 };
+    const proc = rentsProcess({ clock, goods: grain, seeds: [crop], placeOf: () => ({}) as never });
+    const apply = (r: { readonly changes?: readonly unknown[] | undefined }) => {
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === RENTS.name) truth.set(RENTS, ch.id as never, ch.value as never);
+        if (ch.table === SHARES.name) truth.set(SHARES, ch.id as never, ch.value as never);
+      }
+    };
+    apply(proc.run(ctxOf(truth, ledger, 1)));
+    const id = [...truth.ids(RENTS)][0] as string;
+    const unit = truth.get(RENTS, id as never)?.unit;
+    const hp = sharecropHarvestProcess({ placeOf: () => ({}) as never });
+    const harvest = {
+      id: makeId("event", 9),
+      kind: "routine.harvested",
+      actors: [makeId("agent", 2)],
+      data: { good: unit, grams: 100 },
+    };
+    const kinds: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = hp.run({ ...ctxOf(truth, ledger, 3), recent: [harvest] } as unknown as ProcessContext);
+      kinds.push(...(r.events ?? []).map((e) => e.kind));
+      apply(r);
+    }
+    expect(kinds.filter((k) => k === "property.rent_default")).toHaveLength(1);
+    apply(proc.run(ctxOf(truth, ledger, 4)));
+    expect(truth.get(RENTS, id as never)?.status).toBe("defaulted");
+  });
 });
