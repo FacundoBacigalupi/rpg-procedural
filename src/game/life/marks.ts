@@ -62,8 +62,8 @@ export interface MarksOptions {
   readonly eye?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Habilidad de quien falsifica (0-1); sin dato, 0,5. */
   readonly skill?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
-  /** Fama de quien marca (0-1); sin dato, `MARK_DEFAULT_RENOWN`. */
-  readonly renown?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Fama de quien marca (`markOwner`) según quien mira o compra (`observer`) (0-1); sin dato, `MARK_DEFAULT_RENOWN`. */
+  readonly renown?: (truth: ReadonlyWorldTruth, observer: AgentId, markOwner: AgentId) => number;
   /** Tablas que lee `renown` (para declararlas en `reads`). */
   readonly renownReads?: readonly string[];
   /**
@@ -162,7 +162,7 @@ export function marksProcess(o: MarksOptions): ProcessDef {
             old.mark,
             eye,
             fam,
-            o.renown?.(truth, old.mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
+            o.renown?.(truth, actor, old.mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
             ctx.rng.fork("mark_look_roll", e.id, ctx.now).float(),
             markFalseAlarmChance(eye, fam),
           );
@@ -297,7 +297,7 @@ export function marksProcess(o: MarksOptions): ProcessDef {
           mark,
           o.eye?.(truth, buyer) ?? 0.5,
           familiarity,
-          o.renown?.(truth, mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
+          o.renown?.(truth, buyer, mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
           roll,
         );
         events.push({
@@ -329,7 +329,7 @@ export function marksProcess(o: MarksOptions): ProcessDef {
             old.mark,
             eye,
             fam,
-            o.renown?.(truth, old.mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
+            o.renown?.(truth, buyer, old.mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
             ctx.rng.fork("mark_recheck_roll", e.id, ctx.now).float(),
             markFalseAlarmChance(eye, fam),
           );

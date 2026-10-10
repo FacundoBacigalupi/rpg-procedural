@@ -4,6 +4,7 @@ import type { ProcessContext } from "../../sim/index.ts";
 import { PERSON, RUMORS } from "../../sim/index.ts";
 import {
   believedMarkRenown,
+  believedMarkRenownBy,
   clearedRenown,
   MARK_CLEARED,
   MARK_CLEARED_EVENT,
@@ -121,5 +122,10 @@ describe("la fama del falsificador como creencia", () => {
       }) as never;
     expect(believedMarkRenown(truth(books), forger)).toBeCloseTo(0.2, 9);
     expect(believedMarkRenown(truth({}), forger)).toBe(MARK_DEFAULT_RENOWN);
+    const by = (b: Record<string, unknown>, who: AgentId) =>
+      believedMarkRenownBy(truth(b), who, forger);
+    expect(by(books, buyer)).toBeCloseTo(0.3, 9);
+    expect(by(books, near)).toBeCloseTo(0.1, 9);
+    expect(by(books, wu)).toBe(MARK_DEFAULT_RENOWN);
   });
 });

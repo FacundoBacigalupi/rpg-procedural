@@ -29,7 +29,6 @@ import {
   type LocalMap,
   type MaterialDef,
   type NutrientProfileDef,
-  PERSON,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -90,7 +89,7 @@ import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import {
-  believedMarkRenown,
+  believedMarkRenownBy,
   clearedRenown,
   MARK_CLEARED,
   markExposureProcess,
@@ -642,10 +641,13 @@ export function lifeWorld(
                 ...(parts.marksExpose === true && parts.marksGossip === true
                   ? parts.moldGossip?.fromForgery
                     ? {
-                        renown: believedMarkRenown,
-                        renownReads: [MARK_CLEARED.name, MOLD_RUMORS.name, PERSON.name],
+                        renown: believedMarkRenownBy,
+                        renownReads: [MARK_CLEARED.name, MOLD_RUMORS.name],
                       }
-                    : { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
+                    : {
+                        renown: (t, _observer, owner) => clearedRenown(t, owner),
+                        renownReads: [MARK_CLEARED.name],
+                      }
                   : {}),
               }),
             ]

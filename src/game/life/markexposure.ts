@@ -82,6 +82,18 @@ export function believedMarkRenown(truth: ReadonlyWorldTruth, who: AgentId): num
   return n === 0 ? clearedRenown(truth, who) : sum / n;
 }
 
+/**
+ * La fama de `who` como marcador según `observer` (quien fija el precio o compra): su rumor `renown`
+ * del libro de moldes; si no sabe nada, el prior `clearedRenown`. Creencia propia, no promedio.
+ */
+export function believedMarkRenownBy(
+  truth: ReadonlyWorldTruth,
+  observer: AgentId,
+  who: AgentId,
+): number {
+  return renownBelieved(truth, observer, who) ?? clearedRenown(truth, who);
+}
+
 export interface MarkExposureOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares (creencia, nunca la verdad). */
