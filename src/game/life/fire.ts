@@ -65,6 +65,8 @@ export interface FireContext {
   /** Vivos por hogar (para el uso del fogón) y adultos por aldea (los vecinos que acuden). */
   readonly aliveOf: (household: string | undefined) => number;
   readonly adultsIn: (settlement: string) => number;
+  /** Gramos de materia que los ahorros del hogar del edificio comprarían (sin él, 0). */
+  readonly savingsOf?: (b: BuildingRecord) => number;
 }
 
 /** Sequedad 0-1 del día: la lluvia la baja a casi nada; sin lluvia, el calor la sube (calibración abierta). */
@@ -300,7 +302,7 @@ export function burnDay(
     rebuild = rebuildChoice({
       neededGrams: needed + burned,
       salvagedGrams: salvaged,
-      savingsGrams: 0,
+      savingsGrams: f.savingsOf?.({ ...b, components }) ?? 0,
       helpGrams: 0,
       siteUnsafe: false,
     });

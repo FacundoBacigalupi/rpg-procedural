@@ -21,6 +21,8 @@ export const MaterialDef = z.strictObject({
   wall: z.enum(BARRIERS),
   /** Cuánto alimenta un fuego (0 = no arde); entra en el frente de fuego (Fase 3). */
   fuel: z.number().min(0),
+  /** Cobre por kilo puesto en la obra (jornales y acarreo incluidos); sin él, `DEFAULT_MATERIAL_COPPER_PER_KG`. */
+  priceCopperPerKg: z.number().positive().optional(),
 });
 export type MaterialDef = z.infer<typeof MaterialDef>;
 export const MATERIALS = defineContent("materials", MaterialDef);

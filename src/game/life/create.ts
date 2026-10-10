@@ -128,6 +128,7 @@ import {
   type VillagePopulation,
   validateTemperament,
   villagePopulation,
+  WAGES_SINK,
   WORK_TYPES,
   WORKSHOP,
   WORKSHOP_WASTE,
@@ -441,6 +442,7 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       [WORKSHOP_WASTE]: tradeUnits,
       [GATHERED_SOURCE]: settlementUnits(content.all(MATERIALS)),
       [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
+      [WAGES_SINK]: [COPPER],
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
     },
   };

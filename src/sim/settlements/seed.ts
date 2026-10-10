@@ -68,6 +68,8 @@ export const SEED_SOURCE = "seed";
 export const GATHERED_SOURCE = "gathered";
 /** A donde va lo cambiado al reparar (la paja podrida, la viga vieja). */
 export const DEBRIS_SINK = "debris";
+/** A donde van las monedas que un hogar paga por materia y jornales al reconstruir. */
+export const WAGES_SINK = "wages";
 /** A donde va lo que el fuego vuelve humo y gas (la ceniza va a `DEBRIS_SINK`). */
 export const SMOKE_SINK = "smoke";
 
