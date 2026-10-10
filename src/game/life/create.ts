@@ -146,6 +146,7 @@ import {
   villageSite,
 } from "../../worldgen/index.ts";
 import type { ConverseForm } from "./converse.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
@@ -158,7 +159,6 @@ import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
-import type { ViewCues } from "./cue-local.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -264,8 +264,6 @@ export interface LifeOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): señal por objeto (`LifeParts.objectCues`). */
   readonly objectCues?: boolean;
-  /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
-  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -839,15 +837,15 @@ export function createLife(
   // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
   const baseCulture = content.all(CULTURES).find((c) => c.id === "village");
   if (!baseCulture) throw new Error("falta contenido: cultura village");
-  const culture = withInterestNorm(baseCulture, options);
   // Opt-in: suma las creencias de contagio y la norma del jefe del hogar (`village.health`).
   const healthCulture = options.healthCulture
     ? content.all(CULTURES).find((c) => c.id === "village.health")
     : undefined;
   if (options.healthCulture && !healthCulture) throw new Error("falta contenido: village.health");
-  const culture = healthCulture
+  const healthy = healthCulture
     ? { ...baseCulture, traits: [...baseCulture.traits, ...healthCulture.traits] }
     : baseCulture;
+  const culture = withInterestNorm(healthy, options);
   const community = seedCulture(truth, ids, log, {
     settlement,
     place: terrain.village,
