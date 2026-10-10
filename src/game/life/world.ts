@@ -365,6 +365,7 @@ export function lifeWorld(
               scamDiscoveryProcess({
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
+                appraisers: scamEyeOf(parts.traits),
                 day: parts.clock.day,
               }),
             ]
