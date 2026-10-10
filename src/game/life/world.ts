@@ -154,6 +154,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
+import { usuryGossipProcess } from "./usurygossip.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -357,6 +358,8 @@ export interface LifeWorld {
   readonly marksGossip?: boolean;
   /** Opt-in (con `marksGossip`): el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares. */
   readonly marksReach?: boolean;
+  /** Opt-in: el fallo de usura que procede viaja como rumor `fraud` sobre el prestamista y quien pide fiado lo lee (`life.usury_gossip`). */
+  readonly usuryGossip?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -678,6 +681,7 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
@@ -788,6 +792,7 @@ export function lifeWorld(
           player,
           placeOf: placeOf(parts, village),
           ...(parts.creditHeed ? { heedStanding: parts.creditHeed } : {}),
+          ...(parts.usuryGossip ? { heedFraud: true } : {}),
         }),
         repayProcess({
           foods: parts.foods,

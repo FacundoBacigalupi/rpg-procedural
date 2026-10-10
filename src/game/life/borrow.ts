@@ -29,6 +29,7 @@ import {
   RESERVE_GRAMS_PER_MEMBER,
   type ReadonlyLedger,
   type ReadonlyWorldTruth,
+  RUMORS,
   readPressures,
   withHazards,
   worstDeed,
@@ -39,6 +40,7 @@ import { MOLD_RUMORS } from "./moldgossip.ts";
 import { NEIGHBOR_STANDING } from "./neighbors.ts";
 import { BORROW_PROCESS, householdHungerSource } from "./pressures.ts";
 import { householdsOf } from "./spoilage.ts";
+import { fraudCaution } from "./usurygossip.ts";
 
 export { BORROW_PROCESS };
 export const REPAY_PROCESS = "life.repay";
@@ -54,6 +56,8 @@ export interface BorrowOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: el vecino baja su limite de fiado segun lo que CREE del apuro del hogar que pide (creencia, nunca la verdad). */
   readonly heedStanding?: HeedStanding;
+  /** Opt-in: quien pide recorta el fiado al vecino que CREE tramposo (rumor `fraud` sobre él, p. ej. tras un fallo de usura; creencia). */
+  readonly heedFraud?: boolean;
 }
 
 function membersOf(truth: ReadonlyWorldTruth, home: string): AgentId[] {
@@ -96,6 +100,7 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
       PRESSURE.name,
       KNOWN_DEEDS.name,
       ...(o.heedStanding ? [NEIGHBOR_STANDING.name, MOLD_RUMORS.name] : []),
+      ...(o.heedFraud ? [RUMORS.name] : []),
     ],
     writes: [ENTITY.name, PRESSURE.name],
     run(ctx) {
@@ -129,9 +134,12 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
             (a, b) => a + b,
             0,
           );
-          const limit = o.heedStanding
-            ? CREDIT_LIMIT_GRAMS * standingCaution(ctx.truth, lender, home, o.heedStanding)
-            : CREDIT_LIMIT_GRAMS;
+          const wary = o.heedFraud ? fraudCaution(ctx.truth, borrower, lender) : 1;
+          const limit =
+            wary *
+            (o.heedStanding
+              ? CREDIT_LIMIT_GRAMS * standingCaution(ctx.truth, lender, home, o.heedStanding)
+              : CREDIT_LIMIT_GRAMS);
           if (owed + GIFT_GRAMS > limit) return [];
           const spare = stock(ledger, h, kcal).map((s) => ({
             ...s,
