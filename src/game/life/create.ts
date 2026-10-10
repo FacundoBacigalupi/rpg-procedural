@@ -210,6 +210,8 @@ export interface LifeOptions {
     readonly prohibitedVariants?: readonly string[];
     readonly wagePerDay?: number;
     readonly tolerance?: number;
+    /** El caso comunitario que juzga la usura sospechada (`UsuryOptions.communityCase`); sin él solo hay sospecha. */
+    readonly communityCase?: NonNullable<UsuryOptions["communityCase"]>;
   };
   /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
   readonly loanBondage?: Omit<NonNullable<LifeParts["loanBondage"]>, "skillWage"> & {
@@ -312,6 +314,7 @@ export function derivedLoanUsury(
         .reduce((sum, h) => sum + h.amount, 0),
     ...(n.wagePerDay !== undefined ? { wagePerDay: n.wagePerDay } : {}),
     ...(n.tolerance !== undefined ? { tolerance: n.tolerance } : {}),
+    ...(n.communityCase ? { communityCase: n.communityCase } : {}),
     eyeOf: eyeByPerception(traits),
   });
 }
