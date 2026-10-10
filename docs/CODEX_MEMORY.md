@@ -121,15 +121,15 @@ verificarlo. En PowerShell, `codex.ps1` está bloqueado por execution policy;
 
 ## Modelo recomendado para la próxima sesión
 
-Recomendación para este repo: **GPT-6.1 Sol con razonamiento xhigh para el
-coordinador**, si aparece en el selector de la cuenta. La guía oficial recomienda
-Sol para trabajo técnico complejo y entregables coordinados; xhigh es una elección
-para que el agente general sostenga arquitectura, causalidad, integración y estado
-de varias líneas, no una exigencia del repositorio ni un resultado de benchmark.
-Los agentes de implementación pueden usar High (o Medium en tareas mecánicas muy
-acotadas). Usar GPT-6 Astra para problemas especialmente difíciles de
-causalidad/replay o arquitectura; GPT-6 Luna para tareas mecánicas/documentación
-bien delimitadas.
+Preferencia del usuario al comenzar el trabajo: **GPT-6.1 Sol con razonamiento
+Medium como coordinador**, para cuidar el consumo. Delegar tareas pequeñas y
+delimitadas a GPT-6 Luna Medium/High (equivalente práctico al rol de Haiku), y
+código de simulación complejo a GPT-6.1 Sol Medium (rol de Sonnet). Subir a High
+solo si hay dificultades concretas de scheduler, determinismo, ledger o cruces
+entre sistemas. Reservar Astra para un bloqueo arquitectónico excepcional.
+Estas equivalencias son una estrategia de reparto, no una comparación medida
+entre modelos. Evitar duplicar exploración, contexto completo y suites entre
+agentes; un brief corto y un reporte de hasta 10 líneas por tarea.
 Si no está 6.1 Sol, GPT-6 Sol es la alternativa disponible que conviene comprobar.
 
 Fuentes oficiales consultadas el 2026-10-10:
