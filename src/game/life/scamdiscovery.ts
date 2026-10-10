@@ -7,17 +7,32 @@
 // (`scamAftermath`) y `life.deeds` lo anota como incumplimiento para que la fama del vendedor caiga.
 // Opt-in (`LifeParts.scam`); apagado no existe ni corre.
 
-import type { AgentId, Event, EventId, PlaceRef } from "../../core/index.ts";
+import {
+  type AgentId,
+  type Event,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  type LedgerUnit,
+  type PlaceRef,
+} from "../../core/index.ts";
 import {
   discoveryChance,
+  draftEvent,
   ENTITY,
+  type EventDraft,
   INNATE,
+  isMoney,
+  PERSON,
+  type PostingDraft,
+  type ProcessContext,
   type ProcessDef,
   pendingScams,
   type ReadonlyWorldTruth,
   SCAM_DEALS,
   SCAM_FOUND,
   type ScamAftermath,
+  type ScamDeal,
   type StateChange,
   scamAftermath,
   setComponent,
@@ -32,6 +47,23 @@ export interface ScamDiscoveryOptions {
   readonly eye?: (truth: ReadonlyWorldTruth, buyer: AgentId) => number;
   /** Días con el lote en uso por trato: el tiempo desde que lo compró. */
   readonly day: number;
+  /** Ojo de quien puede tasar por paga (0-1, ver `scamEyeOf`); sin esto, no hay tasadores. */
+  readonly appraisers?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+}
+
+export const SCAM_APPRAISED = "scam.appraised";
+/** Lo que cobra el tasador por mirar el lote (una unidad de dinero). */
+export const APPRAISAL_FEE = 1;
+/** Chance diaria de que un comprador sin sospecha propia pague una tasación. */
+export const APPRAISAL_HAZARD = 0.15;
+/** Ojo mínimo para cobrar como tasador. */
+export const APPRAISER_MIN_EYE = 0.3;
+
+/** Lo que dice `scam.appraised`: el trato mirado, si se vio la brecha y lo cobrado (ya pasó por el ledger). */
+export interface ScamAppraisedData {
+  readonly deal: EventId;
+  readonly found: boolean;
+  readonly paid: { readonly unit: LedgerUnit; readonly amount: number };
 }
 
 /** Lo que dice `scam.discovered` en `data` (lo lee `life.appraise`). */
@@ -41,6 +73,8 @@ export interface ScamDiscoveredData extends ScamAftermath {
   readonly grams: number;
   readonly real: number;
   readonly believed: number;
+  /** Quién lo tasó, si fue por tasador pagado. */
+  readonly appraiser?: AgentId;
 }
 
 /** Del evento `scam.discovered`: quién cayó (comprador), quién estafó y el agravio. */
@@ -61,12 +95,14 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "perceive",
-    reads: [SCAM_DEALS.name, SCAM_FOUND.name, ENTITY.name, INNATE.name],
+    reads: [SCAM_DEALS.name, SCAM_FOUND.name, ENTITY.name, INNATE.name, PERSON.name],
     writes: [SCAM_FOUND.name],
     run(ctx) {
       const truth = ctx.truth;
       const changes: StateChange[] = [];
-      const events = [];
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const spent = new Map<AgentId, number>();
       const buyers = [...(truth.ids(SCAM_DEALS) as AgentId[])].sort();
       for (const buyer of buyers) {
         if (truth.get(ENTITY, buyer)?.endedAt !== undefined) continue;
@@ -78,7 +114,42 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
           const p = discoveryChance(d.real, d.believed, o.eye?.(truth, buyer) ?? 0.5, used);
           if (p <= 0) continue;
           const rng = ctx.rng.fork("scam", d.event, ctx.windowIndex ?? ctx.now);
-          if (!rng.chance(p)) continue;
+          let appraised: AgentId | undefined;
+          if (!rng.chance(p)) {
+            // Sin notarlo solo, puede pagarle a alguien de mejor ojo que esté ahí.
+            const hire = hireAppraiser(ctx, o, buyer, d, spent);
+            if (!hire) continue;
+            spent.set(buyer, (spent.get(buyer) ?? 0) + APPRAISAL_FEE);
+            const draft = draftEvent(events.length);
+            const hit = ctx.rng
+              .fork("appraise", d.event, ctx.windowIndex ?? ctx.now)
+              .chance(discoveryChance(d.real, d.believed, hire.eye, used, true));
+            events.push({
+              kind: SCAM_APPRAISED,
+              actors: [buyer, hire.who],
+              place: o.placeOf(truth, buyer),
+              data: {
+                deal: d.event,
+                found: hit,
+                paid: { unit: hire.unit, amount: APPRAISAL_FEE },
+              } satisfies ScamAppraisedData,
+              emissions: {},
+              causes: [{ kind: "event" as const, event: d.event }],
+            });
+            postings.push({
+              event: draft,
+              transfers: [
+                {
+                  unit: hire.unit,
+                  from: holderAccount(buyer as unknown as HolderRef),
+                  to: holderAccount(hire.who as unknown as HolderRef),
+                  amount: APPRAISAL_FEE,
+                },
+              ],
+            });
+            if (!hit) continue;
+            appraised = hire.who;
+          }
           found.push(d.event);
           const after = scamAftermath(d.real, d.believed, d.trust);
           const data: ScamDiscoveredData = {
@@ -88,6 +159,7 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
             grams: d.grams,
             real: d.real,
             believed: d.believed,
+            ...(appraised ? { appraiser: appraised } : {}),
           };
           events.push({
             kind: SCAM_DISCOVERED,
@@ -105,7 +177,45 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
           );
         }
       }
-      return events.length === 0 ? {} : { changes, events };
+      return events.length === 0 ? {} : { changes, events, postings };
     },
   };
+}
+
+/**
+ * Un tasador a mano: otro vecino vivo, en el mismo lugar que el comprador, que ni vendió ni es él,
+ * con mejor ojo que el suyo; el comprador lo contrata con una chance por día y si le alcanza la
+ * bolsa (en dinero, descontado lo ya gastado hoy). Elige al de mejor ojo; empate, por id.
+ */
+function hireAppraiser(
+  ctx: ProcessContext,
+  o: ScamDiscoveryOptions,
+  buyer: AgentId,
+  d: ScamDeal,
+  spent: ReadonlyMap<AgentId, number>,
+): { who: AgentId; eye: number; unit: LedgerUnit } | null {
+  const ledger = ctx.ledger;
+  if (!o.appraisers || !ledger) return null;
+  if (!ctx.rng.fork("hire", d.event, ctx.windowIndex ?? ctx.now).chance(APPRAISAL_HAZARD)) {
+    return null;
+  }
+  const purse = ledger
+    .holdings(holderAccount(buyer as unknown as HolderRef))
+    .filter((h) => isMoney(h.unit) && h.amount - (spent.get(buyer) ?? 0) >= APPRAISAL_FEE)
+    .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0];
+  if (!purse) return null;
+  const here = JSON.stringify(o.placeOf(ctx.truth, buyer));
+  const own = o.eye?.(ctx.truth, buyer) ?? 0.5;
+  const pick = (ctx.truth.ids(PERSON) as AgentId[])
+    .filter(
+      (id) =>
+        id !== buyer &&
+        id !== d.seller &&
+        ctx.truth.get(ENTITY, id)?.endedAt === undefined &&
+        JSON.stringify(o.placeOf(ctx.truth, id)) === here,
+    )
+    .map((id) => ({ id, eye: o.appraisers?.(ctx.truth, id) ?? 0 }))
+    .filter((c) => c.eye >= APPRAISER_MIN_EYE && c.eye > own + 0.05)
+    .sort((a, b) => b.eye - a.eye || (a.id < b.id ? -1 : 1))[0];
+  return pick ? { who: pick.id, eye: pick.eye, unit: purse.unit } : null;
 }

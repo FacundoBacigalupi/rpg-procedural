@@ -4,6 +4,18 @@ import { planFor, routineAt } from "./routine.ts";
 const DAY = 86400;
 const sick = { unwell: true, larderLow: false };
 
+describe("planFor boil", () => {
+  const d = { verb: "boil", at: 900 };
+  const can = { unwell: false, larderLow: false, canBoil: true };
+  it("hierve en casa y despierto solo si está habilitado", () => {
+    expect(planFor(19, 30, d, 1000, DAY, can).boil).toBe(true);
+    expect(planFor(19, 30, d, 1000, DAY, { ...can, canBoil: false }).boil).toBeUndefined();
+    expect(planFor(19, 30, d, 1000, DAY).boil).toBeUndefined();
+    expect(planFor(23, 30, d, 1000, DAY, can).boil).toBeUndefined();
+    expect(planFor(10, 30, d, 1000, DAY, can).boil).toBeUndefined();
+  });
+});
+
 describe("planFor", () => {
   it("sin decisión es la rutina", () => {
     expect(planFor(10, 30, undefined, 1000, DAY, sick)).toEqual({

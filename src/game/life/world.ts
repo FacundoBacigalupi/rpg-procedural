@@ -49,6 +49,7 @@ import {
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess, type BoilOptions } from "./act.ts";
+import { adultGrowthProcess } from "./adultGrowth.ts";
 import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
@@ -167,6 +168,8 @@ export interface LifeWorld {
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
   readonly growthSequelae?: boolean;
+  /** Opt-in: al cumplir 18 la masa del cuerpo se reconstruye con la talla final (genética y secuelas de hambre infantil); apagado por defecto: sin escrituras. */
+  readonly adultGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
   readonly nutritionCaps?: boolean;
   /**
@@ -202,6 +205,12 @@ export interface LifeWorld {
    * defecto: sin filas, RNG ni eventos nuevos.
    */
   readonly boil?: BoilOptions;
+  /**
+   * Opt-in (con `boil`): los NPC con sed por encima de `minThirst` y sin agua tratada vigente
+   * deciden hervir (`life.decide`) y `life.routine` lo cumple con la despensa. Apagado por defecto:
+   * sin candidata, filas, RNG ni eventos nuevos.
+   */
+  readonly npcBoil?: { readonly minThirst: number; readonly weight: number };
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
   /**
@@ -274,7 +283,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
-  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map) : undefined;
+  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map, parts.spaces) : undefined;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
@@ -356,6 +365,7 @@ export function lifeWorld(
               scamDiscoveryProcess({
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
+                appraisers: scamEyeOf(parts.traits),
                 day: parts.clock.day,
               }),
             ]
@@ -551,6 +561,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
+        ...(parts.adultGrowth === true
+          ? [adultGrowthProcess({ clock: parts.clock, plans: parts.plans, traits: parts.traits })]
+          : []),
         thermalProcess({
           clock: parts.clock,
           map: parts.map,
@@ -701,8 +714,10 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.moldHints ? { moldHints: parts.moldHints } : {}),
+          ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         routineProcess({
+          ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
             ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }

@@ -84,6 +84,7 @@ import {
   stageAt,
   standardize,
   THERMAL,
+  TREATED_WATER,
   type Trait,
   table,
   temperOf,
@@ -165,6 +166,12 @@ export interface DecideOptions {
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
    */
   readonly moldHints?: MoldHintOptions;
+  /**
+   * Opt-in: con la sed por encima de `minThirst` y sin agua tratada vigente, el verbo `boil` entra
+   * como candidata (empuja `thirst` con `weight`); `life.routine` con `boil` la cumple. Apagado, no
+   * hay candidata nueva ni se lee `TREATED_WATER`.
+   */
+  readonly boilThirst?: { readonly minThirst: number; readonly weight: number };
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -203,6 +210,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_GOALS.name,
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
+      ...(o.boilThirst ? [TREATED_WATER.name] : []),
     ],
     writes: [NPC_DECISION.name, NPC_GOALS.name],
     run(ctx) {
@@ -424,6 +432,20 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         places: truth.ids(PLACE).map((id) => id as unknown as EntityRef),
         texts,
       });
+      // Sed alta con agua sin tratar: hervir también apaga la sed (de lo que traería el agua cruda).
+      if (
+        o.boilThirst &&
+        (drives.needs.thirst ?? 0) >= o.boilThirst.minThirst &&
+        (truth.get(TREATED_WATER, me)?.until ?? -1) < now
+      ) {
+        catalogCandidates.push({
+          id: "boil:",
+          verb: "boil",
+          contributes: { thirst: o.boilThirst.weight },
+          chance: 0.9,
+          loss: STAKES_RISK.none.loss,
+        });
+      }
       for (const p of people) {
         const confidence = (() => {
           const alive = believed(beliefs, p.id, "alive");

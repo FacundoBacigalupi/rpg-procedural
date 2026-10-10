@@ -63,7 +63,7 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#397**. Tests: ~1870 (265 archivos; último `npm run check` completo verde en #396, con 266 archivos y 1908 tests).
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#402**. Tests: 1945 en 271 archivos (último `npm run check` completo verde en #402).
 
 **Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`. Sigue igual en #390–#397: 4 agentes Sonnet por lote, el líder integra y corre la suite amplia. Al agotarse los ítems hacibles se pasa a `v0.3.0`.
 
@@ -107,6 +107,15 @@ Desde #390 hasta #397, una línea por PR (títulos en `git log --oneline origin/
 - #395: cognición/vigor por carencia, señales de sustancias al panel, congelación al médico, verbo consume.
 - #396: molde attr, estafa pura, ansia por señales, semillas de patógeno.
 - #397: opciones famine/migration/rumorGrievance, estafa en cotización, apodo con lugar, render de sustancias.
+
+Desde #398 hasta #402:
+- #398: política de estafa, signos y heridas por carencia, hervir agua.
+- #399: estafa desde Life, etapas de carencia, señales en entorno, refugio.
+- #400: estafa con descubrimiento (`scam.discovered`), signos de altitud al sanador, `rumor.told`, dosis de remedio.
+- #401: congelación tratada (`FROSTBITE_CARE`), `coreEffects`, `moldHints`, `--famine`/`--nickname`, frase de `consume`.
+- #402: renta como gasto fijo, órdenes de congelación del médico, desmayo por núcleo, precio creído en moldes.
+
+Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuando no quede nada hacible, pasar lo dependiente a su fase, `npm run check`, PR `develop`→`main` y tag `v0.3.0`. Quedan ramas remotas `origin/feat/f3-g|h|i|j` por borrar al final.
 
 Estado: la mayoría de los `[ ]` restantes de Fase 3 son cableados o calibración para encender por defecto, o ítems que dependen de fases posteriores. Al agotarse los hacibles: mover los dependientes a su fase (prefijo `Heredado de Fase 3:`), PR `develop` → `main` y tag `v0.3.0`. Los «Heredado de Fase 2» van al final de la lista de pendientes.
 

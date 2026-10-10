@@ -25,6 +25,7 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   BUILDING,
+  BURNED,
   dayOf,
   draftEvent,
   EATEN,
@@ -57,10 +58,11 @@ import {
   type StateChange,
   setActivity,
   setComponent,
+  TREATED_WATER,
   VILLAGE_SQUARE,
   type WaterQuality,
 } from "../../sim/index.ts";
-import { PLAN_STATE } from "./act.ts";
+import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { PLAYER } from "./player.ts";
 
@@ -99,6 +101,12 @@ export interface RoutineOptions {
     who: AgentId,
     now?: number,
   ) => WaterQuality | undefined;
+  /**
+   * Opt-in: quien decidió hervir (`life.decision`, sed con carga alta) quema `grams` de `fuel` de la
+   * despensa del hogar (sale del ledger hacia `burned`) y queda con agua tratada (`TREATED_WATER`).
+   * Apagado: no lee ni escribe la tabla, sin eventos ni asientos nuevos.
+   */
+  readonly boil?: BoilOptions;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -140,13 +148,31 @@ export function planFor(
     readonly unwell: boolean;
     readonly larderLow: boolean;
     readonly hungry?: boolean;
+    /** Opt-in: puede hervir (hay `boil` configurado y no tiene agua tratada vigente). */
+    readonly canBoil?: boolean;
   } = {
     unwell: false,
     larderLow: false,
   },
-): { activity: Activity; at: "home" | "fields"; replaced: boolean; eat?: true } {
+): {
+  activity: Activity;
+  at: "home" | "fields";
+  replaced: boolean;
+  eat?: true;
+  boil?: true;
+} {
   const base = routineAt(hour, ageYears);
   const fresh = decision !== undefined && now - decision.at < day;
+  // Hervir decidido (sed con carga alta): en casa y despierto; al tener agua tratada no encadena.
+  if (
+    fresh &&
+    decision.verb === "boil" &&
+    state.canBoil === true &&
+    base.activity !== "sleep" &&
+    base.at === "home"
+  ) {
+    return { ...base, replaced: true, boil: true };
+  }
   // Comer decidido: una ración fuera de las comidas de la rutina (que ya comen a su hora, así
   // que no se duplica), despierto y con hambre; al comer el hambre baja y no encadena.
   if (
@@ -196,8 +222,9 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PERSON.name,
       LOCATION.name,
       BODY_STATE.name,
+      ...(o.boil ? [TREATED_WATER.name] : []),
     ],
-    writes: [LOCATION.name, BODY_STATE.name, MEALS.name],
+    writes: [LOCATION.name, BODY_STATE.name, MEALS.name, ...(o.boil ? [TREATED_WATER.name] : [])],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -234,6 +261,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         unwell,
         larderLow,
         hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
+        canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
       });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -290,6 +318,42 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             },
           ],
         });
+      }
+      // Hervir: quema el combustible de la despensa y deja agua tratada que dura `validDays`.
+      if (want.boil && o.boil) {
+        const fuel = ledgerUnit(o.boil.fuel);
+        const have =
+          ctx.ledger
+            ?.holdings(holderAccount(person.household as unknown as HolderRef))
+            .find((h) => h.unit === fuel)?.amount ?? 0;
+        if (have >= o.boil.grams) {
+          const ev = draftEvent(events.length);
+          events.push({
+            kind: "routine.boiled",
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { fuel: o.boil.fuel, grams: o.boil.grams, treatment: o.boil.treatment },
+            emissions: { sight: 0.2, sound: 0.05 },
+            causes: [{ kind: "state", entity: me, key: "routine" }],
+          });
+          postings.push({
+            event: ev,
+            transfers: [
+              {
+                from: holderAccount(person.household as unknown as HolderRef),
+                to: externalAccount(BURNED),
+                unit: fuel,
+                amount: o.boil.grams,
+              },
+            ],
+          });
+          changes.push(
+            setComponent(TREATED_WATER, me, {
+              treatment: o.boil.treatment,
+              until: ctx.now + Math.round(o.boil.validDays * o.clock.day),
+            }),
+          );
+        }
       }
       // Comer: una ración a la medida del cuerpo, de lo que haya en la despensa del hogar. Solo
       // si alcanza para todos los de la casa: dos que comen en la misma fase no pueden dejar el

@@ -6,6 +6,7 @@ import {
   type BodyCapabilities,
   LOCATION,
   type LocalMap,
+  type SpaceGraph,
 } from "../../sim/index.ts";
 import { applyAltitude, mapAltitudeOf } from "./altitude.ts";
 
@@ -29,6 +30,18 @@ describe("altitud real", () => {
     const f = mapAltitudeOf(map);
     expect(f(truthAt(0), who)).toBe(100);
     expect(f(truthAt(1), who)).toBe(4500);
+  });
+
+  it("suma la altura del piso del espacio", () => {
+    const spaces = { spaces: [{ key: "tower", heightM: 30 }], edges: [] } as unknown as SpaceGraph;
+    const f = mapAltitudeOf(map, spaces);
+    const at = (space?: string) =>
+      ({
+        get: (t: { name: string }) => (t.name === LOCATION.name ? { hex: 0, space } : undefined),
+      }) as unknown as ReadonlyWorldTruth;
+    expect(f(at("tower"), who)).toBe(130);
+    expect(f(at("other"), who)).toBe(100);
+    expect(f(at(), who)).toBe(100);
   });
 
   it("en el llano no cambia las capacidades; arriba baja la resistencia, menos aclimatado", () => {
