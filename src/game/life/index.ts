@@ -1,5 +1,6 @@
 export * from "./about.ts";
 export * from "./act.ts";
+export * from "./altitude.ts";
 export * from "./askaround.ts";
 export * from "./beliefs.ts";
 export * from "./create.ts";
