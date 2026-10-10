@@ -57,6 +57,7 @@ import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
 import { figureText, withImpressions } from "./impressions.ts";
+import { playerNickname } from "./nickname.ts";
 import { PERCEPTS } from "./perceive.ts";
 import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
@@ -172,6 +173,11 @@ export interface PlayerViewOptions {
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
   /** Lo que el jugador pidió pensar (`pensar sobre X`): entra como pensamientos de la vista. */
   readonly thinking?: readonly ThoughtInput[];
+  /**
+   * Opt-in: el apodo con lugar que el personaje ya sabe que le dicen entra al léxico (lista blanca
+   * del validador). Apagado por defecto: la vista no cambia.
+   */
+  readonly nickname?: boolean;
 }
 
 /** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
@@ -331,6 +337,14 @@ export function readingsForView(w: LifeWorld, since: Tick): readonly ReadingView
   return out.reverse();
 }
 
+/** Las palabras que el narrador puede citar: las conocidas y, opt-in, el apodo que ya le dicen. */
+export function lexiconWords(w: LifeWorld, withNickname: boolean): string[] {
+  const words = knownWords(w);
+  const nick = withNickname ? playerNickname(w) : null;
+  if (nick) words.push(nick.epithet, ...(nick.place === undefined ? [] : [nick.place]));
+  return words;
+}
+
 export function playerView(
   w: LifeWorld,
   steps: readonly StepRecord[],
@@ -468,7 +482,7 @@ export function playerView(
       ...(s.purpose ? { purpose: s.purpose } : {}),
     })),
     acquaintances: acq,
-    lexicon: knownWords(w),
+    lexicon: lexiconWords(w, options.nickname === true),
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
