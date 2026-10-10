@@ -483,10 +483,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const hinted =
         o.moldHints && hintBook
           ? merged.map((c) => {
-              const bump = moldHintMood(c, hintBook, o.moldHints, {
-                beliefs: truth.get(PRICE_BELIEFS, me),
-                day: Math.floor(now / o.clock.day),
-              });
+              // Las candidatas que nombran un bien salen de la despensa: ofrecerlo es vender.
+              const bump = moldHintMood(
+                c.verb === "trade" ? { ...c, direction: "sell" } : c,
+                hintBook,
+                o.moldHints,
+                {
+                  beliefs: truth.get(PRICE_BELIEFS, me),
+                  day: Math.floor(now / o.clock.day),
+                },
+              );
               return bump === 0 ? c : { ...c, mood: r((c.mood ?? 0) + bump) };
             })
           : merged;

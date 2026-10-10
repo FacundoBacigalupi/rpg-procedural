@@ -285,6 +285,12 @@ export interface MoldHintOptions {
     good: string,
     day: number,
   ) => number | undefined;
+  /**
+   * Opt-in: distingue comprar de vender. La candidata `trade` que trae `direction` solo se empuja
+   * con un `price` del mismo lado (`buy`: oído más barato que lo creído; `sell`: más caro). Exige
+   * `believedPerKg`; sin él, o con precio igual al creído, no filtra.
+   */
+  readonly bySide?: boolean;
 }
 
 /**
@@ -322,7 +328,13 @@ export function catalogMoldHints(goods: readonly GoodDef[]): MoldHintOptions {
  * del que oyó el precio. Lo más útil de lo que aplique; 0 si nada.
  */
 export function moldHintMood(
-  c: { readonly verb: string; readonly target?: string; readonly id: string },
+  c: {
+    readonly verb: string;
+    readonly target?: string;
+    readonly id: string;
+    /** Si la candidata compra o vende (solo la lee `bySide`). */
+    readonly direction?: "buy" | "sell";
+  },
   book: MoldBook | undefined,
   o: MoldHintOptions = {},
   priced?: { readonly beliefs: PriceBeliefs | undefined; readonly day: number },
@@ -340,7 +352,9 @@ export function moldHintMood(
     let use = moldUsefulness(r, h.confidence);
     if (r.mold === "price" && o.believedPerKg && priced) {
       const believed = o.believedPerKg(priced.beliefs, r.good, priced.day);
-      use = Math.round(use * moldPriceEdge(r.amount, believed).edge * 1e6) / 1e6;
+      const pe = moldPriceEdge(r.amount, believed);
+      if (o.bySide && c.direction && pe.side !== "none" && pe.side !== c.direction) continue;
+      use = Math.round(use * pe.edge * 1e6) / 1e6;
     }
     best = Math.max(best, use);
   }

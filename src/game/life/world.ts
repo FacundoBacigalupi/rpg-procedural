@@ -78,7 +78,12 @@ import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
-import { type MoldGossipOptions, type MoldHintOptions, moldGossipProcess } from "./moldgossip.ts";
+import {
+  catalogMoldHints,
+  type MoldGossipOptions,
+  type MoldHintOptions,
+  moldGossipProcess,
+} from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -233,6 +238,8 @@ export interface LifeWorld {
   readonly moldGossip?: MoldGossipOptions;
   /** Opt-in: la decisión (`life.decide`) suma al ánimo lo que cree de oídas en `MOLD_RUMORS` (`moldHintMood`: ir donde cree que hay algo, comerciar un bien con precio oído); apagado por defecto: no lee la tabla. */
   readonly moldHints?: MoldHintOptions;
+  /** Opt-in: sin `moldHints`, usa `catalogMoldHints(goods)` con `bySide` (comprar y vender se distinguen); apagado por defecto. */
+  readonly moldHintsFromCatalog?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
@@ -713,7 +720,11 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
-          ...(parts.moldHints ? { moldHints: parts.moldHints } : {}),
+          ...(parts.moldHints
+            ? { moldHints: parts.moldHints }
+            : parts.moldHintsFromCatalog === true
+              ? { moldHints: { ...catalogMoldHints(parts.goods), bySide: true } }
+              : {}),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         routineProcess({

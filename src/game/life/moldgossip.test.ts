@@ -83,4 +83,15 @@ describe("la decisión lee lo que cree de oídas", () => {
     expect(moldHintMood(buy, book(price(5), 1), o, at)).toBeCloseTo(0.5 * MOLD_HINT_MOOD, 6);
     expect(moldHintMood(buy, book(price(10), 1), o, at)).toBe(0);
   });
+
+  it("con bySide, la candidata que vende no se empuja con un precio oído más barato", () => {
+    const sell = { id: "trade:ana+rice", verb: "trade", target: "ana", direction: "sell" as const };
+    const at = { beliefs: undefined, day: 0 };
+    const o = { believedPerKg: () => 10, bySide: true };
+    expect(moldHintMood(sell, book(price(5), 1), o, at)).toBe(0);
+    expect(moldHintMood(sell, book(price(15), 1), o, at)).toBeCloseTo(0.5 * MOLD_HINT_MOOD, 6);
+    expect(moldHintMood(sell, book(price(5), 1), { believedPerKg: () => 10 }, at)).toBeGreaterThan(
+      0,
+    );
+  });
 });
