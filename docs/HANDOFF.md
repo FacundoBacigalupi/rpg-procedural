@@ -63,7 +63,7 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#437**. Tests: 2173 en 307 archivos (último `npm run check` completo verde en #433).
+Actualizado: 2026-10-10. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#438**. Tests: 2179 en 308 archivos (último `npm run check` completo verde en #433).
 
 **Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`. Sigue igual en #390–#397: 4 agentes Sonnet por lote, el líder integra y corre la suite amplia. Al agotarse los ítems hacibles se pasa a `v0.3.0`.
 
@@ -148,6 +148,7 @@ Desde #398 hasta #409:
 - #435: `lend`/`hire` leen `fraudCaution` (`heedFraud`), escritor `TRAVEL_CELL` (`life.travel_cell`), reparación de la fama del deudor (`life.debtor_repair`), `patientDecides.realBonds` (jefe del hogar y relación real).
 - #436: reparación de fama por restitución (`debtorRepairRestitution`), `loanUsury`/`loanSeeds` desde `LifeOptions`, `puerperalSeed` (sin cablear), señales de objeto ajenas (`viewCues`, sin cablear).
 - #437: `viewCues` en LifeOptions y panel, `puerperalSeed` como `arrivals` de `life.exposure`, `deriveUsury` (usuryderive.ts, sin cablear en Life.create), `patientDecides.cultureTraits`.
+- #438: `norms.interest` + `interestNorm` (deriveUsury en Life.create), fiebre puerperal por madre (`PathogenSeed.perCarrier`), `healthCulture` (`village.health`: contagio y jefatura), `ViewCues.ground`. Se arreglaron bytes latin-1 sueltos en comentarios (scan UTF-8 de todo el repo limpio).
 
 Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuando no quede nada hacible, pasar lo dependiente a su fase, `npm run check`, PR `develop`→`main` y tag `v0.3.0`. Quedan ramas remotas `origin/feat/f3-g|h|i|j` por borrar al final.
 

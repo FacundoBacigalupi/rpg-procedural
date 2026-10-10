@@ -43,6 +43,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { playerNickname, REPUTATION_NOTICED } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
@@ -170,8 +171,8 @@ export interface CharacterPanelOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cueLocal`): ids de bienes cuya vista despierta la señal por objeto de una sustancia. */
   readonly objectCues?: readonly string[];
-  /** Opt-in (con `objectCues`): tambi�n lo que llevan los presentes y los puestos del lugar. */
-  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  /** Opt-in (con `objectCues`): también lo que llevan los presentes y los puestos del lugar. */
+  readonly viewCues?: ViewCues;
   /** Opt-in (con `substances`): el residuo de lo ingerido y la sobrecarga reciente se sienten (mismo `ResidueConfig` de la vida). */
   readonly residue?: ResidueConfig;
 }

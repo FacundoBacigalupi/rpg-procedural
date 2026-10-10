@@ -268,6 +268,32 @@ export const PUERPERAL_FEVER: PathogenDef = {
 };
 
 /**
+ * Una semilla por madre con fiebre y viva (opt-in, vía `arrivals`, con `perCarrier`): un caso por
+ * parto, cada uno con su parto como causa. Pura; orden estable por tick y madre.
+ */
+export function puerperalSeeds(
+  truth: ReadonlyWorldTruth,
+  def: PathogenDef = PUERPERAL_FEVER,
+): PathogenSeed[] {
+  const out: { mother: AgentId; row: LaborRow }[] = [];
+  for (const id of truth.ids(LABOR)) {
+    const row = truth.get(LABOR, id);
+    if (row?.fever && !row.motherDied) out.push({ mother: id as unknown as AgentId, row });
+  }
+  out.sort(
+    (a, b) => a.row.at - b.row.at || (a.mother < b.mother ? -1 : a.mother > b.mother ? 1 : 0),
+  );
+  return out.map(({ mother, row }) => ({
+    def,
+    carrier: mother,
+    from: row.at,
+    source: "fiebre tras el parto",
+    causes: [{ kind: "event", event: row.cause as never }],
+    perCarrier: true,
+  }));
+}
+
+/**
  * Semilla de infección para `life.exposure` (opt-in, vía `arrivals`): la primera madre cuyo parto
  * dejó `fever` (tirada ya hecha en `resolveBirth` según higiene y partera) y que sigue viva,
  * con el evento del parto como causa. Pura: sin RNG ni IO. `exposure` introduce un patógeno una

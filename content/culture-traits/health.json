@@ -1,0 +1,27 @@
+[
+  {
+    "id": "beliefs.contagion",
+    "name": "cuánto se cree que la enfermedad se pega",
+    "domain": "values",
+    "variants": [
+      { "id": "catching", "name": "se pega de la gente y del aire" },
+      { "id": "not_catching", "name": "viene del destino o del cuerpo de cada uno" }
+    ],
+    "salience": 0.3,
+    "stickiness": 0.7,
+    "readBy": ["body-health", "npc-psychology"]
+  },
+  {
+    "id": "kinship.head",
+    "name": "quién manda en la casa",
+    "domain": "kinship",
+    "variants": [
+      { "id": "eldest", "name": "el más viejo" },
+      { "id": "eldest_male", "name": "el hombre más viejo" },
+      { "id": "eldest_female", "name": "la mujer más vieja" }
+    ],
+    "salience": 0.4,
+    "stickiness": 0.9,
+    "readBy": ["family", "body-health"]
+  }
+]

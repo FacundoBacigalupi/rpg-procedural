@@ -97,7 +97,14 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { creditRows } from "./credit.ts";
-import { cueLocalOf, objectsInView, objectsSeen, peopleInView } from "./cue-local.ts";
+import {
+  cueLocalOf,
+  objectsInView,
+  objectsSeen,
+  peopleInView,
+  placeHoldersInView,
+  type ViewCues,
+} from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -226,7 +233,7 @@ export interface DecideOptions {
    * encima la gente que de verdad está en su mismo lugar y los de los puestos que `stalls` da para
    * ese hex (percepción: no la despensa ajena ni lo que está en otro lugar); apagado, solo lo propio.
    */
-  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  readonly viewCues?: ViewCues;
   /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
@@ -358,7 +365,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                 ...ownSeen,
                 ...objectsInView(cueGoods, [
                   ...peopleInView(truth, me).map((id) => amountIn(id as unknown as HolderRef)),
-                  ...(o.viewCues.stalls?.(here) ?? []).map(amountIn),
+                  ...placeHoldersInView(o.viewCues, truth.get(LOCATION, me)).map(amountIn),
                 ]),
               ]),
             ].sort()

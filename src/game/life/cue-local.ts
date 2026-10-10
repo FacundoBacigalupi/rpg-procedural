@@ -1,7 +1,7 @@
 // El entorno de las señales de ansia como lo vive el personaje (opt-in): las personas que CREE
 // presentes (sus creencias, no la verdad) y el huso local por la longitud del lugar.
 
-import type { AgentId, PlanetClock, Tick } from "../../core/index.ts";
+import type { AgentId, HolderRef, PlanetClock, Tick } from "../../core/index.ts";
 import {
   BELIEFS,
   type Beliefs,
@@ -93,4 +93,26 @@ export function cueLocalOf(
   }
   believedPresent.sort();
   return { believedPresent, hourOffset: Math.round(lonDeg / 15) };
+}
+
+/** Opt-in de lo que se ve en lotes ajenos: los puestos del hex y, aparte, lo tirado en el suelo. */
+export interface ViewCues {
+  readonly stalls?: (hex: number) => readonly HolderRef[];
+  /**
+   * Lotes sin dueño tirados o dejados en el hex y espacio del personaje (el lugar donde están,
+   * `PlaceRef`); se piden solo para donde está, no hay vista a distancia.
+   */
+  readonly ground?: (hex: number, space: string | undefined) => readonly HolderRef[];
+}
+
+/**
+ * Los tenedores de lotes a la vista en el lugar del personaje (puro, percepción): los puestos del
+ * hex y el suelo de su mismo hex y espacio. Sin ubicación no ve nada.
+ */
+export function placeHoldersInView(
+  cues: ViewCues,
+  here: { readonly hex: number; readonly space?: string } | undefined,
+): readonly HolderRef[] {
+  if (!here) return [];
+  return [...(cues.stalls?.(here.hex) ?? []), ...(cues.ground?.(here.hex, here.space) ?? [])];
 }

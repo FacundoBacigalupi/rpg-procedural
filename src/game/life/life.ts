@@ -20,6 +20,7 @@ import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } fro
 import {
   anchorOf,
   createLife,
+  derivedLoanUsury,
   type LifeOptions,
   type LifeTerrain,
   lifeTerrain,
@@ -172,7 +173,13 @@ export class Life {
         [],
         new Map((world.materials ?? []).map((m) => [m.id, m])),
       );
-      const parts: LifeParts = { ...world, spaces, ...saved };
+      const derived = derivedLoanUsury(options, content, saved.ledger);
+      const parts: LifeParts = {
+        ...world,
+        ...(derived ? { loanUsury: derived } : {}),
+        spaces,
+        ...saved,
+      };
       const resumed = lifeWorld(parts, world.player, terrain.village, saved.scheduler);
       return new Life(resumed, anchorOf(terrain), terrain);
     }
@@ -188,7 +195,14 @@ export class Life {
     const waterTerrain = needsTerrain
       ? lifeTerrain(seed, content, options).site.terrain
       : undefined;
-    const parts: LifeParts = { ...base, ...optInParts(options, waterTerrain), spaces, ...saved };
+    const derived = derivedLoanUsury(options, content, saved.ledger);
+    const parts: LifeParts = {
+      ...base,
+      ...optInParts(options, waterTerrain),
+      ...(derived ? { loanUsury: derived } : {}),
+      spaces,
+      ...saved,
+    };
     const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
     return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }

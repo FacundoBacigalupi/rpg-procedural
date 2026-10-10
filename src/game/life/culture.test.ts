@@ -153,3 +153,14 @@ describe("la cultura de cada persona", () => {
     }
   }, 30_000);
 });
+
+describe("creencias de salud de la cultura (opt-in)", () => {
+  it("por defecto la aldea no las tiene; con healthCulture las lee patientbonds", () => {
+    const off = Life.create(7, content).world;
+    expect(villageCulture(off.truth)?.prevalence["beliefs.contagion"]).toBeUndefined();
+    const on = Life.create(7, content, { healthCulture: true }).world;
+    const c = villageCulture(on.truth);
+    expect(dominantVariant(c, "kinship.head")).toBe("eldest_male");
+    expect(traitParam(c, "beliefs.contagion", "flu", 0.5)).toBeCloseTo(0.8);
+  }, 30_000);
+});

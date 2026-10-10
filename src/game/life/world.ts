@@ -72,6 +72,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
@@ -100,7 +101,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
-import { type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
+import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -357,8 +358,8 @@ export interface LifeWorld {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
   readonly objectCues?: boolean;
-  /** Opt-in (con `objectCues`): ver tambi�n lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
-  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  /** Opt-in (con `objectCues`): ver también lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
+  readonly viewCues?: ViewCues;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -983,10 +984,7 @@ export function lifeWorld(
           seeds: parts.pathogenSeeds ?? [],
           ...(parts.labors && parts.labors.length > 0
             ? {
-                arrivals: (truth: ReadonlyWorldTruth) => {
-                  const s = puerperalSeed(truth);
-                  return s ? [s] : [];
-                },
+                arrivals: (truth: ReadonlyWorldTruth) => puerperalSeeds(truth),
               }
             : {}),
           ...(parts.waterSources
