@@ -88,6 +88,42 @@ describe("life.loans", () => {
     expect(make([]).run(ctxOf(truth, ledger, 5))).toEqual({});
   });
 
+  it("usury: la cultura prohíbe el interés, se disfraza, la tasa efectiva es real y un tercero sospecha", () => {
+    const { truth, ledger } = setup();
+    const id = makeId("agent", 3);
+    truth.set(ENTITY, id, { id, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, id, { born: -30 * clock.year, household: "third" } as never);
+    const p = loansProcess({
+      clock,
+      goods,
+      seeds: [seed],
+      placeOf: () => ({ kind: "cell" }) as never,
+      usury: {
+        prohibits: () => true,
+        available: ["gift", "labor"],
+        suspicion: { tolerance: 0.05, believedValue: (_t, _o, pr) => pr },
+      },
+    });
+    const r = p.run(ctxOf(truth, ledger, 1));
+    expect(r.events?.map((e) => e.kind)).toEqual(["credit.loaned", "credit.usury_suspected"]);
+    expect(r.events?.[0]?.data).toMatchObject({ disguise: "gift", statedRate: 0 });
+    expect(r.events?.[1]?.causes.length).toBeGreaterThan(0);
+    const row = (r.changes ?? []).find((c) => (c as { table?: string }).table === LOANS.name) as {
+      value: { rate: number; disguise?: { kind: string } };
+    };
+    expect(row.value.rate).toBeCloseTo(0.2);
+    expect(row.value.disguise?.kind).toBe("gift");
+    // Sin disfraces a mano no presta; sin la opción, todo igual que antes.
+    const none = loansProcess({
+      clock,
+      goods,
+      seeds: [seed],
+      placeOf: () => ({ kind: "cell" }) as never,
+      usury: { prohibits: () => true, available: [] },
+    }).run(ctxOf(truth, ledger, 1));
+    expect(none.events ?? []).toEqual([]);
+  });
+
   it("abre con evento, desembolsa por el ledger y conserva", () => {
     const { truth, ledger } = setup();
     const r = make([seed]).run(ctxOf(truth, ledger, 1));
