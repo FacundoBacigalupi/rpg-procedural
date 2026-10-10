@@ -16,20 +16,23 @@ export interface GoalVacuumSource {
 export interface GoalVacuum {
   /** La última finalización válida marca el inicio más reciente del vacío. */
   readonly since: Tick;
+  /** Tiempo transcurrido en unidades de Tick; la curva lenta queda para otro ítem. */
+  readonly elapsed: Tick;
   /** Fuentes individuales, sin agregación o calibración de sus pesos. */
   readonly sources: readonly GoalVacuumSource[];
 }
 
 /**
- * Deriva vacío solo si no queda un objetivo núcleo activo y hay un núcleo que el agente ya
- * considera cumplido. No consulta verdad ni convierte necesidades continuas en objetivos logrados.
+ * Deriva vacío desde núcleos que el agente considera cumplidos. Un `pursue` de valor es continuo y
+ * no reemplaza por sí solo ese ancla; un núcleo concreto activo sí lo hace. No consulta verdad ni
+ * convierte necesidades continuas en objetivos logrados.
  */
 export function goalVacuumFromCompletions(
   activeGoals: readonly Goal[],
   completions: readonly GoalCompletion[],
   now: Tick,
 ): GoalVacuum | undefined {
-  if (activeGoals.some((goal) => goal.layer === "core")) return undefined;
+  if (activeGoals.some((goal) => goal.layer === "core" && goal.kind !== "pursue")) return undefined;
   const sources = completions
     .filter(
       (completion) =>
@@ -57,5 +60,6 @@ export function goalVacuumFromCompletions(
         compareStrings(a.cause, b.cause),
     );
   if (sources.length === 0) return undefined;
-  return { since: sources[sources.length - 1]?.at ?? now, sources };
+  const since = sources[sources.length - 1]?.at ?? now;
+  return { since, elapsed: (now - since) as Tick, sources };
 }

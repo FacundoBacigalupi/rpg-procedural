@@ -29,6 +29,7 @@ describe("sim.mind.goal-vacuum", () => {
     const done = completion("core:family_first", 400);
     expect(goalVacuumFromCompletions([], [done], now)).toEqual({
       since: 400,
+      elapsed: 100,
       sources: [
         {
           goalId: done.goalId,
@@ -44,8 +45,8 @@ describe("sim.mind.goal-vacuum", () => {
     );
   });
 
-  it("no deriva vacío mientras haya algún objetivo núcleo activo", () => {
-    const active: Goal = {
+  it("un pursue continuo no reemplaza el ancla perdida; un núcleo concreto sí", () => {
+    const family: Goal = {
       id: "core:family_first",
       layer: "core",
       kind: "pursue",
@@ -54,13 +55,22 @@ describe("sim.mind.goal-vacuum", () => {
       originEventId: makeId("event", 3),
       since: 450 as Tick,
     };
-    expect(goalVacuumFromCompletions([active], [completion("core:revenge", 400)], now)).toBe(
-      undefined,
-    );
-    const short = { ...active, id: "short:hunt", layer: "short" as const };
-    expect(goalVacuumFromCompletions([short], [completion("core:revenge", 400)], now)).not.toBe(
-      undefined,
-    );
+    const completedRevenge = completion("core:revenge:agent:7", 400);
+    expect(goalVacuumFromCompletions([family], [completedRevenge], now)?.since).toBe(400);
+    const concrete: Goal = {
+      ...completedRevenge.original,
+      id: "core:revenge:agent:8",
+      kind: "avenge",
+      target: makeId("agent", 8),
+      since: 300 as Tick,
+    };
+    expect(goalVacuumFromCompletions([concrete], [completedRevenge], now)).toBeUndefined();
+    expect(
+      goalVacuumFromCompletions([{ ...concrete, since: 450 as Tick }], [completedRevenge], now),
+    ).toBeUndefined();
+    expect(
+      goalVacuumFromCompletions([{ ...family, layer: "short" }], [completedRevenge], now),
+    ).not.toBeUndefined();
   });
 
   it("ignora fuentes futuras o no citables y ordena completions de forma estable", () => {
