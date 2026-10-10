@@ -23,6 +23,7 @@ const TURNING_KINDS: ReadonlySet<string> = new Set([
   "combat.fight",
   "body.collapsed",
   "body.wound_infected",
+  "body.amputated",
   "law.default",
   "contract.pledge_broken",
 ]);

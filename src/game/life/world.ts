@@ -290,6 +290,8 @@ export interface LifeWorld {
   readonly migration?: Omit<MigrationOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero (`AppraiseOptions.rumorGrievance`); apagado por defecto. */
   readonly rumorGrievance?: boolean;
+  /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
+  readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -726,6 +728,7 @@ export function lifeWorld(
           map: parts.map,
           seed: parts.seed,
           materials: parts.materials ?? [],
+          ...(parts.swapMaterials ? { swapMaterials: true } : {}),
         }),
         upbringingProcess({
           clock: parts.clock,

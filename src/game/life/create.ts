@@ -182,6 +182,8 @@ export interface LifeOptions {
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
   readonly relationDecay?: boolean;
+  /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
+  readonly swapMaterials?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -190,7 +192,13 @@ export function optInParts(
   terrain?: Pick<LocalTerrain, "sea" | "lake" | "water">,
 ): Pick<
   LifeParts,
-  "famine" | "migration" | "rumorGrievance" | "scam" | "waterSources" | "relationDecay"
+  | "famine"
+  | "migration"
+  | "rumorGrievance"
+  | "scam"
+  | "waterSources"
+  | "relationDecay"
+  | "swapMaterials"
 > {
   return {
     ...(options.waterSources
@@ -206,6 +214,7 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.scam ? { scam: true } : {}),
+    ...(options.swapMaterials ? { swapMaterials: true } : {}),
   };
 }
 
