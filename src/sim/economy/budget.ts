@@ -134,3 +134,33 @@ export interface DealBudget {
 export function strainOf(s: HouseholdStanding): "tight" | "broke" | undefined {
   return s === "tight" || s === "broke" ? s : undefined;
 }
+
+/** Aporte base a la bolsa común (el 70% fijo de antes), de donde parte `personalPoolShare`. */
+export const BASE_POOL_SHARE = 0.7;
+/** Cuánto suma a lo aportado cada unidad de calidez (eje -1 a 1) y cuánto resta la de control (guarda). */
+export const POOL_WARMTH_WEIGHT = 0.1;
+export const POOL_CONTROL_WEIGHT = 0.08;
+/** Lo que suma cada dependiente (niño o viejo) por adulto del hogar, y el tope de ese aporte. */
+export const POOL_DEPENDENT_WEIGHT = 0.1;
+export const POOL_DEPENDENT_CAP = 0.2;
+/** Piso y techo del aporte: nadie da todo ni se queda con todo. */
+export const POOL_SHARE_MIN = 0.3;
+export const POOL_SHARE_MAX = 0.95;
+
+/**
+ * Qué parte de su jornal aporta alguien a la bolsa común (0 a 1): más si es cálido o si en su casa
+ * hay más bocas dependientes por adulto; menos si es de guardar (control alto). Sin RNG.
+ */
+export function personalPoolShare(
+  temperament: { readonly warmth?: number; readonly control?: number },
+  household: Pick<HouseholdFlows, "adults" | "children" | "elders">,
+): number {
+  const dependents = household.children + household.elders;
+  const perAdult = dependents / Math.max(1, household.adults);
+  const share =
+    BASE_POOL_SHARE +
+    POOL_WARMTH_WEIGHT * clamp(temperament.warmth ?? 0, -1, 1) -
+    POOL_CONTROL_WEIGHT * clamp(temperament.control ?? 0, -1, 1) +
+    clamp(POOL_DEPENDENT_WEIGHT * perAdult, 0, POOL_DEPENDENT_CAP);
+  return clamp(share, POOL_SHARE_MIN, POOL_SHARE_MAX);
+}

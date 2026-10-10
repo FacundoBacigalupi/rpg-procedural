@@ -13,6 +13,7 @@ import {
   type HolderRef,
   holderAccount,
   type LedgerAccount,
+  ledgerUnit,
   type PlaceRef,
   type PlanetClock,
   type Transfer,
@@ -72,7 +73,14 @@ export interface LoanSeed {
   /** Día del mundo en que se abre y días hasta el vencimiento. */
   readonly startDay: number;
   readonly termDays: number;
-  readonly collateral?: readonly (Omit<Collateral, "heldBy"> & { readonly heldBy: string })[];
+  /**
+   * Prendas. Con `lot` la prenda es un lote de bienes sueltos del ledger (unidad y cantidad): al
+   * ejecutarse pasa de la cuenta de quien la tiene a la del prestamista, tope lo que haya (traspaso).
+   */
+  readonly collateral?: readonly (Omit<Collateral, "heldBy"> & {
+    readonly heldBy: string;
+    readonly lot?: { readonly unit: string; readonly amount: number };
+  })[];
   readonly guarantors?: readonly { readonly household: string; readonly share: number }[];
 }
 
@@ -175,7 +183,10 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           rate: s.rate,
           startDay: today,
           dueDay: today + s.termDays,
-          collateral: (s.collateral ?? []).map((c) => ({ ...c, heldBy: acct(c.heldBy) })),
+          collateral: (s.collateral ?? []).map(({ lot: _lot, ...c }) => ({
+            ...c,
+            heldBy: acct(c.heldBy),
+          })),
           guarantors: (s.guarantors ?? []).map(
             (g): Guarantor => ({ id: g.household, account: acct(g.household), share: g.share }),
           ),
@@ -253,11 +264,23 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             emissions: {},
             causes: cause,
           });
-          if (res.transfers.length > 0) {
-            postings.push({ event: draftEvent(k), transfers: res.transfers });
-            apply(res.transfers);
+          // Lotes en prenda: lo que hay (tope el saldo) pasa por el ledger a la cuenta del prestamista.
+          const seedOf = o.seeds.find((x) => x.id === l.seed);
+          const lotTransfers: Transfer[] = [];
+          for (const sz of res.seized) {
+            const lot = seedOf?.collateral?.find((c) => c.ref === sz.ref)?.lot;
+            if (!lot || sz.from === sz.to) continue;
+            const unit = ledgerUnit(lot.unit);
+            const amount = Math.min(Math.floor(lot.amount), Math.floor(bal(sz.from, unit)));
+            if (amount <= 0) continue;
+            const t = { unit, from: sz.from, to: sz.to, amount };
+            lotTransfers.push(t);
+            apply([t]);
           }
-          // La tenencia real: la tierra dada en prenda pasa de casa (los bienes sueltos viajan por ledger).
+          const all = [...res.transfers, ...lotTransfers];
+          if (res.transfers.length > 0) apply(res.transfers);
+          if (all.length > 0) postings.push({ event: draftEvent(k), transfers: all });
+          // La tenencia real: la tierra dada en prenda pasa de casa; los lotes ya viajaron por ledger.
           const parcels = new Map<string, Parcel>();
           for (const sz of res.seized) {
             const p = parcels.get(sz.ref) ?? ctx.truth.get(PARCEL, sz.ref as never);

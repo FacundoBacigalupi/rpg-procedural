@@ -9,6 +9,7 @@
 import type { AgentId, PlaceRef, PlanetClock, Seed } from "../../core/index.ts";
 import {
   ACTIVITY_LOAD,
+  altitudeEnv,
   BODY_STATE,
   type Clothing,
   CORE_NORMAL_C,
@@ -65,6 +66,16 @@ export interface ThermalOptions {
    * activityKcal 1 y sin sudor extra, la aldea no cambia.
    */
   readonly effort?: boolean;
+  /**
+   * Opt-in: altitud (m) de quien está y del lugar de referencia del mapa, y `qiC` (°C equivalentes
+   * de un ambiente de qi, negativo enfría). El aire se enfría con el gradiente adiabático
+   * (`altitudeEnv`) antes de `refineEnv`. Por defecto apagado: la aldea no cambia.
+   */
+  readonly altitude?: {
+    readonly baseM: number;
+    readonly altitudeOf: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+    readonly qiC?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  };
   readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
 }
 
@@ -155,7 +166,16 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
           const outC = outdoorTempC(o.map, o.clock, o.seed, at);
-          const base0 = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const flat = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const base0 = o.altitude
+            ? altitudeEnv(
+                flat,
+                o.altitude.baseM,
+                o.altitude.altitudeOf(ctx.truth, agent),
+                o.altitude.qiC?.(ctx.truth, agent) ?? 0,
+                indoor ? INDOOR_LEAK : 1,
+              )
+            : flat;
           const env = o.refineEnv ? o.refineEnv(ctx.truth, agent, base0) : base0;
           const clothing = (o.clothingOf ?? ((_t, _w, c) => seasonalClothing(c)))(
             ctx.truth,

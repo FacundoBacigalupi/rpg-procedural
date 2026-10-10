@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   availableCoins,
+  BASE_POOL_SHARE,
   type HouseholdFlows,
   netPerDay,
+  POOL_SHARE_MAX,
+  POOL_SHARE_MIN,
+  personalPoolShare,
   poolIncome,
   runwayDays,
   spendCeiling,
@@ -44,5 +48,29 @@ describe("presupuesto del hogar", () => {
     const { pot, kept } = poolIncome(earned);
     const keptSum = [...kept.values()].reduce((s, x) => s + x, 0);
     expect(pot + keptSum).toBe(26);
+  });
+});
+
+describe("aporte personal a la bolsa común", () => {
+  const home = { adults: 2, children: 0, elders: 0 };
+
+  it("sin temperamento ni dependientes es el 70% de siempre", () => {
+    expect(personalPoolShare({}, home)).toBeCloseTo(BASE_POOL_SHARE, 10);
+  });
+
+  it("el cálido da más, el de guardar da menos, y los dependientes suben el aporte", () => {
+    expect(personalPoolShare({ warmth: 1 }, home)).toBeGreaterThan(personalPoolShare({}, home));
+    expect(personalPoolShare({ control: 1 }, home)).toBeLessThan(personalPoolShare({}, home));
+    expect(personalPoolShare({}, { adults: 1, children: 2, elders: 1 })).toBeGreaterThan(
+      personalPoolShare({}, home),
+    );
+  });
+
+  it("queda entre el piso y el techo", () => {
+    const hungry = { adults: 1, children: 9, elders: 9 };
+    expect(personalPoolShare({ warmth: 9, control: -9 }, hungry)).toBe(POOL_SHARE_MAX);
+    expect(personalPoolShare({ warmth: -9, control: 9 }, home)).toBeGreaterThanOrEqual(
+      POOL_SHARE_MIN,
+    );
   });
 });

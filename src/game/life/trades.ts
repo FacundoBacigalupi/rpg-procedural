@@ -18,6 +18,7 @@ import {
   type PlanetClock,
   Rng,
   type Seed,
+  type Tick,
   type Transfer,
 } from "../../core/index.ts";
 import {
@@ -97,7 +98,7 @@ export interface TradesOptions {
   /** Jornal de base por día de trabajo, en monedas (calibración abierta). */
   readonly baseWagePerDay?: number;
   /** Qué parte de su jornal aporta esta persona a la bolsa común (0 a 1); por defecto `WAGE_POOL_SHARE`. */
-  readonly poolShareOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  readonly poolShareOf?: (truth: ReadonlyWorldTruth, who: AgentId, now: Tick) => number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -261,7 +262,7 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
           const ts = wageTransfer(coin, shop, holderAccount(w.id as unknown as HolderRef), pay);
           wageTransfers.push(...ts);
           // El aporte a la bolsa común sale de `pooledCollection` (conserva) con la parte de la persona.
-          const share = (o.poolShareOf ?? (() => WAGE_POOL_SHARE))(ctx.truth, w.id);
+          const share = (o.poolShareOf ?? (() => WAGE_POOL_SHARE))(ctx.truth, w.id, ctx.now);
           wageTransfers.push(
             ...pooledCollection(coin, holderAccount(w.home as unknown as HolderRef), [
               {
