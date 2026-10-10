@@ -15,6 +15,7 @@ import {
   type Parcel,
   PERSON,
   type ProcessContext,
+  RELATIONS,
   WorldTruth,
 } from "../../sim/index.ts";
 import {
@@ -217,6 +218,56 @@ describe("life.loans", () => {
     const sub = after.find((r) => r.commitment.kind === "subrogation")?.commitment;
     expect(sub?.parties[0]).toEqual({ ref: "kin", role: "creditor" });
     expect(sub?.parent).toBe(rows[0]?.id);
+  });
+
+  it("el reclamo ante la comunidad solo lo oyen los vecinos que le creen al acreedor", () => {
+    const { truth, ledger } = setup();
+    const mk = (n: number, home: string) => {
+      const id = makeId("agent", n);
+      truth.set(ENTITY, id, { id, originEventId: makeId("event", 1), createdAt: 0 } as never);
+      truth.set(PERSON, id, { born: -30 * clock.year, household: home } as never);
+      return id;
+    };
+    const believer = mk(3, "n1");
+    const doubter = mk(4, "n2");
+    const rel = (trust: number) => ({ dims: { trust }, bonds: [], history: [], updated: 0 });
+    const lender = makeId("agent", 1);
+    const debtor = makeId("agent", 2);
+    truth.set(RELATIONS, believer, {
+      toward: { [lender]: rel(0.6), [debtor]: rel(-0.2) },
+      originEventId: makeId("event", 1),
+    } as never);
+    truth.set(RELATIONS, doubter, {
+      toward: { [lender]: rel(0.1), [debtor]: rel(0.7) },
+      originEventId: makeId("event", 1),
+    } as never);
+    const s: LoanSeed = { ...seed, guarantors: [] };
+    const proc = (on: boolean) =>
+      loansProcess({
+        clock,
+        goods,
+        seeds: [s],
+        placeOf: () => ({ kind: "cell" }) as never,
+        ...(on ? { enforcement: { community: "village" }, communityClaim: true } : {}),
+      });
+    const opened = proc(true).run(ctxOf(truth, ledger, 1));
+    for (const p of opened.postings ?? [])
+      ledger.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+    for (const c of opened.changes ?? []) {
+      const ch = c as { table?: string; id?: string; value?: unknown };
+      if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+    }
+    const off = proc(false).run(ctxOf(truth, ledger, 11));
+    expect(off.events?.map((e) => e.kind)).toEqual(["credit.defaulted", "law.default"]);
+    const on = proc(true).run(ctxOf(truth, ledger, 11));
+    expect(on.events?.map((e) => e.kind)).toEqual([
+      "credit.defaulted",
+      "law.default",
+      "credit.claimed",
+    ]);
+    const claim = on.events?.[2];
+    expect(claim?.data).toMatchObject({ noticedBy: [believer] });
+    expect(claim?.causes.length).toBeGreaterThan(0);
   });
 
   it("sin semillas no hay filas de Commitment", () => {

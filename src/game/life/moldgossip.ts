@@ -21,6 +21,7 @@ import {
   type MoldRumor,
   moldUsefulness,
   PERSON,
+  PRICE_BELIEFS,
   type PriceBeliefs,
   type ProcessDef,
   placeKey,
@@ -126,6 +127,15 @@ export interface MoldGossipOptions {
    * oficio que el que cuenta conoce. Apagado: no lee `TRADE_VIEW`.
    */
   readonly fromTradeView?: { readonly clock: PlanetClock };
+  /**
+   * Opt-in: el precio que cada uno vio en el mercado (`PRICE_BELIEFS`, corrido por cada trato
+   * visto) entra como rumor `price` de primera mano, con `market` donde lo vio (`marketOf`;
+   * `undefined` = no se sabe dónde, no entra). Apagado: no lee `PRICE_BELIEFS`.
+   */
+  readonly fromPriceBeliefs?: {
+    readonly clock: PlanetClock;
+    readonly marketOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef | undefined;
+  };
 }
 
 /** Cómo se nombra el hogar en un rumor de oficio. */
@@ -171,6 +181,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       MOLD_RUMORS.name,
       ...(o.fromHeard ? [HEARD.name] : []),
       ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
+      ...(o.fromPriceBeliefs ? [PRICE_BELIEFS.name] : []),
       ...(o.neighborStanding ? [NEIGHBOR_STANDING.name] : []),
       ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
@@ -262,6 +273,37 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
             };
             const b = bookOf(id);
             const at = seen.day * o.fromTradeView.clock.day;
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+            if (prev && prev.heardAt >= at && prev.hops === 0) continue;
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: at, teller: null }),
+            );
+            dirty.add(id);
+          }
+        }
+      }
+      if (o.fromPriceBeliefs) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          const beliefs = truth.get(PRICE_BELIEFS, id);
+          if (!beliefs) continue;
+          const market = o.fromPriceBeliefs.marketOf(truth, id);
+          if (!market) continue;
+          for (const unit of Object.keys(beliefs).sort()) {
+            const seen = beliefs[unit];
+            if (!seen) continue;
+            const rumor: MoldRumor = {
+              mold: "price",
+              good: unit.startsWith("good:") ? unit.slice(5) : unit,
+              market,
+              amount: Math.round(seen.perKg * 1e6) / 1e6,
+            };
+            const b = bookOf(id);
+            const at = seen.lastSeenDay * o.fromPriceBeliefs.clock.day;
             const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
             if (prev && prev.heardAt >= at && prev.hops === 0) continue;
             const rest: MoldBook | undefined = b && {

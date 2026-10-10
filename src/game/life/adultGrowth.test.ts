@@ -42,8 +42,8 @@ const ctx = (truth: WorldTruth, years: number) =>
     newId: () => "x",
   }) as unknown as ProcessContext;
 
-const run = (truth: WorldTruth, years: number) =>
-  adultGrowthProcess({ clock, plans: [plan], traits: [] }).run(ctx(truth, years));
+const run = (truth: WorldTruth, years: number, gradual = false) =>
+  adultGrowthProcess({ clock, plans: [plan], traits: [], gradual }).run(ctx(truth, years));
 
 describe("life.adult-growth", () => {
   it("un menor no cambia", () => {
@@ -55,5 +55,17 @@ describe("life.adult-growth", () => {
     const stunted = run(world(true), 18).changes?.[0] as never as { value: { massKg: number } };
     expect(grown.value.massKg).toBeGreaterThan(50);
     expect(stunted.value.massKg).toBeLessThan(grown.value.massKg);
+  });
+
+  it("gradual: un menor crece por año cumplido, sin pasos dentro del año, conserva proporciones", () => {
+    const m = (y: number) =>
+      run(world(false), y, true).changes?.[0] as never as {
+        value: { massKg: number; glycogen: number; fat: number };
+      };
+    const at10 = m(10);
+    const at12 = m(12);
+    expect(at12.value.massKg).toBeGreaterThan(at10.value.massKg);
+    expect(m(10.5).value.massKg).toBe(at10.value.massKg);
+    expect(at10.value.fat / at10.value.massKg).toBeCloseTo(1000 / 20);
   });
 });

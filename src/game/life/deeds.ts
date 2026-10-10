@@ -116,6 +116,11 @@ export function offenseOf(
     // El acreedor es quien reclama: sabe quién le debe.
     return { kind: "default", by: first, victim: second, noticedBy: [second] };
   }
+  if (e.kind === "credit.claimed" && second) {
+    // El reclamo ante la comunidad: los vecinos que le creyeron al acreedor saben quién no pagó.
+    const heard = (data?.noticedBy ?? []) as AgentId[];
+    return { kind: "default", by: first, victim: second, noticedBy: [second, ...heard] };
+  }
   if (e.kind === "scam.discovered" && second) {
     // La estafa descubierta es fe rota: se anota como incumplimiento (el comprador sabe quién fue).
     return { kind: "default", by: first, victim: second, noticedBy: [second] };

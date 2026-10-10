@@ -175,6 +175,8 @@ export interface LifeWorld {
   readonly growthSequelae?: boolean;
   /** Opt-in: al cumplir 18 la masa del cuerpo se reconstruye con la talla final (genética y secuelas de hambre infantil); apagado por defecto: sin escrituras. */
   readonly adultGrowth?: boolean;
+  /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
+  readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
   readonly nutritionCaps?: boolean;
   /**
@@ -244,6 +246,8 @@ export interface LifeWorld {
   readonly moldHintsFromCatalog?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
+  /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
+  readonly loanEnforcement?: { readonly community: string };
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -504,6 +508,9 @@ export function lifeWorld(
           goods: parts.goods,
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
+          ...(parts.loanEnforcement
+            ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
+            : {}),
         }),
         ...(parts.rentSeeds && parts.rentSeeds.length > 0
           ? [
@@ -572,7 +579,14 @@ export function lifeWorld(
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
         ...(parts.adultGrowth === true
-          ? [adultGrowthProcess({ clock: parts.clock, plans: parts.plans, traits: parts.traits })]
+          ? [
+              adultGrowthProcess({
+                clock: parts.clock,
+                plans: parts.plans,
+                traits: parts.traits,
+                gradual: parts.gradualGrowth === true,
+              }),
+            ]
           : []),
         thermalProcess({
           clock: parts.clock,
