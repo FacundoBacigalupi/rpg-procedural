@@ -61,8 +61,8 @@ import {
   setComponent,
   TRADE_RECEIPTS,
   table,
-  workBondageDay,
   WORK_DAY_UNIT,
+  workBondageDay,
 } from "../../sim/index.ts";
 
 export const LOANS_PROCESS = "life.loans";

@@ -18,12 +18,12 @@ import {
   type HeldSubstance,
   type SubstanceDef,
 } from "../body/index.ts";
+import { EMOTION_HALF_LIFE_TICKS, type EmotionSignal, emotionIntensityAt } from "./emotions.ts";
 import type { Goal } from "./goals.ts";
 import type { Memories } from "./memory.ts";
 import type { ValueId } from "./mind.ts";
 import type { NeedId } from "./utility.ts";
 import { WARM_VALENCE } from "./utility-beliefs.ts";
-import { type EmotionSignal, emotionIntensityAt, EMOTION_HALF_LIFE_TICKS } from "./emotions.ts";
 
 /** Umbral y vida media provisionales; la emoción decae en horas, aunque el recuerdo perdure. */
 export const IMMEDIATE_MIN = 0.5;

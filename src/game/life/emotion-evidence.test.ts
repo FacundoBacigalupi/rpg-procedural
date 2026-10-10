@@ -20,6 +20,7 @@ import {
   type Percept,
   type ProcessContext,
   RELATIONS,
+  strangerDims,
   VILLAGE_SQUARE,
   villageSpaces,
   WorldTruth,
@@ -132,7 +133,7 @@ function world() {
   truth.set(RELATIONS, OWNER, {
     toward: {
       [DEAD]: {
-        dims: { affection: 1, familiarity: 1, dependency: 1 },
+        dims: { ...strangerDims([]), affection: 1, familiarity: 1, dependency: 1 },
         bonds: [],
         history: [],
         updated: now,
@@ -142,8 +143,22 @@ function world() {
   });
   return truth;
 }
-const context = (truth: WorldTruth, recent: readonly Event[]): ProcessContext =>
-  ({ truth, recent, now, window: 3600, scope: "world", rng: Rng.root(7) }) as ProcessContext;
+const context = (truth: WorldTruth, recent: readonly Event[]): ProcessContext => ({
+  truth,
+  recent,
+  now,
+  window: 3600,
+  scope: "world",
+  rng: Rng.root(7),
+  windowIndex: undefined,
+  resolution: "local",
+  phase: "perceive",
+  ledger: undefined,
+  item: undefined,
+  newId() {
+    throw new Error("emotion fixture must not create entities");
+  },
+});
 
 describe("life.appraise persiste emociones opt-in", () => {
   it("false equivale a omitir; persiste miedo propio sin renovar el evento y declara un solo escritor", () => {
