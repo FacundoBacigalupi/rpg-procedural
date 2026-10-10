@@ -392,7 +392,7 @@ function withScamRumor(
 ): Rumors {
   const heard: HeardRumor = {
     root: d.event,
-    content: { kind: "default", by: d.seller, victim, severity: 1 },
+    content: { kind: "fraud", by: d.seller, victim, severity: 1 },
     at: d.tick,
     heardAt: now,
     confidence: NOTICE_CONFIDENCE,

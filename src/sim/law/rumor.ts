@@ -29,12 +29,14 @@ export const MAX_SEVERITY = 2;
 /** Desde esta severidad el hecho sube un escalón (robo → agresión). */
 export const ESCALATE_AT = 1.5;
 const ESCALATION: Readonly<Record<DeedKind, DeedKind>> = {
+  fraud: "theft",
   default: "theft",
   theft: "assault",
   assault: "assault",
 };
 /** Cuánto pesa en la fama cada clase de hecho. */
 export const KIND_WEIGHT: Readonly<Record<DeedKind, number>> = {
+  fraud: 0.4,
   default: 0.3,
   theft: 0.6,
   assault: 1,
@@ -428,7 +430,7 @@ export function reputationIn(
   if (members.length === 0) return { fame: 0, standing: 0, dominant: null };
   let knowers = 0;
   let total = 0;
-  const tally: Record<DeedKind, number> = { default: 0, theft: 0, assault: 0 };
+  const tally: Record<DeedKind, number> = { default: 0, fraud: 0, theft: 0, assault: 0 };
   for (const m of members) {
     let worst = 0;
     let kind: DeedKind | null = null;
@@ -454,7 +456,7 @@ export function reputationIn(
     tally[kind]++;
   }
   let dominant: DeedKind | null = null;
-  for (const k of ["assault", "theft", "default"] as const) {
+  for (const k of ["assault", "theft", "fraud", "default"] as const) {
     if (tally[k] > 0 && (dominant === null || tally[k] > tally[dominant])) dominant = k;
   }
   return {

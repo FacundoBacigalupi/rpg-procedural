@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { incomeNeed } from "./tradechoice.ts";
-import { noticeTrade, tradeBelieved } from "./tradeview.ts";
+import { misreadTrade, noticeTrade, tradeBelieved } from "./tradeview.ts";
+
+describe("creer un oficio equivocado", () => {
+  const all = ["weave-cloth", "forge-tools", "bake-bread"];
+  it("con la tirada bajo la chance aparenta otro oficio, nunca el cierto", () => {
+    expect(misreadTrade("weave-cloth", all, 0.2, 0.1, 0)).toBe("bake-bread");
+    expect(misreadTrade("weave-cloth", all, 0.2, 0.1, 0.99)).toBe("forge-tools");
+  });
+  it("con la tirada sobre la chance, o sin otro donde elegir, lo ve bien", () => {
+    expect(misreadTrade("weave-cloth", all, 0.2, 0.5, 0)).toBe("weave-cloth");
+    expect(misreadTrade("weave-cloth", ["weave-cloth"], 1, 0, 0)).toBe("weave-cloth");
+  });
+});
 
 describe("ocupación de oficio como creencia", () => {
   it("quien cruza al hogar anota su oficio con el día; quien no, no sabe nada", () => {

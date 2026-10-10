@@ -36,6 +36,28 @@ export interface TradeViewOptions {
   readonly assignments: readonly TradeAssignment[];
   /** Los oficios salen de `TRADE_CHOICE` (como en `tradesProcess`). */
   readonly chosen?: boolean;
+  /**
+   * Opt-in: desde la vista se puede creer un oficio equivocado. Cada vez que anota el oficio de un
+   * hogar, con probabilidad `chance` (sin calibrar) cree otro de `recipes`. Apagado: lo visto es
+   * lo cierto y no se usa RNG.
+   */
+  readonly misread?: { readonly chance: number };
+}
+
+/**
+ * El oficio que se anota al ver `recipe` (puro): con `roll` (0-1) bajo `chance` es otro de
+ * `recipes` elegido con `pick` (0-1); sin otro donde elegir, el cierto.
+ */
+export function misreadTrade(
+  recipe: string,
+  recipes: readonly string[],
+  chance: number,
+  roll: number,
+  pick: number,
+): string {
+  if (roll >= chance) return recipe;
+  const others = [...new Set(recipes)].filter((r) => r !== recipe).sort();
+  return others[Math.min(others.length - 1, Math.floor(pick * others.length))] ?? recipe;
 }
 
 /** Lo que `book` dice del oficio de `home` (undefined: no se sabe). */
@@ -102,7 +124,19 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
           const before = book;
           for (const home of homesHere) {
             if (home === watcher.home) continue;
-            book = noticeTrade(book, home, tradeOf.get(home), today);
+            const real = tradeOf.get(home);
+            let seen = real;
+            if (real !== undefined && o.misread) {
+              const rng = ctx.rng.fork("trade_misread", watcher.id, home, today);
+              seen = misreadTrade(
+                real,
+                o.recipes.map((r) => r.id),
+                o.misread.chance,
+                rng.float(),
+                rng.float(),
+              );
+            }
+            book = noticeTrade(book, home, seen, today);
           }
           if (book === before) continue;
           changes.push(

@@ -85,7 +85,7 @@ export function moralWeightOf(parts: {
 }
 
 /** Daño de un hecho propio cuando el evento no lo mide (constantes sin calibrar). */
-const HARM = { theft: 0.4, default: 0.3 } as const;
+const HARM = { theft: 0.4, fraud: 0.35, default: 0.3 } as const;
 /** Cuánto de la excusa le da el rencor que ya le tenía a la víctima. */
 const GRUDGE_EXCUSE = 0.6;
 
@@ -107,8 +107,7 @@ export function ownDeedOf(
   // Lo que se toma dentro de la casa es de la familia, no un robo (igual que la aldea).
   const home = (id: AgentId) => truth.get(PERSON, id)?.household;
   if (off.kind === "theft" && home(off.by) === home(off.victim)) return null;
-  let harm: number =
-    off.kind === "assault" ? 0.3 : HARM[off.kind === "theft" ? "theft" : "default"];
+  let harm: number = off.kind === "assault" ? 0.3 : HARM[off.kind];
   let fatal = false;
   if (off.kind === "assault") {
     const data = (e.data ?? {}) as {
@@ -196,7 +195,7 @@ export function exposureOf(truth: ReadonlyWorldTruth, by: AgentId, event: string
 /** Se puede reparar si es un robo o una deuda y la víctima sigue viva. */
 function canRepair(truth: ReadonlyWorldTruth, d: OwnDeed): boolean {
   return (
-    (d.kind === "theft" || d.kind === "default") &&
+    (d.kind === "theft" || d.kind === "fraud" || d.kind === "default") &&
     truth.get(ENTITY, d.victim)?.endedAt === undefined
   );
 }

@@ -147,6 +147,64 @@ export function rentDuePerDay(truth: ReadonlyWorldTruth, tenant: string, today: 
   return sum;
 }
 
+/** Un dueño que ofrece una parcela libre en arriendo, con el canon que pide por día. */
+export interface RentOffer {
+  readonly landlord: string;
+  readonly parcel: string;
+  readonly good: string;
+  readonly askPerDay: number;
+  readonly termDays: number;
+}
+
+/** Un hogar sin parcela que busca arriendo: lo que puede pagar por día y lo que tiene a mano. */
+export interface RentSeeker {
+  readonly tenant: string;
+  readonly maxPerDay: number;
+  /** Fondos en la moneda de la oferta; deben cubrir al menos `coverDays` de canon. */
+  readonly funds: number;
+}
+
+/**
+ * Empareja ofertas con buscadores (pura, sin RNG): las ofertas en orden de parcela, cada una va al
+ * buscador que puede pagar el canon (tope y fondos para `coverDays` días) con más fondos; desempate
+ * por id. Un hogar toma un solo arriendo y un dueño no se arrienda a sí mismo. Devuelve `RentSeed`
+ * para `rentsProcess`; sin llamarla nada cambia.
+ */
+export function matchRents(
+  offers: readonly RentOffer[],
+  seekers: readonly RentSeeker[],
+  startDay: number,
+  coverDays = 7,
+): RentSeed[] {
+  const taken = new Set<string>();
+  const out: RentSeed[] = [];
+  const sorted = [...offers].sort((a, b) =>
+    a.parcel < b.parcel ? -1 : a.parcel > b.parcel ? 1 : 0,
+  );
+  for (const o of sorted) {
+    let best: RentSeeker | undefined;
+    for (const k of seekers) {
+      if (taken.has(k.tenant) || k.tenant === o.landlord) continue;
+      if (k.maxPerDay < o.askPerDay || k.funds < o.askPerDay * coverDays) continue;
+      if (!best || k.funds > best.funds || (k.funds === best.funds && k.tenant < best.tenant))
+        best = k;
+    }
+    if (!best) continue;
+    taken.add(best.tenant);
+    out.push({
+      id: `offer:${o.parcel}:${best.tenant}`,
+      landlord: o.landlord,
+      tenant: best.tenant,
+      parcel: o.parcel,
+      good: o.good,
+      perDay: o.askPerDay,
+      startDay,
+      termDays: o.termDays,
+    });
+  }
+  return out;
+}
+
 function leaseCommitment(
   id: string,
   s: RentSeed,
@@ -316,7 +374,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
           // Aparcería: sin canon diario; se liquida al cosechar. Al vencer cierra según el atraso.
           const sh = ctx.truth.get(SHARES, r.id as never);
           if (sh?.defaulted) {
-            // Mora de aparcer�a declarada al cosechar: se acaba el uso y vuelve la posesi�n.
+            // Mora de aparcería declarada al cosechar: se acaba el uso y vuelve la posesión.
             const parcel = ctx.truth.get(PARCEL, l.parcel as never) as Parcel | undefined;
             if (parcel)
               changes.push(

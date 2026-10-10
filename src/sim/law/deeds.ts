@@ -6,8 +6,8 @@
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 
-/** `default`: no devolvió lo que le fiaron y el acreedor lo reclamó (contracts, fiado). */
-export type DeedKind = "theft" | "assault" | "default";
+/** `fraud`: estafa de calidad descubierta (economy §6). `default`: no devolvió lo que le fiaron y el acreedor lo reclamó (contracts, fiado). */
+export type DeedKind = "theft" | "assault" | "fraud" | "default";
 
 /** Cómo lo supo: lo vio, lo oyó (sin ver), se lo contaron. */
 export type DeedVia = "saw" | "heard" | "told";
@@ -67,7 +67,7 @@ export function deedsBy(known: KnownDeeds | undefined, who: AgentId): readonly D
   return (known?.deeds ?? []).filter((d) => d.by === who);
 }
 
-const GRAVITY: readonly DeedKind[] = ["assault", "theft", "default"];
+const GRAVITY: readonly DeedKind[] = ["assault", "theft", "fraud", "default"];
 
 /**
  * El hecho más grave que `knower` sabe de `who` (herir pesa más que robar, y robar más que deber).

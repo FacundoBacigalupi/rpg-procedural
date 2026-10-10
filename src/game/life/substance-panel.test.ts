@@ -7,7 +7,7 @@ import {
   type SubstanceState,
   WorldTruth,
 } from "../../sim/index.ts";
-import { seenSubstanceSigns } from "./substance-panel.ts";
+import { seenSubstanceSigns, urgeOf } from "./substance-panel.ts";
 
 describe("life.substance-panel", () => {
   const def = {
@@ -47,5 +47,11 @@ describe("life.substance-panel", () => {
     const seen = seenSubstanceSigns(t, who);
     expect(seen).toEqual([{ kind: "poison", stage: "grave" }]);
     expect(JSON.stringify(seen)).not.toContain("toxin");
+  });
+
+  it("el ansia de señal sale como palabra, sin número ni sustancia", () => {
+    expect(urgeOf(0)).toBeUndefined();
+    expect(urgeOf(0.1)).toBe("faint");
+    expect(urgeOf(0.5)).toBe("pressing");
   });
 });

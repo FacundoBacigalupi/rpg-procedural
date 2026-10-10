@@ -134,6 +134,7 @@ const BURDEN: Readonly<
 const DEED: Readonly<Record<string, string>> = {
   theft: "Lo que le sacaste",
   assault: "Lo que le hiciste",
+  fraud: "Lo que le cobraste de más",
   default: "Lo que le debés",
 };
 
@@ -156,6 +157,7 @@ const REP_STANDING = {
   feared: "te temen",
 } as const;
 const NICKNAME = {
+  fraud: "«el Estafador»",
   default: "«el Tramposo»",
   theft: "«el Ladrón»",
   assault: "«el Matón»",
