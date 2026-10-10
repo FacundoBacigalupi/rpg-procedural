@@ -8,7 +8,13 @@ import {
   RELATIONS,
   WorldTruth,
 } from "../../sim/index.ts";
-import { contagionBeliefOf, householdAuthority, householdHead, realTrust } from "./patientbonds.ts";
+import {
+  combineAuthorities,
+  contagionBeliefOf,
+  householdAuthority,
+  householdHead,
+  realTrust,
+} from "./patientbonds.ts";
 
 const ev = "event:1" as EventId;
 const home = "household:1" as HouseholdId;
@@ -111,5 +117,22 @@ describe("patientbonds", () => {
     expect(realTrust(world(), kid, doc)).toBeCloseTo(0.7);
     expect(realTrust(world(), kid, dad)).toBeCloseTo(0.5);
     expect(realTrust(world(), dad, doc)).toBeUndefined();
+  });
+
+  it("combineAuthorities pesa cada autoridad por el respeto y las suma sin orden", () => {
+    const a = combineAuthorities(world(), kid, [
+      { holder: gran, strength: 0.5 },
+      { holder: dad, strength: 1 },
+    ]);
+    // gran 0.8*0.5=0.4, dad 0.2*1=0.2 -> 1-(0.6*0.8)=0.52
+    expect(a).toBeCloseTo(0.52);
+    const b = combineAuthorities(world(), kid, [
+      { holder: dad, strength: 1 },
+      { holder: gran, strength: 0.5 },
+    ]);
+    expect(b).toBeCloseTo(a);
+    expect(combineAuthorities(world(), kid, [{ holder: kid, strength: 1 }])).toBe(0);
+    expect(combineAuthorities(world(), kid, [{ holder: doc, strength: 1 }])).toBe(0);
+    expect(combineAuthorities(world(), kid, [])).toBe(0);
   });
 });

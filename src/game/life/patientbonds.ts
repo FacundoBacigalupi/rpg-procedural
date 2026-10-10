@@ -97,6 +97,32 @@ export function householdAuthority(
   return clamp01(clamp01(respect) * contagionBeliefOf(truth, pathogen, o));
 }
 
+/** Una autoridad que ordena aislar: quién (consejo, jefe de aldea) y con qué fuerza (0-1) lo ordena. */
+export interface AuthoritySource {
+  readonly holder: AgentId;
+  readonly strength: number;
+}
+
+/**
+ * Combina autoridades (hogar, aldea, ...) sobre el paciente: cada una pesa su fuerza por el respeto
+ * creído (RELATIONS) del paciente hacia ella; se suman como "al menos una manda" (1 - prod(1 - x)),
+ * sin depender del orden. Quien es el propio paciente no cuenta; sin respeto positivo no manda.
+ */
+export function combineAuthorities(
+  truth: ReadonlyWorldTruth,
+  patient: AgentId,
+  sources: readonly AuthoritySource[],
+): number {
+  const rel = truth.get(RELATIONS, patient)?.toward;
+  let free = 1;
+  for (const s of sources) {
+    if (s.holder === patient) continue;
+    const respect = clamp01(rel?.[s.holder as string]?.dims.respect ?? 0);
+    free *= 1 - respect * clamp01(s.strength);
+  }
+  return clamp01(1 - free);
+}
+
 /**
  * Confianza del paciente en el sanador: la relación real (trust de -1..1 a 0..1, con un poco de
  * afecto) y, si además cree una fama, el promedio con ella. Sin trato ni fama, `undefined`
