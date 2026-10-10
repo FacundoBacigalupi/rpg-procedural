@@ -259,6 +259,55 @@ describe("life.loans", () => {
     expect(sub?.parent).toBe(rows[0]?.id);
   });
 
+  it("debtKnowledge anuncia los términos subrogados y sólo cambia ese payload opt-in", () => {
+    const { truth, ledger } = setup();
+    const kin = makeId("agent", 3);
+    truth.set(ENTITY, kin, { id: kin, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, kin, { born: -30 * clock.year, household: "kin" } as never);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("kin"), amount: 50000 }],
+    });
+    const s: LoanSeed = { ...seed, guarantors: [{ household: "kin", share: 1 }] };
+    const opened = make([s]).run(ctxOf(truth, ledger, 1));
+    for (const c of opened.changes ?? []) if (c.op === "set") truth.setRaw(c.table, c.id, c.value);
+    for (const p of opened.postings ?? [])
+      ledger.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+    const options = { clock, goods, seeds: [s], placeOf: () => ({ kind: "cell" }) as never };
+    const baseContext = ctxOf(truth, ledger, 11);
+    const start = n;
+    const off = loansProcess(options).run(baseContext);
+    n = start;
+    expect(
+      loansProcess({ ...options, debtKnowledge: false }).run(ctxOf(truth, ledger, 11)),
+    ).toEqual(off);
+    n = start;
+    const on = loansProcess({ ...options, debtKnowledge: true }).run(ctxOf(truth, ledger, 11));
+    const event = on.events?.find((e) => e.kind === "credit.defaulted");
+    const data = event?.data as { subrogations?: unknown[] };
+    expect(data.subrogations).toEqual([
+      expect.objectContaining({
+        creditor: kin,
+        debtor: makeId("agent", 2),
+        creditorRef: "kin",
+        debtorRef: "poor",
+        unit: GRAIN,
+        qty: 24000,
+        dueDay: 11,
+      }),
+    ]);
+    const withoutAnnouncement = {
+      ...on,
+      events: on.events?.map((e) => {
+        if (e.kind !== "credit.defaulted") return e;
+        const { subrogations: _notices, ...data } = e.data as Record<string, unknown>;
+        return { ...e, data };
+      }),
+    };
+    expect(withoutAnnouncement).toEqual(off);
+  });
+
   it("con repaySubrogation el fiador cobra al deudor original por ledger", () => {
     const { truth, ledger } = setup();
     const kin = makeId("agent", 3);

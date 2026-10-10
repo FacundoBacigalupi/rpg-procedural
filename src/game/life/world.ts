@@ -898,6 +898,7 @@ export function lifeWorld(
           : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
+          ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
           seeds: parts.loanSeeds ?? [],

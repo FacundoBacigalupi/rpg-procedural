@@ -66,6 +66,18 @@ import {
 
 export const LOANS_PROCESS = "life.loans";
 
+/** Términos que las partes conocen cuando el fiador paga, dentro de credit.defaulted. */
+export interface SubrogationNotice {
+  readonly commitment: string;
+  readonly debtor: AgentId;
+  readonly creditor: AgentId;
+  readonly debtorRef: string;
+  readonly creditorRef: string;
+  readonly unit: string;
+  readonly qty: number;
+  readonly dueDay: number;
+}
+
 /** El préstamo guardado: el compromiso económico y la semilla de la que nació. */
 export type LoanRow = LoanCommitment & {
   readonly seed: string;
@@ -117,6 +129,8 @@ export interface LoanSeed {
 }
 
 export interface LoansOptions {
+  /** Opt-in: anuncia a las partes los derechos creados cuando paga un fiador. */
+  readonly debtKnowledge?: boolean;
   readonly clock: PlanetClock;
   readonly goods: readonly GoodDef[];
   readonly seeds: readonly LoanSeed[];
@@ -699,6 +713,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             }),
           );
           // El fiador que pagó queda como acreedor del deudor (subrogación, contracts §5).
+          const subrogations: SubrogationNotice[] = [];
           for (const gp of res.guarantorsPaid) {
             const sid = ctx.newId("commitment");
             const sub = guarantorSubrogation(
@@ -710,6 +725,20 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               today,
             );
             if (!sub) continue;
+            if (o.debtKnowledge) {
+              const creditor = firstAlive(gp.id);
+              if (creditor)
+                subrogations.push({
+                  commitment: sid as string,
+                  creditor,
+                  debtor: borrowerMan,
+                  creditorRef: gp.id,
+                  debtorRef: l.borrower,
+                  unit: l.unit,
+                  qty: gp.amount,
+                  dueDay: today,
+                });
+            }
             changes.push(
               setComponent(
                 ENTITY,
@@ -718,6 +747,11 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               ),
               setComponent(COMMITMENTS, sid as never, sub),
             );
+          }
+          if (subrogations.length > 0) {
+            const source = events[k];
+            if (source)
+              events[k] = { ...source, data: { ...(source.data as object), subrogations } };
           }
           // Servidumbre (contracts §2): lo que no se cobró se salda trabajando para el acreedor.
           if (o.bondage && res.loan.status === "defaulted" && res.loss > 0) {

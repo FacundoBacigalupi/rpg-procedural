@@ -16,10 +16,11 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
-import { COMMITMENTS } from "./loans.ts";
+import { COMMITMENTS, type SubrogationNotice } from "./loans.ts";
 
 export interface DebtBelief {
   readonly commitment: string;
+  readonly parent?: string;
   readonly role: "debtor" | "creditor";
   readonly other: AgentId;
   /** Referencias del acuerdo; no convierten a todo el hogar en observador. */
@@ -53,6 +54,8 @@ export type DebtObservation =
       readonly event: EventId;
       readonly at: Tick;
       readonly fulfilled: boolean;
+      /** Saldo expresamente conocido en la devolución al fiador, no consultado en la verdad. */
+      readonly knownRemaining?: number;
     }
   | {
       readonly kind: "resolved";
@@ -86,7 +89,7 @@ export function observeDebt(book: DebtBook | undefined, observation: DebtObserva
         observation.kind === "paid"
           ? observation.fulfilled
             ? 0
-            : Math.max(0, b.remaining - observation.amount)
+            : Math.max(0, observation.knownRemaining ?? b.remaining - observation.amount)
           : Math.max(0, observation.remaining);
       const status =
         observation.kind === "resolved"
@@ -148,6 +151,29 @@ function numberIn(e: Event, key: string): number | undefined {
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
 }
 
+function subrogationsIn(e: Event): readonly SubrogationNotice[] {
+  const raw = (e.data as Record<string, unknown>).subrogations;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((value): value is SubrogationNotice => {
+    if (typeof value !== "object" || value === null) return false;
+    const n = value as Partial<SubrogationNotice>;
+    return (
+      typeof n.commitment === "string" &&
+      typeof n.debtor === "string" &&
+      typeof n.creditor === "string" &&
+      typeof n.debtorRef === "string" &&
+      typeof n.creditorRef === "string" &&
+      typeof n.unit === "string" &&
+      typeof n.qty === "number" &&
+      Number.isFinite(n.qty) &&
+      n.qty > 0 &&
+      typeof n.dueDay === "number" &&
+      Number.isFinite(n.dueDay) &&
+      n.dueDay >= 0
+    );
+  });
+}
+
 /** Solo participantes conscientes: recent es evidencia de su acto, no difusión a terceros. */
 export function debtKnowledgeProcess(): ProcessDef {
   return {
@@ -168,15 +194,34 @@ export function debtKnowledgeProcess(): ProcessDef {
         ctx.truth.get(ENTITY, who)?.endedAt === undefined &&
         ctx.truth.get(BODY_STATE, who)?.consciousness !== "unconscious" &&
         ctx.truth.get(BODY_STATE, who)?.activity !== "sleep";
+      const note = (who: AgentId, observation: DebtObservation) => {
+        if (!aware(who)) return;
+        const prev = books.get(who) ?? ctx.truth.get(DEBT_BOOK, who);
+        const next = observeDebt(prev, observation);
+        if (next.items.some((b, i) => b !== prev?.items[i])) books.set(who, next);
+      };
       for (const e of ctx.recent) {
-        if (e.kind !== "credit.loaned" && e.kind !== "credit.paid" && e.kind !== "credit.defaulted")
+        if (
+          e.kind !== "credit.loaned" &&
+          e.kind !== "credit.paid" &&
+          e.kind !== "credit.defaulted" &&
+          e.kind !== "credit.subrogated_paid"
+        )
           continue;
         const data = e.data as Record<string, unknown>;
-        if (typeof data.loan !== "string") continue;
-        const contract = ctx.truth.get(COMMITMENTS, data.loan as never);
-        if (contract?.kind !== "loan") continue;
+        if (e.kind === "credit.defaulted" && numberIn(e, "loss") === undefined) continue;
+        const subrogatedPayment = e.kind === "credit.subrogated_paid";
+        const id = subrogatedPayment ? data.commitment : data.loan;
+        if (typeof id !== "string") continue;
+        const contract = ctx.truth.get(COMMITMENTS, id as never);
+        if (contract?.kind !== (subrogatedPayment ? "subrogation" : "loan")) continue;
         const obligation = contract.obligations[0];
         if (obligation?.duty.kind !== "deliver") continue;
+        if (
+          subrogatedPayment &&
+          (data.unit !== obligation.duty.unit || data.parent !== contract.parent)
+        )
+          continue;
         const actors = e.actors as readonly AgentId[];
         const debtor = actors[e.kind === "credit.loaned" ? 1 : 0];
         const creditor = actors[e.kind === "credit.loaned" ? 0 : 1];
@@ -192,7 +237,6 @@ export function debtKnowledgeProcess(): ProcessDef {
           [creditor, debtor, "creditor"],
         ] as const) {
           if (!aware(who)) continue;
-          const prev = books.get(who) ?? ctx.truth.get(DEBT_BOOK, who);
           let observation: DebtObservation;
           if (e.kind === "credit.loaned") {
             const principal = numberIn(e, "principal");
@@ -227,16 +271,19 @@ export function debtKnowledgeProcess(): ProcessDef {
                 sources: [e.id],
               },
             };
-          } else if (e.kind === "credit.paid") {
+          } else if (e.kind === "credit.paid" || subrogatedPayment) {
             const amount = numberIn(e, "paid");
             if (amount === undefined) continue;
+            const left = subrogatedPayment ? numberIn(e, "left") : undefined;
+            if (subrogatedPayment && left === undefined) continue;
             observation = {
               kind: "paid",
               commitment: contract.id,
               amount,
               event: e.id,
               at: e.tick,
-              fulfilled: data.status === "repaid",
+              fulfilled: subrogatedPayment ? left === 0 : data.status === "repaid",
+              ...(left === undefined ? {} : { knownRemaining: left }),
             };
           } else {
             const remaining = numberIn(e, "loss");
@@ -250,8 +297,50 @@ export function debtKnowledgeProcess(): ProcessDef {
               at: e.tick,
             };
           }
-          const next = observeDebt(prev, observation);
-          if (next.items.some((b, i) => b !== prev?.items[i])) books.set(who, next);
+          note(who, observation);
+        }
+        if (e.kind !== "credit.defaulted") continue;
+        for (const n of subrogationsIn(e)) {
+          const sub = ctx.truth.get(COMMITMENTS, n.commitment as never);
+          const duty = sub?.obligations[0];
+          if (
+            sub?.kind !== "subrogation" ||
+            sub.parent !== contract.id ||
+            sub.originEventId !== e.id ||
+            duty?.duty.kind !== "deliver" ||
+            duty.debtor !== n.debtorRef ||
+            duty.creditor !== n.creditorRef ||
+            duty.duty.unit !== n.unit ||
+            n.debtor !== debtor ||
+            ctx.truth.get(PERSON, n.debtor)?.household !== n.debtorRef ||
+            ctx.truth.get(PERSON, n.creditor)?.household !== n.creditorRef
+          )
+            continue;
+          for (const [who, other, role] of [
+            [n.debtor, n.creditor, "debtor"],
+            [n.creditor, n.debtor, "creditor"],
+          ] as const) {
+            note(who, {
+              kind: "opened",
+              belief: {
+                commitment: n.commitment,
+                parent: contract.id,
+                role,
+                other,
+                debtorRef: n.debtorRef,
+                creditorRef: n.creditorRef,
+                unit: n.unit,
+                total: n.qty,
+                remaining: n.qty,
+                dueDay: n.dueDay,
+                status: "active",
+                originEventId: e.id,
+                learnedAt: e.tick,
+                confidence: 1,
+                sources: [e.id],
+              },
+            });
+          }
         }
       }
       return books.size === 0

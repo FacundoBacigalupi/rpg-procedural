@@ -163,7 +163,8 @@ Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
 marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
 la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
 unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
-El libro cubre préstamos, no fiado, subrogaciones ni servidumbre.
+El libro cubre préstamos y subrogaciones conocidas; el fiado y la servidumbre
+corresponden a los subítems posteriores del ROADMAP.
 
 **Proyección a metas (2026-10-10, f3b2):** `life.decide` con `debtKnowledge` lee
 solo el libro propio y deriva `medium:debt:<contraparte>` incluso sin memoria
@@ -175,6 +176,19 @@ con desempate canónico por id; no suma cantidades de unidades distintas.
 Un pago desconocido no reduce la meta aunque el contrato real esté saldado.
 Al conocerse el cumplimiento desaparece; `persistGoalLayers` sigue siendo la
 opción independiente que conserva las capas y registra nacimientos y fines.
+
+**Subrogaciones conocidas (2026-10-10, f3b3):** con `debtKnowledge`, el evento
+existente `credit.defaulted` anuncia en `subrogations` el id del nuevo derecho,
+las partes que participan, sus referencias contractuales y cantidad/unidad/plazo.
+El fiador aprende su desembolso propio aunque no esté entre los actores
+principales del evento. El deudor consciente conoce la nueva obligación y el
+saldo anunciado `loss` del préstamo original, sin contar dos veces lo pagado
+por el fiador. Quien no conoce ese pago conserva su saldo anterior y no recibe
+el derecho nuevo por existir en `COMMITMENTS`. `credit.subrogated_paid` actualiza
+solo los libros de sus partes con `paid` y `left` conocidos: puede corregir un
+saldo viejo, no leer el `performed` actual. Cero pendiente conocido libera la
+meta. Sin la opción, los eventos y el estado real de los préstamos conservan
+exactamente su forma anterior.
 
 ```ts
 interface EnforcerRef {
