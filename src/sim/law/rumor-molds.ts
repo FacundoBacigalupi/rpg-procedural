@@ -25,7 +25,18 @@ export interface LocationRumor {
   readonly vague: boolean;
 }
 
-export type MoldRumor = PriceRumor | LocationRumor;
+/**
+ * «`about` tiene `attr` = `value`» (vive, murió, está en...): lo que se cuenta de una persona o cosa.
+ * `about` es el id como texto (no es un lugar: no se corre ni se vuelve vago al contarlo).
+ */
+export interface AttrRumor {
+  readonly mold: "attr";
+  readonly about: string;
+  readonly attr: string;
+  readonly value: string | number | boolean;
+}
+
+export type MoldRumor = PriceRumor | LocationRumor | AttrRumor;
 
 export type MoldDistortion = "rounded" | "inflated" | "drifted" | "blurred";
 
@@ -61,6 +72,9 @@ export function distortMold(
   const r1 = rng.float();
   const r2 = rng.float();
   const changes: MoldDistortion[] = [];
+  // Un atributo se cuenta tal cual: la deformación de lo que cree sobre alguien es de la creencia,
+  // no del molde (los sorteos se consumen igual para no mover el rng de los demás).
+  if (r.mold === "attr") return { rumor: r, changes };
   if (r.mold === "price") {
     let amount = r.amount;
     if (r1 < clamp01(0.6 * (1 - ctx.memory) + 0.2 * ctx.hurry)) {
@@ -119,6 +133,10 @@ export function moldDistance(truth: MoldRumor, c: MoldRumor): number {
   if (truth.mold === "price" && c.mold === "price") {
     if (truth.good !== c.good || !samePlace(truth.market, c.market)) return 1;
     return round(Math.min(1, Math.abs(c.amount - truth.amount) / Math.max(1, truth.amount)));
+  }
+  if (truth.mold === "attr" && c.mold === "attr") {
+    if (truth.about !== c.about || truth.attr !== c.attr) return 1;
+    return truth.value === c.value ? 0 : 1;
   }
   if (truth.mold === "location" && c.mold === "location") {
     if (truth.what !== c.what) return 1;

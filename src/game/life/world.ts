@@ -172,6 +172,8 @@ export interface LifeWorld {
    * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
+  readonly cravingCues?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -293,6 +295,7 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.cravingCues === true ? { cravingCues: true } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -615,6 +618,7 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.cravingCues === true ? { cravingCues: true } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

@@ -10,6 +10,7 @@ export * from "./parcelField.ts";
 export * from "./price.ts";
 export * from "./priceMemory.ts";
 export * from "./quality.ts";
+export * from "./scam.ts";
 export * from "./soil.ts";
 export * from "./spoilage.ts";
 export * from "./trades.ts";

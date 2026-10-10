@@ -25,4 +25,12 @@ describe("chisme de moldes", () => {
     const c = keepMold(b, heard(30, 0.9));
     expect(c.items[0]?.rumor).toEqual(price(30));
   });
+
+  it("un atributo oído tiene clave por persona y atributo, no por valor", () => {
+    const a = { mold: "attr", about: "p1", attr: "alive", value: true } as const;
+    const b = { ...a, value: false };
+    expect(moldKey(a)).toBe(moldKey(b));
+    const book = keepMold(undefined, { ...heard(1, 0.6), rumor: b });
+    expect(book.items[0]?.rumor).toEqual(b);
+  });
 });

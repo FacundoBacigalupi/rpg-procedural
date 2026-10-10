@@ -18,6 +18,7 @@ export * from "./process.ts";
 export * from "./state.ts";
 export * from "./stunting.ts";
 export * from "./substance.ts";
+export * from "./substance-cues.ts";
 export * from "./substance-effects.ts";
 export * from "./substance-state.ts";
 export * from "./thermal.ts";
