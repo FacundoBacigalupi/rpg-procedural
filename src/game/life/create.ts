@@ -150,6 +150,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
+import type { PawnLots } from "./pawn.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -209,6 +210,8 @@ export interface LifeOptions {
   readonly loanContagionEffects?: LifeParts["loanContagionEffects"];
   /** Opt-in (con `loanContagion`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
+  /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
+  readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
   /** Opt-in: el verbo `hire` se ejecuta (`LifeParts.hire`); apagado por defecto. */
   readonly hire?: LifeParts["hire"];
 }
@@ -236,6 +239,7 @@ export function optInParts(
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
+  | "pawn"
   | "hire"
   | "tradeNeeds"
 > {
@@ -274,6 +278,7 @@ export function optInParts(
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
+    ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
