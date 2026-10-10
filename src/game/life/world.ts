@@ -49,6 +49,7 @@ import {
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess, type BoilOptions } from "./act.ts";
+import { adultGrowthProcess } from "./adultGrowth.ts";
 import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
@@ -167,6 +168,8 @@ export interface LifeWorld {
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
   readonly growthSequelae?: boolean;
+  /** Opt-in: al cumplir 18 la masa del cuerpo se reconstruye con la talla final (genética y secuelas de hambre infantil); apagado por defecto: sin escrituras. */
+  readonly adultGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
   readonly nutritionCaps?: boolean;
   /**
@@ -551,6 +554,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
+        ...(parts.adultGrowth === true
+          ? [adultGrowthProcess({ clock: parts.clock, plans: parts.plans, traits: parts.traits })]
+          : []),
         thermalProcess({
           clock: parts.clock,
           map: parts.map,
