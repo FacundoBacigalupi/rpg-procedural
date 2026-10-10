@@ -3,9 +3,11 @@ import {
   believedQuality,
   claimedQuality,
   discoveryChance,
+  inflateFor,
   isScam,
   scamAftermath,
   scamMargin,
+  trustFromRelation,
 } from "./index.ts";
 
 describe("estafa de calidad", () => {
@@ -27,5 +29,22 @@ describe("estafa de calidad", () => {
     const a = scamAftermath(0.3, 0.7, 1);
     expect(a.trustDrop).toBeGreaterThan(scamAftermath(0.3, 0.7, 0).trustDrop);
     expect(a.overpaid).toBeGreaterThan(0);
+  });
+});
+
+describe("política de estafa", () => {
+  it("el honesto o el que quiere al comprador no infla; la necesidad empuja", () => {
+    expect(inflateFor({ honesty: 1, boldness: 1, need: 1 })).toBe(0);
+    expect(inflateFor({ honesty: 0.1, boldness: 0.5, need: 1, care: 1 })).toBe(0);
+    const calm = inflateFor({ honesty: 0.2, boldness: 0.5, need: 0 });
+    const needy = inflateFor({ honesty: 0.2, boldness: 0.5, need: 1 });
+    expect(needy).toBeGreaterThan(calm);
+    expect(needy).toBeLessThanOrEqual(0.4);
+  });
+
+  it("la confianza sale de la relación: el extraño 0.5, el resentido menos", () => {
+    expect(trustFromRelation({})).toBe(0.5);
+    expect(trustFromRelation({ trust: 0.8, affection: 0.5 })).toBeGreaterThan(0.5);
+    expect(trustFromRelation({ trust: -0.5, resentment: 0.8 })).toBeLessThan(0.3);
   });
 });

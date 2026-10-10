@@ -10,6 +10,56 @@ function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
 }
 
+/** Insumos de la política de quién estafa y cuánto (todo 0-1). */
+export interface InflateInputs {
+  /** Honestidad del temperamento: 1 nunca infla. */
+  readonly honesty: number;
+  /** Audacia: el audaz se anima a inflar más. */
+  readonly boldness: number;
+  /** Necesidad (hambre, deuda): la carencia empuja a estafar. */
+  readonly need: number;
+  /** Cuánto le importa el comprador (afecto/vínculo, 0-1): al querido no se le estafa. */
+  readonly care?: number;
+}
+
+/** Por debajo de esta propensión no estafa: la honestidad plena y la saciedad lo dejan en cero. */
+export const SCAM_FLOOR = 0.15;
+/** Tope de lo que se atreve a mejorar un lote. */
+export const SCAM_MAX_INFLATE = 0.4;
+
+/**
+ * Cuánto mejora el vendedor lo que ofrece (0 = honesto). Propensión = deshonestidad ponderada por
+ * la necesidad; el que quiere al comprador no estafa. Puro y monótono: más necesidad, menos
+ * honestidad o más audacia nunca inflan menos.
+ */
+export function inflateFor(i: InflateInputs): number {
+  const dishonest = 1 - clamp(i.honesty, 0, 1);
+  const drive =
+    dishonest * (0.4 + 0.6 * clamp(i.need, 0, 1)) * (1 - 0.9 * clamp(i.care ?? 0, 0, 1));
+  if (drive < SCAM_FLOOR) return 0;
+  return clamp(drive * (0.5 + clamp(i.boldness, 0, 1)) * SCAM_MAX_INFLATE, 0, SCAM_MAX_INFLATE);
+}
+
+/**
+ * Cuánto le cree el comprador al vendedor (0-1) según lo que siente por él: la confianza
+ * (-1..1) pesa más, el afecto y el respeto suman y el resentimiento resta. El extraño (todo en
+ * su base) queda cerca de 0.5.
+ */
+export function trustFromRelation(dims: {
+  readonly trust?: number;
+  readonly affection?: number;
+  readonly respect?: number;
+  readonly resentment?: number;
+}): number {
+  const x =
+    0.5 +
+    0.35 * (dims.trust ?? 0) +
+    0.1 * (dims.affection ?? 0) +
+    0.05 * (dims.respect ?? 0) -
+    0.2 * clamp(dims.resentment ?? 0, 0, 1);
+  return clamp(x, 0, 1);
+}
+
 /** Lo que el vendedor dice del lote: la real más lo que infla (0 = honesto), con tope en 1. */
 export function claimedQuality(real: number, inflate: number): number {
   return clamp(real + Math.max(0, inflate), 0, 1);
