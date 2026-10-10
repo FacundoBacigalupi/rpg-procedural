@@ -41,9 +41,11 @@ import {
   relationship,
   type StateChange,
   setComponent,
+  TREATMENT,
   table,
 } from "../../sim/index.ts";
 import { glanceAcuity, lookAcuity } from "./looking.ts";
+import { healerRenown } from "./medicine.ts";
 import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
 import { TRADE_VIEW } from "./tradeview.ts";
 
@@ -74,6 +76,38 @@ export function standingRumorsOf(book: NeighborStandings | undefined): readonly 
 export function distortStanding(r: MoldRumor, memory: number, roll: number): MoldRumor {
   if (r.mold !== "attr" || r.attr !== "standing" || r.value !== "tight") return r;
   return roll < STANDING_INFLATE * (1 - memory) ? { ...r, value: "broke" } : r;
+}
+
+/** La fama de un sanador como rumor `attr` `renown` (0-1, dos decimales). */
+export function renownRumor(healer: string, renown: number): MoldRumor {
+  return { mold: "attr", about: healer, attr: "renown", value: Math.round(renown * 100) / 100 };
+}
+
+/** La fama de `healer` que `who` cree (rumor `renown` de su libro, 0-1); `undefined` si no sabe nada. */
+export function renownBelieved(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  healer: AgentId,
+): number | undefined {
+  const key = moldKey(renownRumor(healer, 0));
+  const r = truth.get(MOLD_RUMORS, who)?.items.find((x) => moldKey(x.rumor) === key)?.rumor;
+  return r && r.mold === "attr" && typeof r.value === "number" ? r.value : undefined;
+}
+
+/** Lo que un paciente vio de cada sanador que lo trató: la fama de lo que le pasó a él (puro, orden por id). */
+export function renownRumorsOf(
+  treatments: readonly { readonly healer: string; readonly effect: number }[],
+): readonly MoldRumor[] {
+  const by = new Map<string, { n: number; helped: number }>();
+  for (const t of treatments) {
+    const v = by.get(t.healer) ?? { n: 0, helped: 0 };
+    v.n += 1;
+    if (t.effect > 0.3) v.helped += 1;
+    by.set(t.healer, v);
+  }
+  return [...by.keys()]
+    .sort()
+    .map((h) => renownRumor(h, healerRenown(by.get(h)?.n ?? 0, by.get(h)?.helped ?? 0)));
 }
 
 /** Lo que alguien cree de oídas (o vio) de un molde, y de quién lo oyó. */
@@ -126,6 +160,13 @@ export interface MoldGossipOptions {
    * Apagado: sin lectura de esa tabla ni cambios.
    */
   readonly neighborStanding?: boolean;
+  /**
+   * Opt-in (information §4, body-health §6): lo que el paciente vio de quien lo trató (`TREATMENT`:
+   * mejoró o no) entra como rumor `attr` `renown` de primera mano y viaja con la deformación y la
+   * confianza de siempre. La fama del sanador es esa creencia, no una cuenta del estado. Apagado:
+   * no lee `TREATMENT`.
+   */
+  readonly fromHealing?: boolean;
   /** Probabilidad por hora de que alguien cuente algo a un vecino (sin calibrar). */
   readonly tellChance?: number;
   /**
@@ -249,6 +290,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
       ...(o.fromPriceBeliefs ? [PRICE_BELIEFS.name] : []),
       ...(o.neighborStanding ? [NEIGHBOR_STANDING.name] : []),
+      ...(o.fromHealing ? [TREATMENT.name] : []),
       ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
     writes: [MOLD_RUMORS.name],
@@ -277,6 +319,26 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       if (o.neighborStanding) {
         for (const id of truth.ids(PERSON).sort() as AgentId[]) {
           for (const rumor of standingRumorsOf(truth.get(NEIGHBOR_STANDING, id))) {
+            const b = bookOf(id);
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+            if (prev && prev.hops === 0 && JSON.stringify(prev.rumor) === JSON.stringify(rumor)) {
+              continue;
+            }
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
+            );
+            dirty.add(id);
+          }
+        }
+      }
+      if (o.fromHealing) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          for (const rumor of renownRumorsOf(truth.get(TREATMENT, id)?.treatments ?? [])) {
             const b = bookOf(id);
             const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
             if (prev && prev.hops === 0 && JSON.stringify(prev.rumor) === JSON.stringify(rumor)) {

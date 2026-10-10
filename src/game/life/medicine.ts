@@ -316,6 +316,23 @@ export interface MedicineOptions {
    * `stepSubstance` (nivel al pico) en vez del efecto fijo. Sin esto, el efecto fijo de siempre.
    */
   readonly doses?: Readonly<Record<string, RemedyDose>> | undefined;
+  /**
+   * Opt-in (body-health §6, information §4): el enfermo elige a quién llamar por la fama que cree
+   * (`renownOf`: lo que sabe de oídas o vio, `undefined` = no sabe, prior 0,5) y paga `healerFee`
+   * con asiento al ledger (`fee.unit`) si le alcanza; si no, lo atienden igual y no hay cobro.
+   * Apagado: orden de siempre, sin cobro.
+   */
+  readonly fee?:
+    | {
+        readonly unit: LedgerUnit;
+        readonly base: number;
+        readonly renownOf: (
+          truth: ReadonlyWorldTruth,
+          patient: AgentId,
+          healer: AgentId,
+        ) => number | undefined;
+      }
+    | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -423,6 +440,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       ...(o.frostbiteSigns || o.frostbiteOrders ? [FROSTBITE.name, AMPUTATIONS.name] : []),
       ...(o.frostbiteOrders ? [FROSTBITE_ORDERS.name] : []),
       ...(o.altitudeSigns ? [ACCLIMATIZATION.name] : []),
+      ...(o.fee ? ["law.mold_rumors"] : []),
     ],
     writes: o.frostbiteOrders ? [TREATMENT.name, FROSTBITE_ORDERS.name] : [TREATMENT.name],
     run(ctx) {
@@ -472,9 +490,12 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           if (had.some((t) => t.pathogen === def.id)) continue;
           const hours = (ctx.now - inf.exposedAt) / tph;
           if (infectionStage(def, inf, hours) !== "symptomatic") continue;
-          const healer = healers.find(
+          const free = healers.filter(
             (h) => h.agent !== patient && (taken.get(h.agent) ?? 0) < (h.capacity ?? 3),
           );
+          const fee = o.fee;
+          const believed = (h: Healer) => fee?.renownOf(ctx.truth, patient, h.agent) ?? 0.5;
+          const healer = fee ? [...free].sort((a, b) => believed(b) - believed(a))[0] : free[0];
           if (!healer) continue;
           taken.set(healer.agent, (taken.get(healer.agent) ?? 0) + 1);
 
@@ -558,24 +579,42 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
             : 0;
           const harm = remedy && given && !real ? remedyHarm(remedy, given.dose) : 0;
           const iso = healer.isolation ?? 0;
+          const transfers: PostingDraft["transfers"][number][] = [];
           if (spent) {
-            postings.push({
-              event: draftEvent(events.length),
-              transfers: [
-                {
-                  unit: spent.unit,
-                  from: spent.from,
-                  to: externalAccount(REMEDY_USED),
-                  amount: 1,
-                },
-              ],
+            transfers.push({
+              unit: spent.unit,
+              from: spent.from,
+              to: externalAccount(REMEDY_USED),
+              amount: 1,
             });
           }
+          let paid = 0;
+          if (fee && ctx.ledger) {
+            const owed = Math.round(healerFee(fee.base, healer.skill, believed(healer)));
+            const acc = holderAccount(patient as unknown as HolderRef);
+            const used = reserved.get(`${acc}|${fee.unit}`) ?? 0;
+            if (owed > 0 && ctx.ledger.balance(acc, fee.unit) - used >= owed) {
+              reserved.set(`${acc}|${fee.unit}`, used + owed);
+              transfers.push({
+                unit: fee.unit,
+                from: acc,
+                to: holderAccount(healer.agent as unknown as HolderRef),
+                amount: owed,
+              });
+              paid = owed;
+            }
+          }
+          if (transfers.length > 0) postings.push({ event: draftEvent(events.length), transfers });
           events.push({
             kind: "body.treated",
             actors: [healer.agent, patient],
             place: o.placeOf(ctx.truth, patient),
-            data: { pathogen: def.id, remedy: remedy?.id ?? null, quarantine: iso > 0 },
+            data: {
+              pathogen: def.id,
+              remedy: remedy?.id ?? null,
+              quarantine: iso > 0,
+              ...(fee ? { paid } : {}),
+            },
             emissions: {},
             causes: [{ kind: "event", event: draftEvent(k) }],
           });

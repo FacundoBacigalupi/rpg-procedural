@@ -356,3 +356,56 @@ describe("life.medicine, remedio con dosis real", () => {
     expect(out.changes?.some((c) => c.table === PERSON_SUBSTANCE.name)).toBe(true);
   });
 });
+
+describe("life.medicine, fama por rumor y cobro", () => {
+  const doc2 = "agent:4" as AgentId;
+  const unit = "unit:coin" as never;
+  const twoHealers = () => {
+    const t = world();
+    t.set(
+      ENTITY,
+      doc2 as EntityRef,
+      {
+        id: doc2,
+        originEventId: "event:1" as EventId,
+        createdAt: 0,
+      } as never,
+    );
+    return t;
+  };
+  const balances = (m: Record<string, number>) =>
+    ({ balance: (acc: string) => m[acc] ?? 0, holdings: () => [] }) as never;
+  const run = (renown: Record<string, number>, purse: number) => {
+    const t = twoHealers();
+    const c = {
+      ...ctx(t, clock.day * 2),
+      ledger: balances({ [holderAccount(sick as unknown as HolderRef)]: purse }),
+    };
+    return medicineProcess({
+      clock,
+      healers: [healer, { ...healer, agent: doc2 }],
+      fee: { unit, base: 10, renownOf: (_t, _p, h) => renown[h] },
+      placeOf: () => place,
+    }).run(c as never);
+  };
+
+  it("el enfermo elige al de mejor fama creída y le paga con asiento", () => {
+    const out = run({ [doc]: 0.2, [doc2]: 0.9 }, 100);
+    const treated = out.events?.find((e) => e.kind === "body.treated");
+    expect(treated?.actors[0]).toBe(doc2);
+    const tr = out.postings?.[0]?.transfers[0];
+    expect(tr?.to).toBe(holderAccount(doc2 as unknown as HolderRef));
+    expect(tr?.amount).toBe(Math.round(healerFee(10, 1, 0.9)));
+    expect(run({ [doc]: 0.2, [doc2]: 0.9 }, 100)).toEqual(out);
+  });
+
+  it("sin bolsa lo atienden igual y no hay cobro; sin la opción no hay cobro", () => {
+    const out = run({ [doc2]: 0.9 }, 0);
+    expect(out.postings).toBeUndefined();
+    expect(out.events?.some((e) => e.kind === "body.treated")).toBe(true);
+    const off = medicineProcess({ clock, healers: [healer], placeOf: () => place }).run(
+      ctx(world(), clock.day * 2),
+    );
+    expect(off.postings).toBeUndefined();
+  });
+});

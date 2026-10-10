@@ -11,7 +11,7 @@ import type {
   PlanetClock,
   Seed,
 } from "../../core/index.ts";
-import { makeId, Rng } from "../../core/index.ts";
+import { ledgerUnit, makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type BodyPlanDef,
@@ -97,6 +97,7 @@ import {
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
+  renownBelieved,
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
@@ -168,6 +169,11 @@ export interface LifeWorld {
   readonly healerSchool?: HealerSchool;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
+  /**
+   * Opt-in (la fama viaja con `moldGossip.fromHealing`): el enfermo elige sanador por la
+   * fama que cree (rumor `renown` de su libro) y le paga `healerFee` (base `base`, en `unit`) con asiento.
+   */
+  readonly healerFee?: { readonly unit: string; readonly base: number };
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -861,6 +867,15 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          ...(parts.healerFee
+            ? {
+                fee: {
+                  unit: ledgerUnit(parts.healerFee.unit),
+                  base: parts.healerFee.base,
+                  renownOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                },
+              }
+            : {}),
           doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
