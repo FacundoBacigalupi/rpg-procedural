@@ -60,6 +60,7 @@ import {
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
+import { bondageAbuseChance } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
@@ -333,6 +334,8 @@ export interface LifeWorld {
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: la mora con pérdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
   readonly loanBondage?: BondageTerms;
+  /** Opt-in (con `loanBondage`): `abuse.chance` sale del temperamento, la necesidad y la cultura del acreedor (`bondageAbuseChance`). */
+  readonly loanBondageAbuse?: { readonly reputationCost: number };
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Opt-in: cada tanto arma ofertas y buscadores de arriendo desde el estado (`rentMarketFromState` + `matchRents`). */
@@ -683,7 +686,21 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
-          ...(parts.loanBondage ? { bondage: parts.loanBondage } : {}),
+          ...(parts.loanBondage
+            ? {
+                bondage: {
+                  ...parts.loanBondage,
+                  ...(parts.loanBondageAbuse && !parts.loanBondage.abuse
+                    ? {
+                        abuse: {
+                          chance: bondageAbuseChance(parts.traits, scamNeedOf(parts.plans)),
+                          reputationCost: parts.loanBondageAbuse.reputationCost,
+                        },
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           ...(parts.loanContagion !== undefined && parts.loanContagionEffects
             ? { contagionCaution: parts.loanContagionEffects }
             : {}),
