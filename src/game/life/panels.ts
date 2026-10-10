@@ -44,6 +44,7 @@ import {
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
+import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -137,6 +138,8 @@ export interface CharacterPanel {
     readonly standing: "tainted" | "bad" | "feared";
     readonly nickname: DeedKind | null;
   };
+  /** Opt-in: señales perceptibles de sustancias (sin nombre de sustancia), de sí y de los vistos. */
+  readonly substances?: SubstancePanel;
   /** Lo que cree que sabe hacer (su autoimagen, no la verdad ni las horas), sin niveles. */
   readonly skills: readonly {
     readonly id: string;
@@ -159,6 +162,8 @@ export const REPUTATION_NOTICED = 0.15;
 
 export interface CharacterPanelOptions {
   readonly reputation?: boolean;
+  /** Opt-in: señales de sustancias propias y de los que ve (`substances`). */
+  readonly substances?: boolean;
 }
 
 export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): CharacterPanel {
@@ -231,6 +236,7 @@ export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): 
       : {}),
     ...conscienceOf(w),
     ...(opts.reputation ? reputationOf(w) : {}),
+    ...(opts.substances ? { substances: substancePanel(w) } : {}),
     skills,
   };
 }

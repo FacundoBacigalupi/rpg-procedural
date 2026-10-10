@@ -91,7 +91,7 @@ import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
-import { type SubstanceDose, substancesProcess } from "./substances.ts";
+import { type ConsumableDef, type SubstanceDose, substancesProcess } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
@@ -133,6 +133,8 @@ export interface LifeWorld {
   readonly healerRealSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
+  /** Opt-in: el sanador también ve los signos de la congelación. */
+  readonly healerFrostbiteSigns?: boolean;
   /** Remedio a unidad del ledger: darlo gasta un bien real (del sanador o del enfermo); sin existencias no se da. Sin esto, remedios sin costo. */
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
@@ -148,6 +150,8 @@ export interface LifeWorld {
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
   readonly growthSequelae?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
+  readonly nutritionCaps?: boolean;
   /**
    * Opt-in: altitud real del hex (`LocalMap.elevationM`): corre `life.altitude` (aclimatación en
    * `ACCLIMATIZATION`), el frío sigue el gradiente con la elevación y la resistencia de `decide`/`act`
@@ -162,6 +166,12 @@ export interface LifeWorld {
    * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
    */
   readonly frostbite?: boolean;
+  /**
+   * Opt-in: bienes que son sustancias de consumo (body-health §9): el verbo `consume` los toma
+   * (`life.act`: gasta una unidad y suma una dosis con evento) y `life.decide` lo ofrece con
+   * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
+   */
+  readonly consumables?: readonly ConsumableDef[];
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -281,6 +291,8 @@ export function lifeWorld(
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
+          ...(parts.consumables ? { consumables: parts.consumables } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -450,6 +462,7 @@ export function lifeWorld(
           school: parts.healerSchool,
           stock: parts.remedyStock,
           substanceSigns: parts.healerSubstanceSigns === true,
+          frostbiteSigns: parts.healerFrostbiteSigns === true,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           placeOf: placeOf(parts, village),
         }),
@@ -600,6 +613,8 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
+          ...(parts.consumables ? { consumables: parts.consumables } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

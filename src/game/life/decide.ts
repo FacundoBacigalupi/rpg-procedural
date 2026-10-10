@@ -31,6 +31,7 @@ import {
   capabilitiesOf,
   closeness,
   coreGoals,
+  DEFICIENCY_EFFECTS,
   type DimensionDef,
   decideByUtility,
   drivesFor,
@@ -38,6 +39,7 @@ import {
   FROSTBITE,
   type Goal,
   type GoodDef,
+  GROWTH_SEQUELAE,
   goalChanges,
   goalDrives,
   goodUnit,
@@ -91,7 +93,8 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
-import { acuteOf } from "./substances.ts";
+import { applyDeficiency } from "./deficiencyCaps.ts";
+import { acuteOf, type ConsumableDef } from "./substances.ts";
 import { applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -143,6 +146,13 @@ export interface DecideOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
+  readonly nutritionCaps?: boolean;
+  /**
+   * Opt-in: sustancias de consumo que tiene en la despensa que cree tener: el verbo `consume`
+   * las nombra y el ansia (`serves: craving`) lo empuja. Apagado, no hay candidata nueva.
+   */
+  readonly consumables?: readonly ConsumableDef[];
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -169,6 +179,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       MENTAL.name,
       LOCATION.name,
       ACCLIMATIZATION.name,
+      DEFICIENCY_EFFECTS.name,
+      GROWTH_SEQUELAE.name,
       FROSTBITE.name,
       AMPUTATIONS.name,
       PLACE.name,
@@ -331,7 +343,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : [];
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
       const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
-      const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+      const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+      const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {
@@ -369,13 +382,19 @@ export function decideProcess(o: DecideOptions): ProcessDef {
 
       // La despensa que cree tener: la de su casa, que conoce (no hay foto de NPC todavía).
       const larder = ctx.ledger?.holdings(holderAccount(person.household as unknown as HolderRef));
-      const texts = pantryTexts(
+      const pantry = pantryTexts(
         (o.goods ?? []).flatMap((g) => {
           const unit = goodUnit(g);
           const amount = larder?.find((h) => h.unit === unit)?.amount ?? 0;
           return g.form === "good" ? [{ name: g.name, amount }] : [];
         }),
       );
+      const stash = (o.consumables ?? []).flatMap((c) => {
+        const g = (o.goods ?? []).find((x) => x.id === c.good);
+        const have = g ? (larder?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
+        return g && have >= 1 ? [g.name] : [];
+      });
+      const texts = stash.length > 0 ? { ...pantry, consume: stash.sort() } : pantry;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
         catalog: o.catalog,

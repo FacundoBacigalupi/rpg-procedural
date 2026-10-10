@@ -37,6 +37,7 @@ import {
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
+  DEFICIENCY_EFFECTS,
   type DealBudget,
   dayOf,
   deleteComponent,
@@ -49,6 +50,7 @@ import {
   FROSTBITE,
   fieldFertility,
   type GoodDef,
+  GROWTH_SEQUELAE,
   goodUnit,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
@@ -133,6 +135,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
+import { applyDeficiency } from "./deficiencyCaps.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
   atMyMercy,
@@ -145,7 +148,7 @@ import {
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
-import { acuteOf } from "./substances.ts";
+import { acuteOf, type ConsumableDef, consumeDose } from "./substances.ts";
 import { applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
@@ -211,6 +214,13 @@ export interface ActOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
+  readonly nutritionCaps?: boolean;
+  /**
+   * Opt-in: bienes que son sustancias de consumo (body-health §9): `consume` gasta una unidad y
+   * suma una dosis con evento causal. Apagado, `consume` no tiene qué tomar y no cambia nada.
+   */
+  readonly consumables?: readonly ConsumableDef[];
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -303,6 +313,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELLER_DAY.name,
       SALE_RECEIPTS.name,
       ACCLIMATIZATION.name,
+      DEFICIENCY_EFFECTS.name,
+      GROWTH_SEQUELAE.name,
       FROSTBITE.name,
       AMPUTATIONS.name,
     ],
@@ -506,7 +518,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const bodyPlan = e.plans.get(body.plan) as BodyPlanDef;
   const acuteCaps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
   const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
-  const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+  const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+  const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 
@@ -575,6 +588,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     foods: e.foods,
     unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
+    consumables:
+      o.consumables && node.verb === "consume"
+        ? new Set(o.consumables.map((c) => GOOD(c.good)))
+        : undefined,
     owed: node.verb === "give" ? debtsTo(truth, me, parties["to"]?.id ?? null) : undefined,
     recipes: node.verb === "cook" ? o.recipes : undefined,
     market:
@@ -588,6 +605,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   let nextBody: Body = setActivity(body, activityOf(node.verb, e.hour));
   let bodyTouched = nextBody !== body;
   const changes: StateChange[] = [...r.changes];
+  const doseEvents: EventDraft[] = [];
   const eff = r.effect;
   if (eff.kind === "eat") {
     nextBody = ingest(bodyPlan, nextBody, eff.kcal, eff.water);
@@ -603,6 +621,14 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   } else if (eff.kind === "drink") {
     nextBody = ingest(bodyPlan, nextBody, 0, eff.liters);
     bodyTouched = true;
+  } else if (eff.kind === "consume" && eff.good !== null && eff.units > 0) {
+    // La dosis entra al cuerpo ahora; `life.substances` la absorbe y metaboliza desde la próxima hora.
+    const used = o.consumables?.find((c) => GOOD(c.good) === eff.good);
+    if (used) {
+      const dose = consumeDose(truth, me, used, ctx, input.place, r.events.length);
+      changes.push(...dose.changes);
+      doseEvents.push(...dose.events);
+    }
   } else if (eff.kind === "tend" && eff.done) {
     const target = eff.target === me ? nextBody : truth.get(BODY_STATE, eff.target as AgentId);
     const worst = target?.wounds
@@ -954,6 +980,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           ? { ...e, data: { ...(e.data as object), purpose: state.plan.purpose } }
           : e,
       ),
+      ...doseEvents,
       ...extraEvents,
     ],
     changes,

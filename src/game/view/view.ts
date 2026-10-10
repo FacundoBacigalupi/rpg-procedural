@@ -756,6 +756,14 @@ function effectView(
         fromLarder: e.from !== null && e.from !== player,
         grams: Math.round(e.grams),
       };
+    case "consume":
+      // Narración propia queda como ítem aparte: por ahora se ve como comer lo que tomó.
+      return {
+        kind: "eat",
+        good: e.good,
+        fromLarder: e.from !== null && e.from !== player,
+        grams: 0,
+      };
     case "store":
       return {
         kind: "store",

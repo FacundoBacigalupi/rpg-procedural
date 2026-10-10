@@ -1033,6 +1033,19 @@
     }
   },
   {
+    "id": "consume-pipe",
+    "text": "fumo un poco de hierba de la pipa",
+    "scene": "Estás en tu casa; en la repisa hay una pipa y hierba de fumar.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "consume",
+        "args": [{ "role": "what", "text": "hierba" }]
+      }
+    }
+  },
+  {
     "id": "store-grain",
     "text": "guardo el grano que traje en la despensa",
     "scene": "Estás en tu casa; volviste del campo con un saco de grano al hombro.",
