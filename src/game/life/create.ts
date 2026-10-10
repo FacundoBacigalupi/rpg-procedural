@@ -151,6 +151,7 @@ import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions } from "./pawn.ts";
+import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -546,7 +547,7 @@ export function resumeParts(
 }
 
 /** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
-export function ledgerConfigOf(content: Content): LedgerConfig {
+export function ledgerConfigOf(content: Content, residue?: ResidueConfig): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
     ...new Set(
@@ -574,6 +575,7 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
       [DEBRIS_SINK]: settlementUnits(content.all(MATERIALS)),
       [WAGES_SINK]: [COPPER],
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
+      ...residueExternals(residue),
     },
   };
 }
@@ -583,11 +585,15 @@ export function ledgerConfigOf(content: Content): LedgerConfig {
  * (`harvest`, `rotted`, ...): suma las unidades que faltan y rehace el ledger con el mismo diario,
  * así el saldo no cambia. Si ya declara todo, devuelve el mismo.
  */
-export function withDeclaredExternals(ledger: Ledger, content: Content): Ledger {
+export function withDeclaredExternals(
+  ledger: Ledger,
+  content: Content,
+  residue?: ResidueConfig,
+): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
-  for (const [name, units] of Object.entries(ledgerConfigOf(content).externals)) {
+  for (const [name, units] of Object.entries(ledgerConfigOf(content, residue).externals)) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
     if (missing.length > 0) changed = true;
@@ -695,7 +701,7 @@ export function createLife(
   const ids = idsAfter(truth, log);
   const foods = content.all(FOODS);
   const materials = content.all(MATERIALS);
-  const ledger = new Ledger(ledgerConfigOf(content));
+  const ledger = new Ledger(ledgerConfigOf(content, options.residue));
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
   seedSettlement(truth, ids, log, ledger, {
     seed,

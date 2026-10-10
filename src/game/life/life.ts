@@ -163,7 +163,7 @@ export class Life {
     options: LifeOptions = {},
     anchor?: ResumeAnchor,
   ): Life {
-    saved = { ...saved, ledger: withDeclaredExternals(saved.ledger, content) };
+    saved = { ...saved, ledger: withDeclaredExternals(saved.ledger, content, options.residue) };
     if (anchor === undefined) {
       const { world, terrain } = createLife(seed, content, options);
       const spaces = liveSettlementSpaces(

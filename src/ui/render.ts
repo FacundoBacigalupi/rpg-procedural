@@ -187,6 +187,18 @@ const SUBSTANCE_OTHER = {
   withdrawing: "tiembla y está inquieto",
 } as const;
 
+const RESIDUE_SELF = {
+  light: "Notás un peso tibio y turbio en los meridianos, como un sedimento que no se va",
+  heavy:
+    "Los meridianos te pesan y el qi te circula turbio: algo de lo que tomaste se te quedó adentro",
+} as const;
+
+const OVERLOAD_SELF = {
+  fever: "Te sube la fiebre: lo que tomaste es más de lo que tu cuerpo puede llevar",
+  burned: "Sentís los meridianos quemados, como si te corriera fuego por dentro",
+  fatal: "Una fuerza enorme te desgarra por dentro y todo se apaga",
+} as const;
+
 function signText(s: SeenSigns[number], t: typeof SUBSTANCE_SELF | typeof SUBSTANCE_OTHER): string {
   if (s.kind === "poison") return t.poison[s.stage ?? "mild"];
   return t[s.kind];
@@ -195,6 +207,11 @@ function signText(s: SeenSigns[number], t: typeof SUBSTANCE_SELF | typeof SUBSTA
 /** Señales de sustancias (opt-in del panel): lo perceptible, sin nombrar la sustancia. */
 function substanceLines(sub: NonNullable<CharacterPanel["substances"]>): string[] {
   const lines = sub.self.map((s) => `${signText(s, SUBSTANCE_SELF)}.`);
+  if (sub.residue) {
+    const r = sub.residue;
+    if (r.overload) lines.push(`${OVERLOAD_SELF[r.overload]}.`);
+    lines.push(`${RESIDUE_SELF[r.load]}.`);
+  }
   lines.push(...presentSignLines(sub.others));
   return lines;
 }
