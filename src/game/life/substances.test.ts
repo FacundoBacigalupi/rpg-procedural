@@ -85,4 +85,15 @@ describe("consumeDose (verbo consume)", () => {
     expect(second.events).toEqual([]);
     expect(second.changes.some((c) => c.table === SUBSTANCE.name)).toBe(false);
   });
+
+  it("comer un lote con la sustancia: la dosis escala con los gramos (por gramo x gramos)", () => {
+    const t = world();
+    const tea = { ...consumable, good: "tea" };
+    const small = consumeDose(t, a, { ...tea, amount: 0.5 * 10 }, ctx(t, 500), place, 0);
+    const big = consumeDose(t, a, { ...tea, amount: 0.5 * 40 }, ctx(t, 500), place, 0);
+    const held = (r: typeof small) =>
+      JSON.stringify(r.changes.find((c) => c.table === PERSON_SUBSTANCE.name));
+    expect(held(small)).not.toEqual(held(big));
+    expect(small.events[0]?.data).toMatchObject({ source: "consume:tea" });
+  });
 });

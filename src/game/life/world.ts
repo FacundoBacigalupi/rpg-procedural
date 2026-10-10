@@ -204,6 +204,8 @@ export interface LifeWorld {
    * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
+  readonly foodSubstances?: readonly ConsumableDef[];
   /**
    * Opt-in: el verbo `boil` (body-health §5) quema combustible del ledger (declarar el sumidero
    * `burned` con esa unidad) y deja agua tratada que `waterSources` aplica al beber. Apagado por
@@ -354,6 +356,7 @@ export function lifeWorld(
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.scam === true
@@ -719,6 +722,7 @@ export function lifeWorld(
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }
