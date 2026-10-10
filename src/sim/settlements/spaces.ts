@@ -37,8 +37,8 @@ export function settlementSpaces(
     if (!b) continue;
     spaces.push(...b.graph.spaces);
     // Con materiales, los tabiques entre cuartos y la pared hacia afuera salen del material
-    // (settlements §5): el vano entre cuartos solo queda abierto si el tabique no es de papel, y
-    // por la pared del cuarto principal se oye y se ve aunque la puerta esté cerrada.
+    // (settlements Â§5): el vano entre cuartos solo queda abierto si el tabique no es de papel, y
+    // por la pared del cuarto principal se oye y se ve aunque la puerta estÃ© cerrada.
     const wall = materials ? wallBarrier(b.components, materials) : undefined;
     const inner = wall ? partitionBarrier(wall) : "doorway";
     edges.push(
@@ -56,7 +56,7 @@ export function settlementSpaces(
 /**
  * El mismo grafo, pero vivo: se rehace solo cuando una puerta cambia de estado o un material de
  * pared cambia (el desgaste traba puertas, `life.upkeep`). Es un objeto de identidad estable con
- * `spaces` y `edges` calculados contra la verdad, así los procesos que lo recibieron al armarse
+ * `spaces` y `edges` calculados contra la verdad, asÃ­ los procesos que lo recibieron al armarse
  * ven siempre el grafo de hoy. Cache por la firma de puertas y paredes.
  */
 export function liveSettlementSpaces(

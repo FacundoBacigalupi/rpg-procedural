@@ -171,7 +171,7 @@ export interface CharacterPanelOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cueLocal`): ids de bienes cuya vista despierta la señal por objeto de una sustancia. */
   readonly objectCues?: readonly string[];
-  /** Opt-in (con `objectCues`): tambi�n lo que llevan los presentes y los puestos del lugar. */
+  /** Opt-in (con `objectCues`): también lo que llevan los presentes y los puestos del lugar. */
   readonly viewCues?: ViewCues;
   /** Opt-in (con `substances`): el residuo de lo ingerido y la sobrecarga reciente se sienten (mismo `ResidueConfig` de la vida). */
   readonly residue?: ResidueConfig;

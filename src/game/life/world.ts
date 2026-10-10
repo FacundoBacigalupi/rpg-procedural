@@ -72,6 +72,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
@@ -160,7 +161,6 @@ import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
-import type { ViewCues } from "./cue-local.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -358,7 +358,7 @@ export interface LifeWorld {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
   readonly objectCues?: boolean;
-  /** Opt-in (con `objectCues`): ver tambi�n lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
+  /** Opt-in (con `objectCues`): ver también lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
   readonly viewCues?: ViewCues;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y

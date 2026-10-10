@@ -266,7 +266,7 @@ export interface LifeOptions {
   readonly objectCues?: boolean;
   /** Opt-in (con `objectCues`): tambiï¿½n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
-  /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
+  /** Opt-in (con `objectCues`): tambiÃ©n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
 
