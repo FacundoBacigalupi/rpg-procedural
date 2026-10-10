@@ -49,6 +49,7 @@ import {
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess } from "./act.ts";
+import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
@@ -143,6 +144,12 @@ export interface LifeWorld {
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
   readonly growthSequelae?: boolean;
+  /**
+   * Opt-in: altitud real del hex (`LocalMap.elevationM`): corre `life.altitude` (aclimatación en
+   * `ACCLIMATIZATION`), el frío sigue el gradiente con la elevación y la resistencia de `decide`/`act`
+   * baja con la altura. Apagado por defecto: la aldea no cambia, sin filas ni RNG.
+   */
+  readonly realAltitude?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -201,6 +208,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
+  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map) : undefined;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
@@ -257,6 +265,7 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           player,
+          ...(altitudeOf ? { altitudeOf } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -437,7 +446,9 @@ export function lifeWorld(
           spaces: parts.spaces,
           seed: parts.seed,
           placeOf: placeOf(parts, village),
+          ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
         }),
+        ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
         upkeepProcess({
           clock: parts.clock,
           map: parts.map,
@@ -559,6 +570,7 @@ export function lifeWorld(
           habits: parts.habits,
           player,
           placeOf: placeOf(parts, village),
+          ...(altitudeOf ? { altitudeOf } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

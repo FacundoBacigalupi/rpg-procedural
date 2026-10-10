@@ -31,6 +31,8 @@ export function localMapOf(planet: Planet, site: VillageSite): LocalMap {
     neighbors: patch.neighbors,
     crossSeconds,
     forest: patch.hexes.map((_, h) => tr.forest[h] === 1),
+    elevationM: patch.hexes.map((_, h) => tr.elevation[h] as number),
+    baseElevationM: tr.elevation.reduce((s, e) => s + e, 0) / Math.max(1, patch.hexes.length),
     climate: {
       cell: String(planet.grid.cellId(patch.cell)),
       latDeg: ((planet.grid.lat[patch.cell] as number) * 180) / Math.PI,

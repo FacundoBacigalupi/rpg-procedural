@@ -18,6 +18,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ACCLIMATIZATION,
   type ActionCatalog,
   type ActionPlan,
   type Activity,
@@ -125,6 +126,7 @@ import {
   withReceipt,
   YIELDED,
 } from "../../sim/index.ts";
+import { applyAltitude } from "./altitude.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
@@ -201,6 +203,8 @@ export interface ActOptions {
    * `life.famine` dejó en `FAMINE` para el asentamiento del actor. Apagado, o sin filas, no cambia.
    */
   readonly famineTrade?: boolean;
+  /** Opt-in: la altura baja la resistencia al actuar (`applyAltitude`); apagado, no cambia. */
+  readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -292,6 +296,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       MARKET_TAPE.name,
       SELLER_DAY.name,
       SALE_RECEIPTS.name,
+      ACCLIMATIZATION.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
@@ -490,7 +495,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const body = truth.get(BODY_STATE, me);
   if (!person || !innate || !body) throw new Error(`${me} no tiene persona, rasgos o cuerpo`);
   const bodyPlan = e.plans.get(body.plan) as BodyPlanDef;
-  const caps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
+  const acuteCaps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
+  const caps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 
