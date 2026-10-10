@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
-import { keepMold, moldKey, trustScale } from "./moldgossip.ts";
+import { keepMold, MOLD_HINT_MOOD, moldHintMood, moldKey, trustScale } from "./moldgossip.ts";
 
 const market: PlaceRef = { kind: "settlement", settlement: "s1" } as unknown as PlaceRef;
 const price = (amount: number) => ({ mold: "price", good: "rice", market, amount }) as const;
@@ -39,5 +39,29 @@ describe("chisme de moldes", () => {
     expect(moldKey(a)).toBe(moldKey(b));
     const book = keepMold(undefined, { ...heard(1, 0.6), rumor: b });
     expect(book.items[0]?.rumor).toEqual(b);
+  });
+});
+
+describe("la decisión lee lo que cree de oídas", () => {
+  const cave = { kind: "place", place: "place:cave" } as unknown as PlaceRef;
+  const where = (vague: boolean) =>
+    ({ mold: "location", what: "herb", where: cave, vague }) as const;
+  const book = (r: ReturnType<typeof where> | ReturnType<typeof price>, confidence: number) => ({
+    items: [{ rumor: r, confidence, hops: 1, heardAt: 0, teller: null }],
+    told: [],
+  });
+  const go = { id: "move:place:cave", verb: "move", target: "place:cave" };
+
+  it("ir hacia donde cree que hay algo suma por utilidad; un lugar vago, la mitad", () => {
+    expect(moldHintMood(go, book(where(false), 0.8))).toBeCloseTo(0.8 * MOLD_HINT_MOOD, 6);
+    expect(moldHintMood(go, book(where(true), 0.8))).toBeCloseTo(0.4 * MOLD_HINT_MOOD, 6);
+  });
+
+  it("comerciar el bien con precio oído suma; otro destino o sin libro, nada", () => {
+    const buy = { id: "trade:ana+rice", verb: "trade", target: "ana" };
+    expect(moldHintMood(buy, book(price(10), 0.5))).toBeCloseTo(0.5 * MOLD_HINT_MOOD, 6);
+    expect(moldHintMood(buy, book(price(10), 0.5), { goodName: () => "pan" })).toBe(0);
+    expect(moldHintMood({ ...go, target: "place:mill" }, book(where(false), 1))).toBe(0);
+    expect(moldHintMood(go, undefined)).toBe(0);
   });
 });

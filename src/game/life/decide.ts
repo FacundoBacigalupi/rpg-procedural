@@ -95,6 +95,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { MOLD_RUMORS, type MoldHintOptions, moldHintMood } from "./moldgossip.ts";
 import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
@@ -158,6 +159,11 @@ export interface DecideOptions {
   readonly consumables?: readonly ConsumableDef[];
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
+  /**
+   * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
+   * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
+   */
+  readonly moldHints?: MoldHintOptions;
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -195,6 +201,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       "culture.community",
+      ...(o.moldHints ? [MOLD_RUMORS.name] : []),
     ],
     writes: [NPC_DECISION.name, NPC_GOALS.name],
     run(ctx) {
@@ -448,7 +455,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       }
       // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
       // esos insumos las candidatas quedan iguales.
-      const candidates = modifyCandidates(mergeCandidates(catalogCandidates, social), {
+      const merged = mergeCandidates(catalogCandidates, social);
+      const hintBook = o.moldHints ? truth.get(MOLD_RUMORS, me) : undefined;
+      const hinted =
+        o.moldHints && hintBook
+          ? merged.map((c) => {
+              const bump = moldHintMood(c, hintBook, o.moldHints);
+              return bump === 0 ? c : { ...c, mood: r((c.mood ?? 0) + bump) };
+            })
+          : merged;
+      const candidates = modifyCandidates(hinted, {
         now,
         memories,
         habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),

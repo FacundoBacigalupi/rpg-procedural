@@ -77,7 +77,7 @@ import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
-import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
+import { type MoldGossipOptions, type MoldHintOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -220,6 +220,8 @@ export interface LifeWorld {
   readonly personalPool?: boolean;
   /** Opt-in: chisme de precios y lugares (`life.gossip_molds`, tabla `MOLD_RUMORS`) desde lo que cada uno vio (`seeds`); apagado por defecto. */
   readonly moldGossip?: MoldGossipOptions;
+  /** Opt-in: la decisión (`life.decide`) suma al ánimo lo que cree de oídas en `MOLD_RUMORS` (`moldHintMood`: ir donde cree que hay algo, comerciar un bien con precio oído); apagado por defecto: no lee la tabla. */
+  readonly moldHints?: MoldHintOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
@@ -694,6 +696,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.moldHints ? { moldHints: parts.moldHints } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,
