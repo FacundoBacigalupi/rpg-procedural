@@ -18,6 +18,7 @@ import {
   BUILDING,
   type CarrionSource,
   createEntity,
+  DEFICIENCY_EFFECTS,
   draftEvent,
   ENTITY,
   type EventDraft,
@@ -25,6 +26,7 @@ import {
   exposureDose,
   INFECTION,
   type Infection,
+  immuneSusceptibility,
   immunityAfter,
   infectionStage,
   isImmune,
@@ -80,6 +82,8 @@ export interface ExposureOptions {
    */
   readonly waterFor?: (truth: ReadonlyWorldTruth, who: EntityRef, load: number) => WaterQuality;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Leer `DEFICIENCY_EFFECTS` (`immune` sube la chance de infectarse); apagado por defecto. */
+  readonly deficiency?: boolean;
   /**
    * Agua corriente (body-health §6), opt-in: tramos de río, fuentes de carga (cadáveres sin enterrar,
    * fosas) y a qué tramo filtra cada pozo. Sin esto, o sin fuentes ni carga, no hay RNG ni filas.
@@ -131,6 +135,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       BODY_STATE.name,
       WORK.name,
       TREATMENT.name,
+      DEFICIENCY_EFFECTS.name,
     ],
     writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, REACH_TAINT.name, ENTITY.name],
     run(ctx) {
@@ -367,6 +372,8 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         }
 
         const frailty = 1 - (ctx.truth.get(BODY_STATE, id)?.muscle ?? 0.5);
+        const fx = o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, id) : undefined;
+        const susceptible = fx ? immuneSusceptibility(fx.immune) : 1;
         let infectedBy: { def: PathogenDef; dose: number; cause: string } | undefined;
         if (!died) {
           for (const def of known.values()) {
@@ -417,6 +424,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               ctx.rng.fork("infect", id, def.id),
               ctx.now,
               null,
+              susceptible,
             );
             if (!got) continue;
             const cause = src?.cause ?? water?.cause;

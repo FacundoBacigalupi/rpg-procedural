@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Rng } from "../../core/index.ts";
 import {
   exposureDose,
+  immuneSusceptibility,
   immunityAfter,
   infectionChance,
   infectionStage,
@@ -24,6 +25,16 @@ const flu: PathogenDef = {
 };
 
 const room = { hours: 8, closeness: 0.6, ventilation: 0, waterDirt: 0, touch: 0.3 };
+
+describe("susceptibilidad por carencia inmune", () => {
+  it("1 = sin efecto; defensa débil sube la chance", () => {
+    expect(immuneSusceptibility(1)).toBe(1);
+    expect(infectionChance(flu, 5, 0, immuneSusceptibility(1))).toBe(infectionChance(flu, 5, 0));
+    expect(infectionChance(flu, 5, 0, immuneSusceptibility(0.5))).toBeGreaterThan(
+      infectionChance(flu, 5, 0),
+    );
+  });
+});
 
 describe("enfermedades con contagio", () => {
   it("el aire libre baja la dosis, la inmunidad baja la chance y el curso avanza", () => {

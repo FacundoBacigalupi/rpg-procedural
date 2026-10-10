@@ -382,6 +382,7 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
         medicineProcess({
