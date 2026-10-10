@@ -364,4 +364,71 @@ describe("life.loans", () => {
     const after = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
     expect(after?.commitment.obligations[0]?.performed).toBe(1);
   });
+
+  function bondedWorld(extra: Record<string, unknown>) {
+    const { truth, ledger } = setup();
+    const fid = makeId("agent", 3);
+    truth.set(ENTITY, fid, { id: fid, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, fid, { born: -30 * clock.year, household: "friend" } as never);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("friend"), amount: 500000 }],
+    });
+    const poorId = makeId("agent", 2);
+    const rel = { dims: { trust: 0.5 }, bonds: [], history: [], updated: 0 };
+    truth.set(RELATIONS, fid, { toward: { [poorId as string]: rel } } as never);
+    const { guarantors: _g, ...s } = seed;
+    const proc = loansProcess({
+      clock,
+      goods,
+      seeds: [s],
+      placeOf: () => ({ cell: 0 }) as never,
+      bondage: { wagePerDay: 1000, upkeepPerDay: 0, maxDays: 100, ...extra },
+    });
+    const apply = (r: ReturnType<typeof proc.run>) => {
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+      return r;
+    };
+    const ctx = (day: number) =>
+      ({ ...ctxOf(truth, ledger, day), rng: { fork: () => ({ chance: () => true }) } }) as never;
+    apply(proc.run(ctx(1)));
+    apply(proc.run(ctx(11)));
+    return { truth, proc, apply, ctx };
+  }
+
+  it("con ransom un conocido con saldo paga lo que falta por el ledger", () => {
+    const { truth, proc, apply, ctx } = bondedWorld({ ransom: true });
+    const r = apply(proc.run(ctx(12)));
+    const ev = r.events?.find((e) => e.kind === "credit.bondage_ended");
+    expect((ev?.data as { end?: string } | undefined)?.end).toBe("ransom");
+    expect(ev?.causes.length).toBeGreaterThan(0);
+    const t = (r.postings ?? []).flatMap((p) => p.transfers);
+    expect(t.length).toBe(1);
+    expect(t[0]?.amount).toBeGreaterThan(0);
+    const bond = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(bond?.commitment.status).toBe("settled");
+  });
+
+  it("con abuse el acreedor rompe el trato y pierde confianza de los vecinos", () => {
+    const { truth, proc, apply, ctx } = bondedWorld({
+      abuse: { chance: () => 1, reputationCost: 0.2 },
+    });
+    const r = apply(proc.run(ctx(12)));
+    expect(
+      (
+        r.events?.find((e) => e.kind === "credit.bondage_ended")?.data as
+          | { end?: string }
+          | undefined
+      )?.end,
+    ).toBe("abuse");
+    const bond = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(bond?.commitment.status).toBe("settled");
+    expect(r.postings ?? []).toEqual([]);
+  });
 });
