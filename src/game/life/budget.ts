@@ -16,8 +16,10 @@ import {
   goodUnit,
   type HouseholdFlows,
   type HouseholdStanding,
+  INNATE,
   type LoanCommitment,
   PERSON,
+  personalPoolShare,
   type ReadonlyLedger,
   type ReadonlyWorldTruth,
   spendCeiling,
@@ -95,3 +97,29 @@ export function coinCeilingOf(flows: HouseholdFlows, urgent: boolean): number {
 export type { HouseholdStanding };
 export { availableCoins };
 export const standingOf = (flows: HouseholdFlows): HouseholdStanding => standing(flows);
+
+/**
+ * `TradesOptions.poolShareOf` según la persona: su temperamento (`INNATE`: calidez y control) y los
+ * dependientes de su hogar (niños y viejos vivos por adulto). Solo lee; sin RNG.
+ */
+export function personalPoolShareOf(
+  year: Duration,
+): (truth: ReadonlyWorldTruth, who: AgentId, now: Tick) => number {
+  return (truth, who, now) => {
+    const home = truth.get(PERSON, who)?.household;
+    let adults = 0;
+    let children = 0;
+    let elders = 0;
+    if (home !== undefined) {
+      for (const id of truth.ids(PERSON)) {
+        const p = truth.get(PERSON, id);
+        if (p?.household !== home || truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+        const age = (now - p.born) / year;
+        if (age < ADULT_AGE_YEARS) children++;
+        else if (age >= ELDER_AGE_YEARS) elders++;
+        else adults++;
+      }
+    }
+    return personalPoolShare(truth.get(INNATE, who) ?? {}, { adults, children, elders });
+  };
+}

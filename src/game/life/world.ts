@@ -53,6 +53,7 @@ import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
+import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
@@ -146,6 +147,8 @@ export interface LifeWorld {
   readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
   /** Opt-in: quien cruza a un hogar con oficio cree que vive de eso (`TRADE_VIEW`); apagado por defecto. */
   readonly tradeView?: boolean;
+  /** Opt-in: el aporte del jornalero a la bolsa común sale de su temperamento y los dependientes de su hogar (`personalPoolShareOf`), no del 70% fijo; apagado por defecto. */
+  readonly personalPool?: boolean;
   /** Opt-in: chisme de precios y lugares (`life.gossip_molds`, tabla `MOLD_RUMORS`) desde lo que cada uno vio (`seeds`); apagado por defecto. */
   readonly moldGossip?: MoldGossipOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
@@ -340,6 +343,7 @@ export function lifeWorld(
           assignments: parts.householdTrades ?? [],
           // Sin asignaciones explícitas, el oficio de cada hogar sale de la población.
           ...(parts.tradeChoice ? { chosen: true } : {}),
+          ...(parts.personalPool ? { poolShareOf: personalPoolShareOf(parts.clock.year) } : {}),
           ...(parts.householdTrades === undefined && !parts.tradeChoice
             ? { seed: parts.seed }
             : {}),
