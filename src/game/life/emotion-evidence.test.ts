@@ -29,6 +29,7 @@ import { type AppraiseOptions, appraiseProcess } from "./appraise.ts";
 import {
   ownEmotionSignals,
   perceivedLossSignals,
+  perceivedLoveSignals,
   receivedInsultSignals,
 } from "./emotion-evidence.ts";
 import { NPC_PERCEPTS, type WitnessingOptions, witnessingProcess } from "./witnessing.ts";
@@ -75,6 +76,26 @@ const insultEvent = (): Event => ({
 });
 
 describe("evidencia propia de emociones", () => {
+  it("el amor nace de calidez vista de alguien con cariño previo, con la identidad leída", () => {
+    const give: Percept = {
+      ...percept,
+      fields: { action: field("action.give"), identity: field(DEAD) },
+    };
+    const likes = (id: AgentId) => (id === DEAD ? 0.5 : 0);
+    expect(perceivedLoveSignals(give, now, likes)[0]).toMatchObject({
+      owner: OWNER,
+      emotion: "love",
+      target: DEAD,
+      evidence: { kind: "percept", percept: percept.id },
+    });
+    expect(perceivedLoveSignals(give, now, () => 0)).toEqual([]);
+    expect(perceivedLoveSignals(percept, now, () => 1)).toEqual([]);
+    expect(
+      perceivedLoveSignals({ ...give, fields: { action: field("action.give") } }, now, () => 1),
+    ).toEqual([]);
+    expect(perceivedLoveSignals({ ...give, tick: now + 1 }, now, () => 1)).toEqual([]);
+  });
+
   it("la alegría exige éxito propio con evidencia de pelea del dueño como iniciador", () => {
     const win = [{ stimulus: { theme: "success", intensity: 0.4 }, blame: null }] as const;
     const mine = { ...event("combat.fight"), actors: [OWNER, DEAD] };

@@ -5,6 +5,7 @@ import {
   appraisalEmotionSignals,
   appraiseInsultEmotion,
   appraiseLoss,
+  appraiseLoveEmotion,
   type EmotionSignal,
   type Percept,
 } from "../../sim/index.ts";
@@ -109,4 +110,42 @@ export function perceivedLossSignals(
   return appraisalEmotionSignals(percept.observer, appraisal, percept.sourceEventId, now).map(
     (s) => ({ ...s, evidence: { kind: "percept" as const, percept: percept.id } }),
   );
+}
+
+/** Calidez que se lee de cada acción de cuidado vista (no de la intención del actor). */
+const WARM_ACTIONS: Readonly<Record<string, number>> = { "action.give": 0.6, "action.tend": 0.8 };
+
+/** Amor desde una acción cálida vista de alguien identificado al que el observador ya quiere.
+ * La identidad es la leída (aunque errónea); sin cariño previo propio, o sin lectura, no nace.
+ */
+export function perceivedLoveSignals(
+  percept: Percept,
+  now: Tick,
+  affectionFor: (who: AgentId) => number,
+): EmotionSignal[] {
+  const who = percept.fields.identity?.value;
+  const action = percept.fields.action;
+  const identity = percept.fields.identity;
+  const warmth = typeof action?.value === "string" ? WARM_ACTIONS[action.value] : undefined;
+  if (
+    !percept.sourceEventId ||
+    percept.tick > now ||
+    typeof who !== "string" ||
+    !who.startsWith("agent:") ||
+    warmth === undefined ||
+    !action ||
+    action.confidence <= 0 ||
+    !identity ||
+    identity.confidence <= 0
+  )
+    return [];
+  const signal = appraiseLoveEmotion(percept.observer, {
+    beloved: who as AgentId,
+    affection: affectionFor(who as AgentId),
+    warmth,
+    confidence: Math.min(action.confidence, identity.confidence),
+    originEventId: percept.sourceEventId,
+    at: now,
+  });
+  return signal ? [{ ...signal, evidence: { kind: "percept" as const, percept: percept.id } }] : [];
 }
