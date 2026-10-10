@@ -1,0 +1,21 @@
+[
+  {
+    "id": "village.health",
+    "name": "creencias de salud y casa de la aldea (opt-in, se suman a la cultura village)",
+    "traits": [
+      {
+        "trait": "beliefs.contagion",
+        "variants": { "catching": 1 },
+        "params": { "flu": 0.8, "pox": 0.6, "fever": 0.4 },
+        "origin": "adaptation",
+        "because": "se vio enfermar a la casa del que tosía, y lo de las fiebres se lo achacan al agua mala"
+      },
+      {
+        "trait": "kinship.head",
+        "variants": { "eldest_male": 1 },
+        "origin": "inertia",
+        "because": "la tierra pasa de padre a hijo y en la casa manda quien la trabajó más años"
+      }
+    ]
+  }
+]

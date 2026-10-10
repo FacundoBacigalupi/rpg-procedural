@@ -251,6 +251,8 @@ export interface LifeOptions {
   readonly hire?: LifeParts["hire"];
   /** Opt-in: el fiado por hambre (`life.borrow`) baja el límite según lo que el vecino CREE del apuro del hogar que pide (`LifeParts.creditHeed`); apagado por defecto. */
   readonly creditHeed?: LifeParts["creditHeed"];
+  /** Opt-in: la cultura de la aldea suma `beliefs.contagion` y `kinship.head` (los lee `patientDecides.cultureTraits`); apagado por defecto (cambia el hash de la vida). */
+  readonly healthCulture?: boolean;
   /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
   readonly residue?: LifeParts["residue"];
   /** Opt-in: sustancias consumibles (`LifeParts.consumables`); los paneles de la sesión leen de acá los bienes de las señales por objeto. */
@@ -835,6 +837,14 @@ export function createLife(
   const baseCulture = content.all(CULTURES).find((c) => c.id === "village");
   if (!baseCulture) throw new Error("falta contenido: cultura village");
   const culture = withInterestNorm(baseCulture, options);
+  // Opt-in: suma las creencias de contagio y la norma del jefe del hogar (`village.health`).
+  const healthCulture = options.healthCulture
+    ? content.all(CULTURES).find((c) => c.id === "village.health")
+    : undefined;
+  if (options.healthCulture && !healthCulture) throw new Error("falta contenido: village.health");
+  const culture = healthCulture
+    ? { ...baseCulture, traits: [...baseCulture.traits, ...healthCulture.traits] }
+    : baseCulture;
   const community = seedCulture(truth, ids, log, {
     settlement,
     place: terrain.village,
