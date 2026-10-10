@@ -1,9 +1,16 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent } from "../../core/index.ts";
+import {
+  type AgentId,
+  type ContentSource,
+  type EventId,
+  loadContent,
+  type Tick,
+} from "../../core/index.ts";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
-import { deterministicPart, runSim } from "./sim.ts";
+import type { HeardRumor, Rumors } from "../../sim/index.ts";
+import { deterministicPart, rumorDeformationMetric, runSim } from "./sim.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -43,4 +50,35 @@ describe("sim headless", () => {
     const b = runSim({ seed: 5, content, setup, years: 0.25 });
     expect(deterministicPart(a)).toBe(deterministicPart(b));
   }, 300_000);
+});
+
+describe("métrica de deformación de rumores", () => {
+  const A = "agent:a" as AgentId;
+  const B = "agent:b" as AgentId;
+  const E1 = "event:1" as EventId;
+  const item = (hops: number, severity: number): HeardRumor => ({
+    root: E1,
+    content: { kind: "theft", by: A, victim: B, severity },
+    at: 0 as Tick,
+    heardAt: 0 as Tick,
+    confidence: 0.8,
+    hops,
+    variant: `${E1}#${hops}`,
+    parent: null,
+    teller: null,
+    voices: 1,
+  });
+  it("sin rumores da ceros y con rumores promedia por salto", () => {
+    expect(rumorDeformationMetric(new Map()).roots).toBe(0);
+    const m = rumorDeformationMetric(
+      new Map<AgentId, Rumors | undefined>([
+        [A, { items: [item(0, 1)], told: [] }],
+        [B, { items: [item(1, 2)], told: [] }],
+      ]),
+    );
+    expect(m.roots).toBe(1);
+    expect(m.versions).toBe(2);
+    expect(m.meanByHop["0"]).toBe(0);
+    expect(m.meanByHop["1"]).toBeGreaterThan(0);
+  });
 });

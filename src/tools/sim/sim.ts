@@ -3,7 +3,14 @@
 // viola, la corrida se detiene y arma el paquete de reproducción (`repro.json`) con lo mínimo para
 // rehacer el fallo desde el seed. Nunca llama al LLM.
 
-import { type Content, canonicalJson, type Seed, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type Content,
+  canonicalJson,
+  type EventId,
+  type Seed,
+  type Tick,
+} from "../../core/index.ts";
 import {
   addAccuracy,
   LIFE_ENGINE,
@@ -20,8 +27,58 @@ import {
   INFERENCE_RULES,
   type InferenceAccuracy,
   MEMORIES,
+  RUMORS,
+  type Rumors,
+  rumorDeformation,
+  rumorTree,
   type StateHash,
 } from "../../sim/index.ts";
+
+/** Resumen de `rumorDeformation` sobre todos los hechos que circulan como rumor. */
+export interface RumorDeformationMetric {
+  /** Hechos con al menos una versión oída. */
+  readonly roots: number;
+  /** Versiones guardadas en total. */
+  readonly versions: number;
+  /** Deformación media por salto (clave = salto) sobre todos los árboles. */
+  readonly meanByHop: Readonly<Record<string, number>>;
+  /** Media de la distancia de la versión dominante a la de menor salto (0 si no hay). */
+  readonly dominantDistance: number;
+}
+
+export function rumorDeformationMetric(
+  holders: ReadonlyMap<AgentId, Rumors | undefined>,
+): RumorDeformationMetric {
+  const roots = new Set<EventId>();
+  for (const r of holders.values()) for (const h of r?.items ?? []) roots.add(h.root);
+  const sums = new Map<number, { total: number; n: number }>();
+  let versions = 0;
+  let dom = 0;
+  let doms = 0;
+  for (const root of [...roots].sort()) {
+    const tree = rumorTree(root, holders);
+    versions += tree.variants.length;
+    const d = rumorDeformation(tree);
+    for (const s of d.steps) {
+      const acc = sums.get(s.hops) ?? { total: 0, n: 0 };
+      sums.set(s.hops, { total: acc.total + s.mean * s.versions, n: acc.n + s.versions });
+    }
+    if (d.dominant) {
+      dom += d.dominant.distance;
+      doms++;
+    }
+  }
+  const meanByHop: Record<string, number> = {};
+  for (const [hops, a] of [...sums].sort((x, y) => x[0] - y[0])) {
+    meanByHop[String(hops)] = Math.round((a.total / a.n) * 1000) / 1000;
+  }
+  return {
+    roots: roots.size,
+    versions,
+    meanByHop,
+    dominantDistance: doms > 0 ? Math.round((dom / doms) * 1000) / 1000 : 0,
+  };
+}
 
 export interface SimOptions {
   readonly seed: Seed;
@@ -81,6 +138,8 @@ export interface SimReport {
     /** Conclusiones del personaje contra la verdad, sumadas sobre los chequeos (tooling §6). */
     readonly inference: InferenceAccuracy;
     readonly memories: { readonly holders: number; readonly items: number; readonly gists: number };
+    /** Deformación de los rumores al final de la corrida (tooling §6, information §9). */
+    readonly rumorDeformation: RumorDeformationMetric;
   };
   readonly performance: { readonly wallMs: number; readonly msPerWorldDay: number };
   readonly hash: StateHash;
@@ -150,6 +209,8 @@ export function runSim(options: SimOptions): SimReport {
     memories.items += m.items.length;
     memories.gists += m.gists.length;
   }
+  const holders = new Map<AgentId, Rumors | undefined>();
+  for (const h of w.truth.ids(RUMORS)) holders.set(h as AgentId, w.truth.get(RUMORS, h));
   const wallMs = wall() - started;
   const worldDays = (life.now - from) / w.clock.day;
 
@@ -171,6 +232,7 @@ export function runSim(options: SimOptions): SimReport {
       beliefs: beliefAccuracy(w.truth, life.now),
       inference,
       memories,
+      rumorDeformation: rumorDeformationMetric(holders),
     },
     performance: { wallMs, msPerWorldDay: worldDays > 0 ? wallMs / worldDays : 0 },
     hash: life.hash(),
