@@ -8,7 +8,7 @@ import {
   type LocalMap,
   type SpaceGraph,
 } from "../../sim/index.ts";
-import { applyAltitude, mapAltitudeOf } from "./altitude.ts";
+import { applyAltitude, mapAltitudeOf, travelAltitudeOf } from "./altitude.ts";
 
 const who = "agent:1" as AgentId;
 const map = { elevationM: [100, 4500] } as unknown as LocalMap;
@@ -42,6 +42,17 @@ describe("altitud real", () => {
     expect(f(at("tower"), who)).toBe(130);
     expect(f(at("other"), who)).toBe(100);
     expect(f(at(), who)).toBe(100);
+  });
+
+  it("de viaje usa la elevación de la celda recorrida; en el parche, la local", () => {
+    const f = travelAltitudeOf(map, {
+      cellOf: (t) => (t.get(LOCATION, who)?.hex === 1 ? 7 : undefined),
+      elevationM: (c) => (c === 7 ? 3200 : -50),
+    });
+    expect(f(truthAt(0), who)).toBe(100);
+    expect(f(truthAt(1), who)).toBe(3200);
+    const sea = travelAltitudeOf(map, { cellOf: () => 1, elevationM: () => -50 });
+    expect(sea(truthAt(0), who)).toBe(0);
   });
 
   it("en el llano no cambia las capacidades; arriba baja la resistencia, menos aclimatado", () => {

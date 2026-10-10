@@ -24,6 +24,12 @@ export interface WaterSourcesConfig {
   readonly treatment?: WaterTreatment;
   /** 0-1: lo que arrastra el cauce (crecida, lluvia reciente) para los ríos. */
   readonly runoff?: number;
+  /**
+   * Opt-in: si llueve en `now` (lo arma quien cablea desde `dailyWeather`: `precip.kind === "rain"`),
+   * a campo abierto se bebe lluvia en vez de la fuente del hex (sin agua de mar: la sal no cambia
+   * por llover). Sin él, o sin `now`, nada cambia.
+   */
+  readonly rainingAt?: (now: number) => boolean;
 }
 
 /** El agua que bebe quien está en `hex` (con o sin sitio) con la carga `load` del pozo. */
@@ -31,18 +37,22 @@ export function waterAt(
   cfg: WaterSourcesConfig,
   at: { readonly hex: number; readonly space?: unknown } | undefined,
   load: number,
+  now?: number,
 ): WaterQuality {
   if (at && at.space !== undefined) {
     return treatWater(sourceWater({ kind: "well", load }), cfg.treatment ?? "none");
   }
   const kind = (at ? cfg.hexKinds?.get(at.hex) : undefined) ?? cfg.open ?? "river";
+  if (now !== undefined && cfg.rainingAt?.(now) && kind !== "sea") {
+    return sourceWater({ kind: "rain", load });
+  }
   return sourceWater({ kind, runoff: cfg.runoff ?? 0 });
 }
 
 export function waterHooks(cfg: WaterSourcesConfig) {
   return {
     drinkQuality: (truth: ReadonlyWorldTruth, who: AgentId, now?: number): WaterQuality => {
-      const base = waterAt(cfg, truth.get(LOCATION, who), 0);
+      const base = waterAt(cfg, truth.get(LOCATION, who), 0, now);
       // Agua que hirvió o filtró él mismo con el verbo `boil`: vale mientras no se ensucie.
       const t = truth.get(TREATED_WATER, who);
       return t !== undefined && now !== undefined && now <= t.until

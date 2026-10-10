@@ -404,6 +404,9 @@ function outcome(
     case "drink":
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
       break;
+    case "boil":
+      say(e.boiled ? "outcome.boil.done" : "outcome.boil.none");
+      break;
     case "tend":
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });

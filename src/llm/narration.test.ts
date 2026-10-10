@@ -266,7 +266,19 @@ describe("plantillas", () => {
   it("todo lo que pueden armar pasa el validador, en cada variante", () => {
     const cases: PlayerView[] = [
       viewOf(),
-      viewOf({ self: ["hungry", "thirsty", "tired", "hurt", "bleeding", "sick", "cold"] }),
+      viewOf({
+        self: [
+          "hungry",
+          "thirsty",
+          "tired",
+          "hurt",
+          "bleeding",
+          "sick",
+          "cold",
+          "maimed",
+          "blacked_out",
+        ],
+      }),
       ...steps().map((s) => viewOf({ steps: s })),
       ...percepts().map((p) => viewOf({ percepts: p })),
     ];
