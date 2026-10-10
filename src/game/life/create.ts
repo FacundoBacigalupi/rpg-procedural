@@ -158,6 +158,7 @@ import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -265,6 +266,8 @@ export interface LifeOptions {
   readonly objectCues?: boolean;
   /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
+  readonly viewCues?: ViewCues;
 }
 
 /** La cultura con el rasgo `norms.interest` sembrado, solo si se pidió (`interestNorm`); si no, la misma. */

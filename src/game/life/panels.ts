@@ -49,6 +49,7 @@ import { deficiencyStagesOf } from "./nutrition.ts";
 import type { ResidueConfig } from "./residue.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { type LifeWorld, living } from "./world.ts";
 
 /** Cuánto hay de algo a ojo. */
@@ -171,7 +172,7 @@ export interface CharacterPanelOptions {
   /** Opt-in (con `cueLocal`): ids de bienes cuya vista despierta la señal por objeto de una sustancia. */
   readonly objectCues?: readonly string[];
   /** Opt-in (con `objectCues`): tambi�n lo que llevan los presentes y los puestos del lugar. */
-  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  readonly viewCues?: ViewCues;
   /** Opt-in (con `substances`): el residuo de lo ingerido y la sobrecarga reciente se sienten (mismo `ResidueConfig` de la vida). */
   readonly residue?: ResidueConfig;
 }

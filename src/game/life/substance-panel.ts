@@ -18,7 +18,13 @@ import {
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
-import { cueLocalOf, objectsSeen, peopleInView } from "./cue-local.ts";
+import {
+  cueLocalOf,
+  objectsSeen,
+  peopleInView,
+  placeHoldersInView,
+  type ViewCues,
+} from "./cue-local.ts";
 import { type ResidueConfig, residueBodyOf } from "./residue.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
@@ -100,7 +106,7 @@ export function substancePanel(
     /** Opt-in (con `cueLocal`): ids de bienes que remiten a una sustancia; ver uno en lo que lleva o en la despensa despierta su señal. */
     readonly objectCues?: readonly string[];
     /** Opt-in (con `objectCues`): suma lo que llevan los presentes de verdad y los puestos del hex. */
-    readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+    readonly viewCues?: ViewCues;
   },
 ): SubstancePanel {
   const at = w.truth.get(LOCATION, w.player);
@@ -129,7 +135,7 @@ export function substancePanel(
           const viewed = opts.viewCues
             ? [
                 ...peopleInView(w.truth, w.player),
-                ...((at && opts.viewCues.stalls?.(at.hex)) || []),
+                ...placeHoldersInView(opts.viewCues, at),
               ].reduce<number>((n, h) => n + amountOf(h as HolderRef), 0)
             : 0;
           return (

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, PlanetClock } from "../../core/index.ts";
 import { BELIEFS, cueCraving, LOCATION, learnCues, WorldTruth } from "../../sim/index.ts";
-import { cueLocalOf, objectsInView, objectsSeen, peopleInView } from "./cue-local.ts";
+import {
+  cueLocalOf,
+  objectsInView,
+  objectsSeen,
+  peopleInView,
+  placeHoldersInView,
+} from "./cue-local.ts";
 import { cueContextOf } from "./substances.ts";
 
 const clock = { day: 24000 } as unknown as PlanetClock;
@@ -91,5 +97,33 @@ describe("life.cueLocalOf", () => {
     const onlyObj = cues.filter((c) => c.kind === "object");
     expect(cueCraving(onlyObj, bare, 6000, 60 * 24000)).toBe(0);
     expect(cueCraving(onlyObj, withObj, 6000, 60 * 24000)).toBeGreaterThan(0);
+  });
+});
+
+describe("life.placeHoldersInView (suelo)", () => {
+  const stall = { kind: "settlement", settlement: "settlement:1" } as never;
+  const lot = { kind: "cell", cell: "cell:7" } as never;
+  const cues = {
+    stalls: (hex: number) => (hex === 5 ? [stall] : []),
+    ground: (hex: number, space: string | undefined) =>
+      hex === 5 && space === undefined ? [lot] : [],
+  };
+
+  it("suma puestos y suelo solo del hex y espacio donde está", () => {
+    expect(placeHoldersInView(cues, { hex: 5 })).toEqual([stall, lot]);
+    expect(placeHoldersInView(cues, { hex: 5, space: "room" })).toEqual([stall]);
+    expect(placeHoldersInView(cues, { hex: 9 })).toEqual([]);
+    expect(placeHoldersInView(cues, undefined)).toEqual([]);
+    expect(placeHoldersInView({ stalls: cues.stalls }, { hex: 5 })).toEqual([stall]);
+  });
+
+  it("el suelo a la vista despierta el objeto como cualquier otro lote", () => {
+    const amounts = new Map<unknown, number>([[lot, 2]]);
+    const view = placeHoldersInView(cues, { hex: 5 }).map(
+      (h) => (g: string) => (g === "wine" ? (amounts.get(h) ?? 0) : 0),
+    );
+    expect(objectsInView(["wine", "tea"], view)).toEqual(["wine"]);
+    const far = placeHoldersInView(cues, { hex: 9 }).map(() => () => 1);
+    expect(objectsInView(["wine"], far)).toEqual([]);
   });
 });
