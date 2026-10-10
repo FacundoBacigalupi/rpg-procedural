@@ -39,6 +39,14 @@ export interface SpaceNode {
   readonly clearSight: number;
   /** El hogar que vive acá, si es una casa. */
   readonly household?: HouseholdId;
+  /**
+   * Refugio térmico, opt-in (body-health §7): techo, apertura (0 cerrado, 1 a cielo abierto; la
+   * puerta abierta o cerrada) y material de las paredes. Sin `roof`, el espacio no tiene dato y
+   * `life.thermal` usa el filtrado fijo de siempre.
+   */
+  readonly roof?: boolean;
+  readonly openness?: number;
+  readonly wall?: "cave" | "stone" | "wood" | "hide" | "paper";
 }
 
 /** Qué separa dos espacios. */

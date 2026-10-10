@@ -437,3 +437,31 @@ export function shelterOf(roof: boolean, openness: number): number {
   const o = clamp(openness, 0, 1);
   return roof ? clamp(1 - 0.6 * o, 0.4, 1) : clamp(0.5 * (1 - o), 0, 0.5);
 }
+
+/** Material de las paredes: cuánto cierran (1 hermético, 0 nada). Marcador sin calibrar. */
+export const WALL_TIGHTNESS = {
+  cave: 1,
+  stone: 0.95,
+  wood: 0.85,
+  hide: 0.7,
+  paper: 0.5,
+} as const;
+export type WallMaterial = keyof typeof WALL_TIGHTNESS;
+
+/** Lo que de un espacio importa al reparo: techo, apertura (puerta/hueco) y material de paredes. */
+export interface ShelterAttrs {
+  readonly roof: boolean;
+  /** 0 cerrado y 1 a cielo abierto (puerta abierta o hueco grande). */
+  readonly openness: number;
+  readonly wall?: WallMaterial;
+}
+
+/**
+ * Reparo (0-1) de un espacio: la apertura efectiva suma lo que dejan pasar las paredes según
+ * el material (`WALL_TIGHTNESS`; sin dato, hermético) y sale de `shelterOf`.
+ */
+export function shelterOfSpace(a: ShelterAttrs): number {
+  const tight = a.wall === undefined ? 1 : WALL_TIGHTNESS[a.wall];
+  const open = clamp(a.openness, 0, 1);
+  return shelterOf(a.roof, 1 - (1 - open) * tight);
+}

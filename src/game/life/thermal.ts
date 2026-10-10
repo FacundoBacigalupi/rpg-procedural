@@ -34,9 +34,11 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   type SpaceGraph,
+  type SpaceNode,
   type StateChange,
   SWEAT,
   setComponent,
+  shelterOfSpace,
   stepCore,
   stepFrostbite,
   THERMAL,
@@ -83,6 +85,12 @@ export interface ThermalOptions {
     readonly altitudeOf: (truth: ReadonlyWorldTruth, who: AgentId) => number;
     readonly qiC?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   };
+  /**
+   * Opt-in: el reparo sale de los datos del espacio (`SpaceNode.roof/openness/wall`, con
+   * `shelterOfSpace`) en vez de "adentro = viento 0 y filtrado fijo". Los espacios sin `roof`
+   * siguen igual. Por defecto apagado: la aldea no cambia.
+   */
+  readonly shelter?: boolean;
   readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
 }
 
@@ -105,7 +113,32 @@ export function seasonalClothing(airC: number): Clothing {
 }
 
 /** El ambiente de alguien a un tick: afuera con el viento y la lluvia, adentro con reparo. */
-function envOf(day: DayWeather, outC: number, indoor: boolean): ThermalEnv {
+function envOf(
+  day: DayWeather,
+  outC: number,
+  indoor: boolean,
+  node?: SpaceNode,
+  useShelter?: boolean,
+): ThermalEnv {
+  if (useShelter && node?.roof !== undefined) {
+    // Con datos de refugio: el viento de afuera existe y lo frena el reparo; la apertura deja
+    // pasar más del aire de afuera.
+    const open = Math.min(1, Math.max(0, node.openness ?? 0));
+    const leak = INDOOR_LEAK + (1 - INDOOR_LEAK) * open;
+    const base = node.roof ? INDOOR_BASE_C : outC;
+    return {
+      airC: base + leak * (outC - base),
+      windMs: day.windMs,
+      humidity: day.precip.kind !== "none" ? 0.9 : 0.5,
+      wet: 0,
+      shelter: shelterOfSpace({
+        roof: node.roof,
+        openness: open,
+        ...(node.wall ? { wall: node.wall } : {}),
+      }),
+      radiantC: 0,
+    };
+  }
   // La gente se refugia de la lluvia: el mojado de la ropa queda para el ítem de ropa puesta.
   const rain = 0;
   return indoor
@@ -195,7 +228,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         for (let k = 0; k < n && dead === null; k++) {
           const at = ctx.now - (n - 1 - k) * stepTicks;
           const outC = outdoorTempC(o.map, o.clock, o.seed, at);
-          const flat = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor);
+          const flat = envOf(weatherAt(o.map, o.clock, o.seed, at), outC, indoor, node, o.shelter);
           const base0 = o.altitude
             ? altitudeEnv(
                 flat,
