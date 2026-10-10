@@ -100,6 +100,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
+import { type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
@@ -151,6 +152,8 @@ export interface LifeWorld {
    * baja con la altura. Apagado por defecto: la aldea no cambia, sin filas ni RNG.
    */
   readonly realAltitude?: boolean;
+  /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
+  readonly waterSources?: WaterSourcesConfig;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -428,6 +431,7 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          ...(parts.waterSources ? { waterFor: waterHooks(parts.waterSources).waterFor } : {}),
           deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
@@ -587,6 +591,9 @@ export function lifeWorld(
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,
+          ...(parts.waterSources
+            ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }
+            : {}),
           map: parts.map,
           spaces: parts.spaces,
           bodyPlans: parts.plans,
