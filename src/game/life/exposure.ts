@@ -1,9 +1,9 @@
-// Contagio cableado a la vida (body-health §6): los patógenos son entidades con origen, y cada día
+﻿// Contagio cableado a la vida (body-health Â§6): los patÃ³genos son entidades con origen, y cada dÃ­a
 // el proceso expone a quienes comparten hogar con un contagioso y a quienes toman de un pozo
-// sucio. La infección avanza por su curso (incubación → síntomas → cura con inmunidad, o muerte con
-// causa), y los enfermos ensucian el agua de los pozos si el patógeno pasa por el agua.
-// Ningún patógeno nace sin causa: `seeds` es la única fuente (un escenario, una caravana que llega) y
-// con la tabla de patógenos vacía el proceso no hace nada, así que la aldea por defecto no cambia.
+// sucio. La infecciÃ³n avanza por su curso (incubaciÃ³n â†’ sÃ­ntomas â†’ cura con inmunidad, o muerte con
+// causa), y los enfermos ensucian el agua de los pozos si el patÃ³geno pasa por el agua.
+// NingÃºn patÃ³geno nace sin causa: `seeds` es la Ãºnica fuente (un escenario, una caravana que llega) y
+// con la tabla de patÃ³genos vacÃ­a el proceso no hace nada, asÃ­ que la aldea por defecto no cambia.
 
 import {
   type AgentId,
@@ -45,6 +45,7 @@ import {
   treatedCourse,
   tryInfect,
   VILLAGE_SQUARE,
+  type WaterQuality,
   WELL_TAINT,
   WORK,
   waterDose,
@@ -53,24 +54,29 @@ import {
 
 export const EXPOSURE_PROCESS = "life.exposure";
 
-/** Una fuente explícita de patógeno: quién lo trae, desde cuándo y (opcional) qué pozo ensucia. */
+/** Una fuente explÃ­cita de patÃ³geno: quiÃ©n lo trae, desde cuÃ¡ndo y (opcional) quÃ© pozo ensucia. */
 export interface PathogenSeed {
   readonly def: PathogenDef;
   readonly carrier: AgentId;
   readonly from: Tick;
   /** El pozo (`WorkId`) donde cae la carga, si entra por el agua. */
   readonly well?: string;
-  /** Lo que pasó, en palabras (queda en el evento y en el patógeno). */
+  /** Lo que pasÃ³, en palabras (queda en el evento y en el patÃ³geno). */
   readonly source: string;
 }
 
 export interface ExposureOptions {
   readonly clock: PlanetClock;
   readonly seeds?: readonly PathogenSeed[];
+  /**
+   * Calidad del agua que bebe cada quien, con la carga del pozo (turbiedad, tratamiento);
+   * sin esto es `wellWater(load)`, como siempre.
+   */
+  readonly waterFor?: (truth: ReadonlyWorldTruth, who: EntityRef, load: number) => WaterQuality;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
-/** Lo que comparten los de un mismo hogar en un día (calibración abierta). */
+/** Lo que comparten los de un mismo hogar en un dÃ­a (calibraciÃ³n abierta). */
 const HOUSEHOLD_DAY: Shared = {
   hours: 8,
   closeness: 0.7,
@@ -78,14 +84,14 @@ const HOUSEHOLD_DAY: Shared = {
   waterDirt: 0,
   touch: 0.5,
 };
-/** Horas de contacto por día con quien comparte lugar fuera del hogar (foto del día, calibración abierta). */
+/** Horas de contacto por dÃ­a con quien comparte lugar fuera del hogar (foto del dÃ­a, calibraciÃ³n abierta). */
 const PLACE_HOURS = 2;
-/** Cuántos vecinos de lugar hacen falta para que la cercanía llegue a ~63% (calibración abierta). */
+/** CuÃ¡ntos vecinos de lugar hacen falta para que la cercanÃ­a llegue a ~63% (calibraciÃ³n abierta). */
 const CROWD_SCALE = 4;
-/** Ventilación de la plaza y del campo abierto contra la de un cuarto cerrado. */
+/** VentilaciÃ³n de la plaza y del campo abierto contra la de un cuarto cerrado. */
 const OPEN_AIR = 0.9;
 const ROOM_AIR = 0.3;
-/** Carga que un enfermo suma por día a cada pozo, por peso de la ruta de agua (calibración abierta). */
+/** Carga que un enfermo suma por dÃ­a a cada pozo, por peso de la ruta de agua (calibraciÃ³n abierta). */
 const TAINT_PER_DAY = 0.15;
 /** Carga con que un sembrado cae en su pozo. */
 const SEED_TAINT = 0.8;
@@ -119,7 +125,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         if (rec) known.set(rec.def.id, rec.def);
       }
 
-      // Siembra: la fuente explícita introduce el patógeno una sola vez.
+      // Siembra: la fuente explÃ­cita introduce el patÃ³geno una sola vez.
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       for (const s of o.seeds ?? []) {
@@ -169,7 +175,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           (id) => ctx.truth.get(ENTITY, id)?.endedAt === undefined && ctx.truth.has(BODY_STATE, id),
         );
 
-      // Quién contagia hoy y desde qué evento, por hogar.
+      // QuiÃ©n contagia hoy y desde quÃ© evento, por hogar.
       type Source = { shed: number; cause: string; quarantine?: Quarantine; healer?: string };
       const byHouse = new Map<string, Map<string, Source>>();
       const byPlace = new Map<string, Map<string, Source>>();
@@ -212,7 +218,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         stages.set(id, list);
       }
 
-      // Pozos: la carga que baja con los días y la que suman los enfermos que pasan por el agua.
+      // Pozos: la carga que baja con los dÃ­as y la que suman los enfermos que pasan por el agua.
       const wells = ctx.truth.ids(WORK).filter((id) => ctx.truth.get(WORK, id)?.kind === "well");
       const taintNow = new Map<string, { pathogen: string; load: number; cause: string }>();
       for (const w of wells) {
@@ -259,7 +265,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           changes.push({ op: "delete", table: WELL_TAINT.name, id: w });
         }
       }
-      // Cuánta gente comparte cada lugar hoy: la cercanía sale de la ocupación.
+      // CuÃ¡nta gente comparte cada lugar hoy: la cercanÃ­a sale de la ocupaciÃ³n.
       const crowd = new Map<string, number>();
       for (const id of people) {
         const k = placeKey(ctx.truth, id);
@@ -290,7 +296,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           if (s.stage === "recovered" || s.stage === "dead") {
             infections = infections.filter((i) => i !== s.inf);
             changed = true;
-            // Un enfermo tratado con efecto real puede salvarse de un curso fatal (medicina §6).
+            // Un enfermo tratado con efecto real puede salvarse de un curso fatal (medicina Â§6).
             const tr = ctx.truth
               .get(TREATMENT, id)
               ?.treatments.find((t) => t.pathogen === s.def.id);
@@ -321,7 +327,11 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
             const shared: Shared = {
               ...HOUSEHOLD_DAY,
               hours: HOUSEHOLD_DAY.hours * days,
-              waterDirt: water ? waterDose(wellWater(water.load)) : 0,
+              waterDirt: water
+                ? waterDose(
+                    o.waterFor ? o.waterFor(ctx.truth, id, water.load) : wellWater(water.load),
+                  )
+                : 0,
             };
             const eff = homeSrc?.quarantine
               ? quarantinedShared(shared, homeSrc.quarantine, homeSrc.healer === id)
@@ -402,7 +412,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         }
 
         if (!changed) {
-          // Nada nuevo, pero puede haber pasado de incubar a tener síntomas.
+          // Nada nuevo, pero puede haber pasado de incubar a tener sÃ­ntomas.
         }
         const ill = infections
           .filter((i) => {
@@ -425,13 +435,13 @@ function withInfection(truth: ReadonlyWorldTruth, who: AgentId, inf: Infection):
   return { ...cur, infections: [...cur.infections, inf] };
 }
 
-/** Dónde está alguien hoy: hex y espacio (vacío es el campo abierto del hex). */
+/** DÃ³nde estÃ¡ alguien hoy: hex y espacio (vacÃ­o es el campo abierto del hex). */
 function placeKey(truth: ReadonlyWorldTruth, who: EntityRef): string | undefined {
   const loc = truth.get(LOCATION, who as never);
   return loc ? `${loc.hex}|${loc.space ?? ""}` : undefined;
 }
 
-/** El asentamiento de cada hogar, por el edificio que habita (de ahí sale qué pozo usa). */
+/** El asentamiento de cada hogar, por el edificio que habita (de ahÃ­ sale quÃ© pozo usa). */
 function householdSettlements(truth: ReadonlyWorldTruth): Map<string, string> {
   const out = new Map<string, string>();
   for (const id of truth.ids(BUILDING)) {

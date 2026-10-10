@@ -47,6 +47,7 @@ import {
   MEALS,
   nearestHex,
   needsFrom,
+  netHydration,
   PERSON,
   PLACE,
   type ProcessDef,
@@ -57,6 +58,7 @@ import {
   setActivity,
   setComponent,
   VILLAGE_SQUARE,
+  type WaterQuality,
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
@@ -91,6 +93,8 @@ const MAX_DRINK_L = 1.5;
 export interface RoutineOptions {
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
+  /** Calidad del agua que bebe cada quien (fuente y tratamiento); sin esto, agua limpia. */
+  readonly drinkQuality?: (truth: ReadonlyWorldTruth, who: AgentId) => WaterQuality | undefined;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -340,7 +344,13 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // Beber lo que falta (el agua del pozo no va al ledger todavía, como en `drink`).
       if (ROUTINE.meals.includes(hour) || ROUTINE.drinkAlso.includes(hour)) {
         const liters = Math.min(MAX_DRINK_L, Math.max(0, next.water));
-        if (liters > 0) next = ingest(bodyPlan, next, 0, liters);
+        if (liters > 0) {
+          // Con `drinkQuality` la sal deshidrata (netHydration): la hidratación neta puede ser
+          // negativa y entonces falta más agua. Sin el gancho, agua limpia como siempre.
+          const q = o.drinkQuality?.(truth, me);
+          const net = q ? netHydration(liters, q) : liters;
+          next = net >= 0 ? ingest(bodyPlan, next, 0, net) : { ...next, water: next.water - net };
+        }
       }
       if (next !== body) changes.push(setComponent(BODY_STATE, me, next));
       return { changes, events, postings };
