@@ -140,7 +140,7 @@ describe("life.rents", () => {
     expect(row?.status).toBe("defaulted");
   });
 
-  it("mora sostenida: evento con causas, desalojo y fama vÃ­a deeds", () => {
+  it("mora sostenida: evento con causas, desalojo y fama vía deeds", () => {
     const { truth, ledger } = setup(1);
     const long: RentSeed = { ...seed, termDays: 50 };
     const proc = rentsProcess({
@@ -174,7 +174,7 @@ describe("life.rents", () => {
     ).toBe("default");
   });
 
-  it("aparcerÃ­a: al cosechar el aparcero entrega la parte, con causas, y el resto es atraso", () => {
+  it("aparcería: al cosechar el aparcero entrega la parte, con causas, y el resto es atraso", () => {
     const { truth, ledger } = setup(1);
     const GRAIN = ledgerUnit("good:grain");
     const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
@@ -208,7 +208,7 @@ describe("life.rents", () => {
         eventId: makeId("event", 2),
         transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("tenant"), amount: n }],
       });
-    // Con la despensa vacÃ­a todo es atraso; con 100 de grano entrega 35 de una cosecha de 100.
+    // Con la despensa vacía todo es atraso; con 100 de grano entrega 35 de una cosecha de 100.
     const ctx = (recent: unknown[]) =>
       ({ ...ctxOf(truth, ledger, 3), recent }) as unknown as ProcessContext;
     const first = hp.run(ctx([harvest(100)]));

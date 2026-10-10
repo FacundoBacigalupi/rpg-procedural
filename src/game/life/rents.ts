@@ -1,12 +1,12 @@
-// Arriendos entre hogares (property Â§tenencia, economy: renta). ExplÃ­citos y opt-in: sin
-// `RentSeed` no hay filas, ni eventos, ni RNG, asÃ­ que la aldea por defecto no cambia. Una semilla
-// es un arriendo ya decidido (dueÃ±o de la parcela, hogar arrendatario, canon por dÃ­a en una
-// moneda, plazo); al llegar su dÃ­a el proceso diario lo abre con el evento `property.leased`
-// (causa: la semilla, estado del hogar dueÃ±o) y crea la entidad `commitment:N` con `RENTS`, que
-// guarda el `Commitment` contractual (kind "lease") y lo pagado. Cada dÃ­a el arrendatario paga el
+// Arriendos entre hogares (property §tenencia, economy: renta). Explícitos y opt-in: sin
+// `RentSeed` no hay filas, ni eventos, ni RNG, así que la aldea por defecto no cambia. Una semilla
+// es un arriendo ya decidido (dueño de la parcela, hogar arrendatario, canon por día en una
+// moneda, plazo); al llegar su día el proceso diario lo abre con el evento `property.leased`
+// (causa: la semilla, estado del hogar dueño) y crea la entidad `commitment:N` con `RENTS`, que
+// guarda el `Commitment` contractual (kind "lease") y lo pagado. Cada día el arrendatario paga el
 // canon con lo que tiene (`property.rent_paid`, por ledger: conserva); lo que no alcanza queda
 // como atraso. Al vencer queda cumplido o en mora. `rentsOf` entrega las rentas vigentes de un
-// hogar como `RentCollected` para `BudgetEnv.rents`. Tabla propia (escritor Ãºnico).
+// hogar como `RentCollected` para `BudgetEnv.rents`. Tabla propia (escritor único).
 
 import {
   type AgentId,
@@ -51,21 +51,21 @@ export interface RentRow {
   readonly parcel: string;
   readonly unit: string;
   readonly perDay: number;
-  /** Primer dÃ­a de cobro y dÃ­a en que vence (exclusive). */
+  /** Primer día de cobro y día en que vence (exclusive). */
   readonly startDay: number;
   readonly endDay: number;
-  /** Lo pagado hasta hoy y lo que quedÃ³ sin pagar por falta de fondos. */
+  /** Lo pagado hasta hoy y lo que quedó sin pagar por falta de fondos. */
   readonly paid: number;
   readonly arrears: number;
-  /** DÃ­as seguidos sin pagar el canon entero; al llegar a `evictAfterDays` hay desalojo. */
+  /** Días seguidos sin pagar el canon entero; al llegar a `evictAfterDays` hay desalojo. */
   readonly missed?: number;
   readonly status: "active" | "fulfilled" | "defaulted";
   readonly commitment: Commitment;
-  /** AparcerÃ­a: el canon es una parte de la cosecha (sin canon diario); ver `SHARES`. */
+  /** Aparcería: el canon es una parte de la cosecha (sin canon diario); ver `SHARES`. */
   readonly share?: { readonly fraction: number };
 }
 
-/** Lo liquidado de una aparcerÃ­a, por cosecha. Solo lo escribe `life.rents.harvest`. */
+/** Lo liquidado de una aparcería, por cosecha. Solo lo escribe `life.rents.harvest`. */
 export interface ShareRow {
   readonly harvested: number;
   readonly paid: number;
@@ -83,21 +83,21 @@ export const SHARES_PROCESS = "life.rents.harvest";
 /** Cada arriendo vive en una entidad `commitment:n` con este componente. Solo lo escribe `life.rents`. */
 export const RENTS = table<RentRow>("economy.rents");
 
-/** Un arriendo decidido de antemano: la Ãºnica fuente de arriendos hasta que los hogares sin tierra los busquen. */
+/** Un arriendo decidido de antemano: la única fuente de arriendos hasta que los hogares sin tierra los busquen. */
 export interface RentSeed {
   readonly id: string;
   readonly landlord: string;
   readonly tenant: string;
   /** Parcela arrendada (`parcel:N`); debe existir. */
   readonly parcel: string;
-  /** Bien del canon (una moneda); canon entero por dÃ­a. */
+  /** Bien del canon (una moneda); canon entero por día. */
   readonly good: string;
   readonly perDay: number;
   readonly startDay: number;
   readonly termDays: number;
   /** "sharecrop": el canon es una parte de la cosecha (`good` es el grano; `perDay` se ignora). */
   readonly kind?: "cash" | "sharecrop";
-  /** QuiÃ©n pone semilla, bueyes y herramientas (true: el dueÃ±o); default todo del aparcero. */
+  /** Quién pone semilla, bueyes y herramientas (true: el dueño); default todo del aparcero. */
   readonly inputs?: SharecropInputs;
 }
 
@@ -105,7 +105,7 @@ export interface RentsOptions {
   readonly clock: PlanetClock;
   readonly goods: readonly GoodDef[];
   readonly seeds: readonly RentSeed[];
-  /** DÃ­as seguidos de mora tras los que el dueÃ±o desaloja (default 30). */
+  /** Días seguidos de mora tras los que el dueño desaloja (default 30). */
   readonly evictAfterDays?: number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
@@ -271,7 +271,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
       const rows = rentRows(ctx.truth);
       const known = new Set(rows.map((r) => r.rent.seed));
 
-      // Abrir: las semillas cuyo dÃ­a llegÃ³, con parcela existente y ambos hogares vivos.
+      // Abrir: las semillas cuyo día llegó, con parcela existente y ambos hogares vivos.
       for (const s of [...o.seeds].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
         if (known.has(s.id) || s.startDay > today) continue;
         const def = goodDef.get(s.good);
@@ -331,7 +331,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
           ),
         };
         // El arrendatario recibe el derecho de uso y los frutos y pasa a ocupar la parcela;
-        // la propiedad del dueÃ±o queda como estÃ¡.
+        // la propiedad del dueño queda como está.
         const parcel = ctx.truth.get(PARCEL, s.parcel as never) as Parcel;
         changes.push(
           setComponent(PARCEL, s.parcel as never, {
@@ -361,7 +361,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         );
       }
 
-      // Cobrar: los activos de antes (los reciÃ©n abiertos empiezan maÃ±ana). Cada arriendo
+      // Cobrar: los activos de antes (los recién abiertos empiezan mañana). Cada arriendo
       // paga de la cuenta del arrendatario; con varios arriendos el saldo ya gastado cuenta.
       const spent = new Map<string, number>();
       for (const r of rows) {
@@ -371,7 +371,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         const tenMan = firstAlive(l.tenant);
         if (!landMan || !tenMan) continue;
         if (l.share) {
-          // AparcerÃ­a: sin canon diario; se liquida al cosechar. Al vencer cierra segÃºn el atraso.
+          // Aparcería: sin canon diario; se liquida al cosechar. Al vencer cierra según el atraso.
           const sh = ctx.truth.get(SHARES, r.id as never);
           if (sh?.defaulted) {
             // Mora de aparcería declarada al cosechar: se acaba el uso y vuelve la posesión.
@@ -451,8 +451,8 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
           spent.set(sk, (spent.get(sk) ?? 0) + pay);
         }
         if (status === "defaulted") {
-          // Mora: el dueÃ±o la anota (el hecho llega a `deeds` como incumplimiento del arrendatario,
-          // el arrendatario pierde la fama) y recupera la parcela: se acaba el uso y vuelve la posesiÃ³n.
+          // Mora: el dueño la anota (el hecho llega a `deeds` como incumplimiento del arrendatario,
+          // el arrendatario pierde la fama) y recupera la parcela: se acaba el uso y vuelve la posesión.
           events.push({
             kind: "property.rent_default",
             actors: [tenMan, landMan],
@@ -515,8 +515,8 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
 }
 
 /**
- * Liquida las aparcerÃ­as al cosechar: por cada `routine.harvested` del hogar aparcero en una
- * parcela con aparcerÃ­a vigente, el aparcero entrega la parte del dueÃ±o (mÃ¡s el atraso) de lo que
+ * Liquida las aparcerías al cosechar: por cada `routine.harvested` del hogar aparcero en una
+ * parcela con aparcería vigente, el aparcero entrega la parte del dueño (más el atraso) de lo que
  * tiene (`property.rent_paid`, por ledger: conserva); lo que no alcanza queda como atraso en
  * `SHARES`. Lee los eventos del paso (`recent`): no toca la rutina de cosecha.
  */
