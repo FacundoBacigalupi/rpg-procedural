@@ -26,7 +26,10 @@ import {
   table,
 } from "../../sim/index.ts";
 import { skillWageOf } from "./bondagepolicy.ts";
+import { type HeedStanding, standingCaution } from "./lend.ts";
 import { COMMITMENTS } from "./loans.ts";
+import { MOLD_RUMORS } from "./moldgossip.ts";
+import { NEIGHBOR_STANDING } from "./neighbors.ts";
 
 export const HIRE_PROCESS = "life.hire";
 export const HIRE_DONE = "hire.done";
@@ -67,6 +70,8 @@ export interface HireOptions {
   readonly jobDays?: number;
   /** Cuánto más pide quien no confía (fracción del jornal con confianza 0; 0.5 por defecto). */
   readonly distrustPremium?: number;
+  /** Opt-in: quien contrata ofrece menos al oficial cuyo hogar CREE apretado o en la ruina (creencia, nunca la verdad). */
+  readonly heedStanding?: HeedStanding;
   /** Servidumbre por lo no pagado: sin esto, quien no puede pagar no consigue el trabajo. */
   readonly bondage?: {
     readonly wagePerDay: number;
@@ -93,7 +98,14 @@ export function hireProcess(o: HireOptions): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, RELATIONS.name, SKILL_STATE.name, HIRED_WORK.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      RELATIONS.name,
+      SKILL_STATE.name,
+      HIRED_WORK.name,
+      ...(o.heedStanding ? [NEIGHBOR_STANDING.name, MOLD_RUMORS.name] : []),
+    ],
     writes: [HIRED_WORK.name, ...(o.bondage ? [COMMITMENTS.name, ENTITY.name] : [])],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -130,9 +142,17 @@ export function hireProcess(o: HireOptions): ProcessDef {
         const place = o.placeOf(truth, hirer);
         const base = skillWageOf(truth, worker, o.baseWage, o.crafts) ?? o.baseWage;
         const trust = truth.get(RELATIONS, worker)?.toward[hirer as string]?.dims.trust ?? 0.5;
+        const caution = o.heedStanding
+          ? standingCaution(
+              truth,
+              hirer,
+              (truth.get(PERSON, worker)?.household as string | undefined) ?? "",
+              o.heedStanding,
+            )
+          : 1;
         const wage = Math.max(
           1,
-          Math.round(base * (1 + premium * (1 - Math.min(1, Math.max(0, trust))))),
+          Math.round(base * (1 + premium * (1 - Math.min(1, Math.max(0, trust)))) * caution),
         );
         const total = wage * days;
         const homeId = truth.get(PERSON, hirer)?.household as string | undefined;

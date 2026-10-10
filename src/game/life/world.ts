@@ -82,7 +82,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
-import { lendProcess, repayDoseProcess } from "./lend.ts";
+import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -311,11 +311,15 @@ export interface LifeWorld {
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
+  /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
+  readonly creditHeed?: HeedStanding;
   readonly hire?: {
     readonly unit: string;
     readonly baseWage: number;
     readonly jobDays?: number;
     readonly distrustPremium?: number;
+    /** Opt-in: ofrece menos jornal al oficial que CREE en la ruina (creido, nunca verdad). */
+    readonly heedStanding?: HeedStanding;
     readonly bondage?: {
       readonly wagePerDay: number;
       readonly upkeepPerDay: number;
@@ -681,6 +685,7 @@ export function lifeWorld(
           curves: parts.pressureCurves,
           player,
           placeOf: placeOf(parts, village),
+          ...(parts.creditHeed ? { heedStanding: parts.creditHeed } : {}),
         }),
         repayProcess({
           foods: parts.foods,
