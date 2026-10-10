@@ -100,7 +100,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
-import { type Labor, laborProcess } from "./midwife.ts";
+import { type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -438,7 +438,7 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
-  /** Opt-in (con `loanSeeds`): préstamos con interés disfrazado donde la cultura lo prohíbe; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  /** Opt-in (con `loanSeeds`): prï¿½stamos con interï¿½s disfrazado donde la cultura lo prohï¿½be; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
   readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
@@ -979,6 +979,14 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          ...(parts.labors && parts.labors.length > 0
+            ? {
+                arrivals: (truth: ReadonlyWorldTruth) => {
+                  const s = puerperalSeed(truth);
+                  return s ? [s] : [];
+                },
+              }
+            : {}),
           ...(parts.waterSources
             ? {
                 waterFor: waterHooks(

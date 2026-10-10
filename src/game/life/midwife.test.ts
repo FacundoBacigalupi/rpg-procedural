@@ -4,11 +4,13 @@ import { holderAccount, Rng } from "../../core/index.ts";
 import {
   birthRisk,
   ENTITY,
+  PATHOGEN,
   PERSON,
   type ProcessContext,
   SKILL_STATE,
   WorldTruth,
 } from "../../sim/index.ts";
+import { exposureProcess } from "./exposure.ts";
 import { healerFee } from "./medicine.ts";
 import { LABOR, type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
 
@@ -158,5 +160,39 @@ describe("puerperalSeed", () => {
     expect(s?.causes).toEqual([{ kind: "event", event: "event:9" }]);
     t.set(LABOR, mother as EntityRef, { ...row, motherDied: true } as never);
     expect(puerperalSeed(t)).toBeNull();
+  });
+});
+
+describe("puerperalSeed en life.exposure (arrivals)", () => {
+  it("siembra el patógeno con el parto como causa; sin fiebre no hay nada", () => {
+    const t = world();
+    const p = exposureProcess({
+      clock,
+      arrivals: (t2) => [puerperalSeed(t2)].flatMap((s) => (s ? [s] : [])),
+      placeOf: () => place,
+    });
+    expect(p.run(ctx(t, 6))).toEqual({});
+    t.set(
+      LABOR,
+      mother as EntityRef,
+      {
+        dueAt: 0,
+        at: 5,
+        midwife: null,
+        called: false,
+        believedRisk: 0.1,
+        complication: false,
+        motherDied: false,
+        infantDied: false,
+        fever: true,
+        paid: 0,
+        cause: "event:9",
+      } as never,
+    );
+    const out = p.run(ctx(t, 6));
+    expect(out.events?.[0]?.kind).toBe("body.pathogen_introduced");
+    expect(out.events?.[0]?.causes).toEqual([{ kind: "event", event: "event:9" }]);
+    expect(out.changes?.some((c) => c.table === PATHOGEN.name)).toBe(true);
+    expect(p.run(ctx(t, 6))).toEqual(out);
   });
 });
