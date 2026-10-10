@@ -759,7 +759,8 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [ ] Crédito: calibrar el umbral de `enforcerStands`
   - [x] Crédito: cadenas de deuda y contagio de quiebras, parte pura (2026-10-10): `sim/contracts/contagion.ts` — `debtEdges` (aristas deudor→acreedor de los `Commitment` activos en una unidad), `clearDebts`/`contagion` (clearing tipo Eisenberg-Noe: pago a prorrata hasta el punto fijo, `payRatio`, `equity` conservado, ronda de caída y `because` = deudores caídos que lo hundieron). Sin cablear a la vida. Test en `contagion.test.ts`.
   - [ ] Crédito: cablear el contagio (leer `COMMITMENTS` y los activos del ledger, evento `credit.contagion` con causas, opt-in)
-  - [ ] Crédito: servidumbre por deudas (Commitment de trabajo por deuda; `CommitmentDuty` hoy solo `deliver`)
+  - [x] Crédito: servidumbre por deudas, parte pura (2026-10-10): `CommitmentDuty` suma `work` (días que faltan, `creditPerDay`); `sim/contracts/bondage.ts` con `makeBondage` (deuda impaga a Commitment `bondage` con plazo, abono neto = jornal − sustento, perpetua si el sustento se lo come), `workBondageDay` (fracción por salud), `endBondage` (`paid`/`term`/`ransom`/`escape`/`abuse` con deuda sin cobrar), `bondageExpired`. Test en `bondage.test.ts`. Sin cablear.
+  - [ ] Crédito: cablear la servidumbre a la vida (mora con pérdida de `life.loans` abre el `bondage` con `parent`; trabajo diario sin otro jornal, evento con causas, fuga y rescate; opt-in)
   - [ ] Crédito: empeño
   - [ ] Crédito: prohibiciones de usura que disfrazan el interés
   - [ ] Crédito: interés compuesto y en especie
