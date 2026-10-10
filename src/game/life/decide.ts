@@ -99,6 +99,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { creditRows } from "./credit.ts";
+import { DEBT_BOOK, debtGoalInputs } from "./debtknowledge.ts";
 import {
   cueLocalOf,
   objectsInView,
@@ -167,6 +168,8 @@ export interface DecideOptions {
   readonly persistGoalLayers?: boolean;
   /** Opt-in: registra necesidades sentidas y miedo con procedencia, sin sumar utilidad. */
   readonly persistImmediateGoals?: boolean;
+  /** Opt-in: objetivos medianos desde su libro de deuda conocida, sin consultar el saldo real. */
+  readonly debtKnowledge?: boolean;
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -287,6 +290,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SKILL_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
+      ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
@@ -445,13 +449,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const layered = [
         ...longGoals(goals, mind, now),
         ...mediumGoals(
-          people.map((p) => ({
-            who: p.id,
-            resentment: p.rel.dims.resentment ?? 0,
-            closeness: closeness(p.rel.dims, p.rel.bonds),
-            kin: kinWeight(p.rel.bonds) > 0,
-            debt: 0,
-          })),
+          [
+            ...people.map((p) => ({
+              who: p.id,
+              resentment: p.rel.dims.resentment ?? 0,
+              closeness: closeness(p.rel.dims, p.rel.bonds),
+              kin: kinWeight(p.rel.bonds) > 0,
+              debt: 0,
+            })),
+            ...(o.debtKnowledge ? debtGoalInputs(truth.get(DEBT_BOOK, me)) : []),
+          ],
           {
             memories,
             now,

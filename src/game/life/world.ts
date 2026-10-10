@@ -1270,6 +1270,7 @@ export function lifeWorld(
         decideProcess({
           ...(parts.persistGoalLayers === true ? { persistGoalLayers: true } : {}),
           ...(parts.persistImmediateGoals === true ? { persistImmediateGoals: true } : {}),
+          ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,

@@ -1,9 +1,16 @@
 // Libro contractual personal (contracts §4, information §1): participación directa, nunca
 // lectura del saldo actual. Un pago remoto o un préstamo secreto no se aprende por existir.
-import type { AgentId, Event, EventId, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  compareStrings,
+  type Event,
+  type EventId,
+  type Tick,
+} from "../../core/index.ts";
 import {
   BODY_STATE,
   ENTITY,
+  type MediumInput,
   PERSON,
   type ProcessDef,
   setComponent,
@@ -25,6 +32,8 @@ export interface DebtBelief {
   readonly status: "active" | "fulfilled" | "defaulted" | "settled";
   readonly originEventId: EventId;
   readonly learnedAt: Tick;
+  /** 0-1: certeza de lo conocido; participación propia nace en 1. */
+  readonly confidence: number;
   /** Fuentes propias: además impiden descontar dos veces el mismo pago. */
   readonly sources: readonly EventId[];
 }
@@ -108,6 +117,32 @@ export function believedDebtRatio(belief: DebtBelief): number {
   return Math.round(Math.min(1, Math.max(0, belief.remaining / belief.total)) * 1e6) / 1e6;
 }
 
+/** Una meta por contraparte conocida; la mayor fracción pendiente, sin sumar monedas con grano. */
+export function debtGoalInputs(book: DebtBook | undefined): MediumInput[] {
+  const byOther = new Map<AgentId, { readonly belief: DebtBelief; readonly debt: number }>();
+  for (const belief of [...(book?.items ?? [])].sort((a, b) =>
+    compareStrings(a.commitment, b.commitment),
+  )) {
+    const debt =
+      Math.round(
+        believedDebtRatio(belief) * Math.min(1, Math.max(0, belief.confidence ?? 1)) * 1e6,
+      ) / 1e6;
+    if (debt <= 0) continue;
+    const prev = byOther.get(belief.other);
+    if (prev === undefined || debt > prev.debt) byOther.set(belief.other, { belief, debt });
+  }
+  return [...byOther]
+    .sort(([a], [b]) => compareStrings(a, b))
+    .map(([who, { belief, debt }]) => ({
+      who,
+      debt,
+      debtOriginEventId: belief.originEventId,
+      resentment: 0,
+      closeness: 0,
+      kin: false,
+    }));
+}
+
 function numberIn(e: Event, key: string): number | undefined {
   const v = (e.data as Record<string, unknown>)[key];
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
@@ -128,6 +163,8 @@ export function debtKnowledgeProcess(): ProcessDef {
       const books = new Map<AgentId, DebtBook>();
       const aware = (who: AgentId) =>
         ctx.truth.has(PERSON, who) &&
+        ctx.truth.has(ENTITY, who) &&
+        ctx.truth.has(BODY_STATE, who) &&
         ctx.truth.get(ENTITY, who)?.endedAt === undefined &&
         ctx.truth.get(BODY_STATE, who)?.consciousness !== "unconscious" &&
         ctx.truth.get(BODY_STATE, who)?.activity !== "sleep";
@@ -186,6 +223,7 @@ export function debtKnowledgeProcess(): ProcessDef {
                 status: "active",
                 originEventId: e.id,
                 learnedAt: e.tick,
+                confidence: 1,
                 sources: [e.id],
               },
             };

@@ -33,6 +33,7 @@ import {
   VALUES,
   WorldTruth,
 } from "../../sim/index.ts";
+import { DEBT_BOOK, type DebtBelief, observeDebt } from "./debtknowledge.ts";
 import {
   DECIDED_EVENT,
   type DecideOptions,
@@ -41,6 +42,7 @@ import {
   NPC_DECISION,
   NPC_GOALS,
 } from "./decide.ts";
+import { COMMITMENTS } from "./loans.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -190,6 +192,111 @@ describe("life.decide", () => {
     const out = decideProcess({ ...opts, persistImmediateGoals: true }).run(ctx(truth, A, 1000));
     applyGoals(truth, out);
     expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.layer === "immediate")).toBe(false);
+  });
+
+  it("solo su libro opt-in produce metas de deuda con origen, peso actualizado y fin conocido", () => {
+    const truth = world(0);
+    const bookItem: DebtBelief = {
+      commitment: "commitment:1",
+      role: "debtor",
+      other: "agent:2" as AgentId,
+      debtorRef: "h:1",
+      creditorRef: "h:2",
+      unit: "grain",
+      total: 100,
+      remaining: 100,
+      dueDay: 10,
+      status: "active",
+      originEventId: "event:11" as EventId,
+      learnedAt: 900,
+      confidence: 1,
+      sources: ["event:11" as EventId],
+    };
+    const options = { ...opts, persistGoalLayers: true };
+    const on = decideProcess({ ...options, debtKnowledge: true });
+    expect(on.reads).toContain(DEBT_BOOK.name);
+    expect(decideProcess(options).reads).not.toContain(DEBT_BOOK.name);
+    const debtEvent = (out: ProcessResult) =>
+      out.events?.find((e) => e.kind === GOAL_EVENT && e.data.goal === "medium:debt:agent:2");
+    truth.set(
+      COMMITMENTS,
+      bookItem.commitment as never,
+      {
+        status: "active",
+        obligations: [{ debtor: "h:1", creditor: "h:2", duty: { qty: 100 }, performed: 0 }],
+      } as never,
+    );
+    truth.set(DEBT_BOOK, PLAYER, { items: [bookItem] });
+    expect(debtEvent(on.run(ctx(truth, A, 1000)))).toBeUndefined();
+    truth.set(DEBT_BOOK, A, { items: [bookItem] });
+    const off = decideProcess(options).run(ctx(truth, A, 1000));
+    expect(decideProcess({ ...options, debtKnowledge: false }).run(ctx(truth, A, 1000))).toEqual(
+      off,
+    );
+    expect(debtEvent(off)).toBeUndefined();
+    const first = on.run(ctx(truth, A, 1000));
+    applyGoals(truth, first);
+    expect(debtEvent(first)).toMatchObject({
+      data: { what: "born", weight: 0.6 },
+      causes: [{ kind: "event", event: bookItem.originEventId }],
+    });
+    expect(truth.has(ENTITY, bookItem.other)).toBe(false);
+    const debt = () => truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "medium:debt:agent:2");
+    expect(debt()).toMatchObject({
+      target: bookItem.other,
+      since: 1000,
+      originEventId: bookItem.originEventId,
+    });
+    truth.set(
+      COMMITMENTS,
+      bookItem.commitment as never,
+      { status: "fulfilled", obligations: [] } as never,
+    );
+    const unknownPayment = on.run(ctx(truth, A, 1100));
+    expect(debtEvent(unknownPayment)).toBeUndefined();
+    expect(debt()?.weight).toBe(0.6);
+    truth.set(
+      DEBT_BOOK,
+      A,
+      observeDebt(truth.get(DEBT_BOOK, A), {
+        kind: "paid",
+        commitment: bookItem.commitment,
+        amount: 50,
+        event: "event:12" as EventId,
+        at: 1200,
+        fulfilled: false,
+      }),
+    );
+    const partial = on.run(ctx(truth, A, 1200));
+    applyGoals(truth, partial);
+    expect(debtEvent(partial)).toBeUndefined();
+    expect(debt()).toMatchObject({
+      weight: 0.3,
+      since: 1000,
+      originEventId: bookItem.originEventId,
+    });
+    truth.set(
+      DEBT_BOOK,
+      A,
+      observeDebt(truth.get(DEBT_BOOK, A), {
+        kind: "paid",
+        commitment: bookItem.commitment,
+        amount: 50,
+        event: "event:13" as EventId,
+        at: 1300,
+        fulfilled: true,
+      }),
+    );
+    const done = on.run(ctx(truth, A, 1300));
+    applyGoals(truth, done);
+    expect(debt()).toBeUndefined();
+    expect(debtEvent(done)).toMatchObject({
+      data: { what: "ended" },
+      causes: [
+        { kind: "event", event: bookItem.originEventId },
+        { kind: "state", entity: A, key: "goals" },
+      ],
+    });
   });
 
   it("false equivale a omitir la persistencia; encenderla conserva la decisión y el RNG", () => {

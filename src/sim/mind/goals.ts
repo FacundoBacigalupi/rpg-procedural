@@ -243,9 +243,11 @@ export interface MediumInput {
   readonly kin: boolean;
   /** 0-1: cuánto debe él a esa persona (deuda pendiente). */
   readonly debt: number;
+  /** Fuente contractual conocida: permite deuda sin inventar una memoria episódica. */
+  readonly debtOriginEventId?: EventId;
 }
 
-/** El plan mediano: familia cercana, deudas y rivales; sin memoria con esa persona no nace (regla 5). */
+/** Familia y rivales desde memorias; deuda desde memoria o fuente contractual conocida (regla 5). */
 export function mediumGoals(
   rels: readonly MediumInput[],
   s: RevengeSources,
@@ -262,6 +264,19 @@ export function mediumGoals(
       const mass = m.intensity * salienceAt(m, s.now);
       if (origin === undefined || mass > origin.mass) origin = { mass, id: m.eventId };
     }
+    const debtOrigin = rel.debtOriginEventId ?? origin?.id;
+    if (rel.debt > 0 && debtOrigin !== undefined)
+      out.push({
+        layer: "medium",
+        kind: "pursue",
+        target: rel.who,
+        originEventId: debtOrigin,
+        since: s.now,
+        id: `medium:debt:${rel.who}`,
+        value: "justice",
+        weight: r(0.6 * clamp01(rel.debt)),
+        ...parentOf("core:justice"),
+      });
     if (origin === undefined) continue;
     const base = {
       layer: "medium",
@@ -277,14 +292,6 @@ export function mediumGoals(
         value: "family",
         weight: r(0.5 * clamp01(rel.closeness)),
         ...parentOf("core:family"),
-      });
-    if (rel.debt > 0)
-      out.push({
-        ...base,
-        id: `medium:debt:${rel.who}`,
-        value: "justice",
-        weight: r(0.6 * clamp01(rel.debt)),
-        ...parentOf("core:justice"),
       });
     if (rel.resentment >= RIVAL_MIN && rel.resentment < threshold)
       out.push({

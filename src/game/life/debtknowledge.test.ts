@@ -4,6 +4,7 @@ import {
   BODY_STATE,
   type Commitment,
   ENTITY,
+  mediumGoals,
   PERSON,
   type ProcessContext,
   type ProcessResult,
@@ -14,6 +15,7 @@ import {
   believedDebtRatio,
   DEBT_BOOK,
   type DebtBelief,
+  debtGoalInputs,
   debtKnowledgeProcess,
   observeDebt,
 } from "./debtknowledge.ts";
@@ -62,6 +64,7 @@ const belief: DebtBelief = {
   status: "active",
   originEventId: origin,
   learnedAt: 1000,
+  confidence: 1,
   sources: [origin],
 };
 function event(id: number, kind: string, data: Record<string, unknown>): Event {
@@ -105,6 +108,74 @@ function apply(truth: WorldTruth, result: ProcessResult) {
 }
 
 describe("libro de deuda conocida", () => {
+  it("proyecta fracciones con confianza y origen contractual sin memoria inventada ni suma de unidades", () => {
+    const uncertain = { ...belief, confidence: 0.5 };
+    const book = {
+      items: [
+        uncertain,
+        { ...belief, commitment: "commitment:2", unit: "silver", remaining: 20, confidence: 1 },
+      ],
+    };
+    expect(debtGoalInputs(book)).toEqual(debtGoalInputs({ items: [...book.items].reverse() }));
+    expect(debtGoalInputs(book)).toEqual([
+      {
+        who: creditor,
+        debt: 0.5,
+        debtOriginEventId: origin,
+        resentment: 0,
+        closeness: 0,
+        kin: false,
+      },
+    ]);
+    const goals = mediumGoals(
+      debtGoalInputs(book),
+      { memories: undefined, now: 2000, warmth: 0.5, control: 0.5, strengthIsWorth: 0 },
+      [],
+    );
+    expect(goals).toEqual([
+      {
+        id: `medium:debt:${creditor}`,
+        layer: "medium",
+        kind: "pursue",
+        target: creditor,
+        value: "justice",
+        weight: 0.3,
+        originEventId: origin,
+        since: 2000,
+      },
+    ]);
+    expect(debtGoalInputs({ items: [{ ...belief, confidence: 0 }] })).toEqual([]);
+    expect(debtGoalInputs({ items: [{ ...belief, role: "creditor" }] })).toEqual([]);
+    expect(debtGoalInputs(undefined)).toEqual([]);
+    const update = observeDebt(
+      { items: [uncertain] },
+      {
+        kind: "paid",
+        commitment: commitment.id,
+        amount: 50,
+        event: "event:2" as EventId,
+        at: 1200,
+        fulfilled: false,
+      },
+    );
+    expect(update.items[0]?.confidence).toBe(0.5);
+    expect(debtGoalInputs(update)[0]?.debt).toBe(0.25);
+  });
+
+  it("sin ficha o cuerpo, dormido o inconsciente no registra conocimiento de la parte", () => {
+    const open = event(1, "credit.loaned", { principal: 100, rate: 0, unit: "grain", dueDay: 10 });
+    for (const absent of [ENTITY, BODY_STATE]) {
+      const truth = fixture();
+      truth.deleteRaw(absent.name, debtor);
+      apply(truth, run(truth, [open]));
+      expect(truth.has(DEBT_BOOK, debtor)).toBe(false);
+      expect(truth.get(DEBT_BOOK, creditor)?.items[0]?.confidence).toBe(1);
+    }
+    const truth = fixture();
+    truth.set(BODY_STATE, debtor, { consciousness: "alert", activity: "sleep" } as never);
+    apply(truth, run(truth, [open]));
+    expect(truth.has(DEBT_BOOK, debtor)).toBe(false);
+  });
   it("normaliza por contrato y actualiza solo evidencia nueva; un pago desconocido no inventa deuda", () => {
     const opened = observeDebt(undefined, { kind: "opened", belief });
     expect(believedDebtRatio(belief)).toBe(1);

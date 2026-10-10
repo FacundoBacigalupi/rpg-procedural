@@ -163,8 +163,18 @@ Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
 marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
 la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
 unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
-La proyección de este libro a objetivos medianos corresponde a f3b2 del ROADMAP;
-este primer cableado cubre préstamos, no fiado, subrogaciones ni servidumbre.
+El libro cubre préstamos, no fiado, subrogaciones ni servidumbre.
+
+**Proyección a metas (2026-10-10, f3b2):** `life.decide` con `debtKnowledge` lee
+solo el libro propio y deriva `medium:debt:<contraparte>` incluso sin memoria
+episódica: la fuente es el evento contractual que conoce. El peso usa la fracción
+pendiente normalizada por contrato y la confianza 0–1 del recuerdo. Una
+observación propia nace con confianza 1; sus actualizaciones la conservan.
+Para varios contratos con la misma contraparte toma la mayor fracción ponderada,
+con desempate canónico por id; no suma cantidades de unidades distintas.
+Un pago desconocido no reduce la meta aunque el contrato real esté saldado.
+Al conocerse el cumplimiento desaparece; `persistGoalLayers` sigue siendo la
+opción independiente que conserva las capas y registra nacimientos y fines.
 
 ```ts
 interface EnforcerRef {
