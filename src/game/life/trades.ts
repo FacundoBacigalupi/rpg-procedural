@@ -40,6 +40,7 @@ import {
   setComponent,
   TRADE_RECEIPTS,
   type TradeRecipeDef,
+  table,
   WORK_HOURS_PER_DAY,
   WORKSHOP,
   WORKSHOP_WASTE,
@@ -49,7 +50,7 @@ import {
 } from "../../sim/index.ts";
 
 /** Igual a ROUTINE.workAge (no se importa routine.ts: ciclo con act.ts). */
-const WORK_AGE = 10;
+export const WORK_AGE = 10;
 
 export const TRADES_PROCESS = "life.trades";
 
@@ -91,6 +92,8 @@ export interface TradesOptions {
   readonly assignments: readonly TradeAssignment[];
   /** Con seed, los hogares sin asignación explícita reciben oficio de la población (`tradeOfHousehold`). */
   readonly seed?: Seed;
+  /** Opt-in: los oficios salen de `TRADE_CHOICE` (elegidos por habilidad), no del seed. */
+  readonly chosen?: boolean;
   /** Jornal de base por día de trabajo, en monedas (calibración abierta). */
   readonly baseWagePerDay?: number;
   /** Qué parte de su jornal aporta esta persona a la bolsa común (0 a 1); por defecto `WAGE_POOL_SHARE`. */
@@ -112,6 +115,39 @@ export function incomeOfHousehold(truth: ReadonlyWorldTruth, home: string, today
   return meanIncomePerDay([...wages, ...sales], today, RECEIPT_WINDOW_DAYS);
 }
 
+/** El oficio elegido por un hogar (por habilidad y necesidad), con el día en que lo eligió. */
+export interface TradeChoice {
+  readonly recipe: string;
+  readonly day: number;
+}
+/** Elección guardada por hogar (id del hogar como clave); la escribe solo `life.trade_choice`. */
+export const TRADE_CHOICE = table<TradeChoice>("economy.trade_choice");
+
+/**
+ * Los hogares con oficio: las asignaciones explícitas; con `chosen`, las elecciones guardadas en
+ * `TRADE_CHOICE`; si no hay ni una cosa ni la otra y hay `seed`, las derivadas de la población.
+ */
+export function tradeAssignments(
+  truth: ReadonlyWorldTruth,
+  o: Pick<TradesOptions, "assignments" | "seed" | "recipes" | "chosen">,
+  adultsByHome: ReadonlyMap<string, number>,
+): TradeAssignment[] {
+  const out: TradeAssignment[] = [...o.assignments];
+  if (o.chosen) {
+    const explicit = new Set(out.map((a) => a.household));
+    for (const id of [...truth.ids(TRADE_CHOICE)].sort()) {
+      const c = truth.get(TRADE_CHOICE, id);
+      if (c && !explicit.has(id as string)) out.push({ household: id as string, recipe: c.recipe });
+    }
+  } else if (o.assignments.length === 0 && o.seed !== undefined) {
+    for (const [home, n] of adultsByHome) {
+      const r = tradeOfHousehold(o.seed, home, n, o.recipes);
+      if (r) out.push({ household: home, recipe: r.id });
+    }
+  }
+  return out;
+}
+
 export function tradesProcess(o: TradesOptions): ProcessDef {
   const recipeOf = new Map(o.recipes.map((r) => [r.id, r]));
   const coinDef = o.goods.find((g) => g.form === "coin");
@@ -129,11 +165,12 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, TRADE_RECEIPTS.name, SALE_RECEIPTS.name],
+    reads: [PERSON.name, ENTITY.name, TRADE_RECEIPTS.name, SALE_RECEIPTS.name, TRADE_CHOICE.name],
     writes: [TRADE_RECEIPTS.name],
     run(ctx) {
       const ledger = ctx.ledger;
-      if (!ledger || !coinDef || (o.assignments.length === 0 && o.seed === undefined)) return {};
+      if (!ledger || !coinDef || (o.assignments.length === 0 && o.seed === undefined && !o.chosen))
+        return {};
       const coin = goodUnit(coinDef);
       const days = Math.max(1, ctx.window) / o.clock.day;
       const today = Math.floor(ctx.now / o.clock.day);
@@ -164,13 +201,11 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
         }
       };
 
-      const assignments: TradeAssignment[] = [...o.assignments];
-      if (o.assignments.length === 0 && o.seed !== undefined) {
-        for (const [home, list] of adults) {
-          const r = tradeOfHousehold(o.seed, home, list.length, o.recipes);
-          if (r) assignments.push({ household: home, recipe: r.id });
-        }
-      }
+      const assignments = tradeAssignments(
+        ctx.truth,
+        o,
+        new Map([...adults].map(([h, l]) => [h, l.length])),
+      );
       const employers = assignments
         .filter((a) => recipeOf.has(a.recipe) && (adults.get(a.household)?.length ?? 0) > 0)
         .sort((a, b) => (a.household < b.household ? -1 : a.household > b.household ? 1 : 0));

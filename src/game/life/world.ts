@@ -89,7 +89,9 @@ import { type SubstanceDose, substancesProcess } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
+import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
+import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { witnessingProcess } from "./witnessing.ts";
@@ -137,6 +139,10 @@ export interface LifeWorld {
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
   readonly householdTrades?: readonly TradeAssignment[];
+  /** Opt-in: cada hogar elige oficio por habilidad y necesidad (`tradeSkills`: receta a habilidad) y lo guarda; sin esto sale del seed. */
+  readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
+  /** Opt-in: quien cruza a un hogar con oficio cree que vive de eso (`TRADE_VIEW`); apagado por defecto. */
+  readonly tradeView?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -327,10 +333,33 @@ export function lifeWorld(
           recipes: parts.tradeRecipes ?? [],
           assignments: parts.householdTrades ?? [],
           // Sin asignaciones explícitas, el oficio de cada hogar sale de la población.
-          ...(parts.householdTrades === undefined ? { seed: parts.seed } : {}),
+          ...(parts.tradeChoice ? { chosen: true } : {}),
+          ...(parts.householdTrades === undefined && !parts.tradeChoice
+            ? { seed: parts.seed }
+            : {}),
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
+        ...(parts.tradeChoice
+          ? [
+              tradeChoiceProcess({
+                clock: parts.clock,
+                goods: parts.goods,
+                recipes: parts.tradeRecipes ?? [],
+                skills: parts.tradeChoice.tradeSkills,
+              }),
+            ]
+          : []),
+        ...(parts.tradeView
+          ? [
+              tradeViewProcess({
+                clock: parts.clock,
+                recipes: parts.tradeRecipes ?? [],
+                assignments: parts.householdTrades ?? [],
+                chosen: parts.tradeChoice !== undefined,
+              }),
+            ]
+          : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
           clock: parts.clock,
