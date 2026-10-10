@@ -30,6 +30,7 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  RUMORS,
   relationship,
   setComponent,
   table,
@@ -39,6 +40,7 @@ import { creditRows } from "./credit.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 import { NEIGHBOR_STANDING, neighborStandingKnown } from "./neighbors.ts";
+import { fraudCaution } from "./usurygossip.ts";
 
 export const LEND_PROCESS = "life.lend";
 
@@ -63,6 +65,8 @@ export interface LendOptions {
   readonly dropBelow?: number;
   /** Opt-in: el prestamista presta menos al hogar que CREE apretado o en la ruina (creencia, no verdad). */
   readonly heedStanding?: HeedStanding;
+  /** Opt-in: el prestamista presta menos a quien CREE tramposo (rumor `fraud` sobre él; creencia). */
+  readonly heedFraud?: boolean;
 }
 
 /** Cuánto pesa en el prestamista lo que cree del apuro del hogar que pide (multiplicadores de 0 a 1). */
@@ -124,6 +128,7 @@ export function lendProcess(o: LendOptions): ProcessDef {
       KNOWN_DEEDS.name,
       MOLD_RUMORS.name,
       LEND_LOG.name,
+      ...(o.heedFraud ? [RUMORS.name] : []),
     ],
     writes: [MOLD_RUMORS.name, LEND_LOG.name],
     run(ctx) {
@@ -190,9 +195,10 @@ export function lendProcess(o: LendOptions): ProcessDef {
       });
       const harmed = worstDeed(truth.get(KNOWN_DEEDS, lender), me) !== null;
       const base = harmed ? 0 : clamp01(0.4 + 0.4 * rel.dims.trust + 0.2 * rel.dims.affection);
-      const willing = o.heedStanding
+      const standing = o.heedStanding
         ? base * standingCaution(truth, lender, myHome, o.heedStanding)
         : base;
+      const willing = o.heedFraud ? standing * fraudCaution(truth, lender, me) : standing;
       if (!ctx.rng.fork("lend", me, ctx.now).chance(willing)) {
         return {
           changes: [log],

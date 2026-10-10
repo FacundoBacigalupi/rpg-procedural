@@ -649,6 +649,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
                 crafts: craftSkillIds(parts.skills),
+                ...(parts.usuryGossip ? { heedFraud: true } : {}),
               }),
             ]
           : []),
@@ -755,6 +756,7 @@ export function lifeWorld(
                 day: parts.clock.day,
                 player,
                 placeOf: placeOf(parts, village),
+                ...(parts.usuryGossip ? { heedFraud: true } : {}),
               }),
             ]
           : []),

@@ -20,6 +20,7 @@ import {
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  RUMORS,
   SKILL_STATE,
   type StateChange,
   setComponent,
@@ -30,6 +31,7 @@ import { type HeedStanding, standingCaution } from "./lend.ts";
 import { COMMITMENTS } from "./loans.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 import { NEIGHBOR_STANDING } from "./neighbors.ts";
+import { fraudCaution } from "./usurygossip.ts";
 
 export const HIRE_PROCESS = "life.hire";
 export const HIRE_DONE = "hire.done";
@@ -72,6 +74,8 @@ export interface HireOptions {
   readonly distrustPremium?: number;
   /** Opt-in: quien contrata ofrece menos al oficial cuyo hogar CREE apretado o en la ruina (creencia, nunca la verdad). */
   readonly heedStanding?: HeedStanding;
+  /** Opt-in: quien contrata ofrece menos al oficial que CREE tramposo (rumor `fraud` sobre él; creencia). */
+  readonly heedFraud?: boolean;
   /** Servidumbre por lo no pagado: sin esto, quien no puede pagar no consigue el trabajo. */
   readonly bondage?: {
     readonly wagePerDay: number;
@@ -106,6 +110,7 @@ export function hireProcess(o: HireOptions): ProcessDef {
       SKILL_STATE.name,
       HIRED_WORK.name,
       ...(o.heedStanding ? [NEIGHBOR_STANDING.name, MOLD_RUMORS.name] : []),
+      ...(o.heedFraud ? [RUMORS.name] : []),
     ],
     writes: [HIRED_WORK.name, ...(o.bondage ? [COMMITMENTS.name, ENTITY.name] : [])],
     run(ctx) {
@@ -151,9 +156,10 @@ export function hireProcess(o: HireOptions): ProcessDef {
               o.heedStanding,
             )
           : 1;
+        const wary = o.heedFraud ? fraudCaution(truth, hirer, worker) : 1;
         const wage = Math.max(
           1,
-          Math.round(base * (1 + premium * (1 - Math.min(1, Math.max(0, trust)))) * caution),
+          Math.round(base * (1 + premium * (1 - Math.min(1, Math.max(0, trust)))) * caution * wary),
         );
         const total = wage * days;
         const homeId = truth.get(PERSON, hirer)?.household as string | undefined;
