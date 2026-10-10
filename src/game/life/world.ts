@@ -49,6 +49,7 @@ import {
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess } from "./act.ts";
+import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
@@ -65,6 +66,7 @@ import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gossipProcess } from "./gossip.ts";
+import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
@@ -83,6 +85,7 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
+import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
@@ -140,6 +143,14 @@ export interface LifeWorld {
   readonly deficiencyEffects?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
+  /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
+  readonly growthSequelae?: boolean;
+  /**
+   * Opt-in: altitud real del hex (`LocalMap.elevationM`): corre `life.altitude` (aclimatación en
+   * `ACCLIMATIZATION`), el frío sigue el gradiente con la elevación y la resistencia de `decide`/`act`
+   * baja con la altura. Apagado por defecto: la aldea no cambia, sin filas ni RNG.
+   */
+  readonly realAltitude?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -154,6 +165,8 @@ export interface LifeWorld {
   readonly moldGossip?: MoldGossipOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
+  /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
+  readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
   readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`, tabla `MIGRATIONS`); solo la decisión, no mueve a nadie. Apagado por defecto. */
@@ -198,6 +211,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
+  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map) : undefined;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
@@ -254,6 +268,7 @@ export function lifeWorld(
           clock: parts.clock,
           seed: parts.seed,
           player,
+          ...(altitudeOf ? { altitudeOf } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -380,6 +395,16 @@ export function lifeWorld(
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.rentSeeds && parts.rentSeeds.length > 0
+          ? [
+              rentsProcess({
+                clock: parts.clock,
+                goods: parts.goods,
+                seeds: parts.rentSeeds,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ...(parts.famine
           ? [
               famineProcess({
@@ -427,13 +452,16 @@ export function lifeWorld(
           lethal: parts.malnutritionDeath === true,
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
         thermalProcess({
           clock: parts.clock,
           map: parts.map,
           spaces: parts.spaces,
           seed: parts.seed,
           placeOf: placeOf(parts, village),
+          ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
         }),
+        ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
         upkeepProcess({
           clock: parts.clock,
           map: parts.map,
@@ -555,6 +583,7 @@ export function lifeWorld(
           habits: parts.habits,
           player,
           placeOf: placeOf(parts, village),
+          ...(altitudeOf ? { altitudeOf } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

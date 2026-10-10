@@ -145,6 +145,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
+import { rentsOf } from "./rents.ts";
 import { liveTaboos } from "./taboos.ts";
 import { recountOf, recountTone, weighedMemories } from "./talkmemory.ts";
 import { INQUIRY_EVENT, type InquiryData } from "./testify.ts";
@@ -1194,6 +1195,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(o.year === undefined ? {} : { year: o.year }),
           incomePerDay: incomeOfHousehold(truth, home, Math.floor(ctx.now / o.day)),
           loans: loansOf(truth, holderAccount(larder)),
+          rents: rentsOf(truth, home),
         },
         home,
       );

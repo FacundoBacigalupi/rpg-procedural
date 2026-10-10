@@ -70,6 +70,10 @@ export interface LocalMap {
   /** Segundos que se tarda en cruzar cada hex caminando (terreno, pendiente, bosque). */
   readonly crossSeconds: readonly number[];
   readonly forest: readonly boolean[];
+  /** m sobre el nivel del mar de cada hex (planet-gen); opcional: sin esto la altitud es 0. */
+  readonly elevationM?: readonly number[];
+  /** Elevación media de la celda (m): la altura a la que valen las normales del clima. */
+  readonly baseElevationM?: number;
   /** Las normales de la celda: de acá sale el tiempo de cada día (`sim/weather`). */
   readonly climate: ClimateNormals;
 }

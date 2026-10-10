@@ -6,8 +6,12 @@
 import type { AgentId, PlanetClock } from "../../core/index.ts";
 import {
   ACCLIMATIZATION,
+  altitudeEnduranceFactor,
   BODY_STATE,
+  type BodyCapabilities,
   ENTITY,
+  LOCATION,
+  type LocalMap,
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
@@ -17,6 +21,31 @@ import {
 } from "../../sim/index.ts";
 
 export const ALTITUDE_PROCESS = "life.altitude";
+
+/**
+ * Altitud real (m) de quien está: la elevación del hex de planet-gen donde está (`LOCATION.hex`,
+ * `LocalMap.elevationM`). Lectura simple y determinista; sin elevación en el mapa o sin lugar, 0.
+ */
+export function mapAltitudeOf(map: LocalMap): (truth: ReadonlyWorldTruth, who: AgentId) => number {
+  return (truth, who) => {
+    const hex = truth.get(LOCATION, who)?.hex;
+    return hex === undefined ? 0 : (map.elevationM?.[hex] ?? 0);
+  };
+}
+
+/** Las capacidades con la resistencia bajada por la altura y la aclimatación de quien está. */
+export function applyAltitude(
+  caps: BodyCapabilities,
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  altitudeOf: (truth: ReadonlyWorldTruth, who: AgentId) => number,
+): BodyCapabilities {
+  const factor = altitudeEnduranceFactor(
+    altitudeOf(truth, who),
+    truth.get(ACCLIMATIZATION, who)?.level ?? 0,
+  );
+  return factor >= 1 ? caps : { ...caps, endurance: caps.endurance * factor };
+}
 
 export interface AltitudeOptions {
   readonly clock: PlanetClock;

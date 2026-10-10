@@ -3,6 +3,8 @@
 // la carencia; lo que se perdió en los años sensibles no se recupera (talla) o se recupera poco
 // (cognición). Sin carencia (`growth` = 1, `cognition` = 1) no se acumula nada.
 
+import { table } from "../world/index.ts";
+
 /** Marcas permanentes de la infancia: 0 = ninguna, 1 = el máximo posible. */
 export interface GrowthSequelae {
   /** Fracción de la talla adulta que no se alcanzó (hasta `MAX_STUNT`). */
@@ -12,6 +14,9 @@ export interface GrowthSequelae {
 }
 
 export const NO_SEQUELAE: GrowthSequelae = { stunt: 0, cognitiveLoss: 0 };
+
+/** Secuelas por niño; sin fila, ninguna. Las escribe solo `life.growth-sequelae`. */
+export const GROWTH_SEQUELAE = table<GrowthSequelae>("body.growth_sequelae");
 
 export const MAX_STUNT = 0.2;
 export const MAX_COGNITIVE_LOSS = 0.3;

@@ -24,6 +24,7 @@ import {
 } from "../../sim/index.ts";
 import { type HouseholdStanding, householdFlowsOf, standingOf } from "./budget.ts";
 import { loansOf } from "./loans.ts";
+import { rentsOf } from "./rents.ts";
 import {
   chooseTradeBySkill,
   incomeOfHousehold,
@@ -116,6 +117,7 @@ export function tradeChoiceProcess(o: TradeChoiceOptions): ProcessDef {
                 year: o.clock.year,
                 incomePerDay: incomeOfHousehold(truth, home, today),
                 loans: loansOf(truth, holderAccount(home as unknown as HolderRef)),
+                rents: rentsOf(truth, home),
               },
               home,
             ),

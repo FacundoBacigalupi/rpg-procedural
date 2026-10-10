@@ -16,6 +16,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import {
+  ACCLIMATIZATION,
   type ActionCatalog,
   applyAcute,
   BELIEFS,
@@ -87,6 +88,7 @@ import {
   villageCulture,
   villageReligion,
 } from "../../sim/index.ts";
+import { applyAltitude } from "./altitude.ts";
 import { acuteOf } from "./substances.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -134,6 +136,8 @@ export interface DecideOptions {
   readonly habits?: readonly HabitDef[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: la altura baja la resistencia creída (`applyAltitude`); apagado, no cambia. */
+  readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -159,6 +163,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       HABITS.name,
       MENTAL.name,
       LOCATION.name,
+      ACCLIMATIZATION.name,
       PLACE.name,
       SELF_IMAGES.name,
       SKILL_STATE.name,
@@ -317,7 +322,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         born.length + ended.length > 0 || prevGoals.length !== goals.length
           ? [setComponent(NPC_GOALS, me, { items: goals })]
           : [];
-      const caps = applyAcute(capabilitiesOf(plan, body), acute);
+      const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
+      const caps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {
