@@ -113,6 +113,29 @@ Las emociones son `fear`, `anger`, `sadness`, `joy`, `shame`, `guilt`, `envy` y 
 - El **estrés** crónico es un acumulador lento. Si se sostiene, mueve esquemas como un evento formativo.
 - **Contagio emocional:** las emociones **percibidas** en otros entran a la interpretación como un evento más. Su peso depende de `sociability`, de la relación con quien la muestra y de cuántos la muestran. Así se dan el pánico en una batalla, la euforia en un festival o la furia de una turba. Los grupos de tier 0 tienen un humor colectivo que se mueve con la misma regla, en agregado.
 
+**Contrato puro inicial (2026-10-10, f3c3a):** `EmotionSignal` registra dueño,
+emoción, intensidad, `originEventId`, momento vivido y tema del appraisal.
+`appraisalEmotionSignals` sólo interpreta tres temas ya disponibles: violencia
+propia como miedo, pérdida sentida como tristeza y culpa interpretada como culpa.
+Conserva las intensidades que appraisal ya moduló por temperamento, esquemas o
+consuelo; no transforma cualquier experiencia negativa en ira o vergüenza, ni
+supone amor por un cuidado recibido. Repetir un tema del mismo hecho conserva
+su mayor intensidad y no la suma. Sin appraisal de esos temas no genera señales.
+
+`emotionIntensityAt` calcula decaimiento separado de la memoria duradera y de
+las condiciones crónicas; recibe vida media explícita en ticks y reactividad
+normalizada 0-1. Con reactividad 0,5 usa esa vida media; con 0 o 1 la escala por
+0,5 o 1,5 respectivamente (provisional). Un hecho aún no vivido no produce
+intensidad. Este núcleo no persiste ni cambia procesos o decisiones. El llamador
+debe acreditar que el dueño vivió o percibió el appraisal y citar ese hecho:
+la ruta actual de duelo que consulta hogares reales no constituye por sí sola
+un contrato de evidencia para el nuevo cableado.
+
+La división de Fase 3 continúa con persistencia opt-in y consumo de señales con
+evidencia propia en la capa inmediata, y un subítem separado de appraisal
+específico para ira, alegría, vergüenza, envidia y amor. El catálogo de ocho
+emociones ya está tipado; esas cinco todavía no tienen una fuente implementada.
+
 ## 5. Memoria episódica
 
 ```ts
