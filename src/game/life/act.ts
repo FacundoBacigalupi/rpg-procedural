@@ -37,6 +37,7 @@ import {
   blowFromStrike,
   CREDIT,
   capabilitiesOf,
+  DEFICIENCY_EFFECTS,
   type DealBudget,
   dayOf,
   deleteComponent,
@@ -49,6 +50,7 @@ import {
   FROSTBITE,
   fieldFertility,
   type GoodDef,
+  GROWTH_SEQUELAE,
   goodUnit,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
@@ -133,6 +135,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
+import { applyDeficiency } from "./deficiencyCaps.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
   atMyMercy,
@@ -211,6 +214,8 @@ export interface ActOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
+  readonly nutritionCaps?: boolean;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -303,6 +308,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       SELLER_DAY.name,
       SALE_RECEIPTS.name,
       ACCLIMATIZATION.name,
+      DEFICIENCY_EFFECTS.name,
+      GROWTH_SEQUELAE.name,
       FROSTBITE.name,
       AMPUTATIONS.name,
     ],
@@ -506,7 +513,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const bodyPlan = e.plans.get(body.plan) as BodyPlanDef;
   const acuteCaps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
   const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
-  const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+  const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+  const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 

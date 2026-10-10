@@ -148,6 +148,8 @@ export interface LifeWorld {
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
   readonly growthSequelae?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
+  readonly nutritionCaps?: boolean;
   /**
    * Opt-in: altitud real del hex (`LocalMap.elevationM`): corre `life.altitude` (aclimatación en
    * `ACCLIMATIZATION`), el frío sigue el gradiente con la elevación y la resistencia de `decide`/`act`
@@ -281,6 +283,7 @@ export function lifeWorld(
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -600,6 +603,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

@@ -31,6 +31,7 @@ import {
   capabilitiesOf,
   closeness,
   coreGoals,
+  DEFICIENCY_EFFECTS,
   type DimensionDef,
   decideByUtility,
   drivesFor,
@@ -38,6 +39,7 @@ import {
   FROSTBITE,
   type Goal,
   type GoodDef,
+  GROWTH_SEQUELAE,
   goalChanges,
   goalDrives,
   goodUnit,
@@ -91,6 +93,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
+import { applyDeficiency } from "./deficiencyCaps.ts";
 import { acuteOf } from "./substances.ts";
 import { applyFrostbite } from "./thermal.ts";
 
@@ -143,6 +146,8 @@ export interface DecideOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
+  readonly nutritionCaps?: boolean;
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -169,6 +174,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       MENTAL.name,
       LOCATION.name,
       ACCLIMATIZATION.name,
+      DEFICIENCY_EFFECTS.name,
+      GROWTH_SEQUELAE.name,
       FROSTBITE.name,
       AMPUTATIONS.name,
       PLACE.name,
@@ -331,7 +338,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : [];
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
       const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
-      const caps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+      const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
+      const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {
