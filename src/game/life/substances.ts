@@ -73,7 +73,12 @@ export function cueContextOf(
    * mismo hex": una creencia falsa despierta la señal, una persona oculta no) y `hourOffset` el huso
    * local en horas respecto de la hora global. Sin esto, el entorno es el de siempre.
    */
-  local?: { readonly believedPresent?: readonly string[]; readonly hourOffset?: number },
+  local?: {
+    readonly believedPresent?: readonly string[];
+    readonly hourOffset?: number;
+    /** Objetos u olores presentes (señal por objeto). */
+    readonly objects?: readonly string[];
+  },
 ): CueContext {
   const hex = truth.get(LOCATION, who)?.hex ?? 0;
   const people =
@@ -88,7 +93,10 @@ export function cueContextOf(
   const inDay = ((now % clock.day) + clock.day) % clock.day;
   const hour = Math.floor((inDay / clock.day) * 24);
   const off = Math.round(local?.hourOffset ?? 0);
-  return { hex, people, hour: (((hour + off) % 24) + 24) % 24 };
+  const hourLocal = (((hour + off) % 24) + 24) % 24;
+  return local?.objects !== undefined && local.objects.length > 0
+    ? { hex, people, hour: hourLocal, objects: local.objects }
+    : { hex, people, hour: hourLocal };
 }
 
 /** Ansia que despierta el entorno por señales aprendidas; sin señales (o sin opt-in), 0. */

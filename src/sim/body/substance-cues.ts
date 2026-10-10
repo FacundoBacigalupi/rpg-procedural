@@ -6,7 +6,7 @@
 
 import { pow } from "../../core/math/index.ts";
 
-export type CueKind = "place" | "person" | "hour";
+export type CueKind = "place" | "person" | "hour" | "object";
 
 /** Una asociación aprendida entre una señal del entorno y una sustancia. */
 export interface CravingCue {
@@ -25,6 +25,8 @@ export interface CueContext {
   readonly people: readonly string[];
   /** 0-23. */
   readonly hour: number;
+  /** Opcional: objetos u olores presentes (id del bien o de la marca de olor) que remiten a la sustancia. */
+  readonly objects?: readonly string[];
 }
 
 /** Franjas del día para la señal de hora (cada 4 horas). */
@@ -44,6 +46,7 @@ export function cuesOf(ctx: CueContext): { kind: CueKind; key: string }[] {
     { kind: "place", key: `hex:${ctx.hex}` },
     ...[...ctx.people].sort().map((p) => ({ kind: "person" as const, key: p })),
     { kind: "hour", key: hourBand(ctx.hour) },
+    ...[...(ctx.objects ?? [])].sort().map((o) => ({ kind: "object" as const, key: `obj:${o}` })),
   ];
 }
 

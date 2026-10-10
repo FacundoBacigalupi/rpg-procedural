@@ -148,6 +148,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
+import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
@@ -301,6 +302,8 @@ export interface ActOptions {
   };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
+  /** Opt-in (con `cravingCues`): las señales de la dosis usan creencias, huso y el objeto tomado; ver `cueLocalOf`. */
+  readonly cueLocal?: boolean;
 }
 
 export interface BoilOptions {
@@ -619,6 +622,17 @@ function marketOf(
 function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const { me, state, cursor } = e;
   const truth = ctx.truth;
+  // Entorno de la dosis; con `cueLocal`, a quién cree presente, el huso y el objeto tomado (su olor).
+  const doseCueCtx = (good: string) =>
+    cueContextOf(
+      truth,
+      me,
+      ctx.now,
+      o.clock,
+      o.cueLocal
+        ? { ...cueLocalOf(truth, me, ctx.now, o.clock, o.map.lonDeg), objects: [good] }
+        : undefined,
+    );
   const node = nodeAt(state.plan.root, cursor.path as number[]) as Extract<
     PlanNode,
     { kind: "do" }
@@ -754,9 +768,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ctx,
         input.place,
         r.events.length,
-        o.cravingCues
-          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
-          : undefined,
+        o.cravingCues ? { ctx: doseCueCtx(laced.good), clock: o.clock } : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);
@@ -775,9 +787,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ctx,
         input.place,
         r.events.length,
-        o.cravingCues
-          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
-          : undefined,
+        o.cravingCues ? { ctx: doseCueCtx(o.drinkSubstance.good), clock: o.clock } : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);
@@ -807,9 +817,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ctx,
         input.place,
         r.events.length,
-        o.cravingCues
-          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
-          : undefined,
+        o.cravingCues ? { ctx: doseCueCtx(used.good), clock: o.clock } : undefined,
       );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);

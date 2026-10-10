@@ -493,6 +493,7 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.cravingCues === true && parts.cueLocal === true ? { cueLocal: true } : {}),
           ...(parts.scam === true
             ? {
                 scam: scamProviders({

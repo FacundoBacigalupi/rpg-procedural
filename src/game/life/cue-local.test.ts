@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, PlanetClock } from "../../core/index.ts";
-import { BELIEFS, LOCATION, WorldTruth } from "../../sim/index.ts";
+import { BELIEFS, cueCraving, LOCATION, learnCues, WorldTruth } from "../../sim/index.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { cueContextOf } from "./substances.ts";
 
@@ -40,5 +40,17 @@ describe("life.cueLocalOf", () => {
 
   it("sin opt-in el entorno sigue siendo el de la verdad", () => {
     expect(cueContextOf(t, me, 6000, clock).people).toEqual(["agent:2"]);
+  });
+
+  it("una señal por objeto se aprende y despierta ansia solo con el objeto", () => {
+    const l = cueLocalOf(t, me, 1000, clock, 0);
+    const withObj = cueContextOf(t, me, 6000, clock, { ...l, objects: ["wine"] });
+    expect(withObj.objects).toEqual(["wine"]);
+    const cues = learnCues([], "wine", withObj, 6000, 60 * 24000);
+    expect(cues.some((c) => c.kind === "object" && c.key === "obj:wine")).toBe(true);
+    const bare = cueContextOf(t, me, 6000, clock, l);
+    const onlyObj = cues.filter((c) => c.kind === "object");
+    expect(cueCraving(onlyObj, bare, 6000, 60 * 24000)).toBe(0);
+    expect(cueCraving(onlyObj, withObj, 6000, 60 * 24000)).toBeGreaterThan(0);
   });
 });
