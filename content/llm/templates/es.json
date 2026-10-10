@@ -110,6 +110,13 @@
     "id": "outcome.move.short",
     "lines": ["Todavía no llegás: te queda camino.", "Avanzás, pero no llegás todavía."]
   },
+  {
+    "id": "outcome.move.blocked",
+    "lines": [
+      "La puerta está trabada: empujás y no cede.",
+      "No lográs abrir la puerta; está trabada."
+    ]
+  },
   { "id": "outcome.move.lost", "lines": ["No sabés bien dónde estás.", "Perdiste el rumbo."] },
   {
     "id": "outcome.stumbled",

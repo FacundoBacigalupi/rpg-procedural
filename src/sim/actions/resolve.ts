@@ -94,6 +94,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
   /** El hex adonde va `move` (el del lugar del argumento, ya elegido por quien arma el paso). */
   readonly destination?: number | undefined;
+  /** El actor está detrás de una puerta trabada: de ahí no sale caminando (settlements §7). */
+  readonly shut?: boolean | undefined;
   /** Cuánto más cuesta caminar hoy por el tiempo (1 = seco y templado; `walkingFactor`). */
   readonly walkFactor?: number | undefined;
   /** Qué tan fácil es torcer el rumbo hoy (1 = día claro; `bearingFactor`) y qué hitos se ven. */
@@ -207,6 +209,8 @@ export type VerbEffect =
       readonly reached: number | null;
       /** Se cayó o se torció algo en el camino (body lo lee cuando llegue). */
       readonly stumbled: boolean;
+      /** La puerta trabada no lo dejó salir: se queda donde estaba. */
+      readonly blocked?: "jammed_door";
       /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
       readonly onTheWay?: boolean;
       /** Se torció del rumbo sin notarlo: el hex donde cree estar (`reached` es donde está). */
@@ -675,6 +679,10 @@ const move: Resolver = (c) => {
   const at = (hex: number): StateChange[] =>
     hex === from ? [] : [setComponent(LOCATION, c.input.actor.id, { hex })];
 
+  if (c.input.shut === true && path.length > 0) {
+    // Quiere salir y la puerta no cede: no hay tirada que valga, forcejea un rato y sigue adentro.
+    return { effect: { ...effect(from, false), blocked: "jammed_door" }, seconds: c.nominal * 0.1 };
+  }
   if (roll.unmet || (path.length === 0 && to !== from)) {
     // No pudo ni salir, o no hay camino por tierra: se queda.
     return { effect: effect(from, false), seconds: c.nominal };

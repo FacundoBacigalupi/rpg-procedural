@@ -27,7 +27,9 @@ import {
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  BUILDING,
   bearingFactor,
+  behindJammedDoor,
   beliefAbout,
   blowFromMishap,
   blowFromStrike,
@@ -265,6 +267,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       SOIL.name,
       ENTITY.name,
       LOCATION.name,
+      BUILDING.name,
       BODY_STATE.name,
       SKILL_STATE.name,
       SELF_IMAGES.name,
@@ -508,6 +511,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     rng: ctx.rng.fork("act", state.seq, (cursor.path as number[]).join(".")),
     map: o.map,
     destination,
+    shut:
+      def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
     walkFactor:
       def.resolver === "move"
         ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now))

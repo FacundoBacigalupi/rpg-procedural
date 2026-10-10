@@ -267,6 +267,8 @@ export type EffectView =
       /** Llegó; `false` quedó a mitad de camino; `null` no sabe dónde está. */
       readonly arrived: boolean | null;
       readonly stumbled: boolean;
+      /** La puerta trabada no lo dejó salir. */
+      readonly blocked?: boolean;
     }
   | { readonly kind: "observe" }
   | {
@@ -671,6 +673,7 @@ function effectView(
         kind: "move",
         arrived: e.reached === null ? null : e.reached === e.to,
         stumbled: e.stumbled,
+        ...(e.blocked !== undefined ? { blocked: true } : {}),
       };
     case "observe":
       return { kind: "observe" };
