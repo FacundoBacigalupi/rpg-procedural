@@ -228,6 +228,12 @@ export interface ProcessDef {
   readonly cadence: Partial<Record<ZoneResolution, TimeScale | "onEvent">>;
   readonly representation: "individual" | "aggregate" | "both";
   readonly phase: Phase;
+  /**
+   * Opt-in: con cadencia `onEvent` y fase distinta de `perceive`, corre en su fase del mismo paso
+   * con `recent` = los eventos que las fases anteriores asentaron en él (sin esto, un `onEvent`
+   * que no es `perceive` nunca corre).
+   */
+  readonly withRecent?: true;
   /** Tablas que lee y que escribe. Escribir fuera de `writes` es un error. */
   readonly reads: readonly string[];
   readonly writes: readonly string[];

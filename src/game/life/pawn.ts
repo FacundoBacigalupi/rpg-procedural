@@ -223,6 +223,7 @@ export function pawnOpenProcess(o: {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "settle",
+    withRecent: true,
     reads: [PERSON.name, ENTITY.name, ...(o.open.terms ? [INNATE.name] : [])],
     writes: [COMMITMENTS.name, ENTITY.name],
     run(ctx) {

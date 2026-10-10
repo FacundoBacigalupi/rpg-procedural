@@ -279,6 +279,28 @@ export class Scheduler {
             rngParts: [def.system, def.id, head.scope, "at", t, n],
           });
         }
+        if (events.length > 0) {
+          for (const def of this.#defs.values()) {
+            if (
+              def.phase !== phase ||
+              def.withRecent !== true ||
+              def.cadence[this.#o.resolution] !== "onEvent"
+            ) {
+              continue;
+            }
+            for (const scope of this.#scopesOf(def)) {
+              specs.push({
+                def,
+                scope,
+                window: 0,
+                windowIndex: undefined,
+                item: undefined,
+                recent: [...events],
+                rngParts: [def.system, def.id, scope, "event", t],
+              });
+            }
+          }
+        }
         specs.sort(
           (a, b) =>
             compareStrings(a.def.id, b.def.id) ||
