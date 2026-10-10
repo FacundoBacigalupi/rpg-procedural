@@ -64,6 +64,7 @@ import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
 import { conscienceProcess } from "./conscience.ts";
+import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import { decideProcess } from "./decide.ts";
@@ -292,6 +293,8 @@ export interface LifeWorld {
   readonly scamFiller?: LedgerUnit;
   /** Opt-in: marcas en los lotes comerciados y verificación del comprador (`life.marks`). */
   readonly marks?: boolean;
+  /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
+  readonly loanContagion?: string;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -482,6 +485,9 @@ export function lifeWorld(
                 day: parts.clock.day,
               }),
             ]
+          : []),
+        ...(parts.loanContagion !== undefined
+          ? [contagionProcess({ unit: parts.loanContagion, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.marks === true
           ? [marksProcess({ placeOf: placeOf(parts, village), eye: scamEyeOf(parts.traits) })]
