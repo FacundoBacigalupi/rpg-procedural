@@ -1126,6 +1126,46 @@ function prophecyOf(
   return { told, heard, fresh: known === undefined };
 }
 
+/** Una pata de un trato cerrado: qué unidad pasa de qué titular a cuál. */
+export interface DealSwap {
+  readonly unit: LedgerUnit;
+  readonly from: HolderRef;
+  readonly to: HolderRef;
+  readonly amount: number;
+}
+
+/**
+ * Las transferencias de un trato aceptado (dialogue §8): lo que el oyente da sale de su despensa
+ * hacia el bolsillo de quien habla, y lo que recibe entra a su despensa (también si es una
+ * sustancia: de ahí la toma `consume`, que mira la despensa). Las monedas van por la bolsa de
+ * quien trata, no por la despensa.
+ */
+export function dealSwaps(
+  deal: Pick<Proposal, "gives" | "gets"> | undefined,
+  goodById: (id: string) => GoodDef | undefined,
+  larder: HolderRef,
+  me: AgentId,
+  speaker: AgentId,
+): DealSwap[] {
+  const swaps: DealSwap[] = [];
+  const yours = speaker as unknown as HolderRef;
+  const purse = me as unknown as HolderRef;
+  for (const [term, from, to] of [
+    [deal?.gives, larder, yours],
+    [deal?.gets, yours, larder],
+  ] as const) {
+    const g = term ? goodById(term.good) : undefined;
+    if (!term || !g) continue;
+    swaps.push({
+      unit: goodUnit(g),
+      from: g.form === "coin" && from === larder ? purse : from,
+      to: g.form === "coin" && to === larder ? purse : to,
+      amount: term.grams,
+    });
+  }
+  return swaps;
+}
+
 export function converseProcess(o: ConverseOptions): ProcessDef {
   const speak = o.catalog.verb("speak");
   return {
@@ -1703,24 +1743,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         causes: [reason],
       };
       // Un trato cerrado: cada parte pasa lo suyo, de despensa a bolsillo y de bolsillo a despensa.
-      const swaps: { unit: LedgerUnit; from: HolderRef; to: HolderRef; amount: number }[] = [];
-      const mine = larder;
-      const yours = speaker as unknown as HolderRef;
-      for (const [term, from, to] of [
-        [reply.deal?.gives, mine, yours],
-        [reply.deal?.gets, yours, mine],
-      ] as const) {
-        const g = term ? goodById(term.good) : undefined;
-        if (!term || !g) continue;
-        // Las monedas salen y entran por la bolsa de quien trata, no por la despensa.
-        const purse = me as unknown as HolderRef;
-        swaps.push({
-          unit: goodUnit(g),
-          from: g.form === "coin" && from === mine ? purse : from,
-          to: g.form === "coin" && to === mine ? purse : to,
-          amount: term.grams,
-        });
-      }
+      const swaps = dealSwaps(reply.deal, goodById, larder, me, speaker);
       return {
         changes,
         events: [
