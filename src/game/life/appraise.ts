@@ -89,7 +89,11 @@ import {
 } from "../../sim/index.ts";
 import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
-import { ownEmotionSignals, perceivedLossSignals } from "./emotion-evidence.ts";
+import {
+  ownEmotionSignals,
+  perceivedLossSignals,
+  receivedInsultSignals,
+} from "./emotion-evidence.ts";
 import { grievanceDeltas, grievanceOf } from "./grievance.ts";
 import {
   type Lived,
@@ -281,6 +285,17 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         truth.get(BODY_STATE, id)?.activity === "sleep" ? WITNESS_ASLEEP_ENCODING : 1;
       for (const e of ctx.recent) {
         if (o.persistEmotionSignals) {
+          const listener = e.actors[0] as AgentId | undefined;
+          const listenerBody = listener ? truth.get(BODY_STATE, listener) : undefined;
+          if (listener && listenerBody)
+            recordEmotions(
+              listener,
+              receivedInsultSignals(
+                e,
+                ctx.now,
+                listenerBody.consciousness !== "unconscious" && listenerBody.activity !== "sleep",
+              ),
+            );
           // Se recalcula el mismo percept que witnessing asentará al terminar perceive.
           // No depende del orden lexical de escritores de la misma fase ni usa lossLived legacy.
           for (const percept of seen.get(e.id) ?? []) {

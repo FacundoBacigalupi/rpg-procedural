@@ -3,10 +3,49 @@ import type { AgentId, Event, Tick } from "../../core/index.ts";
 import {
   type Appraised,
   appraisalEmotionSignals,
+  appraiseInsultEmotion,
   appraiseLoss,
   type EmotionSignal,
   type Percept,
 } from "../../sim/index.ts";
+
+/** Contrato de la respuesta entregada de converse: primero oyente, luego hablante conocido. */
+export function receivedInsultSignals(
+  event: Event,
+  now: Tick,
+  conscious: boolean,
+): EmotionSignal[] {
+  if (!conscious || event.tick > now || event.kind !== "action.speak") return [];
+  const [listener, speaker] = event.actors;
+  if (!listener?.startsWith("agent:") || !speaker?.startsWith("agent:")) return [];
+  const effect = (
+    event.data as {
+      effect?: {
+        kind?: string;
+        delivered?: boolean;
+        to?: string;
+        reply?: string;
+        regard?: { kind?: string; faceLoss?: number };
+      };
+    } | null
+  )?.effect;
+  if (
+    effect?.kind !== "speak" ||
+    effect.to !== speaker ||
+    effect.regard?.kind !== "insult" ||
+    (effect.reply !== "insult.hurt" && effect.reply !== "insult.shrug")
+  )
+    return [];
+  const signal = appraiseInsultEmotion(listener as AgentId, {
+    offender: speaker as AgentId,
+    delivered: effect.delivered === true,
+    understood: true,
+    feltOffense: effect.regard.faceLoss ?? 0,
+    originEventId: event.id,
+    at: now,
+  });
+  return signal ? [{ ...signal, evidence: { kind: "own" as const, event: event.id } }] : [];
+}
 
 /** Un appraisal legacy no acredita percepción. Solo violencia corporal propia y culpa del actor. */
 export function ownEmotionSignals(

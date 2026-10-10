@@ -134,7 +134,8 @@ un contrato de evidencia para el nuevo cableado.
 La división de Fase 3 continúa con persistencia opt-in y consumo de señales con
 evidencia propia en la capa inmediata, y un subítem separado de appraisal
 específico para ira, alegría, vergüenza, envidia y amor. El catálogo de ocho
-emociones ya está tipado; esas cinco todavía no tienen una fuente implementada.
+emociones ya está tipado. La fuente de ira se implementa en f3c3c1 más abajo;
+alegría, vergüenza, envidia y amor requieren sus subítems propios.
 
 **Persistencia con evidencia (2026-10-10, f3c3b):** `persistImmediateGoals`
 habilita `persistEmotionSignals` en `life.appraise`. Es el único escritor de
@@ -166,7 +167,42 @@ cuando es su fuente. No añade otro término a utilidad. Tristeza y culpa persis
 sin inventar una necesidad ni una acción para aliviarlas. **Subítem f3c3d de
 Fase 3:** definir consuelo y reparación según creencias y catálogo de acciones,
 y sólo después convertir tristeza/culpa en motivaciones inmediatas. El appraisal
-de ira, alegría, vergüenza, envidia y amor sigue siendo el subítem separado f3c3c.
+de ira, alegría, vergüenza, envidia y amor se divide según sus fuentes
+en los subítems f3c3c descritos a continuación.
+
+**Ira ante insulto comprendido (2026-10-10, f3c3c1):** el núcleo puro
+`appraiseInsultEmotion` necesita insulto entregado y entendido, ofensa sentida
+positiva y autor atribuible distinto del dueño. Guarda `target` con ese autor;
+no transforma tristeza, miedo o cualquier valencia negativa en ira. La intensidad
+es la ofensa que el oyente ya juzgó con sus creencias de rango, testigos y cuánto
+le dolió, sin consultar emociones del hablante ni sus intenciones reales.
+
+El cableado opt-in usa el contrato de la respuesta de `life.converse`:
+`action.speak` con actores `[oyente, hablante]`, entrega efectiva, destinatario
+consistente y respuesta `insult.hurt`/`insult.shrug`, junto a `regard.kind=insult`
+y su `faceLoss`. Una declaración cruda de intención `act.kind=insult` no acredita
+comprensión. `life.appraise` persiste la señal sólo si el oyente está consciente
+y despierto; cita ese evento como experiencia propia. Sigue siendo un único
+escritor de `EMOTIONS`. Vida media provisional de ira: tres horas, escalada por
+reactividad. Este subítem registra la emoción y su autor; no añade venganza,
+agresión ni un nuevo peso de utilidad.
+
+**División restante de f3c3c, por evidencia (Fase 3):**
+
+- **f3c3c2 — Alegría por logro reconocido propio:** existe appraisal de `success`,
+  pero se debe definir qué logro cree haber conseguido el actor y qué le importa;
+  un `outcome` real o cualquier recuerdo positivo no basta.
+- **f3c3c3 — Vergüenza por falta propia reconocida:** hay reproches y pérdida de
+  cara en diálogo, pero debe acreditarse que el dueño recibió el reproche y se
+  atribuyó una falta propia; perder cara por un insulto no implica esa atribución.
+- **f3c3c4 — Envidia por comparación creída concreta:** debe comparar algo que
+  desea con un logro/bien que cree de otra persona, desde creencias propias;
+  no hay hoy una fuente de appraisal que haga esa comparación.
+- **f3c3c5 — Amor desde contacto propio y vínculo sentido:** hay afecto/atracción
+  en la relación propia y eventos de trato, pero una etiqueta de parentesco o
+  pareja no prueba amor; falta definir el contacto percibido que despierta la señal.
+- **f3c3c6 — Ira en riesgo y motivación opt-in:** definir su efecto acotado sobre
+  aversión/riesgo y calibrarlo sin duplicar resentimiento, venganza ni necesidades.
 
 ## 5. Memoria episódica
 

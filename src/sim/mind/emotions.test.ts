@@ -3,6 +3,7 @@ import type { AgentId, EventId } from "../../core/index.ts";
 import { type Appraised, appraiseFight, appraiseGuilt, appraiseLoss } from "./appraise.ts";
 import {
   appraisalEmotionSignals,
+  appraiseInsultEmotion,
   emotionIntensityAt,
   reconcileEmotionSignals,
 } from "./emotions.ts";
@@ -14,6 +15,42 @@ const ORIGIN = "event:3" as EventId;
 const mind: Mind = { schemas: {}, formative: [], originEventId: ORIGIN };
 
 describe("emociones propias desde appraisal", () => {
+  it("ira exige insulto comprendido, ofensa sentida y autor atribuible; conserva objetivo y causa", () => {
+    const insult = {
+      offender: FOE,
+      feltOffense: 0.7,
+      delivered: true,
+      understood: true,
+      originEventId: ORIGIN,
+      at: 1000,
+    };
+    const anger = appraiseInsultEmotion(OWNER, insult);
+    expect(anger).toMatchObject({
+      owner: OWNER,
+      emotion: "anger",
+      intensity: 0.7,
+      target: FOE,
+      originEventId: ORIGIN,
+      at: 1000,
+      appraisalTheme: "injustice",
+    });
+    expect(appraiseInsultEmotion(OWNER, { ...insult, delivered: false })).toBeUndefined();
+    expect(appraiseInsultEmotion(OWNER, { ...insult, understood: false })).toBeUndefined();
+    expect(appraiseInsultEmotion(OWNER, { ...insult, feltOffense: 0 })).toBeUndefined();
+    expect(appraiseInsultEmotion(OWNER, { ...insult, offender: OWNER })).toBeUndefined();
+    expect(
+      appraiseInsultEmotion(OWNER, {
+        feltOffense: 0.7,
+        delivered: true,
+        understood: true,
+        originEventId: ORIGIN,
+        at: 1000,
+      }),
+    ).toBeUndefined();
+    if (!anger) throw new Error("insulto sentido sin ira");
+    expect(emotionIntensityAt(anger, 4600, { halfLifeTicks: 3600, reactivity: 0.5 })).toBe(0.35);
+  });
+
   it("persistencia deduplica sin renovar el momento y no backfillea señales sin evidencia", () => {
     const bare = appraisalEmotionSignals(OWNER, appraiseGuilt(0.8), ORIGIN, 1000);
     expect(reconcileEmotionSignals([], bare, 1000, 0.5)).toEqual([]);

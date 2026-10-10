@@ -26,7 +26,11 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { type AppraiseOptions, appraiseProcess } from "./appraise.ts";
-import { ownEmotionSignals, perceivedLossSignals } from "./emotion-evidence.ts";
+import {
+  ownEmotionSignals,
+  perceivedLossSignals,
+  receivedInsultSignals,
+} from "./emotion-evidence.ts";
 import { NPC_PERCEPTS, type WitnessingOptions, witnessingProcess } from "./witnessing.ts";
 
 const OWNER = makeId("agent", 1) as AgentId;
@@ -56,8 +60,59 @@ const percept: Percept = {
   fields: { action: field("body.died"), identity: field(DEAD) },
 };
 const appraisal = [{ stimulus: { theme: "violence", intensity: 0.8 }, blame: DEAD }] as const;
+const insultEvent = (): Event => ({
+  ...event("action.speak"),
+  actors: [OWNER, DEAD],
+  data: {
+    effect: {
+      kind: "speak",
+      to: DEAD,
+      delivered: true,
+      reply: "insult.hurt",
+      regard: { kind: "insult", faceLoss: 0.7, deltas: { resentment: 0.3 } },
+    },
+  },
+});
 
 describe("evidencia propia de emociones", () => {
+  it("la ira toma el insulto entendido de converse, no intención cruda ni otra emoción del hablante", () => {
+    expect(receivedInsultSignals(insultEvent(), now, true)[0]).toMatchObject({
+      owner: OWNER,
+      target: DEAD,
+      emotion: "anger",
+      intensity: 0.7,
+      evidence: { kind: "own", event: ORIGIN },
+    });
+    expect(receivedInsultSignals(insultEvent(), now, false)).toEqual([]);
+    expect(receivedInsultSignals(insultEvent(), now - 1, true)).toEqual([]);
+    for (const effect of [
+      {
+        kind: "speak",
+        to: DEAD,
+        delivered: false,
+        reply: "insult.hurt",
+        regard: { kind: "insult", faceLoss: 0.7 },
+      },
+      { kind: "speak", to: DEAD, delivered: true, act: { kind: "insult" } },
+      {
+        kind: "speak",
+        to: DEAD,
+        delivered: true,
+        reply: "other",
+        regard: { kind: "insult", faceLoss: 0.7 },
+      },
+      {
+        kind: "speak",
+        to: DEAD,
+        delivered: true,
+        reply: "insult.hurt",
+        regard: { kind: "flattery", faceLoss: 0.7 },
+      },
+    ])
+      expect(receivedInsultSignals({ ...insultEvent(), data: { effect } }, now, true)).toEqual([]);
+    expect(receivedInsultSignals({ ...insultEvent(), actors: [OWNER] }, now, true)).toEqual([]);
+  });
+
   it("requiere violencia propia consciente y culpa de la acción propia, nunca pérdida legacy del hogar", () => {
     expect(ownEmotionSignals(OWNER, event(), appraisal, now, true)[0]).toMatchObject({
       emotion: "fear",
@@ -161,6 +216,30 @@ const context = (truth: WorldTruth, recent: readonly Event[]): ProcessContext =>
 });
 
 describe("life.appraise persiste emociones opt-in", () => {
+  it("persiste ira con autor sólo con flag y no altera las otras escrituras del diálogo", () => {
+    const truth = world();
+    const ctx = context(truth, [insultEvent()]);
+    const off = appraiseProcess(options).run(ctx);
+    expect(appraiseProcess({ ...options, persistEmotionSignals: false }).run(ctx)).toEqual(off);
+    const on = appraiseProcess({ ...options, persistEmotionSignals: true }).run(ctx);
+    expect(on.changes?.filter((c) => c.table !== EMOTIONS.name)).toEqual(off.changes);
+    const emotion = on.changes?.find((c) => c.table === EMOTIONS.name && c.id === OWNER);
+    expect(emotion?.op === "set" ? emotion.value : undefined).toMatchObject({
+      signals: [{ emotion: "anger", target: DEAD, originEventId: ORIGIN }],
+    });
+    expect(on.changes?.some((c) => c.table === EMOTIONS.name && c.id === DEAD)).toBe(false);
+    truth.set(BODY_STATE, OWNER, {
+      consciousness: "unconscious",
+      activity: "rest",
+      death: null,
+    } as never);
+    expect(
+      appraiseProcess({ ...options, persistEmotionSignals: true })
+        .run(ctx)
+        .changes?.some((c) => c.table === EMOTIONS.name) ?? false,
+    ).toBe(false);
+  });
+
   it("false equivale a omitir; persiste miedo propio sin renovar el evento y declara un solo escritor", () => {
     const truth = world();
     const ctx = context(truth, [event()]);

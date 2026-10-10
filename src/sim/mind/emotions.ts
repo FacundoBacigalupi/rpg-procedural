@@ -33,6 +33,8 @@ export interface EmotionSignal {
   /** Momento en que lo vivió/interpretó, separado de la fecha del hecho narrado. */
   readonly at: Tick;
   readonly appraisalTheme: Theme;
+  /** A quién dirige una respuesta que tiene autor identificado según el dueño. */
+  readonly target?: AgentId;
   /** Sólo el cableado con evidencia propia agrega esta procedencia; no se rellena en historia legacy. */
   readonly evidence?: EmotionEvidence;
 }
@@ -51,7 +53,44 @@ export const EMOTION_HALF_LIFE_TICKS = {
   fear: 6 * 3600,
   sadness: 24 * 3600,
   guilt: 12 * 3600,
+  anger: 3 * 3600,
 } as const;
+
+export interface InsultEmotionInput {
+  readonly offender?: AgentId;
+  /** Gravedad que el oyente ya juzgó en su ofensa, no la intención real del hablante. */
+  readonly feltOffense: number;
+  readonly delivered: boolean;
+  readonly understood: boolean;
+  readonly originEventId: EventId;
+  readonly at: Tick;
+}
+
+/** Ira por un insulto comprendido que le dolió y cuyo autor pudo atribuir. No presume ira de tristeza/miedo. */
+export function appraiseInsultEmotion(
+  owner: AgentId,
+  insult: InsultEmotionInput,
+): EmotionSignal | undefined {
+  const intensity = round(clamp01(insult.feltOffense));
+  if (
+    !insult.delivered ||
+    !insult.understood ||
+    insult.offender === undefined ||
+    insult.offender === owner ||
+    !Number.isFinite(intensity) ||
+    intensity <= 0
+  )
+    return undefined;
+  return {
+    owner,
+    emotion: "anger",
+    intensity,
+    originEventId: insult.originEventId,
+    at: insult.at,
+    appraisalTheme: "injustice",
+    target: insult.offender,
+  };
+}
 
 /** Reconcilia por dueño/emoción/hecho: no rejuvenece una respuesta repitiendo el evento. */
 export function reconcileEmotionSignals(
