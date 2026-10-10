@@ -29,6 +29,7 @@ import {
   type LocalMap,
   type MaterialDef,
   type NutrientProfileDef,
+  PERSON,
   type PressureCurve,
   type ReadonlyWorldTruth,
   type RecipeDef,
@@ -87,7 +88,12 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { clearedRenown, MARK_CLEARED, markExposureProcess } from "./markexposure.ts";
+import {
+  believedMarkRenown,
+  clearedRenown,
+  MARK_CLEARED,
+  markExposureProcess,
+} from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -95,6 +101,7 @@ import {
   catalogMoldHints,
   type HouseholdNeeds,
   lookSiteOf,
+  MOLD_RUMORS,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
@@ -627,7 +634,12 @@ export function lifeWorld(
                 skill: forgeSkillOf(parts.traits),
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
                 ...(parts.marksExpose === true && parts.marksGossip === true
-                  ? { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
+                  ? parts.moldGossip?.fromForgery
+                    ? {
+                        renown: believedMarkRenown,
+                        renownReads: [MARK_CLEARED.name, MOLD_RUMORS.name, PERSON.name],
+                      }
+                    : { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
                   : {}),
               }),
             ]

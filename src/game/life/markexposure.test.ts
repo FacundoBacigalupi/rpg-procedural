@@ -3,12 +3,14 @@ import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import type { ProcessContext } from "../../sim/index.ts";
 import { PERSON, RUMORS } from "../../sim/index.ts";
 import {
+  believedMarkRenown,
   clearedRenown,
   MARK_CLEARED,
   MARK_CLEARED_EVENT,
   markExposureProcess,
 } from "./markexposure.ts";
 import { MARK_DEFAULT_RENOWN } from "./marks.ts";
+import { FORGERY_RENOWN_BASE, forgeryRenownRumors, renownRumor } from "./moldgossip.ts";
 
 const forger = "agent:2" as AgentId;
 const buyer = "agent:1" as AgentId;
@@ -89,5 +91,35 @@ describe("la fama que el mercado le supone al copiado", () => {
     expect(clearedRenown(withCount(0), wu)).toBe(MARK_DEFAULT_RENOWN);
     expect(clearedRenown(withCount(2), wu)).toBeCloseTo(0.7, 9);
     expect(clearedRenown(withCount(16), wu)).toBe(1);
+  });
+});
+
+describe("la fama del falsificador como creencia", () => {
+  it("el fraude oído baja el renown que cree quien lo oyó, por raíz distinta", () => {
+    const fraud = (root: string) => ({ root, content: { kind: "fraud", by: forger } });
+    const one = forgeryRenownRumors([fraud("e:1"), fraud("e:1")]);
+    expect(one).toHaveLength(1);
+    expect(one[0]?.rumor).toMatchObject({ attr: "renown", about: forger });
+    const two = forgeryRenownRumors([fraud("e:1"), fraud("e:2")]);
+    const v = (r: typeof one) => (r[0] as unknown as { rumor: { value: number } }).rumor.value;
+    expect(v(two)).toBeLessThan(v(one));
+    expect(v(one)).toBeLessThan(FORGERY_RENOWN_BASE);
+    expect(forgeryRenownRumors([{ root: "e:3", content: { kind: "theft", by: forger } }])).toEqual(
+      [],
+    );
+  });
+  it("el mercado supone el promedio de lo creído; sin creencias, la fama de base", () => {
+    const books: Record<string, unknown> = {
+      [buyer]: { items: [{ rumor: renownRumor(forger, 0.3) }], told: [] },
+      [near]: { items: [{ rumor: renownRumor(forger, 0.1) }], told: [] },
+    };
+    const truth = (b: Record<string, unknown>) =>
+      ({
+        get: (t: { name: string }, id: string) =>
+          t.name === "law.mold_rumors" ? b[id] : undefined,
+        ids: () => [buyer, near, wu],
+      }) as never;
+    expect(believedMarkRenown(truth(books), forger)).toBeCloseTo(0.2, 9);
+    expect(believedMarkRenown(truth({}), forger)).toBe(MARK_DEFAULT_RENOWN);
   });
 });
