@@ -100,7 +100,6 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { creditRows } from "./credit.ts";
-import { DEBT_BOOK, debtGoalInputs } from "./debtknowledge.ts";
 import {
   cueLocalOf,
   objectsInView,
@@ -109,6 +108,7 @@ import {
   placeHoldersInView,
   type ViewCues,
 } from "./cue-local.ts";
+import { DEBT_BOOK, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,

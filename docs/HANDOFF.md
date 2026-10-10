@@ -18,6 +18,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 5. Trabajar según §2-§5. Al cerrar, actualizar ROADMAP y §8 en el mismo PR.
 
 ## 2. Roles
+**Método vigente para Codex (pedido del usuario, 2026-10-10):** la sesión principal coordina continuamente. Los subagentes conservan su línea temática y reciben nuevas tareas al terminar, incluso mientras el coordinador verifica e integra el lote anterior. El cierre de un ítem no termina la sesión. Pruebas con LLM solo cuando el cambio toque parser, narración o sus contratos. Reemplaza la antigua regla de una sesión por ítem.
+
 - **Coordinador** (una sesión): agrupa ítems en *clusters* temáticos (de cualquier fase), despacha agentes, integra ramas, corre la suite, mantiene «Ahora» y la tabla §7. Es el único que corre tests amplios y mergea.
 - **Agentes** (hasta 3, uno por worktree `C:\dev\rpg-procedural-wt\<slot>`, slots `v`, `w`, `x`): implementan un cluster, **un commit por ítem**, cada ítem cerrado `[x]` en el ROADMAP (lo no hecho pasa a `[ ]` con nombre). No tocan «Ahora» ni este archivo, no hacen push, PR ni merge.
 - Sin Codex/Claude en paralelo, una sola sesión puede hacer los dos roles: elegir un cluster, hacerlo en un worktree e integrarlo.

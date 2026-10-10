@@ -21,8 +21,13 @@ resolver la escala con LOD, sin recortar el diseño para hacer una demo.
 - ROADMAP decide qué hacer; HANDOFF decide cómo y registra el estado de las líneas.
   ARCHITECTURE manda sobre tipos compartidos y dueños; los docs de sistema definen
   el diseño. La sección fechada más reciente describe el método operativo actual.
-- Una sesión = un ítem, salvo que el usuario pida un lote. Si no entra, partirlo
-  en subítems antes de implementar. Cada `[x]` explica lo terminado; cualquier
+- Método vigente por pedido del usuario (2026-10-10): la sesión principal es
+  coordinadora continua. Los subagentes encadenan ítems del mismo tema/contexto;
+  al terminar reciben nuevas tareas mientras el coordinador revisa, prueba e
+  integra el lote. Reutilizar agentes en vez de recrear su contexto. No terminar
+  el trabajo por cerrar un ítem: continuar hasta que el usuario pare o exista un
+  bloqueo real. Si un ítem no entra, partirlo antes de implementar. Cada `[x]`
+  explica lo terminado; cualquier
   parte pendiente debe ser otro `[ ]` con nombre y fase, nunca «queda X» suelto.
 - Núcleo puro primero, cableado después; en Fase 3, nuevas funciones opt-in.
   No activar opciones por defecto ni cambiar hashes dorados como trámite.
@@ -52,6 +57,10 @@ resolver la escala con LOD, sin recortar el diseño para hacer una demo.
 - Cada agente recibe alcance, worktree, doc, pruebas y criterios de cierre.
   Un commit por ítem; sin push/PR/merge, sin editar «Ahora» ni HANDOFF y sin suite
   amplia. Reporte máximo 10 líneas. Reutilizar agentes; esperar notificaciones.
+- Mantener tareas de contexto similar en cada agente. Mientras se verifica un
+  lote integrado, asignarles el siguiente trabajo sobre su base estable; integrar
+  esos cambios después. Probar con el LLM del juego cuando cambien parser,
+  narración o sus contratos; no gastar inferencias en cambios puramente de sim.
 - El coordinador integra, resuelve docs compartidos, revisa y ejecuta una sola
   corrida amplia por vez. No correr suites pesadas simultáneas: compiten con el
   LLM local residente. Tests puntuales para agentes; typecheck/lint y suite amplia

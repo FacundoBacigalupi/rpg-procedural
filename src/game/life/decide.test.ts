@@ -276,7 +276,7 @@ describe("life.decide", () => {
     expect(on.reads).toContain(DEBT_BOOK.name);
     expect(decideProcess(options).reads).not.toContain(DEBT_BOOK.name);
     const debtEvent = (out: ProcessResult) =>
-      out.events?.find((e) => e.kind === GOAL_EVENT && e.data.goal === "medium:debt:agent:2");
+      out.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === "medium:debt:agent:2");
     truth.set(
       COMMITMENTS,
       bookItem.commitment as never,

@@ -152,7 +152,7 @@ function numberIn(e: Event, key: string): number | undefined {
 }
 
 function subrogationsIn(e: Event): readonly SubrogationNotice[] {
-  const raw = (e.data as Record<string, unknown>).subrogations;
+  const raw = (e.data as Record<string, unknown>)["subrogations"];
   if (!Array.isArray(raw)) return [];
   return raw.filter((value): value is SubrogationNotice => {
     if (typeof value !== "object" || value === null) return false;
@@ -208,10 +208,11 @@ export function debtKnowledgeProcess(): ProcessDef {
           e.kind !== "credit.subrogated_paid"
         )
           continue;
+        if (typeof e.data !== "object" || e.data === null || Array.isArray(e.data)) continue;
         const data = e.data as Record<string, unknown>;
         if (e.kind === "credit.defaulted" && numberIn(e, "loss") === undefined) continue;
         const subrogatedPayment = e.kind === "credit.subrogated_paid";
-        const id = subrogatedPayment ? data.commitment : data.loan;
+        const id = subrogatedPayment ? data["commitment"] : data["loan"];
         if (typeof id !== "string") continue;
         const contract = ctx.truth.get(COMMITMENTS, id as never);
         if (contract?.kind !== (subrogatedPayment ? "subrogation" : "loan")) continue;
@@ -219,7 +220,7 @@ export function debtKnowledgeProcess(): ProcessDef {
         if (obligation?.duty.kind !== "deliver") continue;
         if (
           subrogatedPayment &&
-          (data.unit !== obligation.duty.unit || data.parent !== contract.parent)
+          (data["unit"] !== obligation.duty.unit || data["parent"] !== contract.parent)
         )
           continue;
         const actors = e.actors as readonly AgentId[];
@@ -240,14 +241,14 @@ export function debtKnowledgeProcess(): ProcessDef {
           let observation: DebtObservation;
           if (e.kind === "credit.loaned") {
             const principal = numberIn(e, "principal");
-            const rate = numberIn(e, data.disguise === undefined ? "rate" : "statedRate");
+            const rate = numberIn(e, data["disguise"] === undefined ? "rate" : "statedRate");
             const dueDay = numberIn(e, "dueDay");
             if (
               contract.originEventId !== e.id ||
               principal === undefined ||
               rate === undefined ||
               dueDay === undefined ||
-              typeof data.unit !== "string"
+              typeof data["unit"] !== "string"
             )
               continue;
             const total = principal + Math.round(principal * rate);
@@ -260,7 +261,7 @@ export function debtKnowledgeProcess(): ProcessDef {
                 other,
                 debtorRef: obligation.debtor,
                 creditorRef: obligation.creditor,
-                unit: data.unit,
+                unit: data["unit"],
                 total,
                 remaining: total,
                 dueDay,
@@ -282,7 +283,7 @@ export function debtKnowledgeProcess(): ProcessDef {
               amount,
               event: e.id,
               at: e.tick,
-              fulfilled: subrogatedPayment ? left === 0 : data.status === "repaid",
+              fulfilled: subrogatedPayment ? left === 0 : data["status"] === "repaid",
               ...(left === undefined ? {} : { knownRemaining: left }),
             };
           } else {

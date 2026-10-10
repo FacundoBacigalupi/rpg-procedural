@@ -13,8 +13,8 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho
 
 **Retoma Codex (2026-10-10):** #440 y #441 integradas; recuperado el test de `j` y completada la cobertura del panel. Terminado (f3a), persistir largo/mediano/corto en `NPC_GOALS` con `persistGoalLayers` opt-in, sin duplicar el empuje a la utilidad (estado de integración en HANDOFF §8). **Siguiente por orden: (f3b) Deuda real desde `Commitment` para objetivos medianos**, según lo que el NPC cree deber. Después emociones inmediatas, cumplimiento y calibración como subítems separados. Mantener Sol Medium como coordinador y Luna para tareas pequeñas; autorización de PRs y merges en AGENTS.md.
 
-### Cómo se trabaja (una sesión = un ítem)
-El usuario abre **una sesión nueva por ítem** para no gastar contexto, así que cada ítem tiene que entrar en una sesión y terminar sin ambigüedad.
+### Cómo se trabaja (coordinación continua por lotes)
+**Método vigente por pedido del usuario (2026-10-10):** esta sesión es la coordinadora. Los subagentes reciben ítems de un mismo tema para reutilizar su contexto y, al terminar, reciben más trabajo mientras el coordinador revisa, prueba e integra un lote. No se corta la sesión al cerrar un ítem. Cada ítem sigue siendo pequeño, cerrado sin ambigüedad y con su commit; si no entra, se divide antes de implementar. Esta instrucción reemplaza la antigua regla de una sesión por ítem.
 
 1. **Estados:** `[ ]` pendiente (no se empezó) · `[~]` en curso (solo durante la sesión; con sub-ítems) · `[x]` hecho. Un ítem no se deja `[~]` al cerrar la sesión: o está `[x]` o se parte (punto 3).
 2. **Elegir:** el siguiente es el **primer `[ ]` de la fase actual** (la primera fase con `[ ]`), sin saltear. Si es demasiado grande para una sesión, **antes de codear** se parte en sub-ítems `[ ]` (cada uno entra en una sesión, con el doc de sistema y la sección que cita) y se hace solo el primero. El partido va al ROADMAP en el mismo PR.
@@ -574,10 +574,24 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [x] (f3) Capas largo, mediano y corto derivadas (2026-10-09): `longGoals`/`mediumGoals`/`shortGoals`/`layerDrives` puros en `sim/mind/goals.ts` (largo desde núcleo con esquema fuerte, mediano desde familia/deuda/rival con memoria de origen, corto desde necesidades con `parent`); en `decide` se recalculan cada vez, no se guardan, y solo empujan un poco los valores (`LAYER_PULL`, desempates; sin calibrar)
   - (f3) Capas persistidas e inmediato, partido antes de implementar (2026-10-10, npc-psychology §7):
     - [x] (f3a, 2026-10-10) Persistir largo/mediano/corto en `NPC_GOALS` con `LifeOptions.persistGoalLayers` (opt-in, create/resume): reconciliar identidad/origen/`since`, refrescar pesos sin repetir nacimientos y emitir `npc.goal` al nacer/terminar. Núcleo y capas separados al derivar y puntuar para evitar el doble empuje; apagado conserva el comportamiento por defecto. Pruebas de ciclo, causas, actualización y decisión on/off en `decide.test.ts`, y transmisión de la opción en `optIn.test.ts`.
-    - [ ] (f3b) Deuda real desde `Commitment` para objetivos medianos (hoy `debt: 0`), según lo que el NPC cree deber.
-    - [ ] (f3c) Capa inmediata desde necesidades y emociones, con origen causal.
-    - [ ] (f3d) Objetivo cumplido y vacío de sentido, con procesos y consecuencias.
+    - (f3b) Deuda desde `Commitment` según lo que el NPC cree deber, partido antes de implementar (2026-10-10):
+      - [ ] (f3b1) Libro contractual por parte, opt-in: aprender términos anunciados y pagos desde eventos de participación/percepción, con origen y confianza; no consultar saldo real ni aprender compromisos secretos.
+      - [ ] (f3b2) Proyectar la deuda creída del libro a objetivos medianos en `decide`, normalización acotada y origen contractual, sin omnisciencia.
+      - [ ] (f3b3) Subrogaciones conocidas: el derecho del fiador y sus pagos entran al libro por participación/percepción, sin doble contar el préstamo original ni leer saldos reales.
+      - [ ] (f3b4a) Fiado como conocimiento contractual: términos y pagos aprendidos por las partes desde eventos propios, sin leer el saldo real de CREDIT para la utilidad.
+      - [ ] (f3b4b) Servidumbre por deuda como conocimiento contractual, con términos y fuentes propios; deuda de trabajo creída en vez de cantidad real.
+    - (f3c) Capa inmediata desde necesidades y emociones, partido por señales disponibles (2026-10-10):
+      - [ ] (f3c1) Necesidades corporales y miedo desde memoria propia, persistencia `persistImmediateGoals` opt-in, sin duplicar empuje ni RNG; procedencia y cierre de la capa.
+      - [ ] (f3c2a) Compañía desde memoria de vínculo propio, con origen causal.
+      - [ ] (f3c2b) Procedencia de dosis/señales en sustancias y capa inmediata de ansia; no atribuir un consumo personal al evento de introducción global.
+      - [ ] (f3c3) Emociones tipadas desde appraisal/percepts propios y su capa inmediata (ira, culpa, alegría, vergüenza…); hoy solo está disponible el miedo de recuerdos.
+    - (f3d) Objetivo cumplido y vacío de sentido, partido por contrato (2026-10-10):
+      - [ ] (f3d1) Cumplimiento subjetivo de venganza puro: creencia propia de muerte con fuente causal y confianza, nunca verdad del objetivo.
+      - [ ] (f3d2) Cablear el cumplimiento conocido a cierre/persistencia y evitar regenerar la misma meta mientras el NPC crea cumplida la venganza.
+      - [ ] (f3d3) Vacío de sentido por objetivo núcleo cumplido, necesidad lenta con causas y consecuencias en utilidad; calibración propia.
+      - [ ] (f3d4) Cumplimiento de otros objetivos desde evidencia de progreso propio y metas concretas; no cerrar valores continuos por una acción aislada.
     - [ ] (f3e) Calibrar `LAYER_PULL` y activar capas persistidas por defecto solo después de comparar seeds y revisar hashes/replay.
+  - [ ] (f2b) Cerrar objetivos del NPC cuando muere, opt-in: registrar `npc.goal` de fin con el evento de muerte como causa y vaciar objetivos sin repetir cierres, aunque el scheduler ya no vuelva a decidir por ese agente.
   - [x] (g) Modificadores en la utilidad, parte con insumos (2026-10-09): `sim/mind/utility-modifiers.ts` (puro; `modifyCandidates` suma al `mood`, sin insumos devuelve lo mismo): memorias del trato con la persona (`memoryPull`, `memoriesAbout`), hábitos asentados por verbo (`verbHabits`), disonancia con valores propios (`dissonanceOf`: contribución negativa × peso), evitación por condición disparada (`avoidance`: castiga acercarse y premia `avoid:`), `pleasureUtility` sobre la contribución de placer y un `sanction` por candidata que pasa quien llama; cableado en `life.decide` (`DecideOptions.habits`). Test `utility-modifiers.test.ts`. Constantes sin calibrar. **Quedan con ítem:**
   - [x] (g2) `sanction` en `life.decide` (2026-10-09): `sanctionWeight` ya existía en `sim/religion/identity.ts` (lo usan `appraise` y `conscience`); `sim/mind/utility-modifiers.ts` suma `takenGood` (el bien que nombra una candidata `take`, desde su id) y `sanctionFor(weigh)` (el callback `sanction`, sin RNG); `life.decide` lo pasa con identidad religiosa del NPC y `villageReligion`. Hoy `take` no ofrece textos (`pantryTexts` no lo incluye), así que no hay candidata con bien y el peso es 0: la aldea no cambia. Test en `utility-modifiers.test.ts`. **Queda con ítem:**
     - [ ] (g2b) Que `take` (y el robo en `trade`) ofrezcan textos de bienes ajenos (de lo que cree que tiene el otro) para que la candidata ilícita exista y el tabú pese; sanción por la norma legal conocida (`KNOWN_DEEDS`, `law.md`); sin calibrar
