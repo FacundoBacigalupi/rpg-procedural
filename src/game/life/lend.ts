@@ -38,6 +38,7 @@ import {
 import { creditRows } from "./credit.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
+import { NEIGHBOR_STANDING, neighborStandingKnown } from "./neighbors.ts";
 
 export const LEND_PROCESS = "life.lend";
 
@@ -60,6 +61,41 @@ export interface LendOptions {
   readonly weaken?: number;
   /** Con menos confianza que esto el rumor se borra (0.1 por defecto). */
   readonly dropBelow?: number;
+  /** Opt-in: el prestamista presta menos al hogar que CREE apretado o en la ruina (creencia, no verdad). */
+  readonly heedStanding?: HeedStanding;
+}
+
+/** Cuánto pesa en el prestamista lo que cree del apuro del hogar que pide (multiplicadores de 0 a 1). */
+export interface HeedStanding {
+  /** Si cree que anda apretado (0.6 por defecto). */
+  readonly tight?: number;
+  /** Si cree que está en la ruina (0.2 por defecto). */
+  readonly broke?: number;
+}
+
+/**
+ * Multiplicador de la gana de prestar según lo que `lender` CREE del apuro de `home` (puro, nunca
+ * la verdad): lo que vio él mismo (`NEIGHBOR_STANDING`, confianza 1) o lo que oyó (rumor `standing`
+ * en `MOLD_RUMORS`, ponderado por su confianza). Sin nada creído: 1. Toma lo más cauto.
+ */
+export function standingCaution(
+  truth: ReadonlyWorldTruth,
+  lender: AgentId,
+  home: string,
+  heed: HeedStanding,
+): number {
+  const mult = (s: "tight" | "broke") =>
+    s === "broke" ? (heed.broke ?? 0.2) : (heed.tight ?? 0.6);
+  let out = 1;
+  const seen = neighborStandingKnown(truth.get(NEIGHBOR_STANDING, lender), home);
+  if (seen) out = Math.min(out, mult(seen.standing));
+  for (const h of truth.get(MOLD_RUMORS, lender)?.items ?? []) {
+    const r = h.rumor;
+    if (r.mold !== "attr" || r.attr !== "standing" || r.about !== home) continue;
+    if (r.value !== "tight" && r.value !== "broke") continue;
+    out = Math.min(out, 1 - clamp01(h.confidence) * (1 - mult(r.value)));
+  }
+  return out;
 }
 
 const DECISION_ID = /^speak:(.+)\+borrow:(.+)$/;
@@ -78,6 +114,7 @@ export function lendProcess(o: LendOptions): ProcessDef {
     representation: "individual",
     phase: "act",
     reads: [
+      NEIGHBOR_STANDING.name,
       NPC_DECISION.name,
       PERSON.name,
       ENTITY.name,
@@ -152,7 +189,10 @@ export function lendProcess(o: LendOptions): ProcessDef {
         schemaStrength: (s) => truth.get(MIND, lender)?.schemas[s]?.strength ?? 0,
       });
       const harmed = worstDeed(truth.get(KNOWN_DEEDS, lender), me) !== null;
-      const willing = harmed ? 0 : clamp01(0.4 + 0.4 * rel.dims.trust + 0.2 * rel.dims.affection);
+      const base = harmed ? 0 : clamp01(0.4 + 0.4 * rel.dims.trust + 0.2 * rel.dims.affection);
+      const willing = o.heedStanding
+        ? base * standingCaution(truth, lender, myHome, o.heedStanding)
+        : base;
       if (!ctx.rng.fork("lend", me, ctx.now).chance(willing)) {
         return {
           changes: [log],

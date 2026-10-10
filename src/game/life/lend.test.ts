@@ -12,8 +12,9 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { NPC_DECISION } from "./decide.ts";
-import { LEND_LOG, lendProcess, repayDoseProcess } from "./lend.ts";
+import { LEND_LOG, lendProcess, repayDoseProcess, standingCaution } from "./lend.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
+import { NEIGHBOR_STANDING } from "./neighbors.ts";
 
 const me = "agent:1" as AgentId;
 const him = "agent:2" as AgentId;
@@ -125,6 +126,59 @@ describe("life.lend (pedir prestada la sustancia)", () => {
       options: 3,
     } as never);
     expect(run(truth, 3, 150 + day).events?.length).toBe(1);
+  });
+});
+
+describe("life.lend con el apuro creído (opt-in)", () => {
+  const heeded = lendProcess({
+    goods: [{ id: "poppy", name: "amapola", form: "good" }] as never,
+    dims: [
+      { id: "trust", baseline: 1 },
+      { id: "affection", baseline: 1 },
+    ] as never,
+    bonds: [],
+    day,
+    player: "agent:99" as AgentId,
+    placeOf: () => place,
+    heedStanding: { broke: 0 },
+  });
+  const go = (truth: WorldTruth) =>
+    heeded.run({
+      now: 200,
+      scope: me,
+      truth,
+      ledger: { balance: () => 3 },
+      rng: Rng.root(1),
+    } as unknown as ProcessContext);
+
+  it("sin creencia del apuro presta como siempre", () => {
+    expect(go(world()).events?.map((e) => e.kind)).toEqual(["household.borrowed"]);
+  });
+
+  it("si el prestamista vio al hogar en la ruina, se niega aunque lo tenga", () => {
+    const truth = world();
+    truth.set(NEIGHBOR_STANDING, him, {
+      homes: { "household:1": { standing: "broke", day: 0 } },
+    });
+    expect(go(truth).events?.map((e) => e.kind)).toEqual(["substance.borrow_refused"]);
+  });
+
+  it("un rumor oído pesa por su confianza; la verdad no cuenta", () => {
+    const truth = world();
+    truth.set(MOLD_RUMORS, him, {
+      items: [
+        {
+          rumor: { mold: "attr", about: "household:1", attr: "standing", value: "broke" },
+          confidence: 0.5,
+          hops: 1,
+          heardAt: 0,
+          teller: null,
+        },
+      ],
+      told: [],
+    } as never);
+    expect(standingCaution(truth, him, "household:1", { broke: 0 })).toBeCloseTo(0.5, 6);
+    expect(standingCaution(truth, him, "household:9", { broke: 0 })).toBe(1);
   });
 });
 
