@@ -15,6 +15,7 @@ import {
   IdAllocator,
   Ledger,
   type LedgerConfig,
+  type LedgerUnit,
   ledgerUnit,
   makeId,
   type PlaceRef,
@@ -178,6 +179,8 @@ export interface LifeOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
+  /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
+  readonly scamFiller?: LedgerUnit;
   /** Opt-in: fuentes de agua; si no trae `hexKinds`, salen del terreno local (`hexKindsFromTerrain`). */
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
@@ -186,6 +189,8 @@ export interface LifeOptions {
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
   readonly moldHintsFromCatalog?: boolean;
+  /** Opt-in: vista de oficios (`TRADE_VIEW`); con `misread`/`people` además cree oficios equivocados / anota personas. Apagado por defecto. */
+  readonly tradeView?: LifeParts["tradeView"];
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -198,10 +203,12 @@ export function optInParts(
   | "migration"
   | "rumorGrievance"
   | "scam"
+  | "scamFiller"
   | "waterSources"
   | "relationDecay"
   | "swapMaterials"
   | "moldHintsFromCatalog"
+  | "tradeView"
 > {
   return {
     ...(options.waterSources
@@ -217,8 +224,10 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.scam ? { scam: true } : {}),
+    ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
+    ...(options.tradeView ? { tradeView: options.tradeView } : {}),
   };
 }
 

@@ -117,8 +117,23 @@ export interface RentMarketOptions {
   readonly everyDays: number;
   /** Moneda del canon (bien de `goods`). */
   readonly good: string;
-  /** Canon fijo por día que piden los dueños (sin productividad ni regateo todavía). */
+  /** Canon fijo por día que piden los dueños (sin `productivity`; con ella, piso de la pedida). */
   readonly askPerDay: number;
+  /**
+   * Opt-in: el canon sale de lo que rinde la parcela: `área * perM2PerDay * fertilidad * ownerShare`
+   * (redondeado, al menos `askPerDay`). Con `haggle` el dueño acepta bajar hasta `ask * (1 - haggle)`
+   * si el buscador no llega a la pedida.
+   */
+  readonly productivity?: {
+    /** Valor, en la moneda del canon, que rinde un m2 de campo por día con suelo pleno. */
+    readonly perM2PerDay: number;
+    /** Fracción de ese rendimiento que pide el dueño (default 0,3). */
+    readonly ownerShare?: number;
+    /** Rebaja máxima aceptada, 0-1 (default 0: sin regateo). */
+    readonly haggle?: number;
+    /** Fertilidad 0-1 de los campos (default 1). */
+    readonly fertility?: number;
+  };
   readonly termDays: number;
   readonly coverDays?: number;
   /** Tope de lo que un hogar paga por día, como fracción de sus fondos (default 0,1). */
@@ -171,6 +186,8 @@ export interface RentOffer {
   readonly good: string;
   readonly askPerDay: number;
   readonly termDays: number;
+  /** Lo mínimo que el dueño acepta tras regatear; sin esto no regatea. */
+  readonly floorPerDay?: number;
 }
 
 /** Un hogar sin parcela que busca arriendo: lo que puede pagar por día y lo que tiene a mano. */
@@ -202,19 +219,24 @@ export function matchRents(
     let best: RentSeeker | undefined;
     for (const k of seekers) {
       if (taken.has(k.tenant) || k.tenant === o.landlord) continue;
-      if (k.maxPerDay < o.askPerDay || k.funds < o.askPerDay * coverDays) continue;
+      const floor = Math.min(o.askPerDay, o.floorPerDay ?? o.askPerDay);
+      const price = Math.max(floor, Math.min(o.askPerDay, k.maxPerDay));
+      if (k.maxPerDay < floor || k.funds < price * coverDays) continue;
       if (!best || k.funds > best.funds || (k.funds === best.funds && k.tenant < best.tenant))
         best = k;
     }
     if (!best) continue;
     taken.add(best.tenant);
+    // Regateo: si el buscador no llega a la pedida pero sí al piso, paga lo que puede (su tope).
+    const floor = Math.min(o.askPerDay, o.floorPerDay ?? o.askPerDay);
     out.push({
-      id: `offer:${o.parcel}:${best.tenant}`,
+      // El día va en el id: el mismo par puede volver a arrendar tras vencer un arriendo.
+      id: `offer:${o.parcel}:${best.tenant}:${startDay}`,
       landlord: o.landlord,
       tenant: best.tenant,
       parcel: o.parcel,
       good: o.good,
-      perDay: o.askPerDay,
+      perDay: Math.max(floor, Math.min(o.askPerDay, best.maxPerDay)),
       startDay,
       termDays: o.termDays,
     });
@@ -252,12 +274,20 @@ export function rentMarketFromState(
     if (!uses.includes(p.landUse) || rented.has(id as string)) continue;
     const occ = p.possession as unknown as string | null;
     if (occ && occ !== owner) continue;
+    const pr = m.productivity;
+    const ask = pr
+      ? Math.max(
+          m.askPerDay,
+          Math.round(p.area * pr.perM2PerDay * (pr.fertility ?? 1) * (pr.ownerShare ?? 0.3)),
+        )
+      : m.askPerDay;
     offers.push({
       landlord: owner,
       parcel: id as string,
       good: m.good,
-      askPerDay: m.askPerDay,
+      askPerDay: ask,
       termDays: m.termDays,
+      ...(pr?.haggle ? { floorPerDay: Math.max(1, Math.ceil(ask * (1 - pr.haggle))) } : {}),
     });
   }
   const homes = new Set<string>();

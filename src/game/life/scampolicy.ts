@@ -3,7 +3,7 @@
 // siente por el vendedor (`RELATIONS`). Son los proveedores de `ActOptions.scam`; opt-in, sin
 // filas, RNG ni eventos propios.
 
-import type { AgentId, Tick } from "../../core/index.ts";
+import type { AgentId, LedgerUnit, Tick } from "../../core/index.ts";
 import {
   BODY_STATE,
   type BodyPlanDef,
@@ -32,6 +32,8 @@ export interface ScamPolicyOptions {
   readonly traits: readonly Trait[];
   /** Necesidad 0-1 de quien vende (hambre, deuda; ver `scamNeedOf`). Sin dato, 0. */
   readonly need?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Unidad del relleno con que se mezcla el lote (opt-in; ver `ActOptions.scam.filler`). */
+  readonly filler?: LedgerUnit;
 }
 
 /** Lo que adeuda vivo (en gramos) con el que la necesidad por deuda llega a 1: dos veces el tope del fiado. */
@@ -57,6 +59,7 @@ const unit = (x: number) => Math.min(1, Math.max(0, x));
 /** `inflate` y `trust` listos para `ActOptions.scam`. */
 export function scamProviders(o: ScamPolicyOptions) {
   return {
+    ...(o.filler === undefined ? {} : { filler: o.filler }),
     inflate(truth: ReadonlyWorldTruth, seller: AgentId): number {
       const innate = truth.get(INNATE, seller);
       if (!innate) return 0;

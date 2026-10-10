@@ -23,6 +23,7 @@ import {
   type ActionPlan,
   type Activity,
   AMPUTATIONS,
+  adulterate,
   advance,
   applyAcute,
   type Bearing,
@@ -49,6 +50,7 @@ import {
   FRESH_CURSOR,
   FROSTBITE,
   fieldFertility,
+  fillerFor,
   type GoodDef,
   GROWTH_SEQUELAE,
   goodUnit,
@@ -84,6 +86,7 @@ import {
   PLACE,
   type PlanCursor,
   type PlanNode,
+  type PostingDraft,
   PRICE_BELIEFS,
   type ProcessContext,
   type ProcessDef,
@@ -289,6 +292,12 @@ export interface ActOptions {
       seller: AgentId,
       now: Tick,
     ) => number;
+    /**
+     * Opt-in: unidad del relleno (p. ej. piedras) con que el vendedor mezcla el lote; sale de su
+     * bolsa (`fillerFor` desde su `inflate`) y pasa al comprador por el ledger en el mismo trato
+     * (`scam.adulterated`); la calidad del lote recibido baja por promedio (`adulterate`).
+     */
+    readonly filler?: LedgerUnit;
   };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
@@ -307,6 +316,9 @@ export interface FilterOptions {
   readonly treatment?: WaterTreatment;
   readonly validDays: number;
 }
+
+/** El trato con relleno: lo que el vendedor mezcló en el lote (data: unit, filler, grams, lot). */
+export const SCAM_ADULTERATED = "scam.adulterated";
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
 
@@ -823,6 +835,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   // no puede o no quiere seguir. Contra quien ya no está en pie queda el golpe suelto.
   const targetId = "target" in eff ? (eff.target as AgentId | null) : null;
   const extraEvents: EventDraft[] = [];
+  const fillerPostings: PostingDraft[] = [];
   let fightSeconds = 0;
   let exposure: Exposure | undefined;
   let record: StepRecord["self"] = r.self;
@@ -976,6 +989,49 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     // Lo pagado se normaliza a la calidad de referencia: el bien bueno no sube "el precio del bien".
     const paid =
       ((eff.coins / eff.grams) * 1000) / qualityPriceFactor(eff.quality ?? REFERENCE_QUALITY);
+    // Relleno (opt-in): el vendedor mezcla de lo que tiene en la bolsa; pasa al comprador por el
+    // ledger en este trato y baja la calidad del lote recibido (conserva la masa).
+    let dealQuality = eff.quality;
+    if (
+      o.scam?.filler !== undefined &&
+      eff.quality !== undefined &&
+      eff.believed !== undefined &&
+      isScam(eff.quality, eff.believed) &&
+      ctx.ledger
+    ) {
+      const buyerId = eff.direction === "buy" ? me : (eff.with as AgentId);
+      const sellerId = buyerId === me ? (eff.with as AgentId) : me;
+      const stock =
+        ctx.ledger
+          .holdings(holderAccount(sellerId as unknown as HolderRef))
+          .find((h) => h.unit === o.scam?.filler)?.amount ?? 0;
+      const grams = Math.min(
+        Math.floor(fillerFor(eff.grams, o.scam.inflate(truth, sellerId))),
+        Math.floor(stock),
+      );
+      if (grams >= 1) {
+        dealQuality = adulterate(eff.grams, eff.quality, grams).quality;
+        fillerPostings.push({
+          event: draftEvent(0),
+          transfers: [
+            {
+              unit: o.scam.filler,
+              from: holderAccount(sellerId as unknown as HolderRef),
+              to: holderAccount(buyerId as unknown as HolderRef),
+              amount: grams,
+            },
+          ],
+        });
+        extraEvents.push({
+          kind: SCAM_ADULTERATED,
+          actors: [sellerId, buyerId],
+          place: input.place,
+          data: { unit: eff.good as string, filler: o.scam.filler, grams, lot: eff.grams },
+          emissions: {},
+          causes: [{ kind: "event", event: draftEvent(0) }],
+        });
+      }
+    }
     // El lote cambia de manos con su calidad: se mezcla con lo que el comprador ya tenía.
     if (eff.quality !== undefined) {
       const buyer = eff.direction === "buy" ? me : (eff.with as AgentId);
@@ -988,7 +1044,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         setComponent(
           LOT_QUALITY,
           buyer,
-          receiveLot(truth.get(LOT_QUALITY, buyer), unit, held, eff.grams, eff.quality),
+          receiveLot(
+            truth.get(LOT_QUALITY, buyer),
+            unit,
+            held,
+            eff.grams,
+            dealQuality ?? eff.quality,
+          ),
         ),
       );
     }
@@ -1013,7 +1075,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
               unit,
               grams: eff.grams,
               coins: eff.coins,
-              real: eff.quality,
+              real: dealQuality ?? eff.quality,
               believed: eff.believed,
               trust: o.scam.trust(truth, buyer, seller, ctx.now),
             }),
@@ -1200,7 +1262,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...extraEvents,
     ],
     changes,
-    postings: r.postings,
+    postings: fillerPostings.length === 0 ? r.postings : [...r.postings, ...fillerPostings],
     schedule: [
       {
         at: end,
