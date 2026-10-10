@@ -692,7 +692,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [ ] Apodo («el Carnicero de…») desde `Reputation.dominant` en el narrador/`PlayerView` y reputación en el panel del personaje (`panels.ts`)
   - [ ] Agravios de terceros que se enteran por rumor mueven su propia relación (`appraise` sobre `rumor.told`)
   - [ ] Rumores de otros moldes (no solo hechos con autor): `trait`, `relation`, `location`, `price`, mitos y rumores falsos (cebos), olvido de la fuente con compactación del linaje, y frentes de noticias por rutas ([information.md](systems/information.md) §4, §11)
-  - [ ] Test de determinismo de la vida con `life.gossip` y chequeo de conflictos de escritura (`KNOWN_DEEDS`/`MEMORIES`) en vidas largas: lo corre el coordinador
+  - [x] Test de determinismo de la vida con `life.gossip` y chequeo de conflictos de escritura (2026-10-09): `gossip.test.ts` corre 3 días de mundo dos veces con el mismo seed (mismo hash, sin `SchedulerError`); sin conflictos de escritura
 - [ ] Intrigas F1-F2: asesinato/robo motivados, cebos con rumores falsos, cómplices ([schemes.md](systems/schemes.md))
 - [ ] Compromisos: préstamos y garantías (colateral, fiadores, empeño), deudas por norma, herencia de deudas, matrimonio y aprendizaje como `status`, mediación, documentos y tallas como objetos ([contracts.md](systems/contracts.md))
 - [ ] Estatus como normas en `content/` (derechos, deberes, protecciones, capacidad), servidumbre por deudas, movilidad por matrimonio, deuda y riqueza, resentimiento por comunidad ([social-structure.md](systems/social-structure.md))
