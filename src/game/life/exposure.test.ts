@@ -12,7 +12,7 @@ import {
   type ProcessContext,
   WorldTruth,
 } from "../../sim/index.ts";
-import { exposureProcess } from "./exposure.ts";
+import { arrivalSeed, exposureProcess, spillSeed } from "./exposure.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const flu: PathogenDef = {
@@ -115,5 +115,55 @@ describe("life.exposure fuera del hogar", () => {
     const out = p.run(ctx(t, clock.day * 2));
     expect(out.events?.some((e) => e.kind === "body.infected" && e.actors[0] === b)).toBe(true);
     expect(out.events?.some((e) => e.actors[0] === c)).toBe(false);
+  });
+});
+
+describe("life.exposure semillas con causa", () => {
+  const dest = { hours: 8, closeness: 1, ventilation: 0, waterDirt: 0, touch: 1 };
+  const arrived = { kind: "event", event: "event:77" as EventId } as const;
+
+  it("un portador que llega siembra con la llegada como causa; sin arrivals no pasa nada", () => {
+    const carrier = {
+      pathogen: flu,
+      hoursSinceExposure: 30,
+      fatal: false,
+      from: "caravana",
+      party: 20,
+    };
+    const seed = arrivalSeed(Rng.root(3), carrier, 10, dest, {
+      carrier: a,
+      from: 0,
+      event: arrived,
+    });
+    expect(seed).not.toBeNull();
+    const t = world();
+    const on = exposureProcess({
+      clock,
+      placeOf: () => place,
+      arrivals: () => (seed ? [seed] : []),
+    });
+    const out = on.run(ctx(t, 0));
+    expect(out.events?.[0]?.kind).toBe("body.pathogen_introduced");
+    expect(out.events?.[0]?.causes).toEqual([arrived]);
+    expect(out.changes?.some((c) => c.table === PATHOGEN.name)).toBe(true);
+    expect(exposureProcess({ clock, placeOf: () => place }).run(ctx(world(), 0))).toEqual({});
+    expect(on.run(ctx(world(), 0))).toEqual(out);
+  });
+
+  it("un reservorio apagado o sin contacto no derrama", () => {
+    const r = {
+      pathogen: "flu",
+      kind: "animal",
+      population: 50,
+      prevalence: 0,
+      criticalSize: 10,
+    } as const;
+    const cause = { kind: "state", entity: a as EntityRef, key: "reservoir" } as const;
+    const who = { carrier: a, from: 0, cause };
+    expect(spillSeed(Rng.root(3), r, flu, 1, 5, who)).toBeNull();
+    expect(spillSeed(Rng.root(3), { ...r, prevalence: 0.5 }, flu, 0, 5, who)).toBeNull();
+    expect(spillSeed(Rng.root(3), { ...r, prevalence: 0.5 }, flu, 1, 5, who)?.causes).toEqual([
+      cause,
+    ]);
   });
 });

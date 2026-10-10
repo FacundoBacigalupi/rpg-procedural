@@ -7,16 +7,20 @@
 
 import {
   type AgentId,
+  type CauseRef,
   type EntityRef,
   exp,
   type PlaceRef,
   type PlanetClock,
+  type Rng,
   type Tick,
 } from "../../core/index.ts";
 import {
   BODY_STATE,
   BUILDING,
+  type Carrier,
   type CarrionSource,
+  carrierArrival,
   createEntity,
   DEFICIENCY_EFFECTS,
   draftEvent,
@@ -42,6 +46,8 @@ import {
   type Reach,
   type ReachTaint,
   type ReadonlyWorldTruth,
+  type Reservoir,
+  reservoirSpill,
   type Shared,
   type StateChange,
   seepageLoad,
@@ -71,11 +77,19 @@ export interface PathogenSeed {
   readonly well?: string;
   /** Lo que pasÃ³, en palabras (queda en el evento y en el patÃ³geno). */
   readonly source: string;
+  /** Causas del mundo del evento (caravana que llega, reservorio); sin esto, solo el portador. */
+  readonly causes?: readonly CauseRef[];
 }
 
 export interface ExposureOptions {
   readonly clock: PlanetClock;
   readonly seeds?: readonly PathogenSeed[];
+  /**
+   * Semillas con causa del mundo (body-health §6), opt-in: se consultan cada día y aportan
+   * `PathogenSeed` con `causes` (portador que llega, derrame de reservorio; ver `arrivalSeed` y
+   * `spillSeed`). Sin esto no hay semillas nuevas, RNG ni eventos.
+   */
+  readonly arrivals?: (truth: ReadonlyWorldTruth, now: Tick) => readonly PathogenSeed[];
   /**
    * Calidad del agua que bebe cada quien, con la carga del pozo (turbiedad, tratamiento);
    * sin esto es `wellWater(load)`, como siempre.
@@ -115,6 +129,54 @@ const TAINT_PER_DAY = 0.15;
 /** Carga con que un sembrado cae en su pozo. */
 const SEED_TAINT = 0.8;
 
+/**
+ * Semilla de un portador que llega de viaje (caravana): si muere en el camino o no llega contagioso
+ * no hay semilla; la dosis que deja en el destino pasa por una tirada con clave del patógeno.
+ * `event` es el evento de la llegada (queda como causa).
+ */
+export function arrivalSeed(
+  rng: Rng,
+  c: Carrier,
+  travelHours: number,
+  atDestination: Shared,
+  who: { carrier: AgentId; from: Tick; event: CauseRef },
+): PathogenSeed | null {
+  const out = carrierArrival(c, travelHours, atDestination);
+  if (out.diedOnRoad || out.dose <= 0) return null;
+  if (!rng.fork("arrival", c.pathogen.id, who.carrier).chance(Math.min(1, out.dose))) return null;
+  return {
+    def: c.pathogen,
+    carrier: who.carrier,
+    from: who.from,
+    source: `llegó con ${c.from}`,
+    causes: [who.event],
+  };
+}
+
+/**
+ * Semilla por derrame de un reservorio (zoonosis, agua): la dosis acumulada en `days` días de
+ * contacto de `who` con el reservorio es la chance de que se infecte, con tirada con clave.
+ */
+export function spillSeed(
+  rng: Rng,
+  r: Reservoir,
+  def: PathogenDef,
+  contact: number,
+  days: number,
+  who: { carrier: AgentId; from: Tick; cause: CauseRef },
+): PathogenSeed | null {
+  const dose = reservoirSpill(r, def, contact, days);
+  if (dose <= 0) return null;
+  if (!rng.fork("spill", def.id, who.carrier).chance(Math.min(1, dose))) return null;
+  return {
+    def,
+    carrier: who.carrier,
+    from: who.from,
+    source: r.kind === "animal" ? "zoonosis de un reservorio animal" : "agua de un reservorio",
+    causes: [who.cause],
+  };
+}
+
 const EMPTY: PersonInfection = { infections: [], immunities: [], ill: [] };
 
 export function exposureProcess(o: ExposureOptions): ProcessDef {
@@ -148,7 +210,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       // Siembra: la fuente explÃ­cita introduce el patÃ³geno una sola vez.
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
-      for (const s of o.seeds ?? []) {
+      for (const s of [...(o.seeds ?? []), ...(o.arrivals?.(ctx.truth, ctx.now) ?? [])]) {
         if (ctx.now < s.from || known.has(s.def.id)) continue;
         const k = events.length;
         const pid = ctx.newId("pathogen");
@@ -166,7 +228,9 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
           place: o.placeOf(ctx.truth, s.carrier),
           data: { pathogen: s.def.id, source: s.source, well: s.well ?? null },
           emissions: {},
-          causes: [{ kind: "state", entity: s.carrier, key: "body.carrier" }],
+          causes: s.causes?.length
+            ? [...s.causes]
+            : [{ kind: "state", entity: s.carrier, key: "body.carrier" }],
         });
         changes.push(
           createEntity(pid, draftEvent(k), ctx.now),
