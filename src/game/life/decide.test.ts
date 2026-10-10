@@ -723,6 +723,52 @@ describe("life.decide", () => {
     ).toContainEqual({ kind: "event", event: "event:12" });
   });
 
+  it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {
+    const truth = layeredWorld();
+    const goal = {
+      id: "medium:master_craft",
+      layer: "medium",
+      kind: "pursue",
+      value: "knowledge",
+      weight: 0.5,
+      originEventId: "event:8" as EventId,
+      since: 100,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    const evidence = (n: number) => ({
+      goalId: goal.id,
+      cause: `event:${n}` as EventId,
+      at: 100 + n * 100,
+      amount: 0.5,
+    });
+    let seen = [evidence(1)];
+    const process = decideProcess({
+      ...opts,
+      persistGoalLayers: true,
+      goalProgress: {
+        concrete: (g) => g.id === goal.id,
+        evidenceOf: () => seen,
+        minSpan: 100,
+      },
+    });
+    const fulfilled = (out: ReturnType<typeof process.run>) =>
+      out.events?.find(
+        (e) =>
+          e.kind === GOAL_EVENT &&
+          goalData(e).goal === goal.id &&
+          (e.data as { reason?: string }).reason === "fulfilled",
+      );
+    expect(fulfilled(process.run(ctx(truth, A, 1000)))).toBeUndefined();
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)).toBeUndefined();
+
+    seen = [evidence(1), evidence(2), evidence(3)];
+    const first = process.run(ctx(truth, A, 1000));
+    expect(fulfilled(first)?.causes).toContainEqual({ kind: "event", event: "event:3" });
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === goal.id)).toBe(false);
+  });
+
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
     const p = decideProcess(opts);
     const truth = world(0.5);
