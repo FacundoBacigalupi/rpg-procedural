@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { AgentId, EntityRef, EventId } from "../../core/index.ts";
-import { Rng } from "../../core/index.ts";
+import type { AgentId, EntityRef, EventId, HolderRef } from "../../core/index.ts";
+import { holderAccount, Rng } from "../../core/index.ts";
 import {
   BODY_STATE,
+  draftEvent,
   ENTITY,
   INFECTION,
   PATHOGEN,
@@ -129,6 +130,28 @@ describe("life.medicine", () => {
         .events?.some((ev) => ev.kind === "body.infected" && ev.actors[0] === kin) ?? false;
     expect(infects(base)).toBe(true);
     expect(infects(quarantined)).toBe(false);
+  });
+
+  it("con stock el remedio sale del lote del sanador, va al sumidero y sin existencias no se da", () => {
+    const acc = holderAccount(doc as unknown as HolderRef);
+    const withLedger = (n: number) => {
+      const c = ctx(world(), clock.day * 2) as { ledger?: unknown };
+      c.ledger = { balance: (a: string, u: string) => (a === acc && u === "herb" ? n : 0) };
+      return c as unknown as ProcessContext;
+    };
+    const p = medicineProcess({
+      clock,
+      healers: [healer],
+      stock: { tea: "herb" },
+      placeOf: () => place,
+    });
+    const out = p.run(withLedger(1));
+    expect(out.postings).toHaveLength(1);
+    expect(out.postings?.[0]?.transfers[0]).toMatchObject({ unit: "herb", from: acc, amount: 1 });
+    expect(out.postings?.[0]?.event).toBe(draftEvent(1));
+    const empty = p.run(withLedger(0));
+    expect(empty.postings).toBeUndefined();
+    expect(empty.events?.[1]?.data).toMatchObject({ remedy: null });
   });
 
   it("sanador desde las habilidades: quien tiene medicine atiende, sin lista explícita", () => {
