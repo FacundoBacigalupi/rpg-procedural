@@ -77,7 +77,7 @@ const village: KnownEntity[] = [
 ];
 
 describe("catálogo", () => {
-  it("el contenido del repo carga: veintidós verbos y la plantilla de robar", () => {
+  it("el contenido del repo carga: veintitrés verbos y la plantilla de robar", () => {
     expect(catalog.verbs.map((v) => v.id).sort()).toEqual([
       "boil",
       "consult",
@@ -85,6 +85,7 @@ describe("catálogo", () => {
       "cook",
       "drink",
       "eat",
+      "filter",
       "gather",
       "give",
       "look",

@@ -245,6 +245,12 @@ export interface ActOptions {
    */
   readonly boil?: BoilOptions;
   /**
+   * Opt-in: el verbo `filter` gasta `grams` de la unidad `material` del ledger (lo que lleva o la
+   * despensa) y deja agua filtrada (`TREATED_WATER`, `treatment` por defecto `filter`) que dura
+   * `validDays` días. Apagado, `filter` no tiene con qué y no cambia nada.
+   */
+  readonly filter?: FilterOptions;
+  /**
    * Opt-in: la calidad del agua que bebe el verbo `drink` (la sal deshidrata, `netHydration`); la
    * hidratación neta puede ser negativa y entonces falta más agua. Sin él, agua limpia como siempre.
    */
@@ -273,6 +279,13 @@ export interface BoilOptions {
   readonly fuel: string;
   readonly grams: number;
   readonly treatment: WaterTreatment;
+  readonly validDays: number;
+}
+
+export interface FilterOptions {
+  readonly material: string;
+  readonly grams: number;
+  readonly treatment?: WaterTreatment;
   readonly validDays: number;
 }
 
@@ -664,6 +677,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
         : undefined,
+    filterMaterial:
+      o.filter && node.verb === "filter"
+        ? { unit: ledgerUnit(o.filter.material), grams: o.filter.grams }
+        : undefined,
     consumables:
       o.consumables && node.verb === "consume"
         ? new Set(o.consumables.map((c) => GOOD(c.good)))
@@ -724,6 +741,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       setComponent(TREATED_WATER, me, {
         treatment: o.boil.treatment,
         until: ctx.now + Math.round(o.boil.validDays * o.clock.day),
+      }),
+    );
+  } else if (eff.kind === "filter" && eff.material !== null && eff.grams > 0 && o.filter) {
+    changes.push(
+      setComponent(TREATED_WATER, me, {
+        treatment: o.filter.treatment ?? "filter",
+        until: ctx.now + Math.round(o.filter.validDays * o.clock.day),
       }),
     );
   } else if (eff.kind === "consume" && eff.good !== null && eff.units > 0) {

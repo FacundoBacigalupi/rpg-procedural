@@ -93,6 +93,7 @@
   },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.boil", "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."] },
+  { "id": "percept.action.filter", "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."] },
   { "id": "percept.action.consume", "lines": ["{who} toma algo.", "Ves a {who} tomando algo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
   {
@@ -435,6 +436,11 @@
       "Hervís el agua un buen rato."
     ]
   },
+  {
+    "id": "outcome.filter.done",
+    "lines": ["Pasás el agua por el filtro hasta que sale clara.", "Filtrás el agua con paciencia."]
+  },
+  { "id": "outcome.filter.none", "lines": ["No tenés con qué filtrar el agua."] },
   { "id": "outcome.boil.none", "lines": ["No tenés con qué hervir el agua."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
   {

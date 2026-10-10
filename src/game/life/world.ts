@@ -48,7 +48,7 @@ import {
   type WorldTruth,
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
-import { actProcess, type BoilOptions } from "./act.ts";
+import { actProcess, type BoilOptions, type FilterOptions } from "./act.ts";
 import { adultGrowthProcess } from "./adultGrowth.ts";
 import {
   altitudeProcess,
@@ -239,6 +239,8 @@ export interface LifeWorld {
    * defecto: sin filas, RNG ni eventos nuevos.
    */
   readonly boil?: BoilOptions;
+  /** Opt-in: el verbo `filter` gasta material filtrante del ledger y deja agua filtrada; ver `ActOptions.filter`. */
+  readonly filter?: FilterOptions;
   /**
    * Opt-in (con `boil`): los NPC con sed por encima de `minThirst` y sin agua tratada vigente
    * deciden hervir (`life.decide`) y `life.routine` lo cumple con la despensa. Apagado por defecto:
@@ -399,6 +401,7 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
+          ...(parts.filter ? { filter: parts.filter } : {}),
           ...(parts.waterSources?.netDrink === true
             ? {
                 drinkQuality: waterHooks(
