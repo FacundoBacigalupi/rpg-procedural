@@ -168,6 +168,23 @@ export interface LifeOptions {
   readonly playerAge?: { readonly min: number; readonly max: number };
   /** Gustos pedidos del personaje (modo novela): se fijan sobre los que el mundo le generó. */
   readonly tastes?: readonly TasteSpec[];
+  /** Opt-in: presión de escasez y su descarga (`life.famine`); apagado por defecto. */
+  readonly famine?: LifeParts["famine"];
+  /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`); apagado por defecto. */
+  readonly migration?: LifeParts["migration"];
+  /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
+  readonly rumorGrievance?: boolean;
+}
+
+/** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
+export function optInParts(
+  options: LifeOptions,
+): Pick<LifeParts, "famine" | "migration" | "rumorGrievance"> {
+  return {
+    ...(options.famine ? { famine: options.famine } : {}),
+    ...(options.migration ? { migration: options.migration } : {}),
+    ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
+  };
 }
 
 /**
@@ -773,6 +790,7 @@ export function createLife(
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),
+      ...optInParts(options),
     },
     pop.player,
     terrain.village,
