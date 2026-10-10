@@ -137,6 +137,8 @@ export interface LifeWorld {
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
   readonly healerFrostbiteSigns?: boolean;
+  /** Opt-in (con `frostbite`; con `frostbiteTreatment` se ejecuta): el sanador escribe el pedido de cuidado de la congelación. */
+  readonly healerFrostbiteOrders?: boolean;
   /** Opt-in (con `realAltitude`): el sanador también ve los signos del mal de altura. */
   readonly healerAltitudeSigns?: boolean;
   /** Opt-in (con `realAltitude`): la aclimatación escala con el genoma (`constitution`). */
@@ -314,6 +316,7 @@ export function lifeWorld(
           ambientOf: ambientOf(parts),
           deficiency: parts.deficiencyEffects === true,
           reopen: parts.reopenWounds === true,
+          thermal: parts.coreEffects === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,
@@ -527,6 +530,7 @@ export function lifeWorld(
           doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
+          frostbiteOrders: parts.frostbite === true && parts.healerFrostbiteOrders === true,
           altitudeSigns: parts.healerAltitudeSigns === true ? altitudeOf : undefined,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           deficiencySigns: parts.deficiencySigns === true,

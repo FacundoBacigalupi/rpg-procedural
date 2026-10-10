@@ -60,6 +60,7 @@ import {
   otherBeliefFrom,
   PERSON,
   PLACE,
+  PRICE_BELIEFS,
   type ProcessDef,
   pantryTexts,
   RELATIONS,
@@ -201,7 +202,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       "culture.community",
-      ...(o.moldHints ? [MOLD_RUMORS.name] : []),
+      ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
     ],
     writes: [NPC_DECISION.name, NPC_GOALS.name],
     run(ctx) {
@@ -460,7 +461,10 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const hinted =
         o.moldHints && hintBook
           ? merged.map((c) => {
-              const bump = moldHintMood(c, hintBook, o.moldHints);
+              const bump = moldHintMood(c, hintBook, o.moldHints, {
+                beliefs: truth.get(PRICE_BELIEFS, me),
+                day: Math.floor(now / o.clock.day),
+              });
               return bump === 0 ? c : { ...c, mood: r((c.mood ?? 0) + bump) };
             })
           : merged;

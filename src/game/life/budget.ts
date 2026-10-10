@@ -28,6 +28,7 @@ import {
   withLoanPayments,
   withRentIncome,
 } from "../../sim/index.ts";
+import { rentDuePerDay } from "./rents.ts";
 
 /** Desde qué edad se cuenta como adulto (la misma que `ADULT_AGE_YEARS`). */
 const ADULT_AGE_YEARS = 10;
@@ -78,17 +79,18 @@ export function householdFlowsOf(
   coins += balance(home as unknown as HolderRef, coin);
   const perDayKg = Math.max(0.001, adults + children * 0.6 + elders * 0.8) * GRAIN_KG_PER_ADULT_DAY;
   const pantryDays = balance(home as unknown as HolderRef, grain) / 1000 / perDayKg;
+  const today = Math.floor(env.now / env.day);
   const flows: HouseholdFlows = {
     coins,
     incomePerDay: env.incomePerDay ?? 0,
-    fixedPerDay: env.fixedPerDay ?? 0,
+    // Opt-in: sin filas de `RENTS` el canon es 0 y nada cambia.
+    fixedPerDay: (env.fixedPerDay ?? 0) + rentDuePerDay(truth, home, today),
     foodCoinsPerAdultDay: GRAIN_KG_PER_ADULT_DAY * (grain?.priceCopperPerKg ?? 0),
     pantryDays,
     adults,
     children,
     elders,
   };
-  const today = Math.floor(env.now / env.day);
   const withRent =
     env.rents && env.rents.length > 0 ? withRentIncome(flows, env.rents, today) : flows;
   return env.loans && env.loans.length > 0

@@ -402,6 +402,12 @@ export interface FrostbiteCareOrder {
   readonly at: number;
 }
 export const FROSTBITE_CARE = table<FrostbiteCareOrder>("body.frostbite_care");
+/**
+ * Pedido de tratamiento que escribe el médico (`life.medicine`, único escritor); `life.thermal`
+ * lo convierte en la orden de `FROSTBITE_CARE` (único escritor de esa) cuando es más nuevo que la
+ * orden vigente. Misma forma que la orden.
+ */
+export const FROSTBITE_ORDERS = table<FrostbiteCareOrder>("body.frostbite_orders");
 
 /** Baja de gravedad por hora con recalentamiento y con aislamiento (a intensidad 1), además de la curación natural. */
 export const FROSTBITE_REWARM_PER_HOUR = 0.04;

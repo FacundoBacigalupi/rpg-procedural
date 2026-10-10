@@ -34,6 +34,7 @@ import {
   type EventDraft,
   effectLevel,
   FROSTBITE,
+  FROSTBITE_ORDERS,
   type FrostbiteState,
   frostbiteAmputations,
   frostbiteStage,
@@ -46,6 +47,7 @@ import {
   type PathogenTreatment,
   PERSON_SUBSTANCE,
   type PostingDraft,
+  type ProcessContext,
   type ProcessDef,
   type ReadonlyWorldTruth,
   type RemedyDef,
@@ -295,6 +297,12 @@ export interface MedicineOptions {
   readonly substanceSigns?: boolean | undefined;
   /** Opt-in: también los signos de la congelación (`FROSTBITE`, `AMPUTATIONS`). */
   readonly frostbiteSigns?: boolean | undefined;
+  /**
+   * Opt-in: el sanador ve la congelación del paciente (`FROSTBITE`) y escribe el pedido de cuidado
+   * (`FROSTBITE_ORDERS`, `frostbiteCare`) que `life.thermal` convierte en orden. La habilidad sube la
+   * intensidad y la cirugía exige un mínimo. Apagado: sin filas, RNG ni eventos.
+   */
+  readonly frostbiteOrders?: boolean | undefined;
   /** Opt-in: también los signos del mal de altura (altitud real de donde está y su aclimatación). */
   readonly altitudeSigns?: ((truth: ReadonlyWorldTruth, who: AgentId) => number) | undefined;
   readonly healers?: readonly Healer[];
@@ -326,6 +334,75 @@ export function substanceRemedyEffect(d: RemedyDose, peakHours: number): number 
   return effectLevel(d.def, st);
 }
 
+/** Días que rige un pedido de cuidado de congelación. */
+const FROSTBITE_ORDER_DAYS = 3;
+/** Habilidad mínima para decidir una amputación quirúrgica. */
+const SURGERY_MIN_SKILL = 0.3;
+
+/**
+ * Los médicos escriben el pedido de cuidado de la congelación de cada paciente con lesión (uno por
+ * ventana, sin repetir mientras rige): recalentar/aislar con intensidad por habilidad y, si hay
+ * tejido necrosado y el médico sabe operar, amputar. Lo que no hay que hacer no se pide.
+ */
+function frostbiteOrders(
+  ctx: ProcessContext,
+  healers: readonly Healer[],
+  taken: Map<string, number>,
+  changes: StateChange[],
+  events: EventDraft[],
+  day: number,
+  placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef,
+): void {
+  // Pedidos vencidos de quien ya no tiene lesión: se limpian (este proceso es su único escritor).
+  for (const id of ctx.truth.ids(FROSTBITE_ORDERS)) {
+    const old = ctx.truth.get(FROSTBITE_ORDERS, id);
+    if (old && old.until <= ctx.now && !ctx.truth.get(FROSTBITE, id)) {
+      changes.push({ op: "delete", table: FROSTBITE_ORDERS.name, id });
+    }
+  }
+  for (const id of ctx.truth.ids(FROSTBITE)) {
+    const patient = id as AgentId;
+    if (ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const state = ctx.truth.get(FROSTBITE, id);
+    if (!state) continue;
+    const have = ctx.truth.get(FROSTBITE_ORDERS, id);
+    if (have && have.until > ctx.now) continue;
+    const care = frostbiteCare(state);
+    if (care.length === 0) continue;
+    const healer = healers.find(
+      (h) => h.agent !== patient && (taken.get(h.agent) ?? 0) < (h.capacity ?? 3),
+    );
+    if (!healer) continue;
+    taken.set(healer.agent, (taken.get(healer.agent) ?? 0) + 1);
+    const lost = ctx.truth.get(AMPUTATIONS, id);
+    const amputate =
+      care.includes("amputate") && healer.skill >= SURGERY_MIN_SKILL
+        ? frostbiteAmputations(state).filter((p) => !lost?.lost.some((l) => l.part === p))
+        : [];
+    const power = Math.min(1, 0.4 + 0.6 * healer.skill);
+    const rewarm = care.includes("rewarm") ? power : 0;
+    const insulate = care.includes("insulate") ? power : 0;
+    events.push({
+      kind: "body.frostbite_ordered",
+      actors: [healer.agent, patient],
+      place: placeOf(ctx.truth, patient),
+      data: { rewarm, insulate, amputate },
+      emissions: {},
+      causes: [{ kind: "state", entity: patient, key: "body.frostbite" }],
+    });
+    changes.push(
+      setComponent(FROSTBITE_ORDERS, id, {
+        rewarm,
+        insulate,
+        amputate,
+        until: ctx.now + FROSTBITE_ORDER_DAYS * day,
+        by: healer.agent,
+        at: ctx.now,
+      }),
+    );
+  }
+}
+
 export function medicineProcess(o: MedicineOptions): ProcessDef {
   const tph = o.clock.day / 24;
   return {
@@ -343,10 +420,11 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       ENTITY.name,
       BODY_STATE.name,
       ...(o.substanceSigns ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
-      ...(o.frostbiteSigns ? [FROSTBITE.name, AMPUTATIONS.name] : []),
+      ...(o.frostbiteSigns || o.frostbiteOrders ? [FROSTBITE.name, AMPUTATIONS.name] : []),
+      ...(o.frostbiteOrders ? [FROSTBITE_ORDERS.name] : []),
       ...(o.altitudeSigns ? [ACCLIMATIZATION.name] : []),
     ],
-    writes: [TREATMENT.name],
+    writes: o.frostbiteOrders ? [TREATMENT.name, FROSTBITE_ORDERS.name] : [TREATMENT.name],
     run(ctx) {
       const alive = (a: AgentId) => ctx.truth.get(ENTITY, a)?.endedAt === undefined;
       const healers = (o.healers ?? []).filter((h) => alive(h.agent));
@@ -371,11 +449,14 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
         const rec = ctx.truth.get(PATHOGEN, id);
         if (rec) defs.set(rec.def.id, rec.def);
       }
-      if (defs.size === 0) return {};
-
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const taken = new Map<string, number>();
+      if (o.frostbiteOrders) {
+        frostbiteOrders(ctx, healers, taken, changes, events, o.clock.day, o.placeOf);
+      }
+      if (defs.size === 0) return events.length > 0 ? { changes, events } : {};
+
       const postings: PostingDraft[] = [];
       const reserved = new Map<string, number>();
       for (const id of ctx.truth.ids(INFECTION)) {

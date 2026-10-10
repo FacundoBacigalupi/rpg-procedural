@@ -18,7 +18,7 @@ import {
   rentIncomePerDay,
   WorldTruth,
 } from "../../sim/index.ts";
-import { RENTS, type RentSeed, rentsOf, rentsProcess } from "./rents.ts";
+import { RENTS, type RentSeed, rentDuePerDay, rentsOf, rentsProcess } from "./rents.ts";
 
 const goods = [{ id: "copper", name: "cobre", form: "coin" }] as unknown as GoodDef[];
 const COIN = ledgerUnit("coin:copper");
@@ -106,6 +106,19 @@ describe("life.rents", () => {
     expect(row?.status).toBe("fulfilled");
     expect(row?.commitment.status).toBe("fulfilled");
     expect(rentsOf(truth, "owner")).toEqual([]);
+  });
+
+  it("el canon es gasto fijo del arrendatario y la parcela pasa a su uso", () => {
+    const { truth, ledger } = setup(100);
+    const r = run(truth, ledger, 1);
+    const ch = (r.changes ?? []).find((c) => (c as { table?: string }).table === PARCEL.name) as
+      | { value: Parcel }
+      | undefined;
+    expect(ch?.value.possession).toBe("tenant");
+    expect(ch?.value.rights.at(-1)?.incidents).toEqual(["use", "fruits"]);
+    expect(rentDuePerDay(truth, "tenant", 2)).toBe(3);
+    expect(rentDuePerDay(truth, "tenant", 5)).toBe(0);
+    expect(rentDuePerDay(truth, "owner", 2)).toBe(0);
   });
 
   it("sin fondos queda atraso y mora", () => {

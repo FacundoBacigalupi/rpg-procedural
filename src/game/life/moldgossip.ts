@@ -8,16 +8,20 @@
 import type { AgentId, CauseRef, EventId, PlaceRef, Tick } from "../../core/index.ts";
 import {
   type BondDef,
+  baseFor,
   type DimensionDef,
   distortMold,
   ENTITY,
   type EventDraft,
+  type GoodDef,
+  goodUnit,
   HEARD,
   LOCATION,
   MIND,
   type MoldRumor,
   moldUsefulness,
   PERSON,
+  type PriceBeliefs,
   type ProcessDef,
   placeKey,
   RELATIONS,
@@ -272,6 +276,44 @@ export const MOLD_HINT_MOOD = 0.2;
 export interface MoldHintOptions {
   /** Nombre con que el catálogo nombra un bien de `price` (por defecto, la clave tal cual). */
   readonly goodName?: (good: string) => string;
+  /**
+   * Precio creído por kilo (monedas) de un bien de `price` (ya con el nombre del catálogo) para
+   * quien decide; `undefined` si no lo sabe. Con él, un `price` solo empuja si difiere de lo creído.
+   */
+  readonly believedPerKg?: (
+    beliefs: PriceBeliefs | undefined,
+    good: string,
+    day: number,
+  ) => number | undefined;
+}
+
+/**
+ * Valora un precio oído contra el creído (puro): `buy` si el oído es más bajo (conviene comprar
+ * allá), `sell` si es más alto; `edge` 0-1 es la diferencia relativa (tope 1). Sin creído, 1.
+ */
+export function moldPriceEdge(
+  heardPerKg: number,
+  believedPerKg: number | undefined,
+): { readonly side: "buy" | "sell" | "none"; readonly edge: number } {
+  if (believedPerKg === undefined || !(believedPerKg > 0)) return { side: "none", edge: 1 };
+  const rel = (heardPerKg - believedPerKg) / believedPerKg;
+  const edge = Math.round(Math.min(1, Math.abs(rel)) * 1e6) / 1e6;
+  return { side: rel < 0 ? "buy" : rel > 0 ? "sell" : "none", edge };
+}
+
+/** Opciones de `moldHints` para el catálogo real: `good` por id y creído desde `PRICE_BELIEFS` o la referencia. */
+export function catalogMoldHints(goods: readonly GoodDef[]): MoldHintOptions {
+  const byName = new Map(goods.map((g) => [g.name, g]));
+  const byId = new Map(goods.map((g) => [g.id as string, g]));
+  const find = (good: string) => byName.get(good) ?? byId.get(good);
+  return {
+    goodName: (good) => find(good)?.name ?? good,
+    believedPerKg: (beliefs, good, day) => {
+      const g = find(good);
+      if (!g || g.priceCopperPerKg === undefined) return undefined;
+      return baseFor(beliefs, goodUnit(g) as string, g.priceCopperPerKg, day);
+    },
+  };
 }
 
 /**
@@ -283,6 +325,7 @@ export function moldHintMood(
   c: { readonly verb: string; readonly target?: string; readonly id: string },
   book: MoldBook | undefined,
   o: MoldHintOptions = {},
+  priced?: { readonly beliefs: PriceBeliefs | undefined; readonly day: number },
 ): number {
   let best = 0;
   for (const h of book?.items ?? []) {
@@ -293,7 +336,13 @@ export function moldHintMood(
     } else if (c.verb === "trade" && r.mold === "price") {
       hit = c.id.endsWith(`+${o.goodName ? o.goodName(r.good) : r.good}`);
     }
-    if (hit) best = Math.max(best, moldUsefulness(r, h.confidence));
+    if (!hit) continue;
+    let use = moldUsefulness(r, h.confidence);
+    if (r.mold === "price" && o.believedPerKg && priced) {
+      const believed = o.believedPerKg(priced.beliefs, r.good, priced.day);
+      use = Math.round(use * moldPriceEdge(r.amount, believed).edge * 1e6) / 1e6;
+    }
+    best = Math.max(best, use);
   }
   return Math.round(best * MOLD_HINT_MOOD * 1e6) / 1e6;
 }

@@ -145,7 +145,13 @@ function deathCauses(body: Body, entity: AgentId, cause: DeathCause): CauseRef[]
   }
 }
 
-function consciousnessOf(plan: BodyPlanDef, body: Body, at: Tick): Body["consciousness"] {
+function consciousnessOf(
+  plan: BodyPlanDef,
+  body: Body,
+  at: Tick,
+  coreUnconscious: boolean,
+): Body["consciousness"] {
+  if (coreUnconscious) return "unconscious";
   const lethalWater = plan.physiology.lethalDehydration * body.massKg;
   if (body.stunnedUntil !== null && at < body.stunnedUntil) return "unconscious";
   if (body.blood <= BLOOD_FAINT || body.water >= 0.85 * lethalWater || body.sepsis >= 0.85) {
@@ -347,15 +353,16 @@ export function advanceBody(
   ambient: AmbientTemp = COMFORTABLE,
   sweatLph = 0,
   deficiency: BodyDeficiency = NO_BODY_DEFICIENCY,
+  coreUnconscious = false,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
   while (b.death === null && b.updatedAt < to) {
     const at = Math.min(to, b.updatedAt + stepSeconds(b));
     b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph, deficiency);
-    const consciousness = consciousnessOf(plan, b, at);
+    const consciousness = consciousnessOf(plan, b, at, coreUnconscious);
     if (consciousness !== b.consciousness) {
-      const why = collapseCauses(plan, entity, b);
+      const why = collapseCauses(plan, entity, b, coreUnconscious);
       if (consciousness === "unconscious") happenings.push({ kind: "collapsed", at, causes: why });
       else if (b.consciousness === "unconscious")
         happenings.push({ kind: "came_to", at, causes: why });
@@ -375,13 +382,19 @@ export function advanceBody(
 }
 
 /** Por qué cayó (o se levantó): lo más grave de lo que tiene ahora. */
-function collapseCauses(plan: BodyPlanDef, entity: AgentId, body: Body): CauseRef[] {
+function collapseCauses(
+  plan: BodyPlanDef,
+  entity: AgentId,
+  body: Body,
+  coreUnconscious: boolean,
+): CauseRef[] {
   if (body.blood <= BLOOD_DAZED) return deathCauses(body, entity, "exsanguination");
   if (body.sepsis >= 0.5) return deathCauses(body, entity, "sepsis");
   if (body.water >= 0.6 * plan.physiology.lethalDehydration * body.massKg) {
     return deathCauses(body, entity, "dehydration");
   }
   if (body.stunnedUntil !== null) return deathCauses(body, entity, "brain_trauma");
+  if (coreUnconscious) return [{ kind: "state", entity, key: "body.thermal" }];
   return [{ kind: "state", entity, key: "body" }];
 }
 

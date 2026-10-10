@@ -564,3 +564,19 @@ describe("heridas que se reabren en el scheduler", () => {
     expect(reopened(run(3, { deficiency: true, reopen: true, chance: 0 }))).toEqual([]);
   });
 });
+
+describe("núcleo inconsciente", () => {
+  it("con el núcleo en inconsciencia térmica el cuerpo cae con causa body.thermal y se levanta", () => {
+    const hour = 3600;
+    const down = advanceBody(plan, me, fresh(), hour, undefined, 0, undefined, true);
+    expect(down.body.consciousness).toBe("unconscious");
+    const fell = down.happenings.find((h) => h.kind === "collapsed");
+    expect(fell && "causes" in fell ? fell.causes : null).toEqual([
+      { kind: "state", entity: me, key: "body.thermal" },
+    ]);
+    const up = advanceBody(plan, me, down.body, 2 * hour);
+    expect(up.body.consciousness).toBe("alert");
+    expect(up.happenings.some((h) => h.kind === "came_to")).toBe(true);
+    expect(advanceBody(plan, me, fresh(), hour).body.consciousness).toBe("alert");
+  });
+});
