@@ -97,7 +97,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { creditRows } from "./credit.ts";
-import { cueLocalOf, objectsSeen } from "./cue-local.ts";
+import { cueLocalOf, objectsInView, objectsSeen, peopleInView } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -222,6 +222,12 @@ export interface DecideOptions {
    */
   readonly objectCues?: boolean;
   /**
+   * Opt-in (con `objectCues`): también despiertan la señal por objeto los consumibles que lleva
+   * encima la gente que de verdad está en su mismo lugar y los de los puestos que `stalls` da para
+   * ese hex (percepción: no la despensa ajena ni lo que está en otro lugar); apagado, solo lo propio.
+   */
+  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+  /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
    */
@@ -336,18 +342,27 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       );
       const acute = acuteOf(truth, me);
       // Opt-in `objectCues`: los consumibles que ve en su despensa gatillan la señal por objeto.
-      const seenObjects = o.objectCues
-        ? objectsSeen(
-            (o.consumables ?? []).map((c) => c.good),
-            (good) => {
-              const g = (o.goods ?? []).find((x) => x.id === good);
-              const held = ctx.ledger?.holdings(
-                holderAccount(person.household as unknown as HolderRef),
-              );
-              return g ? (held?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
-            },
-          )
+      const cueGoods = (o.consumables ?? []).map((c) => c.good);
+      const amountIn = (holder: HolderRef) => (good: string) => {
+        const g = (o.goods ?? []).find((x) => x.id === good);
+        const held = ctx.ledger?.holdings(holderAccount(holder));
+        return g ? (held?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
+      };
+      const ownSeen = o.objectCues
+        ? objectsSeen(cueGoods, amountIn(person.household as unknown as HolderRef))
         : [];
+      const seenObjects =
+        o.objectCues && o.viewCues
+          ? [
+              ...new Set([
+                ...ownSeen,
+                ...objectsInView(cueGoods, [
+                  ...peopleInView(truth, me).map((id) => amountIn(id as unknown as HolderRef)),
+                  ...(o.viewCues.stalls?.(here) ?? []).map(amountIn),
+                ]),
+              ]),
+            ].sort()
+          : ownSeen;
       const mood = {
         ...moodFrom({
           memories,

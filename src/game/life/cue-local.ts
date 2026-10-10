@@ -45,6 +45,36 @@ export function objectsSeen(
   return [...new Set(goods)].filter((g) => have(g) >= 1).sort();
 }
 
+/**
+ * Quién tiene a la vista (puro, percepción): las personas que de verdad están en su mismo lugar
+ * (hex y espacio; no se ve lo que está en otra parte aunque lo crea) y a las que no está ciego,
+ * ordenadas. Lo que se ve de ellas es lo que llevan, nunca su despensa de casa.
+ */
+export function peopleInView(truth: ReadonlyWorldTruth, who: AgentId): readonly AgentId[] {
+  const here = truth.get(LOCATION, who);
+  if (!here) return [];
+  const out: AgentId[] = [];
+  for (const id of truth.ids(LOCATION)) {
+    if (id === who || !id.startsWith("agent:")) continue;
+    const there = truth.get(LOCATION, id as AgentId);
+    if (!there || there.hex !== here.hex || there.space !== here.space) continue;
+    out.push(id as AgentId);
+  }
+  return out.sort();
+}
+
+/**
+ * Los objetos que ve en lotes ajenos (lo que llevan los presentes y los puestos del lugar), sin
+ * repetir y ordenados; se suma a lo propio con `objectsSeen`. `visible` dice cuánto de un bien
+ * está a la vista en ese lote (un lote guardado o tapado no cuenta: devuelve 0).
+ */
+export function objectsInView(
+  goods: readonly string[],
+  lots: readonly ((good: string) => number)[],
+): readonly string[] {
+  return objectsSeen(goods, (g) => lots.reduce((n, visible) => n + visible(g), 0));
+}
+
 export function cueLocalOf(
   truth: ReadonlyWorldTruth,
   who: AgentId,
