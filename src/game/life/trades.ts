@@ -291,3 +291,70 @@ function spentBy(ts: readonly Transfer[], from: LedgerAccount): number {
   for (const t of ts) if (t.from === from && (t.unit as string).startsWith("coin:")) s += t.amount;
   return s;
 }
+
+// --- Elección de oficio por habilidad y necesidad (economy §3), parte pura y opt-in ---------------
+// No está cableada: `tradeOfHousehold` (fork keyed) sigue siendo lo que usa la vida. Esto no toca
+// RNG ni estado: dado lo que el hogar sabe hacer y lo que le falta, devuelve el oficio que más le
+// conviene (o ninguno). Quien lo cablee debe guardar la elección en una tabla propia.
+
+/** Habilidad mínima (0 a 1) del mejor adulto para que el hogar se dedique a un oficio (sin calibrar). */
+export const TRADE_MIN_SKILL = 0.15;
+/** Peso de la necesidad económica sobre el puntaje (sin calibrar). */
+export const TRADE_NEED_WEIGHT = 1;
+/** Puntaje mínimo para dedicarse a un oficio (sin calibrar). */
+export const TRADE_MIN_SCORE = 0.05;
+
+/** Una receta vista por un hogar: qué tan bien la hace y cuánto rinde la hora. */
+export interface TradeCandidate {
+  readonly recipe: string;
+  /** Habilidad del mejor adulto del hogar en el oficio, 0 a 1. */
+  readonly skill: number;
+  /** Producto menos insumos por hora de trabajo, en monedas (con los precios que el hogar cree). */
+  readonly marginPerHour: number;
+  /** Cuánto falta el producto en el lugar, 0 a 1 (1 = nadie lo ofrece). Por defecto 0.5. */
+  readonly scarcity?: number;
+}
+
+/** Lo que rinde una hora de la receta con los valores por gramo dados (0 si falta algún precio). */
+export function recipeMarginPerHour(
+  r: TradeRecipeDef,
+  valuePerGram: (good: string) => number,
+): number {
+  const net =
+    r.output.amount * valuePerGram(r.output.good) -
+    r.inputs.reduce((s, i) => s + i.amount * valuePerGram(i.good), 0);
+  return net / Math.max(1e-9, r.hoursPerBatch);
+}
+
+/**
+ * Puntaje de un oficio para un hogar: rendimiento por hora, escalado por la habilidad y por cuánto
+ * falta el producto, más empuje si el hogar necesita ingreso (`need`, 0 a 1: déficit de ingreso
+ * contra gasto). Sin rendimiento o sin habilidad suficiente no hay puntaje.
+ */
+export function tradeScore(c: TradeCandidate, need: number): number {
+  if (c.skill < TRADE_MIN_SKILL || c.marginPerHour <= 0) return 0;
+  const scarcity = Math.min(1, Math.max(0, c.scarcity ?? 0.5));
+  const n = Math.min(1, Math.max(0, need));
+  return c.marginPerHour * c.skill * (0.5 + scarcity) * (1 + TRADE_NEED_WEIGHT * n);
+}
+
+/**
+ * El oficio que elige un hogar entre los candidatos: el de mayor puntaje (empate por id), solo si
+ * tiene al menos `TRADE_MIN_ADULTS` adultos y el puntaje llega al mínimo. Determinista, sin RNG.
+ */
+export function chooseTradeBySkill(
+  adults: number,
+  candidates: readonly TradeCandidate[],
+  need: number,
+  minScore: number = TRADE_MIN_SCORE,
+): string | undefined {
+  if (adults < TRADE_MIN_ADULTS) return undefined;
+  let best: { id: string; score: number } | undefined;
+  for (const c of candidates) {
+    const score = tradeScore(c, need);
+    if (score < minScore || score <= 0) continue;
+    if (!best || score > best.score || (score === best.score && c.recipe < best.id))
+      best = { id: c.recipe, score };
+  }
+  return best?.id;
+}

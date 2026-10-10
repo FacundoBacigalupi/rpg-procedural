@@ -139,3 +139,23 @@ describe("oficio de un hogar desde la población", () => {
     expect(homes.every((h) => tradeOfHousehold(7, h, 1, recipes) === undefined)).toBe(true);
   });
 });
+
+describe("elección de oficio por habilidad y necesidad", () => {
+  it("elige por puntaje, la necesidad empuja y sin habilidad o manos no hay oficio", async () => {
+    const m = await import("./trades.ts");
+    const c = [
+      { recipe: "b", skill: 0.8, marginPerHour: 10 },
+      { recipe: "a", skill: 0.8, marginPerHour: 10 },
+      { recipe: "z", skill: 0.05, marginPerHour: 99 },
+    ];
+    expect(m.chooseTradeBySkill(2, c, 0)).toBe("a");
+    expect(m.chooseTradeBySkill(1, c, 1)).toBeUndefined();
+    expect(m.chooseTradeBySkill(2, [c[2] as (typeof c)[number]], 1)).toBeUndefined();
+    expect(m.tradeScore(c[0] as (typeof c)[number], 1)).toBeGreaterThan(
+      m.tradeScore(c[0] as (typeof c)[number], 0),
+    );
+    expect(
+      m.recipeMarginPerHour(recipes[0] as TradeRecipeDef, (g) => (g === "wool" ? 0.018 : 0.04)),
+    ).toBeCloseTo((800 * 0.04 - 1000 * 0.018) / 4);
+  });
+});
