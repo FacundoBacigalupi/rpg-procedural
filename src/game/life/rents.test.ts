@@ -212,8 +212,8 @@ describe("life.rents", () => {
       ({ ...ctxOf(truth, ledger, 3), recent }) as unknown as ProcessContext;
     const first = hp.run(ctx([harvest(100)]));
     expect(first.events?.[0]?.kind).toBe("property.rent_paid");
-    const sh = (first.changes as unknown as { value: { arrears: number } }[])[0].value;
-    expect(sh.arrears).toBe(35);
+    const sh = (first.changes as unknown as { value: { arrears: number } }[])[0]?.value;
+    expect(sh?.arrears).toBe(35);
     truth.set(SHARES, [...truth.ids(RENTS)][0] as never, sh as never);
     give(100);
     const total = ledger.total(GRAIN);
