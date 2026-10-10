@@ -100,7 +100,8 @@ describe("inspector", () => {
   }, 120_000);
 
   it("dice cuándo llegan los comandos de sistemas que faltan", () => {
-    expect(inspect(life, "rumor 1")).toContain("Fase 3");
+    expect(inspect(life, "rumor event:999999")).toContain("No hay un evento");
+    expect(inspect(life, "rumor")).toBe("rumor <evento>");
     expect(inspect(life, "mind agent:1")).toContain("Fase 2");
     expect(inspect(life, "invariants")).toBe("Sin violaciones.");
   });

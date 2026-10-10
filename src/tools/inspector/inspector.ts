@@ -25,6 +25,10 @@ import {
   isMistaken,
   MEMORIES,
   type Pressure,
+  RUMORS,
+  type Rumors,
+  rumorDeformation,
+  rumorTree,
   salient,
   snapshotTruth,
   truthOf,
@@ -40,14 +44,13 @@ const LATER: Readonly<Record<string, string>> = {
   mind: "Fase 2 (npc-psychology)",
   decision: "Fase 3 (decisión de los NPC)",
   believes: "Fase 2 (creencias)",
-  rumor: "Fase 3 (información: rumores con linaje)",
 };
 
 export const INSPECTOR_HELP = [
   "Inspector (solo lectura; marca la vida como inspeccionada):",
   "  tables · entity <id> · find <texto> · origin <id> · why <evento> · effects <evento>",
   "  timeline [n] · body <agente> · view · ledger <cuenta> · invariants · hash",
-  "  memories [agente] · wrong [agente] · percepts [agente] [tick] · rumor <id>",
+  "  memories [agente] · wrong [agente] · percepts [agente] [tick] · rumor <evento>",
   "  pressures [tipo] · pressure <tipo> <id> · hazard",
   "  at <tick> <comando> (el comando como era en ese tick) · diff <desde> [hasta]",
 ].join("\n");
@@ -95,6 +98,8 @@ export function inspect(life: Life, line: string, past?: PastLife): string {
       return wrong(life, arg);
     case "percepts":
       return percepts(life, arg ?? life.player, args[1]);
+    case "rumor":
+      return arg ? rumor(life, arg) : "rumor <evento>";
     case "hazard":
       return hazard(life);
     case "at":
@@ -327,6 +332,46 @@ function dischargeHistory(life: Life, id: PressureId): string {
       return `  t${e.tick} ${e.id} ${e.kind} con valor ${value.toFixed(2)}`;
     });
   return [`${id}: citada por ${rows.length} eventos:`, ...rows.slice(-INSPECT_LIMIT)].join("\n");
+}
+
+/** El linaje de un rumor (raíz = evento real) entre quienes lo guardan, y cuánto se deformó por salto. */
+function rumor(life: Life, id: string): string {
+  const root = id as EventId;
+  const truth = life.world.truth;
+  const holders = new Map<AgentId, Rumors | undefined>();
+  for (const h of truth.ids(RUMORS)) holders.set(h as AgentId, truth.get(RUMORS, h));
+  const tree = rumorTree(root, holders);
+  if (tree.variants.length === 0) {
+    return life.world.log.has(root) ? `Nadie cuenta ${id} como rumor.` : `No hay un evento ${id}.`;
+  }
+  const real = life.world.log.get(root);
+  const rows = tree.variants.map((v) => {
+    const c = v.content;
+    return (
+      `${"  ".repeat(Math.min(v.hops, 8))}${v.variant} salto ${v.hops} ← ${v.parent ?? "(vio)"}: ` +
+      `${c.kind} por ${c.by ?? "nadie"} a ${c.victim} gravedad ${f2(c.severity)} ` +
+      `confianza ${f2(v.confidence)}`
+    );
+  });
+  const d = rumorDeformation(tree);
+  const steps = d.steps.map(
+    (s) =>
+      `  salto ${s.hops}: ${s.versions} versiones, deformación media ${f2(s.mean)}, máx ${f2(s.max)}`,
+  );
+  return [
+    real ? line(real) : `${id} (no está en el registro)`,
+    `${tree.variants.length} versiones:`,
+    ...rows.slice(0, INSPECT_LIMIT),
+    ...(rows.length > INSPECT_LIMIT ? [`… y ${rows.length - INSPECT_LIMIT} más`] : []),
+    "deformación respecto de la versión de menor salto:",
+    ...steps,
+    ...(d.dominant
+      ? [
+          `versión dominante: ${d.dominant.content.kind} por ${d.dominant.content.by ?? "nadie"} ` +
+            `gravedad ${f2(d.dominant.content.severity)}, distancia ${f2(d.dominant.distance)}`,
+        ]
+      : []),
+  ].join("\n");
 }
 
 function hazard(life: Life): string {
