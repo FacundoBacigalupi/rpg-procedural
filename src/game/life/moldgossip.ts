@@ -10,6 +10,7 @@ import {
   distortMold,
   ENTITY,
   LOCATION,
+  HEARD,
   type MoldRumor,
   PERSON,
   type ProcessDef,
@@ -48,13 +49,22 @@ export interface MoldGossipOptions {
   readonly seeds?: readonly MoldSeed[];
   /** Probabilidad por hora de que alguien cuente algo a un vecino (sin calibrar). */
   readonly tellChance?: number;
+  /**
+   * Lo que cada uno oyó en conversación (`HEARD`: vive/murió) entra como rumor `attr` de oídas
+   * (confianza `HEARD_CONFIDENCE`, un salto desde quien se lo dijo). Apagado por defecto.
+   */
+  readonly fromHeard?: boolean;
 }
+
+/** Cuánto cree de entrada lo que le dijeron en una conversación (sin calibrar). */
+export const HEARD_CONFIDENCE = 0.6
 
 const KEPT_MOLDS = 24;
 const KEPT_MOLD_TOLD = 48;
 
 /** QuÃ© cosa es el rumor (precio de un bien en un mercado, o dÃ³nde hay algo), sin el valor. */
 export function moldKey(r: MoldRumor): string {
+  if (r.mold === "attr") return `attr:${r.about}:${r.attr}`;
   return r.mold === "price" ? `price:${r.good}:${placeKey(r.market)}` : `location:${r.what}`;
 }
 
@@ -79,7 +89,13 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "decide",
-    reads: [PERSON.name, ENTITY.name, LOCATION.name, MOLD_RUMORS.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      LOCATION.name,
+      MOLD_RUMORS.name,
+      ...(o.fromHeard ? [HEARD.name] : []),
+    ],
     writes: [MOLD_RUMORS.name],
     run(ctx) {
       const truth = ctx.truth;
@@ -94,6 +110,36 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           keepMold(b, { rumor: s.rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
         );
         dirty.add(s.agent);
+      }
+      if (o.fromHeard) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          for (const c of truth.get(HEARD, id)?.claims ?? []) {
+            const rumor: MoldRumor = {
+              mold: "attr",
+              about: c.about,
+              attr: "alive",
+              value: c.claim === "alive",
+            };
+            const b = bookOf(id);
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+            if (prev && prev.heardAt >= c.at) continue;
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, {
+                rumor,
+                confidence: HEARD_CONFIDENCE,
+                hops: 1,
+                heardAt: c.at,
+                teller: c.from,
+              }),
+            );
+            dirty.add(id);
+          }
+        }
       }
       const groups = new Map<string, AgentId[]>();
       for (const id of truth.ids(PERSON).sort() as AgentId[]) {
@@ -117,7 +163,11 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           const h = fresh[Math.floor(rng.float() * fresh.length)];
           if (!h) continue;
           const nearby = mine.items.flatMap((x) =>
-            x.rumor.mold === "location" ? [x.rumor.where] : [x.rumor.market],
+            x.rumor.mold === "location"
+              ? [x.rumor.where]
+              : x.rumor.mold === "price"
+                ? [x.rumor.market]
+                : [],
           );
           const out = distortMold(
             h.rumor,

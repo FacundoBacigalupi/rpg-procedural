@@ -54,4 +54,12 @@ describe("rumor molds", () => {
     expect(moldUsefulness({ ...loc, vague: true }, 0.8)).toBe(0.4);
     expect(moldUsefulness(price, 0.8)).toBe(0.8);
   });
+
+  it("un atributo se cuenta tal cual y su distancia es del valor", () => {
+    const a = { mold: "attr", about: "p1", attr: "alive", value: true } as const;
+    expect(distortMold(a, wild, rng(2))).toEqual({ rumor: a, changes: [] });
+    expect(moldDistance(a, a)).toBe(0);
+    expect(moldDistance(a, { ...a, value: false })).toBe(1);
+    expect(moldDistance(a, { ...a, about: "p2" })).toBe(1);
+  });
 });
