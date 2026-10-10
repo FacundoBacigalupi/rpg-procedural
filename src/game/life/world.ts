@@ -72,6 +72,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import { debtKnowledgeProcess } from "./debtknowledge.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
@@ -463,6 +464,8 @@ export interface LifeWorld {
   readonly rumorGrievance?: boolean;
   /** Opt-in: conserva largo/mediano/corto junto al núcleo en NPC_GOALS. */
   readonly persistGoalLayers?: boolean;
+  /** Opt-in: libro personal de términos y pagos conocidos de préstamos Commitment. */
+  readonly debtKnowledge?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -781,6 +784,7 @@ export function lifeWorld(
           : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        ...(parts.debtKnowledge === true ? [debtKnowledgeProcess()] : []),
         ...(parts.lendBorrowed === true && parts.borrowCraving
           ? [
               lendProcess({

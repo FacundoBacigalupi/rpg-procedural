@@ -186,6 +186,8 @@ export interface LifeOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in: persiste los objetivos largos, medianos y cortos del NPC; apagado por defecto. */
   readonly persistGoalLayers?: boolean;
+  /** Opt-in: las partes recuerdan los préstamos y pagos que participan directamente. */
+  readonly debtKnowledge?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -331,6 +333,7 @@ export function optInParts(
   | "migration"
   | "rumorGrievance"
   | "persistGoalLayers"
+  | "debtKnowledge"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -392,6 +395,7 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
+    ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),

@@ -150,6 +150,22 @@ type Guarantee =
 
 ## 6. Quién hace cumplir (ejecutores)
 
+**Libro personal de préstamos (2026-10-10, f3b1):** `LifeOptions.debtKnowledge`
+registra opt-in `life.debt_knowledge` en `perceive`. `DEBT_BOOK` conserva por parte
+los términos que conoció al participar en `credit.loaned` y las actualizaciones
+de `credit.paid` / `credit.defaulted` en las que participa consciente. Los
+representantes del hogar que figuran como actores aprenden; los demás miembros
+y los terceros no reciben información por pertenecer al mismo hogar o existir
+el `Commitment`. No se consulta su saldo actual: la lectura contractual valida
+identidad, origen y partes, y las cantidades salen de los eventos conocidos.
+Un préstamo disfrazado se recuerda por `statedRate`, sin revelar la tasa efectiva.
+Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
+marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
+la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
+unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
+La proyección de este libro a objetivos medianos corresponde a f3b2 del ROADMAP;
+este primer cableado cubre préstamos, no fiado, subrogaciones ni servidumbre.
+
 ```ts
 interface EnforcerRef {
   kind: "conscience" | "counterparty" | "social" | "organization" | "court" | "guarantee" | "karmic" | "binding" | "patron";
