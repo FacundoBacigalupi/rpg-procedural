@@ -5,8 +5,9 @@ import { PERSON, type ProcessContext, RELATIONS } from "../../sim/index.ts";
 import { optInParts } from "./create.ts";
 import { hireProcess } from "./hire.ts";
 import { COMMITMENTS } from "./loans.ts";
+import { NEIGHBOR_STANDING } from "./neighbors.ts";
 
-function run(coins: number, who: string, bondage = true) {
+function run(coins: number, who: string, bondage = true, heard?: "tight" | "broke") {
   const people: Record<string, unknown> = {
     "agent:a": { household: "h:a" },
     "agent:b": { household: "h:b" },
@@ -19,7 +20,9 @@ function run(coins: number, who: string, bondage = true) {
         ? people[id]
         : t.name === RELATIONS.name
           ? { toward: { "agent:a": { dims: { trust: 1 } } } }
-          : undefined,
+          : t.name === NEIGHBOR_STANDING.name && id === "agent:a" && heard
+            ? { homes: { "h:b": { standing: heard, day: 0 } } }
+            : undefined,
   } as never;
   const ledger = {
     balance: (a: unknown, u: string) =>
@@ -45,6 +48,7 @@ function run(coins: number, who: string, bondage = true) {
     baseWage: 10,
     crafts: new Set(),
     jobDays: 3,
+    ...(heard ? { heedStanding: { broke: 0.2, tight: 0.6 } } : {}),
     ...(bondage ? { bondage: { wagePerDay: 10, upkeepPerDay: 2, maxDays: 30 } } : {}),
   }).run(ctx) as unknown as {
     events: { kind: string; data: { owed?: number } }[];
@@ -59,6 +63,11 @@ describe("contratar a un oficial", () => {
     expect(r.events[0]?.kind).toBe("hire.done");
     expect(r.postings?.[0]?.transfers[0]?.amount).toBe(30);
     expect(r.events).toHaveLength(1);
+  });
+  it("ofrece menos al oficial que cree en la ruina (solo si lo cree)", () => {
+    expect(run(100, "agent:b", true, "broke").postings?.[0]?.transfers[0]?.amount).toBe(6);
+    expect(run(100, "agent:b", true, "tight").postings?.[0]?.transfers[0]?.amount).toBe(18);
+    expect(run(100, "agent:b").postings?.[0]?.transfers[0]?.amount).toBe(30);
   });
   it("resuelve un hogar a una persona suya", () => {
     const r = run(100, "household:h:b");

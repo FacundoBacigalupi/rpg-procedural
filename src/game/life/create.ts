@@ -204,6 +204,8 @@ export interface LifeOptions {
   readonly tradeView?: LifeParts["tradeView"];
   /** Opt-in: los lotes comerciados llevan la marca del vendedor y el comprador la verifica (`life.marks`). Apagado por defecto. */
   readonly marks?: boolean;
+  /** Opt-in (con `marks` y `scam`): la marca falsa descubierta al repasarla dispara `scam.discovered` contra el falsificador. */
+  readonly marksExpose?: boolean;
   /** Opt-in: contagio de quiebras sobre los préstamos, en esta unidad de deuda (`life.contagion`). Apagado por defecto. */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): efectos del contagio (fama del quebrado y tasa más alta de los acreedores arrastrados). */
@@ -236,6 +238,7 @@ export function optInParts(
   | "moldHintsFromCatalog"
   | "tradeView"
   | "marks"
+  | "marksExpose"
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
@@ -275,6 +278,7 @@ export function optInParts(
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
     ...(options.marks ? { marks: true } : {}),
+    ...(options.marksExpose ? { marksExpose: true } : {}),
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),

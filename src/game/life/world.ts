@@ -11,7 +11,7 @@ import type {
   PlanetClock,
   Seed,
 } from "../../core/index.ts";
-import { makeId, Rng } from "../../core/index.ts";
+import { ledgerUnit, makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type BodyPlanDef,
@@ -82,7 +82,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
-import { lendProcess, repayDoseProcess } from "./lend.ts";
+import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -97,6 +97,7 @@ import {
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
+  renownBelieved,
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
@@ -168,6 +169,11 @@ export interface LifeWorld {
   readonly healerSchool?: HealerSchool;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
+  /**
+   * Opt-in (la fama viaja con `moldGossip.fromHealing`): el enfermo elige sanador por la
+   * fama que cree (rumor `renown` de su libro) y le paga `healerFee` (base `base`, en `unit`) con asiento.
+   */
+  readonly healerFee?: { readonly unit: string; readonly base: number };
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -302,6 +308,8 @@ export interface LifeWorld {
   readonly scamFiller?: LedgerUnit;
   /** Opt-in: marcas en los lotes comerciados y verificación del comprador (`life.marks`). */
   readonly marks?: boolean;
+  /** Opt-in: la marca falsa descubierta dispara `scam.discovered` contra el falsificador (con `marks`). */
+  readonly marksExpose?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -311,11 +319,15 @@ export interface LifeWorld {
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
+  /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
+  readonly creditHeed?: HeedStanding;
   readonly hire?: {
     readonly unit: string;
     readonly baseWage: number;
     readonly jobDays?: number;
     readonly distrustPremium?: number;
+    /** Opt-in: ofrece menos jornal al oficial que CREE en la ruina (creido, nunca verdad). */
+    readonly heedStanding?: HeedStanding;
     readonly bondage?: {
       readonly wagePerDay: number;
       readonly upkeepPerDay: number;
@@ -569,6 +581,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
                 skill: forgeSkillOf(parts.traits),
+                ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
               }),
             ]
           : []),
@@ -681,6 +694,7 @@ export function lifeWorld(
           curves: parts.pressureCurves,
           player,
           placeOf: placeOf(parts, village),
+          ...(parts.creditHeed ? { heedStanding: parts.creditHeed } : {}),
         }),
         repayProcess({
           foods: parts.foods,
@@ -853,6 +867,15 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          ...(parts.healerFee
+            ? {
+                fee: {
+                  unit: ledgerUnit(parts.healerFee.unit),
+                  base: parts.healerFee.base,
+                  renownOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                },
+              }
+            : {}),
           doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,

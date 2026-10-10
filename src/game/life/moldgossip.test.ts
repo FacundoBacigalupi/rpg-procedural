@@ -12,6 +12,8 @@ import {
   moldHintMood,
   moldKey,
   moldPriceEdge,
+  renownRumor,
+  renownRumorsOf,
   standingRumor,
   standingRumorsOf,
   trustScale,
@@ -285,5 +287,19 @@ describe("compra desde lo oído barato", () => {
     expect(moldBuyGoods(dear, o, at)).toEqual([]);
     expect(moldBuyGoods(book, { ...o, believedPerKg: () => undefined }, at)).toEqual([]);
     expect(moldBuyGoods(undefined, o, at)).toEqual([]);
+  });
+});
+
+describe("fama del sanador por rumor", () => {
+  it("el paciente ve la fama de quien lo trató: mejoró o no, orden fijo, clave por sanador", () => {
+    const r = renownRumorsOf([
+      { healer: "agent:9", effect: 0.9 },
+      { healer: "agent:3", effect: 0 },
+    ]);
+    expect(r.map((x) => (x.mold === "attr" ? x.about : ""))).toEqual(["agent:3", "agent:9"]);
+    const val = (i: number) =>
+      r[i]?.mold === "attr" ? Number((r[i] as { value: number }).value) : -1;
+    expect(val(1)).toBeGreaterThan(val(0));
+    expect(moldKey(renownRumor("agent:3", 0.1))).toBe(moldKey(renownRumor("agent:3", 0.9)));
   });
 });

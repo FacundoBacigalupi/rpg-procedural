@@ -34,6 +34,9 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { creditRows, debtsTo } from "./credit.ts";
+import { type HeedStanding, standingCaution } from "./lend.ts";
+import { MOLD_RUMORS } from "./moldgossip.ts";
+import { NEIGHBOR_STANDING } from "./neighbors.ts";
 import { BORROW_PROCESS, householdHungerSource } from "./pressures.ts";
 import { householdsOf } from "./spoilage.ts";
 
@@ -49,6 +52,8 @@ export interface BorrowOptions {
   /** El hogar del jugador queda afuera: lo que hace su personaje lo decide él. */
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: el vecino baja su limite de fiado segun lo que CREE del apuro del hogar que pide (creencia, nunca la verdad). */
+  readonly heedStanding?: HeedStanding;
 }
 
 function membersOf(truth: ReadonlyWorldTruth, home: string): AgentId[] {
@@ -85,7 +90,13 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, PRESSURE.name, KNOWN_DEEDS.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      PRESSURE.name,
+      KNOWN_DEEDS.name,
+      ...(o.heedStanding ? [NEIGHBOR_STANDING.name, MOLD_RUMORS.name] : []),
+    ],
     writes: [ENTITY.name, PRESSURE.name],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -118,7 +129,10 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
             (a, b) => a + b,
             0,
           );
-          if (owed + GIFT_GRAMS > CREDIT_LIMIT_GRAMS) return [];
+          const limit = o.heedStanding
+            ? CREDIT_LIMIT_GRAMS * standingCaution(ctx.truth, lender, home, o.heedStanding)
+            : CREDIT_LIMIT_GRAMS;
+          if (owed + GIFT_GRAMS > limit) return [];
           const spare = stock(ledger, h, kcal).map((s) => ({
             ...s,
             grams: s.grams - people.length * RESERVE_GRAMS_PER_MEMBER,

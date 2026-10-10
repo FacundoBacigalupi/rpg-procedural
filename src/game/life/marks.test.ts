@@ -108,6 +108,54 @@ describe("marcas en el lote", () => {
     expect(r.events?.[0]?.data["onLook"]).toBe(true);
     expect(r.events?.[0]?.data["seemsForged"]).toBe(true);
   });
+  it("la marca falsa descubierta dispara scam.discovered contra el falsificador, solo con opt-in", () => {
+    const wu = "agent:3" as AgentId;
+    const fake = {
+      event: "event:1",
+      unit: "good:grain",
+      grams: 100,
+      mark: { claimedBy: wu, stampedBy: seller, tick: 1, claimed: 0.9, fidelity: 0.2 },
+      seemsForged: false,
+      credence: 1,
+    };
+    const tables: Record<string, Record<string, unknown>> = {
+      [LOT_MARKS.name]: { [buyer]: { lots: [fake] } },
+      entity: {},
+    };
+    const truth = { get: (t: { name: string }, id: string) => tables[t.name]?.[id] } as never;
+    const rng = { fork: () => rng, float: () => 0 } as never;
+    const go = (exposeForgery: boolean) =>
+      marksProcess({
+        placeOf: () => "here" as never,
+        eye: () => 0.9,
+        ...(exposeForgery ? { exposeForgery } : {}),
+      }).run({
+        truth,
+        rng,
+        recent: [
+          {
+            id: "event:7" as EventId,
+            actors: [buyer],
+            data: { effect: { kind: "observe", acuity: 0.5 } },
+          },
+        ],
+        now: 4 as Tick,
+      } as unknown as ProcessContext) as unknown as {
+        events?: {
+          kind: string;
+          actors: string[];
+          causes: unknown[];
+          data: Record<string, unknown>;
+        }[];
+      };
+    expect(go(false).events?.map((e) => e.kind)).toEqual([MARK_RECHECKED]);
+    const r = go(true);
+    expect(r.events?.map((e) => e.kind)).toEqual([MARK_RECHECKED, "scam.discovered"]);
+    const found = r.events?.[1];
+    expect(found?.actors).toEqual([seller, buyer, wu]);
+    expect(found?.causes).toEqual([{ kind: "event", event: "event:7" }]);
+    expect(found?.data["forgedMark"]).toBe(true);
+  });
   it("falsificar copia la marca de otro en un lote propio, con quién la forjó", () => {
     const lot = {
       event: "event:1",
