@@ -205,6 +205,12 @@ export interface LifeWorld {
    * defecto: sin filas, RNG ni eventos nuevos.
    */
   readonly boil?: BoilOptions;
+  /**
+   * Opt-in (con `boil`): los NPC con sed por encima de `minThirst` y sin agua tratada vigente
+   * deciden hervir (`life.decide`) y `life.routine` lo cumple con la despensa. Apagado por defecto:
+   * sin candidata, filas, RNG ni eventos nuevos.
+   */
+  readonly npcBoil?: { readonly minThirst: number; readonly weight: number };
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
   /**
@@ -707,8 +713,10 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.moldHints ? { moldHints: parts.moldHints } : {}),
+          ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         routineProcess({
+          ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
             ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }

@@ -127,6 +127,18 @@ describe("life.decide", () => {
     expect(JSON.stringify(out.changes)).toContain(NPC_GOALS.name);
   });
 
+  it("con boilThirst, un sediento sin agua tratada considera hervir; apagado no", () => {
+    const thirsty = world(0.05);
+    const on = decideProcess({ ...opts, boilThirst: { minThirst: 0.1, weight: 1 } });
+    const out = on.run(ctx(thirsty, A, 1000)) as unknown as {
+      events?: { kind: string; data: { verb?: string } }[];
+    };
+    const decided = out.events?.find((e) => e.kind === DECIDED_EVENT);
+    expect(on.reads).toContain("body.treated_water");
+    expect(decided?.data.verb).toBeDefined();
+    expect(decideProcess(opts).reads).not.toContain("body.treated_water");
+  });
+
   it("el personaje del jugador no decide", () => {
     const p = decideProcess(opts);
     expect(p.run(ctx(world(0), PLAYER, 1000))).toEqual({});
