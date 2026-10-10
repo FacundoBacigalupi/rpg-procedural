@@ -10,7 +10,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { healerFee } from "./medicine.ts";
-import { LABOR, type Labor, laborProcess } from "./midwife.ts";
+import { LABOR, type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const mother = "agent:1" as AgentId;
@@ -131,5 +131,32 @@ describe("life.labor", () => {
     expect(row).toBeDefined();
     t.set(LABOR, mother as EntityRef, { dueAt: labor.dueAt } as never);
     expect(p.run(ctx(t, 3 * clock.day))).toEqual({});
+  });
+});
+
+describe("puerperalSeed", () => {
+  it("siembra la fiebre del parto con el evento como causa; sin fiebre, nada", () => {
+    const t = world();
+    expect(puerperalSeed(t)).toBeNull();
+    const row = {
+      dueAt: 0,
+      at: 5,
+      midwife: null,
+      called: false,
+      believedRisk: 0.1,
+      complication: false,
+      motherDied: false,
+      infantDied: false,
+      fever: true,
+      paid: 0,
+      cause: "event:9",
+    };
+    t.set(LABOR, mother as EntityRef, row as never);
+    const s = puerperalSeed(t);
+    expect(s?.carrier).toBe(mother);
+    expect(s?.def.id).toBe("puerperal_fever");
+    expect(s?.causes).toEqual([{ kind: "event", event: "event:9" }]);
+    t.set(LABOR, mother as EntityRef, { ...row, motherDied: true } as never);
+    expect(puerperalSeed(t)).toBeNull();
   });
 });

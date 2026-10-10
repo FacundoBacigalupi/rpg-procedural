@@ -25,6 +25,7 @@ import {
   ENTITY,
   type EventDraft,
   endEntity,
+  type PathogenDef,
   PERSON,
   type PostingDraft,
   type ProcessDef,
@@ -35,6 +36,7 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
+import type { PathogenSeed } from "./exposure.ts";
 import { healerFee, healingSkill } from "./medicine.ts";
 
 export const LABOR_PROCESS = "life.labor";
@@ -246,5 +248,50 @@ export function laborProcess(o: LaborOptions): ProcessDef {
       }
       return { changes, events, ...(postings.length > 0 ? { postings } : {}) };
     },
+  };
+}
+
+/**
+ * Fiebre puerperal como patógeno (body-health §6): no pasa entre personas (sin rutas), incuba
+ * poco y mata más sin cuidado. Calibración abierta.
+ */
+export const PUERPERAL_FEVER: PathogenDef = {
+  id: "puerperal_fever",
+  routes: {},
+  incubationHours: 36,
+  courseHours: 240,
+  contagiousFrom: 1,
+  transmissibility: 0,
+  lethality: 0.35,
+  immunity: "none",
+  immunityHours: 0,
+};
+
+/**
+ * Semilla de infección para `life.exposure` (opt-in, vía `arrivals`): la primera madre cuyo parto
+ * dejó `fever` (tirada ya hecha en `resolveBirth` según higiene y partera) y que sigue viva,
+ * con el evento del parto como causa. Pura: sin RNG ni IO. `exposure` introduce un patógeno una
+ * sola vez por definición, así que siembra el primer caso; los siguientes quedan abiertos.
+ */
+export function puerperalSeed(
+  truth: ReadonlyWorldTruth,
+  def: PathogenDef = PUERPERAL_FEVER,
+): PathogenSeed | null {
+  let best: { mother: AgentId; row: LaborRow } | null = null;
+  for (const id of truth.ids(LABOR)) {
+    const row = truth.get(LABOR, id);
+    if (!row?.fever || row.motherDied) continue;
+    const mother = id as unknown as AgentId;
+    if (!best || row.at < best.row.at || (row.at === best.row.at && mother < best.mother)) {
+      best = { mother, row };
+    }
+  }
+  if (!best) return null;
+  return {
+    def,
+    carrier: best.mother,
+    from: best.row.at,
+    source: "fiebre tras el parto",
+    causes: [{ kind: "event", event: best.row.cause as never }],
   };
 }
