@@ -451,6 +451,51 @@ describe("life.loans", () => {
     expect(after?.commitment.obligations[0]?.performed).toBe(1);
   });
 
+  it("debtKnowledge anuncia términos laborales pactados sin cambiar logs ni cuentas apagado", () => {
+    const { truth, ledger } = setup();
+    const { guarantors: _g, ...s } = seed;
+    const options = {
+      clock,
+      goods,
+      seeds: [s],
+      placeOf: () => ({ cell: 0 }) as never,
+      bondage: { wagePerDay: 1000, upkeepPerDay: 0, maxDays: 100 },
+    };
+    const opened = loansProcess(options).run(ctxOf(truth, ledger, 1));
+    for (const c of opened.changes ?? []) if (c.op === "set") truth.setRaw(c.table, c.id, c.value);
+    const start = n;
+    const off = loansProcess(options).run(ctxOf(truth, ledger, 11));
+    n = start;
+    expect(
+      loansProcess({ ...options, debtKnowledge: false }).run(ctxOf(truth, ledger, 11)),
+    ).toEqual(off);
+    n = start;
+    const on = loansProcess({ ...options, debtKnowledge: true }).run(ctxOf(truth, ledger, 11));
+    const notice = on.events?.find((e) => e.kind === "credit.bonded");
+    expect(notice?.data).toMatchObject({
+      unit: "work-day",
+      workDays: 24,
+      creditPerDay: 1000,
+      debtUnit: GRAIN,
+      maxDays: 100,
+    });
+    const strip = {
+      ...on,
+      events: on.events?.map((e) => {
+        if (e.kind !== "credit.bonded") return e;
+        const {
+          unit: _unit,
+          workDays: _days,
+          creditPerDay: _net,
+          debtUnit: _debt,
+          ...data
+        } = e.data as Record<string, unknown>;
+        return { ...e, data };
+      }),
+    };
+    expect(strip).toEqual(off);
+  });
+
   it("bondage: el jornal sale de la habilidad y no abona el día con otro jornal", () => {
     const { truth, ledger } = setup();
     const { guarantors: _g, ...s } = seed;

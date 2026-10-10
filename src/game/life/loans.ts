@@ -62,6 +62,7 @@ import {
   TRADE_RECEIPTS,
   table,
   workBondageDay,
+  WORK_DAY_UNIT,
 } from "../../sim/index.ts";
 
 export const LOANS_PROCESS = "life.loans";
@@ -772,11 +773,25 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               originEventId: draftEvent(events.length) as unknown as string,
             });
             if (bond) {
+              const work = bond.obligations[0]?.duty;
               events.push({
                 kind: "credit.bonded",
                 actors: [borrowerMan, lenderMan],
                 place: o.placeOf(ctx.truth, lenderMan),
-                data: { loan: r.id, commitment: bid, debt: res.loss, maxDays: o.bondage.maxDays },
+                data: {
+                  loan: r.id,
+                  commitment: bid,
+                  debt: res.loss,
+                  maxDays: o.bondage.maxDays,
+                  ...(o.debtKnowledge && work?.kind === "work"
+                    ? {
+                        unit: WORK_DAY_UNIT,
+                        workDays: work.qty,
+                        creditPerDay: work.creditPerDay,
+                        debtUnit: l.unit,
+                      }
+                    : {}),
+                },
                 emissions: {},
                 causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
               });

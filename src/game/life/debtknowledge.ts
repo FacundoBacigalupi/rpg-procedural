@@ -16,13 +16,21 @@ import {
   type ProcessDef,
   setComponent,
   table,
+  WORK_DAY_UNIT,
 } from "../../sim/index.ts";
 import { paidIn } from "./credit.ts";
 import { COMMITMENTS, type SubrogationNotice } from "./loans.ts";
 
 export interface DebtBelief {
   readonly commitment: string;
-  readonly kind?: "loan" | "subrogation" | "credit";
+  readonly kind?: "loan" | "subrogation" | "credit" | "bondage";
+  /** Términos laborales anunciados al entrar; las cantidades del libro quedan en días de trabajo. */
+  readonly work?: {
+    readonly creditPerDay: number;
+    readonly debtUnit: string;
+    readonly debt: number;
+    readonly maxDays: number;
+  };
   /** Momento del acuerdo: mantiene el orden de devolución al actualizar learnedAt. */
   readonly openedAt?: Tick;
   readonly parent?: string;
@@ -268,6 +276,145 @@ export function debtKnowledgeProcess(): ProcessDef {
       for (const e of ctx.recent) {
         const data = recordOf(e.data);
         if (!data) continue;
+        if (
+          e.kind === "credit.bonded" ||
+          e.kind === "credit.bondage_worked" ||
+          e.kind === "credit.bondage_ended"
+        ) {
+          const id = data["commitment"];
+          if (typeof id !== "string") continue;
+          const contract = ctx.truth.get(COMMITMENTS, id as never);
+          const duty = contract?.obligations[0];
+          const [debtor, creditor] = e.actors as readonly AgentId[];
+          if (
+            contract?.kind !== "bondage" ||
+            duty?.duty.kind !== "work" ||
+            !debtor ||
+            !creditor ||
+            ctx.truth.get(PERSON, debtor)?.household !== duty.debtor ||
+            ctx.truth.get(PERSON, creditor)?.household !== duty.creditor
+          )
+            continue;
+          if (e.kind === "credit.bonded") {
+            const workDays = numberIn(e, "workDays");
+            const creditPerDay = numberIn(e, "creditPerDay");
+            const maxDays = numberIn(e, "maxDays");
+            const debt = numberIn(e, "debt");
+            const debtUnit = data["debtUnit"];
+            const parent = data["loan"];
+            if (
+              contract.originEventId !== e.id ||
+              contract.parent !== parent ||
+              typeof parent !== "string" ||
+              data["unit"] !== WORK_DAY_UNIT ||
+              typeof debtUnit !== "string" ||
+              workDays === undefined ||
+              workDays <= 0 ||
+              creditPerDay === undefined ||
+              maxDays === undefined ||
+              debt === undefined
+            )
+              continue;
+            for (const [who, other, role] of [
+              [debtor, creditor, "debtor"],
+              [creditor, debtor, "creditor"],
+            ] as const) {
+              if (!aware(who)) continue;
+              note(who, {
+                kind: "resolved",
+                commitment: parent,
+                remaining: 0,
+                status: "settled",
+                event: e.id,
+                at: e.tick,
+              });
+              note(who, {
+                kind: "opened",
+                belief: {
+                  commitment: id,
+                  kind: "bondage",
+                  parent,
+                  role,
+                  other,
+                  debtorRef: duty.debtor,
+                  creditorRef: duty.creditor,
+                  unit: WORK_DAY_UNIT,
+                  total: workDays,
+                  remaining: workDays,
+                  work: { creditPerDay, debtUnit, debt, maxDays },
+                  originEventId: e.id,
+                  status: "active",
+                  openedAt: e.tick,
+                  learnedAt: e.tick,
+                  confidence: 1,
+                  sources: [e.id],
+                },
+              });
+            }
+          } else {
+            if (data["parent"] !== contract.parent) continue;
+            for (const who of [debtor, creditor]) {
+              if (!aware(who)) continue;
+              const belief = (books.get(who) ?? ctx.truth.get(DEBT_BOOK, who))?.items.find(
+                (b) => b.commitment === id && b.kind === "bondage",
+              );
+              if (!belief?.work) continue;
+              if (e.kind === "credit.bondage_worked") {
+                const credited = numberIn(e, "credited");
+                if (
+                  credited === undefined ||
+                  typeof data["paid"] !== "boolean" ||
+                  (belief.work.creditPerDay <= 0 && data["paid"] !== true)
+                )
+                  continue;
+                note(who, {
+                  kind: "paid",
+                  commitment: id,
+                  amount: belief.work.creditPerDay > 0 ? credited / belief.work.creditPerDay : 0,
+                  fulfilled: data["paid"],
+                  event: e.id,
+                  at: e.tick,
+                });
+              } else {
+                const end = data["end"];
+                const unpaid = numberIn(e, "unpaid");
+                if (
+                  unpaid === undefined ||
+                  (end !== "term" &&
+                    end !== "ransom" &&
+                    end !== "abuse" &&
+                    end !== "escape" &&
+                    end !== "paid")
+                )
+                  continue;
+                if (end === "paid")
+                  note(who, {
+                    kind: "paid",
+                    commitment: id,
+                    amount: belief.remaining,
+                    fulfilled: true,
+                    event: e.id,
+                    at: e.tick,
+                  });
+                else
+                  note(who, {
+                    kind: "resolved",
+                    commitment: id,
+                    remaining:
+                      end === "escape"
+                        ? belief.work.creditPerDay > 0
+                          ? unpaid / belief.work.creditPerDay
+                          : belief.remaining
+                        : 0,
+                    status: end === "escape" ? "defaulted" : "settled",
+                    event: e.id,
+                    at: e.tick,
+                  });
+              }
+            }
+          }
+          continue;
+        }
         const offered = recordOf(data["credit"]);
         if ((e.kind === "action.speak" || e.kind === "household.borrowed") && offered) {
           const [creditor, debtor] = e.actors as readonly AgentId[];

@@ -163,8 +163,7 @@ Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
 marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
 la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
 unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
-El libro cubre préstamos, subrogaciones y fiado conocidos; la servidumbre
-corresponde al subítem posterior del ROADMAP.
+El libro cubre préstamos, subrogaciones, fiado y servidumbre conocidos.
 
 **Proyección a metas (2026-10-10, f3b2):** `life.decide` con `debtKnowledge` lee
 solo el libro propio y deriva `medium:debt:<contraparte>` incluso sin memoria
@@ -202,6 +201,24 @@ el pago nombra `payment.credit`, actualiza solo ese contrato conocido. Fallos,
 cantidades cero, unidades ajenas, terceros o contratos secretos no saldan ni
 crean recuerdos. La fuente es el acto real, con protección contra pagos
 repetidos. No añade eventos, ids, RNG ni un segundo escritor del libro.
+
+**Servidumbre conocida (2026-10-10, f3b4b):** `credit.bonded` anuncia con
+`debtKnowledge` los días de trabajo pactados, su unidad, el abono neto diario
+y la unidad de cuenta de la deuda; `debt` y `maxDays` ya eran públicos. El libro
+guarda la obligación en días de trabajo, junto a esos términos conocidos y
+el origen real del contrato. Al conocer la sustitución, la parte cierra el
+préstamo padre que recordaba y anota la obligación laboral; un deudor
+inconsciente conserva su recuerdo anterior, sin duplicar deuda nueva invisible.
+`credit.bondage_worked` descuenta los días equivalentes al abono conocido,
+sin consultar `duty.qty`, `performed` o el jornal actual. El cumplimiento
+anunciado libera la meta. `credit.bondage_ended` conocido cierra por plazo,
+rescate o abuso; la fuga conserva el trabajo pendiente que explica el
+`unpaid` comunicado (con abono cero conserva los días que recordaba).
+El plazo se recuerda como duración máxima desde `openedAt`, sin copiar el
+reloj interno `term.endDay`. Los eventos anteriores sin unidad ni términos
+laborales anunciados no completan el libro por leer la verdad: su recuperación
+requiere una comunicación explícita posterior, como residual de conocimiento
+contractual histórico. Apagado conserva eventos y contabilidad anteriores.
 
 ```ts
 interface EnforcerRef {
