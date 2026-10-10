@@ -6,7 +6,18 @@
 // (`hypothermia` / `heatstroke`). Ropa: hasta que haya ítems con aislamiento puestos, la gente se
 // viste para la estación (`seasonalClothing`, calibración abierta).
 
-import type { AgentId, PlaceRef, PlanetClock, Seed } from "../../core/index.ts";
+import {
+  type AgentId,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  type LedgerAccount,
+  type LedgerUnit,
+  ledgerUnit,
+  type PlaceRef,
+  type PlanetClock,
+  type Seed,
+} from "../../core/index.ts";
 import {
   ACTIVITY_LOAD,
   AMPUTATIONS,
@@ -53,6 +64,9 @@ import {
   weatherAt,
 } from "../../sim/index.ts";
 import { INDOOR_BASE_C, INDOOR_LEAK } from "./ambient.ts";
+import { BURNED_SINK } from "./hearth.ts";
+
+type EntityRefLike = string;
 
 export const THERMAL_PROCESS = "life.thermal";
 
@@ -87,6 +101,22 @@ export interface ThermalOptions {
    */
   readonly frostbiteSelfCare?: {
     readonly skillOf: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  };
+  /**
+   * Opt-in (con `frostbiteTreatment`): el cuidado (propio y del médico) gasta insumos del ledger:
+   * `fuelUnit` (leña/agua tibia) `fuelGramsPerHour` por hora de cuidado, del paciente y si no del
+   * médico (`order.by`), hacia `sink` (cuenta externa declarada), con evento `body.frostbite_supplied`.
+   * Sin combustible alcanza solo la fracción que hay a recalentar; sin `blanketUnit` en poder del
+   * paciente (se usa, no se gasta) el aislamiento rinde `unsuppliedInsulate`. Con
+   * `frostbiteSelfCare` la habilidad (del médico si hay orden) también decide el acierto de la
+   * amputación (`surgerySuccessChance`, RNG con seed). Por defecto apagado: sin insumos.
+   */
+  readonly frostbiteSupplies?: {
+    readonly fuelUnit: string;
+    readonly fuelGramsPerHour: number;
+    readonly sink?: string;
+    readonly blanketUnit?: string;
+    readonly unsuppliedInsulate?: number;
   };
   /**
    * Opt-in: el esfuerzo (`Body.activity`, `ACTIVITY_LOAD` relativo al reposo) entra en `stepCore`
@@ -242,6 +272,64 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       const events: EventDraft[] = [];
       const window = Math.max(stepTicks, Math.min(ctx.window, o.clock.day));
       const n = Math.max(1, Math.round(window / stepTicks));
+      const postings: {
+        event: ReturnType<typeof draftEvent>;
+        transfers: { unit: LedgerUnit; from: LedgerAccount; to: LedgerAccount; amount: number }[];
+      }[] = [];
+      const reserved = new Map<string, number>();
+      const sup = o.frostbiteSupplies;
+      const fuelUnit = sup ? ledgerUnit(sup.fuelUnit) : undefined;
+      const blanketUnit = sup?.blanketUnit === undefined ? undefined : ledgerUnit(sup.blanketUnit);
+      // Insumos de un cuidado de `hoursCare` horas: lo que se quema sale del paciente y si no del
+      // médico (asiento + evento con causa); devuelve cuánto rinden recalentar y aislar (0-1).
+      const supply = (patient: EntityRefLike, by: string | undefined, hoursCare: number) => {
+        if (!sup || !fuelUnit || !ctx.ledger || hoursCare <= 0) return { rewarm: 1, insulate: 1 };
+        const need = sup.fuelGramsPerHour * hoursCare;
+        const holders = [patient as string, ...(by === undefined ? [] : [by])].map((w) =>
+          holderAccount(w as unknown as HolderRef),
+        );
+        const burn: { from: LedgerAccount; amount: number }[] = [];
+        let left = need;
+        for (const acc of holders) {
+          if (left <= 0) break;
+          const have =
+            ctx.ledger.balance(acc, fuelUnit) - (reserved.get(`${acc}|${fuelUnit}`) ?? 0);
+          const take = Math.min(left, Math.max(0, have));
+          if (take > 0) {
+            burn.push({ from: acc, amount: take });
+            reserved.set(`${acc}|${fuelUnit}`, (reserved.get(`${acc}|${fuelUnit}`) ?? 0) + take);
+            left -= take;
+          }
+        }
+        const burned = need - left;
+        if (burned > 0) {
+          const ke = events.length;
+          events.push({
+            kind: "body.frostbite_supplied",
+            actors: [patient as AgentId],
+            place: o.placeOf(ctx.truth, patient as AgentId),
+            data: { unit: sup.fuelUnit, grams: Math.round(burned), wanted: Math.round(need) },
+            emissions: { sight: 0.1 },
+            causes: [{ kind: "state", entity: patient as AgentId, key: "body.frostbite" }],
+          });
+          postings.push({
+            event: draftEvent(ke),
+            transfers: burn.map((b) => ({
+              unit: fuelUnit,
+              from: b.from,
+              to: externalAccount(sup.sink ?? BURNED_SINK),
+              amount: b.amount,
+            })),
+          });
+        }
+        const covered = blanketUnit
+          ? ctx.ledger.balance(holderAccount(patient as unknown as HolderRef), blanketUnit) >= 1
+          : true;
+        return {
+          rewarm: need > 0 ? burned / need : 1,
+          insulate: covered ? 1 : (sup.unsuppliedInsulate ?? 0.4),
+        };
+      };
       for (const id of ctx.truth.ids(PERSON)) {
         const body = ctx.truth.get(BODY_STATE, id);
         const base = ctx.truth.get(ENTITY, id);
@@ -342,7 +430,13 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
           const skill = Math.min(1, Math.max(0, o.frostbiteSelfCare.skillOf(ctx.truth, agent)));
           const power = SELF_CARE_BASE + SELF_CARE_SKILL * skill;
           const hoursCare = (n * hours * SELF_CARE_HOURS_PER_DAY) / 24;
-          frost = treatFrostbite(frost, { rewarm: power, insulate: power }, hoursCare, ctx.now);
+          const sup = supply(id, undefined, hoursCare);
+          frost = treatFrostbite(
+            frost,
+            { rewarm: power * sup.rewarm, insulate: power * sup.insulate },
+            hoursCare,
+            ctx.now,
+          );
         }
         if (frost && o.frostbite && o.frostbiteTreatment && hadLost?.lost.some((l) => l.surgical)) {
           // Lo quitado por cirugía no vuelve a congelarse: no queda tejido.
@@ -361,11 +455,40 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
             0,
             Math.min(windowH, ((Math.min(order.until, ctx.now) - from) / o.clock.day) * 24),
           );
-          if (frost) frost = treatFrostbite(frost, order, covered, ctx.now);
+          if (frost) {
+            const sup = supply(id, order.by, covered);
+            frost = treatFrostbite(
+              frost,
+              { rewarm: order.rewarm * sup.rewarm, insulate: order.insulate * sup.insulate },
+              covered,
+              ctx.now,
+            );
+          }
           if (frost && order.amputate.length > 0) {
-            const cut = amputateSurgically(frost, order.amputate, hadLost, ctx.now);
+            const surgeon =
+              o.frostbiteSelfCare && o.frostbiteSupplies ? (order.by ?? id) : undefined;
+            const skill =
+              surgeon === undefined
+                ? undefined
+                : Math.min(
+                    1,
+                    Math.max(0, o.frostbiteSelfCare?.skillOf(ctx.truth, surgeon as AgentId) ?? 0),
+                  );
+            const cut = amputateSurgically(frost, order.amputate, hadLost, ctx.now, skill, (p) =>
+              ctx.rng.fork("amputate", id, p, ctx.now).float(),
+            );
             frost = cut.state;
             surgical.push(...cut.done);
+            for (const part of cut.failed) {
+              events.push({
+                kind: "body.amputation_failed",
+                actors: [agent],
+                place: o.placeOf(ctx.truth, agent),
+                data: { part, surgeon: order.by ?? null },
+                emissions: { sight: 0.4, sound: 0.3 },
+                causes: [{ kind: "state", entity: agent, key: "body.frostbite_care" }],
+              });
+            }
           }
           if (order.until > ctx.now) {
             if (fresh || order.amputate.length > 0) {
@@ -413,7 +536,8 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
           }
         }
       }
-      return changes.length > 0 || events.length > 0 ? { changes, events } : {};
+      if (changes.length === 0 && events.length === 0) return {};
+      return postings.length > 0 ? { changes, events, postings } : { changes, events };
     },
   };
 }

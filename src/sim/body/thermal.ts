@@ -471,23 +471,39 @@ export function treatFrostbite(
 /**
  * Amputación quirúrgica de las partes pedidas que lo justifican (gravedad profunda o necrótica) y
  * que no estén ya perdidas: quita el tejido (gravedad 0) antes de que la gangrena se lleve más.
- * Devuelve el estado resultante y las partes quitadas.
+ * Devuelve el estado resultante y las partes quitadas. Con `skill` (0-1) y `roll` (0-1, del RNG
+ * con seed) la habilidad decide el acierto de cada parte (`surgerySuccessChance`); las que
+ * fallan quedan en `failed` y con la gravedad que tenían. Sin `skill`, todo acierta.
  */
 export function amputateSurgically(
   state: FrostbiteState,
   parts: readonly FrostbitePart[],
   had: Amputations | undefined,
   now: number,
-): { readonly state: FrostbiteState; readonly done: FrostbitePart[] } {
-  const done = FROSTBITE_PARTS.filter(
+  skill?: number,
+  roll: (part: FrostbitePart) => number = () => 0,
+): {
+  readonly state: FrostbiteState;
+  readonly done: FrostbitePart[];
+  readonly failed: FrostbitePart[];
+} {
+  const wanted = FROSTBITE_PARTS.filter(
     (p) =>
       parts.includes(p) &&
       state[p] >= FROSTBITE_SURGERY_MIN &&
       !had?.lost.some((l) => l.part === p),
   );
-  if (done.length === 0) return { state, done };
+  const chance = skill === undefined ? 1 : surgerySuccessChance(skill);
+  const done = wanted.filter((p) => roll(p) < chance);
+  const failed = wanted.filter((p) => !done.includes(p));
+  if (done.length === 0) return { state, done, failed };
   const z = (p: FrostbitePart) => (done.includes(p) ? 0 : state[p]);
-  return { state: { hands: z("hands"), feet: z("feet"), face: z("face"), at: now }, done };
+  return { state: { hands: z("hands"), feet: z("feet"), face: z("face"), at: now }, done, failed };
+}
+
+/** Chance de que el corte salga limpio: 0.4 sin oficio, 0.98 con maestría. */
+export function surgerySuccessChance(skill: number): number {
+  return 0.4 + 0.58 * clamp(skill, 0, 1);
 }
 
 /** Agua por hora (L) que suda en equilibrio, para alimentar la sed del cuerpo. */

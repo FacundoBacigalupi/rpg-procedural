@@ -214,6 +214,14 @@ export interface LifeWorld {
   readonly frostbiteTreatment?: boolean;
   /** Opt-in (con `frostbiteTreatment`): sin orden de médico, cada uno se recalienta y aísla solo unas horas por día; la habilidad (su entrada en `healers`, 0 si no está) decide la intensidad. Apagado: nada cambia. */
   readonly frostbiteSelfCare?: boolean;
+  /** Opt-in (con `frostbiteTreatment`): el cuidado gasta leña (y usa manta) del ledger; con `frostbiteSelfCare` la habilidad decide el acierto de la amputación. Ver `ThermalOptions.frostbiteSupplies`. Apagado: nada cambia. */
+  readonly frostbiteSupplies?: {
+    readonly fuelUnit: string;
+    readonly fuelGramsPerHour: number;
+    readonly sink?: string;
+    readonly blanketUnit?: string;
+    readonly unsuppliedInsulate?: number;
+  };
   /** Opt-in (con `frostbite`): la amputación deja `Scar` con `lost` en el `Body` (`body.physiology`) y baja capacidades por zona. Apagado: nada cambia. */
   readonly amputationScars?: boolean;
   /**
@@ -669,6 +677,11 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.frostbite === true && parts.frostbiteTreatment === true
             ? { frostbiteTreatment: true }
+            : {}),
+          ...(parts.frostbite === true &&
+          parts.frostbiteTreatment === true &&
+          parts.frostbiteSupplies
+            ? { frostbiteSupplies: parts.frostbiteSupplies }
             : {}),
           ...(parts.frostbite === true &&
           parts.frostbiteTreatment === true &&
