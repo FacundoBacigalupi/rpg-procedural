@@ -171,3 +171,61 @@ export function chooseDisguise(
   }
   return best;
 }
+
+/** Un testigo del caso: lo que él tasó y cuánto pesa su palabra para la comunidad (0-1, su confianza creída). */
+export interface UsuryWitness {
+  readonly impliedRate: number;
+  readonly credibility: number;
+}
+
+export interface UsuryCaseInput {
+  readonly witnesses: readonly UsuryWitness[];
+  /** Testigos creíbles mínimos para que la comunidad dé por cierto el cargo (por defecto 1). */
+  readonly quorum?: number;
+  /** Credibilidad mínima para contar como testigo creído (por defecto > 0). */
+  readonly minCredibility?: number;
+  /** La tasa que la norma deja pasar sobre el plazo (la declarada del trato, normalmente 0). */
+  readonly lawfulRate: number;
+  readonly principal: number;
+  /** Tasa efectiva realmente pactada. */
+  readonly appliedRate: number;
+  /** Lo ya pagado por el deudor (cuenta primero al interés). */
+  readonly paid: number;
+  /** Multa sobre el exceso de interés pactado, a favor del deudor (0 = solo reparar). */
+  readonly fineFactor?: number;
+}
+
+export interface UsuryRuling {
+  readonly upheld: boolean;
+  /** Tasa que la comunidad cree que se cobró (promedio ponderado de los testigos creídos). */
+  readonly believedRate: number;
+  readonly believedWitnesses: number;
+  /** Tasa que queda en la deuda: la lícita. */
+  readonly newRate: number;
+  /** Interés ya pagado de más que el prestamista devuelve (asiento de compensación). */
+  readonly refund: number;
+  /** Castigo con costo: multa en valor que paga el prestamista, además del reintegro. */
+  readonly fine: number;
+}
+
+/**
+ * Caso comunitario contra el prestamista (contracts §6, law): la comunidad solo actúa si bastantes
+ * testigos creíbles sospechan; entonces la deuda se ajusta a la tasa lícita, se devuelve el interés
+ * cobrado de más y, con `fineFactor`, el prestamista paga una multa proporcional al exceso. Puro.
+ */
+export function ruleUsuryCase(i: UsuryCaseInput): UsuryRuling {
+  const min = i.minCredibility ?? 0;
+  const believed = i.witnesses.filter((w) => w.credibility > min);
+  const total = believed.reduce((s, w) => s + w.credibility, 0);
+  const believedRate =
+    total > 0 ? believed.reduce((s, w) => s + w.impliedRate * w.credibility, 0) / total : 0;
+  const none = { believedRate, believedWitnesses: believed.length, refund: 0, fine: 0 };
+  if (believed.length < Math.max(1, i.quorum ?? 1) || i.appliedRate <= i.lawfulRate)
+    return { ...none, upheld: false, newRate: i.appliedRate };
+  const lawfulInterest = Math.round(i.principal * Math.max(0, i.lawfulRate));
+  const paidInterest = Math.max(0, i.paid - i.principal);
+  const refund = Math.max(0, paidInterest - lawfulInterest);
+  const excess = Math.round(i.principal * (i.appliedRate - i.lawfulRate));
+  const fine = Math.round(excess * Math.max(0, i.fineFactor ?? 0));
+  return { ...none, upheld: true, newRate: i.lawfulRate, refund, fine };
+}

@@ -56,6 +56,7 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   type Relationship,
+  ruleUsuryCase,
   type StateChange,
   setComponent,
   TRADE_RECEIPTS,
@@ -70,6 +71,14 @@ export type LoanRow = LoanCommitment & {
   readonly seed: string;
   /** Con `LoansOptions.usury`: los términos disfrazados con que se pactó (la tasa de la fila es la efectiva real). */
   readonly disguise?: DisguisedTerms;
+  /**
+   * Con `UsuryOptions.communityCase`: quienes sospecharon al abrirse (la evidencia del caso) y el día
+   * en que la comunidad lo resolvió (`ruledOn`); sin `ruledOn` el caso sigue abierto.
+   */
+  readonly usuryCase?: {
+    readonly witnesses: readonly { readonly observer: AgentId; readonly impliedRate: number }[];
+    readonly ruledOn?: number;
+  };
 };
 /** Cada préstamo vive en una entidad `commitment:n` con este componente. */
 export const LOANS = table<LoanRow>("economy.loans");
@@ -161,6 +170,14 @@ export interface UsuryOptions {
    * Opt-in: terceros (otros hogares) que tasan el trato; `believedValue` es lo que ese observador cree
    * que valió lo recibido (error de tasación incluido). Si sospecha, nace `credit.usury_suspected`.
    */
+  readonly communityCase?: {
+    /** Testigos creíbles mínimos (por defecto 1). */
+    readonly quorum?: number;
+    /** Días entre abrirse el trato y resolverse el caso (por defecto 1). */
+    readonly delayDays?: number;
+    /** Multa sobre el exceso de interés, a favor del deudor (por defecto 0). */
+    readonly fineFactor?: number;
+  };
   readonly suspicion?: {
     readonly tolerance?: number;
     readonly believedValue: (
@@ -371,7 +388,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           originEventId: draftEvent(k),
         });
         if (!loan) continue;
-        const row: LoanRow = { ...loan, seed: s.id, ...(disguise ? { disguise } : {}) };
+        let row: LoanRow = { ...loan, seed: s.id, ...(disguise ? { disguise } : {}) };
         events.push({
           kind: "credit.loaned",
           actors: [lenderMan, borrowerMan],
@@ -390,6 +407,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             { kind: "state", entity: s.lender as unknown as EntityRef, key: `loan-seed:${s.id}` },
           ],
         });
+        const witnesses: { observer: AgentId; impliedRate: number }[] = [];
         if (disguise && o.usury?.suspicion) {
           const sus = o.usury.suspicion;
           for (const oid of [...ctx.truth.ids(PERSON)].sort()) {
@@ -409,6 +427,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               sus.tolerance,
             );
             if (!est.suspected) continue;
+            witnesses.push({ observer: oid as AgentId, impliedRate: est.impliedRate });
             events.push({
               kind: "credit.usury_suspected",
               actors: [oid as AgentId, lenderMan],
@@ -419,6 +438,8 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             });
           }
         }
+        if (witnesses.length > 0 && o.usury?.communityCase && o.enforcement?.community)
+          row = { ...row, usuryCase: { witnesses } };
         const ts = [
           { unit, from: row.lenderAccount, to: row.borrowerAccount, amount: row.principal },
         ];
@@ -442,7 +463,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
 
       // Cobrar o ejecutar: los activos de antes (los recién abiertos empiezan mañana).
       for (const r of rows) {
-        const l = r.loan;
+        let l = r.loan;
         if (l.status !== "active") continue;
         const lenderMan = firstAlive(l.lender);
         const borrowerMan = firstAlive(l.borrower);
@@ -451,6 +472,88 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           { kind: "event" as const, event: l.originEventId as never },
           { kind: "state" as const, entity: r.id as unknown as EntityRef, key: "loan" },
         ];
+        // Caso comunitario por usura: la evidencia son los testigos que tasaron el trato; los que
+        // todavía viven y le creen al deudor al menos como al prestamista cuentan como creídos.
+        const cc = o.usury?.communityCase;
+        if (
+          cc &&
+          l.usuryCase &&
+          l.usuryCase.ruledOn === undefined &&
+          today >= l.startDay + (cc.delayDays ?? 1)
+        ) {
+          const ws = l.usuryCase.witnesses
+            .filter((w) => ctx.truth.get(ENTITY, w.observer)?.endedAt === undefined)
+            .map((w) => {
+              const toward = ctx.truth.get(RELATIONS, w.observer)?.toward;
+              const tB = trustNow(toward?.[borrowerMan as string], ctx.now, o.relationDecay);
+              const tL = trustNow(toward?.[lenderMan as string], ctx.now, o.relationDecay);
+              return {
+                observer: w.observer,
+                impliedRate: w.impliedRate,
+                credibility: Math.max(0, Math.min(1, 0.5 + (tB - tL) / 2)),
+              };
+            });
+          const ruling = ruleUsuryCase({
+            witnesses: ws,
+            ...(cc.quorum !== undefined ? { quorum: cc.quorum } : {}),
+            ...(cc.fineFactor !== undefined ? { fineFactor: cc.fineFactor } : {}),
+            lawfulRate: l.disguise?.statedRate ?? 0,
+            principal: l.principal,
+            appliedRate: l.rate,
+            paid: l.paid,
+          });
+          const ck = events.length;
+          events.push({
+            kind: "credit.usury_ruled",
+            actors: [borrowerMan, lenderMan],
+            place: o.placeOf(ctx.truth, lenderMan),
+            data: {
+              loan: r.id,
+              community: o.enforcement?.community,
+              upheld: ruling.upheld,
+              evidence: ws.map((w) => ({ observer: w.observer, impliedRate: w.impliedRate })),
+              believedRate: ruling.believedRate,
+              refund: 0,
+              fine: 0,
+              newRate: ruling.newRate,
+            },
+            emissions: {},
+            causes: cause,
+          });
+          let paidNow = l.paid;
+          if (ruling.upheld) {
+            const owe = Math.min(
+              ruling.refund + ruling.fine,
+              Math.floor(bal(l.lenderAccount, l.unit)),
+            );
+            const refund = Math.min(ruling.refund, owe);
+            const fine = owe - refund;
+            const ts: Transfer[] =
+              owe > 0
+                ? [{ unit: l.unit, from: l.lenderAccount, to: l.borrowerAccount, amount: owe }]
+                : [];
+            if (ts.length > 0) {
+              postings.push({ event: draftEvent(ck), transfers: ts });
+              apply(ts);
+            }
+            paidNow = l.paid - refund;
+            const ev = events[ck];
+            if (ev) events[ck] = { ...ev, data: { ...(ev.data as object), refund, fine } };
+          }
+          let adj: LoanRow = {
+            ...l,
+            rate: ruling.newRate,
+            paid: paidNow,
+            usuryCase: { ...l.usuryCase, ruledOn: today },
+          };
+          if (outstanding(adj) === 0) adj = { ...adj, status: "repaid" };
+          l = adj;
+          changes.push(
+            setComponent(LOANS, r.id as never, adj),
+            setComponent(COMMITMENTS, r.id as never, loanToCommitment(adj, enf)),
+          );
+          if (l.status !== "active") continue;
+        }
         if (today >= l.dueDay) {
           const holds = new Map(l.guarantors.map((g) => [g.id, bal(g.account, l.unit)]));
           const res = executeDefault(l, today, holds);

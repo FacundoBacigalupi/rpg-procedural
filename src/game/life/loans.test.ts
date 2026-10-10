@@ -508,4 +508,71 @@ describe("life.loans", () => {
     expect(bond?.commitment.status).toBe("settled");
     expect(r.postings ?? []).toEqual([]);
   });
+
+  it("usury communityCase: el caso creído ajusta la deuda a la tasa lícita y reintegra con asiento", () => {
+    const { truth, ledger } = setup();
+    const id = makeId("agent", 3);
+    truth.set(ENTITY, id, { id, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, id, { born: -30 * clock.year, household: "third" } as never);
+    const mk = (cc: boolean) =>
+      loansProcess({
+        clock,
+        goods,
+        seeds: [{ ...seed, guarantors: [] }],
+        placeOf: () => ({ kind: "cell" }) as never,
+        enforcement: { community: "village" },
+        usury: {
+          prohibits: () => true,
+          available: ["gift"],
+          suspicion: { tolerance: 0.05, believedValue: (_t, _o, pr) => pr },
+          ...(cc ? { communityCase: { delayDays: 3, fineFactor: 0.5 } } : {}),
+        },
+      });
+    const run = (p: ReturnType<typeof mk>, day: number) => {
+      const r = p.run(ctxOf(truth, ledger, day));
+      for (const q of r.postings ?? [])
+        ledger.post({ tick: day, eventId: makeId("event", 100 + day), transfers: q.transfers });
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+      return r;
+    };
+    const evs: string[] = [];
+    const p = mk(true);
+    run(p, 1);
+    for (let d = 2; d <= 5; d++) for (const e of run(p, d).events ?? []) evs.push(e.kind);
+    expect(evs).toContain("credit.usury_ruled");
+    const row = [...truth.ids(LOANS)].map((x) => truth.get(LOANS, x as never))[0];
+    expect(row?.rate).toBe(0);
+    expect(row?.usuryCase?.ruledOn).toBe(4);
+    // Lo cobrado de más volvió al deudor: el ledger conserva el total.
+    expect(row?.paid).toBeLessThanOrEqual(row?.principal ?? 0);
+  });
+
+  it("usury communityCase apagado: sin caso, sin eventos nuevos", () => {
+    const { truth, ledger } = setup();
+    const id = makeId("agent", 3);
+    truth.set(ENTITY, id, { id, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, id, { born: -30 * clock.year, household: "third" } as never);
+    const p = loansProcess({
+      clock,
+      goods,
+      seeds: [{ ...seed, guarantors: [] }],
+      placeOf: () => ({ kind: "cell" }) as never,
+      enforcement: { community: "village" },
+      usury: {
+        prohibits: () => true,
+        available: ["gift"],
+        suspicion: { tolerance: 0.05, believedValue: (_t, _o, pr) => pr },
+      },
+    });
+    const r = p.run(ctxOf(truth, ledger, 1));
+    const row = (r.changes ?? []).find((c) => (c as { table?: string }).table === LOANS.name) as {
+      value: { usuryCase?: unknown };
+    };
+    expect(row.value.usuryCase).toBeUndefined();
+  });
 });

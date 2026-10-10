@@ -7,6 +7,7 @@ import {
   effectiveAnnualRate,
   effectiveRate,
   estimateDisguise,
+  ruleUsuryCase,
 } from "./usury.ts";
 
 const base = { principal: 100, rate: 0.2, termDays: 90, wagePerDay: 2 };
@@ -53,5 +54,37 @@ describe("usura disfrazada", () => {
     expect(chooseDisguise(["labor", "buyback"])).toBe("buyback");
     expect(chooseDisguise(["labor", "gift"], { gift: 0.9 })).toBe("labor");
     expect(chooseDisguise([])).toBeUndefined();
+  });
+});
+
+describe("ruleUsuryCase", () => {
+  const base = { lawfulRate: 0, principal: 1000, appliedRate: 0.2, paid: 1100 };
+  it("sin quorum de testigos creíbles no pasa nada", () => {
+    const r = ruleUsuryCase({
+      ...base,
+      quorum: 2,
+      witnesses: [
+        { impliedRate: 0.2, credibility: 0.5 },
+        { impliedRate: 0.2, credibility: 0 },
+      ],
+    });
+    expect(r.upheld).toBe(false);
+    expect(r.refund).toBe(0);
+    expect(r.newRate).toBe(0.2);
+  });
+  it("con quorum ajusta a la tasa lícita, reintegra el exceso y multa", () => {
+    const r = ruleUsuryCase({
+      ...base,
+      fineFactor: 0.5,
+      witnesses: [{ impliedRate: 0.2, credibility: 0.5 }],
+    });
+    expect(r).toMatchObject({ upheld: true, newRate: 0, refund: 100, fine: 100 });
+    expect(r.believedRate).toBeCloseTo(0.2);
+  });
+  it("sin exceso sobre lo lícito no hay caso", () => {
+    expect(
+      ruleUsuryCase({ ...base, appliedRate: 0, witnesses: [{ impliedRate: 0.2, credibility: 1 }] })
+        .upheld,
+    ).toBe(false);
   });
 });
