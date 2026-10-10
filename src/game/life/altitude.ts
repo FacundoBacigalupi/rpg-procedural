@@ -113,3 +113,30 @@ export function altitudeProcess(o: AltitudeOptions): ProcessDef {
     },
   };
 }
+
+/**
+ * Viaje fuera del parche local (travel, body-health §7): dónde está quien viaja como celda del
+ * planeta y la elevación de esa celda.
+ */
+export interface TravelAltitude {
+  /** Celda del planeta donde está quien viaja; `undefined` si está en el parche local. */
+  readonly cellOf: (truth: ReadonlyWorldTruth, who: AgentId) => number | undefined;
+  /** Elevación (m) de la celda (p. ej. `planet.tectonics.elevation[cell]`). */
+  readonly elevationM: (cell: number) => number;
+}
+
+/**
+ * Como `mapAltitudeOf`, pero fuera del parche local usa la elevación de la celda recorrida (nunca
+ * negativa: el mar no baja la altura del cuerpo). En el parche, igual que `mapAltitudeOf`.
+ */
+export function travelAltitudeOf(
+  map: LocalMap,
+  travel: TravelAltitude,
+  spaces?: SpaceGraph,
+): (truth: ReadonlyWorldTruth, who: AgentId) => number {
+  const local = mapAltitudeOf(map, spaces);
+  return (truth, who) => {
+    const cell = travel.cellOf(truth, who);
+    return cell === undefined ? local(truth, who) : Math.max(0, travel.elevationM(cell));
+  };
+}

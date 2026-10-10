@@ -50,7 +50,12 @@ import {
 import { accentProcess } from "./accent.ts";
 import { actProcess, type BoilOptions } from "./act.ts";
 import { adultGrowthProcess } from "./adultGrowth.ts";
-import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
+import {
+  altitudeProcess,
+  mapAltitudeOf,
+  type TravelAltitude,
+  travelAltitudeOf,
+} from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
@@ -185,6 +190,8 @@ export interface LifeWorld {
    * baja con la altura. Apagado por defecto: la aldea no cambia, sin filas ni RNG.
    */
   readonly realAltitude?: boolean;
+  /** Opt-in (con `realAltitude`): fuera del parche local la altitud sale de la elevación de la celda recorrida; sin esto, solo el parche. */
+  readonly travelAltitude?: TravelAltitude;
   /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
   readonly waterSources?: WaterSourcesConfig;
   /**
@@ -298,7 +305,11 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
-  const altitudeOf = parts.realAltitude ? mapAltitudeOf(parts.map, parts.spaces) : undefined;
+  const altitudeOf = parts.realAltitude
+    ? parts.travelAltitude
+      ? travelAltitudeOf(parts.map, parts.travelAltitude, parts.spaces)
+      : mapAltitudeOf(parts.map, parts.spaces)
+    : undefined;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
