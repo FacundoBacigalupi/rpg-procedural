@@ -105,6 +105,10 @@
     "lines": ["{who} retoca la marca de un lote.", "Ves a {who} trabajando sobre un sello."]
   },
   {
+    "id": "percept.action.hire",
+    "lines": ["{who} ofrece jornal a alguien.", "Ves a {who} tratando de contratar a alguien."]
+  },
+  {
     "id": "percept.action.ponder",
     "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
   },

@@ -218,6 +218,27 @@ describe("resolución", () => {
   });
 });
 
+describe("contratar", () => {
+  it("deja a quién ofrece jornal y para qué, sin mover plata ni bienes", () => {
+    const i = input(
+      "hire",
+      {
+        args: [
+          { role: "who", entity: wu },
+          { role: "what", text: "ayudar con la cosecha" },
+        ],
+      },
+      { parties: { who: { id: wu, z: {}, hex: 0 } } },
+    );
+    const a = resolve(i);
+    expect(resolve(i)).toEqual(a);
+    expect(a.postings).toEqual([]);
+    const fx = (a.events[0]?.data as { effect?: unknown } | undefined)?.effect;
+    expect(fx).toMatchObject({ kind: "hire", what: "ayudar con la cosecha" });
+    expect(a.events[0]?.kind).toBe("action.hire");
+  });
+});
+
 describe("moverse", () => {
   const go = (extra: Partial<ResolveInput>) =>
     input(

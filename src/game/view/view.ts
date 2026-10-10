@@ -691,6 +691,7 @@ function effectView(
     case "none":
     case "ponder":
     case "forge":
+    case "hire":
       return { kind: "none" };
     case "move":
       return {

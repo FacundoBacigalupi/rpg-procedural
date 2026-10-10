@@ -680,6 +680,38 @@
     "evidence": 0.4
   },
   {
+    "id": "hire",
+    "name": "contratar",
+    "domain": "social",
+    "args": [
+      { "role": "who", "kind": "person", "required": true },
+      { "role": "what", "kind": "text", "required": false }
+    ],
+    "manners": [{ "id": "careful", "duration": 1.5, "ease": 0.3 }],
+    "requires": [
+      { "kind": "capability", "cap": "speech", "min": 0.3 },
+      { "kind": "position", "near": "who" }
+    ],
+    "occupies": { "voice": "full", "mind": "full" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.3, "sound": 0.5 },
+    "serves": { "wealth": 0.4, "social": 0.2 },
+    "resolver": "hire",
+    "ease": 0.5,
+    "factors": {
+      "nerve": 0.1,
+      "skill": [{ "trait": "sociability", "weight": 0.4 }, { "trait": "intellect", "weight": 0.2 }]
+    },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.6
+  },
+  {
     "id": "ponder",
     "name": "suponer",
     "domain": "mind",

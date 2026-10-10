@@ -140,8 +140,8 @@ describe("el borrador según el catálogo", () => {
     );
     expect(a).toBe(b);
     expect(a).toContain('"const":"take"');
-    // Tope de tamaño del esquema que ve el modelo: 22 000, 23 000 con el acto de habla, 25 000 con `consult`, 26 000 con `purpose` 27 000 con `consume` 27 500 con `filter` y 29 000 con `forge`.
-    expect(a.length).toBeLessThan(29_000);
+    // Tope de tamaño del esquema que ve el modelo: 22 000, 23 000 con el acto de habla, 25 000 con `consult`, 26 000 con `purpose` 27 000 con `consume` 27 500 con `filter` 29 000 con `forge` y 31 000 con `hire`.
+    expect(a.length).toBeLessThan(31_000);
   });
 
   it("sin el catálogo, un borrador ajeno pasa el genérico (por eso el control existe)", () => {

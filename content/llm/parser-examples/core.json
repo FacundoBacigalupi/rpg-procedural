@@ -1193,6 +1193,23 @@
     "notes": "copiar la marca de otro en un lote propio es falsificar; el resultado no lo decide el parser"
   },
   {
+    "id": "hire-day-laborer",
+    "text": "le ofrezco a Wu un jornal por ayudarme con la cosecha",
+    "scene": "Estás en los campos de arroz de la aldea. Wu, el molinero, está cerca.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "hire",
+        "args": [
+          { "role": "who", "ref": { "text": "Wu", "kind": "person", "features": ["Wu"] } },
+          { "role": "what", "text": "ayudar con la cosecha" }
+        ]
+      }
+    },
+    "notes": "ofrecer jornal por un trabajo es contratar; el pago y el resultado no los decide el parser"
+  },
+  {
     "id": "ponder-yield-season",
     "text": "creo que el campo rinde más en verano",
     "scene": "Estás en los campos de arroz de la aldea, a media mañana.",
