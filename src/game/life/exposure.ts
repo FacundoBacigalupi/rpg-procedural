@@ -212,6 +212,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       WORK.name,
       TREATMENT.name,
       DEFICIENCY_EFFECTS.name,
+      ...(o.arrivals ? ["life.labor"] : []),
     ],
     writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, REACH_TAINT.name, ENTITY.name],
     run(ctx) {

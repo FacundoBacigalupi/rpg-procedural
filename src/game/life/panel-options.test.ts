@@ -19,6 +19,22 @@ describe("panelOptionsOf", () => {
     });
   });
 
+  it("viewCues pasa solo con ansia, huso, objectCues y consumibles", () => {
+    const viewCues = { stalls: () => [] };
+    const on = {
+      consumables: [{ good: "tea" }],
+      cravingCues: true,
+      cueLocal: true,
+      objectCues: true,
+    };
+    expect(panelOptionsOf({ ...on, viewCues })).toEqual({
+      cueLocal: true,
+      objectCues: ["tea"],
+      viewCues,
+    });
+    expect(panelOptionsOf({ ...on, objectCues: false, viewCues })).toEqual({ cueLocal: true });
+  });
+
   it("el residuo pasa tal cual", () => {
     const residue = {} as never;
     expect(panelOptionsOf({ residue })).toEqual({ residue });

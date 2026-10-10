@@ -18,7 +18,7 @@ import {
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
-import { cueLocalOf, objectsSeen } from "./cue-local.ts";
+import { cueLocalOf, objectsSeen, peopleInView } from "./cue-local.ts";
 import { type ResidueConfig, residueBodyOf } from "./residue.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
@@ -99,6 +99,8 @@ export function substancePanel(
     readonly residue?: ResidueConfig;
     /** Opt-in (con `cueLocal`): ids de bienes que remiten a una sustancia; ver uno en lo que lleva o en la despensa despierta su señal. */
     readonly objectCues?: readonly string[];
+    /** Opt-in (con `objectCues`): suma lo que llevan los presentes de verdad y los puestos del hex. */
+    readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
   },
 ): SubstancePanel {
   const at = w.truth.get(LOCATION, w.player);
@@ -124,9 +126,16 @@ export function substancePanel(
           const unit = ledgerUnit(`good:${good}`);
           const amountOf = (h: HolderRef) =>
             w.ledger.holdings(holderAccount(h)).find((x) => x.unit === unit)?.amount ?? 0;
+          const viewed = opts.viewCues
+            ? [
+                ...peopleInView(w.truth, w.player),
+                ...((at && opts.viewCues.stalls?.(at.hex)) || []),
+              ].reduce<number>((n, h) => n + amountOf(h as HolderRef), 0)
+            : 0;
           return (
             amountOf(w.player as HolderRef) +
-            (house === undefined ? 0 : amountOf(house as unknown as HolderRef))
+            (house === undefined ? 0 : amountOf(house as unknown as HolderRef)) +
+            viewed
           );
         })
       : [];

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, HouseholdId } from "../../core/index.ts";
-import { ENTITY, HOUSEHOLD, PERSON, RELATIONS, WorldTruth } from "../../sim/index.ts";
-import { householdAuthority, householdHead, realTrust } from "./patientbonds.ts";
+import {
+  COMMUNITY_CULTURE,
+  ENTITY,
+  HOUSEHOLD,
+  PERSON,
+  RELATIONS,
+  WorldTruth,
+} from "../../sim/index.ts";
+import { contagionBeliefOf, householdAuthority, householdHead, realTrust } from "./patientbonds.ts";
 
 const ev = "event:1" as EventId;
 const home = "household:1" as HouseholdId;
@@ -72,6 +79,32 @@ describe("patientbonds", () => {
     expect(householdAuthority(world({ granDead: true }), kid, "flu", o)).toBeCloseTo(0.2);
     expect(householdAuthority(world(), gran, "flu", o)).toBe(0);
     expect(householdAuthority(world(), kid, "flu", {})).toBeCloseTo(0.4);
+  });
+
+  it("la creencia de contagio y el jefe salen de la cultura si se pide; la tabla explicita manda", () => {
+    const w = world();
+    w.set(PERSON, dad, { ...person(50), sex: "male" as const });
+    w.set(COMMUNITY_CULTURE, "settlement:1" as never, {
+      culture: "c",
+      name: "c",
+      originEventId: ev,
+      prevalence: {
+        sickness: { variants: { miasma: 1 }, params: { flu: 0.9 }, origin: "inertia", because: "" },
+        household_head: {
+          variants: { eldest_male: 1 },
+          params: {},
+          origin: "inertia",
+          because: "",
+        },
+      },
+    });
+    const o = { cultureTraits: { contagion: "sickness" } };
+    expect(contagionBeliefOf(w, "flu", o)).toBeCloseTo(0.9);
+    expect(contagionBeliefOf(w, "pox", o)).toBeCloseTo(0.5);
+    expect(contagionBeliefOf(w, "flu", { ...o, contagionBelief: { flu: 0.1 } })).toBeCloseTo(0.1);
+    expect(householdAuthority(w, kid, "flu", o)).toBeCloseTo(0.72);
+    expect(householdHead(w, kid, { cultureTraits: { head: "household_head" } })).toBe(dad);
+    expect(householdHead(w, kid)).toBe(gran);
   });
 
   it("la confianza sale de la relacion real; sin trato ni fama, queda el prior", () => {

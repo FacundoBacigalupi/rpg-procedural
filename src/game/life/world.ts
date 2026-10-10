@@ -4,6 +4,7 @@
 import type {
   AgentId,
   EventLog,
+  HolderRef,
   IdAllocator,
   Ledger,
   LedgerUnit,
@@ -99,7 +100,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
-import { type Labor, laborProcess } from "./midwife.ts";
+import { type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -210,6 +211,8 @@ export interface LifeWorld {
      * que cree de respaldo). Sin esto, la confianza es la fama creída y no hay autoridad.
      */
     readonly realBonds?: boolean;
+    /** Opt-in (con `realBonds`): `contagionBelief` y el jefe del hogar salen de rasgos de la cultura de la aldea. */
+    readonly cultureTraits?: { readonly contagion?: string; readonly head?: string };
   };
   /**
    * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
@@ -354,6 +357,8 @@ export interface LifeWorld {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
   readonly objectCues?: boolean;
+  /** Opt-in (con `objectCues`): ver tambi�n lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
+  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -435,7 +440,7 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
-  /** Opt-in (con `loanSeeds`): pr�stamos con inter�s disfrazado donde la cultura lo proh�be; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  /** Opt-in (con `loanSeeds`): pr�stamos con inter�s disfrazado donde la cultura lo proh�be; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
   readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
@@ -976,6 +981,14 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          ...(parts.labors && parts.labors.length > 0
+            ? {
+                arrivals: (truth: ReadonlyWorldTruth) => {
+                  const s = puerperalSeed(truth);
+                  return s ? [s] : [];
+                },
+              }
+            : {}),
           ...(parts.waterSources
             ? {
                 waterFor: waterHooks(
@@ -1016,6 +1029,9 @@ export function lifeWorld(
                           householdAuthority(truth, patient, pathogen, {
                             ...(parts.patientDecides?.contagionBelief
                               ? { contagionBelief: parts.patientDecides.contagionBelief }
+                              : {}),
+                            ...(parts.patientDecides?.cultureTraits
+                              ? { cultureTraits: parts.patientDecides.cultureTraits }
                               : {}),
                           }),
                       }
@@ -1278,6 +1294,12 @@ export function lifeWorld(
             : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true && parts.objectCues === true
             ? { objectCues: true }
+            : {}),
+          ...(parts.cravingCues === true &&
+          parts.cueLocal === true &&
+          parts.objectCues === true &&
+          parts.viewCues
+            ? { viewCues: parts.viewCues }
             : {}),
           ...(() => {
             const base: MoldHintOptions | undefined = parts.moldHints

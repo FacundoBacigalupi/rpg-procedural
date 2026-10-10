@@ -161,7 +161,9 @@ export interface UsuryOptions {
   /** Si la cultura del hogar prestamista prohíbe cobrar interés (calculada afuera, de sus normas). */
   readonly prohibits: (truth: ReadonlyWorldTruth, lenderHome: string) => boolean;
   /** Disfraces que tiene a mano ese prestamista; sin ninguno no presta con interés. */
-  readonly available: readonly DisguiseKind[];
+  readonly available:
+    | readonly DisguiseKind[]
+    | ((truth: ReadonlyWorldTruth, lenderHome: string) => readonly DisguiseKind[]);
   /** Cuánto llama la atención cada disfraz en esa cultura (0-1). */
   readonly visibility?: Partial<Record<DisguiseKind, number>>;
   /** Jornal de mercado (valor por día) para el disfraz de trabajo. */
@@ -353,7 +355,12 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         }
         let disguise: DisguisedTerms | undefined;
         if (o.usury && rate > 0 && o.usury.prohibits(ctx.truth, s.lender)) {
-          const kind = chooseDisguise(o.usury.available, o.usury.visibility);
+          const kind = chooseDisguise(
+            typeof o.usury.available === "function"
+              ? o.usury.available(ctx.truth, s.lender)
+              : o.usury.available,
+            o.usury.visibility,
+          );
           if (!kind) continue;
           disguise = disguiseInterest({
             principal: s.principal,
