@@ -361,6 +361,7 @@ export function playerView(
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
 
   const acq = acquaintances(w);
+  const nick = options.nickname === true ? playerNickname(w) : null;
   const observer = playerObserver(w, attentionOf(steps), now);
   const rng = Rng.root(w.seed).fork("view", now);
   // Reconoce por lo que cree (BELIEFS); al mirar a propósito o en la primera escena, al instante.
@@ -489,6 +490,7 @@ export function playerView(
     })),
     acquaintances: acq,
     lexicon: lexiconWords(w, options.nickname === true),
+    ...(nick ? { nickname: nick.text } : {}),
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
