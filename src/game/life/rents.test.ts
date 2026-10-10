@@ -306,4 +306,23 @@ describe("matchRents", () => {
     ]);
     expect(matchRents(offers, seekers, 10)).toEqual(seeds);
   });
+
+  it("regatea hasta el piso y el id lleva el día para repetir el par", () => {
+    const offers = [
+      {
+        landlord: "h1",
+        parcel: "parcel:1",
+        good: "copper",
+        askPerDay: 10,
+        termDays: 30,
+        floorPerDay: 7,
+      },
+    ];
+    const a = matchRents(offers, [{ tenant: "h2", maxPerDay: 8, funds: 500 }], 10);
+    expect(a[0]?.perDay).toBe(8);
+    expect(matchRents(offers, [{ tenant: "h2", maxPerDay: 6, funds: 500 }], 10)).toEqual([]);
+    const b = matchRents(offers, [{ tenant: "h2", maxPerDay: 20, funds: 500 }], 50);
+    expect(b[0]?.perDay).toBe(10);
+    expect(b[0]?.id).not.toBe(a[0]?.id);
+  });
 });
