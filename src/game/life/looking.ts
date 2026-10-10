@@ -48,6 +48,12 @@ export function lookAcuity(data: unknown): number | undefined {
   return typeof fx.acuity === "number" ? fx.acuity : 0;
 }
 
+/** La agudeza de la mirada de paso que dejó caminar a campo traviesa (`ActOptions.glanceOnMove`), o `undefined`. */
+export function glanceAcuity(data: unknown): number | undefined {
+  const g = (data as { glance?: { acuity?: unknown } } | null)?.glance;
+  return typeof g?.acuity === "number" ? g.acuity : undefined;
+}
+
 /** A quién buscó sin encontrarlo ni verlo de pasada, o `undefined` si el evento no fue eso. */
 export function searchedInVain(data: unknown): AgentId | undefined {
   const fx = (

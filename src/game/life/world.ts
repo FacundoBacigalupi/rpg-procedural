@@ -206,6 +206,8 @@ export interface LifeWorld {
    * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
    */
   readonly frostbite?: boolean;
+  /** Opt-in: explorar a pie emite una mirada de paso que `moldGossip.fromLooking` lee; ver `ActOptions.glanceOnMove`. Apagado: nada cambia. */
+  readonly glanceOnMove?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -403,6 +405,7 @@ export function lifeWorld(
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),

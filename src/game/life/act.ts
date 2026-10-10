@@ -193,6 +193,9 @@ export function planKey(seq: number): string {
   return `plan.${seq}`;
 }
 
+/** Agudeza de la mirada de paso al caminar (0-1); bajo `vagueBelow` el lugar queda vago. */
+export const GLANCE_ACUITY = 0.6;
+
 export interface ActOptions {
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
@@ -222,6 +225,11 @@ export interface ActOptions {
   readonly famineTrade?: boolean;
   /** Opt-in: la altura baja la resistencia al actuar (`applyAltitude`); apagado, no cambia. */
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /**
+   * Opt-in: explorar a pie (un `move` que llega a otro hex) emite un evento de mirada de paso
+   * (`look.glance`, agudeza `GLANCE_ACUITY`) que `life.moldgossip` con `fromLooking` lee como un `look`.
+   */
+  readonly glanceOnMove?: boolean;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
   /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
@@ -1100,6 +1108,23 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         causes: [{ kind: "event", event: draftEvent(0) }],
       });
     }
+  }
+
+  if (
+    o.glanceOnMove &&
+    eff.kind === "move" &&
+    eff.reached !== null &&
+    eff.reached !== eff.from &&
+    eff.blocked === undefined
+  ) {
+    extraEvents.push({
+      kind: "look.glance",
+      actors: [me],
+      place: input.place,
+      data: { glance: { acuity: GLANCE_ACUITY, hex: eff.reached } },
+      emissions: { sight: 0.1 },
+      causes: [{ kind: "event", event: draftEvent(0) }],
+    });
   }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.
