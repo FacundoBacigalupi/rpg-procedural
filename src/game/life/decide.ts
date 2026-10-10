@@ -451,17 +451,34 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const deathEvidence = o.recognizeGoalCompletion
         ? (memories?.items ?? [])
             .filter(
-              (m) => m.at <= now && m.perceived.kind === "body.died" && m.perceived.with.length > 0,
+              (m) =>
+                m.at <= now &&
+                m.measured <= now &&
+                m.perceived.kind === "body.died" &&
+                m.perceived.with.length === 1,
             )
             .flatMap((m) => m.perceived.with.map((target) => ({ target, cause: m.eventId })))
         : [];
       const completions = o.recognizeGoalCompletion
         ? goalCompletionsFromBeliefs(prevGoals, beliefs, now, deathEvidence).filter(
-            (completion) => !completionHistory.some((old) => old.goalId === completion.goalId),
+            (completion) =>
+              !completionHistory.some(
+                (old) =>
+                  old.goalId === completion.goalId &&
+                  old.original.since === completion.original.since &&
+                  old.original.originEventId === completion.original.originEventId,
+              ),
           )
         : [];
       const stillBelievedComplete = o.recognizeGoalCompletion
         ? completionHistory.filter((completion) => {
+            const reopened = prevGoals.some(
+              (goal) =>
+                goal.id === completion.goalId &&
+                (goal.since !== completion.original.since ||
+                  goal.originEventId !== completion.original.originEventId),
+            );
+            if (reopened) return false;
             const target = completion.original.target;
             if (!target) return false;
             const death = believed(beliefs, target as AgentId, "alive");

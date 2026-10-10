@@ -538,6 +538,79 @@ describe("life.decide", () => {
     );
   });
 
+  it("permite otra instancia tras revisar vivo y cerrar una nueva muerte percibida", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.9,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(RELATIONS, A, {
+      toward: {
+        [target]: {
+          dims: { ...strangerDims([]), resentment: 1, familiarity: 0.8 },
+          bonds: [],
+          history: [],
+          updated: 1000,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    } as never);
+    const belief = (value: boolean, event: string, at: number) => ({
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value,
+          confidence: 0.99,
+          asOf: at,
+          learnedAt: at,
+          measured: at,
+          salience: 1,
+          sources: [{ kind: "percept", percept: "life", tick: at, event: event as EventId }],
+        },
+      ],
+    });
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    truth.set(BELIEFS, A, belief(false, "event:9", 900) as never);
+    const first = process.run(ctx(truth, A, 1000));
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+
+    truth.set(BELIEFS, A, belief(true, "event:10", 1100) as never);
+    truth.set(RELATIONS, A, {
+      toward: {
+        [target]: {
+          dims: { ...strangerDims([]), resentment: 1, familiarity: 0.8 },
+          bonds: [],
+          history: [],
+          updated: 1100,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    } as never);
+    const reopened = process.run(ctx(truth, A, 1200));
+    applyGoals(truth, reopened);
+    const newGoal = truth.get(NPC_GOALS, A)?.items.find((item) => item.id === goal.id);
+    expect(newGoal?.since).toBe(1200);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+
+    truth.set(BELIEFS, A, belief(false, "event:11", 1300) as never);
+    const finishedAgain = process.run(ctx(truth, A, 1400));
+    applyGoals(truth, finishedAgain);
+    expect(
+      finishedAgain.events?.filter(
+        (event) => event.kind === GOAL_EVENT && goalData(event).goal === goal.id,
+      ),
+    ).toHaveLength(1);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(2);
+  });
+
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
     const p = decideProcess(opts);
     const truth = world(0.5);
