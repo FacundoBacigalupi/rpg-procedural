@@ -220,6 +220,48 @@ describe("life.loans", () => {
     expect(sub?.parent).toBe(rows[0]?.id);
   });
 
+  it("con repaySubrogation el fiador cobra al deudor original por ledger", () => {
+    const { truth, ledger } = setup();
+    const kin = makeId("agent", 3);
+    truth.set(ENTITY, kin, { id: kin, originEventId: makeId("event", 1), createdAt: 0 } as never);
+    truth.set(PERSON, kin, { born: -30 * clock.year, household: "kin" } as never);
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("kin"), amount: 50000 }],
+    });
+    const s: LoanSeed = { ...seed, guarantors: [{ household: "kin", share: 1 }] };
+    const proc = loansProcess({
+      clock,
+      goods,
+      seeds: [s],
+      placeOf: () => ({ cell: 0 }) as never,
+      repaySubrogation: true,
+    });
+    let n = 10;
+    const apply = (r: ReturnType<typeof proc.run>) => {
+      for (const p of r.postings ?? [])
+        ledger.post({ tick: clock.day, eventId: makeId("event", n++), transfers: p.transfers });
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+      return r;
+    };
+    apply(proc.run(ctxOf(truth, ledger, 1)));
+    apply(proc.run(ctxOf(truth, ledger, 11)));
+    const total = ledger.total(GRAIN);
+    const kinBefore = ledger.balance(H("kin"), GRAIN);
+    const r = apply(proc.run(ctxOf(truth, ledger, 12)));
+    expect(r.events?.map((e) => e.kind)).toContain("credit.subrogated_paid");
+    expect(ledger.total(GRAIN)).toBe(total);
+    expect(ledger.balance(H("kin"), GRAIN)).toBeGreaterThanOrEqual(kinBefore);
+    const sub = commitmentRows(truth).find((x) => x.commitment.kind === "subrogation");
+    expect(sub?.commitment.obligations[0]?.performed).toBeGreaterThan(0);
+  });
+
   it("el reclamo ante la comunidad solo lo oyen los vecinos que le creen al acreedor", () => {
     const { truth, ledger } = setup();
     const mk = (n: number, home: string) => {

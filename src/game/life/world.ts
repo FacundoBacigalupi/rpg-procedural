@@ -257,6 +257,8 @@ export interface LifeWorld {
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
   readonly loanEnforcement?: { readonly community: string };
+  /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
+  readonly loanRepaySubrogation?: boolean;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -526,6 +528,7 @@ export function lifeWorld(
           ...(parts.loanEnforcement
             ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
             : {}),
+          ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
         }),
         ...(parts.rentSeeds && parts.rentSeeds.length > 0
           ? [
