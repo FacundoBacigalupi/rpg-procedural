@@ -4,7 +4,17 @@
 // cuarentena al hogar. El efecto lo lee `life.exposure` (menos dosis a los del hogar, curso menos fatal).
 // Sin sanadores o sin enfermos no hace nada: la aldea por defecto no cambia.
 
-import type { AgentId, PlaceRef, PlanetClock } from "../../core/index.ts";
+import {
+  type AgentId,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  type LedgerAccount,
+  type LedgerUnit,
+  ledgerUnit,
+  type PlaceRef,
+  type PlanetClock,
+} from "../../core/index.ts";
 import {
   BODY_STATE,
   type ConditionModel,
@@ -18,6 +28,7 @@ import {
   PATHOGEN,
   type PathogenDef,
   type PathogenTreatment,
+  type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
   type RemedyDef,
@@ -31,6 +42,8 @@ import {
 } from "../../sim/index.ts";
 
 export const MEDICINE_PROCESS = "life.medicine";
+/** Sumidero externo de los remedios dados. */
+export const REMEDY_USED = "remedy_used";
 
 /** Un sanador explícito (hasta que el oficio de sanar viva en el modelo de habilidades). */
 export interface Healer {
@@ -74,6 +87,8 @@ export interface MedicineOptions {
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
+  /** Opt-in: id del remedio a la unidad del ledger que gasta (1 por dosis, del sanador o del enfermo). */
+  readonly stock?: Readonly<Record<string, string>> | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -124,6 +139,8 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const taken = new Map<string, number>();
+      const postings: PostingDraft[] = [];
+      const reserved = new Map<string, number>();
       for (const id of ctx.truth.ids(INFECTION)) {
         const mine = ctx.truth.get(INFECTION, id);
         if (!mine || mine.ill.length === 0) continue;
@@ -173,7 +190,24 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           });
 
           const remedyId = healer.remedyFor[belief.condition];
-          const remedy = healer.remedies.find((r) => r.id === remedyId);
+          let remedy = healer.remedies.find((r) => r.id === remedyId);
+          // Con `stock`, el remedio sale de un lote real (el del sanador, o si no el del enfermo): sin
+          // existencias no se da, y lo gastado va al sumidero con el evento del tratamiento.
+          let spent: { unit: LedgerUnit; from: LedgerAccount } | undefined;
+          const unitName = remedy ? o.stock?.[remedy.id] : undefined;
+          const unit = unitName === undefined ? undefined : ledgerUnit(unitName);
+          if (remedy && unit !== undefined && ctx.ledger) {
+            for (const who of [healer.agent, patient]) {
+              const acc = holderAccount(who as unknown as HolderRef);
+              const used = reserved.get(`${acc}|${unit}`) ?? 0;
+              if (ctx.ledger.balance(acc, unit) - used >= 1) {
+                reserved.set(`${acc}|${unit}`, used + 1);
+                spent = { unit, from: acc };
+                break;
+              }
+            }
+            if (!spent) remedy = undefined;
+          }
           const given = remedy
             ? {
                 remedy,
@@ -186,6 +220,19 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           const effect = given ? remedyEffect(def, given) : 0;
           const harm = remedy && given ? remedyHarm(remedy, given.dose) : 0;
           const iso = healer.isolation ?? 0;
+          if (spent) {
+            postings.push({
+              event: draftEvent(events.length),
+              transfers: [
+                {
+                  unit: spent.unit,
+                  from: spent.from,
+                  to: externalAccount(REMEDY_USED),
+                  amount: 1,
+                },
+              ],
+            });
+          }
           events.push({
             kind: "body.treated",
             actors: [healer.agent, patient],
@@ -219,7 +266,8 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           changes.push(setComponent(TREATMENT, id, { treatments: [...had, ...added] }));
         }
       }
-      return events.length > 0 ? { changes, events } : {};
+      if (events.length === 0) return {};
+      return postings.length > 0 ? { changes, events, postings } : { changes, events };
     },
   };
 }
