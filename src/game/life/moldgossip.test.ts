@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
-import { keepMold, moldKey } from "./moldgossip.ts";
+import { keepMold, moldKey, trustScale } from "./moldgossip.ts";
 
 const market: PlaceRef = { kind: "settlement", settlement: "s1" } as unknown as PlaceRef;
 const price = (amount: number) => ({ mold: "price", good: "rice", market, amount }) as const;
@@ -13,6 +13,13 @@ const heard = (amount: number, confidence: number) => ({
 });
 
 describe("chisme de moldes", () => {
+  it("la confianza en quien cuenta escala lo que se cree, con piso y techo", () => {
+    expect(trustScale(1)).toBe(1);
+    expect(trustScale(0)).toBe(0.6);
+    expect(trustScale(-1)).toBe(0.2);
+    expect(trustScale(-5)).toBe(0.2);
+  });
+
   it("la clave no depende del valor, solo de quÃ© cosa es", () => {
     expect(moldKey(price(10))).toBe(moldKey(price(99)));
   });
@@ -26,7 +33,7 @@ describe("chisme de moldes", () => {
     expect(c.items[0]?.rumor).toEqual(price(30));
   });
 
-  it("un atributo oído tiene clave por persona y atributo, no por valor", () => {
+  it("un atributo oï¿½do tiene clave por persona y atributo, no por valor", () => {
     const a = { mold: "attr", about: "p1", attr: "alive", value: true } as const;
     const b = { ...a, value: false };
     expect(moldKey(a)).toBe(moldKey(b));

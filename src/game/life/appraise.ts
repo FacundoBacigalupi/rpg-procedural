@@ -94,6 +94,7 @@ import {
   WITNESS_ASLEEP_ENCODING,
   witnessLived,
 } from "./memories.ts";
+import { discoveredBy } from "./scamdiscovery.ts";
 import {
   applyTalkMemory,
   applyTestimony,
@@ -312,6 +313,16 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             const after = applyTestimony(before, said, e.tick);
             if (after && after !== before) mems.set(witness, after);
           }
+        }
+        const scammed = discoveredBy(e);
+        if (scammed) {
+          // Descubrir la estafa baja la confianza del comprador en el vendedor y le deja resentimiento.
+          const a = scammed.data;
+          move(scammed.buyer, scammed.seller, e, {
+            trust: -a.trustDrop,
+            resentment: a.grievance,
+            affection: -0.3 * a.grievance,
+          });
         }
         if (e.kind === "rumor.told" && o.rumorGrievance) {
           const g = grievanceOf(e, truth.get(RUMORS, e.actors[1] as AgentId));

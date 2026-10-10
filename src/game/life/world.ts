@@ -75,7 +75,7 @@ import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { type Healer, type HealerSchool, medicineProcess } from "./medicine.ts";
+import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
@@ -87,7 +87,8 @@ import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
 import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
-import { scamNeedOf, scamProviders } from "./scampolicy.ts";
+import { scamDiscoveryProcess } from "./scamdiscovery.ts";
+import { scamEyeOf, scamNeedOf, scamProviders } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -136,10 +137,16 @@ export interface LifeWorld {
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
   readonly healerFrostbiteSigns?: boolean;
+  /** Opt-in (con `realAltitude`): el sanador también ve los signos del mal de altura. */
+  readonly healerAltitudeSigns?: boolean;
+  /** Opt-in (con `realAltitude`): la aclimatación escala con el genoma (`constitution`). */
+  readonly altitudeGenome?: boolean;
   /** Remedio a unidad del ledger: darlo gasta un bien real (del sanador o del enfermo); sin existencias no se da. Sin esto, remedios sin costo. */
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
   readonly substanceDoses?: readonly SubstanceDose[];
+  /** Remedios con dosis real (remedio a sustancia): el tratamiento deja una dosis en `PERSON_SUBSTANCE`; sin esto, efecto fijo. */
+  readonly remedyDoses?: Readonly<Record<string, RemedyDose>>;
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
   readonly nutrientProfiles?: readonly NutrientProfileDef[];
   readonly diets?: readonly DietDef[];
@@ -331,6 +338,15 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(parts.scam === true
+          ? [
+              scamDiscoveryProcess({
+                placeOf: placeOf(parts, village),
+                eye: scamEyeOf(parts.traits),
+                day: parts.clock.day,
+              }),
+            ]
+          : []),
         converseProcess({
           spaces: parts.spaces,
           catalog: parts.catalog,
@@ -498,8 +514,10 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          doses: parts.remedyDoses,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
+          altitudeSigns: parts.healerAltitudeSigns === true ? altitudeOf : undefined,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
@@ -507,6 +525,7 @@ export function lifeWorld(
         substancesProcess({
           clock: parts.clock,
           doses: parts.substanceDoses ?? [],
+          treatmentDoses: parts.remedyDoses !== undefined,
           placeOf: placeOf(parts, village),
         }),
         nutritionProcess({
@@ -527,7 +546,15 @@ export function lifeWorld(
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
-        ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
+        ...(altitudeOf
+          ? [
+              altitudeProcess({
+                clock: parts.clock,
+                altitudeOf,
+                genomeAdaptation: parts.altitudeGenome === true,
+              }),
+            ]
+          : []),
         upkeepProcess({
           clock: parts.clock,
           map: parts.map,

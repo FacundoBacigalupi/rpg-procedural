@@ -6,10 +6,12 @@
 import type { AgentId, PlanetClock } from "../../core/index.ts";
 import {
   ACCLIMATIZATION,
+  adaptationRate,
   altitudeEnduranceFactor,
   BODY_STATE,
   type BodyCapabilities,
   ENTITY,
+  GENOME,
   LOCATION,
   type LocalMap,
   PERSON,
@@ -51,6 +53,8 @@ export interface AltitudeOptions {
   readonly clock: PlanetClock;
   /** Altitud (m) de quien está. */
   readonly altitudeOf: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /** Opt-in: la tasa de aclimatación escala con el genoma (`constitution`), sin tocar el RNG. */
+  readonly genomeAdaptation?: boolean | undefined;
 }
 
 /** Por debajo de este nivel no se guarda fila. */
@@ -64,7 +68,13 @@ export function altitudeProcess(o: AltitudeOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, ACCLIMATIZATION.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      ACCLIMATIZATION.name,
+      ...(o.genomeAdaptation ? [GENOME.name] : []),
+    ],
     writes: [ACCLIMATIZATION.name],
     run(ctx) {
       const changes: StateChange[] = [];
@@ -78,6 +88,9 @@ export function altitudeProcess(o: AltitudeOptions): ProcessDef {
           had?.level ?? 0,
           o.altitudeOf(ctx.truth, id as AgentId),
           days,
+          o.genomeAdaptation
+            ? adaptationRate(ctx.truth.get(GENOME, id)?.additive["constitution"])
+            : 1,
         );
         if (next > MIN_LEVEL) {
           if (!had || had.level !== next) {

@@ -17,11 +17,15 @@ import {
   LOCATION,
   LOT_QUALITY,
   PERSON,
+  RELATIONS,
   type ReadonlyWorldTruth,
+  SCAM_DEALS,
+  SCAM_FOUND,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
 import { optInParts } from "./create.ts";
 import { Life } from "./index.ts";
+import { SCAM_DISCOVERED } from "./scamdiscovery.ts";
 import { SCAM_DEBT_FULL, scamNeedOf } from "./scampolicy.ts";
 import { living } from "./world.ts";
 
@@ -151,4 +155,75 @@ describe("estafa en la vida (opt-in)", () => {
     rows.set("commitment:2", { ...(rows.get("commitment:1") as object), owed: SCAM_DEBT_FULL });
     expect(need(truth, who)).toBe(1);
   });
+
+  it("descubrimiento de punta a punta: el trato inflado se registra, se descubre con causa en el trato y baja la confianza; apagado no deja nada", () => {
+    const run = (scam: boolean) => {
+      const life = Life.create(2, content, scam ? { scam: true } : {});
+      const w = life.world;
+      const me = life.player;
+      const home = w.truth.get(PERSON, me)?.household;
+      const here = w.truth.get(LOCATION, me);
+      const trades: string[] = [];
+      let seq = 1;
+      const sellers = living(w.truth)
+        .filter((id) => w.truth.get(PERSON, id)?.household !== home)
+        .slice(0, 4);
+      for (const n of sellers) {
+        if (here) w.truth.set(LOCATION, n, here);
+        w.truth.set(LOT_QUALITY, n, { [grain]: 0.2 });
+        const innate = { ...w.truth.get(INNATE, n) };
+        for (const t of w.traits) {
+          if (t.id === "willpower") innate[t.id] = t.mean - 3 * t.sd;
+          if (t.id === "boldness") innate[t.id] = t.mean + 3 * t.sd;
+        }
+        w.truth.set(INNATE, n, innate);
+        w.truth.set(CREDIT, `commitment:${9000 + seq}` as never, indebted(n, me));
+        const plan: ActionPlan = {
+          actor: me,
+          source: "player",
+          root: {
+            kind: "do",
+            verb: "trade",
+            args: [
+              { role: "with", entity: n },
+              { role: "what", text: "8 kilos de grano" },
+            ],
+            manner: [],
+          },
+          manner: [],
+          causes: [{ kind: "state", entity: me, key: "intent" }],
+        };
+        const ev = life.turn(plan, seq++).events.find((e) => e.kind === "action.trade");
+        if (ev) trades.push(ev.id);
+      }
+      const found: { causes: readonly unknown[]; actors: readonly string[] }[] = [];
+      const before = new Map(sellers.map((n) => [n, w.truth.get(RELATIONS, me)?.toward[n]?.dims]));
+      w.scheduler.advanceUntil(life.now + 25 * w.clock.day, (report) => {
+        for (const e of report.events) if (e.kind === SCAM_DISCOVERED) found.push(e);
+        return false;
+      });
+      return { life, w, me, trades, found, before };
+    };
+
+    const off = run(false);
+    expect(off.w.truth.ids(SCAM_DEALS)).toEqual([]);
+    expect(off.w.truth.ids(SCAM_FOUND)).toEqual([]);
+    expect(off.found).toEqual([]);
+
+    const on = run(true);
+    expect(on.w.truth.get(SCAM_DEALS, on.me)?.deals.length ?? 0).toBeGreaterThan(0);
+    expect(on.found.length).toBeGreaterThan(0);
+    for (const e of on.found) {
+      const cause = e.causes[0] as { kind: string; event: string };
+      expect(cause.kind).toBe("event");
+      expect(on.trades).toContain(cause.event);
+      expect(e.actors[1]).toBe(on.me);
+      const seller = e.actors[0] as AgentId;
+      const after = on.w.truth.get(RELATIONS, on.me)?.toward[seller]?.dims.trust ?? 0;
+      const was = on.before.get(seller)?.trust ?? 0;
+      expect(after).toBeLessThan(was);
+    }
+    expect(on.w.ledger.audit()).toEqual([]);
+    expect(run(true).life.hash()).toEqual(on.life.hash());
+  }, 240_000);
 });

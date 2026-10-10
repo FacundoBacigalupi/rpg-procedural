@@ -6,6 +6,7 @@
 import { exp, type Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 import type { Immunity, Infection, PathogenDef } from "./disease.ts";
+import type { SubstanceDef, SubstanceRoute } from "./substance.ts";
 
 export interface PathogenRecord {
   readonly def: PathogenDef;
@@ -64,6 +65,12 @@ export interface PathogenTreatment {
     readonly caregiverHygiene: number;
     readonly separateWater: boolean;
   } | null;
+  /** Con dosis real: la sustancia que el sanador dio (la aplica `life.substances` desde este asiento). */
+  readonly dose?: {
+    readonly def: SubstanceDef;
+    readonly route: SubstanceRoute;
+    readonly amount: number;
+  };
   readonly givenAt: Tick;
   /** El evento `body.treated`. */
   readonly cause: string;

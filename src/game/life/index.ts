@@ -23,6 +23,7 @@ export * from "./pressures.ts";
 export * from "./reading.ts";
 export * from "./recap.ts";
 export * from "./routine.ts";
+export * from "./scamdiscovery.ts";
 export * from "./scampolicy.ts";
 export * from "./sleep.ts";
 export * from "./substance-panel.ts";

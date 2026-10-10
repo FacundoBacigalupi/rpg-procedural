@@ -5,16 +5,23 @@
 // cada uno sabe de primera mano entra por `seeds` (quiÃ©n vio quÃ© precio o dÃ³nde hay quÃ©): nada
 // aparece de la nada. Opt-in. Sin eventos todavÃ­a; constantes sin calibrar.
 
-import type { AgentId, Tick } from "../../core/index.ts";
+import type { AgentId, CauseRef, EventId, PlaceRef, Tick } from "../../core/index.ts";
 import {
+  type BondDef,
+  type DimensionDef,
   distortMold,
   ENTITY,
-  LOCATION,
+  type EventDraft,
   HEARD,
+  LOCATION,
+  MIND,
   type MoldRumor,
   PERSON,
   type ProcessDef,
   placeKey,
+  RELATIONS,
+  type ReadonlyWorldTruth,
+  relationship,
   type StateChange,
   setComponent,
   table,
@@ -31,6 +38,8 @@ export interface HeardMold {
   readonly hops: number;
   readonly heardAt: Tick;
   readonly teller: AgentId | null;
+  /** El evento del que viene el rumor (lo que vio el primero); cita de los `rumor.told`. */
+  readonly cause?: EventId;
 }
 export interface MoldBook {
   readonly items: readonly HeardMold[];
@@ -43,21 +52,38 @@ export const MOLD_RUMORS = table<MoldBook>("law.mold_rumors");
 export interface MoldSeed {
   readonly agent: AgentId;
   readonly rumor: MoldRumor;
+  /** El evento donde lo vio (origen del rumor); sin Ã©l, la causa es `seed`. */
+  readonly cause?: EventId;
+}
+
+/** CuÃ¡nto pesa lo que cuenta alguien segÃºn la confianza (-1..1) que le tiene el oyente (sin calibrar). */
+export function trustScale(trust: number): number {
+  return Math.round(Math.min(1, Math.max(0.2, 0.6 + 0.4 * trust)) * 1e6) / 1e6;
 }
 
 export interface MoldGossipOptions {
+  /**
+   * Opt-in: cada molde contado emite un `rumor.told` con causa en el origen del rumor, y el oyente
+   * lo cree segÃºn su confianza en quien cuenta (`RELATIONS`, `trustScale`). Apagado: sin eventos
+   * ni lectura de relaciones.
+   */
+  readonly told?: {
+    readonly dims: readonly DimensionDef[];
+    readonly bonds: readonly BondDef[];
+    readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  };
   readonly seeds?: readonly MoldSeed[];
   /** Probabilidad por hora de que alguien cuente algo a un vecino (sin calibrar). */
   readonly tellChance?: number;
   /**
-   * Lo que cada uno oyó en conversación (`HEARD`: vive/murió) entra como rumor `attr` de oídas
+   * Lo que cada uno oyï¿½ en conversaciï¿½n (`HEARD`: vive/muriï¿½) entra como rumor `attr` de oï¿½das
    * (confianza `HEARD_CONFIDENCE`, un salto desde quien se lo dijo). Apagado por defecto.
    */
   readonly fromHeard?: boolean;
 }
 
-/** Cuánto cree de entrada lo que le dijeron en una conversación (sin calibrar). */
-export const HEARD_CONFIDENCE = 0.6
+/** Cuï¿½nto cree de entrada lo que le dijeron en una conversaciï¿½n (sin calibrar). */
+export const HEARD_CONFIDENCE = 0.6;
 
 const KEPT_MOLDS = 24;
 const KEPT_MOLD_TOLD = 48;
@@ -95,19 +121,28 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       LOCATION.name,
       MOLD_RUMORS.name,
       ...(o.fromHeard ? [HEARD.name] : []),
+      ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
     writes: [MOLD_RUMORS.name],
     run(ctx) {
       const truth = ctx.truth;
       const books = new Map<AgentId, MoldBook>();
       const dirty = new Set<AgentId>();
+      const events: EventDraft[] = [];
       const bookOf = (id: AgentId) => books.get(id) ?? truth.get(MOLD_RUMORS, id);
       for (const s of o.seeds ?? []) {
         const b = bookOf(s.agent);
         if (b?.items.some((x) => moldKey(x.rumor) === moldKey(s.rumor))) continue;
         books.set(
           s.agent,
-          keepMold(b, { rumor: s.rumor, confidence: 1, hops: 0, heardAt: ctx.now, teller: null }),
+          keepMold(b, {
+            rumor: s.rumor,
+            confidence: 1,
+            hops: 0,
+            heardAt: ctx.now,
+            teller: null,
+            ...(s.cause ? { cause: s.cause } : {}),
+          }),
         );
         dirty.add(s.agent);
       }
@@ -178,16 +213,44 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
             items: mine.items,
             told: [...mine.told, `${moldKey(h.rumor)}|${listener}`].slice(-KEPT_MOLD_TOLD),
           });
+          const trust = o.told
+            ? relationship(truth.get(RELATIONS, listener), teller, ctx.now, {
+                dims: o.told.dims,
+                bonds: o.told.bonds,
+                schemaStrength: (s) => truth.get(MIND, listener)?.schemas[s]?.strength ?? 0,
+              }).dims.trust
+            : null;
+          const confidence =
+            Math.round(h.confidence * 0.8 * (trust === null ? 1 : trustScale(trust)) * 1e6) / 1e6;
           books.set(
             listener,
             keepMold(bookOf(listener), {
               rumor: out.rumor,
-              confidence: Math.round(h.confidence * 0.8 * 1e6) / 1e6,
+              confidence,
               hops: h.hops + 1,
               heardAt: ctx.now,
               teller,
+              ...(h.cause ? { cause: h.cause } : {}),
             }),
           );
+          if (o.told) {
+            const causes: CauseRef[] = [
+              h.cause ? { kind: "event", event: h.cause } : { kind: "seed" },
+            ];
+            events.push({
+              kind: "rumor.told",
+              actors: [teller, listener],
+              place: o.told.placeOf(truth, teller),
+              data: {
+                mold: out.rumor.mold,
+                key: moldKey(out.rumor),
+                hops: h.hops + 1,
+                credit: confidence,
+              },
+              emissions: {},
+              causes,
+            });
+          }
           dirty.add(teller);
           dirty.add(listener);
         }
@@ -197,7 +260,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
         const b = books.get(id);
         if (b) changes.push(setComponent(MOLD_RUMORS, id, b));
       }
-      return { changes };
+      return events.length > 0 ? { changes, events } : { changes };
     },
   };
 }

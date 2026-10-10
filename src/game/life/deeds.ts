@@ -116,6 +116,10 @@ export function offenseOf(
     // El acreedor es quien reclama: sabe quién le debe.
     return { kind: "default", by: first, victim: second, noticedBy: [second] };
   }
+  if (e.kind === "scam.discovered" && second) {
+    // La estafa descubierta es fe rota: se anota como incumplimiento (el comprador sabe quién fue).
+    return { kind: "default", by: first, victim: second, noticedBy: [second] };
+  }
   if (e.kind === "contract.pledge_broken" && second) {
     // La promesa rota es un incumplimiento más: el destinatario sabe quién le falló.
     return { kind: "default", by: first, victim: second, noticedBy: [second] };

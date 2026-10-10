@@ -77,3 +77,13 @@ export function scamProviders(o: ScamPolicyOptions) {
     },
   };
 }
+
+/** Qué tan fino mira un comprador (0-1): sentidos sin oficio, con el sesgo de su percepción innata (como `handsOf`). */
+export function scamEyeOf(traits: readonly Trait[]) {
+  return (truth: ReadonlyWorldTruth, who: AgentId): number => {
+    const innate = truth.get(INNATE, who);
+    if (!innate) return 0.5;
+    const z = standardize(innate, traits, truth.get(PERSON, who)?.sex ?? "female");
+    return unit(0.25 + 0.08 * (z["perception"] ?? 0));
+  };
+}
