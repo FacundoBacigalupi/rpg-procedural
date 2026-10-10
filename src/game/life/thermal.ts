@@ -9,8 +9,11 @@
 import type { AgentId, PlaceRef, PlanetClock, Seed } from "../../core/index.ts";
 import {
   ACTIVITY_LOAD,
+  AMPUTATIONS,
   altitudeEnv,
+  amputationFactors,
   BODY_STATE,
+  type BodyCapabilities,
   type Clothing,
   CORE_NORMAL_C,
   type DayWeather,
@@ -20,9 +23,12 @@ import {
   endEntity,
   FROSTBITE,
   type FrostbiteState,
+  frostbiteHandFactor,
+  frostbiteMobilityFactor,
   LOCATION,
   type LocalMap,
   NO_FROSTBITE,
+  newAmputations,
   outdoorTempC,
   PERSON,
   type ProcessDef,
@@ -56,7 +62,8 @@ export interface ThermalOptions {
    */
   /**
    * Opt-in: acumula congelación por parte (`FROSTBITE`, `stepFrostbite`) con la piel bajo cero.
-   * Solo estado: la amputación y los efectos en acciones se cablean aparte. Por defecto apagado.
+   * La necrosis amputa la parte (`AMPUTATIONS`, evento `body.amputated`); `applyFrostbite` baja
+   * las capacidades en `decide`/`act` (opción `frostbite` de `LifeParts`). Por defecto apagado.
    */
   readonly frostbite?: boolean;
   /**
@@ -120,6 +127,27 @@ function envOf(day: DayWeather, outC: number, indoor: boolean): ThermalEnv {
       };
 }
 
+/**
+ * Las capacidades con lo que dejó la congelación: manos y pies con gravedad (`frostbiteHandFactor`,
+ * `frostbiteMobilityFactor`) y las partes amputadas, que no vuelven. Sin filas devuelve las mismas.
+ */
+export function applyFrostbite(
+  caps: BodyCapabilities,
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+): BodyCapabilities {
+  const state = truth.get(FROSTBITE, who);
+  const lost = amputationFactors(truth.get(AMPUTATIONS, who));
+  const hands = (state ? frostbiteHandFactor(state) : 1) * lost.manipulation;
+  const feet = (state ? frostbiteMobilityFactor(state) : 1) * lost.locomotion;
+  if (hands >= 1 && feet >= 1) return caps;
+  return {
+    ...caps,
+    manipulation: caps.manipulation * hands,
+    locomotion: caps.locomotion * feet,
+  };
+}
+
 export function thermalProcess(o: ThermalOptions): ProcessDef {
   const stepTicks = o.clock.day / STEPS_PER_DAY;
   const hours = 24 / STEPS_PER_DAY;
@@ -138,8 +166,9 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       LOCATION.name,
       FROSTBITE.name,
       SWEAT.name,
+      AMPUTATIONS.name,
     ],
-    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name, SWEAT.name],
+    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name, SWEAT.name, AMPUTATIONS.name],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -225,6 +254,25 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
             changes.push(setComponent(FROSTBITE, id, { ...frost, at: ctx.now }));
           } else if (hadFrost) {
             changes.push({ op: "delete", table: FROSTBITE.name, id });
+          }
+          // Tejido necrosado: la parte se pierde para siempre, con evento que la causa.
+          const hadLost = ctx.truth.get(AMPUTATIONS, id);
+          const fresh = frost && dead === null ? newAmputations(frost, hadLost) : [];
+          if (frost && fresh.length > 0) {
+            const lost = [...(hadLost?.lost ?? [])];
+            for (const part of fresh) {
+              const ke = events.length;
+              events.push({
+                kind: "body.amputated",
+                actors: [agent],
+                place: o.placeOf(ctx.truth, agent),
+                data: { part, cause: "frostbite", severity: Math.round(frost[part] * 100) / 100 },
+                emissions: { sight: 0.4 },
+                causes: [{ kind: "state", entity: agent, key: "body.frostbite" }],
+              });
+              lost.push({ part, at: ctx.now, cause: draftEvent(ke) });
+            }
+            changes.push(setComponent(AMPUTATIONS, id, { lost }));
           }
         }
       }

@@ -154,6 +154,12 @@ export interface LifeWorld {
   readonly realAltitude?: boolean;
   /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
   readonly waterSources?: WaterSourcesConfig;
+  /**
+   * Opt-in: la congelación se acumula por parte (`FROSTBITE`), la necrosis amputa (`AMPUTATIONS`,
+   * evento `body.amputated`) y manos y pies heridos bajan las capacidades de `decide`/`act`.
+   * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
+   */
+  readonly frostbite?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -272,6 +278,7 @@ export function lifeWorld(
           seed: parts.seed,
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         converseProcess({
           spaces: parts.spaces,
@@ -464,6 +471,7 @@ export function lifeWorld(
           seed: parts.seed,
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
         upkeepProcess({
@@ -588,6 +596,7 @@ export function lifeWorld(
           player,
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
+          ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,
