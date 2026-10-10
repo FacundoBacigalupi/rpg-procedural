@@ -4,11 +4,14 @@ import {
   AMPUTATIONS,
   type Amputations,
   amputationFactors,
+  BODY_STATE,
   type BodyCapabilities,
+  ENTITY,
   FROSTBITE,
   type FrostbiteState,
   NO_FROSTBITE,
   newAmputations,
+  PERSON,
   type ReadonlyWorldTruth,
   stepCore,
   TEMPERATE,
@@ -43,6 +46,53 @@ describe("life.thermal", () => {
     });
     expect(p.id).toBe("life.thermal");
     expect(p.cadence.local).toBe("day");
+  });
+});
+
+describe("congelación: autocuidado", () => {
+  const who = "agent:1" as AgentId;
+  const climate = {
+    cell: "c:1",
+    latDeg: 45,
+    axialTiltDeg: 23.4,
+    annualMeanC: 24,
+    seasonalRangeC: 2,
+    annualPrecipMm: 800,
+    windEast: 1,
+    windNorth: 0.3,
+  };
+  const severityAfter = (care?: number): number => {
+    const rows: Record<string, unknown> = {
+      [PERSON.name]: {},
+      [ENTITY.name]: { id: who },
+      [BODY_STATE.name]: { massKg: 70, water: 3.5, activity: "rest", scars: [] },
+      [FROSTBITE.name]: { ...NO_FROSTBITE, hands: 0.3 },
+    };
+    const truth = {
+      ids: () => [who],
+      get: (t: { name: string }) => rows[t.name],
+    } as unknown as ReadonlyWorldTruth;
+    const p = thermalProcess({
+      clock,
+      map: { cell: "c:1", lonDeg: 0, climate } as never,
+      spaces: { spaces: [] } as never,
+      seed: 1 as never,
+      placeOf: () => ({ kind: "cell", cell: "cell:1" }) as never,
+      frostbite: true,
+      frostbiteTreatment: true,
+      ...(care === undefined ? {} : { frostbiteSelfCare: { skillOf: () => care } }),
+    });
+    const out = p.run({ truth, now: clock.day * 10, window: clock.day } as never);
+    const set = out.changes?.find((c) => c.table === FROSTBITE.name && c.op === "set");
+    return (set as unknown as { value?: FrostbiteState } | undefined)?.value?.hands ?? 0;
+  };
+
+  it("sin médico se recalienta solo y la habilidad lo acelera", () => {
+    const none = severityAfter();
+    const novice = severityAfter(0);
+    const expert = severityAfter(1);
+    expect(novice).toBeLessThan(none);
+    expect(expert).toBeLessThan(novice);
   });
 });
 
