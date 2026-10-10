@@ -64,6 +64,13 @@ resolver la escala con LOD, sin recortar el diseño para hacer una demo.
 
 ## Git y continuidad
 
+- Autorización permanente del usuario (2026-10-10), limitada a
+  `FacundoBacigalupi/rpg-procedural`: crear ramas, hacer commits y push, abrir y
+  actualizar PRs, y mergearlas sin pedir confirmación por cada operación.
+  A `develop`, squash después de las verificaciones correspondientes; a `main`,
+  desde `develop` al cerrar fases o hitos según ROADMAP/HANDOFF, con merge commit,
+  CI aprobado y tag. Incluye integrar #440 y #441. Esta autorización no elimina
+  los límites técnicos del entorno ni autoriza saltarse checks o rulesets.
 - Ramas de trabajo desde develop; nunca commits directos a main/develop.
   Conventional Commits. PR a develop con squash; cierre de fase a main con merge
   commit, CI y tag. Cada operación Git de integración en una llamada separada.
