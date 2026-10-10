@@ -4,3 +4,4 @@ export * from "./contagion.ts";
 export * from "./credit.ts";
 export * from "./pledge.ts";
 export * from "./restructure.ts";
+export * from "./usury.ts";
