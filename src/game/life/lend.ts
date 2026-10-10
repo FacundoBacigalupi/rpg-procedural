@@ -17,6 +17,7 @@ import {
 } from "../../core/index.ts";
 import {
   type BondDef,
+  CREDIT,
   type DimensionDef,
   draftEvent,
   ENTITY,
@@ -34,6 +35,7 @@ import {
   table,
   worstDeed,
 } from "../../sim/index.ts";
+import { creditRows } from "./credit.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 
@@ -193,6 +195,93 @@ export function lendProcess(o: LendOptions): ProcessDef {
                 from: holderAccount(hisHome as unknown as HolderRef),
                 to: holderAccount(myHome as unknown as HolderRef),
                 amount: units,
+              },
+            ],
+          },
+        ],
+      };
+    },
+  };
+}
+
+export const REPAY_DOSE_PROCESS = "life.repay_dose";
+
+export interface RepayDoseOptions {
+  readonly goods: readonly GoodDef[];
+  /** Ids de los bienes que son sustancias (`ConsumableDef.good`): solo esas deudas se devuelven acá. */
+  readonly substances: readonly string[];
+  readonly player: AgentId;
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+}
+
+/**
+ * Devolver la dosis prestada en especie (opt-in): una vez por día, el hogar que debe una sustancia
+ * y ya la tiene en su despensa (la consiguió por compra, recolección o cosecha) la pasa al hogar
+ * del prestamista por el libro mayor. El `household.repaid` descuenta el fiado (`life.credit`) y
+ * sube la confianza (appraise). Si no la devuelve, el vencimiento (`life.arrears`) la declara
+ * mora y baja la confianza; nada se cobra solo.
+ */
+export function repayDoseProcess(o: RepayDoseOptions): ProcessDef {
+  const units = new Map<string, string>();
+  for (const g of o.goods) if (o.substances.includes(g.id)) units.set(goodUnit(g), g.id);
+  return {
+    id: REPAY_DOSE_PROCESS,
+    system: "life",
+    scope: "household",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "act",
+    reads: [PERSON.name, ENTITY.name, CREDIT.name],
+    writes: [],
+    run(ctx) {
+      const ledger = ctx.ledger;
+      const home = ctx.scope as string;
+      if (!ledger || units.size === 0) return {};
+      const mine = ctx.truth
+        .ids(PERSON)
+        .filter(
+          (id) =>
+            ctx.truth.get(PERSON, id)?.household === home &&
+            ctx.truth.get(ENTITY, id)?.endedAt === undefined,
+        );
+      if (mine.length === 0 || mine.includes(o.player)) return {};
+      const row = creditRows(ctx.truth)
+        .filter(
+          (r) =>
+            mine.includes(r.credit.debtor) &&
+            units.has(r.credit.unit) &&
+            r.credit.status !== "settled" &&
+            r.credit.owed > 0 &&
+            ctx.truth.get(ENTITY, r.credit.creditor)?.endedAt === undefined,
+        )
+        .sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+      if (!row) return {};
+      const creditorHome = ctx.truth.get(PERSON, row.credit.creditor)?.household;
+      if (creditorHome === undefined || creditorHome === home) return {};
+      const held = ledger.balance(holderAccount(home as unknown as HolderRef), row.credit.unit);
+      const amount = Math.min(row.credit.owed, Math.floor(held));
+      if (amount <= 0) return {};
+      const paid = draftEvent(0);
+      return {
+        events: [
+          {
+            kind: "household.repaid",
+            actors: [row.credit.debtor, row.credit.creditor],
+            place: o.placeOf(ctx.truth, row.credit.debtor),
+            data: { payment: { unit: row.credit.unit, grams: amount, credit: row.id } },
+            emissions: { sight: 0.2 },
+            causes: [{ kind: "state", entity: row.id as never, key: "owed" }],
+          },
+        ],
+        postings: [
+          {
+            event: paid,
+            transfers: [
+              {
+                unit: row.credit.unit,
+                from: holderAccount(home as unknown as HolderRef),
+                to: holderAccount(creditorHome as unknown as HolderRef),
+                amount,
               },
             ],
           },

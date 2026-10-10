@@ -81,7 +81,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
-import { lendProcess } from "./lend.ts";
+import { lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -265,6 +265,8 @@ export interface LifeWorld {
   readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
   readonly lendBorrowed?: boolean;
+  /** Opt-in (con `consumables`): el hogar que debe una sustancia y ya la tiene la devuelve en especie por el libro mayor (`life.repay_dose`); si no, el vencimiento la vuelve mora. Apagado, sin proceso. */
+  readonly repayDoses?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -577,6 +579,16 @@ export function lifeWorld(
                 dims: parts.relationDims,
                 bonds: parts.relationBonds,
                 day: parts.clock.day,
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
+        ...(parts.repayDoses === true && parts.consumables
+          ? [
+              repayDoseProcess({
+                goods: parts.goods,
+                substances: parts.consumables.map((c) => c.good),
                 player,
                 placeOf: placeOf(parts, village),
               }),

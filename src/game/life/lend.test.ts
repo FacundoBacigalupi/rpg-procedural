@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, EntityRef, EventId } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
 import {
+  CREDIT,
   ENTITY,
   LOCATION,
+  lend,
   PERSON,
   type ProcessContext,
   type StateChange,
   WorldTruth,
 } from "../../sim/index.ts";
 import { NPC_DECISION } from "./decide.ts";
-import { LEND_LOG, lendProcess } from "./lend.ts";
+import { LEND_LOG, lendProcess, repayDoseProcess } from "./lend.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 
 const me = "agent:1" as AgentId;
@@ -123,5 +125,42 @@ describe("life.lend (pedir prestada la sustancia)", () => {
       options: 3,
     } as never);
     expect(run(truth, 3, 150 + day).events?.length).toBe(1);
+  });
+});
+
+describe("life.repay_dose (devolver la dosis prestada)", () => {
+  const goods = [{ id: "poppy", name: "amapola", form: "good" }] as never;
+  const unit = "good:poppy" as never;
+  const repay = repayDoseProcess({
+    goods,
+    substances: ["poppy"],
+    player: "agent:99" as AgentId,
+    placeOf: () => place,
+  });
+  function runRepay(stock: number) {
+    const truth = world();
+    truth.set(CREDIT, "commitment:1" as never, lend(him, me, unit, 1, 0, day));
+    const ctx = {
+      now: 500,
+      scope: "household:1",
+      truth,
+      ledger: { balance: () => stock },
+      rng: Rng.root(1),
+    } as unknown as ProcessContext;
+    return repay.run(ctx);
+  }
+
+  it("con la dosis en su despensa la devuelve al hogar del prestamista", () => {
+    const r = runRepay(2);
+    expect(r.events?.map((e) => e.kind)).toEqual(["household.repaid"]);
+    expect(r.events?.[0]?.actors).toEqual([me, him]);
+    expect(r.events?.[0]?.causes.length).toBeGreaterThan(0);
+    const t = r.postings?.[0]?.transfers[0];
+    expect(t?.amount).toBe(1);
+    expect(t?.to).toContain("household:2");
+  });
+
+  it("sin la dosis no devuelve nada (el vencimiento hace la mora)", () => {
+    expect(runRepay(0)).toEqual({});
   });
 });
