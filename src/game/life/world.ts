@@ -103,7 +103,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
-import { type PawnLots, pawnProcess } from "./pawn.ts";
+import { type PawnLots, type PawnOpenOptions, pawnOpenProcess, pawnProcess } from "./pawn.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
@@ -317,7 +317,11 @@ export interface LifeWorld {
   /** Opt-in (con `loanContagion` y `loanSeeds`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
-  readonly pawn?: { readonly unit: string; readonly lots: PawnLots };
+  readonly pawn?: {
+    readonly unit: string;
+    readonly lots: PawnLots;
+    readonly open?: PawnOpenOptions;
+  };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
   /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
   readonly creditHeed?: HeedStanding;
@@ -560,6 +564,16 @@ export function lifeWorld(
               pawnProcess({
                 unit: parts.pawn.unit,
                 lots: parts.pawn.lots,
+                placeOf: () => village,
+                day: parts.clock.day,
+              }),
+            ]
+          : []),
+        ...(parts.pawn?.open
+          ? [
+              pawnOpenProcess({
+                unit: parts.pawn.unit,
+                open: parts.pawn.open,
                 placeOf: () => village,
                 day: parts.clock.day,
               }),

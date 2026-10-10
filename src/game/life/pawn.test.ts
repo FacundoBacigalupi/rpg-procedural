@@ -3,7 +3,7 @@ import type { Tick } from "../../core/index.ts";
 import { holderAccount } from "../../core/index.ts";
 import { openPawn, type ProcessContext } from "../../sim/index.ts";
 import { COMMITMENTS } from "./loans.ts";
-import { pawnProcess } from "./pawn.ts";
+import { pawnOpenProcess, pawnProcess } from "./pawn.ts";
 
 const DAY = 1;
 function run(now: number, coin: number) {
@@ -55,5 +55,57 @@ describe("casa de empeño", () => {
     const r = run(40, 10);
     expect(r.events?.[0]?.kind).toBe("credit.pawn_forfeited");
     expect(r.postings).toEqual([]);
+  });
+});
+
+describe("abrir el empeño desde el verbo give", () => {
+  const ev = (manner: string[], grams = 1) =>
+    ({
+      id: "e1",
+      kind: "action.give",
+      actors: ["p:a", "p:b"],
+      data: { manner, effect: { kind: "give", to: "p:b", good: "ring", grams } },
+    }) as never;
+  function open(manner: string[], cash: number) {
+    const truth = {
+      ids: () => [],
+      get: (t: { name: string }, id: string) =>
+        t.name === "person" || t.name.includes("person") ? { id } : undefined,
+    } as never;
+    const ledger = {
+      balance: (a: unknown, u: string) =>
+        a === holderAccount("p:b" as never) && u === "coin" ? cash : 0,
+    };
+    const ctx = {
+      truth,
+      ledger,
+      now: 5 as Tick,
+      recent: [ev(manner)],
+      newId: () => "commitment:9",
+    } as unknown as ProcessContext;
+    return pawnOpenProcess({
+      unit: "coin",
+      placeOf: () => "here" as never,
+      day: DAY,
+      open: { prices: { ring: 100 }, rate: 0.1 },
+    }).run(ctx) as unknown as {
+      events?: { kind: string; causes: unknown[]; data: { advance?: number; owed?: number } }[];
+      postings?: { transfers: { amount: number }[] }[];
+      changes?: unknown[];
+    };
+  }
+  it("tasa con lo creído, adelanta del bolsillo de la casa y abre el compromiso", () => {
+    const r = open(["pawn"], 80);
+    expect(r.events?.[0]?.kind).toBe("credit.pawn_opened");
+    expect(r.events?.[0]?.data.advance).toBe(50);
+    expect(r.events?.[0]?.data.owed).toBe(55);
+    expect(r.postings?.[0]?.transfers[0]?.amount).toBe(50);
+    expect(r.changes?.length).toBe(2);
+  });
+  it("sin efectivo la casa devuelve el lote; sin modo pawn no pasa nada", () => {
+    const r = open(["pawn"], 10);
+    expect(r.events?.[0]?.kind).toBe("credit.pawn_refused");
+    expect(r.postings?.[0]?.transfers[0]?.amount).toBe(1);
+    expect(open([], 80).events).toBeUndefined();
   });
 });

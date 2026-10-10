@@ -351,7 +351,7 @@
       { "role": "to", "kind": "person", "required": true },
       { "role": "what", "kind": "text", "required": false }
     ],
-    "manners": [],
+    "manners": [{ "id": "pawn", "duration": 1.2 }],
     "requires": [
       { "kind": "capability", "cap": "manipulation", "min": 0.1 },
       { "kind": "position", "near": "to" },
