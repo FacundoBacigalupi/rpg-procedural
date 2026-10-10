@@ -72,3 +72,18 @@ describe("hexKindsFromTerrain", () => {
     expect(m.has(3)).toBe(false);
   });
 });
+
+describe("agua filtrada con el verbo filter", () => {
+  it("mientras dura, drinkQuality aclara el agua turbia del hex; después, la fuente cruda", () => {
+    const truth = (until: number) =>
+      ({
+        get: (t: { name: string }) =>
+          t.name === "body.treated_water" ? { treatment: "filter", until } : { hex: 1 },
+      }) as never;
+    const h = waterHooks({ open: "stagnant" });
+    const raw = h.drinkQuality(truth(100), "agent:1" as never, 200);
+    const clean = h.drinkQuality(truth(100), "agent:1" as never, 50);
+    expect(clean.turbidity).toBeLessThan(raw.turbidity);
+    expect(clean.treated).toBeGreaterThan(raw.treated);
+  });
+});

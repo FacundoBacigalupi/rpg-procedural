@@ -114,6 +114,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly larder?: HolderRef | undefined;
   /** Opt-in: el combustible que gasta `boil` (unidad del ledger y gramos por tanda); sin esto no hay con qué hervir. */
   readonly boilFuel?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
+  /** Opt-in: el material filtrante que gasta `filter` (unidad del ledger y gramos por tanda); sin esto no hay con qué filtrar. */
+  readonly filterMaterial?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
   /** Opt-in: las unidades que son sustancias de consumo (`consume`: una unidad, una dosis); sin esto no hay qué tomar. */
   readonly consumables?: ReadonlySet<LedgerUnit> | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
@@ -348,6 +350,13 @@ export type VerbEffect =
       /** El combustible que quemó (null si no tenía o no pudo). */
       readonly fuel: LedgerUnit | null;
       /** Gramos quemados. */
+      readonly grams: number;
+    }
+  | {
+      readonly kind: "filter";
+      /** El material filtrante que gastó (null si no tenía o no pudo). */
+      readonly material: LedgerUnit | null;
+      /** Gramos gastados. */
       readonly grams: number;
     }
   | {
@@ -1319,6 +1328,36 @@ const eat: Resolver = (c) => {
 };
 
 /**
+ * Filtra agua: gasta material filtrante (lo que lleva o la despensa, sale del ledger hacia `BURNED`)
+ * y lleva su tiempo. Sin material no hay agua tratada.
+ */
+const filter: Resolver = (c) => {
+  const cfg = c.input.filterMaterial;
+  const empty: VerbEffect = { kind: "filter", material: null, grams: 0 };
+  if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
+  const holders = [c.input.actor.id as HolderRef, ...(c.input.larder ? [c.input.larder] : [])];
+  const from = cfg
+    ? holders.find(
+        (h) =>
+          (c.input.ledger.holdings(holderAccount(h)).find((x) => x.unit === cfg.unit)?.amount ??
+            0) >= cfg.grams,
+      )
+    : undefined;
+  if (!cfg || from === undefined) {
+    return {
+      effect: empty,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return {
+    effect: { kind: "filter", material: cfg.unit, grams: cfg.grams },
+    seconds: c.nominal,
+    transfers: [{ from, unit: cfg.unit, amount: cfg.grams, to: externalAccount(BURNED) }],
+  };
+};
+
+/**
  * Hierve agua: quema combustible (lo que lleva encima o la despensa de la casa, sale del ledger
  * hacia `BURNED`) y lleva su tiempo. Sin combustible no hay agua tratada.
  */
@@ -1675,6 +1714,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   eat,
   consume,
   boil,
+  filter,
   cook,
   drink,
   tend,

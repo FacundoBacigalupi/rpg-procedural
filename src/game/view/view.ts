@@ -361,6 +361,7 @@ export type EffectView =
     }
   | { readonly kind: "drink"; readonly drank: boolean }
   | { readonly kind: "boil"; readonly boiled: boolean }
+  | { readonly kind: "filter"; readonly filtered: boolean }
   | {
       readonly kind: "cook";
       /** Lo que sacó (null si no cocinó nada). */
@@ -789,6 +790,8 @@ function effectView(
     case "boil":
       // Hirvió si quemó combustible; el número de gramos no se cuenta.
       return { kind: "boil", boiled: e.fuel !== null && e.grams > 0 };
+    case "filter":
+      return { kind: "filter", filtered: e.material !== null && e.grams > 0 };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
     case "cook":

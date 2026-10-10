@@ -22,6 +22,8 @@ const STEP: Readonly<Record<string, string>> = {
   "body.collapsed": "un desmayo",
   "body.wound_infected": "una herida que se infectó",
   "body.wound_healed": "una herida que cerró",
+  "body.amputated": "una amputación",
+  "body.amputation_failed": "una amputación que salió mal",
   "law.default": "una deuda que no se pagó",
 };
 
@@ -29,6 +31,7 @@ const CLOSER: Readonly<Record<string, string>> = {
   "combat.fight": "hasta una pelea",
   "body.collapsed": "hasta que se desmayó",
   "body.wound_infected": "hasta que una herida se infectó",
+  "body.amputated": "hasta que perdió un miembro",
   "law.default": "hasta una deuda sin pagar",
   death: "hasta el final",
 };

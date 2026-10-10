@@ -7,6 +7,7 @@ import {
   checkInvariants,
   ENTITY,
   LOCATION,
+  MATERIALS,
   PERSON,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
@@ -92,6 +93,46 @@ describe("reconstrucción de la aldea", () => {
     const built = fresh && truth.get(BUILDING, fresh);
     expect(built?.household).toBe(record.household);
     expect(truth.get(ENTITY, fresh as never)?.endedAt).toBeUndefined();
+    expect(ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth, log, ledger })).toEqual([]);
+  }, 240_000);
+
+  it("con swapMaterials, «distinto» reconstruye sin poner un material donde no sirve, y todo cierra", () => {
+    const life = Life.create(7, content, { frequency: 8, swapMaterials: true });
+    const { truth, log, ledger, clock } = life.world;
+    const home = truth.ids(BUILDING).find((id) => truth.get(BUILDING, id)?.household);
+    const record = home && truth.get(BUILDING, home);
+    const base = home && truth.get(ENTITY, home);
+    if (!home || !record || !base) throw new Error("sin casas");
+    const fall = log
+      .all()
+      .filter((e) => e.tick <= life.now - 20 * clock.day)
+      .at(-1);
+    if (!fall) throw new Error("sin eventos");
+    truth.set(ENTITY, home, { ...base, endedAt: fall.tick, endEventId: fall.id });
+    truth.set(BUILDING, home, {
+      ...record,
+      components: record.components.map((c) => ({ ...c, area: 1 })),
+      ruin: { cause: "rain", rebuild: "different" },
+    });
+    for (const id of truth.ids(PERSON)) {
+      const at = truth.get(LOCATION, id);
+      if (at && at.space === record.graph.spaces[0]?.key)
+        truth.set(LOCATION, id, { hex: at.hex, space: VILLAGE_SQUARE });
+    }
+    life.advanceTo(life.now + 5 * clock.day);
+
+    expect(log.all().filter((e) => e.kind === "settlement.rebuilt").length).toBe(1);
+    const fresh = truth.ids(BUILDING).find((id) => truth.get(BUILDING, id)?.replaces === home);
+    const built = fresh && truth.get(BUILDING, fresh);
+    if (!built) throw new Error("no se reconstruyó");
+    const allowed = new Map(content.all(MATERIALS).map((m) => [m.id, m.parts] as const));
+    for (const c of built.components) {
+      for (const line of c.materials) {
+        const parts = allowed.get(line.material);
+        expect(parts === undefined || parts.includes(c.part)).toBe(true);
+      }
+    }
     expect(ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth, log, ledger })).toEqual([]);
   }, 240_000);
