@@ -37,6 +37,7 @@ import {
   COPPER,
   CULTURE_TRAITS,
   CULTURES,
+  type CultureDef,
   DEBRIS_SINK,
   DEMOGRAPHY,
   DIETS,
@@ -148,12 +149,14 @@ import type { ConverseForm } from "./converse.ts";
 import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
+import type { UsuryOptions } from "./loans.ts";
 import { localMapOf } from "./map.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
+import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
@@ -194,6 +197,19 @@ export interface LifeOptions {
   readonly loanEnforcement?: LifeParts["loanEnforcement"];
   /** Opt-in (con `loanSeeds`): usura disfrazada y caso comunitario (`LifeParts.loanUsury`). */
   readonly loanUsury?: LifeParts["loanUsury"];
+  /**
+   * Opt-in (con `loanSeeds`): siembra el rasgo `norms.interest` en la cultura de la aldea (con estos pesos por
+   * variante) y deriva `loanUsury` de él (`deriveUsury`: prohíbe `forbidden` por firmeza, disfraces por lo que
+   * el hogar tiene en el ledger, tasación por la percepción). El rasgo no está en la cultura `village`, así que
+   * sin esta opción la siembra (y los hashes) no cambian. Un `loanUsury` explícito manda.
+   */
+  readonly interestNorm?: {
+    readonly variants: Readonly<Record<string, number>>;
+    readonly because?: string;
+    readonly prohibitedVariants?: readonly string[];
+    readonly wagePerDay?: number;
+    readonly tolerance?: number;
+  };
   /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
   readonly loanBondage?: Omit<NonNullable<LifeParts["loanBondage"]>, "skillWage"> & {
     /** `true`: el jornal sale del mejor oficio del deudor (`skillWageOf`); o una función propia. */
@@ -245,8 +261,56 @@ export interface LifeOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): señal por objeto (`LifeParts.objectCues`). */
   readonly objectCues?: boolean;
-  /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
+  /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
+}
+
+/** La cultura con el rasgo `norms.interest` sembrado, solo si se pidió (`interestNorm`); si no, la misma. */
+export function withInterestNorm(culture: CultureDef, options: LifeOptions): CultureDef {
+  const n = options.interestNorm;
+  if (!n || culture.traits.some((t) => t.trait === INTEREST_TRAIT)) return culture;
+  return {
+    ...culture,
+    traits: [
+      ...culture.traits,
+      {
+        trait: INTEREST_TRAIT,
+        variants: { ...n.variants },
+        params: {},
+        origin: "adaptation",
+        because:
+          n.because ?? "quien prestaba de más se quedó con las tierras y no volvió a tener vecinos",
+      },
+    ],
+  };
+}
+
+const INTEREST_TRAIT = "norms.interest";
+
+/**
+ * `UsuryOptions` derivadas del mundo (`deriveUsury`) si se pidió `interestNorm` y no hay `loanUsury`
+ * explícito: lo que el hogar prestamista tiene a mano sale de sus bienes (`good:*`) en el ledger vivo.
+ */
+export function derivedLoanUsury(
+  options: LifeOptions,
+  content: Content,
+  ledger: Ledger,
+): UsuryOptions | undefined {
+  const n = options.interestNorm;
+  if (!n || options.loanUsury) return undefined;
+  const traits: readonly Trait[] = content.all(TRAITS);
+  return deriveUsury({
+    traitId: INTEREST_TRAIT,
+    prohibitedVariants: n.prohibitedVariants ?? ["forbidden"],
+    goodsHeld: (_truth, home) =>
+      ledger
+        .holdings(holderAccount(home as unknown as HolderRef))
+        .filter((h) => String(h.unit).startsWith("good:"))
+        .reduce((sum, h) => sum + h.amount, 0),
+    ...(n.wagePerDay !== undefined ? { wagePerDay: n.wagePerDay } : {}),
+    ...(n.tolerance !== undefined ? { tolerance: n.tolerance } : {}),
+    eyeOf: eyeByPerception(traits),
+  });
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -768,8 +832,9 @@ export function createLife(
     defs: statuses,
   });
   // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
-  const culture = content.all(CULTURES).find((c) => c.id === "village");
-  if (!culture) throw new Error("falta contenido: cultura village");
+  const baseCulture = content.all(CULTURES).find((c) => c.id === "village");
+  if (!baseCulture) throw new Error("falta contenido: cultura village");
+  const culture = withInterestNorm(baseCulture, options);
   const community = seedCulture(truth, ids, log, {
     settlement,
     place: terrain.village,
@@ -952,6 +1017,10 @@ export function createLife(
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),
       ...optInParts(options, site.terrain),
+      ...(() => {
+        const u = derivedLoanUsury(options, content, ledger);
+        return u ? { loanUsury: u } : {};
+      })(),
     },
     pop.player,
     terrain.village,

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "norms.interest",
+    "name": "qué se piensa del interés",
+    "domain": "norms",
+    "variants": [
+      { "id": "forbidden", "name": "cobrar de más por prestar es pecado y deshonra" },
+      { "id": "tolerated", "name": "se tolera mientras no se note ni se abuse" },
+      { "id": "free", "name": "es cosa de tratos: cada uno pacta lo que puede" }
+    ],
+    "salience": 0.5,
+    "stickiness": 0.8,
+    "readBy": ["economy", "law", "religion"]
+  }
+]
