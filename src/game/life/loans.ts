@@ -52,6 +52,7 @@ import {
   type Relationship,
   type StateChange,
   setComponent,
+  TRADE_RECEIPTS,
   table,
   workBondageDay,
 } from "../../sim/index.ts";
@@ -145,6 +146,16 @@ export interface BondageTerms {
    */
   readonly ransom?: boolean;
   /**
+   * Opt-in: el día de servidumbre solo abona si el hogar del deudor no cobró un jornal ese día
+   * (`TRADE_RECEIPTS` con `day === today`): quien ya trabajó por salario no trabaja dos veces.
+   */
+  readonly onlyWithoutOtherWage?: boolean;
+  /**
+   * Opt-in: el jornal de la servidumbre sale del oficio que sabe el deudor (la habilidad, calculada
+   * afuera) en vez de `wagePerDay`; se fija al abrirse. Si devuelve `undefined` o <= 0, vale la constante.
+   */
+  readonly skillWage?: (truth: ReadonlyWorldTruth, debtor: AgentId) => number | undefined;
+  /**
    * Opt-in: cada día el acreedor rompe el trato con probabilidad `chance(truth, acreedor)` (la que
    * dé su temperamento y su cultura, calculada afuera); el deudor queda libre (`end: "abuse"`) y los
    * vecinos que confiaban en el acreedor le restan `reputationCost` de confianza.
@@ -222,6 +233,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       PARCEL.name,
       RELATIONS.name,
       ...(o.contagionCaution ? [CONTAGION_STATE.name] : []),
+      ...(o.bondage?.onlyWithoutOtherWage ? [TRADE_RECEIPTS.name] : []),
     ],
     writes: [
       LOANS.name,
@@ -521,12 +533,14 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           // Servidumbre (contracts §2): lo que no se cobró se salda trabajando para el acreedor.
           if (o.bondage && res.loan.status === "defaulted" && res.loss > 0) {
             const bid = ctx.newId("commitment");
+            const sw = o.bondage.skillWage?.(ctx.truth, borrowerMan);
+            const skillWageOf = sw !== undefined && sw > 0 ? sw : undefined;
             const bond = makeBondage({
               id: bid as string,
               creditor: l.lender,
               debtor: l.borrower,
               debt: res.loss,
-              wagePerDay: o.bondage.wagePerDay,
+              wagePerDay: skillWageOf ?? o.bondage.wagePerDay,
               upkeepPerDay: o.bondage.upkeepPerDay,
               startDay: today,
               maxDays: o.bondage.maxDays,
@@ -725,6 +739,15 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               );
             }
             continue;
+          }
+          if (o.bondage.onlyWithoutOtherWage) {
+            const home = ctx.truth.get(PERSON, debtorMan)?.household;
+            const paidToday = home
+              ? (ctx.truth.get(TRADE_RECEIPTS, home as never)?.receipts ?? []).some(
+                  (x) => x.day === today && x.coins > 0,
+                )
+              : false;
+            if (paidToday) continue;
           }
           const w = workBondageDay(c, today);
           if (w.credited <= 0) continue;
