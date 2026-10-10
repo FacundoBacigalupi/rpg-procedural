@@ -302,6 +302,8 @@ export interface LifeWorld {
   readonly scamFiller?: LedgerUnit;
   /** Opt-in: marcas en los lotes comerciados y verificación del comprador (`life.marks`). */
   readonly marks?: boolean;
+  /** Opt-in: la marca falsa descubierta dispara `scam.discovered` contra el falsificador (con `marks`). */
+  readonly marksExpose?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -573,6 +575,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
                 skill: forgeSkillOf(parts.traits),
+                ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
               }),
             ]
           : []),
