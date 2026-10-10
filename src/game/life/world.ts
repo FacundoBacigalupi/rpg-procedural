@@ -137,6 +137,10 @@ export interface LifeWorld {
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
   readonly healerFrostbiteSigns?: boolean;
+  /** Opt-in (con `realAltitude`): el sanador también ve los signos del mal de altura. */
+  readonly healerAltitudeSigns?: boolean;
+  /** Opt-in (con `realAltitude`): la aclimatación escala con el genoma (`constitution`). */
+  readonly altitudeGenome?: boolean;
   /** Remedio a unidad del ledger: darlo gasta un bien real (del sanador o del enfermo); sin existencias no se da. Sin esto, remedios sin costo. */
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
@@ -510,6 +514,7 @@ export function lifeWorld(
           stock: parts.remedyStock,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
+          altitudeSigns: parts.healerAltitudeSigns === true ? altitudeOf : undefined,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
@@ -537,7 +542,15 @@ export function lifeWorld(
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
         }),
-        ...(altitudeOf ? [altitudeProcess({ clock: parts.clock, altitudeOf })] : []),
+        ...(altitudeOf
+          ? [
+              altitudeProcess({
+                clock: parts.clock,
+                altitudeOf,
+                genomeAdaptation: parts.altitudeGenome === true,
+              }),
+            ]
+          : []),
         upkeepProcess({
           clock: parts.clock,
           map: parts.map,

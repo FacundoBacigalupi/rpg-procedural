@@ -16,8 +16,11 @@ import {
   type PlanetClock,
 } from "../../core/index.ts";
 import {
+  ACCLIMATIZATION,
+  type AltitudeSickness,
   AMPUTATIONS,
   type Amputations,
+  altitudeSickness,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
@@ -159,6 +162,29 @@ export function signsOfSubstances(held: readonly HeldDef[]): SignSet {
   return out;
 }
 
+/**
+ * Lo que ve el sanador del mal de altura (`altitudeSickness`), como pesos 0-1 de `SignSet`: dolor
+ * de cabeza y mareo desde lo leve, debilidad y palidez en lo moderado, falta de aire y confusión en
+ * lo grave.
+ */
+export function signsOfAltitude(sickness: AltitudeSickness): SignSet {
+  if (sickness === "mild") return { headache: 0.4, dizziness: 0.3 };
+  if (sickness === "moderate") {
+    return { headache: 0.6, dizziness: 0.5, weakness: 0.5, breathlessness: 0.5 };
+  }
+  if (sickness === "severe") {
+    return {
+      headache: 0.8,
+      dizziness: 0.7,
+      weakness: 0.8,
+      breathlessness: 0.9,
+      confusion: 0.7,
+      pallor: 0.5,
+    };
+  }
+  return {};
+}
+
 /** Qué haría un sanador con la congelación de alguien: recalentar, aislar lo lesionado o amputar. */
 export type FrostbiteCare = "rewarm" | "insulate" | "amputate";
 
@@ -221,6 +247,16 @@ function frostSigns(truth: ReadonlyWorldTruth, who: string): SignSet {
   return signsOfFrostbite(state, truth.get(AMPUTATIONS, who as never));
 }
 
+function altitudeSigns(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  altitudeOf: (truth: ReadonlyWorldTruth, who: AgentId) => number,
+): SignSet {
+  return signsOfAltitude(
+    altitudeSickness(altitudeOf(truth, who), truth.get(ACCLIMATIZATION, who)?.level ?? 0),
+  );
+}
+
 function mergeSigns(a: SignSet, b: SignSet): SignSet {
   const out: Record<string, number> = { ...a };
   for (const [k, v] of Object.entries(b)) out[k] = Math.max(out[k] ?? 0, v);
@@ -254,6 +290,8 @@ export interface MedicineOptions {
   readonly substanceSigns?: boolean | undefined;
   /** Opt-in: también los signos de la congelación (`FROSTBITE`, `AMPUTATIONS`). */
   readonly frostbiteSigns?: boolean | undefined;
+  /** Opt-in: también los signos del mal de altura (altitud real de donde está y su aclimatación). */
+  readonly altitudeSigns?: ((truth: ReadonlyWorldTruth, who: AgentId) => number) | undefined;
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
@@ -280,6 +318,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       BODY_STATE.name,
       ...(o.substanceSigns ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
       ...(o.frostbiteSigns ? [FROSTBITE.name, AMPUTATIONS.name] : []),
+      ...(o.altitudeSigns ? [ACCLIMATIZATION.name] : []),
     ],
     writes: [TREATMENT.name],
     run(ctx) {
@@ -342,9 +381,12 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           const withSubs: SignSet = o.substanceSigns
             ? mergeSigns(base, heldSigns(ctx.truth, id))
             : base;
-          const signs: SignSet = o.frostbiteSigns
+          const withFrost: SignSet = o.frostbiteSigns
             ? mergeSigns(withSubs, frostSigns(ctx.truth, id))
             : withSubs;
+          const signs: SignSet = o.altitudeSigns
+            ? mergeSigns(withFrost, altitudeSigns(ctx.truth, patient, o.altitudeSigns))
+            : withFrost;
           const belief = diagnose(
             signs,
             healer.models,

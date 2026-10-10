@@ -51,14 +51,31 @@ export function altitudeEnduranceFactor(altitudeM: number, acclimatization: numb
  * Aclimatación tras `days` días a `altitudeM`: sube hacia 1 en proporción a la falta de oxígeno
  * (sin falta no hay estímulo) y a lo que falta por ganar; sin estímulo baja despacio.
  */
-export function stepAcclimatization(level: number, altitudeM: number, days: number): number {
+export function stepAcclimatization(
+  level: number,
+  altitudeM: number,
+  days: number,
+  /** Escala de la ganancia (adaptación por genoma); 1 es la tasa de siempre. */
+  rate = 1,
+): number {
   const h = hypoxia(altitudeM);
   const l = clamp(level, 0, 1);
   if (h <= 0) return clamp(l - ACCLIM_LOSS_PER_DAY * days, 0, 1);
   // Solo ayuda hasta lo que la altura exige: a media altura no se sube más que eso.
   const target = h;
   if (l >= target) return clamp(l - ACCLIM_LOSS_PER_DAY * 0.25 * days, target, 1);
-  return clamp(l + ACCLIM_GAIN_PER_DAY * h * days, 0, target);
+  return clamp(l + ACCLIM_GAIN_PER_DAY * rate * h * days, 0, target);
+}
+
+/** Cuánto pesa cada desvío del valor genético de `constitution` en la tasa de aclimatación. */
+const ADAPTATION_PER_SD = 0.15;
+
+/**
+ * Escala (0.7-1.3) de la tasa de aclimatación por el valor genético aditivo de `constitution`
+ * (en desvíos): quien heredó mejor constitución se aclimata más rápido. Sin genoma, 1.
+ */
+export function adaptationRate(constitutionAdditive: number | undefined): number {
+  return clamp(1 + ADAPTATION_PER_SD * (constitutionAdditive ?? 0), 0.7, 1.3);
 }
 
 export type AltitudeSickness = "none" | "mild" | "moderate" | "severe";
