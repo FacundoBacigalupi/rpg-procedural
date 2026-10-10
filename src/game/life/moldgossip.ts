@@ -31,9 +31,8 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
-import { TRADE_VIEW } from "./tradeview.ts";
-
 import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
+import { TRADE_VIEW } from "./tradeview.ts";
 
 export const MOLD_GOSSIP_PROCESS = "life.gossip_molds";
 
