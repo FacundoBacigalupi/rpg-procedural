@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceRef } from "../../core/index.ts";
 import { Rng } from "../../core/index.ts";
-import { PERSON, PRICE_BELIEFS } from "../../sim/index.ts";
+import { PERSON, PLACE, PRICE_BELIEFS } from "../../sim/index.ts";
 import {
   distortStanding,
   keepMold,
+  lookSiteOf,
   MOLD_HINT_MOOD,
   moldBuyGoods,
   moldGossipProcess,
@@ -183,6 +184,32 @@ describe("el precio visto entra como rumor de primera mano", () => {
     expect(item?.cause).toBe("ev:1");
     expect(item?.heardAt).toBe(90);
     expect(go({}).changes ?? []).toHaveLength(0);
+  });
+});
+
+describe("lookSiteOf", () => {
+  const village = { kind: "place", place: "place:v" } as unknown as PlaceRef;
+  const places: Record<string, { kind: string; hexes: number[] }> = {
+    "place:f": { kind: "fields", hexes: [3] },
+    "place:v": { kind: "village", hexes: [3] },
+    "place:w": { kind: "water", hexes: [4] },
+  };
+  const truth = (at: { hex: number; space?: string } | undefined) =>
+    ({
+      ids: () => Object.keys(places),
+      get: (t: { name: string }, id: string) => (t.name === PLACE.name ? places[id] : at),
+    }) as never;
+
+  it("dentro de un espacio ve la aldea; afuera, el lugar de su hex con prioridad", () => {
+    const f = lookSiteOf(village);
+    expect(f(truth({ hex: 3, space: "house" }), "a" as never)?.what).toBe("village");
+    expect(f(truth({ hex: 3 }), "a" as never)).toEqual({
+      what: "fields",
+      where: { kind: "place", place: "place:f" },
+    });
+    expect(f(truth({ hex: 4 }), "a" as never)?.what).toBe("water");
+    expect(f(truth({ hex: 9 }), "a" as never)).toBeUndefined();
+    expect(f(truth(undefined), "a" as never)).toBeUndefined();
   });
 });
 

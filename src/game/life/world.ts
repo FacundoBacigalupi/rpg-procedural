@@ -86,6 +86,7 @@ import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
+  lookSiteOf,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
@@ -468,7 +469,21 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           player,
         }),
-        ...(parts.moldGossip ? [moldGossipProcess(parts.moldGossip)] : []),
+        ...(parts.moldGossip
+          ? [
+              moldGossipProcess(
+                parts.moldGossip.fromLooking && !parts.moldGossip.fromLooking.siteOf
+                  ? {
+                      ...parts.moldGossip,
+                      fromLooking: {
+                        ...parts.moldGossip.fromLooking,
+                        siteOf: lookSiteOf(village),
+                      },
+                    }
+                  : parts.moldGossip,
+              ),
+            ]
+          : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
