@@ -470,6 +470,7 @@ export interface LifeWorld {
   readonly persistImmediateGoals?: boolean;
   /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
   readonly closeGoalsOnDeath?: boolean;
+  readonly recognizeGoalCompletion?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1277,6 +1278,7 @@ export function lifeWorld(
           ...(parts.persistGoalLayers === true ? { persistGoalLayers: true } : {}),
           ...(parts.persistImmediateGoals === true ? { persistImmediateGoals: true } : {}),
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
+          ...(parts.recognizeGoalCompletion === true ? { recognizeGoalCompletion: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,

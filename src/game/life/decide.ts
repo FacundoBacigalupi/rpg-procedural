@@ -39,10 +39,13 @@ import {
   FROSTBITE,
   feltCompanyNeed,
   feltCravingNeeds,
+  GOAL_COMPLETION_MIN_CONFIDENCE,
   type Goal,
+  type GoalCompletion,
   type GoodDef,
   GROWTH_SEQUELAE,
   goalChanges,
+  goalCompletionsFromBeliefs,
   goalDrives,
   goodUnit,
   HABITS,
@@ -163,6 +166,13 @@ export interface NpcGoals {
 
 export const NPC_GOALS = table<NpcGoals>("life.goals");
 
+/** Historial persistente de objetivos cumplidos desde la perspectiva del NPC. */
+export interface GoalCompletionHistory {
+  readonly items: readonly GoalCompletion[];
+}
+
+export const NPC_GOAL_COMPLETIONS = table<GoalCompletionHistory>("life.goal_completions");
+
 /** A cuántas personas considera como mucho (las que más conoce). */
 export const MAX_KNOWN = 12;
 /** Cuánto afecto/parentesco (`closeness`) hace que alguien le importe (sin calibrar). */
@@ -175,6 +185,8 @@ export interface DecideOptions {
   readonly persistImmediateGoals?: boolean;
   /** Opt-in: objetivos medianos desde su libro de deuda conocida, sin consultar el saldo real. */
   readonly debtKnowledge?: boolean;
+  /** Opt-in: cierra venganzas reconocidas como cumplidas desde las creencias propias. */
+  readonly recognizeGoalCompletion?: boolean;
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -297,11 +309,16 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_GOALS.name,
       ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
+      ...(o.recognizeGoalCompletion ? [NPC_GOAL_COMPLETIONS.name] : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
     ],
-    writes: [NPC_DECISION.name, NPC_GOALS.name],
+    writes: [
+      NPC_DECISION.name,
+      NPC_GOALS.name,
+      ...(o.recognizeGoalCompletion ? [NPC_GOAL_COMPLETIONS.name] : []),
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -428,6 +445,41 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // Los objetivos: núcleo desde sus valores y venganza desde el resentimiento con memoria que lo
       // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.
       const prevGoals = truth.get(NPC_GOALS, me)?.items ?? [];
+      const completionHistory = o.recognizeGoalCompletion
+        ? (truth.get(NPC_GOAL_COMPLETIONS, me)?.items ?? [])
+        : [];
+      const deathEvidence = o.recognizeGoalCompletion
+        ? (memories?.items ?? [])
+            .filter(
+              (m) => m.at <= now && m.perceived.kind === "body.died" && m.perceived.with.length > 0,
+            )
+            .flatMap((m) => m.perceived.with.map((target) => ({ target, cause: m.eventId })))
+        : [];
+      const completions = o.recognizeGoalCompletion
+        ? goalCompletionsFromBeliefs(prevGoals, beliefs, now, deathEvidence).filter(
+            (completion) => !completionHistory.some((old) => old.goalId === completion.goalId),
+          )
+        : [];
+      const stillBelievedComplete = o.recognizeGoalCompletion
+        ? completionHistory.filter((completion) => {
+            const target = completion.original.target;
+            if (!target) return false;
+            const death = believed(beliefs, target as AgentId, "alive");
+            return (
+              death?.value === false &&
+              death.learnedAt <= now &&
+              death.asOf <= now &&
+              beliefConfidenceAt(death, now) >= GOAL_COMPLETION_MIN_CONFIDENCE
+            );
+          })
+        : [];
+      const completedIds = new Set([
+        ...completions.map((completion) => completion.goalId),
+        ...stillBelievedComplete.map((completion) => completion.goalId),
+      ]);
+      const completionById = new Map(
+        completions.map((completion) => [completion.goalId, completion]),
+      );
       const goals = reconcileGoals(
         prevGoals.filter((g) => g.layer === "core"),
         [
@@ -441,7 +493,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               control: innate["control"] ?? 0.5,
               strengthIsWorth: mind.schemas["strength_is_worth"]?.strength ?? 0,
             },
-          ),
+          ).filter((goal) => !completedIds.has(goal.id)),
         ],
       );
       // Derivar exclusivamente desde el núcleo evita que las capas se alimenten a sí mismas.
@@ -532,9 +584,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : goals;
       const { born, ended } = goalChanges(prevGoals, storedGoals);
       const goalEvents = [
-        ...born.map((g) => ({ g, what: "born" as const })),
-        ...ended.map((g) => ({ g, what: "ended" as const })),
-      ].map(({ g, what }) => ({
+        ...born.map((g) => ({
+          g,
+          what: "born" as const,
+          completion: undefined as GoalCompletion | undefined,
+        })),
+        ...ended.map((g) => ({ g, what: "ended" as const, completion: completionById.get(g.id) })),
+      ].map(({ g, what, completion }) => ({
         kind: GOAL_EVENT,
         actors: [me],
         place: o.placeOf(truth, me),
@@ -542,6 +598,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           goal: g.id,
           layer: g.layer,
           what,
+          ...(completion ? { reason: "fulfilled" } : {}),
           weight: g.weight,
           ...(g.value === undefined ? {} : { value: g.value }),
           ...(g.target === undefined ? {} : { target: g.target }),
@@ -563,6 +620,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                 } as const,
               ]
             : []),
+          ...(completion ? [{ kind: "event", event: completion.cause } as const] : []),
           ...(what === "ended" ? [{ kind: "state", entity: me, key: "goals" } as const] : []),
         ],
       }));
@@ -574,6 +632,14 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             (g, i) => g.weight !== prevGoals[i]?.weight || g.parent !== prevGoals[i]?.parent,
           ))
           ? [setComponent(NPC_GOALS, me, { items: storedGoals })]
+          : [];
+      const completionChange =
+        completions.length > 0
+          ? [
+              setComponent(NPC_GOAL_COMPLETIONS, me, {
+                items: [...completionHistory, ...completions],
+              }),
+            ]
           : [];
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
       const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
@@ -903,7 +969,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             sanctionWeight(truth.get(RELIGIOUS_IDENTITY, me), villageReligion(truth), good).penalty,
         ),
       });
-      if (candidates.length === 0) return { changes: goalChange, events: goalEvents };
+      if (candidates.length === 0)
+        return { changes: [...goalChange, ...completionChange], events: goalEvents };
 
       const choice = decideByUtility(
         candidates,
@@ -912,7 +979,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         temper,
         ctx.rng.fork("decision", me, now),
       );
-      if (!choice) return { changes: goalChange, events: goalEvents };
+      if (!choice) return { changes: [...goalChange, ...completionChange], events: goalEvents };
       const c = choice.candidate;
       const decision: Decision = {
         at: now,
@@ -925,7 +992,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const prev = truth.get(NPC_DECISION, me);
       const changed = !prev || prev.verb !== c.verb || prev.target !== c.target;
       return {
-        changes: [setComponent(NPC_DECISION, me, decision), ...goalChange],
+        changes: [setComponent(NPC_DECISION, me, decision), ...goalChange, ...completionChange],
         events: [
           ...goalEvents,
           ...(changed

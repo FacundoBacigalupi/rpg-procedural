@@ -42,6 +42,7 @@ export function goalCompletionsFromBeliefs(
     if (goal.kind !== "avenge" || goal.target === undefined) continue;
     const death = believed(beliefs, goal.target, "alive");
     if (death?.value !== false) continue;
+    if (death.learnedAt > now || death.asOf > now) continue;
     if (beliefConfidenceAt(death, now) < GOAL_COMPLETION_MIN_CONFIDENCE) continue;
     const source = death.sources[death.sources.length - 1];
     const cited = source?.kind === "percept" ? source.event : undefined;

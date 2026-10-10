@@ -85,6 +85,10 @@ describe("sim.mind.goal-progress", () => {
     expect(goalCompletionsFromBeliefs([goal], beliefs(false, 0.59, deathEvent), now)).toEqual([]);
     const later = (now + 14 * 86_400) as Tick;
     expect(goalCompletionsFromBeliefs([goal], beliefs(false, 0.9, deathEvent), later)).toEqual([]);
+    const future: Beliefs = {
+      items: [{ ...belief(false, 0.99, deathEvent), asOf: later }],
+    };
+    expect(goalCompletionsFromBeliefs([goal], future, now)).toEqual([]);
     expect(
       goalCompletionsFromBeliefs([goal], beliefs(false, 0.9, "event:00" as EventId), now),
     ).toEqual([]);

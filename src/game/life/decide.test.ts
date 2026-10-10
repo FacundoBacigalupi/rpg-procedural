@@ -11,6 +11,7 @@ import {
 import {
   ACTIONS,
   ActionCatalog,
+  BELIEFS,
   BODY_PLANS,
   BODY_STATE,
   type BodyPlanDef,
@@ -41,6 +42,7 @@ import {
   decideProcess,
   GOAL_EVENT,
   NPC_DECISION,
+  NPC_GOAL_COMPLETIONS,
   NPC_GOALS,
 } from "./decide.ts";
 import { COMMITMENTS } from "./loans.ts";
@@ -141,7 +143,7 @@ function layeredWorld() {
 
 function applyGoals(truth: WorldTruth, out: ProcessResult) {
   for (const change of out.changes ?? []) {
-    if (change.op === "set" && change.table === NPC_GOALS.name)
+    if (change.op === "set" && [NPC_GOALS.name, NPC_GOAL_COMPLETIONS.name].includes(change.table))
       truth.setRaw(change.table, change.id, change.value);
   }
 }
@@ -484,6 +486,56 @@ describe("life.decide", () => {
     const p = decideProcess(opts);
     expect(p.phase).toBe("decide");
     expect(p.writes).toEqual([NPC_DECISION.name, NPC_GOALS.name]);
+    expect(p.reads).not.toContain(NPC_GOAL_COMPLETIONS.name);
+    const enabled = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    expect(enabled.reads).toContain(NPC_GOAL_COMPLETIONS.name);
+    expect(enabled.writes).toContain(NPC_GOAL_COMPLETIONS.name);
+  });
+
+  it("cierra una venganza por creencia propia, cita ambas causas y no la regenera", () => {
+    const truth = layeredWorld();
+    const target = "agent:2" as AgentId;
+    const goal = {
+      id: "core:avenge:agent:2",
+      layer: "core",
+      kind: "avenge",
+      target,
+      weight: 0.7,
+      originEventId: "event:8" as EventId,
+      since: 800,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    truth.set(BELIEFS, A, {
+      items: [
+        {
+          prop: { kind: "attr", subject: target, attr: "alive" },
+          value: false,
+          confidence: 0.95,
+          asOf: 900,
+          learnedAt: 900,
+          measured: 900,
+          salience: 0.9,
+          sources: [{ kind: "percept", percept: "death", tick: 900, event: "event:9" as EventId }],
+        },
+      ],
+    } as never);
+    const process = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    expect(
+      decideProcess({ ...opts, recognizeGoalCompletion: false }).run(ctx(truth, A, 1000)),
+    ).toEqual(decideProcess(opts).run(ctx(truth, A, 1000)));
+    const first = process.run(ctx(truth, A, 1000));
+    const end = first.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === goal.id);
+    expect(end?.data).toMatchObject({ what: "ended", reason: "fulfilled" });
+    expect(end?.causes).toEqual([
+      { kind: "event", event: goal.originEventId },
+      { kind: "event", event: "event:9" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOALS, A)?.items.some((item) => item.id === goal.id)).toBe(false);
+    expect(process.run(ctx(truth, A, 1100)).events?.filter((e) => e.kind === GOAL_EVENT)).toEqual(
+      [],
+    );
   });
 
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {
