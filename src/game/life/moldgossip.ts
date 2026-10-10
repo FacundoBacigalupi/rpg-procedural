@@ -5,7 +5,7 @@
 // cada uno sabe de primera mano entra por `seeds` (quién vio qué precio o dónde hay qué): nada
 // aparece de la nada. Opt-in. Sin eventos todavía; constantes sin calibrar.
 
-import type { AgentId, CauseRef, EventId, PlaceRef, Tick } from "../../core/index.ts";
+import type { AgentId, CauseRef, EventId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
 import {
   type BondDef,
   baseFor,
@@ -31,6 +31,7 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
+import { TRADE_VIEW } from "./tradeview.ts";
 
 export const MOLD_GOSSIP_PROCESS = "life.gossip_molds";
 
@@ -85,7 +86,16 @@ export interface MoldGossipOptions {
    * (confianza `HEARD_CONFIDENCE`, un salto desde quien se lo dijo). Apagado por defecto.
    */
   readonly fromHeard?: boolean;
+  /**
+   * Opt-in: el oficio que cada uno vio de otros hogares (`TRADE_VIEW`) entra como rumor `attr`
+   * `trade` de primera mano (`about` = `household:<id>`), y al contarse puede confundirse con otro
+   * oficio que el que cuenta conoce. Apagado: no lee `TRADE_VIEW`.
+   */
+  readonly fromTradeView?: { readonly clock: PlanetClock };
 }
+
+/** Cómo se nombra el hogar en un rumor de oficio. */
+export const tradeAbout = (home: string): string => `household:${home}`;
 
 /** Cu�nto cree de entrada lo que le dijeron en una conversaci�n (sin calibrar). */
 export const HEARD_CONFIDENCE = 0.6;
@@ -126,6 +136,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       LOCATION.name,
       MOLD_RUMORS.name,
       ...(o.fromHeard ? [HEARD.name] : []),
+      ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
       ...(o.told ? [RELATIONS.name, MIND.name] : []),
     ],
     writes: [MOLD_RUMORS.name],
@@ -181,6 +192,35 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           }
         }
       }
+      if (o.fromTradeView) {
+        for (const id of truth.ids(PERSON).sort() as AgentId[]) {
+          const view = truth.get(TRADE_VIEW, id);
+          if (!view) continue;
+          for (const home of Object.keys(view.homes).sort()) {
+            const seen = view.homes[home];
+            if (!seen) continue;
+            const rumor: MoldRumor = {
+              mold: "attr",
+              about: tradeAbout(home),
+              attr: "trade",
+              value: seen.recipe,
+            };
+            const b = bookOf(id);
+            const at = seen.day * o.fromTradeView.clock.day;
+            const prev = b?.items.find((x) => moldKey(x.rumor) === moldKey(rumor));
+            if (prev && prev.heardAt >= at && prev.hops === 0) continue;
+            const rest: MoldBook | undefined = b && {
+              items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+              told: b.told,
+            };
+            books.set(
+              id,
+              keepMold(rest, { rumor, confidence: 1, hops: 0, heardAt: at, teller: null }),
+            );
+            dirty.add(id);
+          }
+        }
+      }
       const groups = new Map<string, AgentId[]>();
       for (const id of truth.ids(PERSON).sort() as AgentId[]) {
         if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
@@ -211,7 +251,21 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           );
           const out = distortMold(
             h.rumor,
-            { memory: 0.4 + 0.6 * h.confidence, drama: 0.5, hurry: 0, nearby },
+            {
+              memory: 0.4 + 0.6 * h.confidence,
+              drama: 0.5,
+              hurry: 0,
+              nearby,
+              ...(o.fromTradeView
+                ? {
+                    trades: mine.items.flatMap((x) =>
+                      x.rumor.mold === "attr" && x.rumor.attr === "trade"
+                        ? [String(x.rumor.value)]
+                        : [],
+                    ),
+                  }
+                : {}),
+            },
             rng.fork("distort"),
           );
           books.set(teller, {

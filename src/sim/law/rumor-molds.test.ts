@@ -63,3 +63,18 @@ describe("rumor molds", () => {
     expect(moldDistance(a, { ...a, about: "p2" })).toBe(1);
   });
 });
+
+describe("rumor de oficio", () => {
+  const trade = { mold: "attr", about: "household:h1", attr: "trade", value: "bake" } as const;
+  it("con memoria plena se cuenta tal cual; sin memoria se confunde solo con un oficio que conoce", () => {
+    expect(distortMold(trade, { ...calm, trades: ["weave"] }, rng(1)).rumor).toEqual(trade);
+    let drifted = 0;
+    for (let i = 0; i < 40; i++) {
+      const out = distortMold(trade, { ...wild, trades: ["weave", "bake"] }, rng(i));
+      expect(["bake", "weave"]).toContain(out.rumor.mold === "attr" ? out.rumor.value : "");
+      if (out.changes.includes("drifted")) drifted++;
+    }
+    expect(drifted).toBeGreaterThan(0);
+    expect(distortMold(trade, wild, rng(2)).rumor).toEqual(trade);
+  });
+});

@@ -26,7 +26,7 @@ export interface LocationRumor {
 }
 
 /**
- * «`about` tiene `attr` = `value`» (vive, murió, está en...): lo que se cuenta de una persona o cosa.
+ * ï¿½`about` tiene `attr` = `value`ï¿½ (vive, muriï¿½, estï¿½ en...): lo que se cuenta de una persona o cosa.
  * `about` es el id como texto (no es un lugar: no se corre ni se vuelve vago al contarlo).
  */
 export interface AttrRumor {
@@ -49,6 +49,8 @@ export interface MoldDistortContext {
   readonly hurry: number;
   /** Lugares cercanos que el que cuenta conoce (a donde se puede correr la ubicaciÃ³n). */
   readonly nearby: readonly PlaceRef[];
+  /** Otros oficios que el que cuenta conoce (a cuÃ¡l se puede confundir un `trade`); solo para `attr` de oficio. */
+  readonly trades?: readonly string[];
 }
 
 /** Redondeo a una cifra Â«de bocaÂ»: 2 cifras significativas, nunca menos de 1. */
@@ -72,9 +74,19 @@ export function distortMold(
   const r1 = rng.float();
   const r2 = rng.float();
   const changes: MoldDistortion[] = [];
-  // Un atributo se cuenta tal cual: la deformación de lo que cree sobre alguien es de la creencia,
-  // no del molde (los sorteos se consumen igual para no mover el rng de los demás).
-  if (r.mold === "attr") return { rumor: r, changes };
+  // Un atributo se cuenta tal cual: la deformaciï¿½n de lo que cree sobre alguien es de la creencia,
+  // no del molde (los sorteos se consumen igual para no mover el rng de los demï¿½s).
+  if (r.mold === "attr") {
+    // Un oficio se confunde con otro que conoce (nunca inventa uno); poca memoria y apuro, mÃ¡s.
+    if (r.attr === "trade" && typeof r.value === "string") {
+      const pool = (ctx.trades ?? []).filter((t) => t !== r.value);
+      if (pool.length > 0 && r2 < clamp01(0.3 * (1 - ctx.memory) + 0.2 * ctx.hurry)) {
+        const value = pool[Math.min(pool.length - 1, Math.floor(r1 * pool.length))] ?? r.value;
+        return { rumor: { ...r, value }, changes: ["drifted"] };
+      }
+    }
+    return { rumor: r, changes };
+  }
   if (r.mold === "price") {
     let amount = r.amount;
     if (r1 < clamp01(0.6 * (1 - ctx.memory) + 0.2 * ctx.hurry)) {
