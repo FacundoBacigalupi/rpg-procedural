@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { NO_DEFICIENCY } from "./nutrition.ts";
 import {
   cognitionFactor,
+  growthSensitivity,
   hasSequelae,
   heightFactor,
   MAX_STUNT,
   NO_SEQUELAE,
-  growthSensitivity,
   stepSequelae,
 } from "./stunting.ts";
 
