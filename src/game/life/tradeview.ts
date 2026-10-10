@@ -27,6 +27,8 @@ export interface SeenTrade {
 }
 export interface TradeView {
   readonly homes: Readonly<Record<string, SeenTrade>>;
+  /** Opt-in (`people`): lo que cree de una persona concreta (id de agente), por ejemplo un aprendiz. */
+  readonly people?: Readonly<Record<string, SeenTrade>>;
 }
 export const TRADE_VIEW = table<TradeView>("economy.trade_view");
 
@@ -42,6 +44,24 @@ export interface TradeViewOptions {
    * lo cierto y no se usa RNG.
    */
   readonly misread?: { readonly chance: number };
+  /**
+   * Opt-in: además del hogar anota la ocupación de cada persona vista de otro hogar. Un menor sin
+   * oficio en su casa que comparte hex con un adulto de otro hogar con oficio se cree aprendiz de
+   * ese maestro (`apprenticeOf`). Apagado: `people` no se toca.
+   */
+  readonly people?: boolean;
+}
+
+/**
+ * El oficio que se le cree a un menor visto (puro): el de su hogar si lo tiene; si no, el del
+ * maestro presente (primer oficio de otro hogar); sin ninguno, nada.
+ */
+export function apprenticeOf(
+  homeTrade: string | undefined,
+  mastersHere: readonly (string | undefined)[],
+): string | undefined {
+  if (homeTrade !== undefined) return homeTrade;
+  return mastersHere.find((t) => t !== undefined);
 }
 
 /**
@@ -92,7 +112,7 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
     run(ctx) {
       const truth = ctx.truth;
       const today = Math.floor(ctx.now / o.clock.day);
-      const byHex = new Map<number, { id: AgentId; home: string | undefined }[]>();
+      const byHex = new Map<number, { id: AgentId; home: string | undefined; minor: boolean }[]>();
       const adults = new Map<string, number>();
       for (const id of [...truth.ids(PERSON)].sort() as AgentId[]) {
         const p = truth.get(PERSON, id);
@@ -102,7 +122,7 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
         const at = truth.get(LOCATION, id);
         if (!at) continue;
         const list = byHex.get(at.hex) ?? [];
-        list.push({ id, home: p.household });
+        list.push({ id, home: p.household, minor: (ctx.now - p.born) / o.clock.year < WORK_AGE });
         byHex.set(at.hex, list);
       }
       const tradeOf = new Map(
@@ -137,6 +157,21 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
               );
             }
             book = noticeTrade(book, home, seen, today);
+          }
+          if (o.people) {
+            for (const other of here) {
+              if (other.home === undefined || other.home === watcher.home) continue;
+              const masters = homesHere
+                .filter((h) => h !== other.home && h !== watcher.home)
+                .map((h) => tradeOf.get(h));
+              const real = other.minor
+                ? apprenticeOf(tradeOf.get(other.home), masters)
+                : tradeOf.get(other.home);
+              const people = { ...(book?.people ?? {}) };
+              if (real !== undefined) people[other.id] = { recipe: real, day: today };
+              else delete people[other.id];
+              book = { homes: book?.homes ?? {}, people };
+            }
           }
           if (book === before) continue;
           changes.push(

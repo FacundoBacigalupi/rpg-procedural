@@ -158,7 +158,13 @@ import {
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
-import { acuteOf, type ConsumableDef, consumeDose, cueContextOf } from "./substances.ts";
+import {
+  acuteOf,
+  type ConsumableDef,
+  consumeDose,
+  cueContextOf,
+  scaledDose,
+} from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
@@ -246,6 +252,11 @@ export interface ActOptions {
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /**
+   * Opt-in: lo que se bebe lleva una sustancia (té, tisana; `drink` no tiene bien): cada sorbo
+   * suma `amount` por litro (`ConsumableDef.amount` = por litro) vía `consumeDose`. Apagado: beber no cambia.
+   */
+  readonly drinkSubstance?: ConsumableDef;
   /**
    * Opt-in: el verbo `boil` quema `grams` de la unidad `fuel` del ledger (de lo que lleva o de la
    * despensa) y deja agua tratada (`TREATED_WATER`) que dura `validDays` días. Apagado, `boil`
@@ -727,7 +738,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       const dose = consumeDose(
         truth,
         me,
-        { ...laced, amount: laced.amount * eff.grams },
+        scaledDose(laced, eff.grams),
         ctx,
         input.place,
         r.events.length,
@@ -744,6 +755,21 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     nextBody =
       net >= 0 ? ingest(bodyPlan, nextBody, 0, net) : { ...nextBody, water: nextBody.water - net };
     bodyTouched = true;
+    if (o.drinkSubstance && eff.liters > 0) {
+      const dose = consumeDose(
+        truth,
+        me,
+        scaledDose(o.drinkSubstance, eff.liters),
+        ctx,
+        input.place,
+        r.events.length,
+        o.cravingCues
+          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
+          : undefined,
+      );
+      changes.push(...dose.changes);
+      doseEvents.push(...dose.events);
+    }
   } else if (eff.kind === "boil" && eff.fuel !== null && eff.grams > 0 && o.boil) {
     changes.push(
       setComponent(TREATED_WATER, me, {

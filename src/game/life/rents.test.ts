@@ -97,6 +97,30 @@ describe("life.rents", () => {
     return r;
   };
 
+  it("el mercado arma ofertas y buscadores desde el estado y abre el arriendo", () => {
+    const { truth, ledger } = setup(100);
+    truth.set(
+      PARCEL,
+      "parcel:1" as never,
+      {
+        landUse: "field",
+        rights: [{ holder: "owner", incidents: ["alienate", "use"], tenure: "freehold" }],
+        possession: "owner",
+      } as unknown as Parcel,
+    );
+    const proc = rentsProcess({
+      clock,
+      goods,
+      seeds: [],
+      market: { everyDays: 5, good: "copper", askPerDay: 3, termDays: 10 },
+      placeOf: () => ({ kind: "cell" }) as never,
+    });
+    expect(proc.run(ctxOf(truth, ledger, 3))).toEqual({});
+    const r = proc.run(ctxOf(truth, ledger, 5));
+    expect(r.events?.map((e) => e.kind)).toEqual(["property.leased"]);
+    expect(r.events?.[0]?.data).toMatchObject({ parcel: "parcel:1", perDay: 3 });
+  });
+
   it("sin semillas no hace nada", () => {
     const { truth, ledger } = setup(100);
     expect(make([]).run(ctxOf(truth, ledger, 5))).toEqual({});

@@ -98,7 +98,12 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
-import { type RentSeed, rentsProcess, sharecropHarvestProcess } from "./rents.ts";
+import {
+  type RentMarketOptions,
+  type RentSeed,
+  rentsProcess,
+  sharecropHarvestProcess,
+} from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -240,6 +245,8 @@ export interface LifeWorld {
   readonly consumables?: readonly ConsumableDef[];
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
+  readonly drinkSubstance?: ConsumableDef;
   /**
    * Opt-in: el verbo `boil` (body-health §5) quema combustible del ledger (declarar el sumidero
    * `burned` con esa unidad) y deja agua tratada que `waterSources` aplica al beber. Apagado por
@@ -291,6 +298,8 @@ export interface LifeWorld {
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
+  /** Opt-in: cada tanto arma ofertas y buscadores de arriendo desde el estado (`rentMarketFromState` + `matchRents`). */
+  readonly rentMarket?: RentMarketOptions;
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
   readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`, tabla `MIGRATIONS`); solo la decisión, no mueve a nadie. Apagado por defecto. */
@@ -410,6 +419,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.filter ? { filter: parts.filter } : {}),
           ...(parts.waterSources?.netDrink === true
@@ -607,15 +617,16 @@ export function lifeWorld(
               }
             : {}),
         }),
-        ...(parts.rentSeeds && parts.rentSeeds.length > 0
+        ...((parts.rentSeeds && parts.rentSeeds.length > 0) || parts.rentMarket
           ? [
               rentsProcess({
                 clock: parts.clock,
                 goods: parts.goods,
-                seeds: parts.rentSeeds,
+                seeds: parts.rentSeeds ?? [],
+                ...(parts.rentMarket ? { market: parts.rentMarket } : {}),
                 placeOf: placeOf(parts, village),
               }),
-              ...(parts.rentSeeds.some((r) => r.kind === "sharecrop")
+              ...(parts.rentSeeds?.some((r) => r.kind === "sharecrop")
                 ? [sharecropHarvestProcess({ placeOf: placeOf(parts, village) })]
                 : []),
             ]
@@ -860,6 +871,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  adulterate,
   believedQuality,
   claimedQuality,
   discoveryChance,
+  fillerFor,
+  fillerNoticeChance,
   inflateFor,
   isScam,
   scamAftermath,
@@ -46,5 +49,23 @@ describe("política de estafa", () => {
     expect(trustFromRelation({})).toBe(0.5);
     expect(trustFromRelation({ trust: 0.8, affection: 0.5 })).toBeGreaterThan(0.5);
     expect(trustFromRelation({ trust: -0.5, resentment: 0.8 })).toBeLessThan(0.3);
+  });
+});
+
+describe("mezclar como estafa", () => {
+  it("el relleno conserva la masa y baja la calidad", () => {
+    const a = adulterate(1000, 0.8, 250);
+    expect(a.grams).toBe(1250);
+    expect(a.quality).toBeCloseTo(0.64, 10);
+    expect(a.fillerFraction).toBeCloseTo(0.2, 10);
+    expect(adulterate(0, 0.5, 0).fillerFraction).toBe(0);
+  });
+
+  it("el honesto no rellena; el tope es 30% y el ojo nota más", () => {
+    expect(fillerFor(1000, 0)).toBe(0);
+    const g = fillerFor(1000, 0.4);
+    expect(adulterate(1000, 0.8, g).fillerFraction).toBeCloseTo(0.3, 10);
+    expect(fillerNoticeChance(0.2, 1)).toBeGreaterThan(fillerNoticeChance(0.2, 0));
+    expect(fillerNoticeChance(0, 1)).toBe(0);
   });
 });

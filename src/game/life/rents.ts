@@ -26,6 +26,7 @@ import {
   type EventDraft,
   type GoodDef,
   goodUnit,
+  ownerOf,
   PARCEL,
   type Parcel,
   PERSON,
@@ -108,6 +109,22 @@ export interface RentsOptions {
   /** Días seguidos de mora tras los que el dueño desaloja (default 30). */
   readonly evictAfterDays?: number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: cada `everyDays` días arma ofertas y buscadores desde el estado y los pasa a `matchRents`. */
+  readonly market?: RentMarketOptions;
+}
+
+export interface RentMarketOptions {
+  readonly everyDays: number;
+  /** Moneda del canon (bien de `goods`). */
+  readonly good: string;
+  /** Canon fijo por día que piden los dueños (sin productividad ni regateo todavía). */
+  readonly askPerDay: number;
+  readonly termDays: number;
+  readonly coverDays?: number;
+  /** Tope de lo que un hogar paga por día, como fracción de sus fondos (default 0,1). */
+  readonly maxShareOfFunds?: number;
+  /** Usos de suelo que se ofrecen (default solo campos). */
+  readonly landUses?: readonly string[];
 }
 
 const acct = (home: string): LedgerAccount => holderAccount(home as unknown as HolderRef);
@@ -205,6 +222,62 @@ export function matchRents(
   return out;
 }
 
+/**
+ * Ofertas y buscadores desde el estado (puro, sin RNG): oferta toda parcela de uso permitido con
+ * dueño hogar, sin arriendo vigente y sin nadie más ocupándola; busca todo hogar vivo sin parcela
+ * propia ni arriendo vigente, con fondos en la moneda del canon.
+ */
+export function rentMarketFromState(
+  truth: ReadonlyWorldTruth,
+  balanceOf: (home: string) => number,
+  m: RentMarketOptions,
+): { offers: RentOffer[]; seekers: RentSeeker[] } {
+  const uses = m.landUses ?? ["field"];
+  const rented = new Set<string>();
+  const tenants = new Set<string>();
+  for (const { rent } of rentRows(truth)) {
+    if (rent.status !== "active") continue;
+    rented.add(rent.parcel);
+    tenants.add(rent.tenant);
+  }
+  const owners = new Set<string>();
+  const offers: RentOffer[] = [];
+  for (const id of [...truth.ids(PARCEL)].sort()) {
+    const p = truth.get(PARCEL, id);
+    if (!p) continue;
+    const owner = ownerOf(p) as unknown as string | null;
+    if (!owner) continue;
+    owners.add(owner);
+    for (const r of p.rights) owners.add(r.holder as unknown as string);
+    if (!uses.includes(p.landUse) || rented.has(id as string)) continue;
+    const occ = p.possession as unknown as string | null;
+    if (occ && occ !== owner) continue;
+    offers.push({
+      landlord: owner,
+      parcel: id as string,
+      good: m.good,
+      askPerDay: m.askPerDay,
+      termDays: m.termDays,
+    });
+  }
+  const homes = new Set<string>();
+  for (const id of [...truth.ids(PERSON)].sort()) {
+    const h = truth.get(PERSON, id)?.household;
+    if (h && truth.get(ENTITY, id)?.endedAt === undefined) homes.add(h as string);
+  }
+  const seekers: RentSeeker[] = [];
+  for (const h of [...homes].sort()) {
+    if (owners.has(h) || tenants.has(h)) continue;
+    const funds = balanceOf(h);
+    seekers.push({
+      tenant: h,
+      funds,
+      maxPerDay: Math.floor(funds * (m.maxShareOfFunds ?? 0.1)),
+    });
+  }
+  return { offers, seekers };
+}
+
 function leaseCommitment(
   id: string,
   s: RentSeed,
@@ -256,8 +329,22 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
     writes: [RENTS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
-      if (!ledger || o.seeds.length === 0) return {};
+      if (!ledger || (o.seeds.length === 0 && !o.market)) return {};
       const today = Math.floor(ctx.now / o.clock.day);
+      let seeds: readonly RentSeed[] = o.seeds;
+      const mk = o.market;
+      if (mk && mk.everyDays > 0 && today % mk.everyDays === 0) {
+        const def = goodDef.get(mk.good);
+        const u = def ? ledgerUnit(goodUnit(def) as string) : undefined;
+        if (u) {
+          const { offers, seekers } = rentMarketFromState(
+            ctx.truth,
+            (h) => Math.floor(ledger.balance(acct(h), u) ?? 0),
+            mk,
+          );
+          seeds = [...seeds, ...matchRents(offers, seekers, today, mk.coverDays)];
+        }
+      }
       const firstAlive = (home: string): AgentId | undefined => {
         for (const id of [...ctx.truth.ids(PERSON)].sort()) {
           if (ctx.truth.get(PERSON, id)?.household !== home) continue;
@@ -272,7 +359,7 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
       const known = new Set(rows.map((r) => r.rent.seed));
 
       // Abrir: las semillas cuyo día llegó, con parcela existente y ambos hogares vivos.
-      for (const s of [...o.seeds].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+      for (const s of [...seeds].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
         if (known.has(s.id) || s.startDay > today) continue;
         const def = goodDef.get(s.good);
         const landMan = firstAlive(s.landlord);
