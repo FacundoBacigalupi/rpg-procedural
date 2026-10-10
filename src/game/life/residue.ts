@@ -5,11 +5,22 @@
 // muerte con causa. Opt-in: sin `residue` en las opciones no hay filas, ni RNG, ni eventos. La
 // eficiencia de cultivo (`cultivationEfficiencyOf`) la lee quien cultive.
 
-import type { AgentId, CauseRef, PlaceRef, PlanetClock } from "../../core/index.ts";
+import {
+  type AgentId,
+  type CauseRef,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  type LedgerConfig,
+  ledgerUnit,
+  type PlaceRef,
+  type PlanetClock,
+} from "../../core/index.ts";
 import {
   BODY_STATE,
   cultivationEfficiency,
   deviationRisk,
+  draftEvent,
   ENTITY,
   type EventDraft,
   NATURAL_PURGE,
@@ -17,6 +28,7 @@ import {
   type OverloadResult,
   overload,
   PERSON,
+  type PostingDraft,
   type ProcessDef,
   type PurgeMethod,
   RESIDUE,
@@ -26,6 +38,25 @@ import {
   splitByPurity,
   stepResidue,
 } from "../../sim/index.ts";
+
+/** Unidad de `Essence` del ledger (en milésimas: el residuo es un decimal, el ledger va en enteros). */
+export const ESSENCE_UNIT = "essence";
+export const ESSENCE_SCALE = 1000;
+/** Fuente: la `Essence` de lo ingerido que el cuerpo retiene como residuo. */
+export const ESSENCE_INTAKE = "essence-intake";
+/** Sumideros: el residuo purgado y lo que el desvío descarga (al entorno, no se pierde). */
+export const RESIDUE_PURGED = "residue-purged";
+export const DEVIATION_DISCHARGE = "deviation-discharge";
+
+/** Fuentes y sumideros de `Essence` que la vida declara cuando el residuo lleva ledger (opt-in). */
+export function residueExternals(cfg: ResidueConfig | undefined): LedgerConfig["externals"] {
+  if (!cfg?.ledger) return {};
+  return {
+    [ESSENCE_INTAKE]: [ESSENCE_UNIT],
+    [RESIDUE_PURGED]: [ESSENCE_UNIT],
+    [DEVIATION_DISCHARGE]: [ESSENCE_UNIT],
+  };
+}
 
 export const RESIDUE_PROCESS = "life.residue";
 
@@ -43,6 +74,12 @@ export interface ResidueConfig {
   readonly deviation?: boolean;
   /** Estabilidad del fundamento (0-1) de cada uno; por defecto 0,5. */
   readonly stabilityOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  /**
+   * Conservación: el residuo vive como `Essence` en la cuenta de quien lo carga (entra por la
+   * fuente `essence-intake` al ingerir; sale al sumidero `residue-purged` al purgar o morir y a
+   * `deviation-discharge` por el desvío). Apagado: el residuo es solo un número, sin asientos.
+   */
+  readonly ledger?: boolean;
 }
 
 export const residueBodyOf = (
@@ -66,6 +103,8 @@ export interface EssenceIntake {
   readonly events: EventDraft[];
   /** La sobrecarga (solo con `overload` encendido); quien llama aplica heridas o muerte. */
   readonly overload: OverloadResult | undefined;
+  /** Asientos de conservación (solo con `ledger`): la `Essence` retenida entra al cuerpo. */
+  readonly postings: PostingDraft[];
 }
 
 /**
@@ -82,11 +121,12 @@ export function takeEssence(
   place: PlaceRef,
   cause: CauseRef,
 ): EssenceIntake {
-  if (!(intake.essence > 0)) return { changes: [], events: [], overload: undefined };
+  if (!(intake.essence > 0)) return { changes: [], events: [], overload: undefined, postings: [] };
   const split = splitByPurity(intake.essence, intake.purity ?? 1);
   const body = residueBodyOf(cfg, truth, who);
   const changes: StateChange[] = [];
   const events: EventDraft[] = [];
+  const postings: PostingDraft[] = [];
   let res: OverloadResult | undefined;
   if (cfg.overload === true) {
     res = overload(body, split.useful);
@@ -101,6 +141,20 @@ export function takeEssence(
         at: now,
       }),
     );
+    const milli = Math.round(split.residue * ESSENCE_SCALE);
+    if (cfg.ledger === true && milli > 0 && cause.kind === "event") {
+      postings.push({
+        event: cause.event,
+        transfers: [
+          {
+            unit: ledgerUnit(ESSENCE_UNIT),
+            from: externalAccount(ESSENCE_INTAKE),
+            to: holderAccount(who as unknown as HolderRef),
+            amount: milli,
+          },
+        ],
+      });
+    }
   }
   if (res) {
     events.push({
@@ -121,7 +175,7 @@ export function takeEssence(
       causes: [cause],
     });
   }
-  return { changes, events, overload: res };
+  return { changes, events, overload: res, postings };
 }
 
 export interface ResidueProcessOptions extends ResidueConfig {
@@ -146,6 +200,61 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const essence = ledgerUnit(ESSENCE_UNIT);
+      // Lleva la cuenta del cuerpo a `target` milésimas: lo que sobra va al sumidero con su evento.
+      const settle = (
+        who: AgentId,
+        target: number,
+        discharged: number,
+        reason: "purge" | "death",
+        at: number,
+        day: number,
+        deviationEvent: number | undefined,
+      ) => {
+        if (o.ledger !== true || !ctx.ledger) return;
+        const account = holderAccount(who as unknown as HolderRef);
+        const diff = ctx.ledger.balance(account, essence) - target;
+        if (diff <= 0) return;
+        const dev = Math.min(diff, Math.round(discharged * ESSENCE_SCALE));
+        const purged = diff - dev;
+        if (dev > 0 && deviationEvent !== undefined) {
+          postings.push({
+            event: draftEvent(deviationEvent),
+            transfers: [
+              {
+                unit: essence,
+                from: account,
+                to: externalAccount(DEVIATION_DISCHARGE),
+                amount: dev,
+              },
+            ],
+          });
+        }
+        const rest = deviationEvent === undefined ? diff : purged;
+        if (rest > 0) {
+          const k = events.length;
+          events.push({
+            kind: "body.purged",
+            actors: [who],
+            place: o.placeOf(ctx.truth, who),
+            data: { amount: rest / ESSENCE_SCALE, reason, day, at },
+            emissions: {},
+            causes: [{ kind: "state", entity: who, key: "body.residue" }],
+          });
+          postings.push({
+            event: draftEvent(k),
+            transfers: [
+              {
+                unit: essence,
+                from: account,
+                to: externalAccount(RESIDUE_PURGED),
+                amount: rest,
+              },
+            ],
+          });
+        }
+      };
       const days = Math.max(1, Math.min(MAX_DAYS, Math.round(ctx.window / o.clock.day)));
       const today = Math.floor(ctx.now / o.clock.day);
       for (const id of ctx.truth.ids(RESIDUE)) {
@@ -155,6 +264,7 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
         if (!had) continue;
         if (!base || base.endedAt !== undefined || body?.death) {
           changes.push({ op: "delete", table: RESIDUE.name, id });
+          settle(id as AgentId, 0, 0, "death", ctx.now, today, undefined);
           continue;
         }
         const who = id as AgentId;
@@ -162,6 +272,8 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
         let load = had.load;
         let deviations = had.deviations ?? 0;
         let lastDeviation = had.lastDeviation;
+        let discharged = 0;
+        let firstDeviation: number | undefined;
         for (let d = 0; d < days; d++) {
           load = stepResidue(load, 1, capacity, method).load;
           if (o.deviation !== true) continue;
@@ -169,6 +281,7 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
           if (risk <= 0) continue;
           const day = today - (days - 1 - d);
           if (ctx.rng.fork("residue", id as unknown as number, day).float() < risk) {
+            if (firstDeviation === undefined) firstDeviation = events.length;
             events.push({
               kind: "cultivation.deviation",
               actors: [who],
@@ -180,9 +293,19 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
             deviations += 1;
             lastDeviation = ctx.now;
             // El desvío descarga la mitad de lo retenido (sin cablear el destino de esa Essence).
+            discharged += load / 2;
             load /= 2;
           }
         }
+        settle(
+          who,
+          load > MIN_LOAD ? Math.round(load * ESSENCE_SCALE) : 0,
+          discharged,
+          "purge",
+          ctx.now,
+          today,
+          firstDeviation,
+        );
         if (load > MIN_LOAD) {
           if (load !== had.load || deviations !== (had.deviations ?? 0)) {
             changes.push(
@@ -196,7 +319,9 @@ export function residueProcess(o: ResidueProcessOptions): ProcessDef {
           }
         } else changes.push({ op: "delete", table: RESIDUE.name, id });
       }
-      return changes.length > 0 || events.length > 0 ? { changes, events } : {};
+      return changes.length > 0 || events.length > 0
+        ? { changes, events, ...(postings.length > 0 ? { postings } : {}) }
+        : {};
     },
   };
 }

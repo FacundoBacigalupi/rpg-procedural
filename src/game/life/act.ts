@@ -65,6 +65,7 @@ import {
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
+  LOT_ESSENCE,
   LOT_QUALITY,
   type LocalMap,
   learnFromAttempt,
@@ -93,6 +94,7 @@ import {
   type ProcessDef,
   type ProcessResult,
   type Purpose,
+  pillOf,
   placeAt,
   placeRefOf,
   qualityPriceFactor,
@@ -105,6 +107,7 @@ import {
   type ResolveInput,
   RUMORS,
   rankOf,
+  receiveEssenceLot,
   receiveLot,
   recordDeal,
   recordScamDeal,
@@ -428,10 +431,11 @@ export function actProcess(o: ActOptions): ProcessDef {
       AMPUTATIONS.name,
       TREATED_WATER.name,
       ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name, SCAM_DEALS.name] : []),
+      ...(o.residue ? [LOT_ESSENCE.name] : []),
     ],
     writes: [
       ...(o.scam ? [SCAM_DEALS.name] : []),
-      ...(o.residue ? [RESIDUE.name] : []),
+      ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
       SALE_RECEIPTS.name,
@@ -850,6 +854,18 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       bodyTouched = bodyTouched || eff.target === me;
     }
   }
+  const intakePostings: PostingDraft[] = [];
+  if (o.residue && eff.kind === "eat" && eff.good !== null && eff.grams > 0) {
+    // Lo preparado por alquimia lleva su propia esencia y pureza (por gramo): pisa lo del contenido.
+    const lot = truth.get(LOT_ESSENCE, me)?.[eff.good];
+    if (lot) {
+      essence = {
+        essence: lot.essence * eff.grams,
+        purity: lot.purity,
+        good: eff.good.replace(/^good:/, ""),
+      };
+    }
+  }
   if (o.residue && essence) {
     // Pureza y sobrecarga de lo ingerido con `Essence`: residuo en `RESIDUE`, heridas o muerte.
     const k = r.events.length + doseEvents.length;
@@ -858,6 +874,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       event: draftEvent(0),
     });
     changes.push(...take.changes);
+    intakePostings.push(...take.postings);
     doseEvents.push(...take.events);
     const ov = take.overload;
     if (ov && ov.stage === "fatal") {
@@ -1232,6 +1249,31 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     );
   }
 
+  // La alquimia escribe la esencia y la pureza en lo que produjo (opt-in, `pill` de la receta).
+  if (o.residue && eff.kind === "cook" && eff.good !== null && eff.grams > 0 && eff.from !== null) {
+    const recipe = o.recipes?.find((rc) => GOOD(rc.output.good) === eff.good);
+    const made = pillOf(recipe?.pill, eff.quality);
+    if (made) {
+      const held = (ctx.ledger?.holdings(holderAccount(eff.from as HolderRef)) ?? [])
+        .filter((r2) => r2.unit === eff.good)
+        .reduce((sum, r2) => sum + r2.amount, 0);
+      changes.push(
+        setComponent(
+          LOT_ESSENCE,
+          me,
+          receiveEssenceLot(
+            truth.get(LOT_ESSENCE, me),
+            eff.good as string,
+            held,
+            eff.grams,
+            made.essence,
+            made.purity,
+          ),
+        ),
+      );
+    }
+  }
+
   // Un maestro de la casa que vio la tanda le señala lo que notó y el cocinero lo incorpora (crafts §11).
   if (eff.kind === "cook" && eff.defects && eff.defects.length > 0) {
     const fix = masterCorrects({
@@ -1326,7 +1368,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...extraEvents,
     ],
     changes,
-    postings: fillerPostings.length === 0 ? r.postings : [...r.postings, ...fillerPostings],
+    postings:
+      fillerPostings.length + intakePostings.length === 0
+        ? r.postings
+        : [...r.postings, ...fillerPostings, ...intakePostings],
     schedule: [
       {
         at: end,

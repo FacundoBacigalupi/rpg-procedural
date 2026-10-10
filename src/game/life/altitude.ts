@@ -21,6 +21,7 @@ import {
   type StateChange,
   setComponent,
   stepAcclimatization,
+  TRAVEL_CELL,
 } from "../../sim/index.ts";
 
 export const ALTITUDE_PROCESS = "life.altitude";
@@ -139,4 +140,13 @@ export function travelAltitudeOf(
     const cell = travel.cellOf(truth, who);
     return cell === undefined ? local(truth, who) : Math.max(0, travel.elevationM(cell));
   };
+}
+
+/**
+ * `TravelAltitude` desde la tabla `TRAVEL_CELL`: la celda de quien viaja sale de su fila (sin fila,
+ * está en el parche). El `baseM` térmico no cambia: el aire del parche es la referencia y la
+ * altitud de la celda recorrida enfría respecto de ella (`altitudeEnv`).
+ */
+export function travelCellAltitude(elevationM: (cell: number) => number): TravelAltitude {
+  return { cellOf: (truth, who) => truth.get(TRAVEL_CELL, who)?.cell, elevationM };
 }

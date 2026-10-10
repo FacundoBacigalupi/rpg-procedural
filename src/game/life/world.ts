@@ -87,7 +87,7 @@ import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
-import { markExposureProcess } from "./markexposure.ts";
+import { clearedRenown, MARK_CLEARED, markExposureProcess } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
@@ -104,7 +104,14 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
-import { type PawnLots, type PawnOpenOptions, pawnOpenProcess, pawnProcess } from "./pawn.ts";
+import {
+  type PawnLots,
+  type PawnOpenOptions,
+  type PawnWantOptions,
+  pawnOpenProcess,
+  pawnProcess,
+} from "./pawn.ts";
+import { pawnDecideProcess } from "./pawndecide.ts";
 import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
@@ -318,6 +325,8 @@ export interface LifeWorld {
   readonly marksExpose?: boolean;
   /** Opt-in (con `marks` y `marksExpose`): rumor `fraud` sobre el falsificador y reparación del marcador copiado (`life.mark_exposure`). */
   readonly marksGossip?: boolean;
+  /** Opt-in (con `marksGossip`): el rumor `fraud` también llega, con chance y más flojo, a gente de otros lugares. */
+  readonly marksReach?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -329,6 +338,8 @@ export interface LifeWorld {
     readonly unit: string;
     readonly lots: PawnLots;
     readonly open?: PawnOpenOptions;
+    /** Opt-in (con `open` y `moldHints`): el NPC en apuro empeña por decisión (`decide` `pawnWant` + `life.pawn_decide`). */
+    readonly want?: PawnWantOptions;
   };
   /** Opt-in: el verbo `hire` se ejecuta (`life.hire`): jornal por `skillWageOf` y lo que el oficial cree, pago por ledger, trabajo hecho o servidumbre por jornal; apagado por defecto. */
   /** Opt-in: el fiado por hambre (`life.borrow`) baja el limite segun lo que el vecino CREE del apuro del hogar que pide. */
@@ -588,6 +599,16 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.pawn?.open && parts.pawn.want
+          ? [
+              pawnDecideProcess({
+                goods: parts.goods,
+                day: parts.clock.day,
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ...(parts.hire
           ? [
               hireProcess({
@@ -605,11 +626,19 @@ export function lifeWorld(
                 eye: scamEyeOf(parts.traits),
                 skill: forgeSkillOf(parts.traits),
                 ...(parts.marksExpose === true ? { exposeForgery: true } : {}),
+                ...(parts.marksExpose === true && parts.marksGossip === true
+                  ? { renown: clearedRenown, renownReads: [MARK_CLEARED.name] }
+                  : {}),
               }),
             ]
           : []),
         ...(parts.marks === true && parts.marksExpose === true && parts.marksGossip === true
-          ? [markExposureProcess({ placeOf: placeOf(parts, village) })]
+          ? [
+              markExposureProcess({
+                placeOf: placeOf(parts, village),
+                ...(parts.marksReach === true ? { reach: true } : {}),
+              }),
+            ]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
@@ -1112,6 +1141,7 @@ export function lifeWorld(
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
+          ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),

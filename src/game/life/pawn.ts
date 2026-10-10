@@ -6,15 +6,25 @@
 // abren con `openPawn`/`pawnTransfers` (sim/contracts). Opt-in (`LifeParts.pawn`): apagado no hay
 // filas, RNG ni eventos.
 
-import type { AgentId, EntityRef, HolderRef, LedgerAccount, PlaceRef } from "../../core/index.ts";
+import type {
+  AgentId,
+  EntityRef,
+  HolderRef,
+  LedgerAccount,
+  PlaceRef,
+  Rng,
+} from "../../core/index.ts";
 import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   type Commitment,
+  clampTemper,
   commitmentOwed,
   draftEvent,
   ENTITY,
   type EventDraft,
   forfeitPawn,
+  INNATE,
+  type MoldRumor,
   openPawn,
   PAWN_KIND,
   PERSON,
@@ -25,6 +35,8 @@ import {
   redeemPawn,
   type StateChange,
   setComponent,
+  standardize,
+  type Trait,
 } from "../../sim/index.ts";
 import { COMMITMENTS } from "./loans.ts";
 
@@ -56,7 +68,14 @@ export interface PawnOpenOptions {
     broker: AgentId,
     unit: string,
     amount: number,
+    /** Tirada con clave (prestamista y evento): de acá sale el error de tasación. */
+    rng: Rng,
   ) => number;
+  /** Plazos del prestamista por su carácter (pisan `advance`/`rate`); ver `pawnTermsByTemper`. */
+  readonly terms?: (
+    truth: ReadonlyWorldTruth,
+    broker: AgentId,
+  ) => { readonly advance?: number; readonly rate?: number };
 }
 
 /** Lotes del ledger por `ref` de prenda: unidad y cantidad. */
@@ -204,7 +223,7 @@ export function pawnOpenProcess(o: {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name],
+    reads: [PERSON.name, ENTITY.name, ...(o.open.terms ? [INNATE.name] : [])],
     writes: [COMMITMENTS.name, ENTITY.name],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -236,8 +255,11 @@ export function pawnOpenProcess(o: {
         const place = o.placeOf();
         const causes = [{ kind: "event" as const, event: e.id }];
         const value = o.open.appraise
-          ? o.open.appraise(truth, broker, unit, grams)
+          ? o.open.appraise(truth, broker, unit, grams, ctx.rng.fork("pawnAppraise", broker, e.id))
           : grams * (o.open.prices?.[unit] ?? (unit === o.unit ? 1 : 0));
+        const terms = o.open.terms?.(truth, broker);
+        const advance = terms?.advance ?? o.open.advance;
+        const rate = terms?.rate ?? o.open.rate;
         const id = ctx.newId("commitment") as string;
         const k = events.length;
         const opened = openPawn({
@@ -249,8 +271,8 @@ export function pawnOpenProcess(o: {
           believedValue: value,
           day: today,
           originEventId: draftEvent(k) as unknown as string,
-          ...(o.open.advance !== undefined ? { advance: o.open.advance } : {}),
-          ...(o.open.rate !== undefined ? { rate: o.open.rate } : {}),
+          ...(advance !== undefined ? { advance } : {}),
+          ...(rate !== undefined ? { rate } : {}),
           ...(o.open.termDays !== undefined ? { termDays: o.open.termDays } : {}),
         });
         const free = Math.floor(
@@ -319,4 +341,145 @@ export function pawnOpenProcess(o: {
       return events.length === 0 ? {} : { events, postings, changes };
     },
   };
+}
+
+const unit01 = (x: number) => Math.min(1, Math.max(0, x));
+const r6 = (x: number) => Math.round(x * 1e6) / 1e6;
+
+/**
+ * Plazos del prestamista por su carácter (puro): la calidez adelanta más y cobra menos; el control
+ * y la audacia adelantan menos y cobran más. Sin temperamento, los plazos de `base`.
+ */
+export function pawnTermsByTemper(
+  traits: readonly Trait[],
+  base: { readonly advance: number; readonly rate: number } = { advance: 0.5, rate: 0.1 },
+) {
+  return (truth: ReadonlyWorldTruth, broker: AgentId) => {
+    const innate = truth.get(INNATE, broker);
+    if (!innate) return base;
+    const z = standardize(innate, traits, truth.get(PERSON, broker)?.sex ?? "female");
+    const warm = clampTemper(z["warmth"] ?? 0);
+    const hard = (clampTemper(z["control"] ?? 0) + clampTemper(z["boldness"] ?? 0)) / 2;
+    return {
+      advance: r6(unit01(base.advance + 0.1 * warm - 0.1 * hard)),
+      rate: r6(Math.max(0, base.rate * (1 - 0.4 * warm + 0.4 * hard))),
+    };
+  };
+}
+
+/**
+ * Tasación con error (puro): lo que el prestamista CREE que vale el lote, `grams × precio` por un
+ * factor que se desvía hasta `error` según lo poco que ve (`eyeOf`, 0 a 1); con ojo 1 no se
+ * equivoca. La tirada la trae `PawnOpenOptions.appraise` (con clave por prestamista y evento).
+ */
+export function pawnAppraisal(o: {
+  readonly prices: Readonly<Record<string, number>>;
+  readonly error?: number;
+  readonly eyeOf?: (truth: ReadonlyWorldTruth, broker: AgentId) => number;
+}): NonNullable<PawnOpenOptions["appraise"]> {
+  const error = o.error ?? 0.3;
+  return (truth, broker, unit, amount, rng) => {
+    const eye = unit01(o.eyeOf?.(truth, broker) ?? 0.5);
+    const miss = (rng.float() * 2 - 1) * error * (1 - eye);
+    return Math.max(0, r6(amount * (o.prices[unit] ?? 0) * (1 + miss)));
+  };
+}
+
+/** Ojo del prestamista desde su percepción innata (0,5 más o menos 0,35 por desvío). */
+export function pawnEyeByPerception(traits: readonly Trait[]) {
+  return (truth: ReadonlyWorldTruth, broker: AgentId): number => {
+    const innate = truth.get(INNATE, broker);
+    if (!innate) return 0.5;
+    const z = standardize(innate, traits, truth.get(PERSON, broker)?.sex ?? "female");
+    return unit01(0.5 + 0.35 * clampTemper(z["perception"] ?? 0));
+  };
+}
+
+/** Opt-in de `decide`: el NPC en apuro empeña un lote que cree valioso al que cree con efectivo. */
+export interface PawnWantOptions {
+  /** Apuro mínimo (0-1: el mayor entre el hambre y la deuda sobre `debtScale`) para considerarlo. */
+  readonly minDistress: number;
+  /** Peso del empuje con el apuro al máximo, a plena confianza en el rumor. */
+  readonly weight: number;
+  /** Nombre (del catálogo) del efectivo que el rumor `has` dice que tiene el prestamista. */
+  readonly cash: string;
+  /** Valor creído mínimo del lote para que valga la pena empeñarlo. */
+  readonly minValue: number;
+  /** Valor creído por unidad de lote (lo que él piensa); sin valor no es prenda. */
+  readonly valueOf: (unit: string) => number | undefined;
+  /** Deuda (unidades) que cuenta como apuro 1 (100 por defecto). */
+  readonly debtScale?: number;
+  /** Confianza mínima en el rumor del prestamista (0,2 por defecto). */
+  readonly minConfidence?: number;
+}
+
+export interface PawnWant {
+  readonly broker: string;
+  readonly unit: string;
+  readonly name: string;
+  readonly grams: number;
+  /** Valor creído del lote. */
+  readonly value: number;
+  /** Cuánto cree el rumor del efectivo del prestamista (0-1). */
+  readonly confidence: number;
+}
+
+/** Apuro del NPC (puro, 0-1): el mayor entre su hambre y su deuda sobre la escala. */
+export function pawnDistress(hunger: number, debt: number, o: PawnWantOptions): number {
+  return unit01(Math.max(hunger, debt / (o.debtScale ?? 100)));
+}
+
+/**
+ * Empeños que considera (puro): con apuro, un lote de su bolsillo que cree valioso y un conocido
+ * del que oyó (rumor `attr` `has` del efectivo; creencia, no verdad). Orden estable por valor,
+ * confianza y nombre.
+ */
+export function pawnWants(
+  distress: number,
+  pocket: readonly { readonly unit: string; readonly name: string; readonly amount: number }[],
+  rumors: readonly { readonly rumor: MoldRumor; readonly confidence: number }[],
+  known: ReadonlySet<string>,
+  o: PawnWantOptions,
+): PawnWant[] {
+  if (distress < o.minDistress) return [];
+  const minConf = o.minConfidence ?? 0.2;
+  const lots = pocket.flatMap((p) => {
+    const grams = Math.floor(p.amount);
+    const per = o.valueOf(p.unit);
+    if (p.name === o.cash || grams < 1 || per === undefined) return [];
+    const value = grams * per;
+    return value >= o.minValue ? [{ ...p, grams, value }] : [];
+  });
+  const brokers = new Map<string, number>();
+  for (const { rumor: r, confidence } of rumors) {
+    if (r.mold !== "attr" || r.attr !== "has" || r.value !== o.cash) continue;
+    if (!known.has(r.about) || confidence < minConf) continue;
+    brokers.set(r.about, Math.max(brokers.get(r.about) ?? 0, confidence));
+  }
+  const out: PawnWant[] = [];
+  for (const l of lots) {
+    for (const [broker, confidence] of brokers) {
+      out.push({ broker, unit: l.unit, name: l.name, grams: l.grams, value: l.value, confidence });
+    }
+  }
+  return out.sort(
+    (a, b) =>
+      b.value - a.value ||
+      b.confidence - a.confidence ||
+      (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) ||
+      (a.broker < b.broker ? -1 : a.broker > b.broker ? 1 : 0),
+  );
+}
+
+/** Empuje de ánimo de empeñar (puro): crece con el apuro y con la confianza en el rumor. */
+export function pawnWantMood(distress: number, confidence: number, o: PawnWantOptions): number {
+  return r6(o.weight * unit01(distress) * unit01(confidence));
+}
+
+/** Lo que debe un NPC en total (fiados sin saldar), en unidades del libro; creencia propia: sabe lo que debe. */
+export function pawnDebtOf(
+  rows: readonly { readonly debtor: string; readonly owed: number; readonly settled: boolean }[],
+  me: string,
+): number {
+  return rows.reduce((a, r) => (r.debtor === me && !r.settled ? a + r.owed : a), 0);
 }

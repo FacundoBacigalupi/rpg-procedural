@@ -88,3 +88,15 @@ export function altitudeSickness(altitudeM: number, acclimatization: number): Al
   if (h >= 0.1) return "mild";
   return "none";
 }
+
+/**
+ * Dónde está quien viaja fuera del parche local (travel, body-health §7): la celda del planeta que
+ * recorre. Sin fila está en el parche. El que mueve al viajero (el `Journey`) es el único escritor;
+ * la altitud y el frío leen la elevación de esa celda.
+ */
+export interface TravelCell {
+  readonly cell: number;
+  /** Desde cuándo está en esa celda. */
+  readonly since: number;
+}
+export const TRAVEL_CELL = table<TravelCell>("body.travel_cell");

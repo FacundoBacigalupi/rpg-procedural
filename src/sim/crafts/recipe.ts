@@ -22,6 +22,13 @@ export const RecipeDef = z
     output: z.strictObject({ good: contentId, ratio: z.number().positive() }),
     /** Amasar y preparar el fuego antes de que empiece la cocción. */
     prepMinutes: z.number().positive(),
+    /** Opt-in: `Essence` por gramo y pureza base del producto (píldoras); ver `pillOf`. */
+    pill: z
+      .strictObject({
+        essence: z.number().positive(),
+        purity: z.number().min(0).max(1),
+      })
+      .optional(),
     /**
      * El calor (°C): `target` es el que pide la receta, `minutes` lo que tarda en estar a punto a
      * esa temperatura, y por encima de `scorchAt` lo de afuera se quema antes que lo de adentro.
@@ -51,3 +58,24 @@ export const RECIPES = defineContent("recipes", RecipeDef, (r) => [
   ...r.inputs.map((i, n) => ({ kind: "goods", id: i.good, at: `inputs.${n}.good` })),
   { kind: "goods", id: r.output.good, at: "output.good" },
 ]);
+
+/**
+ * Lo que la alquimia escribe en lo producido (body-health §9, crafts §4): `Essence` por gramo
+ * de producto y pureza base de la receta (0-1) con la tanda en su punto. La mano que la hizo la
+ * baja: tanda mal llevada, más tensión residual. Sin `pill` la receta no deja esencia.
+ */
+export interface PillSpec {
+  readonly essence: number;
+  readonly purity: number;
+}
+
+/** `Essence` por gramo y pureza de lo que salió con `quality` (0-1): la pureza baja hasta la mitad con la calidad. */
+export function pillOf(
+  pill: PillSpec | undefined,
+  quality: number,
+): { readonly essence: number; readonly purity: number } | undefined {
+  if (!pill || !(pill.essence > 0)) return undefined;
+  const q = quality < 0 ? 0 : quality > 1 ? 1 : quality;
+  const p = pill.purity < 0 ? 0 : pill.purity > 1 ? 1 : pill.purity;
+  return { essence: pill.essence, purity: p * (0.5 + 0.5 * q) };
+}

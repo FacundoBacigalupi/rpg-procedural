@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import type { ProcessContext } from "../../sim/index.ts";
 import { PERSON, RUMORS } from "../../sim/index.ts";
-import { MARK_CLEARED, MARK_CLEARED_EVENT, markExposureProcess } from "./markexposure.ts";
+import {
+  clearedRenown,
+  MARK_CLEARED,
+  MARK_CLEARED_EVENT,
+  markExposureProcess,
+} from "./markexposure.ts";
+import { MARK_DEFAULT_RENOWN } from "./marks.ts";
 
 const forger = "agent:2" as AgentId;
 const buyer = "agent:1" as AgentId;
@@ -10,7 +16,7 @@ const wu = "agent:3" as AgentId;
 const near = "agent:4" as AgentId;
 const far = "agent:5" as AgentId;
 
-function run(forgedMark: boolean, roll: boolean) {
+function run(forgedMark: boolean, roll: boolean, reach = false) {
   const tables: Record<string, Record<string, unknown>> = { entity: {}, [RUMORS.name]: {} };
   const truth = {
     get: (t: { name: string }, id: string) => tables[t.name]?.[id],
@@ -27,7 +33,7 @@ function run(forgedMark: boolean, roll: boolean) {
       data: { forgedMark, deal: "event:1" },
     },
   ];
-  return markExposureProcess({ placeOf: place as never }).run({
+  return markExposureProcess({ placeOf: place as never, ...(reach ? { reach: true } : {}) }).run({
     truth,
     rng,
     recent,
@@ -58,5 +64,30 @@ describe("tras la marca falsa descubierta", () => {
     const quiet = run(true, false);
     expect((quiet.changes ?? []).filter((c) => c.value?.items).map((c) => c.id)).toEqual([buyer]);
     expect(run(false, true)).toEqual({});
+  });
+  it("con reach el rumor llega, más flojo y con más saltos, a quien está en otro lugar", () => {
+    const heardBy = (r: ReturnType<typeof run>) =>
+      (r.changes ?? []).filter((c) => c.value?.items).map((c) => c.id);
+    expect(heardBy(run(true, true))).not.toContain(far);
+    const r = run(true, true, true);
+    expect(heardBy(r)).toContain(far);
+    const c = r.changes?.find((x) => x.id === far) as unknown as {
+      value: { items: { hops: number; confidence: number }[] };
+    };
+    expect(c.value.items[0]?.hops).toBe(2);
+    expect(c.value.items[0]?.confidence).toBeLessThan(0.6);
+    expect(heardBy(run(true, false, true))).toEqual([buyer]);
+  });
+});
+
+describe("la fama que el mercado le supone al copiado", () => {
+  it("sube con cada vez que se supo que su marca era falsa, hasta 1", () => {
+    const withCount = (n: number) =>
+      ({
+        get: () => ({ entries: Array.from({ length: n }, () => ({})) }),
+      }) as never;
+    expect(clearedRenown(withCount(0), wu)).toBe(MARK_DEFAULT_RENOWN);
+    expect(clearedRenown(withCount(2), wu)).toBeCloseTo(0.7, 9);
+    expect(clearedRenown(withCount(16), wu)).toBe(1);
   });
 });

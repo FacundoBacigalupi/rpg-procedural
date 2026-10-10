@@ -10,13 +10,16 @@ import {
   LOCATION,
   PERSON,
   PERSON_SUBSTANCE,
+  RESIDUE,
   type ReadonlyWorldTruth,
+  residueRatio,
   SUBSTANCE,
   type SubstanceDef,
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
 import { cueLocalOf, objectsSeen } from "./cue-local.ts";
+import { type ResidueConfig, residueBodyOf } from "./residue.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
@@ -41,7 +44,18 @@ export function urgeOf(craving: number): SeenUrge | undefined {
   return craving >= URGE_NOTICED ? "faint" : undefined;
 }
 
+/** Cómo se siente la `Essence` impura retenida (sin cifras): carga y, si hubo, la sobrecarga de hoy. */
+export interface SeenResidue {
+  readonly load: "light" | "heavy";
+  readonly overload?: "fever" | "burned" | "fatal";
+}
+
+/** Lo que dura la sensación de una sobrecarga reciente (un día). */
+const OVERLOAD_MEMORY = 1;
+
 export interface SubstancePanel {
+  /** Opt-in (`residue`): el peso de lo impuro en el cuerpo y la sobrecarga reciente; solo si hay algo. */
+  readonly residue?: SeenResidue;
   /** Lo que nota de sí mismo. */
   readonly self: readonly SeenSubstanceSign[];
   /**
@@ -81,6 +95,8 @@ export function substancePanel(
   w: LifeWorld,
   opts?: {
     readonly cueLocal?: boolean;
+    /** Opt-in: la `Essence` impura retenida y la sobrecarga reciente se sienten (`SeenResidue`). */
+    readonly residue?: ResidueConfig;
     /** Opt-in (con `cueLocal`): ids de bienes que remiten a una sustancia; ver uno en lo que lleva o en la despensa despierta su señal. */
     readonly objectCues?: readonly string[];
   },
@@ -134,5 +150,26 @@ export function substancePanel(
       w.clock,
     ),
   );
-  return { self: seenSubstanceSigns(w.truth, w.player), others, ...(urge ? { urge } : {}) };
+  const feel = opts?.residue ? seenResidue(w, opts.residue) : undefined;
+  return {
+    self: seenSubstanceSigns(w.truth, w.player),
+    others,
+    ...(urge ? { urge } : {}),
+    ...(feel ? { residue: feel } : {}),
+  };
+}
+
+/** Lo que el jugador nota de su residuo: carga desde la mitad de lo que soporta; sobrecarga del último día. */
+export function seenResidue(w: LifeWorld, cfg: ResidueConfig): SeenResidue | undefined {
+  const row = w.truth.get(RESIDUE, w.player);
+  const ratio = row ? residueRatio(row.load, residueBodyOf(cfg, w.truth, w.player).capacity) : 0;
+  let stage: SeenResidue["overload"];
+  const since = w.scheduler.now - OVERLOAD_MEMORY * w.clock.day;
+  for (const e of w.log.all()) {
+    if (e.kind !== "body.overload" || e.actors[0] !== w.player || e.tick < since) continue;
+    const st = (e.data as { stage?: string } | undefined)?.stage;
+    if (st === "fever" || st === "burned" || st === "fatal") stage = st;
+  }
+  if (ratio < 0.5 && stage === undefined) return undefined;
+  return { load: ratio >= 1 ? "heavy" : "light", ...(stage ? { overload: stage } : {}) };
 }

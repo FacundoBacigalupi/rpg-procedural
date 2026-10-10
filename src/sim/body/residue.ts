@@ -153,3 +153,39 @@ export function overload(body: OverloadBody, intake: number): OverloadResult {
     awakens: stage !== "fatal" && aff >= 0.6,
   };
 }
+
+/** `Essence` por gramo y pureza de lo preparado que alguien tiene de cada bien (`good:<id>`), mezclado de los lotes. */
+export type LotEssences = Readonly<
+  Record<string, { readonly essence: number; readonly purity: number }>
+>;
+
+/** Esencia y pureza por lote de cada agente (crafts: la alquimia las escribe en lo que produce); opt-in. */
+export const LOT_ESSENCE = table<LotEssences>("body.lot_essence");
+
+/**
+ * Lo que queda después de que a quien tiene `heldGrams` de `unit` le llegan `addGrams` con
+ * `essence` por gramo y `purity`: promedio ponderado por gramos (la pureza, por la esencia). Lo
+ * que ya tenía sin registro cuenta como sin esencia.
+ */
+export function receiveEssenceLot(
+  lots: LotEssences | undefined,
+  unit: string,
+  heldGrams: number,
+  addGrams: number,
+  essence: number,
+  purity: number,
+): LotEssences {
+  const had = lots?.[unit];
+  const hg = Math.max(0, heldGrams);
+  const ag = Math.max(0, addGrams);
+  const total = hg + ag;
+  if (total <= 0) return { ...lots, [unit]: { essence, purity: clamp(purity, 0, 1) } };
+  const eHad = (had?.essence ?? 0) * hg;
+  const eAdd = essence * ag;
+  const e = eHad + eAdd;
+  const p = e > 0 ? ((had?.purity ?? 1) * eHad + clamp(purity, 0, 1) * eAdd) / e : 1;
+  return {
+    ...lots,
+    [unit]: { essence: Math.round((e / total) * 1e6) / 1e6, purity: Math.round(p * 1e6) / 1e6 },
+  };
+}
