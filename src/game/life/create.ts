@@ -209,6 +209,8 @@ export interface LifeOptions {
   readonly loanContagionEffects?: LifeParts["loanContagionEffects"];
   /** Opt-in (con `loanContagion`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
+  /** Opt-in: el verbo `hire` se ejecuta (`LifeParts.hire`); apagado por defecto. */
+  readonly hire?: LifeParts["hire"];
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -234,6 +236,7 @@ export function optInParts(
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
+  | "hire"
   | "tradeNeeds"
 > {
   return {
@@ -271,6 +274,7 @@ export function optInParts(
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
+    ...(options.hire ? { hire: options.hire } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }
