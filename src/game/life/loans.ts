@@ -97,7 +97,15 @@ export interface LoansOptions {
    * comunidad (`credit.claimed`) y los vecinos que le creen más a él se enteran (fama del moroso).
    */
   readonly communityClaim?: boolean;
+  /**
+   * Opt-in: el fiador subrogado (`kind: "subrogation"`) cobra al deudor original, cada día una cuota
+   * (`SUBROGATION_DAYS` días de plazo) con lo que el deudor tenga, por el ledger (`credit.subrogated_paid`).
+   */
+  readonly repaySubrogation?: boolean;
 }
+
+/** En cuántos días el deudor original devuelve al fiador lo que este puso (constante sin calibrar). */
+export const SUBROGATION_DAYS = 30;
 
 export function commitmentRows(
   truth: ReadonlyWorldTruth,
@@ -397,6 +405,63 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           setComponent(LOANS, r.id as never, paidRow),
           setComponent(COMMITMENTS, r.id as never, loanToCommitment(paidRow, enf)),
         );
+      }
+
+      // Subrogación (contracts §5): el fiador que pagó cobra al deudor original, en cuotas, por ledger.
+      if (o.repaySubrogation) {
+        for (const r of commitmentRows(ctx.truth)) {
+          const c = r.commitment;
+          const ob = c.obligations[0];
+          if (
+            c.kind !== "subrogation" ||
+            c.status !== "active" ||
+            !ob ||
+            ob.duty.kind !== "deliver"
+          )
+            continue;
+          const left = ob.duty.qty - ob.performed;
+          const creditorMan = firstAlive(ob.creditor);
+          const debtorMan = firstAlive(ob.debtor);
+          if (left <= 0 || !creditorMan || !debtorMan) continue;
+          const unit = ledgerUnit(ob.duty.unit);
+          const due = Math.min(left, Math.ceil(ob.duty.qty / SUBROGATION_DAYS));
+          const amount = Math.min(due, Math.floor(bal(acct(ob.debtor), unit)));
+          if (amount <= 0) continue;
+          const performed = ob.performed + amount;
+          const done = performed >= ob.duty.qty;
+          const k = events.length;
+          events.push({
+            kind: "credit.subrogated_paid",
+            actors: [debtorMan, creditorMan],
+            place: o.placeOf(ctx.truth, debtorMan),
+            data: {
+              commitment: r.id,
+              parent: c.parent,
+              unit: ob.duty.unit,
+              paid: amount,
+              left: ob.duty.qty - performed,
+            },
+            emissions: {},
+            causes: [
+              { kind: "event" as const, event: c.originEventId as never },
+              { kind: "state" as const, entity: r.id as unknown as EntityRef, key: "subrogation" },
+            ],
+          });
+          const ts = [{ unit, from: acct(ob.debtor), to: acct(ob.creditor), amount }];
+          postings.push({ event: draftEvent(k), transfers: ts });
+          apply(ts);
+          changes.push(
+            setComponent(COMMITMENTS, r.id as never, {
+              ...c,
+              obligations: [
+                { ...ob, performed, state: done ? "fulfilled" : "partial" },
+                ...c.obligations.slice(1),
+              ],
+              status: done ? "fulfilled" : "active",
+              history: [...c.history, "credit.subrogated_paid"],
+            }),
+          );
+        }
       }
 
       if (events.length === 0) return {};

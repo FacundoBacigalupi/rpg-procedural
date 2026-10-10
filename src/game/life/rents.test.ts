@@ -19,7 +19,15 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { offenseOf } from "./deeds.ts";
-import { RENTS, type RentSeed, rentDuePerDay, rentsOf, rentsProcess } from "./rents.ts";
+import {
+  RENTS,
+  type RentSeed,
+  rentDuePerDay,
+  rentsOf,
+  rentsProcess,
+  SHARES,
+  sharecropHarvestProcess,
+} from "./rents.ts";
 
 const goods = [{ id: "copper", name: "cobre", form: "coin" }] as unknown as GoodDef[];
 const COIN = ledgerUnit("coin:copper");
@@ -29,7 +37,7 @@ describe("life.rents", () => {
   const clock = EARTHLIKE_CLOCK;
   function setup(tenantCoins: number) {
     const truth = new WorldTruth();
-    const ledger = new Ledger({ externals: { seed: [COIN] } });
+    const ledger = new Ledger({ externals: { seed: [COIN, ledgerUnit("good:grain")] } });
     for (const [n, home] of [
       [1, "owner"],
       [2, "tenant"],
@@ -163,5 +171,57 @@ describe("life.rents", () => {
     expect(
       offenseOf({ kind: "property.rent_default", actors: ["agent:2", "agent:1"] } as never)?.kind,
     ).toBe("default");
+  });
+
+  it("aparcería: al cosechar el aparcero entrega la parte, con causas, y el resto es atraso", () => {
+    const { truth, ledger } = setup(1);
+    const GRAIN = ledgerUnit("good:grain");
+    const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
+    const crop: RentSeed = {
+      ...seed,
+      good: "grain",
+      kind: "sharecrop",
+      inputs: { seed: true, oxen: false, tools: false },
+      termDays: 50,
+    };
+    const proc = rentsProcess({ clock, goods: grain, seeds: [crop], placeOf: () => ({}) as never });
+    const r0 = proc.run(ctxOf(truth, ledger, 1));
+    for (const c of r0.changes ?? []) {
+      const ch = c as { table?: string; id?: string; value?: unknown };
+      if (ch.table === RENTS.name) truth.set(RENTS, ch.id as never, ch.value as never);
+    }
+    const [row] = [...truth.ids(RENTS)].map((id) => truth.get(RENTS, id));
+    expect(row?.share?.fraction).toBeCloseTo(0.35);
+    expect(proc.run(ctxOf(truth, ledger, 2))).toEqual({});
+    const harvest = (grams: number) =>
+      ({
+        id: makeId("event", 9),
+        kind: "routine.harvested",
+        actors: [makeId("agent", 2)],
+        data: { good: row?.unit, grams },
+      }) as never;
+    const hp = sharecropHarvestProcess({ placeOf: () => ({}) as never });
+    const give = (n: number) =>
+      ledger.post({
+        tick: 0,
+        eventId: makeId("event", 2),
+        transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("tenant"), amount: n }],
+      });
+    // Con la despensa vacía todo es atraso; con 100 de grano entrega 35 de una cosecha de 100.
+    const ctx = (recent: unknown[]) =>
+      ({ ...ctxOf(truth, ledger, 3), recent }) as unknown as ProcessContext;
+    const first = hp.run(ctx([harvest(100)]));
+    expect(first.events?.[0]?.kind).toBe("property.rent_paid");
+    const sh = (first.changes as unknown as { value: { arrears: number } }[])[0]?.value;
+    expect(sh?.arrears).toBe(35);
+    truth.set(SHARES, [...truth.ids(RENTS)][0] as never, sh as never);
+    give(100);
+    const total = ledger.total(GRAIN);
+    const second = hp.run(ctx([harvest(100)]));
+    for (const p of second.postings ?? [])
+      ledger.post({ tick: 1, eventId: makeId("event", 3), transfers: p.transfers });
+    expect(ledger.balance(H("owner"), GRAIN)).toBe(70);
+    expect(ledger.total(GRAIN)).toBe(total);
+    expect(second.events?.[0]?.causes.length).toBe(2);
   });
 });

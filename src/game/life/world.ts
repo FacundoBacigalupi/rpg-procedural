@@ -96,7 +96,7 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
-import { type RentSeed, rentsProcess } from "./rents.ts";
+import { type RentSeed, rentsProcess, sharecropHarvestProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -113,7 +113,7 @@ import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
-import { type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
+import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 
 export { living } from "./living.ts";
@@ -257,6 +257,8 @@ export interface LifeWorld {
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
   readonly loanEnforcement?: { readonly community: string };
+  /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
+  readonly loanRepaySubrogation?: boolean;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -394,6 +396,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
                 appraisers: scamEyeOf(parts.traits),
+                witnesses: scamEyeOf(parts.traits),
                 refund: scamRefundOf(parts.traits, scamNeedOf(parts.plans)),
                 day: parts.clock.day,
               }),
@@ -526,6 +529,7 @@ export function lifeWorld(
           ...(parts.loanEnforcement
             ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
             : {}),
+          ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
         }),
         ...(parts.rentSeeds && parts.rentSeeds.length > 0
           ? [
@@ -535,6 +539,9 @@ export function lifeWorld(
                 seeds: parts.rentSeeds,
                 placeOf: placeOf(parts, village),
               }),
+              ...(parts.rentSeeds.some((r) => r.kind === "sharecrop")
+                ? [sharecropHarvestProcess({ placeOf: placeOf(parts, village) })]
+                : []),
             ]
           : []),
         ...(parts.famine
@@ -560,7 +567,13 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
-          ...(parts.waterSources ? { waterFor: waterHooks(parts.waterSources).waterFor } : {}),
+          ...(parts.waterSources
+            ? {
+                waterFor: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).waterFor,
+              }
+            : {}),
           deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
@@ -764,7 +777,11 @@ export function lifeWorld(
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
-            ? { drinkQuality: waterHooks(parts.waterSources).drinkQuality }
+            ? {
+                drinkQuality: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).drinkQuality,
+              }
             : {}),
           map: parts.map,
           spaces: parts.spaces,

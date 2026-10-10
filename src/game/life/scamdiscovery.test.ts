@@ -11,6 +11,7 @@ import {
 import {
   APPRAISAL_FEE,
   APPRAISAL_HAZARD,
+  NOTICE_HAZARD,
   SCAM_APPRAISED,
   scamDiscoveryProcess,
 } from "./scamdiscovery.ts";
@@ -20,7 +21,12 @@ const seller = "agent:2" as AgentId;
 const expert = "agent:3" as AgentId;
 const coin = ledgerUnit("coin");
 
-function run(opts: { eyes: Record<string, number>; day: number; refund?: number }) {
+function run(opts: {
+  eyes: Record<string, number>;
+  day: number;
+  refund?: number;
+  witnesses?: boolean;
+}) {
   const deal = {
     event: "event:7" as EventId,
     tick: 0 as Tick,
@@ -44,7 +50,7 @@ function run(opts: { eyes: Record<string, number>; day: number; refund?: number 
   } as unknown as ReadonlyWorldTruth;
   const rng = {
     fork: () => rng,
-    chance: (p: number) => p > 0.9 || p === APPRAISAL_HAZARD || p === 0.77,
+    chance: (p: number) => p > 0.9 || p === APPRAISAL_HAZARD || p === NOTICE_HAZARD || p === 0.77,
   } as never;
   const ledger = {
     holdings: (a: unknown) => [{ unit: coin, amount: JSON.stringify(a).includes(buyer) ? 5 : 3 }],
@@ -54,11 +60,13 @@ function run(opts: { eyes: Record<string, number>; day: number; refund?: number 
     placeOf: () => "here" as never,
     eye: (_t, who) => opts.eyes[who] ?? 0,
     appraisers: (_t, who) => opts.eyes[who] ?? 0,
+    ...(opts.witnesses ? { witnesses: (_t: unknown, who: AgentId) => opts.eyes[who] ?? 0 } : {}),
     day: opts.day,
   });
   const ctx = { truth, rng, ledger, now: 1 as Tick } as unknown as ProcessContext;
   return proc.run(ctx) as unknown as {
     events?: { kind: string; data: Record<string, unknown> }[];
+    changes?: { table?: string; id?: string; value?: { items: { content: { by: string } }[] } }[];
     postings?: { transfers: { amount: number }[] }[];
   };
 }
@@ -85,11 +93,23 @@ describe("estafa: descubrimiento por tasador", () => {
     const back = yes.postings?.[1]?.transfers[0]?.amount ?? 0;
     expect(back).toBeGreaterThan(0);
     expect(back).toBeLessThanOrEqual(3);
-    const no = run({ eyes, day: 0.001, refund: 0.1 });
+    const no = run({ eyes, day: 0.001, refund: 0.2 });
     expect(no.events?.some((e) => e.kind === "scam.refund_refused")).toBe(true);
     expect(no.postings).toHaveLength(1);
     expect(run({ eyes, day: 0.001 }).events?.some((e) => e.kind.startsWith("scam.refund"))).toBe(
       false,
     );
+  });
+  it("un tercero de buen ojo la nota sin cobrar: scam.noticed, rumor en ambos y sin asiento", () => {
+    const eyes = { [buyer]: 0.3, [expert]: 0.45 };
+    const r = run({ eyes, day: 0.001, witnesses: true });
+    const kinds = (r.events ?? []).map((e) => e.kind);
+    expect(kinds).toContain("scam.noticed");
+    expect(kinds).not.toContain(SCAM_APPRAISED);
+    expect(r.postings ?? []).toEqual([]);
+    expect(r.events?.find((e) => e.kind === "scam.discovered")?.data["witness"]).toBe(expert);
+    const rumored = (r.changes ?? []).filter((c) => c.value?.items?.[0]?.content.by === seller);
+    expect(rumored).toHaveLength(2);
+    expect(run({ eyes, day: 0.001 }).events?.some((e) => e.kind === "scam.noticed")).toBe(false);
   });
 });
