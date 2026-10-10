@@ -106,13 +106,18 @@ import {
   sharecropHarvestProcess,
 } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
-import { scamDiscoveryProcess } from "./scamdiscovery.ts";
+import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
-import { type ConsumableDef, type SubstanceDose, substancesProcess } from "./substances.ts";
+import {
+  type BuyCravingOptions,
+  type ConsumableDef,
+  type SubstanceDose,
+  substancesProcess,
+} from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
@@ -244,6 +249,8 @@ export interface LifeWorld {
    * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /** Opt-in (con `consumables`): el ansia empuja a comprar lo que se consume y no hay en la despensa (`life.decide`); apagado, sin candidata nueva. */
+  readonly buyCraving?: BuyCravingOptions;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -264,6 +271,8 @@ export interface LifeWorld {
   readonly npcBoil?: { readonly minThirst: number; readonly weight: number };
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
+  /** Opt-in (con `cravingCues`): `life.decide` lee a quién cree presente y el huso del lugar; ver `DecideOptions.cueLocal`. */
+  readonly cueLocal?: boolean;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -456,6 +465,14 @@ export function lifeWorld(
                 witnesses: scamEyeOf(parts.traits),
                 refund: scamRefundOf(parts.traits, scamNeedOf(parts.plans)),
                 day: parts.clock.day,
+              }),
+            ]
+          : []),
+        ...(parts.scam === true && parts.scamFiller !== undefined
+          ? [
+              fillerNoticeProcess({
+                placeOf: placeOf(parts, village),
+                eye: scamEyeOf(parts.traits),
               }),
             ]
           : []),
@@ -882,9 +899,13 @@ export function lifeWorld(
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.cravingCues === true && parts.cueLocal === true
+            ? { cueLocal: { lonDeg: parts.map.lonDeg } }
+            : {}),
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }
             : parts.moldHintsFromCatalog === true

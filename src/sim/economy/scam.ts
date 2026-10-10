@@ -147,6 +147,8 @@ export interface ScamDeal {
   readonly believed: number;
   /** Cuánto le creía al vendedor al cerrar el trato (0-1). */
   readonly trust: number;
+  /** Gramos de relleno que el vendedor mezcló en el lote (`scam.adulterated`); sin esto, no hubo. */
+  readonly filler?: number;
 }
 
 export interface ScamDeals {

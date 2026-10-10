@@ -96,9 +96,18 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
+import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { MOLD_RUMORS, type MoldHintOptions, moldBuyGoods, moldHintMood } from "./moldgossip.ts";
-import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
+import {
+  acuteOf,
+  type BuyCravingOptions,
+  type ConsumableDef,
+  cravingBuyGoods,
+  cravingBuyMood,
+  cueContextOf,
+  cueCravingOf,
+} from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -159,8 +168,19 @@ export interface DecideOptions {
    * las nombra y el ansia (`serves: craving`) lo empuja. Apagado, no hay candidata nueva.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /**
+   * Opt-in (exige `consumables`): con ansia alta y sin la sustancia en la despensa, `trade` de
+   * compra de ese bien entra como candidata (cadena conseguir → tomar) con ánimo que crece con el
+   * ansia y cae con el precio creído (`moldHints.believedPerKg`, si hay). Apagado, no cambia.
+   */
+  readonly buyCraving?: BuyCravingOptions;
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
+  /**
+   * Opt-in (con `cravingCues`): las señales leen a quién CREE presente (sus creencias) y la hora del
+   * huso del lugar (`lonDeg`); apagado, el entorno es el de siempre (mismo hex, hora global).
+   */
+  readonly cueLocal?: { readonly lonDeg: number };
   /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
@@ -285,7 +305,19 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         craving: o.cravingCues
           ? Math.max(
               acute.craving,
-              cueCravingOf(truth, me, cueContextOf(truth, me, now, o.clock), now, o.clock),
+              cueCravingOf(
+                truth,
+                me,
+                cueContextOf(
+                  truth,
+                  me,
+                  now,
+                  o.clock,
+                  o.cueLocal ? cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg) : undefined,
+                ),
+                now,
+                o.clock,
+              ),
             )
           : acute.craving,
         numbing: acute.numbing,
@@ -433,8 +465,21 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         o.moldHints && hintBook
           ? moldBuyGoods(hintBook, o.moldHints, hintPriced).filter((n) => !pantryTrade.has(n))
           : [];
+      // Ansia sin la sustancia a mano: comprarla (opt-in `buyCraving`); la usa `consume` después.
+      const craveBuy = o.buyCraving
+        ? cravingBuyGoods(
+            mood.craving,
+            (o.consumables ?? []).flatMap((c) => {
+              const g = (o.goods ?? []).find((x) => x.id === c.good);
+              const have = g ? (larder?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
+              return g ? [{ name: g.name, have }] : [];
+            }),
+            o.buyCraving,
+          ).filter((n) => !pantryTrade.has(n))
+        : [];
+      const buyAll = [...new Set([...buyOnly, ...craveBuy])];
       const withBuy =
-        buyOnly.length > 0 ? { ...pantry, trade: [...pantryTrade, ...buyOnly].sort() } : pantry;
+        buyAll.length > 0 ? { ...pantry, trade: [...pantryTrade, ...buyAll].sort() } : pantry;
       const texts = stash.length > 0 ? { ...withBuy, consume: stash.sort() } : withBuy;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
@@ -506,7 +551,23 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               return bump === 0 ? c : { ...c, mood: r((c.mood ?? 0) + bump) };
             })
           : merged;
-      const candidates = modifyCandidates(hinted, {
+      const craved =
+        craveBuy.length > 0 && o.buyCraving
+          ? hinted.map((c) => {
+              const name =
+                c.verb === "trade" ? craveBuy.find((n) => c.id.endsWith(`+${n}`)) : undefined;
+              if (name === undefined) return c;
+              const perKg = o.moldHints?.believedPerKg?.(hintPriced.beliefs, name, hintPriced.day);
+              return {
+                ...c,
+                mood: r(
+                  (c.mood ?? 0) +
+                    cravingBuyMood(mood.craving, perKg, o.buyCraving as BuyCravingOptions),
+                ),
+              };
+            })
+          : hinted;
+      const candidates = modifyCandidates(craved, {
         now,
         memories,
         habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),

@@ -992,6 +992,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     // Relleno (opt-in): el vendedor mezcla de lo que tiene en la bolsa; pasa al comprador por el
     // ledger en este trato y baja la calidad del lote recibido (conserva la masa).
     let dealQuality = eff.quality;
+    let mixedFiller = 0;
     if (
       o.scam?.filler !== undefined &&
       eff.quality !== undefined &&
@@ -1011,6 +1012,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       );
       if (grams >= 1) {
         dealQuality = adulterate(eff.grams, eff.quality, grams).quality;
+        mixedFiller = grams;
         fillerPostings.push({
           event: draftEvent(0),
           transfers: [
@@ -1078,6 +1080,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
               real: dealQuality ?? eff.quality,
               believed: eff.believed,
               trust: o.scam.trust(truth, buyer, seller, ctx.now),
+              ...(mixedFiller > 0 ? { filler: mixedFiller } : {}),
             }),
           ),
         );
