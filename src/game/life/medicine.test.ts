@@ -19,11 +19,13 @@ import {
 } from "../../sim/index.ts";
 import { exposureProcess } from "./exposure.ts";
 import {
+  frostbiteCare,
   type Healer,
   healerFee,
   healerRenown,
   medicineProcess,
   signsOfBody,
+  signsOfFrostbite,
   signsOfSubstances,
 } from "./medicine.ts";
 
@@ -242,5 +244,21 @@ describe("life.medicine, señales de sustancias", () => {
     expect(mild.weakness).toBe(0.4);
     expect(grave.weakness).toBe(0.7);
     expect(grave.pallor).toBe(0.5);
+  });
+});
+
+describe("life.medicine, señales de congelación", () => {
+  type Frost = { blisters?: number; blackTissue?: number; missingPart?: number };
+  it("sin lesión no hay señales ni cuidados; crecen con la etapa", () => {
+    const none = { hands: 0, feet: 0, face: 0, at: 0 };
+    expect(signsOfFrostbite(none)).toEqual({});
+    expect(frostbiteCare(none)).toEqual([]);
+    expect((signsOfFrostbite({ ...none, hands: 0.6 }) as Frost).blisters).toBe(0.7);
+    expect(frostbiteCare({ ...none, hands: 0.6 })).toEqual(["rewarm", "insulate"]);
+    const dead = { ...none, feet: 0.9 };
+    expect((signsOfFrostbite(dead) as Frost).blackTissue).toBe(0.9);
+    expect(frostbiteCare(dead)).toEqual(["rewarm", "insulate", "amputate"]);
+    const lost = { lost: [{ part: "feet" as const, at: 1, cause: "e" as never }] };
+    expect((signsOfFrostbite(dead, lost) as Frost).missingPart).toBe(1);
   });
 });

@@ -16,6 +16,8 @@ import {
   type PlanetClock,
 } from "../../core/index.ts";
 import {
+  AMPUTATIONS,
+  type Amputations,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
@@ -25,6 +27,10 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  FROSTBITE,
+  type FrostbiteState,
+  frostbiteAmputations,
+  frostbiteStage,
   type HeldDef,
   INFECTION,
   infectionStage,
@@ -148,6 +154,52 @@ export function signsOfSubstances(held: readonly HeldDef[]): SignSet {
   return out;
 }
 
+/** Qué haría un sanador con la congelación de alguien: recalentar, aislar lo lesionado o amputar. */
+export type FrostbiteCare = "rewarm" | "insulate" | "amputate";
+
+/**
+ * Lo que ve el sanador de la congelación (`frostbiteStage` por parte), como pesos 0-1 de `SignSet`:
+ * palidez y entumecimiento por la etapa más grave, ampollas desde la profunda, tejido negro si hay
+ * necrosis; las partes ya perdidas no se ven como lesión sino como ausencia (`missingPart`).
+ */
+export function signsOfFrostbite(state: FrostbiteState, had?: Amputations): SignSet {
+  const out: Record<string, number> = {};
+  const put = (k: string, v: number) => {
+    out[k] = Math.max(out[k] ?? 0, v);
+  };
+  for (const part of ["hands", "feet", "face"] as const) {
+    if (had?.lost.some((l) => l.part === part)) {
+      put("missingPart", 1);
+      continue;
+    }
+    const stage = frostbiteStage(state[part]);
+    if (stage === "frostnip") put("pallor", 0.3);
+    else if (stage === "superficial") {
+      put("pallor", 0.5);
+      put("numbness", 0.5);
+    } else if (stage === "deep") {
+      put("pallor", 0.7);
+      put("numbness", 0.8);
+      put("blisters", 0.7);
+    } else if (stage === "necrotic") {
+      put("numbness", 1);
+      put("blackTissue", 0.9);
+    }
+  }
+  return out;
+}
+
+/** Tratamientos que corresponden a la congelación: recalentar desde lo superficial, aislar en lo profundo, amputar lo necrosado. */
+export function frostbiteCare(state: FrostbiteState): FrostbiteCare[] {
+  const worst = frostbiteStage(Math.max(state.hands, state.feet, state.face));
+  const dead = frostbiteAmputations(state).length > 0;
+  const out: FrostbiteCare[] = [];
+  if (worst !== "none") out.push("rewarm");
+  if (worst === "deep" || dead) out.push("insulate");
+  if (dead) out.push("amputate");
+  return out;
+}
+
 /** Fama del sanador: la fracción de lo que atendió que mejoró (con prior de 1 caso neutro), 0-1. */
 export function healerRenown(treated: number, helped: number): number {
   return (helped + 0.5) / (treated + 1);
@@ -156,6 +208,12 @@ export function healerRenown(treated: number, helped: number): number {
 /** Lo que pide por atender: base según la habilidad, que sube con la fama que le corre por rumor (x1 a x2). */
 export function healerFee(base: number, skill: number, renown: number): number {
   return Math.round(base * (0.5 + skill) * (1 + Math.min(1, Math.max(0, renown))) * 100) / 100;
+}
+
+function frostSigns(truth: ReadonlyWorldTruth, who: string): SignSet {
+  const state = truth.get(FROSTBITE, who as never);
+  if (!state) return {};
+  return signsOfFrostbite(state, truth.get(AMPUTATIONS, who as never));
 }
 
 function mergeSigns(a: SignSet, b: SignSet): SignSet {
@@ -187,6 +245,8 @@ export interface MedicineOptions {
   readonly clock: PlanetClock;
   /** Opt-in: a los signos del enfermo se suman los de las sustancias que tiene encima (`PERSON_SUBSTANCE`). */
   readonly substanceSigns?: boolean | undefined;
+  /** Opt-in: también los signos de la congelación (`FROSTBITE`, `AMPUTATIONS`). */
+  readonly frostbiteSigns?: boolean | undefined;
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
@@ -212,6 +272,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       ENTITY.name,
       BODY_STATE.name,
       ...(o.substanceSigns ? [PERSON_SUBSTANCE.name, SUBSTANCE.name] : []),
+      ...(o.frostbiteSigns ? [FROSTBITE.name, AMPUTATIONS.name] : []),
     ],
     writes: [TREATMENT.name],
     run(ctx) {
@@ -269,9 +330,12 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           const plan = body && o.plans?.find((p) => p.id === body.plan);
           const base: SignSet =
             body && plan ? signsOfBody(plan, body) : { fever: 0.8, weakness: 0.3 + 0.5 * progress };
-          const signs: SignSet = o.substanceSigns
+          const withSubs: SignSet = o.substanceSigns
             ? mergeSigns(base, heldSigns(ctx.truth, id))
             : base;
+          const signs: SignSet = o.frostbiteSigns
+            ? mergeSigns(withSubs, frostSigns(ctx.truth, id))
+            : withSubs;
           const belief = diagnose(
             signs,
             healer.models,
