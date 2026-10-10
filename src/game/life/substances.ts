@@ -119,6 +119,40 @@ export function scaledDose(c: ConsumableDef, quantity: number): ConsumableDef {
   return { ...c, amount: c.amount * quantity };
 }
 
+/** Opt-in de `decide`: el ansia empuja a comprar lo que se consume y no está en la despensa. */
+export interface BuyCravingOptions {
+  /** Ansia mínima (0-1) para que la compra entre como candidata. */
+  readonly minCraving: number;
+  /** Peso del empuje con el ansia al máximo y precio nulo. */
+  readonly weight: number;
+  /** Precio por kilo (monedas) en que el empuje se reduce a la mitad; por defecto 10. */
+  readonly refPrice?: number;
+}
+
+/** Nombres de bienes de consumo a comprar (puro): ansia alta y sin existencias; orden por nombre. */
+export function cravingBuyGoods(
+  craving: number,
+  names: readonly { readonly name: string; readonly have: number }[],
+  o: BuyCravingOptions,
+): string[] {
+  if (craving < o.minCraving) return [];
+  return names
+    .filter((n) => n.have < 1)
+    .map((n) => n.name)
+    .sort();
+}
+
+/** Empuje de ánimo de la compra de un consumible (puro): crece con el ansia y cae con el precio creído. */
+export function cravingBuyMood(
+  craving: number,
+  pricePerKg: number | undefined,
+  o: BuyCravingOptions,
+): number {
+  const ref = o.refPrice ?? 10;
+  const price = pricePerKg !== undefined && pricePerKg > 0 ? pricePerKg : 0;
+  return Math.round(((o.weight * Math.min(1, craving)) / (1 + price / ref)) * 1e6) / 1e6;
+}
+
 /**
  * Tomar una dosis ahora (verbo `consume`): suma la dosis al estado de la persona y, si la
  * sustancia no existía, la crea como entidad con su evento. Lo demás (absorber, metabolizar,

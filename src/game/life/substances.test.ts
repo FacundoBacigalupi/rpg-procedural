@@ -11,7 +11,13 @@ import {
   type SubstanceDef,
   WorldTruth,
 } from "../../sim/index.ts";
-import { consumeDose, scaledDose, substancesProcess } from "./substances.ts";
+import {
+  consumeDose,
+  cravingBuyGoods,
+  cravingBuyMood,
+  scaledDose,
+  substancesProcess,
+} from "./substances.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const place = { kind: "cell", cell: "cell:1" } as never;
@@ -103,5 +109,23 @@ describe("scaledDose (beber con sustancia)", () => {
     const tea = { good: "tea", def: POISON, route: "ingest", amount: 2 } as const;
     expect(scaledDose(tea, 0.75).amount).toBeCloseTo(1.5);
     expect(tea.amount).toBe(2);
+  });
+});
+
+describe("comprar lo que se consume", () => {
+  const o = { minCraving: 0.4, weight: 1, refPrice: 10 };
+  it("solo con ansia alta y sin existencias, por nombre", () => {
+    const names = [
+      { name: "tea", have: 0 },
+      { name: "ale", have: 3 },
+      { name: "bark", have: 0 },
+    ];
+    expect(cravingBuyGoods(0.3, names, o)).toEqual([]);
+    expect(cravingBuyGoods(0.5, names, o)).toEqual(["bark", "tea"]);
+  });
+  it("el empuje crece con el ansia y cae con el precio", () => {
+    expect(cravingBuyMood(1, undefined, o)).toBe(1);
+    expect(cravingBuyMood(1, 10, o)).toBe(0.5);
+    expect(cravingBuyMood(0.5, 0, o)).toBe(0.5);
   });
 });
