@@ -181,6 +181,8 @@ export interface LifeWorld {
    * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
    */
   readonly frostbite?: boolean;
+  /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
+  readonly coreEffects?: boolean;
   /**
    * Opt-in (con `frostbite`): `life.thermal` consume la orden de `FROSTBITE_CARE` (recalentar y aislar
    * bajan la gravedad por hora; amputar quita la parte profunda antes de la gangrena). Apagado: nada cambia.
@@ -328,6 +330,7 @@ export function lifeWorld(
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
@@ -687,6 +690,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),

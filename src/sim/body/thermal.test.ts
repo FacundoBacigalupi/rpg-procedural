@@ -3,6 +3,7 @@ import {
   airCAtAltitude,
   altitudeEnv,
   amputateSurgically,
+  applyCore,
   type Clothing,
   CORE_NORMAL_C,
   dexterityFactor,
@@ -189,5 +190,26 @@ describe("tratamiento de la congelación", () => {
       10,
     );
     expect(again.done).toEqual([]);
+describe("applyCore", () => {
+  const caps = {
+    locomotion: 1,
+    manipulation: 1,
+    speech: 1,
+    strength: 1,
+    cognition: 1,
+    endurance: 1,
+    sight: 1,
+    hearing: 1,
+  };
+  it("deja igual con el núcleo normal y baja la destreza con frío", () => {
+    expect(applyCore(caps, CORE_NORMAL_C)).toBe(caps);
+    const cold = applyCore(caps, 33);
+    expect(cold.manipulation).toBeCloseTo(dexterityFactor(33));
+    expect(cold.manipulation).toBeLessThan(1);
+    expect(cold.sight).toBe(1);
+  });
+  it("no deja nada con el núcleo inconsciente", () => {
+    expect(applyCore(caps, 29).manipulation).toBe(0);
+    expect(applyCore(caps, 42).locomotion).toBe(0);
   });
 });

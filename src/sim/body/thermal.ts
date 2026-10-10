@@ -6,6 +6,7 @@
 import type { EventId } from "../../core/index.ts";
 import { exp, pow } from "../../core/math/index.ts";
 import { table } from "../world/index.ts";
+import type { BodyCapabilities } from "./capabilities.ts";
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
 
@@ -531,4 +532,28 @@ export function shelterOfSpace(a: ShelterAttrs): number {
   const tight = a.wall === undefined ? 1 : WALL_TIGHTNESS[a.wall];
   const open = clamp(a.openness, 0, 1);
   return shelterOf(a.roof, 1 - (1 - open) * tight);
+}
+
+/**
+ * Las capacidades con el núcleo frío o caliente: el entumecimiento y el mareo bajan manipulación y
+ * locomoción con `dexterityFactor`, y con `thermalUnconscious` no queda ninguna (body-health §7).
+ * Con el núcleo normal devuelve las mismas.
+ */
+export function applyCore(caps: BodyCapabilities, coreC: number): BodyCapabilities {
+  if (thermalUnconscious(coreC)) {
+    return {
+      ...caps,
+      locomotion: 0,
+      manipulation: 0,
+      speech: 0,
+      strength: 0,
+      cognition: 0,
+      endurance: 0,
+      sight: 0,
+      hearing: 0,
+    };
+  }
+  const f = dexterityFactor(coreC);
+  if (f >= 1) return caps;
+  return { ...caps, manipulation: caps.manipulation * f, locomotion: caps.locomotion * f };
 }

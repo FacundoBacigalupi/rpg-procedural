@@ -13,6 +13,7 @@ import {
   altitudeEnv,
   amputateSurgically,
   amputationFactors,
+  applyCore,
   BODY_STATE,
   type BodyCapabilities,
   type Clothing,
@@ -378,4 +379,14 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       return changes.length > 0 || events.length > 0 ? { changes, events } : {};
     },
   };
+}
+
+/** Las capacidades con el núcleo de `who` (`applyCore`); sin fila de `THERMAL` (núcleo normal) no cambian. */
+export function applyCoreTemp(
+  caps: BodyCapabilities,
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+): BodyCapabilities {
+  const t = truth.get(THERMAL, who);
+  return t ? applyCore(caps, t.coreC) : caps;
 }

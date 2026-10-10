@@ -35,6 +35,7 @@ import {
   setComponent,
   standardize,
   styleKey,
+  THERMAL,
   type Trait,
   table,
   verbSkill,
@@ -93,6 +94,8 @@ export interface StrikeFightInput {
   readonly holdBack?: number;
   /** Retomar una pelea pausada. */
   readonly resume?: PausedFight;
+  /** Opt-in: el núcleo de cada uno (`THERMAL`) entumece o deja inconsciente en la pelea (`applyCore`). */
+  readonly coreEffects?: boolean;
 }
 
 export interface StrikeFight {
@@ -217,6 +220,10 @@ const SIDE: Readonly<Record<FighterOutcome, FightGist["mine"]>> = {
 export function strikeFight(i: StrikeFightInput): StrikeFight {
   const day = i.day ?? DAY_SECONDS;
   const theirHold = npcHoldBack(i);
+  const coreOf = (id: AgentId) => {
+    const t = i.coreEffects ? i.truth.get(THERMAL, id) : undefined;
+    return t ? { coreC: t.coreC } : {};
+  };
   const person = (id: AgentId) => i.truth.get(PERSON, id);
   const z = (id: AgentId) => {
     const p = person(id);
@@ -248,6 +255,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         ),
         intent: i.intent,
         at: { x: 0, y: 0 },
+        ...coreOf(i.me),
       },
       {
         id: i.target,
@@ -270,6 +278,7 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
         ),
         intent: "drive_off",
         at: { x: 0.7, y: 0 },
+        ...coreOf(i.target),
         unaware: theirBody.activity === "sleep",
       },
     ],

@@ -82,6 +82,7 @@ import {
   socialCandidates,
   stageAt,
   standardize,
+  THERMAL,
   type Trait,
   table,
   temperOf,
@@ -95,7 +96,7 @@ import {
 import { applyAltitude } from "./altitude.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
-import { applyFrostbite } from "./thermal.ts";
+import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
 export const DECIDED_EVENT = "npc.decided";
@@ -146,6 +147,8 @@ export interface DecideOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
+  readonly coreEffects?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
   readonly nutritionCaps?: boolean;
   /**
@@ -184,6 +187,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       DEFICIENCY_EFFECTS.name,
       GROWTH_SEQUELAE.name,
       FROSTBITE.name,
+      THERMAL.name,
       AMPUTATIONS.name,
       PLACE.name,
       SELF_IMAGES.name,
@@ -351,7 +355,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
       const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
       const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
-      const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
+      const coreCaps = o.coreEffects ? applyCoreTemp(frostCaps, truth, me) : frostCaps;
+      const caps = o.nutritionCaps ? applyDeficiency(coreCaps, truth, me) : coreCaps;
       const images = truth.get(SELF_IMAGES, me);
       const skills = truth.get(SKILL_STATE, me);
       const view: BeliefView = {
