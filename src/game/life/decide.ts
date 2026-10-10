@@ -148,7 +148,7 @@ export interface Decision {
 
 export const NPC_DECISION = table<Decision>("life.decision");
 
-/** Los objetivos vigentes de un NPC (núcleo y venganza, `sim/mind/goals.ts`). */
+/** Objetivos vigentes: núcleo y venganza; opt-in también largo, mediano y corto. */
 export interface NpcGoals {
   readonly items: readonly Goal[];
 }
@@ -161,6 +161,8 @@ export const MAX_KNOWN = 12;
 export const CARES_MIN = 0.3;
 
 export interface DecideOptions {
+  /** Opt-in: conserva las capas derivadas y registra sus nacimientos y fines. */
+  readonly persistGoalLayers?: boolean;
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -418,21 +420,24 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // Los objetivos: núcleo desde sus valores y venganza desde el resentimiento con memoria que lo
       // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.
       const prevGoals = truth.get(NPC_GOALS, me)?.items ?? [];
-      const goals = reconcileGoals(prevGoals, [
-        ...coreGoals(drives.values as never, o.schemas, mind, now),
-        ...revengeGoals(
-          people.map((p) => ({ who: p.id, resentment: p.rel.dims.resentment ?? 0 })),
-          {
-            memories,
-            now,
-            warmth: innate["warmth"] ?? 0.5,
-            control: innate["control"] ?? 0.5,
-            strengthIsWorth: mind.schemas["strength_is_worth"]?.strength ?? 0,
-          },
-        ),
-      ]);
-      // Capas derivadas (largo, mediano, corto): se recalculan cada vez, no se guardan; solo
-      // empujan un poco los valores (desempatan).
+      const goals = reconcileGoals(
+        prevGoals.filter((g) => g.layer === "core"),
+        [
+          ...coreGoals(drives.values as never, o.schemas, mind, now),
+          ...revengeGoals(
+            people.map((p) => ({ who: p.id, resentment: p.rel.dims.resentment ?? 0 })),
+            {
+              memories,
+              now,
+              warmth: innate["warmth"] ?? 0.5,
+              control: innate["control"] ?? 0.5,
+              strengthIsWorth: mind.schemas["strength_is_worth"]?.strength ?? 0,
+            },
+          ),
+        ],
+      );
+      // Derivar exclusivamente desde el núcleo evita que las capas se alimenten a sí mismas.
+      // Su persistencia no modifica el empuje: siguen entrando solo por layerDrives.
       const layered = [
         ...longGoals(goals, mind, now),
         ...mediumGoals(
@@ -454,7 +459,10 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         ),
         ...shortGoals(drives.needs, goals, mind.originEventId, now),
       ];
-      const { born, ended } = goalChanges(prevGoals, goals);
+      const storedGoals = o.persistGoalLayers
+        ? reconcileGoals(prevGoals, [...goals, ...layered])
+        : goals;
+      const { born, ended } = goalChanges(prevGoals, storedGoals);
       const goalEvents = [
         ...born.map((g) => ({ g, what: "born" as const })),
         ...ended.map((g) => ({ g, what: "ended" as const })),
@@ -477,8 +485,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         ],
       }));
       const goalChange =
-        born.length + ended.length > 0 || prevGoals.length !== goals.length
-          ? [setComponent(NPC_GOALS, me, { items: goals })]
+        born.length + ended.length > 0 ||
+        prevGoals.length !== storedGoals.length ||
+        (o.persistGoalLayers &&
+          storedGoals.some(
+            (g, i) => g.weight !== prevGoals[i]?.weight || g.parent !== prevGoals[i]?.parent,
+          ))
+          ? [setComponent(NPC_GOALS, me, { items: storedGoals })]
           : [];
       const acuteCaps = applyAcute(capabilitiesOf(plan, body), acute);
       const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;

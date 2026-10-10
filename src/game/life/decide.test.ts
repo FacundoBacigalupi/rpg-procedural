@@ -17,14 +17,18 @@ import {
   ENTITY,
   INNATE,
   LIFE_STAGES,
+  MEMORIES,
   MIND,
   newBody,
   PERSON,
   PLANS,
   type ProcessContext,
+  type ProcessResult,
+  RELATIONS,
   SCHEMAS,
   SKILLS,
   SkillCatalog,
+  strangerDims,
   TRAITS,
   VALUES,
   WorldTruth,
@@ -92,7 +96,141 @@ const ctx = (truth: WorldTruth, who: AgentId, now: number) =>
     rng: Rng.root(7),
   }) as unknown as ProcessContext;
 
+function layeredWorld() {
+  const truth = world(3);
+  truth.set(MIND, A, {
+    schemas: { family_first: { strength: 1, causes: ["event:7" as EventId] } },
+    formative: [],
+    originEventId: "event:1" as EventId,
+  });
+  truth.set(RELATIONS, A, {
+    toward: {
+      "agent:2": {
+        dims: { ...strangerDims([]), resentment: 0.4, familiarity: 0.8 },
+        bonds: [],
+        history: [],
+        updated: 1000,
+      },
+    },
+    originEventId: "event:1" as EventId,
+  } as never);
+  truth.set(MEMORIES, A, {
+    items: [
+      {
+        eventId: "event:8" as EventId,
+        perceived: { kind: "action.insult", with: ["agent:2" as AgentId], place: NONE },
+        source: "witnessed",
+        at: 900,
+        intensity: 0.5,
+        valence: -0.5,
+        confidence: 1,
+        distortion: 0,
+        salience: 1,
+        measured: 1000,
+        lastRecalled: 1000,
+        recalls: 0,
+      },
+    ],
+    gists: [],
+  });
+  return truth;
+}
+
+function applyGoals(truth: WorldTruth, out: ProcessResult) {
+  for (const change of out.changes ?? []) {
+    if (change.op === "set" && change.table === NPC_GOALS.name)
+      truth.setRaw(change.table, change.id, change.value);
+  }
+}
+
+const goalData = (event: { readonly data: unknown }) =>
+  event.data as { readonly goal: string; readonly what: "born" | "ended" };
+
 describe("life.decide", () => {
+  it("false equivale a omitir la persistencia; encenderla conserva la decisión y el RNG", () => {
+    const truth = layeredWorld();
+    const off = decideProcess(opts).run(ctx(truth, A, 1000));
+    expect(decideProcess({ ...opts, persistGoalLayers: false }).run(ctx(truth, A, 1000))).toEqual(
+      off,
+    );
+    const on = decideProcess({ ...opts, persistGoalLayers: true }).run(ctx(truth, A, 1000));
+    const decision = (out: ProcessResult) =>
+      out.changes?.find((c) => c.table === NPC_DECISION.name);
+    expect(decision(on)).toEqual(decision(off));
+    applyGoals(truth, on);
+    expect(
+      decision(decideProcess({ ...opts, persistGoalLayers: true }).run(ctx(truth, A, 1000))),
+    ).toEqual(decision(off));
+    expect(truth.get(NPC_GOALS, A)?.items.map((g) => g.layer)).toEqual(
+      expect.arrayContaining(["core", "long", "medium", "short"]),
+    );
+  });
+
+  it("las capas nacen una vez, actualizan su peso conservando origen y since y terminan con causas", () => {
+    const truth = layeredWorld();
+    const process = decideProcess({ ...opts, persistGoalLayers: true });
+    const first = process.run(ctx(truth, A, 1000));
+    applyGoals(truth, first);
+    const initial = truth.get(NPC_GOALS, A)?.items ?? [];
+    const ids = ["long:family", "medium:rival:agent:2", "short:thirst"];
+    for (const id of ids) {
+      const g = initial.find((g) => g.id === id);
+      expect(g).toBeDefined();
+      expect(g?.since).toBe(1000);
+      const birth = first.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === id);
+      expect(birth && goalData(birth).what).toBe("born");
+      expect(birth?.causes).toEqual([{ kind: "event", event: g?.originEventId }]);
+    }
+    const repeat = process.run(ctx(truth, A, 1100));
+    expect(repeat.events?.filter((e) => e.kind === GOAL_EVENT) ?? []).toEqual([]);
+    expect(repeat.changes?.filter((c) => c.table === NPC_GOALS.name) ?? []).toEqual([]);
+    truth.set(MIND, A, {
+      schemas: { family_first: { strength: 0.7, causes: ["event:9" as EventId] } },
+      formative: [],
+      originEventId: "event:10" as EventId,
+    });
+    truth.set(BODY_STATE, A, { ...newBody(plan, 60, 0), water: 2.5 });
+    truth.set(RELATIONS, A, {
+      toward: {
+        "agent:2": {
+          dims: { ...strangerDims([]), resentment: 0.5, familiarity: 0.8 },
+          bonds: [],
+          history: [],
+          updated: 1200,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    } as never);
+    const update = process.run(ctx(truth, A, 1200));
+    applyGoals(truth, update);
+    expect(update.events?.filter((e) => e.kind === GOAL_EVENT) ?? []).toEqual([]);
+    for (const id of ids) {
+      const was = initial.find((g) => g.id === id);
+      const next = truth.get(NPC_GOALS, A)?.items.find((g) => g.id === id);
+      expect(next?.weight).not.toBe(was?.weight);
+      expect(next?.since).toBe(was?.since);
+      expect(next?.originEventId).toBe(was?.originEventId);
+      if (next?.layer === "long") expect(next.parent).toBe("core:family");
+    }
+    truth.set(MIND, A, { schemas: {}, formative: [], originEventId: "event:10" as EventId });
+    truth.set(BODY_STATE, A, newBody(plan, 60, 0));
+    truth.set(RELATIONS, A, { toward: {}, originEventId: "event:1" as EventId });
+    const end = process.run(ctx(truth, A, 1300));
+    applyGoals(truth, end);
+    for (const id of ids) {
+      expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === id)).toBe(false);
+      const event = end.events?.find((e) => e.kind === GOAL_EVENT && goalData(e).goal === id);
+      expect(event && goalData(event).what).toBe("ended");
+      expect(event?.causes).toEqual([
+        { kind: "event", event: initial.find((g) => g.id === id)?.originEventId },
+        { kind: "state", entity: A, key: "goals" },
+      ]);
+    }
+    expect(
+      process.run(ctx(truth, A, 1400)).events?.filter((e) => e.kind === GOAL_EVENT) ?? [],
+    ).toEqual([]);
+  });
+
   it("declara lo que lee y lo que escribe, en la fase decide", () => {
     const p = decideProcess(opts);
     expect(p.phase).toBe("decide");

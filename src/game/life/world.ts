@@ -461,6 +461,8 @@ export interface LifeWorld {
   readonly migration?: Omit<MigrationOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero (`AppraiseOptions.rumorGrievance`); apagado por defecto. */
   readonly rumorGrievance?: boolean;
+  /** Opt-in: conserva largo/mediano/corto junto al núcleo en NPC_GOALS. */
+  readonly persistGoalLayers?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1261,6 +1263,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         decideProcess({
+          ...(parts.persistGoalLayers === true ? { persistGoalLayers: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,

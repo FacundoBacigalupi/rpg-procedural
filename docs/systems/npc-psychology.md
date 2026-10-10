@@ -178,6 +178,18 @@ Dos necesidades **lentas** se miden en meses: `belonging` y `meaning` (sección 
 
 Todo objetivo tiene `originEventId`. Por ejemplo, "venganza contra X" nace cuando una memoria con `resentment` alto cruza un umbral que depende de `warmth`, `control` y del esquema `strength_is_worth`. Ningún NPC "decide ser villano" al azar.
 
+**Cableado opt-in (2026-10-10, f3a):** `LifeOptions.persistGoalLayers` llega a
+`life.decide` al crear o retomar una vida. Guarda largo, mediano y corto junto al
+núcleo y la venganza en `NPC_GOALS`, reconciliando por id: conserva `since` y
+`originEventId`, actualiza pesos sin inventar nacimientos o fines y emite
+`npc.goal` cuando una capa aparece o desaparece. El nacimiento cita el origen;
+el fin cita además el estado anterior de los objetivos. Las capas se derivan
+solo del núcleo actualizado y conservan su empuje pequeño en la utilidad, sin
+sumarse otra vez como núcleo. No agrega empuje ni consume RNG adicional:
+solo persiste estado y emite eventos opt-in. Apagado conserva el comportamiento anterior.
+La deuda real, las emociones inmediatas, el cumplimiento y la muerte se tratan
+en los subítems posteriores del ROADMAP; los umbrales siguen sin calibrar.
+
 ### Utilidad
 Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):
 

@@ -61,6 +61,9 @@ resolver la escala con LOD, sin recortar el diseño para hacer una demo.
   ejecutar la simulación completa; revisar diff, enlaces y finales de línea.
 - Node 24 y npm: en PowerShell usar `npm.cmd`, `npx.cmd`, `codex.cmd` si los wrappers
   `.ps1` están bloqueados. Cwd con `C:` mayúscula para Vitest.
+- Si se redirige la salida de npm/npx a un log en PowerShell, conservar y devolver
+  `$LASTEXITCODE` explícitamente. Los notices por stderr pueden dejar `$?` en false
+  aun con exit code nativo 0; verificar el reporte y el código nativo.
 
 ## Git y continuidad
 
