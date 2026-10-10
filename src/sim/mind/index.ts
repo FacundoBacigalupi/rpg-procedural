@@ -11,6 +11,7 @@ export * from "./goals.ts";
 export * from "./habits.ts";
 export * from "./history.ts";
 export * from "./immediate-goals.ts";
+export * from "./meaning-pressure.ts";
 export * from "./memory.ts";
 export * from "./mind.ts";
 export * from "./seed.ts";
