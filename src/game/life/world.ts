@@ -396,6 +396,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 eye: scamEyeOf(parts.traits),
                 appraisers: scamEyeOf(parts.traits),
+                witnesses: scamEyeOf(parts.traits),
                 refund: scamRefundOf(parts.traits, scamNeedOf(parts.plans)),
                 day: parts.clock.day,
               }),

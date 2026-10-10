@@ -15,14 +15,17 @@ import {
   holderAccount,
   type LedgerUnit,
   type PlaceRef,
+  type Tick,
 } from "../../core/index.ts";
 import {
   discoveryChance,
   draftEvent,
   ENTITY,
   type EventDraft,
+  type HeardRumor,
   INNATE,
   isMoney,
+  KEPT_RUMORS,
   PERSON,
   type PostingDraft,
   type ProcessContext,
@@ -30,6 +33,8 @@ import {
   pendingScams,
   qualityPriceFactor,
   type ReadonlyWorldTruth,
+  RUMORS,
+  type Rumors,
   SCAM_DEALS,
   SCAM_FOUND,
   type ScamAftermath,
@@ -51,8 +56,19 @@ export interface ScamDiscoveryOptions {
   /** Ojo de quien puede tasar por paga (0-1, ver `scamEyeOf`); sin esto, no hay tasadores. */
   readonly appraisers?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Chance (0-1) de que el vendedor devuelva el sobreprecio si se lo reclaman; sin esto, no hay reclamo. */
+  /**
+   * Ojo de un tercero que ve la mercadería (o se la cuentan) y la nota sin cobrar (0-1, ver
+   * `scamEyeOf`); sin esto, nadie más la nota. Lo cuenta: `scam.noticed` y rumor en ambos.
+   */
+  readonly witnesses?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   readonly refund?: (truth: ReadonlyWorldTruth, seller: AgentId, buyer: AgentId) => number;
 }
+
+export const SCAM_NOTICED = "scam.noticed";
+/** Chance diaria de que un vecino de buen ojo vea la mercadería del comprador (sin calibrar). */
+export const NOTICE_HAZARD = 0.1;
+/** Cuánto cree el comprador lo que le cuenta el vecino que la notó, y el vecino lo que vio (sin calibrar). */
+export const NOTICE_CONFIDENCE = 0.7;
 
 export const SCAM_REFUNDED = "scam.refunded";
 export const SCAM_REFUND_REFUSED = "scam.refund_refused";
@@ -88,6 +104,8 @@ export interface ScamDiscoveredData extends ScamAftermath {
   readonly believed: number;
   /** Quién lo tasó, si fue por tasador pagado. */
   readonly appraiser?: AgentId;
+  /** Quién la notó sin cobrar, si fue un tercero. */
+  readonly witness?: AgentId;
 }
 
 /** Del evento `scam.discovered`: quién cayó (comprador), quién estafó y el agravio. */
@@ -108,14 +126,22 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "perceive",
-    reads: [SCAM_DEALS.name, SCAM_FOUND.name, ENTITY.name, INNATE.name, PERSON.name],
-    writes: [SCAM_FOUND.name],
+    reads: [
+      SCAM_DEALS.name,
+      SCAM_FOUND.name,
+      ENTITY.name,
+      INNATE.name,
+      PERSON.name,
+      ...(o.witnesses ? [RUMORS.name] : []),
+    ],
+    writes: [SCAM_FOUND.name, ...(o.witnesses ? [RUMORS.name] : [])],
     run(ctx) {
       const truth = ctx.truth;
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
       const spent = new Map<AgentId, number>();
+      const rumors = new Map<AgentId, Rumors>();
       const buyers = [...(truth.ids(SCAM_DEALS) as AgentId[])].sort();
       for (const buyer of buyers) {
         if (truth.get(ENTITY, buyer)?.endedAt !== undefined) continue;
@@ -128,40 +154,62 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
           if (p <= 0) continue;
           const rng = ctx.rng.fork("scam", d.event, ctx.windowIndex ?? ctx.now);
           let appraised: AgentId | undefined;
+          let witness: AgentId | undefined;
           if (!rng.chance(p)) {
-            // Sin notarlo solo, puede pagarle a alguien de mejor ojo que esté ahí.
-            const hire = hireAppraiser(ctx, o, buyer, d, spent);
-            if (!hire) continue;
-            spent.set(buyer, (spent.get(buyer) ?? 0) + APPRAISAL_FEE);
-            const draft = draftEvent(events.length);
-            const hit = ctx.rng
-              .fork("appraise", d.event, ctx.windowIndex ?? ctx.now)
-              .chance(discoveryChance(d.real, d.believed, hire.eye, used, true));
-            events.push({
-              kind: SCAM_APPRAISED,
-              actors: [buyer, hire.who],
-              place: o.placeOf(truth, buyer),
-              data: {
-                deal: d.event,
-                found: hit,
-                paid: { unit: hire.unit, amount: APPRAISAL_FEE },
-              } satisfies ScamAppraisedData,
-              emissions: {},
-              causes: [{ kind: "event" as const, event: d.event }],
-            });
-            postings.push({
-              event: draft,
-              transfers: [
-                {
-                  unit: hire.unit,
-                  from: holderAccount(buyer as unknown as HolderRef),
-                  to: holderAccount(hire.who as unknown as HolderRef),
-                  amount: APPRAISAL_FEE,
-                },
-              ],
-            });
-            if (!hit) continue;
-            appraised = hire.who;
+            const seen = noticer(ctx, o, buyer, d, used);
+            if (seen) {
+              witness = seen;
+              events.push({
+                kind: SCAM_NOTICED,
+                actors: [d.seller, buyer, seen],
+                place: o.placeOf(truth, buyer),
+                data: { deal: d.event },
+                emissions: {},
+                causes: [{ kind: "event" as const, event: d.event }],
+              });
+              for (const who of [seen, buyer]) {
+                const before = rumors.get(who) ?? truth.get(RUMORS, who);
+                rumors.set(
+                  who,
+                  withScamRumor(before, d, buyer, ctx.now, who === seen ? 0 : 1, seen),
+                );
+              }
+            }
+            if (!witness) {
+              // Sin notarlo solo, puede pagarle a alguien de mejor ojo que esté ahí.
+              const hire = hireAppraiser(ctx, o, buyer, d, spent);
+              if (!hire) continue;
+              spent.set(buyer, (spent.get(buyer) ?? 0) + APPRAISAL_FEE);
+              const draft = draftEvent(events.length);
+              const hit = ctx.rng
+                .fork("appraise", d.event, ctx.windowIndex ?? ctx.now)
+                .chance(discoveryChance(d.real, d.believed, hire.eye, used, true));
+              events.push({
+                kind: SCAM_APPRAISED,
+                actors: [buyer, hire.who],
+                place: o.placeOf(truth, buyer),
+                data: {
+                  deal: d.event,
+                  found: hit,
+                  paid: { unit: hire.unit, amount: APPRAISAL_FEE },
+                } satisfies ScamAppraisedData,
+                emissions: {},
+                causes: [{ kind: "event" as const, event: d.event }],
+              });
+              postings.push({
+                event: draft,
+                transfers: [
+                  {
+                    unit: hire.unit,
+                    from: holderAccount(buyer as unknown as HolderRef),
+                    to: holderAccount(hire.who as unknown as HolderRef),
+                    amount: APPRAISAL_FEE,
+                  },
+                ],
+              });
+              if (!hit) continue;
+              appraised = hire.who;
+            }
           }
           found.push(d.event);
           const after = scamAftermath(d.real, d.believed, d.trust);
@@ -173,6 +221,7 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
             real: d.real,
             believed: d.believed,
             ...(appraised ? { appraiser: appraised } : {}),
+            ...(witness ? { witness } : {}),
           };
           events.push({
             kind: SCAM_DISCOVERED,
@@ -190,6 +239,9 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
             setComponent(SCAM_FOUND, buyer, { events: [...before, ...found].slice(-32) }),
           );
         }
+      }
+      for (const [who, r] of [...rumors].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+        changes.push(setComponent(RUMORS, who, r));
       }
       return events.length === 0 ? {} : { changes, events, postings };
     },
@@ -295,4 +347,61 @@ function hireAppraiser(
     .filter((c) => c.eye >= APPRAISER_MIN_EYE && c.eye > own + 0.05)
     .sort((a, b) => b.eye - a.eye || (a.id < b.id ? -1 : 1))[0];
   return pick ? { who: pick.id, eye: pick.eye, unit: purse.unit } : null;
+}
+
+/**
+ * Un tercero que nota la estafa sin cobrar: otro vecino vivo en el mismo lugar que el comprador,
+ * que ni vendió ni es él, de buen ojo (`witnesses`), que ve la mercadería con una chance por día
+ * (`NOTICE_HAZARD`) y la brecha según su ojo (`discoveryChance`). Elige al de mejor ojo; empate, por id.
+ */
+function noticer(
+  ctx: ProcessContext,
+  o: ScamDiscoveryOptions,
+  buyer: AgentId,
+  d: ScamDeal,
+  used: number,
+): AgentId | null {
+  if (!o.witnesses) return null;
+  const here = JSON.stringify(o.placeOf(ctx.truth, buyer));
+  const pick = (ctx.truth.ids(PERSON) as AgentId[])
+    .filter(
+      (id) =>
+        id !== buyer &&
+        id !== d.seller &&
+        ctx.truth.get(ENTITY, id)?.endedAt === undefined &&
+        JSON.stringify(o.placeOf(ctx.truth, id)) === here,
+    )
+    .map((id) => ({ id, eye: o.witnesses?.(ctx.truth, id) ?? 0 }))
+    .filter((c) => c.eye >= APPRAISER_MIN_EYE)
+    .sort((a, b) => b.eye - a.eye || (a.id < b.id ? -1 : 1))[0];
+  if (!pick) return null;
+  const rng = ctx.rng.fork("notice", d.event, ctx.windowIndex ?? ctx.now);
+  if (!rng.chance(NOTICE_HAZARD)) return null;
+  const p = discoveryChance(d.real, d.believed, pick.eye, used, true);
+  return rng.chance(p) ? pick.id : null;
+}
+
+/** El rumor de la estafa en la cabeza de `who` (el tercero lo vio: 0 saltos; el comprador lo oyó: 1). Puro. */
+function withScamRumor(
+  before: Rumors | undefined,
+  d: ScamDeal,
+  victim: AgentId,
+  now: Tick,
+  hops: number,
+  teller: AgentId,
+): Rumors {
+  const heard: HeardRumor = {
+    root: d.event,
+    content: { kind: "default", by: d.seller, victim, severity: 1 },
+    at: d.tick,
+    heardAt: now,
+    confidence: NOTICE_CONFIDENCE,
+    hops,
+    variant: `${d.event}#${hops === 0 ? teller : victim}`,
+    parent: null,
+    teller: hops === 0 ? null : teller,
+    voices: 1,
+  };
+  const items = [...(before?.items ?? []).filter((x) => x.root !== d.event), heard];
+  return { items: items.slice(-KEPT_RUMORS), told: before?.told ?? [] };
 }
