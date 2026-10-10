@@ -83,6 +83,7 @@ import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
+import { debtGoalProgress } from "./goal-evidence.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { hireProcess } from "./hire.ts";
@@ -471,6 +472,10 @@ export interface LifeWorld {
   /** Opt-in: cierra las metas persistidas cuando el NPC muere; apagado por defecto. */
   readonly closeGoalsOnDeath?: boolean;
   readonly recognizeGoalCompletion?: boolean;
+  /** Opt-in: cierra saldar una deuda desde los pagos propios recordados (necesita `debtKnowledge`). */
+  readonly recognizeGoalProgress?: boolean;
+  /** Opt-in: el vacío por venganza cumplida presiona la necesidad lenta `meaning`. */
+  readonly meaningPressure?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1280,6 +1285,10 @@ export function lifeWorld(
           ...(parts.persistImmediateGoals === true ? { persistImmediateGoals: true } : {}),
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           ...(parts.recognizeGoalCompletion === true ? { recognizeGoalCompletion: true } : {}),
+          ...(parts.recognizeGoalProgress === true
+            ? { goalProgress: debtGoalProgress(parts.clock.day) }
+            : {}),
+          ...(parts.meaningPressure === true ? { meaningPressure: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,

@@ -194,6 +194,10 @@ export interface LifeOptions {
   readonly closeGoalsOnDeath?: boolean;
   /** Opt-in: cierra venganzas cuando el NPC cree muerto al blanco y conserva la causa; apagado. */
   readonly recognizeGoalCompletion?: boolean;
+  /** Opt-in: cierra saldar una deuda desde los pagos propios recordados (con `debtKnowledge`); apagado. */
+  readonly recognizeGoalProgress?: boolean;
+  /** Opt-in: el vacío por venganza cumplida presiona la necesidad lenta `meaning`; apagado. */
+  readonly meaningPressure?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -343,6 +347,8 @@ export function optInParts(
   | "persistImmediateGoals"
   | "closeGoalsOnDeath"
   | "recognizeGoalCompletion"
+  | "recognizeGoalProgress"
+  | "meaningPressure"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -408,6 +414,8 @@ export function optInParts(
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
     ...(options.closeGoalsOnDeath ? { closeGoalsOnDeath: true } : {}),
     ...(options.recognizeGoalCompletion ? { recognizeGoalCompletion: true } : {}),
+    ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
+    ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),

@@ -123,7 +123,7 @@ import {
   placeHoldersInView,
   type ViewCues,
 } from "./cue-local.ts";
-import { DEBT_BOOK, debtGoalInputs } from "./debtknowledge.ts";
+import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -196,16 +196,21 @@ export interface DecideOptions {
   readonly debtKnowledge?: boolean;
   /** Opt-in: cierra venganzas reconocidas como cumplidas desde las creencias propias. */
   readonly recognizeGoalCompletion?: boolean;
+  /** Opt-in: el vacío por venganza cumplida sube la necesidad lenta `meaning` (necesita el historial). */
+  readonly meaningPressure?: boolean;
   /**
    * Opt-in: cierra metas concretas persistidas desde evidencia de progreso propia. `concrete`
    * declara cuáles tienen final (un valor continuo no se infiere) y `evidenceOf` extrae, de las
-   * memorias propias, las evidencias con su evento; la acción aislada no basta (`goal-progress-evidence`).
+   * memorias y el libro de deuda propios, las evidencias con su evento; la acción aislada no basta
+   * (`goal-progress-evidence`).
    */
-  /** Opt-in: el vacío por venganza cumplida sube la necesidad lenta `meaning` (necesita el historial). */
-  readonly meaningPressure?: boolean;
   readonly goalProgress?: {
     readonly concrete: (goal: Goal) => boolean;
-    readonly evidenceOf: (goal: Goal, memories: Memories | undefined) => GoalProgressEvidence[];
+    readonly evidenceOf: (
+      goal: Goal,
+      memories: Memories | undefined,
+      debts?: DebtBook,
+    ) => GoalProgressEvidence[];
     readonly minSpan: Duration;
   };
   readonly clock: PlanetClock;
@@ -328,7 +333,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SKILL_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
+      ...(o.debtKnowledge || o.goalProgress ? [DEBT_BOOK.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
         ? [NPC_GOAL_COMPLETIONS.name]
@@ -535,7 +540,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             const concrete = prevGoals.filter((g) => gp.concrete(g));
             return goalCompletionsFromProgress(
               prevGoals,
-              concrete.flatMap((g) => gp.evidenceOf(g, memories)),
+              concrete.flatMap((g) => gp.evidenceOf(g, memories, truth.get(DEBT_BOOK, me))),
               now,
               new Set(concrete.map((g) => g.id)),
               gp.minSpan,
