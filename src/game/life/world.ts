@@ -131,6 +131,8 @@ export interface LifeWorld {
   readonly healerSchool?: HealerSchool;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
+  /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
+  readonly healerSubstanceSigns?: boolean;
   /** Remedio a unidad del ledger: darlo gasta un bien real (del sanador o del enfermo); sin existencias no se da. Sin esto, remedios sin costo. */
   readonly remedyStock?: Readonly<Record<string, string>>;
   /** Dosis explícitas de sustancias (body-health §9); sin ellas no hay nada que simular. */
@@ -447,6 +449,7 @@ export function lifeWorld(
           healers: parts.healers ?? [],
           school: parts.healerSchool,
           stock: parts.remedyStock,
+          substanceSigns: parts.healerSubstanceSigns === true,
           plans: parts.healerRealSigns === true ? parts.plans : undefined,
           placeOf: placeOf(parts, village),
         }),
