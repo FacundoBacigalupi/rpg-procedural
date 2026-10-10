@@ -244,6 +244,8 @@ export interface LifeWorld {
   readonly moldHintsFromCatalog?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
+  /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
+  readonly loanEnforcement?: { readonly community: string };
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -504,6 +506,9 @@ export function lifeWorld(
           goods: parts.goods,
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
+          ...(parts.loanEnforcement
+            ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
+            : {}),
         }),
         ...(parts.rentSeeds && parts.rentSeeds.length > 0
           ? [

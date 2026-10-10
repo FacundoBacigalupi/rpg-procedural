@@ -41,6 +41,7 @@ import {
   type PostingDraft,
   type ProcessDef,
   payLoan,
+  RELATIONS,
   type ReadonlyWorldTruth,
   type StateChange,
   setComponent,
@@ -91,6 +92,11 @@ export interface LoansOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Qué ejecutores hay en este mundo (comunidad, tribunal, clan, Cielo); por defecto solo conciencia y contraparte. */
   readonly enforcement?: EnforcementContext;
+  /**
+   * Opt-in: con `enforcement.community`, al caer en mora con pérdida el acreedor reclama ante la
+   * comunidad (`credit.claimed`) y los vecinos que le creen más a él se enteran (fama del moroso).
+   */
+  readonly communityClaim?: boolean;
 }
 
 export function commitmentRows(
@@ -129,7 +135,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, LOANS.name, COMMITMENTS.name, PARCEL.name],
+    reads: [PERSON.name, ENTITY.name, LOANS.name, COMMITMENTS.name, PARCEL.name, RELATIONS.name],
     writes: [LOANS.name, COMMITMENTS.name, ENTITY.name, PARCEL.name],
     run(ctx) {
       const ledger = ctx.ledger;
@@ -312,6 +318,33 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               emissions: {},
               causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
             });
+          }
+          // Ejecutor social (contracts §6): el acreedor reclama ante la comunidad, y solo lo oyen los
+          // vecinos que en su cabeza (RELATIONS: confianza) le creen más a él que al moroso.
+          if (res.loan.status === "defaulted" && o.communityClaim && o.enforcement?.community) {
+            const listeners = [...ctx.truth.ids(PERSON)].sort().filter((id) => {
+              const p = ctx.truth.get(PERSON, id);
+              if (!p || p.household === l.lender || p.household === l.borrower) return false;
+              if (ctx.truth.get(ENTITY, id)?.endedAt !== undefined) return false;
+              const toward = ctx.truth.get(RELATIONS, id)?.toward;
+              const trustIn = (who: AgentId) => toward?.[who as string]?.dims.trust ?? 0;
+              return trustIn(lenderMan) > trustIn(borrowerMan);
+            }) as AgentId[];
+            if (listeners.length > 0) {
+              events.push({
+                kind: "credit.claimed",
+                actors: [borrowerMan, lenderMan],
+                place: o.placeOf(ctx.truth, lenderMan),
+                data: {
+                  loan: r.id,
+                  community: o.enforcement.community,
+                  owed: res.loss,
+                  noticedBy: listeners,
+                },
+                emissions: {},
+                causes: [{ kind: "event" as const, event: draftEvent(k) as never }],
+              });
+            }
           }
           const next: LoanRow = { ...res.loan, seed: l.seed };
           const parent = loanToCommitment(next, enf);
