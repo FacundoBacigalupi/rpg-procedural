@@ -60,7 +60,7 @@ import {
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
-import { bondageAbuseChance } from "./bondagepolicy.ts";
+import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
@@ -340,6 +340,8 @@ export interface LifeWorld {
   /** Opt-in: la mora con pérdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
   readonly loanBondage?: BondageTerms;
   /** Opt-in (con `loanBondage`): `abuse.chance` sale del temperamento, la necesidad y la cultura del acreedor (`bondageAbuseChance`). */
+  /** Opt-in (con `loanBondage`): `skillWage` sale del mejor oficio del deudor (`skillWageOf`) y escala `wagePerDay`. */
+  readonly loanBondageSkillWage?: boolean;
   readonly loanBondageAbuse?: { readonly reputationCost: number };
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
@@ -719,6 +721,14 @@ export function lifeWorld(
             ? {
                 bondage: {
                   ...parts.loanBondage,
+                  ...(parts.loanBondageSkillWage && !parts.loanBondage.skillWage
+                    ? {
+                        skillWage: (
+                          (crafts) => (t: ReadonlyWorldTruth, who: AgentId) =>
+                            skillWageOf(t, who, parts.loanBondage?.wagePerDay ?? 0, crafts)
+                        )(craftSkillIds(parts.skills)),
+                      }
+                    : {}),
                   ...(parts.loanBondageAbuse && !parts.loanBondage.abuse
                     ? {
                         abuse: {

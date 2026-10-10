@@ -7,9 +7,13 @@ import type { AgentId } from "../../core/index.ts";
 import {
   clampTemper,
   dominantVariant,
+  type FacetKey,
   INNATE,
+  levelOf,
   PERSON,
   type ReadonlyWorldTruth,
+  SKILL_STATE,
+  type SkillCatalog,
   standardize,
   type Trait,
   villageCulture,
@@ -66,4 +70,35 @@ export function bondageAbuseChance(
       restraint: cultureRestraintOf(truth),
     });
   };
+}
+
+/** Piso del jornal por oficio (fracción de la base) para quien tiene un oficio apenas empezado. */
+export const SKILL_WAGE_FLOOR = 0.5;
+/** Cuánto suma el nivel (0-1) del mejor oficio: nivel 1 paga `FLOOR + SPAN` veces la base. */
+export const SKILL_WAGE_SPAN = 1.5;
+
+/** Los ids de habilidad de dominio oficio de un catálogo. */
+export function craftSkillIds(catalog: SkillCatalog): ReadonlySet<string> {
+  return new Set(catalog.skills.filter((s) => s.domain === "craft").map((s) => s.id));
+}
+
+/**
+ * Jornal de servidumbre escalado por el mejor oficio del deudor (`SKILL_STATE`, dominio `craft`):
+ * base × (piso + tramo × nivel). `undefined` si no practicó ninguno (vale el jornal constante).
+ */
+export function skillWageOf(
+  truth: ReadonlyWorldTruth,
+  debtor: AgentId,
+  base: number,
+  crafts: ReadonlySet<string>,
+): number | undefined {
+  const skills = truth.get(SKILL_STATE, debtor);
+  if (!skills) return undefined;
+  let best = 0;
+  for (const id of crafts) {
+    const st = skills[id];
+    if (!st) continue;
+    for (const f of Object.keys(st.facets) as FacetKey[]) best = Math.max(best, levelOf(st, f));
+  }
+  return best > 0 ? base * (SKILL_WAGE_FLOOR + SKILL_WAGE_SPAN * unit(best)) : undefined;
 }

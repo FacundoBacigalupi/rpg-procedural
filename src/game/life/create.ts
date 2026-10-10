@@ -187,7 +187,10 @@ export interface LifeOptions {
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
   readonly relationDecay?: boolean;
   /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
-  readonly loanBondage?: LifeParts["loanBondage"];
+  readonly loanBondage?: Omit<NonNullable<LifeParts["loanBondage"]>, "skillWage"> & {
+    /** `true`: el jornal sale del mejor oficio del deudor (`skillWageOf`); o una función propia. */
+    readonly skillWage?: true | NonNullable<LifeParts["loanBondage"]>["skillWage"];
+  };
   /** Opt-in (con `loanBondage`): el acreedor abusa según su temperamento, necesidad y la cultura (`LifeParts.loanBondageAbuse`); apagado por defecto. */
   readonly loanBondageAbuse?: LifeParts["loanBondageAbuse"];
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
@@ -223,6 +226,7 @@ export function optInParts(
   | "relationDecay"
   | "loanBondage"
   | "loanBondageAbuse"
+  | "loanBondageSkillWage"
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
@@ -242,7 +246,16 @@ export function optInParts(
         }
       : {}),
     ...(options.relationDecay ? { relationDecay: true } : {}),
-    ...(options.loanBondage ? { loanBondage: options.loanBondage } : {}),
+    ...(options.loanBondage
+      ? (() => {
+          const { skillWage, ...terms } = options.loanBondage;
+          return {
+            loanBondage:
+              skillWage === undefined || skillWage === true ? terms : { ...terms, skillWage },
+            ...(skillWage === true ? { loanBondageSkillWage: true } : {}),
+          };
+        })()
+      : {}),
     ...(options.loanBondage && options.loanBondageAbuse
       ? { loanBondageAbuse: options.loanBondageAbuse }
       : {}),
