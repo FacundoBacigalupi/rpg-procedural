@@ -152,4 +152,35 @@ describe("el precio visto entra como rumor de primera mano", () => {
       run({ fromPriceBeliefs: { clock, marketOf: () => undefined } }).out.changes,
     ).toHaveLength(0);
   });
+
+  it("con fromLooking, un look guarda un location de primera mano con la causa; apagado, nada", () => {
+    const truth = {
+      ids: (t: { name: string }) => (t.name === PERSON.name ? ["agent:a"] : []),
+      get: (t: { name: string }) => (t.name === PERSON.name ? {} : undefined),
+    };
+    const where = { kind: "place", place: "place:cave" } as unknown as PlaceRef;
+    const recent = [
+      {
+        id: "ev:1",
+        tick: 90,
+        actors: ["agent:a"],
+        data: { effect: { kind: "observe", acuity: 0.3 } },
+      },
+    ];
+    const go = (o: Parameters<typeof moldGossipProcess>[0]) =>
+      moldGossipProcess(o).run({
+        truth,
+        now: 100,
+        rng: Rng.root(1),
+        recent,
+      } as never) as unknown as {
+        changes?: { value: { items: { rumor: unknown; cause?: string; heardAt: number }[] } }[];
+      };
+    const on = go({ fromLooking: { siteOf: () => ({ what: "cave", where }) } });
+    const item = on.changes?.[0]?.value.items[0];
+    expect(item?.rumor).toEqual({ mold: "location", what: "cave", where, vague: true });
+    expect(item?.cause).toBe("ev:1");
+    expect(item?.heardAt).toBe(90);
+    expect(go({}).changes ?? []).toHaveLength(0);
+  });
 });
