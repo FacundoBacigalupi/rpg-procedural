@@ -118,6 +118,14 @@ const VALUE: Readonly<Record<NeedId, ValueId>> = {
   social: "family",
   craving: "pleasure",
 };
+/** Valor que cada emoción propia mueve en la capa inmediata (provisional; ira y tristeza aún sin proyección). */
+const EMOTION_VALUE: Readonly<Partial<Record<EmotionSignal["emotion"], ValueId>>> = {
+  fear: "safety",
+  joy: "pleasure",
+  shame: "status",
+  envy: "status",
+  love: "family",
+};
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
 const clamp = (x: number) => Math.min(1, Math.max(0, x));
 
@@ -153,15 +161,15 @@ export function immediateGoals(
     add("immediate:fear", "safety", fear, m.eventId);
   }
   for (const s of emotions?.signals ?? []) {
-    if (!emotions || s.owner !== emotions.owner || s.emotion !== "fear" || s.evidence === undefined)
-      continue;
+    if (!emotions || s.owner !== emotions.owner || s.evidence === undefined) continue;
+    const value = EMOTION_VALUE[s.emotion];
+    const halfLifeTicks =
+      EMOTION_HALF_LIFE_TICKS[s.emotion as keyof typeof EMOTION_HALF_LIFE_TICKS];
+    if (value === undefined || halfLifeTicks === undefined) continue;
     add(
-      "immediate:fear",
-      "safety",
-      emotionIntensityAt(s, now, {
-        halfLifeTicks: EMOTION_HALF_LIFE_TICKS.fear,
-        reactivity: emotions.reactivity,
-      }),
+      `immediate:${s.emotion}`,
+      value,
+      emotionIntensityAt(s, now, { halfLifeTicks, reactivity: emotions.reactivity }),
       s.originEventId,
     );
   }

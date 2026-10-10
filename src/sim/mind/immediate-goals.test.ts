@@ -159,6 +159,43 @@ describe("objetivos inmediatos", () => {
     expect(immediateGoals([], memories, [], 1000 + IMMEDIATE_FEAR_HALF_LIFE)[0]?.weight).toBe(0.5);
     expect(immediateGoals([], memories, [], 1000 + 2 * IMMEDIATE_FEAR_HALF_LIFE)).toEqual([]);
   });
+  it("proyecta alegría, vergüenza, envidia y amor propios con evidencia; sin ella o ajenos no", () => {
+    const owner = "agent:1" as AgentId;
+    const sig = (emotion: "joy" | "shame" | "envy" | "love", evidence = true) => ({
+      owner,
+      emotion,
+      intensity: 1,
+      originEventId: E(5),
+      at: 1000,
+      appraisalTheme: "success" as const,
+      ...(evidence ? { evidence: { kind: "own" as const, event: E(5) } } : {}),
+    });
+    const ctx = (signals: ReturnType<typeof sig>[], o = owner) => ({
+      owner: o,
+      signals,
+      reactivity: 0.5,
+    });
+    const goals = immediateGoals(
+      [],
+      undefined,
+      [],
+      1000,
+      ctx([sig("joy"), sig("shame"), sig("love")]),
+    );
+    expect(goals.map((g) => [g.id, g.value])).toEqual([
+      ["immediate:joy", "pleasure"],
+      ["immediate:love", "family"],
+      ["immediate:shame", "status"],
+    ]);
+    expect(goals[0]?.originEventId).toBe(E(5));
+    expect(immediateGoals([], undefined, [], 1000, ctx([sig("envy", false)]))).toEqual([]);
+    expect(
+      immediateGoals([], undefined, [], 1000, ctx([sig("envy")], "agent:2" as AgentId)),
+    ).toEqual([]);
+    expect(
+      immediateGoals([], undefined, [], 1000 + 3 * 14 * 24 * 3600, ctx([sig("love")])),
+    ).toEqual([]);
+  });
   it("ordena y limita determinísticamente necesidades con fuentes, sin duplicar ids", () => {
     const needs = (["hunger", "thirst", "rest", "pain"] as const).map((need) => ({
       need,
