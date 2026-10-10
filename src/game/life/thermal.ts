@@ -81,6 +81,14 @@ export interface ThermalOptions {
    */
   readonly frostbiteTreatment?: boolean;
   /**
+   * Opt-in (con `frostbiteTreatment`): quien se congela y no tiene orden de médico se cuida solo
+   * (recalentar y aislar, `SELF_CARE_HOURS_PER_DAY` horas por día); `skillOf` (0-1) decide la
+   * intensidad. Sin cirugía ni insumos del ledger (pendiente). Por defecto apagado.
+   */
+  readonly frostbiteSelfCare?: {
+    readonly skillOf: (truth: ReadonlyWorldTruth, who: AgentId) => number;
+  };
+  /**
    * Opt-in: el esfuerzo (`Body.activity`, `ACTIVITY_LOAD` relativo al reposo) entra en `stepCore`
    * como `activityKcal` y el sudor sostenido va a `SWEAT` (el cuerpo lo suma a la sed). Usa la
    * actividad al momento del paso (una vez por día), no el promedio del día. Por defecto apagado:
@@ -112,6 +120,10 @@ const STEPS_PER_DAY = 4;
 const NORMAL_BAND_C = 0.5;
 /** Horas de cada subpaso de `stepCore` (con pasos largos el Euler explícito oscila). */
 const SUBSTEP_H = 0.25;
+/** Autocuidado de la congelación: horas por día que le dedica, e intensidad = base + skill * habilidad. */
+export const SELF_CARE_HOURS_PER_DAY = 6;
+const SELF_CARE_BASE = 0.15;
+const SELF_CARE_SKILL = 0.5;
 /** Por debajo de este sudor (L/h) no se guarda fila. */
 const MIN_SWEAT_LPH = 0.005;
 
@@ -316,6 +328,22 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const fresh = req !== undefined && req.until > ctx.now && (!care || care.at < req.at);
         const order = fresh ? req : care;
         const surgical: FrostbitePart[] = [];
+        if (
+          !order &&
+          frost &&
+          dead === null &&
+          o.frostbite &&
+          o.frostbiteTreatment &&
+          o.frostbiteSelfCare &&
+          (frost.hands > 0 || frost.feet > 0 || frost.face > 0)
+        ) {
+          // Sin médico ni orden: se cuida solo, recalentando y aislando unas horas por día (el
+          // resto del día sigue con lo suyo); la habilidad decide la intensidad. No se opera.
+          const skill = Math.min(1, Math.max(0, o.frostbiteSelfCare.skillOf(ctx.truth, agent)));
+          const power = SELF_CARE_BASE + SELF_CARE_SKILL * skill;
+          const hoursCare = (n * hours * SELF_CARE_HOURS_PER_DAY) / 24;
+          frost = treatFrostbite(frost, { rewarm: power, insulate: power }, hoursCare, ctx.now);
+        }
         if (frost && o.frostbite && o.frostbiteTreatment && hadLost?.lost.some((l) => l.surgical)) {
           // Lo quitado por cirugía no vuelve a congelarse: no queda tejido.
           const gone = (p: FrostbitePart) => hadLost.lost.some((l) => l.surgical && l.part === p);

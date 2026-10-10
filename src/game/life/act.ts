@@ -74,6 +74,7 @@ import {
   MIND,
   type Nutrition,
   nearestHex,
+  netHydration,
   nodeAt,
   noteSeller,
   notoriety,
@@ -132,6 +133,7 @@ import {
   treat,
   updateSelfImage,
   verbSkill,
+  type WaterQuality,
   type WaterTreatment,
   walkingFactor,
   weatherAt,
@@ -242,6 +244,11 @@ export interface ActOptions {
    * no tiene con qué y no cambia nada.
    */
   readonly boil?: BoilOptions;
+  /**
+   * Opt-in: la calidad del agua que bebe el verbo `drink` (la sal deshidrata, `netHydration`); la
+   * hidratación neta puede ser negativa y entonces falta más agua. Sin él, agua limpia como siempre.
+   */
+  readonly drinkQuality?: (truth: ReadonlyWorldTruth, who: AgentId, now?: number) => WaterQuality;
   /**
    * Opt-in: estafa de calidad (economy §6). `inflate` dice cuánto mejora de lo que es el vendedor
    * lo que ofrece (0 = honesto) y `trust` cuánto le cree el comprador (0-1); el comprador cotiza
@@ -707,7 +714,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       doseEvents.push(...dose.events);
     }
   } else if (eff.kind === "drink") {
-    nextBody = ingest(bodyPlan, nextBody, 0, eff.liters);
+    const q = o.drinkQuality?.(truth, me, ctx.now);
+    const net = q ? netHydration(eff.liters, q) : eff.liters;
+    nextBody =
+      net >= 0 ? ingest(bodyPlan, nextBody, 0, net) : { ...nextBody, water: nextBody.water - net };
     bodyTouched = true;
   } else if (eff.kind === "boil" && eff.fuel !== null && eff.grams > 0 && o.boil) {
     changes.push(

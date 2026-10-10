@@ -207,6 +207,8 @@ export interface LifeWorld {
    * bajan la gravedad por hora; amputar quita la parte profunda antes de la gangrena). Apagado: nada cambia.
    */
   readonly frostbiteTreatment?: boolean;
+  /** Opt-in (con `frostbiteTreatment`): sin orden de médico, cada uno se recalienta y aísla solo unas horas por día; la habilidad (su entrada en `healers`, 0 si no está) decide la intensidad. Apagado: nada cambia. */
+  readonly frostbiteSelfCare?: boolean;
   /** Opt-in (con `frostbite`): la amputación deja `Scar` con `lost` en el `Body` (`body.physiology`) y baja capacidades por zona. Apagado: nada cambia. */
   readonly amputationScars?: boolean;
   /**
@@ -256,7 +258,12 @@ export interface LifeWorld {
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: ejecutores de los préstamos (la aldea como comunidad que reclama la mora, contracts §6). */
-  readonly loanEnforcement?: { readonly community: string };
+  readonly loanEnforcement?: {
+    readonly community: string;
+    /** Opt-in: tribunal y/o clan que reclaman la mora según lo que cree la gente (`enforcerClaims`). */
+    readonly court?: string;
+    readonly organization?: string;
+  };
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
@@ -378,6 +385,13 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
+          ...(parts.waterSources?.netDrink === true
+            ? {
+                drinkQuality: waterHooks(
+                  resolveWaterSources(parts.waterSources, parts.map, parts.clock, parts.seed),
+                ).drinkQuality,
+              }
+            : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.scam === true
             ? {
@@ -527,7 +541,19 @@ export function lifeWorld(
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
           ...(parts.loanEnforcement
-            ? { enforcement: { community: parts.loanEnforcement.community }, communityClaim: true }
+            ? {
+                enforcement: {
+                  community: parts.loanEnforcement.community,
+                  ...(parts.loanEnforcement.court ? { court: parts.loanEnforcement.court } : {}),
+                  ...(parts.loanEnforcement.organization
+                    ? { organization: parts.loanEnforcement.organization }
+                    : {}),
+                },
+                communityClaim: true,
+                ...(parts.loanEnforcement.court || parts.loanEnforcement.organization
+                  ? { enforcerClaims: true }
+                  : {}),
+              }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
         }),
@@ -626,6 +652,16 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.frostbite === true && parts.frostbiteTreatment === true
             ? { frostbiteTreatment: true }
+            : {}),
+          ...(parts.frostbite === true &&
+          parts.frostbiteTreatment === true &&
+          parts.frostbiteSelfCare === true
+            ? {
+                frostbiteSelfCare: {
+                  skillOf: (_t: unknown, who: AgentId) =>
+                    parts.healers?.find((h) => h.agent === who)?.skill ?? 0,
+                },
+              }
             : {}),
         }),
         ...(altitudeOf

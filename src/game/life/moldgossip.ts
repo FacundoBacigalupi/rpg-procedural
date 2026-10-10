@@ -32,6 +32,7 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
+import { lookAcuity } from "./looking.ts";
 import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
 import { TRADE_VIEW } from "./tradeview.ts";
 
@@ -135,6 +136,19 @@ export interface MoldGossipOptions {
   readonly fromPriceBeliefs?: {
     readonly clock: PlanetClock;
     readonly marketOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef | undefined;
+  };
+  /**
+   * Opt-in: lo que alguien ve al mirar (`look`, evento con `lookAcuity`) entra como rumor
+   * `location` de primera mano, con el evento como causa; si la agudeza no llega a `vagueBelow`
+   * (0.5 por defecto) el lugar queda vago. `siteOf` dice qué sitio vio (`undefined` = ninguno).
+   * Apagado: no mira eventos ni escribe nada.
+   */
+  readonly fromLooking?: {
+    readonly siteOf: (
+      truth: ReadonlyWorldTruth,
+      who: AgentId,
+    ) => { readonly what: string; readonly where: PlaceRef } | undefined;
+    readonly vagueBelow?: number;
   };
 }
 
@@ -316,6 +330,38 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
             );
             dirty.add(id);
           }
+        }
+      }
+      if (o.fromLooking) {
+        for (const e of ctx.recent) {
+          const acuity = lookAcuity(e.data);
+          const who = e.actors[0] as AgentId | undefined;
+          if (acuity === undefined || !who || !truth.get(PERSON, who)) continue;
+          const site = o.fromLooking.siteOf(truth, who);
+          if (!site) continue;
+          const rumor: MoldRumor = {
+            mold: "location",
+            what: site.what,
+            where: site.where,
+            vague: acuity < (o.fromLooking.vagueBelow ?? 0.5),
+          };
+          const b = bookOf(who);
+          const rest: MoldBook | undefined = b && {
+            items: b.items.filter((x) => moldKey(x.rumor) !== moldKey(rumor)),
+            told: b.told,
+          };
+          books.set(
+            who,
+            keepMold(rest, {
+              rumor,
+              confidence: 1,
+              hops: 0,
+              heardAt: e.tick,
+              teller: null,
+              cause: e.id as EventId,
+            }),
+          );
+          dirty.add(who);
         }
       }
       const groups = new Map<string, AgentId[]>();
