@@ -65,6 +65,7 @@ import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gossipProcess } from "./gossip.ts";
+import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
@@ -140,6 +141,8 @@ export interface LifeWorld {
   readonly deficiencyEffects?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
+  /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
+  readonly growthSequelae?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -427,6 +430,7 @@ export function lifeWorld(
           lethal: parts.malnutritionDeath === true,
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
         thermalProcess({
           clock: parts.clock,
           map: parts.map,

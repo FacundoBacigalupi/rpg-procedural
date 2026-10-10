@@ -8,6 +8,7 @@ import type { AgentId, EventId, PlanetClock, Tick } from "../../core/index.ts";
 import { INNATE, type Innate, PERSON, type Sex, type Trait } from "../family/index.ts";
 import { ENTITY, table, type WorldTruth } from "../world/index.ts";
 import type { BodyPlanDef } from "./plan.ts";
+import { GROWTH_SEQUELAE, heightFactor, NO_SEQUELAE } from "./stunting.ts";
 
 /** Cuánto se exige el cuerpo ahora (lo pone la acción en curso; dormir es la única que paga sueño). */
 export const ACTIVITIES = ["sleep", "rest", "light", "moderate", "heavy"] as const;
@@ -176,7 +177,13 @@ export function seedBodies(
     const innate = truth.get(INNATE, id);
     if (!person || !innate) continue;
     const age = (now - person.born) / clock.year;
-    truth.set(BODY_STATE, id, newBody(plan, massOf(plan, innate, traits, person.sex, age), now));
+    // Con secuelas de hambre infantil (`GROWTH_SEQUELAE`) la talla adulta es menor; sin fila, 1.
+    const scale = heightFactor(truth.get(GROWTH_SEQUELAE, id) ?? NO_SEQUELAE);
+    truth.set(
+      BODY_STATE,
+      id,
+      newBody(plan, massOf(plan, innate, traits, person.sex, age, scale), now),
+    );
   }
 }
 
