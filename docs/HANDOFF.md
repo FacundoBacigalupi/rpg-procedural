@@ -5,6 +5,11 @@ Pensado para que otra herramienta (Codex, Claude Code en la nube, otra sesión) 
 - **Qué hacer:** [ROADMAP.md](ROADMAP.md), sección «Ahora» y los `[ ]` de la fase actual.
 - **Cómo hacerlo y en qué está cada línea:** este archivo. Se actualiza en cada integración (tabla de estado en §8).
 
+**Para Codex:** [AGENTS.md](../AGENTS.md) carga las instrucciones del repositorio;
+[CODEX_MEMORY.md](CODEX_MEMORY.md) conserva el contexto, el mapa de los 46 sistemas
+y la adaptación del flujo de Claude Code. No reemplaza ROADMAP ni el estado de
+este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
+
 ## 1. Retomar en 5 pasos
 1. `git fetch` y leer la tabla de estado (§8): qué ramas/PR hay abiertos y quién los tiene.
 2. `git worktree list`, `git branch -a`, `gh pr list`: lo que no esté en la tabla es sospechoso (ramas sueltas = o se integran o se borran, §6).
