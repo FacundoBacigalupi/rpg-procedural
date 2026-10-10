@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, PlaceRef } from "../../core/index.ts";
-import { CLEAN, type SubstanceDef } from "../body/substance.ts";
+import { CLEAN, type SubstanceDef } from "../body/index.ts";
 import { goalChanges, layerDrives, reconcileGoals } from "./goals.ts";
 import {
   feltCompanyNeed,

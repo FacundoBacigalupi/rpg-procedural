@@ -187,8 +187,21 @@ el fin cita además el estado anterior de los objetivos. Las capas se derivan
 solo del núcleo actualizado y conservan su empuje pequeño en la utilidad, sin
 sumarse otra vez como núcleo. No agrega empuje ni consume RNG adicional:
 solo persiste estado y emite eventos opt-in. Apagado conserva el comportamiento anterior.
-La deuda real, el cumplimiento y la muerte se tratan en los subítems posteriores
-del ROADMAP; los umbrales siguen sin calibrar.
+La deuda creída se deriva del libro personal contractual (contracts.md); los
+umbrales siguen sin calibrar.
+
+**Cierre por muerte opt-in (2026-10-10, f2b):** `closeGoalsOnDeath` registra
+`npc.goal` de fin y elimina `NPC_GOALS` en `perceive` ante un `body.died` cuyo id
+coincide con `ENTITY.endEventId`. Cita la muerte, el origen de la meta y su estado
+anterior. El proceso se agenda a nivel mundo porque el fallecido deja de decidir;
+no repite cierres ni agrega otro escritor de metas en la fase `decide`.
+
+**Cumplimiento subjetivo puro (2026-10-10, f3d1):**
+`goalCompletionsFromBeliefs` reconoce una venganza desde la creencia propia de
+que el objetivo murió, con confianza mínima 0,6 y fuente de evento perceptivo
+o evidencia propia explícita. Un relato sin evento causal no inventa prueba;
+la verdad del objetivo no participa. Cierre persistido, prevención de
+regeneración y vacío de sentido son los subítems f3d2–3 del ROADMAP.
 
 **Capa inmediata opt-in (2026-10-10, f3c):** `persistImmediateGoals`, independiente
 de `persistGoalLayers`, guarda hambre, sed y descanso sentidos, dolor de heridas

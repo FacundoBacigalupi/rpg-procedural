@@ -268,7 +268,7 @@ describe("consumeDose (verbo consume)", () => {
         ? (reinforcedRow.value as PersonSubstances)
         : undefined;
     expect(strengthened?.held[0]?.originEventId).toBe("event:9");
-    expect(strengthened?.cues?.every((c) => c.originEventId === "event:9")).toBe(true);
+    expect(strengthened?.cues?.every((c) => c.originEventId === ("event:9" as EventId))).toBe(true);
     const rejected = consumeDose(
       world(),
       a,

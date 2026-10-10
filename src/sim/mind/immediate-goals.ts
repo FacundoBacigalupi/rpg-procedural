@@ -8,15 +8,16 @@ import {
   LN2,
   type Tick,
 } from "../../core/index.ts";
-import { craving, type SubstanceDef } from "../body/substance.ts";
 import {
   type CravingCue,
   type CueContext,
+  craving,
   cueCraving,
   cueStrength,
   cuesOf,
-} from "../body/substance-cues.ts";
-import type { HeldSubstance } from "../body/substance-state.ts";
+  type HeldSubstance,
+  type SubstanceDef,
+} from "../body/index.ts";
 import type { Goal } from "./goals.ts";
 import type { Memories } from "./memory.ts";
 import type { ValueId } from "./mind.ts";
