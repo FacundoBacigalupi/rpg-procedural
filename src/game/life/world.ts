@@ -96,7 +96,7 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
-import { type RentSeed, rentsProcess } from "./rents.ts";
+import { type RentSeed, rentsProcess, sharecropHarvestProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -535,6 +535,9 @@ export function lifeWorld(
                 seeds: parts.rentSeeds,
                 placeOf: placeOf(parts, village),
               }),
+              ...(parts.rentSeeds.some((r) => r.kind === "sharecrop")
+                ? [sharecropHarvestProcess({ placeOf: placeOf(parts, village) })]
+                : []),
             ]
           : []),
         ...(parts.famine

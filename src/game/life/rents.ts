@@ -33,8 +33,11 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   type RentCollected,
+  type SharecropInputs,
   type StateChange,
   setComponent,
+  settleSharecrop,
+  sharecropFraction,
   table,
 } from "../../sim/index.ts";
 
@@ -58,7 +61,19 @@ export interface RentRow {
   readonly missed?: number;
   readonly status: "active" | "fulfilled" | "defaulted";
   readonly commitment: Commitment;
+  /** Aparcería: el canon es una parte de la cosecha (sin canon diario); ver `SHARES`. */
+  readonly share?: { readonly fraction: number };
 }
+
+/** Lo liquidado de una aparcería, por cosecha. Solo lo escribe `life.rents.harvest`. */
+export interface ShareRow {
+  readonly harvested: number;
+  readonly paid: number;
+  readonly arrears: number;
+  readonly harvests: number;
+}
+export const SHARES = table<ShareRow>("economy.sharecrop");
+export const SHARES_PROCESS = "life.rents.harvest";
 
 /** Cada arriendo vive en una entidad `commitment:n` con este componente. Solo lo escribe `life.rents`. */
 export const RENTS = table<RentRow>("economy.rents");
@@ -75,6 +90,10 @@ export interface RentSeed {
   readonly perDay: number;
   readonly startDay: number;
   readonly termDays: number;
+  /** "sharecrop": el canon es una parte de la cosecha (`good` es el grano; `perDay` se ignora). */
+  readonly kind?: "cash" | "sharecrop";
+  /** Quién pone semilla, bueyes y herramientas (true: el dueño); default todo del aparcero. */
+  readonly inputs?: SharecropInputs;
 }
 
 export interface RentsOptions {
@@ -196,7 +215,9 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         const landMan = firstAlive(s.landlord);
         const tenMan = firstAlive(s.tenant);
         if (!def || !landMan || !tenMan || !ctx.truth.get(PARCEL, s.parcel as never)) continue;
-        if (!(s.perDay > 0) || !Number.isInteger(s.perDay) || s.termDays <= 0) continue;
+        const crop = s.kind === "sharecrop";
+        if (s.termDays <= 0) continue;
+        if (!crop && (!(s.perDay > 0) || !Number.isInteger(s.perDay))) continue;
         const id = ctx.newId("commitment");
         const k = events.length;
         const unit = goodUnit(def) as string;
@@ -223,12 +244,21 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
           tenant: s.tenant,
           parcel: s.parcel,
           unit,
-          perDay: s.perDay,
+          perDay: crop ? 0 : s.perDay,
           startDay: today + 1,
           endDay: today + 1 + s.termDays,
           paid: 0,
           arrears: 0,
           status: "active",
+          ...(crop
+            ? {
+                share: {
+                  fraction: sharecropFraction(
+                    s.inputs ?? { seed: false, oxen: false, tools: false },
+                  ),
+                },
+              }
+            : {}),
           commitment: leaseCommitment(
             id as string,
             s,
@@ -277,6 +307,19 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
         const landMan = firstAlive(l.landlord);
         const tenMan = firstAlive(l.tenant);
         if (!landMan || !tenMan) continue;
+        if (l.share) {
+          // Aparcería: sin canon diario; se liquida al cosechar. Al vencer cierra según el atraso.
+          if (today + 1 >= l.endDay) {
+            const sh = ctx.truth.get(SHARES, r.id as never);
+            changes.push(
+              setComponent(RENTS, r.id as never, {
+                ...l,
+                status: (sh?.arrears ?? 0) > 0 ? "defaulted" : "fulfilled",
+              }),
+            );
+          }
+          continue;
+        }
         const k = events.length;
         const u = ledgerUnit(l.unit);
         const sk = `${l.tenant}|${l.unit}`;
@@ -376,6 +419,98 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
       }
 
       if (events.length === 0 && changes.length === 0) return {};
+      return { events, postings, changes };
+    },
+  };
+}
+
+/**
+ * Liquida las aparcerías al cosechar: por cada `routine.harvested` del hogar aparcero en una
+ * parcela con aparcería vigente, el aparcero entrega la parte del dueño (más el atraso) de lo que
+ * tiene (`property.rent_paid`, por ledger: conserva); lo que no alcanza queda como atraso en
+ * `SHARES`. Lee los eventos del paso (`recent`): no toca la rutina de cosecha.
+ */
+export function sharecropHarvestProcess(o: {
+  readonly placeOf: RentsOptions["placeOf"];
+}): ProcessDef {
+  return {
+    id: SHARES_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [PERSON.name, RENTS.name, SHARES.name],
+    writes: [SHARES.name],
+    run(ctx) {
+      const ledger = ctx.ledger;
+      if (!ledger) return {};
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const changes: StateChange[] = [];
+      const rows = rentRows(ctx.truth).filter((r) => r.rent.share && r.rent.status === "active");
+      if (rows.length === 0) return {};
+      const spent = new Map<string, number>();
+      const state = new Map<string, ShareRow>();
+      for (const e of ctx.recent) {
+        if (e.kind !== "routine.harvested") continue;
+        const d = e.data as { good?: string; grams?: number };
+        const who = e.actors[0];
+        const home = who ? ctx.truth.get(PERSON, who)?.household : undefined;
+        if (!home || typeof d.grams !== "number" || d.grams <= 0) continue;
+        for (const r of rows) {
+          const l = r.rent;
+          if (l.tenant !== home || l.unit !== d.good || !l.share) continue;
+          const prior = state.get(r.id) ??
+            ctx.truth.get(SHARES, r.id as never) ?? {
+              harvested: 0,
+              paid: 0,
+              arrears: 0,
+              harvests: 0,
+            };
+          const landMan = [...ctx.truth.ids(PERSON)]
+            .sort()
+            .find(
+              (id) =>
+                ctx.truth.get(PERSON, id)?.household === l.landlord &&
+                ctx.truth.get(ENTITY, id)?.endedAt === undefined,
+            ) as AgentId | undefined;
+          const u = ledgerUnit(l.unit);
+          const sk = `${l.tenant}|${l.unit}`;
+          const s = settleSharecrop({
+            harvested: d.grams,
+            fraction: l.share.fraction,
+            priorArrears: prior.arrears,
+            available: Math.floor(ledger.balance(acct(l.tenant), u) ?? 0) - (spent.get(sk) ?? 0),
+            unit: u,
+            tenant: acct(l.tenant),
+            landlord: acct(l.landlord),
+          });
+          state.set(r.id, {
+            harvested: prior.harvested + d.grams,
+            paid: prior.paid + s.paid,
+            arrears: s.arrears,
+            harvests: prior.harvests + 1,
+          });
+          if (s.paid > 0) {
+            postings.push({ event: draftEvent(events.length), transfers: [...s.transfers] });
+            spent.set(sk, (spent.get(sk) ?? 0) + s.paid);
+          }
+          events.push({
+            kind: "property.rent_paid",
+            actors: landMan ? [who as AgentId, landMan] : [who as AgentId],
+            place: o.placeOf(ctx.truth, who as AgentId),
+            data: { rent: r.id, paid: s.paid, owed: s.owed, arrears: s.arrears, share: true },
+            emissions: {},
+            causes: [
+              { kind: "event" as const, event: e.id },
+              { kind: "event" as const, event: l.commitment.originEventId as never },
+            ],
+          });
+        }
+      }
+      for (const [id, v] of state) changes.push(setComponent(SHARES, id as never, v));
+      if (events.length === 0) return {};
       return { events, postings, changes };
     },
   };
