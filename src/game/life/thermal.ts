@@ -11,6 +11,7 @@ import {
   ACTIVITY_LOAD,
   AMPUTATIONS,
   altitudeEnv,
+  amputateSurgically,
   amputationFactors,
   BODY_STATE,
   type BodyCapabilities,
@@ -22,6 +23,8 @@ import {
   type EventDraft,
   endEntity,
   FROSTBITE,
+  FROSTBITE_CARE,
+  type FrostbitePart,
   type FrostbiteState,
   frostbiteHandFactor,
   frostbiteMobilityFactor,
@@ -44,6 +47,7 @@ import {
   THERMAL,
   type ThermalEnv,
   thermalDeath,
+  treatFrostbite,
   weatherAt,
 } from "../../sim/index.ts";
 import { INDOOR_BASE_C, INDOOR_LEAK } from "./ambient.ts";
@@ -68,6 +72,12 @@ export interface ThermalOptions {
    * las capacidades en `decide`/`act` (opción `frostbite` de `LifeParts`). Por defecto apagado.
    */
   readonly frostbite?: boolean;
+  /**
+   * Opt-in (con `frostbite`): consume la orden de `FROSTBITE_CARE` por persona: recalentar y aislar
+   * bajan la gravedad por hora (`treatFrostbite`) y la amputación quirúrgica quita la parte profunda
+   * (`amputateSurgically`, evento `body.amputated` con causa `surgery`). Por defecto apagado.
+   */
+  readonly frostbiteTreatment?: boolean;
   /**
    * Opt-in: el esfuerzo (`Body.activity`, `ACTIVITY_LOAD` relativo al reposo) entra en `stepCore`
    * como `activityKcal` y el sudor sostenido va a `SWEAT` (el cuerpo lo suma a la sed). Usa la
@@ -200,8 +210,16 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       FROSTBITE.name,
       SWEAT.name,
       AMPUTATIONS.name,
+      FROSTBITE_CARE.name,
     ],
-    writes: [THERMAL.name, ENTITY.name, FROSTBITE.name, SWEAT.name, AMPUTATIONS.name],
+    writes: [
+      THERMAL.name,
+      ENTITY.name,
+      FROSTBITE.name,
+      SWEAT.name,
+      AMPUTATIONS.name,
+      FROSTBITE_CARE.name,
+    ],
     run(ctx) {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -282,17 +300,65 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
             changes.push({ op: "delete", table: SWEAT.name, id });
           }
         }
-        if (o.frostbite && frost !== hadFrost) {
+        // Tratamiento aplicado: recalentar/aislar bajan la gravedad por hora y la cirugía quita
+        // lo profundo antes de la gangrena; la orden de amputar se ejecuta una sola vez.
+        const hadLost = ctx.truth.get(AMPUTATIONS, id);
+        const order =
+          o.frostbite && o.frostbiteTreatment ? ctx.truth.get(FROSTBITE_CARE, id) : undefined;
+        const surgical: FrostbitePart[] = [];
+        if (frost && o.frostbite && o.frostbiteTreatment && hadLost?.lost.some((l) => l.surgical)) {
+          // Lo quitado por cirugía no vuelve a congelarse: no queda tejido.
+          const gone = (p: FrostbitePart) => hadLost.lost.some((l) => l.surgical && l.part === p);
+          frost = {
+            hands: gone("hands") ? 0 : frost.hands,
+            feet: gone("feet") ? 0 : frost.feet,
+            face: gone("face") ? 0 : frost.face,
+            at: frost.at,
+          };
+        }
+        if (order && dead === null) {
+          const windowH = n * hours;
+          const from = ctx.now - n * stepTicks;
+          const covered = Math.max(
+            0,
+            Math.min(windowH, ((Math.min(order.until, ctx.now) - from) / o.clock.day) * 24),
+          );
+          if (frost) frost = treatFrostbite(frost, order, covered, ctx.now);
+          if (frost && order.amputate.length > 0) {
+            const cut = amputateSurgically(frost, order.amputate, hadLost, ctx.now);
+            frost = cut.state;
+            surgical.push(...cut.done);
+          }
+          if (order.until > ctx.now) {
+            if (order.amputate.length > 0) {
+              changes.push(setComponent(FROSTBITE_CARE, id, { ...order, amputate: [] }));
+            }
+          } else {
+            changes.push({ op: "delete", table: FROSTBITE_CARE.name, id });
+          }
+        }
+        if (o.frostbite && (frost !== hadFrost || surgical.length > 0)) {
           if (frost && (frost.hands > 0 || frost.feet > 0 || frost.face > 0)) {
             changes.push(setComponent(FROSTBITE, id, { ...frost, at: ctx.now }));
           } else if (hadFrost) {
             changes.push({ op: "delete", table: FROSTBITE.name, id });
           }
           // Tejido necrosado: la parte se pierde para siempre, con evento que la causa.
-          const hadLost = ctx.truth.get(AMPUTATIONS, id);
           const fresh = frost && dead === null ? newAmputations(frost, hadLost) : [];
-          if (frost && fresh.length > 0) {
+          if (frost && (fresh.length > 0 || surgical.length > 0)) {
             const lost = [...(hadLost?.lost ?? [])];
+            for (const part of surgical) {
+              const ke = events.length;
+              events.push({
+                kind: "body.amputated",
+                actors: [agent],
+                place: o.placeOf(ctx.truth, agent),
+                data: { part, cause: "surgery" },
+                emissions: { sight: 0.4 },
+                causes: [{ kind: "state", entity: agent, key: "body.frostbite_care" }],
+              });
+              lost.push({ part, at: ctx.now, cause: draftEvent(ke), surgical: true });
+            }
             for (const part of fresh) {
               const ke = events.length;
               events.push({

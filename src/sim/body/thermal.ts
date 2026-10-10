@@ -351,6 +351,8 @@ export interface LostPart {
   readonly part: FrostbitePart;
   readonly at: number;
   readonly cause: EventId;
+  /** Quitada por cirugía (antes de la gangrena), no por necrosis. */
+  readonly surgical?: true;
 }
 
 /**
@@ -380,6 +382,71 @@ export function newAmputations(
   had: Amputations | undefined,
 ): FrostbitePart[] {
   return frostbiteAmputations(state).filter((p) => !had?.lost.some((l) => l.part === p));
+}
+
+/**
+ * Tratamiento en curso de la congelación, aparte del `Body` y de `FROSTBITE` (como `THERMAL`): lo
+ * escribe quien atiende (un médico, uno mismo) y lo consume `life.thermal`. Sin fila no hay
+ * tratamiento. `rewarm` e `insulate` (0-1, intensidad) rigen hasta `until`; `amputate` es la orden
+ * de quitar quirúrgicamente esas partes, que se ejecuta una vez.
+ */
+export interface FrostbiteCareOrder {
+  readonly rewarm: number;
+  readonly insulate: number;
+  readonly amputate: readonly FrostbitePart[];
+  /** Hasta cuándo rigen recalentar y aislar. */
+  readonly until: number;
+  /** Quién atiende (lo que causa el evento). */
+  readonly by?: string;
+  readonly at: number;
+}
+export const FROSTBITE_CARE = table<FrostbiteCareOrder>("body.frostbite_care");
+
+/** Baja de gravedad por hora con recalentamiento y con aislamiento (a intensidad 1), además de la curación natural. */
+export const FROSTBITE_REWARM_PER_HOUR = 0.04;
+export const FROSTBITE_INSULATE_PER_HOUR = 0.02;
+/** Gravedad desde la que la cirugía tiene sentido (profunda o peor); antes se recalienta. */
+export const FROSTBITE_SURGERY_MIN = 0.5;
+
+/**
+ * Un tratamiento de `hours` horas: recalentar y aislar bajan la gravedad por hora de lo que todavía
+ * se puede salvar (lo necrosado no vuelve). Con `hours <= 0` o sin intensidad devuelve el mismo estado.
+ */
+export function treatFrostbite(
+  state: FrostbiteState,
+  care: Pick<FrostbiteCareOrder, "rewarm" | "insulate">,
+  hours: number,
+  now: number,
+): FrostbiteState {
+  const drop =
+    (clamp(care.rewarm, 0, 1) * FROSTBITE_REWARM_PER_HOUR +
+      clamp(care.insulate, 0, 1) * FROSTBITE_INSULATE_PER_HOUR) *
+    hours;
+  if (drop <= 0) return state;
+  const next = (v: number) => (v >= FROSTBITE_AMPUTATION ? v : clamp(v - drop, 0, 1));
+  return { hands: next(state.hands), feet: next(state.feet), face: next(state.face), at: now };
+}
+
+/**
+ * Amputación quirúrgica de las partes pedidas que lo justifican (gravedad profunda o necrótica) y
+ * que no estén ya perdidas: quita el tejido (gravedad 0) antes de que la gangrena se lleve más.
+ * Devuelve el estado resultante y las partes quitadas.
+ */
+export function amputateSurgically(
+  state: FrostbiteState,
+  parts: readonly FrostbitePart[],
+  had: Amputations | undefined,
+  now: number,
+): { readonly state: FrostbiteState; readonly done: FrostbitePart[] } {
+  const done = FROSTBITE_PARTS.filter(
+    (p) =>
+      parts.includes(p) &&
+      state[p] >= FROSTBITE_SURGERY_MIN &&
+      !had?.lost.some((l) => l.part === p),
+  );
+  if (done.length === 0) return { state, done };
+  const z = (p: FrostbitePart) => (done.includes(p) ? 0 : state[p]);
+  return { state: { hands: z("hands"), feet: z("feet"), face: z("face"), at: now }, done };
 }
 
 /** Agua por hora (L) que suda en equilibrio, para alimentar la sed del cuerpo. */

@@ -182,6 +182,11 @@ export interface LifeWorld {
    */
   readonly frostbite?: boolean;
   /**
+   * Opt-in (con `frostbite`): `life.thermal` consume la orden de `FROSTBITE_CARE` (recalentar y aislar
+   * bajan la gravedad por hora; amputar quita la parte profunda antes de la gangrena). Apagado: nada cambia.
+   */
+  readonly frostbiteTreatment?: boolean;
+  /**
    * Opt-in: bienes que son sustancias de consumo (body-health §9): el verbo `consume` los toma
    * (`life.act`: gasta una unidad y suma una dosis con evento) y `life.decide` lo ofrece con
    * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
@@ -545,6 +550,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.frostbite === true && parts.frostbiteTreatment === true
+            ? { frostbiteTreatment: true }
+            : {}),
         }),
         ...(altitudeOf
           ? [
