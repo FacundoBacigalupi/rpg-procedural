@@ -142,6 +142,49 @@ export function travelAltitudeOf(
   };
 }
 
+export const TRAVEL_CELL_PROCESS = "life.travel_cell";
+
+export interface TravelCellOptions {
+  /**
+   * La celda del planeta por la que pasa quien viaja hoy (la del `Journey` que lo lleva), o
+   * `undefined` si está en el parche local. Lectura pura de la verdad.
+   */
+  readonly cellOf: (truth: ReadonlyWorldTruth, who: AgentId, now: number) => number | undefined;
+}
+
+/**
+ * Escritor de `TRAVEL_CELL` (travel, body-health §7): cada día copia la celda por la que pasa el
+ * viajero (`cellOf`), conserva `since` mientras no cambia y borra la fila al llegar al parche.
+ * Sin viajeros no hay cambios (ni RNG ni eventos). Corre antes que `life.altitude`.
+ */
+export function travelCellProcess(o: TravelCellOptions): ProcessDef {
+  return {
+    id: TRAVEL_CELL_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "settle",
+    reads: [PERSON.name, ENTITY.name, TRAVEL_CELL.name],
+    writes: [TRAVEL_CELL.name],
+    run(ctx) {
+      const changes: StateChange[] = [];
+      for (const id of ctx.truth.ids(PERSON)) {
+        const base = ctx.truth.get(ENTITY, id);
+        if (!base || base.endedAt !== undefined) continue;
+        const cell = o.cellOf(ctx.truth, id as AgentId, ctx.now);
+        const had = ctx.truth.get(TRAVEL_CELL, id);
+        if (cell === undefined) {
+          if (had) changes.push({ op: "delete", table: TRAVEL_CELL.name, id });
+        } else if (had?.cell !== cell) {
+          changes.push(setComponent(TRAVEL_CELL, id, { cell, since: ctx.now }));
+        }
+      }
+      return changes.length > 0 ? { changes } : {};
+    },
+  };
+}
+
 /**
  * `TravelAltitude` desde la tabla `TRAVEL_CELL`: la celda de quien viaja sale de su fila (sin fila,
  * está en el parche). El `baseM` térmico no cambia: el aire del parche es la referencia y la

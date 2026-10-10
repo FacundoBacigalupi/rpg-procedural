@@ -4,12 +4,19 @@ import type { ReadonlyWorldTruth } from "../../sim/index.ts";
 import {
   ACCLIMATIZATION,
   type BodyCapabilities,
+  ENTITY,
   LOCATION,
   type LocalMap,
   type SpaceGraph,
   TRAVEL_CELL,
 } from "../../sim/index.ts";
-import { applyAltitude, mapAltitudeOf, travelAltitudeOf, travelCellAltitude } from "./altitude.ts";
+import {
+  applyAltitude,
+  mapAltitudeOf,
+  travelAltitudeOf,
+  travelCellAltitude,
+  travelCellProcess,
+} from "./altitude.ts";
 
 const who = "agent:1" as AgentId;
 const map = { elevationM: [100, 4500] } as unknown as LocalMap;
@@ -83,5 +90,38 @@ describe("celda de viaje en la tabla", () => {
       }) as unknown as ReadonlyWorldTruth;
     expect(f(at(), who)).toBe(100);
     expect(f(at(9), who)).toBe(5000);
+  });
+});
+
+describe("escritor de la celda de viaje", () => {
+  const person = "agent:2" as AgentId;
+  function run(
+    cellOf: (t: ReadonlyWorldTruth, w: AgentId, now: number) => number | undefined,
+    had?: { cell: number; since: number },
+    now = 10,
+  ) {
+    const truth = {
+      ids: () => [person],
+      get: (t: { name: string }) =>
+        t.name === ENTITY.name
+          ? { endedAt: undefined }
+          : t.name === TRAVEL_CELL.name
+            ? had
+            : undefined,
+    } as unknown as ReadonlyWorldTruth;
+    const p = travelCellProcess({ cellOf });
+    return (p.run({ truth, now, window: 1 } as never) as { changes?: unknown[] }).changes ?? [];
+  }
+
+  it("escribe al entrar a una celda, no repite si sigue y borra al llegar al parche", () => {
+    expect(run(() => 7)).toEqual([
+      { op: "set", table: TRAVEL_CELL.name, id: person, value: { cell: 7, since: 10 } },
+    ]);
+    expect(run(() => 7, { cell: 7, since: 3 })).toEqual([]);
+    expect(run(() => 8, { cell: 7, since: 3 })).toHaveLength(1);
+    expect(run(() => undefined, { cell: 7, since: 3 })).toEqual([
+      { op: "delete", table: TRAVEL_CELL.name, id: person },
+    ]);
+    expect(run(() => undefined)).toEqual([]);
   });
 });

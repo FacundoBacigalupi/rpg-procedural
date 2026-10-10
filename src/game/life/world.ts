@@ -55,7 +55,9 @@ import {
   altitudeProcess,
   mapAltitudeOf,
   type TravelAltitude,
+  type TravelCellOptions,
   travelAltitudeOf,
+  travelCellProcess,
 } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
@@ -259,6 +261,8 @@ export interface LifeWorld {
   readonly realAltitude?: boolean;
   /** Opt-in (con `realAltitude`): fuera del parche local la altitud sale de la elevación de la celda recorrida; sin esto, solo el parche. */
   readonly travelAltitude?: TravelAltitude;
+  /** Opt-in (con `realAltitude`): celda por la que pasa quien viaja (la del `Journey`); `life.travel_cell` la escribe en `TRAVEL_CELL` cada día y la borra al llegar al parche. */
+  readonly travelCell?: TravelCellOptions["cellOf"];
   /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: `loansProcess` lee la confianza de RELATIONS con `current` (decaimiento al día); apagado: tal cual guardada. */
@@ -1077,6 +1081,9 @@ export function lifeWorld(
               }
             : {}),
         }),
+        ...(altitudeOf && parts.travelCell
+          ? [travelCellProcess({ cellOf: parts.travelCell })]
+          : []),
         ...(altitudeOf
           ? [
               altitudeProcess({
