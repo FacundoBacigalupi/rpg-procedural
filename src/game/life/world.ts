@@ -85,6 +85,7 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
+import { type RentSeed, rentsProcess } from "./rents.ts";
 import { routineProcess } from "./routine.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
@@ -164,6 +165,8 @@ export interface LifeWorld {
   readonly moldGossip?: MoldGossipOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
+  /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
+  readonly rentSeeds?: readonly RentSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
   readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`, tabla `MIGRATIONS`); solo la decisión, no mueve a nadie. Apagado por defecto. */
@@ -392,6 +395,16 @@ export function lifeWorld(
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.rentSeeds && parts.rentSeeds.length > 0
+          ? [
+              rentsProcess({
+                clock: parts.clock,
+                goods: parts.goods,
+                seeds: parts.rentSeeds,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ...(parts.famine
           ? [
               famineProcess({

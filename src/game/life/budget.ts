@@ -48,7 +48,7 @@ export interface BudgetEnv {
   readonly fixedPerDay?: number;
   /** Préstamos activos del hogar: su cuota diaria se suma a los gastos fijos (`withLoanPayments`). */
   readonly loans?: readonly LoanCommitment[];
-  /** Opt-in: rentas que cobra el hogar (suman al ingreso); hoy la vida no las genera, quien las tenga las pasa. */
+  /** Opt-in: rentas que cobra el hogar (suman al ingreso); las genera `life.rents` (`rentsOf`). */
   readonly rents?: readonly RentCollected[];
 }
 

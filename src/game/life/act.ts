@@ -142,6 +142,7 @@ import {
   strikeFight,
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
+import { rentsOf } from "./rents.ts";
 import { acuteOf } from "./substances.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
@@ -396,6 +397,7 @@ function dealBudgetOf(
       year: o.clock.year,
       incomePerDay: incomeOfHousehold(truth, home, Math.floor(ctx.now / o.clock.day)),
       loans: loansOf(truth, holderAccount(home as unknown as HolderRef)),
+      rents: rentsOf(truth, home),
     },
     home,
   );
