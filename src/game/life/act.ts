@@ -232,6 +232,11 @@ export interface ActOptions {
    */
   readonly consumables?: readonly ConsumableDef[];
   /**
+   * Opt-in: comer un lote que contiene una sustancia (hierba, té) suma una dosis proporcional a
+   * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
+   */
+  readonly foodSubstances?: readonly ConsumableDef[];
+  /**
    * Opt-in: el verbo `boil` quema `grams` de la unidad `fuel` del ledger (de lo que lleva o de la
    * despensa) y deja agua tratada (`TREATED_WATER`) que dura `validDays` días. Apagado, `boil`
    * no tiene con qué y no cambia nada.
@@ -682,6 +687,25 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ),
       );
     bodyTouched = true;
+    const laced =
+      eff.good !== null && eff.grams > 0
+        ? o.foodSubstances?.find((c) => GOOD(c.good) === eff.good)
+        : undefined;
+    if (laced) {
+      const dose = consumeDose(
+        truth,
+        me,
+        { ...laced, amount: laced.amount * eff.grams },
+        ctx,
+        input.place,
+        r.events.length,
+        o.cravingCues
+          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
+          : undefined,
+      );
+      changes.push(...dose.changes);
+      doseEvents.push(...dose.events);
+    }
   } else if (eff.kind === "drink") {
     nextBody = ingest(bodyPlan, nextBody, 0, eff.liters);
     bodyTouched = true;
