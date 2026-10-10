@@ -142,6 +142,49 @@ describe("life.loans", () => {
     expect(ch?.value.possession).toBe("rich");
   });
 
+  it("la mora traspasa el lote de bienes sueltos en prenda por el ledger y conserva", () => {
+    const { truth, ledger } = setup();
+    const SEED = ledgerUnit("good:seed");
+    const ledger2 = new Ledger({ externals: { seed: [GRAIN, SEED] } });
+    ledger2.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [
+        { unit: GRAIN, from: externalAccount("seed"), to: H("rich"), amount: 100000 },
+        { unit: GRAIN, from: externalAccount("seed"), to: H("poor"), amount: 1000 },
+        { unit: SEED, from: externalAccount("seed"), to: H("poor"), amount: 50 },
+      ],
+    });
+    void ledger;
+    const s: LoanSeed = {
+      ...seed,
+      guarantors: [],
+      collateral: [
+        {
+          ref: "lot:1",
+          believedValue: 10,
+          trueValue: 10,
+          heldBy: "poor",
+          lot: { unit: "good:seed", amount: 80 },
+        },
+      ],
+    };
+    const opened = make([s]).run(ctxOf(truth, ledger2, 1));
+    for (const p of opened.postings ?? [])
+      ledger2.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+    for (const c of opened.changes ?? []) {
+      const ch = c as { table?: string; id?: string; value?: unknown };
+      if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+    }
+    const before = ledger2.total(SEED);
+    const r = make([s]).run(ctxOf(truth, ledger2, 11));
+    for (const p of r.postings ?? [])
+      ledger2.post({ tick: 11 * clock.day, eventId: makeId("event", 3), transfers: p.transfers });
+    expect(ledger2.balance(H("poor"), SEED)).toBe(0);
+    expect(ledger2.balance(H("rich"), SEED)).toBe(50);
+    expect(ledger2.total(SEED)).toBe(before);
+  });
+
   it("cada préstamo tiene su Commitment y el fiador que paga queda como acreedor", () => {
     const { truth, ledger } = setup();
     const kin = makeId("agent", 3);
