@@ -5,6 +5,7 @@ describe("nicknameFor", () => {
   it("agrega el lugar al epíteto del hecho dominante", () => {
     expect(nicknameFor("theft", -0.4, "Valle Alto").text).toBe("el Ladrón de Valle Alto");
     expect(nicknameFor("default", -0.2).text).toBe("el Tramposo");
+    expect(nicknameFor("fraud", -0.2).text).toBe("el Estafador");
   });
 
   it("la violencia muy mal creída sube de Matón a Carnicero", () => {

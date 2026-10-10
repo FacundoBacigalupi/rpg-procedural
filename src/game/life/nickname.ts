@@ -32,6 +32,7 @@ export interface Nickname {
 }
 
 const EPITHET: Readonly<Record<DeedKind, string>> = {
+  fraud: "Estafador",
   default: "Tramposo",
   theft: "Ladrón",
   assault: "Matón",

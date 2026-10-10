@@ -45,11 +45,13 @@ export interface DeedRecollection {
 export const RECALL_HALF_LIFE_DAYS = 20;
 
 const ESCALATE: Readonly<Record<DeedKind, DeedKind>> = {
+  fraud: "theft",
   default: "theft",
   theft: "assault",
   assault: "assault",
 };
 const SOFTEN: Readonly<Record<DeedKind, DeedKind>> = {
+  fraud: "default",
   default: "default",
   theft: "default",
   assault: "theft",
@@ -327,6 +329,7 @@ export const GUILT_HALF_LIFE_DAYS = 60;
 const SEVERITY: Readonly<Record<DeedKind, number>> = {
   assault: 1,
   theft: 0.6,
+  fraud: 0.4,
   default: 0.3,
 };
 
