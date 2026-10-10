@@ -69,9 +69,9 @@ describe("catálogo", () => {
     const without = verbs.filter((v) => !catalog.forVerb(v.id)).map((v) => v.id);
     expect(without.sort()).toEqual([
       "consult",
+      "consume",
       "drink",
       "eat",
-      "consume",
       "give",
       "ponder",
       "rest",
