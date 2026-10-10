@@ -80,6 +80,12 @@ export interface PathogenSeed {
   readonly source: string;
   /** Causas del mundo del evento (caravana que llega, reservorio); sin esto, solo el portador. */
   readonly causes?: readonly CauseRef[];
+  /**
+   * Opt-in: una semilla por portador (no una por patógeno). Aunque el patógeno ya exista, el
+   * portador se infecta si no tiene ya ese patógeno y la semilla es de los últimos 2 días
+   * (así una recuperada sin inmunidad no se vuelve a sembrar). Sin esto, una sola vez por patógeno.
+   */
+  readonly perCarrier?: boolean;
 }
 
 export interface ExposureOptions {
@@ -226,10 +232,23 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       for (const s of [...(o.seeds ?? []), ...(o.arrivals?.(ctx.truth, ctx.now) ?? [])]) {
-        if (ctx.now < s.from || known.has(s.def.id)) continue;
+        if (ctx.now < s.from) continue;
+        const again = s.perCarrier === true && known.has(s.def.id);
+        if (known.has(s.def.id) && !again) continue;
+        if (s.perCarrier === true) {
+          if (ctx.now >= s.from + o.clock.day * 2) continue;
+          const cur = ctx.truth.get(INFECTION, s.carrier);
+          if (cur?.infections.some((i) => i.pathogen === s.def.id)) continue;
+          if (
+            changes.some((c) => c.op === "set" && c.table === INFECTION.name && c.id === s.carrier)
+          )
+            continue;
+        }
         const k = events.length;
         const pid = ctx.newId("pathogen");
-        const fatal = ctx.rng.fork("seed", s.def.id).chance(Math.min(1, s.def.lethality * 1.0));
+        const fatal = (
+          s.perCarrier ? ctx.rng.fork("seed", s.def.id, s.carrier) : ctx.rng.fork("seed", s.def.id)
+        ).chance(Math.min(1, s.def.lethality * 1.0));
         const carrierInfection: Infection = {
           pathogen: s.def.id,
           exposedAt: ctx.now,
@@ -248,8 +267,12 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
             : [{ kind: "state", entity: s.carrier, key: "body.carrier" }],
         });
         changes.push(
-          createEntity(pid, draftEvent(k), ctx.now),
-          setComponent(PATHOGEN, pid, { def: s.def, source: s.source }),
+          ...(again
+            ? []
+            : [
+                createEntity(pid, draftEvent(k), ctx.now),
+                setComponent(PATHOGEN, pid, { def: s.def, source: s.source }),
+              ]),
           setComponent(INFECTION, s.carrier, withInfection(ctx.truth, s.carrier, carrierInfection)),
         );
         if (s.well) {

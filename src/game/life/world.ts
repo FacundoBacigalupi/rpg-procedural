@@ -100,7 +100,7 @@ import {
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
-import { type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
+import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
@@ -983,10 +983,7 @@ export function lifeWorld(
           seeds: parts.pathogenSeeds ?? [],
           ...(parts.labors && parts.labors.length > 0
             ? {
-                arrivals: (truth: ReadonlyWorldTruth) => {
-                  const s = puerperalSeed(truth);
-                  return s ? [s] : [];
-                },
+                arrivals: (truth: ReadonlyWorldTruth) => puerperalSeeds(truth),
               }
             : {}),
           ...(parts.waterSources

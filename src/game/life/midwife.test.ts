@@ -4,6 +4,7 @@ import { holderAccount, Rng } from "../../core/index.ts";
 import {
   birthRisk,
   ENTITY,
+  INFECTION,
   PATHOGEN,
   PERSON,
   type ProcessContext,
@@ -12,7 +13,7 @@ import {
 } from "../../sim/index.ts";
 import { exposureProcess } from "./exposure.ts";
 import { healerFee } from "./medicine.ts";
-import { LABOR, type Labor, laborProcess, puerperalSeed } from "./midwife.ts";
+import { LABOR, type Labor, laborProcess, puerperalSeed, puerperalSeeds } from "./midwife.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const mother = "agent:1" as AgentId;
@@ -194,5 +195,45 @@ describe("puerperalSeed en life.exposure (arrivals)", () => {
     expect(out.events?.[0]?.causes).toEqual([{ kind: "event", event: "event:9" }]);
     expect(out.changes?.some((c) => c.table === PATHOGEN.name)).toBe(true);
     expect(p.run(ctx(t, 6))).toEqual(out);
+  });
+});
+
+describe("puerperalSeeds (un caso por madre)", () => {
+  it("dos madres con fiebre dan dos infecciones con causa en sus partos", () => {
+    const t = world();
+    const other = "agent:4" as AgentId;
+    t.set(
+      ENTITY,
+      other as EntityRef,
+      { id: other, originEventId: "event:1" as EventId, createdAt: 0 } as never,
+    );
+    const row = (cause: string) =>
+      ({
+        dueAt: 0,
+        at: 5,
+        midwife: null,
+        called: false,
+        believedRisk: 0.1,
+        complication: false,
+        motherDied: false,
+        infantDied: false,
+        fever: true,
+        paid: 0,
+        cause,
+      }) as never;
+    t.set(LABOR, mother as EntityRef, row("event:9"));
+    t.set(LABOR, other as EntityRef, row("event:10"));
+    const p = exposureProcess({
+      clock,
+      arrivals: (t2) => puerperalSeeds(t2),
+      placeOf: () => place,
+    });
+    const out1 = p.run(ctx(t, 6));
+    expect(out1.events?.map((e) => e.causes?.[0])).toEqual([
+      { kind: "event", event: "event:9" },
+      { kind: "event", event: "event:10" },
+    ]);
+    expect(out1.changes?.filter((c) => c.table === INFECTION.name)).toHaveLength(2);
+    expect(out1.changes?.filter((c) => c.table === PATHOGEN.name)).toHaveLength(1);
   });
 });
