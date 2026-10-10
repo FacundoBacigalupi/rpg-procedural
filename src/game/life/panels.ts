@@ -44,7 +44,7 @@ import {
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
-import { REPUTATION_NOTICED } from "./nickname.ts";
+import { playerNickname, REPUTATION_NOTICED } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
@@ -139,6 +139,8 @@ export interface CharacterPanel {
     readonly fame: "some" | "many" | "everyone";
     readonly standing: "tainted" | "bad" | "feared";
     readonly nickname: DeedKind | null;
+    /** El apodo con lugar («el Ladrón de Valle Alto») cuando el personaje ya lo sabe; el render lo prefiere a `nickname`. */
+    readonly nicknameText?: string;
   };
   /** Opt-in: señales perceptibles de sustancias (sin nombre de sustancia), de sí y de los vistos. */
   readonly substances?: SubstancePanel;
@@ -254,11 +256,13 @@ function reputationOf(w: LifeWorld): Pick<CharacterPanel, "reputation"> | Record
     (id) => w.truth.get(RUMORS, id),
   );
   if (rep.fame < REPUTATION_NOTICED || rep.standing >= 0) return {};
+  const nick = playerNickname(w);
   return {
     reputation: {
       fame: rep.fame < 0.5 ? "some" : rep.fame < 0.85 ? "many" : "everyone",
       standing: rep.standing > -0.35 ? "tainted" : rep.standing > -0.7 ? "bad" : "feared",
       nickname: rep.dominant,
+      ...(nick ? { nicknameText: nick.text } : {}),
     },
   };
 }

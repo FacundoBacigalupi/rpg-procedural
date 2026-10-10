@@ -35,7 +35,9 @@ export function panelsOf(session: Session): Panels {
   const w = session.life.world;
   return {
     now: renderStatus(session.life.now),
-    character: renderCharacter(characterPanel(w, { substances: true })),
+    character: renderCharacter(
+      characterPanel(w, { substances: true, ...(session.nickname ? { reputation: true } : {}) }),
+    ),
     inventory: renderInventory(inventoryPanel(w)),
     book: renderBook(bookPanel(w)),
     people: renderPeople(peoplePanel(w)),

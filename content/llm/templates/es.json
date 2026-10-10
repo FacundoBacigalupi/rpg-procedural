@@ -419,6 +419,14 @@
     "id": "outcome.cook.nothing",
     "lines": ["No tenés con qué cocinar.", "Sin insumos suficientes, no encendés el fuego."]
   },
+  {
+    "id": "outcome.consume.own",
+    "lines": ["Te tomás lo que llevabas encima.", "Tragás lo que tenías a mano."]
+  },
+  {
+    "id": "outcome.consume.larder",
+    "lines": ["Te tomás lo que había guardado en la casa.", "Tragás lo que sacás de la despensa."]
+  },
   { "id": "outcome.drink.done", "lines": ["Tomás agua.", "Bebés unos tragos de agua."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
   {
@@ -450,6 +458,7 @@
     "lines": ["Te acercás a {who}, pero no te animás a pedir la consulta."]
   },
   { "id": "outcome.consult.left_anyone", "lines": ["No encontrás a quién consultar."] },
+  { "id": "reputation.nickname", "lines": ["En la aldea te dicen {name}."] },
   { "id": "self.hungry", "lines": ["Tenés hambre."] },
   { "id": "self.thirsty", "lines": ["Tenés sed."] },
   { "id": "self.tired", "lines": ["Estás cansado."] },

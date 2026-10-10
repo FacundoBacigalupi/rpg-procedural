@@ -38,6 +38,8 @@ export interface LifeSetup {
   readonly game: GameSetup;
   /** Frecuencia de la grilla del planeta; sin ella, la del planeta real. */
   readonly frequency?: number;
+  /** Opt-in (`--famine`): hambruna y migración de hogares (`LifeOptions.famine|migration`); apagado por defecto. */
+  readonly famine?: boolean;
 }
 
 /** Las versiones del motor para el replay (tooling §4): la del formato la pone quien guarda. */
@@ -86,6 +88,7 @@ export function optionsOf(setup: LifeSetup): LifeOptions {
   return {
     ...(setup.frequency === undefined ? {} : { frequency: setup.frequency }),
     ...birthOf(setup.game),
+    ...(setup.famine ? { famine: { staple: "grain" }, migration: { staple: "grain" } } : {}),
   };
 }
 

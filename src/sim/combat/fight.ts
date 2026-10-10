@@ -8,6 +8,7 @@
 import { type AgentId, type EventId, hypot, type Rng, type Tick } from "../../core/index.ts";
 import {
   advanceBody,
+  applyCore,
   type Body,
   type BodyCapabilities,
   type BodyPlanDef,
@@ -44,6 +45,8 @@ export interface FighterInput {
   readonly at: Vec2;
   /** No sabe que lo van a atacar: no se defiende hasta que lo golpean o ve venir un golpe. */
   readonly unaware?: boolean;
+  /** Opt-in: temperatura del núcleo (°C); el frío entumece y el calor marea (`applyCore`), y fuera de rango no pelea. */
+  readonly coreC?: number;
 }
 
 export interface FightInput {
@@ -178,6 +181,7 @@ interface State {
   readonly plan: BodyPlanDef;
   body: Body;
   caps: BodyCapabilities;
+  readonly coreC: number | undefined;
   readonly z: Readonly<Record<string, number>>;
   readonly skill: number;
   readonly eye: number;
@@ -273,7 +277,8 @@ export function runFight(input: FightInput): FightResult {
       side: f.side,
       plan: f.plan,
       body,
-      caps: capabilitiesOf(f.plan, body),
+      caps: coreCaps(capabilitiesOf(f.plan, body), f.coreC),
+      coreC: f.coreC,
       z: f.z,
       skill: clamp01(f.skill),
       eye: clamp01(f.eye ?? f.skill),
@@ -333,7 +338,7 @@ export function runFight(input: FightInput): FightResult {
     for (const s of order) {
       if (s.body.updatedAt < t && s.body.death === null) {
         s.body = advanceBody(s.plan, s.id, s.body, t).body;
-        s.caps = capabilitiesOf(s.plan, s.body);
+        s.caps = coreCaps(capabilitiesOf(s.plan, s.body), s.coreC);
       }
     }
     for (const s of order) {
@@ -417,7 +422,7 @@ export function runFight(input: FightInput): FightResult {
         rng.fork("injure"),
       );
       b.to.body = injury.body;
-      b.to.caps = capabilitiesOf(b.to.plan, b.to.body);
+      b.to.caps = coreCaps(capabilitiesOf(b.to.plan, b.to.body), b.to.coreC);
       b.to.woundsTaken += 1;
       b.from.landed += 1;
       b.to.alert = true;
@@ -680,4 +685,8 @@ function decide(s: State, foes: readonly State[], input: FightInput, t: Tick): A
     return { kind: "feint", to: rival.id };
   }
   return { kind: "windup", to: rival.id };
+}
+
+function coreCaps(caps: BodyCapabilities, coreC: number | undefined): BodyCapabilities {
+  return coreC === undefined ? caps : applyCore(caps, coreC);
 }

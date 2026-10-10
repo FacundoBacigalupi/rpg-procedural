@@ -77,7 +77,7 @@ import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
-import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
+import { type MoldGossipOptions, type MoldHintOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -181,6 +181,13 @@ export interface LifeWorld {
    * Apagado por defecto: la aldea no cambia, sin filas, RNG ni muertes.
    */
   readonly frostbite?: boolean;
+  /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
+  readonly coreEffects?: boolean;
+  /**
+   * Opt-in (con `frostbite`): `life.thermal` consume la orden de `FROSTBITE_CARE` (recalentar y aislar
+   * bajan la gravedad por hora; amputar quita la parte profunda antes de la gangrena). Apagado: nada cambia.
+   */
+  readonly frostbiteTreatment?: boolean;
   /**
    * Opt-in: bienes que son sustancias de consumo (body-health §9): el verbo `consume` los toma
    * (`life.act`: gasta una unidad y suma una dosis con evento) y `life.decide` lo ofrece con
@@ -213,6 +220,8 @@ export interface LifeWorld {
   readonly personalPool?: boolean;
   /** Opt-in: chisme de precios y lugares (`life.gossip_molds`, tabla `MOLD_RUMORS`) desde lo que cada uno vio (`seeds`); apagado por defecto. */
   readonly moldGossip?: MoldGossipOptions;
+  /** Opt-in: la decisión (`life.decide`) suma al ánimo lo que cree de oídas en `MOLD_RUMORS` (`moldHintMood`: ir donde cree que hay algo, comerciar un bien con precio oído); apagado por defecto: no lee la tabla. */
+  readonly moldHints?: MoldHintOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
@@ -323,6 +332,7 @@ export function lifeWorld(
           player,
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
@@ -545,6 +555,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitude: { baseM: parts.map.baseElevationM ?? 0, altitudeOf } } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.frostbite === true && parts.frostbiteTreatment === true
+            ? { frostbiteTreatment: true }
+            : {}),
         }),
         ...(altitudeOf
           ? [
@@ -679,9 +692,11 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
+          ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.moldHints ? { moldHints: parts.moldHints } : {}),
         }),
         routineProcess({
           logMeals: parts.eatenNutrition === true,

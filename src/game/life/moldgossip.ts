@@ -16,6 +16,7 @@ import {
   LOCATION,
   MIND,
   type MoldRumor,
+  moldUsefulness,
   PERSON,
   type ProcessDef,
   placeKey,
@@ -263,4 +264,36 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       return events.length > 0 ? { changes, events } : { changes };
     },
   };
+}
+
+/** Cuánto suma al ánimo de una candidata lo que cree de oídas, por unidad de `moldUsefulness` (sin calibrar). */
+export const MOLD_HINT_MOOD = 0.2;
+
+export interface MoldHintOptions {
+  /** Nombre con que el catálogo nombra un bien de `price` (por defecto, la clave tal cual). */
+  readonly goodName?: (good: string) => string;
+}
+
+/**
+ * Empuje al ánimo de una candidata desde lo que el NPC cree de oídas (puro): ir (`move`) hacia
+ * donde cree que hay algo (`location`, un lugar vago vale la mitad) y comerciar (`trade`) un bien
+ * del que oyó el precio. Lo más útil de lo que aplique; 0 si nada.
+ */
+export function moldHintMood(
+  c: { readonly verb: string; readonly target?: string; readonly id: string },
+  book: MoldBook | undefined,
+  o: MoldHintOptions = {},
+): number {
+  let best = 0;
+  for (const h of book?.items ?? []) {
+    const r = h.rumor;
+    let hit = false;
+    if (c.verb === "move" && r.mold === "location") {
+      hit = r.where.kind === "place" && c.target === String(r.where.place);
+    } else if (c.verb === "trade" && r.mold === "price") {
+      hit = c.id.endsWith(`+${o.goodName ? o.goodName(r.good) : r.good}`);
+    }
+    if (hit) best = Math.max(best, moldUsefulness(r, h.confidence));
+  }
+  return Math.round(best * MOLD_HINT_MOOD * 1e6) / 1e6;
 }

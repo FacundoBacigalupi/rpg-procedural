@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   airCAtAltitude,
   altitudeEnv,
+  amputateSurgically,
+  applyCore,
   type Clothing,
   CORE_NORMAL_C,
   dexterityFactor,
   dressed,
+  FROSTBITE_INSULATE_PER_HOUR,
+  FROSTBITE_REWARM_PER_HOUR,
   fireRadiantC,
   frostbiteAmputations,
   frostbiteHandFactor,
@@ -23,6 +27,7 @@ import {
   type ThermalEnv,
   thermalDeath,
   thermalStage,
+  treatFrostbite,
 } from "./thermal.ts";
 
 const street: Clothing = { clo: 1, windproof: 0.2, coverage: 0.8 };
@@ -160,5 +165,54 @@ describe("reparo del espacio", () => {
     expect(shelterOfSpace({ roof: true, openness: 0, wall: "paper" })).toBeLessThan(closed);
     expect(shelterOfSpace({ roof: false, openness: 0, wall: "stone" })).toBeLessThanOrEqual(0.5);
     expect(shelterOfSpace({ roof: true, openness: 0 })).toBe(1);
+  });
+});
+
+describe("tratamiento de la congelación", () => {
+  const hurt = { ...NO_FROSTBITE, hands: 0.6, feet: 0.3, face: 0.85 };
+  it("recalentar y aislar bajan la gravedad por hora, pero no lo necrosado", () => {
+    const s = treatFrostbite(hurt, { rewarm: 1, insulate: 1 }, 5, 10);
+    expect(s.hands).toBeCloseTo(
+      0.6 - 5 * (FROSTBITE_REWARM_PER_HOUR + FROSTBITE_INSULATE_PER_HOUR),
+    );
+    expect(s.feet).toBeLessThan(0.3);
+    expect(s.face).toBe(0.85);
+    expect(treatFrostbite(hurt, { rewarm: 0, insulate: 0 }, 5, 10)).toBe(hurt);
+  });
+  it("la cirugía quita lo profundo o necrótico una sola vez y deja lo leve", () => {
+    const r = amputateSurgically(hurt, ["hands", "feet", "face"], undefined, 10);
+    expect(r.done).toEqual(["hands", "face"]);
+    expect(r.state).toMatchObject({ hands: 0, feet: 0.3, face: 0 });
+    const again = amputateSurgically(
+      hurt,
+      ["hands"],
+      { lost: [{ part: "hands", at: 1, cause: 1 as never }] },
+      10,
+    );
+    expect(again.done).toEqual([]);
+  });
+});
+
+describe("applyCore", () => {
+  const caps = {
+    locomotion: 1,
+    manipulation: 1,
+    speech: 1,
+    strength: 1,
+    cognition: 1,
+    endurance: 1,
+    sight: 1,
+    hearing: 1,
+  };
+  it("deja igual con el núcleo normal y baja la destreza con frío", () => {
+    expect(applyCore(caps, CORE_NORMAL_C)).toBe(caps);
+    const cold = applyCore(caps, 33);
+    expect(cold.manipulation).toBeCloseTo(dexterityFactor(33));
+    expect(cold.manipulation).toBeLessThan(1);
+    expect(cold.sight).toBe(1);
+  });
+  it("no deja nada con el núcleo inconsciente", () => {
+    expect(applyCore(caps, 29).manipulation).toBe(0);
+    expect(applyCore(caps, 42).locomotion).toBe(0);
   });
 });

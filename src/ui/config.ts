@@ -31,6 +31,8 @@ export const LIFE_ARG_OPTIONS = {
   runtime: { type: "string", default: "ollama" },
   "llm-url": { type: "string" },
   think: { type: "boolean", default: false },
+  famine: { type: "boolean", default: false },
+  nickname: { type: "boolean", default: false },
 } as const;
 
 export interface LifeArgs {
@@ -45,6 +47,8 @@ export interface LifeArgs {
   runtime: string;
   "llm-url"?: string | undefined;
   think: boolean;
+  famine?: boolean | undefined;
+  nickname?: boolean | undefined;
 }
 
 export interface LifeConfig {
@@ -52,6 +56,8 @@ export interface LifeConfig {
   readonly setup: LifeSetup;
   readonly llm: LlmJobs | undefined;
   readonly save: string;
+  /** `--nickname`: apodo con lugar en paneles y narración (solo vista). */
+  readonly nickname: boolean;
 }
 
 export function lifeConfig(values: LifeArgs): LifeConfig {
@@ -66,8 +72,13 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
   return {
     seed,
     save: values.save,
+    nickname: values.nickname === true,
     llm: values.llm === undefined ? undefined : llmJobs(values.llm, runtime, values),
-    setup: { game: gameSetup(values, mode), ...(frequency === undefined ? {} : { frequency }) },
+    setup: {
+      game: gameSetup(values, mode),
+      ...(frequency === undefined ? {} : { frequency }),
+      ...(values.famine ? { famine: true } : {}),
+    },
   };
 }
 

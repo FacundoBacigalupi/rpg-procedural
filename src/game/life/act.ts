@@ -125,6 +125,7 @@ import {
   spaceLight,
   standardize,
   type TapeEntry,
+  THERMAL,
   TREATED_WATER,
   type Trait,
   table,
@@ -156,7 +157,7 @@ import {
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { acuteOf, type ConsumableDef, consumeDose, cueContextOf } from "./substances.ts";
-import { applyFrostbite } from "./thermal.ts";
+import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
 
@@ -221,6 +222,8 @@ export interface ActOptions {
   readonly altitudeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => number;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
+  /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
+  readonly coreEffects?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades (`applyDeficiency`); apagado, no cambia. */
   readonly nutritionCaps?: boolean;
   /**
@@ -354,6 +357,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       DEFICIENCY_EFFECTS.name,
       GROWTH_SEQUELAE.name,
       FROSTBITE.name,
+      THERMAL.name,
       AMPUTATIONS.name,
       TREATED_WATER.name,
       ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name, SCAM_DEALS.name] : []),
@@ -574,7 +578,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const acuteCaps = applyAcute(capabilitiesOf(bodyPlan, body), acuteOf(truth, me));
   const altCaps = o.altitudeOf ? applyAltitude(acuteCaps, truth, me, o.altitudeOf) : acuteCaps;
   const frostCaps = o.frostbite ? applyFrostbite(altCaps, truth, me) : altCaps;
-  const caps = o.nutritionCaps ? applyDeficiency(frostCaps, truth, me) : frostCaps;
+  const coreCaps = o.coreEffects ? applyCoreTemp(frostCaps, truth, me) : frostCaps;
+  const caps = o.nutritionCaps ? applyDeficiency(coreCaps, truth, me) : coreCaps;
   const skills = truth.get(SKILL_STATE, me);
   const places = placesOf(truth);
 
@@ -786,6 +791,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...([...state.plan.manner, ...node.manner].includes("hold_back") ? { holdBack: 1 } : {}),
       start: ctx.now,
       rng: input.rng.fork("fight"),
+      ...(o.coreEffects ? { coreEffects: true } : {}),
       day: o.clock.day,
       cause: draftEvent(0),
       place: input.place,

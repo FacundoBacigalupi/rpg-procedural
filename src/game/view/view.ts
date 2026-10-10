@@ -340,6 +340,11 @@ export type EffectView =
       readonly grams: number;
     }
   | {
+      /** Tomó una sustancia (remedio, droga, veneno): sin nombrarla ni contarla como comida. */
+      readonly kind: "consume";
+      readonly fromLarder: boolean;
+    }
+  | {
       readonly kind: "store";
       readonly got: readonly { readonly good: string; readonly amount: number }[];
     }
@@ -406,6 +411,8 @@ export interface PlayerView {
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
+  /** Opt-in: cómo le dicen al personaje en la aldea, con lugar («el Ladrón de Valle Alto»), solo si ya lo sabe. */
+  readonly nickname?: string;
 }
 
 /** Lo que el personaje cree de alguien que conoce (information; la Fase 2 lo saca de creencias). */
@@ -441,6 +448,8 @@ export interface ViewInput {
   readonly stretch?: StretchInput;
   /** Palabras que conoce además de los nombres de sus conocidos (lugares, oficios). */
   readonly lexicon?: readonly string[];
+  /** El apodo con lugar que el personaje ya sabe (opt-in). */
+  readonly nickname?: string;
   /**
    * Avisa a quien arma la vista qué entidad real está detrás de cada etiqueta local reconocida.
    * Queda del lado del motor (memoria de continuidad): no entra en `PlayerView`.
@@ -641,6 +650,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       : {}),
     labels,
     lexicon: [...words].sort(compareStrings),
+    ...(input.nickname !== undefined ? { nickname: input.nickname } : {}),
   };
   return view as unknown as PlayerView;
 }
@@ -757,13 +767,8 @@ function effectView(
         grams: Math.round(e.grams),
       };
     case "consume":
-      // Narración propia queda como ítem aparte: por ahora se ve como comer lo que tomó.
-      return {
-        kind: "eat",
-        good: e.good,
-        fromLarder: e.from !== null && e.from !== player,
-        grams: 0,
-      };
+      // Frase propia: no nombra la sustancia (el personaje puede no saber qué es).
+      return { kind: "consume", fromLarder: e.from !== null && e.from !== player };
     case "store":
       return {
         kind: "store",

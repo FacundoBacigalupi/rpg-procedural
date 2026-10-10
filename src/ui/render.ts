@@ -221,7 +221,13 @@ export function renderCharacter(p: CharacterPanel): string {
   if (p.status !== undefined) lines.push(`En la aldea sos ${p.status}.`);
   if (p.reputation) {
     const r = p.reputation;
-    const nick = r.nickname === null ? "" : ` Te dicen ${NICKNAME[r.nickname]}.`;
+    const named =
+      r.nicknameText !== undefined
+        ? `«${r.nicknameText}»`
+        : r.nickname === null
+          ? null
+          : NICKNAME[r.nickname];
+    const nick = named === null ? "" : ` Te dicen ${named}.`;
     lines.push(`${REP_FAME[r.fame]}, y ${REP_STANDING[r.standing]}.${nick}`);
   }
   if (p.family.length > 0) {

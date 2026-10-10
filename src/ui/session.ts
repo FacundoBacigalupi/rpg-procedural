@@ -130,6 +130,8 @@ export interface SessionOptions {
   readonly content: Content;
   /** Los trabajos del LLM; sin esto, todo sale de la gramática y las plantillas. */
   readonly llm?: LlmJobs | undefined;
+  /** Opt-in (`--nickname`): el apodo con lugar en el panel del personaje y en la narración; apagado por defecto. */
+  readonly nickname?: boolean;
 }
 
 /** Cuántas intenciones anteriores ve el parser para entender «otra vez». */
@@ -166,6 +168,8 @@ export interface Session {
   choose(id: string): Promise<Reply>;
   /** Lo que se nota del lugar ahora, con la habituación al día. */
   environment(): EnvironmentItem[];
+  /** Si el apodo con lugar está encendido (`--nickname`): paneles con fama y apodo, narración que lo cita. */
+  readonly nickname: boolean;
 }
 
 /** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
@@ -221,6 +225,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     const keys = new Map<string, string>();
     const view = playerView(life.world, report?.steps ?? [], {
       intro: report === null && thinking === undefined,
+      ...(options.nickname ? { nickname: true } : {}),
       ...(thinking ? { thinking } : {}),
       ...(report ? { heardSince: report.from } : {}),
       onLabel: (localId, entity) => keys.set(localId, entity),
@@ -402,7 +407,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
       if (/^personaje/i.test(text)) {
-        const panel = renderCharacter(characterPanel(life.world, { substances: true }));
+        const panel = renderCharacter(
+          characterPanel(life.world, {
+            substances: true,
+            ...(options.nickname ? { reputation: true } : {}),
+          }),
+        );
         return { text: holdStance ? `${panel}\nPeleás conteniéndote.` : panel };
       }
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };
@@ -484,7 +494,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     return play(picked.draft, renderSuggestion(picked));
   };
   const environment = () => environmentPanel(life.world, habituation, { attended });
-  return { life, store, opening, say, suggested, choose, environment };
+  return {
+    life,
+    store,
+    opening,
+    say,
+    suggested,
+    choose,
+    environment,
+    nickname: options.nickname === true,
+  };
 }
 
 /** Lo que el jugador supone, si el borrador es solo eso (un `ponder` suelto). */

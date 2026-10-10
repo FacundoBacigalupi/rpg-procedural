@@ -164,6 +164,8 @@ export function renderView(
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
   for (const c of view.self.cues) say(`self.${c}`);
+  if (view.nickname !== undefined && (!s.familiar || arrived))
+    say("reputation.nickname", { name: view.nickname });
   for (const t of view.thoughts) {
     const of = t.about !== undefined;
     if (t.kind === "conclude" && t.conclusion !== undefined) {
@@ -384,6 +386,9 @@ function outcome(
     case "eat":
       if (e.grams <= 0 || e.good === null) say("outcome.eat.nothing");
       else say(e.fromLarder ? "outcome.eat.larder" : "outcome.eat.own", { what: good(e.good) });
+      break;
+    case "consume":
+      say(e.fromLarder ? "outcome.consume.larder" : "outcome.consume.own");
       break;
     case "store":
       if (e.got.length === 0) say("outcome.store.nothing");
