@@ -184,6 +184,8 @@ export interface LifeOptions {
   readonly relationDecay?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
   readonly swapMaterials?: boolean;
+  /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
+  readonly moldHintsFromCatalog?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -199,6 +201,7 @@ export function optInParts(
   | "waterSources"
   | "relationDecay"
   | "swapMaterials"
+  | "moldHintsFromCatalog"
 > {
   return {
     ...(options.waterSources
@@ -215,6 +218,7 @@ export function optInParts(
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
+    ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
   };
 }
 

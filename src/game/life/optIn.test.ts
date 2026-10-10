@@ -20,6 +20,8 @@ describe("opciones opt-in de la vida", () => {
   it("apagadas por defecto: no pasa nada al mundo", () => {
     expect(optInParts({})).toEqual({});
     expect(optInParts({ rumorGrievance: false })).toEqual({});
+    expect(optInParts({ moldHintsFromCatalog: false })).toEqual({});
+    expect(optInParts({ moldHintsFromCatalog: true })).toEqual({ moldHintsFromCatalog: true });
   });
 
   it("encendidas llegan a las partes del mundo", () => {
