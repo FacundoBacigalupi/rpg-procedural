@@ -190,6 +190,9 @@ describe("tratamiento de la congelación", () => {
       10,
     );
     expect(again.done).toEqual([]);
+  });
+});
+
 describe("applyCore", () => {
   const caps = {
     locomotion: 1,
