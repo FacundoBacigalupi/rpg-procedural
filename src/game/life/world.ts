@@ -115,6 +115,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
+import { householdAuthority, realTrust } from "./patientbonds.ts";
 import {
   type PawnLots,
   type PawnOpenOptions,
@@ -203,6 +204,12 @@ export interface LifeWorld {
     readonly contagionBelief?: Readonly<Record<string, number>>;
     readonly caution?: number;
     readonly secondOpinion?: boolean;
+    /**
+     * Opt-in: la autoridad sale del jefe del hogar real (`householdAuthority`: lo que él cree que se
+     * pega por el respeto del paciente) y la confianza de la relación real (`realTrust`, con la fama
+     * que cree de respaldo). Sin esto, la confianza es la fama creída y no hay autoridad.
+     */
+    readonly realBonds?: boolean;
   };
   /**
    * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
@@ -988,7 +995,19 @@ export function lifeWorld(
             ? {
                 patientDecides: {
                   ...parts.patientDecides,
-                  trustOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                  trustOf: parts.patientDecides.realBonds
+                    ? (truth, patient, healer) => realTrust(truth, patient, healer)
+                    : (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                  ...(parts.patientDecides.realBonds
+                    ? {
+                        authorityOf: (truth, patient, pathogen) =>
+                          householdAuthority(truth, patient, pathogen, {
+                            ...(parts.patientDecides?.contagionBelief
+                              ? { contagionBelief: parts.patientDecides.contagionBelief }
+                              : {}),
+                          }),
+                      }
+                    : {}),
                 },
               }
             : {}),
