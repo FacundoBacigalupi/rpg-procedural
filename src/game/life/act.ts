@@ -45,6 +45,7 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  endEntity,
   FINISH_FORCE,
   type FoodDef,
   FRESH_CURSOR,
@@ -98,6 +99,7 @@ import {
   RECEIPT_WINDOW_DAYS,
   REFERENCE_QUALITY,
   RELATIONS,
+  RESIDUE,
   type ReadonlyWorldTruth,
   type RecipeDef,
   type ResolveInput,
@@ -162,6 +164,7 @@ import {
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
+import { type ResidueConfig, takeEssence } from "./residue.ts";
 import {
   acuteOf,
   type ConsumableDef,
@@ -256,6 +259,11 @@ export interface ActOptions {
    * los gramos (`ConsumableDef.amount` = por gramo) vía `consumeDose`. Apagado: comer no cambia.
    */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /**
+   * Opt-in: lo que se come o consume con `ConsumableDef.essence` deja residuo por su pureza
+   * (`RESIDUE`) y, con `overload`, sobrecarga al cuerpo (fiebre, heridas, muerte). Apagado: nada.
+   */
+  readonly residue?: ResidueConfig;
   /**
    * Opt-in: lo que se bebe lleva una sustancia (té, tisana; `drink` no tiene bien): cada sorbo
    * suma `amount` por litro (`ConsumableDef.amount` = por litro) vía `consumeDose`. Apagado: beber no cambia.
@@ -423,6 +431,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     ],
     writes: [
       ...(o.scam ? [SCAM_DEALS.name] : []),
+      ...(o.residue ? [RESIDUE.name] : []),
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
       SALE_RECEIPTS.name,
@@ -745,6 +754,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const changes: StateChange[] = [...r.changes];
   const doseEvents: EventDraft[] = [];
   const eff = r.effect;
+  let essence: { essence: number; purity: number | undefined; good: string } | undefined;
   if (eff.kind === "eat") {
     nextBody = ingest(bodyPlan, nextBody, eff.kcal, eff.water);
     if (o.logMeals && eff.good !== null && eff.grams > 0)
@@ -760,6 +770,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       eff.good !== null && eff.grams > 0
         ? o.foodSubstances?.find((c) => GOOD(c.good) === eff.good)
         : undefined;
+    if (laced?.essence !== undefined && eff.good !== null) {
+      essence = { essence: laced.essence * eff.grams, purity: laced.purity, good: laced.good };
+    }
     if (laced) {
       const dose = consumeDose(
         truth,
@@ -809,6 +822,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   } else if (eff.kind === "consume" && eff.good !== null && eff.units > 0) {
     // La dosis entra al cuerpo ahora; `life.substances` la absorbe y metaboliza desde la próxima hora.
     const used = o.consumables?.find((c) => GOOD(c.good) === eff.good);
+    if (used?.essence !== undefined) {
+      essence = { essence: used.essence * eff.units, purity: used.purity, good: used.good };
+    }
     if (used) {
       const dose = consumeDose(
         truth,
@@ -832,6 +848,43 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       if (eff.target === me) nextBody = treated;
       else changes.push(setComponent(BODY_STATE, eff.target as AgentId, treated));
       bodyTouched = bodyTouched || eff.target === me;
+    }
+  }
+  if (o.residue && essence) {
+    // Pureza y sobrecarga de lo ingerido con `Essence`: residuo en `RESIDUE`, heridas o muerte.
+    const k = r.events.length + doseEvents.length;
+    const take = takeEssence(truth, me, essence, o.residue, ctx.now, input.place, {
+      kind: "event",
+      event: draftEvent(0),
+    });
+    changes.push(...take.changes);
+    doseEvents.push(...take.events);
+    const ov = take.overload;
+    if (ov && ov.stage === "fatal") {
+      const base = truth.get(ENTITY, me);
+      doseEvents.push({
+        kind: "body.died",
+        actors: [me],
+        place: input.place,
+        data: { cause: "poison", reason: "overload", good: essence.good },
+        emissions: { sight: 0.6, sound: 0.2 },
+        causes: [{ kind: "event", event: draftEvent(k) }],
+      });
+      if (base) changes.push(endEntity(base, draftEvent(k + 1), ctx.now));
+    } else if (ov && ov.meridianDamage > 0) {
+      nextBody = injure(
+        bodyPlan,
+        nextBody,
+        {
+          kind: "blunt",
+          force: ov.meridianDamage * 0.6,
+          zone: "torso",
+          cause: draftEvent(k),
+          at: ctx.now,
+        },
+        input.rng.fork("overload"),
+      ).body;
+      bodyTouched = true;
     }
   }
   const mishap = blowFromMishap(eff, draftEvent(0), ctx.now, input.rng.fork("mishap"));

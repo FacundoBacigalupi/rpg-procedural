@@ -114,6 +114,7 @@ import {
   rentsProcess,
   sharecropHarvestProcess,
 } from "./rents.ts";
+import { type ResidueConfig, residueProcess } from "./residue.ts";
 import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
@@ -278,6 +279,8 @@ export interface LifeWorld {
   readonly repayDoses?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
+  readonly residue?: ResidueConfig;
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
   readonly drinkSubstance?: ConsumableDef;
   /**
@@ -498,6 +501,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.filter ? { filter: parts.filter } : {}),
@@ -957,6 +961,15 @@ export function lifeWorld(
                 clock: parts.clock,
                 altitudeOf,
                 genomeAdaptation: parts.altitudeGenome === true,
+              }),
+            ]
+          : []),
+        ...(parts.residue
+          ? [
+              residueProcess({
+                ...parts.residue,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
               }),
             ]
           : []),
