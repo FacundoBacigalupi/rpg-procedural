@@ -22,9 +22,11 @@ import {
   personalPoolShare,
   type ReadonlyLedger,
   type ReadonlyWorldTruth,
+  type RentCollected,
   spendCeiling,
   standing,
   withLoanPayments,
+  withRentIncome,
 } from "../../sim/index.ts";
 
 /** Desde qué edad se cuenta como adulto (la misma que `ADULT_AGE_YEARS`). */
@@ -46,6 +48,8 @@ export interface BudgetEnv {
   readonly fixedPerDay?: number;
   /** Préstamos activos del hogar: su cuota diaria se suma a los gastos fijos (`withLoanPayments`). */
   readonly loans?: readonly LoanCommitment[];
+  /** Opt-in: rentas que cobra el hogar (suman al ingreso); hoy la vida no las genera, quien las tenga las pasa. */
+  readonly rents?: readonly RentCollected[];
 }
 
 /** Los flujos del hogar `home` como los ve el presupuesto: miembros vivos, bolsas, despensa. */
@@ -84,9 +88,12 @@ export function householdFlowsOf(
     children,
     elders,
   };
+  const today = Math.floor(env.now / env.day);
+  const withRent =
+    env.rents && env.rents.length > 0 ? withRentIncome(flows, env.rents, today) : flows;
   return env.loans && env.loans.length > 0
-    ? withLoanPayments(flows, env.loans, Math.floor(env.now / env.day))
-    : flows;
+    ? withLoanPayments(withRent, env.loans, today)
+    : withRent;
 }
 
 /** Cuántas monedas puede soltar el hogar en un trato: urgente usa todo lo que hay. */
