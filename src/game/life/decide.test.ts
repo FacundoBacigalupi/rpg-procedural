@@ -19,11 +19,13 @@ import {
   ENTITY,
   INNATE,
   LIFE_STAGES,
+  LOCATION,
   MEMORIES,
   MIND,
   newBody,
   PERSON,
   PERSON_SUBSTANCE,
+  PLACE,
   PLANS,
   type ProcessContext,
   type ProcessResult,
@@ -727,12 +729,15 @@ describe("life.decide", () => {
     const year = 365 * 86_400;
     const make = () => {
       const truth = layeredWorld();
+      // En un campo, `work` es posible y es el verbo que sirve meaning.
+      truth.set(LOCATION, A, { hex: 5 });
+      truth.set(PLACE, "place:1" as never, { kind: "fields", hexes: [5] });
       truth.set(NPC_GOAL_COMPLETIONS, A, {
         items: [
           {
             goalId: "core:avenge:agent:2",
             cause: "event:9" as EventId,
-            at: 1000 - year,
+            at: year,
             original: {
               id: "core:avenge:agent:2",
               layer: "core",
@@ -751,10 +756,21 @@ describe("life.decide", () => {
     const on = decideProcess({ ...opts, recognizeGoalCompletion: true, meaningPressure: true });
     expect(on.reads).toContain(NPC_GOAL_COMPLETIONS.name);
     expect(on.run(ctx(make(), A, 1000))).toEqual(on.run(ctx(make(), A, 1000)));
-    const u = (p: typeof on) =>
-      p.run(ctx(make(), A, 1000)).changes?.find((c) => c.table === NPC_DECISION.name);
-    expect(u(on)).toBeDefined();
-    expect(u(decideProcess({ ...opts, meaningPressure: false }))).toEqual(u(base));
+    const verbs = (p: typeof on) =>
+      Array.from({ length: 60 }, (_, k) => {
+        const change = p
+          .run(ctx(make(), A, 2 * year + k * 86_400))
+          .changes?.find((c) => c.table === NPC_DECISION.name) as
+          | { value?: { verb: string } }
+          | undefined;
+        return change?.value?.verb ?? "";
+      });
+    const off = verbs(decideProcess({ ...opts, meaningPressure: false }));
+    expect(off).toEqual(verbs(base));
+    const withMeaning = verbs(on);
+    const works = (list: string[]) => list.filter((v) => v === "work").length;
+    expect(works(withMeaning)).toBeGreaterThan(works(off));
+    expect(withMeaning).not.toEqual(off);
   });
 
   it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {
