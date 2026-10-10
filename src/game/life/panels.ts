@@ -43,13 +43,13 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
+import type { ViewCues } from "./cue-local.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { playerNickname, REPUTATION_NOTICED } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
 import type { ResidueConfig } from "./residue.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
-import type { ViewCues } from "./cue-local.ts";
 import { type LifeWorld, living } from "./world.ts";
 
 /** Cuánto hay de algo a ojo. */
