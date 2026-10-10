@@ -175,6 +175,8 @@ export interface LifeWorld {
   readonly growthSequelae?: boolean;
   /** Opt-in: al cumplir 18 la masa del cuerpo se reconstruye con la talla final (genética y secuelas de hambre infantil); apagado por defecto: sin escrituras. */
   readonly adultGrowth?: boolean;
+  /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
+  readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
   readonly nutritionCaps?: boolean;
   /**
@@ -577,7 +579,14 @@ export function lifeWorld(
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
         ...(parts.adultGrowth === true
-          ? [adultGrowthProcess({ clock: parts.clock, plans: parts.plans, traits: parts.traits })]
+          ? [
+              adultGrowthProcess({
+                clock: parts.clock,
+                plans: parts.plans,
+                traits: parts.traits,
+                gradual: parts.gradualGrowth === true,
+              }),
+            ]
           : []),
         thermalProcess({
           clock: parts.clock,

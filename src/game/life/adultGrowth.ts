@@ -35,6 +35,8 @@ export interface AdultGrowthOptions {
   readonly clock: PlanetClock;
   readonly plans: readonly BodyPlanDef[];
   readonly traits: readonly Trait[];
+  /** Opt-in: los menores de 18 crecen un paso por año cumplido (sin azar); apagado: solo desde los 18. */
+  readonly gradual?: boolean;
 }
 
 export function adultGrowthProcess(o: AdultGrowthOptions): ProcessDef {
@@ -56,8 +58,9 @@ export function adultGrowthProcess(o: AdultGrowthOptions): ProcessDef {
         const base = ctx.truth.get(ENTITY, id);
         if (!body || !person || !innate || !base || base.endedAt !== undefined || body.death)
           continue;
-        const age = (ctx.now - person.born) / o.clock.year;
-        if (age < ADULT_AGE_YEARS) continue;
+        const rawAge = (ctx.now - person.born) / o.clock.year;
+        if (rawAge < ADULT_AGE_YEARS && o.gradual !== true) continue;
+        const age = rawAge < ADULT_AGE_YEARS ? Math.floor(rawAge) : rawAge;
         const plan = o.plans.find((p) => p.id === body.plan);
         if (!plan) continue;
         const scale = heightFactor(ctx.truth.get(GROWTH_SEQUELAE, id) ?? NO_SEQUELAE);
