@@ -537,7 +537,16 @@ export interface MoldHintOptions {
    * no esté en la despensa (`moldBuyGoods`). Exige `believedPerKg`.
    */
   readonly buyCandidates?: boolean;
+  /**
+   * Opt-in: cuánto necesita quien decide un oficio (0-1; 0 o `undefined` si no). Una candidata
+   * `trade` o `hire` cuyo `target` es el hogar (`household:<id>`) del que oyó que ejerce ese
+   * oficio (`attr` `trade`) empuja en proporción a la necesidad y a lo creído. Apagado, no lee.
+   */
+  readonly tradeWant?: (trade: string) => number | undefined;
 }
+
+/** Verbos que buscan a un artesano creído (contratarlo o comprarle). */
+export const CRAFTSMAN_VERBS: readonly string[] = ["trade", "hire"];
 
 /**
  * Valora un precio oído contra el creído (puro): `buy` si el oído es más bajo (conviene comprar
@@ -593,6 +602,17 @@ export function moldHintMood(
       hit = r.where.kind === "place" && c.target === String(r.where.place);
     } else if (c.verb === "trade" && r.mold === "price") {
       hit = c.id.endsWith(`+${o.goodName ? o.goodName(r.good) : r.good}`);
+    }
+    if (
+      o.tradeWant &&
+      CRAFTSMAN_VERBS.includes(c.verb) &&
+      r.mold === "attr" &&
+      r.attr === "trade" &&
+      c.target === r.about
+    ) {
+      const want = Math.max(0, Math.min(1, o.tradeWant(String(r.value)) ?? 0));
+      best = Math.max(best, Math.round(moldUsefulness(r, h.confidence) * want * 1e6) / 1e6);
+      continue;
     }
     if (!hit) continue;
     let use = moldUsefulness(r, h.confidence);
