@@ -6,6 +6,7 @@ import type {
   EventLog,
   IdAllocator,
   Ledger,
+  LedgerUnit,
   PlaceRef,
   PlanetClock,
   Seed,
@@ -269,6 +270,8 @@ export interface LifeWorld {
    * Apagado por defecto: sin filas, RNG ni eventos nuevos.
    */
   readonly scam?: boolean;
+  /** Opt-in bajo `scam`: unidad del relleno con que el vendedor mezcla el lote (ver `ActOptions.scam.filler`). */
+  readonly scamFiller?: LedgerUnit;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -437,6 +440,7 @@ export function lifeWorld(
                   bonds: parts.relationBonds,
                   traits: parts.traits,
                   need: scamNeedOf(parts.plans),
+                  ...(parts.scamFiller === undefined ? {} : { filler: parts.scamFiller }),
                 }),
               }
             : {}),

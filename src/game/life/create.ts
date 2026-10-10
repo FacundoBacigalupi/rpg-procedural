@@ -15,6 +15,7 @@ import {
   IdAllocator,
   Ledger,
   type LedgerConfig,
+  type LedgerUnit,
   ledgerUnit,
   makeId,
   type PlaceRef,
@@ -178,6 +179,8 @@ export interface LifeOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
+  /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
+  readonly scamFiller?: LedgerUnit;
   /** Opt-in: fuentes de agua; si no trae `hexKinds`, salen del terreno local (`hexKindsFromTerrain`). */
   readonly waterSources?: WaterSourcesConfig;
   /** Opt-in: la confianza de RELATIONS en los préstamos se lee con decaimiento (`relationDecay`). */
@@ -198,6 +201,7 @@ export function optInParts(
   | "migration"
   | "rumorGrievance"
   | "scam"
+  | "scamFiller"
   | "waterSources"
   | "relationDecay"
   | "swapMaterials"
@@ -217,6 +221,7 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.scam ? { scam: true } : {}),
+    ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
   };

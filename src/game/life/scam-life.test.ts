@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   type AgentId,
   type ContentSource,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
   ledgerUnit,
   loadContent,
   type Tick,
@@ -23,6 +26,7 @@ import {
   SCAM_FOUND,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../index.ts";
+import { SCAM_ADULTERATED } from "./act.ts";
 import { optInParts } from "./create.ts";
 import { Life } from "./index.ts";
 import { SCAM_DISCOVERED } from "./scamdiscovery.ts";
@@ -225,5 +229,71 @@ describe("estafa en la vida (opt-in)", () => {
     }
     expect(on.w.ledger.audit()).toEqual([]);
     expect(run(true).life.hash()).toEqual(on.life.hash());
+  }, 240_000);
+});
+
+describe("estafa con relleno (opt-in)", () => {
+  it("el relleno sale del vendedor, llega al comprador, baja la calidad del lote y el ledger cuadra", () => {
+    const iron = ledgerUnit("good:iron");
+    const life = Life.create(2, content, { scam: true, scamFiller: iron });
+    const w = life.world;
+    const me = life.player;
+    const home = w.truth.get(PERSON, me)?.household;
+    const here = w.truth.get(LOCATION, me);
+    const first = w.log.all()[0];
+    let seq = 1;
+    let adulterated = 0;
+    const neighbours = living(w.truth).filter((id) => w.truth.get(PERSON, id)?.household !== home);
+    for (const n of neighbours.slice(0, 4)) {
+      if (here) w.truth.set(LOCATION, n, here);
+      w.truth.set(LOT_QUALITY, n, { [grain]: 0.2 });
+      const innate = { ...w.truth.get(INNATE, n) };
+      for (const t of w.traits) {
+        if (t.id === "willpower") innate[t.id] = t.mean - 3 * t.sd;
+        if (t.id === "boldness") innate[t.id] = t.mean + 3 * t.sd;
+      }
+      w.truth.set(INNATE, n, innate);
+      w.truth.set(CREDIT, `commitment:${9000 + seq}` as never, indebted(n, me));
+      if (first)
+        w.ledger.post({
+          tick: first.tick,
+          eventId: first.id,
+          transfers: [
+            {
+              unit: iron,
+              from: externalAccount("seed"),
+              to: holderAccount(n as unknown as HolderRef),
+              amount: 5000,
+            },
+          ],
+        });
+      const plan: ActionPlan = {
+        actor: me,
+        source: "player",
+        root: {
+          kind: "do",
+          verb: "trade",
+          args: [
+            { role: "with", entity: n },
+            { role: "what", text: "8 kilos de grano" },
+          ],
+          manner: [],
+        },
+        manner: [],
+        causes: [{ kind: "state", entity: me, key: "intent" }],
+      };
+      const events = life.turn(plan, seq++).events;
+      const ev = events.find((e) => e.kind === "action.trade");
+      const ad = events.find((e) => e.kind === SCAM_ADULTERATED);
+      if (!ad) continue;
+      adulterated++;
+      const d = ad.data as { grams: number; lot: number };
+      expect(d.grams).toBeGreaterThanOrEqual(1);
+      expect(ad.causes).toEqual([{ kind: "event", event: ev?.id }]);
+      const deal = w.truth.get(SCAM_DEALS, me)?.deals.at(-1);
+      expect(deal?.real).toBeLessThan(0.2);
+    }
+    expect(adulterated).toBeGreaterThan(0);
+    expect(w.ledger.audit()).toEqual([]);
   }, 240_000);
 });
