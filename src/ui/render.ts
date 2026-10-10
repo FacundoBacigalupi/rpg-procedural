@@ -145,6 +145,22 @@ const STANCE: Readonly<Record<"none" | "avoid" | "repair" | "confess" | "deflect
   deflect: "te das excusas y buscás otro culpable",
 };
 
+const REP_FAME = {
+  some: "En la aldea algunos saben de vos",
+  many: "En la aldea muchos saben de vos",
+  everyone: "En la aldea todos saben de vos",
+} as const;
+const REP_STANDING = {
+  tainted: "te miran con recelo",
+  bad: "te tienen por mala persona",
+  feared: "te temen",
+} as const;
+const NICKNAME = {
+  default: "«el Tramposo»",
+  theft: "«el Ladrón»",
+  assault: "«el Matón»",
+} as const;
+
 export function renderCharacter(p: CharacterPanel): string {
   const lines = [
     `Tenés ${p.ageYears} años. ${p.where.home ? "Estás en tu casa." : "Estás fuera de tu casa."}`,
@@ -159,6 +175,11 @@ export function renderCharacter(p: CharacterPanel): string {
       : `Cómo te sentís: ${[...general, ...zones].join("; ")}.`,
   );
   if (p.status !== undefined) lines.push(`En la aldea sos ${p.status}.`);
+  if (p.reputation) {
+    const r = p.reputation;
+    const nick = r.nickname === null ? "" : ` Te dicen ${NICKNAME[r.nickname]}.`;
+    lines.push(`${REP_FAME[r.fame]}, y ${REP_STANDING[r.standing]}.${nick}`);
+  }
   if (p.family.length > 0) {
     lines.push(`Tu gente: ${p.family.map((f) => `tu ${f.relation}`).join(", ")}.`);
   }

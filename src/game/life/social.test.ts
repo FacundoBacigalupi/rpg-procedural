@@ -53,6 +53,11 @@ describe("el estatus en la aldea inicial", () => {
     expect(characterPanel(w).status).toBe(mine?.name);
   });
 
+  it("la reputación del panel es opt-in y sin fama no aparece", () => {
+    expect(characterPanel(w).reputation).toBeUndefined();
+    expect(characterPanel(w, { reputation: true }).reputation).toBeUndefined();
+  });
+
   it("es determinista", () => {
     const a = Life.create(7, content).world;
     const pick = (x: typeof a) => living(x.truth).map((id) => x.truth.get(STATUS, id)?.status);
