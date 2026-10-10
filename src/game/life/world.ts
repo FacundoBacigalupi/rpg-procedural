@@ -62,6 +62,7 @@ import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
+import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gossipProcess } from "./gossip.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
@@ -134,6 +135,8 @@ export interface LifeWorld {
   readonly householdTrades?: readonly TradeAssignment[];
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
+  /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
+  readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -330,6 +333,16 @@ export function lifeWorld(
           seeds: parts.loanSeeds ?? [],
           placeOf: placeOf(parts, village),
         }),
+        ...(parts.famine
+          ? [
+              famineProcess({
+                ...parts.famine,
+                clock: parts.clock,
+                goods: parts.goods,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
