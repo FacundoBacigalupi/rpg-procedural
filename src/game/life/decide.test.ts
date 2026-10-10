@@ -149,6 +149,65 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("compañía inmediata nace de contacto propio recordado y se termina sin evidencia", () => {
+    const truth = world(0);
+    const who = "agent:2" as AgentId;
+    truth.set(RELATIONS, A, {
+      toward: {
+        [who]: {
+          dims: { ...strangerDims([]), affection: 1, familiarity: 1 },
+          bonds: [],
+          history: ["event:8" as EventId],
+          updated: 1000,
+        },
+      },
+      originEventId: "event:1" as EventId,
+    });
+    truth.set(MEMORIES, A, {
+      items: [
+        {
+          eventId: "event:8" as EventId,
+          perceived: { kind: "action.talk", with: [who], place: NONE },
+          source: "witnessed",
+          at: 1000,
+          intensity: 0.8,
+          valence: 0.8,
+          confidence: 1,
+          distortion: 0,
+          salience: 1,
+          measured: 1000,
+          lastRecalled: 1000,
+          recalls: 0,
+        },
+      ],
+      gists: [],
+    });
+    const now = 1000 + 72 * 3600;
+    const off = decideProcess(opts).run(ctx(truth, A, now));
+    const p = decideProcess({ ...opts, persistImmediateGoals: true });
+    const out = p.run(ctx(truth, A, now));
+    expect(out.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, out);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:social")).toMatchObject({
+      weight: 1,
+      originEventId: "event:8",
+      since: now,
+    });
+    expect(out.events?.find((e) => goalData(e).goal === "immediate:social")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "memories" },
+    ]);
+    truth.set(MEMORIES, A, { items: [], gists: [] });
+    const end = p.run(ctx(truth, A, now + 3600));
+    expect(end.events?.find((e) => goalData(e).goal === "immediate:social")?.causes).toEqual([
+      { kind: "event", event: "event:8" },
+      { kind: "state", entity: A, key: "memories" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+  });
+
   it("la capa inmediata opt-in conserva la decisión y registra causas y cambios de peso", () => {
     const truth = layeredWorld();
     truth.set(ENTITY, A, { id: A, originEventId: "event:1" as EventId, createdAt: 0 });

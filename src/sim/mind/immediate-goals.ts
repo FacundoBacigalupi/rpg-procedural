@@ -1,10 +1,18 @@
 // La capa inmediata registra presiones sentidas, sin volver a sumarlas a la utilidad (§7).
 // El miedo disponible es el de recuerdos dolorosos propios, no emociones de terceros.
-import { compareStrings, type EventId, exp, LN2, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  compareStrings,
+  type EventId,
+  exp,
+  LN2,
+  type Tick,
+} from "../../core/index.ts";
 import type { Goal } from "./goals.ts";
 import type { Memories } from "./memory.ts";
 import type { ValueId } from "./mind.ts";
 import type { NeedId } from "./utility.ts";
+import { WARM_VALENCE } from "./utility-beliefs.ts";
 
 /** Umbral y vida media provisionales; la emoción decae en horas, aunque el recuerdo perdure. */
 export const IMMEDIATE_MIN = 0.5;
@@ -15,6 +23,29 @@ export interface FeltNeed {
   readonly need: NeedId;
   readonly urgency: number;
   readonly originEventId: EventId;
+}
+
+/** Fuente de la soledad sentida: su último contacto grato vivido con alguien querido.
+ * Una noticia sobre otro no demuestra compañía propia; sin contacto recordado no inventa uno.
+ */
+export function feltCompanyNeed(
+  memories: Memories | undefined,
+  now: Tick,
+  urgency: number,
+  cares: (who: AgentId) => boolean,
+): FeltNeed | undefined {
+  const warm = (memories?.items ?? [])
+    .filter(
+      (m) =>
+        m.at <= now &&
+        m.source === "witnessed" &&
+        m.valence >= WARM_VALENCE &&
+        m.intensity > 0 &&
+        m.confidence > 0 &&
+        m.perceived.with.some(cares),
+    )
+    .sort((a, b) => b.at - a.at || compareStrings(a.eventId, b.eventId))[0];
+  return warm ? { need: "social", urgency, originEventId: warm.eventId } : undefined;
 }
 
 const VALUE: Readonly<Record<NeedId, ValueId>> = {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { EventId, PlaceRef } from "../../core/index.ts";
+import type { AgentId, EventId, PlaceRef } from "../../core/index.ts";
 import { goalChanges, layerDrives, reconcileGoals } from "./goals.ts";
 import {
+  feltCompanyNeed,
   IMMEDIATE_FEAR_HALF_LIFE,
   immediateGoals,
   MAX_IMMEDIATE_GOALS,
@@ -20,6 +21,39 @@ const memory = formMemory({
 });
 
 describe("objetivos inmediatos", () => {
+  it("compañía cita el contacto grato vivido más reciente, sin inventar vínculos o contactos", () => {
+    const who = "agent:2" as AgentId;
+    const warm = { ...memory, valence: 0.8, perceived: { ...memory.perceived, with: [who] } };
+    const older = { ...warm, eventId: E(1), at: 900 };
+    const source = feltCompanyNeed(
+      { items: [older, warm], gists: [] },
+      2000,
+      0.7,
+      (id) => id === who,
+    );
+    expect(source).toEqual({ need: "social", urgency: 0.7, originEventId: E(2) });
+    expect(immediateGoals(source ? [source] : [], undefined, [], 2000)[0]).toMatchObject({
+      id: "immediate:social",
+      value: "family",
+      weight: 0.7,
+      originEventId: E(2),
+    });
+    expect(feltCompanyNeed(undefined, 2000, 1, () => true)).toBeUndefined();
+    expect(feltCompanyNeed({ items: [warm], gists: [] }, 2000, 1, () => false)).toBeUndefined();
+    for (const other of [
+      { ...warm, at: 3000 },
+      { ...warm, valence: -1 },
+      { ...warm, source: "told" as const },
+      { ...warm, source: "inferred" as const },
+      { ...warm, confidence: 0 },
+    ]) {
+      expect(feltCompanyNeed({ items: [other], gists: [] }, 2000, 1, () => true)).toBeUndefined();
+    }
+    expect(
+      immediateGoals([{ need: "social", urgency: 0.1, originEventId: E(2) }], undefined, [], 2000),
+    ).toEqual([]);
+  });
+
   it("no inventa objetivos sin señales, ni de recuerdos agradables o futuros", () => {
     expect(immediateGoals([], undefined, [], 1000)).toEqual([]);
     expect(

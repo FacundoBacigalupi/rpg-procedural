@@ -37,6 +37,7 @@ import {
   drivesFor,
   ENTITY,
   FROSTBITE,
+  feltCompanyNeed,
   type Goal,
   type GoodDef,
   GROWTH_SEQUELAE,
@@ -473,9 +474,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // El cuerpo tiene procedencia seed/nacimiento; dolor cita el golpe concreto.
       // Las presiones agudas sin una fuente identificable no se inventan.
       const bodyOrigin = truth.get(ENTITY, me)?.originEventId;
+      const companyNeed = o.persistImmediateGoals
+        ? feltCompanyNeed(memories, now, drives.needs.social ?? 0, (who) => cared.has(who))
+        : undefined;
       const immediate = o.persistImmediateGoals
         ? immediateGoals(
             [
+              ...(companyNeed ? [companyNeed] : []),
               ...(bodyOrigin === undefined
                 ? []
                 : (["hunger", "thirst", "rest"] as const).map((need) => ({
@@ -528,7 +533,8 @@ export function decideProcess(o: DecideOptions): ProcessDef {
                 {
                   kind: "state",
                   entity: me,
-                  key: g.id === "immediate:fear" ? "memories" : "body",
+                  key:
+                    g.id === "immediate:fear" || g.id === "immediate:social" ? "memories" : "body",
                 } as const,
               ]
             : []),

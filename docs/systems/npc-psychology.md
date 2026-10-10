@@ -204,9 +204,21 @@ El núcleo puro `immediateGoals` acepta señales de necesidad con origen explíc
 sin fuentes no inventa objetivos. El miedo transitorio decae con vida media de
 seis horas desde el evento, separado de la saliencia duradera del recuerdo. Umbral
 0,5 y límite de tres objetivos son provisionales. `appraise` aún no produce las
-ocho emociones tipadas de §4: este cableado cubre solo miedo. Otras emociones,
-compañía y ansia requieren sus señales con procedencia, registradas como subítem
-propio de Fase 3 en ROADMAP antes de ampliar el cableado.
+ocho emociones tipadas de §4: este cableado cubre solo miedo. Otras emociones y
+ansia requieren sus señales con procedencia, registradas como subítems propios
+de Fase 3 en ROADMAP antes de ampliar el cableado.
+
+**Compañía inmediata (2026-10-10, f3c2):** con `persistImmediateGoals`, la urgencia
+social ya sentida puede crear `immediate:social`. Su origen es el último contacto
+grato que vivió con alguien que le importa según su relación: una memoria propia
+presenciada, con valencia positiva, intensidad y confianza, nunca un relato sobre
+terceros ni un vínculo supuesto. El evento de objetivo cita ese contacto y el
+estado `memories`. Sin evidencia de contacto no crea una procedencia para la
+soledad; si la necesidad baja o la evidencia desaparece, el objetivo termina.
+No duplica el peso social en utilidad. El ansia todavía no tiene procedencia por
+persona en `HeldSubstance`/`CravingCue`: el origen global de una sustancia no
+demuestra un consumo propio. Agregar procedencia por dosis y señal es un subítem
+separado antes de persistir `immediate:craving`.
 
 ### Utilidad
 Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):
