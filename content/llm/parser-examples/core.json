@@ -1176,6 +1176,23 @@
     "notes": "parentesco va en relation, no en features"
   },
   {
+    "id": "forge-seal",
+    "text": "le pongo a mi saco de grano el sello de Wu",
+    "scene": "Estás en tu casa. Llevás un saco de grano. Wu, el molinero, sella su grano con su marca.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "forge",
+        "args": [
+          { "role": "of", "ref": { "text": "Wu", "kind": "person", "features": ["Wu"] } },
+          { "role": "what", "text": "saco de grano" }
+        ]
+      }
+    },
+    "notes": "copiar la marca de otro en un lote propio es falsificar; el resultado no lo decide el parser"
+  },
+  {
     "id": "ponder-yield-season",
     "text": "creo que el campo rinde más en verano",
     "scene": "Estás en los campos de arroz de la aldea, a media mañana.",

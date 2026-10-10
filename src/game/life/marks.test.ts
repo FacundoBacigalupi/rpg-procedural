@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import type { ProcessContext, ReadonlyWorldTruth } from "../../sim/index.ts";
 import { optInParts } from "./create.ts";
-import { LOT_MARKS, MARK_RECHECKED, MARK_STAMPED, MARK_VERIFIED, marksProcess } from "./marks.ts";
+import {
+  LOT_MARKS,
+  MARK_FORGED,
+  MARK_RECHECKED,
+  MARK_STAMPED,
+  MARK_VERIFIED,
+  marksProcess,
+} from "./marks.ts";
 
 const buyer = "agent:1" as AgentId;
 const seller = "agent:2" as AgentId;
@@ -100,6 +107,45 @@ describe("marcas en el lote", () => {
     expect(r.events?.map((e) => e.kind)).toEqual([MARK_RECHECKED]);
     expect(r.events?.[0]?.data["onLook"]).toBe(true);
     expect(r.events?.[0]?.data["seemsForged"]).toBe(true);
+  });
+  it("falsificar copia la marca de otro en un lote propio, con quién la forjó", () => {
+    const lot = {
+      event: "event:1",
+      unit: "good:grain",
+      grams: 100,
+      mark: { claimedBy: seller, stampedBy: seller, tick: 1, claimed: 0.6, fidelity: 1 },
+      seemsForged: false,
+      credence: 0.65,
+    };
+    const wu = "agent:3" as AgentId;
+    const tables: Record<string, Record<string, unknown>> = {
+      [LOT_MARKS.name]: { [buyer]: { lots: [lot] } },
+      entity: {},
+    };
+    const truth = { get: (t: { name: string }, id: string) => tables[t.name]?.[id] } as never;
+    const rng = { fork: () => rng, float: () => 0.5 } as never;
+    const go = (failure: unknown) =>
+      marksProcess({ placeOf: () => "here" as never, skill: () => 0.9 }).run({
+        truth,
+        rng,
+        recent: [
+          {
+            id: "event:8" as EventId,
+            actors: [buyer],
+            data: { failure, effect: { kind: "forge", of: wu, what: "grano" } },
+          },
+        ],
+        now: 5 as Tick,
+      } as unknown as ProcessContext) as unknown as {
+        events?: { kind: string; data: Record<string, unknown> }[];
+        changes?: { value?: { lots: { mark: { claimedBy: string; stampedBy: string } }[] } }[];
+      };
+    const r = go(null);
+    expect(r.events?.map((e) => e.kind)).toEqual([MARK_FORGED]);
+    const m = r.changes?.[0]?.value?.lots[0]?.mark;
+    expect(m?.claimedBy).toBe(wu);
+    expect(m?.stampedBy).toBe(buyer);
+    expect(go("clumsy").events).toBeUndefined();
   });
   it("sin trato no hay marca", () => {
     expect(run("buy", 0.5, false).events).toBeUndefined();

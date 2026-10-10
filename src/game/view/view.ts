@@ -690,6 +690,7 @@ function effectView(
   switch (e.kind) {
     case "none":
     case "ponder":
+    case "forge":
       return { kind: "none" };
     case "move":
       return {
