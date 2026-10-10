@@ -60,6 +60,7 @@ import {
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
+import { bondageAbuseChance } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
@@ -80,7 +81,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
-import { lendProcess } from "./lend.ts";
+import { lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -264,6 +265,8 @@ export interface LifeWorld {
   readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
   readonly lendBorrowed?: boolean;
+  /** Opt-in (con `consumables`): el hogar que debe una sustancia y ya la tiene la devuelve en especie por el libro mayor (`life.repay_dose`); si no, el vencimiento la vuelve mora. Apagado, sin proceso. */
+  readonly repayDoses?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -333,6 +336,8 @@ export interface LifeWorld {
   readonly loanRepaySubrogation?: boolean;
   /** Opt-in: la mora con pérdida abre una servidumbre por deudas (`LoansOptions.bondage`). */
   readonly loanBondage?: BondageTerms;
+  /** Opt-in (con `loanBondage`): `abuse.chance` sale del temperamento, la necesidad y la cultura del acreedor (`bondageAbuseChance`). */
+  readonly loanBondageAbuse?: { readonly reputationCost: number };
   /** Opt-in: arriendos decididos de antemano (`life.rents`, tabla `RENTS`, `Commitment` "lease" entre hogares, canon por ledger); sin semillas no hay proceso. */
   readonly rentSeeds?: readonly RentSeed[];
   /** Opt-in: cada tanto arma ofertas y buscadores de arriendo desde el estado (`rentMarketFromState` + `matchRents`). */
@@ -579,6 +584,16 @@ export function lifeWorld(
               }),
             ]
           : []),
+        ...(parts.repayDoses === true && parts.consumables
+          ? [
+              repayDoseProcess({
+                goods: parts.goods,
+                substances: parts.consumables.map((c) => c.good),
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
         keepProcess({
           values: parts.values,
@@ -683,7 +698,21 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
-          ...(parts.loanBondage ? { bondage: parts.loanBondage } : {}),
+          ...(parts.loanBondage
+            ? {
+                bondage: {
+                  ...parts.loanBondage,
+                  ...(parts.loanBondageAbuse && !parts.loanBondage.abuse
+                    ? {
+                        abuse: {
+                          chance: bondageAbuseChance(parts.traits, scamNeedOf(parts.plans)),
+                          reputationCost: parts.loanBondageAbuse.reputationCost,
+                        },
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           ...(parts.loanContagion !== undefined && parts.loanContagionEffects
             ? { contagionCaution: parts.loanContagionEffects }
             : {}),

@@ -188,6 +188,8 @@ export interface LifeOptions {
   readonly relationDecay?: boolean;
   /** Opt-in: la mora de los préstamos abre una servidumbre por deudas (`LifeParts.loanBondage`); apagado por defecto. */
   readonly loanBondage?: LifeParts["loanBondage"];
+  /** Opt-in (con `loanBondage`): el acreedor abusa según su temperamento, necesidad y la cultura (`LifeParts.loanBondageAbuse`); apagado por defecto. */
+  readonly loanBondageAbuse?: LifeParts["loanBondageAbuse"];
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material; apagado por defecto. */
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
@@ -218,6 +220,7 @@ export function optInParts(
   | "waterSources"
   | "relationDecay"
   | "loanBondage"
+  | "loanBondageAbuse"
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
@@ -237,6 +240,9 @@ export function optInParts(
       : {}),
     ...(options.relationDecay ? { relationDecay: true } : {}),
     ...(options.loanBondage ? { loanBondage: options.loanBondage } : {}),
+    ...(options.loanBondage && options.loanBondageAbuse
+      ? { loanBondageAbuse: options.loanBondageAbuse }
+      : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),

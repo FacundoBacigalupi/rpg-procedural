@@ -3,6 +3,7 @@ export * from "./act.ts";
 export * from "./altitude.ts";
 export * from "./askaround.ts";
 export * from "./beliefs.ts";
+export * from "./bondagepolicy.ts";
 export * from "./create.ts";
 export * from "./divine.ts";
 export * from "./environment.ts";

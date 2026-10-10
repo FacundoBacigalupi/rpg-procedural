@@ -173,6 +173,12 @@ export interface BorrowCravingOptions {
   readonly minCraving: number;
   /** Peso del empuje con el ansia al máximo, a plena confianza en el rumor. */
   readonly weight: number;
+  /**
+   * Opt-in: si cree al prestamista en otro hex (creencia de ubicación, no verdad), `move` hacia el
+   * lugar de ese hex entra como candidata con el ánimo del pedido por este factor (0-1). Apagado,
+   * solo pide a quien ya tiene delante.
+   */
+  readonly approach?: number;
 }
 
 /** A quién pedirle qué (puro): `lender` es el id como texto; `name` el bien tal como lo nombra el catálogo. */
@@ -228,6 +234,36 @@ export function cravingBorrowMood(
 ): number {
   const c = Math.min(1, Math.max(0, confidence));
   return Math.round(o.weight * Math.min(1, craving) * c * 1e6) / 1e6;
+}
+
+/**
+ * Ir hacia el prestamista (puro): por cada pedido con `lender` creído en otro hex que `here` y un
+ * lugar que lo contenga (`placeAt`), la candidata `move` hacia ese lugar con su ánimo. Sin
+ * `approach`, sin creencia de ubicación o ya en el mismo hex, nada.
+ */
+export function cravingApproachMoves(
+  asks: readonly BorrowAsk[],
+  believedHex: (lender: string) => number | undefined,
+  here: number,
+  placeAt: (hex: number) => string | undefined,
+  craving: number,
+  o: BorrowCravingOptions,
+): { readonly id: string; readonly place: string; readonly mood: number }[] {
+  const k = o.approach;
+  if (k === undefined || k <= 0) return [];
+  const out: { id: string; place: string; mood: number }[] = [];
+  for (const ask of asks) {
+    const hex = believedHex(ask.lender);
+    if (hex === undefined || hex === here) continue;
+    const place = placeAt(hex);
+    if (place === undefined) continue;
+    out.push({
+      id: `move:${place}+toward:${ask.lender}`,
+      place,
+      mood: Math.round(cravingBorrowMood(craving, ask.confidence, o) * Math.min(1, k) * 1e6) / 1e6,
+    });
+  }
+  return out;
 }
 
 /**

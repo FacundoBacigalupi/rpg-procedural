@@ -111,6 +111,7 @@ import {
   type BorrowCravingOptions,
   type BuyCravingOptions,
   type ConsumableDef,
+  cravingApproachMoves,
   cravingBorrowAsks,
   cravingBorrowMood,
   cravingBuyGoods,
@@ -624,6 +625,32 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             o.borrowCraving as BorrowCravingOptions,
           ),
         });
+      }
+      // Cree al prestamista en otro lado (creencia de ubicación): ir hacia el lugar donde lo cree.
+      if (o.borrowCraving?.approach !== undefined && craveBorrow.length > 0) {
+        const placeAt = (hex: number) =>
+          truth.ids(PLACE).find((id) => truth.get(PLACE, id)?.hexes.includes(hex));
+        for (const m of cravingApproachMoves(
+          craveBorrow,
+          (lender) => {
+            const b = believed(beliefs, lender as unknown as AgentId, "at");
+            return b && typeof b.value === "object" ? b.value.hex : undefined;
+          },
+          here,
+          (hex) => placeAt(hex) as string | undefined,
+          mood.craving,
+          o.borrowCraving,
+        )) {
+          catalogCandidates.push({
+            id: m.id,
+            verb: "move",
+            target: m.place as unknown as EntityRef,
+            contributes: { craving: 0.3 },
+            chance: 0.8,
+            loss: STAKES_RISK.none.loss,
+            mood: m.mood,
+          });
+        }
       }
       // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
       // esos insumos las candidatas quedan iguales.
