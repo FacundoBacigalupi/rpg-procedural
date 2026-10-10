@@ -83,6 +83,7 @@ import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
+import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
@@ -284,6 +285,8 @@ export interface LifeWorld {
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno con que el vendedor mezcla el lote (ver `ActOptions.scam.filler`). */
   readonly scamFiller?: LedgerUnit;
+  /** Opt-in: marcas en los lotes comerciados y verificación del comprador (`life.marks`). */
+  readonly marks?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -470,6 +473,9 @@ export function lifeWorld(
                 day: parts.clock.day,
               }),
             ]
+          : []),
+        ...(parts.marks === true
+          ? [marksProcess({ placeOf: placeOf(parts, village), eye: scamEyeOf(parts.traits) })]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [

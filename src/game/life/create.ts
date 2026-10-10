@@ -191,6 +191,8 @@ export interface LifeOptions {
   readonly moldHintsFromCatalog?: boolean;
   /** Opt-in: vista de oficios (`TRADE_VIEW`); con `misread`/`people` además cree oficios equivocados / anota personas. Apagado por defecto. */
   readonly tradeView?: LifeParts["tradeView"];
+  /** Opt-in: los lotes comerciados llevan la marca del vendedor y el comprador la verifica (`life.marks`). Apagado por defecto. */
+  readonly marks?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -209,6 +211,7 @@ export function optInParts(
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
+  | "marks"
 > {
   return {
     ...(options.waterSources
@@ -228,6 +231,7 @@ export function optInParts(
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
+    ...(options.marks ? { marks: true } : {}),
   };
 }
 
