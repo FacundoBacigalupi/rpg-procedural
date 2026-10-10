@@ -25,6 +25,7 @@ import {
   endEntity,
   FROSTBITE,
   FROSTBITE_CARE,
+  FROSTBITE_ORDERS,
   type FrostbitePart,
   type FrostbiteState,
   frostbiteHandFactor,
@@ -212,6 +213,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       SWEAT.name,
       AMPUTATIONS.name,
       FROSTBITE_CARE.name,
+      FROSTBITE_ORDERS.name,
     ],
     writes: [
       THERMAL.name,
@@ -304,8 +306,13 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         // Tratamiento aplicado: recalentar/aislar bajan la gravedad por hora y la cirugía quita
         // lo profundo antes de la gangrena; la orden de amputar se ejecuta una sola vez.
         const hadLost = ctx.truth.get(AMPUTATIONS, id);
-        const order =
+        const care =
           o.frostbite && o.frostbiteTreatment ? ctx.truth.get(FROSTBITE_CARE, id) : undefined;
+        // Un pedido del médico más nuevo que la orden vigente pasa a ser la orden.
+        const req =
+          o.frostbite && o.frostbiteTreatment ? ctx.truth.get(FROSTBITE_ORDERS, id) : undefined;
+        const fresh = req !== undefined && req.until > ctx.now && (!care || care.at < req.at);
+        const order = fresh ? req : care;
         const surgical: FrostbitePart[] = [];
         if (frost && o.frostbite && o.frostbiteTreatment && hadLost?.lost.some((l) => l.surgical)) {
           // Lo quitado por cirugía no vuelve a congelarse: no queda tejido.
@@ -331,7 +338,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
             surgical.push(...cut.done);
           }
           if (order.until > ctx.now) {
-            if (order.amputate.length > 0) {
+            if (fresh || order.amputate.length > 0) {
               changes.push(setComponent(FROSTBITE_CARE, id, { ...order, amputate: [] }));
             }
           } else {

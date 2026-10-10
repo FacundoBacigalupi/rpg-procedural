@@ -5,6 +5,8 @@ import {
   BODY_STATE,
   draftEvent,
   ENTITY,
+  FROSTBITE,
+  FROSTBITE_ORDERS,
   INFECTION,
   PATHOGEN,
   type PathogenDef,
@@ -263,6 +265,35 @@ describe("life.medicine, señales de congelación", () => {
     expect(frostbiteCare(dead)).toEqual(["rewarm", "insulate", "amputate"]);
     const lost = { lost: [{ part: "feet" as const, at: 1, cause: "e" as never }] };
     expect((signsOfFrostbite(dead, lost) as Frost).missingPart).toBe(1);
+  });
+});
+
+describe("life.medicine, pedido de cuidado de congelación", () => {
+  const run = (on: boolean, skill = 1) => {
+    const t = world();
+    t.set(FROSTBITE, sick as EntityRef, { hands: 0.6, feet: 0.9, face: 0, at: 0 });
+    return medicineProcess({
+      clock,
+      healers: [{ ...healer, skill }],
+      frostbiteOrders: on,
+      placeOf: () => place,
+    }).run(ctx(t, clock.day * 2));
+  };
+  const row = (o: ReturnType<typeof run>) =>
+    (o.changes?.find((c) => c.table === FROSTBITE_ORDERS.name) as never as { value: never })
+      ?.value as { rewarm: number; amputate: string[]; by: string } | undefined;
+
+  it("apagado no escribe; encendido pide recalentar, aislar y amputar lo necrosado, con causa", () => {
+    expect(row(run(false))).toBeUndefined();
+    const on = run(true);
+    expect(row(on)).toMatchObject({ amputate: ["feet"], by: doc });
+    expect(on.events?.some((e) => e.kind === "body.frostbite_ordered")).toBe(true);
+    expect(on.events?.[0]?.causes[0]).toMatchObject({ kind: "state", key: "body.frostbite" });
+    expect(run(true)).toEqual(on);
+  });
+
+  it("con poca habilidad no opera", () => {
+    expect(row(run(true, 0.1))?.amputate).toEqual([]);
   });
 });
 
