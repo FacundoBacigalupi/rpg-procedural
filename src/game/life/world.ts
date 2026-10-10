@@ -80,6 +80,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
+import { lendProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -261,6 +262,8 @@ export interface LifeWorld {
   readonly gatherCraving?: GatherCravingOptions;
   /** Opt-in (con `consumables` y `moldHints`): sin comercio ni planta, pedir la sustancia a un conocido que se cree que la tiene (`life.decide`); apagado, sin candidata nueva. */
   readonly borrowCraving?: BorrowCravingOptions;
+  /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
+  readonly lendBorrowed?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -564,6 +567,18 @@ export function lifeWorld(
           : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        ...(parts.lendBorrowed === true && parts.borrowCraving
+          ? [
+              lendProcess({
+                goods: parts.goods,
+                dims: parts.relationDims,
+                bonds: parts.relationBonds,
+                day: parts.clock.day,
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
         keepProcess({
           values: parts.values,
