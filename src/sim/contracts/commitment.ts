@@ -13,11 +13,20 @@ export interface CommitmentParty {
   readonly role: string;
 }
 
-export type CommitmentDuty = {
-  readonly kind: "deliver";
-  readonly unit: string;
-  readonly qty: number;
-};
+export type CommitmentDuty =
+  | {
+      readonly kind: "deliver";
+      readonly unit: string;
+      readonly qty: number;
+    }
+  | {
+      /** Trabajo a cuenta de una deuda (servidumbre): `qty` son los días de trabajo que faltan. */
+      readonly kind: "work";
+      readonly unit: string;
+      readonly qty: number;
+      /** Lo que se abona de la deuda por día trabajado (neto del sustento que cobra el acreedor). */
+      readonly creditPerDay: number;
+    };
 
 export interface CommitmentObligation {
   readonly id: string;

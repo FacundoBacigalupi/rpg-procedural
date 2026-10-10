@@ -83,14 +83,17 @@ import { living } from "./living.ts";
 import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
+import { marksProcess } from "./marks.ts";
 import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
+  type HouseholdNeeds,
   lookSiteOf,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
+  tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
@@ -113,6 +116,7 @@ import { soilProcess } from "./soil.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
 import {
+  type BorrowCravingOptions,
   type BuyCravingOptions,
   type ConsumableDef,
   type GatherCravingOptions,
@@ -254,6 +258,8 @@ export interface LifeWorld {
   readonly buyCraving?: BuyCravingOptions;
   /** Opt-in (con `consumables`): sin con quién comprar, el ansia empuja a recolectar la planta (`life.decide`); apagado, sin candidata nueva. */
   readonly gatherCraving?: GatherCravingOptions;
+  /** Opt-in (con `consumables` y `moldHints`): sin comercio ni planta, pedir la sustancia a un conocido que se cree que la tiene (`life.decide`); apagado, sin candidata nueva. */
+  readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -284,6 +290,8 @@ export interface LifeWorld {
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno con que el vendedor mezcla el lote (ver `ActOptions.scam.filler`). */
   readonly scamFiller?: LedgerUnit;
+  /** Opt-in: marcas en los lotes comerciados y verificación del comprador (`life.marks`). */
+  readonly marks?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -300,6 +308,8 @@ export interface LifeWorld {
   readonly moldGossip?: MoldGossipOptions;
   /** Opt-in: la decisión (`life.decide`) suma al ánimo lo que cree de oídas en `MOLD_RUMORS` (`moldHintMood`: ir donde cree que hay algo, comerciar un bien con precio oído); apagado por defecto: no lee la tabla. */
   readonly moldHints?: MoldHintOptions;
+  /** Opt-in: necesidades del hogar; `moldHints.tradeWant` sale de ellas (`tradeWantFromNeeds`) si no trae uno; apagado por defecto. */
+  readonly tradeNeeds?: HouseholdNeeds;
   /** Opt-in: sin `moldHints`, usa `catalogMoldHints(goods)` con `bySide` (comprar y vender se distinguen); apagado por defecto. */
   readonly moldHintsFromCatalog?: boolean;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
@@ -470,6 +480,9 @@ export function lifeWorld(
                 day: parts.clock.day,
               }),
             ]
+          : []),
+        ...(parts.marks === true
+          ? [marksProcess({ placeOf: placeOf(parts, village), eye: scamEyeOf(parts.traits) })]
           : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
@@ -904,23 +917,24 @@ export function lifeWorld(
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
+          ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true
             ? { cueLocal: { lonDeg: parts.map.lonDeg } }
             : {}),
-          ...(parts.moldHints
-            ? { moldHints: parts.moldHints }
-            : parts.moldHintsFromCatalog === true
-              ? {
-                  moldHints: {
-                    ...catalogMoldHints(parts.goods),
-                    bySide: true,
-                    buyCandidates: true,
-                  },
-                }
-              : {}),
+          ...(() => {
+            const base: MoldHintOptions | undefined = parts.moldHints
+              ? parts.moldHints
+              : parts.moldHintsFromCatalog === true
+                ? { ...catalogMoldHints(parts.goods), bySide: true, buyCandidates: true }
+                : undefined;
+            if (!base) return {};
+            return parts.tradeNeeds && !base.tradeWant
+              ? { moldHints: { ...base, tradeWant: tradeWantFromNeeds(parts.tradeNeeds) } }
+              : { moldHints: base };
+          })(),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         routineProcess({

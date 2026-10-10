@@ -108,8 +108,11 @@ import {
 } from "./moldgossip.ts";
 import {
   acuteOf,
+  type BorrowCravingOptions,
   type BuyCravingOptions,
   type ConsumableDef,
+  cravingBorrowAsks,
+  cravingBorrowMood,
   cravingBuyGoods,
   cravingBuyMood,
   cravingGatherMood,
@@ -189,6 +192,13 @@ export interface DecideOptions {
    * rinde entra como candidata con ánimo que crece con el ansia. Apagado, no cambia.
    */
   readonly gatherCraving?: GatherCravingOptions;
+  /**
+   * Opt-in (exige `consumables` y `moldHints`): con ansia alta, sin la sustancia en la despensa y
+   * sin con quién comprarla ni planta que recolectar, `speak` pidiéndola a un conocido del que oyó
+   * (rumor `attr` `has`, creencia y no verdad) que la tiene entra como candidata, con ánimo que
+   * crece con el ansia y con la confianza en el rumor. Apagado, no cambia.
+   */
+  readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
   /**
@@ -514,6 +524,21 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           )
         : [];
       const withGather = craveGather.length > 0 ? { ...withBuy, gather: craveGather } : withBuy;
+      // Sin con quién comprar ni planta: pedírsela a quien oyó que la tiene (opt-in `borrowCraving`).
+      const craveBorrow =
+        o.borrowCraving && hintBook && craveBuy.length === 0 && craveGather.length === 0
+          ? cravingBorrowAsks(
+              mood.craving,
+              (o.consumables ?? []).flatMap((c) => {
+                const g = (o.goods ?? []).find((x) => x.id === c.good);
+                const have = g ? (larder?.find((h) => h.unit === goodUnit(g))?.amount ?? 0) : 0;
+                return g ? [{ name: g.name, have }] : [];
+              }),
+              hintBook.items,
+              new Set(people.map((p) => p.id as string)),
+              o.borrowCraving,
+            )
+          : [];
       const texts = stash.length > 0 ? { ...withGather, consume: stash.sort() } : withGather;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
@@ -584,6 +609,21 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             means: { surplus: Math.max(0, 1 - (drives.needs.hunger ?? 0) * 2) },
           }),
         );
+      }
+      for (const ask of craveBorrow) {
+        catalogCandidates.push({
+          id: `speak:${ask.lender}+borrow:${ask.name}`,
+          verb: "speak",
+          target: ask.lender,
+          contributes: { craving: 0.5 },
+          chance: 0.6,
+          loss: STAKES_RISK.none.loss,
+          mood: cravingBorrowMood(
+            mood.craving,
+            ask.confidence,
+            o.borrowCraving as BorrowCravingOptions,
+          ),
+        });
       }
       // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
       // esos insumos las candidatas quedan iguales.

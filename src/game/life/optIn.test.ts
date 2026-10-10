@@ -23,6 +23,7 @@ describe("opciones opt-in de la vida", () => {
     expect(optInParts({ moldHintsFromCatalog: false })).toEqual({});
     expect(optInParts({ moldHintsFromCatalog: true })).toEqual({ moldHintsFromCatalog: true });
     expect(optInParts({ tradeView: false })).toEqual({});
+    expect(optInParts({ tradeNeeds: { tool: 0.5 } })).toEqual({ tradeNeeds: { tool: 0.5 } });
   });
 
   it("la vista de oficios pasa misread y people a las partes", () => {

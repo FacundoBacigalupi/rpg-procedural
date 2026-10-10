@@ -545,6 +545,46 @@ export interface MoldHintOptions {
   readonly tradeWant?: (trade: string) => number | undefined;
 }
 
+/** Necesidades del hogar (0-1): lo que le falta y un oficio podría darle. */
+export interface HouseholdNeeds {
+  /** Herramienta rota o gastada. */
+  readonly tool?: number;
+  /** Techo con goteras o sin reparar. */
+  readonly roof?: number;
+  /** Ropa gastada. */
+  readonly clothing?: number;
+  /** Despensa vacía. */
+  readonly pantry?: number;
+}
+
+/** Qué necesidad cubre cada oficio (dato; se puede pasar otro mapa). */
+export const TRADE_NEED_KIND: Readonly<Record<string, keyof HouseholdNeeds>> = {
+  forge: "tool",
+  smith: "tool",
+  carpentry: "roof",
+  thatch: "roof",
+  mason: "roof",
+  weave: "clothing",
+  tailor: "clothing",
+  bake: "pantry",
+  farm: "pantry",
+};
+
+/**
+ * `tradeWant` desde la necesidad real del hogar (puro): la necesidad (0-1, acotada) que cubre el
+ * oficio según `kinds`; 0 si el oficio no cubre ninguna o el hogar no la tiene.
+ */
+export function tradeWantFromNeeds(
+  needs: HouseholdNeeds,
+  kinds: Readonly<Record<string, keyof HouseholdNeeds>> = TRADE_NEED_KIND,
+): (trade: string) => number {
+  return (trade) => {
+    const kind = Object.hasOwn(kinds, trade) ? kinds[trade] : undefined;
+    const n = kind ? (needs[kind] ?? 0) : 0;
+    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+  };
+}
+
 /** Verbos que buscan a un artesano creído (contratarlo o comprarle). */
 export const CRAFTSMAN_VERBS: readonly string[] = ["trade", "hire"];
 

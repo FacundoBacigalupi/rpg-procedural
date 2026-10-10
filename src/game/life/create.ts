@@ -149,6 +149,7 @@ import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import { localMapOf } from "./map.ts";
+import type { HouseholdNeeds } from "./moldgossip.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -189,8 +190,12 @@ export interface LifeOptions {
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
   readonly moldHintsFromCatalog?: boolean;
+  /** Opt-in: necesidades del hogar de las que sale `moldHints.tradeWant` (`tradeWantFromNeeds`); apagado por defecto. */
+  readonly tradeNeeds?: HouseholdNeeds;
   /** Opt-in: vista de oficios (`TRADE_VIEW`); con `misread`/`people` además cree oficios equivocados / anota personas. Apagado por defecto. */
   readonly tradeView?: LifeParts["tradeView"];
+  /** Opt-in: los lotes comerciados llevan la marca del vendedor y el comprador la verifica (`life.marks`). Apagado por defecto. */
+  readonly marks?: boolean;
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -209,6 +214,8 @@ export function optInParts(
   | "swapMaterials"
   | "moldHintsFromCatalog"
   | "tradeView"
+  | "marks"
+  | "tradeNeeds"
 > {
   return {
     ...(options.waterSources
@@ -228,6 +235,8 @@ export function optInParts(
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
+    ...(options.marks ? { marks: true } : {}),
+    ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }
 

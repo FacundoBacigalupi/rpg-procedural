@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { MOLD_HINT_MOOD, moldCraftsmen, moldHintMood, tradeAbout } from "./moldgossip.ts";
+import {
+  MOLD_HINT_MOOD,
+  moldCraftsmen,
+  moldHintMood,
+  tradeAbout,
+  tradeWantFromNeeds,
+} from "./moldgossip.ts";
 
 const book = (value: string, confidence: number) => ({
   items: [
@@ -22,6 +28,24 @@ describe("hogares creídos artesanos", () => {
     expect(moldCraftsmen(book("weave", 1), o)).toEqual([]);
     expect(moldCraftsmen(book("forge", 1), {})).toEqual([]);
     expect(moldCraftsmen(undefined, o)).toEqual([]);
+  });
+});
+
+describe("tradeWant desde la necesidad del hogar", () => {
+  it("cada oficio lee la necesidad que cubre, acotada; sin necesidad u oficio ajeno, 0", () => {
+    const want = tradeWantFromNeeds({ tool: 0.7, roof: 3, clothing: Number.NaN });
+    expect(want("forge")).toBe(0.7);
+    expect(want("thatch")).toBe(1);
+    expect(want("weave")).toBe(0);
+    expect(want("farm")).toBe(0);
+    expect(want("toString")).toBe(0);
+    expect(tradeWantFromNeeds({ pantry: 0.4 }, { cook: "pantry" })("cook")).toBe(0.4);
+  });
+
+  it("alimenta moldCraftsmen y moldHintMood", () => {
+    const o = { tradeWant: tradeWantFromNeeds({ tool: 0.5 }) };
+    expect(moldCraftsmen(book("forge", 1), o)).toEqual([tradeAbout("h1")]);
+    expect(moldCraftsmen(book("weave", 1), o)).toEqual([]);
   });
 });
 

@@ -1,3 +1,4 @@
+export * from "./bondage.ts";
 export * from "./commitment.ts";
 export * from "./contagion.ts";
 export * from "./credit.ts";
