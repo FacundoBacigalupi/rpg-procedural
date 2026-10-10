@@ -11,17 +11,22 @@ import {
   acuteEffects,
   BODY_STATE,
   CLEAN,
+  type CueContext,
   createEntity,
+  cueCraving,
   draftEvent,
   ENTITY,
   type EventDraft,
   endEntity,
   type HeldSubstance,
+  LOCATION,
+  learnCues,
   NEUTRAL,
   PERSON,
   PERSON_SUBSTANCE,
   type ProcessContext,
   type ProcessDef,
+  pruneCues,
   type ReadonlyWorldTruth,
   type StateChange,
   SUBSTANCE,
@@ -51,6 +56,38 @@ export function acuteOf(truth: ReadonlyWorldTruth, who: AgentId): AcuteEffects {
   return acuteEffects(held);
 }
 
+/** Vida media de una señal sin reforzarse: dos meses de mundo. */
+export const CUE_HALF_LIFE_DAYS = 60;
+export const cueHalfLife = (clock: PlanetClock): number => CUE_HALF_LIFE_DAYS * clock.day;
+
+/** El entorno de alguien ahora: su hex, quiénes están en el mismo hex y la hora (sin huso). */
+export function cueContextOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  now: number,
+  clock: PlanetClock,
+): CueContext {
+  const hex = truth.get(LOCATION, who)?.hex ?? 0;
+  const people = truth
+    .ids(LOCATION)
+    .filter((id) => id !== who && id.startsWith("agent:") && truth.get(LOCATION, id)?.hex === hex)
+    .map(String);
+  const inDay = ((now % clock.day) + clock.day) % clock.day;
+  return { hex, people, hour: Math.floor((inDay / clock.day) * 24) };
+}
+
+/** Ansia que despierta el entorno por señales aprendidas; sin señales (o sin opt-in), 0. */
+export function cueCravingOf(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  ctx: CueContext,
+  now: number,
+  clock: PlanetClock,
+): number {
+  const cues = truth.get(PERSON_SUBSTANCE, who as never)?.cues;
+  return cues ? cueCraving(cues, ctx, now, cueHalfLife(clock)) : 0;
+}
+
 export const SUBSTANCES_PROCESS = "life.substances";
 
 /** Una unidad del ledger que es una sustancia de consumo: tomarla es una dosis (opt-in en `ActOptions`). */
@@ -76,6 +113,7 @@ export function consumeDose(
   ctx: Pick<ProcessContext, "now" | "newId">,
   place: PlaceRef,
   eventIndex: number,
+  learn?: { readonly ctx: CueContext; readonly clock: PlanetClock },
 ): { readonly changes: StateChange[]; readonly events: EventDraft[] } {
   const prev = truth.get(PERSON_SUBSTANCE, who as never)?.held ?? [];
   const cur = prev.find((h) => h.substance === c.def.id)?.state ?? CLEAN;
@@ -84,8 +122,21 @@ export function consumeDose(
     { substance: c.def.id, state: takeDose(c.def, cur, c.route, c.amount) },
   ].sort((a, b) => (a.substance < b.substance ? -1 : 1));
   const now = ctx.now;
+  const cues = learn
+    ? learnCues(
+        truth.get(PERSON_SUBSTANCE, who as never)?.cues ?? [],
+        c.def.id,
+        learn.ctx,
+        now,
+        cueHalfLife(learn.clock),
+      )
+    : (truth.get(PERSON_SUBSTANCE, who as never)?.cues ?? []);
   const changes: StateChange[] = [
-    setComponent(PERSON_SUBSTANCE, who as never, { held: rows, at: now }),
+    setComponent(PERSON_SUBSTANCE, who as never, {
+      held: rows,
+      at: now,
+      ...(cues.length > 0 ? { cues } : {}),
+    }),
   ];
   const events: EventDraft[] = [];
   const known = truth.ids(SUBSTANCE).some((id) => truth.get(SUBSTANCE, id)?.def.id === c.def.id);
@@ -218,6 +269,17 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
         const rows: HeldSubstance[] = [...held]
           .filter(([, s]) => !isSpent(s))
           .map(([substance, state]) => ({ substance, state }));
+        // Las señales aprendidas (opt-in) pasan tal cual, menos las ya olvidadas.
+        const cues = pruneCues(
+          ctx.truth.get(PERSON_SUBSTANCE, pid as never)?.cues ?? [],
+          ctx.now,
+          cueHalfLife(o.clock),
+        );
+        const withCues = (held: HeldSubstance[]) => ({
+          held,
+          at: ctx.now,
+          ...(cues.length > 0 ? { cues } : {}),
+        });
         if (died) {
           const kd = events.length;
           events.push({
@@ -230,10 +292,10 @@ export function substancesProcess(o: SubstancesOptions): ProcessDef {
           });
           changes.push(
             endEntity(base, draftEvent(kd), ctx.now),
-            setComponent(PERSON_SUBSTANCE, pid as never, { held: rows, at: ctx.now }),
+            setComponent(PERSON_SUBSTANCE, pid as never, withCues(rows)),
           );
-        } else if (rows.length > 0) {
-          changes.push(setComponent(PERSON_SUBSTANCE, pid as never, { held: rows, at: ctx.now }));
+        } else if (rows.length > 0 || cues.length > 0) {
+          changes.push(setComponent(PERSON_SUBSTANCE, pid as never, withCues(rows)));
         } else if (ctx.truth.get(PERSON_SUBSTANCE, pid as never)) {
           changes.push({ op: "delete", table: PERSON_SUBSTANCE.name, id: pid as never });
         }

@@ -94,7 +94,7 @@ import {
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
-import { acuteOf, type ConsumableDef } from "./substances.ts";
+import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
 import { applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -153,6 +153,8 @@ export interface DecideOptions {
    * las nombra y el ansia (`serves: craving`) lo empuja. Apagado, no hay candidata nueva.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
+  readonly cravingCues?: boolean;
 }
 
 const r = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -260,7 +262,12 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           cares: (who) => cared.has(who),
           withCompany: [...cared].some((id) => truth.get(LOCATION, id)?.hex === here),
         }),
-        craving: acute.craving,
+        craving: o.cravingCues
+          ? Math.max(
+              acute.craving,
+              cueCravingOf(truth, me, cueContextOf(truth, me, now, o.clock), now, o.clock),
+            )
+          : acute.craving,
         numbing: acute.numbing,
       };
       const drives = drivesFor({

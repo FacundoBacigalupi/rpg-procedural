@@ -148,7 +148,7 @@ import {
 } from "./fight.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
-import { acuteOf, type ConsumableDef, consumeDose } from "./substances.ts";
+import { acuteOf, type ConsumableDef, consumeDose, cueContextOf } from "./substances.ts";
 import { applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
 import { watchersLearn } from "./watching.ts";
@@ -221,6 +221,8 @@ export interface ActOptions {
    * suma una dosis con evento causal. Apagado, `consume` no tiene qué tomar y no cambia nada.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
+  readonly cravingCues?: boolean;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -625,7 +627,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     // La dosis entra al cuerpo ahora; `life.substances` la absorbe y metaboliza desde la próxima hora.
     const used = o.consumables?.find((c) => GOOD(c.good) === eff.good);
     if (used) {
-      const dose = consumeDose(truth, me, used, ctx, input.place, r.events.length);
+      const dose = consumeDose(
+        truth,
+        me,
+        used,
+        ctx,
+        input.place,
+        r.events.length,
+        o.cravingCues
+          ? { ctx: cueContextOf(truth, me, ctx.now, o.clock), clock: o.clock }
+          : undefined,
+      );
       changes.push(...dose.changes);
       doseEvents.push(...dose.events);
     }

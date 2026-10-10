@@ -5,6 +5,7 @@
 
 import { table } from "../world/index.ts";
 import type { SubstanceDef, SubstanceState } from "./substance.ts";
+import type { CravingCue } from "./substance-cues.ts";
 
 export interface SubstanceRecord {
   readonly def: SubstanceDef;
@@ -24,6 +25,8 @@ export interface PersonSubstances {
   readonly held: readonly HeldSubstance[];
   /** Hasta cuándo está calculado. */
   readonly at: number;
+  /** Señales de ansia aprendidas (opt-in `cravingCues`); ausente, no hay condicionamiento. */
+  readonly cues?: readonly CravingCue[];
 }
 
 /** Clave: la persona. Sin fila, no hay nada en el cuerpo. */
