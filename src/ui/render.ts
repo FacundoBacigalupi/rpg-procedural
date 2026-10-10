@@ -193,10 +193,15 @@ function signText(s: SeenSigns[number], t: typeof SUBSTANCE_SELF | typeof SUBSTA
 /** Señales de sustancias (opt-in del panel): lo perceptible, sin nombrar la sustancia. */
 function substanceLines(sub: NonNullable<CharacterPanel["substances"]>): string[] {
   const lines = sub.self.map((s) => `${signText(s, SUBSTANCE_SELF)}.`);
-  for (const o of sub.others) {
-    lines.push(`${o.who} ${o.signs.map((s) => signText(s, SUBSTANCE_OTHER)).join(" y ")}.`);
-  }
+  lines.push(...presentSignLines(sub.others));
   return lines;
+}
+
+/** Las señales de los presentes, una línea por persona, sin nombrar la sustancia. */
+function presentSignLines(others: NonNullable<CharacterPanel["substances"]>["others"]): string[] {
+  return others.map(
+    (o) => `${o.who} ${o.signs.map((s) => signText(s, SUBSTANCE_OTHER)).join(" y ")}.`,
+  );
 }
 
 export function renderCharacter(p: CharacterPanel): string {
@@ -494,9 +499,14 @@ const CHANNEL_NAMES: Readonly<Record<EnvironmentItem["channel"], string>> = {
   smell: "olfato",
 };
 
-export function renderEnvironment(items: readonly EnvironmentItem[]): string {
-  if (items.length === 0) return "Nada te llama la atención del lugar.";
-  return items.map((i) => `${CHANNEL_NAMES[i.channel]}: ${ENVIRONMENT[i.kind]}`).join("\n");
+/** `present` (opt-in): las señales de sustancias de los presentes, junto a la escena. */
+export function renderEnvironment(
+  items: readonly EnvironmentItem[],
+  present: NonNullable<CharacterPanel["substances"]>["others"] = [],
+): string {
+  const lines = items.map((i) => `${CHANNEL_NAMES[i.channel]}: ${ENVIRONMENT[i.kind]}`);
+  lines.push(...presentSignLines(present));
+  return lines.length === 0 ? "Nada te llama la atención del lugar." : lines.join("\n");
 }
 
 // --- Diario de hipótesis (discovery §14): lo que el personaje cree de cómo anda el mundo ---

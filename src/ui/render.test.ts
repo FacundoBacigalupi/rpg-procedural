@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AboutPanel, BookLine, CharacterPanel } from "../game/index.ts";
-import { renderAbout, renderBook, renderCharacter } from "./render.ts";
+import { renderAbout, renderBook, renderCharacter, renderEnvironment } from "./render.ts";
 
 const line = (over: Partial<BookLine>): BookLine => ({
   kind: "pledge",
@@ -78,5 +78,22 @@ describe("renderCharacter substances", () => {
     const text = renderCharacter(base);
     expect(text).toContain("envenenado");
     expect(text).toContain("Wu parece adormecido.");
+  });
+});
+
+describe("render.renderEnvironment con señales de presentes", () => {
+  it("suma las señales de los presentes sin nombrar sustancia; sin ellas queda igual", () => {
+    const items = [{ channel: "sight", kind: "dark" }] as never;
+    expect(renderEnvironment(items)).toBe("vista: está oscuro");
+    const text = renderEnvironment(items, [
+      { who: "Mara", signs: [{ kind: "poison", stage: "grave" }, { kind: "sedated" }] },
+    ]);
+    expect(text).toBe(
+      "vista: está oscuro\nMara está gravemente enfermo, casi no se tiene en pie y parece adormecido.",
+    );
+    expect(renderEnvironment([], [{ who: "Mara", signs: [{ kind: "withdrawing" }] }])).toBe(
+      "Mara tiembla y está inquieto.",
+    );
+    expect(renderEnvironment([])).toBe("Nada te llama la atención del lugar.");
   });
 });
