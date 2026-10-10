@@ -727,8 +727,23 @@ describe("life.decide", () => {
 
   it("el vacío de una venganza cumplida presiona meaning solo con la opción", () => {
     const year = 365 * 86_400;
-    const make = () => {
+    const make = (newCore?: "before" | "after") => {
       const truth = layeredWorld();
+      if (newCore) {
+        truth.set(NPC_GOALS, A, {
+          items: [
+            {
+              id: "core:avenge:agent:3",
+              layer: "core",
+              kind: "avenge",
+              target: "agent:3" as AgentId,
+              weight: 0.6,
+              originEventId: "event:20" as EventId,
+              since: newCore === "after" ? year + 10 : 50,
+            },
+          ],
+        });
+      }
       // En un campo, `work` es posible y es el verbo que sirve meaning.
       truth.set(LOCATION, A, { hex: 5 });
       truth.set(PLACE, "place:1" as never, { kind: "fields", hexes: [5] });
@@ -756,10 +771,10 @@ describe("life.decide", () => {
     const on = decideProcess({ ...opts, recognizeGoalCompletion: true, meaningPressure: true });
     expect(on.reads).toContain(NPC_GOAL_COMPLETIONS.name);
     expect(on.run(ctx(make(), A, 1000))).toEqual(on.run(ctx(make(), A, 1000)));
-    const verbs = (p: typeof on) =>
+    const verbs = (p: typeof on, newCore?: "before" | "after") =>
       Array.from({ length: 60 }, (_, k) => {
         const change = p
-          .run(ctx(make(), A, 2 * year + k * 86_400))
+          .run(ctx(make(newCore), A, 2 * year + k * 86_400))
           .changes?.find((c) => c.table === NPC_DECISION.name) as
           | { value?: { verb: string } }
           | undefined;
@@ -771,6 +786,13 @@ describe("life.decide", () => {
     const works = (list: string[]) => list.filter((v) => v === "work").length;
     expect(works(withMeaning)).toBeGreaterThan(works(off));
     expect(withMeaning).not.toEqual(off);
+
+    // Un núcleo nuevo, con causa, reemplaza el sentido: la presión se apaga. Uno anterior al
+    // cumplimiento ya ocupaba el lugar y tampoco deja nacer el vacío.
+    const offWithCore = (c: "before" | "after") =>
+      verbs(decideProcess({ ...opts, meaningPressure: false }), c);
+    expect(verbs(on, "after")).toEqual(offWithCore("after"));
+    expect(verbs(on, "before")).toEqual(offWithCore("before"));
   });
 
   it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {

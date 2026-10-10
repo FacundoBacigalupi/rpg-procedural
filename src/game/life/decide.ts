@@ -479,13 +479,24 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : [];
       // Opt-in: el vacío de un núcleo cumplido (venganza consumada) presiona `meaning` despacio.
       const yearTicks = daysInYear(o.clock, toCalendar(o.clock, now).year) * o.clock.day;
-      const meaning = o.meaningPressure
-        ? calibratedMeaningPressure(
-            goalVacuumFromCompletions(prevGoals, completionHistory, now),
-            now,
-            yearTicks,
-          )
+      // Un núcleo concreto nacido después del cumplimiento lo reemplaza y alivia de a poco, citando
+      // su origen; uno anterior ya ocupaba el lugar y no deja nacer el vacío.
+      const vacuum = o.meaningPressure
+        ? goalVacuumFromCompletions([], completionHistory, now)
         : undefined;
+      const concreteCore = prevGoals
+        .filter((g) => g.layer === "core" && g.kind !== "pursue")
+        .sort((a, b) => a.since - b.since);
+      const replacing = vacuum ? concreteCore.find((g) => g.since >= vacuum.since) : undefined;
+      const meaning =
+        vacuum && !(concreteCore.length > 0 && !replacing)
+          ? calibratedMeaningPressure(
+              vacuum,
+              now,
+              yearTicks,
+              replacing ? { at: replacing.since, cause: replacing.originEventId } : undefined,
+            )
+          : undefined;
       const drives: typeof baseDrives =
         meaning && meaning.pressure > 0
           ? { ...baseDrives, needs: { ...baseDrives.needs, meaning: meaning.pressure } }
