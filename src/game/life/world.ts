@@ -264,6 +264,8 @@ export interface LifeWorld {
   readonly npcBoil?: { readonly minThirst: number; readonly weight: number };
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
+  /** Opt-in (con `cravingCues`): `life.decide` lee a quién cree presente y el huso del lugar; ver `DecideOptions.cueLocal`. */
+  readonly cueLocal?: boolean;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -893,6 +895,9 @@ export function lifeWorld(
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
+          ...(parts.cravingCues === true && parts.cueLocal === true
+            ? { cueLocal: { lonDeg: parts.map.lonDeg } }
+            : {}),
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }
             : parts.moldHintsFromCatalog === true

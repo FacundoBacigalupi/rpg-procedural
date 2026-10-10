@@ -96,6 +96,7 @@ import {
   villageReligion,
 } from "../../sim/index.ts";
 import { applyAltitude } from "./altitude.ts";
+import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { MOLD_RUMORS, type MoldHintOptions, moldBuyGoods, moldHintMood } from "./moldgossip.ts";
 import { acuteOf, type ConsumableDef, cueContextOf, cueCravingOf } from "./substances.ts";
@@ -161,6 +162,11 @@ export interface DecideOptions {
   readonly consumables?: readonly ConsumableDef[];
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
+  /**
+   * Opt-in (con `cravingCues`): las señales leen a quién CREE presente (sus creencias) y la hora del
+   * huso del lugar (`lonDeg`); apagado, el entorno es el de siempre (mismo hex, hora global).
+   */
+  readonly cueLocal?: { readonly lonDeg: number };
   /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
@@ -285,7 +291,19 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         craving: o.cravingCues
           ? Math.max(
               acute.craving,
-              cueCravingOf(truth, me, cueContextOf(truth, me, now, o.clock), now, o.clock),
+              cueCravingOf(
+                truth,
+                me,
+                cueContextOf(
+                  truth,
+                  me,
+                  now,
+                  o.clock,
+                  o.cueLocal ? cueLocalOf(truth, me, now, o.clock, o.cueLocal.lonDeg) : undefined,
+                ),
+                now,
+                o.clock,
+              ),
             )
           : acute.craving,
         numbing: acute.numbing,

@@ -15,6 +15,7 @@ import {
   type SubstanceStage,
   substanceSigns,
 } from "../../sim/index.ts";
+import { cueLocalOf } from "./cue-local.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
 import type { LifeWorld } from "./world.ts";
@@ -75,7 +76,7 @@ export function seenSubstanceSigns(truth: ReadonlyWorldTruth, who: AgentId): See
   );
 }
 
-export function substancePanel(w: LifeWorld): SubstancePanel {
+export function substancePanel(w: LifeWorld, opts?: { readonly cueLocal?: boolean }): SubstancePanel {
   const at = w.truth.get(LOCATION, w.player);
   const known = acquaintances(w);
   const others: { who: string; signs: SeenSubstanceSign[] }[] = [];
@@ -93,7 +94,19 @@ export function substancePanel(w: LifeWorld): SubstancePanel {
   }
   const now = w.scheduler.now;
   const urge = urgeOf(
-    cueCravingOf(w.truth, w.player, cueContextOf(w.truth, w.player, now, w.clock), now, w.clock),
+    cueCravingOf(
+      w.truth,
+      w.player,
+      cueContextOf(
+        w.truth,
+        w.player,
+        now,
+        w.clock,
+        opts?.cueLocal ? cueLocalOf(w.truth, w.player, now, w.clock, w.map.lonDeg) : undefined,
+      ),
+      now,
+      w.clock,
+    ),
   );
   return { self: seenSubstanceSigns(w.truth, w.player), others, ...(urge ? { urge } : {}) };
 }
