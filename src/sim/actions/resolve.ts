@@ -424,6 +424,13 @@ export type VerbEffect =
       readonly of: EntityRef | null;
       /** El lote que nombró, en sus palabras. */
       readonly what: string | null;
+    }
+  | {
+      /** Ofrecer jornal a un oficial o jornalero: el pago y el trabajo los resuelve `game`. */
+      readonly kind: "hire";
+      readonly who: EntityRef | null;
+      /** El trabajo o el oficio que nombró, en sus palabras. */
+      readonly what: string | null;
     };
 
 /** Cómo terminó una pelea para cada lado, tal como lo ve quien la vivió (combat §12, §17). */
@@ -675,6 +682,12 @@ const ponder: Resolver = (c) => ({
  */
 const forge: Resolver = (c) => ({
   effect: { kind: "forge", of: argEntity(c, "of"), what: argText(c, "what") },
+  seconds: c.nominal,
+});
+
+/** Contratar: el resolver deja a quién y para qué; el jornal y el trabajo salen de `game`. */
+const hire: Resolver = (c) => ({
+  effect: { kind: "hire", who: argEntity(c, "who"), what: argText(c, "what") },
   seconds: c.nominal,
 });
 
@@ -1736,6 +1749,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   tend,
   consult,
   forge,
+  hire,
   ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];

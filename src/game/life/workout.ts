@@ -16,6 +16,8 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  PARCEL,
+  type Parcel,
   PERSON,
   type PostingDraft,
   type ProcessDef,
@@ -40,6 +42,11 @@ export interface WorkoutOptions {
   readonly day: number;
   /** Prendas en lotes del ledger por `ref` de garantía: unidad y cantidad (tope el saldo del deudor). */
   readonly lots: ReadonlyMap<string, { readonly unit: string; readonly amount: number }>;
+  /**
+   * Valor en la unidad de la deuda de una parcela dada en prenda (por `ref` de garantia) que el deudor
+   * tiene en su haz. Sin esto las parcelas no se ejecutan (solo lotes del ledger).
+   */
+  readonly parcelValue?: (ref: string, parcel: Parcel) => number;
   /** Valor de una unidad de lote en la unidad de la deuda (por defecto 1 si es la misma, si no 0). */
   readonly priceOf?: (unit: string) => number;
   /** Confianza mínima del acreedor hacia el deudor para renegociar en vez de ejecutar (0.3 por defecto). */
@@ -60,8 +67,15 @@ export function workoutProcess(o: WorkoutOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, COMMITMENTS.name, CONTAGION_STATE.name, RELATIONS.name],
-    writes: [COMMITMENTS.name, ENTITY.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      COMMITMENTS.name,
+      CONTAGION_STATE.name,
+      RELATIONS.name,
+      ...(o.parcelValue ? [PARCEL.name] : []),
+    ],
+    writes: [COMMITMENTS.name, ENTITY.name, ...(o.parcelValue ? [PARCEL.name] : [])],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger) return {};
@@ -75,9 +89,12 @@ export function workoutProcess(o: WorkoutOptions): ProcessDef {
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
       const changes: StateChange[] = [];
+      const parcelsMoved = new Map<string, Parcel>();
       const delta = new Map<string, number>();
       const bal = (a: LedgerAccount, u: string) =>
         (ledger.balance(a, u as never) ?? 0) + (delta.get(`${a}|${u}`) ?? 0);
+      const parcelAt = (ref: string): Parcel | undefined =>
+        parcelsMoved.get(ref) ?? ctx.truth.get(PARCEL, ref as never);
       for (const id of [...ctx.truth.ids(COMMITMENTS)].sort()) {
         const c = ctx.truth.get(COMMITMENTS, id) as Commitment;
         if (c.status !== "active" && c.status !== "defaulted") continue;
@@ -96,7 +113,12 @@ export function workoutProcess(o: WorkoutOptions): ProcessDef {
         for (const g of c.guarantees) {
           if (g.kind !== "collateral") continue;
           const lot = o.lots.get(g.ref);
-          if (!lot) continue;
+          if (!lot) {
+            const parcel = o.parcelValue ? parcelAt(g.ref) : undefined;
+            if (parcel?.rights.some((rt) => (rt.holder as string) === ob.debtor))
+              values.set(g.ref, Math.max(0, o.parcelValue?.(g.ref, parcel) ?? 0));
+            continue;
+          }
           const have = Math.min(Math.floor(lot.amount), Math.floor(bal(acct(ob.debtor), lot.unit)));
           values.set(g.ref, Math.max(0, have) * price(lot.unit));
         }
@@ -114,6 +136,29 @@ export function workoutProcess(o: WorkoutOptions): ProcessDef {
           const out = seize(c, values);
           if (out.taken <= 0) continue;
           const k = events.length;
+          // La tenencia real: la parcela dada en prenda pasa de casa (derechos y posesión).
+          for (const l of out.lines) {
+            const p = o.lots.has(l.ref) || l.taken <= 0 ? undefined : parcelAt(l.ref);
+            if (!p) continue;
+            const record = {
+              kind: "custom" as const,
+              witnesses: [debtorMan, creditorMan],
+              event: draftEvent(k) as never,
+            };
+            parcelsMoved.set(l.ref, {
+              ...p,
+              rights: p.rights.map((rt) =>
+                (rt.holder as string) === ob.debtor
+                  ? { ...rt, holder: ob.creditor as never, record }
+                  : rt,
+              ),
+              possession:
+                (p.possession as string | null) === ob.debtor
+                  ? (ob.creditor as never)
+                  : p.possession,
+            });
+            changes.push(setComponent(PARCEL, l.ref as never, parcelsMoved.get(l.ref) as Parcel));
+          }
           const ts = out.lines.flatMap((l) => {
             const lot = o.lots.get(l.ref);
             if (!lot) return [];
@@ -142,6 +187,7 @@ export function workoutProcess(o: WorkoutOptions): ProcessDef {
               taken: out.taken,
               remaining: out.remaining,
               refs: out.lines.map((l) => l.ref),
+              parcels: out.lines.filter((l) => parcelsMoved.has(l.ref)).map((l) => l.ref),
               trust,
             },
             emissions: {},

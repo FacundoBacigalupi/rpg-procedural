@@ -127,6 +127,16 @@ export interface DueView {
   readonly sure: boolean;
 }
 /**
+ * Un oficio que el personaje oyó de un vecino (creencia de oídas, nunca la verdad): el oficio por
+ * su nombre y, si conoce a alguien de esa casa, cómo lo llama. Sin ids de hogar ni de receta.
+ */
+export interface HeardTradeView {
+  readonly trade: string;
+  readonly who?: string;
+  /** Si lo cree con firmeza; si no, el narrador lo deja en «dicen». */
+  readonly sure: boolean;
+}
+/**
  * La lectura de un adivino que el personaje fue a ver (divination §5): lo que vio tirar y lo que
  * le dijeron, nunca si es cierto ni lo que el adivino creyó leer.
  */
@@ -415,6 +425,8 @@ export interface PlayerView {
   /** Una deuda o promesa por vencer o vencida que el personaje recuerda ahora; vacío casi siempre. */
   readonly dues: readonly DueView[];
   readonly offenses: readonly OffenseView[];
+  /** Un oficio oído de un vecino, como creencia; vacío casi siempre. */
+  readonly heardTrades: readonly HeardTradeView[];
   /** Las lecturas de adivino de este turno; vacío casi siempre. */
   readonly readings: readonly ReadingView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
@@ -456,6 +468,7 @@ export interface ViewInput {
   readonly tastes?: readonly TasteView[];
   readonly dues?: readonly DueView[];
   readonly offenses?: readonly OffenseView[];
+  readonly heardTrades?: readonly HeardTradeView[];
   readonly readings?: readonly ReadingView[];
   readonly mode?: SpecialMode;
   readonly stretch?: StretchInput;
@@ -641,6 +654,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),
     dues: (input.dues ?? []).map((d) => ({ ...d })),
     offenses: (input.offenses ?? []).map((o) => ({ ...o })),
+    heardTrades: (input.heardTrades ?? []).map((t) => ({ ...t })),
     readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined
@@ -691,6 +705,7 @@ function effectView(
     case "none":
     case "ponder":
     case "forge":
+    case "hire":
       return { kind: "none" };
     case "move":
       return {

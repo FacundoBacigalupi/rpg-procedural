@@ -192,6 +192,13 @@ export function renderView(
       say(`taste.recalls_${t.recalls}`, { what: t.name });
     }
   }
+  for (const t of view.heardTrades) {
+    say(t.who === undefined ? "heard_trade.some" : "heard_trade.of", {
+      trade: t.trade,
+      ...(t.who === undefined ? {} : { who: t.who }),
+    });
+    if (!t.sure) say("heard_trade.unsure");
+  }
   for (const d of view.dues) {
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");

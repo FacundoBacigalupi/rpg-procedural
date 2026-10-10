@@ -38,6 +38,7 @@ import {
   spaceLight,
   TASTES_OF,
   TRACE,
+  type TradeRecipeDef,
   traceStrength,
   traceVisible,
   watching,
@@ -56,6 +57,7 @@ import {
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
+import { heardTradesForView } from "./heardtrades.ts";
 import { figureText, withImpressions } from "./impressions.ts";
 import { playerNickname } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
@@ -179,6 +181,11 @@ export interface PlayerViewOptions {
    * del validador). Apagado por defecto: la vista no cambia.
    */
   readonly nickname?: boolean;
+  /**
+   * Opt-in: las recetas de oficio (nombres); con ellas, a veces trae a la cabeza un oficio que oyó
+   * de un vecino (`heardTrades`, creencia de oídas). Apagado: la vista no cambia ni gasta RNG.
+   */
+  readonly heardTrades?: readonly TradeRecipeDef[];
 }
 
 /** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
@@ -511,6 +518,9 @@ export function playerView(
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),
+    ...(options.heardTrades
+      ? { heardTrades: heardTradesForView(w, options.heardTrades, rng.fork("heard-trade")) }
+      : {}),
     ...(options.heardSince !== undefined
       ? {
           offenses: offensesForView(w, options.heardSince, acq),

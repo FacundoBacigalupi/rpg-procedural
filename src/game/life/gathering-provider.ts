@@ -1,5 +1,5 @@
 /**
- * Proveedor de reuniones del día (body-health §6) desde lo que ya hay en la vida: la fiesta del
+ * Proveedor de reuniones del dÃ­a (body-health Â§6) desde lo que ya hay en la vida: la fiesta del
  * calendario ritual de la aldea (`villageFestivals`) y el mercado (quienes tienen libro de vendedor
  * en `SELLER_DAY`). Todo en la plaza, al aire libre. Sin RNG propio: la fiesta usa claves del RNG
  * con seed. Sin fiesta ni vendedores no devuelve nada. Los de paso y el templo entran por `transit`/`temple` (opt-in).
@@ -21,14 +21,14 @@ import type { Gathering, HourWindow } from "./gathering.ts";
 export const FESTIVAL_WINDOW: HourWindow = { from: 10, to: 16 };
 export const MARKET_WINDOW: HourWindow = { from: 8, to: 12 };
 
-/** Quien est� de paso (posada, posta) y cu�ndo: `place` es la clave `hex|espacio` donde para. */
+/** Quien está de paso (posada, posta) y cuándo: `place` es la clave `hex|espacio` donde para. */
 export interface TransitStop {
   readonly place: string;
   readonly open: boolean;
   readonly visitors: ReadonlyMap<string, HourWindow>;
 }
 
-/** Un servicio del templo: horas de la jornada y qui�nes asisten (el templo es cerrado). */
+/** Un servicio del templo: horas de la jornada y quiénes asisten (el templo es cerrado). */
 export interface TempleService {
   readonly place: string;
   readonly window: HourWindow;
@@ -38,7 +38,7 @@ export interface TempleService {
 export interface GatheringProviderOptions {
   readonly clock: PlanetClock;
   readonly rng: Rng;
-  /** Opt-in: viajeros de paso (de `Journey`) del d�a; sin esto no hay cambios. */
+  /** Opt-in: viajeros de paso (de `Journey`) del día; sin esto no hay cambios. */
   readonly transit?: (truth: ReadonlyWorldTruth, now: Tick) => readonly TransitStop[];
   /** Opt-in: servicios del templo con horario real. */
   readonly temple?: (truth: ReadonlyWorldTruth, now: Tick) => readonly TempleService[];
@@ -65,7 +65,7 @@ export function extraGatherings(
   return out;
 }
 
-/** El hex de la plaza: donde está el primer vecino (por id) que tiene espacio; undefined si nadie. */
+/** El hex de la plaza: donde estÃ¡ el primer vecino (por id) que tiene espacio; undefined si nadie. */
 function squareHex(truth: ReadonlyWorldTruth): string | undefined {
   for (const id of [...truth.ids(PERSON)].sort()) {
     const loc = truth.get(LOCATION, id as never);
