@@ -98,15 +98,24 @@ import {
 import { applyAltitude } from "./altitude.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
-import { MOLD_RUMORS, type MoldHintOptions, moldBuyGoods, moldHintMood } from "./moldgossip.ts";
+import {
+  CRAFTSMAN_VERBS,
+  MOLD_RUMORS,
+  type MoldHintOptions,
+  moldBuyGoods,
+  moldCraftsmen,
+  moldHintMood,
+} from "./moldgossip.ts";
 import {
   acuteOf,
   type BuyCravingOptions,
   type ConsumableDef,
   cravingBuyGoods,
   cravingBuyMood,
+  cravingGatherMood,
   cueContextOf,
   cueCravingOf,
+  type GatherCravingOptions,
 } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
@@ -174,6 +183,12 @@ export interface DecideOptions {
    * ansia y cae con el precio creído (`moldHints.believedPerKg`, si hay). Apagado, no cambia.
    */
   readonly buyCraving?: BuyCravingOptions;
+  /**
+   * Opt-in (exige `consumables`): con ansia alta, sin la sustancia en la despensa y sin con quién
+   * comprarla (ninguna candidata de `trade` para ese bien), `gather` de la planta que el catálogo
+   * rinde entra como candidata con ánimo que crece con el ansia. Apagado, no cambia.
+   */
+  readonly gatherCraving?: GatherCravingOptions;
   /** Opt-in: las señales aprendidas (lugar, persona, hora) suman ansia sin abstinencia; apagado, no cambia. */
   readonly cravingCues?: boolean;
   /**
@@ -480,7 +495,26 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const buyAll = [...new Set([...buyOnly, ...craveBuy])];
       const withBuy =
         buyAll.length > 0 ? { ...pantry, trade: [...pantryTrade, ...buyAll].sort() } : pantry;
-      const texts = stash.length > 0 ? { ...withBuy, consume: stash.sort() } : withBuy;
+      // Ansia sin la sustancia ni con quién comprarla: recolectar la planta que el catálogo rinde.
+      const gatherYields = new Set(
+        o.catalog.verbs
+          .filter((v) => v.id === "gather")
+          .flatMap((v) => v.yields.map((y) => y.good)),
+      );
+      const craveGather = o.gatherCraving
+        ? cravingBuyGoods(
+            mood.craving,
+            (o.consumables ?? []).flatMap((c) => {
+              const g = (o.goods ?? []).find((x) => x.id === c.good);
+              if (!g || !gatherYields.has(g.id)) return [];
+              const have = larder?.find((h) => h.unit === goodUnit(g))?.amount ?? 0;
+              return [{ name: g.name, have }];
+            }),
+            o.gatherCraving,
+          )
+        : [];
+      const withGather = craveGather.length > 0 ? { ...withBuy, gather: craveGather } : withBuy;
+      const texts = stash.length > 0 ? { ...withGather, consume: stash.sort() } : withGather;
       const social: Candidate[] = [];
       const catalogCandidates: Candidate[] = verbCandidates({
         catalog: o.catalog,
@@ -503,6 +537,23 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           chance: 0.9,
           loss: STAKES_RISK.none.loss,
         });
+      }
+      // Hogar que cree artesano de un oficio que necesita: contratarlo o comprarle (opt-in `tradeWant`);
+      // solo con los verbos que el catálogo tiene, y el ánimo lo pone `moldHintMood`.
+      if (o.moldHints?.tradeWant) {
+        for (const verb of CRAFTSMAN_VERBS) {
+          if (!o.catalog.verbs.some((v) => v.id === verb)) continue;
+          for (const home of moldCraftsmen(hintBook, o.moldHints)) {
+            catalogCandidates.push({
+              id: `${verb}:${home}`,
+              verb,
+              target: home,
+              contributes: {},
+              chance: 0.6,
+              loss: STAKES_RISK.none.loss,
+            });
+          }
+        }
       }
       for (const p of people) {
         const confidence = (() => {
@@ -567,7 +618,24 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               };
             })
           : hinted;
-      const candidates = modifyCandidates(craved, {
+      // Recolectar solo empuja si no hay con quién comprar ese bien (ninguna `trade` lo nombra).
+      const gathered =
+        craveGather.length > 0 && o.gatherCraving
+          ? craved.map((c) => {
+              const name =
+                c.verb === "gather" ? craveGather.find((n) => c.id.endsWith(`+${n}`)) : undefined;
+              if (name === undefined) return c;
+              if (craved.some((t) => t.verb === "trade" && t.id.endsWith(`+${name}`))) return c;
+              return {
+                ...c,
+                mood: r(
+                  (c.mood ?? 0) +
+                    cravingGatherMood(mood.craving, o.gatherCraving as GatherCravingOptions),
+                ),
+              };
+            })
+          : craved;
+      const candidates = modifyCandidates(gathered, {
         now,
         memories,
         habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),

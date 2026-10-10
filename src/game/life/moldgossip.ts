@@ -549,6 +549,22 @@ export interface MoldHintOptions {
 export const CRAFTSMAN_VERBS: readonly string[] = ["trade", "hire"];
 
 /**
+ * Hogares que cree artesanos de un oficio que necesita (puro, `tradeWant` > 0): el `about` de cada
+ * `attr` `trade` oído, sin repetir y en orden fijo. Sin `tradeWant` o sin libro, nada.
+ */
+export function moldCraftsmen(book: MoldBook | undefined, o: MoldHintOptions): string[] {
+  if (!o.tradeWant) return [];
+  const out = new Set<string>();
+  for (const h of book?.items ?? []) {
+    const r = h.rumor;
+    if (r.mold === "attr" && r.attr === "trade" && (o.tradeWant(String(r.value)) ?? 0) > 0) {
+      out.add(String(r.about));
+    }
+  }
+  return [...out].sort();
+}
+
+/**
  * Valora un precio oído contra el creído (puro): `buy` si el oído es más bajo (conviene comprar
  * allá), `sell` si es más alto; `edge` 0-1 es la diferencia relativa (tope 1). Sin creído, 1.
  */

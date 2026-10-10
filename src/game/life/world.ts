@@ -115,6 +115,7 @@ import { standingProcess } from "./standing.ts";
 import {
   type BuyCravingOptions,
   type ConsumableDef,
+  type GatherCravingOptions,
   type SubstanceDose,
   substancesProcess,
 } from "./substances.ts";
@@ -251,6 +252,8 @@ export interface LifeWorld {
   readonly consumables?: readonly ConsumableDef[];
   /** Opt-in (con `consumables`): el ansia empuja a comprar lo que se consume y no hay en la despensa (`life.decide`); apagado, sin candidata nueva. */
   readonly buyCraving?: BuyCravingOptions;
+  /** Opt-in (con `consumables`): sin con quién comprar, el ansia empuja a recolectar la planta (`life.decide`); apagado, sin candidata nueva. */
+  readonly gatherCraving?: GatherCravingOptions;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -900,6 +903,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
+          ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),

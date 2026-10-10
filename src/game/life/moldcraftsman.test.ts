@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOLD_HINT_MOOD, moldHintMood, tradeAbout } from "./moldgossip.ts";
+import { MOLD_HINT_MOOD, moldCraftsmen, moldHintMood, tradeAbout } from "./moldgossip.ts";
 
 const book = (value: string, confidence: number) => ({
   items: [
@@ -14,6 +14,16 @@ const book = (value: string, confidence: number) => ({
   told: [],
 });
 const hire = { id: "hire:household:h1", verb: "hire", target: tradeAbout("h1") };
+
+describe("hogares creídos artesanos", () => {
+  it("lista los que ejercen un oficio que necesita, sin repetir; apagado, nada", () => {
+    const o = { tradeWant: (t: string) => (t === "forge" ? 0.5 : 0) };
+    expect(moldCraftsmen(book("forge", 1), o)).toEqual([tradeAbout("h1")]);
+    expect(moldCraftsmen(book("weave", 1), o)).toEqual([]);
+    expect(moldCraftsmen(book("forge", 1), {})).toEqual([]);
+    expect(moldCraftsmen(undefined, o)).toEqual([]);
+  });
+});
 
 describe("decidir sobre el oficio oído", () => {
   const o = { tradeWant: (t: string) => (t === "forge" ? 0.5 : 0) };
