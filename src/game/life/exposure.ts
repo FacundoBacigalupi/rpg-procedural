@@ -65,6 +65,7 @@ import {
   waterDose,
   wellWater,
 } from "../../sim/index.ts";
+import { type Gathering, overlapCount, sharedHours } from "./gathering.ts";
 
 export const EXPOSURE_PROCESS = "life.exposure";
 
@@ -82,6 +83,12 @@ export interface PathogenSeed {
 }
 
 export interface ExposureOptions {
+  /**
+   * Reuniones del día (mercado, fiesta, templo), opt-in: el contacto de quienes asisten pesa por las
+   * horas en que coinciden de verdad (`overlapHours`) y no por la foto diaria de `LOCATION`. Sin esto,
+   * sin reuniones o sin contagiosos asistentes no hay RNG, filas ni eventos nuevos.
+   */
+  readonly gatherings?: (truth: ReadonlyWorldTruth, now: Tick) => readonly Gathering[];
   readonly clock: PlanetClock;
   readonly seeds?: readonly PathogenSeed[];
   /**
@@ -124,6 +131,8 @@ const HOUSEHOLD_DAY: Shared = {
 };
 /** Horas de contacto por dÃ­a con quien comparte lugar fuera del hogar (foto del dÃ­a, calibraciÃ³n abierta). */
 const PLACE_HOURS = 2;
+/** Contacto físico en una reunión (más que la plaza de paso: se toca, se regatea, se comparte). */
+const GATHERING_TOUCH = 0.3;
 /** CuÃ¡ntos vecinos de lugar hacen falta para que la cercanÃ­a llegue a ~63% (calibraciÃ³n abierta). */
 const CROWD_SCALE = 4;
 /** VentilaciÃ³n de la plaza y del campo abierto contra la de un cuarto cerrado. */
@@ -268,6 +277,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       type Source = { shed: number; cause: string; quarantine?: Quarantine; healer?: string };
       const byHouse = new Map<string, Map<string, Source>>();
       const byPlace = new Map<string, Map<string, Source>>();
+      const shedOf = new Map<string, Map<string, Source>>();
       const stages = new Map<
         string,
         { inf: Infection; def: PathogenDef; stage: string; hours: number }[]
@@ -292,6 +302,9 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               cause: inf.cause,
               ...(tr?.quarantine ? { quarantine: tr.quarantine, healer: tr.healer } : {}),
             };
+            const mineShed = shedOf.get(id) ?? new Map<string, Source>();
+            mineShed.set(def.id, src);
+            shedOf.set(id, mineShed);
             for (const [key, groups] of [
               [house, byHouse],
               [here, byPlace],
@@ -396,6 +409,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         const k = placeKey(ctx.truth, id);
         if (k !== undefined) crowd.set(k, (crowd.get(k) ?? 0) + 1);
       }
+      const gatherings = o.gatherings?.(ctx.truth, ctx.now) ?? [];
       const dirtFor = (id: string) => {
         let best: { pathogen: string; load: number; cause: string } | undefined;
         for (const w of wellsFor(id)) {
@@ -484,6 +498,31 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
               if (d2 > dose) {
                 dose = d2;
                 src = placeSrc;
+              }
+            }
+            for (const g of gatherings) {
+              if (!g.visits.has(id)) continue;
+              const near = overlapCount(g, id);
+              for (const [other, src2] of shedOf.entries()) {
+                const sh = src2.get(def.id);
+                if (!sh || other === id) continue;
+                const hrs = sharedHours(g, id, other);
+                if (hrs <= 0) continue;
+                const common: Shared = {
+                  hours: hrs * days,
+                  closeness: 1 - exp(-near / CROWD_SCALE),
+                  ventilation: g.open ? OPEN_AIR : ROOM_AIR,
+                  waterDirt: 0,
+                  touch: GATHERING_TOUCH,
+                };
+                const eff3 = sh.quarantine
+                  ? quarantinedShared(common, sh.quarantine, sh.healer === id)
+                  : common;
+                const d3 = exposureDose(def, sh.shed, eff3);
+                if (d3 > dose) {
+                  dose = d3;
+                  src = sh;
+                }
               }
             }
             if (dose <= 0) continue;
