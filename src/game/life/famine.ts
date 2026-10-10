@@ -21,7 +21,6 @@ import {
   ENTITY,
   type EventDraft,
   FAMINE_HORIZON_DAYS,
-  type FamineState,
   famineDischarge,
   famineState,
   type GoodDef,
@@ -36,21 +35,13 @@ import {
   type StateChange,
   scarcityValue,
   setComponent,
-  table,
 } from "../../sim/index.ts";
+import { FAMINE, type FamineRow } from "./famineRow.ts";
 import { GRAIN_EATEN_PER_PERSON_DAY_G } from "./larder.ts";
 
 export const FAMINE_PROCESS = "life.famine";
 
-/** El estado de escasez de un asentamiento: vive en su entidad. */
-export interface FamineRow {
-  readonly state: FamineState;
-  readonly value: number;
-  readonly since: number;
-  readonly pricePush: number;
-  readonly migrationPull: number;
-}
-export const FAMINE = table<FamineRow>("economy.famine");
+export { FAMINE, type FamineRow };
 
 /**
  * La hambruna de cada asentamiento como presión `hunger` de comunidad para el libro y el
@@ -92,6 +83,11 @@ export interface FamineOptions {
     today: number,
   ) => number;
   readonly horizonDays?: number;
+  /**
+   * Opt-in: mientras dura una escasez o hambruna, cada día se refresca el valor (y los empujes) de
+   * la fila aunque el estado no cambie, sin evento; así la presión `hunger` lee el valor de hoy.
+   */
+  readonly refresh?: boolean;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -146,7 +142,20 @@ export function famineProcess(o: FamineOptions): ProcessDef {
         });
         const prev = ctx.truth.get(FAMINE, s as never);
         const state = famineState(value, prev?.state ?? "none");
-        if (state === (prev?.state ?? "none")) continue;
+        if (state === (prev?.state ?? "none")) {
+          if (o.refresh && prev && state !== "none" && prev.value !== value) {
+            const r = famineDischarge(value, state);
+            changes.push(
+              setComponent(FAMINE, s as never, {
+                ...prev,
+                value,
+                pricePush: r.pricePush,
+                migrationPull: r.migrationPull,
+              }),
+            );
+          }
+          continue;
+        }
         const d = famineDischarge(value, state);
         const kind =
           state === "none"
@@ -197,7 +206,7 @@ export function famineProcess(o: FamineOptions): ProcessDef {
           }),
         );
       }
-      if (events.length === 0) return {};
+      if (events.length === 0) return changes.length === 0 ? {} : { changes };
       return { events, changes };
     },
   };

@@ -94,9 +94,19 @@ export function exposureDose(p: PathogenDef, shedding: number, shared: Shared): 
 }
 
 /** Chance de infectarse con esa dosis: 1 - exp(-t × dosis × (1 - inmune)); `immune` es 0-1. */
-export function infectionChance(p: PathogenDef, dose: number, immune: number): number {
+export function infectionChance(
+  p: PathogenDef,
+  dose: number,
+  immune: number,
+  susceptibility = 1,
+): number {
   if (dose <= 0) return 0;
-  return 1 - exp(-p.transmissibility * dose * (1 - clamp(immune, 0, 0.95)));
+  return 1 - exp(-p.transmissibility * dose * (1 - clamp(immune, 0, 0.95)) * susceptibility);
+}
+
+/** Susceptibilidad por defensa inmune debilitada (`DeficiencyEffects.immune`): 1 = normal, tope 10x. */
+export function immuneSusceptibility(immune: number): number {
+  return 1 / Math.max(immune, 0.1);
 }
 
 /** ¿Protege la inmunidad guardada contra este patógeno en `now`? */
@@ -123,8 +133,9 @@ export function tryInfect(
   rng: Rng,
   at: Tick,
   cause: string | null,
+  susceptibility = 1,
 ): Infection | null {
-  if (!rng.chance(infectionChance(p, dose, immuneScore))) return null;
+  if (!rng.chance(infectionChance(p, dose, immuneScore, susceptibility))) return null;
   const fatal = rng.chance(clamp(p.lethality * (0.5 + frailty), 0, 1));
   return { pathogen: p.id, exposedAt: at, dose, fatal, cause };
 }

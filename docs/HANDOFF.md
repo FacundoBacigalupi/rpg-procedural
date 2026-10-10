@@ -63,7 +63,9 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-Actualizado: 2026-10-09. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`. El Team Lead autónomo lanza agentes en worktrees `C:\dev\rpg-procedural-wt\{g,h,i}`.
+Actualizado: 2026-10-09. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3** en `develop`, con PRs mergeados hasta **#389**. Tests: ~1809.
+
+**Método de trabajo actual:** 4 agentes Sonnet en worktrees `C:\dev\rpg-procedural-wt\{g,h,i,j}`, cada uno con un ítem pure-first y opt-in (la parte pura primero, el cableado a la vida detrás de una opción), sin correr la suite completa. El líder integra por lotes: cherry-pick de las ramas en una sola, `typecheck` + `lint` + suite ancha una vez, y un PR squash por lote. `npm run check` completo cada ~2 lotes. Receta de la corrida ancha: `npx vitest run src/game src/sim src/persistence src/llm src/ui src/tools src/core`.
 
 Hecho en Fase 3: #331–#375 mergeados a `develop`. Implementado (todo puro y cableado donde corresponde): rumores (personaje oye, `HEARD`→`RUMORS`); ánimo en decisión y creencias de necesidad/peligro; derrumbe de edificios puro y cableado en `upkeep`; objetivos núcleo y venganza puros y cableados en `life.decide`; presupuesto del hogar puro y cableado en `life.trades`; descanso por decisión en la rutina; enfermedades con contagio puras y cableadas en `life.exposure`; oficios y jornales puros; mercado de la aldea puro. Desde #351: modificadores de la utilidad (#351); `life.trades`, oficios y jornales cableados (#352); el NPC come por decisión (e2b, #353); frío y calor puros y cableados (#354, #358); cinta de transacciones y testigos del mercado (#355); nutrición y agua con calidad, pura y cableada en su primera parte (#356, #362); sustancias, venenos y adicciones, pura y cableada en su primera parte (#357, #361); crédito de cosecha y usura, puro y cableado (#360, #363); térmico por masa, ropa y fuego, puro (#364).
 
@@ -80,6 +82,22 @@ Desde #365 hasta #375, una línea por PR:
 - #374: tope y standing del otro en el trato del jugador.
 - #375: fix de lint, dependencias de trades y market.
 
-Pendientes siguientes: los `[ ]` de Fase 3 del ROADMAP, en orden; el primero es el que marca «Ahora». Los «Heredado de Fase 2» van al final.
+Desde #376 hasta #389, una línea por PR (títulos en `git log --oneline origin/develop`):
+- #376: docs, handoff y ahora al día (#365–#375).
+- #377: ingreso real del hogar y standing visible a vecinos.
+- #378: efectos agudos de sustancias y ansia en la utilidad.
+- #379: nutrición con lo comido y efectos de carencias (opt-in).
+- #380: lote crédito (colateral), mercado (householdQuote), congelación.
+- #381: inspector de rumor con árbol y deformación.
+- #382: lote sanador por habilidad, esfuerzo y sudor, memoria told.
+- #383: reconstrucción con ahorros del hogar.
+- #384: lote puerta trabada, remedios con stock, núcleo de fiestas.
+- #385: agua con calidad completa (parte pura y ganchos).
+- #386: lote hogares encendidos, oficio por habilidad, hambruna con causa.
+- #387: Commitment puro, cauce contaminado, reputación en el trato, test gossip.
+- #388: Commitment en préstamos, desnutrición, agravios por rumor, reputación en panel.
+- #389: oficio por habilidad, signos del sanador, moldes de rumor, hambruna en PRESSURE.
+
+Estado: la mayoría de los `[ ]` restantes de Fase 3 son cableados o calibración para encender por defecto, o ítems que dependen de fases posteriores. Al agotarse los hacibles: mover los dependientes a su fase (prefijo `Heredado de Fase 3:`), PR `develop` → `main` y tag `v0.3.0`. Los «Heredado de Fase 2» van al final de la lista de pendientes.
 
 Notas: el CI de `main` tarda ~25 min (ubuntu) y los tests lentos tienen timeouts de 600 s; los agentes no corren la suite completa, solo el coordinador (una corrida a la vez, ~5-9 min); si el límite de sesión de la API corta a los agentes, retomarlos con SendMessage.

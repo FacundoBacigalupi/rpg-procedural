@@ -73,6 +73,7 @@ import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, type HealerSchool, medicineProcess } from "./medicine.ts";
+import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -145,6 +146,8 @@ export interface LifeWorld {
   readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
   /** Opt-in: quien cruza a un hogar con oficio cree que vive de eso (`TRADE_VIEW`); apagado por defecto. */
   readonly tradeView?: boolean;
+  /** Opt-in: chisme de precios y lugares (`life.gossip_molds`, tabla `MOLD_RUMORS`) desde lo que cada uno vio (`seeds`); apagado por defecto. */
+  readonly moldGossip?: MoldGossipOptions;
   /** Préstamos de cosecha decididos de antemano (economy §8); sin semillas no hay préstamos. */
   readonly loanSeeds?: readonly LoanSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
@@ -285,6 +288,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           player,
         }),
+        ...(parts.moldGossip ? [moldGossipProcess(parts.moldGossip)] : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
@@ -382,6 +386,7 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
+          deficiency: parts.deficiencyEffects === true,
           placeOf: placeOf(parts, village),
         }),
         medicineProcess({

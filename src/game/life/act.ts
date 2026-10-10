@@ -129,6 +129,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { declaredStyle, listenTo, PENDING } from "./converse.ts";
 import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
+import { pricePushOf } from "./famineRow.ts";
 import {
   atMyMercy,
   canFight,
@@ -195,6 +196,11 @@ export interface ActOptions {
    * rumores) en vez de solo la fracción que sabe algo. Apagado, el trato es el de siempre.
    */
   readonly reputationTrade?: boolean;
+  /**
+   * Opt-in: el trato escala el precio creído de la comida (`HARVEST_GOOD`) por el `pricePush` que
+   * `life.famine` dejó en `FAMINE` para el asentamiento del actor. Apagado, o sin filas, no cambia.
+   */
+  readonly famineTrade?: boolean;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -449,6 +455,9 @@ function marketOf(
           },
     harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
+    ...(o.famineTrade
+      ? { pricePush: { unit: HARVEST_GOOD, factor: pricePushOf(truth, me as string) } }
+      : {}),
     fame: o.reputationTrade
       ? reputationFameOf(truth, me)
       : notoriety(
