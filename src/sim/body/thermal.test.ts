@@ -191,6 +191,15 @@ describe("tratamiento de la congelación", () => {
     );
     expect(again.done).toEqual([]);
   });
+  it("la habilidad decide el acierto del corte; el fallo deja la parte como estaba", () => {
+    const roll = () => 0.7;
+    const novice = amputateSurgically(hurt, ["hands"], undefined, 10, 0, roll);
+    expect(novice.failed).toEqual(["hands"]);
+    expect(novice.state).toBe(hurt);
+    const expert = amputateSurgically(hurt, ["hands"], undefined, 10, 1, roll);
+    expect(expert.done).toEqual(["hands"]);
+    expect(expert.failed).toEqual([]);
+  });
 });
 
 describe("applyCore", () => {

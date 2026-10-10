@@ -96,6 +96,61 @@ describe("congelación: autocuidado", () => {
   });
 });
 
+describe("congelación: insumos del cuidado", () => {
+  const who = "agent:1" as AgentId;
+  const climate = {
+    cell: "c:1",
+    latDeg: 45,
+    axialTiltDeg: 23.4,
+    annualMeanC: 24,
+    seasonalRangeC: 2,
+    annualPrecipMm: 800,
+    windEast: 1,
+    windNorth: 0.3,
+  };
+  const run = (grams: number, supplies: boolean) => {
+    const rows: Record<string, unknown> = {
+      [PERSON.name]: {},
+      [ENTITY.name]: { id: who },
+      [BODY_STATE.name]: { massKg: 70, water: 3.5, activity: "rest", scars: [] },
+      [FROSTBITE.name]: { ...NO_FROSTBITE, hands: 0.3 },
+    };
+    const truth = {
+      ids: () => [who],
+      get: (t: { name: string }) => rows[t.name],
+    } as unknown as ReadonlyWorldTruth;
+    const p = thermalProcess({
+      clock,
+      map: { cell: "c:1", lonDeg: 0, climate } as never,
+      spaces: { spaces: [] } as never,
+      seed: 1 as never,
+      placeOf: () => ({ kind: "cell", cell: "cell:1" }) as never,
+      frostbite: true,
+      frostbiteTreatment: true,
+      frostbiteSelfCare: { skillOf: () => 0.5 },
+      ...(supplies ? { frostbiteSupplies: { fuelUnit: "good:wood", fuelGramsPerHour: 100 } } : {}),
+    });
+    const ledger = { balance: () => grams };
+    const out = p.run({ truth, ledger, now: clock.day * 10, window: clock.day } as never);
+    const set = out.changes?.find((c) => c.table === FROSTBITE.name && c.op === "set");
+    return {
+      hands: (set as unknown as { value?: FrostbiteState } | undefined)?.value?.hands ?? 0,
+      out,
+    };
+  };
+
+  it("gasta leña con asiento y evento; sin leña cura menos", () => {
+    const free = run(0, false);
+    const fed = run(5000, true);
+    const dry = run(0, true);
+    expect(fed.out.postings?.length).toBe(1);
+    expect(fed.out.events?.[0]?.causes?.length).toBeGreaterThan(0);
+    expect(dry.out.postings).toBeUndefined();
+    expect(fed.hands).toBeLessThan(dry.hands);
+    expect(fed.hands).toBeLessThanOrEqual(free.hands);
+  });
+});
+
 describe("congelación cableada", () => {
   const who = "agent:1" as AgentId;
   const caps = { manipulation: 1, locomotion: 1, cognition: 1 } as unknown as BodyCapabilities;

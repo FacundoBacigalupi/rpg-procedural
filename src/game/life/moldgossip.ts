@@ -5,7 +5,15 @@
 // cada uno sabe de primera mano entra por `seeds` (quién vio qué precio o dónde hay qué): nada
 // aparece de la nada. Opt-in. Sin eventos todavía; constantes sin calibrar.
 
-import type { AgentId, CauseRef, EventId, PlaceRef, PlanetClock, Tick } from "../../core/index.ts";
+import type {
+  AgentId,
+  CauseRef,
+  EventId,
+  PlaceId,
+  PlaceRef,
+  PlanetClock,
+  Tick,
+} from "../../core/index.ts";
 import {
   type BondDef,
   baseFor,
@@ -21,6 +29,7 @@ import {
   type MoldRumor,
   moldUsefulness,
   PERSON,
+  PLACE,
   PRICE_BELIEFS,
   type PriceBeliefs,
   type ProcessDef,
@@ -144,11 +153,41 @@ export interface MoldGossipOptions {
    * Apagado: no mira eventos ni escribe nada.
    */
   readonly fromLooking?: {
-    readonly siteOf: (
+    /** Sin `siteOf`, la vida real pone `lookSiteOf(aldea)`; el proceso solo no ve nada. */
+    readonly siteOf?: (
       truth: ReadonlyWorldTruth,
       who: AgentId,
     ) => { readonly what: string; readonly where: PlaceRef } | undefined;
     readonly vagueBelow?: number;
+  };
+}
+
+const LOOK_ORDER = ["water", "fields", "forest", "village"];
+
+/**
+ * Qué sitio ve quien mira desde donde está: dentro de un espacio (casa), la aldea; al aire libre,
+ * el lugar (`PLACE`) que cubre su hex, con prioridad agua, campos, bosque, aldea. `undefined` si
+ * ninguno lo cubre. Puro sobre la verdad.
+ */
+export function lookSiteOf(village: PlaceRef) {
+  return (
+    truth: ReadonlyWorldTruth,
+    who: AgentId,
+  ): { readonly what: string; readonly where: PlaceRef } | undefined => {
+    const at = truth.get(LOCATION, who);
+    if (!at) return undefined;
+    if (at.space !== undefined) return { what: "village", where: village };
+    let best: { what: string; rank: number; id: string } | undefined;
+    for (const id of truth.ids(PLACE).sort()) {
+      const p = truth.get(PLACE, id);
+      if (!p || !(p.hexes as readonly number[]).includes(at.hex)) continue;
+      const rank = LOOK_ORDER.indexOf(p.kind);
+      if (rank < 0 || (best && best.rank <= rank)) continue;
+      best = { what: p.kind, rank, id };
+    }
+    return best
+      ? { what: best.what, where: { kind: "place", place: best.id as PlaceId } }
+      : undefined;
   };
 }
 
@@ -194,6 +233,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       LOCATION.name,
       MOLD_RUMORS.name,
       ...(o.fromHeard ? [HEARD.name] : []),
+      ...(o.fromLooking ? [PLACE.name] : []),
       ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
       ...(o.fromPriceBeliefs ? [PRICE_BELIEFS.name] : []),
       ...(o.neighborStanding ? [NEIGHBOR_STANDING.name] : []),
@@ -337,7 +377,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
           const acuity = lookAcuity(e.data);
           const who = e.actors[0] as AgentId | undefined;
           if (acuity === undefined || !who || !truth.get(PERSON, who)) continue;
-          const site = o.fromLooking.siteOf(truth, who);
+          const site = o.fromLooking.siteOf?.(truth, who);
           if (!site) continue;
           const rumor: MoldRumor = {
             mold: "location",

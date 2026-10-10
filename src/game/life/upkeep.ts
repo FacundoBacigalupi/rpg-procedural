@@ -482,7 +482,12 @@ function rebuildRuins(
       coins,
       pricePerKg: (m) => materials.get(m)?.priceCopperPerKg ?? DEFAULT_MATERIAL_COPPER_PER_KG,
       ...(o.swapMaterials
-        ? { alternatives: (m: string) => [...materials.keys()].filter((x) => x !== m) }
+        ? {
+            alternatives: (m: string, part: BuildingComponent["part"]) =>
+              [...materials.values()]
+                .filter((x) => x.id !== m && (x.parts === undefined || x.parts.includes(part)))
+                .map((x) => x.id),
+          }
         : {}),
       built: draftEvent(k),
     });

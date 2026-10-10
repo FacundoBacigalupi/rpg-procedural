@@ -9,10 +9,15 @@ import { BARRIERS, SPACE_KINDS } from "../world/index.ts";
 /** De dónde sale un material: lo que la aldea tenga cerca decide cuáles puede usar. */
 export const MATERIAL_SOURCES = ["forest", "fields", "ground"] as const;
 
+/** Partes de edificio donde el material sirve (sin lista: cualquiera). */
+export const BUILDING_PARTS = ["foundation", "walls", "roof", "door"] as const;
+
 export const MaterialDef = z.strictObject({
   id: contentId,
   name: z.string().min(1),
   source: z.enum(MATERIAL_SOURCES),
+  /** En qué partes del edificio se puede usar (alternativas al reconstruir distinto). */
+  parts: z.array(z.enum(BUILDING_PARTS)).min(1).optional(),
   /** Gramos por metro cuadrado de componente. */
   gramsPerM2: z.number().int().positive(),
   /** Desgaste por año sin mantenimiento (fracción que se pierde, exponencial). */
@@ -37,7 +42,7 @@ const RoomDef = z.strictObject({
 });
 
 const ComponentDef = z.strictObject({
-  part: z.enum(["foundation", "walls", "roof", "door"]),
+  part: z.enum(BUILDING_PARTS),
   /** Metros cuadrados del componente. */
   area: z.number().positive(),
   /** Con qué se puede hacer, con peso relativo; solo entran los materiales que hay cerca. */

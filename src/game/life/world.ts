@@ -71,6 +71,7 @@ import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from ".
 import { ecologyProcess } from "./ecology.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
+import { gatheringsFor } from "./gathering-provider.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { intrusionProcess } from "./intrusion.ts";
@@ -85,6 +86,7 @@ import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
   catalogMoldHints,
+  lookSiteOf,
   type MoldGossipOptions,
   type MoldHintOptions,
   moldGossipProcess,
@@ -150,6 +152,8 @@ export interface LifeWorld {
   readonly healerFrostbiteSigns?: boolean;
   /** Opt-in (con `frostbite`; con `frostbiteTreatment` se ejecuta): el sanador escribe el pedido de cuidado de la congelación. */
   readonly healerFrostbiteOrders?: boolean;
+  /** Opt-in: el contagio usa reuniones con horas reales (fiesta del calendario, mercado); ver `gatheringsFor`. */
+  readonly gatheringContact?: boolean;
   /** Opt-in (con `realAltitude`): el sanador también ve los signos del mal de altura. */
   readonly healerAltitudeSigns?: boolean;
   /** Opt-in (con `realAltitude`): la aclimatación escala con el genoma (`constitution`). */
@@ -211,6 +215,14 @@ export interface LifeWorld {
   readonly frostbiteTreatment?: boolean;
   /** Opt-in (con `frostbiteTreatment`): sin orden de médico, cada uno se recalienta y aísla solo unas horas por día; la habilidad (su entrada en `healers`, 0 si no está) decide la intensidad. Apagado: nada cambia. */
   readonly frostbiteSelfCare?: boolean;
+  /** Opt-in (con `frostbiteTreatment`): el cuidado gasta leña (y usa manta) del ledger; con `frostbiteSelfCare` la habilidad decide el acierto de la amputación. Ver `ThermalOptions.frostbiteSupplies`. Apagado: nada cambia. */
+  readonly frostbiteSupplies?: {
+    readonly fuelUnit: string;
+    readonly fuelGramsPerHour: number;
+    readonly sink?: string;
+    readonly blanketUnit?: string;
+    readonly unsuppliedInsulate?: number;
+  };
   /** Opt-in (con `frostbite`): la amputación deja `Scar` con `lost` en el `Body` (`body.physiology`) y baja capacidades por zona. Apagado: nada cambia. */
   readonly amputationScars?: boolean;
   /**
@@ -457,7 +469,21 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           player,
         }),
-        ...(parts.moldGossip ? [moldGossipProcess(parts.moldGossip)] : []),
+        ...(parts.moldGossip
+          ? [
+              moldGossipProcess(
+                parts.moldGossip.fromLooking && !parts.moldGossip.fromLooking.siteOf
+                  ? {
+                      ...parts.moldGossip,
+                      fromLooking: {
+                        ...parts.moldGossip.fromLooking,
+                        siteOf: lookSiteOf(village),
+                      },
+                    }
+                  : parts.moldGossip,
+              ),
+            ]
+          : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
@@ -612,6 +638,9 @@ export function lifeWorld(
               }
             : {}),
           deficiency: parts.deficiencyEffects === true,
+          ...(parts.gatheringContact
+            ? { gatherings: gatheringsFor({ clock: parts.clock, rng: Rng.root(parts.seed) }) }
+            : {}),
           placeOf: placeOf(parts, village),
         }),
         medicineProcess({
@@ -663,6 +692,11 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.frostbite === true && parts.frostbiteTreatment === true
             ? { frostbiteTreatment: true }
+            : {}),
+          ...(parts.frostbite === true &&
+          parts.frostbiteTreatment === true &&
+          parts.frostbiteSupplies
+            ? { frostbiteSupplies: parts.frostbiteSupplies }
             : {}),
           ...(parts.frostbite === true &&
           parts.frostbiteTreatment === true &&
