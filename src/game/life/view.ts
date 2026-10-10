@@ -346,6 +346,18 @@ export function lexiconWords(w: LifeWorld, withNickname: boolean): string[] {
   return words;
 }
 
+/** Si el personaje se desmayó por el frío o el calor desde `since` (lo que él nota: perdió el rato). */
+function thermalBlackout(w: LifeWorld, since: Tick): boolean {
+  const events = w.log.all();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.tick < since) break;
+    if (e.kind !== "body.collapsed" || e.actors[0] !== w.player) continue;
+    if (e.causes.some((c) => c.kind === "state" && c.key === "body.thermal")) return true;
+  }
+  return false;
+}
+
 export function playerView(
   w: LifeWorld,
   steps: readonly StepRecord[],
@@ -434,6 +446,10 @@ export function playerView(
     const c = CUES[s];
     if (c) cues.add(c);
   }
+
+  if (body.scars.some((sc) => sc.lost)) cues.add("maimed");
+  if (options.heardSince !== undefined && thermalBlackout(w, options.heardSince))
+    cues.add("blacked_out");
 
   const places = w.truth.ids(PLACE).flatMap((id) => {
     const p = w.truth.get(PLACE, id);

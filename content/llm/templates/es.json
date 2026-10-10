@@ -466,6 +466,20 @@
   { "id": "self.bleeding", "lines": ["Estás sangrando."] },
   { "id": "self.sick", "lines": ["Te sentís mal, afiebrado."] },
   { "id": "self.cold", "lines": ["Tenés frío."] },
+  {
+    "id": "self.maimed",
+    "lines": [
+      "Te falta un pedazo del cuerpo, y lo sentís.",
+      "Lo que perdiste no vuelve; el muñón te lo recuerda."
+    ]
+  },
+  {
+    "id": "self.blacked_out",
+    "lines": [
+      "Se te fue el conocimiento, y volvés en vos sin saber cuánto pasó.",
+      "Te desmayaste por el clima y recién ahora volvés en vos."
+    ]
+  },
 
   {
     "id": "thought.remember",

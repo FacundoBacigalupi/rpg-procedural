@@ -32,7 +32,18 @@ import {
 declare const viewBrand: unique symbol;
 
 /** Lo que el personaje siente de sí (perception §10). El cuerpo lo llena con body-health. */
-export type SelfCue = "hungry" | "thirsty" | "tired" | "hurt" | "bleeding" | "sick" | "cold";
+export type SelfCue =
+  | "hungry"
+  | "thirsty"
+  | "tired"
+  | "hurt"
+  | "bleeding"
+  | "sick"
+  | "cold"
+  /** Le falta una parte del cuerpo (`Scar.lost`): lo sabe y lo ve. */
+  | "maimed"
+  /** Perdió el conocimiento por el frío o el calor y volvió en sí (`body.collapsed` por causa térmica). */
+  | "blacked_out";
 
 export interface SelfView {
   readonly cues: readonly SelfCue[];
