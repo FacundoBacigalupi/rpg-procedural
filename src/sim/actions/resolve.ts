@@ -145,6 +145,8 @@ export interface Market {
     | undefined;
   /** Qué parte de la aldea sabe de algo malo que hizo el actor, 0-1 (law §2): baja el trato. */
   readonly fame?: number | undefined;
+  /** Empuje de precio de una escasez de comida (`FAMINE.pricePush`) sobre un bien; sin esto, 1. */
+  readonly pricePush?: { readonly unit: LedgerUnit; readonly factor: number } | undefined;
   /**
    * Lo que cada parte cree que vale cada bien (`economy/priceMemory`) y el día del mundo: la base
    * de `askPerKg`/`bidPerKg` de cada una es `baseFor` (lo creído mezclado con el precio de
@@ -964,7 +966,15 @@ function quoteOf(
   ownDays: number,
   opts: QuoteOptions,
 ): HouseholdQuote {
-  return householdQuote(mk.beliefs?.[who], unit, ref, mk.beliefs?.day ?? 0, ownDays, opts);
+  const push = mk.pricePush?.unit === unit ? mk.pricePush.factor : undefined;
+  return householdQuote(
+    mk.beliefs?.[who],
+    unit,
+    ref,
+    mk.beliefs?.day ?? 0,
+    ownDays,
+    push === undefined ? opts : { ...opts, pricePush: push },
+  );
 }
 
 /**
