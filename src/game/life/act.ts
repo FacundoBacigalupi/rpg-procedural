@@ -221,6 +221,16 @@ export interface ActOptions {
    * suma una dosis con evento causal. Apagado, `consume` no tiene qué tomar y no cambia nada.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /**
+   * Opt-in: estafa de calidad (economy §6). `inflate` dice cuánto mejora de lo que es el vendedor
+   * lo que ofrece (0 = honesto) y `trust` cuánto le cree el comprador (0-1); el comprador cotiza
+   * por `believedQuality` y el lote sigue con su calidad real. Apagado, el comprador ve con su ojo.
+   * Sin descubrimiento todavía (ROADMAP: `scam.discovered`).
+   */
+  readonly scam?: {
+    readonly inflate: (truth: ReadonlyWorldTruth, seller: AgentId) => number;
+    readonly trust: (truth: ReadonlyWorldTruth, buyer: AgentId, seller: AgentId) => number;
+  };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
 }
@@ -483,6 +493,20 @@ function marketOf(
           },
     harvestGramsPerHour,
     harvestGood: HARVEST_GOOD,
+    ...(o.scam && other !== null
+      ? {
+          scam: {
+            inflate: {
+              actor: o.scam.inflate(truth, me),
+              other: o.scam.inflate(truth, other as AgentId),
+            },
+            trust: {
+              actor: o.scam.trust(truth, other as AgentId, me),
+              other: o.scam.trust(truth, me, other as AgentId),
+            },
+          },
+        }
+      : {}),
     ...(o.famineTrade
       ? { pricePush: { unit: HARVEST_GOOD, factor: pricePushOf(truth, me as string) } }
       : {}),

@@ -44,6 +44,7 @@ import {
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
+import { REPUTATION_NOTICED } from "./nickname.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -156,9 +157,6 @@ export interface InventoryPanel {
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
 }
-
-/** Desde qué fracción de la aldea la fama se nota. */
-export const REPUTATION_NOTICED = 0.15;
 
 export interface CharacterPanelOptions {
   readonly reputation?: boolean;

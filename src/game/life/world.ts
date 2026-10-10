@@ -194,6 +194,8 @@ export interface LifeWorld {
   readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
   /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`, tabla `MIGRATIONS`); solo la decisión, no mueve a nadie. Apagado por defecto. */
   readonly migration?: Omit<MigrationOptions, "clock" | "goods" | "placeOf">;
+  /** Opt-in: el agravio que llega por rumor mueve la relación del tercero (`AppraiseOptions.rumorGrievance`); apagado por defecto. */
+  readonly rumorGrievance?: boolean;
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -516,6 +518,7 @@ export function lifeWorld(
           habits: parts.habits,
           traits: parts.traits,
           values: parts.values,
+          ...(parts.rumorGrievance ? { rumorGrievance: true } : {}),
           witness: {
             player,
             map: parts.map,

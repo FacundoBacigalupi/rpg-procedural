@@ -402,7 +402,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
       if (/^personaje/i.test(text)) {
-        const panel = renderCharacter(characterPanel(life.world));
+        const panel = renderCharacter(characterPanel(life.world, { substances: true }));
         return { text: holdStance ? `${panel}\nPeleás conteniéndote.` : panel };
       }
       if (/^inventario/i.test(text)) return { text: renderInventory(inventoryPanel(life.world)) };

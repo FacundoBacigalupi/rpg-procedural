@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { AboutPanel, BookLine } from "../game/index.ts";
-import { renderAbout, renderBook } from "./render.ts";
+import type { AboutPanel, BookLine, CharacterPanel } from "../game/index.ts";
+import { renderAbout, renderBook, renderCharacter } from "./render.ts";
 
 const line = (over: Partial<BookLine>): BookLine => ({
   kind: "pledge",
@@ -58,5 +58,25 @@ describe("renderAbout con el porqué leído", () => {
 
   it("sin lectura no inventa nada", () => {
     expect(renderAbout(panel())).not.toContain("te parece");
+  });
+});
+
+describe("renderCharacter substances", () => {
+  it("muestra señales sin nombrar la sustancia", () => {
+    const base = {
+      ageYears: 30,
+      where: { home: true },
+      body: { general: [], zones: [] },
+      family: [],
+      tastes: [],
+      skills: [],
+      substances: {
+        self: [{ kind: "poison", stage: "symptoms" }, { kind: "withdrawing" }],
+        others: [{ who: "Wu", signs: [{ kind: "sedated" }] }],
+      },
+    } as unknown as CharacterPanel;
+    const text = renderCharacter(base);
+    expect(text).toContain("envenenado");
+    expect(text).toContain("Wu parece adormecido.");
   });
 });

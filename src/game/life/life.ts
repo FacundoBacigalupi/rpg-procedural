@@ -22,6 +22,7 @@ import {
   type LifeOptions,
   type LifeTerrain,
   lifeTerrain,
+  optInParts,
   type ResumeAnchor,
   resumeParts,
   withDeclaredExternals,
@@ -174,7 +175,7 @@ export class Life {
       anchor.households,
       new Map((base.materials ?? []).map((m) => [m.id, m])),
     );
-    const parts: LifeParts = { ...base, spaces, ...saved };
+    const parts: LifeParts = { ...base, ...optInParts(options), spaces, ...saved };
     const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
     return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }

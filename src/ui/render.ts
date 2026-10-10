@@ -161,6 +161,44 @@ const NICKNAME = {
   assault: "«el Matón»",
 } as const;
 
+type SeenSigns = NonNullable<CharacterPanel["substances"]>["self"];
+
+const SUBSTANCE_SELF = {
+  poison: {
+    mild: "Sentís un malestar raro, como si algo te hubiera caído mal",
+    symptoms: "Te sentís envenenado: náuseas, mareo y flojedad",
+    grave: "Te sentís muy envenenado: apenas te sostenés",
+    dying: "Sentís que la vida se te va: no te sostenés en pie",
+  },
+  sedated: "Tenés el cuerpo pesado y la cabeza adormecida",
+  withdrawing: "Te tiemblan las manos y el cuerpo te pide algo",
+} as const;
+
+const SUBSTANCE_OTHER = {
+  poison: {
+    mild: "parece descompuesto",
+    symptoms: "se ve muy mal, pálido y sudoroso",
+    grave: "está gravemente enfermo, casi no se tiene en pie",
+    dying: "parece estar muriéndose",
+  },
+  sedated: "parece adormecido",
+  withdrawing: "tiembla y está inquieto",
+} as const;
+
+function signText(s: SeenSigns[number], t: typeof SUBSTANCE_SELF | typeof SUBSTANCE_OTHER): string {
+  if (s.kind === "poison") return t.poison[s.stage ?? "mild"];
+  return t[s.kind];
+}
+
+/** Señales de sustancias (opt-in del panel): lo perceptible, sin nombrar la sustancia. */
+function substanceLines(sub: NonNullable<CharacterPanel["substances"]>): string[] {
+  const lines = sub.self.map((s) => `${signText(s, SUBSTANCE_SELF)}.`);
+  for (const o of sub.others) {
+    lines.push(`${o.who} ${o.signs.map((s) => signText(s, SUBSTANCE_OTHER)).join(" y ")}.`);
+  }
+  return lines;
+}
+
 export function renderCharacter(p: CharacterPanel): string {
   const lines = [
     `Tenés ${p.ageYears} años. ${p.where.home ? "Estás en tu casa." : "Estás fuera de tu casa."}`,
@@ -174,6 +212,7 @@ export function renderCharacter(p: CharacterPanel): string {
       ? "Te sentís bien."
       : `Cómo te sentís: ${[...general, ...zones].join("; ")}.`,
   );
+  if (p.substances) lines.push(...substanceLines(p.substances));
   if (p.status !== undefined) lines.push(`En la aldea sos ${p.status}.`);
   if (p.reputation) {
     const r = p.reputation;
