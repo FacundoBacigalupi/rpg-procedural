@@ -1,0 +1,74 @@
+// La capa inmediata registra presiones sentidas, sin volver a sumarlas a la utilidad (§7).
+// El miedo disponible es el de recuerdos dolorosos propios, no emociones de terceros.
+import { compareStrings, type EventId, exp, LN2, type Tick } from "../../core/index.ts";
+import type { Goal } from "./goals.ts";
+import type { Memories } from "./memory.ts";
+import type { ValueId } from "./mind.ts";
+import type { NeedId } from "./utility.ts";
+
+/** Umbral y vida media provisionales; la emoción decae en horas, aunque el recuerdo perdure. */
+export const IMMEDIATE_MIN = 0.5;
+export const IMMEDIATE_FEAR_HALF_LIFE = 6 * 3600;
+export const MAX_IMMEDIATE_GOALS = 3;
+
+export interface FeltNeed {
+  readonly need: NeedId;
+  readonly urgency: number;
+  readonly originEventId: EventId;
+}
+
+const VALUE: Readonly<Record<NeedId, ValueId>> = {
+  hunger: "safety",
+  thirst: "safety",
+  pain: "safety",
+  safety: "safety",
+  rest: "pleasure",
+  social: "family",
+  craving: "pleasure",
+};
+const round = (x: number) => Math.round(x * 1e6) / 1e6;
+const clamp = (x: number) => Math.min(1, Math.max(0, x));
+
+/** Sin señal con procedencia no nace un objetivo. Una memoria futura tampoco es una señal. */
+export function immediateGoals(
+  needs: readonly FeltNeed[],
+  memories: Memories | undefined,
+  core: readonly Goal[],
+  now: Tick,
+): Goal[] {
+  const signals = new Map<string, { value: ValueId; weight: number; origin: EventId }>();
+  const add = (id: string, value: ValueId, weight: number, origin: EventId) => {
+    const w = round(clamp(weight));
+    if (!Number.isFinite(w) || w < IMMEDIATE_MIN) return;
+    const previous = signals.get(id);
+    if (
+      !previous ||
+      w > previous.weight ||
+      (w === previous.weight && compareStrings(origin, previous.origin) < 0)
+    )
+      signals.set(id, { value, weight: w, origin });
+  };
+  for (const n of needs) add(`immediate:${n.need}`, VALUE[n.need], n.urgency, n.originEventId);
+  for (const m of memories?.items ?? []) {
+    if (m.at > now || m.valence >= 0) continue;
+    const fear =
+      m.intensity * -m.valence * m.salience * exp((-LN2 * (now - m.at)) / IMMEDIATE_FEAR_HALF_LIFE);
+    add("immediate:fear", "safety", fear, m.eventId);
+  }
+  const coreIds = new Set(core.map((g) => g.id));
+  return [...signals]
+    .map(
+      ([id, s]): Goal => ({
+        id,
+        layer: "immediate",
+        kind: "pursue",
+        value: s.value,
+        weight: s.weight,
+        originEventId: s.origin,
+        since: now,
+        ...(coreIds.has(`core:${s.value}`) ? { parent: `core:${s.value}` } : {}),
+      }),
+    )
+    .sort((a, b) => b.weight - a.weight || compareStrings(a.id, b.id))
+    .slice(0, MAX_IMMEDIATE_GOALS);
+}

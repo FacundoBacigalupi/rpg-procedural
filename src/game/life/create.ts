@@ -188,6 +188,8 @@ export interface LifeOptions {
   readonly persistGoalLayers?: boolean;
   /** Opt-in: las partes recuerdan los préstamos y pagos que participan directamente. */
   readonly debtKnowledge?: boolean;
+  /** Opt-in: persiste la capa inmediata desde señales con causa; apagado por defecto. */
+  readonly persistImmediateGoals?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -334,6 +336,7 @@ export function optInParts(
   | "rumorGrievance"
   | "persistGoalLayers"
   | "debtKnowledge"
+  | "persistImmediateGoals"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -396,6 +399,7 @@ export function optInParts(
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
+    ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),

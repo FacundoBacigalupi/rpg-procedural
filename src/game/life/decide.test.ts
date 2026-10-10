@@ -147,6 +147,51 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("la capa inmediata opt-in conserva la decisión y registra causas y cambios de peso", () => {
+    const truth = layeredWorld();
+    truth.set(ENTITY, A, { id: A, originEventId: "event:1" as EventId, createdAt: 0 });
+    const off = decideProcess(opts).run(ctx(truth, A, 1000));
+    expect(
+      decideProcess({ ...opts, persistImmediateGoals: false }).run(ctx(truth, A, 1000)),
+    ).toEqual(off);
+    const p = decideProcess({ ...opts, persistImmediateGoals: true });
+    const on = p.run(ctx(truth, A, 1000));
+    expect(on.changes?.find((c) => c.table === NPC_DECISION.name)).toEqual(
+      off.changes?.find((c) => c.table === NPC_DECISION.name),
+    );
+    applyGoals(truth, on);
+    const thirst = truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst");
+    expect(thirst).toMatchObject({ layer: "immediate", originEventId: "event:1", since: 1000 });
+    expect(on.events?.find((e) => goalData(e).goal === "immediate:thirst")?.causes).toEqual([
+      { kind: "event", event: "event:1" },
+      { kind: "state", entity: A, key: "body" },
+    ]);
+    expect(p.run(ctx(truth, A, 1100)).events?.filter((e) => e.kind === GOAL_EVENT)).toEqual([]);
+    truth.set(BODY_STATE, A, { ...newBody(plan, 60, 0), water: 2.5 });
+    applyGoals(truth, p.run(ctx(truth, A, 1200)));
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst")).toMatchObject({
+      since: 1000,
+      originEventId: "event:1",
+    });
+    expect(
+      truth.get(NPC_GOALS, A)?.items.find((g) => g.id === "immediate:thirst")?.weight,
+    ).not.toBe(thirst?.weight);
+    truth.set(BODY_STATE, A, newBody(plan, 60, 0));
+    const end = p.run(ctx(truth, A, 1300));
+    expect(end.events?.find((e) => goalData(e).goal === "immediate:thirst")?.causes).toEqual([
+      { kind: "event", event: "event:1" },
+      { kind: "state", entity: A, key: "body" },
+      { kind: "state", entity: A, key: "goals" },
+    ]);
+  });
+
+  it("sin procedencia corporal no inventa un objetivo inmediato de sed", () => {
+    const truth = world(3);
+    const out = decideProcess({ ...opts, persistImmediateGoals: true }).run(ctx(truth, A, 1000));
+    applyGoals(truth, out);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.layer === "immediate")).toBe(false);
+  });
+
   it("false equivale a omitir la persistencia; encenderla conserva la decisión y el RNG", () => {
     const truth = layeredWorld();
     const off = decideProcess(opts).run(ctx(truth, A, 1000));

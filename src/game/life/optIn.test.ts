@@ -21,6 +21,8 @@ describe("opciones opt-in de la vida", () => {
     expect(optInParts({})).toEqual({});
     expect(optInParts({ persistGoalLayers: false })).toEqual({});
     expect(optInParts({ persistGoalLayers: true })).toEqual({ persistGoalLayers: true });
+    expect(optInParts({ persistImmediateGoals: false })).toEqual({});
+    expect(optInParts({ persistImmediateGoals: true })).toEqual({ persistImmediateGoals: true });
     expect(optInParts({ rumorGrievance: false })).toEqual({});
     expect(optInParts({ moldHintsFromCatalog: false })).toEqual({});
     expect(optInParts({ moldHintsFromCatalog: true })).toEqual({ moldHintsFromCatalog: true });

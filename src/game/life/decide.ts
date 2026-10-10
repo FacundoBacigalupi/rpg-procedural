@@ -46,6 +46,8 @@ import {
   HABITS,
   type HabitDef,
   INNATE,
+  immediateGoals,
+  impairment,
   kinWeight,
   LOCATION,
   layerDrives,
@@ -163,6 +165,8 @@ export const CARES_MIN = 0.3;
 export interface DecideOptions {
   /** Opt-in: conserva las capas derivadas y registra sus nacimientos y fines. */
   readonly persistGoalLayers?: boolean;
+  /** Opt-in: registra necesidades sentidas y miedo con procedencia, sin sumar utilidad. */
+  readonly persistImmediateGoals?: boolean;
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -459,9 +463,40 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         ),
         ...shortGoals(drives.needs, goals, mind.originEventId, now),
       ];
-      const storedGoals = o.persistGoalLayers
-        ? reconcileGoals(prevGoals, [...goals, ...layered])
-        : goals;
+      // El cuerpo tiene procedencia seed/nacimiento; dolor cita el golpe concreto.
+      // Las presiones agudas sin una fuente identificable no se inventan.
+      const bodyOrigin = truth.get(ENTITY, me)?.originEventId;
+      const immediate = o.persistImmediateGoals
+        ? immediateGoals(
+            [
+              ...(bodyOrigin === undefined
+                ? []
+                : (["hunger", "thirst", "rest"] as const).map((need) => ({
+                    need,
+                    urgency: drives.needs[need] ?? 0,
+                    originEventId: bodyOrigin,
+                  }))),
+              ...body.wounds.map((w) => ({
+                need: "pain" as const,
+                urgency:
+                  ((drives.needs.pain ?? 0) * impairment(w)) /
+                  Math.max(1e-6, ...body.wounds.map(impairment)),
+                originEventId: w.cause,
+              })),
+            ],
+            memories,
+            goals,
+            now,
+          )
+        : [];
+      const storedGoals =
+        o.persistGoalLayers || o.persistImmediateGoals
+          ? reconcileGoals(prevGoals, [
+              ...goals,
+              ...(o.persistGoalLayers ? layered : []),
+              ...immediate,
+            ])
+          : goals;
       const { born, ended } = goalChanges(prevGoals, storedGoals);
       const goalEvents = [
         ...born.map((g) => ({ g, what: "born" as const })),
@@ -481,13 +516,22 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         emissions: {},
         causes: [
           { kind: "event", event: g.originEventId } as const,
+          ...(g.layer === "immediate"
+            ? [
+                {
+                  kind: "state",
+                  entity: me,
+                  key: g.id === "immediate:fear" ? "memories" : "body",
+                } as const,
+              ]
+            : []),
           ...(what === "ended" ? [{ kind: "state", entity: me, key: "goals" } as const] : []),
         ],
       }));
       const goalChange =
         born.length + ended.length > 0 ||
         prevGoals.length !== storedGoals.length ||
-        (o.persistGoalLayers &&
+        ((o.persistGoalLayers || o.persistImmediateGoals) &&
           storedGoals.some(
             (g, i) => g.weight !== prevGoals[i]?.weight || g.parent !== prevGoals[i]?.parent,
           ))

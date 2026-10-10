@@ -187,8 +187,26 @@ el fin cita además el estado anterior de los objetivos. Las capas se derivan
 solo del núcleo actualizado y conservan su empuje pequeño en la utilidad, sin
 sumarse otra vez como núcleo. No agrega empuje ni consume RNG adicional:
 solo persiste estado y emite eventos opt-in. Apagado conserva el comportamiento anterior.
-La deuda real, las emociones inmediatas, el cumplimiento y la muerte se tratan
-en los subítems posteriores del ROADMAP; los umbrales siguen sin calibrar.
+La deuda real, el cumplimiento y la muerte se tratan en los subítems posteriores
+del ROADMAP; los umbrales siguen sin calibrar.
+
+**Capa inmediata opt-in (2026-10-10, f3c):** `persistImmediateGoals`, independiente
+de `persistGoalLayers`, guarda hambre, sed y descanso sentidos, dolor de heridas
+y miedo desde recuerdos dolorosos propios. Las necesidades corporales citan el
+origen de la persona (seed/nacimiento) y el estado `body`; el dolor cita la herida
+que más contribuye al dolor sentido. El miedo cita el evento recordado y el estado
+`memories`, sin leer emociones ajenas. Conserva identidad, origen y `since`,
+actualiza pesos y registra fines al bajar del umbral. No suma otro empuje a la
+utilidad: necesidades y miedo ya entran en sus insumos. Apagado mantiene el estado
+y los resultados anteriores; no consume RNG adicional.
+
+El núcleo puro `immediateGoals` acepta señales de necesidad con origen explícito;
+sin fuentes no inventa objetivos. El miedo transitorio decae con vida media de
+seis horas desde el evento, separado de la saliencia duradera del recuerdo. Umbral
+0,5 y límite de tres objetivos son provisionales. `appraise` aún no produce las
+ocho emociones tipadas de §4: este cableado cubre solo miedo. Otras emociones,
+compañía y ansia requieren sus señales con procedencia, registradas como subítem
+propio de Fase 3 en ROADMAP antes de ampliar el cableado.
 
 ### Utilidad
 Para cada acción candidata, del **mismo catálogo que usa el jugador** ([actions.md](actions.md)):

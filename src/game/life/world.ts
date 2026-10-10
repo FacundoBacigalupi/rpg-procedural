@@ -466,6 +466,7 @@ export interface LifeWorld {
   readonly persistGoalLayers?: boolean;
   /** Opt-in: libro personal de términos y pagos conocidos de préstamos Commitment. */
   readonly debtKnowledge?: boolean;
+  readonly persistImmediateGoals?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1268,6 +1269,7 @@ export function lifeWorld(
         }),
         decideProcess({
           ...(parts.persistGoalLayers === true ? { persistGoalLayers: true } : {}),
+          ...(parts.persistImmediateGoals === true ? { persistImmediateGoals: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,
