@@ -6,7 +6,7 @@
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import { exp } from "../../core/math/index.ts";
 import { table } from "../world/index.ts";
-import { perceivedQuality, qualityPriceFactor } from "./quality.ts";
+import { blendQuality, perceivedQuality, qualityPriceFactor } from "./quality.ts";
 
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
@@ -174,4 +174,59 @@ export function recordScamDeal(before: ScamDeals | undefined, deal: ScamDeal): S
 export function pendingScams(deals: ScamDeals | undefined, found: ScamFound | undefined) {
   const done = new Set(found?.events ?? []);
   return (deals?.deals ?? []).filter((d) => !done.has(d.event));
+}
+
+/** Tope de la fracción de relleno (en gramos sobre el total) que alguien se anima a mezclar. */
+export const ADULTERATION_MAX_FRACTION = 0.3;
+
+/** Un lote mezclado con relleno (arroz con piedras): el total, su calidad y cuánto es relleno. */
+export interface Adulterated {
+  /** Gramos totales del lote ya mezclado (suma exacta: el relleno sale del ledger de quien mezcla). */
+  readonly grams: number;
+  /** Calidad promedio ponderada por gramos (el relleno vale `fillerQuality`, normalmente 0). */
+  readonly quality: number;
+  /** Fracción del lote que es relleno (0-1). */
+  readonly fillerFraction: number;
+}
+
+/**
+ * Mezclar `fillerGrams` de relleno en un lote de `grams` y calidad `quality`: conserva la masa
+ * (los gramos suman) y la calidad baja por promedio ponderado. Puro; quien llama debe consumir
+ * el relleno del ledger del vendedor.
+ */
+export function adulterate(
+  grams: number,
+  quality: number,
+  fillerGrams: number,
+  fillerQuality = 0,
+): Adulterated {
+  const g = Math.max(0, grams);
+  const f = Math.max(0, fillerGrams);
+  const total = g + f;
+  return {
+    grams: total,
+    quality: blendQuality([
+      { grams: g, quality },
+      { grams: f, quality: fillerQuality },
+    ]),
+    fillerFraction: total === 0 ? 0 : f / total,
+  };
+}
+
+/**
+ * Cuánto relleno (gramos) mezcla el vendedor en `grams`: la propensión es la misma de `inflateFor`
+ * (`inflate` ya sale de honestidad, necesidad y cariño), escalada al tope de fracción. 0 = honesto.
+ */
+export function fillerFor(grams: number, inflate: number): number {
+  const frac = clamp(inflate / SCAM_MAX_INFLATE, 0, 1) * ADULTERATION_MAX_FRACTION;
+  return Math.max(0, grams) * (frac / (1 - frac));
+}
+
+/**
+ * Probabilidad (0-1) de notar el relleno al mirar o pesar el lote: crece con la fracción y con el
+ * ojo; con ojo nulo el relleno chico pasa. El relleno es visible aunque la calidad se crea alta.
+ */
+export function fillerNoticeChance(fillerFraction: number, eye: number): number {
+  const f = clamp(fillerFraction, 0, 1);
+  return clamp(f * 2 * (0.3 + 0.7 * clamp(eye, 0, 1)), 0, 1);
 }
