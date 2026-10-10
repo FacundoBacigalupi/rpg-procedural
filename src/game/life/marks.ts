@@ -2,7 +2,7 @@
 // un trato le pone al lote su marca auténtica (calidad real afirmada) y el comprador la verifica
 // al recibirla, con chance según su ojo y su familiaridad con la marca (cuántos lotes de ese
 // mismo vendedor ya tuvo). Proceso opt-in (`LifeParts.marks`): apagado no hay filas, RNG ni
-// eventos. Único dueño de `LOT_MARKS`. Al cerrar otro trato repasa un lote ya recibido (`marks.rechecked`, con falso positivo). Falsificar como acción queda con ítem aparte (pide verbo).
+// eventos. Único dueño de `LOT_MARKS`. Al cerrar otro trato repasa un lote ya recibido (`marks.rechecked`, con falso positivo). Mirar a pedido (`look`) repasa un lote recibido sin verbo nuevo. Falsificar como acción queda con ítem aparte (pide verbo).
 
 import type { AgentId, EventId, PlaceRef, Tick } from "../../core/index.ts";
 import {
@@ -19,6 +19,7 @@ import {
   table,
   verifyMark,
 } from "../../sim/index.ts";
+import { lookAcuity } from "./looking.ts";
 
 export const MARKS_PROCESS = "life.marks";
 export const MARK_STAMPED = "marks.stamped";
@@ -88,6 +89,60 @@ export function marksProcess(o: MarksOptions): ProcessDef {
       for (const e of ctx.recent) {
         const fx = (e.data as { effect?: TradeFx } | null)?.effect;
         const actor = e.actors[0] as AgentId | undefined;
+        if (actor && fx?.kind !== "trade" && lookAcuity(e.data) !== undefined) {
+          // Mirar a pedido: repasa un lote marcado ya recibido (mismo repaso que al cerrar un trato).
+          const held = pending.has(actor) ? pending.get(actor) : truth.get(LOT_MARKS, actor);
+          const lots = held?.lots ?? [];
+          if (lots.length === 0 || truth.get(ENTITY, actor)?.endedAt !== undefined) continue;
+          const idx = Math.min(
+            lots.length - 1,
+            Math.floor(ctx.rng.fork("mark_look", e.id, ctx.now).float() * lots.length),
+          );
+          const old = lots[idx] as MarkedLot;
+          const fam = Math.min(
+            1,
+            lots.filter((l) => l.mark.claimedBy === old.mark.claimedBy).length *
+              MARK_FAMILIARITY_STEP,
+          );
+          const eye = o.eye?.(truth, actor) ?? 0.5;
+          const again = verifyMark(
+            old.mark,
+            eye,
+            fam,
+            o.renown?.(truth, old.mark.claimedBy) ?? MARK_DEFAULT_RENOWN,
+            ctx.rng.fork("mark_look_roll", e.id, ctx.now).float(),
+            markFalseAlarmChance(eye, fam),
+          );
+          events.push({
+            kind: MARK_RECHECKED,
+            actors: [actor, old.mark.claimedBy],
+            place: o.placeOf(truth, actor),
+            data: {
+              deal: old.event,
+              credence: again.credence,
+              seemsForged: again.seemsForged,
+              wasForged: old.mark.claimedBy !== old.mark.stampedBy,
+              onLook: true,
+            },
+            emissions: {},
+            causes: [{ kind: "event" as const, event: e.id }],
+          });
+          const after: LotMarks = {
+            lots: lots.map((l, i) =>
+              i === idx
+                ? {
+                    ...l,
+                    seemsForged: again.seemsForged,
+                    credence: again.credence,
+                    rechecks: (l.rechecks ?? 0) + 1,
+                  }
+                : l,
+            ),
+          };
+          pending.set(actor, after);
+          changes.push(setComponent(LOT_MARKS, actor, after));
+          continue;
+        }
         if (fx?.kind !== "trade" || !fx.deal || !fx.with || !actor) continue;
         if (!fx.direction || !fx.good || !fx.grams || fx.grams <= 0) continue;
         const other = fx.with as AgentId;

@@ -136,6 +136,7 @@ import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
+import { workoutProcess } from "./workout.ts";
 
 export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
@@ -303,6 +304,8 @@ export interface LifeWorld {
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
   readonly loanContagionEffects?: { readonly rateMarkup: number };
+  /** Opt-in (con `loanContagion` y `loanSeeds`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
+  readonly loanWorkout?: boolean;
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -502,6 +505,20 @@ export function lifeWorld(
                 unit: parts.loanContagion,
                 placeOf: placeOf(parts, village),
                 ...(parts.loanContagionEffects ? { fame: true } : {}),
+              }),
+            ]
+          : []),
+        ...(parts.loanContagion !== undefined && parts.loanWorkout === true
+          ? [
+              workoutProcess({
+                unit: parts.loanContagion,
+                placeOf: placeOf(parts, village),
+                day: parts.clock.day,
+                lots: new Map(
+                  (parts.loanSeeds ?? []).flatMap((s) =>
+                    (s.collateral ?? []).flatMap((c) => (c.lot ? [[c.ref, c.lot] as const] : [])),
+                  ),
+                ),
               }),
             ]
           : []),

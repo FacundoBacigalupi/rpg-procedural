@@ -71,6 +71,36 @@ describe("marcas en el lote", () => {
     const calm = run("buy", 0.5, true, { lots: [old] });
     expect(calm.events?.[2]?.data["seemsForged"]).toBe(false);
   });
+  it("mirar a pedido repasa un lote recibido, con causa en el look", () => {
+    const old = {
+      event: "event:1",
+      unit: "good:grain",
+      grams: 100,
+      mark: { claimedBy: seller, stampedBy: seller, tick: 1, claimed: 0.6, fidelity: 1 },
+      seemsForged: false,
+      credence: 0.65,
+    };
+    const tables: Record<string, Record<string, unknown>> = {
+      [LOT_MARKS.name]: { [buyer]: { lots: [old] } },
+      entity: {},
+    };
+    const truth = { get: (t: { name: string }, id: string) => tables[t.name]?.[id] } as never;
+    const rng = { fork: () => rng, float: () => 0.999 } as never;
+    const recent = [
+      {
+        id: "event:7" as EventId,
+        actors: [buyer],
+        data: { effect: { kind: "observe", acuity: 0.5 } },
+      },
+    ];
+    const ctx = { truth, rng, recent, now: 4 as Tick } as unknown as ProcessContext;
+    const r = marksProcess({ placeOf: () => "here" as never }).run(ctx) as unknown as {
+      events?: { kind: string; data: Record<string, unknown> }[];
+    };
+    expect(r.events?.map((e) => e.kind)).toEqual([MARK_RECHECKED]);
+    expect(r.events?.[0]?.data["onLook"]).toBe(true);
+    expect(r.events?.[0]?.data["seemsForged"]).toBe(true);
+  });
   it("sin trato no hay marca", () => {
     expect(run("buy", 0.5, false).events).toBeUndefined();
   });

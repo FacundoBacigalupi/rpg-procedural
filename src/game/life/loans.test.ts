@@ -16,6 +16,7 @@ import {
   PERSON,
   type ProcessContext,
   RELATIONS,
+  TRADE_RECEIPTS,
   WorldTruth,
 } from "../../sim/index.ts";
 import {
@@ -363,6 +364,46 @@ describe("life.loans", () => {
     expect(ev?.causes.length).toBeGreaterThan(0);
     const after = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
     expect(after?.commitment.obligations[0]?.performed).toBe(1);
+  });
+
+  it("bondage: el jornal sale de la habilidad y no abona el día con otro jornal", () => {
+    const { truth, ledger } = setup();
+    const { guarantors: _g, ...s } = seed;
+    const proc = loansProcess({
+      clock,
+      goods,
+      seeds: [s],
+      placeOf: () => ({ cell: 0 }) as never,
+      bondage: {
+        wagePerDay: 1000,
+        upkeepPerDay: 0,
+        maxDays: 100,
+        onlyWithoutOtherWage: true,
+        skillWage: () => 500,
+      },
+    });
+    const apply = (r: ReturnType<typeof proc.run>) => {
+      for (const c of r.changes ?? []) {
+        const ch = c as { table?: string; id?: string; value?: unknown };
+        if (ch.table === LOANS.name) truth.set(LOANS, ch.id as never, ch.value as never);
+        if (ch.table === COMMITMENTS.name)
+          truth.set(COMMITMENTS, ch.id as never, ch.value as never);
+      }
+      return r;
+    };
+    apply(proc.run(ctxOf(truth, ledger, 1)));
+    apply(proc.run(ctxOf(truth, ledger, 11)));
+    const bond = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    const duty = bond?.commitment.obligations[0]?.duty as { creditPerDay?: number } | undefined;
+    expect(duty?.creditPerDay).toBe(500);
+    const debtor = bond?.commitment.obligations[0]?.debtor as unknown as string;
+    truth.set(TRADE_RECEIPTS, debtor as never, { receipts: [{ day: 12, coins: 3 }] } as never);
+    apply(proc.run(ctxOf(truth, ledger, 12)));
+    const mid = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(mid?.commitment.obligations[0]?.performed).toBe(0);
+    apply(proc.run(ctxOf(truth, ledger, 13)));
+    const end = commitmentRows(truth).find((x) => x.commitment.kind === "bondage");
+    expect(end?.commitment.obligations[0]?.performed).toBe(1);
   });
 
   function bondedWorld(extra: Record<string, unknown>) {
