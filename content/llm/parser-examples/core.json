@@ -1033,6 +1033,15 @@
     }
   },
   {
+    "id": "boil-water",
+    "text": "hiervo agua antes de beberla",
+    "scene": "Estás en tu casa; hay un fuego, una olla y leña.",
+    "expect": {
+      "kind": "act",
+      "plan": { "kind": "do", "verb": "boil", "args": [] }
+    }
+  },
+  {
     "id": "consume-pipe",
     "text": "fumo un poco de hierba de la pipa",
     "scene": "Estás en tu casa; en la repisa hay una pipa y hierba de fumar.",

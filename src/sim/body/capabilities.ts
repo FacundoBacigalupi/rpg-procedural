@@ -3,6 +3,7 @@
 // la percepción interna lee síntomas cualitativos, nunca números (el jugador no ve su `Body`).
 
 import type { CapabilityKey } from "../actions/index.ts";
+import type { DeficiencyStage, Nutrient } from "./nutrition.ts";
 import { BLOOD_DAZED, BLOOD_DEATH, INFECTED } from "./physiology.ts";
 import type { BodyFunction, BodyPlanDef } from "./plan.ts";
 import type { Body, Wound } from "./state.ts";
@@ -108,8 +109,36 @@ export interface SignReport {
   readonly zones: readonly { readonly zone: string; readonly signs: readonly BodySign[] }[];
 }
 
-/** `ill`: tiene una enfermedad con síntomas (body-health §6), que se ve como fiebre. */
-export function bodySigns(plan: BodyPlanDef, body: Body, ill = false): SignReport {
+/**
+ * Signos por etapa de carencia (opt-in de `bodySigns`): hierro, desde la incipiente, palidez; proteína
+ * franca, consunción; vitamina C franca, dolor; vitamina D grave, cojera; yodo franco, cansancio.
+ */
+export function deficiencySigns(
+  stages: Readonly<Partial<Record<Nutrient, DeficiencyStage>>>,
+): readonly BodySign[] {
+  const out: BodySign[] = [];
+  const at = (n: Nutrient, min: 1 | 2 | 3) => {
+    const k = stages[n];
+    return k === "early" ? min <= 1 : k === "overt" ? min <= 2 : k === "severe";
+  };
+  if (at("iron", 1)) out.push("pale");
+  if (at("protein", 2)) out.push("wasting");
+  if (at("vitaminC", 2)) out.push("in_pain");
+  if (at("vitaminD", 3)) out.push("limping");
+  if (at("iodine", 2)) out.push("tired");
+  return out;
+}
+
+/**
+ * `ill`: tiene una enfermedad con síntomas (body-health §6), que se ve como fiebre. `stages`: etapas
+ * de carencia (opt-in; sin ellas, el resultado es el de siempre).
+ */
+export function bodySigns(
+  plan: BodyPlanDef,
+  body: Body,
+  ill = false,
+  stages?: Readonly<Partial<Record<Nutrient, DeficiencyStage>>>,
+): SignReport {
   const general: BodySign[] = [];
   const ph = plan.physiology;
   const scale = body.massKg / ph.refMassKg;
@@ -131,6 +160,7 @@ export function bodySigns(plan: BodyPlanDef, body: Body, ill = false): SignRepor
     capabilitiesOf(plan, body).locomotion < 0.7 && body.consciousness !== "unconscious",
     "limping",
   );
+  if (stages) for (const sign of deficiencySigns(stages)) add(!general.includes(sign), sign);
   const zones: { zone: string; signs: BodySign[] }[] = [];
   for (const zone of plan.zones) {
     const signs: BodySign[] = [];

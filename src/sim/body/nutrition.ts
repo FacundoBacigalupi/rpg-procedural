@@ -150,11 +150,10 @@ export function deficiencyEffects(stores: NutrientStores): DeficiencyEffects {
   };
 }
 
+export type DeficiencyStage = "none" | "early" | "overt" | "severe";
+
 /** Etapa observable de un mal de carencia, para `bodySigns`: nada, incipiente, franca, grave. */
-export function deficiencyStage(
-  stores: NutrientStores,
-  n: Nutrient,
-): "none" | "early" | "overt" | "severe" {
+export function deficiencyStage(stores: NutrientStores, n: Nutrient): DeficiencyStage {
   const d = deficiency(stores, n);
   return d < 0.15 ? "none" : d < 0.5 ? "early" : d < 0.85 ? "overt" : "severe";
 }

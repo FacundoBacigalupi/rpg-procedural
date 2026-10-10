@@ -48,7 +48,7 @@ import {
   type WorldTruth,
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
-import { actProcess } from "./act.ts";
+import { actProcess, type BoilOptions } from "./act.ts";
 import { altitudeProcess, mapAltitudeOf } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { appraiseProcess } from "./appraise.ts";
@@ -146,6 +146,8 @@ export interface LifeWorld {
   readonly eatenNutrition?: boolean;
   /** Las carencias publicadas (`DEFICIENCY_EFFECTS`) frenan la curación y la defensa inmune del cuerpo; apagado por defecto. */
   readonly deficiencyEffects?: boolean;
+  /** Con `deficiencyEffects`, `reopenWound` reabre heridas viejas (rng con clave); apagado por defecto. */
+  readonly reopenWounds?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
@@ -172,6 +174,12 @@ export interface LifeWorld {
    * `serves: craving`. Apagado por defecto: sin candidata, filas, RNG ni muertes nuevas.
    */
   readonly consumables?: readonly ConsumableDef[];
+  /**
+   * Opt-in: el verbo `boil` (body-health §5) quema combustible del ledger (declarar el sumidero
+   * `burned` con esa unidad) y deja agua tratada que `waterSources` aplica al beber. Apagado por
+   * defecto: sin filas, RNG ni eventos nuevos.
+   */
+  readonly boil?: BoilOptions;
   /** Opt-in: señales de ansia aprendidas (lugar, persona, hora) en `life.act` y `life.decide`; apagado, sin señales. */
   readonly cravingCues?: boolean;
   readonly recipes: readonly RecipeDef[];
@@ -277,6 +285,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ambientOf: ambientOf(parts),
           deficiency: parts.deficiencyEffects === true,
+          reopen: parts.reopenWounds === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,
@@ -297,6 +306,7 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
+          ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
         }),
         converseProcess({

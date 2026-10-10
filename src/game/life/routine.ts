@@ -94,7 +94,11 @@ export interface RoutineOptions {
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   /** Calidad del agua que bebe cada quien (fuente y tratamiento); sin esto, agua limpia. */
-  readonly drinkQuality?: (truth: ReadonlyWorldTruth, who: AgentId) => WaterQuality | undefined;
+  readonly drinkQuality?: (
+    truth: ReadonlyWorldTruth,
+    who: AgentId,
+    now?: number,
+  ) => WaterQuality | undefined;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -347,7 +351,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         if (liters > 0) {
           // Con `drinkQuality` la sal deshidrata (netHydration): la hidratación neta puede ser
           // negativa y entonces falta más agua. Sin el gancho, agua limpia como siempre.
-          const q = o.drinkQuality?.(truth, me);
+          const q = o.drinkQuality?.(truth, me, ctx.now);
           const net = q ? netHydration(liters, q) : liters;
           next = net >= 0 ? ingest(bodyPlan, next, 0, net) : { ...next, water: next.water - net };
         }

@@ -92,6 +92,7 @@
     "lines": ["{who} cocina.", "Ves a {who} atendiendo el fuego."]
   },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
+  { "id": "percept.action.boil", "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."] },
   { "id": "percept.action.consume", "lines": ["{who} toma algo.", "Ves a {who} tomando algo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
   {
