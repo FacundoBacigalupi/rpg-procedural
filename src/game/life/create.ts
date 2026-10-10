@@ -200,6 +200,8 @@ export interface LifeOptions {
   readonly marks?: boolean;
   /** Opt-in: contagio de quiebras sobre los préstamos, en esta unidad de deuda (`life.contagion`). Apagado por defecto. */
   readonly loanContagion?: string;
+  /** Opt-in (con `loanContagion`): efectos del contagio (fama del quebrado y tasa más alta de los acreedores arrastrados). */
+  readonly loanContagionEffects?: LifeParts["loanContagionEffects"];
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -221,6 +223,7 @@ export function optInParts(
   | "tradeView"
   | "marks"
   | "loanContagion"
+  | "loanContagionEffects"
   | "tradeNeeds"
 > {
   return {
@@ -244,6 +247,7 @@ export function optInParts(
     ...(options.tradeView ? { tradeView: options.tradeView } : {}),
     ...(options.marks ? { marks: true } : {}),
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
+    ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

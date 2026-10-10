@@ -1,0 +1,203 @@
+// Pedir prestada la sustancia, de verdad (opt-in): quien decidió `speak:<prestamista>+borrow:<bien>`
+// (`decide`, `borrowCraving`) y está con el prestamista le hace el pedido. El prestamista decide
+// según lo que siente por quien pide (confianza, afecto, daño que le consta) y según lo que HAY en
+// su despensa (la verdad del libro mayor, no lo que cree el que pide). Si accede, pasa una dosis de
+// su despensa a la del que pide (conservación) con un `household.borrowed` que cita la decisión y
+// que `life.credit` convierte en deuda (el `Commitment` liviano del fiado: se devuelve con un `give`).
+// Si no la tiene, el que pidió corrige lo que creía: el rumor `has` pierde confianza (y se borra si
+// queda por debajo de `dropBelow`). Si no quiere, el rumor queda y hay un `substance.borrow_refused`.
+// Un pedido por día por persona. Apagado: el pedido sigue siendo solo una candidata que no hace nada.
+
+import {
+  type AgentId,
+  type HolderRef,
+  holderAccount,
+  type PlaceRef,
+  type Tick,
+} from "../../core/index.ts";
+import {
+  type BondDef,
+  type DimensionDef,
+  draftEvent,
+  ENTITY,
+  type GoodDef,
+  goodUnit,
+  KNOWN_DEEDS,
+  LOCATION,
+  MIND,
+  PERSON,
+  type ProcessDef,
+  RELATIONS,
+  type ReadonlyWorldTruth,
+  relationship,
+  setComponent,
+  table,
+  worstDeed,
+} from "../../sim/index.ts";
+import { NPC_DECISION } from "./decide.ts";
+import { MOLD_RUMORS } from "./moldgossip.ts";
+
+export const LEND_PROCESS = "life.lend";
+
+/** Cuándo pidió por última vez (un pedido por día). */
+export const LEND_LOG = table<{ readonly at: Tick }>("life.lend_log");
+
+export interface LendOptions {
+  readonly goods: readonly GoodDef[];
+  readonly dims: readonly DimensionDef[];
+  readonly bonds: readonly BondDef[];
+  readonly day: number;
+  /** El jugador decide por su cuenta: queda afuera. */
+  readonly player: AgentId;
+  readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Unidades que presta por pedido (1 = una dosis). */
+  readonly units?: number;
+  /** Lo que se queda el prestamista antes de prestar (unidades; 0 por defecto). */
+  readonly keep?: number;
+  /** Cuánto se multiplica la confianza en el rumor `has` si el prestamista no lo tenía (0.25 por defecto). */
+  readonly weaken?: number;
+  /** Con menos confianza que esto el rumor se borra (0.1 por defecto). */
+  readonly dropBelow?: number;
+}
+
+const DECISION_ID = /^speak:(.+)\+borrow:(.+)$/;
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
+export function lendProcess(o: LendOptions): ProcessDef {
+  const units = o.units ?? 1;
+  const keep = o.keep ?? 0;
+  const weaken = o.weaken ?? 0.25;
+  const dropBelow = o.dropBelow ?? 0.1;
+  return {
+    id: LEND_PROCESS,
+    system: "life",
+    scope: "agent",
+    cadence: { local: "hour", scene: "hour" },
+    representation: "individual",
+    phase: "act",
+    reads: [
+      NPC_DECISION.name,
+      PERSON.name,
+      ENTITY.name,
+      LOCATION.name,
+      RELATIONS.name,
+      MIND.name,
+      KNOWN_DEEDS.name,
+      MOLD_RUMORS.name,
+      LEND_LOG.name,
+    ],
+    writes: [MOLD_RUMORS.name, LEND_LOG.name],
+    run(ctx) {
+      const me = ctx.scope as AgentId;
+      const truth = ctx.truth;
+      const ledger = ctx.ledger;
+      if (!ledger || me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
+      const decision = truth.get(NPC_DECISION, me);
+      if (decision?.verb !== "speak" || ctx.now - decision.at >= o.day) return {};
+      const m = DECISION_ID.exec(decision.id);
+      if (!m) return {};
+      const lender = m[1] as AgentId;
+      const name = m[2] as string;
+      const last = truth.get(LEND_LOG, me);
+      if (last && ctx.now - last.at < o.day) return {};
+      const here = truth.get(LOCATION, me);
+      const there = truth.get(LOCATION, lender);
+      if (!here || !there || here.hex !== there.hex || here.space !== there.space) return {};
+      const good = o.goods.find((g) => g.name === name);
+      const myHome = truth.get(PERSON, me)?.household;
+      const hisHome = truth.get(PERSON, lender)?.household;
+      if (!good || myHome === undefined || hisHome === undefined || myHome === hisHome) return {};
+
+      const unit = goodUnit(good);
+      const lenderAlive = truth.get(ENTITY, lender)?.endedAt === undefined;
+      const has = lenderAlive
+        ? ledger.balance(holderAccount(hisHome as unknown as HolderRef), unit)
+        : 0;
+      const place = o.placeOf(truth, me);
+      const asked = { kind: "state", entity: me, key: "utility" } as const;
+      const log = setComponent(LEND_LOG, me, { at: ctx.now });
+
+      if (has < units + keep) {
+        // Lo que creía no era cierto: el rumor pierde confianza (o se borra).
+        const book = truth.get(MOLD_RUMORS, me);
+        const items = (book?.items ?? []).flatMap((h) => {
+          const r = h.rumor;
+          if (r.mold !== "attr" || r.attr !== "has" || r.about !== lender || r.value !== name) {
+            return [h];
+          }
+          const confidence = Math.round(h.confidence * weaken * 1e6) / 1e6;
+          return confidence < dropBelow ? [] : [{ ...h, confidence }];
+        });
+        return {
+          changes: [log, ...(book ? [setComponent(MOLD_RUMORS, me, { ...book, items })] : [])],
+          events: [
+            {
+              kind: "substance.borrow_missed",
+              actors: [me, lender],
+              place,
+              data: { good: good.id, name },
+              emissions: { sight: 0.2, sound: 0.2 },
+              causes: [asked, { kind: "state", entity: lender, key: "larder" }],
+            },
+          ],
+        };
+      }
+
+      // Si accede: según lo que siente por quien pide y el daño que le consta.
+      const rel = relationship(truth.get(RELATIONS, lender), me, ctx.now, {
+        dims: o.dims,
+        bonds: o.bonds,
+        schemaStrength: (s) => truth.get(MIND, lender)?.schemas[s]?.strength ?? 0,
+      });
+      const harmed = worstDeed(truth.get(KNOWN_DEEDS, lender), me) !== null;
+      const willing = harmed ? 0 : clamp01(0.4 + 0.4 * rel.dims.trust + 0.2 * rel.dims.affection);
+      if (!ctx.rng.fork("lend", me, ctx.now).chance(willing)) {
+        return {
+          changes: [log],
+          events: [
+            {
+              kind: "substance.borrow_refused",
+              actors: [me, lender],
+              place,
+              data: { good: good.id, name },
+              emissions: { sight: 0.2, sound: 0.2 },
+              causes: [asked],
+            },
+          ],
+        };
+      }
+      const ev = draftEvent(0);
+      return {
+        changes: [log],
+        events: [
+          {
+            kind: "household.borrowed",
+            actors: [lender, me],
+            place,
+            data: {
+              credit: { unit, grams: units },
+              from: hisHome,
+              to: myHome,
+              substance: good.id,
+            },
+            emissions: { sight: 0.2, sound: 0.2 },
+            causes: [asked, { kind: "state", entity: lender, key: "larder" }],
+          },
+        ],
+        postings: [
+          {
+            event: ev,
+            transfers: [
+              {
+                unit,
+                from: holderAccount(hisHome as unknown as HolderRef),
+                to: holderAccount(myHome as unknown as HolderRef),
+                amount: units,
+              },
+            ],
+          },
+        ],
+      };
+    },
+  };
+}

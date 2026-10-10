@@ -22,18 +22,23 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
-import { COMMITMENTS, commitmentRows } from "./loans.ts";
+import { COMMITMENTS, CONTAGION_STATE, commitmentRows } from "./loans.ts";
 
 export const CONTAGION_PROCESS = "life.contagion";
 export const CONTAGION_EVENT = "credit.contagion";
 
-/** Si el hogar (anotado en su primer vivo) estaba caído la última vez que se calculó. Solo escribe `life.contagion`. */
-export const CONTAGION_STATE = table<{ readonly failed: boolean }>("life.contagion_state");
+export { CONTAGION_STATE };
 
 export interface ContagionOptions {
   /** Unidad de las deudas a limpiar (la de `duty.unit` de los compromisos, p. ej. `coin:copper`). */
   readonly unit: string;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Opt-in: el hogar que cae por sus propios activos (ronda 0) anota en el evento a quiénes les debía
+   * (`data.creditors`); `offenseOf` lo lee como incumplimiento y esos acreedores quedan con su fama
+   * rebajada como creencia ajena. Sin esto el evento no lleva `creditors`.
+   */
+  readonly fame?: boolean;
 }
 
 export function contagionProcess(o: ContagionOptions): ProcessDef {
@@ -67,6 +72,10 @@ export function contagionProcess(o: ContagionOptions): ProcessDef {
             assets.set(h, ledger.balance(holderAccount(h as unknown as HolderRef), unit) ?? 0);
       const out = contagion(rows, o.unit, assets);
       const failed = new Set(out.failed);
+      const creditorsOf = (h: string): AgentId[] =>
+        [...new Set(edges.filter((e) => e.debtor === h).map((e) => e.creditor))]
+          .sort()
+          .flatMap((d) => firstAlive(d) ?? []);
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
       const index = new Map<string, number>();
@@ -105,6 +114,7 @@ export function contagionProcess(o: ContagionOptions): ProcessDef {
             round: out.round.get(h) ?? 0,
             payRatio: out.payRatio.get(h) ?? 1,
             because: [...why],
+            ...(o.fame && why.length === 0 ? { creditors: creditorsOf(h) } : {}),
           },
           emissions: {},
           causes,

@@ -4,6 +4,7 @@ import { holderAccount, ledgerUnit } from "../../core/index.ts";
 import { type Commitment, PERSON, type ProcessContext } from "../../sim/index.ts";
 import { CONTAGION_EVENT, contagionProcess } from "./contagion.ts";
 import { optInParts } from "./create.ts";
+import { offenseOf } from "./deeds.ts";
 import { COMMITMENTS } from "./loans.ts";
 
 const loan = (id: string, debtor: string, creditor: string, qty: number): Commitment =>
@@ -67,5 +68,40 @@ describe("contagio de quiebras en la vida", () => {
   it("apagado por defecto", () => {
     expect(optInParts({})).toEqual({});
     expect(optInParts({ loanContagion: "coin:copper" })).toEqual({ loanContagion: "coin:copper" });
+  });
+  it("con fama anota los acreedores del quebrado y offenseOf los lee", () => {
+    const rows: Record<string, Commitment> = {
+      "commitment:1": loan("commitment:1", "h:b", "h:a", 100),
+    };
+    const people: Record<string, unknown> = {
+      "agent:a": { household: "h:a" },
+      "agent:b": { household: "h:b" },
+    };
+    const truth = {
+      ids: (t: { name: string }) =>
+        t.name === COMMITMENTS.name
+          ? Object.keys(rows)
+          : t.name === PERSON.name
+            ? Object.keys(people)
+            : [],
+      get: (t: { name: string }, id: string) =>
+        t.name === COMMITMENTS.name ? rows[id] : t.name === PERSON.name ? people[id] : undefined,
+    } as never;
+    const ledger = { balance: () => 0 };
+    const ctx = { truth, ledger, now: 1 as Tick } as unknown as ProcessContext;
+    const r = contagionProcess({ unit: "coin", placeOf: () => "here" as never, fame: true }).run(
+      ctx,
+    ) as unknown as {
+      events: { actors: string[]; data: { creditors?: string[] } }[];
+    };
+    expect(r.events[0]?.data.creditors).toEqual(["agent:a"]);
+    const off = offenseOf({
+      kind: CONTAGION_EVENT,
+      actors: r.events[0]?.actors,
+      data: r.events[0]?.data,
+    } as never);
+    expect(off?.kind).toBe("default");
+    expect(off?.by).toBe("agent:b");
+    expect(off?.noticedBy).toEqual(["agent:a"]);
   });
 });

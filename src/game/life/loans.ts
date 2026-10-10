@@ -19,6 +19,7 @@ import {
   type Transfer,
 } from "../../core/index.ts";
 import {
+  bondageDebtLeft,
   bondageExpired,
   type Collateral,
   type Commitment,
@@ -66,6 +67,9 @@ export const LOANS = table<LoanRow>("economy.loans");
  * pagaron (§5), con la misma clave `commitment:N`. Solo la escribe el proceso de préstamos.
  */
 export const COMMITMENTS = table<Commitment>("contracts.commitment");
+
+/** Si el hogar (anotado en su primer vivo) estaba caído la última vez que se calculó el contagio. Solo escribe `life.contagion`. */
+export const CONTAGION_STATE = table<{ readonly failed: boolean }>("life.contagion_state");
 
 /** Un préstamo decidido de antemano: la única fuente de préstamos hasta que los hogares apretados los pidan. */
 export interface LoanSeed {
@@ -121,6 +125,11 @@ export interface LoansOptions {
    * a mitad de plazo el deudor huye). Sin esto no hay filas, eventos ni RNG nuevos.
    */
   readonly bondage?: BondageTerms;
+  /**
+   * Opt-in (con `life.contagion`): el prestamista arrastrado por una quiebra ajena (caído, o con un
+   * deudor activo caído) cobra `rateMarkup` más de tasa en lo que abre mientras dure; el caído no presta.
+   */
+  readonly contagionCaution?: { readonly rateMarkup: number };
   /** Opt-in: la confianza de RELATIONS se lee con `current` (decaimiento al día de hoy); sin esto, tal cual está guardada. */
   readonly relationDecay?: DecayContext;
 }
@@ -130,6 +139,20 @@ export interface BondageTerms {
   readonly wagePerDay: number;
   readonly upkeepPerDay: number;
   readonly maxDays: number;
+  /**
+   * Opt-in: un conocido del deudor (confianza > 0 hacia él, otro hogar) con saldo suficiente paga lo
+   * que falta por el ledger al acreedor (`end: "ransom"`, `credit.bondage_ended` con `ransomer`).
+   */
+  readonly ransom?: boolean;
+  /**
+   * Opt-in: cada día el acreedor rompe el trato con probabilidad `chance(truth, acreedor)` (la que
+   * dé su temperamento y su cultura, calculada afuera); el deudor queda libre (`end: "abuse"`) y los
+   * vecinos que confiaban en el acreedor le restan `reputationCost` de confianza.
+   */
+  readonly abuse?: {
+    readonly chance: (truth: ReadonlyWorldTruth, creditor: AgentId) => number;
+    readonly reputationCost: number;
+  };
 }
 
 /** Confianza de `rel` al tick `now`: con decaimiento si hay contexto, sin él tal cual. */
@@ -191,8 +214,22 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, LOANS.name, COMMITMENTS.name, PARCEL.name, RELATIONS.name],
-    writes: [LOANS.name, COMMITMENTS.name, ENTITY.name, PARCEL.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      LOANS.name,
+      COMMITMENTS.name,
+      PARCEL.name,
+      RELATIONS.name,
+      ...(o.contagionCaution ? [CONTAGION_STATE.name] : []),
+    ],
+    writes: [
+      LOANS.name,
+      COMMITMENTS.name,
+      ENTITY.name,
+      PARCEL.name,
+      ...(o.bondage?.abuse ? [RELATIONS.name] : []),
+    ],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || o.seeds.length === 0) return {};
@@ -222,6 +259,10 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       const rows = loanRows(ctx.truth);
       const known = new Set(rows.map((r) => r.loan.seed));
 
+      const failedHome = (home: string): boolean => {
+        const m = firstAlive(home);
+        return m !== undefined && ctx.truth.get(CONTAGION_STATE, m)?.failed === true;
+      };
       // Abrir: las semillas cuyo día llegó y que todavía no son préstamo.
       const opened: { id: string; loan: LoanRow }[] = [];
       for (const s of [...o.seeds].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
@@ -232,6 +273,19 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         if (!def || !lenderMan || !borrowerMan) continue;
         const unit = goodUnit(def);
         if (bal(acct(s.lender), unit) < s.principal) continue;
+        let rate = s.rate;
+        if (o.contagionCaution) {
+          if (failedHome(s.lender)) continue;
+          if (
+            rows.some(
+              (r) =>
+                r.loan.status === "active" &&
+                r.loan.lender === s.lender &&
+                failedHome(r.loan.borrower),
+            )
+          )
+            rate += o.contagionCaution.rateMarkup;
+        }
         const id = ctx.newId("commitment");
         const k = events.length;
         const loan = makeLoan({
@@ -242,7 +296,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           borrowerAccount: acct(s.borrower),
           unit,
           requested: s.principal,
-          rate: s.rate,
+          rate,
           startDay: today,
           dueDay: today + s.termDays,
           collateral: (s.collateral ?? []).map(({ lot: _lot, ...c }) => ({
@@ -597,14 +651,17 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             { kind: "event" as const, event: c.originEventId as never },
             { kind: "state" as const, entity: r.id as unknown as EntityRef, key: "bondage" },
           ];
-          const endWith = (end: "term" | "escape") => {
+          const endWith = (
+            end: "term" | "escape" | "ransom" | "abuse",
+            extra: Record<string, unknown> = {},
+          ) => {
             const k = events.length;
             const done = endBondage(c, end, draftEvent(k) as unknown as string);
             events.push({
               kind: "credit.bondage_ended",
               actors: [debtorMan, creditorMan],
               place: o.placeOf(ctx.truth, debtorMan),
-              data: { commitment: r.id, parent: c.parent, end, unpaid: done.unpaid },
+              data: { commitment: r.id, parent: c.parent, end, unpaid: done.unpaid, ...extra },
               emissions: {},
               causes: cause,
             });
@@ -617,6 +674,56 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           const half = c.term.startDay + (c.term.endDay - c.term.startDay) / 2;
           if (ob.duty.creditPerDay <= 0 && today >= half) {
             endWith("escape");
+            continue;
+          }
+          // Rescate: un conocido del deudor con saldo paga lo que falta (conservación por el ledger).
+          const owedLeft = Math.ceil(bondageDebtLeft(c));
+          const unit = c.parent ? ctx.truth.get(LOANS, c.parent as never)?.unit : undefined;
+          if (o.bondage?.ransom && owedLeft > 0 && unit) {
+            const debtorHome = ctx.truth.get(PERSON, debtorMan)?.household;
+            let best: { man: AgentId; home: string; trust: number } | undefined;
+            for (const id of [...ctx.truth.ids(PERSON)].sort()) {
+              const p = ctx.truth.get(PERSON, id);
+              if (!p || p.household === debtorHome || p.household === ob.creditor) continue;
+              if (ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+              const toward = ctx.truth.get(RELATIONS, id)?.toward;
+              const trust = trustNow(toward?.[debtorMan as string], ctx.now, o.relationDecay);
+              if (trust <= 0 || bal(acct(p.household), unit) < owedLeft) continue;
+              if (!best || trust > best.trust)
+                best = { man: id as AgentId, home: p.household, trust };
+            }
+            if (best) {
+              const k = events.length;
+              const ts = [{ unit, from: acct(best.home), to: acct(ob.creditor), amount: owedLeft }];
+              postings.push({ event: draftEvent(k), transfers: ts });
+              apply(ts);
+              endWith("ransom", { ransomer: best.man, paid: owedLeft });
+              continue;
+            }
+          }
+          // Abuso: el acreedor rompe el trato; los vecinos que confiaban en él le quitan confianza.
+          const ab = o.bondage?.abuse;
+          if (
+            ab &&
+            ctx.rng.fork("bondageAbuse", r.id, today).chance(ab.chance(ctx.truth, creditorMan))
+          ) {
+            endWith("abuse", { reputationCost: ab.reputationCost });
+            for (const id of [...ctx.truth.ids(PERSON)].sort()) {
+              if (id === (creditorMan as unknown) || id === (debtorMan as unknown)) continue;
+              const rel = ctx.truth.get(RELATIONS, id);
+              const old = rel?.toward[creditorMan as string];
+              if (!rel || !old || (old.dims.trust ?? 0) <= 0) continue;
+              const trust = Math.max(0, (old.dims.trust ?? 0) - ab.reputationCost);
+              changes.push(
+                setComponent(RELATIONS, id as never, {
+                  ...rel,
+                  toward: {
+                    ...rel.toward,
+                    [creditorMan as string]: { ...old, dims: { ...old.dims, trust } },
+                  },
+                }),
+              );
+            }
             continue;
           }
           const w = workBondageDay(c, today);

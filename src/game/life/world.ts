@@ -80,6 +80,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
+import { lendProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
@@ -261,6 +262,8 @@ export interface LifeWorld {
   readonly gatherCraving?: GatherCravingOptions;
   /** Opt-in (con `consumables` y `moldHints`): sin comercio ni planta, pedir la sustancia a un conocido que se cree que la tiene (`life.decide`); apagado, sin candidata nueva. */
   readonly borrowCraving?: BorrowCravingOptions;
+  /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
+  readonly lendBorrowed?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
@@ -295,6 +298,8 @@ export interface LifeWorld {
   readonly marks?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
+  /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
+  readonly loanContagionEffects?: { readonly rateMarkup: number };
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
@@ -487,7 +492,13 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.loanContagion !== undefined
-          ? [contagionProcess({ unit: parts.loanContagion, placeOf: placeOf(parts, village) })]
+          ? [
+              contagionProcess({
+                unit: parts.loanContagion,
+                placeOf: placeOf(parts, village),
+                ...(parts.loanContagionEffects ? { fame: true } : {}),
+              }),
+            ]
           : []),
         ...(parts.marks === true
           ? [marksProcess({ placeOf: placeOf(parts, village), eye: scamEyeOf(parts.traits) })]
@@ -556,6 +567,18 @@ export function lifeWorld(
           : []),
         askAroundProcess({ player, traits: parts.traits, placeOf: placeOf(parts, village) }),
         creditProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
+        ...(parts.lendBorrowed === true && parts.borrowCraving
+          ? [
+              lendProcess({
+                goods: parts.goods,
+                dims: parts.relationDims,
+                bonds: parts.relationBonds,
+                day: parts.clock.day,
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         pledgeProcess({ goods: parts.goods, placeOf: placeOf(parts, village) }),
         keepProcess({
           values: parts.values,
@@ -661,6 +684,9 @@ export function lifeWorld(
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
           ...(parts.loanBondage ? { bondage: parts.loanBondage } : {}),
+          ...(parts.loanContagion !== undefined && parts.loanContagionEffects
+            ? { contagionCaution: parts.loanContagionEffects }
+            : {}),
           ...(parts.relationDecay
             ? {
                 relationDecay: {
