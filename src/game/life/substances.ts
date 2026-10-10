@@ -67,14 +67,27 @@ export function cueContextOf(
   who: AgentId,
   now: number,
   clock: PlanetClock,
+  /**
+   * Opt-in: `believedPresent` son las personas que quien siente CREE presentes (sustituye a "las del
+   * mismo hex": una creencia falsa despierta la señal, una persona oculta no) y `hourOffset` el huso
+   * local en horas respecto de la hora global. Sin esto, el entorno es el de siempre.
+   */
+  local?: { readonly believedPresent?: readonly string[]; readonly hourOffset?: number },
 ): CueContext {
   const hex = truth.get(LOCATION, who)?.hex ?? 0;
-  const people = truth
-    .ids(LOCATION)
-    .filter((id) => id !== who && id.startsWith("agent:") && truth.get(LOCATION, id)?.hex === hex)
-    .map(String);
+  const people =
+    local?.believedPresent !== undefined
+      ? local.believedPresent.filter((id) => id !== who && id.startsWith("agent:"))
+      : truth
+          .ids(LOCATION)
+          .filter(
+            (id) => id !== who && id.startsWith("agent:") && truth.get(LOCATION, id)?.hex === hex,
+          )
+          .map(String);
   const inDay = ((now % clock.day) + clock.day) % clock.day;
-  return { hex, people, hour: Math.floor((inDay / clock.day) * 24) };
+  const hour = Math.floor((inDay / clock.day) * 24);
+  const off = Math.round(local?.hourOffset ?? 0);
+  return { hex, people, hour: (((hour + off) % 24) + 24) % 24 };
 }
 
 /** Ansia que despierta el entorno por señales aprendidas; sin señales (o sin opt-in), 0. */
