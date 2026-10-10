@@ -147,6 +147,60 @@ describe("marcas en el lote", () => {
     expect(m?.stampedBy).toBe(buyer);
     expect(go("clumsy").events).toBeUndefined();
   });
+  it("vender un lote con marca falsa lleva la marca forjada y el comprador la verifica", () => {
+    const wu = "agent:3" as AgentId;
+    const fake = {
+      event: "event:1",
+      unit: "good:grain",
+      grams: 100,
+      mark: { claimedBy: wu, stampedBy: seller, tick: 1, claimed: 0.9, fidelity: 0.2 },
+      seemsForged: false,
+      credence: 1,
+    };
+    const tables: Record<string, Record<string, unknown>> = {
+      [LOT_MARKS.name]: { [seller]: { lots: [fake] } },
+      entity: {},
+    };
+    const truth = { get: (t: { name: string }, id: string) => tables[t.name]?.[id] } as never;
+    const go = (roll: number) => {
+      const rng = { fork: () => rng, float: () => roll } as never;
+      return marksProcess({ placeOf: () => "here" as never, eye: () => 0.9 }).run({
+        truth,
+        rng,
+        recent: [
+          {
+            id: "event:9" as EventId,
+            actors: [seller],
+            data: {
+              effect: {
+                kind: "trade",
+                with: buyer,
+                deal: true,
+                direction: "sell",
+                good: "good:grain",
+                grams: 50,
+                quality: 0.4,
+              },
+            },
+          },
+        ],
+        now: 6 as Tick,
+      } as unknown as ProcessContext) as unknown as {
+        events?: { kind: string; data: Record<string, unknown> }[];
+        changes?: { id?: string; value?: { lots: { mark: { claimedBy: string } }[] } }[];
+      };
+    };
+    const r = go(0.0);
+    expect(r.events?.[0]?.data["forged"]).toBe(true);
+    expect(r.events?.[0]?.data["claimed"]).toBe(0.9);
+    expect(r.events?.[1]?.data["seemsForged"]).toBe(true);
+    expect(r.events?.[1]?.data["credence"]).toBe(0);
+    const sold = r.changes?.find((c) => c.id === buyer);
+    expect(sold?.value?.lots[0]?.mark.claimedBy).toBe(wu);
+    expect(r.changes?.find((c) => c.id === seller)?.value?.lots).toEqual([]);
+    // Un ojo flojo y una tirada alta: la creencia queda alta (el comprador se la traga).
+    expect(go(0.99).events?.[1]?.data["seemsForged"]).toBe(false);
+  });
   it("sin trato no hay marca", () => {
     expect(run("buy", 0.5, false).events).toBeUndefined();
   });
