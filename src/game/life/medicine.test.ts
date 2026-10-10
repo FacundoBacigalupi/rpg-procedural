@@ -16,7 +16,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { exposureProcess } from "./exposure.ts";
-import { type Healer, medicineProcess } from "./medicine.ts";
+import { type Healer, healerFee, healerRenown, medicineProcess, signsOfBody } from "./medicine.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const flu: PathogenDef = {
@@ -175,5 +175,27 @@ describe("life.medicine", () => {
     });
     expect(none.run(ctx(t, clock.day * 2))).toEqual({});
     expect(p.run(ctx(t, clock.day * 2))).toEqual(out);
+  });
+
+  it("signos desde el cuerpo, fama y precio del sanador", () => {
+    const plan = { id: "p", zones: [], physiology: { refMassKg: 70 } } as never;
+    const body = {
+      massKg: 70,
+      blood: 1,
+      fatigue: 0.9,
+      wounds: [],
+      water: 0,
+      glycogen: 1e9,
+      fat: 1e9,
+      muscle: 1,
+      sleepDebt: 0,
+      sepsis: 0,
+      consciousness: "awake",
+    } as never;
+    const s = signsOfBody(plan, body) as { fever?: number; weakness?: number };
+    expect(s.fever).toBe(0.8);
+    expect(s.weakness).toBe(0.8);
+    expect(healerRenown(10, 9)).toBeGreaterThan(healerRenown(10, 2));
+    expect(healerFee(10, 0.5, 1)).toBeGreaterThan(healerFee(10, 0.5, 0));
   });
 });

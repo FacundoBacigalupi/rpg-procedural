@@ -24,6 +24,7 @@ import {
   readPressures,
   withHazards,
 } from "../../sim/index.ts";
+import { communityHungerSource } from "./famine.ts";
 import { living } from "./living.ts";
 
 /** Con más días de comida que esto, la despensa no preocupa. */
@@ -83,7 +84,7 @@ export interface PressureWorld {
 
 export function lifePressures(w: PressureWorld): Pressure[] {
   return withHazards(
-    readPressures([householdHungerSource(w.foods)], {
+    readPressures([householdHungerSource(w.foods), communityHungerSource()], {
       truth: w.truth,
       ledger: w.ledger,
       now: w.scheduler.now,

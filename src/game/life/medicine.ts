@@ -17,6 +17,9 @@ import {
 } from "../../core/index.ts";
 import {
   BODY_STATE,
+  type Body,
+  type BodyPlanDef,
+  bodySigns,
   type ConditionModel,
   diagnose,
   draftEvent,
@@ -82,7 +85,48 @@ export function healingSkill(state: Parameters<typeof levelOf>[0]): number {
   );
 }
 
+/** Lo que ve el sanador en el cuerpo del enfermo (`bodySigns`), como pesos 0-1 de `SignSet`. */
+export function signsOfBody(plan: BodyPlanDef, body: Body): SignSet {
+  const r = bodySigns(plan, body, true);
+  const out: Record<string, number> = {};
+  const put = (k: string, v: number) => {
+    out[k] = Math.max(out[k] ?? 0, v);
+  };
+  const map: Readonly<Record<string, readonly [string, number]>> = {
+    feverish: ["fever", 0.8],
+    tired: ["weakness", 0.5],
+    exhausted: ["weakness", 0.8],
+    wasting: ["weakness", 0.4],
+    pale: ["pallor", 0.6],
+    dizzy: ["dizziness", 0.5],
+    thirsty: ["thirst", 0.4],
+    parched: ["thirst", 0.8],
+    wound_hot: ["wound_heat", 0.7],
+    in_pain: ["pain", 0.6],
+    bleeding_heavily: ["bleeding", 0.9],
+    bleeding: ["bleeding", 0.4],
+    limping: ["limping", 0.5],
+  };
+  for (const s of [...r.general, ...r.zones.flatMap((z) => z.signs)]) {
+    const m = map[s];
+    if (m) put(m[0], m[1]);
+  }
+  return out;
+}
+
+/** Fama del sanador: la fracción de lo que atendió que mejoró (con prior de 1 caso neutro), 0-1. */
+export function healerRenown(treated: number, helped: number): number {
+  return (helped + 0.5) / (treated + 1);
+}
+
+/** Lo que pide por atender: base según la habilidad, que sube con la fama que le corre por rumor (x1 a x2). */
+export function healerFee(base: number, skill: number, renown: number): number {
+  return Math.round(base * (0.5 + skill) * (1 + Math.min(1, Math.max(0, renown))) * 100) / 100;
+}
+
 export interface MedicineOptions {
+  /** Opt-in: planes de cuerpo; los signos del enfermo salen de `bodySigns` en vez de fijos. */
+  readonly plans?: readonly BodyPlanDef[] | undefined;
   readonly clock: PlanetClock;
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
@@ -161,7 +205,10 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           taken.set(healer.agent, (taken.get(healer.agent) ?? 0) + 1);
 
           const progress = Math.min(1, Math.max(0, hours / Math.max(1, def.courseHours)));
-          const signs: SignSet = { fever: 0.8, weakness: 0.3 + 0.5 * progress };
+          const body = o.plans ? ctx.truth.get(BODY_STATE, id) : undefined;
+          const plan = body && o.plans?.find((p) => p.id === body.plan);
+          const signs: SignSet =
+            body && plan ? signsOfBody(plan, body) : { fever: 0.8, weakness: 0.3 + 0.5 * progress };
           const belief = diagnose(
             signs,
             healer.models,
