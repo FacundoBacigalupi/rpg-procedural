@@ -170,6 +170,8 @@ export interface CharacterPanelOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cueLocal`): ids de bienes cuya vista despierta la seÃ±al por objeto de una sustancia. */
   readonly objectCues?: readonly string[];
+  /** Opt-in (con `objectCues`): también lo que llevan los presentes y los puestos del lugar. */
+  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
   /** Opt-in (con `substances`): el residuo de lo ingerido y la sobrecarga reciente se sienten (mismo `ResidueConfig` de la vida). */
   readonly residue?: ResidueConfig;
 }
@@ -185,13 +187,17 @@ export function panelOptionsOf(life: {
   readonly cravingCues?: boolean | undefined;
   readonly cueLocal?: boolean | undefined;
   readonly objectCues?: boolean | undefined;
-}): Pick<CharacterPanelOptions, "cueLocal" | "objectCues" | "residue"> {
+  readonly viewCues?: CharacterPanelOptions["viewCues"] | undefined;
+}): Pick<CharacterPanelOptions, "cueLocal" | "objectCues" | "residue" | "viewCues"> {
   const cueLocal = life.cravingCues === true && life.cueLocal === true;
   const goods = (life.consumables ?? []).map((c) => c.good);
   return {
     ...(life.residue ? { residue: life.residue } : {}),
     ...(cueLocal ? { cueLocal: true } : {}),
     ...(cueLocal && life.objectCues === true && goods.length > 0 ? { objectCues: goods } : {}),
+    ...(cueLocal && life.objectCues === true && goods.length > 0 && life.viewCues
+      ? { viewCues: life.viewCues }
+      : {}),
   };
 }
 
@@ -275,6 +281,7 @@ export function characterPanel(w: LifeWorld, opts: CharacterPanelOptions = {}): 
           substances: substancePanel(w, {
             cueLocal: opts.cueLocal === true,
             ...(opts.objectCues ? { objectCues: opts.objectCues } : {}),
+            ...(opts.viewCues ? { viewCues: opts.viewCues } : {}),
             ...(opts.residue ? { residue: opts.residue } : {}),
           }),
         }

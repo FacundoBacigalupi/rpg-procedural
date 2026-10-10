@@ -245,6 +245,8 @@ export interface LifeOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): señal por objeto (`LifeParts.objectCues`). */
   readonly objectCues?: boolean;
+  /** Opt-in (con `objectCues`): tambi�n ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
+  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -284,6 +286,7 @@ export function optInParts(
   | "cravingCues"
   | "cueLocal"
   | "objectCues"
+  | "viewCues"
   | "tradeNeeds"
 > {
   return {
@@ -335,6 +338,7 @@ export function optInParts(
     ...(options.cravingCues ? { cravingCues: true } : {}),
     ...(options.cueLocal ? { cueLocal: true } : {}),
     ...(options.objectCues ? { objectCues: true } : {}),
+    ...(options.viewCues ? { viewCues: options.viewCues } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

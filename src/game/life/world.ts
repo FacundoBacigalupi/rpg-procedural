@@ -4,6 +4,7 @@
 import type {
   AgentId,
   EventLog,
+  HolderRef,
   IdAllocator,
   Ledger,
   LedgerUnit,
@@ -354,6 +355,8 @@ export interface LifeWorld {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): ver el consumible en la despensa despierta su señal por objeto en `life.decide`; ver `DecideOptions.objectCues`. */
   readonly objectCues?: boolean;
+  /** Opt-in (con `objectCues`): ver tambi�n lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
+  readonly viewCues?: { readonly stalls?: (hex: number) => readonly HolderRef[] };
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -1278,6 +1281,12 @@ export function lifeWorld(
             : {}),
           ...(parts.cravingCues === true && parts.cueLocal === true && parts.objectCues === true
             ? { objectCues: true }
+            : {}),
+          ...(parts.cravingCues === true &&
+          parts.cueLocal === true &&
+          parts.objectCues === true &&
+          parts.viewCues
+            ? { viewCues: parts.viewCues }
             : {}),
           ...(() => {
             const base: MoldHintOptions | undefined = parts.moldHints
