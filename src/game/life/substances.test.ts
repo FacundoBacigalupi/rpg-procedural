@@ -11,7 +11,7 @@ import {
   type SubstanceDef,
   WorldTruth,
 } from "../../sim/index.ts";
-import { consumeDose, substancesProcess } from "./substances.ts";
+import { consumeDose, scaledDose, substancesProcess } from "./substances.ts";
 
 const clock = { day: 86400, year: 86400 * 360, moons: [] };
 const place = { kind: "cell", cell: "cell:1" } as never;
@@ -95,5 +95,13 @@ describe("consumeDose (verbo consume)", () => {
       JSON.stringify(r.changes.find((c) => c.table === PERSON_SUBSTANCE.name));
     expect(held(small)).not.toEqual(held(big));
     expect(small.events[0]?.data).toMatchObject({ source: "consume:tea" });
+  });
+});
+
+describe("scaledDose (beber con sustancia)", () => {
+  it("escala la dosis por litro y la deja fuera del lote original", () => {
+    const tea = { good: "tea", def: POISON, route: "ingest", amount: 2 } as const;
+    expect(scaledDose(tea, 0.75).amount).toBeCloseTo(1.5);
+    expect(tea.amount).toBe(2);
   });
 });

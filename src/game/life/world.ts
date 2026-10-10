@@ -245,6 +245,8 @@ export interface LifeWorld {
   readonly consumables?: readonly ConsumableDef[];
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
+  /** Opt-in: lo que se bebe lleva una sustancia (`amount` por litro); ver `ActOptions.drinkSubstance`. */
+  readonly drinkSubstance?: ConsumableDef;
   /**
    * Opt-in: el verbo `boil` (body-health §5) quema combustible del ledger (declarar el sumidero
    * `burned` con esa unidad) y deja agua tratada que `waterSources` aplica al beber. Apagado por
@@ -417,6 +419,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
           ...(parts.filter ? { filter: parts.filter } : {}),
           ...(parts.waterSources?.netDrink === true
@@ -868,6 +871,7 @@ export function lifeWorld(
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
+          ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.cravingCues === true ? { cravingCues: true } : {}),
           ...(parts.moldHints
             ? { moldHints: parts.moldHints }

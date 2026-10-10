@@ -101,6 +101,11 @@ export interface ConsumableDef {
   readonly amount: number;
 }
 
+/** La dosis de `c` para una cantidad (`amount` por gramo o por litro) de lo ingerido. */
+export function scaledDose(c: ConsumableDef, quantity: number): ConsumableDef {
+  return { ...c, amount: c.amount * quantity };
+}
+
 /**
  * Tomar una dosis ahora (verbo `consume`): suma la dosis al estado de la persona y, si la
  * sustancia no existía, la crea como entidad con su evento. Lo demás (absorber, metabolizar,
