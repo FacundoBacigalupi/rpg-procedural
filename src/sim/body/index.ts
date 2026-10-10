@@ -15,6 +15,7 @@ export * from "./pathogen.ts";
 export * from "./physiology.ts";
 export * from "./plan.ts";
 export * from "./process.ts";
+export * from "./reopen.ts";
 export * from "./state.ts";
 export * from "./stunting.ts";
 export * from "./substance.ts";

@@ -146,6 +146,8 @@ export interface LifeWorld {
   readonly eatenNutrition?: boolean;
   /** Las carencias publicadas (`DEFICIENCY_EFFECTS`) frenan la curación y la defensa inmune del cuerpo; apagado por defecto. */
   readonly deficiencyEffects?: boolean;
+  /** Con `deficiencyEffects`, `reopenWound` reabre heridas viejas (rng con clave); apagado por defecto. */
+  readonly reopenWounds?: boolean;
   /** Desnutrición proteica grave sostenida mata (causa `malnutrition`); apagado por defecto: sin muertes nuevas. */
   readonly malnutritionDeath?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`GROWTH_SEQUELAE`); apagado por defecto: sin filas. */
@@ -277,6 +279,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
           ambientOf: ambientOf(parts),
           deficiency: parts.deficiencyEffects === true,
+          reopen: parts.reopenWounds === true,
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,

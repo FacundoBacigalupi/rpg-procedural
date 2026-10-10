@@ -32,6 +32,7 @@ import {
   injure,
   massOf,
   newBody,
+  reopenOldWounds,
   setActivity,
   treat,
 } from "./index.ts";
@@ -460,5 +461,31 @@ describe("en el scheduler", () => {
     expect(hot.water).toBeGreaterThan(mild.water);
     expect(cold.glycogen + cold.fat).toBeLessThan(mild.glycogen + mild.fat);
     expect(advanceBody(plan, me, fresh(), DAY).body).toEqual(mild);
+  });
+});
+
+describe("carencias en los signos y heridas que se reabren", () => {
+  it("bodySigns suma palidez y consunción por etapa solo si se le pasan; sin ellas, igual que antes", () => {
+    const b = fresh();
+    expect(bodySigns(plan, b, false, { iron: "early", protein: "early" }).general).toEqual(
+      bodySigns(plan, b).general.concat("pale"),
+    );
+    const s = bodySigns(plan, b, false, { iron: "overt", protein: "overt" }).general;
+    expect(s).toContain("pale");
+    expect(s).toContain("wasting");
+    expect(bodySigns(plan, b, false, {}).general).toEqual(bodySigns(plan, b).general);
+  });
+
+  it("reopenOldWounds es determinista, no toca heridas abiertas y no tira con chance 0", () => {
+    const base = injure(plan, fresh(), blow({ force: 0.4, zone: "left_leg" }), Rng.root(1));
+    const w = { ...base.wound, stage: "healing" as const, repair: 0.8 };
+    const body = { ...base.body, wounds: [w] };
+    const a = reopenOldWounds(body, 1, 86_400, 100, Rng.root(5));
+    const b = reopenOldWounds(body, 1, 86_400, 100, Rng.root(5));
+    expect(a).toEqual(b);
+    expect(a.reopened[0]?.stage).toBe("inflamed");
+    expect(reopenOldWounds(body, 0, 86_400, 100, Rng.root(5)).body).toBe(body);
+    const open = { ...body, wounds: [{ ...w, stage: "fresh" as const }] };
+    expect(reopenOldWounds(open, 1, 86_400, 100, Rng.root(5)).reopened).toEqual([]);
   });
 });

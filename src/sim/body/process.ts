@@ -17,6 +17,7 @@ import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
 import { DEFICIENCY_EFFECTS } from "./nutrition.ts";
 import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
+import { reopenOldWounds } from "./reopen.ts";
 import { BODY_STATE } from "./state.ts";
 import { SWEAT } from "./thermal.ts";
 
@@ -28,6 +29,11 @@ export interface BodyProcessOptions {
   ambientOf?(truth: ReadonlyWorldTruth, who: AgentId): AmbientTemp;
   /** Leer `DEFICIENCY_EFFECTS` (curación e inmune); apagado por defecto: la aldea no cambia. */
   readonly deficiency?: boolean;
+  /**
+   * Con `deficiency`, que `reopenWound` reabra heridas viejas (rng con clave por persona, tick y
+   * herida); apagado por defecto: sin RNG ni eventos nuevos.
+   */
+  readonly reopen?: boolean;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -83,7 +89,29 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
         o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined,
       );
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
-      const changes: StateChange[] = [setComponent(BODY_STATE, me, next)];
+      let after = next;
+      const reopenP = o.deficiency && o.reopen ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined;
+      if (reopenP && !next.death) {
+        const r = reopenOldWounds(
+          next,
+          reopenP.reopenWound,
+          ctx.now - body.updatedAt,
+          ctx.now,
+          ctx.rng.fork("reopen", me),
+        );
+        after = r.body;
+        for (const w of r.reopened)
+          events.push({
+            kind: "body.wound_reopened",
+            actors: [me],
+            place,
+            tick: ctx.now,
+            data: { zone: w.zone, wound: w.id },
+            emissions: {},
+            causes: [{ kind: "event", event: w.cause }],
+          });
+      }
+      const changes: StateChange[] = [setComponent(BODY_STATE, me, after)];
       const died = happenings.findIndex((h) => h.kind === "died");
       if (died >= 0) changes.push(endEntity(base, draftEvent(died), ctx.now));
       return { events, changes };
