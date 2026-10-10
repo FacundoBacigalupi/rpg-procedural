@@ -211,6 +211,8 @@ export interface LifeWorld {
      * que cree de respaldo). Sin esto, la confianza es la fama creída y no hay autoridad.
      */
     readonly realBonds?: boolean;
+    /** Opt-in (con `realBonds`): `contagionBelief` y el jefe del hogar salen de rasgos de la cultura de la aldea. */
+    readonly cultureTraits?: { readonly contagion?: string; readonly head?: string };
   };
   /**
    * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
@@ -1027,6 +1029,9 @@ export function lifeWorld(
                           householdAuthority(truth, patient, pathogen, {
                             ...(parts.patientDecides?.contagionBelief
                               ? { contagionBelief: parts.patientDecides.contagionBelief }
+                              : {}),
+                            ...(parts.patientDecides?.cultureTraits
+                              ? { cultureTraits: parts.patientDecides.cultureTraits }
                               : {}),
                           }),
                       }
