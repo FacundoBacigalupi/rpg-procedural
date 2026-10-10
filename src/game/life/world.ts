@@ -74,6 +74,7 @@ import { type LoanSeed, loansProcess } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
 import { marketProcess } from "./market.ts";
 import { type Healer, type HealerSchool, medicineProcess } from "./medicine.ts";
+import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import { type MoldGossipOptions, moldGossipProcess } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { nutritionProcess } from "./nutrition.ts";
@@ -155,6 +156,8 @@ export interface LifeWorld {
   readonly loanSeeds?: readonly LoanSeed[];
   /** Presión de escasez de alimento y su descarga (economy, hambruna); apagada por defecto: la aldea no cambia. */
   readonly famine?: Omit<FamineOptions, "clock" | "goods" | "placeOf">;
+  /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`, tabla `MIGRATIONS`); solo la decisión, no mueve a nadie. Apagado por defecto. */
+  readonly migration?: Omit<MigrationOptions, "clock" | "goods" | "placeOf">;
   readonly statuses: readonly StatusDef[];
   readonly cultureTraits: readonly TraitDef[];
   readonly speech: readonly SpeechLine[];
@@ -381,6 +384,16 @@ export function lifeWorld(
           ? [
               famineProcess({
                 ...parts.famine,
+                clock: parts.clock,
+                goods: parts.goods,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
+        ...(parts.migration
+          ? [
+              migrationProcess({
+                ...parts.migration,
                 clock: parts.clock,
                 goods: parts.goods,
                 placeOf: placeOf(parts, village),
