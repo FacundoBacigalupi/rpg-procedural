@@ -600,7 +600,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
       - (f3d3) Vacío de sentido desde núcleo cumplido subjetivamente, dividido antes de implementar:
         - [x] (f3d3a) Señal pura desde historial de cumplimiento, sin núcleo activo, con tiempos y causas válidos; no sumar todavía a utilidad.
         - [x] (f3d3b) Presión lenta de sentido y cableado opt-in a utilidad desde la señal propia.
-        - [ ] (f3d3c) Calibrar intensidad, evolución y reemplazo del vacío con seeds y evidencia causal.
+        - [x] (f3d3c) `sim/mind/meaning-calibration.ts` fija rampa 9 meses, meseta 24, habituación a piso 0.4 en 48 y alivio gradual de 4 meses por un núcleo nuevo con causa; `tools/sim/meaning-vacuum.ts` lo mide en seeds 1..20 (pico medio 0.80, 0.32 a los 8 años, reemplazo apaga a 0). Puro; sin cablear a la utilidad por defecto.
       - [ ] (f3d4) Cumplimiento de otros objetivos desde evidencia de progreso propio y metas concretas; no cerrar valores continuos por una acción aislada.
     - [ ] (f3e) Calibrar `LAYER_PULL` y activar capas persistidas por defecto solo después de comparar seeds y revisar hashes/replay.
   - [x] (f2b) `closeGoalsOnDeath` cierra y vacía objetivos una vez en `perceive` ante `body.died` validado, citando muerte y origen; funciona aunque el NPC ya no decida.
