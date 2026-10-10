@@ -163,8 +163,8 @@ Pagos repetidos no se descuentan dos veces; una noticia de devolución completa
 marca el saldo creído como cumplido. Si no se conoce el pago, el libro conserva
 la deuda anterior. La proporción pendiente se calcula por contrato sin sumar
 unidades incompatibles. Apagado no agrega proceso, tablas, eventos ni RNG.
-El libro cubre préstamos y subrogaciones conocidas; el fiado y la servidumbre
-corresponden a los subítems posteriores del ROADMAP.
+El libro cubre préstamos, subrogaciones y fiado conocidos; la servidumbre
+corresponde al subítem posterior del ROADMAP.
 
 **Proyección a metas (2026-10-10, f3b2):** `life.decide` con `debtKnowledge` lee
 solo el libro propio y deriva `medium:debt:<contraparte>` incluso sin memoria
@@ -189,6 +189,19 @@ solo los libros de sus partes con `paid` y `left` conocidos: puede corregir un
 saldo viejo, no leer el `performed` actual. Cero pendiente conocido libera la
 meta. Sin la opción, los eventos y el estado real de los préstamos conservan
 exactamente su forma anterior.
+
+**Fiado conocido (2026-10-10, f3b4a):** el cierre `perceive/onEvent` del scheduler
+ejecuta `life.credit` antes de `life.debt_knowledge`. Así el libro puede validar
+el id, origen, unidad y partes de `CREDIT` recién creado por `action.speak` o
+`household.borrowed` y guardar los gramos anunciados por ese acto. No copia
+`CREDIT.principal` ni `CREDIT.owed`, aunque difieran de lo anunciado. El plazo
+queda desconocido si el acto no lo anunció: no se inventa que el NPC conoce la
+norma de treinta días. `action.give` válido y `household.repaid` actualizan los
+fiados conocidos de sus dos participantes por unidad y orden de acuerdo; si
+el pago nombra `payment.credit`, actualiza solo ese contrato conocido. Fallos,
+cantidades cero, unidades ajenas, terceros o contratos secretos no saldan ni
+crean recuerdos. La fuente es el acto real, con protección contra pagos
+repetidos. No añade eventos, ids, RNG ni un segundo escritor del libro.
 
 ```ts
 interface EnforcerRef {

@@ -9,6 +9,7 @@ import {
 } from "../../core/index.ts";
 import {
   BODY_STATE,
+  CREDIT,
   ENTITY,
   type MediumInput,
   PERSON,
@@ -16,10 +17,14 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
+import { paidIn } from "./credit.ts";
 import { COMMITMENTS, type SubrogationNotice } from "./loans.ts";
 
 export interface DebtBelief {
   readonly commitment: string;
+  readonly kind?: "loan" | "subrogation" | "credit";
+  /** Momento del acuerdo: mantiene el orden de devolución al actualizar learnedAt. */
+  readonly openedAt?: Tick;
   readonly parent?: string;
   readonly role: "debtor" | "creditor";
   readonly other: AgentId;
@@ -29,7 +34,8 @@ export interface DebtBelief {
   readonly unit: string;
   readonly total: number;
   readonly remaining: number;
-  readonly dueDay: number;
+  /** Ausente cuando el acto no anunció plazo y no consta una norma conocida. */
+  readonly dueDay?: number;
   readonly status: "active" | "fulfilled" | "defaulted" | "settled";
   readonly originEventId: EventId;
   readonly learnedAt: Tick;
@@ -147,12 +153,64 @@ export function debtGoalInputs(book: DebtBook | undefined): MediumInput[] {
 }
 
 function numberIn(e: Event, key: string): number | undefined {
-  const v = (e.data as Record<string, unknown>)[key];
+  const v = recordOf(e.data)?.[key];
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
 }
 
+function recordOf(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+/** FIFO de fiados conocidos, sin completar huecos con deudas verdaderas que nadie le contó. */
+export function observeCreditPayment(
+  book: DebtBook | undefined,
+  holder: AgentId,
+  payer: AgentId,
+  to: AgentId,
+  unit: string,
+  amount: number,
+  event: EventId,
+  at: Tick,
+  credit?: string,
+): DebtBook {
+  let next = book ?? { items: [] };
+  const eligible = next.items.filter(
+    (b) =>
+      b.kind === "credit" &&
+      b.unit === unit &&
+      (credit === undefined || b.commitment === credit) &&
+      ((holder === payer && b.role === "debtor" && b.other === to) ||
+        (holder === to && b.role === "creditor" && b.other === payer)),
+  );
+  if (eligible.some((b) => b.sources.includes(event)) || !Number.isFinite(amount) || amount <= 0)
+    return next;
+  let left = amount;
+  for (const b of [...eligible].sort(
+    (a, b) =>
+      (a.openedAt ?? a.learnedAt) - (b.openedAt ?? b.learnedAt) ||
+      compareStrings(a.commitment, b.commitment),
+  )) {
+    if (left <= 0) break;
+    if (b.remaining <= 0 || b.status === "settled" || b.status === "fulfilled" || at < b.learnedAt)
+      continue;
+    const applied = Math.min(left, b.remaining);
+    next = observeDebt(next, {
+      kind: "paid",
+      commitment: b.commitment,
+      amount: applied,
+      event,
+      at,
+      fulfilled: applied === b.remaining,
+    });
+    left -= applied;
+  }
+  return next;
+}
+
 function subrogationsIn(e: Event): readonly SubrogationNotice[] {
-  const raw = (e.data as Record<string, unknown>)["subrogations"];
+  const raw = recordOf(e.data)?.["subrogations"];
   if (!Array.isArray(raw)) return [];
   return raw.filter((value): value is SubrogationNotice => {
     if (typeof value !== "object" || value === null) return false;
@@ -183,7 +241,14 @@ export function debtKnowledgeProcess(): ProcessDef {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [DEBT_BOOK.name, COMMITMENTS.name, PERSON.name, ENTITY.name, BODY_STATE.name],
+    reads: [
+      DEBT_BOOK.name,
+      COMMITMENTS.name,
+      CREDIT.name,
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+    ],
     writes: [DEBT_BOOK.name],
     run(ctx) {
       const books = new Map<AgentId, DebtBook>();
@@ -201,6 +266,84 @@ export function debtKnowledgeProcess(): ProcessDef {
         if (next.items.some((b, i) => b !== prev?.items[i])) books.set(who, next);
       };
       for (const e of ctx.recent) {
+        const data = recordOf(e.data);
+        if (!data) continue;
+        const offered = recordOf(data["credit"]);
+        if ((e.kind === "action.speak" || e.kind === "household.borrowed") && offered) {
+          const [creditor, debtor] = e.actors as readonly AgentId[];
+          const unit = offered["unit"];
+          const grams = offered["grams"];
+          const dueDay = offered["dueDay"];
+          if (
+            !creditor ||
+            !debtor ||
+            typeof unit !== "string" ||
+            typeof grams !== "number" ||
+            !Number.isFinite(grams) ||
+            grams <= 0
+          )
+            continue;
+          const id = ctx.truth
+            .ids(CREDIT)
+            .find(
+              (id) =>
+                ctx.truth.get(ENTITY, id)?.originEventId === e.id &&
+                ctx.truth.get(CREDIT, id)?.creditor === creditor &&
+                ctx.truth.get(CREDIT, id)?.debtor === debtor &&
+                ctx.truth.get(CREDIT, id)?.unit === unit,
+            );
+          if (id === undefined) continue;
+          for (const [who, other, role] of [
+            [debtor, creditor, "debtor"],
+            [creditor, debtor, "creditor"],
+          ] as const)
+            note(who, {
+              kind: "opened",
+              belief: {
+                commitment: id,
+                kind: "credit",
+                openedAt: e.tick,
+                role,
+                other,
+                debtorRef: debtor,
+                creditorRef: creditor,
+                unit,
+                total: grams,
+                remaining: grams,
+                ...(typeof dueDay === "number" && Number.isFinite(dueDay) && dueDay >= 0
+                  ? { dueDay }
+                  : {}),
+                status: "active",
+                originEventId: e.id,
+                learnedAt: e.tick,
+                confidence: 1,
+                sources: [e.id],
+              },
+            });
+          continue;
+        }
+        const payment = paidIn(e);
+        if (payment && Number.isFinite(payment.grams) && payment.grams > 0) {
+          const explicit = recordOf(data["payment"])?.["credit"];
+          if (explicit !== undefined && typeof explicit !== "string") continue;
+          for (const who of [payment.payer, payment.to]) {
+            if (!aware(who)) continue;
+            const prev = books.get(who) ?? ctx.truth.get(DEBT_BOOK, who);
+            const next = observeCreditPayment(
+              prev,
+              who,
+              payment.payer,
+              payment.to,
+              payment.unit,
+              payment.grams,
+              e.id,
+              e.tick,
+              explicit,
+            );
+            if (next.items.some((b, i) => b !== prev?.items[i])) books.set(who, next);
+          }
+          continue;
+        }
         if (
           e.kind !== "credit.loaned" &&
           e.kind !== "credit.paid" &&
@@ -208,8 +351,6 @@ export function debtKnowledgeProcess(): ProcessDef {
           e.kind !== "credit.subrogated_paid"
         )
           continue;
-        if (typeof e.data !== "object" || e.data === null || Array.isArray(e.data)) continue;
-        const data = e.data as Record<string, unknown>;
         if (e.kind === "credit.defaulted" && numberIn(e, "loss") === undefined) continue;
         const subrogatedPayment = e.kind === "credit.subrogated_paid";
         const id = subrogatedPayment ? data["commitment"] : data["loan"];
@@ -257,6 +398,7 @@ export function debtKnowledgeProcess(): ProcessDef {
               kind: "opened",
               belief: {
                 commitment: contract.id,
+                kind: "loan",
                 role,
                 other,
                 debtorRef: obligation.debtor,
@@ -325,6 +467,7 @@ export function debtKnowledgeProcess(): ProcessDef {
               kind: "opened",
               belief: {
                 commitment: n.commitment,
+                kind: "subrogation",
                 parent: contract.id,
                 role,
                 other,
