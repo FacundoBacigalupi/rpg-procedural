@@ -189,3 +189,44 @@ export function receiveEssenceLot(
     [unit]: { essence: Math.round((e / total) * 1e6) / 1e6, purity: Math.round(p * 1e6) / 1e6 },
   };
 }
+
+/** Qi del lugar relativo a una referencia (la del hogar del cuerpo): 0 = igual, 1 = el doble, -1 = nada. */
+export function relativeQi(level: number, reference: number): number {
+  return reference > 0 ? Math.max(-1, level / reference - 1) : 0;
+}
+
+/** °C equivalentes por unidad de qi relativo (sin calibrar). */
+export const QI_C_PER_RELATIVE = 4;
+const QI_C_MAX = 12;
+
+/**
+ * Ambiente térmico de un lugar de qi (el `qiC` de `altitudeEnv`): solo el qi que sobra de la
+ * referencia se siente en la piel; `temper` (-1 frío a 1 cálido, de la naturaleza del qi del lugar)
+ * le da el signo. Qi igual o menor que la referencia: 0. No crea ni mueve esencia.
+ */
+export function ambientQiC(relative: number, temper: number): number {
+  const over = clamp(relative, 0, 3);
+  return clamp(over * QI_C_PER_RELATIVE * clamp(temper, -1, 1), -QI_C_MAX, QI_C_MAX) + 0;
+}
+
+/** Fracción de la capacidad del cuerpo que absorbe por día en reposo cuando el qi duplica la referencia. */
+export const AMBIENT_ABSORB_PER_DAY = 0.01;
+
+/**
+ * Lo que un cuerpo en un lugar de qi alto toma sin querer en `days`: nada con qi igual o menor que
+ * la referencia; sobre ella, proporcional al exceso y a la capacidad. Cuanto más denso, menos puro
+ * (el cuerpo no alcanza a asentarlo): la parte impura se queda como residuo. El qi bajo no quita
+ * nada al cuerpo (eso sería otra cuenta). Devuelve `essence` total y su `purity`.
+ */
+export function ambientIntake(
+  relative: number,
+  capacity: number,
+  days: number,
+): { readonly essence: number; readonly purity: number } {
+  const over = clamp(relative, 0, 3);
+  if (over <= 0 || capacity <= 0 || days <= 0) return { essence: 0, purity: 1 };
+  return {
+    essence: over * AMBIENT_ABSORB_PER_DAY * capacity * days,
+    purity: 1 / (1 + 0.25 * over * over),
+  };
+}
