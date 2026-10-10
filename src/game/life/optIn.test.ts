@@ -22,6 +22,13 @@ describe("opciones opt-in de la vida", () => {
     expect(optInParts({ rumorGrievance: false })).toEqual({});
     expect(optInParts({ moldHintsFromCatalog: false })).toEqual({});
     expect(optInParts({ moldHintsFromCatalog: true })).toEqual({ moldHintsFromCatalog: true });
+    expect(optInParts({ tradeView: false })).toEqual({});
+  });
+
+  it("la vista de oficios pasa misread y people a las partes", () => {
+    const tv = { misread: { chance: 0.2 }, people: true };
+    expect(optInParts({ tradeView: tv })).toEqual({ tradeView: tv });
+    expect(optInParts({ tradeView: true })).toEqual({ tradeView: true });
   });
 
   it("encendidas llegan a las partes del mundo", () => {

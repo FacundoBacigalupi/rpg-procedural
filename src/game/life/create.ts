@@ -189,6 +189,8 @@ export interface LifeOptions {
   readonly swapMaterials?: boolean;
   /** Opt-in: el chisme de moldes mueve la decisión con precios del catálogo (`LifeParts.moldHintsFromCatalog`); apagado por defecto. */
   readonly moldHintsFromCatalog?: boolean;
+  /** Opt-in: vista de oficios (`TRADE_VIEW`); con `misread`/`people` además cree oficios equivocados / anota personas. Apagado por defecto. */
+  readonly tradeView?: LifeParts["tradeView"];
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -206,6 +208,7 @@ export function optInParts(
   | "relationDecay"
   | "swapMaterials"
   | "moldHintsFromCatalog"
+  | "tradeView"
 > {
   return {
     ...(options.waterSources
@@ -224,6 +227,7 @@ export function optInParts(
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
     ...(options.moldHintsFromCatalog ? { moldHintsFromCatalog: true } : {}),
+    ...(options.tradeView ? { tradeView: options.tradeView } : {}),
   };
 }
 

@@ -279,7 +279,9 @@ export interface LifeWorld {
   /** Opt-in: cada hogar elige oficio por habilidad y necesidad (`tradeSkills`: receta a habilidad) y lo guarda; sin esto sale del seed. */
   readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
   /** Opt-in: quien cruza a un hogar con oficio cree que vive de eso (`TRADE_VIEW`); apagado por defecto. */
-  readonly tradeView?: boolean;
+  readonly tradeView?:
+    | boolean
+    | { readonly misread?: { readonly chance: number }; readonly people?: boolean };
   /** Opt-in: el aporte del jornalero a la bolsa común sale de su temperamento y los dependientes de su hogar (`personalPoolShareOf`), no del 70% fijo; apagado por defecto. */
   readonly personalPool?: boolean;
   /** Opt-in: chisme de precios y lugares (`life.gossip_molds`, tabla `MOLD_RUMORS`) desde lo que cada uno vio (`seeds`); apagado por defecto. */
@@ -586,6 +588,12 @@ export function lifeWorld(
                 recipes: parts.tradeRecipes ?? [],
                 assignments: parts.householdTrades ?? [],
                 chosen: parts.tradeChoice !== undefined,
+                ...(typeof parts.tradeView === "object" && parts.tradeView.misread
+                  ? { misread: parts.tradeView.misread }
+                  : {}),
+                ...(typeof parts.tradeView === "object" && parts.tradeView.people
+                  ? { people: true }
+                  : {}),
               }),
             ]
           : []),
