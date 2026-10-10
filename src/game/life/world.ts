@@ -71,6 +71,7 @@ import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
+import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
@@ -364,6 +365,8 @@ export interface LifeWorld {
   readonly marksReach?: boolean;
   /** Opt-in: el fallo de usura que procede viaja como rumor `fraud` sobre el prestamista y quien pide fiado lo lee (`life.usury_gossip`). */
   readonly usuryGossip?: boolean;
+  /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
+  readonly debtorRepair?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
   readonly loanContagion?: string;
   /** Opt-in (con `loanContagion`): fama del quebrado rebajada y `rateMarkup` en la tasa de los acreedores arrastrados. */
@@ -687,6 +690,7 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.usuryGossip ? [usuryGossipProcess({ placeOf: placeOf(parts, village) })] : []),
+        ...(parts.debtorRepair ? [debtorRepairProcess({ placeOf: placeOf(parts, village) })] : []),
         ...(parts.scam === true && parts.scamFiller !== undefined
           ? [
               fillerNoticeProcess({
