@@ -71,7 +71,10 @@ export function withHazards(
   sparks?: { readonly truth: ReadonlyWorldTruth; readonly now: Tick },
 ): Pressure[] {
   return pressures.map((p) => {
-    const curve = curves.find((c) => c.id === p.kind);
+    // La curva propia del alcance (`hunger.community`) gana sobre la del tipo (`hunger`).
+    const curve =
+      curves.find((c) => c.id === `${p.kind}.${p.scope.kind}`) ??
+      curves.find((c) => c.id === p.kind);
     if (!curve) return p;
     const spark = sparks ? sparkOf(sparks.truth, p.kind, p.scope.ref, sparks.now) : 0;
     return {

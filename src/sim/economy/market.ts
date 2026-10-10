@@ -124,6 +124,8 @@ export interface QuoteOptions {
   readonly carryDays?: number;
   /** Factor de calidad del lote sobre la base (1 sin calidad registrada). */
   readonly quality?: number;
+  /** Empuje de precio de una escasez de comida (`famineDischarge.pricePush`; 1 = sin empuje). */
+  readonly pricePush?: number;
 }
 
 /**
@@ -139,7 +141,8 @@ export function householdQuote(
   ownDays: number,
   opts: QuoteOptions = {},
 ): HouseholdQuote {
-  const base = baseFor(beliefs, unit, referencePerKg, day) * (opts.quality ?? 1);
+  const base =
+    baseFor(beliefs, unit, referencePerKg, day) * (opts.quality ?? 1) * (opts.pricePush ?? 1);
   return { ask: askPerKg(base, ownDays), bid: bidPerKg(base, ownDays, opts.carryDays) };
 }
 

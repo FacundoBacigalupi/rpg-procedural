@@ -16,6 +16,8 @@ import {
 } from "../../core/index.ts";
 import {
   BUILDING,
+  citePressure,
+  draftEvent,
   ENTITY,
   type EventDraft,
   FAMINE_HORIZON_DAYS,
@@ -25,8 +27,12 @@ import {
   type GoodDef,
   goodUnit,
   PERSON,
+  PRESSURE,
+  type PressureReading,
+  type PressureSource,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SCARCITY_THRESHOLD,
   type StateChange,
   scarcityValue,
   setComponent,
@@ -45,6 +51,34 @@ export interface FamineRow {
   readonly migrationPull: number;
 }
 export const FAMINE = table<FamineRow>("economy.famine");
+
+/**
+ * La hambruna de cada asentamiento como presión `hunger` de comunidad para el libro y el
+ * inspector: sale de `FAMINE` (sin filas, no hay lecturas). La descarga es `life.famine`.
+ */
+export function communityHungerSource(): PressureSource {
+  return {
+    kind: "hunger",
+    read({ truth }): PressureReading[] {
+      return truth.ids(FAMINE).flatMap((id): PressureReading[] => {
+        const row = truth.get(FAMINE, id);
+        if (!row || row.state === "none") return [];
+        return [
+          {
+            kind: "hunger",
+            scope: { kind: "community", ref: id as unknown as EntityRef },
+            value: row.value,
+            sources: [{ kind: "state", entity: id as unknown as EntityRef, key: "food-scarcity" }],
+            discharges: [
+              { process: FAMINE_PROCESS, threshold: SCARCITY_THRESHOLD, hazard: 0, blockers: [] },
+            ],
+            system: "economy",
+          },
+        ];
+      });
+    },
+  };
+}
 
 export interface FamineOptions {
   readonly clock: PlanetClock;
@@ -70,8 +104,8 @@ export function famineProcess(o: FamineOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name, BUILDING.name, FAMINE.name],
-    writes: [FAMINE.name],
+    reads: [PERSON.name, ENTITY.name, BUILDING.name, FAMINE.name, PRESSURE.name],
+    writes: [FAMINE.name, PRESSURE.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || !def) return {};
@@ -122,6 +156,20 @@ export function famineProcess(o: FamineOptions): ProcessDef {
               : state === "famine"
                 ? "famine.worsened"
                 : "famine.began";
+        // Escasez o hambruna es la descarga de la presión: la cita (nace del primer evento).
+        const cite =
+          state === "none"
+            ? undefined
+            : citePressure(
+                ctx,
+                {
+                  kind: "hunger",
+                  scope: { kind: "community", ref: s as unknown as EntityRef },
+                  value,
+                },
+                draftEvent(events.length),
+              );
+        if (cite) changes.push(...cite.changes);
         events.push({
           kind,
           actors: [who],
@@ -134,7 +182,10 @@ export function famineProcess(o: FamineOptions): ProcessDef {
             migrationPull: d.migrationPull,
           },
           emissions: {},
-          causes: [{ kind: "state", entity: s as unknown as EntityRef, key: "food-scarcity" }],
+          causes: [
+            ...(cite ? [cite.cause] : []),
+            { kind: "state", entity: s as unknown as EntityRef, key: "food-scarcity" },
+          ],
         });
         changes.push(
           setComponent(FAMINE, s as never, {

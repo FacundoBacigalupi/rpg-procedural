@@ -7,6 +7,7 @@ import {
   scarcityReading,
   scarcityValue,
 } from "./famine.ts";
+import { householdQuote } from "./market.ts";
 
 const none = () => 0;
 
@@ -46,5 +47,12 @@ describe("hambruna: presión de escasez", () => {
     expect(r.kind).toBe("hunger");
     expect(r.value).toBeGreaterThanOrEqual(0);
     expect(r.value).toBeLessThanOrEqual(1);
+  });
+
+  it("el precio creído de la comida sube con el pricePush y sin él no cambia", () => {
+    const base = householdQuote(undefined, "good:grain", 1, 0, 30);
+    expect(householdQuote(undefined, "good:grain", 1, 0, 30, { pricePush: 1 })).toEqual(base);
+    const pushed = householdQuote(undefined, "good:grain", 1, 0, 30, { pricePush: 2 });
+    expect(pushed.ask).toBeGreaterThan(base.ask);
   });
 });
