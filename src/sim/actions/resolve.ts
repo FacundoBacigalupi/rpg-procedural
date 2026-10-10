@@ -112,6 +112,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly foods?: ReadonlyMap<LedgerUnit, Nutrition>;
   /** La despensa del hogar del actor: de ahí come si no lleva nada encima. */
   readonly larder?: HolderRef | undefined;
+  /** Opt-in: el combustible que gasta `boil` (unidad del ledger y gramos por tanda); sin esto no hay con qué hervir. */
+  readonly boilFuel?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
   /** Opt-in: las unidades que son sustancias de consumo (`consume`: una unidad, una dosis); sin esto no hay qué tomar. */
   readonly consumables?: ReadonlySet<LedgerUnit> | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
@@ -192,6 +194,8 @@ export interface Nutrition {
  * aplica con `ingest`). Quien arma el ledger declara este sumidero con las unidades de comida.
  */
 export const EATEN = "eaten";
+/** Adonde va el combustible que se quema al hervir (como el de `life.hearth`); quien arma el ledger lo declara con esa unidad. */
+export const BURNED = "burned";
 /**
  * Por donde pasa lo que se cocina: los insumos se van acá y el producto sale de acá. Las dos
  * puntas quedan en el diario del evento de cocinar; el agua que absorbe la masa no se cuenta.
@@ -336,6 +340,13 @@ export type VerbEffect =
       readonly kcal: number;
       /** Litros de agua que trae la comida. */
       readonly water: number;
+    }
+  | {
+      readonly kind: "boil";
+      /** El combustible que quemó (null si no tenía o no pudo). */
+      readonly fuel: LedgerUnit | null;
+      /** Gramos quemados. */
+      readonly grams: number;
     }
   | {
       readonly kind: "consume";
@@ -1296,6 +1307,36 @@ const eat: Resolver = (c) => {
   };
 };
 
+/**
+ * Hierve agua: quema combustible (lo que lleva encima o la despensa de la casa, sale del ledger
+ * hacia `BURNED`) y lleva su tiempo. Sin combustible no hay agua tratada.
+ */
+const boil: Resolver = (c) => {
+  const cfg = c.input.boilFuel;
+  const empty: VerbEffect = { kind: "boil", fuel: null, grams: 0 };
+  if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
+  const holders = [c.input.actor.id as HolderRef, ...(c.input.larder ? [c.input.larder] : [])];
+  const from = cfg
+    ? holders.find(
+        (h) =>
+          (c.input.ledger.holdings(holderAccount(h)).find((x) => x.unit === cfg.unit)?.amount ??
+            0) >= cfg.grams,
+      )
+    : undefined;
+  if (!cfg || from === undefined) {
+    return {
+      effect: empty,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return {
+    effect: { kind: "boil", fuel: cfg.unit, grams: cfg.grams },
+    seconds: c.nominal,
+    transfers: [{ from, unit: cfg.unit, amount: cfg.grams, to: externalAccount(BURNED) }],
+  };
+};
+
 /** Toma una sustancia de consumo: lo que lleva encima o la despensa de la casa; gasta una unidad. */
 const consume: Resolver = (c) => {
   const kinds = c.input.consumables ?? new Set<LedgerUnit>();
@@ -1622,6 +1663,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   store,
   eat,
   consume,
+  boil,
   cook,
   drink,
   tend,

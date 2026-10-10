@@ -8,6 +8,7 @@ import {
   LOCATION,
   type ReadonlyWorldTruth,
   sourceWater,
+  TREATED_WATER,
   treatWater,
   type WaterQuality,
   type WaterSourceKind,
@@ -40,8 +41,14 @@ export function waterAt(
 
 export function waterHooks(cfg: WaterSourcesConfig) {
   return {
-    drinkQuality: (truth: ReadonlyWorldTruth, who: AgentId): WaterQuality =>
-      waterAt(cfg, truth.get(LOCATION, who), 0),
+    drinkQuality: (truth: ReadonlyWorldTruth, who: AgentId, now?: number): WaterQuality => {
+      const base = waterAt(cfg, truth.get(LOCATION, who), 0);
+      // Agua que hirvió o filtró él mismo con el verbo `boil`: vale mientras no se ensucie.
+      const t = truth.get(TREATED_WATER, who);
+      return t !== undefined && now !== undefined && now <= t.until
+        ? treatWater(base, t.treatment)
+        : base;
+    },
     waterFor: (truth: ReadonlyWorldTruth, who: EntityRef, load: number): WaterQuality =>
       waterAt(cfg, truth.get(LOCATION, who), load),
   };

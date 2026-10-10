@@ -120,11 +120,13 @@ import {
   spaceLight,
   standardize,
   type TapeEntry,
+  TREATED_WATER,
   type Trait,
   table,
   treat,
   updateSelfImage,
   verbSkill,
+  type WaterTreatment,
   walkingFactor,
   weatherAt,
   withReceipt,
@@ -222,6 +224,12 @@ export interface ActOptions {
    */
   readonly consumables?: readonly ConsumableDef[];
   /**
+   * Opt-in: el verbo `boil` quema `grams` de la unidad `fuel` del ledger (de lo que lleva o de la
+   * despensa) y deja agua tratada (`TREATED_WATER`) que dura `validDays` días. Apagado, `boil`
+   * no tiene con qué y no cambia nada.
+   */
+  readonly boil?: BoilOptions;
+  /**
    * Opt-in: estafa de calidad (economy §6). `inflate` dice cuánto mejora de lo que es el vendedor
    * lo que ofrece (0 = honesto) y `trust` cuánto le cree el comprador (0-1); el comprador cotiza
    * por `believedQuality` y el lote sigue con su calidad real. Apagado, el comprador ve con su ojo.
@@ -233,6 +241,13 @@ export interface ActOptions {
   };
   /** Opt-in: cada dosis refuerza las señales del entorno (lugar, persona, hora); apagado, no guarda señales. */
   readonly cravingCues?: boolean;
+}
+
+export interface BoilOptions {
+  readonly fuel: string;
+  readonly grams: number;
+  readonly treatment: WaterTreatment;
+  readonly validDays: number;
 }
 
 const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
@@ -329,6 +344,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       GROWTH_SEQUELAE.name,
       FROSTBITE.name,
       AMPUTATIONS.name,
+      TREATED_WATER.name,
     ],
     writes: [
       PRICE_BELIEFS.name,
@@ -614,6 +630,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     foods: e.foods,
     unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
+    boilFuel:
+      o.boil && node.verb === "boil"
+        ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
+        : undefined,
     consumables:
       o.consumables && node.verb === "consume"
         ? new Set(o.consumables.map((c) => GOOD(c.good)))
@@ -647,6 +667,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   } else if (eff.kind === "drink") {
     nextBody = ingest(bodyPlan, nextBody, 0, eff.liters);
     bodyTouched = true;
+  } else if (eff.kind === "boil" && eff.fuel !== null && eff.grams > 0 && o.boil) {
+    changes.push(
+      setComponent(TREATED_WATER, me, {
+        treatment: o.boil.treatment,
+        until: ctx.now + Math.round(o.boil.validDays * o.clock.day),
+      }),
+    );
   } else if (eff.kind === "consume" && eff.good !== null && eff.units > 0) {
     // La dosis entra al cuerpo ahora; `life.substances` la absorbe y metaboliza desde la próxima hora.
     const used = o.consumables?.find((c) => GOOD(c.good) === eff.good);

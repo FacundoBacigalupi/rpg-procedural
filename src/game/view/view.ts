@@ -769,6 +769,9 @@ function effectView(
         kind: "store",
         got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
       };
+    case "boil":
+      // Sin narración propia todavía: el hervor se nota por el tiempo y el gasto, no por un efecto visible.
+      return { kind: "none" };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
     case "cook":

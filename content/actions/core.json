@@ -519,6 +519,26 @@
     "evidence": 1
   },
   {
+    "id": "boil",
+    "name": "hervir",
+    "domain": "body",
+    "args": [],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 1800 },
+    "checkpoint": 600,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": {},
+    "resolver": "boil",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "drink",
     "name": "beber",
     "domain": "body",

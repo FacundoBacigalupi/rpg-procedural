@@ -2,6 +2,7 @@
 // carga, barro y sal trae, y quÃ© le hacen hervirla o filtrarla. Puro: sin IO ni estado; el
 // cableado (quÃ© fuente usa cada quien) vive en `game/life`.
 
+import { table } from "../world/index.ts";
 import { CLEAN_WATER, netHydration, type WaterQuality } from "./nutrition.ts";
 
 export type WaterSourceKind = "well" | "river" | "rain" | "sea" | "stagnant";
@@ -66,3 +67,15 @@ export function treatWater(w: WaterQuality, t: WaterTreatment): WaterQuality {
 export function drinkWater(liters: number, w: WaterQuality): { readonly hydration: number } {
   return { hydration: netHydration(liters, w) };
 }
+
+/**
+ * Agua ya tratada que alguien tiene a mano (hervida o filtrada con una acción, body-health §5):
+ * mientras `until` no pase, `drinkQuality` la aplica sobre la fuente base. Una fila por persona;
+ * la escribe solo el verbo que trata el agua (`life.act`). Sin filas, nada cambia.
+ */
+export interface TreatedWater {
+  readonly treatment: WaterTreatment;
+  /** Hasta cuándo dura sin volver a ensuciarse (tick). */
+  readonly until: number;
+}
+export const TREATED_WATER = table<TreatedWater>("body.treated_water");

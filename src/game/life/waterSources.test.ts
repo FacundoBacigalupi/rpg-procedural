@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { waterAt } from "./waterSources.ts";
+import { waterAt, waterHooks } from "./waterSources.ts";
 
 describe("waterAt", () => {
   it("en el sitio bebe el pozo, y hervirlo mata la carga", () => {
@@ -12,5 +12,19 @@ describe("waterAt", () => {
     const cfg = { hexKinds: new Map([[7, "sea" as const]]) };
     expect(waterAt(cfg, { hex: 7 }, 0).salinity).toBeGreaterThan(0.5);
     expect(waterAt(cfg, { hex: 1 }, 0).load).toBeGreaterThan(0);
+  });
+});
+
+describe("agua hervida con el verbo boil", () => {
+  const truth = (until: number) =>
+    ({
+      get: (t: { name: string }) =>
+        t.name === "body.treated_water" ? { treatment: "boil", until } : { hex: 1, space: "s" },
+    }) as never;
+  it("mientras dura, drinkQuality aplica el tratamiento; después, la fuente cruda", () => {
+    const h = waterHooks({});
+    expect(h.drinkQuality(truth(100), "agent:1" as never, 50).treated).toBeGreaterThan(0.9);
+    expect(h.drinkQuality(truth(100), "agent:1" as never, 200).treated).toBe(0);
+    expect(h.drinkQuality(truth(100), "agent:1" as never).treated).toBe(0);
   });
 });
