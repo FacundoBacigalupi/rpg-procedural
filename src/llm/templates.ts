@@ -247,6 +247,10 @@ function outcome(
       break;
     }
     case "move":
+      if (e.blocked === true) {
+        say("outcome.move.blocked");
+        break;
+      }
       say(
         e.arrived === true
           ? "outcome.move.arrived"

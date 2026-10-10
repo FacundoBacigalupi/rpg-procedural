@@ -10,6 +10,7 @@ import {
 } from "../../core/index.ts";
 import {
   BUILDING,
+  behindJammedDoor,
   checkInvariants,
   ENTITY,
   HOUSEHOLD,
@@ -156,4 +157,22 @@ describe("la aldea inicial", () => {
       { numRuns: 3 },
     );
   }, 300_000);
+});
+
+describe("la puerta trabada para quien se mueve", () => {
+  it("solo los espacios del edificio con la puerta trabada quedan cerrados", () => {
+    const { truth } = Life.create(7, content, options).world;
+    const [a, b] = truth.ids(BUILDING).sort();
+    const ra = truth.get(BUILDING, a as BuildingId);
+    const rb = truth.get(BUILDING, b as BuildingId);
+    if (!ra || !rb) throw new Error("faltan edificios");
+    const inA = ra.graph.spaces[0]?.key;
+    const inB = rb.graph.spaces[0]?.key;
+    expect(behindJammedDoor(truth, inA)).toBe(false);
+    truth.set(BUILDING, a as BuildingId, { ...ra, doorState: "jammed" });
+    expect(behindJammedDoor(truth, inA)).toBe(true);
+    expect(behindJammedDoor(truth, inB)).toBe(false);
+    expect(behindJammedDoor(truth, VILLAGE_SQUARE)).toBe(false);
+    expect(behindJammedDoor(truth, undefined)).toBe(false);
+  });
 });

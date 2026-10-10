@@ -226,6 +226,15 @@ describe("moverse", () => {
       { destination: 5, ...extra },
     );
 
+  it("con la puerta trabada no sale: se queda, sin cambiar de lugar, y lo dice", () => {
+    for (const r of many(50, () => go({ shut: true }))) {
+      expect(r.effect).toMatchObject({ kind: "move", reached: 0, blocked: "jammed_door" });
+      expect(r.changes).toEqual([]);
+    }
+    const free = many(50, () => go({ shut: false }));
+    expect(free.some((r) => r.effect.kind === "move" && r.effect.reached === 3)).toBe(true);
+  });
+
   it("de día camina un tramo, cambia la ubicación y tarda lo del tramo o un poco más", () => {
     const rs = many(200, () => go({}));
     const ok = rs.filter((r) => r.outcome === "success" || r.outcome === "critical");
