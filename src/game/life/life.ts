@@ -178,7 +178,12 @@ export class Life {
       anchor.households,
       new Map((base.materials ?? []).map((m) => [m.id, m])),
     );
-    const parts: LifeParts = { ...base, ...optInParts(options), spaces, ...saved };
+    // Con aguas opt-in sin `hexKinds`, el terreno local las llena (regenera el planeta, como al crear).
+    const needsTerrain = options.waterSources !== undefined && !options.waterSources.hexKinds;
+    const waterTerrain = needsTerrain
+      ? lifeTerrain(seed, content, options).site.terrain
+      : undefined;
+    const parts: LifeParts = { ...base, ...optInParts(options, waterTerrain), spaces, ...saved };
     const resumed = lifeWorld(parts, anchor.player, anchor.village, saved.scheduler);
     return new Life(resumed, anchor, () => lifeTerrain(seed, content, options));
   }

@@ -194,6 +194,8 @@ export interface LifeWorld {
   readonly travelAltitude?: TravelAltitude;
   /** Opt-in: qué fuente bebe cada quien (pozo tratado en el sitio, fuente del hex fuera) con `drinkQuality`/`waterFor`; apagado: agua limpia/pozo como siempre. */
   readonly waterSources?: WaterSourcesConfig;
+  /** Opt-in: `loansProcess` lee la confianza de RELATIONS con `current` (decaimiento al día); apagado: tal cual guardada. */
+  readonly relationDecay?: boolean;
   /**
    * Opt-in: la congelación se acumula por parte (`FROSTBITE`), la necrosis amputa (`AMPUTATIONS`,
    * evento `body.amputated`) y manos y pies heridos bajan las capacidades de `decide`/`act`.
@@ -556,6 +558,15 @@ export function lifeWorld(
               }
             : {}),
           ...(parts.loanRepaySubrogation ? { repaySubrogation: true } : {}),
+          ...(parts.relationDecay
+            ? {
+                relationDecay: {
+                  dims: parts.relationDims,
+                  bonds: parts.relationBonds,
+                  schemaStrength: () => 0,
+                },
+              }
+            : {}),
         }),
         ...(parts.rentSeeds && parts.rentSeeds.length > 0
           ? [
