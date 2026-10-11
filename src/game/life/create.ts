@@ -316,6 +316,8 @@ export interface LifeOptions {
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
   readonly npcPace?: "careful" | "fast";
+  /** Opt-in: el calzado de quien camina se gasta con la marcha y gastado cuesta más caminar (`LifeParts.npcFootwear`); apagado. */
+  readonly npcFootwear?: boolean;
   /** Opt-in: `speak` con acto declarado desde afecto y familiaridad (`LifeParts.speakActs`); apagado. */
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
@@ -429,6 +431,7 @@ export function optInParts(
   | "npcProvisions"
   | "npcNightRest"
   | "npcPace"
+  | "npcFootwear"
   | "speakActs"
   | "takeBelieved"
   | "creditHeed"
@@ -506,6 +509,7 @@ export function optInParts(
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
+    ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.speakActs ? { speakActs: options.speakActs } : {}),
     ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
     ...(options.residue ? { residue: options.residue } : {}),

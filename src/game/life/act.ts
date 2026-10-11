@@ -168,6 +168,7 @@ import {
   livePause,
   strikeFight,
 } from "./fight.ts";
+import { FOOTWEAR, footwearWalkFactor, wearAfter } from "./footwear.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
@@ -254,6 +255,8 @@ export interface ActOptions {
    * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
    */
   readonly effortByManner?: boolean;
+  /** Opt-in: el calzado se gasta con la marcha (más por monte) y gastado cuesta más caminar (`footwear.ts`); apagado, no cambia. */
+  readonly footwear?: boolean;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
   /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
@@ -452,6 +455,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       // La iniciativa de hablarle a alguien que otro también le habla (`speakInitiative`) lee su trato.
       RELATIONS.name,
       ...(o.scam ? [INNATE.name, MIND.name, SCAM_DEALS.name] : []),
+      ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [LOT_ESSENCE.name] : []),
     ],
     writes: [
@@ -461,6 +465,7 @@ export function actProcess(o: ActOptions): ProcessDef {
         ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, ENTITY.name]
         : []),
       ...(o.scam ? [SCAM_DEALS.name] : []),
+      ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
       PRICE_BELIEFS.name,
       MARKET_TAPE.name,
@@ -761,7 +766,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
     walkFactor:
       def.resolver === "move"
-        ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now))
+        ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now)) *
+          (o.footwear ? footwearWalkFactor(truth.get(FOOTWEAR, me)?.wear) : 1)
         : undefined,
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
@@ -1364,6 +1370,16 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       emissions: { sight: 0.1 },
       causes: [{ kind: "event", event: draftEvent(0) }],
     });
+  }
+
+  // El calzado se gasta con lo caminado en este tramo, más si el destino es monte.
+  if (o.footwear && eff.kind === "move" && r.seconds > 0) {
+    const wear = truth.get(FOOTWEAR, me)?.wear ?? 0;
+    changes.push(
+      setComponent(FOOTWEAR, me, {
+        wear: wearAfter(wear, r.seconds, o.map.forest[eff.reached ?? eff.from] === true),
+      }),
+    );
   }
 
   // Un tramo de camino a medias no cuenta como paso: el viaje se registra al llegar o al fallar.

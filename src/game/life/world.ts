@@ -359,6 +359,8 @@ export interface LifeWorld {
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje, modo `careful` o `fast` del `move` (`NpcVerbsOptions.pace`). */
   readonly npcPace?: "careful" | "fast";
+  /** Opt-in: el calzado de quien camina se gasta (más por monte) y gastado cuesta más caminar (`life.act`); apagado, nada cambia. */
+  readonly npcFootwear?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -617,6 +619,7 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
+          ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
