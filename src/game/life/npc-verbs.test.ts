@@ -61,6 +61,32 @@ describe("planFromDecision", () => {
     });
   });
 
+  it("el acto de habla de la decisión viaja como contenido del speak", () => {
+    const act = { kind: "greet" } as const;
+    expect(
+      planFromDecision({ id: "speak:agent:2", verb: "speak", act }, catalog, me)?.root,
+    ).toMatchObject({
+      args: [
+        { role: "to", entity: "agent:2" },
+        { role: "content", text: "", act },
+      ],
+    });
+    expect(
+      planFromDecision({ id: "speak:agent:2+hola", verb: "speak", act }, catalog, me)?.root,
+    ).toMatchObject({
+      args: [
+        { role: "to", entity: "agent:2" },
+        { role: "content", text: "hola", act },
+      ],
+    });
+    // el acto solo cuenta en speak
+    expect(
+      planFromDecision({ id: "gather:", verb: "gather", act }, catalog, me)?.root,
+    ).toMatchObject({
+      args: [],
+    });
+  });
+
   it("no ejecuta ids de otro proceso, verbos desconocidos ni argumentos que faltan", () => {
     expect(planFromDecision({ id: "speak:agent:2+borrow:té", verb: "speak" }, catalog, me)).toBe(
       undefined,
@@ -123,7 +149,16 @@ function withNeighbor(verb: "trade" | "give" | "speak") {
     .map((h) => content.get(GOODS, h.unit.slice(5)))
     .find((g) => g !== undefined);
   const id = verb === "speak" ? `speak:${other}` : `${verb}:${other}+${stock?.name ?? "grano"}`;
-  w.truth.set(NPC_DECISION, npc, { at: life.now, id, verb, utility: 1, options: 2 } as never);
+  // El hablar lleva un saludo declarado: sin palabras, pero con el acto.
+  const act = verb === "speak" ? { act: { kind: "greet" } } : {};
+  w.truth.set(NPC_DECISION, npc, {
+    at: life.now,
+    id,
+    verb,
+    ...act,
+    utility: 1,
+    options: 2,
+  } as never);
   return { life, w, npc, other };
 }
 

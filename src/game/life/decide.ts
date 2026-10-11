@@ -93,6 +93,7 @@ import {
   SELF_IMAGES,
   SKILL_STATE,
   type SkillCatalog,
+  type SpeakAct,
   STAKES_RISK,
   type StageDef,
   SUBSTANCE,
@@ -172,6 +173,8 @@ export interface Decision {
   readonly id: string;
   readonly verb: string;
   readonly target?: string;
+  /** El acto de habla de una candidata `speak` que lo declara; `life.npc_verbs` lo pasa al plan. */
+  readonly act?: SpeakAct;
   readonly utility: number;
   readonly options: number;
 }
@@ -1164,6 +1167,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         id: c.id,
         verb: c.verb,
         ...(c.target === undefined ? {} : { target: c.target }),
+        ...(c.act === undefined ? {} : { act: c.act }),
         utility: r(choice.utility),
         options: candidates.length,
       };

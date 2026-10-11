@@ -41,7 +41,7 @@ const SPECIAL_PART = /^(borrow|pawn|toward):/;
  * desconocido o un id con partes de otro proceso, no se ejecuta (`undefined`).
  */
 export function planFromDecision(
-  decision: Pick<Decision, "id" | "verb">,
+  decision: Pick<Decision, "id" | "verb"> & Partial<Pick<Decision, "act">>,
   catalog: ActionCatalog,
   actor: AgentId,
 ): ActionPlan | undefined {
@@ -80,6 +80,13 @@ export function planFromDecision(
     next++;
   }
   if (next !== parts.length) return undefined;
+  // El acto de habla declarado por la candidata viaja con el contenido (vacío si no dice palabras).
+  if (decision.act && decision.verb === "speak") {
+    const at = args.findIndex((a) => a.role === "content" && "text" in a);
+    const spoken = args[at];
+    if (at >= 0 && spoken && "text" in spoken) args[at] = { ...spoken, act: decision.act };
+    else args.push({ role: "content", text: "", act: decision.act });
+  }
   return {
     actor,
     source: "utility",
