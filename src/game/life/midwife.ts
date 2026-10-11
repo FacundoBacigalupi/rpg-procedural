@@ -99,6 +99,13 @@ export interface LaborOptions {
       }
     | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Partos que salen de otra tabla (los embarazos de `life.conception`): sus nombres y cómo leerlos. */
+  readonly more?:
+    | {
+        readonly reads: readonly string[];
+        readonly of: (truth: ReadonlyWorldTruth) => readonly Labor[];
+      }
+    | undefined;
 }
 
 const round3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -117,13 +124,15 @@ export function laborProcess(o: LaborOptions): ProcessDef {
       PERSON.name,
       LABOR.name,
       ...(o.fee ? ["law.mold_rumors"] : []),
+      ...(o.more?.reads ?? []),
     ],
     writes: [LABOR.name, ENTITY.name],
     run(ctx) {
-      if (o.labors.length === 0) return {};
+      const labors = [...o.labors, ...(o.more?.of(ctx.truth) ?? [])];
+      if (labors.length === 0) return {};
       const alive = (a: AgentId) =>
         ctx.truth.get(ENTITY, a as unknown as EntityRef)?.endedAt === undefined;
-      const due = o.labors
+      const due = labors
         .filter((l) => l.dueAt <= ctx.now)
         .filter((l) => alive(l.mother))
         .filter(
