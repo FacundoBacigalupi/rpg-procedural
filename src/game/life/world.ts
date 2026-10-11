@@ -165,6 +165,7 @@ import { thermalProcess } from "./thermal.ts";
 import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
+import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
@@ -344,6 +345,8 @@ export interface LifeWorld {
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
   readonly npcJourneyDays?: number;
+  /** Opt-in (con `npcJourneyDays`): el NPC en viaje pasa por los hexes del camino mientras dura la marcha (`life.transit`). */
+  readonly npcTransit?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1382,6 +1385,9 @@ export function lifeWorld(
                   : {}),
               }),
             ]
+          : []),
+        ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
+          ? [transitProcess({ map: parts.map, player })]
           : []),
         ...(parts.closeGoalsOnDeath
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
