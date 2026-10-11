@@ -92,7 +92,8 @@ describe("el viajero gasta el calzado (opt-in)", () => {
     // El primer tramo de cada uno: el mismo camino, así que solo cambia lo que cuesta el calzado.
     const firstLeg = (who: AgentId) =>
       w.log.all().find((e) => e.kind === "action.move" && e.actors[0] === who && e.tick > t0);
-    const legSeconds = (who: AgentId) => (firstLeg(who)?.data as { seconds: number }).seconds;
+    const legSeconds = (who: AgentId) =>
+      (firstLeg(who)?.data as { seconds?: number } | undefined)?.seconds ?? 0;
     expect(legSeconds(fresh)).toBeGreaterThan(0);
     expect(legSeconds(worn)).toBeGreaterThan(legSeconds(fresh));
     // Caminar gastó el calzado nuevo; el destrozado sigue destrozado.
