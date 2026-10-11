@@ -159,6 +159,25 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("speak con acto declarado (opt-in): suma el saludo a un conocido y la decisión conserva el acto", () => {
+    const truth = layeredWorld();
+    const run = (o: DecideOptions) =>
+      decideProcess(o)
+        .run(ctx(truth, A, 1000))
+        .changes?.find((c) => c.table === NPC_DECISION.name);
+    const value = (c: ReturnType<typeof run>) =>
+      c?.op === "set" ? (c.value as { verb: string; id: string; act?: unknown }) : undefined;
+    // Sin la opción la decisión no declara ningún acto.
+    expect(value(run(opts))?.act).toBeUndefined();
+    const on = value(
+      run({
+        ...opts,
+        speakActs: { minFamiliarity: 0.3, quietSeconds: 0, weight: 100, chance: 1 },
+      }),
+    );
+    expect(on).toMatchObject({ verb: "speak", id: "speak:agent:2", act: { kind: "greet" } });
+  });
+
   it("hurto creído (opt-in): suma una candidata por bien que oyó que tiene un conocido", () => {
     const truth = layeredWorld();
     truth.set(MOLD_RUMORS, A, {

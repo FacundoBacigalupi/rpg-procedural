@@ -147,6 +147,7 @@ import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
 import { soilProcess } from "./soil.ts";
+import type { SpeakActsOptions } from "./speakacts.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
 import { standingProcess } from "./standing.ts";
 import {
@@ -331,6 +332,8 @@ export interface LifeWorld {
   readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in (con `moldHints`): `take` sobre bienes que cree que tiene un conocido, con sanción por los robos que conoce (`life.decide`); apagado, sin candidata nueva. */
   readonly takeBelieved?: TakeBelievedOptions;
+  /** Opt-in: `speak` con acto declarado (saludar, preguntar) desde afecto y familiaridad (`life.decide`); apagado, sin candidata nueva. */
+  readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
   readonly lendBorrowed?: boolean;
   /** Opt-in (con `consumables`): el hogar que debe una sustancia y ya la tiene la devuelve en especie por el libro mayor (`life.repay_dose`); si no, el vencimiento la vuelve mora. Apagado, sin proceso. */
@@ -1331,6 +1334,7 @@ export function lifeWorld(
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
           ...(parts.takeBelieved ? { takeBelieved: parts.takeBelieved } : {}),
+          ...(parts.speakActs ? { speakActs: parts.speakActs } : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),

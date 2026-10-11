@@ -139,6 +139,7 @@ import {
 } from "./moldgossip.ts";
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
+import { type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -293,6 +294,12 @@ export interface DecideOptions {
    * `KNOWN_DEEDS`) al tabú del bien. Apagado, no cambia nada.
    */
   readonly takeBelieved?: TakeBelievedOptions;
+  /**
+   * Opt-in: `speak:<persona>` entra con acto declarado (saludar a un conocido sin trato reciente,
+   * preguntar por alguien querido de quien no sabe dónde está), con ánimo desde afecto y
+   * familiaridad; la decisión conserva el acto (`npcVerbs` lo ejecuta). Apagado, no cambia.
+   */
+  readonly speakActs?: SpeakActsOptions;
   /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
@@ -1017,6 +1024,21 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             }),
             means: { surplus: Math.max(0, 1 - (drives.needs.hunger ?? 0) * 2) },
           }),
+        );
+      }
+      if (o.speakActs) {
+        social.push(
+          ...speakActCandidates(
+            people.map((p) => ({
+              id: p.id as string,
+              familiarity: p.rel.dims.familiarity,
+              affection: p.rel.dims.affection,
+              updated: p.rel.updated,
+              whereaboutsKnown: believed(beliefs, p.id, "at") !== undefined,
+            })),
+            now,
+            o.speakActs,
+          ),
         );
       }
       for (const w of pawnAsks.slice(0, 3)) {
