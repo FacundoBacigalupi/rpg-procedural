@@ -142,3 +142,20 @@ describe("el NPC ejecuta tratar y dar (opt-in)", () => {
     }, 120_000);
   }
 });
+
+describe("hablar entre NPC no encadena respuestas sin fin", () => {
+  it("en 24 horas de vida el intercambio queda acotado y el mundo sigue coherente", () => {
+    const { life, w, npc, other } = withNeighbor("speak");
+    life.advanceTo(life.now + 24 * HOUR);
+    const talk = w.log
+      .all()
+      .filter(
+        (e) => e.kind === "action.speak" && e.actors.includes(npc) && e.actors.includes(other),
+      );
+    // El dicho y su respuesta; más de un puñado sería un encadenamiento.
+    expect(talk.length).toBeGreaterThan(0);
+    expect(talk.length).toBeLessThanOrEqual(6);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+});
