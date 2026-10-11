@@ -62,6 +62,7 @@ import {
   INNATE,
   immediateGoals,
   impairment,
+  KNOWN_DEEDS,
   kinWeight,
   LOCATION,
   layerDrives,
@@ -153,6 +154,12 @@ import {
   cueHalfLife,
   type GatherCravingOptions,
 } from "./substances.ts";
+import {
+  believedHoldings,
+  type TakeBelievedOptions,
+  takeCandidates,
+  theftNormPenalty,
+} from "./takeillicit.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 
 export const DECIDE_PROCESS = "life.decide";
@@ -278,6 +285,12 @@ export interface DecideOptions {
    */
   readonly borrowCraving?: BorrowCravingOptions;
   /**
+   * Opt-in (exige `moldHints`): `take:<conocido>+<bien>` entra como candidata por cada bien que oyó
+   * (rumor `has`, creencia) que tiene un conocido, y su sanción suma la norma que conoce (robos en
+   * `KNOWN_DEEDS`) al tabú del bien. Apagado, no cambia nada.
+   */
+  readonly takeBelieved?: TakeBelievedOptions;
+  /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
    * que ese conocido tiene efectivo; `life.pawn_decide` la ejecuta. Apagado, no cambia.
@@ -357,6 +370,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
+      ...(o.takeBelieved ? [KNOWN_DEEDS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
     ],
     writes: [
@@ -1054,6 +1068,20 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           });
         }
       }
+      // Hurto desde lo que cree (opt-in `takeBelieved`): bienes que oyó que tiene un conocido.
+      if (o.takeBelieved && hintBook) {
+        catalogCandidates.push(
+          ...takeCandidates(
+            believedHoldings(
+              hintBook.items,
+              new Set(people.map((p) => p.id as string)),
+              me as string,
+              o.takeBelieved,
+            ),
+            o.takeBelieved,
+          ),
+        );
+      }
       // Modificadores (g): memorias, hábitos, disonancia con valores y evitación por trauma; sin
       // esos insumos las candidatas quedan iguales.
       const merged = mergeCandidates(catalogCandidates, social);
@@ -1110,10 +1138,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         habits: verbHabits(o.habits ?? [], truth.get(HABITS, me), now),
         values: drives.values,
         mental: truth.get(MENTAL, me),
-        // Tabú creído sobre el bien que toma la candidata (hoy ninguna candidata nombra uno).
-        sanction: sanctionFor(
-          (good) =>
+        // Tabú creído sobre el bien que toma la candidata (`take` desde `takeBelieved`).
+        sanction: sanctionFor((good) =>
+          Math.max(
             sanctionWeight(truth.get(RELIGIOUS_IDENTITY, me), villageReligion(truth), good).penalty,
+            // La norma legal que conoce (opt-in `takeBelieved`): los robos de los que se enteró.
+            o.takeBelieved ? theftNormPenalty(truth.get(KNOWN_DEEDS, me), o.takeBelieved) : 0,
+          ),
         ),
       });
       if (candidates.length === 0)
