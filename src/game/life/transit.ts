@@ -92,29 +92,39 @@ export function transitProcess(o: {
           : {};
       }
       if (!rec) return { changes: [setComponent(TRANSIT, me, { seen: loc.hex, at: ctx.now })] };
-      let walk = rec.walk;
-      if (loc.hex !== rec.seen) {
-        // `life.act` lo movió: de donde estaba a donde dice que llegó, caminando desde la última vez.
-        const path = hexPath(o.map, rec.seen, loc.hex);
-        walk =
-          path.length === 0
-            ? undefined
-            : { from: rec.seen, to: loc.hex, path, t0: rec.at, seconds: walkSeconds(o.map, path) };
-      }
-      if (!walk) return { changes: [setComponent(TRANSIT, me, { seen: loc.hex, at: ctx.now })] };
-      const elapsed = ctx.now - walk.t0;
-      const arrived = elapsed >= walk.seconds;
-      const pos = arrived ? walk.to : positionAlong(o.map, walk.from, walk.path, elapsed);
+      const step = advanceTransit(o.map, rec, loc.hex, ctx.now);
       return {
         changes: [
-          ...(pos === loc.hex ? [] : [setComponent(LOCATION, me, { hex: pos })]),
-          setComponent(TRANSIT, me, {
-            seen: pos,
-            at: ctx.now,
-            ...(arrived ? {} : { walk }),
-          }),
+          ...(step.pos === loc.hex ? [] : [setComponent(LOCATION, me, { hex: step.pos })]),
+          setComponent(TRANSIT, me, step.next),
         ],
       };
     },
   };
+}
+
+/**
+ * Un paso de la caminata (puro): dado lo último que se vio (`rec`), dónde está ahora el cuerpo
+ * (`locHex`, donde `life.act` lo dejó) y la hora, dónde le toca estar y el registro nuevo. Si el
+ * cuerpo saltó respecto de lo visto, el salto es una caminata desde la última vez.
+ */
+export function advanceTransit(
+  map: LocalMap,
+  rec: Transit,
+  locHex: number,
+  now: Tick,
+): { readonly pos: number; readonly next: Transit } {
+  let walk = rec.walk;
+  if (locHex !== rec.seen) {
+    const path = hexPath(map, rec.seen, locHex);
+    walk =
+      path.length === 0
+        ? undefined
+        : { from: rec.seen, to: locHex, path, t0: rec.at, seconds: walkSeconds(map, path) };
+  }
+  if (!walk) return { pos: locHex, next: { seen: locHex, at: now } };
+  const elapsed = now - walk.t0;
+  const arrived = elapsed >= walk.seconds;
+  const pos = arrived ? walk.to : positionAlong(map, walk.from, walk.path, elapsed);
+  return { pos, next: { seen: pos, at: now, ...(arrived ? {} : { walk }) } };
 }

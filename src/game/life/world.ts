@@ -1389,6 +1389,9 @@ export function lifeWorld(
                 player,
                 plans: parts.plans,
                 placeOf: placeOf(parts, village),
+                ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
+                  ? { map: parts.map }
+                  : {}),
               }),
               npcReactProcess({ player }),
             ]
@@ -1400,6 +1403,12 @@ export function lifeWorld(
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
                 player,
+                ...(parts.npcInterrupt === true
+                  ? {
+                      placeOf: placeOf(parts, village),
+                      resume: { plans: parts.plans, after: 3600, within: parts.clock.day },
+                    }
+                  : {}),
                 ...(parts.npcTemplates
                   ? { templates: { byVerb: parts.npcTemplates, map: parts.map } }
                   : {}),

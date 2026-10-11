@@ -14,6 +14,8 @@ import {
   deleteComponent,
   ENTITY,
   type EventDraft,
+  LOCATION,
+  type LocalMap,
   nodeAt,
   type ProcessDef,
   type ReadonlyWorldTruth,
@@ -22,7 +24,8 @@ import {
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { alarmingSignsOf } from "./alarms.ts";
-import { NPC_JOURNEY } from "./npc-verbs.ts";
+import { NPC_JOURNEY, NPC_PAUSED } from "./npc-verbs.ts";
+import { advanceTransit, TRANSIT } from "./transit.ts";
 
 export const NPC_INTERRUPT_PROCESS = "life.npc_interrupt";
 export const NPC_REACT_PROCESS = "life.npc_react";
@@ -94,6 +97,8 @@ export interface NpcInterruptOptions {
   readonly player: AgentId;
   readonly plans: readonly BodyPlanDef[];
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Con `life.transit` encendido: el viaje cortado deja al cuerpo en el hex intermedio que le toca. */
+  readonly map?: LocalMap;
 }
 
 export function npcInterruptProcess(o: NpcInterruptOptions): ProcessDef {
@@ -112,8 +117,15 @@ export function npcInterruptProcess(o: NpcInterruptOptions): ProcessDef {
       NPC_ALARMS.name,
       NPC_JOURNEY.name,
       NPC_REACT.name,
+      ...(o.map ? [LOCATION.name, TRANSIT.name] : []),
     ],
-    writes: [PLAN_STATE.name, NPC_ALARMS.name, NPC_JOURNEY.name],
+    writes: [
+      PLAN_STATE.name,
+      NPC_ALARMS.name,
+      NPC_JOURNEY.name,
+      NPC_PAUSED.name,
+      ...(o.map ? [LOCATION.name, TRANSIT.name] : []),
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -167,11 +179,43 @@ export function npcInterruptProcess(o: NpcInterruptOptions): ProcessDef {
           ? [{ kind: "event", event: heard.event }]
           : [{ kind: "state", entity: me, key: "body" }],
       };
+      // El cuerpo queda donde le tocaba estar a medio camino, no en el destino que `life.act` ya fijó.
+      const here = truth.get(LOCATION, me);
+      const walked =
+        trip && o.map && here
+          ? advanceTransit(
+              o.map,
+              truth.get(TRANSIT, me) ??
+                (trip.from !== undefined
+                  ? { seen: trip.from, at: trip.since }
+                  : { seen: here.hex, at: ctx.now }),
+              here.hex,
+              ctx.now,
+            )
+          : undefined;
       return {
         changes: [
           ...book,
           setComponent(PLAN_STATE, me, { ...going, done: true }),
+          // Lo cortado queda a mano para retomarlo (`NpcVerbsOptions.resume`).
+          setComponent(NPC_PAUSED, me, {
+            plan: going.plan,
+            cursor: going.cursor,
+            steps: going.steps,
+            ...(going.resume ? { resume: true } : {}),
+            ...(trip ? { journey: trip } : {}),
+            at: ctx.now,
+            why: heard ? heard.kind : "body_alarm",
+          }),
           ...(trip ? [deleteComponent(NPC_JOURNEY, me)] : []),
+          ...(walked
+            ? [
+                ...(walked.pos === here?.hex
+                  ? []
+                  : [setComponent(LOCATION, me, { hex: walked.pos })]),
+                setComponent(TRANSIT, me, { seen: walked.pos, at: ctx.now }),
+              ]
+            : []),
         ],
         events: [event],
       };
