@@ -157,6 +157,7 @@ import {
   substancesProcess,
 } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
+import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
 import { tradeChoiceProcess } from "./tradechoice.ts";
@@ -327,6 +328,8 @@ export interface LifeWorld {
   readonly gatherCraving?: GatherCravingOptions;
   /** Opt-in (con `consumables` y `moldHints`): sin comercio ni planta, pedir la sustancia a un conocido que se cree que la tiene (`life.decide`); apagado, sin candidata nueva. */
   readonly borrowCraving?: BorrowCravingOptions;
+  /** Opt-in (con `moldHints`): `take` sobre bienes que cree que tiene un conocido, con sanción por los robos que conoce (`life.decide`); apagado, sin candidata nueva. */
+  readonly takeBelieved?: TakeBelievedOptions;
   /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
   readonly lendBorrowed?: boolean;
   /** Opt-in (con `consumables`): el hogar que debe una sustancia y ya la tiene la devuelve en especie por el libro mayor (`life.repay_dose`); si no, el vencimiento la vuelve mora. Apagado, sin proceso. */
@@ -1324,6 +1327,7 @@ export function lifeWorld(
           ...(parts.buyCraving ? { buyCraving: parts.buyCraving } : {}),
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
+          ...(parts.takeBelieved ? { takeBelieved: parts.takeBelieved } : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),

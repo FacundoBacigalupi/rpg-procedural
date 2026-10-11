@@ -51,6 +51,7 @@ import {
 } from "./decide.ts";
 import { ownGoalProgress } from "./goal-evidence.ts";
 import { COMMITMENTS } from "./loans.ts";
+import { MOLD_RUMORS } from "./moldgossip.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
@@ -158,6 +159,33 @@ const goalData = (event: { readonly data: unknown }) =>
   event.data as { readonly goal: string; readonly what: "born" | "ended" };
 
 describe("life.decide", () => {
+  it("hurto creído (opt-in): suma una candidata por bien que oyó que tiene un conocido", () => {
+    const truth = layeredWorld();
+    truth.set(MOLD_RUMORS, A, {
+      items: [
+        {
+          rumor: { mold: "attr", about: "agent:2", attr: "has", value: "pan" },
+          confidence: 0.9,
+          hops: 1,
+          heardAt: 900,
+          teller: null,
+        },
+      ],
+      told: [],
+    } as never);
+    const hints = { ...opts, moldHints: {} };
+    const take = { minConfidence: 0.3, perDeed: 0.2, maxPenalty: 0.5 };
+    const options = (o: DecideOptions) =>
+      decideProcess(o)
+        .run(ctx(truth, A, 1000))
+        .changes?.find((c) => c.table === NPC_DECISION.name);
+    const off = options(hints);
+    const on = options({ ...hints, takeBelieved: take });
+    const count = (c: typeof off) =>
+      c?.op === "set" ? (c.value as { options: number }).options : 0;
+    expect(count(on)).toBe(count(off) + 1);
+  });
+
   it("miedo tipado propio con evidencia entra por máximo en la capa inmediata, sin sumar utilidad", () => {
     const truth = world(0);
     const signal = {
