@@ -20,6 +20,8 @@ import {
   type Percept,
   type ProcessContext,
   RELATIONS,
+  STATUS,
+  type StatusDef,
   strangerDims,
   VILLAGE_SQUARE,
   villageSpaces,
@@ -28,6 +30,7 @@ import {
 import { type AppraiseOptions, appraiseProcess } from "./appraise.ts";
 import {
   ownEmotionSignals,
+  perceivedEnvySignals,
   perceivedLossSignals,
   perceivedLoveSignals,
   receivedInsultSignals,
@@ -76,6 +79,38 @@ const insultEvent = (): Event => ({
 });
 
 describe("evidencia propia de emociones", () => {
+  it("la envidia sale de la vestimenta leída de alguien de rango mayor al propio y exige que importe el estatus", () => {
+    const seen: Percept = {
+      ...percept,
+      fields: { attire: field("fine"), identity: field(DEAD) },
+    };
+    const ctx = {
+      rankOfAttire: (a: string) => (a === "fine" ? 3 : 1),
+      ownRank: 1,
+      rankSpan: 4,
+      valuesStatus: 0.8,
+    };
+    expect(perceivedEnvySignals(seen, now, ctx)[0]).toMatchObject({
+      owner: OWNER,
+      emotion: "envy",
+      target: DEAD,
+      intensity: 0.4,
+      evidence: { kind: "percept", percept: percept.id },
+    });
+    for (const bad of [
+      { valuesStatus: 0 },
+      { ownRank: 3 },
+      { ownRank: undefined },
+      { rankSpan: 0 },
+      { rankOfAttire: () => undefined },
+    ])
+      expect(perceivedEnvySignals(seen, now, { ...ctx, ...bad })).toEqual([]);
+    expect(perceivedEnvySignals({ ...seen, fields: { attire: field("fine") } }, now, ctx)).toEqual(
+      [],
+    );
+    expect(perceivedEnvySignals({ ...seen, tick: now + 1 }, now, ctx)).toEqual([]);
+  });
+
   it("el amor nace de calidez vista de alguien con cariño previo, con la identidad leída", () => {
     const give: Percept = {
       ...percept,
@@ -300,6 +335,71 @@ describe("life.appraise persiste emociones opt-in", () => {
         .run(context(truth, [{ ...event(), id: makeId("event", 8) }]))
         .changes?.filter((c) => c.table === EMOTIONS.name),
     ).toEqual([]);
+  });
+  it("envidia la vestimenta vista de un rango mayor sólo con el opt-in de estatus y valor propio", () => {
+    const truth = world();
+    const base = { culture: "culture:a", wealth: 1 } as const;
+    const statuses: StatusDef[] = [
+      { ...base, id: "status:low", name: "bajo", role: "common", rank: 1, attire: "plain" },
+      { ...base, id: "status:high", name: "alto", role: "holder", rank: 4, attire: "fine" },
+    ];
+    const holding = (status: string) => ({
+      status,
+      basis: "custom" as const,
+      patron: null,
+      recognizedBy: "settlement:1" as never,
+      since: 0,
+      originEventId: makeId("event", 1),
+    });
+    truth.set(STATUS, OWNER, holding("status:low"));
+    truth.set(STATUS, DEAD, holding("status:high"));
+    truth.set(PERSON, DEAD, {
+      born: -30 * EARTHLIKE_CLOCK.year,
+      household: "home:other",
+      sex: "male",
+    } as never);
+    const witness: WitnessingOptions = {
+      player: THIRD,
+      seed: 7,
+      clock: EARTHLIKE_CLOCK,
+      statuses,
+      tierOf: () => 3,
+      spaces: villageSpaces({ hex: 0, households: [] }),
+      map: {
+        cell: makeId("cell", 1),
+        lonDeg: 0,
+        neighbors: [[]],
+        crossSeconds: [60],
+        forest: [false],
+        climate: {
+          cell: "cell:1",
+          latDeg: 0,
+          axialTiltDeg: 23,
+          annualMeanC: 20,
+          seasonalRangeC: 0,
+          annualPrecipMm: 1000,
+          windEast: 0,
+          windNorth: 0,
+        },
+      },
+    };
+    const values = [
+      { id: "status", species: "human", name: "estatus", base: 1, temperament: {} },
+    ] as const;
+    const ctx = context(truth, [{ ...event("body.died"), actors: [DEAD], data: null }]);
+    const withEnvy = { ...options, witness, values, persistEmotionSignals: true } as const;
+    const envies = (o: Parameters<typeof appraiseProcess>[0]) => {
+      const c = appraiseProcess(o)
+        .run(ctx)
+        .changes?.find((x) => x.table === EMOTIONS.name && x.id === OWNER);
+      const signals =
+        c?.op === "set" ? (c.value as { signals: { emotion: string }[] }).signals : [];
+      return signals.filter((x) => x.emotion === "envy");
+    };
+    expect(envies(withEnvy)).toEqual([]);
+    expect(envies({ ...withEnvy, envyStatuses: statuses })).toMatchObject([
+      { owner: OWNER, target: DEAD, evidence: { kind: "percept" } },
+    ]);
   });
   it("percibe pérdida fresca sin depender de una fila escrita en la misma fase ni del hogar real", () => {
     const truth = world();

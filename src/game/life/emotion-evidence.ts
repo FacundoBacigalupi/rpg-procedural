@@ -3,6 +3,7 @@ import type { AgentId, Event, Tick } from "../../core/index.ts";
 import {
   type Appraised,
   appraisalEmotionSignals,
+  appraiseEnvyEmotion,
   appraiseInsultEmotion,
   appraiseLoss,
   appraiseLoveEmotion,
@@ -144,6 +145,56 @@ export function perceivedLoveSignals(
     affection: affectionFor(who as AgentId),
     warmth,
     confidence: Math.min(action.confidence, identity.confidence),
+    originEventId: percept.sourceEventId,
+    at: now,
+  });
+  return signal ? [{ ...signal, evidence: { kind: "percept" as const, percept: percept.id } }] : [];
+}
+
+export interface EnvyContext {
+  /** Rango ritual (de `rankOfAttire`) que el observador lee en una vestimenta; undefined si no la ubica. */
+  readonly rankOfAttire: (attire: string) => number | undefined;
+  /** Rango propio que el observador cree tener (undefined: no se compara). */
+  readonly ownRank: number | undefined;
+  /** Distancia máxima entre rangos del mundo (> 0), para normalizar la ventaja. */
+  readonly rankSpan: number;
+  /** Cuánto le importa el estatus al observador (0-1, de sus valores). */
+  readonly valuesStatus: number;
+}
+
+/** Envidia desde la vestimenta vista de alguien identificado de rango mayor al que el observador cree
+ * tener. La ventaja es la leída (puede ser ropa que miente); sin rango propio, sin lectura o sin que
+ * le importe el estatus no nace. No cambia ningún evento: sólo lee lo percibido.
+ */
+export function perceivedEnvySignals(
+  percept: Percept,
+  now: Tick,
+  ctx: EnvyContext,
+): EmotionSignal[] {
+  const who = percept.fields.identity?.value;
+  const identity = percept.fields.identity;
+  const attire = percept.fields.attire;
+  if (
+    !percept.sourceEventId ||
+    percept.tick > now ||
+    typeof who !== "string" ||
+    !who.startsWith("agent:") ||
+    !identity ||
+    identity.confidence <= 0 ||
+    typeof attire?.value !== "string" ||
+    attire.confidence <= 0 ||
+    ctx.ownRank === undefined ||
+    !(ctx.rankSpan > 0)
+  )
+    return [];
+  const rival = ctx.rankOfAttire(attire.value);
+  if (rival === undefined || rival <= ctx.ownRank) return [];
+  const signal = appraiseEnvyEmotion(percept.observer, {
+    rival: who as AgentId,
+    perceivedGain: (rival - ctx.ownRank) / ctx.rankSpan,
+    confidence: Math.min(identity.confidence, attire.confidence),
+    gap: 1,
+    valued: ctx.valuesStatus,
     originEventId: percept.sourceEventId,
     at: now,
   });
