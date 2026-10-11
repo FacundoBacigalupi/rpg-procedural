@@ -1197,6 +1197,7 @@ export function lifeWorld(
                         schemas: parts.schemas,
                         dims: parts.relationDims,
                         bonds: parts.relationBonds,
+                        cultureTraits: parts.cultureTraits,
                       },
                     }
                   : {}),

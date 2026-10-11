@@ -17,6 +17,7 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   type BondDef,
+  type TraitDef as CultureTraitDef,
   createEntity,
   type DimensionDef,
   draftEvent,
@@ -36,18 +37,24 @@ import {
   newBody,
   newMind,
   PERSON,
+  PERSON_CULTURE,
   PERSON_NAME,
   type ProcessDef,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   type Relationship,
   type SchemaDef,
   type Sex,
   type StateChange,
+  seedAffiliation,
+  seedPersonCulture,
   setComponent,
   strangerDims,
   type Trait,
   table,
+  villageCulture,
+  villageReligion,
 } from "../../sim/index.ts";
 import { PREGNANCY } from "./conception.ts";
 import { LABOR } from "./midwife.ts";
@@ -81,6 +88,8 @@ export interface BirthOptions {
         readonly schemas: readonly SchemaDef[];
         readonly dims: readonly DimensionDef[];
         readonly bonds: readonly BondDef[];
+        /** Los rasgos de cultura: con ellos copia a sus padres lo que siguen (culture §4). */
+        readonly cultureTraits: readonly CultureTraitDef[];
       }
     | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -103,7 +112,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       ENTITY.name,
       LOCATION.name,
-      ...(o.newborn ? [PERSON_NAME.name] : []),
+      ...(o.newborn ? [PERSON_NAME.name, PERSON_CULTURE.name, RELIGIOUS_IDENTITY.name] : []),
     ],
     writes: [
       BIRTH.name,
@@ -114,7 +123,15 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       LOCATION.name,
       BODY_STATE.name,
-      ...(o.newborn ? [PERSON_NAME.name, MIND.name, RELATIONS.name] : []),
+      ...(o.newborn
+        ? [
+            PERSON_NAME.name,
+            MIND.name,
+            RELATIONS.name,
+            PERSON_CULTURE.name,
+            RELIGIOUS_IDENTITY.name,
+          ]
+        : []),
     ],
     run(ctx) {
       const plan = o.bodyPlans.find((p) => p.id === "human");
@@ -217,6 +234,56 @@ export function birthProcess(o: BirthOptions): ProcessDef {
               newMind(n.schemas, innate, rng.fork("psyche"), birthEvent),
             ),
           );
+          // Lo que sigue de su cultura y su fe: copia a sus padres, como los chicos de la siembra.
+          const parents = [mother, f];
+          const community = villageCulture(ctx.truth);
+          if (community) {
+            const learned = parents.flatMap((p) => {
+              const culture = ctx.truth.get(PERSON_CULTURE, p as unknown as EntityRef);
+              return culture ? [{ id: p, culture }] : [];
+            });
+            changes.push(
+              setComponent(
+                PERSON_CULTURE,
+                childKey,
+                seedPersonCulture(
+                  {
+                    community,
+                    traits: n.cultureTraits,
+                    parents: learned,
+                    since: born,
+                    originEventId: birthEvent,
+                  },
+                  rng.fork("person-culture"),
+                ),
+              ),
+            );
+          }
+          const religion = villageReligion(ctx.truth);
+          if (religion) {
+            const raised = parents.flatMap((p) => {
+              const aff = ctx.truth.get(RELIGIOUS_IDENTITY, p as unknown as EntityRef)
+                ?.affiliations[0];
+              return aff ? [{ id: p, aff }] : [];
+            });
+            changes.push(
+              setComponent(RELIGIOUS_IDENTITY, childKey, {
+                affiliations: [
+                  seedAffiliation(
+                    {
+                      religion,
+                      parents: raised.map((r) => r.aff),
+                      learnedFrom: raised.map((r) => r.id),
+                      since: born,
+                      originEventId: birthEvent,
+                    },
+                    rng.fork("person-religion"),
+                  ),
+                ],
+                doubts: [],
+              }),
+            );
+          }
           // Lo que siente por su parentela y su casa, con la misma regla que la siembra.
           const record = { sex, born, mother, father: f, household: m.household, spouse: null };
           const person = (who: AgentId) =>
