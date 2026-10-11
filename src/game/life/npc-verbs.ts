@@ -189,6 +189,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           place: decision.target,
           since: ctx.now,
           decision: decision.id,
+          ...(truth.get(LOCATION, me) ? { from: truth.get(LOCATION, me)?.hex as number } : {}),
         });
         return startPlan(me, plan, state?.seq ?? 0, ctx.now, {
           changes: [log, open],
@@ -206,6 +207,8 @@ export interface NpcJourney {
   readonly since: Tick;
   /** La decisión que lo abrió. */
   readonly decision: string;
+  /** El hex del que salió, si se sabía (`life.transit` parte de ahí). */
+  readonly from?: number;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
 

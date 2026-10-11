@@ -300,6 +300,8 @@ export interface LifeOptions {
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs` con `move`): el viaje del NPC sigue hasta N días (`LifeParts.npcJourneyDays`). */
   readonly npcJourneyDays?: number;
+  /** Opt-in (con `npcJourneyDays`): el NPC en viaje pasa por los hexes del camino (`LifeParts.npcTransit`). */
+  readonly npcTransit?: boolean;
   /** Opt-in: `speak` con acto declarado desde afecto y familiaridad (`LifeParts.speakActs`); apagado. */
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
@@ -399,6 +401,7 @@ export function optInParts(
   | "npcMove"
   | "npcVerbs"
   | "npcJourneyDays"
+  | "npcTransit"
   | "speakActs"
   | "takeBelieved"
   | "creditHeed"
@@ -470,6 +473,7 @@ export function optInParts(
     ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
+    ...(options.npcTransit ? { npcTransit: true } : {}),
     ...(options.speakActs ? { speakActs: options.speakActs } : {}),
     ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
