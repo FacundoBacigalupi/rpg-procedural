@@ -234,6 +234,24 @@ function percepts(): Percept[][] {
       ),
     ],
     [percept({ presence: field(true), action: field("dance") }, "clear", 5)],
+    // Como llegan de verdad: eventos de acción con su prefijo, la muerte, el llanto de un recién
+    // nacido y un evento interno de la sim que nadie narra.
+    [
+      percept(
+        { presence: field(true), identity: field(other), action: field("action.work") },
+        "identified",
+        6,
+      ),
+    ],
+    [
+      percept(
+        { presence: field(true), identity: field(other), action: field("body.died") },
+        "identified",
+        7,
+      ),
+    ],
+    [percept({ presence: field(true), action: field("family.birth") }, "clear", 8)],
+    [percept({ presence: field(true), action: field("npc.crossed") }, "clear", 9)],
   ];
   verbs.forEach((verb, k) => {
     out.push([
@@ -288,6 +306,32 @@ describe("plantillas", () => {
         const marked = renderView(view, book, Rng.root(seed).fork("narration", n));
         expect(validateNarration(marked, request), `${n}/${seed}: ${marked}`).toEqual([]);
       }
+    }
+  });
+
+  it("lo visto se narra por su verbo y un evento desconocido cae en «algo que no entiende» sin romper nada", () => {
+    const say = (action: string) =>
+      stripMarks(
+        renderView(
+          viewOf({
+            percepts: [
+              percept(
+                { presence: field(true), identity: field(other), action: field(action) },
+                "identified",
+                1,
+              ),
+            ],
+          }),
+          book,
+          Rng.root(1).fork("narration", 1),
+        ),
+      );
+    expect(say("action.work")).toMatch(/trabaj/);
+    expect(say("action.work")).not.toMatch(/no llegás a entender/);
+    expect(say("body.died")).toMatch(/muert|sin vida/);
+    expect(say("family.birth")).toMatch(/nacid|llanto|nacer/);
+    for (const unknown of ["npc.crossed", "npc.interrupted", "npc.resumed", "family.conception"]) {
+      expect(say(unknown)).toMatch(/no llegás a entender/);
     }
   });
 

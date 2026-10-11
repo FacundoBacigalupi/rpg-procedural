@@ -112,6 +112,17 @@
     "id": "percept.action.ponder",
     "lines": ["{who} se queda pensando.", "Ves a {who} dándole vueltas a algo."]
   },
+  {
+    "id": "percept.action.body.died",
+    "lines": ["{who} cae sin vida.", "Ves a {who} caer muerto."]
+  },
+  {
+    "id": "percept.action.family.birth",
+    "lines": [
+      "Se oye llorar a {who}, apenas nacido.",
+      "Alguien acaba de nacer: oís a {who} llorar."
+    ]
+  },
   { "id": "percept.action.other", "lines": ["{who} hace algo que no llegás a entender."] },
   { "id": "percept.words", "lines": ["{who} dice: «{words}»", "Oís a {who}: «{words}»"] },
 
