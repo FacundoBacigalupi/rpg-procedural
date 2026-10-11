@@ -118,6 +118,7 @@ import {
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
+import { npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { householdAuthority, realTrust } from "./patientbonds.ts";
@@ -336,6 +337,8 @@ export interface LifeWorld {
   readonly repayDoses?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina diaria (`RoutineOptions.npcMove`); apagado, sin cambios. */
   readonly npcMove?: boolean;
+  /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
+  readonly npcVerbs?: readonly string[];
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1358,6 +1361,16 @@ export function lifeWorld(
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         ...(parts.craftGoals ? [practiceLogProcess({ skills: parts.skills })] : []),
+        ...(parts.npcVerbs && parts.npcVerbs.length > 0
+          ? [
+              npcVerbsProcess({
+                catalog: parts.catalog,
+                verbs: parts.npcVerbs,
+                day: parts.clock.day,
+                player,
+              }),
+            ]
+          : []),
         ...(parts.closeGoalsOnDeath
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),

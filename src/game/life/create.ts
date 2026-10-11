@@ -294,6 +294,8 @@ export interface LifeOptions {
   readonly objectCues?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina (`LifeParts.npcMove`); apagado. */
   readonly npcMove?: boolean;
+  /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
+  readonly npcVerbs?: readonly string[];
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -387,6 +389,7 @@ export function optInParts(
   | "pawn"
   | "hire"
   | "npcMove"
+  | "npcVerbs"
   | "creditHeed"
   | "residue"
   | "consumables"
@@ -454,6 +457,7 @@ export function optInParts(
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
+    ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),

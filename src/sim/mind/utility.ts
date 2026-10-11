@@ -12,7 +12,7 @@
 // que `life` cablea después (candidatos desde el catálogo, creencias, relaciones).
 
 import { exp, type Rng } from "../../core/index.ts";
-import { expectedGain } from "../actions/index.ts";
+import { expectedGain, type SpeakAct } from "../actions/index.ts";
 import type { Innate } from "../family/index.ts";
 import { VALUE_IDS, type ValueId } from "./mind.ts";
 
@@ -55,6 +55,8 @@ export interface Candidate {
   readonly risk?: number;
   /** Suma directa del ánimo, de gusto o de culpa (±), ya calculada por quien llama. */
   readonly mood?: number;
+  /** Solo de `speak`: el acto de habla que la candidata declara (saludo, pedido…); la decisión lo conserva. */
+  readonly act?: SpeakAct;
 }
 
 export interface Drives {
