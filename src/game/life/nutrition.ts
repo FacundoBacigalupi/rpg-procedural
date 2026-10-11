@@ -9,6 +9,7 @@
 
 import type { AgentId, EntityRef, PlaceRef, PlanetClock } from "../../core/index.ts";
 import {
+  ASLEEP,
   BODY_NUTRIENTS,
   BODY_STATE,
   DEFICIENCY_EFFECTS,
@@ -52,6 +53,8 @@ const MAX_CATCH_UP_DAYS = 400;
 const FULL_EPS = 1e-9;
 
 export interface NutritionOptions {
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no se avanza acá; queda como estaba. */
+  readonly sleepers?: boolean;
   readonly clock: PlanetClock;
   readonly profiles: readonly NutrientProfileDef[];
   /** La dieta de referencia; sin ella el proceso no hace nada. */
@@ -105,7 +108,14 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [PERSON.name, ENTITY.name, BODY_STATE.name, NUTRITION.name, MEALS.name],
+    reads: [
+      PERSON.name,
+      ENTITY.name,
+      BODY_STATE.name,
+      NUTRITION.name,
+      MEALS.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
+    ],
     writes: [NUTRITION.name, DEFICIENCY_EFFECTS.name, SEVERE_PROTEIN.name, ENTITY.name],
     run(ctx) {
       if (!intake) return {};
@@ -113,6 +123,7 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
       const events: EventDraft[] = [];
       const days = Math.min(MAX_CATCH_UP_DAYS, Math.max(1, Math.round(ctx.window / o.clock.day)));
       for (const id of ctx.truth.ids(PERSON)) {
+        if (o.sleepers && ctx.truth.get(ASLEEP, id)) continue;
         const body = ctx.truth.get(BODY_STATE, id);
         const base = ctx.truth.get(ENTITY, id);
         if (!body || !base || base.endedAt !== undefined || body.death) continue;

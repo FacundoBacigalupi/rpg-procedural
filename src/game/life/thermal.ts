@@ -21,6 +21,7 @@ import {
 import {
   ACTIVITY_LOAD,
   AMPUTATIONS,
+  ASLEEP,
   altitudeEnv,
   amputateSurgically,
   amputationFactors,
@@ -71,6 +72,8 @@ type EntityRefLike = string;
 export const THERMAL_PROCESS = "life.thermal";
 
 export interface ThermalOptions {
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no se avanza acá; queda como estaba. */
+  readonly sleepers?: boolean;
   readonly clock: PlanetClock;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
@@ -263,6 +266,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       AMPUTATIONS.name,
       FROSTBITE_CARE.name,
       FROSTBITE_ORDERS.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
     ],
     writes: [
       THERMAL.name,
@@ -353,6 +357,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         };
       };
       for (const id of ctx.truth.ids(PERSON)) {
+        if (o.sleepers && ctx.truth.get(ASLEEP, id)) continue;
         const body = ctx.truth.get(BODY_STATE, id);
         const base = ctx.truth.get(ENTITY, id);
         if (!body || !base || base.endedAt !== undefined || body.death) continue;

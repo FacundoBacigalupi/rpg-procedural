@@ -18,6 +18,7 @@ import {
   type ActionCatalog,
   type ActionPlan,
   type ArgValue,
+  ASLEEP,
   BODY_STATE,
   type BodyPlanDef,
   deleteComponent,
@@ -65,6 +66,8 @@ export interface NpcVerbsOptions {
   /** Verbos de la decisión que se ejecutan (el resto sigue como hasta ahora). */
   readonly verbs: readonly string[];
   readonly day: number;
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no arma planes. */
+  readonly sleepers?: boolean;
   /** El personaje decide por su cuenta: queda afuera. */
   readonly player: AgentId;
   /**
@@ -264,6 +267,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       NPC_VERB_LOG.name,
       LOCATION.name,
       PLACE.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.provisions ? [PERSON.name] : []),
       ...(o.nightRest || o.resume ? [BODY_STATE.name] : []),
       ...(o.resume ? [NPC_PAUSED.name] : []),
@@ -279,6 +283,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
+      if (o.sleepers && truth.get(ASLEEP, me)) return {};
       const journeyDays = o.journeyDays;
       const trip = journeyDays !== undefined ? truth.get(NPC_JOURNEY, me) : undefined;
       if (journeyDays !== undefined && trip && o.placeOf) {

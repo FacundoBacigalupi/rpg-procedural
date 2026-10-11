@@ -103,6 +103,50 @@ describe("tier 1 en una vida real: los dormidos", () => {
     expect(compared).toBeGreaterThan(3);
   }, 600_000);
 
+  it("costo: ejecuciones de proceso por hora, con y sin dormidos", () => {
+    const count = (sleepers: boolean) => {
+      const calls = new Map<string, number>();
+      const work = new Map<string, number>();
+      const all = loadContent(GAME_CONTENT_KINDS, sources("content"));
+      const life = Life.create(7, all, {
+        npcVerbs: ["move"],
+        ...(sleepers ? { sleepers: { near: 1, food: "grain" } } : {}),
+        runProbe: (id, changes, events) => {
+          calls.set(id, (calls.get(id) ?? 0) + 1);
+          if (changes + events > 0) work.set(id, (work.get(id) ?? 0) + 1);
+        },
+      });
+      const w = life.world;
+      const place = w.truth.ids(PLACE)[0] as string;
+      const hexes = (w.truth.get(PLACE, place as never)?.hexes ?? []) as number[];
+      let far = hexes[0] as number;
+      for (let i = 0; i < 6; i++) {
+        far =
+          (w.map.neighbors[far] ?? []).find(
+            (n) => !hexes.includes(n) && hexPath(w.map, n, hexes[0] as number).length > i,
+          ) ?? far;
+      }
+      w.truth.set(LOCATION, life.player, { hex: far });
+      // Un día de arranque (se registran los dormidos); se mide lo que sigue.
+      life.advanceTo(life.now + DAY);
+      calls.clear();
+      work.clear();
+      life.advanceTo(life.now + 2 * DAY);
+      const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
+      return { calls, work, totalCalls: sum(calls), totalWork: sum(work) };
+    };
+    const off = count(false);
+    const on = count(true);
+    const hours = 48;
+    const rows = [...new Set([...off.calls.keys(), ...on.calls.keys()])]
+      .map((id) => `${id}: ${off.calls.get(id) ?? 0} -> ${on.calls.get(id) ?? 0}`)
+      .sort();
+    console.log(
+      `ejecuciones/hora: ${(off.totalCalls / hours).toFixed(1)} -> ${(on.totalCalls / hours).toFixed(1)}; con trabajo: ${(off.totalWork / hours).toFixed(1)} -> ${(on.totalWork / hours).toFixed(1)}\n${rows.join("\n")}`,
+    );
+    expect(on.totalWork).toBeLessThan(off.totalWork);
+  }, 600_000);
+
   it("sin la opción nadie duerme y el estado es el mismo de siempre", () => {
     const a = build(false);
     const b = build(false);
