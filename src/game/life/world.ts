@@ -342,6 +342,8 @@ export interface LifeWorld {
   readonly npcMove?: boolean;
   /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
   readonly npcVerbs?: readonly string[];
+  /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
+  readonly npcJourneyDays?: number;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1372,6 +1374,12 @@ export function lifeWorld(
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
                 player,
+                ...(parts.npcJourneyDays !== undefined
+                  ? {
+                      journeyDays: parts.npcJourneyDays,
+                      placeOf: placeOf(parts, village),
+                    }
+                  : {}),
               }),
             ]
           : []),

@@ -23,7 +23,7 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
-import { planFromDecision } from "./npc-verbs.ts";
+import { NPC_JOURNEY, planFromDecision } from "./npc-verbs.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -243,6 +243,65 @@ describe("el NPC camina a un lugar decidido (opt-in)", () => {
     const seconds = (e: (typeof steps)[number]) => (e.data as { seconds?: number }).seconds ?? 0;
     expect(seconds(steps[0] as (typeof steps)[number])).toBeGreaterThan(HOUR);
     expect(w.truth.get(LOCATION, npc)?.hex).not.toBe(from);
+  }, 120_000);
+
+  /** Un NPC con viaje encendido y un lugar donde no está. */
+  function traveler() {
+    const life = Life.create(7, content, { npcVerbs: ["move"], npcJourneyDays: 6, npcMove: true });
+    const w = life.world;
+    const npc = living(w.truth).find(
+      (x) =>
+        x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+    ) as AgentId;
+    const from = w.truth.get(LOCATION, npc)?.hex ?? -1;
+    const place = w.truth.ids(PLACE).find((p) => !w.truth.get(PLACE, p)?.hexes.includes(from));
+    if (!place) throw new Error("sin lugar");
+    const trip = () =>
+      w.log
+        .all()
+        .filter((e) => e.kind === "npc.journey" && e.actors[0] === npc)
+        .map((e) => (e.data as { what: string }).what);
+    return { life, w, npc, place, trip };
+  }
+
+  it("con viaje, la decisión abre un viaje con comienzo y llegada como eventos y no lo reabre", () => {
+    const { life, w, npc, place, trip } = traveler();
+    w.truth.set(NPC_DECISION, npc, {
+      at: life.now,
+      id: `move:${place}+toward:agent:99`,
+      verb: "move",
+      target: place,
+      utility: 1,
+      options: 2,
+    } as never);
+    life.advanceTo(life.now + 6 * HOUR);
+    // En el lugar, con npcMove se queda ahí el rato de la decisión.
+    expect(w.truth.get(PLACE, place)?.hexes).toContain(w.truth.get(LOCATION, npc)?.hex);
+    life.advanceTo(life.now + 3 * 86_400);
+    expect(trip()).toEqual(["started", "arrived"]);
+    expect(w.truth.get(NPC_JOURNEY, npc)).toBeUndefined();
+  }, 120_000);
+
+  it("un viaje en curso sigue sin que la decisión esté vigente y termina al llegar", () => {
+    const { life, w, npc, place, trip } = traveler();
+    w.truth.set(NPC_JOURNEY, npc, { place, since: life.now, decision: "move:viejo" });
+    life.advanceTo(life.now + 2 * 86_400);
+    expect(w.log.all().some((e) => e.kind === "action.move" && e.actors[0] === npc)).toBe(true);
+    expect(trip()).toEqual(["arrived"]);
+    expect(w.truth.get(NPC_JOURNEY, npc)).toBeUndefined();
+  }, 120_000);
+
+  it("un viaje que pasa del tope de días se rinde y queda dicho", () => {
+    const { life, w, npc, place, trip } = traveler();
+    w.truth.set(NPC_JOURNEY, npc, {
+      place,
+      since: life.now - 7 * 86_400,
+      decision: "move:viejo",
+    });
+    life.advanceTo(life.now + 2 * HOUR);
+    expect(trip()).toEqual(["gave_up"]);
+    expect(w.truth.get(NPC_JOURNEY, npc)).toBeUndefined();
+    expect(w.log.all().some((e) => e.kind === "action.move" && e.actors[0] === npc)).toBe(false);
   }, 120_000);
 });
 
