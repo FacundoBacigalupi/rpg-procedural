@@ -1,6 +1,7 @@
 export * from "./batch.ts";
 export * from "./diff.ts";
 export * from "./html.ts";
+export * from "./layer-pull.ts";
 export * from "./meaning-vacuum.ts";
 export * from "./repro.ts";
 export * from "./scenario.ts";
