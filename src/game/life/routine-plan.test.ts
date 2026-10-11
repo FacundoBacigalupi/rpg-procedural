@@ -61,3 +61,20 @@ describe("planFor: comer decidido", () => {
     expect(planFor(10, 30, d, 2 * DAY, DAY, hungry).eat).toBeUndefined();
   });
 });
+
+describe("planFor: ir hacia un lugar decidido", () => {
+  const d = { verb: "move", at: 900, target: "place:4" };
+  const can = { unwell: false, larderLow: false, canMove: true };
+  it("despierto y con la decisión vigente va al lugar, sin cosecha", () => {
+    const p = planFor(10, 30, d, 1000, DAY, can);
+    expect(p).toEqual({ activity: "light", at: "home", replaced: true, move: "place:4" });
+    expect(planFor(7, 30, d, 1000, DAY, can).move).toBe("place:4");
+  });
+  it("apagado, de noche, vieja o sin lugar no se mueve", () => {
+    expect(planFor(10, 30, d, 1000, DAY).move).toBeUndefined();
+    expect(planFor(10, 30, d, 1000, DAY, { ...can, canMove: false }).move).toBeUndefined();
+    expect(planFor(23, 30, d, 1000, DAY, can).move).toBeUndefined();
+    expect(planFor(10, 30, d, 2 * DAY, DAY, can).move).toBeUndefined();
+    expect(planFor(10, 30, { ...d, target: "agent:2" }, 1000, DAY, can).move).toBeUndefined();
+  });
+});

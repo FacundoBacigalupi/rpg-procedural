@@ -331,6 +331,8 @@ export interface LifeWorld {
   readonly lendBorrowed?: boolean;
   /** Opt-in (con `consumables`): el hogar que debe una sustancia y ya la tiene la devuelve en especie por el libro mayor (`life.repay_dose`); si no, el vencimiento la vuelve mora. Apagado, sin proceso. */
   readonly repayDoses?: boolean;
+  /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina diaria (`RoutineOptions.npcMove`); apagado, sin cambios. */
+  readonly npcMove?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1357,6 +1359,7 @@ export function lifeWorld(
           : []),
         routineProcess({
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
+          ...(parts.npcMove === true ? { npcMove: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
             ? {

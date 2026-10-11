@@ -292,6 +292,8 @@ export interface LifeOptions {
   readonly cueLocal?: boolean;
   /** Opt-in (con `cravingCues`, `cueLocal` y `consumables`): señal por objeto (`LifeParts.objectCues`). */
   readonly objectCues?: boolean;
+  /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina (`LifeParts.npcMove`); apagado. */
+  readonly npcMove?: boolean;
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -384,6 +386,7 @@ export function optInParts(
   | "loanWorkout"
   | "pawn"
   | "hire"
+  | "npcMove"
   | "creditHeed"
   | "residue"
   | "consumables"
@@ -450,6 +453,7 @@ export function optInParts(
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
+    ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),
