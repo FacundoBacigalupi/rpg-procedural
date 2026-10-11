@@ -139,6 +139,7 @@ import {
 } from "./moldgossip.ts";
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
+import { type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -294,6 +295,12 @@ export interface DecideOptions {
    */
   readonly takeBelieved?: TakeBelievedOptions;
   /**
+   * Opt-in: `speak:<persona>` entra con acto declarado (saludar a un conocido sin trato reciente,
+   * preguntar por alguien querido de quien no sabe dónde está), con ánimo desde afecto y
+   * familiaridad; la decisión conserva el acto (`npcVerbs` lo ejecuta). Apagado, no cambia.
+   */
+  readonly speakActs?: SpeakActsOptions;
+  /**
    * Opt-in (exige `moldHints`): en apuro (hambre o deuda) y con un lote de su bolsillo que cree
    * valioso, `give:<prestamista>+pawn:<bien>` entra como candidata si oyó (rumor `has`, creencia)
    * que ese conocido tiene efectivo; `life.pawn_decide` la ejecuta. Apagado, no cambia.
@@ -365,7 +372,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SKILL_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.debtKnowledge || o.goalProgress ? [DEBT_BOOK.name] : []),
+      ...(o.debtKnowledge || o.goalProgress || o.speakActs ? [DEBT_BOOK.name] : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
@@ -1017,6 +1024,40 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             }),
             means: { surplus: Math.max(0, 1 - (drives.needs.hunger ?? 0) * 2) },
           }),
+        );
+      }
+      if (o.speakActs) {
+        // Lo que cree deber (libro de deudas propio), a quién y en qué unidad.
+        const owes = new Map<string, string>();
+        for (const d of truth.get(DEBT_BOOK, me)?.items ?? []) {
+          if (d.role === "debtor" && d.remaining > 0 && !owes.has(d.other))
+            owes.set(d.other, d.unit);
+        }
+        // Noticias que cree de terceros: los que da por muertos, con confianza suficiente.
+        const news = (beliefs?.items ?? [])
+          .filter(
+            (b) =>
+              b.prop.attr === "alive" &&
+              b.value === false &&
+              beliefConfidenceAt(b, now) >= 0.5 &&
+              b.prop.subject !== me,
+          )
+          .map((b) => ({ about: b.prop.subject as string, claim: "dead" as const }))
+          .sort((a, b) => (a.about < b.about ? -1 : a.about > b.about ? 1 : 0));
+        social.push(
+          ...speakActCandidates(
+            people.map((p) => ({
+              id: p.id as string,
+              familiarity: p.rel.dims.familiarity,
+              affection: p.rel.dims.affection,
+              updated: p.rel.updated,
+              whereaboutsKnown: believed(beliefs, p.id, "at") !== undefined,
+              ...(owes.has(p.id) ? { owes: owes.get(p.id) as string } : {}),
+            })),
+            now,
+            o.speakActs,
+            { want: { what: null, urgency: drives.needs.hunger ?? 0 }, news },
+          ),
         );
       }
       for (const w of pawnAsks.slice(0, 3)) {
