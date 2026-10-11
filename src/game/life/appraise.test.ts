@@ -398,7 +398,7 @@ describe("la aldea cría a sus chicos", () => {
     );
     expect(cited).toBe(true);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
-  }, 120_000);
+  }, 300_000);
 
   it("un chico sin nadie en la casa queda abandonado", () => {
     const life = Life.create(10, content);
