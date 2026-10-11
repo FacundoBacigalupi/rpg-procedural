@@ -19,10 +19,13 @@ import {
   ENTITY,
   type EventDraft,
   endEntity,
+  type Happening,
   happeningEvent,
+  injure,
   LOCATION,
   type LocalMap,
   MEAL_KCAL,
+  PENDING_FACTS,
   PERSON,
   type PostingDraft,
   type ProcessDef,
@@ -31,10 +34,12 @@ import {
   setComponent,
 } from "../../sim/index.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
+import { living } from "./living.ts";
 
 export const CATCH_UP_PROCESS = "life.catch_up";
 export const CAUGHT_UP_EVENT = "npc.caught_up";
 export const SLEEP_POLICY_PROCESS = "life.sleep_policy";
+export const PENDING_APPLIED_EVENT = "npc.pending_applied";
 
 // El registro del dormido vive en `sim/body/asleep.ts` (lo leen procesos de `sim`).
 export { ASLEEP, type Asleep };
@@ -51,6 +56,20 @@ export interface CatchUpProcessOptions {
   };
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Parte el proceso en dos para llamarlo menos (off-3e): `wake` (por hora) atiende solo a quien
+   * pidió despertar y `daily` (por día) a quien no; quien arma el mundo les reparte los alcances
+   * (`catchUpDue`). Sin `mode`, un solo proceso por hora que decide solo (como antes).
+   */
+  readonly mode?: "wake" | "daily";
+}
+
+export const CATCH_UP_WAKE_PROCESS = "life.catch_up_wake";
+export const CATCH_UP_DAILY_PROCESS = "life.catch_up_daily";
+
+/** ¿Le toca este modo de puesta al día a un dormido? (puro: lo usa `scopes` para no invocar de más). */
+export function catchUpDue(mode: "wake" | "daily", sleep: Asleep): boolean {
+  return mode === "wake" ? sleep.wake === true : sleep.wake !== true;
 }
 
 /** Los gramos de una comida del cuerpo (como la rutina: `MEAL_KCAL` a escala de su masa). */
@@ -61,15 +80,23 @@ export function mealGrams(plan: BodyPlanDef, massKg: number, kcalPerGram: number
 export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
   const plans = new Map(o.plans.map((p) => [p.id, p]));
   return {
-    id: CATCH_UP_PROCESS,
+    id:
+      o.mode === "wake"
+        ? CATCH_UP_WAKE_PROCESS
+        : o.mode === "daily"
+          ? CATCH_UP_DAILY_PROCESS
+          : CATCH_UP_PROCESS,
     system: "life",
     scope: "agent",
     // Corre cada hora para atender un pedido de despertar sin demora; sin él, una vez por día.
-    cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
+    cadence:
+      o.mode === "daily"
+        ? { scene: "day", local: "day", regional: "day", world: "day" }
+        : { scene: "hour", local: "hour", regional: "hour", world: "hour" },
     representation: "individual",
     phase: "decide",
-    reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PERSON.name],
-    writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name],
+    reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PERSON.name, PENDING_FACTS.name],
+    writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PENDING_FACTS.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -104,14 +131,67 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const grams = mealGrams(plan, body.massKg, o.ration.kcalPerGram);
       const maxMeals = Math.floor(stock / (grams * mouths));
 
-      const done = catchUpRoutine(plan, me, body, ctx.now, {
+      // Primero lo asignado, después lo propio (simulation §8): los hechos pendientes se aplican en
+      // su momento y entre ellos la persona vive su rutina por tramos.
+      const pending = [...(truth.get(PENDING_FACTS, me) ?? [])].sort((a, b) => a.at - b.at);
+      const due = pending.filter((f) => f.at <= ctx.now);
+      const later = pending.filter((f) => f.at > ctx.now);
+      const catchOpts = (left: number) => ({
         clock: o.clock,
         lonDeg: o.lonDeg,
         ageYears: (ctx.now - person.born) / o.clock.year,
         ration: o.ration,
-        maxMeals,
+        maxMeals: left,
       });
+      let b = body;
+      let meals = 0;
+      let eatenGrams = 0;
+      const happenings: Happening[] = [];
+      const applied: EventDraft[] = [];
       const place = o.placeOf(truth, me);
+      due.forEach((f, i) => {
+        if (b.death !== null) return;
+        const to = Math.max(b.updatedAt, f.at) as Tick;
+        const seg = catchUpRoutine(plan, me, b, to, catchOpts(maxMeals - meals));
+        b = seg.body;
+        meals += seg.meals;
+        eatenGrams += seg.grams;
+        happenings.push(...seg.happenings);
+        if (b.death !== null) return;
+        const hit = injure(
+          plan,
+          b,
+          { ...f.blow, cause: f.cause, at: f.at },
+          ctx.rng.fork("pending", me, f.at, i),
+        );
+        b = hit.body;
+        applied.push({
+          kind: PENDING_APPLIED_EVENT,
+          actors: [me],
+          place,
+          data: { fact: f.kind, at: f.at, zone: hit.wound.zone, wound: hit.wound.id },
+          emissions: {},
+          causes: [{ kind: "event", event: f.cause }],
+        });
+        // Un golpe que mata en el acto: el cuerpo ya lo dice, falta cerrar con su causa.
+        if (hit.died !== null) {
+          applied.push({
+            kind: "body.died",
+            actors: [me],
+            place,
+            data: { cause: hit.died },
+            emissions: { sight: 0.5, sound: 0.1 },
+            causes: [{ kind: "event", event: f.cause }],
+          });
+        }
+      });
+      const rest = catchUpRoutine(plan, me, b, ctx.now, catchOpts(maxMeals - meals));
+      const done = {
+        body: rest.body,
+        happenings: [...happenings, ...rest.happenings],
+        meals: meals + rest.meals,
+        grams: eatenGrams + rest.grams,
+      };
       const summary: EventDraft = {
         kind: CAUGHT_UP_EVENT,
         actors: [me],
@@ -122,6 +202,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       };
       const events: EventDraft[] = [
         summary,
+        ...applied,
         ...done.happenings.map((h) => happeningEvent(h, me, place, ctx.now)),
       ];
       const changes: StateChange[] = [
@@ -131,8 +212,15 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
           ? deleteComponent(ASLEEP, me)
           : setComponent(ASLEEP, me, { since: sleep.since, lastAdvanced: ctx.now }),
       ];
-      const died = done.happenings.findIndex((h) => h.kind === "died");
-      if (died >= 0) changes.push(endEntity(base, draftEvent(1 + died), ctx.now));
+      if (pending.length > 0) {
+        changes.push(
+          later.length > 0
+            ? setComponent(PENDING_FACTS, me, later)
+            : deleteComponent(PENDING_FACTS, me),
+        );
+      }
+      const died = events.findIndex((e) => e.kind === "body.died");
+      if (died >= 0) changes.push(endEntity(base, draftEvent(died), ctx.now));
       const postings: PostingDraft[] =
         done.grams > 0
           ? [
@@ -214,40 +302,41 @@ export function sleepPolicyProcess(o: SleepPolicyOptions): ProcessDef {
   return {
     id: SLEEP_POLICY_PROCESS,
     system: "life",
-    scope: "agent",
+    // Un solo proceso del mundo que recorre a los vivos (off-3e): una llamada por hora, no una por agente.
+    scope: "world",
     cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
     representation: "individual",
     phase: "perceive",
     reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, LOCATION.name],
     writes: [ASLEEP.name],
     run(ctx) {
-      const me = ctx.scope as AgentId;
       const truth = ctx.truth;
-      if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
-      const here = truth.get(LOCATION, me)?.hex;
       const there = truth.get(LOCATION, o.player)?.hex;
-      const body = truth.get(BODY_STATE, me);
-      if (here === undefined || there === undefined || !body) return {};
-      const want = sleepWant({
-        nearPlayer: hexesWithin(o.map, there, o.near).has(here),
-        bondedToPlayer: o.bonded(truth, me),
-        important: o.important(truth, me),
-        pending: o.pending?.(truth, me) ?? false,
-      });
-      const sleep = truth.get(ASLEEP, me);
-      if (want && !sleep) {
-        return {
-          changes: [setComponent(ASLEEP, me, { since: ctx.now, lastAdvanced: body.updatedAt })],
-        };
+      if (there === undefined) return {};
+      const zone = hexesWithin(o.map, there, o.near);
+      const changes: StateChange[] = [];
+      for (const me of living(truth)) {
+        if (me === o.player) continue;
+        const here = truth.get(LOCATION, me)?.hex;
+        const body = truth.get(BODY_STATE, me);
+        if (here === undefined || !body) continue;
+        const want = sleepWant({
+          nearPlayer: zone.has(here),
+          bondedToPlayer: o.bonded(truth, me),
+          important: o.important(truth, me),
+          pending: o.pending?.(truth, me) ?? false,
+        });
+        const sleep = truth.get(ASLEEP, me);
+        if (want && !sleep) {
+          changes.push(setComponent(ASLEEP, me, { since: ctx.now, lastAdvanced: body.updatedAt }));
+        } else if (!want && sleep && sleep.wake !== true) {
+          changes.push(setComponent(ASLEEP, me, { ...sleep, wake: true }));
+        } else if (want && sleep?.wake === true) {
+          // Quiso despertar y se le pidió, pero volvió a quedar lejos: se cancela el pedido.
+          changes.push(setComponent(ASLEEP, me, { ...sleep, wake: false }));
+        }
       }
-      if (!want && sleep && sleep.wake !== true) {
-        return { changes: [setComponent(ASLEEP, me, { ...sleep, wake: true })] };
-      }
-      // Quiso despertar y se le pidió, pero volvió a quedar lejos: se cancela el pedido.
-      if (want && sleep?.wake === true) {
-        return { changes: [setComponent(ASLEEP, me, { ...sleep, wake: false })] };
-      }
-      return {};
+      return changes.length > 0 ? { changes } : {};
     },
   };
 }

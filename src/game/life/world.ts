@@ -156,9 +156,10 @@ import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from
 import { sleepProcess } from "./sleep.ts";
 import {
   ASLEEP,
-  CATCH_UP_PROCESS,
+  CATCH_UP_DAILY_PROCESS,
+  CATCH_UP_WAKE_PROCESS,
+  catchUpDue,
   catchUpProcess,
-  SLEEP_POLICY_PROCESS,
   sleepPolicyProcess,
 } from "./sleepers.ts";
 import { soilProcess } from "./soil.ts";
@@ -190,9 +191,6 @@ import { workoutProcess } from "./workout.ts";
 
 export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
-
-/** Los únicos procesos por agente que sí se invocan para un dormido. */
-const SLEEPER_PROCESSES: ReadonlySet<string> = new Set([CATCH_UP_PROCESS, SLEEP_POLICY_PROCESS]);
 
 export interface LifeWorld {
   readonly seed: Seed;
@@ -1564,18 +1562,23 @@ export function lifeWorld(
               bonded: (t, who) => household(t, who) === household(t, player),
               important: () => false,
             }),
-            catchUpProcess({
-              plans: parts.plans,
-              clock: parts.clock,
-              lonDeg: parts.map.lonDeg,
-              ration: {
-                unit: `good:${food.id}`,
-                kcalPerGram: food.kcalPerGram,
-                waterPerGram: food.waterPerGram,
-              },
-              player,
-              placeOf: placeOf(parts, village),
-            }),
+            // Dos procesos con alcances repartidos (off-3e): por hora solo quien pidió despertar,
+            // por día el resto; así no se invoca a cada dormido cada hora.
+            ...(["wake", "daily"] as const).map((mode) =>
+              catchUpProcess({
+                mode,
+                plans: parts.plans,
+                clock: parts.clock,
+                lonDeg: parts.map.lonDeg,
+                ration: {
+                  unit: `good:${food.id}`,
+                  kcalPerGram: food.kcalPerGram,
+                  waterPerGram: food.waterPerGram,
+                },
+                player,
+                placeOf: placeOf(parts, village),
+              }),
+            ),
           ];
         })(),
         ...(parts.closeGoalsOnDeath
@@ -1605,10 +1608,19 @@ export function lifeWorld(
       resolution: "local",
       scopes: (kind, t, def) =>
         kind === "agent"
-          ? parts.sleepers && !SLEEPER_PROCESSES.has(def.id)
-            ? // Tier 1 (off-3d): al dormido no se lo invoca; solo su política y su puesta al día.
-              living(t).filter((id) => !t.get(ASLEEP, id))
-            : living(t)
+          ? !parts.sleepers
+            ? living(t)
+            : def.id === CATCH_UP_WAKE_PROCESS || def.id === CATCH_UP_DAILY_PROCESS
+              ? // Tier 1 (off-3e): la puesta al día solo toca a los dormidos que le corresponden.
+                living(t).filter((id) => {
+                  const s = t.get(ASLEEP, id);
+                  return (
+                    s !== undefined &&
+                    catchUpDue(def.id === CATCH_UP_WAKE_PROCESS ? "wake" : "daily", s)
+                  );
+                })
+              : // Tier 1 (off-3d): al dormido no se lo invoca.
+                living(t).filter((id) => !t.get(ASLEEP, id))
           : kind === "household"
             ? householdsOf(t)
             : [],
