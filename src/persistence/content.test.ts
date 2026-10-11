@@ -79,6 +79,6 @@ describe("loadContentDir", () => {
     expect(c.all(TRAITS).length).toBeGreaterThan(10);
     expect(c.all(PARSER_EXAMPLES).length).toBeGreaterThan(0);
     expect(c.all(ACTIONS).map((a) => a.id)).toContain("take");
-    expect(c.all(PLANS).map((p) => p.id)).toEqual(["steal"]);
+    expect(c.all(PLANS).map((p) => p.id)).toEqual(["fieldwork", "steal"]);
   });
 });
