@@ -312,6 +312,8 @@ export interface LifeOptions {
   readonly npcProvisions?: LifeParts["npcProvisions"];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC y deja el resultado parcial (`LifeParts.npcInterrupt`). */
   readonly npcInterrupt?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el viajero se cruza con quien comparte su hex (`LifeParts.npcEncounters`). */
+  readonly npcEncounters?: boolean;
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`LifeParts.npcNightRest`). */
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
@@ -425,6 +427,7 @@ export function optInParts(
   | "npcMove"
   | "npcVerbs"
   | "npcInterrupt"
+  | "npcEncounters"
   | "npcTemplates"
   | "npcJourneyDays"
   | "npcTransit"
@@ -503,6 +506,7 @@ export function optInParts(
     ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.npcInterrupt ? { npcInterrupt: true } : {}),
+    ...(options.npcEncounters ? { npcEncounters: true } : {}),
     ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
