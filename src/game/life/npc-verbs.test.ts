@@ -377,3 +377,37 @@ describe("el NPC hurta lo que decidió (opt-in)", () => {
     ).toEqual([]);
   }, 120_000);
 });
+
+describe("dos NPC le hablan a la vez al mismo vecino", () => {
+  it("la disputa por lo que el oyente va a contestar se resuelve por iniciativa, sin romper el scheduler", () => {
+    const life = Life.create(7, content, { npcVerbs: ["speak"] });
+    const w = life.world;
+    const adults = living(w.truth).filter(
+      (x) =>
+        x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+    );
+    const [a, b, listener] = adults as [AgentId, AgentId, AgentId];
+    const here = w.truth.get(LOCATION, a);
+    if (here) for (const x of [b, listener]) w.truth.set(LOCATION, x, here);
+    for (const who of [a, b]) {
+      w.truth.set(NPC_DECISION, who, {
+        at: life.now,
+        id: `speak:${listener}`,
+        verb: "speak",
+        act: { kind: "greet" },
+        utility: 1,
+        options: 2,
+      } as never);
+    }
+    expect(() => life.advanceTo(life.now + 6 * HOUR)).not.toThrow();
+    const talk = w.log
+      .all()
+      .filter((e) => e.kind === "action.speak" && e.actors.includes(listener));
+    expect(talk.length).toBeGreaterThan(0);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    // La disputa deja su registro: quién perdió y con qué iniciativa.
+    const contests = w.log.all().filter((e) => e.kind === "contest");
+    expect(contests.length).toBeGreaterThan(0);
+  }, 240_000);
+});
