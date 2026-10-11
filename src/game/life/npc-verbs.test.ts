@@ -128,7 +128,7 @@ function withNeighbor(verb: "trade" | "give") {
 }
 
 describe("el NPC ejecuta tratar y dar (opt-in)", () => {
-  for (const verb of ["trade"] as const) {
+  for (const verb of ["trade", "give"] as const) {
     it(`${verb}: la decisión vigente se vuelve un action.${verb} suyo y el ledger cierra`, () => {
       const { life, w, npc, other } = withNeighbor(verb);
       const total = w.ledger.audit();
