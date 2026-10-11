@@ -5,7 +5,8 @@
 // Las configurables por el usuario y la delegación llegan con las rutinas (Fase 3).
 
 import type { AgentId, Event, EventId, Tick } from "../../core/index.ts";
-import { BODY_STATE, bodySigns } from "../../sim/index.ts";
+import { BODY_STATE } from "../../sim/index.ts";
+import { ALARMING_SIGNS, alarmingSignsOf } from "./alarms.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
 import { perceivedDetail } from "./perceive.ts";
 import { acquaintances } from "./view.ts";
@@ -32,32 +33,14 @@ export interface Interrupt {
   readonly signs?: readonly string[];
 }
 
-/** Lo que el personaje nota como grave en su cuerpo (player-loop §6: "dolor que nota como grave"). */
-export const ALARMING_SIGNS: ReadonlySet<string> = new Set([
-  "dizzy",
-  "parched",
-  "starving",
-  "exhausted",
-  "feverish",
-  "bleeding_heavily",
-  "bone_broken",
-  "wound_hot",
-]);
+export { ALARMING_SIGNS, alarmingSignsOf };
 
 /** Los signos graves que el personaje siente ahora. */
 export function alarmingSigns(w: LifeWorld): Set<string> {
   const body = w.truth.get(BODY_STATE, w.player);
   const plan = body && w.plans.find((p) => p.id === body.plan);
   if (!body || !plan) return new Set();
-  const signs = bodySigns(
-    plan,
-    body,
-    false,
-    deficiencyStagesOf(w.truth, w.player, w.deficiencySigns),
-  );
-  return new Set(
-    [...signs.general, ...signs.zones.flatMap((z) => z.signs)].filter((s) => ALARMING_SIGNS.has(s)),
-  );
+  return alarmingSignsOf(plan, body, deficiencyStagesOf(w.truth, w.player, w.deficiencySigns));
 }
 
 /** Lo que el evento de otro le hace al personaje en el cuerpo (un golpe que lo alcanza). */

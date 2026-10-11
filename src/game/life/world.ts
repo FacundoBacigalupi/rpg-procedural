@@ -119,6 +119,7 @@ import {
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
+import { npcInterruptProcess } from "./npc-interrupt.ts";
 import { npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -344,6 +345,8 @@ export interface LifeWorld {
   readonly npcMove?: boolean;
   /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
   readonly npcVerbs?: readonly string[];
+  /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC (viaje y plantillas incluidos) y deja el resultado parcial en `npc.interrupted` (`life.npc_interrupt`); apagado, sin proceso. */
+  readonly npcInterrupt?: boolean;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1380,6 +1383,15 @@ export function lifeWorld(
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
         ...(parts.craftGoals ? [practiceLogProcess({ skills: parts.skills })] : []),
+        ...(parts.npcInterrupt === true
+          ? [
+              npcInterruptProcess({
+                player,
+                plans: parts.plans,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
           ? [
               npcVerbsProcess({
