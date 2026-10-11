@@ -64,6 +64,8 @@ import {
   type ReadonlyWorldTruth,
   type Relations,
   RUMORS,
+  rankOf,
+  rankOfAttire,
   reconcileEmotionSignals,
   reinforceAll,
   relationship,
@@ -75,6 +77,7 @@ import {
   STATUS,
   type StageDef,
   type StateChange,
+  type StatusDef,
   sanctionWeight,
   setComponent,
   spareDeltas,
@@ -84,6 +87,7 @@ import {
   tendDeltas,
   tradeDeltas,
   type ValueDef,
+  valuesOf,
   villageReligion,
   weaken,
 } from "../../sim/index.ts";
@@ -91,6 +95,7 @@ import { conscienceOf, ownDeedOf } from "./conscience.ts";
 import { creditRows } from "./credit.ts";
 import {
   ownEmotionSignals,
+  perceivedEnvySignals,
   perceivedLossSignals,
   perceivedLoveSignals,
   receivedInsultSignals,
@@ -132,6 +137,8 @@ export interface AppraiseOptions {
   readonly rumorGrievance?: boolean;
   /** Opt-in ligado a persistImmediateGoals: guarda sólo señales con evidencia propia. */
   readonly persistEmotionSignals?: boolean;
+  /** Opt-in junto a `persistEmotionSignals`: estatus de la cultura para leer rangos y envidiar por la vestimenta vista. */
+  readonly envyStatuses?: readonly StatusDef[];
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -316,6 +323,25 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
                 ),
               ),
             );
+            const defs = o.envyStatuses;
+            const mind = truth.get(MIND, percept.observer);
+            const innate = truth.get(INNATE, percept.observer);
+            if (defs && defs.length > 0 && o.values && mind && innate) {
+              const ranks = defs.map((d) => d.rank);
+              recordEmotions(
+                percept.observer,
+                perceivedEnvySignals(percept, ctx.now, {
+                  rankOfAttire: (attire) => rankOfAttire(attire as StatusDef["attire"], defs),
+                  ownRank: rankOf(truth.get(STATUS, percept.observer), defs),
+                  rankSpan: Math.max(...ranks) - Math.min(...ranks),
+                  // Valores normalizados a suma 1: el promedio de un valor es 1/n.
+                  valuesStatus: Math.min(
+                    1,
+                    (valuesOf(o.values, o.schemas, mind, innate)["status"] ?? 0) * o.values.length,
+                  ),
+                }),
+              );
+            }
             recordEmotions(
               percept.observer,
               perceivedLoveSignals(
