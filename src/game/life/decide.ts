@@ -35,6 +35,7 @@ import {
   capabilitiesOf,
   closeness,
   coreGoals,
+  craftGoals,
   DEFICIENCY_EFFECTS,
   type DimensionDef,
   decideByUtility,
@@ -78,6 +79,7 @@ import {
   PERSON_SUBSTANCE,
   PLACE,
   PRICE_BELIEFS,
+  type PracticeEntry,
   type ProcessDef,
   pantryTexts,
   RELATIONS,
@@ -134,6 +136,7 @@ import {
   moldHintMood,
 } from "./moldgossip.ts";
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
+import { PRACTICE_LOG } from "./practice-log.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -187,6 +190,13 @@ export const MAX_KNOWN = 12;
 /** Cuánto afecto/parentesco (`closeness`) hace que alguien le importe (sin calibrar). */
 export const CARES_MIN = 0.3;
 
+/** La práctica propia y el nivel que el agente cree tener en cada habilidad que practicó. */
+export interface OwnPractice {
+  readonly practice: readonly PracticeEntry[];
+  readonly levels: Readonly<Record<string, number>>;
+  readonly now: Tick;
+}
+
 export interface DecideOptions {
   /** Opt-in: conserva las capas derivadas y registra sus nacimientos y fines. */
   readonly persistGoalLayers?: boolean;
@@ -210,9 +220,15 @@ export interface DecideOptions {
       goal: Goal,
       memories: Memories | undefined,
       debts?: DebtBook,
+      own?: OwnPractice,
     ) => GoalProgressEvidence[];
     readonly minSpan: Duration;
   };
+  /**
+   * Opt-in: metas de oficio y estudio desde el registro de práctica propio (`practice-log.ts`) en
+   * las capas persistidas; `window` es cuánto atrás cuenta la práctica reciente.
+   */
+  readonly craftGoals?: { readonly window: Duration };
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -334,6 +350,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       NPC_DECISION.name,
       NPC_GOALS.name,
       ...(o.debtKnowledge || o.goalProgress ? [DEBT_BOOK.name] : []),
+      ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
         ? [NPC_GOAL_COMPLETIONS.name]
@@ -543,6 +560,24 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             );
           })
         : [];
+      // Su práctica y el nivel que cree tener (autoimagen, o la semilla de su estado si no la tiene).
+      const own: OwnPractice | undefined =
+        o.craftGoals || o.goalProgress
+          ? (() => {
+              const practice = truth.get(PRACTICE_LOG, me)?.items ?? [];
+              const state = truth.get(SKILL_STATE, me);
+              const seen = truth.get(SELF_IMAGES, me);
+              const levels: Record<string, number> = {};
+              for (const id of new Set(practice.map((p) => p.skill))) {
+                const def = o.skills.skill(id);
+                const mine = state?.[id];
+                const image =
+                  seen?.[id] ?? (def && mine ? seedSelfImage(def, mine, {}, now) : undefined);
+                levels[id] = image?.estimate?.level ?? 0;
+              }
+              return { practice, levels, now };
+            })()
+          : undefined;
       // Metas concretas persistidas que el agente cumplió por su propio progreso. La meta se
       // vuelve a derivar después como instancia nueva (`since` nuevo) y debe ganarse otra vez.
       const progressCompletions = o.goalProgress
@@ -551,7 +586,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             const concrete = prevGoals.filter((g) => gp.concrete(g));
             return goalCompletionsFromProgress(
               prevGoals,
-              concrete.flatMap((g) => gp.evidenceOf(g, memories, truth.get(DEBT_BOOK, me))),
+              concrete.flatMap((g) => gp.evidenceOf(g, memories, truth.get(DEBT_BOOK, me), own)),
               now,
               new Set(concrete.map((g) => g.id)),
               gp.minSpan,
@@ -616,6 +651,9 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           goals,
         ),
         ...shortGoals(drives.needs, goals, mind.originEventId, now),
+        ...(o.craftGoals && own
+          ? craftGoals(own.practice, own.levels, now, o.craftGoals.window)
+          : []),
       ];
       // El cuerpo tiene procedencia seed/nacimiento; dolor cita el golpe concreto.
       // Las presiones agudas sin una fuente identificable no se inventan.

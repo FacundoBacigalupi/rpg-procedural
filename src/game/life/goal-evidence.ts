@@ -4,7 +4,13 @@
 // que no recuerda no cuentan: sin memoria no hay momento ni evento propio que citar.
 
 import type { Duration, Tick } from "../../core/index.ts";
-import type { Goal, GoalProgressEvidence, Memories } from "../../sim/index.ts";
+import {
+  craftEvidence,
+  type Goal,
+  type GoalProgressEvidence,
+  type Memories,
+  parseCraftGoal,
+} from "../../sim/index.ts";
 import type { DebtBook } from "./debtknowledge.ts";
 import type { DecideOptions } from "./decide.ts";
 
@@ -37,6 +43,21 @@ export function debtGoalProgress(minSpan: Duration): NonNullable<DecideOptions["
   return {
     concrete: (goal) => goal.id.startsWith(DEBT_GOAL_PREFIX),
     evidenceOf: debtGoalEvidence,
+    minSpan,
+  };
+}
+
+/** Deuda saldada y metas de oficio/estudio (hito alcanzado con práctica propia) son concretas. */
+export function ownGoalProgress(minSpan: Duration): NonNullable<DecideOptions["goalProgress"]> {
+  return {
+    concrete: (goal) =>
+      goal.id.startsWith(DEBT_GOAL_PREFIX) || parseCraftGoal(goal.id) !== undefined,
+    evidenceOf: (goal, memories, debts, own) =>
+      parseCraftGoal(goal.id)
+        ? own
+          ? craftEvidence(goal, own.practice, own.levels, own.now)
+          : []
+        : debtGoalEvidence(goal, memories, debts),
     minSpan,
   };
 }

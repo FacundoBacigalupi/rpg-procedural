@@ -198,6 +198,8 @@ export interface LifeOptions {
   readonly recognizeGoalProgress?: boolean;
   /** Opt-in: el vacío por venganza cumplida presiona la necesidad lenta `meaning`; apagado. */
   readonly meaningPressure?: boolean;
+  /** Opt-in: registro de práctica propio y metas de oficio/estudio (con `persistGoalLayers`); apagado. */
+  readonly craftGoals?: boolean;
   /** Opt-in: estafa de calidad en el trato (el vendedor infla por temperamento y necesidad); apagado por defecto. */
   readonly scam?: boolean;
   /** Opt-in bajo `scam`: unidad del relleno que el vendedor mezcla en el lote; apagado por defecto. */
@@ -349,6 +351,7 @@ export function optInParts(
   | "recognizeGoalCompletion"
   | "recognizeGoalProgress"
   | "meaningPressure"
+  | "craftGoals"
   | "scam"
   | "scamFiller"
   | "waterSources"
@@ -416,6 +419,7 @@ export function optInParts(
     ...(options.recognizeGoalCompletion ? { recognizeGoalCompletion: true } : {}),
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
+    ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
     ...(options.swapMaterials ? { swapMaterials: true } : {}),
