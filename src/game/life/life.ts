@@ -2,8 +2,15 @@
 // avanza hasta que el plan termina, se interrumpe o el personaje muere, y el turno devuelve lo que
 // pasó. El mismo `submit` + `advanceTo` es el que rehace el replay (tooling §4).
 
-import type { AgentId, Event, IdAllocator, Seed, Tick } from "../../core/index.ts";
-import { type Content, MINUTE } from "../../core/index.ts";
+import {
+  type AgentId,
+  type Content,
+  type Event,
+  IdAllocator,
+  MINUTE,
+  type Seed,
+  type Tick,
+} from "../../core/index.ts";
 import {
   type ActionPlan,
   ENTITY,
@@ -63,6 +70,22 @@ export function lifeReplayGame(
     versions,
     start(seed: Seed, setup: LifeSetup) {
       const life = Life.create(seed, content, optionsOf(setup));
+      return {
+        advanceTo: (t: Tick) => life.advanceTo(t),
+        submit: (plan: ActionPlan, seq: number) => life.submit(plan, seq),
+        hash: () => life.hash(),
+      };
+    },
+    /** Desde el snapshot del límite de motor (tooling §4): la misma vida, retomada con el motor nuevo. */
+    resume(seed: Seed, setup: LifeSetup, state: unknown, anchor?: unknown) {
+      const saved = state as LifeState;
+      const life = Life.resume(
+        seed,
+        content,
+        { ...saved, ids: new IdAllocator(saved.ids) },
+        optionsOf(setup),
+        (anchor as ResumeAnchor | undefined) ?? undefined,
+      );
       return {
         advanceTo: (t: Tick) => life.advanceTo(t),
         submit: (plan: ActionPlan, seq: number) => life.submit(plan, seq),

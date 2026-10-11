@@ -563,6 +563,8 @@ function open(store: LifeStore, options: SessionOptions, notices: string[]): Lif
       const limits = (store.getMeta("replayLimits") as ReplayLimit[] | undefined) ?? [];
       store.setMeta("replayLimits", [...limits, check.limit]);
       store.setMeta("versions", check.versions);
+      // El snapshot del límite: desde ahí se rehace el replay con el motor nuevo (tooling §4).
+      store.saveSnapshot(s);
       notices.push(`Esta vida pasó del motor ${saved.engine} al ${VERSIONS.engine}.\n`);
     }
     notices.push("Seguís donde quedaste.\n");
