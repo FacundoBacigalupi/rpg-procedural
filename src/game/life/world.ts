@@ -68,7 +68,7 @@ import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
-import { birthProcess } from "./birth.ts";
+import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
@@ -1190,6 +1190,9 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
               }),
             ]
+          : []),
+        ...(parts.conception === true && parts.births === true && parts.form
+          ? [newbornBondsProcess({ dims: parts.relationDims, bonds: parts.relationBonds })]
           : []),
         ...(parts.conception === true && parts.births === true
           ? [
