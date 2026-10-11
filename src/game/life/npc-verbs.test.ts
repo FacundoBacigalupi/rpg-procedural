@@ -1,8 +1,23 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
-import { ACTIONS, ActionCatalog, LOCATION, PERSON, PLACE, PLANS } from "../../sim/index.ts";
+import {
+  type AgentId,
+  type ContentSource,
+  type HolderRef,
+  holderAccount,
+  loadContent,
+} from "../../core/index.ts";
+import {
+  ACTIONS,
+  ActionCatalog,
+  checkInvariants,
+  GOODS,
+  LOCATION,
+  PERSON,
+  PLACE,
+  PLANS,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { NPC_DECISION } from "./decide.ts";
@@ -88,4 +103,42 @@ describe("el NPC ejecuta su decisión (opt-in)", () => {
       false,
     );
   }, 120_000);
+});
+
+/** Un NPC con la decisión de tratar o dar algo de su despensa a otro vecino que está a su lado. */
+function withNeighbor(verb: "trade" | "give") {
+  const life = Life.create(7, content, { npcVerbs: [verb] });
+  const w = life.world;
+  const adults = living(w.truth).filter(
+    (x) => x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+  );
+  const npc = adults[0] as AgentId;
+  const home = w.truth.get(PERSON, npc)?.household;
+  const other = adults.find((x) => w.truth.get(PERSON, x)?.household !== home) as AgentId;
+  const here = w.truth.get(LOCATION, npc);
+  if (here) w.truth.set(LOCATION, other, here);
+  const stock = w.ledger
+    .holdings(holderAccount(home as unknown as HolderRef))
+    .filter((h) => h.unit.startsWith("good:") && h.amount > 0)
+    .map((h) => content.get(GOODS, h.unit.slice(5)))
+    .find((g) => g !== undefined);
+  const id = `${verb}:${other}+${stock?.name ?? "grano"}`;
+  w.truth.set(NPC_DECISION, npc, { at: life.now, id, verb, utility: 1, options: 2 } as never);
+  return { life, w, npc, other };
+}
+
+describe("el NPC ejecuta tratar y dar (opt-in)", () => {
+  for (const verb of ["trade"] as const) {
+    it(`${verb}: la decisión vigente se vuelve un action.${verb} suyo y el ledger cierra`, () => {
+      const { life, w, npc, other } = withNeighbor(verb);
+      const total = w.ledger.audit();
+      life.advanceTo(life.now + 6 * HOUR);
+      const mine = w.log.all().filter((e) => e.kind === `action.${verb}` && e.actors[0] === npc);
+      expect(mine.length).toBeGreaterThan(0);
+      expect(mine[0]?.actors).toContain(other);
+      expect(total).toEqual([]);
+      expect(w.ledger.audit()).toEqual([]);
+      expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    }, 120_000);
+  }
 });

@@ -627,7 +627,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
   - [ ] (npc-b) Viaje con costo y tiempo en vez de teletransporte para el `move` del NPC (días de mundo, desgaste, `Journey` común; [travel.md](systems/travel.md)).
   - (npc-c) Ejecutar por el catálogo los verbos de la decisión que hoy se ignoran, uno por commit, opt-in (`LifeOptions.npcVerbs`, lista de verbos):
     - [x] (npc-c1) Infraestructura y `gather`: `game/life/npc-verbs.ts` — `planFromDecision` (puro: id `<verbo>:<parte>+<parte>` -> `ActionPlan` de fuente `utility` con los argumentos del verbo en orden; ids de otro proceso `borrow:`/`pawn:`/`toward:` no se ejecutan) y el proceso `life.npc_verbs` (fase `decide`, por hora): la decisión vigente de un verbo habilitado, sin plan en curso y no ejecutada ya, entra a `life.plan` y se agenda para `life.act`, igual que el personaje (misma tirada, eventos y aprendizaje). Apagado, sin proceso. Tests en `npc-verbs.test.ts` (puro y vida con `Life.create`).
-    - [ ] (npc-c2) `trade` por la decisión (con quien está; compra o venta ya decididas por la utilidad).
+    - [x] (npc-c2) `trade` por la decisión (`npcVerbs: ["trade"]`): con un vecino a su lado y un bien de su despensa, la decisión `trade:<persona>+<bien>` se vuelve un `action.trade` suyo por `life.act`; el ledger cierra y los invariantes pasan (test de vida en `npc-verbs.test.ts`).
     - [ ] (npc-c3) `give` por la decisión.
     - [ ] (npc-c4) `speak` por la decisión (salvo el pedido de sustancia, que ya ejecuta `life.lend`).
   - [ ] (npc-d) Plantillas de plan en `content/plans/` para NPC y recursos del cuerpo y concurrencia entre acciones.
