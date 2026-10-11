@@ -19,6 +19,7 @@ import {
   type ActionPlan,
   type ArgValue,
   BODY_STATE,
+  type BodyPlanDef,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -29,8 +30,10 @@ import {
   type LocalMap,
   localHour,
   nearestHex,
+  nodeAt,
   PERSON,
   PLACE,
+  type PlanCursor,
   type PlanTemplate,
   type PostingDraft,
   type ProcessDef,
@@ -40,7 +43,15 @@ import {
   setComponent,
   table,
 } from "../../sim/index.ts";
-import { ACT_PROCESS, FRESH_CURSOR, PLAN_STATE, type PlanState, planKey } from "./act.ts";
+import {
+  ACT_PROCESS,
+  FRESH_CURSOR,
+  PLAN_STATE,
+  type PlanState,
+  planKey,
+  type StepRecord,
+} from "./act.ts";
+import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { ROUTINE } from "./routine.ts";
 
@@ -77,6 +88,16 @@ export interface NpcVerbsOptions {
    * `fast` (más rápido, peor tirada y más ruido) del `move`; sin esto, el modo por defecto.
    */
   readonly pace?: "careful" | "fast";
+  /**
+   * Opt-in (con `LifeParts.npcInterrupt`): lo que un percance cortó (`NPC_PAUSED`) se retoma,
+   * `after` segundos después y si el cuerpo ya no tiene signos graves, desde el paso siguiente (o el
+   * tramo a medias) y reabriendo el viaje; pasados `within` segundos se olvida.
+   */
+  readonly resume?: {
+    readonly plans: readonly BodyPlanDef[];
+    readonly after: number;
+    readonly within: number;
+  };
   /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
   readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
   /**
@@ -244,12 +265,14 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       LOCATION.name,
       PLACE.name,
       ...(o.provisions ? [PERSON.name] : []),
-      ...(o.nightRest ? [BODY_STATE.name] : []),
+      ...(o.nightRest || o.resume ? [BODY_STATE.name] : []),
+      ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
     ],
     writes: [
       PLAN_STATE.name,
       NPC_VERB_LOG.name,
+      ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
     ],
     run(ctx) {
@@ -330,6 +353,63 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           o.pace ? [o.pace] : [],
         );
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
+      }
+      // Lo que un percance cortó se retoma cuando ya pasó (y si no pasa a tiempo, se olvida).
+      const paused = o.resume ? truth.get(NPC_PAUSED, me) : undefined;
+      if (o.resume && paused) {
+        const idle = truth.get(PLAN_STATE, me);
+        if (idle && !idle.done) return {};
+        const age = ctx.now - paused.at;
+        if (age > o.resume.within) return { changes: [deleteComponent(NPC_PAUSED, me)] };
+        if (age < o.resume.after) return {};
+        const body = truth.get(BODY_STATE, me);
+        const bodyPlan = body && o.resume.plans.find((p) => p.id === body.plan);
+        if (body && bodyPlan && alarmingSignsOf(bodyPlan, body).size > 0) return {};
+        const seq = (idle?.seq ?? 0) + 1;
+        const next: PlanState = {
+          seq,
+          plan: paused.plan,
+          cursor: paused.cursor,
+          lastBelieved: null,
+          steps: paused.steps,
+          done: false,
+          ...(paused.resume ? { resume: true } : {}),
+        };
+        const cutAt = paused.cursor.path ? nodeAt(paused.plan.root, paused.cursor.path) : undefined;
+        return {
+          changes: [
+            setComponent(PLAN_STATE, me, next),
+            deleteComponent(NPC_PAUSED, me),
+            ...(paused.journey ? [setComponent(NPC_JOURNEY, me, paused.journey)] : []),
+          ],
+          events: o.placeOf
+            ? [
+                {
+                  kind: "npc.resumed",
+                  actors: [me],
+                  place: o.placeOf(truth, me),
+                  data: {
+                    plan: paused.plan.goal ?? "plan",
+                    done: paused.steps.map((s) => s.verb),
+                    from: cutAt && cutAt.kind === "do" ? cutAt.verb : null,
+                    ...(paused.journey ? { journey: paused.journey.place } : {}),
+                    why: paused.why,
+                  },
+                  emissions: {},
+                  causes: [{ kind: "state", entity: me, key: "utility" }],
+                },
+              ]
+            : [],
+          schedule: [
+            {
+              at: (ctx.now + 1) as Tick,
+              phase: "act",
+              process: ACT_PROCESS,
+              scope: me,
+              reason: { kind: "state", entity: me, key: planKey(seq) },
+            },
+          ],
+        };
       }
       const decision = truth.get(NPC_DECISION, me);
       if (!decision || !allowed.has(decision.verb) || ctx.now - decision.at >= o.day) return {};
@@ -440,6 +520,20 @@ export interface NpcJourney {
   readonly rested?: Tick;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
+
+/** Lo que un percance cortó, a mano para retomarlo (`NpcVerbsOptions.resume`). */
+export interface NpcPaused {
+  readonly plan: ActionPlan;
+  readonly cursor: PlanCursor;
+  readonly steps: readonly StepRecord[];
+  /** El viaje abierto cuando se cortó, para reabrirlo al retomar. */
+  readonly journey?: NpcJourney;
+  /** El tramo del camino estaba a medias (`PlanState.resume`). */
+  readonly resume?: boolean;
+  readonly at: Tick;
+  readonly why: string;
+}
+export const NPC_PAUSED = table<NpcPaused>("life.npc_paused");
 
 /** Entre una parada a dormir y la siguiente pasa al menos esto (horas): una por noche. */
 export const REST_GAP_HOURS = 12;

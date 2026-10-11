@@ -5,6 +5,7 @@ import {
   type AgentId,
   type ContentSource,
   type EntityBase,
+  type Event,
   loadContent,
   makeId,
   type PlaceId,
@@ -12,12 +13,15 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  ActionCatalog,
   BODY_PLANS,
   BODY_STATE,
   type BodyPlanDef,
   checkInvariants,
   ENTITY,
   FRESH_CURSOR,
+  LOCATION,
+  type LocalMap,
   newBody,
   PERSON,
   PLACE,
@@ -29,8 +33,15 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE, type PlanState } from "./act.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
-import { INTERRUPTED_EVENT, NPC_ALARMS, npcInterruptProcess } from "./npc-interrupt.ts";
-import { NPC_JOURNEY } from "./npc-verbs.ts";
+import {
+  INTERRUPTED_EVENT,
+  NPC_ALARMS,
+  NPC_REACT,
+  npcInterruptProcess,
+  npcReactProcess,
+} from "./npc-interrupt.ts";
+import { NPC_JOURNEY, NPC_PAUSED, npcVerbsProcess } from "./npc-verbs.ts";
+import { TRANSIT } from "./transit.ts";
 import { living } from "./world.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -95,8 +106,13 @@ function world(fatigue: number, going: boolean) {
   return truth;
 }
 
-function run(truth: WorldTruth, who: AgentId = me): ProcessResult {
-  const p = npcInterruptProcess({ player, plans: [plan], placeOf: () => site });
+function run(truth: WorldTruth, who: AgentId = me, map?: LocalMap): ProcessResult {
+  const p = npcInterruptProcess({
+    player,
+    plans: [plan],
+    placeOf: () => site,
+    ...(map ? { map } : {}),
+  });
   const ctx = {
     now: 3600,
     window: 3600,
@@ -172,6 +188,184 @@ describe("life.npc_interrupt", () => {
   });
 });
 
+describe("lo que otro le hace o le dice", () => {
+  const other = makeId("agent", 2);
+  const event = (id: number, kind: string, actors: string[], tick = 3000): Event =>
+    ({
+      id: makeId("event", id),
+      tick,
+      kind,
+      actors,
+      place: site,
+      data: {},
+      emissions: {},
+      causes: [],
+      resolution: "local",
+    }) as unknown as Event;
+
+  function react(truth: WorldTruth, recent: Event[]): ProcessResult {
+    const p = npcReactProcess({ player });
+    return p.run({
+      now: 3600,
+      window: 0,
+      windowIndex: undefined,
+      scope: "world",
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger: undefined,
+      rng: Rng.root(1),
+      item: undefined,
+      recent,
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+
+  it("anota el golpe o la frase de otro donde el NPC es parte; el golpe vale más", () => {
+    const truth = world(0.1, true);
+    const out = react(truth, [
+      event(5, "action.strike", [other, me]),
+      event(6, "action.speak", [other, me]),
+      event(7, "action.strike", [me, other]),
+      event(8, "action.strike", [other, player]),
+      event(9, "body.died", [other, me]),
+    ]);
+    apply(truth, out);
+    expect(truth.get(NPC_REACT, me)).toMatchObject({
+      kind: "attacked",
+      event: makeId("event", 5),
+      who: other,
+    });
+    expect(truth.get(NPC_REACT, player)).toBeUndefined();
+    expect(react(truth, [event(10, "action.move", [other, me])])).toEqual({});
+  });
+
+  it("un golpe corta el plan, cita el evento y no corta dos veces por el mismo", () => {
+    const truth = world(0.1, true);
+    truth.set(NPC_REACT, me, { kind: "attacked", event: makeId("event", 5), who: other, at: 3000 });
+    const out = run(truth);
+    const ev = out.events?.[0];
+    expect(ev?.data).toMatchObject({ why: "attacked", plan: "fieldwork", cut: "work" });
+    expect(ev?.actors).toEqual([me, other]);
+    expect(ev?.causes).toEqual([{ kind: "event", event: makeId("event", 5) }]);
+    apply(truth, out);
+    expect(truth.get(PLAN_STATE, me)?.done).toBe(true);
+    expect(truth.get(NPC_ALARMS, me)?.seen).toBe(makeId("event", 5));
+    truth.set(PLAN_STATE, me, { ...(truth.get(PLAN_STATE, me) as PlanState), done: false });
+    expect(run(truth).events ?? []).toEqual([]);
+  });
+
+  it("una frase también corta; una reacción vieja no corta un plan nuevo", () => {
+    const talk = world(0.1, true);
+    talk.set(NPC_REACT, me, { kind: "spoken_to", event: makeId("event", 6), who: other, at: 3000 });
+    expect(run(talk).events?.[0]?.data).toMatchObject({ why: "spoken_to" });
+    const old = world(0.1, true);
+    old.set(NPC_REACT, me, { kind: "attacked", event: makeId("event", 5), who: other, at: -4000 });
+    expect(run(old).events ?? []).toEqual([]);
+  });
+});
+
+describe("retomar lo cortado y la posición a medio camino", () => {
+  // Una línea de seis hexes de 1000 s cada uno: 0-1-2-3-4-5.
+  const line = {
+    neighbors: [[1], [0, 2], [1, 3], [2, 4], [3, 5], [4]],
+    crossSeconds: [1000, 1000, 1000, 1000, 1000, 1000],
+  } as unknown as LocalMap;
+
+  it("al cortar queda lo que hace falta para retomar: plan, cursor, pasos y viaje", () => {
+    const truth = world(0.95, true);
+    apply(truth, run(truth));
+    const paused = truth.get(NPC_PAUSED, me);
+    expect(paused).toMatchObject({
+      why: "body_alarm",
+      at: 3600,
+      cursor: { path: [1] },
+      journey: { place: "place:7" },
+    });
+    expect(paused?.plan.goal).toBe("fieldwork");
+    expect(paused?.steps.map((s) => s.verb)).toEqual(["move"]);
+  });
+
+  it("el viaje cortado deja el cuerpo en el hex que le tocaba, no en el destino ya fijado", () => {
+    const truth = world(0.95, true);
+    truth.set(NPC_JOURNEY, me, { place: "place:7", since: 0, decision: "d", from: 0 });
+    // `life.act` ya lo dejó en el fin del tramo (hex 5); pasaron 3600 s: lleva tres hexes.
+    truth.set(LOCATION, me, { hex: 5 });
+    const out = run(truth, me, line);
+    apply(truth, out);
+    expect(truth.get(LOCATION, me)?.hex).toBe(3);
+    expect(truth.get(TRANSIT, me)).toEqual({ seen: 3, at: 3600 });
+    expect(truth.get(NPC_JOURNEY, me)).toBeUndefined();
+  });
+
+  const resumeOpts = {
+    catalog: new ActionCatalog([], []),
+    verbs: ["move"],
+    day: 86_400,
+    player,
+    placeOf: () => site,
+    resume: { plans: [plan], after: 3600, within: 86_400 },
+  };
+  function resume(truth: WorldTruth, now: number): ProcessResult {
+    return npcVerbsProcess(resumeOpts).run({
+      now,
+      window: 3600,
+      windowIndex: 1,
+      scope: me,
+      resolution: "local",
+      phase: "decide",
+      truth,
+      ledger: undefined,
+      rng: Rng.root(1),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  function cutWorld() {
+    const truth = world(0.95, true);
+    apply(truth, run(truth));
+    // Se repone: ya no hay signos graves.
+    truth.set(BODY_STATE, me, { ...newBody(plan, 60, 0), fatigue: 0.1 });
+    return truth;
+  }
+
+  it("repuesto, retoma el plan desde donde quedó, reabre el viaje y lo dice", () => {
+    const truth = cutWorld();
+    const out = resume(truth, 3600 + 2 * 3600);
+    apply(truth, out);
+    const state = truth.get(PLAN_STATE, me);
+    expect(state).toMatchObject({ seq: 4, done: false, cursor: { path: [1] } });
+    expect(state?.plan.goal).toBe("fieldwork");
+    expect(state?.steps.map((s) => s.verb)).toEqual(["move"]);
+    expect(truth.get(NPC_JOURNEY, me)).toMatchObject({ place: "place:7" });
+    expect(truth.get(NPC_PAUSED, me)).toBeUndefined();
+    expect(out.events?.[0]).toMatchObject({
+      kind: "npc.resumed",
+      data: { plan: "fieldwork", from: "work", journey: "place:7", why: "body_alarm" },
+    });
+    expect(out.schedule?.[0]).toMatchObject({ phase: "act", scope: me });
+  });
+
+  it("no retoma antes de tiempo, si sigue mal, ni cuando ya pasó mucho; lo viejo se olvida", () => {
+    const early = cutWorld();
+    expect(resume(early, 3600 + 600)).toEqual({});
+    const unwell = world(0.95, true);
+    apply(unwell, run(unwell));
+    expect(resume(unwell, 3600 + 2 * 3600)).toEqual({});
+    const old = cutWorld();
+    const out = resume(old, 3600 + 2 * 86_400);
+    expect(out.events ?? []).toEqual([]);
+    apply(old, out);
+    expect(old.get(NPC_PAUSED, me)).toBeUndefined();
+    expect(old.get(PLAN_STATE, me)?.done).toBe(true);
+  });
+});
+
 describe("en una vida con el proceso encendido", () => {
   it("el NPC agotado en pleno viaje se interrumpe y el mundo sigue coherente", () => {
     const all = loadContent(GAME_CONTENT_KINDS, sources("content"));
@@ -179,6 +373,7 @@ describe("en una vida con el proceso encendido", () => {
       npcVerbs: ["move"],
       npcJourneyDays: 6,
       npcInterrupt: true,
+      npcTransit: true,
     });
     const w = life.world;
     const npc = living(w.truth).find(

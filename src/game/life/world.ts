@@ -119,7 +119,7 @@ import {
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
-import { npcInterruptProcess } from "./npc-interrupt.ts";
+import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
 import { npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -1389,7 +1389,11 @@ export function lifeWorld(
                 player,
                 plans: parts.plans,
                 placeOf: placeOf(parts, village),
+                ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
+                  ? { map: parts.map }
+                  : {}),
               }),
+              npcReactProcess({ player }),
             ]
           : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
@@ -1399,6 +1403,12 @@ export function lifeWorld(
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
                 player,
+                ...(parts.npcInterrupt === true
+                  ? {
+                      placeOf: placeOf(parts, village),
+                      resume: { plans: parts.plans, after: 3600, within: parts.clock.day },
+                    }
+                  : {}),
                 ...(parts.npcTemplates
                   ? { templates: { byVerb: parts.npcTemplates, map: parts.map } }
                   : {}),
