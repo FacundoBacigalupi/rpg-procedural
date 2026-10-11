@@ -2,11 +2,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
-import { hexPath, LOCATION, localHour, PERSON, PLACE } from "../../sim/index.ts";
+import { BODY_STATE, hexPath, LOCATION, localHour, PERSON, PLACE } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { activityOf } from "./act.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
-import { REST_GAP_HOURS, restDue } from "./npc-verbs.ts";
+import { REST_GAP_HOURS, restDue, TIRED_STOP } from "./npc-verbs.ts";
 import { ROUTINE } from "./routine.ts";
 import { living } from "./world.ts";
 
@@ -20,6 +21,24 @@ describe("restDue", () => {
     // Ya paró hace poco: no vuelve a parar la misma noche; pasadas las horas, sí.
     expect(restDue(23, 0, 3 * H)).toBe(false);
     expect(restDue(23, 0, REST_GAP_HOURS * H)).toBe(true);
+  });
+
+  it("agotado para de día; con cansancio normal, no", () => {
+    expect(restDue(12, undefined, 0, TIRED_STOP)).toBe(true);
+    expect(restDue(12, undefined, 0, TIRED_STOP - 0.01)).toBe(false);
+    expect(restDue(12, 0, 3 * H, 1)).toBe(false);
+    expect(restDue(12, 0, REST_GAP_HOURS * H, 1)).toBe(true);
+  });
+});
+
+describe("activityOf: el esfuerzo del camino", () => {
+  it("el modo pesa solo con el flag; fast es pesado y careful liviano", () => {
+    expect(activityOf("move", 10)).toBe("moderate");
+    expect(activityOf("move", 10, ["fast"])).toBe("heavy");
+    expect(activityOf("move", 10, ["careful"])).toBe("light");
+    expect(activityOf("move", 10, [])).toBe("moderate");
+    expect(activityOf("work", 10, ["fast"])).toBe("heavy");
+    expect(activityOf("rest", 23, ["fast"])).toBe("sleep");
   });
 });
 
@@ -40,7 +59,7 @@ describe("el viajero para a dormir de noche (opt-in)", () => {
       npcVerbs: ["move"],
       npcJourneyDays: 6,
       npcNightRest: true,
-      npcPace: "fast",
+      npcPace: "careful",
     });
     const w = life.world;
     const npc = living(w.truth).find(
@@ -85,8 +104,54 @@ describe("el viajero para a dormir de noche (opt-in)", () => {
       .filter((e) => e.kind === "npc.journey" && e.actors[0] === npc)
       .map((e) => (e.data as { what: string }).what);
     expect(trip[0]).toBe("started");
-    // El ritmo `fast` del viaje llega al `move` (modo del verbo, con su tirada y su ruido).
+    // El ritmo del viaje llega al `move` (modo del verbo); con cuidado casi no cansa y solo para de noche.
     const first = w.log.all().find((e) => e.kind === "action.move" && e.actors[0] === npc);
-    expect((first?.data as { manner?: string[] } | undefined)?.manner).toContain("fast");
+    expect((first?.data as { manner?: string[] } | undefined)?.manner).toContain("careful");
+  }, 240_000);
+
+  it("agotado, el viajero para a recuperarse aunque sea de día", () => {
+    const life = Life.create(7, content, {
+      npcVerbs: ["move"],
+      npcJourneyDays: 6,
+      npcNightRest: true,
+      npcPace: "fast",
+    });
+    const w = life.world;
+    const HOUR = 3600;
+    // Hasta media mañana, antes de que salga.
+    while (Math.floor(localHour(w.clock, life.now, w.map.lonDeg)) !== 10) {
+      life.advanceTo(life.now + HOUR);
+    }
+    const npc = living(w.truth).find(
+      (x) =>
+        x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+    ) as AgentId;
+    const place = w.truth.ids(PLACE)[0] as string;
+    const hexes = (w.truth.get(PLACE, place as never)?.hexes ?? []) as number[];
+    let from = hexes[0] as number;
+    for (let i = 0; i < 4; i++) {
+      from =
+        (w.map.neighbors[from] ?? []).find(
+          (n) => !hexes.includes(n) && hexPath(w.map, n, hexes[0] as number).length > i,
+        ) ?? from;
+    }
+    w.truth.set(LOCATION, npc, { hex: from });
+    const body = w.truth.get(BODY_STATE, npc);
+    if (!body) throw new Error("sin cuerpo");
+    w.truth.set(BODY_STATE, npc, { ...body, fatigue: 0.9 });
+    w.truth.set(NPC_DECISION, npc, {
+      at: life.now,
+      id: `move:${place}+toward:agent:99`,
+      verb: "move",
+      target: place,
+      utility: 1,
+      options: 2,
+    } as never);
+    life.advanceTo(life.now + 3 * HOUR);
+    const rest = w.log.all().find((e) => e.kind === "action.rest" && e.actors[0] === npc);
+    expect(rest).toBeDefined();
+    const at = Math.floor(localHour(w.clock, rest?.tick ?? 0, w.map.lonDeg));
+    expect(at).toBeGreaterThanOrEqual(ROUTINE.wake);
+    expect(at).toBeLessThan(ROUTINE.sleep);
   }, 240_000);
 });
