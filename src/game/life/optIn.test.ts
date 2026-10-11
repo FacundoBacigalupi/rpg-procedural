@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { createLife, optInParts } from "./create.ts";
+import { createLife, defaultParts, optInParts } from "./create.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -32,6 +32,12 @@ describe("opciones opt-in de la vida", () => {
     expect(optInParts({ moldHintsFromCatalog: true })).toEqual({ moldHintsFromCatalog: true });
     expect(optInParts({ tradeView: false })).toEqual({});
     expect(optInParts({ tradeNeeds: { tool: 0.5 } })).toEqual({ tradeNeeds: { tool: 0.5 } });
+  });
+
+  it("las capas de objetivos persistidas están encendidas por defecto (life-2) y se apagan con false", () => {
+    expect(defaultParts({})).toEqual({ persistGoalLayers: true });
+    expect(defaultParts({ persistGoalLayers: true })).toEqual({ persistGoalLayers: true });
+    expect(defaultParts({ persistGoalLayers: false })).toEqual({});
   });
 
   it("la vista de oficios pasa misread y people a las partes", () => {

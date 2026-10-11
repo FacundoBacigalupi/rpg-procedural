@@ -20,6 +20,7 @@ import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } fro
 import {
   anchorOf,
   createLife,
+  defaultParts,
   derivedLoanUsury,
   type LifeOptions,
   type LifeTerrain,
@@ -202,6 +203,7 @@ export class Life {
     const derived = derivedLoanUsury(options, content, saved.ledger);
     const parts: LifeParts = {
       ...base,
+      ...defaultParts(options),
       ...optInParts(options, waterTerrain),
       ...(derived ? { loanUsury: derived } : {}),
       spaces,

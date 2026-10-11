@@ -369,6 +369,14 @@ export function derivedLoanUsury(
   });
 }
 
+/**
+ * Lo que está encendido por defecto desde `life-2` y se apaga con `false`: por ahora las capas de
+ * objetivos persistidas. Va antes de `optInParts`, que solo lleva lo que se pidió.
+ */
+export function defaultParts(options: LifeOptions): Pick<LifeParts, "persistGoalLayers"> {
+  return options.persistGoalLayers === false ? {} : { persistGoalLayers: true };
+}
+
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
 export function optInParts(
   options: LifeOptions,
@@ -460,7 +468,7 @@ export function optInParts(
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
-    ...(options.persistGoalLayers !== false ? { persistGoalLayers: true } : {}),
+    ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
     ...(options.closeGoalsOnDeath ? { closeGoalsOnDeath: true } : {}),
@@ -1124,6 +1132,7 @@ export function createLife(
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),
+      ...defaultParts(options),
       ...optInParts(options, site.terrain),
       ...(() => {
         const u = derivedLoanUsury(options, content, ledger);
