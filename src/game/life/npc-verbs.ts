@@ -4,15 +4,20 @@
 // (`NpcVerbsOptions.verbs`): apagado, la decisión sigue sin mover nada salvo lo que ya ejecutan
 // `life.routine` (comer, hervir, descansar, ir) y `life.lend`/`life.pawn_decide`.
 
-import type { AgentId, Tick } from "../../core/index.ts";
+import type { AgentId, PlaceRef, Tick } from "../../core/index.ts";
 import {
   type ActionCatalog,
   type ActionPlan,
   type ArgValue,
+  deleteComponent,
   ENTITY,
+  type EventDraft,
   LOCATION,
   PLACE,
   type ProcessDef,
+  type ProcessResult,
+  type ReadonlyWorldTruth,
+  type StateChange,
   setComponent,
   table,
 } from "../../sim/index.ts";
@@ -28,6 +33,12 @@ export interface NpcVerbsOptions {
   readonly day: number;
   /** El personaje decide por su cuenta: queda afuera. */
   readonly player: AgentId;
+  /**
+   * Opt-in (con `placeOf`): ir a un lugar abre un viaje (`NPC_JOURNEY`) que sigue de día en día
+   * hasta llegar o hasta `journeyDays` días; sin esto, el `move` vence con la decisión del día.
+   */
+  readonly journeyDays?: number;
+  readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
 /** Qué decisión ya se volvió plan, para no repetirla cada hora mientras siga vigente. */
@@ -119,16 +130,42 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       NPC_VERB_LOG.name,
       LOCATION.name,
       PLACE.name,
+      ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
     ],
-    writes: [PLAN_STATE.name, NPC_VERB_LOG.name],
+    writes: [
+      PLAN_STATE.name,
+      NPC_VERB_LOG.name,
+      ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
+      const journeyDays = o.journeyDays;
+      const trip = journeyDays !== undefined ? truth.get(NPC_JOURNEY, me) : undefined;
+      if (journeyDays !== undefined && trip && o.placeOf) {
+        // Un viaje en curso manda hasta llegar o rendirse; no depende de que la decisión siga vigente.
+        const hexes = truth.get(PLACE, trip.place as never)?.hexes ?? [];
+        const here = truth.get(LOCATION, me)?.hex;
+        const days = (ctx.now - trip.since) / o.day;
+        const end = (what: "arrived" | "gave_up") => ({
+          changes: [deleteComponent(NPC_JOURNEY, me)],
+          events: [journeyEvent(me, what, trip.place, days, o.placeOf?.(truth, me))],
+        });
+        if (here !== undefined && hexes.includes(here)) return end("arrived");
+        if (days >= journeyDays) return end("gave_up");
+        const going = truth.get(PLAN_STATE, me);
+        if (going && !going.done) return {};
+        const plan = planFromDecision({ id: `move:${trip.place}`, verb: "move" }, o.catalog, me);
+        return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
+      }
       const decision = truth.get(NPC_DECISION, me);
       if (!decision || !allowed.has(decision.verb) || ctx.now - decision.at >= o.day) return {};
       const done = truth.get(NPC_VERB_LOG, me);
       if (decision.verb === "move") {
+        // Con viaje, la decisión abre un solo viaje; llegar no lo reabre cuando la rutina lo aleja.
+        if (journeyDays !== undefined && done && done.at === decision.at && done.id === decision.id)
+          return {};
         // Un camino largo son varios tramos: sigue hasta llegar al lugar mientras la decisión vigue.
         const hexes = decision.target
           ? truth.get(PLACE, decision.target as never)?.hexes
@@ -140,30 +177,85 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       if (state && !state.done) return {};
       const plan = planFromDecision(decision, o.catalog, me);
       if (!plan) return {};
-      const seq = (state?.seq ?? 0) + 1;
-      const next: PlanState = {
-        seq,
-        plan,
-        cursor: FRESH_CURSOR,
-        lastBelieved: null,
-        steps: [],
-        done: false,
-      };
-      return {
-        changes: [
-          setComponent(PLAN_STATE, me, next),
-          setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id }),
-        ],
-        schedule: [
-          {
-            at: (ctx.now + 1) as Tick,
-            phase: "act",
-            process: ACT_PROCESS,
-            scope: me,
-            reason: { kind: "state", entity: me, key: planKey(seq) },
-          },
-        ],
-      };
+      const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });
+      // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega.
+      const opens =
+        journeyDays !== undefined &&
+        o.placeOf &&
+        decision.verb === "move" &&
+        decision.target !== undefined;
+      if (opens && decision.target) {
+        const open = setComponent(NPC_JOURNEY, me, {
+          place: decision.target,
+          since: ctx.now,
+          decision: decision.id,
+        });
+        return startPlan(me, plan, state?.seq ?? 0, ctx.now, {
+          changes: [log, open],
+          events: [journeyEvent(me, "started", decision.target, 0, o.placeOf?.(truth, me))],
+        });
+      }
+      return startPlan(me, plan, state?.seq ?? 0, ctx.now, { changes: [log] });
     },
+  };
+}
+
+/** Un viaje del NPC: a dónde va y desde cuándo; sigue de día en día hasta llegar o rendirse. */
+export interface NpcJourney {
+  readonly place: string;
+  readonly since: Tick;
+  /** La decisión que lo abrió. */
+  readonly decision: string;
+}
+export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
+
+function journeyEvent(
+  me: AgentId,
+  what: "started" | "arrived" | "gave_up",
+  place: string,
+  days: number,
+  at: PlaceRef | undefined,
+): EventDraft {
+  return {
+    kind: "npc.journey",
+    actors: [me],
+    place: at as PlaceRef,
+    data: { what, place, days: Math.round(days * 100) / 100 },
+    emissions: {},
+    causes: [{ kind: "state", entity: me, key: "utility" }],
+  };
+}
+
+function startPlan(
+  me: AgentId,
+  plan: ActionPlan,
+  prevSeq: number,
+  now: Tick,
+  extra: {
+    readonly changes?: readonly StateChange[];
+    readonly events?: readonly EventDraft[];
+  } = {},
+): ProcessResult {
+  const seq = prevSeq + 1;
+  const next: PlanState = {
+    seq,
+    plan,
+    cursor: FRESH_CURSOR,
+    lastBelieved: null,
+    steps: [],
+    done: false,
+  };
+  return {
+    changes: [setComponent(PLAN_STATE, me, next), ...(extra.changes ?? [])],
+    ...(extra.events ? { events: extra.events } : {}),
+    schedule: [
+      {
+        at: (now + 1) as Tick,
+        phase: "act",
+        process: ACT_PROCESS,
+        scope: me,
+        reason: { kind: "state", entity: me, key: planKey(seq) },
+      },
+    ],
   };
 }
