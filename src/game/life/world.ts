@@ -19,6 +19,7 @@ import {
   type BondDef,
   bodyProcess,
   type ConcernWords,
+  type Demography,
   type DietDef,
   type DimensionDef,
   type DivinationMethodDef,
@@ -65,10 +66,12 @@ import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
+import { birthProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { companyProcess } from "./company.ts";
+import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
@@ -234,6 +237,23 @@ export interface LifeWorld {
   readonly labors?: readonly Labor[];
   /** Miedo del hogar al parto (se suma al riesgo creído; por defecto 0). */
   readonly laborCaution?: number;
+  /**
+   * Opt-in (family-lineage §3): una casada con el marido vivo concibe con la fecundidad de su edad
+   * (`life.conception`, tabla `PREGNANCY`, evento `family.conception`) y su parto lo resuelve
+   * `life.labor` con la partera. Exige `demography`. Apagado, nadie concibe en la vida viva.
+   */
+  readonly conception?: boolean;
+  /**
+   * Opt-in (con `conception`): el niño que no murió en el parto nace como persona (`life.birth`,
+   * evento `family.birth`, genoma heredado, cuerpo de recién nacido, hogar de la madre). Apagado, el
+   * parto resuelve a la madre y al niño pero no crea a nadie.
+   */
+  readonly births?: boolean;
+  /** Con `conception`: multiplica la fecundidad (por defecto 1; calibrar o tests cortos). */
+  readonly conceptionRateScale?: number;
+  /** Con `conception`: días de embarazo (por defecto 280; tests cortos). */
+  readonly conceptionGestationDays?: number;
+  readonly demography?: Pick<Demography, "fertility">;
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
   /** Opt-in: el sanador también ve los signos de la congelación. */
@@ -1102,11 +1122,29 @@ export function lifeWorld(
           deficiencySigns: parts.deficiencySigns === true,
           placeOf: placeOf(parts, village),
         }),
-        ...(parts.labors && parts.labors.length > 0
+        ...(parts.conception === true && parts.demography
+          ? [
+              conceptionProcess({
+                clock: parts.clock,
+                demography: parts.demography,
+                ...(parts.conceptionRateScale !== undefined
+                  ? { rateScale: parts.conceptionRateScale }
+                  : {}),
+                ...(parts.conceptionGestationDays !== undefined
+                  ? { gestationDays: parts.conceptionGestationDays }
+                  : {}),
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
+        ...((parts.labors && parts.labors.length > 0) || parts.conception === true
           ? [
               laborProcess({
                 clock: parts.clock,
-                labors: parts.labors,
+                labors: parts.labors ?? [],
+                ...(parts.conception === true
+                  ? { more: { reads: [PREGNANCY.name], of: pregnancyLabors } }
+                  : {}),
                 ...(parts.laborCaution !== undefined ? { caution: parts.laborCaution } : {}),
                 ...(parts.healerFee
                   ? {
@@ -1117,6 +1155,16 @@ export function lifeWorld(
                       },
                     }
                   : {}),
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
+        ...(parts.conception === true && parts.births === true
+          ? [
+              birthProcess({
+                clock: parts.clock,
+                traits: parts.traits,
+                bodyPlans: parts.plans,
                 placeOf: placeOf(parts, village),
               }),
             ]
