@@ -29,6 +29,8 @@ export interface CatchUpOptions {
   readonly ageYears: number;
   /** El alimento de la despensa con que come (`FoodDef.kcalPerGram`, `waterPerGram`). */
   readonly ration: { readonly kcalPerGram: number; readonly waterPerGram: number };
+  /** Tope de comidas que la despensa alcanza a dar en la ventana; sin tope, todas las de la rutina. */
+  readonly maxMeals?: number;
 }
 
 export interface CatchUpResult {
@@ -89,9 +91,11 @@ function run(
     const start = b.updatedAt;
     const hour = Math.floor(localHour(o.clock, start, o.lonDeg));
     const p = hourPlan(hour, o.ageYears);
-    const taken = intake(plan, b, p, o.ration);
+    // Sin ración que alcance no come (ni se inventa la comida): sigue el agua y el día.
+    const eats = p.eats && meals < (o.maxMeals ?? Number.POSITIVE_INFINITY);
+    const taken = intake(plan, b, { ...p, eats }, o.ration);
     b = setActivity(taken.body, p.activity);
-    if (p.eats) {
+    if (eats) {
       meals++;
       grams += taken.grams;
     }
