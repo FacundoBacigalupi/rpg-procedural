@@ -13,13 +13,22 @@ import {
 import {
   BODY_PLANS,
   BODY_STATE,
+  CONCEPTS,
   checkInvariants,
   ENTITY,
   GENOME,
+  generateLanguage,
   HOUSEHOLD,
   INNATE,
+  LANGUAGES,
+  MIND,
   PERSON,
+  PERSON_NAME,
   type ProcessContext,
+  RELATION_BONDS,
+  RELATION_DIMS,
+  RELATIONS,
+  SCHEMAS,
   TRAITS,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -42,6 +51,17 @@ function sources(dir: string, root = dir): ContentSource[] {
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 const traits = content.all(TRAITS);
 const bodyPlans = content.all(BODY_PLANS);
+const language = generateLanguage(
+  7,
+  content.get(LANGUAGES, "village.hills") as never,
+  content.all(CONCEPTS),
+);
+const newborn = {
+  language,
+  schemas: content.all(SCHEMAS),
+  dims: content.all(RELATION_DIMS),
+  bonds: content.all(RELATION_BONDS),
+};
 
 const DAY = 86_400;
 const mother = "agent:1" as AgentId;
@@ -183,6 +203,67 @@ describe("nacer vivo (puro)", () => {
   });
 });
 
+describe("el recién nacido con nombre, mente y relaciones (puro)", () => {
+  const named = birthProcess({
+    clock: { day: DAY, year: 365 * DAY } as never,
+    traits,
+    bodyPlans,
+    newborn,
+    placeOf: () => place,
+  });
+  const runNamed = () => {
+    const t = world(false);
+    const fatherName = {
+      language: language.id,
+      parts: [
+        {
+          kind: "family" as const,
+          lexemes: ["x"],
+          meaning: ["roca"],
+          form: "Karo",
+          givenBy: null,
+          event: "event:1" as EventId,
+          usedBy: "all" as const,
+        },
+      ],
+    };
+    t.set(PERSON_NAME, father as EntityRef, fatherName as never);
+    const out = named.run({
+      truth: t,
+      now: 282 * DAY,
+      rng: Rng.root(3),
+      newId: () => "agent:99",
+    } as unknown as ProcessContext);
+    return (table: string) =>
+      (out.changes as unknown as { table: string; value: unknown }[]).find((c) => c.table === table)
+        ?.value as Record<string, unknown> | undefined;
+  };
+
+  it("lleva el apellido del padre, un nombre de pila con significado y la mente de base con el parto como causa", () => {
+    const get = runNamed();
+    const name = get(PERSON_NAME.name) as unknown as {
+      parts: { kind: string; form: string; meaning: string[] }[];
+    };
+    expect(name.parts.find((x) => x.kind === "family")?.form).toBe("Karo");
+    const given = name.parts.find((x) => x.kind === "given");
+    expect(given?.form.length).toBeGreaterThan(0);
+    expect(given?.meaning.length).toBeGreaterThan(0);
+    const mind = get(MIND.name) as { originEventId: string; schemas: Record<string, unknown> };
+    expect(mind.originEventId).toBe("event:~0");
+    expect(Object.keys(mind.schemas).length).toBeGreaterThan(0);
+  });
+
+  it("siente por su madre y su padre lo que el vínculo pone, citando el parto", () => {
+    const rel = runNamed()(RELATIONS.name) as unknown as {
+      toward: Record<string, { bonds: string[]; history: string[] }>;
+    };
+    expect(Object.keys(rel.toward).sort()).toEqual([mother, father]);
+    expect(rel.toward[mother]?.bonds).toContain("parent");
+    expect(rel.toward[father]?.bonds).toContain("parent");
+    expect(rel.toward[mother]?.history).toEqual(["event:~0"]);
+  });
+});
+
 describe("nacer vivo en la vida (opt-in)", () => {
   it("el embarazo llega al parto y el niño entra a la población con causa, ledger e invariantes limpios", () => {
     const life = Life.create(7, content, {
@@ -214,6 +295,13 @@ describe("nacer vivo en la vida (opt-in)", () => {
         child,
       );
       expect(e.causes.length).toBeGreaterThan(0);
+      // Nombre, mente y lo que siente por su madre, con el parto como origen.
+      const name = w.truth.get(PERSON_NAME, child as unknown as EntityRef);
+      expect(name?.parts.find((x) => x.kind === "given")?.event).toBe(e.id);
+      expect(w.truth.get(MIND, child as unknown as EntityRef)?.originEventId).toBe(e.id);
+      expect(
+        w.truth.get(RELATIONS, child as unknown as EntityRef)?.toward[e.actors[1] as string]?.bonds,
+      ).toContain("parent");
     }
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);

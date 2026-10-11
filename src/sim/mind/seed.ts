@@ -31,6 +31,23 @@ export interface SeedMindsInput {
 /** Variación personal de la fuerza de base de un esquema (desvío). */
 export const BASELINE_JITTER = 0.05;
 
+/** La mente de base de alguien: los esquemas del temperamento con su variación personal. */
+export function newMind(
+  schemas: readonly SchemaDef[],
+  innate: Innate,
+  rng: { normal(mean: number, sd: number): number },
+  event: EventId,
+): Mind {
+  const base = baselineSchemas(schemas, innate, () => rng.normal(0, BASELINE_JITTER));
+  return {
+    schemas: Object.fromEntries(
+      Object.entries(base).map(([k, strength]) => [k, { strength, causes: [event] }]),
+    ),
+    formative: [],
+    originEventId: event,
+  };
+}
+
 /** Escribe `MIND` de cada vivo. Devuelve el evento de la siembra. */
 export function seedMinds(
   truth: WorldTruth,
@@ -58,12 +75,7 @@ export function seedMinds(
   for (const id of alive) {
     const innate = truth.get(INNATE, id);
     if (!innate) continue;
-    const rng = root.fork("psyche", id);
-    const base = baselineSchemas(input.schemas, innate, () => rng.normal(0, BASELINE_JITTER));
-    const schemas: Mind["schemas"] = Object.fromEntries(
-      Object.entries(base).map(([k, strength]) => [k, { strength, causes: [event] }]),
-    );
-    minds.set(id, { schemas, formative: [], originEventId: event });
+    minds.set(id, newMind(input.schemas, innate, root.fork("psyche", id), event));
   }
   const lived = input.history
     ? applyFoundersHistory(
