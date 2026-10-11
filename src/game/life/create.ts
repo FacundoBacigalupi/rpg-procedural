@@ -310,6 +310,8 @@ export interface LifeOptions {
   readonly npcTransit?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero lleva provisiones de la despensa y come en el camino (`LifeParts.npcProvisions`). */
   readonly npcProvisions?: LifeParts["npcProvisions"];
+  /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC y deja el resultado parcial (`LifeParts.npcInterrupt`). */
+  readonly npcInterrupt?: boolean;
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`LifeParts.npcNightRest`). */
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
@@ -420,6 +422,7 @@ export function optInParts(
   | "hire"
   | "npcMove"
   | "npcVerbs"
+  | "npcInterrupt"
   | "npcTemplates"
   | "npcJourneyDays"
   | "npcTransit"
@@ -496,6 +499,7 @@ export function optInParts(
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
+    ...(options.npcInterrupt ? { npcInterrupt: true } : {}),
     ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
