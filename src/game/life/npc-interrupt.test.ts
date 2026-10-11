@@ -5,6 +5,7 @@ import {
   type AgentId,
   type ContentSource,
   type EntityBase,
+  type Event,
   loadContent,
   makeId,
   type PlaceId,
@@ -29,7 +30,13 @@ import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { PLAN_STATE, type PlanState } from "./act.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
-import { INTERRUPTED_EVENT, NPC_ALARMS, npcInterruptProcess } from "./npc-interrupt.ts";
+import {
+  INTERRUPTED_EVENT,
+  NPC_ALARMS,
+  NPC_REACT,
+  npcInterruptProcess,
+  npcReactProcess,
+} from "./npc-interrupt.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { living } from "./world.ts";
 
@@ -169,6 +176,85 @@ describe("life.npc_interrupt", () => {
     truth.set(BODY_STATE, me, { ...newBody(plan, 60, 0), fatigue: 0.95 });
     truth.set(PLAN_STATE, me, { ...(truth.get(PLAN_STATE, me) as PlanState), done: false });
     expect(run(truth).events?.[0]?.kind).toBe(INTERRUPTED_EVENT);
+  });
+});
+
+describe("lo que otro le hace o le dice", () => {
+  const other = makeId("agent", 2);
+  const event = (id: number, kind: string, actors: string[], tick = 3000): Event =>
+    ({
+      id: makeId("event", id),
+      tick,
+      kind,
+      actors,
+      place: site,
+      data: {},
+      emissions: {},
+      causes: [],
+      resolution: "local",
+    }) as unknown as Event;
+
+  function react(truth: WorldTruth, recent: Event[]): ProcessResult {
+    const p = npcReactProcess({ player });
+    return p.run({
+      now: 3600,
+      window: 0,
+      windowIndex: undefined,
+      scope: "world",
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger: undefined,
+      rng: Rng.root(1),
+      item: undefined,
+      recent,
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+
+  it("anota el golpe o la frase de otro donde el NPC es parte; el golpe vale más", () => {
+    const truth = world(0.1, true);
+    const out = react(truth, [
+      event(5, "action.strike", [other, me]),
+      event(6, "action.speak", [other, me]),
+      event(7, "action.strike", [me, other]),
+      event(8, "action.strike", [other, player]),
+      event(9, "body.died", [other, me]),
+    ]);
+    apply(truth, out);
+    expect(truth.get(NPC_REACT, me)).toMatchObject({
+      kind: "attacked",
+      event: makeId("event", 5),
+      who: other,
+    });
+    expect(truth.get(NPC_REACT, player)).toBeUndefined();
+    expect(react(truth, [event(10, "action.move", [other, me])])).toEqual({});
+  });
+
+  it("un golpe corta el plan, cita el evento y no corta dos veces por el mismo", () => {
+    const truth = world(0.1, true);
+    truth.set(NPC_REACT, me, { kind: "attacked", event: makeId("event", 5), who: other, at: 3000 });
+    const out = run(truth);
+    const ev = out.events?.[0];
+    expect(ev?.data).toMatchObject({ why: "attacked", plan: "fieldwork", cut: "work" });
+    expect(ev?.actors).toEqual([me, other]);
+    expect(ev?.causes).toEqual([{ kind: "event", event: makeId("event", 5) }]);
+    apply(truth, out);
+    expect(truth.get(PLAN_STATE, me)?.done).toBe(true);
+    expect(truth.get(NPC_ALARMS, me)?.seen).toBe(makeId("event", 5));
+    truth.set(PLAN_STATE, me, { ...(truth.get(PLAN_STATE, me) as PlanState), done: false });
+    expect(run(truth).events ?? []).toEqual([]);
+  });
+
+  it("una frase también corta; una reacción vieja no corta un plan nuevo", () => {
+    const talk = world(0.1, true);
+    talk.set(NPC_REACT, me, { kind: "spoken_to", event: makeId("event", 6), who: other, at: 3000 });
+    expect(run(talk).events?.[0]?.data).toMatchObject({ why: "spoken_to" });
+    const old = world(0.1, true);
+    old.set(NPC_REACT, me, { kind: "attacked", event: makeId("event", 5), who: other, at: -4000 });
+    expect(run(old).events ?? []).toEqual([]);
   });
 });
 

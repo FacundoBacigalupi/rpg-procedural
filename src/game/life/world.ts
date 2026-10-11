@@ -119,7 +119,7 @@ import {
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
-import { npcInterruptProcess } from "./npc-interrupt.ts";
+import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
 import { npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -1390,6 +1390,7 @@ export function lifeWorld(
                 plans: parts.plans,
                 placeOf: placeOf(parts, village),
               }),
+              npcReactProcess({ player }),
             ]
           : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
