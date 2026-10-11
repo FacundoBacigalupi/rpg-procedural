@@ -20,6 +20,8 @@ const { values } = parseArgs({
     days: { type: "string", default: "30" },
     frequency: { type: "string", default: "8" },
     out: { type: "string", default: "sim-reports" },
+    // Solo estas variantes (nombres separados por coma); sin ella, todas.
+    only: { type: "string" },
     // Uso interno: un solo seed y una sola variante, y una fila JSON por la salida estándar.
     seed: { type: "string" },
     variant: { type: "string" },
@@ -39,7 +41,8 @@ if (values.seed !== undefined && values.variant !== undefined) {
 } else {
   const rows: (SpeakActsRun & { seed: number })[] = [];
   for (const seed of parseSeeds(values.seeds ?? "1..2")) {
-    for (const v of variants) {
+    const only = values.only?.split(",");
+    for (const v of variants.filter((x) => !only || only.includes(x.name))) {
       const child = spawnSync(
         process.execPath,
         [
@@ -71,7 +74,7 @@ if (values.seed !== undefined && values.variant !== undefined) {
   );
   for (const r of rows) {
     process.stdout.write(
-      `seed ${r.seed} ${r.variant}: ${r.speaks} hablas (${r.speaksPerNpcDay}/NPC-día), ${r.problems} problemas\n`,
+      `seed ${r.seed} ${r.variant}: ${r.speaks} hablas (${r.speaksPerNpcDay}/NPC-día) actos ${JSON.stringify(r.acts)}, ${r.problems} problemas\n`,
     );
   }
 }

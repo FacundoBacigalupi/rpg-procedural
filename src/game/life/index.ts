@@ -37,7 +37,7 @@ export * from "./routine.ts";
 export * from "./scamdiscovery.ts";
 export * from "./scampolicy.ts";
 export * from "./sleep.ts";
-export type { SpeakActsOptions } from "./speakacts.ts";
+export { type SpeakActsOptions, speakActsDefaults } from "./speakacts.ts";
 export * from "./substance-panel.ts";
 export * from "./substances.ts";
 export * from "./suggest.ts";
