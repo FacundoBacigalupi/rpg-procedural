@@ -78,7 +78,14 @@ import {
   TemplateBook,
   voiceOf,
 } from "../llm/index.ts";
-import { FORMAT_VERSION, type LifeStore, sha256 } from "../persistence/index.ts";
+import {
+  FORMAT_VERSION,
+  type LifeStore,
+  type ReplayLimit,
+  type SaveVersions,
+  sha256,
+  upgradeVersions,
+} from "../persistence/index.ts";
 import {
   type ActionPlan,
   answerClarify,
@@ -541,11 +548,23 @@ function endingOf(life: Life, store: LifeStore): string {
 
 function open(store: LifeStore, options: SessionOptions, notices: string[]): Life {
   if (store.hasSave) {
-    const saved = store.getMeta("versions");
-    if (canonicalJson(saved) !== canonicalJson(VERSIONS)) {
-      throw new Error(`la vida guardada es de otra versión: ${canonicalJson(saved)}`);
-    }
+    const saved = store.getMeta("versions") as SaveVersions | undefined;
+    if (!saved) throw new Error("la vida guardada no trae sus versiones");
     const s = store.load();
+    // Un motor más nuevo sigue la vida desde el estado guardado; el replay desde el seed deja de valer
+    // desde ese tick y queda registrado el límite (tooling §4).
+    const check = upgradeVersions(saved, VERSIONS, s.scheduler.now);
+    if (check.kind === "incompatible") {
+      throw new Error(
+        `la vida guardada es de otra versión: ${canonicalJson(saved)} (${check.reason})`,
+      );
+    }
+    if (check.kind === "upgrade") {
+      const limits = (store.getMeta("replayLimits") as ReplayLimit[] | undefined) ?? [];
+      store.setMeta("replayLimits", [...limits, check.limit]);
+      store.setMeta("versions", check.versions);
+      notices.push(`Esta vida pasó del motor ${saved.engine} al ${VERSIONS.engine}.\n`);
+    }
     notices.push("Seguís donde quedaste.\n");
     const mode = store.getMeta("mode");
     if (mode !== options.setup.game.mode) {

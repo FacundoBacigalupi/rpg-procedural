@@ -133,6 +133,13 @@ describe("replay", () => {
     );
   });
 
+  it("un guardado que cruzó de motor no se rehace desde el seed: dice dónde está el límite", () => {
+    const store = play(5, [5]);
+    const from = { engine: "life-1", content: "h", format: 1 };
+    store.setMeta("replayLimits", [{ tick: 123, from, to: { ...from, engine: "life-2" } }]);
+    expect(() => replayInputFromStore(store)).toThrow(/life-1 a life-2 en el tick 123/);
+  });
+
   it("sin los planes, diverge en el primer checkpoint después de la primera orden", () => {
     const store = play(21, [5, 5, 5]);
     const { input, checkpoints } = replayInputFromStore(store);

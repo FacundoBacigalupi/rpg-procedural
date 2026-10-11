@@ -4,3 +4,4 @@ export * from "./content.ts";
 export * from "./driver.ts";
 export * from "./schema.ts";
 export * from "./store.ts";
+export * from "./versions.ts";

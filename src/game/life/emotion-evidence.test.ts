@@ -34,6 +34,7 @@ import {
   perceivedLossSignals,
   perceivedLoveSignals,
   receivedInsultSignals,
+  receivedShameSignals,
 } from "./emotion-evidence.ts";
 import { NPC_PERCEPTS, type WitnessingOptions, witnessingProcess } from "./witnessing.ts";
 
@@ -109,6 +110,38 @@ describe("evidencia propia de emociones", () => {
       [],
     );
     expect(perceivedEnvySignals({ ...seen, tick: now + 1 }, now, ctx)).toEqual([]);
+  });
+
+  it("la vergüenza exige un insulto que toca una falta propia y crece con los testigos", () => {
+    const shamed = (ownFault: boolean | undefined, witnesses = 0): Event => {
+      const e = insultEvent();
+      const data = e.data as { effect: { regard: Record<string, unknown> } };
+      return {
+        ...e,
+        data: {
+          effect: {
+            ...data.effect,
+            regard: {
+              ...data.effect.regard,
+              witnesses,
+              ...(ownFault === undefined ? {} : { ownFault }),
+            },
+          },
+        },
+      };
+    };
+    expect(receivedShameSignals(shamed(true), now, true)[0]).toMatchObject({
+      owner: OWNER,
+      emotion: "shame",
+      intensity: 0.35,
+      originEventId: ORIGIN,
+      evidence: { kind: "own", event: ORIGIN },
+    });
+    expect(receivedShameSignals(shamed(true, 4), now, true)[0]?.intensity).toBe(0.7);
+    expect(receivedShameSignals(shamed(false), now, true)).toEqual([]);
+    expect(receivedShameSignals(shamed(undefined), now, true)).toEqual([]);
+    expect(receivedShameSignals(shamed(true), now, false)).toEqual([]);
+    expect(receivedShameSignals(shamed(true), now - 1, true)).toEqual([]);
   });
 
   it("el amor nace de calidez vista de alguien con cariño previo, con la identidad leída", () => {

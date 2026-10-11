@@ -186,7 +186,11 @@ export interface LifeOptions {
   readonly migration?: LifeParts["migration"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
-  /** Opt-in: persiste los objetivos largos, medianos y cortos del NPC; apagado por defecto. */
+  /**
+   * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
+   * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
+   * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
+   */
   readonly persistGoalLayers?: boolean;
   /** Opt-in: las partes recuerdan los préstamos y pagos que participan directamente. */
   readonly debtKnowledge?: boolean;
@@ -363,6 +367,14 @@ export function derivedLoanUsury(
     ...(n.communityCase ? { communityCase: n.communityCase } : {}),
     eyeOf: eyeByPerception(traits),
   });
+}
+
+/**
+ * Lo que está encendido por defecto desde `life-2` y se apaga con `false`: por ahora las capas de
+ * objetivos persistidas. Va antes de `optInParts`, que solo lleva lo que se pidió.
+ */
+export function defaultParts(options: LifeOptions): Pick<LifeParts, "persistGoalLayers"> {
+  return options.persistGoalLayers === false ? {} : { persistGoalLayers: true };
 }
 
 /** Los procesos opt-in que la configuración de la vida pasa al mundo (vacío si no pide ninguno). */
@@ -1120,6 +1132,7 @@ export function createLife(
       concerns: content.all(DIVINATION_CONCERNS),
       tastes: content.all(TASTES),
       form: villageForm(seed, content, language),
+      ...defaultParts(options),
       ...optInParts(options, site.terrain),
       ...(() => {
         const u = derivedLoanUsury(options, content, ledger);

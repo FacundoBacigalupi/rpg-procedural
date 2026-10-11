@@ -9,7 +9,7 @@
 // de ese tick en el orden en que se guardaron.
 
 import { canonicalJson, compareStrings, type Seed, type Tick } from "../../core/index.ts";
-import type { LifeStore } from "../../persistence/index.ts";
+import type { LifeStore, ReplayLimit } from "../../persistence/index.ts";
 import { diffStateHashes, type StateHash } from "../../sim/index.ts";
 
 /** Las versiones que tienen que coincidir para que el replay valga (tooling §4). */
@@ -148,6 +148,14 @@ export function replayInputFromStore(store: LifeStore): {
 } {
   const missing = REPLAY_META.filter((k) => store.getMeta(k) === undefined).sort(compareStrings);
   if (missing.length > 0) throw new ReplayError(`al guardado le falta: ${missing.join(", ")}`);
+  // La vida cruzó de motor (tooling §4): desde el seed el replay vale solo hasta ese tick.
+  const limits = (store.getMeta("replayLimits") as ReplayLimit[] | undefined) ?? [];
+  const first = limits[0];
+  if (first) {
+    throw new ReplayError(
+      `el guardado pasó de ${first.from.engine} a ${first.to.engine} en el tick ${first.tick}: el replay desde el seed solo vale hasta ahí (falta arrancar desde el snapshot del límite)`,
+    );
+  }
   return {
     input: {
       seed: store.getMeta("seed") as Seed,
