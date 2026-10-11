@@ -300,6 +300,8 @@ export interface LifeOptions {
   readonly objectCues?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina (`LifeParts.npcMove`); apagado. */
   readonly npcMove?: boolean;
+  /** Opt-in: los lejanos y sin vínculo se duermen y se ponen al día por tramos (`LifeParts.sleepers`); apagado. */
+  readonly sleepers?: { readonly near: number; readonly food: string };
   /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): verbo -> plantilla de `content/plans/` (`LifeParts.npcTemplates`), p. ej. `work` -> `fieldwork`. */
@@ -433,6 +435,7 @@ export function optInParts(
   | "pawn"
   | "hire"
   | "npcMove"
+  | "sleepers"
   | "npcVerbs"
   | "npcInterrupt"
   | "npcEncounters"
@@ -516,6 +519,7 @@ export function optInParts(
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
+    ...(options.sleepers ? { sleepers: options.sleepers } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.npcInterrupt ? { npcInterrupt: true } : {}),
     ...(options.npcEncounters ? { npcEncounters: true } : {}),

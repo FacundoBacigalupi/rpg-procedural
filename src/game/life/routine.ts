@@ -22,6 +22,7 @@ import {
 } from "../../core/index.ts";
 import {
   type Activity,
+  ASLEEP,
   BODY_STATE,
   type BodyPlanDef,
   BUILDING,
@@ -113,6 +114,8 @@ export interface RoutineOptions {
    * Hoy sin costo ni tiempo de viaje, igual que el resto de la rutina; apagado, nada cambia.
    */
   readonly npcMove?: boolean;
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
+  readonly sleepers?: boolean;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -247,6 +250,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       PERSON.name,
       LOCATION.name,
       BODY_STATE.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.boil ? [TREATED_WATER.name] : []),
     ],
     writes: [LOCATION.name, BODY_STATE.name, MEALS.name, ...(o.boil ? [TREATED_WATER.name] : [])],
@@ -255,6 +259,8 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const truth = ctx.truth;
       // El personaje decide él; quien tiene un plan en curso lo sigue.
       if (truth.has(PLAYER, me)) return {};
+      // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
+      if (o.sleepers && truth.get(ASLEEP, me)) return {};
       const plan = truth.get(PLAN_STATE, me);
       if (plan && !plan.done) return {};
       const person = truth.get(PERSON, me);

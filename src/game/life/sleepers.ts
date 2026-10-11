@@ -9,6 +9,8 @@
 import type { AgentId, HolderRef, PlaceRef, Tick } from "../../core/index.ts";
 import { externalAccount, holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
+  ASLEEP,
+  type Asleep,
   BODY_STATE,
   type BodyPlanDef,
   deleteComponent,
@@ -27,21 +29,14 @@ import {
   type ReadonlyWorldTruth,
   type StateChange,
   setComponent,
-  table,
 } from "../../sim/index.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
 
 export const CATCH_UP_PROCESS = "life.catch_up";
 export const CAUGHT_UP_EVENT = "npc.caught_up";
 
-/** Un NPC dormido (tier 1): hasta cuándo se lo avanzó. */
-export interface Asleep {
-  readonly since: Tick;
-  readonly lastAdvanced: Tick;
-  /** Pedido de despertar: `life.catch_up` lo pone al día y borra el registro (off-3). */
-  readonly wake?: boolean;
-}
-export const ASLEEP = table<Asleep>("life.asleep");
+// El registro del dormido vive en `sim/body/asleep.ts` (lo leen procesos de `sim`).
+export { ASLEEP, type Asleep };
 
 export interface CatchUpProcessOptions {
   readonly plans: readonly BodyPlanDef[];
