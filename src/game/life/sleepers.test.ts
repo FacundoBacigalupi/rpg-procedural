@@ -22,13 +22,22 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   ENTITY,
+  LOCATION,
+  type LocalMap,
   newBody,
   PERSON,
   type ProcessContext,
   type ProcessResult,
   WorldTruth,
 } from "../../sim/index.ts";
-import { ASLEEP, CAUGHT_UP_EVENT, catchUpProcess } from "./sleepers.ts";
+import {
+  ASLEEP,
+  CAUGHT_UP_EVENT,
+  catchUpProcess,
+  hexesWithin,
+  sleepPolicyProcess,
+  sleepWant,
+} from "./sleepers.ts";
 
 const content = loadContent(
   [BODY_PLANS],
@@ -180,11 +189,125 @@ describe("life.catch_up: el dormido se pone al día con la despensa", () => {
     expect(run(other.truth, other.ledger, DAY as Tick, player)).toEqual({});
   });
 
+  it("sin pedido de despertar espera al día; con pedido se pone al día ya y el registro se borra", () => {
+    const { truth, ledger } = setup(100_000);
+    // A las tres horas todavía no toca (cadencia gruesa).
+    expect(run(truth, ledger, (3 * 3600) as Tick)).toEqual({});
+    // Con el pedido, a las tres horas lo pone al día y lo despierta.
+    truth.set(ASLEEP, me, { since: 0 as Tick, lastAdvanced: 0 as Tick, wake: true });
+    const out = run(truth, ledger, (3 * 3600) as Tick);
+    expect(summaryOf(out).meals).toBeGreaterThanOrEqual(0);
+    settle(truth, ledger, out, (3 * 3600) as Tick);
+    expect(truth.get(ASLEEP, me)).toBeUndefined();
+    expect(truth.get(BODY_STATE, me)?.updatedAt).toBe(3 * 3600);
+    expect(ledger.audit()).toEqual([]);
+  });
+
   it("es determinista", () => {
     const a = setup(100_000);
     const b = setup(100_000);
     expect(run(a.truth, a.ledger, (5 * DAY) as Tick)).toEqual(
       run(b.truth, b.ledger, (5 * DAY) as Tick),
     );
+  });
+});
+
+describe("quién duerme y cuándo despierta", () => {
+  // Una línea de diez hexes: 0-1-2-…-9.
+  const line = {
+    neighbors: Array.from({ length: 10 }, (_, i) => [i - 1, i + 1].filter((n) => n >= 0 && n < 10)),
+    crossSeconds: Array.from({ length: 10 }, () => 1000),
+  } as unknown as LocalMap;
+
+  it("los hexes cerca del jugador se cuentan por pasos", () => {
+    expect([...hexesWithin(line, 4, 0)]).toEqual([4]);
+    expect([...hexesWithin(line, 4, 2)].sort((a, b) => a - b)).toEqual([2, 3, 4, 5, 6]);
+    expect([...hexesWithin(line, 0, 1)].sort((a, b) => a - b)).toEqual([0, 1]);
+  });
+
+  it("solo duerme quien está lejos, sin vínculo, sin importancia y sin nada pendiente", () => {
+    const base = { nearPlayer: false, bondedToPlayer: false, important: false, pending: false };
+    expect(sleepWant(base)).toBe(true);
+    expect(sleepWant({ ...base, nearPlayer: true })).toBe(false);
+    expect(sleepWant({ ...base, bondedToPlayer: true })).toBe(false);
+    expect(sleepWant({ ...base, important: true })).toBe(false);
+    expect(sleepWant({ ...base, pending: true })).toBe(false);
+  });
+
+  function policyWorld(npcHex: number) {
+    const { truth } = setup(1000);
+    truth.deleteRaw(ASLEEP.name, me);
+    truth.set(ENTITY, player, {
+      id: player,
+      originEventId: makeId("event", 1),
+      createdAt: 0,
+    } satisfies EntityBase);
+    truth.set(LOCATION, player, { hex: 0 });
+    truth.set(LOCATION, me, { hex: npcHex });
+    return truth;
+  }
+  function policy(
+    truth: WorldTruth,
+    extra: { bonded?: boolean; important?: boolean; pending?: boolean } = {},
+  ): ProcessResult {
+    return sleepPolicyProcess({
+      player,
+      map: line,
+      near: 2,
+      bonded: () => extra.bonded ?? false,
+      important: () => extra.important ?? false,
+      pending: () => extra.pending ?? false,
+    }).run({
+      now: 7200,
+      window: 3600,
+      windowIndex: 1,
+      scope: me,
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger: undefined,
+      rng: Rng.root(1),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  function put(truth: WorldTruth, out: ProcessResult) {
+    for (const c of out.changes ?? []) if (c.op === "set") truth.setRaw(c.table, c.id, c.value);
+  }
+
+  it("lejos se registra dormido desde donde estaba su cuerpo; cerca o con vínculo, no", () => {
+    const far = policyWorld(7);
+    put(far, policy(far));
+    expect(far.get(ASLEEP, me)).toEqual({ since: 7200, lastAdvanced: 0 });
+    for (const extra of [{ bonded: true }, { important: true }, { pending: true }]) {
+      const t = policyWorld(7);
+      expect(policy(t, extra)).toEqual({});
+    }
+    expect(policy(policyWorld(2))).toEqual({});
+  });
+
+  it("si el jugador se acerca pide despertar; si vuelve a alejarse, lo cancela", () => {
+    const t = policyWorld(7);
+    put(t, policy(t));
+    t.set(LOCATION, me, { hex: 1 });
+    put(t, policy(t));
+    expect(t.get(ASLEEP, me)?.wake).toBe(true);
+    // El pedido se repite sin escribir de nuevo.
+    expect(policy(t)).toEqual({});
+    t.set(LOCATION, me, { hex: 8 });
+    put(t, policy(t));
+    expect(t.get(ASLEEP, me)?.wake).toBe(false);
+  });
+
+  it("el personaje, un muerto o quien no tiene posición no se tocan", () => {
+    const t = policyWorld(7);
+    t.deleteRaw(LOCATION.name, me);
+    expect(policy(t)).toEqual({});
+    const dead = policyWorld(7);
+    dead.set(ENTITY, me, { id: me, originEventId: makeId("event", 1), createdAt: 0, endedAt: 5 });
+    expect(policy(dead)).toEqual({});
   });
 });

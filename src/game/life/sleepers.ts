@@ -18,6 +18,8 @@ import {
   type EventDraft,
   endEntity,
   happeningEvent,
+  LOCATION,
+  type LocalMap,
   MEAL_KCAL,
   PERSON,
   type PostingDraft,
@@ -36,6 +38,8 @@ export const CAUGHT_UP_EVENT = "npc.caught_up";
 export interface Asleep {
   readonly since: Tick;
   readonly lastAdvanced: Tick;
+  /** Pedido de despertar: `life.catch_up` lo pone al día y borra el registro (off-3). */
+  readonly wake?: boolean;
 }
 export const ASLEEP = table<Asleep>("life.asleep");
 
@@ -64,7 +68,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
     id: CATCH_UP_PROCESS,
     system: "life",
     scope: "agent",
-    cadence: { scene: "day", local: "day", regional: "day", world: "day" },
+    // Corre cada hora para atender un pedido de despertar sin demora; sin él, una vez por día.
+    cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
     representation: "individual",
     phase: "decide",
     reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PERSON.name],
@@ -79,7 +84,12 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       if (me === o.player || !sleep || !base || !body || !person) return {};
       if (base.endedAt !== undefined) return { changes: [deleteComponent(ASLEEP, me)] };
       const plan = plans.get(body.plan);
-      if (!plan || body.updatedAt >= ctx.now) return {};
+      if (!plan) return {};
+      // Sin pedido de despertar, se atiende una vez por día (el dormido es de cadencia gruesa).
+      if (sleep.wake !== true && ctx.now - sleep.lastAdvanced < o.clock.day) return {};
+      if (body.updatedAt >= ctx.now) {
+        return sleep.wake === true ? { changes: [deleteComponent(ASLEEP, me)] } : {};
+      }
 
       // La despensa alcanza para las comidas que le tocan: lo suyo entre los que comen de ella.
       const unit = ledgerUnit(o.ration.unit);
@@ -120,7 +130,10 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       ];
       const changes: StateChange[] = [
         setComponent(BODY_STATE, me, done.body),
-        setComponent(ASLEEP, me, { since: sleep.since, lastAdvanced: ctx.now }),
+        // Despertado: ya al día, el registro se borra y vuelve a correr todo lo demás.
+        sleep.wake === true
+          ? deleteComponent(ASLEEP, me)
+          : setComponent(ASLEEP, me, { since: sleep.since, lastAdvanced: ctx.now }),
       ];
       const died = done.happenings.findIndex((h) => h.kind === "died");
       if (died >= 0) changes.push(endEntity(base, draftEvent(1 + died), ctx.now));
@@ -141,6 +154,104 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
             ]
           : [];
       return { changes, events, postings };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Quién duerme y cuándo despierta (simulation §4.2, off-3a)
+
+/** Los hexes a `n` pasos o menos de `from` (puro, por anchura): la zona que el jugador tiene cerca. */
+export function hexesWithin(
+  map: Pick<LocalMap, "neighbors">,
+  from: number,
+  n: number,
+): Set<number> {
+  const seen = new Set<number>([from]);
+  let ring = [from];
+  for (let d = 0; d < n; d++) {
+    const next: number[] = [];
+    for (const h of ring) {
+      for (const m of map.neighbors[h] ?? []) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        next.push(m);
+      }
+    }
+    ring = next;
+  }
+  return seen;
+}
+
+export interface SleepWantInput {
+  /** ¿Está en la zona que el jugador tiene cerca (scene/local)? */
+  readonly nearPlayer: boolean;
+  /** Tier 4: familia, maestro, pareja, enemigos declarados… (el vínculo con el jugador). */
+  readonly bondedToPlayer: boolean;
+  /** Tier 3: importancia por encima del umbral (puesto, poder, intrigas). */
+  readonly important: boolean;
+  /** Un hecho pendiente lo espera (la leva, la epidemia): lo despierta quien lo deba atender. */
+  readonly pending: boolean;
+}
+
+/** ¿Debería estar dormido? Solo quien está lejos, sin vínculo, sin importancia y sin nada pendiente. */
+export function sleepWant(i: SleepWantInput): boolean {
+  return !i.nearPlayer && !i.bondedToPlayer && !i.important && !i.pending;
+}
+
+export interface SleepPolicyOptions {
+  readonly player: AgentId;
+  readonly map: LocalMap;
+  /** Cuántos hexes alrededor del jugador cuentan como cerca (zona scene/local). */
+  readonly near: number;
+  readonly bonded: (truth: ReadonlyWorldTruth, who: AgentId) => boolean;
+  readonly important: (truth: ReadonlyWorldTruth, who: AgentId) => boolean;
+  readonly pending?: (truth: ReadonlyWorldTruth, who: AgentId) => boolean;
+}
+
+/**
+ * Registra a quien debe dormir y pide despertar a quien ya no (por hora, fase `perceive`): no
+ * pone al día a nadie —eso es `life.catch_up`, que atiende el pedido y borra el registro—. Un
+ * muerto, el personaje o quien no tiene posición no se toca.
+ */
+export function sleepPolicyProcess(o: SleepPolicyOptions): ProcessDef {
+  return {
+    id: "life.sleep_policy",
+    system: "life",
+    scope: "agent",
+    cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, LOCATION.name],
+    writes: [ASLEEP.name],
+    run(ctx) {
+      const me = ctx.scope as AgentId;
+      const truth = ctx.truth;
+      if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
+      const here = truth.get(LOCATION, me)?.hex;
+      const there = truth.get(LOCATION, o.player)?.hex;
+      const body = truth.get(BODY_STATE, me);
+      if (here === undefined || there === undefined || !body) return {};
+      const want = sleepWant({
+        nearPlayer: hexesWithin(o.map, there, o.near).has(here),
+        bondedToPlayer: o.bonded(truth, me),
+        important: o.important(truth, me),
+        pending: o.pending?.(truth, me) ?? false,
+      });
+      const sleep = truth.get(ASLEEP, me);
+      if (want && !sleep) {
+        return {
+          changes: [setComponent(ASLEEP, me, { since: ctx.now, lastAdvanced: body.updatedAt })],
+        };
+      }
+      if (!want && sleep && sleep.wake !== true) {
+        return { changes: [setComponent(ASLEEP, me, { ...sleep, wake: true })] };
+      }
+      // Quiso despertar y se le pidió, pero volvió a quedar lejos: se cancela el pedido.
+      if (want && sleep?.wake === true) {
+        return { changes: [setComponent(ASLEEP, me, { ...sleep, wake: false })] };
+      }
+      return {};
     },
   };
 }
