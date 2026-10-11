@@ -147,7 +147,7 @@
     "duration": { "kind": "arg", "role": "for", "default": 14400, "max": 43200 },
     "checkpoint": 1800,
     "emissions": { "sight": 0.6, "sound": 0.4 },
-    "serves": { "wealth": 0.6, "hunger": 0.2, "tradition": 0.2, "rest": -0.3 },
+    "serves": { "wealth": 0.6, "hunger": 0.2, "tradition": 0.2, "rest": -0.3, "meaning": 0.3 },
     "resolver": "work",
     "ease": 1,
     "factors": {
@@ -598,7 +598,7 @@
     "duration": { "kind": "fixed", "seconds": 600 },
     "checkpoint": 120,
     "emissions": { "sight": 0.3, "sound": 0.1 },
-    "serves": { "family": 0.5, "safety": 0.3, "justice": 0.1 },
+    "serves": { "family": 0.5, "safety": 0.3, "justice": 0.1, "meaning": 0.3 },
     "resolver": "tend",
     "ease": 0.8,
     "factors": {
@@ -635,7 +635,7 @@
     "duration": { "kind": "fixed", "seconds": 900 },
     "checkpoint": 120,
     "emissions": { "sight": 0.3, "sound": 0.4 },
-    "serves": { "knowledge": 0.4, "social": 0.1 },
+    "serves": { "knowledge": 0.4, "social": 0.1, "meaning": 0.2 },
     "resolver": "consult",
     "ease": 1.5,
     "factors": {
@@ -665,7 +665,7 @@
     "duration": { "kind": "fixed", "seconds": 1800 },
     "checkpoint": 300,
     "emissions": { "sight": 0.2, "sound": 0.1 },
-    "serves": { "wealth": 0.4 },
+    "serves": { "wealth": 0.4, "meaning": 0.4 },
     "resolver": "forge",
     "ease": 1,
     "factors": {

@@ -19,11 +19,13 @@ import {
   ENTITY,
   INNATE,
   LIFE_STAGES,
+  LOCATION,
   MEMORIES,
   MIND,
   newBody,
   PERSON,
   PERSON_SUBSTANCE,
+  PLACE,
   PLANS,
   type ProcessContext,
   type ProcessResult,
@@ -721,6 +723,122 @@ describe("life.decide", () => {
         (event) => event.kind === GOAL_EVENT && goalData(event).goal === goal.id,
       )?.causes,
     ).toContainEqual({ kind: "event", event: "event:12" });
+  });
+
+  it("el vacío de una venganza cumplida presiona meaning solo con la opción", () => {
+    const year = 365 * 86_400;
+    const make = (newCore?: "before" | "after") => {
+      const truth = layeredWorld();
+      if (newCore) {
+        truth.set(NPC_GOALS, A, {
+          items: [
+            {
+              id: "core:avenge:agent:3",
+              layer: "core",
+              kind: "avenge",
+              target: "agent:3" as AgentId,
+              weight: 0.6,
+              originEventId: "event:20" as EventId,
+              since: newCore === "after" ? year + 10 : 50,
+            },
+          ],
+        });
+      }
+      // En un campo, `work` es posible y es el verbo que sirve meaning.
+      truth.set(LOCATION, A, { hex: 5 });
+      truth.set(PLACE, "place:1" as never, { kind: "fields", hexes: [5] });
+      truth.set(NPC_GOAL_COMPLETIONS, A, {
+        items: [
+          {
+            goalId: "core:avenge:agent:2",
+            cause: "event:9" as EventId,
+            at: year,
+            original: {
+              id: "core:avenge:agent:2",
+              layer: "core",
+              kind: "avenge",
+              target: "agent:2" as AgentId,
+              weight: 0.8,
+              originEventId: "event:8" as EventId,
+              since: 100,
+            },
+          },
+        ],
+      });
+      return truth;
+    };
+    const base = decideProcess({ ...opts, recognizeGoalCompletion: true });
+    const on = decideProcess({ ...opts, recognizeGoalCompletion: true, meaningPressure: true });
+    expect(on.reads).toContain(NPC_GOAL_COMPLETIONS.name);
+    expect(on.run(ctx(make(), A, 1000))).toEqual(on.run(ctx(make(), A, 1000)));
+    const verbs = (p: typeof on, newCore?: "before" | "after") =>
+      Array.from({ length: 60 }, (_, k) => {
+        const change = p
+          .run(ctx(make(newCore), A, 2 * year + k * 86_400))
+          .changes?.find((c) => c.table === NPC_DECISION.name) as
+          | { value?: { verb: string } }
+          | undefined;
+        return change?.value?.verb ?? "";
+      });
+    const off = verbs(decideProcess({ ...opts, meaningPressure: false }));
+    expect(off).toEqual(verbs(base));
+    const withMeaning = verbs(on);
+    const works = (list: string[]) => list.filter((v) => v === "work").length;
+    expect(works(withMeaning)).toBeGreaterThan(works(off));
+    expect(withMeaning).not.toEqual(off);
+
+    // Un núcleo nuevo, con causa, reemplaza el sentido: la presión se apaga. Uno anterior al
+    // cumplimiento ya ocupaba el lugar y tampoco deja nacer el vacío.
+    const offWithCore = (c: "before" | "after") =>
+      verbs(decideProcess({ ...opts, meaningPressure: false }), c);
+    expect(verbs(on, "after")).toEqual(offWithCore("after"));
+    expect(verbs(on, "before")).toEqual(offWithCore("before"));
+  });
+
+  it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {
+    const truth = layeredWorld();
+    const goal = {
+      id: "medium:master_craft",
+      layer: "medium",
+      kind: "pursue",
+      value: "knowledge",
+      weight: 0.5,
+      originEventId: "event:8" as EventId,
+      since: 100,
+    } as const;
+    truth.set(NPC_GOALS, A, { items: [goal] });
+    const evidence = (n: number) => ({
+      goalId: goal.id,
+      cause: `event:${n}` as EventId,
+      at: 100 + n * 100,
+      amount: 0.5,
+    });
+    let seen = [evidence(1)];
+    const process = decideProcess({
+      ...opts,
+      persistGoalLayers: true,
+      goalProgress: {
+        concrete: (g) => g.id === goal.id,
+        evidenceOf: () => seen,
+        minSpan: 100,
+      },
+    });
+    const fulfilled = (out: ReturnType<typeof process.run>) =>
+      out.events?.find(
+        (e) =>
+          e.kind === GOAL_EVENT &&
+          goalData(e).goal === goal.id &&
+          (e.data as { reason?: string }).reason === "fulfilled",
+      );
+    expect(fulfilled(process.run(ctx(truth, A, 1000)))).toBeUndefined();
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)).toBeUndefined();
+
+    seen = [evidence(1), evidence(2), evidence(3)];
+    const first = process.run(ctx(truth, A, 1000));
+    expect(fulfilled(first)?.causes).toContainEqual({ kind: "event", event: "event:3" });
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOAL_COMPLETIONS, A)?.items).toHaveLength(1);
+    expect(truth.get(NPC_GOALS, A)?.items.some((g) => g.id === goal.id)).toBe(false);
   });
 
   it("un NPC sediento registra su decisión y la emite una sola vez", () => {

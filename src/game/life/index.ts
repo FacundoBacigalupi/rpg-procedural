@@ -11,6 +11,7 @@ export * from "./exposure.ts";
 export * from "./gathering.ts";
 export * from "./gathering-provider.ts";
 export * from "./goal-death.ts";
+export * from "./goal-evidence.ts";
 export * from "./hire.ts";
 export * from "./hypotheses.ts";
 export * from "./identity.ts";

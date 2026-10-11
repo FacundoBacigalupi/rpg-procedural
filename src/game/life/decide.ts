@@ -8,12 +8,15 @@
 
 import {
   type AgentId,
+  type Duration,
+  daysInYear,
   type EntityRef,
   type HolderRef,
   holderAccount,
   type PlaceRef,
   type PlanetClock,
   type Tick,
+  toCalendar,
 } from "../../core/index.ts";
 import {
   ACCLIMATIZATION,
@@ -28,6 +31,7 @@ import {
   beliefConfidenceAt,
   believed,
   type Candidate,
+  calibratedMeaningPressure,
   capabilitiesOf,
   closeness,
   coreGoals,
@@ -43,11 +47,14 @@ import {
   GOAL_COMPLETION_MIN_CONFIDENCE,
   type Goal,
   type GoalCompletion,
+  type GoalProgressEvidence,
   type GoodDef,
   GROWTH_SEQUELAE,
   goalChanges,
   goalCompletionsFromBeliefs,
+  goalCompletionsFromProgress,
   goalDrives,
+  goalVacuumFromCompletions,
   goodUnit,
   HABITS,
   type HabitDef,
@@ -60,6 +67,7 @@ import {
   longGoals,
   MEMORIES,
   MENTAL,
+  type Memories,
   MIND,
   mediumGoals,
   mergeCandidates,
@@ -115,7 +123,7 @@ import {
   placeHoldersInView,
   type ViewCues,
 } from "./cue-local.ts";
-import { DEBT_BOOK, debtGoalInputs } from "./debtknowledge.ts";
+import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -188,6 +196,23 @@ export interface DecideOptions {
   readonly debtKnowledge?: boolean;
   /** Opt-in: cierra venganzas reconocidas como cumplidas desde las creencias propias. */
   readonly recognizeGoalCompletion?: boolean;
+  /** Opt-in: el vacío por venganza cumplida sube la necesidad lenta `meaning` (necesita el historial). */
+  readonly meaningPressure?: boolean;
+  /**
+   * Opt-in: cierra metas concretas persistidas desde evidencia de progreso propia. `concrete`
+   * declara cuáles tienen final (un valor continuo no se infiere) y `evidenceOf` extrae, de las
+   * memorias y el libro de deuda propios, las evidencias con su evento; la acción aislada no basta
+   * (`goal-progress-evidence`).
+   */
+  readonly goalProgress?: {
+    readonly concrete: (goal: Goal) => boolean;
+    readonly evidenceOf: (
+      goal: Goal,
+      memories: Memories | undefined,
+      debts?: DebtBook,
+    ) => GoalProgressEvidence[];
+    readonly minSpan: Duration;
+  };
   readonly clock: PlanetClock;
   readonly catalog: ActionCatalog;
   readonly skills: SkillCatalog;
@@ -308,9 +333,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SKILL_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.debtKnowledge ? [DEBT_BOOK.name] : []),
+      ...(o.debtKnowledge || o.goalProgress ? [DEBT_BOOK.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
-      ...(o.recognizeGoalCompletion ? [NPC_GOAL_COMPLETIONS.name] : []),
+      ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
+        ? [NPC_GOAL_COMPLETIONS.name]
+        : []),
       "culture.community",
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
@@ -318,7 +345,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
     writes: [
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.recognizeGoalCompletion ? [NPC_GOAL_COMPLETIONS.name] : []),
+      ...(o.recognizeGoalCompletion || o.goalProgress ? [NPC_GOAL_COMPLETIONS.name] : []),
     ],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -430,7 +457,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           : acute.craving,
         numbing: acute.numbing,
       };
-      const drives = drivesFor({
+      const baseDrives = drivesFor({
         plan,
         body,
         mood,
@@ -446,9 +473,34 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       // Los objetivos: núcleo desde sus valores y venganza desde el resentimiento con memoria que lo
       // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.
       const prevGoals = truth.get(NPC_GOALS, me)?.items ?? [];
-      const completionHistory = o.recognizeGoalCompletion
-        ? (truth.get(NPC_GOAL_COMPLETIONS, me)?.items ?? [])
-        : [];
+      const completionHistory =
+        o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
+          ? (truth.get(NPC_GOAL_COMPLETIONS, me)?.items ?? [])
+          : [];
+      // Opt-in: el vacío de un núcleo cumplido (venganza consumada) presiona `meaning` despacio.
+      const yearTicks = daysInYear(o.clock, toCalendar(o.clock, now).year) * o.clock.day;
+      // Un núcleo concreto nacido después del cumplimiento lo reemplaza y alivia de a poco, citando
+      // su origen; uno anterior ya ocupaba el lugar y no deja nacer el vacío.
+      const vacuum = o.meaningPressure
+        ? goalVacuumFromCompletions([], completionHistory, now)
+        : undefined;
+      const concreteCore = prevGoals
+        .filter((g) => g.layer === "core" && g.kind !== "pursue")
+        .sort((a, b) => a.since - b.since);
+      const replacing = vacuum ? concreteCore.find((g) => g.since >= vacuum.since) : undefined;
+      const meaning =
+        vacuum && !(concreteCore.length > 0 && !replacing)
+          ? calibratedMeaningPressure(
+              vacuum,
+              now,
+              yearTicks,
+              replacing ? { at: replacing.since, cause: replacing.originEventId } : undefined,
+            )
+          : undefined;
+      const drives: typeof baseDrives =
+        meaning && meaning.pressure > 0
+          ? { ...baseDrives, needs: { ...baseDrives.needs, meaning: meaning.pressure } }
+          : baseDrives;
       const deathEvidence = o.recognizeGoalCompletion
         ? (memories?.items ?? [])
             .filter(
@@ -491,12 +543,37 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             );
           })
         : [];
+      // Metas concretas persistidas que el agente cumplió por su propio progreso. La meta se
+      // vuelve a derivar después como instancia nueva (`since` nuevo) y debe ganarse otra vez.
+      const progressCompletions = o.goalProgress
+        ? (() => {
+            const gp = o.goalProgress;
+            const concrete = prevGoals.filter((g) => gp.concrete(g));
+            return goalCompletionsFromProgress(
+              prevGoals,
+              concrete.flatMap((g) => gp.evidenceOf(g, memories, truth.get(DEBT_BOOK, me))),
+              now,
+              new Set(concrete.map((g) => g.id)),
+              gp.minSpan,
+            ).filter(
+              (completion) =>
+                !completionHistory.some(
+                  (old) =>
+                    old.goalId === completion.goalId &&
+                    old.original.since === completion.original.since &&
+                    old.original.originEventId === completion.original.originEventId,
+                ),
+            );
+          })()
+        : [];
+      const allCompletions = [...completions, ...progressCompletions];
+      const progressIds = new Set(progressCompletions.map((completion) => completion.goalId));
       const completedIds = new Set([
-        ...completions.map((completion) => completion.goalId),
+        ...allCompletions.map((completion) => completion.goalId),
         ...stillBelievedComplete.map((completion) => completion.goalId),
       ]);
       const completionById = new Map(
-        completions.map((completion) => [completion.goalId, completion]),
+        allCompletions.map((completion) => [completion.goalId, completion]),
       );
       const goals = reconcileGoals(
         prevGoals.filter((g) => g.layer === "core"),
@@ -599,11 +676,12 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         : [];
       const storedGoals =
         o.persistGoalLayers || o.persistImmediateGoals
-          ? reconcileGoals(prevGoals, [
-              ...goals,
-              ...(o.persistGoalLayers ? layered : []),
-              ...immediate,
-            ])
+          ? reconcileGoals(
+              prevGoals,
+              [...goals, ...(o.persistGoalLayers ? layered : []), ...immediate].filter(
+                (g) => !progressIds.has(g.id),
+              ),
+            )
           : goals;
       const { born, ended } = goalChanges(prevGoals, storedGoals);
       const goalEvents = [
@@ -665,10 +743,10 @@ export function decideProcess(o: DecideOptions): ProcessDef {
           ? [setComponent(NPC_GOALS, me, { items: storedGoals })]
           : [];
       const completionChange =
-        completions.length > 0
+        allCompletions.length > 0
           ? [
               setComponent(NPC_GOAL_COMPLETIONS, me, {
-                items: [...completionHistory, ...completions],
+                items: [...completionHistory, ...allCompletions],
               }),
             ]
           : [];

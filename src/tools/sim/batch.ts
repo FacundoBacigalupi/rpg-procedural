@@ -31,7 +31,13 @@ export interface MetricSummary {
 export function summarizeReports(
   reports: readonly SimReport[],
 ): Readonly<Record<string, MetricSummary>> {
-  const flats = reports.map(flattenMetrics);
+  return summarizeFlat(reports.map(flattenMetrics));
+}
+
+/** Lo mismo sobre métricas ya planas (mediciones que no son un `SimReport`). */
+export function summarizeFlat(
+  flats: readonly FlatMetrics[],
+): Readonly<Record<string, MetricSummary>> {
   const keys = [...new Set(flats.flatMap((f) => Object.keys(f)))].sort();
   const out: Record<string, MetricSummary> = {};
   for (const key of keys) {
