@@ -2,8 +2,8 @@
 // contra lo que el actor conoce (§4), las plantillas se expanden, las duraciones pasan a segundos
 // con el reloj del planeta y las condiciones se toman de su forma normalizada (`is`). Si queda
 // algo ambiguo no hay plan: vuelve la aclaración, que el juego le pregunta al jugador en términos
-// del personaje. Lo que la Fase 1 no sabe hacer (`repeat`, `if`, `onEvent`) es un problema, no se
-// aproxima.
+// del personaje. Lo que todavía no sabe hacer (`onEvent`, la separación entre vueltas de un `repeat`) es un
+// problema, no se aproxima.
 
 import {
   type AgentId,
@@ -221,10 +221,27 @@ function convert(
       }
       return Object.keys(params).length === t.params.length ? expandTemplate(t.root, params) : null;
     }
-    case "repeat":
-    case "if":
+    case "repeat": {
+      if (node.every !== undefined) {
+        w.problems.push(`${at}: repeat con separación entre vueltas todavía no se ejecuta`);
+        return null;
+      }
+      if (node.times === undefined) {
+        w.problems.push(`${at}: repeat sin cuántas veces`);
+        return null;
+      }
+      const body = convert(node.body, `${at}.body`, w);
+      return body ? { kind: "repeat", body, times: node.times } : null;
+    }
+    case "if": {
+      const cond = condition(node.cond, `${at}.cond`, w);
+      const then = convert(node.then, `${at}.then`, w);
+      const other = node.else ? convert(node.else, `${at}.else`, w) : undefined;
+      if (!cond || !then || other === null) return null;
+      return other ? { kind: "if", cond, then, else: other } : { kind: "if", cond, then };
+    }
     case "onEvent":
-      w.problems.push(`${at}: ${node.kind} todavía no se ejecuta (Fase 3)`);
+      w.problems.push(`${at}: onEvent todavía no se ejecuta (reacciones a mitad de plan)`);
       return null;
   }
 }

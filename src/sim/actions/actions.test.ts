@@ -24,6 +24,7 @@ import {
   type PlanNode,
   parsePlan,
   planFromDraft,
+  planLeaves,
   type RefDescription,
   refTokens,
   resolveRef,
@@ -225,6 +226,62 @@ describe("plan", () => {
       max: 100,
     };
     expect(leaves(timed, (i) => env(i * 60))).toHaveLength(10);
+  });
+
+  it("repeat corre el cuerpo las veces pedidas y sigue con el paso de después", () => {
+    const look: PlanNode = { kind: "do", verb: "look", args: [], manner: [] };
+    const three: PlanNode = { kind: "repeat", body: look, times: 3 };
+    expect(leaves(three, (i) => env(i))).toEqual(["look", "look", "look"]);
+    const root: PlanNode = { kind: "seq", steps: [three, take] };
+    expect(leaves(root, (i) => env(i))).toEqual(["look", "look", "look", "take"]);
+    const nested: PlanNode = {
+      kind: "repeat",
+      body: { kind: "seq", steps: [look, take] },
+      times: 2,
+    };
+    expect(leaves(nested, (i) => env(i))).toEqual(["look", "take", "look", "take"]);
+  });
+
+  it("if elige al llegar según lo que el actor percibe y cree, y salta si no hay rama", () => {
+    const look: PlanNode = { kind: "do", verb: "look", args: [], manner: [] };
+    // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+    const branch: PlanNode = { kind: "if", cond: { kind: "dark" }, then: take, else: look };
+    expect(leaves(branch, () => env(0, { dark: true }))).toEqual(["take"]);
+    expect(leaves(branch, () => env(0, { dark: false }))).toEqual(["look"]);
+    // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+    const onlyThen: PlanNode = { kind: "if", cond: { kind: "dark" }, then: take };
+    expect(leaves(onlyThen, () => env(0, { dark: false }))).toEqual([]);
+    const after: PlanNode = { kind: "seq", steps: [onlyThen, look] };
+    expect(leaves(after, () => env(0, { dark: false }))).toEqual(["look"]);
+    expect(leaves(after, () => env(0, { dark: true }))).toEqual(["take", "look"]);
+    // Por lo que cree que le salió, no por la verdad.
+    const afterOk: PlanNode = {
+      kind: "if",
+      cond: { kind: "succeeded" },
+      // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+      then: take,
+      else: look,
+    };
+    expect(leaves(afterOk, () => env(0, { lastBelieved: "success" }))).toEqual(["take"]);
+    expect(leaves(afterOk, () => env(0, { lastBelieved: "failure" }))).toEqual(["look"]);
+  });
+
+  it("repeat e if vuelven por JSON, cuentan sus hojas y se validan contra el catálogo", () => {
+    const look: PlanNode = { kind: "do", verb: "look", args: [], manner: [] };
+    const root: PlanNode = {
+      kind: "repeat",
+      // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+      body: { kind: "if", cond: { kind: "light" }, then: take, else: look },
+      times: 2,
+    };
+    const p = plan(root);
+    expect(parsePlan(JSON.parse(JSON.stringify(p)))).toEqual(p);
+    expect(planLeaves(root).map((l) => l.path.join("."))).toEqual(["0.0", "0.1"]);
+    expect(validatePlan(p, catalog)).toEqual([]);
+    // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+    const bad = plan({ kind: "if", cond: { kind: "dark" }, then: { ...take, verb: "fly" } });
+    expect(validatePlan(bad, catalog).join()).toMatch(/fly.*desconocido/);
+    expect(() => parsePlan({ ...p, root: { ...root, times: 0 } })).toThrow();
   });
 
   it("until anidado en seq sigue con el paso de después", () => {
@@ -454,10 +511,67 @@ describe("del borrador al plan", () => {
     );
     expect(bad.kind === "invalid" && bad.problems.join()).toMatch(/condición/);
     const later = planFromDraft(
-      act({ kind: "repeat", body: { kind: "do", verb: "look", args: [] }, times: 3 }),
+      act({
+        kind: "onEvent",
+        trigger: { kind: "time", text: "si anochece", is: { kind: "dark" } },
+        react: { kind: "do", verb: "look", args: [] },
+      }),
       ctx,
     );
-    expect(later.kind === "invalid" && later.problems.join()).toMatch(/Fase 3/);
+    expect(later.kind === "invalid" && later.problems.join()).toMatch(/onEvent/);
+    const spaced = planFromDraft(
+      act({
+        kind: "repeat",
+        body: { kind: "do", verb: "look", args: [] },
+        times: 2,
+        every: { amount: 1, unit: "hour" },
+      }),
+      ctx,
+    );
+    expect(spaced.kind === "invalid" && spaced.problems.join()).toMatch(/separación/);
+    const unbounded = planFromDraft(
+      act({ kind: "repeat", body: { kind: "do", verb: "look", args: [] } }),
+      ctx,
+    );
+    expect(unbounded.kind === "invalid" && unbounded.problems.join()).toMatch(/cuántas veces/);
+  });
+
+  it("repeat e if del borrador pasan al plan con la condición normalizada", () => {
+    const r = planFromDraft(
+      act({
+        kind: "repeat",
+        times: 3,
+        body: {
+          kind: "if",
+          cond: { kind: "time", text: "si es de noche", is: { kind: "dark" } },
+          // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+          then: { kind: "do", verb: "look", args: [] },
+          else: { kind: "do", verb: "gather", args: [{ role: "what", text: "hierbas" }] },
+        },
+      }),
+      ctx,
+    );
+    expect(r.kind === "plan" && r.plan.root).toMatchObject({
+      kind: "repeat",
+      times: 3,
+      body: {
+        kind: "if",
+        cond: { kind: "dark" },
+        // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+        then: { kind: "do", verb: "look" },
+        else: { kind: "do", verb: "gather" },
+      },
+    });
+    const noCond = planFromDraft(
+      act({
+        kind: "if",
+        cond: { kind: "time", text: "si se me da la gana" },
+        // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+        then: { kind: "do", verb: "look", args: [] },
+      }),
+      ctx,
+    );
+    expect(noCond.kind === "invalid" && noCond.problems.join()).toMatch(/condición/);
   });
 
   it("until con la condición normalizada", () => {

@@ -104,11 +104,21 @@ function walk(node: DraftPlanNode, at: string, catalog: ActionCatalog, problems:
       return;
     }
     case "repeat":
+      if (node.times === undefined) problems.push(`${at}.times: say how many times to repeat`);
+      if (node.every !== undefined) {
+        problems.push(`${at}.every: spacing between passes is not available; give times only`);
+      }
+      walk(node.body, `${at}.body`, catalog, problems);
+      return;
     case "if":
+      if (!node.cond.is) {
+        problems.push(`${at}.cond.is: say which condition it is (dark, light, succeeded, elapsed)`);
+      }
+      walk(node.then, `${at}.then`, catalog, problems);
+      if (node.else) walk(node.else, `${at}.else`, catalog, problems);
+      return;
     case "onEvent":
-      problems.push(
-        `${at}: "${node.kind}" plans are not available; describe one pass or use unmapped`,
-      );
+      problems.push(`${at}: "onEvent" plans are not available; describe one pass or use unmapped`);
   }
 }
 

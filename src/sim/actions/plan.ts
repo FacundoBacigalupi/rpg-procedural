@@ -64,6 +64,19 @@ export type PlanNode =
       readonly cond: Condition;
       /** Tope de vueltas: un plan nunca corre para siempre. */
       readonly max: number;
+    }
+  /** El cuerpo `times` veces seguidas (npc-e4); `times` tiene el mismo tope que un `until`. */
+  | { readonly kind: "repeat"; readonly body: PlanNode; readonly times: number }
+  /**
+   * Un camino u otro según una condición evaluada al llegar (actions §3): `then` si vale, `else`
+   * si no (y nada si falta). La condición lee lo que el actor percibe y cree, nunca la verdad.
+   * El camino de `then` es el índice 0 y el de `else` el 1.
+   */
+  | {
+      readonly kind: "if";
+      readonly cond: Condition;
+      readonly then: PlanNode;
+      readonly else?: PlanNode | undefined;
     };
 
 export const PLAN_SOURCES = ["player", "utility", "order", "routine", "reflex"] as const;
@@ -154,6 +167,24 @@ const PlanNodeSchema: z.ZodType<PlanNode> = z.discriminatedUnion("kind", [
     cond: ConditionSchema,
     max: z.number().int().min(1).max(MAX_UNTIL),
   }),
+  z.strictObject({
+    kind: z.literal("repeat"),
+    get body() {
+      return PlanNodeSchema;
+    },
+    times: z.number().int().min(1).max(MAX_UNTIL),
+  }),
+  z.strictObject({
+    kind: z.literal("if"),
+    cond: ConditionSchema,
+    // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+    get then() {
+      return PlanNodeSchema;
+    },
+    get else() {
+      return PlanNodeSchema.optional();
+    },
+  }),
 ]);
 
 /** La forma del plan (sin mirar el catálogo): para leerlo de la base o del replay. */
@@ -182,7 +213,13 @@ export function planLeaves(
     case "seq":
       return node.steps.flatMap((s, i) => planLeaves(s, [...at, i]));
     case "until":
+    case "repeat":
       return planLeaves(node.body, [...at, 0]);
+    case "if":
+      return [
+        ...planLeaves(node.then, [...at, 0]),
+        ...(node.else ? planLeaves(node.else, [...at, 1]) : []),
+      ];
   }
 }
 
@@ -311,6 +348,17 @@ function enter(node: PlanNode, at: number[], w: Walk): number[] | null {
       w.iters[key] = 1;
       return enter(node.body, [...at, 0], w);
     }
+    case "repeat": {
+      w.iters[at.join(".")] = 1;
+      return enter(node.body, [...at, 0], w);
+    }
+    case "if": {
+      // Se decide al llegar, con lo que el actor cree que le salió hasta ahora.
+      const key = at.join(".");
+      const yes = holds(node.cond, key, w, false);
+      const branch = yes ? node.then : node.else;
+      return branch ? enter(branch, [...at, yes ? 0 : 1], w) : null;
+    }
   }
 }
 
@@ -338,6 +386,20 @@ function after(node: PlanNode, at: number[], rest: readonly number[], w: Walk): 
       w.iters[key] = n + 1;
       return enter(node.body, [...at, 0], w);
     }
+    case "repeat": {
+      const r = after(node.body, [...at, 0], rest.slice(1), w);
+      if (r) return r;
+      const key = at.join(".");
+      const n = w.iters[key] ?? 1;
+      if (n >= node.times) return null;
+      w.iters[key] = n + 1;
+      return enter(node.body, [...at, 0], w);
+    }
+    case "if": {
+      const i = rest[0] as number;
+      const branch = i === 0 ? node.then : node.else;
+      return branch ? after(branch, [...at, i], rest.slice(1), w) : null;
+    }
   }
 }
 
@@ -358,8 +420,10 @@ export function nodeAt(root: PlanNode, path: readonly number[]): PlanNode {
   let node = root;
   for (const i of path) {
     if (node.kind === "seq") node = node.steps[i] as PlanNode;
-    else if (node.kind === "until") node = node.body;
-    else throw new RangeError(`camino inválido: ${path.join(".")}`);
+    else if (node.kind === "until" || node.kind === "repeat") node = node.body;
+    else if (node.kind === "if" && (i === 0 || (i === 1 && node.else))) {
+      node = (i === 0 ? node.then : node.else) as PlanNode;
+    } else throw new RangeError(`camino inválido: ${path.join(".")}`);
   }
   return node;
 }

@@ -55,12 +55,34 @@ const BAD: readonly [string, unknown, RegExp][] = [
   ],
   ["modo de otro verbo", moveTo([{ role: "to", ref: forest }], ["loud"]), /no manner "loud"/],
   [
-    "nodo de la Fase 3",
+    "onEvent todavía no",
     {
       kind: "plan",
-      plan: { kind: "repeat", times: 3, body: { kind: "do", verb: "look", args: [] } },
+      plan: {
+        kind: "onEvent",
+        trigger: { kind: "time", text: "si anochece", is: { kind: "dark" } },
+        react: { kind: "do", verb: "look", args: [] },
+      },
     },
     /not available/,
+  ],
+  [
+    "repeat sin cuántas veces",
+    { kind: "plan", plan: { kind: "repeat", body: { kind: "do", verb: "look", args: [] } } },
+    /say how many times/,
+  ],
+  [
+    "if con una condición sin normalizar",
+    {
+      kind: "plan",
+      plan: {
+        kind: "if",
+        cond: { kind: "time", text: "si se me da la gana" },
+        // biome-ignore lint/suspicious/noThenProperty: el nodo `if` de actions §3; nunca se espera con await
+        then: { kind: "do", verb: "look", args: [] },
+      },
+    },
+    /say which condition/,
   ],
   [
     "plantilla sin su parámetro",
