@@ -26,6 +26,7 @@ export * from "./nutrition.ts";
 export * from "./panels.ts";
 export * from "./perceive.ts";
 export * from "./ponder.ts";
+export * from "./practice-log.ts";
 export * from "./pressures.ts";
 export * from "./reading.ts";
 export * from "./recap.ts";

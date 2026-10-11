@@ -31,6 +31,7 @@ import {
   type ProcessResult,
   RELATIONS,
   SCHEMAS,
+  SELF_IMAGES,
   SKILLS,
   SkillCatalog,
   strangerDims,
@@ -48,7 +49,9 @@ import {
   NPC_GOAL_COMPLETIONS,
   NPC_GOALS,
 } from "./decide.ts";
+import { ownGoalProgress } from "./goal-evidence.ts";
 import { COMMITMENTS } from "./loans.ts";
+import { PRACTICE_LOG } from "./practice-log.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -793,6 +796,57 @@ describe("life.decide", () => {
       verbs(decideProcess({ ...opts, meaningPressure: false }), c);
     expect(verbs(on, "after")).toEqual(offWithCore("after"));
     expect(verbs(on, "before")).toEqual(offWithCore("before"));
+  });
+
+  it("deriva una meta de oficio de la práctica propia y la cierra al alcanzar el hito (opt-in)", () => {
+    const truth = layeredWorld();
+    const entry = (n: number, at: number) => ({
+      skill: "farming",
+      event: `event:${n}` as EventId,
+      at,
+      hours: 2,
+    });
+    const image = (level: number) =>
+      ({ farming: { estimate: { level, spread: 0.1 }, updated: 0 } }) as never;
+    truth.set(PRACTICE_LOG, A, { items: [entry(30, 100), entry(31, 200), entry(32, 300)] });
+    truth.set(SELF_IMAGES, A, image(0.1));
+    const process = decideProcess({
+      ...opts,
+      persistGoalLayers: true,
+      craftGoals: { window: 10_000 },
+      goalProgress: ownGoalProgress(100),
+    });
+    const goalId = "medium:craft:farming:0.25";
+    const first = process.run(ctx(truth, A, 1000));
+    expect(
+      first.events?.some(
+        (e) => e.kind === GOAL_EVENT && goalData(e).goal === goalId && goalData(e).what === "born",
+      ),
+    ).toBe(true);
+    applyGoals(truth, first);
+    expect(truth.get(NPC_GOALS, A)?.items.find((g) => g.id === goalId)?.originEventId).toBe(
+      "event:30",
+    );
+
+    // Sin llegar al hito, aunque siga practicando, no se cumple.
+    truth.set(PRACTICE_LOG, A, {
+      items: [entry(30, 100), entry(31, 200), entry(32, 300), entry(33, 1100), entry(34, 1200)],
+    });
+    const early = process.run(ctx(truth, A, 2000));
+    expect(early.events?.some((e) => (e.data as { reason?: string }).reason === "fulfilled")).toBe(
+      false,
+    );
+    // Con el hito alcanzado y tres sesiones posteriores a la meta, se cumple citando la última.
+    truth.set(SELF_IMAGES, A, image(0.3));
+    truth.set(PRACTICE_LOG, A, {
+      items: [entry(30, 100), entry(33, 1100), entry(34, 1200), entry(35, 1300)],
+    });
+    const done = process.run(ctx(truth, A, 2000));
+    const end = done.events?.find(
+      (e) => e.kind === GOAL_EVENT && (e.data as { reason?: string }).reason === "fulfilled",
+    );
+    expect(goalData(end ?? { data: {} }).goal).toBe(goalId);
+    expect(end?.causes).toContainEqual({ kind: "event", event: "event:35" });
   });
 
   it("cierra una meta concreta solo con progreso propio repetido y lo cita (opt-in)", () => {

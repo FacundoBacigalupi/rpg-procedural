@@ -83,7 +83,7 @@ import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
-import { debtGoalProgress } from "./goal-evidence.ts";
+import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { hireProcess } from "./hire.ts";
@@ -133,6 +133,7 @@ import { perceiveProcess } from "./perceive.ts";
 import { pitchProcess } from "./pitch.ts";
 import { pledgeProcess } from "./pledges.ts";
 import { ponderProcess } from "./ponder.ts";
+import { practiceLogProcess } from "./practice-log.ts";
 import {
   type RentMarketOptions,
   type RentSeed,
@@ -476,6 +477,8 @@ export interface LifeWorld {
   readonly recognizeGoalProgress?: boolean;
   /** Opt-in: el vacío por venganza cumplida presiona la necesidad lenta `meaning`. */
   readonly meaningPressure?: boolean;
+  /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
+  readonly craftGoals?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
   readonly swapMaterials?: boolean;
   readonly statuses: readonly StatusDef[];
@@ -1286,8 +1289,14 @@ export function lifeWorld(
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           ...(parts.recognizeGoalCompletion === true ? { recognizeGoalCompletion: true } : {}),
           ...(parts.recognizeGoalProgress === true
-            ? { goalProgress: debtGoalProgress(parts.clock.day) }
+            ? {
+                goalProgress:
+                  parts.craftGoals === true
+                    ? ownGoalProgress(parts.clock.day)
+                    : debtGoalProgress(parts.clock.day),
+              }
             : {}),
+          ...(parts.craftGoals === true ? { craftGoals: { window: 60 * parts.clock.day } } : {}),
           ...(parts.meaningPressure === true ? { meaningPressure: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
@@ -1340,6 +1349,7 @@ export function lifeWorld(
           })(),
           ...(parts.boil && parts.npcBoil ? { boilThirst: parts.npcBoil } : {}),
         }),
+        ...(parts.craftGoals ? [practiceLogProcess({ skills: parts.skills })] : []),
         ...(parts.closeGoalsOnDeath
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),
