@@ -4,16 +4,28 @@
 // (`NpcVerbsOptions.verbs`): apagado, la decisión sigue sin mover nada salvo lo que ya ejecutan
 // `life.routine` (comer, hervir, descansar, ir) y `life.lend`/`life.pawn_decide`.
 
-import type { AgentId, PlaceRef, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type HolderRef,
+  holderAccount,
+  ledgerUnit,
+  type PlaceRef,
+  type PlanetClock,
+  type Tick,
+} from "../../core/index.ts";
 import {
   type ActionCatalog,
   type ActionPlan,
   type ArgValue,
   deleteComponent,
+  draftEvent,
   ENTITY,
   type EventDraft,
   LOCATION,
+  localHour,
+  PERSON,
   PLACE,
+  type PostingDraft,
   type ProcessDef,
   type ProcessResult,
   type ReadonlyWorldTruth,
@@ -23,6 +35,10 @@ import {
 } from "../../sim/index.ts";
 import { ACT_PROCESS, FRESH_CURSOR, PLAN_STATE, type PlanState, planKey } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
+import { ROUTINE } from "./routine.ts";
+
+/** Cada cuánto como mucho vuelve a comer un viajero (horas). */
+const MEAL_GAP_HOURS = 4;
 
 export const NPC_VERBS_PROCESS = "life.npc_verbs";
 
@@ -39,6 +55,18 @@ export interface NpcVerbsOptions {
    */
   readonly journeyDays?: number;
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Opt-in (con `journeyDays`): el viajero sale con `grams` de `unit` de la despensa de su hogar
+   * en el bolsillo (del libro mayor al suyo), come de eso en las horas de comida del camino
+   * interrumpiendo el tramo y, al llegar o rendirse, devuelve lo que sobra a la despensa.
+   */
+  readonly provisions?: {
+    readonly unit: string;
+    readonly name: string;
+    readonly grams: number;
+    readonly clock: PlanetClock;
+    readonly lonDeg: number;
+  };
 }
 
 /** Qué decisión ya se volvió plan, para no repetirla cada hora mientras siga vigente. */
@@ -130,6 +158,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       NPC_VERB_LOG.name,
       LOCATION.name,
       PLACE.name,
+      ...(o.provisions ? [PERSON.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
     ],
     writes: [
@@ -148,13 +177,52 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         const hexes = truth.get(PLACE, trip.place as never)?.hexes ?? [];
         const here = truth.get(LOCATION, me)?.hex;
         const days = (ctx.now - trip.since) / o.day;
-        const end = (what: "arrived" | "gave_up") => ({
-          changes: [deleteComponent(NPC_JOURNEY, me)],
-          events: [journeyEvent(me, what, trip.place, days, o.placeOf?.(truth, me))],
-        });
+        const prov = o.provisions;
+        const pocket = holderAccount(me as unknown as HolderRef);
+        const carried = prov ? (ctx.ledger?.balance(pocket, ledgerUnit(prov.unit)) ?? 0) : 0;
+        const end = (what: "arrived" | "gave_up") => {
+          const home = truth.get(PERSON, me)?.household;
+          // Lo que sobra de las provisiones vuelve a la despensa, con el evento del fin.
+          const back: PostingDraft[] =
+            prov && carried > 0 && home
+              ? [
+                  {
+                    event: draftEvent(0),
+                    transfers: [
+                      {
+                        unit: ledgerUnit(prov.unit),
+                        from: pocket,
+                        to: holderAccount(home as unknown as HolderRef),
+                        amount: carried,
+                      },
+                    ],
+                  },
+                ]
+              : [];
+          return {
+            changes: [deleteComponent(NPC_JOURNEY, me)],
+            events: [journeyEvent(me, what, trip.place, days, o.placeOf?.(truth, me))],
+            postings: back,
+          };
+        };
         if (here !== undefined && hexes.includes(here)) return end("arrived");
         if (days >= journeyDays) return end("gave_up");
         const going = truth.get(PLAN_STATE, me);
+        // Hora de comida con provisiones encima: el tramo se corta, come y sigue el camino.
+        if (prov && carried > 0) {
+          const hour = Math.floor(localHour(prov.clock, ctx.now, prov.lonDeg));
+          const due =
+            ROUTINE.meals.includes(hour) &&
+            (trip.ate === undefined || ctx.now - trip.ate >= MEAL_GAP_HOURS * 3600);
+          const meal = due
+            ? planFromDecision({ id: `eat:${prov.name}`, verb: "eat" }, o.catalog, me)
+            : undefined;
+          if (meal) {
+            return startPlan(me, meal, going?.seq ?? 0, ctx.now, {
+              changes: [setComponent(NPC_JOURNEY, me, { ...trip, ate: ctx.now })],
+            });
+          }
+        }
         if (going && !going.done) return {};
         const plan = planFromDecision({ id: `move:${trip.place}`, verb: "move" }, o.catalog, me);
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
@@ -191,9 +259,36 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           decision: decision.id,
           ...(truth.get(LOCATION, me) ? { from: truth.get(LOCATION, me)?.hex as number } : {}),
         });
+        // Las provisiones salen de la despensa del hogar al bolsillo, con el evento de salida.
+        const prov = o.provisions;
+        const home = truth.get(PERSON, me)?.household;
+        const stock =
+          prov && home
+            ? (ctx.ledger?.balance(
+                holderAccount(home as unknown as HolderRef),
+                ledgerUnit(prov.unit),
+              ) ?? 0)
+            : 0;
+        const pack = prov ? Math.min(prov.grams, stock) : 0;
         return startPlan(me, plan, state?.seq ?? 0, ctx.now, {
           changes: [log, open],
           events: [journeyEvent(me, "started", decision.target, 0, o.placeOf?.(truth, me))],
+          postings:
+            prov && home && pack > 0
+              ? [
+                  {
+                    event: draftEvent(0),
+                    transfers: [
+                      {
+                        unit: ledgerUnit(prov.unit),
+                        from: holderAccount(home as unknown as HolderRef),
+                        to: holderAccount(me as unknown as HolderRef),
+                        amount: pack,
+                      },
+                    ],
+                  },
+                ]
+              : [],
         });
       }
       return startPlan(me, plan, state?.seq ?? 0, ctx.now, { changes: [log] });
@@ -209,6 +304,8 @@ export interface NpcJourney {
   readonly decision: string;
   /** El hex del que salió, si se sabía (`life.transit` parte de ahí). */
   readonly from?: number;
+  /** Cuándo comió por última vez en el camino (`NpcVerbsOptions.provisions`). */
+  readonly ate?: Tick;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
 
@@ -237,6 +334,7 @@ function startPlan(
   extra: {
     readonly changes?: readonly StateChange[];
     readonly events?: readonly EventDraft[];
+    readonly postings?: readonly PostingDraft[];
   } = {},
 ): ProcessResult {
   const seq = prevSeq + 1;
@@ -251,6 +349,7 @@ function startPlan(
   return {
     changes: [setComponent(PLAN_STATE, me, next), ...(extra.changes ?? [])],
     ...(extra.events ? { events: extra.events } : {}),
+    ...(extra.postings && extra.postings.length > 0 ? { postings: extra.postings } : {}),
     schedule: [
       {
         at: (now + 1) as Tick,
