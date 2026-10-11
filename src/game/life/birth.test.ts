@@ -14,6 +14,7 @@ import {
   BODY_PLANS,
   BODY_STATE,
   CONCEPTS,
+  CULTURE_TRAITS,
   checkInvariants,
   ENTITY,
   GENOME,
@@ -23,11 +24,13 @@ import {
   LANGUAGES,
   MIND,
   PERSON,
+  PERSON_CULTURE,
   PERSON_NAME,
   type ProcessContext,
   RELATION_BONDS,
   RELATION_DIMS,
   RELATIONS,
+  RELIGIOUS_IDENTITY,
   SCHEMAS,
   TRAITS,
   WorldTruth,
@@ -61,6 +64,7 @@ const newborn = {
   schemas: content.all(SCHEMAS),
   dims: content.all(RELATION_DIMS),
   bonds: content.all(RELATION_BONDS),
+  cultureTraits: content.all(CULTURE_TRAITS),
 };
 
 const DAY = 86_400;
@@ -299,6 +303,12 @@ describe("nacer vivo en la vida (opt-in)", () => {
       const name = w.truth.get(PERSON_NAME, child as unknown as EntityRef);
       expect(name?.parts.find((x) => x.kind === "given")?.event).toBe(e.id);
       expect(w.truth.get(MIND, child as unknown as EntityRef)?.originEventId).toBe(e.id);
+      // Lo que sigue de su cultura y su fe: lo copia de sus padres, con el parto como origen.
+      expect(w.truth.get(PERSON_CULTURE, child as unknown as EntityRef)?.originEventId).toBe(e.id);
+      expect(
+        w.truth.get(RELIGIOUS_IDENTITY, child as unknown as EntityRef)?.affiliations[0]
+          ?.originEventId,
+      ).toBe(e.id);
       expect(
         w.truth.get(RELATIONS, child as unknown as EntityRef)?.toward[e.actors[1] as string]?.bonds,
       ).toContain("parent");

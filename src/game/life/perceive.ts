@@ -54,9 +54,13 @@ export interface PerceiveOptions {
   readonly relations?: ReaderContent;
 }
 
-/** Los pasos de otros que se perciben: lo que hacen y que alguien muera. */
+/**
+ * Los pasos de otros que el personaje percibe: lo que hacen, que alguien muera y que nazca un niño
+ * cerca (el llanto; `family.birth` solo existe con `births`). Los eventos internos de la sim
+ * (`npc.*`, `family.conception`…) no emiten nada: no llegan a la narración.
+ */
 function perceivable(kind: string): boolean {
-  return kind.startsWith("action.") || kind === "body.died";
+  return kind.startsWith("action.") || kind === "body.died" || kind === "family.birth";
 }
 
 export function perceiveProcess(o: PerceiveOptions): ProcessDef {

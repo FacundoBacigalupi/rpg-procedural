@@ -518,6 +518,14 @@ function isAgent(ref: unknown): ref is AgentId {
 }
 
 /**
+ * Cómo se narra lo que se vio hacer: los eventos de acción llegan como `action.<verbo>` y se narran
+ * por el verbo (`work`); los demás (`body.died`, `family.birth`) conservan su clase entera.
+ */
+export function perceivedAction(kind: string): string {
+  return kind.startsWith("action.") ? kind.slice("action.".length) : kind;
+}
+
+/**
  * Arma la vista del jugador. Tira si le pasan percepts de otro: el muro no mezcla mentes.
  */
 export function buildPlayerView(input: ViewInput): PlayerView {
@@ -612,7 +620,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       who,
       channels: [...p.channels],
       detail: p.detail,
-      ...(typeof action === "string" ? { action } : {}),
+      ...(typeof action === "string" ? { action: perceivedAction(action) } : {}),
       ...(typeof said === "string" && said.length > 0 ? { words: said } : {}),
     });
   }

@@ -166,3 +166,13 @@ describe("ambienceOf", () => {
     expect(ambienceOf(v.scene, entries)).toEqual(["gallinas", "sol"]);
   });
 });
+
+describe("perceivedAction", () => {
+  it("los eventos de acción se narran por su verbo; los demás conservan su clase", async () => {
+    const { perceivedAction } = await import("./view.ts");
+    expect(perceivedAction("action.work")).toBe("work");
+    expect(perceivedAction("work")).toBe("work");
+    expect(perceivedAction("body.died")).toBe("body.died");
+    expect(perceivedAction("family.birth")).toBe("family.birth");
+  });
+});
