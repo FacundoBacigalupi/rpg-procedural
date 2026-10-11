@@ -61,6 +61,18 @@ describe("planFromDecision", () => {
     });
   });
 
+  it("ir hacia alguien es caminar al lugar: el destino es el lugar, la persona es el porqué", () => {
+    expect(
+      planFromDecision({ id: "move:place:4+toward:agent:7", verb: "move" }, catalog, me)?.root,
+    ).toEqual({
+      kind: "do",
+      verb: "move",
+      args: [{ role: "to", entity: "place:4" }],
+      manner: [],
+    });
+    expect(planFromDecision({ id: "move:", verb: "move" }, catalog, me)).toBe(undefined);
+  });
+
   it("el acto de habla de la decisión viaja como contenido del speak", () => {
     const act = { kind: "greet" } as const;
     expect(
@@ -192,5 +204,34 @@ describe("hablar entre NPC no encadena respuestas sin fin", () => {
     expect(talk.length).toBeLessThanOrEqual(6);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 120_000);
+});
+
+describe("el NPC camina a un lugar decidido (opt-in)", () => {
+  it("move: la decisión hacia un lugar se vuelve action.move con tiempo, no un salto", () => {
+    const life = Life.create(7, content, { npcVerbs: ["move"] });
+    const w = life.world;
+    const npc = living(w.truth).find(
+      (x) =>
+        x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+    ) as AgentId;
+    const from = w.truth.get(LOCATION, npc)?.hex ?? -1;
+    const place = w.truth.ids(PLACE).find((p) => !w.truth.get(PLACE, p)?.hexes.includes(from));
+    if (!place) throw new Error("sin lugar");
+    w.truth.set(NPC_DECISION, npc, {
+      at: life.now,
+      id: `move:${place}+toward:agent:99`,
+      verb: "move",
+      target: place,
+      utility: 1,
+      options: 2,
+    } as never);
+    life.advanceTo(life.now + 12 * HOUR);
+    const steps = w.log.all().filter((e) => e.kind === "action.move" && e.actors[0] === npc);
+    expect(steps.length).toBeGreaterThan(0);
+    // Cada tramo tarda lo que cuesta caminarlo (horas, no un salto) y el NPC va acercándose.
+    const seconds = (e: (typeof steps)[number]) => (e.data as { seconds?: number }).seconds ?? 0;
+    expect(seconds(steps[0] as (typeof steps)[number])).toBeGreaterThan(HOUR);
+    expect(w.truth.get(LOCATION, npc)?.hex).not.toBe(from);
   }, 120_000);
 });
