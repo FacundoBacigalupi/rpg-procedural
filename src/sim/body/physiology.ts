@@ -354,11 +354,20 @@ export function advanceBody(
   sweatLph = 0,
   deficiency: BodyDeficiency = NO_BODY_DEFICIENCY,
   coreUnconscious = false,
+  /**
+   * Paso grueso (segundos) para el cuerpo sano (puesta al día de un dormido, simulation §8): con
+   * heridas abiertas o sepsis manda el paso fino de siempre. Sin esto, el paso de siempre.
+   */
+  coarseSeconds?: number,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
   while (b.death === null && b.updatedAt < to) {
-    const at = Math.min(to, b.updatedAt + stepSeconds(b));
+    const fine = stepSeconds(b);
+    const at = Math.min(
+      to,
+      b.updatedAt + (coarseSeconds !== undefined && fine === 3600 ? coarseSeconds : fine),
+    );
     b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph, deficiency);
     const consciousness = consciousnessOf(plan, b, at, coreUnconscious);
     if (consciousness !== b.consciousness) {
