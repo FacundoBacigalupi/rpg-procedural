@@ -179,6 +179,12 @@ export function cravingGatherMood(craving: number, o: GatherCravingOptions): num
   return Math.round(o.weight * Math.min(1, craving) * 1e6) / 1e6;
 }
 
+/**
+ * Valor de `approach` medido (npc-f, `npc-approach.test.ts`): con 0,2 y 0,5 el NPC con ansia no sale a
+ * buscar al prestamista en 8 días; con 1 (y 2, igual) sale una vez, llega y le pide.
+ */
+export const APPROACH_DEFAULT = 1;
+
 /** Opt-in de `decide`: sin comercio ni planta, el ansia empuja a pedirle la sustancia a un conocido que se cree que la tiene. */
 export interface BorrowCravingOptions {
   /** Ansia mínima (0-1) para que pedir prestado entre como candidata. */
