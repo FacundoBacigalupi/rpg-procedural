@@ -40,6 +40,15 @@ const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 const me = "agent:1" as AgentId;
 
 describe("planFromDecision", () => {
+  it("el ritmo del viaje es el modo del verbo", () => {
+    expect(
+      planFromDecision({ id: "move:place:4", verb: "move" }, catalog, me, ["fast"])?.root,
+    ).toMatchObject({ verb: "move", manner: ["fast"] });
+    expect(planFromDecision({ id: "move:place:4", verb: "move" }, catalog, me)?.root).toMatchObject(
+      { manner: [] },
+    );
+  });
+
   it("arma el plan del catálogo con los argumentos del id, en orden", () => {
     const gather = planFromDecision({ id: "gather:hierba", verb: "gather" }, catalog, me);
     expect(gather?.source).toBe("utility");

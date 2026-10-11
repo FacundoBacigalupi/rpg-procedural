@@ -56,6 +56,13 @@ export interface NpcVerbsOptions {
   readonly journeyDays?: number;
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /**
+   * Opt-in (con `journeyDays`): el ritmo del viaje es el modo `careful` (más lento, más cuidado) o
+   * `fast` (más rápido, peor tirada y más ruido) del `move`; sin esto, el modo por defecto.
+   */
+  readonly pace?: "careful" | "fast";
+  /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
+  readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
+  /**
    * Opt-in (con `journeyDays`): el viajero sale con `grams` de `unit` de la despensa de su hogar
    * en el bolsillo (del libro mayor al suyo), come de eso en las horas de comida del camino
    * interrumpiendo el tramo y, al llegar o rendirse, devuelve lo que sobra a la despensa.
@@ -85,6 +92,8 @@ export function planFromDecision(
   decision: Pick<Decision, "id" | "verb"> & Partial<Pick<Decision, "act">>,
   catalog: ActionCatalog,
   actor: AgentId,
+  /** Modos del verbo (`careful`, `fast` en `move`): el ritmo del viaje. */
+  manner: readonly string[] = [],
 ): ActionPlan | undefined {
   const def = catalog.verb(decision.verb);
   const prefix = `${decision.verb}:`;
@@ -135,7 +144,7 @@ export function planFromDecision(
   return {
     actor,
     source: "utility",
-    root: { kind: "do", verb: decision.verb, args, manner: [] },
+    root: { kind: "do", verb: decision.verb, args, manner: [...manner] },
     manner: [],
     causes: [{ kind: "state", entity: actor, key: "utility" }],
   };
@@ -223,8 +232,25 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
             });
           }
         }
+        // De noche el viajero para y duerme (el `rest` del catálogo, la noche entera) y sigue al alba.
+        if (o.nightRest) {
+          const hour = Math.floor(localHour(o.nightRest.clock, ctx.now, o.nightRest.lonDeg));
+          const sleep = restDue(hour, trip.rested, ctx.now)
+            ? planFromDecision({ id: "rest:", verb: "rest" }, o.catalog, me)
+            : undefined;
+          if (sleep) {
+            return startPlan(me, sleep, going?.seq ?? 0, ctx.now, {
+              changes: [setComponent(NPC_JOURNEY, me, { ...trip, rested: ctx.now })],
+            });
+          }
+        }
         if (going && !going.done) return {};
-        const plan = planFromDecision({ id: `move:${trip.place}`, verb: "move" }, o.catalog, me);
+        const plan = planFromDecision(
+          { id: `move:${trip.place}`, verb: "move" },
+          o.catalog,
+          me,
+          o.pace ? [o.pace] : [],
+        );
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
       }
       const decision = truth.get(NPC_DECISION, me);
@@ -243,7 +269,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       } else if (done && done.at === decision.at && done.id === decision.id) return {};
       const state = truth.get(PLAN_STATE, me);
       if (state && !state.done) return {};
-      const plan = planFromDecision(decision, o.catalog, me);
+      const plan = planFromDecision(
+        decision,
+        o.catalog,
+        me,
+        decision.verb === "move" && journeyDays !== undefined && o.pace ? [o.pace] : [],
+      );
       if (!plan) return {};
       const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });
       // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega.
@@ -306,8 +337,19 @@ export interface NpcJourney {
   readonly from?: number;
   /** Cuándo comió por última vez en el camino (`NpcVerbsOptions.provisions`). */
   readonly ate?: Tick;
+  /** Cuándo paró a dormir por última vez en el camino (`NpcVerbsOptions.nightRest`). */
+  readonly rested?: Tick;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
+
+/** Entre una parada a dormir y la siguiente pasa al menos esto (horas): una por noche. */
+export const REST_GAP_HOURS = 12;
+
+/** ¿Toca parar a dormir? De noche (las horas de sueño de la rutina) y sin haber parado hace poco. */
+export function restDue(hour: number, restedAt: Tick | undefined, now: number): boolean {
+  const night = hour >= ROUTINE.sleep || hour < ROUTINE.wake;
+  return night && (restedAt === undefined || now - restedAt >= REST_GAP_HOURS * 3600);
+}
 
 function journeyEvent(
   me: AgentId,

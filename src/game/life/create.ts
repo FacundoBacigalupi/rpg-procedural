@@ -304,6 +304,10 @@ export interface LifeOptions {
   readonly npcTransit?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero lleva provisiones de la despensa y come en el camino (`LifeParts.npcProvisions`). */
   readonly npcProvisions?: LifeParts["npcProvisions"];
+  /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`LifeParts.npcNightRest`). */
+  readonly npcNightRest?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
+  readonly npcPace?: "careful" | "fast";
   /** Opt-in: `speak` con acto declarado desde afecto y familiaridad (`LifeParts.speakActs`); apagado. */
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
@@ -405,6 +409,8 @@ export function optInParts(
   | "npcJourneyDays"
   | "npcTransit"
   | "npcProvisions"
+  | "npcNightRest"
+  | "npcPace"
   | "speakActs"
   | "takeBelieved"
   | "creditHeed"
@@ -478,6 +484,8 @@ export function optInParts(
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),
+    ...(options.npcNightRest ? { npcNightRest: true } : {}),
+    ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.speakActs ? { speakActs: options.speakActs } : {}),
     ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
     ...(options.residue ? { residue: options.residue } : {}),

@@ -350,6 +350,10 @@ export interface LifeWorld {
   readonly npcTransit?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero sale con `grams` del bien `good` de la despensa, come en el camino y devuelve lo que sobra (`NpcVerbsOptions.provisions`). */
   readonly npcProvisions?: { readonly good: string; readonly grams: number };
+  /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`rest`) y sigue al alba (`NpcVerbsOptions.nightRest`). */
+  readonly npcNightRest?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el ritmo del viaje, modo `careful` o `fast` del `move` (`NpcVerbsOptions.pace`). */
+  readonly npcPace?: "careful" | "fast";
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1384,6 +1388,10 @@ export function lifeWorld(
                   ? {
                       journeyDays: parts.npcJourneyDays,
                       placeOf: placeOf(parts, village),
+                      ...(parts.npcPace ? { pace: parts.npcPace } : {}),
+                      ...(parts.npcNightRest === true
+                        ? { nightRest: { clock: parts.clock, lonDeg: parts.map.lonDeg } }
+                        : {}),
                       ...(() => {
                         const food = parts.goods.find((g) => g.id === parts.npcProvisions?.good);
                         return food && parts.npcProvisions
