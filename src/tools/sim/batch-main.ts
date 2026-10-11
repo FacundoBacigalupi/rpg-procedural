@@ -10,12 +10,16 @@ import { loadContentDir } from "../../persistence/index.ts";
 import { parseSeeds, runBatch } from "./batch.ts";
 import { diffMetrics } from "./diff.ts";
 import { renderDiffHtml } from "./html.ts";
-import { findScenario, scenarioRun } from "./scenario.ts";
+import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
 
 const { values } = parseArgs({
   options: {
     seeds: { type: "string", default: "1..5" },
     years: { type: "string" },
+    days: { type: "string" },
+    "persist-goal-layers": { type: "boolean" },
+    "debt-knowledge": { type: "boolean" },
+    "goal-report": { type: "boolean" },
     scenario: { type: "string" },
     frequency: { type: "string" },
     "check-days": { type: "string" },
@@ -33,21 +37,41 @@ const scenario =
 const years = Number(values.years ?? scenario?.years ?? 1);
 if (!(years > 0)) throw new Error(`años inválidos: ${values.years}`);
 const seeds = parseSeeds(values.seeds);
-
-const result = runBatch(seeds, {
-  years,
-  content,
-  setup: scenario?.setup ?? {
+const setup = goalMeasurementSetup(
+  scenario?.setup ?? {
     game: defaultGameSetup("realistic"),
     ...(frequency === undefined ? {} : { frequency }),
   },
+  {
+    persistGoalLayers: values["persist-goal-layers"] === true,
+    debtKnowledge: values["debt-knowledge"] === true,
+  },
+);
+
+const result = runBatch(seeds, {
+  years,
+  ...(values["goal-report"] === true ? { goalReport: true } : {}),
+  ...(values.days === undefined ? {} : { days: Number(values.days) }),
+  content,
+  setup,
   ...(values["check-days"] === undefined ? {} : { checkEveryDays: Number(values["check-days"]) }),
 });
 
 mkdirSync(values.out, { recursive: true });
 const body = {
   seeds: result.seeds,
-  years,
+  ...(values.days === undefined ? { years } : {}),
+  ...(values.days === undefined ? {} : { days: Number(values.days) }),
+  ...(values["goal-report"] === true ||
+  setup.life?.persistGoalLayers === true ||
+  setup.life?.debtKnowledge === true
+    ? {
+        setup,
+        engine: result.reports[0]?.goalMeasurement?.engine,
+        content: content.hash,
+        goalReport: true,
+      }
+    : {}),
   stopped: result.stopped,
   summary: result.summary,
 };
@@ -60,7 +84,9 @@ if (values.html) {
   );
   writeFileSync(join(values.out, "batch.html"), renderDiffHtml(rows, "-", "media"));
 }
-process.stdout.write(`${seeds.length} seeds, ${years} años; detenidas: ${result.stopped.length}\n`);
+process.stdout.write(
+  `${seeds.length} seeds, ${values.days === undefined ? `${years} años` : `${values.days} días`}; detenidas: ${result.stopped.length}\n`,
+);
 if (result.stopped.length > 0) {
   process.stdout.write(`INVARIANTE VIOLADO en seeds: ${result.stopped.join(", ")}\n`);
   process.exitCode = 1;
