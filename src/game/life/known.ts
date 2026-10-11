@@ -14,6 +14,7 @@ import {
   LOCATION,
   PERSON,
   PERSON_NAME,
+  type Percept,
   PLACE,
   PLACE_NAME,
 } from "../../sim/index.ts";
@@ -32,7 +33,40 @@ const PLACE_NAMES: Readonly<Record<string, readonly string[]>> = {
   groundwater: ["el pozo"],
 };
 
-export function knownEntities(w: LifeWorld): KnownEntity[] {
+/** Cómo se dice una figura vista, en castellano y con sinónimos: «niño», «nene», «chico». */
+const FIGURE_WORDS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  female: {
+    child: ["niña", "nena", "chica", "criatura"],
+    youth: ["muchacha", "joven", "chica"],
+    adult: ["mujer", "señora"],
+    elder: ["vieja", "anciana", "abuela"],
+  },
+  male: {
+    child: ["niño", "nene", "chico", "criatura"],
+    youth: ["muchacho", "joven", "chico"],
+    adult: ["hombre", "señor"],
+    elder: ["viejo", "anciano", "abuelo"],
+  },
+};
+
+/** Lo que se ve de alguien que no se reconoce: su figura y su ropa, nunca quién es. */
+export function featuresOfPercept(p: Percept): string[] {
+  const fig = p.fields.figure?.value as { sex?: string; age?: string } | undefined;
+  const attire = p.fields.attire?.value;
+  const words = fig?.sex && fig.age ? (FIGURE_WORDS[fig.sex]?.[fig.age] ?? []) : [];
+  return [
+    "persona",
+    ...words,
+    ...(attire === "fine" ? ["ropa fina"] : attire === "worn" ? ["ropa gastada"] : []),
+  ];
+}
+
+/**
+ * Lo que el personaje conoce y puede nombrar. Con `seen` (los percepts de personas de la escena
+ * actual, `PlayerViewOptions.onSeen`) suma a quienes ve ahora aunque no sean de su familia: sin
+ * nombre si no los reconoce, con lo que se ve (figura, ropa) y presentes.
+ */
+export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): KnownEntity[] {
   const me = w.truth.get(PERSON, w.player);
   const here = w.truth.get(LOCATION, w.player);
   const out: KnownEntity[] = [];
@@ -67,6 +101,31 @@ export function knownEntities(w: LifeWorld): KnownEntity[] {
         out.push(person(w, agent, [rel], rel, here, false));
       }
     }
+  }
+  // Quienes ve ahora y no son de su familia: los desconocidos no tienen nombre, solo lo que se ve.
+  const listed = new Set<EntityRef>(out.map((k) => k.ref));
+  for (const p of seen) {
+    const id = p.sourceEntityId;
+    if (id === undefined || !id.startsWith("agent:") || id === w.player || listed.has(id)) continue;
+    listed.add(id);
+    const identity = p.fields.identity;
+    const named =
+      identity !== undefined &&
+      identity.confidence >= RECOGNIZED_CONFIDENCE &&
+      identity.value === id;
+    const given = named
+      ? callName(w.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] })
+      : undefined;
+    out.push({
+      ref: id,
+      kind: "person",
+      names: given === undefined ? [] : [given],
+      features: featuresOfPercept(p),
+      relations: [],
+      present: true,
+      ...(here === undefined ? {} : { at: here.hex }),
+      via: [],
+    });
   }
   for (const id of w.truth.ids(PLACE)) {
     const p = w.truth.get(PLACE, id);

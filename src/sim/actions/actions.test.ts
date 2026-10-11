@@ -319,6 +319,44 @@ describe("referencias", () => {
     expect(r.clarify[0]?.distinguishing).not.toContain("viejo");
   });
 
+  const kid1 = "agent:101" as EntityRef;
+  const kid2 = "agent:102" as EntityRef;
+  const elder = "agent:103" as EntityRef;
+  const strangers: KnownEntity[] = [
+    known(kid1, [], { features: ["persona", "niño", "nene"], present: true }),
+    known(kid2, [], { features: ["persona", "niño", "nene"], present: true }),
+    known(elder, [], { features: ["persona", "viejo"], present: true }),
+  ];
+
+  it("en plural, los que encajan son el conjunto y no hay a quién preguntar", () => {
+    const g = resolveRef(desc("los niños"), strangers);
+    expect(g.status).toBe("group");
+    if (g.status !== "group") return;
+    expect(g.members).toEqual([kid1, kid2]);
+    expect(g.chosen).toBe(kid1);
+    // Con número, solo esos; con uno solo que encaja, es único; en singular sigue la pregunta.
+    const two = resolveRef(desc("los dos niños"), strangers);
+    expect(two.status === "group" && two.members).toEqual([kid1, kid2]);
+    const one = resolveRef(desc("dos niños"), strangers.slice(0, 1));
+    expect(one.status).toBe("unique");
+    expect(resolveRef(desc("el niño"), strangers).status).toBe("ambiguous");
+    expect(resolveRef(desc("los gatos"), strangers).status).toBe("unknown");
+  });
+
+  it("por cantidad declarada: «todos» y «dos» sin artículo", () => {
+    const all = resolveRef(desc("los chicos", { quantity: { kind: "all" } }), [
+      known(kid1, [], { features: ["chicos"], present: true }),
+      known(kid2, [], { features: ["chicos"], present: true }),
+    ]);
+    expect(all.status).toBe("group");
+    const two = resolveRef(desc("hombres", { quantity: { kind: "count", n: 2 } }), [
+      known(kid1, [], { features: ["hombre"] }),
+      known(kid2, [], { features: ["hombre"] }),
+      known(elder, [], { features: ["hombre"] }),
+    ]);
+    expect(two.status === "group" && two.members).toHaveLength(2);
+  });
+
   it("por relación: 'mi padre' es quien el actor sabe que es su padre", () => {
     const r = resolveRef(desc("mi padre", { relation: { to: "self", rel: "padre" } }), village);
     expect(r.status === "unique" && r.chosen).toBe(dad);
@@ -534,6 +572,52 @@ describe("del borrador al plan", () => {
       ctx,
     );
     expect(unbounded.kind === "invalid" && unbounded.problems.join()).toMatch(/cuántas veces/);
+  });
+
+  it("«me acerco a los niños»: si los tiene delante mira y escucha de cerca; si no, va adonde cree que están", () => {
+    const kids: KnownEntity[] = [
+      known("agent:101" as EntityRef, [], { features: ["persona", "niño"], present: true, at: 5 }),
+      known("agent:102" as EntityRef, [], { features: ["persona", "niño"], present: true, at: 5 }),
+    ];
+    const toKids = act({
+      kind: "do",
+      verb: "move",
+      args: [{ role: "to", ref: desc("los niños", { kind: "person" }) }],
+    });
+    // La referencia a «los niños» con `kind` person o sin él da lo mismo.
+    const bare = act({
+      kind: "do",
+      verb: "move",
+      args: [{ role: "to", ref: desc("los niños") }],
+    });
+    for (const draft of [toKids, bare]) {
+      const here = planFromDraft(draft, { ...ctx, known: [...village, ...kids] });
+      expect(here.kind === "plan" && here.plan.root).toMatchObject({ kind: "do", verb: "look" });
+      expect(here.kind === "plan" && here.groups?.[0]?.members).toHaveLength(2);
+    }
+    // Si cree que están en otro hex, va al lugar que lo contiene.
+    const away = kids.map((k) => ({ ...k, present: false, at: 9 }));
+    const bosque = known(forest, ["el bosque"], { hexes: [9] });
+    const there = planFromDraft(toKids, { ...ctx, known: [bosque, ...away] });
+    expect(there.kind === "plan" && there.plan.root).toMatchObject({
+      verb: "move",
+      args: [{ role: "to", entity: forest }],
+    });
+    // Un lugar que sí encaja sigue siendo un lugar.
+    const place = planFromDraft(
+      act({ kind: "do", verb: "move", args: [{ role: "to", ref: desc("el bosque") }] }),
+      { ...ctx, known: [...village, ...kids] },
+    );
+    expect(place.kind === "plan" && place.plan.root).toMatchObject({
+      args: [{ role: "to", entity: forest }],
+    });
+    // Hablarles a «los niños»: va hacia el primero y el conjunto queda anotado.
+    const talk = planFromDraft(
+      act({ kind: "do", verb: "speak", args: [{ role: "to", ref: desc("los niños") }] }),
+      { ...ctx, known: [...village, ...kids] },
+    );
+    expect(talk.kind).toBe("plan");
+    expect(talk.kind === "plan" && talk.groups?.[0]?.text).toBe("los niños");
   });
 
   it("repeat e if del borrador pasan al plan con la condición normalizada", () => {

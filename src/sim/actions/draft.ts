@@ -22,6 +22,7 @@ import type {
   DraftPurpose,
   EntityKind,
   IntentDraft,
+  RefDescription,
 } from "./intent.ts";
 import {
   type ActionPlan,
@@ -39,6 +40,13 @@ import { clarifyOptions, type KnownEntity, type ResolvedRef, resolveRef } from "
 /** Vueltas de un `until` que pidió el jugador si no dijo otra cosa (simulation §12 para más). */
 export const DEFAULT_UNTIL_MAX = 100;
 
+/** Un conjunto al que se refirió el jugador en plural («los niños»): dónde, con qué palabras y quiénes. */
+export interface GroupNote {
+  readonly at: string;
+  readonly text: string;
+  readonly members: readonly EntityRef[];
+}
+
 /** Una referencia que no quedó única, con dónde está en el borrador. */
 export interface RefIssue {
   readonly at: string;
@@ -55,6 +63,8 @@ export type DraftResult =
        * inspector y los tests, nunca para el jugador. El plan se intenta igual y falla al ejecutar.
        */
       readonly phantoms: readonly string[];
+      /** Dónde del borrador una descripción en plural resolvió a un conjunto (§4): quiénes son. */
+      readonly groups?: readonly GroupNote[];
     }
   /** Hay que preguntar: a cuál de estos se refiere. */
   | { readonly kind: "clarify"; readonly refs: readonly RefIssue[] }
@@ -85,7 +95,7 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   if (draft.kind !== "act" && draft.kind !== "plan") {
     return { kind: "invalid", problems: [`un ${draft.kind} no es un plan`] };
   }
-  const w: Walk = { ctx, problems: [], ambiguous: [], unknown: [], phantoms: [] };
+  const w: Walk = { ctx, problems: [], ambiguous: [], unknown: [], phantoms: [], groups: [] };
   const steps: PlanNode[] = [];
   if (draft.speech) {
     const act = draft.speech.act ? speakAct(draft.speech.act, "speech.act", w) : undefined;
@@ -128,7 +138,12 @@ export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResul
   const problems = validatePlan(plan, ctx.catalog);
   return problems.length > 0
     ? { kind: "invalid", problems }
-    : { kind: "plan", plan, phantoms: w.phantoms };
+    : {
+        kind: "plan",
+        plan,
+        phantoms: w.phantoms,
+        ...(w.groups.length > 0 ? { groups: w.groups } : {}),
+      };
 }
 
 /**
@@ -158,6 +173,7 @@ interface Walk {
   readonly ambiguous: RefIssue[];
   readonly unknown: RefIssue[];
   readonly phantoms: string[];
+  readonly groups: GroupNote[];
 }
 
 function convert(
@@ -172,6 +188,11 @@ function convert(
       if (!def) {
         w.problems.push(`${at}: verbo desconocido ${node.verb}`);
         return null;
+      }
+      if (node.verb === "move") {
+        const to = node.args.find((a) => a.role === "to" && "ref" in a);
+        const near = to && "ref" in to ? approachPeople(to.ref, `${at}.to`, w) : undefined;
+        if (near !== undefined) return near;
       }
       const args: ArgValue[] = [];
       for (const a of node.args) {
@@ -247,6 +268,41 @@ function convert(
 }
 
 /**
+ * «Me acerco a los niños»: `move` pide un lugar, pero el jugador nombró gente. Si ningún lugar
+ * conocido encaja y sí personas, se acerca a ellas: si las tiene delante, mira y escucha de cerca
+ * (`look`: no hay sub-hex donde acercarse); si cree que están en otro hex, va al lugar que lo
+ * contiene. `undefined` = no aplica (sigue el camino normal); `null` = pregunta o problema anotado.
+ */
+function approachPeople(desc: RefDescription, at: string, w: Walk): PlanNode | null | undefined {
+  const places = w.ctx.known.filter((k) => k.kind === "place");
+  if (resolveRef({ ...desc, kind: "place" }, places).status !== "unknown") return undefined;
+  const people = w.ctx.known.filter((k) => k.kind === "person");
+  const r = resolveRef({ ...desc, kind: "person" }, people);
+  if (r.status === "unknown") return undefined;
+  if (r.status === "ambiguous") {
+    w.ambiguous.push({ at, role: "to", resolved: r });
+    return null;
+  }
+  const members = r.status === "group" ? r.members : [r.chosen];
+  if (r.status === "group") w.groups.push({ at, text: desc.text, members });
+  const who = members.map((m) => people.find((k) => k.ref === m)).filter((k) => k !== undefined);
+  if (who.every((k) => k.present)) {
+    return { kind: "do", verb: "look", args: [], manner: [] };
+  }
+  const first = who.find((k) => !k.present) ?? who[0];
+  const hex = first?.at;
+  const place =
+    hex === undefined
+      ? undefined
+      : w.ctx.known.find((k) => k.kind === "place" && k.hexes?.includes(hex));
+  if (!place) {
+    w.problems.push(`${at}: no sabés dónde encontrar a ${desc.text}`);
+    return null;
+  }
+  return { kind: "do", verb: "move", args: [{ role: "to", entity: place.ref }], manner: [] };
+}
+
+/**
  * «Hablo con mi madre» es ir a donde cree que está y hablarle (actions §4): si el destinatario no
  * está en el hex del actor y hay un lugar conocido que contiene el hex donde lo cree, el plan
  * antepone el desplazamiento a ese lugar.
@@ -289,6 +345,11 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
   const known = w.ctx.known.filter((k) => kinds.includes(k.kind));
   const r = resolveRef(desc, known);
   if (r.status === "unique") return { role: a.role, entity: r.chosen };
+  if (r.status === "group") {
+    // Un verbo que toma una sola cosa va hacia el primero del conjunto; el conjunto queda anotado.
+    w.groups.push({ at, text: a.ref.text, members: r.members });
+    return { role: a.role, entity: r.chosen };
+  }
   if (r.status === "phantom") {
     w.phantoms.push(at);
     return { role: a.role, entity: r.chosen };

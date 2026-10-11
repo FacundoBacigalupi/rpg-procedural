@@ -70,6 +70,18 @@ export type ResolvedRef =
     }
   | { readonly status: "unknown"; readonly desc: RefDescription; readonly candidates: readonly [] }
   /**
+   * Una descripción en plural («los niños», «los dos hombres») que encaja con varios: el conjunto de
+   * los que encajan (`members`, el mejor primero), no una pregunta. `chosen` es el primero, para los
+   * verbos que toman una sola cosa.
+   */
+  | {
+      readonly status: "group";
+      readonly desc: RefDescription;
+      readonly chosen: EntityRef;
+      readonly members: readonly EntityRef[];
+      readonly candidates: readonly RefCandidate[];
+    }
+  /**
    * Única para el actor, pero lo que cree no existe: la acción se intenta con esa referencia y el
    * fracaso es cómo se entera. Solo el juego y el inspector ven esta diferencia.
    */
@@ -84,6 +96,29 @@ export type ResolvedRef =
 export const PRESENT_BONUS = 0.25;
 /** Dos candidatos a menos de esto del mejor son ambiguos. */
 export const AMBIGUITY_GAP = 0.2;
+
+/** Palabras con las que se pide más de uno: «los niños», «dos hombres», «todos». */
+const PLURAL_LEAD =
+  /^\s*(los|las|unos|unas|esos|esas|estos|estas|ambos|ambas|todos|todas|dos|tres|cuatro|cinco)(\s|$)/iu;
+const COUNTS: Readonly<Record<string, number>> = {
+  dos: 2,
+  tres: 3,
+  cuatro: 4,
+  cinco: 5,
+  ambos: 2,
+  ambas: 2,
+};
+
+/** Si la descripción pide un conjunto y, si dice cuántos, cuántos (`undefined` = todos los que encajan). */
+export function pluralWanted(desc: RefDescription): { n?: number } | undefined {
+  const q = desc.quantity;
+  if (q?.kind === "count" && q.n > 1) return { n: q.n };
+  if (q?.kind === "all") return {};
+  const m = PLURAL_LEAD.exec(desc.text);
+  if (!m) return undefined;
+  const n = COUNTS[(m[1] as string).toLowerCase()];
+  return n === undefined ? {} : { n };
+}
 
 const STOPWORDS = new Set([
   "a",
@@ -191,6 +226,18 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
   const candidates = scored.map(({ e, score }) => ({ ref: e.ref, score, via: e.via }));
   const best = (scored[0] as (typeof scored)[number]).score;
   const close = scored.filter((s) => best - s.score < AMBIGUITY_GAP);
+  // En plural, los que encajan son el conjunto (hasta el número pedido): no hay a cuál preguntar.
+  const plural = pluralWanted(desc);
+  if (plural && close.length > 1 && !relTo) {
+    const members = close.slice(0, plural.n ?? close.length).map((c) => c.e.ref);
+    return {
+      status: "group",
+      desc,
+      chosen: members[0] as EntityRef,
+      members,
+      candidates,
+    };
+  }
   if (close.length === 1) {
     const only = (close[0] as (typeof close)[number]).e;
     return { status: only.phantom ? "phantom" : "unique", desc, chosen: only.ref, candidates };
