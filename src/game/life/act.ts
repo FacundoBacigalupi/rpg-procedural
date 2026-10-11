@@ -435,7 +435,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       THERMAL.name,
       AMPUTATIONS.name,
       TREATED_WATER.name,
-      ...(o.scam ? [INNATE.name, MIND.name, RELATIONS.name, SCAM_DEALS.name] : []),
+      // La iniciativa de hablarle a alguien que otro también le habla (`speakInitiative`) lee su trato.
+      RELATIONS.name,
+      ...(o.scam ? [INNATE.name, MIND.name, SCAM_DEALS.name] : []),
       ...(o.residue ? [LOT_ESSENCE.name] : []),
     ],
     writes: [
@@ -640,6 +642,19 @@ function marketOf(
           : beliefAbout(truth.get(STANDING_BELIEFS, me), other as AgentId)?.rank,
     },
   };
+}
+
+/**
+ * La iniciativa (en desvíos estándar de la tirada, 0 a 1) de quien le habla a `listener` cuando otro
+ * también le habla en el mismo instante: cuánto lo conoce el oyente. Sale del estado, no del azar.
+ */
+export function speakInitiative(
+  truth: ReadonlyWorldTruth,
+  speaker: AgentId,
+  listener: string,
+): number {
+  const familiarity = truth.get(RELATIONS, listener as AgentId)?.toward[speaker]?.dims.familiarity;
+  return Math.min(1, Math.max(0, familiarity ?? 0));
 }
 
 function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
@@ -1377,6 +1392,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...extraEvents,
     ],
     changes,
+    // Dos que le hablan a la vez al mismo oyente disputan lo que va a contestar (`life.pending_speech`):
+    // gana quien el oyente conoce más (scheduler: contienda por iniciativa más la tirada, simulation §3).
+    ...(heard.changes.length > 0 && eff.kind === "speak" && eff.to !== null
+      ? {
+          contest: {
+            initiative: speakInitiative(truth, me, eff.to),
+            place: input.place,
+            actor: me,
+          },
+        }
+      : {}),
     postings:
       fillerPostings.length + intakePostings.length === 0
         ? r.postings
