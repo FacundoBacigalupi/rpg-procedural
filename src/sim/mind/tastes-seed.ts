@@ -88,6 +88,79 @@ export function mergeChosen(
   return [...kept, ...fixed];
 }
 
+/** Lo de la aldea que cada gusto necesita: los sentidos, lo corriente, lo vedado y lo conocido de chico. */
+export interface TasteWorld {
+  readonly senses: readonly string[];
+  readonly familiar: Readonly<Record<string, number>>;
+  readonly exposure: Readonly<Record<string, TasteExposure>>;
+  readonly forbidden: readonly string[];
+}
+
+export function tasteWorld(
+  defs: readonly TasteDef[],
+  taboos: readonly { readonly goods: readonly string[] }[],
+): TasteWorld {
+  const familiar: Record<string, number> = {};
+  const exposure: Record<string, TasteExposure> = {};
+  for (const d of defs) {
+    if (d.common <= 0) continue;
+    familiar[d.id] = d.common;
+    // Lo corriente se conoció de chico: tantas veces como lo corriente que es.
+    exposure[d.id] = {
+      count: Math.round(d.common * EXPOSURE_SATURATION),
+      childhood: true,
+      outcome: 0.3,
+    };
+  }
+  return { senses: sensesOf(defs), familiar, exposure, forbidden: forbiddenItems(defs, taboos) };
+}
+
+/**
+ * Los gustos de una persona: sensibilidades de su cuerpo, lo corriente en la cultura, lo vedado y lo
+ * que conoció en la mesa de su madre (lo bueno queda ligado a ella). `rng` es `fork("tastes", id)`.
+ */
+export function newTastes(
+  defs: readonly TasteDef[],
+  world: TasteWorld,
+  innate: Readonly<Record<string, number>>,
+  mother: AgentId | undefined,
+  rng: Rng,
+  event: EventId,
+  chosen: readonly ChosenTaste[] = [],
+): PersonTastes {
+  const sensitivities: Record<string, number> = {};
+  for (const s of world.senses) {
+    sensitivities[s] = round(
+      clamp01(
+        0.5 +
+          SENSITIVITY_PERCEPTION * (innate["perception"] ?? 0) +
+          rng.fork("sense", s).normal(0, SENSITIVITY_SPREAD),
+      ),
+    );
+  }
+  const fed: Record<string, TasteExposure> = mother
+    ? Object.fromEntries(
+        Object.entries(world.exposure).map(([k, e]) => [k, { ...e, from: mother }]),
+      )
+    : { ...world.exposure };
+  const generated = generateTastes(
+    defs,
+    {
+      innate,
+      body: { sensitivities },
+      culture: { familiar: world.familiar, forbidden: world.forbidden },
+      exposure: fed,
+      origin: event,
+    },
+    rng,
+  );
+  return {
+    preferences: mergeChosen(generated, chosen),
+    chosen: chosen.map((c) => c.item),
+    originEventId: event,
+  };
+}
+
 /** Escribe `TASTES_OF` de cada vivo. Devuelve el evento de la formación. */
 export function seedTastes(
   truth: WorldTruth,
@@ -110,57 +183,25 @@ export function seedTastes(
     causes: [{ kind: "event", event: input.foundersEvent }],
     resolution: "local",
   });
-  const senses = sensesOf(input.defs);
-  const familiar: Record<string, number> = {};
-  const exposure: Record<string, TasteExposure> = {};
-  for (const d of input.defs) {
-    if (d.common <= 0) continue;
-    familiar[d.id] = d.common;
-    // Lo corriente se conoció de chico: tantas veces como lo corriente que es.
-    exposure[d.id] = {
-      count: Math.round(d.common * EXPOSURE_SATURATION),
-      childhood: true,
-      outcome: 0.3,
-    };
-  }
-  const forbidden = forbiddenItems(input.defs, input.taboos ?? []);
+  const world = tasteWorld(input.defs, input.taboos ?? []);
   const root = Rng.root(input.seed);
   for (const id of alive) {
     const innate = truth.get(INNATE, id);
     if (!innate) continue;
-    const rng = root.fork("tastes", id);
-    const sensitivities: Record<string, number> = {};
-    for (const s of senses) {
-      sensitivities[s] = round(
-        clamp01(
-          0.5 +
-            SENSITIVITY_PERCEPTION * (innate["perception"] ?? 0) +
-            rng.fork("sense", s).normal(0, SENSITIVITY_SPREAD),
-        ),
-      );
-    }
-    // Lo corriente se conoció de chico en la mesa de la madre: lo bueno queda ligado a ella.
-    const mother = truth.get(PERSON, id)?.mother ?? undefined;
-    const fed: Record<string, TasteExposure> = mother
-      ? Object.fromEntries(Object.entries(exposure).map(([k, e]) => [k, { ...e, from: mother }]))
-      : exposure;
-    const generated = generateTastes(
-      input.defs,
-      {
-        innate,
-        body: { sensitivities },
-        culture: { familiar, forbidden },
-        exposure: fed,
-        origin: event,
-      },
-      rng,
-    );
     const chosen = input.chosen?.get(id) ?? [];
-    truth.set(TASTES_OF, id, {
-      preferences: mergeChosen(generated, chosen),
-      chosen: chosen.map((c) => c.item),
-      originEventId: event,
-    });
+    truth.set(
+      TASTES_OF,
+      id,
+      newTastes(
+        input.defs,
+        world,
+        innate,
+        truth.get(PERSON, id)?.mother ?? undefined,
+        root.fork("tastes", id),
+        event,
+        chosen,
+      ),
+    );
   }
   return event;
 }

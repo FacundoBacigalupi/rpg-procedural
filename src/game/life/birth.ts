@@ -36,23 +36,34 @@ import {
   nameNewborn,
   newBody,
   newMind,
+  newTastes,
   PERSON,
   PERSON_CULTURE,
   PERSON_NAME,
   type ProcessDef,
+  practicesOfKind,
   RELATIONS,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   type Relationship,
   type SchemaDef,
+  SELF_IMAGES,
   type Sex,
+  SKILL_STATE,
+  type SkillCatalog,
   type StateChange,
   seedAffiliation,
   seedPersonCulture,
+  seedSelfImages,
   setComponent,
+  standardize,
   strangerDims,
+  TASTES_OF,
+  type TasteDef,
   type Trait,
   table,
+  tasteWorld,
+  upbringingSkills,
   villageCulture,
   villageReligion,
 } from "../../sim/index.ts";
@@ -90,6 +101,9 @@ export interface BirthOptions {
         readonly bonds: readonly BondDef[];
         /** Los rasgos de cultura: con ellos copia a sus padres lo que siguen (culture §4). */
         readonly cultureTraits: readonly CultureTraitDef[];
+        /** Las habilidades de base (sin aprendido: solo lo heredado) y los gustos que trae al nacer. */
+        readonly skills: SkillCatalog;
+        readonly tastes: readonly TasteDef[];
       }
     | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -130,6 +144,9 @@ export function birthProcess(o: BirthOptions): ProcessDef {
             RELATIONS.name,
             PERSON_CULTURE.name,
             RELIGIOUS_IDENTITY.name,
+            SKILL_STATE.name,
+            SELF_IMAGES.name,
+            TASTES_OF.name,
           ]
         : []),
     ],
@@ -284,6 +301,25 @@ export function birthProcess(o: BirthOptions): ProcessDef {
               }),
             );
           }
+          // Lo heredado de habilidad (talento y techo, sin aprendido) y los gustos de la mesa de su madre.
+          const z = standardize(innate, o.traits, sex);
+          const skills = upbringingSkills(n.skills, z, born, born, o.clock);
+          changes.push(
+            setComponent(SKILL_STATE, childKey, skills),
+            setComponent(SELF_IMAGES, childKey, seedSelfImages(n.skills, skills, z, born)),
+            setComponent(
+              TASTES_OF,
+              childKey,
+              newTastes(
+                n.tastes,
+                tasteWorld(n.tastes, practicesOfKind(villageReligion(ctx.truth), "taboo")),
+                innate,
+                mother,
+                rng.fork("tastes"),
+                birthEvent,
+              ),
+            ),
+          );
           // Lo que siente por su parentela y su casa, con la misma regla que la siembra.
           const record = { sex, born, mother, father: f, household: m.household, spouse: null };
           const person = (who: AgentId) =>
@@ -326,6 +362,102 @@ export function birthProcess(o: BirthOptions): ProcessDef {
         }
       }
       return { changes, events };
+    },
+  };
+}
+
+export const BONDED_PROCESS = "life.newborn_bonds";
+
+/** A qué hijo de una madre ya le tomaron cariño los suyos. */
+export const BONDED = table<{ readonly child: AgentId }>("life.newborn_bonded");
+
+export interface BondOptions {
+  readonly dims: readonly DimensionDef[];
+  readonly bonds: readonly BondDef[];
+}
+
+/**
+ * Lo que sienten por el recién nacido su madre, su padre y la gente de su casa: su lado de
+ * `RELATIONS` con la misma regla que la siembra (`kinRelationship`), una vez por hijo. Va en la fase
+ * `physics`, donde ningún otro proceso escribe esa tabla (`appraise` percibe, `company` asienta), y
+ * por eso no choca con ellos; sin esto el niño siente por su familia pero la familia no por él.
+ */
+export function newbornBondsProcess(o: BondOptions): ProcessDef {
+  return {
+    id: BONDED_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "physics",
+    reads: [
+      BIRTH.name,
+      BONDED.name,
+      PERSON.name,
+      INNATE.name,
+      HOUSEHOLD.name,
+      ENTITY.name,
+      RELATIONS.name,
+    ],
+    writes: [BONDED.name, RELATIONS.name],
+    run(ctx) {
+      const alive = (a: AgentId) =>
+        ctx.truth.get(ENTITY, a as unknown as EntityRef)?.endedAt === undefined;
+      const changes: StateChange[] = [];
+      const stranger = strangerDims(o.dims);
+      // Las filas que van tomando los suyos en este paso (dos hijos de la misma casa el mismo día).
+      const rows = new Map<AgentId, { toward: Record<string, Relationship>; origin: string }>();
+      const mothers = ctx.truth
+        .ids(BIRTH)
+        .map((id) => id as unknown as AgentId)
+        .sort();
+      for (const mother of mothers) {
+        const born = ctx.truth.get(BIRTH, mother as unknown as EntityRef);
+        if (!born || ctx.truth.get(BONDED, mother as unknown as EntityRef)?.child === born.child) {
+          continue;
+        }
+        const child = born.child;
+        const record = ctx.truth.get(PERSON, child as unknown as EntityRef);
+        const origin = ctx.truth.get(ENTITY, child as unknown as EntityRef)?.originEventId;
+        if (!record || !origin) continue;
+        const person = (who: AgentId) => ctx.truth.get(PERSON, who as unknown as EntityRef);
+        const kin = [
+          ...new Set([
+            ...(record.mother ? [record.mother] : []),
+            ...(record.father ? [record.father] : []),
+            ...(ctx.truth.get(HOUSEHOLD, record.household as unknown as EntityRef)?.members ?? []),
+          ]),
+        ]
+          .filter((k) => k !== child && alive(k))
+          .sort();
+        for (const k of kin) {
+          const warmth = ctx.truth.get(INNATE, k as unknown as EntityRef)?.["warmth"] ?? 0;
+          const r = kinRelationship(k, child, person, warmth, {
+            rng: ctx.rng.fork("newborn-bond", k, child),
+            dims: stranger,
+            bonds: o.bonds,
+            event: origin as never,
+            now: ctx.now,
+          });
+          if (!r) continue;
+          const row = rows.get(k) ?? {
+            toward: { ...(ctx.truth.get(RELATIONS, k as unknown as EntityRef)?.toward ?? {}) },
+            origin: ctx.truth.get(RELATIONS, k as unknown as EntityRef)?.originEventId ?? origin,
+          };
+          row.toward[child] = r;
+          rows.set(k, row);
+        }
+        changes.push(setComponent(BONDED, mother as unknown as EntityRef, { child }));
+      }
+      for (const [k, row] of [...rows].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+        changes.push(
+          setComponent(RELATIONS, k as unknown as EntityRef, {
+            toward: row.toward,
+            originEventId: row.origin as never,
+          }),
+        );
+      }
+      return { changes };
     },
   };
 }

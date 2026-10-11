@@ -11,6 +11,7 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  ACTIONS,
   BODY_PLANS,
   BODY_STATE,
   CONCEPTS,
@@ -32,6 +33,11 @@ import {
   RELATIONS,
   RELIGIOUS_IDENTITY,
   SCHEMAS,
+  SKILL_STATE,
+  SKILLS,
+  SkillCatalog,
+  TASTES,
+  TASTES_OF,
   TRAITS,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -65,6 +71,8 @@ const newborn = {
   dims: content.all(RELATION_DIMS),
   bonds: content.all(RELATION_BONDS),
   cultureTraits: content.all(CULTURE_TRAITS),
+  skills: new SkillCatalog(content.all(SKILLS), content.all(ACTIONS)),
+  tastes: content.all(TASTES),
 };
 
 const DAY = 86_400;
@@ -285,6 +293,7 @@ describe("nacer vivo en la vida (opt-in)", () => {
     const births = w.log.all().filter((e) => e.kind === "family.birth" && e.tick > t0);
     expect(births.length).toBeGreaterThan(0);
     expect(w.truth.ids(PERSON).length).toBe(before + births.length);
+    let bondedChecked = 0;
     for (const e of births) {
       const child = e.actors[0] as AgentId;
       const person = w.truth.get(PERSON, child as unknown as EntityRef);
@@ -303,6 +312,16 @@ describe("nacer vivo en la vida (opt-in)", () => {
       const name = w.truth.get(PERSON_NAME, child as unknown as EntityRef);
       expect(name?.parts.find((x) => x.kind === "given")?.event).toBe(e.id);
       expect(w.truth.get(MIND, child as unknown as EntityRef)?.originEventId).toBe(e.id);
+      // Su madre lo siente a él (el lado de ella, un día después de nacer).
+      if (e.tick < life.now - 3 * DAY) {
+        bondedChecked++;
+        expect(
+          w.truth.get(RELATIONS, e.actors[1] as unknown as EntityRef)?.toward[child]?.bonds,
+        ).toContain("child");
+      }
+      // Habilidades heredadas (sin aprendido) y gustos con el parto de origen.
+      expect(w.truth.get(SKILL_STATE, child as unknown as EntityRef)).toBeDefined();
+      expect(w.truth.get(TASTES_OF, child as unknown as EntityRef)?.originEventId).toBe(e.id);
       // Lo que sigue de su cultura y su fe: lo copia de sus padres, con el parto como origen.
       expect(w.truth.get(PERSON_CULTURE, child as unknown as EntityRef)?.originEventId).toBe(e.id);
       expect(
@@ -313,6 +332,7 @@ describe("nacer vivo en la vida (opt-in)", () => {
         w.truth.get(RELATIONS, child as unknown as EntityRef)?.toward[e.actors[1] as string]?.bonds,
       ).toContain("parent");
     }
+    expect(bondedChecked).toBeGreaterThan(0);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
   }, 500_000);
