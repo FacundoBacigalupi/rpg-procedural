@@ -592,7 +592,8 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
           - [x] (f3c3c2) Alegría propia: `ownEmotionSignals` acepta el éxito de `appraiseFight` del iniciador en `combat.fight` (por `persistEmotionSignals` ya existente), con test de gate.
           - [ ] (f3c3c3) Vergüenza: que `regardEffect` (converse) emita testigos creídos y si el oyente reconoce la falta (verdad del insulto) y gate en `emotion-evidence.ts`.
           - [x] (f3c3c4a) Amor desde percepts: `perceivedLoveSignals` (acción de cuidado vista de alguien identificado con cariño previo propio, identidad leída), cableado en `appraiseProcess` bajo `persistEmotionSignals`.
-          - [ ] (f3c3c4b) Envidia desde percepts: falta que el percept lleve la ventaja ajena (qué ganó y cuánto); hoy solo hay acción e identidad, sin magnitud para `appraiseEnvyEmotion`.
+          - [x] (f3c3c4b) Envidia desde percepts sin tocar eventos: `perceivedEnvySignals` lee la vestimenta vista de alguien identificado de rango mayor al propio (la ventaja es la leída, aunque la ropa mienta) y exige que importe el estatus; contexto inyectado (`EnvyContext`), con test.
+          - [ ] (f3c3c4c) Cablear la envidia en `appraiseProcess` con opt-in de la vida: pasar `StatusDef` y rango propio (`rankOf`) y el valor `status` del observador (`valuesOf`) por `LifeOptions` -> partes -> `AppraiseOptions`.
           - [x] (f3c3c5) `immediateGoals` proyecta señales propias con evidencia de miedo, alegría (placer), vergüenza y envidia (estatus) y amor (familia) con su vida media; ira y tristeza siguen sin proyección (valor por definir).
     - (f3d) Objetivo cumplido y vacío de sentido, partido por contrato (2026-10-10):
       - [x] (f3d1) `goalCompletionsFromBeliefs` reconoce venganza desde creencia propia de muerte con confianza y fuente causal; no consulta la verdad del objetivo.
