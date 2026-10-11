@@ -324,6 +324,10 @@ export interface LifeOptions {
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
   readonly conceptionRateScale?: number;
+  /** Con `conception`: días de embarazo (por defecto 280). */
+  readonly conceptionGestationDays?: number;
+  /** Opt-in (con `conception`): el niño que no murió en el parto nace como persona (`LifeParts.births`); apagado. */
+  readonly births?: boolean;
   /** Opt-in: `speak` con acto declarado desde afecto y familiaridad (`LifeParts.speakActs`); apagado. */
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
@@ -441,6 +445,8 @@ export function optInParts(
   | "npcFootwear"
   | "conception"
   | "conceptionRateScale"
+  | "conceptionGestationDays"
+  | "births"
   | "speakActs"
   | "takeBelieved"
   | "creditHeed"
@@ -521,6 +527,10 @@ export function optInParts(
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.conception ? { conception: true } : {}),
+    ...(options.conception && options.births ? { births: true } : {}),
+    ...(options.conception && options.conceptionGestationDays !== undefined
+      ? { conceptionGestationDays: options.conceptionGestationDays }
+      : {}),
     ...(options.conception && options.conceptionRateScale !== undefined
       ? { conceptionRateScale: options.conceptionRateScale }
       : {}),

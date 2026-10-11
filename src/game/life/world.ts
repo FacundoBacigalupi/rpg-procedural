@@ -66,6 +66,7 @@ import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
+import { birthProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
@@ -242,8 +243,16 @@ export interface LifeWorld {
    * `life.labor` con la partera. Exige `demography`. Apagado, nadie concibe en la vida viva.
    */
   readonly conception?: boolean;
+  /**
+   * Opt-in (con `conception`): el niño que no murió en el parto nace como persona (`life.birth`,
+   * evento `family.birth`, genoma heredado, cuerpo de recién nacido, hogar de la madre). Apagado, el
+   * parto resuelve a la madre y al niño pero no crea a nadie.
+   */
+  readonly births?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1; calibrar o tests cortos). */
   readonly conceptionRateScale?: number;
+  /** Con `conception`: días de embarazo (por defecto 280; tests cortos). */
+  readonly conceptionGestationDays?: number;
   readonly demography?: Pick<Demography, "fertility">;
   /** Opt-in: el sanador también ve los signos de las sustancias que el enfermo tiene encima. */
   readonly healerSubstanceSigns?: boolean;
@@ -1121,6 +1130,9 @@ export function lifeWorld(
                 ...(parts.conceptionRateScale !== undefined
                   ? { rateScale: parts.conceptionRateScale }
                   : {}),
+                ...(parts.conceptionGestationDays !== undefined
+                  ? { gestationDays: parts.conceptionGestationDays }
+                  : {}),
                 placeOf: placeOf(parts, village),
               }),
             ]
@@ -1143,6 +1155,16 @@ export function lifeWorld(
                       },
                     }
                   : {}),
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
+        ...(parts.conception === true && parts.births === true
+          ? [
+              birthProcess({
+                clock: parts.clock,
+                traits: parts.traits,
+                bodyPlans: parts.plans,
                 placeOf: placeOf(parts, village),
               }),
             ]
