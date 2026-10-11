@@ -119,6 +119,7 @@ import {
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
+import { npcEncountersProcess } from "./npc-encounters.ts";
 import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
 import { npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
@@ -347,6 +348,8 @@ export interface LifeWorld {
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC (viaje y plantillas incluidos) y deja el resultado parcial en `npc.interrupted` (`life.npc_interrupt`); apagado, sin proceso. */
   readonly npcInterrupt?: boolean;
+  /** Opt-in (con `npcJourneyDays`, mejor con `npcTransit`): el viajero se cruza con quien comparte su hex (`npc.crossed`, `life.npc_encounters`); apagado, sin proceso. */
+  readonly npcEncounters?: boolean;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1398,6 +1401,9 @@ export function lifeWorld(
               }),
               npcReactProcess({ player }),
             ]
+          : []),
+        ...(parts.npcEncounters === true && parts.npcJourneyDays !== undefined
+          ? [npcEncountersProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
           ? [
