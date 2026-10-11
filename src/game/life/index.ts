@@ -6,7 +6,7 @@ export * from "./beliefs.ts";
 export * from "./bondagepolicy.ts";
 export * from "./create.ts";
 export * from "./debtknowledge.ts";
-export { GOAL_EVENT, NPC_GOALS } from "./decide.ts";
+export { GOAL_EVENT, NPC_DECISION, NPC_GOALS } from "./decide.ts";
 export * from "./divine.ts";
 export * from "./environment.ts";
 export * from "./exposure.ts";

@@ -42,7 +42,10 @@ const setup = goalMeasurementSetup(
     game: defaultGameSetup("realistic"),
     ...(frequency === undefined ? {} : { frequency }),
   },
-  { persistGoalLayers: values["persist-goal-layers"], debtKnowledge: values["debt-knowledge"] },
+  {
+    persistGoalLayers: values["persist-goal-layers"] === true,
+    debtKnowledge: values["debt-knowledge"] === true,
+  },
 );
 
 const result = runBatch(seeds, {

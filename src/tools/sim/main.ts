@@ -48,7 +48,10 @@ const report = runSim({
       game: defaultGameSetup("realistic"),
       ...(frequency === undefined ? {} : { frequency }),
     },
-    { persistGoalLayers: values["persist-goal-layers"], debtKnowledge: values["debt-knowledge"] },
+    {
+      persistGoalLayers: values["persist-goal-layers"] === true,
+      debtKnowledge: values["debt-knowledge"] === true,
+    },
   ),
   ...(values["check-days"] === undefined ? {} : { checkEveryDays: Number(values["check-days"]) }),
 });
