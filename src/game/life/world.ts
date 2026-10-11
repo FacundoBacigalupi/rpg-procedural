@@ -344,6 +344,8 @@ export interface LifeWorld {
   readonly npcMove?: boolean;
   /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
   readonly npcVerbs?: readonly string[];
+  /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
+  readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
   readonly npcJourneyDays?: number;
   /** Opt-in (con `npcJourneyDays`): el NPC en viaje pasa por los hexes del camino mientras dura la marcha (`life.transit`). */
@@ -1385,6 +1387,9 @@ export function lifeWorld(
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
                 player,
+                ...(parts.npcTemplates
+                  ? { templates: { byVerb: parts.npcTemplates, map: parts.map } }
+                  : {}),
                 ...(parts.npcJourneyDays !== undefined
                   ? {
                       journeyDays: parts.npcJourneyDays,

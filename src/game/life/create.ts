@@ -302,6 +302,8 @@ export interface LifeOptions {
   readonly npcMove?: boolean;
   /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
   readonly npcVerbs?: readonly string[];
+  /** Opt-in (con `npcVerbs`): verbo -> plantilla de `content/plans/` (`LifeParts.npcTemplates`), p. ej. `work` -> `fieldwork`. */
+  readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` con `move`): el viaje del NPC sigue hasta N días (`LifeParts.npcJourneyDays`). */
   readonly npcJourneyDays?: number;
   /** Opt-in (con `npcJourneyDays`): el NPC en viaje pasa por los hexes del camino (`LifeParts.npcTransit`). */
@@ -418,6 +420,7 @@ export function optInParts(
   | "hire"
   | "npcMove"
   | "npcVerbs"
+  | "npcTemplates"
   | "npcJourneyDays"
   | "npcTransit"
   | "npcProvisions"
@@ -493,6 +496,7 @@ export function optInParts(
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
+    ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),

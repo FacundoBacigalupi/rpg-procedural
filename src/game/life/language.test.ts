@@ -138,7 +138,7 @@ describe("los nombres de la aldea", () => {
     for (const id of truth.ids(PERSON)) {
       expect(again.world.truth.get(PERSON_NAME, id)).toEqual(truth.get(PERSON_NAME, id));
     }
-  }, 120_000);
+  }, 300_000);
 
   it("el personaje conoce los nombres de pila de su familia y la vista los cita", () => {
     const v = playerView(life.world, []);

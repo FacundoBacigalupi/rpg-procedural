@@ -1,0 +1,15 @@
+[
+  {
+    "id": "fieldwork",
+    "name": "ir al campo, trabajar y volver",
+    "params": [{ "id": "field", "kind": "place" }, { "id": "home", "kind": "place" }],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "field" }] },
+        { "kind": "do", "verb": "work", "args": [{ "role": "for", "seconds": 14400 }] },
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "home" }] }
+      ]
+    }
+  }
+]
