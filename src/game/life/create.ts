@@ -186,7 +186,11 @@ export interface LifeOptions {
   readonly migration?: LifeParts["migration"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
-  /** Opt-in: persiste los objetivos largos, medianos y cortos del NPC; apagado por defecto. */
+  /**
+   * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
+   * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
+   * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
+   */
   readonly persistGoalLayers?: boolean;
   /** Opt-in: las partes recuerdan los préstamos y pagos que participan directamente. */
   readonly debtKnowledge?: boolean;
@@ -456,7 +460,7 @@ export function optInParts(
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
-    ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
+    ...(options.persistGoalLayers !== false ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
     ...(options.closeGoalsOnDeath ? { closeGoalsOnDeath: true } : {}),

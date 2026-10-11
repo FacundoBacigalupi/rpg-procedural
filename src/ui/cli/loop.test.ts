@@ -183,6 +183,18 @@ describe("runCli", () => {
     expect(store.getMeta("mode")).toBe("novel");
   }, 300_000);
 
+  it("sigue una vida de un motor anterior y registra el límite de replay", async () => {
+    const store = memory();
+    await session(store, ["salir"]);
+    store.setMeta("versions", { ...VERSIONS, engine: "life-1" });
+    const out = await session(store, ["salir"]);
+    expect(out).toContain("pasó del motor life-1 al life-2");
+    expect(store.getMeta("versions")).toEqual(VERSIONS);
+    expect(store.getMeta("replayLimits")).toMatchObject([
+      { from: { engine: "life-1" }, to: { engine: LIFE_ENGINE } },
+    ]);
+  }, 300_000);
+
   it("no sigue una vida de otra versión", async () => {
     const store = memory();
     await session(store, ["salir"]);

@@ -51,7 +51,8 @@ export function measureLayerRun(
 ): LayerRun {
   const life = Life.create(seed, content, {
     ...optionsOf(setup),
-    ...(persist ? { persistGoalLayers: true } : {}),
+    // Desde `life-2` está encendido por defecto: apagarlo es explícito.
+    persistGoalLayers: persist,
   });
   const w = life.world;
   life.advanceTo(life.now + Math.round(years * w.clock.year));

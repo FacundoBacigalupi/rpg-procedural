@@ -47,7 +47,11 @@ export interface LifeSetup {
 }
 
 /** Las versiones del motor para el replay (tooling §4): la del formato la pone quien guarda. */
-export const LIFE_ENGINE = "life-1";
+/**
+ * `life-2`: `persistGoalLayers` encendido por defecto (objetivos de capas persistidos y eventos
+ * `npc.goal` nuevos), así que cambian los hashes y el replay desde el seed de un guardado `life-1`.
+ */
+export const LIFE_ENGINE = "life-2";
 
 /** La vida como juego del replay (tools/replay), sin importarlo: misma forma. */
 export function lifeReplayGame(
