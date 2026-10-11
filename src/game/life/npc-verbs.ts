@@ -6,6 +6,7 @@
 
 import {
   type AgentId,
+  type EntityRef,
   type HolderRef,
   holderAccount,
   ledgerUnit,
@@ -22,10 +23,15 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  expandTemplate,
+  hexPath,
   LOCATION,
+  type LocalMap,
   localHour,
+  nearestHex,
   PERSON,
   PLACE,
+  type PlanTemplate,
   type PostingDraft,
   type ProcessDef,
   type ProcessResult,
@@ -55,6 +61,16 @@ export interface NpcVerbsOptions {
    * hasta llegar o hasta `journeyDays` días; sin esto, el `move` vence con la decisión del día.
    */
   readonly journeyDays?: number;
+  /**
+   * Opt-in: verbos de la decisión que se ejecutan como una plantilla de plan de `content/plans/`
+   * (`byVerb`: verbo -> id de plantilla, p. ej. `work` -> `fieldwork`). Los parámetros de lugar
+   * salen del lugar más cercano de la clase que dice cada uno (`PARAM_PLACE_KIND`); sin ellos, el
+   * verbo suelto como siempre.
+   */
+  readonly templates?: {
+    readonly byVerb: Readonly<Record<string, string>>;
+    readonly map: LocalMap;
+  };
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /**
    * Opt-in (con `journeyDays`): el ritmo del viaje es el modo `careful` (más lento, más cuidado) o
@@ -146,6 +162,65 @@ export function planFromDecision(
     actor,
     source: "utility",
     root: { kind: "do", verb: decision.verb, args, manner: [...manner] },
+    manner: [],
+    causes: [{ kind: "state", entity: actor, key: "utility" }],
+  };
+}
+
+/** Qué clase de lugar nombra cada parámetro de una plantilla (`field` es un campo, `home` la aldea…). */
+export const PARAM_PLACE_KIND: Readonly<Record<string, string>> = {
+  field: "fields",
+  home: "village",
+  water: "water",
+  wood: "forest",
+};
+
+/**
+ * Los parámetros de lugar de una plantilla para quien está en `from` (puro): el lugar más cercano
+ * de la clase que dice cada parámetro (`PARAM_PLACE_KIND`). Un parámetro de persona, de clase
+ * desconocida o sin lugar de esa clase deja la plantilla sin resolver (`undefined`).
+ */
+export function templateParams(
+  template: PlanTemplate,
+  places: readonly {
+    readonly id: string;
+    readonly kind: string;
+    readonly hexes: readonly number[];
+  }[],
+  map: LocalMap,
+  from: number | undefined,
+): Record<string, EntityRef> | undefined {
+  if (from === undefined) return undefined;
+  const out: Record<string, EntityRef> = {};
+  for (const p of template.params) {
+    const kind = PARAM_PLACE_KIND[p.id];
+    if (p.kind !== "place" || kind === undefined) return undefined;
+    let best: { id: string; steps: number } | undefined;
+    for (const pl of places) {
+      if (pl.kind !== kind || pl.hexes.length === 0) continue;
+      const steps = hexPath(map, from, nearestHex(map, from, pl.hexes)).length;
+      if (!best || steps < best.steps || (steps === best.steps && pl.id < best.id)) {
+        best = { id: pl.id, steps };
+      }
+    }
+    if (!best) return undefined;
+    out[p.id] = best.id as EntityRef;
+  }
+  return out;
+}
+
+/** El plan de una plantilla ya resuelta, con fuente `utility`; sin parámetros, nada. */
+export function planFromTemplate(
+  template: PlanTemplate,
+  params: Readonly<Record<string, EntityRef>> | undefined,
+  actor: AgentId,
+): ActionPlan | undefined {
+  if (!params) return undefined;
+  return {
+    actor,
+    source: "utility",
+    goal: template.id,
+    root: expandTemplate(template.root, params),
     manner: [],
     causes: [{ kind: "state", entity: actor, key: "utility" }],
   };
@@ -272,12 +347,33 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       } else if (done && done.at === decision.at && done.id === decision.id) return {};
       const state = truth.get(PLAN_STATE, me);
       if (state && !state.done) return {};
-      const plan = planFromDecision(
-        decision,
-        o.catalog,
-        me,
-        decision.verb === "move" && journeyDays !== undefined && o.pace ? [o.pace] : [],
-      );
+      // Con plantilla para este verbo (ir al campo, trabajar, volver) el plan es de varios pasos.
+      const tplId = o.templates?.byVerb[decision.verb];
+      const tpl = tplId ? o.catalog.template(tplId) : undefined;
+      const fromTemplate =
+        tpl && o.templates
+          ? planFromTemplate(
+              tpl,
+              templateParams(
+                tpl,
+                truth.ids(PLACE).flatMap((id) => {
+                  const p = truth.get(PLACE, id);
+                  return p ? [{ id: id as string, kind: p.kind, hexes: p.hexes }] : [];
+                }),
+                o.templates.map,
+                truth.get(LOCATION, me)?.hex,
+              ),
+              me,
+            )
+          : undefined;
+      const plan =
+        fromTemplate ??
+        planFromDecision(
+          decision,
+          o.catalog,
+          me,
+          decision.verb === "move" && journeyDays !== undefined && o.pace ? [o.pace] : [],
+        );
       if (!plan) return {};
       const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });
       // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega.
