@@ -139,7 +139,7 @@ import {
 } from "./moldgossip.ts";
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
-import { type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
+import { requestWant, type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -1056,7 +1056,10 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             })),
             now,
             o.speakActs,
-            { want: { what: null, urgency: drives.needs.hunger ?? 0 }, news },
+            {
+              want: requestWant(o.speakActs, drives.needs.hunger ?? 0, larder, o.goods ?? []),
+              news,
+            },
           ),
         );
       }

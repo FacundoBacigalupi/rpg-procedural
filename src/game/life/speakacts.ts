@@ -19,6 +19,10 @@ export interface SpeakActsOptions {
   readonly requestMinUrgency?: number;
   /** Afecto mínimo (0-1) hacia quien le pide; por defecto 0,3. */
   readonly requestMinAffection?: number;
+  /** Nombre (del catálogo) del bien que pide cuando le falta: lo básico de su casa; sin él, pide sin cosa precisa. */
+  readonly requestWhat?: string;
+  /** Gramos de ese bien en la despensa desde los que ya no pide (por defecto 1000). */
+  readonly requestEnoughGrams?: number;
 }
 
 /** Lo que el NPC cree y quiere decir, más allá de a quién. */
@@ -107,4 +111,23 @@ export function speakActCandidates(
     }
   }
   return out;
+}
+
+/**
+ * Lo que le falta para `request` (puro): con `requestWhat` configurado, pide ese bien si la despensa
+ * de su casa tiene menos de `requestEnoughGrams` (y ninguna urgencia si le sobra); sin él, pide sin
+ * cosa precisa con la urgencia del hambre.
+ */
+export function requestWant(
+  o: SpeakActsOptions,
+  hunger: number,
+  larder: readonly { readonly unit: string; readonly amount: number }[] | undefined,
+  goods: readonly { readonly id: string; readonly name: string; readonly form: string }[],
+): { readonly what: string | null; readonly urgency: number } {
+  if (o.requestWhat === undefined) return { what: null, urgency: hunger };
+  const good = goods.find((g) => g.name === o.requestWhat && g.form === "good");
+  const have = good ? (larder?.find((h) => h.unit === `good:${good.id}`)?.amount ?? 0) : 0;
+  return have >= (o.requestEnoughGrams ?? 1000)
+    ? { what: o.requestWhat, urgency: 0 }
+    : { what: o.requestWhat, urgency: hunger };
 }

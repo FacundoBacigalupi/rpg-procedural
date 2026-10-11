@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type Acquaintance, type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
+import {
+  type Acquaintance,
+  requestWant,
+  type SpeakActsOptions,
+  speakActCandidates,
+} from "./speakacts.ts";
 
 const o: SpeakActsOptions = { minFamiliarity: 0.3, quietSeconds: 1000, weight: 0.4, chance: 0.9 };
 const p = (id: string, over: Partial<Acquaintance> = {}): Acquaintance => ({
@@ -82,5 +87,14 @@ describe("speak con acto declarado", () => {
     });
     expect(out.find((c) => c.id === "speak:agent:2")?.act).toEqual({ kind: "greet" });
     expect(speakActCandidates([p("agent:3", { updated: 4900 })], 5000, o, { news })).toEqual([]);
+  });
+
+  it("pide un bien concreto solo si la despensa de su casa no alcanza", () => {
+    const goods = [{ id: "grain", name: "grano", form: "good" }];
+    const w = { ...o, requestWhat: "grano" };
+    expect(requestWant(o, 0.7, [], goods)).toEqual({ what: null, urgency: 0.7 });
+    expect(requestWant(w, 0.7, [], goods)).toEqual({ what: "grano", urgency: 0.7 });
+    expect(requestWant(w, 0.7, [{ unit: "good:grain", amount: 400 }], goods).urgency).toBe(0.7);
+    expect(requestWant(w, 0.7, [{ unit: "good:grain", amount: 1500 }], goods).urgency).toBe(0);
   });
 });
