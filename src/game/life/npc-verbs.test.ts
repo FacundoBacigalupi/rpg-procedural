@@ -106,7 +106,7 @@ describe("el NPC ejecuta su decisión (opt-in)", () => {
 });
 
 /** Un NPC con la decisión de tratar o dar algo de su despensa a otro vecino que está a su lado. */
-function withNeighbor(verb: "trade" | "give") {
+function withNeighbor(verb: "trade" | "give" | "speak") {
   const life = Life.create(7, content, { npcVerbs: [verb] });
   const w = life.world;
   const adults = living(w.truth).filter(
@@ -122,13 +122,13 @@ function withNeighbor(verb: "trade" | "give") {
     .filter((h) => h.unit.startsWith("good:") && h.amount > 0)
     .map((h) => content.get(GOODS, h.unit.slice(5)))
     .find((g) => g !== undefined);
-  const id = `${verb}:${other}+${stock?.name ?? "grano"}`;
+  const id = verb === "speak" ? `speak:${other}` : `${verb}:${other}+${stock?.name ?? "grano"}`;
   w.truth.set(NPC_DECISION, npc, { at: life.now, id, verb, utility: 1, options: 2 } as never);
   return { life, w, npc, other };
 }
 
 describe("el NPC ejecuta tratar y dar (opt-in)", () => {
-  for (const verb of ["trade", "give"] as const) {
+  for (const verb of ["trade", "give", "speak"] as const) {
     it(`${verb}: la decisión vigente se vuelve un action.${verb} suyo y el ledger cierra`, () => {
       const { life, w, npc, other } = withNeighbor(verb);
       const total = w.ledger.audit();
