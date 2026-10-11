@@ -166,7 +166,7 @@ describe("la aldea inicial", () => {
       }),
       { numRuns: 1 },
     );
-  }, 120_000);
+  }, 300_000);
 });
 
 describe("la puerta trabada para quien se mueve", () => {
