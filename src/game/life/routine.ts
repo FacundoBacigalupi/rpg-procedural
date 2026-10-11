@@ -107,6 +107,12 @@ export interface RoutineOptions {
    * Apagado: no lee ni escribe la tabla, sin eventos ni asientos nuevos.
    */
   readonly boil?: BoilOptions;
+  /**
+   * Opt-in: quien decidió `move` hacia un lugar (`move:<lugar>+toward:<persona>`) pasa el día
+   * despierto en el hex de ese lugar más cercano a donde está, en vez de ir al campo o a casa.
+   * Hoy sin costo ni tiempo de viaje, igual que el resto de la rutina; apagado, nada cambia.
+   */
+  readonly npcMove?: boolean;
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly bodyPlans: readonly BodyPlanDef[];
@@ -141,7 +147,7 @@ export function routineAt(
 export function planFor(
   hour: number,
   ageYears: number,
-  decision: Pick<Decision, "verb" | "at"> | undefined,
+  decision: (Pick<Decision, "verb" | "at"> & { readonly target?: string | undefined }) | undefined,
   now: number,
   day: number,
   state: {
@@ -150,6 +156,8 @@ export function planFor(
     readonly hungry?: boolean;
     /** Opt-in: puede hervir (hay `boil` configurado y no tiene agua tratada vigente). */
     readonly canBoil?: boolean;
+    /** Opt-in (`RoutineOptions.npcMove`): la decisión `move` hacia un lugar se ejecuta. */
+    readonly canMove?: boolean;
   } = {
     unwell: false,
     larderLow: false,
@@ -160,9 +168,26 @@ export function planFor(
   replaced: boolean;
   eat?: true;
   boil?: true;
+  /** El lugar (`place:N`) al que fue la decisión de moverse. */
+  move?: string;
 } {
   const base = routineAt(hour, ageYears);
   const fresh = decision !== undefined && now - decision.at < day;
+  // Ir hacia un lugar decidido: despierto, el día vigente de la decisión; no hay trabajo de campo ahí.
+  if (
+    fresh &&
+    decision.verb === "move" &&
+    state.canMove === true &&
+    decision.target?.startsWith("place:") &&
+    base.activity !== "sleep"
+  ) {
+    return {
+      activity: base.activity === "moderate" ? "light" : base.activity,
+      at: "home",
+      replaced: true,
+      move: decision.target,
+    };
+  }
   // Hervir decidido (sed con carga alta): en casa y despierto; al tener agua tratada no encadena.
   if (
     fresh &&
@@ -262,6 +287,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         larderLow,
         hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
         canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
+        canMove: o.npcMove === true,
       });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -278,6 +304,10 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           return p?.kind === "fields" ? [...p.hexes] : [];
         });
         if (fields.length > 0) there = { hex: nearestHex(o.map, home.hex, fields) };
+      }
+      if (want.move && home) {
+        const hexes = truth.get(PLACE, want.move as never)?.hexes ?? [];
+        if (hexes.length > 0) there = { hex: nearestHex(o.map, here?.hex ?? home.hex, hexes) };
       }
       // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
       // adentro no se sale hasta que la arreglen (settlements �7).

@@ -86,6 +86,7 @@ import {
   OPINIONS,
   opposingSkill,
   PERSON,
+  PERSON_SUBSTANCE,
   PLACE,
   type PlanCursor,
   type PlanNode,
@@ -127,6 +128,7 @@ import {
   STATUS,
   type StateChange,
   type StatusDef,
+  SUBSTANCE,
   setActivity,
   setComponent,
   skyBrightness,
@@ -437,6 +439,11 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.residue ? [LOT_ESSENCE.name] : []),
     ],
     writes: [
+      // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
+      // vez, la entidad de la sustancia.
+      ...(o.consumables || o.foodSubstances || o.drinkSubstance
+        ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, ENTITY.name]
+        : []),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
       PRICE_BELIEFS.name,
