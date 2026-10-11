@@ -156,6 +156,8 @@ import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
+import type { SpeakActsOptions } from "./speakacts.ts";
+import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -296,6 +298,10 @@ export interface LifeOptions {
   readonly npcMove?: boolean;
   /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
   readonly npcVerbs?: readonly string[];
+  /** Opt-in: `speak` con acto declarado desde afecto y familiaridad (`LifeParts.speakActs`); apagado. */
+  readonly speakActs?: SpeakActsOptions;
+  /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
+  readonly takeBelieved?: TakeBelievedOptions;
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -390,6 +396,8 @@ export function optInParts(
   | "hire"
   | "npcMove"
   | "npcVerbs"
+  | "speakActs"
+  | "takeBelieved"
   | "creditHeed"
   | "residue"
   | "consumables"
@@ -458,6 +466,8 @@ export function optInParts(
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
+    ...(options.speakActs ? { speakActs: options.speakActs } : {}),
+    ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),

@@ -48,4 +48,39 @@ describe("speak con acto declarado", () => {
     const out = speakActCandidates([p("agent:9"), p("agent:2")], 5000, o);
     expect(out.map((c) => c.id)).toEqual(["speak:agent:2", "speak:agent:9"]);
   });
+
+  it("promete devolver lo que cree deber, con prioridad sobre pedir, contar y saludar", () => {
+    const [c] = speakActCandidates([p("agent:2", { owes: "coin:copper" })], 5000, o, {
+      want: { what: null, urgency: 1 },
+      news: [{ about: "agent:7", claim: "dead" }],
+    });
+    expect(c).toMatchObject({ act: { kind: "promise", what: "coin:copper" }, mood: 0.33 });
+  });
+
+  it("pide lo que le falta solo con urgencia y afecto suficientes", () => {
+    const want = { what: "grano", urgency: 0.8 };
+    expect(speakActCandidates([p("agent:2")], 5000, o, { want })[0]).toMatchObject({
+      act: { kind: "request", what: "grano" },
+      mood: 0.16,
+    });
+    const quiet = { ...o, quietSeconds: 99999 };
+    expect(
+      speakActCandidates([p("agent:2")], 5000, quiet, { want: { ...want, urgency: 0.2 } }),
+    ).toEqual([]);
+    expect(speakActCandidates([p("agent:2", { affection: 0.1 })], 5000, quiet, { want })).toEqual(
+      [],
+    );
+  });
+
+  it("cuenta la noticia de un tercero a quien no ve hace tiempo, y no a su protagonista", () => {
+    const news = [{ about: "agent:2", claim: "dead" as const }];
+    const out = speakActCandidates([p("agent:2"), p("agent:3")], 5000, o, { news });
+    expect(out.find((c) => c.id === "speak:agent:3")?.act).toEqual({
+      kind: "tell",
+      about: "agent:2",
+      claim: "dead",
+    });
+    expect(out.find((c) => c.id === "speak:agent:2")?.act).toEqual({ kind: "greet" });
+    expect(speakActCandidates([p("agent:3", { updated: 4900 })], 5000, o, { news })).toEqual([]);
+  });
 });

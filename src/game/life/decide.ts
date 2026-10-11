@@ -372,7 +372,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       SKILL_STATE.name,
       NPC_DECISION.name,
       NPC_GOALS.name,
-      ...(o.debtKnowledge || o.goalProgress ? [DEBT_BOOK.name] : []),
+      ...(o.debtKnowledge || o.goalProgress || o.speakActs ? [DEBT_BOOK.name] : []),
       ...(o.craftGoals || o.goalProgress ? [PRACTICE_LOG.name] : []),
       ...(o.persistImmediateGoals ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, EMOTIONS.name] : []),
       ...(o.recognizeGoalCompletion || o.goalProgress || o.meaningPressure
@@ -1027,6 +1027,23 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         );
       }
       if (o.speakActs) {
+        // Lo que cree deber (libro de deudas propio), a quién y en qué unidad.
+        const owes = new Map<string, string>();
+        for (const d of truth.get(DEBT_BOOK, me)?.items ?? []) {
+          if (d.role === "debtor" && d.remaining > 0 && !owes.has(d.other))
+            owes.set(d.other, d.unit);
+        }
+        // Noticias que cree de terceros: los que da por muertos, con confianza suficiente.
+        const news = (beliefs?.items ?? [])
+          .filter(
+            (b) =>
+              b.prop.attr === "alive" &&
+              b.value === false &&
+              beliefConfidenceAt(b, now) >= 0.5 &&
+              b.prop.subject !== me,
+          )
+          .map((b) => ({ about: b.prop.subject as string, claim: "dead" as const }))
+          .sort((a, b) => (a.about < b.about ? -1 : a.about > b.about ? 1 : 0));
         social.push(
           ...speakActCandidates(
             people.map((p) => ({
@@ -1035,9 +1052,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               affection: p.rel.dims.affection,
               updated: p.rel.updated,
               whereaboutsKnown: believed(beliefs, p.id, "at") !== undefined,
+              ...(owes.has(p.id) ? { owes: owes.get(p.id) as string } : {}),
             })),
             now,
             o.speakActs,
+            { want: { what: null, urgency: drives.needs.hunger ?? 0 }, news },
           ),
         );
       }
