@@ -2,11 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
+import { Life, type LifeSetup, lifeReplayGame, optionsOf } from "../../game/life/life.ts";
+import { defaultGameSetup } from "../../game/setup/index.ts";
+import { GAME_CONTENT_KINDS } from "../../game/view/index.ts";
 import { LifeStore, openSqlite } from "../../persistence/index.ts";
-import { replay, replayInputFromStore } from "../../tools/replay/index.ts";
-import { defaultGameSetup } from "../setup/index.ts";
-import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { Life, type LifeSetup, lifeReplayGame, optionsOf } from "./life.ts";
+import { replay, replayInputFromStore } from "./index.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
