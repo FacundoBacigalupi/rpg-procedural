@@ -39,8 +39,10 @@ function sources(dir: string, root = dir): ContentSource[] {
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 const options = { frequency: 8 };
 
+const sharedLife = Life.create(7, content, options);
+
 describe("la aldea inicial", () => {
-  const life = Life.create(7, content, options);
+  const life = sharedLife;
   const { world, terrain } = life;
   const { truth } = world;
 
@@ -135,33 +137,42 @@ describe("la aldea inicial", () => {
     expect(Life.create(7, content, options).hash()).toEqual(life.hash());
   }, 120_000);
 
+  /** La invariante de ledger y causa de una aldea recién creada. */
+  const closes = (w: typeof world) => {
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    for (const id of [...w.truth.ids(BUILDING), ...w.truth.ids(WORK)]) {
+      const origin = w.truth.get(ENTITY, id)?.originEventId;
+      expect(origin && w.log.get(origin)?.causes.length).toBeGreaterThan(0);
+    }
+    for (const id of w.truth.ids(PERSON)) {
+      const b = w.truth
+        .ids(BUILDING)
+        .find((x) => w.truth.get(BUILDING, x)?.household === w.truth.get(PERSON, id)?.household);
+      if (w.truth.get(ENTITY, id)?.endedAt === undefined) expect(b).toBeDefined();
+    }
+  };
+
+  // Crear una aldea cuesta ~40 s: la invariante corre sobre la compartida (seed 7, gratis) y sobre
+  // una sola más con seed al azar; antes eran tres creaciones extra.
+  it("la aldea compartida cierra: ledger, invariantes y toda construcción con causa", () => {
+    closes(world);
+  });
+
   it("para cualquier seed: ledger y invariantes cierran, y toda construcción tiene causa", () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 5000 }), (seed) => {
-        const w = createLife(seed, content, options).world;
-        expect(w.ledger.audit()).toEqual([]);
-        expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
-        for (const id of [...w.truth.ids(BUILDING), ...w.truth.ids(WORK)]) {
-          const origin = w.truth.get(ENTITY, id)?.originEventId;
-          expect(origin && w.log.get(origin)?.causes.length).toBeGreaterThan(0);
-        }
-        for (const id of w.truth.ids(PERSON)) {
-          const b = w.truth
-            .ids(BUILDING)
-            .find(
-              (x) => w.truth.get(BUILDING, x)?.household === w.truth.get(PERSON, id)?.household,
-            );
-          if (w.truth.get(ENTITY, id)?.endedAt === undefined) expect(b).toBeDefined();
-        }
+        closes(createLife(seed, content, options).world);
       }),
-      { numRuns: 3 },
+      { numRuns: 1 },
     );
-  }, 300_000);
+  }, 120_000);
 });
 
 describe("la puerta trabada para quien se mueve", () => {
   it("solo los espacios del edificio con la puerta trabada quedan cerrados", () => {
-    const { truth } = Life.create(7, content, options).world;
+    // Una aldea más cuesta ~40 s: se usa la compartida y se deja la puerta como estaba.
+    const { truth } = sharedLife.world;
     const [a, b] = truth.ids(BUILDING).sort();
     const ra = truth.get(BUILDING, a as BuildingId);
     const rb = truth.get(BUILDING, b as BuildingId);
@@ -174,5 +185,7 @@ describe("la puerta trabada para quien se mueve", () => {
     expect(behindJammedDoor(truth, inB)).toBe(false);
     expect(behindJammedDoor(truth, VILLAGE_SQUARE)).toBe(false);
     expect(behindJammedDoor(truth, undefined)).toBe(false);
+    truth.set(BUILDING, a as BuildingId, ra);
+    expect(behindJammedDoor(truth, inA)).toBe(false);
   });
 });

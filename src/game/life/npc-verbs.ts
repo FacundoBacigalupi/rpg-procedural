@@ -10,6 +10,8 @@ import {
   type ActionPlan,
   type ArgValue,
   ENTITY,
+  LOCATION,
+  PLACE,
   type ProcessDef,
   setComponent,
   table,
@@ -49,7 +51,11 @@ export function planFromDecision(
   const prefix = `${decision.verb}:`;
   if (!def || !decision.id.startsWith(prefix)) return undefined;
   const rest = decision.id.slice(prefix.length);
-  const parts = rest === "" ? [] : rest.split("+");
+  // `move:<lugar>+toward:<persona>`: ir hacia donde cree que está alguien. El destino es el lugar;
+  // la persona es el porqué, no un argumento del verbo.
+  const parts = (rest === "" ? [] : rest.split("+")).filter(
+    (p) => !(decision.verb === "move" && p.startsWith("toward:")),
+  );
   if (parts.some((p) => SPECIAL_PART.test(p))) return undefined;
   const args: ArgValue[] = [];
   let next = 0;
@@ -106,7 +112,14 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "decide",
-    reads: [NPC_DECISION.name, PLAN_STATE.name, ENTITY.name, NPC_VERB_LOG.name],
+    reads: [
+      NPC_DECISION.name,
+      PLAN_STATE.name,
+      ENTITY.name,
+      NPC_VERB_LOG.name,
+      LOCATION.name,
+      PLACE.name,
+    ],
     writes: [PLAN_STATE.name, NPC_VERB_LOG.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -115,7 +128,14 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       const decision = truth.get(NPC_DECISION, me);
       if (!decision || !allowed.has(decision.verb) || ctx.now - decision.at >= o.day) return {};
       const done = truth.get(NPC_VERB_LOG, me);
-      if (done && done.at === decision.at && done.id === decision.id) return {};
+      if (decision.verb === "move") {
+        // Un camino largo son varios tramos: sigue hasta llegar al lugar mientras la decisión vigue.
+        const hexes = decision.target
+          ? truth.get(PLACE, decision.target as never)?.hexes
+          : undefined;
+        const here = truth.get(LOCATION, me)?.hex;
+        if (!hexes || here === undefined || hexes.includes(here)) return {};
+      } else if (done && done.at === decision.at && done.id === decision.id) return {};
       const state = truth.get(PLAN_STATE, me);
       if (state && !state.done) return {};
       const plan = planFromDecision(decision, o.catalog, me);
