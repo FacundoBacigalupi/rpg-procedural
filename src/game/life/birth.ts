@@ -36,23 +36,34 @@ import {
   nameNewborn,
   newBody,
   newMind,
+  newTastes,
   PERSON,
   PERSON_CULTURE,
   PERSON_NAME,
   type ProcessDef,
+  practicesOfKind,
   RELATIONS,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
   type Relationship,
   type SchemaDef,
+  SELF_IMAGES,
   type Sex,
+  SKILL_STATE,
+  type SkillCatalog,
   type StateChange,
   seedAffiliation,
   seedPersonCulture,
+  seedSelfImages,
   setComponent,
+  standardize,
   strangerDims,
+  TASTES_OF,
+  type TasteDef,
   type Trait,
   table,
+  tasteWorld,
+  upbringingSkills,
   villageCulture,
   villageReligion,
 } from "../../sim/index.ts";
@@ -90,6 +101,9 @@ export interface BirthOptions {
         readonly bonds: readonly BondDef[];
         /** Los rasgos de cultura: con ellos copia a sus padres lo que siguen (culture §4). */
         readonly cultureTraits: readonly CultureTraitDef[];
+        /** Las habilidades de base (sin aprendido: solo lo heredado) y los gustos que trae al nacer. */
+        readonly skills: SkillCatalog;
+        readonly tastes: readonly TasteDef[];
       }
     | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -130,6 +144,9 @@ export function birthProcess(o: BirthOptions): ProcessDef {
             RELATIONS.name,
             PERSON_CULTURE.name,
             RELIGIOUS_IDENTITY.name,
+            SKILL_STATE.name,
+            SELF_IMAGES.name,
+            TASTES_OF.name,
           ]
         : []),
     ],
@@ -284,6 +301,25 @@ export function birthProcess(o: BirthOptions): ProcessDef {
               }),
             );
           }
+          // Lo heredado de habilidad (talento y techo, sin aprendido) y los gustos de la mesa de su madre.
+          const z = standardize(innate, o.traits, sex);
+          const skills = upbringingSkills(n.skills, z, born, born, o.clock);
+          changes.push(
+            setComponent(SKILL_STATE, childKey, skills),
+            setComponent(SELF_IMAGES, childKey, seedSelfImages(n.skills, skills, z, born)),
+            setComponent(
+              TASTES_OF,
+              childKey,
+              newTastes(
+                n.tastes,
+                tasteWorld(n.tastes, practicesOfKind(villageReligion(ctx.truth), "taboo")),
+                innate,
+                mother,
+                rng.fork("tastes"),
+                birthEvent,
+              ),
+            ),
+          );
           // Lo que siente por su parentela y su casa, con la misma regla que la siembra.
           const record = { sex, born, mother, father: f, household: m.household, spouse: null };
           const person = (who: AgentId) =>

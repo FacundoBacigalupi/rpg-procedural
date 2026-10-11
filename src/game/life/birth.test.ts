@@ -11,6 +11,7 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  ACTIONS,
   BODY_PLANS,
   BODY_STATE,
   CONCEPTS,
@@ -32,6 +33,11 @@ import {
   RELATIONS,
   RELIGIOUS_IDENTITY,
   SCHEMAS,
+  SKILL_STATE,
+  SKILLS,
+  SkillCatalog,
+  TASTES,
+  TASTES_OF,
   TRAITS,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -65,6 +71,8 @@ const newborn = {
   dims: content.all(RELATION_DIMS),
   bonds: content.all(RELATION_BONDS),
   cultureTraits: content.all(CULTURE_TRAITS),
+  skills: new SkillCatalog(content.all(SKILLS), content.all(ACTIONS)),
+  tastes: content.all(TASTES),
 };
 
 const DAY = 86_400;
@@ -303,6 +311,9 @@ describe("nacer vivo en la vida (opt-in)", () => {
       const name = w.truth.get(PERSON_NAME, child as unknown as EntityRef);
       expect(name?.parts.find((x) => x.kind === "given")?.event).toBe(e.id);
       expect(w.truth.get(MIND, child as unknown as EntityRef)?.originEventId).toBe(e.id);
+      // Habilidades heredadas (sin aprendido) y gustos con el parto de origen.
+      expect(w.truth.get(SKILL_STATE, child as unknown as EntityRef)).toBeDefined();
+      expect(w.truth.get(TASTES_OF, child as unknown as EntityRef)?.originEventId).toBe(e.id);
       // Lo que sigue de su cultura y su fe: lo copia de sus padres, con el parto como origen.
       expect(w.truth.get(PERSON_CULTURE, child as unknown as EntityRef)?.originEventId).toBe(e.id);
       expect(

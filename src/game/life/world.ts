@@ -1205,6 +1205,8 @@ export function lifeWorld(
                         dims: parts.relationDims,
                         bonds: parts.relationBonds,
                         cultureTraits: parts.cultureTraits,
+                        skills: parts.skills,
+                        tastes: parts.tastes,
                       },
                     }
                   : {}),
