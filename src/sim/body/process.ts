@@ -143,6 +143,16 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
   };
 }
 
+/** El evento de algo que le pasó al cuerpo (infección, caída, muerte…), con sus causas. */
+export function happeningEvent(
+  h: Happening,
+  me: AgentId,
+  place: PlaceRef,
+  tick: number,
+): EventDraft {
+  return eventOf(h, me, place, tick);
+}
+
 function eventOf(h: Happening, me: AgentId, place: PlaceRef, tick: number): EventDraft {
   const common = { actors: [me], place, tick };
   switch (h.kind) {
