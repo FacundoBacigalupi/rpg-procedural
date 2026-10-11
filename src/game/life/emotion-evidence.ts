@@ -7,6 +7,7 @@ import {
   appraiseInsultEmotion,
   appraiseLoss,
   appraiseLoveEmotion,
+  appraiseShameEmotion,
   type EmotionSignal,
   type Percept,
 } from "../../sim/index.ts";
@@ -43,6 +44,44 @@ export function receivedInsultSignals(
     delivered: effect.delivered === true,
     understood: true,
     feltOffense: effect.regard.faceLoss ?? 0,
+    originEventId: event.id,
+    at: now,
+  });
+  return signal ? [{ ...signal, evidence: { kind: "own" as const, event: event.id } }] : [];
+}
+
+/**
+ * Vergüenza del oyente por un insulto entendido que le toca una falta propia (`ownFault`), mayor
+ * con los testigos que tenía a la vista. Sin falta propia es ira (`receivedInsultSignals`), no vergüenza.
+ */
+export function receivedShameSignals(event: Event, now: Tick, conscious: boolean): EmotionSignal[] {
+  if (!conscious || event.tick > now || event.kind !== "action.speak") return [];
+  const [listener, speaker] = event.actors;
+  if (!listener?.startsWith("agent:") || !speaker?.startsWith("agent:")) return [];
+  const effect = (
+    event.data as {
+      effect?: {
+        kind?: string;
+        delivered?: boolean;
+        to?: string;
+        reply?: string;
+        regard?: { kind?: string; faceLoss?: number; witnesses?: number; ownFault?: boolean };
+      };
+    } | null
+  )?.effect;
+  if (
+    effect?.kind !== "speak" ||
+    effect.delivered !== true ||
+    effect.to !== speaker ||
+    effect.regard?.kind !== "insult" ||
+    effect.regard.ownFault !== true ||
+    (effect.reply !== "insult.hurt" && effect.reply !== "insult.shrug")
+  )
+    return [];
+  const signal = appraiseShameEmotion(listener as AgentId, {
+    faceLoss: effect.regard.faceLoss ?? 0,
+    acknowledged: true,
+    witnesses: effect.regard.witnesses ?? 0,
     originEventId: event.id,
     at: now,
   });

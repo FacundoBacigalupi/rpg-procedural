@@ -968,6 +968,7 @@ const VANITY_SCHEMA = 0.2;
 function regardEffect(
   reply: ReturnType<typeof decideReply>,
   witnesses: number,
+  ownFault = false,
 ): RegardEffect | undefined {
   if (reply.threat) {
     const { verdict, aftermath } = reply.threat;
@@ -1008,6 +1009,8 @@ function regardEffect(
       response: reply.line,
       faceLoss: size,
       vengeful: false,
+      witnesses,
+      ownFault,
       deltas: {
         resentment: INSULT_RESENTMENT * size,
         respect: -INSULT_RESPECT * size,
@@ -1055,6 +1058,10 @@ export interface RegardEffect {
   readonly deltas: Readonly<Record<string, number>>;
   /** Cara que gana quien habló (amenaza obedecida); no está si no aplica. */
   readonly faceGain?: number;
+  /** Solo en un insulto: testigos que el oyente tiene a la vista (npc-psychology §3, vergüenza). */
+  readonly witnesses?: number;
+  /** Solo en un insulto: si el oyente carga una falta propia (`OWN_DEEDS`) que el insulto le toca. */
+  readonly ownFault?: boolean;
 }
 
 /** Constantes sin calibrar de una profecía que quien habla se inventa o no sabe de dónde salió. */
@@ -1520,7 +1527,11 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         };
       }
       const good = reply.give ? goodById(reply.give.good) : undefined;
-      const regard = regardEffect(reply, witnessesOf(truth, me, speaker));
+      const regard = regardEffect(
+        reply,
+        witnessesOf(truth, me, speaker),
+        (truth.get(OWN_DEEDS, me)?.deeds.length ?? 0) > 0,
+      );
       // La forma: lo dicho con su registro y tratamiento; la falta le cuesta cara al ofendido (FACE).
       const judged = reply.form;
       const formEffect =

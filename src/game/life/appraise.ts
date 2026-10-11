@@ -99,6 +99,7 @@ import {
   perceivedLossSignals,
   perceivedLoveSignals,
   receivedInsultSignals,
+  receivedShameSignals,
 } from "./emotion-evidence.ts";
 import { grievanceDeltas, grievanceOf } from "./grievance.ts";
 import {
@@ -299,6 +300,15 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
             recordEmotions(
               listener,
               receivedInsultSignals(
+                e,
+                ctx.now,
+                listenerBody.consciousness !== "unconscious" && listenerBody.activity !== "sleep",
+              ),
+            );
+          if (listener && listenerBody)
+            recordEmotions(
+              listener,
+              receivedShameSignals(
                 e,
                 ctx.now,
                 listenerBody.consciousness !== "unconscious" && listenerBody.activity !== "sleep",
