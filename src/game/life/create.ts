@@ -276,6 +276,16 @@ export interface LifeOptions {
   readonly residue?: LifeParts["residue"];
   /** Opt-in: sustancias consumibles (`LifeParts.consumables`); los paneles de la sesión leen de acá los bienes de las señales por objeto. */
   readonly consumables?: LifeParts["consumables"];
+  /** Opt-in (con `consumables`): el ansia empuja a comprar la sustancia (`LifeParts.buyCraving`). */
+  readonly buyCraving?: LifeParts["buyCraving"];
+  /** Opt-in (con `consumables`): sin con quién comprar, el ansia empuja a recolectar (`LifeParts.gatherCraving`). */
+  readonly gatherCraving?: LifeParts["gatherCraving"];
+  /** Opt-in (con `consumables` y `moldHintsFromCatalog`): pedir la sustancia a quien se cree que la tiene (`LifeParts.borrowCraving`). */
+  readonly borrowCraving?: LifeParts["borrowCraving"];
+  /** Opt-in (con `borrowCraving`): el prestamista decide y pasa una dosis (`LifeParts.lendBorrowed`). */
+  readonly lendBorrowed?: boolean;
+  /** Opt-in (con `consumables`): devolver la dosis prestada en especie (`LifeParts.repayDoses`). */
+  readonly repayDoses?: boolean;
   /** Opt-in: señales de ansia aprendidas (`LifeParts.cravingCues`). */
   readonly cravingCues?: boolean;
   /** Opt-in (con `cravingCues`): las señales leen a quién cree presente y el huso (`LifeParts.cueLocal`). */
@@ -377,6 +387,11 @@ export function optInParts(
   | "creditHeed"
   | "residue"
   | "consumables"
+  | "buyCraving"
+  | "gatherCraving"
+  | "borrowCraving"
+  | "lendBorrowed"
+  | "repayDoses"
   | "cravingCues"
   | "cueLocal"
   | "objectCues"
@@ -437,6 +452,11 @@ export function optInParts(
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
+    ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),
+    ...(options.gatherCraving ? { gatherCraving: options.gatherCraving } : {}),
+    ...(options.borrowCraving ? { borrowCraving: options.borrowCraving } : {}),
+    ...(options.lendBorrowed ? { lendBorrowed: true } : {}),
+    ...(options.repayDoses ? { repayDoses: true } : {}),
     ...(options.cravingCues ? { cravingCues: true } : {}),
     ...(options.cueLocal ? { cueLocal: true } : {}),
     ...(options.objectCues ? { objectCues: true } : {}),
