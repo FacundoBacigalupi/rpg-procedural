@@ -24,6 +24,7 @@ import {
   type DivinationMethodDef,
   type FoodDef,
   type GoodDef,
+  goodUnit,
   type HabitDef,
   type LineageDef,
   LOCATION,
@@ -347,6 +348,8 @@ export interface LifeWorld {
   readonly npcJourneyDays?: number;
   /** Opt-in (con `npcJourneyDays`): el NPC en viaje pasa por los hexes del camino mientras dura la marcha (`life.transit`). */
   readonly npcTransit?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el viajero sale con `grams` del bien `good` de la despensa, come en el camino y devuelve lo que sobra (`NpcVerbsOptions.provisions`). */
+  readonly npcProvisions?: { readonly good: string; readonly grams: number };
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1381,6 +1384,20 @@ export function lifeWorld(
                   ? {
                       journeyDays: parts.npcJourneyDays,
                       placeOf: placeOf(parts, village),
+                      ...(() => {
+                        const food = parts.goods.find((g) => g.id === parts.npcProvisions?.good);
+                        return food && parts.npcProvisions
+                          ? {
+                              provisions: {
+                                unit: goodUnit(food),
+                                name: food.name,
+                                grams: parts.npcProvisions.grams,
+                                clock: parts.clock,
+                                lonDeg: parts.map.lonDeg,
+                              },
+                            }
+                          : {};
+                      })(),
                     }
                   : {}),
               }),
