@@ -1050,7 +1050,13 @@ export function decideProcess(o: DecideOptions): ProcessDef {
               id: p.id as string,
               familiarity: p.rel.dims.familiarity,
               affection: p.rel.dims.affection,
-              updated: p.rel.updated,
+              // El último trato que recuerda con él (la relación se pone al día cada vez que se lee,
+              // así que su `updated` no dice cuándo hablaron); sin recuerdo, hace tiempo.
+              updated: (memories?.items ?? []).reduce(
+                (last, m) =>
+                  m.at <= now && m.perceived.with.includes(p.id) ? Math.max(last, m.at) : last,
+                Number.MIN_SAFE_INTEGER,
+              ) as Tick,
               whereaboutsKnown: believed(beliefs, p.id, "at") !== undefined,
               ...(owes.has(p.id) ? { owes: owes.get(p.id) as string } : {}),
             })),

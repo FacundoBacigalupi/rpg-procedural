@@ -4,6 +4,7 @@ import {
   requestWant,
   type SpeakActsOptions,
   speakActCandidates,
+  speakActsDefaults,
 } from "./speakacts.ts";
 
 const o: SpeakActsOptions = { minFamiliarity: 0.3, quietSeconds: 1000, weight: 0.4, chance: 0.9 };
@@ -38,7 +39,7 @@ describe("speak con acto declarado", () => {
 
   it("pregunta por el querido de quien no sabe dónde está, y no a él mismo", () => {
     const out = speakActCandidates(
-      [p("agent:2", { updated: 4900 }), p("agent:3", { whereaboutsKnown: false, updated: 4900 })],
+      [p("agent:2"), p("agent:3", { whereaboutsKnown: false, updated: 4900 })],
       5000,
       o,
     );
@@ -47,6 +48,14 @@ describe("speak con acto declarado", () => {
       id: "speak:agent:2",
       act: { kind: "ask", about: "agent:3" },
     });
+  });
+
+  it("no vuelve a preguntarle a quien trató hace poco", () => {
+    const people = [
+      p("agent:2", { updated: 4900 }),
+      p("agent:3", { whereaboutsKnown: false, updated: 4900 }),
+    ];
+    expect(speakActCandidates(people, 5000, o)).toEqual([]);
   });
 
   it("orden fijo por id, sin repetir un conocido", () => {
@@ -96,5 +105,14 @@ describe("speak con acto declarado", () => {
     expect(requestWant(w, 0.7, [], goods)).toEqual({ what: "grano", urgency: 0.7 });
     expect(requestWant(w, 0.7, [{ unit: "good:grain", amount: 400 }], goods).urgency).toBe(0.7);
     expect(requestWant(w, 0.7, [{ unit: "good:grain", amount: 1500 }], goods).urgency).toBe(0);
+  });
+
+  it("los valores por defecto medidos: silencio de un día y peso 0,4", () => {
+    expect(speakActsDefaults(86_400)).toEqual({
+      minFamiliarity: 0.3,
+      quietSeconds: 86_400,
+      weight: 0.4,
+      chance: 0.9,
+    });
   });
 });
