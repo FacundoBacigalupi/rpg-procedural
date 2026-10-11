@@ -14,6 +14,7 @@ import {
   setComponent,
 } from "../scheduler/index.ts";
 import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
+import { ASLEEP } from "./asleep.ts";
 import { DEFICIENCY_EFFECTS } from "./nutrition.ts";
 import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
@@ -46,6 +47,11 @@ export interface BodyProcessOptions {
    * lecturas, la aldea no cambia.
    */
   readonly amputations?: boolean;
+  /**
+   * Leer `ASLEEP` (tier 1): el dormido no corre acá, lo pone al día `life.catch_up` por tramos.
+   * Apagado por defecto: sin lecturas, la aldea no cambia.
+   */
+  readonly sleepers?: boolean;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -64,10 +70,12 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
       DEFICIENCY_EFFECTS.name,
       THERMAL.name,
       AMPUTATIONS.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
     ],
     writes: [BODY_STATE.name, ENTITY.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
+      if (o.sleepers && ctx.truth.get(ASLEEP, me)) return {};
       const base = ctx.truth.get(ENTITY, me);
       const body = ctx.truth.get(BODY_STATE, me);
       if (!base || !body || base.endedAt !== undefined) return {};

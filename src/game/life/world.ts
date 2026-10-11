@@ -32,7 +32,9 @@ import {
   type LocalMap,
   type MaterialDef,
   type NutrientProfileDef,
+  PERSON,
   type PressureCurve,
+  type ProcessDef,
   type ReadonlyWorldTruth,
   type RecipeDef,
   Scheduler,
@@ -152,6 +154,7 @@ import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
+import { catchUpProcess, sleepPolicyProcess } from "./sleepers.ts";
 import { soilProcess } from "./soil.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -364,6 +367,15 @@ export interface LifeWorld {
   readonly repayDoses?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina diaria (`RoutineOptions.npcMove`); apagado, sin cambios. */
   readonly npcMove?: boolean;
+  /**
+   * Opt-in (tier 1, simulation §4.2): quien está a más de `near` hexes del personaje, sin vínculo
+   * de hogar con él, se duerme (`ASLEEP`): deja de correr `body.physiology`, `life.routine` y
+   * `life.decide` y `life.catch_up` lo pone al día por tramos al despertar o una vez por día,
+   * comiendo `food` (id del alimento) de la despensa del hogar. Apagado, sin procesos ni cambios.
+   */
+  readonly sleepers?: { readonly near: number; readonly food: string };
+  /** Solo medición (no entra al estado ni al hash): se llama tras cada ejecución de proceso con cuántos cambios y eventos devolvió. */
+  readonly runProbe?: (process: string, changes: number, events: number) => void;
   /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC (viaje y plantillas incluidos) y deja el resultado parcial en `npc.interrupted` (`life.npc_interrupt`); apagado, sin proceso. */
@@ -579,6 +591,18 @@ export function lifeWorld(
       ? travelAltitudeOf(parts.map, parts.travelAltitude, parts.spaces)
       : mapAltitudeOf(parts.map, parts.spaces)
     : undefined;
+  const onRun = parts.runProbe;
+  const probe = (def: ProcessDef): ProcessDef =>
+    onRun
+      ? {
+          ...def,
+          run(ctx) {
+            const out = def.run(ctx);
+            onRun(def.id, out.changes?.length ?? 0, out.events?.length ?? 0);
+            return out;
+          },
+        }
+      : def;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
@@ -622,6 +646,7 @@ export function lifeWorld(
           reopen: parts.reopenWounds === true,
           thermal: parts.coreEffects === true,
           amputations: parts.frostbite === true && parts.amputationScars === true,
+          ...(parts.sleepers ? { sleepers: true } : {}),
         }),
         actProcess({
           logMeals: parts.eatenNutrition === true,
@@ -1187,6 +1212,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         nutritionProcess({
+          ...(parts.sleepers ? { sleepers: true } : {}),
           clock: parts.clock,
           profiles: parts.nutrientProfiles ?? [],
           diet: parts.diets?.find((d) => d.id === "village"),
@@ -1206,6 +1232,7 @@ export function lifeWorld(
             ]
           : []),
         thermalProcess({
+          ...(parts.sleepers ? { sleepers: true } : {}),
           clock: parts.clock,
           map: parts.map,
           spaces: parts.spaces,
@@ -1313,6 +1340,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         sleepProcess({
+          ...(parts.sleepers ? { sleepers: true } : {}),
           clock: parts.clock,
           seed: parts.seed,
           schemas: parts.schemas,
@@ -1393,6 +1421,7 @@ export function lifeWorld(
             : {}),
           ...(parts.craftGoals === true ? { craftGoals: { window: 60 * parts.clock.day } } : {}),
           ...(parts.meaningPressure === true ? { meaningPressure: true } : {}),
+          ...(parts.sleepers ? { sleepers: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
           skills: parts.skills,
@@ -1466,6 +1495,7 @@ export function lifeWorld(
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
           ? [
               npcVerbsProcess({
+                ...(parts.sleepers ? { sleepers: true } : {}),
                 catalog: parts.catalog,
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
@@ -1509,12 +1539,42 @@ export function lifeWorld(
         ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
           ? [transitProcess({ map: parts.map, player })]
           : []),
+        ...(() => {
+          const sl = parts.sleepers;
+          const food = sl ? parts.foods.find((f) => f.id === sl.food) : undefined;
+          if (!sl || !food) return [];
+          const household = (t: ReadonlyWorldTruth, who: string) =>
+            t.get(PERSON, who as AgentId)?.household;
+          return [
+            sleepPolicyProcess({
+              player,
+              map: parts.map,
+              near: sl.near,
+              // Vínculo (tier 4): quien comparte hogar con el personaje no se duerme.
+              bonded: (t, who) => household(t, who) === household(t, player),
+              important: () => false,
+            }),
+            catchUpProcess({
+              plans: parts.plans,
+              clock: parts.clock,
+              lonDeg: parts.map.lonDeg,
+              ration: {
+                unit: `good:${food.id}`,
+                kcalPerGram: food.kcalPerGram,
+                waterPerGram: food.waterPerGram,
+              },
+              player,
+              placeOf: placeOf(parts, village),
+            }),
+          ];
+        })(),
         ...(parts.closeGoalsOnDeath
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         routineProcess({
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
+          ...(parts.sleepers ? { sleepers: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
             ? {
@@ -1531,7 +1591,7 @@ export function lifeWorld(
           seed: parts.seed,
           placeOf: placeOf(parts, village),
         }),
-      ],
+      ].map(probe),
       resolution: "local",
       scopes: (kind, t) =>
         kind === "agent" ? living(t) : kind === "household" ? householdsOf(t) : [],

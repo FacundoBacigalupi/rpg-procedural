@@ -20,6 +20,7 @@ import {
 } from "../../core/index.ts";
 import {
   AMENDS,
+  ASLEEP,
   applySchemaUpdates,
   BODY_STATE,
   type Body,
@@ -139,6 +140,8 @@ export function themeOfMemory(m: Memory): Theme | undefined {
 }
 
 export interface SleepOptions {
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no lleva la cuenta de la noche. */
+  readonly sleepers?: boolean;
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly schemas: readonly SchemaDef[];
@@ -174,11 +177,13 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       RELIGIOUS_IDENTITY.name,
       AMENDS.name,
       WAKE_COMFORT.name,
+      ...(o.sleepers ? [ASLEEP.name] : []),
     ],
     writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
+      if (o.sleepers && truth.get(ASLEEP, me)) return {};
       const body = truth.get(BODY_STATE, me);
       const st = truth.get(SLEEP_STATE, me);
       if (!body || !truth.get(PERSON, me) || truth.get(ENTITY, me)?.endedAt !== undefined) {

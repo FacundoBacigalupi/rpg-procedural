@@ -22,6 +22,7 @@ import {
   ACCLIMATIZATION,
   type ActionCatalog,
   AMPUTATIONS,
+  ASLEEP,
   applyAcute,
   BELIEFS,
   type BeliefView,
@@ -209,6 +210,8 @@ export interface OwnPractice {
 }
 
 export interface DecideOptions {
+  /** Opt-in: el dormido (`ASLEEP`, tier 1) no decide; lo pone al día `life.catch_up`. */
+  readonly sleepers?: boolean;
   /** Opt-in: conserva las capas derivadas y registra sus nacimientos y fines. */
   readonly persistGoalLayers?: boolean;
   /** Opt-in: registra necesidades sentidas y miedo con procedencia, sin sumar utilidad. */
@@ -379,6 +382,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         ? [NPC_GOAL_COMPLETIONS.name]
         : []),
       "culture.community",
+      ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.moldHints ? [MOLD_RUMORS.name, PRICE_BELIEFS.name] : []),
       ...(o.takeBelieved ? [KNOWN_DEEDS.name] : []),
       ...(o.boilThirst ? [TREATED_WATER.name] : []),
@@ -392,6 +396,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       if (me === o.player) return {};
+      if (o.sleepers && truth.get(ASLEEP, me)) return {};
       const person = truth.get(PERSON, me);
       const body = truth.get(BODY_STATE, me);
       const mind = truth.get(MIND, me);
