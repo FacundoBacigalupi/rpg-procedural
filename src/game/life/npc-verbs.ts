@@ -55,6 +55,11 @@ export interface NpcVerbsOptions {
    */
   readonly journeyDays?: number;
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Opt-in (con `journeyDays`): el ritmo del viaje es el modo `careful` (más lento, más cuidado) o
+   * `fast` (más rápido, peor tirada y más ruido) del `move`; sin esto, el modo por defecto.
+   */
+  readonly pace?: "careful" | "fast";
   /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
   readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
   /**
@@ -87,6 +92,8 @@ export function planFromDecision(
   decision: Pick<Decision, "id" | "verb"> & Partial<Pick<Decision, "act">>,
   catalog: ActionCatalog,
   actor: AgentId,
+  /** Modos del verbo (`careful`, `fast` en `move`): el ritmo del viaje. */
+  manner: readonly string[] = [],
 ): ActionPlan | undefined {
   const def = catalog.verb(decision.verb);
   const prefix = `${decision.verb}:`;
@@ -137,7 +144,7 @@ export function planFromDecision(
   return {
     actor,
     source: "utility",
-    root: { kind: "do", verb: decision.verb, args, manner: [] },
+    root: { kind: "do", verb: decision.verb, args, manner: [...manner] },
     manner: [],
     causes: [{ kind: "state", entity: actor, key: "utility" }],
   };
@@ -238,7 +245,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           }
         }
         if (going && !going.done) return {};
-        const plan = planFromDecision({ id: `move:${trip.place}`, verb: "move" }, o.catalog, me);
+        const plan = planFromDecision(
+          { id: `move:${trip.place}`, verb: "move" },
+          o.catalog,
+          me,
+          o.pace ? [o.pace] : [],
+        );
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
       }
       const decision = truth.get(NPC_DECISION, me);
@@ -257,7 +269,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       } else if (done && done.at === decision.at && done.id === decision.id) return {};
       const state = truth.get(PLAN_STATE, me);
       if (state && !state.done) return {};
-      const plan = planFromDecision(decision, o.catalog, me);
+      const plan = planFromDecision(
+        decision,
+        o.catalog,
+        me,
+        decision.verb === "move" && journeyDays !== undefined && o.pace ? [o.pace] : [],
+      );
       if (!plan) return {};
       const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });
       // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega.

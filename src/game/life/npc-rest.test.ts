@@ -40,6 +40,7 @@ describe("el viajero para a dormir de noche (opt-in)", () => {
       npcVerbs: ["move"],
       npcJourneyDays: 6,
       npcNightRest: true,
+      npcPace: "fast",
     });
     const w = life.world;
     const npc = living(w.truth).find(
@@ -84,5 +85,8 @@ describe("el viajero para a dormir de noche (opt-in)", () => {
       .filter((e) => e.kind === "npc.journey" && e.actors[0] === npc)
       .map((e) => (e.data as { what: string }).what);
     expect(trip[0]).toBe("started");
+    // El ritmo `fast` del viaje llega al `move` (modo del verbo, con su tirada y su ruido).
+    const first = w.log.all().find((e) => e.kind === "action.move" && e.actors[0] === npc);
+    expect((first?.data as { manner?: string[] } | undefined)?.manner).toContain("fast");
   }, 240_000);
 });
