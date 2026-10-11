@@ -55,6 +55,8 @@ export interface NpcVerbsOptions {
    */
   readonly journeyDays?: number;
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
+  readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
   /**
    * Opt-in (con `journeyDays`): el viajero sale con `grams` de `unit` de la despensa de su hogar
    * en el bolsillo (del libro mayor al suyo), come de eso en las horas de comida del camino
@@ -223,6 +225,18 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
             });
           }
         }
+        // De noche el viajero para y duerme (el `rest` del catálogo, la noche entera) y sigue al alba.
+        if (o.nightRest) {
+          const hour = Math.floor(localHour(o.nightRest.clock, ctx.now, o.nightRest.lonDeg));
+          const sleep = restDue(hour, trip.rested, ctx.now)
+            ? planFromDecision({ id: "rest:", verb: "rest" }, o.catalog, me)
+            : undefined;
+          if (sleep) {
+            return startPlan(me, sleep, going?.seq ?? 0, ctx.now, {
+              changes: [setComponent(NPC_JOURNEY, me, { ...trip, rested: ctx.now })],
+            });
+          }
+        }
         if (going && !going.done) return {};
         const plan = planFromDecision({ id: `move:${trip.place}`, verb: "move" }, o.catalog, me);
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
@@ -306,8 +320,19 @@ export interface NpcJourney {
   readonly from?: number;
   /** Cuándo comió por última vez en el camino (`NpcVerbsOptions.provisions`). */
   readonly ate?: Tick;
+  /** Cuándo paró a dormir por última vez en el camino (`NpcVerbsOptions.nightRest`). */
+  readonly rested?: Tick;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
+
+/** Entre una parada a dormir y la siguiente pasa al menos esto (horas): una por noche. */
+export const REST_GAP_HOURS = 12;
+
+/** ¿Toca parar a dormir? De noche (las horas de sueño de la rutina) y sin haber parado hace poco. */
+export function restDue(hour: number, restedAt: Tick | undefined, now: number): boolean {
+  const night = hour >= ROUTINE.sleep || hour < ROUTINE.wake;
+  return night && (restedAt === undefined || now - restedAt >= REST_GAP_HOURS * 3600);
+}
 
 function journeyEvent(
   me: AgentId,
