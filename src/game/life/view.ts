@@ -174,6 +174,11 @@ export interface PlayerViewOptions {
   readonly heardSince?: Tick;
   /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
+  /**
+   * Recibe los percepts de personas que armaron esta escena (los que el personaje percibe ahora):
+   * lo que el jugador puede señalar al escribir («los niños») sale de ahí, no de la verdad.
+   */
+  readonly onSeen?: (percepts: readonly Percept[]) => void;
   /** Lo que el jugador pidió pensar (`pensar sobre X`): entra como pensamientos de la vista. */
   readonly thinking?: readonly ThoughtInput[];
   /**
@@ -475,6 +480,8 @@ export function playerView(
           known: new Set<string>(acq.keys()),
         });
   const thoughtList = [...(options.thinking ?? []), ...(inner?.thoughts ?? [])];
+  const digested = digest(percepts);
+  options.onSeen?.(digested);
   return buildPlayerView({
     player: w.player,
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
@@ -504,7 +511,7 @@ export function playerView(
         rainBetween(w.map, w.clock, w.seed, made, now),
       ),
     },
-    percepts: digest(percepts),
+    percepts: digested,
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
     steps: steps.map((s) => ({
       verb: s.verb,
