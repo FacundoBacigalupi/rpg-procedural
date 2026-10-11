@@ -1165,6 +1165,16 @@ export function lifeWorld(
                 clock: parts.clock,
                 traits: parts.traits,
                 bodyPlans: parts.plans,
+                ...(parts.form
+                  ? {
+                      newborn: {
+                        language: parts.form.language,
+                        schemas: parts.schemas,
+                        dims: parts.relationDims,
+                        bonds: parts.relationBonds,
+                      },
+                    }
+                  : {}),
                 placeOf: placeOf(parts, village),
               }),
             ]

@@ -16,7 +16,9 @@ import type {
 import {
   BODY_STATE,
   type BodyPlanDef,
+  type BondDef,
   createEntity,
+  type DimensionDef,
   draftEvent,
   ENTITY,
   type EventDraft,
@@ -25,15 +27,25 @@ import {
   HOUSEHOLD,
   INNATE,
   inheritGenome,
+  kinRelationship,
+  type Language,
   LOCATION,
+  MIND,
   massOf,
+  nameNewborn,
   newBody,
+  newMind,
   PERSON,
+  PERSON_NAME,
   type ProcessDef,
+  RELATIONS,
   type ReadonlyWorldTruth,
+  type Relationship,
+  type SchemaDef,
   type Sex,
   type StateChange,
   setComponent,
+  strangerDims,
   type Trait,
   table,
 } from "../../sim/index.ts";
@@ -58,6 +70,19 @@ export interface BirthOptions {
   readonly traits: readonly Trait[];
   readonly bodyPlans: readonly BodyPlanDef[];
   readonly maleRatio?: number;
+  /**
+   * Con esto el recién nacido también trae nombre (la lengua de la aldea), mente de base y lo que
+   * siente por su parentela y su casa, con los mismos caminos que la siembra (`nameNewborn`,
+   * `newMind`, `kinRelationship`); sin esto nace sin nombre, mente ni relaciones.
+   */
+  readonly newborn?:
+    | {
+        readonly language: Language;
+        readonly schemas: readonly SchemaDef[];
+        readonly dims: readonly DimensionDef[];
+        readonly bonds: readonly BondDef[];
+      }
+    | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
 
@@ -78,6 +103,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       ENTITY.name,
       LOCATION.name,
+      ...(o.newborn ? [PERSON_NAME.name] : []),
     ],
     writes: [
       BIRTH.name,
@@ -88,6 +114,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       HOUSEHOLD.name,
       LOCATION.name,
       BODY_STATE.name,
+      ...(o.newborn ? [PERSON_NAME.name, MIND.name, RELATIONS.name] : []),
     ],
     run(ctx) {
       const plan = o.bodyPlans.find((p) => p.id === "human");
@@ -159,6 +186,64 @@ export function birthProcess(o: BirthOptions): ProcessDef {
           ),
           setComponent(BIRTH, key, { dueAt: labor.dueAt, child }),
         );
+        if (o.newborn) {
+          const n = o.newborn;
+          const childKey = child as unknown as EntityRef;
+          // El nombre: el apellido del padre y un nombre de pila que la casa no repite.
+          const used = new Set<string>();
+          for (const member of ctx.truth.get(HOUSEHOLD, m.household as unknown as EntityRef)
+            ?.members ?? []) {
+            const name = ctx.truth.get(PERSON_NAME, member as unknown as EntityRef);
+            const given = name?.parts.find((x) => x.kind === "given")?.form;
+            if (given) used.add(given);
+          }
+          changes.push(
+            setComponent(
+              PERSON_NAME,
+              childKey,
+              nameNewborn(n.language, {
+                rng: rng.fork("name"),
+                sex,
+                father: ctx.truth.get(PERSON_NAME, f as unknown as EntityRef),
+                used,
+                raisedBy: f,
+                event: birthEvent,
+              }),
+            ),
+            // La mente de base desde su temperamento, con el nacimiento como causa.
+            setComponent(
+              MIND,
+              childKey,
+              newMind(n.schemas, innate, rng.fork("psyche"), birthEvent),
+            ),
+          );
+          // Lo que siente por su parentela y su casa, con la misma regla que la siembra.
+          const record = { sex, born, mother, father: f, household: m.household, spouse: null };
+          const person = (who: AgentId) =>
+            who === child ? record : ctx.truth.get(PERSON, who as unknown as EntityRef);
+          const kin = [
+            ...new Set([
+              mother,
+              f,
+              ...(ctx.truth.get(HOUSEHOLD, m.household as unknown as EntityRef)?.members ?? []),
+            ]),
+          ].sort();
+          const stranger = strangerDims(n.dims);
+          const toward: Record<string, Relationship> = {};
+          for (const other of kin) {
+            const r = kinRelationship(child, other, person as never, innate["warmth"] ?? 0, {
+              rng: rng.fork("relation", other),
+              dims: stranger,
+              bonds: n.bonds,
+              event: birthEvent,
+              now: born,
+            });
+            if (r) toward[other] = r;
+          }
+          if (Object.keys(toward).length > 0) {
+            changes.push(setComponent(RELATIONS, childKey, { toward, originEventId: birthEvent }));
+          }
+        }
         const where = ctx.truth.get(LOCATION, key);
         if (where) changes.push(setComponent(LOCATION, child as unknown as EntityRef, where));
         const house = ctx.truth.get(HOUSEHOLD, m.household as unknown as EntityRef);

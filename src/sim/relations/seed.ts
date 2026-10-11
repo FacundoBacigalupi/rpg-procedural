@@ -70,6 +70,41 @@ export function kinBonds(
   return [...out].sort();
 }
 
+export interface KinRelationInput {
+  /** `rng.fork("relation", from, to)`: la variación personal de este par. */
+  readonly rng: { normal(mean: number, sd: number): number };
+  /** Las dimensiones de un extraño (`strangerDims`). */
+  readonly dims: Readonly<Record<string, number>>;
+  readonly bonds: readonly BondDef[];
+  readonly event: EventId;
+  readonly now: Tick;
+}
+
+/**
+ * Lo que `from` siente por `to` según el registro civil: la línea base más lo que pone cada vínculo,
+ * una variación propia y la calidez de quien siente. Sin vínculo, `undefined` (es un extraño).
+ */
+export function kinRelationship(
+  from: AgentId,
+  to: AgentId,
+  person: (id: AgentId) => PersonRecord | undefined,
+  warmth: number,
+  i: KinRelationInput,
+): Relationship | undefined {
+  const bonds = kinBonds(from, to, person);
+  if (bonds.length === 0) return undefined;
+  const dims = { ...i.dims } as Record<(typeof DIMENSIONS)[number], number>;
+  for (const id of bonds) {
+    const def = i.bonds.find((b) => b.id === id);
+    if (!def) continue;
+    for (const d of DIMENSIONS) dims[d] += def.initial[d] ?? 0;
+  }
+  for (const d of JITTERED) dims[d] += i.rng.normal(0, RELATION_JITTER);
+  dims.affection += warmth * WARMTH_TO_AFFECTION;
+  for (const d of DIMENSIONS) dims[d] = clampDim(d, dims[d]);
+  return { dims, bonds, history: [i.event], updated: i.now };
+}
+
 /** Escribe `RELATIONS` de cada vivo con algún vínculo. Devuelve el evento de la siembra. */
 export function seedRelations(
   truth: WorldTruth,
@@ -99,19 +134,14 @@ export function seedRelations(
     const warmth = truth.get(INNATE, from)?.["warmth"] ?? 0;
     const toward: Record<string, Relationship> = {};
     for (const to of alive) {
-      const bonds = kinBonds(from, to, person);
-      if (bonds.length === 0) continue;
-      const rng = root.fork("relation", from, to);
-      const dims = { ...stranger };
-      for (const id of bonds) {
-        const def = input.bonds.find((b) => b.id === id);
-        if (!def) continue;
-        for (const d of DIMENSIONS) dims[d] += def.initial[d] ?? 0;
-      }
-      for (const d of JITTERED) dims[d] += rng.normal(0, RELATION_JITTER);
-      dims.affection += warmth * WARMTH_TO_AFFECTION;
-      for (const d of DIMENSIONS) dims[d] = clampDim(d, dims[d]);
-      toward[to] = { dims, bonds, history: [event], updated: input.now };
+      const r = kinRelationship(from, to, person, warmth, {
+        rng: root.fork("relation", from, to),
+        dims: stranger,
+        bonds: input.bonds,
+        event,
+        now: input.now,
+      });
+      if (r) toward[to] = r;
     }
     if (Object.keys(toward).length === 0) continue;
     const relations: Relations = { toward, originEventId: event };

@@ -123,6 +123,50 @@ function partOf(
 /** Intentos por nombre de pila para no repetir el de alguien de la casa. */
 const GIVEN_TRIES = 12;
 
+/** Un nombre de pila que no repite los de `used` (la casa), con hasta `GIVEN_TRIES` intentos. */
+function pickGiven(language: Language, sex: Sexed, rng: Rng, used: ReadonlySet<string>) {
+  let given = givenOf(language, sex, rng.fork("given", 0));
+  for (let i = 1; i < GIVEN_TRIES && used.has(given.text); i++) {
+    given = givenOf(language, sex, rng.fork("given", i));
+  }
+  return given;
+}
+
+export interface NewbornNameInput {
+  /** `rng.fork(<hijo>)` o equivalente: el azar del nombre. */
+  readonly rng: Rng;
+  readonly sex: "female" | "male";
+  /** El nombre del padre: de él pasa el apellido; sin él (o sin apellido) se elige uno nuevo. */
+  readonly father: PersonName | undefined;
+  /** Los nombres de pila de la casa, para no repetir. */
+  readonly used: ReadonlySet<string>;
+  /** Quien le pone el nombre de pila (quien cría). */
+  readonly raisedBy: AgentId | null;
+  /** El nacimiento. */
+  readonly event: EventId;
+}
+
+/**
+ * El nombre de un recién nacido (language §8): el apellido del padre y un nombre de pila con
+ * significado de la lengua, que la casa no repite. Mismo camino que `seedPersonNames`.
+ */
+export function nameNewborn(language: Language, i: NewbornNameInput): PersonName {
+  const inherited = i.father?.parts.find((x) => x.kind === "family");
+  let family: NamePart;
+  if (inherited) {
+    family = { ...inherited, event: i.event, givenBy: null };
+  } else {
+    const { ids, weights } = weightsFor(language, "family");
+    const concept = ids[i.rng.fork("family").weighted(weights)] as string;
+    family = partOf("family", language.compound([concept]), null, i.event, "all");
+  }
+  const given = pickGiven(language, i.sex, i.rng, i.used);
+  return {
+    language: language.id,
+    parts: [family, partOf("given", given, i.raisedBy, i.event, "all")],
+  };
+}
+
 /**
  * Le pone nombre a toda la gente de la aldea (los vivos y los que ya no están). Va por orden de
  * nacimiento: el padre se nombra antes que sus hijos y les pasa el apellido.
@@ -159,10 +203,7 @@ export function seedPersonNames(truth: WorldTruth, language: Language, seed: See
     const used = usedGiven.get(p.household) ?? new Set<string>();
     usedGiven.set(p.household, used);
     const sex: Sexed = p.sex === "female" ? "female" : "male";
-    let given = givenOf(language, sex, rng.fork("given", 0));
-    for (let i = 1; i < GIVEN_TRIES && used.has(given.text); i++) {
-      given = givenOf(language, sex, rng.fork("given", i));
-    }
+    const given = pickGiven(language, sex, rng, used);
     used.add(given.text);
 
     truth.set(PERSON_NAME, id, {
