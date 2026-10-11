@@ -4,6 +4,7 @@ export * from "./appraise.ts";
 export * from "./chosen.ts";
 export * from "./conditions.ts";
 export * from "./consolidation.ts";
+export * from "./craft-goals.ts";
 export * from "./emotions.ts";
 export * from "./goal-progress.ts";
 export * from "./goal-progress-evidence.ts";
