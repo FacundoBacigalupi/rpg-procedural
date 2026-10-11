@@ -154,7 +154,13 @@ import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { sleepProcess } from "./sleep.ts";
-import { catchUpProcess, sleepPolicyProcess } from "./sleepers.ts";
+import {
+  ASLEEP,
+  CATCH_UP_PROCESS,
+  catchUpProcess,
+  SLEEP_POLICY_PROCESS,
+  sleepPolicyProcess,
+} from "./sleepers.ts";
 import { soilProcess } from "./soil.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
@@ -184,6 +190,9 @@ import { workoutProcess } from "./workout.ts";
 
 export { living } from "./living.ts";
 export { PLAYER } from "./player.ts";
+
+/** Los únicos procesos por agente que sí se invocan para un dormido. */
+const SLEEPER_PROCESSES: ReadonlySet<string> = new Set([CATCH_UP_PROCESS, SLEEP_POLICY_PROCESS]);
 
 export interface LifeWorld {
   readonly seed: Seed;
@@ -1594,8 +1603,15 @@ export function lifeWorld(
         }),
       ].map(probe),
       resolution: "local",
-      scopes: (kind, t) =>
-        kind === "agent" ? living(t) : kind === "household" ? householdsOf(t) : [],
+      scopes: (kind, t, def) =>
+        kind === "agent"
+          ? parts.sleepers && !SLEEPER_PROCESSES.has(def.id)
+            ? // Tier 1 (off-3d): al dormido no se lo invoca; solo su política y su puesta al día.
+              living(t).filter((id) => !t.get(ASLEEP, id))
+            : living(t)
+          : kind === "household"
+            ? householdsOf(t)
+            : [],
     },
     start,
   );

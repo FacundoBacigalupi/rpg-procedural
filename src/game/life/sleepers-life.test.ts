@@ -145,6 +145,11 @@ describe("tier 1 en una vida real: los dormidos", () => {
       `ejecuciones/hora: ${(off.totalCalls / hours).toFixed(1)} -> ${(on.totalCalls / hours).toFixed(1)}; con trabajo: ${(off.totalWork / hours).toFixed(1)} -> ${(on.totalWork / hours).toFixed(1)}\n${rows.join("\n")}`,
     );
     expect(on.totalWork).toBeLessThan(off.totalWork);
+    // El scheduler ya no invoca por agente a los dormidos: bajan también las llamadas.
+    expect(on.totalCalls).toBeLessThan(off.totalCalls);
+    expect(on.calls.get("body.physiology") ?? 0).toBeLessThan(
+      off.calls.get("body.physiology") ?? 0,
+    );
   }, 600_000);
 
   it("sin la opción nadie duerme y el estado es el mismo de siempre", () => {

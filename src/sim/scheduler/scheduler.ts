@@ -73,7 +73,12 @@ export interface SchedulerOptions {
   /** Una sola resolución para todo el mundo hasta que lleguen las zonas (Fase 5). */
   readonly resolution: ZoneResolution;
   /** Sobre qué alcances corre un proceso de cada tipo. "world" no hace falta declararlo. */
-  readonly scopes?: (kind: ScopeKind, truth: ReadonlyWorldTruth) => readonly ScopeRef[];
+  readonly scopes?: (
+    kind: ScopeKind,
+    truth: ReadonlyWorldTruth,
+    /** El proceso que se va a correr: permite excluir alcances solo para algunos (tier 1). */
+    def: ProcessDef,
+  ) => readonly ScopeRef[];
 }
 
 /** Lo que hay que guardar para seguir exactamente donde se quedó. */
@@ -348,7 +353,7 @@ export class Scheduler {
     const scopes = this.#o.scopes;
     if (!scopes)
       throw new SchedulerError(`no hay cómo enumerar alcances "${def.scope}" (${def.id})`);
-    return [...scopes(def.scope, this.#o.truth)].sort(compareScopes);
+    return [...scopes(def.scope, this.#o.truth, def)].sort(compareScopes);
   }
 
   #run(spec: RunSpec, t: Tick, phase: Phase): Run {

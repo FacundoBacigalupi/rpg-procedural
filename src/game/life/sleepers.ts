@@ -34,6 +34,7 @@ import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
 
 export const CATCH_UP_PROCESS = "life.catch_up";
 export const CAUGHT_UP_EVENT = "npc.caught_up";
+export const SLEEP_POLICY_PROCESS = "life.sleep_policy";
 
 // El registro del dormido vive en `sim/body/asleep.ts` (lo leen procesos de `sim`).
 export { ASLEEP, type Asleep };
@@ -211,7 +212,7 @@ export interface SleepPolicyOptions {
  */
 export function sleepPolicyProcess(o: SleepPolicyOptions): ProcessDef {
   return {
-    id: "life.sleep_policy",
+    id: SLEEP_POLICY_PROCESS,
     system: "life",
     scope: "agent",
     cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
