@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AgentId, Seed, Tick } from "../../core/index.ts";
+import { type AgentId, IdAllocator, type Seed, type Tick } from "../../core/index.ts";
 import { type LifeState, LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { createEntity, draftEvent, ENTITY, hashState, setComponent } from "../../sim/index.ts";
 import {
@@ -10,6 +10,7 @@ import {
   HUT,
   living,
   PROCESSES,
+  resumeVillage,
   VILLAGE,
   village,
 } from "../../sim/scheduler/village.fixture.ts";
@@ -79,8 +80,15 @@ function runOf(w: Village): ReplayRun<Order> {
   };
 }
 
-function game(processes = [...PROCESSES, order]): ReplayGame<null, Order> {
-  return { versions: VERSIONS, start: (seed) => runOf(village(seed, processes)) };
+function game(processes = [...PROCESSES, order], versions = VERSIONS): ReplayGame<null, Order> {
+  return {
+    versions,
+    start: (seed) => runOf(village(seed, processes)),
+    resume: (seed, _setup, state) => {
+      const s = state as LifeState;
+      return runOf(resumeVillage(seed, { ...s, ids: new IdAllocator(s.ids) }, processes));
+    },
+  };
 }
 
 const opened: SqlDriver[] = [];
@@ -133,11 +141,46 @@ describe("replay", () => {
     );
   });
 
-  it("un guardado que cruzó de motor no se rehace desde el seed: dice dónde está el límite", () => {
+  it("un guardado que cruzó de motor se rehace desde el snapshot del límite y compara desde ahí", () => {
+    const store = play(5, [5, 5, 5]);
+    const limit = store.snapshots().filter((x) => x.kind === "full")[1]?.tick as Tick;
+    const to = { ...VERSIONS, engine: "test-2" };
+    store.setMeta("replayLimits", [{ tick: limit, from: VERSIONS, to }]);
+    store.setMeta("versions", to);
+    const { input, checkpoints } = replayInputFromStore(store);
+    expect(input.from?.tick).toBe(limit);
+    expect(input.plans.every((p) => p.tick >= limit)).toBe(true);
+    expect(checkpoints.every((c) => c.tick >= limit)).toBe(true);
+    const end = store.load().scheduler.now;
+    const report = replay(input, game(undefined, to), { checkpoints, until: end });
+    expect(report.divergence).toBeUndefined();
+    expect(report.checked).toBeGreaterThanOrEqual(2);
+    expect(report.hash).toEqual(hashState(store.load()));
+    // Con el motor viejo no vale: las versiones del guardado ya son las del motor nuevo.
+    expect(() => replay(input, game(), { checkpoints, until: end })).toThrow(/versiones distintas/);
+  });
+
+  it("si desde el límite una regla cambió, el detector dice dónde se separó", () => {
+    const store = play(8, [5, 5, 5]);
+    const limit = store.snapshots().filter((x) => x.kind === "full")[0]?.tick as Tick;
+    const to = { ...VERSIONS, engine: "test-2" };
+    store.setMeta("replayLimits", [{ tick: limit, from: VERSIONS, to }]);
+    store.setMeta("versions", to);
+    const { input, checkpoints } = replayInputFromStore(store);
+    const end = store.load().scheduler.now;
+    const report = replay(input, game([...PROCESSES.filter((x) => x !== death), order], to), {
+      checkpoints,
+      until: end,
+    });
+    expect(report.divergence).toBeDefined();
+    expect(report.divergence?.tick).toBeGreaterThan(limit);
+  });
+
+  it("sin el snapshot del límite no hay replay desde él", () => {
     const store = play(5, [5]);
-    const from = { engine: "life-1", content: "h", format: 1 };
-    store.setMeta("replayLimits", [{ tick: 123, from, to: { ...from, engine: "life-2" } }]);
-    expect(() => replayInputFromStore(store)).toThrow(/life-1 a life-2 en el tick 123/);
+    const from = { engine: "test", content: "none", format: 1 };
+    store.setMeta("replayLimits", [{ tick: 123, from, to: { ...from, engine: "test-2" } }]);
+    expect(() => replayInputFromStore(store)).toThrow(/no tiene el snapshot de ese límite/);
   });
 
   it("sin los planes, diverge en el primer checkpoint después de la primera orden", () => {

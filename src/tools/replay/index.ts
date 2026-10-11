@@ -31,6 +31,11 @@ export interface ReplayInput<S = unknown, P = unknown> {
   /** Lo que se eligió antes de empezar (modo, personaje…): parte de la entrada, como el seed. */
   readonly setup: S;
   readonly plans: readonly ReplayPlan<P>[];
+  /**
+   * Arrancar desde un estado guardado y no desde el seed: la vida cruzó de motor en `tick`
+   * (tooling §4) y desde el seed el replay ya no vale más allá. Los planes son los posteriores.
+   */
+  readonly from?: { readonly tick: Tick; readonly state: unknown; readonly context?: unknown };
 }
 
 export interface Checkpoint {
@@ -48,6 +53,8 @@ export interface ReplayRun<P> {
 export interface ReplayGame<S, P> {
   readonly versions: ReplayVersions;
   start(seed: Seed, setup: S): ReplayRun<P>;
+  /** Rehace la corrida desde un estado guardado (el del límite de motor); sin esto, no hay replay desde un límite. */
+  resume?(seed: Seed, setup: S, state: unknown, context?: unknown): ReplayRun<P>;
 }
 
 export interface ReplayDivergence {
@@ -99,11 +106,18 @@ export function replay<S, P>(
   const last = Math.max(0, input.plans.at(-1)?.tick ?? 0, checkpoints.at(-1)?.tick ?? 0);
   const until = options.until ?? last;
 
+  const origin = input.from;
   const ticks = [...new Set([...input.plans.map((p) => p.tick), ...checkpoints.map((c) => c.tick)])]
-    .filter((t) => t <= until)
+    .filter((t) => t <= until && (origin === undefined || t >= origin.tick))
     .sort((a, b) => a - b);
 
-  const run = game.start(input.seed, input.setup);
+  if (origin && !game.resume) {
+    throw new ReplayError("el juego no sabe rehacer una corrida desde un estado guardado");
+  }
+  const run =
+    origin && game.resume
+      ? game.resume(input.seed, input.setup, origin.state, origin.context)
+      : game.start(input.seed, input.setup);
   let checked = 0;
   let p = 0;
   let c = 0;
@@ -148,13 +162,34 @@ export function replayInputFromStore(store: LifeStore): {
 } {
   const missing = REPLAY_META.filter((k) => store.getMeta(k) === undefined).sort(compareStrings);
   if (missing.length > 0) throw new ReplayError(`al guardado le falta: ${missing.join(", ")}`);
-  // La vida cruzó de motor (tooling §4): desde el seed el replay vale solo hasta ese tick.
+  // La vida cruzó de motor (tooling §4): desde el seed el replay vale solo hasta ese tick, así que
+  // se rehace desde el snapshot del último límite, con el motor nuevo, y se compara desde ahí.
   const limits = (store.getMeta("replayLimits") as ReplayLimit[] | undefined) ?? [];
-  const first = limits[0];
-  if (first) {
-    throw new ReplayError(
-      `el guardado pasó de ${first.from.engine} a ${first.to.engine} en el tick ${first.tick}: el replay desde el seed solo vale hasta ahí (falta arrancar desde el snapshot del límite)`,
-    );
+  const limit = limits.at(-1);
+  if (limit) {
+    if (!store.snapshots().some((x) => x.tick === limit.tick && x.kind === "full")) {
+      throw new ReplayError(
+        `el guardado pasó de ${limit.from.engine} a ${limit.to.engine} en el tick ${limit.tick} y no tiene el snapshot de ese límite`,
+      );
+    }
+    return {
+      input: {
+        seed: store.getMeta("seed") as Seed,
+        versions: limit.to,
+        setup: store.getMeta("setup"),
+        plans: store
+          .plans()
+          // El snapshot de un tick es antes de los planes de ese tick (como un checkpoint).
+          .filter((p) => p.tick >= limit.tick)
+          .map((p) => ({ seq: p.seq, tick: p.tick, plan: p.plan })),
+        from: {
+          tick: limit.tick,
+          state: store.loadSnapshot(limit.tick),
+          context: store.getMeta("anchor"),
+        },
+      },
+      checkpoints: store.checkpoints().filter((c) => c.tick >= limit.tick),
+    };
   }
   return {
     input: {
