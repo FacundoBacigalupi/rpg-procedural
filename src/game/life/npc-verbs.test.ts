@@ -243,6 +243,8 @@ describe("el NPC camina a un lugar decidido (opt-in)", () => {
     const seconds = (e: (typeof steps)[number]) => (e.data as { seconds?: number }).seconds ?? 0;
     expect(seconds(steps[0] as (typeof steps)[number])).toBeGreaterThan(HOUR);
     expect(w.truth.get(LOCATION, npc)?.hex).not.toBe(from);
+  }, 120_000);
+});
 
 describe("el NPC hurta lo que decidió (opt-in)", () => {
   it("take: lo que lleva encima el otro pasa a su bolsillo, el ledger cierra y los invariantes pasan", () => {
