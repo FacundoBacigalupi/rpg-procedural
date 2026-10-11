@@ -17,6 +17,7 @@ import {
   type ActionCatalog,
   type ActionPlan,
   type ArgValue,
+  BODY_STATE,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -168,6 +169,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       LOCATION.name,
       PLACE.name,
       ...(o.provisions ? [PERSON.name] : []),
+      ...(o.nightRest ? [BODY_STATE.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
     ],
     writes: [
@@ -235,7 +237,8 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         // De noche el viajero para y duerme (el `rest` del catálogo, la noche entera) y sigue al alba.
         if (o.nightRest) {
           const hour = Math.floor(localHour(o.nightRest.clock, ctx.now, o.nightRest.lonDeg));
-          const sleep = restDue(hour, trip.rested, ctx.now)
+          const fatigue = truth.get(BODY_STATE, me)?.fatigue ?? 0;
+          const sleep = restDue(hour, trip.rested, ctx.now, fatigue)
             ? planFromDecision({ id: "rest:", verb: "rest" }, o.catalog, me)
             : undefined;
           if (sleep) {
@@ -345,10 +348,24 @@ export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
 /** Entre una parada a dormir y la siguiente pasa al menos esto (horas): una por noche. */
 export const REST_GAP_HOURS = 12;
 
-/** ¿Toca parar a dormir? De noche (las horas de sueño de la rutina) y sin haber parado hace poco. */
-export function restDue(hour: number, restedAt: Tick | undefined, now: number): boolean {
+/** Desde este cansancio del cuerpo (0-1, `Body.fatigue`: agotado) el viajero para aunque sea de día. */
+export const TIRED_STOP = 0.85;
+
+/**
+ * ¿Toca parar? De noche (las horas de sueño de la rutina) o agotado (`fatigue >= TIRED_STOP`, el
+ * cansancio que ya acumula el cuerpo por el esfuerzo del camino), y sin haber parado hace poco.
+ */
+export function restDue(
+  hour: number,
+  restedAt: Tick | undefined,
+  now: number,
+  fatigue = 0,
+): boolean {
   const night = hour >= ROUTINE.sleep || hour < ROUTINE.wake;
-  return night && (restedAt === undefined || now - restedAt >= REST_GAP_HOURS * 3600);
+  return (
+    (night || fatigue >= TIRED_STOP) &&
+    (restedAt === undefined || now - restedAt >= REST_GAP_HOURS * 3600)
+  );
 }
 
 function journeyEvent(

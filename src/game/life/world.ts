@@ -611,6 +611,7 @@ export function lifeWorld(
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
+          ...(parts.npcPace ? { effortByManner: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),

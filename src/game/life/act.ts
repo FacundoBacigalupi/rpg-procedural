@@ -249,6 +249,11 @@ export interface ActOptions {
    * (`look.glance`, agudeza `GLANCE_ACUITY`) que `life.moldgossip` con `fromLooking` lee como un `look`.
    */
   readonly glanceOnMove?: boolean;
+  /**
+   * Opt-in: el modo del `move` cambia el esfuerzo del cuerpo (`fast` es esfuerzo pesado, `careful`
+   * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
+   */
+  readonly effortByManner?: boolean;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
   /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
@@ -361,8 +366,17 @@ const VERB_ACTIVITY: Readonly<Record<string, Activity>> = {
 };
 
 /** Descansar de noche es dormir. */
-export function activityOf(verb: string, hour: number): Activity {
+export function activityOf(
+  verb: string,
+  hour: number,
+  /** Con esto, el modo del `move` pesa en el esfuerzo (`effortByManner`). */
+  manner?: readonly string[],
+): Activity {
   const a = VERB_ACTIVITY[verb] ?? "light";
+  if (verb === "move" && manner) {
+    if (manner.includes("fast")) return "heavy";
+    if (manner.includes("careful")) return "light";
+  }
   return verb === "rest" && (hour >= 21 || hour < 5) ? "sleep" : a;
 }
 
@@ -778,7 +792,14 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const r = resolve(input);
 
   // Lo que el paso le hace al cuerpo (body-health): comer, beber, curar, golpes y percances.
-  let nextBody: Body = setActivity(body, activityOf(node.verb, e.hour));
+  let nextBody: Body = setActivity(
+    body,
+    activityOf(
+      node.verb,
+      e.hour,
+      o.effortByManner ? [...state.plan.manner, ...node.manner] : undefined,
+    ),
+  );
   let bodyTouched = nextBody !== body;
   const changes: StateChange[] = [...r.changes];
   const doseEvents: EventDraft[] = [];
