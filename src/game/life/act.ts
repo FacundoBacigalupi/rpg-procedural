@@ -217,6 +217,8 @@ export function planKey(seq: number): string {
 export const GLANCE_ACUITY = 0.6;
 
 export interface ActOptions {
+  /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
+  readonly projectTrades?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   readonly map: LocalMap;
@@ -467,10 +469,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
-      PRICE_BELIEFS.name,
-      MARKET_TAPE.name,
-      SALE_RECEIPTS.name,
-      SELLER_DAY.name,
+      ...(!o.projectTrades
+        ? [PRICE_BELIEFS.name, MARKET_TAPE.name, SALE_RECEIPTS.name, SELLER_DAY.name]
+        : []),
       LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
@@ -1214,56 +1215,62 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           ),
         );
       }
-      // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
-      const entry: TapeEntry = {
-        day,
-        unit,
-        grams: eff.grams,
-        coins: (paid * eff.grams) / 1000,
-        seller,
-        buyer,
-      };
-      const market = here ?? seller;
-      changes.push(
-        setComponent(MARKET_TAPE, market, recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry)),
-      );
-      // Lo cobrado es ingreso real del hogar del vendedor (recibo de venta; alimenta su presupuesto).
-      const sellerHome = truth.get(PERSON, seller)?.household;
-      if (sellerHome !== undefined && eff.coins > 0)
-        changes.push(
-          setComponent(SALE_RECEIPTS, sellerHome as never, {
-            receipts: withReceipt(
-              truth.get(SALE_RECEIPTS, sellerHome as never)?.receipts ?? [],
-              day,
-              eff.coins,
-              RECEIPT_WINDOW_DAYS,
-            ),
-          }),
-        );
-      // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
-      const learners = new Map<AgentId, "party" | "witness">();
-      for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
-        if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
-        if (truth.get(LOCATION, id)?.hex !== e.hex) continue;
-        if (truth.get(BODY_STATE, id)?.activity === "sleep") continue;
-        learners.set(id, "witness");
-      }
-      learners.set(me, "party");
-      learners.set(eff.with as AgentId, "party");
-      for (const [who, role] of [...learners].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+      if (!o.projectTrades) {
+        // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
+        const entry: TapeEntry = {
+          day,
+          unit,
+          grams: eff.grams,
+          coins: (paid * eff.grams) / 1000,
+          seller,
+          buyer,
+        };
+        const market = here ?? seller;
         changes.push(
           setComponent(
-            PRICE_BELIEFS,
-            who,
-            learnFromDeal(truth.get(PRICE_BELIEFS, who), entry, ref, role),
+            MARKET_TAPE,
+            market,
+            recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry),
           ),
         );
+        // Lo cobrado es ingreso real del hogar del vendedor (recibo de venta; alimenta su presupuesto).
+        const sellerHome = truth.get(PERSON, seller)?.household;
+        if (sellerHome !== undefined && eff.coins > 0)
+          changes.push(
+            setComponent(SALE_RECEIPTS, sellerHome as never, {
+              receipts: withReceipt(
+                truth.get(SALE_RECEIPTS, sellerHome as never)?.receipts ?? [],
+                day,
+                eff.coins,
+                RECEIPT_WINDOW_DAYS,
+              ),
+            }),
+          );
+        // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
+        const learners = new Map<AgentId, "party" | "witness">();
+        for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
+          if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+          if (truth.get(LOCATION, id)?.hex !== e.hex) continue;
+          if (truth.get(BODY_STATE, id)?.activity === "sleep") continue;
+          learners.set(id, "witness");
+        }
+        learners.set(me, "party");
+        learners.set(eff.with as AgentId, "party");
+        for (const [who, role] of [...learners].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+          changes.push(
+            setComponent(
+              PRICE_BELIEFS,
+              who,
+              learnFromDeal(truth.get(PRICE_BELIEFS, who), entry, ref, role),
+            ),
+          );
+        }
       }
     }
   }
 
   // El vendedor lleva el día: lo que sacó a la venta y lo que vendió (cierre en `life.market`).
-  if (eff.kind === "trade" && eff.with) {
+  if (!o.projectTrades && eff.kind === "trade" && eff.with) {
     const other = eff.with as AgentId;
     const day = Math.floor(ctx.now / o.clock.day);
     const note = (seller: AgentId, unit: string, offered: number, sold: number) =>
@@ -1420,11 +1427,31 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   return {
     // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
     events: [
-      ...r.events.map((e) =>
-        state.plan.purpose
-          ? { ...e, data: { ...(e.data as object), purpose: state.plan.purpose } }
-          : e,
-      ),
+      ...r.events.map((event) => {
+        if (!state.plan.purpose && !(o.projectTrades && eff.kind === "trade")) return event;
+        return {
+          ...event,
+          data: {
+            ...(event.data as object),
+            ...(state.plan.purpose ? { purpose: state.plan.purpose } : {}),
+            ...(o.projectTrades && eff.kind === "trade"
+              ? {
+                  marketProjection: {
+                    market: here,
+                    witnesses: [...(truth.ids(PERSON) as AgentId[])]
+                      .sort()
+                      .filter(
+                        (id) =>
+                          truth.get(ENTITY, id)?.endedAt === undefined &&
+                          truth.get(LOCATION, id)?.hex === e.hex &&
+                          truth.get(BODY_STATE, id)?.activity !== "sleep",
+                      ),
+                  },
+                }
+              : {}),
+          },
+        };
+      }),
       ...doseEvents,
       ...extraEvents,
     ],

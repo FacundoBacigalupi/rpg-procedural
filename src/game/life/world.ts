@@ -178,6 +178,7 @@ import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from ".
 import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
+import { tradeProjectionProcess } from "./trade-projection.ts";
 import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
@@ -656,6 +657,7 @@ export function lifeWorld(
           ...(parts.sleepers ? { sleepers: true } : {}),
         }),
         actProcess({
+          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
           logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,
@@ -967,6 +969,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
+        ...(parts.npcVerbs?.includes("trade")
+          ? [tradeProjectionProcess({ clock: parts.clock, goods: parts.goods })]
+          : []),
         ...(parts.tradeChoice
           ? [
               tradeChoiceProcess({
