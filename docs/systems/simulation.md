@@ -115,6 +115,15 @@ interface ScheduledItem {
 - **Cadencias anidadas.** Los procesos de una zona de resolución "mundo" corren por estación, pero si un evento con hora cae adentro (una batalla agendada), el scheduler parte la ventana: corre la estación hasta la batalla, resuelve la batalla y sigue.
 - **Interrupciones.** `advanceUntil(t, interrupts)` avanza hasta `t` o hasta que un predicado sobre los percepts del jugador se cumpla (una amenaza, un mensaje, alguien que le habla). Es lo que usa el bucle del jugador para los saltos de tiempo ([player-loop.md](player-loop.md)).
 
+**Proyección de conversación opt-in (2026-10-12).** Con `npcVerbs` activo, las respuestas de
+`life.converse` leen el snapshot de `decide` y dejan operaciones de cara y noticias en su evento
+confirmado. `life.converse_projection` las pliega como un único escritor del mundo en `physics`,
+con `onEvent` y `withRecent`. No se serializa `decide` ni se usan contiendas para descartar lo
+que una persona oyó: cada efecto se aplica en orden canónico y se escribe una fila final por
+persona y tabla. Los lectores de fases anteriores ven el estado anterior; la proyección es visible
+desde `physics` en adelante. El camino sin `npcVerbs` mantiene sus fases y hashes.
+Ver [dialogue.md](dialogue.md#implementado-2026-10-12-respuestas-simultáneas-con-verbos-de-npc).
+
 ## 4. Las dos resoluciones
 
 ### 4.1 Resolución de zona

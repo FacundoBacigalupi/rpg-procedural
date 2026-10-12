@@ -77,6 +77,7 @@ import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess } from "./converse.ts";
+import { converseProjectionProcess } from "./converse-project.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { debtKnowledgeProcess } from "./debtknowledge.ts";
@@ -842,6 +843,7 @@ export function lifeWorld(
             ]
           : []),
         converseProcess({
+          ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectSharedEffects: true } : {}),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
@@ -855,6 +857,7 @@ export function lifeWorld(
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
         }),
+        ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? [converseProjectionProcess()] : []),
         ...(parts.form
           ? [
               bornTaboosProcess({

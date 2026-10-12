@@ -273,6 +273,22 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
 
+### Implementado (2026-10-12): respuestas simultáneas con verbos de NPC
+
+Cuando `npcVerbs` contiene algún verbo, `life.converse` sigue decidiendo cada respuesta en
+`decide` sobre el mismo estado anterior a la fase. Registra las variaciones de cara y las noticias
+oídas como operaciones semánticas en `action.speak.data.conversationEffects`, en vez de escribir
+`FACE` o `HEARD` desde varios oyentes. `life.converse_projection` es su único escritor en `physics`
+(`scope: world`, `onEvent`, `withRecent`): pliega las respuestas confirmadas en orden canónico,
+aplica `adjustFace` por efecto y `hear` por noticia, y escribe una sola fila por persona y tabla.
+Las causas siguen en el `action.speak` de la respuesta; no se crea un evento adicional.
+
+Los cambios se ven desde `physics` y en las fases posteriores y el paso siguiente; las respuestas
+simultáneas y los procesos anteriores a la proyección no leen resultados de otra respuesta del
+mismo paso. Sin `npcVerbs` se conserva el camino directo y sus hashes. Esto evita que una persona
+que oye un insulto y a la vez recibe obediencia, o escucha dos secretos revelados, pierda un
+efecto o provoque un conflicto de escritura fuera de `act`.
+
 ### Implementado (2026-10-09): la forma que declara el jugador
 
 El jugador elige cómo trata al otro con palabras («le hablo de usted», «le digo de vos»). La gramática las saca de lo previo a las comillas y las deja como maneras `formal` / `casual` del verbo `speak` (`speech.manner`); la sim no interpreta el texto citado. `listenTo` guarda la elección en `PENDING.style` y `formOf` la aplica: `formal` trata al oyente de superior (salvo que sean de una misma casa) y `casual` usa formalidad 0, de modo que `acts.address` queda declarado o no y el oyente mide la norma con su lectura del rango. Falta: que la vista cuente la ofensa recibida o causada (ROADMAP).
