@@ -28,8 +28,14 @@ export function runFullProfileSeed(
   config: FullProfileConfig,
   progress?: (message: FullProfileProgress) => void,
 ) {
+  validateFullProfileConfig(config);
+  if (!Number.isSafeInteger(seed) || seed < 0)
+    throw new RangeError("seed debe ser entero no negativo");
+  let stage = "creation";
   try {
-    return measureFullProfileSeed(seed, config, progress);
+    return measureFullProfileSeed(seed, config, progress, (next) => {
+      stage = next;
+    });
   } catch (error) {
     const setup = {
       game: defaultGameSetup("realistic"),
@@ -43,10 +49,10 @@ export function runFullProfileSeed(
       setup,
       stoppedEarly: true,
       failure: {
-        stage: "creation",
+        stage,
         message: error instanceof Error ? (error.stack ?? error.message) : String(error),
       },
-      reproduction: { seed, setup, replayFrom: "seed", stage: "creation", plans: [] },
+      reproduction: { seed, setup, replayFrom: "seed", stage, plans: [] },
     };
   }
 }
@@ -55,6 +61,7 @@ function measureFullProfileSeed(
   seed: number,
   config: FullProfileConfig,
   progress?: (message: FullProfileProgress) => void,
+  setStage?: (stage: string) => void,
 ) {
   validateFullProfileConfig(config);
   const content = loadContentDir("content", GAME_CONTENT_KINDS);
@@ -83,11 +90,15 @@ function measureFullProfileSeed(
   processes.clear();
   const from = life.now;
   const world = life.world;
+  setStage?.("duration");
   const duration =
     config.days === undefined ? config.years * world.clock.year : config.days * world.clock.day;
   const target = from + Math.round(duration);
   const step = config.checkEveryDays * world.clock.day;
+  if (!Number.isSafeInteger(target) || target <= from || !Number.isSafeInteger(step))
+    throw new RangeError("duración o cadencia fuera del rango de ticks");
   let checks = 0;
+  setStage?.("initial-invariants");
   let problems = checkInvariants({ truth: world.truth, log: world.log, ledger: world.ledger });
   checks++;
   const samples = [{ tick: life.now, elapsedMs: creationMs, memory: process.memoryUsage() }];
@@ -104,12 +115,20 @@ function measureFullProfileSeed(
   let stage = "advance";
   let failure: string | undefined;
   const simulationStarted = performance.now();
+  let completeThrough = from;
+  let completedSimulationMs = 0;
   try {
     while (life.now < target && problems.length === 0) {
+      setStage?.("advance");
       life.advanceTo(Math.min(target, life.now + step));
       stage = "invariants";
+      setStage?.(stage);
       problems = checkInvariants({ truth: world.truth, log: world.log, ledger: world.ledger });
       checks++;
+      if (problems.length === 0) {
+        completeThrough = life.now;
+        completedSimulationMs = performance.now() - simulationStarted;
+      }
       samples.push({
         tick: life.now,
         elapsedMs: performance.now() - started,
@@ -131,7 +150,8 @@ function measureFullProfileSeed(
     failure = error instanceof Error ? (error.stack ?? error.message) : String(error);
   }
   const simulationMs = performance.now() - simulationStarted;
-  const completedYears = (life.now - from) / world.clock.year;
+  const completedYears = (completeThrough - from) / world.clock.year;
+  setStage?.("report");
   return {
     scenario: "full-profile",
     seed,
@@ -140,6 +160,7 @@ function measureFullProfileSeed(
     config,
     from,
     to: life.now,
+    completeThrough,
     target,
     checks,
     stoppedEarly: problems.length > 0 || failure !== undefined,
@@ -149,8 +170,10 @@ function measureFullProfileSeed(
     performance: {
       creationMs,
       simulationMs,
+      completedSimulationMs,
       completedYears,
-      msPerWorldYear: completedYears > 0 ? simulationMs / completedYears : null,
+      observedYears: (life.now - from) / world.clock.year,
+      msPerWorldYear: completedYears > 0 ? completedSimulationMs / completedYears : null,
       peakSampledRssBytes: samples.reduce((peak, s) => Math.max(peak, s.memory.rss), 0),
       maxRssBytes: process.resourceUsage().maxRSS * 1024,
       creationProcesses,
@@ -164,6 +187,7 @@ function measureFullProfileSeed(
             seed,
             setup,
             observedTick: life.now,
+            completeThrough,
             replayFrom: "seed",
             stage: failure === undefined ? "invariants" : stage,
             plans: [],

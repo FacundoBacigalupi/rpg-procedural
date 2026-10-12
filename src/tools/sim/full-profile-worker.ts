@@ -25,7 +25,7 @@ try {
   });
   writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(
-    `full-profile seed ${seed}: ${"performance" in report ? `${report.performance.completedYears} años, ${report.checks} chequeos` : "fallo al crear"}, ${report.stoppedEarly ? "detenida" : "completa"}\n`,
+    `full-profile seed ${seed}: ${"performance" in report ? `${report.performance.completedYears} años completados, ${report.checks} chequeos` : `fallo en ${report.failure.stage}`}, ${report.stoppedEarly ? "detenida" : "completa"}\n`,
   );
 } catch (error) {
   writeFileSync(
