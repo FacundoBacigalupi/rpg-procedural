@@ -7,12 +7,18 @@ const staple = z.strictObject({ staple: z.string().trim().min(1) });
 
 /**
  * Subconjunto JSON-serializable de `LifeOptions` (opt-in de la vida): flags, números y cadenas.
- * Lo que lleva funciones o mapas (`waterSources`, `tradeNeeds`, `skillWage`, `abuse.chance`) queda
- * fuera: se cablea en código. Sin `life`, la aldea es la de siempre.
+ * Las variantes con funciones o mapas quedan fuera; agua sin `hexKinds` se deriva del terreno
+ * y `skillWage: true` se deriva de las habilidades. Sin `life`, la aldea es la de siempre.
  */
 export const ScenarioLife = z.strictObject({
   persistGoalLayers: z.boolean().optional(),
   debtKnowledge: z.boolean().optional(),
+  persistImmediateGoals: z.boolean().optional(),
+  closeGoalsOnDeath: z.boolean().optional(),
+  recognizeGoalCompletion: z.boolean().optional(),
+  recognizeGoalProgress: z.boolean().optional(),
+  meaningPressure: z.boolean().optional(),
+  craftGoals: z.boolean().optional(),
   famine: staple
     .extend({ horizonDays: z.number().gt(0).optional(), refresh: z.boolean().optional() })
     .optional(),
@@ -28,6 +34,7 @@ export const ScenarioLife = z.strictObject({
       maxDays: z.number().gt(0),
       ransom: z.boolean().optional(),
       onlyWithoutOtherWage: z.boolean().optional(),
+      skillWage: z.literal(true).optional(),
     })
     .optional(),
   loanBondageAbuse: z.strictObject({ reputationCost: z.number().min(0) }).optional(),
@@ -43,9 +50,54 @@ export const ScenarioLife = z.strictObject({
     ])
     .optional(),
   marks: z.boolean().optional(),
+  marksExpose: z.boolean().optional(),
+  marksGossip: z.boolean().optional(),
+  marksReach: z.boolean().optional(),
   loanContagion: z.string().trim().min(1).optional(),
   loanContagionEffects: z.strictObject({ rateMarkup: z.number().min(0) }).optional(),
   loanWorkout: z.boolean().optional(),
+  waterSources: z
+    .strictObject({
+      open: z.enum(["river", "well", "rain", "sea", "stagnant"]).optional(),
+      netDrink: z.boolean().optional(),
+      rainFromWeather: z.boolean().optional(),
+    })
+    .optional(),
+  hire: z.strictObject({ unit: z.string().min(1), baseWage: z.number().min(0) }).optional(),
+  healthCulture: z.boolean().optional(),
+  cravingCues: z.boolean().optional(),
+  cueLocal: z.boolean().optional(),
+  npcMove: z.boolean().optional(),
+  sleepers: z.strictObject({ near: z.number().min(0), food: z.string().min(1) }).optional(),
+  npcVerbs: z.array(z.string().min(1)).optional(),
+  npcTemplates: z.record(z.string().min(1), z.string().min(1)).optional(),
+  npcJourneyDays: z.number().gt(0).optional(),
+  npcTransit: z.boolean().optional(),
+  npcProvisions: z.strictObject({ good: z.string().min(1), grams: z.number().gt(0) }).optional(),
+  npcInterrupt: z.boolean().optional(),
+  npcEncounters: z.boolean().optional(),
+  npcNightRest: z.boolean().optional(),
+  npcPace: z.enum(["careful", "fast"]).optional(),
+  npcFootwear: z.boolean().optional(),
+  conception: z.boolean().optional(),
+  conceptionRateScale: z.number().min(0).optional(),
+  conceptionGestationDays: z.number().gt(0).optional(),
+  births: z.boolean().optional(),
+  speakActs: z
+    .strictObject({
+      minFamiliarity: z.number().min(0).max(1),
+      quietSeconds: z.number().min(0),
+      weight: z.number().min(0),
+      chance: z.number().min(0).max(1),
+    })
+    .optional(),
+  takeBelieved: z
+    .strictObject({
+      minConfidence: z.number().min(0).max(1),
+      perDeed: z.number().min(0),
+      maxPenalty: z.number().min(0).max(1),
+    })
+    .optional(),
 });
 export type ScenarioLife = z.infer<typeof ScenarioLife>;
 

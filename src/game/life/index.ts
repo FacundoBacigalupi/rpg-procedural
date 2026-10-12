@@ -30,6 +30,7 @@ export * from "./perceive.ts";
 export * from "./ponder.ts";
 export * from "./practice-log.ts";
 export * from "./pressures.ts";
+export * from "./profile.ts";
 export * from "./reading.ts";
 export * from "./recap.ts";
 export * from "./residue.ts";

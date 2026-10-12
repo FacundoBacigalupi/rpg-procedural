@@ -121,8 +121,8 @@ export function optionsOf(setup: LifeSetup): LifeOptions {
     ...(setup.frequency === undefined ? {} : { frequency: setup.frequency }),
     ...birthOf(setup.game),
     ...(setup.famine ? { famine: { staple: "grain" }, migration: { staple: "grain" } } : {}),
-    // Subconjunto serializable: `scamFiller` y `loanContagion` son cadenas (unidades del ledger).
-    ...(setup.life ? (setup.life as Partial<LifeOptions>) : {}),
+    // JSON de Zod: sus opcionales permiten `undefined` y las unidades aún no tienen marca TS.
+    ...(setup.life ? (setup.life as unknown as Partial<LifeOptions>) : {}),
   };
 }
 
