@@ -520,7 +520,7 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
-  /** Opt-in (con `loanSeeds`): pr�stamos con inter�s disfrazado donde la cultura lo proh�be; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  /** Opt-in (con `loanSeeds`): préstamos con interés disfrazado donde la cultura lo prohíbe; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
   readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
@@ -663,9 +663,8 @@ export function lifeWorld(
           ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
           ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
             ? {
-                serialEconomicVerbs: (["trade", "give"] as const).filter((verb) =>
-                  parts.npcVerbs?.includes(verb),
-                ),
+                // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
+                serialEconomicVerbs: ["trade", "give"] as const,
               }
             : {}),
           logMeals: parts.eatenNutrition === true,

@@ -1,5 +1,26 @@
 [
   {
+    "id": "shot-request-bucket-attempt",
+    "shot": true,
+    "text": "le pido a mi hermana su balde y me lo entrega",
+    "scene": "Tu hermana está en el patio con un balde.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "¿Me prestás tu balde?",
+        "to": {
+          "text": "mi hermana",
+          "kind": "person",
+          "features": [],
+          "relation": { "rel": "hermana", "to": "self" }
+        },
+        "act": { "kind": "request", "what": "balde" }
+      },
+      "stripped": ["me lo entrega"]
+    },
+    "notes": "Solo intenta pedir mediante habla completa. La respuesta de la hermana se descarta; no se crea una transferencia ni se garantiza convencerla."
+  },
+  {
     "id": "shot-promise-water",
     "shot": true,
     "text": "le prometo a mi madre devolverle el agua: \"Te devolveré el agua.\"",

@@ -260,27 +260,32 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
     unmapped: texts,
     text: DraftText.optional(),
   };
+  const about = z.strictObject({ text: DraftText, features: z.array(DraftText).max(16) });
+  const speechAct = z.discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("greet") }),
+    z.strictObject({ kind: z.literal("farewell") }),
+    z.strictObject({ kind: z.literal("ask"), about: about.optional() }),
+    z.strictObject({ kind: z.literal("request"), what: DraftText.optional() }),
+    z.strictObject({
+      kind: z.literal("tell"),
+      about,
+      claim: z.enum(["dead", "alive", "theft", "assault"]),
+      victim: about.optional(),
+    }),
+    z.strictObject({
+      kind: z.literal("promise"),
+      what: DraftText.optional(),
+      times: z.number().positive().max(100).optional(),
+      dueDays: z.number().int().positive().max(3650).nullable().optional(),
+      precision: z.number().min(0).max(1).optional(),
+    }),
+  ]);
   const speech = z
     .strictObject({
       text: SpeechDraft.shape.text,
       to: refSchema(REF_KINDS.person).optional(),
-      // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
-      act: z
-        .strictObject({
-          kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
-          about: z
-            .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-            .optional(),
-          claim: z.enum(["dead", "alive", "theft", "assault"]).optional(),
-          victim: z
-            .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-            .optional(),
-          what: DraftText.optional(),
-          times: z.number().positive().max(100).optional(),
-          dueDays: z.number().int().positive().max(3650).nullable().optional(),
-          precision: z.number().min(0).max(1).optional(),
-        })
-        .optional(),
+      // Cada acto exige sus propios campos: `tell` siempre necesita una afirmación del catálogo.
+      act: speechAct.optional(),
       ...(speakManners.length > 0
         ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
         : {}),

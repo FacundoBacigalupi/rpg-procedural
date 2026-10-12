@@ -114,6 +114,31 @@ function verbsOf(node: DraftPlanNode | undefined): string[] {
 }
 
 describe("el borrador según el catálogo", () => {
+  it("el acto tell exige afirmación conocida, y los demás actos mantienen sus campos", () => {
+    const about = { text: "Wu", features: ["Wu"] };
+    for (const act of [
+      { kind: "tell", about },
+      { kind: "tell", about, claim: "mañana vamos al río" },
+      { kind: "promise", claim: "alive" },
+    ]) {
+      const draft = { kind: "act", speech: { text: "Algo", act } };
+      expect(checked.safeParse(draft).success).toBe(false);
+      expect(structural.safeParse(draft).success).toBe(false);
+    }
+    for (const act of [
+      { kind: "greet" },
+      { kind: "farewell" },
+      { kind: "ask", about },
+      { kind: "request", what: "agua" },
+      { kind: "tell", about, claim: "alive" },
+      { kind: "promise", what: "agua", dueDays: null, precision: 0.5 },
+    ]) {
+      const draft = { kind: "act", speech: { text: "Algo", act } };
+      expect(checked.safeParse(draft).success).toBe(true);
+      expect(structural.safeParse(draft).success).toBe(true);
+    }
+  });
+
   it("regenera habla duplicada entre speech y plan y conserva habla en secuencias", () => {
     const speech = { text: "Te lo devuelvo cuando pueda" };
     const speak = {
@@ -233,7 +258,7 @@ describe("el borrador según el catálogo", () => {
     );
     expect(a).toBe(b);
     expect(a).toContain('"const":"take"');
-    // Exclusión plan/speech: 33 301 inline; referencias internas compartidas lo reducen a 24 870.
+    // Exclusión plan/speech y actos cerrados: 34 212 inline; referencias compartidas: 25 411.
     expect(a.length).toBeLessThan(26_000);
     expect(a).toContain('"anyOf"');
     expect(a).toContain('"$defs"');

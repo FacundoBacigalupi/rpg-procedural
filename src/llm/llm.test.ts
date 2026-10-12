@@ -188,6 +188,23 @@ const examples = content.all(PARSER_EXAMPLES);
 const setup = parserSetup(catalog, examples);
 
 describe("parseIntent", () => {
+  it("el ejemplo de petición conserva el intento y descarta la respuesta ajena", () => {
+    const example = examples.find((e) => e.id === "shot-request-bucket-attempt");
+    if (!example) throw new Error("sin ejemplo de petición del balde");
+    expect(example.shot).toBe(true);
+    expect(example.expect.plan).toBeUndefined();
+    expect(example.expect.speech?.text).toBe("¿Me prestás tu balde?");
+    expect(example.expect.stripped).toEqual(["me lo entrega"]);
+    expect(
+      setup.shots.some(
+        (m) => m.role === "assistant" && m.content === JSON.stringify(example.expect),
+      ),
+    ).toBe(true);
+    for (const id of ["other-acts-strip", "persuade-strip"]) {
+      expect(examples.find((e) => e.id === id)?.shot).not.toBe(true);
+    }
+  });
+
   it("la promesa de ejemplo conserva la cita y va en speech sin duplicar plan", () => {
     const example = examples.find((e) => e.id === "shot-promise-water");
     if (!example) throw new Error("sin ejemplo de promesa de agua");
