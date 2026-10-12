@@ -9,6 +9,18 @@ export interface FullProfileConfig {
   readonly frequency?: number;
 }
 
+/** Observación del tooling; el callback nunca entra al estado ni al setup de replay. */
+export interface FullProfileProgress {
+  readonly seed: number;
+  readonly stage: "creation-start" | "creation-complete" | "checkpoint";
+  readonly elapsedMs: number;
+  readonly tick?: number;
+  readonly worldDays?: number;
+  readonly checks?: number;
+  readonly problems?: number;
+  readonly rssBytes?: number;
+}
+
 export function validateFullProfileConfig(config: FullProfileConfig): FullProfileConfig {
   if (config.seeds.length === 0 || config.seeds.some((s) => !Number.isSafeInteger(s) || s < 0))
     throw new RangeError("seeds debe contener enteros no negativos");

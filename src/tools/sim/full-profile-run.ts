@@ -1,6 +1,6 @@
 // Una Life por proceso: al terminar el worker, el SO libera también el heap retenido.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -16,15 +16,20 @@ import { loadContentDir } from "../../persistence/index.ts";
 import { checkInvariants } from "../../sim/index.ts";
 import {
   type FullProfileConfig,
+  type FullProfileProgress,
   type ProcessMeasurement,
   profileDemography,
   recordProcess,
   validateFullProfileConfig,
 } from "./full-profile.ts";
 
-export function runFullProfileSeed(seed: number, config: FullProfileConfig) {
+export function runFullProfileSeed(
+  seed: number,
+  config: FullProfileConfig,
+  progress?: (message: FullProfileProgress) => void,
+) {
   try {
-    return measureFullProfileSeed(seed, config);
+    return measureFullProfileSeed(seed, config, progress);
   } catch (error) {
     const setup = {
       game: defaultGameSetup("realistic"),
@@ -46,7 +51,11 @@ export function runFullProfileSeed(seed: number, config: FullProfileConfig) {
   }
 }
 
-function measureFullProfileSeed(seed: number, config: FullProfileConfig) {
+function measureFullProfileSeed(
+  seed: number,
+  config: FullProfileConfig,
+  progress?: (message: FullProfileProgress) => void,
+) {
   validateFullProfileConfig(config);
   const content = loadContentDir("content", GAME_CONTENT_KINDS);
   const setup = {
@@ -57,11 +66,19 @@ function measureFullProfileSeed(seed: number, config: FullProfileConfig) {
   const processes = new Map<string, ProcessMeasurement>();
   assertLifeDependencies(optionsOf(setup));
   const started = performance.now();
+  progress?.({ seed, stage: "creation-start", elapsedMs: 0 });
   const life = Life.create(seed, content, {
     ...optionsOf(setup),
     runProbe: (id, changes, events) => recordProcess(processes, id, changes, events),
   });
   const creationMs = performance.now() - started;
+  progress?.({
+    seed,
+    stage: "creation-complete",
+    elapsedMs: creationMs,
+    tick: life.now,
+    rssBytes: process.memoryUsage().rss,
+  });
   const creationProcesses = Object.fromEntries(processes);
   processes.clear();
   const from = life.now;
@@ -74,6 +91,16 @@ function measureFullProfileSeed(seed: number, config: FullProfileConfig) {
   let problems = checkInvariants({ truth: world.truth, log: world.log, ledger: world.ledger });
   checks++;
   const samples = [{ tick: life.now, elapsedMs: creationMs, memory: process.memoryUsage() }];
+  progress?.({
+    seed,
+    stage: "checkpoint",
+    elapsedMs: performance.now() - started,
+    tick: life.now,
+    worldDays: 0,
+    checks,
+    problems: problems.length,
+    rssBytes: process.memoryUsage().rss,
+  });
   let stage = "advance";
   let failure: string | undefined;
   const simulationStarted = performance.now();
@@ -87,6 +114,16 @@ function measureFullProfileSeed(seed: number, config: FullProfileConfig) {
         tick: life.now,
         elapsedMs: performance.now() - started,
         memory: process.memoryUsage(),
+      });
+      progress?.({
+        seed,
+        stage: "checkpoint",
+        elapsedMs: performance.now() - started,
+        tick: life.now,
+        worldDays: (life.now - from) / world.clock.day,
+        checks,
+        problems: problems.length,
+        rssBytes: process.memoryUsage().rss,
       });
       stage = "advance";
     }
@@ -142,6 +179,8 @@ export function runFullProfileBatch(config: FullProfileConfig, out: string): voi
   const runs = [];
   for (const seed of config.seeds) {
     const path = join(out, `full-profile-${seed}.json`);
+    // Un worker interrumpido no debe heredar el reporte de una ejecución anterior.
+    if (existsSync(path)) unlinkSync(path);
     const child = spawnSync(
       process.execPath,
       [
@@ -154,7 +193,7 @@ export function runFullProfileBatch(config: FullProfileConfig, out: string): voi
       runs.push({
         seed,
         stoppedEarly: true,
-        report: path,
+        ...(existsSync(path) ? { report: path } : {}),
         failure: child.error?.message ?? `worker exit ${child.status}, signal ${child.signal}`,
       });
       process.exitCode = 1;

@@ -9,7 +9,20 @@ const { seed, config, path } = JSON.parse(process.argv[2] ?? "") as {
   path: string;
 };
 try {
-  const report = runFullProfileSeed(seed, config);
+  const report = runFullProfileSeed(seed, config, (message) => {
+    const elapsed = `${Math.round(message.elapsedMs)} ms`;
+    const memory =
+      message.rssBytes === undefined
+        ? ""
+        : `, RSS ${Math.round(message.rssBytes / 1024 / 1024)} MiB`;
+    const detail =
+      message.stage === "creation-start"
+        ? "creación iniciada"
+        : message.stage === "creation-complete"
+          ? `creación terminada en ${elapsed}${memory}`
+          : `checkpoint ${message.checks}: ${message.worldDays} días, ${message.problems} problemas, ${elapsed}${memory}`;
+    process.stdout.write(`full-profile seed ${seed}: ${detail}\n`);
+  });
   writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(
     `full-profile seed ${seed}: ${"performance" in report ? `${report.performance.completedYears} años, ${report.checks} chequeos` : "fallo al crear"}, ${report.stoppedEarly ? "detenida" : "completa"}\n`,
