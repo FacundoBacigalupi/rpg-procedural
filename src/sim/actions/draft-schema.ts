@@ -26,11 +26,16 @@ import {
 } from "./intent.ts";
 
 /** Los nodos que la Fase 1 ejecuta (`planFromDraft` rechaza el resto). */
-export const RUNNABLE_NODES = ["do", "seq", "until", "template"] as const;
+export const RUNNABLE_NODES = ["do", "seq", "until", "template", "repeat", "if"] as const;
 
 /** Problemas de un borrador ya bien formado contra el catálogo; vacío es que pasa. En inglés: vuelven al modelo. */
 export function draftCatalogProblems(draft: IntentDraft, catalog: ActionCatalog): string[] {
   const problems: string[] = [];
+  if (draft.speech && draft.plan) {
+    problems.push(
+      "speech: cannot coexist with plan; for speech alone omit plan, or put all speech in seq using speak with content",
+    );
+  }
   const allManners = new Set(catalog.verbs.flatMap((v) => v.manners.map((m) => m.id)));
   for (const m of draft.manner ?? []) {
     if (!allManners.has(m)) problems.push(`manner: no verb has the manner "${m}"`);

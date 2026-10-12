@@ -113,6 +113,27 @@ function verbsOf(node: DraftPlanNode | undefined): string[] {
 }
 
 describe("el borrador según el catálogo", () => {
+  it("regenera habla duplicada entre speech y plan y conserva habla en secuencias", () => {
+    const speech = { text: "Te lo devuelvo cuando pueda" };
+    const speak = {
+      kind: "do" as const,
+      verb: "speak",
+      args: [{ role: "content", text: speech.text }],
+    };
+    const duplicate: IntentDraft = { kind: "act", speech, plan: speak };
+    expect(checked.safeParse(duplicate).success).toBe(false);
+    expect(draftCatalogProblems(duplicate, catalog)).toEqual([
+      "speech: cannot coexist with plan; for speech alone omit plan, or put all speech in seq using speak with content",
+    ]);
+    expect(checked.safeParse({ kind: "act", speech }).success).toBe(true);
+    expect(
+      checked.safeParse({
+        kind: "plan",
+        plan: { kind: "seq", steps: [speak, { kind: "do", verb: "look", args: [] }] },
+      }).success,
+    ).toBe(true);
+  });
+
   it("todos los ejemplos del parser pasan los dos esquemas", () => {
     expect(examples.length).toBeGreaterThanOrEqual(30);
     for (const e of examples) {
