@@ -60,6 +60,29 @@ const find = (id: string): IntentDraft => {
 };
 
 describe("scoreDraft", () => {
+  it("repeat de una vuelta sin intervalo equivale al cuerpo, dos vueltas no", () => {
+    const direct = find("shot-move");
+    if (!direct.plan) throw new Error("sin plan");
+    const once: IntentDraft = {
+      ...direct,
+      plan: { kind: "repeat", times: 1, body: direct.plan },
+    };
+    expect(scoreDraft(direct, once).pass).toBe(true);
+    expect(scoreDraft(once, direct).pass).toBe(true);
+    expect(
+      scoreDraft(direct, {
+        ...direct,
+        plan: { kind: "repeat", times: 2, body: direct.plan },
+      }).pass,
+    ).toBe(false);
+    expect(
+      scoreDraft(direct, {
+        ...direct,
+        plan: { kind: "repeat", times: 1, every: { amount: 1, unit: "minute" }, body: direct.plan },
+      }).pass,
+    ).toBe(false);
+  });
+
   it("repeat e if puntúan cantidad, condición, ramas y argumentos internos", () => {
     const body = find("shot-move").plan;
     if (!body) throw new Error("sin body");

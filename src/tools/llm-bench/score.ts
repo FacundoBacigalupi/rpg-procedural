@@ -50,6 +50,11 @@ function leaves(node: DraftPlanNode | undefined, out: Leaf[] = []): Leaf[] {
       out.push({ sig: `template:${node.template}`, args: Object.values(node.params) });
       break;
     case "repeat":
+      // Una sola vuelta sin intervalo ejecuta exactamente el cuerpo una vez.
+      if (node.times === 1 && node.every === undefined) {
+        leaves(node.body, out);
+        break;
+      }
       out.push({
         sig: `repeat:${node.times ?? "?"}:${canonicalJson(node.every ?? null)}`,
         args: [],
