@@ -343,6 +343,28 @@ describe("referencias", () => {
     expect(resolveRef(desc("los gatos"), strangers).status).toBe("unknown");
   });
 
+  it("el plural con relación conserva el conjunto filtrado por parentesco", () => {
+    const siblings = strangers.map((k) => ({
+      ...k,
+      relations: [{ rel: "hermano", of: "self" as const }],
+    }));
+    const plural = resolveRef(
+      desc("mis hermanos", {
+        relation: { rel: "hermano", to: "self" },
+        quantity: { kind: "all" },
+      }),
+      [...siblings, ...village],
+    );
+    expect(plural.status === "group" && plural.members).toEqual([kid1, kid2, elder]);
+    const singular = resolveRef(
+      desc("mi hermano", {
+        relation: { rel: "hermano", to: "self" },
+      }),
+      siblings,
+    );
+    expect(singular.status).toBe("ambiguous");
+  });
+
   it("por cantidad declarada: «todos» y «dos» sin artículo", () => {
     const all = resolveRef(desc("los chicos", { quantity: { kind: "all" } }), [
       known(kid1, [], { features: ["chicos"], present: true }),
