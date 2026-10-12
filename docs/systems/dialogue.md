@@ -273,6 +273,17 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 
 `SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
 
+### Núcleo de confirmación económica (2026-10-12)
+
+`sim/economy/settlement.ts` ofrece `validateSettlement`: comprueba una operación completa sobre
+los saldos actuales y las reservas explícitas del titular antes de publicar su resultado. Las
+patas se evalúan juntas, con cantidades enteras seguras y orden canónico; distingue falta de
+existencias (`stock`) de invasión de una reserva (`reserve`). Consultar no modifica saldos ni
+diario. El ledger sigue siendo la autoridad que valida las cuentas externas y registra el asiento.
+La reserva de comida la calcula quien confirma con las bocas vivas actuales, no con un número
+de personas guardado al decidir. Este núcleo permite revalidar regalos y contraprestaciones
+compartidas sin volver a decidir el acto social ni introducir una tirada nueva.
+
 ### Implementado (2026-10-12): respuestas simultáneas con verbos de NPC
 
 Cuando `npcVerbs` contiene algún verbo, `life.converse` sigue decidiendo cada respuesta en
