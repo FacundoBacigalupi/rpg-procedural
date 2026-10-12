@@ -132,6 +132,7 @@ interface Run extends RunSpec {
   /** Los ids reales de sus eventos, una vez repartidos. */
   eventIds: readonly EventId[];
   alive: boolean;
+  readonly serialBatch?: true;
 }
 
 export class Scheduler {
@@ -475,7 +476,7 @@ export class Scheduler {
       true,
     );
     this.#checkResult(first, result, t, phase);
-    return { ...first, result, drafts, eventIds: [], alive: true };
+    return { ...first, result, drafts, eventIds: [], alive: true, serialBatch: true };
   }
 
   #checkResult(spec: RunSpec, result: ProcessResult, t: Tick, phase: Phase): void {
@@ -607,7 +608,7 @@ export class Scheduler {
         real.set(`event:~${n}`, id);
         return id;
       });
-      run.result = resolveDrafts(run.result, real, run.def.id);
+      run.result = resolveDrafts(run.result, real, run.def.id, run.serialBatch === true);
     }
 
     const truth = this.#o.truth;
@@ -706,6 +707,7 @@ function resolveDrafts(
   result: ProcessResult,
   real: ReadonlyMap<string, EntityRef>,
   by: ProcessId,
+  remapKeys = false,
 ): ProcessResult {
   const walk = (v: unknown): unknown => {
     if (typeof v === "string") {
@@ -717,7 +719,7 @@ function resolveDrafts(
     if (Array.isArray(v)) return v.map(walk);
     if (v !== null && typeof v === "object") {
       const out: Record<string, unknown> = {};
-      for (const [k, x] of Object.entries(v)) out[walk(k) as string] = walk(x);
+      for (const [k, x] of Object.entries(v)) out[remapKeys ? (walk(k) as string) : k] = walk(x);
       return out;
     }
     return v;
