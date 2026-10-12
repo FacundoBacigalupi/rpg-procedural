@@ -658,7 +658,7 @@ export function lifeWorld(
           ...(parts.sleepers ? { sleepers: true } : {}),
         }),
         actProcess({
-          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
+          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true, serialTrades: true } : {}),
           logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,

@@ -219,6 +219,8 @@ export const GLANCE_ACUITY = 0.6;
 export interface ActOptions {
   /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
   readonly projectTrades?: boolean;
+  /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
+  readonly serialTrades?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   readonly map: LocalMap;
@@ -484,6 +486,26 @@ export function actProcess(o: ActOptions): ProcessDef {
       YIELDED.name,
       FIGHT_STATE.name,
     ],
+    ...(o.serialTrades
+      ? {
+          serialGroup(ctx: ProcessContext) {
+            const me = ctx.scope as AgentId;
+            const state = ctx.truth.get(PLAN_STATE, me);
+            if (
+              !state ||
+              state.done ||
+              ctx.item?.reason.kind !== "state" ||
+              ctx.item.reason.key !== planKey(state.seq) ||
+              ctx.truth.get(ENTITY, me)?.endedAt !== undefined
+            )
+              return undefined;
+            const { cursor } = actCursor(ctx, o, state);
+            if (cursor.path === null) return undefined;
+            const node = nodeAt(state.plan.root, cursor.path);
+            return node.kind === "do" && node.verb === "trade" ? "trade" : undefined;
+          },
+        }
+      : {}),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const state = ctx.truth.get(PLAN_STATE, me);
@@ -494,19 +516,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       }
       if (ctx.truth.get(ENTITY, me)?.endedAt !== undefined) return {};
 
-      const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
-      const space = ctx.truth.get(LOCATION, me)?.space;
-      const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
-      const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
-      const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
-      const light = node ? spaceLight(node, sky) : sky;
-      const cursor = state.resume
-        ? state.cursor
-        : advance(state.plan.root, state.cursor, {
-            now: ctx.now,
-            dark: light < 0.2,
-            lastBelieved: state.lastBelieved,
-          });
+      const { hex, light, hour, cursor } = actCursor(ctx, o, state);
       if (cursor.path === null) {
         const changes: StateChange[] = [
           setComponent(PLAN_STATE, me, { ...state, cursor, done: true }),
@@ -520,6 +530,24 @@ export function actProcess(o: ActOptions): ProcessDef {
       return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour, season });
     },
   };
+}
+
+function actCursor(ctx: ProcessContext, o: ActOptions, state: PlanState) {
+  const me = ctx.scope as AgentId;
+  const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
+  const space = ctx.truth.get(LOCATION, me)?.space;
+  const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
+  const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
+  const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
+  const light = node ? spaceLight(node, sky) : sky;
+  const cursor = state.resume
+    ? state.cursor
+    : advance(state.plan.root, state.cursor, {
+        now: ctx.now,
+        dark: light < 0.2,
+        lastBelieved: state.lastBelieved,
+      });
+  return { hex, light, hour, cursor };
 }
 
 interface StepEnv {
