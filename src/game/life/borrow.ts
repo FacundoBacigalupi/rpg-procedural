@@ -15,12 +15,14 @@ import {
   type PlaceRef,
 } from "../../core/index.ts";
 import {
+  CREDIT,
   CREDIT_LIMIT_GRAMS,
   citePressure,
   draftEvent,
   ENTITY,
   type FoodDef,
   GIFT_GRAMS,
+  HOUSEHOLD,
   KNOWN_DEEDS,
   PERSON,
   PRESSURE,
@@ -35,6 +37,7 @@ import {
   worstDeed,
 } from "../../sim/index.ts";
 import { creditRows, debtsTo } from "./credit.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { type HeedStanding, standingCaution } from "./lend.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 import { NEIGHBOR_STANDING } from "./neighbors.ts";
@@ -49,6 +52,8 @@ export const REPAY_PROCESS = "life.repay";
 const REPAY_BELOW = 0.3;
 
 export interface BorrowOptions {
+  /** Opt-in: fiado y otras operaciones del dominio leen reservas actualizadas. */
+  readonly economicBatch?: boolean;
   readonly foods: readonly FoodDef[];
   readonly curves: readonly PressureCurve[];
   /** El hogar del jugador queda afuera: lo que hace su personaje lo decide él. */
@@ -97,12 +102,17 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
     reads: [
       PERSON.name,
       ENTITY.name,
+      HOUSEHOLD.name,
+      CREDIT.name,
       PRESSURE.name,
       KNOWN_DEEDS.name,
       ...(o.heedStanding ? [NEIGHBOR_STANDING.name, MOLD_RUMORS.name] : []),
       ...(o.heedFraud ? [RUMORS.name] : []),
     ],
     writes: [ENTITY.name, PRESSURE.name],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const ledger = ctx.ledger;
       const home = ctx.scope as string;
@@ -189,6 +199,8 @@ export function borrowProcess(o: BorrowOptions): ProcessDef {
 }
 
 export interface RepayOptions {
+  /** Opt-in: el pago usa los bienes que dejaron los miembros anteriores del dominio. */
+  readonly economicBatch?: boolean;
   readonly foods: readonly FoodDef[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
@@ -206,8 +218,11 @@ export function repayProcess(o: RepayOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
-    reads: [PERSON.name, ENTITY.name],
+    reads: [PERSON.name, ENTITY.name, HOUSEHOLD.name, CREDIT.name],
     writes: [],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const ledger = ctx.ledger;
       const home = ctx.scope as string;

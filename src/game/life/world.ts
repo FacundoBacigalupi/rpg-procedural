@@ -943,6 +943,9 @@ export function lifeWorld(
         }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
+          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+            ? { economicBatch: true }
+            : {}),
           foods: parts.foods,
           curves: parts.pressureCurves,
           player,
@@ -951,6 +954,9 @@ export function lifeWorld(
           ...(parts.usuryGossip ? { heedFraud: true } : {}),
         }),
         repayProcess({
+          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+            ? { economicBatch: true }
+            : {}),
           foods: parts.foods,
           player,
           placeOf: placeOf(parts, village),
