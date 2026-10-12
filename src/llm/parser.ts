@@ -62,6 +62,8 @@ export const PARSER_RULES = [
   "  Never guess a purpose from the verb; leave it out if the player does not say it.",
   "- If the character only talks, use `speech` with the exact words and `to` when said. When",
   "  talking is one step of a sequence, use the `speak` verb with `content` instead.",
+  "  Represent each utterance only once: never duplicate the same speech in `speech` and a",
+  "  `plan` step. For talking alone, omit `plan`; a `speak` step must include its spoken content.",
   '  How it is said goes in `manner`: `formal` for "de usted / con respeto", `casual` for "de vos /',
   '  con confianza"; never add one the player did not write.',
   "  `act` only when the player says what the words are for: greet, farewell, ask (about whom),",

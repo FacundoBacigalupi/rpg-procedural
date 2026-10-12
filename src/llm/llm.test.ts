@@ -215,6 +215,13 @@ describe("parseIntent", () => {
     expect(setup.system).toContain("do not put those words in `unmapped`");
   });
 
+  it("representa cada intervención una vez y conserva habla dentro de secuencias", () => {
+    expect(setup.system).toContain("talking is one step of a sequence, use the `speak` verb");
+    expect(setup.system).toContain("Represent each utterance only once");
+    expect(setup.system).toContain("For talking alone, omit `plan`");
+    expect(setup.system).toContain("a `speak` step must include its spoken content");
+  });
+
   it("manda el prefijo, lo de este turno al final, y devuelve el borrador validado", async () => {
     const draft = {
       kind: "act",
