@@ -187,6 +187,7 @@ import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
+import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -658,6 +659,7 @@ export function lifeWorld(
           ...(parts.sleepers ? { sleepers: true } : {}),
         }),
         actProcess({
+          ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
           ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true, serialTrades: true } : {}),
           logMeals: parts.eatenNutrition === true,
           map: parts.map,
@@ -970,6 +972,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
+        ...(parts.npcVerbs && parts.npcVerbs.length > 0
+          ? [watchingProjectionProcess({ catalog: parts.skills, clock: parts.clock })]
+          : []),
         ...(parts.npcVerbs?.includes("trade")
           ? [tradeProjectionProcess({ clock: parts.clock, goods: parts.goods })]
           : []),

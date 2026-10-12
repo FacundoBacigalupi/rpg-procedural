@@ -181,7 +181,8 @@ import {
 } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
-import { watchersLearn } from "./watching.ts";
+import { collectWatchExposures, type WatchExposure, watchersLearn } from "./watching.ts";
+import { WATCH_EXPOSURES_KEY } from "./watching-project.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -221,6 +222,8 @@ export interface ActOptions {
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
   readonly serialTrades?: boolean;
+  /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
+  readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   readonly map: LocalMap;
@@ -1104,29 +1107,30 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     : learned;
   if (lessons) changes.push(setComponent(SKILL_STATE, me, lessons));
   // Los presentes que lo vieron aprenden mirando (skills §3.2).
+  let watchExposures: readonly WatchExposure[] = [];
   if (r.attempt.expected !== null) {
-    changes.push(
-      ...watchersLearn({
-        truth,
-        catalog: o.skills,
-        traits: o.traits,
-        plans: e.plans,
-        clock: o.clock,
-        doer: me,
-        verb: node.verb,
-        doerLevel: input.actor.skill ?? 0,
-        // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
-        except: targetId,
-        rng: input.rng.fork("watch"),
-        hex: e.hex,
-        light: skyLight(o.map, o.clock, o.seed, ctx.now),
-        spaces: o.spaces,
-        forest: o.map.forest,
-        emissions: r.emissions,
-        seconds: r.seconds,
-        now: ctx.now,
-      }),
-    );
+    const watchInput = {
+      truth,
+      catalog: o.skills,
+      traits: o.traits,
+      plans: e.plans,
+      clock: o.clock,
+      doer: me,
+      verb: node.verb,
+      doerLevel: input.actor.skill ?? 0,
+      // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
+      except: targetId,
+      rng: input.rng.fork("watch"),
+      hex: e.hex,
+      light: skyLight(o.map, o.clock, o.seed, ctx.now),
+      spaces: o.spaces,
+      forest: o.map.forest,
+      emissions: r.emissions,
+      seconds: r.seconds,
+      now: ctx.now,
+    };
+    if (o.projectWatchExposures) watchExposures = collectWatchExposures(watchInput);
+    else changes.push(...watchersLearn(watchInput));
   }
   // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
   const image = updateSelfImage(
@@ -1455,13 +1459,21 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   return {
     // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
     events: [
-      ...r.events.map((event) => {
-        if (!state.plan.purpose && !(o.projectTrades && eff.kind === "trade")) return event;
+      ...r.events.map((event, index) => {
+        if (
+          !state.plan.purpose &&
+          !(o.projectTrades && eff.kind === "trade") &&
+          watchExposures.length === 0
+        )
+          return event;
         return {
           ...event,
           data: {
             ...(event.data as object),
             ...(state.plan.purpose ? { purpose: state.plan.purpose } : {}),
+            ...(index === 0 && watchExposures.length > 0
+              ? { [WATCH_EXPOSURES_KEY]: watchExposures }
+              : {}),
             ...(o.projectTrades && eff.kind === "trade"
               ? {
                   marketProjection: {

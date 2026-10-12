@@ -35,6 +35,7 @@ import {
 } from "../../sim/index.ts";
 import { type ActOptions, actProcess, PLAN_STATE, planKey } from "./act.ts";
 import { tradeProjectionProcess } from "./trade-projection.ts";
+import { watchingProjectionProcess } from "./watching-project.ts";
 
 const kinds = [ACTIONS, SKILLS, TRAITS, BODY_PLANS] as const;
 const files = [
@@ -78,7 +79,14 @@ const map: LocalMap = {
   },
 };
 
-function world(stock: number, serial = true, reverse = false, single = false, sharedHome = false) {
+function world(
+  stock: number,
+  serial = true,
+  reverse = false,
+  single = false,
+  sharedHome = false,
+  projectWatchExposures = false,
+) {
   const truth = new WorldTruth();
   const log = new EventLog();
   const place = { kind: "cell", cell: map.cell } as const;
@@ -137,6 +145,7 @@ function world(stock: number, serial = true, reverse = false, single = false, sh
     ],
   });
   const opts: ActOptions = {
+    projectWatchExposures,
     serialTrades: serial,
     projectTrades: true,
     map: sharedHome
@@ -163,9 +172,13 @@ function world(stock: number, serial = true, reverse = false, single = false, sh
     ledger,
     ids: new IdAllocator({ event: 2, agent: sharedHome ? 5 : 4 }),
     resolution: "local",
-    processes: [actProcess(opts), tradeProjectionProcess({ clock, goods })],
+    processes: [
+      actProcess(opts),
+      tradeProjectionProcess({ clock, goods }),
+      ...(projectWatchExposures ? [watchingProjectionProcess({ catalog: skills, clock })] : []),
+    ],
   });
-  for (const actor of single ? [buyers[0]] : reverse ? [...buyers].reverse() : buyers) {
+  for (const actor of single ? [buyers[1]] : reverse ? [...buyers].reverse() : buyers) {
     truth.set(PLAN_STATE, actor, {
       seq: 1,
       done: false,
@@ -271,5 +284,31 @@ describe("trade real en lote opt-in", () => {
     expect(a.log.all()).toEqual(b.log.all());
     expect(a.ledger.journal()).toEqual(b.ledger.journal());
     expect(a.scheduler.state()).toEqual(b.scheduler.state());
+  });
+  it("dos acciones directas comparten testigos sin disputar skill/opinion al proyectarlas", () => {
+    const w = world(2000, false, false, false, false, true);
+    expect(() => w.scheduler.advanceTo(clock.day / 2)).not.toThrow();
+    const trades = w.log.all().filter((e) => e.kind === "action.trade");
+    expect(trades).toHaveLength(2);
+    expect(w.scheduler.state().queue).toHaveLength(2);
+    expect(
+      trades.some((e) => (e.data as { watchExposures?: unknown[] }).watchExposures?.length),
+    ).toBe(true);
+    expect(w.log.all().filter((e) => e.kind === "contest")).toHaveLength(0);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("capturar exposiciones conserva efectos de una acción aislada y las emisiones originales", () => {
+    const direct = world(2000, false, false, true, false, false);
+    const projected = world(2000, false, false, true, false, true);
+    direct.scheduler.advanceTo(clock.day / 2);
+    projected.scheduler.advanceTo(clock.day / 2);
+    expect(projected.truth.rows()).toEqual(direct.truth.rows());
+    const withoutPacket = projected.log.all().map((event) => {
+      if (event.kind !== "action.trade") return event;
+      const { watchExposures, ...data } = event.data as { watchExposures?: unknown[] };
+      expect(watchExposures?.length).toBeGreaterThan(0);
+      return { ...event, data };
+    });
+    expect(withoutPacket).toEqual(direct.log.all());
   });
 });
