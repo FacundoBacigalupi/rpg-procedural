@@ -217,6 +217,24 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       // La sim solo usa `is`: en la salida restringida es obligatorio.
       cond: DraftCondition.required({ is: true }),
     }) as unknown as z.ZodType<DraftPlanNode>,
+    z.strictObject({
+      kind: z.literal("repeat"),
+      times: z.number().int().min(1).max(1000),
+      get body() {
+        return node;
+      },
+    }) as unknown as z.ZodType<DraftPlanNode>,
+    z.strictObject({
+      kind: z.literal("if"),
+      cond: DraftCondition.required({ is: true }),
+      // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+      get then() {
+        return node;
+      },
+      get else() {
+        return node.optional();
+      },
+    }) as unknown as z.ZodType<DraftPlanNode>,
   ]);
 
   const allManners = [...new Set(catalog.verbs.flatMap((v) => v.manners.map((m) => m.id)))];

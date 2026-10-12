@@ -155,6 +155,26 @@ describe("el borrador según el catálogo", () => {
     for (const d of [noKind, wrongKind, noIs]) expect(structural.safeParse(d).success).toBe(false);
   });
 
+  it("repeat e if ejecutables pasan también el esquema restringido del modelo", () => {
+    const look = { kind: "do", verb: "look", args: [] };
+    const conditional = {
+      kind: "if",
+      cond: { kind: "time", text: "de noche", is: { kind: "dark" } },
+      // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+      then: look,
+      else: { kind: "do", verb: "wait", args: [] },
+    };
+    for (const plan of [
+      { kind: "repeat", times: 2, body: look },
+      conditional,
+      { kind: "repeat", times: 3, body: conditional },
+    ]) {
+      const draft = { kind: "plan", plan };
+      expect(checked.safeParse(draft).success).toBe(true);
+      expect(structural.safeParse(draft).success).toBe(true);
+    }
+  });
+
   it("el JSON Schema sale del esquema estructural y es determinista", () => {
     const a = JSON.stringify(intentDraftJsonSchemaFor(catalog));
     const b = JSON.stringify(
@@ -163,7 +183,8 @@ describe("el borrador según el catálogo", () => {
     expect(a).toBe(b);
     expect(a).toContain('"const":"take"');
     // Tope de tamaño del esquema que ve el modelo: 22 000, 23 000 con el acto de habla, 25 000 con `consult`, 26 000 con `purpose` 27 000 con `consume` 27 500 con `filter` 29 000 con `forge` y 31 000 con `hire`.
-    expect(a.length).toBeLessThan(31_000);
+    // repeat e if agregan variantes recursivas y la condición normalizada: 31 583 caracteres.
+    expect(a.length).toBeLessThan(32_000);
   });
 
   it("sin el catálogo, un borrador ajeno pasa el genérico (por eso el control existe)", () => {
