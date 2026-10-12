@@ -33,8 +33,10 @@ import {
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
+import { PLAN_STATE } from "./act.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
 import { living } from "./living.ts";
+import { NPC_JOURNEY } from "./npc-verbs.ts";
 
 export const CATCH_UP_PROCESS = "life.catch_up";
 export const CAUGHT_UP_EVENT = "npc.caught_up";
@@ -283,6 +285,15 @@ export function sleepWant(i: SleepWantInput): boolean {
   return !i.nearPlayer && !i.bondedToPlayer && !i.important && !i.pending;
 }
 
+/**
+ * El catch-up actual integra una rutina corporal fija, no un plan ni un viaje en curso.
+ * Hasta off-5, ese trabajo exige ejecución individual aunque el NPC esté lejos del jugador.
+ */
+export function sleepWorkPending(truth: ReadonlyWorldTruth, who: AgentId): boolean {
+  const plan = truth.get(PLAN_STATE, who);
+  return (plan !== undefined && !plan.done) || truth.get(NPC_JOURNEY, who) !== undefined;
+}
+
 export interface SleepPolicyOptions {
   readonly player: AgentId;
   readonly map: LocalMap;
@@ -307,7 +318,14 @@ export function sleepPolicyProcess(o: SleepPolicyOptions): ProcessDef {
     cadence: { scene: "hour", local: "hour", regional: "hour", world: "hour" },
     representation: "individual",
     phase: "perceive",
-    reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, LOCATION.name],
+    reads: [
+      ASLEEP.name,
+      BODY_STATE.name,
+      ENTITY.name,
+      LOCATION.name,
+      PLAN_STATE.name,
+      NPC_JOURNEY.name,
+    ],
     writes: [ASLEEP.name],
     run(ctx) {
       const truth = ctx.truth;
