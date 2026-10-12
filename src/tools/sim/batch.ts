@@ -13,6 +13,8 @@ export function parseSeeds(spec: string): readonly Seed[] {
     if (!m) throw new Error(`seeds inválidos: ${spec}`);
     const from = Number(m[1]);
     const to = m[2] === undefined ? from : Number(m[2]);
+    if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to))
+      throw new Error(`seed fuera de rango seguro: ${part}`);
     if (to < from || to - from > 100_000) throw new Error(`rango inválido: ${part}`);
     for (let s = from; s <= to; s++) if (!out.includes(s)) out.push(s);
   }

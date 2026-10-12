@@ -1,0 +1,173 @@
+// Una Life por proceso: al terminar el worker, el SO libera también el heap retenido.
+import { spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  assertLifeDependencies,
+  defaultGameSetup,
+  FULL_PROFILE,
+  GAME_CONTENT_KINDS,
+  LIFE_ENGINE,
+  Life,
+  optionsOf,
+} from "../../game/index.ts";
+import { loadContentDir } from "../../persistence/index.ts";
+import { checkInvariants } from "../../sim/index.ts";
+import {
+  type FullProfileConfig,
+  type ProcessMeasurement,
+  profileDemography,
+  recordProcess,
+  validateFullProfileConfig,
+} from "./full-profile.ts";
+
+export function runFullProfileSeed(seed: number, config: FullProfileConfig) {
+  try {
+    return measureFullProfileSeed(seed, config);
+  } catch (error) {
+    const setup = {
+      game: defaultGameSetup("realistic"),
+      life: FULL_PROFILE,
+      ...(config.frequency === undefined ? {} : { frequency: config.frequency }),
+    };
+    return {
+      scenario: "full-profile",
+      seed,
+      config,
+      setup,
+      stoppedEarly: true,
+      failure: {
+        stage: "creation",
+        message: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      },
+      reproduction: { seed, setup, replayFrom: "seed", stage: "creation", plans: [] },
+    };
+  }
+}
+
+function measureFullProfileSeed(seed: number, config: FullProfileConfig) {
+  validateFullProfileConfig(config);
+  const content = loadContentDir("content", GAME_CONTENT_KINDS);
+  const setup = {
+    game: defaultGameSetup("realistic"),
+    life: FULL_PROFILE,
+    ...(config.frequency === undefined ? {} : { frequency: config.frequency }),
+  };
+  const processes = new Map<string, ProcessMeasurement>();
+  assertLifeDependencies(optionsOf(setup));
+  const started = performance.now();
+  const life = Life.create(seed, content, {
+    ...optionsOf(setup),
+    runProbe: (id, changes, events) => recordProcess(processes, id, changes, events),
+  });
+  const creationMs = performance.now() - started;
+  const creationProcesses = Object.fromEntries(processes);
+  processes.clear();
+  const from = life.now;
+  const world = life.world;
+  const duration =
+    config.days === undefined ? config.years * world.clock.year : config.days * world.clock.day;
+  const target = from + Math.round(duration);
+  const step = config.checkEveryDays * world.clock.day;
+  let checks = 0;
+  let problems = checkInvariants({ truth: world.truth, log: world.log, ledger: world.ledger });
+  checks++;
+  const samples = [{ tick: life.now, elapsedMs: creationMs, memory: process.memoryUsage() }];
+  let stage = "advance";
+  let failure: string | undefined;
+  const simulationStarted = performance.now();
+  try {
+    while (life.now < target && problems.length === 0) {
+      life.advanceTo(Math.min(target, life.now + step));
+      stage = "invariants";
+      problems = checkInvariants({ truth: world.truth, log: world.log, ledger: world.ledger });
+      checks++;
+      samples.push({
+        tick: life.now,
+        elapsedMs: performance.now() - started,
+        memory: process.memoryUsage(),
+      });
+      stage = "advance";
+    }
+  } catch (error) {
+    failure = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  }
+  const simulationMs = performance.now() - simulationStarted;
+  const completedYears = (life.now - from) / world.clock.year;
+  return {
+    scenario: "full-profile",
+    seed,
+    versions: { engine: LIFE_ENGINE, content: content.hash, format: 1 },
+    setup,
+    config,
+    from,
+    to: life.now,
+    target,
+    checks,
+    stoppedEarly: problems.length > 0 || failure !== undefined,
+    problems,
+    ...(failure === undefined ? {} : { failure: { stage, message: failure } }),
+    metrics: profileDemography(world.log.all(), from),
+    performance: {
+      creationMs,
+      simulationMs,
+      completedYears,
+      msPerWorldYear: completedYears > 0 ? simulationMs / completedYears : null,
+      peakSampledRssBytes: samples.reduce((peak, s) => Math.max(peak, s.memory.rss), 0),
+      maxRssBytes: process.resourceUsage().maxRSS * 1024,
+      creationProcesses,
+      processes: Object.fromEntries([...processes].sort(([a], [b]) => a.localeCompare(b))),
+      samples,
+    },
+    // Todo fallo conserva seed + setup exacto; no atribuye a una opción sin aislarla.
+    ...(problems.length > 0 || failure !== undefined
+      ? {
+          reproduction: {
+            seed,
+            setup,
+            observedTick: life.now,
+            replayFrom: "seed",
+            stage: failure === undefined ? "invariants" : stage,
+            plans: [],
+          },
+        }
+      : {}),
+  };
+}
+
+export function runFullProfileBatch(config: FullProfileConfig, out: string): void {
+  validateFullProfileConfig(config);
+  mkdirSync(out, { recursive: true });
+  const runs = [];
+  for (const seed of config.seeds) {
+    const path = join(out, `full-profile-${seed}.json`);
+    const child = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL("./full-profile-worker.ts", import.meta.url)),
+        JSON.stringify({ seed, config, path }),
+      ],
+      { stdio: "inherit" },
+    );
+    if (child.error || child.status !== 0) {
+      runs.push({
+        seed,
+        stoppedEarly: true,
+        report: path,
+        failure: child.error?.message ?? `worker exit ${child.status}, signal ${child.signal}`,
+      });
+      process.exitCode = 1;
+    } else {
+      const report = JSON.parse(readFileSync(path, "utf8")) as ReturnType<
+        typeof runFullProfileSeed
+      >;
+      runs.push({ seed, stoppedEarly: report.stoppedEarly, report: path });
+      if (report.stoppedEarly) process.exitCode = 1;
+    }
+  }
+  writeFileSync(
+    join(out, "full-profile-batch.json"),
+    `${JSON.stringify({ scenario: "full-profile", config, runs }, null, 2)}\n`,
+  );
+}

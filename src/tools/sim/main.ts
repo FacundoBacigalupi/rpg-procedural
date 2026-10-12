@@ -8,12 +8,15 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
+import { parseSeeds } from "./batch.ts";
+import { runFullProfileBatch } from "./full-profile-run.ts";
 import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
 import { runSim } from "./sim.ts";
 
 const { values } = parseArgs({
   options: {
     seed: { type: "string" },
+    seeds: { type: "string" },
     years: { type: "string" },
     days: { type: "string" },
     "persist-goal-layers": { type: "boolean" },
@@ -27,6 +30,21 @@ const { values } = parseArgs({
 });
 
 const seed = values.seed === undefined ? randomInt(0, 0xffffffff) : Number(values.seed);
+if (values.scenario === "full-profile") {
+  runFullProfileBatch(
+    {
+      seeds: values.seeds === undefined ? [seed] : parseSeeds(values.seeds),
+      years: Number(values.years ?? 1),
+      checkEveryDays: Number(values["check-days"] ?? 30),
+      ...(values.days === undefined ? {} : { days: Number(values.days) }),
+      ...(values.frequency === undefined ? {} : { frequency: Number(values.frequency) }),
+    },
+    values.out,
+  );
+  process.exit(process.exitCode ?? 0);
+}
+if (values.seeds !== undefined)
+  throw new Error("--seeds requiere --scenario full-profile (o sim:batch)");
 const content = loadContentDir("content", GAME_CONTENT_KINDS);
 const frequency = values.frequency === undefined ? undefined : Number(values.frequency);
 const scenario =

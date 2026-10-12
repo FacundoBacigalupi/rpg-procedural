@@ -1,5 +1,6 @@
 export * from "./batch.ts";
 export * from "./diff.ts";
+export * from "./full-profile.ts";
 export * from "./goal-metrics.ts";
 export * from "./html.ts";
 export * from "./layer-pull.ts";
