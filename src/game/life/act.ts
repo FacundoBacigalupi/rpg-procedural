@@ -158,6 +158,7 @@ import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
   atMyMercy,
@@ -224,6 +225,8 @@ export interface ActOptions {
   readonly serialTrades?: boolean;
   /** Opt-in explícito: solo trade/give comparten el turno de servicio de recursos; no combate. */
   readonly serialEconomicVerbs?: readonly ("trade" | "give")[];
+  /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
+  readonly economicBatch?: boolean;
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
   readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -494,6 +497,7 @@ export function actProcess(o: ActOptions): ProcessDef {
     ],
     ...(serialVerbs.size > 0
       ? {
+          ...(o.economicBatch ? { serialDomain: ECONOMIC_SERIAL_DOMAIN } : {}),
           serialGroup(ctx: ProcessContext) {
             const me = ctx.scope as AgentId;
             const state = ctx.truth.get(PLAN_STATE, me);
@@ -511,7 +515,7 @@ export function actProcess(o: ActOptions): ProcessDef {
             return node.kind === "do" &&
               (node.verb === "trade" || node.verb === "give") &&
               serialVerbs.has(node.verb)
-              ? "economic"
+              ? ECONOMIC_SERIAL_GROUP
               : undefined;
           },
         }

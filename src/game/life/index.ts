@@ -8,6 +8,7 @@ export * from "./create.ts";
 export * from "./debtknowledge.ts";
 export { GOAL_EVENT, NPC_DECISION, NPC_GOALS } from "./decide.ts";
 export * from "./divine.ts";
+export * from "./economic-batch.ts";
 export * from "./environment.ts";
 export * from "./exposure.ts";
 export * from "./gathering.ts";

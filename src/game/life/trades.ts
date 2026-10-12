@@ -49,6 +49,7 @@ import {
   wagePerDay,
   wageTransfer,
 } from "../../sim/index.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 /** Igual a ROUTINE.workAge (no se importa routine.ts: ciclo con act.ts). */
 export const WORK_AGE = 10;
@@ -87,6 +88,8 @@ export function tradeOfHousehold(
 }
 
 export interface TradesOptions {
+  /** Opt-in: producción y tratos comparten lectura de los recursos comprometidos en act. */
+  readonly economicBatch?: boolean;
   readonly clock: PlanetClock;
   readonly goods: readonly GoodDef[];
   readonly recipes: readonly TradeRecipeDef[];
@@ -168,6 +171,9 @@ export function tradesProcess(o: TradesOptions): ProcessDef {
     phase: "act",
     reads: [PERSON.name, ENTITY.name, TRADE_RECEIPTS.name, SALE_RECEIPTS.name, TRADE_CHOICE.name],
     writes: [TRADE_RECEIPTS.name],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || !coinDef || (o.assignments.length === 0 && o.seed === undefined && !o.chosen))

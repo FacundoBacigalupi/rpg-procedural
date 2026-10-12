@@ -665,6 +665,7 @@ export function lifeWorld(
             ? {
                 // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
                 serialEconomicVerbs: ["trade", "give"] as const,
+                economicBatch: true,
               }
             : {}),
           logMeals: parts.eatenNutrition === true,
@@ -965,6 +966,9 @@ export function lifeWorld(
           trajectories: parts.trajectories ?? [],
         }),
         tradesProcess({
+          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+            ? { economicBatch: true }
+            : {}),
           clock: parts.clock,
           goods: parts.goods,
           recipes: parts.tradeRecipes ?? [],

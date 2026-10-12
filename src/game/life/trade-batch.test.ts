@@ -31,10 +31,13 @@ import {
   SKILLS,
   SkillCatalog,
   TRAITS,
+  WORKSHOP,
+  WORKSHOP_WASTE,
   WorldTruth,
 } from "../../sim/index.ts";
 import { type ActOptions, actProcess, PLAN_STATE, planKey } from "./act.ts";
 import { tradeProjectionProcess } from "./trade-projection.ts";
+import { tradesProcess } from "./trades.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 
 const kinds = [ACTIONS, SKILLS, TRAITS, BODY_PLANS] as const;
@@ -87,6 +90,7 @@ function world(
   sharedHome = false,
   projectWatchExposures = false,
   economicVerbs?: readonly ("trade" | "give")[],
+  workshop = false,
 ) {
   const truth = new WorldTruth();
   const log = new EventLog();
@@ -126,7 +130,13 @@ function world(
       kind: "village",
       hexes: [1],
     });
-  const ledger = new Ledger({ externals: { seed: [good, coin] } });
+  const ledger = new Ledger({
+    externals: {
+      seed: [good, coin],
+      [WORKSHOP]: [ledgerUnit("good:output")],
+      [WORKSHOP_WASTE]: [good],
+    },
+  });
   ledger.post({
     tick: 0,
     eventId: makeId("event", 1),
@@ -146,6 +156,7 @@ function world(
     ],
   });
   const opts: ActOptions = {
+    ...(workshop ? { economicBatch: true } : {}),
     ...(economicVerbs ? { serialEconomicVerbs: economicVerbs } : {}),
     projectWatchExposures,
     serialTrades: serial,
@@ -178,6 +189,30 @@ function world(
       actProcess(opts),
       tradeProjectionProcess({ clock, goods }),
       ...(projectWatchExposures ? [watchingProjectionProcess({ catalog: skills, clock })] : []),
+      ...(workshop
+        ? [
+            tradesProcess({
+              economicBatch: true,
+              clock,
+              goods: [
+                ...goods,
+                { id: "copper", name: "cobre", form: "coin" },
+                { id: "output", name: "producto", form: "good", priceCopperPerKg: 12 },
+              ],
+              recipes: [
+                {
+                  id: "consume-tool",
+                  name: "oficio",
+                  hoursPerBatch: 4,
+                  inputs: [{ good: "tool", amount: 1000 }],
+                  output: { good: "output", amount: 1000 },
+                },
+              ],
+              assignments: [{ household: "household:3", recipe: "consume-tool" }],
+              placeOf: () => place,
+            }),
+          ]
+        : []),
     ],
   });
   for (const actor of single ? [buyers[1]] : reverse ? [...buyers].reverse() : buyers) {
@@ -204,7 +239,7 @@ function world(
       },
     });
     scheduler.schedule({
-      at: clock.day / 2,
+      at: workshop ? clock.day : clock.day / 2,
       phase: "act",
       process: "life.act",
       scope: actor,
@@ -399,4 +434,16 @@ describe("trade real en lote opt-in", () => {
       expect(w.scheduler.state().queue).toEqual([]);
     },
   );
+  it.each([1000, 2000])("taller y trade comparten reservas con stock=%s", (stock) => {
+    const w = world(stock, true, false, true, true, true, ["trade", "give"], true);
+    expect(() => w.scheduler.advanceTo(clock.day)).not.toThrow();
+    expect(w.log.all().some((e) => e.kind === "household.produced")).toBe(stock === 2000);
+    expect(w.log.all().some((e) => e.kind === "action.trade")).toBe(true);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(1000);
+    expect(w.ledger.total(ledgerUnit("good:output"))).toBe(stock - 1000);
+    expect(w.ledger.balance(holderAccount(makeId("household", 3)), good)).toBe(0);
+    expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
+    expect(w.scheduler.state().queue).toHaveLength(1);
+    expect(w.ledger.audit()).toEqual([]);
+  });
 });
