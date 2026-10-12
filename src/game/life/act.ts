@@ -223,8 +223,8 @@ export interface ActOptions {
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
   readonly serialTrades?: boolean;
-  /** Opt-in explícito: solo trade/give comparten el turno de servicio de recursos; no combate. */
-  readonly serialEconomicVerbs?: readonly ("trade" | "give")[];
+  /** Opt-in explícito: estos verbos comparten saldos; no serializa la iniciativa de combate. */
+  readonly serialEconomicVerbs?: readonly ("trade" | "give" | "eat" | "cook")[];
   /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
   readonly economicBatch?: boolean;
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
@@ -512,9 +512,7 @@ export function actProcess(o: ActOptions): ProcessDef {
             const { cursor } = actCursor(ctx, o, state);
             if (cursor.path === null) return undefined;
             const node = nodeAt(state.plan.root, cursor.path);
-            return node.kind === "do" &&
-              (node.verb === "trade" || node.verb === "give") &&
-              serialVerbs.has(node.verb)
+            return node.kind === "do" && serialVerbs.has(node.verb)
               ? ECONOMIC_SERIAL_GROUP
               : undefined;
           },

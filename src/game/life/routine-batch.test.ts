@@ -13,23 +13,34 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  ACTIONS,
+  ActionCatalog,
   BODY_PLANS,
   BODY_STATE,
+  COOKED,
   EATEN,
   ENTITY,
   type FoodDef,
+  FRESH_CURSOR,
+  GOODS,
   type GoodDef,
+  INNATE,
   LOCATION,
   type LocalMap,
   newBody,
   PERSON,
+  PLACE,
+  RECIPES,
   Scheduler,
+  SKILLS,
+  SkillCatalog,
+  TRAITS,
   type TradeRecipeDef,
   WORKSHOP,
   WORKSHOP_WASTE,
   WorldTruth,
 } from "../../sim/index.ts";
-import { PLAN_STATE } from "./act.ts";
+import { actProcess, PLAN_STATE, planKey } from "./act.ts";
 import { routineProcess } from "./routine.ts";
 import { tradesProcess } from "./trades.ts";
 
@@ -39,6 +50,25 @@ const plans = loadContent(
   [{ kind: "body-plans", file, data: JSON.parse(readFileSync(file, "utf8")) }],
 ).all(BODY_PLANS);
 const recipes = JSON.parse(readFileSync("content/trades/core.json", "utf8")) as TradeRecipeDef[];
+const content = loadContent(
+  [ACTIONS, SKILLS, TRAITS, RECIPES, GOODS],
+  [
+    "content/actions/core.json",
+    "content/skills/core.json",
+    "content/traits/human.json",
+    "content/recipes/core.json",
+    "content/goods/core.json",
+  ].map((file) => ({
+    kind: file.split("/")[1] as string,
+    file,
+    data: JSON.parse(readFileSync(file, "utf8")),
+  })),
+);
+const actions = content
+  .all(ACTIONS)
+  .map((a) => (a.id === "eat" || a.id === "cook" ? { ...a, ease: 100 } : a));
+const catalog = new ActionCatalog(actions);
+const skills = new SkillCatalog(content.all(SKILLS), actions);
 const home = makeId("household", 1);
 const grain = ledgerUnit("good:grain");
 const bread = ledgerUnit("good:flatbread");
@@ -66,7 +96,7 @@ const map: LocalMap = {
   },
 };
 
-function world(batch: boolean) {
+function world(batch: boolean, verb?: "eat" | "cook", consumerBatch = true) {
   const truth = new WorldTruth(),
     log = new EventLog();
   const place = { kind: "cell", cell: map.cell } as const;
@@ -83,21 +113,34 @@ function world(batch: boolean) {
   });
   const plan = plans[0];
   if (!plan) throw new Error("sin body plan");
+  truth.setRaw(PLACE.name, makeId("place", 1), { name: "aldea", kind: "village", hexes: [0] });
   for (const n of [1, 2]) {
     const actor = makeId("agent", n);
     truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
     truth.setRaw(PERSON.name, actor, { born: -30 * clock.year, sex: "male", household: home });
     truth.set(BODY_STATE, actor, newBody(plan, 55, 0));
     truth.set(LOCATION, actor, { hex: 0 });
+    truth.set(INNATE, actor, Object.fromEntries(content.all(TRAITS).map((t) => [t.id, t.mean])));
   }
   const ledger = new Ledger({
-    externals: { seed: [grain], [EATEN]: [grain], [WORKSHOP]: [bread], [WORKSHOP_WASTE]: [grain] },
+    externals: {
+      seed: [grain],
+      [EATEN]: [grain],
+      [COOKED]: [grain, bread],
+      [WORKSHOP]: [bread],
+      [WORKSHOP_WASTE]: [grain],
+    },
   });
   ledger.post({
     tick: 0,
     eventId: makeId("event", 1),
     transfers: [
-      { from: externalAccount("seed"), to: holderAccount(home), unit: grain, amount: 800 },
+      {
+        from: externalAccount("seed"),
+        to: holderAccount(home),
+        unit: grain,
+        amount: verb ? 400 : 800,
+      },
     ],
   });
   const scheduler = new Scheduler(
@@ -111,6 +154,27 @@ function world(batch: boolean) {
       resolution: "local",
       scopes: (kind) => (kind === "agent" ? truth.ids(PERSON) : ["world"]),
       processes: [
+        ...(verb
+          ? [
+              actProcess({
+                economicBatch: true,
+                serialEconomicVerbs: consumerBatch ? ["eat", "cook"] : ["trade", "give"],
+                map,
+                spaces: { spaces: [], edges: [] },
+                catalog,
+                skills,
+                traits: content.all(TRAITS),
+                bodyPlans: plans,
+                goods,
+                foods,
+                recipes: content.all(RECIPES),
+                statuses: [],
+                clock,
+                seed: 7,
+                player: makeId("agent", 99),
+              }),
+            ]
+          : []),
         routineProcess({
           economicBatch: batch,
           map,
@@ -133,6 +197,35 @@ function world(batch: boolean) {
     },
     { now: clock.day - 3600, seq: 0, queue: [] },
   );
+  if (verb) {
+    const actor = makeId("agent", 1);
+    truth.set(PLAN_STATE, actor, {
+      seq: 1,
+      done: false,
+      cursor: FRESH_CURSOR,
+      lastBelieved: null,
+      steps: [],
+      plan: {
+        actor,
+        source: "utility",
+        root: {
+          kind: "do",
+          verb,
+          args: [{ role: "what", text: verb === "eat" ? "grano" : "pan plano" }],
+          manner: [],
+        },
+        manner: [],
+        causes: [],
+      },
+    });
+    scheduler.schedule({
+      at: clock.day,
+      phase: "act",
+      process: "life.act",
+      scope: actor,
+      reason: { kind: "state", entity: actor, key: planKey(1) },
+    });
+  }
   return { truth, log, ledger, scheduler };
 }
 
@@ -187,5 +280,35 @@ describe("rutina y taller comparten despensa", () => {
     });
     expect(p.serialDomain).toBeUndefined();
     expect(p.serialGroup).toBeUndefined();
+  });
+});
+
+describe("planes consumidores y comida de familiares", () => {
+  it.each(["eat", "cook"] as const)("reproduce %s fuera del dominio", (verb) => {
+    const w = world(true, verb, false);
+    expect(() => w.scheduler.advanceTo(clock.day)).toThrow();
+    expect(w.log.all().some((e) => e.kind === `action.${verb}`)).toBe(true);
+  });
+  it.each(["eat", "cook"] as const)("%s lee la despensa común y conserva agenda", (verb) => {
+    const w = world(true, verb);
+    expect(() => w.scheduler.advanceTo(clock.day)).not.toThrow();
+    expect(w.log.all().filter((e) => e.kind === `action.${verb}`)).toHaveLength(1);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(w.ledger.balance(holderAccount(home), grain)).toBeGreaterThanOrEqual(0);
+    expect(w.scheduler.state().queue.some((q) => q.process === "life.act")).toBe(true);
+    expect(
+      w.ledger.balance(externalAccount(verb === "eat" ? EATEN : COOKED), grain),
+    ).toBeGreaterThan(0);
+    expect(
+      w.ledger.balance(holderAccount(home), grain) +
+        w.ledger.balance(externalAccount(EATEN), grain) +
+        w.ledger.balance(externalAccount(COOKED), grain) +
+        w.ledger.balance(externalAccount(WORKSHOP_WASTE), grain),
+    ).toBe(400);
+    const repeated = world(true, verb);
+    repeated.scheduler.advanceTo(clock.day);
+    expect(w.truth.rows()).toEqual(repeated.truth.rows());
+    expect(w.log.all()).toEqual(repeated.log.all());
+    expect(w.ledger.journal()).toEqual(repeated.ledger.journal());
   });
 });
