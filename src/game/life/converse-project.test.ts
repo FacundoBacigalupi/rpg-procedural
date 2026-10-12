@@ -17,6 +17,7 @@ import {
   PERSON,
   PERSON_NAME,
   PLANS,
+  type ProcessDef,
   RELATION_BONDS,
   RELATION_DIMS,
   RELATIONS,
@@ -155,6 +156,62 @@ function fixture(project = true, seed = 7) {
 }
 
 describe("conversaciones simultáneas con proyección causal única", () => {
+  it("hablar sin packet de proyección y otros eventos no escriben ni provocan excepciones", () => {
+    const truth = new WorldTruth();
+    const log = new EventLog();
+    const source: ProcessDef = {
+      id: "life.sample_speech",
+      system: "life",
+      scope: "world",
+      phase: "act",
+      cadence: { local: "hour" },
+      representation: "individual",
+      reads: [],
+      writes: [],
+      run: () => ({
+        events: [
+          undefined,
+          null,
+          "hola",
+          {},
+          { conversationEffects: null },
+          { conversationEffects: {} },
+          { conversationEffects: [] },
+        ]
+          .map((data) => ({
+            kind: "action.speak",
+            actors: [],
+            place,
+            data,
+            emissions: {},
+            causes: [{ kind: "seed" as const }],
+          }))
+          .concat([
+            {
+              kind: "action.wait",
+              actors: [],
+              place,
+              data: { conversationEffects: [] },
+              emissions: {},
+              causes: [{ kind: "seed" as const }],
+            },
+          ]),
+      }),
+    };
+    const scheduler = new Scheduler({
+      rng: Rng.root(7),
+      clock: EARTHLIKE_CLOCK,
+      truth,
+      log,
+      ids: new IdAllocator(),
+      resolution: "local",
+      processes: [source, converseProjectionProcess()],
+    });
+    expect(() => scheduler.advanceTo(3600)).not.toThrow();
+    expect(log.all()).toHaveLength(8);
+    expect(truth.ids(FACE)).toEqual([]);
+    expect(truth.ids(HEARD)).toEqual([]);
+  });
   it("dos respuestas al mismo hablante conservan ambas noticias y sus causas", () => {
     const run = (seed: number, project = true) => {
       const world = fixture(project, seed);

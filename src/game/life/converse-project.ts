@@ -68,12 +68,12 @@ export function converseProjectionProcess(): ProcessDef {
     reads: [FACE.name, HEARD.name],
     writes: [FACE.name, HEARD.name],
     run(ctx) {
-      const effects = ctx.recent.flatMap((event) =>
-        event.kind === "action.speak"
-          ? ((event.data as { readonly conversationEffects?: readonly ConverseProjectionEffect[] })
-              .conversationEffects ?? [])
-          : [],
-      );
+      const effects = ctx.recent.flatMap((event): readonly ConverseProjectionEffect[] => {
+        if (event.kind !== "action.speak" || event.data === null || typeof event.data !== "object")
+          return [];
+        const packet = (event.data as Record<string, unknown>)[CONVERSATION_EFFECTS_KEY];
+        return Array.isArray(packet) ? (packet as ConverseProjectionEffect[]) : [];
+      });
       return { changes: foldConversationEffects(ctx.truth, effects) };
     },
   };
