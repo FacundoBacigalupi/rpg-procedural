@@ -1628,6 +1628,9 @@ export function lifeWorld(
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         routineProcess({
+          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+            ? { economicBatch: true }
+            : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
           ...(parts.sleepers ? { sleepers: true } : {}),

@@ -65,6 +65,7 @@ import {
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { PLAYER } from "./player.ts";
 
 export const ROUTINE_PROCESS = "life.routine";
@@ -94,6 +95,8 @@ const EAT_HUNGER = 0.6;
 const MAX_DRINK_L = 1.5;
 
 export interface RoutineOptions {
+  /** Opt-in: comidas, cosecha y combustible comparten saldos con los demás procesos económicos. */
+  readonly economicBatch?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   /** Calidad del agua que bebe cada quien (fuente y tratamiento); sin esto, agua limpia. */
@@ -240,6 +243,9 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "act",
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     reads: [
       MEALS.name,
       PLAYER.name,
