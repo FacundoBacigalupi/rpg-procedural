@@ -57,7 +57,9 @@ describe("lo que el personaje ve se puede nombrar al escribir", () => {
     expect(recognizedParent?.features).toContain("mujer");
     expect(recognizedParent?.present).toBe(true);
     expect(recognizedParent?.relations).toEqual(family.relations);
-    const unknownParent = { ...perceivedParent, fields: { figure: perceivedParent.fields.figure } };
+    const perceivedFigure = perceivedParent.fields.figure;
+    if (!perceivedFigure) throw new Error("sin figura percibida");
+    const unknownParent = { ...perceivedParent, fields: { figure: perceivedFigure } };
     const remembered = knownEntities(w).find((k) => k.ref === parent);
     expect(knownEntities(w, [unknownParent]).find((k) => k.ref === parent)).toEqual(remembered);
     const me = w.truth.get(PERSON, w.player);
