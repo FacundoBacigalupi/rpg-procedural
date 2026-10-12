@@ -237,6 +237,11 @@ export interface ProcessDef {
   /** Tablas que lee y que escribe. Escribir fuera de `writes` es un error. */
   readonly reads: readonly string[];
   readonly writes: readonly string[];
+  /** Opt-in en act: misma clave agrupa alcances de este proceso en orden canónico, con lectura
+   * actualizada de sus diffs y saldos. No es una contienda simultánea por iniciativa.
+   * Undefined conserva el contrato anterior. Los otros procesos leen la fase original.
+   */
+  readonly serialGroup?: (ctx: ProcessContext) => string | undefined;
   run(ctx: ProcessContext): ProcessResult;
 }
 

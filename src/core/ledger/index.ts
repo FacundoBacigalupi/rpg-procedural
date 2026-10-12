@@ -153,11 +153,12 @@ export class Ledger {
     return new Map([...sums].sort(([a], [b]) => compareStrings(a, b)));
   }
 
-  /**
-   * Aplica un asiento entero o nada. Falla si una cuenta interna quedaría en negativo, si se usa
-   * una fuente o sumidero no declarado para esa unidad, o si un monto no es entero positivo.
-   */
-  post(posting: Posting): void {
+  /** Calcula y valida los saldos finales sin mutar nada; un lote puede aportar su lectura privada. */
+  preview(
+    posting: Posting,
+    balance: (account: LedgerAccount, unit: LedgerUnit) => number = (account, unit) =>
+      this.balance(account, unit),
+  ): BalanceRow[] {
     if (posting.transfers.length === 0) throw new LedgerError("asiento sin transferencias");
     const delta = new Map<LedgerAccount, Map<LedgerUnit, number>>();
     const add = (account: LedgerAccount, unit: LedgerUnit, amount: number) => {
@@ -180,29 +181,35 @@ export class Ledger {
       add(t.to, t.unit, t.amount);
     }
 
-    // Validar todo antes de tocar nada: el asiento entra entero o no entra.
+    const rows: BalanceRow[] = [];
     for (const [account, units] of delta) {
       for (const [unit, d] of units) {
-        const after = checked(this.balance(account, unit) + d);
+        const before = balance(account, unit);
+        const after = checked(before + d);
         if (after < 0 && !isExternal(account)) {
           throw new LedgerError(
-            `${account} no tiene ${-d} de ${unit} (tiene ${this.balance(account, unit)}; ${posting.eventId})`,
+            `${account} no tiene ${-d} de ${unit} (tiene ${before}; ${posting.eventId})`,
           );
         }
+        rows.push({ account, unit, amount: after });
       }
     }
 
-    for (const [account, units] of delta) {
+    return rows;
+  }
+
+  /** Aplica un asiento entero o nada: cuentas internas no negativas, externos declarados y montos enteros seguros. */
+  post(posting: Posting): void {
+    const rows = this.preview(posting);
+    // La proyección validó todas las cuentas antes de tocar la primera.
+    for (const { account, unit, amount: after } of rows) {
       let balances = this.#balances.get(account);
       if (!balances) {
         balances = new Map();
         this.#balances.set(account, balances);
       }
-      for (const [unit, d] of units) {
-        const after = checked((balances.get(unit) ?? 0) + d);
-        if (after === 0) balances.delete(unit);
-        else balances.set(unit, after);
-      }
+      if (after === 0) balances.delete(unit);
+      else balances.set(unit, after);
       if (balances.size === 0) this.#balances.delete(account);
     }
 

@@ -35,10 +35,12 @@ import {
   type ZoneResolution,
 } from "../../core/index.ts";
 import type { ReadonlyWorldTruth, WorldTruth } from "../world/index.ts";
+import { BatchLedger, BatchTruth, batchEvents } from "./batch.ts";
 import {
   type ContestClaim,
   changeKey,
   compareScopes,
+  type EventDraft,
   PHASES,
   type Phase,
   type ProcessContext,
@@ -312,7 +314,31 @@ export class Scheduler {
             compareScopes(a.scope, b.scope) ||
             (a.item?.seq ?? -1) - (b.item?.seq ?? -1),
         );
-        const runs = specs.map((spec) => this.#run(spec, t, phase));
+        const runs: Run[] = [];
+        const groups = new Map<string, RunSpec[]>();
+        for (const spec of specs) {
+          const key = spec.def.serialGroup?.({
+            ...this.#context(spec, t, phase, []),
+            newId() {
+              throw new SchedulerError("serialGroup solo consulta: no crea entidades");
+            },
+          });
+          if (key === undefined) {
+            runs.push(this.#run(spec, t, phase));
+            continue;
+          }
+          const groupKey = JSON.stringify([spec.def.id, key, spec.window, spec.windowIndex]);
+          const group = groups.get(groupKey) ?? [];
+          group.push(spec);
+          groups.set(groupKey, group);
+        }
+        for (const group of groups.values()) runs.push(this.#serial(group, t, phase));
+        runs.sort(
+          (a, b) =>
+            compareStrings(a.def.id, b.def.id) ||
+            compareScopes(a.scope, b.scope) ||
+            (a.item?.seq ?? -1) - (b.item?.seq ?? -1),
+        );
         this.#commit(runs, t, phase, events, contests);
       }
       // Lo percibido en este paso (perception): los procesos `perceive` por evento corren al
@@ -358,6 +384,21 @@ export class Scheduler {
 
   #run(spec: RunSpec, t: Tick, phase: Phase): Run {
     const drafts: EntityKind[] = [];
+    const ctx = this.#context(spec, t, phase, drafts);
+    const result = spec.def.run(ctx);
+    this.#checkResult(spec, result, t, phase);
+    return { ...spec, result, drafts, eventIds: [], alive: true };
+  }
+
+  #context(
+    spec: RunSpec,
+    t: Tick,
+    phase: Phase,
+    drafts: EntityKind[],
+    truth: ReadonlyWorldTruth = this.#o.truth,
+    ledger: ProcessContext["ledger"] = this.#o.ledger,
+    offset = 0,
+  ): ProcessContext {
     const ctx: ProcessContext = {
       now: t,
       window: spec.window,
@@ -365,8 +406,8 @@ export class Scheduler {
       scope: spec.scope,
       resolution: this.#o.resolution,
       phase,
-      truth: this.#o.truth,
-      ledger: this.#o.ledger,
+      truth,
+      ledger,
       rng: this.#o.rng.fork(...spec.rngParts),
       item: spec.item,
       recent: spec.recent,
@@ -375,12 +416,66 @@ export class Scheduler {
           throw new SchedulerError("los eventos se nombran con draftEvent, no con newId");
         }
         drafts.push(kind);
-        return `${kind}:~${drafts.length - 1}` as Id<K>;
+        return `${kind}:~${offset + drafts.length - 1}` as Id<K>;
       },
     };
-    const result = spec.def.run(ctx);
-    this.#checkResult(spec, result, t, phase);
-    return { ...spec, result, drafts, eventIds: [], alive: true };
+    return ctx;
+  }
+
+  #serial(specs: readonly RunSpec[], t: Tick, phase: Phase): Run {
+    const first = specs[0] as RunSpec;
+    if (phase !== "act") throw new SchedulerError(`${first.def.id}: lote serial solo en act`);
+    const truth = new BatchTruth(this.#o.truth);
+    const ledger = this.#o.ledger ? new BatchLedger(this.#o.ledger) : undefined;
+    const drafts: EntityKind[] = [];
+    const eventsOut: EventDraft[] = [];
+    const postings: NonNullable<ProcessResult["postings"]>[number][] = [];
+    const schedule: ScheduleRequest[] = [];
+    for (const spec of specs) {
+      const localDrafts: EntityKind[] = [];
+      const ctx = this.#context(spec, t, phase, localDrafts, truth, ledger, drafts.length);
+      const result = spec.def.run(ctx);
+      this.#checkResult(spec, result, t, phase);
+      if (result.contest)
+        throw new SchedulerError(`${spec.def.id}: el lote serial no admite iniciativa simultánea`);
+      const remapped = batchEvents(result, eventsOut.length);
+      // Valida todo el débito antes de acumular efectos; los overlays no mutan el mundo.
+      for (const posting of remapped.postings ?? []) {
+        if (
+          !(remapped.events ?? []).some(
+            (_, i) => posting.event === `event:batch:${eventsOut.length + i}`,
+          )
+        )
+          throw new SchedulerError(`${spec.def.id}: asiento de evento ajeno al lote`);
+        try {
+          ledger?.post(posting.transfers);
+        } catch (err) {
+          throw new SchedulerError(
+            `${spec.def.id}: asiento rechazado en lote: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      for (const change of remapped.changes ?? []) {
+        try {
+          truth.apply(change);
+        } catch (err) {
+          throw new SchedulerError(
+            `${spec.def.id}: diff rechazado en lote: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      drafts.push(...localDrafts);
+      eventsOut.push(...(remapped.events ?? []));
+      postings.push(...(remapped.postings ?? []));
+      schedule.push(...(remapped.schedule ?? []));
+    }
+    const result = batchEvents(
+      { changes: truth.changes(), events: eventsOut, postings, schedule },
+      0,
+      true,
+    );
+    this.#checkResult(first, result, t, phase);
+    return { ...first, result, drafts, eventIds: [], alive: true };
   }
 
   #checkResult(spec: RunSpec, result: ProcessResult, t: Tick, phase: Phase): void {
@@ -622,7 +717,7 @@ function resolveDrafts(
     if (Array.isArray(v)) return v.map(walk);
     if (v !== null && typeof v === "object") {
       const out: Record<string, unknown> = {};
-      for (const [k, x] of Object.entries(v)) out[k] = walk(x);
+      for (const [k, x] of Object.entries(v)) out[walk(k) as string] = walk(x);
       return out;
     }
     return v;
