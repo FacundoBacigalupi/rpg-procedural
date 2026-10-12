@@ -15,6 +15,8 @@ import type { LifeOptions } from "./create.ts";
  * por lo que el perfil no inventa drogas ni dosis. viewCues necesita callbacks y
  * residue necesita una fuente real de Essence para tener efecto. Las variantes con
  * callbacks/Map de waterSources/loanBondage no entran al JSON.
+ * loanBondage/contagion/workout quedan configurados, pero sin `loanSeeds` no se
+ * crean préstamos de cosecha: medir el perfil no certifica cobertura de esos casos.
  */
 export const FULL_PROFILE = {
   famine: { staple: "grain" },
