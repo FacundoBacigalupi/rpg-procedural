@@ -328,7 +328,10 @@ export class Scheduler {
             runs.push(this.#run(spec, t, phase));
             continue;
           }
-          const groupKey = JSON.stringify([spec.def.id, key, spec.window, spec.windowIndex]);
+          const groupKey =
+            spec.def.serialDomain === undefined
+              ? JSON.stringify(["process", spec.def.id, key, spec.window, spec.windowIndex])
+              : JSON.stringify(["domain", spec.def.serialDomain, key]);
           const group = groups.get(groupKey) ?? [];
           group.push(spec);
           groups.set(groupKey, group);
@@ -475,11 +478,30 @@ export class Scheduler {
       0,
       true,
     );
-    this.#checkResult(first, result, t, phase);
-    return { ...first, result, drafts, eventIds: [], alive: true, serialBatch: true };
+    const sharedDomain = first.def.serialDomain !== undefined;
+    const commitSpec = sharedDomain
+      ? {
+          ...first,
+          def: {
+            ...first.def,
+            reads: [...new Set(specs.flatMap((spec) => spec.def.reads))].sort(compareStrings),
+            writes: [...new Set(specs.flatMap((spec) => spec.def.writes))].sort(compareStrings),
+          },
+        }
+      : first;
+    // Cada resultado ya fue validado con su def/ventana. La unión solo autoriza el commit
+    // de la tabla final; no autoriza a un miembro escribir la tabla de otro.
+    this.#checkResult(commitSpec, result, t, phase, !sharedDomain);
+    return { ...commitSpec, result, drafts, eventIds: [], alive: true, serialBatch: true };
   }
 
-  #checkResult(spec: RunSpec, result: ProcessResult, t: Tick, phase: Phase): void {
+  #checkResult(
+    spec: RunSpec,
+    result: ProcessResult,
+    t: Tick,
+    phase: Phase,
+    checkWindow = true,
+  ): void {
     const { def } = spec;
     for (const c of result.changes ?? []) {
       if (!def.writes.includes(c.table)) {
@@ -490,6 +512,7 @@ export class Scheduler {
       }
     }
     for (const e of result.events ?? []) {
+      if (!checkWindow) continue;
       if (e.tick === undefined) continue;
       if (!Number.isSafeInteger(e.tick) || e.tick > t || e.tick < t - spec.window) {
         throw new SchedulerError(`${def.id}: evento con tick ${e.tick} fuera de su ventana`);
@@ -611,12 +634,6 @@ export class Scheduler {
       run.result = resolveDrafts(run.result, real, run.def.id, run.serialBatch === true);
     }
 
-    const truth = this.#o.truth;
-    for (const run of runs) {
-      if (!run.alive) continue;
-      for (const c of run.result.changes ?? []) applyChange(truth, c, run.def.id);
-    }
-
     for (const run of runs) {
       if (!run.alive) continue;
       (run.result.events ?? []).forEach((draft, n) => {
@@ -628,6 +645,19 @@ export class Scheduler {
           resolution: this.#o.resolution,
         });
       });
+    }
+    if (runs.some((run) => run.alive && run.serialBatch && run.def.serialDomain !== undefined)) {
+      try {
+        log.preview(settled);
+      } catch (err) {
+        if (!(err instanceof EventLogError)) throw err;
+        throw new SchedulerError(`evento rechazado antes del commit de dominio: ${err.message}`);
+      }
+    }
+    const truth = this.#o.truth;
+    for (const run of runs) {
+      if (!run.alive) continue;
+      for (const c of run.result.changes ?? []) applyChange(truth, c, run.def.id);
     }
     for (const e of settled) {
       try {

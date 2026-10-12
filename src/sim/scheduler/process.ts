@@ -242,6 +242,10 @@ export interface ProcessDef {
    * Undefined conserva el contrato anterior. Los otros procesos leen la fase original.
    */
   readonly serialGroup?: (ctx: ProcessContext) => string | undefined;
+  /** Opt-in explícito: permite compartir serialGroup entre procesos/ventanas de un dominio
+   * en act. Cada resultado conserva su validación y RNG originales; el resto queda fuera.
+   */
+  readonly serialDomain?: string;
   run(ctx: ProcessContext): ProcessResult;
 }
 
