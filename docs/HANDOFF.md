@@ -83,6 +83,8 @@ préstamos ni catch-up. El intento de dos años se frenó por `greet.cold.fraud`
 corregido junto a `request.refuse.fraud`. Nueva corrida serial de dos años en
 `sim-reports/full-profile-2y-fraud-fixed`, todavía en curso. No activar defaults
 antes de terminar la medición y revisar cobertura/recursos entre procesos.
+Código de esta corrida: `004d4de` (los commits posteriores del coordinador son
+documentación); no integrar cambios de simulación durante el batch secuencial.
 La seed 1 pasó diez chequeos hasta 270 días y después falló por doble escritura
 de `social.face` en `life.converse/decide`; `perfil2-converse-face` cubre el nuevo
 bloqueo. La seed 2 pasó hasta 330 días en la observación actual, no es resultado
