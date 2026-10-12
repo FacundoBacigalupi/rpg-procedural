@@ -203,8 +203,16 @@ describe("parseIntent", () => {
     const schema = JSON.stringify(setup.jsonSchema.schema);
     for (const v of catalog.verbs) expect(schema).toContain(`{"type":"string","const":"${v.id}"}`);
     expect(schema).toContain('"const":"steal"');
-    expect(schema).not.toContain('"repeat"');
+    expect(schema).toContain('"repeat"');
+    expect(schema).toContain('"if"');
     expect(schema).not.toContain('"onEvent"');
+  });
+
+  it("distingue repetir la intención reciente de una cantidad explícita", () => {
+    expect(setup.system).toContain("for an explicit count");
+    expect(setup.system).toContain("performed once more");
+    expect(setup.system).toContain("not as `repeat` with an invented times");
+    expect(setup.system).toContain("do not put those words in `unmapped`");
   });
 
   it("manda el prefijo, lo de este turno al final, y devuelve el borrador validado", async () => {
