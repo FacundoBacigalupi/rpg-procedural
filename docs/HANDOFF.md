@@ -87,12 +87,18 @@ Código de esta corrida: `004d4de` (los commits posteriores del coordinador son
 documentación); no integrar cambios de simulación durante el batch secuencial.
 La seed 1 pasó diez chequeos hasta 270 días y después falló por doble escritura
 de `social.face` en `life.converse/decide`; `perfil2-converse-face` cubre el nuevo
-bloqueo. La seed 2 pasó hasta 330 días en la observación actual, no es resultado
-final. Reproducción pequeña también confirma compra y producción gastando el
+bloqueo. La seed 2 completó dos años y 26 chequeos limpios: cuatro concepciones,
+tres nacimientos, dos muertes (parto y deshidratación), 1302 s de simulación y
+RSS máximo 2627629056 bytes (~2,45 GiB). No hubo viajes ni dormidos; la seed 3
+está en curso. Una seed completa no aprueba el lote. Reproducción pequeña también confirma compra y producción gastando el
 mismo insumo doméstico: contrato `perfil2-economic-domain` y adaptadores
 `perfil2-economic-adapters`, separados antes de implementar. Agentes reutilizados:
 `profile_tools` conversación, `profile_core` dominio económico, `cloud_audit`
 revisión del contrato; no ejecutan suites amplias ni inferencias en paralelo.
+`perfil2-directed-coverage` separa snapshot de oportunidades y escenarios
+dirigidos: el perfil configura viaje, pero no genera su candidata de movimiento
+a lugar por la ruta normal. Los partos sí se ejercitaron en seed 2, sin acelerar
+gestación ni tasas.
 
 Qwen3:14b último banco: 54/54 borradores válidos, 38/54 semánticamente correctos;
 mejora siete casos comunes frente a #489 y presenta una regresión en liberar al
