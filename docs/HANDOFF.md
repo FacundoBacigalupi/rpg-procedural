@@ -70,6 +70,40 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Estado verificado más reciente (2026-10-12, noche):** rama
+`feat/f3-full-profile-review`, PR #491 en borrador. Integrados dominio serial
+entre procesos, validación causal previa, talleres/fiado/repago/rutina,
+proyección única de FACE/HEARD, llegada física y pausa del viaje, snapshot de
+cobertura y núcleo puro de liquidación. `npm run check` sobre `5387873` está
+en curso (`sim-reports/full-profile-integrated-check.log`): typecheck/lint
+pasaron, suite todavía sin resultado. El intento anterior se frenó por un
+import indebido de persistence en un test, corregido en `bc658d1`; no se cuenta
+como suite aprobada. Antes del check: 66 tests puntuales y luego nueve de
+conversación/fiado pasaron, además de los tests reportados por los agentes.
+
+Batch terminado sobre `004d4de`: seed 1 detenida después de 270 días por FACE;
+seeds 2 y 3 completas, dos años y 26 chequeos cada una. Seed 2: cuatro
+concepciones, tres nacimientos, muertes por parto/deshidratación, 1302 s y
+~2,45 GiB RSS; seed 3: dos concepciones, un nacimiento, muerte por deshidratación,
+852 s y ~1,68 GiB RSS. Viaje/dormidos no se ejercitaron en ese batch. La nueva
+corrección aún requiere repetir la medición; `perfil2b` sigue pendiente.
+
+Qwen3:14b banco posterior al fix de perdonar: 54/54 válidos al primer intento,
+39/54 semánticos; `spare-yielded` correcto, siete mejoras comunes frente a #489
+y ninguna regresión común en esta corrida. Reporte
+`sim-reports/cloud-review-bench-spare-fixed/bench-2026-10-12T22-19-16-592Z.json`.
+No usar validez de esquema para certificar fidelidad; narración mantiene sus
+ítems pendientes. No ejecutar inferencias mientras corre la suite amplia.
+
+Siguiente lote: `profile_tools` resuelve economía conversacional en `act`
+(dos diagnósticos reales de excedente y última moneda, adaptador en trabajo),
+`profile_core` audita consumidores `eat/cook/take/gather`, `cloud_audit` agrega
+slice dirigido de sueño/catch-up. Sus worktrees son internos a `sim-reports`;
+el de cobertura es `codex-coverage-audit`, el antiguo audit conserva WIP de
+speech/schema ya integrado. No borrar worktrees ni junctions automáticamente.
+Los límites de uso de agentes se reintentaron y pudieron retomar; el coordinador
+continúa revisando y corre una sola prueba amplia por vez.
+
 **Estado verificado (2026-10-12, continuación):** PR #491 en borrador y rama
 `feat/f3-full-profile-review`. `npm run check` anterior pasó: 2469 tests en 358
 archivos, typecheck y lint, exit 0. Después se integraron lotes seriales,
