@@ -48,6 +48,23 @@ function leaves(node: DraftPlanNode | undefined, out: Leaf[] = []): Leaf[] {
     case "template":
       out.push({ sig: `template:${node.template}`, args: Object.values(node.params) });
       break;
+    case "repeat":
+      out.push({
+        sig: `repeat:${node.times ?? "?"}:${JSON.stringify(node.every ?? null)}`,
+        args: [],
+      });
+      leaves(node.body, out);
+      out.push({ sig: "end:repeat", args: [] });
+      break;
+    case "if":
+      out.push({ sig: `if:${JSON.stringify(node.cond.is ?? null)}`, args: [] });
+      leaves(node.then, out);
+      if (node.else) {
+        out.push({ sig: "else", args: [] });
+        leaves(node.else, out);
+      }
+      out.push({ sig: "end:if", args: [] });
+      break;
     default:
       out.push({ sig: node.kind, args: [] });
   }
