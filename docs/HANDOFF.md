@@ -70,6 +70,22 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Continuación autónoma (2026-10-12):** la corrida amplia anterior no conservó
+resultado final y no se cuenta como aprobada. Nueva `npm run check` en curso,
+log `sim-reports/cloud-review-check-2026-10-12.log`; typecheck y lint pasaron.
+Integrados en la rama de trabajo: proyección de registros de trades, reserva de
+nombres por hogar y política `sleepWorkPending` (cableada como `pending`).
+También se corrigieron las descripciones obsoletas de `conc1`/`conc2` y el
+alcance real de `off-3d`: la cola agendada no se descarta.
+
+Qwen real, smoke de cuatro casos: `again`, `repeat` e `if` pasan; promesa vaga
+todavía duplica `speech` y `plan`. Hay un fix de validación lógica preparado para
+rechazar esa combinación y regenerar; mantener pendiente la comprobación real
+posterior. El narrador preservó recoger en el último smoke, pero eso no demuestra
+fidelidad semántica general. Batch de acciones: contrato opt-in con vista temporal
+de verdad/ledger en revisión; grupos de trades y proyección de testigos continúan
+en los ítems nombrados del ROADMAP. Los cambios no se activan por defecto.
+
 **Retoma Codex después de #489 (2026-10-11):** checkout inicial limpio, refs
 actualizadas y sin PRs abiertos. #488 cambió la prioridad a perfil completo antes
 de agregar más sistemas opt-in; «Ahora» anterior no reflejaba ese cambio. Rama de

@@ -161,6 +161,7 @@ import {
   catchUpDue,
   catchUpProcess,
   sleepPolicyProcess,
+  sleepWorkPending,
 } from "./sleepers.ts";
 import { soilProcess } from "./soil.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
@@ -1571,6 +1572,7 @@ export function lifeWorld(
               // Vínculo (tier 4): quien comparte hogar con el personaje no se duerme.
               bonded: (t, who) => household(t, who) === household(t, player),
               important: () => false,
+              pending: sleepWorkPending,
             }),
             // Dos procesos con alcances repartidos (off-3e): por hora solo quien pidió despertar,
             // por día el resto; así no se invoca a cada dormido cada hora.

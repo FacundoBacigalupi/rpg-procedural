@@ -11,6 +11,13 @@ Lo usan: todos los sistemas de simulación (cada uno declara sus procesos y su m
 
 ## Principios
 
+**Dormidos con trabajo en curso (2026-10-12):** el catch-up corporal de rutina no
+resuelve un plan ni un viaje activo. La política opt-in de Life usa
+`sleepWorkPending` para mantenerlos en ejecución individual o solicitar despertar.
+El filtro de scopes evita llamadas periódicas y por eventos recientes a dormidos;
+los ítems explícitos de la cola continúan operativos. No se borran agendas al
+dormir, y la puesta al día no corporal sigue pendiente en `off-5`.
+
 1. **Un motor.** No hay un "generador de historia", un "simulador offscreen" y un "motor de escena" separados. Hay un scheduler que corre procesos; lo que cambia es con qué cadencia y sobre qué representación (individuos o agregados).
 2. **Dos ejes de resolución.** Una cosa es **cuánto detalle tiene una entidad** (el tier del agente, 0-4) y otra **cuánto detalle tiene un lugar** (la resolución de la zona: escena, local, regional, mundo, historia). Un cultivador de tier 3 que medita en una montaña lejana es una persona con todo su modelo, pero vive en una zona de resolución "mundo" y su cultivo avanza por mes. Los docs de sistema que dicen "tier 3-4" para un proceso se refieren a la zona (§4, tabla de equivalencias).
 3. **Lo observado no se contradice.** Lo que el jugador (o cualquier agente de tier alto) percibió queda fijado como hecho. Los agregados se ajustan a los hechos fijados, nunca al revés (causality §5.2).
