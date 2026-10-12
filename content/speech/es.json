@@ -449,6 +449,16 @@
     "formal": ["Buen día. Prefiero que guarde distancia."]
   },
   {
+    "id": "greet.cold.fraud",
+    "lines": [
+      "Ah, vos. Lo que me contaron de tus tratos no me deja tranquilo.",
+      "Buen día. Por ahora no me fío de lo que ofrecés."
+    ],
+    "formal": ["Buen día. Con lo que tengo entendido de sus tratos, prefiero guardar distancia."],
+    "warm": ["Hola. Me cuesta confiar en tus tratos después de lo que me contaron."],
+    "dry": ["Ah, vos. No me fío de tus tratos."]
+  },
+  {
     "id": "greet.cold.default",
     "lines": ["Ah, vos. Todavía me debés.", "Mirá quién anda por acá, el que no paga."],
     "formal": ["Buen día. Tengo pendiente una cuenta con usted."]
@@ -484,6 +494,16 @@
       "No te doy {what}. Me da miedo lo que hacés."
     ],
     "formal": ["No le daré {what}; sé de lo que es capaz."]
+  },
+  {
+    "id": "request.refuse.fraud",
+    "lines": [
+      "Con lo que creo de tus tratos, no te voy a dar {what}.",
+      "No te doy {what}. Por ahora no me fío de lo que ofrecés."
+    ],
+    "formal": ["No le daré {what}; con lo que tengo entendido, no confío en sus tratos."],
+    "warm": ["Me cuesta negártelo, pero no te doy {what}: por ahora no confío en tus tratos."],
+    "dry": ["No te doy {what}. No me fío de tus tratos."]
   },
   {
     "id": "greet.fond",

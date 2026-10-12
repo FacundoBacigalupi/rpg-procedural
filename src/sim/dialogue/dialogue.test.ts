@@ -65,6 +65,41 @@ function input(over: Partial<ReplyInput>): ReplyInput {
   };
 }
 
+describe("frases de reproche completas para todos los delitos conocidos", () => {
+  // La exhaustividad queda atada a DeedKind: agregar un delito nuevo obliga a cubrir sus frases.
+  const reproaches = {
+    theft: true,
+    assault: true,
+    fraud: true,
+    default: true,
+  } satisfies Record<NonNullable<ReplyInput["reproach"]>, true>;
+
+  it.each(Object.keys(reproaches) as (keyof typeof reproaches)[])(
+    "%s tiene saludo y rechazo sin excepciones, también formales y por tono",
+    (reproach) => {
+      for (const act of [{ kind: "greet" }, { kind: "request", good: "grain" }] as const) {
+        const expected =
+          act.kind === "greet" ? `greet.cold.${reproach}` : `request.refuse.${reproach}`;
+        expect(lines.some((line) => line.id === expected)).toBe(true);
+        for (const rankAbove of [false, true]) {
+          for (const feel of [KIN, STRANGER, { ...STRANGER, trust: -0.6, resentment: 0.8 }]) {
+            for (let seed = 0; seed < 12; seed++) {
+              const reply = decideReply(
+                input({ act, reproach, rankAbove, feel, rng: Rng.root(seed) }),
+                0,
+              );
+              expect(reply.line).toBe(expected);
+              expect(reply.text.trim().length).toBeGreaterThan(0);
+              expect(reply.text).not.toMatch(/\{\w+\}/);
+              if (act.kind === "request") expect(reply.text).toContain("grano");
+            }
+          }
+        }
+      }
+    },
+  );
+});
+
 describe("entender", () => {
   it("reconoce saludo, despedida, pregunta, pedido y noticia", () => {
     expect(understand("¡Hola, buen día!", lex).kind).toBe("greet");
