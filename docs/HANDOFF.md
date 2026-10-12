@@ -83,6 +83,14 @@ préstamos ni catch-up. El intento de dos años se frenó por `greet.cold.fraud`
 corregido junto a `request.refuse.fraud`. Nueva corrida serial de dos años en
 `sim-reports/full-profile-2y-fraud-fixed`, todavía en curso. No activar defaults
 antes de terminar la medición y revisar cobertura/recursos entre procesos.
+La seed 1 pasó diez chequeos hasta 270 días y después falló por doble escritura
+de `social.face` en `life.converse/decide`; `perfil2-converse-face` cubre el nuevo
+bloqueo. La seed 2 pasó hasta 330 días en la observación actual, no es resultado
+final. Reproducción pequeña también confirma compra y producción gastando el
+mismo insumo doméstico: contrato `perfil2-economic-domain` y adaptadores
+`perfil2-economic-adapters`, separados antes de implementar. Agentes reutilizados:
+`profile_tools` conversación, `profile_core` dominio económico, `cloud_audit`
+revisión del contrato; no ejecutan suites amplias ni inferencias en paralelo.
 
 Qwen3:14b último banco: 54/54 borradores válidos, 38/54 semánticamente correctos;
 mejora siete casos comunes frente a #489 y presenta una regresión en liberar al
