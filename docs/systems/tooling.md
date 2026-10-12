@@ -37,6 +37,15 @@ seed y setup exacto para reproducir desde el seed; no atribuye el choque a una
 opción sin aislarla. El perfil no certifica cobertura de opciones que requieren
 semillas externas o sistemas aún no implementados.
 
+`coverage.initial` y `coverage.final` registran conteos sin nombres ni ids: personas
+vivas, parejas recíprocas vivas con fecundidad positiva por banda de edad, parejas
+que además pueden concebir ahora (sin embarazo activo ni pausa de 365 días tras
+el parto), embarazos activos, viajes de NPC y personas dormidas. Usan la curva
+demográfica normal y solo leen el estado. Una fila de embarazo ya resuelta o una
+fila de un fallecido no cuenta como actividad. Estas fotos distinguen oportunidades
+presentes de eventos producidos; no prueban lo ocurrido entre ambas ni certifican
+por sí solas cobertura del sistema.
+
 **SQLite** (`node:sqlite`), un archivo por vida, en modo WAL.
 
 ```

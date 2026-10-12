@@ -13,11 +13,12 @@ import {
   optionsOf,
 } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
-import { checkInvariants } from "../../sim/index.ts";
+import { checkInvariants, DEMOGRAPHY } from "../../sim/index.ts";
 import {
   type FullProfileConfig,
   type FullProfileProgress,
   type ProcessMeasurement,
+  profileCoverage,
   profileDemography,
   recordProcess,
   validateFullProfileConfig,
@@ -90,6 +91,9 @@ function measureFullProfileSeed(
   processes.clear();
   const from = life.now;
   const world = life.world;
+  const demography = content.get(DEMOGRAPHY, "human.preindustrial-village");
+  if (!demography) throw new Error("sin demografía human.preindustrial-village");
+  const coverageInitial = profileCoverage(world.truth, from, world.clock, demography.fertility);
   setStage?.("duration");
   const duration =
     config.days === undefined ? config.years * world.clock.year : config.days * world.clock.day;
@@ -167,6 +171,10 @@ function measureFullProfileSeed(
     problems,
     ...(failure === undefined ? {} : { failure: { stage, message: failure } }),
     metrics: profileDemography(world.log.all(), from),
+    coverage: {
+      initial: coverageInitial,
+      final: profileCoverage(world.truth, life.now, world.clock, demography.fertility),
+    },
     performance: {
       creationMs,
       simulationMs,

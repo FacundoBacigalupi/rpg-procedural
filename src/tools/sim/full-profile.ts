@@ -1,5 +1,66 @@
 // Configuración y acumuladores de medición: no crean una Life ni llaman al LLM.
-import type { Event } from "../../core/index.ts";
+import type { AgentId, Event, PlanetClock, Tick } from "../../core/index.ts";
+import { LABOR, NPC_JOURNEY, PREGNANCY, SPACING_DAYS } from "../../game/index.ts";
+import {
+  ASLEEP,
+  band,
+  type Demography,
+  ENTITY,
+  PERSON,
+  type ReadonlyWorldTruth,
+} from "../../sim/index.ts";
+
+/** Oportunidades presentes, independientes de que el azar haya producido un evento. Sin ids personales. */
+export function profileCoverage(
+  truth: ReadonlyWorldTruth,
+  now: Tick,
+  clock: Pick<PlanetClock, "day" | "year">,
+  fertility: Demography["fertility"],
+) {
+  const alive = (who: AgentId) => {
+    const entity = truth.get(ENTITY, who);
+    return entity !== undefined && entity.endedAt === undefined;
+  };
+  const people = truth.ids(PERSON).filter((id) => alive(id as AgentId));
+  const activePregnancy = (who: AgentId) => {
+    const pregnancy = truth.get(PREGNANCY, who);
+    return pregnancy !== undefined && (truth.get(LABOR, who)?.dueAt ?? -1) < pregnancy.dueAt;
+  };
+  const byAge = fertility.map((entry) => ({
+    fromAge: entry.fromAge,
+    annualRate: entry.rate,
+    couples: 0,
+  }));
+  let fertileCouples = 0;
+  let conceptionEligibleCouples = 0;
+  for (const id of people) {
+    const mother = truth.get(PERSON, id);
+    if (mother?.sex !== "female" || mother.spouse === null) continue;
+    const father = truth.get(PERSON, mother.spouse);
+    if (father?.sex !== "male" || father.spouse !== id || !alive(mother.spouse)) continue;
+    const ageBand = band(fertility, (now - mother.born) / clock.year);
+    if (!ageBand || !(ageBand.rate > 0)) continue;
+    fertileCouples++;
+    const age = byAge.find((entry) => entry.fromAge === ageBand.fromAge);
+    if (age) age.couples++;
+    if (
+      !activePregnancy(id as AgentId) &&
+      now - (truth.get(LABOR, id)?.at ?? Number.NEGATIVE_INFINITY) >= SPACING_DAYS * clock.day
+    ) {
+      conceptionEligibleCouples++;
+    }
+  }
+  return {
+    tick: now,
+    livingPeople: people.length,
+    fertileCouples,
+    fertileCouplesByAge: byAge.sort((a, b) => a.fromAge - b.fromAge),
+    conceptionEligibleCouples,
+    activePregnancies: people.filter((id) => activePregnancy(id as AgentId)).length,
+    npcJourneys: people.filter((id) => truth.has(NPC_JOURNEY, id)).length,
+    asleepPeople: people.filter((id) => truth.has(ASLEEP, id)).length,
+  };
+}
 
 export interface FullProfileConfig {
   readonly seeds: readonly number[];
