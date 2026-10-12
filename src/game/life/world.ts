@@ -1581,7 +1581,13 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
-          ? [transitProcess({ map: parts.map, player })]
+          ? [
+              transitProcess({
+                map: parts.map,
+                player,
+                ...(parts.npcNightRest === true ? { pauseRest: true } : {}),
+              }),
+            ]
           : []),
         ...(() => {
           const sl = parts.sleepers;

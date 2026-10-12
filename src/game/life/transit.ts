@@ -7,6 +7,7 @@
 
 import type { AgentId, Tick } from "../../core/index.ts";
 import {
+  BODY_STATE,
   ENTITY,
   hexPath,
   LOCATION,
@@ -49,6 +50,8 @@ export function positionAlong(
 export function transitProcess(o: {
   readonly map: LocalMap;
   readonly player: AgentId;
+  /** Con descanso del viajero, las horas de reposo no cuentan como marcha. */
+  readonly pauseRest?: true;
 }): ProcessDef {
   return {
     id: TRANSIT_PROCESS,
@@ -57,7 +60,13 @@ export function transitProcess(o: {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "decide",
-    reads: [ENTITY.name, LOCATION.name, NPC_JOURNEY.name, TRANSIT.name],
+    reads: [
+      ENTITY.name,
+      LOCATION.name,
+      NPC_JOURNEY.name,
+      TRANSIT.name,
+      ...(o.pauseRest ? [BODY_STATE.name] : []),
+    ],
     writes: [LOCATION.name, TRANSIT.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -76,6 +85,20 @@ export function transitProcess(o: {
           : {};
       }
       if (!rec) return { changes: [setComponent(TRANSIT, me, { seen: loc.hex, at: ctx.now })] };
+      const activity = o.pauseRest ? truth.get(BODY_STATE, me)?.activity : undefined;
+      if (activity === "sleep" || activity === "rest") {
+        const idle = Math.max(0, ctx.now - rec.at);
+        return {
+          changes: [
+            ...(loc.hex === rec.seen ? [] : [setComponent(LOCATION, me, { hex: rec.seen })]),
+            setComponent(TRANSIT, me, {
+              ...rec,
+              at: ctx.now,
+              ...(rec.walk ? { walk: { ...rec.walk, t0: rec.walk.t0 + idle } } : {}),
+            }),
+          ],
+        };
+      }
       const step = advanceTransit(o.map, rec, loc.hex, ctx.now);
       return {
         changes: [

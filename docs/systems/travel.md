@@ -247,7 +247,7 @@ Noticias y rumores (information §4), enfermedades (body-health), especies (livi
 **Llegada del NPC con tránsito (2026-10-12):** cuando `npcTransit` está activo,
 `life.npc_verbs` no cierra `NPC_JOURNEY` solo porque `life.act` haya señalado el
 destino del tramo en `LOCATION`. Espera que `TRANSIT.seen` esté en el lugar y que
-ya no haya caminata pendiente; así la fase `physics` no lo devuelve a un hex
+ya no haya caminata pendiente; así el proceso de tránsito no lo devuelve a un hex
 anterior después de anunciar la llegada. El estado compartido vive en
 `game/life/transit-state.ts`; omitir la opción conserva el contrato anterior.
 
@@ -258,6 +258,13 @@ con plan validado, sin generar un planeta ni crear una `Life`. Comprueba inicio,
 progreso, comidas y descanso, llegada física, devolución de provisiones,
 invariantes y repetición determinista. Es cobertura del tramo de viaje; no
 equivale a ejecutar todos los procesos del perfil completo.
+
+**Pausa de la marcha (2026-10-12):** con `npcNightRest`, el proceso de tránsito
+lee la actividad corporal. Mientras duerme o descansa, mantiene el último hex
+físico y aplaza el comienzo temporal de la caminata por ese tiempo de reposo,
+conservando camino y destino. Al volver a caminar continúa con las horas
+efectivamente marchadas; dormir no lo acerca al destino. La prueba dirigida
+cubre horas inmóviles y progreso posterior usando el scheduler real.
 
 - **Fase 1:** caminar entre la aldea y lugares cercanos por tramos con costo; salir del camino al monte cercano con costo por celda; buscar, recolectar y cazar lo que hay; acampar; cansancio y comida.
 - **Fase 3:** viajes de varios días con montaje e interrupciones; posadas; animales de carga; carga como lotes con pérdidas.

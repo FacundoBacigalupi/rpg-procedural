@@ -44,7 +44,7 @@ import { NPC_DECISION } from "./decide.ts";
 import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { ASLEEP, sleepPolicyProcess, sleepWorkPending } from "./sleepers.ts";
-import { transitProcess } from "./transit.ts";
+import { TRANSIT, transitProcess } from "./transit.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -221,7 +221,7 @@ function directedJourney() {
         effortByManner: true,
         footwear: true,
       }),
-      transitProcess({ map, player }),
+      transitProcess({ map, player, pauseRest: true }),
       sleepPolicyProcess({
         player,
         map,
@@ -236,6 +236,36 @@ function directedJourney() {
 }
 
 describe("cobertura dirigida de viaje con procesos reales y opciones del perfil", () => {
+  it("el tránsito no avanza durante el descanso nocturno y reanuda después", () => {
+    const w = directedJourney();
+    let pausedHours = 0;
+    let resumed = false;
+    let slept = false;
+    const visited = new Set<number>();
+    for (let hour = 1; hour <= 120; hour++) {
+      const before = w.truth.get(LOCATION, actor)?.hex;
+      const physicalBefore = w.truth.get(TRANSIT, actor)?.seen ?? before ?? 0;
+      const resting = w.truth.get(BODY_STATE, actor)?.activity === "sleep";
+      w.scheduler.advanceTo(hour * 3600);
+      const after = w.truth.get(LOCATION, actor)?.hex;
+      const physicalAfter = w.truth.get(TRANSIT, actor)?.seen ?? after ?? 0;
+      visited.add(physicalAfter);
+      expect(Math.abs(physicalAfter - physicalBefore)).toBeLessThanOrEqual(1);
+      if (resting && w.truth.get(BODY_STATE, actor)?.activity === "sleep") {
+        expect(after).toBe(before);
+        pausedHours++;
+        slept = true;
+      }
+      if (slept && !resting && after !== before) resumed = true;
+    }
+    expect(pausedHours).toBeGreaterThan(0);
+    expect(resumed).toBe(true);
+    expect([...visited].sort()).toEqual([0, 1, 2, 3, 4]);
+    expect(w.truth.get(LOCATION, actor)?.hex).toBe(4);
+    expect(w.truth.get(NPC_JOURNEY, actor)).toBeUndefined();
+    expect(w.ledger.audit()).toEqual([]);
+  });
+
   it("abre, avanza, come y llega, conservando provisiones y causas", () => {
     const w = directedJourney();
     w.scheduler.advanceTo(3600);
