@@ -22,6 +22,20 @@ Lo usan: [tooling.md](tooling.md) (guardado, replay, inspector), la UI (CLI en F
 
 ## 1. Empezar una partida
 
+**Perfil de integración (2026-10-11):** CLI y web aceptan `--profile full` para una
+vida nueva. `FULL_PROFILE` (`game/life/profile.ts`) reúne 46 opciones JSON del
+cableado existente y valida sus dependencias; `ui/config.ts` guarda una copia en
+`setup.life`, que la sesión persiste y usa al retomar y en replay. Un archivo con
+una vida ya iniciada conserva su setup guardado. Sin el flag no cambia la partida
+habitual. Es experimental hasta completar `perfil2b` del ROADMAP.
+
+Las metas, viajes, rumores, cultura de salud y nacimientos pueden cambiar hashes;
+los nacimientos y el log aumentan memoria. La configuración no incluye funciones,
+Map, elección del personaje, instrumentación, sustancias sin catálogo físico ni
+préstamos/empeño que requieren entidades, semillas o garantías del escenario.
+Los flags de deuda configurados sin semillas no prueban préstamos garantizados.
+Los dormidos todavía tienen puesta al día no corporal pendiente (`off-5`).
+
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").

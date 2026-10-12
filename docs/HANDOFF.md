@@ -70,6 +70,29 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Retoma Codex después de #489 (2026-10-11):** checkout inicial limpio, refs
+actualizadas y sin PRs abiertos. #488 cambió la prioridad a perfil completo antes
+de agregar más sistemas opt-in; «Ahora» anterior no reflejaba ese cambio. Rama de
+integración `feat/f3-full-profile-review`, agentes reutilizados en
+`sim-reports/codex-profile-core`, `codex-profile-tools` y `codex-cloud-audit`.
+No borrar worktrees automáticamente. `perfil1` y tooling `perfil2a` implementados;
+`perfil2b` todavía exige medición larga y cobertura de configuraciones con semillas.
+
+Auditoría: #475 aceptaba repeat/if en el motor pero los omitía del esquema del LLM;
+corregido. #489 perdía modos al acercarse, rechazaba plurales con parentesco y no
+actualizaba familiares reconocidos con los percepts actuales; corregido con tests.
+Qwen real pasa los dos casos nuevos después del esquema; el banco de 52 casos
+comunes mostró dos mejoras y dos regresiones antes de ajustar «otra vez». La
+narración todavía agrega hechos a una acción `gather` aunque el validador la
+acepte: `narr-action-grounding` y `narr-view-llm` continúan pendientes.
+
+Medición: frecuencia 2 agotó Map en refinado local; frecuencia 8 creó en ~43 s y
+~2,33 GB RSS. Frecuencia real crea en ~4,3 s y ~400 MB. Smoke de un día con
+invariantes pasó tras corregir `TRADE_VIEW` y writes causal de `life.famine`.
+Batch seeds 1..3 × 2 años falló temprano por cinta compartida en trades de NPC;
+partido en `perfil2-trades-projection` y `perfil2-trades-resources`. No encender
+el perfil por defecto mientras la medición larga siga sin pasar.
+
 Actualizado: 2026-10-11. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**; `develop` con PRs integradas hasta **#486**. Verificación por rama: typecheck, lint y la suite ancha (`src/game src/sim/scheduler src/persistence src/sim/mind src/sim/actions`) en una sola corrida, con las tareas pesadas sin otros agentes corriendo. `settlement.test.ts` y `language.test.ts` pasan solos pero fallan por timeout (360 s) o por SIGKILL de memoria si corren junto a otras suites: repetirlos solos antes de culpar a la rama.
 
 **Sesión de Claude Code en la nube (2026-10-11), #444–#473 (y #474–#486 abajo):** señales de alegría, vergüenza, envidia y amor (f3c3c); vacío de sentido calibrado, cumplimiento por evidencia propia y metas de oficio con registro de práctica (f3d3c–f3d4e); medición de `LAYER_PULL` (f3e1); métricas de deuda rescatadas de `feat/f3-goal-debt` (#449); sustancias en la vida; hurto (g2b, g2b2); el NPC ejecuta `gather`/`trade`/`give`/`speak`/`take` desde su decisión (`npcVerbs`); `speakActs` calibrado (silencio 1 día, peso 0,4; arreglo del choque de `life.pending_speech` por iniciativa); viaje del NPC (`npcMove`, `move` con tiempo, `NPC_JOURNEY` con `npcJourneyDays`, tránsito `npcTransit`, provisiones `npcProvisions`, descanso `npcNightRest`, ritmo `npcPace`, cansancio con parada al agotarse, calzado `npcFootwear`); plantillas de plan de varios pasos (`npcTemplates`, `content/plans/fieldwork.json`); interrupción y reanudación de planes (`npcInterrupt`: signos graves del cuerpo, golpes y palabras de otros, `NPC_PAUSED`/`npc.resumed`); cadena «ir hacia el prestamista, llegar y pedir» en una vida (npc-f). **Lote de hashes aprobado por el usuario (#467):** motor `life-2`, capas de objetivos por defecto (f3e2) y vergüenza (f3c3c3); un guardado `life-1` se sigue con `life-2` y se registra `meta.replayLimits`; el replay arranca desde el snapshot del límite (f3e3, #469). Todo lo demás sale apagado por defecto.

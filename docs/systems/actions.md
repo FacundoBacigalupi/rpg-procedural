@@ -273,6 +273,19 @@ Con la resolución de zona de simulation §4:
 
 ## Implementación
 
+**Revisión de integración (2026-10-11):** el esquema restringido del parser ahora
+expone `repeat` con `times` obligatorio y cuerpo recursivo, y `if` con condición
+normalizada `is`, rama `then` y `else` opcional. #475 había actualizado la
+conversión lógica pero omitido estas variantes en `structuralDraftFor`; pruebas
+de equivalencia y dos casos con Qwen3:14b verifican el contrato completo.
+
+Las referencias plurales con parentesco estructurado también forman un conjunto;
+el singular mantiene la aclaración. Al convertir acercarse a personas en mirar
+o viajar se conservan los modos y se validan los roles; un modo incompatible con
+el verbo resultante se rechaza. Los familiares reconocidos en percepts actuales
+actualizan figura y presencia conservando nombres/relaciones; una fuente oculta
+sin reconocimiento no actualiza la ubicación del familiar recordado.
+
 **Hecho (Fase 1, Hito 1a, 2026-10-07) — `src/sim/actions/`:** el catálogo, el plan, las referencias, la tirada común y los resolvers.
 - `content/actions/core.json`: 11 verbos (`move`, `look`, `search`, `gather`, `work`, `rest`, `wait`, `speak`, `strike`, `trade`, `take`) con argumentos tipados (`person`, `place`, `thing`, `duration`, `text`), modos (×duración, +facilidad, +sigilo, ×emisiones), requisitos (`capability`, `position` cerca de un rol o en un tipo de lugar, `means` propios o del otro), cuerpo ocupado, duración (`fixed`, `arg` con tope, `path`), emisiones, facilidad, factores, contienda y formas de fallar por factor. `content/plans/steal.json`: robar como plantilla (`look` → `wait` encubierto → `take` encubierto). `catalog.ts` valida con Zod que los roles existan, que no haya modos repetidos y que **todo lo que puede hacer fallar un paso** (cada requisito y cada factor con peso) tenga su forma; las plantillas que nombran un verbo inexistente no cargan.
 - `plan.ts`: `ActionPlan` como JSON plano con `do`, `seq` y `until` (tope de vueltas obligatorio, `MAX_UNTIL`); condiciones `dark`, `light`, `elapsed`, `succeeded` (el último resultado **creído**) y `any`. `validatePlan` contra el catálogo; las plantillas se expanden al armar el plan (el plan guardado no las nombra). El cursor (`advance`) es puro: dice la próxima hoja y guarda vueltas y comienzo de cada `until` vivo.

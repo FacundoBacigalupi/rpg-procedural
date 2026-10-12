@@ -21,6 +21,22 @@ Lo usan: todos los sistemas (cada uno agrega comandos del inspector y métricas)
 
 ## 1. El guardado
 
+**Medición del perfil completo (2026-10-11):** `npm run sim:batch -- --scenario
+full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile`
+corre cada seed en un proceso independiente y secuencial, para liberar también
+la memoria que V8 retiene. `sim --scenario full-profile --seed 1 --days 1` permite
+un smoke corto. Usar frecuencia real para calibración: una grilla madre más
+gruesa aumenta el número de hijos locales, por lo que `--frequency 2` puede
+agotar Map en el refinado antes de crear la vida.
+
+El reporte por seed separa tiempo de creación y avance, tiempo por año completado,
+RSS/heap y máximo RSS del proceso, llamadas/efectos por proceso (`runProbe`),
+eventos por tipo y nacimientos/muertes posteriores a la creación. Los chequeos
+incluyen el estado inicial y cada intervalo solicitado. Un fallo registra fase,
+seed y setup exacto para reproducir desde el seed; no atribuye el choque a una
+opción sin aislarla. El perfil no certifica cobertura de opciones que requieren
+semillas externas o sistemas aún no implementados.
+
 **SQLite** (`node:sqlite`), un archivo por vida, en modo WAL.
 
 ```
