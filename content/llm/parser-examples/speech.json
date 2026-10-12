@@ -1,0 +1,22 @@
+[
+  {
+    "id": "shot-promise-water",
+    "shot": true,
+    "text": "le prometo a mi madre devolverle el agua: \"Te devolveré el agua.\"",
+    "scene": "Tu madre está junto al pozo. Te prestó agua.",
+    "expect": {
+      "kind": "act",
+      "speech": {
+        "text": "Te devolveré el agua.",
+        "to": {
+          "text": "mi madre",
+          "kind": "person",
+          "features": [],
+          "relation": { "rel": "madre", "to": "self" }
+        },
+        "act": { "kind": "promise", "what": "agua" }
+      }
+    },
+    "notes": "Habla sola: las palabras citadas se conservan en speech.text; la promesa fue declarada, sin inventar fecha ni condiciones. No hay plan duplicado."
+  }
+]

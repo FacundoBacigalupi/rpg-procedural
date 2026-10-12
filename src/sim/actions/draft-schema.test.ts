@@ -26,6 +26,7 @@ const content = loadContent(
       ["skills", "content/skills/core.json"],
       ["traits", "content/traits/human.json"],
       ["llm/parser-examples", "content/llm/parser-examples/core.json"],
+      ["llm/parser-examples", "content/llm/parser-examples/speech.json"],
     ] as const
   ).map(([kind, file]) => ({ kind, file, data: json(file) })),
 );

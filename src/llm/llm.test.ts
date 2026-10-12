@@ -176,6 +176,7 @@ const content = loadContent(
     ["skills", "content/skills/core.json"],
     ["traits", "content/traits/human.json"],
     ["llm/parser-examples", "content/llm/parser-examples/core.json"],
+    ["llm/parser-examples", "content/llm/parser-examples/speech.json"],
   ].map(([kind, file]) => ({
     kind: kind as string,
     file: file as string,
@@ -187,6 +188,21 @@ const examples = content.all(PARSER_EXAMPLES);
 const setup = parserSetup(catalog, examples);
 
 describe("parseIntent", () => {
+  it("la promesa de ejemplo conserva la cita y va en speech sin duplicar plan", () => {
+    const example = examples.find((e) => e.id === "shot-promise-water");
+    if (!example) throw new Error("sin ejemplo de promesa de agua");
+    expect(example.shot).toBe(true);
+    expect(example.expect.plan).toBeUndefined();
+    expect(example.expect.speech?.text).toBe("Te devolveré el agua.");
+    expect(example.expect.speech?.act).toMatchObject({ kind: "promise", what: "agua" });
+    expect(
+      setup.shots.some(
+        (m) => m.role === "assistant" && m.content === JSON.stringify(example.expect),
+      ),
+    ).toBe(true);
+    expect(examples.find((e) => e.id === "say-promise-vague")?.shot).not.toBe(true);
+  });
+
   it("el prefijo fijo lleva las reglas, los verbos del catálogo y los ejemplos resueltos", () => {
     expect(setup.system.startsWith(PARSER_RULES)).toBe(true);
     expect(setup.system).toMatch(/- move \("moverse"\): to: ref \(a place/);
