@@ -1,7 +1,14 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EARTHLIKE_CLOCK, EventLog, IdAllocator, makeId, Rng } from "../../core/index.ts";
+import {
+  EARTHLIKE_CLOCK,
+  EventLog,
+  IdAllocator,
+  loadContent,
+  makeId,
+  Rng,
+} from "../../core/index.ts";
 import { GAME_CONTENT_KINDS } from "../../game/index.ts";
-import { loadContentDir } from "../../persistence/index.ts";
 import {
   ACTIONS,
   ActionCatalog,
@@ -37,7 +44,21 @@ import {
   foldConversationEffects,
 } from "./converse-project.ts";
 
-const content = loadContentDir("content", GAME_CONTENT_KINDS);
+const content = loadContent(
+  GAME_CONTENT_KINDS,
+  readdirSync("content", { recursive: true, encoding: "utf8" })
+    .map((file) => file.replaceAll("\\", "/"))
+    .filter((file) => file.endsWith(".json"))
+    .sort()
+    .flatMap((file) => {
+      const kind = GAME_CONTENT_KINDS.find(
+        (kind) => file.slice(0, file.lastIndexOf("/")) === kind.name,
+      );
+      return kind
+        ? [{ kind: kind.name, file, data: JSON.parse(readFileSync(`content/${file}`, "utf8")) }]
+        : [];
+    }),
+);
 const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
 const a = makeId("agent", 1);
 const b = makeId("agent", 2);
