@@ -175,6 +175,26 @@ describe("el borrador según el catálogo", () => {
     }
   });
 
+  it("ambos esquemas rechazan repeat fuera de límites, intervalos y if sin condición", () => {
+    const look = { kind: "do", verb: "look", args: [] };
+    const invalidPlans = [
+      { kind: "repeat", times: 0, body: look },
+      { kind: "repeat", times: 1001, body: look },
+      { kind: "repeat", times: 1.5, body: look },
+      { kind: "repeat", times: 2, every: { amount: 1, unit: "minute" }, body: look },
+      {
+        kind: "if",
+        // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+        then: look,
+      },
+    ];
+    for (const plan of invalidPlans) {
+      const draft = { kind: "plan", plan };
+      expect(checked.safeParse(draft).success).toBe(false);
+      expect(structural.safeParse(draft).success).toBe(false);
+    }
+  });
+
   it("el JSON Schema sale del esquema estructural y es determinista", () => {
     const a = JSON.stringify(intentDraftJsonSchemaFor(catalog));
     const b = JSON.stringify(
