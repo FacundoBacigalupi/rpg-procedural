@@ -11,6 +11,13 @@ Lo usan: [narration.md](narration.md) (verbalización de actos de habla), [playe
 
 ## Principios
 
+**Cobertura de reproches (2026-10-12):** las líneas `greet.cold.<DeedKind>` y
+`request.refuse.<DeedKind>` deben existir para cada clase de agravio. El perfil
+completo descubrió las dos variantes `fraud` ausentes; ahora hay frases ordinarias,
+formales y de tono que expresan creencia o desconfianza, sin afirmar la verdad de
+la acusación. La prueba exhaustiva usa el tipo de `ReplyInput.reproach`, por lo
+que agregar una clase exige revisar contenido y pruebas.
+
 1. **Hablar es actuar.** Cada enunciado es un `speak` con un acto de habla: ocupa tiempo y voz, emite sonido (otros lo oyen), cambia creencias y relaciones, y puede crear compromisos.
 2. **El contenido sale de creencias.** Un NPC solo puede contar lo que cree (verdadero o falso), preguntar por lo que le interesa y mentir con una creencia falsa concreta que la simulación elige. El LLM no agrega hechos, nombres, cifras ni promesas.
 3. **Persuadir es cambiar los insumos de la decisión del otro:** sus creencias, lo que tiene presente, sus emociones, la relación, la cara en juego o lo que gana. La decisión final la toma su utilidad.

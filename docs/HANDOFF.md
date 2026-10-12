@@ -70,6 +70,27 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Estado verificado (2026-10-12, continuación):** PR #491 en borrador y rama
+`feat/f3-full-profile-review`. `npm run check` anterior pasó: 2469 tests en 358
+archivos, typecheck y lint, exit 0. Después se integraron lotes seriales,
+aprendizaje de testigos, los dos reproches de fraude faltantes y la contienda
+trade/give; 95 pruebas puntuales y typecheck latest pasaron. La verificación amplia
+del código posterior sigue pendiente; no reutilizar el número anterior como prueba
+de todos los cambios actuales.
+
+Perfil completo: tres seeds × 30 días pasaron 21 chequeos; no ejercitaron partos,
+préstamos ni catch-up. El intento de dos años se frenó por `greet.cold.fraud`, ya
+corregido junto a `request.refuse.fraud`. Nueva corrida serial de dos años en
+`sim-reports/full-profile-2y-fraud-fixed`, todavía en curso. No activar defaults
+antes de terminar la medición y revisar cobertura/recursos entre procesos.
+
+Qwen3:14b último banco: 54/54 borradores válidos, 38/54 semánticamente correctos;
+mejora siete casos comunes frente a #489 y presenta una regresión en liberar al
+rendido (`parser-spare-regression`). Repetición única se puntúa como su cuerpo,
+habla/plan son excluyentes y los actos tienen esquema discriminado. Narración
+semántica sigue pendiente. Los resultados locales de banco y simulación no se
+confunden con aprobaciones del juego completo.
+
 **Continuación autónoma (2026-10-12):** la corrida amplia anterior no conservó
 resultado final y no se cuenta como aprobada. Nueva `npm run check` en curso,
 log `sim-reports/cloud-review-check-2026-10-12.log`; typecheck y lint pasaron.
