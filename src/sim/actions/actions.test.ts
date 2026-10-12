@@ -620,6 +620,41 @@ describe("del borrador al plan", () => {
     expect(talk.kind === "plan" && talk.groups?.[0]?.text).toBe("los niños");
   });
 
+  it("acercarse a personas conserva los modos y valida los roles del borrador", () => {
+    const kid = known("agent:101" as EntityRef, [], {
+      features: ["niño"],
+      present: true,
+      at: 5,
+    });
+    const approach = {
+      kind: "do" as const,
+      verb: "move",
+      args: [{ role: "to", ref: desc("el niño") }],
+      manner: ["careful"],
+    };
+    const here = planFromDraft(act(approach), { ...ctx, known: [kid] });
+    expect(here.kind === "plan" && here.plan.root).toMatchObject({
+      verb: "look",
+      manner: ["careful"],
+    });
+    const away = planFromDraft(act(approach), {
+      ...ctx,
+      known: [{ ...kid, present: false, at: 9 }, known(forest, ["el bosque"], { hexes: [9] })],
+    });
+    expect(away.kind === "plan" && away.plan.root).toMatchObject({
+      verb: "move",
+      manner: ["careful"],
+    });
+    const invalid = planFromDraft(
+      act({
+        ...approach,
+        args: [...approach.args, { role: "invented", text: "ignorado" }],
+      }),
+      { ...ctx, known: [kid] },
+    );
+    expect(invalid.kind).toBe("invalid");
+  });
+
   it("repeat e if del borrador pasan al plan con la condición normalizada", () => {
     const r = planFromDraft(
       act({

@@ -191,7 +191,10 @@ function convert(
       }
       if (node.verb === "move") {
         const to = node.args.find((a) => a.role === "to" && "ref" in a);
-        const near = to && "ref" in to ? approachPeople(to.ref, `${at}.to`, w) : undefined;
+        const near =
+          to && "ref" in to && node.args.length === 1
+            ? approachPeople(to.ref, `${at}.to`, w, node.manner ?? [])
+            : undefined;
         if (near !== undefined) return near;
       }
       const args: ArgValue[] = [];
@@ -273,7 +276,12 @@ function convert(
  * (`look`: no hay sub-hex donde acercarse); si cree que están en otro hex, va al lugar que lo
  * contiene. `undefined` = no aplica (sigue el camino normal); `null` = pregunta o problema anotado.
  */
-function approachPeople(desc: RefDescription, at: string, w: Walk): PlanNode | null | undefined {
+function approachPeople(
+  desc: RefDescription,
+  at: string,
+  w: Walk,
+  manner: readonly string[],
+): PlanNode | null | undefined {
   const places = w.ctx.known.filter((k) => k.kind === "place");
   if (resolveRef({ ...desc, kind: "place" }, places).status !== "unknown") return undefined;
   const people = w.ctx.known.filter((k) => k.kind === "person");
@@ -287,7 +295,7 @@ function approachPeople(desc: RefDescription, at: string, w: Walk): PlanNode | n
   if (r.status === "group") w.groups.push({ at, text: desc.text, members });
   const who = members.map((m) => people.find((k) => k.ref === m)).filter((k) => k !== undefined);
   if (who.every((k) => k.present)) {
-    return { kind: "do", verb: "look", args: [], manner: [] };
+    return { kind: "do", verb: "look", args: [], manner: [...manner] };
   }
   const first = who.find((k) => !k.present) ?? who[0];
   const hex = first?.at;
@@ -299,7 +307,12 @@ function approachPeople(desc: RefDescription, at: string, w: Walk): PlanNode | n
     w.problems.push(`${at}: no sabés dónde encontrar a ${desc.text}`);
     return null;
   }
-  return { kind: "do", verb: "move", args: [{ role: "to", entity: place.ref }], manner: [] };
+  return {
+    kind: "do",
+    verb: "move",
+    args: [{ role: "to", entity: place.ref }],
+    manner: [...manner],
+  };
 }
 
 /**
