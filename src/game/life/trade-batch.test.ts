@@ -86,6 +86,7 @@ function world(
   single = false,
   sharedHome = false,
   projectWatchExposures = false,
+  economicVerbs?: readonly ("trade" | "give")[],
 ) {
   const truth = new WorldTruth();
   const log = new EventLog();
@@ -145,6 +146,7 @@ function world(
     ],
   });
   const opts: ActOptions = {
+    ...(economicVerbs ? { serialEconomicVerbs: economicVerbs } : {}),
     projectWatchExposures,
     serialTrades: serial,
     projectTrades: true,
@@ -311,4 +313,90 @@ describe("trade real en lote opt-in", () => {
     });
     expect(withoutPacket).toEqual(direct.log.all());
   });
+  it.each([false, true])(
+    "trade y give comparten bolsillo sin doble débito (giverFirst=%s)",
+    (giverFirst) => {
+      const w = world(1000, true, false, true, false, true, ["trade", "give"]);
+      const giver = giverFirst ? buyers[0] : seller;
+      const recipient = giverFirst ? seller : buyers[0];
+      if (giverFirst)
+        w.ledger.post({
+          tick: 0,
+          eventId: makeId("event", 1),
+          transfers: [
+            { unit: good, from: holderAccount(seller), to: holderAccount(giver), amount: 1000 },
+          ],
+        });
+      const buyerPlan = w.truth.get(PLAN_STATE, buyers[1]);
+      if (!buyerPlan) throw new Error("sin plan de trade");
+      w.truth.set(PLAN_STATE, buyers[1], {
+        ...buyerPlan,
+        plan: {
+          ...buyerPlan.plan,
+          root: {
+            kind: "do",
+            verb: "trade",
+            args: [
+              { role: "with", entity: giver },
+              { role: "what", text: "herramienta 1 kg" },
+            ],
+            manner: [],
+          },
+        },
+      });
+      w.truth.set(PLAN_STATE, giver, {
+        seq: 1,
+        done: false,
+        cursor: FRESH_CURSOR,
+        lastBelieved: null,
+        steps: [],
+        plan: {
+          actor: giver,
+          source: "utility",
+          root: {
+            kind: "do",
+            verb: "give",
+            args: [
+              { role: "to", entity: recipient },
+              { role: "what", text: "herramienta 1 kg" },
+            ],
+            manner: [],
+          },
+          manner: [],
+          causes: [],
+        },
+      });
+      w.scheduler.schedule({
+        at: clock.day / 2,
+        phase: "act",
+        process: "life.act",
+        scope: giver,
+        reason: { kind: "state", entity: giver, key: planKey(1) },
+      });
+      expect(() => w.scheduler.advanceTo(clock.day / 2)).not.toThrow();
+      expect(
+        w.log.all().filter((e) => e.kind === "action.trade" || e.kind === "action.give"),
+      ).toHaveLength(2);
+      expect(w.truth.get(PLAN_STATE, giver)?.steps).toHaveLength(1);
+      expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
+      expect(w.scheduler.state().queue).toHaveLength(2);
+      expect(w.ledger.balance(holderAccount(giver), good)).toBe(0);
+      expect(w.ledger.balance(holderAccount(recipient), good)).toBe(giverFirst ? 1000 : 0);
+      expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(giverFirst ? 0 : 1000);
+      expect(w.ledger.audit()).toEqual([]);
+      const failed = w.log
+        .all()
+        .find((event) => event.kind === (giverFirst ? "action.trade" : "action.give"));
+      if (giverFirst)
+        expect((failed?.data as { effect?: { deal: boolean } } | undefined)?.effect?.deal).toBe(
+          false,
+        );
+      else
+        expect((failed?.data as { effect?: { grams: number } } | undefined)?.effect?.grams).toBe(0);
+      w.scheduler.advanceTo(clock.day);
+      expect(w.truth.get(PLAN_STATE, giver)?.done).toBe(true);
+      expect(w.truth.get(PLAN_STATE, buyers[1])?.done).toBe(true);
+      expect(w.scheduler.state().queue).toEqual([]);
+    },
+  );
 });

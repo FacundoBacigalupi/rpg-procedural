@@ -222,6 +222,8 @@ export interface ActOptions {
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
   readonly serialTrades?: boolean;
+  /** Opt-in explícito: solo trade/give comparten el turno de servicio de recursos; no combate. */
+  readonly serialEconomicVerbs?: readonly ("trade" | "give")[];
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
   readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -424,6 +426,7 @@ export function actProcess(o: ActOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
   const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
+  const serialVerbs = new Set<string>(o.serialEconomicVerbs ?? (o.serialTrades ? ["trade"] : []));
 
   return {
     id: ACT_PROCESS,
@@ -489,7 +492,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       YIELDED.name,
       FIGHT_STATE.name,
     ],
-    ...(o.serialTrades
+    ...(serialVerbs.size > 0
       ? {
           serialGroup(ctx: ProcessContext) {
             const me = ctx.scope as AgentId;
@@ -505,7 +508,11 @@ export function actProcess(o: ActOptions): ProcessDef {
             const { cursor } = actCursor(ctx, o, state);
             if (cursor.path === null) return undefined;
             const node = nodeAt(state.plan.root, cursor.path);
-            return node.kind === "do" && node.verb === "trade" ? "trade" : undefined;
+            return node.kind === "do" &&
+              (node.verb === "trade" || node.verb === "give") &&
+              serialVerbs.has(node.verb)
+              ? "economic"
+              : undefined;
           },
         }
       : {}),

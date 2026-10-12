@@ -660,7 +660,14 @@ export function lifeWorld(
         }),
         actProcess({
           ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
-          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true, serialTrades: true } : {}),
+          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
+          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+            ? {
+                serialEconomicVerbs: (["trade", "give"] as const).filter((verb) =>
+                  parts.npcVerbs?.includes(verb),
+                ),
+              }
+            : {}),
           logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,
