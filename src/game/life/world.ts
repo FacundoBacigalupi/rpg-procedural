@@ -1555,6 +1555,7 @@ export function lifeWorld(
                 ...(parts.npcJourneyDays !== undefined
                   ? {
                       journeyDays: parts.npcJourneyDays,
+                      ...(parts.npcTransit === true ? { transit: true } : {}),
                       placeOf: placeOf(parts, village),
                       ...(parts.npcPace ? { pace: parts.npcPace } : {}),
                       ...(parts.npcNightRest === true

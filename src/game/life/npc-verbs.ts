@@ -55,6 +55,7 @@ import {
 import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { ROUTINE } from "./routine.ts";
+import { TRANSIT } from "./transit-state.ts";
 
 /** Cada cuánto como mucho vuelve a comer un viajero (horas). */
 const MEAL_GAP_HOURS = 4;
@@ -75,6 +76,8 @@ export interface NpcVerbsOptions {
    * hasta llegar o hasta `journeyDays` días; sin esto, el `move` vence con la decisión del día.
    */
   readonly journeyDays?: number;
+  /** Con tránsito, la llegada espera la posición física y el cierre de la caminata. */
+  readonly transit?: true;
   /**
    * Opt-in: verbos de la decisión que se ejecutan como una plantilla de plan de `content/plans/`
    * (`byVerb`: verbo -> id de plantilla, p. ej. `work` -> `fieldwork`). Los parámetros de lugar
@@ -272,6 +275,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       ...(o.nightRest || o.resume ? [BODY_STATE.name] : []),
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
+      ...(o.transit ? [TRANSIT.name] : []),
     ],
     writes: [
       PLAN_STATE.name,
@@ -319,7 +323,14 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
             postings: back,
           };
         };
-        if (here !== undefined && hexes.includes(here)) return end("arrived");
+        const transit = o.transit ? truth.get(TRANSIT, me) : undefined;
+        const physicallyHere = transit?.seen ?? trip.from ?? here;
+        const transitArrived =
+          !o.transit ||
+          (transit?.walk === undefined &&
+            physicallyHere !== undefined &&
+            hexes.includes(physicallyHere));
+        if (here !== undefined && hexes.includes(here) && transitArrived) return end("arrived");
         if (days >= journeyDays) return end("gave_up");
         const going = truth.get(PLAN_STATE, me);
         // Hora de comida con provisiones encima: el tramo se corta, come y sigue el camino.

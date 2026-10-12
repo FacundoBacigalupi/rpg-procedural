@@ -13,29 +13,13 @@ import {
   type LocalMap,
   type ProcessDef,
   setComponent,
-  table,
 } from "../../sim/index.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
+import { TRANSIT, type Transit } from "./transit-state.ts";
+
+export { TRANSIT, type Transit, type Walk } from "./transit-state.ts";
 
 export const TRANSIT_PROCESS = "life.transit";
-
-export interface Walk {
-  readonly from: number;
-  readonly to: number;
-  /** Hexes del camino, sin el de salida, con el de llegada. */
-  readonly path: readonly number[];
-  readonly t0: Tick;
-  readonly seconds: number;
-}
-
-/** Lo último que este proceso vio o dejó de la posición, y la caminata en curso si hay una. */
-export interface Transit {
-  readonly seen: number;
-  readonly at: Tick;
-  readonly walk?: Walk;
-}
-
-export const TRANSIT = table<Transit>("life.transit");
 
 /** Cuánto cuesta caminar un camino (puro): suma de lo que cuesta cruzar cada hex. */
 export function walkSeconds(map: Pick<LocalMap, "crossSeconds">, path: readonly number[]): number {
