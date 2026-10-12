@@ -456,6 +456,20 @@ describe("narrador", () => {
   it("el pedido no lleva ids reales", () => {
     expect(narratorUserMessage(request)).not.toMatch(/agent:|place:|mistaken|confidence/);
   });
+
+  it("el prompt distingue recolectar de buscar y recibe solo la acción percibida", () => {
+    const view = viewOf({
+      percepts: [
+        percept({ identity: field(other), action: field("action.gather") }, "identified", 1),
+      ],
+    });
+    const seen = narrationRequest(view, style);
+    expect(seen.view.percepts[0]?.action).toBe("gather");
+    expect(narratorSystem(style)).toContain("Preserve each percept's `action` exactly in meaning");
+    expect(narratorSystem(style)).toContain("`gather` means collecting (recolectar/juntar)");
+    expect(narratorSystem(style)).toContain("not that they search or approach");
+    expect(narratorUserMessage(seen)).not.toMatch(/agent:|place:|mistaken|confidence/);
+  });
 });
 
 describe("hablo con alguien", () => {
