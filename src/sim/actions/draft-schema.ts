@@ -245,9 +245,8 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
   const allManners = [...new Set(catalog.verbs.flatMap((v) => v.manners.map((m) => m.id)))];
   const speakManners = catalog.verb("speak")?.manners.map((m) => m.id) ?? [];
   const texts = z.array(DraftText).max(8).optional();
-  return z.strictObject({
+  const shape = {
     kind: IntentDraft.shape.kind,
-    plan: node.optional(),
     // Plano y chico: el motivo del catálogo cerrado y, si lo dice, para quién (una persona).
     purpose: z
       .strictObject({
@@ -259,34 +258,38 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
     constraints: texts,
     stripped: texts,
     unmapped: texts,
-    speech: z
-      .strictObject({
-        text: SpeechDraft.shape.text,
-        to: refSchema(REF_KINDS.person).optional(),
-        // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
-        act: z
-          .strictObject({
-            kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
-            about: z
-              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-              .optional(),
-            claim: z.enum(["dead", "alive", "theft", "assault"]).optional(),
-            victim: z
-              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-              .optional(),
-            what: DraftText.optional(),
-            times: z.number().positive().max(100).optional(),
-            dueDays: z.number().int().positive().max(3650).nullable().optional(),
-            precision: z.number().min(0).max(1).optional(),
-          })
-          .optional(),
-        ...(speakManners.length > 0
-          ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
-          : {}),
-      })
-      .optional(),
     text: DraftText.optional(),
-  }) as unknown as z.ZodType<IntentDraft>;
+  };
+  const speech = z
+    .strictObject({
+      text: SpeechDraft.shape.text,
+      to: refSchema(REF_KINDS.person).optional(),
+      // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
+      act: z
+        .strictObject({
+          kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
+          about: z
+            .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
+            .optional(),
+          claim: z.enum(["dead", "alive", "theft", "assault"]).optional(),
+          victim: z
+            .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
+            .optional(),
+          what: DraftText.optional(),
+          times: z.number().positive().max(100).optional(),
+          dueDays: z.number().int().positive().max(3650).nullable().optional(),
+          precision: z.number().min(0).max(1).optional(),
+        })
+        .optional(),
+      ...(speakManners.length > 0
+        ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
+        : {}),
+    })
+    .optional();
+  return z.union([
+    z.strictObject({ ...shape, plan: node.optional() }),
+    z.strictObject({ ...shape, speech }),
+  ]) as unknown as z.ZodType<IntentDraft>;
 }
 
 /** El JSON Schema que restringe la salida del modelo a lo que el catálogo tiene. */
@@ -294,5 +297,6 @@ export function intentDraftJsonSchemaFor(catalog: ActionCatalog): Record<string,
   return z.toJSONSchema(structuralDraftFor(catalog), {
     io: "input",
     unrepresentable: "any",
+    reused: "ref",
   }) as Record<string, unknown>;
 }

@@ -122,10 +122,19 @@ describe("el borrador según el catálogo", () => {
     };
     const duplicate: IntentDraft = { kind: "act", speech, plan: speak };
     expect(checked.safeParse(duplicate).success).toBe(false);
+    expect(structural.safeParse(duplicate).success).toBe(false);
     expect(draftCatalogProblems(duplicate, catalog)).toEqual([
       "speech: cannot coexist with plan; for speech alone omit plan, or put all speech in seq using speak with content",
     ]);
     expect(checked.safeParse({ kind: "act", speech }).success).toBe(true);
+    expect(structural.safeParse({ kind: "act", speech }).success).toBe(true);
+    for (const draft of [
+      { kind: "meta", text: "guardar" },
+      { kind: "goal", text: "aprender" },
+    ]) {
+      expect(checked.safeParse(draft).success).toBe(true);
+      expect(structural.safeParse(draft).success).toBe(true);
+    }
     expect(
       checked.safeParse({
         kind: "plan",
@@ -223,9 +232,10 @@ describe("el borrador según el catálogo", () => {
     );
     expect(a).toBe(b);
     expect(a).toContain('"const":"take"');
-    // Tope de tamaño del esquema que ve el modelo: 22 000, 23 000 con el acto de habla, 25 000 con `consult`, 26 000 con `purpose` 27 000 con `consume` 27 500 con `filter` 29 000 con `forge` y 31 000 con `hire`.
-    // repeat e if agregan variantes recursivas y la condición normalizada: 31 583 caracteres.
-    expect(a.length).toBeLessThan(32_000);
+    // Exclusión plan/speech: 33 301 inline; referencias internas compartidas lo reducen a 24 870.
+    expect(a.length).toBeLessThan(26_000);
+    expect(a).toContain('"anyOf"');
+    expect(a).toContain('"$defs"');
   });
 
   it("sin el catálogo, un borrador ajeno pasa el genérico (por eso el control existe)", () => {
