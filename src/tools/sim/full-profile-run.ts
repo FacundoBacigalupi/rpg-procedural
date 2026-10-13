@@ -23,6 +23,7 @@ import {
   recordProcess,
   validateFullProfileConfig,
 } from "./full-profile.ts";
+import { healthDebtFocus } from "./full-profile-focus.ts";
 import { livingHouseholds, rescueLoanSeeds, runRescueTurns } from "./rescue-coverage.ts";
 
 /**
@@ -34,7 +35,6 @@ function rescueSeedsFor(seed: number, content: ReturnType<typeof loadContentDir>
   if (!seeds) throw new Error("rescue: no hay tres hogares con grano para sembrar el préstamo");
   return seeds;
 }
-import { healthDebtFocus } from "./full-profile-focus.ts";
 
 export function runFullProfileSeed(
   seed: number,
