@@ -201,11 +201,18 @@ describe("servicio opt-in de stock público fungible", () => {
       expect(w.truth.rows()).toEqual(other.truth.rows());
       expect(w.log.all()).toEqual(other.log.all());
       expect(w.ledger.journal()).toEqual(other.ledger.journal());
-      if (verb === "gather")
+      if (verb === "gather" || verb === "take")
         expect(
-          w.log.all().find((e) => e.kind === "action.gather" && e.actors[0] === makeId("agent", 2))
+          w.log.all().find((e) => e.kind === `action.${verb}` && e.actors[0] === makeId("agent", 2))
             ?.outcome,
         ).toBe("failure");
+      if (verb === "take") {
+        expect(
+          w.log.all().find((e) => e.kind === "action.take" && e.actors[0] === makeId("agent", 2))
+            ?.data.failure,
+        ).toBe("no_means");
+        expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.lastBelieved).toBe("failure");
+      }
       w.scheduler.advanceTo(clock.day / 2 + 4 * 3600);
       expect(w.truth.get(PLAN_STATE, makeId("agent", 1))?.done).toBe(true);
       expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.done).toBe(true);

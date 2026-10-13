@@ -104,6 +104,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly bearing?: Bearing | undefined;
   /** Lo que tiene cada titular: de acá sale qué hay para tomar, ofrecer o sacar del lugar. */
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
+  /** Opt-in económico: `take` sin bienes disponibles falla por medios reales y el actor lo sabe. */
+  readonly takeEmptyFailure?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
   readonly place: PlaceRef;
   /** Por qué: las causas del plan (la intención, las creencias que la sostienen). */
@@ -1289,7 +1291,22 @@ const take: Resolver = (c) => {
   const wantedRow = pickWanted(held, argText(c, "what"), c.input.unitNames);
   const wanted = wantedRow?.unit ?? null;
   const effect = (got: Holding[]): VerbEffect => ({ kind: "take", from, wanted, got });
-  if (c.roll.unmet || !wantedRow) return { effect: effect([]), seconds: c.nominal };
+  if (c.roll.unmet) return { effect: effect([]), seconds: c.nominal };
+  if (!wantedRow) {
+    return {
+      effect: effect([]),
+      seconds: c.nominal,
+      ...(c.input.takeEmptyFailure
+        ? {
+            override: {
+              outcome: "failure" as const,
+              failure: "no_means" as const,
+              believed: "failure" as const,
+            },
+          }
+        : {}),
+    };
+  }
 
   const m = c.roll.margin as number;
   let got: Holding[] = [];
