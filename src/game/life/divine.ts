@@ -53,6 +53,7 @@ import {
   utter,
 } from "../../sim/index.ts";
 import type { ToldProphecy } from "./converse.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const DIVINERS_PROCESS = "life.diviners";
 export const CONSULT_PROCESS = "life.consult";
@@ -72,6 +73,8 @@ export interface ConsultData {
 }
 
 export interface DivineOptions {
+  /** Interno opt-in: las visitas reservan el bolsillo con las demás operaciones económicas. */
+  readonly economicBatch?: boolean;
   readonly methods: readonly DivinationMethodDef[];
   /** Con qué palabras se nombra cada preocupación, para leer lo que el personaje pregunta. */
   readonly concerns: readonly ConcernWords[];
@@ -512,6 +515,9 @@ export function visitsProcess(o: DivineOptions & { readonly player: AgentId }): 
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     reads: [
       DIVINER_ROLE.name,
       PROPHECY_BELIEFS.name,
