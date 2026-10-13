@@ -3,7 +3,9 @@
 
 import { randomInt } from "node:crypto";
 import {
+  assertLifeDependencies,
   defaultGameSetup,
+  FULL_PROFILE,
   type GameMode,
   type GameSetup,
   type LifeSetup,
@@ -32,6 +34,7 @@ export const LIFE_ARG_OPTIONS = {
   "llm-url": { type: "string" },
   think: { type: "boolean", default: false },
   famine: { type: "boolean", default: false },
+  profile: { type: "string" },
   nickname: { type: "boolean", default: false },
 } as const;
 
@@ -48,6 +51,7 @@ export interface LifeArgs {
   "llm-url"?: string | undefined;
   think: boolean;
   famine?: boolean | undefined;
+  profile?: string | undefined;
   nickname?: boolean | undefined;
 }
 
@@ -69,6 +73,10 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
   if (!mode) throw new Error(`modo inválido: ${values.mode} (realista o novela)`);
   const runtime = values.runtime as keyof typeof LOCAL_BASE_URLS;
   if (!(runtime in LOCAL_BASE_URLS)) throw new Error(`runtime desconocido: ${values.runtime}`);
+  if (values.profile !== undefined && values.profile !== "full") {
+    throw new Error(`perfil inválido: ${values.profile} (full)`);
+  }
+  if (values.profile === "full") assertLifeDependencies(FULL_PROFILE);
   return {
     seed,
     save: values.save,
@@ -78,6 +86,7 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
       game: gameSetup(values, mode),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
+      ...(values.profile === "full" ? { life: structuredClone(FULL_PROFILE) } : {}),
     },
   };
 }

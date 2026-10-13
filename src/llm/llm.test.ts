@@ -176,6 +176,7 @@ const content = loadContent(
     ["skills", "content/skills/core.json"],
     ["traits", "content/traits/human.json"],
     ["llm/parser-examples", "content/llm/parser-examples/core.json"],
+    ["llm/parser-examples", "content/llm/parser-examples/speech.json"],
   ].map(([kind, file]) => ({
     kind: kind as string,
     file: file as string,
@@ -187,6 +188,38 @@ const examples = content.all(PARSER_EXAMPLES);
 const setup = parserSetup(catalog, examples);
 
 describe("parseIntent", () => {
+  it("el ejemplo de petición conserva el intento y descarta la respuesta ajena", () => {
+    const example = examples.find((e) => e.id === "shot-request-bucket-attempt");
+    if (!example) throw new Error("sin ejemplo de petición del balde");
+    expect(example.shot).toBe(true);
+    expect(example.expect.plan).toBeUndefined();
+    expect(example.expect.speech?.text).toBe("¿Me prestás tu balde?");
+    expect(example.expect.stripped).toEqual(["me lo entrega"]);
+    expect(
+      setup.shots.some(
+        (m) => m.role === "assistant" && m.content === JSON.stringify(example.expect),
+      ),
+    ).toBe(true);
+    for (const id of ["other-acts-strip", "persuade-strip"]) {
+      expect(examples.find((e) => e.id === id)?.shot).not.toBe(true);
+    }
+  });
+
+  it("la promesa de ejemplo conserva la cita y va en speech sin duplicar plan", () => {
+    const example = examples.find((e) => e.id === "shot-promise-water");
+    if (!example) throw new Error("sin ejemplo de promesa de agua");
+    expect(example.shot).toBe(true);
+    expect(example.expect.plan).toBeUndefined();
+    expect(example.expect.speech?.text).toBe("Te devolveré el agua.");
+    expect(example.expect.speech?.act).toMatchObject({ kind: "promise", what: "agua" });
+    expect(
+      setup.shots.some(
+        (m) => m.role === "assistant" && m.content === JSON.stringify(example.expect),
+      ),
+    ).toBe(true);
+    expect(examples.find((e) => e.id === "say-promise-vague")?.shot).not.toBe(true);
+  });
+
   it("el prefijo fijo lleva las reglas, los verbos del catálogo y los ejemplos resueltos", () => {
     expect(setup.system.startsWith(PARSER_RULES)).toBe(true);
     expect(setup.system).toMatch(/- move \("moverse"\): to: ref \(a place/);
@@ -203,8 +236,23 @@ describe("parseIntent", () => {
     const schema = JSON.stringify(setup.jsonSchema.schema);
     for (const v of catalog.verbs) expect(schema).toContain(`{"type":"string","const":"${v.id}"}`);
     expect(schema).toContain('"const":"steal"');
-    expect(schema).not.toContain('"repeat"');
+    expect(schema).toContain('"repeat"');
+    expect(schema).toContain('"if"');
     expect(schema).not.toContain('"onEvent"');
+  });
+
+  it("distingue repetir la intención reciente de una cantidad explícita", () => {
+    expect(setup.system).toContain("for an explicit count");
+    expect(setup.system).toContain("performed once more");
+    expect(setup.system).toContain("not as `repeat` with an invented times");
+    expect(setup.system).toContain("do not put those words in `unmapped`");
+  });
+
+  it("representa cada intervención una vez y conserva habla dentro de secuencias", () => {
+    expect(setup.system).toContain("talking is one step of a sequence, use the `speak` verb");
+    expect(setup.system).toContain("Represent each utterance only once");
+    expect(setup.system).toContain("For talking alone, omit `plan`");
+    expect(setup.system).toContain("a `speak` step must include its spoken content");
   });
 
   it("manda el prefijo, lo de este turno al final, y devuelve el borrador validado", async () => {

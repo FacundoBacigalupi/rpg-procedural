@@ -9,6 +9,7 @@ import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { parseSeeds, runBatch } from "./batch.ts";
 import { diffMetrics } from "./diff.ts";
+import { runFullProfileBatch } from "./full-profile-run.ts";
 import { renderDiffHtml } from "./html.ts";
 import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
 
@@ -27,6 +28,20 @@ const { values } = parseArgs({
     html: { type: "boolean", default: false },
   },
 });
+
+if (values.scenario === "full-profile") {
+  runFullProfileBatch(
+    {
+      seeds: parseSeeds(values.seeds),
+      years: Number(values.years ?? 1),
+      checkEveryDays: Number(values["check-days"] ?? 30),
+      ...(values.days === undefined ? {} : { days: Number(values.days) }),
+      ...(values.frequency === undefined ? {} : { frequency: Number(values.frequency) }),
+    },
+    values.out,
+  );
+  process.exit(process.exitCode ?? 0);
+}
 
 const content = loadContentDir("content", GAME_CONTENT_KINDS);
 const frequency = values.frequency === undefined ? undefined : Number(values.frequency);

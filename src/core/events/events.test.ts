@@ -60,6 +60,43 @@ const histories = fc
   });
 
 describe("EventLog", () => {
+  it("preview comparte la validación de append sin cambiar eventos ni sus índices", () => {
+    fc.assert(
+      fc.property(histories, fc.nat(), (events, pick) => {
+        const split = pick % (events.length + 1);
+        const log = EventLog.from(events.slice(0, split));
+        const before = log.all().slice();
+        const last = log.lastNumber;
+        const pending = events.slice(split);
+        log.preview(pending);
+        log.preview(pending);
+        expect(log.all()).toEqual(before);
+        expect(log.lastNumber).toBe(last);
+        for (const event of pending) expect(log.has(event.id)).toBe(false);
+        for (const event of before) {
+          expect(log.effectsOf(event.id)).toEqual(EventLog.from(before).effectsOf(event.id));
+        }
+        for (const event of pending) log.append(event);
+        expect(log.all()).toEqual(events);
+      }),
+    );
+  });
+
+  it.each<[string, Event[]]>([
+    ["causa posterior en la misma serie", [ev(2, 10, seed), ev(3, 9, citing(2))]],
+    ["referencia futura aún no asentada", [ev(2, 10, citing(3)), ev(3, 10, seed)]],
+    ["id duplicado", [ev(2, 10, seed), ev(2, 10, seed)]],
+    ["id anterior al historial", [ev(1, 10, seed)]],
+    ["causa inexistente", [ev(2, 10, citing(99))]],
+  ])("preview rechaza %s antes de asentar parte de la serie", (_, events) => {
+    const log = EventLog.from([ev(1, 0, seed)]);
+    const before = log.all().slice();
+    expect(() => log.preview(events)).toThrow(EventLogError);
+    expect(log.all()).toEqual(before);
+    expect(log.lastNumber).toBe(1);
+    expect(log.effectsOf(E(1))).toEqual([]);
+  });
+
   it("acepta historiales bien formados y los devuelve en orden", () => {
     fc.assert(
       fc.property(histories, (events) => {
@@ -112,6 +149,7 @@ describe("EventLog", () => {
     ["estado sin clave", ev(2, 5, [{ kind: "state", entity: S1, key: "" }])],
   ])("rechaza un evento %s", (_, bad) => {
     const log = EventLog.from([ev(1, 0, seed)]);
+    expect(() => log.preview([bad])).toThrow(EventLogError);
     expect(() => log.append(bad)).toThrow(EventLogError);
     expect(log.size).toBe(1);
   });

@@ -158,6 +158,7 @@ import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
   atMyMercy,
@@ -181,7 +182,8 @@ import {
 } from "./substances.ts";
 import { applyCoreTemp, applyFrostbite } from "./thermal.ts";
 import { incomeOfHousehold } from "./trades.ts";
-import { watchersLearn } from "./watching.ts";
+import { collectWatchExposures, type WatchExposure, watchersLearn } from "./watching.ts";
+import { WATCH_EXPOSURES_KEY } from "./watching-project.ts";
 
 /** Un paso ya hecho, para la autopercepción y la narración del turno. */
 export interface StepRecord {
@@ -217,6 +219,16 @@ export function planKey(seq: number): string {
 export const GLANCE_ACUITY = 0.6;
 
 export interface ActOptions {
+  /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
+  readonly projectTrades?: boolean;
+  /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
+  readonly serialTrades?: boolean;
+  /** Opt-in explícito: estos verbos comparten saldos; no serializa la iniciativa de combate. */
+  readonly serialEconomicVerbs?: readonly ("trade" | "give" | "eat" | "cook" | "take" | "gather")[];
+  /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
+  readonly economicBatch?: boolean;
+  /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
+  readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
   readonly logMeals?: boolean;
   readonly map: LocalMap;
@@ -417,6 +429,7 @@ export function actProcess(o: ActOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
   const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
+  const serialVerbs = new Set<string>(o.serialEconomicVerbs ?? (o.serialTrades ? ["trade"] : []));
 
   return {
     id: ACT_PROCESS,
@@ -467,10 +480,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
-      PRICE_BELIEFS.name,
-      MARKET_TAPE.name,
-      SALE_RECEIPTS.name,
-      SELLER_DAY.name,
+      ...(!o.projectTrades
+        ? [PRICE_BELIEFS.name, MARKET_TAPE.name, SALE_RECEIPTS.name, SELLER_DAY.name]
+        : []),
       LOT_QUALITY.name,
       PLAN_STATE.name,
       LOCATION.name,
@@ -483,6 +495,31 @@ export function actProcess(o: ActOptions): ProcessDef {
       YIELDED.name,
       FIGHT_STATE.name,
     ],
+    ...(serialVerbs.size > 0
+      ? {
+          ...(o.economicBatch ? { serialDomain: ECONOMIC_SERIAL_DOMAIN } : {}),
+          serialGroup(ctx: ProcessContext) {
+            const me = ctx.scope as AgentId;
+            const state = ctx.truth.get(PLAN_STATE, me);
+            if (
+              !state ||
+              state.done ||
+              ctx.item?.reason.kind !== "state" ||
+              ctx.item.reason.key !== planKey(state.seq) ||
+              ctx.truth.get(ENTITY, me)?.endedAt !== undefined
+            )
+              return undefined;
+            const { cursor } = actCursor(ctx, o, state);
+            if (cursor.path === null) return undefined;
+            const node = nodeAt(state.plan.root, cursor.path);
+            // `take` actual mueve Holdings fungibles aun desde persona: la oposición sigue
+            // en el resolver, mientras este servicio evita reutilizar el mismo saldo.
+            return node.kind === "do" && serialVerbs.has(node.verb)
+              ? ECONOMIC_SERIAL_GROUP
+              : undefined;
+          },
+        }
+      : {}),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const state = ctx.truth.get(PLAN_STATE, me);
@@ -493,19 +530,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       }
       if (ctx.truth.get(ENTITY, me)?.endedAt !== undefined) return {};
 
-      const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
-      const space = ctx.truth.get(LOCATION, me)?.space;
-      const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
-      const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
-      const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
-      const light = node ? spaceLight(node, sky) : sky;
-      const cursor = state.resume
-        ? state.cursor
-        : advance(state.plan.root, state.cursor, {
-            now: ctx.now,
-            dark: light < 0.2,
-            lastBelieved: state.lastBelieved,
-          });
+      const { hex, light, hour, cursor } = actCursor(ctx, o, state);
       if (cursor.path === null) {
         const changes: StateChange[] = [
           setComponent(PLAN_STATE, me, { ...state, cursor, done: true }),
@@ -519,6 +544,24 @@ export function actProcess(o: ActOptions): ProcessDef {
       return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour, season });
     },
   };
+}
+
+function actCursor(ctx: ProcessContext, o: ActOptions, state: PlanState) {
+  const me = ctx.scope as AgentId;
+  const hex = ctx.truth.get(LOCATION, me)?.hex ?? 0;
+  const space = ctx.truth.get(LOCATION, me)?.space;
+  const node = space === undefined ? undefined : o.spaces.spaces.find((s) => s.key === space);
+  const sky = skyBrightness(o.clock, skyObserverOf(o.map), ctx.now);
+  const hour = localHour(o.clock, ctx.now, o.map.lonDeg);
+  const light = node ? spaceLight(node, sky) : sky;
+  const cursor = state.resume
+    ? state.cursor
+    : advance(state.plan.root, state.cursor, {
+        now: ctx.now,
+        dark: light < 0.2,
+        lastBelieved: state.lastBelieved,
+      });
+  return { hex, light, hour, cursor };
 }
 
 interface StepEnv {
@@ -771,6 +814,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         : undefined,
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
+    ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],
     foods: e.foods,
@@ -1075,29 +1119,30 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     : learned;
   if (lessons) changes.push(setComponent(SKILL_STATE, me, lessons));
   // Los presentes que lo vieron aprenden mirando (skills §3.2).
+  let watchExposures: readonly WatchExposure[] = [];
   if (r.attempt.expected !== null) {
-    changes.push(
-      ...watchersLearn({
-        truth,
-        catalog: o.skills,
-        traits: o.traits,
-        plans: e.plans,
-        clock: o.clock,
-        doer: me,
-        verb: node.verb,
-        doerLevel: input.actor.skill ?? 0,
-        // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
-        except: targetId,
-        rng: input.rng.fork("watch"),
-        hex: e.hex,
-        light: skyLight(o.map, o.clock, o.seed, ctx.now),
-        spaces: o.spaces,
-        forest: o.map.forest,
-        emissions: r.emissions,
-        seconds: r.seconds,
-        now: ctx.now,
-      }),
-    );
+    const watchInput = {
+      truth,
+      catalog: o.skills,
+      traits: o.traits,
+      plans: e.plans,
+      clock: o.clock,
+      doer: me,
+      verb: node.verb,
+      doerLevel: input.actor.skill ?? 0,
+      // El rival de la pelea ya recibió su propio cambio de habilidades (familiaridad).
+      except: targetId,
+      rng: input.rng.fork("watch"),
+      hex: e.hex,
+      light: skyLight(o.map, o.clock, o.seed, ctx.now),
+      spaces: o.spaces,
+      forest: o.map.forest,
+      emissions: r.emissions,
+      seconds: r.seconds,
+      now: ctx.now,
+    };
+    if (o.projectWatchExposures) watchExposures = collectWatchExposures(watchInput);
+    else changes.push(...watchersLearn(watchInput));
   }
   // Y lo que cree de sí mismo por el resultado que percibió (skills §9).
   const image = updateSelfImage(
@@ -1214,56 +1259,62 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           ),
         );
       }
-      // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
-      const entry: TapeEntry = {
-        day,
-        unit,
-        grams: eff.grams,
-        coins: (paid * eff.grams) / 1000,
-        seller,
-        buyer,
-      };
-      const market = here ?? seller;
-      changes.push(
-        setComponent(MARKET_TAPE, market, recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry)),
-      );
-      // Lo cobrado es ingreso real del hogar del vendedor (recibo de venta; alimenta su presupuesto).
-      const sellerHome = truth.get(PERSON, seller)?.household;
-      if (sellerHome !== undefined && eff.coins > 0)
-        changes.push(
-          setComponent(SALE_RECEIPTS, sellerHome as never, {
-            receipts: withReceipt(
-              truth.get(SALE_RECEIPTS, sellerHome as never)?.receipts ?? [],
-              day,
-              eff.coins,
-              RECEIPT_WINDOW_DAYS,
-            ),
-          }),
-        );
-      // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
-      const learners = new Map<AgentId, "party" | "witness">();
-      for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
-        if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
-        if (truth.get(LOCATION, id)?.hex !== e.hex) continue;
-        if (truth.get(BODY_STATE, id)?.activity === "sleep") continue;
-        learners.set(id, "witness");
-      }
-      learners.set(me, "party");
-      learners.set(eff.with as AgentId, "party");
-      for (const [who, role] of [...learners].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+      if (!o.projectTrades) {
+        // La cinta guarda el precio normalizado a la calidad de referencia (lo que aprenden todos).
+        const entry: TapeEntry = {
+          day,
+          unit,
+          grams: eff.grams,
+          coins: (paid * eff.grams) / 1000,
+          seller,
+          buyer,
+        };
+        const market = here ?? seller;
         changes.push(
           setComponent(
-            PRICE_BELIEFS,
-            who,
-            learnFromDeal(truth.get(PRICE_BELIEFS, who), entry, ref, role),
+            MARKET_TAPE,
+            market,
+            recordDeal(truth.get(MARKET_TAPE, market) ?? [], entry),
           ),
         );
+        // Lo cobrado es ingreso real del hogar del vendedor (recibo de venta; alimenta su presupuesto).
+        const sellerHome = truth.get(PERSON, seller)?.household;
+        if (sellerHome !== undefined && eff.coins > 0)
+          changes.push(
+            setComponent(SALE_RECEIPTS, sellerHome as never, {
+              receipts: withReceipt(
+                truth.get(SALE_RECEIPTS, sellerHome as never)?.receipts ?? [],
+                day,
+                eff.coins,
+                RECEIPT_WINDOW_DAYS,
+              ),
+            }),
+          );
+        // Las partes toman el precio entero; quien estaba en el hex y despierto lo vio de lejos.
+        const learners = new Map<AgentId, "party" | "witness">();
+        for (const id of [...(truth.ids(PERSON) as AgentId[])].sort()) {
+          if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+          if (truth.get(LOCATION, id)?.hex !== e.hex) continue;
+          if (truth.get(BODY_STATE, id)?.activity === "sleep") continue;
+          learners.set(id, "witness");
+        }
+        learners.set(me, "party");
+        learners.set(eff.with as AgentId, "party");
+        for (const [who, role] of [...learners].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+          changes.push(
+            setComponent(
+              PRICE_BELIEFS,
+              who,
+              learnFromDeal(truth.get(PRICE_BELIEFS, who), entry, ref, role),
+            ),
+          );
+        }
       }
     }
   }
 
   // El vendedor lleva el día: lo que sacó a la venta y lo que vendió (cierre en `life.market`).
-  if (eff.kind === "trade" && eff.with) {
+  if (!o.projectTrades && eff.kind === "trade" && eff.with) {
     const other = eff.with as AgentId;
     const day = Math.floor(ctx.now / o.clock.day);
     const note = (seller: AgentId, unit: string, offered: number, sold: number) =>
@@ -1420,11 +1471,39 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   return {
     // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
     events: [
-      ...r.events.map((e) =>
-        state.plan.purpose
-          ? { ...e, data: { ...(e.data as object), purpose: state.plan.purpose } }
-          : e,
-      ),
+      ...r.events.map((event, index) => {
+        if (
+          !state.plan.purpose &&
+          !(o.projectTrades && eff.kind === "trade") &&
+          watchExposures.length === 0
+        )
+          return event;
+        return {
+          ...event,
+          data: {
+            ...(event.data as object),
+            ...(state.plan.purpose ? { purpose: state.plan.purpose } : {}),
+            ...(index === 0 && watchExposures.length > 0
+              ? { [WATCH_EXPOSURES_KEY]: watchExposures }
+              : {}),
+            ...(o.projectTrades && eff.kind === "trade"
+              ? {
+                  marketProjection: {
+                    market: here,
+                    witnesses: [...(truth.ids(PERSON) as AgentId[])]
+                      .sort()
+                      .filter(
+                        (id) =>
+                          truth.get(ENTITY, id)?.endedAt === undefined &&
+                          truth.get(LOCATION, id)?.hex === e.hex &&
+                          truth.get(BODY_STATE, id)?.activity !== "sleep",
+                      ),
+                  },
+                }
+              : {}),
+          },
+        };
+      }),
       ...doseEvents,
       ...extraEvents,
     ],

@@ -11,6 +11,13 @@ Lo usan: todos los sistemas de simulación (cada uno declara sus procesos y su m
 
 ## Principios
 
+**Dormidos con trabajo en curso (2026-10-12):** el catch-up corporal de rutina no
+resuelve un plan ni un viaje activo. La política opt-in de Life usa
+`sleepWorkPending` para mantenerlos en ejecución individual o solicitar despertar.
+El filtro de scopes evita llamadas periódicas y por eventos recientes a dormidos;
+los ítems explícitos de la cola continúan operativos. No se borran agendas al
+dormir, y la puesta al día no corporal sigue pendiente en `off-5`.
+
 1. **Un motor.** No hay un "generador de historia", un "simulador offscreen" y un "motor de escena" separados. Hay un scheduler que corre procesos; lo que cambia es con qué cadencia y sobre qué representación (individuos o agregados).
 2. **Dos ejes de resolución.** Una cosa es **cuánto detalle tiene una entidad** (el tier del agente, 0-4) y otra **cuánto detalle tiene un lugar** (la resolución de la zona: escena, local, regional, mundo, historia). Un cultivador de tier 3 que medita en una montaña lejana es una persona con todo su modelo, pero vive en una zona de resolución "mundo" y su cultivo avanza por mes. Los docs de sistema que dicen "tier 3-4" para un proceso se refieren a la zona (§4, tabla de equivalencias).
 3. **Lo observado no se contradice.** Lo que el jugador (o cualquier agente de tier alto) percibió queda fijado como hecho. Los agregados se ajustan a los hechos fijados, nunca al revés (causality §5.2).
@@ -107,6 +114,20 @@ interface ScheduledItem {
 - **Conflictos de escritura.** Si dos diffs tocan lo mismo (dos agentes agarran el mismo lote, dos órdenes sobre la misma tropa), no gana el que se procesó primero: la fase `act` los detecta por `writes` y los resuelve como una **contienda** con iniciativa, que sale del estado (velocidad, distancia, atención, sorpresa) más una tirada con clave `(contest, objeto, tick)`. La contienda es un evento con causas, y el perdedor recibe un resultado ("llegaste tarde: ya lo tenía él").
 - **Cadencias anidadas.** Los procesos de una zona de resolución "mundo" corren por estación, pero si un evento con hora cae adentro (una batalla agendada), el scheduler parte la ventana: corre la estación hasta la batalla, resuelve la batalla y sigue.
 - **Interrupciones.** `advanceUntil(t, interrupts)` avanza hasta `t` o hasta que un predicado sobre los percepts del jugador se cumpla (una amenaza, un mensaje, alguien que le habla). Es lo que usa el bucle del jugador para los saltos de tiempo ([player-loop.md](player-loop.md)).
+
+**Proyección de conversación opt-in (2026-10-12).** Con `npcVerbs` activo, las respuestas de
+`life.converse` leen el snapshot de `decide` y dejan operaciones de cara y noticias en su evento
+confirmado. `life.converse_projection` las pliega como un único escritor del mundo en `physics`.
+Las respuestas económicas guardan primero una intención causal persistible y consumen la petición
+en `decide`; `life.conversation_settle` confirma en `act` dentro del dominio económico compartido.
+Revalida existencias, reservas y participantes antes de publicar respuesta, diffs y asientos;
+una falta de recursos produce una negativa real. La muerte, una ubicación ausente o la separación
+entre hexes cancelan sin habla ni transferencia; no se exige compartir espacio interior.
+La proyección usa `onEvent` y `withRecent`. No se serializa `decide` ni se usan contiendas para descartar lo
+que una persona oyó: cada efecto se aplica en orden canónico y se escribe una fila final por
+persona y tabla. Los lectores de fases anteriores ven el estado anterior; la proyección es visible
+desde `physics` en adelante. El camino sin `npcVerbs` mantiene sus fases y hashes.
+Ver [dialogue.md](dialogue.md#implementado-2026-10-12-respuestas-simultáneas-con-verbos-de-npc).
 
 ## 4. Las dos resoluciones
 
@@ -247,6 +268,7 @@ interface CatchUp {
 - **Primero lo asignado, después lo propio.** Los eventos pendientes son hechos (si la leva lo llevó, se fue); entre ellos, la persona vive su vida a pasos gruesos con su propio modelo resumido: envejece, cultiva, se casa o no, se endeuda, muere de algo con causa.
 - **El orden importa y es fijo:** los pasos de la puesta al día usan las mismas claves de rng que habría usado la simulación a esa cadencia, así que despertar a alguien antes o después da el mismo resultado si nada externo lo tocó.
 - **El cuerpo se pone al día por tramos, no hora por hora** (implementado, `game/life/catchup.ts`): la rutina parte el día en tramos de la misma actividad sin comida ni bebida en medio y cada tramo se integra de un paso (`advanceBody` con `coarseSeconds`); en un cuerpo sano el balance es lineal por tramo y da lo mismo que la simulación hora por hora salvo el redondeo, medido a 1, 3 y 14 días. Con heridas abiertas o sepsis el paso fino manda, porque el sangrado y la infección no son lineales. La ración la pone quien llama y vuelve como gramos comidos, para asentarlos en el ledger.
+- **Cobertura dirigida de dormidos (2026-10-12):** `game/life/sleep-coverage.test.ts` usa el scheduler real, la política de sueño y los dos procesos de puesta al día, con radio y alimento de `FULL_PROFILE`. Un hogar remoto sin plan ni viaje se duerme; un hecho causal asignado durante el sueño se aplica una vez, las comidas salen de su despensa y acercar al jugador lo pone al día antes de borrar `ASLEEP`. Comprueba intervalos consecutivos sin solapar, conservación, invariantes y repetición determinista, sin crear una `Life` ni generar un planeta. Cubre este tramo del perfil, no todos sus procesos ni los efectos corporales ordinarios después de despertar.
 - **Muertes en la puesta al día** son eventos reales con causa (la enfermedad de la prevalencia, el accidente del oficio, la vejez). Volver a la aldea después de diez años y que el viejo herrero haya muerto, y saber de qué, sale de acá.
 
 ## 9. El contrato del modo agregado
@@ -391,6 +413,8 @@ Comandos que agrega este sistema (en `tools/`, solo lectura; se suman a los de c
 - `schedule [--at <tick>]` — la cola de ítems agendados con sus razones.
 
 ## Implementación por fase
+- **Dominio serial económico entre procesos (2026-10-12, opt-in `serialDomain` + `serialGroup`):** un dominio explícito puede unir procesos y ventanas distintos de `act`; cada miembro conserva su propio `ProcessDef`, alcance, ventana y clave de RNG, y se valida antes del fold privado. Solo el descriptor de commit reúne `reads`/`writes`, sin habilitar escrituras ajenas a ningún miembro. El orden sigue proceso, alcance e ítem; no representa una contienda física por iniciativa. Antes de aplicar verdad, eventos o saldos, el scheduler usa `EventLog.preview` sobre la serie completa de eventos asentables cuando hay un dominio, para rechazar también causas que apuntan al futuro entre ventanas. Omitir el dominio conserva el agrupamiento anterior por proceso y ventana. La validación no reserva recursos para los procesos externos ni convierte un conflicto exclusivo externo en una transacción: los demás escritores necesitan independencia o un contrato propio; tampoco revierte ids repartidos ni ítems retirados de la cola si se aborta. Regresiones pequeñas cubren ventanas mixtas válidas, RNG y orígenes, permisos por miembro, rechazo de débito/ventana/causa antes de efectos, y conflicto con un escritor externo.
+- **Lotes seriales opt-in (2026-10-12, `ProcessDef.serialGroup`):** únicamente en `act`, una consulta pura puede agrupar alcances del mismo proceso y ventana. Se resuelven en orden canónico de alcance e ítem, leyendo los diffs y saldos que dejó el anterior en overlays privados. El lote no disputa iniciativa ni pretende simultaneidad física: el orden de servicio determina quién consume primero un recurso finito. Se validan escrituras, agendas y todos los asientos antes de aplicar efectos al mundo; `Ledger.preview` comparte la validación exacta de `post`, también para externos y overflow. Se conservan las agendas de todos los resultados, y las referencias provisionales de entidades/eventos se remapean incluso en claves de registros. No copia el diario ni la verdad completa. Omitir `serialGroup` conserva el contrato anterior; los procesos fuera del lote todavía leen el estado inicial de la fase y su interacción necesita un contrato separado. Tests puros en `scheduler/batch.test.ts`.
 
 - **Fase 0:** `core/time` con ticks y conversión a calendario simple; `core/rng` con `fork` por clave; `ProcessDef`, cola de ítems agendados, fases y commit de diffs; contiendas; test de determinismo byte a byte con un proceso de juguete. **Hecho** (`sim/scheduler`, `sim/world`): un paso va al próximo ítem o borde de cadencia; lo periódico corre al borde y cubre la ventana que termina (`windowIndex` de esa ventana en la clave del rng: `(sistema, proceso, alcance, ventana)`; lo agendado usa `(sistema, proceso, alcance, "at", tick, n)`); dentro de cada fase, corridas en orden canónico (proceso, alcance, `seq`) que leen todas el mismo estado y asientan juntas al cerrar la fase; diffs `set`/`delete` exclusivos y `add` que conmuta; conflicto exclusivo fuera de `act` es un error, en `act` es una contienda con `initiative + normal()` y clave `("contest", tabla/id, tick)`, el perdedor se descarta entero (cambios, eventos e ítems) y queda un evento `contest` con causa de estado; escribir fuera de `writes`, agendar en el pasado o un evento fuera de su ventana son errores; ids de eventos en orden canónico; estado `{now, seq, queue}` que se guarda y restaura sin diferencias. Queda para sus tareas: zonas y resoluciones distintas, partir ventanas por un ítem que cae adentro, `onEvent` disparado por eventos, chequeo de `reads`, presupuesto.
 - **Fase 1:** una sola zona (la aldea) en resolución scene/local; todos los individuos tier 2-4; sin agregados; `advanceUntil` con interrupciones simples para el bucle CLI.

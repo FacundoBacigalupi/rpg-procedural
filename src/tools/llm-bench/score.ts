@@ -10,6 +10,7 @@
 // - stripped y unmapped: si se esperaba descartar algo o dejar algo sin verbo, se hizo, y al revés.
 // - purpose: el mismo motivo declarado (o ninguno, si el jugador no dijo para qué).
 
+import { canonicalJson } from "../../core/index.ts";
 import type { DraftArg, DraftPlanNode, IntentDraft, RefDescription } from "../../sim/index.ts";
 import { refTokens } from "../../sim/index.ts";
 
@@ -47,6 +48,28 @@ function leaves(node: DraftPlanNode | undefined, out: Leaf[] = []): Leaf[] {
       break;
     case "template":
       out.push({ sig: `template:${node.template}`, args: Object.values(node.params) });
+      break;
+    case "repeat":
+      // Una sola vuelta sin intervalo ejecuta exactamente el cuerpo una vez.
+      if (node.times === 1 && node.every === undefined) {
+        leaves(node.body, out);
+        break;
+      }
+      out.push({
+        sig: `repeat:${node.times ?? "?"}:${canonicalJson(node.every ?? null)}`,
+        args: [],
+      });
+      leaves(node.body, out);
+      out.push({ sig: "end:repeat", args: [] });
+      break;
+    case "if":
+      out.push({ sig: `if:${canonicalJson(node.cond.is ?? null)}`, args: [] });
+      leaves(node.then, out);
+      if (node.else) {
+        out.push({ sig: "else", args: [] });
+        leaves(node.else, out);
+      }
+      out.push({ sig: "end:if", args: [] });
       break;
     default:
       out.push({ sig: node.kind, args: [] });

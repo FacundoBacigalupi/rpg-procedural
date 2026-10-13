@@ -4,7 +4,7 @@
 // del observador (su ojo, con un error determinista por observador). Todo puro y opt-in: se pasa en
 // `LifeParts.loanUsury` solo si quien arma la vida lo pide; sin esto nada cambia.
 
-import type { AgentId } from "../../core/index.ts";
+import type { AgentId, Ledger } from "../../core/index.ts";
 import {
   clampTemper,
   type DisguiseKind,
@@ -55,12 +55,21 @@ export function culturalUsuryBan(
  * tiene jornal (`wagePerDay > 0`).
  */
 export function availableDisguises(o: {
-  readonly goodsHeld: (truth: ReadonlyWorldTruth, home: string) => number;
+  readonly goodsHeld: (
+    truth: ReadonlyWorldTruth,
+    home: string,
+    ledger?: Pick<Ledger, "balance" | "holdings">,
+  ) => number;
   readonly wagePerDay?: number;
-}): (truth: ReadonlyWorldTruth, home: string) => readonly DisguiseKind[] {
-  return (truth, home) => {
+}): (
+  truth: ReadonlyWorldTruth,
+  home: string,
+  ledger?: Pick<Ledger, "balance" | "holdings">,
+) => readonly DisguiseKind[] {
+  return (truth, home, ledger) => {
     const out: DisguiseKind[] = [];
-    if (o.goodsHeld(truth, home) > 0) out.push("buyback", "inflated_price", "gift");
+    const held = ledger ? o.goodsHeld(truth, home, ledger) : o.goodsHeld(truth, home);
+    if (held > 0) out.push("buyback", "inflated_price", "gift");
     if ((o.wagePerDay ?? 0) > 0) out.push("labor");
     return out;
   };
@@ -102,7 +111,11 @@ export function eyeByPerception(traits: readonly Trait[]) {
 export interface DeriveUsuryInput {
   readonly traitId: string;
   readonly prohibitedVariants: readonly string[];
-  readonly goodsHeld: (truth: ReadonlyWorldTruth, home: string) => number;
+  readonly goodsHeld: (
+    truth: ReadonlyWorldTruth,
+    home: string,
+    ledger?: Pick<Ledger, "balance" | "holdings">,
+  ) => number;
   readonly wagePerDay?: number;
   readonly visibility?: Partial<Record<DisguiseKind, number>>;
   readonly tolerance?: number;

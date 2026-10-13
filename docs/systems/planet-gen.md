@@ -287,6 +287,15 @@ interface VolcanicWinter {
 - **Lo que se materializa al acercarse** (causality §5.3): el suelo exacto de una parcela, la morrena de un valle, la playa sumergida frente a una aldea. Siempre se respetan los agregados.
 
 ## Rendimiento
+
+**Medición (2026-10-11, perfil completo):** bajar la frecuencia de la grilla madre
+no necesariamente reduce el costo total. `localFactor` crece para conservar
+hexes locales de ~2 km; `Grid.refine` materializa todos los hijos de la celda.
+Seed 1 con frecuencia 2 agotó el tamaño máximo de Map durante creación; con
+frecuencia 8 creó la vida en ~43 s con ~2,33 GB de RSS. La calibración de vida
+debe usar la frecuencia real; estos resultados no justifican recortar detalle ni
+limitar frecuencias de forma arbitraria. Optimización de creación en `perfil3`
+del ROADMAP, preservando partición, orden y hashes.
 - Objetivo: nivel 0 completo en menos de 10-15 s en Node, una sola vez por partida. Se guarda en SQLite.
 - Nivel 1: menos de 200 ms por celda, generada al acercarse y cacheada.
 - Arrays tipados (`Float32Array` por atributo, indexados por `CellId`), no objetos por celda en los loops calientes.

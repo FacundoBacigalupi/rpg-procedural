@@ -60,6 +60,75 @@ const find = (id: string): IntentDraft => {
 };
 
 describe("scoreDraft", () => {
+  it("repeat de una vuelta sin intervalo equivale al cuerpo, dos vueltas no", () => {
+    const direct = find("shot-move");
+    if (!direct.plan) throw new Error("sin plan");
+    const once: IntentDraft = {
+      ...direct,
+      plan: { kind: "repeat", times: 1, body: direct.plan },
+    };
+    expect(scoreDraft(direct, once).pass).toBe(true);
+    expect(scoreDraft(once, direct).pass).toBe(true);
+    expect(
+      scoreDraft(direct, {
+        ...direct,
+        plan: { kind: "repeat", times: 2, body: direct.plan },
+      }).pass,
+    ).toBe(false);
+    expect(
+      scoreDraft(direct, {
+        ...direct,
+        plan: { kind: "repeat", times: 1, every: { amount: 1, unit: "minute" }, body: direct.plan },
+      }).pass,
+    ).toBe(false);
+  });
+
+  it("repeat e if puntúan cantidad, condición, ramas y argumentos internos", () => {
+    const body = find("shot-move").plan;
+    if (!body) throw new Error("sin body");
+    const repeated: IntentDraft = { kind: "plan", plan: { kind: "repeat", times: 2, body } };
+    const wrongCount: IntentDraft = { ...repeated, plan: { kind: "repeat", times: 3, body } };
+    expect(scoreDraft(repeated, wrongCount).pass).toBe(false);
+    const wrongBody: IntentDraft = {
+      ...repeated,
+      plan: { kind: "repeat", times: 2, body: { kind: "do", verb: "look", args: [] } },
+    };
+    expect(scoreDraft(repeated, wrongBody).pass).toBe(false);
+    const conditional: IntentDraft = {
+      kind: "plan",
+      plan: {
+        kind: "if",
+        cond: { kind: "time", text: "de noche", is: { kind: "dark" } },
+        // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+        then: body,
+      },
+    };
+    expect(scoreDraft(conditional, conditional).pass).toBe(true);
+    expect(
+      scoreDraft(conditional, {
+        ...conditional,
+        plan: {
+          kind: "if",
+          cond: { kind: "time", text: "de día", is: { kind: "light" } },
+          // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+          then: body,
+        },
+      }).pass,
+    ).toBe(false);
+    expect(
+      scoreDraft(conditional, {
+        ...conditional,
+        plan: {
+          kind: "if",
+          cond: { kind: "time", text: "de noche", is: { kind: "dark" } },
+          // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+          then: body,
+          else: { kind: "do", verb: "look", args: [] },
+        },
+      }).pass,
+    ).toBe(false);
+  });
+
   it("el borrador esperado contra sí mismo pasa en todos los campos", () => {
     for (const e of examples) expect(scoreDraft(e.expect, e.expect).pass, e.id).toBe(true);
   });

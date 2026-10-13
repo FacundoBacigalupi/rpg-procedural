@@ -57,6 +57,19 @@ export class EventLog {
     return this.#events;
   }
 
+  /** Valida una serie sin asentar: solo guarda los eventos nuevos, no copia el historial. */
+  preview(events: readonly Event[]): void {
+    const pending = new Map<EventId, Event>();
+    let last = this.#last;
+    const get = (id: EventId) => pending.get(id) ?? this.#byId.get(id);
+    for (const event of events) {
+      const problem = this.#check(event, last, get);
+      if (problem) throw new EventLogError(`${event.id}: ${problem}`);
+      pending.set(event.id, event);
+      last = parseId(event.id)?.n as number;
+    }
+  }
+
   append(event: Event): void {
     const problem = this.#check(event);
     if (problem) throw new EventLogError(`${event.id}: ${problem}`);
@@ -116,10 +129,14 @@ export class EventLog {
     return [...seen].sort(byNumber);
   }
 
-  #check(e: Event): string | undefined {
+  #check(
+    e: Event,
+    last = this.#last,
+    get: (id: EventId) => Event | undefined = (id) => this.#byId.get(id),
+  ): string | undefined {
     const parsed = parseId(e.id);
     if (parsed?.kind !== "event") return "no es un id de evento";
-    if (parsed.n <= this.#last) return `id fuera de orden (el último es event:${this.#last})`;
+    if (parsed.n <= last) return `id fuera de orden (el último es event:${last})`;
     if (!Number.isSafeInteger(e.tick)) return `tick inválido: ${e.tick}`;
     if (typeof e.kind !== "string" || e.kind.length === 0) return "sin tipo";
     if (!RESOLUTIONS.has(e.resolution)) return `resolución desconocida: ${e.resolution}`;
@@ -129,7 +146,7 @@ export class EventLog {
       const p = checkCause(c);
       if (p) return p;
       if (c.kind !== "event") continue;
-      const cause = this.#byId.get(c.event);
+      const cause = get(c.event);
       if (!cause) return `cita a ${c.event}, que no está en el registro`;
       if (cause.tick > e.tick) return `cita a ${c.event}, posterior (${cause.tick} > ${e.tick})`;
     }

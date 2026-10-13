@@ -295,6 +295,20 @@ La narración existe solo para el jugador. En escena se narra cada intercambio; 
 
 ## Tests
 
+**Prueba focalizada con LLM real (2026-10-11):** Qwen3:14b, esquema restringido y
+razonamiento apagado. `repeat-look-twice` y
+`conditional-dark-look-else-wait` pasan al primer intento después de corregir el
+esquema que omitía esas variantes. El scorer compara cantidad, condiciones y
+ramas; un borrador válido no implica cumplir la intención.
+
+En narración, una vista con `action.gather` llega correctamente como `gather`.
+Antes de reforzar el prompt el modelo lo describió como buscar; después dijo
+recoger, pero agregó acercarse y temblores sin evidencia. Ambas salidas pasaron
+el validador estructural. La guía exige preservar la acción y no inventar
+desplazamiento, objeto, motivo o resultado, pero no certifica fidelidad semántica:
+`narr-action-grounding` y la prueba jugada `narr-view-llm` siguen abiertos en el
+ROADMAP. Reporte local: `sim-reports/cloud-llm-smoke.json`.
+
 - **Fugas:** con un mundo de prueba lleno de verdades ocultas (un disfraz, un veneno, una identidad falsa, un percept equivocado), ningún `PlayerView` contiene esos datos. Se prueba sobre el constructor, sin LLM.
 - **Marca de tipo:** el cliente del narrador solo acepta `PlayerView`; un test de tipos falla si se le pasa estado crudo.
 - **Validador:** un corpus de salidas con entidades inventadas, cifras, nombres de otros lugares o términos desconocidos es rechazado; un corpus correcto pasa.

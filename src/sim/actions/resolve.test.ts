@@ -419,6 +419,34 @@ describe("recolectar", () => {
 });
 
 describe("tomar", () => {
+  it("stock agotado falla conscientemente solo con opt-in económico", () => {
+    const base = input(
+      "take",
+      {},
+      { def: { ...verb("take"), ease: 100 }, actor: actor({ capabilities: { manipulation: 1 } }) },
+    );
+    const legacy = resolve(base);
+    const opted = resolve({ ...base, takeEmptyFailure: true });
+    expect(legacy.outcome).toBe("critical");
+    expect(legacy.effect).toMatchObject({ kind: "take", got: [] });
+    expect(opted.outcome).toBe("failure");
+    expect(opted.failure).toBe("no_means");
+    expect(opted.self.believed).toBe("failure");
+    expect(opted.effect).toEqual(legacy.effect);
+    expect(opted.postings).toEqual([]);
+  });
+  it("el opt-in no cambia tomar stock que sí existe", () => {
+    const base = input(
+      "take",
+      {},
+      {
+        def: { ...verb("take"), ease: 100 },
+        actor: actor({ capabilities: { manipulation: 1 } }),
+        ledger: ledgerWith([{ holder: forestRef, unit: forage, amount: 100 }]),
+      },
+    );
+    expect(resolve({ ...base, takeEmptyFailure: true })).toEqual(resolve(base));
+  });
   const steal = (extra: Partial<ResolveInput> = {}, what?: string) =>
     input(
       "take",

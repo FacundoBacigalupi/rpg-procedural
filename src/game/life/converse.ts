@@ -72,6 +72,7 @@ import {
   holdsGrudge,
   honestyShift,
   INNATE,
+  isFormal,
   KNOWN_DEEDS,
   type KnownDeeds,
   keepRumor,
@@ -92,6 +93,7 @@ import {
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
+  type ProcessResult,
   type PromiseTerms,
   type Proposal,
   RELATIONS,
@@ -119,6 +121,7 @@ import {
   type StateChange,
   type StatusDef,
   sameValue,
+  sayLine,
   secretAbout,
   setComponent,
   sincerityOf,
@@ -134,6 +137,7 @@ import {
   table,
   threatCredibility,
   threatFaceDelta,
+  toneOf,
   transmit,
   understand,
   utter,
@@ -142,6 +146,8 @@ import {
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
+import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-economy.ts";
+import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
@@ -286,6 +292,10 @@ export interface OpenDeal {
 export const OPEN_DEALS = table<OpenDeal>("life.open_deal");
 
 export interface ConverseOptions {
+  /** Interno, derivado de npcVerbs: FACE/HEARD tienen un único escritor en physics; default directo. */
+  readonly projectSharedEffects?: boolean;
+  /** Interno, derivado de npcVerbs: regalos y tratos se confirman en act sobre saldos actuales. */
+  readonly settleEconomy?: boolean;
   readonly spaces: SpaceGraph;
   readonly catalog: ActionCatalog;
   readonly goods: readonly GoodDef[];
@@ -1174,6 +1184,8 @@ export function dealSwaps(
 }
 
 export function converseProcess(o: ConverseOptions): ProcessDef {
+  if (o.settleEconomy && !o.projectSharedEffects)
+    throw new Error("confirmar economía requiere proyectar FACE/HEARD");
   const speak = o.catalog.verb("speak");
   return {
     id: CONVERSE_PROCESS,
@@ -1209,7 +1221,15 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       STANDING_BELIEFS.name,
       RELIGIOUS_IDENTITY.name,
     ],
-    writes: [PENDING.name, OPEN_DEALS.name, HEARD.name, KNOWN_DEEDS.name, RUMORS.name, FACE.name],
+    writes: [
+      ...(o.settleEconomy ? [CONVERSATION_INTENT.name] : []),
+      PENDING.name,
+      OPEN_DEALS.name,
+      ...(o.projectSharedEffects ? [] : [HEARD.name]),
+      KNOWN_DEEDS.name,
+      RUMORS.name,
+      ...(o.projectSharedEffects ? [] : [FACE.name]),
+    ],
     run(ctx: ProcessContext) {
       const me = ctx.scope as AgentId;
       const pending = ctx.truth.get(PENDING, me);
@@ -1467,6 +1487,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       );
 
       const changes: StateChange[] = [clear];
+      const conversationEffects: ConverseProjectionEffect[] = [];
       const weighed =
         recollection.count > 0 ? weighedMemories(truth.get(MEMORIES, me), speaker, ctx.now) : [];
       const counted = recount && reply.line.startsWith("ask.recalled.") ? recount : undefined;
@@ -1488,11 +1509,16 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(deleteComponent(OPEN_DEALS, me));
       }
       if (reply.accepted) {
-        changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
+        if (o.projectSharedEffects)
+          conversationEffects.push({ kind: "heard", actor: me, claim: reply.accepted });
+        else changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
       }
       // Lo que soltó entero queda como dicho en quien preguntó (con quién y cuándo, no como verdad).
       if (reply.told) {
-        changes.push(setComponent(HEARD, speaker, hear(truth.get(HEARD, speaker), reply.told)));
+        if (o.projectSharedEffects)
+          conversationEffects.push({ kind: "heard", actor: speaker, claim: reply.told });
+        else
+          changes.push(setComponent(HEARD, speaker, hear(truth.get(HEARD, speaker), reply.told)));
       }
       // Una acusación creída con hecho citado: el hecho queda como contado (no pisa lo que vio).
       const learned = reply.accusation?.heard?.learned;
@@ -1559,7 +1585,10 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       // La cara de quien oye: la falta de forma y la amenaza o el insulto que lo dejó mal parado.
       const lostFace = (judged?.faceLoss ?? 0) + (regard?.faceLoss ?? 0);
       if (lostFace > 0) {
-        changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
+        if (o.projectSharedEffects)
+          conversationEffects.push({ kind: "face", actor: me, delta: -lostFace, at: ctx.now });
+        else
+          changes.push(setComponent(FACE, me, adjustFace(truth.get(FACE, me), -lostFace, ctx.now)));
       }
       // La de quien habló: sube si le cedieron; la vergüenza de la ofensa de forma baja abajo.
       let speakerFace = regard?.faceGain ?? 0;
@@ -1601,9 +1630,17 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         };
       }
       if (speakerFace !== 0) {
-        changes.push(
-          setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), speakerFace, ctx.now)),
-        );
+        if (o.projectSharedEffects)
+          conversationEffects.push({
+            kind: "face",
+            actor: speaker,
+            delta: speakerFace,
+            at: ctx.now,
+          });
+        else
+          changes.push(
+            setComponent(FACE, speaker, adjustFace(truth.get(FACE, speaker), speakerFace, ctx.now)),
+          );
       }
       // La pregunta por un hecho (law §5): quien pregunta lo hace por uno que conoce y el testigo
       // contesta en `life.testify` (causa: este acto de habla).
@@ -1646,6 +1683,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         place: o.placeOf(truth, me),
         outcome: "success",
         data: {
+          ...(o.projectSharedEffects && conversationEffects.length > 0
+            ? { [CONVERSATION_EFFECTS_KEY]: conversationEffects }
+            : {}),
           verb: "speak",
           manner: [],
           margin: null,
@@ -1755,7 +1795,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       };
       // Un trato cerrado: cada parte pasa lo suyo, de despensa a bolsillo y de bolsillo a despensa.
       const swaps = dealSwaps(reply.deal, goodById, larder, me, speaker);
-      return {
+      const result: ProcessResult = {
         changes,
         events: [
           event,
@@ -1793,6 +1833,22 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 ]
               : [],
       };
+      if (o.settleEconomy && (reply.give || reply.deal)) {
+        const line = reply.deal ? "accept.short" : "request.short";
+        const text = sayLine(
+          o.lines,
+          line,
+          { what: reply.give ? (goodById(reply.give.good)?.name ?? reply.give.good) : "eso" },
+          ctx.rng.fork("reply", pending.key).fork(line),
+          isFormal(feel, above),
+          toneOf(feel),
+        );
+        return stageEconomicConversation(ctx, me, speaker, pending.key, clear, result, {
+          line,
+          text,
+        });
+      }
+      return result;
     },
   };
 }

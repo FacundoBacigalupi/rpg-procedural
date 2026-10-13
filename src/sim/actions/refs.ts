@@ -228,7 +228,7 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
   const close = scored.filter((s) => best - s.score < AMBIGUITY_GAP);
   // En plural, los que encajan son el conjunto (hasta el número pedido): no hay a cuál preguntar.
   const plural = pluralWanted(desc);
-  if (plural && close.length > 1 && !relTo) {
+  if (plural && close.length > 1) {
     const members = close.slice(0, plural.n ?? close.length).map((c) => c.e.ref);
     return {
       status: "group",

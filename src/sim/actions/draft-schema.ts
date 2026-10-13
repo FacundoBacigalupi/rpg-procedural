@@ -26,11 +26,16 @@ import {
 } from "./intent.ts";
 
 /** Los nodos que la Fase 1 ejecuta (`planFromDraft` rechaza el resto). */
-export const RUNNABLE_NODES = ["do", "seq", "until", "template"] as const;
+export const RUNNABLE_NODES = ["do", "seq", "until", "template", "repeat", "if"] as const;
 
 /** Problemas de un borrador ya bien formado contra el catálogo; vacío es que pasa. En inglés: vuelven al modelo. */
 export function draftCatalogProblems(draft: IntentDraft, catalog: ActionCatalog): string[] {
   const problems: string[] = [];
+  if (draft.speech && draft.plan) {
+    problems.push(
+      "speech: cannot coexist with plan; for speech alone omit plan, or put all speech in seq using speak with content",
+    );
+  }
   const allManners = new Set(catalog.verbs.flatMap((v) => v.manners.map((m) => m.id)));
   for (const m of draft.manner ?? []) {
     if (!allManners.has(m)) problems.push(`manner: no verb has the manner "${m}"`);
@@ -217,14 +222,31 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
       // La sim solo usa `is`: en la salida restringida es obligatorio.
       cond: DraftCondition.required({ is: true }),
     }) as unknown as z.ZodType<DraftPlanNode>,
+    z.strictObject({
+      kind: z.literal("repeat"),
+      times: z.number().int().min(1).max(1000),
+      get body() {
+        return node;
+      },
+    }) as unknown as z.ZodType<DraftPlanNode>,
+    z.strictObject({
+      kind: z.literal("if"),
+      cond: DraftCondition.required({ is: true }),
+      // biome-ignore lint/suspicious/noThenProperty: rama del nodo if, no es una promesa
+      get then() {
+        return node;
+      },
+      get else() {
+        return node.optional();
+      },
+    }) as unknown as z.ZodType<DraftPlanNode>,
   ]);
 
   const allManners = [...new Set(catalog.verbs.flatMap((v) => v.manners.map((m) => m.id)))];
   const speakManners = catalog.verb("speak")?.manners.map((m) => m.id) ?? [];
   const texts = z.array(DraftText).max(8).optional();
-  return z.strictObject({
+  const shape = {
     kind: IntentDraft.shape.kind,
-    plan: node.optional(),
     // Plano y chico: el motivo del catálogo cerrado y, si lo dice, para quién (una persona).
     purpose: z
       .strictObject({
@@ -236,34 +258,43 @@ export function structuralDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraf
     constraints: texts,
     stripped: texts,
     unmapped: texts,
-    speech: z
-      .strictObject({
-        text: SpeechDraft.shape.text,
-        to: refSchema(REF_KINDS.person).optional(),
-        // Plano a propósito: el esquema del modelo se mantiene chico (el control fino es `DraftAct`).
-        act: z
-          .strictObject({
-            kind: z.enum(["greet", "farewell", "ask", "request", "tell", "promise"]),
-            about: z
-              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-              .optional(),
-            claim: z.enum(["dead", "alive", "theft", "assault"]).optional(),
-            victim: z
-              .strictObject({ text: DraftText, features: z.array(DraftText).max(16) })
-              .optional(),
-            what: DraftText.optional(),
-            times: z.number().positive().max(100).optional(),
-            dueDays: z.number().int().positive().max(3650).nullable().optional(),
-            precision: z.number().min(0).max(1).optional(),
-          })
-          .optional(),
-        ...(speakManners.length > 0
-          ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
-          : {}),
-      })
-      .optional(),
     text: DraftText.optional(),
-  }) as unknown as z.ZodType<IntentDraft>;
+  };
+  const about = z.strictObject({ text: DraftText, features: z.array(DraftText).max(16) });
+  const speechAct = z.discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("greet") }),
+    z.strictObject({ kind: z.literal("farewell") }),
+    z.strictObject({ kind: z.literal("ask"), about: about.optional() }),
+    z.strictObject({ kind: z.literal("request"), what: DraftText.optional() }),
+    z.strictObject({
+      kind: z.literal("tell"),
+      about,
+      claim: z.enum(["dead", "alive", "theft", "assault"]),
+      victim: about.optional(),
+    }),
+    z.strictObject({
+      kind: z.literal("promise"),
+      what: DraftText.optional(),
+      times: z.number().positive().max(100).optional(),
+      dueDays: z.number().int().positive().max(3650).nullable().optional(),
+      precision: z.number().min(0).max(1).optional(),
+    }),
+  ]);
+  const speech = z
+    .strictObject({
+      text: SpeechDraft.shape.text,
+      to: refSchema(REF_KINDS.person).optional(),
+      // Cada acto exige sus propios campos: `tell` siempre necesita una afirmación del catálogo.
+      act: speechAct.optional(),
+      ...(speakManners.length > 0
+        ? { manner: z.array(ids(speakManners)).max(speakManners.length).optional() }
+        : {}),
+    })
+    .optional();
+  return z.union([
+    z.strictObject({ ...shape, plan: node.optional() }),
+    z.strictObject({ ...shape, speech }),
+  ]) as unknown as z.ZodType<IntentDraft>;
 }
 
 /** El JSON Schema que restringe la salida del modelo a lo que el catálogo tiene. */
@@ -271,5 +302,6 @@ export function intentDraftJsonSchemaFor(catalog: ActionCatalog): Record<string,
   return z.toJSONSchema(structuralDraftFor(catalog), {
     io: "input",
     unrepresentable: "any",
+    reused: "ref",
   }) as Record<string, unknown>;
 }

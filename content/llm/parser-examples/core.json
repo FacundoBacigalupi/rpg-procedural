@@ -1,5 +1,32 @@
 [
   {
+    "id": "repeat-look-twice",
+    "text": "miro alrededor dos veces",
+    "scene": "Estás en la plaza al mediodía.",
+    "expect": {
+      "kind": "plan",
+      "plan": { "kind": "repeat", "times": 2, "body": { "kind": "do", "verb": "look", "args": [] } }
+    }
+  },
+  {
+    "id": "conditional-dark-look-else-wait",
+    "text": "si es de noche miro alrededor; si no, espero un minuto",
+    "scene": "Estás en la plaza al atardecer.",
+    "expect": {
+      "kind": "plan",
+      "plan": {
+        "kind": "if",
+        "cond": { "kind": "time", "text": "si es de noche", "is": { "kind": "dark" } },
+        "then": { "kind": "do", "verb": "look", "args": [] },
+        "else": {
+          "kind": "do",
+          "verb": "wait",
+          "args": [{ "role": "for", "duration": { "amount": 1, "unit": "minute" } }]
+        }
+      }
+    }
+  },
+  {
     "id": "shot-move",
     "shot": true,
     "text": "voy al bosque",

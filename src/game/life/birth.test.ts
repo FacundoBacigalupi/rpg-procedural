@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   type AgentId,
   type ContentSource,
+  EARTHLIKE_CLOCK,
   type EntityRef,
+  type Event,
   type EventId,
+  EventLog,
+  IdAllocator,
   loadContent,
   type PlaceRef,
   Rng,
@@ -23,6 +27,7 @@ import {
   HOUSEHOLD,
   INNATE,
   LANGUAGES,
+  Language,
   MIND,
   PERSON,
   PERSON_CULTURE,
@@ -33,6 +38,7 @@ import {
   RELATIONS,
   RELIGIOUS_IDENTITY,
   SCHEMAS,
+  Scheduler,
   SKILL_STATE,
   SKILLS,
   SkillCatalog,
@@ -212,6 +218,141 @@ describe("nacer vivo (puro)", () => {
   it("mismo seed, mismo hijo", () => {
     const a = JSON.stringify(run(world(false)).changes);
     expect(JSON.stringify(run(world(false)).changes)).toBe(a);
+  });
+});
+
+describe("nombres simultáneos con scheduler pequeño", () => {
+  const concepts = [...language.concepts.values()]
+    .filter((c) => (c.name?.male ?? 0) > 0)
+    .slice(0, 2)
+    .map((c) => ({ ...c, name: { male: 1, female: 1, family: 1 } }));
+  const limitedLanguage = new Language(
+    { ...language.spec, names: { ...language.spec.names, compoundGivenChance: 0 } },
+    language.phonology,
+    concepts,
+    language.roots(),
+  );
+  const secondMother = "agent:3" as AgentId;
+
+  const birthsTogether = (seed: number, sameHousehold: boolean, existingGiven?: string) => {
+    const truth = world(false);
+    truth.set(ENTITY, secondMother, {
+      id: secondMother,
+      originEventId: "event:1",
+      createdAt: 0,
+    } as never);
+    truth.set(PERSON, secondMother, {
+      ...truth.get(PERSON, mother),
+      household: sameHousehold ? "household:1" : "household:2",
+    } as never);
+    truth.set(GENOME, secondMother, genome(0.4, secondMother) as never);
+    truth.set(PREGNANCY, secondMother, truth.get(PREGNANCY, mother) as never);
+    truth.set(LABOR, secondMother, truth.get(LABOR, mother) as never);
+    if (existingGiven !== undefined) {
+      truth.set(LABOR, secondMother, {
+        ...truth.get(LABOR, secondMother),
+        infantDied: true,
+      } as never);
+      truth.set(PERSON_NAME, father, {
+        language: limitedLanguage.id,
+        parts: [
+          {
+            kind: "given",
+            form: existingGiven,
+            lexemes: [],
+            meaning: [],
+            givenBy: null,
+            event: "event:1",
+            usedBy: "all",
+          },
+        ],
+      } as never);
+    }
+    const house = "household:1" as EntityRef;
+    const prior = truth.get(HOUSEHOLD, house);
+    if (sameHousehold)
+      truth.set(HOUSEHOLD, house, {
+        ...prior,
+        members: [...(prior?.members ?? []), secondMother],
+      } as never);
+    else
+      truth.set(
+        HOUSEHOLD,
+        "household:2" as EntityRef,
+        { ...prior, members: [secondMother] } as never,
+      );
+    const event = (id: string, kind: string, tick: number, causes: Event["causes"]): Event => ({
+      id: id as EventId,
+      kind,
+      tick,
+      actors: [],
+      place,
+      data: {},
+      emissions: {},
+      causes,
+      resolution: "local",
+    });
+    const log = EventLog.from([
+      event("event:1", "family.initial", 0, [{ kind: "seed" }]),
+      event("event:7", "body.labor", 281 * DAY, [{ kind: "event", event: "event:1" as EventId }]),
+    ]);
+    const scheduler = new Scheduler(
+      {
+        rng: Rng.root(seed),
+        clock: EARTHLIKE_CLOCK,
+        truth,
+        log,
+        ids: new IdAllocator({ agent: 4, event: 8 }),
+        resolution: "local",
+        processes: [
+          birthProcess({
+            clock: EARTHLIKE_CLOCK,
+            traits,
+            bodyPlans,
+            maleRatio: 1,
+            newborn: { ...newborn, language: limitedLanguage },
+            placeOf: () => place,
+          }),
+        ],
+      },
+      { now: 281 * DAY, seq: 0, queue: [] },
+    );
+    scheduler.advanceTo(282 * DAY);
+    const events = log.all().filter((e) => e.kind === "family.birth");
+    const names = events.map((e) => truth.get(PERSON_NAME, e.actors[0] as EntityRef));
+    return { names, events, truth };
+  };
+
+  it("reserva los nombres del mismo paso por hogar y mantiene origen y determinismo", () => {
+    // La lengua acotada permite encontrar dos nombres iguales en hogares distintos.
+    let collisionSeed = -1;
+    for (let seed = 0; seed < 32; seed++) {
+      const result = birthsTogether(seed, false);
+      const given = result.names.map((n) => n?.parts.find((p) => p.kind === "given")?.form);
+      if (given[0] === given[1]) {
+        collisionSeed = seed;
+        break;
+      }
+    }
+    expect(collisionSeed).toBeGreaterThanOrEqual(0);
+    const result = birthsTogether(collisionSeed, true);
+    expect(result.events).toHaveLength(2);
+    const given = result.names.map((n) => n?.parts.find((p) => p.kind === "given")?.form);
+    expect(new Set(given).size).toBe(2);
+    for (const [i, e] of result.events.entries()) {
+      expect(result.truth.get(ENTITY, e.actors[0] as EntityRef)?.originEventId).toBe(e.id);
+      expect(result.names[i]?.parts.every((p) => p.event === e.id)).toBe(true);
+      expect(e.causes).toEqual([{ kind: "event", event: "event:7" }]);
+    }
+    expect(birthsTogether(collisionSeed, true).names).toEqual(result.names);
+  });
+
+  it("también excluye nombres existentes capitalizados en las fichas del hogar", () => {
+    const occupied = birthsTogether(0, true).names[0]?.parts.find((p) => p.kind === "given")?.form;
+    expect(occupied).toBeDefined();
+    const result = birthsTogether(0, true, occupied);
+    expect(result.events).toHaveLength(1);
+    expect(result.names[0]?.parts.find((p) => p.kind === "given")?.form).not.toBe(occupied);
   });
 });
 

@@ -157,6 +157,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
       const events: EventDraft[] = [];
       // Las casas que ganan miembros en este paso (dos hijos del mismo hogar el mismo día).
       const members = new Map<HouseholdId, AgentId[]>();
+      const usedGiven = new Map<HouseholdId, Set<string>>();
       const mothers = ctx.truth
         .ids(LABOR)
         .map((id) => id as unknown as AgentId)
@@ -224,26 +225,30 @@ export function birthProcess(o: BirthOptions): ProcessDef {
           const n = o.newborn;
           const childKey = child as unknown as EntityRef;
           // El nombre: el apellido del padre y un nombre de pila que la casa no repite.
-          const used = new Set<string>();
-          for (const member of ctx.truth.get(HOUSEHOLD, m.household as unknown as EntityRef)
-            ?.members ?? []) {
-            const name = ctx.truth.get(PERSON_NAME, member as unknown as EntityRef);
-            const given = name?.parts.find((x) => x.kind === "given")?.form;
-            if (given) used.add(given);
+          let used = usedGiven.get(m.household);
+          if (!used) {
+            used = new Set<string>();
+            for (const member of ctx.truth.get(HOUSEHOLD, m.household as unknown as EntityRef)
+              ?.members ?? []) {
+              const name = ctx.truth.get(PERSON_NAME, member as unknown as EntityRef);
+              const given = name?.parts.find((x) => x.kind === "given")?.form;
+              // `pickGiven` compara el texto de la lengua, antes de capitalizar el nombre.
+              if (given) used.add(given.toLowerCase());
+            }
+            usedGiven.set(m.household, used);
           }
+          const name = nameNewborn(n.language, {
+            rng: rng.fork("name"),
+            sex,
+            father: ctx.truth.get(PERSON_NAME, f as unknown as EntityRef),
+            used,
+            raisedBy: f,
+            event: birthEvent,
+          });
+          const given = name.parts.find((x) => x.kind === "given")?.form;
+          if (given) used.add(given.toLowerCase());
           changes.push(
-            setComponent(
-              PERSON_NAME,
-              childKey,
-              nameNewborn(n.language, {
-                rng: rng.fork("name"),
-                sex,
-                father: ctx.truth.get(PERSON_NAME, f as unknown as EntityRef),
-                used,
-                raisedBy: f,
-                event: birthEvent,
-              }),
-            ),
+            setComponent(PERSON_NAME, childKey, name),
             // La mente de base desde su temperamento, con el nacimiento como causa.
             setComponent(
               MIND,

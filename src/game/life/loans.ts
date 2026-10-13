@@ -12,7 +12,9 @@ import {
   type EntityRef,
   type HolderRef,
   holderAccount,
+  type Ledger,
   type LedgerAccount,
+  type LedgerUnit,
   ledgerUnit,
   type PlaceRef,
   type PlanetClock,
@@ -64,6 +66,7 @@ import {
   WORK_DAY_UNIT,
   workBondageDay,
 } from "../../sim/index.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const LOANS_PROCESS = "life.loans";
 
@@ -130,6 +133,8 @@ export interface LoanSeed {
 }
 
 export interface LoansOptions {
+  /** Opt-in: reserva común de saldos con las acciones económicas de la misma fase. */
+  readonly economicBatch?: boolean;
   /** Opt-in: anuncia a las partes los derechos creados cuando paga un fiador. */
   readonly debtKnowledge?: boolean;
   readonly clock: PlanetClock;
@@ -178,7 +183,11 @@ export interface UsuryOptions {
   /** Disfraces que tiene a mano ese prestamista; sin ninguno no presta con interés. */
   readonly available:
     | readonly DisguiseKind[]
-    | ((truth: ReadonlyWorldTruth, lenderHome: string) => readonly DisguiseKind[]);
+    | ((
+        truth: ReadonlyWorldTruth,
+        lenderHome: string,
+        ledger?: Pick<Ledger, "balance" | "holdings">,
+      ) => readonly DisguiseKind[]);
   /** Cuánto llama la atención cada disfraz en esa cultura (0-1). */
   readonly visibility?: Partial<Record<DisguiseKind, number>>;
   /** Jornal de mercado (valor por día) para el disfraz de trabajo. */
@@ -295,6 +304,9 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     reads: [
       PERSON.name,
       ENTITY.name,
@@ -325,6 +337,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         return undefined;
       };
       const delta = new Map<string, number>();
+      const changedUnits = new Map<LedgerAccount, Set<LedgerUnit>>();
       const key = (a: LedgerAccount, u: string) => `${a}|${u}`;
       const bal = (a: LedgerAccount, u: string) =>
         (ledger.balance(a, u as never) ?? 0) + (delta.get(key(a, u)) ?? 0);
@@ -332,7 +345,28 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         for (const t of ts) {
           delta.set(key(t.from, t.unit), (delta.get(key(t.from, t.unit)) ?? 0) - t.amount);
           delta.set(key(t.to, t.unit), (delta.get(key(t.to, t.unit)) ?? 0) + t.amount);
+          if (o.economicBatch)
+            for (const account of [t.from, t.to]) {
+              const units = changedUnits.get(account) ?? new Set<LedgerUnit>();
+              units.add(t.unit);
+              changedUnits.set(account, units);
+            }
         }
+      };
+      // Incluye miembros anteriores del dominio y asientos anteriores del mismo resultado.
+      // Solo enumera unidades de la cuenta consultada: no copia verdad, saldos globales ni journal.
+      const usuryLedger: Pick<Ledger, "balance" | "holdings"> = {
+        balance: bal,
+        holdings(account) {
+          const units = new Set([
+            ...ledger.holdings(account).map((row) => row.unit),
+            ...(changedUnits.get(account) ?? []),
+          ]);
+          return [...units]
+            .map((unit) => ({ unit, amount: bal(account, unit) }))
+            .filter((row) => row.amount > 0)
+            .sort((a, b) => (a.unit < b.unit ? -1 : a.unit > b.unit ? 1 : 0));
+        },
       };
 
       const events: EventDraft[] = [];
@@ -372,7 +406,9 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         if (o.usury && rate > 0 && o.usury.prohibits(ctx.truth, s.lender)) {
           const kind = chooseDisguise(
             typeof o.usury.available === "function"
-              ? o.usury.available(ctx.truth, s.lender)
+              ? o.economicBatch
+                ? o.usury.available(ctx.truth, s.lender, usuryLedger)
+                : o.usury.available(ctx.truth, s.lender)
               : o.usury.available,
             o.usury.visibility,
           );

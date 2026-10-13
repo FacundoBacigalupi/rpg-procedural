@@ -22,6 +22,7 @@ import {
   BODY_STATE,
   type BodyPlanDef,
   ENTITY,
+  FRESH_CURSOR,
   LOCATION,
   type LocalMap,
   newBody,
@@ -30,6 +31,8 @@ import {
   type ProcessResult,
   WorldTruth,
 } from "../../sim/index.ts";
+import { PLAN_STATE } from "./act.ts";
+import { NPC_JOURNEY } from "./npc-verbs.ts";
 import {
   ASLEEP,
   CAUGHT_UP_EVENT,
@@ -37,6 +40,7 @@ import {
   hexesWithin,
   sleepPolicyProcess,
   sleepWant,
+  sleepWorkPending,
 } from "./sleepers.ts";
 
 const content = loadContent(
@@ -256,7 +260,7 @@ describe("quién duerme y cuándo despierta", () => {
       near: 2,
       bonded: () => extra.bonded ?? false,
       important: () => extra.important ?? false,
-      pending: () => extra.pending ?? false,
+      pending: (t, who) => extra.pending ?? sleepWorkPending(t, who),
     }).run({
       now: 7200,
       window: 3600,
@@ -287,6 +291,39 @@ describe("quién duerme y cuándo despierta", () => {
       expect(policy(t, extra)).toEqual({});
     }
     expect(policy(policyWorld(2))).toEqual({});
+  });
+
+  it("un plan activo o viaje lejano exige trabajo individual hasta terminar", () => {
+    const t = policyWorld(7);
+    expect(sleepWorkPending(t, me)).toBe(false);
+    t.set(PLAN_STATE, me, {
+      seq: 1,
+      plan: {
+        actor: me,
+        source: "player",
+        root: { kind: "do", verb: "look", args: [], manner: [] },
+        manner: [],
+        causes: [],
+      },
+      cursor: FRESH_CURSOR,
+      lastBelieved: null,
+      steps: [],
+      done: false,
+    });
+    expect(sleepWorkPending(t, me)).toBe(true);
+    expect(policy(t)).toEqual({});
+    const active = t.get(PLAN_STATE, me);
+    if (!active) throw new Error("sin plan");
+    t.set(PLAN_STATE, me, { ...active, done: true });
+    expect(sleepWorkPending(t, me)).toBe(false);
+    put(t, policy(t));
+    expect(t.get(ASLEEP, me)).toBeDefined();
+    t.set(NPC_JOURNEY, me, { place: "place:1", since: 7200, decision: "go" });
+    expect(sleepWorkPending(t, me)).toBe(true);
+    put(t, policy(t));
+    expect(t.get(ASLEEP, me)?.wake).toBe(true);
+    expect(t.get(PLAN_STATE, me)?.done).toBe(true);
+    expect(t.get(NPC_JOURNEY, me)?.decision).toBe("go");
   });
 
   it("si el jugador se acerca pide despertar; si vuelve a alejarse, lo cancela", () => {

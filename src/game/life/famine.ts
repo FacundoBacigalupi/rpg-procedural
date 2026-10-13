@@ -101,7 +101,8 @@ export function famineProcess(o: FamineOptions): ProcessDef {
     representation: "individual",
     phase: "act",
     reads: [PERSON.name, ENTITY.name, BUILDING.name, FAMINE.name, PRESSURE.name],
-    writes: [FAMINE.name, PRESSURE.name],
+    // citePressure crea la entidad de presión al citar por primera vez el hambre comunitaria.
+    writes: [FAMINE.name, PRESSURE.name, ENTITY.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || !def) return {};

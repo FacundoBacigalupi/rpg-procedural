@@ -45,6 +45,20 @@ describe("usura derivada del mundo", () => {
     expect(av(t, "h1")).toEqual(["buyback", "inflated_price", "gift", "labor"]);
     expect(av(t, "h2")).toEqual(["labor"]);
   });
+  it("sin contexto conserva la llamada legacy de dos argumentos", () => {
+    let args = 0;
+    const options = deriveUsury({
+      traitId: "norms.interest",
+      prohibitedVariants: [],
+      goodsHeld(...input) {
+        args = input.length;
+        return 0;
+      },
+    });
+    if (typeof options.available !== "function") throw new Error("sin callback");
+    expect(options.available(new WorldTruth(), "h1")).toEqual([]);
+    expect(args).toBe(2);
+  });
 
   it("la tasación creída es determinista y acotada por el error", () => {
     const t = new WorldTruth();

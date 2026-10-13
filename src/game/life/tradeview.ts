@@ -96,7 +96,7 @@ export function noticeTrade(
   if (recipe !== undefined) homes[home] = { recipe, day };
   else if (home in homes) delete homes[home];
   else return book;
-  return { homes };
+  return { ...book, homes };
 }
 
 export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
@@ -174,11 +174,11 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
             }
           }
           if (book === before) continue;
-          changes.push(
-            book && Object.keys(book.homes).length > 0
-              ? setComponent(TRADE_VIEW, watcher.id, book)
-              : deleteComponent(TRADE_VIEW, watcher.id),
-          );
+          const hasBeliefs =
+            book &&
+            (Object.keys(book.homes).length > 0 || Object.keys(book.people ?? {}).length > 0);
+          if (hasBeliefs) changes.push(setComponent(TRADE_VIEW, watcher.id, book));
+          else if (before !== undefined) changes.push(deleteComponent(TRADE_VIEW, watcher.id));
         }
       }
       return { changes };

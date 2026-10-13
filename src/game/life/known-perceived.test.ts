@@ -38,6 +38,30 @@ describe("lo que el personaje ve se puede nombrar al escribir", () => {
   it("dos desconocidos a la vista se resuelven en plural: «me acerco a los …»", () => {
     const life = Life.create(7, content, { frequency: 8 });
     const w = life.world;
+    const family = knownEntities(w).find((k) => k.kind === "person" && k.relations.length > 0);
+    if (!family) throw new Error("sin familiar conocido");
+    const parent = family.ref;
+    const perceivedParent: Percept = {
+      id: "seen-parent",
+      observer: w.player,
+      sourceEntityId: parent,
+      tick: w.scheduler.now,
+      channels: ["sight"],
+      detail: "identified",
+      fields: {
+        identity: { value: parent, confidence: 1, mistaken: false },
+        figure: { value: { sex: "female", age: "adult" }, confidence: 1, mistaken: false },
+      },
+    };
+    const recognizedParent = knownEntities(w, [perceivedParent]).find((k) => k.ref === parent);
+    expect(recognizedParent?.features).toContain("mujer");
+    expect(recognizedParent?.present).toBe(true);
+    expect(recognizedParent?.relations).toEqual(family.relations);
+    const perceivedFigure = perceivedParent.fields.figure;
+    if (!perceivedFigure) throw new Error("sin figura percibida");
+    const unknownParent = { ...perceivedParent, fields: { figure: perceivedFigure } };
+    const remembered = knownEntities(w).find((k) => k.ref === parent);
+    expect(knownEntities(w, [unknownParent]).find((k) => k.ref === parent)).toEqual(remembered);
     const me = w.truth.get(PERSON, w.player);
     // Dos personas de otra casa, de la misma figura, que aparecen a su lado.
     const others = living(w.truth).filter(

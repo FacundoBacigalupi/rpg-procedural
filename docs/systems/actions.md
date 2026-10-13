@@ -11,6 +11,10 @@ Lo usan: todos los sistemas que resuelven verbos (combat, dialogue, crafts, econ
 
 ## Principios
 
+**Reservas económicas opt-in (2026-10-12):** `ActOptions.serialEconomicVerbs` permite incorporar `eat` y `cook`, además de `trade`/`give`, al grupo económico explícito. Con `economicBatch`, el plan lee la despensa actualizada compartida con la rutina de otros familiares y los talleres; un plan activo solo saltea la rutina de su propio actor. Los casos reales de comer o preparar pan mientras otro familiar come y el taller consume grano reproducían doble débito y eventos asentados sin sus bienes. El servicio canónico conserva las agendas y reduce o rechaza consumos según recursos reales; no modifica las reglas del resolver ni serializa combate. Omitir estos parámetros conserva el comportamiento anterior. Otros consumidores finitos todavía necesitan cobertura y adaptación específica.
+
+**Stock fungible (2026-10-12, opt-in):** el mismo catálogo interno de servicio admite `gather` y `take`, tanto desde el lugar actual como desde una persona explícita. Ambos resolvers actuales transfieren `Holding[]` del ledger, sin mover objetos con identidad; las manos/ojos ocupados pertenecen al actor. `take` personal conserva su tirada de oposición, percepción de la víctima y captura dentro del resolver. Dos planes simultáneos sobre 100 g en un campo o un bolsillo reproducen doble débito sin servicio. En el dominio, cada actor según orden canónico intenta resolver con el saldo que dejaron los anteriores; ambos conservan agenda y terminan sus planes. Este orden expresa atención de lotes fungibles, no iniciativa física ni garantía de que el primero logre robar. Un `take` aislado exitoso o capturado produce exactamente la misma verdad, eventos, asientos y agenda con y sin servicio. `gather` agotado falla con `poor_yield`; `take` agotado falla con `no_means` y creencia de fallo mediante `ResolveInput.takeEmptyFailure`, derivado del opt-in `ActOptions.economicBatch`. Esa razón ya existe en el catálogo. Sin el flag, `take` mantiene el outcome anterior; con stock disponible el resultado es idéntico. Los objetos con identidad, resolución de derechos de propiedad, futura iniciativa física y combate siguen fuera de este contrato de saldos: requieren claims/contiendas propios.
+
 1. **Catálogo cerrado de verbos, composición abierta.** Hay un conjunto finito de verbos primitivos en `content/`. La libertad del jugador está en combinarlos, en los modos (cómo), los objetivos (a quién, con qué) y las condiciones (hasta cuándo, si pasa tal cosa). Lo que no se puede expresar con el catálogo se registra como verbo faltante para agregarlo como contenido, nunca se improvisa.
 2. **Un solo catálogo para todos.** El jugador, los NPCs, los espíritus y las bestias con mente usan los mismos verbos (npc-psychology §7). Una orden de una secta a un discípulo se vuelve un plan del mismo tipo.
 3. **Intentar es del actor, resolver es del mundo.** El actor decide con lo que cree; la ejecución se resuelve contra la verdad. Una acción que el personaje cree posible y no lo es se intenta y falla con forma; una que cree imposible y es posible no se intenta salvo que el jugador insista.
@@ -272,6 +276,19 @@ Con la resolución de zona de simulation §4:
 - **Fase 5-6:** verbos de viaje y transporte; órdenes de organizaciones con brecha de ejecución; registro de verbos faltantes en `tools/`.
 
 ## Implementación
+
+**Revisión de integración (2026-10-11):** el esquema restringido del parser ahora
+expone `repeat` con `times` obligatorio y cuerpo recursivo, y `if` con condición
+normalizada `is`, rama `then` y `else` opcional. #475 había actualizado la
+conversión lógica pero omitido estas variantes en `structuralDraftFor`; pruebas
+de equivalencia y dos casos con Qwen3:14b verifican el contrato completo.
+
+Las referencias plurales con parentesco estructurado también forman un conjunto;
+el singular mantiene la aclaración. Al convertir acercarse a personas en mirar
+o viajar se conservan los modos y se validan los roles; un modo incompatible con
+el verbo resultante se rechaza. Los familiares reconocidos en percepts actuales
+actualizan figura y presencia conservando nombres/relaciones; una fuente oculta
+sin reconocimiento no actualiza la ubicación del familiar recordado.
 
 **Hecho (Fase 1, Hito 1a, 2026-10-07) — `src/sim/actions/`:** el catálogo, el plan, las referencias, la tirada común y los resolvers.
 - `content/actions/core.json`: 11 verbos (`move`, `look`, `search`, `gather`, `work`, `rest`, `wait`, `speak`, `strike`, `trade`, `take`) con argumentos tipados (`person`, `place`, `thing`, `duration`, `text`), modos (×duración, +facilidad, +sigilo, ×emisiones), requisitos (`capability`, `position` cerca de un rol o en un tipo de lugar, `means` propios o del otro), cuerpo ocupado, duración (`fixed`, `arg` con tope, `path`), emisiones, facilidad, factores, contienda y formas de fallar por factor. `content/plans/steal.json`: robar como plantilla (`look` → `wait` encubierto → `take` encubierto). `catalog.ts` valida con Zod que los roles existan, que no haya modos repetidos y que **todo lo que puede hacer fallar un paso** (cada requisito y cada factor con peso) tenga su forma; las plantillas que nombran un verbo inexistente no cargan.

@@ -11,6 +11,13 @@ Lo usan: [narration.md](narration.md) (verbalización de actos de habla), [playe
 
 ## Principios
 
+**Cobertura de reproches (2026-10-12):** las líneas `greet.cold.<DeedKind>` y
+`request.refuse.<DeedKind>` deben existir para cada clase de agravio. El perfil
+completo descubrió las dos variantes `fraud` ausentes; ahora hay frases ordinarias,
+formales y de tono que expresan creencia o desconfianza, sin afirmar la verdad de
+la acusación. La prueba exhaustiva usa el tipo de `ReplyInput.reproach`, por lo
+que agregar una clase exige revisar contenido y pruebas.
+
 1. **Hablar es actuar.** Cada enunciado es un `speak` con un acto de habla: ocupa tiempo y voz, emite sonido (otros lo oyen), cambia creencias y relaciones, y puede crear compromisos.
 2. **El contenido sale de creencias.** Un NPC solo puede contar lo que cree (verdadero o falso), preguntar por lo que le interesa y mentir con una creencia falsa concreta que la simulación elige. El LLM no agrega hechos, nombres, cifras ni promesas.
 3. **Persuadir es cambiar los insumos de la decisión del otro:** sus creencias, lo que tiene presente, sus emociones, la relación, la cara en juego o lo que gana. La decisión final la toma su utilidad.
@@ -265,6 +272,50 @@ Versión mínima: `sim/dialogue` (actos, `understand` léxico, `decideReply` pur
 ### Implementado (2026-10-09): etiqueta declarada y ofensas con causa
 
 `SpokenForm.acts` (`DeclaredActs`: `address` si el tratamiento tuvo honorífico, `greet` si el texto abrió saludando; `greets` en `acts.ts`) viaja en el `SpeechAct` junto al resto de la forma. `judgeForm` mide las normas de `content/etiquette/` contra lo omitido con `judgeBreach`, usando lo que el oyente CREE del rango del hablante (`FormJudgeInput.etiquette`, desde `STANDING_BELIEFS`; sin lectura no hay ofensa) y los testigos del lugar; las faltas salen en `FormJudgement.breaches` y suman a `faceLoss`. `life.converse` toma la peor falta (registro, etiqueta o tabú) y deja un evento `social.offense` (actores [ofensor, ofendido], causa: el `action.speak` de la respuesta) con la decisión `respondToOffense` (ignorar, reprender o castigar, según cara, rango y magnanimidad del temperamento); si reprende o castiga, el ofensor pierde cara (`FACE`) además de la que perdió el ofendido. La reprensión se dice con la línea `form.offended` ya existente; el castigo con costo queda para law. Limitación: el saludo se pide en cada acto (no hay aún "ya saludó en esta charla").
+
+### Núcleo de confirmación económica (2026-10-12)
+
+`sim/economy/settlement.ts` ofrece `validateSettlement`: comprueba una operación completa sobre
+los saldos actuales y las reservas explícitas del titular antes de publicar su resultado. Las
+patas se evalúan juntas, con cantidades enteras seguras y orden canónico; distingue falta de
+existencias (`stock`) de invasión de una reserva (`reserve`). Consultar no modifica saldos ni
+diario. El ledger sigue siendo la autoridad que valida las cuentas externas y registra el asiento.
+La reserva de comida la calcula quien confirma con las bocas vivas actuales, no con un número
+de personas guardado al decidir. Este núcleo permite revalidar regalos y contraprestaciones
+compartidas sin volver a decidir el acto social ni introducir una tirada nueva.
+
+### Implementado (2026-10-12): respuestas simultáneas con verbos de NPC
+
+Cuando `npcVerbs` contiene algún verbo, `life.converse` sigue decidiendo cada respuesta en
+`decide` sobre el mismo estado anterior a la fase. Para regalos y tratos registra una intención
+JSON persistible en `life.conversation_intent`, causada por `dialogue.economic_intended`, y consume
+`PENDING`; posterga la respuesta, los cambios de `OPEN_DEALS`, `KNOWN_DEEDS` y `RUMORS`, y los
+asientos hasta `life.conversation_settle` en `act`. Este comparte el dominio económico con las
+otras acciones y revalida saldos, reservas, personas vivas y titular actual. La reserva mantiene
+la política de `decideReply` para bienes no monetarios y usa los miembros vivos actuales.
+Si faltan recursos contesta con la línea corta real, conserva la propuesta abierta y no publica
+efectos de aceptación; si murió un participante, falta su ubicación o ya no comparten hex,
+cancela causalmente sin habla ni transferencia. Conserva el criterio `sameHex` de la decisión,
+sin exigir un mismo espacio interior.
+La forma alternativa se captura al decidir con un fork independiente, sin cambiar las tiradas
+de la respuesta aceptada. La intención sobrevive a guardar, restaurar y replay.
+Al confirmar una intención retrasada, los efectos de cara y las noticias que cuenta la respuesta
+se fechan en la confirmación. La noticia que el oyente aceptó del mensaje previo conserva su
+fecha de escucha; `intent.at`, fechas de hechos y propuestas no se alteran.
+
+Las respuestas sin transferencia se publican directamente en `decide`. Cada respuesta confirmada
+registra las variaciones de cara y las noticias
+oídas como operaciones semánticas en `action.speak.data.conversationEffects`, en vez de escribir
+`FACE` o `HEARD` desde varios oyentes. `life.converse_projection` es su único escritor en `physics`
+(`scope: world`, `onEvent`, `withRecent`): pliega las respuestas confirmadas en orden canónico,
+aplica `adjustFace` por efecto y `hear` por noticia, y escribe una sola fila por persona y tabla.
+Las causas siguen en el `action.speak` de la respuesta; no se crea un evento adicional.
+
+Los cambios se ven desde `physics` y en las fases posteriores y el paso siguiente; las respuestas
+simultáneas y los procesos anteriores a la proyección no leen resultados de otra respuesta del
+mismo paso. Sin `npcVerbs` se conserva el camino directo y sus hashes. Esto evita que una persona
+que oye un insulto y a la vez recibe obediencia, o escucha dos secretos revelados, pierda un
+efecto o provoque un conflicto de escritura fuera de `act`.
 
 ### Implementado (2026-10-09): la forma que declara el jugador
 

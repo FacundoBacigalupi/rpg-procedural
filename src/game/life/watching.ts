@@ -19,6 +19,7 @@ import {
   MENTAL,
   type Observer,
   OPINIONS,
+  type Opinions,
   observeSkill,
   opinionKey,
   PERSON,
@@ -26,6 +27,7 @@ import {
   type ReadonlyWorldTruth,
   SKILL_STATE,
   type SkillCatalog,
+  type Skills,
   type SpaceGraph,
   type StateChange,
   sensorAcuity,
@@ -65,6 +67,21 @@ export interface WatchInput {
   readonly now: Tick;
 }
 
+/** Lectura del gesto en el momento del acto; JSON puro, sin acceder de nuevo a la escena. */
+export interface WatchExposure {
+  readonly observer: AgentId;
+  readonly doer: AgentId;
+  readonly verb: string;
+  readonly seen: number;
+  readonly doerLevel: number;
+  readonly shown?: number;
+  readonly style?: string;
+  readonly seconds: number;
+  readonly at: Tick;
+  readonly student: Parameters<typeof learnFromWatching>[2];
+  readonly opinionNoise?: number;
+}
+
 /** Lo que se leyó del paso, 0-1: entender el gesto vale todo; solo notar que hacía algo, poco. */
 function seenFrom(p: { fields: Readonly<Record<string, { confidence: number } | undefined>> }) {
   const action = p.fields["action"];
@@ -74,6 +91,11 @@ function seenFrom(p: { fields: Readonly<Record<string, { confidence: number } | 
 
 /** Los cambios de habilidades de quienes miraron el paso, en orden de id. */
 export function watchersLearn(i: WatchInput): StateChange[] {
+  return foldWatchExposures(i.truth, i.catalog, i.clock, collectWatchExposures(i));
+}
+
+/** Captura percepción y ruido con las claves originales; no escribe habilidades ni opiniones. */
+export function collectWatchExposures(i: WatchInput): WatchExposure[] {
   const use = i.catalog.forVerb(i.verb);
   if (!use || i.seconds <= 0) return [];
   const at = i.truth.get(LOCATION, i.doer);
@@ -119,7 +141,7 @@ export function watchersLearn(i: WatchInput): StateChange[] {
     i.rng.fork("sight"),
   );
   const style = styleOf(i.truth, i.doer);
-  const out: StateChange[] = [];
+  const out: WatchExposure[] = [];
   for (const p of percepts) {
     const id = p.observer;
     const seen = Math.min(1, seenFrom(p));
@@ -129,47 +151,81 @@ export function watchersLearn(i: WatchInput): StateChange[] {
     const plan = body ? i.plans.get(body.plan) : undefined;
     if (!person || !innate || !body || !plan) continue;
     const age = (i.now - person.born) / i.clock.year;
-    const next = learnFromWatching(
-      use,
-      i.truth.get(SKILL_STATE, id)?.[use.skill.id],
-      {
+    out.push({
+      observer: id,
+      doer: i.doer,
+      verb: i.verb,
+      seen,
+      doerLevel: i.doerLevel,
+      ...(i.shown === undefined ? {} : { shown: i.shown }),
+      ...(style === undefined ? {} : { style }),
+      seconds: i.seconds,
+      at: i.now,
+      student: {
         z: standardize(innate, i.traits, person.sex),
         capabilities: capabilitiesOf(plan, body),
         ageYears: age,
       },
+      ...(seen < WATCH_MIN_SEEN ? {} : { opinionNoise: i.rng.fork("opinion", id).normal() }),
+    });
+  }
+  return out;
+}
+
+/** Pliega acciones en orden de llegada; un único cambio final por observador y tabla. */
+export function foldWatchExposures(
+  truth: ReadonlyWorldTruth,
+  catalog: SkillCatalog,
+  clock: Pick<PlanetClock, "day">,
+  exposures: readonly WatchExposure[],
+): StateChange[] {
+  const skills = new Map<AgentId, Skills>();
+  const opinions = new Map<AgentId, Opinions>();
+  const observers = new Set<AgentId>();
+  for (const exposure of exposures) {
+    const use = catalog.forVerb(exposure.verb);
+    if (!use) continue;
+    const { observer, doer, seen } = exposure;
+    const current = skills.get(observer) ?? truth.get(SKILL_STATE, observer);
+    const mine = current?.[use.skill.id];
+    const next = learnFromWatching(
+      use,
+      mine,
+      exposure.student,
       {
-        doer: i.doer,
+        doer,
         seen,
-        doerLevel: i.doerLevel,
-        seconds: i.seconds,
-        tick: i.now,
-        ...(style === undefined ? {} : { style }),
+        doerLevel: exposure.doerLevel,
+        seconds: exposure.seconds,
+        tick: exposure.at,
+        ...(exposure.style === undefined ? {} : { style: exposure.style }),
       },
-      i.clock.day,
+      clock.day,
     );
-    if (next)
-      out.push(
-        setComponent(SKILL_STATE, id, { ...i.truth.get(SKILL_STATE, id), [use.skill.id]: next }),
-      );
-    // Y se forma una idea de qué tan bueno es quien lo hace (skills §9): con lo que vio, no con la verdad.
-    if (seen >= WATCH_MIN_SEEN) {
-      const mine = i.truth.get(SKILL_STATE, id)?.[use.skill.id];
-      const key = opinionKey(i.doer, use.skill.id);
-      const opinions = i.truth.get(OPINIONS, id);
-      out.push(
-        setComponent(OPINIONS, id, {
-          ...opinions,
-          [key]: observeSkill(
-            opinions?.[key],
-            i.shown ?? i.doerLevel,
-            seen,
-            levelOf(mine, "reading"),
-            i.rng.fork("opinion", id).normal(),
-            i.now,
-          ),
-        }),
-      );
+    if (next) skills.set(observer, { ...current, [use.skill.id]: next });
+    if (exposure.opinionNoise !== undefined && seen >= WATCH_MIN_SEEN) {
+      const key = opinionKey(doer, use.skill.id);
+      const currentOpinions = opinions.get(observer) ?? truth.get(OPINIONS, observer);
+      opinions.set(observer, {
+        ...currentOpinions,
+        [key]: observeSkill(
+          currentOpinions?.[key],
+          exposure.shown ?? exposure.doerLevel,
+          seen,
+          levelOf(mine, "reading"),
+          exposure.opinionNoise,
+          exposure.at,
+        ),
+      });
     }
+    observers.add(observer);
+  }
+  const out: StateChange[] = [];
+  for (const observer of [...observers].sort()) {
+    const learned = skills.get(observer);
+    if (learned) out.push(setComponent(SKILL_STATE, observer, learned));
+    const observed = opinions.get(observer);
+    if (observed) out.push(setComponent(OPINIONS, observer, observed));
   }
   return out;
 }

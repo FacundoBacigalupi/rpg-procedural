@@ -23,6 +23,8 @@ describe("sim:batch y sim:diff", () => {
     expect(parseSeeds("1..3,5,3..4")).toEqual([1, 2, 3, 5, 4]);
     expect(() => parseSeeds("x")).toThrow();
     expect(() => parseSeeds("5..2")).toThrow();
+    expect(() => parseSeeds("9007199254740992")).toThrow();
+    expect(() => parseSeeds("1..9007199254740992")).toThrow();
   });
 
   it("resume métricas contando la ausente como 0", () => {

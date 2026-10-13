@@ -4,7 +4,6 @@
 import type {
   AgentId,
   EventLog,
-  HolderRef,
   IdAllocator,
   Ledger,
   LedgerUnit,
@@ -27,6 +26,7 @@ import {
   type GoodDef,
   goodUnit,
   type HabitDef,
+  KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
   type LocalMap,
@@ -37,6 +37,7 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   type RecipeDef,
+  RUMORS,
   Scheduler,
   type SchedulerState,
   type SchemaDef,
@@ -76,7 +77,9 @@ import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
-import { type ConverseForm, converseProcess } from "./converse.ts";
+import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
+import { conversationSettlementProcess } from "./converse-economy.ts";
+import { converseProjectionProcess } from "./converse-project.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { debtKnowledgeProcess } from "./debtknowledge.ts";
@@ -161,6 +164,7 @@ import {
   catchUpDue,
   catchUpProcess,
   sleepPolicyProcess,
+  sleepWorkPending,
 } from "./sleepers.ts";
 import { soilProcess } from "./soil.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
@@ -178,6 +182,7 @@ import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from ".
 import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { testifyProcess } from "./testify.ts";
 import { thermalProcess } from "./thermal.ts";
+import { tradeProjectionProcess } from "./trade-projection.ts";
 import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
 import { tradeViewProcess } from "./tradeview.ts";
@@ -185,6 +190,7 @@ import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
+import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -517,7 +523,7 @@ export interface LifeWorld {
     readonly court?: string;
     readonly organization?: string;
   };
-  /** Opt-in (con `loanSeeds`): pr�stamos con inter�s disfrazado donde la cultura lo proh�be; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
+  /** Opt-in (con `loanSeeds`): préstamos con interés disfrazado donde la cultura lo prohíbe; con `communityCase` y `loanEnforcement.community`, el caso comunitario (`credit.usury_ruled`). */
   readonly loanUsury?: UsuryOptions;
   /** Opt-in: el fiador subrogado cobra al deudor original en cuotas por ledger (`credit.subrogated_paid`). */
   readonly loanRepaySubrogation?: boolean;
@@ -593,6 +599,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
+  const economicBatch = (parts.npcVerbs?.length ?? 0) > 0;
   const altitudeOf = parts.realAltitude
     ? parts.travelAltitude
       ? travelAltitudeOf(parts.map, parts.travelAltitude, parts.spaces)
@@ -656,6 +663,15 @@ export function lifeWorld(
           ...(parts.sleepers ? { sleepers: true } : {}),
         }),
         actProcess({
+          ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
+          ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
+          ...(economicBatch
+            ? {
+                // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
+                serialEconomicVerbs: ["trade", "give", "eat", "cook", "take", "gather"] as const,
+                economicBatch: true,
+              }
+            : {}),
           logMeals: parts.eatenNutrition === true,
           map: parts.map,
           spaces: parts.spaces,
@@ -830,6 +846,7 @@ export function lifeWorld(
             ]
           : []),
         converseProcess({
+          ...(economicBatch ? { projectSharedEffects: true, settleEconomy: true } : {}),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
@@ -843,6 +860,10 @@ export function lifeWorld(
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
         }),
+        ...(economicBatch ? [converseProjectionProcess()] : []),
+        ...(economicBatch
+          ? [conversationSettlementProcess([OPEN_DEALS.name, KNOWN_DEEDS.name, RUMORS.name])]
+          : []),
         ...(parts.form
           ? [
               bornTaboosProcess({
@@ -928,6 +949,7 @@ export function lifeWorld(
         }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           foods: parts.foods,
           curves: parts.pressureCurves,
           player,
@@ -936,6 +958,7 @@ export function lifeWorld(
           ...(parts.usuryGossip ? { heedFraud: true } : {}),
         }),
         repayProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           foods: parts.foods,
           player,
           placeOf: placeOf(parts, village),
@@ -954,6 +977,7 @@ export function lifeWorld(
           trajectories: parts.trajectories ?? [],
         }),
         tradesProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
           recipes: parts.tradeRecipes ?? [],
@@ -967,6 +991,12 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         marketProcess({ clock: parts.clock, goods: parts.goods }),
+        ...(parts.npcVerbs && parts.npcVerbs.length > 0
+          ? [watchingProjectionProcess({ catalog: parts.skills, clock: parts.clock })]
+          : []),
+        ...(parts.npcVerbs?.includes("trade")
+          ? [tradeProjectionProcess({ clock: parts.clock, goods: parts.goods })]
+          : []),
         ...(parts.tradeChoice
           ? [
               tradeChoiceProcess({
@@ -995,6 +1025,7 @@ export function lifeWorld(
           : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
@@ -1525,6 +1556,7 @@ export function lifeWorld(
                 ...(parts.npcJourneyDays !== undefined
                   ? {
                       journeyDays: parts.npcJourneyDays,
+                      ...(parts.npcTransit === true ? { transit: true } : {}),
                       placeOf: placeOf(parts, village),
                       ...(parts.npcPace ? { pace: parts.npcPace } : {}),
                       ...(parts.npcNightRest === true
@@ -1550,7 +1582,13 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.npcTransit === true && parts.npcJourneyDays !== undefined
-          ? [transitProcess({ map: parts.map, player })]
+          ? [
+              transitProcess({
+                map: parts.map,
+                player,
+                ...(parts.npcNightRest === true ? { pauseRest: true } : {}),
+              }),
+            ]
           : []),
         ...(() => {
           const sl = parts.sleepers;
@@ -1566,6 +1604,7 @@ export function lifeWorld(
               // Vínculo (tier 4): quien comparte hogar con el personaje no se duerme.
               bonded: (t, who) => household(t, who) === household(t, player),
               important: () => false,
+              pending: sleepWorkPending,
             }),
             // Dos procesos con alcances repartidos (off-3e): por hora solo quien pidió despertar,
             // por día el resto; así no se invoca a cada dormido cada hora.
@@ -1590,6 +1629,7 @@ export function lifeWorld(
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         routineProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
           ...(parts.sleepers ? { sleepers: true } : {}),

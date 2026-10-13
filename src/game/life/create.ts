@@ -377,8 +377,8 @@ export function derivedLoanUsury(
   return deriveUsury({
     traitId: INTEREST_TRAIT,
     prohibitedVariants: n.prohibitedVariants ?? ["forbidden"],
-    goodsHeld: (_truth, home) =>
-      ledger
+    goodsHeld: (_truth, home, balances) =>
+      (balances ?? ledger)
         .holdings(holderAccount(home as unknown as HolderRef))
         .filter((h) => String(h.unit).startsWith("good:"))
         .reduce((sum, h) => sum + h.amount, 0),

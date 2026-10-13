@@ -106,13 +106,30 @@ export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): Know
   const listed = new Set<EntityRef>(out.map((k) => k.ref));
   for (const p of seen) {
     const id = p.sourceEntityId;
-    if (id === undefined || !id.startsWith("agent:") || id === w.player || listed.has(id)) continue;
-    listed.add(id);
+    if (id === undefined || !id.startsWith("agent:") || id === w.player) continue;
     const identity = p.fields.identity;
     const named =
       identity !== undefined &&
       identity.confidence >= RECOGNIZED_CONFIDENCE &&
       identity.value === id;
+    if (listed.has(id)) {
+      // Solo una identidad reconocida vincula la figura vista con un familiar recordado.
+      // El id oculto de una figura desconocida no permite actualizar dónde cree que está.
+      if (named) {
+        const index = out.findIndex((k) => k.ref === id);
+        const previous = out[index];
+        if (previous)
+          out[index] = {
+            ...previous,
+            features: [...new Set([...previous.features, ...featuresOfPercept(p)])],
+            present: true,
+            ...(here === undefined ? {} : { at: here.hex }),
+            phantom: false,
+          };
+      }
+      continue;
+    }
+    listed.add(id);
     const given = named
       ? callName(w.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] })
       : undefined;

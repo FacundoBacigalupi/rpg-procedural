@@ -70,6 +70,153 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Retoma vigente (2026-10-13):** integrar PR #491 a `develop` y limpiar ramas
+extra por pedido explícito del usuario. Código del lote en `3082ecc`: el reporte
+de `npm run check` (`sim-reports/full-profile-final-check.log`) terminó con
+2599 tests en 376 archivos, typecheck/lint y cero violaciones de dependencias.
+La sesión del proceso expiró antes de recuperar su exit code nativo; el reporte
+no muestra fallos. Las 43 pruebas puntuales, typecheck y lint anteriores tienen
+exit 0 confirmado. Incluye préstamos/usura con saldos reservados, seis hojas
+económicas, conversación diferida persistible y fechas de confirmación, viaje
+físico y cobertura dirigida de sueño, familia y préstamo garantizado.
+
+**Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
+el código integrado, sin cambiar producción durante los workers:
+`npm.cmd run sim:batch -- --scenario full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile-2y-economic-fixed`.
+Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
+`004d4de` falló en seed 1 por FACE; seeds 2/3 completaron, pero no certifica el
+lote nuevo. Después: `perfil3` medición/optimización y `perfil4` activación
+validada. Fase 3 abierta; no cambiar defaults ni hashes dorados por trámite.
+Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
+tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
+no equivalen a reservas de cantidades fungibles. Rentas siguen bajo auditoría.
+LLM parser ya probado con Qwen3:14b: 54/54 válidos y 39/54 semánticos, sin
+regresiones comunes frente a #489 en esa corrida; narración semántica sigue
+pendiente. No repetir inferencias por cambios puramente económicos.
+Los agentes disponibles agotaron cuota; continuar desde estos docs si fallan.
+Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
+junctions/node_modules recursivamente. Las observaciones fechadas debajo son
+históricas y no reemplazan este estado.
+
+**Estado verificado más reciente (2026-10-12, noche):** rama
+`feat/f3-full-profile-review`, PR #491 en borrador. Integrados dominio serial
+entre procesos, validación causal previa, talleres/fiado/repago/rutina,
+proyección única de FACE/HEARD, llegada física y pausa del viaje, snapshot de
+cobertura y núcleo puro de liquidación. `npm run check` sobre `5387873`
+terminó (`sim-reports/full-profile-integrated-check.log`): typecheck/lint
+pasaron; la suite tuvo 2554 aprobadas y dos fallos en mocks del worker,
+que no incluían las nuevas lecturas de cobertura. Fix `aef8644` preparado con
+18 pruebas puras, todavía sin integrar en esta observación. El intento anterior se frenó por un
+import indebido de persistence en un test, corregido en `bc658d1`; no se cuenta
+como suite aprobada. Antes del check: 66 tests puntuales y luego nueve de
+conversación/fiado pasaron, además de los tests reportados por los agentes.
+
+Batch terminado sobre `004d4de`: seed 1 detenida después de 270 días por FACE;
+seeds 2 y 3 completas, dos años y 26 chequeos cada una. Seed 2: cuatro
+concepciones, tres nacimientos, muertes por parto/deshidratación, 1302 s y
+~2,45 GiB RSS; seed 3: dos concepciones, un nacimiento, muerte por deshidratación,
+852 s y ~1,68 GiB RSS. Viaje/dormidos no se ejercitaron en ese batch. La nueva
+corrección aún requiere repetir la medición; `perfil2b` sigue pendiente.
+
+Qwen3:14b banco posterior al fix de perdonar: 54/54 válidos al primer intento,
+39/54 semánticos; `spare-yielded` correcto, siete mejoras comunes frente a #489
+y ninguna regresión común en esta corrida. Reporte
+`sim-reports/cloud-review-bench-spare-fixed/bench-2026-10-12T22-19-16-592Z.json`.
+No usar validez de esquema para certificar fidelidad; narración mantiene sus
+ítems pendientes. No ejecutar inferencias mientras corre la suite amplia.
+
+Siguiente lote: `profile_tools` resuelve economía conversacional en `act`
+(dos diagnósticos reales de excedente y última moneda, adaptador en trabajo),
+`profile_core` audita consumidores `eat/cook/take/gather`, `cloud_audit` agrega
+slice dirigido de sueño/catch-up. Sus worktrees son internos a `sim-reports`;
+el de cobertura es `codex-coverage-audit`, el antiguo audit conserva WIP de
+speech/schema ya integrado. No borrar worktrees ni junctions automáticamente.
+Los límites de uso de agentes se reintentaron y pudieron retomar; el coordinador
+continúa revisando y corre una sola prueba amplia por vez.
+Verificación posterior aprobada: `npm run check` sobre `8c72653`, 2585 tests en
+374 archivos, typecheck/lint y exit 0, log
+`sim-reports/full-profile-confirmation-check.log`. Incluye los fixes del worker,
+economía conversacional/presencia, seis consumidores, sleep y family dirigidos.
+Lote siguiente preparado: cobertura garantizada `94cd137`, préstamos en dominio
+`fbdf0ee`, callback de usura con vista actual en trabajo, timestamps de respuesta
+`c09abb4`. No atribuir el check de `8c72653` a esos commits aún no integrados.
+
+**Estado verificado (2026-10-12, continuación):** PR #491 en borrador y rama
+`feat/f3-full-profile-review`. `npm run check` anterior pasó: 2469 tests en 358
+archivos, typecheck y lint, exit 0. Después se integraron lotes seriales,
+aprendizaje de testigos, los dos reproches de fraude faltantes y la contienda
+trade/give; 95 pruebas puntuales y typecheck latest pasaron. La verificación amplia
+del código posterior sigue pendiente; no reutilizar el número anterior como prueba
+de todos los cambios actuales.
+
+Perfil completo: tres seeds × 30 días pasaron 21 chequeos; no ejercitaron partos,
+préstamos ni catch-up. El intento de dos años se frenó por `greet.cold.fraud`, ya
+corregido junto a `request.refuse.fraud`. Nueva corrida serial de dos años en
+`sim-reports/full-profile-2y-fraud-fixed`, todavía en curso. No activar defaults
+antes de terminar la medición y revisar cobertura/recursos entre procesos.
+Código de esta corrida: `004d4de` (los commits posteriores del coordinador son
+documentación); no integrar cambios de simulación durante el batch secuencial.
+La seed 1 pasó diez chequeos hasta 270 días y después falló por doble escritura
+de `social.face` en `life.converse/decide`; `perfil2-converse-face` cubre el nuevo
+bloqueo. La seed 2 completó dos años y 26 chequeos limpios: cuatro concepciones,
+tres nacimientos, dos muertes (parto y deshidratación), 1302 s de simulación y
+RSS máximo 2627629056 bytes (~2,45 GiB). No hubo viajes ni dormidos; la seed 3
+está en curso. Una seed completa no aprueba el lote. Reproducción pequeña también confirma compra y producción gastando el
+mismo insumo doméstico: contrato `perfil2-economic-domain` y adaptadores
+`perfil2-economic-adapters`, separados antes de implementar. Agentes reutilizados:
+`profile_tools` conversación, `profile_core` dominio económico, `cloud_audit`
+revisión del contrato; no ejecutan suites amplias ni inferencias en paralelo.
+`perfil2-directed-coverage` separa snapshot de oportunidades y escenarios
+dirigidos: el perfil configura viaje, pero no genera su candidata de movimiento
+a lugar por la ruta normal. Los partos sí se ejercitaron en seed 2, sin acelerar
+gestación ni tasas.
+
+Qwen3:14b último banco: 54/54 borradores válidos, 38/54 semánticamente correctos;
+mejora siete casos comunes frente a #489 y presenta una regresión en liberar al
+rendido (`parser-spare-regression`). Repetición única se puntúa como su cuerpo,
+habla/plan son excluyentes y los actos tienen esquema discriminado. Narración
+semántica sigue pendiente. Los resultados locales de banco y simulación no se
+confunden con aprobaciones del juego completo.
+
+**Continuación autónoma (2026-10-12):** la corrida amplia anterior no conservó
+resultado final y no se cuenta como aprobada. Nueva `npm run check` en curso,
+log `sim-reports/cloud-review-check-2026-10-12.log`; typecheck y lint pasaron.
+Integrados en la rama de trabajo: proyección de registros de trades, reserva de
+nombres por hogar y política `sleepWorkPending` (cableada como `pending`).
+También se corrigieron las descripciones obsoletas de `conc1`/`conc2` y el
+alcance real de `off-3d`: la cola agendada no se descarta.
+
+Qwen real, smoke de cuatro casos: `again`, `repeat` e `if` pasan; promesa vaga
+todavía duplica `speech` y `plan`. Hay un fix de validación lógica preparado para
+rechazar esa combinación y regenerar; mantener pendiente la comprobación real
+posterior. El narrador preservó recoger en el último smoke, pero eso no demuestra
+fidelidad semántica general. Batch de acciones: contrato opt-in con vista temporal
+de verdad/ledger en revisión; grupos de trades y proyección de testigos continúan
+en los ítems nombrados del ROADMAP. Los cambios no se activan por defecto.
+
+**Retoma Codex después de #489 (2026-10-11):** checkout inicial limpio, refs
+actualizadas y sin PRs abiertos. #488 cambió la prioridad a perfil completo antes
+de agregar más sistemas opt-in; «Ahora» anterior no reflejaba ese cambio. Rama de
+integración `feat/f3-full-profile-review`, agentes reutilizados en
+`sim-reports/codex-profile-core`, `codex-profile-tools` y `codex-cloud-audit`.
+No borrar worktrees automáticamente. `perfil1` y tooling `perfil2a` implementados;
+`perfil2b` todavía exige medición larga y cobertura de configuraciones con semillas.
+
+Auditoría: #475 aceptaba repeat/if en el motor pero los omitía del esquema del LLM;
+corregido. #489 perdía modos al acercarse, rechazaba plurales con parentesco y no
+actualizaba familiares reconocidos con los percepts actuales; corregido con tests.
+Qwen real pasa los dos casos nuevos después del esquema; el banco de 52 casos
+comunes mostró dos mejoras y dos regresiones antes de ajustar «otra vez». La
+narración todavía agrega hechos a una acción `gather` aunque el validador la
+acepte: `narr-action-grounding` y `narr-view-llm` continúan pendientes.
+
+Medición: frecuencia 2 agotó Map en refinado local; frecuencia 8 creó en ~43 s y
+~2,33 GB RSS. Frecuencia real crea en ~4,3 s y ~400 MB. Smoke de un día con
+invariantes pasó tras corregir `TRADE_VIEW` y writes causal de `life.famine`.
+Batch seeds 1..3 × 2 años falló temprano por cinta compartida en trades de NPC;
+partido en `perfil2-trades-projection` y `perfil2-trades-resources`. No encender
+el perfil por defecto mientras la medición larga siga sin pasar.
+
 Actualizado: 2026-10-11. **Fase 2 cerrada y en `main` (`v0.2.0`).** Fase en curso: **Fase 3**; `develop` con PRs integradas hasta **#486**. Verificación por rama: typecheck, lint y la suite ancha (`src/game src/sim/scheduler src/persistence src/sim/mind src/sim/actions`) en una sola corrida, con las tareas pesadas sin otros agentes corriendo. `settlement.test.ts` y `language.test.ts` pasan solos pero fallan por timeout (360 s) o por SIGKILL de memoria si corren junto a otras suites: repetirlos solos antes de culpar a la rama.
 
 **Sesión de Claude Code en la nube (2026-10-11), #444–#473 (y #474–#486 abajo):** señales de alegría, vergüenza, envidia y amor (f3c3c); vacío de sentido calibrado, cumplimiento por evidencia propia y metas de oficio con registro de práctica (f3d3c–f3d4e); medición de `LAYER_PULL` (f3e1); métricas de deuda rescatadas de `feat/f3-goal-debt` (#449); sustancias en la vida; hurto (g2b, g2b2); el NPC ejecuta `gather`/`trade`/`give`/`speak`/`take` desde su decisión (`npcVerbs`); `speakActs` calibrado (silencio 1 día, peso 0,4; arreglo del choque de `life.pending_speech` por iniciativa); viaje del NPC (`npcMove`, `move` con tiempo, `NPC_JOURNEY` con `npcJourneyDays`, tránsito `npcTransit`, provisiones `npcProvisions`, descanso `npcNightRest`, ritmo `npcPace`, cansancio con parada al agotarse, calzado `npcFootwear`); plantillas de plan de varios pasos (`npcTemplates`, `content/plans/fieldwork.json`); interrupción y reanudación de planes (`npcInterrupt`: signos graves del cuerpo, golpes y palabras de otros, `NPC_PAUSED`/`npc.resumed`); cadena «ir hacia el prestamista, llegar y pedir» en una vida (npc-f). **Lote de hashes aprobado por el usuario (#467):** motor `life-2`, capas de objetivos por defecto (f3e2) y vergüenza (f3c3c3); un guardado `life-1` se sigue con `life-2` y se registra `meta.replayLimits`; el replay arranca desde el snapshot del límite (f3e3, #469). Todo lo demás sale apagado por defecto.

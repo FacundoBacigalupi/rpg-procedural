@@ -234,6 +234,19 @@ interface Genealogy {                      // el libro del linaje (族谱): un d
 - **Fase 8:** dinastías, crisis de sucesión de estado ([state.md](state.md) §9), especies y mestizos.
 
 ## Tests
+
+**Cobertura familiar dirigida (2026-10-12):** `game/life/family-coverage.test.ts`
+ejecuta los procesos reales de concepción, parto, nacimiento y afecto familiar
+mediante un scheduler pequeño, con las opciones familiares de `FULL_PROFILE`.
+Una pareja recíproca con origen, genomas, cultura y fe existentes concibe con la
+curva demográfica normal: la seed 3390 lo hace el primer día, sin multiplicar
+tasas ni acortar la gestación de 280 días. El parto se resuelve con sus riesgos
+ordinarios y el hijo nace por su resultado, con nombre con significado, mente,
+parentesco en ambos sentidos, cultura, fe, habilidades y gustos con origen.
+Comprueba conservación del ledger, invariantes, ausencia de nacimiento duplicado
+y repetición determinista. No genera un planeta ni crea una `Life`; cubre este
+tramo familiar, sin fisiología diaria de los adultos, nutrición fetal ni el resto
+de procesos del perfil completo.
 - **Procedencia:** toda persona tiene un evento de nacimiento con dos padres biológicos (salvo condiciones iniciales y orígenes especiales con su propio evento); todo genoma tiene padres o es inicial.
 - **Conservación:** la población cambia solo por nacimientos, muertes y migraciones; dote, precio de la novia y herencia son transferencias que no crean ni destruyen bienes.
 - **Determinismo:** mismos padres, mismo seed y mismo id de hijo dan el mismo genoma, también al materializar.
