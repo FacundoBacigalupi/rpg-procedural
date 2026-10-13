@@ -219,7 +219,9 @@ function world(
 describe("servicio opt-in de stock público fungible", () => {
   it("consult sin servicio intenta pagar una moneda que otro plan tomó", () => {
     const w = world("take", false, false, false, false, false, true);
-    expect(() => w.scheduler.advanceTo(clock.day / 2)).toThrow();
+    expect(() => w.scheduler.advanceTo(clock.day / 2)).toThrow(
+      /agent:2 no tiene 1 de coin:copper \(tiene 0;/,
+    );
   });
   it("consult reserva el bolsillo restante y conserva ambas agendas", () => {
     const w = world("take", true, false, false, false, false, true);
