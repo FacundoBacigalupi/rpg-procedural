@@ -23,6 +23,7 @@ import {
   recordProcess,
   validateFullProfileConfig,
 } from "./full-profile.ts";
+import { healthDebtFocus } from "./full-profile-focus.ts";
 
 export function runFullProfileSeed(
   seed: number,
@@ -66,10 +67,19 @@ function measureFullProfileSeed(
 ) {
   validateFullProfileConfig(config);
   const content = loadContentDir("content", GAME_CONTENT_KINDS);
+  const frequencyOnly = config.frequency === undefined ? {} : { frequency: config.frequency };
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: FULL_PROFILE,
-    ...(config.frequency === undefined ? {} : { frequency: config.frequency }),
+    life: config.focus
+      ? (healthDebtFocus(seed, content, {
+          ...optionsOf({
+            game: defaultGameSetup("realistic"),
+            life: FULL_PROFILE,
+            ...frequencyOnly,
+          }),
+        }) as unknown as typeof FULL_PROFILE)
+      : FULL_PROFILE,
+    ...frequencyOnly,
   };
   const processes = new Map<string, ProcessMeasurement>();
   assertLifeDependencies(optionsOf(setup));
