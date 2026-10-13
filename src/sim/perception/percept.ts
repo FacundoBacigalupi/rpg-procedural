@@ -178,12 +178,23 @@ export function readChance(ratio: number): number {
 /** Lo que llega de la fuente al observador por cada canal: ganancia por unidad de intensidad. */
 export type ChannelGain = Readonly<Record<Channel, number>>;
 
+/** Los nodos de un grafo por clave, armados una vez por grafo (el grafo no cambia: es inmutable). */
+const NODES_MEMO = new WeakMap<SpaceGraph, ReadonlyMap<string, SpaceNode>>();
+function nodesOf(graph: SpaceGraph): ReadonlyMap<string, SpaceNode> {
+  let nodes = NODES_MEMO.get(graph);
+  if (nodes === undefined) {
+    nodes = new Map(graph.spaces.map((s) => [s.key, s]));
+    NODES_MEMO.set(graph, nodes);
+  }
+  return nodes;
+}
+
 /** La ganancia de cada canal entre una fuente y un observador (§3, §5: señal × agudeza / ruido). */
 export function channelGain(medium: Medium, observer: Observer, source: Location): ChannelGain {
   const graph = mediumGraph(medium, [observer.at, source]);
   const from = spaceOf(observer.at);
   const to = spaceOf(source);
-  const nodes = new Map(graph.spaces.map((s) => [s.key, s]));
+  const nodes = nodesOf(graph);
   const here = nodes.get(from) as SpaceNode;
   const there = nodes.get(to) as SpaceNode;
   const out: Record<Channel, number> = { sight: 0, sound: 0 };
