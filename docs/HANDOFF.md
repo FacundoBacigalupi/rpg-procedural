@@ -71,8 +71,10 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 
 ## 8. Estado de las líneas de trabajo
 **Retoma vigente (2026-10-13):** PR #491 squash-mergeada a `develop` en
-`c1bea73`; ramas extras locales/remotas retiradas por pedido del usuario.
-Solo conservar `main` y `develop` al completar el PR de este traspaso.
+`c1bea73`; PR #492 también squash-mergeada en `b29c169`. Ramas extras
+locales/remotas y referencias origin obsoletas retiradas; conservar solo
+`main` y `develop` después de cada integración. WIP hire y cloud-audit limpios
+en worktrees detached después de completar/verificar su trabajo.
 Worktrees antiguos conservados detached: no se borraron archivos ni junctions.
 Respaldo de commits: `sim-reports/branches-before-cleanup-2026-10-13.bundle`;
 WIP de cloud-audit/hire: `sim-reports/cleanup-backup-2026-10-13/`.
@@ -110,11 +112,18 @@ world deriva ambos del servicio existente. Veinticuatro tests puntuales del
 lote integrado pasaron. Check final sobre `41c5c01`: 2612 tests en 378 archivos,
 typecheck/lint, cero violaciones de capas y salida nativa 0, registrado en
 `sim-reports/consultation-final-check.log` y `.exit`. Código posterior hasta
-este traspaso sin cambios (solo docs). Lote consolidado en PR #492 para
-integrar a develop y retirar sus ramas. No habilitar consult para decisiones
+este traspaso sin cambios (solo docs). Lote consolidado e integrado en PR #492,
+ramas retiradas. No habilitar consult para decisiones
 NPC ni cambiar defaults.
 
-**Corrida larga y traspaso:** revisar primero
+**Corrida larga y traspaso:**
+Corrida iniciada el 2026-10-13 sobre `b29c169`, tres seeds × dos años;
+proceso del launcher registrado en run.json (PID inicial 5956). Seed 1 creó
+el mundo en 3899 ms y pasó el control inicial sin problemas. Aún no acredita
+estabilidad ni cierre de perfil2b. Producción congelada durante los workers;
+esta actualización cambia solo docs.
+
+Revisar primero
 `sim-reports/full-profile-2y-economic-fixed/run.json` (SHA y PID), `run.log`,
 `run.exit` y reportes por seed. Si run.exit falta y el PID sigue activo, esperar:
 no lanzar otra corrida encima ni ejecutar suite pesada/LLM. Si terminó con
