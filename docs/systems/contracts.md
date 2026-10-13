@@ -150,6 +150,10 @@ type Guarantee =
 
 ## 6. Quién hace cumplir (ejecutores)
 
+**Slice dirigido de préstamo garantizado (2026-10-12):** `secured-loan.test.ts` ejecuta el scheduler real sin construir una `Life`: prestamista, deudor, fiador, comerciante y lote existen desde el evento inicial; principal y garantía salen de sus saldos declarados. El préstamo de 10 cobres al 20% por dos días garantiza 500 g de grano realmente disponibles, tasados en 2 cobres al precio de 4 cobres/kg, más un fiador del 50%. Una rama comprueba apertura y cuota; otra representa el gasto del desembolso pagando al comerciante en `physics`, y al vencer ejecuta el lote y los 6 cobres del fiador. El descuento de valoración propio del ejecutor deja pérdida de 5 cobres, abre subrogación y servidumbre con los valores constantes de `FULL_PROFILE.loanBondage` (jornal 2, mantenimiento 1, máximo 180 días, rescate habilitado). Cinco días efectivos saldan esa servidumbre. Los eventos de apertura/mora originan los contratos y sus consecuencias; todo conserva los 120 cobres y 500 g iniciales, con repetición exacta para igual seed.
+
+Esta cobertura es dirigida: `FULL_PROFILE` sin `loanSeeds` no abre préstamos garantizados; tampoco prueba todas las garantías, callbacks de jornal/abuso, contagio, workout o un rescate efectivo. `life.loans` permanece fuera del dominio económico en `act`: sus desembolsos, pagos, fiadores y rescates aún requieren prueba de coordinación cuando otros procesos disputan las mismas cuentas. El fixture evita ese cruce entre fases y no lo presenta como resuelto.
+
 **Libro personal de préstamos (2026-10-10, f3b1):** `LifeOptions.debtKnowledge`
 registra opt-in `life.debt_knowledge` en `perceive`. `DEBT_BOOK` conserva por parte
 los términos que conoció al participar en `credit.loaned` y las actualizaciones
