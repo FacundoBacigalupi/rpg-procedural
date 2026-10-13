@@ -70,6 +70,34 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
+**Retoma vigente (2026-10-13):** integrar PR #491 a `develop` y limpiar ramas
+extra por pedido explícito del usuario. Código del lote en `3082ecc`: el reporte
+de `npm run check` (`sim-reports/full-profile-final-check.log`) terminó con
+2599 tests en 376 archivos, typecheck/lint y cero violaciones de dependencias.
+La sesión del proceso expiró antes de recuperar su exit code nativo; el reporte
+no muestra fallos. Las 43 pruebas puntuales, typecheck y lint anteriores tienen
+exit 0 confirmado. Incluye préstamos/usura con saldos reservados, seis hojas
+económicas, conversación diferida persistible y fechas de confirmación, viaje
+físico y cobertura dirigida de sueño, familia y préstamo garantizado.
+
+**Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
+el código integrado, sin cambiar producción durante los workers:
+`npm.cmd run sim:batch -- --scenario full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile-2y-economic-fixed`.
+Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
+`004d4de` falló en seed 1 por FACE; seeds 2/3 completaron, pero no certifica el
+lote nuevo. Después: `perfil3` medición/optimización y `perfil4` activación
+validada. Fase 3 abierta; no cambiar defaults ni hashes dorados por trámite.
+Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
+tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
+no equivalen a reservas de cantidades fungibles. Rentas siguen bajo auditoría.
+LLM parser ya probado con Qwen3:14b: 54/54 válidos y 39/54 semánticos, sin
+regresiones comunes frente a #489 en esa corrida; narración semántica sigue
+pendiente. No repetir inferencias por cambios puramente económicos.
+Los agentes disponibles agotaron cuota; continuar desde estos docs si fallan.
+Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
+junctions/node_modules recursivamente. Las observaciones fechadas debajo son
+históricas y no reemplazan este estado.
+
 **Estado verificado más reciente (2026-10-12, noche):** rama
 `feat/f3-full-profile-review`, PR #491 en borrador. Integrados dominio serial
 entre procesos, validación causal previa, talleres/fiado/repago/rutina,
