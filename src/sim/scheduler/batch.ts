@@ -39,6 +39,8 @@ export class BatchTruth implements ReadonlyWorldTruth {
     return this.get(t, id) !== undefined;
   }
   ids(t: Table<unknown>): EntityRef[] {
+    // Sin filas propias en la tabla el lote ve lo mismo que la base, ya en orden.
+    if (!this.#rows.get(t.name)?.size) return this.#base.ids(t);
     const ids = new Set(this.#base.ids(t));
     for (const [id, value] of this.#rows.get(t.name) ?? []) {
       if (value === REMOVED) ids.delete(id);
