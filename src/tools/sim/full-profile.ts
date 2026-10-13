@@ -70,6 +70,8 @@ export interface FullProfileConfig {
   readonly frequency?: number;
   /** Cobertura dirigida de préstamos con garantía, promesas y contratación (`rescue-coverage.ts`). */
   readonly rescue?: boolean;
+  /** Cobertura dirigida de encuentros y comercio: oficios vistos, profecía contada, oferta del vecino (`commerce-coverage.ts`). */
+  readonly commerce?: boolean;
   /** Escenario `full-profile-focus`: suma el foco de salud y deuda (`full-profile-focus.ts`) a FULL_PROFILE. */
   readonly focus?: boolean;
 }
