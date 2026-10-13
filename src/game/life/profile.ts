@@ -17,6 +17,9 @@ import type { LifeOptions } from "./create.ts";
  * callbacks/Map de waterSources/loanBondage no entran al JSON.
  * loanBondage/contagion/workout quedan configurados, pero sin `loanSeeds` no se
  * crean préstamos de cosecha: medir el perfil no certifica cobertura de esos casos.
+ * Por lo mismo contagio/exposición/medicina/workout/sustancias/nutrición dan 0 llamadas
+ * efectivas aquí (sin deuda sembrada, portador, sanador, dosis ni comida registrada): el
+ * escenario `full-profile-focus` (tools/sim/full-profile-focus.ts) los siembra con seed fijo.
  */
 export const FULL_PROFILE = {
   famine: { staple: "grain" },

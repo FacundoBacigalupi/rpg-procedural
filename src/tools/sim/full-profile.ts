@@ -68,6 +68,8 @@ export interface FullProfileConfig {
   readonly days?: number;
   readonly checkEveryDays: number;
   readonly frequency?: number;
+  /** Escenario `full-profile-focus`: suma el foco de salud y deuda (`full-profile-focus.ts`) a FULL_PROFILE. */
+  readonly focus?: boolean;
 }
 
 /** Observación del tooling; el callback nunca entra al estado ni al setup de replay. */

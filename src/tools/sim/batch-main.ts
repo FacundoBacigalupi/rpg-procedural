@@ -29,12 +29,13 @@ const { values } = parseArgs({
   },
 });
 
-if (values.scenario === "full-profile") {
+if (values.scenario === "full-profile" || values.scenario === "full-profile-focus") {
   runFullProfileBatch(
     {
       seeds: parseSeeds(values.seeds),
       years: Number(values.years ?? 1),
       checkEveryDays: Number(values["check-days"] ?? 30),
+      ...(values.scenario === "full-profile-focus" ? { focus: true } : {}),
       ...(values.days === undefined ? {} : { days: Number(values.days) }),
       ...(values.frequency === undefined ? {} : { frequency: Number(values.frequency) }),
     },
