@@ -88,6 +88,7 @@ import { decideProcess } from "./decide.ts";
 import { deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
+import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
@@ -372,6 +373,8 @@ export interface LifeWorld {
   readonly borrowCraving?: BorrowCravingOptions;
   /** Opt-in (con `moldHints`): `take` sobre bienes que cree que tiene un conocido, con sanción por los robos que conoce (`life.decide`); apagado, sin candidata nueva. */
   readonly takeBelieved?: TakeBelievedOptions;
+  /** Opt-in: candidatas `move` hacia lugares de otro hex (`life.decide`); apagado, sin candidata nueva. */
+  readonly errands?: ErrandOptions;
   /** Opt-in: `speak` con acto declarado (saludar, preguntar) desde afecto y familiaridad (`life.decide`); apagado, sin candidata nueva. */
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `borrowCraving`): el pedido se ejecuta (`life.lend`): el prestamista decide, pasa una dosis por el libro mayor y queda un fiado; si no la tenía, el rumor `has` se debilita. Apagado, el pedido no hace nada. */
@@ -1498,6 +1501,7 @@ export function lifeWorld(
           ...(parts.gatherCraving ? { gatherCraving: parts.gatherCraving } : {}),
           ...(parts.borrowCraving ? { borrowCraving: parts.borrowCraving } : {}),
           ...(parts.takeBelieved ? { takeBelieved: parts.takeBelieved } : {}),
+          ...(parts.errands ? { errands: parts.errands } : {}),
           ...(parts.speakActs ? { speakActs: parts.speakActs } : {}),
           ...(parts.pawn?.open && parts.pawn.want ? { pawnWant: parts.pawn.want } : {}),
           ...(parts.foodSubstances ? { foodSubstances: parts.foodSubstances } : {}),

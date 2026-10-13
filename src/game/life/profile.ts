@@ -50,7 +50,7 @@ export const FULL_PROFILE = {
   cravingCues: true,
   cueLocal: true,
   npcMove: true,
-  sleepers: { near: 2, food: "grain" },
+  sleepers: { near: 0, food: "grain" },
   npcVerbs: ["gather", "trade", "give", "speak", "take", "move", "work"],
   npcTemplates: { work: "fieldwork" },
   npcJourneyDays: 30,
@@ -65,6 +65,8 @@ export const FULL_PROFILE = {
   births: true,
   speakActs: { minFamiliarity: 0.3, quietSeconds: 86400, weight: 0.4, chance: 0.9 },
   takeBelieved: { minConfidence: 0.5, perDeed: 0.1, maxPenalty: 0.8 },
+  // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
+  errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5 },
 } satisfies LifeOptions;
 
 export interface LifeDependencyIssue {

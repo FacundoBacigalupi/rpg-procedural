@@ -130,6 +130,7 @@ import {
 } from "./cue-local.ts";
 import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { type ErrandOptions, errandCandidates } from "./errands.ts";
 import {
   CRAFTSMAN_VERBS,
   MOLD_RUMORS,
@@ -297,6 +298,8 @@ export interface DecideOptions {
    * `KNOWN_DEEDS`) al tabú del bien. Apagado, no cambia nada.
    */
   readonly takeBelieved?: TakeBelievedOptions;
+  /** Opt-in: `move:<lugar>` entra como candidata hacia un lugar de otro hex (con `chance` por decisión). Apagado, nada cambia. */
+  readonly errands?: ErrandOptions;
   /**
    * Opt-in: `speak:<persona>` entra con acto declarado (saludar a un conocido sin trato reciente,
    * preguntar por alguien querido de quien no sabe dónde está), con ánimo desde afecto y
@@ -1125,6 +1128,22 @@ export function decideProcess(o: DecideOptions): ProcessDef {
             mood: m.mood,
           });
         }
+      }
+      // Recado (opt-in `errands`): ir a un lugar de otro hex; el azar sale de un fork propio.
+      if (o.errands) {
+        const rng = ctx.rng.fork("errand", me, now);
+        catalogCandidates.push(
+          ...errandCandidates(
+            truth.ids(PLACE).flatMap((id) => {
+              const p = truth.get(PLACE, id);
+              return p ? [{ id: id as string, kind: p.kind, hexes: p.hexes }] : [];
+            }),
+            here,
+            o.errands,
+            rng.float(),
+            rng.float(),
+          ),
+        );
       }
       // Hurto desde lo que cree (opt-in `takeBelieved`): bienes que oyó que tiene un conocido.
       if (o.takeBelieved && hintBook) {
