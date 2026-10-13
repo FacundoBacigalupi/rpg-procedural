@@ -4,7 +4,6 @@
 import type {
   AgentId,
   EventLog,
-  HolderRef,
   IdAllocator,
   Ledger,
   LedgerUnit,
@@ -600,6 +599,7 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
+  const economicBatch = (parts.npcVerbs?.length ?? 0) > 0;
   const altitudeOf = parts.realAltitude
     ? parts.travelAltitude
       ? travelAltitudeOf(parts.map, parts.travelAltitude, parts.spaces)
@@ -665,10 +665,10 @@ export function lifeWorld(
         actProcess({
           ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
           ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
-          ...(parts.npcVerbs && parts.npcVerbs.length > 0
+          ...(economicBatch
             ? {
                 // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
-                serialEconomicVerbs: ["trade", "give"] as const,
+                serialEconomicVerbs: ["trade", "give", "eat", "cook", "take", "gather"] as const,
                 economicBatch: true,
               }
             : {}),
@@ -846,9 +846,7 @@ export function lifeWorld(
             ]
           : []),
         converseProcess({
-          ...(parts.npcVerbs && parts.npcVerbs.length > 0
-            ? { projectSharedEffects: true, settleEconomy: true }
-            : {}),
+          ...(economicBatch ? { projectSharedEffects: true, settleEconomy: true } : {}),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
@@ -862,8 +860,8 @@ export function lifeWorld(
           year: parts.clock.year,
           ...(parts.form ? { form: parts.form } : {}),
         }),
-        ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? [converseProjectionProcess()] : []),
-        ...(parts.npcVerbs && parts.npcVerbs.length > 0
+        ...(economicBatch ? [converseProjectionProcess()] : []),
+        ...(economicBatch
           ? [conversationSettlementProcess([OPEN_DEALS.name, KNOWN_DEEDS.name, RUMORS.name])]
           : []),
         ...(parts.form
@@ -951,9 +949,7 @@ export function lifeWorld(
         }),
         arrearsProcess({ day: parts.clock.day, placeOf: placeOf(parts, village) }),
         borrowProcess({
-          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
-            ? { economicBatch: true }
-            : {}),
+          ...(economicBatch ? { economicBatch: true } : {}),
           foods: parts.foods,
           curves: parts.pressureCurves,
           player,
@@ -962,9 +958,7 @@ export function lifeWorld(
           ...(parts.usuryGossip ? { heedFraud: true } : {}),
         }),
         repayProcess({
-          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
-            ? { economicBatch: true }
-            : {}),
+          ...(economicBatch ? { economicBatch: true } : {}),
           foods: parts.foods,
           player,
           placeOf: placeOf(parts, village),
@@ -983,9 +977,7 @@ export function lifeWorld(
           trajectories: parts.trajectories ?? [],
         }),
         tradesProcess({
-          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
-            ? { economicBatch: true }
-            : {}),
+          ...(economicBatch ? { economicBatch: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
           recipes: parts.tradeRecipes ?? [],
@@ -1636,9 +1628,7 @@ export function lifeWorld(
           ? [goalDeathClosureProcess({ placeOf: placeOf(parts, village) })]
           : []),
         routineProcess({
-          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
-            ? { economicBatch: true }
-            : {}),
+          ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
           ...(parts.sleepers ? { sleepers: true } : {}),

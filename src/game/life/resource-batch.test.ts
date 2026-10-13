@@ -209,8 +209,8 @@ describe("servicio opt-in de stock público fungible", () => {
       if (verb === "take") {
         expect(
           w.log.all().find((e) => e.kind === "action.take" && e.actors[0] === makeId("agent", 2))
-            ?.data.failure,
-        ).toBe("no_means");
+            ?.data,
+        ).toMatchObject({ failure: "no_means" });
         expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.lastBelieved).toBe("failure");
       }
       w.scheduler.advanceTo(clock.day / 2 + 4 * 3600);

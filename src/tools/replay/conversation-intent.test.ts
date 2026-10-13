@@ -10,12 +10,13 @@ import {
   makeId,
   Rng,
 } from "../../core/index.ts";
-import { OPEN_DEALS, PENDING } from "../../game/life/converse.ts";
 import {
   CONVERSATION_INTENT,
   conversationSettlementProcess,
+  OPEN_DEALS,
+  PENDING,
   stageEconomicConversation,
-} from "../../game/life/converse-economy.ts";
+} from "../../game/index.ts";
 import { type LifeState, LifeStore, openSqlite } from "../../persistence/index.ts";
 import {
   deleteComponent,
