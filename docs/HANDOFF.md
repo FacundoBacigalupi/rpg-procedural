@@ -153,7 +153,7 @@ config/versiones/tick. Life.hash incluye verdad/eventos/ledger/IDs/cola, no
 versiones/RNG. Medir costo del hash fuera del tiempo de sim y cuidar memoria.
 Filtro candidato `perfil3-idle-scopes`: transit requiere NPC_JOURNEY o TRANSIT,
 encounters NPC_JOURNEY o NPC_MET; preservar living/ASLEEP, estados sin viaje,
-limpieza, reenumeración por fase y cola explícita. No implementado todavía.
+limpieza, reenumeración por fase y cola explícita. Implementado el 2026-10-13 (ver abajo).
 Agentes anteriores agotaron cuota; un agente posterior pudo completar la
 auditoría de rentas. Continuar desde estos docs si la cuota impide delegar.
 Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
@@ -398,3 +398,5 @@ Estado: la mayoría de los `[ ]` restantes de Fase 3 son cableados o calibració
 Notas: el CI de `main` tarda ~25 min (ubuntu) y los tests lentos tienen timeouts de 600 s; los agentes no corren la suite completa, solo el coordinador (una corrida a la vez, ~5-9 min); si el límite de sesión de la API corta a los agentes, retomarlos con SendMessage.
 
 **perfil3-hash-metric hecho (2026-10-13):** cada `full-profile-<seed>.json` trae `stateHash: { tick, total, parts, hashMs }` (`Life.hash()` al terminar, fuera del tiempo de sim; `parts` da `c:<tabla>`, `events`, `ledger`, `ids`, `scheduler`). Para comparar una optimización: mismo seed/setup/config/versiones y mismo `tick` (comparar `to`), y `total` idéntico; si difiere, mirar qué `parts` cambiaron. Sin hash por chequeo (costo/memoria). Siguiente: `perfil3-idle-scopes`.
+
+**perfil3-idle-scopes hecho (2026-10-13):** `ProcessDef.scopeGuard` (scheduler, al enumerar alcances de cada fase) en `life.transit`, `life.npc_encounters` y `life.pitch`; solo descarta alcances cuyo `run` devolvía `{}`. Perfil corto `sim:batch --scenario full-profile --seeds 1..2 --days 60 --check-days 30` antes/después: `stateHash.total` idéntico (seed 1 `59c64703d0ea…`, seed 2 `a62fb8f321338…`), igual `events` y `scheduler`; llamadas -33/-34 % (504 797 -> 337 494; 587 359 -> 388 371), tiempo ~0,5 % menos (ruido). Reportes locales en `sim-reports/idle-before` y `idle-after`. Siguiente: `perfil3-cadence` (`body.physiology`, `life.routine`/`life.consolidate`), comparando el mismo hash.

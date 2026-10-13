@@ -68,6 +68,10 @@ export function transitProcess(o: {
       ...(o.pauseRest ? [BODY_STATE.name] : []),
     ],
     writes: [LOCATION.name, TRANSIT.name],
+    // Sin viaje ni registro de caminata, `run` devuelve `{}`.
+    scopeGuard: (truth, scope) =>
+      truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
+      truth.get(TRANSIT, scope as AgentId) !== undefined,
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;

@@ -42,6 +42,10 @@ export function npcEncountersProcess(o: NpcEncountersOptions): ProcessDef {
     phase: "perceive",
     reads: [ENTITY.name, LOCATION.name, NPC_JOURNEY.name, NPC_MET.name],
     writes: [NPC_MET.name],
+    // Sin viaje ni libreta de cruces, `run` devuelve `{}`.
+    scopeGuard: (truth, scope) =>
+      truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
+      truth.get(NPC_MET, scope as AgentId) !== undefined,
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
