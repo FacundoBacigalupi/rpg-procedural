@@ -45,6 +45,8 @@ demográfica normal y solo leen el estado. Una fila de embarazo ya resuelta o un
 fila de un fallecido no cuenta como actividad. Estas fotos distinguen oportunidades
 presentes de eventos producidos; no prueban lo ocurrido entre ambas ni certifican
 por sí solas cobertura del sistema.
+Los errores de lectura de estas fotos se registran como `coverage-initial` o
+`coverage-final`; los cálculos posteriores de métricas usan la etapa `report`.
 
 **SQLite** (`node:sqlite`), un archivo por vida, en modo WAL.
 

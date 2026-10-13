@@ -6,50 +6,80 @@ import type { FullProfileProgress } from "./full-profile.ts";
 import { runFullProfileBatch, runFullProfileSeed } from "./full-profile-run.ts";
 
 vi.mock("node:child_process", () => ({ spawnSync: () => ({ status: null, signal: "SIGKILL" }) }));
-vi.mock("../../persistence/index.ts", () => ({ loadContentDir: () => ({ hash: "test-content" }) }));
+vi.mock("../../persistence/index.ts", () => ({
+  loadContentDir: () => ({
+    hash: "test-content",
+    get: (kind: { name: string }, id: string) => {
+      if (kind.name !== "demography" || id !== "human.preindustrial-village") {
+        throw new Error("unexpected coverage content query");
+      }
+      if (behavior.mode === "coverage-initial-error") throw new Error("coverage input crash");
+      return {
+        fertility: [
+          { fromAge: 15, rate: 0.2 },
+          { fromAge: 50, rate: 0 },
+        ],
+      };
+    },
+  }),
+}));
 const behavior = vi.hoisted(() => ({ mode: "create-error", checks: 0 }));
-vi.mock("../../sim/index.ts", () => ({
+vi.mock("../../sim/index.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../sim/index.ts")>()),
   checkInvariants: () => {
     behavior.checks++;
     if (behavior.mode === "initial-invariant-error") throw new Error("invariant crash");
     return [];
   },
 }));
-vi.mock("../../game/index.ts", () => ({
-  FULL_PROFILE: { births: true, conception: true },
-  GAME_CONTENT_KINDS: [],
-  LIFE_ENGINE: "test-engine",
-  assertLifeDependencies: () => {},
-  defaultGameSetup: () => ({ mode: "realistic" }),
-  optionsOf: (setup: { life: unknown }) => setup.life,
-  Life: {
-    create: () => {
-      if (behavior.mode === "create-error") throw new Error("construction conflict");
-      let now = 0;
-      return {
-        get now() {
-          return now;
-        },
-        world: {
-          clock: { day: 10, year: 100 },
-          truth: {},
-          ledger: {},
-          log: {
-            all: () => {
-              if (behavior.mode === "report-error") throw new Error("report crash");
-              return [];
+vi.mock("../../game/index.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../game/index.ts")>();
+  const { WorldTruth } =
+    await vi.importActual<typeof import("../../sim/index.ts")>("../../sim/index.ts");
+  return {
+    ...actual,
+    FULL_PROFILE: { births: true, conception: true },
+    GAME_CONTENT_KINDS: [],
+    LIFE_ENGINE: "test-engine",
+    assertLifeDependencies: () => {},
+    defaultGameSetup: () => ({ mode: "realistic" }),
+    optionsOf: (setup: { life: unknown }) => setup.life,
+    Life: {
+      create: () => {
+        if (behavior.mode === "create-error") throw new Error("construction conflict");
+        let now = 0;
+        const truth = new WorldTruth();
+        const ids = truth.ids.bind(truth);
+        vi.spyOn(truth, "ids").mockImplementation((table) => {
+          if (behavior.mode === "coverage-final-error" && now > 0)
+            throw new Error("coverage state crash");
+          return ids(table);
+        });
+        return {
+          get now() {
+            return now;
+          },
+          world: {
+            clock: { day: 10, year: 100 },
+            truth,
+            ledger: {},
+            log: {
+              all: () => {
+                if (behavior.mode === "report-error") throw new Error("report crash");
+                return [];
+              },
             },
           },
-        },
-        advanceTo: (tick: number) => {
-          now = tick;
-          if (behavior.mode === "advance-error" && tick >= 20)
-            throw new Error("phase failed after tick moved");
-        },
-      };
+          advanceTo: (tick: number) => {
+            now = tick;
+            if (behavior.mode === "advance-error" && tick >= 20)
+              throw new Error("phase failed after tick moved");
+          },
+        };
+      },
     },
-  },
-}));
+  };
+});
 
 describe("full-profile: fallos de worker sin crear una Life", () => {
   const folders: string[] = [];
@@ -58,6 +88,7 @@ describe("full-profile: fallos de worker sin crear una Life", () => {
     behavior.checks = 0;
   });
   afterEach(() => {
+    vi.restoreAllMocks();
     process.exitCode = 0;
     for (const folder of folders.splice(0)) {
       for (const name of ["full-profile-1.json", "full-profile-batch.json"])
@@ -109,6 +140,8 @@ describe("full-profile: fallos de worker sin crear una Life", () => {
     expect(report.performance.completedYears).toBe(0.1);
     expect(report.performance.observedYears).toBe(0.2);
     expect(report.performance.msPerWorldYear).toBe(report.performance.completedSimulationMs / 0.1);
+    expect(report.coverage.initial).toMatchObject({ tick: 0, livingPeople: 0, fertileCouples: 0 });
+    expect(report.coverage.final).toMatchObject({ tick: 20, livingPeople: 0, fertileCouples: 0 });
     expect(report.reproduction).toMatchObject({ observedTick: 20, completeThrough: 10 });
   });
 
@@ -117,5 +150,12 @@ describe("full-profile: fallos de worker sin crear una Life", () => {
     expect(runFullProfileSeed(1, config).failure).toMatchObject({ stage: "initial-invariants" });
     behavior.mode = "report-error";
     expect(runFullProfileSeed(1, config).failure).toMatchObject({ stage: "report" });
+  });
+
+  it("las consultas de cobertura registran su etapa inicial o final", () => {
+    behavior.mode = "coverage-initial-error";
+    expect(runFullProfileSeed(1, config).failure).toMatchObject({ stage: "coverage-initial" });
+    behavior.mode = "coverage-final-error";
+    expect(runFullProfileSeed(1, config).failure).toMatchObject({ stage: "coverage-final" });
   });
 });

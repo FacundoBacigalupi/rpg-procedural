@@ -91,6 +91,7 @@ function measureFullProfileSeed(
   processes.clear();
   const from = life.now;
   const world = life.world;
+  setStage?.("coverage-initial");
   const demography = content.get(DEMOGRAPHY, "human.preindustrial-village");
   if (!demography) throw new Error("sin demografía human.preindustrial-village");
   const coverageInitial = profileCoverage(world.truth, from, world.clock, demography.fertility);
@@ -155,6 +156,8 @@ function measureFullProfileSeed(
   }
   const simulationMs = performance.now() - simulationStarted;
   const completedYears = (completeThrough - from) / world.clock.year;
+  setStage?.("coverage-final");
+  const coverageFinal = profileCoverage(world.truth, life.now, world.clock, demography.fertility);
   setStage?.("report");
   return {
     scenario: "full-profile",
@@ -173,7 +176,7 @@ function measureFullProfileSeed(
     metrics: profileDemography(world.log.all(), from),
     coverage: {
       initial: coverageInitial,
-      final: profileCoverage(world.truth, life.now, world.clock, demography.fertility),
+      final: coverageFinal,
     },
     performance: {
       creationMs,
