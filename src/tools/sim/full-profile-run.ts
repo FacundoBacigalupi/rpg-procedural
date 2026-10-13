@@ -14,6 +14,7 @@ import {
 } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { checkInvariants, DEMOGRAPHY } from "../../sim/index.ts";
+import { commerceLifeOptions, runCommerceTurns } from "./commerce-coverage.ts";
 import {
   type FullProfileConfig,
   type FullProfileProgress,
@@ -89,9 +90,10 @@ function measureFullProfileSeed(
         }),
       }) as unknown as typeof FULL_PROFILE)
     : FULL_PROFILE;
+  const withRescue = rescueSeeds ? { ...baseLife, loanSeeds: rescueSeeds } : baseLife;
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: rescueSeeds ? { ...baseLife, loanSeeds: rescueSeeds } : baseLife,
+    life: config.commerce === true ? commerceLifeOptions(withRescue) : withRescue,
     ...frequencyOnly,
   };
   const processes = new Map<string, ProcessMeasurement>();
@@ -130,7 +132,10 @@ function measureFullProfileSeed(
   const target = from + Math.round(duration);
   const step = config.checkEveryDays * world.clock.day;
   // Turnos dirigidos del personaje (contratar, prometer): planes legales, quedan en la reproducción.
-  const rescuePlans = config.rescue === true ? runRescueTurns(life) : [];
+  const rescuePlans = [
+    ...(config.rescue === true ? runRescueTurns(life) : []),
+    ...(config.commerce === true && life.alive ? runCommerceTurns(life) : []),
+  ];
   if (!Number.isSafeInteger(target) || target <= from || !Number.isSafeInteger(step))
     throw new RangeError("duración o cadencia fuera del rango de ticks");
   let checks = 0;

@@ -50,6 +50,11 @@ export interface TradeViewOptions {
    * ese maestro (`apprenticeOf`). Apagado: `people` no se toca.
    */
   readonly people?: boolean;
+  /**
+   * Opt-in: sin `assignments` ni `chosen`, el oficio de cada hogar sale del seed como en `tradesProcess`
+   * (`tradeAssignments` con `seed`). Apagado, la vista no ve ningún oficio salvo los explícitos.
+   */
+  readonly seed?: number;
 }
 
 /**
@@ -128,7 +133,12 @@ export function tradeViewProcess(o: TradeViewOptions): ProcessDef {
       const tradeOf = new Map(
         tradeAssignments(
           truth,
-          { assignments: o.assignments, recipes: o.recipes, chosen: o.chosen === true },
+          {
+            assignments: o.assignments,
+            recipes: o.recipes,
+            chosen: o.chosen === true,
+            ...(o.seed === undefined ? {} : { seed: o.seed }),
+          },
           adults,
         ).map((a) => [a.household, a.recipe]),
       );
