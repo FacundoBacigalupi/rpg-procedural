@@ -70,8 +70,17 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**Retoma vigente (2026-10-13):** integrar PR #491 a `develop` y limpiar ramas
-extra por pedido explícito del usuario. Código del lote en `3082ecc`: el reporte
+**Retoma vigente (2026-10-13):** PR #491 squash-mergeada a `develop` en
+`c1bea73`; ramas extras locales/remotas retiradas por pedido del usuario.
+Solo conservar `main` y `develop` al completar el PR de este traspaso.
+Worktrees antiguos conservados detached: no se borraron archivos ni junctions.
+Respaldo de commits: `sim-reports/branches-before-cleanup-2026-10-13.bundle`;
+WIP de cloud-audit/hire: `sim-reports/cleanup-backup-2026-10-13/`.
+Ese WIP no es código nuevo verificado: no integrarlo automáticamente.
+PR #490 cerrada y rama retirada: dependency-cruiser declara incompatible
+TypeScript 7 y advierte que omite fuentes/dependencias. Mantener toolchain
+actual hasta resolver el ítem `toolchain-typescript7`.
+Código del lote en `3082ecc`: el reporte
 de `npm run check` (`sim-reports/full-profile-final-check.log`) terminó con
 2599 tests en 376 archivos, typecheck/lint y cero violaciones de dependencias.
 La sesión del proceso expiró antes de recuperar su exit code nativo; el reporte
