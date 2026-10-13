@@ -12,8 +12,8 @@ import {
 } from "../../core/index.ts";
 import {
   CONVERSATION_INTENT,
-  converseProjectionProcess,
   conversationSettlementProcess,
+  converseProjectionProcess,
   OPEN_DEALS,
   PENDING,
   stageEconomicConversation,

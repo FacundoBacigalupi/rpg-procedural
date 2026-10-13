@@ -1025,7 +1025,7 @@ export function lifeWorld(
           : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
-          ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { economicBatch: true } : {}),
+          ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,
           goods: parts.goods,
