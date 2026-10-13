@@ -74,9 +74,9 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 `feat/f3-full-profile-review`, PR #491 en borrador. Integrados dominio serial
 entre procesos, validación causal previa, talleres/fiado/repago/rutina,
 proyección única de FACE/HEARD, llegada física y pausa del viaje, snapshot de
-cobertura y núcleo puro de liquidación. `npm run check` sobre `5387873` está
-en curso (`sim-reports/full-profile-integrated-check.log`): typecheck/lint
-pasaron; la suite terminó con 2554 aprobadas y dos fallos en mocks del worker,
+cobertura y núcleo puro de liquidación. `npm run check` sobre `5387873`
+terminó (`sim-reports/full-profile-integrated-check.log`): typecheck/lint
+pasaron; la suite tuvo 2554 aprobadas y dos fallos en mocks del worker,
 que no incluían las nuevas lecturas de cobertura. Fix `aef8644` preparado con
 18 pruebas puras, todavía sin integrar en esta observación. El intento anterior se frenó por un
 import indebido de persistence en un test, corregido en `bc658d1`; no se cuenta
@@ -105,6 +105,13 @@ el de cobertura es `codex-coverage-audit`, el antiguo audit conserva WIP de
 speech/schema ya integrado. No borrar worktrees ni junctions automáticamente.
 Los límites de uso de agentes se reintentaron y pudieron retomar; el coordinador
 continúa revisando y corre una sola prueba amplia por vez.
+Verificación posterior aprobada: `npm run check` sobre `8c72653`, 2585 tests en
+374 archivos, typecheck/lint y exit 0, log
+`sim-reports/full-profile-confirmation-check.log`. Incluye los fixes del worker,
+economía conversacional/presencia, seis consumidores, sleep y family dirigidos.
+Lote siguiente preparado: cobertura garantizada `94cd137`, préstamos en dominio
+`fbdf0ee`, callback de usura con vista actual en trabajo, timestamps de respuesta
+`c09abb4`. No atribuir el check de `8c72653` a esos commits aún no integrados.
 
 **Estado verificado (2026-10-12, continuación):** PR #491 en borrador y rama
 `feat/f3-full-profile-review`. `npm run check` anterior pasó: 2469 tests en 358
