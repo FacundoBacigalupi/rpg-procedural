@@ -34,6 +34,7 @@ function rescueSeedsFor(seed: number, content: ReturnType<typeof loadContentDir>
   if (!seeds) throw new Error("rescue: no hay tres hogares con grano para sembrar el préstamo");
   return seeds;
 }
+import { healthDebtFocus } from "./full-profile-focus.ts";
 
 export function runFullProfileSeed(
   seed: number,
@@ -78,10 +79,20 @@ function measureFullProfileSeed(
   validateFullProfileConfig(config);
   const content = loadContentDir("content", GAME_CONTENT_KINDS);
   const rescueSeeds = config.rescue === true ? rescueSeedsFor(seed, content) : undefined;
+  const frequencyOnly = config.frequency === undefined ? {} : { frequency: config.frequency };
+  const baseLife = config.focus
+    ? (healthDebtFocus(seed, content, {
+        ...optionsOf({
+          game: defaultGameSetup("realistic"),
+          life: FULL_PROFILE,
+          ...frequencyOnly,
+        }),
+      }) as unknown as typeof FULL_PROFILE)
+    : FULL_PROFILE;
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: rescueSeeds ? { ...FULL_PROFILE, loanSeeds: rescueSeeds } : FULL_PROFILE,
-    ...(config.frequency === undefined ? {} : { frequency: config.frequency }),
+    life: rescueSeeds ? { ...baseLife, loanSeeds: rescueSeeds } : baseLife,
+    ...frequencyOnly,
   };
   const processes = new Map<string, ProcessMeasurement>();
   assertLifeDependencies(optionsOf(setup));

@@ -70,6 +70,8 @@ export interface FullProfileConfig {
   readonly frequency?: number;
   /** Cobertura dirigida de préstamos con garantía, promesas y contratación (`rescue-coverage.ts`). */
   readonly rescue?: boolean;
+  /** Escenario `full-profile-focus`: suma el foco de salud y deuda (`full-profile-focus.ts`) a FULL_PROFILE. */
+  readonly focus?: boolean;
 }
 
 /** Observación del tooling; el callback nunca entra al estado ni al setup de replay. */

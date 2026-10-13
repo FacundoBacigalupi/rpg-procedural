@@ -278,6 +278,14 @@ export interface LifeOptions {
   readonly creditHeed?: LifeParts["creditHeed"];
   /** Opt-in: la cultura de la aldea suma `beliefs.contagion` y `kinship.head` (los lee `patientDecides.cultureTraits`); apagado por defecto (cambia el hash de la vida). */
   readonly healthCulture?: boolean;
+  /** Opt-in: fuentes explícitas de patógenos con portador (`LifeParts.pathogenSeeds`); sin ellas `life.exposure` no tiene foco. */
+  readonly pathogenSeeds?: LifeParts["pathogenSeeds"];
+  /** Opt-in: sanadores explícitos que diagnostican y tratan (`LifeParts.healers`); sin ellos `life.medicine` no hace nada. */
+  readonly healers?: LifeParts["healers"];
+  /** Opt-in: dosis explícitas de sustancias (`LifeParts.substanceDoses`). */
+  readonly substanceDoses?: LifeParts["substanceDoses"];
+  /** Opt-in: lo comido de verdad alimenta las reservas de nutrientes (`LifeParts.eatenNutrition`). */
+  readonly eatenNutrition?: boolean;
   /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
   readonly residue?: LifeParts["residue"];
   /** Opt-in: sustancias consumibles (`LifeParts.consumables`); los paneles de la sesión leen de acá los bienes de las señales por objeto. */
@@ -336,6 +344,8 @@ export interface LifeOptions {
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
   readonly takeBelieved?: TakeBelievedOptions;
+  /** Opt-in: candidatas `move` hacia lugares de otro hex (`LifeParts.errands`); apagado. */
+  readonly errands?: LifeParts["errands"];
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -455,8 +465,13 @@ export function optInParts(
   | "births"
   | "speakActs"
   | "takeBelieved"
+  | "errands"
   | "creditHeed"
   | "residue"
+  | "pathogenSeeds"
+  | "healers"
+  | "substanceDoses"
+  | "eatenNutrition"
   | "consumables"
   | "buyCraving"
   | "gatherCraving"
@@ -544,7 +559,12 @@ export function optInParts(
       : {}),
     ...(options.speakActs ? { speakActs: options.speakActs } : {}),
     ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
+    ...(options.errands ? { errands: options.errands } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
+    ...(options.pathogenSeeds ? { pathogenSeeds: options.pathogenSeeds } : {}),
+    ...(options.healers ? { healers: options.healers } : {}),
+    ...(options.substanceDoses ? { substanceDoses: options.substanceDoses } : {}),
+    ...(options.eatenNutrition ? { eatenNutrition: true } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),
     ...(options.gatherCraving ? { gatherCraving: options.gatherCraving } : {}),

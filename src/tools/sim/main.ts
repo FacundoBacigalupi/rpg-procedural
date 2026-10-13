@@ -31,13 +31,14 @@ const { values } = parseArgs({
 });
 
 const seed = values.seed === undefined ? randomInt(0, 0xffffffff) : Number(values.seed);
-if (values.scenario === "full-profile") {
+if (values.scenario === "full-profile" || values.scenario === "full-profile-focus") {
   runFullProfileBatch(
     {
       seeds: values.seeds === undefined ? [seed] : parseSeeds(values.seeds),
       years: Number(values.years ?? 1),
       checkEveryDays: Number(values["check-days"] ?? 30),
       ...(values.rescue === true ? { rescue: true } : {}),
+      ...(values.scenario === "full-profile-focus" ? { focus: true } : {}),
       ...(values.days === undefined ? {} : { days: Number(values.days) }),
       ...(values.frequency === undefined ? {} : { frequency: Number(values.frequency) }),
     },
