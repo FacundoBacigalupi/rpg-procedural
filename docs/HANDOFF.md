@@ -120,6 +120,13 @@ conserva perceive y tiene lectura ENTITY no declarada. Pendiente explícito
 LLM parser ya probado con Qwen3:14b: 54/54 válidos y 39/54 semánticos, sin
 regresiones comunes frente a #489 en esa corrida; narración semántica sigue
 pendiente. No repetir inferencias por cambios puramente económicos.
+Preparación de perfil3 por lectura: FULL_PROFILE no guarda hash final; agregar
+`perfil3-hash-metric` antes de comparar optimizaciones, junto a setup/seed/
+config/versiones/tick. Life.hash incluye verdad/eventos/ledger/IDs/cola, no
+versiones/RNG. Medir costo del hash fuera del tiempo de sim y cuidar memoria.
+Filtro candidato `perfil3-idle-scopes`: transit requiere NPC_JOURNEY o TRANSIT,
+encounters NPC_JOURNEY o NPC_MET; preservar living/ASLEEP, estados sin viaje,
+limpieza, reenumeración por fase y cola explícita. No implementado todavía.
 Agentes anteriores agotaron cuota; un agente posterior pudo completar la
 auditoría de rentas. Continuar desde estos docs si la cuota impide delegar.
 Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
