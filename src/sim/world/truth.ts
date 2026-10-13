@@ -35,6 +35,11 @@ export interface ReadonlyWorldTruth {
   ids(table: Table<unknown>): EntityRef[];
   /** Nombres de las tablas con algún componente, ordenados. */
   tables(): string[];
+  /**
+   * Contador de escrituras, si la verdad lo lleva: igual valor implica que nada cambió entre dos
+   * lecturas (permite cachear derivados puros). Las vistas sin contador lo omiten.
+   */
+  readonly version?: number;
 }
 
 /**
@@ -43,6 +48,13 @@ export interface ReadonlyWorldTruth {
  */
 export class WorldTruth implements ReadonlyWorldTruth {
   readonly #tables = new Map<string, Map<EntityRef, unknown>>();
+  #version = 0;
+  /** Ids ordenados por tabla; se invalida al agregarse o quitarse una fila de esa tabla. */
+  readonly #sorted = new Map<string, EntityRef[]>();
+
+  get version(): number {
+    return this.#version;
+  }
 
   get<T>(table: Table<T>, id: EntityRef): Readonly<T> | undefined {
     return this.#tables.get(table.name)?.get(id) as T | undefined;
@@ -54,7 +66,13 @@ export class WorldTruth implements ReadonlyWorldTruth {
 
   ids(table: Table<unknown>): EntityRef[] {
     const rows = this.#tables.get(table.name);
-    return rows ? [...rows.keys()].sort(compareIds) : [];
+    if (!rows) return [];
+    let sorted = this.#sorted.get(table.name);
+    if (sorted === undefined) {
+      sorted = [...rows.keys()].sort(compareIds);
+      this.#sorted.set(table.name, sorted);
+    }
+    return sorted.slice();
   }
 
   tables(): string[] {
@@ -75,17 +93,21 @@ export class WorldTruth implements ReadonlyWorldTruth {
   }
 
   setRaw(tableName: string, id: EntityRef, value: unknown): void {
+    this.#version++;
     let rows = this.#tables.get(tableName);
     if (!rows) {
       rows = new Map();
       this.#tables.set(tableName, rows);
     }
+    if (!rows.has(id)) this.#sorted.delete(tableName);
     rows.set(id, value);
   }
 
   deleteRaw(tableName: string, id: EntityRef): void {
     const rows = this.#tables.get(tableName);
     if (!rows) return;
+    this.#version++;
+    this.#sorted.delete(tableName);
     rows.delete(id);
     if (rows.size === 0) this.#tables.delete(tableName);
   }

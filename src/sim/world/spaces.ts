@@ -134,6 +134,40 @@ export function spaceReach(
   to: SpaceKey,
   channel: SpaceChannel,
 ): SpaceReach {
+  // Puro sobre los arreglos del grafo (inmutables por contrato): se memoiza por su identidad.
+  const spaces = graph.spaces;
+  const edges = graph.edges;
+  let memo = reachMemo.get(spaces)?.get(edges);
+  if (memo === undefined) {
+    memo = new Map();
+    let byEdges = reachMemo.get(spaces);
+    if (byEdges === undefined) {
+      byEdges = new WeakMap();
+      reachMemo.set(spaces, byEdges);
+    }
+    byEdges.set(edges, memo);
+  }
+  const memoKey = `${channel}|${from}|${to}`;
+  const hit = memo.get(memoKey);
+  if (hit !== undefined) return hit;
+  const out = computeReach({ spaces, edges }, from, to, channel);
+  if (memo.size >= MEMO_LIMIT) memo.clear();
+  memo.set(memoKey, out);
+  return out;
+}
+
+const MEMO_LIMIT = 4096;
+const reachMemo = new WeakMap<
+  readonly SpaceNode[],
+  WeakMap<readonly SpaceEdge[], Map<string, SpaceReach>>
+>();
+
+function computeReach(
+  graph: SpaceGraph,
+  from: SpaceKey,
+  to: SpaceKey,
+  channel: SpaceChannel,
+): SpaceReach {
   const byKey = spaceIndex(graph);
   const start = byKey.get(from);
   const end = byKey.get(to);
@@ -205,18 +239,37 @@ function vegetation(clear: number, meters: number): number {
   return out * (1 - (1 - clear) * (left / VEGETATION_METERS));
 }
 
+const indexMemo = new WeakMap<readonly SpaceNode[], Map<SpaceKey, SpaceNode>>();
 function spaceIndex(graph: SpaceGraph): Map<SpaceKey, SpaceNode> {
-  return new Map(graph.spaces.map((s) => [s.key, s]));
+  const spaces = graph.spaces;
+  let out = indexMemo.get(spaces);
+  if (out === undefined) {
+    out = new Map(spaces.map((s) => [s.key, s]));
+    indexMemo.set(spaces, out);
+  }
+  return out;
 }
 
-function adjacency(graph: SpaceGraph): Map<SpaceKey, { key: SpaceKey; barrier: Barrier }[]> {
+type Neighbors = Map<SpaceKey, { key: SpaceKey; barrier: Barrier }[]>;
+const adjacencyMemo = new WeakMap<readonly SpaceEdge[], Neighbors>();
+function adjacency(graph: SpaceGraph): Neighbors {
+  const edges = graph.edges;
+  let out = adjacencyMemo.get(edges);
+  if (out === undefined) {
+    out = buildAdjacency(edges);
+    adjacencyMemo.set(edges, out);
+  }
+  return out;
+}
+
+function buildAdjacency(edgeList: readonly SpaceEdge[]): Neighbors {
   const out = new Map<SpaceKey, { key: SpaceKey; barrier: Barrier }[]>();
   const push = (from: SpaceKey, key: SpaceKey, barrier: Barrier) => {
     const list = out.get(from) ?? [];
     list.push({ key, barrier });
     out.set(from, list);
   };
-  for (const e of graph.edges) {
+  for (const e of edgeList) {
     push(e.a, e.b, e.barrier);
     push(e.b, e.a, e.barrier);
   }
@@ -229,6 +282,37 @@ function adjacency(graph: SpaceGraph): Map<SpaceKey, { key: SpaceKey; barrier: B
  * aire libre de ese hex. Es lo que usa la percepción cuando alguien está en un hex sin espacio.
  */
 export function withOpenSpaces(
+  graph: SpaceGraph,
+  hexes: readonly { readonly hex: number; readonly forest: boolean }[],
+): SpaceGraph {
+  // Mismos arreglos y mismos hexes dan el mismo grafo: se reutiliza (y con él sus índices).
+  const spaces = graph.spaces;
+  const edges = graph.edges;
+  let byEdges = openMemo.get(spaces);
+  if (byEdges === undefined) {
+    byEdges = new WeakMap();
+    openMemo.set(spaces, byEdges);
+  }
+  let byHexes = byEdges.get(edges);
+  if (byHexes === undefined) {
+    byHexes = new Map();
+    byEdges.set(edges, byHexes);
+  }
+  const hexKey = hexes.map((h) => `${h.hex}:${h.forest ? 1 : 0}`).join(",");
+  const hit = byHexes.get(hexKey);
+  if (hit !== undefined) return hit;
+  const out = buildOpenSpaces({ spaces, edges }, hexes);
+  if (byHexes.size >= MEMO_LIMIT) byHexes.clear();
+  byHexes.set(hexKey, out);
+  return out;
+}
+
+const openMemo = new WeakMap<
+  readonly SpaceNode[],
+  WeakMap<readonly SpaceEdge[], Map<string, SpaceGraph>>
+>();
+
+function buildOpenSpaces(
   graph: SpaceGraph,
   hexes: readonly { readonly hex: number; readonly forest: boolean }[],
 ): SpaceGraph {

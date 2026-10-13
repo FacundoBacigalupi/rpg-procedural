@@ -103,6 +103,24 @@ export function hexPath(map: LocalMap, from: number, to: number): number[] {
 /** El hex de `hexes` más cercano a `from` en pasos (el de menor índice si empatan). */
 export function nearestHex(map: LocalMap, from: number, hexes: readonly number[]): number {
   if (hexes.includes(from)) return from;
+  // El mapa local es inmutable: el resultado solo depende de (from, hexes).
+  let memo = nearestMemo.get(map);
+  if (memo === undefined) {
+    memo = new Map();
+    nearestMemo.set(map, memo);
+  }
+  const key = `${from}|${hexes.join(",")}`;
+  const hit = memo.get(key);
+  if (hit !== undefined) return hit;
+  const out = nearestHexUncached(map, from, hexes);
+  if (memo.size >= 20_000) memo.clear();
+  memo.set(key, out);
+  return out;
+}
+
+const nearestMemo = new WeakMap<LocalMap, Map<string, number>>();
+
+function nearestHexUncached(map: LocalMap, from: number, hexes: readonly number[]): number {
   let best = hexes[0] as number;
   let bestLen = Number.POSITIVE_INFINITY;
   for (const h of [...hexes].sort((a, b) => a - b)) {

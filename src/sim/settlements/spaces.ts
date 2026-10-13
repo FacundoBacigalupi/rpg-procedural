@@ -67,7 +67,11 @@ export function liveSettlementSpaces(
 ): SpaceGraph {
   let sig: string | undefined;
   let graph: SpaceGraph | undefined;
+  let seen: number | undefined;
   const current = (): SpaceGraph => {
+    // Sin escrituras desde la última vez (contador de la verdad) la firma no puede haber cambiado.
+    const version = truth.version;
+    if (graph !== undefined && version !== undefined && version === seen) return graph;
     const parts: string[] = [];
     for (const id of truth.ids(BUILDING).sort(compareStrings)) {
       const b = truth.get(BUILDING, id);
@@ -80,6 +84,7 @@ export function liveSettlementSpaces(
       graph = settlementSpaces(truth, hex, fallbackHouseholds, materials);
       sig = now;
     }
+    seen = version;
     return graph;
   };
   return {

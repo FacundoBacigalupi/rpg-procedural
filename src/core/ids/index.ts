@@ -92,8 +92,20 @@ export interface ParsedId<K extends EntityKind = EntityKind> {
   readonly n: number;
 }
 
+const PARSE_CACHE_LIMIT = 200_000;
+const parseCache = new Map<string, ParsedId | undefined>();
+
 /** Lee un id con forma canónica (`tipo:n`, sin ceros a la izquierda). Devuelve undefined si no lo es. */
 export function parseId(value: string): ParsedId | undefined {
+  // Puro y pedido millones de veces (ordenar ids): se memoiza; los resultados no se mutan.
+  if (parseCache.has(value)) return parseCache.get(value);
+  const out = parseIdUncached(value);
+  if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
+  parseCache.set(value, out);
+  return out;
+}
+
+function parseIdUncached(value: string): ParsedId | undefined {
   const colon = value.indexOf(":");
   if (colon <= 0) return undefined;
   const kind = value.slice(0, colon);
