@@ -51,7 +51,7 @@ const content = loadContent(
 );
 const actions = content
   .all(ACTIONS)
-  .map((a) => (a.id === "take" || a.id === "gather" ? { ...a, ease: 100 } : a));
+  .map((a) => (["take", "gather", "consult"].includes(a.id) ? { ...a, ease: 100 } : a));
 const catalog = new ActionCatalog(actions),
   skills = new SkillCatalog(content.all(SKILLS), actions);
 const good = ledgerUnit("good:gleanings");
@@ -82,7 +82,9 @@ function world(
   explicitFrom = false,
   single = false,
   caught = false,
+  consultation = false,
 ) {
+  const stockUnit = consultation ? ledgerUnit("coin:copper") : good;
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -98,7 +100,7 @@ function world(
   });
   const body = content.all(BODY_PLANS)[0];
   if (!body) throw new Error("sin cuerpo");
-  for (const n of explicitFrom ? [1, 2, 3] : [1, 2]) {
+  for (const n of explicitFrom || consultation ? [1, 2, 3] : [1, 2]) {
     const actor = makeId("agent", n);
     truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
     truth.setRaw(PERSON.name, actor, {
@@ -121,11 +123,21 @@ function world(
         source: "utility",
         root: {
           kind: "do",
-          verb,
-          args: [
-            { role: "what", text: "espigueo" },
-            ...(explicitFrom ? [{ role: "from", entity: makeId("agent", 3) }] : []),
-          ],
+          verb: consultation && n === 2 ? "consult" : verb,
+          args: consultation
+            ? n === 2
+              ? [
+                  { role: "with", entity: makeId("agent", 3) },
+                  { role: "about", text: "mi futuro" },
+                ]
+              : [
+                  { role: "what", text: "copper" },
+                  { role: "from", entity: makeId("agent", 2) },
+                ]
+            : [
+                { role: "what", text: "espigueo" },
+                ...(explicitFrom ? [{ role: "from", entity: makeId("agent", 3) }] : []),
+              ],
           manner: [],
         },
         manner: [],
@@ -134,17 +146,29 @@ function world(
     });
   }
   truth.setRaw(PLACE.name, field, { name: "campo", kind: "fields", hexes: [0] });
-  const ledger = new Ledger({ externals: { seed: [good] } });
+  const ledger = new Ledger({ externals: { seed: [stockUnit, good] } });
   ledger.post({
     tick: 0,
     eventId: makeId("event", 1),
     transfers: [
       {
         from: externalAccount("seed"),
-        to: holderAccount(explicitFrom ? makeId("agent", 3) : place),
-        unit: good,
-        amount: 100,
+        to: holderAccount(
+          consultation ? makeId("agent", 2) : explicitFrom ? makeId("agent", 3) : place,
+        ),
+        unit: stockUnit,
+        amount: consultation ? 1 : 100,
       },
+      ...(consultation
+        ? [
+            {
+              from: externalAccount("seed"),
+              to: holderAccount(makeId("agent", 2)),
+              unit: good,
+              amount: 1,
+            },
+          ]
+        : []),
     ],
   });
   const scheduler = new Scheduler({
@@ -159,7 +183,7 @@ function world(
       actProcess({
         economicBatch: true,
         projectWatchExposures: true,
-        serialEconomicVerbs: batch ? ["take", "gather"] : ["trade", "give"],
+        serialEconomicVerbs: batch ? ["take", "gather", "consult"] : ["trade", "give"],
         map,
         spaces: { spaces: [], edges: [] },
         catalog: caught
@@ -181,7 +205,7 @@ function world(
       watchingProjectionProcess({ catalog: skills, clock }),
     ],
   });
-  for (const n of single ? [1] : reverse ? [2, 1] : [1, 2])
+  for (const n of single ? [consultation ? 2 : 1] : reverse ? [2, 1] : [1, 2])
     scheduler.schedule({
       at: clock.day / 2,
       phase: "act",
@@ -193,6 +217,50 @@ function world(
 }
 
 describe("servicio opt-in de stock público fungible", () => {
+  it("consult sin servicio intenta pagar una moneda que otro plan tomó", () => {
+    const w = world("take", false, false, false, false, false, true);
+    expect(() => w.scheduler.advanceTo(clock.day / 2)).toThrow(
+      /agent:2 no tiene 1 de coin:copper \(tiene 0;/,
+    );
+  });
+  it("consult reserva el bolsillo restante y conserva ambas agendas", () => {
+    const w = world("take", true, false, false, false, false, true);
+    w.scheduler.advanceTo(clock.day / 2);
+    const coin = ledgerUnit("coin:copper");
+    expect(w.log.all().find((e) => e.kind === "action.take")?.data).toMatchObject({
+      effect: { got: [{ amount: 1 }] },
+    });
+    expect(w.ledger.balance(holderAccount(makeId("agent", 1)), coin)).toBe(1);
+    expect(w.ledger.balance(holderAccount(makeId("agent", 2)), coin)).toBe(0);
+    expect(w.ledger.balance(holderAccount(makeId("agent", 3)), coin)).toBe(0);
+    expect(w.ledger.total(coin)).toBe(1);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(w.log.all().find((e) => e.kind === "action.consult")?.data).toMatchObject({
+      failure: "no_means",
+      effect: { delivered: false, paid: null },
+    });
+    expect(w.scheduler.state().queue).toHaveLength(2);
+    const reversed = world("take", true, true, false, false, false, true);
+    reversed.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.rows()).toEqual(reversed.truth.rows());
+    expect(w.log.all()).toEqual(reversed.log.all());
+    expect(w.ledger.journal()).toEqual(reversed.ledger.journal());
+    w.scheduler.advanceTo(clock.day / 2 + 4 * 3600);
+    for (const n of [1, 2]) expect(w.truth.get(PLAN_STATE, makeId("agent", n))?.done).toBe(true);
+  });
+  it("consult aislada conserva resolución, pago, RNG y agenda legacy", () => {
+    const opted = world("take", true, false, false, true, false, true);
+    const legacy = world("take", false, false, false, true, false, true);
+    opted.scheduler.advanceTo(clock.day / 2);
+    legacy.scheduler.advanceTo(clock.day / 2);
+    expect(opted.log.all().find((e) => e.kind === "action.consult")?.data).toMatchObject({
+      effect: { delivered: true, paid: { unit: "coin:copper", amount: 1 } },
+    });
+    expect(opted.truth.rows()).toEqual(legacy.truth.rows());
+    expect(opted.log.all()).toEqual(legacy.log.all());
+    expect(opted.ledger.journal()).toEqual(legacy.ledger.journal());
+    expect(opted.scheduler.state()).toEqual(legacy.scheduler.state());
+  });
   it.each(["take", "gather"] as const)("reproduce doble débito de %s sin servicio", (verb) => {
     const w = world(verb, false);
     expect(() => w.scheduler.advanceTo(clock.day / 2)).toThrow();

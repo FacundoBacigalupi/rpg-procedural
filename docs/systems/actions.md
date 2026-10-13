@@ -320,6 +320,12 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
 
 ## Tests
 
+- **Consulta y bolsillo (2026-10-13):** `consult` integra el servicio económico
+  opt-in junto a trade/give/eat/cook/take/gather. Una toma previa de la última
+  moneda hace fallar la consulta por `no_means`, manteniendo ambas agendas y
+  el dinero conservado. Resolver y catálogo no cambian; consulta aislada
+  conserva verdad, eventos, postings, RNG y cola del camino anterior.
+
 - **Ningún resultado desde el texto:** para un corpus de frases con resultados ("lo mato", "encuentro", "me da"), el parser nunca produce cambios de estado y siempre llena `stripped`.
 - **Referencias contra creencias:** un personaje que no vio algo no puede referirse a ello como "único"; una referencia a una entidad fantasma se ejecuta y falla con forma.
 - **Mismo catálogo:** cualquier `ActionPlan` de NPC valida contra el mismo esquema que los del jugador.

@@ -70,8 +70,23 @@ Reporte final corto (máx 10 líneas): commits, qué quedó [ ], qué tests corr
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**Retoma vigente (2026-10-13):** integrar PR #491 a `develop` y limpiar ramas
-extra por pedido explícito del usuario. Código del lote en `3082ecc`: el reporte
+**Retoma vigente (2026-10-13):** PR #491 squash-mergeada a `develop` en
+`c1bea73`; ramas extras locales/remotas retiradas por pedido del usuario.
+Solo conservar `main` y `develop` al completar el PR de este traspaso.
+Worktrees antiguos conservados detached: no se borraron archivos ni junctions.
+Respaldo de commits: `sim-reports/branches-before-cleanup-2026-10-13.bundle`;
+WIP de cloud-audit/hire: `sim-reports/cleanup-backup-2026-10-13/`.
+Auditoría posterior del WIP por pedido del usuario: los cuatro archivos de
+cloud-audit ya estaban íntegros en `develop` (parche inverso comprobado), sin
+nuevo contrato LLM. El núcleo `sim/mind/debt-goal.ts` de hire se completó:
+snapshot finito, pagos nuevos explícitos, rechazo de evidencia antigua/ambigua
+y pruebas de determinismo/inmutabilidad. Diez tests puntuales (siete del núcleo
+y tres de evidencia de juego), typecheck y lint aprobados. El cableado nuevo
+está separado en `f3d4-debt-snapshot-wiring`; no altera metas actuales/defaults.
+PR #490 cerrada y rama retirada: dependency-cruiser declara incompatible
+TypeScript 7 y advierte que omite fuentes/dependencias. Mantener toolchain
+actual hasta resolver el ítem `toolchain-typescript7`.
+Código del lote en `3082ecc`: el reporte
 de `npm run check` (`sim-reports/full-profile-final-check.log`) terminó con
 2599 tests en 376 archivos, typecheck/lint y cero violaciones de dependencias.
 La sesión del proceso expiró antes de recuperar su exit code nativo; el reporte
@@ -87,13 +102,47 @@ Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
 `004d4de` falló en seed 1 por FACE; seeds 2/3 completaron, pero no certifica el
 lote nuevo. Después: `perfil3` medición/optimización y `perfil4` activación
 validada. Fase 3 abierta; no cambiar defaults ni hashes dorados por trámite.
+Verificación WIP de deuda sobre `702bbf6`: `npm run check`, 2606 tests en
+377 archivos, typecheck/lint y salida nativa 0, log/exit en
+`sim-reports/debt-wip-full-check.*`. Después se integraron consultas desde
+`6ad4fc3`, `5dc42f7` y `c1caf1d`: visitas y hoja consult comparten reservas;
+world deriva ambos del servicio existente. Veinticuatro tests puntuales del
+lote integrado pasaron. Check final sobre `41c5c01`: 2612 tests en 378 archivos,
+typecheck/lint, cero violaciones de capas y salida nativa 0, registrado en
+`sim-reports/consultation-final-check.log` y `.exit`. Código posterior hasta
+este traspaso sin cambios (solo docs). Lote consolidado en PR #492 para
+integrar a develop y retirar sus ramas. No habilitar consult para decisiones
+NPC ni cambiar defaults.
+
+**Corrida larga y traspaso:** revisar primero
+`sim-reports/full-profile-2y-economic-fixed/run.json` (SHA y PID), `run.log`,
+`run.exit` y reportes por seed. Si run.exit falta y el PID sigue activo, esperar:
+no lanzar otra corrida encima ni ejecutar suite pesada/LLM. Si terminó con
+error, revisar el reporte de la seed y reproducir antes de corregir. Los
+archivos de sim-reports son locales e ignorados; en Claude Cloud, comprobar
+si existe otra corrida local antes de decidir una ejecución independiente.
+El launcher local `sim-reports/run-full-profile-economic.ps1` conserva salida
+nativa y evita sobrescribir una procedencia existente. Hasta tener resultados
+de las tres seeds no marcar perfil2b, perfil3 ni perfil4 hechos.
 Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
 tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
-no equivalen a reservas de cantidades fungibles. Rentas siguen bajo auditoría.
+no equivalen a reservas de cantidades fungibles. Auditoría de rentas concluida
+por lectura: FULL_PROFILE no configura rentSeeds/rentMarket y no invoca rentas.
+En combinaciones opt-in, `life.rents/act` necesita dominio común; aparcería
+conserva perceive y tiene lectura ENTITY no declarada. Pendiente explícito
+`perfil2-economic-rents`, sin cambiar el perfil para ejercitar un sistema nuevo.
 LLM parser ya probado con Qwen3:14b: 54/54 válidos y 39/54 semánticos, sin
 regresiones comunes frente a #489 en esa corrida; narración semántica sigue
 pendiente. No repetir inferencias por cambios puramente económicos.
-Los agentes disponibles agotaron cuota; continuar desde estos docs si fallan.
+Preparación de perfil3 por lectura: FULL_PROFILE no guarda hash final; agregar
+`perfil3-hash-metric` antes de comparar optimizaciones, junto a setup/seed/
+config/versiones/tick. Life.hash incluye verdad/eventos/ledger/IDs/cola, no
+versiones/RNG. Medir costo del hash fuera del tiempo de sim y cuidar memoria.
+Filtro candidato `perfil3-idle-scopes`: transit requiere NPC_JOURNEY o TRANSIT,
+encounters NPC_JOURNEY o NPC_MET; preservar living/ASLEEP, estados sin viaje,
+limpieza, reenumeración por fase y cola explícita. No implementado todavía.
+Agentes anteriores agotaron cuota; un agente posterior pudo completar la
+auditoría de rentas. Continuar desde estos docs si la cuota impide delegar.
 Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
 junctions/node_modules recursivamente. Las observaciones fechadas debajo son
 históricas y no reemplazan este estado.
