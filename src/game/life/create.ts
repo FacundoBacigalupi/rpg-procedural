@@ -336,6 +336,8 @@ export interface LifeOptions {
   readonly speakActs?: SpeakActsOptions;
   /** Opt-in (con `moldHintsFromCatalog`): `take` sobre bienes que cree que tiene un conocido (`LifeParts.takeBelieved`); apagado. */
   readonly takeBelieved?: TakeBelievedOptions;
+  /** Opt-in: candidatas `move` hacia lugares de otro hex (`LifeParts.errands`); apagado. */
+  readonly errands?: LifeParts["errands"];
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
 }
@@ -455,6 +457,7 @@ export function optInParts(
   | "births"
   | "speakActs"
   | "takeBelieved"
+  | "errands"
   | "creditHeed"
   | "residue"
   | "consumables"
@@ -544,6 +547,7 @@ export function optInParts(
       : {}),
     ...(options.speakActs ? { speakActs: options.speakActs } : {}),
     ...(options.takeBelieved ? { takeBelieved: options.takeBelieved } : {}),
+    ...(options.errands ? { errands: options.errands } : {}),
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),

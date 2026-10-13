@@ -98,6 +98,13 @@ export const ScenarioLife = z.strictObject({
       maxPenalty: z.number().min(0).max(1),
     })
     .optional(),
+  errands: z
+    .strictObject({
+      kinds: z.array(z.string().min(1)).min(1),
+      chance: z.number().min(0).max(1),
+      weight: z.number().min(0),
+    })
+    .optional(),
 });
 export type ScenarioLife = z.infer<typeof ScenarioLife>;
 

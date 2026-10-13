@@ -102,7 +102,10 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
             ? wounds.map((w) => ({ kind: "event", event: w.cause }) as const)
             : [{ kind: "state", entity: me, key: "body" }],
         };
-        return { events: [event], changes: [endEntity(base, draftEvent(0), ctx.now)] };
+        return {
+          events: [event],
+          changes: [endEntity(base, draftEvent(0), event.tick ?? ctx.now)],
+        };
       }
 
       if (body.updatedAt >= ctx.now) return {};
@@ -145,7 +148,12 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
       }
       const changes: StateChange[] = [setComponent(BODY_STATE, me, after)];
       const died = happenings.findIndex((h) => h.kind === "died");
-      if (died >= 0) changes.push(endEntity(base, draftEvent(died), ctx.now));
+      // La entidad termina en el tick del evento de muerte (invariante `endedAt` = tick del fin).
+      const diedAt = happenings[died]?.at;
+      if (died >= 0)
+        changes.push(
+          endEntity(base, draftEvent(died), diedAt === undefined ? ctx.now : tickOf(diedAt)),
+        );
       return { events, changes };
     },
   };
