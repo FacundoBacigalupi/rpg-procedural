@@ -126,12 +126,28 @@ export interface DecayContext {
   readonly schemaStrength: (schema: string) => number;
 }
 
+/**
+ * Último `exp` por dimensión: muchas parejas comparten el mismo tiempo transcurrido (la compañía corre
+ * cada hora), así que el argumento se repite. Mismo valor exacto, sin recalcular.
+ */
+const DECAY_MEMO = new WeakMap<readonly DimensionDef[], { arg: number[]; out: number[] }>();
+function decayMemo(dims: readonly DimensionDef[]): { arg: number[]; out: number[] } {
+  let memo = DECAY_MEMO.get(dims);
+  if (memo === undefined) {
+    memo = { arg: dims.map(() => Number.NaN), out: dims.map(() => 0) };
+    DECAY_MEMO.set(dims, memo);
+  }
+  return memo;
+}
+
 /** La relación al día `now`: cada dimensión recorrió su camino hacia la base. Pura. */
 export function current(rel: Relationship, now: Tick, ctx: DecayContext): Relationship {
   const elapsed = now - rel.updated;
   if (elapsed <= 0) return rel;
   const dims = { ...rel.dims };
-  for (const def of ctx.dims) {
+  const memo = decayMemo(ctx.dims);
+  for (let i = 0; i < ctx.dims.length; i++) {
+    const def = ctx.dims[i] as DimensionDef;
     const target =
       rel.bonds.length === 0 ? def.baseline : floorOf(def.id, def.baseline, rel.bonds, ctx.bonds);
     const slow = def.slowedBy
@@ -142,7 +158,15 @@ export function current(rel: Relationship, now: Tick, ctx: DecayContext): Relati
     // Lo que está por debajo del piso sube hacia él; lo que está por encima, baja hacia él.
     // Igual que `clampDim`, sin armar el par de límites en cada llamada (camino caliente).
     const lo = BIPOLAR.has(def.id) ? -1 : 0;
-    const v = target + (x - target) * exp((-LN2 * elapsed) / half);
+    const arg = (-LN2 * elapsed) / half;
+    let decay: number;
+    if (memo.arg[i] === arg) decay = memo.out[i] as number;
+    else {
+      decay = exp(arg);
+      memo.arg[i] = arg;
+      memo.out[i] = decay;
+    }
+    const v = target + (x - target) * decay;
     dims[def.id] = round(Math.min(1, Math.max(lo, v)));
   }
   return { ...rel, dims, updated: now };
