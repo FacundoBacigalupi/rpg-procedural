@@ -73,6 +73,20 @@ describe("catchUpRoutine: la puesta al día del dormido", () => {
     expect(fast.body.wounds.length).toBe(slow.body.wounds.length);
   });
 
+  it("las horas de campo del dormido cosechan: 10 h por día de adulto, 0 de niño, igual hora por hora", () => {
+    const harvestPerHour = () => 100;
+    const fast = catchUpRoutine(plan, me, start(), at(3), { ...opts, harvestPerHour });
+    const slow = catchUpByHour(plan, me, start(), at(3), { ...opts, harvestPerHour });
+    expect(fast.fieldHours).toBe(30);
+    expect(fast.harvest).toBe(3000);
+    expect(slow.harvest).toBe(fast.harvest);
+    expect(slow.fieldHours).toBe(fast.fieldHours);
+    const kid = catchUpRoutine(plan, me, start(), at(3), { ...opts, ageYears: 5, harvestPerHour });
+    expect(kid.harvest).toBe(0);
+    // Sin rinde configurado no se inventa grano.
+    expect(catchUpRoutine(plan, me, start(), at(3), opts).harvest).toBe(0);
+  });
+
   it("es determinista y no lee nada de afuera", () => {
     const a = catchUpRoutine(plan, me, start(), at(3), opts);
     const b = catchUpRoutine(plan, me, start(), at(3), opts);

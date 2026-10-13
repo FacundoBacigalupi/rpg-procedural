@@ -26,6 +26,7 @@ import {
   type GoodDef,
   goodUnit,
   type HabitDef,
+  harvestSeason,
   KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
@@ -1645,6 +1646,10 @@ export function lifeWorld(
                 },
                 player,
                 placeOf: placeOf(parts, village),
+                // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
+                harvest: {
+                  season: harvestSeason(parts.map.climate, parts.clock, Rng.root(parts.seed)),
+                },
               }),
             ),
           ];
