@@ -17,6 +17,7 @@ import {
   ActionCatalog,
   BODY_PLANS,
   BODY_STATE,
+  draftEvent,
   ENTITY,
   FRESH_CURSOR,
   type GoodDef,
@@ -36,6 +37,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { type ActOptions, actProcess, PLAN_STATE, planKey } from "./act.ts";
+import { LOANS, loansProcess } from "./loans.ts";
 import { tradeProjectionProcess } from "./trade-projection.ts";
 import { tradesProcess } from "./trades.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
@@ -91,6 +93,7 @@ function world(
   projectWatchExposures = false,
   economicVerbs?: readonly ("trade" | "give")[],
   workshop = false,
+  loanCase?: { readonly mode: "open" | "collect" | "guarantor"; readonly batch: boolean },
 ) {
   const truth = new WorldTruth();
   const log = new EventLog();
@@ -141,12 +144,16 @@ function world(
     tick: 0,
     eventId: makeId("event", 1),
     transfers: [
-      {
-        unit: good,
-        from: externalAccount("seed"),
-        to: holderAccount(sharedHome ? sellerHome : seller),
-        amount: stock,
-      },
+      ...(stock > 0
+        ? [
+            {
+              unit: good,
+              from: externalAccount("seed"),
+              to: holderAccount(sharedHome ? sellerHome : seller),
+              amount: stock,
+            },
+          ]
+        : []),
       ...buyers.map((buyer) => ({
         unit: coin,
         from: externalAccount("seed"),
@@ -156,7 +163,7 @@ function world(
     ],
   });
   const opts: ActOptions = {
-    ...(workshop ? { economicBatch: true } : {}),
+    ...(workshop || loanCase ? { economicBatch: true } : {}),
     ...(economicVerbs ? { serialEconomicVerbs: economicVerbs } : {}),
     projectWatchExposures,
     serialTrades: serial,
@@ -177,6 +184,31 @@ function world(
     seed: 7,
     player: makeId("agent", 99),
   };
+  if (loanCase) {
+    for (const n of [2, 3, 4, 5]) {
+      const home = makeId("household", n);
+      truth.set(ENTITY, home, { id: home, createdAt: 0, originEventId: makeId("event", 1) });
+    }
+    for (const n of [5, 6]) {
+      const actor = makeId("agent", n),
+        home = makeId("household", n - 1);
+      truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
+      truth.setRaw(PERSON.name, actor, { born: -30 * clock.year, sex: "male", household: home });
+    }
+    if (loanCase.mode !== "open")
+      ledger.post({
+        tick: 0,
+        eventId: makeId("event", 1),
+        transfers: [
+          {
+            unit: good,
+            from: externalAccount("seed"),
+            to: holderAccount(makeId("household", 4)),
+            amount: 1000,
+          },
+        ],
+      });
+  }
   const scheduler = new Scheduler({
     rng: Rng.root(7),
     clock,
@@ -189,6 +221,81 @@ function world(
       actProcess(opts),
       tradeProjectionProcess({ clock, goods }),
       ...(projectWatchExposures ? [watchingProjectionProcess({ catalog: skills, clock })] : []),
+      ...(loanCase
+        ? [
+            loansProcess({
+              economicBatch: loanCase.batch,
+              clock,
+              goods,
+              seeds: [
+                {
+                  id: "shared-resource",
+                  lender: loanCase.mode === "open" ? "household:3" : "household:4",
+                  borrower:
+                    loanCase.mode === "open"
+                      ? "household:4"
+                      : loanCase.mode === "collect"
+                        ? "household:3"
+                        : "household:5",
+                  good: "tool",
+                  principal: 1000,
+                  rate: 0,
+                  startDay: 1,
+                  termDays: loanCase.mode === "guarantor" ? 1 : 4,
+                  ...(loanCase.mode === "guarantor"
+                    ? { guarantors: [{ household: "household:3", share: 1 }] }
+                    : {}),
+                },
+              ],
+              placeOf: () => place,
+            }),
+          ]
+        : []),
+      ...(loanCase?.mode === "guarantor"
+        ? [
+            {
+              id: "life.fixture_spent",
+              system: "life",
+              scope: "world" as const,
+              cadence: { local: "day" as const },
+              phase: "physics" as const,
+              representation: "individual" as const,
+              reads: [LOANS.name],
+              writes: [],
+              run(ctx: ProcessContext) {
+                if (ctx.now !== clock.day) return {};
+                const id = ctx.truth.ids(LOANS)[0],
+                  loan = id ? ctx.truth.get(LOANS, id) : undefined;
+                if (!loan) throw new Error("gasto sin préstamo");
+                return {
+                  events: [
+                    {
+                      kind: "fixture.spent",
+                      actors: [makeId("agent", 6), buyers[1]],
+                      place,
+                      data: {},
+                      emissions: {},
+                      causes: [{ kind: "event" as const, event: loan.originEventId as never }],
+                    },
+                  ],
+                  postings: [
+                    {
+                      event: draftEvent(0),
+                      transfers: [
+                        {
+                          unit: good,
+                          from: holderAccount(makeId("household", 5)),
+                          to: holderAccount(makeId("household", 2)),
+                          amount: 1000,
+                        },
+                      ],
+                    },
+                  ],
+                };
+              },
+            },
+          ]
+        : []),
       ...(workshop
         ? [
             tradesProcess({
@@ -239,7 +346,13 @@ function world(
       },
     });
     scheduler.schedule({
-      at: workshop ? clock.day : clock.day / 2,
+      at: loanCase
+        ? loanCase.mode === "open"
+          ? clock.day
+          : 2 * clock.day
+        : workshop
+          ? clock.day
+          : clock.day / 2,
       phase: "act",
       process: "life.act",
       scope: actor,
@@ -445,5 +558,66 @@ describe("trade real en lote opt-in", () => {
     expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
     expect(w.scheduler.state().queue).toHaveLength(1);
     expect(w.ledger.audit()).toEqual([]);
+  });
+});
+
+describe("cuentas compartidas entre préstamos y trade real", () => {
+  it.each(["open", "collect", "guarantor"] as const)("reproduce %s sin reserva común", (mode) => {
+    const w = world(
+      mode === "collect" ? 0 : 1000,
+      true,
+      false,
+      true,
+      true,
+      true,
+      ["trade", "give"],
+      false,
+      { mode, batch: false },
+    );
+    expect(() => w.scheduler.advanceTo((mode === "open" ? 1 : 2) * clock.day)).toThrow();
+  });
+  it.each(["open", "collect", "guarantor"] as const)(
+    "%s usa saldo actualizado sin perder agenda ni inventar bienes",
+    (mode) => {
+      const stock = mode === "collect" ? 0 : 1000;
+      const w = world(stock, true, false, true, true, true, ["trade", "give"], false, {
+        mode,
+        batch: true,
+      });
+      const day = mode === "open" ? 1 : 2;
+      expect(() => w.scheduler.advanceTo(day * clock.day)).not.toThrow();
+      expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(1000);
+      expect(w.ledger.balance(holderAccount(makeId("household", 3)), good)).toBe(0);
+      if (mode === "open") expect(w.truth.ids(LOANS)).toHaveLength(0);
+      if (mode === "collect") expect(w.log.all().some((e) => e.kind === "credit.paid")).toBe(false);
+      if (mode === "guarantor")
+        expect(w.log.all().find((e) => e.kind === "credit.defaulted")?.data).toMatchObject({
+          guarantorsPaid: [],
+          loss: 1000,
+        });
+      expect(w.ledger.total(good)).toBe(mode === "guarantor" ? 2000 : 1000);
+      expect(w.ledger.audit()).toEqual([]);
+      expect(w.scheduler.state().queue.some((q) => q.process === "life.act")).toBe(true);
+      const repeated = world(stock, true, false, true, true, true, ["trade", "give"], false, {
+        mode,
+        batch: true,
+      });
+      repeated.scheduler.advanceTo(day * clock.day);
+      expect(w.truth.rows()).toEqual(repeated.truth.rows());
+      expect(w.log.all()).toEqual(repeated.log.all());
+      expect(w.ledger.journal()).toEqual(repeated.ledger.journal());
+      w.scheduler.advanceTo(day * clock.day + 3600);
+      expect(w.truth.get(PLAN_STATE, buyers[1])?.done).toBe(true);
+    },
+  );
+  it("omitir el opt-in conserva el descriptor anterior", () => {
+    const p = loansProcess({
+      clock,
+      goods,
+      seeds: [],
+      placeOf: () => ({ kind: "cell", cell: map.cell }),
+    });
+    expect(p.serialDomain).toBeUndefined();
+    expect(p.serialGroup).toBeUndefined();
   });
 });

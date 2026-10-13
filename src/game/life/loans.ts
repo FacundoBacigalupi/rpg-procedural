@@ -64,6 +64,7 @@ import {
   WORK_DAY_UNIT,
   workBondageDay,
 } from "../../sim/index.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const LOANS_PROCESS = "life.loans";
 
@@ -130,6 +131,8 @@ export interface LoanSeed {
 }
 
 export interface LoansOptions {
+  /** Opt-in: reserva común de saldos con las acciones económicas de la misma fase. */
+  readonly economicBatch?: boolean;
   /** Opt-in: anuncia a las partes los derechos creados cuando paga un fiador. */
   readonly debtKnowledge?: boolean;
   readonly clock: PlanetClock;
@@ -295,6 +298,9 @@ export function loansProcess(o: LoansOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "act",
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     reads: [
       PERSON.name,
       ENTITY.name,

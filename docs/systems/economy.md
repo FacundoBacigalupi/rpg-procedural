@@ -261,6 +261,8 @@ Vender arroz mojado por seco, píldoras de grado bajo por medio, una hierba de d
 - **Comercio a distancia con letras** (§2): un comerciante vende en el sur, cobra con una letra y la cambia en el norte. Las casas de cambio con sucursales son organizaciones con un capital de confianza.
 
 ## 8. Crédito, usura y quiebra
+
+**Reservas económicas de préstamos (2026-10-12):** el opt-in `LoansOptions.economicBatch` comparte dominio y saldos con los planes económicos y talleres de `act`. Repros pequeños de trade contra principal, cuota y fiador verifican que los débitos se deciden desde el stock restante, sin pérdida de la agenda del comprador ni dinero/bienes nuevos. Sin semillas explícitas no abre préstamos y sin opt-in conserva el comportamiento anterior. El contrato y la cobertura dirigida están detallados en [contracts.md](contracts.md); la elección de disfraces mediante callbacks de usura que capturan un ledger externo sigue pendiente de contexto actualizado.
 Prestar es dar algo hoy a cambio de una promesa. El **modelo de compromiso** (quién debe qué, con qué garantía, qué pasa si no cumple, quién lo hace cumplir) es el de [contracts.md](contracts.md), que unifica deudas, vínculos y lazos kármicos: un `Loan` es la vista económica de un `Commitment` de tipo préstamo (contracts §13). Acá va su lado económico.
 
 ```ts
