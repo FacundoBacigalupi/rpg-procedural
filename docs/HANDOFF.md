@@ -107,9 +107,23 @@ Verificación WIP de deuda sobre `702bbf6`: `npm run check`, 2606 tests en
 `sim-reports/debt-wip-full-check.*`. Después se integraron consultas desde
 `6ad4fc3`, `5dc42f7` y `c1caf1d`: visitas y hoja consult comparten reservas;
 world deriva ambos del servicio existente. Veinticuatro tests puntuales del
-lote integrado pasaron. Check amplio posterior requerido antes del merge
-de PR #492; no atribuir los 2606 al código posterior. No habilitar consult
-para decisiones NPC ni cambiar defaults. Tras merge, retirar ramas de agentes.
+lote integrado pasaron. Check final sobre `41c5c01`: 2612 tests en 378 archivos,
+typecheck/lint, cero violaciones de capas y salida nativa 0, registrado en
+`sim-reports/consultation-final-check.log` y `.exit`. Código posterior hasta
+este traspaso sin cambios (solo docs). Lote consolidado en PR #492 para
+integrar a develop y retirar sus ramas. No habilitar consult para decisiones
+NPC ni cambiar defaults.
+
+**Corrida larga y traspaso:** revisar primero
+`sim-reports/full-profile-2y-economic-fixed/run.json` (SHA y PID), `run.log`,
+`run.exit` y reportes por seed. Si run.exit falta y el PID sigue activo, esperar:
+no lanzar otra corrida encima ni ejecutar suite pesada/LLM. Si terminó con
+error, revisar el reporte de la seed y reproducir antes de corregir. Los
+archivos de sim-reports son locales e ignorados; en Claude Cloud, comprobar
+si existe otra corrida local antes de decidir una ejecución independiente.
+El launcher local `sim-reports/run-full-profile-economic.ps1` conserva salida
+nativa y evita sobrescribir una procedencia existente. Hasta tener resultados
+de las tres seeds no marcar perfil2b, perfil3 ni perfil4 hechos.
 Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
 tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
 no equivalen a reservas de cantidades fungibles. Auditoría de rentas concluida
