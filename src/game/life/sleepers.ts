@@ -13,12 +13,17 @@ import {
   type Asleep,
   BODY_STATE,
   type BodyPlanDef,
+  dayOf,
   deleteComponent,
   draftEvent,
   EATEN,
   ENTITY,
   type EventDraft,
   endEntity,
+  fieldFertility,
+  HARVEST,
+  HARVEST_GOOD,
+  HARVEST_GRAMS_PER_HOUR,
   type Happening,
   happeningEvent,
   injure,
@@ -30,6 +35,7 @@ import {
   type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  SOIL,
   type StateChange,
   setComponent,
 } from "../../sim/index.ts";
@@ -64,7 +70,16 @@ export interface CatchUpProcessOptions {
    * (`catchUpDue`). Sin `mode`, un solo proceso por hora que decide solo (como antes).
    */
   readonly mode?: "wake" | "daily";
+  /**
+   * La cosecha del dormido: sus horas de campo de la rutina rinden grano para la despensa de su
+   * hogar (fuente `harvest`, como `life.routine`). Sin esto, al dormirse todos el hogar sigue
+   * comiendo pero nadie cosecha. `season` es `harvestSeason` del lugar (el mismo de la rutina).
+   */
+  readonly harvest?: { readonly season: (day: number) => number };
 }
+
+/** El evento del grano que cosechó un dormido en el tramo que se le puso al día. */
+export const NPC_HARVESTED_EVENT = "npc.harvested";
 
 export const CATCH_UP_WAKE_PROCESS = "life.catch_up_wake";
 export const CATCH_UP_DAILY_PROCESS = "life.catch_up_daily";
@@ -97,7 +112,14 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
         : { scene: "hour", local: "hour", regional: "hour", world: "hour" },
     representation: "individual",
     phase: "decide",
-    reads: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PERSON.name, PENDING_FACTS.name],
+    reads: [
+      ASLEEP.name,
+      BODY_STATE.name,
+      ENTITY.name,
+      PERSON.name,
+      PENDING_FACTS.name,
+      ...(o.harvest ? [SOIL.name] : []),
+    ],
     writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PENDING_FACTS.name],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -138,14 +160,29 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const pending = [...(truth.get(PENDING_FACTS, me) ?? [])].sort((a, b) => a.at - b.at);
       const due = pending.filter((f) => f.at <= ctx.now);
       const later = pending.filter((f) => f.at > ctx.now);
+      const fertility = o.harvest ? fieldFertility(truth) : 0;
       const catchOpts = (left: number) => ({
         clock: o.clock,
         lonDeg: o.lonDeg,
         ageYears: (ctx.now - person.born) / o.clock.year,
         ration: o.ration,
         maxMeals: left,
+        ...(o.harvest
+          ? {
+              harvestPerHour: (at: Tick) =>
+                Math.round(
+                  HARVEST_GRAMS_PER_HOUR *
+                    (o.harvest as { season: (day: number) => number }).season(
+                      dayOf(o.clock, at + Math.round((o.lonDeg / 360) * o.clock.day)),
+                    ) *
+                    fertility,
+                ),
+            }
+          : {}),
       });
       let b = body;
+      let harvested = 0;
+      let fieldHours = 0;
       let meals = 0;
       let eatenGrams = 0;
       const happenings: Happening[] = [];
@@ -158,6 +195,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
         b = seg.body;
         meals += seg.meals;
         eatenGrams += seg.grams;
+        harvested += seg.harvest;
+        fieldHours += seg.fieldHours;
         happenings.push(...seg.happenings);
         if (b.death !== null) return;
         const hit = injure(
@@ -239,6 +278,28 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
               },
             ]
           : [];
+      const crop = harvested + rest.harvest;
+      if (o.harvest && crop > 0) {
+        events.push({
+          kind: NPC_HARVESTED_EVENT,
+          actors: [me],
+          place,
+          data: { good: HARVEST_GOOD, grams: crop, hours: fieldHours + rest.fieldHours },
+          emissions: {},
+          causes: [{ kind: "state", entity: me, key: "routine" }],
+        });
+        postings.push({
+          event: draftEvent(events.length - 1),
+          transfers: [
+            {
+              unit: HARVEST_GOOD,
+              from: externalAccount(HARVEST),
+              to: holderAccount(larder),
+              amount: crop,
+            },
+          ],
+        });
+      }
       return { changes, events, postings };
     },
   };

@@ -31,6 +31,11 @@ export interface CatchUpOptions {
   readonly ration: { readonly kcalPerGram: number; readonly waterPerGram: number };
   /** Tope de comidas que la despensa alcanza a dar en la ventana; sin tope, todas las de la rutina. */
   readonly maxMeals?: number;
+  /**
+   * Gramos que rinde una hora de campo que empieza en `at` (estación x fertilidad). Sin esto el
+   * dormido come de la despensa pero no cosecha: el hogar perdería los brazos de los dormidos.
+   */
+  readonly harvestPerHour?: (at: Tick) => number;
 }
 
 export interface CatchUpResult {
@@ -39,6 +44,10 @@ export interface CatchUpResult {
   /** Cuántas comidas hizo y cuántos gramos de la ración (para el asiento del ledger). */
   readonly meals: number;
   readonly grams: number;
+  /** Gramos cosechados en las horas de campo del tramo (0 sin `harvestPerHour`). */
+  readonly harvest: number;
+  /** Horas de campo trabajadas. */
+  readonly fieldHours: number;
 }
 
 interface HourPlan {
@@ -87,6 +96,8 @@ function run(
   let b = body;
   let meals = 0;
   let grams = 0;
+  let harvest = 0;
+  let fieldHours = 0;
   while (b.death === null && b.updatedAt < to) {
     const start = b.updatedAt;
     const hour = Math.floor(localHour(o.clock, start, o.lonDeg));
@@ -123,8 +134,13 @@ function run(
     );
     b = adv.body;
     happenings.push(...adv.happenings);
+    // Las horas de rutina en el campo (`moderate`) rinden como las de `life.routine`, si sigue vivo.
+    if (p.activity === "moderate" && b.death === null) {
+      fieldHours += hours;
+      if (o.harvestPerHour) harvest += hours * o.harvestPerHour(start as Tick);
+    }
   }
-  return { body: b, happenings, meals, grams };
+  return { body: b, happenings, meals, grams, harvest, fieldHours };
 }
 
 /** La puesta al día con paso grueso: el atajo. */

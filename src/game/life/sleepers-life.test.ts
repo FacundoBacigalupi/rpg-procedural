@@ -1,8 +1,23 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
-import { ASLEEP, BODY_STATE, ENTITY, hexPath, LOCATION, PERSON, PLACE } from "../../sim/index.ts";
+import {
+  type AgentId,
+  type ContentSource,
+  externalAccount,
+  loadContent,
+} from "../../core/index.ts";
+import {
+  ASLEEP,
+  BODY_STATE,
+  ENTITY,
+  HARVEST,
+  HARVEST_GOOD,
+  hexPath,
+  LOCATION,
+  PERSON,
+  PLACE,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
@@ -150,6 +165,27 @@ describe("tier 1 en una vida real: los dormidos", () => {
     expect(on.calls.get("body.physiology") ?? 0).toBeLessThan(
       off.calls.get("body.physiology") ?? 0,
     );
+  }, 600_000);
+
+  it("los dormidos cosechan en sus horas de campo y el grano se conserva (perfil2c-starvation)", () => {
+    const base = build(false);
+    const sleepy = build(true);
+    base.advanceTo(base.now + 5 * DAY);
+    sleepy.advanceTo(sleepy.now + 5 * DAY);
+    const grams = (l: Life, kind: string) =>
+      l.world.log
+        .all()
+        .filter((e) => e.kind === kind)
+        .reduce((s, e) => s + ((e.data as { grams: number }).grams ?? 0), 0);
+    const slept = grams(sleepy, "npc.harvested");
+    expect(slept).toBeGreaterThan(0);
+    expect(grams(base, "npc.harvested")).toBe(0);
+    // Conservación: todo el grano que entró por la fuente `harvest` está en un evento de cosecha.
+    const taken = -(sleepy.world.ledger.balance(externalAccount(HARVEST), HARVEST_GOOD) ?? 0);
+    expect(taken).toBe(slept + grams(sleepy, "routine.harvested"));
+    // Dormir no deja a la aldea sin brazos: cosecha del mismo orden que sin dormidos.
+    const total = (l: Life) => grams(l, "npc.harvested") + grams(l, "routine.harvested");
+    expect(total(sleepy)).toBeGreaterThan(0.5 * total(base));
   }, 600_000);
 
   it("sin la opción nadie duerme y el estado es el mismo de siempre", () => {
