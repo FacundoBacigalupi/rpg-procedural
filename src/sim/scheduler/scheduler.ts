@@ -742,6 +742,22 @@ function resolveDrafts(
   by: ProcessId,
   remapKeys = false,
 ): ProcessResult {
+  // Sin ningún provisional (lo común) no hay nada que reemplazar: se evita copiar todo el resultado.
+  const hasDraft = (v: unknown): boolean => {
+    if (typeof v === "string") return v.includes(":~");
+    if (Array.isArray(v)) {
+      for (const x of v) if (hasDraft(x)) return true;
+      return false;
+    }
+    if (v !== null && typeof v === "object") {
+      for (const k of Object.keys(v)) {
+        if (remapKeys && k.includes(":~")) return true;
+        if (hasDraft((v as Record<string, unknown>)[k])) return true;
+      }
+    }
+    return false;
+  };
+  if (!hasDraft(result)) return result;
   const walk = (v: unknown): unknown => {
     if (typeof v === "string") {
       if (!parseDraftRef(v)) return v;

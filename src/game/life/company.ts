@@ -14,6 +14,7 @@ import {
   type ProcessDef,
   RELATIONS,
   type Relations,
+  type Relationship,
   relationship,
   type StateChange,
   setComponent,
@@ -45,24 +46,27 @@ export function companyProcess(o: CompanyOptions): ProcessDef {
         const at = truth.get(LOCATION, id);
         if (!at) continue;
         const key = `${at.hex}|${at.space ?? ""}`;
-        spots.set(key, [...(spots.get(key) ?? []), id]);
+        const group = spots.get(key);
+        if (group) group.push(id);
+        else spots.set(key, [id]);
       }
-      const rels = new Map<AgentId, Relations>();
+      // Por quien siente: la relación base y una copia propia de `toward` que se muta (el resultado
+      // es el mismo que rehacerla en cada encuentro, sin copiar todo el mapa cada vez).
+      const rels = new Map<AgentId, Relations & { toward: Record<string, Relationship> }>();
+      const ctxRel = { dims: o.dims, bonds: o.bonds, schemaStrength: () => 0 };
       const meet = (from: AgentId, to: AgentId, now: Tick) => {
-        const base = rels.get(from) ??
-          truth.get(RELATIONS, from) ?? { toward: {} as Relations["toward"] };
-        const cur = relationship(rels.get(from) ?? truth.get(RELATIONS, from), to, now, {
-          dims: o.dims,
-          bonds: o.bonds,
-          schemaStrength: () => 0,
-        });
+        let work = rels.get(from);
+        const cur = relationship(work ?? truth.get(RELATIONS, from), to, now, ctxRel);
+        // No toca el mapa original; `work` solo se crea si hay ganancia.
         const gain = contactGain(COMPANY_FAMILIARITY, cur.dims.familiarity);
         if (gain <= 0) return;
+        if (!work) {
+          const base = truth.get(RELATIONS, from) ?? { toward: {} as Relations["toward"] };
+          work = { ...(base as Relations), toward: { ...base.toward } };
+          rels.set(from, work);
+        }
         const dims = { ...cur.dims, familiarity: Math.min(1, cur.dims.familiarity + gain) };
-        rels.set(from, {
-          ...(base as Relations),
-          toward: { ...base.toward, [to]: { ...cur, dims, updated: now } },
-        });
+        work.toward[to] = { ...cur, dims, updated: now };
       };
       for (const group of spots.values()) {
         if (group.length < 2) continue;
