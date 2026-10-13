@@ -250,6 +250,48 @@ describe("life.rents", () => {
     expect(second.events?.[0]?.causes.length).toBe(2);
   });
 
+  it("aparcería: la cosecha de un dormido (npc.harvested) paga la parte y el ledger cierra", () => {
+    const { truth, ledger } = setup(1);
+    const GRAIN = ledgerUnit("good:grain");
+    const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];
+    const crop: RentSeed = { ...seed, good: "grain", kind: "sharecrop", termDays: 50 };
+    const proc = rentsProcess({ clock, goods: grain, seeds: [crop], placeOf: () => ({}) as never });
+    for (const c of proc.run(ctxOf(truth, ledger, 1)).changes ?? []) {
+      const ch = c as { table?: string; id?: string; value?: unknown };
+      if (ch.table === RENTS.name) truth.set(RENTS, ch.id as never, ch.value as never);
+    }
+    const [row] = [...truth.ids(RENTS)].map((id) => truth.get(RENTS, id));
+    const frac = row?.share?.fraction ?? 0;
+    ledger.post({
+      tick: 0,
+      eventId: makeId("event", 2),
+      transfers: [{ unit: GRAIN, from: externalAccount("seed"), to: H("tenant"), amount: 1000 }],
+    });
+    const total = ledger.total(GRAIN);
+    const hp = sharecropHarvestProcess({ placeOf: () => ({}) as never });
+    const r = hp.run({
+      ...ctxOf(truth, ledger, 3),
+      recent: [
+        {
+          id: makeId("event", 9),
+          kind: "npc.harvested",
+          actors: [makeId("agent", 2)],
+          data: { good: row?.unit, grams: 400, hours: 20 },
+        },
+      ],
+    } as unknown as ProcessContext);
+    for (const p of r.postings ?? [])
+      ledger.post({ tick: 1, eventId: makeId("event", 3), transfers: p.transfers });
+    const due = Math.floor(400 * frac);
+    expect(r.events?.[0]?.kind).toBe("property.rent_paid");
+    expect(ledger.balance(H("owner"), GRAIN)).toBe(due);
+    expect(ledger.balance(H("tenant"), GRAIN)).toBe(1000 - due);
+    expect(ledger.total(GRAIN)).toBe(total);
+    const sh = (r.changes as unknown as { value: { harvested: number; paid: number } }[])[0]?.value;
+    expect(sh?.harvested).toBe(400);
+    expect(sh?.paid).toBe(due);
+  });
+
   it("aparcería: tras 3 cosechas seguidas con atraso hay mora, evento y desalojo", () => {
     const { truth, ledger } = setup(1);
     const grain = [{ id: "grain", name: "grano", form: "bulk" }] as unknown as GoodDef[];

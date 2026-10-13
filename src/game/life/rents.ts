@@ -44,6 +44,8 @@ import {
 
 export const RENTS_PROCESS = "life.rents";
 export const EVICT_AFTER_DAYS = 30;
+/** Mismo valor que `NPC_HARVESTED_EVENT` de sleepers.ts (no se importa: ciclo con act.ts). */
+const NPC_HARVESTED_EVENT = "npc.harvested";
 
 export interface RentRow {
   readonly seed: string;
@@ -632,7 +634,8 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
 }
 
 /**
- * Liquida las aparcerías al cosechar: por cada `routine.harvested` del hogar aparcero en una
+ * Liquida las aparcerías al cosechar: por cada `routine.harvested` (despiertos) o `npc.harvested`
+ * (dormidos, una por puesta al día, con los gramos del evento) del hogar aparcero en una
  * parcela con aparcería vigente, el aparcero entrega la parte del dueño (más el atraso) de lo que
  * tiene (`property.rent_paid`, por ledger: conserva); lo que no alcanza queda como atraso en
  * `SHARES`. Lee los eventos del paso (`recent`): no toca la rutina de cosecha.
@@ -662,7 +665,7 @@ export function sharecropHarvestProcess(o: {
       const spent = new Map<string, number>();
       const state = new Map<string, ShareRow>();
       for (const e of ctx.recent) {
-        if (e.kind !== "routine.harvested") continue;
+        if (e.kind !== "routine.harvested" && e.kind !== NPC_HARVESTED_EVENT) continue;
         const d = e.data as { good?: string; grams?: number };
         const who = e.actors[0];
         const home = who ? ctx.truth.get(PERSON, who)?.household : undefined;
