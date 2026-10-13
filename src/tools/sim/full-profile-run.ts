@@ -25,6 +25,7 @@ import {
   validateFullProfileConfig,
 } from "./full-profile.ts";
 import { healthDebtFocus } from "./full-profile-focus.ts";
+import { natalityLifeOptions } from "./natality-coverage.ts";
 import { livingHouseholds, rescueLoanSeeds, runRescueTurns } from "./rescue-coverage.ts";
 
 /**
@@ -91,9 +92,10 @@ function measureFullProfileSeed(
       }) as unknown as typeof FULL_PROFILE)
     : FULL_PROFILE;
   const withRescue = rescueSeeds ? { ...baseLife, loanSeeds: rescueSeeds } : baseLife;
+  const withCommerce = config.commerce === true ? commerceLifeOptions(withRescue) : withRescue;
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: config.commerce === true ? commerceLifeOptions(withRescue) : withRescue,
+    life: config.natality === true ? natalityLifeOptions(withCommerce) : withCommerce,
     ...frequencyOnly,
   };
   const processes = new Map<string, ProcessMeasurement>();

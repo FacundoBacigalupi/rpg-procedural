@@ -72,6 +72,8 @@ export interface FullProfileConfig {
   readonly rescue?: boolean;
   /** Cobertura dirigida de encuentros y comercio: oficios vistos, profecía contada, oferta del vecino (`commerce-coverage.ts`). */
   readonly commerce?: boolean;
+  /** Cobertura dirigida de natalidad: fecundidad x12 y gestación de 30 días, para ver parto, nacimiento y crianza (`natality-coverage.ts`). */
+  readonly natality?: boolean;
   /** Escenario `full-profile-focus`: suma el foco de salud y deuda (`full-profile-focus.ts`) a FULL_PROFILE. */
   readonly focus?: boolean;
 }
