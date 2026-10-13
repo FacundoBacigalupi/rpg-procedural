@@ -171,6 +171,7 @@ type AcquisitionBasis =
 - **Son compromisos** (contracts) con obligaciones en las dos direcciones: renta (en plata, en especie, en trabajo) y a veces el deber del dueño de prestar semilla, mantener el canal o proteger.
 - **La renta sale de la negociación** con las creencias de cada uno y la escasez de tierra: donde sobra gente, las rentas son altas y los contratos cortos.
 - **En aparcería** la proporción depende de quién pone qué: tierra, semilla, bueyes, herramientas, trabajo. Un año malo deja al aparcero debiendo semilla, y la deuda lo ata (social-structure §7).
+  - Cosecha de dormidos: la liquidación de aparcería lee `routine.harvested` (despiertos) y `npc.harvested` (puesta al día de dormidos, un evento por tramo con los gramos del evento); una puesta al día larga cuenta como una cosecha para el atraso/mora.
 - **Desalojar** necesita un ejecutor: el clan del dueño, el alguacil, sus matones. El arrendatario de muchos años cree que tiene derecho a quedarse, y a veces la norma le da la razón.
 - **Subarriendo:** el arrendatario arrienda a otro y cobra la diferencia. Las cadenas largas exprimen al de abajo.
 
