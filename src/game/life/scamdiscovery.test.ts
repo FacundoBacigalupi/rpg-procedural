@@ -140,6 +140,52 @@ describe("estafa: descubrimiento por tasador", () => {
       false,
     );
   });
+  it("dos compradores reclaman al mismo vendedor en el día: los reembolsos no superan su bolsa", () => {
+    const buyer2 = "agent:4" as AgentId;
+    const mk = (event: string) => ({
+      event: event as EventId,
+      tick: 0 as Tick,
+      seller,
+      unit: "good:grain",
+      grams: 8000,
+      coins: 5,
+      real: 0.2,
+      believed: 0.8,
+      trust: 0.5,
+    });
+    const tables: Record<string, Record<string, unknown>> = {
+      [SCAM_DEALS.name]: {
+        [buyer]: { deals: [mk("event:7")] },
+        [buyer2]: { deals: [mk("event:8")] },
+      },
+      [SCAM_FOUND.name]: {},
+      [ENTITY.name]: {},
+      [PERSON.name]: { [buyer]: {}, [buyer2]: {}, [seller]: {} },
+    };
+    const truth = {
+      ids: (t: { name: string }) => Object.keys(tables[t.name] ?? {}),
+      get: (t: { name: string }, id: string) => tables[t.name]?.[id],
+    } as unknown as ReadonlyWorldTruth;
+    const rng = { fork: () => rng, chance: (p: number) => p > 0.9 || p === 0.77 } as never;
+    const ledger = { holdings: () => [{ unit: coin, amount: 3 }] } as never;
+    const proc = scamDiscoveryProcess({
+      refund: () => 0.77,
+      placeOf: () => "here" as never,
+      eye: () => 1,
+      day: 0.001,
+    });
+    const r = proc.run({
+      truth,
+      rng,
+      ledger,
+      now: 1 as Tick,
+    } as unknown as ProcessContext) as unknown as {
+      postings?: { transfers: { amount: number }[] }[];
+    };
+    const paid = (r.postings ?? []).flatMap((p) => p.transfers).reduce((a, t) => a + t.amount, 0);
+    expect(paid).toBeGreaterThan(0);
+    expect(paid).toBeLessThanOrEqual(3);
+  });
   it("un tercero de buen ojo la nota sin cobrar: scam.noticed, rumor en ambos y sin asiento", () => {
     const eyes = { [buyer]: 0.3, [expert]: 0.45 };
     const r = run({ eyes, day: 0.001, witnesses: true });

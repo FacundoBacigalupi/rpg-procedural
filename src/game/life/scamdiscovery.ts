@@ -142,7 +142,8 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
-      const spent = new Map<AgentId, number>();
+      // Lo ya comprometido hoy por bolsa (agente|unidad): reembolsos y tasaciones comparten saldo.
+      const spent = new Map<string, number>();
       const rumors = new Map<AgentId, Rumors>();
       const buyers = [...(truth.ids(SCAM_DEALS) as AgentId[])].sort();
       for (const buyer of buyers) {
@@ -181,7 +182,8 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
               // Sin notarlo solo, puede pagarle a alguien de mejor ojo que esté ahí.
               const hire = hireAppraiser(ctx, o, buyer, d, spent);
               if (!hire) continue;
-              spent.set(buyer, (spent.get(buyer) ?? 0) + APPRAISAL_FEE);
+              const key = `${buyer}|${hire.unit}`;
+              spent.set(key, (spent.get(key) ?? 0) + APPRAISAL_FEE);
               const draft = draftEvent(events.length);
               const hit = ctx.rng
                 .fork("appraise", d.event, ctx.windowIndex ?? ctx.now)
@@ -233,7 +235,7 @@ export function scamDiscoveryProcess(o: ScamDiscoveryOptions): ProcessDef {
             emissions: {},
             causes: [{ kind: "event" as const, event: d.event }],
           });
-          claimRefund(ctx, o, buyer, d, after.overpaid, events, postings);
+          claimRefund(ctx, o, buyer, d, after.overpaid, events, postings, spent);
         }
         if (found.length > 0) {
           const before = truth.get(SCAM_FOUND, buyer)?.events ?? [];
@@ -322,6 +324,7 @@ function claimRefund(
   overpaid: number,
   events: EventDraft[],
   postings: PostingDraft[],
+  spent: Map<string, number>,
 ): void {
   const ledger = ctx.ledger;
   if (!o.refund || !ledger) return;
@@ -334,6 +337,7 @@ function claimRefund(
   const purse = accepts
     ? ledger
         .holdings(holderAccount(d.seller as unknown as HolderRef))
+        .map((h) => ({ ...h, amount: h.amount - (spent.get(`${d.seller}|${h.unit}`) ?? 0) }))
         .filter((h) => isMoney(h.unit) && h.amount >= 1)
         .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0]
     : undefined;
@@ -350,6 +354,8 @@ function claimRefund(
   }
   const amount = Math.min(owed, Math.floor(purse.amount));
   const draft = draftEvent(events.length);
+  const sk = `${d.seller}|${purse.unit}`;
+  spent.set(sk, (spent.get(sk) ?? 0) + amount);
   events.push({
     kind: SCAM_REFUNDED,
     actors: [d.seller, buyer],
@@ -381,7 +387,7 @@ function hireAppraiser(
   o: ScamDiscoveryOptions,
   buyer: AgentId,
   d: ScamDeal,
-  spent: ReadonlyMap<AgentId, number>,
+  spent: ReadonlyMap<string, number>,
 ): { who: AgentId; eye: number; unit: LedgerUnit } | null {
   const ledger = ctx.ledger;
   if (!o.appraisers || !ledger) return null;
@@ -390,7 +396,9 @@ function hireAppraiser(
   }
   const purse = ledger
     .holdings(holderAccount(buyer as unknown as HolderRef))
-    .filter((h) => isMoney(h.unit) && h.amount - (spent.get(buyer) ?? 0) >= APPRAISAL_FEE)
+    .filter(
+      (h) => isMoney(h.unit) && h.amount - (spent.get(`${buyer}|${h.unit}`) ?? 0) >= APPRAISAL_FEE,
+    )
     .sort((a, b) => b.amount - a.amount || (a.unit < b.unit ? -1 : 1))[0];
   if (!purse) return null;
   const here = JSON.stringify(o.placeOf(ctx.truth, buyer));
