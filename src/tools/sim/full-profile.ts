@@ -68,6 +68,8 @@ export interface FullProfileConfig {
   readonly days?: number;
   readonly checkEveryDays: number;
   readonly frequency?: number;
+  /** Cobertura dirigida de préstamos con garantía, promesas y contratación (`rescue-coverage.ts`). */
+  readonly rescue?: boolean;
 }
 
 /** Observación del tooling; el callback nunca entra al estado ni al setup de replay. */

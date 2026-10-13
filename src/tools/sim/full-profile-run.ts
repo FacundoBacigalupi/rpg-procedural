@@ -23,6 +23,17 @@ import {
   recordProcess,
   validateFullProfileConfig,
 } from "./full-profile.ts";
+import { livingHouseholds, rescueLoanSeeds, runRescueTurns } from "./rescue-coverage.ts";
+
+/**
+ * Semillas de la cobertura `rescue`: se eligen sobre un sondeo sin opciones (la población y el libro
+ * nacen antes que las opciones, así que los hogares y saldos son los de la vida real; se verifica).
+ */
+function rescueSeedsFor(seed: number, content: ReturnType<typeof loadContentDir>) {
+  const seeds = rescueLoanSeeds(Life.create(seed, content, {}));
+  if (!seeds) throw new Error("rescue: no hay tres hogares con grano para sembrar el préstamo");
+  return seeds;
+}
 
 export function runFullProfileSeed(
   seed: number,
@@ -66,9 +77,10 @@ function measureFullProfileSeed(
 ) {
   validateFullProfileConfig(config);
   const content = loadContentDir("content", GAME_CONTENT_KINDS);
+  const rescueSeeds = config.rescue === true ? rescueSeedsFor(seed, content) : undefined;
   const setup = {
     game: defaultGameSetup("realistic"),
-    life: FULL_PROFILE,
+    life: rescueSeeds ? { ...FULL_PROFILE, loanSeeds: rescueSeeds } : FULL_PROFILE,
     ...(config.frequency === undefined ? {} : { frequency: config.frequency }),
   };
   const processes = new Map<string, ProcessMeasurement>();
@@ -91,6 +103,12 @@ function measureFullProfileSeed(
   processes.clear();
   const from = life.now;
   const world = life.world;
+  if (rescueSeeds) {
+    const homes = new Set(livingHouseholds(world.truth));
+    for (const s of rescueSeeds)
+      for (const h of [s.lender, s.borrower, ...(s.guarantors ?? []).map((g) => g.household)])
+        if (!homes.has(h)) throw new Error(`rescue: el hogar ${h} no existe en la vida real`);
+  }
   setStage?.("coverage-initial");
   const demography = content.get(DEMOGRAPHY, "human.preindustrial-village");
   if (!demography) throw new Error("sin demografía human.preindustrial-village");
@@ -100,6 +118,8 @@ function measureFullProfileSeed(
     config.days === undefined ? config.years * world.clock.year : config.days * world.clock.day;
   const target = from + Math.round(duration);
   const step = config.checkEveryDays * world.clock.day;
+  // Turnos dirigidos del personaje (contratar, prometer): planes legales, quedan en la reproducción.
+  const rescuePlans = config.rescue === true ? runRescueTurns(life) : [];
   if (!Number.isSafeInteger(target) || target <= from || !Number.isSafeInteger(step))
     throw new RangeError("duración o cadencia fuera del rango de ticks");
   let checks = 0;
@@ -208,7 +228,7 @@ function measureFullProfileSeed(
             completeThrough,
             replayFrom: "seed",
             stage: failure === undefined ? "invariants" : stage,
-            plans: [],
+            plans: rescuePlans,
           },
         }
       : {}),
