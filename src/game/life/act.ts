@@ -512,13 +512,8 @@ export function actProcess(o: ActOptions): ProcessDef {
             const { cursor } = actCursor(ctx, o, state);
             if (cursor.path === null) return undefined;
             const node = nodeAt(state.plan.root, cursor.path);
-            // El servicio de stock público no decide disputas de propiedad ni objetos únicos.
-            if (
-              node.kind === "do" &&
-              node.verb === "take" &&
-              node.args.some((arg) => arg.role === "from" && "entity" in arg)
-            )
-              return undefined;
+            // `take` actual mueve Holdings fungibles aun desde persona: la oposición sigue
+            // en el resolver, mientras este servicio evita reutilizar el mismo saldo.
             return node.kind === "do" && serialVerbs.has(node.verb)
               ? ECONOMIC_SERIAL_GROUP
               : undefined;

@@ -33,6 +33,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess, PLAN_STATE, planKey } from "./act.ts";
+import { watchingProjectionProcess } from "./watching-project.ts";
 
 const files = [
   "content/actions/core.json",
@@ -74,7 +75,14 @@ const map: LocalMap = {
   },
 };
 
-function world(verb: "take" | "gather", batch = true, reverse = false, explicitFrom = false) {
+function world(
+  verb: "take" | "gather",
+  batch = true,
+  reverse = false,
+  explicitFrom = false,
+  single = false,
+  caught = false,
+) {
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -90,7 +98,7 @@ function world(verb: "take" | "gather", batch = true, reverse = false, explicitF
   });
   const body = content.all(BODY_PLANS)[0];
   if (!body) throw new Error("sin cuerpo");
-  for (const n of [1, 2]) {
+  for (const n of explicitFrom ? [1, 2, 3] : [1, 2]) {
     const actor = makeId("agent", n);
     truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
     truth.setRaw(PERSON.name, actor, {
@@ -101,6 +109,7 @@ function world(verb: "take" | "gather", batch = true, reverse = false, explicitF
     truth.set(BODY_STATE, actor, newBody(body, 55, 0));
     truth.set(INNATE, actor, Object.fromEntries(content.all(TRAITS).map((t) => [t.id, t.mean])));
     truth.set(LOCATION, actor, { hex: 0 });
+    if (n === 3) continue;
     truth.set(PLAN_STATE, actor, {
       seq: 1,
       done: false,
@@ -144,15 +153,18 @@ function world(verb: "take" | "gather", batch = true, reverse = false, explicitF
     ledger,
     clock,
     rng: Rng.root(7),
-    ids: new IdAllocator({ event: 2, agent: 3 }),
+    ids: new IdAllocator({ event: 2, agent: explicitFrom ? 4 : 3 }),
     resolution: "local",
     processes: [
       actProcess({
         economicBatch: true,
+        projectWatchExposures: true,
         serialEconomicVerbs: batch ? ["take", "gather"] : ["trade", "give"],
         map,
         spaces: { spaces: [], edges: [] },
-        catalog,
+        catalog: caught
+          ? new ActionCatalog(actions.map((a) => (a.id === "take" ? { ...a, ease: -100 } : a)))
+          : catalog,
         skills,
         traits: content.all(TRAITS),
         bodyPlans: content.all(BODY_PLANS),
@@ -166,9 +178,10 @@ function world(verb: "take" | "gather", batch = true, reverse = false, explicitF
         seed: 7,
         player: makeId("agent", 99),
       }),
+      watchingProjectionProcess({ catalog: skills, clock }),
     ],
   });
-  for (const n of reverse ? [2, 1] : [1, 2])
+  for (const n of single ? [1] : reverse ? [2, 1] : [1, 2])
     scheduler.schedule({
       at: clock.day / 2,
       phase: "act",
@@ -218,8 +231,52 @@ describe("servicio opt-in de stock público fungible", () => {
       expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.done).toBe(true);
     },
   );
-  it("take desde una entidad explícita permanece fuera del servicio público", () => {
-    const w = world("take", true, false, true);
+  it("reproduce doble débito de dos take personales sin reserva compartida", () => {
+    const w = world("take", false, false, true);
     expect(() => w.scheduler.advanceTo(clock.day / 2)).toThrow();
+    expect(w.log.all().filter((e) => e.kind === "action.take")).toHaveLength(2);
+    expect(w.ledger.balance(holderAccount(makeId("agent", 3)), good)).toBe(0);
+  });
+  it("dos take del mismo bolsillo conservan oposición, stock y agenda", () => {
+    const w = world("take", true, false, true);
+    w.scheduler.advanceTo(clock.day / 2);
+    const actions = w.log.all().filter((e) => e.kind === "action.take");
+    expect(actions).toHaveLength(2);
+    expect(actions[0]?.data).toMatchObject({
+      effect: { from: makeId("agent", 3), got: [{ unit: good, amount: 100 }] },
+    });
+    expect(actions[1]?.outcome).toBe("failure");
+    expect(actions[1]?.data).toMatchObject({ failure: "no_means", effect: { got: [] } });
+    expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.lastBelieved).toBe("failure");
+    expect(w.ledger.total(good)).toBe(100);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(w.scheduler.state().queue).toHaveLength(2);
+    w.scheduler.advanceTo(clock.day / 2 + 4 * 3600);
+    expect(w.truth.get(PLAN_STATE, makeId("agent", 1))?.done).toBe(true);
+    expect(w.truth.get(PLAN_STATE, makeId("agent", 2))?.done).toBe(true);
+  });
+  it("un take personal aislado conserva exactamente RNG, oposición y consecuencias anteriores", () => {
+    const opted = world("take", true, false, true, true),
+      legacy = world("take", false, false, true, true);
+    opted.scheduler.advanceTo(clock.day / 2);
+    legacy.scheduler.advanceTo(clock.day / 2);
+    expect(opted.truth.rows()).toEqual(legacy.truth.rows());
+    expect(opted.log.all()).toEqual(legacy.log.all());
+    expect(opted.ledger.journal()).toEqual(legacy.ledger.journal());
+    expect(opted.scheduler.state()).toEqual(legacy.scheduler.state());
+  });
+  it("la reserva conserva la captura por la víctima en una oposición perdida", () => {
+    const opted = world("take", true, false, true, true, true),
+      legacy = world("take", false, false, true, true, true);
+    opted.scheduler.advanceTo(clock.day / 2);
+    legacy.scheduler.advanceTo(clock.day / 2);
+    expect(opted.log.all().find((e) => e.kind === "action.take")?.data).toMatchObject({
+      noticedBy: [makeId("agent", 3)],
+    });
+    expect(opted.ledger.balance(holderAccount(makeId("agent", 3)), good)).toBe(100);
+    expect(opted.truth.rows()).toEqual(legacy.truth.rows());
+    expect(opted.log.all()).toEqual(legacy.log.all());
+    expect(opted.ledger.journal()).toEqual(legacy.ledger.journal());
+    expect(opted.scheduler.state()).toEqual(legacy.scheduler.state());
   });
 });
