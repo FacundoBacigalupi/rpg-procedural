@@ -99,7 +99,9 @@ físico y cobertura dirigida de sueño, familia y préstamo garantizado.
 
 **perfil2b, resultado parcial (2026-10-13):** en `full-profile-2y-economic-fixed` las seeds 1 y 2 completaron dos años limpias (0 problemas); la seed 3 se detuvo ~día 480 con `life.scam_discovery: asiento rechazado: agent:64 no tiene 55 de coin:copper (tiene 54)`. Causa: `claimRefund` leía el saldo del vendedor del ledger sin descontar reembolsos ya decididos el mismo tick a otros compradores (ni tasaciones), y emitía asientos que sumados superaban la bolsa. Fix (`feat/f3-scam-discovery-fix`): un mapa `spent` (agente|unidad) compartido por reembolsos y tasaciones; prueba de regresión con dos compradores y un vendedor. perfil2b sigue abierto hasta repetir seed 3 completa y 1..3 con el fix.
 
-**Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
+**perfil2b CERRADO (2026-10-13, SHA `8638856`):** `sim:batch --scenario full-profile --seeds 1..3 --years 2 --check-days 30`, salida en `sim-reports/full-profile-2y-scamfix-all/`: 3 seeds × 2 años, 26 chequeos c/u, 0 problemas, ninguna detenida. 423/660/413 s por año de mundo, RSS pico 1.80/2.34/2.06 GiB. Huecos de cobertura en ROADMAP `perfil2c-*` (viaje/dormidos, contagio, workout, rescate, encuentros, natalidad). **Siguiente: `perfil3`** (empezar por `perfil3-hash-metric`, luego `perfil3-idle-scopes`); `perfil4` después. Fase 3 abierta.
+
+(Histórico) **Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
 el código integrado, sin cambiar producción durante los workers:
 `npm.cmd run sim:batch -- --scenario full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile-2y-economic-fixed`.
 Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
