@@ -383,7 +383,10 @@ export class Scheduler {
     const scopes = this.#o.scopes;
     if (!scopes)
       throw new SchedulerError(`no hay cómo enumerar alcances "${def.scope}" (${def.id})`);
-    return [...scopes(def.scope, this.#o.truth, def)].sort(compareScopes);
+    const all = scopes(def.scope, this.#o.truth, def);
+    const guard = def.scopeGuard;
+    const truth = this.#o.truth;
+    return [...(guard ? [...all].filter((s) => guard(truth, s)) : all)].sort(compareScopes);
   }
 
   #run(spec: RunSpec, t: Tick, phase: Phase): Run {

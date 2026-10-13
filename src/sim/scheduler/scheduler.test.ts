@@ -192,6 +192,44 @@ describe("pasos y ventanas", () => {
   });
 });
 
+describe("scopeGuard", () => {
+  it("una guardia que solo descarta alcances inertes no cambia mundo, eventos ni tiradas", () => {
+    // Un alcance con stock par es inerte para `pick`; la guardia lo salta sin cambiar el resultado.
+    const pick = (guarded: boolean, seen: string[]) =>
+      def(
+        "econ.pick",
+        (ctx) => {
+          seen.push(String(ctx.scope));
+          const s = ctx.scope as SettlementId;
+          const amount = ctx.truth.get(STOCK, s)?.amount ?? 0;
+          if (amount % 2 === 0) return {};
+          return { changes: [addToField(STOCK, s, "amount", ctx.rng.int(1, 3))] };
+        },
+        {
+          scope: "settlement",
+          ...(guarded
+            ? { scopeGuard: (t, s) => (t.get(STOCK, s as SettlementId)?.amount ?? 0) % 2 === 1 }
+            : {}),
+        },
+      );
+    const run = (guarded: boolean, seed: number) => {
+      const seen: string[] = [];
+      const w = world(seed, [grow, pick(guarded, seen)]);
+      const out = runFor(w, 20 * DAY);
+      return { out, calls: seen.length };
+    };
+    fc.assert(
+      fc.property(seeds, (seed) => {
+        const a = run(false, seed);
+        const b = run(true, seed);
+        expect(b.out).toEqual(a.out);
+        expect(b.calls).toBeLessThan(a.calls);
+      }),
+      { numRuns: 5 },
+    );
+  });
+});
+
 describe("determinismo", () => {
   it("mismo seed, mismo mundo y mismos eventos", () => {
     fc.assert(

@@ -80,6 +80,17 @@ export function pitchProcess(o: PitchOptions): ProcessDef {
     phase: "decide",
     reads: [OPEN_DEALS.name, PERSON.name, ENTITY.name, LOCATION.name, KNOWN_DEEDS.name],
     writes: [OPEN_DEALS.name],
+    // Solo ofrece quien comparte hex y espacio con el personaje; el resto devuelve `{}`.
+    scopeGuard: (truth, scope) => {
+      const here = truth.get(LOCATION, scope as AgentId);
+      const there = truth.get(LOCATION, o.player);
+      return (
+        here !== undefined &&
+        there !== undefined &&
+        here.hex === there.hex &&
+        here.space === there.space
+      );
+    },
     run(ctx) {
       const me = ctx.scope as AgentId;
       const you = o.player;

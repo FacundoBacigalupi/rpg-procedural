@@ -242,6 +242,12 @@ export interface ProcessDef {
    * Undefined conserva el contrato anterior. Los otros procesos leen la fase original.
    */
   readonly serialGroup?: (ctx: ProcessContext) => string | undefined;
+  /**
+   * Guardia barata de alcance (perfil3-idle-scopes): si devuelve false, el alcance no se enumera
+   * en esta fase. Solo es válida si `run` devolvería `{}` para ese alcance con el mismo `truth`
+   * (se evalúa al abrir la fase, con la misma verdad que ven las corridas). Sin guardia, todos.
+   */
+  readonly scopeGuard?: (truth: ReadonlyWorldTruth, scope: ScopeRef) => boolean;
   /** Opt-in explícito: permite compartir serialGroup entre procesos/ventanas de un dominio
    * en act. Cada resultado conserva su validación y RNG originales; el resto queda fuera.
    */
