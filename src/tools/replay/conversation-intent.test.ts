@@ -12,6 +12,7 @@ import {
 } from "../../core/index.ts";
 import {
   CONVERSATION_INTENT,
+  converseProjectionProcess,
   conversationSettlementProcess,
   OPEN_DEALS,
   PENDING,
@@ -22,6 +23,8 @@ import {
   deleteComponent,
   draftEvent,
   ENTITY,
+  FACE,
+  HEARD,
   HOUSEHOLD,
   hashState,
   LOCATION,
@@ -66,7 +69,22 @@ function processes(): ProcessDef[] {
               outcome: "success",
               emissions: {},
               causes: [{ kind: "state", entity: b, key }],
-              data: { effect: { kind: "speak", reply: "request.give", text: "Tomá este grano." } },
+              data: {
+                effect: { kind: "speak", reply: "request.give", text: "Tomá este grano." },
+                conversationEffects: [
+                  { kind: "face", actor: b, delta: 1, at: ctx.now },
+                  {
+                    kind: "heard",
+                    actor: b,
+                    claim: { about: c, claim: "alive", from: a, at: ctx.now },
+                  },
+                  {
+                    kind: "heard",
+                    actor: a,
+                    claim: { about: c, claim: "alive", from: b, at: ctx.now },
+                  },
+                ],
+              },
             },
           ],
           postings: [
@@ -89,6 +107,7 @@ function processes(): ProcessDef[] {
       },
     },
     conversationSettlementProcess([OPEN_DEALS.name]),
+    converseProjectionProcess(),
   ];
 }
 
@@ -169,6 +188,8 @@ describe("intención económica pendiente: persistencia, replay y factibilidad a
     expect(original.truth.ids(PENDING)).toEqual([]);
     expect(original.ledger.balance(holderAccount(a), grain)).toBe(0);
     expect(original.truth.get(CONVERSATION_INTENT, b)?.payload).toContain("event:~0");
+    expect(original.truth.get(CONVERSATION_INTENT, b)?.at).toBe(3600);
+    expect(original.truth.get(FACE, b)).toBeUndefined();
     const db = openSqlite(":memory:");
     try {
       const store = LifeStore.open(db);
@@ -188,6 +209,9 @@ describe("intención económica pendiente: persistencia, replay y factibilidad a
       restored.scheduler.advanceTo(3601);
       expect(restored.hash()).toEqual(original.hash());
       expect(restored.ledger.balance(holderAccount(a), grain)).toBe(500);
+      expect(restored.truth.get(HEARD, a)?.claims[0]?.at).toBe(3601);
+      expect(restored.truth.get(HEARD, b)?.claims[0]?.at).toBe(3600);
+      expect(restored.truth.get(FACE, b)?.updated).toBe(3601);
       store.saveSnapshot(original.state());
       const { input, checkpoints } = replayInputFromStore(store);
       const result = replay(

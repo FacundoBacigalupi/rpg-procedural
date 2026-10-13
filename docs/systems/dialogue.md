@@ -299,6 +299,9 @@ cancela causalmente sin habla ni transferencia. Conserva el criterio `sameHex` d
 sin exigir un mismo espacio interior.
 La forma alternativa se captura al decidir con un fork independiente, sin cambiar las tiradas
 de la respuesta aceptada. La intención sobrevive a guardar, restaurar y replay.
+Al confirmar una intención retrasada, los efectos de cara y las noticias que cuenta la respuesta
+se fechan en la confirmación. La noticia que el oyente aceptó del mensaje previo conserva su
+fecha de escucha; `intent.at`, fechas de hechos y propuestas no se alteran.
 
 Las respuestas sin transferencia se publican directamente en `decide`. Cada respuesta confirmada
 registra las variaciones de cara y las noticias

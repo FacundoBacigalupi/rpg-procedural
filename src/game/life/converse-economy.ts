@@ -29,6 +29,7 @@ import {
   table,
   validateSettlement,
 } from "../../sim/index.ts";
+import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const CONVERSATION_INTENT = table<ConversationIntent>("life.conversation_intent");
@@ -228,11 +229,35 @@ export function conversationSettlementProcess(writes: readonly string[]): Proces
             ? {
                 ...event,
                 causes: [cause, ...event.causes],
-                data: { ...(event.data as object), economicOutcome: { accepted: true } },
+                data: {
+                  ...(event.data as object),
+                  ...confirmedConversationEffects(event.data, ctx.now, intent.speaker),
+                  economicOutcome: { accepted: true },
+                },
               }
             : event,
         ),
       };
     },
+  };
+}
+
+function confirmedConversationEffects(
+  data: unknown,
+  at: Tick,
+  speaker: AgentId,
+): Record<string, unknown> {
+  if (data === null || typeof data !== "object") return {};
+  const packet = (data as Record<string, unknown>)[CONVERSATION_EFFECTS_KEY];
+  if (!Array.isArray(packet)) return {};
+  return {
+    [CONVERSATION_EFFECTS_KEY]: (packet as ConverseProjectionEffect[]).map((effect) =>
+      effect.kind === "face"
+        ? { ...effect, at }
+        : // El speaker oye reply.told al recibir la respuesta; el listener ya oyó reply.accepted.
+          effect.actor === speaker
+          ? { ...effect, claim: { ...effect.claim, at } }
+          : effect,
+    ),
   };
 }
