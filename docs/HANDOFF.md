@@ -396,3 +396,5 @@ Siguiente: más lotes de 4 agentes sobre los `[ ]` de Fase 3 (ver ROADMAP); cuan
 Estado: la mayoría de los `[ ]` restantes de Fase 3 son cableados o calibración para encender por defecto, o ítems que dependen de fases posteriores. Al agotarse los hacibles: mover los dependientes a su fase (prefijo `Heredado de Fase 3:`), PR `develop` → `main` y tag `v0.3.0`. Los «Heredado de Fase 2» van al final de la lista de pendientes.
 
 Notas: el CI de `main` tarda ~25 min (ubuntu) y los tests lentos tienen timeouts de 600 s; los agentes no corren la suite completa, solo el coordinador (una corrida a la vez, ~5-9 min); si el límite de sesión de la API corta a los agentes, retomarlos con SendMessage.
+
+**perfil3-hash-metric hecho (2026-10-13):** cada `full-profile-<seed>.json` trae `stateHash: { tick, total, parts, hashMs }` (`Life.hash()` al terminar, fuera del tiempo de sim; `parts` da `c:<tabla>`, `events`, `ledger`, `ids`, `scheduler`). Para comparar una optimización: mismo seed/setup/config/versiones y mismo `tick` (comparar `to`), y `total` idéntico; si difiere, mirar qué `parts` cambiaron. Sin hash por chequeo (costo/memoria). Siguiente: `perfil3-idle-scopes`.

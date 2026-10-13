@@ -159,6 +159,10 @@ function measureFullProfileSeed(
   setStage?.("coverage-final");
   const coverageFinal = profileCoverage(world.truth, life.now, world.clock, demography.fertility);
   setStage?.("report");
+  // Fuera de simulationMs/completedSimulationMs (ya medidos arriba): el hash no cuenta como costo de sim.
+  const hashStarted = performance.now();
+  const stateHash = life.hash();
+  const hashMs = performance.now() - hashStarted;
   return {
     scenario: "full-profile",
     seed,
@@ -173,6 +177,9 @@ function measureFullProfileSeed(
     stoppedEarly: problems.length > 0 || failure !== undefined,
     problems,
     ...(failure === undefined ? {} : { failure: { stage, message: failure } }),
+    // Para comparar optimizaciones: mismo seed + setup + config + versiones + tick => mismo hash.
+    // Incluye verdad, eventos, ledger, ids y cola; no versiones ni RNG (ver tooling.md, hash del estado).
+    stateHash: { tick: life.now, total: stateHash.total, parts: stateHash.parts, hashMs },
     metrics: profileDemography(world.log.all(), from),
     coverage: {
       initial: coverageInitial,

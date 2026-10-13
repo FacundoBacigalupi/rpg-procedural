@@ -70,6 +70,7 @@ vi.mock("../../game/index.ts", async (importOriginal) => {
               },
             },
           },
+          hash: () => ({ total: `h${now}`, parts: { events: `e${now}` } }),
           advanceTo: (tick: number) => {
             now = tick;
             if (behavior.mode === "advance-error" && tick >= 20)
@@ -143,6 +144,14 @@ describe("full-profile: fallos de worker sin crear una Life", () => {
     expect(report.coverage.initial).toMatchObject({ tick: 0, livingPeople: 0, fertileCouples: 0 });
     expect(report.coverage.final).toMatchObject({ tick: 20, livingPeople: 0, fertileCouples: 0 });
     expect(report.reproduction).toMatchObject({ observedTick: 20, completeThrough: 10 });
+  });
+
+  it("el reporte incluye el StateHash final con su tick", () => {
+    behavior.mode = "ok";
+    const report = runFullProfileSeed(1, config);
+    if (!("stateHash" in report)) throw new Error("reporte completo esperado");
+    expect(report.stateHash).toMatchObject({ tick: 100, total: "h100", parts: { events: "e100" } });
+    expect(report.stateHash.hashMs).toBeGreaterThanOrEqual(0);
   });
 
   it("los fallos posteriores a la creación conservan la etapa del fallo", () => {
