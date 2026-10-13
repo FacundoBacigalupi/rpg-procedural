@@ -27,6 +27,7 @@ import {
   type GoodDef,
   goodUnit,
   type HabitDef,
+  KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
   type LocalMap,
@@ -37,6 +38,7 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   type RecipeDef,
+  RUMORS,
   Scheduler,
   type SchedulerState,
   type SchemaDef,
@@ -76,7 +78,8 @@ import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
-import { type ConverseForm, converseProcess } from "./converse.ts";
+import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
+import { conversationSettlementProcess } from "./converse-economy.ts";
 import { converseProjectionProcess } from "./converse-project.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
@@ -662,7 +665,7 @@ export function lifeWorld(
         actProcess({
           ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
           ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
-          ...(parts.npcVerbs?.some((verb) => verb === "trade" || verb === "give")
+          ...(parts.npcVerbs && parts.npcVerbs.length > 0
             ? {
                 // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
                 serialEconomicVerbs: ["trade", "give"] as const,
@@ -843,7 +846,9 @@ export function lifeWorld(
             ]
           : []),
         converseProcess({
-          ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectSharedEffects: true } : {}),
+          ...(parts.npcVerbs && parts.npcVerbs.length > 0
+            ? { projectSharedEffects: true, settleEconomy: true }
+            : {}),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
@@ -858,6 +863,9 @@ export function lifeWorld(
           ...(parts.form ? { form: parts.form } : {}),
         }),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? [converseProjectionProcess()] : []),
+        ...(parts.npcVerbs && parts.npcVerbs.length > 0
+          ? [conversationSettlementProcess([OPEN_DEALS.name, KNOWN_DEEDS.name, RUMORS.name])]
+          : []),
         ...(parts.form
           ? [
               bornTaboosProcess({

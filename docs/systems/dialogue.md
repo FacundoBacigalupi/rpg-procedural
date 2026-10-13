@@ -287,7 +287,19 @@ compartidas sin volver a decidir el acto social ni introducir una tirada nueva.
 ### Implementado (2026-10-12): respuestas simultáneas con verbos de NPC
 
 Cuando `npcVerbs` contiene algún verbo, `life.converse` sigue decidiendo cada respuesta en
-`decide` sobre el mismo estado anterior a la fase. Registra las variaciones de cara y las noticias
+`decide` sobre el mismo estado anterior a la fase. Para regalos y tratos registra una intención
+JSON persistible en `life.conversation_intent`, causada por `dialogue.economic_intended`, y consume
+`PENDING`; posterga la respuesta, los cambios de `OPEN_DEALS`, `KNOWN_DEEDS` y `RUMORS`, y los
+asientos hasta `life.conversation_settle` en `act`. Este comparte el dominio económico con las
+otras acciones y revalida saldos, reservas, personas vivas y titular actual. La reserva mantiene
+la política de `decideReply` para bienes no monetarios y usa los miembros vivos actuales.
+Si faltan recursos contesta con la línea corta real, conserva la propuesta abierta y no publica
+efectos de aceptación; si murió un participante cancela causalmente sin hacerlo hablar.
+La forma alternativa se captura al decidir con un fork independiente, sin cambiar las tiradas
+de la respuesta aceptada. La intención sobrevive a guardar, restaurar y replay.
+
+Las respuestas sin transferencia se publican directamente en `decide`. Cada respuesta confirmada
+registra las variaciones de cara y las noticias
 oídas como operaciones semánticas en `action.speak.data.conversationEffects`, en vez de escribir
 `FACE` o `HEARD` desde varios oyentes. `life.converse_projection` es su único escritor en `physics`
 (`scope: world`, `onEvent`, `withRecent`): pliega las respuestas confirmadas en orden canónico,

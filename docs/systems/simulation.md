@@ -117,8 +117,12 @@ interface ScheduledItem {
 
 **Proyección de conversación opt-in (2026-10-12).** Con `npcVerbs` activo, las respuestas de
 `life.converse` leen el snapshot de `decide` y dejan operaciones de cara y noticias en su evento
-confirmado. `life.converse_projection` las pliega como un único escritor del mundo en `physics`,
-con `onEvent` y `withRecent`. No se serializa `decide` ni se usan contiendas para descartar lo
+confirmado. `life.converse_projection` las pliega como un único escritor del mundo en `physics`.
+Las respuestas económicas guardan primero una intención causal persistible y consumen la petición
+en `decide`; `life.conversation_settle` confirma en `act` dentro del dominio económico compartido.
+Revalida existencias, reservas y participantes antes de publicar respuesta, diffs y asientos;
+una falta de recursos produce una negativa real y la muerte cancela sin habla ni transferencia.
+La proyección usa `onEvent` y `withRecent`. No se serializa `decide` ni se usan contiendas para descartar lo
 que una persona oyó: cada efecto se aplica en orden canónico y se escribe una fila final por
 persona y tabla. Los lectores de fases anteriores ven el estado anterior; la proyección es visible
 desde `physics` en adelante. El camino sin `npcVerbs` mantiene sus fases y hashes.

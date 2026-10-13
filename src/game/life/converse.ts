@@ -72,6 +72,7 @@ import {
   holdsGrudge,
   honestyShift,
   INNATE,
+  isFormal,
   KNOWN_DEEDS,
   type KnownDeeds,
   keepRumor,
@@ -92,6 +93,7 @@ import {
   PROPHECY_BELIEFS,
   type ProcessContext,
   type ProcessDef,
+  type ProcessResult,
   type PromiseTerms,
   type Proposal,
   RELATIONS,
@@ -119,6 +121,7 @@ import {
   type StateChange,
   type StatusDef,
   sameValue,
+  sayLine,
   secretAbout,
   setComponent,
   sincerityOf,
@@ -134,6 +137,7 @@ import {
   table,
   threatCredibility,
   threatFaceDelta,
+  toneOf,
   transmit,
   understand,
   utter,
@@ -142,6 +146,7 @@ import {
 } from "../../sim/index.ts";
 import { registerKnowledge } from "./accent.ts";
 import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
+import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-economy.ts";
 import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
 import { LOANS, loansOf } from "./loans.ts";
@@ -289,6 +294,8 @@ export const OPEN_DEALS = table<OpenDeal>("life.open_deal");
 export interface ConverseOptions {
   /** Interno, derivado de npcVerbs: FACE/HEARD tienen un único escritor en physics; default directo. */
   readonly projectSharedEffects?: boolean;
+  /** Interno, derivado de npcVerbs: regalos y tratos se confirman en act sobre saldos actuales. */
+  readonly settleEconomy?: boolean;
   readonly spaces: SpaceGraph;
   readonly catalog: ActionCatalog;
   readonly goods: readonly GoodDef[];
@@ -1177,6 +1184,8 @@ export function dealSwaps(
 }
 
 export function converseProcess(o: ConverseOptions): ProcessDef {
+  if (o.settleEconomy && !o.projectSharedEffects)
+    throw new Error("confirmar economía requiere proyectar FACE/HEARD");
   const speak = o.catalog.verb("speak");
   return {
     id: CONVERSE_PROCESS,
@@ -1213,6 +1222,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       RELIGIOUS_IDENTITY.name,
     ],
     writes: [
+      ...(o.settleEconomy ? [CONVERSATION_INTENT.name] : []),
       PENDING.name,
       OPEN_DEALS.name,
       ...(o.projectSharedEffects ? [] : [HEARD.name]),
@@ -1785,7 +1795,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       };
       // Un trato cerrado: cada parte pasa lo suyo, de despensa a bolsillo y de bolsillo a despensa.
       const swaps = dealSwaps(reply.deal, goodById, larder, me, speaker);
-      return {
+      const result: ProcessResult = {
         changes,
         events: [
           event,
@@ -1823,6 +1833,22 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
                 ]
               : [],
       };
+      if (o.settleEconomy && (reply.give || reply.deal)) {
+        const line = reply.deal ? "accept.short" : "request.short";
+        const text = sayLine(
+          o.lines,
+          line,
+          { what: reply.give ? (goodById(reply.give.good)?.name ?? reply.give.good) : "eso" },
+          ctx.rng.fork("reply", pending.key).fork(line),
+          isFormal(feel, above),
+          toneOf(feel),
+        );
+        return stageEconomicConversation(ctx, me, speaker, pending.key, clear, result, {
+          line,
+          text,
+        });
+      }
+      return result;
     },
   };
 }
