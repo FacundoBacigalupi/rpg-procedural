@@ -224,7 +224,15 @@ export interface ActOptions {
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
   readonly serialTrades?: boolean;
   /** Opt-in explícito: estos verbos comparten saldos; no serializa la iniciativa de combate. */
-  readonly serialEconomicVerbs?: readonly ("trade" | "give" | "eat" | "cook" | "take" | "gather")[];
+  readonly serialEconomicVerbs?: readonly (
+    | "trade"
+    | "give"
+    | "eat"
+    | "cook"
+    | "take"
+    | "gather"
+    | "consult"
+  )[];
   /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
   readonly economicBatch?: boolean;
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
