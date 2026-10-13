@@ -182,7 +182,7 @@ function distantSleeper() {
       sleepPolicyProcess({
         player,
         map,
-        near: FULL_PROFILE.sleepers.near,
+        near: 2, // fijo: el test cubre dormidos lejanos con independencia del valor del perfil (FULL_PROFILE usa 0)
         bonded: (t, who) => t.get(PERSON, who)?.household === t.get(PERSON, player)?.household,
         important: () => false,
         pending: sleepWorkPending,
