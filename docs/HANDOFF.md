@@ -95,7 +95,19 @@ exit 0 confirmado. Incluye préstamos/usura con saldos reservados, seis hojas
 económicas, conversación diferida persistible y fechas de confirmación, viaje
 físico y cobertura dirigida de sueño, familia y préstamo garantizado.
 
-**Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
+**Siguiente para Claude/Codex:** cerrar `perfil2-economic-consultations` antes
+de `perfil2b`: visitas al adivino activas en los reportes (44/200/95 consultas)
+debían compartir reservas con acciones; la hoja del jugador `consult` también
+paga. Preparados `6ad4fc3` en `fix/f3-consultation-reservations` (divine/visits,
+worktree codex-profile-core; tres tests y typecheck) y `5dc42f7` + `c1caf1d`
+en `fix/f3-consult-action-reservations` (act/tests, codex-profile-tools;
+once tests). Aún sin integrar en esta observación: check del WIP de deuda
+corriendo sobre `702bbf6`, log `sim-reports/debt-wip-full-check.log` y salida
+durable `sim-reports/debt-wip-full-check.exit`. No correr otra suite pesada
+ni modificar producción mientras corre. Coordinador cablea world y docs;
+no activar
+consult para decisiones NPC. Después de pruebas e integración, retirar ramas.
+Luego `perfil2b`: repetir tres seeds × dos años sobre
 el código integrado, sin cambiar producción durante los workers:
 `npm.cmd run sim:batch -- --scenario full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile-2y-economic-fixed`.
 Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
@@ -104,11 +116,16 @@ lote nuevo. Después: `perfil3` medición/optimización y `perfil4` activación
 validada. Fase 3 abierta; no cambiar defaults ni hashes dorados por trámite.
 Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
 tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
-no equivalen a reservas de cantidades fungibles. Rentas siguen bajo auditoría.
+no equivalen a reservas de cantidades fungibles. Auditoría de rentas concluida
+por lectura: FULL_PROFILE no configura rentSeeds/rentMarket y no invoca rentas.
+En combinaciones opt-in, `life.rents/act` necesita dominio común; aparcería
+conserva perceive y tiene lectura ENTITY no declarada. Pendiente explícito
+`perfil2-economic-rents`, sin cambiar el perfil para ejercitar un sistema nuevo.
 LLM parser ya probado con Qwen3:14b: 54/54 válidos y 39/54 semánticos, sin
 regresiones comunes frente a #489 en esa corrida; narración semántica sigue
 pendiente. No repetir inferencias por cambios puramente económicos.
-Los agentes disponibles agotaron cuota; continuar desde estos docs si fallan.
+Agentes anteriores agotaron cuota; un agente posterior pudo completar la
+auditoría de rentas. Continuar desde estos docs si la cuota impide delegar.
 Conservar cualquier WIP de worktrees antes de retirar sus ramas; no borrar
 junctions/node_modules recursivamente. Las observaciones fechadas debajo son
 históricas y no reemplazan este estado.

@@ -9,8 +9,8 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 ## ▶ Ahora (en orden)
 **Orden vigente (2026-10-11, después de #489):** la prioridad de #488 reemplaza
 el orden de la retoma de Claude que se conserva abajo como contexto. `perfil1`
-y `perfil2a` hechos; préstamos/usura y fechas de confirmación integrados;
-repetir la medición larga `perfil2b` tras el check del lote completo, después
+y `perfil2a` hechos; completar `perfil2-economic-consultations` detectado en
+auditoría, repetir la medición larga `perfil2b` tras el check completo, después
 optimización `perfil3` y activación validada `perfil4`. Fase 3 sigue abierta.
 No sumar sistemas apagados mientras se prepara esa integración. Auditoría de
 #475/#483/#489 en paralelo, con pruebas LLM cuando afecta sus contratos.
@@ -589,6 +589,8 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
           - [ ] (perfil2-personal-resource-claims) Objetos con identidad, derechos de propiedad e iniciativa física requieren claims/contienda propios. Los saldos fungibles personales ya están cubiertos; no presentar el servicio de cantidades como implementación de esos otros contratos ni incorporar combate por esa vía.
           - [x] (perfil2-economic-loans) `life.loans/act` participa del dominio económico con saldos reservados; regresiones de pagos, desembolsos y fiadores contra acciones, y callback de usura con delta local. Rescate efectivo conserva cobertura propia en `perfil2-coverage-loan-variants`.
             - [x] (perfil2-economic-loans-usury-context) El proveedor derivado de usura recibe el ledger del contexto económico y el delta local de préstamos, incluidos bienes recién recibidos; conserva fallback anterior sin opt-in. Regresiones de reservas entre procesos y entre operaciones del mismo proceso aprobadas.
+          - [ ] (perfil2-economic-rents) Para combinaciones opt-in con rentSeeds/rentMarket, incluir canon de `life.rents/act` en dominio económico y reproducir disputa con acciones sobre saldo insuficiente/suficiente. FULL_PROFILE no configura rentas: no bloquea perfil2b ni añadirlas por esta auditoría. Aparcería conserva perceive y debe declarar lectura ENTITY.
+          - [ ] (perfil2-economic-consultations) `life.visits/act` cobra consultas activas en FULL_PROFILE fuera del dominio; incorporar reservas opt-in y reproducir disputa del último saldo personal con acciones. Incluir hoja del jugador `consult` que también paga, conservar defaults y no activar consult para decisiones NPC.
     - [x] (perfil2-sleep-work, 2026-10-12) `sleepWorkPending` y cableado `pending` de la política mantienen despiertos planes no terminados y viajes existentes; solicitan despertar sin borrar trabajo ni la cola. Prueba pura de política/plan/viaje; no cambia el mundo sin `sleepers`. Catch-up no corporal sigue en `off-5`.
     - [x] (perfil2-birth-names, 2026-10-12) Reserva nombres por hogar dentro del paso y normaliza nombres existentes capitalizados al compararlos con el léxico. Ocho pruebas de nacimiento sin Life pesada, incluidas madres simultáneas, hogares distintos, causa y determinismo. Conserva el límite de 12 intentos del generador; el agotamiento del repertorio se separa en `conc-name-exhaustion`.
     - [x] (perfil2-act-observers, 2026-10-12) Captura exposición/percepción y ruido RNG en la acción, y un escritor `physics/onEvent/withRecent` acumula habilidades/opiniones desde los eventos confirmados. Preserva aprendizaje propio, excluye sueño/contrincante y acciones descartadas, sin recalcular la escena tras actuar. Cableado derivado de `npcVerbs`, camino inmediato anterior sin opt-in; 19 pruebas de actor y proyección. Batch tres seeds × 30 días pasó 21 chequeos sin los conflictos previos.
