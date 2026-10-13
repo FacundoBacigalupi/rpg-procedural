@@ -76,7 +76,13 @@ Solo conservar `main` y `develop` al completar el PR de este traspaso.
 Worktrees antiguos conservados detached: no se borraron archivos ni junctions.
 Respaldo de commits: `sim-reports/branches-before-cleanup-2026-10-13.bundle`;
 WIP de cloud-audit/hire: `sim-reports/cleanup-backup-2026-10-13/`.
-Ese WIP no es código nuevo verificado: no integrarlo automáticamente.
+Auditoría posterior del WIP por pedido del usuario: los cuatro archivos de
+cloud-audit ya estaban íntegros en `develop` (parche inverso comprobado), sin
+nuevo contrato LLM. El núcleo `sim/mind/debt-goal.ts` de hire se completó:
+snapshot finito, pagos nuevos explícitos, rechazo de evidencia antigua/ambigua
+y pruebas de determinismo/inmutabilidad. Diez tests puntuales (siete del núcleo
+y tres de evidencia de juego), typecheck y lint aprobados. El cableado nuevo
+está separado en `f3d4-debt-snapshot-wiring`; no altera metas actuales/defaults.
 PR #490 cerrada y rama retirada: dependency-cruiser declara incompatible
 TypeScript 7 y advierte que omite fuentes/dependencias. Mantener toolchain
 actual hasta resolver el ítem `toolchain-typescript7`.

@@ -253,6 +253,19 @@ interface Relationship {
 
 ## 7. Motivación y decisión
 
+**Snapshot puro de deuda (2026-10-13):** `debtGoalSnapshot` congela los
+compromisos positivos conocidos como deudor frente al destinatario al nacer
+una meta. `debtGoalCompletionFromEvidence` exige que todos esos compromisos
+tengan saldo conocido cero y una fuente explícita nueva de pago, incluida en
+sus fuentes observadas. Una sustitución marcada `settled`, un saldo verdadero
+externo, una noticia antigua o una apertura no prueban pago. Rechaza libros
+ambiguos y evidencia futura; ordena compromisos y causas canónicamente sin
+mutar entradas. Deudas posteriores no amplían el conjunto congelado.
+Es núcleo puro exportado, sin leer truth/ledger ni cambiar decisiones. El
+cableado `f3d4-debt-snapshot-wiring` debe persistir el snapshot y distinguir
+pagos en el libro personal: el proveedor actual `debtGoalProgress` conserva
+su contrato anterior hasta ese ítem opt-in.
+
 ### Necesidades
 `hunger`, `rest`, `safety`, `social` y `cultivation` (qi, recursos). Suben con el tiempo y bajan al satisfacerse. Son la capa "inmediata".
 
