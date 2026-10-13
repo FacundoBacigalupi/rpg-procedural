@@ -24,6 +24,7 @@ import {
   ENTITY,
   HOUSEHOLD,
   hashState,
+  LOCATION,
   PERSON,
   type ProcessDef,
   type ProcessResult,
@@ -94,6 +95,7 @@ function processes(): ProcessDef[] {
 function fresh() {
   const truth = new WorldTruth();
   for (const actor of [a, b, c]) {
+    truth.set(LOCATION, actor, { hex: 0, space: "near" });
     truth.set(ENTITY, actor, { id: actor, originEventId: "event:1", createdAt: 0 } as never);
     truth.set(PERSON, actor, {
       household: house,
@@ -236,7 +238,16 @@ describe("intención económica pendiente: persistencia, replay y factibilidad a
     });
   });
 
-  it.each(["dead", "holder"] as const)(
+  it("confirma dentro del mismo hex aunque cambie el espacio interior", () => {
+    const world = fresh();
+    world.scheduler.advanceTo(3600);
+    world.truth.set(LOCATION, a, { hex: 0, space: "elsewhere" });
+    world.scheduler.advanceTo(3601);
+    expect(world.ledger.balance(holderAccount(a), grain)).toBe(500);
+    expect(world.truth.ids(CONVERSATION_INTENT)).toEqual([]);
+  });
+
+  it.each(["dead", "holder", "position", "missingLocation"] as const)(
     "una intención ya inadmisible por %s no entrega ni publica aceptación",
     (reason) => {
       const world = fresh();
@@ -247,15 +258,17 @@ describe("intención económica pendiente: persistencia, replay y factibilidad a
           endedAt: 3600,
           endEventId: "event:1",
         } as never);
+      else if (reason === "position") world.truth.set(LOCATION, a, { hex: 1, space: "near" });
+      else if (reason === "missingLocation") world.truth.deleteRaw(LOCATION.name, a);
       else world.truth.deleteRaw(HOUSEHOLD.name, house);
       world.scheduler.advanceTo(3601);
       expect(world.truth.ids(CONVERSATION_INTENT)).toEqual([]);
       expect(world.ledger.balance(holderAccount(a), grain)).toBe(0);
-      if (reason === "dead") {
+      if (reason === "dead" || reason === "position" || reason === "missingLocation") {
         expect(world.log.all().some((event) => event.kind === "action.speak")).toBe(false);
         expect(
           world.log.all().find((event) => event.kind === "dialogue.economic_cancelled")?.data,
-        ).toMatchObject({ reason });
+        ).toMatchObject({ reason: reason === "missingLocation" ? "position" : reason });
       } else
         expect(world.log.all().find((event) => event.kind === "action.speak")?.data).toMatchObject({
           economicOutcome: { accepted: false, reason },

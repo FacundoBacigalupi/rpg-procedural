@@ -18,6 +18,7 @@ import {
   ENTITY,
   type EventDraft,
   HOUSEHOLD,
+  LOCATION,
   PERSON,
   type ProcessContext,
   type ProcessDef,
@@ -118,7 +119,7 @@ export function conversationSettlementProcess(writes: readonly string[]): Proces
     phase: "act",
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
-    reads: [CONVERSATION_INTENT.name, ENTITY.name, PERSON.name, HOUSEHOLD.name],
+    reads: [CONVERSATION_INTENT.name, ENTITY.name, PERSON.name, HOUSEHOLD.name, LOCATION.name],
     writes: [...new Set([CONVERSATION_INTENT.name, ...writes])],
     serialDomain: ECONOMIC_SERIAL_DOMAIN,
     serialGroup: () => ECONOMIC_SERIAL_GROUP,
@@ -134,8 +135,16 @@ export function conversationSettlementProcess(writes: readonly string[]): Proces
         const entity = ctx.truth.get(ENTITY, actor);
         return entity !== undefined && entity.endedAt === undefined;
       };
-      let reason: "dead" | "holder" | "stock" | "reserve" | undefined;
+      const listenerLocation = ctx.truth.get(LOCATION, listener);
+      const speakerLocation = ctx.truth.get(LOCATION, intent.speaker);
+      let reason: "dead" | "position" | "holder" | "stock" | "reserve" | undefined;
       if (!alive(listener) || !alive(intent.speaker)) reason = "dead";
+      else if (
+        !listenerLocation ||
+        !speakerLocation ||
+        listenerLocation.hex !== speakerLocation.hex
+      )
+        reason = "position";
       else if (
         ctx.truth.get(PERSON, listener)?.household !== intent.household ||
         !ctx.truth.get(HOUSEHOLD, intent.household)
@@ -167,7 +176,7 @@ export function conversationSettlementProcess(writes: readonly string[]): Proces
       }
       const cause: CauseRef = { kind: "event", event: intent.originEventId };
       const consumed = deleteComponent(CONVERSATION_INTENT, listener);
-      if (reason === "dead")
+      if (reason === "dead" || reason === "position")
         return {
           changes: [consumed],
           events: [

@@ -121,7 +121,8 @@ confirmado. `life.converse_projection` las pliega como un único escritor del mu
 Las respuestas económicas guardan primero una intención causal persistible y consumen la petición
 en `decide`; `life.conversation_settle` confirma en `act` dentro del dominio económico compartido.
 Revalida existencias, reservas y participantes antes de publicar respuesta, diffs y asientos;
-una falta de recursos produce una negativa real y la muerte cancela sin habla ni transferencia.
+una falta de recursos produce una negativa real. La muerte, una ubicación ausente o la separación
+entre hexes cancelan sin habla ni transferencia; no se exige compartir espacio interior.
 La proyección usa `onEvent` y `withRecent`. No se serializa `decide` ni se usan contiendas para descartar lo
 que una persona oyó: cada efecto se aplica en orden canónico y se escribe una fila final por
 persona y tabla. Los lectores de fases anteriores ven el estado anterior; la proyección es visible

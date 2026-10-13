@@ -294,7 +294,9 @@ asientos hasta `life.conversation_settle` en `act`. Este comparte el dominio eco
 otras acciones y revalida saldos, reservas, personas vivas y titular actual. La reserva mantiene
 la política de `decideReply` para bienes no monetarios y usa los miembros vivos actuales.
 Si faltan recursos contesta con la línea corta real, conserva la propuesta abierta y no publica
-efectos de aceptación; si murió un participante cancela causalmente sin hacerlo hablar.
+efectos de aceptación; si murió un participante, falta su ubicación o ya no comparten hex,
+cancela causalmente sin habla ni transferencia. Conserva el criterio `sameHex` de la decisión,
+sin exigir un mismo espacio interior.
 La forma alternativa se captura al decidir con un fork independiente, sin cambiar las tiradas
 de la respuesta aceptada. La intención sobrevive a guardar, restaurar y replay.
 
