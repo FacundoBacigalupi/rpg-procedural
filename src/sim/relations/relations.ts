@@ -132,14 +132,18 @@ export function current(rel: Relationship, now: Tick, ctx: DecayContext): Relati
   if (elapsed <= 0) return rel;
   const dims = { ...rel.dims };
   for (const def of ctx.dims) {
-    const target = floorOf(def.id, def.baseline, rel.bonds, ctx.bonds);
+    const target =
+      rel.bonds.length === 0 ? def.baseline : floorOf(def.id, def.baseline, rel.bonds, ctx.bonds);
     const slow = def.slowedBy
       ? 1 + def.slowedBy.factor * ctx.schemaStrength(def.slowedBy.schema)
       : 1;
     const half = def.halfLifeDays * slow * DAY;
     const x = rel.dims[def.id];
     // Lo que está por debajo del piso sube hacia él; lo que está por encima, baja hacia él.
-    dims[def.id] = clampDim(def.id, target + (x - target) * exp((-LN2 * elapsed) / half));
+    // Igual que `clampDim`, sin armar el par de límites en cada llamada (camino caliente).
+    const lo = BIPOLAR.has(def.id) ? -1 : 0;
+    const v = target + (x - target) * exp((-LN2 * elapsed) / half);
+    dims[def.id] = round(Math.min(1, Math.max(lo, v)));
   }
   return { ...rel, dims, updated: now };
 }
