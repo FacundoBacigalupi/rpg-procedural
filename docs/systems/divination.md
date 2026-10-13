@@ -168,6 +168,14 @@ interface BacklashRule {
 - **Costo de cómputo:** las proyecciones del futuro corren el modelo agregado con horizonte y número de corridas limitados por tier; los resultados se guardan por (sujeto, horizonte, tick) para no recalcular.
 
 ## Implementación
+- **Reservas de consultas (2026-10-13):** con el servicio económico derivado
+  de `npcVerbs` no vacío, `life.visits/act` consulta el saldo reservado común
+  antes de cobrar y la hoja del jugador `consult` participa del mismo dominio.
+  Si otro plan agotó el bolsillo, la visita no emite consulta/pago y `consult`
+  falla por medios sin transferir dinero inexistente. Pruebas pequeñas con
+  scheduler real cubren conservación, causas, orden canónico, agendas y
+  equivalencia aislada. No cambia hazard, tarifa, método ni habilita consult
+  para decisiones NPC; sin opt-in conserva el descriptor anterior.
 - **Fase 2:** profecías como creencias con linaje (information) que cambian utilidades de NPCs; adivinos de calle (ritual, lectura en frío).
   - Hecho (parte pura, `src/sim/divination/`): la profecía es `HeardProphecy` por persona (`PROPHECY_BELIEFS`) con raíz inmutable (quién, método, evento), linaje de saltos y crédito; el id sale del evento de la primera vez que se dijo. Claims de catálogo cerrado: `greatness`, `ruin`, `death`, `fortune` sobre un sujeto. Contar la deforma (más intensa según el dramatismo, a veces escala) y el crédito sale de credulidad × confianza en quien cuenta − pérdida por salto; lo bueno sobre uno mismo se cree de más. `prophecyPull` da los insumos de utilidad (miedo, esperanza, hostilidad, devoción, valores movidos) y `prophecyDeltas` el cambio de relación con el sujeto. Adivinos de calle: `castOmen` (ritual, sin verdad, torcido por lo que se quiere oír), `coldRead` (señales visibles + pregunta, ruido según perspicacia), `interpret` (adulación y escuela), fama con fallos recordados a medias.
   - Hecho en el juego (`game/life/divine.ts`): `DIVINER_ROLE` sembrado por proceso diario (edad y temperamento; uno cada ~60 habitantes desde 20) y consulta como evento `divination.consult` → `divination.reading`; el adivino guarda la raíz y el cliente la profecía contada (`transmit`, confianza = fama del adivino).

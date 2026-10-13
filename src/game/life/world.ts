@@ -668,7 +668,15 @@ export function lifeWorld(
           ...(economicBatch
             ? {
                 // El jugador comparte recursos aunque su verbo no esté habilitado para NPC.
-                serialEconomicVerbs: ["trade", "give", "eat", "cook", "take", "gather"] as const,
+                serialEconomicVerbs: [
+                  "trade",
+                  "give",
+                  "eat",
+                  "cook",
+                  "take",
+                  "gather",
+                  "consult",
+                ] as const,
                 economicBatch: true,
               }
             : {}),
@@ -1409,6 +1417,7 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         visitsProcess({
+          ...(economicBatch ? { economicBatch: true } : {}),
           methods: parts.divinations,
           concerns: parts.concerns,
           clock: parts.clock,

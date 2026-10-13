@@ -95,25 +95,21 @@ exit 0 confirmado. Incluye préstamos/usura con saldos reservados, seis hojas
 económicas, conversación diferida persistible y fechas de confirmación, viaje
 físico y cobertura dirigida de sueño, familia y préstamo garantizado.
 
-**Siguiente para Claude/Codex:** cerrar `perfil2-economic-consultations` antes
-de `perfil2b`: visitas al adivino activas en los reportes (44/200/95 consultas)
-debían compartir reservas con acciones; la hoja del jugador `consult` también
-paga. Preparados `6ad4fc3` en `fix/f3-consultation-reservations` (divine/visits,
-worktree codex-profile-core; tres tests y typecheck) y `5dc42f7` + `c1caf1d`
-en `fix/f3-consult-action-reservations` (act/tests, codex-profile-tools;
-once tests). Aún sin integrar en esta observación: check del WIP de deuda
-corriendo sobre `702bbf6`, log `sim-reports/debt-wip-full-check.log` y salida
-durable `sim-reports/debt-wip-full-check.exit`. No correr otra suite pesada
-ni modificar producción mientras corre. Coordinador cablea world y docs;
-no activar
-consult para decisiones NPC. Después de pruebas e integración, retirar ramas.
-Luego `perfil2b`: repetir tres seeds × dos años sobre
+**Siguiente para Claude/Codex:** `perfil2b`: repetir tres seeds × dos años sobre
 el código integrado, sin cambiar producción durante los workers:
 `npm.cmd run sim:batch -- --scenario full-profile --seeds 1..3 --years 2 --check-days 30 --out sim-reports/full-profile-2y-economic-fixed`.
 Registrar SHA y salida nativa, revisar invariantes y cobertura. La corrida vieja
 `004d4de` falló en seed 1 por FACE; seeds 2/3 completaron, pero no certifica el
 lote nuevo. Después: `perfil3` medición/optimización y `perfil4` activación
 validada. Fase 3 abierta; no cambiar defaults ni hashes dorados por trámite.
+Verificación WIP de deuda sobre `702bbf6`: `npm run check`, 2606 tests en
+377 archivos, typecheck/lint y salida nativa 0, log/exit en
+`sim-reports/debt-wip-full-check.*`. Después se integraron consultas desde
+`6ad4fc3`, `5dc42f7` y `c1caf1d`: visitas y hoja consult comparten reservas;
+world deriva ambos del servicio existente. Veinticuatro tests puntuales del
+lote integrado pasaron. Check amplio posterior requerido antes del merge
+de PR #492; no atribuir los 2606 al código posterior. No habilitar consult
+para decisiones NPC ni cambiar defaults. Tras merge, retirar ramas de agentes.
 Préstamos: dominio y callbacks integrados; contagio/workout/rescate efectivo
 tienen cobertura pendiente propia. Claims de identidad/derechos/iniciativa
 no equivalen a reservas de cantidades fungibles. Auditoría de rentas concluida
