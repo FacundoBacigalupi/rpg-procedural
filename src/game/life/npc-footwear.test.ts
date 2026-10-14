@@ -18,7 +18,8 @@ import {
   WORN_EXTRA,
   wearAfter,
 } from "./footwear.ts";
-import { Life } from "./life.ts";
+import { engineOptions, Life } from "./life.ts";
+import { FULL_PROFILE } from "./profile.ts";
 import { living } from "./world.ts";
 
 describe("calzado del viajero (puro)", () => {
@@ -79,6 +80,12 @@ describe("las llagas del calzado destrozado (puro)", () => {
   it("apagado por defecto", () => {
     expect(optInParts({ npcFootSores: true })).toEqual({ npcFootSores: true });
     expect(optInParts({})).toEqual({});
+  });
+  it("el perfil completo lo enciende desde life-14 y el replay anterior lo apaga", () => {
+    expect(FULL_PROFILE.npcFootSores).toBe(true);
+    expect(optInParts({ npcFootSores: true, legacyNoFootSores: true })).toEqual({});
+    expect(engineOptions("life-13", FULL_PROFILE).legacyNoFootSores).toBe(true);
+    expect(engineOptions("life-14", FULL_PROFILE).legacyNoFootSores).toBeUndefined();
   });
 });
 

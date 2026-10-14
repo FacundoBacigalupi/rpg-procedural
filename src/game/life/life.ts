@@ -128,8 +128,13 @@ export interface LifeSetup {
  * su mismo hex) a las horas de agua, `routine.watered`; antes la rutina lo salteaba y moría de sed
  * al lado de su familia. Compatibilidad: el replay con un motor anterior a `life-13` enciende
  * `legacyNoCare`; una vida guardada con `life-12` sigue desde su estado con el límite de replay.
+ *
+ * `life-14`: el perfil completo enciende `npcFootSores` (llagas en la pierna al caminar con el calzado
+ * destrozado). Compatibilidad: el replay con un motor anterior a `life-14` enciende `legacyNoFootSores`,
+ * que lo apaga aunque el setup lo traiga; una vida guardada con `life-13` sigue desde su estado con el
+ * límite de replay.
  */
-export const LIFE_ENGINE = "life-13";
+export const LIFE_ENGINE = "life-14";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -152,6 +157,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 11 ? { legacyResume: true } : {}),
     ...(n < 12 ? { waitEatHomeOnly: true } : {}),
     ...(n < 13 ? { legacyNoCare: true } : {}),
+    ...(n < 14 ? { legacyNoFootSores: true } : {}),
   };
 }
 
