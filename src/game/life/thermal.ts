@@ -174,7 +174,12 @@ const MIN_SWEAT_LPH = 0.005;
  * calor. Marcador hasta que la ropa sea ítems puestos con aislamiento.
  */
 export function seasonalClothing(airC: number): Clothing {
-  const clo = Math.min(3, Math.max(0.5, (24 - airC) / 9));
+  return clothingForClo((24 - airC) / 9);
+}
+
+/** La ropa de un aislamiento (clo) dado, acotado a 0,5-3: viento y cobertura salen de cuánto abriga. */
+export function clothingForClo(wanted: number): Clothing {
+  const clo = Math.min(3, Math.max(0.5, wanted));
   return { clo, windproof: clo > 1.5 ? 0.6 : 0.2, coverage: Math.min(1, 0.4 + clo / 3) };
 }
 

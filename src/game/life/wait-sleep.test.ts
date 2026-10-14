@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-15");
+    expect(LIFE_ENGINE).toBe("life-16");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -35,6 +35,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -45,6 +46,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -54,6 +56,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
@@ -62,6 +65,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
@@ -69,24 +73,32 @@ describe("motor de la espera nocturna", () => {
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       waitEatHomeOnly: true,
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
+      legacyNoCloak: true,
     });
-    expect(engineOptions("life-14", {})).toEqual({ legacyNoFootwearMend: true });
-    expect(engineOptions("life-15", {})).toEqual({});
+    expect(engineOptions("life-14", {})).toEqual({
+      legacyNoFootwearMend: true,
+      legacyNoCloak: true,
+    });
+    expect(engineOptions("life-15", {})).toEqual({ legacyNoCloak: true });
+    expect(engineOptions("life-16", {})).toEqual({});
   });
 });
 

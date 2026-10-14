@@ -68,6 +68,7 @@ export const FULL_PROFILE = {
   npcFootwear: true,
   npcFootSores: true,
   npcFootwearMend: true,
+  npcCloak: true,
   conception: true,
   births: true,
   speakActs: { minFamiliarity: 0.3, quietSeconds: 86400, weight: 0.4, chance: 0.9 },
@@ -132,6 +133,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcPace", "npcJourneyDays"],
     ["npcFootSores", "npcFootwear"],
     ["npcFootwearMend", "npcFootwear"],
+    ["npcCloak", "npcJourneyDays"],
   ];
   for (const [option, dependency] of dependencies) require(option, dependency);
   // Las capas largas están encendidas por default en life-2; omitirlas no es apagarlas.

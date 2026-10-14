@@ -34,6 +34,7 @@ import {
   localHour,
   type MaterialDef,
   type NutrientProfileDef,
+  outdoorTempC,
   PERSON,
   type PressureCurve,
   type ProcessDef,
@@ -75,6 +76,7 @@ import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
+import { CLOAK, cloakClo, cloakWearProcess, roadClothing } from "./cloak.ts";
 import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
@@ -133,7 +135,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { npcEncountersProcess } from "./npc-encounters.ts";
 import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
-import { npcVerbsProcess } from "./npc-verbs.ts";
+import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { householdAuthority, realTrust } from "./patientbonds.ts";
@@ -185,7 +187,7 @@ import {
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { testifyProcess } from "./testify.ts";
-import { thermalProcess } from "./thermal.ts";
+import { seasonalClothing, thermalProcess } from "./thermal.ts";
 import { tradeProjectionProcess } from "./trade-projection.ts";
 import { tradeChoiceProcess } from "./tradechoice.ts";
 import { type TradeAssignment, tradesProcess } from "./trades.ts";
@@ -443,6 +445,8 @@ export interface LifeWorld {
   readonly npcFootSores?: boolean;
   /** Opt-in (con `npcFootwear`): el NPC en la aldea remienda o compra par nuevo del calzado gastado, pagando cobre (`life.footwear_mend`); apagado. */
   readonly npcFootwearMend?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
+  readonly npcCloak?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -846,6 +850,9 @@ export function lifeWorld(
           : []),
         ...(parts.npcFootwear === true && parts.npcFootwearMend === true
           ? [footwearMendProcess({ player, placeOf: placeOf(parts, village) })]
+          : []),
+        ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
+          ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.hire
           ? [
@@ -1348,6 +1355,19 @@ export function lifeWorld(
           spaces: parts.spaces,
           seed: parts.seed,
           placeOf: placeOf(parts, village),
+          ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
+            ? {
+                clothingOf: (t: ReadonlyWorldTruth, who: AgentId, airC: number) => {
+                  const trip = t.get(NPC_JOURNEY, who);
+                  if (!trip) return seasonalClothing(airC);
+                  return roadClothing(
+                    airC,
+                    outdoorTempC(parts.map, parts.clock, parts.seed, trip.since),
+                    cloakClo(t.get(CLOAK, who)?.wear),
+                  );
+                },
+              }
+            : {}),
           ...(altitudeOf || parts.ambientQi
             ? {
                 altitude: {
