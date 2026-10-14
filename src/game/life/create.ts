@@ -212,6 +212,12 @@ export interface LifeOptions {
    */
   readonly sleepUncapped?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-9` lo enciende: todo tropezón del
+   * personaje es una caída con la cabeza al peso de un brazo (desde `life-9` solo cae de verdad
+   * quien tira bajo el margen parcial, y la cabeza pesa 8 %).
+   */
+  readonly legacyFalls?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -450,6 +456,7 @@ export function optInParts(
   | "waitUntended"
   | "waitNoSkin"
   | "sleepUncapped"
+  | "legacyFalls"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -554,6 +561,7 @@ export function optInParts(
     ...(options.waitUntended ? { waitUntended: true } : {}),
     ...(options.waitNoSkin ? { waitNoSkin: true } : {}),
     ...(options.sleepUncapped ? { sleepUncapped: true } : {}),
+    ...(options.legacyFalls ? { legacyFalls: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

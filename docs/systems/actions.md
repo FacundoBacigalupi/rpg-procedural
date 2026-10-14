@@ -302,7 +302,7 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
   - **Lo que el mundo corrige:** buscar a quien no está da `failure`/`not_here` sin importar la tirada. Un lugar que ya no tiene qué sacar da `poor_yield`.
   - **Forma del fracaso con efecto propio:**
     - `move` perdido: anda un tramo del camino y se desvía a un vecino (un crítico malo, tres pasos). Termina en otro hex y no sabe en cuál.
-    - `move` con `slip`: se cae a mitad de camino y sabe dónde quedó.
+    - `move` con `slip`: se cae a mitad de camino y sabe dónde quedó. Un `slip` parcial es solo un tropezón que llega más lento; el cuerpo lo lee distinto (cae de verdad solo bajo el margen parcial; ver body-health §4 "Caídas").
     - `take` con `wrong_target`: se lleva la mitad de otra cosa.
     - `take` torpe: hace ruido.
     - Un crítico malo con alguien al lado: el otro lo nota.

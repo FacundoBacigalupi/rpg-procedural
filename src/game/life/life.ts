@@ -99,8 +99,14 @@ export interface LifeSetup {
  * `life-8`: la deuda de sueño satura en 72 h (`SLEEP_DEBT_CAP`, microsueños forzados; antes el
  * bot llegaba a 374 h). Compatibilidad: el replay con un motor anterior a `life-8` enciende
  * `sleepUncapped`; una vida guardada con `life-7` sigue desde su estado con el límite de replay.
+ *
+ * `life-9`: las caídas del personaje (`blowFromMishap`): solo cae de verdad (hiere siempre) quien
+ * tira bajo el margen parcial; el tropezón que se corrige hiere con chance `RECOVERED_HURT` y
+ * menos fuerte; la cabeza pesa 8 % de las caídas (antes 20 %, como un brazo). Compatibilidad: el
+ * replay con un motor anterior a `life-9` enciende `legacyFalls`; una vida guardada con `life-8`
+ * sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-8";
+export const LIFE_ENGINE = "life-9";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -118,6 +124,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 6 ? { waitUntended: true } : {}),
     ...(n < 7 ? { waitNoSkin: true } : {}),
     ...(n < 8 ? { sleepUncapped: true } : {}),
+    ...(n < 9 ? { legacyFalls: true } : {}),
   };
 }
 
