@@ -71,13 +71,30 @@ export interface LifeSetup {
  * hashes. Compatibilidad: el replay con un motor anterior a `life-4` (`lifeReplayGame`) enciende
  * `verboseSteps` y rehace los registros uno por uno, con los hashes de siempre; una vida guardada
  * con `life-3` sigue desde su estado (los registros viejos se leen igual) con el límite de replay.
+ *
+ * `life-5`: esperar de noche duerme (`bodyProcess` con `nightRest`: el cuerpo en `rest` de noche corre como `sleep`): quien deja pasar días
+ * quieto paga su deuda de sueño. Antes la espera nunca dormía y "espero un día" sumaba 8 h de
+ * deuda; el personaje del jugador automático llegaba a 160 h de media (hasta 374 h), con la
+ * locomoción en 0,32 y la cojera en el 93 % de los turnos. Cambia el cuerpo de quien espera de
+ * noche y los hashes. Compatibilidad: el replay con un motor anterior a `life-5` enciende
+ * `waitAwake` (la espera no duerme, con los hashes de siempre); una vida guardada con `life-4`
+ * sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-4";
+export const LIFE_ENGINE = "life-5";
 
-/** Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos. */
+/**
+ * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
+ * los anteriores a `life-5` no duermen al esperar de noche.
+ */
 export function engineOptions(engine: string, options: LifeOptions): LifeOptions {
   const m = /^life-(\d+)$/.exec(engine);
-  return m !== null && Number(m[1]) < 4 ? { ...options, verboseSteps: true } : options;
+  if (m === null) return options;
+  const n = Number(m[1]);
+  return {
+    ...options,
+    ...(n < 4 ? { verboseSteps: true } : {}),
+    ...(n < 5 ? { waitAwake: true } : {}),
+  };
 }
 
 /** La vida como juego del replay (tools/replay), sin importarlo: misma forma. */

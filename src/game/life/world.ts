@@ -31,6 +31,7 @@ import {
   type LineageDef,
   LOCATION,
   type LocalMap,
+  localHour,
   type MaterialDef,
   type NutrientProfileDef,
   PERSON,
@@ -338,6 +339,8 @@ export interface LifeWorld {
   readonly glanceOnMove?: boolean;
   /** Replay de motores anteriores a `life-4`: un registro por paso fallido repetido; ver `ActOptions.verboseSteps`. */
   readonly verboseSteps?: boolean;
+  /** Replay de motores anteriores a `life-5`: esperar de noche no duerme; ver `BodyProcessOptions.nightRest`. */
+  readonly waitAwake?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -676,6 +679,9 @@ export function lifeWorld(
           thermal: parts.coreEffects === true,
           amputations: parts.frostbite === true && parts.amputationScars === true,
           ...(parts.sleepers ? { sleepers: true } : {}),
+          ...(parts.waitAwake === true
+            ? {}
+            : { nightRest: (at: number) => localHour(parts.clock, at, parts.map.lonDeg) }),
         }),
         actProcess({
           ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),

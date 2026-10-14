@@ -3,7 +3,14 @@ import { join, relative } from "node:path";
 import { parseArgs } from "node:util";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../core/index.ts";
-import { LIFE_ENGINE, Life, type LifeSetup, lifeReplayGame, optionsOf } from "../game/life/life.ts";
+import {
+  engineOptions,
+  LIFE_ENGINE,
+  Life,
+  type LifeSetup,
+  lifeReplayGame,
+  optionsOf,
+} from "../game/life/life.ts";
 import { FULL_PROFILE } from "../game/life/profile.ts";
 import { defaultGameSetup } from "../game/setup/index.ts";
 import { GAME_CONTENT_KINDS } from "../game/view/index.ts";
@@ -44,14 +51,14 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     expect(setupOf([]).life).toEqual(FULL_PROFILE);
     expect(setupOf(["--profile", "full"]).life).toEqual(FULL_PROFILE);
     expect(setupOf(["--profile", "basic"]).life).toBeUndefined();
-    expect(LIFE_ENGINE).toBe("life-4");
+    expect(LIFE_ENGINE).toBe("life-5");
   });
 
   it("una vida guardada sin perfil (life-1/life-2) se rehace igual con el motor nuevo", () => {
     const legacy: LifeSetup = { game: defaultGameSetup("realistic"), frequency: 8 };
     // Las opciones salen solo del setup guardado: el motor nuevo no le suma el perfil.
     expect(optionsOf(legacy)).toEqual({ frequency: 8 });
-    const direct = Life.create(7, content, optionsOf(legacy));
+    const direct = Life.create(7, content, engineOptions("life-2", optionsOf(legacy)));
     direct.advanceTo(START + 24 * HOURS);
     expect(replayHash(legacy, "life-2")).toEqual(direct.hash());
   }, 120_000);
@@ -63,8 +70,8 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     expect(a).not.toEqual(replayHash(setupOf(["--profile", "basic"]), LIFE_ENGINE));
   }, 240_000);
 
-  it("las vidas de motores anteriores pasan a life-4 con límite de replay; no al revés", () => {
-    for (const engine of ["life-2", "life-3"]) {
+  it("las vidas de motores anteriores pasan a life-5 con límite de replay; no al revés", () => {
+    for (const engine of ["life-2", "life-3", "life-4"]) {
       const saved = { engine, content: "none", format: 1 };
       const current = { ...saved, engine: LIFE_ENGINE };
       expect(upgradeVersions(saved, current, 100)).toMatchObject({
@@ -75,6 +82,6 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     const saved = { engine: "life-3", content: "none", format: 1 };
     const current = { ...saved, engine: LIFE_ENGINE };
     expect(upgradeVersions(current, saved, 100).kind).toBe("incompatible");
-    expect(engineNumber(LIFE_ENGINE)).toBe(4);
+    expect(engineNumber(LIFE_ENGINE)).toBe(5);
   });
 });
