@@ -77,6 +77,7 @@ import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
 import { CLOAK, cloakClo, cloakWearProcess, roadClothing } from "./cloak.ts";
+import { cloakMendProcess } from "./cloak-mend.ts";
 import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
 import { conscienceProcess } from "./conscience.ts";
@@ -447,6 +448,8 @@ export interface LifeWorld {
   readonly npcFootwearMend?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
+  /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
+  readonly npcCloakMend?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
@@ -856,6 +859,11 @@ export function lifeWorld(
           : []),
         ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
           ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
+          : []),
+        ...(parts.npcCloak === true &&
+        parts.npcJourneyDays !== undefined &&
+        parts.npcCloakMend === true
+          ? [cloakMendProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.hire
           ? [

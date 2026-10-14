@@ -147,8 +147,13 @@ export interface LifeSetup {
  * `life-17`: el perfil completo enciende `npcStrain` (forzar el ritmo, modo `fast` con fatiga alta, puede
  * torcer una pierna: herida contusa leve). Compatibilidad: el replay con un motor anterior a `life-17`
  * enciende `legacyNoStrain`; una vida guardada con `life-16` sigue desde su estado con el límite de replay.
+ *
+ * `life-18`: el perfil completo enciende `npcCloakMend` (el NPC en la aldea remienda o compra capa nueva
+ * cuando la suya está gastada o perdida, pagando cobre). Compatibilidad: el replay con un motor anterior
+ * a `life-18` enciende `legacyNoCloakMend`; una vida guardada con `life-17` sigue desde su estado con el
+ * límite de replay.
  */
-export const LIFE_ENGINE = "life-17";
+export const LIFE_ENGINE = "life-18";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -175,6 +180,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 15 ? { legacyNoFootwearMend: true } : {}),
     ...(n < 16 ? { legacyNoCloak: true } : {}),
     ...(n < 17 ? { legacyNoStrain: true } : {}),
+    ...(n < 18 ? { legacyNoCloakMend: true } : {}),
   };
 }
 
