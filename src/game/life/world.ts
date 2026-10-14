@@ -93,6 +93,7 @@ import { ecologyProcess } from "./ecology.ts";
 import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
+import { footwearMendProcess } from "./footwear-mend.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
 import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
@@ -440,6 +441,8 @@ export interface LifeWorld {
   readonly npcFootwear?: boolean;
   /** Opt-in (con `npcFootwear`): el calzado destrozado abre llagas en la pierna al caminar (`ActOptions.footSores`). */
   readonly npcFootSores?: boolean;
+  /** Opt-in (con `npcFootwear`): el NPC en la aldea remienda o compra par nuevo del calzado gastado, pagando cobre (`life.footwear_mend`); apagado. */
+  readonly npcFootwearMend?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -840,6 +843,9 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
               }),
             ]
+          : []),
+        ...(parts.npcFootwear === true && parts.npcFootwearMend === true
+          ? [footwearMendProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.hire
           ? [

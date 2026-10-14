@@ -243,6 +243,11 @@ export interface LifeOptions {
    */
   readonly legacyNoFootSores?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-15` lo enciende: apaga `npcFootwearMend` aunque
+   * el perfil lo traiga (el perfil completo lo enciende desde `life-15`).
+   */
+  readonly legacyNoFootwearMend?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -394,6 +399,8 @@ export interface LifeOptions {
   readonly npcFootwear?: boolean;
   /** Opt-in (con `npcFootwear`): el calzado destrozado abre llagas en la pierna al caminar (`LifeParts.npcFootSores`); apagado. */
   readonly npcFootSores?: boolean;
+  /** Opt-in (con `npcFootwear`): el NPC remienda o compra par nuevo del calzado gastado (`LifeParts.npcFootwearMend`); apagado. */
+  readonly npcFootwearMend?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
@@ -534,6 +541,7 @@ export function optInParts(
   | "npcPace"
   | "npcFootwear"
   | "npcFootSores"
+  | "npcFootwearMend"
   | "conception"
   | "conceptionRateScale"
   | "conceptionGestationDays"
@@ -637,6 +645,7 @@ export function optInParts(
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
+    ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined
