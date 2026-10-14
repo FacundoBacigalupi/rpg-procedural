@@ -218,6 +218,11 @@ export interface LifeOptions {
    */
   readonly legacyFalls?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-10` lo enciende: `tend` trata solo la
+   * herida más grave y nunca entablilla (desde `life-10` mira todas y elige vendar, limpiar o entablillar).
+   */
+  readonly legacyTend?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -457,6 +462,7 @@ export function optInParts(
   | "waitNoSkin"
   | "sleepUncapped"
   | "legacyFalls"
+  | "legacyTend"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -562,6 +568,7 @@ export function optInParts(
     ...(options.waitNoSkin ? { waitNoSkin: true } : {}),
     ...(options.sleepUncapped ? { sleepUncapped: true } : {}),
     ...(options.legacyFalls ? { legacyFalls: true } : {}),
+    ...(options.legacyTend ? { legacyTend: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

@@ -105,8 +105,13 @@ export interface LifeSetup {
  * menos fuerte; la cabeza pesa 8 % de las caídas (antes 20 %, como un brazo). Compatibilidad: el
  * replay con un motor anterior a `life-9` enciende `legacyFalls`; una vida guardada con `life-8`
  * sigue desde su estado con el límite de replay.
+ *
+ * `life-10`: `tend` mira todas las heridas del cuerpo (`nextTreatment`) y elige vendar lo que sangra,
+ * limpiar lo infectado o sucio y entablillar el hueso roto; antes trataba solo la más grave y nunca
+ * entablillaba. Compatibilidad: el replay con un motor anterior a `life-10` enciende `legacyTend`;
+ * una vida guardada con `life-9` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-9";
+export const LIFE_ENGINE = "life-10";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -125,6 +130,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 7 ? { waitNoSkin: true } : {}),
     ...(n < 8 ? { sleepUncapped: true } : {}),
     ...(n < 9 ? { legacyFalls: true } : {}),
+    ...(n < 10 ? { legacyTend: true } : {}),
   };
 }
 

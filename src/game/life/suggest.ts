@@ -19,6 +19,7 @@ import {
   LOCATION,
   localHour,
   MENTAL,
+  nextTreatment,
   PERSON,
   type PlanNode,
   planFromDraft,
@@ -130,7 +131,13 @@ function candidates(w: LifeWorld, now: Tick): Suggestion[] {
 
   if (has("parched", "thirsty")) add("drink", has("parched") ? 0.95 : 0.8, act("drink"));
   if (has("starving", "hungry")) add("eat", has("starving") ? 0.9 : 0.7, act("eat"));
-  if (has("bleeding", "bleeding_heavily", "wound_hot", "bone_broken")) {
+  // Curar solo se ofrece si hay algo que hacer (vendar, limpiar, entablillar): ya curado, no se repite.
+  const hurt = w.truth.get(BODY_STATE, w.player);
+  if (
+    has("bleeding", "bleeding_heavily", "wound_hot", "bone_broken") &&
+    hurt &&
+    nextTreatment(hurt) !== null
+  ) {
     add("tend", has("bleeding_heavily", "bone_broken") ? 0.97 : 0.75, act("tend"));
   }
   if (has("exhausted", "sleepy", "tired") || night) {

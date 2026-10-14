@@ -186,3 +186,32 @@ export function treat(body: Body, woundId: number, how: Treatment): Body {
   });
   return { ...body, wounds };
 }
+
+/** Qué cura queda por hacer en el cuerpo y dónde: la herida y el tratamiento. */
+export interface PendingTreatment {
+  readonly wound: number;
+  readonly how: Treatment;
+}
+
+/**
+ * Lo más urgente que `tend` puede hacer ahora (perfil5-bot-wound-care): una pasada mira todas las
+ * heridas abiertas, no solo la más grave, y elige entre vendar lo que sangra, limpiar lo que se
+ * infecta o ensucia (cada limpieza baja la carga, así que se repite hasta que baja de 5 %) y
+ * entablillar el hueso roto. `null` si no hay nada útil que hacer (ya vendado, limpio y
+ * entablillado): ahí `tend` no sirve y las opciones sugeridas no lo ofrecen.
+ */
+export function nextTreatment(body: Body): PendingTreatment | null {
+  let best: { t: PendingTreatment; score: number } | null = null;
+  for (const w of body.wounds) {
+    if (w.stage === "healed") continue;
+    const options: [Treatment, number][] = [];
+    if (w.bleeding > 0.01 && !w.bandaged) options.push(["bandage", 3 + w.bleeding]);
+    if (w.infection > 0.05) options.push(["clean", 2.5 + w.infection]);
+    else if (w.contamination > 0.2 && !w.cleaned) options.push(["clean", 1.5 + w.contamination]);
+    if (w.fracture && !w.splinted) options.push(["splint", 2 + w.severity]);
+    for (const [how, score] of options) {
+      if (best === null || score > best.score) best = { t: { wound: w.id, how }, score };
+    }
+  }
+  return best?.t ?? null;
+}
