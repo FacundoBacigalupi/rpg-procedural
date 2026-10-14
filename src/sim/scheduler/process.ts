@@ -126,9 +126,17 @@ export function parseDraftRef(value: string): { kind: string; n: number } | unde
   return m ? { kind: m[1] as string, n: Number(m[2]) } : undefined;
 }
 
+let draftEventCalls = 0;
+
+/** Cuántos `draftEvent` se pidieron en total: el scheduler lo mira para saber si hay algo que revisar. */
+export function draftEventCount(): number {
+  return draftEventCalls;
+}
+
 /** El evento `index` de `events` del mismo resultado, para citarlo como causa u origen. */
 export function draftEvent(index: number): EventId {
   if (!Number.isSafeInteger(index) || index < 0) throw new RangeError(`índice inválido: ${index}`);
+  draftEventCalls++;
   return `event:~${index}` as EventId;
 }
 
