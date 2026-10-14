@@ -40,6 +40,7 @@ import {
   type ContestClaim,
   changeKey,
   compareScopes,
+  draftEventCount,
   type EventDraft,
   PHASES,
   type Phase,
@@ -623,6 +624,8 @@ export class Scheduler {
     // entidades y sus eventos. Los provisionales se reemplazan en todo el resultado.
     const { ids, log } = this.#o;
     const settled: Event[] = contestEvents.map((e) => ({ id: ids.next("event"), ...e }));
+    const minted = draftEventCount() !== seenDraftEvents;
+    seenDraftEvents = draftEventCount();
     for (const run of runs) {
       if (!run.alive) continue;
       const real = new Map<string, EntityRef>();
@@ -634,7 +637,7 @@ export class Scheduler {
         real.set(`event:~${n}`, id);
         return id;
       });
-      run.result = resolveDrafts(run.result, real, run.def.id, run.serialBatch === true);
+      run.result = resolveDrafts(run.result, real, run.def.id, run.serialBatch === true, minted);
     }
 
     for (const run of runs) {
@@ -735,6 +738,7 @@ function actorOf(claim: ContestClaim, scope: ScopeRef): StateChange["id"][] {
   return scope === "world" ? [] : [scope];
 }
 
+let seenDraftEvents = 0;
 const CLEAN = new WeakSet<object>();
 const CLEAN_REMAP = new WeakSet<object>();
 
@@ -744,6 +748,7 @@ function resolveDrafts(
   real: ReadonlyMap<string, EntityRef>,
   by: ProcessId,
   remapKeys = false,
+  mintedDraftEvent = true,
 ): ProcessResult {
   // Sin ningún provisional (lo común) no hay nada que reemplazar: se evita copiar todo el resultado.
   // Los objetos ya revisados y limpios se recuerdan: un componente grande que crece por copia
@@ -765,7 +770,11 @@ function resolveDrafts(
     clean.add(v);
     return false;
   };
-  if (!hasDraft(result)) return result;
+  // Una corrida que no pidió ids ni emitió eventos no tiene a qué referirse: casi todas (294 mil de
+  // 303 mil en el perfil de 60 días) y revisar sus resultados enormes era el 20 % del CPU. Un
+  // provisional suelto sí se detecta (falla con "que no pidió") si hubo algún `draftEvent` desde el
+  // paso anterior; los ids de `newId` ya cuentan en `real`.
+  if ((real.size === 0 && !mintedDraftEvent) || !hasDraft(result)) return result;
   const walk = (v: unknown): unknown => {
     if (typeof v === "string") {
       if (!parseDraftRef(v)) return v;
