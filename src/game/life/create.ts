@@ -387,6 +387,8 @@ export interface LifeOptions {
   readonly npcPace?: "careful" | "fast";
   /** Opt-in: el calzado de quien camina se gasta con la marcha y gastado cuesta más caminar (`LifeParts.npcFootwear`); apagado. */
   readonly npcFootwear?: boolean;
+  /** Opt-in (con `npcFootwear`): el calzado destrozado abre llagas en la pierna al caminar (`LifeParts.npcFootSores`); apagado. */
+  readonly npcFootSores?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
@@ -526,6 +528,7 @@ export function optInParts(
   | "npcNightRest"
   | "npcPace"
   | "npcFootwear"
+  | "npcFootSores"
   | "conception"
   | "conceptionRateScale"
   | "conceptionGestationDays"
@@ -628,6 +631,7 @@ export function optInParts(
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
+    ...(options.npcFootSores ? { npcFootSores: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined

@@ -172,7 +172,7 @@ import {
   livePause,
   strikeFight,
 } from "./fight.ts";
-import { FOOTWEAR, footwearWalkFactor, wearAfter } from "./footwear.ts";
+import { FOOTWEAR, footSoreBlow, footwearWalkFactor, wearAfter } from "./footwear.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
@@ -336,6 +336,8 @@ export interface ActOptions {
   readonly effortByManner?: boolean;
   /** Opt-in: el calzado se gasta con la marcha (más por monte) y gastado cuesta más caminar (`footwear.ts`); apagado, no cambia. */
   readonly footwear?: boolean;
+  /** Opt-in (con `footwear`): con el calzado gastado más allá de `WORN_AT`, caminar abre llagas en la pierna (`footSoreBlow`); apagado, no cambia. */
+  readonly footSores?: boolean;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
   /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
@@ -1088,6 +1090,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   if (mishap) {
     nextBody = injure(bodyPlan, nextBody, mishap, input.rng.fork("injure")).body;
     bodyTouched = true;
+  }
+  // Caminar con el calzado destrozado abre llagas en el pie (npc-b2b3b2d).
+  if (o.footwear && o.footSores && eff.kind === "move" && r.seconds > 0 && !nextBody.death) {
+    const wear = wearAfter(
+      truth.get(FOOTWEAR, me)?.wear ?? 0,
+      r.seconds,
+      o.map.forest[eff.reached ?? eff.from] === true,
+    );
+    const sore = footSoreBlow(wear, r.seconds, input.rng.fork("footsore"), draftEvent(0), ctx.now);
+    if (sore) {
+      nextBody = injure(bodyPlan, nextBody, sore, input.rng.fork("footsore-injure")).body;
+      bodyTouched = true;
+    }
   }
   // Un golpe contra alguien vivo es el comienzo de una pelea (combat §1): corre hasta que alguien
   // no puede o no quiere seguir. Contra quien ya no está en pie queda el golpe suelto.

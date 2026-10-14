@@ -438,6 +438,8 @@ export interface LifeWorld {
   readonly npcPace?: "careful" | "fast";
   /** Opt-in: el calzado de quien camina se gasta (más por monte) y gastado cuesta más caminar (`life.act`); apagado, nada cambia. */
   readonly npcFootwear?: boolean;
+  /** Opt-in (con `npcFootwear`): el calzado destrozado abre llagas en la pierna al caminar (`ActOptions.footSores`). */
+  readonly npcFootSores?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -741,6 +743,7 @@ export function lifeWorld(
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
+          ...(parts.npcFootwear === true && parts.npcFootSores === true ? { footSores: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
           ...(parts.consumables ? { consumables: parts.consumables } : {}),
