@@ -96,6 +96,27 @@ export interface LongWaitStats {
   readonly cutBy: Readonly<Record<string, number>>;
 }
 
+/** Las heridas del personaje (ROADMAP perfil5-more-seeds2): cuántas, de qué tipo y cómo se curaron. */
+export interface WoundStats {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly fractures: number;
+  readonly fracturesSplinted: number;
+  readonly fracturesNeverSplinted: number;
+  readonly infected: number;
+  readonly maxInfection: number;
+  /** Turnos `[tend]` y cuántos no cambiaron ninguna marca de cura (vendada, limpia, entablillada). */
+  readonly tendTurns: number;
+  readonly tendNoChange: number;
+}
+
+interface SeenWound {
+  kind: string;
+  fracture: boolean;
+  splinted: boolean;
+  maxInf: number;
+}
+
 export interface YearRow {
   readonly year: number;
   readonly turns: number;
@@ -145,6 +166,7 @@ export interface AutoplayReport {
   }[];
   readonly byYear: readonly YearRow[];
   readonly body: BodyStats;
+  readonly wounds: WoundStats;
   readonly longWaits: LongWaitStats;
   readonly peakRssMiB: number;
   /** Hash del estado final: la misma corrida debe dar el mismo antes y después de una optimización. */
@@ -156,6 +178,38 @@ export interface AutoplayReport {
 }
 
 const MiB = 1024 * 1024;
+
+function woundStats(
+  seen: ReadonlyMap<string, SeenWound>,
+  tendTurns: number,
+  tendNoChange: number,
+): WoundStats {
+  const byKind: Record<string, number> = {};
+  let fractures = 0;
+  let splinted = 0;
+  let infected = 0;
+  let maxInfection = 0;
+  for (const x of seen.values()) {
+    byKind[x.kind] = (byKind[x.kind] ?? 0) + 1;
+    if (x.fracture) {
+      fractures++;
+      if (x.splinted) splinted++;
+    }
+    if (x.maxInf > 0.05) infected++;
+    maxInfection = Math.max(maxInfection, x.maxInf);
+  }
+  return {
+    total: seen.size,
+    byKind,
+    fractures,
+    fracturesSplinted: splinted,
+    fracturesNeverSplinted: fractures - splinted,
+    infected,
+    maxInfection: Math.round(maxInfection * 100) / 100,
+    tendTurns,
+    tendNoChange,
+  };
+}
 
 function pct(sorted: readonly number[], p: number): number {
   if (sorted.length === 0) return 0;
@@ -191,6 +245,17 @@ export async function runAutoplay(
   const byYear: YearRow[] = [];
   const bodySum = { n: 0, debt: 0, maxDebt: 0, fatigue: 0, loco: 0 };
   const signCount: Record<string, number> = {};
+  const seenWounds = new Map<string, SeenWound>();
+  const careMarks = (): string => {
+    const b = w.truth.get(BODY_STATE, life.player);
+    return b
+      ? b.wounds
+          .map((x) => `${x.splinted ? 1 : 0}${x.bandaged ? 1 : 0}${x.cleaned ? 1 : 0}`)
+          .join(",")
+      : "";
+  };
+  let tendTurns = 0;
+  let tendNoChange = 0;
   const wait = { count: 0, requested: 0, lived: 0, completed: 0, atWater: 0, atWaterCompleted: 0 };
   /** Si el personaje está en la aldea o junto al agua (`drink` pide lo mismo). */
   const atWaterNow = (): boolean => {
@@ -271,6 +336,7 @@ export async function runAutoplay(
       const t0 = performance.now();
       const before = life.now;
       const wasAtWater = atWaterNow();
+      const marksBefore = "choose" in move && move.choose.includes("tend") ? careMarks() : null;
       let reply = "say" in move ? await session.say(move.say) : await session.choose(move.choose);
       // Un aviso de factibilidad se repite la mitad de las veces, como haría quien insiste.
       if (!reply.turn && "say" in move && /repetilo\.$/.test(reply.text)) {
@@ -289,6 +355,23 @@ export async function runAutoplay(
         progress?.(
           `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}${bodyTrace}`,
         );
+      }
+      if (marksBefore !== null) {
+        tendTurns++;
+        if (careMarks() === marksBefore) tendNoChange++;
+      }
+      for (const x of w.truth.get(BODY_STATE, life.player)?.wounds ?? []) {
+        const key = `${x.at}|${x.zone}|${x.kind}`;
+        const seen = seenWounds.get(key) ?? {
+          kind: x.kind,
+          fracture: false,
+          splinted: false,
+          maxInf: 0,
+        };
+        seen.fracture ||= x.fracture;
+        seen.splinted ||= x.splinted;
+        seen.maxInf = Math.max(seen.maxInf, x.infection);
+        seenWounds.set(key, seen);
       }
       if (reply.turn) {
         const body = w.truth.get(BODY_STATE, life.player);
@@ -430,6 +513,7 @@ export async function runAutoplay(
       ),
       meanLocomotion: Math.round((bodySum.loco / Math.max(1, bodySum.n)) * 100) / 100,
     },
+    wounds: woundStats(seenWounds, tendTurns, tendNoChange),
     longWaits: {
       count: wait.count,
       requestedDays: wait.requested,
