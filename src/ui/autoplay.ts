@@ -1,0 +1,327 @@
+// Jugador automático (ROADMAP perfil5): maneja la sesión del juego (`session.ts`) con una política
+// determinista de turnos, sin LLM, para medir una partida larga con el personaje activo. Escribe líneas
+// al parser sin red y elige opciones sugeridas, como lo haría una persona; no toca la sim por la
+// espalda. Las medidas: tiempo por turno y por año, memoria, invariantes, supervivencia del personaje
+// y de la aldea, y cuánto pisa la rutina inactiva (`idlePlayerRoutine`) al personaje que juega.
+
+import { type AgentId, type Event, HOUR, MINUTE, Rng } from "../core/index.ts";
+import { checkInvariants, ENTITY, PERSON } from "../sim/index.ts";
+import type { Session } from "./session.ts";
+
+export interface AutoplayConfig {
+  readonly seed: number;
+  /** Años de mundo a jugar (puede ser fraccionario). */
+  readonly years: number;
+  /** Cada cuántos días de mundo se corren los invariantes. */
+  readonly checkEveryDays: number;
+  /** Tope de líneas escritas, por si algo no avanza. */
+  readonly maxTurns?: number;
+}
+
+/** Una línea o una opción sugerida con ese id. */
+export type AutoplayMove = { readonly say: string } | { readonly choose: string };
+
+export interface PolicyView {
+  readonly suggestions: readonly { id: string; kind: string; salience: number }[];
+  readonly stalled: number;
+}
+
+/** Actividades de rutina del personaje (peso, línea): de la hora al mes. */
+const ACTIVITIES: readonly (readonly [number, string])[] = [
+  [2, "miro alrededor"],
+  [2, "hablo con mi madre"],
+  [1, "hablo con mi padre"],
+  [1, "hablo con mi hermana"],
+  [2, "busco leña"],
+  [3, "trabajo en el campo hasta que anochezca"],
+  [1, "voy al campo"],
+  [1, "descanso"],
+  [1, "espero 2 horas"],
+  [2, "espero un día"],
+  [1, "espero 3 días"],
+  [1, "espero 7 días"],
+  [1, "espero 30 días"],
+];
+
+/**
+ * La política de turnos: primero lo que el cuerpo pide (las opciones sugeridas de necesidad), después
+ * una actividad sorteada con el RNG de la corrida. Pura: mismo seed y mismas vistas, mismos turnos.
+ */
+export function choosePolicy(rng: Rng, view: PolicyView): AutoplayMove {
+  if (view.stalled >= 8) return { say: "espero una hora" };
+  const need = view.suggestions
+    .filter(
+      (s) =>
+        (["drink", "eat", "tend"].includes(s.kind) && s.salience >= 0.7) ||
+        (s.kind === "sleep" && s.salience >= 0.5),
+    )
+    .sort((a, b) => b.salience - a.salience)[0];
+  if (need) return { choose: need.id };
+  const i = rng.weighted(ACTIVITIES.map(([w]) => w));
+  return { say: (ACTIVITIES[i] as readonly [number, string])[1] };
+}
+
+export interface YearRow {
+  readonly year: number;
+  readonly turns: number;
+  readonly wallMs: number;
+  readonly worldDays: number;
+  readonly msPerTurn: number;
+  readonly secPerWorldYear: number;
+  readonly rssMiB: number;
+  readonly villagers: number;
+  readonly playerAlive: boolean;
+}
+
+export interface AutoplayReport {
+  readonly seed: number;
+  readonly years: number;
+  readonly completedYears: number;
+  readonly turns: number;
+  readonly rejected: number;
+  readonly warned: number;
+  readonly lineTurns: number;
+  readonly chooseTurns: number;
+  readonly checks: number;
+  readonly problems: readonly string[];
+  readonly playerAlive: boolean;
+  readonly playerEnd: { readonly tick: number; readonly cause?: string } | null;
+  readonly villagersStart: number;
+  readonly villagersEnd: number;
+  readonly births: number;
+  readonly deaths: number;
+  readonly deathsByCause: Readonly<Record<string, number>>;
+  /** Eventos de rutina atribuidos al personaje (la rutina inactiva pisando al que juega). */
+  readonly routineOnPlayer: number;
+  readonly routineOnPlayerByKind: Readonly<Record<string, number>>;
+  readonly turnMs: {
+    readonly mean: number;
+    readonly p50: number;
+    readonly p95: number;
+    readonly max: number;
+  };
+  readonly worstTurns: readonly {
+    readonly turn: number;
+    readonly line: string;
+    readonly ms: number;
+    readonly days: number;
+  }[];
+  readonly byYear: readonly YearRow[];
+  readonly peakRssMiB: number;
+  readonly replies: Readonly<Record<string, number>>;
+  readonly topKinds: Readonly<Record<string, number>>;
+  readonly wallSeconds: number;
+  readonly failure?: string;
+}
+
+const MiB = 1024 * 1024;
+
+function pct(sorted: readonly number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] as number;
+}
+
+/** Juega la sesión hasta `years` años de mundo, la muerte del personaje o `maxTurns`. */
+export async function runAutoplay(
+  session: Session,
+  config: AutoplayConfig,
+  progress?: (line: string) => void,
+): Promise<AutoplayReport> {
+  const life = session.life;
+  const w = life.world;
+  const rng = Rng.root(config.seed).fork("autoplay");
+  const from = life.now;
+  const target = from + Math.round(config.years * w.clock.year);
+  const checkStep = config.checkEveryDays * w.clock.day;
+  const maxTurns = config.maxTurns ?? 100_000;
+  const villagers = (): number =>
+    w.truth.ids(PERSON).filter((id) => w.truth.get(ENTITY, id as AgentId)?.endedAt === undefined)
+      .length;
+  const villagersStart = villagers();
+
+  const started = performance.now();
+  const problems: string[] = [];
+  const times: number[] = [];
+  const worst: { turn: number; line: string; ms: number; days: number }[] = [];
+  const replies: Record<string, number> = {};
+  const kinds = new Map<string, number>();
+  const routineByKind: Record<string, number> = {};
+  const deathsByCause: Record<string, number> = {};
+  const byYear: YearRow[] = [];
+  let scanned = 0;
+  let births = 0;
+  let deaths = 0;
+  let routineOnPlayer = 0;
+  let playerEnd: AutoplayReport["playerEnd"] = null;
+  const scan = (): void => {
+    const all: readonly Event[] = w.log.all();
+    for (; scanned < all.length; scanned++) {
+      const e = all[scanned] as Event;
+      if (e.tick <= from) continue;
+      kinds.set(e.kind, (kinds.get(e.kind) ?? 0) + 1);
+      if (e.kind === "family.birth") births++;
+      if (e.kind === "body.died") {
+        deaths++;
+        const cause = String((e.data as { cause?: unknown }).cause ?? "unknown");
+        deathsByCause[cause] = (deathsByCause[cause] ?? 0) + 1;
+        if (e.actors.includes(life.player)) playerEnd = { tick: e.tick, cause };
+      }
+      if (e.kind.startsWith("routine.") && e.actors.includes(life.player)) {
+        routineOnPlayer++;
+        routineByKind[e.kind] = (routineByKind[e.kind] ?? 0) + 1;
+      }
+    }
+  };
+
+  let turns = 0;
+  let rejected = 0;
+  let warned = 0;
+  let lineTurns = 0;
+  let chooseTurns = 0;
+  let stalled = 0;
+  // Opciones que no gastaron tiempo (p. ej. dormir de día): se dejan de sugerir un rato.
+  const banned = new Map<string, number>();
+  let checks = 0;
+  let nextCheck = from + checkStep;
+  let peak = process.memoryUsage().rss;
+  let yearTurns = 0;
+  let yearStart = performance.now();
+  let yearFromTick = from;
+  let failure: string | undefined;
+  const count = (key: string) => {
+    replies[key] = (replies[key] ?? 0) + 1;
+  };
+
+  try {
+    while (life.now < target && life.alive && turns < maxTurns && problems.length === 0) {
+      const view: PolicyView = {
+        suggestions: session
+          .suggested(true)
+          .filter((s) => (banned.get(s.id) ?? 0) <= life.now)
+          .map((s) => ({
+            id: s.id,
+            kind: s.kind,
+            salience: s.salience,
+          })),
+        stalled,
+      };
+      const move = choosePolicy(rng.fork("turn", turns), view);
+      const line = "say" in move ? move.say : `[${move.choose}]`;
+      const t0 = performance.now();
+      const before = life.now;
+      let reply = "say" in move ? await session.say(move.say) : await session.choose(move.choose);
+      // Un aviso de factibilidad se repite la mitad de las veces, como haría quien insiste.
+      if (!reply.turn && "say" in move && /repetilo\.$/.test(reply.text)) {
+        warned++;
+        if (rng.fork("insist", turns).chance(0.5)) reply = await session.say(move.say);
+      }
+      const ms = performance.now() - t0;
+      if (process.env["AUTOPLAY_TRACE"]) {
+        const days = ((life.now - before) / w.clock.day).toFixed(2);
+        progress?.(
+          `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, ${reply.text.split("\n")[0]?.slice(0, 80)}`,
+        );
+      }
+      turns++;
+      if ("say" in move) lineTurns++;
+      else chooseTurns++;
+      if (!("say" in move) && life.now - before < MINUTE) {
+        banned.set(move.choose, life.now + 2 * HOUR);
+        stalled++;
+      } else if (life.now - before >= MINUTE) stalled = 0;
+      if (reply.turn) {
+        times.push(ms);
+        yearTurns++;
+        count("turn");
+        const days = (life.now - before) / w.clock.day;
+        worst.push({ turn: turns, line, ms: Math.round(ms), days: Math.round(days * 100) / 100 });
+        worst.sort((a, b) => b.ms - a.ms);
+        if (worst.length > 8) worst.length = 8;
+      } else {
+        rejected++;
+        stalled++;
+        count(
+          /no se entiende/.test(reply.text)
+            ? "unparsed"
+            : /repetilo/.test(reply.text)
+              ? "warning"
+              : /Contestá/.test(reply.text)
+                ? "clarify"
+                : "other-no-time",
+        );
+      }
+      if (reply.end === "dead") break;
+      peak = Math.max(peak, process.memoryUsage().rss);
+      if (life.now >= nextCheck) {
+        scan();
+        const found = checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger });
+        checks++;
+        problems.push(...found.map((p) => JSON.stringify(p)));
+        nextCheck = life.now + checkStep;
+        progress?.(
+          `seed ${config.seed}: dia ${((life.now - from) / w.clock.day).toFixed(0)}, ${turns} turnos, ${found.length} problemas, aldea ${villagers()}, rss ${Math.round(process.memoryUsage().rss / MiB)} MiB`,
+        );
+      }
+      if (life.now - yearFromTick >= w.clock.year) {
+        const wall = performance.now() - yearStart;
+        const days = (life.now - yearFromTick) / w.clock.day;
+        byYear.push({
+          year: byYear.length + 1,
+          turns: yearTurns,
+          wallMs: Math.round(wall),
+          worldDays: Math.round(days),
+          msPerTurn: Math.round(wall / Math.max(1, yearTurns)),
+          secPerWorldYear: Math.round((wall / 1000) * (w.clock.year / (life.now - yearFromTick))),
+          rssMiB: Math.round(process.memoryUsage().rss / MiB),
+          villagers: villagers(),
+          playerAlive: life.alive,
+        });
+        yearTurns = 0;
+        yearStart = performance.now();
+        yearFromTick = life.now;
+      }
+    }
+  } catch (error) {
+    failure = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  }
+  scan();
+  const final = checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger });
+  checks++;
+  problems.push(...final.map((p) => JSON.stringify(p)));
+  const sorted = [...times].sort((a, b) => a - b);
+  const top = [...kinds].sort((a, b) => b[1] - a[1]).slice(0, 25);
+  return {
+    seed: config.seed,
+    years: config.years,
+    completedYears: Math.round(((life.now - from) / w.clock.year) * 1000) / 1000,
+    turns,
+    rejected,
+    warned,
+    lineTurns,
+    chooseTurns,
+    checks,
+    problems,
+    playerAlive: life.alive,
+    playerEnd,
+    villagersStart,
+    villagersEnd: villagers(),
+    births,
+    deaths,
+    deathsByCause,
+    routineOnPlayer,
+    routineOnPlayerByKind: routineByKind,
+    turnMs: {
+      mean: Math.round(times.reduce((a, b) => a + b, 0) / Math.max(1, times.length)),
+      p50: Math.round(pct(sorted, 0.5)),
+      p95: Math.round(pct(sorted, 0.95)),
+      max: Math.round(sorted.at(-1) ?? 0),
+    },
+    worstTurns: worst,
+    byYear,
+    peakRssMiB: Math.round(peak / MiB),
+    replies,
+    topKinds: Object.fromEntries(top),
+    wallSeconds: Math.round((performance.now() - started) / 100) / 10,
+    ...(failure ? { failure } : {}),
+  };
+}
