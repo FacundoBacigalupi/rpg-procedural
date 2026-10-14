@@ -202,6 +202,11 @@ export interface LifeOptions {
    */
   readonly waitUntended?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-7` lo enciende: quien espera no lleva
+   * odre (desde `life-7` bebe de él lejos del agua y lo llena donde la hay).
+   */
+  readonly waitNoSkin?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -438,6 +443,7 @@ export function optInParts(
   | "verboseSteps"
   | "waitAwake"
   | "waitUntended"
+  | "waitNoSkin"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -540,6 +546,7 @@ export function optInParts(
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
     ...(options.waitUntended ? { waitUntended: true } : {}),
+    ...(options.waitNoSkin ? { waitNoSkin: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

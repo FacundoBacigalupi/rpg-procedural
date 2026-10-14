@@ -61,6 +61,7 @@ import {
   setActivity,
   setComponent,
   TREATED_WATER,
+  table,
   VILLAGE_SQUARE,
   type WaterQuality,
 } from "../../sim/index.ts";
@@ -101,6 +102,20 @@ export function onlyWaits(plan: { readonly root: Parameters<typeof planLeaves>[0
 /** Lo que se bebe de una vez, como mucho: lo que falta, hasta esto. */
 const MAX_DRINK_L = 1.5;
 
+/** Litros del odre con que el jugador sale a la espera (como `JourneyDrinkOptions.carryLiters` de los viajeros). */
+export const SKIN_CAPACITY_L = 3;
+
+/**
+ * El odre del personaje del jugador (desde `life-7`): litros que le quedan. Sin componente se lo
+ * toma lleno. Como el `skin` de los viajeros NPC es un contador y no un bien (el agua de fuente no
+ * pasa por el ledger): no crea ni destruye nada. Se vacía bebiendo lejos del agua mientras espera
+ * y se llena al beber en la aldea o junto al agua.
+ */
+export interface WaterSkin {
+  readonly liters: number;
+}
+export const WATER_SKIN = table<WaterSkin>("life.water_skin");
+
 export interface RoutineOptions {
   /** Opt-in: comidas, cosecha y combustible comparten saldos con los demás procesos económicos. */
   readonly economicBatch?: boolean;
@@ -133,6 +148,12 @@ export interface RoutineOptions {
    * cambia su esfuerzo y no trabaja: la espera sigue siendo suya. Apagado: nadie lo atiende.
    */
   readonly waitTend?: boolean;
+  /**
+   * Desde `life-7` (con `waitTend`): quien espera lleva un odre (`WATER_SKIN`, `SKIN_CAPACITY_L`
+   * litros): lejos del agua bebe de él a las horas de agua, y donde hay agua lo llena. Apagado: sin
+   * agua en el lugar no bebe y la sed corta la espera.
+   */
+  readonly waitSkin?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -264,6 +285,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       : {}),
     reads: [
       MEALS.name,
+      ...(o.waitSkin ? [WATER_SKIN.name] : []),
       PLAYER.name,
       PLAN_STATE.name,
       NPC_DECISION.name,
@@ -275,7 +297,13 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.boil ? [TREATED_WATER.name] : []),
     ],
-    writes: [LOCATION.name, BODY_STATE.name, MEALS.name, ...(o.boil ? [TREATED_WATER.name] : [])],
+    writes: [
+      LOCATION.name,
+      BODY_STATE.name,
+      MEALS.name,
+      ...(o.waitSkin ? [WATER_SKIN.name] : []),
+      ...(o.boil ? [TREATED_WATER.name] : []),
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -495,9 +523,25 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             const p = truth.get(PLACE, id);
             return (p?.kind === "village" || p?.kind === "water") && p.hexes.includes(here.hex);
           }));
-      if ((ROUTINE.meals.includes(hour) || ROUTINE.drinkAlso.includes(hour)) && atWater) {
-        const liters = Math.min(MAX_DRINK_L, Math.max(0, next.water));
-        if (liters > 0) {
+      const skinOn = tendOnly && o.waitSkin === true;
+      const skin = skinOn ? (truth.get(WATER_SKIN, me)?.liters ?? SKIN_CAPACITY_L) : 0;
+      const fromSkin = skinOn && !atWater;
+      const drinkHour = ROUTINE.meals.includes(hour) || ROUTINE.drinkAlso.includes(hour);
+      if (drinkHour && (atWater || (fromSkin && skin > 0))) {
+        const liters = Math.min(MAX_DRINK_L, Math.max(0, next.water), fromSkin ? skin : Infinity);
+        if (fromSkin && liters > 0) {
+          // Del odre: el agua que llevaba (limpia), sin la calidad del lugar.
+          next = ingest(bodyPlan, next, 0, liters);
+          changes.push(setComponent(WATER_SKIN, me, { liters: skin - liters }));
+          events.push({
+            kind: "routine.drank",
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { liters: Math.round(liters * 100) / 100, waiting: true, from: "skin" },
+            emissions: { sight: 0.2 },
+            causes: [{ kind: "state", entity: me, key: "body.water" }],
+          });
+        } else if (liters > 0) {
           // Con `drinkQuality` la sal deshidrata (netHydration): la hidratación neta puede ser
           // negativa y entonces falta más agua. Sin el gancho, agua limpia como siempre.
           const q = o.drinkQuality?.(truth, me, ctx.now);
@@ -514,6 +558,10 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             });
           }
         }
+      }
+      // Donde hay agua el odre se llena (a la hora de beber, beba o no).
+      if (skinOn && atWater && drinkHour && skin < SKIN_CAPACITY_L) {
+        changes.push(setComponent(WATER_SKIN, me, { liters: SKIN_CAPACITY_L }));
       }
       if (next !== body) changes.push(setComponent(BODY_STATE, me, next));
       return { changes, events, postings };
