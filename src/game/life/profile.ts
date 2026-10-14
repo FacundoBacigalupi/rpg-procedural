@@ -2,11 +2,11 @@
 import type { LifeOptions } from "./create.ts";
 
 /**
- * Opciones independientes del seed y serializables. No cambia los defaults del motor.
+ * Opciones independientes del seed y serializables. Desde `life-3` es lo que la CLI/web guardan en `setup.life` de una vida nueva (`--profile basic` las omite); no cambia los defaults de `Life.create`.
  * Todos los flags de estado pueden cambiar hashes: guardar este objeto en `setup.life`.
  * `births` aumenta población, tablas y log; metas, rumores y viajes retienen más estado.
  * `sleepers` reduce llamadas, pero su catch-up no corporal todavía no está completo.
- * No sustituye la medición multiseed del perfil2 ni certifica estabilidad conjunta.
+ * Estable en perfil2d (3 seeds x 2 años, 0 problemas); sin jugador real medido (perfil5).
  *
  * Exclusiones: birth/playerAge/tastes/frequency son elecciones de partida, runProbe es
  * instrumentación; loanSeeds/enforcement/usury/interestNorm y pawn necesitan entidades,

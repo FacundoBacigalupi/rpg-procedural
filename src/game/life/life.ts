@@ -58,8 +58,14 @@ export interface LifeSetup {
 /**
  * `life-2`: `persistGoalLayers` encendido por defecto (objetivos de capas persistidos y eventos
  * `npc.goal` nuevos), así que cambian los hashes y el replay desde el seed de un guardado `life-1`.
+ *
+ * `life-3`: las vidas nuevas de la CLI/web llevan el perfil completo (`FULL_PROFILE`) en `setup.life`
+ * (`--profile basic` vuelve al mundo mínimo). El motor no cambia los defaults de `Life.create`: una
+ * vida guardada conserva su `setup` (con o sin perfil), así que sus hashes y su replay siguen igual
+ * y solo se registra el límite de motor al abrirla; el bump impide abrir una vida con perfil en un
+ * motor anterior, que no conoce esas opciones.
  */
-export const LIFE_ENGINE = "life-2";
+export const LIFE_ENGINE = "life-3";
 
 /** La vida como juego del replay (tools/replay), sin importarlo: misma forma. */
 export function lifeReplayGame(

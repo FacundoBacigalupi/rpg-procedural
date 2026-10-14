@@ -22,12 +22,7 @@ Lo usan: [tooling.md](tooling.md) (guardado, replay, inspector), la UI (CLI en F
 
 ## 1. Empezar una partida
 
-**Perfil de integración (2026-10-11):** CLI y web aceptan `--profile full` para una
-vida nueva. `FULL_PROFILE` (`game/life/profile.ts`) reúne 46 opciones JSON del
-cableado existente y valida sus dependencias; `ui/config.ts` guarda una copia en
-`setup.life`, que la sesión persiste y usa al retomar y en replay. Un archivo con
-una vida ya iniciada conserva su setup guardado. Sin el flag no cambia la partida
-habitual. Es experimental hasta completar `perfil2b` del ROADMAP.
+**Perfil de integración (por defecto desde `life-3`, 2026-10-13):** CLI y web crean la vida nueva con `FULL_PROFILE` (`game/life/profile.ts`, 49 opciones JSON del cableado existente, dependencias validadas). `ui/config.ts` guarda una copia en `setup.life`, que la sesión persiste y usa al retomar y en replay; `--profile basic` da el mundo mínimo anterior (`--profile full` es sinónimo del default). El default vive en el setup guardado y no en `Life.create`: una vida de `life-1`/`life-2` conserva su setup sin perfil y sus hashes. Costo medido (seed 1): crear ~4 s, un turno de 30 días ~5 s (~2x el mundo mínimo). Qué queda opt-in y por qué: ROADMAP `perfil4`.
 
 Las metas, viajes, rumores, cultura de salud y nacimientos pueden cambiar hashes;
 los nacimientos y el log aumentan memoria. La configuración no incluye funciones,

@@ -38,6 +38,9 @@ export const LIFE_ARG_OPTIONS = {
   nickname: { type: "boolean", default: false },
 } as const;
 
+/** `full` (por defecto desde life-3) o `basic` (sin las opciones opt-in del perfil). */
+const PROFILES: readonly string[] = ["full", "basic"];
+
 export interface LifeArgs {
   seed?: string | undefined;
   mode: string;
@@ -73,10 +76,13 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
   if (!mode) throw new Error(`modo inválido: ${values.mode} (realista o novela)`);
   const runtime = values.runtime as keyof typeof LOCAL_BASE_URLS;
   if (!(runtime in LOCAL_BASE_URLS)) throw new Error(`runtime desconocido: ${values.runtime}`);
-  if (values.profile !== undefined && values.profile !== "full") {
-    throw new Error(`perfil inválido: ${values.profile} (full)`);
+  if (values.profile !== undefined && !PROFILES.includes(values.profile)) {
+    throw new Error(`perfil inválido: ${values.profile} (${PROFILES.join(", ")})`);
   }
-  if (values.profile === "full") assertLifeDependencies(FULL_PROFILE);
+  // Una vida nueva nace con el perfil completo (motor life-3, ROADMAP perfil4); `basic` es el mundo
+  // mínimo anterior. Queda en el setup guardado: una vida ya empezada conserva el suyo, con o sin perfil.
+  const full = values.profile !== "basic";
+  if (full) assertLifeDependencies(FULL_PROFILE);
   return {
     seed,
     save: values.save,
@@ -86,7 +92,7 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
       game: gameSetup(values, mode),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
-      ...(values.profile === "full" ? { life: structuredClone(FULL_PROFILE) } : {}),
+      ...(full ? { life: structuredClone(FULL_PROFILE) } : {}),
     },
   };
 }

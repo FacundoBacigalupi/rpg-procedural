@@ -188,7 +188,7 @@ describe("runCli", () => {
     await session(store, ["salir"]);
     store.setMeta("versions", { ...VERSIONS, engine: "life-1" });
     const out = await session(store, ["salir"]);
-    expect(out).toContain("pasó del motor life-1 al life-2");
+    expect(out).toContain(`pasó del motor life-1 al ${LIFE_ENGINE}`);
     expect(store.getMeta("versions")).toEqual(VERSIONS);
     expect(store.getMeta("replayLimits")).toMatchObject([
       { from: { engine: "life-1" }, to: { engine: LIFE_ENGINE } },
