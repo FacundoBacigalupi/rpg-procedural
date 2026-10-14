@@ -223,6 +223,11 @@ export interface LifeOptions {
    */
   readonly legacyTend?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-11` lo enciende: el `resume` de un
+   * tramo de camino queda encendido y el plan repite el `move` (ver `ActOptions.legacyResume`).
+   */
+  readonly legacyResume?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -463,6 +468,7 @@ export function optInParts(
   | "sleepUncapped"
   | "legacyFalls"
   | "legacyTend"
+  | "legacyResume"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -569,6 +575,7 @@ export function optInParts(
     ...(options.sleepUncapped ? { sleepUncapped: true } : {}),
     ...(options.legacyFalls ? { legacyFalls: true } : {}),
     ...(options.legacyTend ? { legacyTend: true } : {}),
+    ...(options.legacyResume ? { legacyResume: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

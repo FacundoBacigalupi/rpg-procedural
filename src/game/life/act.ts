@@ -324,6 +324,12 @@ export interface ActOptions {
    */
   readonly legacyTend?: boolean;
   /**
+   * Motores anteriores a `life-11`: el `resume` de un tramo de camino a medias quedaba encendido
+   * para siempre (`...state`), así que el plan nunca pasaba del `move` y lo repetía contra el hex
+   * donde ya estaba. Solo lo enciende el replay de un guardado viejo.
+   */
+  readonly legacyResume?: boolean;
+  /**
    * Opt-in: el modo del `move` cambia el esfuerzo del cuerpo (`fast` es esfuerzo pesado, `careful`
    * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
    */
@@ -1538,9 +1544,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         )
       : { changes: [], schedule: [] };
   changes.push(...heard.changes);
+  // `resume` vale solo para el próximo paso: un tramo que llega (o falla) lo apaga.
+  const { resume: _prevResume, ...stateNoResume } = state;
   changes.push(
     setComponent(PLAN_STATE, me, {
-      ...state,
+      ...(o.legacyResume === true ? state : stateNoResume),
       cursor,
       lastBelieved,
       steps: resume ? state.steps : appendStep(state.steps, stepRecord, o.verboseSteps !== true),
