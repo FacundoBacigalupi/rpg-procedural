@@ -19,15 +19,16 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-6");
+    expect(LIFE_ENGINE).toBe("life-7");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
       verboseSteps: true,
       waitAwake: true,
       waitUntended: true,
+      waitNoSkin: true,
     });
-    expect(engineOptions("life-6", {})).toEqual({});
+    expect(engineOptions("life-7", {})).toEqual({});
   });
 });
 

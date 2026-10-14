@@ -88,13 +88,20 @@ export interface LifeSetup {
  * siempre. Cambia el cuerpo y la despensa de quien espera y los hashes. Compatibilidad: el replay
  * con un motor anterior a `life-6` enciende `waitUntended` (nadie atiende al que espera, con los
  * hashes de siempre); una vida guardada con `life-5` sigue desde su estado con el límite de replay.
+ *
+ * `life-7`: quien espera lleva un odre de `SKIN_CAPACITY_L` litros (`WATER_SKIN`, contador como el
+ * `skin` de los viajeros NPC `drinkOnRoad`; el agua no pasa por el ledger): a campo abierto, a las
+ * horas de agua de la rutina mínima, bebe de él, y donde hay agua lo llena. Antes, a campo abierto,
+ * toda espera de 2+ días se cortaba por sed a ~1,3 días. Compatibilidad: el replay con un motor
+ * anterior a `life-7` enciende `waitNoSkin`; una vida guardada con `life-6` sigue desde su estado
+ * con el límite de replay.
  */
-export const LIFE_ENGINE = "life-6";
+export const LIFE_ENGINE = "life-7";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
  * los anteriores a `life-5` no duermen al esperar de noche; los anteriores a `life-6` no beben ni
- * comen durante una espera.
+ * comen durante una espera; los anteriores a `life-7` no llevan odre.
  */
 export function engineOptions(engine: string, options: LifeOptions): LifeOptions {
   const m = /^life-(\d+)$/.exec(engine);
@@ -105,6 +112,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 4 ? { verboseSteps: true } : {}),
     ...(n < 5 ? { waitAwake: true } : {}),
     ...(n < 6 ? { waitUntended: true } : {}),
+    ...(n < 7 ? { waitNoSkin: true } : {}),
   };
 }
 

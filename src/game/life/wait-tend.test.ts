@@ -5,7 +5,7 @@ import { type ContentSource, HOUR, loadContent } from "../../core/index.ts";
 import { type ActionPlan, BODY_STATE, LOCATION, PLACE } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { engineOptions, LIFE_ENGINE, Life } from "./life.ts";
-import { onlyWaits } from "./routine.ts";
+import { onlyWaits, SKIN_CAPACITY_L, WATER_SKIN } from "./routine.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -52,15 +52,16 @@ describe("esperar días: la rutina mínima atiende lo chico (perfil5-wait-drink)
       ate: kinds.filter((k) => k === "routine.ate").length,
       water: w.truth.get(BODY_STATE, life.player)?.water ?? Number.NaN,
       alive: life.alive,
+      skin: w.truth.get(WATER_SKIN, life.player)?.liters ?? SKIN_CAPACITY_L,
     };
   }
 
-  it("con life-6 la espera de 4 días se completa; antes la cortaba la sed", () => {
+  it("con life-6 en adelante la espera de 4 días se completa; antes la cortaba la sed", () => {
     const old = waitFourDays("life-5");
     expect(old.interrupt?.kind).toBe("body_alarm");
     expect(old.days).toBeLessThan(2);
     expect(old.drank).toBe(0);
-    const now = waitFourDays(LIFE_ENGINE);
+    const now = waitFourDays("life-6");
     expect(now.interrupt).toBeNull();
     expect(now.days).toBeGreaterThanOrEqual(4);
     expect(now.drank).toBeGreaterThanOrEqual(3);
@@ -72,11 +73,26 @@ describe("esperar días: la rutina mínima atiende lo chico (perfil5-wait-drink)
     expect(waitFourDays(LIFE_ENGINE)).toEqual(waitFourDays(LIFE_ENGINE));
   }, 240_000);
 
-  it("lejos del agua nadie bebe por él: la espera se corta por la alarma del cuerpo", () => {
-    const r = waitFourDays(LIFE_ENGINE, true);
+  it("lejos del agua, sin odre (life-6) nadie bebe por él: la alarma del cuerpo corta la espera", () => {
+    const r = waitFourDays("life-6", true);
     expect(r.drank).toBe(0);
     expect(r.interrupt?.kind).toBe("body_alarm");
     expect(r.days).toBeLessThan(4);
+  }, 240_000);
+
+  it("lejos del agua, con life-7 bebe del odre: dura más, se vacía y es determinista (perfil5-wait-afield)", () => {
+    const old = waitFourDays("life-6", true);
+    const now = waitFourDays(LIFE_ENGINE, true);
+    expect(now.drank).toBeGreaterThanOrEqual(2);
+    expect(now.days).toBeGreaterThan(old.days + 0.5);
+    expect(now.skin).toBeLessThan(SKIN_CAPACITY_L);
+    // El odre vacío: la sed vuelve a cortar la espera, como siempre.
+    expect(now.interrupt?.kind).toBe("body_alarm");
+    expect(waitFourDays(LIFE_ENGINE, true)).toEqual(now);
+  }, 360_000);
+
+  it("en la aldea el odre sigue lleno: bebe de la fuente", () => {
+    expect(waitFourDays(LIFE_ENGINE).skin).toBe(SKIN_CAPACITY_L);
   }, 240_000);
 });
 

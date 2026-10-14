@@ -343,6 +343,8 @@ export interface LifeWorld {
   readonly waitAwake?: boolean;
   /** Replay de motores anteriores a `life-6`: nadie bebe ni come por quien espera; ver `RoutineOptions.waitTend`. */
   readonly waitUntended?: boolean;
+  /** Replay de motores anteriores a `life-7`: quien espera no lleva odre; ver `RoutineOptions.waitSkin`. */
+  readonly waitNoSkin?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -1699,6 +1701,7 @@ export function lifeWorld(
           ...(parts.npcMove === true ? { npcMove: true } : {}),
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),
+          ...(parts.waitUntended === true || parts.waitNoSkin === true ? {} : { waitSkin: true }),
           ...(parts.sleepers ? { sleepers: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
