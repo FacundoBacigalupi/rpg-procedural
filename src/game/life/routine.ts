@@ -53,6 +53,7 @@ import {
   PERSON,
   PLACE,
   type ProcessDef,
+  planLeaves,
   type ReadonlyWorldTruth,
   SOIL,
   type SpaceGraph,
@@ -91,6 +92,12 @@ const LARDER_LOW_DAYS = 14;
 /** Desde cuánta hambre una decisión fresca de comer saca una ración fuera de las comidas. */
 const EAT_HUNGER = 0.6;
 
+/** Si el plan es solo esperar (todas sus hojas son `wait`): lo único que la rutina atiende del jugador. */
+export function onlyWaits(plan: { readonly root: Parameters<typeof planLeaves>[0] }): boolean {
+  const leaves = planLeaves(plan.root);
+  return leaves.length > 0 && leaves.every((l) => l.node.verb === "wait");
+}
+
 /** Lo que se bebe de una vez, como mucho: lo que falta, hasta esto. */
 const MAX_DRINK_L = 1.5;
 
@@ -119,6 +126,13 @@ export interface RoutineOptions {
   readonly npcMove?: boolean;
   /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
   readonly idlePlayer?: boolean;
+  /**
+   * Desde `life-6`: el personaje del jugador con un plan de solo esperas sigue la parte chica de la
+   * rutina (player-loop §4, delegar lo chico): a las horas de comida come de la despensa del hogar
+   * si está en su casa y a las de agua bebe si está en la aldea o junto al agua. No lo mueve, no
+   * cambia su esfuerzo y no trabaja: la espera sigue siendo suya. Apagado: nadie lo atiende.
+   */
+  readonly waitTend?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -266,11 +280,18 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       // El personaje decide él; quien tiene un plan en curso lo sigue.
-      if (truth.has(PLAYER, me) && o.idlePlayer !== true) return {};
+      const plan = truth.get(PLAN_STATE, me);
+      // Quien espera (el jugador con un plan de solo `wait`) solo recibe lo chico: comer y beber.
+      const tendOnly =
+        o.waitTend === true &&
+        truth.has(PLAYER, me) &&
+        plan !== undefined &&
+        !plan.done &&
+        onlyWaits(plan.plan);
+      if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};
-      const plan = truth.get(PLAN_STATE, me);
-      if (plan && !plan.done) return {};
+      if (plan && !plan.done && !tendOnly) return {};
       const person = truth.get(PERSON, me);
       const body = truth.get(BODY_STATE, me);
       if (!person || !body || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
@@ -296,13 +317,18 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         ).reduce((t, h) => t + h.amount * (nutrition.get(h.unit)?.kcalPerGram ?? 0), 0);
         larderLow = kcal < LARDER_LOW_DAYS * 3 * MEAL_KCAL * Math.max(1, mouths);
       }
-      const want = planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
-        unwell,
-        larderLow,
-        hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
-        canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
-        canMove: o.npcMove === true,
-      });
+      if (tendOnly && !ROUTINE.meals.includes(hour) && !ROUTINE.drinkAlso.includes(hour)) {
+        return {};
+      }
+      const want: ReturnType<typeof planFor> = tendOnly
+        ? { activity: body.activity, at: "home", replaced: false }
+        : planFor(hour, age, truth.get(NPC_DECISION, me), ctx.now, o.clock.day, {
+            unwell,
+            larderLow,
+            hungry: (needs.hunger ?? 0) >= EAT_HUNGER,
+            canBoil: o.boil !== undefined && (truth.get(TREATED_WATER, me)?.until ?? -1) < ctx.now,
+            canMove: o.npcMove === true,
+          });
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
       const postings = [];
@@ -311,7 +337,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const home = o.spaces.spaces.find((s) => s.key === houseKey(person.household));
       const here = truth.get(LOCATION, me);
       let there: Location | undefined;
-      if (want.at === "home" && home) there = { hex: home.hex, space: home.key };
+      if (!tendOnly && want.at === "home" && home) there = { hex: home.hex, space: home.key };
       if (want.at === "fields" && home) {
         const fields = truth.ids(PLACE).flatMap((id) => {
           const p = truth.get(PLACE, id);
@@ -325,7 +351,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       }
       // La puerta trabada del hogar no cede: de afuera no se entra (queda en la plaza) y de
       // adentro no se sale hasta que la arreglen (settlements �7).
-      if (home && jammedHome(truth, person.household)) {
+      if (!tendOnly && home && jammedHome(truth, person.household)) {
         const inside = o.spaces.spaces.find((s) => s.key === here?.space)?.indoor === true;
         const toHome = there?.space === home.key;
         if (!inside && toHome) there = { hex: home.hex, space: VILLAGE_SQUARE };
@@ -402,7 +428,9 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // Comer: una ración a la medida del cuerpo, de lo que haya en la despensa del hogar. Solo
       // si alcanza para todos los de la casa: dos que comen en la misma fase no pueden dejar el
       // saldo en negativo (scheduler, asientos por fase).
-      if (ROUTINE.meals.includes(hour) || want.eat) {
+      // Quien espera come solo si está en su casa, donde está la despensa del hogar.
+      const atHome = home !== undefined && here?.space === home.key;
+      if ((ROUTINE.meals.includes(hour) || want.eat) && (!tendOnly || atHome)) {
         const larder = person.household as unknown as HolderRef;
         const mouths = truth
           .ids(PERSON)
@@ -427,7 +455,12 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             kind: "routine.ate",
             actors: [me],
             place: o.placeOf(truth, me),
-            data: { good: row.unit, grams, ...(want.eat ? { decided: true } : {}) },
+            data: {
+              good: row.unit,
+              grams,
+              ...(want.eat ? { decided: true } : {}),
+              ...(tendOnly ? { waiting: true } : {}),
+            },
             emissions: { sight: 0.2, sound: 0.05 },
             causes: [{ kind: "state", entity: me, key: "routine" }],
           });
@@ -454,7 +487,15 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         }
       }
       // Beber lo que falta (el agua del pozo no va al ledger todavía, como en `drink`).
-      if (ROUTINE.meals.includes(hour) || ROUTINE.drinkAlso.includes(hour)) {
+      // Quien espera bebe solo donde hay agua: la aldea o el agua (`drink` pide lo mismo).
+      const atWater =
+        !tendOnly ||
+        (here !== undefined &&
+          truth.ids(PLACE).some((id) => {
+            const p = truth.get(PLACE, id);
+            return (p?.kind === "village" || p?.kind === "water") && p.hexes.includes(here.hex);
+          }));
+      if ((ROUTINE.meals.includes(hour) || ROUTINE.drinkAlso.includes(hour)) && atWater) {
         const liters = Math.min(MAX_DRINK_L, Math.max(0, next.water));
         if (liters > 0) {
           // Con `drinkQuality` la sal deshidrata (netHydration): la hidratación neta puede ser
@@ -462,6 +503,16 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           const q = o.drinkQuality?.(truth, me, ctx.now);
           const net = q ? netHydration(liters, q) : liters;
           next = net >= 0 ? ingest(bodyPlan, next, 0, net) : { ...next, water: next.water - net };
+          if (tendOnly) {
+            events.push({
+              kind: "routine.drank",
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { liters: Math.round(liters * 100) / 100, waiting: true },
+              emissions: { sight: 0.2 },
+              causes: [{ kind: "state", entity: me, key: "body.water" }],
+            });
+          }
         }
       }
       if (next !== body) changes.push(setComponent(BODY_STATE, me, next));

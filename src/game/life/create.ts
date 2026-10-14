@@ -197,6 +197,11 @@ export interface LifeOptions {
    */
   readonly waitAwake?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-6` lo enciende: nadie bebe ni come por
+   * quien espera (desde `life-6` la rutina mínima del hogar atiende lo chico durante una espera).
+   */
+  readonly waitUntended?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -432,6 +437,7 @@ export function optInParts(
   | "rumorGrievance"
   | "verboseSteps"
   | "waitAwake"
+  | "waitUntended"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -533,6 +539,7 @@ export function optInParts(
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
+    ...(options.waitUntended ? { waitUntended: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

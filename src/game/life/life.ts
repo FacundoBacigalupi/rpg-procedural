@@ -79,12 +79,22 @@ export interface LifeSetup {
  * noche y los hashes. Compatibilidad: el replay con un motor anterior a `life-5` enciende
  * `waitAwake` (la espera no duerme, con los hashes de siempre); una vida guardada con `life-4`
  * sigue desde su estado con el límite de replay.
+ *
+ * `life-6`: una espera del jugador (plan de solo `wait`) lleva la rutina mínima del hogar
+ * (`RoutineOptions.waitTend`): a las horas de comida come de la despensa del hogar si está en su
+ * casa, y a las de agua bebe si está en la aldea o junto al agua, con los eventos y asientos de un
+ * NPC (`routine.ate`, `routine.drank`). Antes toda espera de 2+ días se cortaba por sed a ~1,3
+ * días. Sin agua o sin comida a mano no hace nada y la alarma del cuerpo corta la espera como
+ * siempre. Cambia el cuerpo y la despensa de quien espera y los hashes. Compatibilidad: el replay
+ * con un motor anterior a `life-6` enciende `waitUntended` (nadie atiende al que espera, con los
+ * hashes de siempre); una vida guardada con `life-5` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-5";
+export const LIFE_ENGINE = "life-6";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
- * los anteriores a `life-5` no duermen al esperar de noche.
+ * los anteriores a `life-5` no duermen al esperar de noche; los anteriores a `life-6` no beben ni
+ * comen durante una espera.
  */
 export function engineOptions(engine: string, options: LifeOptions): LifeOptions {
   const m = /^life-(\d+)$/.exec(engine);
@@ -94,6 +104,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...options,
     ...(n < 4 ? { verboseSteps: true } : {}),
     ...(n < 5 ? { waitAwake: true } : {}),
+    ...(n < 6 ? { waitUntended: true } : {}),
   };
 }
 
