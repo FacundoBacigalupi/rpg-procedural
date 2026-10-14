@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-17");
+    expect(LIFE_ENGINE).toBe("life-18");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       frequency: 8,
@@ -80,6 +80,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-4", {})).toEqual({
       waitAwake: true,
@@ -95,6 +96,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -107,6 +109,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -118,6 +121,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
@@ -128,6 +132,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
@@ -137,6 +142,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       waitEatHomeOnly: true,
@@ -145,6 +151,7 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyNoCare: true,
@@ -152,21 +159,29 @@ describe("motor y pasos", () => {
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
+      legacyNoCloakMend: true,
     });
-    expect(engineOptions("life-15", {})).toEqual({ legacyNoCloak: true, legacyNoStrain: true });
-    expect(engineOptions("life-16", {})).toEqual({ legacyNoStrain: true });
-    expect(engineOptions("life-17", {})).toEqual({});
+    expect(engineOptions("life-15", {})).toEqual({
+      legacyNoCloak: true,
+      legacyNoStrain: true,
+      legacyNoCloakMend: true,
+    });
+    expect(engineOptions("life-16", {})).toEqual({ legacyNoStrain: true, legacyNoCloakMend: true });
+    expect(engineOptions("life-17", {})).toEqual({ legacyNoCloakMend: true });
+    expect(engineOptions("life-18", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */
