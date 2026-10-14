@@ -228,6 +228,11 @@ export interface LifeOptions {
    */
   readonly legacyResume?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-12` lo enciende: quien espera come
+   * únicamente puertas adentro (ver `RoutineOptions.waitEatVillage`).
+   */
+  readonly waitEatHomeOnly?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -469,6 +474,7 @@ export function optInParts(
   | "legacyFalls"
   | "legacyTend"
   | "legacyResume"
+  | "waitEatHomeOnly"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -576,6 +582,7 @@ export function optInParts(
     ...(options.legacyFalls ? { legacyFalls: true } : {}),
     ...(options.legacyTend ? { legacyTend: true } : {}),
     ...(options.legacyResume ? { legacyResume: true } : {}),
+    ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

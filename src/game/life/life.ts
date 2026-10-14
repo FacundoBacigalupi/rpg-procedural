@@ -117,8 +117,14 @@ export interface LifeSetup {
  * heridas en una caminata) en vez de pasar al paso siguiente. Compatibilidad: el replay con un
  * motor anterior a `life-11` enciende `legacyResume`; una vida guardada con `life-10` sigue desde
  * su estado con el límite de replay.
+ *
+ * `life-12`: quien espera en el hex de su casa (la plaza, la calle) también come de la despensa del
+ * hogar; antes solo comía puertas adentro y, esperando afuera en la aldea, vivía de reservas (seed
+ * 5: 108 de 168 comidas de espera salteadas, grasa de 91k a 18k kcal). Compatibilidad: el replay
+ * con un motor anterior a `life-12` enciende `waitEatHomeOnly`; una vida guardada con `life-11`
+ * sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-11";
+export const LIFE_ENGINE = "life-12";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -139,6 +145,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 9 ? { legacyFalls: true } : {}),
     ...(n < 10 ? { legacyTend: true } : {}),
     ...(n < 11 ? { legacyResume: true } : {}),
+    ...(n < 12 ? { waitEatHomeOnly: true } : {}),
   };
 }
 
