@@ -13,7 +13,9 @@ import {
   capabilitiesOf,
   checkInvariants,
   ENTITY,
+  LOCATION,
   PERSON,
+  PLACE,
 } from "../sim/index.ts";
 import type { Session } from "./session.ts";
 
@@ -87,6 +89,9 @@ export interface LongWaitStats {
   readonly requestedDays: number;
   readonly livedDays: number;
   readonly completed: number;
+  /** De las que empezaron en la aldea o junto al agua (donde la rutina mínima puede beber): cuántas y cuántas llegaron a su fin. */
+  readonly atWater: number;
+  readonly atWaterCompleted: number;
   /** Signos graves del cuerpo al cortarse. */
   readonly cutBy: Readonly<Record<string, number>>;
 }
@@ -123,6 +128,8 @@ export interface AutoplayReport {
   readonly deathsByCause: Readonly<Record<string, number>>;
   /** Eventos de rutina atribuidos al personaje (la rutina inactiva pisando al que juega). */
   readonly routineOnPlayer: number;
+  /** Comidas y bebidas que la rutina mínima le dio al personaje mientras esperaba (`life-6`). */
+  readonly waitTended: number;
   readonly routineOnPlayerByKind: Readonly<Record<string, number>>;
   readonly turnMs: {
     readonly mean: number;
@@ -184,12 +191,23 @@ export async function runAutoplay(
   const byYear: YearRow[] = [];
   const bodySum = { n: 0, debt: 0, maxDebt: 0, fatigue: 0, loco: 0 };
   const signCount: Record<string, number> = {};
-  const wait = { count: 0, requested: 0, lived: 0, completed: 0 };
+  const wait = { count: 0, requested: 0, lived: 0, completed: 0, atWater: 0, atWaterCompleted: 0 };
+  /** Si el personaje está en la aldea o junto al agua (`drink` pide lo mismo). */
+  const atWaterNow = (): boolean => {
+    const hex = w.truth.get(LOCATION, life.player)?.hex;
+    return w.truth.ids(PLACE).some((id) => {
+      const p = w.truth.get(PLACE, id);
+      return (
+        (p?.kind === "village" || p?.kind === "water") && hex !== undefined && p.hexes.includes(hex)
+      );
+    });
+  };
   const waitCut: Record<string, number> = {};
   let scanned = 0;
   let births = 0;
   let deaths = 0;
   let routineOnPlayer = 0;
+  let waitTended = 0;
   let playerEnd: AutoplayReport["playerEnd"] = null;
   const scan = (): void => {
     const all: readonly Event[] = w.log.all();
@@ -205,6 +223,11 @@ export async function runAutoplay(
         if (e.actors.includes(life.player)) playerEnd = { tick: e.tick, cause };
       }
       if (e.kind.startsWith("routine.") && e.actors.includes(life.player)) {
+        // Lo que la rutina mínima le hace al que espera (`life-6`) no es una pisada: es lo previsto.
+        if ((e.data as { waiting?: unknown }).waiting === true) {
+          waitTended++;
+          continue;
+        }
         routineOnPlayer++;
         routineByKind[e.kind] = (routineByKind[e.kind] ?? 0) + 1;
       }
@@ -247,6 +270,7 @@ export async function runAutoplay(
       const line = "say" in move ? move.say : `[${move.choose}]`;
       const t0 = performance.now();
       const before = life.now;
+      const wasAtWater = atWaterNow();
       let reply = "say" in move ? await session.say(move.say) : await session.choose(move.choose);
       // Un aviso de factibilidad se repite la mitad de las veces, como haría quien insiste.
       if (!reply.turn && "say" in move && /repetilo\.$/.test(reply.text)) {
@@ -260,7 +284,7 @@ export async function runAutoplay(
         const planBytes = plan ? JSON.stringify(plan).length : 0;
         const b = w.truth.get(BODY_STATE, life.player);
         const bodyTrace = b
-          ? ` | cuerpo fat=${b.fatigue.toFixed(2)} deb=${b.sleepDebt.toFixed(1)}h agua=${b.water.toFixed(2)}L glu=${Math.round(b.glycogen)} grasa=${Math.round(b.fat)} mus=${b.muscle.toFixed(2)} ${b.activity} heridas=${b.wounds.length} ${b.massKg.toFixed(0)}kg`
+          ? ` | cuerpo fat=${b.fatigue.toFixed(2)} deb=${b.sleepDebt.toFixed(1)}h agua=${b.water.toFixed(2)}L glu=${Math.round(b.glycogen)} grasa=${Math.round(b.fat)} mus=${b.muscle.toFixed(2)} ${b.activity} heridas=${b.wounds.length} ${b.massKg.toFixed(0)}kg en ${JSON.stringify(w.truth.get(LOCATION, life.player))} agua=${wasAtWater}`
           : "";
         progress?.(
           `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}${bodyTrace}`,
@@ -287,8 +311,11 @@ export async function runAutoplay(
           wait.count++;
           wait.requested += want;
           wait.lived += lived;
-          if (lived >= want - 0.01) wait.completed++;
-          else {
+          if (wasAtWater) wait.atWater++;
+          if (lived >= want - 0.01) {
+            wait.completed++;
+            if (wasAtWater) wait.atWaterCompleted++;
+          } else {
             const cut = [...alarmingSigns(w)].sort().join("+") || "otro";
             waitCut[cut] = (waitCut[cut] ?? 0) + 1;
           }
@@ -381,6 +408,7 @@ export async function runAutoplay(
     deaths,
     deathsByCause,
     routineOnPlayer,
+    waitTended,
     routineOnPlayerByKind: routineByKind,
     turnMs: {
       mean: Math.round(times.reduce((a, b) => a + b, 0) / Math.max(1, times.length)),
@@ -407,6 +435,8 @@ export async function runAutoplay(
       requestedDays: wait.requested,
       livedDays: Math.round(wait.lived * 100) / 100,
       completed: wait.completed,
+      atWater: wait.atWater,
+      atWaterCompleted: wait.atWaterCompleted,
       cutBy: waitCut,
     },
     peakRssMiB: Math.round(peak / MiB),

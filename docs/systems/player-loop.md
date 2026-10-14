@@ -36,6 +36,8 @@ El perfil incluye `npcWater` (viajeros que beben, ver body-health §5), `errands
 (sim headless), el personaje inactivo sigue la rutina de cualquier NPC en vez de quedarse quieto
 hasta morir de sed; con un jugador real la rutina no debería correr para el personaje: el perfil la lleva encendida y solo actúa cuando el personaje no tiene plan en curso. Medido con el jugador automático (`npm run autoplay`, ROADMAP `perfil5`): 0 eventos de rutina atribuidos al personaje en 2 años de seed 1.
 
+Una excepción, desde el motor `life-6` (delegar lo chico, §4): mientras el personaje **espera** (plan de solo `wait`), la rutina del hogar le atiende solo comer y beber (`RoutineOptions.waitTend`): come de la despensa si está en su casa y bebe si está en la aldea o junto al agua, con los eventos `routine.ate` y `routine.drank`. No lo mueve ni lo hace trabajar. Si no hay agua o comida a mano, nadie lo atiende y la alarma del cuerpo corta la espera, como siempre.
+
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
