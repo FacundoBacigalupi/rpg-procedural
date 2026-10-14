@@ -34,7 +34,7 @@ Los dormidos todavía tienen puesta al día no corporal pendiente (`off-5`).
 El perfil incluye `npcWater` (viajeros que beben, ver body-health §5), `errands.minAgeYears`
 (los chicos no salen de recado solos) e `idlePlayerRoutine`: en una corrida sin nadie que juegue
 (sim headless), el personaje inactivo sigue la rutina de cualquier NPC en vez de quedarse quieto
-hasta morir de sed; con un jugador real la rutina no debería correr para el personaje: el perfil la lleva encendida y solo actúa cuando el personaje no tiene plan en curso. Medido con el jugador automático (`npm run autoplay`, ROADMAP `perfil5`): 0 eventos de rutina atribuidos al personaje en 2 años de seed 1.
+hasta morir de sed; con un jugador real la rutina no debería correr para el personaje: el perfil la lleva encendida y solo actúa cuando el personaje no tiene plan en curso. Medido con el jugador automático (`npm run autoplay`, ROADMAP `perfil5`): 0 eventos de rutina atribuidos al personaje en 2 años de seed 1, 2 años de seed 2, 1,2 años de seed 3 (murió de sepsis tras una fractura de cráneo por caída) y 1 año de seed 2 con `--profile basic`; el perfil completo no pesa más por turno que el básico (~90-130 ms de media, p95 ~100-140 ms, RSS pico 1,1-1,6 GiB) y hay 0 problemas de invariantes en las cuatro corridas.
 
 Una excepción, desde el motor `life-6` (delegar lo chico, §4): mientras el personaje **espera** (plan de solo `wait`), la rutina del hogar le atiende solo comer y beber (`RoutineOptions.waitTend`): come de la despensa si está en su casa y bebe si está en la aldea o junto al agua, con los eventos `routine.ate` y `routine.drank`. No lo mueve ni lo hace trabajar. Si no hay agua o comida a mano, nadie lo atiende y la alarma del cuerpo corta la espera, como siempre.
 

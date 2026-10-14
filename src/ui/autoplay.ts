@@ -284,7 +284,7 @@ export async function runAutoplay(
         const planBytes = plan ? JSON.stringify(plan).length : 0;
         const b = w.truth.get(BODY_STATE, life.player);
         const bodyTrace = b
-          ? ` | cuerpo fat=${b.fatigue.toFixed(2)} deb=${b.sleepDebt.toFixed(1)}h agua=${b.water.toFixed(2)}L glu=${Math.round(b.glycogen)} grasa=${Math.round(b.fat)} mus=${b.muscle.toFixed(2)} ${b.activity} heridas=${b.wounds.length} ${b.massKg.toFixed(0)}kg en ${JSON.stringify(w.truth.get(LOCATION, life.player))} agua=${wasAtWater}`
+          ? ` | cuerpo fat=${b.fatigue.toFixed(2)} deb=${b.sleepDebt.toFixed(1)}h agua=${b.water.toFixed(2)}L glu=${Math.round(b.glycogen)} grasa=${Math.round(b.fat)} mus=${b.muscle.toFixed(2)} ${b.activity} heridas=${b.wounds.length}${b.wounds.map((x) => `[${x.kind}/${x.zone} sev${x.severity.toFixed(2)}${x.fracture ? " fx" : ""} ${x.stage} rep${x.repair.toFixed(2)} inf${x.infection.toFixed(2)} t${x.at} cause=${x.cause}]`).join("")}${b.massKg.toFixed(0)}kg en ${JSON.stringify(w.truth.get(LOCATION, life.player))} agua=${wasAtWater}`
           : "";
         progress?.(
           `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}${bodyTrace}`,
