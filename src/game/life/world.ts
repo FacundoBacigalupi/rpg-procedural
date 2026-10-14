@@ -347,6 +347,8 @@ export interface LifeWorld {
   readonly waitNoSkin?: boolean;
   /** Replay de motores anteriores a `life-8`: la deuda de sueño no tiene tope (`BodyProcessOptions.sleepCap`). */
   readonly sleepUncapped?: boolean;
+  /** Replay de motores anteriores a `life-9`: todo tropezón es una caída; ver `ActOptions.legacyFalls`. */
+  readonly legacyFalls?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -726,6 +728,7 @@ export function lifeWorld(
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
           ...(parts.verboseSteps === true ? { verboseSteps: true } : {}),
+          ...(parts.legacyFalls === true ? { legacyFalls: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),

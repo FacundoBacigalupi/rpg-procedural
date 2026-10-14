@@ -35,6 +35,7 @@ import {
   massOf,
   NO_DEFICIENCY,
   newBody,
+  RECOVERED_HURT,
   reopenOldWounds,
   SLEEP_DEBT_CAP,
   setActivity,
@@ -411,6 +412,56 @@ describe("capacidades y síntomas", () => {
     const fell = { kind: "move", from: 0, to: 1, reached: 1, stumbled: true } as const;
     expect(blowFromMishap(fell, hit, 0, Rng.root(1))?.kind).toBe("blunt");
     expect(blowFromMishap({ ...fell, stumbled: false }, hit, 0, Rng.root(1))).toBeNull();
+  });
+
+  it("una caída de verdad hiere y pega en la cabeza rara vez; un tropezón recuperado casi nunca hiere", () => {
+    const fell = { kind: "move", from: 0, to: 1, reached: 1, stumbled: true } as const;
+    const N = 4000;
+    const falls = Array.from({ length: N }, (_, i) =>
+      blowFromMishap(fell, hit, 0, Rng.root(i), "fall"),
+    );
+    expect(falls.every((b) => b !== null)).toBe(true);
+    const heads = falls.filter((b) => b?.zone === "head").length / N;
+    expect(heads).toBeGreaterThan(0.05);
+    expect(heads).toBeLessThan(0.11);
+    const slips = Array.from({ length: N }, (_, i) =>
+      blowFromMishap(fell, hit, 0, Rng.root(i), "recovered"),
+    );
+    const hurt = slips.filter((b) => b !== null);
+    expect(hurt.length / N).toBeGreaterThan(RECOVERED_HURT - 0.04);
+    expect(hurt.length / N).toBeLessThan(RECOVERED_HURT + 0.04);
+    expect(Math.max(...hurt.map((b) => b?.force ?? 0))).toBeLessThanOrEqual(0.25);
+    // El comportamiento anterior (replay de guardados viejos): siempre hiere, la cabeza ~20 %.
+    const old = Array.from({ length: N }, (_, i) =>
+      blowFromMishap(fell, hit, 0, Rng.root(i), "legacy"),
+    );
+    expect(old.every((b) => b !== null)).toBe(true);
+    expect(old.filter((b) => b?.zone === "head").length / N).toBeGreaterThan(0.17);
+  });
+
+  it("las fracturas de una caída son raras y el resultado es determinista", () => {
+    const fell = { kind: "move", from: 0, to: 1, reached: 1, stumbled: true } as const;
+    const run = (how: "fall" | "recovered" | "legacy") => {
+      let wounds = 0;
+      let fractures = 0;
+      let heads = 0;
+      for (let i = 0; i < 2000; i++) {
+        const b = blowFromMishap(fell, hit, 0, Rng.root(i), how);
+        if (!b) continue;
+        const w = injure(plan, fresh(), b, Rng.root(i).fork("injure")).wound;
+        wounds++;
+        if (w.fracture) fractures++;
+        if (w.zone === "head" && w.fracture) heads++;
+      }
+      return { wounds, fractures, heads };
+    };
+    expect(run("fall")).toEqual(run("fall"));
+    const fall = run("fall");
+    const recovered = run("recovered");
+    // Por cada tropezón (caída de verdad o recuperado) hay menos heridas y menos huesos rotos.
+    expect(recovered.wounds).toBeLessThan(fall.wounds * 0.3);
+    expect(recovered.fractures).toBeLessThan(fall.fractures * 0.1 + 1);
+    expect(fall.fractures / fall.wounds).toBeLessThan(0.15);
   });
 });
 

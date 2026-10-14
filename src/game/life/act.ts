@@ -85,6 +85,7 @@ import {
   notoriety,
   OPINIONS,
   opposingSkill,
+  PARTIAL_MARGIN,
   PERSON,
   PERSON_SUBSTANCE,
   PLACE,
@@ -128,6 +129,7 @@ import {
   STATUS,
   type StateChange,
   type StatusDef,
+  type Stumble,
   SUBSTANCE,
   setActivity,
   setComponent,
@@ -310,6 +312,11 @@ export interface ActOptions {
    * Solo lo enciende el replay de un guardado viejo para reproducir sus hashes.
    */
   readonly verboseSteps?: boolean;
+  /**
+   * Motores anteriores a `life-9`: todo tropezón es una caída (cabeza al peso de un brazo). Solo
+   * lo enciende el replay de un guardado viejo; ver `Stumble` en `blowFromMishap`.
+   */
+  readonly legacyFalls?: boolean;
   /**
    * Opt-in: el modo del `move` cambia el esfuerzo del cuerpo (`fast` es esfuerzo pesado, `careful`
    * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
@@ -1047,7 +1054,14 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       bodyTouched = true;
     }
   }
-  const mishap = blowFromMishap(eff, draftEvent(0), ctx.now, input.rng.fork("mishap"));
+  // Caída de verdad (tirada bajo el margen parcial) o tropezón que se corrigió (perfil5-fall-rate).
+  const stumble: Stumble =
+    o.legacyFalls === true
+      ? "legacy"
+      : r.attempt.margin !== null && r.attempt.margin < PARTIAL_MARGIN
+        ? "fall"
+        : "recovered";
+  const mishap = blowFromMishap(eff, draftEvent(0), ctx.now, input.rng.fork("mishap"), stumble);
   if (mishap) {
     nextBody = injure(bodyPlan, nextBody, mishap, input.rng.fork("injure")).body;
     bodyTouched = true;

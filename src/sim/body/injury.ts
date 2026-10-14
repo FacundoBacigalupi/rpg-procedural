@@ -117,20 +117,45 @@ export function blowFromStrike(
 }
 
 /**
+ * Cómo terminó el tropiezo: `fall` es una caída de verdad (la tirada cayó por debajo del margen
+ * parcial: llegó al suelo), `recovered` es un tropezón que se corrigió a medias (el resultado fue
+ * parcial: llegó, más lento) y `legacy` es el comportamiento anterior a `life-9` (todo tropezón
+ * es una caída con la cabeza al mismo peso que un brazo), solo para el replay de guardados viejos.
+ */
+export type Stumble = "fall" | "recovered" | "legacy";
+
+/** Chance de que un tropezón recuperado deje una herida (un tobillo torcido, una palma raspada). */
+export const RECOVERED_HURT = 0.2;
+/**
+ * Dónde pega una caída: las manos y las piernas reciben casi todo (el reflejo estira el brazo y
+ * el pie se tuerce); la cabeza es rara (un adulto sano se protege la cara).
+ */
+const FALL_ZONES = ["left_leg", "right_leg", "left_arm", "right_arm", "head"] as const;
+const FALL_WEIGHTS = [23, 23, 23, 23, 8] as const;
+
+/**
  * Los percances de los verbos (actions §8): se cayó caminando o juntando, o se lastimó
- * trabajando. Una caída golpea una pierna o un brazo; el trabajo corta una mano con la
- * herramienta. La fuerza la pone el rng del percance.
+ * trabajando. Una caída golpea una pierna o un brazo (la cabeza, rara vez); un tropezón que se
+ * recupera casi nunca lastima, y menos fuerte; el trabajo corta una mano con la herramienta. La
+ * fuerza la pone el rng del percance.
  */
 export function blowFromMishap(
   effect: VerbEffect,
   cause: EventId,
   at: Tick,
   rng: Rng,
+  how: Stumble = "fall",
 ): Blow | null {
   const fell = (effect.kind === "move" || effect.kind === "gather") && effect.stumbled;
-  if (fell) {
-    const zone = rng.pick(["left_leg", "right_leg", "left_arm", "right_arm", "head"] as const);
+  if (fell && how === "legacy") {
+    const zone = rng.pick(FALL_ZONES);
     return { kind: "blunt", force: rng.float() * 0.5, zone, dirt: 0.7, cause, at };
+  }
+  if (fell) {
+    if (how === "recovered" && !rng.chance(RECOVERED_HURT)) return null;
+    const zone = FALL_ZONES[rng.weighted(FALL_WEIGHTS)] as (typeof FALL_ZONES)[number];
+    const scale = how === "recovered" ? 0.25 : 0.5;
+    return { kind: "blunt", force: rng.float() * scale, zone, dirt: 0.7, cause, at };
   }
   if (effect.kind === "work" && effect.hurt) {
     const zone = rng.pick(["left_arm", "right_arm", "left_leg"] as const);
