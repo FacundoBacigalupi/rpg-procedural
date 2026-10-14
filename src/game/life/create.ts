@@ -187,6 +187,11 @@ export interface LifeOptions {
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-4` lo enciende: un registro de paso por
+   * cada fallo repetido en `PlanState.steps` (desde `life-4` se compactan; cambia el estado y los hashes).
+   */
+  readonly verboseSteps?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -420,6 +425,7 @@ export function optInParts(
   | "famine"
   | "migration"
   | "rumorGrievance"
+  | "verboseSteps"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -519,6 +525,7 @@ export function optInParts(
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
+    ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

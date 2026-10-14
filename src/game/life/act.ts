@@ -192,6 +192,41 @@ export interface StepRecord {
   readonly self: SelfReport;
   /** El porqué que declaró el jugador para el plan: el narrador solo lo cita. */
   readonly purpose?: Purpose | undefined;
+  /**
+   * Desde `life-4`: cuántos intentos fallidos idénticos seguidos resume este registro (ausente = 1).
+   * `at` es el tick del primero y `lastAt` el del último.
+   */
+  readonly times?: number;
+  readonly lastAt?: number;
+}
+
+/** ¿`next` repite el fallo de `prev` sin nada distinto salvo el tick? */
+function repeatsFailure(prev: StepRecord | undefined, next: StepRecord): boolean {
+  return (
+    prev !== undefined &&
+    next.self.believed === "failure" &&
+    prev.verb === next.verb &&
+    prev.self.believed === "failure" &&
+    JSON.stringify(prev.self) === JSON.stringify(next.self) &&
+    JSON.stringify(prev.purpose) === JSON.stringify(next.purpose)
+  );
+}
+
+/**
+ * Agrega un paso al historial del plan. Con `compact` (desde `life-4`), un fallo idéntico al
+ * anterior (mismo verbo, misma autopercepción y mismo porqué) no suma un registro: aumenta la
+ * cuenta del último. Un plan que reintenta cada segundo un camino que el cuerpo no da dejaba un
+ * registro por tick (decenas de miles, megabytes serializados y hasheados en cada guardado).
+ */
+export function appendStep(
+  steps: readonly StepRecord[],
+  next: StepRecord,
+  compact: boolean,
+): readonly StepRecord[] {
+  const prev = steps[steps.length - 1];
+  if (!compact || !prev || !repeatsFailure(prev, next)) return [...steps, next];
+  const merged: StepRecord = { ...prev, times: (prev.times ?? 1) + 1, lastAt: next.at };
+  return [...steps.slice(0, -1), merged];
 }
 
 /** El plan del personaje en curso (o terminado, `done`). Verdad de la sim: va a la base. */
@@ -270,6 +305,11 @@ export interface ActOptions {
    * (`look.glance`, agudeza `GLANCE_ACUITY`) que `life.moldgossip` con `fromLooking` lee como un `look`.
    */
   readonly glanceOnMove?: boolean;
+  /**
+   * Motores anteriores a `life-4`: un registro por paso fallido repetido (`appendStep` sin compactar).
+   * Solo lo enciende el replay de un guardado viejo para reproducir sus hashes.
+   */
+  readonly verboseSteps?: boolean;
   /**
    * Opt-in: el modo del `move` cambia el esfuerzo del cuerpo (`fast` es esfuerzo pesado, `careful`
    * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
@@ -1472,7 +1512,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ...state,
       cursor,
       lastBelieved,
-      steps: resume ? state.steps : [...state.steps, stepRecord],
+      steps: resume ? state.steps : appendStep(state.steps, stepRecord, o.verboseSteps !== true),
       ...(resume ? { resume } : {}),
     }),
   );

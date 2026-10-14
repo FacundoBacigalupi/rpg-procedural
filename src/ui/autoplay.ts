@@ -5,6 +5,7 @@
 // y de la aldea, y cuánto pisa la rutina inactiva (`idlePlayerRoutine`) al personaje que juega.
 
 import { type AgentId, type Event, HOUR, MINUTE, Rng } from "../core/index.ts";
+import { PLAN_STATE } from "../game/life/act.ts";
 import { checkInvariants, ENTITY, PERSON } from "../sim/index.ts";
 import type { Session } from "./session.ts";
 
@@ -220,8 +221,10 @@ export async function runAutoplay(
       const ms = performance.now() - t0;
       if (process.env["AUTOPLAY_TRACE"]) {
         const days = ((life.now - before) / w.clock.day).toFixed(2);
+        const plan = w.truth.get(PLAN_STATE, life.player);
+        const planBytes = plan ? JSON.stringify(plan).length : 0;
         progress?.(
-          `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, ${reply.text.split("\n")[0]?.slice(0, 80)}`,
+          `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}`,
         );
       }
       turns++;
