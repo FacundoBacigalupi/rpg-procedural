@@ -80,6 +80,7 @@ export const ScenarioLife = z.strictObject({
   npcPace: z.enum(["careful", "fast"]).optional(),
   npcFootwear: z.boolean().optional(),
   npcFootSores: z.boolean().optional(),
+  npcFootwearMend: z.boolean().optional(),
   conception: z.boolean().optional(),
   conceptionRateScale: z.number().min(0).optional(),
   conceptionGestationDays: z.number().gt(0).optional(),

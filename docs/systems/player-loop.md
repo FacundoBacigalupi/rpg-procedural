@@ -42,6 +42,8 @@ Y desde `life-13` el cuidado entre personas: quien cae **inconsciente** (el pers
 
 Y desde `life-14` el perfil completo lleva `npcFootSores`: quien camina con el calzado destrozado se abre llagas leves en la pierna (cortes de fuerza baja que el cuerpo cura o infecta como cualquier herida). Medido sin sepsis ni muertes nuevas; el replay de un motor anterior lo apaga (`legacyNoFootSores`).
 
+Y desde `life-15` el perfil completo lleva `npcFootwearMend`: el NPC que está en la aldea con el calzado gastado lo remienda o compra par nuevo, pagando cobre por el ledger (`life.footwear_mend`); el jugador decide lo suyo. En 2 años del perfil nadie llega a gastarlo tanto, así que no mueve la corrida; el replay de un motor anterior lo apaga (`legacyNoFootwearMend`).
+
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
