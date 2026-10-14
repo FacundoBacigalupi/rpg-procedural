@@ -176,6 +176,7 @@ import { FOOTWEAR, footSoreBlow, footwearWalkFactor, wearAfter } from "./footwea
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
+import { strainBlow } from "./strain.ts";
 import {
   acuteOf,
   type ConsumableDef,
@@ -338,6 +339,8 @@ export interface ActOptions {
   readonly footwear?: boolean;
   /** Opt-in (con `footwear`): con el calzado gastado más allá de `WORN_AT`, caminar abre llagas en la pierna (`footSoreBlow`); apagado, no cambia. */
   readonly footSores?: boolean;
+  /** Opt-in (con `effortByManner`): forzar el paso (`fast`) con fatiga alta puede torcer una pierna (`strainBlow`); apagado, no cambia. */
+  readonly strain?: boolean;
   /** Opt-in: la congelación y las amputaciones bajan manos y pies al actuar (`applyFrostbite`); apagado, no cambia. */
   readonly frostbite?: boolean;
   /** Opt-in: el núcleo frío o caliente baja la destreza o deja inconsciente (`applyCoreTemp`); apagado, no cambia. */
@@ -1101,6 +1104,22 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     const sore = footSoreBlow(wear, r.seconds, input.rng.fork("footsore"), draftEvent(0), ctx.now);
     if (sore) {
       nextBody = injure(bodyPlan, nextBody, sore, input.rng.fork("footsore-injure")).body;
+      bodyTouched = true;
+    }
+  }
+  // Forzar el paso con el cuerpo cansado tuerce una pierna (npc-b2b3b2d4); la fatiga es la del inicio del tramo.
+  if (o.effortByManner && o.strain && eff.kind === "move" && r.seconds > 0 && !nextBody.death) {
+    const fast = [...state.plan.manner, ...node.manner].includes("fast");
+    const sprain = strainBlow(
+      body.fatigue,
+      r.seconds,
+      fast,
+      input.rng.fork("strain"),
+      draftEvent(0),
+      ctx.now,
+    );
+    if (sprain) {
+      nextBody = injure(bodyPlan, nextBody, sprain, input.rng.fork("strain-injure")).body;
       bodyTouched = true;
     }
   }
