@@ -19,9 +19,10 @@ describe("perfil de la CLI y la web", () => {
     expect(setup.life).not.toBe(FULL_PROFILE);
   });
 
-  it("sin perfil conserva el setup habitual", () => {
-    expect(config([]).setup.life).toBeUndefined();
-    expect(config(["--famine"]).setup.famine).toBe(true);
+  it("sin flag la vida nueva lleva el perfil completo (life-3) y basic conserva el mundo mínimo", () => {
+    expect(config([]).setup.life).toEqual(FULL_PROFILE);
+    expect(config(["--profile", "basic"]).setup.life).toBeUndefined();
+    expect(config(["--profile", "basic", "--famine"]).setup.famine).toBe(true);
   });
 
   it("rechaza nombres de perfil desconocidos", () => {
