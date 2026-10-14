@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-12");
+    expect(LIFE_ENGINE).toBe("life-13");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -32,6 +32,7 @@ describe("motor de la espera nocturna", () => {
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
+      legacyNoCare: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -39,21 +40,29 @@ describe("motor de la espera nocturna", () => {
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
+      legacyNoCare: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
+      legacyNoCare: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
+      legacyNoCare: true,
     });
-    expect(engineOptions("life-10", {})).toEqual({ legacyResume: true, waitEatHomeOnly: true });
-    expect(engineOptions("life-11", {})).toEqual({ waitEatHomeOnly: true });
-    expect(engineOptions("life-12", {})).toEqual({});
+    expect(engineOptions("life-10", {})).toEqual({
+      legacyResume: true,
+      waitEatHomeOnly: true,
+      legacyNoCare: true,
+    });
+    expect(engineOptions("life-11", {})).toEqual({ waitEatHomeOnly: true, legacyNoCare: true });
+    expect(engineOptions("life-12", {})).toEqual({ legacyNoCare: true });
+    expect(engineOptions("life-13", {})).toEqual({});
   });
 });
 

@@ -24,6 +24,7 @@ import {
   type Activity,
   ASLEEP,
   BODY_STATE,
+  type Body,
   type BodyPlanDef,
   BUILDING,
   BURNED,
@@ -161,6 +162,12 @@ export interface RoutineOptions {
    * kcal). Lejos de la aldea sigue sin comer: el hambre corta la espera. Apagado: solo en casa.
    */
   readonly waitEatVillage?: boolean;
+  /**
+   * Desde `life-13`: el inconsciente (que la rutina saltea) recibe agua de quien lo cuida, un adulto
+   * despierto de su casa en su mismo hex, a las horas de agua (`CARE_SIP_L` a la medida del cuerpo,
+   * evento `routine.watered` con las dos personas). Sin cuidador, sigue sin beber. Apagado: nadie.
+   */
+  readonly careWater?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -330,9 +337,15 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const person = truth.get(PERSON, me);
       const body = truth.get(BODY_STATE, me);
       if (!person || !body || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
-      if (body.death || body.consciousness === "unconscious") return {};
+      if (body.death) return {};
       const bodyPlan = plans.get(body.plan);
       if (!bodyPlan) throw new RangeError(`plan corporal desconocido: ${body.plan}`);
+      if (body.consciousness === "unconscious") {
+        // Desde `life-13`: el inconsciente no puede beber solo; quien lo cuida (alguien despierto
+        // de su casa, en su mismo hex) le da agua a las horas de agua.
+        if (o.careWater !== true) return {};
+        return careForUnconscious(o, ctx, me, person, body, bodyPlan);
+      }
 
       const hour = Math.floor(localHour(o.clock, ctx.now, o.map.lonDeg));
       const age = (ctx.now - person.born) / o.clock.year;
@@ -576,6 +589,75 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (next !== body) changes.push(setComponent(BODY_STATE, me, next));
       return { changes, events, postings };
     },
+  };
+}
+
+/** Lo que se le da de beber a un inconsciente de una vez (a la medida de su masa): sorbos, no jarras. */
+export const CARE_SIP_L = 0.4;
+/** Desde qué edad (años) alguien cuida a otro. */
+export const CARE_MIN_AGE_YEARS = 12;
+
+/**
+ * El cuidador de un inconsciente: el de menor id entre los de su casa, vivos, despiertos, mayores
+ * de `CARE_MIN_AGE_YEARS`, en su mismo hex (y no dormidos, con `sleepers`). Verdad física del lugar:
+ * ver el cuerpo caído es percepción de primera mano (perception §canales), no se modela aparte.
+ */
+function caregiverOf(
+  o: RoutineOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  household: unknown,
+  hex: unknown,
+  now: number,
+): AgentId | undefined {
+  for (const id of truth.ids(PERSON)) {
+    if (id === me) continue;
+    const p = truth.get(PERSON, id);
+    if (!p || p.household !== household || truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    if ((now - p.born) / o.clock.year < CARE_MIN_AGE_YEARS) continue;
+    const b = truth.get(BODY_STATE, id);
+    if (!b || b.death || b.consciousness !== "alert" || b.activity === "sleep") continue;
+    if (o.sleepers && truth.get(ASLEEP, id)) continue;
+    if (truth.get(LOCATION, id)?.hex !== hex) continue;
+    return id as AgentId;
+  }
+  return undefined;
+}
+
+/** El inconsciente recibe agua de su cuidador a las horas de agua (evento con los dos). */
+function careForUnconscious(
+  o: RoutineOptions,
+  ctx: Parameters<ProcessDef["run"]>[0],
+  me: AgentId,
+  person: { readonly household: unknown; readonly born: number },
+  body: Body,
+  bodyPlan: BodyPlanDef,
+): ReturnType<ProcessDef["run"]> {
+  const truth = ctx.truth;
+  const hour = Math.floor(localHour(o.clock, ctx.now, o.map.lonDeg));
+  if (!ROUTINE.meals.includes(hour) && !ROUTINE.drinkAlso.includes(hour)) return {};
+  const here = truth.get(LOCATION, me);
+  if (!here) return {};
+  const carer = caregiverOf(o, truth, me, person.household, here.hex, ctx.now);
+  if (carer === undefined) return {};
+  const sip = CARE_SIP_L * (body.massKg / bodyPlan.physiology.refMassKg);
+  const liters = Math.min(sip, Math.max(0, body.water));
+  if (liters <= 0) return {};
+  const q = o.drinkQuality?.(truth, me, ctx.now);
+  const net = q ? netHydration(liters, q) : liters;
+  const next = net >= 0 ? ingest(bodyPlan, body, 0, net) : { ...body, water: body.water - net };
+  return {
+    changes: [setComponent(BODY_STATE, me, next)],
+    events: [
+      {
+        kind: "routine.watered",
+        actors: [carer, me],
+        place: o.placeOf(truth, me),
+        data: { liters: Math.round(liters * 100) / 100 },
+        emissions: { sight: 0.2 },
+        causes: [{ kind: "state", entity: me, key: "body.water" }],
+      },
+    ],
   };
 }
 

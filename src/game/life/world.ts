@@ -355,6 +355,8 @@ export interface LifeWorld {
   readonly legacyResume?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
   readonly waitEatHomeOnly?: boolean;
+  /** Replay de motores anteriores a `life-13`: nadie da de beber al inconsciente; ver `RoutineOptions.careWater`. */
+  readonly legacyNoCare?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -1719,6 +1721,7 @@ export function lifeWorld(
           ...(parts.waitUntended === true || parts.waitEatHomeOnly === true
             ? {}
             : { waitEatVillage: true }),
+          ...(parts.legacyNoCare === true ? {} : { careWater: true }),
           ...(parts.sleepers ? { sleepers: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
