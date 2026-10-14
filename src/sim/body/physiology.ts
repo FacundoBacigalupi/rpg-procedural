@@ -332,6 +332,9 @@ function stepSeconds(body: Body): number {
 }
 
 /** Temperatura que siente el cuerpo (°C) a un tick: afuera con el tiempo del día, adentro amortiguada. */
+/** Horas de deuda de sueño en que los microsueños forzados la frenan (3 días sin dormir). */
+export const SLEEP_DEBT_CAP = 72;
+
 export type AmbientTemp = (at: Tick) => number;
 const COMFORT_LOW_C = 10;
 const COMFORT_HIGH_C = 24;
@@ -359,6 +362,11 @@ export function advanceBody(
    * heridas abiertas o sepsis manda el paso fino de siempre. Sin esto, el paso de siempre.
    */
   coarseSeconds?: number,
+  /**
+   * Tope de la deuda de sueño (h): pasado, los microsueños forzados la pagan y no sube más
+   * (body-health §8). Sin él, la deuda crece sin límite.
+   */
+  sleepCap?: number,
 ): { body: Body; happenings: Happening[] } {
   const happenings: Happening[] = [];
   let b = body;
@@ -369,6 +377,7 @@ export function advanceBody(
       b.updatedAt + (coarseSeconds !== undefined && fine === 3600 ? coarseSeconds : fine),
     );
     b = step(plan, b, (at - b.updatedAt) / 3600, at, happenings, ambient(at), sweatLph, deficiency);
+    if (sleepCap !== undefined && b.sleepDebt > sleepCap) b = { ...b, sleepDebt: sleepCap };
     const consciousness = consciousnessOf(plan, b, at, coreUnconscious);
     if (consciousness !== b.consciousness) {
       const why = collapseCauses(plan, entity, b, coreUnconscious);

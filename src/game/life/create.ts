@@ -207,6 +207,11 @@ export interface LifeOptions {
    */
   readonly waitNoSkin?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-8` lo enciende: la deuda de sueño no
+   * satura (desde `life-8` los microsueños la frenan en 72 h).
+   */
+  readonly sleepUncapped?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -444,6 +449,7 @@ export function optInParts(
   | "waitAwake"
   | "waitUntended"
   | "waitNoSkin"
+  | "sleepUncapped"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -547,6 +553,7 @@ export function optInParts(
     ...(options.waitAwake ? { waitAwake: true } : {}),
     ...(options.waitUntended ? { waitUntended: true } : {}),
     ...(options.waitNoSkin ? { waitNoSkin: true } : {}),
+    ...(options.sleepUncapped ? { sleepUncapped: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),

@@ -36,6 +36,7 @@ import {
   NO_DEFICIENCY,
   newBody,
   reopenOldWounds,
+  SLEEP_DEBT_CAP,
   setActivity,
   treat,
 } from "./index.ts";
@@ -156,6 +157,42 @@ describe("reservas", () => {
     expect(body.death?.at).toBeGreaterThan(2.5 * DAY);
     expect(body.death?.at).toBeLessThan(5 * DAY);
     expect(happenings.some((h) => h.kind === "collapsed")).toBe(true);
+  });
+
+  it("con tope, los microsueños frenan la deuda de sueño en 72 h; sin tope sigue subiendo; determinista", () => {
+    const tired = { ...setActivity(fresh(), "light"), sleepDebt: 70 };
+    const free = advanceBody(plan, me, tired, 10 * HOUR).body;
+    expect(free.sleepDebt).toBeGreaterThan(SLEEP_DEBT_CAP);
+    const run = () =>
+      advanceBody(
+        plan,
+        me,
+        tired,
+        10 * HOUR,
+        undefined,
+        0,
+        undefined,
+        false,
+        undefined,
+        SLEEP_DEBT_CAP,
+      ).body;
+    const capped = run();
+    expect(capped.sleepDebt).toBe(SLEEP_DEBT_CAP);
+    expect(JSON.stringify(run())).toBe(JSON.stringify(capped));
+    // Bajo el tope no cambia nada.
+    const low = advanceBody(
+      plan,
+      me,
+      fresh(),
+      3 * HOUR,
+      undefined,
+      0,
+      undefined,
+      false,
+      undefined,
+      SLEEP_DEBT_CAP,
+    ).body;
+    expect(low).toEqual(advanceBody(plan, me, fresh(), 3 * HOUR).body);
   });
 
   it("dormir paga la deuda de sueño y descansar baja la fatiga", () => {
