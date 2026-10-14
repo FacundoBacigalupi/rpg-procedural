@@ -6,7 +6,15 @@
 
 import { type AgentId, type Event, HOUR, MINUTE, Rng } from "../core/index.ts";
 import { PLAN_STATE } from "../game/life/act.ts";
-import { checkInvariants, ENTITY, PERSON } from "../sim/index.ts";
+import { alarmingSigns } from "../game/life/interrupts.ts";
+import {
+  BODY_STATE,
+  bodySigns,
+  capabilitiesOf,
+  checkInvariants,
+  ENTITY,
+  PERSON,
+} from "../sim/index.ts";
 import type { Session } from "./session.ts";
 
 export interface AutoplayConfig {
@@ -62,6 +70,27 @@ export function choosePolicy(rng: Rng, view: PolicyView): AutoplayMove {
   return { say: (ACTIVITIES[i] as readonly [number, string])[1] };
 }
 
+/** Cómo anduvo el cuerpo del personaje al final de cada turno que gastó tiempo (ROADMAP perfil5-body-wear). */
+export interface BodyStats {
+  readonly samples: number;
+  readonly meanSleepDebtH: number;
+  readonly maxSleepDebtH: number;
+  readonly meanFatigue: number;
+  /** Fracción de los turnos que terminaron con cada signo (sed, cansancio, cojera...). */
+  readonly signShare: Readonly<Record<string, number>>;
+  readonly meanLocomotion: number;
+}
+
+/** Las esperas largas ("espero N días", N >= 2): cuántas llegaron a su fin y qué las cortó. */
+export interface LongWaitStats {
+  readonly count: number;
+  readonly requestedDays: number;
+  readonly livedDays: number;
+  readonly completed: number;
+  /** Signos graves del cuerpo al cortarse. */
+  readonly cutBy: Readonly<Record<string, number>>;
+}
+
 export interface YearRow {
   readonly year: number;
   readonly turns: number;
@@ -108,6 +137,8 @@ export interface AutoplayReport {
     readonly days: number;
   }[];
   readonly byYear: readonly YearRow[];
+  readonly body: BodyStats;
+  readonly longWaits: LongWaitStats;
   readonly peakRssMiB: number;
   /** Hash del estado final: la misma corrida debe dar el mismo antes y después de una optimización. */
   readonly stateHash: string;
@@ -151,6 +182,10 @@ export async function runAutoplay(
   const routineByKind: Record<string, number> = {};
   const deathsByCause: Record<string, number> = {};
   const byYear: YearRow[] = [];
+  const bodySum = { n: 0, debt: 0, maxDebt: 0, fatigue: 0, loco: 0 };
+  const signCount: Record<string, number> = {};
+  const wait = { count: 0, requested: 0, lived: 0, completed: 0 };
+  const waitCut: Record<string, number> = {};
   let scanned = 0;
   let births = 0;
   let deaths = 0;
@@ -223,9 +258,41 @@ export async function runAutoplay(
         const days = ((life.now - before) / w.clock.day).toFixed(2);
         const plan = w.truth.get(PLAN_STATE, life.player);
         const planBytes = plan ? JSON.stringify(plan).length : 0;
+        const b = w.truth.get(BODY_STATE, life.player);
+        const bodyTrace = b
+          ? ` | cuerpo fat=${b.fatigue.toFixed(2)} deb=${b.sleepDebt.toFixed(1)}h agua=${b.water.toFixed(2)}L glu=${Math.round(b.glycogen)} grasa=${Math.round(b.fat)} mus=${b.muscle.toFixed(2)} ${b.activity} heridas=${b.wounds.length} ${b.massKg.toFixed(0)}kg`
+          : "";
         progress?.(
-          `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}`,
+          `  turno ${turns + 1} ${line}: ${Math.round(ms)} ms, +${days} d, plan ${plan?.steps.length ?? 0} pasos/${planBytes} B, ${reply.text.split("\n")[0]?.slice(0, 80)}${bodyTrace}`,
         );
+      }
+      if (reply.turn) {
+        const body = w.truth.get(BODY_STATE, life.player);
+        const plan = body && w.plans.find((p) => p.id === body.plan);
+        if (body && plan) {
+          bodySum.n++;
+          bodySum.debt += body.sleepDebt;
+          bodySum.maxDebt = Math.max(bodySum.maxDebt, body.sleepDebt);
+          bodySum.fatigue += body.fatigue;
+          bodySum.loco += capabilitiesOf(plan, body).locomotion;
+          const signs = bodySigns(plan, body);
+          for (const sg of new Set([...signs.general, ...signs.zones.flatMap((z) => z.signs)])) {
+            signCount[sg] = (signCount[sg] ?? 0) + 1;
+          }
+        }
+        const asked = "say" in move ? /^espero (\d+) días$/.exec(move.say) : null;
+        if (asked && Number(asked[1]) >= 2) {
+          const want = Number(asked[1]);
+          const lived = (life.now - before) / w.clock.day;
+          wait.count++;
+          wait.requested += want;
+          wait.lived += lived;
+          if (lived >= want - 0.01) wait.completed++;
+          else {
+            const cut = [...alarmingSigns(w)].sort().join("+") || "otro";
+            waitCut[cut] = (waitCut[cut] ?? 0) + 1;
+          }
+        }
       }
       turns++;
       if ("say" in move) lineTurns++;
@@ -323,6 +390,25 @@ export async function runAutoplay(
     },
     worstTurns: worst,
     byYear,
+    body: {
+      samples: bodySum.n,
+      meanSleepDebtH: Math.round((bodySum.debt / Math.max(1, bodySum.n)) * 10) / 10,
+      maxSleepDebtH: Math.round(bodySum.maxDebt * 10) / 10,
+      meanFatigue: Math.round((bodySum.fatigue / Math.max(1, bodySum.n)) * 100) / 100,
+      signShare: Object.fromEntries(
+        Object.entries(signCount)
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, v]) => [k, Math.round((v / Math.max(1, bodySum.n)) * 100) / 100]),
+      ),
+      meanLocomotion: Math.round((bodySum.loco / Math.max(1, bodySum.n)) * 100) / 100,
+    },
+    longWaits: {
+      count: wait.count,
+      requestedDays: wait.requested,
+      livedDays: Math.round(wait.lived * 100) / 100,
+      completed: wait.completed,
+      cutBy: waitCut,
+    },
     peakRssMiB: Math.round(peak / MiB),
     stateHash: life.hash().total,
     replies,

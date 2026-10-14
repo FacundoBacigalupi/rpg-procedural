@@ -52,6 +52,12 @@ export interface BodyProcessOptions {
    * Apagado por defecto: sin lecturas, la aldea no cambia.
    */
   readonly sleepers?: boolean;
+  /**
+   * Hora local de un instante: con ella, el cuerpo en actividad `rest` (esperar, descansar, comer
+   * quieto) corre como `sleep` si el tramo cae de noche (21 a 5 h): quien deja pasar la noche quieto
+   * se duerme y paga su deuda de sueño. Apagado: `rest` no duerme nunca.
+   */
+  nightRest?(at: number): number;
 }
 
 export function bodyProcess(o: BodyProcessOptions): ProcessDef {
@@ -109,16 +115,20 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
       }
 
       if (body.updatedAt >= ctx.now) return {};
-      const { body: next, happenings } = advanceBody(
+      const hour = o.nightRest?.((body.updatedAt + ctx.now) / 2);
+      const napping = body.activity === "rest" && hour !== undefined && (hour >= 21 || hour < 5);
+      const advanced = advanceBody(
         plan,
         me,
-        body,
+        napping ? { ...body, activity: "sleep" } : body,
         ctx.now,
         o.ambientOf?.(ctx.truth, me),
         ctx.truth.get(SWEAT, me)?.litersPerHour ?? 0,
         o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined,
         o.thermal === true && thermalUnconscious(ctx.truth.get(THERMAL, me)?.coreC ?? 37),
       );
+      const { happenings } = advanced;
+      const next = napping ? { ...advanced.body, activity: body.activity } : advanced.body;
       const events = happenings.map((h) => eventOf(h, me, place, tickOf(h.at)));
       let after = next;
       const reopenP = o.deficiency && o.reopen ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined;

@@ -192,6 +192,11 @@ export interface LifeOptions {
    */
   readonly verboseSteps?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-5` lo enciende: esperar de noche no
+   * duerme (desde `life-5` sí; cambia el cuerpo de quien espera y los hashes).
+   */
+  readonly waitAwake?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -426,6 +431,7 @@ export function optInParts(
   | "migration"
   | "rumorGrievance"
   | "verboseSteps"
+  | "waitAwake"
   | "persistGoalLayers"
   | "debtKnowledge"
   | "persistImmediateGoals"
@@ -526,6 +532,7 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
+    ...(options.waitAwake ? { waitAwake: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
     ...(options.debtKnowledge ? { debtKnowledge: true } : {}),
     ...(options.persistImmediateGoals ? { persistImmediateGoals: true } : {}),
