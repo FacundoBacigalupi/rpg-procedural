@@ -19,6 +19,9 @@ export interface BodyCapabilities extends Record<CapabilityKey, number> {
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
 
+/** Desde qué fracción de la masa en déficit de agua el cuerpo siente sed (signo `thirsty`). */
+export const THIRSTY_FRACTION = 0.025;
+
 /** Cuánto le quita una herida a su zona: la gravedad que falta cerrar, y el hueso roto. */
 export function impairment(w: Wound): number {
   if (w.stage === "healed") return 0;
@@ -149,7 +152,7 @@ export function bodySigns(
   };
   add(body.blood < 0.8, "pale");
   add(body.blood <= BLOOD_DAZED + 0.05, "dizzy");
-  add(body.water > 0.025 * body.massKg, "thirsty");
+  add(body.water > THIRSTY_FRACTION * body.massKg, "thirsty");
   add(body.water > 0.06 * body.massKg, "parched");
   add(body.glycogen < 0.3 * ph.glycogenKcal * scale, "hungry");
   add(body.fat < 0.25 * body.massKg * ph.fatFraction * 7700, "starving");

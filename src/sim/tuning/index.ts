@@ -103,8 +103,11 @@ export const ScenarioLife = z.strictObject({
       kinds: z.array(z.string().min(1)).min(1),
       chance: z.number().min(0).max(1),
       weight: z.number().min(0),
+      minAgeYears: z.number().min(0).optional(),
     })
     .optional(),
+  npcWater: z.strictObject({ liters: z.number().gt(0) }).optional(),
+  idlePlayerRoutine: z.boolean().optional(),
 });
 export type ScenarioLife = z.infer<typeof ScenarioLife>;
 

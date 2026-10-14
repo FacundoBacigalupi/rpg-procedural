@@ -117,6 +117,8 @@ export interface RoutineOptions {
    * Hoy sin costo ni tiempo de viaje, igual que el resto de la rutina; apagado, nada cambia.
    */
   readonly npcMove?: boolean;
+  /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
+  readonly idlePlayer?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -264,7 +266,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       // El personaje decide él; quien tiene un plan en curso lo sigue.
-      if (truth.has(PLAYER, me)) return {};
+      if (truth.has(PLAYER, me) && o.idlePlayer !== true) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};
       const plan = truth.get(PLAN_STATE, me);

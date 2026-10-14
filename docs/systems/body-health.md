@@ -163,6 +163,7 @@ La infección no es una tirada aparte: el nivel de contaminación sale de qué l
   - `iron`: anemia; empeora con sangrados y partos.
   Cuáles existen y cómo se llaman depende del conocimiento médico de cada cultura: la sim los modela igual; la gente los entiende distinto ("el mal de los marineros").
 - **Agua.** Deshidratación en días; peor con calor, fiebre, diarrea y esfuerzo. El agua tiene una **calidad** (ver §6, patógenos y contaminación).
+- **Beber en el camino (2026-10-13, opt-in `npcWater`).** Un NPC en viaje lleva un odre (`liters`) y en cada tramo, si el cuerpo siente sed (`THIRSTY_FRACTION` de la masa en déficit), bebe hasta 1,5 L de la fuente del hex rellenando el odre o, si esa agua no hidrata (mar), del odre. Es el evento `npc.drank` con causa `body.water`; el agua no entra al ledger. Los menores de `errands.minAgeYears` no salen de recado solos. Pendiente: que el cuidador atienda la sed del dependiente (`perfil2c-care-thirst`).
 - **Infancia.** El hambre en los primeros años deja secuela permanente (talla, `cognition` y `immune` base algo más bajos): las hambrunas marcan generaciones.
 - **Comida espiritual.** En mundos con qi, carne de bestia, frutos espirituales y arroz de campos con qi alimentan además la `Essence`, y pueden sobrecargar a un mortal (§9).
 

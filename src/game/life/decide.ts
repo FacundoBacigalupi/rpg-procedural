@@ -1130,7 +1130,7 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         }
       }
       // Recado (opt-in `errands`): ir a un lugar de otro hex; el azar sale de un fork propio.
-      if (o.errands) {
+      if (o.errands && age >= (o.errands.minAgeYears ?? 0)) {
         const rng = ctx.rng.fork("errand", me, now);
         catalogCandidates.push(
           ...errandCandidates(

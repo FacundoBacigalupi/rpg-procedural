@@ -9,6 +9,11 @@ export interface ErrandOptions {
   readonly kinds: readonly string[];
   /** Chance (0-1) por decisión de que entre una candidata de recado. */
   readonly chance: number;
+  /**
+   * Edad mínima (años vividos) para salir de recado: quien es chico no sale solo del hogar (un
+   * bebé de 4 kg no emprende un viaje de días). Sin esto, cualquiera.
+   */
+  readonly minAgeYears?: number;
   /** Ánimo que suma la candidata. */
   readonly weight: number;
 }
