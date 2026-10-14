@@ -53,12 +53,14 @@ export const FULL_PROFILE = {
   cravingCues: true,
   cueLocal: true,
   npcMove: true,
+  idlePlayerRoutine: true,
   sleepers: { near: 0, food: "grain" },
   npcVerbs: ["gather", "trade", "give", "speak", "take", "move", "work"],
   npcTemplates: { work: "fieldwork" },
   npcJourneyDays: 30,
   npcTransit: true,
   npcProvisions: { good: "grain", grams: 3000 },
+  npcWater: { liters: 2 },
   npcInterrupt: true,
   npcEncounters: true,
   npcNightRest: true,
@@ -69,7 +71,7 @@ export const FULL_PROFILE = {
   speakActs: { minFamiliarity: 0.3, quietSeconds: 86400, weight: 0.4, chance: 0.9 },
   takeBelieved: { minConfidence: 0.5, perDeed: 0.1, maxPenalty: 0.8 },
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
-  errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5 },
+  errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
 } satisfies LifeOptions;
 
 export interface LifeDependencyIssue {
@@ -122,6 +124,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcInterrupt", "npcVerbs"],
     ["npcTransit", "npcJourneyDays"],
     ["npcProvisions", "npcJourneyDays"],
+    ["npcWater", "npcJourneyDays"],
     ["npcEncounters", "npcJourneyDays"],
     ["npcNightRest", "npcJourneyDays"],
     ["npcPace", "npcJourneyDays"],

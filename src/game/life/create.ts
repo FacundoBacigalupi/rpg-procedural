@@ -308,6 +308,8 @@ export interface LifeOptions {
   readonly objectCues?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina (`LifeParts.npcMove`); apagado. */
   readonly npcMove?: boolean;
+  /** Opt-in: el personaje sin plan sigue la rutina del hogar (`LifeParts.idlePlayerRoutine`); para corridas sin jugador. */
+  readonly idlePlayerRoutine?: boolean;
   /** Opt-in: los lejanos y sin vínculo se duermen y se ponen al día por tramos (`LifeParts.sleepers`); apagado. */
   readonly sleepers?: { readonly near: number; readonly food: string };
   /** Solo medición (`LifeParts.runProbe`): no entra al estado ni al hash. */
@@ -322,6 +324,8 @@ export interface LifeOptions {
   readonly npcTransit?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero lleva provisiones de la despensa y come en el camino (`LifeParts.npcProvisions`). */
   readonly npcProvisions?: LifeParts["npcProvisions"];
+  /** Opt-in (con `npcJourneyDays`): el viajero sale con un odre y bebe en el camino cuando siente sed (`LifeParts.npcWater`). */
+  readonly npcWater?: LifeParts["npcWater"];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC y deja el resultado parcial (`LifeParts.npcInterrupt`). */
   readonly npcInterrupt?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se cruza con quien comparte su hex (`LifeParts.npcEncounters`). */
@@ -447,6 +451,7 @@ export function optInParts(
   | "pawn"
   | "hire"
   | "npcMove"
+  | "idlePlayerRoutine"
   | "sleepers"
   | "runProbe"
   | "npcVerbs"
@@ -456,6 +461,7 @@ export function optInParts(
   | "npcJourneyDays"
   | "npcTransit"
   | "npcProvisions"
+  | "npcWater"
   | "npcNightRest"
   | "npcPace"
   | "npcFootwear"
@@ -537,6 +543,7 @@ export function optInParts(
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
     ...(options.npcMove ? { npcMove: true } : {}),
+    ...(options.idlePlayerRoutine ? { idlePlayerRoutine: true } : {}),
     ...(options.sleepers ? { sleepers: options.sleepers } : {}),
     ...(options.runProbe ? { runProbe: options.runProbe } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
@@ -546,6 +553,7 @@ export function optInParts(
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
     ...(options.npcProvisions ? { npcProvisions: options.npcProvisions } : {}),
+    ...(options.npcWater ? { npcWater: options.npcWater } : {}),
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),

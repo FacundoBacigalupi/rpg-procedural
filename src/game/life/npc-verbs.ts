@@ -20,6 +20,7 @@ import {
   type ArgValue,
   ASLEEP,
   BODY_STATE,
+  type Body,
   type BodyPlanDef,
   deleteComponent,
   draftEvent,
@@ -27,10 +28,12 @@ import {
   type EventDraft,
   expandTemplate,
   hexPath,
+  ingest,
   LOCATION,
   type LocalMap,
   localHour,
   nearestHex,
+  netHydration,
   nodeAt,
   PERSON,
   PLACE,
@@ -42,7 +45,9 @@ import {
   type ReadonlyWorldTruth,
   type StateChange,
   setComponent,
+  THIRSTY_FRACTION,
   table,
+  type WaterQuality,
 } from "../../sim/index.ts";
 import {
   ACT_PROCESS,
@@ -59,6 +64,8 @@ import { TRANSIT } from "./transit-state.ts";
 
 /** Cada cuánto como mucho vuelve a comer un viajero (horas). */
 const MEAL_GAP_HOURS = 4;
+/** Lo que bebe de una vez un viajero con sed, como mucho (litros; el mismo tope que la rutina). */
+const MAX_DRINK_L = 1.5;
 
 export const NPC_VERBS_PROCESS = "life.npc_verbs";
 
@@ -106,6 +113,8 @@ export interface NpcVerbsOptions {
   };
   /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
   readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
+  /** Opt-in (con `journeyDays`): el viajero con sed bebe en el camino (`JourneyDrinkOptions`). */
+  readonly drink?: JourneyDrinkOptions;
   /**
    * Opt-in (con `journeyDays`): el viajero sale con `grams` de `unit` de la despensa de su hogar
    * en el bolsillo (del libro mayor al suyo), come de eso en las horas de comida del camino
@@ -118,6 +127,25 @@ export interface NpcVerbsOptions {
     readonly clock: PlanetClock;
     readonly lonDeg: number;
   };
+}
+
+/**
+ * Opt-in (con `journeyDays`): el viajero siente sed (el signo `thirsty` de su cuerpo) y bebe en el
+ * camino: de la fuente del hex donde está (`quality`: río, lago; el mar deshidrata y no sirve) o,
+ * si no hay, del odre con que salió; beber en una fuente lo vuelve a llenar. El agua del pozo y del
+ * cauce no pasa por el libro mayor (como en `drink` y la rutina), así que el odre es un contador
+ * del viaje (`NpcJourney.skin`) y no un bien: no crea ni destruye nada del ledger.
+ */
+export interface JourneyDrinkOptions {
+  readonly plans: readonly BodyPlanDef[];
+  /** Litros de agua con que sale (el odre lleno, del pozo del hogar). */
+  readonly carryLiters: number;
+  /** La calidad del agua donde está (`waterHooks.drinkQuality`); sin esto, agua limpia. */
+  readonly quality?: (
+    truth: ReadonlyWorldTruth,
+    who: AgentId,
+    now?: number,
+  ) => WaterQuality | undefined;
 }
 
 /** Qué decisión ya se volvió plan, para no repetirla cada hora mientras siga vigente. */
@@ -272,7 +300,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       PLACE.name,
       ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.provisions ? [PERSON.name] : []),
-      ...(o.nightRest || o.resume ? [BODY_STATE.name] : []),
+      ...(o.nightRest || o.resume || o.drink ? [BODY_STATE.name] : []),
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
       ...(o.transit ? [TRANSIT.name] : []),
@@ -282,6 +310,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       NPC_VERB_LOG.name,
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
+      ...(o.drink ? [BODY_STATE.name] : []),
     ],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -333,6 +362,39 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         if (here !== undefined && hexes.includes(here) && transitArrived) return end("arrived");
         if (days >= journeyDays) return end("gave_up");
         const going = truth.get(PLAN_STATE, me);
+        // Con sed, bebe donde está (o del odre) sin cortar el tramo: la sed la siente el cuerpo.
+        if (o.drink) {
+          const body = truth.get(BODY_STATE, me);
+          const bodyPlan = body && o.drink.plans.find((p) => p.id === body.plan);
+          const sip =
+            body && bodyPlan && body.consciousness !== "unconscious" && !body.death
+              ? drinkOnRoad(
+                  bodyPlan,
+                  body,
+                  trip.skin ?? o.drink.carryLiters,
+                  o.drink.carryLiters,
+                  o.drink.quality?.(truth, me, ctx.now),
+                )
+              : undefined;
+          if (sip) {
+            return {
+              changes: [
+                setComponent(BODY_STATE, me, sip.body),
+                setComponent(NPC_JOURNEY, me, { ...trip, skin: sip.skin }),
+              ],
+              events: [
+                {
+                  kind: "npc.drank",
+                  actors: [me],
+                  place: o.placeOf?.(truth, me) as PlaceRef,
+                  data: { liters: Math.round(sip.liters * 100) / 100, from: sip.from },
+                  emissions: { sight: 0.2 },
+                  causes: [{ kind: "state", entity: me, key: "body.water" }],
+                },
+              ],
+            };
+          }
+        }
         // Hora de comida con provisiones encima: el tramo se corta, come y sigue el camino.
         if (prov && carried > 0) {
           const hour = Math.floor(localHour(prov.clock, ctx.now, prov.lonDeg));
@@ -483,6 +545,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           place: decision.target,
           since: ctx.now,
           decision: decision.id,
+          ...(o.drink ? { skin: o.drink.carryLiters } : {}),
           ...(truth.get(LOCATION, me) ? { from: truth.get(LOCATION, me)?.hex as number } : {}),
         });
         // Las provisiones salen de la despensa del hogar al bolsillo, con el evento de salida.
@@ -534,6 +597,8 @@ export interface NpcJourney {
   readonly ate?: Tick;
   /** Cuándo paró a dormir por última vez en el camino (`NpcVerbsOptions.nightRest`). */
   readonly rested?: Tick;
+  /** Litros de agua que le quedan en el odre (`NpcVerbsOptions.drink`). */
+  readonly skin?: number;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
 
@@ -550,6 +615,29 @@ export interface NpcPaused {
   readonly why: string;
 }
 export const NPC_PAUSED = table<NpcPaused>("life.npc_paused");
+
+/**
+ * El sorbo del camino (puro): con sed (`THIRSTY_FRACTION`) bebe lo que falta, hasta `MAX_DRINK_L`,
+ * de la fuente donde está si el agua hidrata (`quality`: el mar no) y, si no, del odre (`skin`
+ * litros). En la fuente el odre se llena (`capacity`). Sin sed, o sin fuente ni odre, `undefined`.
+ */
+export function drinkOnRoad(
+  plan: BodyPlanDef,
+  body: Body,
+  skin: number,
+  capacity: number,
+  quality?: WaterQuality,
+): { body: Body; skin: number; liters: number; from: "source" | "skin" } | undefined {
+  if (body.water <= THIRSTY_FRACTION * body.massKg) return undefined;
+  const want = Math.min(MAX_DRINK_L, body.water);
+  const net = quality ? netHydration(want, quality) : want;
+  if (net > 0) {
+    return { body: ingest(plan, body, 0, net), skin: capacity, liters: net, from: "source" };
+  }
+  const gulp = Math.min(want, skin);
+  if (gulp <= 0) return undefined;
+  return { body: ingest(plan, body, 0, gulp), skin: skin - gulp, liters: gulp, from: "skin" };
+}
 
 /** Entre una parada a dormir y la siguiente pasa al menos esto (horas): una por noche. */
 export const REST_GAP_HOURS = 12;

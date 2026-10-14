@@ -384,6 +384,8 @@ export interface LifeWorld {
   readonly repayDoses?: boolean;
   /** Opt-in: la decisión `move` hacia un lugar se ejecuta en la rutina diaria (`RoutineOptions.npcMove`); apagado, sin cambios. */
   readonly npcMove?: boolean;
+  /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina del hogar (come, bebe, trabaja) como cualquiera: la corrida sin jugador (`sim:batch`) no lo deja morir de sed al tercer día (`RoutineOptions.idlePlayer`). */
+  readonly idlePlayerRoutine?: boolean;
   /**
    * Opt-in (tier 1, simulation §4.2): quien está a más de `near` hexes del personaje, sin vínculo
    * de hogar con él, se duerme (`ASLEEP`): deja de correr `body.physiology`, `life.routine` y
@@ -407,6 +409,8 @@ export interface LifeWorld {
   readonly npcTransit?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero sale con `grams` del bien `good` de la despensa, come en el camino y devuelve lo que sobra (`NpcVerbsOptions.provisions`). */
   readonly npcProvisions?: { readonly good: string; readonly grams: number };
+  /** Opt-in (con `npcJourneyDays`): el viajero sale con un odre de `liters` y bebe en el camino al sentir sed (`NpcVerbsOptions.drink`). */
+  readonly npcWater?: { readonly liters: number };
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`rest`) y sigue al alba (`NpcVerbsOptions.nightRest`). */
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje, modo `careful` o `fast` del `move` (`NpcVerbsOptions.pace`). */
@@ -1585,6 +1589,26 @@ export function lifeWorld(
                       ...(parts.npcTransit === true ? { transit: true } : {}),
                       placeOf: placeOf(parts, village),
                       ...(parts.npcPace ? { pace: parts.npcPace } : {}),
+                      ...(parts.npcWater
+                        ? {
+                            drink: {
+                              plans: parts.plans,
+                              carryLiters: parts.npcWater.liters,
+                              ...(parts.waterSources
+                                ? {
+                                    quality: waterHooks(
+                                      resolveWaterSources(
+                                        parts.waterSources,
+                                        parts.map,
+                                        parts.clock,
+                                        parts.seed,
+                                      ),
+                                    ).drinkQuality,
+                                  }
+                                : {}),
+                            },
+                          }
+                        : {}),
                       ...(parts.npcNightRest === true
                         ? { nightRest: { clock: parts.clock, lonDeg: parts.map.lonDeg } }
                         : {}),
@@ -1662,6 +1686,7 @@ export function lifeWorld(
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
+          ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.sleepers ? { sleepers: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources
