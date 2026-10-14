@@ -353,6 +353,8 @@ export interface LifeWorld {
   readonly legacyTend?: boolean;
   /** Replay de motores anteriores a `life-11`: el `resume` del camino no se apaga; ver `ActOptions.legacyResume`. */
   readonly legacyResume?: boolean;
+  /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
+  readonly waitEatHomeOnly?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -1714,6 +1716,9 @@ export function lifeWorld(
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),
           ...(parts.waitUntended === true || parts.waitNoSkin === true ? {} : { waitSkin: true }),
+          ...(parts.waitUntended === true || parts.waitEatHomeOnly === true
+            ? {}
+            : { waitEatVillage: true }),
           ...(parts.sleepers ? { sleepers: true } : {}),
           logMeals: parts.eatenNutrition === true,
           ...(parts.waterSources

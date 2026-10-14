@@ -154,6 +154,13 @@ export interface RoutineOptions {
    * agua en el lugar no bebe y la sed corta la espera.
    */
   readonly waitSkin?: boolean;
+  /**
+   * Desde `life-12` (con `waitTend`): quien espera en el hex de su casa (la plaza, la calle, un
+   * vecino) también come de la despensa del hogar, que está a unos pasos; antes solo comía
+   * puertas adentro y, esperando afuera en la aldea, vivía de reservas (seed 5: grasa de 91k a 18k
+   * kcal). Lejos de la aldea sigue sin comer: el hambre corta la espera. Apagado: solo en casa.
+   */
+  readonly waitEatVillage?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -456,8 +463,11 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // Comer: una ración a la medida del cuerpo, de lo que haya en la despensa del hogar. Solo
       // si alcanza para todos los de la casa: dos que comen en la misma fase no pueden dejar el
       // saldo en negativo (scheduler, asientos por fase).
-      // Quien espera come solo si está en su casa, donde está la despensa del hogar.
-      const atHome = home !== undefined && here?.space === home.key;
+      // Quien espera come solo si está en su casa, donde está la despensa del hogar (desde
+      // `life-12`, también en el hex de la casa: la despensa queda a unos pasos).
+      const atHome =
+        home !== undefined &&
+        (here?.space === home.key || (o.waitEatVillage === true && here?.hex === home.hex));
       if ((ROUTINE.meals.includes(hour) || want.eat) && (!tendOnly || atHome)) {
         const larder = person.household as unknown as HolderRef;
         const mouths = truth

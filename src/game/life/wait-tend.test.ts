@@ -96,6 +96,31 @@ describe("esperar días: la rutina mínima atiende lo chico (perfil5-wait-drink)
   }, 240_000);
 });
 
+describe("esperar afuera, en el hex de la casa (perfil5-seed5-hunger)", () => {
+  /** Espera 3 días en la calle del hex de su casa (sin espacio): cuántas comidas y cuánta grasa gasta. */
+  function waitInStreet(engine: string) {
+    const life = Life.create(7, content, engineOptions(engine, { frequency: 8 }));
+    const w = life.world;
+    const here = w.truth.get(LOCATION, life.player);
+    if (here === undefined) throw new Error("sin lugar");
+    w.truth.set(LOCATION, life.player, { hex: here.hex });
+    const fat0 = w.truth.get(BODY_STATE, life.player)?.fat ?? 0;
+    const report = life.turn(waitPlan(life.player, 3), 1);
+    const ate = report.events.filter((e) => e.kind === "routine.ate").length;
+    const fat = w.truth.get(BODY_STATE, life.player)?.fat ?? 0;
+    return { ate, lost: fat0 - fat, interrupt: report.interrupt };
+  }
+
+  it("con life-12 come de la despensa del hogar; con life-11 solo puertas adentro", () => {
+    const old = waitInStreet("life-11");
+    expect(old.ate).toBe(0);
+    const now = waitInStreet(LIFE_ENGINE);
+    expect(now.ate).toBeGreaterThanOrEqual(8);
+    expect(now.lost).toBeLessThan(old.lost);
+    expect(waitInStreet(LIFE_ENGINE)).toEqual(now);
+  }, 360_000);
+});
+
 describe("onlyWaits", () => {
   it("solo los planes de puras esperas se atienden", () => {
     const wait = { kind: "do", verb: "wait", args: [], manner: [] } as const;
