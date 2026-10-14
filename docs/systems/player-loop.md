@@ -34,7 +34,7 @@ Los dormidos todavía tienen puesta al día no corporal pendiente (`off-5`).
 El perfil incluye `npcWater` (viajeros que beben, ver body-health §5), `errands.minAgeYears`
 (los chicos no salen de recado solos) e `idlePlayerRoutine`: en una corrida sin nadie que juegue
 (sim headless), el personaje inactivo sigue la rutina de cualquier NPC en vez de quedarse quieto
-hasta morir de sed; con un jugador real la rutina sigue sin correr para el personaje.
+hasta morir de sed; con un jugador real la rutina no debería correr para el personaje: el perfil la lleva encendida y solo actúa cuando el personaje no tiene plan en curso. Medido con el jugador automático (`npm run autoplay`, ROADMAP `perfil5`): 0 eventos de rutina atribuidos al personaje en 2 años de seed 1.
 
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 

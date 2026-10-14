@@ -93,7 +93,9 @@ describe("runCli", () => {
     expect(checkInvariants(store.load())).toEqual([]);
 
     const { input, checkpoints } = replayInputFromStore(store);
-    expect(checkpoints).toHaveLength(PLANS);
+    // Un snapshot por día de mundo como mucho (perfil5), no uno por turno.
+    expect(checkpoints.length).toBeGreaterThanOrEqual(1);
+    expect(checkpoints.length).toBeLessThanOrEqual(PLANS);
     const end = store.load().scheduler.now;
     const report = replay(
       input as ReplayInput<LifeSetup, never>,
@@ -101,7 +103,7 @@ describe("runCli", () => {
       { checkpoints, until: end },
     );
     expect(report.divergence).toBeUndefined();
-    expect(report.checked).toBe(PLANS);
+    expect(report.checked).toBe(checkpoints.length);
     expect(report.hash).toEqual(hashState(store.load()));
   }, 300_000);
 

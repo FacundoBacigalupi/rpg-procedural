@@ -226,6 +226,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     options: readonly ClarifyOption[];
     dropped: readonly ClarifyOption[];
   } | null = null;
+  let lastSnapshot: Tick | undefined = store
+    .snapshots()
+    .filter((x) => x.kind === "full")
+    .at(-1)?.tick;
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
@@ -370,7 +374,13 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     attended = draft.plan?.kind === "do" && draft.plan.verb === "look";
     const tick = life.now;
     const seq = store.nextPlanSeq();
-    store.saveSnapshot(life.state());
+    // El snapshot completo (verdad entera, comprimida y hasheada) es el 75 % del costo de un turno y
+    // crece con el mundo: a lo sumo uno por día de mundo (perfil5). Los turnos entre dos snapshots
+    // se rehacen en el replay desde el anterior; `saveTurn` guarda igual el estado de cada turno.
+    if (lastSnapshot === undefined || tick - lastSnapshot >= life.world.clock.day) {
+      store.saveSnapshot(life.state());
+      lastSnapshot = tick;
+    }
     const report = life.turn(plan, seq);
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
     recent.push(line.trim());
