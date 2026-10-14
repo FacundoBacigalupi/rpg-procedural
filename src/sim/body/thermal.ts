@@ -172,6 +172,23 @@ export function heatLossW(
   return (bodyArea(massKg) * (SKIN_C - effectiveAirC(env, clothing)) * wetting) / r;
 }
 
+/** Fracción de la masa que, faltando de agua, mata (plan humano; `lethalDehydration` del plan manda). */
+export const DEFAULT_LETHAL_DEHYDRATION = 0.15;
+
+/**
+ * Qué parte (0-1) del sudor máximo conserva un cuerpo al que le faltan `waterL` litros de agua: el
+ * sudor cae de forma gradual con el déficit y se apaga recién cerca de lo que mata
+ * (`lethalFraction` de la masa), no con un déficit moderado. Con un déficit de 5% sigue sudando
+ * ~2/3; el calor solo mata a quien casi no tiene agua.
+ */
+export function sweatHydration(
+  waterL: number,
+  massKg: number,
+  lethalFraction: number = DEFAULT_LETHAL_DEHYDRATION,
+): number {
+  return clamp(1 - waterL / Math.max(0.1, lethalFraction * massKg), 0, 1);
+}
+
 export interface ThermalStep {
   readonly coreC: number;
   /** Litros de agua perdidos por sudor en el paso. */

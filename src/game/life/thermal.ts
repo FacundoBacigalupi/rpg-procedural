@@ -28,6 +28,7 @@ import {
   applyCore,
   BODY_STATE,
   type BodyCapabilities,
+  type BodyPlanDef,
   type Clothing,
   CORE_NORMAL_C,
   type DayWeather,
@@ -58,6 +59,7 @@ import {
   shelterOfSpace,
   stepCore,
   stepFrostbite,
+  sweatHydration,
   THERMAL,
   type ThermalEnv,
   thermalDeath,
@@ -75,6 +77,8 @@ export interface ThermalOptions {
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no se avanza acá; queda como estaba. */
   readonly sleepers?: boolean;
   readonly clock: PlanetClock;
+  /** Planes de cuerpo: el sudor se apaga cerca de su `lethalDehydration` (sin planes, el humano). */
+  readonly plans?: readonly BodyPlanDef[];
   readonly map: LocalMap;
   readonly spaces: SpaceGraph;
   readonly seed: Seed;
@@ -367,7 +371,11 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
         const agent = id as AgentId;
         const had = ctx.truth.get(THERMAL, id);
         let core = had?.coreC ?? CORE_NORMAL_C;
-        const hydration = Math.max(0, 1 - body.water / Math.max(0.1, 0.05 * body.massKg));
+        const hydration = sweatHydration(
+          body.water,
+          body.massKg,
+          o.plans?.find((p) => p.id === body.plan)?.physiology.lethalDehydration,
+        );
         const hadFrost = o.frostbite ? ctx.truth.get(FROSTBITE, id) : undefined;
         let frost: FrostbiteState | undefined = hadFrost;
         let dead: "hypothermia" | "heatstroke" | null = null;

@@ -202,7 +202,7 @@ interface Pathogen {
 ## 7. Frío, calor y ambiente
 - **Balance térmico:** temperatura del aire (planet-gen, hora, estación), viento, humedad, mojado, ropa (aislamiento como propiedad del ítem), refugio, fuego, esfuerzo y comida. `coreTemp` se mueve hacia el equilibrio.
 - **Frío:** escalofríos → torpeza (`dexterity` baja) → confusión → hipotermia → muerte. Las extremidades expuestas sufren **congelación**: lesión de parte que puede terminar en amputación de dedos.
-- **Calor:** sudor (pierde agua) → agotamiento → golpe de calor. El esfuerzo con armadura en un desierto mata soldados.
+- **Calor:** sudor (pierde agua) → agotamiento → golpe de calor. El esfuerzo con armadura en un desierto mata soldados. **La sed baja el sudor de forma gradual** (`sweatHydration`): conserva `1 - déficit / (lethalDehydration x masa)` del sudor máximo, así que se apaga cerca de lo que mata (15% de la masa en el plan humano) y no con un déficit moderado; con 5% de déficit sigue sudando ~2/3. (Antes se apagaba a 5% y un adulto dormido, o un chico, moría de golpe de calor con 25-34 °C de máxima: perfil2c-heatstroke.)
 - **Altitud:** falta de aire en montañas altas (planet-gen): menos `endurance`, mal de altura. Los nacidos allá están adaptados (genoma + aclimatación).
 - **Ambientes del mundo:** qi de fuego, frío yin, miasmas de pantano, aire de un reino secreto ([secret-realms.md](secret-realms.md)). Son entradas del mismo balance (calor, toxinas, `Essence` dañina), no reglas aparte. Su efecto lo calcula la física elemental ([elements.md](elements.md) §7).
 
