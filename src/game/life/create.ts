@@ -248,6 +248,11 @@ export interface LifeOptions {
    */
   readonly legacyNoFootwearMend?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-16` lo enciende: apaga `npcCloak` aunque
+   * el perfil lo traiga (el perfil completo lo enciende desde `life-16`).
+   */
+  readonly legacyNoCloak?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -401,6 +406,8 @@ export interface LifeOptions {
   readonly npcFootSores?: boolean;
   /** Opt-in (con `npcFootwear`): el NPC remienda o compra par nuevo del calzado gastado (`LifeParts.npcFootwearMend`); apagado. */
   readonly npcFootwearMend?: boolean;
+  /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
+  readonly npcCloak?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
@@ -542,6 +549,7 @@ export function optInParts(
   | "npcFootwear"
   | "npcFootSores"
   | "npcFootwearMend"
+  | "npcCloak"
   | "conception"
   | "conceptionRateScale"
   | "conceptionGestationDays"
@@ -646,6 +654,7 @@ export function optInParts(
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
+    ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined

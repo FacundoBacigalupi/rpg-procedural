@@ -138,8 +138,13 @@ export interface LifeSetup {
  * nuevo del calzado gastado, pagando cobre). Compatibilidad: el replay con un motor anterior a
  * `life-15` enciende `legacyNoFootwearMend`, que lo apaga aunque el setup lo traiga; una vida
  * guardada con `life-14` sigue desde su estado con el límite de replay.
+ *
+ * `life-16`: el perfil completo enciende `npcCloak` (el viajero sale vestido para el aire de la partida
+ * y lleva una capa para lo que baje en el camino; la capa se gasta con los días de viaje). Compatibilidad:
+ * el replay con un motor anterior a `life-16` enciende `legacyNoCloak`, que lo apaga aunque el setup
+ * lo traiga; una vida guardada con `life-15` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-15";
+export const LIFE_ENGINE = "life-16";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -164,6 +169,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 13 ? { legacyNoCare: true } : {}),
     ...(n < 14 ? { legacyNoFootSores: true } : {}),
     ...(n < 15 ? { legacyNoFootwearMend: true } : {}),
+    ...(n < 16 ? { legacyNoCloak: true } : {}),
   };
 }
 
