@@ -1300,6 +1300,7 @@ export function lifeWorld(
           : []),
         thermalProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
+          plans: parts.plans,
           clock: parts.clock,
           map: parts.map,
           spaces: parts.spaces,

@@ -23,6 +23,7 @@ import {
   shelterOfSpace,
   stepCore,
   stepFrostbite,
+  sweatHydration,
   TEMPERATE,
   type ThermalEnv,
   thermalDeath,
@@ -62,6 +63,30 @@ describe("balance térmico", () => {
     expect(thermalDeath(27)).toBe("hypothermia");
     expect(thermalDeath(43)).toBe("heatstroke");
     expect(thermalDeath(37)).toBeNull();
+  });
+});
+
+describe("sudor y deshidratación", () => {
+  const warm: ThermalEnv = { ...TEMPERATE, airC: 31, windMs: 1.5, humidity: 0.5 };
+  const light: Clothing = { clo: 0.5, windproof: 0.2, coverage: 0.7 };
+  const sleepDay = (kg: number, waterL: number) => {
+    const h = sweatHydration(waterL, kg);
+    let core = CORE_NORMAL_C;
+    for (let i = 0; i < 96; i++) core = stepCore(core, kg, warm, light, 1, h, 0.25).coreC;
+    return core;
+  };
+  it("el sudor se apaga cerca de lo que mata, no con un déficit moderado", () => {
+    expect(sweatHydration(0, 60)).toBe(1);
+    expect(sweatHydration(3, 60)).toBeGreaterThan(0.6); // 5% de la masa
+    expect(sweatHydration(3, 60)).toBeGreaterThan(sweatHydration(6, 60));
+    expect(sweatHydration(9, 60)).toBe(0); // 15% de la masa: lo que mata
+    expect(sweatHydration(1, 4, 0.15)).toBeLessThan(sweatHydration(1, 60, 0.15));
+  });
+  it("un adulto dormido con 5-8% de déficit en un día de 31 máx. no muere de golpe de calor", () => {
+    expect(thermalDeath(sleepDay(60, 3))).toBeNull();
+    expect(thermalDeath(sleepDay(60, 4.8))).toBeNull();
+    // Sin ninguna agua el sudor falla y el calor sí mata (el viejo corte a 5%).
+    expect(thermalDeath(sleepDay(60, 9))).toBe("heatstroke");
   });
 });
 
