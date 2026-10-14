@@ -110,8 +110,15 @@ export interface LifeSetup {
  * limpiar lo infectado o sucio y entablillar el hueso roto; antes trataba solo la más grave y nunca
  * entablillaba. Compatibilidad: el replay con un motor anterior a `life-10` enciende `legacyTend`;
  * una vida guardada con `life-9` sigue desde su estado con el límite de replay.
+ *
+ * `life-11`: el `resume` de un tramo de camino a medias se apaga al llegar. Antes el plan quedaba
+ * con `resume` encendido para siempre y, tras un viaje de varios tramos, repetía el `move` contra
+ * el hex donde ya estaba (un segundo por paso, un tropezón posible en cada uno: 3376 pasos y 35
+ * heridas en una caminata) en vez de pasar al paso siguiente. Compatibilidad: el replay con un
+ * motor anterior a `life-11` enciende `legacyResume`; una vida guardada con `life-10` sigue desde
+ * su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-10";
+export const LIFE_ENGINE = "life-11";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -131,6 +138,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 8 ? { sleepUncapped: true } : {}),
     ...(n < 9 ? { legacyFalls: true } : {}),
     ...(n < 10 ? { legacyTend: true } : {}),
+    ...(n < 11 ? { legacyResume: true } : {}),
   };
 }
 
