@@ -108,6 +108,8 @@ export interface AutoplayReport {
   }[];
   readonly byYear: readonly YearRow[];
   readonly peakRssMiB: number;
+  /** Hash del estado final: la misma corrida debe dar el mismo antes y después de una optimización. */
+  readonly stateHash: string;
   readonly replies: Readonly<Record<string, number>>;
   readonly topKinds: Readonly<Record<string, number>>;
   readonly wallSeconds: number;
@@ -319,6 +321,7 @@ export async function runAutoplay(
     worstTurns: worst,
     byYear,
     peakRssMiB: Math.round(peak / MiB),
+    stateHash: life.hash().total,
     replies,
     topKinds: Object.fromEntries(top),
     wallSeconds: Math.round((performance.now() - started) / 100) / 10,

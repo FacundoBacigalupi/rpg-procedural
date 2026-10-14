@@ -12,6 +12,7 @@ import {
 import { table, WorldTruth } from "../world/index.ts";
 import {
   addToField,
+  draftEvent,
   type ProcessContext,
   type ProcessDef,
   type ProcessResult,
@@ -480,6 +481,44 @@ describe("diffs y conflictos", () => {
       ],
     }));
     expect(() => world(1, [a]).scheduler.advanceTo(DAY)).toThrow(/ventana/);
+  });
+
+  it("un componente que crece por copia sigue resolviendo los provisionales de lo nuevo", () => {
+    // Las partes limpias de un paso se recuerdan para el siguiente (costo lineal, no cuadrático), pero
+    // el provisional que aparece en un elemento nuevo se reemplaza igual y no contamina a los viejos.
+    const LOG = table<{ items: readonly { n: number; ev?: string }[] }>("grow.log");
+    const w = world(1, [
+      def(
+        "a.log",
+        (ctx) => {
+          const items = ctx.truth.get(LOG, S1)?.items ?? [];
+          const n = items.length + 1;
+          return {
+            changes: [
+              setComponent(LOG, S1, {
+                items: [...items, n % 3 === 0 ? { n, ev: draftEvent(0) } : { n }],
+              }),
+            ],
+            events: [
+              {
+                kind: "x",
+                actors: [S1],
+                place: place(S1),
+                data: null,
+                emissions: {},
+                causes: [{ kind: "seed" }],
+              },
+            ],
+          };
+        },
+        { reads: [], writes: ["grow.log"] },
+      ),
+    ]);
+    const { events } = runFor(w, 7 * DAY);
+    const items = w.truth.get(LOG, S1)?.items ?? [];
+    expect(items.map((i) => i.n)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    const ev = items.filter((i) => i.ev !== undefined).map((i) => i.ev);
+    expect(ev).toEqual([events[2]?.id, events[5]?.id]);
   });
 
   it("los eventos reciben ids en orden canónico, la resolución y el tick", () => {

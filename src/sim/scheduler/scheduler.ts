@@ -735,6 +735,9 @@ function actorOf(claim: ContestClaim, scope: ScopeRef): StateChange["id"][] {
   return scope === "world" ? [] : [scope];
 }
 
+const CLEAN = new WeakSet<object>();
+const CLEAN_REMAP = new WeakSet<object>();
+
 /** Reemplaza los ids provisionales por los reales en todo el resultado de una corrida. */
 function resolveDrafts(
   result: ProcessResult,
@@ -743,18 +746,23 @@ function resolveDrafts(
   remapKeys = false,
 ): ProcessResult {
   // Sin ningún provisional (lo común) no hay nada que reemplazar: se evita copiar todo el resultado.
+  // Los objetos ya revisados y limpios se recuerdan: un componente grande que crece por copia
+  // (p. ej. los pasos de un plan de caminata larga) comparte casi todas sus partes con el anterior y
+  // revisarlo entero en cada paso era cuadrático. Los valores de la verdad no se mutan en el lugar.
+  const clean = remapKeys ? CLEAN_REMAP : CLEAN;
   const hasDraft = (v: unknown): boolean => {
     if (typeof v === "string") return v.includes(":~");
+    if (v === null || typeof v !== "object") return false;
+    if (clean.has(v)) return false;
     if (Array.isArray(v)) {
       for (const x of v) if (hasDraft(x)) return true;
-      return false;
-    }
-    if (v !== null && typeof v === "object") {
+    } else {
       for (const k of Object.keys(v)) {
         if (remapKeys && k.includes(":~")) return true;
         if (hasDraft((v as Record<string, unknown>)[k])) return true;
       }
     }
+    clean.add(v);
     return false;
   };
   if (!hasDraft(result)) return result;
