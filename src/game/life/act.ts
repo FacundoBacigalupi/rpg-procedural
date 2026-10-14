@@ -80,6 +80,7 @@ import {
   type Nutrition,
   nearestHex,
   netHydration,
+  nextTreatment,
   nodeAt,
   noteSeller,
   notoriety,
@@ -317,6 +318,11 @@ export interface ActOptions {
    * lo enciende el replay de un guardado viejo; ver `Stumble` en `blowFromMishap`.
    */
   readonly legacyFalls?: boolean;
+  /**
+   * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
+   * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
+   */
+  readonly legacyTend?: boolean;
   /**
    * Opt-in: el modo del `move` cambia el esfuerzo del cuerpo (`fast` es esfuerzo pesado, `careful`
    * liviano) y con él el cansancio que se acumula (`activityOf`). Apagado, siempre moderado.
@@ -1001,8 +1007,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     const worst = target?.wounds
       .filter((w) => w.stage !== "healed")
       .sort((a, b) => b.severity - a.severity)[0];
-    if (target && worst) {
-      const treated = treat(target, worst.id, worst.infection > 0.05 ? "clean" : "bandage");
+    // Desde `life-10` la cura mira todas las heridas (vendar, limpiar, entablillar); antes solo la peor.
+    const pick = !target
+      ? null
+      : o.legacyTend === true
+        ? worst
+          ? {
+              wound: worst.id,
+              how: worst.infection > 0.05 ? ("clean" as const) : ("bandage" as const),
+            }
+          : null
+        : nextTreatment(target);
+    if (target && pick) {
+      const treated = treat(target, pick.wound, pick.how);
       if (eff.target === me) nextBody = treated;
       else changes.push(setComponent(BODY_STATE, eff.target as AgentId, treated));
       bodyTouched = bodyTouched || eff.target === me;
