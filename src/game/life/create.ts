@@ -252,6 +252,8 @@ export interface LifeOptions {
    * el perfil lo traiga (el perfil completo lo enciende desde `life-16`).
    */
   readonly legacyNoCloak?: boolean;
+  /** Solo el replay de un motor anterior a `life-17`: apaga `npcStrain` aunque el perfil lo traiga. */
+  readonly legacyNoStrain?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -408,6 +410,8 @@ export interface LifeOptions {
   readonly npcFootwearMend?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
   readonly npcCloak?: boolean;
+  /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
+  readonly npcStrain?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
@@ -550,6 +554,7 @@ export function optInParts(
   | "npcFootSores"
   | "npcFootwearMend"
   | "npcCloak"
+  | "npcStrain"
   | "conception"
   | "conceptionRateScale"
   | "conceptionGestationDays"
@@ -655,6 +660,7 @@ export function optInParts(
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
+    ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined

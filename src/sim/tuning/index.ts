@@ -82,6 +82,7 @@ export const ScenarioLife = z.strictObject({
   npcFootSores: z.boolean().optional(),
   npcFootwearMend: z.boolean().optional(),
   npcCloak: z.boolean().optional(),
+  npcStrain: z.boolean().optional(),
   conception: z.boolean().optional(),
   conceptionRateScale: z.number().min(0).optional(),
   conceptionGestationDays: z.number().gt(0).optional(),

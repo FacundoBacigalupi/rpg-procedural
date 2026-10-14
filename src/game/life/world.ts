@@ -447,6 +447,8 @@ export interface LifeWorld {
   readonly npcFootwearMend?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
+  /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
+  readonly npcStrain?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -749,6 +751,7 @@ export function lifeWorld(
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
+          ...(parts.npcPace && parts.npcStrain === true ? { strain: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.npcFootwear === true && parts.npcFootSores === true ? { footSores: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),

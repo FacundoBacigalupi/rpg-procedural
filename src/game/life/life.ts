@@ -143,8 +143,12 @@ export interface LifeSetup {
  * y lleva una capa para lo que baje en el camino; la capa se gasta con los días de viaje). Compatibilidad:
  * el replay con un motor anterior a `life-16` enciende `legacyNoCloak`, que lo apaga aunque el setup
  * lo traiga; una vida guardada con `life-15` sigue desde su estado con el límite de replay.
+ *
+ * `life-17`: el perfil completo enciende `npcStrain` (forzar el ritmo, modo `fast` con fatiga alta, puede
+ * torcer una pierna: herida contusa leve). Compatibilidad: el replay con un motor anterior a `life-17`
+ * enciende `legacyNoStrain`; una vida guardada con `life-16` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-16";
+export const LIFE_ENGINE = "life-17";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -170,6 +174,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 14 ? { legacyNoFootSores: true } : {}),
     ...(n < 15 ? { legacyNoFootwearMend: true } : {}),
     ...(n < 16 ? { legacyNoCloak: true } : {}),
+    ...(n < 17 ? { legacyNoStrain: true } : {}),
   };
 }
 

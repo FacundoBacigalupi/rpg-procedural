@@ -46,6 +46,8 @@ Y desde `life-15` el perfil completo lleva `npcFootwearMend`: el NPC que está e
 
 Y desde `life-16` el perfil completo lleva `npcCloak`: el viajero con un viaje abierto sale vestido para el aire de la partida y lleva una capa de 1 clo; si el aire baja en el camino la capa cubre hasta lo que hace falta y sin ella queda con la ropa de la salida; la capa se gasta con los días de camino y se pierde (`cloak.lost`). El perfil no abre viajes en 2 años, así que no mueve la corrida; el replay de un motor anterior lo apaga (`legacyNoCloak`).
 
+Y desde `life-17` el perfil completo lleva `npcStrain`: al caminar a paso `fast` con la fatiga sobre 0,6, cada tramo tira un esguince (herida contusa leve en una pierna, causa en el paso; `game/life/strain.ts`). El perfil camina a paso `careful`, así que no mueve la corrida; el replay de un motor anterior lo apaga (`legacyNoStrain`).
+
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
