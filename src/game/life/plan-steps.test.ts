@@ -1,0 +1,119 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import { describe, expect, it } from "vitest";
+import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
+import { type ActionPlan, BODY_STATE, LOCATION, PLACE } from "../../sim/index.ts";
+import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { appendStep, PLAN_STATE, type StepRecord } from "./act.ts";
+import { engineOptions, LIFE_ENGINE, Life } from "./life.ts";
+import { stretchOf } from "./stretch.ts";
+
+function sources(dir: string, root = dir): ContentSource[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory()) return sources(path, root);
+    if (!e.name.endsWith(".json")) return [];
+    const kind = relative(root, dir).split("\\").join("/");
+    return [{ kind, file: path, data: JSON.parse(readFileSync(path, "utf8")) }];
+  });
+}
+const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+
+const rec = (verb: string, believed: string, at: number, extra: object = {}): StepRecord =>
+  ({ verb, at, self: { believed, cues: [], effect: { kind: "none" } }, ...extra }) as StepRecord;
+
+describe("appendStep", () => {
+  it("junta los fallos idénticos seguidos en un registro con cuenta", () => {
+    let steps: readonly StepRecord[] = [];
+    for (let t = 10; t < 15; t++) steps = appendStep(steps, rec("move", "failure", t), true);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({ verb: "move", at: 10, times: 5, lastAt: 14 });
+  });
+
+  it("no junta éxitos, otro verbo, otra autopercepción ni otro porqué", () => {
+    let steps: readonly StepRecord[] = [];
+    steps = appendStep(steps, rec("eat", "success", 1), true);
+    steps = appendStep(steps, rec("eat", "success", 2), true);
+    steps = appendStep(steps, rec("move", "failure", 3), true);
+    steps = appendStep(steps, rec("eat", "failure", 4), true);
+    steps = appendStep(steps, rec("eat", "failure", 5, { purpose: { motive: "hunger" } }), true);
+    expect(steps).toHaveLength(5);
+    expect(steps.every((s) => s.times === undefined)).toBe(true);
+  });
+
+  it("sin compactar (motores anteriores) agrega un registro por paso", () => {
+    let steps: readonly StepRecord[] = [];
+    for (let t = 0; t < 4; t++) steps = appendStep(steps, rec("move", "failure", t), false);
+    expect(steps).toHaveLength(4);
+  });
+
+  it("el resumen del salto cuenta cada intento de un registro compactado", () => {
+    const s = stretchOf(
+      [rec("move", "failure", 0, { times: 7 })],
+      [],
+      "a:1" as AgentId,
+      0,
+      1000,
+      1000,
+    );
+    expect(s.did[0]).toEqual({ verb: "move", times: 7, failed: 7 });
+  });
+});
+
+describe("motor y pasos", () => {
+  it("los motores anteriores a life-4 piden pasos sin compactar; life-4 no", () => {
+    expect(LIFE_ENGINE).toBe("life-4");
+    expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
+    expect(engineOptions("life-1", { frequency: 8 })).toEqual({ frequency: 8, verboseSteps: true });
+    expect(engineOptions("life-4", {})).toEqual({});
+  });
+
+  /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */
+  function exhaustedWalk(engine: string) {
+    const life = Life.create(7, content, engineOptions(engine, { frequency: 8 }));
+    const w = life.world;
+    const me = life.player;
+    const body = w.truth.get(BODY_STATE, me);
+    if (!body) throw new Error("sin cuerpo");
+    w.truth.set(BODY_STATE, me, {
+      ...body,
+      fatigue: 1,
+      glycogen: 0,
+      sleepDebt: 100,
+      water: 0,
+      consciousness: "dazed",
+    });
+    const here = w.truth.get(LOCATION, me)?.hex;
+    const forest = w.truth
+      .ids(PLACE)
+      .find((id) => (w.truth.get(PLACE, id)?.hexes ?? []).includes(here as number));
+    if (!forest) throw new Error("sin lugar propio");
+    const plan: ActionPlan = {
+      actor: me,
+      source: "player",
+      root: {
+        kind: "until",
+        body: { kind: "do", verb: "move", args: [{ role: "to", entity: forest }], manner: [] },
+        cond: { kind: "succeeded" },
+        max: 200,
+      },
+      manner: [],
+      causes: [{ kind: "state", entity: me, key: "intent" }],
+    };
+    life.submit(plan, 1);
+    life.advanceTo(life.now + 600);
+    return { life, steps: w.truth.get(PLAN_STATE, me)?.steps ?? [] };
+  }
+
+  it("un camino reintentado en vano deja un registro con cuenta, no uno por tick", () => {
+    const compact = exhaustedWalk(LIFE_ENGINE);
+    const verbose = exhaustedWalk("life-3");
+    const total = (s: readonly StepRecord[]) => s.reduce((n, r) => n + (r.times ?? 1), 0);
+    // Cada intento sigue contado: la cuenta suma lo que el motor viejo guardaba uno por uno.
+    expect(total(compact.steps)).toBe(total(verbose.steps));
+    expect(verbose.steps.length).toBeGreaterThan(compact.steps.length);
+    expect(compact.steps.length).toBeLessThan(10);
+    // Solo difieren en esos registros: el estado, y con él el hash, no es el mismo.
+    expect(compact.life.hash()).not.toEqual(verbose.life.hash());
+  }, 240_000);
+});

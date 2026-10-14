@@ -64,8 +64,21 @@ export interface LifeSetup {
  * vida guardada conserva su `setup` (con o sin perfil), así que sus hashes y su replay siguen igual
  * y solo se registra el límite de motor al abrirla; el bump impide abrir una vida con perfil en un
  * motor anterior, que no conoce esas opciones.
+ *
+ * `life-4`: `PlanState.steps` compacta los fallos idénticos seguidos en un registro con cuenta
+ * (`StepRecord.times`/`lastAt`, `appendStep`): una caminata que el cuerpo no da dejaba un registro
+ * por tick (decenas de miles, megabytes en cada guardado y hash). Cambia el estado del plan y los
+ * hashes. Compatibilidad: el replay con un motor anterior a `life-4` (`lifeReplayGame`) enciende
+ * `verboseSteps` y rehace los registros uno por uno, con los hashes de siempre; una vida guardada
+ * con `life-3` sigue desde su estado (los registros viejos se leen igual) con el límite de replay.
  */
-export const LIFE_ENGINE = "life-3";
+export const LIFE_ENGINE = "life-4";
+
+/** Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos. */
+export function engineOptions(engine: string, options: LifeOptions): LifeOptions {
+  const m = /^life-(\d+)$/.exec(engine);
+  return m !== null && Number(m[1]) < 4 ? { ...options, verboseSteps: true } : options;
+}
 
 /** La vida como juego del replay (tools/replay), sin importarlo: misma forma. */
 export function lifeReplayGame(
@@ -75,7 +88,7 @@ export function lifeReplayGame(
   return {
     versions,
     start(seed: Seed, setup: LifeSetup) {
-      const life = Life.create(seed, content, optionsOf(setup));
+      const life = Life.create(seed, content, engineOptions(versions.engine, optionsOf(setup)));
       return {
         advanceTo: (t: Tick) => life.advanceTo(t),
         submit: (plan: ActionPlan, seq: number) => life.submit(plan, seq),
@@ -89,7 +102,7 @@ export function lifeReplayGame(
         seed,
         content,
         { ...saved, ids: new IdAllocator(saved.ids) },
-        optionsOf(setup),
+        engineOptions(versions.engine, optionsOf(setup)),
         (anchor as ResumeAnchor | undefined) ?? undefined,
       );
       return {

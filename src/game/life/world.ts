@@ -336,6 +336,8 @@ export interface LifeWorld {
   readonly frostbite?: boolean;
   /** Opt-in: explorar a pie emite una mirada de paso que `moldGossip.fromLooking` lee; ver `ActOptions.glanceOnMove`. Apagado: nada cambia. */
   readonly glanceOnMove?: boolean;
+  /** Replay de motores anteriores a `life-4`: un registro por paso fallido repetido; ver `ActOptions.verboseSteps`. */
+  readonly verboseSteps?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -710,6 +712,7 @@ export function lifeWorld(
           ...(altitudeOf ? { altitudeOf } : {}),
           ...(parts.frostbite === true ? { frostbite: true } : {}),
           ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
+          ...(parts.verboseSteps === true ? { verboseSteps: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),

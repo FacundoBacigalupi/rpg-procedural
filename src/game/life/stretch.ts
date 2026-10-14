@@ -64,9 +64,10 @@ export function stretchOf(
     if (fx.kind === "work" && fx.hurt) hurt = true;
     if (IDLE_VERBS.has(s.verb)) continue;
     const row = tally.get(s.verb) ?? { times: 0, failed: 0 };
+    const n = s.times ?? 1;
     tally.set(s.verb, {
-      times: row.times + 1,
-      failed: row.failed + (s.self.believed === "failure" ? 1 : 0),
+      times: row.times + n,
+      failed: row.failed + (s.self.believed === "failure" ? n : 0),
     });
   }
   const fought = events.some(
