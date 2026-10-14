@@ -210,6 +210,7 @@ interface Pathogen {
 ## 8. Fatiga y sueño
 - **Fatiga muscular** sube con esfuerzo y baja con descanso; acumulada sin descanso produce lesiones (desgarros, fracturas por estrés).
 - **Deuda de sueño** solo se paga durmiendo. Más de un día sin dormir baja `cognition`, percepción y juicio (npc-psychology: más impulsividad, más errores con forma en perception §5).
+- **Tope fisiológico:** la deuda de sueño **satura en 72 h** (`SLEEP_DEBT_CAP`, tres días sin dormir): pasado ese punto los microsueños forzados la pagan a la misma tasa que se acumula y no sube más. La conciencia y las capacidades siguen leyendo la deuda (aturdido desde 40 h, capacidad al mínimo desde 48 h), así que el tope no cura nada: solo evita una deuda de cientos de horas sin sentido fisiológico. En el motor de la vida, desde `life-8` (`BodyProcessOptions.sleepCap`); apagado por defecto en la aldea sin vida.
 - **Calidad del sueño:** frío, hambre, dolor, miedo, ruido y pesadillas (traumas) lo empeoran. Dormir en la intemperie no descansa igual que en una cama.
 - **Meditación** reemplaza parte del sueño solo si el mundo y la práctica lo permiten, y en cultivadores avanzados la necesidad baja (pero no desaparece salvo en reinos que el mundo defina).
 

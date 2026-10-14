@@ -95,8 +95,12 @@ export interface LifeSetup {
  * toda espera de 2+ días se cortaba por sed a ~1,3 días. Compatibilidad: el replay con un motor
  * anterior a `life-7` enciende `waitNoSkin`; una vida guardada con `life-6` sigue desde su estado
  * con el límite de replay.
+ *
+ * `life-8`: la deuda de sueño satura en 72 h (`SLEEP_DEBT_CAP`, microsueños forzados; antes el
+ * bot llegaba a 374 h). Compatibilidad: el replay con un motor anterior a `life-8` enciende
+ * `sleepUncapped`; una vida guardada con `life-7` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-7";
+export const LIFE_ENGINE = "life-8";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -113,6 +117,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 5 ? { waitAwake: true } : {}),
     ...(n < 6 ? { waitUntended: true } : {}),
     ...(n < 7 ? { waitNoSkin: true } : {}),
+    ...(n < 8 ? { sleepUncapped: true } : {}),
   };
 }
 

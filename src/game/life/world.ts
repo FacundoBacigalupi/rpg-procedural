@@ -345,6 +345,8 @@ export interface LifeWorld {
   readonly waitUntended?: boolean;
   /** Replay de motores anteriores a `life-7`: quien espera no lleva odre; ver `RoutineOptions.waitSkin`. */
   readonly waitNoSkin?: boolean;
+  /** Replay de motores anteriores a `life-8`: la deuda de sueño no tiene tope (`BodyProcessOptions.sleepCap`). */
+  readonly sleepUncapped?: boolean;
   /** Opt-in: el núcleo (`THERMAL`) baja la destreza o deja inconsciente en `decide`, `act` y la pelea. Apagado: sin cambios. */
   readonly coreEffects?: boolean;
   /**
@@ -683,6 +685,7 @@ export function lifeWorld(
           thermal: parts.coreEffects === true,
           amputations: parts.frostbite === true && parts.amputationScars === true,
           ...(parts.sleepers ? { sleepers: true } : {}),
+          ...(parts.sleepUncapped === true ? {} : { sleepCap: true }),
           ...(parts.waitAwake === true
             ? {}
             : { nightRest: (at: number) => localHour(parts.clock, at, parts.map.lonDeg) }),

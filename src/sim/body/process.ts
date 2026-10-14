@@ -16,7 +16,7 @@ import {
 import { ENTITY, type ReadonlyWorldTruth } from "../world/index.ts";
 import { ASLEEP } from "./asleep.ts";
 import { DEFICIENCY_EFFECTS } from "./nutrition.ts";
-import { type AmbientTemp, advanceBody, type Happening } from "./physiology.ts";
+import { type AmbientTemp, advanceBody, type Happening, SLEEP_DEBT_CAP } from "./physiology.ts";
 import type { BodyPlanDef } from "./plan.ts";
 import { reopenOldWounds } from "./reopen.ts";
 import { BODY_STATE } from "./state.ts";
@@ -52,6 +52,11 @@ export interface BodyProcessOptions {
    * Apagado por defecto: sin lecturas, la aldea no cambia.
    */
   readonly sleepers?: boolean;
+  /**
+   * Microsueños forzados: la deuda de sueño satura en `SLEEP_DEBT_CAP` (72 h). Apagado por defecto:
+   * sin tope, la aldea no cambia.
+   */
+  readonly sleepCap?: boolean;
   /**
    * Hora local de un instante: con ella, el cuerpo en actividad `rest` (esperar, descansar, comer
    * quieto) corre como `sleep` si el tramo cae de noche (21 a 5 h): quien deja pasar la noche quieto
@@ -126,6 +131,8 @@ export function bodyProcess(o: BodyProcessOptions): ProcessDef {
         ctx.truth.get(SWEAT, me)?.litersPerHour ?? 0,
         o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, me) : undefined,
         o.thermal === true && thermalUnconscious(ctx.truth.get(THERMAL, me)?.coreC ?? 37),
+        undefined,
+        o.sleepCap === true ? SLEEP_DEBT_CAP : undefined,
       );
       const { happenings } = advanced;
       const next = napping ? { ...advanced.body, activity: body.activity } : advanced.body;
