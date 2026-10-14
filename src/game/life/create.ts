@@ -238,6 +238,11 @@ export interface LifeOptions {
    */
   readonly legacyNoCare?: boolean;
   /**
+   * Solo el replay de un guardado de motor anterior a `life-14` lo enciende: apaga `npcFootSores` aunque
+   * el perfil lo traiga (el perfil completo lo enciende desde `life-14`).
+   */
+  readonly legacyNoFootSores?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -631,7 +636,7 @@ export function optInParts(
     ...(options.npcNightRest ? { npcNightRest: true } : {}),
     ...(options.npcPace ? { npcPace: options.npcPace } : {}),
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
-    ...(options.npcFootSores ? { npcFootSores: true } : {}),
+    ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined

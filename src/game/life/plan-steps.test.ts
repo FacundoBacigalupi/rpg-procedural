@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-13");
+    expect(LIFE_ENGINE).toBe("life-14");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       frequency: 8,
@@ -76,6 +76,7 @@ describe("motor y pasos", () => {
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
     expect(engineOptions("life-4", {})).toEqual({
       waitAwake: true,
@@ -87,6 +88,7 @@ describe("motor y pasos", () => {
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -95,6 +97,7 @@ describe("motor y pasos", () => {
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -102,21 +105,29 @@ describe("motor y pasos", () => {
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
+      legacyNoFootSores: true,
     });
-    expect(engineOptions("life-11", {})).toEqual({ waitEatHomeOnly: true, legacyNoCare: true });
-    expect(engineOptions("life-12", {})).toEqual({ legacyNoCare: true });
-    expect(engineOptions("life-13", {})).toEqual({});
+    expect(engineOptions("life-11", {})).toEqual({
+      waitEatHomeOnly: true,
+      legacyNoCare: true,
+      legacyNoFootSores: true,
+    });
+    expect(engineOptions("life-12", {})).toEqual({ legacyNoCare: true, legacyNoFootSores: true });
+    expect(engineOptions("life-13", {})).toEqual({ legacyNoFootSores: true });
+    expect(engineOptions("life-14", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */

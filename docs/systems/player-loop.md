@@ -40,6 +40,8 @@ Una excepción, desde el motor `life-6` (delegar lo chico, §4): mientras el per
 
 Y desde `life-13` el cuidado entre personas: quien cae **inconsciente** (el personaje o un NPC) no puede beber, y la rutina que lo salteaba lo dejaba morir de sed junto a su familia. Ahora, a las horas de agua, un adulto de su casa (12 años o más, despierto, en el mismo hex) le da un sorbo a la medida de su masa (`CARE_SIP_L`, evento `routine.watered` con cuidador y dependiente); sin cuidador cerca, sigue sin beber. Alimentarlo queda para cuando haya lactancia y sondas.
 
+Y desde `life-14` el perfil completo lleva `npcFootSores`: quien camina con el calzado destrozado se abre llagas leves en la pierna (cortes de fuerza baja que el cuerpo cura o infecta como cualquier herida). Medido sin sepsis ni muertes nuevas; el replay de un motor anterior lo apaga (`legacyNoFootSores`).
+
 La forma canónica de `NewGameSetup` está en [game-modes.md](game-modes.md) §1 (ARCHITECTURE §6): `seed`, `worldConstraints` (solo sobre el mundo: familia, era, ejes; nunca sobre el personaje), `mode` (`"realistic" | "novel"`, §16), `novel` (solo en modo novela), `entry` (§2), `narration: NarrationPrefs` (narration §7) y `llm: LlmConfig` (narration §1).
 
 1. **Generar el mundo:** planeta, leyes, historia profunda corrida en modo agregado hasta el presente (simulation §16). El usuario ve el progreso por épocas, sin spoilers (solo "se forman las montañas", "surgen los primeros pueblos", "pasan 3.000 años").
