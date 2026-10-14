@@ -123,8 +123,13 @@ export interface LifeSetup {
  * 5: 108 de 168 comidas de espera salteadas, grasa de 91k a 18k kcal). Compatibilidad: el replay
  * con un motor anterior a `life-12` enciende `waitEatHomeOnly`; una vida guardada con `life-11`
  * sigue desde su estado con el límite de replay.
+ *
+ * `life-13`: quien está inconsciente recibe agua de su cuidador (un adulto despierto de su casa en
+ * su mismo hex) a las horas de agua, `routine.watered`; antes la rutina lo salteaba y moría de sed
+ * al lado de su familia. Compatibilidad: el replay con un motor anterior a `life-13` enciende
+ * `legacyNoCare`; una vida guardada con `life-12` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-12";
+export const LIFE_ENGINE = "life-13";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -146,6 +151,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 10 ? { legacyTend: true } : {}),
     ...(n < 11 ? { legacyResume: true } : {}),
     ...(n < 12 ? { waitEatHomeOnly: true } : {}),
+    ...(n < 13 ? { legacyNoCare: true } : {}),
   };
 }
 
