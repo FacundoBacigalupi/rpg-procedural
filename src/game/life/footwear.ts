@@ -3,7 +3,8 @@
 // `life.act` lo lee al mover y lo escribe al terminar el tramo; sin la opción nadie lo lleva ni se
 // gasta. Sin calzado nuevo no hay cómo reponerlo todavía (queda como ítem).
 
-import { table } from "../../sim/index.ts";
+import type { EventId, Rng, Tick } from "../../core/index.ts";
+import { type Blow, table } from "../../sim/index.ts";
 
 /** Qué tan gastado está el calzado de alguien (0 nuevo, 1 destrozado). */
 export interface Footwear {
@@ -34,4 +35,33 @@ export function wearAfter(wear: number, seconds: number, rough: boolean): number
 /** Cuánto más se tarda en caminar con ese desgaste (1 = calzado nuevo). */
 export function footwearWalkFactor(wear: number | undefined): number {
   return round(1 + WORN_EXTRA * clamp01(wear ?? 0));
+}
+
+/** Llagas por hora de marcha con el calzado destrozado (desgaste 1); escala con lo pasado de `WORN_AT`. */
+export const FOOT_SORE_PER_HOUR = 0.04;
+/** Las llagas son leves: una ampolla abierta, no un tajo. */
+export const FOOT_SORE_FORCE = 0.12;
+
+/** Chance de que un tramo de `seconds` con ese desgaste abra una llaga (0 hasta `WORN_AT`). */
+export function footSoreChance(wear: number, seconds: number): number {
+  if (!(seconds > 0) || !Number.isFinite(seconds) || !(wear > WORN_AT)) return 0;
+  const over = (clamp01(wear) - WORN_AT) / (1 - WORN_AT);
+  return round(Math.min(1, over * FOOT_SORE_PER_HOUR * (seconds / 3600)));
+}
+
+/**
+ * La llaga que deja el tramo, o null (body-health: heridas de pie). Una tirada por tramo con el
+ * rng del cuerpo; cae en una pierna (el plan corporal no separa el pie), leve y sucia (el
+ * camino), así que si nadie la limpia se infecta como cualquier herida.
+ */
+export function footSoreBlow(
+  wear: number,
+  seconds: number,
+  rng: Rng,
+  cause: EventId,
+  at: Tick,
+): Blow | null {
+  if (!rng.chance(footSoreChance(wear, seconds))) return null;
+  const zone = rng.pick(["left_leg", "right_leg"] as const);
+  return { kind: "cut", force: FOOT_SORE_FORCE * (0.5 + rng.float()), zone, dirt: 0.8, cause, at };
 }
