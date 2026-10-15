@@ -44,6 +44,11 @@ export function cloakClo(wear: number | undefined): number {
   return round(CLOAK_CLO * (1 - clamp01(wear ?? 0)));
 }
 
+/** El abrigo de la capa que lleva en el viaje: ninguno si la dejó en casa (`NpcJourney.cloak`). */
+export function carriedCloakClo(carried: boolean | undefined, wear: number | undefined): number {
+  return carried === false ? 0 : cloakClo(wear);
+}
+
 /** El desgaste tras `days` días de camino. */
 export function cloakWearAfter(wear: number, days: number): number {
   if (!(days > 0) || !Number.isFinite(days)) return round(clamp01(wear));
@@ -84,6 +89,8 @@ export function cloakWearProcess(o: CloakWearOptions): ProcessDef {
         const who = id as AgentId;
         if (ctx.truth.get(PERSON, who) === undefined) continue;
         if (ctx.truth.get(ENTITY, who)?.endedAt !== undefined) continue;
+        // La que dejó en casa por su pronóstico no se gasta en el camino.
+        if (ctx.truth.get(NPC_JOURNEY, who)?.cloak === false) continue;
         const had = ctx.truth.get(CLOAK, who)?.wear ?? 0;
         if (had >= 1) continue;
         const wear = cloakWearAfter(had, 1);

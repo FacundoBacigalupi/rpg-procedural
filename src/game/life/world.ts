@@ -10,6 +10,7 @@ import type {
   PlaceRef,
   PlanetClock,
   Seed,
+  Tick,
 } from "../../core/index.ts";
 import { ledgerUnit, makeId, Rng } from "../../core/index.ts";
 import {
@@ -76,7 +77,7 @@ import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
 import { personalPoolShareOf } from "./budget.ts";
-import { CLOAK, cloakClo, cloakWearProcess, roadClothing } from "./cloak.ts";
+import { CLOAK, carriedCloakClo, cloakWearProcess, roadClothing } from "./cloak.ts";
 import { cloakMendProcess } from "./cloak-mend.ts";
 import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
@@ -97,6 +98,7 @@ import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { footwearMendProcess } from "./footwear-mend.ts";
+import { forecastBeforeLeaving } from "./forecast.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
 import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
@@ -450,6 +452,8 @@ export interface LifeWorld {
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
   readonly npcCloakMend?: boolean;
+  /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`ForecastBeforeLeaving`); apagado: siempre la lleva. */
+  readonly npcForecast?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
@@ -1374,7 +1378,7 @@ export function lifeWorld(
                   return roadClothing(
                     airC,
                     outdoorTempC(parts.map, parts.clock, parts.seed, trip.since),
-                    cloakClo(t.get(CLOAK, who)?.wear),
+                    carriedCloakClo(trip.cloak, t.get(CLOAK, who)?.wear),
                   );
                 },
               }
@@ -1658,6 +1662,19 @@ export function lifeWorld(
                       ...(parts.npcTransit === true ? { transit: true } : {}),
                       placeOf: placeOf(parts, village),
                       ...(parts.npcPace ? { pace: parts.npcPace } : {}),
+                      ...(parts.npcForecast === true && parts.npcCloak === true
+                        ? {
+                            forecast: (who: AgentId, now: Tick, days: number) =>
+                              forecastBeforeLeaving(
+                                parts.map,
+                                parts.clock,
+                                parts.seed,
+                                who,
+                                now,
+                                days,
+                              ),
+                          }
+                        : {}),
                       ...(parts.npcWater
                         ? {
                             drink: {

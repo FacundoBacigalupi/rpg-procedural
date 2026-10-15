@@ -136,6 +136,7 @@ El futuro del tiempo es una proyección (divination §3): los sistemas que ya ex
 - **Sentidos de cultivador:** percibir humedad, viento y qi a distancia según el reino (perception): una lectura real de la verdad, con alcance limitado.
 - **Adivinación** (divination): las lecturas que se apoyan en el estado aciertan como la proyección; las que no, como el azar con sesgo. Los adivinos de lluvia son un oficio con clientela y con fama que sube o baja según aciertan.
 - **Cada pronóstico es una creencia** de quien lo hace, y los demás deciden con ella: sembrar antes, no zarpar, adelantar la cosecha.
+- **Implementado (npc-b2b3b2c3, `life-19`):** el pronóstico del frío (`foreseenMinC`, `sim/weather/forecast.ts`) no mira el tiempo de los días que vienen: parte de la estación esperada (normales y fase del año) y de cuánto se apartó hoy de ella, y esa desviación se desvanece en `FORECAST_MEMORY_DAYS` (4) días, como la memoria del generador (`smooth`); quien lee mal el termómetro arrastra el error. Acierta mejor que la estación sola a uno y a tres días (test) y de ahí en adelante es la estación. Lo usa el viajero NPC para decidir si carga la capa. Falta el pronóstico de lluvia y el panel del jugador (ROADMAP `weather-forecast-rain`, `weather-forecast-panel`).
 
 ## 8. Tormentas de qi
 

@@ -256,6 +256,8 @@ export interface LifeOptions {
   readonly legacyNoStrain?: boolean;
   /** Solo el replay de un motor anterior a `life-18`: apaga `npcCloakMend` aunque el perfil lo traiga. */
   readonly legacyNoCloakMend?: boolean;
+  /** Solo el replay de un motor anterior a `life-19`: apaga `npcForecast` aunque el perfil lo traiga. */
+  readonly legacyNoForecast?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -414,6 +416,8 @@ export interface LifeOptions {
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida (`LifeParts.npcCloakMend`); apagado. */
   readonly npcCloakMend?: boolean;
+  /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`LifeParts.npcForecast`); apagado: siempre la lleva. */
+  readonly npcForecast?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
@@ -559,6 +563,7 @@ export function optInParts(
   | "npcFootwearMend"
   | "npcCloak"
   | "npcCloakMend"
+  | "npcForecast"
   | "npcStrain"
   | "conception"
   | "conceptionRateScale"
@@ -666,6 +671,7 @@ export function optInParts(
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
+    ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
