@@ -120,6 +120,9 @@ export const ScenarioLife = z.strictObject({
     .optional(),
   npcWater: z.strictObject({ liters: z.number().gt(0) }).optional(),
   idlePlayerRoutine: z.boolean().optional(),
+  growthSequelae: z.boolean().optional(),
+  adultGrowth: z.boolean().optional(),
+  gradualGrowth: z.boolean().optional(),
 });
 export type ScenarioLife = z.infer<typeof ScenarioLife>;
 
