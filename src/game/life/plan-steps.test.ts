@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-25");
+    expect(LIFE_ENGINE).toBe("life-26");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       frequency: 8,
@@ -335,8 +335,12 @@ describe("motor y pasos", () => {
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
     });
-    expect(engineOptions("life-24", {})).toEqual({ legacyNoExhaustion: true });
-    expect(engineOptions("life-25", {})).toEqual({});
+    expect(engineOptions("life-24", {})).toEqual({
+      legacyNoExhaustion: true,
+      legacyNoCobbler: true,
+    });
+    expect(engineOptions("life-25", {})).toEqual({ legacyNoCobbler: true });
+    expect(engineOptions("life-26", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */

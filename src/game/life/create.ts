@@ -1040,7 +1040,14 @@ export function ledgerConfigOf(
       [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: [...units, ...tradeUnits.filter((u) => !units.includes(u))],
+      [ROTTED]: [
+        ...units,
+        ...tradeUnits.filter((u) => !units.includes(u)),
+        // El cuero del zapatero también se echa a perder (lento) en su bolsillo.
+        ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
+          ? [LEATHER_UNIT]
+          : []),
+      ],
       seed: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),

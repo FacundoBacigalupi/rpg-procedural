@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-25");
+    expect(LIFE_ENGINE).toBe("life-26");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -268,8 +268,12 @@ describe("motor de la espera nocturna", () => {
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
     });
-    expect(engineOptions("life-24", {})).toEqual({ legacyNoExhaustion: true });
-    expect(engineOptions("life-25", {})).toEqual({});
+    expect(engineOptions("life-24", {})).toEqual({
+      legacyNoExhaustion: true,
+      legacyNoCobbler: true,
+    });
+    expect(engineOptions("life-25", {})).toEqual({ legacyNoCobbler: true });
+    expect(engineOptions("life-26", {})).toEqual({});
   });
 });
 
