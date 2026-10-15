@@ -118,7 +118,11 @@ describe("renderWeather", () => {
         { ahead: "tomorrow", chance: "likely", trust: "fair" },
         { ahead: "week", chance: "possible", trust: "season_only" },
       ],
+      signs: [{ id: "heavy_sky", says: "rain", origin: "shepherds", faith: "sometimes" }],
     });
+    expect(text).toContain(
+      "Hoy el cielo está cargado: dicen los pastores que anuncia agua en estos días (a veces lo viste cumplirse).",
+    );
     expect(text).toContain("Para mañana esperás que lo más probable sea que llueva.");
     expect(text).toContain("Es el invierno y el aire está frío.");
     expect(text).toContain("Para mañana creés que habrá heladas.");

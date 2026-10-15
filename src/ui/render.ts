@@ -681,6 +681,34 @@ const TRUST: Readonly<Record<WeatherPanel["outlook"][number]["trust"], string>> 
   season_only: " (es lo que suele hacer en esta época)",
 };
 
+type PanelSign = WeatherPanel["signs"][number];
+const SIGN_TEXT: Readonly<Record<PanelSign["id"], string>> = {
+  strong_wind: "el viento se levanta y viene a rachas",
+  heavy_sky: "el cielo está cargado",
+  clear_sky: "el cielo está limpio",
+  muggy_air: "el aire está pesado y bochornoso",
+  red_dusk: "el cielo se tiñe de rojo al caer la tarde",
+  aching_knees: "te duelen las rodillas",
+  low_swallows: "las golondrinas vuelan bajo",
+};
+const SIGN_SAYS: Readonly<Record<PanelSign["says"], string>> = {
+  rain: "anuncia agua en estos días",
+  fair: "anuncia buen tiempo",
+};
+const SIGN_ORIGIN: Readonly<Record<PanelSign["origin"], string>> = {
+  sailors: "dicen los marinos",
+  shepherds: "dicen los pastores",
+  farmers: "dicen los labriegos",
+  elders: "dicen los viejos",
+  omens: "dice la gente",
+};
+const SIGN_FAITH: Readonly<Record<PanelSign["faith"], string>> = {
+  unproven: "nunca lo viste bastante para saber",
+  rarely: "casi nunca lo viste cumplirse",
+  sometimes: "a veces lo viste cumplirse",
+  often: "casi siempre lo viste cumplirse",
+};
+
 /** Lo que el personaje siente del cielo y lo que cree que viene (weather §11): creencia, no dato. */
 export function renderWeather(p: WeatherPanel): string {
   const lines = [`Es ${SEASON_NAME[p.season]} y el aire está ${AIR_FEEL[p.airNow]}.`];
@@ -689,6 +717,11 @@ export function renderWeather(p: WeatherPanel): string {
   }
   for (const r of p.rain) {
     lines.push(`${AHEAD[r.ahead]} esperás ${RAIN_BAND[r.chance]}${TRUST[r.trust]}.`);
+  }
+  for (const s of p.signs) {
+    lines.push(
+      `Hoy ${SIGN_TEXT[s.id]}: ${SIGN_ORIGIN[s.origin]} que ${SIGN_SAYS[s.says]} (${SIGN_FAITH[s.faith]}).`,
+    );
   }
   return lines.join("\n");
 }
