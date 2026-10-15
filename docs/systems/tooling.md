@@ -48,6 +48,14 @@ por sí solas cobertura del sistema.
 Los errores de lectura de estas fotos se registran como `coverage-initial` o
 `coverage-final`; los cálculos posteriores de métricas usan la etapa `report`.
 
+Coberturas dirigidas (opt-in, combinables, no cambian el perfil sin el flag):
+`--rescue` (préstamos con prenda y fiador, contratar, prometer), `--commerce`
+(oficios vistos, profecía contada), `--natality` (fecundidad acelerada),
+`--scenario full-profile-focus` (salud y deuda) y `--senses` (turnos `look` y
+`ponder` del personaje: `life.looking` y `life.ponder` solo corren ante verbos del
+jugador, que la corrida headless no juega; `tools/sim/senses-coverage.ts`). Los
+turnos son planes legales por `Life.turn` y quedan en `reproduction.plans`.
+
 **SQLite** (`node:sqlite`), un archivo por vida, en modo WAL.
 
 ```
