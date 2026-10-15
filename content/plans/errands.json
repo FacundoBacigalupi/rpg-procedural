@@ -1,0 +1,64 @@
+[
+  {
+    "id": "fetchwater",
+    "name": "ir por agua, beber y volver",
+    "params": [{ "id": "water", "kind": "place" }, { "id": "home", "kind": "place" }],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "water" }] },
+        { "kind": "do", "verb": "drink", "args": [] },
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "home" }] }
+      ]
+    }
+  },
+  {
+    "id": "gatherwood",
+    "name": "ir al monte a juntar y volver",
+    "params": [{ "id": "wood", "kind": "place" }, { "id": "home", "kind": "place" }],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "wood" }] },
+        { "kind": "do", "verb": "gather", "args": [] },
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "home" }] }
+      ]
+    }
+  },
+  {
+    "id": "marketround",
+    "name": "ronda al mercado",
+    "params": [
+      { "id": "market", "kind": "place" },
+      { "id": "seller", "kind": "person" },
+      { "id": "home", "kind": "place" }
+    ],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "market" }] },
+        { "kind": "do", "verb": "look", "args": [] },
+        { "kind": "do", "verb": "trade", "args": [{ "role": "with", "param": "seller" }] },
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "home" }] }
+      ]
+    }
+  },
+  {
+    "id": "visit",
+    "name": "visitar a un conocido",
+    "params": [
+      { "id": "friend", "kind": "person" },
+      { "id": "friend_at", "kind": "place" },
+      { "id": "home", "kind": "place" }
+    ],
+    "root": {
+      "kind": "seq",
+      "steps": [
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "friend_at" }] },
+        { "kind": "do", "verb": "speak", "args": [{ "role": "to", "param": "friend" }] },
+        { "kind": "do", "verb": "wait", "args": [{ "role": "for", "seconds": 1800 }] },
+        { "kind": "do", "verb": "move", "args": [{ "role": "to", "param": "home" }] }
+      ]
+    }
+  }
+]

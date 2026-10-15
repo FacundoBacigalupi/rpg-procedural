@@ -19,9 +19,11 @@ import {
   type ActionPlan,
   type ArgValue,
   ASLEEP,
+  BELIEFS,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  believed,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -88,9 +90,11 @@ export interface NpcVerbsOptions {
   readonly transit?: true;
   /**
    * Opt-in: verbos de la decisión que se ejecutan como una plantilla de plan de `content/plans/`
-   * (`byVerb`: verbo -> id de plantilla, p. ej. `work` -> `fieldwork`). Los parámetros de lugar
-   * salen del lugar más cercano de la clase que dice cada uno (`PARAM_PLACE_KIND`); sin ellos, el
-   * verbo suelto como siempre.
+   * (`byVerb`: verbo -> id de plantilla, p. ej. `work` -> `fieldwork`; o `verbo@clase` del objetivo,
+   * p. ej. `move@water` -> `fetchwater`, `speak@person` -> `visit`). Los parámetros de lugar salen
+   * del lugar más cercano de la clase que dice cada uno (`PARAM_PLACE_KIND`), los de persona del
+   * objetivo de la decisión y el lugar de una persona de dónde el actor la cree
+   * (`PARAM_PERSON_PLACE`); sin ellos, el verbo suelto como siempre.
    */
   readonly templates?: {
     readonly byVerb: Readonly<Record<string, string>>;
@@ -237,14 +241,34 @@ export function planFromDecision(
 export const PARAM_PLACE_KIND: Readonly<Record<string, string>> = {
   field: "fields",
   home: "village",
+  market: "village",
   water: "water",
   wood: "forest",
 };
 
 /**
- * Los parámetros de lugar de una plantilla para quien está en `from` (puro): el lugar más cercano
- * de la clase que dice cada parámetro (`PARAM_PLACE_KIND`). Un parámetro de persona, de clase
- * desconocida o sin lugar de esa clase deja la plantilla sin resolver (`undefined`).
+ * Parámetros de lugar que salen de una persona de la plantilla (npc-d2): `friend_at` es el lugar donde
+ * el actor cree que está `friend` (su creencia `at`), no donde está de verdad.
+ */
+export const PARAM_PERSON_PLACE: Readonly<Record<string, string>> = {
+  friend_at: "friend",
+  seller_at: "seller",
+};
+
+/** Lo que una plantilla sabe de las personas: a quién apunta la decisión y dónde cree el actor que está. */
+export interface TemplatePeople {
+  /** El objetivo de la decisión (`Decision.target`); solo cuenta si es una persona (`agent:`). */
+  readonly target?: string | undefined;
+  /** El hex donde el actor cree que está alguien (creencia `at`); sin creencia, `undefined`. */
+  readonly believedHex?: (who: string) => number | undefined;
+}
+
+/**
+ * Los parámetros de una plantilla para quien está en `from` (puro). Un lugar es el más cercano de la
+ * clase que dice cada parámetro (`PARAM_PLACE_KIND`); una persona, el objetivo de la decisión si es
+ * una persona (una sola por plantilla); el lugar de una persona (`PARAM_PERSON_PLACE`), el que
+ * contiene el hex donde el actor la cree. Lo que no se resuelve (clase desconocida, sin lugar de esa
+ * clase, decisión sin persona, sin creencia de dónde está) deja la plantilla sin resolver.
  */
 export function templateParams(
   template: PlanTemplate,
@@ -255,12 +279,32 @@ export function templateParams(
   }[],
   map: LocalMap,
   from: number | undefined,
+  people: TemplatePeople = {},
 ): Record<string, EntityRef> | undefined {
   if (from === undefined) return undefined;
   const out: Record<string, EntityRef> = {};
+  const persons = template.params.filter((p) => p.kind === "person");
+  if (persons.length > 1) return undefined;
+  for (const p of persons) {
+    if (!people.target?.startsWith("agent:")) return undefined;
+    out[p.id] = people.target as EntityRef;
+  }
   for (const p of template.params) {
+    if (p.kind !== "place") continue;
+    const of = PARAM_PERSON_PLACE[p.id];
+    if (of !== undefined) {
+      const who = out[of];
+      const hex = who === undefined ? undefined : people.believedHex?.(who);
+      if (hex === undefined) return undefined;
+      const at = places
+        .filter((pl) => pl.hexes.includes(hex))
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+      if (!at) return undefined;
+      out[p.id] = at.id as EntityRef;
+      continue;
+    }
     const kind = PARAM_PLACE_KIND[p.id];
-    if (p.kind !== "place" || kind === undefined) return undefined;
+    if (kind === undefined) return undefined;
     let best: { id: string; steps: number } | undefined;
     for (const pl of places) {
       if (pl.kind !== kind || pl.hexes.length === 0) continue;
@@ -275,21 +319,62 @@ export function templateParams(
   return out;
 }
 
-/** El plan de una plantilla ya resuelta, con fuente `utility`; sin parámetros, nada. */
+/**
+ * La plantilla que toca a una decisión (puro): primero la de `verbo@clase` (la clase del lugar al
+ * que apunta, o `person` si apunta a alguien: `move@water`, `speak@person`), después la del verbo.
+ */
+export function templateKeyFor(
+  byVerb: Readonly<Record<string, string>>,
+  verb: string,
+  targetKind: string | undefined,
+): string | undefined {
+  return (targetKind !== undefined ? byVerb[`${verb}@${targetKind}`] : undefined) ?? byVerb[verb];
+}
+
+/** Si una plantilla tiene parámetros de persona (y lee las creencias del actor). */
+export function templateHasPerson(template: PlanTemplate): boolean {
+  return template.params.some((p) => p.kind === "person");
+}
+
+/**
+ * El plan de una plantilla ya resuelta, con fuente `utility`; sin parámetros, nada. Con `decided` (el
+ * plan del verbo suelto de la decisión), los pasos de ese mismo verbo llevan además los argumentos
+ * de la decisión que la plantilla no fija (qué comerciar, qué decir y su acto de habla).
+ */
 export function planFromTemplate(
   template: PlanTemplate,
   params: Readonly<Record<string, EntityRef>> | undefined,
   actor: AgentId,
+  decided?: ActionPlan,
 ): ActionPlan | undefined {
   if (!params) return undefined;
+  const root = expandTemplate(template.root, params);
+  const extra = decided?.root.kind === "do" ? decided.root : undefined;
   return {
     actor,
     source: "utility",
     goal: template.id,
-    root: expandTemplate(template.root, params),
+    root: extra ? withDecidedArgs(root, extra.verb, extra.args) : root,
     manner: [],
     causes: [{ kind: "state", entity: actor, key: "utility" }],
   };
+}
+
+function withDecidedArgs(
+  node: ActionPlan["root"],
+  verb: string,
+  args: readonly ArgValue[],
+): ActionPlan["root"] {
+  if (node.kind === "do") {
+    if (node.verb !== verb) return node;
+    const have = new Set(node.args.map((a) => a.role));
+    const add = args.filter((a) => !have.has(a.role));
+    return add.length === 0 ? node : { ...node, args: [...node.args, ...add] };
+  }
+  if (node.kind === "seq") {
+    return { ...node, steps: node.steps.map((s) => withDecidedArgs(s, verb, args)) };
+  }
+  return node;
 }
 
 /** Convierte la decisión vigente en plan y lo agenda para `life.act`; un plan en curso no se pisa. */
@@ -315,6 +400,13 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
       ...(o.transit ? [TRANSIT.name] : []),
+      ...(o.templates &&
+      Object.values(o.templates.byVerb).some((id) => {
+        const t = o.catalog.template(id);
+        return t !== undefined && templateHasPerson(t);
+      })
+        ? [BELIEFS.name]
+        : []),
     ],
     writes: [
       PLAN_STATE.name,
@@ -503,9 +595,27 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       const decision = truth.get(NPC_DECISION, me);
       if (!decision || !allowed.has(decision.verb) || ctx.now - decision.at >= o.day) return {};
       const done = truth.get(NPC_VERB_LOG, me);
+      // La plantilla de la decisión: `verbo@clase` del objetivo (lugar o persona) y si no la del verbo.
+      const targetKind = !o.templates
+        ? undefined
+        : decision.target?.startsWith("agent:")
+          ? "person"
+          : decision.target
+            ? truth.get(PLACE, decision.target as never)?.kind
+            : undefined;
+      const tplId = o.templates
+        ? templateKeyFor(o.templates.byVerb, decision.verb, targetKind)
+        : undefined;
+      const tpl = tplId ? o.catalog.template(tplId) : undefined;
       if (decision.verb === "move") {
         // Con viaje, la decisión abre un solo viaje; llegar no lo reabre cuando la rutina lo aleja.
-        if (journeyDays !== undefined && done && done.at === decision.at && done.id === decision.id)
+        // Con plantilla (ir, hacer, volver), tampoco: la vuelta no reabre la ida.
+        if (
+          (journeyDays !== undefined || tpl) &&
+          done &&
+          done.at === decision.at &&
+          done.id === decision.id
+        )
           return {};
         // Un camino largo son varios tramos: sigue hasta llegar al lugar mientras la decisión vigue.
         const hexes = decision.target
@@ -516,9 +626,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       } else if (done && done.at === decision.at && done.id === decision.id) return {};
       const state = truth.get(PLAN_STATE, me);
       if (state && !state.done) return {};
-      // Con plantilla para este verbo (ir al campo, trabajar, volver) el plan es de varios pasos.
-      const tplId = o.templates?.byVerb[decision.verb];
-      const tpl = tplId ? o.catalog.template(tplId) : undefined;
+      // Con plantilla para esta decisión (ir al campo, trabajar, volver) el plan es de varios pasos.
       const fromTemplate =
         tpl && o.templates
           ? planFromTemplate(
@@ -531,8 +639,20 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
                 }),
                 o.templates.map,
                 truth.get(LOCATION, me)?.hex,
+                templateHasPerson(tpl)
+                  ? {
+                      target: decision.target,
+                      believedHex: (who) => {
+                        const b = believed(truth.get(BELIEFS, me), who as AgentId, "at");
+                        return b && typeof b.value === "object" && b.value !== null
+                          ? (b.value as { hex?: number }).hex
+                          : undefined;
+                      },
+                    }
+                  : {},
               ),
               me,
+              planFromDecision(decision, o.catalog, me),
             )
           : undefined;
       const plan =
@@ -545,8 +665,10 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         );
       if (!plan) return {};
       const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });
-      // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega.
+      // Con viaje, ir a un lugar abre un viaje que sigue los días siguientes si no llega. Una
+      // plantilla (ir por agua, al monte, de visita) es una salida corta de ida y vuelta: sin viaje.
       const opens =
+        !fromTemplate &&
         journeyDays !== undefined &&
         o.placeOf &&
         decision.verb === "move" &&
