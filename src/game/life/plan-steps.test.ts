@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-22");
+    expect(LIFE_ENGINE).toBe("life-23");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       frequency: 8,
@@ -85,6 +85,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-4", {})).toEqual({
       waitAwake: true,
@@ -105,6 +106,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -122,6 +124,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -138,6 +141,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
@@ -153,6 +157,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
@@ -167,6 +172,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       waitEatHomeOnly: true,
@@ -180,6 +186,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyNoCare: true,
@@ -192,6 +199,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyNoFootSores: true,
@@ -203,6 +211,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyNoFootwearMend: true,
@@ -213,6 +222,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-15", {})).toEqual({
       legacyNoCloak: true,
@@ -222,6 +232,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-16", {})).toEqual({
       legacyNoStrain: true,
@@ -230,6 +241,7 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-17", {})).toEqual({
       legacyNoCloakMend: true,
@@ -237,24 +249,32 @@ describe("motor y pasos", () => {
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-19", {})).toEqual({
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-18", {})).toEqual({
       legacyNoForecast: true,
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
     expect(engineOptions("life-20", {})).toEqual({
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
     });
-    expect(engineOptions("life-21", {})).toEqual({ legacyNoFieldSowing: true });
-    expect(engineOptions("life-22", {})).toEqual({});
+    expect(engineOptions("life-21", {})).toEqual({
+      legacyNoFieldSowing: true,
+      legacyNoFieldShared: true,
+    });
+    expect(engineOptions("life-22", {})).toEqual({ legacyNoFieldShared: true });
+    expect(engineOptions("life-23", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */

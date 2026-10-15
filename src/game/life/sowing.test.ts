@@ -102,3 +102,43 @@ describe("siembra del campo en la vida (opt-in)", () => {
     expect(run(true).hash()).toEqual(run(true).hash());
   }, 240_000);
 });
+
+describe("campo compartido con el jugador y los dormidos (opt-in)", () => {
+  const base = {
+    npcVerbs: ["move"],
+    npcJourneyDays: 6,
+    npcCloak: true,
+    npcForecast: true,
+    npcRainForecast: true,
+    npcFieldWatering: true,
+    npcFieldSowing: true,
+  } as const;
+
+  function run(shared: boolean) {
+    const life = Life.create(4, content, { ...base, ...(shared ? { npcFieldShared: true } : {}) });
+    life.advanceTo(life.now + 150 * 86_400);
+    return life;
+  }
+
+  it("es opt-in, pide el riego y el perfil lo enciende desde life-23", () => {
+    expect(optInParts({})).toEqual({});
+    expect(optInParts({ npcFieldShared: true })).toEqual({ npcFieldShared: true });
+    expect(
+      validateLifeDependencies({ npcFieldShared: true }).some(
+        (i) => i.requires === "npcFieldWatering",
+      ),
+    ).toBe(true);
+    expect(FULL_PROFILE.npcFieldShared).toBe(true);
+    expect(optInParts({ npcFieldShared: true, legacyNoFieldShared: true })).toEqual({});
+    expect(engineOptions("life-22", FULL_PROFILE).legacyNoFieldShared).toBe(true);
+    expect(engineOptions("life-23", FULL_PROFILE).legacyNoFieldShared).toBeUndefined();
+  });
+
+  it("conserva y es determinista", () => {
+    const life = run(true);
+    expect(
+      checkInvariants({ truth: life.world.truth, log: life.world.log, ledger: life.world.ledger }),
+    ).toEqual([]);
+    expect(run(true).hash()).toEqual(life.hash());
+  }, 240_000);
+});

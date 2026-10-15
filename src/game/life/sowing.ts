@@ -12,7 +12,7 @@
 import { Rng, type Seed } from "../../core/index.ts";
 import { type ReadonlyWorldTruth, table } from "../../sim/index.ts";
 import { believedRainChance, RAIN_HORIZON_DAYS, RAIN_WAIT_CHANCE } from "./forecast.ts";
-import { DRY_SOIL_MM, type IrrigationOptions } from "./irrigation.ts";
+import { DRY_SOIL_MM, fieldBoost, type IrrigationOptions } from "./irrigation.ts";
 
 /** Lo que sembró una persona: la temporada (su primer día) y el día en que sembró. */
 export interface Sown {
@@ -87,6 +87,22 @@ export function sownDay(truth: ReadonlyWorldTruth, start: number): number | unde
 /** El rinde de la temporada el día `day`: sembrada, el de su día; sin sembrar, el de la espera hasta hoy. */
 export function fieldSowYield(truth: ReadonlyWorldTruth, start: number, day: number): number {
   return sowYield((sownDay(truth, start) ?? day) - start);
+}
+
+/**
+ * El factor de rinde del campo el día `day` que suman el riego vigente y la siembra de la temporada
+ * (1 = nada de eso). Lo comparten la rutina de los despiertos, la puesta al día de los dormidos y la
+ * cosecha del jugador, para que el mismo campo rinda igual lo trabaje quien lo trabaje.
+ */
+export function fieldCropFactor(
+  truth: ReadonlyWorldTruth,
+  day: number,
+  rainedMm: number,
+  start: number | undefined,
+): number {
+  return (
+    fieldBoost(rainedMm, truth, day) * (start === undefined ? 1 : fieldSowYield(truth, start, day))
+  );
 }
 
 /**
