@@ -7,8 +7,13 @@ import {
   dayOf,
   expectedMeanC,
   foreseenRainChance,
+  knownSigns,
   persistence,
   rainedToday,
+  SIGN_HORIZON_DAYS,
+  signFaith,
+  signRecord,
+  signsShowing,
   TYPICAL_HALF_RANGE_C,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -48,7 +53,9 @@ describe("el pronóstico del jugador en el panel del cielo", () => {
   it("dice todo en palabras: ningún número del mundo sale en el panel ni en su texto", () => {
     const panel = weatherPanel(w);
     expect(leaves(panel).every((v) => typeof v === "string")).toBe(true);
-    expect(Object.keys(panel).sort()).toEqual(["airNow", "outlook", "rain", "season"]);
+    expect(Object.keys(panel).sort()).toEqual(["airNow", "outlook", "rain", "season", "signs"]);
+    for (const s of panel.signs)
+      expect(Object.keys(s).sort()).toEqual(["faith", "id", "origin", "says"]);
     for (const r of panel.rain) expect(Object.keys(r).sort()).toEqual(["ahead", "chance", "trust"]);
     for (const o of panel.outlook)
       expect(Object.keys(o).sort()).toEqual(["ahead", "night", "trust"]);
@@ -98,6 +105,38 @@ describe("el pronóstico del jugador en el panel del cielo", () => {
     expect(rainTrustAt(101, 3)).toBe("season_only");
     expect(rainTrustAt(99, 1)).toBe("fair");
     expect(rainTrustAt(99, 3)).toBe("weak");
+  });
+
+  it("las señales salen del cielo de hoy y de lo ya vivido, y sólo las que su lugar repite", () => {
+    const today = dayOf(w.clock, w.scheduler.now + Math.round((w.map.lonDeg / 360) * w.clock.day));
+    const root = Rng.root(w.seed);
+    const lore = knownSigns(root, w.map.climate.cell);
+    const showing = signsShowing(w.map.climate, w.clock, root, w.player, today);
+    const panel = weatherPanel(w);
+    expect(panel.signs.map((s) => s.id)).toEqual(showing.filter((id) => lore.includes(id)));
+    for (const s of panel.signs) {
+      const rec = signRecord(s.id, w.map.climate, w.clock, root, w.player, today - 1, 360);
+      expect(s.faith).toBe(signFaith(rec));
+    }
+    // La fe no sabe del plazo que viene: el registro termina el día de ayer menos el plazo.
+    expect(
+      signRecord("heavy_sky", w.map.climate, w.clock, root, w.player, today - 1, 360).days,
+    ).toBe(360 - SIGN_HORIZON_DAYS + 1);
+  });
+
+  it("a lo largo de un año aparecen señales y ninguna trae números ni la verdad", () => {
+    const root = Rng.root(w.seed);
+    const lore = knownSigns(root, w.map.climate.cell);
+    let seenAny = 0;
+    for (let d = 400; d < 760; d += 7) {
+      const showing = signsShowing(w.map.climate, w.clock, root, w.player, d).filter((id) =>
+        lore.includes(id),
+      );
+      seenAny += showing.length;
+    }
+    expect(seenAny).toBeGreaterThan(0);
+    for (const s of weatherPanel(w).signs)
+      expect(leaves(s).every((v) => typeof v === "string")).toBe(true);
   });
 
   it("el error de lectura es suyo: otro personaje, otra lectura del mismo día", () => {

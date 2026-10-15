@@ -4,8 +4,9 @@
 // con `foreseenMinC`, que NO mira el tiempo de mañana. Como los demás paneles, es un muro con la
 // verdad: sale en palabras (bandas), sin grados, sin íconos de pronóstico y sin decir si acertó.
 // La lluvia sale igual (`foreseenRainChance`: si llovió hoy y cuánto llueve en su lugar, no el
-// tiempo de los días que vienen). Las señales populares (refranes con correlación calculada) van
-// aparte (ROADMAP `weather-forecast-signs`). Puro: no escribe nada ni gasta tiempo.
+// tiempo de los días que vienen). Las señales populares (`sim/weather/signs.ts`) salen como lo que
+// dice la gente de su lugar, con la fe que le dan los aciertos del último año (días ya vividos),
+// nunca con lo que valen de verdad. Puro: no escribe nada ni gasta tiempo.
 
 import { Rng } from "../../core/index.ts";
 import {
@@ -13,9 +14,18 @@ import {
   FORECAST_MEMORY_DAYS,
   foreseenMinC,
   foreseenRainChance,
+  knownSigns,
   outdoorTempC,
   rainedToday,
+  SIGNS,
+  type SignFaith,
+  type SignId,
+  type SignOrigin,
+  type SignSays,
   sharedBlockDays,
+  signFaith,
+  signRecord,
+  signsShowing,
   yearPhase,
 } from "../../sim/index.ts";
 import { MISREAD_SD_C } from "./forecast.ts";
@@ -52,7 +62,21 @@ export interface WeatherPanel {
     readonly chance: RainBand;
     readonly trust: ForecastTrust;
   }[];
+  /**
+   * Las señales que la gente de su lugar repite y que hoy se ven: lo que dicen (llueve / se queda
+   * bueno), de dónde viene el refrán y cuánta fe les tiene por lo que ha visto cumplirse en el
+   * último año. Nunca cuánto valen de verdad: puede creerle a una superstición.
+   */
+  readonly signs: readonly {
+    readonly id: SignId;
+    readonly says: SignSays;
+    readonly origin: SignOrigin;
+    readonly faith: SignFaith;
+  }[];
 }
+
+/** Cuántos días de lo ya vivido cuentan para la fe en un refrán. */
+export const SIGN_LOOKBACK_DAYS = 360;
 
 /** Plazos del pronóstico, en días desde hoy. */
 const HORIZONS = [
@@ -115,6 +139,27 @@ export function weatherPanel(w: LifeWorld): WeatherPanel {
   // Lee el día con el error de siempre (el mismo del viajero NPC), fijo para el personaje y el día.
   const misread = root.fork("forecast", w.player, today).normal(0, MISREAD_SD_C);
   const wetToday = rainedToday(w.map.climate, w.clock, root, today);
+  const lore = new Set(knownSigns(root, w.map.climate.cell));
+  const signs = signsShowing(w.map.climate, w.clock, root, w.player, today)
+    .filter((id) => lore.has(id))
+    .map((id) => {
+      const def = SIGNS.find((d) => d.id === id);
+      const record = signRecord(
+        id,
+        w.map.climate,
+        w.clock,
+        root,
+        w.player,
+        today - 1,
+        SIGN_LOOKBACK_DAYS,
+      );
+      return {
+        id,
+        says: def?.says ?? "rain",
+        origin: def?.origin ?? "omens",
+        faith: signFaith(record),
+      };
+    });
   return {
     season: seasonOf(yearPhase(w.clock, today), w.map.climate.latDeg),
     airNow: airFeel(outdoorTempC(w.map, w.clock, w.seed, now)),
@@ -128,5 +173,6 @@ export function weatherPanel(w: LifeWorld): WeatherPanel {
       chance: rainBand(foreseenRainChance(w.map.climate, today, days, wetToday)),
       trust: rainTrustAt(today, days),
     })),
+    signs,
   };
 }
