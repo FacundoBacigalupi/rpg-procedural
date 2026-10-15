@@ -8,12 +8,14 @@ import {
   FROSTBITE,
   FROSTBITE_ORDERS,
   INFECTION,
+  LOT_QUALITY,
   PATHOGEN,
   PATIENT_BELIEF,
   type PathogenDef,
   PERSON,
   PERSON_SUBSTANCE,
   type ProcessContext,
+  REFERENCE_QUALITY,
   type RemedyDef,
   SKILL_STATE,
   type SubstanceDef,
@@ -23,12 +25,15 @@ import {
 } from "../../sim/index.ts";
 import { exposureProcess } from "./exposure.ts";
 import {
+  chooseRemedyDose,
   frostbiteCare,
   type Healer,
   healerFee,
   healerRenown,
+  lotPotency,
   medicineProcess,
   type RemedyDose,
+  type RemedyDosing,
   signsOfBody,
   signsOfFrostbite,
   signsOfSubstances,
@@ -355,6 +360,100 @@ describe("life.medicine, remedio con dosis real", () => {
     const out = run(true);
     expect(out.events?.[0]?.causes[0]).toEqual({ kind: "event", event: "event:77" });
     expect(out.changes?.some((c) => c.table === PERSON_SUBSTANCE.name)).toBe(true);
+  });
+});
+
+describe("life.medicine, dosis desde el lote y según el enfermo", () => {
+  const herb = {
+    id: "herb",
+    routes: { ingest: { bioavailability: 1, halfHours: 1 } },
+    halfLifeHours: 10,
+    ec50: 0.5,
+    hill: 1,
+    latencyHours: 0,
+    toxicThreshold: 0,
+    damagePerHourAtDouble: 0,
+    repairHalfHours: 24,
+  } as unknown as SubstanceDef;
+  const real: RemedyDose = { def: herb, route: "ingest", amount: 1 };
+  const acc = holderAccount(doc as unknown as HolderRef);
+  type Row = {
+    treatments: {
+      dose?: { amount: number };
+      lot?: { unit: string; holder: string; takes: number; quality: number };
+    }[];
+  };
+  const run = (o: {
+    dosing?: RemedyDosing;
+    have: number;
+    quality?: number;
+    massKg?: number;
+    skill?: number;
+  }) => {
+    const t = world();
+    if (o.quality !== undefined) t.set(LOT_QUALITY, doc as EntityRef, { herb: o.quality });
+    if (o.massKg !== undefined) {
+      t.set(BODY_STATE, sick as EntityRef, { muscle: 0.5, massKg: o.massKg } as never);
+    }
+    const c = ctx(t, clock.day * 2) as { ledger?: unknown };
+    c.ledger = { balance: (a: string, u: string) => (a === acc && u === "herb" ? o.have : 0) };
+    const out = medicineProcess({
+      clock,
+      healers: [{ ...healer, skill: o.skill ?? 1 }],
+      stock: { tea: "herb" },
+      doses: { tea: real },
+      dosing: o.dosing,
+      placeOf: () => place,
+    }).run(c as unknown as ProcessContext);
+    const row = (out.changes?.find((ch) => ch.table === TREATMENT.name) as never as { value: Row })
+      ?.value.treatments[0];
+    return { out, row, spent: out.postings?.[0]?.transfers[0]?.amount };
+  };
+
+  it("pura: más masa o lote más flojo piden más tomas; con habilidad plena el error no cuenta", () => {
+    const base = { massKg: 60, refMassKg: 60, believedPotency: 1, skill: 1, noise: 1, maxTakes: 3 };
+    expect(chooseRemedyDose(base)).toEqual({ multiplier: 1, takes: 1 });
+    expect(chooseRemedyDose({ ...base, massKg: 90 })).toEqual({ multiplier: 1.5, takes: 2 });
+    expect(chooseRemedyDose({ ...base, believedPotency: 0.5 }).multiplier).toBe(2);
+    expect(chooseRemedyDose({ ...base, massKg: 10 }).multiplier).toBe(0.25);
+    expect(chooseRemedyDose({ ...base, massKg: 600 })).toEqual({ multiplier: 3, takes: 3 });
+    expect(chooseRemedyDose({ ...base, skill: 0 }).multiplier).toBeCloseTo(1.3);
+    expect(lotPotency(REFERENCE_QUALITY)).toBe(1);
+  });
+
+  it("apagado: una toma, la dosis de siempre y sin lote", () => {
+    const { row, spent } = run({ have: 5, quality: 0.35, massKg: 120 });
+    expect(spent).toBe(1);
+    expect(row?.dose?.amount).toBe(1);
+    expect(row?.lot).toBeUndefined();
+  });
+
+  it("byLot: la sustancia escala con la calidad real del lote y el tratamiento guarda de dónde salió", () => {
+    const on = run({ dosing: { byLot: true }, have: 5, quality: 0.35 });
+    expect(on.spent).toBe(1);
+    expect(on.row?.dose?.amount).toBe(0.5);
+    expect(on.row?.lot).toEqual({ unit: "herb", holder: doc, takes: 1, quality: 0.35 });
+    expect(on.out.events?.[1]?.data).toMatchObject({ amount: 0.5, lot: { holder: doc } });
+    expect(run({ dosing: { byLot: true }, have: 5, quality: 0.35 }).out).toEqual(on.out);
+  });
+
+  it("byPatient: el enfermo pesado pide más tomas, se gastan enteras y no más de las que hay", () => {
+    const heavy = run({ dosing: { byPatient: true }, have: 5, massKg: 120 });
+    expect(heavy.spent).toBe(2);
+    expect(heavy.row?.dose?.amount).toBe(2);
+    const short = run({ dosing: { byPatient: true }, have: 1, massKg: 120 });
+    expect(short.spent).toBe(1);
+    expect(short.row?.dose?.amount).toBe(1);
+    // Lote flojo y sanador que lo ve: compensa con más tomas; la sustancia que llega es la toma por la potencia real.
+    const weak = run({ dosing: { byPatient: true, byLot: true }, have: 5, quality: 0.35 });
+    expect(weak.spent).toBe(2);
+    expect(weak.row?.dose?.amount).toBe(1);
+    // Conservación: lo que sale del lote es lo que entra al sumidero, en tomas enteras.
+    const tr = weak.out.postings?.[0]?.transfers[0];
+    expect(tr).toMatchObject({ from: acc, to: "ext:remedy_used", amount: 2 });
+    // Determinista también con el error del sanador poco hábil.
+    const clumsy = () => run({ dosing: { byPatient: true }, have: 5, massKg: 70, skill: 0.2 });
+    expect(clumsy().out).toEqual(clumsy().out);
   });
 });
 
