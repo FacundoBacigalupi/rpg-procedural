@@ -275,6 +275,12 @@ export interface LifeOptions {
   /** Solo el replay de un motor anterior a `life-26`: apaga `npcCobbler` aunque el perfil lo traiga. */
   readonly legacyNoCobbler?: boolean;
   /**
+   * Solo el replay de un motor anterior a `life-27`: sin la segunda ronda `perceiveCascade`, así que
+   * `life.deeds`, `life.mark_exposure` y `life.appraise` no ven lo que emiten otros `perceive` del
+   * paso (p. ej. el `scam.discovered` de una marca falsa que emite `life.marks`).
+   */
+  readonly legacyNoPerceiveCascade?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -554,6 +560,7 @@ export function optInParts(
   | "legacyFalls"
   | "legacyTend"
   | "legacyResume"
+  | "legacyNoPerceiveCascade"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -682,6 +689,7 @@ export function optInParts(
     ...(options.legacyFalls ? { legacyFalls: true } : {}),
     ...(options.legacyTend ? { legacyTend: true } : {}),
     ...(options.legacyResume ? { legacyResume: true } : {}),
+    ...(options.legacyNoPerceiveCascade ? { legacyNoPerceiveCascade: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),

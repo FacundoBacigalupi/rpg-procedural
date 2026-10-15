@@ -192,8 +192,14 @@ export interface LifeSetup {
  * ledger con origen, cobra los arreglos del calzado en vez del sumidero). Compatibilidad: el replay con un motor
  * anterior a `life-26` enciende `legacyNoCobbler`; una vida guardada con `life-25` sigue desde su estado con el
  * límite de replay.
+ *
+ * `life-27`: `life.appraise`, `life.deeds` y `life.mark_exposure` corren una segunda ronda
+ * `perceiveCascade` con lo que emitieron los `perceive` del paso (el `scam.discovered` de una marca
+ * falsa ahora deja rumor `fraud`, `marks.cleared` y la fama del fraude). Compatibilidad: el replay con
+ * un motor anterior a `life-27` enciende `legacyNoPerceiveCascade`; una vida guardada con `life-26`
+ * sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-26";
+export const LIFE_ENGINE = "life-27";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -229,6 +235,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 24 ? { legacyNoSowSeed: true } : {}),
     ...(n < 25 ? { legacyNoExhaustion: true } : {}),
     ...(n < 26 ? { legacyNoCobbler: true } : {}),
+    ...(n < 27 ? { legacyNoPerceiveCascade: true } : {}),
   };
 }
 
