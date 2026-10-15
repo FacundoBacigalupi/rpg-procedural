@@ -260,6 +260,8 @@ export interface LifeOptions {
   readonly legacyNoForecast?: boolean;
   /** Solo el replay de un motor anterior a `life-20`: apaga `npcRainForecast` aunque el perfil lo traiga. */
   readonly legacyNoRainForecast?: boolean;
+  /** Solo el replay de un motor anterior a `life-21`: apaga `npcFieldWatering` aunque el perfil lo traiga. */
+  readonly legacyNoFieldWatering?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -422,6 +424,8 @@ export interface LifeOptions {
   readonly npcForecast?: boolean;
   /** Opt-in (con `npcForecast`): al salir el viajero cree si va a llover (lo que vio hoy y los refranes de su lugar, con su error); con lluvia creída espera un día (hasta dos seguidos) y carga la capa (`RoadForecast.rain`); apagado: sale igual. */
   readonly npcRainForecast?: boolean;
+  /** Opt-in (con `npcRainForecast`): la gente de campo riega a la primera hora si el suelo está seco y no cree que llueva, en vez de cosechar esa hora; el riego vigente sube el rinde del campo (`RoutineOptions.fieldWatering`); apagado: nadie riega. */
+  readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
@@ -569,6 +573,7 @@ export function optInParts(
   | "npcCloakMend"
   | "npcForecast"
   | "npcRainForecast"
+  | "npcFieldWatering"
   | "npcStrain"
   | "conception"
   | "conceptionRateScale"
@@ -678,6 +683,9 @@ export function optInParts(
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
     ...(options.npcRainForecast && !options.legacyNoRainForecast ? { npcRainForecast: true } : {}),
+    ...(options.npcFieldWatering && !options.legacyNoFieldWatering
+      ? { npcFieldWatering: true }
+      : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),

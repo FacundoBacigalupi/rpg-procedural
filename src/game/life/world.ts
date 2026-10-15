@@ -456,6 +456,8 @@ export interface LifeWorld {
   readonly npcForecast?: boolean;
   /** Opt-in (con `npcForecast`): el viajero también cree si va a llover (`RoadForecast.rain`); con lluvia creída espera y carga la capa; apagado. */
   readonly npcRainForecast?: boolean;
+  /** Opt-in (con `npcRainForecast`): en la rutina, la gente de campo riega con el suelo seco si no cree que llueva (`RoutineOptions.fieldWatering`); apagado. */
+  readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
@@ -1775,6 +1777,7 @@ export function lifeWorld(
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
+          ...(parts.npcFieldWatering === true ? { fieldWatering: true } : {}),
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),
           ...(parts.waitUntended === true || parts.waitNoSkin === true ? {} : { waitSkin: true }),

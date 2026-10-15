@@ -162,8 +162,13 @@ export interface LifeSetup {
  * con lo que vio hoy y los refranes de su lugar; con lluvia creída espera un día, hasta dos seguidos, y
  * carga la capa). Compatibilidad: el replay con un motor anterior a `life-20` enciende
  * `legacyNoRainForecast`; una vida guardada con `life-19` sigue desde su estado con el límite de replay.
+ *
+ * `life-21`: el perfil completo enciende `npcFieldWatering` (a la primera hora de campo, con el suelo
+ * seco y sin creer que llueva, una parte de la gente riega en vez de cosechar y el riego sube el rinde
+ * de las horas siguientes). Compatibilidad: el replay con un motor anterior a `life-21` enciende
+ * `legacyNoFieldWatering`; una vida guardada con `life-20` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-20";
+export const LIFE_ENGINE = "life-21";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -193,6 +198,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 18 ? { legacyNoCloakMend: true } : {}),
     ...(n < 19 ? { legacyNoForecast: true } : {}),
     ...(n < 20 ? { legacyNoRainForecast: true } : {}),
+    ...(n < 21 ? { legacyNoFieldWatering: true } : {}),
   };
 }
 
