@@ -54,6 +54,13 @@
     "halfLifeDays": 3000
   },
   {
+    "id": "leather",
+    "name": "cuero curtido",
+    "form": "good",
+    "priceCopperPerKg": 30,
+    "halfLifeDays": 4000
+  },
+  {
     "id": "iron",
     "name": "hierro en barras",
     "form": "good",

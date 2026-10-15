@@ -145,6 +145,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes } from "./ecology.ts";
@@ -271,6 +272,8 @@ export interface LifeOptions {
   readonly legacyNoFieldShared?: boolean;
   /** Solo el replay de un motor anterior a `life-24`: apaga `npcSowSeed` aunque el perfil lo traiga. */
   readonly legacyNoSowSeed?: boolean;
+  /** Solo el replay de un motor anterior a `life-26`: apaga `npcCobbler` aunque el perfil lo traiga. */
+  readonly legacyNoCobbler?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -435,6 +438,8 @@ export interface LifeOptions {
   readonly npcFootSores?: boolean;
   /** Opt-in (con `npcFootwear`): el NPC remienda o compra par nuevo del calzado gastado (`LifeParts.npcFootwearMend`); apagado. */
   readonly npcFootwearMend?: boolean;
+  /** Opt-in (con `npcFootwearMend`): un zapatero de la aldea con oficio propio y cuero del ledger con origen cobra los arreglos del calzado en vez del sumidero (`game/life/cobbler.ts`); apagado. */
+  readonly npcCobbler?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida (`LifeParts.npcCloakMend`); apagado. */
@@ -596,6 +601,7 @@ export function optInParts(
   | "npcFootwear"
   | "npcFootSores"
   | "npcFootwearMend"
+  | "npcCobbler"
   | "npcCloak"
   | "npcCloakMend"
   | "npcForecast"
@@ -715,6 +721,7 @@ export function optInParts(
     ...(options.npcFootwear ? { npcFootwear: true } : {}),
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
+    ...(options.npcCobbler && !options.legacyNoCobbler ? { npcCobbler: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
@@ -1017,6 +1024,7 @@ export function ledgerConfigOf(
   content: Content,
   residue?: ResidueConfig,
   sowSeed = false,
+  cobbler = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1032,7 +1040,14 @@ export function ledgerConfigOf(
       [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: [...units, ...tradeUnits.filter((u) => !units.includes(u))],
+      [ROTTED]: [
+        ...units,
+        ...tradeUnits.filter((u) => !units.includes(u)),
+        // El cuero del zapatero también se echa a perder (lento) en su bolsillo.
+        ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
+          ? [LEATHER_UNIT]
+          : []),
+      ],
       seed: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),
@@ -1047,6 +1062,7 @@ export function ledgerConfigOf(
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
       ...residueExternals(residue),
       ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
+      ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
 }
@@ -1061,11 +1077,14 @@ export function withDeclaredExternals(
   content: Content,
   residue?: ResidueConfig,
   sowSeed = false,
+  cobbler = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
-  for (const [name, units] of Object.entries(ledgerConfigOf(content, residue, sowSeed).externals)) {
+  for (const [name, units] of Object.entries(
+    ledgerConfigOf(content, residue, sowSeed, cobbler).externals,
+  )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
     if (missing.length > 0) changed = true;
@@ -1178,6 +1197,7 @@ export function createLife(
       content,
       options.residue,
       options.npcSowSeed === true && options.legacyNoSowSeed !== true,
+      options.npcCobbler === true && options.legacyNoCobbler !== true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
