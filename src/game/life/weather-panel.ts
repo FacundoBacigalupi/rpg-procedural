@@ -3,15 +3,19 @@
 // día) y de la estación que conoce por el calendario, y proyecta el frío de las noches que vienen
 // con `foreseenMinC`, que NO mira el tiempo de mañana. Como los demás paneles, es un muro con la
 // verdad: sale en palabras (bandas), sin grados, sin íconos de pronóstico y sin decir si acertó.
-// Las señales populares (refranes con correlación calculada) y la lluvia van aparte (ROADMAP
-// `weather-forecast-signs`, `weather-forecast-rain`). Puro: no escribe nada ni gasta tiempo.
+// La lluvia sale igual (`foreseenRainChance`: si llovió hoy y cuánto llueve en su lugar, no el
+// tiempo de los días que vienen). Las señales populares (refranes con correlación calculada) van
+// aparte (ROADMAP `weather-forecast-signs`). Puro: no escribe nada ni gasta tiempo.
 
 import { Rng } from "../../core/index.ts";
 import {
   dayOf,
   FORECAST_MEMORY_DAYS,
   foreseenMinC,
+  foreseenRainChance,
   outdoorTempC,
+  rainedToday,
+  sharedBlockDays,
   yearPhase,
 } from "../../sim/index.ts";
 import { MISREAD_SD_C } from "./forecast.ts";
@@ -26,6 +30,9 @@ export type NightCold = "hard_frost" | "frost" | "cold" | "cool" | "mild";
 /** Cuánta fe le tiene a lo que cree de ese plazo. */
 export type ForecastTrust = "fair" | "weak" | "season_only";
 
+/** Cuánta lluvia espera en el plazo. */
+export type RainBand = "dry" | "unlikely" | "possible" | "likely" | "sure";
+
 export type SeasonName = "spring" | "summer" | "autumn" | "winter";
 
 export interface WeatherPanel {
@@ -37,6 +44,12 @@ export interface WeatherPanel {
   readonly outlook: readonly {
     readonly ahead: "tomorrow" | "three_days" | "week";
     readonly night: NightCold;
+    readonly trust: ForecastTrust;
+  }[];
+  /** Si espera lluvia algún día hasta ese plazo, en palabras y con la fe que le tiene. */
+  readonly rain: readonly {
+    readonly ahead: "tomorrow" | "three_days" | "week";
+    readonly chance: RainBand;
     readonly trust: ForecastTrust;
   }[];
 }
@@ -65,6 +78,20 @@ export function nightCold(c: number): NightCold {
   return "mild";
 }
 
+export function rainBand(p: number): RainBand {
+  if (p < 0.1) return "dry";
+  if (p < 0.3) return "unlikely";
+  if (p < 0.6) return "possible";
+  if (p < 0.85) return "likely";
+  return "sure";
+}
+
+/** La fe en la lluvia: lo visto hoy sólo vale mientras siga el bloque de tiempo de hoy. */
+export function rainTrustAt(today: number, ahead: number): ForecastTrust {
+  if (sharedBlockDays(today, ahead) < 1) return "season_only";
+  return ahead <= 1 ? "fair" : "weak";
+}
+
 /** La fe en un pronóstico a `ahead` días: la memoria del tiempo dura unos días, de ahí en más es la estación. */
 export function trustAt(ahead: number): ForecastTrust {
   if (ahead <= 1) return "fair";
@@ -87,6 +114,7 @@ export function weatherPanel(w: LifeWorld): WeatherPanel {
   const root = Rng.root(w.seed);
   // Lee el día con el error de siempre (el mismo del viajero NPC), fijo para el personaje y el día.
   const misread = root.fork("forecast", w.player, today).normal(0, MISREAD_SD_C);
+  const wetToday = rainedToday(w.map.climate, w.clock, root, today);
   return {
     season: seasonOf(yearPhase(w.clock, today), w.map.climate.latDeg),
     airNow: airFeel(outdoorTempC(w.map, w.clock, w.seed, now)),
@@ -94,6 +122,11 @@ export function weatherPanel(w: LifeWorld): WeatherPanel {
       ahead,
       night: nightCold(foreseenMinC(w.map.climate, w.clock, root, today, days, misread)),
       trust: trustAt(days),
+    })),
+    rain: HORIZONS.map(([ahead, days]) => ({
+      ahead,
+      chance: rainBand(foreseenRainChance(w.map.climate, today, days, wetToday)),
+      trust: rainTrustAt(today, days),
     })),
   };
 }

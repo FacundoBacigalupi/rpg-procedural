@@ -114,7 +114,12 @@ describe("renderWeather", () => {
         { ahead: "three_days", night: "cold", trust: "weak" },
         { ahead: "week", night: "cold", trust: "season_only" },
       ],
+      rain: [
+        { ahead: "tomorrow", chance: "likely", trust: "fair" },
+        { ahead: "week", chance: "possible", trust: "season_only" },
+      ],
     });
+    expect(text).toContain("Para mañana esperás que lo más probable sea que llueva.");
     expect(text).toContain("Es el invierno y el aire está frío.");
     expect(text).toContain("Para mañana creés que habrá heladas.");
     expect(text).toContain("no lo jurarías");

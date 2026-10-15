@@ -663,6 +663,13 @@ const NIGHT_COLD: Readonly<Record<WeatherPanel["outlook"][number]["night"], stri
   cool: "noches frescas",
   mild: "noches templadas",
 };
+const RAIN_BAND: Readonly<Record<WeatherPanel["rain"][number]["chance"], string>> = {
+  dry: "que no llueva",
+  unlikely: "que no llueva, aunque podría",
+  possible: "que tal vez llueva",
+  likely: "que lo más probable sea que llueva",
+  sure: "que va a llover",
+};
 const AHEAD: Readonly<Record<WeatherPanel["outlook"][number]["ahead"], string>> = {
   tomorrow: "Para mañana",
   three_days: "Para dentro de tres días",
@@ -679,6 +686,9 @@ export function renderWeather(p: WeatherPanel): string {
   const lines = [`Es ${SEASON_NAME[p.season]} y el aire está ${AIR_FEEL[p.airNow]}.`];
   for (const o of p.outlook) {
     lines.push(`${AHEAD[o.ahead]} creés que habrá ${NIGHT_COLD[o.night]}${TRUST[o.trust]}.`);
+  }
+  for (const r of p.rain) {
+    lines.push(`${AHEAD[r.ahead]} esperás ${RAIN_BAND[r.chance]}${TRUST[r.trust]}.`);
   }
   return lines.join("\n");
 }
