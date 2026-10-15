@@ -84,6 +84,7 @@ export const ScenarioLife = z.strictObject({
   npcCloak: z.boolean().optional(),
   npcCloakMend: z.boolean().optional(),
   npcForecast: z.boolean().optional(),
+  npcRainForecast: z.boolean().optional(),
   npcStrain: z.boolean().optional(),
   conception: z.boolean().optional(),
   conceptionRateScale: z.number().min(0).optional(),

@@ -258,6 +258,8 @@ export interface LifeOptions {
   readonly legacyNoCloakMend?: boolean;
   /** Solo el replay de un motor anterior a `life-19`: apaga `npcForecast` aunque el perfil lo traiga. */
   readonly legacyNoForecast?: boolean;
+  /** Solo el replay de un motor anterior a `life-20`: apaga `npcRainForecast` aunque el perfil lo traiga. */
+  readonly legacyNoRainForecast?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -418,6 +420,8 @@ export interface LifeOptions {
   readonly npcCloakMend?: boolean;
   /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`LifeParts.npcForecast`); apagado: siempre la lleva. */
   readonly npcForecast?: boolean;
+  /** Opt-in (con `npcForecast`): al salir el viajero cree si va a llover (lo que vio hoy y los refranes de su lugar, con su error); con lluvia creída espera un día (hasta dos seguidos) y carga la capa (`RoadForecast.rain`); apagado: sale igual. */
+  readonly npcRainForecast?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
@@ -564,6 +568,7 @@ export function optInParts(
   | "npcCloak"
   | "npcCloakMend"
   | "npcForecast"
+  | "npcRainForecast"
   | "npcStrain"
   | "conception"
   | "conceptionRateScale"
@@ -672,6 +677,7 @@ export function optInParts(
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
+    ...(options.npcRainForecast && !options.legacyNoRainForecast ? { npcRainForecast: true } : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),

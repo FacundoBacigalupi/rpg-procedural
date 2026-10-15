@@ -59,7 +59,7 @@ import {
 } from "./act.ts";
 import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
-import type { RoadForecast } from "./forecast.ts";
+import { MAX_RAIN_WAITS, type RoadForecast } from "./forecast.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRANSIT } from "./transit-state.ts";
 
@@ -155,7 +155,12 @@ export interface JourneyDrinkOptions {
 }
 
 /** Qué decisión ya se volvió plan, para no repetirla cada hora mientras siga vigente. */
-export const NPC_VERB_LOG = table<{ readonly at: Tick; readonly id: string }>("life.npc_verb_log");
+export const NPC_VERB_LOG = table<{
+  readonly at: Tick;
+  readonly id: string;
+  /** Días seguidos que esta salida esperó a que escampara (`NpcVerbsOptions.forecast`, `RoadForecast.wait`). */
+  readonly waited?: number;
+}>("life.npc_verb_log");
 
 const ENTITY_PART = /^(agent|place):/;
 /** Ids con partes propias de otro proceso (pedir prestado, empeñar, ir hacia): no son del catálogo. */
@@ -548,11 +553,25 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         decision.target !== undefined;
       if (opens && decision.target) {
         const foreseen = o.forecast?.(me, ctx.now, journeyDays as number);
+        // Si cree que va a llover, espera a que escampe: la salida de hoy queda consumida y mañana
+        // la decisión vuelve a intentarlo; tras `MAX_RAIN_WAITS` días seguidos sale igual.
+        const waited = done && done.id === decision.id ? (done.waited ?? 0) : 0;
+        if (foreseen?.wait === true && waited < MAX_RAIN_WAITS)
+          return {
+            changes: [
+              setComponent(NPC_VERB_LOG, me, {
+                at: decision.at,
+                id: decision.id,
+                waited: waited + 1,
+              }),
+            ],
+          };
         const open = setComponent(NPC_JOURNEY, me, {
           place: decision.target,
           since: ctx.now,
           decision: decision.id,
           ...(foreseen ? { foreseenMinC: foreseen.minC, cloak: foreseen.cloak } : {}),
+          ...(foreseen?.rain !== undefined ? { foreseenRain: foreseen.rain } : {}),
           ...(o.drink ? { skin: o.drink.carryLiters } : {}),
           ...(truth.get(LOCATION, me) ? { from: truth.get(LOCATION, me)?.hex as number } : {}),
         });
@@ -609,6 +628,8 @@ export interface NpcJourney {
   readonly skin?: number;
   /** La mínima de aire que creyó al salir que le iba a tocar (`NpcVerbsOptions.forecast`). */
   readonly foreseenMinC?: number;
+  /** La chance que le dio a que lloviera en el primer tramo al salir (`RoadForecast.rain`). */
+  readonly foreseenRain?: number;
   /** Si salió con la capa (`false`: la dejó en casa por su pronóstico; sin dato, la lleva). */
   readonly cloak?: boolean;
 }
