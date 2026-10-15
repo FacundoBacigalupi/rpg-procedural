@@ -86,6 +86,10 @@
     "id": "percept.action.store",
     "lines": ["{who} guarda algo en la casa.", "Ves a {who} guardando algo."]
   },
+  {
+    "id": "percept.action.drop",
+    "lines": ["{who} suelta algo en el suelo.", "Ves a {who} dejando algo en el suelo."]
+  },
   { "id": "percept.action.eat", "lines": ["{who} come.", "Ves a {who} comiendo."] },
   {
     "id": "percept.action.cook",
