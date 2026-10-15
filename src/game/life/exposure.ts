@@ -66,6 +66,7 @@ import {
   wellWater,
 } from "../../sim/index.ts";
 import { type Gathering, overlapCount, sharedHours } from "./gathering.ts";
+import { exhaustionSusceptibility } from "./strain.ts";
 
 export const EXPOSURE_PROCESS = "life.exposure";
 
@@ -116,6 +117,8 @@ export interface ExposureOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Leer `DEFICIENCY_EFFECTS` (`immune` sube la chance de infectarse); apagado por defecto. */
   readonly deficiency?: boolean;
+  /** Con la fatiga del cuerpo sobre `STRAIN_AT` el contagio prende mas facil (`exhaustionSusceptibility`, npc-b2b3b2d5); apagado por defecto. */
+  readonly exhaustion?: boolean;
   /**
    * Agua corriente (body-health §6), opt-in: tramos de río, fuentes de carga (cadáveres sin enterrar,
    * fosas) y a qué tramo filtra cada pozo. Sin esto, o sin fuentes ni carga, no hay RNG ni filas.
@@ -480,7 +483,10 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
 
         const frailty = 1 - (ctx.truth.get(BODY_STATE, id)?.muscle ?? 0.5);
         const fx = o.deficiency ? ctx.truth.get(DEFICIENCY_EFFECTS, id) : undefined;
-        const susceptible = fx ? immuneSusceptibility(fx.immune) : 1;
+        const tired = o.exhaustion
+          ? exhaustionSusceptibility(ctx.truth.get(BODY_STATE, id)?.fatigue ?? 0)
+          : 1;
+        const susceptible = (fx ? immuneSusceptibility(fx.immune) : 1) * tired;
         let infectedBy: { def: PathogenDef; dose: number; cause: string } | undefined;
         if (!died) {
           for (const def of known.values()) {
@@ -575,7 +581,11 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
             kind: "body.infected",
             actors: [agent],
             place: o.placeOf(ctx.truth, agent),
-            data: { pathogen: infectedBy.def.id, dose: Math.round(infectedBy.dose * 1000) / 1000 },
+            data: {
+              pathogen: infectedBy.def.id,
+              dose: Math.round(infectedBy.dose * 1000) / 1000,
+              ...(tired > 1 ? { exhausted: true } : {}),
+            },
             emissions: {},
             causes: [{ kind: "event", event: infectedBy.cause as never }],
           });

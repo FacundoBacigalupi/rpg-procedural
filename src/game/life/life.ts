@@ -183,8 +183,12 @@ export interface LifeSetup {
  * pasa a la tierra en el ledger y vuelve con la cosecha; quien cree que va a helar espera). Compatibilidad:
  * el replay con un motor anterior a `life-24` enciende `legacyNoSowSeed`; una vida guardada con `life-23`
  * sigue desde su estado con el límite de replay.
+ *
+ * `life-25`: el perfil completo enciende `npcExhaustion` (la fatiga alta del cuerpo baja las defensas y el
+ * contagio prende más fácil). Compatibilidad: el replay con un motor anterior a `life-25` enciende
+ * `legacyNoExhaustion`; una vida guardada con `life-24` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-24";
+export const LIFE_ENGINE = "life-25";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -218,6 +222,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 22 ? { legacyNoFieldSowing: true } : {}),
     ...(n < 23 ? { legacyNoFieldShared: true } : {}),
     ...(n < 24 ? { legacyNoSowSeed: true } : {}),
+    ...(n < 25 ? { legacyNoExhaustion: true } : {}),
   };
 }
 

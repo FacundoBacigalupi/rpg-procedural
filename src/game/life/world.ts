@@ -469,6 +469,8 @@ export interface LifeWorld {
   readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
   readonly npcStrain?: boolean;
+  /** Opt-in (con `npcStrain`): la fatiga alta baja las defensas ante el contagio (`ExposureOptions.exhaustion`); apagado. */
+  readonly npcExhaustion?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
   readonly foodSubstances?: readonly ConsumableDef[];
   /** Opt-in: la pureza de lo ingerido con `essence` deja residuo y la sobrecarga hiere (`life.residue`, `ActOptions.residue`); apagado, sin filas ni RNG. */
@@ -1250,6 +1252,7 @@ export function lifeWorld(
               }
             : {}),
           deficiency: parts.deficiencyEffects === true,
+          ...(parts.npcStrain === true && parts.npcExhaustion === true ? { exhaustion: true } : {}),
           ...(parts.gatheringContact
             ? { gatherings: gatheringsFor({ clock: parts.clock, rng: Rng.root(parts.seed) }) }
             : {}),
