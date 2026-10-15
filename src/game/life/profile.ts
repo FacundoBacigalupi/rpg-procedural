@@ -75,6 +75,7 @@ export const FULL_PROFILE = {
   npcFieldWatering: true,
   npcFieldSowing: true,
   npcFieldShared: true,
+  npcSowSeed: true,
   npcStrain: true,
   conception: true,
   births: true,
@@ -147,6 +148,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcFieldWatering", "npcRainForecast"],
     ["npcFieldSowing", "npcFieldWatering"],
     ["npcFieldShared", "npcFieldWatering"],
+    ["npcSowSeed", "npcFieldSowing"],
     ["npcStrain", "npcPace"],
   ];
   for (const [option, dependency] of dependencies) require(option, dependency);

@@ -178,8 +178,13 @@ export interface LifeSetup {
  * dormidos rinden con el mismo riego y la misma siembra de la aldea que la rutina de los despiertos).
  * Compatibilidad: el replay con un motor anterior a `life-23` enciende `legacyNoFieldShared`; una vida
  * guardada con `life-22` sigue desde su estado con el límite de replay.
+ *
+ * `life-24`: el perfil completo enciende `npcSowSeed` (sembrar cuesta grano de la despensa del hogar, que
+ * pasa a la tierra en el ledger y vuelve con la cosecha; quien cree que va a helar espera). Compatibilidad:
+ * el replay con un motor anterior a `life-24` enciende `legacyNoSowSeed`; una vida guardada con `life-23`
+ * sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-23";
+export const LIFE_ENGINE = "life-24";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -212,6 +217,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 21 ? { legacyNoFieldWatering: true } : {}),
     ...(n < 22 ? { legacyNoFieldSowing: true } : {}),
     ...(n < 23 ? { legacyNoFieldShared: true } : {}),
+    ...(n < 24 ? { legacyNoSowSeed: true } : {}),
   };
 }
 
@@ -346,7 +352,15 @@ export class Life {
     options: LifeOptions = {},
     anchor?: ResumeAnchor,
   ): Life {
-    saved = { ...saved, ledger: withDeclaredExternals(saved.ledger, content, options.residue) };
+    saved = {
+      ...saved,
+      ledger: withDeclaredExternals(
+        saved.ledger,
+        content,
+        options.residue,
+        options.npcSowSeed === true && options.legacyNoSowSeed !== true,
+      ),
+    };
     if (anchor === undefined) {
       const { world, terrain } = createLife(seed, content, options);
       const spaces = liveSettlementSpaces(

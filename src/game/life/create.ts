@@ -156,6 +156,7 @@ import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
+import { SOWN_FIELD } from "./sowing.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
@@ -266,6 +267,8 @@ export interface LifeOptions {
   readonly legacyNoFieldSowing?: boolean;
   /** Solo el replay de un motor anterior a `life-23`: apaga `npcFieldShared` aunque el perfil lo traiga. */
   readonly legacyNoFieldShared?: boolean;
+  /** Solo el replay de un motor anterior a `life-24`: apaga `npcSowSeed` aunque el perfil lo traiga. */
+  readonly legacyNoSowSeed?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -432,6 +435,8 @@ export interface LifeOptions {
   readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcFieldWatering`): la temporada de crecimiento abre una ventana de siembra; la gente de campo siembra a la primera hora si el suelo está mojado o cree que llueve pronto, y sembrar tarde baja el rinde de la temporada (`RoutineOptions.fieldSowing`); apagado: el campo rinde sin sembrar. */
   readonly npcFieldSowing?: boolean;
+  /** Opt-in (con `npcFieldSowing`): sembrar cuesta `SEED_GRAMS` de grano de la despensa del hogar (sin grano no se siembra hoy; la semilla vuelve con la cosecha) y quien cree que va a helar espera (`RoutineOptions.sowSeed`); apagado: sembrar no cuesta nada. */
+  readonly npcSowSeed?: boolean;
   /** Opt-in (con `npcFieldWatering`): la cosecha del jugador y la de los dormidos rinden con el mismo riego y la misma siembra que la rutina (`ActOptions.fieldWatering`, `CatchUpProcessOptions.harvest.field`); apagado: solo la rutina de los despiertos los aplica. */
   readonly npcFieldShared?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
@@ -584,6 +589,7 @@ export function optInParts(
   | "npcFieldWatering"
   | "npcFieldSowing"
   | "npcFieldShared"
+  | "npcSowSeed"
   | "npcStrain"
   | "conception"
   | "conceptionRateScale"
@@ -698,6 +704,7 @@ export function optInParts(
       : {}),
     ...(options.npcFieldSowing && !options.legacyNoFieldSowing ? { npcFieldSowing: true } : {}),
     ...(options.npcFieldShared && !options.legacyNoFieldShared ? { npcFieldShared: true } : {}),
+    ...(options.npcSowSeed && !options.legacyNoSowSeed ? { npcSowSeed: true } : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
@@ -980,7 +987,11 @@ export function resumeParts(
 }
 
 /** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
-export function ledgerConfigOf(content: Content, residue?: ResidueConfig): LedgerConfig {
+export function ledgerConfigOf(
+  content: Content,
+  residue?: ResidueConfig,
+  sowSeed = false,
+): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
     ...new Set(
@@ -1009,6 +1020,7 @@ export function ledgerConfigOf(content: Content, residue?: ResidueConfig): Ledge
       [WAGES_SINK]: [COPPER],
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
       ...residueExternals(residue),
+      ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
     },
   };
 }
@@ -1022,11 +1034,12 @@ export function withDeclaredExternals(
   ledger: Ledger,
   content: Content,
   residue?: ResidueConfig,
+  sowSeed = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
-  for (const [name, units] of Object.entries(ledgerConfigOf(content, residue).externals)) {
+  for (const [name, units] of Object.entries(ledgerConfigOf(content, residue, sowSeed).externals)) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
     if (missing.length > 0) changed = true;
@@ -1134,7 +1147,13 @@ export function createLife(
   const ids = idsAfter(truth, log);
   const foods = content.all(FOODS);
   const materials = content.all(MATERIALS);
-  const ledger = new Ledger(ledgerConfigOf(content, options.residue));
+  const ledger = new Ledger(
+    ledgerConfigOf(
+      content,
+      options.residue,
+      options.npcSowSeed === true && options.legacyNoSowSeed !== true,
+    ),
+  );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
   seedSettlement(truth, ids, log, ledger, {
     seed,
