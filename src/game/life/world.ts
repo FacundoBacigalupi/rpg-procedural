@@ -122,7 +122,13 @@ import {
   markExposureProcess,
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
-import { type Healer, type HealerSchool, medicineProcess, type RemedyDose } from "./medicine.ts";
+import {
+  type Healer,
+  type HealerSchool,
+  medicineProcess,
+  type RemedyDose,
+  type RemedyDosing,
+} from "./medicine.ts";
 import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
 import {
@@ -303,6 +309,8 @@ export interface LifeWorld {
   readonly substanceDoses?: readonly SubstanceDose[];
   /** Remedios con dosis real (remedio a sustancia): el tratamiento deja una dosis en `PERSON_SUBSTANCE`; sin esto, efecto fijo. */
   readonly remedyDoses?: Readonly<Record<string, RemedyDose>>;
+  /** Opt-in (con `remedyDoses`): la dosis sale del lote gastado (calidad, tomas) y de la masa del enfermo. */
+  readonly remedyDosing?: RemedyDosing;
   /** Perfiles de nutrientes por alimento y dieta de referencia (body-health §5); sin dieta no hay reservas. */
   readonly nutrientProfiles?: readonly NutrientProfileDef[];
   readonly diets?: readonly DietDef[];
@@ -1321,6 +1329,7 @@ export function lifeWorld(
               }
             : {}),
           doses: parts.remedyDoses,
+          dosing: parts.remedyDosing,
           substanceSigns: parts.healerSubstanceSigns === true,
           frostbiteSigns: parts.healerFrostbiteSigns === true,
           frostbiteOrders: parts.frostbite === true && parts.healerFrostbiteOrders === true,

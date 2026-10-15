@@ -41,6 +41,7 @@ import {
   type HeldDef,
   INFECTION,
   infectionStage,
+  LOT_QUALITY,
   levelOf,
   PATHOGEN,
   PATIENT_BELIEF,
@@ -51,7 +52,9 @@ import {
   type PostingDraft,
   type ProcessContext,
   type ProcessDef,
+  qualityOfUnit,
   quarantineDecision,
+  REFERENCE_QUALITY,
   type ReadonlyWorldTruth,
   type RemedyDef,
   remedyEffect,
@@ -320,6 +323,15 @@ export interface MedicineOptions {
    */
   readonly doses?: Readonly<Record<string, RemedyDose>> | undefined;
   /**
+   * Opt-in (con `doses`; body-health §9 y §11): la dosis real sale del lote y del enfermo.
+   * `byLot` (con `stock`): la sustancia que llega escala con la calidad real del lote que se gasta
+   * (`LOT_QUALITY` del titular / `REFERENCE_QUALITY`) y el tratamiento guarda de qué lote salió.
+   * `byPatient`: el sanador ajusta la toma a la masa que cree del enfermo y a la potencia que cree
+   * del lote (con error que baja con su habilidad); con `stock`, gasta tantas tomas enteras como
+   * pida esa dosis (lo que sobra de la última abierta se pierde) o las que haya. Apagado: igual que antes.
+   */
+  readonly dosing?: RemedyDosing | undefined;
+  /**
    * Opt-in (body-health §6, information §4): el enfermo elige a quién llamar por la fama que cree
    * (`renownOf`: lo que sabe de oídas o vio, `undefined` = no sabe, prior 0,5) y paga `healerFee`
    * con asiento al ledger (`fee.unit`) si le alcanza; si no, lo atienden igual y no hay cobro.
@@ -373,6 +385,45 @@ export interface RemedyDose {
   readonly def: SubstanceDef;
   readonly route: SubstanceRoute;
   readonly amount: number;
+}
+
+/** Cómo sale la dosis real del lote y del enfermo (`MedicineOptions.dosing`). */
+export interface RemedyDosing {
+  readonly byLot?: boolean;
+  readonly byPatient?: boolean;
+  /** Masa para la que está pensada una toma, si no hay plan de cuerpo (por defecto 60 kg). */
+  readonly refMassKg?: number;
+  /** Tope de tomas por tratamiento (por defecto 3). */
+  readonly maxTakes?: number;
+}
+
+/** Potencia de un lote de calidad `quality` (0-1): 1 en la calidad de referencia. */
+export function lotPotency(quality: number): number {
+  return Math.min(1, Math.max(0, quality)) / REFERENCE_QUALITY;
+}
+
+/**
+ * Cuántas tomas da el sanador (body-health §11): las que pide la masa que cree del enfermo frente
+ * a la de referencia, divididas por la potencia que cree del lote. La masa creída lleva un error
+ * (`noise` en [-1, 1], hasta 30 %) que baja con la habilidad; el resultado va de 0,25 a `maxTakes`
+ * y `takes` es el número de tomas enteras que hay que abrir.
+ */
+export function chooseRemedyDose(i: {
+  readonly massKg: number;
+  readonly refMassKg: number;
+  readonly believedPotency: number;
+  readonly skill: number;
+  readonly noise: number;
+  readonly maxTakes: number;
+}): { readonly multiplier: number; readonly takes: number } {
+  const skill = Math.min(1, Math.max(0, i.skill));
+  const noise = Math.min(1, Math.max(-1, i.noise));
+  const believedMass = Math.max(1, i.massKg) * (1 + 0.3 * noise * (1 - skill));
+  const potency = Math.max(0.05, i.believedPotency);
+  const raw = believedMass / Math.max(1, i.refMassKg) / potency;
+  const multiplier =
+    Math.round(Math.min(Math.max(1, i.maxTakes), Math.max(0.25, raw)) * 1000) / 1000;
+  return { multiplier, takes: Math.max(1, Math.ceil(multiplier - 1e-9)) };
 }
 
 /** Efecto de una dosis real: el nivel que `stepSubstance` deja en sangre al pico del remedio (0-1). */
@@ -474,6 +525,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
       ...(o.altitudeSigns ? [ACCLIMATIZATION.name] : []),
       ...(o.fee ? ["law.mold_rumors"] : []),
       ...(o.patientDecides ? [PATIENT_BELIEF.name] : []),
+      ...(o.dosing?.byLot ? [LOT_QUALITY.name] : []),
     ],
     writes: [
       TREATMENT.name,
@@ -596,20 +648,56 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
           let remedy = healer.remedies.find((r) => r.id === remedyId);
           // Con `stock`, el remedio sale de un lote real (el del sanador, o si no el del enfermo): sin
           // existencias no se da, y lo gastado va al sumidero con el evento del tratamiento.
-          let spent: { unit: LedgerUnit; from: LedgerAccount } | undefined;
+          let spent:
+            | { unit: LedgerUnit; from: LedgerAccount; holder: AgentId; takes: number }
+            | undefined;
           const unitName = remedy ? o.stock?.[remedy.id] : undefined;
           const unit = unitName === undefined ? undefined : ledgerUnit(unitName);
+          const baseDose = remedy ? o.doses?.[remedy.id] : undefined;
+          const dosing = baseDose ? o.dosing : undefined;
+          // Con `dosing.byPatient`, cuántas tomas pide el enfermo según la potencia creída del lote.
+          const choose = (quality: number) => {
+            if (!dosing?.byPatient) return { multiplier: 1, takes: 1 };
+            const noise = ctx.rng.fork("dose", id, def.id);
+            const massNoise = noise.float() * 2 - 1;
+            const believedQuality = Math.min(
+              1,
+              Math.max(0, quality + (noise.float() * 2 - 1) * 0.3 * (1 - healer.skill)),
+            );
+            const pBody = ctx.truth.get(BODY_STATE, id);
+            const pPlan = pBody && o.plans?.find((pl) => pl.id === pBody.plan);
+            const ref = pPlan?.physiology.refMassKg ?? dosing.refMassKg ?? 60;
+            return chooseRemedyDose({
+              massKg: pBody?.massKg ?? ref,
+              refMassKg: ref,
+              believedPotency: dosing.byLot ? lotPotency(believedQuality) : 1,
+              skill: healer.skill,
+              noise: massNoise,
+              maxTakes: dosing.maxTakes ?? 3,
+            });
+          };
+          let lotQuality = REFERENCE_QUALITY;
+          let choice = { multiplier: 1, takes: 1 };
           if (remedy && unit !== undefined && ctx.ledger) {
             for (const who of [healer.agent, patient]) {
               const acc = holderAccount(who as unknown as HolderRef);
               const used = reserved.get(`${acc}|${unit}`) ?? 0;
-              if (ctx.ledger.balance(acc, unit) - used >= 1) {
-                reserved.set(`${acc}|${unit}`, used + 1);
-                spent = { unit, from: acc };
+              const have = ctx.ledger.balance(acc, unit) - used;
+              if (have >= 1) {
+                if (dosing?.byLot)
+                  lotQuality = qualityOfUnit(ctx.truth.get(LOT_QUALITY, who), unit);
+                choice = choose(lotQuality);
+                // Si no alcanza para todas las tomas, da las que hay.
+                const takes = Math.min(choice.takes, Math.floor(have));
+                if (takes < choice.takes) choice = { multiplier: takes, takes };
+                reserved.set(`${acc}|${unit}`, used + takes);
+                spent = { unit, from: acc, holder: who, takes };
                 break;
               }
             }
             if (!spent) remedy = undefined;
+          } else if (remedy && dosing?.byPatient) {
+            choice = choose(REFERENCE_QUALITY);
           }
           const given = remedy
             ? {
@@ -620,7 +708,17 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
                 skill: healer.skill,
               }
             : undefined;
-          const real = remedy ? o.doses?.[remedy.id] : undefined;
+          // La sustancia que llega: la toma por las tomas elegidas y, desde el lote, por su potencia real.
+          const potency = dosing?.byLot && spent ? lotPotency(lotQuality) : 1;
+          const real: RemedyDose | undefined =
+            remedy && baseDose
+              ? dosing && (dosing.byPatient || (dosing.byLot && spent))
+                ? {
+                    ...baseDose,
+                    amount: Math.round(baseDose.amount * choice.multiplier * potency * 1000) / 1000,
+                  }
+                : baseDose
+              : undefined;
           // Con dosis real, el efecto es el nivel de la sustancia (y el daño lo hace ella misma).
           const effect = given
             ? real
@@ -642,13 +740,22 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
               })
             : undefined;
           const iso = decision ? decision.isolation : (healer.isolation ?? 0);
+          const lotRow =
+            dosing?.byLot && spent
+              ? {
+                  unit: spent.unit as string,
+                  holder: spent.holder as string,
+                  takes: spent.takes,
+                  quality: lotQuality,
+                }
+              : undefined;
           const transfers: PostingDraft["transfers"][number][] = [];
           if (spent) {
             transfers.push({
               unit: spent.unit,
               from: spent.from,
               to: externalAccount(REMEDY_USED),
-              amount: 1,
+              amount: spent.takes,
             });
           }
           let paid = 0;
@@ -677,6 +784,8 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
               remedy: remedy?.id ?? null,
               quarantine: iso > 0,
               ...(fee ? { paid } : {}),
+              ...(dosing && real ? { amount: real.amount } : {}),
+              ...(lotRow ? { lot: lotRow } : {}),
             },
             emissions: {},
             causes: [{ kind: "event", event: draftEvent(k) }],
@@ -727,6 +836,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
                   }
                 : null,
             ...(real ? { dose: { def: real.def, route: real.route, amount: real.amount } } : {}),
+            ...(lotRow ? { lot: lotRow } : {}),
             givenAt: ctx.now,
             cause: draftEvent(k + 1),
           });

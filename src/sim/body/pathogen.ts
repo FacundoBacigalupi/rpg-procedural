@@ -71,6 +71,16 @@ export interface PathogenTreatment {
     readonly route: SubstanceRoute;
     readonly amount: number;
   };
+  /**
+   * Con dosis desde el lote (opt-in `dosing.byLot`): de qué lote del ledger salió (unidad, titular
+   * cuyo saldo bajó), cuántas tomas enteras se gastaron y la calidad real del lote al darla.
+   */
+  readonly lot?: {
+    readonly unit: string;
+    readonly holder: string;
+    readonly takes: number;
+    readonly quality: number;
+  };
   readonly givenAt: Tick;
   /** El evento `body.treated`. */
   readonly cause: string;
