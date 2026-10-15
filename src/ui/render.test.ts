@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { AboutPanel, BookLine, CharacterPanel } from "../game/index.ts";
-import { renderAbout, renderBook, renderCharacter, renderEnvironment } from "./render.ts";
+import {
+  renderAbout,
+  renderBook,
+  renderCharacter,
+  renderEnvironment,
+  renderWeather,
+} from "./render.ts";
 
 const line = (over: Partial<BookLine>): BookLine => ({
   kind: "pledge",
@@ -95,5 +101,24 @@ describe("render.renderEnvironment con señales de presentes", () => {
       "Mara tiembla y está inquieto.",
     );
     expect(renderEnvironment([])).toBe("Nada te llama la atención del lugar.");
+  });
+});
+
+describe("renderWeather", () => {
+  it("dice el cielo y el pronóstico como creencia, sin números", () => {
+    const text = renderWeather({
+      season: "winter",
+      airNow: "cold",
+      outlook: [
+        { ahead: "tomorrow", night: "frost", trust: "fair" },
+        { ahead: "three_days", night: "cold", trust: "weak" },
+        { ahead: "week", night: "cold", trust: "season_only" },
+      ],
+    });
+    expect(text).toContain("Es el invierno y el aire está frío.");
+    expect(text).toContain("Para mañana creés que habrá heladas.");
+    expect(text).toContain("no lo jurarías");
+    expect(text).toContain("lo que suele hacer en esta época");
+    expect(text).not.toMatch(/\d/);
   });
 });

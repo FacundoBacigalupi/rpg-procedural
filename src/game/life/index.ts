@@ -55,5 +55,6 @@ export * from "./think.ts";
 export * from "./tone.ts";
 export * from "./view.ts";
 export * from "./waterSources.ts";
+export * from "./weather-panel.ts";
 export * from "./witnessing.ts";
 export * from "./world.ts";

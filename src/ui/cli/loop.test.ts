@@ -83,7 +83,7 @@ describe("runCli", () => {
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain(
-      "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
+      "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, cielo, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
     );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
@@ -122,9 +122,16 @@ describe("runCli", () => {
 
   it("los paneles no pasan el tiempo y la bitácora guarda lo narrado", async () => {
     const store = memory();
-    const out = await session(store, ["personaje", "inventario", "espero una hora", "bitácora"]);
+    const out = await session(store, [
+      "personaje",
+      "inventario",
+      "cielo",
+      "espero una hora",
+      "bitácora",
+    ]);
     expect(out).toContain("Tenés ");
     expect(out).toContain("En la despensa:");
+    expect(out).toContain("Para mañana creés que habrá ");
     expect(store.plans()).toHaveLength(1);
     const journal = store.narrations();
     expect(journal).toHaveLength(2);

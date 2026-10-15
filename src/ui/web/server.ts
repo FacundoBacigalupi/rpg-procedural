@@ -14,6 +14,7 @@ import {
   substancePanel,
   TONE_ICON,
   TONE_LABEL,
+  weatherPanel,
 } from "../../game/index.ts";
 import {
   renderBook,
@@ -26,6 +27,7 @@ import {
   renderRecap,
   renderStatus,
   renderSuggestion,
+  renderWeather,
 } from "../render.ts";
 import { JOURNAL_SHOWN, type Session } from "../session.ts";
 import type { History, Panels, SayResponse, WebState } from "./api.ts";
@@ -46,6 +48,7 @@ export function panelsOf(session: Session): Panels {
     book: renderBook(bookPanel(w)),
     people: renderPeople(peoplePanel(w)),
     hypotheses: renderHypotheses(hypothesesPanel(w)),
+    weather: renderWeather(weatherPanel(w)),
     recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
     journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
     environment: renderEnvironment(

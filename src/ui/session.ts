@@ -58,6 +58,7 @@ import {
   topicEntity,
   topicText,
   WORLD_LEXICON,
+  weatherPanel,
 } from "../game/index.ts";
 import {
   characterLexicon,
@@ -129,6 +130,7 @@ import {
   renderStatus,
   renderSuggestion,
   renderThinking,
+  renderWeather,
 } from "./render.ts";
 
 export const VERSIONS = { engine: LIFE_ENGINE, content: "none", format: FORMAT_VERSION };
@@ -155,7 +157,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, cielo, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -465,6 +467,8 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const recap = renderRecap(recapOf(life.world));
         return { text: recap === "" ? "No hay mucho que recordar todavía." : recap };
       }
+      if (/^(?:clima|cielo|pron[oó]stico)/iu.test(text))
+        return { text: renderWeather(weatherPanel(life.world)) };
       if (/^hip[oó]tesis/i.test(text))
         return { text: renderHypotheses(hypothesesPanel(life.world)) };
       if (/^(?:pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago)/iu.test(text)) {

@@ -10,6 +10,8 @@ export interface Panels {
   readonly people: string;
   /** Lo que piensa de cómo anda el mundo (el diario de hipótesis). */
   readonly hypotheses: string;
+  /** Lo que siente del cielo y lo que cree que viene (creencia, sin datos del mundo). */
+  readonly weather: string;
   /** Lo último que hacía y lo último que recuerda. */
   readonly recap: string;
   readonly journal: string;
