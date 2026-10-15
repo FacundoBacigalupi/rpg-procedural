@@ -384,6 +384,8 @@ export interface LifeOptions {
   readonly substanceDoses?: LifeParts["substanceDoses"];
   /** Opt-in: lo comido de verdad alimenta las reservas de nutrientes (`LifeParts.eatenNutrition`). */
   readonly eatenNutrition?: boolean;
+  /** Opt-in (con `eatenNutrition`): la necesidad suma embarazo y esfuerzo (`LifeParts.nutritionNeeds`). */
+  readonly nutritionNeeds?: boolean;
   /** Opt-in: el hambre infantil deja secuelas permanentes (`LifeParts.growthSequelae`). */
   readonly growthSequelae?: boolean;
   /** Opt-in: al cumplir 18 la masa se reconstruye con la talla final (`LifeParts.adultGrowth`). */
@@ -636,6 +638,7 @@ export function optInParts(
   | "healers"
   | "substanceDoses"
   | "eatenNutrition"
+  | "nutritionNeeds"
   | "growthSequelae"
   | "adultGrowth"
   | "gradualGrowth"
@@ -763,6 +766,7 @@ export function optInParts(
     ...(options.healers ? { healers: options.healers } : {}),
     ...(options.substanceDoses ? { substanceDoses: options.substanceDoses } : {}),
     ...(options.eatenNutrition ? { eatenNutrition: true } : {}),
+    ...(options.nutritionNeeds ? { nutritionNeeds: true } : {}),
     ...(options.growthSequelae ? { growthSequelae: true } : {}),
     ...(options.adultGrowth ? { adultGrowth: true } : {}),
     ...(options.gradualGrowth ? { gradualGrowth: true } : {}),

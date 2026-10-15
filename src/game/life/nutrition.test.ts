@@ -19,11 +19,15 @@ import {
   NUTRITION,
   PERSON,
   type ProcessContext,
+  type ReadonlyWorldTruth,
   severeProteinSince,
   WorldTruth,
 } from "../../sim/index.ts";
 import { BIOMES } from "../../worldgen/index.ts";
+import { PREGNANCY } from "./conception.ts";
+import { optInParts } from "./create.ts";
 import { nutritionProcess, profileMap } from "./nutrition.ts";
+import { validateLifeDependencies } from "./profile.ts";
 
 const json = (f: string) => JSON.parse(readFileSync(f, "utf8"));
 const content = loadContent(
@@ -102,10 +106,69 @@ describe("life.nutrition", () => {
     expect(p.run(ctx(t, clock.day * 5.5))).toEqual(out);
   });
 
+  it("needExtras: embarazo y fatiga suben la necesidad; apagado no cambia", () => {
+    const run = (extras: boolean, pregnant: boolean, fatigue: number) => {
+      const p = nutritionProcess({
+        clock,
+        profiles,
+        diet,
+        useEaten: true,
+        ...(extras
+          ? {
+              needExtras: {
+                table: PREGNANCY.name,
+                pregnant: (tr: ReadonlyWorldTruth, who: EntityRef) =>
+                  tr.get(PREGNANCY, who) !== undefined,
+              },
+            }
+          : {}),
+        placeOf: () => place,
+      });
+      const t = world({ glycogen: 100, fat: 100, wounds: [], fatigue });
+      if (pregnant)
+        t.set(
+          PREGNANCY,
+          a as EntityRef,
+          {
+            father: "agent:2" as AgentId,
+            conceivedAt: 0,
+            dueAt: 1,
+            parity: 1,
+            originEventId: "event:1",
+          } as never,
+        );
+      // Comer lo justo de un alimento con perfil dejaría las reservas cerca de lo lleno.
+      t.set(MEALS, a as EntityRef, logMeal(undefined, 5, "nada", 100));
+      const out = p.run(ctx(t, clock.day * 5.5));
+      const row = out.changes?.find((c) => c.table === NUTRITION.name) as
+        | { value: { stores: Record<string, number> } }
+        | undefined;
+      return row?.value.stores["protein"] ?? 0;
+    };
+    const base = run(false, false, 0);
+    expect(run(false, true, 1)).toBe(base);
+    expect(run(true, false, 0)).toBe(base);
+    expect(run(true, true, 0)).toBeLessThan(base);
+    expect(run(true, false, 1)).toBeLessThan(base);
+    expect(run(true, true, 1)).toBeLessThan(run(true, true, 0));
+    expect(run(true, true, 1)).toBe(run(true, true, 1));
+  });
+
   it("una carencia seria publica sus efectos", () => {
     const p = nutritionProcess({ clock, profiles, diet, placeOf: () => place });
     const out = p.run(ctx(world({ glycogen: 0, fat: 0 }), clock.day * 200, clock.day * 200));
     expect(out.changes?.some((c) => c.table === DEFICIENCY_EFFECTS.name)).toBe(true);
+  });
+});
+
+describe("nutritionNeeds (opción)", () => {
+  it("exige eatenNutrition y pasa a LifeParts solo si se pide", () => {
+    expect(optInParts({})).toEqual({});
+    expect(optInParts({ nutritionNeeds: true })).toEqual({ nutritionNeeds: true });
+    expect(validateLifeDependencies({ nutritionNeeds: true })).toEqual([
+      expect.objectContaining({ option: "nutritionNeeds", requires: "eatenNutrition" }),
+    ]);
+    expect(validateLifeDependencies({ nutritionNeeds: true, eatenNutrition: true })).toEqual([]);
   });
 });
 
