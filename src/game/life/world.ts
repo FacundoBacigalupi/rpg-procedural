@@ -458,6 +458,8 @@ export interface LifeWorld {
   readonly npcRainForecast?: boolean;
   /** Opt-in (con `npcFieldWatering`): en la rutina, la gente de campo siembra la temporada según el suelo y la lluvia creída (`RoutineOptions.fieldSowing`); apagado. */
   readonly npcFieldSowing?: boolean;
+  /** Opt-in (con `npcFieldSowing`): sembrar cuesta grano de la despensa (vuelve con la cosecha) y la helada creída hace esperar (`RoutineOptions.sowSeed`); apagado. */
+  readonly npcSowSeed?: boolean;
   /** Opt-in (con `npcFieldWatering`): el jugador y los dormidos cosechan con el riego y la siembra de la aldea (`ActOptions.fieldWatering`/`fieldSowing`, `CatchUpProcessOptions.harvest.field`); apagado. */
   readonly npcFieldShared?: boolean;
   /** Opt-in (con `npcRainForecast`): en la rutina, la gente de campo riega con el suelo seco si no cree que llueva (`RoutineOptions.fieldWatering`); apagado. */
@@ -1799,6 +1801,11 @@ export function lifeWorld(
           ...(parts.npcFieldWatering === true ? { fieldWatering: true } : {}),
           ...(parts.npcFieldWatering === true && parts.npcFieldSowing === true
             ? { fieldSowing: true }
+            : {}),
+          ...(parts.npcFieldWatering === true &&
+          parts.npcFieldSowing === true &&
+          parts.npcSowSeed === true
+            ? { sowSeed: true }
             : {}),
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),

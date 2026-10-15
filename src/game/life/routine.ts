@@ -79,7 +79,16 @@ import {
   wantsToWater,
 } from "./irrigation.ts";
 import { PLAYER } from "./player.ts";
-import { cropStarts, fieldSowYield, SOWN, sownDay, wantsToSow } from "./sowing.ts";
+import {
+  cropStarts,
+  fieldSowYield,
+  SEED_GRAMS,
+  SEED_RETURN_DAYS,
+  SOWN,
+  SOWN_FIELD,
+  sownDay,
+  wantsToSow,
+} from "./sowing.ts";
 
 export const ROUTINE_PROCESS = "life.routine";
 
@@ -164,6 +173,12 @@ export interface RoutineOptions {
    * a la temporada (`sowYield`). Apagado: nada cambia.
    */
   readonly fieldSowing?: boolean;
+  /**
+   * Opt-in (`LifeOptions.npcSowSeed`, con `fieldSowing`): sembrar cuesta `SEED_GRAMS` de grano de la
+   * despensa del hogar (sin grano no se siembra hoy; el grano pasa a la tierra, `SOWN_FIELD`, en el
+   * ledger) que vuelve a la despensa `SEED_RETURN_DAYS` después; y quien cree que va a helar espera.
+   */
+  readonly sowSeed?: boolean;
   /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
   readonly idlePlayer?: boolean;
   /**
@@ -456,18 +471,50 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           const sowedOn = sownDay(truth, start);
           if (sowedOn === undefined && age >= ROUTINE.workAge && hour === ROUTINE.work[0]) {
             const soilMm = rained + fieldIrrigationMm(truth, day);
-            const w = wantsToSow(o, me as string, day, start, soilMm);
-            if (w.sow) {
+            const w = wantsToSow(o, me as string, day, start, soilMm, o.sowSeed === true);
+            // Con semilla: el grano sale de la despensa del hogar; sin él no se siembra hoy.
+            const larder = holderAccount(person.household as unknown as HolderRef);
+            const haveSeed =
+              o.sowSeed !== true ||
+              (ctx.ledger?.holdings(larder).find((h) => h.unit === HARVEST_GOOD)?.amount ?? 0) >=
+                SEED_GRAMS;
+            if (w.sow && haveSeed) {
               sows = true;
-              changes.push(setComponent(SOWN, me, { start, day }));
+              changes.push(
+                setComponent(
+                  SOWN,
+                  me,
+                  o.sowSeed ? { start, day, seed: SEED_GRAMS, returned: false } : { start, day },
+                ),
+              );
+              const ev = draftEvent(events.length);
               events.push({
                 kind: "routine.sown",
                 actors: [me],
                 place: o.placeOf(truth, me),
-                data: { start, lateDays: day - start, rainChance: w.chance, soilMm },
+                data: {
+                  start,
+                  lateDays: day - start,
+                  rainChance: w.chance,
+                  soilMm,
+                  ...(o.sowSeed ? { seedGrams: SEED_GRAMS } : {}),
+                },
                 emissions: { sight: 0.3, sound: 0.05 },
                 causes: [{ kind: "state", entity: me, key: "routine" }],
               });
+              if (o.sowSeed) {
+                postings.push({
+                  event: ev,
+                  transfers: [
+                    {
+                      from: larder,
+                      to: externalAccount(SOWN_FIELD),
+                      unit: HARVEST_GOOD,
+                      amount: SEED_GRAMS,
+                    },
+                  ],
+                });
+              }
             }
           }
           sowYieldNow = fieldSowYield(truth, start, day);
@@ -524,6 +571,37 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             },
           ],
         });
+      }
+      // La semilla vuelve: a la primera hora de campo, pasados `SEED_RETURN_DAYS` de sembrar, el grano
+      // que salió de la despensa vuelve a ella con la cosecha (de la tierra, no de la fuente).
+      const mine = o.sowSeed ? truth.get(SOWN, me) : undefined;
+      if (
+        mine?.seed !== undefined &&
+        mine.returned !== true &&
+        hour === ROUTINE.work[0] &&
+        day - mine.day >= SEED_RETURN_DAYS
+      ) {
+        const ev = draftEvent(events.length);
+        events.push({
+          kind: "routine.seed_returned",
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: { start: mine.start, grams: mine.seed },
+          emissions: { sight: 0.1 },
+          causes: [{ kind: "state", entity: me, key: "routine" }],
+        });
+        postings.push({
+          event: ev,
+          transfers: [
+            {
+              from: externalAccount(SOWN_FIELD),
+              to: holderAccount(person.household as unknown as HolderRef),
+              unit: HARVEST_GOOD,
+              amount: mine.seed,
+            },
+          ],
+        });
+        changes.push(setComponent(SOWN, me, { ...mine, returned: true }));
       }
       // Hervir: quema el combustible de la despensa y deja agua tratada que dura `validDays`.
       if (want.boil && o.boil) {

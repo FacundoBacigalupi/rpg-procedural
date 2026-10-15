@@ -88,6 +88,7 @@ export const ScenarioLife = z.strictObject({
   npcFieldWatering: z.boolean().optional(),
   npcFieldSowing: z.boolean().optional(),
   npcFieldShared: z.boolean().optional(),
+  npcSowSeed: z.boolean().optional(),
   npcStrain: z.boolean().optional(),
   conception: z.boolean().optional(),
   conceptionRateScale: z.number().min(0).optional(),

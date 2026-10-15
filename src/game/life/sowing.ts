@@ -11,14 +11,34 @@
 
 import { Rng, type Seed } from "../../core/index.ts";
 import { type ReadonlyWorldTruth, table } from "../../sim/index.ts";
-import { believedRainChance, RAIN_HORIZON_DAYS, RAIN_WAIT_CHANCE } from "./forecast.ts";
+import {
+  believedMinC,
+  believedRainChance,
+  RAIN_HORIZON_DAYS,
+  RAIN_WAIT_CHANCE,
+} from "./forecast.ts";
 import { DRY_SOIL_MM, fieldBoost, type IrrigationOptions } from "./irrigation.ts";
 
 /** Lo que sembró una persona: la temporada (su primer día) y el día en que sembró. */
 export interface Sown {
   readonly start: number;
   readonly day: number;
+  /** Con `sowSeed`: los gramos de grano que sacó de la despensa del hogar para sembrar. */
+  readonly seed?: number;
+  /** Con `sowSeed`: ya volvió esa semilla a la despensa con la cosecha. */
+  readonly returned?: boolean;
 }
+
+/** Sumidero/fuente del ledger: el grano que está en la tierra (sembrado) hasta que vuelve con la cosecha. */
+export const SOWN_FIELD = "sown";
+/** Con `sowSeed`: gramos de grano que cuesta sembrar la temporada (sin calibrar). */
+export const SEED_GRAMS = 4000;
+/** Con `sowSeed`: días tras sembrar en que la semilla vuelve a la despensa con la cosecha (sin calibrar). */
+export const SEED_RETURN_DAYS = 90;
+/** Con `sowSeed`: la mínima de aire creída (°C) a la que no se siembra por miedo a la helada. */
+export const FROST_C = 0;
+/** Con `sowSeed`: cuántos días de adelante mira el sembrador para la helada. */
+export const FROST_HORIZON_DAYS = 2;
 export const SOWN = table<Sown>("life.sown");
 
 /** Qué parte de la gente de campo, cada día de campo sin sembrar, mira si siembra (sin calibrar). */
@@ -115,10 +135,16 @@ export function wantsToSow(
   day: number,
   start: number,
   soilMm: number,
-): { readonly sow: boolean; readonly chance?: number } {
+  frost = false,
+): { readonly sow: boolean; readonly chance?: number; readonly frostC?: number } {
   const root = Rng.root(o.seed as Seed);
   if (day - start >= SOW_MAX_WAIT_DAYS) return { sow: true };
   if (root.fork("sow", who, day).float() >= SOW_SHARE) return { sow: false };
+  // Con `sowSeed`: si cree que va a helar en los próximos días, espera (la semilla no se pierde).
+  if (frost) {
+    const minC = believedMinC(o.map, o.clock, root, who, day, FROST_HORIZON_DAYS);
+    if (minC <= FROST_C) return { sow: false, frostC: minC };
+  }
   if (soilMm >= DRY_SOIL_MM) return { sow: true };
   const { chance } = believedRainChance(o.map, o.clock, root, who, day, RAIN_HORIZON_DAYS);
   return { sow: chance >= RAIN_WAIT_CHANCE, chance };

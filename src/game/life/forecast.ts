@@ -90,6 +90,19 @@ export function believedRainChance(
   return folk === undefined ? { chance: base, folk: false } : { chance: folk, folk: true };
 }
 
+/** La mínima de aire que `who` cree en `day` para los próximos `horizon` días (con su error de lectura). */
+export function believedMinC(
+  map: LocalMap,
+  clock: PlanetClock,
+  root: Rng,
+  who: string,
+  day: number,
+  horizon: number,
+): number {
+  const misread = root.fork("forecast", who, day).normal(0, MISREAD_SD_C);
+  return foreseenMinC(map.climate, clock, root, day, horizon, misread);
+}
+
 /** El pronóstico de `who` al salir en `now` para `days` días de camino (determinista por persona y día). */
 export function forecastBeforeLeaving(
   map: LocalMap,
