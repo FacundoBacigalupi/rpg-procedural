@@ -123,6 +123,16 @@ describe("el zapatero de la aldea cobra y trabaja con cuero (opt-in)", () => {
     expect(off.w.ledger.balance(externalAccount(WAGES_SINK), COPPER)).toBeGreaterThan(0);
   }, 300_000);
 
+  it("sin calzado gastado no se elige zapatero (no hay eventos de más)", () => {
+    const life = Life.create(7, content, {
+      npcFootwear: true,
+      npcFootwearMend: true,
+      npcCobbler: true,
+    });
+    life.advanceTo(life.now + 5 * 86_400);
+    expect(life.world.log.all().some((e) => e.kind === COBBLER_CHOSEN)).toBe(false);
+  }, 300_000);
+
   it("el perfil completo lo enciende desde life-26 y el replay anterior lo apaga", () => {
     expect(FULL_PROFILE.npcCobbler).toBe(true);
     expect(engineOptions("life-25", FULL_PROFILE).legacyNoCobbler).toBe(true);

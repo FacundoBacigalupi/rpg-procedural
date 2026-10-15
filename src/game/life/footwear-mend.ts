@@ -102,83 +102,89 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
       const changes: StateChange[] = [];
-      const inVillage = (who: AgentId): boolean =>
+      const alive = (who: AgentId): boolean =>
         ctx.truth.get(PERSON, who) !== undefined &&
-        ctx.truth.get(ENTITY, who)?.endedAt === undefined &&
-        ctx.truth.get(LOCATION, who)?.space !== undefined;
-      // El zapatero: el que ya lo es y sigue en la aldea, o (si no hay) el adulto de menor tirada.
-      let cobbler: AgentId | undefined;
-      let level = 0;
-      if (o.cobbler) {
+        ctx.truth.get(ENTITY, who)?.endedAt === undefined;
+      const inVillage = (who: AgentId): boolean =>
+        alive(who) && ctx.truth.get(LOCATION, who)?.space !== undefined;
+      // El zapatero se busca solo cuando alguien va a arreglar: el que ya lo es mientras viva (si
+      // hoy no está en la aldea, nadie arregla nada hoy), o, si no hay ninguno vivo, el adulto de
+      // menor tirada. `null`: no hay quién (sin la opción, o nadie en edad), y paga al sumidero.
+      let shop: Shop | null | undefined;
+      const findShop = (): Shop | null => {
+        if (!o.cobbler) return null;
         for (const id of [...ctx.truth.ids(COBBLER)].sort()) {
           const c = id as AgentId;
-          if (c !== o.player && inVillage(c)) {
-            cobbler = c;
-            level = ctx.truth.get(COBBLER, c)?.level ?? 0;
-            break;
+          if (c === o.player || !alive(c)) continue;
+          return {
+            who: c,
+            account: holderAccount(c as unknown as HolderRef),
+            level: ctx.truth.get(COBBLER, c)?.level ?? 0,
+            leather: ledger.balance(holderAccount(c as unknown as HolderRef), LEATHER_UNIT),
+            present: inVillage(c),
+          };
+        }
+        let best = Number.POSITIVE_INFINITY;
+        let chosen: AgentId | undefined;
+        for (const id of [...ctx.truth.ids(PERSON)].sort()) {
+          const c = id as AgentId;
+          if (c === o.player || !inVillage(c)) continue;
+          const p = ctx.truth.get(PERSON, c);
+          if (!p || (ctx.now - p.born) / o.cobbler.clock.year < COBBLER_MIN_AGE) continue;
+          const u = ctx.rng.fork("cobbler", c).stream().float();
+          if (u < best) {
+            best = u;
+            chosen = c;
           }
         }
-        if (cobbler === undefined) {
-          let best = Number.POSITIVE_INFINITY;
-          for (const id of [...ctx.truth.ids(PERSON)].sort()) {
-            const c = id as AgentId;
-            if (c === o.player || !inVillage(c)) continue;
-            const p = ctx.truth.get(PERSON, c);
-            if (!p || (ctx.now - p.born) / o.cobbler.clock.year < COBBLER_MIN_AGE) continue;
-            const u = ctx.rng.fork("cobbler", c).stream().float();
-            if (u < best) {
-              best = u;
-              cobbler = c;
-            }
-          }
-          if (cobbler !== undefined) {
-            level = startLevel(best);
-            events.push({
-              kind: COBBLER_CHOSEN,
-              actors: [cobbler],
-              place: o.placeOf(ctx.truth, cobbler),
-              data: { level },
-              emissions: {},
-              causes: [
-                { kind: "state", entity: cobbler as unknown as EntityRef, key: PERSON.name },
-              ],
-            });
-            changes.push(setComponent(COBBLER, cobbler, { level }));
-          }
-        }
-      }
-      const shop =
-        cobbler === undefined ? undefined : holderAccount(cobbler as unknown as HolderRef);
-      // El cuero del zapatero a medida que se asientan los arreglos de hoy.
-      let leather = shop === undefined ? 0 : ledger.balance(shop, LEATHER_UNIT);
+        if (chosen === undefined) return null;
+        const level = startLevel(best);
+        events.push({
+          kind: COBBLER_CHOSEN,
+          actors: [chosen],
+          place: o.placeOf(ctx.truth, chosen),
+          data: { level },
+          emissions: {},
+          causes: [{ kind: "state", entity: chosen as unknown as EntityRef, key: PERSON.name }],
+        });
+        changes.push(setComponent(COBBLER, chosen, { level }));
+        const account = holderAccount(chosen as unknown as HolderRef);
+        return {
+          who: chosen,
+          account,
+          level,
+          leather: ledger.balance(account, LEATHER_UNIT),
+          present: true,
+        };
+      };
       for (const id of [...ctx.truth.ids(FOOTWEAR)].sort()) {
         const who = id as AgentId;
         if (who === o.player) continue;
-        if (ctx.truth.get(PERSON, who) === undefined) continue;
-        if (ctx.truth.get(ENTITY, who)?.endedAt !== undefined) continue;
         // Solo se arregla en la aldea (un espacio del sitio), no a campo traviesa.
-        if (ctx.truth.get(LOCATION, who)?.space === undefined) continue;
+        if (!inVillage(who)) continue;
         const wear = ctx.truth.get(FOOTWEAR, who)?.wear ?? 0;
         const job = mendJob(wear);
         if (!job) continue;
         if (!ctx.rng.fork("mend", who).stream().chance(MEND_CHANCE)) continue;
         const account = holderAccount(who as unknown as HolderRef);
         if (Math.floor(ledger.balance(account, COPPER)) < job.cost) continue;
+        if (shop === undefined) shop = findShop();
+        if (shop !== null && !shop.present) continue;
         const transfers: PostingDraft["transfers"][number][] = [];
         let keeps = MEND_KEEPS;
-        const self = cobbler !== undefined && who === cobbler;
-        if (cobbler !== undefined && shop !== undefined) {
-          const need = leatherFor(job.kind);
-          const fetch = leatherToFetch(leather, need);
+        const self = shop !== null && who === shop.who;
+        const need = leatherFor(job.kind);
+        if (shop !== null) {
+          const fetch = leatherToFetch(shop.leather, need);
           if (fetch > 0) {
             events.push({
               kind: LEATHER_FETCHED,
-              actors: [cobbler],
-              place: o.placeOf(ctx.truth, cobbler),
+              actors: [shop.who],
+              place: o.placeOf(ctx.truth, shop.who),
               data: { grams: fetch },
               emissions: {},
               causes: [
-                { kind: "state", entity: cobbler as unknown as EntityRef, key: COBBLER.name },
+                { kind: "state", entity: shop.who as unknown as EntityRef, key: COBBLER.name },
               ],
             });
             postings.push({
@@ -187,23 +193,25 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
                 {
                   unit: LEATHER_UNIT,
                   from: externalAccount(HIDES_SOURCE),
-                  to: shop,
+                  to: shop.account,
                   amount: fetch,
                 },
               ],
             });
-            leather += fetch;
+            shop.leather += fetch;
           }
-          leather -= need;
-          keeps = mendKeeps(level);
+          shop.leather -= need;
+          keeps = mendKeeps(shop.level);
           transfers.push({
             unit: LEATHER_UNIT,
-            from: shop,
+            from: shop.account,
             to: externalAccount(LEATHER_SCRAP),
             amount: need,
           });
           // El zapatero se arregla lo suyo sin cobrarse.
-          if (!self) transfers.push({ unit: COPPER, from: account, to: shop, amount: job.cost });
+          if (!self) {
+            transfers.push({ unit: COPPER, from: account, to: shop.account, amount: job.cost });
+          }
         } else {
           transfers.push({
             unit: COPPER,
@@ -215,26 +223,35 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
         const after = wearAfterMend(wear, job.kind, keeps);
         events.push({
           kind: FOOTWEAR_MENDED,
-          actors: cobbler !== undefined && !self ? [who, cobbler] : [who],
+          actors: shop !== null && !self ? [who, shop.who] : [who],
           place: o.placeOf(ctx.truth, who),
           data: {
             job: job.kind,
             from: wear,
             to: after,
             paid: self ? 0 : job.cost,
-            ...(cobbler !== undefined ? { cobbler, level, leather: leatherFor(job.kind) } : {}),
+            ...(shop !== null ? { cobbler: shop.who, level: shop.level, leather: need } : {}),
           },
           emissions: {},
           causes: [{ kind: "state", entity: who as unknown as EntityRef, key: FOOTWEAR.name }],
         });
         postings.push({ event: draftEvent(events.length - 1), transfers });
         changes.push(setComponent(FOOTWEAR, who, { wear: after }));
-        if (cobbler !== undefined) {
-          level = levelAfterJob(level);
-          changes.push(setComponent(COBBLER, cobbler, { level }));
+        if (shop !== null) {
+          shop.level = levelAfterJob(shop.level);
+          changes.push(setComponent(COBBLER, shop.who, { level: shop.level }));
         }
       }
       return events.length === 0 ? {} : { events, postings, changes };
     },
   };
+}
+
+/** El zapatero del día mientras se asientan los arreglos (cuero y oficio aún sin asentar). */
+interface Shop {
+  readonly who: AgentId;
+  readonly account: ReturnType<typeof holderAccount>;
+  level: number;
+  leather: number;
+  readonly present: boolean;
 }
