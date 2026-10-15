@@ -367,6 +367,8 @@ export interface LifeOptions {
   readonly pathogenSeeds?: LifeParts["pathogenSeeds"];
   /** Opt-in: orígenes con epidemia de los que los viajeros llevan el patógeno (`LifeParts.afflictedOrigins`); apagado por defecto. */
   readonly afflictedOrigins?: LifeParts["afflictedOrigins"];
+  /** Opt-in: reservorios del patógeno en la ecología de la celda (`LifeParts.reservoirs`); apagado por defecto. */
+  readonly reservoirs?: LifeParts["reservoirs"];
   /** Opt-in: sanadores explícitos que diagnostican y tratan (`LifeParts.healers`); sin ellos `life.medicine` no hace nada. */
   readonly healers?: LifeParts["healers"];
   /** Opt-in: dosis explícitas de sustancias (`LifeParts.substanceDoses`). */
@@ -615,6 +617,7 @@ export function optInParts(
   | "residue"
   | "pathogenSeeds"
   | "afflictedOrigins"
+  | "reservoirs"
   | "healers"
   | "substanceDoses"
   | "eatenNutrition"
@@ -738,6 +741,7 @@ export function optInParts(
     ...(options.residue ? { residue: options.residue } : {}),
     ...(options.pathogenSeeds ? { pathogenSeeds: options.pathogenSeeds } : {}),
     ...(options.afflictedOrigins ? { afflictedOrigins: options.afflictedOrigins } : {}),
+    ...(options.reservoirs ? { reservoirs: options.reservoirs } : {}),
     ...(options.healers ? { healers: options.healers } : {}),
     ...(options.substanceDoses ? { substanceDoses: options.substanceDoses } : {}),
     ...(options.eatenNutrition ? { eatenNutrition: true } : {}),
