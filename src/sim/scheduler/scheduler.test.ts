@@ -465,6 +465,43 @@ describe("cola de ítems", () => {
     expect(run(true)).toEqual(on);
   });
 
+  it("perceiveCascade { kinds }: la segunda ronda solo trae esos tipos de evento", () => {
+    const seen: string[] = [];
+    const once = def(
+      "perc.once",
+      (ctx) => ({
+        events: ctx.recent
+          .filter((e) => e.kind === "grow")
+          .flatMap((e) =>
+            ["echo", "noise"].map((kind) => ({
+              kind,
+              actors: e.actors,
+              place: e.place,
+              data: null,
+              emissions: {},
+              causes: [{ kind: "event" as const, event: e.id }],
+            })),
+          ),
+      }),
+      { phase: "perceive", cadence: { local: "onEvent" } },
+    );
+    const only = def(
+      "perc.only",
+      (ctx) => {
+        seen.push(ctx.recent.map((e) => e.kind).join(","));
+        return {};
+      },
+      {
+        phase: "perceive",
+        cadence: { local: "onEvent" },
+        perceiveCascade: { kinds: ["echo"] },
+      },
+    );
+    runFor(world(7, [grow, once, only]), DAY);
+    expect(seen).toContain("echo,echo,echo");
+    expect(seen.some((x) => x.includes("noise"))).toBe(false);
+  });
+
   it("agendar en el pasado o a un proceso desconocido es un error", () => {
     const back = def("t.back", (ctx) => ({
       schedule: [{ at: ctx.now, phase: "perceive", process: "t.back", scope: "world", reason }],

@@ -379,7 +379,11 @@ export class Scheduler {
           const again: RunSpec[] = [];
           for (const def of this.#defs.values()) {
             if (def.phase !== "perceive" || def.cadence[this.#o.resolution] !== "onEvent") continue;
-            if (def.perceiveCascade !== true) continue;
+            const asked = def.perceiveCascade;
+            if (asked === undefined) continue;
+            const recent =
+              asked === true ? cascaded : cascaded.filter((e) => asked.kinds.includes(e.kind));
+            if (recent.length === 0) continue;
             for (const scope of this.#scopesOf(def)) {
               again.push({
                 def,
@@ -387,7 +391,7 @@ export class Scheduler {
                 window: 0,
                 windowIndex: undefined,
                 item: undefined,
-                recent: cascaded,
+                recent,
                 rngParts: [def.system, def.id, scope, "cascade", t],
               });
             }

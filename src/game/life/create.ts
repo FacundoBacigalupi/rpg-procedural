@@ -280,6 +280,8 @@ export interface LifeOptions {
    * paso (p. ej. el `scam.discovered` de una marca falsa que emite `life.marks`).
    */
   readonly legacyNoPerceiveCascade?: boolean;
+  /** Solo el replay de un motor anterior a `life-28`: `life.appraise` no recibe el `scam.discovered` de la segunda ronda. */
+  readonly legacyNoAppraiseCascade?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -565,6 +567,7 @@ export function optInParts(
   | "legacyTend"
   | "legacyResume"
   | "legacyNoPerceiveCascade"
+  | "legacyNoAppraiseCascade"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -696,6 +699,7 @@ export function optInParts(
     ...(options.legacyTend ? { legacyTend: true } : {}),
     ...(options.legacyResume ? { legacyResume: true } : {}),
     ...(options.legacyNoPerceiveCascade ? { legacyNoPerceiveCascade: true } : {}),
+    ...(options.legacyNoAppraiseCascade ? { legacyNoAppraiseCascade: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
