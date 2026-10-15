@@ -454,6 +454,8 @@ export interface LifeWorld {
   readonly npcCloakMend?: boolean;
   /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`ForecastBeforeLeaving`); apagado: siempre la lleva. */
   readonly npcForecast?: boolean;
+  /** Opt-in (con `npcForecast`): el viajero también cree si va a llover (`RoadForecast.rain`); con lluvia creída espera y carga la capa; apagado. */
+  readonly npcRainForecast?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: bienes que al comerse dan una dosis (`amount` por gramo); ver `ActOptions.foodSubstances`. */
@@ -1672,6 +1674,7 @@ export function lifeWorld(
                                 who,
                                 now,
                                 days,
+                                parts.npcRainForecast === true,
                               ),
                           }
                         : {}),

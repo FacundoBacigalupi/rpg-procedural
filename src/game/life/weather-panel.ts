@@ -28,7 +28,7 @@ import {
   signsShowing,
   yearPhase,
 } from "../../sim/index.ts";
-import { MISREAD_SD_C } from "./forecast.ts";
+import { MISREAD_SD_C, SIGN_LOOKBACK_DAYS } from "./forecast.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** Cómo se siente el aire, de más frío a más calor. */
@@ -75,8 +75,7 @@ export interface WeatherPanel {
   }[];
 }
 
-/** Cuántos días de lo ya vivido cuentan para la fe en un refrán. */
-export const SIGN_LOOKBACK_DAYS = 360;
+export { SIGN_LOOKBACK_DAYS };
 
 /** Plazos del pronóstico, en días desde hoy. */
 const HORIZONS = [

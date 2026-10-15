@@ -157,8 +157,13 @@ export interface LifeSetup {
  * camino con lo que su lugar enseña y solo carga la capa si cree que la va a necesitar). Compatibilidad:
  * el replay con un motor anterior a `life-19` enciende `legacyNoForecast`; una vida guardada con
  * `life-18` sigue desde su estado con el límite de replay.
+ *
+ * `life-20`: el perfil completo enciende `npcRainForecast` (al salir de viaje el NPC cree si va a llover
+ * con lo que vio hoy y los refranes de su lugar; con lluvia creída espera un día, hasta dos seguidos, y
+ * carga la capa). Compatibilidad: el replay con un motor anterior a `life-20` enciende
+ * `legacyNoRainForecast`; una vida guardada con `life-19` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-19";
+export const LIFE_ENGINE = "life-20";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -187,6 +192,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 17 ? { legacyNoStrain: true } : {}),
     ...(n < 18 ? { legacyNoCloakMend: true } : {}),
     ...(n < 19 ? { legacyNoForecast: true } : {}),
+    ...(n < 20 ? { legacyNoRainForecast: true } : {}),
   };
 }
 

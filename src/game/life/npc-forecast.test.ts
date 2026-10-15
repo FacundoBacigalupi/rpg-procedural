@@ -1,15 +1,31 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
-import { checkInvariants, LOCATION, outdoorTempC, PERSON, PLACE } from "../../sim/index.ts";
+import { type AgentId, type ContentSource, loadContent, Rng } from "../../core/index.ts";
+import {
+  checkInvariants,
+  dayOf,
+  foreseenRainChance,
+  LOCATION,
+  outdoorTempC,
+  PERSON,
+  PLACE,
+  rainedToday,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { CLOAK, CLOAK_CLO, carriedCloakClo } from "./cloak.ts";
 import { optInParts } from "./create.ts";
 import { NPC_DECISION } from "./decide.ts";
-import { CLOAK_MARGIN_CLO, wantsCloak } from "./forecast.ts";
+import {
+  believedRainChance,
+  CLOAK_MARGIN_CLO,
+  MAX_RAIN_WAITS,
+  RAIN_HORIZON_DAYS,
+  RAIN_WAIT_CHANCE,
+  wantsCloak,
+} from "./forecast.ts";
 import { engineOptions, Life } from "./life.ts";
-import { NPC_JOURNEY } from "./npc-verbs.ts";
+import { NPC_JOURNEY, NPC_VERB_LOG } from "./npc-verbs.ts";
 import { FULL_PROFILE, validateLifeDependencies } from "./profile.ts";
 import { seasonalClothing } from "./thermal.ts";
 import { living } from "./world.ts";
@@ -28,6 +44,20 @@ describe("pronóstico del viajero (puro)", () => {
     expect(optInParts({ npcForecast: true, legacyNoForecast: true })).toEqual({});
     expect(engineOptions("life-18", FULL_PROFILE).legacyNoForecast).toBe(true);
     expect(engineOptions("life-19", FULL_PROFILE).legacyNoForecast).toBeUndefined();
+  });
+
+  it("la lluvia es opt-in, pide el pronóstico y el perfil la enciende desde life-20", () => {
+    expect(optInParts({ npcForecast: true, npcRainForecast: true })).toEqual({
+      npcForecast: true,
+      npcRainForecast: true,
+    });
+    expect(
+      validateLifeDependencies({ npcRainForecast: true }).some((i) => i.requires === "npcForecast"),
+    ).toBe(true);
+    expect(FULL_PROFILE.npcRainForecast).toBe(true);
+    expect(optInParts({ npcRainForecast: true, legacyNoRainForecast: true })).toEqual({});
+    expect(engineOptions("life-19", FULL_PROFILE).legacyNoRainForecast).toBe(true);
+    expect(engineOptions("life-20", FULL_PROFILE).legacyNoRainForecast).toBeUndefined();
   });
 
   it("carga la capa solo si cree que va a necesitar bastante más abrigo del que lleva", () => {
@@ -58,12 +88,13 @@ function sources(dir: string, root = dir): ContentSource[] {
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("el pronóstico en la vida (opt-in)", () => {
-  function run(forecast: boolean) {
+  function run(forecast: boolean, rain = false) {
     const life = Life.create(7, content, {
       npcVerbs: ["move"],
       npcJourneyDays: 6,
       npcCloak: true,
       ...(forecast ? { npcForecast: true } : {}),
+      ...(forecast && rain ? { npcRainForecast: true } : {}),
     });
     const w = life.world;
     const adults = living(w.truth).filter(
@@ -130,4 +161,78 @@ describe("el pronóstico en la vida (opt-in)", () => {
       JSON.stringify([r.walkers.map((x) => r.w.truth.get(NPC_JOURNEY, x)), r.life.hash()]);
     expect(key(run(true))).toBe(key(run(true)));
   }, 300_000);
+
+  it("la lluvia: sale con lo que creyó, espera si cree que llueve y es determinista", () => {
+    const on = run(true, true);
+    const root = Rng.root(on.w.seed);
+    let judged = 0;
+    for (const x of on.walkers) {
+      const t = on.w.truth.get(NPC_JOURNEY, x);
+      const log = on.w.truth.get(NPC_VERB_LOG, x);
+      if (t) {
+        judged++;
+        expect(typeof t.foreseenRain).toBe("number");
+        const day = dayOf(
+          on.w.clock,
+          t.since + Math.round((on.w.map.lonDeg / 360) * on.w.clock.day),
+        );
+        const again = believedRainChance(on.w.map, on.w.clock, root, x, day, RAIN_HORIZON_DAYS);
+        expect(t.foreseenRain).toBe(again.chance);
+        // Creyendo lluvia solo sale quien ya esperó lo máximo, y entonces lleva la capa.
+        if ((t.foreseenRain as number) >= RAIN_WAIT_CHANCE) {
+          expect(t.cloak).toBe(true);
+          expect(log?.waited ?? 0).toBeLessThanOrEqual(MAX_RAIN_WAITS);
+        }
+      } else if (log?.waited !== undefined) {
+        judged++;
+        expect(log.waited).toBeGreaterThan(0);
+        expect(log.waited).toBeLessThanOrEqual(MAX_RAIN_WAITS);
+      }
+    }
+    expect(judged).toBeGreaterThan(0);
+    expect(on.w.ledger.audit()).toEqual([]);
+    const key = (r: ReturnType<typeof run>) =>
+      JSON.stringify([
+        r.walkers.map((x) => [r.w.truth.get(NPC_JOURNEY, x), r.w.truth.get(NPC_VERB_LOG, x)]),
+        r.life.hash(),
+      ]);
+    expect(key(run(true, true))).toBe(key(on));
+    // Apagado, nadie espera ni deja creencia de lluvia.
+    const off = run(true, false);
+    for (const x of off.walkers) {
+      expect(off.w.truth.get(NPC_JOURNEY, x)?.foreseenRain).toBeUndefined();
+      expect(off.w.truth.get(NPC_VERB_LOG, x)?.waited).toBeUndefined();
+    }
+  }, 300_000);
+});
+
+describe("la creencia de lluvia del viajero (pura)", () => {
+  const life = Life.create(7, content, { npcVerbs: ["move"], npcJourneyDays: 6, npcCloak: true });
+  const { map, clock, seed } = life.world;
+  const root = Rng.root(seed);
+  const today = dayOf(clock, life.now);
+
+  it("es determinista y varía con quién y con el día", () => {
+    const a = believedRainChance(map, clock, root, "agent:1", today, 2);
+    expect(believedRainChance(map, clock, root, "agent:1", today, 2)).toEqual(a);
+    expect(a.chance).toBeGreaterThanOrEqual(0);
+    expect(a.chance).toBeLessThanOrEqual(1);
+    const seen = new Set<number>();
+    for (let d = 0; d < 40; d++) {
+      for (const who of ["agent:1", "agent:2", "agent:3"])
+        seen.add(believedRainChance(map, clock, root, who, today + d, 2).chance);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it("alguien puede recordar mal lo de hoy: la creencia no siempre es la de la verdad", () => {
+    let differs = 0;
+    for (let d = 0; d < 200; d++) {
+      const wet = rainedToday(map.climate, clock, root, today + d);
+      const truthful = foreseenRainChance(map.climate, today + d, 2, wet);
+      const base = believedRainChance(map, clock, root, "agent:9", today + d, 2);
+      if (!base.folk && base.chance !== truthful) differs++;
+    }
+    expect(differs).toBeGreaterThan(0);
+  });
 });
