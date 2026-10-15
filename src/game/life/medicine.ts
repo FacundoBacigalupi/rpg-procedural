@@ -421,7 +421,8 @@ export function chooseRemedyDose(i: {
   const believedMass = Math.max(1, i.massKg) * (1 + 0.3 * noise * (1 - skill));
   const potency = Math.max(0.05, i.believedPotency);
   const raw = believedMass / Math.max(1, i.refMassKg) / potency;
-  const multiplier = Math.round(Math.min(Math.max(1, i.maxTakes), Math.max(0.25, raw)) * 1000) / 1000;
+  const multiplier =
+    Math.round(Math.min(Math.max(1, i.maxTakes), Math.max(0.25, raw)) * 1000) / 1000;
   return { multiplier, takes: Math.max(1, Math.ceil(multiplier - 1e-9)) };
 }
 
@@ -683,7 +684,8 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
               const used = reserved.get(`${acc}|${unit}`) ?? 0;
               const have = ctx.ledger.balance(acc, unit) - used;
               if (have >= 1) {
-                if (dosing?.byLot) lotQuality = qualityOfUnit(ctx.truth.get(LOT_QUALITY, who), unit);
+                if (dosing?.byLot)
+                  lotQuality = qualityOfUnit(ctx.truth.get(LOT_QUALITY, who), unit);
                 choice = choose(lotQuality);
                 // Si no alcanza para todas las tomas, da las que hay.
                 const takes = Math.min(choice.takes, Math.floor(have));
@@ -713,8 +715,7 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
               ? dosing && (dosing.byPatient || (dosing.byLot && spent))
                 ? {
                     ...baseDose,
-                    amount:
-                      Math.round(baseDose.amount * choice.multiplier * potency * 1000) / 1000,
+                    amount: Math.round(baseDose.amount * choice.multiplier * potency * 1000) / 1000,
                   }
                 : baseDose
               : undefined;
