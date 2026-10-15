@@ -107,6 +107,7 @@ import { growthSequelaeProcess } from "./growthSequelae.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
+import { type AfflictedOrigin, journeySeeds } from "./journey-arrivals.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess } from "./knowing.ts";
 import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
@@ -226,6 +227,8 @@ export interface LifeWorld {
   readonly materials?: readonly MaterialDef[];
   /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
   readonly pathogenSeeds?: readonly PathogenSeed[];
+  /** Opt-in (body-health §6): orígenes con epidemia; quien parte de ahí en un viaje abierto lleva el patógeno (`journeySeeds`). */
+  readonly afflictedOrigins?: readonly AfflictedOrigin[];
   /** Sanadores explícitos (body-health §6): diagnostican y tratan a los enfermos; sin ellos no hacen nada. */
   readonly healers?: readonly Healer[];
   /** Escuela de sanadores desde las habilidades (`medicine`); sin ella solo cuentan los explícitos. */
@@ -1224,9 +1227,19 @@ export function lifeWorld(
         exposureProcess({
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
-          ...(parts.labors && parts.labors.length > 0
+          ...((parts.labors && parts.labors.length > 0) ||
+          (parts.afflictedOrigins && parts.afflictedOrigins.length > 0)
             ? {
-                arrivals: (truth: ReadonlyWorldTruth) => puerperalSeeds(truth),
+                arrivals: (truth: ReadonlyWorldTruth, now: Tick) => [
+                  ...(parts.labors && parts.labors.length > 0 ? puerperalSeeds(truth) : []),
+                  ...journeySeeds(
+                    Rng.root(parts.seed),
+                    truth,
+                    now,
+                    parts.clock,
+                    parts.afflictedOrigins ?? [],
+                  ),
+                ],
               }
             : {}),
           ...(parts.waterSources
