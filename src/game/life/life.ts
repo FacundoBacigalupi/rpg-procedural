@@ -167,8 +167,14 @@ export interface LifeSetup {
  * seco y sin creer que llueva, una parte de la gente riega en vez de cosechar y el riego sube el rinde
  * de las horas siguientes). Compatibilidad: el replay con un motor anterior a `life-21` enciende
  * `legacyNoFieldWatering`; una vida guardada con `life-20` sigue desde su estado con el límite de replay.
+ *
+ * `life-22`: el perfil completo enciende `npcFieldSowing` (la temporada de crecimiento abre una ventana
+ * de siembra; la gente de campo siembra a la primera hora con el suelo mojado o lluvia creída, y sembrar
+ * tarde baja el rinde de la temporada). Compatibilidad: el replay con un motor anterior a `life-22`
+ * enciende `legacyNoFieldSowing`; una vida guardada con `life-21` sigue desde su estado con el límite
+ * de replay.
  */
-export const LIFE_ENGINE = "life-21";
+export const LIFE_ENGINE = "life-22";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -199,6 +205,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 19 ? { legacyNoForecast: true } : {}),
     ...(n < 20 ? { legacyNoRainForecast: true } : {}),
     ...(n < 21 ? { legacyNoFieldWatering: true } : {}),
+    ...(n < 22 ? { legacyNoFieldSowing: true } : {}),
   };
 }
 
