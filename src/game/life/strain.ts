@@ -36,3 +36,17 @@ export function strainBlow(
   const zone = rng.pick(["left_leg", "right_leg"] as const);
   return { kind: "blunt", force: STRAIN_FORCE * (0.5 + rng.float()), zone, dirt: 0, cause, at };
 }
+
+/** Cuánto más fácil prende un contagio en un cuerpo agotado (tope de la susceptibilidad). */
+export const EXHAUSTION_MAX = 2.5;
+
+/**
+ * Susceptibilidad al contagio por fatiga (npc-b2b3b2d5, body-health): 1 hasta `STRAIN_AT`; de ahí sube
+ * lineal hasta `EXHAUSTION_MAX` con la fatiga en el tope. Es el mismo cuerpo cansado que tuerce una pierna
+ * al forzar el paso; acá deja las defensas bajas y el aire, el agua o el contacto del camino prenden más.
+ */
+export function exhaustionSusceptibility(fatigue: number): number {
+  if (!(fatigue > STRAIN_AT)) return 1;
+  const over = (clamp01(fatigue) - STRAIN_AT) / (1 - STRAIN_AT);
+  return round(1 + (EXHAUSTION_MAX - 1) * over);
+}

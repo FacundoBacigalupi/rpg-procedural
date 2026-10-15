@@ -255,6 +255,8 @@ export interface LifeOptions {
   readonly legacyNoCloak?: boolean;
   /** Solo el replay de un motor anterior a `life-17`: apaga `npcStrain` aunque el perfil lo traiga. */
   readonly legacyNoStrain?: boolean;
+  /** Solo el replay de un motor anterior a `life-25`: apaga `npcExhaustion` aunque el perfil lo traiga. */
+  readonly legacyNoExhaustion?: boolean;
   /** Solo el replay de un motor anterior a `life-18`: apaga `npcCloakMend` aunque el perfil lo traiga. */
   readonly legacyNoCloakMend?: boolean;
   /** Solo el replay de un motor anterior a `life-19`: apaga `npcForecast` aunque el perfil lo traiga. */
@@ -443,6 +445,8 @@ export interface LifeOptions {
   readonly npcFieldShared?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
   readonly npcStrain?: boolean;
+  /** Opt-in (con `npcStrain`): la fatiga alta del cuerpo baja las defensas y el contagio prende más fácil (`ExposureOptions.exhaustion`); apagado. */
+  readonly npcExhaustion?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
   readonly conception?: boolean;
   /** Con `conception`: multiplica la fecundidad (por defecto 1). */
@@ -593,6 +597,7 @@ export function optInParts(
   | "npcFieldShared"
   | "npcSowSeed"
   | "npcStrain"
+  | "npcExhaustion"
   | "conception"
   | "conceptionRateScale"
   | "conceptionGestationDays"
@@ -709,6 +714,7 @@ export function optInParts(
     ...(options.npcFieldShared && !options.legacyNoFieldShared ? { npcFieldShared: true } : {}),
     ...(options.npcSowSeed && !options.legacyNoSowSeed ? { npcSowSeed: true } : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
+    ...(options.npcExhaustion && !options.legacyNoExhaustion ? { npcExhaustion: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),
     ...(options.conception && options.conceptionGestationDays !== undefined
