@@ -27,6 +27,7 @@ import {
 import { healthDebtFocus } from "./full-profile-focus.ts";
 import { natalityLifeOptions } from "./natality-coverage.ts";
 import { livingHouseholds, rescueLoanSeeds, runRescueTurns } from "./rescue-coverage.ts";
+import { runSensesTurns } from "./senses-coverage.ts";
 
 /**
  * Semillas de la cobertura `rescue`: se eligen sobre un sondeo sin opciones (la población y el libro
@@ -133,11 +134,14 @@ function measureFullProfileSeed(
     config.days === undefined ? config.years * world.clock.year : config.days * world.clock.day;
   const target = from + Math.round(duration);
   const step = config.checkEveryDays * world.clock.day;
-  // Turnos dirigidos del personaje (contratar, prometer): planes legales, quedan en la reproducción.
+  // Turnos dirigidos del personaje (contratar, prometer, contar, mirar, suponer): planes legales,
+  // quedan en la reproducción.
   const rescuePlans = [
     ...(config.rescue === true ? runRescueTurns(life) : []),
     ...(config.commerce === true && life.alive ? runCommerceTurns(life) : []),
   ];
+  if (config.senses === true && life.alive)
+    rescuePlans.push(...runSensesTurns(life, rescuePlans.length + 1));
   if (!Number.isSafeInteger(target) || target <= from || !Number.isSafeInteger(step))
     throw new RangeError("duración o cadencia fuera del rango de ticks");
   let checks = 0;
