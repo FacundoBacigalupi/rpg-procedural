@@ -448,6 +448,8 @@ export interface LifeOptions {
   readonly npcFootwearMend?: boolean;
   /** Opt-in (con `npcFootwearMend`): un zapatero de la aldea con oficio propio y cuero del ledger con origen cobra los arreglos del calzado en vez del sumidero (`game/life/cobbler.ts`); apagado. */
   readonly npcCobbler?: boolean;
+  /** Opt-in (con `npcCobbler`): el zapatero paga con su cobre la piel que junta y sin cobre no arregla (`cobbler.ts`, npc-b2b3b2b3b1); apagado, fuera del perfil completo. */
+  readonly npcCobblerHides?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida (`LifeParts.npcCloakMend`); apagado. */
@@ -613,6 +615,7 @@ export function optInParts(
   | "npcFootSores"
   | "npcFootwearMend"
   | "npcCobbler"
+  | "npcCobblerHides"
   | "npcCloak"
   | "npcCloakMend"
   | "npcForecast"
@@ -736,6 +739,7 @@ export function optInParts(
     ...(options.npcFootSores && !options.legacyNoFootSores ? { npcFootSores: true } : {}),
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
     ...(options.npcCobbler && !options.legacyNoCobbler ? { npcCobbler: true } : {}),
+    ...(options.npcCobblerHides ? { npcCobblerHides: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),

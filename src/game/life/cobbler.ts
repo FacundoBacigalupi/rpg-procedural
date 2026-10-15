@@ -61,3 +61,29 @@ export function leatherToFetch(have: number, need: number): number {
   if (have >= need) return 0;
   return Math.max(need - have, LEATHER_BATCH);
 }
+
+/** Cobre por kilo de piel que el zapatero compra al curtidor de fuera (npc-b2b3b2b3b1, sin calibrar). */
+export const HIDE_COPPER_PER_KG = 1;
+
+/** Cobre que cuestan `grams` de piel (redondeado hacia arriba, entero). Puro. */
+export function hidePrice(grams: number): number {
+  return Math.ceil((grams / 1000) * HIDE_COPPER_PER_KG);
+}
+
+/**
+ * Qué compra el zapatero que tiene `have` g y `copper` cobres para cubrir `need`: el lote de
+ * `leatherToFetch` si le alcanza, o solo lo que falta si no; `null` si ni eso le alcanza y el
+ * trabajo no se hace. Puro.
+ */
+export function hideBuy(
+  have: number,
+  need: number,
+  copper: number,
+): { grams: number; cost: number } | null {
+  const want = leatherToFetch(have, need);
+  if (want === 0) return { grams: 0, cost: 0 };
+  if (hidePrice(want) <= copper) return { grams: want, cost: hidePrice(want) };
+  const missing = need - have;
+  if (hidePrice(missing) <= copper) return { grams: missing, cost: hidePrice(missing) };
+  return null;
+}

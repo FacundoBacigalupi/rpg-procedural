@@ -35,6 +35,7 @@ import {
   COBBLER,
   COBBLER_MIN_AGE,
   HIDES_SOURCE,
+  hideBuy,
   LEATHER_SCRAP,
   LEATHER_UNIT,
   leatherFor,
@@ -81,7 +82,11 @@ export interface FootwearMendOptions {
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Con `npcCobbler`: un zapatero de la aldea cobra, con su oficio y su cuero (en vez del sumidero). */
-  readonly cobbler?: { readonly clock: PlanetClock };
+  readonly cobbler?: {
+    readonly clock: PlanetClock;
+    /** Con `npcCobblerHides`: la piel que junta la paga con su cobre (al sumidero) y sin cobre no arregla. */
+    readonly hideCost?: boolean;
+  };
 }
 
 export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
@@ -121,6 +126,7 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
             account: holderAccount(c as unknown as HolderRef),
             level: ctx.truth.get(COBBLER, c)?.level ?? 0,
             leather: ledger.balance(holderAccount(c as unknown as HolderRef), LEATHER_UNIT),
+            copper: Math.floor(ledger.balance(holderAccount(c as unknown as HolderRef), COPPER)),
             present: inVillage(c),
           };
         }
@@ -154,6 +160,7 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
           account,
           level,
           leather: ledger.balance(account, LEATHER_UNIT),
+          copper: Math.floor(ledger.balance(account, COPPER)),
           present: true,
         };
       };
@@ -175,13 +182,21 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
         const self = shop !== null && who === shop.who;
         const need = leatherFor(job.kind);
         if (shop !== null) {
-          const fetch = leatherToFetch(shop.leather, need);
+          let fetch = leatherToFetch(shop.leather, need);
+          let hideCopper = 0;
+          if (o.cobbler?.hideCost) {
+            const buy = hideBuy(shop.leather, need, shop.copper);
+            // Sin cobre para la piel que falta, el zapatero no arregla hoy.
+            if (buy === null) continue;
+            fetch = buy.grams;
+            hideCopper = buy.cost;
+          }
           if (fetch > 0) {
             events.push({
               kind: LEATHER_FETCHED,
               actors: [shop.who],
               place: o.placeOf(ctx.truth, shop.who),
-              data: { grams: fetch },
+              data: { grams: fetch, ...(o.cobbler?.hideCost ? { paid: hideCopper } : {}) },
               emissions: {},
               causes: [
                 { kind: "state", entity: shop.who as unknown as EntityRef, key: COBBLER.name },
@@ -196,9 +211,20 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
                   to: shop.account,
                   amount: fetch,
                 },
+                ...(hideCopper > 0
+                  ? [
+                      {
+                        unit: COPPER,
+                        from: shop.account,
+                        to: externalAccount(WAGES_SINK),
+                        amount: hideCopper,
+                      },
+                    ]
+                  : []),
               ],
             });
             shop.leather += fetch;
+            shop.copper -= hideCopper;
           }
           shop.leather -= need;
           keeps = mendKeeps(shop.level);
@@ -253,5 +279,7 @@ interface Shop {
   readonly account: ReturnType<typeof holderAccount>;
   level: number;
   leather: number;
+  /** Cobre que tenía al empezar el día (sin contar lo que cobra hoy). */
+  copper: number;
   readonly present: boolean;
 }
