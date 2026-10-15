@@ -187,8 +187,13 @@ export interface LifeSetup {
  * `life-25`: el perfil completo enciende `npcExhaustion` (la fatiga alta del cuerpo baja las defensas y el
  * contagio prende más fácil). Compatibilidad: el replay con un motor anterior a `life-25` enciende
  * `legacyNoExhaustion`; una vida guardada con `life-24` sigue desde su estado con el límite de replay.
+ *
+ * `life-26`: el perfil completo enciende `npcCobbler` (un zapatero de la aldea, con oficio propio y cuero del
+ * ledger con origen, cobra los arreglos del calzado en vez del sumidero). Compatibilidad: el replay con un motor
+ * anterior a `life-26` enciende `legacyNoCobbler`; una vida guardada con `life-25` sigue desde su estado con el
+ * límite de replay.
  */
-export const LIFE_ENGINE = "life-25";
+export const LIFE_ENGINE = "life-26";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -223,6 +228,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 23 ? { legacyNoFieldShared: true } : {}),
     ...(n < 24 ? { legacyNoSowSeed: true } : {}),
     ...(n < 25 ? { legacyNoExhaustion: true } : {}),
+    ...(n < 26 ? { legacyNoCobbler: true } : {}),
   };
 }
 
@@ -364,6 +370,7 @@ export class Life {
         content,
         options.residue,
         options.npcSowSeed === true && options.legacyNoSowSeed !== true,
+        options.npcCobbler === true && options.legacyNoCobbler !== true,
       ),
     };
     if (anchor === undefined) {

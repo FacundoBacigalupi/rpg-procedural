@@ -454,6 +454,8 @@ export interface LifeWorld {
   readonly npcFootSores?: boolean;
   /** Opt-in (con `npcFootwear`): el NPC en la aldea remienda o compra par nuevo del calzado gastado, pagando cobre (`life.footwear_mend`); apagado. */
   readonly npcFootwearMend?: boolean;
+  /** Opt-in (con `npcFootwearMend`): un zapatero de la aldea cobra los arreglos con su oficio y cuero del ledger (`cobbler.ts`); apagado. */
+  readonly npcCobbler?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
@@ -883,7 +885,13 @@ export function lifeWorld(
             ]
           : []),
         ...(parts.npcFootwear === true && parts.npcFootwearMend === true
-          ? [footwearMendProcess({ player, placeOf: placeOf(parts, village) })]
+          ? [
+              footwearMendProcess({
+                player,
+                placeOf: placeOf(parts, village),
+                ...(parts.npcCobbler === true ? { cobbler: { clock: parts.clock } } : {}),
+              }),
+            ]
           : []),
         ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
           ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
