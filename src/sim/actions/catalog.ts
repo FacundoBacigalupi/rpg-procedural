@@ -76,6 +76,7 @@ export const RESOLVERS = [
   "give",
   "take",
   "store",
+  "drop",
   "eat",
   "consume",
   "boil",

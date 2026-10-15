@@ -476,6 +476,8 @@ export interface LifeOptions {
   readonly errands?: LifeParts["errands"];
   /** Opt-in (con `objectCues`): también ve lo que llevan los presentes y los puestos del lugar (`LifeParts.viewCues`). */
   readonly viewCues?: ViewCues;
+  /** Opt-in (con `objectCues`): también ve lo soltado en el suelo del lugar (`drop`, `LifeParts.groundCues`); apagado. */
+  readonly groundCues?: boolean;
 }
 
 /** La cultura con el rasgo `norms.interest` sembrado, solo si se pidió (`interestNorm`); si no, la misma. */
@@ -640,6 +642,7 @@ export function optInParts(
   | "cueLocal"
   | "objectCues"
   | "viewCues"
+  | "groundCues"
   | "tradeNeeds"
 > {
   return {
@@ -765,6 +768,7 @@ export function optInParts(
     ...(options.cueLocal ? { cueLocal: true } : {}),
     ...(options.objectCues ? { objectCues: true } : {}),
     ...(options.viewCues ? { viewCues: options.viewCues } : {}),
+    ...(options.groundCues ? { groundCues: true } : {}),
     ...(options.tradeNeeds ? { tradeNeeds: options.tradeNeeds } : {}),
   };
 }

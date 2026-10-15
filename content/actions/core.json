@@ -446,6 +446,25 @@
     "evidence": 1
   },
   {
+    "id": "drop",
+    "name": "soltar",
+    "domain": "manipulation",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.05 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 10 },
+    "checkpoint": 5,
+    "emissions": { "sight": 0.3, "sound": 0.1 },
+    "resolver": "drop",
+    "ease": 4,
+    "failureModes": [
+      { "id": "too_weak", "factor": "capability" },
+      { "id": "no_means", "factor": "means" }
+    ],
+    "evidence": 0.6
+  },
+  {
     "id": "cook",
     "name": "cocinar",
     "domain": "work",

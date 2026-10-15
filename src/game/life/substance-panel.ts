@@ -25,6 +25,7 @@ import {
   placeHoldersInView,
   type ViewCues,
 } from "./cue-local.ts";
+import { withGround } from "./ground.ts";
 import { type ResidueConfig, residueBodyOf } from "./residue.ts";
 import { cueContextOf, cueCravingOf } from "./substances.ts";
 import { acquaintances } from "./view.ts";
@@ -107,6 +108,8 @@ export function substancePanel(
     readonly objectCues?: readonly string[];
     /** Opt-in (con `objectCues`): suma lo que llevan los presentes de verdad y los puestos del hex. */
     readonly viewCues?: ViewCues;
+    /** Opt-in (con `objectCues`): suma lo soltado en el suelo del lugar (`groundHolder`). */
+    readonly groundCues?: boolean;
   },
 ): SubstancePanel {
   const at = w.truth.get(LOCATION, w.player);
@@ -132,10 +135,13 @@ export function substancePanel(
           const unit = ledgerUnit(`good:${good}`);
           const amountOf = (h: HolderRef) =>
             w.ledger.holdings(holderAccount(h)).find((x) => x.unit === unit)?.amount ?? 0;
-          const viewed = opts.viewCues
+          const viewCues = opts.groundCues
+            ? withGround(opts.viewCues, w.truth, w.map)
+            : opts.viewCues;
+          const viewed = viewCues
             ? [
                 ...peopleInView(w.truth, w.player),
-                ...placeHoldersInView(opts.viewCues, at),
+                ...placeHoldersInView(viewCues, at),
               ].reduce<number>((n, h) => n + amountOf(h as HolderRef), 0)
             : 0;
           return (

@@ -133,6 +133,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["objectCues", "cueLocal"],
     ["objectCues", "consumables"],
     ["viewCues", "objectCues"],
+    ["groundCues", "objectCues"],
     ["npcTemplates", "npcVerbs"],
     ["npcJourneyDays", "npcVerbs"],
     ["npcInterrupt", "npcVerbs"],

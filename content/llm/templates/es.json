@@ -409,6 +409,14 @@
     "lines": ["No llevás nada para guardar.", "No tenés nada encima que guardar."]
   },
   {
+    "id": "outcome.drop.done",
+    "lines": ["Dejás {what} en el suelo.", "Soltás {what} y ahí queda."]
+  },
+  {
+    "id": "outcome.drop.nothing",
+    "lines": ["No llevás eso encima.", "No tenés nada de eso para soltar."]
+  },
+  {
     "id": "outcome.eat.own",
     "lines": ["Comés {what} de lo que llevabas.", "Te comés {what} que tenías encima."]
   },

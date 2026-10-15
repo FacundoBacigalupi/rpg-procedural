@@ -110,6 +110,9 @@ export function touchedBy(e: Event, household: HolderRef | null): Touched[] {
     case "store":
       if (hs(fx.got)) for (const h of fx.got) add(h.unit, true, true);
       break;
+    case "drop":
+      if (hs(fx.got)) for (const h of fx.got) add(h.unit, true, false);
+      break;
   }
   return out;
 }

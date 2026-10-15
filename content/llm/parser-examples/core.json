@@ -1104,6 +1104,19 @@
     }
   },
   {
+    "id": "drop-sack",
+    "text": "dejo el saco de grano en el suelo",
+    "scene": "Estás en el camino, cansado; llevás un saco de grano al hombro.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "drop",
+        "args": [{ "role": "what", "text": "el saco de grano" }]
+      }
+    }
+  },
+  {
     "id": "cook-flatbread",
     "text": "horneo pan con el grano de la despensa",
     "scene": "Estás en tu casa; hay un horno de barro y grano guardado.",
