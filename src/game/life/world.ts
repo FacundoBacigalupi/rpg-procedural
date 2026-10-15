@@ -72,7 +72,7 @@ import {
 } from "./altitude.ts";
 import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
-import { appraiseProcess } from "./appraise.ts";
+import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
@@ -379,6 +379,8 @@ export interface LifeWorld {
   readonly legacyResume?: boolean;
   /** Replay de motores anteriores a `life-27`: sin `perceiveCascade` en deeds y mark_exposure. */
   readonly legacyNoPerceiveCascade?: boolean;
+  /** Replay de motores anteriores a `life-28`: `life.appraise` sin la segunda ronda de `scam.discovered`. */
+  readonly legacyNoAppraiseCascade?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
   readonly waitEatHomeOnly?: boolean;
   /** Replay de motores anteriores a `life-13`: nadie da de beber al inconsciente; ver `RoutineOptions.careWater`. */
@@ -677,13 +679,16 @@ export type LifeParts = Omit<LifeWorld, "scheduler" | "player">;
 /**
  * Los `perceive` por evento que también leen lo emitido por otros `perceive` del mismo paso
  * (`ProcessDef.perceiveCascade`): consumidores de `scam.discovered`, que `life.marks` emite al cerrar el paso.
- * `life.appraise` también lo lee (baja la confianza) pero no está: con él la cascada le llega con todo lo
- * demás que emiten los `perceive` y movía el perfil (ver ROADMAP `perfil2c-appraise-cascade`).
+ * `life.appraise` (desde `life-28`) lo recibe filtrado a `scam.discovered`: con todo lo demás que emiten los
+ * `perceive` la cascada movía el perfil (ver ROADMAP `perfil2c-appraise-cascade`).
  */
 export const PERCEIVE_CASCADE: ReadonlySet<string> = new Set([
   DEEDS_PROCESS,
   MARK_EXPOSURE_PROCESS,
 ]);
+
+/** Lo que `life.appraise` recibe de la segunda ronda: solo la falsificación descubierta. */
+export const APPRAISE_CASCADE = { kinds: ["scam.discovered"] } as const;
 
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
@@ -720,7 +725,11 @@ export function lifeWorld(
   // Desde `life-27` (perfil2c-mark-exposure-cascade): quienes leen lo que emite otro `perceive` del
   // paso (el `scam.discovered` de una marca falsa que emite `life.marks`) lo reciben en la segunda ronda.
   const cascade = (def: ProcessDef): ProcessDef =>
-    PERCEIVE_CASCADE.has(def.id) ? { ...def, perceiveCascade: true } : def;
+    PERCEIVE_CASCADE.has(def.id)
+      ? { ...def, perceiveCascade: true }
+      : def.id === APPRAISE_PROCESS && parts.legacyNoAppraiseCascade !== true
+        ? { ...def, perceiveCascade: APPRAISE_CASCADE }
+        : def;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),

@@ -1,6 +1,7 @@
 // perfil2c-mark-exposure-cascade: el `scam.discovered` que emite `life.marks` (perceive) al repasar
 // una marca falsa llega, en la segunda ronda `perceiveCascade` del scheduler, a `life.mark_exposure`
-// (rumor `fraud`, `marks.cleared`, `MARK_CLEARED`) y a `life.deeds` (el fraude en `KNOWN_DEEDS`).
+// (rumor `fraud`, `marks.cleared`, `MARK_CLEARED`) y a `life.deeds` (el fraude en `KNOWN_DEEDS`);
+// desde `life-28` también a `life.appraise` (baja la confianza en el falsificador).
 // De punta a punta con una Life real: el personaje recibió un lote con la marca de un vecino copiada
 // por otro y lo mira (`look`) hasta descubrirlo.
 import { readdirSync, readFileSync } from "node:fs";
@@ -13,7 +14,7 @@ import {
   loadContent,
   type Tick,
 } from "../../core/index.ts";
-import { type ActionPlan, KNOWN_DEEDS, PERSON, RUMORS } from "../../sim/index.ts";
+import { type ActionPlan, KNOWN_DEEDS, PERSON, RELATIONS, RUMORS } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { engineOptions, Life } from "./life.ts";
 import { MARK_CLEARED, MARK_CLEARED_EVENT } from "./markexposure.ts";
@@ -103,6 +104,19 @@ describe("la falsificación descubierta llega a la exposición (perceiveCascade)
     expect(deed).toMatchObject({ kind: "fraud", by: r.forger, victim: r.me });
     // Determinista: los mismos turnos dejan el mismo mundo.
     expect(run().life.hash().total).toBe(r.life.hash().total);
+  }, 240_000);
+
+  it("life.appraise baja la confianza del comprador en el falsificador (life-28); con life-27 no", () => {
+    const now = run();
+    const before = run("life-27");
+    for (const r of [now, before]) {
+      if (!r.w.log.all().some((e) => e.kind === SCAM_DISCOVERED))
+        throw new Error("sin descubrimiento");
+    }
+    const toward = (r: ReturnType<typeof run>) =>
+      r.w.truth.get(RELATIONS, r.me)?.toward[r.forger]?.dims;
+    expect(toward(now)?.["resentment"] ?? 0).toBeGreaterThan(toward(before)?.["resentment"] ?? 0);
+    expect(toward(now)?.["trust"] ?? 0).toBeLessThan(toward(before)?.["trust"] ?? 0);
   }, 240_000);
 
   it("el replay de un motor anterior a life-27 conserva el bug: nada llega a la exposición", () => {

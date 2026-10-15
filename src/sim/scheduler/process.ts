@@ -246,9 +246,10 @@ export interface ProcessDef {
    * Opt-in (perfil2c-mark-exposure-cascade) para un `perceive` con cadencia `onEvent`: además de la
    * ronda de cierre del paso, corre una segunda ronda con `recent` = solo los eventos que emitieron
    * los `perceive` de la primera (sin esto, lo que emite un `perceive` no lo ve ningún otro). Lo que
-   * emita la segunda ronda queda en el paso y no vuelve a disparar nada.
+   * emita la segunda ronda queda en el paso y no vuelve a disparar nada. `{ kinds }` la limita a
+   * esos tipos de evento (perfil2c-appraise-cascade).
    */
-  readonly perceiveCascade?: true;
+  readonly perceiveCascade?: true | { readonly kinds: readonly string[] };
   /** Tablas que lee y que escribe. Escribir fuera de `writes` es un error. */
   readonly reads: readonly string[];
   readonly writes: readonly string[];
