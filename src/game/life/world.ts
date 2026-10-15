@@ -3,6 +3,7 @@
 
 import type {
   AgentId,
+  EntityRef,
   EventLog,
   IdAllocator,
   Ledger,
@@ -317,6 +318,8 @@ export interface LifeWorld {
   readonly diets?: readonly DietDef[];
   /** Lo comido de verdad alimenta las reservas (`MEALS`); apagado por defecto: la aldea no cambia. */
   readonly eatenNutrition?: boolean;
+  /** Con `eatenNutrition`: la necesidad suma embarazo y esfuerzo (fatiga); apagado por defecto. */
+  readonly nutritionNeeds?: boolean;
   /** Las carencias publicadas (`DEFICIENCY_EFFECTS`) frenan la curación y la defensa inmune del cuerpo; apagado por defecto. */
   readonly deficiencyEffects?: boolean;
   /** Con `deficiencyEffects`, `reopenWound` reabre heridas viejas (rng con clave); apagado por defecto. */
@@ -1434,6 +1437,15 @@ export function lifeWorld(
           profiles: parts.nutrientProfiles ?? [],
           diet: parts.diets?.find((d) => d.id === "village"),
           useEaten: parts.eatenNutrition === true,
+          ...(parts.nutritionNeeds === true
+            ? {
+                needExtras: {
+                  table: PREGNANCY.name,
+                  pregnant: (truth: ReadonlyWorldTruth, who: EntityRef) =>
+                    truth.get(PREGNANCY, who) !== undefined,
+                },
+              }
+            : {}),
           lethal: parts.malnutritionDeath === true,
           placeOf: placeOf(parts, village),
         }),

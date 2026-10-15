@@ -126,6 +126,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["borrowCraving", "consumables"],
     ["borrowCraving", "moldHintsFromCatalog"],
     ["gradualGrowth", "adultGrowth"],
+    ["nutritionNeeds", "eatenNutrition"],
     ["lendBorrowed", "borrowCraving"],
     ["repayDoses", "consumables"],
     ["cueLocal", "cravingCues"],

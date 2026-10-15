@@ -65,6 +65,16 @@ export interface NutritionOptions {
    */
   readonly useEaten?: boolean;
   /**
+   * Con `useEaten`: la necesidad suma el embarazo (`PREGNANCY`) y el esfuerzo del día (la fatiga
+   * del cuerpo como `strain`). Apagado por defecto: solo edad y heridas, como antes.
+   */
+  readonly needExtras?: {
+    /** Si está embarazada (lo inyecta `world`: importar `PREGNANCY` acá cierra un ciclo). */
+    readonly pregnant: (truth: ReadonlyWorldTruth, who: EntityRef) => boolean;
+    /** Tabla que lee `pregnant`, para declarar `reads`. */
+    readonly table: string;
+  };
+  /**
    * Muerte por desnutrición proteica grave sostenida (`LETHAL_SEVERE_PROTEIN_DAYS`), con causa
    * `malnutrition` y el estado de nutrición como causa. Apagado por defecto: sin muertes nuevas.
    */
@@ -115,6 +125,7 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
       NUTRITION.name,
       MEALS.name,
       ...(o.sleepers ? [ASLEEP.name] : []),
+      ...(o.useEaten && o.needExtras ? [o.needExtras.table] : []),
     ],
     writes: [NUTRITION.name, DEFICIENCY_EFFECTS.name, SEVERE_PROTEIN.name, ENTITY.name],
     run(ctx) {
@@ -138,6 +149,9 @@ export function nutritionProcess(o: NutritionOptions): ProcessDef {
           ? needMultiplier({
               ageYears: (ctx.now - born) / o.clock.year,
               openWounds: body.wounds.filter((w) => w.stage !== "healed").length,
+              ...(o.needExtras
+                ? { pregnant: o.needExtras.pregnant(ctx.truth, id), strain: body.fatigue }
+                : {}),
             })
           : 1;
         const lastDay = Math.floor(ctx.now / o.clock.day);
