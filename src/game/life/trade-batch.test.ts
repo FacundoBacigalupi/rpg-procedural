@@ -561,6 +561,84 @@ describe("trade real en lote opt-in", () => {
   });
 });
 
+describe("contienda por dinero, contraparte y reintento en trade real", () => {
+  const dealOf = (e: { data: unknown } | undefined) =>
+    (e?.data as { effect?: { deal: boolean } } | undefined)?.effect?.deal;
+  const tradesOf = (w: ReturnType<typeof world>) =>
+    w.log.all().filter((e) => e.kind === "action.trade");
+  it("el segundo comprador sin monedas fracasa aunque haya stock, sin mover bienes ni perder agenda", () => {
+    const w = world(2000);
+    w.ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [
+        { unit: coin, from: holderAccount(buyers[1]), to: externalAccount("seed"), amount: 100 },
+      ],
+    });
+    w.scheduler.advanceTo(clock.day / 2);
+    const trades = tradesOf(w);
+    expect(trades).toHaveLength(2);
+    expect(trades.map(dealOf).sort()).toEqual([false, true]);
+    expect(w.ledger.balance(holderAccount(buyers[0]), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
+    expect(w.ledger.balance(holderAccount(seller), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(buyers[1]), coin)).toBe(0);
+    expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
+    expect(w.scheduler.state().queue).toHaveLength(2);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("el comprador que no está con el vendedor no comparte la contienda ni mueve existencias", () => {
+    const w = world(2000);
+    w.truth.set(LOCATION, buyers[1], { hex: 5 });
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.ledger.balance(holderAccount(buyers[0]), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
+    expect(w.ledger.total(good)).toBe(2000);
+    expect(w.ledger.total(coin)).toBe(200);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("el plan perdedor reintenta con un plan nuevo tras reponer stock y conserva el ledger", () => {
+    const w = world(1000);
+    w.scheduler.advanceTo(clock.day / 2);
+    const lost = buyers.find((b) => w.ledger.balance(holderAccount(b), good) === 0);
+    const won = buyers.find((b) => w.ledger.balance(holderAccount(b), good) === 1000);
+    if (!lost || !won) throw new Error("sin perdedor");
+    expect(w.truth.get(PLAN_STATE, lost)?.steps).toHaveLength(1);
+    w.ledger.post({
+      tick: clock.day / 2,
+      eventId: makeId("event", 1),
+      transfers: [
+        { unit: good, from: externalAccount("seed"), to: holderAccount(seller), amount: 1000 },
+      ],
+    });
+    const old = w.truth.get(PLAN_STATE, lost);
+    if (!old) throw new Error("sin plan");
+    w.truth.set(PLAN_STATE, lost, {
+      ...old,
+      seq: 2,
+      done: false,
+      cursor: FRESH_CURSOR,
+      lastBelieved: null,
+      steps: [],
+    });
+    w.scheduler.schedule({
+      at: clock.day,
+      phase: "act",
+      process: "life.act",
+      scope: lost,
+      reason: { kind: "state", entity: lost, key: planKey(2) },
+    });
+    w.scheduler.advanceTo(2 * clock.day);
+    expect(w.ledger.balance(holderAccount(lost), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(won), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(seller), good)).toBe(0);
+    expect(w.ledger.total(good)).toBe(2000);
+    expect(w.truth.get(PLAN_STATE, lost)?.done).toBe(true);
+    expect(tradesOf(w).map(dealOf)).toEqual([true, false, true]);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+});
+
 describe("cuentas compartidas entre préstamos y trade real", () => {
   it.each(["open", "collect", "guarantor"] as const)("reproduce %s sin reserva común", (mode) => {
     const w = world(
