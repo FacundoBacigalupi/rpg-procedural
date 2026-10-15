@@ -193,7 +193,7 @@ export interface LifeSetup {
  * anterior a `life-26` enciende `legacyNoCobbler`; una vida guardada con `life-25` sigue desde su estado con el
  * límite de replay.
  *
- * `life-27`: `life.appraise`, `life.deeds` y `life.mark_exposure` corren una segunda ronda
+ * `life-27`: `life.deeds` y `life.mark_exposure` corren una segunda ronda
  * `perceiveCascade` con lo que emitieron los `perceive` del paso (el `scam.discovered` de una marca
  * falsa ahora deja rumor `fraud`, `marks.cleared` y la fama del fraude). Compatibilidad: el replay con
  * un motor anterior a `life-27` enciende `legacyNoPerceiveCascade`; una vida guardada con `life-26`

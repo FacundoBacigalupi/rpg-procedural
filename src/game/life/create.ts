@@ -276,7 +276,7 @@ export interface LifeOptions {
   readonly legacyNoCobbler?: boolean;
   /**
    * Solo el replay de un motor anterior a `life-27`: sin la segunda ronda `perceiveCascade`, así que
-   * `life.deeds`, `life.mark_exposure` y `life.appraise` no ven lo que emiten otros `perceive` del
+   * `life.deeds` y `life.mark_exposure` no ven lo que emiten otros `perceive` del
    * paso (p. ej. el `scam.discovered` de una marca falsa que emite `life.marks`).
    */
   readonly legacyNoPerceiveCascade?: boolean;
