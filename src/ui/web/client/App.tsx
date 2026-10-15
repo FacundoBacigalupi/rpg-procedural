@@ -22,6 +22,7 @@ const TABS = [
   ["book", "Deudas"],
   ["people", "Gente"],
   ["hypotheses", "Hipótesis"],
+  ["weather", "Cielo"],
   ["recap", "Recuento"],
   ["environment", "Entorno"],
   ["journal", "Bitácora"],

@@ -16,6 +16,7 @@ import {
   type Suggestion,
   type ThinkResult,
   TONE_MARK,
+  type WeatherPanel,
 } from "../game/index.ts";
 import type { Fact, PurposeId } from "../sim/index.ts";
 
@@ -637,6 +638,47 @@ export function renderThinking(
   for (const t of r.thoughts) {
     const rival = t.rival === undefined ? "" : ` (o tal vez ${factText(t.rival, name)})`;
     lines.push(`${BAND[t.band]} ${factText(t.fact, name)}${rival}.`);
+  }
+  return lines.join("\n");
+}
+
+const SEASON_NAME: Readonly<Record<WeatherPanel["season"], string>> = {
+  spring: "la primavera",
+  summer: "el verano",
+  autumn: "el otoño",
+  winter: "el invierno",
+};
+const AIR_FEEL: Readonly<Record<WeatherPanel["airNow"], string>> = {
+  bitter: "con un frío que duele",
+  cold: "frío",
+  cool: "fresco",
+  mild: "templado",
+  warm: "tibio",
+  hot: "de un calor pesado",
+};
+const NIGHT_COLD: Readonly<Record<WeatherPanel["outlook"][number]["night"], string>> = {
+  hard_frost: "heladas duras",
+  frost: "heladas",
+  cold: "noches frías",
+  cool: "noches frescas",
+  mild: "noches templadas",
+};
+const AHEAD: Readonly<Record<WeatherPanel["outlook"][number]["ahead"], string>> = {
+  tomorrow: "Para mañana",
+  three_days: "Para dentro de tres días",
+  week: "Para dentro de una semana",
+};
+const TRUST: Readonly<Record<WeatherPanel["outlook"][number]["trust"], string>> = {
+  fair: "",
+  weak: " (no lo jurarías)",
+  season_only: " (es lo que suele hacer en esta época)",
+};
+
+/** Lo que el personaje siente del cielo y lo que cree que viene (weather §11): creencia, no dato. */
+export function renderWeather(p: WeatherPanel): string {
+  const lines = [`Es ${SEASON_NAME[p.season]} y el aire está ${AIR_FEEL[p.airNow]}.`];
+  for (const o of p.outlook) {
+    lines.push(`${AHEAD[o.ahead]} creés que habrá ${NIGHT_COLD[o.night]}${TRUST[o.trust]}.`);
   }
   return lines.join("\n");
 }
