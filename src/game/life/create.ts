@@ -414,7 +414,7 @@ export interface LifeOptions {
   readonly runProbe?: (process: string, changes: number, events: number) => void;
   /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
   readonly npcVerbs?: readonly string[];
-  /** Opt-in (con `npcVerbs`): verbo -> plantilla de `content/plans/` (`LifeParts.npcTemplates`), p. ej. `work` -> `fieldwork`. */
+  /** Opt-in (con `npcVerbs`): verbo -> plantilla de `content/plans/` (`LifeParts.npcTemplates`), p. ej. `work` -> `fieldwork`, o `verbo@clase` del objetivo (`move@water` -> `fetchwater`, `speak@person` -> `visit`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` con `move`): el viaje del NPC sigue hasta N días (`LifeParts.npcJourneyDays`). */
   readonly npcJourneyDays?: number;

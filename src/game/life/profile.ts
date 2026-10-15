@@ -172,7 +172,9 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
       message: "npcJourneyDays requiere move en npcVerbs",
     });
   }
-  for (const verb of Object.keys(options.npcTemplates ?? {}).sort()) {
+  for (const key of Object.keys(options.npcTemplates ?? {}).sort()) {
+    // `move@water`: la plantilla de un verbo según la clase de su objetivo.
+    const verb = key.split("@")[0] ?? key;
     if (!options.npcVerbs?.includes(verb)) {
       issues.push({
         option: "npcTemplates",
