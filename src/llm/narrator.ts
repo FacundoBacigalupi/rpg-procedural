@@ -6,6 +6,7 @@
 
 import type { Rng } from "../core/index.ts";
 import type { PlayerView } from "../game/index.ts";
+import { type ActionWordBook, groundingProblems } from "./grounding.ts";
 import { acceptAll, type JobResult, type LlmJobs, type TextValidator } from "./jobs.ts";
 import { type NarrationRequest, narratorSystem, narratorUserMessage } from "./narration.ts";
 import { renderView, type TemplateBook } from "./templates.ts";
@@ -13,6 +14,12 @@ import { type NarrationCheck, stripMarks, validateNarration } from "./validate.t
 
 export interface NarrateOptions extends NarrationCheck {
   readonly templates: TemplateBook;
+  /**
+   * La aprobación semántica de las acciones percibidas (grounding.ts), aparte del validador: si
+   * está, lo que dice del resto tiene que ser lo que se vio, o el modelo regenera y después caen
+   * las plantillas. Sin ella, solo el validador estructural.
+   */
+  readonly actionWords?: ActionWordBook | undefined;
   /** Elige las variantes de las plantillas: `fork("narration", tick)`. */
   readonly rng: Rng;
 }
@@ -42,7 +49,12 @@ export async function narrate(
       ],
       temperature: 0.7,
     },
-    (text) => validateNarration(text.trim(), request, options),
+    (text) => [
+      ...validateNarration(text.trim(), request, options),
+      ...(options.actionWords !== undefined
+        ? groundingProblems(text.trim(), request, options.actionWords)
+        : []),
+    ],
   );
   if (result.ok) {
     const marked = result.value.trim();

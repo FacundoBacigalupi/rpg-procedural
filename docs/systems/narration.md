@@ -309,6 +309,29 @@ desplazamiento, objeto, motivo o resultado, pero no certifica fidelidad semánti
 `narr-action-grounding` y la prueba jugada `narr-view-llm` siguen abiertos en el
 ROADMAP. Reporte local: `sim-reports/cloud-llm-smoke.json`.
 
+**Aprobación semántica de acciones (2026-10-15, `narr-action-grounding-check`):**
+`llm/grounding` (`groundingProblems`, `ActionWordBook`) es un chequeo aparte del
+validador estructural, sin red y determinista, con el léxico de
+`content/llm/action-words/` (tipo `ACTION_WORDS`): por cada verbo percibido,
+prefijos y formas que lo dicen (y otros débiles que solo cuentan como dicho), más
+`state`, las palabras de lo que solo se sabría desde adentro del otro (temblar,
+inquieto, triste). Parte el texto marcado en oraciones sin lo citado; cada
+oración con marcas abre el tramo de sus etiquetas, que sigue en las oraciones sin
+marca (salvo las que abren con un sujeto propio: «El viento…», «Una mujer…»). En
+ese tramo exige que se diga cada acción vista (la que la plantilla diría) y
+rechaza palabras de otra acción o de estado interior si ninguna acción permitida
+(lo visto de las etiquetas de la oración y los pasos propios) las dice también.
+El voseo y la segunda persona son del personaje y no cuentan; las etiquetas que
+la vista nombra fuera de los percepts (deudas, agravios, pensamientos, a quién se
+le habló) no se juzgan, porque ahí el texto puede decir con razón lo que hicieron
+otro día. `narrate` suma estos problemas cuando recibe `actionWords` (la sesión
+de CLI/web lo pasa): el modelo regenera con el problema en inglés y, si sigue
+infiel, caen las plantillas, que pasan todas. Rechaza los tres fallos de la
+prueba con Qwen y acepta su salida fiel. Es heurística por léxico: no sigue
+pronombres lejos de la marca ni sujetos implícitos; los falsos positivos solo
+cuestan prosa (caen plantillas). Medirlo con el modelo real es
+`narr-action-grounding-llm`.
+
 - **Fugas:** con un mundo de prueba lleno de verdades ocultas (un disfraz, un veneno, una identidad falsa, un percept equivocado), ningún `PlayerView` contiene esos datos. Se prueba sobre el constructor, sin LLM.
 - **Marca de tipo:** el cliente del narrador solo acepta `PlayerView`; un test de tipos falla si se le pasa estado crudo.
 - **Validador:** un corpus de salidas con entidades inventadas, cifras, nombres de otros lugares o términos desconocidos es rechazado; un corpus correcto pasa.

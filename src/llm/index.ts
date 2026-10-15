@@ -5,6 +5,7 @@ export * from "./client.ts";
 export * from "./config.ts";
 export * from "./continuity.ts";
 export * from "./grammar.ts";
+export * from "./grounding.ts";
 export * from "./jobs.ts";
 export * from "./mock.ts";
 export * from "./narration.ts";

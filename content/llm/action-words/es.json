@@ -1,0 +1,269 @@
+[
+  {
+    "id": "move",
+    "kind": "action",
+    "stems": [
+      "camin",
+      "acerc",
+      "alej",
+      "aproxim",
+      "march",
+      "avanz",
+      "despla",
+      "dirig",
+      "acud",
+      "mov",
+      "muev",
+      "pasea",
+      "lleg"
+    ],
+    "forms": [
+      "va",
+      "van",
+      "viene",
+      "vienen",
+      "pasa",
+      "pasan",
+      "anda",
+      "andan",
+      "cruza",
+      "cruzan",
+      "corre",
+      "corren",
+      "corriendo"
+    ],
+    "weak": ["lado"]
+  },
+  {
+    "id": "look",
+    "kind": "action",
+    "stems": ["mir", "observ", "otea", "escrut", "contempl", "vigil", "ojea"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "search",
+    "kind": "action",
+    "stems": ["busc", "rebusc", "hurg", "escarb", "rastre", "husme", "indag", "explor"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "gather",
+    "kind": "action",
+    "stems": ["junt", "recog", "recolect", "cosech", "arranc"],
+    "forms": [],
+    "weak": ["suelo"]
+  },
+  {
+    "id": "work",
+    "kind": "action",
+    "stems": ["trabaj", "labr", "faen"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "rest",
+    "kind": "action",
+    "stems": ["descans", "repos", "recost", "tirad"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "wait",
+    "kind": "action",
+    "stems": ["esper", "aguard"],
+    "forms": [],
+    "weak": ["quiet"]
+  },
+  {
+    "id": "speak",
+    "kind": "action",
+    "stems": [
+      "habl",
+      "murmur",
+      "grit",
+      "susurr",
+      "convers",
+      "charl",
+      "pregunt",
+      "respond",
+      "contest",
+      "dij"
+    ],
+    "forms": ["dice", "dicen", "diciendo", "decir"],
+    "weak": []
+  },
+  {
+    "id": "strike",
+    "kind": "action",
+    "stems": ["golpe", "peg", "atac", "embist", "puñet", "patad", "cachet"],
+    "forms": [],
+    "weak": ["lanza"]
+  },
+  {
+    "id": "spare",
+    "kind": "action",
+    "stems": ["perdon", "solt", "suelt", "liber"],
+    "forms": [],
+    "weak": ["dej", "mano"]
+  },
+  {
+    "id": "trade",
+    "kind": "action",
+    "stems": ["negoci", "regate", "comerci", "truec", "trueq", "intercamb"],
+    "forms": [
+      "vende",
+      "venden",
+      "vendiendo",
+      "vender",
+      "compra",
+      "compran",
+      "comprando",
+      "comprar"
+    ],
+    "weak": []
+  },
+  {
+    "id": "give",
+    "kind": "action",
+    "stems": ["entreg", "regal", "obsequ"],
+    "forms": ["da", "dan", "dando"],
+    "weak": ["pas", "alcanz", "ofrec"]
+  },
+  {
+    "id": "take",
+    "kind": "action",
+    "stems": ["agarr", "arrebat", "sustra", "roba", "hurta", "apoder", "manote"],
+    "forms": [],
+    "weak": ["llev", "tom", "sac"]
+  },
+  {
+    "id": "store",
+    "kind": "action",
+    "stems": ["guard", "almacen", "acopi", "estib"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "eat",
+    "kind": "action",
+    "stems": ["mastic", "devor", "engull", "mordisque", "almorz", "almuerz"],
+    "forms": ["come", "comen", "comiendo", "comer"],
+    "weak": []
+  },
+  {
+    "id": "cook",
+    "kind": "action",
+    "stems": ["cocin", "guis"],
+    "forms": [],
+    "weak": ["fueg", "olla", "atend"]
+  },
+  {
+    "id": "drink",
+    "kind": "action",
+    "stems": ["sorb"],
+    "forms": ["bebe", "beben", "bebiendo", "beber", "bebió"],
+    "weak": ["tom", "agua"]
+  },
+  {
+    "id": "boil",
+    "kind": "action",
+    "stems": ["hierv", "herv"],
+    "forms": [],
+    "weak": ["agua"]
+  },
+  {
+    "id": "filter",
+    "kind": "action",
+    "stems": ["filtr"],
+    "forms": [],
+    "weak": ["agua"]
+  },
+  {
+    "id": "consume",
+    "kind": "action",
+    "stems": ["ingier", "ingir", "fum"],
+    "forms": [],
+    "weak": ["tom", "prob"]
+  },
+  {
+    "id": "tend",
+    "kind": "action",
+    "stems": ["venda", "vendaj", "sutur", "entablill"],
+    "forms": ["cura", "curan", "curando", "curar"],
+    "weak": ["herid"]
+  },
+  {
+    "id": "consult",
+    "kind": "action",
+    "stems": ["consult", "adivin"],
+    "forms": [],
+    "weak": ["suerte", "pag", "lee"]
+  },
+  {
+    "id": "forge",
+    "kind": "action",
+    "stems": ["falsific", "retoc", "adulter"],
+    "forms": [],
+    "weak": ["marca", "sell", "trabaj"]
+  },
+  {
+    "id": "hire",
+    "kind": "action",
+    "stems": ["contrat", "jornal"],
+    "forms": [],
+    "weak": ["ofrec"]
+  },
+  {
+    "id": "ponder",
+    "kind": "action",
+    "stems": ["pens", "piens", "medit", "reflexion", "cavil", "rumi"],
+    "forms": [],
+    "weak": ["vuelta", "queda"]
+  },
+  {
+    "id": "body.died",
+    "kind": "action",
+    "stems": ["muer", "muri", "fallec", "exhal", "inert", "cadaver"],
+    "forms": [],
+    "weak": ["vida", "cae", "caer"]
+  },
+  {
+    "id": "family.birth",
+    "kind": "action",
+    "stems": ["naci", "llor", "berre"],
+    "forms": [],
+    "weak": []
+  },
+  {
+    "id": "state",
+    "kind": "state",
+    "stems": [
+      "tembl",
+      "tirit",
+      "inquiet",
+      "nervios",
+      "asust",
+      "miedo",
+      "temeros",
+      "angusti",
+      "ansios",
+      "furios",
+      "enoj",
+      "enfad",
+      "trist",
+      "alegr",
+      "preocup",
+      "sonri",
+      "cansad",
+      "agotad",
+      "sudor",
+      "sudoros",
+      "palid",
+      "llor"
+    ],
+    "forms": [],
+    "weak": []
+  }
+]
