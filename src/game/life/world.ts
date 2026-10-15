@@ -517,6 +517,8 @@ export interface LifeWorld {
   readonly objectCues?: boolean;
   /** Opt-in (con `objectCues`): ver también lo que llevan los presentes y los puestos del lugar; ver `DecideOptions.viewCues`. */
   readonly viewCues?: ViewCues;
+  /** Opt-in (con `objectCues`): ver lo soltado en el suelo del lugar (lotes a nombre del lugar, `drop`); ver `DecideOptions.groundCues`. */
+  readonly groundCues?: boolean;
   /**
    * Opt-in: estafa de calidad en el trato (economy §6): quien vende infla según su temperamento y
    * su necesidad (hambre, deuda) y el comprador cotiza por lo que cree según cuánto confía.
@@ -1674,6 +1676,12 @@ export function lifeWorld(
           parts.objectCues === true &&
           parts.viewCues
             ? { viewCues: parts.viewCues }
+            : {}),
+          ...(parts.cravingCues === true &&
+          parts.cueLocal === true &&
+          parts.objectCues === true &&
+          parts.groundCues === true
+            ? { groundCues: parts.map }
             : {}),
           ...(() => {
             const base: MoldHintOptions | undefined = parts.moldHints

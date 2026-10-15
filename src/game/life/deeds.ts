@@ -141,9 +141,10 @@ export function offenseOf(
   }
   const eff = data?.effect;
   if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
-    const from = eff.from;
-    // Agarrar lo que lleva otra persona encima es robarle; lo del suelo o del lugar no.
-    if (from?.startsWith("agent:") && from !== first) {
+    const from: unknown = eff.from;
+    // Agarrar lo que lleva otra persona encima es robarle; lo del suelo o del lugar no (ahí `from`
+    // es el `PlaceRef` del lugar, un objeto, no un id).
+    if (typeof from === "string" && from.startsWith("agent:") && from !== first) {
       const caught = (data?.noticedBy ?? []).filter((c) => c === from) as AgentId[];
       return { kind: "theft", by: first, victim: from as AgentId, noticedBy: caught };
     }

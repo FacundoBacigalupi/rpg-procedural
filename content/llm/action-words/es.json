@@ -146,6 +146,13 @@
     "weak": []
   },
   {
+    "id": "drop",
+    "kind": "action",
+    "stems": ["solt", "suelt", "arroj"],
+    "forms": [],
+    "weak": ["tir", "dej"]
+  },
+  {
     "id": "eat",
     "kind": "action",
     "stems": ["mastic", "devor", "engull", "mordisque", "almorz", "almuerz"],

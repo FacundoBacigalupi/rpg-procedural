@@ -374,6 +374,13 @@ export type VerbEffect =
       /** Lo que dejó en la despensa de la casa (nada si no llevaba o no podía). */
       readonly got: readonly Holding[];
     }
+  | {
+      readonly kind: "drop";
+      /** Lo que soltó (nada si no llevaba o no podía): queda sin dueño en el lugar. */
+      readonly got: readonly Holding[];
+      /** Dónde quedó: el mismo lugar del que `take` sin `from` levanta. */
+      readonly at: HolderRef;
+    }
   | { readonly kind: "drink"; readonly liters: number }
   | {
       readonly kind: "cook";
@@ -1498,6 +1505,52 @@ const store: Resolver = (c) => {
   };
 };
 
+/**
+ * Soltar, tirar o dejar en el suelo: lo que lleva encima pasa por el ledger al lugar donde está
+ * (`input.place`), donde queda como lote sin dueño con el evento del acto como origen; `take` sin
+ * `from` lo levanta de ahí. Sin nombrar nada suelta todo menos la plata; con una cantidad
+ * («200 gramos», «3 monedas») suelta solo eso de lo nombrado. Nombrar algo que no lleva no suelta otra cosa.
+ */
+const drop: Resolver = (c) => {
+  const at = c.input.place;
+  const what = argText(c, "what");
+  const none = (): VerbResult => ({
+    effect: { kind: "drop", got: [], at },
+    seconds: Math.min(c.nominal, 5),
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  });
+  if (c.roll.unmet) return { effect: { kind: "drop", got: [], at }, seconds: c.nominal };
+  const carried = c.input.ledger
+    .holdings(holderAccount(c.input.actor.id as HolderRef))
+    .filter((h) => h.amount > 0);
+  const words = what === null ? [] : refTokens(what);
+  const named = carried.filter((h) =>
+    words.some((w) => unitTokens(h.unit, c.input.unitNames).includes(w)),
+  );
+  const pool = words.length > 0 ? named : carried.filter((h) => !isMoney(h.unit));
+  if (pool.length === 0) return none();
+  const count = what === null ? null : /(\d+(?:[.,]\d+)?)/.exec(what);
+  const rows: Holding[] =
+    count !== null && pool.length === 1
+      ? pool.map((h) => {
+          const asked = isMoney(h.unit)
+            ? Math.floor(Number((count[1] as string).replace(",", ".")))
+            : gramsIn(what, 0);
+          return { unit: h.unit, amount: Math.min(h.amount, asked > 0 ? asked : h.amount) };
+        })
+      : pool;
+  return {
+    effect: { kind: "drop", got: rows, at },
+    seconds: c.nominal,
+    transfers: rows.map((r) => ({
+      from: c.input.actor.id as HolderRef,
+      unit: r.unit,
+      amount: r.amount,
+      to: holderAccount(at),
+    })),
+  };
+};
+
 /** Calidad mínima para decir que salió bien, y para decir que salió a medias. */
 const COOK_GOOD = 0.7;
 const COOK_PASSABLE = 0.35;
@@ -1757,6 +1810,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   give,
   take,
   store,
+  drop,
   eat,
   consume,
   boil,

@@ -46,4 +46,17 @@ describe("comerciar con cantidades", () => {
     expect(out).not.toContain("despensa");
     expect(JSON.stringify(parseCommand("guardo todo en la casa", catalog))).not.toContain('"what"');
   });
+
+  it("soltar en el suelo es `drop`, y dejar en la despensa sigue siendo guardar", () => {
+    const out = JSON.stringify(parseCommand("dejo el saco de grano en el suelo", catalog));
+    expect(out).toContain('"drop"');
+    expect(out).toContain("el saco de grano");
+    expect(out).not.toContain("suelo");
+    expect(JSON.stringify(parseCommand("suelto todo", catalog))).toContain('"drop"');
+    expect(JSON.stringify(parseCommand("suelto todo", catalog))).not.toContain('"what"');
+    expect(JSON.stringify(parseCommand("tiro 3 monedas", catalog))).toContain("3 monedas");
+    expect(JSON.stringify(parseCommand("dejo el grano en la despensa", catalog))).toContain(
+      '"store"',
+    );
+  });
 });

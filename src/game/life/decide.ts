@@ -66,6 +66,7 @@ import {
   KNOWN_DEEDS,
   kinWeight,
   LOCATION,
+  type LocalMap,
   layerDrives,
   longGoals,
   MEMORIES,
@@ -131,6 +132,7 @@ import {
 import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { type ErrandOptions, errandCandidates } from "./errands.ts";
+import { withGround } from "./ground.ts";
 import {
   CRAFTSMAN_VERBS,
   MOLD_RUMORS,
@@ -332,6 +334,11 @@ export interface DecideOptions {
    */
   readonly viewCues?: ViewCues;
   /**
+   * Opt-in (con `objectCues`): lo soltado en el suelo del lugar donde está (lotes a nombre del
+   * lugar, `groundHolder`) también se ve, sin que nadie pase el callback `viewCues.ground`; apagado, no lee esa cuenta.
+   */
+  readonly groundCues?: LocalMap;
+  /**
    * Opt-in: lo que cree de oídas (`MOLD_RUMORS`) empuja el ánimo de ir hacia donde cree que hay algo
    * y de comerciar un bien del que oyó el precio (`moldHintMood`, `moldUsefulness`); apagado, no lee la tabla ni cambia.
    */
@@ -468,14 +475,15 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       const ownSeen = o.objectCues
         ? objectsSeen(cueGoods, amountIn(person.household as unknown as HolderRef))
         : [];
+      const viewCues = o.groundCues ? withGround(o.viewCues, truth, o.groundCues) : o.viewCues;
       const seenObjects =
-        o.objectCues && o.viewCues
+        o.objectCues && viewCues
           ? [
               ...new Set([
                 ...ownSeen,
                 ...objectsInView(cueGoods, [
                   ...peopleInView(truth, me).map((id) => amountIn(id as unknown as HolderRef)),
-                  ...placeHoldersInView(o.viewCues, truth.get(LOCATION, me)).map(amountIn),
+                  ...placeHoldersInView(viewCues, truth.get(LOCATION, me)).map(amountIn),
                 ]),
               ]),
             ].sort()

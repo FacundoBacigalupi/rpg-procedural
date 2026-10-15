@@ -247,6 +247,20 @@ filas viejas desde la introducción global de una sustancia; sin la opción,
 los eventos y estados anteriores permanecen iguales. Ver [npc-psychology.md](npc-psychology.md)
 §7 para la capa inmediata del ansia.
 
+**Soltar en el suelo y señales del suelo (2026-10-15, `ground-drop`, opt-in
+`groundCues`).** El verbo `drop` ("suelto el saco", "dejo el grano en el suelo",
+"tiro 3 monedas") pasa lo que el actor lleva a la cuenta del lugar donde está
+(`ResolveInput.place`: el lugar con nombre que cubre el hex o, si no hay, la
+celda), la misma de la que `take` sin `from` levanta. El lote del suelo no tiene
+dueño y su origen es el asiento del acto. Sin palabras suelta todo lo que no es
+dinero; nombrar lo que no lleva falla con `no_means` sin mover nada. No tiene
+`serves`, así que los NPC no lo eligen todavía. Con `groundCues` (requiere
+`objectCues`), `viewCues.ground` se arma solo desde esa cuenta (`withGround` en
+`src/game/life/ground.ts`) para el panel y para la decisión: un vaso de vino
+soltado en el hex despierta el ansia. Límites: la cuenta del lugar mezcla lo
+soltado con el stock silvestre y los escombros, y no distingue hex ni espacio
+dentro del lugar.
+
 ## 10. Envejecimiento y límite de vida
 - **Curva por especie:** crecimiento → madurez → meseta → senescencia. Las capacidades siguen la curva: fuerza y velocidad pico en la juventud adulta, habilidad y juicio más tarde.
 - **Senescencia por sistemas:** vista y oído (perception §4), articulaciones, huesos frágiles (las caídas se vuelven fracturas), inmunidad, memoria. Cada sistema envejece a su ritmo según genoma, desgaste del oficio, heridas viejas y hábitos.

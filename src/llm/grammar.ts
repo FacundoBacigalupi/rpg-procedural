@@ -511,6 +511,20 @@ const VERBS: readonly {
     },
   },
   {
+    // Soltar en el lugar: "suelto el grano", "tiro la piedra", "dejo el saco en el suelo".
+    re: /^(?:suelto|soltar|arrojo|arrojar|tiro(?!\s+a\b)|tirar(?!\s+a\b)|dejo\s+caer|dejo\s+(?=.*\b(?:suelo|piso|tierra)\b))/i,
+    build: (rest) => {
+      const what = nounPhrase(
+        rest
+          .replace(MANNER_WORDS, " ")
+          .replace(/\s+(?:en|a|al|sobre)\s+(?:el\s+|la\s+)?(?:suelo|piso|tierra)\b.*$/i, "")
+          .replace(/\s+(?:ac[aá]|ah[ií]|all[aá])\s*$/i, "")
+          .replace(/^\s*(?:todo|todo lo que llevo)\s*$/i, ""),
+      );
+      return { node: act("drop", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
     // Cocinar: "cocino pan", "horneo pan plano", "me pongo a cocinar".
     re: /^(?:cocino|cocinar|horneo|hornear|amaso|amasar|me pongo a (?:cocinar|hornear))\b/i,
     build: (rest) => {

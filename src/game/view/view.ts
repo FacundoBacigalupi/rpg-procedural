@@ -369,6 +369,11 @@ export type EffectView =
       readonly kind: "store";
       readonly got: readonly { readonly good: string; readonly amount: number }[];
     }
+  | {
+      /** Soltó lo que llevaba en el lugar donde está (queda sin dueño en el suelo). */
+      readonly kind: "drop";
+      readonly got: readonly { readonly good: string; readonly amount: number }[];
+    }
   | { readonly kind: "drink"; readonly drank: boolean }
   | { readonly kind: "boil"; readonly boiled: boolean }
   | { readonly kind: "filter"; readonly filtered: boolean }
@@ -809,6 +814,11 @@ function effectView(
     case "store":
       return {
         kind: "store",
+        got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
+      };
+    case "drop":
+      return {
+        kind: "drop",
         got: e.got.map((h) => ({ good: h.unit as string, amount: Math.round(h.amount) })),
       };
     case "boil":

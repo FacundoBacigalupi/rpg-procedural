@@ -404,6 +404,13 @@ function outcome(
           what: [...new Set(e.got.map((g) => good(g.good)))].join(" y "),
         });
       break;
+    case "drop":
+      if (e.got.length === 0) say("outcome.drop.nothing");
+      else
+        say("outcome.drop.done", {
+          what: [...new Set(e.got.map((g) => good(g.good)))].join(" y "),
+        });
+      break;
     case "cook":
       if (e.grams <= 0 || e.good === null) say("outcome.cook.nothing");
       else say(`outcome.cook.${e.looks}`, { what: good(e.good) });

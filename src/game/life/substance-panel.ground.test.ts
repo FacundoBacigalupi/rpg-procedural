@@ -14,6 +14,7 @@ import {
   type Location,
   PERSON_SUBSTANCE,
   type PersonSubstances,
+  PLACE,
   WorldTruth,
 } from "../../sim/index.ts";
 import { substancePanel } from "./substance-panel.ts";
@@ -60,7 +61,7 @@ describe("substancePanel con objetos vistos", () => {
       truth,
       player: me,
       clock,
-      map: { lonDeg: 0 },
+      map: { lonDeg: 0, cell: makeId("cell", 7) },
       scheduler: { now: 1000 },
       ledger: countedLedger,
     } as unknown as LifeWorld;
@@ -106,6 +107,18 @@ describe("substancePanel con objetos vistos", () => {
     expect(calls()).toBeGreaterThan(0);
     expect(panel.urge).toBe("pressing");
     expect(JSON.stringify(panel)).not.toContain("secret-tonic");
+  });
+
+  it("con `groundCues` lee del ledger el lugar del hex, sin callback", () => {
+    const { w, truth } = build();
+    truth.set(LOCATION, present, { hex: 6, space: "room:1" } satisfies Location);
+    // Fuera de todo lugar con nombre, lo soltado está a nombre de la celda (donde hay 1 de vino).
+    const panel = substancePanel(w, { cueLocal: true, objectCues: ["wine"], groundCues: true });
+    expect(panel.urge).toBe("pressing");
+    // Un lugar con nombre que cubre el hex tiene su propia cuenta, vacía: no hay nada a la vista.
+    truth.set(PLACE, makeId("place", 1), { kind: "fields", hexes: [5] });
+    const elsewhere = substancePanel(w, { cueLocal: true, objectCues: ["wine"], groundCues: true });
+    expect(elsewhere.urge).toBeUndefined();
   });
 
   it("el suelo vacío no despierta una señal por objeto", () => {
