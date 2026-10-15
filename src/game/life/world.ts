@@ -91,7 +91,7 @@ import type { ViewCues } from "./cue-local.ts";
 import { debtKnowledgeProcess } from "./debtknowledge.ts";
 import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
-import { deedsProcess } from "./deeds.ts";
+import { DEEDS_PROCESS, deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
 import { ecologyProcess } from "./ecology.ts";
 import type { ErrandOptions } from "./errands.ts";
@@ -119,6 +119,7 @@ import {
   believedMarkRenownBy,
   clearedRenown,
   MARK_CLEARED,
+  MARK_EXPOSURE_PROCESS,
   markExposureProcess,
 } from "./markexposure.ts";
 import { marksProcess } from "./marks.ts";
@@ -373,6 +374,8 @@ export interface LifeWorld {
   readonly legacyTend?: boolean;
   /** Replay de motores anteriores a `life-11`: el `resume` del camino no se apaga; ver `ActOptions.legacyResume`. */
   readonly legacyResume?: boolean;
+  /** Replay de motores anteriores a `life-27`: sin `perceiveCascade` en deeds y mark_exposure. */
+  readonly legacyNoPerceiveCascade?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
   readonly waitEatHomeOnly?: boolean;
   /** Replay de motores anteriores a `life-13`: nadie da de beber al inconsciente; ver `RoutineOptions.careWater`. */
@@ -667,6 +670,17 @@ export interface LifeWorld {
 export type LifeParts = Omit<LifeWorld, "scheduler" | "player">;
 
 /** El lugar de un evento de alguien: la aldea si está en su hex, si no la celda. */
+/**
+ * Los `perceive` por evento que también leen lo emitido por otros `perceive` del mismo paso
+ * (`ProcessDef.perceiveCascade`): consumidores de `scam.discovered`, que `life.marks` emite al cerrar el paso.
+ * `life.appraise` también lo lee (baja la confianza) pero no está: con él la cascada le llega con todo lo
+ * demás que emiten los `perceive` y movía el perfil (ver ROADMAP `perfil2c-appraise-cascade`).
+ */
+export const PERCEIVE_CASCADE: ReadonlySet<string> = new Set([
+  DEEDS_PROCESS,
+  MARK_EXPOSURE_PROCESS,
+]);
+
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
     const at = truth.get(LOCATION, who);
@@ -699,6 +713,10 @@ export function lifeWorld(
           },
         }
       : def;
+  // Desde `life-27` (perfil2c-mark-exposure-cascade): quienes leen lo que emite otro `perceive` del
+  // paso (el `scam.discovered` de una marca falsa que emite `life.marks`) lo reciben en la segunda ronda.
+  const cascade = (def: ProcessDef): ProcessDef =>
+    PERCEIVE_CASCADE.has(def.id) ? { ...def, perceiveCascade: true } : def;
   const scheduler = new Scheduler(
     {
       rng: Rng.root(parts.seed),
@@ -1889,7 +1907,9 @@ export function lifeWorld(
           seed: parts.seed,
           placeOf: placeOf(parts, village),
         }),
-      ].map(probe),
+      ]
+        .map(parts.legacyNoPerceiveCascade === true ? (d: ProcessDef) => d : cascade)
+        .map(probe),
       resolution: "local",
       scopes: (kind, t, def) =>
         kind === "agent"

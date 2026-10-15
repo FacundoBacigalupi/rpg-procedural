@@ -406,6 +406,65 @@ describe("cola de ítems", () => {
     expect(seen).toEqual([]);
   });
 
+  it("perceiveCascade: lo que emite un perceive llega en una segunda ronda solo a quien la pide", () => {
+    const seen: string[] = [];
+    // `perc.echo` emite un evento por cada `grow` que percibe (como `life.marks` con su descubrimiento).
+    const echo = def(
+      "perc.echo",
+      (ctx) => ({
+        events: ctx.recent
+          .filter((e) => e.kind === "grow")
+          .map((e) => ({
+            kind: "echo",
+            actors: e.actors,
+            place: e.place,
+            data: null,
+            emissions: {},
+            causes: [{ kind: "event" as const, event: e.id }],
+          })),
+      }),
+      { phase: "perceive", cadence: { local: "onEvent" } },
+    );
+    const watch = (id: string, over: Partial<ProcessDef>) =>
+      def(
+        id,
+        (ctx) => {
+          seen.push(`${id}:${ctx.recent.map((e) => e.kind).join(",")}:${ctx.rng.int(0, 1e9)}`);
+          return {};
+        },
+        { phase: "perceive", cadence: { local: "onEvent" }, ...over },
+      );
+    const run = (cascade: boolean) => {
+      seen.length = 0;
+      const w = world(7, [
+        grow,
+        echo,
+        watch("perc.plain", {}),
+        watch("perc.cascade", cascade ? { perceiveCascade: true } : {}),
+      ]);
+      const { events } = runFor(w, DAY);
+      return { seen: [...seen], events: events.map((e) => e.kind) };
+    };
+    const on = run(true);
+    // Primera ronda: los dos ven los `grow`; segunda: solo `perc.cascade`, con solo los `echo`.
+    expect(on.seen.map((s) => s.split(":").slice(0, 2).join(":"))).toEqual([
+      "perc.cascade:grow,grow,grow",
+      "perc.plain:grow,grow,grow",
+      "perc.cascade:echo,echo,echo",
+    ]);
+    expect(on.events.filter((k) => k === "echo")).toHaveLength(3);
+    // RNG de otra clave en la segunda ronda, y sin el flag todo queda igual que antes.
+    const [first, , second] = on.seen;
+    expect(first?.split(":")[2]).not.toBe(second?.split(":")[2]);
+    const off = run(false);
+    expect(off.seen.map((s) => s.split(":").slice(0, 2).join(":"))).toEqual([
+      "perc.cascade:grow,grow,grow",
+      "perc.plain:grow,grow,grow",
+    ]);
+    expect(off.events).toEqual(on.events);
+    expect(run(true)).toEqual(on);
+  });
+
   it("agendar en el pasado o a un proceso desconocido es un error", () => {
     const back = def("t.back", (ctx) => ({
       schedule: [{ at: ctx.now, phase: "perceive", process: "t.back", scope: "world", reason }],

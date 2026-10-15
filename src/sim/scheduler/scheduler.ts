@@ -9,7 +9,8 @@
 // Lo que este scheduler todavía no hace (llega con su tarea): zonas con resoluciones distintas
 // (ahora hay una sola para todo el mundo), partir ventanas cuando un ítem cae adentro, procesos
 // "onEvent" disparados por eventos (salvo los de la fase `perceive`, que corren al cerrar el paso
-// con lo que se asentó; el resto corre solo si se lo agenda), presupuesto, materializar
+// con lo que se asentó, más una segunda ronda opt-in `perceiveCascade` con lo que emitieron ellos;
+// el resto corre solo si se lo agenda), presupuesto, materializar
 // y el caché de presiones.
 
 import {
@@ -370,6 +371,33 @@ export class Scheduler {
         // misma persona (deeds, testify) se suman en vez de pisarse.
         for (const spec of specs) {
           this.#commit([this.#run(spec, t, "perceive")], t, "perceive", events, contests);
+        }
+        // Segunda ronda opt-in (`perceiveCascade`): lo que emitieron los `perceive` de la primera
+        // llega a quienes lo piden, en el mismo orden canónico y con RNG de otra clave.
+        const cascaded = events.slice(settled.length);
+        if (cascaded.length > 0) {
+          const again: RunSpec[] = [];
+          for (const def of this.#defs.values()) {
+            if (def.phase !== "perceive" || def.cadence[this.#o.resolution] !== "onEvent") continue;
+            if (def.perceiveCascade !== true) continue;
+            for (const scope of this.#scopesOf(def)) {
+              again.push({
+                def,
+                scope,
+                window: 0,
+                windowIndex: undefined,
+                item: undefined,
+                recent: cascaded,
+                rngParts: [def.system, def.id, scope, "cascade", t],
+              });
+            }
+          }
+          again.sort(
+            (a, b) => compareStrings(a.def.id, b.def.id) || compareScopes(a.scope, b.scope),
+          );
+          for (const spec of again) {
+            this.#commit([this.#run(spec, t, "perceive")], t, "perceive", events, contests);
+          }
         }
       }
     } finally {
