@@ -173,8 +173,13 @@ export interface LifeSetup {
  * tarde baja el rinde de la temporada). Compatibilidad: el replay con un motor anterior a `life-22`
  * enciende `legacyNoFieldSowing`; una vida guardada con `life-21` sigue desde su estado con el límite
  * de replay.
+ *
+ * `life-23`: el perfil completo enciende `npcFieldShared` (la cosecha del jugador y la puesta al día de los
+ * dormidos rinden con el mismo riego y la misma siembra de la aldea que la rutina de los despiertos).
+ * Compatibilidad: el replay con un motor anterior a `life-23` enciende `legacyNoFieldShared`; una vida
+ * guardada con `life-22` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-22";
+export const LIFE_ENGINE = "life-23";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -206,6 +211,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 20 ? { legacyNoRainForecast: true } : {}),
     ...(n < 21 ? { legacyNoFieldWatering: true } : {}),
     ...(n < 22 ? { legacyNoFieldSowing: true } : {}),
+    ...(n < 23 ? { legacyNoFieldShared: true } : {}),
   };
 }
 

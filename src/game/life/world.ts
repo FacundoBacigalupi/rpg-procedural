@@ -458,6 +458,8 @@ export interface LifeWorld {
   readonly npcRainForecast?: boolean;
   /** Opt-in (con `npcFieldWatering`): en la rutina, la gente de campo siembra la temporada según el suelo y la lluvia creída (`RoutineOptions.fieldSowing`); apagado. */
   readonly npcFieldSowing?: boolean;
+  /** Opt-in (con `npcFieldWatering`): el jugador y los dormidos cosechan con el riego y la siembra de la aldea (`ActOptions.fieldWatering`/`fieldSowing`, `CatchUpProcessOptions.harvest.field`); apagado. */
+  readonly npcFieldShared?: boolean;
   /** Opt-in (con `npcRainForecast`): en la rutina, la gente de campo riega con el suelo seco si no cree que llueva (`RoutineOptions.fieldWatering`); apagado. */
   readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`ActOptions.strain`); apagado. */
@@ -725,6 +727,12 @@ export function lifeWorld(
             : { nightRest: (at: number) => localHour(parts.clock, at, parts.map.lonDeg) }),
         }),
         actProcess({
+          ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
+            ? {
+                fieldWatering: true,
+                ...(parts.npcFieldSowing === true ? { fieldSowing: true } : {}),
+              }
+            : {}),
           ...(parts.npcVerbs && parts.npcVerbs.length > 0 ? { projectWatchExposures: true } : {}),
           ...(parts.npcVerbs?.includes("trade") ? { projectTrades: true } : {}),
           ...(economicBatch
@@ -1767,6 +1775,15 @@ export function lifeWorld(
                 // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
                 harvest: {
                   season: harvestSeason(parts.map.climate, parts.clock, Rng.root(parts.seed)),
+                  ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
+                    ? {
+                        field: {
+                          map: parts.map,
+                          seed: parts.seed,
+                          sowing: parts.npcFieldSowing === true,
+                        },
+                      }
+                    : {}),
                 },
               }),
             ),

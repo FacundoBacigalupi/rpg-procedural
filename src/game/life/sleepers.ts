@@ -6,7 +6,7 @@
 // colapsos, la muerte con su causa) sale como los eventos de siempre. Despertarlo (off-3) es borrar
 // el registro después de ponerlo al día. Opt-in: nadie lo registra por defecto.
 
-import type { AgentId, HolderRef, PlaceRef, Tick } from "../../core/index.ts";
+import type { AgentId, HolderRef, PlaceRef, Seed, Tick } from "../../core/index.ts";
 import { externalAccount, holderAccount, ledgerUnit } from "../../core/index.ts";
 import {
   ASLEEP,
@@ -41,8 +41,10 @@ import {
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
+import { IRRIGATED, rainWindow } from "./irrigation.ts";
 import { living } from "./living.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
+import { cropStarts, fieldCropFactor, SOWN } from "./sowing.ts";
 
 export const CATCH_UP_PROCESS = "life.catch_up";
 export const CAUGHT_UP_EVENT = "npc.caught_up";
@@ -75,7 +77,15 @@ export interface CatchUpProcessOptions {
    * hogar (fuente `harvest`, como `life.routine`). Sin esto, al dormirse todos el hogar sigue
    * comiendo pero nadie cosecha. `season` es `harvestSeason` del lugar (el mismo de la rutina).
    */
-  readonly harvest?: { readonly season: (day: number) => number };
+  readonly harvest?: {
+    readonly season: (day: number) => number;
+    /**
+     * Opt-in (`npcFieldWatering`, y `sowing` con `npcFieldSowing`): sus horas de campo rinden con el
+     * riego vigente de la aldea y la siembra de la temporada, igual que las de la rutina. Ellos no
+     * riegan ni siembran: aprovechan lo que hicieron los despiertos.
+     */
+    readonly field?: { readonly map: LocalMap; readonly seed: Seed; readonly sowing: boolean };
+  };
 }
 
 /** El evento del grano que cosechó un dormido en el tramo que se le puso al día. */
@@ -96,6 +106,13 @@ export function mealGrams(plan: BodyPlanDef, massKg: number, kcalPerGram: number
 
 export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
   const plans = new Map(o.plans.map((p) => [p.id, p]));
+  const field = o.harvest?.field;
+  const rainOf = field
+    ? rainWindow({ map: field.map, clock: o.clock, seed: field.seed })
+    : undefined;
+  const cropStart = field?.sowing
+    ? cropStarts(o.harvest?.season ?? (() => 0), Math.round(o.clock.year / o.clock.day))
+    : undefined;
   return {
     id:
       o.mode === "wake"
@@ -119,6 +136,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       PERSON.name,
       PENDING_FACTS.name,
       ...(o.harvest ? [SOIL.name] : []),
+      ...(o.harvest?.field ? [IRRIGATED.name] : []),
+      ...(o.harvest?.field?.sowing ? [SOWN.name] : []),
     ],
     writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PENDING_FACTS.name],
     run(ctx) {
@@ -161,6 +180,17 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const due = pending.filter((f) => f.at <= ctx.now);
       const later = pending.filter((f) => f.at > ctx.now);
       const fertility = o.harvest ? fieldFertility(truth) : 0;
+      // El factor de riego y siembra del campo por día (se pide por hora y por dormido).
+      const cropByDay = new Map<number, number>();
+      const cropFactor = (day: number): number => {
+        if (!rainOf) return 1;
+        let f = cropByDay.get(day);
+        if (f === undefined) {
+          f = fieldCropFactor(truth, day, rainOf(day), cropStart?.(day));
+          cropByDay.set(day, f);
+        }
+        return f;
+      };
       const catchOpts = (left: number) => ({
         clock: o.clock,
         lonDeg: o.lonDeg,
@@ -169,14 +199,15 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
         maxMeals: left,
         ...(o.harvest
           ? {
-              harvestPerHour: (at: Tick) =>
-                Math.round(
+              harvestPerHour: (at: Tick) => {
+                const day = dayOf(o.clock, at + Math.round((o.lonDeg / 360) * o.clock.day));
+                return Math.round(
                   HARVEST_GRAMS_PER_HOUR *
-                    (o.harvest as { season: (day: number) => number }).season(
-                      dayOf(o.clock, at + Math.round((o.lonDeg / 360) * o.clock.day)),
-                    ) *
+                    (o.harvest as { season: (day: number) => number }).season(day) *
+                    cropFactor(day) *
                     fertility,
-                ),
+                );
+              },
             }
           : {}),
       });

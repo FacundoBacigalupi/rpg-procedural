@@ -264,6 +264,8 @@ export interface LifeOptions {
   readonly legacyNoFieldWatering?: boolean;
   /** Solo el replay de un motor anterior a `life-22`: apaga `npcFieldSowing` aunque el perfil lo traiga. */
   readonly legacyNoFieldSowing?: boolean;
+  /** Solo el replay de un motor anterior a `life-23`: apaga `npcFieldShared` aunque el perfil lo traiga. */
+  readonly legacyNoFieldShared?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -430,6 +432,8 @@ export interface LifeOptions {
   readonly npcFieldWatering?: boolean;
   /** Opt-in (con `npcFieldWatering`): la temporada de crecimiento abre una ventana de siembra; la gente de campo siembra a la primera hora si el suelo está mojado o cree que llueve pronto, y sembrar tarde baja el rinde de la temporada (`RoutineOptions.fieldSowing`); apagado: el campo rinde sin sembrar. */
   readonly npcFieldSowing?: boolean;
+  /** Opt-in (con `npcFieldWatering`): la cosecha del jugador y la de los dormidos rinden con el mismo riego y la misma siembra que la rutina (`ActOptions.fieldWatering`, `CatchUpProcessOptions.harvest.field`); apagado: solo la rutina de los despiertos los aplica. */
+  readonly npcFieldShared?: boolean;
   /** Opt-in (con `npcPace`): forzar el ritmo (`fast` con fatiga alta) puede torcer una pierna (`LifeParts.npcStrain`); apagado. */
   readonly npcStrain?: boolean;
   /** Opt-in: las casadas concibe con la fecundidad de su edad y el embarazo llega al parto con partera (`LifeParts.conception`); apagado. */
@@ -579,6 +583,7 @@ export function optInParts(
   | "npcRainForecast"
   | "npcFieldWatering"
   | "npcFieldSowing"
+  | "npcFieldShared"
   | "npcStrain"
   | "conception"
   | "conceptionRateScale"
@@ -692,6 +697,7 @@ export function optInParts(
       ? { npcFieldWatering: true }
       : {}),
     ...(options.npcFieldSowing && !options.legacyNoFieldSowing ? { npcFieldSowing: true } : {}),
+    ...(options.npcFieldShared && !options.legacyNoFieldShared ? { npcFieldShared: true } : {}),
     ...(options.npcStrain && !options.legacyNoStrain ? { npcStrain: true } : {}),
     ...(options.conception ? { conception: true } : {}),
     ...(options.conception && options.births ? { births: true } : {}),

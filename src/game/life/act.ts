@@ -173,9 +173,11 @@ import {
   strikeFight,
 } from "./fight.ts";
 import { FOOTWEAR, footSoreBlow, footwearWalkFactor, wearAfter } from "./footwear.ts";
+import { IRRIGATED, rainWindow } from "./irrigation.ts";
 import { loansOf } from "./loans.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
+import { cropStarts, fieldCropFactor, SOWN } from "./sowing.ts";
 import { strainBlow } from "./strain.ts";
 import {
   acuteOf,
@@ -258,6 +260,10 @@ export function planKey(seq: number): string {
 export const GLANCE_ACUITY = 0.6;
 
 export interface ActOptions {
+  /** Opt-in (`LifeOptions.npcFieldWatering`): la hora de campo del jugador suma el riego vigente de la aldea. Apagado: nada cambia. */
+  readonly fieldWatering?: boolean;
+  /** Opt-in (con `fieldWatering`, `npcFieldSowing`): y el rinde de la siembra de la temporada. */
+  readonly fieldSowing?: boolean;
   /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
@@ -501,6 +507,8 @@ export function actProcess(o: ActOptions): ProcessDef {
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
   const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
+  const rainOf = rainWindow(o);
+  const cropStart = cropStarts(season, Math.round(o.clock.year / o.clock.day));
   const serialVerbs = new Set<string>(o.serialEconomicVerbs ?? (o.serialTrades ? ["trade"] : []));
 
   return {
@@ -542,6 +550,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.scam ? [INNATE.name, MIND.name, SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [LOT_ESSENCE.name] : []),
+      ...(o.fieldWatering ? [IRRIGATED.name] : []),
+      ...(o.fieldWatering && o.fieldSowing ? [SOWN.name] : []),
     ],
     writes: [
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
@@ -613,7 +623,19 @@ export function actProcess(o: ActOptions): ProcessDef {
         }
         return { changes };
       }
-      return step(ctx, o, { me, state, cursor, foods, plans, hex, light, hour, season });
+      return step(ctx, o, {
+        me,
+        state,
+        cursor,
+        foods,
+        plans,
+        hex,
+        light,
+        hour,
+        season,
+        rainOf,
+        cropStart,
+      });
     },
   };
 }
@@ -644,6 +666,8 @@ interface StepEnv {
   readonly plans: ReadonlyMap<string, BodyPlanDef>;
   readonly hex: number;
   readonly season: (day: number) => number;
+  readonly rainOf: (day: number) => number;
+  readonly cropStart: (day: number) => number | undefined;
   readonly light: number;
   readonly hour: number;
 }
@@ -853,7 +877,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const z = standardize(innate, o.traits, person.sex);
   const here = placeAt(places, e.hex);
   const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
-  const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * fieldFertility(truth);
+  // Con riego y siembra del campo (opt-in), la hora del jugador rinde igual que la de la gente de campo.
+  const cropFactor = o.fieldWatering
+    ? fieldCropFactor(truth, day, e.rainOf(day), o.fieldSowing ? e.cropStart(day) : undefined)
+    : 1;
+  const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth);
   const input: ResolveInput = {
     def,
     node,
