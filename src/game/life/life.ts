@@ -152,8 +152,13 @@ export interface LifeSetup {
  * cuando la suya está gastada o perdida, pagando cobre). Compatibilidad: el replay con un motor anterior
  * a `life-18` enciende `legacyNoCloakMend`; una vida guardada con `life-17` sigue desde su estado con el
  * límite de replay.
+ *
+ * `life-19`: el perfil completo enciende `npcForecast` (al salir de viaje el NPC pronostica el frío del
+ * camino con lo que su lugar enseña y solo carga la capa si cree que la va a necesitar). Compatibilidad:
+ * el replay con un motor anterior a `life-19` enciende `legacyNoForecast`; una vida guardada con
+ * `life-18` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-18";
+export const LIFE_ENGINE = "life-19";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -181,6 +186,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 16 ? { legacyNoCloak: true } : {}),
     ...(n < 17 ? { legacyNoStrain: true } : {}),
     ...(n < 18 ? { legacyNoCloakMend: true } : {}),
+    ...(n < 19 ? { legacyNoForecast: true } : {}),
   };
 }
 

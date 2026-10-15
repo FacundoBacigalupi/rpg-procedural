@@ -70,6 +70,7 @@ export const FULL_PROFILE = {
   npcFootwearMend: true,
   npcCloak: true,
   npcCloakMend: true,
+  npcForecast: true,
   npcStrain: true,
   conception: true,
   births: true,
@@ -137,6 +138,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcFootwearMend", "npcFootwear"],
     ["npcCloak", "npcJourneyDays"],
     ["npcCloakMend", "npcCloak"],
+    ["npcForecast", "npcCloak"],
     ["npcStrain", "npcPace"],
   ];
   for (const [option, dependency] of dependencies) require(option, dependency);

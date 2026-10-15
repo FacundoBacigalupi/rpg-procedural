@@ -59,6 +59,7 @@ import {
 } from "./act.ts";
 import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
+import type { RoadForecast } from "./forecast.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRANSIT } from "./transit-state.ts";
 
@@ -113,6 +114,11 @@ export interface NpcVerbsOptions {
   };
   /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
   readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
+  /**
+   * Opt-in (con `journeyDays`): al salir el viajero hace su pronóstico del frío del camino y decide
+   * si carga la capa (`RoadForecast`); queda en el viaje como creencia (`NpcJourney.foreseenMinC`).
+   */
+  readonly forecast?: (who: AgentId, now: Tick, days: number) => RoadForecast;
   /** Opt-in (con `journeyDays`): el viajero con sed bebe en el camino (`JourneyDrinkOptions`). */
   readonly drink?: JourneyDrinkOptions;
   /**
@@ -541,10 +547,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         decision.verb === "move" &&
         decision.target !== undefined;
       if (opens && decision.target) {
+        const foreseen = o.forecast?.(me, ctx.now, journeyDays as number);
         const open = setComponent(NPC_JOURNEY, me, {
           place: decision.target,
           since: ctx.now,
           decision: decision.id,
+          ...(foreseen ? { foreseenMinC: foreseen.minC, cloak: foreseen.cloak } : {}),
           ...(o.drink ? { skin: o.drink.carryLiters } : {}),
           ...(truth.get(LOCATION, me) ? { from: truth.get(LOCATION, me)?.hex as number } : {}),
         });
@@ -599,6 +607,10 @@ export interface NpcJourney {
   readonly rested?: Tick;
   /** Litros de agua que le quedan en el odre (`NpcVerbsOptions.drink`). */
   readonly skin?: number;
+  /** La mínima de aire que creyó al salir que le iba a tocar (`NpcVerbsOptions.forecast`). */
+  readonly foreseenMinC?: number;
+  /** Si salió con la capa (`false`: la dejó en casa por su pronóstico; sin dato, la lleva). */
+  readonly cloak?: boolean;
 }
 export const NPC_JOURNEY = table<NpcJourney>("life.npc_journey");
 
