@@ -104,6 +104,8 @@ export interface ExposureOptions {
    * `spillSeed`). Sin esto no hay semillas nuevas, RNG ni eventos.
    */
   readonly arrivals?: (truth: ReadonlyWorldTruth, now: Tick) => readonly PathogenSeed[];
+  /** Tablas extra que leen las `arrivals` (p. ej. `life.reservoir`); se suman a `reads`. */
+  readonly arrivalReads?: readonly string[];
   /**
    * Calidad del agua que bebe cada quien, con la carga del pozo (turbiedad, tratamiento);
    * sin esto es `wellWater(load)`, como siempre.
@@ -222,6 +224,7 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       TREATMENT.name,
       DEFICIENCY_EFFECTS.name,
       ...(o.arrivals ? ["life.labor"] : []),
+      ...(o.arrivals ? (o.arrivalReads ?? []) : []),
     ],
     writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, REACH_TAINT.name, ENTITY.name],
     run(ctx) {

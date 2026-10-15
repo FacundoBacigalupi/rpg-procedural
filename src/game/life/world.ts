@@ -162,6 +162,7 @@ import {
   rentsProcess,
   sharecropHarvestProcess,
 } from "./rents.ts";
+import { RESERVOIR, type ReservoirHost, reservoirProcess, reservoirSeeds } from "./reservoirs.ts";
 import { type ResidueConfig, residueProcess } from "./residue.ts";
 import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
@@ -229,6 +230,8 @@ export interface LifeWorld {
   readonly pathogenSeeds?: readonly PathogenSeed[];
   /** Opt-in (body-health §6): orígenes con epidemia; quien parte de ahí en un viaje abierto lleva el patógeno (`journeySeeds`). */
   readonly afflictedOrigins?: readonly AfflictedOrigin[];
+  /** Opt-in (body-health §6): reservorios del patógeno en la ecología de la celda (bestias, agua quieta); quien los toca tira el derrame (`reservoirSeeds`). */
+  readonly reservoirs?: readonly ReservoirHost[];
   /** Sanadores explícitos (body-health §6): diagnostican y tratan a los enfermos; sin ellos no hacen nada. */
   readonly healers?: readonly Healer[];
   /** Escuela de sanadores desde las habilidades (`medicine`); sin ella solo cuentan los explícitos. */
@@ -1078,6 +1081,9 @@ export function lifeWorld(
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
         }),
+        ...(parts.reservoirs && parts.reservoirs.length > 0
+          ? [reservoirProcess({ hosts: parts.reservoirs, dayTicks: parts.clock.day })]
+          : []),
         tradesProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
           clock: parts.clock,
@@ -1230,9 +1236,20 @@ export function lifeWorld(
           clock: parts.clock,
           seeds: parts.pathogenSeeds ?? [],
           ...((parts.labors && parts.labors.length > 0) ||
-          (parts.afflictedOrigins && parts.afflictedOrigins.length > 0)
+          (parts.afflictedOrigins && parts.afflictedOrigins.length > 0) ||
+          (parts.reservoirs && parts.reservoirs.length > 0)
             ? {
+                ...(parts.reservoirs && parts.reservoirs.length > 0
+                  ? { arrivalReads: [RESERVOIR.name] }
+                  : {}),
                 arrivals: (truth: ReadonlyWorldTruth, now: Tick) => [
+                  ...reservoirSeeds(
+                    Rng.root(parts.seed),
+                    truth,
+                    now,
+                    parts.reservoirs ?? [],
+                    parts.map,
+                  ),
                   ...(parts.labors && parts.labors.length > 0 ? puerperalSeeds(truth) : []),
                   ...journeySeeds(
                     Rng.root(parts.seed),
