@@ -57,6 +57,7 @@ import {
   planLeaves,
   type ReadonlyWorldTruth,
   SOIL,
+  SOIL_DAYS,
   type SpaceGraph,
   type StateChange,
   setActivity,
@@ -69,6 +70,14 @@ import {
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
+import {
+  fieldBoost,
+  fieldIrrigationMm,
+  IRRIGATED,
+  IRRIGATION_MM_PER_HOUR,
+  rainWindow,
+  wantsToWater,
+} from "./irrigation.ts";
 import { PLAYER } from "./player.ts";
 
 export const ROUTINE_PROCESS = "life.routine";
@@ -140,6 +149,13 @@ export interface RoutineOptions {
    * Hoy sin costo ni tiempo de viaje, igual que el resto de la rutina; apagado, nada cambia.
    */
   readonly npcMove?: boolean;
+  /**
+   * Opt-in (`LifeOptions.npcFieldWatering`): a la primera hora de campo, con el suelo seco y sin creer
+   * que llueva (`believedRainChance`), una parte de la gente riega en vez de cosechar (evento
+   * `routine.irrigated`, `IRRIGATED`); el riego vigente sube el rinde de las horas siguientes
+   * (`irrigationBoost`). Apagado: nada cambia.
+   */
+  readonly fieldWatering?: boolean;
   /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
   readonly idlePlayer?: boolean;
   /**
@@ -285,6 +301,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     .map((f) => ({ unit: ledgerUnit(`good:${f.id}`), food: f }));
   // El rinde de la hora depende del día del año (calor, helada, lluvia reciente).
   const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
+  const rainOf = rainWindow(o);
   const nutrition = new Map<LedgerUnit, FoodDef>(foods.map((f) => [f.unit, f.food]));
 
   return {
@@ -310,6 +327,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       BODY_STATE.name,
       ...(o.sleepers ? [ASLEEP.name] : []),
       ...(o.boil ? [TREATED_WATER.name] : []),
+      ...(o.fieldWatering ? [IRRIGATED.name] : []),
     ],
     writes: [
       LOCATION.name,
@@ -317,6 +335,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       MEALS.name,
       ...(o.waitSkin ? [WATER_SKIN.name] : []),
       ...(o.boil ? [TREATED_WATER.name] : []),
+      ...(o.fieldWatering ? [IRRIGATED.name] : []),
     ],
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -414,7 +433,39 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       // externa `harvest`; economy §1), según la estación del día: en invierno o con helada el
       // campo no da y la hora no deja asiento.
       const day = dayOf(o.clock, ctx.now + Math.round((o.map.lonDeg / 360) * o.clock.day));
-      const grams = Math.round(HARVEST_GRAMS_PER_HOUR * season(day) * fieldFertility(truth));
+      let boost = 1;
+      let waters = false;
+      if (o.fieldWatering && want.at === "fields" && there && season(day) > 0) {
+        const rained = rainOf(day);
+        boost = fieldBoost(rained, truth, day);
+        // La primera hora de campo del día: mira el suelo y lo que cree del cielo, y quizá riega.
+        if (age >= ROUTINE.workAge && hour === ROUTINE.work[0]) {
+          const soilMm = rained + fieldIrrigationMm(truth, day);
+          const w = wantsToWater(o, me as string, day, soilMm);
+          if (w.water) {
+            waters = true;
+            const prev = (truth.get(IRRIGATED, me)?.entries ?? []).filter(
+              (e) => day - e.day < SOIL_DAYS,
+            );
+            changes.push(
+              setComponent(IRRIGATED, me, {
+                entries: [...prev, { day, mm: IRRIGATION_MM_PER_HOUR }],
+              }),
+            );
+            events.push({
+              kind: "routine.irrigated",
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { mm: IRRIGATION_MM_PER_HOUR, rainChance: w.chance, soilMm },
+              emissions: { sight: 0.3, sound: 0.1 },
+              causes: [{ kind: "state", entity: me, key: "routine" }],
+            });
+          }
+        }
+      }
+      const grams = waters
+        ? 0
+        : Math.round(HARVEST_GRAMS_PER_HOUR * season(day) * boost * fieldFertility(truth));
       if (want.at === "fields" && there && grams > 0) {
         const ev = draftEvent(events.length);
         events.push({

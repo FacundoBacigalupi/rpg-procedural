@@ -44,10 +44,42 @@ export function growthOf(w: DayWeather): number {
   return t * t * (3 - 2 * t);
 }
 
+/** Qué tan mojado está el suelo (`DRY_FLOOR`-1) con `mm` de agua de los últimos días. */
+export function wetness(mm: number): number {
+  return DRY_FLOOR + (1 - DRY_FLOOR) * clamp(mm / SOIL_FULL_MM, 0, 1);
+}
+
+/** Milímetros de lluvia de un día. */
+export function rainMm(w: DayWeather): number {
+  return w.precip.kind === "rain" ? w.precip.mm : 0;
+}
+
 /** Qué tan mojado está el suelo (`DRY_FLOOR`-1) por la lluvia de los últimos días. */
 export function soilWater(recent: readonly DayWeather[]): number {
-  const mm = recent.reduce((s, d) => s + (d.precip.kind === "rain" ? d.precip.mm : 0), 0);
-  return DRY_FLOOR + (1 - DRY_FLOOR) * clamp(mm / SOIL_FULL_MM, 0, 1);
+  return wetness(recent.reduce((s, d) => s + rainMm(d), 0));
+}
+
+/**
+ * Cuánto más rinde el campo con `irrigatedMm` de riego sobre la lluvia de los últimos `SOIL_DAYS`
+ * (`rainedMm`): el cociente de lo mojado del suelo con y sin riego (>= 1; 1 sin riego o con el suelo
+ * ya lleno).
+ */
+export function irrigationBoost(rainedMm: number, irrigatedMm: number): number {
+  return irrigatedMm <= 0 ? 1 : wetness(rainedMm + irrigatedMm) / wetness(rainedMm);
+}
+
+/** Lluvia (mm) de los `SOIL_DAYS` que terminan en `day`, la misma ventana de `soilWater`. */
+export function recentRainMm(
+  n: ClimateNormals,
+  clock: PlanetClock,
+  rng: Rng,
+  day: number,
+  anomalyOf?: (day: number) => Anomaly | undefined,
+): number {
+  let mm = 0;
+  for (let i = 0; i < SOIL_DAYS; i++)
+    mm += rainMm(dailyWeather(n, clock, day - i, rng, anomalyOf?.(day - i)));
+  return mm;
 }
 
 /** ¿Pudo caer granizo ese día? Lluvia fuerte con calor; el azar solo elige entre esos días. */
