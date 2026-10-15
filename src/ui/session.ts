@@ -18,6 +18,7 @@ import {
   type Tick,
 } from "../core/index.ts";
 import {
+  ACTION_WORDS,
   AMBIENCE,
   aboutPanel,
   aboutTopicText,
@@ -61,6 +62,7 @@ import {
   weatherPanel,
 } from "../game/index.ts";
 import {
+  ActionWordBook,
   characterLexicon,
   continuityFor,
   DEFAULT_NARRATION,
@@ -202,6 +204,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const notices: string[] = [];
   const life = open(store, options, notices);
   const book = new TemplateBook(options.content.all(NARRATION_TEMPLATES));
+  const actionWords = new ActionWordBook(options.content.all(ACTION_WORDS));
   const seed = store.getMeta("seed") as Seed;
   const jobs =
     options.llm ?? new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
@@ -288,7 +291,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     const told = await narrate(
       jobs,
       { ...request, continuity: continuityFor(memory, keys, placeKey, hazy) },
-      { templates: book, rng: Rng.root(seed).fork("narration", at) },
+      { templates: book, actionWords, rng: Rng.root(seed).fork("narration", at) },
     );
     // Si el validador rechazó al modelo, queda el paquete para reproducirlo (tooling §9).
     if (narrationRejected(told)) {

@@ -55,12 +55,30 @@ export const LexiconEntry = z.strictObject({
 export type LexiconEntry = z.infer<typeof LexiconEntry>;
 export const WORLD_LEXICON = defineContent("llm/lexicon", LexiconEntry);
 
+/**
+ * Las palabras con que se dice una acción percibida (narration §6, `narr-action-grounding`): el
+ * id es el verbo del percept (`gather`, `body.died`) o `state` para lo que solo se sabría desde
+ * adentro del otro (temblar, inquietarse). `stems` son prefijos sin tildes, `forms` palabras
+ * enteras (con tildes) y los dos dicen esa acción y ninguna otra; `weak` (prefijos) alcanza para
+ * contar que se dijo, pero no delata otra acción si aparece al lado de alguien.
+ */
+export const ActionWords = z.strictObject({
+  id: contentId,
+  kind: z.enum(["action", "state"]),
+  stems: z.array(z.string().trim().min(2)),
+  forms: z.array(z.string().trim().min(1)),
+  weak: z.array(z.string().trim().min(2)),
+});
+export type ActionWords = z.infer<typeof ActionWords>;
+export const ACTION_WORDS = defineContent("llm/action-words", ActionWords);
+
 /** Todo `content/`: lo de la sim más lo del narrador. Quien carga la carpeta entera usa esta. */
 export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   ...CONTENT_KINDS,
   AMBIENCE,
   NARRATION_TEMPLATES,
   WORLD_LEXICON,
+  ACTION_WORDS,
 ] as readonly ContentKind[];
 
 /** La paleta de ambiente de una escena percibida (narration §5, §8): lo que vale, en orden de id. */
