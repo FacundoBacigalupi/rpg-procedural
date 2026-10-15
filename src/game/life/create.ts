@@ -373,6 +373,12 @@ export interface LifeOptions {
   readonly substanceDoses?: LifeParts["substanceDoses"];
   /** Opt-in: lo comido de verdad alimenta las reservas de nutrientes (`LifeParts.eatenNutrition`). */
   readonly eatenNutrition?: boolean;
+  /** Opt-in: el hambre infantil deja secuelas permanentes (`LifeParts.growthSequelae`). */
+  readonly growthSequelae?: boolean;
+  /** Opt-in: al cumplir 18 la masa se reconstruye con la talla final (`LifeParts.adultGrowth`). */
+  readonly adultGrowth?: boolean;
+  /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido (`LifeParts.gradualGrowth`). */
+  readonly gradualGrowth?: boolean;
   /** Opt-in: residuo de lo ingerido con `Essence` (pureza, purga diaria, desviación, sobrecarga) (`LifeParts.residue`); apagado por defecto. */
   readonly residue?: LifeParts["residue"];
   /** Opt-in: sustancias consumibles (`LifeParts.consumables`); los paneles de la sesión leen de acá los bienes de las señales por objeto. */
@@ -612,6 +618,9 @@ export function optInParts(
   | "healers"
   | "substanceDoses"
   | "eatenNutrition"
+  | "growthSequelae"
+  | "adultGrowth"
+  | "gradualGrowth"
   | "consumables"
   | "buyCraving"
   | "gatherCraving"
@@ -732,6 +741,9 @@ export function optInParts(
     ...(options.healers ? { healers: options.healers } : {}),
     ...(options.substanceDoses ? { substanceDoses: options.substanceDoses } : {}),
     ...(options.eatenNutrition ? { eatenNutrition: true } : {}),
+    ...(options.growthSequelae ? { growthSequelae: true } : {}),
+    ...(options.adultGrowth ? { adultGrowth: true } : {}),
+    ...(options.gradualGrowth ? { gradualGrowth: true } : {}),
     ...(options.consumables ? { consumables: options.consumables } : {}),
     ...(options.buyCraving ? { buyCraving: options.buyCraving } : {}),
     ...(options.gatherCraving ? { gatherCraving: options.gatherCraving } : {}),
