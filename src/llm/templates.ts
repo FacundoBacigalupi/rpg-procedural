@@ -199,6 +199,13 @@ export function renderView(
     });
     if (!t.sure) say("heard_trade.unsure");
   }
+  for (const c of view.heardClaims) {
+    say(`heard_claim.${c.claim}.${c.from === undefined ? "some" : "of"}`, {
+      about: c.about,
+      ...(c.from === undefined ? {} : { from: c.from }),
+    });
+    if (!c.sure) say("heard_claim.unsure");
+  }
   for (const d of view.dues) {
     say(`due.${d.direction === "i-owe" ? "owe" : "owed"}.${d.state}`, { who: d.who, what: d.what });
     if (!d.sure) say("due.unsure");

@@ -137,6 +137,18 @@ export interface HeardTradeView {
   readonly sure: boolean;
 }
 /**
+ * Lo que le contaron de si alguien vive («dicen que…», creencia `told`, nunca la verdad): de quién
+ * habla y quién se lo dijo, ambos por cómo los conoce el personaje. Sin ids.
+ */
+export interface HeardClaimView {
+  readonly about: string;
+  readonly claim: "alive" | "dead";
+  /** Quién se lo contó, si lo conoce; si no, el narrador lo deja en «dicen». */
+  readonly from?: string;
+  /** Si lo cree con firmeza; si no, el narrador lo deja en duda. */
+  readonly sure: boolean;
+}
+/**
  * La lectura de un adivino que el personaje fue a ver (divination §5): lo que vio tirar y lo que
  * le dijeron, nunca si es cierto ni lo que el adivino creyó leer.
  */
@@ -432,6 +444,8 @@ export interface PlayerView {
   readonly offenses: readonly OffenseView[];
   /** Un oficio oído de un vecino, como creencia; vacío casi siempre. */
   readonly heardTrades: readonly HeardTradeView[];
+  /** Lo que le contaron de si alguien vive («dicen que…») este turno; vacío casi siempre. */
+  readonly heardClaims: readonly HeardClaimView[];
   /** Las lecturas de adivino de este turno; vacío casi siempre. */
   readonly readings: readonly ReadingView[];
   /** Lo que la sim dice del momento (saltó el tiempo, soñó, pasó algo grave); casi nunca. */
@@ -474,6 +488,7 @@ export interface ViewInput {
   readonly dues?: readonly DueView[];
   readonly offenses?: readonly OffenseView[];
   readonly heardTrades?: readonly HeardTradeView[];
+  readonly heardClaims?: readonly HeardClaimView[];
   readonly readings?: readonly ReadingView[];
   readonly mode?: SpecialMode;
   readonly stretch?: StretchInput;
@@ -668,6 +683,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     dues: (input.dues ?? []).map((d) => ({ ...d })),
     offenses: (input.offenses ?? []).map((o) => ({ ...o })),
     heardTrades: (input.heardTrades ?? []).map((t) => ({ ...t })),
+    heardClaims: (input.heardClaims ?? []).map((c) => ({ ...c })),
     readings: (input.readings ?? []).map((r) => ({ ...r, signs: [...r.signs] })),
     ...(input.mode !== undefined ? { mode: input.mode } : {}),
     ...(input.mode === "montage" && input.stretch !== undefined

@@ -57,6 +57,7 @@ import {
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
+import { heardClaimsForView } from "./heardclaims.ts";
 import { heardTradesForView } from "./heardtrades.ts";
 import { figureText, withImpressions } from "./impressions.ts";
 import { playerNickname } from "./nickname.ts";
@@ -532,6 +533,7 @@ export function playerView(
       ? {
           offenses: offensesForView(w, options.heardSince, acq),
           readings: readingsForView(w, options.heardSince),
+          heardClaims: heardClaimsForView(w, options.heardSince),
         }
       : {}),
   });
