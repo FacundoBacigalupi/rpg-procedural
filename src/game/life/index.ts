@@ -46,6 +46,7 @@ export * from "./scamdiscovery.ts";
 export * from "./scampolicy.ts";
 export * from "./schemepolicy.ts";
 export * from "./schemes.ts";
+export * from "./seed-origins.ts";
 export * from "./sleep.ts";
 export { type SpeakActsOptions, speakActsDefaults } from "./speakacts.ts";
 export * from "./substance-panel.ts";
