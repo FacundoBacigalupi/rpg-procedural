@@ -403,6 +403,8 @@ export interface LifeWorld {
   readonly legacyNoDeadCounterpartyGuard?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
+  /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
+  readonly legacyNoGreetDecision?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -755,6 +757,13 @@ export function lifeWorld(
   village: PlaceRef,
   start: SchedulerState,
 ): LifeWorld {
+  // `life-33`: el saludo al cruzarse sale de la decisión (`speak` con acto `greet`) si el viajero puede hablar.
+  const greetByDecision =
+    parts.legacyNoGreetDecision !== true &&
+    parts.npcGreetings === true &&
+    parts.npcEncounters === true &&
+    parts.npcJourneyDays !== undefined &&
+    parts.npcVerbs?.includes("speak") === true;
   const economicBatch = (parts.npcVerbs?.length ?? 0) > 0;
   const altitudeOf = parts.realAltitude
     ? parts.travelAltitude
@@ -1868,7 +1877,7 @@ export function lifeWorld(
         ...(parts.npcWarnings === true && parts.npcTraces === true && parts.npcEncounters === true
           ? [npcWarningsProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
-        ...(parts.npcGreetings === true && parts.npcEncounters === true
+        ...(parts.npcGreetings === true && parts.npcEncounters === true && !greetByDecision
           ? [
               npcGreetingsProcess({
                 player,
@@ -1944,6 +1953,14 @@ export function lifeWorld(
                 ...(parts.npcJourneyDays !== undefined
                   ? {
                       journeyDays: parts.npcJourneyDays,
+                      ...(greetByDecision
+                        ? {
+                            greet: {
+                              dims: parts.relationDims,
+                              bonds: parts.relationBonds,
+                            },
+                          }
+                        : {}),
                       ...(parts.npcTransit === true ? { transit: true } : {}),
                       placeOf: placeOf(parts, village),
                       ...(parts.npcPace ? { pace: parts.npcPace } : {}),

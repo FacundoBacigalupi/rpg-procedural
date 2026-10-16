@@ -27,31 +27,23 @@ import {
   relationship,
   type StateChange,
   setComponent,
-  table,
   understand,
 } from "../../sim/index.ts";
 import { BIRTH, BONDED } from "./birth.ts";
-import { NPC_MET } from "./npc-encounters.ts";
+import { GREET_CHANCE, GREET_REFUSE, NPC_GREETED, NPC_MET, refusesGreeting } from "./npc-met.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 
 export const NPC_GREETINGS_PROCESS = "life.npc_greetings";
 export const GREETED_EVENT = "npc.greeted";
 
-/** A quién ya saludó en este viaje (el viaje se identifica por cuándo empezó). */
-export const NPC_GREETED = table<{ readonly since: number; readonly greeted: readonly string[] }>(
-  "life.npc_greeted",
-);
+export { GREET_CHANCE, GREET_REFUSE, NPC_GREETED };
 
-/** Chance por hora de que la pareja se salude, si ninguno guarda rencor (sin calibrar). */
-export const GREET_CHANCE = 0.7;
 /** Lo que suma un saludo a cada parte (familiaridad con rendimiento decreciente; sin calibrar). */
 export const GREET_FAMILIARITY = 0.015;
 export const GREET_AFFECTION = 0.01;
 export const GREET_TRUST = 0.005;
 /** Desde esta familiaridad (de quien saluda) el saludo es de palabras, no un gesto. */
 export const GREET_WORDS_FAMILIARITY = 0.2;
-/** Si siente esto o más de rencor o miedo, o menos de esto de afecto, no saluda. */
-export const GREET_REFUSE = { resentment: 0.5, fear: 0.6, affection: -0.3 } as const;
 /** Con menos claridad que esto (otra lengua, un acento muy lejano) el saludo es un murmullo. */
 export const GREET_MIN_CLARITY = 0.15;
 /** Tope de saludos por pasada (una plaza llena no inunda el registro). */
@@ -143,10 +135,7 @@ export function npcGreetingsProcess(o: NpcGreetingsOptions): ProcessDef {
       };
       const feel = (from: AgentId, to: AgentId) =>
         relationship(rows.get(from) ?? truth.get(RELATIONS, from), to, ctx.now, ctxRel);
-      const hostile = (r: Relationship) =>
-        r.dims.resentment >= GREET_REFUSE.resentment ||
-        r.dims.fear >= GREET_REFUSE.fear ||
-        r.dims.affection <= GREET_REFUSE.affection;
+      const hostile = refusesGreeting;
       const warm = (from: AgentId, to: AgentId, r: Relationship) => {
         let row = rows.get(from);
         if (!row) {

@@ -225,8 +225,14 @@ export interface LifeSetup {
  * `MAX_RAIN_WAITS` días, así el recado no se pierde y el viaje se abre. Compatibilidad: el replay
  * con un motor anterior a `life-32` enciende `legacyNoRainWaitPersist`; una vida guardada con
  * `life-31` sigue desde su estado con el límite de replay.
+ *
+ * `life-33`: con `npcGreetings` y `speak` en `npcVerbs`, el viajero saluda a quien se cruzó y sigue
+ * en su hex con la acción `speak` de acto `greet` (la respuesta la resuelve `life.converse`, el
+ * viaje se retoma después) y `life.npc_greetings` (efecto directo) no corre. Compatibilidad: el
+ * replay con un motor anterior a `life-33` enciende `legacyNoGreetDecision`; una vida guardada con
+ * `life-32` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-32";
+export const LIFE_ENGINE = "life-33";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -268,6 +274,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 30 ? { legacyNoLendPawnBatch: true } : {}),
     ...(n < 31 ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(n < 32 ? { legacyNoRainWaitPersist: true } : {}),
+    ...(n < 33 ? { legacyNoGreetDecision: true } : {}),
   };
 }
 
