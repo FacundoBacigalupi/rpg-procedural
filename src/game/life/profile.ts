@@ -142,6 +142,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcProvisions", "npcJourneyDays"],
     ["npcWater", "npcJourneyDays"],
     ["npcEncounters", "npcJourneyDays"],
+    ["npcTraces", "npcEncounters"],
     ["npcNightRest", "npcJourneyDays"],
     ["npcPace", "npcJourneyDays"],
     ["npcFootSores", "npcFootwear"],
