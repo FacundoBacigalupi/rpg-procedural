@@ -37,6 +37,7 @@ import {
   nearestHex,
   netHydration,
   nodeAt,
+  planLeaves,
   PERSON,
   PLACE,
   type PlanCursor,
@@ -115,6 +116,12 @@ export interface NpcVerbsOptions {
     readonly plans: readonly BodyPlanDef[];
     readonly after: number;
     readonly within: number;
+    /**
+     * Opt-in: si después del corte el NPC decidió otra cosa (una decisión más nueva que el corte
+     * cuyo verbo no está en ningún paso del plan cortado), el plan viejo se olvida en vez de
+     * competir con la decisión; sin esto se retoma igual.
+     */
+    readonly reevaluate?: boolean;
   };
   /** Opt-in (con `journeyDays`): de noche el viajero interrumpe el tramo, duerme y sigue al alba. */
   readonly nightRest?: { readonly clock: PlanetClock; readonly lonDeg: number };
@@ -543,6 +550,9 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         const age = ctx.now - paused.at;
         if (age > o.resume.within) return { changes: [deleteComponent(NPC_PAUSED, me)] };
         if (age < o.resume.after) return {};
+        if (o.resume.reevaluate && !pausedPlanFits(paused, truth.get(NPC_DECISION, me))) {
+          return { changes: [deleteComponent(NPC_PAUSED, me)] };
+        }
         const body = truth.get(BODY_STATE, me);
         const bodyPlan = body && o.resume.plans.find((p) => p.id === body.plan);
         if (body && bodyPlan && alarmingSignsOf(bodyPlan, body).size > 0) return {};
@@ -770,6 +780,19 @@ export interface NpcPaused {
   readonly why: string;
 }
 export const NPC_PAUSED = table<NpcPaused>("life.npc_paused");
+
+/**
+ * Si el plan cortado todavía conviene frente a la decisión vigente (puro): sin decisión posterior
+ * al corte, o con un verbo que el plan ya contiene, conviene; con otro verbo, la decisión cambió y
+ * el plan viejo ya no.
+ */
+export function pausedPlanFits(
+  paused: Pick<NpcPaused, "plan" | "at">,
+  decision: Pick<Decision, "at" | "verb"> | undefined,
+): boolean {
+  if (!decision || decision.at < paused.at) return true;
+  return planLeaves(paused.plan.root).some((l) => l.node.verb === decision.verb);
+}
 
 /**
  * El sorbo del camino (puro): con sed (`THIRSTY_FRACTION`) bebe lo que falta, hasta `MAX_DRINK_L`,

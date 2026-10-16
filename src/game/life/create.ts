@@ -442,6 +442,8 @@ export interface LifeOptions {
   readonly npcWater?: LifeParts["npcWater"];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC y deja el resultado parcial (`LifeParts.npcInterrupt`). */
   readonly npcInterrupt?: boolean;
+  /** Opt-in (con `npcInterrupt`): el plan cortado se olvida si, tras el corte, el NPC decidió otro verbo (`NpcVerbsOptions.resume.reevaluate`); apagado, se retoma igual. */
+  readonly npcResumeReevaluate?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se cruza con quien comparte su hex (`LifeParts.npcEncounters`). */
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): rastros del viaje, dejados y notados como creencia (`LifeParts.npcTraces`). */
@@ -621,6 +623,7 @@ export function optInParts(
   | "runProbe"
   | "npcVerbs"
   | "npcInterrupt"
+  | "npcResumeReevaluate"
   | "npcEncounters"
   | "npcTraces"
   | "npcTemplates"
@@ -751,6 +754,7 @@ export function optInParts(
     ...(options.runProbe ? { runProbe: options.runProbe } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.npcInterrupt ? { npcInterrupt: true } : {}),
+    ...(options.npcResumeReevaluate ? { npcResumeReevaluate: true } : {}),
     ...(options.npcEncounters ? { npcEncounters: true } : {}),
     ...(options.npcTraces ? { npcTraces: true } : {}),
     ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),

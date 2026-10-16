@@ -458,6 +458,8 @@ export interface LifeWorld {
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC (viaje y plantillas incluidos) y deja el resultado parcial en `npc.interrupted` (`life.npc_interrupt`); apagado, sin proceso. */
   readonly npcInterrupt?: boolean;
+  /** Ver `LifeOptions.npcResumeReevaluate`. */
+  readonly npcResumeReevaluate?: boolean;
   /** Opt-in (con `npcJourneyDays`, mejor con `npcTransit`): el viajero se cruza con quien comparte su hex (`npc.crossed`, `life.npc_encounters`); apagado, sin proceso. */
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): el viajero deja rastros en los hexes que pisa y nota los de otros como creencia (`npc.trace_seen`, `life.npc_traces`); apagado, sin proceso. */
@@ -1846,7 +1848,12 @@ export function lifeWorld(
                 ...(parts.npcInterrupt === true
                   ? {
                       placeOf: placeOf(parts, village),
-                      resume: { plans: parts.plans, after: 3600, within: parts.clock.day },
+                      resume: {
+                        plans: parts.plans,
+                        after: 3600,
+                        within: parts.clock.day,
+                        ...(parts.npcResumeReevaluate === true ? { reevaluate: true } : {}),
+                      },
                     }
                   : {}),
                 ...(parts.npcTemplates
