@@ -233,4 +233,22 @@ describe("el saludo como acto de habla", () => {
     expect(run(world(), now, 1, deaf)).toEqual(out);
     expect(out).toEqual(run(world(), now));
   });
+
+  it("con claridad por debajo del mínimo nadie entiende, aunque el texto sea un saludo", () => {
+    const speech: GreetingSpeech = { say: () => "Buenas", lexicon, clarity: () => 0 };
+    const truth = known();
+    const out = run(truth, timeFor(speech), 1, speech);
+    expect(out.events?.[0]?.data).toMatchObject({ understood: { [me]: false, [other]: false } });
+    apply(truth, out);
+    expect(truth.get(RELATIONS, me)?.toward[other]?.dims.familiarity).toBeCloseTo(0.5, 5);
+    expect(truth.get(RELATIONS, other)).toBeUndefined();
+  });
+
+  it("con buena claridad se entiende y es determinista", () => {
+    const speech: GreetingSpeech = { say: () => "Buenas", lexicon, clarity: () => 0.9 };
+    const now = timeFor(speech);
+    const x = run(known(), now, 1, speech);
+    expect(x).toEqual(run(known(), now, 1, speech));
+    expect(x.events?.[0]?.data).toMatchObject({ understood: { [me]: true, [other]: true } });
+  });
 });

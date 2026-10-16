@@ -52,6 +52,8 @@ export const GREET_TRUST = 0.005;
 export const GREET_WORDS_FAMILIARITY = 0.2;
 /** Si siente esto o más de rencor o miedo, o menos de esto de afecto, no saluda. */
 export const GREET_REFUSE = { resentment: 0.5, fear: 0.6, affection: -0.3 } as const;
+/** Con menos claridad que esto (otra lengua, un acento muy lejano) el saludo es un murmullo. */
+export const GREET_MIN_CLARITY = 0.15;
 /** Tope de saludos por pasada (una plaza llena no inunda el registro). */
 export const MAX_GREETINGS_PER_PASS = 4;
 
@@ -62,9 +64,12 @@ export const MAX_GREETINGS_PER_PASS = 4;
  */
 export interface GreetingSpeech {
   /** Lo que dice quien saluda con palabras. */
-  readonly say: (speaker: AgentId, hearer: AgentId) => string;
+  readonly say: (speaker: AgentId, hearer: AgentId, truth: ReadonlyWorldTruth) => string;
   readonly lexicon: Lexicon;
-  /** 0-1: qué tan claro lo oye `hearer` (acento, lengua); sin esto, 1. */
+  /**
+   * 0-1: qué tan claro lo oye `hearer` (acento, lengua); sin esto, 1. Con esto, por debajo de
+   * `GREET_MIN_CLARITY` es un murmullo: no se entiende ni como saludo (`npc-greeting-speech.ts`).
+   */
   readonly clarity?: (truth: ReadonlyWorldTruth, speaker: AgentId, hearer: AgentId) => number;
 }
 
@@ -190,14 +195,15 @@ export function npcGreetingsProcess(o: NpcGreetingsOptions): ProcessDef {
           if (ctx.rng.fork("greet", first, second, ctx.now).float() >= GREET_CHANCE) continue;
           const words = Math.max(a.dims.familiarity, b.dims.familiarity) >= GREET_WORDS_FAMILIARITY;
           // Con acto de habla, cada uno oye lo que el otro dijo; sin entender un saludo no se entibia.
-          const heard = (speaker: AgentId, hearer: AgentId) =>
-            !words ||
-            o.speech === undefined ||
-            understand(
-              o.speech.say(speaker, hearer),
-              o.speech.lexicon,
-              o.speech.clarity?.(truth, speaker, hearer) ?? 1,
-            ).kind === "greet";
+          const heard = (speaker: AgentId, hearer: AgentId) => {
+            if (!words || o.speech === undefined) return true;
+            const clarity = o.speech.clarity?.(truth, speaker, hearer) ?? 1;
+            return (
+              clarity >= GREET_MIN_CLARITY &&
+              understand(o.speech.say(speaker, hearer, truth), o.speech.lexicon, clarity).kind ===
+                "greet"
+            );
+          };
           const meHeard = heard(other, me);
           const otherHeard = heard(me, other);
           if (meHeard) warm(me, other, a);

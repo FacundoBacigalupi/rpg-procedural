@@ -149,6 +149,7 @@ import {
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
 import { npcEncountersProcess } from "./npc-encounters.ts";
+import { lexicalGreetingSpeech } from "./npc-greeting-speech.ts";
 import { npcGreetingsProcess } from "./npc-greetings.ts";
 import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
 import { npcTracesProcess } from "./npc-traces.ts";
@@ -1873,7 +1874,15 @@ export function lifeWorld(
                 bonds: parts.relationBonds,
                 placeOf: placeOf(parts, village),
                 ...(parts.npcGreetingSpeech === true
-                  ? { speech: { say: () => "Buenas", lexicon: { people: [], goods: [] } } }
+                  ? {
+                      speech: parts.form
+                        ? lexicalGreetingSpeech({
+                            language: parts.form.language,
+                            addresses: parts.form.addresses,
+                            culture: parts.form.culture,
+                          })
+                        : { say: () => "Buenas", lexicon: { people: [], goods: [] } },
+                    }
                   : {}),
               }),
             ]
