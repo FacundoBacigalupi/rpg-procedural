@@ -5,7 +5,13 @@
 // está ahí: la creencia envejece (la confianza decae por horas), no se corrige sola, y puede
 // quedar falsa. Nadie lee la verdad para saber dónde está el personaje.
 
-import type { AgentId, PlanetClock, Seed, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  compareStrings,
+  type PlanetClock,
+  type Seed,
+  type Tick,
+} from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -18,6 +24,7 @@ import {
   ENTITY,
   HEARD,
   type Heard,
+  type HeardClaim,
   LOCATION,
   type LocalMap,
   learn,
@@ -143,6 +150,63 @@ export function toldAliveClaims(
     });
   }
   return out;
+}
+
+/** Clave de `action.speak.data` con lo que el diálogo le dejó oír a cada uno (desde `life-39`). */
+export const TOLD_CLAIMS_KEY = "toldClaims";
+export const TOLD_CLAIMS_PROCESS = "life.told_claims";
+
+/** Una afirmación de vive/murió que `actor` oyó en esa conversación. */
+export interface ToldClaim {
+  readonly actor: AgentId;
+  readonly claim: HeardClaim;
+}
+
+/**
+ * Desde `life-39` el diálogo ya no escribe `HEARD`: deja las afirmaciones en el evento `action.speak`
+ * y este proceso (al cerrar el paso) las vuelca a `BELIEFS` como `alive` de fuente `told`, en el
+ * tick del evento. De ahí las lee `decideReply`.
+ */
+export function toldClaimsProcess(): ProcessDef {
+  return {
+    id: TOLD_CLAIMS_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [BELIEFS.name],
+    writes: [BELIEFS.name],
+    run(ctx) {
+      const staged = new Map<AgentId, Beliefs | undefined>();
+      for (const event of ctx.recent) {
+        if (event.kind !== "action.speak" || event.data === null || typeof event.data !== "object")
+          continue;
+        const packet = (event.data as Record<string, unknown>)[TOLD_CLAIMS_KEY];
+        if (!Array.isArray(packet)) continue;
+        for (const { actor, claim } of packet as ToldClaim[]) {
+          const before = staged.has(actor) ? staged.get(actor) : ctx.truth.get(BELIEFS, actor);
+          staged.set(
+            actor,
+            learnToldClaims(
+              before,
+              actor,
+              { claims: [{ ...claim, at: event.tick }] },
+              event.tick - 1,
+              event.tick,
+            ),
+          );
+        }
+      }
+      const changes = [...staged.keys()].sort(compareStrings).flatMap((id) => {
+        const b = staged.get(id);
+        return b === undefined || b === ctx.truth.get(BELIEFS, id)
+          ? []
+          : [setComponent(BELIEFS, id, b)];
+      });
+      return changes.length === 0 ? {} : { changes };
+    },
+  };
 }
 
 export function knowingProcess(o: KnowingOptions): ProcessDef {

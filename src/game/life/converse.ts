@@ -149,7 +149,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-economy.ts";
 import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
-import { toldAliveClaims } from "./knowing.ts";
+import { TOLD_CLAIMS_KEY, type ToldClaim, toldAliveClaims } from "./knowing.ts";
 import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { rentsOf } from "./rents.ts";
@@ -299,6 +299,11 @@ export interface ConverseOptions {
   readonly settleEconomy?: boolean;
   /** Desde `life-38`: lo que le contaron se lee de `BELIEFS` (fuente `told`), no de `HEARD`. */
   readonly toldReaders?: boolean;
+  /**
+   * Desde `life-39`: lo que oye no se escribe en `HEARD`; sale en el evento `action.speak`
+   * (`TOLD_CLAIMS_KEY`) y `toldClaimsProcess` lo vuelca a `BELIEFS`, de donde `decideReply` lo lee.
+   */
+  readonly toldClaims?: boolean;
   readonly spaces: SpaceGraph;
   readonly catalog: ActionCatalog;
   readonly goods: readonly GoodDef[];
@@ -1235,7 +1240,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
       ...(o.settleEconomy ? [CONVERSATION_INTENT.name] : []),
       PENDING.name,
       OPEN_DEALS.name,
-      ...(o.projectSharedEffects ? [] : [HEARD.name]),
+      ...(o.projectSharedEffects || o.toldClaims ? [] : [HEARD.name]),
       KNOWN_DEEDS.name,
       RUMORS.name,
       ...(o.projectSharedEffects ? [] : [FACE.name]),
@@ -1439,7 +1444,9 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             return { where: o.spaces.spaces.find((s) => s.key === at?.space)?.kind ?? "open" };
           },
           ...(openWith ? { open: openWith.deal, rounds: openWith.rounds } : {}),
-          heard: truth.get(HEARD, me)?.claims ?? [],
+          heard: o.toldClaims
+            ? toldAliveClaims(truth.get(BELIEFS, me))
+            : (truth.get(HEARD, me)?.claims ?? []),
           owes: owesOf(truth, me, speaker, ctx.now, o.day),
           reproach: worstDeed(truth.get(KNOWN_DEEDS, me), speaker)?.kind ?? null,
           nameOf: (id) => givenName(truth, id) ?? "ese",
@@ -1498,6 +1505,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
 
       const changes: StateChange[] = [clear];
       const conversationEffects: ConverseProjectionEffect[] = [];
+      const toldClaims: ToldClaim[] = [];
       const weighed =
         recollection.count > 0 ? weighedMemories(truth.get(MEMORIES, me), speaker, ctx.now) : [];
       const counted = recount && reply.line.startsWith("ask.recalled.") ? recount : undefined;
@@ -1519,13 +1527,15 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
         changes.push(deleteComponent(OPEN_DEALS, me));
       }
       if (reply.accepted) {
-        if (o.projectSharedEffects)
+        if (o.toldClaims) toldClaims.push({ actor: me, claim: reply.accepted });
+        else if (o.projectSharedEffects)
           conversationEffects.push({ kind: "heard", actor: me, claim: reply.accepted });
         else changes.push(setComponent(HEARD, me, hear(truth.get(HEARD, me), reply.accepted)));
       }
       // Lo que soltó entero queda como dicho en quien preguntó (con quién y cuándo, no como verdad).
       if (reply.told) {
-        if (o.projectSharedEffects)
+        if (o.toldClaims) toldClaims.push({ actor: speaker, claim: reply.told });
+        else if (o.projectSharedEffects)
           conversationEffects.push({ kind: "heard", actor: speaker, claim: reply.told });
         else
           changes.push(setComponent(HEARD, speaker, hear(truth.get(HEARD, speaker), reply.told)));
@@ -1696,6 +1706,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
           ...(o.projectSharedEffects && conversationEffects.length > 0
             ? { [CONVERSATION_EFFECTS_KEY]: conversationEffects }
             : {}),
+          ...(toldClaims.length > 0 ? { [TOLD_CLAIMS_KEY]: toldClaims } : {}),
           verb: "speak",
           manner: [],
           margin: null,

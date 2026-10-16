@@ -114,7 +114,7 @@ import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
 import { type AfflictedOrigin, journeySeeds } from "./journey-arrivals.ts";
 import { keepProcess } from "./keep.ts";
-import { knowingProcess } from "./knowing.ts";
+import { knowingProcess, toldClaimsProcess } from "./knowing.ts";
 import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess, type UsuryOptions } from "./loans.ts";
@@ -417,6 +417,8 @@ export interface LifeWorld {
   readonly legacyNoToldBeliefs?: boolean;
   /** Replay de motores anteriores a `life-38`: `lexiconOf`, `ownBelief`, `heardClash` y `moldgossip.fromHeard` leen `HEARD`, no `BELIEFS`. */
   readonly legacyHeardReaders?: boolean;
+  /** Replay de motores anteriores a `life-39`: lo oído se escribe en `HEARD`, no en `action.speak` + `BELIEFS`. */
+  readonly legacyHeardTable?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -1153,6 +1155,7 @@ export function lifeWorld(
         converseProcess({
           ...(economicBatch ? { projectSharedEffects: true, settleEconomy: true } : {}),
           ...(parts.legacyHeardReaders === true ? {} : { toldReaders: true }),
+          ...(parts.legacyHeardTable === true ? {} : { toldClaims: true }),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
@@ -1833,8 +1836,11 @@ export function lifeWorld(
           statuses: parts.statuses,
           dims: parts.relationDims,
           bonds: parts.relationBonds,
-          ...(parts.legacyNoToldBeliefs === true ? {} : { toldBeliefs: true }),
+          ...(parts.legacyNoToldBeliefs === true || parts.legacyHeardTable !== true
+            ? {}
+            : { toldBeliefs: true }),
         }),
+        ...(parts.legacyHeardTable === true ? [] : [toldClaimsProcess()]),
         lookingProcess({
           player,
           map: parts.map,
