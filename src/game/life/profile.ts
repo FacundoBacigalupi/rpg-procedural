@@ -148,6 +148,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcFootwearMend", "npcFootwear"],
     ["npcCobbler", "npcFootwearMend"],
     ["npcCobblerHides", "npcCobbler"],
+    ["npcRoadMend", "npcFootwearMend"],
     ["npcCloak", "npcJourneyDays"],
     ["npcCloakMend", "npcCloak"],
     ["npcForecast", "npcCloak"],

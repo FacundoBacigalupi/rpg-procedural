@@ -99,6 +99,7 @@ import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
 import { type FamineOptions, famineProcess } from "./famine.ts";
 import { footwearMendProcess } from "./footwear-mend.ts";
+import { footwearRoadMendProcess } from "./footwear-road-mend.ts";
 import { forecastBeforeLeaving } from "./forecast.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
@@ -479,6 +480,8 @@ export interface LifeWorld {
   /** Opt-in (con `npcFootwearMend`): un zapatero de la aldea cobra los arreglos con su oficio y cuero del ledger (`cobbler.ts`); apagado. */
   readonly npcCobbler?: boolean;
   readonly npcCobblerHides?: boolean;
+  /** Opt-in (con `npcFootwearMend`): el viajero de camino con el calzado gastado lo hace arreglar en una posada o posta, más caro y peor (`life.footwear_road_mend`); apagado. */
+  readonly npcRoadMend?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
@@ -946,6 +949,11 @@ export function lifeWorld(
                   : {}),
               }),
             ]
+          : []),
+        ...(parts.npcFootwear === true &&
+        parts.npcFootwearMend === true &&
+        parts.npcRoadMend === true
+          ? [footwearRoadMendProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
           ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
