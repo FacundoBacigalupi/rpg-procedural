@@ -90,6 +90,7 @@ import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
 import { conversationSettlementProcess } from "./converse-economy.ts";
 import { converseProjectionProcess } from "./converse-project.ts";
 import { type CouncilOptions, councilProcess } from "./council.ts";
+import { villageAuthority } from "./councilauthority.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { debtKnowledgeProcess } from "./debtknowledge.ts";
@@ -285,6 +286,12 @@ export interface LifeWorld {
     readonly realBonds?: boolean;
     /** Opt-in (con `realBonds`): `contagionBelief` y el jefe del hogar salen de rasgos de la cultura de la aldea. */
     readonly cultureTraits?: { readonly contagion?: string; readonly head?: string };
+    /**
+     * Opt-in (con `realBonds`; el consejo sale de `council`): `authorityOf` combina al jefe del hogar
+     * con los miembros del consejo de la aldea (`villageAuthority`, `combineAuthorities`): cada uno
+     * pesa lo que cree que se pega por su rango y por el respeto del paciente. Sin esto, solo el hogar.
+     */
+    readonly councilAuthority?: { readonly headStrength?: number; readonly elderStrength?: number };
   };
   /**
    * Opt-in (body-health §6, family-lineage §3): partos a término. A la hora, el hogar llama a quien
@@ -1490,7 +1497,10 @@ export function lifeWorld(
                   ...(parts.patientDecides.realBonds
                     ? {
                         authorityOf: (truth, patient, pathogen) =>
-                          householdAuthority(truth, patient, pathogen, {
+                          (parts.patientDecides?.councilAuthority
+                            ? villageAuthority
+                            : householdAuthority)(truth, patient, pathogen, {
+                            ...parts.patientDecides?.councilAuthority,
                             ...(parts.patientDecides?.contagionBelief
                               ? { contagionBelief: parts.patientDecides.contagionBelief }
                               : {}),
