@@ -152,6 +152,7 @@ import { npcEncountersProcess } from "./npc-encounters.ts";
 import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
 import { npcTracesProcess } from "./npc-traces.ts";
 import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
+import { npcWarningsProcess } from "./npc-warnings.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
 import { householdAuthority, realTrust } from "./patientbonds.ts";
@@ -471,6 +472,8 @@ export interface LifeWorld {
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): el viajero deja rastros en los hexes que pisa y nota los de otros como creencia (`npc.trace_seen`, `life.npc_traces`); apagado, sin proceso. */
   readonly npcTraces?: boolean;
+  /** Opt-in (con `npcTraces`): quien se cruzó y sigue en el hex le cuenta al otro los rastros que vio (`npc.warned`, `life.npc_warnings`); lo oído queda aparte como creencia de oídas. */
+  readonly npcWarnings?: boolean;
   /** Opt-in (con `npcTraces`): horas que aguanta la carga caída antes de pudrirse. */
   readonly npcDropRotHours?: number;
   /** Opt-in (con `npcTraces` y `npcProvisions`): el dueño que vuelve al hex donde dejó caer su carga la reclama (`npc.load_reclaimed`) y tiene prioridad sobre quien la halle. */
@@ -1848,6 +1851,9 @@ export function lifeWorld(
           : []),
         ...(parts.npcEncounters === true && parts.npcJourneyDays !== undefined
           ? [npcEncountersProcess({ player, placeOf: placeOf(parts, village) })]
+          : []),
+        ...(parts.npcWarnings === true && parts.npcTraces === true && parts.npcEncounters === true
+          ? [npcWarningsProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.npcTraces === true && parts.npcEncounters === true
           ? [
