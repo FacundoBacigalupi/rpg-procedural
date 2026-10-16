@@ -17,6 +17,7 @@ import type {
 } from "../../core/index.ts";
 import { holderAccount } from "../../core/index.ts";
 import {
+  BELIEFS,
   type BondDef,
   baseFor,
   type DimensionDef,
@@ -45,6 +46,7 @@ import {
   TREATMENT,
   table,
 } from "../../sim/index.ts";
+import { toldAliveClaims } from "./knowing.ts";
 import { glanceAcuity, lookAcuity } from "./looking.ts";
 import { healerRenown } from "./medicine.ts";
 import { NEIGHBOR_STANDING, type NeighborStandings } from "./neighbors.ts";
@@ -233,6 +235,8 @@ export interface MoldGossipOptions {
    * (confianza `HEARD_CONFIDENCE`, un salto desde quien se lo dijo). Apagado por defecto.
    */
   readonly fromHeard?: boolean;
+  /** Desde `life-38`, con `fromHeard`: lo oído se lee de `BELIEFS` (fuente `told`), no de `HEARD`. */
+  readonly heardFromBeliefs?: boolean;
   /**
    * Opt-in: el oficio que cada uno vio de otros hogares (`TRADE_VIEW`) entra como rumor `attr`
    * `trade` de primera mano (`about` = `household:<id>`), y al contarse puede confundirse con otro
@@ -344,7 +348,7 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       ENTITY.name,
       LOCATION.name,
       MOLD_RUMORS.name,
-      ...(o.fromHeard ? [HEARD.name] : []),
+      ...(o.fromHeard ? [o.heardFromBeliefs ? BELIEFS.name : HEARD.name] : []),
       ...(o.fromLooking ? [PLACE.name] : []),
       ...(o.fromTradeView ? [TRADE_VIEW.name] : []),
       ...(o.fromPriceBeliefs ? [PRICE_BELIEFS.name] : []),
@@ -446,7 +450,9 @@ export function moldGossipProcess(o: MoldGossipOptions): ProcessDef {
       }
       if (o.fromHeard) {
         for (const id of truth.ids(PERSON).sort() as AgentId[]) {
-          for (const c of truth.get(HEARD, id)?.claims ?? []) {
+          for (const c of o.heardFromBeliefs
+            ? toldAliveClaims(truth.get(BELIEFS, id))
+            : (truth.get(HEARD, id)?.claims ?? [])) {
             const rumor: MoldRumor = {
               mold: "attr",
               about: c.about,

@@ -149,6 +149,7 @@ import { coinCeilingOf, householdFlowsOf, standingOf } from "./budget.ts";
 import { CONVERSATION_INTENT, stageEconomicConversation } from "./converse-economy.ts";
 import { CONVERSATION_EFFECTS_KEY, type ConverseProjectionEffect } from "./converse-project.ts";
 import { candidatesOf, RUMOR_TOLD_EVENT } from "./gossip.ts";
+import { toldAliveClaims } from "./knowing.ts";
 import { LOANS, loansOf } from "./loans.ts";
 import { FLATTERY_MEMORY_KIND } from "./memories.ts";
 import { rentsOf } from "./rents.ts";
@@ -296,6 +297,8 @@ export interface ConverseOptions {
   readonly projectSharedEffects?: boolean;
   /** Interno, derivado de npcVerbs: regalos y tratos se confirman en act sobre saldos actuales. */
   readonly settleEconomy?: boolean;
+  /** Desde `life-38`: lo que le contaron se lee de `BELIEFS` (fuente `told`), no de `HEARD`. */
+  readonly toldReaders?: boolean;
   readonly spaces: SpaceGraph;
   readonly catalog: ActionCatalog;
   readonly goods: readonly GoodDef[];
@@ -556,7 +559,9 @@ function lexiconOf(
 ): Lexicon {
   const home = householdOf(truth, listener);
   const me = truth.get(PERSON, speaker);
-  const told = truth.get(HEARD, listener)?.claims ?? [];
+  const told = o.toldReaders
+    ? toldAliveClaims(truth.get(BELIEFS, listener))
+    : (truth.get(HEARD, listener)?.claims ?? []);
   const people = truth
     .ids(PERSON)
     .map((id) => id as AgentId)
@@ -589,17 +594,20 @@ function ownBelief(
   who: AgentId,
   about: AgentId,
   now: Tick,
+  toldReaders = false,
 ): Belief | undefined {
   const held = believed(truth.get(BELIEFS, who), about, "alive");
   if (held) return held;
   const known =
     householdOf(truth, who) === householdOf(truth, about) || sameSpot(truth, who, about)
       ? alive(truth, about)
-      : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "dead"
-        ? false
-        : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "alive"
-          ? true
-          : undefined;
+      : toldReaders
+        ? undefined
+        : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "dead"
+          ? false
+          : truth.get(HEARD, who)?.claims.find((c) => c.about === about)?.claim === "alive"
+            ? true
+            : undefined;
   if (known === undefined) return undefined;
   return {
     prop: { kind: "attr", subject: about, attr: "alive" },
@@ -633,7 +641,7 @@ function detectionOf(
   const { me, speaker, now } = ctx;
   const said = act.claim === "alive";
   const sincerity = sincerityOf(
-    { value: said, own: ownBelief(truth, speaker, act.about, now) },
+    { value: said, own: ownBelief(truth, speaker, act.about, now, o.toldReaders) },
     now,
   );
   const innate = truth.get(INNATE, speaker);
@@ -642,9 +650,10 @@ function detectionOf(
     : {};
   const own = believed(truth.get(BELIEFS, me), act.about, "alive");
   const beliefClash = own && !sameValue(own.value, said) ? unit(beliefConfidenceAt(own, now)) : 0;
-  const heardClash = (truth.get(HEARD, me)?.claims ?? []).some(
-    (c) => c.about === act.about && c.claim !== act.claim,
-  )
+  const heardClash = (o.toldReaders
+    ? toldAliveClaims(truth.get(BELIEFS, me))
+    : (truth.get(HEARD, me)?.claims ?? [])
+  ).some((c) => c.about === act.about && c.claim !== act.claim)
     ? 0.5
     : 0;
   return {
@@ -913,7 +922,8 @@ function keepOf(
   const sz = innate
     ? standardize(innate, o.traits, truth.get(PERSON, speaker)?.sex ?? "female")
     : {};
-  const own = secret.attr === "alive" ? ownBelief(truth, me, act.about, now) : undefined;
+  const own =
+    secret.attr === "alive" ? ownBelief(truth, me, act.about, now, o.toldReaders) : undefined;
   const side = (x: number) => Math.min(1, Math.max(-1, x));
   return {
     state: {

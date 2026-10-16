@@ -311,6 +311,7 @@ describe("life.council: asuntos en la vida", () => {
     const life = Life.create(3, content, {
       legacyNoOscillationEvents: true,
       legacyNoToldBeliefs: true,
+      legacyHeardReaders: true,
     });
     expect(life.hash().total).toBe(
       "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",

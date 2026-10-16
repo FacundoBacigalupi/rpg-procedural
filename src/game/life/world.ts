@@ -415,6 +415,8 @@ export interface LifeWorld {
   readonly legacyNoDeadGiveGuard?: boolean;
   /** Replay de motores anteriores a `life-37`: lo oído (`HEARD`) no entra a `BELIEFS` como `told`. */
   readonly legacyNoToldBeliefs?: boolean;
+  /** Replay de motores anteriores a `life-38`: `lexiconOf`, `ownBelief`, `heardClash` y `moldgossip.fromHeard` leen `HEARD`, no `BELIEFS`. */
+  readonly legacyHeardReaders?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -1150,6 +1152,7 @@ export function lifeWorld(
           : []),
         converseProcess({
           ...(economicBatch ? { projectSharedEffects: true, settleEconomy: true } : {}),
+          ...(parts.legacyHeardReaders === true ? {} : { toldReaders: true }),
           spaces: parts.spaces,
           catalog: parts.catalog,
           goods: parts.goods,
