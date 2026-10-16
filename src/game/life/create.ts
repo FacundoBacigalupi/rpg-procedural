@@ -298,6 +298,8 @@ export interface LifeOptions {
    * `life.pawn_decide` no comparten el dominio económico aunque haya `npcVerbs`.
    */
   readonly legacyNoLendPawnBatch?: boolean;
+  /** Solo el replay de un motor anterior a `life-31`: `trade` no rechaza a una contraparte terminada. */
+  readonly legacyNoDeadCounterpartyGuard?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -601,6 +603,7 @@ export function optInParts(
   | "legacyNoAppraiseCascade"
   | "legacyNoOscillation"
   | "legacyNoLendPawnBatch"
+  | "legacyNoDeadCounterpartyGuard"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -742,6 +745,7 @@ export function optInParts(
     ...(options.legacyNoAppraiseCascade ? { legacyNoAppraiseCascade: true } : {}),
     ...(options.legacyNoOscillation ? { legacyNoOscillation: true } : {}),
     ...(options.legacyNoLendPawnBatch ? { legacyNoLendPawnBatch: true } : {}),
+    ...(options.legacyNoDeadCounterpartyGuard ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),

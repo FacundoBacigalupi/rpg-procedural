@@ -397,6 +397,8 @@ export interface LifeWorld {
   readonly legacyNoAppraiseCascade?: boolean;
   /** Replay de motores anteriores a `life-30`: `life.lend`, `life.repay_dose` y `life.pawn_decide` fuera del dominio económico. */
   readonly legacyNoLendPawnBatch?: boolean;
+  /** Replay de motores anteriores a `life-31`: `trade` no mira `ENTITY.endedAt` de la contraparte. */
+  readonly legacyNoDeadCounterpartyGuard?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -863,6 +865,9 @@ export function lifeWorld(
           ...(parts.glanceOnMove === true ? { glanceOnMove: true } : {}),
           ...(parts.verboseSteps === true ? { verboseSteps: true } : {}),
           ...(parts.legacyFalls === true ? { legacyFalls: true } : {}),
+          ...(parts.legacyNoDeadCounterpartyGuard === true
+            ? { legacyNoDeadCounterpartyGuard: true }
+            : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),

@@ -780,6 +780,19 @@ describe("contraparte que ya no está entre ventanas del mismo dominio", () => {
     w.scheduler.advanceTo(clock.day / 2);
     expectNatural(w);
   });
+  it("el vendedor marcado muerto con bienes aún en su cuenta no cierra el trato (life-31)", () => {
+    const w = world(1000, true, false, true);
+    const e = w.truth.get(ENTITY, seller);
+    if (!e) throw new Error("sin vendedor");
+    w.truth.set(ENTITY, seller, { ...e, endedAt: 1 });
+    w.scheduler.advanceTo(clock.day / 2);
+    const trades = tradesOf(w);
+    expect(trades).toHaveLength(1);
+    expect(dealOf(trades[0])).toBe(false);
+    expect(w.ledger.balance(holderAccount(seller), good)).toBe(1000);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
+    expect(w.ledger.audit()).toEqual([]);
+  });
   it("el vendedor se fue a otro hex: el trade fracasa natural, deja agenda y ledger", () => {
     const w = world(1000, true, false, true);
     w.truth.set(LOCATION, seller, { hex: 5 });

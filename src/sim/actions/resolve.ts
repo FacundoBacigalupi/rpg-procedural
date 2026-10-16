@@ -106,6 +106,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Opt-in económico: `take` sin bienes disponibles falla por medios reales y el actor lo sabe. */
   readonly takeEmptyFailure?: boolean | undefined;
+  /** La contraparte de `trade` ya terminó (`ENTITY.endedAt`): no hay trato aunque su cuenta tenga bienes. */
+  readonly counterpartyGone?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
   readonly place: PlaceRef;
   /** Por qué: las causas del plan (la intención, las creencias que la sostienen). */
@@ -985,7 +987,7 @@ const trade: Resolver = (c) => {
       seconds: deal ? c.nominal : c.nominal / 2,
     };
   }
-  const found = bargain(c, other, mk, edge);
+  const found = c.input.counterpartyGone ? "no_means" : bargain(c, other, mk, edge);
   const strain = mk.other?.budget ? strainOf(mk.other.budget.standing) : undefined;
   const withStrain = (e: VerbEffect, unsold?: Unsold): VerbEffect =>
     e.kind === "trade"

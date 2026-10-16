@@ -214,8 +214,13 @@ export interface LifeSetup {
  * comparten el dominio serial `life.economy` con acciones, fiado y trueques (ven las reservas de los
  * demás dentro de la ventana). Compatibilidad: el replay con un motor anterior a `life-30` enciende
  * `legacyNoLendPawnBatch`; una vida guardada con `life-29` sigue desde su estado con el límite de replay.
+ *
+ * `life-31`: la ejecución de `trade` rechaza (`no_means`) a una contraparte con `ENTITY.endedAt`
+ * aunque su cuenta conserve bienes. Compatibilidad: el replay con un motor anterior a `life-31`
+ * enciende `legacyNoDeadCounterpartyGuard`; una vida guardada con `life-30` sigue desde su estado
+ * con el límite de replay.
  */
-export const LIFE_ENGINE = "life-30";
+export const LIFE_ENGINE = "life-31";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -255,6 +260,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 28 ? { legacyNoAppraiseCascade: true } : {}),
     ...(n < 29 ? { legacyNoOscillation: true } : {}),
     ...(n < 30 ? { legacyNoLendPawnBatch: true } : {}),
+    ...(n < 31 ? { legacyNoDeadCounterpartyGuard: true } : {}),
   };
 }
 
