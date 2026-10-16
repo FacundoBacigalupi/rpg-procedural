@@ -29,6 +29,7 @@ import {
   CAMP_HOURS,
   LOAD_DROPPED_EVENT,
   LOAD_FOUND_EVENT,
+  LOAD_RECLAIMED_EVENT,
   LOAD_ROTTED_EVENT,
   NPC_DROPS,
   NPC_TRACES,
@@ -356,7 +357,7 @@ describe("carga caída (npc-b2b4b2)", () => {
       );
     }
   });
-  it("lo ca�do que nadie recoge se pudre: sale al sumidero, el registro caduca y se conserva", () => {
+  it("lo caído que nadie recoge se pudre: sale al sumidero, el registro caduca y se conserva", () => {
     const rotLoad = { ...load, rotAfterHours: 48 };
     const runRot = (truth: WorldTruth, ledger: ReturnType<typeof bank>, now: number, who = other) =>
       npcTracesProcess({ player, placeOf: () => site, load: rotLoad }).run({
@@ -396,15 +397,113 @@ describe("carga caída (npc-b2b4b2)", () => {
     expect(ledger.balance(roadAccount(5))).toBe(40);
     expect(total(ledger)).toBe(0);
     expect(truth.get(NPC_DROPS, other)?.lots).toHaveLength(1);
-    // Determinista, y el segundo lote tambi�n caduca a su tiempo.
+    // Determinista, y el segundo lote también caduca a su tiempo.
     expect(runRot(setup().truth, setup().ledger, 50 * HOUR)).toEqual(out);
     const later = runRot(truth, ledger, 90 * HOUR);
     post(ledger, later);
     apply(truth, later);
     expect(truth.get(NPC_DROPS, other)).toBeUndefined();
     expect(ledger.balance(roadAccount(5))).toBe(0);
-    // Sin la opci�n no caduca nunca.
+    // Sin la opción no caduca nunca.
     const off = setup();
     expect(runLoad(off.truth, off.ledger, 500 * HOUR, other, 1).events ?? []).toEqual([]);
+  });
+});
+
+describe("el dueño que vuelve reclama lo caído (npc-b2b4b3b)", () => {
+  const load = { unit: "good:grain", name: "grano", reclaim: true };
+  const plain = { unit: "good:grain", name: "grano" };
+  const pocket = holderAccount(me);
+  const pocketOther = holderAccount(other);
+  const lot = { hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 0 };
+
+  function bank(balances: Record<string, number>) {
+    const m = new Map(Object.entries(balances));
+    return { m, balance: (a: string) => m.get(a) ?? 0, holdings: () => [], total: () => 0 };
+  }
+  function runAs(
+    truth: WorldTruth,
+    ledger: ReturnType<typeof bank>,
+    who: AgentId,
+    seed: number,
+    l: { unit: string; name: string; reclaim?: boolean } = load,
+  ): ProcessResult {
+    return npcTracesProcess({ player, placeOf: () => site, load: l }).run({
+      now: 10 * HOUR,
+      window: HOUR,
+      windowIndex: 1,
+      scope: who,
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger,
+      rng: Rng.root(seed),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  function post(ledger: ReturnType<typeof bank>, out: ProcessResult) {
+    for (const p of out.postings ?? []) {
+      for (const t of p.transfers) {
+        ledger.m.set(t.from, (ledger.m.get(t.from) ?? 0) - t.amount);
+        ledger.m.set(t.to, (ledger.m.get(t.to) ?? 0) + t.amount);
+      }
+    }
+  }
+  const total = (l: ReturnType<typeof bank>) => [...l.m.values()].reduce((a, b) => a + b, 0);
+  // `me` está en el hex 5, donde cayó su propia carga.
+  const setup = () => {
+    const truth = world({ trip: false });
+    truth.set(NPC_DROPS, me, { lots: [lot] });
+    return { truth, ledger: bank({ [roadAccount(5)]: 150, [pocket]: -150 }) };
+  };
+
+  it("el dueño en el hex la recupera: conserva gramos, borra el registro, causa en su registro", () => {
+    let seed = 0;
+    for (let s = 1; s < 200 && seed === 0; s++) {
+      const { truth, ledger } = setup();
+      if (runAs(truth, ledger, me, s).events?.length) seed = s;
+    }
+    expect(seed).toBeGreaterThan(0);
+    const { truth, ledger } = setup();
+    const out = runAs(truth, ledger, me, seed);
+    expect(out.events?.map((e) => e.kind)).toEqual([LOAD_RECLAIMED_EVENT]);
+    expect(out.events?.[0]?.causes).toEqual([{ kind: "state", entity: me, key: "life.npc_drops" }]);
+    post(ledger, out);
+    apply(truth, out);
+    expect(ledger.balance(pocket)).toBe(0);
+    expect(ledger.balance(roadAccount(5))).toBe(0);
+    expect(total(ledger)).toBe(0);
+    expect(truth.get(NPC_DROPS, me)).toBeUndefined();
+    // Determinista.
+    const again = setup();
+    expect(runAs(again.truth, again.ledger, me, seed)).toEqual(out);
+  });
+
+  it("sin la opción no reclama; lejos del hex tampoco", () => {
+    for (let s = 1; s < 100; s++) {
+      const a = setup();
+      const off = runAs(a.truth, a.ledger, me, s, plain);
+      expect((off.events ?? []).some((e) => e.kind === LOAD_RECLAIMED_EVENT)).toBe(false);
+      const b = setup();
+      b.truth.set(LOCATION, me, { hex: 9 });
+      const far = runAs(b.truth, b.ledger, me, s);
+      expect((far.events ?? []).some((e) => e.kind === LOAD_RECLAIMED_EVENT)).toBe(false);
+    }
+  });
+
+  it("con el dueño en el hex, quien pasa no se lo lleva; sin la opción el hallazgo sigue igual", () => {
+    const found = (l: typeof load | typeof plain, s: number) => {
+      const truth = world({ trip: true });
+      truth.set(NPC_DROPS, other, { lots: [lot] });
+      truth.set(LOCATION, other, { hex: 5 });
+      const out = runAs(truth, bank({ [roadAccount(5)]: 150, [pocketOther]: -150 }), me, s, l);
+      return (out.events ?? []).some((e) => e.kind === LOAD_FOUND_EVENT);
+    };
+    for (let s = 1; s < 200; s++) expect(found(load, s)).toBe(false);
+    expect(Array.from({ length: 200 }, (_, i) => found(plain, i + 1)).some(Boolean)).toBe(true);
   });
 });

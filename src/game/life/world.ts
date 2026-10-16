@@ -250,7 +250,7 @@ export interface LifeWorld {
   readonly healers?: readonly Healer[];
   /** Escuela de sanadores desde las habilidades (`medicine`); sin ella solo cuentan los explícitos. */
   readonly healerSchool?: HealerSchool;
-  /** Opt-in: la escuela de cada sanador por habilidad seg�n su comunidad (`schoolOfPerson`); cae a `healerSchool`. */
+  /** Opt-in: la escuela de cada sanador por habilidad según su comunidad (`schoolOfPerson`); cae a `healerSchool`. */
   readonly healerSchoolOf?: (truth: ReadonlyWorldTruth, who: AgentId) => HealerSchool | undefined;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
@@ -469,8 +469,10 @@ export interface LifeWorld {
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): el viajero deja rastros en los hexes que pisa y nota los de otros como creencia (`npc.trace_seen`, `life.npc_traces`); apagado, sin proceso. */
   readonly npcTraces?: boolean;
-  /** Opt-in (con `npcTraces`): horas que aguanta la carga ca�da antes de pudrirse. */
+  /** Opt-in (con `npcTraces`): horas que aguanta la carga caída antes de pudrirse. */
   readonly npcDropRotHours?: number;
+  /** Opt-in (con `npcTraces` y `npcProvisions`): el dueño que vuelve al hex donde dejó caer su carga la reclama (`npc.load_reclaimed`) y tiene prioridad sobre quien la halle. */
+  readonly npcDropReclaim?: boolean;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1844,6 +1846,7 @@ export function lifeWorld(
                         load: {
                           unit: goodUnit(food),
                           name: food.name,
+                          ...(parts.npcDropReclaim ? { reclaim: true } : {}),
                           ...(parts.npcDropRotHours !== undefined
                             ? { rotAfterHours: parts.npcDropRotHours }
                             : {}),
