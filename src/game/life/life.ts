@@ -209,8 +209,13 @@ export interface LifeSetup {
  * lluvia de la ventana de riego leen la anomalía del año de la oscilación (`anomalyOfMap`: años
  * buenos y malos, weather §1). Compatibilidad: el replay con un motor anterior a `life-29` enciende
  * `legacyNoOscillation`; una vida guardada con `life-28` sigue desde su estado con el límite de replay.
+ *
+ * `life-30`: con `npcVerbs` (perfil económico), `life.lend`, `life.repay_dose` y `life.pawn_decide`
+ * comparten el dominio serial `life.economy` con acciones, fiado y trueques (ven las reservas de los
+ * demás dentro de la ventana). Compatibilidad: el replay con un motor anterior a `life-30` enciende
+ * `legacyNoLendPawnBatch`; una vida guardada con `life-29` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-29";
+export const LIFE_ENGINE = "life-30";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -249,6 +254,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 27 ? { legacyNoPerceiveCascade: true } : {}),
     ...(n < 28 ? { legacyNoAppraiseCascade: true } : {}),
     ...(n < 29 ? { legacyNoOscillation: true } : {}),
+    ...(n < 30 ? { legacyNoLendPawnBatch: true } : {}),
   };
 }
 

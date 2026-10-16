@@ -10,9 +10,12 @@ import { rentsProcess } from "./rents.ts";
 // en el ledger comparten el dominio económico y cuáles siguen fuera. Medición, no certificación:
 // un proceso fuera del dominio no ve las reservas de los demás dentro de la misma ventana.
 const none = {} as never;
-const gaps: readonly (readonly [string, () => ProcessDef])[] = [
-  ["life.lend", () => lendProcess(none)],
-  ["life.repay_dose", () => repayDoseProcess({ goods: [], substances: [] } as never)],
+const wired: readonly (readonly [string, () => ProcessDef])[] = [
+  ["life.lend", () => lendProcess({ economicBatch: true } as never)],
+  [
+    "life.repay_dose",
+    () => repayDoseProcess({ goods: [], substances: [], economicBatch: true } as never),
+  ],
   [
     "life.pawn_decide",
     () =>
@@ -21,12 +24,23 @@ const gaps: readonly (readonly [string, () => ProcessDef])[] = [
         day: 86400,
         player: "agent:1" as AgentId,
         placeOf: () => none,
+        economicBatch: true,
       }),
   ],
+];
+const gaps: readonly (readonly [string, () => ProcessDef])[] = [
   ["life.rents", () => rentsProcess({ goods: [] } as never)],
 ];
 
-describe("auditoría: procesos de act con ledger fuera del dominio económico", () => {
+describe("auditoría: procesos de act con ledger y el dominio económico", () => {
+  it.each(wired)("%s comparte el dominio económico con economicBatch (life-30)", (id, make) => {
+    const p = make();
+    expect(p.id).toBe(id);
+    expect(p.phase).toBe("act");
+    expect(p.serialDomain).toBe(ECONOMIC_SERIAL_DOMAIN);
+    expect(p.serialGroup).toBeDefined();
+  });
+
   it.each(gaps)("%s sigue sin serialDomain (hueco conocido)", (id, make) => {
     const p = make();
     expect(p.id).toBe(id);

@@ -294,6 +294,11 @@ export interface LifeOptions {
    */
   readonly legacyNoOscillation?: boolean;
   /**
+   * Solo el replay de un motor anterior a `life-30`: `life.lend`, `life.repay_dose` y
+   * `life.pawn_decide` no comparten el dominio económico aunque haya `npcVerbs`.
+   */
+  readonly legacyNoLendPawnBatch?: boolean;
+  /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
    * con `life-1`: ver `upgradeVersions`); `false` vuelve al comportamiento anterior.
@@ -593,6 +598,7 @@ export function optInParts(
   | "legacyNoPerceiveCascade"
   | "legacyNoAppraiseCascade"
   | "legacyNoOscillation"
+  | "legacyNoLendPawnBatch"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -732,6 +738,7 @@ export function optInParts(
     ...(options.legacyNoPerceiveCascade ? { legacyNoPerceiveCascade: true } : {}),
     ...(options.legacyNoAppraiseCascade ? { legacyNoAppraiseCascade: true } : {}),
     ...(options.legacyNoOscillation ? { legacyNoOscillation: true } : {}),
+    ...(options.legacyNoLendPawnBatch ? { legacyNoLendPawnBatch: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
