@@ -64,6 +64,16 @@ export interface LoanCommitment {
    * cada período y el interés se capitaliza (compuesto). Ausente o 1: interés simple por plazo.
    */
   readonly periods?: number;
+  /**
+   * Interés en especie (opt-in, ver `creditKind.ts`): el interés (`interestOf`, en unidades del
+   * principal) se paga en otra unidad, `ceil(interés * ratio)`. Con esto `paid` cuenta solo
+   * principal y `paidKind` lo ya pagado en la unidad del interés. Ausente: todo en `unit`.
+   */
+  readonly inKind?: {
+    readonly unit: LedgerUnit;
+    readonly ratio: number;
+    readonly paidKind: number;
+  };
   readonly startDay: number;
   /** Día de la cosecha en que vence. */
   readonly dueDay: number;
