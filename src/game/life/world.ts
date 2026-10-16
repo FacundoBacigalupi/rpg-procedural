@@ -1319,6 +1319,7 @@ export function lifeWorld(
                 goods: parts.goods,
                 seeds: parts.rentSeeds ?? [],
                 ...(parts.rentMarket ? { market: parts.rentMarket } : {}),
+                ...(economicBatch ? { economicBatch: true } : {}),
                 placeOf: placeOf(parts, village),
               }),
               ...(parts.rentSeeds?.some((r) => r.kind === "sharecrop")
