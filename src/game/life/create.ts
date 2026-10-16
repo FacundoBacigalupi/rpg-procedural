@@ -415,6 +415,12 @@ export interface LifeOptions {
   readonly reservoirs?: LifeParts["reservoirs"];
   /** Opt-in: sanadores explícitos que diagnostican y tratan (`LifeParts.healers`); sin ellos `life.medicine` no hace nada. */
   readonly healers?: LifeParts["healers"];
+  /**
+   * Opt-in (body-health §6): el paciente decide con lo que cree. `realBonds` usa la relación real; con
+   * `councilAuthority` (requiere `realBonds` y `council`) la autoridad suma el consejo de la aldea y la
+   * lealtad de `council.treasury.loyalty`. Sin `healers` no hay a quién decirle que no. Apagado por defecto.
+   */
+  readonly patientDecides?: LifeParts["patientDecides"];
   /** Opt-in: dosis explícitas de sustancias (`LifeParts.substanceDoses`). */
   readonly substanceDoses?: LifeParts["substanceDoses"];
   /** Opt-in: lo comido de verdad alimenta las reservas de nutrientes (`LifeParts.eatenNutrition`). */
@@ -710,6 +716,7 @@ export function optInParts(
   | "afflictedOrigins"
   | "reservoirs"
   | "healers"
+  | "patientDecides"
   | "substanceDoses"
   | "eatenNutrition"
   | "nutritionNeeds"
@@ -858,6 +865,7 @@ export function optInParts(
     ...(options.afflictedOrigins ? { afflictedOrigins: options.afflictedOrigins } : {}),
     ...(options.reservoirs ? { reservoirs: options.reservoirs } : {}),
     ...(options.healers ? { healers: options.healers } : {}),
+    ...(options.patientDecides ? { patientDecides: options.patientDecides } : {}),
     ...(options.substanceDoses ? { substanceDoses: options.substanceDoses } : {}),
     ...(options.eatenNutrition ? { eatenNutrition: true } : {}),
     ...(options.nutritionNeeds ? { nutritionNeeds: true } : {}),
@@ -1345,6 +1353,11 @@ export function createLife(
     households: pop.households,
     defs: statuses,
   });
+  if (options.patientDecides?.councilAuthority) {
+    if (!options.patientDecides.realBonds)
+      throw new Error("patientDecides.councilAuthority requiere realBonds");
+    if (!options.council) throw new Error("patientDecides.councilAuthority requiere council");
+  }
   // La cultura de la aldea: qué hace la gente y por qué (culture §1, §3).
   const baseCulture = content.all(CULTURES).find((c) => c.id === "village");
   if (!baseCulture) throw new Error("falta contenido: cultura village");
