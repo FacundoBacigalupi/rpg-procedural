@@ -59,6 +59,11 @@ export interface LoanCommitment {
   readonly principal: number;
   /** Interés simple por plazo (0,2 = 20% del principal al vencer). */
   readonly rate: number;
+  /**
+   * Períodos de capitalización hasta el vencimiento (opt-in): con más de 1, `rate` es la tasa de
+   * cada período y el interés se capitaliza (compuesto). Ausente o 1: interés simple por plazo.
+   */
+  readonly periods?: number;
   readonly startDay: number;
   /** Día de la cosecha en que vence. */
   readonly dueDay: number;
@@ -131,13 +136,23 @@ export function collateralRealValue(collaterals: readonly Collateral[]): number 
   return v;
 }
 
-/** Total a devolver al vencer: principal más interés simple. */
-export function totalDue(l: Pick<LoanCommitment, "principal" | "rate">): number {
-  return l.principal + Math.round(l.principal * l.rate);
+/** Tope de períodos de capitalización (evita deudas que se disparan por un dato absurdo). */
+export const MAX_COMPOUND_PERIODS = 120;
+
+/**
+ * Total a devolver al vencer: principal más interés. Simple por defecto; con `periods` > 1 el
+ * interés de cada período (redondeado al entero, en la unidad del préstamo) se suma a la deuda
+ * y rinde el siguiente. Con 1 período da exactamente lo mismo que el simple.
+ */
+export function totalDue(l: Pick<LoanCommitment, "principal" | "rate" | "periods">): number {
+  const n = Math.min(MAX_COMPOUND_PERIODS, Math.max(1, Math.floor(l.periods ?? 1)));
+  let due = l.principal;
+  for (let i = 0; i < n; i++) due += Math.round(due * l.rate);
+  return due;
 }
 
 /** Interés del préstamo (sale de lo que produce el deudor, no se crea). */
-export function interestOf(l: Pick<LoanCommitment, "principal" | "rate">): number {
+export function interestOf(l: Pick<LoanCommitment, "principal" | "rate" | "periods">): number {
   return totalDue(l) - l.principal;
 }
 
@@ -155,6 +170,8 @@ export interface LoanInput {
   readonly unit: LedgerUnit;
   readonly requested: number;
   readonly rate: number;
+  /** Períodos de capitalización (ver `LoanCommitment.periods`); ausente: interés simple. */
+  readonly periods?: number;
   readonly startDay: number;
   readonly dueDay: number;
   readonly collateral: readonly Collateral[];
@@ -180,6 +197,7 @@ export function makeLoan(input: LoanInput): LoanCommitment | undefined {
     unit: input.unit,
     principal,
     rate: input.rate,
+    ...(input.periods !== undefined && input.periods > 1 ? { periods: input.periods } : {}),
     startDay: input.startDay,
     dueDay: input.dueDay,
     collateral: input.collateral,
