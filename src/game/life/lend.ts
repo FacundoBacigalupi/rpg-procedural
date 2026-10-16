@@ -38,6 +38,7 @@ import {
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import { NPC_DECISION } from "./decide.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { MOLD_RUMORS } from "./moldgossip.ts";
 import { NEIGHBOR_STANDING, neighborStandingKnown } from "./neighbors.ts";
 import { fraudCaution } from "./usurygossip.ts";
@@ -67,6 +68,8 @@ export interface LendOptions {
   readonly heedStanding?: HeedStanding;
   /** Opt-in: el prestamista presta menos a quien CREE tramposo (rumor `fraud` sobre él; creencia). */
   readonly heedFraud?: boolean;
+  /** Opt-in: comparte el dominio económico (`life.economy`) con acciones, fiado y trueques. */
+  readonly economicBatch?: boolean;
 }
 
 /** Cuánto pesa en el prestamista lo que cree del apuro del hogar que pide (multiplicadores de 0 a 1). */
@@ -131,6 +134,9 @@ export function lendProcess(o: LendOptions): ProcessDef {
       ...(o.heedFraud ? [RUMORS.name] : []),
     ],
     writes: [MOLD_RUMORS.name, LEND_LOG.name],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -258,6 +264,8 @@ export interface RepayDoseOptions {
   readonly substances: readonly string[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: comparte el dominio económico (`life.economy`) con acciones, fiado y trueques. */
+  readonly economicBatch?: boolean;
 }
 
 /**
@@ -279,6 +287,9 @@ export function repayDoseProcess(o: RepayDoseOptions): ProcessDef {
     phase: "act",
     reads: [PERSON.name, ENTITY.name, CREDIT.name],
     writes: [],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const ledger = ctx.ledger;
       const home = ctx.scope as string;
