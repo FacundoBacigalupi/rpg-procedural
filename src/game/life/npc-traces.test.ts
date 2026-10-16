@@ -5,6 +5,7 @@ import {
   type AgentId,
   type ContentSource,
   type EntityBase,
+  externalAccount,
   holderAccount,
   loadContent,
   makeId,
@@ -13,6 +14,8 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  EATEN,
+  ECOLOGY,
   ENTITY,
   hexPath,
   LOCATION,
@@ -28,6 +31,7 @@ import { Life } from "./life.ts";
 import {
   CAMP_HOURS,
   LOAD_DROPPED_EVENT,
+  LOAD_EATEN_EVENT,
   LOAD_FOUND_EVENT,
   LOAD_RECLAIMED_EVENT,
   LOAD_ROTTED_EVENT,
@@ -505,5 +509,121 @@ describe("el dueño que vuelve reclama lo caído (npc-b2b4b3b)", () => {
     };
     for (let s = 1; s < 200; s++) expect(found(load, s)).toBe(false);
     expect(Array.from({ length: 200 }, (_, i) => found(plain, i + 1)).some(Boolean)).toBe(true);
+  });
+});
+
+describe("un animal que existe se come lo caído (npc-b2b4b3c)", () => {
+  const eco = makeId("agent", 500);
+  const scav = { unit: "good:grain", name: "grano", scavenge: { lineage: "hare" } };
+  const pocketOwner = holderAccount(other);
+  const lot = { hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 0 };
+
+  function bank(balances: Record<string, number>) {
+    const m = new Map(Object.entries(balances));
+    return { m, balance: (a: string) => m.get(a) ?? 0, holdings: () => [], total: () => 0 };
+  }
+  function setup(hares: number | undefined) {
+    const truth = world({ trip: false });
+    truth.set(NPC_DROPS, other, { lots: [lot] });
+    if (hares !== undefined) {
+      truth.set(ENTITY, eco, {
+        id: eco,
+        originEventId: makeId("event", 1),
+        createdAt: 0,
+      } as EntityBase);
+      truth.set(ECOLOGY, eco, {
+        cell: { productivity: 1, shelter: 0.5, populations: [{ lineage: "hare", count: hares }] },
+        forest: {},
+        fireHazard: 0,
+        day: 0,
+        yearDays: 0,
+      } as never);
+    }
+    return { truth, ledger: bank({ [roadAccount(5)]: 150, [pocketOwner]: -150 }) };
+  }
+  function runAs(
+    truth: WorldTruth,
+    ledger: ReturnType<typeof bank>,
+    seed: number,
+    l: Record<string, unknown> = scav,
+  ): ProcessResult {
+    return npcTracesProcess({ player, placeOf: () => site, load: l as never }).run({
+      now: 10 * HOUR,
+      window: HOUR,
+      windowIndex: 1,
+      scope: other,
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger,
+      rng: Rng.root(seed),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  const eaten = (out: ProcessResult) =>
+    (out.events ?? []).filter((e) => e.kind === LOAD_EATEN_EVENT);
+  function firstSeed(hares: number): number {
+    for (let s = 1; s < 500; s++) {
+      const { truth, ledger } = setup(hares);
+      if (eaten(runAs(truth, ledger, s)).length > 0) return s;
+    }
+    throw new Error("sin semilla");
+  }
+
+  it("se come lo caído: al sumidero eaten, conserva gramos, causa en la ecologia, determinista", () => {
+    const seed = firstSeed(10);
+    const { truth, ledger } = setup(10);
+    const out = runAs(truth, ledger, seed);
+    expect(eaten(out)).toHaveLength(1);
+    expect(eaten(out)[0]?.causes).toEqual([{ kind: "state", entity: eco, key: "living.ecology" }]);
+    const t = (out.postings ?? []).flatMap((p) => p.transfers);
+    expect(t).toHaveLength(1);
+    expect(t[0]).toMatchObject({ from: roadAccount(5), to: externalAccount(EATEN) });
+    // 10 animales x 20 g = 200 g: alcanza para los 150 g.
+    expect(t[0]?.amount).toBe(150);
+    apply(truth, out);
+    expect(truth.get(NPC_DROPS, other)).toBeUndefined();
+    const again = setup(10);
+    expect(runAs(again.truth, again.ledger, seed)).toEqual(out);
+  });
+
+  it("pocos animales dejan un resto: come de a poco", () => {
+    const seed = firstSeed(3);
+    const { truth, ledger } = setup(3);
+    const out = runAs(truth, ledger, seed);
+    expect((out.postings ?? [])[0]?.transfers[0]?.amount).toBe(60);
+    apply(truth, out);
+    expect(truth.get(NPC_DROPS, other)?.lots[0]?.grams).toBe(90);
+  });
+
+  it("sin la opcion, sin ecologia, sin esos animales o fuera de su zona no come nada", () => {
+    for (let s = 1; s < 200; s++) {
+      const a = setup(50);
+      expect(eaten(runAs(a.truth, a.ledger, s, { unit: "good:grain", name: "grano" }))).toEqual([]);
+      const b = setup(undefined);
+      expect(eaten(runAs(b.truth, b.ledger, s))).toEqual([]);
+      const c = setup(0);
+      expect(eaten(runAs(c.truth, c.ledger, s))).toEqual([]);
+      const d = setup(50);
+      expect(
+        eaten(runAs(d.truth, d.ledger, s, { ...scav, scavenge: { lineage: "hare", hexes: [9] } })),
+      ).toEqual([]);
+    }
+  });
+
+  it("mas animales, mas chance", () => {
+    const rate = (n: number) => {
+      let c = 0;
+      for (let s = 1; s <= 400; s++) {
+        const { truth, ledger } = setup(n);
+        if (eaten(runAs(truth, ledger, s)).length > 0) c++;
+      }
+      return c;
+    };
+    expect(rate(15)).toBeGreaterThan(rate(2));
   });
 });
