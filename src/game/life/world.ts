@@ -1788,7 +1788,18 @@ export function lifeWorld(
           ? [npcEncountersProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.npcTraces === true && parts.npcEncounters === true
-          ? [npcTracesProcess({ player, placeOf: placeOf(parts, village) })]
+          ? [
+              npcTracesProcess({
+                player,
+                placeOf: placeOf(parts, village),
+                ...(() => {
+                  const food = parts.goods.find((g) => g.id === parts.npcProvisions?.good);
+                  return food && parts.npcProvisions
+                    ? { load: { unit: goodUnit(food), name: food.name } }
+                    : {};
+                })(),
+              }),
+            ]
           : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
           ? [

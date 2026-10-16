@@ -4,12 +4,20 @@
 // de fogata) y hace cuánto, con error; nunca de quién. Una sola mirada por rastro y viajero. Se nota
 // con una tirada con rng propio. Opt-in (`LifeParts.npcTraces`, con `npcEncounters`).
 
-import type { AgentId, PlaceRef } from "../../core/index.ts";
+import {
+  type AgentId,
+  holderAccount,
+  ledgerUnit,
+  makeId,
+  type PlaceRef,
+} from "../../core/index.ts";
 import {
   deleteComponent,
+  draftEvent,
   ENTITY,
   type EventDraft,
   LOCATION,
+  type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
   setComponent,
@@ -20,7 +28,10 @@ import { NPC_JOURNEY } from "./npc-verbs.ts";
 export const NPC_TRACES_PROCESS = "life.npc_traces";
 export const TRACE_SEEN_EVENT = "npc.trace_seen";
 
-export type TraceKind = "footprints" | "campfire";
+export const LOAD_DROPPED_EVENT = "npc.load_dropped";
+export const LOAD_FOUND_EVENT = "npc.load_found";
+
+export type TraceKind = "footprints" | "campfire" | "dropped_load";
 
 /** Por dónde anduvo: una entrada por tramo continuo en un hex. */
 export interface TrailStep {
@@ -30,6 +41,17 @@ export interface TrailStep {
   readonly last: number;
 }
 export const NPC_TRAIL = table<{ readonly steps: readonly TrailStep[] }>("life.npc_trail");
+
+/** Carga que el viajero dejó caer en un hex del camino: un lote en la cuenta de la celda. */
+export interface DroppedLot {
+  readonly hex: number;
+  readonly unit: string;
+  readonly name: string;
+  readonly grams: number;
+  readonly at: number;
+}
+/** Por quien la perdió (origen del lote); lo que quede sin recoger sigue en el ledger de la celda. */
+export const NPC_DROPS = table<{ readonly lots: readonly DroppedLot[] }>("life.npc_drops");
 
 /** Lo que el viajero cree haber visto: sin quién, con la edad estimada (no la real). */
 export interface BelievedTrace {
@@ -58,6 +80,12 @@ export const MAX_SEEN = 8;
 export const MAX_LOOKED = 32;
 /** Rastros mirados por pasada. */
 export const MAX_NOTICED_PER_PASS = 2;
+/** Chance por hora de camino de perder carga, y fracción del bolsillo que se cae (sin calibrar). */
+export const DROP_CHANCE = 0.01;
+export const DROP_FRACTION = 0.15;
+/** Chance de recoger lo que vio caído (hallazgo: lo tirado en el camino es de quien lo toma). */
+export const PICKUP_CHANCE = 0.7;
+export const MAX_DROPS = 4;
 
 const HOUR = 3600;
 
@@ -68,6 +96,13 @@ export function traceKind(step: TrailStep): TraceKind {
 export interface NpcTracesOptions {
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: el bien que lleva en el bolsillo (`provisions`) y puede perder o recoger en el camino. */
+  readonly load?: { readonly unit: string; readonly name: string };
+}
+
+/** La cuenta del ledger donde queda lo caído en un hex. */
+export function roadAccount(hex: number) {
+  return holderAccount({ kind: "cell", cell: makeId("cell", hex) });
 }
 
 export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
@@ -78,8 +113,15 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
     cadence: { local: "hour", scene: "hour" },
     representation: "individual",
     phase: "perceive",
-    reads: [ENTITY.name, LOCATION.name, NPC_JOURNEY.name, NPC_TRAIL.name, NPC_TRACES.name],
-    writes: [NPC_TRAIL.name, NPC_TRACES.name],
+    reads: [
+      ENTITY.name,
+      LOCATION.name,
+      NPC_JOURNEY.name,
+      NPC_TRAIL.name,
+      NPC_TRACES.name,
+      NPC_DROPS.name,
+    ],
+    writes: [NPC_TRAIL.name, NPC_TRACES.name, NPC_DROPS.name],
     scopeGuard: (truth, scope) =>
       truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
       truth.get(NPC_TRAIL, scope as AgentId) !== undefined ||
@@ -93,6 +135,9 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       const here = truth.get(LOCATION, me)?.hex;
       const changes = [];
       const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const load = o.load;
+      const pocket = holderAccount(me);
 
       // Lo que deja: el tramo en este hex; lo viejo se olvida.
       const old = truth.get(NPC_TRAIL, me)?.steps ?? [];
@@ -148,7 +193,65 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
             causes: [{ kind: "state", entity: me, key: "location" }],
           });
         }
-        if (candidates.length > 0 || (book && !fresh)) {
+        // Carga caída: la ve (creencia) y, si quiere, la recoge del ledger de la celda.
+        let lookedDrop = false;
+        if (load && ctx.ledger) {
+          const unit = ledgerUnit(load.unit);
+          const lying: { owner: AgentId; lot: DroppedLot }[] = [];
+          for (const owner of truth.ids(NPC_DROPS) as AgentId[]) {
+            if (owner === me) continue;
+            for (const lot of truth.get(NPC_DROPS, owner)?.lots ?? []) {
+              if (lot.hex === here && lot.unit === load.unit) lying.push({ owner, lot });
+            }
+          }
+          lying.sort((a, b) =>
+            a.owner < b.owner ? -1 : a.owner > b.owner ? 1 : a.lot.at - b.lot.at,
+          );
+          for (const { owner, lot } of lying) {
+            const key = `drop:${lot.hex}:${lot.at}:${lot.grams}`;
+            if (looked.has(key)) continue;
+            looked.add(key);
+            lookedDrop = true;
+            const roll = ctx.rng.fork("drop_seen", me, key);
+            if (roll.float() >= NOTICE_CHANCE) continue;
+            const estAgeHours = Math.max(
+              1,
+              Math.round(((now - lot.at) / HOUR) * (1 + roll.normal(0, AGE_SD))),
+            );
+            seen.push({ hex: here, kind: "dropped_load", estAgeHours, at: now });
+            events.push({
+              kind: TRACE_SEEN_EVENT,
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { hex: here, trace: "dropped_load", estAgeHours },
+              emissions: {},
+              causes: [{ kind: "state", entity: me, key: "location" }],
+            });
+            if (roll.float() >= PICKUP_CHANCE) continue;
+            const grams = Math.min(lot.grams, ctx.ledger.balance(roadAccount(here), unit));
+            const rest = (truth.get(NPC_DROPS, owner)?.lots ?? []).filter((l) => l !== lot);
+            changes.push(
+              rest.length > 0
+                ? setComponent(NPC_DROPS, owner, { lots: rest })
+                : deleteComponent(NPC_DROPS, owner),
+            );
+            if (grams <= 0) continue;
+            events.push({
+              kind: LOAD_FOUND_EVENT,
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { hex: here, unit: load.unit, grams },
+              emissions: {},
+              causes: [{ kind: "state", entity: owner, key: "life.npc_drops" }],
+            });
+            postings.push({
+              event: draftEvent(events.length - 1),
+              transfers: [{ unit, from: roadAccount(here), to: pocket, amount: grams }],
+            });
+            break;
+          }
+        }
+        if (candidates.length > 0 || lookedDrop || (book && !fresh)) {
           changes.push(
             setComponent(NPC_TRACES, me, {
               since: trip.since,
@@ -158,7 +261,34 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
           );
         }
       }
-      return changes.length > 0 || events.length > 0 ? { changes, events } : {};
+
+      // Lo que pierde: parte del bolsillo cae en este hex y queda a la vista de quien pase.
+      if (load && ctx.ledger && trip && here !== undefined) {
+        const unit = ledgerUnit(load.unit);
+        const grams = Math.floor(ctx.ledger.balance(pocket, unit) * DROP_FRACTION);
+        if (grams > 0 && ctx.rng.fork("drop", me, now).float() < DROP_CHANCE) {
+          const lots = [
+            ...(truth.get(NPC_DROPS, me)?.lots ?? []),
+            { hex: here, unit: load.unit, name: load.name, grams, at: now },
+          ].slice(-MAX_DROPS);
+          changes.push(setComponent(NPC_DROPS, me, { lots }));
+          events.push({
+            kind: LOAD_DROPPED_EVENT,
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { hex: here, unit: load.unit, grams },
+            emissions: {},
+            causes: [{ kind: "state", entity: me, key: "location" }],
+          });
+          postings.push({
+            event: draftEvent(events.length - 1),
+            transfers: [{ unit, from: pocket, to: roadAccount(here), amount: grams }],
+          });
+        }
+      }
+      return changes.length > 0 || events.length > 0
+        ? { changes, events, ...(postings.length > 0 ? { postings } : {}) }
+        : {};
     },
   };
 }

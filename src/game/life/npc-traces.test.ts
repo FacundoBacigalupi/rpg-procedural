@@ -5,6 +5,7 @@ import {
   type AgentId,
   type ContentSource,
   type EntityBase,
+  holderAccount,
   loadContent,
   makeId,
   type PlaceId,
@@ -26,9 +27,13 @@ import { NPC_DECISION } from "./decide.ts";
 import { Life } from "./life.ts";
 import {
   CAMP_HOURS,
+  LOAD_DROPPED_EVENT,
+  LOAD_FOUND_EVENT,
+  NPC_DROPS,
   NPC_TRACES,
   NPC_TRAIL,
   npcTracesProcess,
+  roadAccount,
   TRACE_SEEN_EVENT,
   TRAIL_KEEP_HOURS,
   traceKind,
@@ -223,4 +228,131 @@ describe("en una vida con el proceso encendido", () => {
     expect(a).toContain('"hex"');
     expect(trail()).toBe(a);
   }, 240_000);
+});
+
+describe("carga caída (npc-b2b4b2)", () => {
+  const load = { unit: "good:grain", name: "grano" };
+  const pocket = holderAccount(me);
+  const pocketOther = holderAccount(other);
+
+  function bank(balances: Record<string, number>) {
+    const m = new Map(Object.entries(balances));
+    return {
+      m,
+      balance: (a: string) => m.get(a) ?? 0,
+      holdings: () => [],
+      total: () => 0,
+    };
+  }
+  function runLoad(
+    truth: WorldTruth,
+    ledger: ReturnType<typeof bank>,
+    now: number,
+    who: AgentId,
+    seed: number,
+  ): ProcessResult {
+    return npcTracesProcess({ player, placeOf: () => site, load }).run({
+      now,
+      window: HOUR,
+      windowIndex: 1,
+      scope: who,
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger,
+      rng: Rng.root(seed),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  function post(ledger: ReturnType<typeof bank>, out: ProcessResult) {
+    for (const p of out.postings ?? []) {
+      for (const t of p.transfers) {
+        ledger.m.set(t.from, (ledger.m.get(t.from) ?? 0) - t.amount);
+        ledger.m.set(t.to, (ledger.m.get(t.to) ?? 0) + t.amount);
+      }
+    }
+  }
+  const total = (l: ReturnType<typeof bank>) => [...l.m.values()].reduce((a, b) => a + b, 0);
+
+  function dropSeed(): number {
+    for (let s = 1; s < 2000; s++) {
+      const out = runLoad(world({}), bank({ [pocket]: 1000 }), 10 * HOUR, me, s);
+      if ((out.postings?.length ?? 0) > 0) return s;
+    }
+    throw new Error("sin semilla");
+  }
+
+  it("quien carga puede perder parte: sale del bolsillo, queda en la celda del hex y se registra", () => {
+    const seed = dropSeed();
+    const truth = world({});
+    const ledger = bank({ [pocket]: 1000 });
+    const out = runLoad(truth, ledger, 10 * HOUR, me, seed);
+    expect(out.events?.some((e) => e.kind === LOAD_DROPPED_EVENT)).toBe(true);
+    post(ledger, out);
+    apply(truth, out);
+    expect(ledger.balance(pocket)).toBe(850);
+    expect(ledger.balance(roadAccount(5))).toBe(150);
+    expect(total(ledger)).toBe(1000);
+    expect(truth.get(NPC_DROPS, me)?.lots).toEqual([
+      { hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 10 * HOUR },
+    ]);
+    // Determinista.
+    expect(runLoad(world({}), bank({ [pocket]: 1000 }), 10 * HOUR, me, seed)).toEqual(out);
+  });
+
+  it("sin carga o sin la opción no se pierde nada", () => {
+    for (let s = 1; s < 300; s++) {
+      expect(runLoad(world({}), bank({}), 10 * HOUR, me, s).postings ?? []).toEqual([]);
+      expect(run(world({}), 10 * HOUR, me, s).postings ?? []).toEqual([]);
+    }
+  });
+
+  it("quien pasa lo ve como creencia y puede recogerlo: conservación y una sola vez", () => {
+    const lot = { hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 0 };
+    const setup = () => {
+      const truth = world({});
+      truth.set(NPC_DROPS, other, { lots: [lot] });
+      const ledger = bank({ [roadAccount(5)]: 150, [pocketOther]: -150 });
+      return { truth, ledger };
+    };
+    let seed = 0;
+    for (let s = 1; s < 500 && seed === 0; s++) {
+      const { truth, ledger } = setup();
+      const out = runLoad(truth, ledger, 10 * HOUR, me, s);
+      if (out.events?.some((e) => e.kind === LOAD_FOUND_EVENT)) seed = s;
+    }
+    expect(seed).toBeGreaterThan(0);
+    const { truth, ledger } = setup();
+    const out = runLoad(truth, ledger, 10 * HOUR, me, seed);
+    post(ledger, out);
+    apply(truth, out);
+    expect(ledger.balance(pocket)).toBe(150);
+    expect(ledger.balance(roadAccount(5))).toBe(0);
+    expect(total(ledger)).toBe(0);
+    expect(truth.get(NPC_DROPS, other)).toBeUndefined();
+    expect(truth.get(NPC_TRACES, me)?.seen[0]).toMatchObject({ kind: "dropped_load", hex: 5 });
+    expect(JSON.stringify(truth.get(NPC_TRACES, me))).not.toContain(other);
+    // Ya no hay nada que recoger.
+    const again = runLoad(truth, ledger, 11 * HOUR, me, seed);
+    expect((again.postings ?? []).filter((p) => p.transfers.some((t) => t.to === pocket))).toEqual(
+      [],
+    );
+  });
+
+  it("el que dejó la carga no la recoge", () => {
+    const truth = world({});
+    truth.set(NPC_DROPS, me, {
+      lots: [{ hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 0 }],
+    });
+    for (let s = 1; s < 100; s++) {
+      const out = runLoad(truth, bank({ [roadAccount(5)]: 150 }), 10 * HOUR, me, s);
+      expect((out.postings ?? []).filter((p) => p.transfers.some((t) => t.to === pocket))).toEqual(
+        [],
+      );
+    }
+  });
 });
