@@ -11,7 +11,7 @@ import {
   SKILL_STATE,
   WorldTruth,
 } from "../../sim/index.ts";
-import { exposureProcess } from "./exposure.ts";
+import { exposureProcess, SEEDED } from "./exposure.ts";
 import { healerFee } from "./medicine.ts";
 import { LABOR, type Labor, laborProcess, puerperalSeed, puerperalSeeds } from "./midwife.ts";
 
@@ -235,5 +235,53 @@ describe("puerperalSeeds (un caso por madre)", () => {
     ]);
     expect(out1.changes?.filter((c) => c.table === INFECTION.name)).toHaveLength(2);
     expect(out1.changes?.filter((c) => c.table === PATHOGEN.name)).toHaveLength(1);
+  });
+});
+
+describe("puerperalSeeds con memoria de la siembra", () => {
+  const fevered = () => {
+    const t = world();
+    t.set(
+      LABOR,
+      mother as EntityRef,
+      {
+        dueAt: 0,
+        at: 5,
+        midwife: null,
+        called: false,
+        believedRisk: 0.1,
+        complication: false,
+        motherDied: false,
+        infantDied: false,
+        fever: true,
+        paid: 0,
+        cause: "event:9",
+      } as never,
+    );
+    return t;
+  };
+  const proc = () =>
+    exposureProcess({
+      clock,
+      arrivals: (t2) => puerperalSeeds(t2).map((s) => ({ ...s, remember: true })),
+      placeOf: () => place,
+    });
+
+  it("siembra aunque la sim haya dormido más de 2 días, y no resiembra después", () => {
+    const t = fevered();
+    const late = 5 + clock.day * 10;
+    const out = proc().run(ctx(t, late));
+    expect(out.changes?.filter((c) => c.table === INFECTION.name)).toHaveLength(1);
+    const mark = out.changes?.find((c) => c.table === SEEDED.name);
+    expect(mark).toBeDefined();
+    // La infección ya se curó (no está en la verdad), pero la marca persiste.
+    t.set(SEEDED, mother as EntityRef, (mark as unknown as { value: never }).value);
+    expect(proc().run(ctx(t, late + clock.day))).toEqual({});
+  });
+
+  it("es determinista", () => {
+    const a = proc().run(ctx(fevered(), 5 + clock.day * 10));
+    const b = proc().run(ctx(fevered(), 5 + clock.day * 10));
+    expect(a).toEqual(b);
   });
 });
