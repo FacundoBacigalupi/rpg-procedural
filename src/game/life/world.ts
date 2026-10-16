@@ -469,6 +469,8 @@ export interface LifeWorld {
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): el viajero deja rastros en los hexes que pisa y nota los de otros como creencia (`npc.trace_seen`, `life.npc_traces`); apagado, sin proceso. */
   readonly npcTraces?: boolean;
+  /** Opt-in (con `npcTraces`): horas que aguanta la carga caída antes de pudrirse. */
+  readonly npcDropRotHours?: number;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N dÃ­as (`NpcVerbsOptions.journeyDays`). */
@@ -1837,7 +1839,15 @@ export function lifeWorld(
                 ...(() => {
                   const food = parts.goods.find((g) => g.id === parts.npcProvisions?.good);
                   return food && parts.npcProvisions
-                    ? { load: { unit: goodUnit(food), name: food.name } }
+                    ? {
+                        load: {
+                          unit: goodUnit(food),
+                          name: food.name,
+                          ...(parts.npcDropRotHours !== undefined
+                            ? { rotAfterHours: parts.npcDropRotHours }
+                            : {}),
+                        },
+                      }
                     : {};
                 })(),
               }),
