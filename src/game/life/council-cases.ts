@@ -9,7 +9,10 @@
 // pagar al hogar del acusado una compensación en grano al hogar de quien acusó, por el ledger (solo lo
 // que tiene: conservación), sube su rencor hacia el acusador y le baja el respeto que le tienen los
 // miembros del consejo (cara); la mediación baja el rencor entre las partes. Todo con el evento
-// `law.case_effects` (causa: la resolución). Opt-in (`LifeParts.councilCases`, requiere `council`);
+// `law.case_effects` (causa: la resolución). Con `vendetta` (sub-opción) un caso `defied` o un acusado
+// que el foro no pudo sancionar abre la decisión del acusador de cobrárselo solo con su linaje (por
+// creencia y rencor, lealtad al foro), que escala por etapas acotadas y se cierra al enfriarse.
+// Opt-in (`LifeParts.councilCases`, requiere `council`);
 // apagado no existe ni corre ni cambia hashes.
 
 import {
@@ -29,13 +32,17 @@ import {
   type CaseBook,
   type CaseEffectRules,
   type Clue,
+  closeVendetta,
   compensationDue,
   DEFAULT_CASE_EFFECTS,
+  DEFAULT_VENDETTA_RULES,
   type DeedKind,
   type Denunciation,
+  decideVendetta,
   draftEvent,
   ENTITY,
   type EventDraft,
+  escalateVendetta,
   forumResponse,
   type GoodDef,
   goodUnit,
@@ -44,6 +51,7 @@ import {
   investigationDue,
   isRepeat,
   KNOWN_DEEDS,
+  loyaltyOf,
   nudgeDim,
   ORG,
   ORG_LOYALTY,
@@ -66,6 +74,14 @@ import {
   traceStrength,
   traceVisible,
   traceWeight,
+  unreachedReason,
+  VENDETTA_KIN_SHARE,
+  VENDETTA_RETURN,
+  type Vendetta,
+  type VendettaRules,
+  vendettaChance,
+  vendettaDue,
+  vendettaPush,
 } from "../../sim/index.ts";
 import { type CouncilAuthorityOptions, councilStanding } from "./councilauthority.ts";
 
@@ -76,6 +92,9 @@ export const CASE_EFFECTS_EVENT = "law.case_effects";
 export const CASE_INVESTIGATED_EVENT = "law.case_investigated";
 export const SUMMONS_ANSWERED_EVENT = "law.summons_answered";
 export const SUMMONS_DEFIED_EVENT = "law.summons_defied";
+export const VENDETTA_DECLARED_EVENT = "law.vendetta_declared";
+export const VENDETTA_ESCALATED_EVENT = "law.vendetta_escalated";
+export const VENDETTA_CLOSED_EVENT = "law.vendetta_closed";
 
 /** Opt-in: el caso `investigating` cita al acusado y su obediencia decide si comparece. */
 export interface SummonsOptions {
@@ -100,6 +119,8 @@ export interface CouncilCasesOptions extends CouncilAuthorityOptions {
   readonly summons?: SummonsOptions;
   /** Opt-in: el caso investigando reúne indicios y testigos (creídos, no la verdad) y se resuelve. */
   readonly investigation?: InvestigationOptions;
+  /** Opt-in: el acusador y su linaje se cobran solos lo que el consejo no alcanzó (law §9). */
+  readonly vendetta?: Partial<{ days: number; gain: number; coolBelow: number }>;
 }
 
 export interface CouncilCasesDeps extends CouncilCasesOptions {
@@ -148,7 +169,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
       CASES.name,
       TRACE.name,
     ],
-    writes: o.effects ? [CASES.name, RELATIONS.name] : [CASES.name],
+    writes: o.effects || o.vendetta ? [CASES.name, RELATIONS.name] : [CASES.name],
     run(ctx) {
       const truth = ctx.truth;
       const changes: StateChange[] = [];
@@ -469,6 +490,91 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
           causes: [{ kind: "event", event: openedEv }],
         });
         if (o.effects) applyEffects(c, draftEvent(events.length - 1));
+      }
+      // Vendettas: donde el consejo no alcanzó al acusado, el acusador y su linaje deciden si se la cobran.
+      if (o.vendetta) {
+        const vr: VendettaRules = {
+          escalationDays: o.vendetta.days ?? DEFAULT_VENDETTA_RULES.escalationDays,
+          gain: o.vendetta.gain ?? DEFAULT_VENDETTA_RULES.gain,
+          coolBelow: o.vendetta.coolBelow ?? DEFAULT_VENDETTA_RULES.coolBelow,
+        };
+        const wait = vr.escalationDays * o.day;
+        const alive = (a: AgentId) => truth.get(ENTITY, a)?.endedAt === undefined;
+        const kinOf = (c: Case): AgentId[] => {
+          const home = truth.get(PERSON, c.accuser)?.household;
+          const members = home === undefined ? [] : (truth.get(HOUSEHOLD, home)?.members ?? []);
+          return members.filter((m) => m !== c.accuser && m !== c.accused && alive(m)).sort();
+        };
+        for (const forum of [...truth.ids(CASES)].sort()) {
+          const stored = books.has(forum) ? books.get(forum) : truth.get(CASES, forum as never);
+          if (!stored) continue;
+          let touched = false;
+          const cases: Case[] = [];
+          for (const c of stored.cases) {
+            const reason = unreachedReason(c);
+            const place = o.placeOf(truth, c.judge);
+            if (reason !== null && alive(c.accused) && alive(c.accuser)) {
+              touched = true;
+              const chance = vendettaChance({
+                belief: c.belief,
+                resentment: rowOf(c.accuser)?.toward[c.accused as string]?.dims.resentment ?? 0,
+                loyalty: loyaltyOf(truth.get(ORG_LOYALTY, forum as never), c.accuser),
+                reason,
+              });
+              const declare = ctx.rng.fork("vendetta", c.id).chance(chance);
+              const kin = kinOf(c);
+              const next = decideVendetta(c, reason, declare, chance, kin, ctx.now);
+              cases.push(next);
+              if (declare) {
+                const push = vendettaPush(1, vr.gain);
+                tweak(c.accuser, c.accused, "resentment", push, 0);
+                tweak(c.accused, c.accuser, "resentment", push * VENDETTA_RETURN, 0);
+                for (const k of next.vendetta?.kin ?? [])
+                  tweak(k, c.accused, "resentment", push * VENDETTA_KIN_SHARE, 0);
+                events.push({
+                  kind: VENDETTA_DECLARED_EVENT,
+                  actors: [c.accuser, c.accused],
+                  place,
+                  data: { case: c.id, forum, reason, chance, kin: next.vendetta?.kin ?? [] },
+                  emissions: {},
+                  causes: [{ kind: "event", event: c.originEventId }],
+                });
+              }
+              continue;
+            }
+            if (!vendettaDue(c, ctx.now, wait)) {
+              cases.push(c);
+              continue;
+            }
+            touched = true;
+            const v = c.vendetta as Vendetta;
+            const grudge = rowOf(c.accuser)?.toward[c.accused as string]?.dims.resentment ?? 0;
+            const gone = !alive(c.accused) || !alive(c.accuser);
+            const next = gone
+              ? closeVendetta(c, ctx.now)
+              : escalateVendetta(c, grudge, ctx.now, vr.coolBelow);
+            cases.push(next);
+            const stage = next.vendetta?.stage ?? v.stage;
+            const closed = next.vendetta?.status === "closed";
+            if (!closed) {
+              const push = vendettaPush(1, vr.gain);
+              tweak(c.accuser, c.accused, "resentment", push, 0);
+              tweak(c.accused, c.accuser, "resentment", push * VENDETTA_RETURN, 0);
+              for (const k of v.kin) {
+                if (alive(k)) tweak(k, c.accused, "resentment", push * VENDETTA_KIN_SHARE, 0);
+              }
+            }
+            events.push({
+              kind: closed ? VENDETTA_CLOSED_EVENT : VENDETTA_ESCALATED_EVENT,
+              actors: [c.accuser, c.accused],
+              place,
+              data: { case: c.id, forum, stage, grudge, ...(closed ? { gone } : {}) },
+              emissions: {},
+              causes: [{ kind: "event", event: c.originEventId }],
+            });
+          }
+          if (touched) books.set(forum, { ...stored, cases });
+        }
       }
       for (const [forum, book] of [...books].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
         if (book) changes.push(setComponent(CASES, forum as never, book));
