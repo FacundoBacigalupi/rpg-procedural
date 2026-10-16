@@ -13,6 +13,7 @@ import {
   type PlaceRef,
 } from "../../core/index.ts";
 import {
+  BODY_STATE,
   deleteComponent,
   draftEvent,
   EATEN,
@@ -37,6 +38,10 @@ export const LOAD_FOUND_EVENT = "npc.load_found";
 export const LOAD_ROTTED_EVENT = "npc.load_rotted";
 export const LOAD_RECLAIMED_EVENT = "npc.load_reclaimed";
 export const LOAD_EATEN_EVENT = "npc.load_eaten";
+export const LOAD_LEAKED_EVENT = "npc.load_leaked";
+
+/** Por qué se pierde la carga: cada causa sale del estado del viajero y deja un resto distinto. */
+export type LossCause = "stumble" | "leak" | "weight";
 
 export type TraceKind = "footprints" | "campfire" | "dropped_load";
 
@@ -102,6 +107,17 @@ export const SCAVENGE_RATE = 0.002;
 export const SCAVENGE_GRAMS_EACH = 20;
 export const SCAVENGE_MAX_ANIMALS = 20;
 
+/** Tropiezo: desde esta fatiga (0-1) el cansancio sube la chance por hora (sin calibrar). */
+export const STUMBLE_AT = 0.5;
+export const STUMBLE_CHANCE = 0.03;
+/** Peso: desde estos gramos en el bolsillo se rompe la correa y cae más (sin calibrar). */
+export const HEAVY_GRAMS = 4000;
+export const WEIGHT_CHANCE = 0.02;
+export const WEIGHT_FRACTION = 0.3;
+/** Fuga de un odre (bien líquido): chance por hora y fracción que se pierde sin dejar nada que hallar. */
+export const LEAK_CHANCE = 0.015;
+export const LEAK_FRACTION = 0.1;
+
 const HOUR = 3600;
 
 export function traceKind(step: TrailStep): TraceKind {
@@ -117,11 +133,30 @@ export interface NpcTracesOptions {
     readonly reclaim?: boolean;
     readonly unit: string;
     readonly name: string;
+    /** Opt-in: la pérdida tiene causa (tropiezo con fatiga, peso, fuga si `liquid`) con efecto distinto sobre lo caído; apagado, la pérdida de siempre. */
+    readonly causes?: { readonly liquid?: boolean };
     /** Opt-in: horas que aguanta lo caído; pasadas, se pudre (sumidero `rotted`) y el registro caduca. */
     readonly rotAfterHours?: number;
     /** Opt-in: un linaje de `ECOLOGY` (los animales que de verdad hay en la celda) se come lo caído en `hexes` (default todos); la chance sale de cuántos son. */
     readonly scavenge?: { readonly lineage: string; readonly hexes?: readonly number[] };
   };
+}
+
+/** Qué causa pierde la carga esta hora, si alguna; una tirada propia por causa, en orden fijo. */
+export function lossCause(
+  pocketGrams: number,
+  fatigue: number,
+  liquid: boolean,
+  roll: (name: string) => number,
+): LossCause | undefined {
+  if (!(pocketGrams > 0)) return undefined;
+  if (liquid && roll("leak") < LEAK_CHANCE) return "leak";
+  if (pocketGrams >= HEAVY_GRAMS && roll("weight") < WEIGHT_CHANCE) return "weight";
+  if (fatigue > STUMBLE_AT) {
+    const over = (Math.min(1, fatigue) - STUMBLE_AT) / (1 - STUMBLE_AT);
+    if (roll("stumble") < STUMBLE_CHANCE * over) return "stumble";
+  }
+  return undefined;
 }
 
 /** La cuenta del ledger donde queda lo caído en un hex. */
@@ -145,6 +180,7 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       NPC_TRACES.name,
       NPC_DROPS.name,
       ...(o.load?.scavenge ? [ECOLOGY.name] : []),
+      ...(o.load?.causes ? [BODY_STATE.name] : []),
     ],
     writes: [NPC_TRAIL.name, NPC_TRACES.name, NPC_DROPS.name],
     scopeGuard: (truth, scope) =>
@@ -427,8 +463,35 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       // Lo que pierde: parte del bolsillo cae en este hex y queda a la vista de quien pase.
       if (load && ctx.ledger && trip && here !== undefined) {
         const unit = ledgerUnit(load.unit);
-        const grams = Math.floor(ctx.ledger.balance(pocket, unit) * DROP_FRACTION);
-        if (grams > 0 && ctx.rng.fork("drop", me, now).float() < DROP_CHANCE) {
+        const have = ctx.ledger.balance(pocket, unit);
+        const cause: LossCause | "plain" | undefined = load.causes
+          ? lossCause(
+              have,
+              truth.get(BODY_STATE, me)?.fatigue ?? 0,
+              load.causes.liquid === true,
+              (name) => ctx.rng.fork(name, me, now).float(),
+            )
+          : have > 0 && ctx.rng.fork("drop", me, now).float() < DROP_CHANCE
+            ? "plain"
+            : undefined;
+        const fraction =
+          cause === "weight" ? WEIGHT_FRACTION : cause === "leak" ? LEAK_FRACTION : DROP_FRACTION;
+        const grams = Math.floor(have * fraction);
+        if (cause === "leak" && grams > 0) {
+          // Se derrama: no queda nada en el camino que hallar, sale del ledger al sumidero.
+          events.push({
+            kind: LOAD_LEAKED_EVENT,
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { hex: here, unit: load.unit, grams, cause },
+            emissions: {},
+            causes: [{ kind: "state", entity: me, key: "location" }],
+          });
+          postings.push({
+            event: draftEvent(events.length - 1),
+            transfers: [{ unit, from: pocket, to: externalAccount(ROTTED), amount: grams }],
+          });
+        } else if (cause !== undefined && cause !== "leak" && grams > 0) {
           const lots = [
             ...kept,
             { hex: here, unit: load.unit, name: load.name, grams, at: now },
@@ -438,7 +501,12 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
             kind: LOAD_DROPPED_EVENT,
             actors: [me],
             place: o.placeOf(truth, me),
-            data: { hex: here, unit: load.unit, grams },
+            data: {
+              hex: here,
+              unit: load.unit,
+              grams,
+              ...(cause === "plain" ? {} : { cause }),
+            },
             emissions: {},
             causes: [{ kind: "state", entity: me, key: "location" }],
           });

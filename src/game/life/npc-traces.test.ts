@@ -14,6 +14,7 @@ import {
   Rng,
 } from "../../core/index.ts";
 import {
+  BODY_STATE,
   EATEN,
   ECOLOGY,
   ENTITY,
@@ -23,6 +24,7 @@ import {
   PLACE,
   type ProcessContext,
   type ProcessResult,
+  ROTTED,
   WorldTruth,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -33,6 +35,7 @@ import {
   LOAD_DROPPED_EVENT,
   LOAD_EATEN_EVENT,
   LOAD_FOUND_EVENT,
+  LOAD_LEAKED_EVENT,
   LOAD_RECLAIMED_EVENT,
   LOAD_ROTTED_EVENT,
   NPC_DROPS,
@@ -625,5 +628,115 @@ describe("un animal que existe se come lo caído (npc-b2b4b3c)", () => {
       return c;
     };
     expect(rate(15)).toBeGreaterThan(rate(2));
+  });
+});
+
+describe("causas de pérdida de la carga (npc-b2b4b3d)", () => {
+  const unit = "good:grain";
+  const pocket = holderAccount(me);
+
+  function bank(balances: Record<string, number>) {
+    const m = new Map(Object.entries(balances));
+    return { m, balance: (a: string) => m.get(a) ?? 0, holdings: () => [], total: () => 0 };
+  }
+  function tired(fatigue: number) {
+    const truth = world({});
+    truth.set(BODY_STATE, me, { fatigue } as never);
+    return truth;
+  }
+  function go(
+    truth: WorldTruth,
+    ledger: ReturnType<typeof bank>,
+    seed: number,
+    causes: { liquid?: boolean } | undefined,
+  ): ProcessResult {
+    return npcTracesProcess({
+      player,
+      placeOf: () => site,
+      load: { unit, name: "grano", ...(causes ? { causes } : {}) },
+    }).run({
+      now: 10 * HOUR,
+      window: HOUR,
+      windowIndex: 1,
+      scope: me,
+      resolution: "local",
+      phase: "perceive",
+      truth,
+      ledger,
+      rng: Rng.root(seed),
+      item: undefined,
+      recent: [],
+      newId() {
+        throw new Error("no crea entidades");
+      },
+    } as unknown as ProcessContext);
+  }
+  function seedFor(
+    pick: (out: ProcessResult) => boolean,
+    mk: () => WorldTruth,
+    grams: number,
+    causes: { liquid?: boolean },
+  ): number {
+    for (let s = 1; s < 5000; s++) {
+      if (pick(go(mk(), bank({ [pocket]: grams }), s, causes))) return s;
+    }
+    throw new Error("sin semilla");
+  }
+  const causeOf = (out: ProcessResult) =>
+    (out.events?.find((e) => e.kind === LOAD_DROPPED_EVENT)?.data as { cause?: string } | undefined)
+      ?.cause;
+  const setsDrops = (out: ProcessResult) =>
+    out.changes?.some((c) => c.op === "set" && c.table === NPC_DROPS.name) === true;
+
+  it("tropiezo: solo con fatiga; cae lo de siempre y queda a la vista en la celda", () => {
+    const mk = () => tired(0.9);
+    const seed = seedFor((o) => causeOf(o) === "stumble", mk, 1000, {});
+    const out = go(mk(), bank({ [pocket]: 1000 }), seed, {});
+    expect(out.postings?.[0]?.transfers[0]).toMatchObject({ to: roadAccount(5), amount: 150 });
+    expect(setsDrops(out)).toBe(true);
+    // Descansado, nunca tropieza.
+    for (let s = 1; s < 400; s++) {
+      expect(causeOf(go(tired(0.2), bank({ [pocket]: 1000 }), s, {}))).toBeUndefined();
+    }
+    // Determinista.
+    expect(go(mk(), bank({ [pocket]: 1000 }), seed, {})).toEqual(out);
+  });
+
+  it("peso: solo con mucha carga; cae el doble y conserva gramos", () => {
+    const mk = () => tired(0);
+    const seed = seedFor((o) => causeOf(o) === "weight", mk, 5000, {});
+    const out = go(mk(), bank({ [pocket]: 5000 }), seed, {});
+    expect(out.postings?.[0]?.transfers[0]).toMatchObject({ to: roadAccount(5), amount: 1500 });
+    for (let s = 1; s < 400; s++) {
+      expect(causeOf(go(mk(), bank({ [pocket]: 1000 }), s, {}))).toBeUndefined();
+    }
+  });
+
+  it("fuga: solo con odre; no deja nada que hallar y sale al sumidero rotted", () => {
+    const mk = () => tired(0);
+    const leaked = (o: ProcessResult) => o.events?.some((e) => e.kind === LOAD_LEAKED_EVENT);
+    const seed = seedFor((o) => leaked(o) === true, mk, 1000, { liquid: true });
+    const out = go(mk(), bank({ [pocket]: 1000 }), seed, { liquid: true });
+    expect(out.postings?.[0]?.transfers[0]).toMatchObject({
+      from: pocket,
+      to: externalAccount(ROTTED),
+      amount: 100,
+    });
+    expect(setsDrops(out)).toBe(false);
+    for (let s = 1; s < 400; s++) {
+      expect(leaked(go(mk(), bank({ [pocket]: 1000 }), s, {}))).toBeFalsy();
+    }
+  });
+
+  it("sin la opción es la pérdida de siempre, sin causa en el evento", () => {
+    let dropped = 0;
+    for (let s = 1; s < 600; s++) {
+      const o = go(tired(0.9), bank({ [pocket]: 1000 }), s, undefined);
+      for (const e of o.events ?? []) {
+        expect(e.data).not.toHaveProperty("cause");
+        if (e.kind === LOAD_DROPPED_EVENT) dropped++;
+      }
+    }
+    expect(dropped).toBeGreaterThan(0);
   });
 });
