@@ -33,6 +33,7 @@ export const TRACE_SEEN_EVENT = "npc.trace_seen";
 export const LOAD_DROPPED_EVENT = "npc.load_dropped";
 export const LOAD_FOUND_EVENT = "npc.load_found";
 export const LOAD_ROTTED_EVENT = "npc.load_rotted";
+export const LOAD_RECLAIMED_EVENT = "npc.load_reclaimed";
 
 export type TraceKind = "footprints" | "campfire" | "dropped_load";
 
@@ -89,6 +90,8 @@ export const DROP_FRACTION = 0.15;
 /** Chance de recoger lo que vio caído (hallazgo: lo tirado en el camino es de quien lo toma). */
 export const PICKUP_CHANCE = 0.7;
 export const MAX_DROPS = 4;
+/** Chance por hora de que el dueño que está en el hex reclame lo que dejó caer (sin calibrar). */
+export const RECLAIM_CHANCE = 0.9;
 
 const HOUR = 3600;
 
@@ -101,9 +104,11 @@ export interface NpcTracesOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: el bien que lleva en el bolsillo (`provisions`) y puede perder o recoger en el camino. */
   readonly load?: {
+    /** Opt-in: el dueño que vuelve al hex reclama lo suyo y tiene la prioridad sobre quien lo halle. */
+    readonly reclaim?: boolean;
     readonly unit: string;
     readonly name: string;
-    /** Opt-in: horas que aguanta lo ca�do; pasadas, se pudre (sumidero `rotted`) y el registro caduca. */
+    /** Opt-in: horas que aguanta lo caído; pasadas, se pudre (sumidero `rotted`) y el registro caduca. */
     readonly rotAfterHours?: number;
   };
 }
@@ -134,19 +139,21 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
       truth.get(NPC_TRAIL, scope as AgentId) !== undefined ||
       truth.get(NPC_TRACES, scope as AgentId) !== undefined ||
-      (o.load?.rotAfterHours !== undefined && truth.get(NPC_DROPS, scope as AgentId) !== undefined),
+      ((o.load?.rotAfterHours !== undefined || o.load?.reclaim === true) &&
+        truth.get(NPC_DROPS, scope as AgentId) !== undefined),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
       const now = ctx.now;
-      // Lo ca�do que nadie recogi� se pudre: sale de la celda al sumidero y el registro caduca.
+      // Lo caído que nadie recogió se pudre: sale de la celda al sumidero y el registro caduca.
       const rotHours = o.load?.rotAfterHours;
       const allDrops = truth.get(NPC_DROPS, me)?.lots ?? [];
       const rotting =
         rotHours === undefined || !ctx.ledger
           ? []
           : allDrops.filter((l) => now - l.at >= rotHours * HOUR);
-      const liveDrops = rotting.length > 0 ? allDrops.filter((l) => !rotting.includes(l)) : allDrops;
+      const liveDrops =
+        rotting.length > 0 ? allDrops.filter((l) => !rotting.includes(l)) : allDrops;
       const rotChanges = [];
       const rotEvents: EventDraft[] = [];
       const rotPostings: PostingDraft[] = [];
@@ -195,6 +202,39 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       const postings: PostingDraft[] = [...rotPostings];
       const load = o.load;
       const pocket = holderAccount(me);
+      let kept = liveDrops;
+
+      // El dueño que vuelve al hex donde dejó caer su carga la reclama (derecho de quien la perdió).
+      if (load?.reclaim && ctx.ledger && here !== undefined) {
+        const mine = kept.filter((l) => l.hex === here && l.unit === load.unit);
+        if (mine.length > 0 && ctx.rng.fork("reclaim", me, now).float() < RECLAIM_CHANCE) {
+          const unit = ledgerUnit(load.unit);
+          let have = ctx.ledger.balance(roadAccount(here), unit);
+          for (const lot of mine) {
+            const grams = Math.min(lot.grams, have);
+            have -= grams;
+            if (grams <= 0) continue;
+            events.push({
+              kind: LOAD_RECLAIMED_EVENT,
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { hex: here, unit: load.unit, grams },
+              emissions: {},
+              causes: [{ kind: "state", entity: me, key: "life.npc_drops" }],
+            });
+            postings.push({
+              event: draftEvent(events.length - 1),
+              transfers: [{ unit, from: roadAccount(here), to: pocket, amount: grams }],
+            });
+          }
+          kept = kept.filter((l) => !mine.includes(l));
+          changes.push(
+            kept.length > 0
+              ? setComponent(NPC_DROPS, me, { lots: kept })
+              : deleteComponent(NPC_DROPS, me),
+          );
+        }
+      }
 
       // Lo que deja: el tramo en este hex; lo viejo se olvida.
       const old = truth.get(NPC_TRAIL, me)?.steps ?? [];
@@ -257,6 +297,8 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
           const lying: { owner: AgentId; lot: DroppedLot }[] = [];
           for (const owner of truth.ids(NPC_DROPS) as AgentId[]) {
             if (owner === me) continue;
+            // Si el dueño está en el hex, la prioridad es suya.
+            if (load.reclaim && truth.get(LOCATION, owner)?.hex === here) continue;
             for (const lot of truth.get(NPC_DROPS, owner)?.lots ?? []) {
               if (rotHours !== undefined && now - lot.at >= rotHours * HOUR) continue;
               if (lot.hex === here && lot.unit === load.unit) lying.push({ owner, lot });
@@ -326,7 +368,7 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
         const grams = Math.floor(ctx.ledger.balance(pocket, unit) * DROP_FRACTION);
         if (grams > 0 && ctx.rng.fork("drop", me, now).float() < DROP_CHANCE) {
           const lots = [
-            ...liveDrops,
+            ...kept,
             { hex: here, unit: load.unit, name: load.name, grams, at: now },
           ].slice(-MAX_DROPS);
           changes.push(setComponent(NPC_DROPS, me, { lots }));
