@@ -12,6 +12,33 @@ import {
   skyClearness,
   tempAt,
 } from "./daily.ts";
+import { anomalyOfDay, oscillationFor } from "./oscillation.ts";
+
+const anomalyMemo = new WeakMap<LocalMap, Map<Seed, (day: number) => Anomaly>>();
+
+/**
+ * La anomalía de cada día del lugar según la oscilación de su cuenca (weather §1), o `undefined` si
+ * el mapa no tiene cuenca. Mismo mapa y seed, misma función (se guarda).
+ */
+export function anomalyOfMap(
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+): ((day: number) => Anomaly) | undefined {
+  const site = map.oscillation;
+  if (site === undefined) return undefined;
+  let bySeed = anomalyMemo.get(map);
+  if (bySeed === undefined) {
+    bySeed = new Map();
+    anomalyMemo.set(map, bySeed);
+  }
+  let fn = bySeed.get(seed);
+  if (fn === undefined) {
+    fn = anomalyOfDay(oscillationFor(site.basin, Rng.root(seed)), clock, site.teleconnection);
+    bySeed.set(seed, fn);
+  }
+  return fn;
+}
 
 /** El día de un tick en el lugar (el día cambia a la medianoche local). */
 export function weatherAt(
@@ -22,7 +49,14 @@ export function weatherAt(
   anomaly?: Anomaly,
 ): DayWeather {
   const local = tick + Math.round((map.lonDeg / 360) * clock.day);
-  return dailyWeather(map.climate, clock, dayOf(clock, local), Rng.root(seed), anomaly);
+  const day = dayOf(clock, local);
+  return dailyWeather(
+    map.climate,
+    clock,
+    day,
+    Rng.root(seed),
+    anomaly ?? anomalyOfMap(map, clock, seed)?.(day),
+  );
 }
 
 /** Temperatura afuera a un tick, °C. */
@@ -109,9 +143,10 @@ export function rainBetween(
   const last = dayOf(clock, to + shift);
   const first = Math.max(dayOf(clock, from + shift), last - RAIN_LOOKBACK_DAYS);
   const root = Rng.root(seed);
+  const anomalyOf = anomalyOfMap(map, clock, seed);
   let mm = 0;
   for (let d = first; d <= last; d++) {
-    const w = dailyWeather(map.climate, clock, d, root);
+    const w = dailyWeather(map.climate, clock, d, root, anomalyOf?.(d));
     if (w.precip.kind === "rain" || w.precip.kind === "sleet") mm += w.precip.mm;
   }
   return mm;

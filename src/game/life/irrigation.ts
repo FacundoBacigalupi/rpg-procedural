@@ -10,6 +10,7 @@
 
 import { type PlanetClock, Rng, type Seed } from "../../core/index.ts";
 import {
+  anomalyOfMap,
   irrigationBoost,
   type LocalMap,
   type ReadonlyWorldTruth,
@@ -52,11 +53,12 @@ export interface IrrigationOptions {
 /** El campo del día: la lluvia de la ventana, cacheada por día (la rutina lo pide por hora y por persona). */
 export function rainWindow(o: IrrigationOptions): (day: number) => number {
   const root = Rng.root(o.seed);
+  const anomalyOf = anomalyOfMap(o.map, o.clock, o.seed);
   const cache = new Map<number, number>();
   return (day) => {
     let mm = cache.get(day);
     if (mm === undefined) {
-      mm = recentRainMm(o.map.climate, o.clock, root, day);
+      mm = recentRainMm(o.map.climate, o.clock, root, day, anomalyOf);
       cache.set(day, mm);
     }
     return mm;

@@ -2,7 +2,12 @@
 // worldgen: vecinos del parche, la longitud de la celda y cuánto se tarda en cruzar cada hex a pie.
 
 import type { LocalMap } from "../../sim/index.ts";
-import type { Planet, VillageSite } from "../../worldgen/index.ts";
+import {
+  oceanBasins,
+  oscillationSite,
+  type Planet,
+  type VillageSite,
+} from "../../worldgen/index.ts";
 
 /** Paso medio a pie sobre llano, m/s. */
 export const WALK_SPEED = 1.3;
@@ -14,7 +19,23 @@ const RIVER_FACTOR = 5;
 const WATER_FACTOR = 40;
 const SLOPE_FACTOR = 8;
 
-export function localMapOf(planet: Planet, site: VillageSite): LocalMap {
+/**
+ * `noOscillation`: replay de motores anteriores a `life-29`, sin cuenca ni anomalía por año. Si no
+ * hay mar al alcance de la celda tampoco se guarda nada.
+ */
+export function localMapOf(
+  planet: Planet,
+  site: VillageSite,
+  noOscillation: boolean = false,
+): LocalMap {
+  const osc = noOscillation
+    ? undefined
+    : oscillationSite(
+        planet.grid,
+        oceanBasins(planet.grid, planet.tectonics.elevation),
+        planet.kmPerHop,
+        site.patch.cell,
+      );
   const { patch, terrain: tr } = site;
   const km = patch.kmPerHex;
   const crossSeconds = patch.hexes.map((_, h) => {
@@ -33,6 +54,9 @@ export function localMapOf(planet: Planet, site: VillageSite): LocalMap {
     forest: patch.hexes.map((_, h) => tr.forest[h] === 1),
     elevationM: patch.hexes.map((_, h) => tr.elevation[h] as number),
     baseElevationM: tr.elevation.reduce((s, e) => s + e, 0) / Math.max(1, patch.hexes.length),
+    ...(osc?.basin != null
+      ? { oscillation: { basin: osc.basin, teleconnection: osc.teleconnection } }
+      : {}),
     climate: {
       cell: String(planet.grid.cellId(patch.cell)),
       latDeg: ((planet.grid.lat[patch.cell] as number) * 180) / Math.PI,

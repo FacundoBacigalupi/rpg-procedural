@@ -76,6 +76,11 @@ export interface LocalMap {
   readonly baseElevationM?: number;
   /** Las normales de la celda: de acá sale el tiempo de cada día (`sim/weather`). */
   readonly climate: ClimateNormals;
+  /**
+   * La cuenca oceánica que toca a la celda y cómo (-1..1, signo por el lado): de ahí sale la
+   * anomalía de cada año (`anomalyOfMap`, weather §1). Sin esto el clima es el de las normales.
+   */
+  readonly oscillation?: { readonly basin: string; readonly teleconnection: number };
 }
 
 /** El camino más corto en hexes de `from` a `to` (sin `from`, con `to`); vacío si son el mismo. */
