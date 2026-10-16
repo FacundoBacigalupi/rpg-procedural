@@ -43,6 +43,7 @@ import {
   type ReadonlyWorldTruth,
   type RecipeDef,
   RUMORS,
+  rainBetween,
   Scheduler,
   type SchedulerState,
   type SchemaDef,
@@ -1126,6 +1127,8 @@ export function lifeWorld(
                 goods: parts.goods,
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
+                year: parts.clock.year,
+                rain: (made, now) => rainBetween(parts.map, parts.clock, parts.seed, made, now),
               }),
             ]
           : []),

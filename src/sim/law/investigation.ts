@@ -6,10 +6,12 @@
 // vía (vi / oí / me contaron) y la culpa que leyó el que lo guarda; con testigos que declaran
 // (`spokenWeight`), además la firmeza con que lo dicen, y quien niega o calla no deja indicio.
 
-import type { AgentId, EventId, Tick } from "../../core/index.ts";
+import type { AgentId, EventId, Rng, Tick } from "../../core/index.ts";
+import { readChance } from "../perception/index.ts";
 import type { Case, Investigation, Verdict } from "./cases.ts";
 import { culpability, type Deed } from "./deeds.ts";
 import { type ForumStanding, forumPenalty, forumResponse } from "./forum.ts";
+import { TRACE_VISIBLE } from "./traces.ts";
 
 export type ClueKind = "testimony" | "trace";
 
@@ -136,4 +138,43 @@ export function investigationDue(c: Case, now: Tick, waitFor: Tick): boolean {
   if (c.status !== "investigating" || c.investigation !== undefined) return false;
   if (c.summons) return c.summons.outcome === "appeared";
   return c.openedAt + waitFor <= now;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mirar la huella en el lugar (perception §9): el investigador va y la percibe, no la lee de la verdad.
+
+/** Desvío (en fuerza 0-1) con que se estima cuánto se nota una huella, con agudeza y atención 1. */
+export const TRACE_READ_SD = 0.2;
+
+export interface TraceLook {
+  /** Agudeza de la vista del que mira, 0-1+ (`sensorAcuity`). */
+  readonly acuity: number;
+  /** Atención: quien va a propósito a mirar el lugar está alerta (`ATTENTION.alert`). */
+  readonly attention: number;
+}
+
+export interface TraceReading {
+  /** La lluvia o el tiempo la dejaron debajo de lo visible: no hay nada que mirar. */
+  readonly erased: boolean;
+  /** Reparó en ella. */
+  readonly seen: boolean;
+  /** Cuánto cree que se nota (0-1, con error); 0 si no la vio. */
+  readonly perceived: number;
+}
+
+/**
+ * Lee una huella con la fuerza que le queda (`traceStrength` ya con el tiempo y la lluvia). Lo
+ * borrado no se ve; lo demás se ve con `readChance` del cociente fuerza × agudeza × atención sobre
+ * el umbral visible, y lo que se estima lleva error que baja con la agudeza y la atención. Se
+ * tiran siempre los dos dados para que el flujo del rng no dependa del resultado.
+ */
+export function readTrace(strength: number, look: TraceLook, rng: Rng): TraceReading {
+  const roll = rng.float();
+  const noise = rng.normal(0, 1);
+  if (strength < TRACE_VISIBLE) return { erased: true, seen: false, perceived: 0 };
+  const sense = Math.max(0, look.acuity) * Math.max(0, look.attention);
+  const seen = roll < readChance((strength * sense) / TRACE_VISIBLE);
+  if (!seen) return { erased: false, seen: false, perceived: 0 };
+  const sd = TRACE_READ_SD / Math.max(0.5, sense);
+  return { erased: false, seen: true, perceived: round(clamp01(strength + noise * sd)) };
 }
