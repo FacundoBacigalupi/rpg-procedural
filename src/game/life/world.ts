@@ -142,6 +142,7 @@ import {
   type MoldHintOptions,
   moldGossipProcess,
   renownBelieved,
+  renownWeighed,
   tradeWantFromNeeds,
 } from "./moldgossip.ts";
 import { neighborsProcess } from "./neighbors.ts";
@@ -250,7 +251,12 @@ export interface LifeWorld {
    * Opt-in (la fama viaja con `moldGossip.fromHealing`): el enfermo elige sanador por la
    * fama que cree (rumor `renown` de su libro) y le paga `healerFee` (base `base`, en `unit`) con asiento.
    */
-  readonly healerFee?: { readonly unit: string; readonly base: number };
+  readonly healerFee?: {
+    readonly unit: string;
+    readonly base: number;
+    /** Opt-in: la fama oída pesa por la fe que le tiene (`renownWeighed`) y no entera. */
+    readonly byConfidence?: boolean;
+  };
   /**
    * Opt-in (body-health §6): la cuarentena la decide el paciente (`patientDecides`); la confianza en el
    * sanador sale de la fama que cree (`renownBelieved`); con `secondOpinion` el que discrepa llama a otro.
@@ -1341,7 +1347,12 @@ export function lifeWorld(
                 fee: {
                   unit: ledgerUnit(parts.healerFee.unit),
                   base: parts.healerFee.base,
-                  renownOf: (truth, patient, healer) => renownBelieved(truth, patient, healer),
+                  renownOf: (truth, patient, healer) =>
+                    (parts.healerFee?.byConfidence ? renownWeighed : renownBelieved)(
+                      truth,
+                      patient,
+                      healer,
+                    ),
                 },
               }
             : {}),
@@ -1407,7 +1418,12 @@ export function lifeWorld(
                       fee: {
                         unit: ledgerUnit(parts.healerFee.unit),
                         base: parts.healerFee.base,
-                        renownOf: (truth, mother, healer) => renownBelieved(truth, mother, healer),
+                        renownOf: (truth, mother, healer) =>
+                          (parts.healerFee?.byConfidence ? renownWeighed : renownBelieved)(
+                            truth,
+                            mother,
+                            healer,
+                          ),
                       },
                     }
                   : {}),
