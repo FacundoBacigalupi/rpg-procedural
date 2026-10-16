@@ -138,6 +138,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcTemplates", "npcVerbs"],
     ["npcJourneyDays", "npcVerbs"],
     ["npcInterrupt", "npcVerbs"],
+    ["npcResumeReevaluate", "npcInterrupt"],
     ["npcTransit", "npcJourneyDays"],
     ["npcProvisions", "npcJourneyDays"],
     ["npcWater", "npcJourneyDays"],

@@ -40,7 +40,7 @@ import {
   npcInterruptProcess,
   npcReactProcess,
 } from "./npc-interrupt.ts";
-import { NPC_JOURNEY, NPC_PAUSED, npcVerbsProcess } from "./npc-verbs.ts";
+import { NPC_JOURNEY, NPC_PAUSED, npcVerbsProcess, pausedPlanFits } from "./npc-verbs.ts";
 import { TRANSIT } from "./transit.ts";
 import { living } from "./world.ts";
 
@@ -363,6 +363,59 @@ describe("retomar lo cortado y la posiciÃ³n a medio camino", () => {
     apply(old, out);
     expect(old.get(NPC_PAUSED, me)).toBeUndefined();
     expect(old.get(PLAN_STATE, me)?.done).toBe(true);
+  });
+
+  const decisionAt = (at: number, verb: string) => ({
+    at,
+    id: `${verb}:`,
+    verb,
+    utility: 1,
+    options: 2,
+  });
+
+  it("pausedPlanFits: sin decisión posterior al corte o con un verbo del plan, conviene", () => {
+    const paused = { plan: cutWorld().get(NPC_PAUSED, me)?.plan as never, at: 3600 as never };
+    expect(pausedPlanFits(paused, undefined)).toBe(true);
+    expect(pausedPlanFits(paused, decisionAt(100, "eat"))).toBe(true);
+    expect(pausedPlanFits(paused, decisionAt(4000, "move"))).toBe(true);
+    expect(pausedPlanFits(paused, decisionAt(4000, "eat"))).toBe(false);
+  });
+
+  it("con reevaluate, si decidió otra cosa tras el corte el plan viejo se olvida; apagado se retoma", () => {
+    const run2 = (reevaluate: boolean, verb: string) => {
+      const truth = cutWorld();
+      truth.set(NPC_DECISION, me, decisionAt(4000, verb));
+      const out = npcVerbsProcess({
+        ...resumeOpts,
+        resume: { ...resumeOpts.resume, ...(reevaluate ? { reevaluate: true } : {}) },
+      }).run({
+        now: 3600 + 2 * 3600,
+        window: 3600,
+        windowIndex: 1,
+        scope: me,
+        resolution: "local",
+        phase: "decide",
+        truth,
+        ledger: undefined,
+        rng: Rng.root(1),
+        item: undefined,
+        recent: [],
+        newId() {
+          throw new Error("no crea entidades");
+        },
+      } as unknown as ProcessContext);
+      apply(truth, out);
+      return { out, truth };
+    };
+    const dropped = run2(true, "eat");
+    expect(dropped.out.events ?? []).toEqual([]);
+    expect(dropped.truth.get(NPC_PAUSED, me)).toBeUndefined();
+    expect(dropped.truth.get(PLAN_STATE, me)?.done).toBe(true);
+    // Mismo verbo, o sin la opción: se retoma como siempre.
+    expect(run2(true, "move").out.events?.[0]).toMatchObject({ kind: "npc.resumed" });
+    expect(run2(false, "eat").out.events?.[0]).toMatchObject({ kind: "npc.resumed" });
+    // Determinismo.
+    expect(run2(true, "eat").out).toEqual(dropped.out);
   });
 });
 
