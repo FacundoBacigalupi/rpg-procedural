@@ -49,9 +49,18 @@ export function roadMendJob(wear: number): { kind: "mend" | "replace"; cost: num
   return job ? { kind: job.kind, cost: job.cost * ROAD_MARKUP } : null;
 }
 
+/** Si el viajero paró a dormir en el último día: esa parada es donde hay posada o posta con remendón. Puro. */
+export function atStop(rested: number | undefined, now: number): boolean {
+  return rested !== undefined && now - rested < STOP_WINDOW;
+}
+/** Cuánto vale una parada para arreglar el calzado: un día (el proceso corre a diario). */
+export const STOP_WINDOW = 86_400;
+
 export interface FootwearRoadMendOptions {
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Solo en la parada de la noche: `rested` del viaje dentro del último día (`npcRoadStops`). */
+  readonly atStops?: true;
 }
 
 export function footwearRoadMendProcess(o: FootwearRoadMendOptions): ProcessDef {
@@ -76,7 +85,9 @@ export function footwearRoadMendProcess(o: FootwearRoadMendOptions): ProcessDef 
         if (ctx.truth.get(PERSON, who) === undefined) continue;
         if (ctx.truth.get(ENTITY, who)?.endedAt !== undefined) continue;
         // Solo de camino: con un viaje abierto y fuera de la aldea.
-        if (ctx.truth.get(NPC_JOURNEY, who) === undefined) continue;
+        const trip = ctx.truth.get(NPC_JOURNEY, who);
+        if (trip === undefined) continue;
+        if (o.atStops && !atStop(trip.rested, ctx.now)) continue;
         if (ctx.truth.get(LOCATION, who)?.space !== undefined) continue;
         const wear = ctx.truth.get(FOOTWEAR, who)?.wear ?? 0;
         const job = roadMendJob(wear);

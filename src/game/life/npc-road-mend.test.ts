@@ -10,11 +10,13 @@ import {
 import { COPPER, checkInvariants, LOCATION, PERSON, PLACE, WAGES_SINK } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { NPC_DECISION } from "./decide.ts";
+import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { FOOTWEAR } from "./footwear.ts";
 import {
   FOOTWEAR_ROAD_MENDED,
   ROAD_KEEPS,
   ROAD_MARKUP,
+  atStop,
   roadMendJob,
 } from "./footwear-road-mend.ts";
 import { Life } from "./life.ts";
@@ -114,5 +116,54 @@ describe("arreglar el calzado de camino (npc-b2b3b2b3c, opt-in)", () => {
           .map((e) => [e.id, e.data]),
       );
     expect(key(run(true, true))).toBe(key(run(true, true)));
+  }, 300_000);
+
+  it("las paradas reales: solo cuenta la noche que paró a dormir", () => {
+    expect(atStop(undefined, 1000)).toBe(false);
+    expect(atStop(1000, 1000 + 3600)).toBe(true);
+    expect(atStop(1000, 1000 + 86_400)).toBe(false);
+    const issues = validateLifeDependencies({ npcRoadStops: true });
+    expect(issues.some((i) => i.requires === "npcRoadMend")).toBe(true);
+    expect(issues.some((i) => i.requires === "npcNightRest")).toBe(true);
+  });
+
+  function runStops(stops: boolean, rested: boolean) {
+    const life = Life.create(7, content, {
+      npcVerbs: ["move"],
+      npcJourneyDays: 6,
+      npcFootwear: true,
+      npcFootwearMend: true,
+      npcRoadMend: true,
+      ...(stops ? { npcRoadStops: true } : {}),
+    });
+    const w = life.world;
+    const adults = living(w.truth).filter(
+      (x) =>
+        x !== life.player && (w.truth.get(PERSON, x)?.born ?? 0) < life.now - 20 * 365 * 86_400,
+    ) as AgentId[];
+    const place = w.truth.ids(PLACE)[0] as string;
+    const hexes = (w.truth.get(PLACE, place as never)?.hexes ?? []) as number[];
+    let from = hexes[0] as number;
+    for (let i = 0; i < 4; i++) {
+      from = (w.map.neighbors[from] ?? []).find((n) => !hexes.includes(n)) ?? from;
+    }
+    for (const who of adults.slice(0, 6)) {
+      w.truth.set(LOCATION, who, { hex: from });
+      w.truth.set(NPC_JOURNEY, who, {
+        place,
+        since: life.now,
+        decision: "x",
+        ...(rested ? { rested: life.now } : {}),
+      } as never);
+      w.truth.set(FOOTWEAR, who, { wear: 0.8 });
+    }
+    life.advanceTo(life.now + 86_400);
+    return w.log.all().filter((e) => e.kind === FOOTWEAR_ROAD_MENDED).length;
+  }
+
+  it("con paradas, sin dormir en el camino no se arregla; sin la opción, sí", () => {
+    expect(runStops(true, false)).toBe(0);
+    expect(runStops(true, true)).toBeLessThanOrEqual(runStops(false, true));
+    expect(runStops(true, true)).toBe(runStops(true, true));
   }, 300_000);
 });
