@@ -13,8 +13,11 @@ import {
   type Beliefs,
   BODY_STATE,
   type BondDef,
+  believed,
   type DimensionDef,
   ENTITY,
+  HEARD,
+  type Heard,
   LOCATION,
   type LocalMap,
   learn,
@@ -53,6 +56,8 @@ export interface KnowingOptions {
   readonly statuses: readonly StatusDef[];
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
+  /** Desde `life-37`: lo oído (`HEARD`) también es creencia `alive` de fuente `told`. */
+  readonly toldBeliefs?: boolean;
 }
 
 /** Piso de lo conocido: un vecino reconoce al personaje aunque casi no hayan hablado. */
@@ -80,6 +85,43 @@ export function learnActions(
   return beliefs;
 }
 
+/** Cuánto se fía de lo que le contaron de si alguien vive (como `HEARD_CONFIDENCE` de los moldes). */
+export const TOLD_ALIVE_CONFIDENCE = 0.6;
+
+/**
+ * Lo oído en conversación (`HEARD`: vive/murió) como creencia `alive` de fuente `told` (information
+ * §1, ítem HEARD→RUMORS): pasan las afirmaciones de la última hora (`since`), una sola vez (la fuente
+ * `told` de ese `from` y `tick` ya en la creencia las salta), y revisa con `learn`: lo dicho choca
+ * con lo que ya creía.
+ */
+export function learnToldClaims(
+  before: Beliefs | undefined,
+  holder: AgentId,
+  heard: Heard | undefined,
+  since: Tick,
+  now: Tick,
+): Beliefs | undefined {
+  let beliefs = before;
+  for (const c of heard?.claims ?? []) {
+    if (c.about === holder || c.at > now || c.at <= since) continue;
+    const prev = believed(beliefs, c.about, "alive");
+    if (prev?.sources.some((s) => s.kind === "told" && s.from === c.from && s.tick === c.at))
+      continue;
+    beliefs = learn(
+      beliefs,
+      {
+        prop: { kind: "attr", subject: c.about, attr: "alive" },
+        value: c.claim === "alive",
+        confidence: TOLD_ALIVE_CONFIDENCE,
+        asOf: c.at,
+        source: { kind: "told", from: c.from, tick: c.at },
+      },
+      now,
+    );
+  }
+  return beliefs;
+}
+
 export function knowingProcess(o: KnowingOptions): ProcessDef {
   return {
     id: KNOWING_PROCESS,
@@ -96,6 +138,7 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       BODY_STATE.name,
       RELATIONS.name,
       BELIEFS.name,
+      ...(o.toldBeliefs === true ? [HEARD.name] : []),
       MENTAL.name,
       PURPOSE_READS.name,
       PERCEPTS.name,
@@ -245,6 +288,19 @@ export function knowingProcess(o: KnowingOptions): ProcessDef {
       if (reads.length > 0) {
         const learned = learnReads(beliefsOf(o.player), reads, ctx.now);
         if (learned !== beliefsOf(o.player)) staged.set(o.player, learned);
+      }
+      // Lo que le contaron de si alguien vive entra a su libro de creencias con la fuente `told`.
+      if (o.toldBeliefs === true) {
+        for (const id of (truth.ids(HEARD) as AgentId[]).sort()) {
+          const learnt = learnToldClaims(
+            beliefsOf(id),
+            id,
+            truth.get(HEARD, id),
+            ctx.now - 3_600,
+            ctx.now,
+          );
+          if (learnt !== beliefsOf(id)) staged.set(id, learnt);
+        }
       }
       for (const id of [...staged.keys()].sort()) {
         const b = staged.get(id);
