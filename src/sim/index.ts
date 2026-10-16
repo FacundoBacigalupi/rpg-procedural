@@ -24,6 +24,7 @@ export * from "./property/index.ts";
 export * from "./relations/index.ts";
 export * from "./religion/index.ts";
 export * from "./scheduler/index.ts";
+export * from "./schemes/index.ts";
 export * from "./settlements/index.ts";
 export * from "./skills/index.ts";
 export * from "./sky/index.ts";
