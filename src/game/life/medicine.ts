@@ -315,10 +315,12 @@ export interface MedicineOptions {
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
   /**
-   * Opt-in: la escuela de cada sanador por habilidad seg�n su comunidad (con varias comunidades,
+   * Opt-in: la escuela de cada sanador por habilidad según su comunidad (con varias comunidades,
    * cada una la suya); si devuelve `undefined` cae a `school`. Sin esto, `school` para todos.
    */
-  readonly schoolOf?: ((truth: ReadonlyWorldTruth, who: AgentId) => HealerSchool | undefined) | undefined;
+  readonly schoolOf?:
+    | ((truth: ReadonlyWorldTruth, who: AgentId) => HealerSchool | undefined)
+    | undefined;
   /** Opt-in: id del remedio a la unidad del ledger que gasta (1 por dosis, del sanador o del enfermo). */
   readonly stock?: Readonly<Record<string, string>> | undefined;
   /**

@@ -139,7 +139,8 @@ describe("life.schemes: el paso take mueve dinero (F1b-2b)", () => {
     });
     let n = 100;
     let recent: { id: unknown; kind: string; data: unknown; place: unknown }[] = [];
-    const steps: { kind: string; data: { stepKind?: string; taken?: number }; place: unknown }[] = [];
+    const steps: { kind: string; data: { stepKind?: string; taken?: number }; place: unknown }[] =
+      [];
     for (let d = 0; d < 12; d++) {
       let sn = 0;
       const r = p.run({
@@ -167,7 +168,7 @@ describe("life.schemes: el paso take mueve dinero (F1b-2b)", () => {
     return { truth, ledger, steps };
   }
 
-  it("el ladrón se lleva parte del saldo del blanco y el total se conserva", () => {
+  it("el ladrÃ³n se lleva parte del saldo del blanco y el total se conserva", () => {
     const { ledger, steps } = robbery(0.5);
     expect(ledger.balance(H("h2"), COIN)).toBe(50);
     expect(ledger.balance(H("h1"), COIN)).toBe(60);

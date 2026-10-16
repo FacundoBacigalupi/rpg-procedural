@@ -37,7 +37,6 @@ import {
   nearestHex,
   netHydration,
   nodeAt,
-  planLeaves,
   PERSON,
   PLACE,
   type PlanCursor,
@@ -45,6 +44,7 @@ import {
   type PostingDraft,
   type ProcessDef,
   type ProcessResult,
+  planLeaves,
   type ReadonlyWorldTruth,
   type StateChange,
   setComponent,
@@ -117,9 +117,9 @@ export interface NpcVerbsOptions {
     readonly after: number;
     readonly within: number;
     /**
-     * Opt-in: si despuÈs del corte el NPC decidiÛ otra cosa (una decisiÛn m·s nueva que el corte
-     * cuyo verbo no est· en ning˙n paso del plan cortado), el plan viejo se olvida en vez de
-     * competir con la decisiÛn; sin esto se retoma igual.
+     * Opt-in: si despu√©s del corte el NPC decidi√≥ otra cosa (una decisi√≥n m√°s nueva que el corte
+     * cuyo verbo no est√° en ning√∫n paso del plan cortado), el plan viejo se olvida en vez de
+     * competir con la decisi√≥n; sin esto se retoma igual.
      */
     readonly reevaluate?: boolean;
   };
@@ -782,8 +782,8 @@ export interface NpcPaused {
 export const NPC_PAUSED = table<NpcPaused>("life.npc_paused");
 
 /**
- * Si el plan cortado todavÌa conviene frente a la decisiÛn vigente (puro): sin decisiÛn posterior
- * al corte, o con un verbo que el plan ya contiene, conviene; con otro verbo, la decisiÛn cambiÛ y
+ * Si el plan cortado todav√≠a conviene frente a la decisi√≥n vigente (puro): sin decisi√≥n posterior
+ * al corte, o con un verbo que el plan ya contiene, conviene; con otro verbo, la decisi√≥n cambi√≥ y
  * el plan viejo ya no.
  */
 export function pausedPlanFits(

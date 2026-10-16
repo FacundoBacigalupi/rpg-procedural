@@ -373,7 +373,7 @@ describe("retomar lo cortado y la posición a medio camino", () => {
     options: 2,
   });
 
-  it("pausedPlanFits: sin decisi�n posterior al corte o con un verbo del plan, conviene", () => {
+  it("pausedPlanFits: sin decisión posterior al corte o con un verbo del plan, conviene", () => {
     const paused = { plan: cutWorld().get(NPC_PAUSED, me)?.plan as never, at: 3600 as never };
     expect(pausedPlanFits(paused, undefined)).toBe(true);
     expect(pausedPlanFits(paused, decisionAt(100, "eat"))).toBe(true);
@@ -381,7 +381,7 @@ describe("retomar lo cortado y la posición a medio camino", () => {
     expect(pausedPlanFits(paused, decisionAt(4000, "eat"))).toBe(false);
   });
 
-  it("con reevaluate, si decidi� otra cosa tras el corte el plan viejo se olvida; apagado se retoma", () => {
+  it("con reevaluate, si decidió otra cosa tras el corte el plan viejo se olvida; apagado se retoma", () => {
     const run2 = (reevaluate: boolean, verb: string) => {
       const truth = cutWorld();
       truth.set(NPC_DECISION, me, decisionAt(4000, verb));
@@ -411,7 +411,7 @@ describe("retomar lo cortado y la posición a medio camino", () => {
     expect(dropped.out.events ?? []).toEqual([]);
     expect(dropped.truth.get(NPC_PAUSED, me)).toBeUndefined();
     expect(dropped.truth.get(PLAN_STATE, me)?.done).toBe(true);
-    // Mismo verbo, o sin la opci�n: se retoma como siempre.
+    // Mismo verbo, o sin la opción: se retoma como siempre.
     expect(run2(true, "move").out.events?.[0]).toMatchObject({ kind: "npc.resumed" });
     expect(run2(false, "eat").out.events?.[0]).toMatchObject({ kind: "npc.resumed" });
     // Determinismo.

@@ -3,17 +3,17 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent, Rng } from "../../core/index.ts";
 import {
+  COMMUNITY_CULTURE,
   type CommunityCulture,
   CULTURE_TRAITS,
-  COMMUNITY_CULTURE,
   CULTURES,
-  PERSON_CULTURE,
-  WorldTruth,
   cultureProblems,
   diagnose,
   type PathogenDef,
+  PERSON_CULTURE,
   remedyEffect,
   villageCulture,
+  WorldTruth,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -117,13 +117,14 @@ describe("escuelas médicas por cultura", () => {
   }, 30_000);
 });
 
-describe("escuela m�dica por comunidad", () => {
+describe("escuela médica por comunidad", () => {
   const community = (id: string, variants: Record<string, number>) =>
     ({ ...culture(variants), culture: id }) as CommunityCulture;
   const who = "agent:1" as AgentId;
   const world = (communities: CommunityCulture[], group?: string) => {
     const t = new WorldTruth();
-    for (const c of communities) t.set(COMMUNITY_CULTURE, `settlement:${c.culture === "a" ? 1 : 2}` as never, c);
+    for (const c of communities)
+      t.set(COMMUNITY_CULTURE, `settlement:${c.culture === "a" ? 1 : 2}` as never, c);
     if (group)
       t.set(
         PERSON_CULTURE,
