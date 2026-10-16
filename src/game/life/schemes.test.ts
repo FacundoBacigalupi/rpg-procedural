@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { makeId, Rng } from "../../core/index.ts";
+import {
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  Ledger,
+  ledgerUnit,
+  makeId,
+  Rng,
+} from "../../core/index.ts";
 import { ENTITY, PERSON, type SchemerView, WorldTruth } from "../../sim/index.ts";
 import { SCHEMES, type SchemeSeed, schemeRows, schemesProcess } from "./schemes.ts";
 
@@ -102,5 +110,80 @@ describe("life.schemes", () => {
     const y = run(bold, 12);
     expect(JSON.stringify(schemeRows(x.truth))).toBe(JSON.stringify(schemeRows(y.truth)));
     expect(x.kinds).toEqual(y.kinds);
+  });
+});
+
+describe("life.schemes: el paso take mueve dinero (F1b-2b)", () => {
+  const COIN = ledgerUnit("coin:copper");
+  const H = (h: string) => holderAccount(h as unknown as HolderRef);
+  const greedy: SchemerView = { ...bold, motive: "greed", believedLoot: 1, affinity: 0 };
+  const greedSeed: SchemeSeed = { ...seed, motive: "greed" };
+
+  function robbery(fraction: number, seeds: readonly SchemeSeed[] = [greedSeed]) {
+    const truth = world();
+    const ledger = new Ledger({ externals: { seed: [COIN] } });
+    ledger.post({
+      tick: 0,
+      eventId: ev(1),
+      transfers: [
+        { unit: COIN, from: externalAccount("seed"), to: H("h2"), amount: 100 },
+        { unit: COIN, from: externalAccount("seed"), to: H("h1"), amount: 10 },
+      ],
+    });
+    const p = schemesProcess({
+      seeds,
+      view: () => greedy,
+      placeOf: (_t, who) => ({ kind: "cell", who }) as never,
+      day: 10,
+      loot: { unit: COIN, fraction },
+    });
+    let n = 100;
+    let recent: { id: unknown; kind: string; data: unknown; place: unknown }[] = [];
+    const steps: { kind: string; data: { stepKind?: string; taken?: number }; place: unknown }[] = [];
+    for (let d = 0; d < 12; d++) {
+      let sn = 0;
+      const r = p.run({
+        truth,
+        ledger,
+        now: d * 10,
+        recent,
+        rng: Rng.root(7),
+        newId: () => makeId("scheme", ++sn),
+      } as never);
+      for (const c of r.changes ?? []) {
+        const x = c as unknown as { table: string; id: never; value: unknown };
+        truth.setRaw(x.table, x.id, x.value);
+      }
+      const ids = (r.events ?? []).map(() => ev(++n));
+      recent = (r.events ?? []).map((e, i) => ({ ...e, id: ids[i] }) as never);
+      for (const po of r.postings ?? []) {
+        const i = Number(String(po.event).replace("event:~", ""));
+        ledger.post({ tick: d * 10, eventId: ids[i] as never, transfers: po.transfers });
+      }
+      for (const e of r.events ?? [])
+        if (e.kind === "scheme.step")
+          steps.push({ kind: e.kind, data: e.data as never, place: e.place });
+    }
+    return { truth, ledger, steps };
+  }
+
+  it("el ladrón se lleva parte del saldo del blanco y el total se conserva", () => {
+    const { ledger, steps } = robbery(0.5);
+    expect(ledger.balance(H("h2"), COIN)).toBe(50);
+    expect(ledger.balance(H("h1"), COIN)).toBe(60);
+    expect(ledger.total(COIN)).toBe(110);
+    const take = steps.find((s) => s.data.stepKind === "take");
+    expect(take?.data.taken).toBe(50);
+    expect(take?.place).toMatchObject({ who: makeId("agent", 2) });
+    expect(steps.filter((s) => s.data.taken !== undefined)).toHaveLength(1);
+  });
+
+  it("sin loot no mueve nada y es determinista", () => {
+    const a = robbery(0);
+    expect(a.ledger.balance(H("h2"), COIN)).toBe(100);
+    const b = robbery(0.5);
+    const c = robbery(0.5);
+    expect(JSON.stringify(b.steps)).toBe(JSON.stringify(c.steps));
+    expect(JSON.stringify(schemeRows(b.truth))).toBe(JSON.stringify(schemeRows(c.truth)));
   });
 });

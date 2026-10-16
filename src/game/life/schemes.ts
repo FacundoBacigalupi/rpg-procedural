@@ -7,15 +7,26 @@
 // nadie (F1b-2: `move`/`attack`/`take`, dinero y huellas para el `Case`). Opt-in
 // (`LifeParts.schemes`); apagado no existe ni corre. Nada de esto llega al narrador.
 
-import type { AgentId, EventId, PlaceRef } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  type LedgerAccount,
+  type LedgerUnit,
+  type PlaceRef,
+  type Transfer,
+} from "../../core/index.ts";
 import {
   decideScheme,
+  draftEvent,
   ENTITY,
   type EventDraft,
   endScheme,
   makeScheme,
   nextStep,
   PERSON,
+  type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
   recordStep,
@@ -54,6 +65,19 @@ export interface SchemeRow {
 /** Cada intriga vive en una entidad `scheme:n` con este componente. Solo la escribe `life.schemes`. */
 export const SCHEMES = table<SchemeRow>("life.schemes");
 
+/**
+ * Opt-in (F1b-2b): el paso `take` mueve dinero del blanco al intrigante por el ledger (conserva;
+ * no se crea nada). Se lleva `fraction` de lo que el blanco tiene en `unit` (redondeado hacia abajo,
+ * nunca más que su saldo). Sin esto el paso `take` sigue sin mover nada.
+ */
+export interface SchemeLoot {
+  readonly unit: LedgerUnit;
+  /** Parte (0-1) del saldo del blanco que se lleva. */
+  readonly fraction: number;
+  /** Cuenta de una persona; por defecto, la de su hogar. */
+  readonly account?: (truth: ReadonlyWorldTruth, who: AgentId) => LedgerAccount;
+}
+
 export interface SchemesOptions {
   readonly seeds: readonly SchemeSeed[];
   /** Lo que el intrigante cree y es respecto del blanco (nunca la verdad del blanco). */
@@ -61,6 +85,7 @@ export interface SchemesOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por dÃ­a de mundo. */
   readonly day: number;
+  readonly loot?: SchemeLoot;
 }
 
 export function schemeRows(truth: ReadonlyWorldTruth): { id: string; row: SchemeRow }[] {
@@ -68,6 +93,9 @@ export function schemeRows(truth: ReadonlyWorldTruth): { id: string; row: Scheme
     .sort()
     .map((id) => ({ id: id as string, row: truth.get(SCHEMES, id) as SchemeRow }));
 }
+
+const householdAccount = (truth: ReadonlyWorldTruth, who: AgentId): LedgerAccount =>
+  holderAccount((truth.get(PERSON, who)?.household ?? String(who)) as unknown as HolderRef);
 
 export function schemesProcess(o: SchemesOptions): ProcessDef {
   return {
@@ -85,6 +113,8 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
       const alive = (id: AgentId) => truth.get(ENTITY, id)?.endedAt === undefined;
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const spent = new Map<string, number>();
       const known = new Set<string>();
 
       for (const { id, row } of schemeRows(truth)) {
@@ -110,11 +140,32 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
             if (!alive(scheme.owner) || !alive(scheme.target)) {
               scheme = endScheme(scheme, "abandoned");
             } else {
+              let loot: { taken: number; unit: string } | undefined;
+              const ledger = ctx.ledger;
+              if (o.loot && ledger && step.kind === "take") {
+                const acct = o.loot.account ?? householdAccount;
+                const from = acct(truth, scheme.target);
+                const to = acct(truth, scheme.owner);
+                const key = `${String(from)}|${String(o.loot.unit)}`;
+                const have = Math.floor(ledger.balance(from, o.loot.unit) ?? 0) - (spent.get(key) ?? 0);
+                const taken = Math.max(0, Math.min(have, Math.floor(have * o.loot.fraction)));
+                loot = { taken, unit: String(o.loot.unit) };
+                if (taken > 0 && String(from) !== String(to)) {
+                  const ts: Transfer[] = [{ unit: o.loot.unit, from, to, amount: taken }];
+                  postings.push({ event: draftEvent(events.length), transfers: ts });
+                  spent.set(key, (spent.get(key) ?? 0) + taken);
+                } else loot.taken = 0;
+              }
               events.push({
                 kind: SCHEME_STEP_EVENT,
                 actors: [scheme.owner, scheme.target],
-                place: o.placeOf(truth, scheme.owner),
-                data: { scheme: id, step: scheme.done, stepKind: step.kind },
+                place: o.placeOf(truth, loot ? scheme.target : scheme.owner),
+                data: {
+                  scheme: id,
+                  step: scheme.done,
+                  stepKind: step.kind,
+                  ...(loot ? { taken: loot.taken, unit: loot.unit } : {}),
+                },
                 emissions: {},
                 causes: stepCauses(scheme).map((event) => ({ kind: "event" as const, event })),
               });
@@ -164,7 +215,9 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
           causes: [{ kind: "event", event: seed.origin }],
         });
       }
-      return changes.length === 0 && events.length === 0 ? {} : { changes, events };
+      return changes.length === 0 && events.length === 0
+        ? {}
+        : { changes, events, ...(postings.length > 0 ? { postings } : {}) };
     },
   };
 }
