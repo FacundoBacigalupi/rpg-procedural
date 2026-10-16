@@ -203,8 +203,14 @@ export interface LifeSetup {
  * `scam.discovered` (baja la confianza en el falsificador); el resto de lo que emiten los `perceive` no le llega.
  * Compatibilidad: el replay con un motor anterior a `life-28` enciende `legacyNoAppraiseCascade`; una vida
  * guardada con `life-27` sigue desde su estado con el límite de replay.
+ *
+ * `life-29`: el mapa local guarda la cuenca oceánica y la teleconexión de la celda de la aldea
+ * (`LocalMap.oscillation`, `worldgen/planet/basins.ts`) y el clima de cada día, la cosecha y la
+ * lluvia de la ventana de riego leen la anomalía del año de la oscilación (`anomalyOfMap`: años
+ * buenos y malos, weather §1). Compatibilidad: el replay con un motor anterior a `life-29` enciende
+ * `legacyNoOscillation`; una vida guardada con `life-28` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-28";
+export const LIFE_ENGINE = "life-29";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -242,6 +248,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 26 ? { legacyNoCobbler: true } : {}),
     ...(n < 27 ? { legacyNoPerceiveCascade: true } : {}),
     ...(n < 28 ? { legacyNoAppraiseCascade: true } : {}),
+    ...(n < 29 ? { legacyNoOscillation: true } : {}),
   };
 }
 

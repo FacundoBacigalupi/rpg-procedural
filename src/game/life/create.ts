@@ -28,6 +28,7 @@ import {
   ACTIONS,
   ActionCatalog,
   ADDRESSES,
+  anomalyOfMap,
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
@@ -282,6 +283,11 @@ export interface LifeOptions {
   readonly legacyNoPerceiveCascade?: boolean;
   /** Solo el replay de un motor anterior a `life-28`: `life.appraise` no recibe el `scam.discovered` de la segunda ronda. */
   readonly legacyNoAppraiseCascade?: boolean;
+  /**
+   * Solo el replay de un motor anterior a `life-29`: el mapa local no guarda la cuenca y la
+   * teleconexión de la celda, así que no hay años buenos y malos por la oscilación oceánica.
+   */
+  readonly legacyNoOscillation?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -568,6 +574,7 @@ export function optInParts(
   | "legacyResume"
   | "legacyNoPerceiveCascade"
   | "legacyNoAppraiseCascade"
+  | "legacyNoOscillation"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -700,6 +707,7 @@ export function optInParts(
     ...(options.legacyResume ? { legacyResume: true } : {}),
     ...(options.legacyNoPerceiveCascade ? { legacyNoPerceiveCascade: true } : {}),
     ...(options.legacyNoAppraiseCascade ? { legacyNoAppraiseCascade: true } : {}),
+    ...(options.legacyNoOscillation ? { legacyNoOscillation: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
@@ -880,7 +888,13 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
       : {}),
   });
   const village: PlaceRef = { kind: "settlement", settlement: population.settlement };
-  return { village, planet, site, map: localMapOf(planet, site), population };
+  return {
+    village,
+    planet,
+    site,
+    map: localMapOf(planet, site, options.legacyNoOscillation === true),
+    population,
+  };
 }
 
 /**
@@ -1349,7 +1363,7 @@ export function createLife(
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
   // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
-  const season = harvestSeason(map.climate, clock, Rng.root(seed));
+  const season = harvestSeason(map.climate, clock, Rng.root(seed), anomalyOfMap(map, clock, seed));
   const startDay = dayOf(clock, pop.now + Math.round((map.lonDeg / 360) * clock.day));
   const birthOf = new Map(pop.people.map((p) => [p.id, p.born]));
   const larderOf = (h: { members: readonly AgentId[]; id: HouseholdId }): number =>

@@ -16,6 +16,7 @@ import type {
 import { ledgerUnit, makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
+  anomalyOfMap,
   type BodyPlanDef,
   type BondDef,
   bodyProcess,
@@ -387,6 +388,8 @@ export interface LifeWorld {
   readonly legacyNoPerceiveCascade?: boolean;
   /** Replay de motores anteriores a `life-28`: `life.appraise` sin la segunda ronda de `scam.discovered`. */
   readonly legacyNoAppraiseCascade?: boolean;
+  /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
+  readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
   readonly waitEatHomeOnly?: boolean;
   /** Replay de motores anteriores a `life-13`: nadie da de beber al inconsciente; ver `RoutineOptions.careWater`. */
@@ -1897,7 +1900,12 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
                 harvest: {
-                  season: harvestSeason(parts.map.climate, parts.clock, Rng.root(parts.seed)),
+                  season: harvestSeason(
+                    parts.map.climate,
+                    parts.clock,
+                    Rng.root(parts.seed),
+                    anomalyOfMap(parts.map, parts.clock, parts.seed),
+                  ),
                   ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
                     ? {
                         field: {

@@ -25,6 +25,7 @@ import {
   AMPUTATIONS,
   adulterate,
   advance,
+  anomalyOfMap,
   applyAcute,
   type Bearing,
   BODY_STATE,
@@ -506,7 +507,12 @@ export function actProcess(o: ActOptions): ProcessDef {
   );
   const plans = new Map(o.bodyPlans.map((p) => [p.id, p]));
   // Lo que rinde la hora de campo depende del día (calor, helada, lluvia) y del suelo, igual que en la rutina.
-  const season = harvestSeason(o.map.climate, o.clock, Rng.root(o.seed));
+  const season = harvestSeason(
+    o.map.climate,
+    o.clock,
+    Rng.root(o.seed),
+    anomalyOfMap(o.map, o.clock, o.seed),
+  );
   const rainOf = rainWindow(o);
   const cropStart = cropStarts(season, Math.round(o.clock.year / o.clock.day));
   const serialVerbs = new Set<string>(o.serialEconomicVerbs ?? (o.serialTrades ? ["trade"] : []));
