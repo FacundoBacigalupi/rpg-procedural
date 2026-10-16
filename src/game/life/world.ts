@@ -1118,6 +1118,7 @@ export function lifeWorld(
           ? [
               councilCasesProcess({
                 ...parts.councilCases,
+                goods: parts.goods,
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
               }),
