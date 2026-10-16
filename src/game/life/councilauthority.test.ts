@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { AgentId, EventId, HouseholdId, OrgId, SettlementId } from "../../core/index.ts";
 import {
   ENTITY,
+  forumResponse,
   foundCouncil,
   HOUSEHOLD,
+  NO_STANDING,
   ORG,
   ORG_LOYALTY,
   PERSON,
@@ -12,7 +14,7 @@ import {
   WorldTruth,
   withdrawMember,
 } from "../../sim/index.ts";
-import { councilSources, villageAuthority } from "./councilauthority.ts";
+import { councilSources, councilStanding, villageAuthority } from "./councilauthority.ts";
 import { householdAuthority } from "./patientbonds.ts";
 
 const ev = "event:1" as EventId;
@@ -152,6 +154,41 @@ describe("councilauthority", () => {
         expect(y).toBeGreaterThanOrEqual(x - 1e-9);
         expect(y).toBeLessThanOrEqual(1);
         expect(y).toBe(villageAuthority(base, kid, "flu", o));
+      }),
+    );
+  });
+
+  it("councilStanding: autoridad y lealtad del consejo como foro, solo de lo creído y registrado", () => {
+    const w = world({ dad: 0, chief: 0.5, elder: 0 });
+    // Sin contagio de por medio: cabeza 1 * respeto 0,5.
+    expect(councilStanding(w, kid)).toEqual({ authority: 0.5, loyalty: 0 });
+    w.set(ORG_LOYALTY, org1, {
+      toward: { [kid]: { value: 0.4, updated: 1, cause: ev, moves: 1 } },
+    });
+    const s = councilStanding(w, kid);
+    expect(s.loyalty).toBeCloseTo(0.4);
+    expect(s.authority).toBeGreaterThan(0.5);
+    expect(councilStanding(world({ dad: 1, chief: 1, elder: 1 }, false), kid)).toEqual(NO_STANDING);
+    // La respuesta del foro sube con la autoridad que de verdad le reconoce el acusado.
+    const weak = councilStanding(world({ dad: 0, chief: 0, elder: 0 }), kid);
+    const strong = councilStanding(world({ dad: 0, chief: 1, elder: 1 }), kid);
+    expect(forumResponse(0.9, false, weak)).toBe("mediate");
+    expect(forumResponse(0.9, false, strong)).toBe("sanction");
+  });
+
+  it("propiedad: councilStanding es determinista y acotada", () => {
+    const unit = fc.double({ min: 0, max: 1, noNaN: true });
+    fc.assert(
+      fc.property(unit, unit, unit, (r, e, l) => {
+        const w = world({ dad: 0, chief: r, elder: e });
+        w.set(ORG_LOYALTY, org1, {
+          toward: { [kid]: { value: l, updated: 1, cause: ev, moves: 1 } },
+        });
+        const s = councilStanding(w, kid);
+        expect(s).toEqual(councilStanding(w, kid));
+        expect(s.authority).toBeGreaterThanOrEqual(0);
+        expect(s.authority).toBeLessThanOrEqual(1);
+        expect(s.loyalty).toBeCloseTo(l);
       }),
     );
   });
