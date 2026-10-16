@@ -394,6 +394,8 @@ export interface LifeWorld {
   readonly legacyNoPerceiveCascade?: boolean;
   /** Replay de motores anteriores a `life-28`: `life.appraise` sin la segunda ronda de `scam.discovered`. */
   readonly legacyNoAppraiseCascade?: boolean;
+  /** Replay de motores anteriores a `life-30`: `life.lend`, `life.repay_dose` y `life.pawn_decide` fuera del dominio económico. */
+  readonly legacyNoLendPawnBatch?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -950,6 +952,9 @@ export function lifeWorld(
         ...(parts.pawn?.open && parts.pawn.want
           ? [
               pawnDecideProcess({
+                ...(economicBatch && parts.legacyNoLendPawnBatch !== true
+                  ? { economicBatch: true }
+                  : {}),
                 goods: parts.goods,
                 day: parts.clock.day,
                 player,
@@ -1133,6 +1138,9 @@ export function lifeWorld(
         ...(parts.lendBorrowed === true && parts.borrowCraving
           ? [
               lendProcess({
+                ...(economicBatch && parts.legacyNoLendPawnBatch !== true
+                  ? { economicBatch: true }
+                  : {}),
                 goods: parts.goods,
                 dims: parts.relationDims,
                 bonds: parts.relationBonds,
@@ -1146,6 +1154,9 @@ export function lifeWorld(
         ...(parts.repayDoses === true && parts.consumables
           ? [
               repayDoseProcess({
+                ...(economicBatch && parts.legacyNoLendPawnBatch !== true
+                  ? { economicBatch: true }
+                  : {}),
                 goods: parts.goods,
                 substances: parts.consumables.map((c) => c.good),
                 player,
