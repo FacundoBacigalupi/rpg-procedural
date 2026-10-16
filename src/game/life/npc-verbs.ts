@@ -23,7 +23,9 @@ import {
   BODY_STATE,
   type Body,
   type BodyPlanDef,
+  type BondDef,
   believed,
+  type DimensionDef,
   deleteComponent,
   draftEvent,
   ENTITY,
@@ -42,10 +44,13 @@ import {
   type PlanCursor,
   type PlanTemplate,
   type PostingDraft,
+  type ProcessContext,
   type ProcessDef,
   type ProcessResult,
   planLeaves,
+  RELATIONS,
   type ReadonlyWorldTruth,
+  relationship,
   type StateChange,
   setComponent,
   THIRSTY_FRACTION,
@@ -63,6 +68,7 @@ import {
 import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { MAX_RAIN_WAITS, type RoadForecast } from "./forecast.ts";
+import { GREET_CHANCE, NPC_GREETED, NPC_MET, refusesGreeting } from "./npc-met.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRANSIT } from "./transit-state.ts";
 
@@ -80,6 +86,12 @@ export interface NpcVerbsOptions {
   readonly day: number;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia no mantiene viva la decisión `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
+  /**
+   * Opt-in (`life-33`, con `journeyDays` y `placeOf`; `speak` en `verbs`): el viajero saluda a quien
+   * se cruzó y sigue en su hex con una acción `speak` de acto `greet` (`RoadGreetOptions`), en vez de
+   * que `life.npc_greetings` lo haga con efecto directo.
+   */
+  readonly greet?: RoadGreetOptions;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no arma planes. */
   readonly sleepers?: boolean;
   /** El personaje decide por su cuenta: queda afuera. */
@@ -386,6 +398,67 @@ function withDecidedArgs(
   return node;
 }
 
+/** Opt-in (`life-33`, con `journeyDays`): el saludo al cruzarse sale por el verbo `speak` con acto `greet`. */
+export interface RoadGreetOptions {
+  readonly dims: readonly DimensionDef[];
+  readonly bonds: readonly BondDef[];
+}
+
+/**
+ * El saludo del viajero a alguien que se cruzó y sigue en su hex (puro): el primero por id que no
+ * saludó ya en este viaje (ni él lo saludó a `me`), vivo, sin rencor, miedo ni aversión de ninguno
+ * y con la chance `GREET_CHANCE` (rng propio por pareja y hora). Devuelve el plan y la libreta de
+ * saludos que lo anota; una vez por pareja y viaje.
+ */
+function greetOnRoad(
+  g: RoadGreetOptions,
+  o: NpcVerbsOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  trip: { readonly since: number },
+  now: Tick,
+  rng: ProcessContext["rng"],
+): { plan: ActionPlan; book: { since: number; greeted: string[] } } | undefined {
+  const met = truth.get(NPC_MET, me);
+  const here = truth.get(LOCATION, me)?.hex;
+  if (!met || met.since !== trip.since || here === undefined) return undefined;
+  const old = truth.get(NPC_GREETED, me);
+  const mine = new Set(old && old.since === trip.since ? old.greeted : []);
+  const ctxRel = { dims: g.dims, bonds: g.bonds, schemaStrength: () => 0 };
+  for (const other of [...met.met].sort() as AgentId[]) {
+    if (other === o.player || mine.has(other)) continue;
+    if (
+      truth.get(ENTITY, other)?.endedAt !== undefined ||
+      truth.get(PERSON, other) === undefined ||
+      truth.get(LOCATION, other)?.hex !== here
+    )
+      continue;
+    const theirs = truth.get(NPC_GREETED, other);
+    if (
+      theirs &&
+      theirs.since === truth.get(NPC_JOURNEY, other)?.since &&
+      theirs.greeted.includes(me)
+    )
+      continue;
+    if (
+      refusesGreeting(relationship(truth.get(RELATIONS, me), other, now, ctxRel)) ||
+      refusesGreeting(relationship(truth.get(RELATIONS, other), me, now, ctxRel))
+    )
+      continue;
+    const first = me < other ? me : other;
+    const second = me < other ? other : me;
+    if (rng.fork("greet", first, second, now).float() >= GREET_CHANCE) continue;
+    const plan = planFromDecision(
+      { id: `speak:${other}`, verb: "speak", act: { kind: "greet" } },
+      o.catalog,
+      me,
+    );
+    if (!plan) continue;
+    return { plan, book: { since: trip.since, greeted: [...mine, other].sort() } };
+  }
+  return undefined;
+}
+
 /** Convierte la decisión vigente en plan y lo agenda para `life.act`; un plan en curso no se pisa. */
 export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
   const allowed = new Set(o.verbs);
@@ -404,7 +477,8 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       LOCATION.name,
       PLACE.name,
       ...(o.sleepers ? [ASLEEP.name] : []),
-      ...(o.provisions ? [PERSON.name] : []),
+      ...(o.provisions || o.greet ? [PERSON.name] : []),
+      ...(o.greet ? [NPC_MET.name, NPC_GREETED.name, RELATIONS.name] : []),
       ...(o.nightRest || o.resume || o.drink ? [BODY_STATE.name] : []),
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
@@ -421,6 +495,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       PLAN_STATE.name,
       NPC_VERB_LOG.name,
       ...(o.legacyNoRainWaitPersist === true ? [] : [NPC_DECISION.name]),
+      ...(o.greet ? [NPC_GREETED.name] : []),
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
       ...(o.drink ? [BODY_STATE.name] : []),
@@ -460,7 +535,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
                 ]
               : [];
           return {
-            changes: [deleteComponent(NPC_JOURNEY, me)],
+            changes: [
+              deleteComponent(NPC_JOURNEY, me),
+              ...(o.greet && truth.get(NPC_GREETED, me) !== undefined
+                ? [deleteComponent(NPC_GREETED, me)]
+                : []),
+            ],
             events: [journeyEvent(me, what, trip.place, days, o.placeOf?.(truth, me))],
             postings: back,
           };
@@ -535,6 +615,21 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
               changes: [setComponent(NPC_JOURNEY, me, { ...trip, rested: ctx.now })],
             });
           }
+        }
+        // `life-33`: quien se cruzó con alguien que sigue en su hex lo saluda con el acto `greet` del
+        // verbo `speak` (el trato lo resuelve `life.converse`); el viaje no se pierde, el tramo
+        // siguiente lo retoma. No corta un tramo a medias con tránsito.
+        // Tras un saludo toca caminar: una plaza llena no se come las horas del viaje.
+        const justGreeted =
+          going?.plan.root.kind === "do" && going.plan.root.verb === "speak" && going.done;
+        const greeting =
+          o.greet && !justGreeted && !(o.transit && transit?.walk !== undefined)
+            ? greetOnRoad(o.greet, o, truth, me, trip, ctx.now, ctx.rng)
+            : undefined;
+        if (greeting) {
+          return startPlan(me, greeting.plan, going?.seq ?? 0, ctx.now, {
+            changes: [setComponent(NPC_GREETED, me, greeting.book)],
+          });
         }
         if (going && !going.done) return {};
         const plan = planFromDecision(

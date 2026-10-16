@@ -12,17 +12,14 @@ import {
   type ProcessDef,
   type ReadonlyWorldTruth,
   setComponent,
-  table,
 } from "../../sim/index.ts";
+import { NPC_MET } from "./npc-met.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 
 export const NPC_ENCOUNTERS_PROCESS = "life.npc_encounters";
 export const CROSSED_EVENT = "npc.crossed";
 
-/** A quién ya se cruzó en este viaje (el viaje se identifica por cuándo empezó). */
-export const NPC_MET = table<{ readonly since: number; readonly met: readonly string[] }>(
-  "life.npc_met",
-);
+export { NPC_MET };
 
 /** Tope de cruces que se registran en una misma pasada, para que una plaza llena no inunde el registro. */
 export const MAX_CROSSINGS_PER_PASS = 3;

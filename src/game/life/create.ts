@@ -302,6 +302,8 @@ export interface LifeOptions {
   readonly legacyNoDeadCounterpartyGuard?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
+  /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
+  readonly legacyNoGreetDecision?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -611,6 +613,7 @@ export function optInParts(
   | "legacyNoLendPawnBatch"
   | "legacyNoDeadCounterpartyGuard"
   | "legacyNoRainWaitPersist"
+  | "legacyNoGreetDecision"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -756,6 +759,7 @@ export function optInParts(
     ...(options.legacyNoLendPawnBatch ? { legacyNoLendPawnBatch: true } : {}),
     ...(options.legacyNoDeadCounterpartyGuard ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
+    ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
