@@ -56,6 +56,8 @@ export interface ScanEnv {
   readonly day: Duration;
   readonly year: Duration;
   readonly goods: readonly GoodDef[];
+  /** Consejo de aldea 4: por préstamo, lo que el tesoro ya pagó al acreedor (se descuenta de lo adeudado). */
+  readonly assumed?: Readonly<Record<string, number>>;
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
@@ -108,7 +110,7 @@ export function scanPressures(
     if (l?.status !== "defaulted") continue;
     if (!people.homes.has(l.borrower) || !people.homes.has(l.lender)) continue;
     const due = totalDue(l);
-    const owed = outstanding(l);
+    const owed = outstanding(l) - (env.assumed?.[id as string] ?? 0);
     if (owed <= 0 || due <= 0) continue;
     out.push({
       kind: "debt",
