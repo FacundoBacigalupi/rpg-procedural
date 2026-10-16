@@ -107,8 +107,8 @@ describe("life.council: salidas por muerte (proceso aislado)", () => {
     placeOf: () => ({ kind: "cell" }) as never,
   };
 
-  function step(truth: WorldTruth, now: number, n: number) {
-    const p = councilProcess(opts);
+  function step(truth: WorldTruth, now: number, n: number, o: CouncilOptions = opts) {
+    const p = councilProcess(o);
     let sn = n;
     const r = p.run({
       truth,
@@ -145,13 +145,13 @@ describe("life.council: salidas por muerte (proceso aislado)", () => {
       endedAt: 50,
       endEventId: ev(9),
     } as never);
-    const r = step(t, 60, 5);
+    const r = step(t, 60, 5, { ...opts, succession: false });
     expect(r.events?.map((e) => e.kind)).toEqual(["org.member_left"]);
     expect(JSON.stringify(r.events?.[0]?.causes)).toContain(String(ev(9)));
     const org = councilRows(t)[0]?.org;
     expect(org?.positions[0]?.holder).toBeNull();
     expect(org?.members.find((m) => m.agent === ag(1))?.until).toBe(50);
     expect(orgViolations(org as never)).toEqual([]);
-    expect(step(t, 70, 5).events ?? []).toEqual([]);
+    expect(step(t, 70, 5, { ...opts, succession: false }).events ?? []).toEqual([]);
   });
 });

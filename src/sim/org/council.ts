@@ -10,7 +10,7 @@ import { table } from "../world/index.ts";
 
 export type OrgTemplate = "village_council";
 export type OrgStatus = "active" | "dormant" | "dissolved";
-export type MembershipVia = "founding";
+export type MembershipVia = "founding" | "coopted";
 export type MembershipExit = "death";
 export type CouncilRank = "head" | "elder";
 export type SelectionRule = "seniority";
@@ -28,6 +28,8 @@ export interface Membership {
   readonly exit?: MembershipExit;
   /** Evento que explica la salida (la muerte), si la hubo. */
   readonly exitEventId?: EventId;
+  /** Quién ocupó el asiento que dejó esta salida (reposición); ausente = asiento aún vacante. */
+  readonly replacedBy?: AgentId;
   readonly originEventId: EventId;
 }
 
@@ -37,6 +39,9 @@ export interface Position {
   readonly selection: SelectionRule;
   readonly holder: AgentId | null;
   readonly since: Tick;
+  /** Si está vacante: desde cuándo y qué evento (la muerte del titular) la dejó así. */
+  readonly vacantSince?: Tick;
+  readonly vacatedBy?: EventId;
   readonly originEventId: EventId;
 }
 
@@ -183,9 +188,116 @@ export function withdrawMember(
       ? { ...m, until: exit.at, exit: exit.kind, exitEventId: exit.event }
       : m,
   );
-  const positions = org.positions.map((p) => (p.holder === who ? { ...p, holder: null } : p));
+  const positions = org.positions.map((p) =>
+    p.holder === who ? { ...p, holder: null, vacantSince: exit.at, vacatedBy: exit.event } : p,
+  );
   const left = members.some((m) => m.until === undefined);
   return { ...org, members, positions, status: left ? org.status : "dissolved" };
+}
+
+export interface SuccessionCandidate {
+  readonly agent: AgentId;
+  readonly ageYears: number;
+  readonly respect?: number;
+}
+
+/**
+ * Legitimidad de un miembro para ser cabeza (organizations §3 «sucesión»): antigüedad en el consejo
+ * (0.35, tope 20 años), edad (0.35) y respeto creído (0.30). Sin azar.
+ */
+export function headClaim(
+  m: Membership,
+  c: SuccessionCandidate,
+  now: Tick,
+  yearTicks: number,
+): number {
+  const tenure = clamp01((now - m.since) / yearTicks / 20);
+  return round6(0.35 * tenure + 0.35 * clamp01(c.ageYears / 80) + 0.3 * clamp01(c.respect ?? 0));
+}
+
+/** El miembro activo con más derecho al puesto de cabeza (desempate por id), o null. */
+export function electHead(
+  org: Organization,
+  info: ReadonlyMap<AgentId, SuccessionCandidate>,
+  now: Tick,
+  yearTicks: number,
+): AgentId | null {
+  let best: { agent: AgentId; w: number } | null = null;
+  for (const m of activeMembers(org)) {
+    const c = info.get(m.agent) ?? { agent: m.agent, ageYears: 0 };
+    const w = headClaim(m, c, now, yearTicks);
+    if (best === null || w > best.w || (w === best.w && m.agent < best.agent))
+      best = { agent: m.agent, w };
+  }
+  return best?.agent ?? null;
+}
+
+/** ¿Está vacante el puesto de cabeza (y queda alguien para ocuparlo)? */
+export const headVacant = (org: Organization): boolean =>
+  org.status === "active" &&
+  org.positions.some((p) => p.id === HEAD_POSITION && p.holder === null) &&
+  activeMembers(org).length > 0;
+
+/** Un miembro asume el puesto de cabeza (el evento `event` lo explica). */
+export function fillHead(org: Organization, who: AgentId, at: Tick, event: EventId): Organization {
+  if (!isMember(org, who) || !headVacant(org)) return org;
+  const members = org.members.map((m) =>
+    m.until !== undefined
+      ? m
+      : m.agent === who
+        ? { ...m, rank: "head" as const, positions: [HEAD_POSITION] }
+        : { ...m, rank: "elder" as const, positions: [] },
+  );
+  const positions = org.positions.map((p) =>
+    p.id === HEAD_POSITION
+      ? {
+          id: p.id,
+          title: p.title,
+          selection: p.selection,
+          holder: who,
+          since: at,
+          originEventId: event,
+        }
+      : p,
+  );
+  return { ...org, members, positions };
+}
+
+/** Asientos que dejó la muerte y nadie ocupó todavía, acotados por el tope de asientos. */
+export function openSeats(org: Organization, rules: CouncilRules): number {
+  if (org.status !== "active") return 0;
+  const unreplaced = org.members.filter((m) => m.until !== undefined && m.replacedBy === undefined);
+  return Math.max(0, Math.min(unreplaced.length, rules.seats - activeMembers(org).length));
+}
+
+/** La salida (la muerte) del asiento vacante más viejo, si hay: su `exitEventId` es la causa. */
+export function oldestVacancy(org: Organization): Membership | undefined {
+  return org.members
+    .filter((m) => m.until !== undefined && m.replacedBy === undefined)
+    .sort((a, b) => (a.until ?? 0) - (b.until ?? 0) || (a.agent < b.agent ? -1 : 1))[0];
+}
+
+/** Un nuevo anciano ocupa el asiento vacante más viejo (cooptado por el consejo). */
+export function admitMember(
+  org: Organization,
+  who: AgentId,
+  at: Tick,
+  event: EventId,
+): Organization {
+  const seat = oldestVacancy(org);
+  if (!seat || isMember(org, who)) return org;
+  const members: Membership[] = org.members.map((m) =>
+    m === seat ? { ...m, replacedBy: who } : m,
+  );
+  members.push({
+    agent: who,
+    rank: "elder",
+    positions: [],
+    via: "coopted",
+    since: at,
+    originEventId: event,
+  });
+  return { ...org, members };
 }
 
 /** Lo que tiene que cumplir toda organización (organizations «Tests»); devuelve las violaciones. */
@@ -204,6 +316,16 @@ export function orgViolations(org: Organization): readonly string[] {
       out.push(`${org.id}: el puesto ${p.id} lo ocupa ${p.holder}, que no es miembro`);
     if (!p.originEventId) out.push(`${org.id}: puesto ${p.id} sin originEventId`);
   }
+  const head = org.positions.find((p) => p.id === HEAD_POSITION);
+  for (const m of activeMembers(org))
+    if ((m.rank === "head") !== (head?.holder === m.agent))
+      out.push(`${org.id}: ${m.agent} tiene el rango ${m.rank} que no coincide con el puesto`);
+  for (const p of org.positions)
+    if (p.holder === null && p.vacantSince !== undefined && p.vacatedBy === undefined)
+      out.push(`${org.id}: puesto ${p.id} vacante sin causa`);
+  for (const m of org.members)
+    if (m.replacedBy !== undefined && !org.members.some((x) => x.agent === m.replacedBy))
+      out.push(`${org.id}: el reemplazo ${m.replacedBy} no es miembro`);
   for (const m of org.members)
     if (m.until !== undefined && m.exitEventId === undefined)
       out.push(`${org.id}: salida de ${m.agent} sin evento`);
