@@ -9,42 +9,65 @@
 
 import type { AgentId, EntityRef, EventId, PlaceRef, SettlementId } from "../../core/index.ts";
 import {
+  type Agenda,
   activeMembers,
   admitMember,
   type CouncilRules,
   chooseElders,
+  chooseRaiser,
+  closeIssue,
   DEFAULT_COUNCIL_RULES,
+  DEFAULT_ISSUE_RULES,
+  deliberate,
   draftEvent,
   type ElderCandidate,
+  EMPTY_AGENDA,
   ENTITY,
   type EventDraft,
   electHead,
   fillHead,
   foundCouncil,
+  type GoodDef,
   HEAD_POSITION,
   HOUSEHOLD,
   headClaim,
   headVacant,
+  type Issue,
+  type IssueRules,
   isMember,
+  lapse,
   ORG,
+  ORG_AGENDA,
   type Organization,
   oldestVacancy,
+  openIssue,
   openSeats,
   PERSON,
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
+  recentlyHandled,
   type StateChange,
   type SuccessionCandidate,
   setComponent,
   withdrawMember,
 } from "../../sim/index.ts";
+import {
+  type IssuesOptions,
+  type PressureSignal,
+  perceiveAll,
+  scanPressures,
+} from "./council-issues.ts";
+import { LOANS } from "./loans.ts";
 
 export const COUNCIL_PROCESS = "life.council";
 export const ORG_FOUNDED_EVENT = "org.founded";
 export const ORG_MEMBER_LEFT_EVENT = "org.member_left";
 export const ORG_POSITION_FILLED_EVENT = "org.position_filled";
 export const ORG_MEMBER_JOINED_EVENT = "org.member_joined";
+export const ORG_ISSUE_RAISED_EVENT = "org.issue_raised";
+export const ORG_DECIDED_EVENT = "org.decided";
+export const ORG_ISSUE_LAPSED_EVENT = "org.issue_lapsed";
 
 /**
  * El respeto que la aldea le tiene a `who`: lo que sus vecinos sienten de verdad (RELATIONS,
@@ -75,6 +98,14 @@ export interface CouncilOptions {
   readonly respect?: "relations";
   /** `false` apaga la sucesión del cabeza y la reposición de asientos (queda solo la fundación y las salidas). */
   readonly succession?: boolean;
+  /**
+   * Opt-in (Consejo de aldea 3): asuntos y deliberación. Presiones reales de la aldea (hambre,
+   * deuda en mora, disputa) que un miembro percibe y plantea; el consejo delibera y decide. Sin
+   * esto no hay agenda ni eventos de asuntos. Usa `goods` para medir la despensa.
+   */
+  readonly issues?: IssuesOptions;
+  /** Bienes de la aldea (los inyecta el mundo); la despensa de los hogares se mide con ellos. */
+  readonly goods?: readonly GoodDef[];
   /** Ticks por día de mundo. */
   readonly day: number;
   /** Ticks por año de mundo (para la edad). */
@@ -98,8 +129,15 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "decide",
-    reads: [ORG.name, ENTITY.name, PERSON.name, HOUSEHOLD.name, RELATIONS.name],
-    writes: [ORG.name, ENTITY.name],
+    reads: [
+      ORG.name,
+      ENTITY.name,
+      PERSON.name,
+      HOUSEHOLD.name,
+      RELATIONS.name,
+      ...(o.issues ? [ORG_AGENDA.name, LOANS.name] : []),
+    ],
+    writes: [ORG.name, ENTITY.name, ...(o.issues ? [ORG_AGENDA.name] : [])],
     run(ctx) {
       const truth = ctx.truth;
       const alive = (id: AgentId) => truth.get(ENTITY, id)?.endedAt === undefined;
@@ -227,6 +265,139 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
       for (const [id, u] of updated)
         if (u.after !== u.before) changes.push(setComponent(ORG, id as never, u.after));
 
+      // Asuntos y deliberación (opt-in).
+      if (o.issues) {
+        const iopts = o.issues;
+        const irules: IssueRules = { ...DEFAULT_ISSUE_RULES, ...iopts.rules };
+        for (const [id, u] of updated) {
+          const org = u.after;
+          if (org.status !== "active") continue;
+          const agenda0: Agenda = truth.get(ORG_AGENDA, id as never) ?? EMPTY_AGENDA;
+          let agenda = agenda0;
+          const homes = new Map<string, AgentId[]>();
+          for (const who of peopleOf.get(org.settlement) ?? []) {
+            const home = truth.get(PERSON, who)?.household as string | undefined;
+            if (home === undefined) continue;
+            const list = homes.get(home) ?? [];
+            list.push(who);
+            homes.set(home, list);
+          }
+          const signals = scanPressures(
+            {
+              truth,
+              ledger: ctx.ledger,
+              now: ctx.now,
+              day: o.day,
+              year: o.year,
+              goods: o.goods ?? [],
+            },
+            { homes },
+            iopts,
+          );
+          const byKey = new Map<string, PressureSignal>(
+            signals.map((s) => [`${s.kind}|${s.subject}`, s]),
+          );
+          const members = activeMembers(org).map((m) => m.agent);
+
+          // Los asuntos abiertos que ya deliberaron un tiempo se votan (o caducan si la presión se fue).
+          for (const issue of agenda0.open) {
+            if (ctx.now - issue.raisedAt < irules.deliberationDays * o.day) continue;
+            const decisionId = `decision:${id}:${agenda.serial}`;
+            const sig = byKey.get(`${issue.kind}|${issue.subject}`);
+            const raiserBelief = issue.beliefs[0];
+            if (!sig || !raiserBelief) {
+              const d = lapse(issue, ctx.now, decisionId);
+              agenda = closeIssue(agenda, d, irules.keepDecisions);
+              events.push({
+                kind: ORG_ISSUE_LAPSED_EVENT,
+                actors: [issue.raisedBy],
+                place: o.placeOf(truth, issue.raisedBy),
+                data: { org: id, issue: issue.id, kind: issue.kind, subject: issue.subject },
+                emissions: {},
+                causes: d.causes as never,
+              });
+              continue;
+            }
+            const res = deliberate({
+              org,
+              issue,
+              perceived: perceiveAll(truth, members, sig, irules),
+              raiserBelief,
+              rules: irules,
+              rng: ctx.rng.fork("org", id, decisionId),
+              at: ctx.now,
+              decisionId,
+            });
+            agenda = closeIssue(agenda, res.decision, irules.keepDecisions);
+            events.push({
+              kind: ORG_DECIDED_EVENT,
+              actors: [issue.raisedBy, ...res.decision.votes.map((v) => v.agent)].filter(
+                (a, k, l) => l.indexOf(a) === k,
+              ),
+              place: o.placeOf(truth, issue.raisedBy),
+              data: {
+                org: id,
+                decision: decisionId,
+                issue: issue.id,
+                kind: issue.kind,
+                subject: issue.subject,
+                option: res.decision.option,
+                outcome: res.decision.outcome,
+                raisedBy: issue.raisedBy,
+                votes: res.decision.votes.map((v) => ({
+                  agent: v.agent,
+                  vote: v.vote,
+                  utility: v.utility,
+                  confidence: v.confidence,
+                })),
+                circulated: res.circulated,
+              },
+              emissions: {},
+              causes: res.decision.causes as never,
+            });
+          }
+
+          // Presiones nuevas: las plantea quien las percibe y le conviene; si nadie, no existen.
+          for (const sig of signals) {
+            if (agenda.open.length >= irules.maxOpen) break;
+            if (
+              recentlyHandled(agenda, sig.kind, sig.subject, ctx.now, irules.cooldownDays * o.day)
+            )
+              continue;
+            const pick = chooseRaiser(org, perceiveAll(truth, members, sig, irules), irules);
+            if (!pick) continue;
+            const issue: Issue = {
+              id: `issue:${id}:${agenda.serial}`,
+              org: org.id,
+              kind: sig.kind,
+              subject: sig.subject,
+              raisedBy: pick.agent,
+              raisedAt: ctx.now,
+              beliefs: [pick.belief],
+              raisedEvent: draftEvent(events.length),
+              causes: sig.causes,
+            };
+            agenda = openIssue(agenda, issue);
+            events.push({
+              kind: ORG_ISSUE_RAISED_EVENT,
+              actors: [pick.agent],
+              place: o.placeOf(truth, pick.agent),
+              data: {
+                org: id,
+                issue: issue.id,
+                kind: sig.kind,
+                subject: sig.subject,
+                raisedBy: pick.agent,
+                believed: pick.belief,
+              },
+              emissions: {},
+              causes: sig.causes as never,
+            });
+          }
+          if (agenda !== agenda0) changes.push(setComponent(ORG_AGENDA, id as never, agenda));
+        }
+      }
+
       // Fundación: asentamientos con gente y sin consejo.
       for (const settlement of [...peopleOf.keys()].sort()) {
         if (founded.has(settlement)) continue;
@@ -276,6 +447,13 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
       return changes.length === 0 && events.length === 0 ? {} : { changes, events };
     },
   };
+}
+
+/** Las agendas de los consejos (asuntos abiertos y decisiones), en orden de id. */
+export function agendaRows(truth: ReadonlyWorldTruth): { id: string; agenda: Agenda }[] {
+  return [...truth.ids(ORG_AGENDA)]
+    .sort()
+    .map((id) => ({ id: id as string, agenda: truth.get(ORG_AGENDA, id) as Agenda }));
 }
 
 /** ¿Es `who` miembro activo de algún consejo? (lectura para otros módulos). */

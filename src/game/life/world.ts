@@ -605,7 +605,7 @@ export interface LifeWorld {
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
   /** Opt-in: consejo de aldea como organización fundada desde sus ancianos (`life.council`, organizations §11); sin esto no existe ni corre. */
-  readonly council?: Omit<CouncilOptions, "placeOf" | "day" | "year">;
+  readonly council?: Omit<CouncilOptions, "placeOf" | "day" | "year" | "goods">;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
   readonly schemes?: Omit<SchemesOptions, "placeOf" | "day" | "view"> &
     Partial<Pick<SchemesOptions, "view">>;
@@ -1091,6 +1091,7 @@ export function lifeWorld(
               councilProcess({
                 ...parts.council,
                 placeOf: placeOf(parts, village),
+                goods: parts.goods,
                 day: parts.clock.day,
                 year: parts.clock.year,
               }),
