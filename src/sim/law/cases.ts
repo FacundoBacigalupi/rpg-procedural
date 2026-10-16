@@ -39,6 +39,26 @@ export interface Investigation {
   readonly beliefAfter: number;
 }
 
+/**
+ * La vendetta del acusador y su linaje contra un acusado que el consejo no alcanzó (law §9): se decide
+ * una vez (`declined` si no) sobre lo que el acusador cree y siente, escala por etapas acotadas y se
+ * cierra cuando el rencor se enfría o el acusado ya no está.
+ */
+export interface Vendetta {
+  readonly status: "declined" | "active" | "closed";
+  /** Por qué el consejo no lo alcanzó: citado que desoyó, o foro sin fuerza para sancionar. */
+  readonly reason: "defied" | "unreached";
+  readonly decidedAt: Tick;
+  /** Probabilidad con la que se decidió declararla (creída, no la verdad). */
+  readonly chance: number;
+  /** Etapa 0 (nada) a `MAX_VENDETTA_STAGE`. */
+  readonly stage: number;
+  /** Último movimiento (declarar o escalar). */
+  readonly lastAt: Tick;
+  /** El linaje del acusador que la sostiene (ordenado). */
+  readonly kin: readonly AgentId[];
+}
+
 export interface Case {
   /** `<org>#<n>`: el libro es por foro, el contador también. */
   readonly id: string;
@@ -61,6 +81,8 @@ export interface Case {
   readonly summons?: Summons;
   /** La investigación hecha antes de decidir (opt-in). */
   readonly investigation?: Investigation;
+  /** La vendetta que nació del caso, si el consejo no alcanzó al acusado (opt-in). */
+  readonly vendetta?: Vendetta;
   readonly openedAt: Tick;
   /** La denuncia (el evento de habla que la contó). */
   readonly originEventId: EventId;
