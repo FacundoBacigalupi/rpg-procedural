@@ -106,7 +106,7 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Opt-in económico: `take` sin bienes disponibles falla por medios reales y el actor lo sabe. */
   readonly takeEmptyFailure?: boolean | undefined;
-  /** La contraparte de `trade` ya terminó (`ENTITY.endedAt`): no hay trato aunque su cuenta tenga bienes. */
+  /** La contraparte de `trade` (o el destinatario de `give`) ya terminó (`ENTITY.endedAt`): no hay trato ni regalo aunque su cuenta exista. */
   readonly counterpartyGone?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
   readonly place: PlaceRef;
@@ -1713,7 +1713,7 @@ const give: Resolver = (c) => {
   });
   if (c.roll.unmet)
     return { effect: { kind: "give", to, good: null, grams: 0 }, seconds: c.nominal };
-  if (to === null) return none();
+  if (to === null || c.input.counterpartyGone) return none();
   const carried = c.input.ledger
     .holdings(holderAccount(c.input.actor.id as HolderRef))
     .filter((h) => h.amount > 0);

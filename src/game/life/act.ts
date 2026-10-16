@@ -327,6 +327,8 @@ export interface ActOptions {
   readonly legacyFalls?: boolean;
   /** Replay de motores anteriores a `life-31`: `trade` cierra con una contraparte terminada si su cuenta tiene bienes. */
   readonly legacyNoDeadCounterpartyGuard?: boolean;
+  /** Replay de motores anteriores a `life-36`: `give` entrega bienes a un destinatario terminado. */
+  readonly legacyNoDeadGiveGuard?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -921,6 +923,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     node.verb === "trade" &&
     parties["with"] !== undefined &&
     truth.get(ENTITY, parties["with"].id as AgentId)?.endedAt !== undefined
+      ? { counterpartyGone: true }
+      : {}),
+    ...(o.legacyNoDeadGiveGuard !== true &&
+    node.verb === "give" &&
+    parties["to"] !== undefined &&
+    truth.get(ENTITY, parties["to"].id as AgentId)?.endedAt !== undefined
       ? { counterpartyGone: true }
       : {}),
     place: placeRefOf(o.map, here),

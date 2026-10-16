@@ -410,6 +410,8 @@ export interface LifeWorld {
   readonly legacyNoLendPawnBatch?: boolean;
   /** Replay de motores anteriores a `life-31`: `trade` no mira `ENTITY.endedAt` de la contraparte. */
   readonly legacyNoDeadCounterpartyGuard?: boolean;
+  /** Replay de motores anteriores a `life-36`: `give` no mira `ENTITY.endedAt` del destinatario. */
+  readonly legacyNoDeadGiveGuard?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -902,6 +904,7 @@ export function lifeWorld(
           ...(parts.legacyNoDeadCounterpartyGuard === true
             ? { legacyNoDeadCounterpartyGuard: true }
             : {}),
+          ...(parts.legacyNoDeadGiveGuard === true ? { legacyNoDeadGiveGuard: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),

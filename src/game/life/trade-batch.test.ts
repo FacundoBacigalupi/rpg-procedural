@@ -793,6 +793,54 @@ describe("contraparte que ya no está entre ventanas del mismo dominio", () => {
     expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
     expect(w.ledger.audit()).toEqual([]);
   });
+  it("regalar a un destinatario marcado muerto no le pasa bienes (life-36)", () => {
+    const w = world(1000, true, false, true, false, true, ["trade", "give"]);
+    const recipient = buyers[0];
+    const e = w.truth.get(ENTITY, recipient);
+    if (!e) throw new Error("sin destinatario");
+    w.truth.set(ENTITY, recipient, { ...e, endedAt: 1 });
+    // El otro comprador no compite por las existencias del regalo.
+    for (const b of buyers) {
+      const ps = w.truth.get(PLAN_STATE, b);
+      if (ps) w.truth.set(PLAN_STATE, b, { ...ps, done: true });
+    }
+    w.truth.set(PLAN_STATE, seller, {
+      seq: 1,
+      done: false,
+      cursor: FRESH_CURSOR,
+      lastBelieved: null,
+      steps: [],
+      plan: {
+        actor: seller,
+        source: "utility",
+        root: {
+          kind: "do",
+          verb: "give",
+          args: [
+            { role: "to", entity: recipient },
+            { role: "what", text: "herramienta 1 kg" },
+          ],
+          manner: [],
+        },
+        manner: [],
+        causes: [],
+      },
+    });
+    w.scheduler.schedule({
+      at: clock.day / 2,
+      phase: "act",
+      process: "life.act",
+      scope: seller,
+      reason: { kind: "state", entity: seller, key: planKey(1) },
+    });
+    w.scheduler.advanceTo(clock.day / 2);
+    const gives = w.log.all().filter((ev) => ev.kind === "action.give");
+    expect(gives).toHaveLength(1);
+    expect((gives[0]?.data as { effect?: { grams: number } } | undefined)?.effect?.grams).toBe(0);
+    expect(w.ledger.balance(holderAccount(recipient), good)).toBe(0);
+    expect(w.ledger.balance(holderAccount(seller), good)).toBe(1000);
+    expect(w.ledger.audit()).toEqual([]);
+  });
   it("el vendedor se fue a otro hex: el trade fracasa natural, deja agenda y ledger", () => {
     const w = world(1000, true, false, true);
     w.truth.set(LOCATION, seller, { hex: 5 });
