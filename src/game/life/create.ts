@@ -154,7 +154,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
 import { localMapOf } from "./map.ts";
-import { schoolOfCulture } from "./medschools.ts";
+import { medicalSchools, schoolOfCulture } from "./medschools.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
@@ -1486,7 +1486,7 @@ export function createLife(
       ...optInParts(options, site.terrain),
       ...(options.medicalSchools
         ? (() => {
-            const school = schoolOfCulture(villageCulture(truth));
+            const school = schoolOfCulture(villageCulture(truth), medicalSchools(content));
             return school ? { healerSchool: school } : {};
           })()
         : {}),

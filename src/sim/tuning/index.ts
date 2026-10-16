@@ -65,6 +65,7 @@ export const ScenarioLife = z.strictObject({
     .optional(),
   hire: z.strictObject({ unit: z.string().min(1), baseWage: z.number().min(0) }).optional(),
   healthCulture: z.boolean().optional(),
+  medicalSchools: z.boolean().optional(),
   cravingCues: z.boolean().optional(),
   cueLocal: z.boolean().optional(),
   npcMove: z.boolean().optional(),
