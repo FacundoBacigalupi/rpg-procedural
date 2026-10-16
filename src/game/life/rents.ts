@@ -41,6 +41,7 @@ import {
   sharecropFraction,
   table,
 } from "../../sim/index.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const RENTS_PROCESS = "life.rents";
 export const EVICT_AFTER_DAYS = 30;
@@ -113,6 +114,8 @@ export interface RentsOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: cada `everyDays` días arma ofertas y buscadores desde el estado y los pasa a `matchRents`. */
   readonly market?: RentMarketOptions;
+  /** Opt-in: el canon comparte el dominio económico (`life.economy`) con acciones, fiado y trueques. */
+  readonly economicBatch?: boolean;
 }
 
 export interface RentMarketOptions {
@@ -359,6 +362,9 @@ export function rentsProcess(o: RentsOptions): ProcessDef {
     phase: "act",
     reads: [PERSON.name, ENTITY.name, RENTS.name, PARCEL.name, SHARES.name],
     writes: [RENTS.name, ENTITY.name, PARCEL.name],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger || (o.seeds.length === 0 && !o.market)) return {};
