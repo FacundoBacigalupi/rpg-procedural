@@ -479,6 +479,8 @@ export interface LifeWorld {
   readonly npcWarnings?: boolean;
   /** Opt-in (con `npcEncounters`): quienes se cruzaron y siguen en el hex se saludan (`npc.greeted`, `life.npc_greetings`), con familiaridad, afecto y confianza a ambos lados; apagado, sin proceso. */
   readonly npcGreetings?: boolean;
+  /** Opt-in (con `npcGreetings`): el saludo de palabras se dice y el otro lo entiende (`understand`); sin entender un saludo no se entibia (`GreetingSpeech`). */
+  readonly npcGreetingSpeech?: boolean;
   /** Opt-in (con `npcTraces`): horas que aguanta la carga caída antes de pudrirse. */
   readonly npcDropRotHours?: number;
   /** Opt-in (con `npcTraces` y `npcProvisions`): el dueño que vuelve al hex donde dejó caer su carga la reclama (`npc.load_reclaimed`) y tiene prioridad sobre quien la halle. */
@@ -1870,6 +1872,9 @@ export function lifeWorld(
                 dims: parts.relationDims,
                 bonds: parts.relationBonds,
                 placeOf: placeOf(parts, village),
+                ...(parts.npcGreetingSpeech === true
+                  ? { speech: { say: () => "Buenas", lexicon: { people: [], goods: [] } } }
+                  : {}),
               }),
             ]
           : []),

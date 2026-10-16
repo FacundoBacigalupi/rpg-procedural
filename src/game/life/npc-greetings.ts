@@ -16,6 +16,7 @@ import {
   deleteComponent,
   ENTITY,
   type EventDraft,
+  type Lexicon,
   LOCATION,
   PERSON,
   type ProcessDef,
@@ -27,6 +28,7 @@ import {
   type StateChange,
   setComponent,
   table,
+  understand,
 } from "../../sim/index.ts";
 import { BIRTH, BONDED } from "./birth.ts";
 import { NPC_MET } from "./npc-encounters.ts";
@@ -53,7 +55,22 @@ export const GREET_REFUSE = { resentment: 0.5, fear: 0.6, affection: -0.3 } as c
 /** Tope de saludos por pasada (una plaza llena no inunda el registro). */
 export const MAX_GREETINGS_PER_PASS = 4;
 
+/**
+ * El saludo de palabras como acto de habla (dialogue §2, `npc-b2b4c2b1`): quien saluda dice un
+ * texto y el otro lo entiende con el léxico (`understand`) y la claridad con que lo oye; solo si
+ * entiende un saludo le suma al otro. El gesto no necesita lengua y se entiende siempre.
+ */
+export interface GreetingSpeech {
+  /** Lo que dice quien saluda con palabras. */
+  readonly say: (speaker: AgentId, hearer: AgentId) => string;
+  readonly lexicon: Lexicon;
+  /** 0-1: qué tan claro lo oye `hearer` (acento, lengua); sin esto, 1. */
+  readonly clarity?: (truth: ReadonlyWorldTruth, speaker: AgentId, hearer: AgentId) => number;
+}
+
 export interface NpcGreetingsOptions {
+  /** Opt-in: el saludo de palabras se dice y se entiende (sin esto, el efecto es directo). */
+  readonly speech?: GreetingSpeech;
   readonly player: AgentId;
   readonly dims: readonly DimensionDef[];
   readonly bonds: readonly BondDef[];
@@ -171,18 +188,33 @@ export function npcGreetingsProcess(o: NpcGreetingsOptions): ProcessDef {
           const second = me < other ? other : me;
           if (hostile(a) || hostile(b)) continue;
           if (ctx.rng.fork("greet", first, second, ctx.now).float() >= GREET_CHANCE) continue;
-          warm(me, other, a);
-          warm(other, me, b);
+          const words = Math.max(a.dims.familiarity, b.dims.familiarity) >= GREET_WORDS_FAMILIARITY;
+          // Con acto de habla, cada uno oye lo que el otro dijo; sin entender un saludo no se entibia.
+          const heard = (speaker: AgentId, hearer: AgentId) =>
+            !words ||
+            o.speech === undefined ||
+            understand(
+              o.speech.say(speaker, hearer),
+              o.speech.lexicon,
+              o.speech.clarity?.(truth, speaker, hearer) ?? 1,
+            ).kind === "greet";
+          const meHeard = heard(other, me);
+          const otherHeard = heard(me, other);
+          if (meHeard) warm(me, other, a);
+          if (otherHeard) warm(other, me, b);
           mine?.greeted.add(other);
           if (mine) dirty.add(me);
           if (theirs) dirty.add(other);
           theirs?.greeted.add(me);
-          const words = Math.max(a.dims.familiarity, b.dims.familiarity) >= GREET_WORDS_FAMILIARITY;
           events.push({
             kind: GREETED_EVENT,
             actors: [me, other],
             place: o.placeOf(truth, me),
-            data: { hex: here, form: words ? "words" : "gesture" },
+            data: {
+              hex: here,
+              form: words ? "words" : "gesture",
+              ...(o.speech && words ? { understood: { [me]: meHeard, [other]: otherHeard } } : {}),
+            },
             emissions: {},
             causes: [
               { kind: "state", entity: me, key: "life.npc_met" },
