@@ -12,7 +12,13 @@ import {
   skyClearness,
   tempAt,
 } from "./daily.ts";
-import { anomalyOfDay, oscillationFor } from "./oscillation.ts";
+import {
+  anomalyOfDay,
+  type OscillationCause,
+  oscillationAnomaly,
+  oscillationCause,
+  oscillationFor,
+} from "./oscillation.ts";
 
 const anomalyMemo = new WeakMap<LocalMap, Map<Seed, (day: number) => Anomaly>>();
 
@@ -38,6 +44,44 @@ export function anomalyOfMap(
     bySeed.set(seed, fn);
   }
   return fn;
+}
+
+/** Por debajo de este factor de lluvia el año de la oscilación cuenta como seco (sequía con causa). */
+export const DRY_YEAR_FACTOR = 0.9;
+/** Por encima de este factor el año cuenta como húmedo (inundación con causa). */
+export const WET_YEAR_FACTOR = 1.1;
+
+export interface OscillationYear {
+  readonly cause: OscillationCause;
+  readonly teleconnection: number;
+  readonly precipFactor: number;
+  /** Seco, húmedo o ninguno: según el factor de lluvia que la fase da en este lugar. */
+  readonly effect: "dry" | "wet" | "none";
+}
+
+/**
+ * La causa del año bueno o malo del lugar en un día (la fase de la cuenca, no una tabla): la
+ * `OscillationCause` del año con la teleconexión del lugar y lo que hace a la lluvia, o
+ * `undefined` si el mapa no tiene cuenca. Mismo mapa y seed, mismo resultado.
+ */
+export function oscillationYearOfMap(
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+  day: number,
+): OscillationYear | undefined {
+  const site = map.oscillation;
+  if (site === undefined) return undefined;
+  const osc = oscillationFor(site.basin, Rng.root(seed));
+  const year = Math.floor(day / Math.round(clock.year / clock.day));
+  const precipFactor = oscillationAnomaly(osc, year, site.teleconnection).precipFactor;
+  return {
+    cause: oscillationCause(osc, year),
+    teleconnection: site.teleconnection,
+    precipFactor,
+    effect:
+      precipFactor < DRY_YEAR_FACTOR ? "dry" : precipFactor > WET_YEAR_FACTOR ? "wet" : "none",
+  };
 }
 
 /** El día de un tick en el lugar (el día cambia a la medianoche local). */

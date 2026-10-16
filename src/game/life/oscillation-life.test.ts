@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EARTHLIKE_CLOCK, loadContent, Rng } from "../../core/index.ts";
-import { anomalyOfMap, harvestSeason, weatherAt } from "../../sim/index.ts";
+import { anomalyOfMap, harvestSeason, oscillationYearOfMap, weatherAt } from "../../sim/index.ts";
 import { BIOMES, generatePlanet, villageSite } from "../../worldgen/index.ts";
 import { engineOptions } from "./life.ts";
 import { localMapOf } from "./map.ts";
@@ -71,5 +71,22 @@ describe("oscilación en la aldea (life-29)", () => {
     }
     expect(weatherDiff).toBeGreaterThan(0);
     expect(harvestDiff).toBeGreaterThan(0);
+  });
+
+  it("oscillationYearOfMap (life-34) coincide con anomalyOfMap y cita la fase de la cuenca", () => {
+    const { seed, on, off } = found as NonNullable<typeof found>;
+    let seen = 0;
+    for (let y = 0; y < 12; y++) {
+      const day = y * yearDays + 100;
+      const o = oscillationYearOfMap(on, clock, seed, day);
+      expect(o?.cause.basin).toBe(on.oscillation?.basin);
+      expect(o?.cause.year).toBe(y);
+      expect(o?.precipFactor).toBe(anomalyOfMap(on, clock, seed)?.(day).precipFactor);
+      expect(oscillationYearOfMap(on, clock, seed, day)).toEqual(o);
+      if (o?.effect === "dry") expect(o.precipFactor).toBeLessThan(1);
+      if (o?.precipFactor !== 1) seen++;
+    }
+    expect(seen).toBeGreaterThan(0);
+    expect(oscillationYearOfMap(off, clock, seed, 100)).toBeUndefined();
   });
 });

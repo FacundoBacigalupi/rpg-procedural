@@ -311,6 +311,8 @@ export interface LifeOptions {
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
   readonly legacyNoGreetDecision?: boolean;
+  /** Solo el replay de un motor anterior a `life-34`: la hambruna no cita la oscilación oceánica entre sus causas. */
+  readonly legacyNoOscillationCause?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -624,6 +626,7 @@ export function optInParts(
   | "legacyNoDeadCounterpartyGuard"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
+  | "legacyNoOscillationCause"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -772,6 +775,7 @@ export function optInParts(
     ...(options.legacyNoDeadCounterpartyGuard ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
+    ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
