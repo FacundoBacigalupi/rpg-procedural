@@ -314,6 +314,11 @@ export interface MedicineOptions {
   readonly healers?: readonly Healer[];
   /** Sanadores desde las habilidades: quien tiene `medicine` sobre el mínimo atiende, después de los explícitos. */
   readonly school?: HealerSchool | undefined;
+  /**
+   * Opt-in: la escuela de cada sanador por habilidad seg�n su comunidad (con varias comunidades,
+   * cada una la suya); si devuelve `undefined` cae a `school`. Sin esto, `school` para todos.
+   */
+  readonly schoolOf?: ((truth: ReadonlyWorldTruth, who: AgentId) => HealerSchool | undefined) | undefined;
   /** Opt-in: id del remedio a la unidad del ledger que gasta (1 por dosis, del sanador o del enfermo). */
   readonly stock?: Readonly<Record<string, string>> | undefined;
   /**
@@ -535,14 +540,15 @@ export function medicineProcess(o: MedicineOptions): ProcessDef {
     run(ctx) {
       const alive = (a: AgentId) => ctx.truth.get(ENTITY, a)?.endedAt === undefined;
       const healers = (o.healers ?? []).filter((h) => alive(h.agent));
-      const school = o.school;
-      if (school) {
-        const min = school.minSkill ?? 0.2;
+      if (o.school || o.schoolOf) {
         const explicit = new Set(healers.map((h) => h.agent));
         const found: Healer[] = [];
         for (const id of ctx.truth.ids(SKILL_STATE)) {
           const agent = id as AgentId;
           if (explicit.has(agent) || !alive(agent)) continue;
+          const school = o.schoolOf?.(ctx.truth, agent) ?? o.school;
+          if (!school) continue;
+          const min = school.minSkill ?? 0.2;
           const skill = healingSkill(ctx.truth.get(SKILL_STATE, id)?.["medicine"]);
           if (skill < min) continue;
           found.push({ ...school, agent, skill });

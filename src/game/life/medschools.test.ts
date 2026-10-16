@@ -1,11 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent, Rng } from "../../core/index.ts";
+import { type AgentId, type ContentSource, loadContent, Rng } from "../../core/index.ts";
 import {
   type CommunityCulture,
   CULTURE_TRAITS,
+  COMMUNITY_CULTURE,
   CULTURES,
+  PERSON_CULTURE,
+  WorldTruth,
   cultureProblems,
   diagnose,
   type PathogenDef,
@@ -15,7 +18,12 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import type { HealerSchool } from "./medicine.ts";
-import { MEDICINE_SCHOOL_TRAIT, medicalSchools, schoolOfCulture } from "./medschools.ts";
+import {
+  MEDICINE_SCHOOL_TRAIT,
+  medicalSchools,
+  schoolOfCulture,
+  schoolOfPerson,
+} from "./medschools.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -107,4 +115,41 @@ describe("escuelas mÃ©dicas por cultura", () => {
     const again = Life.create(7, content, { medicalSchools: true }).world;
     expect(villageCulture(again.truth)).toEqual(villageCulture(on.truth));
   }, 30_000);
+});
+
+describe("escuela médica por comunidad", () => {
+  const community = (id: string, variants: Record<string, number>) =>
+    ({ ...culture(variants), culture: id }) as CommunityCulture;
+  const who = "agent:1" as AgentId;
+  const world = (communities: CommunityCulture[], group?: string) => {
+    const t = new WorldTruth();
+    for (const c of communities) t.set(COMMUNITY_CULTURE, `settlement:${c.culture === "a" ? 1 : 2}` as never, c);
+    if (group)
+      t.set(
+        PERSON_CULTURE,
+        who as never,
+        {
+          holdings: {},
+          identity: [{ about: who, group, confidence: 0.9, basis: [] }],
+          originEventId: "event:1",
+        } as never,
+      );
+    return t;
+  };
+
+  it("con una sola comunidad es su escuela; sin comunidades, ninguna", () => {
+    const one = world([community("a", { humoral: 3 })]);
+    expect(schoolOfPerson(one, who, MEDICAL_SCHOOLS)).toBe(MEDICAL_SCHOOLS["humoral"]);
+    expect(schoolOfPerson(new WorldTruth(), who, MEDICAL_SCHOOLS)).toBeUndefined();
+  });
+
+  it("con varias, cada persona sigue la de su grupo; sin grupo, la primera por id", () => {
+    const cs = [community("a", { humoral: 3 }), community("b", { empirical: 3 })];
+    expect(schoolOfPerson(world(cs, "b"), who, MEDICAL_SCHOOLS)).toBe(MEDICAL_SCHOOLS["empirical"]);
+    expect(schoolOfPerson(world(cs, "a"), who, MEDICAL_SCHOOLS)).toBe(MEDICAL_SCHOOLS["humoral"]);
+    expect(schoolOfPerson(world(cs), who, MEDICAL_SCHOOLS)).toBe(MEDICAL_SCHOOLS["humoral"]);
+    expect(schoolOfPerson(world(cs, "b"), who, MEDICAL_SCHOOLS)).toBe(
+      schoolOfPerson(world([...cs].reverse(), "b"), who, MEDICAL_SCHOOLS),
+    );
+  });
 });

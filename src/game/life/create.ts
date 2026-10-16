@@ -85,6 +85,7 @@ import {
   RELATION_BONDS,
   RELATION_DIMS,
   RELIGIONS,
+  type ReadonlyWorldTruth,
   ROTTED,
   resolveTastes,
   SCHEMAS,
@@ -154,7 +155,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
 import { localMapOf } from "./map.ts";
-import { medicalSchools, schoolOfCulture } from "./medschools.ts";
+import { medicalSchools, schoolOfCulture, schoolOfPerson } from "./medschools.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
@@ -1487,7 +1488,12 @@ export function createLife(
       ...(options.medicalSchools
         ? (() => {
             const school = schoolOfCulture(villageCulture(truth), medicalSchools(content));
-            return school ? { healerSchool: school } : {};
+            const catalog = medicalSchools(content);
+            return {
+              ...(school ? { healerSchool: school } : {}),
+              healerSchoolOf: (t: ReadonlyWorldTruth, who: AgentId) =>
+                schoolOfPerson(t, who, catalog),
+            };
           })()
         : {}),
       ...(() => {
