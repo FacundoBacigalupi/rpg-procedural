@@ -197,6 +197,8 @@ export interface LifeOptions {
   readonly migration?: LifeParts["migration"];
   /** Opt-in: intrigas motivadas por un hecho (`life.schemes`); sin `view` la lee de rasgos y relaciones (`schemerViewOf`). Apagado por defecto. */
   readonly schemes?: LifeParts["schemes"];
+  /** Opt-in: consejo de aldea fundado desde los ancianos reales (`life.council`); sin decisiones todavía. Apagado por defecto. */
+  readonly council?: LifeParts["council"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
   /**
@@ -605,6 +607,7 @@ export function optInParts(
   | "famine"
   | "migration"
   | "schemes"
+  | "council"
   | "rumorGrievance"
   | "verboseSteps"
   | "waitAwake"
@@ -752,6 +755,7 @@ export function optInParts(
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.schemes ? { schemes: options.schemes } : {}),
+    ...(options.council ? { council: options.council } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
