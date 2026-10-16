@@ -249,6 +249,8 @@ export interface LifeWorld {
   readonly healers?: readonly Healer[];
   /** Escuela de sanadores desde las habilidades (`medicine`); sin ella solo cuentan los explÃ­citos. */
   readonly healerSchool?: HealerSchool;
+  /** Opt-in: la escuela de cada sanador por habilidad según su comunidad (`schoolOfPerson`); cae a `healerSchool`. */
+  readonly healerSchoolOf?: (truth: ReadonlyWorldTruth, who: AgentId) => HealerSchool | undefined;
   /** Opt-in: los signos que ve el sanador salen del cuerpo real (`bodySigns`). */
   readonly healerRealSigns?: boolean;
   /**
@@ -1388,6 +1390,7 @@ export function lifeWorld(
           clock: parts.clock,
           healers: parts.healers ?? [],
           school: parts.healerSchool,
+          schoolOf: parts.healerSchoolOf,
           stock: parts.remedyStock,
           ...(parts.healerFee
             ? {

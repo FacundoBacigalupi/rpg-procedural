@@ -5,14 +5,17 @@
 // nombra las condiciones como son y receta lo que sirve. Las escuelas y los remedios son contenido
 // (`content/medical-schools/`, `content/remedies/`); acá solo se arma el catálogo.
 
-import type { Content } from "../../core/index.ts";
+import type { AgentId, Content } from "../../core/index.ts";
 import {
+  COMMUNITY_CULTURE,
   type CommunityCulture,
   dominantVariant,
   MEDICAL_SCHOOL_DEFS,
   REMEDIES,
+  type ReadonlyWorldTruth,
   type RemedyDef,
 } from "../../sim/index.ts";
+import { ownGroup } from "./identity.ts";
 import type { HealerSchool } from "./medicine.ts";
 
 /** Id del rasgo de cultura (`content/culture-traits/health.json`) cuya variante elige la escuela. */
@@ -59,4 +62,27 @@ export function schoolOfCulture(
 ): HealerSchool | undefined {
   const v = dominantVariant(culture, trait);
   return v === undefined ? undefined : catalog[v];
+}
+
+/**
+ * La escuela que sigue `who`: la de la comunidad a la que se siente de pertenecer. Con una sola
+ * comunidad es esa (igual que `villageCulture`); con varias, la de su `ownGroup` (o la primera por
+ * id si no se sabe). Sin comunidades, ninguna.
+ */
+export function schoolOfPerson(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  catalog: Readonly<Record<string, HealerSchool>>,
+  trait: string = MEDICINE_SCHOOL_TRAIT,
+): HealerSchool | undefined {
+  const ids = [...truth.ids(COMMUNITY_CULTURE)].sort();
+  const communities = ids.flatMap((id) => {
+    const c = truth.get(COMMUNITY_CULTURE, id);
+    return c ? [c] : [];
+  });
+  const first = communities[0];
+  if (!first) return undefined;
+  const group = communities.length === 1 ? undefined : ownGroup(truth, who);
+  const own = group === undefined ? undefined : communities.find((c) => c.culture === group);
+  return schoolOfCulture(own ?? first, catalog, trait);
 }
