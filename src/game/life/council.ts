@@ -7,27 +7,42 @@
 // muerte). Todavía no decide nada (ni reparte, ni defiende, ni cobra): eso es «Consejo de aldea
 // 2-5» del ROADMAP. Opt-in (`LifeParts.council`); apagado no existe ni corre ni cambia hashes.
 
-import type { AgentId, EntityRef, EventId, PlaceRef, SettlementId } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  type PlaceRef,
+  type SettlementId,
+  type Transfer,
+} from "../../core/index.ts";
 import {
   type Agenda,
   activeMembers,
+  addOrder,
   admitMember,
+  assumeAmount,
   type CouncilRules,
   chooseElders,
   chooseRaiser,
   closeIssue,
+  closeOrder,
   DEFAULT_COUNCIL_RULES,
   DEFAULT_ISSUE_RULES,
+  DEFAULT_ORDER_RULES,
   deliberate,
   draftEvent,
   type ElderCandidate,
   EMPTY_AGENDA,
+  EMPTY_BOOK,
   ENTITY,
   type EventDraft,
   electHead,
   fillHead,
   foundCouncil,
   type GoodDef,
+  goodUnit,
   HEAD_POSITION,
   HOUSEHOLD,
   headClaim,
@@ -38,11 +53,21 @@ import {
   lapse,
   ORG,
   ORG_AGENDA,
+  ORG_ORDERS,
+  type Order,
+  type OrderBook,
+  type OrderRules,
   type Organization,
+  obedienceChance,
+  obeys,
   oldestVacancy,
   openIssue,
+  openOrders,
   openSeats,
+  orderFrom,
+  outstanding,
   PERSON,
+  type PostingDraft,
   type ProcessDef,
   RELATIONS,
   type ReadonlyWorldTruth,
@@ -50,6 +75,7 @@ import {
   type StateChange,
   type SuccessionCandidate,
   setComponent,
+  spendable,
   withdrawMember,
 } from "../../sim/index.ts";
 import {
@@ -68,6 +94,37 @@ export const ORG_MEMBER_JOINED_EVENT = "org.member_joined";
 export const ORG_ISSUE_RAISED_EVENT = "org.issue_raised";
 export const ORG_DECIDED_EVENT = "org.decided";
 export const ORG_ISSUE_LAPSED_EVENT = "org.issue_lapsed";
+export const ORG_CONTRIBUTED_EVENT = "org.contributed";
+export const ORG_ORDERED_EVENT = "org.ordered";
+export const ORG_ORDER_EXECUTED_EVENT = "org.order_executed";
+export const ORG_ORDER_REFUSED_EVENT = "org.order_refused";
+export const ORG_ORDER_FAILED_EVENT = "org.order_failed";
+
+/** Una contribución al tesoro: cada miembro da `amount` del bien de la despensa de su hogar, si le sobra `keep`. */
+export interface Contribution {
+  readonly good: string;
+  /** Unidades (gramos de grano, piezas de moneda) por miembro y período. */
+  readonly amount: number;
+  /** Lo que el hogar tiene que conservar después de dar. */
+  readonly keep?: number;
+}
+
+/**
+ * Consejo de aldea 4: el tesoro del consejo (una cuenta del ledger, `holderAccount(orgId)`) y las
+ * órdenes. Opt-in; sin esto no hay cuenta, aportes, libro ni órdenes.
+ */
+export interface TreasuryOptions {
+  /** Aportes periódicos de los miembros (por defecto 10 kg de grano, si al hogar le quedan 60 kg). */
+  readonly contribute?: readonly Contribution[];
+  /** Cada cuántos días de mundo aporta (30 por defecto). */
+  readonly everyDays?: number;
+  /** Con esto las decisiones aprobadas se vuelven órdenes que ejecutan los miembros; requiere `issues`. */
+  readonly orders?: Partial<OrderRules>;
+}
+
+const DEFAULT_CONTRIBUTIONS: readonly Contribution[] = [
+  { good: "grain", amount: 10000, keep: 60000 },
+];
 
 /**
  * El respeto que la aldea le tiene a `who`: lo que sus vecinos sienten de verdad (RELATIONS,
@@ -104,6 +161,8 @@ export interface CouncilOptions {
    * esto no hay agenda ni eventos de asuntos. Usa `goods` para medir la despensa.
    */
   readonly issues?: IssuesOptions;
+  /** Opt-in (Consejo de aldea 4): tesoro con aportes y órdenes con efecto acotado. */
+  readonly treasury?: TreasuryOptions;
   /** Bienes de la aldea (los inyecta el mundo); la despensa de los hogares se mide con ellos. */
   readonly goods?: readonly GoodDef[];
   /** Ticks por día de mundo. */
@@ -122,6 +181,8 @@ export function councilRows(truth: ReadonlyWorldTruth): { id: string; org: Organ
 
 export function councilProcess(o: CouncilOptions): ProcessDef {
   const rules: CouncilRules = { ...DEFAULT_COUNCIL_RULES, ...o.rules };
+  const ordersOn = o.treasury?.orders !== undefined && o.issues !== undefined;
+  const orderRules: OrderRules = { ...DEFAULT_ORDER_RULES, ...o.treasury?.orders };
   return {
     id: COUNCIL_PROCESS,
     system: "life",
@@ -136,10 +197,33 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
       HOUSEHOLD.name,
       RELATIONS.name,
       ...(o.issues ? [ORG_AGENDA.name, LOANS.name] : []),
+      ...(ordersOn ? [ORG_ORDERS.name] : []),
     ],
-    writes: [ORG.name, ENTITY.name, ...(o.issues ? [ORG_AGENDA.name] : [])],
+    writes: [
+      ORG.name,
+      ENTITY.name,
+      ...(o.issues ? [ORG_AGENDA.name] : []),
+      ...(ordersOn ? [ORG_ORDERS.name, RELATIONS.name] : []),
+    ],
     run(ctx) {
       const truth = ctx.truth;
+      const postings: PostingDraft[] = [];
+      // Saldos del ledger con lo ya asentado en esta corrida (el tesoro no gasta dos veces lo mismo).
+      const moved = new Map<string, number>();
+      const bal = (acct: string, unit: string): number =>
+        (ctx.ledger?.balance(acct as never, unit as never) ?? 0) +
+        (moved.get(`${acct}|${unit}`) ?? 0);
+      const post = (ev: EventId, transfers: readonly Transfer[]): void => {
+        for (const t of transfers) {
+          moved.set(`${t.from}|${t.unit}`, (moved.get(`${t.from}|${t.unit}`) ?? 0) - t.amount);
+          moved.set(`${t.to}|${t.unit}`, (moved.get(`${t.to}|${t.unit}`) ?? 0) + t.amount);
+        }
+        postings.push({ event: ev, transfers });
+      };
+      const unitOf = (good: string) => {
+        const def = (o.goods ?? []).find((g) => g.id === good);
+        return def ? goodUnit(def) : undefined;
+      };
       const alive = (id: AgentId) => truth.get(ENTITY, id)?.endedAt === undefined;
       const changes: StateChange[] = [];
       const events: EventDraft[] = [];
@@ -265,6 +349,37 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
       for (const [id, u] of updated)
         if (u.after !== u.before) changes.push(setComponent(ORG, id as never, u.after));
 
+      // Tesoro: cada período los miembros aportan de la despensa de su hogar lo que les sobra.
+      if (o.treasury && ctx.ledger) {
+        const today = Math.floor(ctx.now / o.day);
+        const every = Math.max(1, o.treasury.everyDays ?? 30);
+        if (today > 0 && today % every === 0)
+          for (const [id, u] of updated) {
+            if (u.after.status !== "active") continue;
+            const vault = holderAccount(id as unknown as HolderRef);
+            for (const m of activeMembers(u.after)) {
+              const home = truth.get(PERSON, m.agent)?.household as string | undefined;
+              if (home === undefined) continue;
+              const from = holderAccount(home as unknown as HolderRef);
+              for (const c of o.treasury.contribute ?? DEFAULT_CONTRIBUTIONS) {
+                const unit = unitOf(c.good);
+                const amount = Math.floor(c.amount);
+                if (!unit || amount <= 0 || bal(from, unit) - amount < (c.keep ?? 0)) continue;
+                const ev = draftEvent(events.length);
+                events.push({
+                  kind: ORG_CONTRIBUTED_EVENT,
+                  actors: [m.agent],
+                  place: o.placeOf(truth, m.agent),
+                  data: { org: id, agent: m.agent, home, good: c.good, amount },
+                  emissions: {},
+                  causes: [{ kind: "event", event: u.after.originEventId }],
+                });
+                post(ev, [{ from, to: vault, unit, amount }]);
+              }
+            }
+          }
+      }
+
       // Asuntos y deliberación (opt-in).
       if (o.issues) {
         const iopts = o.issues;
@@ -274,6 +389,10 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
           if (org.status !== "active") continue;
           const agenda0: Agenda = truth.get(ORG_AGENDA, id as never) ?? EMPTY_AGENDA;
           let agenda = agenda0;
+          const book0: OrderBook = ordersOn
+            ? (truth.get(ORG_ORDERS, id as never) ?? EMPTY_BOOK)
+            : EMPTY_BOOK;
+          let book = book0;
           const homes = new Map<string, AgentId[]>();
           for (const who of peopleOf.get(org.settlement) ?? []) {
             const home = truth.get(PERSON, who)?.household as string | undefined;
@@ -290,6 +409,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
               day: o.day,
               year: o.year,
               goods: o.goods ?? [],
+              ...(ordersOn ? { assumed: book0.assumed } : {}),
             },
             { homes },
             iopts,
@@ -298,6 +418,180 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
             signals.map((s) => [`${s.kind}|${s.subject}`, s]),
           );
           const members = activeMembers(org).map((m) => m.agent);
+
+          // Las órdenes pendientes que ya esperaron se cumplen (o no) por los miembros.
+          if (ordersOn && ctx.ledger) {
+            const vault = holderAccount(id as unknown as HolderRef);
+            const grain = unitOf("grain");
+            const homeOf = (who: string): string | undefined =>
+              truth.get(PERSON, who as AgentId)?.household as string | undefined;
+            const livingHome = (home: string): boolean =>
+              truth.get(ENTITY, home as never)?.endedAt === undefined &&
+              (truth.get(HOUSEHOLD, home as never)?.members ?? []).some(
+                (x) => truth.get(PERSON, x) && alive(x),
+              );
+            for (const ord of openOrders(book0)) {
+              if (ctx.now - ord.issuedAt < orderRules.executeAfterDays * o.day) continue;
+              const decision = agenda0.decisions.find((d) => d.id === ord.decision);
+              const base = { org: id, order: ord.id, option: ord.option, subject: ord.subject };
+              const cause = [{ kind: "event", event: ord.issuedEvent }] as never;
+              const fail = (note: string, status: "failed" | "void" = "failed") => {
+                book = closeOrder(book, ord.id, status, ctx.now, { note });
+                events.push({
+                  kind: ORG_ORDER_FAILED_EVENT,
+                  actors: [ord.executor],
+                  place: o.placeOf(truth, ord.executor),
+                  data: { ...base, status, note },
+                  emissions: {},
+                  causes: cause,
+                });
+              };
+              if (!alive(ord.executor) || !isMember(org, ord.executor)) {
+                fail("executor_gone", "void");
+                continue;
+              }
+              const loan =
+                ord.option === "extend" ? truth.get(LOANS, ord.subject as never) : undefined;
+              const conflict = loan !== undefined && homeOf(ord.executor) === loan.lender;
+              const chance = obedienceChance(
+                decision?.votes.find((v) => v.agent === ord.executor),
+                conflict,
+                orderRules,
+              );
+              if (!obeys(chance, ctx.rng.fork("order", ord.id))) {
+                book = closeOrder(book, ord.id, "refused", ctx.now, { note: "disobeyed" });
+                events.push({
+                  kind: ORG_ORDER_REFUSED_EVENT,
+                  actors: [ord.executor],
+                  place: o.placeOf(truth, ord.executor),
+                  data: { ...base, obedienceChance: chance, conflict },
+                  emissions: {},
+                  causes: cause,
+                });
+                continue;
+              }
+              const done = (
+                transfers: readonly Transfer[],
+                extra: { unit?: string; loan?: string },
+                data: Record<string, unknown>,
+                changesMore: StateChange[] = [],
+              ) => {
+                const spent = transfers.reduce((n, t) => n + t.amount, 0);
+                const ev = draftEvent(events.length);
+                book = closeOrder(book, ord.id, "done", ctx.now, {
+                  ...(spent > 0 ? { spent } : {}),
+                  ...extra,
+                });
+                events.push({
+                  kind: ORG_ORDER_EXECUTED_EVENT,
+                  actors: [ord.executor],
+                  place: o.placeOf(truth, ord.executor),
+                  data: { ...base, spent, ...data },
+                  emissions: {},
+                  causes: cause,
+                });
+                if (transfers.length > 0) post(ev, transfers);
+                changes.push(...changesMore);
+              };
+              if (ord.option === "relief") {
+                if (!grain) {
+                  fail("no_grain");
+                  continue;
+                }
+                if (!livingHome(ord.subject)) {
+                  fail("household_gone", "void");
+                  continue;
+                }
+                const amount = spendable(orderRules.reliefGrams, bal(vault, grain));
+                if (amount <= 0) {
+                  fail("empty_treasury");
+                  continue;
+                }
+                done(
+                  [
+                    {
+                      from: vault,
+                      to: holderAccount(ord.subject as unknown as HolderRef),
+                      unit: grain,
+                      amount,
+                    },
+                  ],
+                  { unit: grain },
+                  { home: ord.subject, unit: grain },
+                );
+              } else if (ord.option === "extend") {
+                if (!loan || loan.status !== "defaulted") {
+                  fail("loan_not_defaulted", "void");
+                  continue;
+                }
+                const owed = outstanding(loan) - (book.assumed[ord.subject] ?? 0);
+                const amount = spendable(assumeAmount(owed, orderRules), bal(vault, loan.unit));
+                if (amount <= 0) {
+                  fail(
+                    owed <= 0 ? "nothing_owed" : "empty_treasury",
+                    owed <= 0 ? "void" : "failed",
+                  );
+                  continue;
+                }
+                done(
+                  [{ from: vault, to: loan.lenderAccount, unit: loan.unit, amount }],
+                  { unit: loan.unit, loan: ord.subject },
+                  { lender: loan.lender, borrower: loan.borrower, unit: loan.unit },
+                );
+              } else {
+                const [a, b] = ord.subject.split("|") as [AgentId, AgentId];
+                if (!alive(a) || !alive(b)) {
+                  fail("party_gone", "void");
+                  continue;
+                }
+                const more: StateChange[] = [];
+                for (const [x, y] of [
+                  [a, b],
+                  [b, a],
+                ] as const) {
+                  const row = truth.get(RELATIONS, x);
+                  const r = row?.toward[y];
+                  if (!row || !r) continue;
+                  const resentment = Math.max(
+                    0,
+                    Math.round(((r.dims.resentment ?? 0) - orderRules.resentmentDrop) * 1e6) / 1e6,
+                  );
+                  more.push(
+                    setComponent(RELATIONS, x, {
+                      ...row,
+                      toward: {
+                        ...row.toward,
+                        [y]: { ...r, dims: { ...r.dims, resentment }, updated: ctx.now },
+                      },
+                    }),
+                  );
+                }
+                const hs = [
+                  ...new Set([homeOf(a), homeOf(b)].filter((x): x is string => !!x)),
+                ].sort();
+                const each = grain
+                  ? Math.floor(
+                      spendable(orderRules.feastGrams, bal(vault, grain)) / Math.max(1, hs.length),
+                    )
+                  : 0;
+                const feast: Transfer[] =
+                  grain && each > 0
+                    ? hs.map((h) => ({
+                        from: vault,
+                        to: holderAccount(h as unknown as HolderRef),
+                        unit: grain,
+                        amount: each,
+                      }))
+                    : [];
+                done(
+                  feast,
+                  grain ? { unit: grain } : {},
+                  { parties: [a, b], resentmentDrop: orderRules.resentmentDrop },
+                  more,
+                );
+              }
+            }
+          }
 
           // Los asuntos abiertos que ya deliberaron un tiempo se votan (o caducan si la presión se fue).
           for (const issue of agenda0.open) {
@@ -329,6 +623,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
               decisionId,
             });
             agenda = closeIssue(agenda, res.decision, irules.keepDecisions);
+            const decidedEv = draftEvent(events.length);
             events.push({
               kind: ORG_DECIDED_EVENT,
               actors: [issue.raisedBy, ...res.decision.votes.map((v) => v.agent)].filter(
@@ -355,6 +650,34 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
               emissions: {},
               causes: res.decision.causes as never,
             });
+            if (ordersOn) {
+              const ordEv = draftEvent(events.length);
+              const order: Order | null = orderFrom(
+                org,
+                res.decision,
+                `order:${id}:${book.serial}`,
+                ctx.now,
+                ordEv,
+              );
+              if (order) {
+                book = addOrder(book, order, orderRules.keepOrders);
+                events.push({
+                  kind: ORG_ORDERED_EVENT,
+                  actors: [order.executor],
+                  place: o.placeOf(truth, order.executor),
+                  data: {
+                    org: id,
+                    order: order.id,
+                    decision: decisionId,
+                    option: order.option,
+                    subject: order.subject,
+                    executor: order.executor,
+                  },
+                  emissions: {},
+                  causes: [{ kind: "event", event: decidedEv }],
+                });
+              }
+            }
           }
 
           // Presiones nuevas: las plantea quien las percibe y le conviene; si nadie, no existen.
@@ -395,6 +718,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
             });
           }
           if (agenda !== agenda0) changes.push(setComponent(ORG_AGENDA, id as never, agenda));
+          if (book !== book0) changes.push(setComponent(ORG_ORDERS, id as never, book));
         }
       }
 
@@ -444,7 +768,9 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
         });
       }
 
-      return changes.length === 0 && events.length === 0 ? {} : { changes, events };
+      return changes.length === 0 && events.length === 0
+        ? {}
+        : { changes, events, ...(postings.length > 0 ? { postings } : {}) };
     },
   };
 }
