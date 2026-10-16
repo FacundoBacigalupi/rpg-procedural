@@ -22,6 +22,7 @@ import {
   GREET_CHANCE,
   GREET_FAMILIARITY,
   GREETED_EVENT,
+  type GreetingSpeech,
   NPC_GREETED,
   npcGreetingsProcess,
 } from "./npc-greetings.ts";
@@ -60,8 +61,14 @@ function world(opts: { otherHex?: number; met?: boolean; resentment?: number } =
   return truth;
 }
 
-function run(truth: WorldTruth, now = 3600, seed = 1): ProcessResult {
-  return npcGreetingsProcess({ player, dims: [...dims], bonds: [], placeOf: () => site }).run({
+function run(truth: WorldTruth, now = 3600, seed = 1, speech?: GreetingSpeech): ProcessResult {
+  return npcGreetingsProcess({
+    player,
+    dims: [...dims],
+    bonds: [],
+    placeOf: () => site,
+    ...(speech ? { speech } : {}),
+  }).run({
     now,
     window: 3600,
     windowIndex: 1,
@@ -164,5 +171,66 @@ describe("life.npc_greetings", () => {
     truth.deleteRaw(NPC_JOURNEY.name, me);
     apply(truth, run(truth));
     expect(truth.get(NPC_GREETED, me)).toBeUndefined();
+  });
+});
+
+describe("el saludo como acto de habla", () => {
+  const lexicon = { people: [], goods: [] };
+  const known = (): WorldTruth => {
+    const truth = world();
+    truth.set(RELATIONS, me, {
+      originEventId: origin,
+      toward: {
+        [other]: {
+          dims: { familiarity: 0.5, resentment: 0, fear: 0, affection: 0, trust: 0 } as never,
+          bonds: [],
+          history: [],
+          updated: 3600,
+        },
+      },
+    });
+    return truth;
+  };
+  const timeFor = (speech: GreetingSpeech): number => {
+    for (let h = 1; h < 200; h++) {
+      if (run(known(), h * 3600, 1, speech).events?.length) return h * 3600;
+    }
+    throw new Error("nunca saluda");
+  };
+
+  it("entendido, deja lo mismo que el efecto directo y anota quién entendió", () => {
+    const speech: GreetingSpeech = { say: () => "Buenas", lexicon };
+    const now = timeFor(speech);
+    const direct = known();
+    apply(direct, run(direct, now));
+    const spoken = known();
+    const out = run(spoken, now, 1, speech);
+    apply(spoken, out);
+    expect(out.events?.[0]?.data).toMatchObject({
+      form: "words",
+      understood: { [me]: true, [other]: true },
+    });
+    expect(spoken.get(RELATIONS, me)).toEqual(direct.get(RELATIONS, me));
+    expect(spoken.get(RELATIONS, other)).toEqual(direct.get(RELATIONS, other));
+  });
+
+  it("lo que no se entiende como saludo no entibia a quien lo oyó", () => {
+    const speech: GreetingSpeech = { say: (s) => (s === me ? "Buenas" : "mmm"), lexicon };
+    const truth = known();
+    const out = run(truth, timeFor(speech), 1, speech);
+    expect(out.events?.[0]?.data).toMatchObject({ understood: { [me]: false, [other]: true } });
+    apply(truth, out);
+    // `me` oyó "mmm" de `other`: su sentir por él no cambia; `other` sí oyó el saludo de `me`.
+    expect(truth.get(RELATIONS, me)?.toward[other]?.dims.familiarity).toBeCloseTo(0.5, 5);
+    expect(truth.get(RELATIONS, other)?.toward[me]?.dims.familiarity).toBeGreaterThan(0);
+  });
+
+  it("el gesto no necesita lengua, es determinista y apagado no cambia nada", () => {
+    const deaf: GreetingSpeech = { say: () => "mmm", lexicon };
+    const now = greetingTime();
+    const out = run(world(), now, 1, deaf);
+    expect(out.events?.[0]?.data).toEqual({ hex: 5, form: "gesture" });
+    expect(run(world(), now, 1, deaf)).toEqual(out);
+    expect(out).toEqual(run(world(), now));
   });
 });
