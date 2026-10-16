@@ -411,7 +411,7 @@ describe("life.council: tesoro y órdenes en la vida", () => {
   });
 
   it("apagado: los hashes de siempre", () => {
-    const life = Life.create(3, content, {});
+    const life = Life.create(3, content, { legacyNoOscillationEvents: true });
     expect(life.hash().total).toBe(
       "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",
     );
