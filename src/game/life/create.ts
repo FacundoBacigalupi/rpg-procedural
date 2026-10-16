@@ -430,6 +430,8 @@ export interface LifeOptions {
   readonly lendBorrowed?: boolean;
   /** Opt-in (con `consumables`): devolver la dosis prestada en especie (`LifeParts.repayDoses`). */
   readonly repayDoses?: boolean;
+  /** Opt-in: interés en especie del fiado de comida entre hogares (`LifeParts.householdInterest`). */
+  readonly householdInterest?: number;
   /** Opt-in: señales de ansia aprendidas (`LifeParts.cravingCues`). */
   readonly cravingCues?: boolean;
   /** Opt-in (con `cravingCues`): las señales leen a quién cree presente y el huso (`LifeParts.cueLocal`). */
@@ -705,6 +707,7 @@ export function optInParts(
   | "borrowCraving"
   | "lendBorrowed"
   | "repayDoses"
+  | "householdInterest"
   | "cravingCues"
   | "cueLocal"
   | "objectCues"
@@ -848,6 +851,7 @@ export function optInParts(
     ...(options.borrowCraving ? { borrowCraving: options.borrowCraving } : {}),
     ...(options.lendBorrowed ? { lendBorrowed: true } : {}),
     ...(options.repayDoses ? { repayDoses: true } : {}),
+    ...(options.householdInterest ? { householdInterest: options.householdInterest } : {}),
     ...(options.cravingCues ? { cravingCues: true } : {}),
     ...(options.cueLocal ? { cueLocal: true } : {}),
     ...(options.objectCues ? { objectCues: true } : {}),
