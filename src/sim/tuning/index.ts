@@ -83,6 +83,7 @@ export const ScenarioLife = z.strictObject({
   npcFootwearMend: z.boolean().optional(),
   npcCobbler: z.boolean().optional(),
   npcCobblerHides: z.boolean().optional(),
+  npcRoadMend: z.boolean().optional(),
   npcCloak: z.boolean().optional(),
   npcCloakMend: z.boolean().optional(),
   npcForecast: z.boolean().optional(),
