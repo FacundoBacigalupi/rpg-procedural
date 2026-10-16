@@ -21,8 +21,10 @@ import {
 } from "../../core/index.ts";
 import {
   activeMembers,
+  appearChance,
   CASE_COOLDOWN_DAYS,
   CASES,
+  type Case,
   type CaseBook,
   type CaseEffectRules,
   compensationDue,
@@ -49,8 +51,11 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   type Relations,
+  resolveSummons,
   type StateChange,
+  SUMMONS_DAYS,
   setComponent,
+  summonsPending,
 } from "../../sim/index.ts";
 import { type CouncilAuthorityOptions, councilStanding } from "./councilauthority.ts";
 
@@ -58,12 +63,24 @@ export const COUNCIL_CASES_PROCESS = "life.council_cases";
 export const CASE_OPENED_EVENT = "law.case_opened";
 export const CASE_RESOLVED_EVENT = "law.case_resolved";
 export const CASE_EFFECTS_EVENT = "law.case_effects";
+export const SUMMONS_ANSWERED_EVENT = "law.summons_answered";
+export const SUMMONS_DEFIED_EVENT = "law.summons_defied";
+
+/** Opt-in: el caso `investigating` cita al acusado y su obediencia decide si comparece. */
+export interface SummonsOptions {
+  /** Días de plazo para presentarse (por defecto `SUMMONS_DAYS`). */
+  readonly days?: number;
+  /** Piso de deber de presentarse aun sin autoridad del consejo (por defecto `SUMMONS_DUTY`). */
+  readonly duty?: number;
+}
 
 export interface CouncilCasesOptions extends CouncilAuthorityOptions {
   /** Días antes de volver a abrir el mismo caso (mismo acusador, acusado y cargo). */
   readonly cooldownDays?: number;
   /** Opt-in: la resolución mueve grano por el ledger y las relaciones de las partes (necesita `goods` y ledger). */
   readonly effects?: Partial<CaseEffectRules>;
+  /** Opt-in: la citación vence y el acusado comparece o no (escala a `defied`). */
+  readonly summons?: SummonsOptions;
 }
 
 export interface CouncilCasesDeps extends CouncilCasesOptions {
@@ -98,6 +115,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
     system: "life",
     scope: "world",
     cadence: { local: "onEvent", scene: "onEvent" },
+    withRecent: true,
     representation: "individual",
     phase: "decide",
     reads: [
@@ -149,6 +167,57 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
         return after - before;
       };
       const books = new Map<string, CaseBook | undefined>();
+      // Citaciones vencidas: el citado comparece o no, según lo que el consejo pesa sobre él.
+      if (o.summons) {
+        for (const forum of [...truth.ids(CASES)].sort()) {
+          const stored = truth.get(CASES, forum as never);
+          if (!stored) continue;
+          let touched = false;
+          const cases: Case[] = [];
+          for (const c of stored.cases) {
+            if (!summonsPending(c, ctx.now)) {
+              cases.push(c);
+              continue;
+            }
+            touched = true;
+            if (truth.get(ENTITY, c.accused)?.endedAt !== undefined) {
+              cases.push({ ...c, status: "dropped" });
+              continue;
+            }
+            const chance = appearChance(councilStanding(truth, c.accused, o), o.summons.duty);
+            const appeared = ctx.rng.fork("summons", c.id).chance(chance);
+            cases.push(resolveSummons(c, appeared, chance, ctx.now));
+            events.push({
+              kind: appeared ? SUMMONS_ANSWERED_EVENT : SUMMONS_DEFIED_EVENT,
+              actors: [c.accuser, c.accused, c.judge],
+              place: o.placeOf(truth, c.judge),
+              data: { case: c.id, forum, chance, ...(appeared ? {} : { status: "defied" }) },
+              emissions: {},
+              causes: [{ kind: "event", event: c.originEventId }],
+            });
+            if (!appeared && o.effects) {
+              const evId = draftEvent(events.length - 1);
+              const forumOrg = truth.get(ORG, forum as never);
+              let face = 0;
+              for (const m of forumOrg ? activeMembers(forumOrg) : []) {
+                if (m.agent === c.accused || m.agent === c.accuser) continue;
+                face += tweak(m.agent, c.accused, "respect", -rules.defianceFaceDrop, -1);
+              }
+              if (face !== 0) {
+                events.push({
+                  kind: CASE_EFFECTS_EVENT,
+                  actors: [c.accuser, c.accused, c.judge],
+                  place: o.placeOf(truth, c.judge),
+                  data: { case: c.id, forum, status: "defied", face: Math.round(face * 1e6) / 1e6 },
+                  emissions: {},
+                  causes: [{ kind: "event", event: evId }],
+                });
+              }
+            }
+          }
+          if (touched) books.set(forum, { ...stored, cases });
+        }
+      }
       for (const e of ctx.recent) {
         if (e.kind !== "action.speak") continue;
         const acc = accusationOf(e.data);
@@ -188,7 +257,14 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
         if (isRepeat(book, d, cooldown)) continue;
         const standing = councilStanding(truth, accused, o);
         const response = forumResponse(belief, suspectsLiar, standing);
-        const opened = openCase(book, d, response, known ? penaltyScale(known) : 1, standing);
+        const opened = openCase(
+          book,
+          d,
+          response,
+          known ? penaltyScale(known) : 1,
+          standing,
+          o.summons ? e.tick + (o.summons.days ?? SUMMONS_DAYS) * o.day : undefined,
+        );
         books.set(forum, opened.book);
         const c = opened.case;
         const openedEv = draftEvent(events.length);
@@ -210,6 +286,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
             response,
             status: c.status,
             ...(c.verdict ? { penalty: c.verdict.penalty } : {}),
+            ...(c.summons ? { summonsDue: c.summons.due } : {}),
           },
           emissions: {},
           causes: [{ kind: "event", event: openedEv }],

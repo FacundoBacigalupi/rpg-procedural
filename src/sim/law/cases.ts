@@ -10,7 +10,18 @@ import { table } from "../world/index.ts";
 import type { DeedKind } from "./deeds.ts";
 import { type ForumResponse, type ForumStanding, forumPenalty } from "./forum.ts";
 
-export type CaseStatus = "investigating" | "decided" | "dropped" | "settled";
+/** `defied`: el citado no se presentó y el caso escaló (insumo de las vendettas). */
+export type CaseStatus = "investigating" | "decided" | "dropped" | "settled" | "defied";
+
+/** La citación a comparecer de un caso `investigating`: plazo y, vencido, qué hizo el citado. */
+export interface Summons {
+  /** Tick a partir del cual el citado debía haberse presentado. */
+  readonly due: Tick;
+  readonly outcome?: "appeared" | "defied";
+  readonly resolvedAt?: Tick;
+  /** Probabilidad (creída por el foro) con la que se esperaba que compareciera. */
+  readonly chance?: number;
+}
 
 export interface Verdict {
   /** Cuánto de la pena base impone el foro (0 si no puede o no quiere). */
@@ -36,6 +47,8 @@ export interface Case {
   readonly response: ForumResponse;
   readonly status: CaseStatus;
   readonly verdict?: Verdict;
+  /** La citación, si el foro citó y la jurisdicción la exige (opt-in). */
+  readonly summons?: Summons;
   readonly openedAt: Tick;
   /** La denuncia (el evento de habla que la contó). */
   readonly originEventId: EventId;
@@ -94,6 +107,7 @@ export function openCase(
   response: ForumResponse,
   scale: number,
   standing: ForumStanding,
+  summonsDue?: Tick,
 ): { readonly book: CaseBook; readonly case: Case } {
   const before = book ?? EMPTY_CASE_BOOK;
   const serial = before.serial + 1;
@@ -112,6 +126,9 @@ export function openCase(
     response,
     status,
     ...(status === "decided" ? { verdict: { penalty, decidedAt: d.at } } : {}),
+    ...(status === "investigating" && summonsDue !== undefined
+      ? { summons: { due: summonsDue } }
+      : {}),
     openedAt: d.at,
     originEventId: d.origin,
   };
@@ -128,6 +145,8 @@ export interface CaseEffectRules {
   readonly faceDrop: number;
   /** Rencor que baja entre las dos partes cuando el consejo media. */
   readonly mediationDrop: number;
+  /** Respeto que pierde ante el consejo quien desoyó la citación (cara). */
+  readonly defianceFaceDrop: number;
 }
 
 export const DEFAULT_CASE_EFFECTS: CaseEffectRules = {
@@ -135,6 +154,7 @@ export const DEFAULT_CASE_EFFECTS: CaseEffectRules = {
   resentmentGain: 0.15,
   faceDrop: 0.1,
   mediationDrop: 0.1,
+  defianceFaceDrop: 0.05,
 };
 
 /** Compensación en gramos: la parte de la multa que impone la pena, sin pasar de lo que el pagador tiene. */
@@ -146,4 +166,43 @@ export function compensationDue(penalty: number, fineGrams: number, balance: num
 /** Suma `delta` a una dimensión de relación, acotada a [lo, hi] y redondeada. */
 export function nudgeDim(value: number, delta: number, lo: number, hi: number): number {
   return Math.round(Math.min(hi, Math.max(lo, value + delta)) * 1e6) / 1e6;
+}
+
+/** Cuánto pesa el deber de presentarse aun sin autoridad del consejo sobre el citado. */
+export const SUMMONS_DUTY = 0.1;
+/** Días de plazo para comparecer, por defecto. */
+export const SUMMONS_DAYS = 3;
+
+/**
+ * Probabilidad de que el citado comparezca: lo que el consejo pesa sobre él (autoridad respetada y
+ * lealtad, creídas o registradas, no la verdad del hecho). Igual alcance que `forumPenalty`, con un
+ * piso de deber.
+ */
+export function appearChance(standing: ForumStanding, duty: number = SUMMONS_DUTY): number {
+  const a = Math.min(1, Math.max(0, standing.authority));
+  const l = Math.min(1, Math.max(0, standing.loyalty));
+  const reach = 1 - (1 - a) * (1 - 0.5 * l);
+  const floor = Math.min(1, Math.max(0, duty));
+  return Math.round((floor + (1 - floor) * reach) * 1e6) / 1e6;
+}
+
+/** ¿El caso tiene una citación vencida sin respuesta? */
+export function summonsPending(c: Case, now: Tick): boolean {
+  return (
+    c.status === "investigating" &&
+    c.summons !== undefined &&
+    c.summons.outcome === undefined &&
+    c.summons.due <= now
+  );
+}
+
+/** Cierra la citación: comparece (el caso sigue investigándose) o desoye (el caso escala). */
+export function resolveSummons(c: Case, appeared: boolean, chance: number, at: Tick): Case {
+  const summons: Summons = {
+    due: c.summons?.due ?? at,
+    outcome: appeared ? "appeared" : "defied",
+    resolvedAt: at,
+    chance,
+  };
+  return { ...c, summons, status: appeared ? c.status : "defied" };
 }
