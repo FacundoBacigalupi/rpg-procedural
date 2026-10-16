@@ -23,5 +23,18 @@
     "salience": 0.4,
     "stickiness": 0.9,
     "readBy": ["family", "body-health"]
+  },
+  {
+    "id": "medicine.school",
+    "name": "cómo se entiende y se cura la enfermedad",
+    "domain": "values",
+    "variants": [
+      { "id": "empirical", "name": "se nombra la dolencia como es y se da lo que sirvió" },
+      { "id": "herbal", "name": "hierbas de la abuela, sin teoría" },
+      { "id": "humoral", "name": "sangre caliente o fría: se sangra al enfermo" }
+    ],
+    "salience": 0.3,
+    "stickiness": 0.8,
+    "readBy": ["body-health", "religion"]
   }
 ]
