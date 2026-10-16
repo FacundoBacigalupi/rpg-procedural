@@ -231,8 +231,13 @@ export interface LifeSetup {
  * viaje se retoma después) y `life.npc_greetings` (efecto directo) no corre. Compatibilidad: el
  * replay con un motor anterior a `life-33` enciende `legacyNoGreetDecision`; una vida guardada con
  * `life-32` sigue desde su estado con el límite de replay.
+ *
+ * `life-34`: `famine.began|worsened` cita la oscilación oceánica cuando el año de hoy o el anterior
+ * fue seco en la aldea (`data.oscillation` y una causa `state` `oscillation:<cuenca>:<año>:<fase>`).
+ * Compatibilidad: el replay con un motor anterior a `life-34` enciende `legacyNoOscillationCause`;
+ * una vida guardada con `life-33` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-33";
+export const LIFE_ENGINE = "life-34";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -275,6 +280,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 31 ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(n < 32 ? { legacyNoRainWaitPersist: true } : {}),
     ...(n < 33 ? { legacyNoGreetDecision: true } : {}),
+    ...(n < 34 ? { legacyNoOscillationCause: true } : {}),
   };
 }
 

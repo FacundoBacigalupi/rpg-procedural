@@ -37,6 +37,7 @@ import {
   localHour,
   type MaterialDef,
   type NutrientProfileDef,
+  oscillationYearOfMap,
   outdoorTempC,
   PERSON,
   type PressureCurve,
@@ -406,6 +407,8 @@ export interface LifeWorld {
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
   readonly legacyNoGreetDecision?: boolean;
+  /** Solo el replay de un motor anterior a `life-34`: la hambruna no cita la oscilación oceánica entre sus causas. */
+  readonly legacyNoOscillationCause?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -1391,6 +1394,12 @@ export function lifeWorld(
           ? [
               famineProcess({
                 ...parts.famine,
+                ...(parts.legacyNoOscillationCause !== true && parts.map.oscillation !== undefined
+                  ? {
+                      oscillationYear: (day: number) =>
+                        oscillationYearOfMap(parts.map, parts.clock, parts.seed, day),
+                    }
+                  : {}),
                 clock: parts.clock,
                 goods: parts.goods,
                 placeOf: placeOf(parts, village),

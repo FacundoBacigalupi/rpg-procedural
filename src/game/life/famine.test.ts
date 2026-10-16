@@ -6,6 +6,7 @@ import {
   draftEvent,
   ENTITY,
   type GoodDef,
+  type OscillationYear,
   PERSON,
   PRESSURE,
   type ProcessDef,
@@ -23,7 +24,7 @@ const goods = [
   { id: "grain", name: "grano", form: "good", priceCopperPerKg: 4, halfLifeDays: 400 },
 ] as unknown as GoodDef[];
 
-function world() {
+function world(oscillationYear?: (day: number) => OscillationYear | undefined) {
   const truth = new WorldTruth();
   const log = new EventLog();
   const origin = makeId("event", 1);
@@ -76,7 +77,16 @@ function world() {
     clock,
     ledger: new Ledger({ externals: {} }),
     resolution: "local",
-    processes: [famineProcess({ clock, goods, staple: "grain", placeOf: () => place }), concurrent],
+    processes: [
+      famineProcess({
+        clock,
+        goods,
+        staple: "grain",
+        placeOf: () => place,
+        ...(oscillationYear ? { oscillationYear } : {}),
+      }),
+      concurrent,
+    ],
   });
   return { truth, log, scheduler };
 }
@@ -106,6 +116,50 @@ describe("life.famine con scheduler real", () => {
     a.scheduler.advanceTo(2 * clock.day);
     b.scheduler.advanceTo(2 * clock.day);
     expect(a.truth.rows()).toEqual(b.truth.rows());
+    expect(a.log.all()).toEqual(b.log.all());
+  });
+});
+
+describe("la hambruna cita la oscilación (life-34)", () => {
+  const dry = (day: number): OscillationYear => ({
+    cause: { basin: "basin-9", year: Math.floor(day / 365), phase: "cool", value: -0.8 },
+    teleconnection: 0.7,
+    precipFactor: 0.6,
+    effect: "dry",
+  });
+
+  it("un año seco queda en las causas y en los datos del evento", () => {
+    const w = world(dry);
+    w.scheduler.advanceTo(clock.day);
+    const event = w.log.all().find((e) => e.kind === "famine.worsened");
+    expect(event?.causes).toContainEqual({
+      kind: "state",
+      entity: settlement,
+      key: "oscillation:basin-9:0:cool",
+    });
+    expect(event?.data).toMatchObject({ oscillation: { basin: "basin-9", phase: "cool" } });
+  });
+
+  it("sin año seco, o sin la opción, no cita nada", () => {
+    const wet = (day: number): OscillationYear => ({
+      ...dry(day),
+      precipFactor: 1.3,
+      effect: "wet",
+    });
+    for (const w of [world(wet), world()]) {
+      w.scheduler.advanceTo(clock.day);
+      const event = w.log.all().find((e) => e.kind === "famine.worsened");
+      expect(event).toBeDefined();
+      expect(event?.data).not.toHaveProperty("oscillation");
+      expect(JSON.stringify(event?.causes)).not.toContain("oscillation:");
+    }
+  });
+
+  it("es determinista", () => {
+    const a = world(dry);
+    const b = world(dry);
+    a.scheduler.advanceTo(2 * clock.day);
+    b.scheduler.advanceTo(2 * clock.day);
     expect(a.log.all()).toEqual(b.log.all());
   });
 });

@@ -25,6 +25,7 @@ import {
   famineState,
   type GoodDef,
   goodUnit,
+  type OscillationYear,
   PERSON,
   PRESSURE,
   type PressureReading,
@@ -88,7 +89,26 @@ export interface FamineOptions {
    * la fila aunque el estado no cambie, sin evento; así la presión `hunger` lee el valor de hoy.
    */
   readonly refresh?: boolean;
+  /**
+   * `life-34`: el año de la oscilación oceánica del lugar en un día del mundo (`oscillationYearOfMap`).
+   * Si el año de hoy o el anterior fue seco, la hambruna que empieza o empeora lo cita entre sus
+   * causas (la fase de la cuenca) y en `data.oscillation`; sin esto no se cita nada.
+   */
+  readonly oscillationYear?: (day: number) => OscillationYear | undefined;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+}
+
+/** La sequía de la oscilación detrás de hoy: el año de hoy o el anterior, el más seco de los secos. */
+export function droughtBehind(
+  yearOf: (day: number) => OscillationYear | undefined,
+  today: number,
+  yearDays: number,
+): OscillationYear | undefined {
+  const now = yearOf(today);
+  const before = yearOf(today - yearDays);
+  const dry = [now, before].filter((y): y is OscillationYear => y?.effect === "dry");
+  if (dry.length === 0) return undefined;
+  return dry.reduce((a, b) => (b.precipFactor < a.precipFactor ? b : a));
 }
 
 export function famineProcess(o: FamineOptions): ProcessDef {
@@ -180,6 +200,10 @@ export function famineProcess(o: FamineOptions): ProcessDef {
                 draftEvent(events.length),
               );
         if (cite) changes.push(...cite.changes);
+        const drought =
+          o.oscillationYear && (kind === "famine.began" || kind === "famine.worsened")
+            ? droughtBehind(o.oscillationYear, today, Math.round(o.clock.year / o.clock.day))
+            : undefined;
         events.push({
           kind,
           actors: [who],
@@ -190,11 +214,29 @@ export function famineProcess(o: FamineOptions): ProcessDef {
             value,
             pricePush: d.pricePush,
             migrationPull: d.migrationPull,
+            ...(drought
+              ? {
+                  oscillation: {
+                    ...drought.cause,
+                    teleconnection: drought.teleconnection,
+                    precipFactor: drought.precipFactor,
+                  },
+                }
+              : {}),
           },
           emissions: {},
           causes: [
             ...(cite ? [cite.cause] : []),
             { kind: "state", entity: s as unknown as EntityRef, key: "food-scarcity" },
+            ...(drought
+              ? [
+                  {
+                    kind: "state" as const,
+                    entity: s as unknown as EntityRef,
+                    key: `oscillation:${drought.cause.basin}:${drought.cause.year}:${drought.cause.phase}`,
+                  },
+                ]
+              : []),
           ],
         });
         changes.push(
