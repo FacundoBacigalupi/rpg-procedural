@@ -3,9 +3,9 @@
 // `renderAddress`) detrás del saludo; la claridad con que lo oye el otro sale de la distancia entre
 // los acentos nativos (`accentDistance`) y de su oído (`earOf`), y de si hablan la misma lengua.
 //
-// Hoy no hay una lengua ni una comunidad por persona: todos nacen en la aldea, así que `nativeOf`
-// por defecto devuelve la lengua y el acento de la aldea (`COMMUNITY_ACCENT`) y la claridad es 1.
-// Con una comunidad por persona se inyecta otra `nativeOf` y el resto ya funciona.
+// Cada persona puede tener su origen y sus lenguas (`PERSON_ORIGIN`, opt-in): `personNative` lee la
+// lengua y el acento de su asentamiento de origen y, si el oyente habla la lengua del otro sin ser
+// la suya, la entiende en la medida de su nivel. Sin filas todos son de la aldea y la claridad es 1.
 
 import type { AgentId } from "../../core/index.ts";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../../sim/index.ts";
 import { earOf } from "./accent.ts";
 import type { GreetingSpeech } from "./npc-greetings.ts";
+import { levelIn, originOf } from "./person-origin.ts";
 import { villageOf } from "./taboos.ts";
 
 /** Cuánta claridad se pierde por punto de distancia de acento sobre lo que no se nota (sin calibrar). */
@@ -42,8 +43,15 @@ export function villageNative(truth: ReadonlyWorldTruth): Native | undefined {
   return row ? { language: row.language, accent: row.accent } : undefined;
 }
 
+/** La lengua y el acento nativo de su asentamiento de origen (sin fila, el de la aldea). */
+export function personNative(truth: ReadonlyWorldTruth, who: AgentId): Native | undefined {
+  const origin = originOf(truth, who);
+  const row = origin === undefined ? undefined : truth.get(COMMUNITY_ACCENT, origin);
+  return row ? { language: row.language, accent: row.accent } : undefined;
+}
+
 /**
- * Qué tan claro lo oye `hearer` (0-1): otra lengua es 0 (no se entiende); la misma, 1 menos lo que
+ * Qué tan claro lo oye `hearer` (0-1): otra lengua es el nivel con que el oyente la habla (0 si no la sabe); la misma, 1 menos lo que
  * pesa la distancia de acento por encima de lo que no se nota, atenuada por el oído de quien oye.
  */
 export function greetingClarity(
@@ -51,11 +59,14 @@ export function greetingClarity(
   speaker: AgentId,
   hearer: AgentId,
   nativeOf: (truth: ReadonlyWorldTruth, who: AgentId) => Native | undefined,
+  levelOfLanguage?: (truth: ReadonlyWorldTruth, who: AgentId, language: string) => number,
 ): number {
   const a = nativeOf(truth, speaker);
   const b = nativeOf(truth, hearer);
   if (!a || !b) return 1;
-  if (a.language !== b.language) return 0;
+  if (a.language !== b.language) {
+    return Math.min(1, Math.max(0, levelOfLanguage?.(truth, hearer, a.language) ?? 0));
+  }
   const gap = Math.max(0, accentDistance(a.accent, b.accent) - ACCENT_JND);
   const loss = gap * ACCENT_CLARITY_LOSS * (1 - EAR_COMPENSATION * earOf(truth, hearer));
   return Math.min(1, Math.max(0, 1 - loss));
@@ -73,7 +84,7 @@ export interface GreetingLanguage {
  */
 export function lexicalGreetingSpeech(
   lang: GreetingLanguage,
-  nativeOf: (truth: ReadonlyWorldTruth, who: AgentId) => Native | undefined = villageNative,
+  nativeOf: (truth: ReadonlyWorldTruth, who: AgentId) => Native | undefined = personNative,
 ): GreetingSpeech {
   return {
     say: (_speaker, hearer, truth) => {
@@ -84,6 +95,6 @@ export function lexicalGreetingSpeech(
       return to === "" ? "Buenas" : `Buenas, ${to}`;
     },
     lexicon: { people: [], goods: [] },
-    clarity: (truth, speaker, hearer) => greetingClarity(truth, speaker, hearer, nativeOf),
+    clarity: (truth, speaker, hearer) => greetingClarity(truth, speaker, hearer, nativeOf, levelIn),
   };
 }
