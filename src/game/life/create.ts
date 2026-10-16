@@ -460,6 +460,8 @@ export interface LifeOptions {
   readonly npcEncounters?: boolean;
   /** Opt-in (con `npcEncounters`): rastros del viaje, dejados y notados como creencia (`LifeParts.npcTraces`). */
   readonly npcTraces?: boolean;
+  /** Opt-in (con `npcTraces`): quien se cruzó y sigue en el hex le cuenta al otro los rastros que vio (`LifeParts.npcWarnings`). */
+  readonly npcWarnings?: boolean;
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`LifeParts.npcNightRest`). */
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
@@ -640,6 +642,7 @@ export function optInParts(
   | "npcResumeReevaluate"
   | "npcEncounters"
   | "npcTraces"
+  | "npcWarnings"
   | "npcTemplates"
   | "npcJourneyDays"
   | "npcTransit"
@@ -773,6 +776,7 @@ export function optInParts(
     ...(options.npcResumeReevaluate ? { npcResumeReevaluate: true } : {}),
     ...(options.npcEncounters ? { npcEncounters: true } : {}),
     ...(options.npcTraces ? { npcTraces: true } : {}),
+    ...(options.npcWarnings ? { npcWarnings: true } : {}),
     ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
