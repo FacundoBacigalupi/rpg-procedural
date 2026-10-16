@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { externalAccount, ledgerUnit, makeId } from "../../core/index.ts";
 import type { HouseholdFlows } from "./budget.ts";
@@ -146,5 +147,67 @@ describe("crédito de cosecha", () => {
     expect(r.seized.map((s) => s.ref)).toEqual(["a"]);
     expect(r.released).toEqual(["b"]);
     expect(r.loss).toBe(0);
+  });
+});
+
+describe("interés compuesto", () => {
+  it("con un período (o sin él) es el simple de siempre", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100000 }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (principal, rate) => {
+          const simple = principal + Math.round(principal * rate);
+          expect(totalDue({ principal, rate })).toBe(simple);
+          expect(totalDue({ principal, rate, periods: 1 })).toBe(simple);
+        },
+      ),
+    );
+  });
+
+  it("capitaliza: más períodos nunca deben menos, y el interés es total menos principal", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100000 }),
+        fc.double({ min: 0, max: 0.5, noNaN: true }),
+        fc.integer({ min: 1, max: 24 }),
+        (principal, rate, periods) => {
+          const a = totalDue({ principal, rate, periods });
+          const b = totalDue({ principal, rate, periods: periods + 1 });
+          expect(b).toBeGreaterThanOrEqual(a);
+          expect(interestOf({ principal, rate, periods })).toBe(a - principal);
+        },
+      ),
+    );
+  });
+
+  it("el compuesto supera al simple por período y el préstamo lo paga entero, sin crear nada", () => {
+    expect(totalDue({ principal: 1000, rate: 0.1, periods: 3 })).toBe(1331);
+    const l0 = loan();
+    const l = makeLoan({
+      id: l0.id,
+      lender: l0.lender,
+      borrower: l0.borrower,
+      lenderAccount: lender,
+      borrowerAccount: borrower,
+      unit: coin,
+      requested: 500,
+      rate: 0.1,
+      periods: 3,
+      startDay: 0,
+      dueDay: 90,
+      collateral: [land],
+      guarantors: [],
+      unsecuredLimit: 0,
+      originEventId: "event:1",
+    });
+    if (!l) throw new Error("sin préstamo");
+    expect(outstanding(l)).toBe(666);
+    const r = payLoan(l, 10000, 10000);
+    expect(r.paid).toBe(666);
+    expect(r.loan.status).toBe("repaid");
+    expect(
+      makeLoan({ ...l, requested: 500, unsecuredLimit: 0, periods: 1 })?.periods,
+    ).toBeUndefined();
   });
 });
