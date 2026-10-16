@@ -95,6 +95,27 @@ export function renownBelieved(
   return r && r.mold === "attr" && typeof r.value === "number" ? r.value : undefined;
 }
 
+/** Fama de partida de quien no sabe nada de un sanador (la que usan `medicine` y `labor`). */
+export const RENOWN_PRIOR = 0.5;
+
+/**
+ * La fama de `healer` que `who` cree, pesada por cuánto lo cree (puro): lo oído con poca fe vale
+ * poco y se arrima al prior (`prior + (fama - prior) * confianza`); lo que vio él (confianza 1) vale entero.
+ * `undefined` si no sabe nada. Alternativa opt-in a `renownBelieved`, que ignora la confianza.
+ */
+export function renownWeighed(
+  truth: ReadonlyWorldTruth,
+  who: AgentId,
+  healer: AgentId,
+): number | undefined {
+  const key = moldKey(renownRumor(healer, 0));
+  const h = truth.get(MOLD_RUMORS, who)?.items.find((x) => moldKey(x.rumor) === key);
+  const r = h?.rumor;
+  if (!h || !r || r.mold !== "attr" || typeof r.value !== "number") return undefined;
+  const c = Math.min(1, Math.max(0, h.confidence));
+  return Math.round((RENOWN_PRIOR + (r.value - RENOWN_PRIOR) * c) * 1e6) / 1e6;
+}
+
 /** Cuánto baja la fama que cree alguien de un marcador por cada fraude distinto que oyó de él (sin calibrar). */
 export const FORGERY_RENOWN_DROP = 0.2;
 /** Fama de partida de un marcador sin fraudes oídos (igual que `MARK_DEFAULT_RENOWN`). */

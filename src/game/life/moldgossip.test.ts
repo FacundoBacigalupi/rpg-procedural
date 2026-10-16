@@ -12,8 +12,11 @@ import {
   moldHintMood,
   moldKey,
   moldPriceEdge,
+  RENOWN_PRIOR,
+  renownBelieved,
   renownRumor,
   renownRumorsOf,
+  renownWeighed,
   standingRumor,
   standingRumorsOf,
   trustScale,
@@ -301,5 +304,27 @@ describe("fama del sanador por rumor", () => {
       r[i]?.mold === "attr" ? Number((r[i] as { value: number }).value) : -1;
     expect(val(1)).toBeGreaterThan(val(0));
     expect(moldKey(renownRumor("agent:3", 0.1))).toBe(moldKey(renownRumor("agent:3", 0.9)));
+  });
+
+  it("la fama oída con poca fe se arrima al prior; lo visto vale entero", () => {
+    const item = (renown: number, confidence: number) => ({
+      rumor: renownRumor("agent:3", renown),
+      confidence,
+      hops: 1,
+      heardAt: 0,
+      teller: null,
+    });
+    const truthOf = (items: unknown[]) =>
+      ({ get: () => ({ items, told: [] }) }) as unknown as Parameters<typeof renownWeighed>[0];
+    const w = (renown: number, confidence: number) =>
+      renownWeighed(truthOf([item(renown, confidence)]), "agent:1" as never, "agent:3" as never);
+    expect(w(0.9, 1)).toBe(0.9);
+    expect(w(0.9, 0)).toBe(RENOWN_PRIOR);
+    expect(w(0.9, 0.5)).toBeCloseTo(0.7, 6);
+    expect(w(0.1, 0.5)).toBeCloseTo(0.3, 6);
+    expect(renownWeighed(truthOf([]), "agent:1" as never, "agent:3" as never)).toBeUndefined();
+    expect(renownWeighed(truthOf([]), "agent:1" as never, "agent:3" as never)).toBe(
+      renownBelieved(truthOf([]), "agent:1" as never, "agent:3" as never),
+    );
   });
 });
