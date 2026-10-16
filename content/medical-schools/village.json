@@ -1,0 +1,41 @@
+[
+  {
+    "id": "empirical",
+    "name": "Empírica: mira las condiciones como son y receta lo que sirve",
+    "models": [
+      { "id": "flu", "signature": { "fever": 0.8, "weakness": 0.6 }, "prior": 0 },
+      { "id": "fever", "signature": { "fever": 1, "thirst": 0.4 }, "prior": 0 },
+      { "id": "pox", "signature": { "fever": 0.5, "pallor": 0.6 }, "prior": 0 }
+    ],
+    "remedies": ["infusion", "poultice"],
+    "remedyFor": { "flu": "infusion", "fever": "infusion", "pox": "poultice" },
+    "minSkill": 0.2
+  },
+  {
+    "id": "herbal",
+    "name": "Herbal: hierbas sin teoría, nombra con sesgo (tiende a ver gripe)",
+    "models": [
+      { "id": "flu", "signature": { "fever": 0.8, "weakness": 0.6 }, "prior": 0.3 },
+      { "id": "fever", "signature": { "fever": 1, "thirst": 0.4 }, "prior": 0.3 },
+      { "id": "pox", "signature": { "fever": 0.5, "pallor": 0.6 }, "prior": -0.3 }
+    ],
+    "remedies": ["infusion", "poultice"],
+    "remedyFor": { "flu": "infusion", "fever": "infusion", "pox": "poultice" },
+    "minSkill": 0.15
+  },
+  {
+    "id": "humoral",
+    "name": "Humoral: todo es sangre caliente o fría y se sangra; el remedio solo consuela",
+    "models": [
+      {
+        "id": "hot_blood",
+        "signature": { "fever": 1, "thirst": 0.5, "weakness": 0.3 },
+        "prior": 0.2
+      },
+      { "id": "cold_blood", "signature": { "pallor": 0.8, "weakness": 0.6 }, "prior": 0 }
+    ],
+    "remedies": ["bloodletting"],
+    "remedyFor": { "hot_blood": "bloodletting", "cold_blood": "bloodletting" },
+    "minSkill": 0.2
+  }
+]

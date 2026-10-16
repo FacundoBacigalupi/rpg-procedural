@@ -4,7 +4,7 @@
 // y parto con o sin partera como función de entradas. La habilidad del médico entra como número
 // 0-1 en todas. Sin estado: el azar sale de un `Rng` con clave que pone el llamador.
 
-import { logistic, type Rng } from "../../core/index.ts";
+import { contentId, defineContent, logistic, type Rng, z } from "../../core/index.ts";
 import type { PathogenDef, Shared } from "./disease.ts";
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -363,3 +363,54 @@ export function quarantineDecision(i: QuarantineDecisionInput): QuarantineDecisi
     isolation: takes ? advised * clamp01(weight / 0.6) : 0,
   };
 }
+
+// --- Contenido: remedios y escuelas médicas ---------------------------------------------------
+
+/** Un remedio de `content/remedies/`: la misma forma que `RemedyDef`. */
+export const RemedyContent = z.strictObject({
+  id: contentId,
+  targets: z.array(contentId),
+  onsetHours: z.number().min(0),
+  peakHours: z.number().min(0),
+  endHours: z.number().gt(0),
+  potency: z.number().min(0).max(1),
+  optimalDose: z.number().gt(0),
+  toxicDose: z.number().gt(0),
+  placebo: z.number().min(0).max(1),
+});
+export const REMEDIES = defineContent("remedies", RemedyContent);
+
+/** Una escuela médica de `content/medical-schools/`: modelos de condición y qué receta para cada una. */
+export const MedicalSchoolDef = z
+  .strictObject({
+    id: contentId,
+    name: z.string().trim().min(1),
+    models: z
+      .array(
+        z.strictObject({
+          id: contentId,
+          signature: z.record(z.string().min(1), z.number().min(0).max(1)),
+          prior: z.number().min(-1).max(1),
+        }),
+      )
+      .min(1),
+    /** Ids de `remedies`. */
+    remedies: z.array(contentId).min(1),
+    /** Id de condición del modelo → id de remedio. */
+    remedyFor: z.record(z.string().min(1), contentId),
+    isolation: z.number().min(0).max(1).optional(),
+    compliance: z.number().min(0).max(1).optional(),
+    capacity: z.number().gt(0).optional(),
+    minSkill: z.number().min(0).max(1).optional(),
+  })
+  .refine(
+    (s) =>
+      Object.entries(s.remedyFor).every(
+        ([cond, rid]) => s.models.some((m) => m.id === cond) && s.remedies.includes(rid),
+      ),
+    "remedyFor: cada condición debe ser un modelo y cada remedio uno de `remedies`",
+  );
+export type MedicalSchoolDef = z.infer<typeof MedicalSchoolDef>;
+export const MEDICAL_SCHOOL_DEFS = defineContent("medical-schools", MedicalSchoolDef, (s) =>
+  s.remedies.map((id, i) => ({ kind: "remedies", id, at: `remedies[${i}]` })),
+);

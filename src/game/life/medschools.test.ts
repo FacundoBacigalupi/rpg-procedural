@@ -15,7 +15,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import type { HealerSchool } from "./medicine.ts";
-import { MEDICAL_SCHOOLS, MEDICINE_SCHOOL_TRAIT, schoolOfCulture } from "./medschools.ts";
+import { MEDICINE_SCHOOL_TRAIT, medicalSchools, schoolOfCulture } from "./medschools.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -27,6 +27,7 @@ function sources(dir: string, root = dir): ContentSource[] {
   });
 }
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
+const MEDICAL_SCHOOLS = medicalSchools(content);
 
 const culture = (variants: Record<string, number>): CommunityCulture =>
   ({
@@ -50,10 +51,14 @@ const flu: PathogenDef = {
 
 describe("escuelas médicas por cultura", () => {
   it("la variante dominante elige la escuela; sin rasgo o sin escuela, ninguna", () => {
-    expect(schoolOfCulture(culture({ humoral: 6, herbal: 2 }))).toBe(MEDICAL_SCHOOLS["humoral"]);
-    expect(schoolOfCulture(culture({ empirical: 1 }))).toBe(MEDICAL_SCHOOLS["empirical"]);
-    expect(schoolOfCulture(culture({ astral: 1 }))).toBeUndefined();
-    expect(schoolOfCulture(undefined)).toBeUndefined();
+    expect(schoolOfCulture(culture({ humoral: 6, herbal: 2 }), MEDICAL_SCHOOLS)).toBe(
+      MEDICAL_SCHOOLS["humoral"],
+    );
+    expect(schoolOfCulture(culture({ empirical: 1 }), MEDICAL_SCHOOLS)).toBe(
+      MEDICAL_SCHOOLS["empirical"],
+    );
+    expect(schoolOfCulture(culture({ astral: 1 }), MEDICAL_SCHOOLS)).toBeUndefined();
+    expect(schoolOfCulture(undefined, MEDICAL_SCHOOLS)).toBeUndefined();
   });
 
   it("la humoral yerra y sangra sin efecto real; la empírica cura", () => {
@@ -96,7 +101,9 @@ describe("escuelas médicas por cultura", () => {
     expect(villageCulture(off.truth)?.prevalence[MEDICINE_SCHOOL_TRAIT]).toBeUndefined();
     const on = Life.create(7, content, { medicalSchools: true }).world;
     expect(villageCulture(on.truth)?.prevalence[MEDICINE_SCHOOL_TRAIT]).toBeDefined();
-    expect(schoolOfCulture(villageCulture(on.truth))).toBe(MEDICAL_SCHOOLS["herbal"]);
+    expect(schoolOfCulture(villageCulture(on.truth), MEDICAL_SCHOOLS)).toBe(
+      MEDICAL_SCHOOLS["herbal"],
+    );
     const again = Life.create(7, content, { medicalSchools: true }).world;
     expect(villageCulture(again.truth)).toEqual(villageCulture(on.truth));
   }, 30_000);

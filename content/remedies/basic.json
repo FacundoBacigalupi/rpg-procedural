@@ -1,0 +1,35 @@
+[
+  {
+    "id": "infusion",
+    "targets": ["flu", "fever"],
+    "onsetHours": 1,
+    "peakHours": 6,
+    "endHours": 48,
+    "potency": 0.6,
+    "optimalDose": 1,
+    "toxicDose": 3,
+    "placebo": 0.2
+  },
+  {
+    "id": "poultice",
+    "targets": ["pox"],
+    "onsetHours": 2,
+    "peakHours": 12,
+    "endHours": 72,
+    "potency": 0.3,
+    "optimalDose": 1,
+    "toxicDose": 2,
+    "placebo": 0.2
+  },
+  {
+    "id": "bloodletting",
+    "targets": [],
+    "onsetHours": 0.5,
+    "peakHours": 2,
+    "endHours": 12,
+    "potency": 0,
+    "optimalDose": 0.5,
+    "toxicDose": 1.5,
+    "placebo": 0.35
+  }
+]
