@@ -56,6 +56,7 @@ export const ScenarioLife = z.strictObject({
   loanContagion: z.string().trim().min(1).optional(),
   loanContagionEffects: z.strictObject({ rateMarkup: z.number().min(0) }).optional(),
   loanWorkout: z.boolean().optional(),
+  offerings: z.boolean().optional(),
   waterSources: z
     .strictObject({
       open: z.enum(["river", "well", "rain", "sea", "stagnant"]).optional(),

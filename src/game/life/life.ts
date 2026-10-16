@@ -456,6 +456,7 @@ export class Life {
         options.residue,
         options.npcSowSeed === true && options.legacyNoSowSeed !== true,
         options.npcCobbler === true && options.legacyNoCobbler !== true,
+        options.offerings === true,
       ),
     };
     if (anchor === undefined) {
