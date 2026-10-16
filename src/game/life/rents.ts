@@ -658,7 +658,9 @@ export function sharecropHarvestProcess(o: {
     cadence: { local: "onEvent", scene: "onEvent" },
     representation: "individual",
     phase: "perceive",
-    reads: [PERSON.name, RENTS.name, SHARES.name],
+    // ENTITY: busca al hombre del dueño por `endedAt`. Solo declaración: perceive corre de a un
+    // proceso, tras el commit de act, y ya ve saldos y reservas asentados (rents-sharecrop-reads.test).
+    reads: [PERSON.name, ENTITY.name, RENTS.name, SHARES.name],
     writes: [SHARES.name],
     run(ctx) {
       const ledger = ctx.ledger;
