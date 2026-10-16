@@ -30,6 +30,7 @@ import {
   closeOrder,
   DEFAULT_COUNCIL_RULES,
   DEFAULT_ISSUE_RULES,
+  DEFAULT_LOYALTY_RULES,
   DEFAULT_ORDER_RULES,
   deliberate,
   draftEvent,
@@ -50,14 +51,18 @@ import {
   type Issue,
   type IssueRules,
   isMember,
+  type LoyaltyOutcome,
+  type LoyaltyRules,
   lapse,
   ORG,
   ORG_AGENDA,
+  ORG_LOYALTY,
   ORG_ORDERS,
   type Order,
   type OrderBook,
   type OrderRules,
   type Organization,
+  type OrgLoyalty,
   obedienceChance,
   obeys,
   oldestVacancy,
@@ -65,6 +70,7 @@ import {
   openOrders,
   openSeats,
   orderFrom,
+  outcomeDelta,
   outstanding,
   PERSON,
   type PostingDraft,
@@ -75,6 +81,7 @@ import {
   type StateChange,
   type SuccessionCandidate,
   setComponent,
+  shiftLoyalty,
   spendable,
   withdrawMember,
 } from "../../sim/index.ts";
@@ -120,6 +127,12 @@ export interface TreasuryOptions {
   readonly everyDays?: number;
   /** Con esto las decisiones aprobadas se vuelven órdenes que ejecutan los miembros; requiere `issues`. */
   readonly orders?: Partial<OrderRules>;
+  /**
+   * Consejo de aldea 5b: la lealtad de la gente a la organización (`ORG_LOYALTY`). Sube en quien
+   * recibe lo que una orden cumplida le da y baja en quien una orden fallida o desobedecida dejó
+   * colgado. Requiere `orders`; sin esto no hay tabla ni cambios.
+   */
+  readonly loyalty?: Partial<LoyaltyRules>;
 }
 
 const DEFAULT_CONTRIBUTIONS: readonly Contribution[] = [
@@ -183,6 +196,8 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
   const rules: CouncilRules = { ...DEFAULT_COUNCIL_RULES, ...o.rules };
   const ordersOn = o.treasury?.orders !== undefined && o.issues !== undefined;
   const orderRules: OrderRules = { ...DEFAULT_ORDER_RULES, ...o.treasury?.orders };
+  const loyaltyOn = ordersOn && o.treasury?.loyalty !== undefined;
+  const loyaltyRules: LoyaltyRules = { ...DEFAULT_LOYALTY_RULES, ...o.treasury?.loyalty };
   return {
     id: COUNCIL_PROCESS,
     system: "life",
@@ -198,12 +213,14 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
       RELATIONS.name,
       ...(o.issues ? [ORG_AGENDA.name, LOANS.name] : []),
       ...(ordersOn ? [ORG_ORDERS.name] : []),
+      ...(loyaltyOn ? [ORG_LOYALTY.name] : []),
     ],
     writes: [
       ORG.name,
       ENTITY.name,
       ...(o.issues ? [ORG_AGENDA.name] : []),
       ...(ordersOn ? [ORG_ORDERS.name, RELATIONS.name] : []),
+      ...(loyaltyOn ? [ORG_LOYALTY.name] : []),
     ],
     run(ctx) {
       const truth = ctx.truth;
@@ -393,6 +410,33 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
             ? (truth.get(ORG_ORDERS, id as never) ?? EMPTY_BOOK)
             : EMPTY_BOOK;
           let book = book0;
+          const loyalty0: OrgLoyalty | undefined = loyaltyOn
+            ? truth.get(ORG_LOYALTY, id as never)
+            : undefined;
+          let loyal = loyalty0;
+          // Quienes una orden toca: el hogar socorrido, las dos partes de la deuda o de la disputa.
+          const touched = (ord: Order): AgentId[] => {
+            const peopleOfRef = (ref: string): AgentId[] => {
+              const h = truth.get(HOUSEHOLD, ref as never);
+              return h ? [...h.members] : truth.get(PERSON, ref as never) ? [ref as AgentId] : [];
+            };
+            const refs =
+              ord.option === "relief"
+                ? [ord.subject]
+                : ord.option === "extend"
+                  ? ((l) => (l ? [l.borrower, l.lender] : []))(
+                      truth.get(LOANS, ord.subject as never),
+                    )
+                  : ord.subject.split("|");
+            return [...new Set(refs.flatMap(peopleOfRef))]
+              .filter((x) => truth.get(PERSON, x) && alive(x))
+              .sort();
+          };
+          const moveLoyalty = (outcome: LoyaltyOutcome, ord: Order, ev: EventId): void => {
+            if (!loyaltyOn) return;
+            const delta = outcomeDelta(outcome, loyaltyRules);
+            for (const who of touched(ord)) loyal = shiftLoyalty(loyal, who, delta, ctx.now, ev);
+          };
           const homes = new Map<string, AgentId[]>();
           for (const who of peopleOf.get(org.settlement) ?? []) {
             const home = truth.get(PERSON, who)?.household as string | undefined;
@@ -437,6 +481,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
               const cause = [{ kind: "event", event: ord.issuedEvent }] as never;
               const fail = (note: string, status: "failed" | "void" = "failed") => {
                 book = closeOrder(book, ord.id, status, ctx.now, { note });
+                if (status === "failed") moveLoyalty("failed", ord, draftEvent(events.length));
                 events.push({
                   kind: ORG_ORDER_FAILED_EVENT,
                   actors: [ord.executor],
@@ -460,6 +505,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
               );
               if (!obeys(chance, ctx.rng.fork("order", ord.id))) {
                 book = closeOrder(book, ord.id, "refused", ctx.now, { note: "disobeyed" });
+                moveLoyalty("refused", ord, draftEvent(events.length));
                 events.push({
                   kind: ORG_ORDER_REFUSED_EVENT,
                   actors: [ord.executor],
@@ -482,6 +528,7 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
                   ...(spent > 0 ? { spent } : {}),
                   ...extra,
                 });
+                moveLoyalty("executed", ord, ev);
                 events.push({
                   kind: ORG_ORDER_EXECUTED_EVENT,
                   actors: [ord.executor],
@@ -719,6 +766,8 @@ export function councilProcess(o: CouncilOptions): ProcessDef {
           }
           if (agenda !== agenda0) changes.push(setComponent(ORG_AGENDA, id as never, agenda));
           if (book !== book0) changes.push(setComponent(ORG_ORDERS, id as never, book));
+          if (loyal !== loyalty0 && loyal)
+            changes.push(setComponent(ORG_LOYALTY, id as never, loyal));
         }
       }
 
