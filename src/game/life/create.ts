@@ -456,6 +456,8 @@ export interface LifeOptions {
   readonly npcCobblerHides?: boolean;
   /** Opt-in (con `npcFootwearMend`): el viajero de camino arregla el calzado gastado en una posada o posta, más caro y peor (`LifeParts.npcRoadMend`); apagado. */
   readonly npcRoadMend?: boolean;
+  /** Opt-in (con `npcRoadMend`): el arreglo de camino solo ocurre en una parada real, la noche que el viajero para a dormir (`npcNightRest`), no en cualquier d�a de marcha (npc-b2b3b2b3c2a); apagado. */
+  readonly npcRoadStops?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida (`LifeParts.npcCloakMend`); apagado. */
@@ -625,6 +627,7 @@ export function optInParts(
   | "npcCobbler"
   | "npcCobblerHides"
   | "npcRoadMend"
+  | "npcRoadStops"
   | "npcCloak"
   | "npcCloakMend"
   | "npcForecast"
@@ -752,6 +755,7 @@ export function optInParts(
     ...(options.npcCobbler && !options.legacyNoCobbler ? { npcCobbler: true } : {}),
     ...(options.npcCobblerHides ? { npcCobblerHides: true } : {}),
     ...(options.npcRoadMend ? { npcRoadMend: true } : {}),
+    ...(options.npcRoadStops ? { npcRoadStops: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
