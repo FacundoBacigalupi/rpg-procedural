@@ -23,6 +23,7 @@ import {
   type GoodDef,
   INNATE,
   LOCATION,
+  LOT_QUALITY,
   type LocalMap,
   newBody,
   PERSON,
@@ -697,5 +698,47 @@ describe("cuentas compartidas entre préstamos y trade real", () => {
     });
     expect(p.serialDomain).toBeUndefined();
     expect(p.serialGroup).toBeUndefined();
+  });
+});
+
+describe("testigos y calidad en el lote de trade real", () => {
+  const exposuresOf = (w: ReturnType<typeof world>) =>
+    w.log
+      .all()
+      .filter((e) => e.kind === "action.trade")
+      .map((e) => (e.data as { watchExposures?: unknown[] }).watchExposures);
+  it("con lote serial las exposiciones de testigos se proyectan sin disputar skill/opinion", () => {
+    const w = world(2000, true, false, false, false, true);
+    expect(() => w.scheduler.advanceTo(clock.day / 2)).not.toThrow();
+    expect(exposuresOf(w).some((x) => x?.length)).toBe(true);
+    expect(w.log.all().filter((e) => e.kind === "contest")).toHaveLength(0);
+    expect(w.scheduler.state().queue).toHaveLength(2);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("el orden de llegada no cambia exposiciones, verdad ni registro con testigos", () => {
+    const a = world(2000, true, false, false, false, true);
+    const b = world(2000, true, true, false, false, true);
+    a.scheduler.advanceTo(clock.day / 2);
+    b.scheduler.advanceTo(clock.day / 2);
+    expect(exposuresOf(a)).toEqual(exposuresOf(b));
+    expect(a.truth.rows()).toEqual(b.truth.rows());
+    expect(a.log.all()).toEqual(b.log.all());
+  });
+  it("la calidad del lote del vendedor llega a cada comprador y el trato fallido no la deja", () => {
+    const w = world(1000, true, false, false, false, true);
+    w.truth.set(LOT_QUALITY, seller, { "good:tool": 0.8 });
+    w.scheduler.advanceTo(clock.day / 2);
+    const won = buyers.find((b) => w.ledger.balance(holderAccount(b), good) === 1000);
+    const lost = buyers.find((b) => w.ledger.balance(holderAccount(b), good) === 0);
+    if (!won || !lost) throw new Error("sin ganador");
+    expect(w.truth.get(LOT_QUALITY, won)?.["good:tool"]).toBeCloseTo(0.8, 6);
+    expect(w.truth.get(LOT_QUALITY, lost)?.["good:tool"]).toBeUndefined();
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("con stock para ambos los dos compradores reciben la misma calidad", () => {
+    const w = world(2000, true, false, false, false, true);
+    w.truth.set(LOT_QUALITY, seller, { "good:tool": 0.6 });
+    w.scheduler.advanceTo(clock.day / 2);
+    for (const b of buyers) expect(w.truth.get(LOT_QUALITY, b)?.["good:tool"]).toBeCloseTo(0.6, 6);
   });
 });
