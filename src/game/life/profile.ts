@@ -152,6 +152,8 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["npcRoadMend", "npcFootwearMend"],
     ["npcRoadStops", "npcRoadMend"],
     ["npcRoadStops", "npcNightRest"],
+    ["npcRoadCobbler", "npcRoadMend"],
+    ["npcRoadCobbler", "npcCobbler"],
     ["npcCloak", "npcJourneyDays"],
     ["npcCloakMend", "npcCloak"],
     ["npcForecast", "npcCloak"],

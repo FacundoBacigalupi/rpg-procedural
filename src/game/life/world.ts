@@ -489,6 +489,8 @@ export interface LifeWorld {
   readonly npcRoadMend?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo en la parada de la noche (`rested` del viaje); apagado. */
   readonly npcRoadStops?: boolean;
+  /** Opt-in (con `npcRoadMend` y `npcCobbler`): si el zapatero está en el mismo hex que el viajero, arregla él con su oficio y cuero (npc-b2b3b2b3c2c); apagado. */
+  readonly npcRoadCobbler?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
@@ -968,6 +970,9 @@ export function lifeWorld(
                 player,
                 placeOf: placeOf(parts, village),
                 ...(parts.npcRoadStops === true ? { atStops: true } : {}),
+                ...(parts.npcRoadCobbler === true && parts.npcCobbler === true
+                  ? { cobbler: true as const }
+                  : {}),
               }),
             ]
           : []),
