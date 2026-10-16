@@ -92,9 +92,26 @@ export function lexicalGreetingSpeech(
       const given = name ? (callName(name) ?? "") : "";
       const form = chooseAddress(lang.addresses, lang.culture, "peer", 0.5);
       const to = renderAddress(lang.language, form, given).trim();
-      return to === "" ? "Buenas" : `Buenas, ${to}`;
+      const word = greetingWord(lang.language) ?? "Buenas";
+      return to === "" ? word : `${word}, ${to}`;
     },
-    lexicon: { people: [], goods: [] },
+    lexicon: { people: [], goods: [], ...greetingLexicon(lang.language) },
     clarity: (truth, speaker, hearer) => greetingClarity(truth, speaker, hearer, nativeOf, levelIn),
+    // Sin lengua en común el saludo es un gesto, que se entiende sin palabras.
+    gesture: () => true,
   };
+}
+
+/** La palabra de la lengua para el concepto `greeting` (language §3); sin el concepto, undefined. */
+export function greetingWord(language: Language): string | undefined {
+  for (const c of language.concepts.values()) {
+    if (c.act === "greet") return language.root(c.id).text;
+  }
+  return undefined;
+}
+
+/** El léxico del oyente para `understand`: la palabra de su lengua que nombra el saludo. */
+function greetingLexicon(language: Language): { readonly greetings?: readonly string[] } {
+  const word = greetingWord(language);
+  return word === undefined ? {} : { greetings: [word] };
 }

@@ -63,6 +63,11 @@ export interface GreetingSpeech {
    * `GREET_MIN_CLARITY` es un murmullo: no se entiende ni como saludo (`npc-greeting-speech.ts`).
    */
   readonly clarity?: (truth: ReadonlyWorldTruth, speaker: AgentId, hearer: AgentId) => number;
+  /**
+   * Si las palabras no llegan (murmullo), ¿saludan con un gesto (mano alzada, inclinación) que se
+   * entiende sin lengua? Sin esto, el murmullo no entibia (`npc-b2b4c2b3b`).
+   */
+  readonly gesture?: (truth: ReadonlyWorldTruth, speaker: AgentId, hearer: AgentId) => boolean;
 }
 
 export interface NpcGreetingsOptions {
@@ -187,10 +192,11 @@ export function npcGreetingsProcess(o: NpcGreetingsOptions): ProcessDef {
           const heard = (speaker: AgentId, hearer: AgentId) => {
             if (!words || o.speech === undefined) return true;
             const clarity = o.speech.clarity?.(truth, speaker, hearer) ?? 1;
+            if (clarity < GREET_MIN_CLARITY)
+              return o.speech.gesture?.(truth, speaker, hearer) ?? false;
             return (
-              clarity >= GREET_MIN_CLARITY &&
               understand(o.speech.say(speaker, hearer, truth), o.speech.lexicon, clarity).kind ===
-                "greet"
+              "greet"
             );
           };
           const meHeard = heard(other, me);

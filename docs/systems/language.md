@@ -293,6 +293,13 @@ La generación es determinista: mismo seed y misma historia, mismas lenguas. Tod
 - **Sin palabras del LLM:** con un LLM falso que inventa nombres, el validador rechaza toda forma que no esté en el léxico conocido por el personaje.
 - **Sin fuga:** un personaje que no conoce una palabra no la recibe en su `PlayerView`.
 
+## Implementación (el saludo desde el léxico, `npc-b2b4c2b3b`, 2026-10-16)
+
+- **Concepto `greeting`** (`content/language-concepts/speech.json`, con `act: "greet"`): el acto de habla que nombra. Cada lengua generada le da su raíz como a cualquier concepto, así que el saludo de los NPC (`lexicalGreetingSpeech`, `greetingWord`) es la palabra de la lengua y no el «Buenas» fijo (sin el concepto queda «Buenas»).
+- **`understand` por léxico:** `Lexicon.greetings` trae las palabras de la lengua del oyente que nombran el saludo; se reconocen además de las frases del español del jugador (regex).
+- **Sin lengua en común** (claridad bajo `GREET_MIN_CLARITY`): `GreetingSpeech.gesture` hace que el saludo caiga a un gesto que se entiende sin palabras y entibia; sin esa opción el murmullo no entibia.
+- **Todavía no:** el saludo en la lengua del oyente cuando el que saluda la habla de segunda (hoy dice la palabra de la lengua de la aldea), la lengua franca del mercado (§6) como puente, y la mímica de más que un saludo.
+
 ## Decisiones (aprobado 2026-10-06)
 - **Sin textos completos en lenguas del mundo:** solo nombres, palabras sueltas y frases cortas citadas; el contenido se narra en español (§3).
 - **Lo que no se entiende se narra como sonido,** con las palabras reconocidas citadas y aprendizaje por exposición; sin subtítulos (§13).
