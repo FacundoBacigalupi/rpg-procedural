@@ -44,6 +44,7 @@ import {
   goodUnit,
   guarantorSubrogation,
   installmentPerDay,
+  interestOf,
   type LoanCommitment,
   loanToCommitment,
   makeBondage,
@@ -116,8 +117,14 @@ export interface LoanSeed {
   /** Bien del principal (`grain`, una moneda…). */
   readonly good: string;
   readonly principal: number;
-  /** Interés simple por plazo. */
+  /** Interés simple por plazo; con `periods` > 1, la tasa de cada período. */
   readonly rate: number;
+  /**
+   * Opt-in: períodos de capitalización que elige el prestamista (el usurero que capitaliza por mes).
+   * Ausente o 1: interés simple, sin campo nuevo en la fila. Se ignora si el interés va disfrazado
+   * (ahí la tasa de la fila ya es la efectiva real).
+   */
+  readonly periods?: number;
   /** Día del mundo en que se abre y días hasta el vencimiento. */
   readonly startDay: number;
   readonly termDays: number;
@@ -174,6 +181,11 @@ export interface LoansOptions {
   readonly relationDecay?: DecayContext;
   /** Opt-in: donde la cultura prohíbe el interés, el prestamista lo disfraza y la deuda registra la tasa efectiva real. */
   readonly usury?: UsuryOptions;
+  /**
+   * Opt-in: norma de usura sobre la tasa efectiva compuesta (interés total / principal): el
+   * prestamista no abre lo que la supere (la capitalización no la esquiva).
+   */
+  readonly maxEffectiveRate?: number;
 }
 
 /** Prohibición de usura (economy §8): donde se prohíbe el interés, el prestamista lo disfraza. */
@@ -422,6 +434,18 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           });
           rate = effectiveRate(disguise);
         }
+        const periods = !disguise && (s.periods ?? 1) > 1 ? s.periods : undefined;
+        if (
+          o.maxEffectiveRate !== undefined &&
+          interestOf({
+            principal: s.principal,
+            rate,
+            ...(periods !== undefined ? { periods } : {}),
+          }) /
+            s.principal >
+            o.maxEffectiveRate
+        )
+          continue;
         const id = ctx.newId("commitment");
         const k = events.length;
         const loan = makeLoan({
@@ -433,6 +457,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           unit,
           requested: s.principal,
           rate,
+          ...(periods !== undefined ? { periods } : {}),
           startDay: today,
           dueDay: today + s.termDays,
           collateral: (s.collateral ?? []).map(({ lot: _lot, ...c }) => ({
@@ -457,6 +482,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             unit,
             principal: row.principal,
             rate: row.rate,
+            ...(row.periods !== undefined ? { periods: row.periods } : {}),
             dueDay: row.dueDay,
             ...(disguise ? { disguise: disguise.kind, statedRate: disguise.statedRate } : {}),
           },

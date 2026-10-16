@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   EARTHLIKE_CLOCK,
@@ -8,6 +9,7 @@ import {
   ledgerUnit,
   makeId,
 } from "../../core/index.ts";
+import { totalDue } from "../../sim/economy/credit.ts";
 import {
   ENTITY,
   type GoodDef,
@@ -122,6 +124,59 @@ describe("life.loans", () => {
       usury: { prohibits: () => true, available: [] },
     }).run(ctxOf(truth, ledger, 1));
     expect(none.events ?? []).toEqual([]);
+  });
+
+  it("periods: el prestamista capitaliza, la fila lo guarda y el ledger conserva (fast-check)", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 12 }),
+        fc.integer({ min: 1000, max: 50000 }),
+        (periods, principal) => {
+          const { truth, ledger } = setup();
+          const sd: LoanSeed = { ...seed, principal, periods };
+          const r = make([sd]).run(ctxOf(truth, ledger, 1));
+          const row = (r.changes ?? []).find(
+            (c) => (c as { table?: string }).table === LOANS.name,
+          ) as {
+            value: { principal: number; rate: number; periods?: number };
+          };
+          expect(row.value.periods).toBe(periods > 1 ? periods : undefined);
+          const total = totalDue(row.value);
+          if (periods > 1)
+            expect(total).toBeGreaterThanOrEqual(totalDue({ ...row.value, periods: 1 }));
+          const before = ledger.total(GRAIN);
+          for (const p of r.postings ?? [])
+            ledger.post({ tick: clock.day, eventId: makeId("event", 2), transfers: p.transfers });
+          expect(ledger.total(GRAIN)).toBe(before);
+        },
+      ),
+      { numRuns: 25 },
+    );
+  });
+
+  it("periods ausente: la fila no trae campo nuevo; determinista", () => {
+    const run = () => {
+      const { truth, ledger } = setup();
+      n = 0;
+      return make([seed]).run(ctxOf(truth, ledger, 1));
+    };
+    const a = run();
+    expect(JSON.stringify(a)).not.toContain("periods");
+    expect(JSON.stringify(run())).toBe(JSON.stringify(a));
+  });
+
+  it("maxEffectiveRate: la norma mira la tasa compuesta y no la nominal", () => {
+    const { truth, ledger } = setup();
+    const capped = (periods: number) =>
+      loansProcess({
+        clock,
+        goods,
+        seeds: [{ ...seed, periods }],
+        placeOf: () => ({ kind: "cell" }) as never,
+        maxEffectiveRate: 0.3,
+      }).run(ctxOf(truth, ledger, 1));
+    expect(capped(1).events?.map((e) => e.kind)).toEqual(["credit.loaned"]);
+    expect(capped(3).events ?? []).toEqual([]);
   });
 
   it("abre con evento, desembolsa por el ledger y conserva", () => {
