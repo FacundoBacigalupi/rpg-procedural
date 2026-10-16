@@ -21,6 +21,13 @@ import {
   type Transfer,
 } from "../../core/index.ts";
 import {
+  kindInterestDue,
+  kindInterestOutstanding,
+  payLoanInKind,
+  principalOutstanding,
+  withKindInterest,
+} from "../../sim/economy/creditKind.ts";
+import {
   bondageDebtLeft,
   bondageExpired,
   type Collateral,
@@ -108,6 +115,13 @@ export const COMMITMENTS = table<Commitment>("contracts.commitment");
 /** Si el hogar (anotado en su primer vivo) estaba caído la última vez que se calculó el contagio. Solo escribe `life.contagion`. */
 export const CONTAGION_STATE = table<{ readonly failed: boolean }>("life.contagion_state");
 
+/** Con interés en especie el `Commitment` y la mora cuentan solo el principal (el interés va en otra unidad). */
+function principalView<T extends LoanCommitment>(l: T): T {
+  if (!l.inKind) return l;
+  const { periods: _p, ...rest } = l;
+  return { ...rest, rate: 0 } as T;
+}
+
 /** Un préstamo decidido de antemano: la única fuente de préstamos hasta que los hogares apretados los pidan. */
 export interface LoanSeed {
   readonly id: string;
@@ -125,6 +139,12 @@ export interface LoanSeed {
    * (ahí la tasa de la fila ya es la efectiva real).
    */
   readonly periods?: number;
+  /**
+   * Opt-in: el interés se paga en otro bien (`good`) a razón `ratio` (`creditKind.ts`): el principal
+   * vuelve en su unidad y el interés, `ceil(interés * ratio)`, en grano. Se ignora si el interés va
+   * disfrazado. Ausente: nada cambia, ni la fila ni el evento.
+   */
+  readonly inKind?: { readonly good: string; readonly ratio: number };
   /** Día del mundo en que se abre y días hasta el vencimiento. */
   readonly startDay: number;
   readonly termDays: number;
@@ -471,7 +491,10 @@ export function loansProcess(o: LoansOptions): ProcessDef {
           originEventId: draftEvent(k),
         });
         if (!loan) continue;
-        let row: LoanRow = { ...loan, seed: s.id, ...(disguise ? { disguise } : {}) };
+        const kindDef = s.inKind && !disguise ? goodDef.get(s.inKind.good) : undefined;
+        const kinded =
+          s.inKind && kindDef ? withKindInterest(loan, goodUnit(kindDef), s.inKind.ratio) : loan;
+        let row: LoanRow = { ...kinded, seed: s.id, ...(disguise ? { disguise } : {}) };
         events.push({
           kind: "credit.loaned",
           actors: [lenderMan, borrowerMan],
@@ -485,6 +508,15 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             ...(row.periods !== undefined ? { periods: row.periods } : {}),
             dueDay: row.dueDay,
             ...(disguise ? { disguise: disguise.kind, statedRate: disguise.statedRate } : {}),
+            ...(row.inKind
+              ? {
+                  inKind: {
+                    unit: row.inKind.unit,
+                    ratio: row.inKind.ratio,
+                    interest: kindInterestDue(row),
+                  },
+                }
+              : {}),
           },
           emissions: {},
           causes: [
@@ -540,7 +572,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             } as never,
           ),
           setComponent(LOANS, id as never, row),
-          setComponent(COMMITMENTS, id as never, loanToCommitment(row, enf)),
+          setComponent(COMMITMENTS, id as never, loanToCommitment(principalView(row), enf)),
         );
         opened.push({ id: id as string, loan: row });
       }
@@ -640,7 +672,39 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         }
         if (today >= l.dueDay) {
           const holds = new Map(l.guarantors.map((g) => [g.id, bal(g.account, l.unit)]));
-          const res = executeDefault(l, today, holds);
+          const res0 = executeDefault(principalView(l), today, holds);
+          let res = res0;
+          let kindSeized = 0;
+          let kindLoss = 0;
+          if (l.inKind) {
+            const kindOwed = kindInterestOutstanding(l);
+            kindSeized = Math.max(
+              0,
+              Math.min(kindOwed, Math.floor(bal(l.borrowerAccount, l.inKind.unit))),
+            );
+            kindLoss = kindOwed - kindSeized;
+            res = {
+              ...res0,
+              transfers:
+                kindSeized > 0
+                  ? [
+                      ...res0.transfers,
+                      {
+                        unit: l.inKind.unit,
+                        from: l.borrowerAccount,
+                        to: l.lenderAccount,
+                        amount: kindSeized,
+                      },
+                    ]
+                  : res0.transfers,
+              loan: {
+                ...l,
+                paid: res0.loan.paid,
+                inKind: { ...l.inKind, paidKind: l.inKind.paidKind + kindSeized },
+                status: res0.loan.status === "defaulted" || kindLoss > 0 ? "defaulted" : "settled",
+              },
+            };
+          }
           const k = events.length;
           events.push({
             kind: "credit.defaulted",
@@ -648,8 +712,9 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             place: o.placeOf(ctx.truth, lenderMan),
             data: {
               loan: r.id,
-              owed: outstanding(l),
+              owed: l.inKind ? principalOutstanding(l) : outstanding(l),
               loss: res.loss,
+              ...(l.inKind ? { kindSeized, kindLoss } : {}),
               status: res.loan.status,
               seized: res.seized.map((s) => s.ref),
               released: res.released,
@@ -767,7 +832,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
             }
           }
           const next: LoanRow = { ...res.loan, seed: l.seed };
-          const parent = loanToCommitment(next, enf);
+          const parent = loanToCommitment(principalView(next), enf);
           changes.push(
             setComponent(LOANS, r.id as never, next),
             setComponent(COMMITMENTS, r.id as never, {
@@ -871,6 +936,39 @@ export function loansProcess(o: LoansOptions): ProcessDef {
               );
             }
           }
+          continue;
+        }
+        if (l.inKind) {
+          const days = Math.max(1, l.dueDay - today);
+          const kp = payLoanInKind(
+            l,
+            Math.ceil(principalOutstanding(l) / days),
+            Math.ceil(kindInterestOutstanding(l) / days),
+            bal(l.borrowerAccount, l.unit),
+            bal(l.borrowerAccount, l.inKind.unit),
+          );
+          if (kp.paidPrincipal <= 0 && kp.paidInterest <= 0) continue;
+          const kk = events.length;
+          events.push({
+            kind: "credit.paid",
+            actors: [borrowerMan, lenderMan],
+            place: o.placeOf(ctx.truth, borrowerMan),
+            data: {
+              loan: r.id,
+              paid: kp.paidPrincipal,
+              paidInterest: kp.paidInterest,
+              status: kp.loan.status,
+            },
+            emissions: {},
+            causes: cause,
+          });
+          postings.push({ event: draftEvent(kk), transfers: kp.transfers });
+          apply(kp.transfers);
+          const kRow: LoanRow = { ...kp.loan, seed: l.seed };
+          changes.push(
+            setComponent(LOANS, r.id as never, kRow),
+            setComponent(COMMITMENTS, r.id as never, loanToCommitment(principalView(kRow), enf)),
+          );
           continue;
         }
         const due = Math.ceil(installmentPerDay(l, today));
