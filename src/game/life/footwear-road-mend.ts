@@ -29,6 +29,14 @@ import {
   setComponent,
   WAGES_SINK,
 } from "../../sim/index.ts";
+import {
+  COBBLER,
+  LEATHER_SCRAP,
+  LEATHER_UNIT,
+  leatherFor,
+  levelAfterJob,
+  mendKeeps,
+} from "./cobbler.ts";
 import { FOOTWEAR } from "./footwear.ts";
 import { mendJob, wearAfterMend } from "./footwear-mend.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
@@ -49,18 +57,32 @@ export function roadMendJob(wear: number): { kind: "mend" | "replace"; cost: num
   return job ? { kind: job.kind, cost: job.cost * ROAD_MARKUP } : null;
 }
 
-/** Si el viajero paró a dormir en el último día: esa parada es donde hay posada o posta con remendón. Puro. */
+/** Si el viajero parÃ³ a dormir en el Ãºltimo dÃ­a: esa parada es donde hay posada o posta con remendÃ³n. Puro. */
 export function atStop(rested: number | undefined, now: number): boolean {
   return rested !== undefined && now - rested < STOP_WINDOW;
 }
-/** Cuánto vale una parada para arreglar el calzado: un día (el proceso corre a diario). */
+/** CuÃ¡nto vale una parada para arreglar el calzado: un dÃ­a (el proceso corre a diario). */
 export const STOP_WINDOW = 86_400;
 
 export interface FootwearRoadMendOptions {
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
-  /** Solo en la parada de la noche: `rested` del viaje dentro del último día (`npcRoadStops`). */
+  /** Solo en la parada de la noche: `rested` del viaje dentro del Ãºltimo dÃ­a (`npcRoadStops`). */
   readonly atStops?: true;
+  /**
+   * Con `npcRoadCobbler`: si un zapatero (el de la aldea) estÃ¡ en el mismo hex que el viajero, arregla
+   * Ã©l con su oficio y su cuero, al precio de la aldea y cobrando (npc-b2b3b2b3c2c).
+   */
+  readonly cobbler?: true;
+}
+
+/** Si el zapatero estÃ¡ donde el viajero (mismo hex, fuera de la aldea) y le alcanza el cuero. Puro. */
+export function cobblerHere(
+  traveler: { readonly hex: number },
+  cobbler: { readonly hex: number; readonly inVillage: boolean; readonly leather: number },
+  kind: "mend" | "replace",
+): boolean {
+  return !cobbler.inVillage && cobbler.hex === traveler.hex && cobbler.leather >= leatherFor(kind);
 }
 
 export function footwearRoadMendProcess(o: FootwearRoadMendOptions): ProcessDef {
@@ -71,14 +93,36 @@ export function footwearRoadMendProcess(o: FootwearRoadMendOptions): ProcessDef 
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [FOOTWEAR.name, NPC_JOURNEY.name, PERSON.name, ENTITY.name, LOCATION.name],
-    writes: [FOOTWEAR.name],
+    reads: o.cobbler
+      ? [FOOTWEAR.name, NPC_JOURNEY.name, PERSON.name, ENTITY.name, LOCATION.name, COBBLER.name]
+      : [FOOTWEAR.name, NPC_JOURNEY.name, PERSON.name, ENTITY.name, LOCATION.name],
+    writes: o.cobbler ? [FOOTWEAR.name, COBBLER.name] : [FOOTWEAR.name],
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger) return {};
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
       const changes: StateChange[] = [];
+      // Los zapateros vivos con su hex, cuero y oficio del dÃ­a (se asientan al final del proceso).
+      const shops = new Map<
+        AgentId,
+        { hex: number; inVillage: boolean; leather: number; level: number }
+      >();
+      if (o.cobbler) {
+        for (const id of [...ctx.truth.ids(COBBLER)].sort()) {
+          const c = id as AgentId;
+          const loc = ctx.truth.get(LOCATION, c);
+          if (c === o.player || loc === undefined) continue;
+          if (ctx.truth.get(PERSON, c) === undefined) continue;
+          if (ctx.truth.get(ENTITY, c)?.endedAt !== undefined) continue;
+          shops.set(c, {
+            hex: loc.hex,
+            inVillage: loc.space !== undefined,
+            leather: ledger.balance(holderAccount(c as unknown as HolderRef), LEATHER_UNIT),
+            level: ctx.truth.get(COBBLER, c)?.level ?? 0,
+          });
+        }
+      }
       for (const id of [...ctx.truth.ids(FOOTWEAR)].sort()) {
         const who = id as AgentId;
         if (who === o.player) continue;
@@ -94,6 +138,52 @@ export function footwearRoadMendProcess(o: FootwearRoadMendOptions): ProcessDef 
         if (!job) continue;
         if (!ctx.rng.fork("roadmend", who).stream().chance(ROAD_MEND_CHANCE)) continue;
         const account = holderAccount(who as unknown as HolderRef);
+        const here = ctx.truth.get(LOCATION, who);
+        const local = here
+          ? [...shops.entries()].find(([, c]) => cobblerHere(here, c, job.kind))
+          : undefined;
+        if (local) {
+          const [cid, shop] = local;
+          const self = cid === who;
+          const price = mendJob(wear)?.cost ?? job.cost;
+          if (!self && Math.floor(ledger.balance(account, COPPER)) < price) continue;
+          const need = leatherFor(job.kind);
+          const cAccount = holderAccount(cid as unknown as HolderRef);
+          const done = wearAfterMend(wear, job.kind, mendKeeps(shop.level));
+          events.push({
+            kind: FOOTWEAR_ROAD_MENDED,
+            actors: self ? [who] : [who, cid],
+            place: o.placeOf(ctx.truth, who),
+            data: {
+              job: job.kind,
+              from: wear,
+              to: done,
+              paid: self ? 0 : price,
+              cobbler: cid,
+              level: shop.level,
+              leather: need,
+            },
+            emissions: {},
+            causes: [{ kind: "state", entity: who as unknown as EntityRef, key: FOOTWEAR.name }],
+          });
+          postings.push({
+            event: draftEvent(events.length - 1),
+            transfers: [
+              {
+                unit: LEATHER_UNIT,
+                from: cAccount,
+                to: externalAccount(LEATHER_SCRAP),
+                amount: need,
+              },
+              ...(self ? [] : [{ unit: COPPER, from: account, to: cAccount, amount: price }]),
+            ],
+          });
+          changes.push(setComponent(FOOTWEAR, who, { wear: done }));
+          shop.leather -= need;
+          shop.level = levelAfterJob(shop.level);
+          changes.push(setComponent(COBBLER, cid, { level: shop.level }));
+          continue;
+        }
         if (Math.floor(ledger.balance(account, COPPER)) < job.cost) continue;
         const after = wearAfterMend(wear, job.kind, ROAD_KEEPS);
         events.push({
