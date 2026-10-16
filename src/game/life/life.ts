@@ -219,8 +219,14 @@ export interface LifeSetup {
  * aunque su cuenta conserve bienes. Compatibilidad: el replay con un motor anterior a `life-31`
  * enciende `legacyNoDeadCounterpartyGuard`; una vida guardada con `life-30` sigue desde su estado
  * con el límite de replay.
+ *
+ * `life-32`: la espera por lluvia del viajero (`forecastBeforeLeaving` -> `wait`) deja `waits` en
+ * su decisión `move`: `life.npc_verbs` no la vence con el día y `life.decide` no la reemplaza hasta
+ * `MAX_RAIN_WAITS` días, así el recado no se pierde y el viaje se abre. Compatibilidad: el replay
+ * con un motor anterior a `life-32` enciende `legacyNoRainWaitPersist`; una vida guardada con
+ * `life-31` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-31";
+export const LIFE_ENGINE = "life-32";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -261,6 +267,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 29 ? { legacyNoOscillation: true } : {}),
     ...(n < 30 ? { legacyNoLendPawnBatch: true } : {}),
     ...(n < 31 ? { legacyNoDeadCounterpartyGuard: true } : {}),
+    ...(n < 32 ? { legacyNoRainWaitPersist: true } : {}),
   };
 }
 

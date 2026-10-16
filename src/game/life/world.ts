@@ -401,6 +401,8 @@ export interface LifeWorld {
   readonly legacyNoLendPawnBatch?: boolean;
   /** Replay de motores anteriores a `life-31`: `trade` no mira `ENTITY.endedAt` de la contraparte. */
   readonly legacyNoDeadCounterpartyGuard?: boolean;
+  /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
+  readonly legacyNoRainWaitPersist?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -1921,6 +1923,9 @@ export function lifeWorld(
                 catalog: parts.catalog,
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
+                ...(parts.legacyNoRainWaitPersist === true
+                  ? { legacyNoRainWaitPersist: true }
+                  : {}),
                 player,
                 ...(parts.npcInterrupt === true
                   ? {
