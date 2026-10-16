@@ -57,7 +57,7 @@ export const SCHEMES = table<SchemeRow>("life.schemes");
 export interface SchemesOptions {
   readonly seeds: readonly SchemeSeed[];
   /** Lo que el intrigante cree y es respecto del blanco (nunca la verdad del blanco). */
-  readonly view: (truth: ReadonlyWorldTruth, seed: SchemeSeed) => SchemerView;
+  readonly view: (truth: ReadonlyWorldTruth, seed: SchemeSeed, now: number) => SchemerView;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Ticks por día de mundo. */
   readonly day: number;
@@ -129,7 +129,7 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
       for (const seed of [...o.seeds].sort((a, b) => (a.key < b.key ? -1 : 1))) {
         if (known.has(seed.key) || seed.startDay > today) continue;
         if (!alive(seed.owner) || !alive(seed.target)) continue;
-        const view = o.view(truth, seed);
+        const view = o.view(truth, seed, ctx.now);
         const d = decideScheme(view, ctx.rng.fork("scheme_decide", seed.key));
         const sid = ctx.newId("scheme");
         const base = {

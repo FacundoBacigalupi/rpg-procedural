@@ -186,6 +186,8 @@ export interface LifeOptions {
   readonly famine?: LifeParts["famine"];
   /** Opt-in: hogares que deciden irse por la hambruna (`life.migration`); apagado por defecto. */
   readonly migration?: LifeParts["migration"];
+  /** Opt-in: intrigas motivadas por un hecho (`life.schemes`); sin `view` la lee de rasgos y relaciones (`schemerViewOf`). Apagado por defecto. */
+  readonly schemes?: LifeParts["schemes"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
   /**
@@ -563,6 +565,7 @@ export function optInParts(
   LifeParts,
   | "famine"
   | "migration"
+  | "schemes"
   | "rumorGrievance"
   | "verboseSteps"
   | "waitAwake"
@@ -698,6 +701,7 @@ export function optInParts(
     ...(options.loanUsury ? { loanUsury: options.loanUsury } : {}),
     ...(options.famine ? { famine: options.famine } : {}),
     ...(options.migration ? { migration: options.migration } : {}),
+    ...(options.schemes ? { schemes: options.schemes } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
