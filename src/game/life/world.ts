@@ -161,6 +161,7 @@ import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
 import { npcWarningsProcess } from "./npc-warnings.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
+import { offeringsProcess } from "./offerings.ts";
 import { oscillationEventsProcess } from "./oscillation-events.ts";
 import { householdAuthority, realTrust } from "./patientbonds.ts";
 import {
@@ -638,6 +639,8 @@ export interface LifeWorld {
   readonly loanContagionEffects?: { readonly rateMarkup: number };
   /** Opt-in (con `loanContagion` y `loanSeeds`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
+  /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
+  readonly offerings?: boolean;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
     readonly unit: string;
@@ -1440,6 +1443,15 @@ export function lifeWorld(
                 subject: (village.kind === "settlement"
                   ? village.settlement
                   : parts.map.cell) as unknown as EntityRef,
+              }),
+            ]
+          : []),
+        ...(parts.offerings
+          ? [
+              offeringsProcess({
+                clock: parts.clock,
+                goods: parts.goods,
+                placeOf: placeOf(parts, village),
               }),
             ]
           : []),

@@ -70,6 +70,7 @@ import {
   liveSettlementSpaces,
   MATERIALS,
   NUTRIENT_PROFILES,
+  OFFERING_ASH,
   PARCEL_SOIL,
   PERSON,
   type Person,
@@ -401,6 +402,8 @@ export interface LifeOptions {
   readonly loanContagionEffects?: LifeParts["loanContagionEffects"];
   /** Opt-in (con `loanContagion`): el acreedor del hogar caído renegocia o ejecuta la garantía (`life.workout`). */
   readonly loanWorkout?: boolean;
+  /** Opt-in: los hogares ofrendan grano (ración a la tablilla y fiesta) con destino: quemado a un sumidero, enterrado en el lugar, dado a los pobres; asiento en el ledger con evento `offering.made` (`game/life/offerings.ts`); apagado. */
+  readonly offerings?: boolean;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
     readonly unit: string;
@@ -679,6 +682,7 @@ export function optInParts(
   | "loanContagion"
   | "loanContagionEffects"
   | "loanWorkout"
+  | "offerings"
   | "pawn"
   | "hire"
   | "npcMove"
@@ -827,6 +831,7 @@ export function optInParts(
     ...(options.loanContagion ? { loanContagion: options.loanContagion } : {}),
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
+    ...(options.offerings ? { offerings: true } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
@@ -1175,6 +1180,7 @@ export function ledgerConfigOf(
   residue?: ResidueConfig,
   sowSeed = false,
   cobbler = false,
+  offerings = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1212,6 +1218,7 @@ export function ledgerConfigOf(
       [SMOKE_SINK]: settlementUnits(content.all(MATERIALS)),
       ...residueExternals(residue),
       ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
+      ...(offerings ? { [OFFERING_ASH]: units } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1228,12 +1235,13 @@ export function withDeclaredExternals(
   residue?: ResidueConfig,
   sowSeed = false,
   cobbler = false,
+  offerings = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
   for (const [name, units] of Object.entries(
-    ledgerConfigOf(content, residue, sowSeed, cobbler).externals,
+    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings).externals,
   )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
@@ -1348,6 +1356,7 @@ export function createLife(
       options.residue,
       options.npcSowSeed === true && options.legacyNoSowSeed !== true,
       options.npcCobbler === true && options.legacyNoCobbler !== true,
+      options.offerings === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
