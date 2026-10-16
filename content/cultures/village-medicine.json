@@ -1,0 +1,14 @@
+[
+  {
+    "id": "village.medicine",
+    "name": "la escuela médica de la aldea (opt-in, se suma a la cultura village)",
+    "traits": [
+      {
+        "trait": "medicine.school",
+        "variants": { "herbal": 5, "humoral": 3, "empirical": 2 },
+        "origin": "inertia",
+        "because": "se cura como curaba la abuela: hierbas, y algunos todavía juran por sangrar al que arde"
+      }
+    ]
+  }
+]

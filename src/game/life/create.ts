@@ -129,6 +129,7 @@ import {
   VILLAGE_SEPARATION,
   type VillagePopulation,
   validateTemperament,
+  villageCulture,
   villagePopulation,
   WAGES_SINK,
   WORK_TYPES,
@@ -153,6 +154,7 @@ import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
 import { localMapOf } from "./map.ts";
+import { schoolOfCulture } from "./medschools.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
@@ -376,6 +378,8 @@ export interface LifeOptions {
   readonly creditHeed?: LifeParts["creditHeed"];
   /** Opt-in: la cultura de la aldea suma `beliefs.contagion` y `kinship.head` (los lee `patientDecides.cultureTraits`); apagado por defecto (cambia el hash de la vida). */
   readonly healthCulture?: boolean;
+  /** Opt-in: suma la cultura `village.medicine` y el sanador por habilidad sigue su escuela (`medicine.school` → `LifeParts.healerSchool`); apagado por defecto (cambia el hash de la vida). */
+  readonly medicalSchools?: boolean;
   /** Opt-in: fuentes explícitas de patógenos con portador (`LifeParts.pathogenSeeds`); sin ellas `life.exposure` no tiene foco. */
   readonly pathogenSeeds?: LifeParts["pathogenSeeds"];
   /** Opt-in: orígenes con epidemia de los que los viajeros llevan el patógeno (`LifeParts.afflictedOrigins`); apagado por defecto. */
@@ -1271,9 +1275,23 @@ export function createLife(
     ? content.all(CULTURES).find((c) => c.id === "village.health")
     : undefined;
   if (options.healthCulture && !healthCulture) throw new Error("falta contenido: village.health");
-  const healthy = healthCulture
-    ? { ...baseCulture, traits: [...baseCulture.traits, ...healthCulture.traits] }
-    : baseCulture;
+  // Opt-in: suma la escuela médica de la aldea (`village.medicine`).
+  const medicineCulture = options.medicalSchools
+    ? content.all(CULTURES).find((c) => c.id === "village.medicine")
+    : undefined;
+  if (options.medicalSchools && !medicineCulture)
+    throw new Error("falta contenido: village.medicine");
+  const healthy =
+    healthCulture || medicineCulture
+      ? {
+          ...baseCulture,
+          traits: [
+            ...baseCulture.traits,
+            ...(healthCulture?.traits ?? []),
+            ...(medicineCulture?.traits ?? []),
+          ],
+        }
+      : baseCulture;
   const culture = withInterestNorm(healthy, options);
   const community = seedCulture(truth, ids, log, {
     settlement,
@@ -1462,6 +1480,12 @@ export function createLife(
       form: villageForm(seed, content, language),
       ...defaultParts(options),
       ...optInParts(options, site.terrain),
+      ...(options.medicalSchools
+        ? (() => {
+            const school = schoolOfCulture(villageCulture(truth));
+            return school ? { healerSchool: school } : {};
+          })()
+        : {}),
       ...(() => {
         const u = derivedLoanUsury(options, content, ledger);
         return u ? { loanUsury: u } : {};
