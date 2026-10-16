@@ -326,6 +326,8 @@ export interface ActOptions {
    * lo enciende el replay de un guardado viejo; ver `Stumble` en `blowFromMishap`.
    */
   readonly legacyFalls?: boolean;
+  /** Replay de motores anteriores a `life-31`: `trade` cierra con una contraparte terminada si su cuenta tiene bienes. */
+  readonly legacyNoDeadCounterpartyGuard?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -921,6 +923,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
+    ...(o.legacyNoDeadCounterpartyGuard !== true &&
+    node.verb === "trade" &&
+    parties["with"] !== undefined &&
+    truth.get(ENTITY, parties["with"].id as AgentId)?.endedAt !== undefined
+      ? { counterpartyGone: true }
+      : {}),
     place: placeRefOf(o.map, here),
     causes: [{ kind: "state", entity: me, key: planKey(state.seq) }],
     foods: e.foods,
