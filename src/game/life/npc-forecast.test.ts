@@ -187,6 +187,11 @@ describe("el pronóstico en la vida (opt-in)", () => {
         judged++;
         expect(log.waited).toBeGreaterThan(0);
         expect(log.waited).toBeLessThanOrEqual(MAX_RAIN_WAITS);
+      } else if (
+        // `life-32`: tras esperar sale y llega; el viaje ya cerró pero quedó el evento.
+        on.w.log.all().some((e) => e.kind === "npc.journey" && e.actors.includes(x))
+      ) {
+        judged++;
       }
     }
     expect(judged).toBeGreaterThan(0);
