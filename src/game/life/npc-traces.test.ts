@@ -29,6 +29,7 @@ import {
   CAMP_HOURS,
   LOAD_DROPPED_EVENT,
   LOAD_FOUND_EVENT,
+  LOAD_ROTTED_EVENT,
   NPC_DROPS,
   NPC_TRACES,
   NPC_TRAIL,
@@ -354,5 +355,56 @@ describe("carga caÃ­da (npc-b2b4b2)", () => {
         [],
       );
     }
+  });
+  it("lo caído que nadie recoge se pudre: sale al sumidero, el registro caduca y se conserva", () => {
+    const rotLoad = { ...load, rotAfterHours: 48 };
+    const runRot = (truth: WorldTruth, ledger: ReturnType<typeof bank>, now: number, who = other) =>
+      npcTracesProcess({ player, placeOf: () => site, load: rotLoad }).run({
+        now,
+        window: HOUR,
+        windowIndex: 1,
+        scope: who,
+        resolution: "local",
+        phase: "perceive",
+        truth,
+        ledger,
+        rng: Rng.root(3),
+        item: undefined,
+        recent: [],
+        newId() {
+          throw new Error("no crea entidades");
+        },
+      } as unknown as ProcessContext);
+    const setup = () => {
+      const truth = world({ trip: false });
+      truth.set(NPC_DROPS, other, {
+        lots: [
+          { hex: 5, unit: "good:grain", name: "grano", grams: 150, at: 0 },
+          { hex: 5, unit: "good:grain", name: "grano", grams: 40, at: 40 * HOUR },
+        ],
+      });
+      return { truth, ledger: bank({ [roadAccount(5)]: 190, [pocketOther]: -190 }) };
+    };
+    // Antes de tiempo no pasa nada.
+    const early = setup();
+    expect(runRot(early.truth, early.ledger, 47 * HOUR)).toEqual({});
+    const { truth, ledger } = setup();
+    const out = runRot(truth, ledger, 50 * HOUR);
+    expect(out.events?.map((e) => e.kind)).toEqual([LOAD_ROTTED_EVENT]);
+    post(ledger, out);
+    apply(truth, out);
+    expect(ledger.balance(roadAccount(5))).toBe(40);
+    expect(total(ledger)).toBe(0);
+    expect(truth.get(NPC_DROPS, other)?.lots).toHaveLength(1);
+    // Determinista, y el segundo lote también caduca a su tiempo.
+    expect(runRot(setup().truth, setup().ledger, 50 * HOUR)).toEqual(out);
+    const later = runRot(truth, ledger, 90 * HOUR);
+    post(ledger, later);
+    apply(truth, later);
+    expect(truth.get(NPC_DROPS, other)).toBeUndefined();
+    expect(ledger.balance(roadAccount(5))).toBe(0);
+    // Sin la opción no caduca nunca.
+    const off = setup();
+    expect(runLoad(off.truth, off.ledger, 500 * HOUR, other, 1).events ?? []).toEqual([]);
   });
 });

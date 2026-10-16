@@ -6,6 +6,7 @@
 
 import {
   type AgentId,
+  externalAccount,
   holderAccount,
   ledgerUnit,
   makeId,
@@ -20,6 +21,7 @@ import {
   type PostingDraft,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  ROTTED,
   setComponent,
   table,
 } from "../../sim/index.ts";
@@ -30,6 +32,7 @@ export const TRACE_SEEN_EVENT = "npc.trace_seen";
 
 export const LOAD_DROPPED_EVENT = "npc.load_dropped";
 export const LOAD_FOUND_EVENT = "npc.load_found";
+export const LOAD_ROTTED_EVENT = "npc.load_rotted";
 
 export type TraceKind = "footprints" | "campfire" | "dropped_load";
 
@@ -97,7 +100,12 @@ export interface NpcTracesOptions {
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   /** Opt-in: el bien que lleva en el bolsillo (`provisions`) y puede perder o recoger en el camino. */
-  readonly load?: { readonly unit: string; readonly name: string };
+  readonly load?: {
+    readonly unit: string;
+    readonly name: string;
+    /** Opt-in: horas que aguanta lo caído; pasadas, se pudre (sumidero `rotted`) y el registro caduca. */
+    readonly rotAfterHours?: number;
+  };
 }
 
 /** La cuenta del ledger donde queda lo caÃ­do en un hex. */
@@ -125,17 +133,66 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
     scopeGuard: (truth, scope) =>
       truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
       truth.get(NPC_TRAIL, scope as AgentId) !== undefined ||
-      truth.get(NPC_TRACES, scope as AgentId) !== undefined,
+      truth.get(NPC_TRACES, scope as AgentId) !== undefined ||
+      (o.load?.rotAfterHours !== undefined && truth.get(NPC_DROPS, scope as AgentId) !== undefined),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
-      if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) return {};
       const now = ctx.now;
+      // Lo caído que nadie recogió se pudre: sale de la celda al sumidero y el registro caduca.
+      const rotHours = o.load?.rotAfterHours;
+      const allDrops = truth.get(NPC_DROPS, me)?.lots ?? [];
+      const rotting =
+        rotHours === undefined || !ctx.ledger
+          ? []
+          : allDrops.filter((l) => now - l.at >= rotHours * HOUR);
+      const liveDrops = rotting.length > 0 ? allDrops.filter((l) => !rotting.includes(l)) : allDrops;
+      const rotChanges = [];
+      const rotEvents: EventDraft[] = [];
+      const rotPostings: PostingDraft[] = [];
+      if (rotting.length > 0 && ctx.ledger) {
+        rotChanges.push(
+          liveDrops.length > 0
+            ? setComponent(NPC_DROPS, me, { lots: liveDrops })
+            : deleteComponent(NPC_DROPS, me),
+        );
+        const left = new Map<string, number>();
+        for (const lot of rotting) {
+          const acct = roadAccount(lot.hex);
+          const unit = ledgerUnit(lot.unit);
+          const k = `${lot.hex}:${lot.unit}`;
+          const have = left.get(k) ?? ctx.ledger.balance(acct, unit);
+          const grams = Math.min(lot.grams, have);
+          left.set(k, have - grams);
+          if (grams <= 0) continue;
+          rotEvents.push({
+            kind: LOAD_ROTTED_EVENT,
+            actors: [me],
+            place: o.placeOf(truth, me),
+            data: { hex: lot.hex, unit: lot.unit, grams },
+            emissions: {},
+            causes: [{ kind: "state", entity: me, key: "life.npc_drops" }],
+          });
+          rotPostings.push({
+            event: draftEvent(rotEvents.length - 1),
+            transfers: [{ unit, from: acct, to: externalAccount(ROTTED), amount: grams }],
+          });
+        }
+      }
+      if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) {
+        return rotChanges.length > 0 || rotEvents.length > 0
+          ? {
+              changes: rotChanges,
+              events: rotEvents,
+              ...(rotPostings.length > 0 ? { postings: rotPostings } : {}),
+            }
+          : {};
+      }
       const trip = truth.get(NPC_JOURNEY, me);
       const here = truth.get(LOCATION, me)?.hex;
-      const changes = [];
-      const events: EventDraft[] = [];
-      const postings: PostingDraft[] = [];
+      const changes = [...rotChanges];
+      const events: EventDraft[] = [...rotEvents];
+      const postings: PostingDraft[] = [...rotPostings];
       const load = o.load;
       const pocket = holderAccount(me);
 
@@ -201,6 +258,7 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
           for (const owner of truth.ids(NPC_DROPS) as AgentId[]) {
             if (owner === me) continue;
             for (const lot of truth.get(NPC_DROPS, owner)?.lots ?? []) {
+              if (rotHours !== undefined && now - lot.at >= rotHours * HOUR) continue;
               if (lot.hex === here && lot.unit === load.unit) lying.push({ owner, lot });
             }
           }
@@ -268,7 +326,7 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
         const grams = Math.floor(ctx.ledger.balance(pocket, unit) * DROP_FRACTION);
         if (grams > 0 && ctx.rng.fork("drop", me, now).float() < DROP_CHANCE) {
           const lots = [
-            ...(truth.get(NPC_DROPS, me)?.lots ?? []),
+            ...liveDrops,
             { hex: here, unit: load.unit, name: load.name, grams, at: now },
           ].slice(-MAX_DROPS);
           changes.push(setComponent(NPC_DROPS, me, { lots }));
