@@ -8,8 +8,10 @@
 import type { AgentId } from "../../core/index.ts";
 import {
   activeMembers,
+  type ForumStanding,
   HOUSEHOLD,
   loyaltyOf,
+  NO_STANDING,
   ORG,
   ORG_LOYALTY,
   PERSON,
@@ -92,4 +94,33 @@ export function villageAuthority(
     }
   }
   return combineAuthorities(truth, patient, sources);
+}
+
+/** Clave de "creencia" fija para pedir la autoridad del consejo fuera de un contagio. */
+const ANY = "*";
+
+/**
+ * Lo que el consejo de la aldea de `subject` pesa sobre él como foro de una denuncia (law §4,
+ * Consejo de aldea 5d): la autoridad que le reconoce (respeto creído en RELATIONS hacia cada
+ * miembro, más la lealtad a la organización; la creencia de contagio fija en 1 porque aquí no es
+ * un contagio) y la mayor lealtad que guarda a un consejo activo de su asentamiento. Lee solo lo
+ * creído y lo registrado (RELATIONS, ORG_LOYALTY), ningún hecho. Sin consejo: `NO_STANDING`.
+ */
+export function councilStanding(
+  truth: ReadonlyWorldTruth,
+  subject: AgentId,
+  o: CouncilAuthorityOptions = {},
+): ForumStanding {
+  const whole = { ...o, contagionBelief: { ...o.contagionBelief, [ANY]: 1 } };
+  const sources = councilSources(truth, subject, ANY, whole);
+  if (sources.length === 0) return NO_STANDING;
+  const home = truth.get(PERSON, subject)?.household;
+  const settlement = home === undefined ? undefined : truth.get(HOUSEHOLD, home)?.settlement;
+  let loyalty = 0;
+  for (const id of [...truth.ids(ORG)].sort()) {
+    const org = truth.get(ORG, id);
+    if (org?.status !== "active" || org.settlement !== settlement) continue;
+    loyalty = Math.max(loyalty, loyaltyOf(truth.get(ORG_LOYALTY, id), subject));
+  }
+  return { authority: combineAuthorities(truth, subject, sources), loyalty };
 }
