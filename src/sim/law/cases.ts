@@ -117,3 +117,33 @@ export function openCase(
   };
   return { book: { cases: [...before.cases, c].slice(-KEPT_CASES), serial }, case: c };
 }
+
+/** Cuánto mueve la resolución de un caso en el mundo (law §4: compensación, cara y rencor). */
+export interface CaseEffectRules {
+  /** Gramos de grano de la multa completa (pena 1); la compensación es `pena * fineGrams`. */
+  readonly fineGrams: number;
+  /** Rencor que gana el sancionado hacia quien lo acusó, por unidad de pena. */
+  readonly resentmentGain: number;
+  /** Respeto que pierde el sancionado ante el consejo (cara), por unidad de pena. */
+  readonly faceDrop: number;
+  /** Rencor que baja entre las dos partes cuando el consejo media. */
+  readonly mediationDrop: number;
+}
+
+export const DEFAULT_CASE_EFFECTS: CaseEffectRules = {
+  fineGrams: 20000,
+  resentmentGain: 0.15,
+  faceDrop: 0.1,
+  mediationDrop: 0.1,
+};
+
+/** Compensación en gramos: la parte de la multa que impone la pena, sin pasar de lo que el pagador tiene. */
+export function compensationDue(penalty: number, fineGrams: number, balance: number): number {
+  const due = Math.floor(Math.max(0, Math.min(1, penalty)) * Math.max(0, fineGrams));
+  return Math.max(0, Math.min(due, Math.floor(balance)));
+}
+
+/** Suma `delta` a una dimensión de relación, acotada a [lo, hi] y redondeada. */
+export function nudgeDim(value: number, delta: number, lo: number, hi: number): number {
+  return Math.round(Math.min(hi, Math.max(lo, value + delta)) * 1e6) / 1e6;
+}
