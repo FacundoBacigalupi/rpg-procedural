@@ -742,3 +742,73 @@ describe("testigos y calidad en el lote de trade real", () => {
     for (const b of buyers) expect(w.truth.get(LOT_QUALITY, b)?.["good:tool"]).toBeCloseTo(0.6, 6);
   });
 });
+
+describe("contraparte que ya no está entre ventanas del mismo dominio", () => {
+  const tradesOf = (w: ReturnType<typeof world>) =>
+    w.log.all().filter((e) => e.kind === "action.trade");
+  const dealOf = (e: { data: unknown } | undefined) =>
+    (e?.data as { effect?: { deal: boolean } } | undefined)?.effect?.deal;
+  const expectNatural = (w: ReturnType<typeof world>) => {
+    const trades = tradesOf(w);
+    expect(trades).toHaveLength(1);
+    expect(dealOf(trades[0])).toBe(false);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
+    expect(w.ledger.balance(holderAccount(buyers[1]), coin)).toBe(100);
+    expect(w.ledger.total(good)).toBe(1000);
+    expect(w.ledger.total(coin)).toBe(200);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
+    expect(w.scheduler.state().queue).toHaveLength(1);
+  };
+  it("el vendedor murió y su herencia se repartió antes de la ventana: fracasa natural, deja agenda y ledger", () => {
+    const w = world(1000, true, false, true);
+    const e = w.truth.get(ENTITY, seller);
+    if (!e) throw new Error("sin vendedor");
+    w.truth.set(ENTITY, seller, { ...e, endedAt: 1 });
+    w.ledger.post({
+      tick: 1,
+      eventId: makeId("event", 1),
+      transfers: [
+        {
+          unit: good,
+          from: holderAccount(seller),
+          to: holderAccount(makeId("agent", 50)),
+          amount: 1000,
+        },
+      ],
+    });
+    w.scheduler.advanceTo(clock.day / 2);
+    expectNatural(w);
+  });
+  it("el vendedor se fue a otro hex: el trade fracasa natural, deja agenda y ledger", () => {
+    const w = world(1000, true, false, true);
+    w.truth.set(LOCATION, seller, { hex: 5 });
+    w.scheduler.advanceTo(clock.day / 2);
+    expectNatural(w);
+  });
+  it("el bien cambió de dueño: el trade fracasa natural, deja agenda y ledger", () => {
+    const w = world(1000, true, false, true);
+    w.ledger.post({
+      tick: 0,
+      eventId: makeId("event", 1),
+      transfers: [
+        {
+          unit: good,
+          from: holderAccount(seller),
+          to: holderAccount(makeId("agent", 50)),
+          amount: 1000,
+        },
+      ],
+    });
+    w.scheduler.advanceTo(clock.day / 2);
+    const trades = tradesOf(w);
+    expect(trades).toHaveLength(1);
+    expect(dealOf(trades[0])).toBe(false);
+    expect(w.ledger.balance(holderAccount(buyers[1]), good)).toBe(0);
+    expect(w.ledger.balance(holderAccount(buyers[1]), coin)).toBe(100);
+    expect(w.ledger.total(good)).toBe(1000);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(w.truth.get(PLAN_STATE, buyers[1])?.steps).toHaveLength(1);
+    expect(w.scheduler.state().queue).toHaveLength(1);
+  });
+});
