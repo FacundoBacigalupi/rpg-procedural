@@ -308,13 +308,16 @@ describe("life.council: asuntos en la vida", () => {
   });
 
   it("apagado: los hashes de siempre", () => {
-    const life = Life.create(3, content, { legacyNoOscillationEvents: true });
+    const life = Life.create(3, content, {
+      legacyNoOscillationEvents: true,
+      legacyNoToldBeliefs: true,
+    });
     expect(life.hash().total).toBe(
-      "b829bb7436cffc764da33660c899d578132ea796fdf7f86e47af651e5310c12f",
+      "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",
     );
     life.advanceTo(life.now + DAY * 5);
     expect(life.hash().total).toBe(
-      "ab02c781a70744adc3f00ff20234fd2ffd8bf4beb97b513920806ab288f418ab",
+      "72b116bae6593c310f3f53a8b85c5dd51457a49fd8a8232c4c24a5d7b00db0d6",
     );
   });
 });

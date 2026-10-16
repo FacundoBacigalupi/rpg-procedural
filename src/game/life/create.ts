@@ -307,6 +307,8 @@ export interface LifeOptions {
   readonly legacyNoDeadCounterpartyGuard?: boolean;
   /** Solo el replay de un motor anterior a `life-36`: `give` no rechaza a un destinatario terminado. */
   readonly legacyNoDeadGiveGuard?: boolean;
+  /** Solo el replay de un motor anterior a `life-37`: lo oído (`HEARD`) no entra a `BELIEFS` como `told`. */
+  readonly legacyNoToldBeliefs?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -633,6 +635,7 @@ export function optInParts(
   | "legacyNoLendPawnBatch"
   | "legacyNoDeadCounterpartyGuard"
   | "legacyNoDeadGiveGuard"
+  | "legacyNoToldBeliefs"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
@@ -785,6 +788,7 @@ export function optInParts(
     ...(options.legacyNoLendPawnBatch ? { legacyNoLendPawnBatch: true } : {}),
     ...(options.legacyNoDeadCounterpartyGuard ? { legacyNoDeadCounterpartyGuard: true } : {}),
     ...(options.legacyNoDeadGiveGuard ? { legacyNoDeadGiveGuard: true } : {}),
+    ...(options.legacyNoToldBeliefs ? { legacyNoToldBeliefs: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),

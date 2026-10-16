@@ -246,8 +246,13 @@ export interface LifeSetup {
  * `life-36`: la ejecución de `give` rechaza (`no_means`) a un destinatario con `ENTITY.endedAt` aunque
  * su cuenta exista. Compatibilidad: el replay con un motor anterior a `life-36` enciende
  * `legacyNoDeadGiveGuard`; una vida guardada con `life-35` sigue desde su estado con el límite de replay.
+ *
+ * `life-37`: lo que le contaron de si alguien vive o murió (`HEARD`) entra además a su libro de
+ * creencias como `alive` de fuente `told` (`life.knowing`, `learnToldClaims`, confianza 0,6), y choca
+ * con lo que ya creía. Compatibilidad: el replay con un motor anterior a `life-37` enciende
+ * `legacyNoToldBeliefs`; una vida guardada con `life-36` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-36";
+export const LIFE_ENGINE = "life-37";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -293,6 +298,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 34 ? { legacyNoOscillationCause: true } : {}),
     ...(n < 35 ? { legacyNoOscillationEvents: true } : {}),
     ...(n < 36 ? { legacyNoDeadGiveGuard: true } : {}),
+    ...(n < 37 ? { legacyNoToldBeliefs: true } : {}),
   };
 }
 
