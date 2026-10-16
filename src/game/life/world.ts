@@ -596,6 +596,8 @@ export interface LifeWorld {
   readonly marksReach?: boolean;
   /** Opt-in: el fallo de usura que procede viaja como rumor `fraud` sobre el prestamista y quien pide fiado lo lee (`life.usury_gossip`). */
   readonly usuryGossip?: boolean;
+  /** Opt-in: interés en especie en el fiado de comida entre hogares: al saldar, el hogar suma `ceil(principal * ratio)` g del mismo bien de lo que le sobra (`life.repay`). Ausente: sin interés. */
+  readonly householdInterest?: number;
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
@@ -1225,6 +1227,7 @@ export function lifeWorld(
           foods: parts.foods,
           player,
           placeOf: placeOf(parts, village),
+          ...(parts.householdInterest ? { interestRatio: parts.householdInterest } : {}),
         }),
         spoilageProcess({
           goods: parts.goods,

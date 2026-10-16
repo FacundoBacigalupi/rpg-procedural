@@ -204,6 +204,12 @@ export interface RepayOptions {
   readonly foods: readonly FoodDef[];
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Opt-in: interés en especie. Al saldar la deuda del todo, el hogar suma de su despensa
+   * `ceil(principal * ratio)` gramos más del mismo bien (solo lo que le sobra tras el principal),
+   * en el mismo asiento y anotado en el evento (`payment.interest`). Ausente: sin cambio.
+   */
+  readonly interestRatio?: number;
 }
 
 /** Los hogares que salieron del apuro devuelven en especie lo que deben, de su despensa a la del vecino. */
@@ -251,13 +257,28 @@ export function repayProcess(o: RepayOptions): ProcessDef {
       const grams = Math.min(row.credit.owed, Math.floor(held?.grams ?? 0));
       if (grams <= 0) return {};
       const paid = draftEvent(0);
+      const ratio = o.interestRatio ?? 0;
+      const interest =
+        ratio > 0 && grams === row.credit.owed
+          ? Math.min(
+              Math.ceil(row.credit.principal * ratio),
+              Math.max(0, Math.floor((held?.grams ?? 0) - grams)),
+            )
+          : 0;
       return {
         events: [
           {
             kind: "household.repaid",
             actors: [row.credit.debtor, row.credit.creditor],
             place: o.placeOf(ctx.truth, row.credit.debtor),
-            data: { payment: { unit: row.credit.unit, grams, credit: row.id } },
+            data: {
+              payment: {
+                unit: row.credit.unit,
+                grams,
+                credit: row.id,
+                ...(interest > 0 ? { interest } : {}),
+              },
+            },
             emissions: { sight: 0.2 },
             causes: [{ kind: "state", entity: row.id as never, key: "owed" }],
           },
@@ -270,7 +291,7 @@ export function repayProcess(o: RepayOptions): ProcessDef {
                 unit: row.credit.unit,
                 from: holderAccount(home as unknown as HolderRef),
                 to: holderAccount(creditorHome as unknown as HolderRef),
-                amount: grams,
+                amount: grams + interest,
               },
             ],
           },
