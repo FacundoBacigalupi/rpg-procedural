@@ -149,6 +149,7 @@ import {
 import { neighborsProcess } from "./neighbors.ts";
 import { npcEncountersProcess } from "./npc-encounters.ts";
 import { npcInterruptProcess, npcReactProcess } from "./npc-interrupt.ts";
+import { npcTracesProcess } from "./npc-traces.ts";
 import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
@@ -457,6 +458,8 @@ export interface LifeWorld {
   readonly npcInterrupt?: boolean;
   /** Opt-in (con `npcJourneyDays`, mejor con `npcTransit`): el viajero se cruza con quien comparte su hex (`npc.crossed`, `life.npc_encounters`); apagado, sin proceso. */
   readonly npcEncounters?: boolean;
+  /** Opt-in (con `npcEncounters`): el viajero deja rastros en los hexes que pisa y nota los de otros como creencia (`npc.trace_seen`, `life.npc_traces`); apagado, sin proceso. */
+  readonly npcTraces?: boolean;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1783,6 +1786,9 @@ export function lifeWorld(
           : []),
         ...(parts.npcEncounters === true && parts.npcJourneyDays !== undefined
           ? [npcEncountersProcess({ player, placeOf: placeOf(parts, village) })]
+          : []),
+        ...(parts.npcTraces === true && parts.npcEncounters === true
+          ? [npcTracesProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.npcVerbs && parts.npcVerbs.length > 0
           ? [

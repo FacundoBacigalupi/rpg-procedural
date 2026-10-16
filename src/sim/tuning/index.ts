@@ -76,6 +76,7 @@ export const ScenarioLife = z.strictObject({
   npcProvisions: z.strictObject({ good: z.string().min(1), grams: z.number().gt(0) }).optional(),
   npcInterrupt: z.boolean().optional(),
   npcEncounters: z.boolean().optional(),
+  npcTraces: z.boolean().optional(),
   npcNightRest: z.boolean().optional(),
   npcPace: z.enum(["careful", "fast"]).optional(),
   npcFootwear: z.boolean().optional(),
