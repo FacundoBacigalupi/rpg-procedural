@@ -122,6 +122,29 @@ export function learnToldClaims(
   return beliefs;
 }
 
+/**
+ * Lo que le contaron a `beliefs` de si alguien vive (creencias `alive` con alguna fuente `told`),
+ * leído de `BELIEFS` en lugar de `HEARD` (`life-38`): por quién, el dicho (`alive`/`dead`) y de quién
+ * (la fuente `told` más nueva).
+ */
+export function toldAliveClaims(
+  beliefs: Beliefs | undefined,
+): { about: AgentId; claim: "alive" | "dead"; from: AgentId; at: Tick }[] {
+  const out: { about: AgentId; claim: "alive" | "dead"; from: AgentId; at: Tick }[] = [];
+  for (const b of beliefs?.items ?? []) {
+    if (b.prop.kind !== "attr" || b.prop.attr !== "alive" || typeof b.value !== "boolean") continue;
+    const told = [...b.sources].reverse().find((s) => s.kind === "told");
+    if (told?.kind !== "told") continue;
+    out.push({
+      about: b.prop.subject,
+      claim: b.value ? "alive" : "dead",
+      from: told.from,
+      at: told.tick,
+    });
+  }
+  return out;
+}
+
 export function knowingProcess(o: KnowingOptions): ProcessDef {
   return {
     id: KNOWING_PROCESS,

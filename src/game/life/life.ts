@@ -251,8 +251,14 @@ export interface LifeSetup {
  * creencias como `alive` de fuente `told` (`life.knowing`, `learnToldClaims`, confianza 0,6), y choca
  * con lo que ya creía. Compatibilidad: el replay con un motor anterior a `life-37` enciende
  * `legacyNoToldBeliefs`; una vida guardada con `life-36` sigue desde su estado con el límite de replay.
+ *
+ * `life-38`: los lectores de lo oído miran `BELIEFS` (fuente `told`) y no `HEARD`: el léxico de
+ * `converse` (a quién puede nombrar), la creencia propia del hablante, el choque con lo ya oído al
+ * detectar una mentira y `moldgossip.fromHeard` (`heardFromBeliefs`). Compatibilidad: el replay con
+ * un motor anterior a `life-38` enciende `legacyHeardReaders`; una vida guardada con `life-37` sigue
+ * desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-37";
+export const LIFE_ENGINE = "life-38";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -299,6 +305,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 35 ? { legacyNoOscillationEvents: true } : {}),
     ...(n < 36 ? { legacyNoDeadGiveGuard: true } : {}),
     ...(n < 37 ? { legacyNoToldBeliefs: true } : {}),
+    ...(n < 38 ? { legacyHeardReaders: true } : {}),
   };
 }
 

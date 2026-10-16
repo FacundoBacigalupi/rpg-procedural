@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId } from "../../core/index.ts";
 import { type Beliefs, believed, type Heard } from "../../sim/index.ts";
-import { learnToldClaims, TOLD_ALIVE_CONFIDENCE } from "./knowing.ts";
+import { learnToldClaims, TOLD_ALIVE_CONFIDENCE, toldAliveClaims } from "./knowing.ts";
 
 const A = "agent:a" as AgentId;
 const B = "agent:b" as AgentId;
@@ -51,5 +51,31 @@ describe("lo oído como creencia told (HEARD → BELIEFS)", () => {
   it("nadie guarda lo que le cuentan de sí mismo", () => {
     const mine: Heard = { claims: [{ about: A, claim: "dead", from: C, at: 10 * HOUR }] };
     expect(learnToldClaims(undefined, A, mine, 0, 10 * HOUR)).toBeUndefined();
+  });
+});
+
+describe("leer lo oído desde BELIEFS (life-38)", () => {
+  it("toldAliveClaims devuelve lo contado: quién, qué dijo, de quién y cuándo", () => {
+    const b = learnToldClaims(undefined, A, heard("dead", 10 * HOUR), 9 * HOUR + 1, 10 * HOUR);
+    expect(toldAliveClaims(b)).toEqual([{ about: B, claim: "dead", from: C, at: 10 * HOUR }]);
+  });
+
+  it("lo que no se contó (sin fuente told) no cuenta como oído", () => {
+    const seen: Beliefs = {
+      items: [
+        {
+          prop: { kind: "attr", subject: B, attr: "alive" },
+          value: true,
+          confidence: 0.9,
+          asOf: 0,
+          learnedAt: 0,
+          sources: [{ kind: "percept", percept: "x", tick: 0 }],
+          salience: 1,
+          measured: 0,
+        },
+      ],
+    };
+    expect(toldAliveClaims(seen)).toEqual([]);
+    expect(toldAliveClaims(undefined)).toEqual([]);
   });
 });
