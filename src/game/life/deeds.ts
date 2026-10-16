@@ -100,9 +100,13 @@ function neighbor(
 }
 
 /** Lo que el evento es, si es un delito: qué, quién lo hizo y contra quién. */
-export function offenseOf(
-  e: Event,
-): { kind: DeedKind; by: AgentId; victim: AgentId; noticedBy: readonly AgentId[] } | null {
+export function offenseOf(e: Event): {
+  kind: DeedKind;
+  by: AgentId;
+  victim: AgentId;
+  noticedBy: readonly AgentId[];
+  missedBy?: readonly AgentId[];
+} | null {
   const [first, second] = e.actors as AgentId[];
   if (!first) return null;
   const data = e.data as {
@@ -141,9 +145,15 @@ export function offenseOf(
   }
   if (e.kind === "scheme.step" && second) {
     // El paso `take` de una intriga que se llevó algo es un robo; el robado no lo ve: se enteran los que estaban.
-    const step = e.data as { stepKind?: string; taken?: number } | null;
+    const step = e.data as { stepKind?: string; taken?: number; missed?: boolean } | null;
     if (step?.stepKind === "take" && (step.taken ?? 0) > 0)
-      return { kind: "theft", by: first, victim: second, noticedBy: [] };
+      return {
+        kind: "theft",
+        by: first,
+        victim: second,
+        noticedBy: [],
+        ...(step.missed ? { missedBy: [second] } : {}),
+      };
   }
   const eff = data?.effect;
   if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
@@ -209,6 +219,9 @@ function witnessesOf(
   }
   // Quien lo agarró con la mano adentro, o con quien se peleó, sabe quién fue.
   for (const id of off.noticedBy) if (alive(truth, id)) out.set(id, { by: off.by, via: "saw" });
+  // Quien nota la falta sabe que hubo un robo, no quién fue (salvo que ya lo supiera por otra vía).
+  for (const id of off.missedBy ?? [])
+    if (alive(truth, id) && !out.has(id)) out.set(id, { by: null, via: "saw" });
   return [...out].map(([who, k]) => ({ who, ...k }));
 }
 
