@@ -15,6 +15,8 @@ import {
 import {
   deleteComponent,
   draftEvent,
+  EATEN,
+  ECOLOGY,
   ENTITY,
   type EventDraft,
   LOCATION,
@@ -34,6 +36,7 @@ export const LOAD_DROPPED_EVENT = "npc.load_dropped";
 export const LOAD_FOUND_EVENT = "npc.load_found";
 export const LOAD_ROTTED_EVENT = "npc.load_rotted";
 export const LOAD_RECLAIMED_EVENT = "npc.load_reclaimed";
+export const LOAD_EATEN_EVENT = "npc.load_eaten";
 
 export type TraceKind = "footprints" | "campfire" | "dropped_load";
 
@@ -93,6 +96,12 @@ export const MAX_DROPS = 4;
 /** Chance por hora de que el dueño que está en el hex reclame lo que dejó caer (sin calibrar). */
 export const RECLAIM_CHANCE = 0.9;
 
+/** Chance por hora y por animal de la población de que algo se coma lo caído (sin calibrar). */
+export const SCAVENGE_RATE = 0.002;
+/** Gramos que come cada animal por vez y tope de animales que comen a la vez. */
+export const SCAVENGE_GRAMS_EACH = 20;
+export const SCAVENGE_MAX_ANIMALS = 20;
+
 const HOUR = 3600;
 
 export function traceKind(step: TrailStep): TraceKind {
@@ -110,6 +119,8 @@ export interface NpcTracesOptions {
     readonly name: string;
     /** Opt-in: horas que aguanta lo caído; pasadas, se pudre (sumidero `rotted`) y el registro caduca. */
     readonly rotAfterHours?: number;
+    /** Opt-in: un linaje de `ECOLOGY` (los animales que de verdad hay en la celda) se come lo caído en `hexes` (default todos); la chance sale de cuántos son. */
+    readonly scavenge?: { readonly lineage: string; readonly hexes?: readonly number[] };
   };
 }
 
@@ -133,13 +144,16 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       NPC_TRAIL.name,
       NPC_TRACES.name,
       NPC_DROPS.name,
+      ...(o.load?.scavenge ? [ECOLOGY.name] : []),
     ],
     writes: [NPC_TRAIL.name, NPC_TRACES.name, NPC_DROPS.name],
     scopeGuard: (truth, scope) =>
       truth.get(NPC_JOURNEY, scope as AgentId) !== undefined ||
       truth.get(NPC_TRAIL, scope as AgentId) !== undefined ||
       truth.get(NPC_TRACES, scope as AgentId) !== undefined ||
-      ((o.load?.rotAfterHours !== undefined || o.load?.reclaim === true) &&
+      ((o.load?.rotAfterHours !== undefined ||
+        o.load?.reclaim === true ||
+        o.load?.scavenge !== undefined) &&
         truth.get(NPC_DROPS, scope as AgentId) !== undefined),
     run(ctx) {
       const me = ctx.scope as AgentId;
@@ -158,11 +172,6 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       const rotEvents: EventDraft[] = [];
       const rotPostings: PostingDraft[] = [];
       if (rotting.length > 0 && ctx.ledger) {
-        rotChanges.push(
-          liveDrops.length > 0
-            ? setComponent(NPC_DROPS, me, { lots: liveDrops })
-            : deleteComponent(NPC_DROPS, me),
-        );
         const left = new Map<string, number>();
         for (const lot of rotting) {
           const acct = roadAccount(lot.hex);
@@ -186,6 +195,59 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
           });
         }
       }
+      // Un animal que de verdad vive en la celda se come lo caído: sumidero `eaten`, causa en la ecología.
+      let afterEat = liveDrops;
+      const sc = o.load?.scavenge;
+      const eco = sc && ctx.ledger ? truth.ids(ECOLOGY)[0] : undefined;
+      if (sc && eco !== undefined && ctx.ledger && liveDrops.length > 0) {
+        const count = truth
+          .get(ECOLOGY, eco)
+          ?.cell.populations.find((p) => p.lineage === sc.lineage)?.count;
+        const animals = Math.min(SCAVENGE_MAX_ANIMALS, Math.floor(count ?? 0));
+        if (animals > 0) {
+          const chance = 1 - (1 - SCAVENGE_RATE) ** animals;
+          const roll = ctx.rng.fork("scavenge", me, now);
+          const here = truth.get(LOCATION, me)?.hex;
+          const left = new Map<string, number>();
+          const rest: DroppedLot[] = [];
+          for (const lot of liveDrops) {
+            const guarded = o.load?.reclaim === true && here === lot.hex;
+            const roams = sc.hexes === undefined || sc.hexes.includes(lot.hex);
+            if (guarded || !roams || roll.float() >= chance) {
+              rest.push(lot);
+              continue;
+            }
+            const acct = roadAccount(lot.hex);
+            const unit = ledgerUnit(lot.unit);
+            const k = `${lot.hex}:${lot.unit}`;
+            const have = left.get(k) ?? ctx.ledger.balance(acct, unit);
+            const grams = Math.min(lot.grams, have, animals * SCAVENGE_GRAMS_EACH);
+            left.set(k, have - grams);
+            if (grams <= 0) continue;
+            if (lot.grams > grams) rest.push({ ...lot, grams: lot.grams - grams });
+            rotEvents.push({
+              kind: LOAD_EATEN_EVENT,
+              actors: [me],
+              place: o.placeOf(truth, me),
+              data: { hex: lot.hex, unit: lot.unit, grams, lineage: sc.lineage },
+              emissions: {},
+              causes: [{ kind: "state", entity: eco, key: "living.ecology" }],
+            });
+            rotPostings.push({
+              event: draftEvent(rotEvents.length - 1),
+              transfers: [{ unit, from: acct, to: externalAccount(EATEN), amount: grams }],
+            });
+          }
+          if (rotEvents.some((e) => e.kind === LOAD_EATEN_EVENT)) afterEat = rest;
+        }
+      }
+      if (afterEat !== liveDrops || rotting.length > 0) {
+        rotChanges.push(
+          afterEat.length > 0
+            ? setComponent(NPC_DROPS, me, { lots: afterEat })
+            : deleteComponent(NPC_DROPS, me),
+        );
+      }
       if (me === o.player || truth.get(ENTITY, me)?.endedAt !== undefined) {
         return rotChanges.length > 0 || rotEvents.length > 0
           ? {
@@ -202,7 +264,7 @@ export function npcTracesProcess(o: NpcTracesOptions): ProcessDef {
       const postings: PostingDraft[] = [...rotPostings];
       const load = o.load;
       const pocket = holderAccount(me);
-      let kept = liveDrops;
+      let kept = afterEat;
 
       // El dueño que vuelve al hex donde dejó caer su carga la reclama (derecho de quien la perdió).
       if (load?.reclaim && ctx.ledger && here !== undefined) {

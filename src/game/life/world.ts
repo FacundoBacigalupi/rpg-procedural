@@ -475,6 +475,8 @@ export interface LifeWorld {
   readonly npcDropRotHours?: number;
   /** Opt-in (con `npcTraces` y `npcProvisions`): el dueño que vuelve al hex donde dejó caer su carga la reclama (`npc.load_reclaimed`) y tiene prioridad sobre quien la halle. */
   readonly npcDropReclaim?: boolean;
+  /** Opt-in (con `npcTraces` y `npcProvisions`): id de un linaje de la ecología de la celda que se come lo caído en el camino (`npc.load_eaten`, sumidero `eaten`); la chance sale de cuántos animales hay. */
+  readonly npcDropScavenge?: string;
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1858,6 +1860,9 @@ export function lifeWorld(
                           unit: goodUnit(food),
                           name: food.name,
                           ...(parts.npcDropReclaim ? { reclaim: true } : {}),
+                          ...(parts.npcDropScavenge !== undefined
+                            ? { scavenge: { lineage: parts.npcDropScavenge } }
+                            : {}),
                           ...(parts.npcDropRotHours !== undefined
                             ? { rotAfterHours: parts.npcDropRotHours }
                             : {}),
