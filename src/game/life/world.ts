@@ -88,6 +88,7 @@ import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
 import { conversationSettlementProcess } from "./converse-economy.ts";
 import { converseProjectionProcess } from "./converse-project.ts";
+import { type CouncilOptions, councilProcess } from "./council.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { debtKnowledgeProcess } from "./debtknowledge.ts";
@@ -600,6 +601,8 @@ export interface LifeWorld {
   readonly householdInterest?: number;
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
+  /** Opt-in: consejo de aldea como organización fundada desde sus ancianos (`life.council`, organizations §11); sin esto no existe ni corre. */
+  readonly council?: Omit<CouncilOptions, "placeOf" | "day" | "year">;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
   readonly schemes?: Omit<SchemesOptions, "placeOf" | "day" | "view"> &
     Partial<Pick<SchemesOptions, "view">>;
@@ -1077,6 +1080,16 @@ export function lifeWorld(
               debtorRepairProcess({
                 placeOf: placeOf(parts, village),
                 ...(parts.debtorRepairRestitution ? { restitution: true } : {}),
+              }),
+            ]
+          : []),
+        ...(parts.council
+          ? [
+              councilProcess({
+                ...parts.council,
+                placeOf: placeOf(parts, village),
+                day: parts.clock.day,
+                year: parts.clock.year,
               }),
             ]
           : []),
