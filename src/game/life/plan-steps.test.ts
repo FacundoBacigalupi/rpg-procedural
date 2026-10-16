@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-34");
+    expect(LIFE_ENGINE).toBe("life-35");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       frequency: 8,
@@ -97,6 +97,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-4", {})).toEqual({
       waitAwake: true,
@@ -129,6 +130,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -158,6 +160,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -186,6 +189,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
@@ -213,6 +217,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
@@ -239,6 +244,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       waitEatHomeOnly: true,
@@ -264,6 +270,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyNoCare: true,
@@ -288,6 +295,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyNoFootSores: true,
@@ -311,6 +319,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyNoFootwearMend: true,
@@ -333,6 +342,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-15", {})).toEqual({
       legacyNoCloak: true,
@@ -354,6 +364,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-16", {})).toEqual({
       legacyNoStrain: true,
@@ -374,6 +385,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-17", {})).toEqual({
       legacyNoCloakMend: true,
@@ -393,6 +405,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-19", {})).toEqual({
       legacyNoRainForecast: true,
@@ -410,6 +423,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-18", {})).toEqual({
       legacyNoForecast: true,
@@ -428,6 +442,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-20", {})).toEqual({
       legacyNoFieldWatering: true,
@@ -444,6 +459,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-21", {})).toEqual({
       legacyNoFieldSowing: true,
@@ -459,6 +475,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-22", {})).toEqual({
       legacyNoFieldShared: true,
@@ -473,6 +490,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-23", {})).toEqual({
       legacyNoSowSeed: true,
@@ -486,6 +504,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-24", {})).toEqual({
       legacyNoExhaustion: true,
@@ -498,6 +517,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-25", {})).toEqual({
       legacyNoCobbler: true,
@@ -509,6 +529,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-26", {})).toEqual({
       legacyNoPerceiveCascade: true,
@@ -519,6 +540,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-27", {})).toEqual({
       legacyNoAppraiseCascade: true,
@@ -528,6 +550,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-28", {})).toEqual({
       legacyNoOscillation: true,
@@ -536,6 +559,7 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-29", {})).toEqual({
       legacyNoLendPawnBatch: true,
@@ -543,24 +567,32 @@ describe("motor y pasos", () => {
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-30", {})).toEqual({
       legacyNoDeadCounterpartyGuard: true,
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-31", {})).toEqual({
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
     expect(engineOptions("life-32", {})).toEqual({
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
     });
-    expect(engineOptions("life-33", {})).toEqual({ legacyNoOscillationCause: true });
-    expect(engineOptions("life-34", {})).toEqual({});
+    expect(engineOptions("life-33", {})).toEqual({
+      legacyNoOscillationCause: true,
+      legacyNoOscillationEvents: true,
+    });
+    expect(engineOptions("life-34", {})).toEqual({ legacyNoOscillationEvents: true });
+    expect(engineOptions("life-35", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */

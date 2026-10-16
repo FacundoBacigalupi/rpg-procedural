@@ -32,6 +32,10 @@ export const HAIL_MELT_C = 32;
 export const HAIL_LOSS = 0.6;
 /** Días hasta que el campo vuelve a rendir lo de antes. */
 export const HAIL_RECOVERY_DAYS = 4;
+/** Milímetros en los `SOIL_DAYS` desde los que el agua anega el campo (inundación, solo si se pide). */
+export const FLOOD_MM = 90;
+/** Fracción que pierde el campo cuando la lluvia de la ventana duplica `FLOOD_MM` (sube lineal desde `FLOOD_MM`). */
+export const FLOOD_LOSS = 0.6;
 /** Piso del promedio anual al normalizar, para que un clima sin verano no divida por casi cero. */
 const MIN_MEAN = 0.05;
 
@@ -103,9 +107,17 @@ export function rawHarvest(
   day: DayWeather,
   previous: readonly DayWeather[],
   hailAgo?: number,
+  flood?: boolean,
 ): number {
   const standing = hailAgo === undefined ? 1 : hailStanding(hailAgo);
-  return growthOf(day) * soilWater([day, ...previous]) * standing;
+  const window = [day, ...previous];
+  const drowned = flood === true ? floodStanding(window.reduce((s, d) => s + rainMm(d), 0)) : 1;
+  return growthOf(day) * soilWater(window) * standing * drowned;
+}
+
+/** Cuánto del campo sigue sin anegar (0-1) con `mm` de lluvia en la ventana del suelo. */
+export function floodStanding(mm: number): number {
+  return 1 - FLOOD_LOSS * clamp((mm - FLOOD_MM) / FLOOD_MM, 0, 1);
 }
 
 /**
@@ -117,12 +129,13 @@ export function harvestSeason(
   clock: PlanetClock,
   rng: Rng,
   anomalyOf?: (day: number) => Anomaly | undefined,
+  flood?: boolean,
 ): (day: number) => number {
   const yearDays = Math.round(clock.year / clock.day);
-  const rawOf = rawSeason(n, clock, rng, anomalyOf);
+  const rawOf = rawSeason(n, clock, rng, anomalyOf, flood);
   // El promedio es el de un año sin anomalía: los años buenos y malos (oscilaciones oceánicas,
   // weather §1) rinden más o menos que el promedio en vez de normalizarse cada uno a 1.
-  const baseRaw = anomalyOf ? rawSeason(n, clock, rng) : rawOf;
+  const baseRaw = anomalyOf ? rawSeason(n, clock, rng, undefined, flood) : rawOf;
   let sum = 0;
   for (let d = 0; d < yearDays; d++) sum += baseRaw(d);
   const mean = Math.max(sum / yearDays, MIN_MEAN);
@@ -143,6 +156,7 @@ function rawSeason(
   clock: PlanetClock,
   rng: Rng,
   anomalyOf?: (day: number) => Anomaly | undefined,
+  flood?: boolean,
 ): (day: number) => number {
   const weather = new Map<number, DayWeather>();
   const at = (d: number): DayWeather => {
@@ -172,5 +186,6 @@ function rawSeason(
       at(d),
       Array.from({ length: SOIL_DAYS - 1 }, (_, i) => at(d - 1 - i)),
       hailAgoAt(d),
+      flood,
     );
 }

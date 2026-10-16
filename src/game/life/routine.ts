@@ -23,7 +23,6 @@ import {
 import {
   type Activity,
   ASLEEP,
-  anomalyOfMap,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
@@ -39,7 +38,6 @@ import {
   HARVEST,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
-  harvestSeason,
   houseKey,
   ingest,
   LOCATION,
@@ -79,6 +77,7 @@ import {
   rainWindow,
   wantsToWater,
 } from "./irrigation.ts";
+import { harvestSeasonOf } from "./map.ts";
 import { PLAYER } from "./player.ts";
 import {
   cropStarts,
@@ -324,12 +323,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     .filter((f) => f.kcalPerGram > 0)
     .map((f) => ({ unit: ledgerUnit(`good:${f.id}`), food: f }));
   // El rinde de la hora depende del día del año (calor, helada, lluvia reciente).
-  const season = harvestSeason(
-    o.map.climate,
-    o.clock,
-    Rng.root(o.seed),
-    anomalyOfMap(o.map, o.clock, o.seed),
-  );
+  const season = harvestSeasonOf(o.map, o.clock, o.seed);
   const rainOf = rainWindow(o);
   const cropStart = cropStarts(season, Math.round(o.clock.year / o.clock.day));
   const nutrition = new Map<LedgerUnit, FoodDef>(foods.map((f) => [f.unit, f.food]));

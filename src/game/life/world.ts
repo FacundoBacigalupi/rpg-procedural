@@ -16,7 +16,6 @@ import type {
 import { ledgerUnit, makeId, Rng } from "../../core/index.ts";
 import {
   type ActionCatalog,
-  anomalyOfMap,
   type BodyPlanDef,
   type BondDef,
   bodyProcess,
@@ -29,7 +28,6 @@ import {
   type GoodDef,
   goodUnit,
   type HabitDef,
-  harvestSeason,
   KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
@@ -119,6 +117,7 @@ import { type HeedStanding, lendProcess, repayDoseProcess } from "./lend.ts";
 import { living } from "./living.ts";
 import { type BondageTerms, type LoanSeed, loansProcess, type UsuryOptions } from "./loans.ts";
 import { lookingProcess } from "./looking.ts";
+import { harvestSeasonOf } from "./map.ts";
 import { marketProcess } from "./market.ts";
 import {
   believedMarkRenownBy,
@@ -159,6 +158,7 @@ import { NPC_JOURNEY, npcVerbsProcess } from "./npc-verbs.ts";
 import { npcWarningsProcess } from "./npc-warnings.ts";
 import { nutritionProcess } from "./nutrition.ts";
 import { observeProcess } from "./observe.ts";
+import { oscillationEventsProcess } from "./oscillation-events.ts";
 import { householdAuthority, realTrust } from "./patientbonds.ts";
 import {
   type PawnLots,
@@ -409,6 +409,8 @@ export interface LifeWorld {
   readonly legacyNoGreetDecision?: boolean;
   /** Solo el replay de un motor anterior a `life-34`: la hambruna no cita la oscilación oceánica entre sus causas. */
   readonly legacyNoOscillationCause?: boolean;
+  /** Solo el replay de un motor anterior a `life-35`: sin eventos de sequía e inundación ni campo anegado (el mapa ya lo trae armado). */
+  readonly legacyNoOscillationEvents?: boolean;
   /** Replay de motores anteriores a `life-29`: el mapa no lleva cuenca (ya aplicado al armarlo; se guarda por trazabilidad). */
   readonly legacyNoOscillation?: boolean;
   /** Replay de motores anteriores a `life-12`: quien espera come solo puertas adentro; ver `RoutineOptions.waitEatVillage`. */
@@ -1390,6 +1392,19 @@ export function lifeWorld(
                 : []),
             ]
           : []),
+        ...(parts.legacyNoOscillationEvents !== true && parts.map.oscillation !== undefined
+          ? [
+              oscillationEventsProcess({
+                clock: parts.clock,
+                yearOf: (day: number) =>
+                  oscillationYearOfMap(parts.map, parts.clock, parts.seed, day),
+                place: village,
+                subject: (village.kind === "settlement"
+                  ? village.settlement
+                  : parts.map.cell) as unknown as EntityRef,
+              }),
+            ]
+          : []),
         ...(parts.famine
           ? [
               famineProcess({
@@ -2087,12 +2102,7 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
                 // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
                 harvest: {
-                  season: harvestSeason(
-                    parts.map.climate,
-                    parts.clock,
-                    Rng.root(parts.seed),
-                    anomalyOfMap(parts.map, parts.clock, parts.seed),
-                  ),
+                  season: harvestSeasonOf(parts.map, parts.clock, parts.seed),
                   ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
                     ? {
                         field: {

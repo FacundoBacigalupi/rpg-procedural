@@ -236,8 +236,14 @@ export interface LifeSetup {
  * fue seco en la aldea (`data.oscillation` y una causa `state` `oscillation:<cuenca>:<año>:<fase>`).
  * Compatibilidad: el replay con un motor anterior a `life-34` enciende `legacyNoOscillationCause`;
  * una vida guardada con `life-33` sigue desde su estado con el límite de replay.
+ *
+ * `life-35`: la aldea declara `weather.drought` y `weather.flood` el primer día de un año seco o
+ * húmedo de la oscilación (con su `OscillationCause` y la causa `state` `oscillation:<cuenca>:<año>:<fase>`),
+ * y la cosecha se anega cuando llueve de más en los últimos días (`FLOOD_MM`, `harvestSeason` con
+ * `flood`). Compatibilidad: el replay con un motor anterior a `life-35` enciende
+ * `legacyNoOscillationEvents`; una vida guardada con `life-34` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-34";
+export const LIFE_ENGINE = "life-35";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -281,6 +287,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 32 ? { legacyNoRainWaitPersist: true } : {}),
     ...(n < 33 ? { legacyNoGreetDecision: true } : {}),
     ...(n < 34 ? { legacyNoOscillationCause: true } : {}),
+    ...(n < 35 ? { legacyNoOscillationEvents: true } : {}),
   };
 }
 
