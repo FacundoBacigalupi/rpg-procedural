@@ -35,6 +35,8 @@ export const ConceptDef = z.strictObject({
       place: weight.optional(),
     })
     .optional(),
+  /** El acto de habla que nombra (dialogue §2): `understand` lo reconoce por el léxico, no solo por regex. */
+  act: z.enum(["greet"]).optional(),
   /** Si es la cabeza del nombre de un lugar con esa característica. */
   feature: z.enum(PLACE_FEATURES).optional(),
 });

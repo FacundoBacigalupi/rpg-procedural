@@ -145,6 +145,11 @@ export interface Lexicon {
     /** Es moneda: la cantidad se cuenta en piezas y no en gramos (`grams` guarda las piezas). */
     readonly coin?: boolean;
   }[];
+  /**
+   * Las palabras de la lengua del oyente que nombran un saludo (el concepto `greeting` del léxico,
+   * language §3): se reconocen además de las frases del español del jugador.
+   */
+  readonly greetings?: readonly string[];
 }
 
 const COIN_WORDS: Readonly<Record<string, number>> = {
@@ -554,6 +559,8 @@ function understandBody(text: string, lex: Lexicon, clarity: number): SpeechBody
   if (REFUSE.test(norm) && brief) return { kind: "refuse" };
   if (ACCEPT.test(norm) && brief) return { kind: "accept" };
   if (FAREWELL.test(norm)) return { kind: "farewell" };
-  if (GREET.test(norm)) return { kind: "greet" };
+  if (GREET.test(norm) || (lex.greetings !== undefined && mentions(norm, lex.greetings))) {
+    return { kind: "greet" };
+  }
   return { kind: "other" };
 }

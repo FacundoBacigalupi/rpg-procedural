@@ -63,7 +63,7 @@ describe("el saludo con lengua y acento", () => {
         concepts: ["elder"],
       } as AddressDef,
     ];
-    const language = { compound: () => ({ text: "zorvu" }) } as never;
+    const language = { compound: () => ({ text: "zorvu" }), concepts: new Map() } as never;
     const t = new WorldTruth();
     t.set(ENTITY, b, { id: b, originEventId: makeId("event", 1), createdAt: 0 } as never);
     t.set(PERSON_NAME, b, {

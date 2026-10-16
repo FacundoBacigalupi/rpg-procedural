@@ -244,6 +244,22 @@ describe("el saludo como acto de habla", () => {
     expect(truth.get(RELATIONS, other)).toBeUndefined();
   });
 
+  it("sin lengua en común, el saludo cae a un gesto que se entiende y entibia", () => {
+    const speech: GreetingSpeech = {
+      say: () => "Buenas",
+      lexicon,
+      clarity: () => 0,
+      gesture: () => true,
+    };
+    const truth = known();
+    const now = timeFor(speech);
+    const out = run(truth, now, 1, speech);
+    expect(out.events?.[0]?.data).toMatchObject({ understood: { [me]: true, [other]: true } });
+    expect(run(known(), now, 1, speech)).toEqual(out);
+    apply(truth, out);
+    expect(truth.get(RELATIONS, other)?.toward[me]?.dims.familiarity).toBeGreaterThan(0);
+  });
+
   it("con buena claridad se entiende y es determinista", () => {
     const speech: GreetingSpeech = { say: () => "Buenas", lexicon, clarity: () => 0.9 };
     const now = timeFor(speech);

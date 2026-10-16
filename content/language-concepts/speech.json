@@ -1,0 +1,8 @@
+[
+  {
+    "id": "greeting",
+    "es": "saludo",
+    "pos": "noun",
+    "act": "greet"
+  }
+]
