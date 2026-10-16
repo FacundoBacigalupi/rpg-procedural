@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-31");
+    expect(LIFE_ENGINE).toBe("life-32");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -51,6 +51,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       sleepUncapped: true,
@@ -77,6 +78,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyFalls: true,
@@ -102,6 +104,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyTend: true,
@@ -126,6 +129,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyResume: true,
@@ -149,6 +153,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       waitEatHomeOnly: true,
@@ -171,6 +176,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyNoCare: true,
@@ -192,6 +198,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyNoFootSores: true,
@@ -212,6 +219,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyNoFootwearMend: true,
@@ -231,6 +239,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-15", {})).toEqual({
       legacyNoCloak: true,
@@ -249,6 +258,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-16", {})).toEqual({
       legacyNoStrain: true,
@@ -266,6 +276,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-17", {})).toEqual({
       legacyNoCloakMend: true,
@@ -282,6 +293,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-19", {})).toEqual({
       legacyNoRainForecast: true,
@@ -296,6 +308,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-18", {})).toEqual({
       legacyNoForecast: true,
@@ -311,6 +324,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-20", {})).toEqual({
       legacyNoFieldWatering: true,
@@ -324,6 +338,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-21", {})).toEqual({
       legacyNoFieldSowing: true,
@@ -336,6 +351,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-22", {})).toEqual({
       legacyNoFieldShared: true,
@@ -347,6 +363,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-23", {})).toEqual({
       legacyNoSowSeed: true,
@@ -357,6 +374,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-24", {})).toEqual({
       legacyNoExhaustion: true,
@@ -366,6 +384,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-25", {})).toEqual({
       legacyNoCobbler: true,
@@ -374,6 +393,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-26", {})).toEqual({
       legacyNoPerceiveCascade: true,
@@ -381,24 +401,32 @@ describe("motor de la espera nocturna", () => {
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-27", {})).toEqual({
       legacyNoAppraiseCascade: true,
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-28", {})).toEqual({
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
     expect(engineOptions("life-29", {})).toEqual({
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
     });
-    expect(engineOptions("life-30", {})).toEqual({ legacyNoDeadCounterpartyGuard: true });
-    expect(engineOptions("life-31", {})).toEqual({});
+    expect(engineOptions("life-30", {})).toEqual({
+      legacyNoDeadCounterpartyGuard: true,
+      legacyNoRainWaitPersist: true,
+    });
+    expect(engineOptions("life-31", {})).toEqual({ legacyNoRainWaitPersist: true });
+    expect(engineOptions("life-32", {})).toEqual({});
   });
 });
 

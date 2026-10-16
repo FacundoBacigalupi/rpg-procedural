@@ -10,28 +10,15 @@ import {
 import { loadContentDir } from "../../persistence/index.ts";
 import { checkInvariants } from "../../sim/index.ts";
 
-// perfil2-coverage-transit-gap: en el perfil completo el viaje NPC (`npc.journey`, `life.transit`) da
-// 0 salidas porque `npcRainForecast` hace esperar al viajero un día (`wait`) y la decisión `move` de un
-// recado vence en un día (`ctx.now - decision.at >= day`), así que nunca sale: ver el ROADMAP
-// (`perfil2-rain-wait-persist`). Este test fija que, sin el pronóstico de lluvia (y el riego que
-// depende de él), los recados del perfil sí abren viajes, llegan y se cruzan con gente.
-describe("cobertura de tránsito NPC con el perfil completo sin pronóstico de lluvia", () => {
+// perfil2-rain-wait-persist: en el perfil completo (con `npcRainForecast`) la espera por lluvia del
+// viajero no pierde el recado `move` por el vencimiento diario: los recados abren viajes que llegan.
+describe("cobertura de tránsito NPC con el perfil completo", () => {
   it("los recados abren viajes que llegan, con invariantes sanos", () => {
     const content = loadContentDir("content", GAME_CONTENT_KINDS);
-    const setup = {
-      game: defaultGameSetup("realistic"),
-      life: {
-        ...FULL_PROFILE,
-        npcRainForecast: false,
-        npcFieldWatering: false,
-        npcFieldSowing: false,
-        npcFieldShared: false,
-        npcSowSeed: false,
-      },
-    };
+    const setup = { game: defaultGameSetup("realistic"), life: { ...FULL_PROFILE } };
     assertLifeDependencies(optionsOf(setup));
     const life = Life.create(1, content, optionsOf(setup));
-    life.advanceTo(life.now + 30 * life.world.clock.day);
+    life.advanceTo(life.now + 45 * life.world.clock.day);
     const world = life.world;
     const count = (kind: string, what?: string) =>
       world.log

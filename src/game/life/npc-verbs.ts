@@ -78,6 +78,8 @@ export interface NpcVerbsOptions {
   /** Verbos de la decisión que se ejecutan (el resto sigue como hasta ahora). */
   readonly verbs: readonly string[];
   readonly day: number;
+  /** Replay de motores anteriores a `life-32`: la espera por lluvia no mantiene viva la decisión `move`. */
+  readonly legacyNoRainWaitPersist?: boolean;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no arma planes. */
   readonly sleepers?: boolean;
   /** El personaje decide por su cuenta: queda afuera. */
@@ -418,6 +420,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
     writes: [
       PLAN_STATE.name,
       NPC_VERB_LOG.name,
+      ...(o.legacyNoRainWaitPersist === true ? [] : [NPC_DECISION.name]),
       ...(o.resume ? [NPC_PAUSED.name] : []),
       ...(o.journeyDays !== undefined ? [NPC_JOURNEY.name] : []),
       ...(o.drink ? [BODY_STATE.name] : []),
@@ -603,7 +606,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
         };
       }
       const decision = truth.get(NPC_DECISION, me);
-      if (!decision || !allowed.has(decision.verb) || ctx.now - decision.at >= o.day) return {};
+      if (!decision || !allowed.has(decision.verb)) return {};
+      if (
+        ctx.now - decision.at >=
+        o.day * (decision.waits !== undefined && decision.waits > 0 ? MAX_RAIN_WAITS + 1 : 1)
+      )
+        return {};
       const done = truth.get(NPC_VERB_LOG, me);
       // La plantilla de la decisión: `verbo@clase` del objetivo (lugar o persona) y si no la del verbo.
       const targetKind = !o.templates
@@ -624,7 +632,9 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           (journeyDays !== undefined || tpl) &&
           done &&
           done.at === decision.at &&
-          done.id === decision.id
+          done.id === decision.id &&
+          // `life-32`: el que espera la lluvia vuelve a intentarlo mañana (decision.waits).
+          !(decision.waits !== undefined && (done.waited ?? 0) > 0)
         )
           return {};
         // Un camino largo son varios tramos: sigue hasta llegar al lugar mientras la decisión vigue.
@@ -696,6 +706,9 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
                 id: decision.id,
                 waited: waited + 1,
               }),
+              ...(o.legacyNoRainWaitPersist === true
+                ? []
+                : [setComponent(NPC_DECISION, me, { ...decision, waits: waited + 1 })]),
             ],
           };
         const open = setComponent(NPC_JOURNEY, me, {

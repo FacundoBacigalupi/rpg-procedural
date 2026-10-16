@@ -132,6 +132,7 @@ import {
 import { DEBT_BOOK, type DebtBook, debtGoalInputs } from "./debtknowledge.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
 import { type ErrandOptions, errandCandidates } from "./errands.ts";
+import { MAX_RAIN_WAITS } from "./forecast.ts";
 import { withGround } from "./ground.ts";
 import {
   CRAFTSMAN_VERBS,
@@ -182,6 +183,8 @@ export interface Decision {
   readonly act?: SpeakAct;
   readonly utility: number;
   readonly options: number;
+  /** Días que el viajero esperó a que escampe con esta decisión `move` (`life-32`): la mantiene viva. */
+  readonly waits?: number;
 }
 
 export const NPC_DECISION = table<Decision>("life.decision");
@@ -418,6 +421,14 @@ export function decideProcess(o: DecideOptions): ProcessDef {
       if (!plan) throw new RangeError(`plan corporal desconocido: ${body.plan}`);
 
       const now = ctx.now;
+      // `life-32`: quien espera la lluvia con un recado `move` no lo pierde por el cambio diario.
+      const held = truth.get(NPC_DECISION, me);
+      if (
+        held?.waits !== undefined &&
+        held.waits > 0 &&
+        now - held.at < (MAX_RAIN_WAITS + 1) * o.clock.day
+      )
+        return {};
       const age = (now - person.born) / o.clock.year;
       const culture = villageCulture(truth);
 
