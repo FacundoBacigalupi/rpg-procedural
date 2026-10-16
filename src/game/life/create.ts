@@ -161,6 +161,7 @@ import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
+import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { SOWN_FIELD } from "./sowing.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
@@ -184,6 +185,10 @@ export interface LifeOptions {
   readonly frequency?: number;
   /** Entre qué edades sale el personaje de la pre-corrida (player-loop §2). */
   readonly playerAge?: { readonly min: number; readonly max: number };
+  /** Opt-in: cuántas comunidades vecinas con acento propio se siembran (`seed-origins.ts`); 0/ausente, solo la aldea. */
+  readonly neighborCommunities?: number;
+  /** Opt-in (con `neighborCommunities`): cómo entra el personaje; `arrived` le da el origen de una vecina. */
+  readonly playerEntry?: PlayerEntry;
   /** Gustos pedidos del personaje (modo novela): se fijan sobre los que el mundo le generó. */
   readonly tastes?: readonly TasteSpec[];
   /** Opt-in: presión de escasez y su descarga (`life.famine`); apagado por defecto. */
@@ -1365,6 +1370,19 @@ export function createLife(
     language: language.id,
     generations: VILLAGE_SEPARATION,
   });
+  // Opt-in: comunidades vecinas con su acento y, si el personaje llega de afuera, su origen.
+  if ((options.neighborCommunities ?? 0) > 0) {
+    const neighbors = seedNeighborCommunities(truth, ids, log, {
+      seed,
+      place: terrain.village,
+      now: pop.now,
+      foundersEvent: pop.foundersEvent,
+      language: language.id,
+      count: options.neighborCommunities ?? 0,
+    });
+    if (options.playerEntry)
+      seedPlayerOrigin(truth, pop.player, options.playerEntry, neighbors, settlement);
+  }
   // Lo que cada uno sigue de ella: los hijos copian a sus padres (culture §4).
   seedPeopleCulture(truth, ids, log, {
     seed,
