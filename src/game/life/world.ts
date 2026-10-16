@@ -178,6 +178,7 @@ import { type ResidueConfig, residueProcess } from "./residue.ts";
 import { routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
+import { schemerViewOf } from "./schemepolicy.ts";
 import { type SchemesOptions, schemesProcess } from "./schemes.ts";
 import { sleepProcess } from "./sleep.ts";
 import {
@@ -562,7 +563,8 @@ export interface LifeWorld {
   /** Opt-in: pagar del todo la deuda repara parte de la fama de moroso o estafador del deudor en `RUMORS` (`life.debtor_repair`). */
   readonly debtorRepair?: boolean;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
-  readonly schemes?: Omit<SchemesOptions, "placeOf" | "day">;
+  readonly schemes?: Omit<SchemesOptions, "placeOf" | "day" | "view"> &
+    Partial<Pick<SchemesOptions, "view">>;
   /** Opt-in (con `debtorRepair`): devolver lo mal habido (estafa devuelta, reintegro de usura) también repara la fama y corre la voz correctiva. */
   readonly debtorRepairRestitution?: boolean;
   /** Opt-in (con `loanSeeds`): contagio de quiebras entre hogares sobre los compromisos de `life.loans`, en la unidad dada (`life.contagion`). */
@@ -1022,6 +1024,13 @@ export function lifeWorld(
           ? [
               schemesProcess({
                 ...parts.schemes,
+                view:
+                  parts.schemes.view ??
+                  schemerViewOf({
+                    traits: parts.traits,
+                    dims: parts.relationDims,
+                    bonds: parts.relationBonds,
+                  }),
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
               }),
