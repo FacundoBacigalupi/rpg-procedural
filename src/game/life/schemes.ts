@@ -118,6 +118,11 @@ export interface SchemeActs {
 export interface SchemeTraces {
   readonly sight: number;
   readonly sound: number;
+  /**
+   * Probabilidad (0-1) de que el blanco note la falta: el `scheme.step` lleva `missed: true` y
+   * `life.deeds` anota que hubo un robo (sin saber quién). Sin esto el robado no se entera solo.
+   */
+  readonly notice?: number;
 }
 
 export interface SchemesOptions {
@@ -269,8 +274,17 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
                   stepKind: step.kind,
                   ...(loot ? { taken: loot.taken, unit: loot.unit } : {}),
                   ...(acted ?? {}),
+                  ...(o.traces?.notice !== undefined &&
+                  loot &&
+                  loot.taken > 0 &&
+                  ctx.rng.fork("scheme_notice", id, String(scheme.done)).float() < o.traces.notice
+                    ? { missed: true }
+                    : {}),
                 },
-                emissions: o.traces && loot && loot.taken > 0 ? { ...o.traces } : {},
+                emissions:
+                  o.traces && loot && loot.taken > 0
+                    ? { sight: o.traces.sight, sound: o.traces.sound }
+                    : {},
                 causes: stepCauses(scheme).map((event) => ({ kind: "event" as const, event })),
               });
               events.push(...fightEvents);

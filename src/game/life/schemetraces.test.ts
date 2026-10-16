@@ -107,6 +107,19 @@ describe("life.schemes: huellas del robo (F1b-2b-3)", () => {
     for (const s of steps.filter((x) => x !== take)) expect(offenseOf(s)).toBeNull();
   });
 
+  it("el blanco nota la falta solo con notice, y deeds lo anota sin saber quien fue", () => {
+    const t = { sight: 0.6, sound: 0.2 };
+    const none = robbery(t).find((s) => (s.data as { taken?: number }).taken);
+    expect(((none as Event).data as { missed?: boolean }).missed).toBeUndefined();
+    expect(offenseOf(none as Event)?.missedBy).toBeUndefined();
+    const sure = robbery({ ...t, notice: 1 }).find((s) => (s.data as { taken?: number }).taken);
+    expect(((sure as Event).data as { missed?: boolean }).missed).toBe(true);
+    expect(offenseOf(sure as Event)).toMatchObject({ kind: "theft", missedBy: [a(2)] });
+    const never = robbery({ ...t, notice: 0 }).find((s) => (s.data as { taken?: number }).taken);
+    expect(((never as Event).data as { missed?: boolean }).missed).toBeUndefined();
+    expect((sure as Event).emissions).toEqual({ sight: 0.6, sound: 0.2 });
+  });
+
   it("es determinista", () => {
     const t = { sight: 0.6, sound: 0.2 };
     expect(JSON.stringify(robbery(t))).toBe(JSON.stringify(robbery(t)));
