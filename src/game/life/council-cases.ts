@@ -22,11 +22,13 @@ import {
 import {
   activeMembers,
   appearChance,
+  balanceClues,
   CASE_COOLDOWN_DAYS,
   CASES,
   type Case,
   type CaseBook,
   type CaseEffectRules,
+  type Clue,
   compensationDue,
   DEFAULT_CASE_EFFECTS,
   type DeedKind,
@@ -38,6 +40,8 @@ import {
   type GoodDef,
   goodUnit,
   HOUSEHOLD,
+  INVESTIGATION_DAYS,
+  investigationDue,
   isRepeat,
   KNOWN_DEEDS,
   nudgeDim,
@@ -51,11 +55,17 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   type Relations,
+  resolveInvestigation,
   resolveSummons,
   type StateChange,
   SUMMONS_DAYS,
   setComponent,
   summonsPending,
+  TRACE,
+  testimonyWeight,
+  traceStrength,
+  traceVisible,
+  traceWeight,
 } from "../../sim/index.ts";
 import { type CouncilAuthorityOptions, councilStanding } from "./councilauthority.ts";
 
@@ -63,6 +73,7 @@ export const COUNCIL_CASES_PROCESS = "life.council_cases";
 export const CASE_OPENED_EVENT = "law.case_opened";
 export const CASE_RESOLVED_EVENT = "law.case_resolved";
 export const CASE_EFFECTS_EVENT = "law.case_effects";
+export const CASE_INVESTIGATED_EVENT = "law.case_investigated";
 export const SUMMONS_ANSWERED_EVENT = "law.summons_answered";
 export const SUMMONS_DEFIED_EVENT = "law.summons_defied";
 
@@ -74,6 +85,12 @@ export interface SummonsOptions {
   readonly duty?: number;
 }
 
+/** Opt-in: el caso `investigating` reúne indicios de lo que el foro cree y ve antes de decidir. */
+export interface InvestigationOptions {
+  /** Días que espera un caso sin citación antes de investigarse (por defecto `INVESTIGATION_DAYS`). */
+  readonly days?: number;
+}
+
 export interface CouncilCasesOptions extends CouncilAuthorityOptions {
   /** Días antes de volver a abrir el mismo caso (mismo acusador, acusado y cargo). */
   readonly cooldownDays?: number;
@@ -81,6 +98,8 @@ export interface CouncilCasesOptions extends CouncilAuthorityOptions {
   readonly effects?: Partial<CaseEffectRules>;
   /** Opt-in: la citación vence y el acusado comparece o no (escala a `defied`). */
   readonly summons?: SummonsOptions;
+  /** Opt-in: el caso investigando reúne indicios y testigos (creídos, no la verdad) y se resuelve. */
+  readonly investigation?: InvestigationOptions;
 }
 
 export interface CouncilCasesDeps extends CouncilCasesOptions {
@@ -127,6 +146,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
       ORG_LOYALTY.name,
       KNOWN_DEEDS.name,
       CASES.name,
+      TRACE.name,
     ],
     writes: o.effects ? [CASES.name, RELATIONS.name] : [CASES.name],
     run(ctx) {
@@ -167,6 +187,94 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
         return after - before;
       };
       const books = new Map<string, CaseBook | undefined>();
+      /** Lo que la resolución de un caso mueve en el mundo (con `effects`); cuelga de `resolvedEv`. */
+      const applyEffects = (c: Case, resolvedEv: ReturnType<typeof draftEvent>): void => {
+        const { accuser, accused, judge, forum } = c;
+        const effects: { compensation?: object; resentment?: number; face?: number } = {};
+        const transfers: Transfer[] = [];
+        if (c.status === "decided" && c.verdict) {
+          const p = c.verdict.penalty;
+          const payerHome = truth.get(PERSON, accused)?.household as string | undefined;
+          const payeeHome = truth.get(PERSON, accuser)?.household as string | undefined;
+          if (grain && ctx.ledger && payerHome && payeeHome && payerHome !== payeeHome) {
+            const from = holderAccount(payerHome as unknown as HolderRef);
+            const to = holderAccount(payeeHome as unknown as HolderRef);
+            const have = ctx.ledger.balance(from as never, grain as never) + (moved.get(from) ?? 0);
+            const amount = compensationDue(p, rules.fineGrams, have);
+            if (amount > 0) {
+              transfers.push({ from, to, unit: grain, amount });
+              moved.set(from, (moved.get(from) ?? 0) - amount);
+              effects.compensation = { from: payerHome, to: payeeHome, unit: grain, amount };
+            }
+          }
+          const anger = tweak(accused, accuser, "resentment", rules.resentmentGain * p, 0);
+          if (anger !== 0) effects.resentment = anger;
+          const forumOrg = truth.get(ORG, forum as never);
+          let face = 0;
+          for (const m of forumOrg ? activeMembers(forumOrg) : []) {
+            if (m.agent === accused || m.agent === accuser) continue;
+            face += tweak(m.agent, accused, "respect", -rules.faceDrop * p, -1);
+          }
+          if (face !== 0) effects.face = Math.round(face * 1e6) / 1e6;
+        } else if (c.status === "settled") {
+          const calmed =
+            tweak(accused, accuser, "resentment", -rules.mediationDrop, 0) +
+            tweak(accuser, accused, "resentment", -rules.mediationDrop, 0);
+          if (calmed !== 0) effects.resentment = Math.round(calmed * 1e6) / 1e6;
+        }
+        if (Object.keys(effects).length > 0) {
+          const effEv = draftEvent(events.length);
+          events.push({
+            kind: CASE_EFFECTS_EVENT,
+            actors: [accuser, accused, judge],
+            place: o.placeOf(truth, judge),
+            data: { case: c.id, forum, status: c.status, ...effects },
+            emissions: {},
+            causes: [{ kind: "event", event: resolvedEv }],
+          });
+          if (transfers.length > 0) postings.push({ event: effEv, transfers });
+        }
+      };
+      // Qué sabe cada fuente del hecho que se juzga: lo que guarda (no la verdad) y las huellas
+      // visibles atadas a un hecho que ya sabe de quién es.
+      const cluesOf = (c: Case): Clue[] => {
+        const forumOrg = truth.get(ORG, c.forum as never);
+        const sources = [
+          ...(forumOrg ? activeMembers(forumOrg).map((m) => m.agent) : []),
+          c.accuser,
+        ]
+          .filter((a, i, all) => a !== c.accused && all.indexOf(a) === i)
+          .sort();
+        const clues: Clue[] = [];
+        for (const src of sources) {
+          const deeds = (truth.get(KNOWN_DEEDS, src)?.deeds ?? []).filter(
+            (d) =>
+              d.kind === c.claimed &&
+              (c.facts.length === 0 ? d.by === c.accused : c.facts.includes(d.event)),
+          );
+          for (const d of deeds) {
+            clues.push({
+              kind: "testimony",
+              source: src,
+              points: d.by,
+              weight: testimonyWeight(d, src === c.accuser),
+              event: d.event,
+            });
+            for (const tid of [...truth.ids(TRACE)].sort()) {
+              const t = truth.get(TRACE, tid);
+              if (!t || t.event !== d.event || d.by === null || !traceVisible(t, ctx.now)) continue;
+              clues.push({
+                kind: "trace",
+                source: src,
+                points: d.by,
+                weight: traceWeight(traceStrength(t, ctx.now)),
+                event: d.event,
+              });
+            }
+          }
+        }
+        return clues;
+      };
       // Citaciones vencidas: el citado comparece o no, según lo que el consejo pesa sobre él.
       if (o.summons) {
         for (const forum of [...truth.ids(CASES)].sort()) {
@@ -214,6 +322,75 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
                 });
               }
             }
+          }
+          if (touched) books.set(forum, { ...stored, cases });
+        }
+      }
+      // Investigación: el caso reúne indicios de lo que el foro cree y ve, corrige su creencia y decide.
+      if (o.investigation) {
+        const wait = (o.investigation.days ?? INVESTIGATION_DAYS) * o.day;
+        for (const forum of [...truth.ids(CASES)].sort()) {
+          const stored = books.has(forum) ? books.get(forum) : truth.get(CASES, forum as never);
+          if (!stored) continue;
+          let touched = false;
+          const cases: Case[] = [];
+          for (const c of stored.cases) {
+            if (!investigationDue(c, ctx.now, wait)) {
+              cases.push(c);
+              continue;
+            }
+            touched = true;
+            if (truth.get(ENTITY, c.accused)?.endedAt !== undefined) {
+              cases.push({ ...c, status: "dropped" });
+              continue;
+            }
+            const clues = cluesOf(c);
+            const balance = balanceClues(clues, c.accused);
+            const known = (truth.get(KNOWN_DEEDS, c.judge)?.deeds ?? []).find(
+              (d) => c.facts[0] !== undefined && d.event === c.facts[0],
+            );
+            const done = resolveInvestigation(
+              c,
+              balance,
+              councilStanding(truth, c.accused, o),
+              known ? penaltyScale(known) : 1,
+              ctx.now,
+            );
+            cases.push(done);
+            const place = o.placeOf(truth, c.judge);
+            const invEv = draftEvent(events.length);
+            events.push({
+              kind: CASE_INVESTIGATED_EVENT,
+              actors: [c.accuser, c.accused, c.judge],
+              place,
+              data: {
+                case: c.id,
+                forum,
+                clues: balance.clues,
+                for: balance.for,
+                against: balance.against,
+                beliefBefore: c.belief,
+                beliefAfter: done.investigation?.beliefAfter ?? c.belief,
+                witnesses: [...new Set(clues.map((x) => x.source))],
+              },
+              emissions: {},
+              causes: [{ kind: "event", event: c.originEventId }],
+            });
+            events.push({
+              kind: CASE_RESOLVED_EVENT,
+              actors: [c.accuser, c.accused, c.judge],
+              place,
+              data: {
+                case: c.id,
+                forum,
+                response: "investigated",
+                status: done.status,
+                ...(done.verdict ? { penalty: done.verdict.penalty } : {}),
+              },
+              emissions: {},
+              causes: [{ kind: "event", event: invEv }],
+            });
+            if (o.effects) applyEffects(done, draftEvent(events.length - 1));
           }
           if (touched) books.set(forum, { ...stored, cases });
         }
@@ -291,54 +468,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
           emissions: {},
           causes: [{ kind: "event", event: openedEv }],
         });
-        if (o.effects) {
-          const resolvedEv = draftEvent(events.length - 1);
-          const effects: { compensation?: object; resentment?: number; face?: number } = {};
-          const transfers: Transfer[] = [];
-          if (c.status === "decided" && c.verdict) {
-            const p = c.verdict.penalty;
-            const payerHome = truth.get(PERSON, accused)?.household as string | undefined;
-            const payeeHome = truth.get(PERSON, accuser)?.household as string | undefined;
-            if (grain && ctx.ledger && payerHome && payeeHome && payerHome !== payeeHome) {
-              const from = holderAccount(payerHome as unknown as HolderRef);
-              const to = holderAccount(payeeHome as unknown as HolderRef);
-              const have =
-                ctx.ledger.balance(from as never, grain as never) + (moved.get(from) ?? 0);
-              const amount = compensationDue(p, rules.fineGrams, have);
-              if (amount > 0) {
-                transfers.push({ from, to, unit: grain, amount });
-                moved.set(from, (moved.get(from) ?? 0) - amount);
-                effects.compensation = { from: payerHome, to: payeeHome, unit: grain, amount };
-              }
-            }
-            const anger = tweak(accused, accuser, "resentment", rules.resentmentGain * p, 0);
-            if (anger !== 0) effects.resentment = anger;
-            const forumOrg = truth.get(ORG, forum as never);
-            let face = 0;
-            for (const m of forumOrg ? activeMembers(forumOrg) : []) {
-              if (m.agent === accused || m.agent === accuser) continue;
-              face += tweak(m.agent, accused, "respect", -rules.faceDrop * p, -1);
-            }
-            if (face !== 0) effects.face = Math.round(face * 1e6) / 1e6;
-          } else if (c.status === "settled") {
-            const calmed =
-              tweak(accused, accuser, "resentment", -rules.mediationDrop, 0) +
-              tweak(accuser, accused, "resentment", -rules.mediationDrop, 0);
-            if (calmed !== 0) effects.resentment = Math.round(calmed * 1e6) / 1e6;
-          }
-          if (Object.keys(effects).length > 0) {
-            const effEv = draftEvent(events.length);
-            events.push({
-              kind: CASE_EFFECTS_EVENT,
-              actors: [accuser, accused, judge],
-              place: o.placeOf(truth, judge),
-              data: { case: c.id, forum, status: c.status, ...effects },
-              emissions: {},
-              causes: [{ kind: "event", event: resolvedEv }],
-            });
-            if (transfers.length > 0) postings.push({ event: effEv, transfers });
-          }
-        }
+        if (o.effects) applyEffects(c, draftEvent(events.length - 1));
       }
       for (const [forum, book] of [...books].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
         if (book) changes.push(setComponent(CASES, forum as never, book));
