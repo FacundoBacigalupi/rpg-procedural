@@ -23,6 +23,7 @@ import {
   type Transfer,
 } from "../../core/index.ts";
 import {
+  ATTENTION,
   activeMembers,
   appearChance,
   type BondDef,
@@ -68,10 +69,12 @@ import {
   RELATIONS,
   type ReadonlyWorldTruth,
   type Relations,
+  readTrace,
   resolveInvestigation,
   resolveSummons,
   type StateChange,
   SUMMONS_DAYS,
+  sensorAcuity,
   setComponent,
   spokenWeight,
   summonsPending,
@@ -101,6 +104,7 @@ export const CASE_RESOLVED_EVENT = "law.case_resolved";
 export const CASE_EFFECTS_EVENT = "law.case_effects";
 export const CASE_INVESTIGATED_EVENT = "law.case_investigated";
 export const COUNCIL_TESTIMONY_EVENT = "law.council_testimony";
+export const TRACE_INSPECTED_EVENT = "law.trace_inspected";
 export const SUMMONS_ANSWERED_EVENT = "law.summons_answered";
 export const SUMMONS_DEFIED_EVENT = "law.summons_defied";
 export const VENDETTA_DECLARED_EVENT = "law.vendetta_declared";
@@ -127,6 +131,13 @@ export interface InvestigationOptions {
    * firmeza. Necesita `dims`, `bonds` y `traits` (la vida los pasa).
    */
   readonly testimony?: Record<string, never>;
+  /**
+   * Sub-opción: las huellas se MIRAN en el lugar. Cada investigador que sabe de quién es el hecho va
+   * a la huella atada a él y la percibe por la vista (`readTrace`: agudeza por edad, atención alerta,
+   * error); la lluvia (clima del mapa, `rain`) y el tiempo la borran, y lo que no ve o ya se borró no
+   * deja indicio. El peso sale de lo que percibió (`traceWeight`), nunca de la fuerza real.
+   */
+  readonly traces?: Record<string, never>;
 }
 
 export interface CouncilCasesOptions extends CouncilAuthorityOptions {
@@ -145,6 +156,9 @@ export interface CouncilCasesOptions extends CouncilAuthorityOptions {
 export interface CouncilCasesDeps extends CouncilCasesOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   readonly day: number;
+  /** Para `investigation.traces`: segundos por año (la edad da la agudeza; sin él, adulto) y lluvia caída en el lugar entre dos ticks. */
+  readonly year?: number;
+  readonly rain?: (made: number, now: number) => number;
   readonly goods?: readonly GoodDef[];
   /** Para `investigation.testimony`: dimensiones, vínculos y rasgos con que el testigo se siente y decide. */
   readonly dims?: readonly DimensionDef[];
@@ -284,7 +298,13 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
       // visibles atadas a un hecho que ya sabe de quién es.
       const cluesOf = (
         c: Case,
-        spoken: { events: EventDraft[]; silent: AgentId[]; lies: number },
+        spoken: {
+          events: EventDraft[];
+          silent: AgentId[];
+          lies: number;
+          seen: number;
+          missed: number;
+        },
       ): Clue[] => {
         const forumOrg = truth.get(ORG, c.forum as never);
         const sources = [
@@ -367,7 +387,48 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
             }
             for (const tid of [...truth.ids(TRACE)].sort()) {
               const t = truth.get(TRACE, tid);
-              if (!t || t.event !== d.event || d.by === null || !traceVisible(t, ctx.now)) continue;
+              if (!t || t.event !== d.event || d.by === null) continue;
+              if (o.investigation?.traces) {
+                // Va al lugar y la mira: la lluvia y el tiempo la bajaron; ve lo que ve, con error.
+                const rain = t.at.space === undefined ? (o.rain?.(t.made, ctx.now) ?? 0) : 0;
+                const born = truth.get(PERSON, src)?.born;
+                const age = born !== undefined && o.year ? (ctx.now - born) / o.year : 30;
+                const reading = readTrace(
+                  traceStrength(t, ctx.now, rain),
+                  { acuity: sensorAcuity(age).sight, attention: ATTENTION.alert },
+                  ctx.rng.fork("council-trace", c.id, src, tid),
+                );
+                if (reading.seen) spoken.seen += 1;
+                else spoken.missed += 1;
+                spoken.events.push({
+                  kind: TRACE_INSPECTED_EVENT,
+                  actors: [src, c.judge],
+                  place: o.placeOf(truth, src),
+                  data: {
+                    case: c.id,
+                    trace: tid,
+                    seen: reading.seen,
+                    perceived: reading.perceived,
+                    // Solo para el inspector y los tests: nadie del mundo lo ve.
+                    truthOf: { erased: reading.erased, rainMm: rain },
+                  },
+                  emissions: {},
+                  causes: [
+                    { kind: "event", event: c.originEventId },
+                    { kind: "event", event: t.event },
+                  ],
+                });
+                if (reading.seen)
+                  clues.push({
+                    kind: "trace",
+                    source: src,
+                    points: d.by,
+                    weight: traceWeight(reading.perceived),
+                    event: d.event,
+                  });
+                continue;
+              }
+              if (!traceVisible(t, ctx.now)) continue;
               clues.push({
                 kind: "trace",
                 source: src,
@@ -449,7 +510,13 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
               cases.push({ ...c, status: "dropped" });
               continue;
             }
-            const spoken = { events: [] as EventDraft[], silent: [] as AgentId[], lies: 0 };
+            const spoken = {
+              events: [] as EventDraft[],
+              silent: [] as AgentId[],
+              lies: 0,
+              seen: 0,
+              missed: 0,
+            };
             const clues = cluesOf(c, spoken);
             events.push(...spoken.events);
             const balance = balanceClues(clues, c.accused);
@@ -479,6 +546,9 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
                 beliefBefore: c.belief,
                 beliefAfter: done.investigation?.beliefAfter ?? c.belief,
                 witnesses: [...new Set(clues.map((x) => x.source))],
+                ...(o.investigation.traces
+                  ? { traces: { seen: spoken.seen, missed: spoken.missed } }
+                  : {}),
                 ...(o.investigation.testimony
                   ? {
                       silent: [...new Set(spoken.silent)],
