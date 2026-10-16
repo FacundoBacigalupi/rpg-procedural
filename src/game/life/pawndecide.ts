@@ -23,6 +23,7 @@ import {
   table,
 } from "../../sim/index.ts";
 import { NPC_DECISION } from "./decide.ts";
+import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 
 export const PAWN_DECIDE_PROCESS = "life.pawn_decide";
 
@@ -36,6 +37,8 @@ export function pawnDecideProcess(o: {
   readonly day: number;
   readonly player: AgentId;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in: comparte el dominio económico (`life.economy`) con acciones, fiado y trueques. */
+  readonly economicBatch?: boolean;
 }): ProcessDef {
   return {
     id: PAWN_DECIDE_PROCESS,
@@ -46,6 +49,9 @@ export function pawnDecideProcess(o: {
     phase: "act",
     reads: [NPC_DECISION.name, ENTITY.name, LOCATION.name, PAWN_LOG.name],
     writes: [PAWN_LOG.name],
+    ...(o.economicBatch
+      ? { serialDomain: ECONOMIC_SERIAL_DOMAIN, serialGroup: () => ECONOMIC_SERIAL_GROUP }
+      : {}),
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
