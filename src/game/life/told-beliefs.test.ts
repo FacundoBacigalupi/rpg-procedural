@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import type { AgentId } from "../../core/index.ts";
-import { type Beliefs, believed, type Heard } from "../../sim/index.ts";
-import { learnToldClaims, TOLD_ALIVE_CONFIDENCE, toldAliveClaims } from "./knowing.ts";
+import type { AgentId, Event, EventId } from "../../core/index.ts";
+import {
+  type Beliefs,
+  believed,
+  type Heard,
+  type ProcessContext,
+  WorldTruth,
+} from "../../sim/index.ts";
+import {
+  learnToldClaims,
+  TOLD_ALIVE_CONFIDENCE,
+  TOLD_CLAIMS_KEY,
+  toldAliveClaims,
+  toldClaimsProcess,
+} from "./knowing.ts";
 
 const A = "agent:a" as AgentId;
 const B = "agent:b" as AgentId;
@@ -77,5 +89,39 @@ describe("leer lo oído desde BELIEFS (life-38)", () => {
     };
     expect(toldAliveClaims(seen)).toEqual([]);
     expect(toldAliveClaims(undefined)).toEqual([]);
+  });
+});
+
+describe("el evento de la charla alimenta BELIEFS (life-39)", () => {
+  it("toldClaimsProcess vuelca cada afirmación de action.speak como creencia told en el tick del evento", () => {
+    const truth = new WorldTruth();
+    const event = {
+      id: "event:1" as EventId,
+      tick: 10 * HOUR,
+      kind: "action.speak",
+      actors: [A, C],
+      place: { space: "x" },
+      data: {
+        [TOLD_CLAIMS_KEY]: [{ actor: A, claim: { about: B, claim: "dead", from: C, at: 0 } }],
+      },
+      emissions: {},
+      causes: [],
+      resolution: "local",
+    } as unknown as Event;
+    const out = toldClaimsProcess().run({ truth, recent: [event] } as unknown as ProcessContext);
+    const change = out.changes?.[0];
+    expect(change).toBeDefined();
+    const beliefs = (change as unknown as { value: Beliefs }).value;
+    const belief = believed(beliefs, B, "alive");
+    expect(belief?.value).toBe(false);
+    expect(belief?.sources).toEqual([{ kind: "told", from: C, tick: 10 * HOUR }]);
+    expect(toldAliveClaims(beliefs)).toEqual([{ about: B, claim: "dead", from: C, at: 10 * HOUR }]);
+  });
+
+  it("sin afirmaciones no cambia nada", () => {
+    const truth = new WorldTruth();
+    const event = { kind: "action.speak", tick: 1, data: {} } as unknown as Event;
+    const out = toldClaimsProcess().run({ truth, recent: [event] } as unknown as ProcessContext);
+    expect(out.changes).toBeUndefined();
   });
 });

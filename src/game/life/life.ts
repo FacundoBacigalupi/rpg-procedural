@@ -257,8 +257,15 @@ export interface LifeSetup {
  * detectar una mentira y `moldgossip.fromHeard` (`heardFromBeliefs`). Compatibilidad: el replay con
  * un motor anterior a `life-38` enciende `legacyHeardReaders`; una vida guardada con `life-37` sigue
  * desde su estado con el límite de replay.
+ *
+ * `life-39`: el diálogo ya no escribe `HEARD` ni proyecta el efecto `heard`: lo que oye cada uno sale
+ * en `action.speak.data.toldClaims` y `life.told_claims` (perceive, al cerrar el paso) lo vuelca a
+ * `BELIEFS` como `alive` de fuente `told`; `decideReply` lee `toldAliveClaims` en vez de `heard:` de
+ * la tabla. La tabla `HEARD` sigue existiendo para el replay. Compatibilidad: un motor anterior a
+ * `life-39` enciende `legacyHeardTable`; una vida guardada con `life-38` sigue desde su estado con
+ * el límite de replay.
  */
-export const LIFE_ENGINE = "life-38";
+export const LIFE_ENGINE = "life-39";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -306,6 +313,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 36 ? { legacyNoDeadGiveGuard: true } : {}),
     ...(n < 37 ? { legacyNoToldBeliefs: true } : {}),
     ...(n < 38 ? { legacyHeardReaders: true } : {}),
+    ...(n < 39 ? { legacyHeardTable: true } : {}),
   };
 }
 

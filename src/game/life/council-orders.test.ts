@@ -415,6 +415,7 @@ describe("life.council: tesoro y órdenes en la vida", () => {
       legacyNoOscillationEvents: true,
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
+      legacyHeardTable: true,
     });
     expect(life.hash().total).toBe(
       "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",
