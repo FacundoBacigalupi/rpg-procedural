@@ -80,7 +80,12 @@ export interface LocalMap {
    * La cuenca oceánica que toca a la celda y cómo (-1..1, signo por el lado): de ahí sale la
    * anomalía de cada año (`anomalyOfMap`, weather §1). Sin esto el clima es el de las normales.
    */
-  readonly oscillation?: { readonly basin: string; readonly teleconnection: number };
+  readonly oscillation?: {
+    readonly basin: string;
+    readonly teleconnection: number;
+    /** `life-35`: el campo se anega cuando llueve de más (`harvestSeason` con `flood`). */
+    readonly flood?: true;
+  };
 }
 
 /** El camino más corto en hexes de `from` a `to` (sin `from`, con `to`); vacío si son el mismo. */

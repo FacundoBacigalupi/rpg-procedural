@@ -5,10 +5,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EARTHLIKE_CLOCK, loadContent, Rng } from "../../core/index.ts";
-import { anomalyOfMap, harvestSeason, oscillationYearOfMap, weatherAt } from "../../sim/index.ts";
+import {
+  anomalyOfMap,
+  floodStanding,
+  harvestSeason,
+  oscillationYearOfMap,
+  weatherAt,
+} from "../../sim/index.ts";
 import { BIOMES, generatePlanet, villageSite } from "../../worldgen/index.ts";
 import { engineOptions } from "./life.ts";
-import { localMapOf } from "./map.ts";
+import { harvestSeasonOf, localMapOf } from "./map.ts";
+import { oscillationEventsProcess } from "./oscillation-events.ts";
 
 const biomes = loadContent(
   [BIOMES],
@@ -88,5 +95,56 @@ describe("oscilación en la aldea (life-29)", () => {
     }
     expect(seen).toBeGreaterThan(0);
     expect(oscillationYearOfMap(off, clock, seed, 100)).toBeUndefined();
+  });
+
+  it("sequía e inundación como eventos con su causa (life-35)", () => {
+    // El seed 4 tiene años secos y húmedos en 60 años (teleconexión 0,27).
+    const seed = 4;
+    const { on } = mapsOf(seed);
+    const proc = oscillationEventsProcess({
+      clock,
+      yearOf: (d) => oscillationYearOfMap(on, clock, seed, d),
+      place: { kind: "cell", cell: on.cell },
+      subject: "s1" as never,
+    });
+    const run = (day: number) =>
+      (proc.run({ now: day * clock.day } as never) as { events?: any[] }).events ?? [];
+    const kinds: string[] = [];
+    for (let y = 0; y < 60; y++) {
+      const evs = run(y * yearDays);
+      const o = oscillationYearOfMap(on, clock, seed, y * yearDays);
+      expect(evs.length).toBe(o?.effect === "none" ? 0 : 1);
+      for (const e of evs) {
+        kinds.push(e.kind);
+        expect(e.kind).toBe(o?.effect === "dry" ? "weather.drought" : "weather.flood");
+        expect(e.data.year).toBe(y);
+        expect(e.data.basin).toBe(on.oscillation?.basin);
+        expect(e.causes[0].key).toBe(`oscillation:${e.data.basin}:${y}:${e.data.phase}`);
+      }
+      expect(run(y * yearDays + 1)).toEqual([]);
+      expect(run(y * yearDays)).toEqual(evs);
+    }
+    expect(kinds).toContain("weather.drought");
+    expect(kinds).toContain("weather.flood");
+  });
+
+  it("la cosecha se anega con lluvia de más y solo con flood (life-35)", () => {
+    const { seed, on } = found as NonNullable<typeof found>;
+    expect(on.oscillation?.flood).toBe(true);
+    expect(engineOptions("life-34", {}).legacyNoOscillationEvents).toBe(true);
+    expect(engineOptions("life-35", {}).legacyNoOscillationEvents).toBeUndefined();
+    expect(floodStanding(0)).toBe(1);
+    expect(floodStanding(1000)).toBeLessThan(1);
+    const planet = generatePlanet({ seed, biomes });
+    const dry = localMapOf(planet, villageSite(planet), false, true);
+    expect(dry.oscillation?.flood).toBeUndefined();
+    const withFlood = harvestSeasonOf(on, clock, seed);
+    const without = harvestSeasonOf(dry, clock, seed);
+    expect(harvestSeasonOf(on, clock, seed)(200)).toBe(withFlood(200));
+    let lower = 0;
+    for (let d = 0; d < 12 * yearDays; d += 3) {
+      if (withFlood(d) < without(d)) lower++;
+    }
+    expect(lower).toBeGreaterThan(0);
   });
 });

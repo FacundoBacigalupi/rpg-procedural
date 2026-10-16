@@ -1,7 +1,8 @@
 // El `LocalMap` que leen los procesos (sim/world/space), armado desde el sitio de la aldea de
 // worldgen: vecinos del parche, la longitud de la celda y cuánto se tarda en cruzar cada hex a pie.
 
-import type { LocalMap } from "../../sim/index.ts";
+import { type PlanetClock, Rng, type Seed } from "../../core/index.ts";
+import { anomalyOfMap, harvestSeason, type LocalMap } from "../../sim/index.ts";
 import {
   oceanBasins,
   oscillationSite,
@@ -27,6 +28,7 @@ export function localMapOf(
   planet: Planet,
   site: VillageSite,
   noOscillation: boolean = false,
+  noFlood: boolean = false,
 ): LocalMap {
   const osc = noOscillation
     ? undefined
@@ -55,7 +57,13 @@ export function localMapOf(
     elevationM: patch.hexes.map((_, h) => tr.elevation[h] as number),
     baseElevationM: tr.elevation.reduce((s, e) => s + e, 0) / Math.max(1, patch.hexes.length),
     ...(osc?.basin != null
-      ? { oscillation: { basin: osc.basin, teleconnection: osc.teleconnection } }
+      ? {
+          oscillation: {
+            basin: osc.basin,
+            teleconnection: osc.teleconnection,
+            ...(noFlood ? {} : { flood: true as const }),
+          },
+        }
       : {}),
     climate: {
       cell: String(planet.grid.cellId(patch.cell)),
@@ -68,4 +76,22 @@ export function localMapOf(
       windNorth: planet.climate.windNorth[patch.cell] as number,
     },
   };
+}
+
+/**
+ * Lo que rinde cada día del año en la aldea (`harvestSeason`) con el año de la oscilación y, desde
+ * `life-35`, con el campo anegado si el mapa lo pide (`oscillation.flood`).
+ */
+export function harvestSeasonOf(
+  map: LocalMap,
+  clock: PlanetClock,
+  seed: Seed,
+): (day: number) => number {
+  return harvestSeason(
+    map.climate,
+    clock,
+    Rng.root(seed),
+    anomalyOfMap(map, clock, seed),
+    map.oscillation?.flood === true,
+  );
 }

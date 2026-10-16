@@ -70,7 +70,7 @@ describe("life.council: el consejo de aldea sembrado desde sus ancianos", () => 
   });
 
   it("apagado deja el hash idéntico al de antes de existir la opción (baseline de develop 119c5bc)", () => {
-    const life = Life.create(3, content, {});
+    const life = Life.create(3, content, { legacyNoOscillationEvents: true });
     expect(life.hash().total).toBe(
       "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",
     );

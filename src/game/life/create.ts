@@ -28,7 +28,6 @@ import {
   ACTIONS,
   ActionCatalog,
   ADDRESSES,
-  anomalyOfMap,
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
@@ -60,7 +59,6 @@ import {
   HARVEST,
   HARVEST_GOOD,
   type Household,
-  harvestSeason,
   houseKey,
   initialCell,
   LANGUAGES,
@@ -155,7 +153,7 @@ import { ecologyHexes } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
-import { localMapOf } from "./map.ts";
+import { harvestSeasonOf, localMapOf } from "./map.ts";
 import { medicalSchools, schoolOfCulture, schoolOfPerson } from "./medschools.ts";
 import type { HouseholdNeeds } from "./moldgossip.ts";
 import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
@@ -313,6 +311,8 @@ export interface LifeOptions {
   readonly legacyNoGreetDecision?: boolean;
   /** Solo el replay de un motor anterior a `life-34`: la hambruna no cita la oscilación oceánica entre sus causas. */
   readonly legacyNoOscillationCause?: boolean;
+  /** Solo el replay de un motor anterior a `life-35`: no hay eventos `weather.drought|flood` ni cosecha anegada por lluvia de más. */
+  readonly legacyNoOscillationEvents?: boolean;
   /**
    * Persiste los objetivos largos, medianos y cortos del NPC (`life.goals` y eventos `npc.goal`).
    * Encendido por defecto desde `life-2` (cambia hashes y el replay desde el seed de vidas guardadas
@@ -627,6 +627,7 @@ export function optInParts(
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
+  | "legacyNoOscillationEvents"
   | "waitEatHomeOnly"
   | "legacyNoCare"
   | "persistGoalLayers"
@@ -776,6 +777,7 @@ export function optInParts(
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
+    ...(options.legacyNoOscillationEvents ? { legacyNoOscillationEvents: true } : {}),
     ...(options.waitEatHomeOnly ? { waitEatHomeOnly: true } : {}),
     ...(options.legacyNoCare ? { legacyNoCare: true } : {}),
     ...(options.persistGoalLayers ? { persistGoalLayers: true } : {}),
@@ -969,7 +971,12 @@ export function lifeTerrain(seed: Seed, content: Content, options: LifeOptions =
     village,
     planet,
     site,
-    map: localMapOf(planet, site, options.legacyNoOscillation === true),
+    map: localMapOf(
+      planet,
+      site,
+      options.legacyNoOscillation === true,
+      options.legacyNoOscillationEvents === true,
+    ),
     population,
   };
 }
@@ -1467,7 +1474,7 @@ export function createLife(
   const wealthOf = (h: HouseholdId): number => standing.get(h)?.wealth ?? 1;
   // Despensas de arranque: lo que cada hogar guardó de la última cosecha para llegar a la próxima
   // (`larderNeeded`: sus brazos en el campo contra sus bocas, día por día del año que viene).
-  const season = harvestSeason(map.climate, clock, Rng.root(seed), anomalyOfMap(map, clock, seed));
+  const season = harvestSeasonOf(map, clock, seed);
   const startDay = dayOf(clock, pop.now + Math.round((map.lonDeg / 360) * clock.day));
   const birthOf = new Map(pop.people.map((p) => [p.id, p.born]));
   const larderOf = (h: { members: readonly AgentId[]; id: HouseholdId }): number =>
