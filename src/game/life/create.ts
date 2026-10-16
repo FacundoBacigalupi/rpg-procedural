@@ -466,6 +466,10 @@ export interface LifeOptions {
   readonly npcTraces?: boolean;
   /** Opt-in (con `npcTraces`): quien se cruzó y sigue en el hex le cuenta al otro los rastros que vio (`LifeParts.npcWarnings`). */
   readonly npcWarnings?: boolean;
+  /** Opt-in (con `npcEncounters`): quienes se cruzaron y siguen en el hex se saludan, con efecto en la relación (`LifeParts.npcGreetings`). */
+  readonly npcGreetings?: boolean;
+  /** Opt-in (con `npcGreetings`): el saludo de palabras se dice y el otro lo entiende (`understand`); sin entender un saludo no se entibia (`GreetingSpeech`). */
+  readonly npcGreetingSpeech?: boolean;
   /** Opt-in (con `npcJourneyDays`): de noche el viajero para y duerme (`LifeParts.npcNightRest`). */
   readonly npcNightRest?: boolean;
   /** Opt-in (con `npcJourneyDays`): el ritmo del viaje del NPC (`LifeParts.npcPace`). */
@@ -649,6 +653,8 @@ export function optInParts(
   | "npcEncounters"
   | "npcTraces"
   | "npcWarnings"
+  | "npcGreetings"
+  | "npcGreetingSpeech"
   | "npcTemplates"
   | "npcJourneyDays"
   | "npcTransit"
@@ -785,6 +791,8 @@ export function optInParts(
     ...(options.npcEncounters ? { npcEncounters: true } : {}),
     ...(options.npcTraces ? { npcTraces: true } : {}),
     ...(options.npcWarnings ? { npcWarnings: true } : {}),
+    ...(options.npcGreetings ? { npcGreetings: true } : {}),
+    ...(options.npcGreetingSpeech ? { npcGreetingSpeech: true } : {}),
     ...(options.npcTemplates ? { npcTemplates: options.npcTemplates } : {}),
     ...(options.npcJourneyDays !== undefined ? { npcJourneyDays: options.npcJourneyDays } : {}),
     ...(options.npcTransit ? { npcTransit: true } : {}),
