@@ -242,8 +242,12 @@ export interface LifeSetup {
  * y la cosecha se anega cuando llueve de más en los últimos días (`FLOOD_MM`, `harvestSeason` con
  * `flood`). Compatibilidad: el replay con un motor anterior a `life-35` enciende
  * `legacyNoOscillationEvents`; una vida guardada con `life-34` sigue desde su estado con el límite de replay.
+ *
+ * `life-36`: la ejecución de `give` rechaza (`no_means`) a un destinatario con `ENTITY.endedAt` aunque
+ * su cuenta exista. Compatibilidad: el replay con un motor anterior a `life-36` enciende
+ * `legacyNoDeadGiveGuard`; una vida guardada con `life-35` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-35";
+export const LIFE_ENGINE = "life-36";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -288,6 +292,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 33 ? { legacyNoGreetDecision: true } : {}),
     ...(n < 34 ? { legacyNoOscillationCause: true } : {}),
     ...(n < 35 ? { legacyNoOscillationEvents: true } : {}),
+    ...(n < 36 ? { legacyNoDeadGiveGuard: true } : {}),
   };
 }
 
