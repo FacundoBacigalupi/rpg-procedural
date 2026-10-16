@@ -197,6 +197,8 @@ export interface LifeOptions {
   readonly schemes?: LifeParts["schemes"];
   /** Opt-in: consejo de aldea fundado desde los ancianos reales (`life.council`); sin decisiones todavía. Apagado por defecto. */
   readonly council?: LifeParts["council"];
+  /** Opt-in (requiere `council`): las acusaciones contadas a un anciano abren un `Case` del consejo (`life.council_cases`); apagado por defecto. */
+  readonly councilCases?: LifeParts["councilCases"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
   /**
@@ -618,6 +620,7 @@ export function optInParts(
   | "migration"
   | "schemes"
   | "council"
+  | "councilCases"
   | "rumorGrievance"
   | "verboseSteps"
   | "waitAwake"
@@ -770,6 +773,7 @@ export function optInParts(
     ...(options.migration ? { migration: options.migration } : {}),
     ...(options.schemes ? { schemes: options.schemes } : {}),
     ...(options.council ? { council: options.council } : {}),
+    ...(options.councilCases ? { councilCases: options.councilCases } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
@@ -1357,6 +1361,7 @@ export function createLife(
     households: pop.households,
     defs: statuses,
   });
+  if (options.councilCases && !options.council) throw new Error("councilCases requiere council");
   if (options.patientDecides?.councilAuthority) {
     if (!options.patientDecides.realBonds)
       throw new Error("patientDecides.councilAuthority requiere realBonds");
