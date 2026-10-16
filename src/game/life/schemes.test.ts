@@ -139,7 +139,8 @@ describe("life.schemes: el paso take mueve dinero (F1b-2b)", () => {
     });
     let n = 100;
     let recent: { id: unknown; kind: string; data: unknown; place: unknown }[] = [];
-    const steps: { kind: string; data: { stepKind?: string; taken?: number }; place: unknown }[] = [];
+    const steps: { kind: string; data: { stepKind?: string; taken?: number }; place: unknown }[] =
+      [];
     for (let d = 0; d < 12; d++) {
       let sn = 0;
       const r = p.run({
