@@ -18,11 +18,14 @@ import {
   type Transfer,
 } from "../../core/index.ts";
 import {
+  BODY_STATE,
+  type BodyPlanDef,
   decideScheme,
   draftEvent,
   ENTITY,
   type EventDraft,
   endScheme,
+  LOCATION,
   makeScheme,
   nextStep,
   PERSON,
@@ -33,11 +36,16 @@ import {
   type Scheme,
   type SchemeMotive,
   type SchemerView,
+  SKILL_STATE,
+  type SkillCatalog,
   type StateChange,
   setComponent,
   stepCauses,
+  type Trait,
   table,
+  YIELDED,
 } from "../../sim/index.ts";
+import { canFight, FIGHT_STATE, strikeFight } from "./fight.ts";
 
 export const SCHEMES_PROCESS = "life.schemes";
 export const SCHEME_STARTED_EVENT = "scheme.started";
@@ -68,7 +76,7 @@ export const SCHEMES = table<SchemeRow>("life.schemes");
 /**
  * Opt-in (F1b-2b): el paso `take` mueve dinero del blanco al intrigante por el ledger (conserva;
  * no se crea nada). Se lleva `fraction` de lo que el blanco tiene en `unit` (redondeado hacia abajo,
- * nunca m�s que su saldo). Sin esto el paso `take` sigue sin mover nada.
+ * nunca más que su saldo). Sin esto el paso `take` sigue sin mover nada.
  */
 export interface SchemeLoot {
   readonly unit: LedgerUnit;
@@ -76,6 +84,29 @@ export interface SchemeLoot {
   readonly fraction: number;
   /** Cuenta de una persona; por defecto, la de su hogar. */
   readonly account?: (truth: ReadonlyWorldTruth, who: AgentId) => LedgerAccount;
+}
+
+/**
+ * Opt-in (F1b-2b-2): los pasos del plan hacen lo mismo que las acciones normales. `approach` y
+ * `flee` son un `move` (cambian el `LOCATION` del intrigante: al lugar del blanco / a `fleeTo`);
+ * `strike` es un `attack`: una pelea real (`strikeFight`, heridas por `combat`) del intrigante
+ * contra el blanco. Sin esto los pasos siguen sin mover ni herir a nadie.
+ */
+export interface SchemeActs {
+  /** Mover al intrigante en `approach` (al lugar del blanco) y `flee` (a `fleeTo`, si hay). */
+  readonly move?: boolean;
+  /** Adonde huye tras el golpe; sin esto `flee` no mueve a nadie. */
+  readonly fleeTo?: (
+    truth: ReadonlyWorldTruth,
+    who: AgentId,
+  ) => { hex: number; space?: string } | undefined;
+  /** El golpe como pelea real. */
+  readonly strike?: {
+    readonly plans: ReadonlyMap<string, BodyPlanDef>;
+    readonly skills: SkillCatalog;
+    readonly traits: readonly Trait[];
+    readonly light: number;
+  };
 }
 
 export interface SchemesOptions {
@@ -86,6 +117,7 @@ export interface SchemesOptions {
   /** Ticks por día de mundo. */
   readonly day: number;
   readonly loot?: SchemeLoot;
+  readonly acts?: SchemeActs;
 }
 
 export function schemeRows(truth: ReadonlyWorldTruth): { id: string; row: SchemeRow }[] {
@@ -98,6 +130,7 @@ const householdAccount = (truth: ReadonlyWorldTruth, who: AgentId): LedgerAccoun
   holderAccount((truth.get(PERSON, who)?.household ?? String(who)) as unknown as HolderRef);
 
 export function schemesProcess(o: SchemesOptions): ProcessDef {
+  const acts = o.acts;
   return {
     id: SCHEMES_PROCESS,
     system: "life",
@@ -105,8 +138,18 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "decide",
-    reads: [SCHEMES.name, ENTITY.name, PERSON.name],
-    writes: [SCHEMES.name, ENTITY.name],
+    reads: [
+      SCHEMES.name,
+      ENTITY.name,
+      PERSON.name,
+      ...(acts ? [LOCATION.name, BODY_STATE.name, SKILL_STATE.name] : []),
+    ],
+    writes: [
+      SCHEMES.name,
+      ENTITY.name,
+      ...(acts?.move ? [LOCATION.name] : []),
+      ...(acts?.strike ? [BODY_STATE.name, SKILL_STATE.name, FIGHT_STATE.name, YIELDED.name] : []),
+    ],
     run(ctx) {
       const truth = ctx.truth;
       const today = Math.floor(ctx.now / o.day);
@@ -147,7 +190,8 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
                 const from = acct(truth, scheme.target);
                 const to = acct(truth, scheme.owner);
                 const key = `${String(from)}|${String(o.loot.unit)}`;
-                const have = Math.floor(ledger.balance(from, o.loot.unit) ?? 0) - (spent.get(key) ?? 0);
+                const have =
+                  Math.floor(ledger.balance(from, o.loot.unit) ?? 0) - (spent.get(key) ?? 0);
                 const taken = Math.max(0, Math.min(have, Math.floor(have * o.loot.fraction)));
                 loot = { taken, unit: String(o.loot.unit) };
                 if (taken > 0 && String(from) !== String(to)) {
@@ -156,19 +200,68 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
                   spent.set(key, (spent.get(key) ?? 0) + taken);
                 } else loot.taken = 0;
               }
+              let acted: Record<string, unknown> | undefined;
+              const here = step.kind === "approach" ? scheme.target : scheme.owner;
+              if (acts?.move && (step.kind === "approach" || step.kind === "flee")) {
+                const to =
+                  step.kind === "approach"
+                    ? truth.get(LOCATION, scheme.target)
+                    : acts.fleeTo?.(truth, scheme.owner);
+                const from = truth.get(LOCATION, scheme.owner);
+                if (to && from && (to.hex !== from.hex || to.space !== from.space)) {
+                  changes.push(
+                    setComponent(LOCATION, scheme.owner, {
+                      hex: to.hex,
+                      ...(to.space !== undefined ? { space: to.space } : {}),
+                    } as never),
+                  );
+                  acted = { moved: true, toHex: to.hex };
+                } else acted = { moved: false };
+              }
+              const fightEvents: EventDraft[] = [];
+              if (acts?.strike && step.kind === "strike") {
+                const mine = truth.get(BODY_STATE, scheme.owner);
+                const cause = draftEvent(events.length);
+                if (mine && canFight(truth, scheme.target)) {
+                  const f = strikeFight({
+                    truth,
+                    me: scheme.owner,
+                    myBody: mine,
+                    target: scheme.target,
+                    plans: acts.strike.plans,
+                    skills: acts.strike.skills,
+                    traits: acts.strike.traits,
+                    intent: "kill",
+                    light: acts.strike.light,
+                    start: ctx.now,
+                    rng: ctx.rng.fork("scheme_strike", id, String(scheme.done)),
+                    day: o.day,
+                    cause,
+                    place: o.placeOf(truth, scheme.target),
+                  });
+                  changes.push(setComponent(BODY_STATE, scheme.owner, f.myBody), ...f.changes);
+                  fightEvents.push(f.event);
+                  acted = { fought: true, hits: f.gist.woundsDealt };
+                } else acted = { fought: false };
+              }
               events.push({
                 kind: SCHEME_STEP_EVENT,
                 actors: [scheme.owner, scheme.target],
-                place: o.placeOf(truth, loot ? scheme.target : scheme.owner),
+                place: o.placeOf(
+                  truth,
+                  loot || here !== scheme.owner ? scheme.target : scheme.owner,
+                ),
                 data: {
                   scheme: id,
                   step: scheme.done,
                   stepKind: step.kind,
                   ...(loot ? { taken: loot.taken, unit: loot.unit } : {}),
+                  ...(acted ?? {}),
                 },
                 emissions: {},
                 causes: stepCauses(scheme).map((event) => ({ kind: "event" as const, event })),
               });
+              events.push(...fightEvents);
               pending = true;
             }
           }
