@@ -88,6 +88,7 @@ import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
 import { conversationSettlementProcess } from "./converse-economy.ts";
 import { converseProjectionProcess } from "./converse-project.ts";
 import { type CouncilOptions, councilProcess } from "./council.ts";
+import { type CouncilCasesOptions, councilCasesProcess } from "./council-cases.ts";
 import { villageAuthority } from "./councilauthority.ts";
 import { arrearsProcess, creditProcess } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
@@ -617,6 +618,8 @@ export interface LifeWorld {
   readonly debtorRepair?: boolean;
   /** Opt-in: consejo de aldea como organización fundada desde sus ancianos (`life.council`, organizations §11); sin esto no existe ni corre. */
   readonly council?: Omit<CouncilOptions, "placeOf" | "day" | "year" | "goods">;
+  /** Opt-in (con `council`): la acusación contada a un anciano se vuelve un `Case` del consejo como foro (`life.council_cases`, law §4); sin esto no existe ni corre. */
+  readonly councilCases?: CouncilCasesOptions;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
   readonly schemes?: Omit<SchemesOptions, "placeOf" | "day" | "view"> &
     Partial<Pick<SchemesOptions, "view">>;
@@ -1106,6 +1109,15 @@ export function lifeWorld(
                 goods: parts.goods,
                 day: parts.clock.day,
                 year: parts.clock.year,
+              }),
+            ]
+          : []),
+        ...(parts.council && parts.councilCases
+          ? [
+              councilCasesProcess({
+                ...parts.councilCases,
+                placeOf: placeOf(parts, village),
+                day: parts.clock.day,
               }),
             ]
           : []),

@@ -9,6 +9,7 @@ export { OPEN_DEALS, PENDING } from "./converse.ts";
 export * from "./converse-economy.ts";
 export { converseProjectionProcess } from "./converse-project.ts";
 export * from "./council.ts";
+export * from "./council-cases.ts";
 export * from "./council-issues.ts";
 export * from "./create.ts";
 export * from "./debtknowledge.ts";
