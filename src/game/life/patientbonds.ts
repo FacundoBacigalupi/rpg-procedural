@@ -101,6 +101,12 @@ export function householdAuthority(
 export interface AuthoritySource {
   readonly holder: AgentId;
   readonly strength: number;
+  /**
+   * Lealtad (0-1) del paciente a la organización que respalda esta fuente (Consejo de aldea 5b):
+   * se suma al respeto personal como "al menos uno" (1 - (1 - respeto)(1 - lealtad)), así que
+   * sobrevive a que cambie el titular. Sin esto cuenta solo el respeto personal.
+   */
+  readonly loyalty?: number;
 }
 
 /**
@@ -118,7 +124,8 @@ export function combineAuthorities(
   for (const s of sources) {
     if (s.holder === patient) continue;
     const respect = clamp01(rel?.[s.holder as string]?.dims.respect ?? 0);
-    free *= 1 - respect * clamp01(s.strength);
+    const bond = s.loyalty === undefined ? respect : 1 - (1 - respect) * (1 - clamp01(s.loyalty));
+    free *= 1 - bond * clamp01(s.strength);
   }
   return clamp01(1 - free);
 }

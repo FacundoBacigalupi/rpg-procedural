@@ -6,6 +6,7 @@ import {
   foundCouncil,
   HOUSEHOLD,
   ORG,
+  ORG_LOYALTY,
   PERSON,
   RELATIONS,
   WorldTruth,
@@ -111,6 +112,48 @@ describe("councilauthority", () => {
       withdrawMember(org as never, chief, { at: 5, kind: "death", event: "event:2" as EventId }),
     );
     expect(villageAuthority(w2, kid, "flu", o)).toBeLessThan(before);
+  });
+
+  it("la lealtad al consejo manda sin respeto personal y sobrevive al cambio de cabeza", () => {
+    const o = { contagionBelief: { flu: 1 } };
+    const w = world({ dad: 0, chief: 0, elder: 0 });
+    expect(villageAuthority(w, kid, "flu", o)).toBe(0);
+    w.set(ORG_LOYALTY, org1, {
+      toward: { [kid]: { value: 0.5, updated: 1, cause: ev, moves: 1 } },
+    });
+    // 1 - (1 - 0.5 * 1) * (1 - 0.5 * 0.6): cabeza y anciano, ambos respaldados por la lealtad.
+    expect(villageAuthority(w, kid, "flu", o)).toBeCloseTo(1 - 0.5 * 0.7);
+    const org = w.get(ORG, org1);
+    w.set(
+      ORG,
+      org1,
+      withdrawMember(org as never, chief, { at: 5, kind: "death", event: "event:2" as EventId }),
+    );
+    expect(villageAuthority(w, kid, "flu", o)).toBeCloseTo(0.3);
+    // La de otra persona no es la del paciente.
+    const w2 = world({ dad: 0, chief: 0, elder: 0 });
+    w2.set(ORG_LOYALTY, org1, {
+      toward: { [dad]: { value: 1, updated: 1, cause: ev, moves: 1 } },
+    });
+    expect(villageAuthority(w2, kid, "flu", o)).toBe(0);
+  });
+
+  it("propiedad: la lealtad solo suma y la autoridad sigue en 0-1", () => {
+    const unit = fc.double({ min: 0, max: 1, noNaN: true });
+    fc.assert(
+      fc.property(unit, unit, unit, (r, l, belief) => {
+        const o = { contagionBelief: { flu: belief } };
+        const base = world({ dad: 0, chief: r, elder: r });
+        const x = villageAuthority(base, kid, "flu", o);
+        base.set(ORG_LOYALTY, org1, {
+          toward: { [kid]: { value: l, updated: 1, cause: ev, moves: 1 } },
+        });
+        const y = villageAuthority(base, kid, "flu", o);
+        expect(y).toBeGreaterThanOrEqual(x - 1e-9);
+        expect(y).toBeLessThanOrEqual(1);
+        expect(y).toBe(villageAuthority(base, kid, "flu", o));
+      }),
+    );
   });
 
   it("es determinista, acotada y el consejo solo suma al hogar", () => {

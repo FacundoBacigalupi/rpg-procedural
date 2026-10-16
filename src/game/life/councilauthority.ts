@@ -2,10 +2,19 @@
 // frente a un contagio. Cada miembro vivo del consejo del asentamiento del paciente es una fuente
 // de autoridad: pesa lo que cree que se pega por su rango (el cabeza más que un anciano); después
 // `combineAuthorities` la pondera por el respeto que el paciente le tiene a cada uno (RELATIONS).
-// Puro: solo lee la verdad; la lealtad es la relación `respect` ya guardada, sin tabla nueva.
+// Puro: solo lee la verdad. Pesa el respeto personal (RELATIONS `respect`) y, desde 5b, la lealtad
+// del paciente a la organización (ORG_LOYALTY), que sobrevive al cambio de cabeza.
 
 import type { AgentId } from "../../core/index.ts";
-import { activeMembers, HOUSEHOLD, ORG, PERSON, type ReadonlyWorldTruth } from "../../sim/index.ts";
+import {
+  activeMembers,
+  HOUSEHOLD,
+  loyaltyOf,
+  ORG,
+  ORG_LOYALTY,
+  PERSON,
+  type ReadonlyWorldTruth,
+} from "../../sim/index.ts";
 import {
   type AuthoritySource,
   combineAuthorities,
@@ -41,8 +50,14 @@ export function councilSources(
   for (const id of [...truth.ids(ORG)].sort()) {
     const org = truth.get(ORG, id);
     if (org?.status !== "active" || org.settlement !== settlement) continue;
+    // La lealtad del paciente a la organización (5b) es de ella, no de quien la encabeza.
+    const loyalty = loyaltyOf(truth.get(ORG_LOYALTY, id), patient);
     for (const m of activeMembers(org)) {
-      out.push({ holder: m.agent, strength: belief * (m.rank === "head" ? head : elder) });
+      out.push({
+        holder: m.agent,
+        strength: belief * (m.rank === "head" ? head : elder),
+        ...(loyalty > 0 ? { loyalty } : {}),
+      });
     }
   }
   return out.sort((a, b) => (a.holder < b.holder ? -1 : a.holder > b.holder ? 1 : 0));
@@ -66,7 +81,15 @@ export function villageAuthority(
   for (const s of councilSources(truth, patient, pathogen, o)) {
     const dup = sources.findIndex((x) => x.holder === s.holder);
     if (dup < 0) sources.push(s);
-    else if (s.strength > (sources[dup] as AuthoritySource).strength) sources[dup] = s;
+    else {
+      const prev = sources[dup] as AuthoritySource;
+      const loyalty = Math.max(prev.loyalty ?? 0, s.loyalty ?? 0);
+      sources[dup] = {
+        holder: s.holder,
+        strength: Math.max(prev.strength, s.strength),
+        ...(loyalty > 0 ? { loyalty } : {}),
+      };
+    }
   }
   return combineAuthorities(truth, patient, sources);
 }

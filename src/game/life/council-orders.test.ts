@@ -14,9 +14,13 @@ import {
 } from "../../core/index.ts";
 import {
   checkInvariants,
+  DEFAULT_LOYALTY_RULES,
   ENTITY,
   goodUnit,
   HOUSEHOLD,
+  loyaltyOf,
+  loyaltyViolations,
+  ORG_LOYALTY,
   ORG_ORDERS,
   type OrderBook,
   orderViolations,
@@ -415,5 +419,118 @@ describe("life.council: tesoro y órdenes en la vida", () => {
     expect(life.hash().total).toBe(
       "72b116bae6593c310f3f53a8b85c5dd51457a49fd8a8232c4c24a5d7b00db0d6",
     );
+  });
+});
+
+describe("life.council: lealtad a la organización (5b)", () => {
+  const withLoyalty = (rules = {}) => opts({ treasury: { ...opts().treasury, loyalty: rules } });
+  const loyalty = (w: ReturnType<typeof setup>) => w.t.get(ORG_LOYALTY, "org:1" as never);
+  const preset = (w: ReturnType<typeof setup>, v: number) =>
+    w.t.set(ORG_LOYALTY, "org:1" as never, {
+      toward: Object.fromEntries(
+        [ag(6), ag(7)].map((a) => [a, { value: v, updated: 0, cause: ev(1), moves: 1 }]),
+      ),
+    });
+
+  it("la orden cumplida sube la lealtad de quien recibe, no la de los demás", () => {
+    const { w } = until(seedFamine, "org.order_executed", withLoyalty(), "relief");
+    const l = loyalty(w);
+    expect(loyaltyOf(l, ag(6))).toBeGreaterThan(0);
+    expect(loyaltyOf(l, ag(7))).toBeGreaterThan(0);
+    expect(l?.toward[ag(6)]?.cause).toBeTruthy();
+    expect(Object.keys(l?.toward ?? {}).every((k) => w.t.get(PERSON, k as AgentId))).toBe(true);
+    const org = councilRows(w.t)[0]?.org;
+    if (org && l) expect(loyaltyViolations(org, l)).toEqual([]);
+  });
+
+  it("la orden desobedecida baja la lealtad de quien esperaba el socorro", () => {
+    const o = opts({
+      treasury: {
+        ...opts().treasury,
+        orders: { assentObeys: 0, dissentObeys: 0 },
+        loyalty: {},
+      },
+    });
+    const { w } = until(
+      (x) => {
+        seedFamine(x);
+        preset(x, 0.5);
+      },
+      "org.order_refused",
+      o,
+    );
+    expect(loyaltyOf(loyalty(w), ag(6))).toBeLessThan(0.5);
+    expect(loyaltyOf(loyalty(w), ag(6))).toBeGreaterThanOrEqual(0);
+  });
+
+  it("con el tesoro vacío la orden falla y la lealtad baja menos que con una desobediencia", () => {
+    const failed = opts({ treasury: { orders: {}, contribute: [], everyDays: 5, loyalty: {} } });
+    const { w } = until(
+      (x) => {
+        seedFamine(x);
+        preset(x, 0.5);
+      },
+      "org.order_failed",
+      failed,
+    );
+    expect(loyaltyOf(loyalty(w), ag(7))).toBeCloseTo(0.5 - DEFAULT_LOYALTY_RULES.failedLoss, 5);
+    expect(DEFAULT_LOYALTY_RULES.failedLoss).toBeLessThan(DEFAULT_LOYALTY_RULES.refusedLoss);
+  });
+
+  it("sin `loyalty` no hay tabla de lealtad", () => {
+    const { w } = until(seedFamine, "org.order_executed", opts(), "relief");
+    expect(loyalty(w)).toBeUndefined();
+  });
+
+  it("propiedad: la lealtad queda en 0-1, con causa, y es reproducible", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1e5 }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (seed, start) => {
+          const run = () => {
+            nid = 0;
+            const w = setup();
+            const o = withLoyalty();
+            step(w, 0, o, seed);
+            seedFamine(w);
+            preset(w, start);
+            for (const d of [...DAYS.slice(1), 600, 800]) step(w, d, o, seed);
+            const l = loyalty(w);
+            const org = councilRows(w.t)[0]?.org;
+            if (org && l) expect(loyaltyViolations(org, l)).toEqual([]);
+            return JSON.stringify(l);
+          };
+          expect(run()).toBe(run());
+        },
+      ),
+      { numRuns: 15 },
+    );
+  });
+
+  it("en la vida: determinista, invariantes limpios y la tabla cumple las reglas", () => {
+    const make = () => {
+      const life = Life.create(3, content, {
+        council: {
+          issues: { famineDays: 100000 },
+          treasury: {
+            everyDays: 5,
+            contribute: [{ good: "grain", amount: 2000, keep: 0 }],
+            orders: {},
+            loyalty: {},
+          },
+        },
+      });
+      life.advanceTo(life.now + DAY * 60);
+      return life;
+    };
+    const a = make();
+    expect(a.hash().total).toBe(make().hash().total);
+    expect(checkInvariants({ truth: a.world.truth, log: a.world.log })).toEqual([]);
+    for (const id of a.world.truth.ids(ORG_LOYALTY)) {
+      const org = councilRows(a.world.truth).find((r) => r.id === (id as string))?.org;
+      const l = a.world.truth.get(ORG_LOYALTY, id);
+      if (org && l) expect(loyaltyViolations(org, l)).toEqual([]);
+    }
   });
 });
