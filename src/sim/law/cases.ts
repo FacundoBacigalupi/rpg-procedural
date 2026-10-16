@@ -29,6 +29,16 @@ export interface Verdict {
   readonly decidedAt: Tick;
 }
 
+/** Lo que dejó la investigación del foro (indicios pesados y cuánto movieron su creencia). */
+export interface Investigation {
+  readonly at: Tick;
+  readonly clues: number;
+  readonly for: number;
+  readonly against: number;
+  readonly beliefBefore: number;
+  readonly beliefAfter: number;
+}
+
 export interface Case {
   /** `<org>#<n>`: el libro es por foro, el contador también. */
   readonly id: string;
@@ -49,6 +59,8 @@ export interface Case {
   readonly verdict?: Verdict;
   /** La citación, si el foro citó y la jurisdicción la exige (opt-in). */
   readonly summons?: Summons;
+  /** La investigación hecha antes de decidir (opt-in). */
+  readonly investigation?: Investigation;
   readonly openedAt: Tick;
   /** La denuncia (el evento de habla que la contó). */
   readonly originEventId: EventId;
