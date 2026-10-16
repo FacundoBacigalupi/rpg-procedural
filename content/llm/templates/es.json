@@ -702,6 +702,29 @@
     ]
   },
   {
+    "id": "heard_claim.alive.of",
+    "lines": ["{from} te contó que {about} sigue vivo.", "Según {from}, {about} está con vida."]
+  },
+  {
+    "id": "heard_claim.alive.some",
+    "lines": ["Dicen que {about} sigue vivo.", "Oíste que {about} está con vida."]
+  },
+  {
+    "id": "heard_claim.dead.of",
+    "lines": [
+      "{from} te contó que {about} murió.",
+      "Según {from}, {about} ya no está entre los vivos."
+    ]
+  },
+  {
+    "id": "heard_claim.dead.some",
+    "lines": ["Dicen que {about} murió.", "Oíste que {about} ya no está entre los vivos."]
+  },
+  {
+    "id": "heard_claim.unsure",
+    "lines": ["Quién sabe si es cierto.", "No sabés cuánto hay de verdad."]
+  },
+  {
     "id": "heard_trade.unsure",
     "lines": ["Quién sabe si es cierto.", "No sabés cuánto hay de verdad."]
   },

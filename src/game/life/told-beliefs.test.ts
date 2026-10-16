@@ -7,6 +7,7 @@ import {
   type ProcessContext,
   WorldTruth,
 } from "../../sim/index.ts";
+import { heardClaimsOf } from "./heardclaims.ts";
 import {
   learnToldClaims,
   TOLD_ALIVE_CONFIDENCE,
@@ -123,5 +124,47 @@ describe("el evento de la charla alimenta BELIEFS (life-39)", () => {
     const event = { kind: "action.speak", tick: 1, data: {} } as unknown as Event;
     const out = toldClaimsProcess().run({ truth, recent: [event] } as unknown as ProcessContext);
     expect(out.changes).toBeUndefined();
+  });
+});
+
+describe("«dicen que…» en la vista (heard-4)", () => {
+  const names = new Map<AgentId, string>([
+    [B, "Marta"],
+    [C, "el herrero"],
+  ]);
+  const nameOf = (id: AgentId) => names.get(id);
+
+  it("cita a quién se refiere y quién lo contó, solo lo llegado desde since", () => {
+    const b = learnToldClaims(undefined, A, heard("dead", 10 * HOUR), 9 * HOUR + 1, 10 * HOUR);
+    expect(heardClaimsOf(b, 9 * HOUR, A, nameOf)).toEqual([
+      { about: "Marta", claim: "dead", from: "el herrero", sure: true },
+    ]);
+    expect(heardClaimsOf(b, 10 * HOUR, A, nameOf)).toEqual([]);
+  });
+
+  it("sin nombre conocido de la persona no entra; sin el del que contó, queda anónimo", () => {
+    const b = learnToldClaims(undefined, A, heard("alive", 10 * HOUR), 9 * HOUR + 1, 10 * HOUR);
+    expect(heardClaimsOf(b, 0, A, (id) => (id === B ? "Marta" : undefined))).toEqual([
+      { about: "Marta", claim: "alive", sure: true },
+    ]);
+    expect(heardClaimsOf(b, 0, A, () => undefined)).toEqual([]);
+  });
+
+  it("lo percibido (sin fuente told) no se cita como oído", () => {
+    const seen: Beliefs = {
+      items: [
+        {
+          prop: { kind: "attr", subject: B, attr: "alive" },
+          value: true,
+          confidence: 0.9,
+          asOf: 0,
+          learnedAt: 0,
+          sources: [{ kind: "percept", percept: "x", tick: 5 * HOUR }],
+          salience: 1,
+          measured: 0,
+        },
+      ],
+    };
+    expect(heardClaimsOf(seen, 0, A, nameOf)).toEqual([]);
   });
 });
