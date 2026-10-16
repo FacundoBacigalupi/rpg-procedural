@@ -477,6 +477,8 @@ export interface LifeWorld {
   readonly npcDropReclaim?: boolean;
   /** Opt-in (con `npcTraces` y `npcProvisions`): id de un linaje de la ecología de la celda que se come lo caído en el camino (`npc.load_eaten`, sumidero `eaten`); la chance sale de cuántos animales hay. */
   readonly npcDropScavenge?: string;
+  /** Opt-in (con `npcTraces` y `npcProvisions`): la carga se pierde por causas (tropiezo con fatiga, peso, fuga si `liquid`) con efecto distinto sobre lo caído (`npc.load_dropped` con `cause`, `npc.load_leaked`). */
+  readonly npcDropCauses?: { readonly liquid?: boolean };
   /** Opt-in (con `npcVerbs`): verbo -> id de plantilla de `content/plans/` que el NPC ejecuta en vez del verbo suelto (`NpcVerbsOptions.templates`). */
   readonly npcTemplates?: Readonly<Record<string, string>>;
   /** Opt-in (con `npcVerbs` que incluya `move`): ir a un lugar abre un viaje que sigue hasta N días (`NpcVerbsOptions.journeyDays`). */
@@ -1860,6 +1862,7 @@ export function lifeWorld(
                           unit: goodUnit(food),
                           name: food.name,
                           ...(parts.npcDropReclaim ? { reclaim: true } : {}),
+                          ...(parts.npcDropCauses ? { causes: parts.npcDropCauses } : {}),
                           ...(parts.npcDropScavenge !== undefined
                             ? { scavenge: { lineage: parts.npcDropScavenge } }
                             : {}),
