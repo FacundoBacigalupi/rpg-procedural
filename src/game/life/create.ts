@@ -449,7 +449,7 @@ export interface LifeOptions {
   readonly npcWater?: LifeParts["npcWater"];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC y deja el resultado parcial (`LifeParts.npcInterrupt`). */
   readonly npcInterrupt?: boolean;
-  /** Opt-in (con `npcInterrupt`): el plan cortado se olvida si, tras el corte, el NPC decidió otro verbo (`NpcVerbsOptions.resume.reevaluate`); apagado, se retoma igual. */
+  /** Opt-in (con `npcInterrupt`): el plan cortado se olvida si, tras el corte, el NPC decidiÃ³ otro verbo (`NpcVerbsOptions.resume.reevaluate`); apagado, se retoma igual. */
   readonly npcResumeReevaluate?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se cruza con quien comparte su hex (`LifeParts.npcEncounters`). */
   readonly npcEncounters?: boolean;

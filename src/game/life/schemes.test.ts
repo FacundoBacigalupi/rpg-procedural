@@ -167,7 +167,7 @@ describe("life.schemes: el paso take mueve dinero (F1b-2b)", () => {
     return { truth, ledger, steps };
   }
 
-  it("el ladrón se lleva parte del saldo del blanco y el total se conserva", () => {
+  it("el ladrÃ³n se lleva parte del saldo del blanco y el total se conserva", () => {
     const { ledger, steps } = robbery(0.5);
     expect(ledger.balance(H("h2"), COIN)).toBe(50);
     expect(ledger.balance(H("h1"), COIN)).toBe(60);

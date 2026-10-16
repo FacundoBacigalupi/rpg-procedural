@@ -117,7 +117,7 @@ describe("escuelas médicas por cultura", () => {
   }, 30_000);
 });
 
-describe("escuela m�dica por comunidad", () => {
+describe("escuela médica por comunidad", () => {
   const community = (id: string, variants: Record<string, number>) =>
     ({ ...culture(variants), culture: id }) as CommunityCulture;
   const who = "agent:1" as AgentId;
