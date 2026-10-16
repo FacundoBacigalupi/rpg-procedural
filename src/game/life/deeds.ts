@@ -139,6 +139,12 @@ export function offenseOf(
     // La promesa rota es un incumplimiento más: el destinatario sabe quién le falló.
     return { kind: "default", by: first, victim: second, noticedBy: [second] };
   }
+  if (e.kind === "scheme.step" && second) {
+    // El paso `take` de una intriga que se llevó algo es un robo; el robado no lo ve: se enteran los que estaban.
+    const step = e.data as { stepKind?: string; taken?: number } | null;
+    if (step?.stepKind === "take" && (step.taken ?? 0) > 0)
+      return { kind: "theft", by: first, victim: second, noticedBy: [] };
+  }
   const eff = data?.effect;
   if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
     const from: unknown = eff.from;

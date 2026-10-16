@@ -109,6 +109,17 @@ export interface SchemeActs {
   };
 }
 
+/**
+ * Opt-in (F1b-2b-3): lo que el robo deja a la vista. El paso `take` que se llevó algo emite estas
+ * intensidades de vista y sonido (0-1), así que los vecinos del lugar lo perciben y `life.deeds`
+ * lo anota como robo (los que no reconocen al ladrón saben que hubo uno). Sin esto el paso no
+ * emite nada: nadie lo ve y no hay caso.
+ */
+export interface SchemeTraces {
+  readonly sight: number;
+  readonly sound: number;
+}
+
 export interface SchemesOptions {
   readonly seeds: readonly SchemeSeed[];
   /** Lo que el intrigante cree y es respecto del blanco (nunca la verdad del blanco). */
@@ -118,6 +129,7 @@ export interface SchemesOptions {
   readonly day: number;
   readonly loot?: SchemeLoot;
   readonly acts?: SchemeActs;
+  readonly traces?: SchemeTraces;
 }
 
 export function schemeRows(truth: ReadonlyWorldTruth): { id: string; row: SchemeRow }[] {
@@ -258,7 +270,7 @@ export function schemesProcess(o: SchemesOptions): ProcessDef {
                   ...(loot ? { taken: loot.taken, unit: loot.unit } : {}),
                   ...(acted ?? {}),
                 },
-                emissions: {},
+                emissions: o.traces && loot && loot.taken > 0 ? { ...o.traces } : {},
                 causes: stepCauses(scheme).map((event) => ({ kind: "event" as const, event })),
               });
               events.push(...fightEvents);
