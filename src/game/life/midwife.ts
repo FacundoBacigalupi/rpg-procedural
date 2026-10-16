@@ -299,6 +299,7 @@ export function puerperalSeeds(
     source: "fiebre tras el parto",
     causes: [{ kind: "event", event: row.cause as never }],
     perCarrier: true,
+    remember: true,
   }));
 }
 

@@ -55,6 +55,7 @@ import {
   sheddingLevel,
   stepWatercourse,
   TREATMENT,
+  table,
   taintAfter,
   treatedCourse,
   tryInfect,
@@ -87,7 +88,20 @@ export interface PathogenSeed {
    * (así una recuperada sin inmunidad no se vuelve a sembrar). Sin esto, una sola vez por patógeno.
    */
   readonly perCarrier?: boolean;
+  /**
+   * Opt-in (con `perCarrier`): en vez de la ventana de 2 días, la siembra deja una marca
+   * persistente (`SEEDED`, por portador y patógeno, con el `from` sembrado). Se siembra una sola
+   * vez aunque la sim haya dormido días, y una recuperada sin inmunidad no se resiembra.
+   */
+  readonly remember?: boolean;
 }
+
+/** Marca de siembra por portador: qué patógenos ya se le sembraron y para qué `from`. */
+export interface SeededRow {
+  readonly seeded: Readonly<Record<string, Tick>>;
+}
+
+export const SEEDED = table<SeededRow>("life.seeded");
 
 export interface ExposureOptions {
   /**
@@ -226,7 +240,14 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
       ...(o.arrivals ? ["life.labor"] : []),
       ...(o.arrivals ? (o.arrivalReads ?? []) : []),
     ],
-    writes: [PATHOGEN.name, INFECTION.name, WELL_TAINT.name, REACH_TAINT.name, ENTITY.name],
+    writes: [
+      PATHOGEN.name,
+      INFECTION.name,
+      WELL_TAINT.name,
+      REACH_TAINT.name,
+      ENTITY.name,
+      ...(o.arrivals ? [SEEDED.name] : []),
+    ],
     run(ctx) {
       const known = new Map<string, PathogenDef>();
       for (const id of ctx.truth.ids(PATHOGEN)) {
@@ -242,7 +263,14 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
         const again = s.perCarrier === true && known.has(s.def.id);
         if (known.has(s.def.id) && !again) continue;
         if (s.perCarrier === true) {
-          if (ctx.now >= s.from + o.clock.day * 2) continue;
+          if (s.remember) {
+            const mark = ctx.truth.get(SEEDED, s.carrier)?.seeded[s.def.id];
+            if (mark !== undefined && mark >= s.from) continue;
+            if (
+              changes.some((c) => c.op === "set" && c.table === SEEDED.name && c.id === s.carrier)
+            )
+              continue;
+          } else if (ctx.now >= s.from + o.clock.day * 2) continue;
           const cur = ctx.truth.get(INFECTION, s.carrier);
           if (cur?.infections.some((i) => i.pathogen === s.def.id)) continue;
           if (
@@ -280,6 +308,16 @@ export function exposureProcess(o: ExposureOptions): ProcessDef {
                 setComponent(PATHOGEN, pid, { def: s.def, source: s.source }),
               ]),
           setComponent(INFECTION, s.carrier, withInfection(ctx.truth, s.carrier, carrierInfection)),
+          ...(s.remember
+            ? [
+                setComponent(SEEDED, s.carrier, {
+                  seeded: {
+                    ...(ctx.truth.get(SEEDED, s.carrier)?.seeded ?? {}),
+                    [s.def.id]: s.from,
+                  },
+                }),
+              ]
+            : []),
         );
         if (s.well) {
           changes.push(
