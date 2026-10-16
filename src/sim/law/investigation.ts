@@ -2,8 +2,9 @@
 // que los miembros del foro CREEN y VEN (hechos que guardan, con quién fue según ellos, y huellas
 // del lugar atadas a un hecho que ya saben de quién es), nunca de la verdad. Puro y sin IO: quien
 // llama arma los `Clue` desde las creencias; acá se pesan, se corrige la creencia del foro sobre
-// la denuncia y se decide con la misma regla del foro (`forumResponse`). Sin mentiras de testigos
-// todavía: cada indicio vale lo que su vía (vi / oí / me contaron) y la culpa que leyó el que lo guarda.
+// la denuncia y se decide con la misma regla del foro (`forumResponse`). Cada indicio vale lo que su
+// vía (vi / oí / me contaron) y la culpa que leyó el que lo guarda; con testigos que declaran
+// (`spokenWeight`), además la firmeza con que lo dicen, y quien niega o calla no deja indicio.
 
 import type { AgentId, EventId, Tick } from "../../core/index.ts";
 import type { Case, Investigation, Verdict } from "./cases.ts";
@@ -47,6 +48,19 @@ const round = (x: number): number => Math.round(x * 1e6) / 1e6;
 export function testimonyWeight(deed: Deed, party: boolean): number {
   const w = VIA_WEIGHT[deed.via] * Math.min(1, culpability(deed));
   return round(clamp01(party ? w * PARTY_DISCOUNT : w));
+}
+
+/** Cuánto del peso de un testimonio depende de la firmeza con que se dice (0 firmeza = esto de piso). */
+export const CERTAINTY_FLOOR = 0.4;
+
+/**
+ * El peso de lo que un testigo DICE (no de lo que guarda): el peso de su vía por la firmeza con
+ * que lo cuenta. Una mentira pulida suena firme y pesa más que un recuerdo borroso dicho con
+ * duda; quien calla o niega no aporta indicio (`null`).
+ */
+export function spokenWeight(base: number, certainty: number, said: boolean): number | null {
+  if (!said) return null;
+  return round(clamp01(base * (CERTAINTY_FLOOR + (1 - CERTAINTY_FLOOR) * clamp01(certainty))));
 }
 
 /** El peso de una huella visible (fuerza 0-1) atada a un hecho que quien la ve ya sabe de quién es. */
