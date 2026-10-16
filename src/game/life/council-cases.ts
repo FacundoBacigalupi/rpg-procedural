@@ -25,6 +25,7 @@ import {
 import {
   activeMembers,
   appearChance,
+  type BondDef,
   balanceClues,
   CASE_COOLDOWN_DAYS,
   CASES,
@@ -38,6 +39,7 @@ import {
   DEFAULT_VENDETTA_RULES,
   type DeedKind,
   type Denunciation,
+  type DimensionDef,
   decideVendetta,
   draftEvent,
   ENTITY,
@@ -47,11 +49,14 @@ import {
   type GoodDef,
   goodUnit,
   HOUSEHOLD,
+  INNATE,
   INVESTIGATION_DAYS,
   investigationDue,
   isRepeat,
   KNOWN_DEEDS,
   loyaltyOf,
+  MEMORIES,
+  MIND,
   nudgeDim,
   ORG,
   ORG_LOYALTY,
@@ -68,8 +73,12 @@ import {
   type StateChange,
   SUMMONS_DAYS,
   setComponent,
+  spokenWeight,
   summonsPending,
+  type Testimony,
   TRACE,
+  type Trait,
+  testify,
   testimonyWeight,
   traceStrength,
   traceVisible,
@@ -84,12 +93,14 @@ import {
   vendettaPush,
 } from "../../sim/index.ts";
 import { type CouncilAuthorityOptions, councilStanding } from "./councilauthority.ts";
+import { witnessProfile } from "./testify.ts";
 
 export const COUNCIL_CASES_PROCESS = "life.council_cases";
 export const CASE_OPENED_EVENT = "law.case_opened";
 export const CASE_RESOLVED_EVENT = "law.case_resolved";
 export const CASE_EFFECTS_EVENT = "law.case_effects";
 export const CASE_INVESTIGATED_EVENT = "law.case_investigated";
+export const COUNCIL_TESTIMONY_EVENT = "law.council_testimony";
 export const SUMMONS_ANSWERED_EVENT = "law.summons_answered";
 export const SUMMONS_DEFIED_EVENT = "law.summons_defied";
 export const VENDETTA_DECLARED_EVENT = "law.vendetta_declared";
@@ -108,6 +119,14 @@ export interface SummonsOptions {
 export interface InvestigationOptions {
   /** Días que espera un caso sin citación antes de investigarse (por defecto `INVESTIGATION_DAYS`). */
   readonly days?: number;
+  /**
+   * Sub-opción: los testigos (miembros del foro y acusador) DECLARAN en vez de aportar lo que
+   * guardan tal cual: cada uno recuerda deformado y decide decir la verdad, negar/callar o
+   * inculpar a otro según su relación con las partes, su miedo y su lealtad (`witnessProfile`:
+   * creencias y relaciones, nunca la verdad). Lo negado no deja indicio; lo dicho pesa por su
+   * firmeza. Necesita `dims`, `bonds` y `traits` (la vida los pasa).
+   */
+  readonly testimony?: Record<string, never>;
 }
 
 export interface CouncilCasesOptions extends CouncilAuthorityOptions {
@@ -127,6 +146,10 @@ export interface CouncilCasesDeps extends CouncilCasesOptions {
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
   readonly day: number;
   readonly goods?: readonly GoodDef[];
+  /** Para `investigation.testimony`: dimensiones, vínculos y rasgos con que el testigo se siente y decide. */
+  readonly dims?: readonly DimensionDef[];
+  readonly bonds?: readonly BondDef[];
+  readonly traits?: readonly Trait[];
 }
 
 interface SpokenAccusation {
@@ -168,6 +191,7 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
       KNOWN_DEEDS.name,
       CASES.name,
       TRACE.name,
+      ...(o.investigation?.testimony ? [MEMORIES.name, INNATE.name, MIND.name] : []),
     ],
     writes: o.effects || o.vendetta ? [CASES.name, RELATIONS.name] : [CASES.name],
     run(ctx) {
@@ -258,7 +282,10 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
       };
       // Qué sabe cada fuente del hecho que se juzga: lo que guarda (no la verdad) y las huellas
       // visibles atadas a un hecho que ya sabe de quién es.
-      const cluesOf = (c: Case): Clue[] => {
+      const cluesOf = (
+        c: Case,
+        spoken: { events: EventDraft[]; silent: AgentId[]; lies: number },
+      ): Clue[] => {
         const forumOrg = truth.get(ORG, c.forum as never);
         const sources = [
           ...(forumOrg ? activeMembers(forumOrg).map((m) => m.agent) : []),
@@ -274,13 +301,70 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
               (c.facts.length === 0 ? d.by === c.accused : c.facts.includes(d.event)),
           );
           for (const d of deeds) {
-            clues.push({
-              kind: "testimony",
-              source: src,
-              points: d.by,
-              weight: testimonyWeight(d, src === c.accuser),
-              event: d.event,
-            });
+            if (o.investigation?.testimony) {
+              // Declara: recuerda deformado y decide contar, negar/callar o inculpar a otro.
+              const p = witnessProfile(
+                truth,
+                {
+                  dims: o.dims ?? [],
+                  bonds: o.bonds ?? [],
+                  traits: o.traits ?? [],
+                  placeOf: o.placeOf,
+                },
+                src,
+                c.judge,
+                d,
+                0,
+                ctx.now,
+              );
+              const t: Testimony = testify(
+                d,
+                p.recall,
+                p.motives,
+                p.other,
+                ctx.rng.fork("council-testify", c.id, src, d.event),
+              );
+              const w = spokenWeight(
+                testimonyWeight(d, src === c.accuser),
+                t.certainty,
+                t.kind !== null,
+              );
+              if (w === null) spoken.silent.push(src);
+              else
+                clues.push({
+                  kind: "testimony",
+                  source: src,
+                  points: t.accused,
+                  weight: w,
+                  event: d.event,
+                });
+              if (t.lie.kind !== "none") spoken.lies += 1;
+              spoken.events.push({
+                kind: COUNCIL_TESTIMONY_EVENT,
+                actors: [src, c.judge],
+                place: o.placeOf(truth, src),
+                data: {
+                  case: c.id,
+                  deed: d.event,
+                  said: w !== null,
+                  kind: t.kind,
+                  accused: t.accused,
+                  certainty: t.certainty,
+                  // Solo para el inspector y los tests: nadie del mundo lo ve.
+                  truthOf: { lie: t.lie, distortion: t.distortion },
+                },
+                emissions: {},
+                causes: [{ kind: "event", event: c.originEventId }],
+              });
+            } else {
+              clues.push({
+                kind: "testimony",
+                source: src,
+                points: d.by,
+                weight: testimonyWeight(d, src === c.accuser),
+                event: d.event,
+              });
+            }
             for (const tid of [...truth.ids(TRACE)].sort()) {
               const t = truth.get(TRACE, tid);
               if (!t || t.event !== d.event || d.by === null || !traceVisible(t, ctx.now)) continue;
@@ -365,7 +449,9 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
               cases.push({ ...c, status: "dropped" });
               continue;
             }
-            const clues = cluesOf(c);
+            const spoken = { events: [] as EventDraft[], silent: [] as AgentId[], lies: 0 };
+            const clues = cluesOf(c, spoken);
+            events.push(...spoken.events);
             const balance = balanceClues(clues, c.accused);
             const known = (truth.get(KNOWN_DEEDS, c.judge)?.deeds ?? []).find(
               (d) => c.facts[0] !== undefined && d.event === c.facts[0],
@@ -393,6 +479,13 @@ export function councilCasesProcess(o: CouncilCasesDeps): ProcessDef {
                 beliefBefore: c.belief,
                 beliefAfter: done.investigation?.beliefAfter ?? c.belief,
                 witnesses: [...new Set(clues.map((x) => x.source))],
+                ...(o.investigation.testimony
+                  ? {
+                      silent: [...new Set(spoken.silent)],
+                      // Solo para el inspector y los tests: nadie del mundo lo ve.
+                      truthOf: { lies: spoken.lies },
+                    }
+                  : {}),
               },
               emissions: {},
               causes: [{ kind: "event", event: c.originEventId }],

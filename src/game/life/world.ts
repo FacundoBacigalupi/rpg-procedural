@@ -1120,6 +1120,9 @@ export function lifeWorld(
           ? [
               councilCasesProcess({
                 ...parts.councilCases,
+                dims: parts.relationDims,
+                bonds: parts.relationBonds,
+                traits: parts.traits,
                 goods: parts.goods,
                 placeOf: placeOf(parts, village),
                 day: parts.clock.day,
