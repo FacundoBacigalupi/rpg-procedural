@@ -1,5 +1,6 @@
 export * from "./budget.ts";
 export * from "./credit.ts";
+export * from "./creditKind.ts";
 export * from "./famine.ts";
 export * from "./famineMigration.ts";
 export * from "./goods.ts";
