@@ -9,6 +9,7 @@ import {
   type IssueBelief,
   type IssueKind,
   type IssueRules,
+  MEMORIES,
   type MemberView,
   outstanding,
   PERSON,
@@ -23,6 +24,8 @@ import { householdFlowsOf } from "./budget.ts";
 import { LOANS } from "./loans.ts";
 
 export interface IssuesOptions {
+  /** Lee solamente recuerdos/avisos ya conocidos por los miembros; no descubre bandas remotas. */
+  readonly bandits?: { readonly memoryDays?: number };
   /** Reglas de los asuntos; por defecto `DEFAULT_ISSUE_RULES`. */
   readonly rules?: Partial<IssueRules>;
   /** Días de despensa por debajo de los cuales un hogar pasa hambre (7 por defecto). */
@@ -33,6 +36,8 @@ export interface IssuesOptions {
 
 /** Una presión real de la aldea que podría llegar al consejo si alguien la percibe y la plantea. */
 export interface PressureSignal {
+  /** Lectura individual ya adquirida: jamás se extiende por cercanía social. */
+  readonly knownBy?: Readonly<Record<string, IssueBelief>>;
   readonly kind: IssueKind;
   readonly subject: string;
   /** 0-1: gravedad real. */
@@ -50,6 +55,7 @@ export interface PressureSignal {
 }
 
 export interface ScanEnv {
+  readonly observers?: readonly AgentId[];
   readonly truth: ReadonlyWorldTruth;
   readonly ledger: ReadonlyLedger | undefined;
   readonly now: Tick;
@@ -84,6 +90,43 @@ export function scanPressures(
       all.add(m);
       homeOf.set(m, home);
     }
+
+  if (o.bandits) {
+    const known = new Map<string, { beliefs: Record<string, IssueBelief>; event: CauseRef }>();
+    for (const who of [...(env.observers ?? [])].sort()) {
+      for (const m of truth.get(MEMORIES, who)?.items ?? []) {
+        if (
+          m.perceived.kind !== "band.raided" ||
+          m.at > env.now ||
+          env.now - m.at > (o.bandits.memoryDays ?? 30) * env.day ||
+          m.confidence <= 0
+        )
+          continue;
+        const subject = m.eventId as string;
+        const entry = known.get(subject) ?? {
+          beliefs: {},
+          event: { kind: "event" as const, event: m.eventId },
+        };
+        entry.beliefs[who] = {
+          kind: "bandits",
+          subject,
+          severity: 1,
+          confidence: clamp01(m.confidence),
+        };
+        known.set(subject, entry);
+      }
+    }
+    for (const [subject, k] of [...known].sort(([a], [b]) => (a < b ? -1 : 1)))
+      out.push({
+        kind: "bandits",
+        subject,
+        severity: 1,
+        affected: [],
+        affectedHomes: [],
+        knownBy: k.beliefs,
+        causes: [k.event],
+      });
+  }
 
   // Hambre: hogares con la despensa por debajo de los días de umbral (necesita ledger).
   if (env.ledger)
@@ -204,7 +247,9 @@ export function perceiveAll(
   for (const who of members) {
     const home = truth.get(PERSON, who)?.household as string | undefined;
     const view = memberView(truth, who, home, s);
-    const belief: IssueBelief | null = perceiveIssue(s.kind, s.subject, s.severity, view, rules);
+    const belief: IssueBelief | null = s.knownBy
+      ? (s.knownBy[who] ?? null)
+      : perceiveIssue(s.kind, s.subject, s.severity, view, rules);
     out.set(who, { view, belief });
   }
   return out;

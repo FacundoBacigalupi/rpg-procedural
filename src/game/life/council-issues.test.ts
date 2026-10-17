@@ -9,7 +9,9 @@ import {
   checkInvariants,
   ENTITY,
   HOUSEHOLD,
+  MEMORIES,
   ORG_AGENDA,
+  ORG_ORDERS,
   type Organization,
   orgViolations,
   PERSON,
@@ -124,6 +126,50 @@ const off = (() => {
 })();
 
 describe("life.council: asuntos y deliberación (proceso aislado)", () => {
+  it("solo un recuerdo conocido del asalto abre bandits, se delibera y no inventa guardias", () => {
+    const { t } = world();
+    const options = opts({
+      issues: { bandits: {}, rules: { temperature: 0.001 } },
+      treasury: { orders: {} },
+    });
+    step(t, 0, options);
+    const memory = {
+      eventId: ev(90),
+      perceived: { kind: "band.raided", with: [ag(6)], place: { kind: "cell" } },
+      source: "told",
+      toldBy: ag(7),
+      at: 1,
+      confidence: 0.9,
+      intensity: 0.8,
+      valence: -1,
+      distortion: 0,
+      salience: 1,
+      measured: 1,
+      lastRecalled: 1,
+      recalls: 0,
+    } as const;
+    t.set(MEMORIES, ag(7), { items: [memory], gists: [] } as never);
+    step(t, 10, options);
+    expect(agendaRows(t)[0]?.agenda.open ?? []).toEqual([]); // vecino que no pertenece al consejo
+    t.set(MEMORIES, ag(1), { items: [memory], gists: [] } as never);
+    step(t, 20, opts());
+    expect(agendaRows(t)[0]?.agenda.open ?? []).toEqual([]); // opt-in apagado
+    const raised = step(t, 30, options);
+    const issue = agendaRows(t)[0]?.agenda.open[0];
+    expect(issue?.kind).toBe("bandits");
+    expect(issue?.raisedBy).toBe(ag(1));
+    expect(issue?.causes).toEqual([{ kind: "event", event: ev(90) }]);
+    expect(raised.events?.some((e) => e.kind === "org.issue_raised")).toBe(true);
+    step(t, 40, options);
+    const decision = agendaRows(t)[0]?.agenda.decisions[0];
+    expect(decision?.kind).toBe("bandits");
+    expect(decision?.option).toBe("defend");
+    expect(decision?.votes.find((v) => v.agent === ag(1))?.confidence).toBe(0.9);
+    expect(decision?.votes.find((v) => v.agent === ag(2))?.confidence).toBe(0.45);
+    expect([...t.ids(ORG_ORDERS)].flatMap((id) => t.get(ORG_ORDERS, id)?.orders ?? [])).toEqual([]);
+    step(t, 400, options);
+    expect(agendaRows(t)[0]?.agenda.open).toEqual([]);
+  });
   it("una deuda caída en mora la plantea quien la percibe y se vota al día siguiente, con causas", () => {
     const { t, h1, h2 } = world();
     step(t, 0, opts()); // funda

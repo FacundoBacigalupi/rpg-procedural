@@ -19,8 +19,8 @@ import {
 import { table } from "../world/index.ts";
 import { activeMembers, type Organization, type OrgRank } from "./council.ts";
 
-export type IssueKind = "famine" | "debt" | "dispute";
-export type IssueOption = "relief" | "extend" | "mediate";
+export type IssueKind = "famine" | "debt" | "dispute" | "bandits";
+export type IssueOption = "relief" | "extend" | "mediate" | "defend";
 export type Vote = "for" | "against";
 export type DecisionOutcome = "enacted" | "rejected" | "lapsed";
 
@@ -29,6 +29,7 @@ export const OPTION_OF: Readonly<Record<IssueKind, IssueOption>> = {
   famine: "relief",
   debt: "extend",
   dispute: "mediate",
+  bandits: "defend",
 };
 
 /** Lo que alguien cree de una presión: cuán grave y con cuánta fe. Puede estar equivocado. */

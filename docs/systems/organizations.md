@@ -483,6 +483,10 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - El karma de lo que hace una organización es de las personas que lo hicieron; la fortuna colectiva es derivada ([heaven-karma.md](heaven-karma.md) §8).
 - El jugador lidera con órdenes, propuestas y políticas permanentes, no con un menú de gestión.
 
+### Puente de avisos de bandas al consejo (2026-10-17)
+
+`council.issues.bandits` agrega el asunto `bandits` y la opción `defend`. Solo lee recuerdos episódicos `MEMORIES` de tipo percibido `band.raided` que los miembros del consejo ya poseen (incluidos avisos `told`); no consulta `BANDS`, el registro global de eventos ni recuerdos de vecinos. Cada miembro conserva su propia confianza y solo quien conoce el aviso puede plantearlo; los demás se enteran durante la deliberación por el mecanismo habitual de confianza en el ponente. La causa es el evento recordado, sin verificar el relato contra la verdad. `memoryDays` limita la antigüedad (30 días por defecto). Una decisión aprobada no genera orden ejecutable: hacen falta el contrato de guardia, personas, raciones y tiempo reales. El aviso automático del asalto, la ejecución de defensa y la medición bajo hambruna tienen ítems separados de Fase 3 en ROADMAP; actualmente `band.raided` no atraviesa por sí solo el filtro de percepción.
+
 ## Preguntas abiertas
 - Calibración: frecuencia de cismas, sucesiones disputadas y colapsos por siglo; vida media de sectas, clanes y gremios por tipo y era.
 - Calibración: tamaño a partir del cual aparecen facciones y costo de cohesión por miembro.
