@@ -85,6 +85,38 @@ describe("lotes materiales de culto", () => {
     expect(craft().posting).toEqual(craft(setup(), [...materials].reverse()).posting);
     expect(materials[0]?.material).toBe("wax");
   });
+  it.each([NaN, Infinity, -1, 0.5])("rechaza tick no canónico %s", (tick) => {
+    expect(() =>
+      craftCultLot(recipe, materials, makeId("lot", 3), productAccount, event, tick, setup()),
+    ).toThrow();
+  });
+  it.each([NaN, Infinity, 0, -1, 0.5])("rechaza gramos no conservables %s", (grams) => {
+    expect(CultRecipe.safeParse({ ...recipe, inputs: [{ material: "wax", grams }] }).success).toBe(
+      false,
+    );
+  });
+  it("no conserva alias con la receta ni los objetos materiales del llamador", () => {
+    const inputs = materials.map((m) => ({ ...m, material: String(m.material) }));
+    const { lot, posting } = craft(setup(), inputs);
+    expect(lot.materials[0]).not.toBe(inputs[1]);
+    const changed = inputs[1];
+    if (!changed) throw new Error("falta insumo de la prueba");
+    changed.material = "changed";
+    expect(lot.materials[0]?.material).toBe("fiber");
+    expect(posting.transfers[0]?.amount).toBe(10);
+  });
+  it("no permite quemar fracciones ni duplicar insumos de un lote reconstruido", () => {
+    const ledger = setup();
+    const { lot, posting } = craft(ledger);
+    ledger.post(posting);
+    const material = lot.materials[0] as (typeof lot.materials)[number];
+    expect(() =>
+      burnCultLot({ ...lot, materials: [{ ...material, grams: 0.5 }] }, ash, event, 2, ledger),
+    ).toThrow();
+    expect(() =>
+      burnCultLot({ ...lot, materials: [material, material] }, ash, event, 2, ledger),
+    ).toThrow();
+  });
   it("rechaza insumos insuficientes o repetidos sin mutar el ledger", () => {
     const ledger = setup();
     const before = [...ledger.journal()];

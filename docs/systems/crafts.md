@@ -258,6 +258,7 @@ interface Recipe {
 - **Fase 7:** recetas que nacen, se pierden y se redescubren en la historia; ruinas con formaciones vivas; fuegos extraños como tesoros.
 
 ## Tests
+- **Culto, frontera material:** rechazar gramos fraccionarios/no finitos, ticks no canónicos, ids repetidos o mal formados y unidades monetarias; copiar insumos sin alias y validar el gasto agregado mediante `ledger.preview`. La carga de un catálogo opcional requiere diseño: `Content.hash` incluye incluso tipos vacíos registrados, por lo que agregarlo a `CONTENT_KINDS` afecta replay aunque no se active un proceso.
 - **Conservación:** en cada sesión, materia y esencia de entrada = producto + subproductos + `released` + lo que absorbió el recipiente. El metal reforjado conserva su masa menos la escoria registrada.
 - **Determinismo:** misma sesión, mismos pasos y mismo seed dan el mismo producto.
 - **Ninguna decisión del artesano lee `WorkState`:** solo `PerceivedWorkState`.

@@ -4,6 +4,7 @@ import {
   compareStrings,
   type EventId,
   isExternal,
+  isId,
   type Ledger,
   type LedgerAccount,
   type LedgerUnit,
@@ -60,8 +61,9 @@ export function craftCultLot(
   account: LedgerAccount,
   eventId: EventId,
   tick: Tick,
-  ledger: Pick<Ledger, "balance" | "holdings" | "preview">,
+  ledger: Pick<Ledger, "holdings" | "preview">,
 ): { readonly lot: CultLot; readonly posting: Posting } {
+  validateOrigin(id, eventId, tick);
   const parsed = CultRecipe.parse(recipe);
   if (isExternal(account) || ledger.holdings(account).length > 0) {
     throw new TypeError("el producto requiere una cuenta interna vacía y exclusiva");
@@ -80,7 +82,9 @@ export function craftCultLot(
       if (
         matches.length !== 1 ||
         !material ||
-        !material.originEventId ||
+        !isId("event", material.originEventId) ||
+        !isId("lot", material.id) ||
+        !material.unit.startsWith("good:") ||
         material.id === id ||
         material.from === account ||
         isExternal(material.from)
@@ -116,6 +120,23 @@ export function burnCultLot(
   tick: Tick,
   ledger: Pick<Ledger, "preview">,
 ): Posting {
+  validateOrigin(lot.id, eventId, tick);
+  if (
+    !isId("event", lot.originEventId) ||
+    isExternal(lot.account) ||
+    lot.materials.length === 0 ||
+    new Set(lot.materials.map((m) => m.id)).size !== lot.materials.length ||
+    lot.materials.some(
+      (m) =>
+        !isId("lot", m.id) ||
+        !isId("event", m.originEventId) ||
+        !m.unit.startsWith("good:") ||
+        !Number.isSafeInteger(m.grams) ||
+        m.grams <= 0,
+    )
+  ) {
+    throw new TypeError("lote de culto inválido");
+  }
   if (!isExternal(ash)) throw new TypeError("la ceniza requiere un sumidero externo");
   const posting: Posting = {
     tick,
@@ -136,4 +157,10 @@ export function burnCultLot(
   };
   ledger.preview(posting);
   return posting;
+}
+
+function validateOrigin(id: LotId, eventId: EventId, tick: Tick): void {
+  if (!isId("lot", id) || !isId("event", eventId) || !Number.isSafeInteger(tick) || tick < 0) {
+    throw new TypeError("origen o tick inválido para el lote de culto");
+  }
 }
