@@ -3,6 +3,7 @@ export * from "./credit.ts";
 export * from "./creditKind.ts";
 export * from "./famine.ts";
 export * from "./famineMigration.ts";
+export * from "./funerals.ts";
 export * from "./goods.ts";
 export * from "./harvest.ts";
 export * from "./market.ts";
