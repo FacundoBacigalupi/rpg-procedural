@@ -188,6 +188,44 @@ describe("life.bandits: asaltos, reparto y disolución (proceso aislado)", () =>
       expect(w.ledger.balance(acct(h), GRAIN)).toBeGreaterThanOrEqual(Math.min(900_000, 90_000));
   });
 
+  it("con sucesión, la muerte causa el relevo sin repartir ni perder tesoro", () => {
+    const options = {
+      succession: true,
+      rules: { minFounders: 2, raidEveryDays: 100, shareEveryDays: 100 },
+    };
+    const { w, seed } = born(options);
+    const b0 = bandIn(w) as Band;
+    w.ledger.post({
+      tick: 0,
+      eventId: ev(899),
+      transfers: [{ from: acct(w.homes[1] as string), to: vault(), unit: GRAIN, amount: 1234 }],
+    });
+    w.t.set(BANDS, b0.org.id, { ...b0, looted: 1234 });
+    const leader = b0.org.positions[0]?.holder as AgentId;
+    const death = ev(900);
+    w.t.set(ENTITY, leader, {
+      id: leader,
+      originEventId: ev(1),
+      createdAt: 0,
+      endedAt: DAY,
+      endEventId: death,
+    } as never);
+    const before = total(w);
+    const events = step(w, 1, opts(options), seed);
+    const b = bandIn(w) as Band;
+    expect(events.find((e) => e.kind === "band.leader_succeeded")?.causes).toEqual([
+      { kind: "event", event: death },
+    ]);
+    expect(b.org.status).toBe("active");
+    expect(b.org.positions[0]?.holder).not.toBe(leader);
+    expect(w.t.get(PERSON, b.org.positions[0]?.holder as AgentId)).toBeDefined();
+    expect(b.org.members.find((m) => m.agent === leader)?.exitEventId).toBe(death);
+    expect(total(w)).toBe(before);
+    expect(w.ledger.balance(vault(), GRAIN)).toBe(1234);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(bandViolations(b, w.ledger.balance(vault(), GRAIN))).toEqual([]);
+  });
+
   it("si cae el cabecilla se disuelve, el tesoro vuelve a los hogares y la causa es su muerte", () => {
     const { w, seed } = born({ rules: { raidEveryDays: 1, captureChance: 0 } });
     for (let d = 1; d <= 12; d++)

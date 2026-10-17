@@ -36,6 +36,7 @@ import {
   type BandRules,
   bandAccounting,
   bandStrength,
+  chooseBandSuccessor,
   DEFAULT_BAND_RULES,
   deserts,
   desperation,
@@ -69,6 +70,7 @@ import {
   setComponent,
   shareOut,
   shiftLoyalty,
+  succeedBand,
 } from "../../sim/index.ts";
 import { FAMINE } from "./famineRow.ts";
 import { GRAIN_EATEN_PER_PERSON_DAY_G } from "./larder.ts";
@@ -82,8 +84,11 @@ export const BAND_SHARED_EVENT = "band.shared";
 export const BAND_HUNGRY_EVENT = "band.went_hungry";
 export const BAND_MEMBER_LEFT_EVENT = "band.member_left";
 export const BAND_DISSOLVED_EVENT = "band.dissolved";
+export const BAND_SUCCESSION_EVENT = "band.leader_succeeded";
 
 export interface BanditsOptions {
+  /** Opt-in: tras caer el cabecilla, un juramentado leal ocupa la vacante por fuerza. */
+  readonly succession?: boolean;
   readonly rules?: Partial<BandRules>;
   /** Fuerza (0-1) de una persona; por defecto sale de su edad (`ageStrength`). */
   readonly strengthOf?: (truth: ReadonlyWorldTruth, who: AgentId, ageYears: number) => number;
@@ -209,6 +214,39 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
             emissions: {},
             causes: [{ kind: "event", event: cause }],
           });
+        }
+
+        // La vacante conserva la causa de la muerte; no crea personas ni mueve el tesoro.
+        if (
+          o.succession &&
+          leaderOf(band) === null &&
+          memberAgents(band).length >= rules.minFounders
+        ) {
+          const successor = chooseBandSuccessor(
+            band,
+            memberAgents(band)
+              .filter(
+                (m) =>
+                  truth.get(PERSON, m) !== undefined &&
+                  truth.get(ENTITY, m) !== undefined &&
+                  alive(m),
+              )
+              .map((agent) => ({ agent, strength: strengthOf(agent) })),
+            rules,
+          );
+          const vacancy = band.org.positions.find((p) => p.id === "head")?.vacatedBy;
+          if (successor !== null && vacancy !== undefined) {
+            const event = draftEvent(events.length);
+            band = succeedBand(band, successor, ctx.now, event);
+            events.push({
+              kind: BAND_SUCCESSION_EVENT,
+              actors: [successor],
+              place: o.placeOf(truth, successor),
+              data: { band: id, successor },
+              emissions: {},
+              causes: [{ kind: "event", event: vacancy }],
+            });
+          }
         }
 
         // La paz: la hambruna del lugar terminó.
