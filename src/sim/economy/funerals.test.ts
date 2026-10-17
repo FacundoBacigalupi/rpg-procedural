@@ -82,7 +82,8 @@ describe("gasto funerario", () => {
       credit: { ...credit, terms: { ...credit.terms, unsecuredLimit: 5 } },
     });
     expect(limited.loan?.principal).toBe(5);
-    const none = funeralExpense({ ...input, credit: undefined });
+    const { credit: _credit, ...withoutCredit } = input;
+    const none = funeralExpense(withoutCredit);
     expect(none.loan).toBeUndefined();
     expect(none.paid).toBe(20);
   });
