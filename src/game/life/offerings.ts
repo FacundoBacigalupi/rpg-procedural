@@ -109,6 +109,11 @@ export function offeringsProcess(o: OfferingsOptions): ProcessDef {
 
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
+      // Los asientos se aplican al terminar el proceso: las prácticas del mismo
+      // día comparten un saldo provisional, también para lo recibido por pobres.
+      const balances = new Map<string, number>();
+      const balance = (account: LedgerAccount, unit: Parameters<typeof ledger.balance>[1]) =>
+        balances.get(`${account}|${unit}`) ?? ledger.balance(account, unit);
       const make = (
         practice: PracticeDef,
         household: string,
@@ -123,7 +128,7 @@ export function offeringsProcess(o: OfferingsOptions): ProcessDef {
           const unit = goodUnit(good);
           const stocks = new Map<string, number>();
           for (const h of members.keys()) {
-            stocks.set(h, ledger.balance(holderAccount(h as unknown as HolderRef), unit));
+            stocks.set(h, balance(holderAccount(h as unknown as HolderRef), unit));
           }
           const from = holderAccount(household as unknown as HolderRef);
           const total = offeredAmount(stocks.get(household) ?? 0, share, sincerity);
@@ -162,6 +167,13 @@ export function offeringsProcess(o: OfferingsOptions): ProcessDef {
           });
           if (lot.transfers.length > 0) {
             postings.push({ event: draftEvent(k), transfers: lot.transfers });
+            for (const transfer of lot.transfers) {
+              balances.set(
+                `${transfer.from}|${unit}`,
+                balance(transfer.from, unit) - transfer.amount,
+              );
+              balances.set(`${transfer.to}|${unit}`, balance(transfer.to, unit) + transfer.amount);
+            }
           }
         }
       };

@@ -210,6 +210,11 @@ Un linaje deja de ofrendar por algo concreto: se extinguió, migró y dejó el s
 
 ## 11. Economía de las ofrendas
 
+Las prácticas de un mismo día comparten los saldos provisionales de `life.offerings`:
+cada lote descuenta lo ya transferido por las prácticas anteriores e incluye las
+donaciones recibidas por los hogares pobres. Los asientos se aplican al terminar
+el proceso; reservarlos evita gastar repetidamente la misma despensa.
+
 Las ofrendas mueven buena parte de la economía de un mundo así ([economy.md](economy.md)).
 - **Gasto de los hogares:** ritos de calendario, funerales, aniversarios, pedidos. Las familias pobres se endeudan para un funeral digno (economy: crédito y usura), porque un funeral pobre es una pérdida de cara para toda la familia.
 - **Oficios que viven de esto:** fabricantes de incienso (de hierbas mortales o espirituales, con precios muy distintos), papel de ofrenda, velas, tallistas de tablillas, geománticos que eligen tumbas, plañideras, sacerdotes, adivinos y exorcistas.
