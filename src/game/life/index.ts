@@ -2,6 +2,7 @@ export * from "./about.ts";
 export * from "./act.ts";
 export * from "./altitude.ts";
 export * from "./askaround.ts";
+export * from "./bandits.ts";
 export * from "./beliefs.ts";
 export * from "./bondagepolicy.ts";
 export { PREGNANCY, SPACING_DAYS } from "./conception.ts";

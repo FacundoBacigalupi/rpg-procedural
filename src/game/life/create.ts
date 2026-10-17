@@ -200,6 +200,8 @@ export interface LifeOptions {
   readonly council?: LifeParts["council"];
   /** Opt-in (requiere `council`): las acusaciones contadas a un anciano abren un `Case` del consejo (`life.council_cases`); apagado por defecto. */
   readonly councilCases?: LifeParts["councilCases"];
+  /** Opt-in (requiere `famine`): bandas de bandidos que nacen de la hambruna (`life.bandits`); apagado por defecto. */
+  readonly bandits?: LifeParts["bandits"];
   /** Opt-in: el agravio que llega por rumor mueve la relación del tercero; apagado por defecto. */
   readonly rumorGrievance?: boolean;
   /**
@@ -630,6 +632,7 @@ export function optInParts(
   | "schemes"
   | "council"
   | "councilCases"
+  | "bandits"
   | "rumorGrievance"
   | "verboseSteps"
   | "waitAwake"
@@ -787,6 +790,7 @@ export function optInParts(
     ...(options.schemes ? { schemes: options.schemes } : {}),
     ...(options.council ? { council: options.council } : {}),
     ...(options.councilCases ? { councilCases: options.councilCases } : {}),
+    ...(options.bandits ? { bandits: options.bandits } : {}),
     ...(options.rumorGrievance ? { rumorGrievance: true } : {}),
     ...(options.verboseSteps ? { verboseSteps: true } : {}),
     ...(options.waitAwake ? { waitAwake: true } : {}),
@@ -1383,6 +1387,7 @@ export function createLife(
     defs: statuses,
   });
   if (options.councilCases && !options.council) throw new Error("councilCases requiere council");
+  if (options.bandits && !options.famine) throw new Error("bandits requiere famine");
   if (options.patientDecides?.councilAuthority) {
     if (!options.patientDecides.realBonds)
       throw new Error("patientDecides.councilAuthority requiere realBonds");

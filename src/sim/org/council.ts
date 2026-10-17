@@ -8,17 +8,19 @@
 import type { AgentId, EventId, OrgId, SettlementId, Tick } from "../../core/index.ts";
 import { table } from "../world/index.ts";
 
-export type OrgTemplate = "village_council";
+export type OrgTemplate = "village_council" | "bandit_band";
 export type OrgStatus = "active" | "dormant" | "dissolved";
-export type MembershipVia = "founding" | "coopted";
-export type MembershipExit = "death";
+/** `sworn`/`captured`: las bandas (band.ts) reciben gente por juramento o por captura. */
+export type MembershipVia = "founding" | "coopted" | "sworn" | "captured";
+export type MembershipExit = "death" | "desertion" | "dissolution";
 export type CouncilRank = "head" | "elder";
-export type SelectionRule = "seniority";
-export type OrganRule = "consensus_of_elders";
+export type OrgRank = CouncilRank | "follower";
+export type SelectionRule = "seniority" | "strength";
+export type OrganRule = "consensus_of_elders" | "leader_decides";
 
 export interface Membership {
   readonly agent: AgentId;
-  readonly rank: CouncilRank;
+  readonly rank: OrgRank;
   /** Ids de `Position` que ocupa. */
   readonly positions: readonly string[];
   readonly via: MembershipVia;
@@ -47,7 +49,7 @@ export interface Position {
 
 export interface Organ {
   readonly id: string;
-  readonly seats: ReadonlyArray<{ readonly rank: CouncilRank; readonly weight: number }>;
+  readonly seats: ReadonlyArray<{ readonly rank: OrgRank; readonly weight: number }>;
   readonly rule: OrganRule;
 }
 

@@ -17,7 +17,7 @@ import {
   type Tick,
 } from "../../core/index.ts";
 import { table } from "../world/index.ts";
-import { activeMembers, type Organization } from "./council.ts";
+import { activeMembers, type Organization, type OrgRank } from "./council.ts";
 
 export type IssueKind = "famine" | "debt" | "dispute";
 export type IssueOption = "relief" | "extend" | "mediate";
@@ -177,7 +177,7 @@ export interface Weights {
 }
 
 /** Pesos de la utilidad mixta: el cabeza carga más con la organización. */
-export function weightsFor(rank: "head" | "elder", rules: IssueRules): Weights {
+export function weightsFor(rank: OrgRank, rules: IssueRules): Weights {
   const org = clamp(rules.wOrg + (rank === "head" ? 0.1 : 0), 0, 1);
   return { org: round6(org), self: round6(1 - org) };
 }
@@ -258,7 +258,7 @@ export interface Deliberation {
 export function deliberate(i: DeliberateInput): Deliberation {
   const rules = i.rules ?? DEFAULT_ISSUE_RULES;
   const organ = i.org.organs[0];
-  const seatWeight = (rank: "head" | "elder"): number =>
+  const seatWeight = (rank: OrgRank): number =>
     organ?.seats.find((s) => s.rank === rank)?.weight ?? 1;
   const members = [...activeMembers(i.org)].sort((a, b) => (a.agent < b.agent ? -1 : 1));
   const votes: CastVote[] = [];
