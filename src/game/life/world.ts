@@ -75,6 +75,7 @@ import { ambientOf } from "./ambient.ts";
 import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
+import { type BanditsOptions, banditsProcess } from "./bandits.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
@@ -627,6 +628,8 @@ export interface LifeWorld {
   readonly council?: Omit<CouncilOptions, "placeOf" | "day" | "year" | "goods">;
   /** Opt-in (con `council`): la acusación contada a un anciano se vuelve un `Case` del consejo como foro (`life.council_cases`, law §4); sin esto no existe ni corre. */
   readonly councilCases?: CouncilCasesOptions;
+  /** Opt-in (requiere `famine`): bandas de bandidos que nacen de la hambruna (`life.bandits`, organizations §11 «Hambre y armas»); sin esto no existe ni corre. */
+  readonly bandits?: Omit<BanditsOptions, "placeOf" | "day" | "year" | "goods">;
   /** Opt-in: intrigas de asesinato/robo motivadas por un hecho (`life.schemes`, schemes F1b); sin esto no existe ni corre. */
   readonly schemes?: Omit<SchemesOptions, "placeOf" | "day" | "view"> &
     Partial<Pick<SchemesOptions, "view">>;
@@ -1112,6 +1115,17 @@ export function lifeWorld(
           ? [
               councilProcess({
                 ...parts.council,
+                placeOf: placeOf(parts, village),
+                goods: parts.goods,
+                day: parts.clock.day,
+                year: parts.clock.year,
+              }),
+            ]
+          : []),
+        ...(parts.bandits
+          ? [
+              banditsProcess({
+                ...parts.bandits,
                 placeOf: placeOf(parts, village),
                 goods: parts.goods,
                 day: parts.clock.day,
