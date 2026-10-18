@@ -406,6 +406,8 @@ export interface LifeOptions {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano (ración a la tablilla y fiesta) con destino: quemado a un sumidero, enterrado en el lugar, dado a los pobres; asiento en el ledger con evento `offering.made` (`game/life/offerings.ts`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
+  readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
     readonly unit: string;
@@ -686,6 +688,7 @@ export function optInParts(
   | "loanContagionEffects"
   | "loanWorkout"
   | "offerings"
+  | "funerals"
   | "pawn"
   | "hire"
   | "npcMove"
@@ -836,6 +839,7 @@ export function optInParts(
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.offerings ? { offerings: true } : {}),
+    ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
     ...(options.creditHeed ? { creditHeed: options.creditHeed } : {}),
