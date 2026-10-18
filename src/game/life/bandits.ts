@@ -53,6 +53,7 @@ import {
   isActive,
   isMember,
   joinBand,
+  LOCATION,
   leaderOf,
   leaveBand,
   loyaltyOf,
@@ -87,6 +88,8 @@ export const BAND_DISSOLVED_EVENT = "band.dissolved";
 export const BAND_SUCCESSION_EVENT = "band.leader_succeeded";
 
 export interface BanditsOptions {
+  /** Opt-in: emite el asalto solo si cabecilla y un adulto del hogar están en el mismo lugar real. */
+  readonly witnesses?: boolean;
   /** Opt-in: tras caer el cabecilla, un juramentado leal ocupa la vacante por fuerza. */
   readonly succession?: boolean;
   readonly rules?: Partial<BandRules>;
@@ -133,6 +136,7 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
       PERSON.name,
       HOUSEHOLD.name,
       RELATIONS.name,
+      ...(o.witnesses ? [LOCATION.name] : []),
     ],
     writes: [BANDS.name, ENTITY.name],
     run(ctx) {
@@ -276,6 +280,13 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
           if (victim) {
             const people = household.get(victim.home) ?? [];
             const adults = people.filter((p) => ageOf(p) >= rules.minAge);
+            const at = o.witnesses ? truth.get(LOCATION, leader) : undefined;
+            const localRaid =
+              at !== undefined &&
+              adults.some((p) => {
+                const there = truth.get(LOCATION, p);
+                return there !== undefined && there.hex === at.hex && there.space === at.space;
+              });
             const attack = bandStrength(members.map(strengthOf));
             const defense = bandStrength(adults.map(strengthOf));
             const chance = raidChance(attack, defense);
@@ -298,8 +309,12 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
                 kind: BAND_RAIDED_EVENT,
                 actors: [leader],
                 place: o.placeOf(truth, leader),
-                data: { ...base, amount: loot },
-                emissions: {},
+                data: {
+                  ...base,
+                  amount: loot,
+                  ...(localRaid ? { perceptibleRaid: true, raidAt: at } : {}),
+                },
+                emissions: localRaid ? { sight: 0.9, sound: 0.8 } : {},
                 causes: raidCauses,
               });
               post(ev, [{ from: acct(victim.home) as never, to: vault, unit, amount: loot }]);

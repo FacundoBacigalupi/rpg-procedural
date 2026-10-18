@@ -9,9 +9,18 @@ import {
   loadContent,
   type PlaceRef,
 } from "../../core/index.ts";
-import { LOCATION, PERSON } from "../../sim/index.ts";
+import {
+  formMemory,
+  LOCATION,
+  MEMORIES,
+  type Memories,
+  PERSON,
+  type Percept,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { appraiseProcess } from "./appraise.ts";
 import { Life } from "./life.ts";
+import { witnessLived } from "./memories.ts";
 import {
   importanceTiers,
   NPC_PERCEPTS,
@@ -73,6 +82,45 @@ describe("life.witnessing con un mundo", () => {
     const again = npcPerceive(o, t, [e], witnessRng(w.seed));
     expect(JSON.stringify([...again])).toEqual(JSON.stringify([...out]));
     expect(t.get(PERSON, near)).toBeDefined();
+    const raid = {
+      ...e,
+      kind: "band.raided",
+      data: { perceptibleRaid: true, raidAt: at },
+    } as Event;
+    t.set(LOCATION, actor, { hex: at.hex + 1 });
+    expect(npcPerceive(o, t, [{ ...raid, data: {} }], witnessRng(w.seed)).size).toBe(0);
+    const raidSeen = npcPerceive(o, t, [raid], witnessRng(w.seed));
+    expect(raidSeen.has(far)).toBe(false);
+    const seen = raidSeen.get(near)?.[0];
+    expect(seen?.fields.action?.value).toBe("band.raided");
+    const lived = witnessLived(raid, [...raidSeen.values()].flat());
+    expect(lived.some((l) => l.who === near)).toBe(true);
+    const experience = lived.find((l) => l.who === near)?.experience;
+    expect(experience && formMemory(experience).perceived.kind).toBe("band.raided");
+    const anonymous = {
+      ...seen,
+      fields: { presence: seen?.fields.presence, action: seen?.fields.action },
+    } as Percept;
+    expect(witnessLived(raid, [anonymous])[0]?.experience.with).toEqual([]);
+    const vague = { ...seen, fields: { presence: seen?.fields.presence } } as Percept;
+    expect(witnessLived(raid, [vague])).toEqual([]);
+    const appraised = appraiseProcess({
+      clock: w.clock,
+      schemas: w.schemas,
+      stages: w.stages,
+      dims: w.relationDims,
+      bonds: w.relationBonds,
+      habits: w.habits,
+      traits: w.traits,
+      witness: o,
+    }).run({ truth: t, now: e.tick, recent: [raid], rng: witnessRng(w.seed) } as never);
+    const remembered = appraised.changes?.find((c) => c.table === MEMORIES.name && c.id === near);
+    expect(
+      (remembered as { value?: Memories } | undefined)?.value?.items.some(
+        (m) => m.perceived.kind === "band.raided" && m.eventId === raid.id,
+      ),
+    ).toBe(true);
+    expect(appraised.changes?.some((c) => c.table === MEMORIES.name && c.id === far)).toBe(false);
   }, 180_000);
 
   it("el hogar del personaje es de tier 3 (con cupo) y el resto de la aldea de tier 2", () => {

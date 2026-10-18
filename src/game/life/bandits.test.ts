@@ -20,6 +20,7 @@ import {
   ENTITY,
   goodUnit,
   HOUSEHOLD,
+  LOCATION,
   PERSON,
   WorldTruth,
 } from "../../sim/index.ts";
@@ -111,6 +112,7 @@ function step(w: ReturnType<typeof setup>, day: number, o: BanditsOptions, seed 
     w.ledger.post({ tick: now, eventId: ev(++evn), transfers: p.transfers });
   return (r.events ?? []) as never as {
     kind: string;
+    emissions: Record<string, number>;
     data: Record<string, unknown>;
     causes: { kind: string; key?: string }[];
   }[];
@@ -166,6 +168,33 @@ describe("life.bandits: nacimiento (proceso aislado)", () => {
 });
 
 describe("life.bandits: asaltos, reparto y disolución (proceso aislado)", () => {
+  it("solo el opt-in con presencia física emite un asalto perceptible", () => {
+    for (const [enabled, local] of [
+      [false, true],
+      [true, false],
+      [true, true],
+    ]) {
+      const { w, seed } = born();
+      const leader = bandIn(w)?.org.positions[0]?.holder as AgentId;
+      for (const id of w.t.ids(PERSON)) w.t.set(LOCATION, id, { hex: 1 });
+      if (!local) w.t.set(LOCATION, leader, { hex: 2 });
+      const events = Array.from({ length: 12 }, (_, i) =>
+        step(
+          w,
+          i + 1,
+          opts({ witnesses: enabled, rules: { raidEveryDays: 1, captureChance: 0 } }),
+          seed,
+        ),
+      ).flat();
+      const raids = events.filter((e) => e.kind === "band.raided");
+      expect(raids.length).toBeGreaterThan(0);
+      for (const raid of raids) {
+        expect(raid.data.perceptibleRaid).toBe(enabled && local ? true : undefined);
+        expect(raid.emissions).toEqual(enabled && local ? { sight: 0.9, sound: 0.8 } : {});
+      }
+      expect(w.ledger.audit()).toEqual([]);
+    }
+  });
   it("el botín sale de un hogar y entra al tesoro; el ledger audita y se conserva", () => {
     const { w, seed } = born();
     const before = total(w);
