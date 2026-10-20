@@ -46,6 +46,22 @@ const clock: fc.Arbitrary<PlanetClock> = fc
 const tick = fc.integer({ min: -1e15, max: 1e15 });
 
 describe("división entera", () => {
+  it("no pierde un cociente cuando el múltiplo inferior sale del rango seguro", () => {
+    expect(floorDiv(Number.MIN_SAFE_INTEGER, 3)).toBe(-3002399751580331);
+    expect(floorMod(Number.MIN_SAFE_INTEGER, 3)).toBe(2);
+    for (const a of [
+      Number.MIN_SAFE_INTEGER,
+      Number.MIN_SAFE_INTEGER + 1,
+      Number.MIN_SAFE_INTEGER + 2,
+      Number.MAX_SAFE_INTEGER,
+    ])
+      for (const b of [1, 2, 3, 7, 86400, 1e12, Number.MAX_SAFE_INTEGER]) {
+        const q = floorDiv(a, b),
+          r = floorMod(a, b);
+        expect(r >= 0 && r < b).toBe(true);
+        expect(BigInt(q) * BigInt(b) + BigInt(r)).toBe(BigInt(a));
+      }
+  });
   it("floorDiv y floorMod son exactas, también con negativos y cerca del límite", () => {
     fc.assert(
       fc.property(

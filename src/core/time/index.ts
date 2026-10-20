@@ -70,8 +70,10 @@ export function assertTick(t: Tick): Tick {
 
 /** División entera hacia −∞, exacta para enteros seguros (incluidos los negativos). */
 export function floorDiv(a: number, b: number): number {
-  // a − resto es múltiplo exacto de b: el cociente en double queda a menos de medio entero.
-  return Math.round((a - floorMod(a, b)) / b);
+  // Para enteros seguros y b positivo, el error del cociente es menor que 1/b:
+  // no puede redondearse cruzando el entero siguiente. No restar el resto antes:
+  // cerca de MIN_SAFE_INTEGER ese múltiplo puede salir del rango entero seguro.
+  return Math.floor(a / b);
 }
 
 /** Resto con el signo del divisor: siempre en [0, b). Para reducir fases antes de la trigonometría. */
