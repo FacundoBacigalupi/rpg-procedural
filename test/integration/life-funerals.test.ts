@@ -25,6 +25,7 @@ import {
   type EventDraft,
   FACE,
   type GoodDef,
+  LOCATION,
   PERSON,
   PERSON_CULTURE,
   type PostingDraft,
@@ -72,6 +73,9 @@ function fixture(credit = true) {
     .filter((id) => id !== dead && w.truth.get(PERSON, id)?.household === home)
     .sort()[0];
   if (!organizer) throw new Error("falta organizador");
+  const at = w.truth.get(LOCATION, organizer);
+  if (!at) throw new Error("falta ubicación del rito");
+  w.truth.set(LOCATION, provider, at);
   const existing = w.ledger.balance(holderAccount(organizer as AgentId), copper);
   const cause = w.log.all().at(-1);
   if (!cause || existing <= 0) throw new Error("falta cobre");
@@ -144,96 +148,112 @@ describe("funerales opt-in en la vida", () => {
     }
   });
 
-  it("dos muertos comparten despensa sin duplicarla y acumulan la pérdida de cara", () => {
-    const truth = new WorldTruth();
-    const ids = [1, 2, 3, 4].map((n) => makeId("agent", n));
-    const [organizer, dead, otherDead, provider] = ids as [AgentId, AgentId, AgentId, AgentId];
-    for (const id of ids) {
-      const n = ids.indexOf(id);
-      truth.set(PERSON, id, { household: id === provider ? "provider" : "family" } as never);
-      truth.set(ENTITY, id, {
-        id,
-        originEventId: makeId("event", 1),
-        createdAt: 0,
-        ...(id === dead || id === otherDead
-          ? { endedAt: 1, endEventId: makeId("event", n + 10) }
-          : {}),
-      } as never);
-    }
-    truth.set(PERSON_CULTURE, organizer, {
-      holdings: {
-        "funeral.rite": {
-          variant: "burial",
-          strength: 0.1,
-        },
-      },
-    } as never);
-    const grain = ledgerUnit("good:grain");
-    const balances = new Map<string, number>([
-      [`${account("family")}|${grain}`, 15],
-      [`${holderAccount(organizer)}|${grain}`, 3],
-    ]);
-    const events: EventDraft[] = [];
-    const postings: PostingDraft[] = [];
-    const changes: StateChange[] = [];
-    const place = { kind: "cell", cell: makeId("cell", 1) } as const;
-    const ctx = {
-      truth,
-      now: DAY,
-      newId: () => {
-        throw new Error("no debe reservar préstamo");
-      },
-    } as unknown as ProcessContext;
-    resolveFunerals(
-      ctx,
-      {
-        since: 0,
-        provider,
-        fee: 100,
-        rate: 0.2,
-        termDays: 10,
-        unsecuredLimit: 0,
-        materials: [{ good: "grain", amount: 10 }],
-      },
-      [
-        { id: "grain", form: "good" },
-        { id: "copper", form: "coin" },
-      ] as GoodDef[],
-      1,
-      (a, u) => balances.get(`${a}|${u}`) ?? 0,
-      (transfers) => {
-        for (const t of transfers) {
-          balances.set(
-            `${t.from}|${t.unit}`,
-            (balances.get(`${t.from}|${t.unit}`) ?? 0) - t.amount,
-          );
-          balances.set(`${t.to}|${t.unit}`, (balances.get(`${t.to}|${t.unit}`) ?? 0) + t.amount);
-        }
-      },
-      events,
-      postings,
-      changes,
-      (id) =>
-        ({
+  it.each(["local", "other-space", "other-hex", "missing"])(
+    "funerales con proveedor %s: presencia real y reservas compartidas",
+    (location) => {
+      const truth = new WorldTruth();
+      const ids = [1, 2, 3, 4].map((n) => makeId("agent", n));
+      const [organizer, dead, otherDead, provider] = ids as [AgentId, AgentId, AgentId, AgentId];
+      truth.set(LOCATION, organizer, { hex: 1, space: "home" });
+      if (location !== "missing")
+        truth.set(LOCATION, provider, {
+          hex: location === "other-hex" ? 2 : 1,
+          space: location === "other-space" ? "other-home" : "home",
+        });
+      for (const id of ids) {
+        const n = ids.indexOf(id);
+        truth.set(PERSON, id, { household: id === provider ? "provider" : "family" } as never);
+        truth.set(ENTITY, id, {
           id,
-          kind: "body.died",
-          actors: [id === makeId("event", 11) ? dead : otherDead],
-        }) as never,
-      () => place,
-      () => {
-        throw new Error("no debe abrir préstamo");
-      },
-    );
-    expect(events).toHaveLength(2);
-    expect(balances.get(`${holderAccount(dead)}|${grain}`)).toBe(10);
-    expect(balances.get(`${holderAccount(otherDead)}|${grain}`)).toBe(8);
-    expect(balances.get(`${account("family")}|${grain}`)).toBe(0);
-    const face = changes.filter((c) => c.table === FACE.name);
-    expect(face).toHaveLength(1);
-    const adjustment = face[0];
-    if (adjustment?.op !== "set") throw new Error("falta ajuste de cara");
-    expect((adjustment.value as { value: number }).value).toBeCloseTo(0.3, 12);
-  });
+          originEventId: makeId("event", 1),
+          createdAt: 0,
+          ...(id === dead || id === otherDead
+            ? { endedAt: 1, endEventId: makeId("event", n + 10) }
+            : {}),
+        } as never);
+      }
+      truth.set(PERSON_CULTURE, organizer, {
+        holdings: {
+          "funeral.rite": {
+            variant: "burial",
+            strength: 0.1,
+          },
+        },
+      } as never);
+      const grain = ledgerUnit("good:grain");
+      const balances = new Map<string, number>([
+        [`${account("family")}|${grain}`, 15],
+        [`${holderAccount(organizer)}|${grain}`, 3],
+      ]);
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      const changes: StateChange[] = [];
+      const place = { kind: "cell", cell: makeId("cell", 1) } as const;
+      const ctx = {
+        truth,
+        now: DAY,
+        newId: () => {
+          throw new Error("no debe reservar préstamo");
+        },
+      } as unknown as ProcessContext;
+      resolveFunerals(
+        ctx,
+        {
+          since: 0,
+          provider,
+          fee: 100,
+          rate: 0.2,
+          termDays: 10,
+          unsecuredLimit: 0,
+          materials: [{ good: "grain", amount: 10 }],
+        },
+        [
+          { id: "grain", form: "good" },
+          { id: "copper", form: "coin" },
+        ] as GoodDef[],
+        1,
+        (a, u) => balances.get(`${a}|${u}`) ?? 0,
+        (transfers) => {
+          for (const t of transfers) {
+            balances.set(
+              `${t.from}|${t.unit}`,
+              (balances.get(`${t.from}|${t.unit}`) ?? 0) - t.amount,
+            );
+            balances.set(`${t.to}|${t.unit}`, (balances.get(`${t.to}|${t.unit}`) ?? 0) + t.amount);
+          }
+        },
+        events,
+        postings,
+        changes,
+        (id) =>
+          ({
+            id,
+            kind: "body.died",
+            actors: [id === makeId("event", 11) ? dead : otherDead],
+          }) as never,
+        () => place,
+        () => {
+          throw new Error("no debe abrir préstamo");
+        },
+      );
+      if (location !== "local") {
+        expect(events).toEqual([]);
+        expect(postings).toEqual([]);
+        expect(changes).toEqual([]);
+        expect(balances.get(`${account("family")}|${grain}`)).toBe(15);
+        return;
+      }
+      expect(events).toHaveLength(2);
+      expect(balances.get(`${holderAccount(dead)}|${grain}`)).toBe(10);
+      expect(balances.get(`${holderAccount(otherDead)}|${grain}`)).toBe(8);
+      expect(balances.get(`${account("family")}|${grain}`)).toBe(0);
+      const face = changes.filter((c) => c.table === FACE.name);
+      expect(face).toHaveLength(1);
+      const adjustment = face[0];
+      if (adjustment?.op !== "set") throw new Error("falta ajuste de cara");
+      expect((adjustment.value as { value: number }).value).toBeCloseTo(0.3, 12);
+    },
+  );
   it("el scheduler abre deuda real, conserva ajuar y retoma desde SQLite sin repetir el gasto", () => {
     const { life, dead, options } = fixture();
     life.advanceTo(life.now + 2 * DAY);

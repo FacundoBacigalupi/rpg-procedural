@@ -55,6 +55,7 @@ import {
   guarantorSubrogation,
   installmentPerDay,
   interestOf,
+  LOCATION,
   type LoanCommitment,
   loanToCommitment,
   makeBondage,
@@ -361,7 +362,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       RELATIONS.name,
       ...(o.contagionCaution ? [CONTAGION_STATE.name] : []),
       ...(o.bondage?.onlyWithoutOtherWage ? [TRADE_RECEIPTS.name] : []),
-      ...(o.funerals ? [FUNERALS.name, FACE.name, PERSON_CULTURE.name] : []),
+      ...(o.funerals ? [FUNERALS.name, FACE.name, PERSON_CULTURE.name, LOCATION.name] : []),
     ],
     writes: [
       LOANS.name,

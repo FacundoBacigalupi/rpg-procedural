@@ -1,7 +1,7 @@
 // Resolver dentro de life.loans mantiene un único escritor de los compromisos y un presupuesto
 // compartido. Cada muerto se marca una vez; el origen es su evento real body.died.
 import type { AgentId, Event, EventId, LedgerAccount, LedgerUnit } from "../../core/index.ts";
-import { type HolderRef, holderAccount, makeId, placeKey } from "../../core/index.ts";
+import { type HolderRef, holderAccount, makeId } from "../../core/index.ts";
 import {
   adjustFace,
   draftEvent,
@@ -11,6 +11,7 @@ import {
   funeralExpense,
   type GoodDef,
   goodUnit,
+  LOCATION,
   PERSON,
   PERSON_CULTURE,
   type PostingDraft,
@@ -101,7 +102,9 @@ export function resolveFunerals(
     const organizer = members[0] as AgentId | undefined;
     if (!household || !organizer || provider.household === household) continue;
     // El proveedor debe ver el rito: no se pierde cara públicamente por una muerte desconocida.
-    if (placeKey(placeOf(organizer)) !== placeKey(placeOf(o.provider))) continue;
+    const at = ctx.truth.get(LOCATION, organizer);
+    const providerAt = ctx.truth.get(LOCATION, o.provider);
+    if (!at || !providerAt || at.hex !== providerAt.hex || at.space !== providerAt.space) continue;
     const holding = ctx.truth.get(PERSON_CULTURE, organizer)?.holdings["funeral.rite"];
     if (holding?.variant !== "burial") continue;
     const materials = o.materials.map((m) => ({
