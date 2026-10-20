@@ -5,6 +5,7 @@ export * from "./goal-metrics.ts";
 export * from "./html.ts";
 export * from "./layer-pull.ts";
 export * from "./meaning-vacuum.ts";
+export * from "./oscillation-metrics.ts";
 export * from "./repro.ts";
 export * from "./scenario.ts";
 export * from "./sim.ts";

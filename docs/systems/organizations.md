@@ -451,6 +451,7 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 ## Implementación
 - **Fase 1:** nada de organizaciones; la aldea tiene un jefe y mayores como NPCs con respeto, sin estructura.
 - **Fase 3 (offscreen):** consejo de aldea como primera organización (reparto, defensa, tributo); bandas de bandidos que nacen del hambre y se disuelven; membresía y lealtad como relación con la organización.
+  - Sucesión de bandas (2026-10-17): `sim/org/band.ts` ofrece `chooseBandSuccessor` y `succeedBand`; el único escritor `life.bandits` lo aplica con `BanditsOptions.succession: true`. Tras registrar las muertes, exige al menos `minFounders` sobrevivientes y elige solo entre juramentados activos existentes con lealtad al menos `desertBelow`; fuerza descendente, id ascendente. Los cautivos no disputan la vacante. No exige hambre ni edad de reclutamiento a los veteranos. El relevo conserva membresías cerradas, lealtades y cuenta del tesoro; actualiza rango, puesto y evento de origen del mandato. `band.leader_succeeded` cita el evento que dejó la vacante. Sin sucesor se conserva la disolución; apagado conserva el comportamiento anterior. El crecimiento territorial y coordinación con `war` tienen su ítem propio de Fase 3 en ROADMAP.
 - **Fase 4 (cultivo):** secta mínima como plantilla: prueba de ingreso con instrumentos con error, rangos sobre reinos culturales, maestro y discípulo, sueldos, puntos de contribución.
 - **Fase 6 (organizaciones):** el modelo completo: puestos, órganos, deliberación y ejecución con brecha, facciones emergentes, tesoro con ingresos y gastos, corrupción con huellas, normas y disciplina, sucesión y crisis, relaciones y diplomacia, cismas, absorciones, plantillas de clan, gremio, casa comercial, templo y sociedad secreta.
 - **Fase 7 (historia):** ciclo de vida en modo agregado (procesos de riesgo), organizaciones que nacen y mueren en la historia y dejan legados, rencores hereditarios entre organizaciones.
@@ -481,6 +482,14 @@ Cada plantilla trae rangos, puestos, órganos, ingreso, fuentes de ingresos y no
 - El hogar no es una organización; un clan sí.
 - El karma de lo que hace una organización es de las personas que lo hicieron; la fortuna colectiva es derivada ([heaven-karma.md](heaven-karma.md) §8).
 - El jugador lidera con órdenes, propuestas y políticas permanentes, no con un menú de gestión.
+
+### Puente de avisos de bandas al consejo (2026-10-17)
+
+`council.issues.bandits` agrega el asunto `bandits` y la opción `defend`. Solo lee recuerdos episódicos `MEMORIES` de tipo percibido `band.raided` que los miembros del consejo ya poseen (incluidos avisos `told`); no consulta `BANDS`, el registro global de eventos ni recuerdos de vecinos. Cada miembro conserva su propia confianza y solo quien conoce el aviso puede plantearlo; los demás se enteran durante la deliberación por el mecanismo habitual de confianza en el ponente. La causa es el evento recordado, sin verificar el relato contra la verdad. `memoryDays` limita la antigüedad (30 días por defecto). Una decisión aprobada no genera orden ejecutable: hacen falta el contrato de guardia, personas, raciones y tiempo reales. Los testigos NPC se describen abajo; la difusión de avisos, la ejecución de defensa y la medición bajo hambruna tienen ítems separados de Fase 3 en ROADMAP.
+
+### Testigos NPC de asaltos locales (2026-10-18)
+
+`bandits.witnesses` hace perceptible un `band.raided` solo cuando cabecilla y un adulto del hogar asaltado comparten hex y espacio reales. Los asaltos agregados sin esa coincidencia siguen silenciosos. El productor fija `raidAt`, agrega la marca persistida `perceptibleRaid` y emisiones de vista/oído; sin la opción conserva el evento anterior. `life.witnessing` y `life.appraise` recalculan la misma percepción con el seed y evento, usando la ubicación fijada aunque el cabecilla se haya movido después. Solo un percept que leyó `action: band.raided` forma memoria, con confianza limitada por esa lectura; sin identidad percibida no conoce autor. No accede al botín, la cuenta ni la composición de la banda. `life.appraise` conserva la propiedad exclusiva de `MEMORIES` y el puente del consejo lee estos recuerdos desde el siguiente día de deliberación. La difusión contada/rumores y la percepción del jugador tienen ítems separados en ROADMAP.
 
 ## Preguntas abiertas
 - Calibración: frecuencia de cismas, sucesiones disputadas y colapsos por siglo; vida media de sectas, clanes y gremios por tipo y era.

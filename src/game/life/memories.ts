@@ -5,6 +5,7 @@
 
 import type { AgentId, Event } from "../../core/index.ts";
 import { type Experience, PERCEPT_KEYS, type Percept } from "../../sim/index.ts";
+import { perceptibleBandRaid } from "./band-raid.ts";
 
 export interface Lived {
   readonly who: AgentId;
@@ -268,7 +269,11 @@ export function witnessLived(
   let valence = 0;
   const lived = livedFrom(e);
   const parties = new Set<string>([...e.actors, ...lived.map((l) => l.who)]);
-  if (e.kind === "body.died") {
+  const raid = perceptibleBandRaid(e);
+  if (raid) {
+    intensity = 0.7;
+    valence = -0.7;
+  } else if (e.kind === "body.died") {
     intensity = 0.5;
     valence = -0.5;
   } else if (lived.length > 0) {
@@ -279,11 +284,22 @@ export function witnessLived(
   }
   const out: Lived[] = [];
   for (const p of percepts) {
+    if (raid && (p.sourceEventId !== e.id || p.fields.action?.value !== "band.raided")) continue;
     if (parties.has(p.observer)) continue;
-    const clarity = perceptClarity(p);
+    const clarity = raid
+      ? Math.min(perceptClarity(p), p.fields.action?.confidence ?? 0)
+      : perceptClarity(p);
     if (clarity < WITNESS_MIN_CLARITY) continue;
     const knows = p.fields.identity?.value != null;
-    const who = (knows ? e.actors : []).filter((a) => a !== p.observer) as AgentId[];
+    const who = (
+      raid
+        ? typeof p.fields.identity?.value === "string"
+          ? [p.fields.identity.value]
+          : []
+        : knows
+          ? e.actors
+          : []
+    ).filter((a) => a !== p.observer) as AgentId[];
     out.push({
       who: p.observer,
       experience: {

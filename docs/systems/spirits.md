@@ -210,6 +210,11 @@ Un linaje deja de ofrendar por algo concreto: se extinguió, migró y dejó el s
 
 ## 11. Economía de las ofrendas
 
+Las prácticas de un mismo día comparten los saldos provisionales de `life.offerings`:
+cada lote descuenta lo ya transferido por las prácticas anteriores e incluye las
+donaciones recibidas por los hogares pobres. Los asientos se aplican al terminar
+el proceso; reservarlos evita gastar repetidamente la misma despensa.
+
 Las ofrendas mueven buena parte de la economía de un mundo así ([economy.md](economy.md)).
 - **Gasto de los hogares:** ritos de calendario, funerales, aniversarios, pedidos. Las familias pobres se endeudan para un funeral digno (economy: crédito y usura), porque un funeral pobre es una pérdida de cara para toda la familia.
 - **Oficios que viven de esto:** fabricantes de incienso (de hierbas mortales o espirituales, con precios muy distintos), papel de ofrenda, velas, tallistas de tablillas, geománticos que eligen tumbas, plañideras, sacerdotes, adivinos y exorcistas.
@@ -217,6 +222,12 @@ Las ofrendas mueven buena parte de la economía de un mundo así ([economy.md](e
 - **Templos como tesoros:** reciben ofrendas y tierras, prestan con interés y guardan depósitos. Son ricos, y por eso los saquean los ejércitos y los codician los reyes ([war.md](war.md), state).
 - **El mercado de creencias:** se vende mérito, perdón, una buena reencarnación y papel moneda "para el más allá". Nada de eso funciona como se dice (heaven-karma §7: el mérito no se compra), pero todo mueve dinero real. El que regala comida a los pobres en el festival sí gana mérito, aunque crea que lo ganó por otra razón.
 - **Ajuar funerario:** los ricos se entierran con bienes. Es riqueza sacada de circulación que vuelve por el saqueo (law: profanación), por la arqueología ([deep-history.md](deep-history.md) §2, §6-§7) o nunca.
+
+Núcleo puro de Fase 3 (2026-10-17): `sim/economy/funerals.ts` recibe el rito ya elegido y reservas reales. Cada material se transfiere a un destino explícito (tumba para ajuar, ceniza o destinatario para otros bienes), descontando partidas repetidas de la misma reserva. Los honorarios salen del cobre del hogar; si los materiales alcanzan, el déficit puede financiarse con `makeLoan`, limitado por garantías y monedas existentes del prestamista. El resultado devuelve transferencias, préstamo con origen causal, dignidad y pérdida de cara propuesta según el peso social recibido; no crea eventos ni modifica reputaciones.
+
+Entierro opt-in (2026-10-18): `LifeOptions.funerals` exige un límite temporal `since` persistible, proveedor existente, costos/materiales y, opcionalmente, prestamista existente y condiciones. El helper `game/life/funerals.ts` corre dentro de `life.loans` (único escritor de préstamos y presupuesto compartido), sin proceso adicional. Una muerte con `ENTITY.endEventId` que cita `body.died`, posterior a `since`, puede recibir rito una sola vez (`life.funerals`). El primer familiar vivo de costumbre personal `burial` organiza ante el proveedor presente. Los materiales salen primero de su bolsa y luego de la despensa; el cobre sale de su bolsa personal y del crédito de la bolsa del prestamista. El ajuar queda separado del suelo genérico, en la cuenta del muerto, y no desaparece. `funeral.held` cita la muerte y la costumbre; guarda déficit, dignidad y crédito. Cuando el proveedor presencia el déficit, se reduce la cara del hogar, acumulando correctamente varios ritos del mismo día. El crédito se registra en `LOANS`/`COMMITMENTS` y se cobra por la ruta existente, sin acuñar principal ni interés. Al retomar hay que suministrar las mismas opciones explícitas, como con `loanSeeds`; `since` no se recalcula desde el tick del checkpoint.
+
+La versión actual cubre entierro económico, con continuidad SQLite comprobada desde un fixture que inyecta muerte. Presencia (corrección 2026-10-20): proveedor y organizador deben tener `LOCATION` y compartir `hex` y `space`; el `PlaceRef` agregado de la aldea no prueba cercanía. La prueba de integración cubre otro espacio, otro hex y ubicación ausente, sin cobro ni pérdida de cara remotos. Si muere un titular de las bolsas del crédito, se suspende el cobro funerario: otro familiar vivo no habilita cobrarle a un muerto. ROADMAP separa los otros ritos, la tumba como lugar físico, decisiones desde conocimiento de la muerte, propagación por percepts/testigos, sucesión de la bolsa obligada y replay desde seed/planes como ítems pendientes de Fase 3.
 
 ## 12. El jugador y el narrador
 - **El narrador cuenta el rito y lo que el personaje percibe**, nunca lo que pasa del otro lado si el personaje no puede verlo. Un mortal huele el incienso y siente paz o culpa; un cultivador con sentido espiritual puede notar que el salón está vacío, o que algo absorbe el humo.

@@ -61,6 +61,7 @@ vi.mock("../../game/index.ts", async (importOriginal) => {
           },
           world: {
             clock: { day: 10, year: 100 },
+            map: {},
             truth,
             ledger: {},
             log: {
@@ -152,6 +153,8 @@ describe("full-profile: fallos de worker sin crear una Life", () => {
     if (!("stateHash" in report)) throw new Error("reporte completo esperado");
     expect(report.stateHash).toMatchObject({ tick: 100, total: "h100", parts: { events: "e100" } });
     expect(report.stateHash.hashMs).toBeGreaterThanOrEqual(0);
+    expect(report.oscillation.interval).toEqual({ fromExclusive: 0, toInclusive: 100 });
+    expect(report.oscillation.rows.every((row) => row.oscillation === null)).toBe(true);
   });
 
   it("los fallos posteriores a la creación conservan la etapa del fallo", () => {

@@ -13,7 +13,7 @@ import {
   optionsOf,
 } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
-import { checkInvariants, DEMOGRAPHY } from "../../sim/index.ts";
+import { checkInvariants, DEMOGRAPHY, oscillationYearOfMap } from "../../sim/index.ts";
 import { commerceLifeOptions, runCommerceTurns } from "./commerce-coverage.ts";
 import {
   type FullProfileConfig,
@@ -26,6 +26,7 @@ import {
 } from "./full-profile.ts";
 import { healthDebtFocus } from "./full-profile-focus.ts";
 import { natalityLifeOptions } from "./natality-coverage.ts";
+import { profileOscillation } from "./oscillation-metrics.ts";
 import { livingHouseholds, rescueLoanSeeds, runRescueTurns } from "./rescue-coverage.ts";
 import { runSensesTurns } from "./senses-coverage.ts";
 
@@ -223,6 +224,13 @@ function measureFullProfileSeed(
     // Incluye verdad, eventos, ledger, ids y cola; no versiones ni RNG (ver tooling.md, hash del estado).
     stateHash: { tick: life.now, total: stateHash.total, parts: stateHash.parts, hashMs },
     metrics: profileDemography(world.log.all(), from),
+    oscillation: profileOscillation(world.log.all(), {
+      from,
+      to: life.now,
+      clock: world.clock,
+      yearOf: (day) => oscillationYearOfMap(world.map, world.clock, seed, day),
+      population: [coverageInitial, coverageFinal],
+    }),
     coverage: {
       initial: coverageInitial,
       final: coverageFinal,

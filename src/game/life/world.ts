@@ -106,6 +106,7 @@ import { type FamineOptions, famineProcess } from "./famine.ts";
 import { footwearMendProcess } from "./footwear-mend.ts";
 import { footwearRoadMendProcess } from "./footwear-road-mend.ts";
 import { forecastBeforeLeaving } from "./forecast.ts";
+import type { FuneralOptions } from "./funerals.ts";
 import { gatheringsFor } from "./gathering-provider.ts";
 import { goalDeathClosureProcess } from "./goal-death.ts";
 import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
@@ -644,6 +645,7 @@ export interface LifeWorld {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
+  readonly funerals?: FuneralOptions;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
     readonly unit: string;
@@ -1373,6 +1375,9 @@ export function lifeWorld(
           : []),
         neighborsProcess({ clock: parts.clock, goods: parts.goods }),
         loansProcess({
+          ...(parts.funerals
+            ? { funerals: parts.funerals, eventOf: (id) => parts.log.get(id) }
+            : {}),
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.debtKnowledge === true ? { debtKnowledge: true } : {}),
           clock: parts.clock,

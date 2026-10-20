@@ -98,7 +98,8 @@ export function orderFrom(
   at: Tick,
   issuedEvent: EventId,
 ): Order | null {
-  if (d.outcome !== "enacted") return null;
+  // La defensa aún requiere su contrato de guardia y recursos; una resolución no la ejecuta.
+  if (d.outcome !== "enacted" || d.option === "defend") return null;
   const executor = chooseExecutor(org, d);
   if (executor === null) return null;
   return {

@@ -10,6 +10,8 @@
 import {
   type AgentId,
   type EntityRef,
+  type Event,
+  type EventId,
   type HolderRef,
   holderAccount,
   type Ledger,
@@ -46,12 +48,14 @@ import {
   endBondage,
   estimateDisguise,
   executeDefault,
+  FACE,
   type GoodDef,
   type Guarantor,
   goodUnit,
   guarantorSubrogation,
   installmentPerDay,
   interestOf,
+  LOCATION,
   type LoanCommitment,
   loanToCommitment,
   makeBondage,
@@ -60,6 +64,7 @@ import {
   PARCEL,
   type Parcel,
   PERSON,
+  PERSON_CULTURE,
   type PostingDraft,
   type ProcessDef,
   payLoan,
@@ -75,6 +80,12 @@ import {
   workBondageDay,
 } from "../../sim/index.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
+import {
+  FUNERALS,
+  type FuneralOptions,
+  resolveFunerals,
+  validateFuneralOptions,
+} from "./funerals.ts";
 
 export const LOANS_PROCESS = "life.loans";
 
@@ -160,6 +171,8 @@ export interface LoanSeed {
 }
 
 export interface LoansOptions {
+  readonly funerals?: FuneralOptions;
+  readonly eventOf?: (id: EventId) => Event | undefined;
   /** Opt-in: reserva común de saldos con las acciones económicas de la misma fase. */
   readonly economicBatch?: boolean;
   /** Opt-in: anuncia a las partes los derechos creados cuando paga un fiador. */
@@ -327,6 +340,7 @@ export function loansOf(truth: ReadonlyWorldTruth, borrowerAccount: LedgerAccoun
 const acct = (home: string): LedgerAccount => holderAccount(home as unknown as HolderRef);
 
 export function loansProcess(o: LoansOptions): ProcessDef {
+  if (o.funerals) validateFuneralOptions(o.funerals, o.goods);
   const goodDef = new Map(o.goods.map((g) => [g.id, g]));
   const enf = o.enforcement ? { enforcement: o.enforcement } : {};
   return {
@@ -348,6 +362,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       RELATIONS.name,
       ...(o.contagionCaution ? [CONTAGION_STATE.name] : []),
       ...(o.bondage?.onlyWithoutOtherWage ? [TRADE_RECEIPTS.name] : []),
+      ...(o.funerals ? [FUNERALS.name, FACE.name, PERSON_CULTURE.name, LOCATION.name] : []),
     ],
     writes: [
       LOANS.name,
@@ -355,10 +370,11 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       ENTITY.name,
       PARCEL.name,
       ...(o.bondage?.abuse ? [RELATIONS.name] : []),
+      ...(o.funerals ? [FUNERALS.name, FACE.name] : []),
     ],
     run(ctx) {
       const ledger = ctx.ledger;
-      if (!ledger || o.seeds.length === 0) return {};
+      if (!ledger || (o.seeds.length === 0 && !o.funerals)) return {};
       const today = Math.floor(ctx.now / o.clock.day);
 
       const firstAlive = (home: string): AgentId | undefined => {
@@ -581,6 +597,19 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       for (const r of rows) {
         let l = r.loan;
         if (l.status !== "active") continue;
+        // Los funerales obligan bolsas personales. La sucesión aún no reasigna esa obligación:
+        // otro familiar vivo no habilita cobrar la bolsa de un titular muerto o inexistente.
+        if (l.seed.startsWith("funeral:")) {
+          const debtor = ctx.truth.get(ENTITY, l.borrowerAccount as unknown as EntityRef);
+          const creditor = ctx.truth.get(ENTITY, l.lenderAccount as unknown as EntityRef);
+          if (
+            !debtor ||
+            !creditor ||
+            debtor.endedAt !== undefined ||
+            creditor.endedAt !== undefined
+          )
+            continue;
+        }
         const lenderMan = firstAlive(l.lender);
         const borrowerMan = firstAlive(l.borrower);
         if (!lenderMan || !borrowerMan) continue;
@@ -1167,6 +1196,32 @@ export function loansProcess(o: LoansOptions): ProcessDef {
         }
       }
 
+      if (o.funerals && o.eventOf)
+        resolveFunerals(
+          ctx,
+          o.funerals,
+          o.goods,
+          today,
+          bal,
+          apply,
+          events,
+          postings,
+          changes,
+          o.eventOf,
+          (who) => o.placeOf(ctx.truth, who),
+          (base, dead) => {
+            const loan: LoanRow = { ...base, seed: `funeral:${dead}` };
+            changes.push(
+              setComponent(ENTITY, loan.id, {
+                id: loan.id,
+                originEventId: loan.originEventId,
+                createdAt: ctx.now,
+              } as never),
+              setComponent(LOANS, loan.id, loan),
+              setComponent(COMMITMENTS, loan.id, loanToCommitment(loan, enf)),
+            );
+          },
+        );
       if (events.length === 0) return {};
       return { events, postings, changes };
     },

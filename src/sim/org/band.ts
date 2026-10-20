@@ -269,6 +269,69 @@ export const memberAgents = (b: Band): readonly AgentId[] =>
 export const leaderOf = (b: Band): AgentId | null =>
   b.org.positions.find((p) => p.id === HEAD_POSITION)?.holder ?? null;
 
+/** Solo juramentados activos y leales disputan la vacante; fuerza primero, id desempata.
+ * La lista recibida contiene únicamente personas vivas existentes, verificadas por el llamador.
+ * No exige hambre ni el límite de edad de reclutamiento: un veterano sigue siendo miembro.
+ */
+export function chooseBandSuccessor(
+  b: Band,
+  candidates: readonly { readonly agent: AgentId; readonly strength: number }[],
+  r: BandRules,
+): AgentId | null {
+  if (!isActive(b) || leaderOf(b) !== null) return null;
+  const eligible = new Set(
+    activeMembers(b.org)
+      .filter(
+        (m) => m.via !== "captured" && (b.loyalty.toward[m.agent]?.value ?? 0) >= r.desertBelow,
+      )
+      .map((m) => m.agent),
+  );
+  return (
+    [...candidates]
+      .filter((c) => eligible.has(c.agent))
+      .sort(
+        (a, z) => z.strength - a.strength || (a.agent < z.agent ? -1 : a.agent > z.agent ? 1 : 0),
+      )[0]?.agent ?? null
+  );
+}
+
+/** Ocupa la vacante sin alterar membresía histórica, lealtades ni tesoro. */
+export function succeedBand(b: Band, who: AgentId, at: Tick, event: EventId): Band {
+  if (
+    !isActive(b) ||
+    leaderOf(b) !== null ||
+    !activeMembers(b.org).some((m) => m.agent === who && m.via !== "captured")
+  )
+    return b;
+  return {
+    ...b,
+    org: {
+      ...b.org,
+      members: b.org.members.map((m) =>
+        m.until !== undefined
+          ? m
+          : {
+              ...m,
+              rank: m.agent === who ? "head" : "follower",
+              positions: m.agent === who ? [HEAD_POSITION] : [],
+            },
+      ),
+      positions: b.org.positions.map((p) =>
+        p.id !== HEAD_POSITION
+          ? p
+          : {
+              id: p.id,
+              title: p.title,
+              selection: p.selection,
+              holder: who,
+              since: at,
+              originEventId: event,
+            },
+      ),
+    },
+  };
+}
+
 /** Alguien se suma por juramento o por captura (tope `maxMembers`); idempotente si ya es miembro. */
 export function joinBand(
   b: Band,

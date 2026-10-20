@@ -36,6 +36,7 @@ import {
   type BandRules,
   bandAccounting,
   bandStrength,
+  chooseBandSuccessor,
   DEFAULT_BAND_RULES,
   deserts,
   desperation,
@@ -52,6 +53,7 @@ import {
   isActive,
   isMember,
   joinBand,
+  LOCATION,
   leaderOf,
   leaveBand,
   loyaltyOf,
@@ -69,6 +71,7 @@ import {
   setComponent,
   shareOut,
   shiftLoyalty,
+  succeedBand,
 } from "../../sim/index.ts";
 import { FAMINE } from "./famineRow.ts";
 import { GRAIN_EATEN_PER_PERSON_DAY_G } from "./larder.ts";
@@ -82,8 +85,13 @@ export const BAND_SHARED_EVENT = "band.shared";
 export const BAND_HUNGRY_EVENT = "band.went_hungry";
 export const BAND_MEMBER_LEFT_EVENT = "band.member_left";
 export const BAND_DISSOLVED_EVENT = "band.dissolved";
+export const BAND_SUCCESSION_EVENT = "band.leader_succeeded";
 
 export interface BanditsOptions {
+  /** Opt-in: emite el asalto solo si cabecilla y un adulto del hogar están en el mismo lugar real. */
+  readonly witnesses?: boolean;
+  /** Opt-in: tras caer el cabecilla, un juramentado leal ocupa la vacante por fuerza. */
+  readonly succession?: boolean;
   readonly rules?: Partial<BandRules>;
   /** Fuerza (0-1) de una persona; por defecto sale de su edad (`ageStrength`). */
   readonly strengthOf?: (truth: ReadonlyWorldTruth, who: AgentId, ageYears: number) => number;
@@ -128,6 +136,7 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
       PERSON.name,
       HOUSEHOLD.name,
       RELATIONS.name,
+      ...(o.witnesses ? [LOCATION.name] : []),
     ],
     writes: [BANDS.name, ENTITY.name],
     run(ctx) {
@@ -211,6 +220,39 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
           });
         }
 
+        // La vacante conserva la causa de la muerte; no crea personas ni mueve el tesoro.
+        if (
+          o.succession &&
+          leaderOf(band) === null &&
+          memberAgents(band).length >= rules.minFounders
+        ) {
+          const successor = chooseBandSuccessor(
+            band,
+            memberAgents(band)
+              .filter(
+                (m) =>
+                  truth.get(PERSON, m) !== undefined &&
+                  truth.get(ENTITY, m) !== undefined &&
+                  alive(m),
+              )
+              .map((agent) => ({ agent, strength: strengthOf(agent) })),
+            rules,
+          );
+          const vacancy = band.org.positions.find((p) => p.id === "head")?.vacatedBy;
+          if (successor !== null && vacancy !== undefined) {
+            const event = draftEvent(events.length);
+            band = succeedBand(band, successor, ctx.now, event);
+            events.push({
+              kind: BAND_SUCCESSION_EVENT,
+              actors: [successor],
+              place: o.placeOf(truth, successor),
+              data: { band: id, successor },
+              emissions: {},
+              causes: [{ kind: "event", event: vacancy }],
+            });
+          }
+        }
+
         // La paz: la hambruna del lugar terminó.
         const calm = (famineAt(settlement)?.state ?? "none") === "none";
         if (calm && band.peaceSince === null) band = { ...band, peaceSince: ctx.now };
@@ -238,6 +280,13 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
           if (victim) {
             const people = household.get(victim.home) ?? [];
             const adults = people.filter((p) => ageOf(p) >= rules.minAge);
+            const at = o.witnesses ? truth.get(LOCATION, leader) : undefined;
+            const localRaid =
+              at !== undefined &&
+              adults.some((p) => {
+                const there = truth.get(LOCATION, p);
+                return there !== undefined && there.hex === at.hex && there.space === at.space;
+              });
             const attack = bandStrength(members.map(strengthOf));
             const defense = bandStrength(adults.map(strengthOf));
             const chance = raidChance(attack, defense);
@@ -260,8 +309,12 @@ export function banditsProcess(o: BanditsOptions): ProcessDef {
                 kind: BAND_RAIDED_EVENT,
                 actors: [leader],
                 place: o.placeOf(truth, leader),
-                data: { ...base, amount: loot },
-                emissions: {},
+                data: {
+                  ...base,
+                  amount: loot,
+                  ...(localRaid ? { perceptibleRaid: true, raidAt: at } : {}),
+                },
+                emissions: localRaid ? { sight: 0.9, sound: 0.8 } : {},
                 causes: raidCauses,
               });
               post(ev, [{ from: acct(victim.home) as never, to: vault, unit, amount: loot }]);

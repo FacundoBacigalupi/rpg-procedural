@@ -6,6 +6,7 @@ import {
   type Band,
   type BandCandidate,
   bandViolations,
+  chooseBandSuccessor,
   chooseLeader,
   DEFAULT_BAND_RULES,
   deserts,
@@ -22,6 +23,7 @@ import {
   raidChance,
   raidLoot,
   shareOut,
+  succeedBand,
   treasuryOf,
 } from "./band.ts";
 
@@ -75,6 +77,28 @@ function band(n = 4): Band {
 }
 
 describe("sim/org/band: decisiones puras", () => {
+  it("la sucesión solo toma juramentados activos, conserva tesoro y desempata por id", () => {
+    let b = band(8);
+    b = leaveBand(b, leaderOf(b) as AgentId, { at: 3, kind: "death", event: ev(2) });
+    b = joinBand(b, ag(99), "captured", 3, ev(3), R);
+    const crew = memberAgents(b).filter((a) => a !== ag(99));
+    const candidates = [
+      ...crew.map((agent) => ({ agent, strength: 0.5 })),
+      { agent: ag(99), strength: 1 },
+      { agent: ag(100), strength: 1 },
+    ];
+    const who = chooseBandSuccessor(b, candidates, R) as AgentId;
+    expect(who).toBe([...crew].sort()[0]);
+    expect(chooseBandSuccessor(b, [...candidates].reverse(), R)).toBe(who);
+    const next = succeedBand(b, who, 4, ev(4));
+    expect(leaderOf(next)).toBe(who);
+    expect(next.loyalty).toBe(b.loyalty);
+    expect(treasuryOf(next)).toBe(treasuryOf(b));
+    expect(memberAgents(next)).toEqual(memberAgents(b));
+    expect(bandViolations(next, 0)).toEqual([]);
+    expect(succeedBand(next, ag(100), 5, ev(5))).toBe(next);
+    expect(chooseBandSuccessor({ ...b, loyalty: { toward: {} } }, candidates, R)).toBeNull();
+  });
   it("el cabecilla es el más fuerte y desesperado, con desempate por id", () => {
     const l = chooseLeader([cand(3, { strength: 0.5 }), cand(2), cand(1)], R);
     expect(l?.agent).toBe(ag(1));

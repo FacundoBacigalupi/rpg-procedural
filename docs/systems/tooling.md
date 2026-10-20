@@ -48,6 +48,25 @@ por sí solas cobertura del sistema.
 Los errores de lectura de estas fotos se registran como `coverage-initial` o
 `coverage-final`; los cálculos posteriores de métricas usan la etapa `report`.
 
+**Preparación de calibración de oscilación (2026-10-18):** el reporte por seed de
+full-profile incluye `oscillation`, calculado después de la corrida por
+`tools/sim/oscillation-metrics.ts`. Sus ventanas son años absolutos del reloj de
+oscilación (`round(clock.year / clock.day)` días), con cuenca/fase/valor,
+teleconexión y factor de lluvia leídos de la misma ley que usa la vida. Incluye
+años neutros sin eventos y marca cuenca ausente con `null`. El intervalo de eventos
+es `(from, to]`, sin historia inicial; conserva fechas, datos, lugar y causas de
+`weather.drought`, `weather.flood`, `famine.*` y muertes `starvation`. Una causa
+puede citar el año seco anterior: no se reescribe para hacerla coincidir con el
+año de la muerte o del hambre. Días observados y fotos disponibles de población
+inicial/final describen cobertura temporal, sin estimar personas-día ni tasas de
+mortalidad. Un evento en el tick final que abre un año nuevo queda en ese año
+con cero días de exposición. `weather.flood` clasifica un año húmedo: no demuestra
+anegado físico ni agota los anegados por lluvia natural. La coincidencia temporal
+no crea causalidad; se conservan las causas registradas. Esta preparación no
+ejecutó batch ni calibró constantes; el contraste A/B con mismas seeds/setup y
+oscilación apagada sigue pendiente. No agrega procesos ni modifica estado, hash
+de simulación o streams de RNG.
+
 Coberturas dirigidas (opt-in, combinables, no cambian el perfil sin el flag):
 `--rescue` (préstamos con prenda y fiador, contratar, prometer), `--commerce`
 (oficios vistos, profecía contada), `--natality` (fecundidad acelerada),

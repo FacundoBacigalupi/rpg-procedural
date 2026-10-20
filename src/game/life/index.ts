@@ -19,6 +19,7 @@ export * from "./divine.ts";
 export * from "./economic-batch.ts";
 export * from "./environment.ts";
 export * from "./exposure.ts";
+export { FUNERALS, type FuneralOptions } from "./funerals.ts";
 export * from "./gathering.ts";
 export * from "./gathering-provider.ts";
 export * from "./goal-death.ts";

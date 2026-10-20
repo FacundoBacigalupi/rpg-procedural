@@ -30,6 +30,7 @@ import {
   type WitnessCandidate,
   witnessStimulus,
 } from "../../sim/index.ts";
+import { bandRaidLocation, perceptibleBandRaid } from "./band-raid.ts";
 
 export const WITNESSING_PROCESS = "life.witnessing";
 
@@ -143,8 +144,8 @@ export function npcPerceive(
   for (const e of events) {
     if (budget <= 0) break;
     const who = e.actors[0] as AgentId | undefined;
-    if (!who || !perceivable(e.kind)) continue;
-    const at = truth.get(LOCATION, who);
+    if (!who || (!perceivable(e.kind) && !perceptibleBandRaid(e))) continue;
+    const at = perceptibleBandRaid(e) ? bandRaidLocation(e) : truth.get(LOCATION, who);
     const p = truth.get(PERSON, who);
     if (!at || !p) continue;
     budget -= 1;

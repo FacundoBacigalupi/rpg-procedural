@@ -7,22 +7,30 @@ import {
   externalAccount,
   type HolderRef,
   holderAccount,
+  Ledger,
   ledgerUnit,
   loadContent,
+  makeId,
+  Rng,
 } from "../../core/index.ts";
 import {
+  COMMUNITY_RELIGION,
+  ENTITY,
   FESTIVAL_MIX,
   HEARTH_MIX,
   OFFERING_ASH,
   OFFERING_DISPOSALS,
   offeredAmount,
   offeringLot,
+  PERSON,
   poorestHousehold,
+  RELIGIOUS_IDENTITY,
   splitLot,
+  WorldTruth,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { householdSincerity, OFFERING_MADE, offeringDue } from "./offerings.ts";
+import { householdSincerity, OFFERING_MADE, offeringDue, offeringsProcess } from "./offerings.ts";
 
 const DAY = 86400;
 const unit = ledgerUnit("good:grain");
@@ -149,6 +157,57 @@ describe("ofrendas en la vida", () => {
       a.world.ledger.total(unit),
     );
   });
+});
+
+it("las prácticas del mismo día comparten saldo y no gastan dos veces la despensa", () => {
+  const truth = new WorldTruth();
+  const who = makeId("agent", 1);
+  const home = makeId("household", 1);
+  const origin = makeId("event", 1);
+  const place = { kind: "settlement", settlement: makeId("settlement", 1) } as const;
+  truth.set(ENTITY, who, { id: who, originEventId: origin, createdAt: 0 } as never);
+  truth.set(PERSON, who, { household: home } as never);
+  truth.set(RELIGIOUS_IDENTITY, who, {
+    affiliations: [{ religion: "folk", practice: 1 }],
+  } as never);
+  truth.set(COMMUNITY_RELIGION, place.settlement, {
+    religion: "folk",
+    practices: Array.from({ length: 1100 }, (_, i) => ({
+      id: `offering-${i}`,
+      kind: "offering",
+      everyDays: 1,
+      goods: ["grain"],
+    })),
+  } as never);
+  const ledger = new Ledger({ externals: { mint: [unit], [OFFERING_ASH]: [unit] } });
+  ledger.post({
+    tick: 0,
+    eventId: origin,
+    transfers: [
+      {
+        from: externalAccount("mint"),
+        to: acc(home),
+        unit,
+        amount: 1_000_000,
+      },
+    ],
+  });
+  const result = offeringsProcess({
+    clock: { day: DAY },
+    goods: [{ id: "grain", form: "good" }] as never,
+    placeOf: () => place,
+  }).run({ truth, ledger, now: DAY, rng: Rng.root(1 as never) } as never);
+  expect(result.events?.[1]?.data).toMatchObject({ total: 3996 });
+  expect(() => {
+    for (const posting of result.postings ?? []) {
+      ledger.post({ tick: DAY, eventId: origin, transfers: posting.transfers });
+    }
+  }).not.toThrow();
+  expect(ledger.balance(acc(home), unit)).toBeGreaterThanOrEqual(0);
+  expect(
+    ledger.balance(acc(home), unit) + ledger.balance(externalAccount(OFFERING_ASH), unit),
+  ).toBe(1_000_000);
+  expect(ledger.audit()).toEqual([]);
 });
 
 const BASE_HASH = "b829bb7436cffc764da33660c899d578132ea796fdf7f86e47af651e5310c12f";
