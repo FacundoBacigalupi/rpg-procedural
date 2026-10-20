@@ -5,6 +5,13 @@ updates:
     target-branch: develop
     schedule:
       interval: weekly
+    ignore:
+      # Node 24 es la plataforma del juego; sus tipos deben seguir esa major.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # dependency-cruiser 18.6 todavía admite TypeScript <7; revisar toolchain-typescript7.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       dependencies:
         patterns: ["*"]
