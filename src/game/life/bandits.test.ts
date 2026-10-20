@@ -182,14 +182,17 @@ describe("life.bandits: asaltos, reparto y disolución (proceso aislado)", () =>
         step(
           w,
           i + 1,
-          opts({ witnesses: enabled, rules: { raidEveryDays: 1, captureChance: 0 } }),
+          opts({
+            ...(enabled === undefined ? {} : { witnesses: enabled }),
+            rules: { raidEveryDays: 1, captureChance: 0 },
+          }),
           seed,
         ),
       ).flat();
       const raids = events.filter((e) => e.kind === "band.raided");
       expect(raids.length).toBeGreaterThan(0);
       for (const raid of raids) {
-        expect(raid.data.perceptibleRaid).toBe(enabled && local ? true : undefined);
+        expect(raid.data["perceptibleRaid"]).toBe(enabled && local ? true : undefined);
         expect(raid.emissions).toEqual(enabled && local ? { sight: 0.9, sound: 0.8 } : {});
       }
       expect(w.ledger.audit()).toEqual([]);

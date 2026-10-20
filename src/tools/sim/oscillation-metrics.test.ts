@@ -15,6 +15,9 @@ const event = (n: number, tick: number, kind: string, data: unknown = {}) =>
     tick,
     kind,
     data,
+    actors: [],
+    emissions: {},
+    resolution: "local",
     causes: [cause],
     place: { kind: "cell", cell: makeId("cell", 1) },
   }) as Event;

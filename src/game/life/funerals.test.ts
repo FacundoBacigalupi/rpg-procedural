@@ -72,7 +72,7 @@ function fixture(credit = true) {
     .filter((id) => id !== dead && w.truth.get(PERSON, id)?.household === home)
     .sort()[0];
   if (!organizer) throw new Error("falta organizador");
-  const existing = w.ledger.balance(holderAccount(organizer), copper);
+  const existing = w.ledger.balance(holderAccount(organizer as AgentId), copper);
   const cause = w.log.all().at(-1);
   if (!cause || existing <= 0) throw new Error("falta cobre");
   w.ledger.post({
@@ -81,8 +81,8 @@ function fixture(credit = true) {
     transfers: [
       {
         unit: copper,
-        from: holderAccount(organizer),
-        to: holderAccount(provider),
+        from: holderAccount(organizer as AgentId),
+        to: holderAccount(provider as AgentId),
         amount: existing,
       },
     ],
@@ -239,7 +239,9 @@ describe("funerales opt-in en la vida", () => {
     life.advanceTo(life.now + 2 * DAY);
     const held = life.world.log.all().filter((e) => e.kind === "funeral.held");
     expect(held).toHaveLength(1);
-    expect(held[0]?.data.principal).toBeGreaterThan(0);
+    const firstHeld = held[0];
+    if (!firstHeld) throw new Error("falta funeral");
+    expect((firstHeld.data as { principal: number }).principal).toBeGreaterThan(0);
     expect(
       life.world.ledger.balance(
         holderAccount(dead as unknown as HolderRef),
@@ -287,8 +289,9 @@ describe("funerales opt-in en la vida", () => {
     const { life, home } = fixture(false);
     life.advanceTo(life.now + 2 * DAY);
     const held = life.world.log.all().find((e) => e.kind === "funeral.held");
-    expect(held?.data.dignified).toBe(false);
-    expect(held?.data.faceLoss).toBeGreaterThan(0);
+    if (!held) throw new Error("falta funeral");
+    expect((held.data as { dignified: boolean }).dignified).toBe(false);
+    expect((held.data as { faceLoss: number }).faceLoss).toBeGreaterThan(0);
     const faces = life.world.truth
       .ids(FACE)
       .filter((id) => life.world.truth.get(PERSON, id)?.household === home);
