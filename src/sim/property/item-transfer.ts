@@ -6,12 +6,15 @@ import {
   type HolderRef,
   holderKey,
   type ItemId,
+  type Party,
   type Tick,
 } from "../../core/index.ts";
 import type { RecordRef, Right } from "./parcel.ts";
 
 /** Proyección para muebles: reutiliza el haz/registro de property, sin cambiar parcelas. */
 export interface ItemRight extends Pick<Right, "holder" | "incidents" | "tenure" | "record"> {
+  /** Los derechos comunales se representan mediante una organización, no SettlementId. */
+  readonly holder: Party;
   readonly key: string;
   readonly norm: string;
   readonly originEventId: EventId;
@@ -151,7 +154,7 @@ export function transferItem(input: ItemTransferInput): ItemTransferResult {
     if (reason) outcome = { transferred: false, reason };
     else {
       // No crear/dividir haces: cambiar titular de los existentes, conservando cuota y cargas.
-      const recipient = to.holder as Right["holder"];
+      const recipient = to.holder as Party;
       rights = snapshot.rights.map((r) =>
         selected.has(r.key) ? { ...r, holder: recipient, record: donation.record } : r,
       );

@@ -59,6 +59,26 @@ function freezeDeep(value: unknown): void {
 }
 
 describe("transferencia pura de objetos con identidad", () => {
+  it.each([makeId("household", 1), makeId("org", 1)])(
+    "dona el haz a un titular colectivo %s sin alterar la otra cuota",
+    (holder) => {
+      const result = transferItem(
+        input({
+          operation: "give",
+          donation,
+          to: { holder, exists: true, reachable: true },
+        }),
+      );
+      expect(result).toMatchObject({
+        accepted: true,
+        possession: holder,
+        donation: { transferred: true },
+      });
+      if (!result.accepted) throw new Error("entrega rechazada");
+      expect(result.rights[0]?.holder).toBe(holder);
+      expect(result.rights.slice(1)).toEqual(snapshot.rights.slice(1));
+    },
+  );
   it.each(["take", "give"] as const)("%s cambia posesión sin regalar derechos", (operation) => {
     const result = transferItem(input({ operation }));
     expect(result).toMatchObject({
