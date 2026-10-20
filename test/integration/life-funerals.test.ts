@@ -10,8 +10,13 @@ import {
   ledgerUnit,
   loadContent,
   makeId,
-} from "../../core/index.ts";
-import { LifeStore, openSqlite } from "../../persistence/index.ts";
+} from "../../src/core/index.ts";
+import type { LifeOptions } from "../../src/game/life/create.ts";
+import { FUNERALS, resolveFunerals, validateFuneralOptions } from "../../src/game/life/funerals.ts";
+import { Life } from "../../src/game/life/life.ts";
+import { LOANS } from "../../src/game/life/loans.ts";
+import { GAME_CONTENT_KINDS } from "../../src/game/view/index.ts";
+import { LifeStore, openSqlite } from "../../src/persistence/index.ts";
 import {
   BODY_STATE,
   type Body,
@@ -26,12 +31,7 @@ import {
   type ProcessContext,
   type StateChange,
   WorldTruth,
-} from "../../sim/index.ts";
-import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import type { LifeOptions } from "./create.ts";
-import { FUNERALS, resolveFunerals, validateFuneralOptions } from "./funerals.ts";
-import { Life } from "./life.ts";
-import { LOANS } from "./loans.ts";
+} from "../../src/sim/index.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
