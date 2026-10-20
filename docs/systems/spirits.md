@@ -229,6 +229,16 @@ Entierro opt-in (2026-10-18): `LifeOptions.funerals` exige un límite temporal `
 
 La versión actual cubre entierro económico, con continuidad SQLite comprobada desde un fixture que inyecta muerte. Presencia (corrección 2026-10-20): proveedor y organizador deben tener `LOCATION` y compartir `hex` y `space`; el `PlaceRef` agregado de la aldea no prueba cercanía. La prueba de integración cubre otro espacio, otro hex y ubicación ausente, sin cobro ni pérdida de cara remotos. Si muere un titular de las bolsas del crédito, se suspende el cobro funerario: otro familiar vivo no habilita cobrarle a un muerto. ROADMAP separa los otros ritos, la tumba como lugar físico, decisiones desde conocimiento de la muerte, propagación por percepts/testigos, sucesión de la bolsa obligada y replay desde seed/planes como ítems pendientes de Fase 3.
 
+Tumba física opt-in (2026-10-20): `funerals.physicalGraves: true` exige que el
+cuerpo conserve LOCATION y coincida con organizador y proveedor en hex y espacio.
+El rito crea un PLACE de clase `grave` con ENTITY y origen en `funeral.held`; el
+ajuar pasa a la cuenta exclusiva del lugar, sin mezclarse con la bolsa heredable
+del muerto. FUNERALS guarda la referencia para no repetir creación ni gasto al
+retomar SQLite. No hay traslado automático del cuerpo ni elección de cementerio.
+El modo anterior conserva sus cuentas/ids/eventos al omitir la opción; los
+registros históricos sin grave siguen válidos. Las pruebas cubren distancia,
+espacios distintos, reservas compartidas y continuidad SQLite en ambos modos.
+
 ## 12. El jugador y el narrador
 - **El narrador cuenta el rito y lo que el personaje percibe**, nunca lo que pasa del otro lado si el personaje no puede verlo. Un mortal huele el incienso y siente paz o culpa; un cultivador con sentido espiritual puede notar que el salón está vacío, o que algo absorbe el humo.
 - **El jugador puede ofrendar a sus ancestros** (los de su familia generada), fundar un culto, financiar un templo, robar tumbas o cuidar un santuario olvidado, con todas las consecuencias de arriba.
