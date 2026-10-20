@@ -128,17 +128,27 @@ reportes ni copias del código. No borrar directorios ni junctions.
 
 [Estados anteriores y resultados históricos](history/handoff-through-2026-10-17.md).
 
-Código actual: `487abdd`. Incluye cableado funerario `9272a50`, recuerdos de
+Código final del lote: `d4e5395` (producción `487abdd`). Incluye cableado funerario `9272a50`, recuerdos de
 asaltos para testigos NPC `c9976b8`, correcciones de tipos en fixtures y prueba
 SQLite reubicada en `test/integration/life-funerals.test.ts` por capas.
 La revisión independiente encontró presencia funeraria comprobada contra un
 PlaceRef agregado: `487abdd` exige LOCATION.hex/space reales y declara reads.
 Siete pruebas funerarias aprobadas (exit 0), incluida presencia remota/ausente,
 reservas y continuidad SQLite. Log: `sim-reports/funeral-presence-check.log`.
-Check completo reiniciado sobre `487abdd`, aún sin resultado certificado;
-`social-continuity-final-check.log/.exit` se actualizan al terminar. La corrida
-anterior se interrumpió para corregir presencia, no cuenta como aprobación.
+Verificación amplia sobre `487abdd`: typecheck/lint/capas aprobados; 3239 tests
+aprobados y 2 fallidos del mismo fixture de `full-profile-run.test.ts` (faltaba
+`world.map` para el reporte nuevo). Duración Vitest: 1033,85 s; exit nativo 1,
+log/exit `sim-reports/social-continuity-final-check.*`. `d4e5395` solo corrige
+ese fixture: 15 tests de full-profile-run/oscillation-metrics aprobados, exit 0
+(`social-continuity-fixture-check.*`); typecheck y lint repetidos, exit 0
+(`social-continuity-final-typecheck.log`, `social-continuity-final-lint.log`).
+Evidencia combinada: todos los archivos cubiertos; no se repitió la suite
+completa tras el cambio exclusivo del fixture. No describir el check amplio
+como verde. La corrida anterior interrumpida no cuenta como aprobación.
 Git fetch y consulta de PR exitosos con permisos ampliados el 2026-10-20;
-PR #651 de dependencias fuera del lote; PR borrador #652 de este lote, ya
-publicado. No mergear hasta certificar la verificación final.
-Siguiente: revisar resultado del check, actualizar PR y certificar e integrar.
+PR #651 de dependencias fuera del lote; PR #652 del lote social preparado para
+integración con la evidencia anterior. Sin cambios de defaults ni motor.
+Siguiente tras integrar #652: `perfil2-item-claims-design`, primer pendiente no
+bloqueado de Fase 3; partir contrato puro, contienda de take y transferencia
+de give antes de implementar. Los tres worktrees temáticos se conservan y sus
+commits del lote ya están incorporados a la rama coordinadora; no reintegrarlos.

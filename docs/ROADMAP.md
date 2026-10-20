@@ -8,11 +8,12 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**2026-10-20: Fase 3, certificar e integrar el lote social y funerario abierto.**
-Rama: `feat/f3-social-continuity`; base de trabajo actual: `c9976b8`.
-Primero resolver los fallos del check final y certificar el lote integrado.
-No abrir otro frente mientras siga sin certificar. Estado y pruebas: HANDOFF
-secciones 5 y 8. Tras integrar, retomar el primer [ ] no bloqueado de Fase 3.
+**2026-10-20: Fase 3, integrar el lote social y funerario #652 y continuar claims.**
+Rama: `feat/f3-social-continuity`; código final `d4e5395`.
+Verificación amplia y corrección puntual del fixture terminadas; evidencia y
+límites en HANDOFF secciones 5 y 8. Tras integrar #652, el primer [ ] no
+bloqueado es `perfil2-item-claims-design`: partir contrato físico/normativo,
+contienda de take y transferencia de give antes de implementar el primer tramo.
 Aplicar el acuerdo compartido del 2026-10-20 de HANDOFF secciones 2 y 5:
 lotes acotados, resultado observable y trabajo limitado sin integrar.
 
