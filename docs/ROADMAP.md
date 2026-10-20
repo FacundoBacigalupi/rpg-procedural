@@ -9,10 +9,11 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 ## Ahora (en orden)
 
 **2026-10-20: Fase 3, #652 integrado en develop (`e391592`); sigue claims.**
-Rama actual: `feat/f3-item-claims-contract`, diseño sin código. Contrato físico y
-normativo documentado y revisado; integrar el diseño y tomar el primer [ ] no
-bloqueado, `perfil2-item-claims-core`. Después take, give y replay/perfil, cada uno
-con resultado observable. Evidencia y límites del lote anterior: HANDOFF §8.
+Diseño integrado en #653 (`ec05d59`). Rama actual: `feat/f3-item-claims-core`,
+núcleo puro sin consumidores; 40 tests de property, typecheck y lint aprobados.
+Tras integrar el núcleo, retomar primero el WIP anterior `funeral-tomb-wip`
+detectado en `.worktrees/funeral`; después el primer pendiente no bloqueado,
+`perfil2-item-claims-take`. Evidencia y ramas: HANDOFF §8.
 Aplicar el acuerdo compartido del 2026-10-20 de HANDOFF secciones 2 y 5:
 lotes acotados, resultado observable y trabajo limitado sin integrar.
 
@@ -594,7 +595,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
           - [x] (perfil2-personal-resource-claims, 2026-10-15) Auditoría: `item-claims-audit.test.ts` (2 pruebas, `take` real con `economicBatch`) mide que un objeto con identidad (`ItemId`) no vive en el ledger: dos actores que van por la misma espada fracasan ambos por `no_means`, sin claim ni contienda, el ítem no se mueve y el ledger no cambia. Los saldos fungibles personales siguen cubiertos; no es implementación de claims. Solo tests, sin tocar la sim.
             - Claims/contienda de objetos con identidad, partido antes de implementar (2026-10-20). Combate queda fuera de esta vía:
               - [x] (perfil2-item-claims-design) Contrato físico/normativo en property §12 y ARCHITECTURE §4.5: dueños de identidad, posesión, ubicación y derechos; toma no dona derechos, entrega material y donación separadas; adjudicación física previa y un escritor. Diseño sin componentes activos.
-              - [ ] (perfil2-item-claims-core, Fase 3) Núcleo puro de transferencia de posesión/derechos sobre objetos existentes; preservar origen, cargas y derechos ajenos, rechazo sin mutación, determinismo e inmutabilidad. Ver contrato de property §12.
+              - [x] (perfil2-item-claims-core, 2026-10-20) `sim/property/item-transfer.ts`: `transferItem` propone posesión y donación normativa separadas sobre objetos existentes; conserva origen/cuotas/cargas y derechos ajenos, rechaza sin cambios, toma desde cadáver/suelo y entrega a titulares colectivos. Reutiliza haz/registro de Right, con titulares Party canónicos. 40 tests de property, typecheck/lint aprobados; sin componentes activos ni consumidores. Cableado en take/give y replay/perfil siguen en sus ítems.
               - [ ] (perfil2-item-claims-take, Fase 3) Claims por ítem/ventana y contienda física desde scheduler/acciones, un ganador y fracaso explícito; cableado opt-in e invertir `item-claims-audit.test.ts`. Depende de core.
               - [ ] (perfil2-item-claims-give, Fase 3) Entrega física y donación normativa separadas, formalidades/cargas y receptor disponible, desde `give` y el escritor único. Depende de core y take.
               - [ ] (perfil2-item-claims-replay-profile, Fase 3) Setup persistible, replay desde seed/planes y pruebas de game/scheduler/persistence; perfil dirigido y medición, apagado sin cambio de hash. Depende de take y give; no activar defaults como trámite.
@@ -1342,6 +1343,7 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
 - [ ] Oficios de culto 2b, taller y lotes en la vida (Fase 3): fuentes reales de cera/fibra/resina/madera con origen, registro persistido de lotes y cuentas exclusivas no reutilizables, duración y mano del artesano, venta y elección de productos al ofrendar; hoy la vida solo ofrenda bienes `GoodDef` por hogar, no productos compuestos con unidades materiales conservadas. Depende de 2a y del contrato de conversión/registro de productos ([spirits.md](systems/spirits.md) §11, [crafts.md](systems/crafts.md)).
 - [x] Gasto de funerales y endeudamiento, entierro opt-in (2026-10-18): `LifeOptions.funerals` configura proveedor/prestamista existentes y costos; `life.loans` tramita una sola vez la muerte real posterior a `since`, con familia sobreviviente y organizador de costumbre `burial`. Despensa compartida y bolsas personales financian ajuar conservado en la cuenta del muerto, honorarios y préstamo real cobrado por el proceso existente. El proveedor debe presenciar el rito; el déficit reduce la cara familiar. Validación numérica, saldos compartidos en dos funerales, scheduler, invariantes, cuota y continuidad SQLite cubiertos; sin proceso nuevo, defaults ni cambio de motor ([spirits.md](systems/spirits.md) §11).
 - [ ] Funerales, otros ritos y observación social (Fase 3): cremación y otros destinos desde la costumbre, traslado físico a la tumba con entidad/lugar propio, conocimiento de muerte y gasto por percepts del organizador, testigos/rumores de funerales y costo social según lo que cree cada observador, sin difundir verdad omnisciente.
+  - [ ] (funeral-tomb-wip, Fase 3) Retomar cambios sin commit de `.worktrees/funeral` en funerals/loans y world/space: tumba como PLACE/ENTITY con origen, ajuar fuera de la bolsa heredable y cadáver físicamente presente. Revisar contra #652, conservar la corrección de presencia por hex/space y reubicar las pruebas SQLite en test/integration. Sin validación vigente; no borrar ni mergear el worktree a ciegas.
 - [ ] Funerales, sucesión de deuda y reproducción por planes (Fase 3): herencia de la bolsa obligada si muere organizador/prestamista (sin cobrar la bolsa de un muerto por la presencia de otro familiar), y escenario de muerte reproducible desde seed/planes; la prueba actual de SQLite cubre continuidad de un fixture con muerte inyectada, no replay desde seed.
 - [ ] Conversaciones fuera de escena como actos, grupos y oyentes de costado, promesas que crean compromisos, interrogatorios ([dialogue.md](systems/dialogue.md) §7, §12, §15)
 - [ ] Montaje para saltos de tiempo, textos dentro del mundo redactados una vez y guardados con el objeto, sueños narrados ([narration.md](systems/narration.md) §1, §12)
