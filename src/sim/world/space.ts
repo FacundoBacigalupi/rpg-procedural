@@ -17,7 +17,7 @@ import type {
 import { floorDiv } from "../../core/index.ts";
 import { table } from "./truth.ts";
 
-export const PLACE_KINDS = ["village", "water", "fields", "forest"] as const;
+export const PLACE_KINDS = ["village", "water", "fields", "forest", "grave"] as const;
 export type PlaceKind = (typeof PLACE_KINDS)[number];
 
 /** Un lugar con nombre: qué es y qué hexes cubre (índices locales del parche de la aldea). */
