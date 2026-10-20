@@ -128,8 +128,17 @@ reportes ni copias del código. No borrar directorios ni junctions.
 
 [Estados anteriores y resultados históricos](history/handoff-through-2026-10-17.md).
 
-Código actual: `c9976b8`, incluye cableado funerario `9272a50` y recuerdos de
-asaltos para testigos NPC `c9976b8`, aún sin check final certificado.
+Código actual: `487abdd`. Incluye cableado funerario `9272a50`, recuerdos de
+asaltos para testigos NPC `c9976b8`, correcciones de tipos en fixtures y prueba
+SQLite reubicada en `test/integration/life-funerals.test.ts` por capas.
+La revisión independiente encontró presencia funeraria comprobada contra un
+PlaceRef agregado: `487abdd` exige LOCATION.hex/space reales y declara reads.
+Siete pruebas funerarias aprobadas (exit 0), incluida presencia remota/ausente,
+reservas y continuidad SQLite. Log: `sim-reports/funeral-presence-check.log`.
+Check completo reiniciado sobre `487abdd`, aún sin resultado certificado;
+`social-continuity-final-check.log/.exit` se actualizan al terminar. La corrida
+anterior se interrumpió para corregir presencia, no cuenta como aprobación.
 Git fetch y consulta de PR exitosos con permisos ampliados el 2026-10-20;
-único PR abierto observado: #651 (dependencias, fuera de este lote).
-Siguiente: resolver fallos de tipos del check final y certificar el lote.
+PR #651 de dependencias fuera del lote; PR borrador #652 de este lote, ya
+publicado. No mergear hasta certificar la verificación final.
+Siguiente: revisar resultado del check, actualizar PR y certificar e integrar.
