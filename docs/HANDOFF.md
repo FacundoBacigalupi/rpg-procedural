@@ -76,6 +76,13 @@ solos: diff, enlaces y LF. Corridas largas para calibración, conservación o
 rendimiento según el criterio de cierre, no por rutina. LLM real solo para
 parser, narración o sus contratos. Registrar SHA de código, comando, resultado,
 log y exit nativo; cambios posteriores requieren la verificación pertinente.
+Caso de bajo impacto: un núcleo puro nuevo sin consumidores, efectos al cargar,
+procesos, RNG ni cambios de estado/contenido se verifica con typecheck, lint y
+tests del módulo y sus contratos existentes. La suite amplia corresponde al
+lote que lo conecte o a cambios transversales; no repetirla solo por exportarlo.
+Si una corrida amplia solo falla por un fixture y el arreglo posterior cambia
+únicamente ese fixture, registrar ambos resultados y repetir los archivos
+afectados y checks estáticos; no presentar la corrida original como aprobada.
 La receta histórica siguiente no exige duplicar checks ya cubiertos.
 
 **Tests:** los agentes no corren la suite. El coordinador ejecuta una sola corrida por vez, desde un worktree (en Windows, unidad en mayúscula), según el criterio vigente anterior.
@@ -105,7 +112,7 @@ La receta histórica siguiente no exige duplicar checks ya cubiertos.
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**2026-10-20: #652 integrado por squash a develop, `e391592`.**
+**2026-10-20: #652 y #653 integrados por squash a develop, `ec05d59`.**
 Git fetch, push, consulta y merge funcionan con permisos ampliados en esta sesión.
 PR #651 de dependencias sigue fuera de alcance. Worktrees temáticos conservados;
 sus cambios sociales ya entraron en #652, no volver a integrarlos por hash.
@@ -118,10 +125,33 @@ check de producción `487abdd` con 3239 tests aprobados y dos fallos del fixture
 fixture reparado en `d4e5395`, 15 tests afectados aprobados, typecheck/lint exit 0.
 No se repitió la suite amplia tras ese cambio exclusivo de pruebas.
 
-Lote actual, base `e391592`, rama `feat/f3-item-claims-contract`: contrato de
-objetos con identidad, docs sin código. ROADMAP divide contrato, núcleo puro,
-take con contienda, give y replay/perfil. Diseño en property §12 y dueños en
-ARCHITECTURE §4.5. Sin componentes activos ni cambios de contenido/hashes.
-Validación documental: diff/LF/enlaces y revisión independiente del contrato.
-Siguiente: integrar este diseño y tomar `perfil2-item-claims-core` sobre su base
-estable; no invertir aún la auditoría de take ni abrir combate.
+Diseño de objetos con identidad integrado en #653 (`ec05d59`), sin código,
+revisado independientemente y con diff/LF/enlaces comprobados. ROADMAP divide
+contrato, núcleo puro, take con contienda, give y replay/perfil. Diseño en
+property §12 y dueños en ARCHITECTURE §4.5.
+
+Lote actual, base `ec05d59`, coordinador `feat/f3-item-claims-core`: agente en
+`.worktrees/itemclaims`, rama `feat/f3-itemclaims-agent`, implementa solo núcleo
+puro de posesión/donación y tests en sim/property; sin componentes activos ni
+consumidores, defaults, motor o contenido. node_modules es junction, conservar.
+Núcleo integrado localmente en `01c4f26`; corrección de titulares Party y dos
+casos colectivos en `61091e3`. 40 tests de property aprobados, typecheck y lint
+exit 0; logs `sim-reports/item-claims-core-{tests,typecheck,lint}.log` y tests.exit.
+Sin suite amplia adicional: núcleo nuevo sin consumidores ni efectos al cargar.
+El agente agotó su cuota después de dejar la corrección sin commit en su
+worktree; coordinador incorporó y verificó ambos archivos. No reintegrarlos.
+
+Inventario de ramas auditado por pedido del usuario (2026-10-20):
+- Bandas y culto: commits/archivos incorporados a #652; worktrees limpios.
+  Cult tiene patch-ids distintos en dos commits, pero archivos de núcleo/tests
+  idénticos a la rama coordinadora integrada. No necesitan otro merge.
+- Funerales: commits incorporados a #652, pero **cuatro archivos sin commit**
+  permanecen en `.worktrees/funeral`: funerals.ts/test, loans.ts y world/space.ts.
+  Son avance de tumba física/cadáver local, no integrado; ROADMAP `funeral-tomb-wip`.
+  Respaldo sin alterar el worktree: `sim-reports/funeral-tomb-wip-before-integration.patch`.
+- Remoto real (`git ls-remote --heads origin`): main, develop y dependabot #651.
+  Las referencias origin/feat de #652/#653 están obsoletas, no son PR pendientes.
+- Claims: rama coordinadora y worktree del agente activos. No borrar junctions,
+  worktrees ni cambios sin commit como parte de limpiar nombres de ramas.
+
+Siguiente: integrar el núcleo; retomar `funeral-tomb-wip` antes de abrir take.

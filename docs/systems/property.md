@@ -234,7 +234,7 @@ type RecordRef =
 
 ### Contrato de objetos con identidad (Fase 3, 2026-10-20)
 
-Diseño previo a `perfil2-item-claims-core`; todavía sin componentes ni cableado.
+Contrato de `perfil2-item-claims-core`; todavía sin componentes ni cableado.
 El objeto debe existir como `ItemId` con `ENTITY` y origen válido. `Holding` de
 actions sigue siendo una cantidad fungible del ledger; no representa una espada.
 
@@ -283,6 +283,19 @@ sobre una espada, uno gana, origen y materiales conservados); give (entrega y
 donación separadas, cargas preservadas); integración (scheduler/persistencia,
 replay desde seed/planes, opt-in apagado sin cambio de hash y perfil dirigido).
 La auditoría actual de dos take fallidos se invierte recién al cablear contienda.
+
+Núcleo implementado (2026-10-20): `sim/property/item-transfer.ts` exporta
+`transferItem` y snapshots explícitos, sin tablas ni consumidores. `ItemRight`
+reutiliza haz, tenencia y registro de `Right`, restringiendo titulares a `Party`
+canónico (comunales mediante `OrgId`), con norma, cuota, origen y cargas propias.
+La propuesta conserva el origen del objeto/derechos y cita por separado el
+evento de transferencia; una donación acredita formalidades y registro del
+evento actual, sin dividir haces ni borrar otras cuotas. Una carga sin regla de
+alienación explícita conserva el derecho y permite entrega material; no se
+interpreta como prohibición universal de la cultura. El llamador valida causa,
+existencia/alcance de extremos y adjudicación; el helper comprueba el snapshot,
+posesión vigente y receptor agente vivo. Los 40 tests de property incluyen
+donación a hogar/organización, normas ajenas, cargas, rechazo e inmutabilidad.
 
 ## 13. Entre cultivadores
 
