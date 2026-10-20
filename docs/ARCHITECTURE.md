@@ -181,6 +181,12 @@ type Time = Tick;          // alias: algunos docs dicen Time; es lo mismo
 
 Implementado en `core/time` (Fase 0): los ticks son enteros seguros; el día, el año trópico y las lunas vienen en un `PlanetClock` que calcula planet-gen y se guarda con el mundo. El calendario de la verdad cuenta días desde la medianoche del meridiano 0 y años trópicos exactos (un día es del año en que cae su medianoche; los bisiestos salen solos). Las escalas (`TimeScale`) cortan el tiempo en ventanas con índice (`windowIndex`), que es lo que entra en la clave del rng de los procesos. La hora local de cada lugar y la posición del sol en el cielo son de planet-gen; los calendarios de las culturas son creencia.
 
+Nota de exactitud temporal (2026-10-20): `core/time.floorDiv` opera sobre enteros
+seguros y divisor positivo mediante el piso del cociente. No calcular primero
+`a - floorMod(a, b)`: para `MIN_SAFE_INTEGER` y divisor 3, ese múltiplo inferior
+sale del rango seguro y el cociente anterior perdía una unidad. La regresión
+reconstruye dividendos con BigInt en tests; la simulación continúa usando números.
+
 ### 4.3 Eventos y causas
 
 ```ts

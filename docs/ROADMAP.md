@@ -11,10 +11,12 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 **2026-10-20: Fase 3, auditoría/cierre de todas las ramas solicitado por el usuario.**
 Base develop `19caa62` (#654); rama `feat/f3-funeral-tomb-integration`.
 WIP funerario completado y dependencias #651 ajustadas para compatibilidad;
-check amplio consolidado en curso sobre `b420cc1`. Aprobarlo, integrar el lote,
+check amplio consolidado reiniciado sobre `8d161d3` tras corregir floorDiv en
+el límite negativo seguro (13 tests de tiempo aprobados). Aprobarlo, integrar el lote,
 cerrar #651 sustituida y borrar las ramas viejas comprobadas, conservando
-worktrees/junctions y snapshots. Después: `perfil2-item-claims-take`, primer [ ]
-no bloqueado; partir antes de implementar. Estado y evidencia: HANDOFF §8.
+worktrees/junctions y snapshots. Después: `perfil2-item-claims-take-loss`, primer
+[ ] no bloqueado del take ya partido en loss/state/act/audit. Estado y evidencia:
+HANDOFF §8.
 Aplicar el acuerdo compartido del 2026-10-20 de HANDOFF secciones 2 y 5:
 lotes acotados, resultado observable y trabajo limitado sin integrar.
 
@@ -597,7 +599,11 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
             - Claims/contienda de objetos con identidad, partido antes de implementar (2026-10-20). Combate queda fuera de esta vía:
               - [x] (perfil2-item-claims-design) Contrato físico/normativo en property §12 y ARCHITECTURE §4.5: dueños de identidad, posesión, ubicación y derechos; toma no dona derechos, entrega material y donación separadas; adjudicación física previa y un escritor. Diseño sin componentes activos.
               - [x] (perfil2-item-claims-core, 2026-10-20) `sim/property/item-transfer.ts`: `transferItem` propone posesión y donación normativa separadas sobre objetos existentes; conserva origen/cuotas/cargas y derechos ajenos, rechaza sin cambios, toma desde cadáver/suelo y entrega a titulares colectivos. Reutiliza haz/registro de Right, con titulares Party canónicos. 40 tests de property, typecheck/lint aprobados; sin componentes activos ni consumidores. Cableado en take/give y replay/perfil siguen en sus ítems.
-              - [ ] (perfil2-item-claims-take, Fase 3) Claims por ítem/ventana y contienda física desde scheduler/acciones, un ganador y fracaso explícito; cableado opt-in e invertir `item-claims-audit.test.ts`. Depende de core.
+              - Claims por ítem/ventana y contienda física (`perfil2-item-claims-take`), partido antes de implementar (2026-10-20), depende de core:
+                - [ ] (perfil2-item-claims-take-loss, Fase 3) Contrato opt-in del scheduler para el resultado del perdedor: evento causal de fracaso y avance/revisión del plan propio, sin aplicar la transferencia ganadora, gastar recursos ni volver a disputar el ítem. Validar escrituras y reservar IDs solo del resultado asentado. Probar empate determinista, pérdida única ante varios conflictos, causas válidas y comportamiento anterior sin la opción; simulation §3.
+                - [ ] (perfil2-item-claims-take-state, Fase 3) Representación de posesión/derechos de ítems existentes en property y snapshot desde ENTITY/ubicación; sin crear objetos desde argumentos o creencias ni sembrar componentes globales. Definir portador frente a ubicación de suelo y origen material antes del cableado; property §12 y ARCHITECTURE §4.5.
+                - [ ] (perfil2-item-claims-take-act, Fase 3) Cableado opt-in de take sobre ItemId conocido y alcanzable, iniciativa desde cuerpo/distancia/atención y escritor único; aplicar transferItem solo al resultado adjudicado, conservar derechos y registrar fracaso del perdedor. Depende de loss y state; actions y simulation §3.
+                - [ ] (perfil2-item-claims-take-audit, Fase 3) Invertir `item-claims-audit.test.ts` con dos planes reales sobre una espada, exactamente un ganador, fracaso explícito del otro, agendas/origen/materiales conservados y determinismo. Apagado idéntico y sin cambios de hashes dorados como trámite. Depende de act; habilitación de perfil y replay en su ítem final.
               - [ ] (perfil2-item-claims-give, Fase 3) Entrega física y donación normativa separadas, formalidades/cargas y receptor disponible, desde `give` y el escritor único. Depende de core y take.
               - [ ] (perfil2-item-claims-replay-profile, Fase 3) Setup persistible, replay desde seed/planes y pruebas de game/scheduler/persistence; perfil dirigido y medición, apagado sin cambio de hash. Depende de take y give; no activar defaults como trámite.
           - [x] (perfil2-economic-loans) `life.loans/act` participa del dominio económico con saldos reservados; regresiones de pagos, desembolsos y fiadores contra acciones, y callback de usura con delta local. Rescate efectivo conserva cobertura propia en `perfil2-coverage-loan-variants`.

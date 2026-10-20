@@ -132,9 +132,15 @@ validación. Con TS 6 analizó 1050 módulos/5054 dependencias. El bloqueo exter
 `toolchain-typescript7` sigue documentado; Dependabot ignora esas majors hasta
 revisar compatibilidad. PR #651 se sustituirá por la integración consolidada.
 
-Verificación amplia `npm run check` sobre `b420cc1` en curso; typecheck/lint
-aprobados, Vitest aún activo. Log/exit: `sim-reports/branch-integration-check.*`.
-Solo documentación posterior mientras corre. No certificar antes del resultado.
+La primera verificación sobre `b420cc1` encontró un bug previo de floorDiv cerca
+de MIN_SAFE_INTEGER; se interrumpió, no cuenta como aprobación. Contraejemplo:
+MIN_SAFE_INTEGER/3 daba -3002399751580330 en vez de -3002399751580331, al sacar
+el múltiplo inferior del rango seguro. Fix `8d161d3`, 13 tests de core/time
+aprobados con regresión fija y propiedad de reconstrucción BigInt.
+Verificación amplia `npm run check` reiniciada sobre `8d161d3`; solo docs
+posteriores mientras corre. Log/exit: `sim-reports/branch-integration-check.*`;
+log anterior conservado como `branch-integration-check-before-timefix.log`.
+PR borrador #655; no certificar antes del resultado ni cambiar hashes dorados.
 
 Auditoría de los 17 worktrees: únicamente funeral e itemclaims tenían WIP.
 Instantáneas `54909ad` y `9a1068f`, respectivamente, para preservar originales
@@ -147,4 +153,7 @@ comprobada su incorporación o sustitución; no reintegrar commits ya consumidos
 
 Siguiente: aprobar el lote, publicar/mergear a develop, cerrar #651 sustituida,
 borrar ramas viejas locales/remotas, verificar inventario y continuar el primer
-pendiente no bloqueado: `perfil2-item-claims-take`, dividido antes de implementar.
+pendiente no bloqueado: `perfil2-item-claims-take-loss`; take ya dividido en
+resultado del perdedor, representación, cableado y auditoría. Diseño del
+resultado alternativo sin implementar en simulation §3; no cambiar scheduler
+mientras se verifica el lote actual.

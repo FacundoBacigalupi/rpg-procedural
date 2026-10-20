@@ -130,6 +130,17 @@ persona y tabla. Los lectores de fases anteriores ven el estado anterior; la pro
 desde `physics` en adelante. El camino sin `npcVerbs` mantiene sus fases y hashes.
 Ver [dialogue.md](dialogue.md#implementado-2026-10-12-respuestas-simultáneas-con-verbos-de-npc).
 
+Preparación de claims de ítems (2026-10-20, aún sin implementación): el scheduler
+actual elimina el resultado de una corrida que pierde una contienda. Para take
+se necesita un resultado alternativo opt-in que conserve el fracaso causal y la
+continuidad del plan del perdedor. Debe validarse contra `reads`/`writes`, no
+aplicar la transferencia ni asientos del resultado descartado, no escribir de
+nuevo el recurso disputado y no generar otra contienda recursiva. Una corrida
+que pierde varios conflictos asienta su fracaso una sola vez, con causa en la
+contienda que la descartó; solo el resultado finalmente asentado consume IDs.
+El contrato sin alternativa conserva las contiendas y hashes anteriores. Ver
+ROADMAP `perfil2-item-claims-take-loss` antes de modificar este mecanismo.
+
 ## 4. Las dos resoluciones
 
 ### 4.1 Resolución de zona
