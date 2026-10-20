@@ -51,6 +51,11 @@ resolver la escala con LOD, sin recortar el diseño para hacer una demo.
 
 ## Coordinación y verificación
 
+- Acuerdo compartido Claude/Codex (2026-10-20): aplicar el método vigente de
+  `docs/HANDOFF.md` §2 y §5. Lotes acotados con resultado observable, límite de
+  trabajo sin integrar y validación por riesgo y SHA. La continuidad de agentes
+  depende de la capacidad de revisión; no obliga a abrir más frentes.
+
 - Si el usuario pide trabajar como Claude Code con agentes, delegar ítems
   independientes en worktrees: un coordinador y tantos agentes como permita la
   sesión. No asumir que cuatro agentes hijos caben en todos los clientes.

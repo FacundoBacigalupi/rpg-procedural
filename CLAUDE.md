@@ -57,6 +57,15 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/chronicle.md](docs/systems/chronicle.md) — crónica, epílogo e historiografía: crónicas adentro del mundo como objetos con autor, sesgo y copias que se reescriben con cada régimen; la crónica final desde la verdad (capítulos por huella causal, "lo que nunca supiste"), el legado medido como lo causado y lo recordado, epílogo como la misma simulación sin vos, archivo de vidas.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
+## Método compartido vigente (2026-10-20)
+
+Claude y Codex aplican `docs/HANDOFF.md` §2 y §5: lotes acotados por un
+resultado observable, límite de trabajo sin integrar y validación por riesgo
+y SHA. Estas reglas reemplazan las recetas históricas contradictorias de
+paralelismo y frecuencia de checks. ROADMAP «Ahora» contiene solo la prioridad
+actual; HANDOFF §8 registra el estado vigente. No confundir núcleo puro,
+cableado opt-in y comportamiento validado, ni activar defaults como trámite.
+
 ## Retomar en un chat nuevo
 Si el usuario dice solo "continuá" (o similar): es el **primer `[ ]` de la fase actual** que nombra "▶ Ahora", siguiendo la **receta por ítem** y las reglas de "Cómo se trabaja" que están ahí mismo. **Una sesión = un ítem**: el usuario abre una sesión nueva por ítem. Si el ítem no entra en una sesión, se parte en sub-ítems en el ROADMAP antes de codear y se hace uno. Al terminar, el ítem queda `[x]` (nunca a medias ni con "queda X" suelto): lo no hecho pasa a ítems `[ ]` con nombre en la fase que corresponda, y "Ahora" apunta al siguiente.
 1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue (y cómo hacerlo) y "Estado del diseño" qué queda abierto.
