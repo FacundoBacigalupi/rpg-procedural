@@ -8,12 +8,11 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**2026-10-20: Fase 3, integrar el lote social y funerario #652 y continuar claims.**
-Rama: `feat/f3-social-continuity`; código final `d4e5395`.
-Verificación amplia y corrección puntual del fixture terminadas; evidencia y
-límites en HANDOFF secciones 5 y 8. Tras integrar #652, el primer [ ] no
-bloqueado es `perfil2-item-claims-design`: partir contrato físico/normativo,
-contienda de take y transferencia de give antes de implementar el primer tramo.
+**2026-10-20: Fase 3, #652 integrado en develop (`e391592`); sigue claims.**
+Rama actual: `feat/f3-item-claims-contract`, diseño sin código. Contrato físico y
+normativo documentado y revisado; integrar el diseño y tomar el primer [ ] no
+bloqueado, `perfil2-item-claims-core`. Después take, give y replay/perfil, cada uno
+con resultado observable. Evidencia y límites del lote anterior: HANDOFF §8.
 Aplicar el acuerdo compartido del 2026-10-20 de HANDOFF secciones 2 y 5:
 lotes acotados, resultado observable y trabajo limitado sin integrar.
 
@@ -593,7 +592,12 @@ Se parte en tres hitos jugables (aprobado 2026-10-06); cada uno termina con algo
           - [x] (perfil2-economic-consumers, 2026-10-12) `eat`/`cook` comparten despensa con comidas/talleres; `take`/`gather` reservan cantidades fungibles del lugar o bolsillo personal. Reproducciones reales de doble débito, conservación, agendas/cierre y orden canónico; take personal conserva oposición y captura, y el caso aislado coincide exactamente con el camino anterior. Seis hojas explícitas, sin combate.
             - [x] (perfil2-take-empty, 2026-10-12) `ResolveInput.takeEmptyFailure`, derivado del opt-in económico, informa `no_means` y creencia de fallo al agotarse la fuente; con stock el resultado coincide y sin flag conserva el comportamiento anterior. Pruebas de resolver y plan real con cursor/agenda.
           - [x] (perfil2-personal-resource-claims, 2026-10-15) Auditoría: `item-claims-audit.test.ts` (2 pruebas, `take` real con `economicBatch`) mide que un objeto con identidad (`ItemId`) no vive en el ledger: dos actores que van por la misma espada fracasan ambos por `no_means`, sin claim ni contienda, el ítem no se mueve y el ledger no cambia. Los saldos fungibles personales siguen cubiertos; no es implementación de claims. Solo tests, sin tocar la sim.
-            - [ ] (perfil2-item-claims-design) Diseñar e implementar claims/contienda de objetos con identidad y derechos de propiedad (take/give de ítems, `property.md`) e iniciativa física; invertir las pruebas de `item-claims-audit.test.ts`. Combate queda fuera de esta vía.
+            - Claims/contienda de objetos con identidad, partido antes de implementar (2026-10-20). Combate queda fuera de esta vía:
+              - [x] (perfil2-item-claims-design) Contrato físico/normativo en property §12 y ARCHITECTURE §4.5: dueños de identidad, posesión, ubicación y derechos; toma no dona derechos, entrega material y donación separadas; adjudicación física previa y un escritor. Diseño sin componentes activos.
+              - [ ] (perfil2-item-claims-core, Fase 3) Núcleo puro de transferencia de posesión/derechos sobre objetos existentes; preservar origen, cargas y derechos ajenos, rechazo sin mutación, determinismo e inmutabilidad. Ver contrato de property §12.
+              - [ ] (perfil2-item-claims-take, Fase 3) Claims por ítem/ventana y contienda física desde scheduler/acciones, un ganador y fracaso explícito; cableado opt-in e invertir `item-claims-audit.test.ts`. Depende de core.
+              - [ ] (perfil2-item-claims-give, Fase 3) Entrega física y donación normativa separadas, formalidades/cargas y receptor disponible, desde `give` y el escritor único. Depende de core y take.
+              - [ ] (perfil2-item-claims-replay-profile, Fase 3) Setup persistible, replay desde seed/planes y pruebas de game/scheduler/persistence; perfil dirigido y medición, apagado sin cambio de hash. Depende de take y give; no activar defaults como trámite.
           - [x] (perfil2-economic-loans) `life.loans/act` participa del dominio económico con saldos reservados; regresiones de pagos, desembolsos y fiadores contra acciones, y callback de usura con delta local. Rescate efectivo conserva cobertura propia en `perfil2-coverage-loan-variants`.
             - [x] (perfil2-economic-loans-usury-context) El proveedor derivado de usura recibe el ledger del contexto económico y el delta local de préstamos, incluidos bienes recién recibidos; conserva fallback anterior sin opt-in. Regresiones de reservas entre procesos y entre operaciones del mismo proceso aprobadas.
           - [x] (perfil2-economic-rents, 2026-10-15) `RentsOptions.economicBatch` (opt-in; `world.ts` lo pasa con `npcVerbs` no vacío, solo si hay `rentSeeds`/`rentMarket`) mete el canon de `life.rents` en `life.economy`. `rents-batch.test.ts` (5 pruebas, scheduler real): sin la opción un consumo del mismo paso gasta la caja y el asiento del canon revienta; con ella el canon ve la caja vacía, no paga, queda atraso (`arrears`/`missed`) y el ledger audita limpio; con saldo suficiente pagan ambos; determinismo. No hay claim ni contienda: el canon es una deuda contra saldo, no una iniciativa física. FULL_PROFILE no configura rentas; defaults y hashes intactos.

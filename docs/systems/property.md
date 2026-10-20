@@ -232,6 +232,58 @@ type RecordRef =
 - **Abandono:** lo abandonado puede volverse de nadie según la norma; lo perdido no (el dueño sigue creyendo que es suyo). En ruinas y campos de batalla, todo es de quien llega primero, hasta que alguien con fuerza dice otra cosa.
 - **Artefactos vinculados al alma** (crafts): el vínculo es verdad física, no norma; el objeto obedece a su dueño aunque cambie de manos. Romper el vínculo es un trabajo (family-lineage §8: lo sellado del cultivador).
 
+### Contrato de objetos con identidad (Fase 3, 2026-10-20)
+
+Diseño previo a `perfil2-item-claims-core`; todavía sin componentes ni cableado.
+El objeto debe existir como `ItemId` con `ENTITY` y origen válido. `Holding` de
+actions sigue siendo una cantidad fungible del ledger; no representa una espada.
+
+- **Dueños:** economy conserva identidad, materiales e historia del ítem;
+  property es dueño de su posesión y derechos. world conserva ubicación espacial.
+  El poseedor es un `HolderRef` o ninguno; una posesión exclusiva no se duplica.
+  La ubicación de un objeto portado se deriva de su portador; no se mantienen dos
+  ubicaciones físicas independientes. Los objetos sueltos tienen LOCATION propia.
+- **Capas independientes:** derechos bajo una norma, posesión física, registros y
+  creencias no se actualizan juntos por inferencia. Robar cambia posesión; no
+  regala derechos ni informa automáticamente al dueño o a testigos.
+- **Núcleo puro:** recibe snapshot explícito del objeto existente, posesión,
+  derechos con norma y causa, participantes y su disponibilidad, operación y causa
+  validada. Devuelve aceptación o rechazo con razón y cambios propuestos. No crea
+  entidades, eventos, derechos iniciales, dinero ni reservas globales; no consulta
+  verdad externa, muta entradas o resuelve competencia física. Conserva el origen
+  del objeto y los derechos ajenos a la operación.
+- **Transferencia material:** una toma o entrega exige origen físico alcanzable,
+  destino disponible y posesión de partida todavía vigente. Un receptor agente
+  debe existir y vivir para recibir por entrega; un lugar o contenedor existente
+  no se trata como agente. Tomar desde un cadáver o desde el suelo es físicamente
+  posible: no exigir vida al poseedor de origen ni extinguir sus derechos por
+  inferencia (la sucesión normativa corresponde a su proceso). La
+  ausencia de derecho no impide físicamente robar; determina consecuencias
+  normativas separadas. Una toma rechazada deja posesión y derechos intactos.
+- **Donación:** `give` puede entregar físicamente algo robado sin convertir al
+  receptor en dueño. La adquisición por donación solo transfiere el haz enajenable
+  del donante bajo la norma correspondiente y con las formalidades existentes.
+  No borra cargas, copropietarios ni derechos de otras normas. Sin contrato
+  normativo válido, conservar derechos y registrar entrega material explícita.
+- **Contienda:** el núcleo aplica una transferencia ya adjudicada; la iniciativa
+  física y oposición se resuelven en el scheduler/acciones. Agrupar claims del
+  mismo ítem y ventana antes de adjudicar; no usar orden de enumeración o id como
+  sustituto de rapidez/alcance/cuerpo. El desempate usa RNG con clave estable;
+  ids solo canonizan entradas. Revalidar posesión al aplicar: un solo ganador y
+  fracaso explícito de los demás, sin duplicar objeto ni sus materiales.
+- **Escritura y continuidad:** un solo escritor por fase aplica los cambios
+  causales de posesión/derechos; no habilitar un segundo escritor desde give.
+  El componente no se siembra vacío globalmente: primero el núcleo, después
+  cableado opt-in, serialización de setup, replay y perfil con plan de activación.
+  Ningún panel o narrador lee derechos reales fuera de PlayerView/creencias.
+
+Cierre por etapas: núcleo (toma conserva derechos, entrega no dona derechos
+ajenos, rechazo sin cambios, determinismo/inmutabilidad); contienda (dos take
+sobre una espada, uno gana, origen y materiales conservados); give (entrega y
+donación separadas, cargas preservadas); integración (scheduler/persistencia,
+replay desde seed/planes, opt-in apagado sin cambio de hash y perfil dirigido).
+La auditoría actual de dos take fallidos se invierte recién al cablear contienda.
+
 ## 13. Entre cultivadores
 
 - **La norma de la fuerza:** entre cultivadores muchas culturas tienen una norma tácita de que el tesoro es de quien lo puede tomar y retener, y de que matar por un tesoro es normal (杀人夺宝). Es una norma, no una ley del mundo: hay sectas que la condenan y regiones donde un tratado entre sectas la limita. Su fuerza varía por mundo y por región (aprobado 2026-10-06): dura en zonas sin ley, atenuada donde hay tratados o un estado fuerte, así que cada seed da un mundo más duro o más civilizado.

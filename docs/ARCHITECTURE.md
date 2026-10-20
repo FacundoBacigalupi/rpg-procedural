@@ -234,6 +234,13 @@ El modelo es un **ECS liviano**: cada sistema guarda sus componentes en su propi
 - **`Item`**: lo que tiene identidad (una espada con nombre, un manual, una tablilla, un artefacto sellado, una característica de los misterios suelta). Es una entidad con `ItemId`, materiales con origen y su propia historia.
 - **Pasar de uno a otro** es un evento: forjar una espada consume lotes y crea un ítem; fundir el ítem crea lotes. Los dos pasan por el ledger.
 
+Contrato de claims de Fase 3 (diseño 2026-10-20, aún sin cablear): economy
+conserva identidad/materiales/historia de `Item`; property posee posesión y
+derechos normativos; world posee la ubicación espacial. La ubicación del objeto
+portado se deriva de su portador, sin copiar una segunda LOCATION independiente.
+`Holding` de actions representa cantidades del ledger. Ver property §12,
+«Contrato de objetos con identidad», para transferencia, contienda y replay.
+
 ### 4.5b El ledger (`core/ledger`)
 
 - **Doble entrada en enteros seguros.** Cada transferencia es `{unit, from, to, amount}` con `amount` entero positivo en la unidad mínima que elige el sistema (gramos, granos de cobre, micro-unidades de esencia). Nada de floats: la igualdad es exacta y un desborde es un error.
