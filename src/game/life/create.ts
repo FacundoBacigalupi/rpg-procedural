@@ -152,6 +152,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { seedBelonging } from "./belonging.ts";
 import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
@@ -418,6 +419,8 @@ export interface LifeOptions {
   readonly mortalTech?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
+  /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly belonging?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
@@ -705,6 +708,7 @@ export function optInParts(
   | "recognizeGoalProgress"
   | "meaningPressure"
   | "lifeStages"
+  | "belonging"
   | "coop"
   | "craftGoals"
   | "scam"
@@ -873,6 +877,7 @@ export function optInParts(
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
+    ...(options.belonging ? { belonging: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
@@ -1679,6 +1684,16 @@ export function createLife(
   if (options.lifeStages) {
     seedDevelopment(truth, ids, log, {
       stages: content.all(LIFE_STAGES),
+      clock,
+      now: pop.now,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+    });
+  }
+
+  // Opt-in: la pertenencia inicial de cada persona.
+  if (options.belonging) {
+    seedBelonging(truth, ids, log, {
       clock,
       now: pop.now,
       place: terrain.village,

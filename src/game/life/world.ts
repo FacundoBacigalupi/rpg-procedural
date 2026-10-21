@@ -77,6 +77,7 @@ import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { type BanditsOptions, banditsProcess } from "./bandits.ts";
+import { belongingProcess } from "./belonging.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
@@ -759,6 +760,8 @@ export interface LifeWorld {
   readonly meaningPressure?: boolean;
   /** Opt-in (`LifeOptions.lifeStages`): enciende `life.stages` y que la decisión lea el sesgo de riesgo de la etapa; apagado. */
   readonly lifeStages?: boolean;
+  /** Opt-in (`LifeOptions.belonging`): enciende `life.belonging`; apagado. */
+  readonly belonging?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1369,6 +1372,9 @@ export function lifeWorld(
                 placeOf: placeOf(parts, village),
               }),
             ]
+          : []),
+        ...(parts.belonging
+          ? [belongingProcess({ clock: parts.clock, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.mortalTech
           ? [

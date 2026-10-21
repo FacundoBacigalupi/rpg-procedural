@@ -232,7 +232,13 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - [ ] (psy-stages-peers) `peerWeight` de la etapa en la utilidad (hoy solo `riskBias`) y `recordFormative` desde las memorias de alto impacto.
     - [ ] (psy-stages-ancient) Etapa `ancient` para longevos en `content/life-stages/` (y `STAGE_SOCIAL`), sin mover hashes de mortales.
     - [ ] (psy-stages-profile) Entrar al perfil completo y a la CLI tras calibrar con `sim:batch`.
-  - [ ] (psy-belonging) `belonging`/`meaning` como necesidades con causa: déficit por falta de rito, aislamiento y vacío de metas (ya hay `meaning-pressure`) ([npc-psychology.md](systems/npc-psychology.md) §13).
+  - [~] (psy-belonging) `belonging`/`meaning` como necesidades con causa ([npc-psychology.md](systems/npc-psychology.md) §13). Partido en sub-ítems:
+    - [x] (psy-belonging-core, 2026-10-21) Núcleo puro `sim/mind/belonging.ts`: `BelongingState` (nivel 0-1, fuentes `family`/`village` con fuerza y peso, causas `isolation`/`orphan`), `belongingSources`, `belongingTarget`, `stepBelonging` (lento, 90 días), histéresis del aviso (`nextInDeficit`) y `belongingProblems`. Constantes sin calibrar.
+    - [x] (psy-belonging-wire, 2026-10-21) Cableado opt-in `LifeOptions.belonging` / `LifeParts.belonging` (`src/game/life/belonging.ts`, tabla `BELONGING`): `life.belonging-seeded` (hijo de la fundación) da el estado inicial; el proceso diario `life.belonging` da estado a los nacidos después (`life.belonging-started`, causa su nacimiento), mueve el nivel hacia lo que sostienen la casa, los padres vivos, la pareja y los años en la aldea, y deja `life.belonging-deficit` / `life.belonging-restored` con las causas. Apagado: mismo hash (BASE_HASH). Hoy no la lee nadie (declarada). Tests en `belonging.test.ts` de `sim/mind` y `game/life`.
+    - [ ] (psy-belonging-rite) Déficit por falta de rito de paso (`noPlaceDeficit`) como fuente; depende de `psy-stages-rites`.
+    - [ ] (psy-belonging-utility) `belonging` como necesidad lenta en la utilidad de `life.decide` y susceptibilidad a quien ofrezca un lugar (sectas, bandas, maestro); fuentes `clan`/`sect`/`faith`/`gang`/`identityWeight`.
+    - [ ] (psy-meaning-need) `meaning` con fuentes causales (`MeaningSource`: rol, fe, oficio, legado) más allá del vacío de `meaning-pressure`, y su déficit hacia depresión/`despair`.
+    - [ ] (psy-belonging-profile) Entrar al perfil completo y al panel tras calibrar con `sim:batch`.
   - [ ] (psy-conditions-culture) Condiciones mentales con etiqueta cultural (duelo, depresión, trauma, adicción) sobre `mind/conditions.ts`, y lado mental de la adicción ([npc-psychology.md](systems/npc-psychology.md) §11).
   - [ ] (psy-tastes-demand) Gustos personales en la demanda y los regalos ([npc-psychology.md](systems/npc-psychology.md) §16).
   - [ ] (psy-dreams) Sueños con contenido desde la consolidación nocturna ([npc-psychology.md](systems/npc-psychology.md) §15).
