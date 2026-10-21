@@ -425,6 +425,8 @@ export interface LifeOptions {
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
+  /** Con `fieldManure`: la calidad del abono sale de la dieta (proteína de lo comido) y no es la constante; apagado. */
+  readonly fieldManureDiet?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
@@ -733,6 +735,7 @@ export function optInParts(
   | "loanWorkout"
   | "offerings"
   | "fieldManure"
+  | "fieldManureDiet"
   | "wildHarvest"
   | "wildCapacityScale"
   | "wildHunt"
@@ -894,6 +897,7 @@ export function optInParts(
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.offerings ? { offerings: true } : {}),
     ...(options.fieldManure ? { fieldManure: true } : {}),
+    ...(options.fieldManure && options.fieldManureDiet ? { fieldManureDiet: true } : {}),
     ...(options.wildHarvest ? { wildHarvest: true } : {}),
     ...(options.wildHarvest && options.wildCapacityScale !== undefined
       ? { wildCapacityScale: options.wildCapacityScale }

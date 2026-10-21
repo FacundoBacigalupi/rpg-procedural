@@ -58,3 +58,32 @@ export const EXCRETED_FRACTION = 0.1;
 export const MANURE_GRAMS_PER_UNIT = 500_000;
 /** Calidad del desecho mixto (heces humanas y de animales, sin curar): constante hasta que dependa de la dieta. */
 export const MANURE_QUALITY = 0.4;
+
+/** Calidad base del desecho de una dieta sin proteína (fibra y almidón: casi solo materia orgánica). */
+export const MANURE_QUALITY_BASE = 0.25;
+/** Cuánto suma cada gramo de proteína por gramo comido (el nitrógeno de la dieta sale en el desecho). */
+export const MANURE_QUALITY_PER_PROTEIN = 1.5;
+/** Techo de la calidad (una dieta de pura carne). */
+export const MANURE_QUALITY_MAX = 0.8;
+
+/**
+ * Calidad del abono desde la dieta (planet-gen §9): el nitrógeno que come un cuerpo sale en lo que
+ * deja, así que una dieta de carne y legumbres abona más que una de grano. Es el promedio de la
+ * proteína por gramo, ponderado por la masa comida. Sin nada comido, la calidad mixta de siempre.
+ */
+export function manureQualityOf(
+  diet: Iterable<{ readonly grams: number; readonly proteinPerGram: number }>,
+): number {
+  let mass = 0;
+  let protein = 0;
+  for (const d of diet) {
+    if (!(d.grams > 0)) continue;
+    mass += d.grams;
+    protein += d.grams * d.proteinPerGram;
+  }
+  if (mass <= 0) return MANURE_QUALITY;
+  return Math.min(
+    MANURE_QUALITY_MAX,
+    MANURE_QUALITY_BASE + (MANURE_QUALITY_PER_PROTEIN * protein) / mass,
+  );
+}

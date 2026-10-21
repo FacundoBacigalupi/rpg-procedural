@@ -7,7 +7,10 @@ import {
   EXCRETED,
   EXCRETED_FRACTION,
   FIELD_MANURE,
+  MANURE_QUALITY,
+  MANURE_QUALITY_MAX,
   MANURE_UNIT,
+  manureQualityOf,
   PARCEL_SOIL,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -61,6 +64,34 @@ describe("abono de los campos (fieldManure)", () => {
     const returned = l.balance(externalAccount(FIELD_MANURE), MANURE_UNIT);
     expect(returned).toBeGreaterThan(0);
     expect(l.total(MANURE_UNIT)).toBe(made - returned);
+  });
+
+  it("la calidad del abono sale de la dieta: más proteína, mejor abono; sin comida, la constante", () => {
+    expect(manureQualityOf([])).toBe(MANURE_QUALITY);
+    const grain = manureQualityOf([{ grams: 1000, proteinPerGram: 0.07 }]);
+    const meat = manureQualityOf([{ grams: 1000, proteinPerGram: 0.2 }]);
+    expect(meat).toBeGreaterThan(grain);
+    expect(meat).toBeLessThanOrEqual(MANURE_QUALITY_MAX);
+    const mix = manureQualityOf([
+      { grams: 1000, proteinPerGram: 0.07 },
+      { grams: 1000, proteinPerGram: 0.2 },
+    ]);
+    expect(mix).toBeGreaterThan(grain);
+    expect(mix).toBeLessThan(meat);
+  });
+
+  it("fieldManureDiet: sin fieldManure se ignora; encendido es determinista, cuadra y cambia el campo", () => {
+    const go = (o: { fieldManure?: boolean; fieldManureDiet?: boolean }) => {
+      const l = Life.create(3, content, o);
+      l.advanceTo(l.now + DAY * 40);
+      return l;
+    };
+    expect(go({ fieldManureDiet: true }).hash().total).toBe(go({}).hash().total);
+    const a = go({ fieldManure: true, fieldManureDiet: true });
+    const b = go({ fieldManure: true, fieldManureDiet: true });
+    expect(a.hash().total).toBe(b.hash().total);
+    expect(a.world.ledger.audit()).toEqual([]);
+    expect(a.hash().total).not.toBe(go({ fieldManure: true }).hash().total);
   });
 
   it("el abono sube la fertilidad del campo frente a no abonar", () => {
