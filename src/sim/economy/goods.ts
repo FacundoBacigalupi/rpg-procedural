@@ -43,3 +43,18 @@ export const ROTTED = "rotted";
 export const HARVEST_GOOD: LedgerUnit = ledgerUnit("good:grain");
 /** Gramos de grano por hora de trabajo medio en el campo. */
 export const HARVEST_GRAMS_PER_HOUR = 110;
+
+/**
+ * Abono de los campos (opt-in `fieldManure`, planet-gen §9): lo comido (sumidero `eaten`) deja desecho.
+ * `EXCRETED` es la fuente del bien `MANURE_UNIT` (el cuerpo que digiere), `FIELD_MANURE` el sumidero
+ * final (la tierra del campo, que lo toma como `afterManure`). El desecho espera en la cuenta de la aldea.
+ */
+export const EXCRETED = "excreted";
+export const FIELD_MANURE = "field-manure";
+export const MANURE_UNIT: LedgerUnit = ledgerUnit("good:manure");
+/** Fracción en masa de lo comido (y de lo que el ganado y la fauna se llevan) que sale como desecho aprovechable. */
+export const EXCRETED_FRACTION = 0.1;
+/** Gramos de desecho que equivalen a una "unidad de abono" de `afterManure` sobre los campos agregados (calibración abierta). */
+export const MANURE_GRAMS_PER_UNIT = 500_000;
+/** Calidad del desecho mixto (heces humanas y de animales, sin curar): constante hasta que dependa de la dieta. */
+export const MANURE_QUALITY = 0.4;

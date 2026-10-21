@@ -2,18 +2,37 @@
 // acumulado de la fuente `harvest` del ledger, así cuenta también lo que cosecha el personaje— le
 // saca fertilidad, y el descanso se la devuelve. La rutina rinde `fertilidad × estación`.
 
-import { externalAccount, type PlanetClock, type Seed } from "../../core/index.ts";
 import {
+  type AgentId,
+  type EntityRef,
+  externalAccount,
+  type HolderRef,
+  holderAccount,
+  type PlaceRef,
+  type PlanetClock,
+  type Seed,
+} from "../../core/index.ts";
+import {
+  draftEvent,
+  EATEN,
   ENTITY,
+  EXCRETED,
+  EXCRETED_FRACTION,
+  FIELD_MANURE,
   fieldYield,
   HARVEST,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
   HEAVY_RAIN_MM,
   type LocalMap,
+  MANURE_GRAMS_PER_UNIT,
+  MANURE_QUALITY,
+  MANURE_UNIT,
   PARCEL_SOIL,
   PERSON,
   type ProcessDef,
+  type ProcessResult,
+  type ReadonlyWorldTruth,
   SOIL,
   SOIL_FLOOR,
   setComponent,
@@ -30,7 +49,14 @@ export interface SoilOptions {
   readonly clock: PlanetClock;
   readonly map: LocalMap;
   readonly seed: Seed;
+  /**
+   * Opt-in (`fieldManure`): lo comido deja desecho en la cuenta de la aldea y el campo lo toma al
+   * día siguiente como abono (cosecha -> comida -> desecho -> campo). Apagado no hay asientos ni eventos.
+   */
+  readonly manure?: { readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef };
 }
+
+export const FIELD_MANURED_EVENT = "field.manured";
 
 export function soilProcess(o: SoilOptions): ProcessDef {
   return {
@@ -79,7 +105,53 @@ export function soilProcess(o: SoilOptions): ProcessDef {
         if (weatherAt(o.map, o.clock, o.seed, t).precip.mm >= HEAVY_RAIN_MM) heavy++;
       }
       const arid = o.map.climate.annualPrecipMm < 400;
+      // Abono: el desecho de ayer (cuenta de la aldea) va al campo; lo comido desde ayer deja el de hoy.
+      let manure = 0;
+      let manureEvents: ProcessResult["events"];
+      let manurePostings: ProcessResult["postings"];
+      const first = ctx.truth
+        .ids(PERSON)
+        .find((p) => ctx.truth.get(ENTITY, p)?.endedAt === undefined);
+      if (o.manure && ctx.ledger && first !== undefined) {
+        const village = holderAccount(id as unknown as HolderRef);
+        const pile = ctx.ledger.balance(village, MANURE_UNIT);
+        const eaten = ctx.ledger
+          .holdings(externalAccount(EATEN))
+          .reduce((n, h) => n + Math.max(0, h.amount), 0);
+        const made = -ctx.ledger.balance(externalAccount(EXCRETED), MANURE_UNIT);
+        const fresh = Math.max(0, Math.floor(eaten * EXCRETED_FRACTION) - made);
+        const transfers = [
+          ...(fresh > 0
+            ? [{ unit: MANURE_UNIT, from: externalAccount(EXCRETED), to: village, amount: fresh }]
+            : []),
+          ...(pile > 0
+            ? [
+                {
+                  unit: MANURE_UNIT,
+                  from: village,
+                  to: externalAccount(FIELD_MANURE),
+                  amount: pile,
+                },
+              ]
+            : []),
+        ];
+        if (transfers.length > 0) {
+          manure = pile / MANURE_GRAMS_PER_UNIT;
+          manureEvents = [
+            {
+              kind: FIELD_MANURED_EVENT,
+              actors: [],
+              place: o.manure.placeOf(ctx.truth, first as AgentId),
+              data: { returned: pile, excreted: fresh },
+              emissions: {},
+              causes: [{ kind: "state", entity: id as unknown as EntityRef, key: "soil" }],
+            },
+          ];
+          manurePostings = [{ event: draftEvent(0), transfers }];
+        }
+      }
       const stepped = stepParcelField(parcel.soil, {
+        ...(manure > 0 ? { manure, manureQuality: MANURE_QUALITY } : {}),
         days,
         load,
         heavyRainDays: (heavy / samples) * days,
@@ -91,6 +163,7 @@ export function soilProcess(o: SoilOptions): ProcessDef {
           setComponent(PARCEL_SOIL, id, { soil: stepped, seen }),
           setComponent(SOIL, id, { fertility, seen }),
         ],
+        ...(manureEvents ? { events: manureEvents, postings: manurePostings } : {}),
       };
     },
   };
