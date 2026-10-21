@@ -72,6 +72,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
 
+**Lote life-stages-wire (2026-10-21, rama `feat/life-stages-wire`):** `lifeStages` opt-in (`DEVELOPMENT` por persona al materializar, `life.stages` con `life.stage-entered`, audacia con `riskBias` de la etapa); apagado conserva el hash. Ver ROADMAP `psy-stages-wire`; pendientes `-rites`, `-attachment`, `-peers`, `-ancient`.
+
 **Lote wild-forage (2026-10-21, rama `feat/harvest-stock`):** forraje silvestre opt-in `wildHarvest` (stock en pie `WILD` que rebrota, `life.wild` mina de la fuente `wild` a los lugares de monte lo que da `harvestStock`; `gather` lo toma); apagado conserva el hash. ROADMAP `wild-forage`; pendientes `wild-fields-water`, `wild-hunt`, `wild-wood`, `wild-belief`.
 
 **Lote wild-gather (2026-10-21, rama `feat/wild-gather`):** test de punta a punta de un `gather` real con `wildHarvest` (`src/game/life/wild-gather.test.ts`): el rendimiento diario y el stock en pie bajan al recolectar varios días en un monte pobre (`wildCapacityScale`). Corregido: antes el stock solo bajaba por la ventana inicial; ahora la cuenta del lugar es la ventana diaria (lo tomado baja el stock al reponer, lo que sobra vuelve al monte; `wild.supplied` con `minted`/`returned`). Pendiente `wild-wood` (no hay verbo de tala ni vínculo con `PatchVegetation`: lote propio).
