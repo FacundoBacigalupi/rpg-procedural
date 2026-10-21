@@ -156,7 +156,7 @@ import { seedBelonging } from "./belonging.ts";
 import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
-import { ecologyHexes } from "./ecology.ts";
+import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
@@ -421,12 +421,18 @@ export interface LifeOptions {
   readonly lifeStages?: boolean;
   /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly belonging?: boolean;
+  /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
   readonly wildCapacityScale?: number;
+  /** Opt-in: la gente caza herbívoros de la celda (`ECOLOGY.cell.populations`): salen individuos enteros con evento `wild.hunted` y causa, y su carne (`good:venison`, fuente `hunt`) llega a los montes; apagado, hashes idénticos; fuera del perfil completo. */
+  readonly wildHunt?: boolean;
+  /** Con `wildHunt`: multiplicador del esfuerzo diario de caza (1 = el de referencia); para tests y escenarios. */
+  readonly wildHuntScale?: number;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
   readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
@@ -703,6 +709,7 @@ export function optInParts(
   | "meaningPressure"
   | "lifeStages"
   | "belonging"
+  | "coop"
   | "craftGoals"
   | "scam"
   | "scamFiller"
@@ -728,6 +735,8 @@ export function optInParts(
   | "fieldManure"
   | "wildHarvest"
   | "wildCapacityScale"
+  | "wildHunt"
+  | "wildHuntScale"
   | "funerals"
   | "pawn"
   | "hire"
@@ -869,6 +878,7 @@ export function optInParts(
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
     ...(options.belonging ? { belonging: true } : {}),
+    ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
@@ -887,6 +897,10 @@ export function optInParts(
     ...(options.wildHarvest ? { wildHarvest: true } : {}),
     ...(options.wildHarvest && options.wildCapacityScale !== undefined
       ? { wildCapacityScale: options.wildCapacityScale }
+      : {}),
+    ...(options.wildHunt ? { wildHunt: true } : {}),
+    ...(options.wildHunt && options.wildHuntScale !== undefined
+      ? { wildHuntScale: options.wildHuntScale }
       : {}),
     ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
@@ -1242,6 +1256,7 @@ export function ledgerConfigOf(
   offerings = false,
   fieldManure = false,
   wildHarvest = false,
+  wildHunt = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1282,6 +1297,7 @@ export function ledgerConfigOf(
       ...(offerings ? { [OFFERING_ASH]: units } : {}),
       ...(fieldManure ? { [EXCRETED]: [MANURE_UNIT], [FIELD_MANURE]: [MANURE_UNIT] } : {}),
       ...(wildHarvest ? { [WILD_SOURCE]: [FORAGE_UNIT] } : {}),
+      ...(wildHunt ? { [HUNT_SOURCE]: [GAME_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1301,13 +1317,22 @@ export function withDeclaredExternals(
   offerings = false,
   fieldManure = false,
   wildHarvest = false,
+  wildHunt = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
   for (const [name, units] of Object.entries(
-    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings, fieldManure, wildHarvest)
-      .externals,
+    ledgerConfigOf(
+      content,
+      residue,
+      sowSeed,
+      cobbler,
+      offerings,
+      fieldManure,
+      wildHarvest,
+      wildHunt,
+    ).externals,
   )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
@@ -1425,6 +1450,7 @@ export function createLife(
       options.offerings === true,
       options.fieldManure === true,
       options.wildHarvest === true,
+      options.wildHunt === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -1451,6 +1477,7 @@ export function createLife(
     defs: statuses,
   });
   if (options.councilCases && !options.council) throw new Error("councilCases requiere council");
+  if (options.coop && !options.council) throw new Error("coop requiere council");
   if (options.bandits && !options.famine) throw new Error("bandits requiere famine");
   if (options.patientDecides?.councilAuthority) {
     if (!options.patientDecides.realBonds)
