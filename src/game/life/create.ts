@@ -418,6 +418,8 @@ export interface LifeOptions {
   readonly mortalTech?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
+  /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
@@ -699,6 +701,7 @@ export function optInParts(
   | "recognizeGoalProgress"
   | "meaningPressure"
   | "lifeStages"
+  | "coop"
   | "craftGoals"
   | "scam"
   | "scamFiller"
@@ -864,6 +867,7 @@ export function optInParts(
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
+    ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
@@ -1446,6 +1450,7 @@ export function createLife(
     defs: statuses,
   });
   if (options.councilCases && !options.council) throw new Error("councilCases requiere council");
+  if (options.coop && !options.council) throw new Error("coop requiere council");
   if (options.bandits && !options.famine) throw new Error("bandits requiere famine");
   if (options.patientDecides?.councilAuthority) {
     if (!options.patientDecides.realBonds)

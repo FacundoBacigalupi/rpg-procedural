@@ -90,6 +90,7 @@ import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
 import { conversationSettlementProcess } from "./converse-economy.ts";
 import { converseProjectionProcess } from "./converse-project.ts";
+import { type CoopOptions, coopProcess } from "./coop.ts";
 import { type CouncilOptions, councilProcess } from "./council.ts";
 import { type CouncilCasesOptions, councilCasesProcess } from "./council-cases.ts";
 import { villageAuthority } from "./councilauthority.ts";
@@ -754,6 +755,8 @@ export interface LifeWorld {
   readonly meaningPressure?: boolean;
   /** Opt-in (`LifeOptions.lifeStages`): enciende `life.stages` y que la decisión lea el sesgo de riesgo de la etapa; apagado. */
   readonly lifeStages?: boolean;
+  /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
+  readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
   readonly craftGoals?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
@@ -1341,6 +1344,19 @@ export function lifeWorld(
           seed: parts.seed,
           ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
         }),
+        ...(parts.coop
+          ? [
+              coopProcess({
+                ...parts.coop,
+                placeOf: placeOf(parts, village),
+                day: parts.clock.day,
+                year: parts.clock.year,
+                traits: parts.traits,
+                dims: parts.relationDims,
+                bonds: parts.relationBonds,
+              }),
+            ]
+          : []),
         ...(parts.lifeStages
           ? [
               stagesProcess({
