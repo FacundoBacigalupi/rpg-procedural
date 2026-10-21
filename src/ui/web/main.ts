@@ -25,6 +25,7 @@ const session = await openSession(LifeStore.open(db), {
   content: loadContentDir("content", GAME_CONTENT_KINDS),
   llm: config.llm,
   nickname: config.nickname,
+  epilogue: config.epilogue,
   setup: config.setup,
 });
 const web = await startWeb(session, {

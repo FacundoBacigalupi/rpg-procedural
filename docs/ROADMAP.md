@@ -10,7 +10,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 **Prioridad vigente (2026-10-21):** Fase 3. La cadena `perfil2-item-claims-take`
 (loss → state → act → audit → give → replay-profile) está cerrada; sigue
-`perfil2-item-claims-item-demand` (bloqueado, ver ROADMAP) y luego `perfil3b`. Un solo lote,
+`perfil2-item-claims-item-demand` (bloqueado, ver ROADMAP) y luego el epílogo corto (Fase 3). Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
@@ -49,7 +49,7 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - [x] (perfil2-directed-coverage, 2026-10-21) Auditoría de oportunidades del perfil por defecto en `directed-coverage-audit.test.ts` (cero concepciones en 270 días es la curva normal, no un defecto; viaje y dormidos no existen al abrir la vida y dependen de recados y `sleepers`).
       - [x] (perfil2-coverage-scenarios, 2026-10-21) Cada frente se ejerce contra el perfil completo: viaje en `transit-coverage.test.ts` (recados que abren viajes que llegan, tras `perfil2-rain-wait-persist`); dormidos, embarazo/parto y préstamos con garantías en `directed-coverage-combined.test.ts`. El viaje corre en una corrida aparte de la combinada, no en la misma.
   - [x] (perfil3, 2026-10-21) Reloj por proceso (`runClock`) y `life.gossip` memoizado (90 días seed 1: 10,2 s a 6,9 s, hash idéntico a 30 días, #660). Perfil de CPU: `decide`, `standing` y `knowing` cuestan ~1 s por 30 días cada uno, ya sin hotspot algorítmico (`relations.current` ya memoiza el `exp`); las llamadas sin efecto (`pitch`, `npc_verbs`) retornan temprano y no pesan. **Queda con ítem:**
-    - [ ] (perfil3b) Costo de crear la `Life` (~4 s: `climate` del planeta domina con 1,5 s) y memoria retenida; medir antes y después.
+    - [x] (perfil3b, 2026-10-21) Crear la `Life` (~4 s) lo domina `climate` del planeta (1,5 s, ruido y `exp` por celda): tocarlo cambia los mapas y los hashes dorados, y se paga una vez por vida; se deja sin tocar.
   - [x] (perfil5) Partida larga con personaje activo: todos sus sub-ítems están cerrados (archivo de Fase 3).
 - [~] IA de utilidad: objetivos en capas que compiten ([npc-psychology.md](systems/npc-psychology.md) §7). Partido en sub-ítems (2026-10-09); desbloquea los `[ ]` de la Fase 2 que dicen «cuando exista la decisión de los NPC» (kin, `valuesOf`, autoimagen, entumecimiento, evitación, sanción religiosa, profecía):
   - (f3) Capas persistidas e inmediato, partido antes de implementar (2026-10-10, npc-psychology §7):
@@ -213,7 +213,9 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] Fase 3 — Bandas: ejecutar la defensa decidida por el consejo con guardias existentes, raciones y tiempo reales, obediencia y efecto acotado sobre los asaltos
   - [ ] Fase 3 — Bandas: medir con `sim:batch` bajo hambruna real, incluyendo nacimiento, avisos y defensa; una corrida amplia a la vez
 - [ ] Catálogo inicial de procesos mortales en `content/` con requisitos físicos y efectos sobre producción, `ProcessKnowledge` por persona, aprendizaje con maestro ([technology.md](systems/technology.md))
-- [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
+- [x] (epilogo-corto, 2026-10-21) Epílogo corto opt-in `--epilogue` (`src/game/chronicle/epilogue.ts`): el mismo mundo sigue sin el personaje y en cada punto de control (`runEpilogue`, por defecto 1 año en la sesión; 10 años por parámetro) se anota qué fue de la pareja, los hijos, el hogar y los más cercanos (vivos con edad, o muertos con causa y evento citado); se corta si no queda nadie. Un año del perfil completo cuesta ~90 s y diez ~15 min, por eso la sesión pide solo el año. **Queda con ítem:**
+  - [ ] (epilogo-herencia) Herencia y quién ocupa tu lugar: hoy nada reparte los bienes del muerto ni nombra heredero (no hay mecánica de herencia en `src/`); anotarlo en el epílogo cuando exista ([family-lineage.md](systems/family-lineage.md)). **(c) bloqueado por herencia en family.**
+  - [ ] (epilogo-recuerdo) `rememberedBy` es solo "vivos seguidos"; el recuerdo real (memorias, reputación, embudo) llega con deep-history/Fase 7.
 - [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
 - [ ] Proyectos cooperativos de aldea y caravanas: participantes con `knownPlan`, pool con conservación, repartos con compromisos, free riders ([schemes.md](systems/schemes.md) §9)
 - [ ] Conectar la oscilación a la aldea (partido 2026-10-15 en cuatro):

@@ -50,6 +50,8 @@ import {
   type ResumeAnchor,
   recapOf,
   renderChronicle,
+  renderEpilogue,
+  runEpilogue,
   type Suggestion,
   suggestions,
   type ThoughtInput,
@@ -146,6 +148,8 @@ export interface SessionOptions {
   readonly llm?: LlmJobs | undefined;
   /** Opt-in (`--nickname`): el apodo con lugar en el panel del personaje y en la narración; apagado por defecto. */
   readonly nickname?: boolean;
+  /** Opt-in (`--epilogue`): tras la crónica, un año de mundo sin el personaje (chronicle §7); tarda. */
+  readonly epilogue?: boolean;
 }
 
 /** Cuántas intenciones anteriores ve el parser para entender «otra vez». */
@@ -398,7 +402,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}`;
     if (report.over) {
       return {
-        text: `${text}\nTu vida terminó.\n\n${endingOf(life, store)}`,
+        text: `${text}\nTu vida terminó.\n\n${endingOf(life, store, options.epilogue === true)}`,
         end: "dead",
         turn: true,
       };
@@ -556,7 +560,7 @@ function ponderIdea(draft: IntentDraft): string | undefined {
 }
 
 /** La crónica final desde la verdad (chronicle §3): lo único que se le muestra de ella al jugador. */
-function endingOf(life: Life, store: LifeStore): string {
+function endingOf(life: Life, store: LifeStore, epilogue: boolean): string {
   const w = life.world;
   const chronicle = buildChronicle(w, w.truth.get(PLAYER, life.player)?.since ?? 0, {
     mode: String(store.getMeta("mode") ?? "realista"),
@@ -566,7 +570,11 @@ function endingOf(life: Life, store: LifeStore): string {
     const n = w.truth.get(PERSON_NAME, id as AgentId);
     return (n && callName(n)) ?? "alguien";
   };
-  return renderChronicle(chronicle, w.clock, (id) => w.log.get(id), nameOf);
+  const text = renderChronicle(chronicle, w.clock, (id) => w.log.get(id), nameOf);
+  if (!epilogue) return text;
+  return `${text}
+
+${renderEpilogue(runEpilogue(w, chronicle, [1]), nameOf)}`;
 }
 
 function open(store: LifeStore, options: SessionOptions, notices: string[]): Life {
