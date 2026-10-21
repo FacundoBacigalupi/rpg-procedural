@@ -53,6 +53,7 @@ import {
   type StageDef,
   type StatusDef,
   type TasteDef,
+  type TechCatalog,
   type TradeRecipeDef,
   type Trait,
   type TraitDef,
@@ -187,7 +188,7 @@ import {
 } from "./rents.ts";
 import { RESERVOIR, type ReservoirHost, reservoirProcess, reservoirSeeds } from "./reservoirs.ts";
 import { type ResidueConfig, residueProcess } from "./residue.ts";
-import { routineProcess } from "./routine.ts";
+import { ROUTINE, routineProcess } from "./routine.ts";
 import { fillerNoticeProcess, scamDiscoveryProcess } from "./scamdiscovery.ts";
 import { forgeSkillOf, scamEyeOf, scamNeedOf, scamProviders, scamRefundOf } from "./scampolicy.ts";
 import { schemerViewOf } from "./schemepolicy.ts";
@@ -216,6 +217,7 @@ import {
 } from "./substances.ts";
 import { bornTaboosProcess, bornTaboosSettleProcess, heardWordsProcess } from "./taboos.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
+import { techTeachProcess } from "./techknow.ts";
 import { testifyProcess } from "./testify.ts";
 import { seasonalClothing, thermalProcess } from "./thermal.ts";
 import { tradeProjectionProcess } from "./trade-projection.ts";
@@ -651,6 +653,8 @@ export interface LifeWorld {
   readonly offerings?: boolean;
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
+  /** Opt-in (`LifeOptions.mortalTech`): el catálogo de procesos mortales; enciende la enseñanza en el hogar (`life.tech-teach`) y que la cosecha lea `yieldFactor`; apagado. */
+  readonly mortalTech?: { readonly catalog: TechCatalog };
   readonly funerals?: FuneralOptions;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
@@ -1329,6 +1333,16 @@ export function lifeWorld(
           seed: parts.seed,
           ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
         }),
+        ...(parts.mortalTech
+          ? [
+              techTeachProcess({
+                catalog: parts.mortalTech.catalog,
+                clock: parts.clock,
+                workAge: ROUTINE.workAge,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ecologyProcess({
           clock: parts.clock,
           map: parts.map,
@@ -2228,6 +2242,7 @@ export function lifeWorld(
           parts.npcSowSeed === true
             ? { sowSeed: true }
             : {}),
+          ...(parts.mortalTech ? { tech: parts.mortalTech } : {}),
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),
           ...(parts.waitUntended === true || parts.waitNoSkin === true ? {} : { waitSkin: true }),
