@@ -766,6 +766,8 @@ export interface LifeWorld {
   readonly stageRites?: boolean;
   /** Opt-in (`LifeOptions.belonging`): enciende `life.belonging`; apagado. */
   readonly belonging?: boolean;
+  /** Opt-in (`LifeOptions.dreams`): `life.consolidate` emite `mind.dreamt` al despertar; apagado. */
+  readonly dreams?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1931,6 +1933,7 @@ export function lifeWorld(
         }),
         sleepProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
+          ...(parts.dreams ? { dreams: true } : {}),
           clock: parts.clock,
           seed: parts.seed,
           schemas: parts.schemas,

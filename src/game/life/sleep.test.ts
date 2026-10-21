@@ -13,6 +13,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import {
+  DREAM_EVENT,
   discomfortOf,
   fearOf,
   MIN_SLEEP_HOURS,
@@ -126,6 +127,28 @@ describe("sueño que consolida", () => {
       }),
       { numRuns: 20 },
     );
+  });
+
+  it("con dreams, despertar además emite el sueño citando memorias; sin dreams no", () => {
+    const run = (dreams: boolean) => {
+      const p = sleepProcess({ ...opts(7), ...(dreams ? { dreams: true } : {}) });
+      const truth = world(body("light"), [memory(1, 0.9), memory(2, 0.7)]);
+      truth.set(SLEEP_STATE, A, {
+        since: 0,
+        mark: 8 * HOUR,
+        hours: 8,
+        discomfortHours: 0,
+        fear: 0,
+      });
+      return p.run(ctx(truth, 9 * HOUR));
+    };
+    expect(run(false).events?.map((e) => e.kind)).toEqual(["mind.consolidated"]);
+    const on = run(true);
+    expect(on.events?.map((e) => e.kind)).toEqual(["mind.consolidated", DREAM_EVENT]);
+    const dream = on.events?.[1];
+    expect(dream?.causes.length).toBeGreaterThan(0);
+    expect(dream?.causes.every((c) => c.kind === "event")).toBe(true);
+    expect(run(true)).toEqual(on);
   });
 
   it("una siesta corta no consolida y no deja cuenta", () => {
