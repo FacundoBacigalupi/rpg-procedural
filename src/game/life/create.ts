@@ -168,6 +168,7 @@ import { ROUTINE } from "./routine.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
 import { SOWN_FIELD } from "./sowing.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
+import { seedDevelopment } from "./stages.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { seedTechKnowledge } from "./techknow.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
@@ -414,6 +415,8 @@ export interface LifeOptions {
   readonly offerings?: boolean;
   /** Opt-in: procesos mortales (technology §1-§2): al materializar la aldea se siembra el saber tácito de los procesos que la geografía permite (`tech.seeded`), en el hogar se enseña de a poco (`life.tech-teach`, `teachProcess`) y la cosecha de la rutina lee `yieldFactor` (`LifeParts.mortalTech`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly mortalTech?: boolean;
+  /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly lifeStages?: boolean;
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
@@ -690,6 +693,7 @@ export function optInParts(
   | "recognizeGoalCompletion"
   | "recognizeGoalProgress"
   | "meaningPressure"
+  | "lifeStages"
   | "craftGoals"
   | "scam"
   | "scamFiller"
@@ -852,6 +856,7 @@ export function optInParts(
     ...(options.recognizeGoalCompletion ? { recognizeGoalCompletion: true } : {}),
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
+    ...(options.lifeStages ? { lifeStages: true } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
     ...(options.scam && options.scamFiller ? { scamFiller: options.scamFiller } : {}),
@@ -1622,6 +1627,17 @@ export function createLife(
       clock,
       now: pop.now,
       workAge: ROUTINE.workAge,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+    });
+  }
+
+  // Opt-in: el estado de desarrollo (etapa por edad vivida y apego) de cada persona.
+  if (options.lifeStages) {
+    seedDevelopment(truth, ids, log, {
+      stages: content.all(LIFE_STAGES),
+      clock,
+      now: pop.now,
       place: terrain.village,
       foundersEvent: pop.foundersEvent,
     });

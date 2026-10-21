@@ -4,6 +4,7 @@
 // esquemas de infancia (nunca una variable suelta que se escriba a mano).
 
 import type { EventId, Tick } from "../../core/index.ts";
+import { table } from "../world/index.ts";
 import { type Mind, type StageDef, stageAt } from "./mind.ts";
 
 export type AttachmentStyle = "secure" | "anxious" | "avoidant" | "disorganized";
@@ -19,6 +20,9 @@ export interface DevelopmentState {
   /** El evento con que empezó este estado (nacimiento o siembra). */
   readonly originEventId: EventId;
 }
+
+/** El estado de desarrollo por persona (opt-in `LifeOptions.lifeStages`). */
+export const DEVELOPMENT = table<DevelopmentState>("mind.development");
 
 export const MAX_FORMATIVE_DEV = 24;
 /** Fuerza desde la que un esquema de infancia cuenta como «alto» para el apego. */

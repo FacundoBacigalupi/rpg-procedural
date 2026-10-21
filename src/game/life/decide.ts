@@ -38,6 +38,7 @@ import {
   coreGoals,
   craftGoals,
   DEFICIENCY_EFFECTS,
+  DEVELOPMENT,
   type DimensionDef,
   decideByUtility,
   drivesFor,
@@ -145,6 +146,7 @@ import {
 import { type PawnWantOptions, pawnDebtOf, pawnDistress, pawnWantMood, pawnWants } from "./pawn.ts";
 import { PRACTICE_LOG } from "./practice-log.ts";
 import { requestWant, type SpeakActsOptions, speakActCandidates } from "./speakacts.ts";
+import { stageBoldness } from "./stages.ts";
 import {
   acuteOf,
   type BorrowCravingOptions,
@@ -228,6 +230,8 @@ export interface DecideOptions {
   readonly recognizeGoalCompletion?: boolean;
   /** Opt-in: el vacío por venganza cumplida sube la necesidad lenta `meaning` (necesita el historial). */
   readonly meaningPressure?: boolean;
+  /** Opt-in: el `riskBias` de la etapa (`DEVELOPMENT`) mueve la audacia de la decisión. */
+  readonly lifeStages?: boolean;
   /**
    * Opt-in: cierra metas concretas persistidas desde evidencia de progreso propia. `concrete`
    * declara cuáles tienen final (un valor continuo no se infiere) y `evidenceOf` extrae, de las
@@ -536,7 +540,11 @@ export function decideProcess(o: DecideOptions): ProcessDef {
         bias: valueBias(culture?.prevalence["values.bias"]?.params ?? {}),
         stage: stageAt(o.stages, age),
       });
-      const temper = temperOf(innate, mood);
+      const baseTemper = temperOf(innate, mood);
+      const developed = o.lifeStages ? truth.get(DEVELOPMENT, me) : undefined;
+      const temper = developed
+        ? { ...baseTemper, boldness: stageBoldness(baseTemper.boldness, developed.stage) }
+        : baseTemper;
 
       // Los objetivos: núcleo desde sus valores y venganza desde el resentimiento con memoria que lo
       // explique. Se reconcilian con los vigentes; los que nacen o terminan quedan como `npc.goal`.

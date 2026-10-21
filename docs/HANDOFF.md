@@ -72,6 +72,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
 
+**Lote life-stages-wire (2026-10-21, rama `feat/life-stages-wire`):** `lifeStages` opt-in (`DEVELOPMENT` por persona al materializar, `life.stages` con `life.stage-entered`, audacia con `riskBias` de la etapa); apagado conserva el hash. Ver ROADMAP `psy-stages-wire`; pendientes `-rites`, `-attachment`, `-peers`, `-ancient`.
+
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
 **Lote life-stages (2026-10-21, `feat/life-stages`):** `sim/mind/development.ts` (núcleo puro, sin cablear: no cambia hashes; fuera de FULL_PROFILE): etapa por edad vivida con evento causa, apego derivado de esquemas, `riskBias`/`peerWeight` por etapa. Ítem de Fase 3 partido en `psy-*` en el ROADMAP; sigue `psy-stages-wire`. Check en `sim-reports/check-life-stages.log` (local).
