@@ -72,6 +72,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
+**Lote coop-projects (2026-10-21, `feat/coop-projects`):** `sim/schemes/{project,pool,coop}.ts` (núcleo puro, sin cablear: no cambia hashes; fuera de FULL_PROFILE): `Project` cooperativo con `knownPlan`, pool entero con conservación, reparto como `Commitment`, free riders y salida. Pendientes en el ROADMAP: `coop-wire`, `coop-betrayal`, `coop-lod`. Check en `sim-reports/check-coop-projects.log` (local).
+
 **Lote mortal-processes (2026-10-21, `feat/mortal-processes`):** `sim/technology` (núcleo puro) y `content/techprocesses/` (18 procesos): catálogo con `feasibility`, `ProcessKnowledge` por persona con `yieldFactor`/`storageFactor`, y `teachProcess`/`learnFromManual`. Sin cablear a la vida (no cambia hashes; el cableado opt-in `--tech`/`FULL_PROFILE` queda `[ ]` en el ROADMAP, después de «Abono de los campos»). `npm run check` sobre `855d0a6`: 482 archivos, 3336 tests, exit 0 (`sim-reports/check-mortal-processes.log`, local).
 
 **Lote perfil3 (2026-10-21, #660 + este PR):** `life.gossip` memoizado y reloj por proceso; `npm run check` sobre `3cb88b6`: 478 archivos, 3307 tests, exit 0 (`sim-reports/check-perfil3.log`). Este PR es solo docs: cierra `perfil3`/`perfil5`, abre `perfil3b` (crear la `Life`). Lote epílogo corto (rama `feat/epilogue-short`): `epilogue.ts` + `--epilogue`; ver ROADMAP `epilogo-corto`.
