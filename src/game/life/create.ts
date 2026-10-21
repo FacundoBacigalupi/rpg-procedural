@@ -425,6 +425,8 @@ export interface LifeOptions {
   readonly attachmentBias?: boolean;
   /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly belonging?: boolean;
+  /** Opt-in: sueños con contenido (npc-psychology §15): al despertar de una noche que consolidó, `life.consolidate` emite `mind.dreamt` con el `Dream` (fuentes = memorias reales como causas, tono, símbolos, pesadilla) (`LifeParts.dreams`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly dreams?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
@@ -717,6 +719,7 @@ export function optInParts(
   | "stageRites"
   | "attachmentBias"
   | "belonging"
+  | "dreams"
   | "coop"
   | "craftGoals"
   | "scam"
@@ -889,6 +892,7 @@ export function optInParts(
     ...(options.lifeStages && options.stageRites ? { stageRites: true } : {}),
     ...(options.lifeStages && options.attachmentBias ? { attachmentBias: true } : {}),
     ...(options.belonging ? { belonging: true } : {}),
+    ...(options.dreams ? { dreams: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),

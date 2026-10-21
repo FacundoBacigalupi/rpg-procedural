@@ -8,6 +8,7 @@ export * from "./consolidation.ts";
 export * from "./craft-goals.ts";
 export * from "./debt-goal.ts";
 export * from "./development.ts";
+export * from "./dreams.ts";
 export * from "./emotions.ts";
 export * from "./goal-progress.ts";
 export * from "./goal-progress-evidence.ts";

@@ -26,6 +26,7 @@ import {
   type Body,
   type BondDef,
   COMMUNITY_RELIGION,
+  composeDream,
   consolidate,
   type DimensionDef,
   deleteComponent,
@@ -58,6 +59,8 @@ import { supportFor } from "./support.ts";
 import { WAKE_COMFORT } from "./wake.ts";
 
 export const SLEEP_PROCESS = "life.consolidate";
+/** Evento del sueño de la noche (npc-psychology §15), con `dreams`. */
+export const DREAM_EVENT = "mind.dreamt";
 
 /** Lo que se lleva de una noche mientras dura. */
 export interface SleepState {
@@ -142,6 +145,8 @@ export function themeOfMemory(m: Memory): Theme | undefined {
 export interface SleepOptions {
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no lleva la cuenta de la noche. */
   readonly sleepers?: boolean;
+  /** Opt-in: al despertar tras consolidar, emite `mind.dreamt` con el sueño de la noche. */
+  readonly dreams?: boolean;
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly schemas: readonly SchemaDef[];
@@ -289,10 +294,39 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
               ),
             };
       const changes: StateChange[] = [drop, setComponent(MEMORIES, me, memories)];
+      const dream = o.dreams
+        ? composeDream({
+            dreamer: me,
+            night,
+            memories: memories.items,
+            now: ctx.now,
+            quality: pass.sleepQuality,
+            ...(dreamt && mental ? { nightmareCauses: nightmareCauses(mental) } : {}),
+            themeOf: themeOfMemory,
+            rng: Rng.root(o.seed).fork("dream", me, night),
+          })
+        : undefined;
       if (mind && pass.schemaUpdates.length > 0) {
         changes.push(setComponent(MIND, me, applySchemaUpdates(mind, pass.schemaUpdates)));
       }
       const events: EventDraft[] = [event];
+      if (dream) {
+        events.push({
+          kind: DREAM_EVENT,
+          actors: [me],
+          place: o.placeOf(truth, me),
+          data: {
+            night,
+            sources: dream.sources,
+            valence: dream.valence,
+            arousal: dream.arousal,
+            symbols: dream.symbols,
+            nightmare: dream.nightmare,
+          },
+          emissions: {},
+          causes: dream.sources.map((ev) => ({ kind: "event", event: ev }) as const),
+        });
+      }
       if (mental) {
         const settled = settleConditions(
           mental,
