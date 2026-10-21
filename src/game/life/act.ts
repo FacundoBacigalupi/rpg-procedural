@@ -65,6 +65,7 @@ import {
   ingest,
   injure,
   isScam,
+  itemDonationFor,
   itemEndpoint,
   itemHex,
   itemSnapshot,
@@ -674,10 +675,22 @@ function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | 
 }
 
 /** La toma de `item` por `me` según el núcleo de property, con el estado actual (causa provisional). */
-/** La entrega de `item` de `me` a `to` (solo posesión física: los derechos quedan donde estaban). */
+/**
+ * La entrega de `item` de `me` a `to`: la posesión física y, si los haces de `me` lo permiten
+ * (`itemDonationFor`), su donación normativa; los derechos no donados quedan donde estaban.
+ */
 function itemGiveFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, to: EntityRef | null) {
   const snapshot = itemSnapshot(truth, item);
+  const donation = snapshot
+    ? itemDonationFor({
+        rights: snapshot.rights,
+        giver: me,
+        recipient: (to as HolderRef | null) ?? null,
+        cause: draftEvent(0),
+      })
+    : undefined;
   return transferItem({
+    ...(donation ? { donation } : {}),
     item,
     snapshot,
     from: itemEndpoint(truth, me, true),

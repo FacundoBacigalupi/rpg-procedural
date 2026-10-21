@@ -22,6 +22,7 @@ import {
   type GoodDef,
   INNATE,
   ITEM_HOLD,
+  type ItemRight,
   LOCATION,
   type LocalMap,
   newBody,
@@ -81,7 +82,7 @@ const map: LocalMap = {
   },
 };
 
-function world(itemClaims = false, gift = false) {
+function world(itemClaims = false, gift = false, rights: ItemRight[] = []) {
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -98,7 +99,7 @@ function world(itemClaims = false, gift = false) {
   const body = content.all(BODY_PLANS)[0];
   if (!body) throw new Error("sin cuerpo");
   truth.set(ENTITY, sword, { id: sword, createdAt: 0, originEventId: makeId("event", 1) });
-  if (gift) truth.set(ITEM_HOLD, sword, { possession: makeId("agent", 1), rights: [] });
+  if (gift) truth.set(ITEM_HOLD, sword, { possession: makeId("agent", 1), rights });
   else truth.set(LOCATION, sword, { hex: 0 });
   for (const n of [1, 2]) {
     const actor = makeId("agent", n);
@@ -284,9 +285,51 @@ describe("entrega de ítems (give, opt-in itemClaims)", () => {
     expect(w.truth.get(ENTITY, sword)).toEqual(origin);
     expect(w.ledger.audit()).toEqual([]);
   });
+  const origin = makeId("event", 1);
+  const ownership: ItemRight = {
+    key: "ownership",
+    holder: makeId("agent", 1),
+    incidents: ["possess", "use", "alienate"],
+    tenure: "personal",
+    record: { kind: "custom", witnesses: [], event: origin },
+    norm: "village",
+    originEventId: origin,
+    share: 0.5,
+    encumbrances: [],
+  };
+  const kept: ItemRight = { ...ownership, key: "coowner", holder: makeId("agent", 3) };
+  it("dona el haz del que da, con la cuota y el evento de la entrega; el ajeno queda", () => {
+    const w = world(true, true, [ownership, kept]);
+    w.scheduler.advanceTo(clock.day / 2);
+    const give = w.log.all().find((e) => e.kind === "action.give");
+    const hold = w.truth.get(ITEM_HOLD, sword);
+    expect(hold?.possession).toBe(makeId("agent", 2));
+    expect(hold?.rights[0]).toMatchObject({
+      holder: makeId("agent", 2),
+      share: 0.5,
+      record: { kind: "custom", event: give?.id },
+    });
+    expect(hold?.rights[1]).toEqual(kept);
+  });
+  it("una carga que impide enajenar: entrega la posesión pero no el haz", () => {
+    const encumbered = { ...ownership, encumbrances: [{ key: "lien", originEventId: origin }] };
+    const w = world(true, true, [encumbered]);
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ITEM_HOLD, sword)).toEqual({
+      possession: makeId("agent", 2),
+      rights: [encumbered],
+    });
+  });
+  it("sin alienate no dona", () => {
+    const loan = { ...ownership, incidents: ["possess" as const, "use" as const] };
+    const w = world(true, true, [loan]);
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ITEM_HOLD, sword)?.rights).toEqual([loan]);
+    expect(w.truth.get(ITEM_HOLD, sword)?.possession).toBe(makeId("agent", 2));
+  });
   it("es determinista", () => {
     const run = () => {
-      const w = world(true, true);
+      const w = world(true, true, [ownership, kept]);
       w.scheduler.advanceTo(clock.day / 2);
       return w;
     };
