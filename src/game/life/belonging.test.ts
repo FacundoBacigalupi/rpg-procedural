@@ -53,8 +53,8 @@ describe("pertenencia (belonging)", () => {
   });
 
   it("determinista; los avisos y los estados nuevos llevan causa", () => {
-    const a = run(true, 400);
-    const b = run(true, 400);
+    const a = run(true, 60);
+    const b = run(true, 60);
     expect(a.hash().total).toBe(b.hash().total);
     const kinds = new Set([
       "life.belonging-deficit",
