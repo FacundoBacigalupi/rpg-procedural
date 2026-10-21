@@ -6,12 +6,15 @@ import { randomInt } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { acquireHeavy } from "../../../heavy-lock.ts";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { parseSeeds } from "./batch.ts";
 import { runFullProfileBatch } from "./full-profile-run.ts";
 import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
 import { runSim } from "./sim.ts";
+
+await acquireHeavy("sim");
 
 const { values } = parseArgs({
   options: {

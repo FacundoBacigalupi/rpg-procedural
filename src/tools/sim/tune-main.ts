@@ -5,9 +5,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { acquireHeavy } from "../../../heavy-lock.ts";
 import { GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { formatTuning, runTuning } from "./tuning.ts";
+
+await acquireHeavy("sim-tune");
 
 const { values } = parseArgs({
   options: {
