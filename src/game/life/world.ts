@@ -659,6 +659,10 @@ export interface LifeWorld {
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda). */
   readonly wildCapacityScale?: number;
+  /** Opt-in: la gente caza herbívoros de la celda (cobro diario dentro de `life.ecology`, ledger `hunt` -> montes); apagado. */
+  readonly wildHunt?: boolean;
+  /** Con `wildHunt`: multiplicador del esfuerzo diario de caza. */
+  readonly wildHuntScale?: number;
   /** Opt-in (`LifeOptions.mortalTech`): el catálogo de procesos mortales; enciende la enseñanza en el hogar (`life.tech-teach`) y que la cosecha lea `yieldFactor`; apagado. */
   readonly mortalTech?: { readonly catalog: TechCatalog };
   readonly funerals?: FuneralOptions;
@@ -1366,6 +1370,7 @@ export function lifeWorld(
           seed: parts.seed,
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
+          ...(parts.wildHunt ? { hunt: { effortScale: parts.wildHuntScale ?? 1 } } : {}),
         }),
         ...(parts.wildHarvest
           ? [

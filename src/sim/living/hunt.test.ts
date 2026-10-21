@@ -33,8 +33,8 @@ describe("caza de la gente", () => {
       owed = { ...s.owed };
       c = s.next;
       for (const n of Object.values(s.taken)) expect(Number.isInteger(n)).toBe(true);
-      total += s.taken.deer ?? 0;
-      expect(s.grams).toBe(Math.round((s.taken.deer ?? 0) * 60 * 1000 * 0.4));
+      total += s.taken["deer"] ?? 0;
+      expect(s.grams).toBe(Math.round((s.taken["deer"] ?? 0) * 60 * 1000 * 0.4));
     }
     expect(total).toBeGreaterThan(0);
     expect(c.populations.find((p) => p.lineage === "deer")?.count).toBe(400 - total);
@@ -44,9 +44,9 @@ describe("caza de la gente", () => {
   it("el rendimiento por hora baja con el stock y hay un piso de reproductores", () => {
     const rich = huntStep(cell(400), lineages, {}, 1);
     const poor = huntStep(cell(20), lineages, {}, 1);
-    expect(rich.perHour.deer).toBeGreaterThan(poor.perHour.deer ?? 0);
+    expect(rich.perHour["deer"]).toBeGreaterThan(poor.perHour["deer"] ?? 0);
     const crowd = huntStep(cell(HUNT_BREEDERS + 1), lineages, { deer: 50 }, 1);
-    expect(crowd.taken.deer).toBe(1);
-    expect(huntStep(cell(HUNT_BREEDERS), lineages, { deer: 50 }, 1).taken.deer).toBeUndefined();
+    expect(crowd.taken["deer"]).toBe(1);
+    expect(huntStep(cell(HUNT_BREEDERS), lineages, { deer: 50 }, 1).taken["deer"]).toBeUndefined();
   });
 });

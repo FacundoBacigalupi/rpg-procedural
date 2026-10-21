@@ -460,6 +460,7 @@ export class Life {
         options.offerings === true,
         options.fieldManure === true,
         options.wildHarvest === true,
+        options.wildHunt === true,
       ),
     };
     if (anchor === undefined) {

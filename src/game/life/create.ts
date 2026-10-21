@@ -155,7 +155,7 @@ import {
 import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
-import { ecologyHexes } from "./ecology.ts";
+import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
@@ -424,6 +424,10 @@ export interface LifeOptions {
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
   readonly wildCapacityScale?: number;
+  /** Opt-in: la gente caza herbívoros de la celda (`ECOLOGY.cell.populations`): salen individuos enteros con evento `wild.hunted` y causa, y su carne (`good:venison`, fuente `hunt`) llega a los montes; apagado, hashes idénticos; fuera del perfil completo. */
+  readonly wildHunt?: boolean;
+  /** Con `wildHunt`: multiplicador del esfuerzo diario de caza (1 = el de referencia); para tests y escenarios. */
+  readonly wildHuntScale?: number;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
   readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
@@ -724,6 +728,8 @@ export function optInParts(
   | "fieldManure"
   | "wildHarvest"
   | "wildCapacityScale"
+  | "wildHunt"
+  | "wildHuntScale"
   | "funerals"
   | "pawn"
   | "hire"
@@ -882,6 +888,10 @@ export function optInParts(
     ...(options.wildHarvest ? { wildHarvest: true } : {}),
     ...(options.wildHarvest && options.wildCapacityScale !== undefined
       ? { wildCapacityScale: options.wildCapacityScale }
+      : {}),
+    ...(options.wildHunt ? { wildHunt: true } : {}),
+    ...(options.wildHunt && options.wildHuntScale !== undefined
+      ? { wildHuntScale: options.wildHuntScale }
       : {}),
     ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
@@ -1237,6 +1247,7 @@ export function ledgerConfigOf(
   offerings = false,
   fieldManure = false,
   wildHarvest = false,
+  wildHunt = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1277,6 +1288,7 @@ export function ledgerConfigOf(
       ...(offerings ? { [OFFERING_ASH]: units } : {}),
       ...(fieldManure ? { [EXCRETED]: [MANURE_UNIT], [FIELD_MANURE]: [MANURE_UNIT] } : {}),
       ...(wildHarvest ? { [WILD_SOURCE]: [FORAGE_UNIT] } : {}),
+      ...(wildHunt ? { [HUNT_SOURCE]: [GAME_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1296,13 +1308,22 @@ export function withDeclaredExternals(
   offerings = false,
   fieldManure = false,
   wildHarvest = false,
+  wildHunt = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
   for (const [name, units] of Object.entries(
-    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings, fieldManure, wildHarvest)
-      .externals,
+    ledgerConfigOf(
+      content,
+      residue,
+      sowSeed,
+      cobbler,
+      offerings,
+      fieldManure,
+      wildHarvest,
+      wildHunt,
+    ).externals,
   )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
@@ -1420,6 +1441,7 @@ export function createLife(
       options.offerings === true,
       options.fieldManure === true,
       options.wildHarvest === true,
+      options.wildHunt === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
