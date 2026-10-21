@@ -37,6 +37,7 @@ import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
 import { SKILLS } from "./skills/index.ts";
 import { ETIQUETTE, STATUSES } from "./social/index.ts";
+import { TECH_PROCESSES } from "./technology/index.ts";
 import { SCENARIOS, TUNING_TARGETS } from "./tuning/index.ts";
 
 export const CONTENT_KINDS: readonly ContentKind[] = [
@@ -87,6 +88,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   LINEAGES,
   TRAJECTORIES,
   TASTES,
+  TECH_PROCESSES,
   SCENARIOS,
   TUNING_TARGETS,
 ] as readonly ContentKind[];
