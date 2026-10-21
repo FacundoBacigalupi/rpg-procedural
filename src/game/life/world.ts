@@ -649,6 +649,8 @@ export interface LifeWorld {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano en la ración a la tablilla y la fiesta, con destino (quemado, enterrado, a los pobres) y asiento en el ledger (`life.offerings`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
+  readonly fieldManure?: boolean;
   readonly funerals?: FuneralOptions;
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
   readonly pawn?: {
@@ -1321,7 +1323,12 @@ export function lifeWorld(
           clock: parts.clock,
           placeOf: placeOf(parts, village),
         }),
-        soilProcess({ clock: parts.clock, map: parts.map, seed: parts.seed }),
+        soilProcess({
+          clock: parts.clock,
+          map: parts.map,
+          seed: parts.seed,
+          ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
+        }),
         ecologyProcess({
           clock: parts.clock,
           map: parts.map,

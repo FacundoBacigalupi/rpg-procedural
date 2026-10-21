@@ -50,6 +50,8 @@ import {
   ECOLOGY,
   ENTITY,
   ETIQUETTE,
+  EXCRETED,
+  FIELD_MANURE,
   FOODS,
   GATHERED_SOURCE,
   GOODS,
@@ -68,6 +70,7 @@ import {
   LOCATION,
   type LocalMap,
   liveSettlementSpaces,
+  MANURE_UNIT,
   MATERIALS,
   NUTRIENT_PROFILES,
   OFFERING_ASH,
@@ -406,6 +409,8 @@ export interface LifeOptions {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano (ración a la tablilla y fiesta) con destino: quemado a un sumidero, enterrado en el lugar, dado a los pobres; asiento en el ledger con evento `offering.made` (`game/life/offerings.ts`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
+  readonly fieldManure?: boolean;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
   readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
@@ -692,6 +697,7 @@ export function optInParts(
   | "loanContagionEffects"
   | "loanWorkout"
   | "offerings"
+  | "fieldManure"
   | "funerals"
   | "pawn"
   | "hire"
@@ -845,6 +851,7 @@ export function optInParts(
     ...(options.loanContagionEffects ? { loanContagionEffects: options.loanContagionEffects } : {}),
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.offerings ? { offerings: true } : {}),
+    ...(options.fieldManure ? { fieldManure: true } : {}),
     ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
@@ -1197,6 +1204,7 @@ export function ledgerConfigOf(
   sowSeed = false,
   cobbler = false,
   offerings = false,
+  fieldManure = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1235,6 +1243,7 @@ export function ledgerConfigOf(
       ...residueExternals(residue),
       ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
       ...(offerings ? { [OFFERING_ASH]: units } : {}),
+      ...(fieldManure ? { [EXCRETED]: [MANURE_UNIT], [FIELD_MANURE]: [MANURE_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1252,12 +1261,13 @@ export function withDeclaredExternals(
   sowSeed = false,
   cobbler = false,
   offerings = false,
+  fieldManure = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
   for (const [name, units] of Object.entries(
-    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings).externals,
+    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings, fieldManure).externals,
   )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
@@ -1373,6 +1383,7 @@ export function createLife(
       options.npcSowSeed === true && options.legacyNoSowSeed !== true,
       options.npcCobbler === true && options.legacyNoCobbler !== true,
       options.offerings === true,
+      options.fieldManure === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
