@@ -28,6 +28,7 @@ export const ENTITY_KINDS = [
   "journey",
   "force",
   "scheme",
+  "project",
   "lineage",
   "trace",
   "pathogen",
@@ -66,6 +67,7 @@ export type EventId = Id<"event">;
 export type JourneyId = Id<"journey">;
 export type ForceId = Id<"force">;
 export type SchemeId = Id<"scheme">;
+export type ProjectId = Id<"project">;
 export type LineageId = Id<"lineage">;
 export type TraceId = Id<"trace">;
 export type PathogenId = Id<"pathogen">; // un patógeno concreto, con origen (body-health §6)
