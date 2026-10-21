@@ -459,6 +459,7 @@ export class Life {
         options.npcCobbler === true && options.legacyNoCobbler !== true,
         options.offerings === true,
         options.fieldManure === true,
+        options.wildHarvest === true,
       ),
     };
     if (anchor === undefined) {

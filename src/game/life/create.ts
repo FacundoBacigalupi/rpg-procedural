@@ -174,6 +174,7 @@ import { seedTechKnowledge } from "./techknow.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
+import { FORAGE_UNIT, WILD_SOURCE } from "./wild.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -419,6 +420,8 @@ export interface LifeOptions {
   readonly lifeStages?: boolean;
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
+  /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly wildHarvest?: boolean;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
   readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
@@ -717,6 +720,7 @@ export function optInParts(
   | "loanWorkout"
   | "offerings"
   | "fieldManure"
+  | "wildHarvest"
   | "funerals"
   | "pawn"
   | "hire"
@@ -872,6 +876,7 @@ export function optInParts(
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.offerings ? { offerings: true } : {}),
     ...(options.fieldManure ? { fieldManure: true } : {}),
+    ...(options.wildHarvest ? { wildHarvest: true } : {}),
     ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),
@@ -1225,6 +1230,7 @@ export function ledgerConfigOf(
   cobbler = false,
   offerings = false,
   fieldManure = false,
+  wildHarvest = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1264,6 +1270,7 @@ export function ledgerConfigOf(
       ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
       ...(offerings ? { [OFFERING_ASH]: units } : {}),
       ...(fieldManure ? { [EXCRETED]: [MANURE_UNIT], [FIELD_MANURE]: [MANURE_UNIT] } : {}),
+      ...(wildHarvest ? { [WILD_SOURCE]: [FORAGE_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1282,12 +1289,14 @@ export function withDeclaredExternals(
   cobbler = false,
   offerings = false,
   fieldManure = false,
+  wildHarvest = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
   let changed = false;
   for (const [name, units] of Object.entries(
-    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings, fieldManure).externals,
+    ledgerConfigOf(content, residue, sowSeed, cobbler, offerings, fieldManure, wildHarvest)
+      .externals,
   )) {
     const known = new Set(have[name] ?? []);
     const missing = units.filter((u) => !known.has(u));
@@ -1404,6 +1413,7 @@ export function createLife(
       options.npcCobbler === true && options.legacyNoCobbler !== true,
       options.offerings === true,
       options.fieldManure === true,
+      options.wildHarvest === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).

@@ -231,6 +231,7 @@ import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
+import { wildProcess } from "./wild.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
 
@@ -654,6 +655,8 @@ export interface LifeWorld {
   readonly offerings?: boolean;
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
+  /** Opt-in: el forraje del monte es un stock en pie que rebrota y del que la gente alcanza lo que da `harvestStock` (`life.wild`, ledger `wild` -> lugares de monte); apagado. */
+  readonly wildHarvest?: boolean;
   /** Opt-in (`LifeOptions.mortalTech`): el catálogo de procesos mortales; enciende la enseñanza en el hogar (`life.tech-teach`) y que la cosecha lea `yieldFactor`; apagado. */
   readonly mortalTech?: { readonly catalog: TechCatalog };
   readonly funerals?: FuneralOptions;
@@ -1362,6 +1365,7 @@ export function lifeWorld(
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
         }),
+        ...(parts.wildHarvest ? [wildProcess({ dayTicks: parts.clock.day })] : []),
         ...(parts.reservoirs && parts.reservoirs.length > 0
           ? [reservoirProcess({ hosts: parts.reservoirs, dayTicks: parts.clock.day })]
           : []),
