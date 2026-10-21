@@ -16,6 +16,7 @@ import {
   bodySigns,
   bookOf,
   COPPER,
+  type ConditionKind,
   type DeedKind,
   type GuiltResponse,
   houseKey,
@@ -122,7 +123,7 @@ export interface CharacterPanel {
    */
   readonly conscience?: {
     readonly burdens: readonly {
-      readonly kind: "trauma" | "guilt";
+      readonly kind: ConditionKind;
       readonly weight: BurdenLevel;
     }[];
     readonly guilt: readonly {

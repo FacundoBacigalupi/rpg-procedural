@@ -60,8 +60,10 @@ export const MOOD_FROM_SEVERITY = 0.15;
  */
 export function moodOf(truth: ReadonlyWorldTruth, who: AgentId): VoiceMoodName | undefined {
   const state = truth.get(MENTAL, who);
-  let best: { kind: "trauma" | "guilt"; severity: number } | undefined;
+  let best: { kind: string; severity: number } | undefined;
   for (const c of state?.conditions ?? []) {
+    // Duelo, depresión y adicción todavía no tiñen la voz (psy-conditions-wire).
+    if (c.kind !== "trauma" && c.kind !== "guilt") continue;
     if (c.severity < MOOD_FROM_SEVERITY) continue;
     if (best === undefined || c.severity > best.severity) best = c;
   }
