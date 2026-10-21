@@ -206,6 +206,7 @@ import {
 import { soilProcess } from "./soil.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import { householdsOf, spoilageProcess } from "./spoilage.ts";
+import { stagesProcess } from "./stages.ts";
 import { standingProcess } from "./standing.ts";
 import {
   type BorrowCravingOptions,
@@ -749,6 +750,8 @@ export interface LifeWorld {
   readonly recognizeGoalProgress?: boolean;
   /** Opt-in: el vacío por venganza cumplida presiona la necesidad lenta `meaning`. */
   readonly meaningPressure?: boolean;
+  /** Opt-in (`LifeOptions.lifeStages`): enciende `life.stages` y que la decisión lea el sesgo de riesgo de la etapa; apagado. */
+  readonly lifeStages?: boolean;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
   readonly craftGoals?: boolean;
   /** Opt-in: la reconstrucción «distinta» puede cambiar de material (`UpkeepOptions.swapMaterials`); apagado por defecto. */
@@ -1336,6 +1339,15 @@ export function lifeWorld(
           seed: parts.seed,
           ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
         }),
+        ...(parts.lifeStages
+          ? [
+              stagesProcess({
+                stages: parts.stages,
+                clock: parts.clock,
+                placeOf: placeOf(parts, village),
+              }),
+            ]
+          : []),
         ...(parts.mortalTech
           ? [
               techTeachProcess({
@@ -1949,6 +1961,7 @@ export function lifeWorld(
             : {}),
           ...(parts.craftGoals === true ? { craftGoals: { window: 60 * parts.clock.day } } : {}),
           ...(parts.meaningPressure === true ? { meaningPressure: true } : {}),
+          ...(parts.lifeStages === true ? { lifeStages: true } : {}),
           ...(parts.sleepers ? { sleepers: true } : {}),
           clock: parts.clock,
           catalog: parts.catalog,
