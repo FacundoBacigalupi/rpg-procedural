@@ -36,6 +36,7 @@ export const LIFE_ARG_OPTIONS = {
   famine: { type: "boolean", default: false },
   profile: { type: "string" },
   nickname: { type: "boolean", default: false },
+  epilogue: { type: "boolean", default: false },
 } as const;
 
 /** `full` (por defecto desde life-3) o `basic` (sin las opciones opt-in del perfil). */
@@ -56,6 +57,7 @@ export interface LifeArgs {
   famine?: boolean | undefined;
   profile?: string | undefined;
   nickname?: boolean | undefined;
+  epilogue?: boolean | undefined;
 }
 
 export interface LifeConfig {
@@ -65,6 +67,8 @@ export interface LifeConfig {
   readonly save: string;
   /** `--nickname`: apodo con lugar en paneles y narración (solo vista). */
   readonly nickname: boolean;
+  /** `--epilogue`: al morir, el mundo sigue un año sin el personaje y se cuenta qué fue de los suyos. */
+  readonly epilogue: boolean;
 }
 
 export function lifeConfig(values: LifeArgs): LifeConfig {
@@ -87,6 +91,7 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
     seed,
     save: values.save,
     nickname: values.nickname === true,
+    epilogue: values.epilogue === true,
     llm: values.llm === undefined ? undefined : llmJobs(values.llm, runtime, values),
     setup: {
       game: gameSetup(values, mode),

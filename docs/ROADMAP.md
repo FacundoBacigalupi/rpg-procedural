@@ -213,7 +213,9 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] Fase 3 — Bandas: ejecutar la defensa decidida por el consejo con guardias existentes, raciones y tiempo reales, obediencia y efecto acotado sobre los asaltos
   - [ ] Fase 3 — Bandas: medir con `sim:batch` bajo hambruna real, incluyendo nacimiento, avisos y defensa; una corrida amplia a la vez
 - [ ] Catálogo inicial de procesos mortales en `content/` con requisitos físicos y efectos sobre producción, `ProcessKnowledge` por persona, aprendizaje con maestro ([technology.md](systems/technology.md))
-- [ ] Epílogo corto (un año, diez años) con descendencia, herencia y quién ocupa tu lugar ([chronicle.md](systems/chronicle.md))
+- [x] (epilogo-corto, 2026-10-21) Epílogo corto opt-in `--epilogue` (`src/game/chronicle/epilogue.ts`): el mismo mundo sigue sin el personaje y en cada punto de control (`runEpilogue`, por defecto 1 año en la sesión; 10 años por parámetro) se anota qué fue de la pareja, los hijos, el hogar y los más cercanos (vivos con edad, o muertos con causa y evento citado); se corta si no queda nadie. Un año del perfil completo cuesta ~90 s y diez ~15 min, por eso la sesión pide solo el año. **Queda con ítem:**
+  - [ ] (epilogo-herencia) Herencia y quién ocupa tu lugar: hoy nada reparte los bienes del muerto ni nombra heredero (no hay mecánica de herencia en `src/`); anotarlo en el epílogo cuando exista ([family-lineage.md](systems/family-lineage.md)). **(c) bloqueado por herencia en family.**
+  - [ ] (epilogo-recuerdo) `rememberedBy` es solo "vivos seguidos"; el recuerdo real (memorias, reputación, embudo) llega con deep-history/Fase 7.
 - [ ] Etapas de vida y apego, `belonging`/`meaning`, condiciones mentales con etiqueta cultural, lado mental de la adicción, gustos en la demanda y los regalos, sueños con contenido ([npc-psychology.md](systems/npc-psychology.md) §10, §11, §13, §15, §16)
 - [ ] Proyectos cooperativos de aldea y caravanas: participantes con `knownPlan`, pool con conservación, repartos con compromisos, free riders ([schemes.md](systems/schemes.md) §9)
 - [ ] Conectar la oscilación a la aldea (partido 2026-10-15 en cuatro):

@@ -1,6 +1,6 @@
 // Punto de entrada de la CLI: `npm run dev -- [--seed N] [--mode realista|novela]
 // [--sex mujer|hombre] [--age N] [--familia terrateniente|campesina|sirviente] (modo novela)
-// [--frequency N] [--save archivo] [--llm modelo [--runtime ollama] [--llm-url URL] [--think]] [--famine] [--nickname]`.
+// [--frequency N] [--save archivo] [--llm modelo [--runtime ollama] [--llm-url URL] [--think]] [--famine] [--nickname] [--epilogue]`.
 // Sin `--save` la vida va a `saves/vida.sqlite`; si ese archivo ya tiene una, se sigue esa.
 // Con `--llm`, un modelo local lee y narra (con la gramática y las plantillas de respaldo si no
 // contesta); sin él, todo va sin red.
@@ -26,6 +26,7 @@ try {
     content: loadContentDir("content", GAME_CONTENT_KINDS),
     llm: config.llm,
     nickname: config.nickname,
+    epilogue: config.epilogue,
     setup: config.setup,
   });
 } finally {
