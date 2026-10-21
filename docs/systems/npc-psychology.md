@@ -793,3 +793,7 @@ Las viñetas de la infancia (player-loop) son decisiones reales dentro de los pe
 ## Implementación (2026-10-09): decisión por utilidad, núcleo y candidatas sociales
 
 `sim/mind/utility.ts` implementa la fórmula de §7 sobre `Candidate` (contribución a impulsos, chance y riesgo creídos, pérdida, ánimo): los impulsos son las necesidades inmediatas con su urgencia (bajo `NEED_FLOOR` no empujan) y los valores de `valuesOf` (escalados por `VALUE_SCALE`). `aversion` sale de la audacia y el miedo del momento; `decideByUtility` hace softmax con temperatura por `control` y una sola tirada de `rng.fork("decision", npc, tick)`. `utility-social.ts` arma ayudar, dar, evitar y vengarse desde las dimensiones, el parentesco y `OtherBelief`. Es puro y nadie lo llama aún: el cableado (candidatas del catálogo, insumos del cuerpo, proceso `life.decide`, objetivos en capas, modificadores) son los sub-ítems (c)-(h) de «IA de utilidad» en el ROADMAP. Constantes sin calibrar.
+
+## Implementación (2026-10-21): pertenencia (psy-belonging)
+
+`sim/mind/belonging.ts` guarda por persona un `BelongingState` (nivel, fuentes `family`/`village`, causas `isolation`/`orphan`); el nivel se acerca en 90 días a lo que sostienen la casa, los padres vivos, la pareja y los años en la aldea. Opt-in `LifeOptions.belonging`: `life.belonging` deja `life.belonging-deficit`/`-restored` con histéresis (0,6/0,4) y causa. Aún no la lee la utilidad ni el panel; quedan rito de paso, sectas/bandas, `meaning` con fuentes y perfil completo (ROADMAP `psy-belonging-*`).

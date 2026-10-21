@@ -72,6 +72,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
 
+**Lote psy-belonging (2026-10-21, rama `feat/psy-belonging`):** pertenencia opt-in `belonging` (`sim/mind/belonging.ts` núcleo puro + `src/game/life/belonging.ts`: `BELONGING` por persona, `life.belonging` con `-deficit`/`-restored` y causa); apagado conserva el hash. Ver ROADMAP `psy-belonging`; pendientes `psy-belonging-rite`, `-utility`, `-profile` y `psy-meaning-need`.
+
 **Lote life-stages-wire (2026-10-21, rama `feat/life-stages-wire`):** `lifeStages` opt-in (`DEVELOPMENT` por persona al materializar, `life.stages` con `life.stage-entered`, audacia con `riskBias` de la etapa); apagado conserva el hash. Ver ROADMAP `psy-stages-wire`; pendientes `-rites`, `-attachment`, `-peers`, `-ancient`.
 
 **Lote wild-forage (2026-10-21, rama `feat/harvest-stock`):** forraje silvestre opt-in `wildHarvest` (stock en pie `WILD` que rebrota, `life.wild` mina de la fuente `wild` a los lugares de monte lo que da `harvestStock`; `gather` lo toma); apagado conserva el hash. ROADMAP `wild-forage`; pendientes `wild-fields-water`, `wild-hunt`, `wild-wood`, `wild-belief`.
