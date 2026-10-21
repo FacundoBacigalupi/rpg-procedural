@@ -130,7 +130,7 @@ persona y tabla. Los lectores de fases anteriores ven el estado anterior; la pro
 desde `physics` en adelante. El camino sin `npcVerbs` mantiene sus fases y hashes.
 Ver [dialogue.md](dialogue.md#implementado-2026-10-12-respuestas-simultáneas-con-verbos-de-npc).
 
-Preparación de claims de ítems (2026-10-20, aún sin implementación): el scheduler
+Implementado 2026-10-21 (`ContestClaim.loss`, `LossOutcome` en `scheduler/process.ts`; sin consumidores aún). Contrato de claims de ítems: el scheduler
 actual elimina el resultado de una corrida que pierde una contienda. Para take
 se necesita un resultado alternativo opt-in que conserve el fracaso causal y la
 continuidad del plan del perdedor. Debe validarse contra `reads`/`writes`, no

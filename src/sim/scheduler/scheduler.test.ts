@@ -698,6 +698,126 @@ describe("contiendas", () => {
     expect(winners).toEqual(new Set([1, 2]));
   });
 
+  describe("resultado del perdedor (loss)", () => {
+    const failure = (value: number) => ({
+      kind: "grab.failed",
+      actors: [],
+      place: place(S1),
+      data: value,
+      emissions: {},
+      causes: [{ kind: "seed" } as const],
+    });
+    // Disputa el stock de `keys`; si pierde, deja un fracaso y avanza su propio plan (`own`).
+    const grabLoss = (
+      id: string,
+      value: number,
+      initiative: number,
+      keys: SettlementId[],
+      own: SettlementId,
+    ) =>
+      def(
+        id,
+        (ctx) => ({
+          changes: keys.map((k) => setComponent(STOCK, k, { amount: value })),
+          events: [{ ...failure(value), kind: "grab" }],
+          schedule: [{ at: ctx.now + 1, phase: "act", process: "t.after", scope: "world", reason }],
+          contest: {
+            initiative,
+            place: place(S1),
+            actor: makeId("agent", value),
+            loss: {
+              events: [failure(value)],
+              changes: [setComponent(STOCK, own, { amount: -value })],
+            },
+          },
+        }),
+        { phase: "act" },
+      );
+
+    it("el perdedor asienta fracaso con causa en la contienda y avanza su plan; el ganador queda entero", () => {
+      fc.assert(
+        fc.property(seeds, (seed) => {
+          const w = world(seed, [
+            grabLoss("a.grab", 1, 0, [S1], S2),
+            grabLoss("b.grab", 2, 0, [S1], S3),
+            after,
+          ]);
+          const reports: StepReport[] = [];
+          w.scheduler.advanceTo(DAY, (r) => reports.push(r));
+          const contest = reports[0]?.contests[0];
+          const winnerValue = contest?.contenders[contest.winner]?.process === "a.grab" ? 1 : 2;
+          const loserValue = 3 - winnerValue;
+          expect(w.truth.get(STOCK, S1)?.amount).toBe(winnerValue);
+          expect(w.truth.get(STOCK, loserValue === 1 ? S2 : S3)?.amount).toBe(-loserValue);
+          expect(reports[0]?.events.map((e) => [e.id, e.kind, e.data])).toEqual([
+            ["event:1", "contest", contest],
+            [
+              "event:2",
+              loserValue === 1 ? "grab.failed" : "grab",
+              loserValue === 1 ? 1 : winnerValue,
+            ],
+            [
+              "event:3",
+              loserValue === 1 ? "grab" : "grab.failed",
+              loserValue === 1 ? winnerValue : loserValue,
+            ],
+          ]);
+          const failed = reports[0]?.events.find((e) => e.kind === "grab.failed");
+          expect(failed?.causes).toContainEqual({ kind: "event", event: "event:1" });
+          expect(w.scheduler.state().queue).toHaveLength(1); // solo el ítem del ganador
+        }),
+        { numRuns: 30 },
+      );
+    });
+
+    it("perder dos contiendas asienta un solo fracaso, con la primera como causa", () => {
+      const w = world(
+        1,
+        [
+          grabLoss("a.grab", 1, -50, [S1, S2], S3),
+          grabLoss("b.grab", 2, 0, [S1], makeId("settlement", 4)),
+          grabLoss("c.grab", 3, 0, [S2], makeId("settlement", 5)),
+          after,
+        ],
+        [S1, S2, S3, makeId("settlement", 4), makeId("settlement", 5)],
+      );
+      const reports: StepReport[] = [];
+      w.scheduler.advanceTo(DAY, (r) => reports.push(r));
+      const failures = reports[0]?.events.filter((e) => e.data === 1 && e.kind === "grab.failed");
+      expect(failures).toHaveLength(1);
+      expect(failures?.[0]?.causes).toContainEqual({ kind: "event", event: "event:1" });
+      expect(reports[0]?.contests.length).toBeGreaterThanOrEqual(1);
+      const ids = reports[0]?.events.map((e) => e.id) ?? [];
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("el fracaso no puede escribir lo disputado", () => {
+      const bad = def(
+        "a.grab",
+        () => ({
+          changes: [setComponent(STOCK, S1, { amount: 1 })],
+          contest: {
+            initiative: -50,
+            place: place(S1),
+            loss: { changes: [setComponent(STOCK, S1, { amount: 0 })] },
+          },
+        }),
+        { phase: "act" },
+      );
+      expect(() => world(1, [bad, grab("b.grab", 2, 0), after]).scheduler.advanceTo(DAY)).toThrow(
+        /no le pertenece/,
+      );
+    });
+
+    it("sin loss el perdedor sigue descartándose entero", () => {
+      const w = world(1, [grab("a.grab", 1, -50), grabLoss("b.grab", 2, 0, [S1], S3), after]);
+      const reports: StepReport[] = [];
+      w.scheduler.advanceTo(DAY, (r) => reports.push(r));
+      expect(w.truth.get(STOCK, S1)?.amount).toBe(2);
+      expect(reports[0]?.events.map((e) => e.kind)).toEqual(["contest", "grab"]);
+    });
+  });
+
   it("disputar sin declarar iniciativa es un error", () => {
     const bare = def("c.grab", () => ({ changes: [setComponent(STOCK, S1, { amount: 9 })] }), {
       phase: "act",

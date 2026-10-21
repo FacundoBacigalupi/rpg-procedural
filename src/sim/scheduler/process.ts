@@ -179,6 +179,19 @@ export interface ContestClaim {
   readonly initiative: number;
   readonly place: PlaceRef;
   readonly actor?: EntityRef;
+  /** Opt-in: qué se asienta si esta corrida pierde (simulation §3). Sin esto, el perdedor se descarta. */
+  readonly loss?: LossOutcome;
+}
+
+/**
+ * El resultado alternativo de un perdedor: eventos de fracaso y avance/revisión del plan propio. El
+ * scheduler le agrega como causa el evento de la contienda que lo descartó. No admite asientos ni
+ * ids nuevos, ni escribir lo disputado ni lo que toca otra corrida del paso.
+ */
+export interface LossOutcome {
+  readonly events?: readonly EventDraft[];
+  readonly changes?: readonly StateChange[];
+  readonly schedule?: readonly ScheduleRequest[];
 }
 
 /**
