@@ -8,9 +8,10 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**Prioridad vigente (2026-10-21):** Fase 3, cadena `perfil2-item-claims-take`
-(loss → state → act → audit), después give y replay-profile. Un solo lote, un
-commit por ítem; la suite completa una vez al certificar el lote. Estado de
+**Prioridad vigente (2026-10-21):** Fase 3. La cadena `perfil2-item-claims-take`
+(loss → state → act → audit → give → replay-profile) está cerrada; sigue
+`perfil2-item-claims-donation` y luego `perfil2-directed-coverage`. Un solo lote,
+un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
 ### Cómo se trabaja
@@ -40,8 +41,10 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
                 - [x] (perfil2-item-claims-take-state, 2026-10-21) `ITEM_HOLD` (posesión + haces de derechos) en `sim/property/item-state.ts`: `itemSnapshot` desde ENTITY, `itemHex` (portado = hex del portador, suelto = su LOCATION), `itemEndpoint`, `itemTransferChanges` (set ITEM_HOLD y borra la LOCATION propia al pasar a un agente). Sin ITEM_HOLD = sin poseedor ni derechos; leer no siembra; no crea ítems. Núcleo puro, sin consumidores.
                 - [x] (perfil2-item-claims-take-act, Fase 3) `ActOptions.itemClaims` opt-in: `take` sobre `ItemId` conocido arma un `ContestClaim` con `loss` (fracaso `lost_race` y plan del perdedor) y aplica `transferItem` solo al ganador; apagado idéntico.
                 - [x] (perfil2-item-claims-take-audit, Fase 3) `item-claims-audit.test.ts` con dos planes reales sobre una espada: un ganador (posesión en `ITEM_HOLD`, sin LOCATION propia), fracaso explícito del otro y plan avanzado; perfil y replay quedan en su ítem final.
-              - [ ] (perfil2-item-claims-give, Fase 3) Entrega física y donación normativa separadas, formalidades/cargas y receptor disponible, desde `give` y el escritor único. Depende de core y take.
-              - [ ] (perfil2-item-claims-replay-profile, Fase 3) Setup persistible, replay desde seed/planes y pruebas de game/scheduler/persistence; perfil dirigido y medición, apagado sin cambio de hash. Depende de take y give; no activar defaults como trámite.
+              - [x] (perfil2-item-claims-give, 2026-10-21) `give` sobre `ItemId` poseído (opt-in `itemClaims`): el receptor en el mismo hex recibe la posesión física por `transferItem` (operación `give`) con el mismo `ContestClaim`/`loss` que `take`; el requisito `means` lo cumple el ítem en mano. Los derechos quedan donde estaban: la donación normativa pasa al ítem siguiente.
+              - [ ] (perfil2-item-claims-donation, Fase 3) Donación normativa de los haces de derechos al entregar (`ItemDonation`): norma y formalidades evaluadas fuera del núcleo, cargas que impiden enajenar y registro con el evento causal. Depende de give.
+              - [x] (perfil2-item-claims-replay-profile, 2026-10-21) `LifeOptions.itemClaims` opt-in (create → `LifeParts` → `actProcess`) y en el esquema de tuning; SQLite lo conserva y `Life.create` lo recibe en el replay (prueba en `full-profile-store.test.ts`); apagado no cambia partes ni hashes. Fuera de `FULL_PROFILE`: encenderlo en el perfil exige medirlo antes (`perfil2-item-claims-profile-measure`).
+              - [ ] (perfil2-item-claims-profile-measure, Fase 3) Escenario dirigido con dos NPC por un ítem real en una vida con `itemClaims` y medición multiseed antes de pensar en el perfil. Depende de replay-profile.
     - [ ] (perfil2-directed-coverage) Complementar la medición multiseed con escenarios causales dirigidos para viaje, sueño/catch-up, embarazo/parto y préstamos con garantías. El perfil no activa `borrowCraving.approach`, única candidata actual de movimiento a lugar, y `move` sin `serves` no entra a decisiones normales; configurar viaje no prueba que ocurra. Cero concepciones en 270 días tampoco prueba defecto: verificar parejas elegibles y tasas normales, sin acelerar artificialmente la fecundidad.
       - [ ] (perfil2-coverage-scenarios) Escenarios dirigidos con entidades y planes legales existentes para ejercer viaje, despertar/catch-up, embarazo/parto a duración normal y préstamos garantizados; combinar sus pruebas con el perfil completo. **(c) bloqueado por perfil2-directed-coverage.**
   - [ ] (perfil3) Optimizar lo que salga de (perfil2): procesos que más llaman, memoria que se retiene, el costo de crear una `Life` (~40 s), cadencia gruesa donde el resultado no cambia; con la medición antes y después.

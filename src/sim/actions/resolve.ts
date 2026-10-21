@@ -112,6 +112,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * dice (existe y está al alcance); la tirada decide si el intento alcanza para disputarlo.
    */
   readonly takeItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
+  /** Opt-in de claims de ítems: `give` entrega un objeto con identidad (solo la posesión física). */
+  readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /** La contraparte de `trade` (o el destinatario de `give`) ya terminó (`ENTITY.endedAt`): no hay trato ni regalo aunque su cuenta exista. */
   readonly counterpartyGone?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -337,6 +339,9 @@ export type VerbEffect =
       /** Lo que pasó de un bolsillo al otro (nada si no llevaba o no estaba). */
       readonly good: LedgerUnit | null;
       readonly grams: number;
+      /** Opt-in (`giveItem`): el ítem con identidad entregado; la donación normativa no va acá. */
+      readonly item?: ItemId;
+      readonly delivered?: boolean;
     }
   | {
       readonly kind: "take";
@@ -549,7 +554,9 @@ export function resolve(input: ResolveInput): ActionResolution {
   const { def, node, actor } = input;
   if (input.causes.length === 0) throw new RangeError(`${def.id}: un paso sin causas`);
 
+  // Un ítem con identidad en la mano cuenta como bien aunque no tenga cuenta en el ledger.
   const has = (holder: EntityRef, what: "goods" | "money") =>
+    (what === "goods" && input.giveItem?.available === true && holder === actor.id) ||
     input.ledger
       .holdings(holderAccount(holder as HolderRef))
       .some((h) => isMoney(h.unit) === (what === "money"));
@@ -1738,6 +1745,26 @@ const tend: Resolver = (c) => {
 const give: Resolver = (c) => {
   const to = argEntity(c, "to");
   const what = argText(c, "what");
+  if (c.input.giveItem) {
+    const g = c.input.giveItem;
+    const effect = (delivered: boolean): VerbEffect => ({
+      kind: "give",
+      to,
+      good: null,
+      grams: 0,
+      item: g.item,
+      delivered,
+    });
+    if (c.roll.unmet) return { effect: effect(false), seconds: c.nominal };
+    if (!g.available || to === null || c.input.counterpartyGone) {
+      return {
+        effect: effect(false),
+        seconds: Math.min(c.nominal, 60),
+        override: { outcome: "failure", failure: "no_means", believed: "failure" },
+      };
+    }
+    return { effect: effect((c.roll.margin as number) >= SUCCESS_MARGIN), seconds: c.nominal };
+  }
   const none = (): VerbResult => ({
     effect: { kind: "give", to, good: null, grams: 0 },
     seconds: Math.min(c.nominal, 60),

@@ -68,7 +68,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Siguiente lote: cadena `perfil2-item-claims-take`. Fase 3 abierta.
+**Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Siguiente: `perfil2-item-claims-donation`. Fase 3 abierta.
 
 Lote #655: WIP funerario completado, cinco actualizaciones compatibles de #651
 y arreglo de floorDiv. Código final `034b6d1`; producción `8d161d3`.

@@ -34,6 +34,7 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess, PLAN_STATE, planKey } from "./act.ts";
+import { optInParts } from "./create.ts";
 
 // Auditoría (perfil2-personal-resource-claims; invertida en perfil2-item-claims-take-audit con itemClaims): el servicio económico reserva cantidades del
 // ledger. Un objeto con identidad (ItemId) no vive en el ledger: `take` solo mueve `Holding`
@@ -53,7 +54,9 @@ const content = loadContent(
     data: JSON.parse(readFileSync(file, "utf8")),
   })),
 );
-const actions = content.all(ACTIONS).map((a) => (a.id === "take" ? { ...a, ease: 100 } : a));
+const actions = content
+  .all(ACTIONS)
+  .map((a) => (a.id === "take" || a.id === "give" ? { ...a, ease: 100 } : a));
 const catalog = new ActionCatalog(actions),
   skills = new SkillCatalog(content.all(SKILLS), actions);
 const good = ledgerUnit("good:gleanings");
@@ -78,7 +81,7 @@ const map: LocalMap = {
   },
 };
 
-function world(itemClaims = false) {
+function world(itemClaims = false, gift = false) {
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -95,7 +98,8 @@ function world(itemClaims = false) {
   const body = content.all(BODY_PLANS)[0];
   if (!body) throw new Error("sin cuerpo");
   truth.set(ENTITY, sword, { id: sword, createdAt: 0, originEventId: makeId("event", 1) });
-  truth.set(LOCATION, sword, { hex: 0 });
+  if (gift) truth.set(ITEM_HOLD, sword, { possession: makeId("agent", 1), rights: [] });
+  else truth.set(LOCATION, sword, { hex: 0 });
   for (const n of [1, 2]) {
     const actor = makeId("agent", n);
     truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
@@ -118,8 +122,13 @@ function world(itemClaims = false) {
         source: "utility",
         root: {
           kind: "do",
-          verb: "take",
-          args: [itemClaims ? { role: "what", entity: sword } : { role: "what", text: "espada" }],
+          verb: gift ? "give" : "take",
+          args: gift
+            ? [
+                { role: "what", entity: sword },
+                { role: "to", entity: makeId("agent", 2) },
+              ]
+            : [itemClaims ? { role: "what", entity: sword } : { role: "what", text: "espada" }],
           manner: [],
         },
         manner: [],
@@ -172,7 +181,7 @@ function world(itemClaims = false) {
       }),
     ],
   });
-  for (const n of [1, 2])
+  for (const n of gift ? [1] : [1, 2])
     scheduler.schedule({
       at: clock.day / 2,
       phase: "act",
@@ -256,5 +265,39 @@ describe("claims de ítems (opt-in itemClaims)", () => {
     const b = run();
     expect(a.log.all()).toEqual(b.log.all());
     expect(a.truth.get(ITEM_HOLD, sword)).toEqual(b.truth.get(ITEM_HOLD, sword));
+  });
+});
+
+describe("entrega de ítems (give, opt-in itemClaims)", () => {
+  it("entrega la posesión física al receptor y deja los derechos donde estaban", () => {
+    const w = world(true, true);
+    const origin = w.truth.get(ENTITY, sword);
+    w.scheduler.advanceTo(clock.day / 2);
+    const gives = w.log.all().filter((e) => e.kind === "action.give");
+    expect(gives).toHaveLength(1);
+    expect(gives[0]?.data).toMatchObject({ effect: { item: sword, delivered: true } });
+    expect(w.truth.get(ITEM_HOLD, sword)).toEqual({
+      possession: makeId("agent", 2),
+      rights: [],
+    });
+    expect(w.truth.get(LOCATION, sword)).toBeUndefined();
+    expect(w.truth.get(ENTITY, sword)).toEqual(origin);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  it("es determinista", () => {
+    const run = () => {
+      const w = world(true, true);
+      w.scheduler.advanceTo(clock.day / 2);
+      return w;
+    };
+    expect(run().log.all()).toEqual(run().log.all());
+  });
+});
+
+describe("itemClaims como opción de la vida", () => {
+  it("apagado por defecto: sin la opción no hay parte nueva", () => {
+    expect(optInParts({})).toEqual({});
+    expect(optInParts({ itemClaims: false })).toEqual({});
+    expect(optInParts({ itemClaims: true })).toEqual({ itemClaims: true });
   });
 });

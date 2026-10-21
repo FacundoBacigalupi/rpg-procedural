@@ -666,7 +666,7 @@ export function actProcess(o: ActOptions): ProcessDef {
 
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
 function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | undefined {
-  if (node.verb !== "take") return undefined;
+  if (node.verb !== "take" && node.verb !== "give") return undefined;
   const a = node.args.find(
     (x) => x.role === "what" && "entity" in x && x.entity.startsWith("item:"),
   );
@@ -674,6 +674,19 @@ function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | 
 }
 
 /** La toma de `item` por `me` según el núcleo de property, con el estado actual (causa provisional). */
+/** La entrega de `item` de `me` a `to` (solo posesión física: los derechos quedan donde estaban). */
+function itemGiveFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, to: EntityRef | null) {
+  const snapshot = itemSnapshot(truth, item);
+  return transferItem({
+    item,
+    snapshot,
+    from: itemEndpoint(truth, me, true),
+    to: itemEndpoint(truth, (to as HolderRef | null) ?? null, true),
+    operation: "give",
+    cause: draftEvent(0),
+  });
+}
+
 function itemTakeFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId) {
   const snapshot = itemSnapshot(truth, item);
   return transferItem({
@@ -930,8 +943,20 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth);
   // Claims de ítems: lo que el mundo permite (existe, al alcance, la toma es físicamente válida).
   const wantedItem = o.itemClaims ? itemArgOf(node) : undefined;
+  const giveTo = parties["to"]?.id as EntityRef | undefined;
+  const giveItem =
+    wantedItem === undefined || node.verb !== "give"
+      ? undefined
+      : {
+          item: wantedItem,
+          available:
+            giveTo !== undefined &&
+            itemHex(truth, wantedItem) === e.hex &&
+            (truth.get(LOCATION, giveTo)?.hex ?? -1) === e.hex &&
+            itemGiveFor(truth, wantedItem, me, giveTo).accepted === true,
+        };
   const takeItem =
-    wantedItem === undefined
+    wantedItem === undefined || node.verb !== "take"
       ? undefined
       : {
           item: wantedItem,
@@ -973,6 +998,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
     ...(takeItem ? { takeItem } : {}),
+    ...(giveItem ? { giveItem } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
     node.verb === "trade" &&
     parties["with"] !== undefined &&
@@ -1697,12 +1723,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   // Claim de ítem: la toma que alcanzó para disputar propone el cambio de posesión; si otro lo
   // toma en el mismo instante, el scheduler asienta este fracaso en vez de descartar el plan.
   let claim: ContestClaim | undefined;
-  if (takeItem && eff.kind === "take" && eff.claimed === true) {
-    const moved = itemTransferChanges(truth, itemTakeFor(truth, takeItem.item, me));
+  const itemMove =
+    takeItem && eff.kind === "take" && eff.claimed === true
+      ? itemTakeFor(truth, takeItem.item, me)
+      : giveItem && eff.kind === "give" && eff.delivered === true
+        ? itemGiveFor(truth, giveItem.item, me, eff.to)
+        : undefined;
+  if (itemMove) {
+    const moved = itemTransferChanges(truth, itemMove);
     if (moved.length > 0) {
       changes.push(...moved);
       const first = r.events[0] as (typeof r.events)[number];
-      const lostEffect = { ...eff, claimed: false };
+      const lostEffect =
+        eff.kind === "give" ? { ...eff, delivered: false } : { ...eff, claimed: false };
       claim = {
         initiative: r.attempt?.margin ?? 0,
         place: input.place,

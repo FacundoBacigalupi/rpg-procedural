@@ -85,3 +85,34 @@ describe("perfil completo guardado y entregado al replay sin crear mundos", () =
     }
   });
 });
+
+describe("itemClaims guardado y entregado al replay (opt-in, fuera del perfil)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const content = loadContent([], []);
+  const setup = { game: defaultGameSetup("realistic"), life: { itemClaims: true } };
+  const versions = { engine: LIFE_ENGINE, content: content.hash, format: 1 };
+
+  it("no está en el perfil completo y SQLite lo conserva hasta Life.create", () => {
+    expect(FULL_PROFILE).not.toHaveProperty("itemClaims");
+    const db = openSqlite(":memory:");
+    try {
+      const store = LifeStore.open(db);
+      store.setMeta("seed", 7);
+      store.setMeta("versions", versions);
+      store.setMeta("setup", setup);
+      const { input } = replayInputFromStore(store);
+      expect(input.setup).toEqual(setup);
+      const life = {
+        advanceTo: vi.fn(),
+        submit: vi.fn(),
+        hash: () => "",
+      } as unknown as Life;
+      const create = vi.spyOn(Life, "create").mockReturnValue(life);
+      replay(input, lifeReplayGame(content, versions), { until: 0 });
+      expect(create.mock.calls[0]?.[2]).toEqual(optionsOf(setup));
+      expect(create.mock.calls[0]?.[2]).toMatchObject({ itemClaims: true });
+    } finally {
+      db.close();
+    }
+  });
+});
