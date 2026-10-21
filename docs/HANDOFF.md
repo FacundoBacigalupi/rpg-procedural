@@ -76,6 +76,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote wild-forage (2026-10-21, rama `feat/harvest-stock`):** forraje silvestre opt-in `wildHarvest` (stock en pie `WILD` que rebrota, `life.wild` mina de la fuente `wild` a los lugares de monte lo que da `harvestStock`; `gather` lo toma); apagado conserva el hash. ROADMAP `wild-forage`; pendientes `wild-fields-water`, `wild-hunt`, `wild-wood`, `wild-belief`.
 
+**Lote wild-gather (2026-10-21, rama `feat/wild-gather`):** test de punta a punta de un `gather` real con `wildHarvest` (`src/game/life/wild-gather.test.ts`): el rendimiento diario y el stock en pie bajan al recolectar varios días en un monte pobre (`wildCapacityScale`). Corregido: antes el stock solo bajaba por la ventana inicial; ahora la cuenta del lugar es la ventana diaria (lo tomado baja el stock al reponer, lo que sobra vuelve al monte; `wild.supplied` con `minted`/`returned`). Pendiente `wild-wood` (no hay verbo de tala ni vínculo con `PatchVegetation`: lote propio).
+
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
 **Lote life-stages (2026-10-21, `feat/life-stages`):** `sim/mind/development.ts` (núcleo puro, sin cablear: no cambia hashes; fuera de FULL_PROFILE): etapa por edad vivida con evento causa, apego derivado de esquemas, `riskBias`/`peerWeight` por etapa. Ítem de Fase 3 partido en `psy-*` en el ROADMAP; sigue `psy-stages-wire`. Check en `sim-reports/check-life-stages.log` (local).

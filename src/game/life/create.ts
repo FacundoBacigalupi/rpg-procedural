@@ -422,6 +422,8 @@ export interface LifeOptions {
   readonly fieldManure?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHarvest?: boolean;
+  /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
+  readonly wildCapacityScale?: number;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
   readonly funerals?: LifeParts["funerals"];
   /** Opt-in: casa de empeño (`life.pawn`): el dueño recupera la prenda pagando o el lote pasa a la casa al vencer; apagado por defecto. */
@@ -721,6 +723,7 @@ export function optInParts(
   | "offerings"
   | "fieldManure"
   | "wildHarvest"
+  | "wildCapacityScale"
   | "funerals"
   | "pawn"
   | "hire"
@@ -877,6 +880,9 @@ export function optInParts(
     ...(options.offerings ? { offerings: true } : {}),
     ...(options.fieldManure ? { fieldManure: true } : {}),
     ...(options.wildHarvest ? { wildHarvest: true } : {}),
+    ...(options.wildHarvest && options.wildCapacityScale !== undefined
+      ? { wildCapacityScale: options.wildCapacityScale }
+      : {}),
     ...(options.funerals ? { funerals: options.funerals } : {}),
     ...(options.pawn ? { pawn: options.pawn } : {}),
     ...(options.hire ? { hire: options.hire } : {}),

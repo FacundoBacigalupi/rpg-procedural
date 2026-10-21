@@ -657,6 +657,8 @@ export interface LifeWorld {
   readonly fieldManure?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota y del que la gente alcanza lo que da `harvestStock` (`life.wild`, ledger `wild` -> lugares de monte); apagado. */
   readonly wildHarvest?: boolean;
+  /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda). */
+  readonly wildCapacityScale?: number;
   /** Opt-in (`LifeOptions.mortalTech`): el catálogo de procesos mortales; enciende la enseñanza en el hogar (`life.tech-teach`) y que la cosecha lea `yieldFactor`; apagado. */
   readonly mortalTech?: { readonly catalog: TechCatalog };
   readonly funerals?: FuneralOptions;
@@ -1365,7 +1367,14 @@ export function lifeWorld(
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
         }),
-        ...(parts.wildHarvest ? [wildProcess({ dayTicks: parts.clock.day })] : []),
+        ...(parts.wildHarvest
+          ? [
+              wildProcess({
+                dayTicks: parts.clock.day,
+                capacityScale: parts.wildCapacityScale ?? 1,
+              }),
+            ]
+          : []),
         ...(parts.reservoirs && parts.reservoirs.length > 0
           ? [reservoirProcess({ hosts: parts.reservoirs, dayTicks: parts.clock.day })]
           : []),
