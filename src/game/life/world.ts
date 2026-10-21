@@ -87,6 +87,7 @@ import { CLOAK, carriedCloakClo, cloakWearProcess, roadClothing } from "./cloak.
 import { cloakMendProcess } from "./cloak-mend.ts";
 import { companyProcess } from "./company.ts";
 import { conceptionProcess, PREGNANCY, pregnancyLabors } from "./conception.ts";
+import { conditionBeliefsProcess } from "./condition-beliefs.ts";
 import { conscienceProcess } from "./conscience.ts";
 import { contagionProcess } from "./contagion.ts";
 import { type ConverseForm, converseProcess, OPEN_DEALS } from "./converse.ts";
@@ -1993,6 +1994,9 @@ export function lifeWorld(
             : { toldBeliefs: true }),
         }),
         ...(parts.legacyHeardTable === true ? [] : [toldClaimsProcess()]),
+        ...(parts.conditionLabels
+          ? [conditionBeliefsProcess({ mentalLabels: parts.conditionLabels })]
+          : []),
         lookingProcess({
           player,
           map: parts.map,

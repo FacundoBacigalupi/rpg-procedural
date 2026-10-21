@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { loadContent, makeId } from "../../core/index.ts";
+import { believed, learn } from "../knowledge/index.ts";
 import {
   believeCondition,
+  conditionEvidence,
   hides,
   LABELED_KINDS,
   labelFor,
@@ -10,6 +12,7 @@ import {
   stigmaOf,
   treatmentHarm,
   treatmentSupport,
+  visibleCondition,
 } from "./condition-labels.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
@@ -79,5 +82,34 @@ describe("sim.mind.condition-labels", () => {
     const f = () =>
       believeCondition(defs, "humoral", A, B, { kind: "grief", severity: 0.3 }, 0.5, ev);
     expect(f()).toEqual(f());
+  });
+
+  it("la evidencia entra al libro como `condition` con el id de la etiqueta y cita el evento", () => {
+    const b = believeCondition(defs, "spirit", A, B, { kind: "trauma", severity: 0.6 }, 0.7, ev);
+    if (!b) throw new Error("sin creencia");
+    const learned = learn(undefined, conditionEvidence(b, 1000), 1000);
+    const held = believed(learned, B, "condition");
+    expect(held?.value).toBe("spirit.trauma");
+    expect(held?.confidence).toBe(0.7);
+    expect(held?.sources[0]).toMatchObject({ kind: "percept", event: ev });
+  });
+
+  it("una etiqueta ajena y débil no pisa una creencia más firme", () => {
+    const a = believeCondition(defs, "spirit", A, B, { kind: "trauma", severity: 0.6 }, 0.9, ev);
+    const w = believeCondition(defs, "weakness", A, B, { kind: "trauma", severity: 0.6 }, 0.2, ev);
+    if (!a || !w) throw new Error("sin creencia");
+    const first = learn(undefined, conditionEvidence(a, 10), 10);
+    const second = learn(first, conditionEvidence(w, 20), 20);
+    expect(believed(second, B, "condition")?.value).toBe("spirit.trauma");
+  });
+
+  it("visibleCondition elige la más grave con etiqueta", () => {
+    const cs = [
+      { kind: "mania", severity: 0.99 },
+      { kind: "guilt", severity: 0.2 },
+      { kind: "grief", severity: 0.5 },
+    ];
+    expect(visibleCondition(cs)?.kind).toBe("grief");
+    expect(visibleCondition([{ kind: "mania", severity: 1 }])).toBeUndefined();
   });
 });
