@@ -41,5 +41,14 @@
       },
       "loanBondageAbuse": { "reputationCost": 0.1 }
     }
+  },
+  {
+    "id": "item-claims",
+    "name": "Claims de ítems",
+    "description": "Opt-in itemClaims sobre la aldea de referencia: take y give de objetos con identidad se disputan con resultado del perdedor.",
+    "mode": "realistic",
+    "frequency": 8,
+    "years": 2,
+    "life": { "itemClaims": true }
   }
 ]
