@@ -74,6 +74,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
 
 **Lote psy-stages-rites (2026-10-21, rama `feat/psy-stages-rites`):** `stageRites` opt-in (requiere `lifeStages`): ritos de paso desde `rites.coming_of_age` (`life.rite-of-passage` con padrino adulto, o `riteMissed` + `life.rite-missed`); apagado conserva el hash. Ver ROADMAP `psy-stages-rites`; el déficit de `belonging` sigue en `psy-belonging`.
+**Lote psy-attachment (2026-10-21, rama `feat/psy-attachment`):** `attachmentBias` opt-in (requiere `lifeStages`): el apego de `DEVELOPMENT` tiñe en `life.appraise` la confianza previa y la lectura de amenaza de cercanos; apagado conserva el hash. Pendiente: ROADMAP `psy-stages-attachment-closeness`.
+
 **Lote psy-belonging (2026-10-21, rama `feat/psy-belonging`):** pertenencia opt-in `belonging` (`sim/mind/belonging.ts` núcleo puro + `src/game/life/belonging.ts`: `BELONGING` por persona, `life.belonging` con `-deficit`/`-restored` y causa); apagado conserva el hash. Ver ROADMAP `psy-belonging`; pendientes `psy-belonging-rite`, `-utility`, `-profile` y `psy-meaning-need`.
 
 **Lote life-stages-wire (2026-10-21, rama `feat/life-stages-wire`):** `lifeStages` opt-in (`DEVELOPMENT` por persona al materializar, `life.stages` con `life.stage-entered`, audacia con `riskBias` de la etapa); apagado conserva el hash. Ver ROADMAP `psy-stages-wire`; pendientes `-rites`, `-attachment`, `-peers`, `-ancient`.
