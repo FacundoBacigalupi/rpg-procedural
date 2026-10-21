@@ -495,7 +495,9 @@ export interface LifeWorld {
    */
   readonly sleepers?: { readonly near: number; readonly food: string };
   /** Solo medición (no entra al estado ni al hash): se llama tras cada ejecución de proceso con cuántos cambios y eventos devolvió. */
-  readonly runProbe?: (process: string, changes: number, events: number) => void;
+  readonly runProbe?: (process: string, changes: number, events: number, ms?: number) => void;
+  /** Solo medición: reloj inyectado en ms; con él `runProbe` recibe lo que tardó cada ejecución. */
+  readonly runClock?: () => number;
   /** Opt-in: verbos del catálogo cuya decisión el NPC ejecuta como plan (`life.npc_verbs`, por ahora `gather`); apagado, sin proceso. */
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): un signo grave nuevo del cuerpo corta el plan del NPC (viaje y plantillas incluidos) y deja el resultado parcial en `npc.interrupted` (`life.npc_interrupt`); apagado, sin proceso. */
@@ -810,13 +812,20 @@ export function lifeWorld(
       : mapAltitudeOf(parts.map, parts.spaces)
     : undefined;
   const onRun = parts.runProbe;
+  const clock = parts.runClock;
   const probe = (def: ProcessDef): ProcessDef =>
     onRun
       ? {
           ...def,
           run(ctx) {
+            const t0 = clock?.();
             const out = def.run(ctx);
-            onRun(def.id, out.changes?.length ?? 0, out.events?.length ?? 0);
+            onRun(
+              def.id,
+              out.changes?.length ?? 0,
+              out.events?.length ?? 0,
+              clock && t0 !== undefined ? clock() - t0 : undefined,
+            );
             return out;
           },
         }
