@@ -879,6 +879,19 @@
     }
   },
   {
+    "id": "hunt-deer",
+    "text": "salgo a cazar un ciervo",
+    "scene": "Estás en el bosque, entre pinos. Se ven huellas de ciervo en el barro.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "hunt",
+        "args": [{ "role": "what", "text": "ciervo" }]
+      }
+    }
+  },
+  {
     "id": "again",
     "text": "otra vez",
     "scene": "Estás en el bosque, entre pinos. Hay hongos al pie de los troncos y se oye un arroyo.",

@@ -259,7 +259,7 @@ describe("el borrador según el catálogo", () => {
     expect(a).toBe(b);
     expect(a).toContain('"const":"take"');
     // Exclusión plan/speech y actos cerrados: 34 212 inline; referencias compartidas: 25 411.
-    expect(a.length).toBeLessThan(26_000);
+    expect(a.length).toBeLessThan(27_000);
     expect(a).toContain('"anyOf"');
     expect(a).toContain('"$defs"');
   });

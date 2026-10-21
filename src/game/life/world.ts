@@ -934,6 +934,7 @@ export function lifeWorld(
                   "cook",
                   "take",
                   "gather",
+                  "hunt",
                   "consult",
                 ] as const,
                 economicBatch: true,
