@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 ## 8. Estado de las líneas de trabajo
 **Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
 
+**Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
+
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
 **Lote mortal-processes (2026-10-21, `feat/mortal-processes`):** `sim/technology` (núcleo puro) y `content/techprocesses/` (18 procesos): catálogo con `feasibility`, `ProcessKnowledge` por persona con `yieldFactor`/`storageFactor`, y `teachProcess`/`learnFromManual`. Sin cablear a la vida (no cambia hashes; el cableado opt-in `--tech`/`FULL_PROFILE` queda `[ ]` en el ROADMAP, después de «Abono de los campos»). `npm run check` sobre `855d0a6`: 482 archivos, 3336 tests, exit 0 (`sim-reports/check-mortal-processes.log`, local).
