@@ -57,21 +57,11 @@ Documentos de referencia (leer el relevante antes de tocar un sistema):
 - [docs/systems/chronicle.md](docs/systems/chronicle.md) — crónica, epílogo e historiografía: crónicas adentro del mundo como objetos con autor, sesgo y copias que se reescriben con cada régimen; la crónica final desde la verdad (capítulos por huella causal, "lo que nunca supiste"), el legado medido como lo causado y lo recordado, epílogo como la misma simulación sin vos, archivo de vidas.
 - `docs/systems/<sistema>.md` — diseño de cada sistema (se crea antes de implementarlo).
 
-## Método compartido vigente (2026-10-20)
-
-Claude y Codex aplican `docs/HANDOFF.md` §2 y §5: lotes acotados por un
-resultado observable, límite de trabajo sin integrar y validación por riesgo
-y SHA. Estas reglas reemplazan las recetas históricas contradictorias de
-paralelismo y frecuencia de checks. ROADMAP «Ahora» contiene solo la prioridad
-actual; HANDOFF §8 registra el estado vigente. No confundir núcleo puro,
-cableado opt-in y comportamiento validado, ni activar defaults como trámite.
+## Cómo se trabaja (única versión: docs/HANDOFF.md §2, §3 y §5)
+Lotes acotados por un resultado observable (una cadena de ítems dependientes es un lote: un commit por ítem, un PR); una sesión coordina e implementa; agentes solo para trabajo independiente. Verificación por riesgo: tests del módulo por commit, suite completa una vez por lote. No confundir núcleo puro, cableado opt-in y comportamiento validado, ni activar defaults como trámite. Ahorrar tokens: leer solo «Ahora» del ROADMAP, el ítem y el doc de su sistema.
 
 ## Retomar en un chat nuevo
-Si el usuario dice solo "continuá" (o similar): es el **primer `[ ]` de la fase actual** que nombra "▶ Ahora", siguiendo la **receta por ítem** y las reglas de "Cómo se trabaja" que están ahí mismo. **Una sesión = un ítem**: el usuario abre una sesión nueva por ítem. Si el ítem no entra en una sesión, se parte en sub-ítems en el ROADMAP antes de codear y se hace uno. Al terminar, el ítem queda `[x]` (nunca a medias ni con "queda X" suelto): lo no hecho pasa a ítems `[ ]` con nombre en la fase que corresponda, y "Ahora" apunta al siguiente.
-1. Leer [docs/ROADMAP.md](docs/ROADMAP.md): "▶ Ahora" dice qué sigue (y cómo hacerlo) y "Estado del diseño" qué queda abierto.
-2. `git status` y `gh pr list` para ver ramas o PRs a medio camino (`gh` ya está en el PATH de Bash vía `~/bin/gh`).
-3. Leer el doc de sistema relevante antes de tocar código.
-4. Al cerrar cualquier cosa: actualizar ROADMAP (y el doc del sistema) **en el mismo PR**, para que el próximo chat tenga el contexto sin depender de la conversación.
+Si el usuario dice solo «continuá»: tomar la prioridad de «Ahora» en [docs/ROADMAP.md](docs/ROADMAP.md) (primer `[ ]` no bloqueado), `git status` y `gh pr list`, leer el doc de sistema del ítem y seguir HANDOFF §1-§5. Al cerrar, actualizar ROADMAP y HANDOFF §8 en el mismo PR; lo no hecho pasa a  con nombre.
 
 ## Reglas que no se rompen
 1. **La IA no es el juego.** El LLM solo (a) traduce texto del jugador a intenciones estructuradas y (b) narra eventos ya resueltos. Nunca decide resultados, nunca crea entidades ni items, nunca modifica el estado.
@@ -101,7 +91,7 @@ TypeScript 6 (strict, `erasableSyntaxOnly`) · Node 24 corriendo `.ts` nativo (s
 1. Mirar ROADMAP → elegir la siguiente tarea.
 2. Si el sistema no tiene `docs/systems/X.md`, escribirlo primero (plan mode).
 3. Rama `feat/<nombre>` desde `develop`, tests (incluido uno de determinismo si toca la sim), implementar.
-4. `npm run typecheck && npm run lint && npm test`, revisar, PR a `develop` (squash), actualizar ROADMAP.
+4. Verificar según HANDOFF §5 (módulo por commit, `npm run check` al certificar el lote), PR a `develop` (squash), actualizar ROADMAP.
 5. `develop` → `main` solo al cerrar un hito, con tag. Nunca commitear directo a `main` ni `develop`.
 
 ## Convenciones
