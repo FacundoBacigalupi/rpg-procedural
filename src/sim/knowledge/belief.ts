@@ -23,11 +23,25 @@ const HOUR = 3_600;
 const DAY = 86_400;
 
 /** Qué se cree de alguien: dónde está, si vive y qué se propone (el motivo que le leyó a un acto). */
-export const ATTR_KEYS = ["at", "alive", "purpose", "figure", "attire", "action"] as const;
+export const ATTR_KEYS = [
+  "at",
+  "alive",
+  "purpose",
+  "figure",
+  "attire",
+  "action",
+  "condition",
+] as const;
 export type AttrKey = (typeof ATTR_KEYS)[number];
 
 /** Los atributos de texto: el valor es una cadena (motivo, figura, ropa, acción) y no un lugar. */
-export const TEXT_ATTRS: readonly AttrKey[] = ["purpose", "figure", "attire", "action"];
+export const TEXT_ATTRS: readonly AttrKey[] = [
+  "purpose",
+  "figure",
+  "attire",
+  "action",
+  "condition",
+];
 export const isTextAttr = (attr: AttrKey): boolean => TEXT_ATTRS.includes(attr);
 
 export interface Proposition {
@@ -92,6 +106,8 @@ export const CONFIDENCE_HALF_LIFE_HOURS: Readonly<Record<AttrKey, number>> = {
   figure: 24 * 365,
   attire: 24 * 3,
   action: 1,
+  /** Lo que se cree que le pasa a la mente de alguien (`ConditionBelief`): dura meses. */
+  condition: 24 * 120,
 };
 /** Vida media de la saliencia (días). */
 export const SALIENCE_HALF_LIFE_DAYS = 30;

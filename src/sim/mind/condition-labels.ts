@@ -3,8 +3,9 @@
 // estigma y cuánto ayuda de verdad (a veces por razones reales: rutina, comunidad; a veces daña).
 // Núcleo puro: la etiqueta es una creencia de alguien sobre alguien, no la condición. Sin cablear.
 
-import type { AgentId } from "../../core/index.ts";
+import type { AgentId, Tick } from "../../core/index.ts";
 import { contentId, defineContent, type EventId, z } from "../../core/index.ts";
+import type { Evidence } from "../knowledge/index.ts";
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -87,6 +88,34 @@ export function believeCondition(
     confidence: round(clamp01(confidence)),
     sourceEventId,
   };
+}
+
+/**
+ * La creencia como evidencia del libro `BELIEFS` (`knowledge/belief.ts`): proposición `condition` del
+ * sujeto, valor el id de la etiqueta, fuente un percept que cita el evento. Pura.
+ */
+export function conditionEvidence(belief: ConditionBelief, now: Tick): Evidence {
+  return {
+    prop: { kind: "attr", subject: belief.about, attr: "condition" },
+    value: belief.label,
+    confidence: belief.confidence,
+    asOf: now,
+    source: { kind: "percept", percept: "condition", tick: now, event: belief.sourceEventId },
+  };
+}
+
+/**
+ * Qué condición se nombra de alguien: la más grave de las que tienen etiqueta (la que tira del resto).
+ */
+export function visibleCondition<T extends { readonly kind: string; readonly severity: number }>(
+  conditions: readonly T[],
+): T | undefined {
+  let best: T | undefined;
+  for (const c of conditions) {
+    if (!(LABELED_KINDS as readonly string[]).includes(c.kind)) continue;
+    if (best === undefined || c.severity > best.severity) best = c;
+  }
+  return best;
 }
 
 /** Apoyo (0-1) que el trato cultural suma a la cura: solo lo que ayuda; lo que daña no la acelera. */
