@@ -77,6 +77,7 @@ import { type AmbientQi, ambientQiCOf } from "./ambientQi.ts";
 import { APPRAISE_PROCESS, appraiseProcess } from "./appraise.ts";
 import { askAroundProcess } from "./askaround.ts";
 import { type BanditsOptions, banditsProcess } from "./bandits.ts";
+import { belongingProcess } from "./belonging.ts";
 import { birthProcess, newbornBondsProcess } from "./birth.ts";
 import { bondageAbuseChance, craftSkillIds, skillWageOf } from "./bondagepolicy.ts";
 import { borrowProcess, repayProcess } from "./borrow.ts";
@@ -656,6 +657,8 @@ export interface LifeWorld {
   readonly offerings?: boolean;
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
+  /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
+  readonly fieldManureDiet?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota y del que la gente alcanza lo que da `harvestStock` (`life.wild`, ledger `wild` -> lugares de monte); apagado. */
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda). */
@@ -761,6 +764,8 @@ export interface LifeWorld {
   readonly lifeStages?: boolean;
   /** Opt-in (`LifeOptions.stageRites`, con `lifeStages`): ritos de paso de la cultura en `life.stages`. */
   readonly stageRites?: boolean;
+  /** Opt-in (`LifeOptions.belonging`): enciende `life.belonging`; apagado. */
+  readonly belonging?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1348,7 +1353,20 @@ export function lifeWorld(
           clock: parts.clock,
           map: parts.map,
           seed: parts.seed,
-          ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
+          ...(parts.fieldManure
+            ? {
+                manure: {
+                  placeOf: placeOf(parts, village),
+                  ...(parts.fieldManureDiet
+                    ? {
+                        proteinOf: new Map(
+                          parts.foods.map((f) => [`good:${f.id}`, f.proteinPerGram] as const),
+                        ),
+                      }
+                    : {}),
+                },
+              }
+            : {}),
         }),
         ...(parts.coop
           ? [
@@ -1372,6 +1390,9 @@ export function lifeWorld(
                 ...(parts.stageRites === true ? { rites: {} } : {}),
               }),
             ]
+          : []),
+        ...(parts.belonging
+          ? [belongingProcess({ clock: parts.clock, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.mortalTech
           ? [

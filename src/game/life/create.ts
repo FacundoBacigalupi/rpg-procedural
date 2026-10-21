@@ -152,6 +152,7 @@ import {
   type VillageSite,
   villageSite,
 } from "../../worldgen/index.ts";
+import { seedBelonging } from "./belonging.ts";
 import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
@@ -420,10 +421,14 @@ export interface LifeOptions {
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
   readonly stageRites?: boolean;
+  /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly belonging?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
+  /** Con `fieldManure`: la calidad del abono sale de la dieta (proteína de lo comido) y no es la constante; apagado. */
+  readonly fieldManureDiet?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota; la gente alcanza lo que da `harvestStock` y `gather` lo toma de la cuenta del lugar (`life.wild`, fuente `wild`, evento `wild.supplied`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
@@ -708,6 +713,7 @@ export function optInParts(
   | "meaningPressure"
   | "lifeStages"
   | "stageRites"
+  | "belonging"
   | "coop"
   | "craftGoals"
   | "scam"
@@ -732,6 +738,7 @@ export function optInParts(
   | "loanWorkout"
   | "offerings"
   | "fieldManure"
+  | "fieldManureDiet"
   | "wildHarvest"
   | "wildCapacityScale"
   | "wildHunt"
@@ -877,6 +884,7 @@ export function optInParts(
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
     ...(options.lifeStages && options.stageRites ? { stageRites: true } : {}),
+    ...(options.belonging ? { belonging: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),
@@ -893,6 +901,7 @@ export function optInParts(
     ...(options.loanWorkout ? { loanWorkout: true } : {}),
     ...(options.offerings ? { offerings: true } : {}),
     ...(options.fieldManure ? { fieldManure: true } : {}),
+    ...(options.fieldManure && options.fieldManureDiet ? { fieldManureDiet: true } : {}),
     ...(options.wildHarvest ? { wildHarvest: true } : {}),
     ...(options.wildHarvest && options.wildCapacityScale !== undefined
       ? { wildCapacityScale: options.wildCapacityScale }
@@ -1683,6 +1692,16 @@ export function createLife(
   if (options.lifeStages) {
     seedDevelopment(truth, ids, log, {
       stages: content.all(LIFE_STAGES),
+      clock,
+      now: pop.now,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+    });
+  }
+
+  // Opt-in: la pertenencia inicial de cada persona.
+  if (options.belonging) {
+    seedBelonging(truth, ids, log, {
       clock,
       now: pop.now,
       place: terrain.village,

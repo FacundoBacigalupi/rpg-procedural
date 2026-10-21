@@ -73,6 +73,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
 
 **Lote psy-stages-rites (2026-10-21, rama `feat/psy-stages-rites`):** `stageRites` opt-in (requiere `lifeStages`): ritos de paso desde `rites.coming_of_age` (`life.rite-of-passage` con padrino adulto, o `riteMissed` + `life.rite-missed`); apagado conserva el hash. Ver ROADMAP `psy-stages-rites`; el déficit de `belonging` sigue en `psy-belonging`.
+**Lote psy-belonging (2026-10-21, rama `feat/psy-belonging`):** pertenencia opt-in `belonging` (`sim/mind/belonging.ts` núcleo puro + `src/game/life/belonging.ts`: `BELONGING` por persona, `life.belonging` con `-deficit`/`-restored` y causa); apagado conserva el hash. Ver ROADMAP `psy-belonging`; pendientes `psy-belonging-rite`, `-utility`, `-profile` y `psy-meaning-need`.
 
 **Lote life-stages-wire (2026-10-21, rama `feat/life-stages-wire`):** `lifeStages` opt-in (`DEVELOPMENT` por persona al materializar, `life.stages` con `life.stage-entered`, audacia con `riskBias` de la etapa); apagado conserva el hash. Ver ROADMAP `psy-stages-wire`; pendientes `-rites`, `-attachment`, `-peers`, `-ancient`.
 
@@ -82,7 +83,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote wild-gather (2026-10-21, rama `feat/wild-gather`):** test de punta a punta de un `gather` real con `wildHarvest` (`src/game/life/wild-gather.test.ts`): el rendimiento diario y el stock en pie bajan al recolectar varios días en un monte pobre (`wildCapacityScale`). Corregido: antes el stock solo bajaba por la ventana inicial; ahora la cuenta del lugar es la ventana diaria (lo tomado baja el stock al reponer, lo que sobra vuelve al monte; `wild.supplied` con `minted`/`returned`). Pendiente `wild-wood` (no hay verbo de tala ni vínculo con `PatchVegetation`: lote propio).
 
-**Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
+**Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` (hecho) y `field-manure-removed`.
+**Lote field-manure-diet (2026-10-21, rama `feat/field-manure-diet`):** `fieldManureDiet` opt-in (calidad del abono desde la proteína de la dieta, `manureQualityOf`); apagado conserva el hash. Parte pendiente: ROADMAP `field-manure-household`.
 
 **Lote life-stages (2026-10-21, `feat/life-stages`):** `sim/mind/development.ts` (núcleo puro, sin cablear: no cambia hashes; fuera de FULL_PROFILE): etapa por edad vivida con evento causa, apego derivado de esquemas, `riskBias`/`peerWeight` por etapa. Ítem de Fase 3 partido en `psy-*` en el ROADMAP; sigue `psy-stages-wire`. Check en `sim-reports/check-life-stages.log` (local).
 
