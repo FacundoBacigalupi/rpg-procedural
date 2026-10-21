@@ -18,7 +18,7 @@ import {
   TONE_MARK,
   type WeatherPanel,
 } from "../game/index.ts";
-import type { Fact, PurposeId } from "../sim/index.ts";
+import type { ConditionKind, Fact, PurposeId } from "../sim/index.ts";
 
 const UNITS: readonly [number, string, string][] = [
   [EARTHLIKE_CLOCK.day, "día", "días"],
@@ -118,7 +118,7 @@ const LASTS: Readonly<Record<InventoryPanel["larder"][number]["lasts"], string>>
 };
 
 const BURDEN: Readonly<
-  Record<"trauma" | "guilt", Readonly<Record<"light" | "heavy" | "crushing", string>>>
+  Record<ConditionKind, Readonly<Record<"light" | "heavy" | "crushing", string>>>
 > = {
   trauma: {
     light: "Un sobresalto te queda dentro",
@@ -129,6 +129,21 @@ const BURDEN: Readonly<
     light: "Algo que hiciste te roza la conciencia",
     heavy: "Cargás con algo que hiciste",
     crushing: "Lo que hiciste te aplasta",
+  },
+  grief: {
+    light: "Extrañás a alguien que ya no está",
+    heavy: "La pérdida te pesa todos los días",
+    crushing: "La pérdida no te deja levantarte",
+  },
+  depression: {
+    light: "Todo te cuesta un poco más",
+    heavy: "Nada te da ganas de hacer nada",
+    crushing: "Todo te parece inútil",
+  },
+  addiction: {
+    light: "A veces el cuerpo te pide algo",
+    heavy: "Lo que necesitás te ronda la cabeza",
+    crushing: "No pensás en otra cosa que en eso",
   },
 };
 

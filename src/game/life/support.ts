@@ -28,6 +28,9 @@ export const FULL_COMPANY = 4;
 export const SUPPORT_WEIGHTS: Readonly<Record<ConditionKind, { company: number; rite: number }>> = {
   trauma: { company: 0.5, rite: 0.2 },
   guilt: { company: 0.2, rite: 0.5 },
+  grief: { company: 0.5, rite: 0.4 },
+  depression: { company: 0.4, rite: 0.2 },
+  addiction: { company: 0.3, rite: 0.2 },
 };
 
 /**

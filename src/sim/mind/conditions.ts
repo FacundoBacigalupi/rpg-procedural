@@ -17,7 +17,7 @@ import { type FormativeStimulus, PAINFUL } from "./mind.ts";
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
 
-export type ConditionKind = "trauma" | "guilt";
+export type ConditionKind = "trauma" | "guilt" | "grief" | "depression" | "addiction";
 
 /** Lo que la despierta de golpe: ver de nuevo a alguien o volver al lugar. */
 export interface ConditionTrigger {
@@ -47,11 +47,25 @@ export interface MentalState {
 export const MENTAL = table<MentalState>("mind.conditions");
 
 /** Días para que una condición pierda la mitad, sin apoyo (calibración abierta). */
-export const CONDITION_HALF_LIFE_DAYS = { trauma: 90, guilt: 200 } as const;
+export const CONDITION_HALF_LIFE_DAYS = {
+  trauma: 90,
+  guilt: 200,
+  grief: 120,
+  depression: 240,
+  addiction: 400,
+} as const;
 /** Bajo esta gravedad la condición se resuelve y se borra. */
 export const CONDITION_FLOOR = 0.03;
 /** Cuántas condiciones de cada tipo guarda como máximo (las causas se juntan). */
 export const MAX_ORIGINS = 8;
+/** Cuánto pesa cada tipo en la chance de pesadilla (el trauma manda; la depresión casi no sueña). */
+const NIGHTMARE_WEIGHT = {
+  trauma: 1,
+  guilt: 0.6,
+  grief: 0.5,
+  depression: 0.2,
+  addiction: 0.2,
+} as const;
 /** Chance de pesadilla por noche = gravedad × esto. */
 export const NIGHTMARE_RATE = 0.8;
 /** Gravedad desde la que el curso es crónico. */
@@ -136,12 +150,18 @@ export function nightmareChance(state: MentalState | undefined): number {
   if (!state) return 0;
   return clamp01(
     NIGHTMARE_RATE *
-      Math.max(0, ...state.conditions.map((c) => c.severity * (c.kind === "trauma" ? 1 : 0.6))),
+      Math.max(0, ...state.conditions.map((c) => c.severity * NIGHTMARE_WEIGHT[c.kind])),
   );
 }
 
 /** Cuánto pesa cada tipo al evitar o al invadir (el trauma más que la culpa). */
-const KIND_WEIGHT = { trauma: 1, guilt: 0.6 } as const;
+const KIND_WEIGHT = {
+  trauma: 1,
+  guilt: 0.6,
+  grief: 0.4,
+  depression: 0.2,
+  addiction: 0.5,
+} as const;
 /** Tope de la evitación: nunca anula del todo la utilidad de acercarse. */
 export const AVOIDANCE_CAP = 0.9;
 /** Chance de un recuerdo intrusivo al toparse con el disparador = gravedad × esto. */
@@ -210,7 +230,13 @@ export const VIGILANCE_SLEEP_FEAR = 0.5;
 /** Chance de falsa alarma por mirada = vigilancia × esto. */
 export const FALSE_ALARM_RATE = 0.2;
 /** Cuánto embota cada tipo las emociones positivas (el trauma apaga; la culpa casi no). */
-const NUMBING_WEIGHT = { trauma: 0.8, guilt: 0.2 } as const;
+const NUMBING_WEIGHT = {
+  trauma: 0.8,
+  guilt: 0.2,
+  grief: 0.5,
+  depression: 0.7,
+  addiction: 0.3,
+} as const;
 /** Tope del entumecimiento: nunca anula del todo lo que se siente. */
 export const NUMBING_CAP = 0.8;
 
