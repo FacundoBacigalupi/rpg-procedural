@@ -126,12 +126,14 @@ export function settleConditions(
   now: Tick,
   dayLength: number,
   support: number | ((kind: ConditionKind) => number) = 0,
+  /** Factor (>0) sobre la vida media por tipo: el trato que daña la alarga (`treatmentHarm`). */
+  stretch?: (kind: ConditionKind) => number,
 ): MentalState {
   const days = Math.max(0, (now - state.updated) / dayLength);
   if (days === 0) return state;
   const conditions = state.conditions.flatMap((c) => {
     const s = typeof support === "number" ? support : support(c.kind);
-    const half = CONDITION_HALF_LIFE_DAYS[c.kind] / (1 + clamp01(s));
+    const half = (CONDITION_HALF_LIFE_DAYS[c.kind] * (stretch?.(c.kind) ?? 1)) / (1 + clamp01(s));
     const severity = round(c.severity * pow(0.5, days / half));
     return severity < CONDITION_FLOOR
       ? []

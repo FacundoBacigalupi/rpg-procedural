@@ -13,11 +13,16 @@ import {
   comfortOf,
   ENTITY,
   type GuiltResponse,
+  labelFor,
   MENTAL,
+  type MentalLabelDef,
   PERSON,
+  PERSON_CULTURE,
   practicesOfKind,
   RELIGIOUS_IDENTITY,
   type ReadonlyWorldTruth,
+  treatmentHarm,
+  treatmentSupport,
   villageReligion,
 } from "../../sim/index.ts";
 import { WAKE_COMFORT, wakeComfortFor } from "./wake.ts";
@@ -118,5 +123,29 @@ export function supportFor(
     const c = conditions.find((x) => x.kind === kind);
     const went = c ? wakeComfortFor(wakes, c) : undefined;
     return supportOf(kind, company, went ?? rite, response);
+  };
+}
+
+/** La teoría de la mente (`mind.theory`) que sostiene `me`, de su cultura personal. */
+export function mindTheoryOf(truth: ReadonlyWorldTruth, me: AgentId): string | undefined {
+  return truth.get(PERSON_CULTURE, me)?.holdings["mind.theory"]?.variant;
+}
+
+/**
+ * El trato cultural de la condición (`conditionLabels`): suma el apoyo de lo que ayuda
+ * (`treatmentSupport`) y estira la vida media de lo que daña (`treatmentHarm`), según la teoría de
+ * la persona. Devuelve el apoyo base más el trato, y el factor sobre la vida media. Puro.
+ */
+export function labeledSupportFor(
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  defs: readonly MentalLabelDef[],
+  base: (kind: ConditionKind) => number,
+): { support: (kind: ConditionKind) => number; stretch: (kind: ConditionKind) => number } {
+  const theory = mindTheoryOf(truth, me);
+  const def = (kind: ConditionKind) => labelFor(defs, theory, kind);
+  return {
+    support: (kind) => Math.min(1, base(kind) + treatmentSupport(def(kind))),
+    stretch: (kind) => treatmentHarm(def(kind)),
   };
 }

@@ -26,6 +26,7 @@ import type { GameSetup } from "../setup/index.ts";
 import { ACT_PROCESS, PLAN_STATE, type PlanState, planKey, type StepRecord } from "./act.ts";
 import {
   anchorOf,
+  conditionLabelParts,
   createLife,
   defaultParts,
   derivedLoanUsury,
@@ -499,6 +500,7 @@ export class Life {
       ...defaultParts(options),
       ...optInParts(options, waterTerrain),
       ...mortalTechParts(options, content),
+      ...conditionLabelParts(options, content),
       ...(derived ? { loanUsury: derived } : {}),
       spaces,
       ...saved,

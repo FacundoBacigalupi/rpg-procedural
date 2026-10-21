@@ -35,10 +35,12 @@ import {
   MEMORIES,
   MENTAL,
   type Memory,
+  type MentalLabelDef,
   MIND,
   nightmareCauses,
   nightmareChance,
   PERSON,
+  PERSON_CULTURE,
   type ProcessDef,
   RELATIONS,
   RELIGIOUS_IDENTITY,
@@ -55,7 +57,7 @@ import {
   vigilantSleepFear,
 } from "../../sim/index.ts";
 import { closeness } from "./appraise.ts";
-import { supportFor } from "./support.ts";
+import { labeledSupportFor, supportFor } from "./support.ts";
 import { WAKE_COMFORT } from "./wake.ts";
 
 export const SLEEP_PROCESS = "life.consolidate";
@@ -147,6 +149,8 @@ export interface SleepOptions {
   readonly sleepers?: boolean;
   /** Opt-in: al despertar tras consolidar, emite `mind.dreamt` con el sueño de la noche. */
   readonly dreams?: boolean;
+  /** Opt-in (`LifeOptions.conditionLabels`): etiquetas culturales; su tratamiento entra en la cura de las condiciones. */
+  readonly mentalLabels?: readonly MentalLabelDef[];
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly schemas: readonly SchemaDef[];
@@ -182,6 +186,7 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
       RELIGIOUS_IDENTITY.name,
       AMENDS.name,
       WAKE_COMFORT.name,
+      ...(o.mentalLabels ? [PERSON_CULTURE.name] : []),
       ...(o.sleepers ? [ASLEEP.name] : []),
     ],
     writes: [SLEEP_STATE.name, MEMORIES.name, MIND.name, MENTAL.name],
@@ -328,11 +333,16 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
         });
       }
       if (mental) {
+        const base = mental.conditions.length > 0 ? supportFor(truth, me) : undefined;
+        // Con `conditionLabels`, el trato de la teoría de su cultura suma apoyo o estira la cura.
+        const treated =
+          o.mentalLabels && base ? labeledSupportFor(truth, me, o.mentalLabels, base) : undefined;
         const settled = settleConditions(
           mental,
           ctx.now,
           o.clock.day,
-          mental.conditions.length > 0 ? supportFor(truth, me) : 0,
+          treated?.support ?? base ?? 0,
+          treated?.stretch,
         );
         changes.push(setComponent(MENTAL, me, settled));
         if (dreamt) {

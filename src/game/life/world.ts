@@ -34,6 +34,7 @@ import {
   type LocalMap,
   localHour,
   type MaterialDef,
+  type MentalLabelDef,
   type NutrientProfileDef,
   oscillationYearOfMap,
   outdoorTempC,
@@ -770,6 +771,8 @@ export interface LifeWorld {
   readonly belonging?: boolean;
   /** Opt-in (`LifeOptions.dreams`): `life.consolidate` emite `mind.dreamt` al despertar; apagado. */
   readonly dreams?: boolean;
+  /** Opt-in (`LifeOptions.conditionLabels`): las etiquetas de `content/mental-labels`; con ellas, la muerte cercana abre duelo y el trato de la teoría de la cultura entra en la cura (npc-psychology §11). */
+  readonly conditionLabels?: readonly MentalLabelDef[];
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1917,6 +1920,7 @@ export function lifeWorld(
           values: parts.values,
           ...(parts.rumorGrievance ? { rumorGrievance: true } : {}),
           ...(parts.lifeStages && parts.attachmentBias === true ? { attachmentBias: true } : {}),
+          ...(parts.conditionLabels ? { conditionGrief: true } : {}),
           witness: {
             player,
             map: parts.map,
@@ -1937,6 +1941,7 @@ export function lifeWorld(
         sleepProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
           ...(parts.dreams ? { dreams: true } : {}),
+          ...(parts.conditionLabels ? { mentalLabels: parts.conditionLabels } : {}),
           clock: parts.clock,
           seed: parts.seed,
           schemas: parts.schemas,
