@@ -72,6 +72,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
+**Lote mortal-processes (2026-10-21, `feat/mortal-processes`):** `sim/technology` (núcleo puro) y `content/techprocesses/` (18 procesos): catálogo con `feasibility`, `ProcessKnowledge` por persona con `yieldFactor`/`storageFactor`, y `teachProcess`/`learnFromManual`. Sin cablear a la vida (no cambia hashes; el cableado opt-in `--tech`/`FULL_PROFILE` queda `[ ]` en el ROADMAP, después de «Abono de los campos»). `npm run check` sobre `855d0a6`: 482 archivos, 3336 tests, exit 0 (`sim-reports/check-mortal-processes.log`, local).
+
 **Lote perfil3 (2026-10-21, #660 + este PR):** `life.gossip` memoizado y reloj por proceso; `npm run check` sobre `3cb88b6`: 478 archivos, 3307 tests, exit 0 (`sim-reports/check-perfil3.log`). Este PR es solo docs: cierra `perfil3`/`perfil5`, abre `perfil3b` (crear la `Life`). Lote epílogo corto (rama `feat/epilogue-short`): `epilogue.ts` + `--epilogue`; ver ROADMAP `epilogo-corto`.
 
 Validación del lote `feat/item-claims-take`: `npm run check` sobre `4a83cd4` (cadena take+give+replay): 477 archivos, 3298 tests, exit 0 (`sim-reports/item-claims-check.*`). La donación (c7982cb) se verificó solo con typecheck, lint y 63 tests dirigidos (property, auditoría de ítems, replay); la suite completa no se repitió.

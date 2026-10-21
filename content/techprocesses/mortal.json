@@ -1,0 +1,194 @@
+[
+  {
+    "id": "digging-stick",
+    "name": "palo cavador y azada de madera",
+    "domain": "agriculture",
+    "requires": { "resources": ["timber"] },
+    "tacitness": 0.2,
+    "learnHours": 40
+  },
+  {
+    "id": "wooden-plow",
+    "name": "arado de madera de tiro animal",
+    "domain": "agriculture",
+    "requires": {
+      "resources": ["timber"],
+      "concepts": ["draft-traction"],
+      "tools": ["digging-stick"],
+      "scale": 2
+    },
+    "tacitness": 0.4,
+    "learnHours": 120,
+    "effects": [{ "kind": "yield", "crop": "grain", "factor": 1.15, "labor": 0.6 }]
+  },
+  {
+    "id": "iron-plowshare",
+    "name": "reja de hierro para el arado",
+    "domain": "agriculture",
+    "requires": { "tools": ["wooden-plow", "iron-forging"] },
+    "tacitness": 0.5,
+    "learnHours": 60,
+    "effects": [{ "kind": "yield", "crop": "grain", "factor": 1.2, "labor": 0.8 }]
+  },
+  {
+    "id": "fallow-rotation",
+    "name": "barbecho y rotación de campos",
+    "domain": "agriculture",
+    "requires": { "concepts": ["fallow-cycle"] },
+    "tacitness": 0.25,
+    "learnHours": 200,
+    "effects": [{ "kind": "yield", "crop": "grain", "factor": 1.1, "labor": 1 }]
+  },
+  {
+    "id": "field-manuring",
+    "name": "abonado de los campos con estiércol",
+    "domain": "agriculture",
+    "requires": { "concepts": ["fallow-cycle"], "tools": ["digging-stick"] },
+    "tacitness": 0.3,
+    "learnHours": 80,
+    "effects": [{ "kind": "yield", "crop": "grain", "factor": 1.2, "labor": 1.1 }]
+  },
+  {
+    "id": "irrigation-channels",
+    "name": "acequias de riego",
+    "domain": "hydraulics",
+    "requires": { "resources": ["running-water"], "tools": ["digging-stick"], "scale": 6 },
+    "tacitness": 0.45,
+    "learnHours": 300,
+    "effects": [
+      { "kind": "yield", "crop": "grain", "factor": 1.3, "labor": 1.2 },
+      { "kind": "arable", "terrain": "dry-plain" }
+    ]
+  },
+  {
+    "id": "salting",
+    "name": "salazón de carne",
+    "domain": "food",
+    "requires": { "resources": ["salt"] },
+    "tacitness": 0.3,
+    "learnHours": 50,
+    "outputs": ["salt-pork"],
+    "effects": [{ "kind": "storage", "good": "salt-pork", "spoilage": 0.25 }]
+  },
+  {
+    "id": "air-drying",
+    "name": "secado al aire de carne y pescado",
+    "domain": "food",
+    "requires": { "concepts": ["preservation"] },
+    "tacitness": 0.3,
+    "learnHours": 40,
+    "outputs": ["dried-meat", "dried-fish"],
+    "effects": [
+      { "kind": "storage", "good": "dried-meat", "spoilage": 0.3 },
+      { "kind": "storage", "good": "dried-fish", "spoilage": 0.3 }
+    ]
+  },
+  {
+    "id": "brewing",
+    "name": "fermentación de cerveza",
+    "domain": "food",
+    "requires": { "resources": ["water"], "concepts": ["controlled-fermentation"] },
+    "tacitness": 0.55,
+    "learnHours": 150,
+    "outputs": ["ale"]
+  },
+  {
+    "id": "charcoal-burning",
+    "name": "carbón de leña en pila cubierta",
+    "domain": "energy",
+    "requires": { "resources": ["timber"], "energy": { "kind": "fire" }, "scale": 2 },
+    "tacitness": 0.65,
+    "learnHours": 120,
+    "effects": [{ "kind": "material", "produces": "charcoal", "quality": 0.6 }]
+  },
+  {
+    "id": "clay-firing",
+    "name": "alfarería en hoguera",
+    "domain": "ceramics_glass",
+    "requires": { "resources": ["clay"], "energy": { "kind": "fire", "temperature": 800 } },
+    "tacitness": 0.7,
+    "learnHours": 250,
+    "effects": [{ "kind": "storage", "good": "grain", "spoilage": 0.7 }]
+  },
+  {
+    "id": "copper-smelting",
+    "name": "fundición de cobre",
+    "domain": "metallurgy",
+    "requires": {
+      "resources": ["copper-ore", "charcoal"],
+      "energy": { "kind": "fire", "temperature": 1100 },
+      "concepts": ["forced-draft"],
+      "tools": ["clay-firing", "charcoal-burning"]
+    },
+    "tacitness": 0.8,
+    "learnHours": 400,
+    "outputs": ["copper"]
+  },
+  {
+    "id": "bronze-alloying",
+    "name": "bronce de cobre y estaño",
+    "domain": "metallurgy",
+    "requires": {
+      "resources": ["tin-ore"],
+      "energy": { "kind": "fire", "temperature": 950 },
+      "concepts": ["alloying"],
+      "tools": ["copper-smelting"]
+    },
+    "tacitness": 0.8,
+    "learnHours": 300,
+    "effects": [{ "kind": "material", "produces": "bronze", "quality": 0.7 }]
+  },
+  {
+    "id": "bloomery-iron",
+    "name": "hierro de bloomery",
+    "domain": "metallurgy",
+    "requires": {
+      "resources": ["iron-ore", "charcoal"],
+      "energy": { "kind": "fire", "temperature": 1200 },
+      "concepts": ["forced-draft"],
+      "tools": ["clay-firing", "charcoal-burning"],
+      "scale": 3
+    },
+    "tacitness": 0.85,
+    "learnHours": 600,
+    "outputs": ["iron"]
+  },
+  {
+    "id": "iron-forging",
+    "name": "forja de herramientas de hierro",
+    "domain": "metallurgy",
+    "requires": {
+      "energy": { "kind": "fire", "temperature": 900 },
+      "tools": ["bloomery-iron"]
+    },
+    "tacitness": 0.85,
+    "learnHours": 800,
+    "outputs": ["tools"]
+  },
+  {
+    "id": "spinning",
+    "name": "hilado a huso",
+    "domain": "textiles",
+    "requires": { "resources": ["fiber"] },
+    "tacitness": 0.6,
+    "learnHours": 150
+  },
+  {
+    "id": "loom-weaving",
+    "name": "tejido en telar",
+    "domain": "textiles",
+    "requires": { "resources": ["timber"], "concepts": ["interlacing"], "tools": ["spinning"] },
+    "tacitness": 0.65,
+    "learnHours": 250,
+    "outputs": ["cloth"]
+  },
+  {
+    "id": "bamboo-slip-writing",
+    "name": "escritura con pincel en tablillas de bambú",
+    "domain": "writing",
+    "requires": { "resources": ["bamboo", "soot"], "concepts": ["phonetic-signs"] },
+    "tacitness": 0.3,
+    "learnHours": 1500,
+    "effects": [{ "kind": "copy_cost", "medium": "bamboo", "factor": 0.8 }]
+  }
+]
