@@ -68,7 +68,9 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Siguiente lote: cadena `perfil2-item-claims-take`. Fase 3 abierta.
+**Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
+
+Validación del lote `feat/item-claims-take`: `npm run check` sobre `4a83cd4` (cadena take+give+replay): 477 archivos, 3298 tests, exit 0 (`sim-reports/item-claims-check.*`). La donación (c7982cb) se verificó solo con typecheck, lint y 63 tests dirigidos (property, auditoría de ítems, replay); la suite completa no se repitió.
 
 Lote #655: WIP funerario completado, cinco actualizaciones compatibles de #651
 y arreglo de floorDiv. Código final `034b6d1`; producción `8d161d3`.

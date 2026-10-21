@@ -522,6 +522,8 @@ export interface LifeOptions {
   readonly npcCobblerHides?: boolean;
   /** Opt-in (con `npcFootwearMend`): el viajero de camino arregla el calzado gastado en una posada o posta, más caro y peor (`LifeParts.npcRoadMend`); apagado. */
   readonly npcRoadMend?: boolean;
+  /** Opt-in: `take`/`give` de objetos con identidad se disputan como claims con resultado del perdedor (`ActOptions.itemClaims`); apagado, nada cambia. */
+  readonly itemClaims?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo ocurre en una parada real, la noche que el viajero para a dormir (`npcNightRest`), no en cualquier día de marcha (npc-b2b3b2b3c2a); apagado. */
   readonly npcRoadStops?: boolean;
   /** Opt-in (con `npcRoadMend` y `npcCobbler`): si el zapatero está en el mismo hex que el viajero, arregla él con su oficio y cuero (npc-b2b3b2b3c2c); apagado. */
@@ -716,6 +718,7 @@ export function optInParts(
   | "npcCobbler"
   | "npcCobblerHides"
   | "npcRoadMend"
+  | "itemClaims"
   | "npcRoadStops"
   | "npcRoadCobbler"
   | "npcCloak"
@@ -868,6 +871,7 @@ export function optInParts(
     ...(options.npcCobbler && !options.legacyNoCobbler ? { npcCobbler: true } : {}),
     ...(options.npcCobblerHides ? { npcCobblerHides: true } : {}),
     ...(options.npcRoadMend ? { npcRoadMend: true } : {}),
+    ...(options.itemClaims ? { itemClaims: true } : {}),
     ...(options.npcRoadStops ? { npcRoadStops: true } : {}),
     ...(options.npcRoadCobbler ? { npcRoadCobbler: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),

@@ -21,6 +21,8 @@ import {
   FRESH_CURSOR,
   type GoodDef,
   INNATE,
+  ITEM_HOLD,
+  type ItemRight,
   LOCATION,
   type LocalMap,
   newBody,
@@ -33,8 +35,9 @@ import {
   WorldTruth,
 } from "../../sim/index.ts";
 import { actProcess, PLAN_STATE, planKey } from "./act.ts";
+import { optInParts } from "./create.ts";
 
-// Auditoría (perfil2-personal-resource-claims): el servicio económico reserva cantidades del
+// Auditoría (perfil2-personal-resource-claims; invertida en perfil2-item-claims-take-audit con itemClaims): el servicio económico reserva cantidades del
 // ledger. Un objeto con identidad (ItemId) no vive en el ledger: `take` solo mueve `Holding`
 // (unidad, cantidad), así que dos actores que van por la misma espada no entran en ninguna
 // contienda; el ítem queda intacto y ambos fracasan por `no_means`. Hueco medido, no implementado.
@@ -52,7 +55,9 @@ const content = loadContent(
     data: JSON.parse(readFileSync(file, "utf8")),
   })),
 );
-const actions = content.all(ACTIONS).map((a) => (a.id === "take" ? { ...a, ease: 100 } : a));
+const actions = content
+  .all(ACTIONS)
+  .map((a) => (a.id === "take" || a.id === "give" ? { ...a, ease: 100 } : a));
 const catalog = new ActionCatalog(actions),
   skills = new SkillCatalog(content.all(SKILLS), actions);
 const good = ledgerUnit("good:gleanings");
@@ -77,7 +82,7 @@ const map: LocalMap = {
   },
 };
 
-function world() {
+function world(itemClaims = false, gift = false, rights: ItemRight[] = []) {
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -94,7 +99,8 @@ function world() {
   const body = content.all(BODY_PLANS)[0];
   if (!body) throw new Error("sin cuerpo");
   truth.set(ENTITY, sword, { id: sword, createdAt: 0, originEventId: makeId("event", 1) });
-  truth.set(LOCATION, sword, { hex: 0 });
+  if (gift) truth.set(ITEM_HOLD, sword, { possession: makeId("agent", 1), rights });
+  else truth.set(LOCATION, sword, { hex: 0 });
   for (const n of [1, 2]) {
     const actor = makeId("agent", n);
     truth.set(ENTITY, actor, { id: actor, createdAt: 0, originEventId: makeId("event", 1) });
@@ -115,7 +121,17 @@ function world() {
       plan: {
         actor,
         source: "utility",
-        root: { kind: "do", verb: "take", args: [{ role: "what", text: "espada" }], manner: [] },
+        root: {
+          kind: "do",
+          verb: gift ? "give" : "take",
+          args: gift
+            ? [
+                { role: "what", entity: sword },
+                { role: "to", entity: makeId("agent", 2) },
+              ]
+            : [itemClaims ? { role: "what", entity: sword } : { role: "what", text: "espada" }],
+          manner: [],
+        },
         manner: [],
         causes: [],
       },
@@ -146,6 +162,7 @@ function world() {
     processes: [
       actProcess({
         economicBatch: true,
+        ...(itemClaims ? { itemClaims: true } : {}),
         serialEconomicVerbs: ["take"],
         map,
         spaces: { spaces: [], edges: [] },
@@ -165,7 +182,7 @@ function world() {
       }),
     ],
   });
-  for (const n of [1, 2])
+  for (const n of gift ? [1] : [1, 2])
     scheduler.schedule({
       at: clock.day / 2,
       phase: "act",
@@ -198,5 +215,132 @@ describe("auditoría: objetos con identidad fuera del servicio de cantidades", (
     expect(w.ledger.holdings(holderAccount(place))).toEqual([]);
     expect(w.ledger.holdings(holderAccount(makeId("agent", 1)))).toEqual([]);
     expect(w.ledger.holdings(holderAccount(makeId("agent", 2)))).toEqual([]);
+  });
+});
+
+describe("claims de ítems (opt-in itemClaims)", () => {
+  const run = () => {
+    const w = world(true);
+    w.scheduler.advanceTo(clock.day / 2);
+    return w;
+  };
+  const takes = (w: ReturnType<typeof world>) =>
+    w.log.all().filter((e) => e.kind === "action.take");
+
+  it("dos planes reales sobre una espada: exactamente un ganador y fracaso explícito del otro", () => {
+    for (const seed of [7]) {
+      const w = run();
+      const claimedOf = (e: { data: unknown }) =>
+        (e.data as { effect: { claimed: boolean } }).effect.claimed;
+      const win = takes(w).filter(claimedOf);
+      const lose = takes(w).filter((e) => !claimedOf(e));
+      expect(takes(w)).toHaveLength(2);
+      expect(win).toHaveLength(1);
+      expect(lose).toHaveLength(1);
+      expect(lose?.[0]?.data).toMatchObject({ failure: "lost_race", effect: { claimed: false } });
+      const contest = w.log.all().find((e) => e.kind === "contest");
+      expect(lose?.[0]?.causes).toContainEqual({ kind: "event", event: contest?.id });
+      const holder = win?.[0]?.actors[0];
+      expect(w.truth.get(ITEM_HOLD, sword)?.possession).toBe(holder);
+      expect(w.truth.get(LOCATION, sword)).toBeUndefined();
+      expect(seed).toBe(7);
+    }
+  });
+
+  it("conserva origen, ledger y avanza el plan del perdedor", () => {
+    const w = world(true);
+    const origin = w.truth.get(ENTITY, sword);
+    const journal = w.ledger.journal().length;
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ENTITY, sword)).toEqual(origin);
+    expect(w.ledger.journal()).toHaveLength(journal);
+    expect(w.ledger.audit()).toEqual([]);
+    for (const n of [1, 2]) {
+      const plan = w.truth.get(PLAN_STATE, makeId("agent", n));
+      expect(plan?.steps.length).toBe(1);
+    }
+  });
+
+  it("es determinista", () => {
+    const a = run();
+    const b = run();
+    expect(a.log.all()).toEqual(b.log.all());
+    expect(a.truth.get(ITEM_HOLD, sword)).toEqual(b.truth.get(ITEM_HOLD, sword));
+  });
+});
+
+describe("entrega de ítems (give, opt-in itemClaims)", () => {
+  it("entrega la posesión física al receptor y deja los derechos donde estaban", () => {
+    const w = world(true, true);
+    const origin = w.truth.get(ENTITY, sword);
+    w.scheduler.advanceTo(clock.day / 2);
+    const gives = w.log.all().filter((e) => e.kind === "action.give");
+    expect(gives).toHaveLength(1);
+    expect(gives[0]?.data).toMatchObject({ effect: { item: sword, delivered: true } });
+    expect(w.truth.get(ITEM_HOLD, sword)).toEqual({
+      possession: makeId("agent", 2),
+      rights: [],
+    });
+    expect(w.truth.get(LOCATION, sword)).toBeUndefined();
+    expect(w.truth.get(ENTITY, sword)).toEqual(origin);
+    expect(w.ledger.audit()).toEqual([]);
+  });
+  const origin = makeId("event", 1);
+  const ownership: ItemRight = {
+    key: "ownership",
+    holder: makeId("agent", 1),
+    incidents: ["possess", "use", "alienate"],
+    tenure: "personal",
+    record: { kind: "custom", witnesses: [], event: origin },
+    norm: "village",
+    originEventId: origin,
+    share: 0.5,
+    encumbrances: [],
+  };
+  const kept: ItemRight = { ...ownership, key: "coowner", holder: makeId("agent", 3) };
+  it("dona el haz del que da, con la cuota y el evento de la entrega; el ajeno queda", () => {
+    const w = world(true, true, [ownership, kept]);
+    w.scheduler.advanceTo(clock.day / 2);
+    const give = w.log.all().find((e) => e.kind === "action.give");
+    const hold = w.truth.get(ITEM_HOLD, sword);
+    expect(hold?.possession).toBe(makeId("agent", 2));
+    expect(hold?.rights[0]).toMatchObject({
+      holder: makeId("agent", 2),
+      share: 0.5,
+      record: { kind: "custom", event: give?.id },
+    });
+    expect(hold?.rights[1]).toEqual(kept);
+  });
+  it("una carga que impide enajenar: entrega la posesión pero no el haz", () => {
+    const encumbered = { ...ownership, encumbrances: [{ key: "lien", originEventId: origin }] };
+    const w = world(true, true, [encumbered]);
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ITEM_HOLD, sword)).toEqual({
+      possession: makeId("agent", 2),
+      rights: [encumbered],
+    });
+  });
+  it("sin alienate no dona", () => {
+    const loan = { ...ownership, incidents: ["possess" as const, "use" as const] };
+    const w = world(true, true, [loan]);
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ITEM_HOLD, sword)?.rights).toEqual([loan]);
+    expect(w.truth.get(ITEM_HOLD, sword)?.possession).toBe(makeId("agent", 2));
+  });
+  it("es determinista", () => {
+    const run = () => {
+      const w = world(true, true, [ownership, kept]);
+      w.scheduler.advanceTo(clock.day / 2);
+      return w;
+    };
+    expect(run().log.all()).toEqual(run().log.all());
+  });
+});
+
+describe("itemClaims como opción de la vida", () => {
+  it("apagado por defecto: sin la opción no hay parte nueva", () => {
+    expect(optInParts({})).toEqual({});
+    expect(optInParts({ itemClaims: false })).toEqual({});
+    expect(optInParts({ itemClaims: true })).toEqual({ itemClaims: true });
   });
 });

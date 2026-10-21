@@ -15,6 +15,7 @@
 
 import {
   assertTick,
+  type CauseRef,
   compareStrings,
   type EntityKind,
   type EntityRef,
@@ -43,6 +44,7 @@ import {
   compareScopes,
   draftEventCount,
   type EventDraft,
+  type LossOutcome,
   PHASES,
   type Phase,
   type ProcessContext,
@@ -130,7 +132,7 @@ interface RunSpec {
 interface Run extends RunSpec {
   result: ProcessResult;
   /** El tipo de cada id provisional que pidió, en orden (`agent:~0` es el primero). */
-  readonly drafts: readonly EntityKind[];
+  drafts: readonly EntityKind[];
   /** Los ids reales de sus eventos, una vez repartidos. */
   eventIds: readonly EventId[];
   alive: boolean;
@@ -555,9 +557,39 @@ export class Scheduler {
       }
     }
     for (const r of result.schedule ?? []) this.#checkItem({ ...r, seq: 0 }, t, phase);
+    const loss = result.contest?.loss;
+    for (const c of loss?.changes ?? []) {
+      if (!def.writes.includes(c.table)) {
+        throw new SchedulerError(
+          `${def.id} escribe ${c.table} en su fracaso sin declararlo en writes`,
+        );
+      }
+      if (c.op === "add" && !Number.isFinite(c.amount)) {
+        throw new SchedulerError(`${def.id}: suma no finita en el fracaso de ${changeKey(c)}`);
+      }
+    }
+    this.#checkLossShape(spec, loss, t, phase, checkWindow);
     if (result.postings?.length && !this.#o.ledger) {
       throw new SchedulerError(`${def.id} devuelve asientos y el mundo no tiene ledger`);
     }
+  }
+
+  #checkLossShape(
+    spec: RunSpec,
+    loss: LossOutcome | undefined,
+    t: Tick,
+    phase: Phase,
+    checkWindow: boolean,
+  ): void {
+    for (const e of loss?.events ?? []) {
+      if (!checkWindow || e.tick === undefined) continue;
+      if (!Number.isSafeInteger(e.tick) || e.tick > t || e.tick < t - spec.window) {
+        throw new SchedulerError(
+          `${spec.def.id}: evento de fracaso con tick ${e.tick} fuera de su ventana`,
+        );
+      }
+    }
+    for (const r of loss?.schedule ?? []) this.#checkItem({ ...r, seq: 0 }, t, phase);
   }
 
   /** Un ítem tiene que ir a un proceso conocido y al futuro (o a una fase posterior de este paso). */
@@ -572,6 +604,41 @@ export class Scheduler {
       throw new SchedulerError(
         `${item.process} agendado en el pasado: ${item.at} (${item.phase}) en ${now}`,
       );
+    }
+  }
+
+  /**
+   * Reemplaza el resultado de cada perdedor con `loss` por su resultado alternativo (simulation §3):
+   * solo eventos, cambios y agenda; con la contienda que lo descartó como causa. No puede escribir lo
+   * disputado, lo que toca otra corrida ni lo que toca otro perdedor, para no crear contiendas nuevas.
+   */
+  #settleLosers(
+    runs: Run[],
+    lost: ReadonlyMap<number, { claim: ContestClaim; contest: number }>,
+    touches: ReadonlyMap<string, { runs: number[]; exclusive: boolean }>,
+    conflicts: readonly string[],
+    settled: readonly Event[],
+  ): void {
+    const claimed = new Set<string>();
+    for (const [i, { claim, contest }] of [...lost].sort((a, b) => a[0] - b[0])) {
+      const run = runs[i] as Run;
+      const loss = claim.loss as LossOutcome;
+      for (const c of loss.changes ?? []) {
+        const key = changeKey(c);
+        const others = (touches.get(key)?.runs ?? []).some((r) => r !== i);
+        if (parseDraftRef(c.id) || conflicts.includes(key) || others || claimed.has(key)) {
+          throw new SchedulerError(`${run.def.id}: el fracaso escribe ${key}, que no le pertenece`);
+        }
+        claimed.add(key);
+      }
+      const cause: CauseRef = { kind: "event", event: (settled[contest] as Event).id };
+      run.result = {
+        ...(loss.changes ? { changes: loss.changes } : {}),
+        ...(loss.schedule ? { schedule: loss.schedule } : {}),
+        events: (loss.events ?? []).map((e) => ({ ...e, causes: [...e.causes, cause] })),
+      };
+      run.drafts = []; // el resultado descartado no reserva ids
+      run.alive = true;
     }
   }
 
@@ -606,6 +673,7 @@ export class Scheduler {
     }
 
     const contestEvents: Omit<Event, "id">[] = [];
+    const lost = new Map<number, { claim: ContestClaim; contest: number }>();
     for (const key of conflicts) {
       const contenders = (touches.get(key)?.runs ?? [])
         .map((i) => runs[i] as Run)
@@ -626,7 +694,11 @@ export class Scheduler {
         if (s.score > (scored[winner] as (typeof scored)[number]).score) winner = i;
       });
       scored.forEach((s, i) => {
-        if (i !== winner) s.run.alive = false;
+        if (i === winner) return;
+        s.run.alive = false;
+        // Una corrida que pierde varias contiendas asienta su fracaso una vez, con la primera.
+        if (s.claim.loss)
+          lost.set(runs.indexOf(s.run), { claim: s.claim, contest: contestEvents.length });
       });
       const record: ContestRecord = {
         key,
@@ -656,6 +728,7 @@ export class Scheduler {
     // entidades y sus eventos. Los provisionales se reemplazan en todo el resultado.
     const { ids, log } = this.#o;
     const settled: Event[] = contestEvents.map((e) => ({ id: ids.next("event"), ...e }));
+    this.#settleLosers(runs, lost, touches, conflicts, settled);
     const minted = draftEventCount() !== seenDraftEvents;
     seenDraftEvents = draftEventCount();
     for (const run of runs) {

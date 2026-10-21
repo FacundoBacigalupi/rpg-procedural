@@ -10,6 +10,7 @@ import {
   type EntityRef,
   type HolderRef,
   holderAccount,
+  type ItemId,
   type LedgerUnit,
   ledgerUnit,
   type PlanetClock,
@@ -23,6 +24,7 @@ import {
   type ActionPlan,
   type Activity,
   AMPUTATIONS,
+  type ArgValue,
   adulterate,
   advance,
   applyAcute,
@@ -36,6 +38,7 @@ import {
   beliefAbout,
   blowFromMishap,
   blowFromStrike,
+  type ContestClaim,
   CREDIT,
   capabilitiesOf,
   DEFICIENCY_EFFECTS,
@@ -58,9 +61,15 @@ import {
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
   INNATE,
+  ITEM_HOLD,
   ingest,
   injure,
   isScam,
+  itemDonationFor,
+  itemEndpoint,
+  itemHex,
+  itemSnapshot,
+  itemTransferChanges,
   KNOWN_DEEDS,
   LANDMARK_MIN_LIGHT,
   LOCATION,
@@ -143,6 +152,7 @@ import {
   TREATED_WATER,
   type Trait,
   table,
+  transferItem,
   treat,
   updateSelfImage,
   verbSkill,
@@ -280,6 +290,12 @@ export interface ActOptions {
   )[];
   /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
   readonly economicBatch?: boolean;
+  /**
+   * Opt-in (`perfil2-item-claims-take-act`): `take` sobre un `ItemId` conocido y al alcance mueve la
+   * posesión del objeto (`ITEM_HOLD`); dos que van por el mismo objeto disputan en `act` y el perdedor
+   * asienta su fracaso (`ContestClaim.loss`). Apagado, `take` solo mueve cantidades del ledger.
+   */
+  readonly itemClaims?: boolean;
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
   readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -551,6 +567,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       TREATED_WATER.name,
       // La iniciativa de hablarle a alguien que otro también le habla (`speakInitiative`) lee su trato.
       RELATIONS.name,
+      ...(o.itemClaims ? [ITEM_HOLD.name] : []),
       ...(o.scam ? [INNATE.name, MIND.name, SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [LOT_ESSENCE.name] : []),
@@ -563,6 +580,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
         ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, ENTITY.name]
         : []),
+      ...(o.itemClaims ? [ITEM_HOLD.name] : []),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -600,6 +618,9 @@ export function actProcess(o: ActOptions): ProcessDef {
             const node = nodeAt(state.plan.root, cursor.path);
             // `take` actual mueve Holdings fungibles aun desde persona: la oposición sigue
             // en el resolver, mientras este servicio evita reutilizar el mismo saldo.
+            // Un take de ítem con identidad disputa por iniciativa: no entra en el lote serial.
+            if (o.itemClaims && node.kind === "do" && itemArgOf(node) !== undefined)
+              return undefined;
             return node.kind === "do" && serialVerbs.has(node.verb)
               ? ECONOMIC_SERIAL_GROUP
               : undefined;
@@ -642,6 +663,53 @@ export function actProcess(o: ActOptions): ProcessDef {
       });
     },
   };
+}
+
+/** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
+function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | undefined {
+  if (node.verb !== "take" && node.verb !== "give") return undefined;
+  const a = node.args.find(
+    (x) => x.role === "what" && "entity" in x && x.entity.startsWith("item:"),
+  );
+  return a && "entity" in a ? (a.entity as ItemId) : undefined;
+}
+
+/** La toma de `item` por `me` según el núcleo de property, con el estado actual (causa provisional). */
+/**
+ * La entrega de `item` de `me` a `to`: la posesión física y, si los haces de `me` lo permiten
+ * (`itemDonationFor`), su donación normativa; los derechos no donados quedan donde estaban.
+ */
+function itemGiveFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, to: EntityRef | null) {
+  const snapshot = itemSnapshot(truth, item);
+  const donation = snapshot
+    ? itemDonationFor({
+        rights: snapshot.rights,
+        giver: me,
+        recipient: (to as HolderRef | null) ?? null,
+        cause: draftEvent(0),
+      })
+    : undefined;
+  return transferItem({
+    ...(donation ? { donation } : {}),
+    item,
+    snapshot,
+    from: itemEndpoint(truth, me, true),
+    to: itemEndpoint(truth, (to as HolderRef | null) ?? null, true),
+    operation: "give",
+    cause: draftEvent(0),
+  });
+}
+
+function itemTakeFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId) {
+  const snapshot = itemSnapshot(truth, item);
+  return transferItem({
+    item,
+    snapshot,
+    from: itemEndpoint(truth, snapshot?.possession ?? null, true),
+    to: itemEndpoint(truth, me, true),
+    operation: "take",
+    cause: draftEvent(0),
+  });
 }
 
 function actCursor(ctx: ProcessContext, o: ActOptions, state: PlanState) {
@@ -886,6 +954,29 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ? fieldCropFactor(truth, day, e.rainOf(day), o.fieldSowing ? e.cropStart(day) : undefined)
     : 1;
   const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth);
+  // Claims de ítems: lo que el mundo permite (existe, al alcance, la toma es físicamente válida).
+  const wantedItem = o.itemClaims ? itemArgOf(node) : undefined;
+  const giveTo = parties["to"]?.id as EntityRef | undefined;
+  const giveItem =
+    wantedItem === undefined || node.verb !== "give"
+      ? undefined
+      : {
+          item: wantedItem,
+          available:
+            giveTo !== undefined &&
+            itemHex(truth, wantedItem) === e.hex &&
+            (truth.get(LOCATION, giveTo)?.hex ?? -1) === e.hex &&
+            itemGiveFor(truth, wantedItem, me, giveTo).accepted === true,
+        };
+  const takeItem =
+    wantedItem === undefined || node.verb !== "take"
+      ? undefined
+      : {
+          item: wantedItem,
+          available:
+            itemHex(truth, wantedItem) === e.hex &&
+            itemTakeFor(truth, wantedItem, me).accepted === true,
+        };
   const input: ResolveInput = {
     def,
     node,
@@ -919,6 +1010,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
+    ...(takeItem ? { takeItem } : {}),
+    ...(giveItem ? { giveItem } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
     node.verb === "trade" &&
     parties["with"] !== undefined &&
@@ -1624,15 +1717,61 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   changes.push(...heard.changes);
   // `resume` vale solo para el próximo paso: un tramo que llega (o falla) lo apaga.
   const { resume: _prevResume, ...stateNoResume } = state;
-  changes.push(
+  const planAfter = (rec: StepRecord, believed: typeof lastBelieved) =>
     setComponent(PLAN_STATE, me, {
       ...(o.legacyResume === true ? state : stateNoResume),
       cursor,
-      lastBelieved,
-      steps: resume ? state.steps : appendStep(state.steps, stepRecord, o.verboseSteps !== true),
+      lastBelieved: believed,
+      steps: resume ? state.steps : appendStep(state.steps, rec, o.verboseSteps !== true),
       ...(resume ? { resume } : {}),
-    }),
-  );
+    });
+  changes.push(planAfter(stepRecord, lastBelieved));
+  const nextStep = {
+    at: end,
+    phase: "act" as const,
+    process: ACT_PROCESS,
+    scope: me,
+    reason: { kind: "state" as const, entity: me, key: planKey(state.seq) },
+  };
+  // Claim de ítem: la toma que alcanzó para disputar propone el cambio de posesión; si otro lo
+  // toma en el mismo instante, el scheduler asienta este fracaso en vez de descartar el plan.
+  let claim: ContestClaim | undefined;
+  const itemMove =
+    takeItem && eff.kind === "take" && eff.claimed === true
+      ? itemTakeFor(truth, takeItem.item, me)
+      : giveItem && eff.kind === "give" && eff.delivered === true
+        ? itemGiveFor(truth, giveItem.item, me, eff.to)
+        : undefined;
+  if (itemMove) {
+    const moved = itemTransferChanges(truth, itemMove);
+    if (moved.length > 0) {
+      changes.push(...moved);
+      const first = r.events[0] as (typeof r.events)[number];
+      const lostEffect =
+        eff.kind === "give" ? { ...eff, delivered: false } : { ...eff, claimed: false };
+      claim = {
+        initiative: r.attempt?.margin ?? 0,
+        place: input.place,
+        actor: me,
+        loss: {
+          events: [
+            {
+              ...first,
+              outcome: "failure",
+              data: { ...(first.data as object), failure: "lost_race", effect: lostEffect },
+            },
+          ],
+          changes: [
+            planAfter(
+              { ...stepRecord, self: { ...record, believed: "failure", effect: lostEffect } },
+              "failure",
+            ),
+          ],
+          schedule: [nextStep],
+        },
+      };
+    }
+  }
   return {
     // El porqué real viaja en el evento como verdad del mundo; los testigos lo leen con error (reading).
     events: [
@@ -1675,6 +1814,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes,
     // Dos que le hablan a la vez al mismo oyente disputan lo que va a contestar (`life.pending_speech`):
     // gana quien el oyente conoce más (scheduler: contienda por iniciativa más la tirada, simulation §3).
+    ...(claim ? { contest: claim } : {}),
     ...(heard.changes.length > 0 && eff.kind === "speak" && eff.to !== null
       ? {
           contest: {
@@ -1688,16 +1828,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       fillerPostings.length + intakePostings.length === 0
         ? r.postings
         : [...r.postings, ...fillerPostings, ...intakePostings],
-    schedule: [
-      {
-        at: end,
-        phase: "act",
-        process: ACT_PROCESS,
-        scope: me,
-        reason: { kind: "state", entity: me, key: planKey(state.seq) },
-      },
-      ...heard.schedule,
-    ],
+    schedule: [nextStep, ...heard.schedule],
   };
 }
 
