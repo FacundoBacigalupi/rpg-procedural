@@ -1,0 +1,17 @@
+[
+  {
+    "id": "mind.theory",
+    "name": "cómo se entiende lo que le pasa a la mente de alguien",
+    "domain": "values",
+    "variants": [
+      { "id": "plain", "name": "se nombra como es: pena, miedo, vicio" },
+      { "id": "spirit", "name": "lo posee o lo castiga un espíritu" },
+      { "id": "humoral", "name": "humores fríos o calientes que se desequilibran" },
+      { "id": "weakness", "name": "debilidad de carácter" },
+      { "id": "wounded_heart", "name": "un corazón herido que necesita cuidado" }
+    ],
+    "salience": 0.4,
+    "stickiness": 0.8,
+    "readBy": ["npc-psychology", "body-health", "religion", "information"]
+  }
+]
