@@ -430,6 +430,8 @@ export interface LifeOptions {
   readonly dreams?: boolean;
   /** Opt-in: condiciones mentales con etiqueta cultural (npc-psychology §11, `psy-conditions-wire`): la muerte de alguien con relación abre duelo (complicado sin velorio, deriva en depresión) y el tratamiento de la teoría `mind.theory` de la persona (`content/mental-labels`) suma apoyo o estira la cura al asentar las condiciones (`LifeParts.conditionLabels`). Sin creencia en `BELIEFS`, estigma ni encierro todavía; apagado, hashes idénticos; fuera del perfil completo. */
   readonly conditionLabels?: boolean;
+  /** Opt-in (requiere `conditionLabels`, `psy-conditions-stigma`): los conocidos de afuera creen el mal ajeno con su propia etiqueta y le ponen estigma (`STIGMA`, reputación), salvo que la familia lo esconda (`hides`: encierro). Apagado: solo la casa lo cree. */
+  readonly conditionStigma?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
@@ -675,8 +677,12 @@ export function mortalTechParts(
 export function conditionLabelParts(
   options: LifeOptions,
   content: Content,
-): Pick<LifeParts, "conditionLabels"> {
-  return options.conditionLabels ? { conditionLabels: content.all(MENTAL_LABELS) } : {};
+): Pick<LifeParts, "conditionLabels" | "conditionStigma"> {
+  if (!options.conditionLabels) return {};
+  return {
+    conditionLabels: content.all(MENTAL_LABELS),
+    ...(options.conditionStigma ? { conditionStigma: true } : {}),
+  };
 }
 
 export function defaultParts(options: LifeOptions): Pick<LifeParts, "persistGoalLayers"> {

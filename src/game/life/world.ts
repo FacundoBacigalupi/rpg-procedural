@@ -774,6 +774,8 @@ export interface LifeWorld {
   readonly dreams?: boolean;
   /** Opt-in (`LifeOptions.conditionLabels`): las etiquetas de `content/mental-labels`; con ellas, la muerte cercana abre duelo y el trato de la teoría de la cultura entra en la cura (npc-psychology §11). */
   readonly conditionLabels?: readonly MentalLabelDef[];
+  /** Opt-in (`LifeOptions.conditionStigma`, requiere `conditionLabels`): los de afuera creen el mal ajeno y le ponen estigma, salvo que la familia lo esconda. */
+  readonly conditionStigma?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1995,7 +1997,12 @@ export function lifeWorld(
         }),
         ...(parts.legacyHeardTable === true ? [] : [toldClaimsProcess()]),
         ...(parts.conditionLabels
-          ? [conditionBeliefsProcess({ mentalLabels: parts.conditionLabels })]
+          ? [
+              conditionBeliefsProcess({
+                mentalLabels: parts.conditionLabels,
+                ...(parts.conditionStigma ? { stigma: true } : {}),
+              }),
+            ]
           : []),
         lookingProcess({
           player,
