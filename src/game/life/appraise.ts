@@ -23,6 +23,7 @@ import {
   type BondDef,
   bornSecret,
   COMMUNITY_RELIGION,
+  complicateGrief,
   contactGain,
   DEVELOPMENT,
   type Deltas,
@@ -58,6 +59,7 @@ import {
   OWN_DEEDS,
   type OwnDeeds,
   openCondition,
+  openGrief,
   PERSON,
   type Percept,
   type ProcessDef,
@@ -144,6 +146,15 @@ export interface AppraiseOptions {
   readonly envyStatuses?: readonly StatusDef[];
   /** Opt-in (`LifeOptions.attachmentBias`, con `lifeStages`): el apego de quien vive el acto tiñe cómo mueve su relación (`attachmentDeltas`). */
   readonly attachmentBias?: boolean;
+  /** Opt-in (`LifeOptions.conditionLabels`): la muerte de alguien cercano abre duelo (`openGrief`) y el duelo complicado deriva en depresión. */
+  readonly conditionGrief?: boolean;
+}
+
+/** Causas de muerte que cuentan como violentas para el duelo (sin calibrar). */
+const VIOLENT_CAUSES: ReadonlySet<string> = new Set(["violence", "combat", "murder", "poison"]);
+function violentDeath(e: Event): boolean {
+  const cause = (e.data as { cause?: unknown } | undefined)?.cause;
+  return typeof cause === "string" && VIOLENT_CAUSES.has(cause);
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -608,6 +619,28 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
               );
             }
             note(lossLived(e, m.id, dead, m.close));
+            if (o.conditionGrief) {
+              // El duelo (npc-psychology §11): la relación por el modo de la muerte; sin velorio, sin rito.
+              const mental =
+                mentals.get(m.id) ?? truth.get(MENTAL, m.id) ?? emptyMental(e.id, e.tick);
+              const opened = openGrief(
+                mental,
+                dead,
+                m.close,
+                { violent: violentDeath(e) },
+                e.id,
+                e.tick,
+              );
+              const riteHeld = wake?.comfort.has(m.id) === true;
+              mentals.set(
+                m.id,
+                complicateGrief(
+                  opened,
+                  { riteHeld, support: wake?.comfort.get(m.id) ?? 0 },
+                  e.tick,
+                ),
+              );
+            }
           }
           if (wake) {
             events.push({
