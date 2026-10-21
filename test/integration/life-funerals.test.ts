@@ -28,6 +28,7 @@ import {
   LOCATION,
   PERSON,
   PERSON_CULTURE,
+  PLACE,
   type PostingDraft,
   type ProcessContext,
   type StateChange,
@@ -54,7 +55,7 @@ const account = (home: string) => holderAccount(home as unknown as HolderRef);
 const _account = (home: string) => holderAccount(home as unknown as HolderRef);
 const DAY = 86400;
 
-function fixture(credit = true) {
+function fixture(credit = true, physicalGraves = false) {
   const life = Life.create(10, content);
   const w = life.world;
   const home = w.truth.get(PERSON, life.player)?.household;
@@ -105,6 +106,7 @@ function fixture(credit = true) {
   }
   const options: LifeOptions = {
     funerals: {
+      ...(physicalGraves ? { physicalGraves: true } : {}),
       since: life.now,
       provider: provider as AgentId,
       ...(credit ? { lender: provider as AgentId } : {}),
@@ -116,11 +118,32 @@ function fixture(credit = true) {
     },
   };
   const body = w.truth.get(BODY_STATE, dead) as Body;
+  if (physicalGraves) {
+    const bodyAt = w.truth.get(LOCATION, dead);
+    if (!bodyAt) throw new Error("falta ubicación del cuerpo");
+    for (const id of [
+      ...alive.filter((id) => w.truth.get(PERSON, id)?.household === home),
+      provider,
+    ])
+      w.truth.set(LOCATION, id, bodyAt);
+  }
   w.truth.set(BODY_STATE, dead, {
     ...body,
     death: { cause: "brain_trauma", at: life.now },
   } as Body);
   const enabled = Life.resume(10, content, { ...life.state(), ids: w.ids }, options, life.anchor);
+  if (physicalGraves) {
+    // Escena controlada justo antes de la revisión diaria: la rutina de trabajo
+    // no equivale a que el proveedor haya decidido visitar el cuerpo.
+    enabled.advanceTo(enabled.now + DAY - 1);
+    const bodyAt = w.truth.get(LOCATION, dead);
+    if (!bodyAt) throw new Error("falta ubicación del cuerpo");
+    for (const id of [
+      ...alive.filter((id) => w.truth.get(PERSON, id)?.household === home),
+      provider,
+    ])
+      w.truth.set(LOCATION, id, bodyAt);
+  }
   return { life: enabled, dead, options, home };
 }
 
@@ -148,162 +171,207 @@ describe("funerales opt-in en la vida", () => {
     }
   });
 
-  it.each(["local", "other-space", "other-hex", "missing"])(
-    "funerales con proveedor %s: presencia real y reservas compartidas",
-    (location) => {
-      const truth = new WorldTruth();
-      const ids = [1, 2, 3, 4].map((n) => makeId("agent", n));
-      const [organizer, dead, otherDead, provider] = ids as [AgentId, AgentId, AgentId, AgentId];
-      truth.set(LOCATION, organizer, { hex: 1, space: "home" });
-      if (location !== "missing")
-        truth.set(LOCATION, provider, {
-          hex: location === "other-hex" ? 2 : 1,
-          space: location === "other-space" ? "other-home" : "home",
+  it.each([
+    "local",
+    "other-space",
+    "other-hex",
+    "missing",
+    "grave-local",
+    "body-other-space",
+    "body-other-hex",
+    "body-missing",
+  ])("funerales con proveedor %s: presencia real y reservas compartidas", (location) => {
+    const truth = new WorldTruth();
+    const physicalGraves = location === "grave-local" || location.startsWith("body-");
+    const ids = [1, 2, 3, 4].map((n) => makeId("agent", n));
+    const [organizer, dead, otherDead, provider] = ids as [AgentId, AgentId, AgentId, AgentId];
+    truth.set(LOCATION, organizer, { hex: 1, space: "home" });
+    if (physicalGraves && location !== "body-missing")
+      for (const id of [dead, otherDead])
+        truth.set(LOCATION, id, {
+          hex: location === "body-other-hex" ? 2 : 1,
+          space: location === "body-other-space" ? "other-home" : "home",
         });
-      for (const id of ids) {
-        const n = ids.indexOf(id);
-        truth.set(PERSON, id, { household: id === provider ? "provider" : "family" } as never);
-        truth.set(ENTITY, id, {
-          id,
-          originEventId: makeId("event", 1),
-          createdAt: 0,
-          ...(id === dead || id === otherDead
-            ? { endedAt: 1, endEventId: makeId("event", n + 10) }
-            : {}),
-        } as never);
-      }
-      truth.set(PERSON_CULTURE, organizer, {
-        holdings: {
-          "funeral.rite": {
-            variant: "burial",
-            strength: 0.1,
-          },
-        },
+    if (location !== "missing")
+      truth.set(LOCATION, provider, {
+        hex: location === "other-hex" ? 2 : 1,
+        space: location === "other-space" ? "other-home" : "home",
+      });
+    for (const id of ids) {
+      const n = ids.indexOf(id);
+      truth.set(PERSON, id, { household: id === provider ? "provider" : "family" } as never);
+      truth.set(ENTITY, id, {
+        id,
+        originEventId: makeId("event", 1),
+        createdAt: 0,
+        ...(id === dead || id === otherDead
+          ? { endedAt: 1, endEventId: makeId("event", n + 10) }
+          : {}),
       } as never);
-      const grain = ledgerUnit("good:grain");
-      const balances = new Map<string, number>([
-        [`${account("family")}|${grain}`, 15],
-        [`${holderAccount(organizer)}|${grain}`, 3],
-      ]);
-      const events: EventDraft[] = [];
-      const postings: PostingDraft[] = [];
-      const changes: StateChange[] = [];
-      const place = { kind: "cell", cell: makeId("cell", 1) } as const;
-      const ctx = {
-        truth,
-        now: DAY,
-        newId: () => {
-          throw new Error("no debe reservar préstamo");
-        },
-      } as unknown as ProcessContext;
-      resolveFunerals(
-        ctx,
-        {
-          since: 0,
-          provider,
-          fee: 100,
-          rate: 0.2,
-          termDays: 10,
-          unsecuredLimit: 0,
-          materials: [{ good: "grain", amount: 10 }],
-        },
-        [
-          { id: "grain", form: "good" },
-          { id: "copper", form: "coin" },
-        ] as GoodDef[],
-        1,
-        (a, u) => balances.get(`${a}|${u}`) ?? 0,
-        (transfers) => {
-          for (const t of transfers) {
-            balances.set(
-              `${t.from}|${t.unit}`,
-              (balances.get(`${t.from}|${t.unit}`) ?? 0) - t.amount,
-            );
-            balances.set(`${t.to}|${t.unit}`, (balances.get(`${t.to}|${t.unit}`) ?? 0) + t.amount);
-          }
-        },
-        events,
-        postings,
-        changes,
-        (id) =>
-          ({
-            id,
-            kind: "body.died",
-            actors: [id === makeId("event", 11) ? dead : otherDead],
-          }) as never,
-        () => place,
-        () => {
-          throw new Error("no debe abrir préstamo");
-        },
-      );
-      if (location !== "local") {
-        expect(events).toEqual([]);
-        expect(postings).toEqual([]);
-        expect(changes).toEqual([]);
-        expect(balances.get(`${account("family")}|${grain}`)).toBe(15);
-        return;
-      }
-      expect(events).toHaveLength(2);
-      expect(balances.get(`${holderAccount(dead)}|${grain}`)).toBe(10);
-      expect(balances.get(`${holderAccount(otherDead)}|${grain}`)).toBe(8);
-      expect(balances.get(`${account("family")}|${grain}`)).toBe(0);
-      const face = changes.filter((c) => c.table === FACE.name);
-      expect(face).toHaveLength(1);
-      const adjustment = face[0];
-      if (adjustment?.op !== "set") throw new Error("falta ajuste de cara");
-      expect((adjustment.value as { value: number }).value).toBeCloseTo(0.3, 12);
-    },
-  );
-  it("el scheduler abre deuda real, conserva ajuar y retoma desde SQLite sin repetir el gasto", () => {
-    const { life, dead, options } = fixture();
-    life.advanceTo(life.now + 2 * DAY);
-    const held = life.world.log.all().filter((e) => e.kind === "funeral.held");
-    expect(held).toHaveLength(1);
-    const firstHeld = held[0];
-    if (!firstHeld) throw new Error("falta funeral");
-    expect((firstHeld.data as { principal: number }).principal).toBeGreaterThan(0);
-    expect(
-      life.world.ledger.balance(
-        holderAccount(dead as unknown as HolderRef),
-        ledgerUnit("good:grain"),
-      ),
-    ).toBe(10);
-    expect(life.world.truth.get(FUNERALS, dead)).toBeDefined();
-    expect(life.world.truth.ids(LOANS)).toHaveLength(1);
-    const row = life.world.truth.get(LOANS, life.world.truth.ids(LOANS)[0] as never);
-    const expense = held[0];
-    if (!row || !expense) throw new Error("falta préstamo funerario");
-    // Ingreso posterior real: una devolución del proveedor deja monedas para la cuota.
-    life.world.ledger.post({
-      tick: life.now,
-      eventId: expense.id,
-      transfers: [{ unit: copper, from: row.lenderAccount, to: row.borrowerAccount, amount: 20 }],
-    });
-    const db = openSqlite(":memory:");
-    try {
-      const store = LifeStore.open(db);
-      store.save(life.state());
-      const saved = store.load();
-      const resumed = Life.resume(
-        10,
-        content,
-        { ...saved, ids: new IdAllocator(saved.ids) },
-        options,
-        life.anchor,
-      );
-      expect(resumed.hash()).toEqual(life.hash());
-      const until = life.now + DAY;
-      life.advanceTo(until);
-      resumed.advanceTo(until);
-      expect(resumed.hash()).toEqual(life.hash());
-      expect(resumed.world.log.all().filter((e) => e.kind === "funeral.held")).toHaveLength(1);
-      expect(resumed.world.log.all().some((e) => e.kind === "credit.paid")).toBe(true);
-      expect(resumed.world.ledger.audit()).toEqual([]);
-      expect(checkInvariants({ truth: resumed.world.truth, log: resumed.world.log })).toEqual([]);
-    } finally {
-      db.close();
     }
-  }, 120000);
+    truth.set(PERSON_CULTURE, organizer, {
+      holdings: {
+        "funeral.rite": {
+          variant: "burial",
+          strength: 0.1,
+        },
+      },
+    } as never);
+    const grain = ledgerUnit("good:grain");
+    const balances = new Map<string, number>([
+      [`${account("family")}|${grain}`, 15],
+      [`${holderAccount(organizer)}|${grain}`, 3],
+    ]);
+    const events: EventDraft[] = [];
+    const postings: PostingDraft[] = [];
+    const changes: StateChange[] = [];
+    const place = { kind: "cell", cell: makeId("cell", 1) } as const;
+    let graveSeq = 0;
+    const ctx = {
+      truth,
+      now: DAY,
+      newId: (kind: string) => {
+        if (!physicalGraves || kind !== "place") throw new Error("id no previsto");
+        return makeId("place", ++graveSeq);
+      },
+    } as unknown as ProcessContext;
+    resolveFunerals(
+      ctx,
+      {
+        since: 0,
+        ...(physicalGraves ? { physicalGraves: true } : {}),
+        provider,
+        fee: 100,
+        rate: 0.2,
+        termDays: 10,
+        unsecuredLimit: 0,
+        materials: [{ good: "grain", amount: 10 }],
+      },
+      [
+        { id: "grain", form: "good" },
+        { id: "copper", form: "coin" },
+      ] as GoodDef[],
+      1,
+      (a, u) => balances.get(`${a}|${u}`) ?? 0,
+      (transfers) => {
+        for (const t of transfers) {
+          balances.set(
+            `${t.from}|${t.unit}`,
+            (balances.get(`${t.from}|${t.unit}`) ?? 0) - t.amount,
+          );
+          balances.set(`${t.to}|${t.unit}`, (balances.get(`${t.to}|${t.unit}`) ?? 0) + t.amount);
+        }
+      },
+      events,
+      postings,
+      changes,
+      (id) =>
+        ({
+          id,
+          kind: "body.died",
+          actors: [id === makeId("event", 11) ? dead : otherDead],
+        }) as never,
+      () => place,
+      () => {
+        throw new Error("no debe abrir préstamo");
+      },
+    );
+    if (location !== "local" && location !== "grave-local") {
+      expect(events).toEqual([]);
+      expect(postings).toEqual([]);
+      expect(changes).toEqual([]);
+      expect(balances.get(`${account("family")}|${grain}`)).toBe(15);
+      expect(graveSeq).toBe(0);
+      return;
+    }
+    expect(events).toHaveLength(2);
+    const first = physicalGraves
+      ? holderAccount({ kind: "place", place: makeId("place", 1) })
+      : holderAccount(dead);
+    const second = physicalGraves
+      ? holderAccount({ kind: "place", place: makeId("place", 2) })
+      : holderAccount(otherDead);
+    expect(balances.get(`${first}|${grain}`)).toBe(10);
+    expect(balances.get(`${second}|${grain}`)).toBe(8);
+    expect(graveSeq).toBe(physicalGraves ? 2 : 0);
+    expect(balances.get(`${account("family")}|${grain}`)).toBe(0);
+    const face = changes.filter((c) => c.table === FACE.name);
+    expect(face).toHaveLength(1);
+    const adjustment = face[0];
+    if (adjustment?.op !== "set") throw new Error("falta ajuste de cara");
+    expect((adjustment.value as { value: number }).value).toBeCloseTo(0.3, 12);
+  });
+  it.each([false, true])(
+    "el scheduler conserva ajuar y retoma SQLite; tumba física %s",
+    (physicalGraves) => {
+      const { life, dead, options } = fixture(true, physicalGraves);
+      const beforeDead = life.world.ledger.holdings(holderAccount(dead as unknown as HolderRef));
+      const beforePlaces = life.world.truth.ids(PLACE).length;
+      life.advanceTo(life.now + 2 * DAY);
+      const held = life.world.log.all().filter((e) => e.kind === "funeral.held");
+      expect(held).toHaveLength(1);
+      const firstHeld = held[0];
+      if (!firstHeld) throw new Error("falta funeral");
+      expect((firstHeld.data as { principal: number }).principal).toBeGreaterThan(0);
+      const burial = life.world.truth.get(FUNERALS, dead);
+      if (!burial) throw new Error("falta entierro");
+      const grave = burial.grave;
+      if (physicalGraves) {
+        if (grave?.kind !== "place") throw new Error("falta tumba física");
+        expect(life.world.truth.get(PLACE, grave.place)?.kind).toBe("grave");
+        expect(life.world.truth.get(ENTITY, grave.place)?.originEventId).toBe(firstHeld.id);
+        expect(life.world.ledger.holdings(holderAccount(dead as unknown as HolderRef))).toEqual(
+          beforeDead,
+        );
+      } else expect(grave).toBeUndefined();
+      expect(
+        life.world.ledger.balance(
+          holderAccount(grave ?? (dead as unknown as HolderRef)),
+          ledgerUnit("good:grain"),
+        ),
+      ).toBe(10);
+      expect(life.world.truth.ids(PLACE)).toHaveLength(beforePlaces + (physicalGraves ? 1 : 0));
+      expect(life.world.truth.ids(LOANS)).toHaveLength(1);
+      const row = life.world.truth.get(LOANS, life.world.truth.ids(LOANS)[0] as never);
+      const expense = held[0];
+      if (!row || !expense) throw new Error("falta préstamo funerario");
+      // Ingreso posterior real: una devolución del proveedor deja monedas para la cuota.
+      life.world.ledger.post({
+        tick: life.now,
+        eventId: expense.id,
+        transfers: [{ unit: copper, from: row.lenderAccount, to: row.borrowerAccount, amount: 20 }],
+      });
+      const db = openSqlite(":memory:");
+      try {
+        const store = LifeStore.open(db);
+        store.save(life.state());
+        const saved = store.load();
+        const resumed = Life.resume(
+          10,
+          content,
+          { ...saved, ids: new IdAllocator(saved.ids) },
+          options,
+          life.anchor,
+        );
+        expect(resumed.hash()).toEqual(life.hash());
+        const until = life.now + DAY;
+        life.advanceTo(until);
+        resumed.advanceTo(until);
+        expect(resumed.hash()).toEqual(life.hash());
+        expect(resumed.world.log.all().filter((e) => e.kind === "funeral.held")).toHaveLength(1);
+        expect(resumed.world.truth.get(FUNERALS, dead)).toEqual(burial);
+        expect(resumed.world.truth.ids(PLACE)).toHaveLength(
+          beforePlaces + (physicalGraves ? 1 : 0),
+        );
+        expect(resumed.world.log.all().some((e) => e.kind === "credit.paid")).toBe(true);
+        expect(resumed.world.ledger.audit()).toEqual([]);
+        expect(checkInvariants({ truth: resumed.world.truth, log: resumed.world.log })).toEqual([]);
+      } finally {
+        db.close();
+      }
+    },
+    120000,
+  );
 
   it("sin crédito el proveedor ve el déficit y la familia pierde cara", () => {
     const { life, home } = fixture(false);

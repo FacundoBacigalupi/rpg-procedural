@@ -1,6 +1,13 @@
 // Resolver dentro de life.loans mantiene un único escritor de los compromisos y un presupuesto
 // compartido. Cada muerto se marca una vez; el origen es su evento real body.died.
-import type { AgentId, Event, EventId, LedgerAccount, LedgerUnit } from "../../core/index.ts";
+import type {
+  AgentId,
+  Event,
+  EventId,
+  LedgerAccount,
+  LedgerUnit,
+  PlaceRef,
+} from "../../core/index.ts";
 import { type HolderRef, holderAccount, makeId } from "../../core/index.ts";
 import {
   adjustFace,
@@ -14,6 +21,7 @@ import {
   LOCATION,
   PERSON,
   PERSON_CULTURE,
+  PLACE,
   type PostingDraft,
   type ProcessContext,
   type StateChange,
@@ -21,10 +29,14 @@ import {
   table,
 } from "../../sim/index.ts";
 
-export const FUNERALS = table<{ readonly event: string }>("life.funerals");
+export const FUNERALS = table<{ readonly event: string; readonly grave?: PlaceRef }>(
+  "life.funerals",
+);
 
 /** Configuración explícita: personas/proveedor/prestamista existentes, sin crearlos al morir. */
 export interface FuneralOptions {
+  /** Opt-in persistible: tumba física propia y cuerpo presente, sin cambiar el replay anterior. */
+  readonly physicalGraves?: boolean;
   /** Límite inferior persistible: no organizar muertes históricas anteriores a este tick. */
   readonly since: number;
   readonly provider: AgentId;
@@ -105,6 +117,9 @@ export function resolveFunerals(
     const at = ctx.truth.get(LOCATION, organizer);
     const providerAt = ctx.truth.get(LOCATION, o.provider);
     if (!at || !providerAt || at.hex !== providerAt.hex || at.space !== providerAt.space) continue;
+    const bodyAt = o.physicalGraves ? ctx.truth.get(LOCATION, dead) : undefined;
+    if (o.physicalGraves && (!bodyAt || bodyAt.hex !== at.hex || bodyAt.space !== at.space))
+      continue;
     const holding = ctx.truth.get(PERSON_CULTURE, organizer)?.holdings["funeral.rite"];
     if (holding?.variant !== "burial") continue;
     const materials = o.materials.map((m) => ({
@@ -115,7 +130,11 @@ export function resolveFunerals(
     // La despensa es compartida; las monedas viven en bolsas personales de la aldea.
     const from = holderAccount(organizer);
     // La cuenta del muerto conserva ajuar separado del suelo genérico, recuperable por saqueo.
-    const grave = holderAccount(dead as unknown as HolderRef);
+    const graveId = o.physicalGraves ? ctx.newId("place") : undefined;
+    const gravePlace: PlaceRef | undefined = graveId
+      ? { kind: "place", place: graveId }
+      : undefined;
+    const grave = holderAccount(gravePlace ?? (dead as unknown as HolderRef));
     const stocks = new Map<LedgerUnit, number>([[copper, balance(from, copper)]]);
     const prepared: import("../../core/index.ts").Transfer[] = [];
     const needed = new Map<LedgerUnit, number>();
@@ -173,7 +192,7 @@ export function resolveFunerals(
         deceased: dead,
         household,
         rite: "burial",
-        grave,
+        grave: gravePlace ?? grave,
         paid: result.paid,
         unpaid: result.unpaid,
         dignified: result.dignified,
@@ -189,7 +208,21 @@ export function resolveFunerals(
     const transfers = [...prepared, ...result.transfers];
     if (transfers.length) postings.push({ event: draftEvent(k), transfers });
     apply(transfers);
-    changes.push(setComponent(FUNERALS, dead, { event: draftEvent(k) }));
+    if (graveId && bodyAt)
+      changes.push(
+        setComponent(ENTITY, graveId, {
+          id: graveId,
+          originEventId: draftEvent(k),
+          createdAt: ctx.now,
+        }),
+        setComponent(PLACE, graveId, { kind: "grave", hexes: [bodyAt.hex] }),
+      );
+    changes.push(
+      setComponent(FUNERALS, dead, {
+        event: draftEvent(k),
+        ...(gravePlace ? { grave: gravePlace } : {}),
+      }),
+    );
     if (result.loan) {
       registerLoan({ ...result.loan, id: ctx.newId("commitment") }, dead);
     }

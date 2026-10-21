@@ -112,46 +112,44 @@ La receta histórica siguiente no exige duplicar checks ya cubiertos.
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**2026-10-20: #652 y #653 integrados por squash a develop, `ec05d59`.**
-Git fetch, push, consulta y merge funcionan con permisos ampliados en esta sesión.
-PR #651 de dependencias sigue fuera de alcance. Worktrees temáticos conservados;
-sus cambios sociales ya entraron en #652, no volver a integrarlos por hash.
+**Cierre por pedido del usuario (2026-10-21): terminar el lote, integrar y retirar
+todas las ramas de trabajo; no empezar ítems nuevos.** Fase 3 sigue abierta.
 
-Lote anterior: entierro y crédito opt-in, sucesión de bandas, percepción NPC de
-asaltos y deliberación del consejo, reservas de ofrendas, núcleo de productos de
-culto, métricas de oscilación y método compartido Claude/Codex. Defaults y motor
-sin cambios. [Evidencia y límites](history/handoff-social-continuity-2026-10-20.md):
-check de producción `487abdd` con 3239 tests aprobados y dos fallos del fixture;
-fixture reparado en `d4e5395`, 15 tests afectados aprobados, typecheck/lint exit 0.
-No se repitió la suite amplia tras ese cambio exclusivo de pruebas.
+Lote #655: WIP funerario completado, cinco actualizaciones compatibles de #651
+y arreglo de floorDiv. Código final `034b6d1`; producción `8d161d3`.
+Tumba física opt-in `funerals.physicalGraves`, con PLACE/ENTITY y cuenta propia,
+cadáver/proveedor/organizador en el mismo hex/space. Omitir la opción conserva
+el modo previo. Sin activaciones de defaults ni cambios de hashes dorados.
+Las ramas social, contrato y núcleo puro ya se integraron en #652/#653/#654.
 
-Diseño de objetos con identidad integrado en #653 (`ec05d59`), sin código,
-revisado independientemente y con diff/LF/enlaces comprobados. ROADMAP divide
-contrato, núcleo puro, take con contienda, give y replay/perfil. Diseño en
-property §12 y dueños en ARCHITECTURE §4.5.
+Validación final:
+- `npm run check` sobre `8d161d3`: typecheck/lint/capas aprobados; 3283 tests
+  aprobados y uno fallido en una propiedad de precisión de council-testimony.
+  Duración Vitest 1047,49 s, exit 1. Log/exit `sim-reports/branch-integration-check.*`.
+- `034b6d1` modifica solo ese test: respeta el redondeo existente a seis
+  decimales y agrega el contraejemplo fijo, sin cambiar pesos ni producción.
+  32 tests finales de core/time, council-testimony y funerales aprobados, exit 0
+  (`branch-integration-final-targeted.*`). Typecheck y lint repetidos, exit 0
+  (`branch-integration-final-{typecheck,lint}.log`, `final-static.exit`).
+- Evidencia combinada, sin repetir la suite completa por la corrección exclusiva
+  de la prueba. No describir la corrida amplia original como verde. Las pruebas
+  cubren también game, scheduler y persistence; el código de producción no
+  cambió tras esa corrida. Diff, enlaces y LF comprobados para docs finales.
 
-Lote actual, base `ec05d59`, coordinador `feat/f3-item-claims-core`: agente en
-`.worktrees/itemclaims`, rama `feat/f3-itemclaims-agent`, implementa solo núcleo
-puro de posesión/donación y tests en sim/property; sin componentes activos ni
-consumidores, defaults, motor o contenido. node_modules es junction, conservar.
-Núcleo integrado localmente en `01c4f26`; corrección de titulares Party y dos
-casos colectivos en `61091e3`. 40 tests de property aprobados, typecheck y lint
-exit 0; logs `sim-reports/item-claims-core-{tests,typecheck,lint}.log` y tests.exit.
-Sin suite amplia adicional: núcleo nuevo sin consumidores ni efectos al cargar.
-El agente agotó su cuota después de dejar la corrección sin commit en su
-worktree; coordinador incorporó y verificó ambos archivos. No reintegrarlos.
+PR #651 sustituida por #655: se conservan TypeScript 6 y tipos Node 24 porque
+dependency-cruiser 18.6 con TS7 omite fuentes (0 módulos, pese a exit 0).
+Con TS6 analiza 1050 módulos/5054 dependencias. Bloqueo externo persistente en
+`toolchain-typescript7`; no saltear ese control para integrar versiones nuevas.
 
-Inventario de ramas auditado por pedido del usuario (2026-10-20):
-- Bandas y culto: commits/archivos incorporados a #652; worktrees limpios.
-  Cult tiene patch-ids distintos en dos commits, pero archivos de núcleo/tests
-  idénticos a la rama coordinadora integrada. No necesitan otro merge.
-- Funerales: commits incorporados a #652, pero **cuatro archivos sin commit**
-  permanecen en `.worktrees/funeral`: funerals.ts/test, loans.ts y world/space.ts.
-  Son avance de tumba física/cadáver local, no integrado; ROADMAP `funeral-tomb-wip`.
-  Respaldo sin alterar el worktree: `sim-reports/funeral-tomb-wip-before-integration.patch`.
-- Remoto real (`git ls-remote --heads origin`): main, develop y dependabot #651.
-  Las referencias origin/feat de #652/#653 están obsoletas, no son PR pendientes.
-- Claims: rama coordinadora y worktree del agente activos. No borrar junctions,
-  worktrees ni cambios sin commit como parte de limpiar nombres de ramas.
+[Inventario completo y respaldos](history/branch-audit-2026-10-20.md): 17
+worktrees auditados; únicos WIP preservados en snapshots `54909ad` (funeral)
+y `9a1068f` (claims), incorporados o completados en los lotes correspondientes.
+Conservar todos los worktrees detached, carpetas y junctions; no son líneas
+activas ni cambios sin guardar. Solo main/develop deben permanecer como ramas
+locales/remotas después del cierre. No volver a integrar los snapshots antiguos.
 
-Siguiente: integrar el núcleo; retomar `funeral-tomb-wip` antes de abrir take.
+Próxima tarea al recibir un nuevo pedido de continuar:
+`perfil2-item-claims-take-loss`, primer pendiente no bloqueado. Take ya está
+partido en resultado del perdedor, representación, cableado y auditoría;
+simulation §3 describe el contrato todavía sin implementar. No hay trabajo
+nuevo de scheduler iniciado en este cierre.

@@ -65,6 +65,7 @@ import {
   type Parcel,
   PERSON,
   PERSON_CULTURE,
+  PLACE,
   type PostingDraft,
   type ProcessDef,
   payLoan,
@@ -371,6 +372,7 @@ export function loansProcess(o: LoansOptions): ProcessDef {
       PARCEL.name,
       ...(o.bondage?.abuse ? [RELATIONS.name] : []),
       ...(o.funerals ? [FUNERALS.name, FACE.name] : []),
+      ...(o.funerals?.physicalGraves ? [PLACE.name] : []),
     ],
     run(ctx) {
       const ledger = ctx.ledger;

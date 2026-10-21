@@ -197,6 +197,10 @@ describe("testigos que mienten o callan en el consejo", () => {
   });
 
   it("propiedad: spokenWeight en [0,1], monótono en la firmeza y nulo si no dijo", () => {
+    // La salida se redondea a seis decimales: una base sin cuantizar puede
+    // crecer como máximo media unidad de esa precisión, no solo 1e-9.
+    expect(spokenWeight(0.0000008, 1, true)).toBe(0.000001);
+    expect(spokenWeight(0.000015500000000000004, 0.9999999999999996, true)).toBe(0.000016);
     fc.assert(
       fc.property(
         fc.double({ min: 0, max: 1, noNaN: true }),
@@ -208,7 +212,13 @@ describe("testigos que mienten o callan en el consejo", () => {
           expect(lo).toBeGreaterThanOrEqual(0);
           expect(hi).toBeLessThanOrEqual(1);
           expect(hi).toBeGreaterThanOrEqual(lo);
-          expect(hi).toBeLessThanOrEqual(base + 1e-9);
+          expect(hi).toBeLessThanOrEqual(base + 0.0000005 + Number.EPSILON);
+          // Las bases reales de testimonyWeight ya tienen esa precisión:
+          // en ese dominio sí se conserva el tope estricto de la base.
+          const canonicalBase = Math.round(base * 1e6) / 1e6;
+          expect(spokenWeight(canonicalBase, Math.max(a, b), true)).toBeLessThanOrEqual(
+            canonicalBase,
+          );
           expect(spokenWeight(base, a, false)).toBeNull();
         },
       ),

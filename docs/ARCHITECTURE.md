@@ -181,6 +181,12 @@ type Time = Tick;          // alias: algunos docs dicen Time; es lo mismo
 
 Implementado en `core/time` (Fase 0): los ticks son enteros seguros; el día, el año trópico y las lunas vienen en un `PlanetClock` que calcula planet-gen y se guarda con el mundo. El calendario de la verdad cuenta días desde la medianoche del meridiano 0 y años trópicos exactos (un día es del año en que cae su medianoche; los bisiestos salen solos). Las escalas (`TimeScale`) cortan el tiempo en ventanas con índice (`windowIndex`), que es lo que entra en la clave del rng de los procesos. La hora local de cada lugar y la posición del sol en el cielo son de planet-gen; los calendarios de las culturas son creencia.
 
+Nota de exactitud temporal (2026-10-20): `core/time.floorDiv` opera sobre enteros
+seguros y divisor positivo mediante el piso del cociente. No calcular primero
+`a - floorMod(a, b)`: para `MIN_SAFE_INTEGER` y divisor 3, ese múltiplo inferior
+sale del rango seguro y el cociente anterior perdía una unidad. La regresión
+reconstruye dividendos con BigInt en tests; la simulación continúa usando números.
+
 ### 4.3 Eventos y causas
 
 ```ts
@@ -417,6 +423,11 @@ El dueño define el tipo, sus invariantes y sus procesos; los demás lo leen y l
 - **dependency-cruiser** para las reglas de arquitectura: capas de §3, ciclos entre carpetas de `sim/`, `families/` aislado, `node:*` prohibido dentro de `core/`, `worldgen/` y `sim/`. Es más expresivo que `no-restricted-imports` y da un grafo para revisar.
 - **Los globales prohibidos** (`Math.random`, `Math.exp` y compañía, `**`, `Date`, `performance`, `process`, temporizadores) no son imports, así que los ve Biome: un plugin GritQL para los miembros de `Math` y `**`, y `noRestrictedGlobals` para el resto (respeta el alcance: una variable local llamada igual no salta). Los tests quedan afuera: los de `core/math` comparan contra `Math.*`.
 - **TypeScript 6, no 7** (implementado 2026-10-06): TS 7 (el compilador en Go) todavía no publica API de JavaScript, y dependency-cruiser la necesita para leer los imports de `.ts`. Se pasa a 7 cuando las herramientas lo soporten; el código no cambia.
+  Revalidado 2026-10-20 con dependency-cruiser 18.6.0: declara TypeScript
+  `>=2.0.0 <7.0.0`; con TS 7.0.2 el comando termina 0 pero avisa que omite las
+  fuentes y reporta 0 módulos. Exigir un grafo real, además del exit code.
+  Mantener `@types/node` en major 24, igual que el runtime; no aceptar APIs de
+  Node 26 solo porque compilen. El bloqueo está en ROADMAP `toolchain-typescript7`.
 - **Vitest** se queda; se suma **fast-check** para tests por propiedades: la conservación (ledgers), el determinismo (mismo seed, cualquier orden de inserción) y `interact` sin móvil perpetuo son propiedades, no ejemplos.
 - **npm** se queda: pnpm solo aporta cuando haya workspaces.
 
