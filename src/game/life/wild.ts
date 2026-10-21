@@ -27,6 +27,8 @@ export const WILD_SUPPLIED_EVENT = "wild.supplied";
 export interface WildOptions {
   /** Días por tick de reloj: segundos del día. */
   readonly dayTicks: number;
+  /** Escala del techo del stock en pie (1 = el de la celda). */
+  readonly capacityScale?: number;
 }
 
 export function wildProcess(o: WildOptions): ProcessDef {
@@ -49,29 +51,41 @@ export function wildProcess(o: WildOptions): ProcessDef {
         .sort();
       if (forests.length === 0) return {};
       const days = Math.max(1, ctx.window) / o.dayTicks;
-      const capacity = forageCapacity(eco.cell.productivity);
+      const capacity = forageCapacity(eco.cell.productivity) * (o.capacityScale ?? 1);
       const prev = ctx.truth.get(WILD, id);
       const standing = regrowForage(prev ? prev.standing : capacity, capacity, prev ? days : 0);
       const reach = forageReach(standing);
       // Cada lugar de monte completa su parte de lo alcanzable hoy; lo que quedó sin tomar sigue ahí.
+      // La cuenta del lugar es la ventana de hoy sobre el stock: lo que `gather` tomó ayer ya no está (el
+      // stock en pie baja por eso al reponer), y lo que sobra de una ventana que se achicó vuelve al monte.
       const share = Math.floor(reach.grams / forests.length);
       const transfers: NonNullable<ProcessResult["postings"]>[number]["transfers"][number][] = [];
       let minted = 0;
+      let returned = 0;
       for (const p of forests) {
         const account = holderAccount({ kind: "place", place: p as unknown as PlaceId });
-        const add = Math.max(0, share - Math.floor(ctx.ledger.balance(account, FORAGE_UNIT)));
-        if (add > 0) {
+        const held = Math.floor(ctx.ledger.balance(account, FORAGE_UNIT));
+        if (share > held) {
           transfers.push({
             unit: FORAGE_UNIT,
             from: externalAccount(WILD_SOURCE),
             to: account,
-            amount: add,
+            amount: share - held,
           });
-          minted += add;
+          minted += share - held;
+        } else if (held > share) {
+          transfers.push({
+            unit: FORAGE_UNIT,
+            from: account,
+            to: externalAccount(WILD_SOURCE),
+            amount: held - share,
+          });
+          returned += held - share;
         }
       }
-      const changes = [setComponent(WILD, id, { standing: standing - minted, day: ctx.now })];
-      if (minted === 0) return { changes };
+      const left = standing - minted + returned;
+      const changes = [setComponent(WILD, id, { standing: left, day: ctx.now })];
+      if (minted === 0 && returned === 0) return { changes };
       return {
         changes,
         events: [
@@ -79,7 +93,7 @@ export function wildProcess(o: WildOptions): ProcessDef {
             kind: WILD_SUPPLIED_EVENT,
             actors: [],
             place: { kind: "place", place: forests[0] as unknown as PlaceId },
-            data: { minted, standing: Math.round(standing - minted), perHour: reach.perHour },
+            data: { minted, returned, standing: Math.round(left), perHour: reach.perHour },
             emissions: {},
             causes: [{ kind: "state", entity: id as never, key: "ecology" }],
           },
