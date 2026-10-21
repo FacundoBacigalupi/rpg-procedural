@@ -4,3 +4,4 @@
 export * from "./feasibility.ts";
 export * from "./knowledge.ts";
 export * from "./process.ts";
+export * from "./teach.ts";
