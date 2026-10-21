@@ -418,6 +418,8 @@ export interface LifeOptions {
   readonly mortalTech?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
+  /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
+  readonly stageRites?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly coop?: LifeParts["coop"];
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
@@ -705,6 +707,7 @@ export function optInParts(
   | "recognizeGoalProgress"
   | "meaningPressure"
   | "lifeStages"
+  | "stageRites"
   | "coop"
   | "craftGoals"
   | "scam"
@@ -873,6 +876,7 @@ export function optInParts(
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
+    ...(options.lifeStages && options.stageRites ? { stageRites: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),
     ...(options.scam ? { scam: true } : {}),

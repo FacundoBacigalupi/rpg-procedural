@@ -14,6 +14,8 @@ export interface DevelopmentState {
   readonly stageEnteredAt: Tick;
   /** El rito cultural que marcó el paso a esta etapa, si lo hubo. */
   readonly riteOfPassage?: EventId;
+  /** Pasó la ventana del rito de su cultura sin hacerlo (sin padrino): quedó sin lugar. */
+  readonly riteMissed?: true;
   readonly attachment: AttachmentStyle;
   /** Eventos de alto impacto vividos en un período sensible (los últimos `MAX_FORMATIVE_DEV`). */
   readonly formativeEvents: readonly EventId[];
@@ -154,6 +156,7 @@ export function recordFormative(
  * `belonging`. 0 si hubo rito o la etapa no lo exige.
  */
 export function noPlaceDeficit(state: DevelopmentState, ritedStages: ReadonlySet<string>): number {
+  if (state.riteMissed) return 1;
   return ritedStages.has(state.stage) && !state.riteOfPassage ? 1 : 0;
 }
 
@@ -166,4 +169,29 @@ export function developmentProblems(
   if (!stages.some((s) => s.id === state.stage)) out.push(`etapa desconocida: ${state.stage}`);
   if (state.formativeEvents.length > MAX_FORMATIVE_DEV) out.push("demasiados eventos formativos");
   return out;
+}
+
+/** Un rito de paso de la cultura: a qué edad se hace y cuánto tiempo queda abierta la ventana. */
+export interface RiteWindow {
+  readonly ageYears: number;
+  readonly graceYears: number;
+}
+
+/**
+ * Qué toca hacer con el rito de este estado a esta edad (sin RNG): `hold` si está en la ventana y
+ * hay padrino, `miss` en los `missYears` siguientes a vencer la ventana sin rito, si no `none`.
+ * Quien ya lo hizo o ya lo perdió, y quien pasó la ventana hace tiempo (llegó o se sembró después),
+ * no cuenta: nada se inventa hacia atrás.
+ */
+export function riteStep(
+  state: Pick<DevelopmentState, "riteOfPassage" | "riteMissed">,
+  rite: RiteWindow,
+  ageYears: number,
+  hasSponsor: boolean,
+  missYears: number,
+): "hold" | "miss" | "none" {
+  if (state.riteOfPassage || state.riteMissed || ageYears < rite.ageYears) return "none";
+  const end = rite.ageYears + rite.graceYears;
+  if (ageYears <= end) return hasSponsor ? "hold" : "none";
+  return ageYears <= end + missYears ? "miss" : "none";
 }

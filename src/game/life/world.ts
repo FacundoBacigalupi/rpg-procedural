@@ -759,6 +759,8 @@ export interface LifeWorld {
   readonly meaningPressure?: boolean;
   /** Opt-in (`LifeOptions.lifeStages`): enciende `life.stages` y que la decisión lea el sesgo de riesgo de la etapa; apagado. */
   readonly lifeStages?: boolean;
+  /** Opt-in (`LifeOptions.stageRites`, con `lifeStages`): ritos de paso de la cultura en `life.stages`. */
+  readonly stageRites?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
   readonly coop?: CoopOptions;
   /** Opt-in: registro de práctica propio y metas de oficio/estudio en las capas persistidas (con `persistGoalLayers`). */
@@ -1367,6 +1369,7 @@ export function lifeWorld(
                 stages: parts.stages,
                 clock: parts.clock,
                 placeOf: placeOf(parts, village),
+                ...(parts.stageRites === true ? { rites: {} } : {}),
               }),
             ]
           : []),

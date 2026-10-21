@@ -4,7 +4,10 @@
 // nacimiento) y avanza la etapa de quien cruzó el umbral de edad vivida (`life.stage-entered`, el
 // «cumpleaños»; sin retroceso). También refresca el apego desde la mente. En la decisión, el sesgo
 // de riesgo de la etapa mueve la audacia (`stageBoldness`). Apagado no hay filas, RNG ni eventos.
-// Constantes sin calibrar. Pendiente: ritos de paso desde la cultura, apego en la lectura de actos.
+// Con `rites` (opt-in `stageRites`) el rasgo `rites.coming_of_age` de la cultura abre una ventana
+// de edad: con un adulto de padrino se hace el rito (`life.rite-of-passage`, queda en
+// `riteOfPassage`); si la ventana vence sin rito queda `riteMissed` (`life.rite-missed`, sin lugar).
+// Constantes sin calibrar. Pendiente: apego en la lectura de actos.
 
 import {
   type AgentId,
@@ -21,6 +24,7 @@ import {
   attachmentFromMind,
   DEVELOPMENT,
   type DevelopmentState,
+  dominantVariant,
   draftEvent,
   ENTITY,
   type EventDraft,
@@ -28,18 +32,36 @@ import {
   PERSON,
   type ProcessDef,
   type ReadonlyWorldTruth,
+  type RiteWindow,
+  riteStep,
   type StageDef,
   type StateChange,
   setComponent,
+  stageAt,
   stageSocial,
   startDevelopment,
+  traitParam,
+  villageCulture,
   type WorldTruth,
 } from "../../sim/index.ts";
 
 export const STAGES_SEEDED_EVENT = "life.stages-seeded";
 export const STAGE_STARTED_EVENT = "life.development-started";
 export const STAGE_ENTERED_EVENT = "life.stage-entered";
+export const RITE_HELD_EVENT = "life.rite-of-passage";
+export const RITE_MISSED_EVENT = "life.rite-missed";
 export const STAGES_PROCESS = "life.stages";
+
+/** El rasgo de la cultura que marca el paso a la vida adulta (culture, ritos de paso). */
+export const COMING_OF_AGE_TRAIT = "rites.coming_of_age";
+/** Edad del rito si la variante de la cultura no la dice (sin calibrar). */
+export const COMING_OF_AGE_DEFAULT_YEARS = 15;
+/** Años que queda abierta la ventana del rito después de la edad (sin calibrar). */
+export const RITE_GRACE_YEARS = 2;
+/** Días tras vencer la ventana en que se registra que el rito se perdió (una sola vez por la marca). */
+export const RITE_MISS_DAYS = 7;
+/** Edad desde la que alguien puede apadrinar un rito si la tabla de etapas no tiene `adult`. */
+const SPONSOR_FALLBACK_AGE = 30;
 
 /** Cuánto mueve el `riskBias` de la etapa a la audacia de la decisión (sin calibrar). */
 export const STAGE_BOLDNESS_GAIN = 0.4;
@@ -97,9 +119,48 @@ export interface StagesProcessOptions {
   readonly stages: readonly StageDef[];
   readonly clock: PlanetClock;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /** Opt-in (`LifeOptions.stageRites`): el rito de paso que marca la cultura de la aldea. */
+  readonly rites?: { readonly graceYears?: number };
 }
 
-/** Un día de desarrollo: estados nuevos, cambios de etapa por edad vivida y apego al día. */
+interface ActiveRite {
+  readonly window: RiteWindow;
+  readonly variant: string;
+  readonly stage: string;
+  readonly missYears: number;
+}
+
+/** El rito de paso de la cultura de la aldea, o `undefined` si no tiene ese rasgo. */
+function riteOf(truth: ReadonlyWorldTruth, o: StagesProcessOptions): ActiveRite | undefined {
+  const culture = villageCulture(truth);
+  const variant = dominantVariant(culture, COMING_OF_AGE_TRAIT);
+  if (variant === undefined) return undefined;
+  const ageYears = traitParam(
+    culture,
+    COMING_OF_AGE_TRAIT,
+    "ageYears",
+    COMING_OF_AGE_DEFAULT_YEARS,
+  );
+  return {
+    window: { ageYears, graceYears: o.rites?.graceYears ?? RITE_GRACE_YEARS },
+    variant,
+    stage: stageAt(o.stages, ageYears).id,
+    missYears: (RITE_MISS_DAYS * o.clock.day) / o.clock.year,
+  };
+}
+
+/** Los vivos con edad de apadrinar un rito, en orden de id. */
+function sponsorsOf(
+  truth: ReadonlyWorldTruth,
+  people: readonly AgentId[],
+  o: StagesProcessOptions,
+  now: Tick,
+): AgentId[] {
+  const from = o.stages.find((s) => s.id === "adult")?.fromAge ?? SPONSOR_FALLBACK_AGE;
+  return people.filter((p) => (now - (truth.get(PERSON, p)?.born ?? now)) / o.clock.year >= from);
+}
+
+/** Un día de desarrollo: estados nuevos, cambios de etapa por edad vivida, apego y ritos de paso. */
 export function stagesProcess(o: StagesProcessOptions): ProcessDef {
   return {
     id: STAGES_PROCESS,
@@ -113,7 +174,12 @@ export function stagesProcess(o: StagesProcessOptions): ProcessDef {
     run(ctx) {
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
-      for (const p of aliveIds(ctx.truth)) {
+      const people = aliveIds(ctx.truth);
+      const rite = o.rites ? riteOf(ctx.truth, o) : undefined;
+      const sponsors = rite ? sponsorsOf(ctx.truth, people, o, ctx.now) : [];
+      // Padrino del rito: el adulto vivo de menor id que no es el propio iniciado.
+      const sponsorFor = (who: AgentId): AgentId | undefined => sponsors.find((s) => s !== who);
+      for (const p of people) {
         const person = ctx.truth.get(PERSON, p);
         if (!person) continue;
         const age = (ctx.now - person.born) / o.clock.year;
@@ -136,8 +202,9 @@ export function stagesProcess(o: StagesProcessOptions): ProcessDef {
         }
         const moved = advanceStage(state, o.stages, age, ctx.now, draftEvent(events.length));
         const attachment = attachmentFromMind(mind);
+        let cur: DevelopmentState = state;
         if (moved.transition) {
-          changes.push(setComponent(DEVELOPMENT, p, { ...moved.state, attachment }));
+          cur = { ...moved.state, attachment };
           events.push({
             kind: STAGE_ENTERED_EVENT,
             actors: [p],
@@ -151,8 +218,34 @@ export function stagesProcess(o: StagesProcessOptions): ProcessDef {
             causes: [{ kind: "event", event: state.originEventId }],
           });
         } else if (attachment !== state.attachment) {
-          changes.push(setComponent(DEVELOPMENT, p, { ...state, attachment }));
+          cur = { ...state, attachment };
         }
+        if (rite) {
+          const sponsor = sponsorFor(p);
+          const step = riteStep(cur, rite.window, age, sponsor !== undefined, rite.missYears);
+          if (step === "hold" && sponsor !== undefined) {
+            events.push({
+              kind: RITE_HELD_EVENT,
+              actors: [p, sponsor],
+              place: o.placeOf(ctx.truth, p),
+              data: { rite: rite.variant, stage: rite.stage, ageYears: Math.floor(age) },
+              emissions: { sight: 0.3 },
+              causes: [{ kind: "event", event: state.originEventId }],
+            });
+            cur = { ...cur, riteOfPassage: draftEvent(events.length - 1) };
+          } else if (step === "miss") {
+            events.push({
+              kind: RITE_MISSED_EVENT,
+              actors: [p],
+              place: o.placeOf(ctx.truth, p),
+              data: { rite: rite.variant, stage: rite.stage, ageYears: Math.floor(age) },
+              emissions: {},
+              causes: [{ kind: "event", event: state.originEventId }],
+            });
+            cur = { ...cur, riteMissed: true };
+          }
+        }
+        if (cur !== state) changes.push(setComponent(DEVELOPMENT, p, cur));
       }
       return changes.length > 0 || events.length > 0 ? { changes, events } : {};
     },
