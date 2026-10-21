@@ -28,6 +28,7 @@ import {
   MANURE_GRAMS_PER_UNIT,
   MANURE_QUALITY,
   MANURE_UNIT,
+  manureQualityOf,
   PARCEL_SOIL,
   PERSON,
   type ProcessDef,
@@ -53,7 +54,14 @@ export interface SoilOptions {
    * Opt-in (`fieldManure`): lo comido deja desecho en la cuenta de la aldea y el campo lo toma al
    * día siguiente como abono (cosecha -> comida -> desecho -> campo). Apagado no hay asientos ni eventos.
    */
-  readonly manure?: { readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef };
+  readonly manure?: {
+    readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+    /**
+     * Opt-in (`fieldManureDiet`): proteína por gramo de cada unidad comida (`good:<id>`); con esto la
+     * calidad del abono sale de la dieta acumulada en `eaten`, no de `MANURE_QUALITY`.
+     */
+    readonly proteinOf?: ReadonlyMap<string, number>;
+  };
 }
 
 export const FIELD_MANURED_EVENT = "field.manured";
@@ -107,6 +115,7 @@ export function soilProcess(o: SoilOptions): ProcessDef {
       const arid = o.map.climate.annualPrecipMm < 400;
       // Abono: el desecho de ayer (cuenta de la aldea) va al campo; lo comido desde ayer deja el de hoy.
       let manure = 0;
+      let manureQuality = MANURE_QUALITY;
       let manureEvents: ProcessResult["events"];
       let manurePostings: ProcessResult["postings"];
       const first = ctx.truth
@@ -137,6 +146,14 @@ export function soilProcess(o: SoilOptions): ProcessDef {
         ];
         if (transfers.length > 0) {
           manure = pile / MANURE_GRAMS_PER_UNIT;
+          const proteinOf = o.manure.proteinOf;
+          if (proteinOf) {
+            manureQuality = manureQualityOf(
+              ctx.ledger
+                .holdings(externalAccount(EATEN))
+                .map((h) => ({ grams: h.amount, proteinPerGram: proteinOf.get(h.unit) ?? 0 })),
+            );
+          }
           manureEvents = [
             {
               kind: FIELD_MANURED_EVENT,
@@ -151,7 +168,7 @@ export function soilProcess(o: SoilOptions): ProcessDef {
         }
       }
       const stepped = stepParcelField(parcel.soil, {
-        ...(manure > 0 ? { manure, manureQuality: MANURE_QUALITY } : {}),
+        ...(manure > 0 ? { manure, manureQuality } : {}),
         days,
         load,
         heavyRainDays: (heavy / samples) * days,

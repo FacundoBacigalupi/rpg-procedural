@@ -656,6 +656,8 @@ export interface LifeWorld {
   readonly offerings?: boolean;
   /** Opt-in: el desecho de lo comido vuelve al campo como abono (`life.soil`, ledger `excreted` -> aldea -> `field-manure`); apagado. */
   readonly fieldManure?: boolean;
+  /** Con `fieldManure`: la calidad del abono sale de la proteína de lo comido (`manureQualityOf`); apagado, constante. */
+  readonly fieldManureDiet?: boolean;
   /** Opt-in: el forraje del monte es un stock en pie que rebrota y del que la gente alcanza lo que da `harvestStock` (`life.wild`, ledger `wild` -> lugares de monte); apagado. */
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda). */
@@ -1346,7 +1348,20 @@ export function lifeWorld(
           clock: parts.clock,
           map: parts.map,
           seed: parts.seed,
-          ...(parts.fieldManure ? { manure: { placeOf: placeOf(parts, village) } } : {}),
+          ...(parts.fieldManure
+            ? {
+                manure: {
+                  placeOf: placeOf(parts, village),
+                  ...(parts.fieldManureDiet
+                    ? {
+                        proteinOf: new Map(
+                          parts.foods.map((f) => [`good:${f.id}`, f.proteinPerGram] as const),
+                        ),
+                      }
+                    : {}),
+                },
+              }
+            : {}),
         }),
         ...(parts.coop
           ? [
