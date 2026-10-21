@@ -122,7 +122,9 @@ import {
   TASTES,
   type TasteDef,
   type TasteSpec,
+  TECH_PROCESSES,
   TENURES,
+  TechCatalog,
   type TemperamentSpec,
   TRADE_RECIPES,
   TRAITS,
@@ -167,6 +169,7 @@ import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./s
 import { SOWN_FIELD } from "./sowing.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import type { TakeBelievedOptions } from "./takeillicit.ts";
+import { seedTechKnowledge } from "./techknow.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
@@ -409,6 +412,8 @@ export interface LifeOptions {
   readonly loanWorkout?: boolean;
   /** Opt-in: los hogares ofrendan grano (ración a la tablilla y fiesta) con destino: quemado a un sumidero, enterrado en el lugar, dado a los pobres; asiento en el ledger con evento `offering.made` (`game/life/offerings.ts`); apagado. */
   readonly offerings?: boolean;
+  /** Opt-in: procesos mortales (technology §1-§2): al materializar la aldea se siembra el saber tácito de los procesos que la geografía permite (`tech.seeded`), en el hogar se enseña de a poco (`life.tech-teach`, `teachProcess`) y la cosecha de la rutina lee `yieldFactor` (`LifeParts.mortalTech`); apagado, hashes idénticos; fuera del perfil completo. */
+  readonly mortalTech?: boolean;
   /** Opt-in: lo comido deja desecho en el ledger (fuente `excreted`) y `life.soil` lo devuelve al campo como abono al día siguiente (sumidero `field-manure`, `afterManure`); apagado, hashes idénticos. */
   readonly fieldManure?: boolean;
   /** Opt-in: funerales de entierro desde la costumbre personal, proveedor y crédito existentes. */
@@ -628,6 +633,16 @@ export function derivedLoanUsury(
  * Lo que está encendido por defecto desde `life-2` y se apaga con `false`: por ahora las capas de
  * objetivos persistidas. Va antes de `optInParts`, que solo lleva lo que se pidió.
  */
+/** El catálogo de procesos mortales si `mortalTech` está encendido (cableado opt-in). */
+export function mortalTechParts(
+  options: LifeOptions,
+  content: Content,
+): Pick<LifeParts, "mortalTech"> {
+  return options.mortalTech
+    ? { mortalTech: { catalog: new TechCatalog(content.all(TECH_PROCESSES)) } }
+    : {};
+}
+
 export function defaultParts(options: LifeOptions): Pick<LifeParts, "persistGoalLayers"> {
   return options.persistGoalLayers === false ? {} : { persistGoalLayers: true };
 }
@@ -1598,6 +1613,19 @@ export function createLife(
     });
   }
   const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
+  // Opt-in: el saber tácito de los procesos mortales que la geografía permite, con su evento.
+  if (options.mortalTech) {
+    seedTechKnowledge(truth, ids, log, {
+      seed,
+      catalog: new TechCatalog(content.all(TECH_PROCESSES)),
+      map,
+      clock,
+      now: pop.now,
+      workAge: ROUTINE.workAge,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+    });
+  }
 
   const world = lifeWorld(
     {
@@ -1642,6 +1670,7 @@ export function createLife(
       form: villageForm(seed, content, language),
       ...defaultParts(options),
       ...optInParts(options, site.terrain),
+      ...mortalTechParts(options, content),
       ...(options.medicalSchools
         ? (() => {
             const school = schoolOfCulture(villageCulture(truth), medicalSchools(content));

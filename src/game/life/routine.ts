@@ -52,6 +52,7 @@ import {
   netHydration,
   PERSON,
   PLACE,
+  PROCESS_KNOWLEDGE,
   type ProcessDef,
   planLeaves,
   type ReadonlyWorldTruth,
@@ -61,10 +62,12 @@ import {
   type StateChange,
   setActivity,
   setComponent,
+  type TechCatalog,
   TREATED_WATER,
   table,
   VILLAGE_SQUARE,
   type WaterQuality,
+  yieldFactor,
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
@@ -179,6 +182,11 @@ export interface RoutineOptions {
    * ledger) que vuelve a la despensa `SEED_RETURN_DAYS` después; y quien cree que va a helar espera.
    */
   readonly sowSeed?: boolean;
+  /**
+   * Opt-in (`LifeOptions.mortalTech`): la cosecha de cada quien se multiplica por `yieldFactor` de lo que
+   * sabe del campo (`PROCESS_KNOWLEDGE`, technology §4). Apagado: nada cambia.
+   */
+  readonly tech?: { readonly catalog: TechCatalog };
   /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
   readonly idlePlayer?: boolean;
   /**
@@ -548,7 +556,14 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         waters || sows
           ? 0
           : Math.round(
-              HARVEST_GRAMS_PER_HOUR * season(day) * boost * sowYieldNow * fieldFertility(truth),
+              HARVEST_GRAMS_PER_HOUR *
+                season(day) *
+                boost *
+                sowYieldNow *
+                fieldFertility(truth) *
+                (o.tech
+                  ? yieldFactor(o.tech.catalog, truth.get(PROCESS_KNOWLEDGE, me), "grain")
+                  : 1),
             );
       if (want.at === "fields" && there && grams > 0) {
         const ev = draftEvent(events.length);

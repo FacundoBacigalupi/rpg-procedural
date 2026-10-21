@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 ## 8. Estado de las líneas de trabajo
 **Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
 
+**Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.
+
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.
 
 **Lote coop-projects (2026-10-21, `feat/coop-projects`):** `sim/schemes/{project,pool,coop}.ts` (núcleo puro, sin cablear: no cambia hashes; fuera de FULL_PROFILE): `Project` cooperativo con `knownPlan`, pool entero con conservación, reparto como `Commitment`, free riders y salida. Pendientes en el ROADMAP: `coop-wire`, `coop-betrayal`, `coop-lod`. Check en `sim-reports/check-coop-projects.log` (local).
