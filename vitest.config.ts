@@ -4,9 +4,11 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "test/**/*.test.ts"],
     environment: "node",
-    // Las vidas completas son pesadas: pocos workers a la vez evita que los tiempos
-    // límite salten por contención de CPU (y cuida la PC).
-    maxWorkers: 6,
+    // La PC se apaga bajo carga (i9-13900K): un solo worker y un solo vitest en toda la máquina
+    // (el candado de `heavy-lock.ts` hace esperar a las demás instancias, también entre worktrees).
+    maxWorkers: 1,
+    fileParallelism: false,
+    globalSetup: ["./vitest.global-setup.ts"],
     testTimeout: 300_000,
   },
 });

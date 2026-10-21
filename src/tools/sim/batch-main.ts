@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { acquireHeavy } from "../../../heavy-lock.ts";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { loadContentDir } from "../../persistence/index.ts";
 import { parseSeeds, runBatch } from "./batch.ts";
@@ -12,6 +13,8 @@ import { diffMetrics } from "./diff.ts";
 import { runFullProfileBatch } from "./full-profile-run.ts";
 import { renderDiffHtml } from "./html.ts";
 import { findScenario, goalMeasurementSetup, scenarioRun } from "./scenario.ts";
+
+await acquireHeavy("sim-batch");
 
 const { values } = parseArgs({
   options: {

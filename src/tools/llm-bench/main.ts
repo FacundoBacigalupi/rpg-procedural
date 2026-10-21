@@ -9,6 +9,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { acquireHeavy } from "../../../heavy-lock.ts";
 import { GAME_CONTENT_KINDS } from "../../game/index.ts";
 import {
   type LlmClient,
@@ -27,6 +28,8 @@ import {
   formatSummaries,
   type ModelSummary,
 } from "./bench.ts";
+
+await acquireHeavy("llm-bench");
 
 const { values } = parseArgs({
   options: {
