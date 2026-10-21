@@ -286,6 +286,7 @@ export interface ActOptions {
     | "cook"
     | "take"
     | "gather"
+    | "hunt"
     | "consult"
   )[];
   /** Opt-in: comparte reservas con la producción doméstica del dominio económico. */
@@ -463,6 +464,7 @@ const GOOD = (id: string): LedgerUnit => ledgerUnit(`good:${id}`);
 const VERB_ACTIVITY: Readonly<Record<string, Activity>> = {
   move: "moderate",
   gather: "moderate",
+  hunt: "heavy",
   search: "light",
   work: "heavy",
   strike: "heavy",

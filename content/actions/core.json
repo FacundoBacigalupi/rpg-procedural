@@ -134,6 +134,47 @@
     ]
   },
   {
+    "id": "hunt",
+    "name": "cazar",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.5 },
+      { "id": "fast", "duration": 0.6, "ease": -0.6 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "capability", "cap": "locomotion", "min": 0.3 },
+      { "kind": "position", "at": ["forest"] }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "partial", "legs": "partial" },
+    "duration": { "kind": "fixed", "seconds": 7200 },
+    "checkpoint": 900,
+    "emissions": { "sight": 0.4, "sound": 0.3 },
+    "serves": {},
+    "resolver": "gather",
+    "ease": 0.3,
+    "factors": {
+      "light": 0.7,
+      "terrain": 0.4,
+      "skill": [
+        { "trait": "perception", "weight": 0.5 },
+        { "trait": "control", "weight": 0.3 },
+        { "trait": "intellect", "weight": 0.2 }
+      ]
+    },
+    "skill": { "id": "foraging", "facets": { "execution": 0.4, "reading": 0.4, "judgment": 0.2 } },
+    "failureModes": [
+      { "id": "poor_yield", "factor": "skill" },
+      { "id": "poor_yield", "factor": "light" },
+      { "id": "slip", "factor": "terrain" },
+      { "id": "not_here", "factor": "position" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.5,
+    "yields": [{ "at": "forest", "good": "venison", "perHour": 1500 }]
+  },
+  {
     "id": "work",
     "name": "trabajar",
     "domain": "work",

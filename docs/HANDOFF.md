@@ -80,6 +80,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 **Lote wild-hunt (2026-10-21, rama `feat/wild-hunt`):** caza opt-in `wildHunt` (`sim/living/hunt.ts`, cobro dentro de `life.ecology`: individuos enteros, evento `wild.hunted`, carne `good:venison` desde la fuente `hunt` a los montes); apagado conserva el hash. ROADMAP `wild-hunt-game`; pendiente `wild-hunt-verb` (verbo/rutina que recoja la carne; pesca).
 
+**Lote wild-hunt-verb (2026-10-21, rama `feat/wild-hunt-verb`):** verbo `hunt` (resolver `gather`, carne `good:venison` de los montes a quien caza); apagado conserva el hash. ROADMAP `wild-hunt-verb`; pendientes `wild-hunt-effort`, `wild-hunt-skill`, `wild-hunt-npc`, `wild-fish`.
+
 **Lote wild-gather (2026-10-21, rama `feat/wild-gather`):** test de punta a punta de un `gather` real con `wildHarvest` (`src/game/life/wild-gather.test.ts`): el rendimiento diario y el stock en pie bajan al recolectar varios días en un monte pobre (`wildCapacityScale`). Corregido: antes el stock solo bajaba por la ventana inicial; ahora la cuenta del lugar es la ventana diaria (lo tomado baja el stock al reponer, lo que sobra vuelve al monte; `wild.supplied` con `minted`/`returned`). Pendiente `wild-wood` (no hay verbo de tala ni vínculo con `PatchVegetation`: lote propio).
 
 **Lote field-manure (2026-10-21, rama `feat/field-manure`):** abono opt-in `fieldManure` (excreted -> aldea -> field-manure -> `afterManure` en `life.soil`); apagado conserva el hash. Ver ROADMAP `field-manure`; pendientes `field-manure-diet` y `field-manure-removed`.

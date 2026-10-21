@@ -67,6 +67,10 @@
     "id": "percept.action.gather",
     "lines": ["{who} junta algo del suelo.", "Ves a {who} recolectando."]
   },
+  {
+    "id": "percept.action.hunt",
+    "lines": ["{who} caza.", "Ves a {who} cazando."]
+  },
   { "id": "percept.action.work", "lines": ["{who} trabaja.", "Ves a {who} trabajando."] },
   { "id": "percept.action.rest", "lines": ["{who} descansa.", "Ves a {who} tirado, descansando."] },
   { "id": "percept.action.wait", "lines": ["{who} espera, quieto.", "Ves a {who} esperando."] },

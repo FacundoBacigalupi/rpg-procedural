@@ -56,6 +56,13 @@
     "weak": ["suelo"]
   },
   {
+    "id": "hunt",
+    "kind": "action",
+    "stems": ["caz", "cacer", "acech"],
+    "forms": [],
+    "weak": []
+  },
+  {
     "id": "work",
     "kind": "action",
     "stems": ["trabaj", "labr", "faen"],
