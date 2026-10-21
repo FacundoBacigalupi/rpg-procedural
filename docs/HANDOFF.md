@@ -112,48 +112,44 @@ La receta histórica siguiente no exige duplicar checks ya cubiertos.
 - En la ruta de Windows usar `C:\dev\...` con unidad en mayúscula para Vitest.
 
 ## 8. Estado de las líneas de trabajo
-**2026-10-20: auditoría completa y cierre de ramas por pedido del usuario.**
-Base `19caa62` (#654); rama coordinadora `feat/f3-funeral-tomb-integration`.
-Los lotes social, contrato y núcleo puro de claims ya están en develop
-(#652, #653 y #654). [Estado anterior](history/handoff-claims-core-2026-10-20.md).
+**Cierre por pedido del usuario (2026-10-21): terminar el lote, integrar y retirar
+todas las ramas de trabajo; no empezar ítems nuevos.** Fase 3 sigue abierta.
 
-Código consolidado `b420cc1`: WIP funerario completado como
-`funerals.physicalGraves` opt-in persistible, tumba PLACE/ENTITY con origen y
-cuenta propia, cuerpo/proveedor/organizador presentes en hex y espacio reales;
-preserva el modo funerario anterior y su replay al omitir la opción.
-Doce pruebas de integración funeraria aprobadas antes del cambio de dependencias.
+Lote #655: WIP funerario completado, cinco actualizaciones compatibles de #651
+y arreglo de floorDiv. Código final `034b6d1`; producción `8d161d3`.
+Tumba física opt-in `funerals.physicalGraves`, con PLACE/ENTITY y cuenta propia,
+cadáver/proveedor/organizador en el mismo hex/space. Omitir la opción conserva
+el modo previo. Sin activaciones de defaults ni cambios de hashes dorados.
+Las ramas social, contrato y núcleo puro ya se integraron en #652/#653/#654.
 
-Dependabot #651 revisado e incorporado al lote con cinco actualizaciones
-compatibles: React/React DOM 19.3.1, Zod 4.6.7, Vitest 5.0.5 y
-dependency-cruiser 18.6.0. Se mantienen TS 6 y tipos de Node 24.
-Prueba real con TS 7: lint terminó 0, pero dependency-cruiser omitió las fuentes
-TS y analizó 0 módulos (`sim-reports/deps651-ts7-lint.log`); no cuenta como
-validación. Con TS 6 analizó 1050 módulos/5054 dependencias. El bloqueo externo
-`toolchain-typescript7` sigue documentado; Dependabot ignora esas majors hasta
-revisar compatibilidad. PR #651 se sustituirá por la integración consolidada.
+Validación final:
+- `npm run check` sobre `8d161d3`: typecheck/lint/capas aprobados; 3283 tests
+  aprobados y uno fallido en una propiedad de precisión de council-testimony.
+  Duración Vitest 1047,49 s, exit 1. Log/exit `sim-reports/branch-integration-check.*`.
+- `034b6d1` modifica solo ese test: respeta el redondeo existente a seis
+  decimales y agrega el contraejemplo fijo, sin cambiar pesos ni producción.
+  32 tests finales de core/time, council-testimony y funerales aprobados, exit 0
+  (`branch-integration-final-targeted.*`). Typecheck y lint repetidos, exit 0
+  (`branch-integration-final-{typecheck,lint}.log`, `final-static.exit`).
+- Evidencia combinada, sin repetir la suite completa por la corrección exclusiva
+  de la prueba. No describir la corrida amplia original como verde. Las pruebas
+  cubren también game, scheduler y persistence; el código de producción no
+  cambió tras esa corrida. Diff, enlaces y LF comprobados para docs finales.
 
-La primera verificación sobre `b420cc1` encontró un bug previo de floorDiv cerca
-de MIN_SAFE_INTEGER; se interrumpió, no cuenta como aprobación. Contraejemplo:
-MIN_SAFE_INTEGER/3 daba -3002399751580330 en vez de -3002399751580331, al sacar
-el múltiplo inferior del rango seguro. Fix `8d161d3`, 13 tests de core/time
-aprobados con regresión fija y propiedad de reconstrucción BigInt.
-Verificación amplia `npm run check` reiniciada sobre `8d161d3`; solo docs
-posteriores mientras corre. Log/exit: `sim-reports/branch-integration-check.*`;
-log anterior conservado como `branch-integration-check-before-timefix.log`.
-PR borrador #655; no certificar antes del resultado ni cambiar hashes dorados.
+PR #651 sustituida por #655: se conservan TypeScript 6 y tipos Node 24 porque
+dependency-cruiser 18.6 con TS7 omite fuentes (0 módulos, pese a exit 0).
+Con TS6 analiza 1050 módulos/5054 dependencias. Bloqueo externo persistente en
+`toolchain-typescript7`; no saltear ese control para integrar versiones nuevas.
 
-Auditoría de los 17 worktrees: únicamente funeral e itemclaims tenían WIP.
-Instantáneas `54909ad` y `9a1068f`, respectivamente, para preservar originales
-antes de limpiar nombres; la implementación completada está en develop/#654
-o en el lote funerario. Bandas/culto y otros worktrees detached estaban limpios.
-Inventario: `sim-reports/branch-audit-2026-10-20.json`; bundles con todas las refs
-y con WIP en `sim-reports/branches-before-cleanup*-2026-10-20.bundle`.
-Conservar worktrees, snapshots detached y junctions. Solo borrar ramas una vez
-comprobada su incorporación o sustitución; no reintegrar commits ya consumidos.
+[Inventario completo y respaldos](history/branch-audit-2026-10-20.md): 17
+worktrees auditados; únicos WIP preservados en snapshots `54909ad` (funeral)
+y `9a1068f` (claims), incorporados o completados en los lotes correspondientes.
+Conservar todos los worktrees detached, carpetas y junctions; no son líneas
+activas ni cambios sin guardar. Solo main/develop deben permanecer como ramas
+locales/remotas después del cierre. No volver a integrar los snapshots antiguos.
 
-Siguiente: aprobar el lote, publicar/mergear a develop, cerrar #651 sustituida,
-borrar ramas viejas locales/remotas, verificar inventario y continuar el primer
-pendiente no bloqueado: `perfil2-item-claims-take-loss`; take ya dividido en
-resultado del perdedor, representación, cableado y auditoría. Diseño del
-resultado alternativo sin implementar en simulation §3; no cambiar scheduler
-mientras se verifica el lote actual.
+Próxima tarea al recibir un nuevo pedido de continuar:
+`perfil2-item-claims-take-loss`, primer pendiente no bloqueado. Take ya está
+partido en resultado del perdedor, representación, cableado y auditoría;
+simulation §3 describe el contrato todavía sin implementar. No hay trabajo
+nuevo de scheduler iniciado en este cierre.

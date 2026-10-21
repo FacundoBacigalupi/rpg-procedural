@@ -8,15 +8,16 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**2026-10-20: Fase 3, auditoría/cierre de todas las ramas solicitado por el usuario.**
-Base develop `19caa62` (#654); rama `feat/f3-funeral-tomb-integration`.
-WIP funerario completado y dependencias #651 ajustadas para compatibilidad;
-check amplio consolidado reiniciado sobre `8d161d3` tras corregir floorDiv en
-el límite negativo seguro (13 tests de tiempo aprobados). Aprobarlo, integrar el lote,
-cerrar #651 sustituida y borrar las ramas viejas comprobadas, conservando
-worktrees/junctions y snapshots. Después: `perfil2-item-claims-take-loss`, primer
-[ ] no bloqueado del take ya partido en loss/state/act/audit. Estado y evidencia:
-HANDOFF §8.
+**2026-10-21: cierre de sesión por pedido del usuario; Fase 3 sigue abierta.**
+Lote final #655: WIP funerario completado, dependencias compatibles de #651 y
+floorDiv corregido. Producción `8d161d3`, prueba de precisión final `034b6d1`;
+evidencia combinada de suite amplia y 32 pruebas finales en HANDOFF §8.
+Integración a develop y retiro de todas las ramas de trabajo del lote; conservar
+worktrees detached, carpetas y junctions. #651 sustituida por #655; TS7 sigue
+bloqueado por soporte externo y Node24 mantiene sus tipos compatibles.
+No iniciar trabajo nuevo en este cierre. Al recibir otro pedido de continuar:
+`perfil2-item-claims-take-loss`, primer [ ] no bloqueado; take ya está partido
+en loss/state/act/audit. No se empezó implementación del scheduler.
 Aplicar el acuerdo compartido del 2026-10-20 de HANDOFF secciones 2 y 5:
 lotes acotados, resultado observable y trabajo limitado sin integrar.
 

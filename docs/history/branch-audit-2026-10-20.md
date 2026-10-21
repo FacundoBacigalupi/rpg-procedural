@@ -1,5 +1,8 @@
 # Auditoría de ramas del 2026-10-20
 
+Cierre solicitado el 2026-10-21: no abrir trabajo nuevo, completar #655 y dejar
+solo main/develop como ramas locales y remotas. Los worktrees se conservan.
+
 Pedido: terminar trabajo pendiente, integrar a develop y retirar las ramas viejas.
 Se revisaron todas las ramas locales, `git ls-remote --heads origin`, PR abiertos
 y los 17 worktrees, incluidos los detached de reportes.
@@ -39,3 +42,12 @@ La primera corrida amplia encontró además un bug previo de floorDiv en el
 límite negativo seguro. Contraejemplo, fix `8d161d3` y regresión fija de 13 tests
 de tiempo quedan registrados en HANDOFF y ARCHITECTURE. La aprobación final de
 #655 se registra en el estado vigente de HANDOFF, con SHA, log y exit reales.
+
+Verificación final del cierre: `npm run check` de producción `8d161d3` terminó
+con 3283 tests aprobados y un fallo de precisión en una propiedad de testigos
+(1047,49 s, exit 1). La función ya redondeaba a seis decimales; la propiedad pedía
+un margen menor que ese redondeo para bases arbitrarias. `034b6d1` solo corrige
+la prueba y conserva un tope estricto para bases cuantizadas. Después pasaron
+32 tests de tiempo/testigos/funerales y typecheck/lint (exit 0), sin repetir la
+suite amplia por ese cambio exclusivo de pruebas. No cambió producción tras
+la corrida amplia ni se actualizaron hashes dorados.
