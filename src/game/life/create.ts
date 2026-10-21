@@ -419,6 +419,8 @@ export interface LifeOptions {
   readonly mortalTech?: boolean;
   /** Opt-in: etapas de vida (npc-psychology §10): cada persona guarda su `DevelopmentState` (`life.stages-seeded`), el proceso diario `life.stages` avanza la etapa por edad vivida con evento y causa, y el sesgo de riesgo de la etapa mueve la audacia al decidir (`LifeParts.lifeStages`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly lifeStages?: boolean;
+  /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
+  readonly stageRites?: boolean;
   /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly belonging?: boolean;
   /** Opt-in (requiere `council`): proyectos cooperativos de la aldea (schemes §9): el cabeza del consejo arma una obra, los adultos deciden sumarse sobre lo que creen y aportan grano de su hogar al pool por el ledger, con free riders, reparto y reintegro, todo con evento y causas (`life.coop`, `LifeParts.coop`); apagado, hashes idénticos; fuera del perfil completo. */
@@ -710,6 +712,7 @@ export function optInParts(
   | "recognizeGoalProgress"
   | "meaningPressure"
   | "lifeStages"
+  | "stageRites"
   | "belonging"
   | "coop"
   | "craftGoals"
@@ -880,6 +883,7 @@ export function optInParts(
     ...(options.recognizeGoalProgress ? { recognizeGoalProgress: true } : {}),
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
+    ...(options.lifeStages && options.stageRites ? { stageRites: true } : {}),
     ...(options.belonging ? { belonging: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),
     ...(options.craftGoals ? { craftGoals: true } : {}),

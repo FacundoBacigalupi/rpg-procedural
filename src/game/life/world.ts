@@ -762,6 +762,8 @@ export interface LifeWorld {
   readonly meaningPressure?: boolean;
   /** Opt-in (`LifeOptions.lifeStages`): enciende `life.stages` y que la decisión lea el sesgo de riesgo de la etapa; apagado. */
   readonly lifeStages?: boolean;
+  /** Opt-in (`LifeOptions.stageRites`, con `lifeStages`): ritos de paso de la cultura en `life.stages`. */
+  readonly stageRites?: boolean;
   /** Opt-in (`LifeOptions.belonging`): enciende `life.belonging`; apagado. */
   readonly belonging?: boolean;
   /** Opt-in (`LifeOptions.coop`, requiere `council`): proyectos cooperativos de la aldea (`life.coop`, schemes §9); sin esto no existe ni corre. */
@@ -1385,6 +1387,7 @@ export function lifeWorld(
                 stages: parts.stages,
                 clock: parts.clock,
                 placeOf: placeOf(parts, village),
+                ...(parts.stageRites === true ? { rites: {} } : {}),
               }),
             ]
           : []),
