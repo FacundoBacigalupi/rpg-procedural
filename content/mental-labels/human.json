@@ -1,0 +1,227 @@
+[
+  {
+    "id": "plain.grief",
+    "theory": "plain",
+    "kind": "grief",
+    "name": "pena",
+    "treatment": "family_care",
+    "stigma": 0.05,
+    "help": 0.3
+  },
+  {
+    "id": "plain.depression",
+    "theory": "plain",
+    "kind": "depression",
+    "name": "tristeza honda",
+    "treatment": "family_care",
+    "stigma": 0.15,
+    "help": 0.3
+  },
+  {
+    "id": "plain.trauma",
+    "theory": "plain",
+    "kind": "trauma",
+    "name": "miedo que quedó",
+    "treatment": "family_care",
+    "stigma": 0.1,
+    "help": 0.25
+  },
+  {
+    "id": "plain.addiction",
+    "theory": "plain",
+    "kind": "addiction",
+    "name": "vicio",
+    "treatment": "none",
+    "stigma": 0.5,
+    "help": -0.1
+  },
+  {
+    "id": "plain.guilt",
+    "theory": "plain",
+    "kind": "guilt",
+    "name": "peso en la conciencia",
+    "treatment": "none",
+    "stigma": 0.2,
+    "help": 0.1
+  },
+  {
+    "id": "spirit.grief",
+    "theory": "spirit",
+    "kind": "grief",
+    "name": "el muerto no descansa",
+    "treatment": "ritual",
+    "stigma": 0.1,
+    "help": 0.5
+  },
+  {
+    "id": "spirit.depression",
+    "theory": "spirit",
+    "kind": "depression",
+    "name": "lo poseyó un espíritu",
+    "treatment": "exorcism",
+    "stigma": 0.3,
+    "help": 0.1
+  },
+  {
+    "id": "spirit.trauma",
+    "theory": "spirit",
+    "kind": "trauma",
+    "name": "se le pegó un espanto",
+    "treatment": "ritual",
+    "stigma": 0.2,
+    "help": 0.4
+  },
+  {
+    "id": "spirit.addiction",
+    "theory": "spirit",
+    "kind": "addiction",
+    "name": "lo tiene el espíritu del vicio",
+    "treatment": "exorcism",
+    "stigma": 0.5,
+    "help": 0
+  },
+  {
+    "id": "spirit.guilt",
+    "theory": "spirit",
+    "kind": "guilt",
+    "name": "lo persigue lo que hizo",
+    "treatment": "ritual",
+    "stigma": 0.2,
+    "help": 0.5
+  },
+  {
+    "id": "humoral.grief",
+    "theory": "humoral",
+    "kind": "grief",
+    "name": "bilis negra de la pena",
+    "treatment": "herbs",
+    "stigma": 0.1,
+    "help": 0.2
+  },
+  {
+    "id": "humoral.depression",
+    "theory": "humoral",
+    "kind": "depression",
+    "name": "humores fríos",
+    "treatment": "herbs",
+    "stigma": 0.25,
+    "help": 0.2
+  },
+  {
+    "id": "humoral.trauma",
+    "theory": "humoral",
+    "kind": "trauma",
+    "name": "humores alterados por el susto",
+    "treatment": "herbs",
+    "stigma": 0.2,
+    "help": 0.15
+  },
+  {
+    "id": "humoral.addiction",
+    "theory": "humoral",
+    "kind": "addiction",
+    "name": "humores sedientos",
+    "treatment": "herbs",
+    "stigma": 0.5,
+    "help": 0
+  },
+  {
+    "id": "humoral.guilt",
+    "theory": "humoral",
+    "kind": "guilt",
+    "name": "humores turbios",
+    "treatment": "herbs",
+    "stigma": 0.2,
+    "help": 0.1
+  },
+  {
+    "id": "weakness.grief",
+    "theory": "weakness",
+    "kind": "grief",
+    "name": "flaqueza ante la pérdida",
+    "treatment": "none",
+    "stigma": 0.4,
+    "help": -0.1
+  },
+  {
+    "id": "weakness.depression",
+    "theory": "weakness",
+    "kind": "depression",
+    "name": "debilidad",
+    "treatment": "confinement",
+    "stigma": 0.7,
+    "help": -0.3
+  },
+  {
+    "id": "weakness.trauma",
+    "theory": "weakness",
+    "kind": "trauma",
+    "name": "cobardía",
+    "treatment": "none",
+    "stigma": 0.7,
+    "help": -0.3
+  },
+  {
+    "id": "weakness.addiction",
+    "theory": "weakness",
+    "kind": "addiction",
+    "name": "falta de voluntad",
+    "treatment": "confinement",
+    "stigma": 0.8,
+    "help": -0.3
+  },
+  {
+    "id": "weakness.guilt",
+    "theory": "weakness",
+    "kind": "guilt",
+    "name": "merecido remordimiento",
+    "treatment": "none",
+    "stigma": 0.1,
+    "help": 0
+  },
+  {
+    "id": "wounded_heart.grief",
+    "theory": "wounded_heart",
+    "kind": "grief",
+    "name": "corazón en duelo",
+    "treatment": "family_care",
+    "stigma": 0.05,
+    "help": 0.6
+  },
+  {
+    "id": "wounded_heart.depression",
+    "theory": "wounded_heart",
+    "kind": "depression",
+    "name": "corazón herido",
+    "treatment": "family_care",
+    "stigma": 0.2,
+    "help": 0.5
+  },
+  {
+    "id": "wounded_heart.trauma",
+    "theory": "wounded_heart",
+    "kind": "trauma",
+    "name": "corazón lastimado",
+    "treatment": "meditation",
+    "stigma": 0.15,
+    "help": 0.5
+  },
+  {
+    "id": "wounded_heart.addiction",
+    "theory": "wounded_heart",
+    "kind": "addiction",
+    "name": "corazón que busca consuelo",
+    "treatment": "family_care",
+    "stigma": 0.4,
+    "help": 0.3
+  },
+  {
+    "id": "wounded_heart.guilt",
+    "theory": "wounded_heart",
+    "kind": "guilt",
+    "name": "corazón cargado",
+    "treatment": "meditation",
+    "stigma": 0.1,
+    "help": 0.4
+  }
+]

@@ -30,7 +30,14 @@ import {
   TONE_CONTRASTS,
 } from "./language/index.ts";
 import { LINEAGES, TRAJECTORIES } from "./living/index.ts";
-import { HABITS_CONTENT, LIFE_STAGES, SCHEMAS, TASTES, VALUES } from "./mind/index.ts";
+import {
+  HABITS_CONTENT,
+  LIFE_STAGES,
+  MENTAL_LABELS,
+  SCHEMAS,
+  TASTES,
+  VALUES,
+} from "./mind/index.ts";
 import { TENURES } from "./property/index.ts";
 import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
 import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
@@ -85,6 +92,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   RELATION_DIMS,
   RELATION_BONDS,
   HABITS_CONTENT,
+  MENTAL_LABELS,
   LINEAGES,
   TRAJECTORIES,
   TASTES,
