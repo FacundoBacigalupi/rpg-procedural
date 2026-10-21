@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 ## 8. Estado de las líneas de trabajo
 **Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
 
+**Lote perfil3 (2026-10-21, #660 + este PR):** `life.gossip` memoizado y reloj por proceso; `npm run check` sobre `3cb88b6`: 478 archivos, 3307 tests, exit 0 (`sim-reports/check-perfil3.log`). Este PR es solo docs: cierra `perfil3`/`perfil5`, abre `perfil3b` (crear la `Life`). Siguiente: `perfil3b`.
+
 Validación del lote `feat/item-claims-take`: `npm run check` sobre `4a83cd4` (cadena take+give+replay): 477 archivos, 3298 tests, exit 0 (`sim-reports/item-claims-check.*`). La donación (c7982cb) se verificó solo con typecheck, lint y 63 tests dirigidos (property, auditoría de ítems, replay); la suite completa no se repitió.
 
 Lote #655: WIP funerario completado, cinco actualizaciones compatibles de #651
