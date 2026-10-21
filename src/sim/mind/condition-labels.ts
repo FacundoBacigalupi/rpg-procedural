@@ -4,8 +4,9 @@
 // Núcleo puro: la etiqueta es una creencia de alguien sobre alguien, no la condición. Sin cablear.
 
 import type { AgentId, Tick } from "../../core/index.ts";
-import { contentId, defineContent, type EventId, z } from "../../core/index.ts";
+import { compareStrings, contentId, defineContent, type EventId, z } from "../../core/index.ts";
 import type { Evidence } from "../knowledge/index.ts";
+import { table } from "../world/index.ts";
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
@@ -137,3 +138,77 @@ export function stigmaOf(def: MentalLabelDef | undefined, severity: number): num
 export const HIDING: ReadonlySet<MentalTreatment> = new Set<MentalTreatment>(["confinement"]);
 export const hides = (def: MentalLabelDef | undefined): boolean =>
   def !== undefined && HIDING.has(def.treatment);
+
+// ---------------------------------------------------------------------------------------------
+// Estigma en la reputación (`psy-conditions-stigma`)
+
+/**
+ * El desprestigio que cada uno de afuera le carga a quien lleva una condición (reputación por
+ * persona, no número global): `by[holder]` es el estigma 0-1 que `holder` le pone, con su propia
+ * teoría de la mente. Lo escribe un proceso de la vida; lo leen paneles y efectos sociales.
+ */
+export interface Stigma {
+  readonly by: Readonly<Record<string, number>>;
+  readonly originEventId: EventId;
+}
+export const STIGMA = table<Stigma>("mind.stigma");
+
+/** Cuánto del estigma se olvida por día cuando la condición ya no se ve (o la persona se curó). */
+export const STIGMA_DAILY_KEEP = 0.9;
+/** Debajo de esto el estigma se da por olvidado. */
+export const STIGMA_FLOOR = 0.01;
+
+/**
+ * ¿La familia esconde a la persona? Si alguno de los de su casa (que no es ella) tiene un trato que
+ * saca de la vista (`hides`: encierro) para esta condición, los de afuera no llegan a verla. Una
+ * persona sola no se puede encerrar: no hay quien lo haga. Pura.
+ */
+export function familyHides(
+  defs: readonly MentalLabelDef[],
+  kinTheories: readonly (string | undefined)[],
+  kind: LabeledKind,
+): boolean {
+  return kinTheories.some((t) => hides(labelFor(defs, t, kind)));
+}
+
+/**
+ * El estigma que `holder` (de afuera) le pone a quien lleva la condición: el de la etiqueta de la
+ * teoría de `holder` escalado por la gravedad. Una condición sin etiqueta no estigmatiza. Pura.
+ */
+export function stigmaFrom(
+  defs: readonly MentalLabelDef[],
+  holderTheory: string | undefined,
+  condition: { readonly kind: string; readonly severity: number },
+): number {
+  if (!(LABELED_KINDS as readonly string[]).includes(condition.kind)) return 0;
+  return stigmaOf(labelFor(defs, holderTheory, condition.kind as LabeledKind), condition.severity);
+}
+
+/**
+ * Un día de estigma: lo calculado hoy (`fresh`) pisa lo anterior; lo de quien ya no lo ve o no
+ * hay condición se va olvidando (`STIGMA_DAILY_KEEP`) hasta `STIGMA_FLOOR`. Devuelve `undefined`
+ * si no queda nada. Orden canónico por id. Pura.
+ */
+export function stepStigma(
+  prev: Stigma | undefined,
+  fresh: Readonly<Record<string, number>>,
+  origin: EventId,
+): Stigma | undefined {
+  const by: Record<string, number> = {};
+  const ids = new Set([...Object.keys(prev?.by ?? {}), ...Object.keys(fresh)]);
+  for (const id of [...ids].sort(compareStrings)) {
+    const now = fresh[id];
+    const v = now !== undefined ? now : (prev?.by[id] ?? 0) * STIGMA_DAILY_KEEP;
+    if (v >= STIGMA_FLOOR) by[id] = round(v);
+  }
+  if (Object.keys(by).length === 0) return undefined;
+  return { by, originEventId: prev?.originEventId ?? origin };
+}
+
+/** La reputación de estigma de quien lleva la condición entre `community` personas: media 0-1. */
+export function stigmaStanding(s: Stigma | undefined, community: number): number {
+  if (!s || community <= 0) return 0;
+  let sum = 0;
+  for (const id of Object.keys(s.by).sort(compareStrings)) sum += s.by[id] ?? 0;
+  return round(clamp01(sum / community));
+}
