@@ -5,7 +5,7 @@
 // por el `Random` del llamador.
 
 import type { EventId, Random } from "../../core/index.ts";
-import type { Commitment, CommitmentObligation, ObligationState } from "../contracts/commitment.ts";
+import type { Commitment, CommitmentObligation, ObligationState } from "../contracts/index.ts";
 import { type Participation, type Project, shareWeights } from "./project.ts";
 
 const round6 = (x: number): number => Math.round(x * 1e6) / 1e6;
