@@ -8,7 +8,7 @@ import type { LifeOptions } from "./create.ts";
  * `sleepers` reduce llamadas, pero su catch-up no corporal todavía no está completo.
  * Estable en perfil2d (3 seeds x 2 años, 0 problemas); sin jugador real medido (perfil5).
  *
- * Exclusiones: birth/playerAge/tastes/frequency son elecciones de partida, runProbe es
+ * Exclusiones: birth/playerAge/tastes/frequency son elecciones de partida, runProbe y runClock son
  * instrumentación; loanSeeds/enforcement/usury/interestNorm y pawn necesitan entidades,
  * garantías o proveedores propios del escenario. consumables y sus opciones de ansia
  * requieren definiciones físicas de sustancias (todavía no hay catálogo de contenido),

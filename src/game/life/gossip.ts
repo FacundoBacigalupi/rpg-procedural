@@ -107,7 +107,9 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
         const at = truth.get(LOCATION, id);
         if (!at) continue;
         const key = `${at.hex}:${at.space ?? ""}`;
-        groups.set(key, [...(groups.get(key) ?? []), id]);
+        const g = groups.get(key);
+        if (g) g.push(id);
+        else groups.set(key, [id]);
       }
       const rumors = new Map<AgentId, Rumors | undefined>();
       const known = new Map<AgentId, KnownDeeds | undefined>();
@@ -117,12 +119,20 @@ export function gossipProcess(o: GossipOptions): ProcessDef {
       const knownOf = (id: AgentId) => (known.has(id) ? known.get(id) : truth.get(KNOWN_DEEDS, id));
       const memoriesOf = (id: AgentId) =>
         memories.has(id) ? memories.get(id) : truth.get(MEMORIES, id);
-      const feeling = (from: AgentId, to: AgentId) =>
-        relationship(truth.get(RELATIONS, from), to, now, {
-          dims: o.dims,
-          bonds: o.bonds,
-          schemaStrength: (s) => truth.get(MIND, from)?.schemas[s]?.strength ?? 0,
-        });
+      const feelings = new Map<string, ReturnType<typeof relationship>>();
+      const feeling = (from: AgentId, to: AgentId) => {
+        const key = `${from}>${to}`;
+        let f = feelings.get(key);
+        if (!f) {
+          f = relationship(truth.get(RELATIONS, from), to, now, {
+            dims: o.dims,
+            bonds: o.bonds,
+            schemaStrength: (s) => truth.get(MIND, from)?.schemas[s]?.strength ?? 0,
+          });
+          feelings.set(key, f);
+        }
+        return f;
+      };
       const z = (id: AgentId) => {
         const innate = truth.get(INNATE, id);
         return innate ? standardize(innate, o.traits, truth.get(PERSON, id)?.sex ?? "female") : {};

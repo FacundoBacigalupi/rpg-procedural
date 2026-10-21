@@ -112,6 +112,8 @@ export interface ProcessMeasurement {
   effectiveCalls: number;
   changes: number;
   events: number;
+  /** Tiempo acumulado en el proceso (ms); solo si la corrida inyectó un reloj. */
+  ms?: number;
 }
 
 export function recordProcess(
@@ -119,12 +121,14 @@ export function recordProcess(
   id: string,
   changes: number,
   events: number,
+  ms?: number,
 ): void {
   const count = counts.get(id) ?? { calls: 0, effectiveCalls: 0, changes: 0, events: 0 };
   count.calls++;
   if (changes > 0 || events > 0) count.effectiveCalls++;
   count.changes += changes;
   count.events += events;
+  if (ms !== undefined) count.ms = (count.ms ?? 0) + ms;
   counts.set(id, count);
 }
 

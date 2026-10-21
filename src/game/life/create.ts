@@ -479,7 +479,9 @@ export interface LifeOptions {
   /** Opt-in: los lejanos y sin vínculo se duermen y se ponen al día por tramos (`LifeParts.sleepers`); apagado. */
   readonly sleepers?: { readonly near: number; readonly food: string };
   /** Solo medición (`LifeParts.runProbe`): no entra al estado ni al hash. */
-  readonly runProbe?: (process: string, changes: number, events: number) => void;
+  readonly runProbe?: (process: string, changes: number, events: number, ms?: number) => void;
+  /** Solo medición (`LifeParts.runClock`): reloj inyectado (ms) para que `runProbe` reciba lo que tardó el proceso; no entra al estado ni al hash. */
+  readonly runClock?: () => number;
   /** Opt-in: verbos de la decisión que el NPC ejecuta como plan (`LifeParts.npcVerbs`); apagado. */
   readonly npcVerbs?: readonly string[];
   /** Opt-in (con `npcVerbs`): verbo -> plantilla de `content/plans/` (`LifeParts.npcTemplates`), p. ej. `work` -> `fieldwork`, o `verbo@clase` del objetivo (`move@water` -> `fetchwater`, `speak@person` -> `visit`). */
@@ -697,6 +699,7 @@ export function optInParts(
   | "idlePlayerRoutine"
   | "sleepers"
   | "runProbe"
+  | "runClock"
   | "npcVerbs"
   | "npcInterrupt"
   | "npcResumeReevaluate"
@@ -850,6 +853,7 @@ export function optInParts(
     ...(options.idlePlayerRoutine ? { idlePlayerRoutine: true } : {}),
     ...(options.sleepers ? { sleepers: options.sleepers } : {}),
     ...(options.runProbe ? { runProbe: options.runProbe } : {}),
+    ...(options.runClock ? { runClock: options.runClock } : {}),
     ...(options.npcVerbs && options.npcVerbs.length > 0 ? { npcVerbs: options.npcVerbs } : {}),
     ...(options.npcInterrupt ? { npcInterrupt: true } : {}),
     ...(options.npcResumeReevaluate ? { npcResumeReevaluate: true } : {}),

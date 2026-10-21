@@ -106,7 +106,8 @@ function measureFullProfileSeed(
   progress?.({ seed, stage: "creation-start", elapsedMs: 0 });
   const life = Life.create(seed, content, {
     ...optionsOf(setup),
-    runProbe: (id, changes, events) => recordProcess(processes, id, changes, events),
+    runProbe: (id, changes, events, ms) => recordProcess(processes, id, changes, events, ms),
+    runClock: () => performance.now(),
   });
   const creationMs = performance.now() - started;
   progress?.({
