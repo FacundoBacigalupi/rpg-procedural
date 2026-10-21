@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { makeId, type Tick } from "../../core/index.ts";
 import {
+  ATTACHMENT_BIAS,
   advanceStage,
+  attachmentDeltas,
   attachmentFromMind,
   developmentProblems,
   isSensitive,
@@ -89,5 +91,27 @@ describe("sim.mind.development", () => {
     expect(a).toEqual(b);
     expect(developmentProblems(a, STAGES)).toEqual([]);
     expect(developmentProblems({ ...a, stage: "x" }, STAGES).length).toBe(1);
+  });
+});
+
+describe("sesgo de apego (attachmentDeltas)", () => {
+  it("con un cercano agranda la amenaza según el estilo y deja intacto lo demás", () => {
+    const d = { trust: -0.1, fear: 0.1, affection: 0.2 };
+    const anx = attachmentDeltas("anxious", d, { fresh: false, close: 0.6 });
+    expect(anx.trust).toBeCloseTo(-0.1 * ATTACHMENT_BIAS.anxious.threatReading);
+    expect(anx.fear).toBeCloseTo(0.1 * ATTACHMENT_BIAS.anxious.threatReading);
+    expect(anx.affection).toBe(0.2);
+    const sec = attachmentDeltas("secure", d, { fresh: false, close: 0.6 });
+    expect(Math.abs(sec.trust ?? 0)).toBeLessThan(0.1);
+    // Un acto bueno (confianza que sube) no se toca.
+    const good = { trust: 0.1 };
+    expect(attachmentDeltas("anxious", good, { fresh: false, close: 0.6 })).toBe(good);
+  });
+
+  it("con un desconocido suma la confianza previa y no amplifica la amenaza", () => {
+    const av = attachmentDeltas("avoidant", { trust: -0.1 }, { fresh: true, close: 0 });
+    expect(av.trust).toBeCloseTo(-0.1 + ATTACHMENT_BIAS.avoidant.trustPrior);
+    const same = { affection: 0.1 };
+    expect(attachmentDeltas("secure", same, { fresh: false, close: 0.1 })).toBe(same);
   });
 });

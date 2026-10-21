@@ -14,6 +14,7 @@ import {
   coopRows,
 } from "./coop.ts";
 import { Life } from "./life.ts";
+import { COMMITMENTS } from "./loans.ts";
 
 const DAY = 86400;
 const must = (): never => {
@@ -85,5 +86,16 @@ describe("proyectos cooperativos de la aldea (coop)", () => {
     expect(poolConserved(project.pool)).toBe(true);
     const bal = l.world.ledger.balance(coopAccount(project), ledgerUnit(project.pool.good)) ?? 0;
     expect(bal).toBe(project.pool.balance);
+  });
+
+  it("el reparto vive como Commitment: una obligación por participante, con lo aportado", () => {
+    const l = run(true, 30);
+    const { project, commitment } = coopRows(l.world.truth)[0]?.row ?? must();
+    const c = l.world.truth.get(COMMITMENTS, (commitment ?? must()) as never);
+    expect(c?.kind).toBe("project-share");
+    expect(c?.obligations).toHaveLength(project.participants.length);
+    const performed = (c?.obligations ?? []).reduce((a, o) => a + o.performed, 0);
+    expect(performed).toBe(project.participants.reduce((a, x) => a + x.contributed, 0));
+    expect(c?.originEventId).toBe(project.originEventId);
   });
 });

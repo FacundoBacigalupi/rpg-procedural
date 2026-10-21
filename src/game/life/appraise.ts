@@ -18,11 +18,13 @@ import {
   appraiseHardship,
   appraiseLoss,
   appraiseRearing,
+  attachmentDeltas,
   BODY_STATE,
   type BondDef,
   bornSecret,
   COMMUNITY_RELIGION,
   contactGain,
+  DEVELOPMENT,
   type Deltas,
   type DimensionDef,
   defaultDeltas,
@@ -140,6 +142,8 @@ export interface AppraiseOptions {
   readonly persistEmotionSignals?: boolean;
   /** Opt-in junto a `persistEmotionSignals`: estatus de la cultura para leer rangos y envidiar por la vestimenta vista. */
   readonly envyStatuses?: readonly StatusDef[];
+  /** Opt-in (`LifeOptions.attachmentBias`, con `lifeStages`): el apego de quien vive el acto tiñe cómo mueve su relación (`attachmentDeltas`). */
+  readonly attachmentBias?: boolean;
 }
 
 /** Cercanía (0-1) de `from` hacia `to` leída de la relación: cariño, trato y dependencia. */
@@ -180,6 +184,7 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
       WAKE_COMFORT.name,
       RUMORS.name,
       ...(o.persistEmotionSignals ? [EMOTIONS.name] : []),
+      ...(o.attachmentBias ? [DEVELOPMENT.name] : []),
     ],
     writes: [
       MIND.name,
@@ -253,7 +258,15 @@ export function appraiseProcess(o: AppraiseOptions): ProcessDef {
         if (!alive(truth, from) || !truth.get(PERSON, from)) return;
         const base = rels.get(from) ??
           truth.get(RELATIONS, from) ?? { toward: {}, originEventId: e.id };
-        const next = applyDeltas(rel(from, to, e), deltas, e.id);
+        const current = rel(from, to, e);
+        const style = o.attachmentBias ? truth.get(DEVELOPMENT, from)?.attachment : undefined;
+        const tinted = style
+          ? attachmentDeltas(style, deltas, {
+              fresh: base.toward[to] === undefined,
+              close: closeness(current),
+            })
+          : deltas;
+        const next = applyDeltas(current, tinted, e.id);
         rels.set(from, { ...base, toward: { ...base.toward, [to]: { ...next, updated: e.tick } } });
       };
       const mentals = new Map<AgentId, MentalState>();

@@ -421,6 +421,8 @@ export interface LifeOptions {
   readonly lifeStages?: boolean;
   /** Opt-in (requiere `lifeStages`): ritos de paso desde la cultura (`rites.coming_of_age`): `life.rite-of-passage` con padrino adulto o `life.rite-missed` si vence la ventana (npc-psychology §10); apagado, hashes idénticos. */
   readonly stageRites?: boolean;
+  /** Opt-in (requiere `lifeStages`): el apego de cada persona (`DevelopmentState.attachment`) tiñe cómo `life.appraise` mueve sus relaciones: confianza previa con desconocidos y amenaza amplificada con cercanos (npc-psychology §3, §6); apagado, hashes idénticos. */
+  readonly attachmentBias?: boolean;
   /** Opt-in: pertenencia (npc-psychology §13): cada persona guarda su `BelongingState` (`life.belonging-seeded`) y el proceso diario `life.belonging` mueve el nivel despacio según casa, padres, pareja y aldea, con evento y causa al entrar o salir de un déficit alto (`LifeParts.belonging`); apagado, hashes idénticos; fuera del perfil completo. */
   readonly belonging?: boolean;
   /** Opt-in: sueños con contenido (npc-psychology §15): al despertar de una noche que consolidó, `life.consolidate` emite `mind.dreamt` con el `Dream` (fuentes = memorias reales como causas, tono, símbolos, pesadilla) (`LifeParts.dreams`); apagado, hashes idénticos; fuera del perfil completo. */
@@ -715,6 +717,7 @@ export function optInParts(
   | "meaningPressure"
   | "lifeStages"
   | "stageRites"
+  | "attachmentBias"
   | "belonging"
   | "dreams"
   | "coop"
@@ -887,6 +890,7 @@ export function optInParts(
     ...(options.meaningPressure ? { meaningPressure: true } : {}),
     ...(options.lifeStages ? { lifeStages: true } : {}),
     ...(options.lifeStages && options.stageRites ? { stageRites: true } : {}),
+    ...(options.lifeStages && options.attachmentBias ? { attachmentBias: true } : {}),
     ...(options.belonging ? { belonging: true } : {}),
     ...(options.dreams ? { dreams: true } : {}),
     ...(options.coop ? { coop: options.coop } : {}),

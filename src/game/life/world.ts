@@ -764,6 +764,8 @@ export interface LifeWorld {
   readonly lifeStages?: boolean;
   /** Opt-in (`LifeOptions.stageRites`, con `lifeStages`): ritos de paso de la cultura en `life.stages`. */
   readonly stageRites?: boolean;
+  /** Opt-in (`LifeOptions.attachmentBias`, con `lifeStages`): el apego tiñe las relaciones en `life.appraise`. */
+  readonly attachmentBias?: boolean;
   /** Opt-in (`LifeOptions.belonging`): enciende `life.belonging`; apagado. */
   readonly belonging?: boolean;
   /** Opt-in (`LifeOptions.dreams`): `life.consolidate` emite `mind.dreamt` al despertar; apagado. */
@@ -1914,6 +1916,7 @@ export function lifeWorld(
           traits: parts.traits,
           values: parts.values,
           ...(parts.rumorGrievance ? { rumorGrievance: true } : {}),
+          ...(parts.lifeStages && parts.attachmentBias === true ? { attachmentBias: true } : {}),
           witness: {
             player,
             map: parts.map,
