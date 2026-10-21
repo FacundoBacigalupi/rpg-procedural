@@ -557,6 +557,8 @@ export interface LifeWorld {
   readonly npcRoadMend?: boolean;
   /** Opt-in: claims de ítems con identidad en `life.act` (`ActOptions.itemClaims`); apagado, nada cambia. */
   readonly itemClaims?: boolean;
+  /** Opt-in: los gustos de comida y bebida corren lo que cada parte paga en un trato (`ActOptions.tasteDemand`, `parts.tastes` es el catálogo); apagado, nada cambia. */
+  readonly tasteDemand?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo en la parada de la noche (`rested` del viaje); apagado. */
   readonly npcRoadStops?: boolean;
   /** Opt-in (con `npcRoadMend` y `npcCobbler`): si el zapatero está en el mismo hex que el viajero, arregla él con su oficio y cuero (npc-b2b3b2b3c2c); apagado. */
@@ -979,6 +981,7 @@ export function lifeWorld(
           ...(parts.npcPace && parts.npcStrain === true ? { strain: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.itemClaims === true ? { itemClaims: true } : {}),
+          ...(parts.tasteDemand === true ? { tasteDemand: parts.tastes } : {}),
           ...(parts.npcFootwear === true && parts.npcFootSores === true ? { footSores: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
           ...(parts.nutritionCaps === true ? { nutritionCaps: true } : {}),
