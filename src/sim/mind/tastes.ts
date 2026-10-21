@@ -40,6 +40,8 @@ export const TasteDef = z.strictObject({
   common: z.number().min(0).max(1).default(0),
   /** Bienes que lo componen: si una práctica vedada de la comunidad los toca, lo veda. */
   goods: z.array(contentId).default([]),
+  /** Bienes del mercado que un gusto así busca (`good:<id>` sin prefijo): lo que lee la demanda por gusto. */
+  demandGoods: z.array(contentId).default([]),
 });
 export type TasteDef = z.infer<typeof TasteDef>;
 export const TASTES = defineContent("tastes", TasteDef);
