@@ -21,6 +21,7 @@ import {
   FRESH_CURSOR,
   type GoodDef,
   INNATE,
+  ITEM_HOLD,
   LOCATION,
   type LocalMap,
   newBody,
@@ -34,7 +35,7 @@ import {
 } from "../../sim/index.ts";
 import { actProcess, PLAN_STATE, planKey } from "./act.ts";
 
-// Auditoría (perfil2-personal-resource-claims): el servicio económico reserva cantidades del
+// Auditoría (perfil2-personal-resource-claims; invertida en perfil2-item-claims-take-audit con itemClaims): el servicio económico reserva cantidades del
 // ledger. Un objeto con identidad (ItemId) no vive en el ledger: `take` solo mueve `Holding`
 // (unidad, cantidad), así que dos actores que van por la misma espada no entran en ninguna
 // contienda; el ítem queda intacto y ambos fracasan por `no_means`. Hueco medido, no implementado.
@@ -77,7 +78,7 @@ const map: LocalMap = {
   },
 };
 
-function world() {
+function world(itemClaims = false) {
   const truth = new WorldTruth(),
     log = new EventLog();
   log.append({
@@ -115,7 +116,12 @@ function world() {
       plan: {
         actor,
         source: "utility",
-        root: { kind: "do", verb: "take", args: [{ role: "what", text: "espada" }], manner: [] },
+        root: {
+          kind: "do",
+          verb: "take",
+          args: [itemClaims ? { role: "what", entity: sword } : { role: "what", text: "espada" }],
+          manner: [],
+        },
         manner: [],
         causes: [],
       },
@@ -146,6 +152,7 @@ function world() {
     processes: [
       actProcess({
         economicBatch: true,
+        ...(itemClaims ? { itemClaims: true } : {}),
         serialEconomicVerbs: ["take"],
         map,
         spaces: { spaces: [], edges: [] },
@@ -198,5 +205,56 @@ describe("auditoría: objetos con identidad fuera del servicio de cantidades", (
     expect(w.ledger.holdings(holderAccount(place))).toEqual([]);
     expect(w.ledger.holdings(holderAccount(makeId("agent", 1)))).toEqual([]);
     expect(w.ledger.holdings(holderAccount(makeId("agent", 2)))).toEqual([]);
+  });
+});
+
+describe("claims de ítems (opt-in itemClaims)", () => {
+  const run = () => {
+    const w = world(true);
+    w.scheduler.advanceTo(clock.day / 2);
+    return w;
+  };
+  const takes = (w: ReturnType<typeof world>) =>
+    w.log.all().filter((e) => e.kind === "action.take");
+
+  it("dos planes reales sobre una espada: exactamente un ganador y fracaso explícito del otro", () => {
+    for (const seed of [7]) {
+      const w = run();
+      const claimedOf = (e: { data: unknown }) =>
+        (e.data as { effect: { claimed: boolean } }).effect.claimed;
+      const win = takes(w).filter(claimedOf);
+      const lose = takes(w).filter((e) => !claimedOf(e));
+      expect(takes(w)).toHaveLength(2);
+      expect(win).toHaveLength(1);
+      expect(lose).toHaveLength(1);
+      expect(lose?.[0]?.data).toMatchObject({ failure: "lost_race", effect: { claimed: false } });
+      const contest = w.log.all().find((e) => e.kind === "contest");
+      expect(lose?.[0]?.causes).toContainEqual({ kind: "event", event: contest?.id });
+      const holder = win?.[0]?.actors[0];
+      expect(w.truth.get(ITEM_HOLD, sword)?.possession).toBe(holder);
+      expect(w.truth.get(LOCATION, sword)).toBeUndefined();
+      expect(seed).toBe(7);
+    }
+  });
+
+  it("conserva origen, ledger y avanza el plan del perdedor", () => {
+    const w = world(true);
+    const origin = w.truth.get(ENTITY, sword);
+    const journal = w.ledger.journal().length;
+    w.scheduler.advanceTo(clock.day / 2);
+    expect(w.truth.get(ENTITY, sword)).toEqual(origin);
+    expect(w.ledger.journal()).toHaveLength(journal);
+    expect(w.ledger.audit()).toEqual([]);
+    for (const n of [1, 2]) {
+      const plan = w.truth.get(PLAN_STATE, makeId("agent", n));
+      expect(plan?.steps.length).toBe(1);
+    }
+  });
+
+  it("es determinista", () => {
+    const a = run();
+    const b = run();
+    expect(a.log.all()).toEqual(b.log.all());
+    expect(a.truth.get(ITEM_HOLD, sword)).toEqual(b.truth.get(ITEM_HOLD, sword));
   });
 });

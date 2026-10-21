@@ -17,6 +17,7 @@ import {
   externalAccount,
   type HolderRef,
   holderAccount,
+  type ItemId,
   type LedgerAccount,
   type LedgerUnit,
   ledgerUnit,
@@ -106,6 +107,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Opt-in económico: `take` sin bienes disponibles falla por medios reales y el actor lo sabe. */
   readonly takeEmptyFailure?: boolean | undefined;
+  /**
+   * Opt-in de claims de ítems: `take` va por un objeto con identidad. `available` es lo que el mundo
+   * dice (existe y está al alcance); la tirada decide si el intento alcanza para disputarlo.
+   */
+  readonly takeItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /** La contraparte de `trade` (o el destinatario de `give`) ya terminó (`ENTITY.endedAt`): no hay trato ni regalo aunque su cuenta exista. */
   readonly counterpartyGone?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -338,6 +344,9 @@ export type VerbEffect =
       /** Lo que quería llevarse. */
       readonly wanted: LedgerUnit | null;
       readonly got: readonly Holding[];
+      /** Opt-in (`takeItem`): el ítem con identidad que fue por, y si su intento alcanzó para disputarlo. */
+      readonly item?: ItemId;
+      readonly claimed?: boolean;
     }
   | {
       readonly kind: "eat";
@@ -1294,6 +1303,7 @@ function bargain(
 }
 
 const take: Resolver = (c) => {
+  if (c.input.takeItem) return takeItem(c, c.input.takeItem);
   const fromEntity = argEntity(c, "from");
   const from: HolderRef = (fromEntity as HolderRef | null) ?? c.input.place;
   const held = c.input.ledger.holdings(holderAccount(from));
@@ -1340,6 +1350,28 @@ const take: Resolver = (c) => {
     loud: c.roll.failure === "clumsy" && m < PARTIAL_MARGIN ? 2.5 : 1,
   };
 };
+
+function takeItem(c: Ctx, t: NonNullable<ResolveInput["takeItem"]>): VerbResult {
+  const fromEntity = argEntity(c, "from");
+  const from: HolderRef = (fromEntity as HolderRef | null) ?? c.input.place;
+  const effect = (claimed: boolean): VerbEffect => ({
+    kind: "take",
+    from,
+    wanted: null,
+    got: [],
+    item: t.item,
+    claimed,
+  });
+  if (!t.available) {
+    return {
+      effect: effect(false),
+      seconds: c.nominal,
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  const claimed = !c.roll.unmet && (c.roll.margin as number) >= SUCCESS_MARGIN;
+  return { effect: effect(claimed), seconds: c.nominal };
+}
 
 const eat: Resolver = (c) => {
   const foods = c.input.foods ?? new Map<LedgerUnit, Nutrition>();
