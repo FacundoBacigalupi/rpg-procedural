@@ -135,3 +135,5 @@ activas ni cambios sin guardar. Solo main/develop deben permanecer como ramas
 locales/remotas después del cierre. No volver a integrar los snapshots antiguos.
 
 Próxima tarea: `perfil2-item-claims-take-loss` (luego state, act, audit como un lote); simulation §3 describe el contrato, sin implementar.
+
+**Lote coop-wire-b1 (2026-10-21, rama `feat/coop-wire-b`):** el reparto de `life.coop` vive como `Commitment` `project-share` en `contracts.commitment` (se escribe al fundar, se reescribe al cambiar el proyecto); apagado conserva el hash. `coop-wire-b` partido en b2-b6 (ROADMAP); sigue `coop-wire-b2`.

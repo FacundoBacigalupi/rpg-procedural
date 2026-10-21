@@ -61,11 +61,13 @@ import {
   sanctionFreeRider,
   setComponent,
   settleProject,
+  shareCommitment,
   standardize,
   type Trait,
   table,
   tellPlan,
 } from "../../sim/index.ts";
+import { COMMITMENTS } from "./loans.ts";
 
 export const COOP_PROCESS = "life.coop";
 export const COOP_FOUNDED_EVENT = "coop.founded";
@@ -112,6 +114,8 @@ export interface CoopRow {
   readonly foundedDay: number;
   readonly dueDay: number;
   readonly settled: boolean;
+  /** El acuerdo de reparto como `Commitment` (`contracts.commitment`), si el proyecto ya lo tiene. */
+  readonly commitment?: string;
 }
 
 /** Cada proyecto vive en una entidad `project:n` con este componente. Solo lo escribe `life.coop`. */
@@ -151,8 +155,16 @@ export function coopProcess(o: CoopProcessOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "decide",
-    reads: [COOP.name, ENTITY.name, PERSON.name, ORG.name, INNATE.name, RELATIONS.name],
-    writes: [COOP.name, ENTITY.name],
+    reads: [
+      COOP.name,
+      ENTITY.name,
+      PERSON.name,
+      ORG.name,
+      INNATE.name,
+      RELATIONS.name,
+      COMMITMENTS.name,
+    ],
+    writes: [COOP.name, ENTITY.name, COMMITMENTS.name],
     run(ctx) {
       const truth = ctx.truth;
       const ledger = ctx.ledger;
@@ -406,8 +418,23 @@ export function coopProcess(o: CoopProcessOptions): ProcessDef {
           settled = true;
         }
 
-        if (project !== row.project || invited !== row.invited || settled)
+        if (project !== row.project || invited !== row.invited || settled) {
           changes.push(setComponent(COOP, id as never, { ...row, project, invited, settled }));
+          // El reparto como compromiso: se reescribe cuando cambian los participantes o lo aportado.
+          if (row.commitment)
+            changes.push(
+              setComponent(
+                COMMITMENTS,
+                row.commitment as never,
+                shareCommitment(project, {
+                  id: row.commitment,
+                  startDay: row.foundedDay,
+                  dueDay: row.dueDay,
+                  day: today,
+                }),
+              ),
+            );
+        }
       }
 
       // Fundación: el cabeza vivo del consejo arma la obra una vez, cuando llega el día.
@@ -422,6 +449,7 @@ export function coopProcess(o: CoopProcessOptions): ProcessDef {
           if (total < COOP_CANAL_STEPS.length) break;
           const per = Math.floor(total / COOP_CANAL_STEPS.length);
           const pid = ctx.newId("project");
+          const cid = ctx.newId("commitment");
           const ev = draftEvent(events.length);
           let project = makeProject({
             id: pid,
@@ -473,7 +501,23 @@ export function coopProcess(o: CoopProcessOptions): ProcessDef {
               foundedDay: today,
               dueDay: today + COOP_DUE_DAYS,
               settled: false,
+              commitment: cid as string,
             }),
+            setComponent(
+              ENTITY,
+              cid as never,
+              { id: cid, originEventId: ev, createdAt: ctx.now } as never,
+            ),
+            setComponent(
+              COMMITMENTS,
+              cid as never,
+              shareCommitment(project, {
+                id: cid as string,
+                startDay: today,
+                dueDay: today + COOP_DUE_DAYS,
+                day: today,
+              }),
+            ),
           );
           break;
         }
