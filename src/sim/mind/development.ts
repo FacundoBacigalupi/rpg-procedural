@@ -1,9 +1,10 @@
-// Desarrollo por etapas y apego (npc-psychology §10). Núcleo puro, opt-in y sin cablear: nadie lo
-// llama todavía, así que no cambia estado ni hashes. La etapa la marca la edad vivida (`stageAt`),
+// Desarrollo por etapas y apego (npc-psychology §10). Núcleo puro y opt-in (cableado en
+// `game/life/stages.ts` y, el sesgo de apego, en `game/life/appraise.ts`). La etapa la marca la edad vivida (`stageAt`),
 // cada paso de etapa lleva el evento que lo causó, y el apego es un resumen cacheado de los
 // esquemas de infancia (nunca una variable suelta que se escriba a mano).
 
 import type { EventId, Tick } from "../../core/index.ts";
+import type { Deltas } from "../relations/index.ts";
 import { table } from "../world/index.ts";
 import { type Mind, type StageDef, stageAt } from "./mind.ts";
 
@@ -66,6 +67,41 @@ export const ATTACHMENT_BIAS: Readonly<Record<AttachmentStyle, AttachmentBias>> 
   avoidant: { trustPrior: -0.15, threatReading: 1.1, closeness: 0.6 },
   disorganized: { trustPrior: -0.2, threatReading: 1.6, closeness: 0.9 },
 };
+
+/** Cercanía (0-1) desde la que un acto del otro se lee con el sesgo de apego (§3). */
+export const ATTACHMENT_CLOSE = 0.3;
+
+/**
+ * Tiñe el cambio de una relación con el apego de quien lo vive (§3, §6; sin RNG): con alguien sin
+ * trato previo (`fresh`) suma `trustPrior` a la confianza; con un cercano (`close` desde
+ * `ATTACHMENT_CLOSE`) multiplica por `threatReading` lo que se lee como amenaza (confianza que
+ * baja, miedo y resentimiento que suben). Lo demás pasa igual. Devuelve el mismo objeto si nada
+ * cambia.
+ */
+export function attachmentDeltas(
+  style: AttachmentStyle,
+  deltas: Deltas,
+  o: { readonly fresh: boolean; readonly close: number },
+): Deltas {
+  const bias = ATTACHMENT_BIAS[style];
+  const out: Deltas = { ...deltas };
+  let changed = false;
+  if (o.close >= ATTACHMENT_CLOSE && bias.threatReading !== 1) {
+    for (const d of ["trust", "fear", "resentment"] as const) {
+      const v = out[d];
+      if (v === undefined) continue;
+      if ((d === "trust" && v < 0) || (d !== "trust" && v > 0)) {
+        out[d] = v * bias.threatReading;
+        changed = true;
+      }
+    }
+  }
+  if (o.fresh && bias.trustPrior !== 0) {
+    out.trust = (out.trust ?? 0) + bias.trustPrior;
+    changed = true;
+  }
+  return changed ? out : deltas;
+}
 
 /** Inclinación al riesgo y peso de los pares por etapa (calibración abierta). */
 export const STAGE_SOCIAL: Readonly<Record<string, { riskBias: number; peerWeight: number }>> = {
