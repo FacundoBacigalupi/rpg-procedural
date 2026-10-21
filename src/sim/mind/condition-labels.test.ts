@@ -5,7 +5,6 @@ import { believed, learn } from "../knowledge/index.ts";
 import {
   believeCondition,
   conditionEvidence,
-  visibleCondition,
   hides,
   LABELED_KINDS,
   labelFor,
@@ -13,6 +12,7 @@ import {
   stigmaOf,
   treatmentHarm,
   treatmentSupport,
+  visibleCondition,
 } from "./condition-labels.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
