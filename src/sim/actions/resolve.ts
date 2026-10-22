@@ -167,6 +167,13 @@ export interface Market {
   readonly fame?: number | undefined;
   /** Empuje de precio de una escasez de comida (`FAMINE.pricePush`) sobre un bien; sin esto, 1. */
   readonly pricePush?: { readonly unit: LedgerUnit; readonly factor: number } | undefined;
+  /** Opt-in: factor del gusto de cada parte sobre lo máximo que paga por un bien (`tasteDemandFactor`); sin esto, 1. */
+  readonly tasteBid?:
+    | {
+        readonly actor: (unit: LedgerUnit) => number;
+        readonly other: (unit: LedgerUnit) => number;
+      }
+    | undefined;
   /**
    * Lo que cada parte cree que vale cada bien (`economy/priceMemory`) y el día del mundo: la base
    * de `askPerKg`/`bidPerKg` de cada una es `baseFor` (lo creído mezclado con el precio de
@@ -1069,7 +1076,7 @@ function quoteOf(
   opts: QuoteOptions,
 ): HouseholdQuote {
   const push = mk.pricePush?.unit === unit ? mk.pricePush.factor : undefined;
-  return householdQuote(
+  const quote = householdQuote(
     mk.beliefs?.[who],
     unit,
     ref,
@@ -1077,6 +1084,9 @@ function quoteOf(
     ownDays,
     push === undefined ? opts : { ...opts, pricePush: push },
   );
+  // El gusto solo corre lo que paga quien compra; lo que pide quien vende no cambia.
+  const taste = mk.tasteBid?.[who](unit);
+  return taste === undefined || taste === 1 ? quote : { ask: quote.ask, bid: quote.bid * taste };
 }
 
 /**

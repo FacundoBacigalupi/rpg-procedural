@@ -10,7 +10,8 @@
     "body": {
       "spice": -0.8
     },
-    "common": 0.25
+    "common": 0.25,
+    "demandGoods": ["chili", "spices"]
   },
   {
     "id": "bitter",
@@ -25,7 +26,8 @@
       "bitter": -1
     },
     "acquiredTaste": true,
-    "common": 0.3
+    "common": 0.3,
+    "demandGoods": ["tea"]
   },
   {
     "id": "sweet",
@@ -39,7 +41,8 @@
     "body": {
       "bitter": 0.2
     },
-    "common": 0.45
+    "common": 0.45,
+    "demandGoods": ["honey", "sugar", "dried-dates"]
   },
   {
     "id": "salty",
@@ -47,7 +50,8 @@
     "domain": "food.flavor",
     "name": "lo salado",
     "temperament": {},
-    "common": 0.85
+    "common": 0.85,
+    "demandGoods": ["salt", "salt-pork", "dried-fish"]
   },
   {
     "id": "sour",
@@ -58,7 +62,8 @@
       "boldness": 0.4,
       "curiosity": 0.3
     },
-    "common": 0.4
+    "common": 0.4,
+    "demandGoods": ["citrus", "yogurt"]
   },
   {
     "id": "tea",
@@ -72,7 +77,8 @@
       "bitter": -0.4
     },
     "acquiredTaste": true,
-    "common": 0.2
+    "common": 0.2,
+    "demandGoods": ["tea"]
   },
   {
     "id": "rice-wine",
@@ -85,7 +91,8 @@
     },
     "acquiredTaste": true,
     "social": true,
-    "common": 0.3
+    "common": 0.3,
+    "demandGoods": ["ale"]
   },
   {
     "id": "fermented",
@@ -97,7 +104,8 @@
     },
     "novelty": 0.5,
     "acquiredTaste": true,
-    "common": 0.5
+    "common": 0.5,
+    "demandGoods": ["cheese", "yogurt", "soybean"]
   },
   {
     "id": "go",

@@ -147,11 +147,14 @@ import {
   skyObserverOf,
   spaceLight,
   standardize,
+  TASTES_OF,
   type TapeEntry,
+  type TasteDef,
   THERMAL,
   TREATED_WATER,
   type Trait,
   table,
+  tasteDemandFactor,
   transferItem,
   treat,
   updateSelfImage,
@@ -297,6 +300,12 @@ export interface ActOptions {
    * asienta su fracaso (`ContestClaim.loss`). Apagado, `take` solo mueve cantidades del ledger.
    */
   readonly itemClaims?: boolean;
+  /**
+   * Opt-in: los gustos de comida y bebida (`TASTES_OF`) corren lo máximo que cada parte paga en un
+   * trato por los bienes que nombra `TasteDef.demandGoods` (`tasteDemandFactor`). Es el catálogo; apagado
+   * (sin él), el trato no mira gustos.
+   */
+  readonly tasteDemand?: readonly TasteDef[];
   /** Opt-in de verbos NPC: acumula aprendizaje de testigos después de las acciones asentadas. */
   readonly projectWatchExposures?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -570,6 +579,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       // La iniciativa de hablarle a alguien que otro también le habla (`speakInitiative`) lee su trato.
       RELATIONS.name,
       ...(o.itemClaims ? [ITEM_HOLD.name] : []),
+      ...(o.tasteDemand ? [TASTES_OF.name] : []),
       ...(o.scam ? [INNATE.name, MIND.name, SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [LOT_ESSENCE.name] : []),
@@ -804,6 +814,17 @@ export function reputationFameOf(truth: ReadonlyWorldTruth, me: AgentId): number
   return rep.fame * Math.min(1, Math.max(0, -rep.standing));
 }
 
+/** El factor del gusto de `who` sobre un bien del trato (1 sin gustos). */
+function tasteBidOf(
+  truth: ReadonlyWorldTruth,
+  defs: readonly TasteDef[],
+  who: AgentId | null,
+): (unit: LedgerUnit) => number {
+  const prefs = who === null ? undefined : truth.get(TASTES_OF, who)?.preferences;
+  if (prefs === undefined) return () => 1;
+  return (unit) => tasteDemandFactor(prefs, defs, unit.replace(/^good:/, ""));
+}
+
 /** Los precios y las casas que `trade` y `work` necesitan para mover bienes (economy §4). */
 function marketOf(
   ctx: ProcessContext,
@@ -853,6 +874,14 @@ function marketOf(
               actor: o.scam.trust(truth, other as AgentId, me, ctx.now),
               other: o.scam.trust(truth, me, other as AgentId, ctx.now),
             },
+          },
+        }
+      : {}),
+    ...(o.tasteDemand
+      ? {
+          tasteBid: {
+            actor: tasteBidOf(truth, o.tasteDemand, me),
+            other: tasteBidOf(truth, o.tasteDemand, other as AgentId | null),
           },
         }
       : {}),
