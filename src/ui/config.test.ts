@@ -25,6 +25,14 @@ describe("perfil de la CLI y la web", () => {
     expect(config(["--profile", "basic", "--famine"]).setup.famine).toBe(true);
   });
 
+  it("--tech suma mortalTech al setup (con o sin perfil) y sin él no aparece", () => {
+    expect(config([]).setup.life).not.toHaveProperty("mortalTech");
+    const full = config(["--tech"]).setup.life;
+    expect(full).toEqual({ ...FULL_PROFILE, mortalTech: true });
+    expect(ScenarioLife.parse(full)).toEqual({ ...FULL_PROFILE, mortalTech: true });
+    expect(config(["--profile", "basic", "--tech"]).setup.life).toEqual({ mortalTech: true });
+  });
+
   it("rechaza nombres de perfil desconocidos", () => {
     expect(() => config(["--profile", "ful"])).toThrow("perfil inválido");
   });

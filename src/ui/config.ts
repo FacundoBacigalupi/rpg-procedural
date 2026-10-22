@@ -37,6 +37,7 @@ export const LIFE_ARG_OPTIONS = {
   profile: { type: "string" },
   nickname: { type: "boolean", default: false },
   epilogue: { type: "boolean", default: false },
+  tech: { type: "boolean", default: false },
 } as const;
 
 /** `full` (por defecto desde life-3) o `basic` (sin las opciones opt-in del perfil). */
@@ -58,6 +59,7 @@ export interface LifeArgs {
   profile?: string | undefined;
   nickname?: boolean | undefined;
   epilogue?: boolean | undefined;
+  tech?: boolean | undefined;
 }
 
 export interface LifeConfig {
@@ -97,7 +99,7 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
       game: gameSetup(values, mode),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
-      ...(full ? { life: structuredClone(FULL_PROFILE) } : {}),
+      ...(full || values.tech ? { life: lifeOptions(full, values.tech === true) } : {}),
     },
   };
 }
@@ -149,4 +151,9 @@ function llmJobs(model: string, runtime: keyof typeof LOCAL_BASE_URLS, values: L
     jobs: { ...offlineLlmConfig().jobs, parser: chain, narrator: chain },
   });
   return new LlmJobs({ config, clientFor: openAiClientFactory({ timeoutMs: 60_000 }) });
+}
+
+/** Las opciones de vida de una vida nueva: el perfil completo si no es `basic`, más `--tech` (procesos mortales, technology §1-§2) que queda en `setup.life`. */
+function lifeOptions(full: boolean, tech: boolean): LifeSetup["life"] {
+  return { ...(full ? structuredClone(FULL_PROFILE) : {}), ...(tech ? { mortalTech: true } : {}) };
 }

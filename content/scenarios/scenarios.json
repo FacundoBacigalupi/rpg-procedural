@@ -50,5 +50,14 @@
     "frequency": 8,
     "years": 2,
     "life": { "itemClaims": true }
+  },
+  {
+    "id": "mortal-tech",
+    "name": "Procesos mortales",
+    "description": "Opt-in mortalTech sobre la aldea de referencia: saber tácito sembrado, enseñanza en el hogar y cosecha con yieldFactor.",
+    "mode": "realistic",
+    "frequency": 8,
+    "years": 2,
+    "life": { "mortalTech": true }
   }
 ]
