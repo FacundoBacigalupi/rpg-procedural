@@ -39,6 +39,7 @@ import {
   MIND,
   nightmareCauses,
   nightmareChance,
+  openChronicDepression,
   PERSON,
   PERSON_CULTURE,
   type ProcessDef,
@@ -151,6 +152,8 @@ export interface SleepOptions {
   readonly dreams?: boolean;
   /** Opt-in (`LifeOptions.conditionLabels`): etiquetas culturales; su tratamiento entra en la cura de las condiciones. */
   readonly mentalLabels?: readonly MentalLabelDef[];
+  /** Opt-in (`LifeOptions.conditionLabels`): al despertar, el estrés crónico (dolor repetido del mes) abre depresión (`openChronicDepression`). */
+  readonly chronicDepression?: boolean;
   readonly clock: PlanetClock;
   readonly seed: Seed;
   readonly schemas: readonly SchemaDef[];
@@ -344,7 +347,11 @@ export function sleepProcess(o: SleepOptions): ProcessDef {
           treated?.support ?? base ?? 0,
           treated?.stretch,
         );
-        changes.push(setComponent(MENTAL, me, settled));
+        // Con `chronicDepression`, el dolor repetido del último mes abre depresión (una sola vez).
+        const final = o.chronicDepression
+          ? openChronicDepression(settled, memories.items, mind, ctx.now, o.clock.day)
+          : settled;
+        changes.push(setComponent(MENTAL, me, final));
         if (dreamt) {
           events.push({
             kind: "mind.nightmare",
