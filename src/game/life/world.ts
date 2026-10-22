@@ -1947,7 +1947,9 @@ export function lifeWorld(
         sleepProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
           ...(parts.dreams ? { dreams: true } : {}),
-          ...(parts.conditionLabels ? { mentalLabels: parts.conditionLabels } : {}),
+          ...(parts.conditionLabels
+            ? { mentalLabels: parts.conditionLabels, chronicDepression: true }
+            : {}),
           clock: parts.clock,
           seed: parts.seed,
           schemas: parts.schemas,

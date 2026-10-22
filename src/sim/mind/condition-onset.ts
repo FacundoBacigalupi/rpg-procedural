@@ -163,3 +163,62 @@ export function openDepression(
   const severity = (total - DEPRESSION_THRESHOLD) / (1 - DEPRESSION_THRESHOLD);
   return openCondition(state, "depression", severity, cause, {}, now);
 }
+
+/** Ventana (días) del estrés crónico: lo que dolió en este lapso. */
+export const STRESS_WINDOW_DAYS = 30;
+/** Suma de intensidad × dolor de las memorias de la ventana que hace estrés pleno. */
+export const STRESS_FULL = 3;
+
+/** Lo mínimo de una memoria para medir el estrés (lo que `Memory` ya trae). */
+export interface StressMemory {
+  readonly eventId: EventId;
+  readonly at: Tick;
+  readonly intensity: number;
+  readonly valence: number;
+}
+
+/** Estrés crónico (0-1) y el evento que más pesó; sin dolor reciente, 0 y sin causa. */
+export function chronicStressOf(
+  memories: readonly StressMemory[],
+  now: Tick,
+  dayLength: number,
+): { readonly stress: number; readonly cause?: EventId } {
+  const from = now - STRESS_WINDOW_DAYS * dayLength;
+  let sum = 0;
+  let worst = 0;
+  let cause: EventId | undefined;
+  for (const m of memories) {
+    if (m.at < from || m.valence >= 0) continue;
+    const w = clamp01(m.intensity) * clamp01(-m.valence);
+    sum += w;
+    if (w > worst) {
+      worst = w;
+      cause = m.eventId;
+    }
+  }
+  const stress = round(clamp01(sum / STRESS_FULL));
+  return cause === undefined ? { stress } : { stress, cause };
+}
+
+/**
+ * Abre depresión por estrés crónico, una sola vez (con una ya abierta no se suma cada noche). Las
+ * pérdidas son el duelo abierto; la indefensión sale de los esquemas. Sin evento que citar, no abre.
+ */
+export function openChronicDepression(
+  state: MentalState,
+  memories: readonly StressMemory[],
+  mind: Mind | undefined,
+  now: Tick,
+  dayLength: number,
+): MentalState {
+  if (severityOf(state, "depression") > 0) return state;
+  const { stress, cause } = chronicStressOf(memories, now, dayLength);
+  if (cause === undefined) return state;
+  return openDepression(
+    state,
+    { chronicStress: stress, losses: severityOf(state, "grief"), illness: 0, isolation: 0 },
+    mind,
+    cause,
+    now,
+  );
+}
