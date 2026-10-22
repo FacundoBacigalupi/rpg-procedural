@@ -798,6 +798,7 @@ export function optInParts(
   | "npcCobblerHides"
   | "npcRoadMend"
   | "itemClaims"
+  | "mortalTech"
   | "tasteDemand"
   | "npcRoadStops"
   | "npcRoadCobbler"
