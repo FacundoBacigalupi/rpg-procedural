@@ -154,6 +154,6 @@ function llmJobs(model: string, runtime: keyof typeof LOCAL_BASE_URLS, values: L
 }
 
 /** Las opciones de vida de una vida nueva: el perfil completo si no es `basic`, más `--tech` (procesos mortales, technology §1-§2) que queda en `setup.life`. */
-function lifeOptions(full: boolean, tech: boolean): LifeSetup["life"] {
+function lifeOptions(full: boolean, tech: boolean): NonNullable<LifeSetup["life"]> {
   return { ...(full ? structuredClone(FULL_PROFILE) : {}), ...(tech ? { mortalTech: true } : {}) };
 }
