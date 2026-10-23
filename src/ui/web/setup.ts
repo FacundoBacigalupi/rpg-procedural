@@ -6,9 +6,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Session } from "../session.ts";
 import type { SetupChoice, SetupInfo } from "./api.ts";
-import { apiHandler, readBody, send } from "./server.ts";
-
-export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
+import { type ApiHandler, apiHandler, readBody, send } from "./server.ts";
 
 /** Lo que se puede elegir del personaje en modo novela (los valores de `--sex` y `--familia`). */
 export const NOVEL_SEXES = ["mujer", "hombre"] as const;

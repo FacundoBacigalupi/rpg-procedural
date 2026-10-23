@@ -32,7 +32,6 @@ import {
 } from "../render.ts";
 import { JOURNAL_SHOWN, type Session } from "../session.ts";
 import type { History, Panels, SayResponse, WebState } from "./api.ts";
-import type { ApiHandler } from "./setup.ts";
 
 /** Los paneles del personaje con el texto de la CLI, sin números de la verdad (player-loop §9). */
 export function panelsOf(session: Session): Panels {
@@ -86,6 +85,9 @@ export function historyOf(session: Session, before?: number): History {
 }
 
 const MAX_BODY = 64 * 1024;
+
+/** Atiende un pedido a `/api/*`; `false` si no es suyo (lo sirve Vite). */
+export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
 
 export async function readBody(req: IncomingMessage): Promise<string> {
   let size = 0;
