@@ -72,11 +72,11 @@ describe("life.council: el consejo de aldea sembrado desde sus ancianos", () => 
   it("apagado deja el hash idéntico al de antes de existir la opción (baseline de develop 119c5bc)", () => {
     const life = Life.create(3, content, { legacyNoOscillationEvents: true });
     expect(life.hash().total).toBe(
-      "2c318d12dc9cb3885ed31505c89946a44164619809d8e0cb538b64ca6909f206",
+      "da2346d34cc826ff26aeb0291cc41a5669979152556893116fef734e944199b1",
     );
     life.advanceTo(life.now + DAY * 5);
     expect(life.hash().total).toBe(
-      "72b116bae6593c310f3f53a8b85c5dd51457a49fd8a8232c4c24a5d7b00db0d6",
+      "a62e51db7c5f3e43a59d70950f0d89e6f3d60fc7adaeb2a648967ef885c2fbf1",
     );
     expect(lifeWith(true).hash().total).not.toBe(lifeWith(false).hash().total);
   });

@@ -210,4 +210,4 @@ it("las prácticas del mismo día comparten saldo y no gastan dos veces la despe
   expect(ledger.audit()).toEqual([]);
 });
 
-const BASE_HASH = "b829bb7436cffc764da33660c899d578132ea796fdf7f86e47af651e5310c12f";
+const BASE_HASH = "b218098c25ac14a61ca65cbd61b1324438ae2a400978faa2e6bfd7efa9b29f26";

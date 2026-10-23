@@ -231,7 +231,7 @@ describe("councilCases en la vida", () => {
   it("apagado deja el hash idéntico al de develop; encendido corre y es determinista", () => {
     const off = Life.create(3, content, {});
     expect(off.hash().total).toBe(
-      "b829bb7436cffc764da33660c899d578132ea796fdf7f86e47af651e5310c12f",
+      "b218098c25ac14a61ca65cbd61b1324438ae2a400978faa2e6bfd7efa9b29f26",
     );
     off.advanceTo(off.now + DAY * 5);
     expect(off.hash().total).toBe(

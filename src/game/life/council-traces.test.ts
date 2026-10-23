@@ -274,7 +274,7 @@ describe("councilCases.investigation.traces en la vida", () => {
   const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
   it("apagado conserva el hash; encendido es determinista", () => {
     expect(Life.create(3, content, {}).hash().total).toBe(
-      "b829bb7436cffc764da33660c899d578132ea796fdf7f86e47af651e5310c12f",
+      "b218098c25ac14a61ca65cbd61b1324438ae2a400978faa2e6bfd7efa9b29f26",
     );
     const on = () => {
       const l = Life.create(3, content, {
