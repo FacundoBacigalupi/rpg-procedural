@@ -11,12 +11,14 @@ import {
   callName,
   ENTITY,
   type KnownEntity,
+  type KnownSpace,
   LOCATION,
   PERSON,
   PERSON_NAME,
   type Percept,
   PLACE,
   PLACE_NAME,
+  VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
@@ -163,6 +165,62 @@ export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): Know
       hexes: p.hexes,
       via: [],
     });
+  }
+  return out;
+}
+
+/** La plaza y las calles: de acá se va a cualquier casa y al campo. */
+const SQUARE_NAMES = ["la plaza", "la calle", "las calles", "la aldea", "el pueblo"];
+/** Desde adentro, «afuera» es la plaza (las puertas de las casas dan ahí). */
+const OUT_NAMES = ["afuera", "fuera"];
+const HOME_NAMES = ["casa", "mi casa", "adentro", "dentro", "mi cuarto", "el cuarto", "mi hogar"];
+const YARD_NAMES = ["el patio", "mi patio"];
+
+/**
+ * Los espacios de la aldea que el personaje puede nombrar para ir (perception §3): la plaza (y
+ * «afuera» si está bajo techo), su casa, su patio y la casa de cada persona que conoce (por ahora,
+ * conocer a alguien es saber dónde vive: la creencia sobre casas llega con settlements).
+ */
+export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownSpace[] {
+  const square = w.spaces.spaces.find((s) => s.key === VILLAGE_SQUARE);
+  if (!square) return [];
+  const village = w.truth.ids(PLACE).find((id) => {
+    const p = w.truth.get(PLACE, id);
+    return p?.kind === "village" && p.hexes.includes(square.hex);
+  });
+  if (village === undefined) return [];
+  const here = w.truth.get(LOCATION, w.player);
+  const node = w.spaces.spaces.find((s) => s.key === here?.space);
+  const mine = w.truth.get(PERSON, w.player)?.household;
+  const out: KnownSpace[] = [
+    {
+      key: square.key,
+      place: village as EntityRef,
+      names: [...SQUARE_NAMES, ...(node?.indoor === true ? OUT_NAMES : [])],
+      owners: [],
+    },
+  ];
+  const housed = new Set<string>();
+  for (const s of w.spaces.spaces) {
+    if (s.household === undefined) continue;
+    const own = s.household === mine;
+    if (s.kind === "yard") {
+      if (own) out.push({ key: s.key, place: village as EntityRef, names: YARD_NAMES, owners: [] });
+      continue;
+    }
+    // El primer cuarto de cada casa es por donde se entra y donde se vive.
+    if (!s.indoor || housed.has(s.household)) continue;
+    housed.add(s.household);
+    const owners = known
+      .filter(
+        (k) =>
+          k.kind === "person" &&
+          !k.phantom &&
+          w.truth.get(PERSON, k.ref as AgentId)?.household === s.household,
+      )
+      .map((k) => k.ref);
+    if (!own && owners.length === 0) continue;
+    out.push({ key: s.key, place: village as EntityRef, names: own ? HOME_NAMES : [], owners });
   }
   return out;
 }

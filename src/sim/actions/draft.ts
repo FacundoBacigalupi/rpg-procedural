@@ -11,6 +11,7 @@ import {
   compareIds,
   type EntityRef,
   type PlanetClock,
+  type SpaceKey,
 } from "../../core/index.ts";
 import type { ActionCatalog, ArgKind } from "./catalog.ts";
 import type {
@@ -35,7 +36,13 @@ import {
   validatePlan,
 } from "./plan.ts";
 import type { Purpose } from "./purpose.ts";
-import { clarifyOptions, type KnownEntity, type ResolvedRef, resolveRef } from "./refs.ts";
+import {
+  clarifyOptions,
+  type KnownEntity,
+  type ResolvedRef,
+  refTokens,
+  resolveRef,
+} from "./refs.ts";
 
 /** Vueltas de un `until` que pidió el jugador si no dijo otra cosa (simulation §12 para más). */
 export const DEFAULT_UNTIL_MAX = 100;
@@ -82,6 +89,23 @@ export interface DraftContext {
   readonly causes: readonly CauseRef[];
   /** El hex donde está el actor: si la persona nombrada cree que está en otro, primero va. */
   readonly here?: number | undefined;
+  /** Los espacios del sitio que conoce y puede nombrar (la plaza, su casa, la del vecino). */
+  readonly spaces?: readonly KnownSpace[] | undefined;
+}
+
+/**
+ * Un espacio adentro de un sitio que el actor conoce (perception §3): «salgo afuera», «vuelvo a
+ * casa», «voy a la casa de mi tío». El paso es `move` al lugar que lo contiene con el espacio como
+ * texto (`space`), así el plan guardado lo repite igual.
+ */
+export interface KnownSpace {
+  readonly key: SpaceKey;
+  /** El lugar con nombre que lo contiene (la aldea): el `to` del paso. */
+  readonly place: EntityRef;
+  /** Cómo lo dice el actor desde donde está («afuera», «la plaza», «mi casa»). */
+  readonly names: readonly string[];
+  /** Los que el actor sabe que viven ahí: «la casa de mi madre». */
+  readonly owners: readonly EntityRef[];
 }
 
 /** El tipo de entidad que cada clase de argumento acepta. */
@@ -191,6 +215,8 @@ function convert(
       }
       if (node.verb === "move") {
         const to = node.args.find((a) => a.role === "to" && "ref" in a);
+        const step = to && "ref" in to ? siteStep(to.ref, w, node.manner ?? []) : undefined;
+        if (step !== undefined) return step;
         const near =
           to && "ref" in to && node.args.length === 1
             ? approachPeople(to.ref, `${at}.to`, w, node.manner ?? [])
@@ -311,6 +337,43 @@ function approachPeople(
     kind: "do",
     verb: "move",
     args: [{ role: "to", entity: place.ref }],
+    manner: [...manner],
+  };
+}
+
+/** Un `move` a un espacio del sitio que el actor conoce, o `undefined` si no nombra ninguno. */
+function siteStep(desc: RefDescription, w: Walk, manner: readonly string[]): PlanNode | undefined {
+  const spaces = w.ctx.spaces;
+  if (spaces === undefined || spaces.length === 0) return undefined;
+  const words = (t: string) => refTokens(t).join(" ");
+  const owner = /\bcasa\s+(?:de|del)\s+(.+)$/iu.exec(desc.text);
+  let hit: KnownSpace | undefined;
+  if (owner) {
+    const who = (owner[1] as string).replace(/^(?:la|el)\s+/i, "");
+    const rel = /^(?:mi|mis)\s+(\p{L}+)$/iu.exec(who);
+    const person: RefDescription = {
+      text: who,
+      kind: "person",
+      features: [],
+      ...(rel ? { relation: { to: "self" as const, rel: rel[1] as string } } : {}),
+    };
+    const r = resolveRef(
+      person,
+      w.ctx.known.filter((k) => k.kind === "person"),
+    );
+    if (r.status === "unique") hit = spaces.find((s) => s.owners.includes(r.chosen));
+  } else {
+    const said = words(desc.text);
+    if (said.length > 0) hit = spaces.find((s) => s.names.some((n) => words(n) === said));
+  }
+  if (hit === undefined) return undefined;
+  return {
+    kind: "do",
+    verb: "move",
+    args: [
+      { role: "to", entity: hit.place },
+      { role: "space", text: hit.key },
+    ],
     manner: [...manner],
   };
 }

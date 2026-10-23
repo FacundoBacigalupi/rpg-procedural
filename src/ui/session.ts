@@ -37,6 +37,7 @@ import {
   hypothesesPanel,
   inventoryPanel,
   knownEntities,
+  knownSpaces,
   LIFE_ENGINE,
   Life,
   type LifeSetup,
@@ -366,6 +367,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       clock: life.world.clock,
       causes: [{ kind: "state", entity: life.player, key: "intent" }],
       here: life.world.truth.get(LOCATION, life.player)?.hex,
+      spaces: knownSpaces(life.world, known),
     });
     if (made.kind === "clarify") {
       // La pregunta es del personaje: con lo que percibió de cada candidato (actions §4).
