@@ -49,6 +49,15 @@ describe("planFromDecision", () => {
     );
   });
 
+  it("ir a la aldea arma plan desde life-42; el replay anterior no", () => {
+    const home = { id: "move:settlement:1", verb: "move" };
+    expect(planFromDecision(home, catalog, me)?.root).toMatchObject({
+      verb: "move",
+      args: [{ role: "to", entity: "settlement:1" }],
+    });
+    expect(planFromDecision(home, catalog, me, [], true)).toBeUndefined();
+  });
+
   it("arma el plan del catálogo con los argumentos del id, en orden", () => {
     const gather = planFromDecision({ id: "gather:hierba", verb: "gather" }, catalog, me);
     expect(gather?.source).toBe("utility");

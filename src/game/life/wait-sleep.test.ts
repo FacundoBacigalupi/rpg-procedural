@@ -19,12 +19,13 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-41");
+    expect(LIFE_ENGINE).toBe("life-42");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       verboseSteps: true,
       waitAwake: true,
       waitUntended: true,
@@ -65,6 +66,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-7", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       sleepUncapped: true,
       legacyFalls: true,
       legacyTend: true,
@@ -101,6 +103,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-8", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyFalls: true,
       legacyTend: true,
       legacyResume: true,
@@ -136,6 +139,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-9", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
@@ -170,6 +174,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-10", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
@@ -203,6 +208,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-11", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
       legacyNoFootSores: true,
@@ -235,6 +241,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-12", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
@@ -266,6 +273,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-13", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
@@ -296,6 +304,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-14", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
@@ -325,6 +334,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-15", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
       legacyNoCloakMend: true,
@@ -353,6 +363,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-16", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoStrain: true,
       legacyNoCloakMend: true,
       legacyNoForecast: true,
@@ -380,6 +391,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-17", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoCloakMend: true,
       legacyNoForecast: true,
       legacyNoRainForecast: true,
@@ -406,6 +418,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-19", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
@@ -430,6 +443,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-18", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoForecast: true,
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
@@ -455,6 +469,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-20", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
       legacyNoFieldShared: true,
@@ -478,6 +493,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-21", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoFieldSowing: true,
       legacyNoFieldShared: true,
       legacyNoSowSeed: true,
@@ -500,6 +516,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-22", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoFieldShared: true,
       legacyNoSowSeed: true,
       legacyNoExhaustion: true,
@@ -521,6 +538,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-23", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoSowSeed: true,
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
@@ -541,6 +559,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-24", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
       legacyNoPerceiveCascade: true,
@@ -560,6 +579,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-25", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoCobbler: true,
       legacyNoPerceiveCascade: true,
       legacyNoAppraiseCascade: true,
@@ -578,6 +598,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-26", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoPerceiveCascade: true,
       legacyNoAppraiseCascade: true,
       legacyNoOscillation: true,
@@ -595,6 +616,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-27", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoAppraiseCascade: true,
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
@@ -611,6 +633,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-28", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
@@ -626,6 +649,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-29", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
       legacyNoRainWaitPersist: true,
@@ -640,6 +664,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-30", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoDeadCounterpartyGuard: true,
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
@@ -653,6 +678,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-31", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
@@ -665,6 +691,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-32", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
       legacyNoOscillationEvents: true,
@@ -676,6 +703,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-33", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoOscillationCause: true,
       legacyNoOscillationEvents: true,
       legacyNoDeadGiveGuard: true,
@@ -686,6 +714,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-34", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoOscillationEvents: true,
       legacyNoDeadGiveGuard: true,
       legacyNoToldBeliefs: true,
@@ -695,6 +724,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-35", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoDeadGiveGuard: true,
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
@@ -703,6 +733,7 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-36", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
@@ -710,20 +741,27 @@ describe("motor de la espera nocturna", () => {
     expect(engineOptions("life-37", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
     });
     expect(engineOptions("life-38", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
       legacyHeardTable: true,
     });
     expect(engineOptions("life-39", {})).toEqual({
       legacyShortNames: true,
       legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
     });
-    expect(engineOptions("life-40", {})).toEqual({ legacyFixedSpeech: true });
-    expect(engineOptions("life-41", {})).toEqual({});
+    expect(engineOptions("life-40", {})).toEqual({
+      legacyFixedSpeech: true,
+      legacyNoSettlementWalk: true,
+    });
+    expect(engineOptions("life-41", {})).toEqual({ legacyNoSettlementWalk: true });
+    expect(engineOptions("life-42", {})).toEqual({});
   });
 });
 

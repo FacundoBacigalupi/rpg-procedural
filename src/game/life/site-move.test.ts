@@ -6,12 +6,15 @@ import {
   checkInvariants,
   type IntentDraft,
   LOCATION,
+  PLACE,
   planFromDraft,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import type { LifeOptions } from "./create.ts";
 import { knownEntities, knownSpaces } from "./known.ts";
 import { Life } from "./life.ts";
+import { planFromDecision } from "./npc-verbs.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -130,4 +133,42 @@ describe("moverse adentro de la aldea (espacios del sitio)", () => {
         args: [{ role: "to" }, { role: "space", text: theirs?.key }],
       });
   });
+});
+
+describe("un move con destino la aldea camina (play-npc-settlement-walk)", () => {
+  /** Del campo, un `move` a la aldea sin espacio del sitio (como el de un NPC): vuelve o no. */
+  const backFromFields = (options: LifeOptions) => {
+    const life = Life.create(7, content, { frequency: 8, ...options });
+    const w = life.world;
+    const home = w.truth.get(LOCATION, w.player)?.hex;
+    const known = knownEntities(w);
+    const made = planFromDraft(go("el campo"), {
+      actor: w.player,
+      source: "player",
+      catalog: w.catalog,
+      known,
+      clock: w.clock,
+      causes: [{ kind: "state", entity: w.player, key: "intent" }],
+      here: home,
+      spaces: knownSpaces(w, known),
+    });
+    if (made.kind !== "plan") throw new Error(`el campo: ${made.kind}`);
+    life.turn(made.plan, 1);
+    const field = w.truth.get(LOCATION, w.player)?.hex;
+    const village = w.truth.ids(PLACE).find((id) => w.truth.get(PLACE, id)?.kind === "village");
+    const plan = planFromDecision({ id: `move:${village}`, verb: "move" }, w.catalog, w.player);
+    if (!plan) throw new Error("sin plan a la aldea");
+    life.turn(plan, 1);
+    return { home, field, after: w.truth.get(LOCATION, w.player)?.hex, w };
+  };
+
+  it("desde life-42 vuelve a la aldea; con el motor anterior se queda en el campo", () => {
+    const now = backFromFields({});
+    expect(now.field).not.toBe(now.home);
+    expect(now.after).toBe(now.home);
+    expect(now.w.ledger.audit()).toEqual([]);
+    const legacy = backFromFields({ legacyNoSettlementWalk: true });
+    expect(legacy.field).toBe(now.field);
+    expect(legacy.after).toBe(legacy.field);
+  }, 300_000);
 });

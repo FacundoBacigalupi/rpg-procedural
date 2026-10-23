@@ -333,6 +333,8 @@ export interface LifeOptions {
   readonly legacyShortNames?: boolean;
   /** Solo el replay de un motor anterior a `life-41`: hablar dura 300 s fijos, sea un saludo o una charla. */
   readonly legacyFixedSpeech?: boolean;
+  /** Solo el replay de un motor anterior a `life-42`: los `move` de los NPC a la aldea no caminan. */
+  readonly legacyNoSettlementWalk?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -728,6 +730,7 @@ export function optInParts(
   | "legacyHeardTable"
   | "legacyShortNames"
   | "legacyFixedSpeech"
+  | "legacyNoSettlementWalk"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
@@ -905,6 +908,7 @@ export function optInParts(
     ...(options.legacyHeardTable ? { legacyHeardTable: true } : {}),
     ...(options.legacyShortNames ? { legacyShortNames: true } : {}),
     ...(options.legacyFixedSpeech ? { legacyFixedSpeech: true } : {}),
+    ...(options.legacyNoSettlementWalk ? { legacyNoSettlementWalk: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
