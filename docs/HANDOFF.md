@@ -69,6 +69,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **Un solo proceso pesado a la vez** (pedido del usuario, 2026-10-21): la PC se apagó sola con tres agentes corriendo `npm run check` en paralelo. Un agente/lote a la vez; no lanzar `check` ni vitest completo en simultáneo.
 
 ## 8. Estado de las líneas de trabajo
+
 **play-scene-more (2026-10-23, rama `feat/play-scene-more`):** `game/life/hud.ts` suma `people.figures` (lo leído de cada percept: edad, sexo, ropa, reconocido) y `place.fire` (fuego encendido en el cuarto, `undefined` sin `HEARTH`); `Scene.tsx` dibuja las siluetas con eso y el hogar solo si arde. Test en `hud.test.ts`. Sin bump de motor. Quedan `play-scene-buildings` y `play-scene-animals`.
 
 **play-hud-more (2026-10-23, rama `feat/play-hud-more`):** `game/life/hud.ts` suma `mood` (emociones propias decaídas + carga de `conscience`) y `warmth` (`warmthOf` sobre `THERMAL`); `ui/web/api.ts` y `TopBar.tsx` los pintan como chips. Tests en `hud.test.ts`. Sin bump de motor. Lo que falta de la barra quedó en `play-hud-load`, `-clothing`, `-sky`, `-danger` y `play-hud-qi` (Fase 4).
