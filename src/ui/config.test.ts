@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { describe, expect, it } from "vitest";
-import { FULL_PROFILE, optionsOf } from "../game/index.ts";
+import { defaultGameSetup, FULL_PROFILE, optionsOf, worldFamilyOf } from "../game/index.ts";
 import { ScenarioLife } from "../sim/index.ts";
 import { LIFE_ARG_OPTIONS, lifeConfig } from "./config.ts";
 
@@ -35,5 +35,18 @@ describe("perfil de la CLI y la web", () => {
 
   it("rechaza nombres de perfil desconocidos", () => {
     expect(() => config(["--profile", "ful"])).toThrow("perfil inválido");
+  });
+});
+
+describe("familia del mundo (--world)", () => {
+  it("se elige al empezar, xianxia por defecto, y queda en el setup", () => {
+    expect(config([]).setup.game.worldConstraints?.family).toBe("xianxia");
+    expect(config(["--world", "xianxia"]).setup.game.worldConstraints?.family).toBe("xianxia");
+    expect(worldFamilyOf(config([]).setup.game)).toBe("xianxia");
+    expect(worldFamilyOf(defaultGameSetup())).toBe("xianxia");
+  });
+
+  it("rechaza familias que todavía no tienen contenido", () => {
+    expect(() => config(["--world", "misterios"])).toThrow("--world");
   });
 });

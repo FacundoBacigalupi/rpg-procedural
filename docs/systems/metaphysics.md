@@ -85,18 +85,18 @@ La esencia tiene formas (elementos) que se generan, se vencen y se transforman e
 En qué momento de su historia está la civilización más avanzada cuando empieza la partida: tribal, bronce, imperial antigua, medieval, moderna temprana, industrial o industrial tardía. El seed la elige **inclinada por la familia** (cada familia tiende a su era típica, que es la más divertida para ella) y la historia la alcanza por causas, sin poner nada a mano. El detalle está en [technology.md](technology.md) §9b.
 
 ## Familias (atractores, no plantillas)
-El seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** que hacen que ciertos paquetes sean coherentes y frecuentes. Las familias son zonas densas del espacio:
+La familia la elige el jugador al empezar; el seed no elige una plantilla cerrada: muestrea los ejes con **correlaciones** que hacen que ciertos paquetes sean coherentes y frecuentes. Las familias son zonas densas del espacio:
 
 | Familia | Combinación típica |
 |---|---|
-| **Xianxia** (la más común) | Campo ambiental + cultivo interno + reinos + ley que se opone + ciclo con olvido + longevidad |
+| **Xianxia** (la de por defecto) | Campo ambiental + cultivo interno + reinos + ley que se opone + ciclo con olvido + longevidad |
 | **Alta fantasía occidental** | Mana ambiental o celeste + hechicería y pactos clericales + círculos + panteón activo + más allás + varias especies |
 | **Fantasía oscura / baja** | Vital o otorgada + pactos + sin escalera + corrupción + algo afuera + poder escaso |
 | **Mitológica** | Espiritual (fe) + pactos y rituales + panteón que camina entre mortales |
 | **Rúnica** | Conceptual + artificio + maestría continua + física indiferente |
 | **Misterios** ([mysteries.md](mysteries.md)) | Espiritualidad + características conservadas + pociones por caminos y secuencias digeridas actuando + pérdida de control + panteón en la cima + algo afuera; era típica industrial |
 
-- **Xianxia es la familia más común** (la mayoría de los mundos); el resto se reparte entre las demás.
+- **La familia se elige al empezar la partida** (`worldConstraints.family`, `--world <familia>` en la CLI y la web; game-modes §1), no la sortea el seed: así cada familia nueva se suma como una opción más del inicio. Por defecto, xianxia. Solo se ofrecen las familias que ya tienen contenido (`WORLD_FAMILIES` en `src/game/setup`; hoy, xianxia). El seed sigue muestreando los ejes **dentro** de la familia elegida.
 - **Sin mundos mixtos:** cada mundo pertenece a una sola familia. Dentro de ella, los ejes varían (fuente, costo, ley, almas), así que dos mundos xianxia también se sienten distintos.
 - Cuanto menos frecuente la combinación dentro de una familia, más rara la partida.
 - **Cada familia tiende a su era:** xianxia a la imperial antigua, la alta fantasía occidental y la rúnica a la medieval, la fantasía oscura a la moderna temprana, la mitológica a la de bronce, la de los misterios a la industrial ([technology.md](technology.md) §9b).

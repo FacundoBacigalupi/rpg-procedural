@@ -10,6 +10,7 @@ import {
   type GameSetup,
   type LifeSetup,
   parseGameSetup,
+  WORLD_FAMILIES,
 } from "../game/index.ts";
 import {
   LlmConfig,
@@ -24,6 +25,7 @@ import {
 export const LIFE_ARG_OPTIONS = {
   seed: { type: "string" },
   mode: { type: "string", default: "realista" },
+  world: { type: "string" },
   frequency: { type: "string" },
   sex: { type: "string" },
   age: { type: "string" },
@@ -46,6 +48,7 @@ const PROFILES: readonly string[] = ["full", "basic"];
 export interface LifeArgs {
   seed?: string | undefined;
   mode: string;
+  world?: string | undefined;
   frequency?: string | undefined;
   sex?: string | undefined;
   age?: string | undefined;
@@ -96,12 +99,24 @@ export function lifeConfig(values: LifeArgs): LifeConfig {
     epilogue: values.epilogue === true,
     llm: values.llm === undefined ? undefined : llmJobs(values.llm, runtime, values),
     setup: {
-      game: gameSetup(values, mode),
+      game: withWorld(gameSetup(values, mode), values.world),
       ...(frequency === undefined ? {} : { frequency }),
       ...(values.famine ? { famine: true } : {}),
       ...(full || values.tech ? { life: lifeOptions(full, values.tech === true) } : {}),
     },
   };
+}
+
+/**
+ * La familia del mundo, elegida al empezar (metaphysics §5): xianxia si no se pide otra. Va en
+ * `worldConstraints.family` para que la vida la conserve al retomarla.
+ */
+function withWorld(game: GameSetup, asked: string | undefined): GameSetup {
+  const family = asked ?? WORLD_FAMILIES[0] ?? "xianxia";
+  if (!WORLD_FAMILIES.includes(family)) {
+    throw new Error(`--world: ${WORLD_FAMILIES.join(", ")} (${asked})`);
+  }
+  return { ...game, worldConstraints: { ...game.worldConstraints, family } };
 }
 
 /** El personaje que se pide en modo novela (game-modes §2.1); en el realista no se elige nada. */

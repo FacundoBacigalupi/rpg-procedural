@@ -184,3 +184,18 @@ export function defaultGameSetup(mode: GameMode = "realistic"): GameSetup {
   const entry: EntryMode = { kind: "age", at: 16 };
   return mode === "novel" ? { mode, novel: EMPTY_NOVEL, entry } : { mode, entry };
 }
+
+/**
+ * Las familias de mundo que ya tienen contenido (metaphysics §5): la familia se elige al empezar
+ * (`--world`) y queda en `worldConstraints.family`. Sumar una familia es sumar su contenido y
+ * su id acá.
+ */
+export const WORLD_FAMILIES: readonly string[] = ["xianxia"];
+
+/** La familia de una vida que no la eligió (las guardadas antes de `--world`). */
+export const DEFAULT_WORLD_FAMILY = "xianxia";
+
+/** La familia del mundo de un setup. */
+export function worldFamilyOf(setup: GameSetup | undefined): string {
+  return setup?.worldConstraints?.family ?? DEFAULT_WORLD_FAMILY;
+}

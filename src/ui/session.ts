@@ -64,6 +64,7 @@ import {
   topicText,
   WORLD_LEXICON,
   weatherPanel,
+  worldFamilyOf,
 } from "../game/index.ts";
 import {
   ActionWordBook,
@@ -196,9 +197,6 @@ export interface Session {
   readonly panelOptions: ReturnType<typeof panelOptionsOf>;
 }
 
-/** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
-const WORLD_FAMILY = "xianxia";
-
 /** La clave de `meta` donde se guarda la memoria de continuidad de la narración. */
 const MEMORY_META = "narration_memory";
 
@@ -218,12 +216,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     options.llm ?? new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
   const catalog = life.world.catalog;
   // Las opciones opt-in que la vida tiene activas (en el setup guardado) llegan a los paneles.
-  const panelOptions = panelOptionsOf(
-    optionsOf((store.getMeta("setup") as LifeSetup | undefined) ?? options.setup),
-  );
+  const setup = (store.getMeta("setup") as LifeSetup | undefined) ?? options.setup;
+  const panelOptions = panelOptionsOf(optionsOf(setup));
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
-  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
+  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), worldFamilyOf(setup.game));
   const recent: string[] = [];
   // «Me contengo» suelto (skills §9): mientras esté puesto, los planes que golpean van en modo
   // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
