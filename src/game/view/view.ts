@@ -501,6 +501,11 @@ export interface ViewInput {
    * Queda del lado del motor (memoria de continuidad): no entra en `PlayerView`.
    */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
+  /**
+   * Lo mismo para la etiqueta de un desconocido: de qué fuente salió lo que vio. El personaje no
+   * sabe quién es; sirve para que «la figura de recién» apunte a la misma figura (actions §4).
+   */
+  readonly onStranger?: (localId: string, source: EntityRef) => void;
 }
 
 export function timeOfDay(hour: number): TimeOfDay {
@@ -634,6 +639,8 @@ export function buildPlayerView(input: ViewInput): PlayerView {
             attire,
             input.seenBefore?.has(p.id) === true,
           );
+    if (p.sourceEntityId !== undefined && !(identity !== undefined && isAgent(identity.value)))
+      input.onStranger?.(who, p.sourceEntityId);
     const action = p.fields.action?.value;
     const said = p.fields.words?.value;
     percepts.push({

@@ -175,6 +175,8 @@ export interface PlayerViewOptions {
   readonly heardSince?: Tick;
   /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
+  /** De qué fuente salió cada etiqueta de desconocido (para resolver «la figura» que se narró). */
+  readonly onStranger?: (localId: string, source: EntityRef) => void;
   /**
    * Recibe los percepts de personas que armaron esta escena (los que el personaje percibe ahora):
    * lo que el jugador puede señalar al escribir («los niños») sale de ahí, no de la verdad.
@@ -544,6 +546,7 @@ export function playerView(
     lexicon: lexiconWords(w, options.nickname === true),
     ...(nick ? { nickname: nick.text } : {}),
     ...(options.onLabel ? { onLabel: options.onLabel } : {}),
+    ...(options.onStranger ? { onStranger: options.onStranger } : {}),
     self: [...cues],
     tastes: tastesForView(w, steps, rng.fork("taste")),
     dues: duesForView(w, rng.fork("dues")),

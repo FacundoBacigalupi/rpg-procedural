@@ -178,6 +178,23 @@ function figure(id: EntityRef, p: Percept, here: Where | undefined, given?: stri
   };
 }
 
+/**
+ * Suma a quienes tiene delante las palabras con que la última escena los nombró («una figura
+ * desconocida», «el hombre del sombrero»): el jugador los señala con lo que leyó (actions §4). Solo
+ * a los presentes: lo narrado de alguien que ya no está no lo vuelve a señalar.
+ */
+export function withNarratedWords(
+  known: readonly KnownEntity[],
+  narrated: ReadonlyMap<string, readonly string[]>,
+): KnownEntity[] {
+  return known.map((k) => {
+    const words = k.present ? narrated.get(k.ref) : undefined;
+    return words === undefined || words.length === 0
+      ? k
+      : { ...k, features: [...new Set([...k.features, ...words])] };
+  });
+}
+
 /** La plaza y las calles: de acá se va a cualquier casa y al campo. */
 const SQUARE_NAMES = ["la plaza", "la calle", "las calles", "la aldea", "el pueblo"];
 /** Desde adentro, «afuera» es la plaza (las puertas de las casas dan ahí). */

@@ -64,6 +64,7 @@ import {
   topicText,
   WORLD_LEXICON,
   weatherPanel,
+  withNarratedWords,
   worldFamilyOf,
 } from "../game/index.ts";
 import {
@@ -105,6 +106,7 @@ import {
   draftHasVerb,
   INFERENCE_RULES,
   type IntentDraft,
+  type KnownEntity,
   LOCATION,
   PARSER_EXAMPLES,
   PERSON_NAME,
@@ -256,6 +258,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
   // Quienes ve ahora, para que «los niños» alcance a quienes la escena mostró (actions §4).
   let seenNow: readonly Percept[] = [];
+  // Con qué palabras la última escena nombró a cada uno: «la figura desconocida» la señala.
+  let narrated = new Map<string, string[]>();
+  const knownNow = (): KnownEntity[] =>
+    withNarratedWords(knownEntities(life.world, seenNow), narrated);
   // Quienes ya se contaron y dónde: si siguen ahí quietos, la escena siguiente no los repite.
   let counted: { place: string | undefined; keys: ReadonlySet<string> } = {
     place: undefined,
@@ -267,6 +273,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     thinking?: readonly ThoughtInput[],
   ): Promise<string> => {
     const keys = new Map<string, string>();
+    const strangers = new Map<string, string>();
     const loc = life.world.truth.get(LOCATION, life.player);
     const placeKey =
       loc === undefined
@@ -281,6 +288,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(report ? { heardSince: report.from } : {}),
       heardTrades: options.content.all(TRADE_RECIPES),
       onLabel: (localId, entity) => keys.set(localId, entity),
+      onStranger: (localId, source) => strangers.set(localId, source),
       ...(report !== null && counted.place === placeKey ? { quietPresence: counted.keys } : {}),
       onSeen: (seen) => {
         seenNow = seen;
@@ -350,17 +358,17 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         .filter((k) => k.kind === "person" && k.present && !k.phantom)
         .map((k) => k.ref),
     );
-    present = [
-      ...new Set(
-        [...markedPhrases(told.marked)].flatMap(([id, phrases]) => {
-          const entity = keys.get(id);
-          if (entity !== undefined) return here.has(entity) ? phrases : [];
-          // Un desconocido de la escena (sin ref para el narrador): una figura que tiene delante.
-          const label = view.labels.find((l) => l.localId === id);
-          return label !== undefined && !label.known && label.figure !== undefined ? phrases : [];
-        }),
-      ),
-    ];
+    // Un desconocido no tiene ref para el narrador, pero sí la figura que tiene delante.
+    const phrases = [...markedPhrases(told.marked)].flatMap(([id, said]) => {
+      const entity = keys.get(id) ?? strangers.get(id);
+      return entity === undefined ? [] : [[entity, said] as const];
+    });
+    if (thinking === undefined) {
+      narrated = new Map();
+      for (const [entity, said] of phrases)
+        narrated.set(entity, [...(narrated.get(entity) ?? []), ...said]);
+    }
+    present = [...new Set(phrases.flatMap(([entity, said]) => (here.has(entity) ? said : [])))];
     return told.text;
   };
   const intro = await tell(null, life.now);
@@ -379,7 +387,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     pending = null;
     // Lo que el jugador descartó al aclarar no vuelve a ser candidato.
     const gone = new Set(dropped.map((o) => o.ref));
-    const known = knownEntities(life.world, seenNow).filter((k) => !gone.has(k.ref));
+    const known = knownNow().filter((k) => !gone.has(k.ref));
     const made = planFromDraft(draft, {
       actor: life.player,
       source: "player",
@@ -500,7 +508,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const about = aboutTopicText(text);
         if (about === undefined)
           return { text: "¿De quién o de qué? Por ejemplo: qué sé de mi padre." };
-        const ref = topicEntity(about, knownEntities(life.world, seenNow));
+        const ref = topicEntity(about, knownNow());
         if (ref === undefined) return { text: "No sabés nada de eso." };
         return { text: renderAbout(aboutPanel(life.world, ref, about)) };
       }
@@ -517,7 +525,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const about = topicText(text);
         if (about === undefined)
           return { text: "¿Sobre qué querés pensar? Por ejemplo: pensar sobre mi padre." };
-        const ref = topicEntity(about, knownEntities(life.world, seenNow));
+        const ref = topicEntity(about, knownNow());
         if (ref === undefined) return { text: "No sabés lo bastante de eso como para pensarlo." };
         const name = (id: string) =>
           callName(
