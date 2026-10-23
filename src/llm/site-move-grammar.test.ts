@@ -35,3 +35,13 @@ describe("la gramática para moverse adentro de la aldea", () => {
     expect(parseCommand("salir a la plaza")).not.toMatchObject({ kind: "meta" });
   });
 });
+
+describe("andar sin destino", () => {
+  it("caminar o ir «por ahí» es dar una vuelta", () => {
+    expect(placeOf("camino")).toBe("por ahí");
+    expect(placeOf("salgo a caminar")).toBe("afuera");
+    expect(placeOf("paseo un poco")).toBe("por ahí");
+    expect(placeOf("voy por ahí")).toBe("por ahí");
+    expect(placeOf("camino por los alrededores")).toBe("por ahí");
+  });
+});

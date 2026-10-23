@@ -195,8 +195,20 @@ export function withNarratedWords(
   });
 }
 
-/** La plaza y las calles: de acá se va a cualquier casa y al campo. */
-const SQUARE_NAMES = ["la plaza", "la calle", "las calles", "la aldea", "el pueblo"];
+/**
+ * La plaza y las calles: de acá se va a cualquier casa y al campo. El pozo de la aldea está en la
+ * plaza (`villageSpaces`), y «por ahí» sin destino es salir a dar una vuelta por la aldea.
+ */
+const SQUARE_NAMES = [
+  "la plaza",
+  "la calle",
+  "las calles",
+  "la aldea",
+  "el pueblo",
+  "el centro",
+  "el pozo",
+  "por ahí",
+];
 /** Desde adentro, «afuera» es la plaza (las puertas de las casas dan ahí). */
 const OUT_NAMES = ["afuera", "fuera"];
 const HOME_NAMES = ["casa", "mi casa", "adentro", "dentro", "mi cuarto", "el cuarto", "mi hogar"];

@@ -345,7 +345,6 @@ function approachPeople(
 function siteStep(desc: RefDescription, w: Walk, manner: readonly string[]): PlanNode | undefined {
   const spaces = w.ctx.spaces;
   if (spaces === undefined || spaces.length === 0) return undefined;
-  const words = (t: string) => refTokens(t).join(" ");
   const owner = /\bcasa\s+(?:de|del)\s+(.+)$/iu.exec(desc.text);
   let hit: KnownSpace | undefined;
   if (owner) {
@@ -363,8 +362,19 @@ function siteStep(desc: RefDescription, w: Walk, manner: readonly string[]): Pla
     );
     if (r.status === "unique") hit = spaces.find((s) => s.owners.includes(r.chosen));
   } else {
-    const said = words(desc.text);
-    if (said.length > 0) hit = spaces.find((s) => s.names.some((n) => words(n) === said));
+    // «La plaza de la aldea» es la plaza: alcanza con que cada palabra dicha sea de un nombre del
+    // mismo espacio y que alguno de sus nombres esté entero en lo dicho.
+    const said = refTokens(desc.text);
+    if (said.length > 0) {
+      hit = spaces.find((s) => {
+        const names = s.names.map(refTokens);
+        const all = new Set(names.flat());
+        return (
+          said.every((t) => all.has(t)) &&
+          names.some((n) => n.length > 0 && n.every((t) => said.includes(t)))
+        );
+      });
+    }
   }
   if (hit === undefined) return undefined;
   return {

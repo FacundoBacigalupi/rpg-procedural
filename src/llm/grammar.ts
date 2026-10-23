@@ -353,18 +353,26 @@ const VERBS: readonly {
       const said = tidy(
         rest
           .replace(/^\s*a\s+(?:caminar|pasear|dar\s+una\s+vuelta|recorrer|andar)\b/i, " ")
+          .replace(/^\s*un\s+(?:poco|rato)\b/i, " ")
           .replace(MANNER_WORDS, " "),
       );
       const leaving = /^(?:salgo|salir|sal[ií]|salimos)\b/i.test(all);
       const entering = /^(?:me\s+)?(?:entro|entrar)\b/i.test(all);
       const bare = said.length === 0 || /^(?:afuera\s+)?de\s+(?:mi\s+|la\s+)?casa$/i.test(said);
-      const place = bare
-        ? leaving
-          ? "afuera"
-          : entering
-            ? "adentro"
-            : ""
-        : nounPhrase(dropPreposition(said));
+      // «Camino un rato», «voy por ahí»: andar sin destino es dar una vuelta por donde se está.
+      const strolling =
+        /^(?:por\s+)?ah[ií]$|^por\s+(?:ah[ií]|los\s+alrededores)$/i.test(said) ||
+        (said.length === 0 &&
+          /^(?:me\s+)?(?:camino|caminar|paseo|pasear|recorro|recorrer)\b/i.test(all));
+      const place = strolling
+        ? "por ahí"
+        : bare
+          ? leaving
+            ? "afuera"
+            : entering
+              ? "adentro"
+              : ""
+          : nounPhrase(dropPreposition(said));
       if (place.length === 0) return null;
       const r = ref(place, "place");
       ctx.lastPlace = r;
