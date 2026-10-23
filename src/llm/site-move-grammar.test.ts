@@ -45,3 +45,36 @@ describe("andar sin destino", () => {
     expect(placeOf("camino por los alrededores")).toBe("por ahí");
   });
 });
+
+describe("lo que dura un paseo", () => {
+  const lasts = (input: string) =>
+    (
+      parseCommand(input) as unknown as {
+        plan?: { args?: { role: string; duration?: { amount: number; unit: string } }[] };
+      }
+    ).plan?.args?.find((a) => a.role === "for")?.duration;
+
+  it("dar una vuelta dura un rato si no se dice cuánto", () => {
+    for (const t of [
+      "camino",
+      "paseo un poco",
+      "voy por ahí",
+      "voy a dar una vuelta por el pueblo",
+    ]) {
+      expect(lasts(t), t).toEqual({ amount: 15, unit: "minute" });
+    }
+  });
+
+  it("lo que dice el jugador manda y no se lee como lugar", () => {
+    expect(placeOf("camino media hora")).toBe("por ahí");
+    expect(lasts("camino media hora")).toEqual({ amount: 30, unit: "minute" });
+    expect(placeOf("paseo por la plaza durante una hora")).toBe("la plaza");
+    expect(lasts("paseo por la plaza durante una hora")).toEqual({ amount: 1, unit: "hour" });
+  });
+
+  it("ir a un lugar no es un paseo: dura lo que tarda llegar", () => {
+    for (const t of ["vuelvo a casa", "voy a la casa de mi madre", "salgo", "entro"]) {
+      expect(lasts(t), t).toBeUndefined();
+    }
+  });
+});

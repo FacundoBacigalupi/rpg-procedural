@@ -24,13 +24,18 @@ function sources(dir: string, root = dir): ContentSource[] {
 }
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
-const go = (text: string): IntentDraft =>
+const go = (text: string, minutes?: number): IntentDraft =>
   ({
     kind: "act",
     plan: {
       kind: "do",
       verb: "move",
-      args: [{ role: "to", ref: { text, kind: "place", features: [] } }],
+      args: [
+        { role: "to", ref: { text, kind: "place", features: [] } },
+        ...(minutes === undefined
+          ? []
+          : [{ role: "for", duration: { amount: minutes, unit: "minute" } }]),
+      ],
     },
   }) as IntentDraft;
 
@@ -71,6 +76,34 @@ describe("moverse adentro de la aldea (espacios del sitio)", () => {
     expect(w.truth.get(LOCATION, w.player)).toEqual(home);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 300_000);
+
+  it("dar una vuelta estando en la plaza dura lo pedido, no los pasos de un espacio a sí mismo", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const plan = (text: string, minutes?: number) => {
+      const known = knownEntities(w);
+      const made = planFromDraft(go(text, minutes), {
+        actor: w.player,
+        source: "player",
+        catalog: w.catalog,
+        known,
+        clock: w.clock,
+        causes: [{ kind: "state", entity: w.player, key: "intent" }],
+        here: w.truth.get(LOCATION, w.player)?.hex,
+        spaces: knownSpaces(w, known),
+      });
+      if (made.kind !== "plan") throw new Error(`${text}: ${made.kind}`);
+      return made.plan;
+    };
+    life.turn(plan("afuera"), 1);
+    const square = w.truth.get(LOCATION, w.player);
+    expect(square?.space).toBe(VILLAGE_SQUARE);
+    const before = w.scheduler.now;
+    life.turn(plan("por ahí", 15), 1);
+    expect(w.scheduler.now - before).toBeGreaterThanOrEqual(15 * 60);
+    expect(w.scheduler.now - before).toBeLessThan(30 * 60);
+    expect(w.truth.get(LOCATION, w.player)).toEqual(square);
   }, 300_000);
 
   it("la casa de un familiar se nombra por la relación", () => {
