@@ -10,7 +10,6 @@ import {
   type EntityRef,
   type EventId,
   type HouseholdId,
-  type Random,
   Rng,
   type Seed,
 } from "../../core/index.ts";
@@ -90,16 +89,83 @@ function weightsFor(
   return { ids, weights };
 }
 
+/**
+ * Largo mínimo de un nombre (en letras): uno de una o dos («O», «Te») se lee como un error y no
+ * como un nombre, así que se le suma un segundo elemento (play-names).
+ */
+export const MIN_NAME_LETTERS = 3;
+
+/** Reglas de forma de los nombres; las vidas viejas (`legacyShortNames`) usan `minLetters: 0`. */
+export interface NameRules {
+  readonly minLetters: number;
+}
+
+/** Las reglas de nombres de una vida: sin alargar si es el replay de un motor viejo. */
+export function nameRules(o: { readonly legacyShortNames?: boolean }): NameRules {
+  return { minLetters: o.legacyShortNames === true ? 0 : MIN_NAME_LETTERS };
+}
+
+const DEFAULT_RULES: NameRules = { minLetters: MIN_NAME_LETTERS };
+
+function letters(text: string): number {
+  return text.match(/\p{L}/gu)?.length ?? 0;
+}
+
+/** Un adjetivo modifica al sustantivo: "claro agua"; dos sustantivos, en el orden en que salieron. */
+function ordered(language: Language, first: string, second: string): string[] {
+  const adj = (id: string) => language.concepts.get(id)?.pos === "adj";
+  return adj(second) && !adj(first) ? [second, first] : [first, second];
+}
+
+/** Elementos como mucho en un nombre alargado. */
+const MAX_NAME_PARTS = 3;
+
+/**
+ * Si el nombre queda más corto que `rules.minLetters`, le suma elementos de los que valen para la
+ * misma clave (hasta `MAX_NAME_PARTS`). Cada uno sale de su propia rama del azar: los nombres que ya
+ * eran largos no cambian.
+ */
+function lengthened(
+  language: Language,
+  key: Sexed | "family",
+  start: readonly string[],
+  rng: Rng,
+  rules: NameRules,
+) {
+  let parts = [...start];
+  let lexeme = language.compound(parts);
+  while (letters(lexeme.text) < rules.minLetters && parts.length < MAX_NAME_PARTS) {
+    const rest = weightsFor(language, key, new Set(parts));
+    if (rest.ids.length === 0) break;
+    const extra = rest.ids[rng.fork("long", parts.length).weighted(rest.weights)] as string;
+    // El agregado va después de lo que ya había, salvo un adjetivo frente a un solo sustantivo.
+    const only = parts.length === 1 ? parts[0] : undefined;
+    parts = only !== undefined ? ordered(language, only, extra) : [...parts, extra];
+    lexeme = language.compound(parts);
+  }
+  return lexeme;
+}
+
 /** Un nombre de pila: uno o dos elementos con significado de los que se desean para ese chico. */
-function givenOf(language: Language, sex: Sexed, rng: Random) {
+function givenOf(language: Language, sex: Sexed, rng: Rng, rules: NameRules) {
   const { ids, weights } = weightsFor(language, sex);
   const first = ids[rng.weighted(weights)] as string;
-  if (!rng.chance(language.spec.names.compoundGivenChance)) return language.compound([first]);
+  if (!rng.chance(language.spec.names.compoundGivenChance))
+    return lengthened(language, sex, [first], rng, rules);
   const rest = weightsFor(language, sex, new Set([first]));
   const second = rest.ids[rng.weighted(rest.weights)] as string;
-  // Un adjetivo modifica al sustantivo: "claro agua"; dos sustantivos, en el orden en que salieron.
-  const adj = (id: string) => language.concepts.get(id)?.pos === "adj";
-  return language.compound(adj(second) && !adj(first) ? [second, first] : [first, second]);
+  return lengthened(language, sex, ordered(language, first, second), rng, rules);
+}
+
+/** Un apellido de un concepto de `pool`, alargado si queda corto. */
+function drawFamily(
+  language: Language,
+  pool: { ids: string[]; weights: number[] },
+  rng: Rng,
+  rules: NameRules,
+) {
+  const concept = pool.ids[rng.fork("family").weighted(pool.weights)] as string;
+  return { concept, lexeme: lengthened(language, "family", [concept], rng.fork("family"), rules) };
 }
 
 function partOf(
@@ -124,10 +190,16 @@ function partOf(
 const GIVEN_TRIES = 12;
 
 /** Un nombre de pila que no repite los de `used` (la casa), con hasta `GIVEN_TRIES` intentos. */
-function pickGiven(language: Language, sex: Sexed, rng: Rng, used: ReadonlySet<string>) {
-  let given = givenOf(language, sex, rng.fork("given", 0));
+function pickGiven(
+  language: Language,
+  sex: Sexed,
+  rng: Rng,
+  used: ReadonlySet<string>,
+  rules: NameRules,
+) {
+  let given = givenOf(language, sex, rng.fork("given", 0), rules);
   for (let i = 1; i < GIVEN_TRIES && used.has(given.text); i++) {
-    given = givenOf(language, sex, rng.fork("given", i));
+    given = givenOf(language, sex, rng.fork("given", i), rules);
   }
   return given;
 }
@@ -144,6 +216,8 @@ export interface NewbornNameInput {
   readonly raisedBy: AgentId | null;
   /** El nacimiento. */
   readonly event: EventId;
+  /** Reglas de forma; por defecto, las de ahora. */
+  readonly rules?: NameRules;
 }
 
 /**
@@ -151,16 +225,16 @@ export interface NewbornNameInput {
  * significado de la lengua, que la casa no repite. Mismo camino que `seedPersonNames`.
  */
 export function nameNewborn(language: Language, i: NewbornNameInput): PersonName {
+  const rules = i.rules ?? DEFAULT_RULES;
   const inherited = i.father?.parts.find((x) => x.kind === "family");
   let family: NamePart;
   if (inherited) {
     family = { ...inherited, event: i.event, givenBy: null };
   } else {
-    const { ids, weights } = weightsFor(language, "family");
-    const concept = ids[i.rng.fork("family").weighted(weights)] as string;
-    family = partOf("family", language.compound([concept]), null, i.event, "all");
+    const { lexeme } = drawFamily(language, weightsFor(language, "family"), i.rng, rules);
+    family = partOf("family", lexeme, null, i.event, "all");
   }
-  const given = pickGiven(language, i.sex, i.rng, i.used);
+  const given = pickGiven(language, i.sex, i.rng, i.used, rules);
   return {
     language: language.id,
     parts: [family, partOf("given", given, i.raisedBy, i.event, "all")],
@@ -171,7 +245,12 @@ export function nameNewborn(language: Language, i: NewbornNameInput): PersonName
  * Le pone nombre a toda la gente de la aldea (los vivos y los que ya no están). Va por orden de
  * nacimiento: el padre se nombra antes que sus hijos y les pasa el apellido.
  */
-export function seedPersonNames(truth: WorldTruth, language: Language, seed: Seed): void {
+export function seedPersonNames(
+  truth: WorldTruth,
+  language: Language,
+  seed: Seed,
+  rules: NameRules = DEFAULT_RULES,
+): void {
   const people = (truth.ids(PERSON) as AgentId[])
     .flatMap((id) => {
       const p = truth.get(PERSON, id);
@@ -192,8 +271,8 @@ export function seedPersonNames(truth: WorldTruth, language: Language, seed: See
     if (family === undefined) {
       const { ids, weights } = weightsFor(language, "family", families);
       const pool = ids.length > 0 ? { ids, weights } : weightsFor(language, "family");
-      const concept = pool.ids[rng.fork("family").weighted(pool.weights)] as string;
-      family = partOf("family", language.compound([concept]), null, event, "all");
+      const { concept, lexeme } = drawFamily(language, pool, rng, rules);
+      family = partOf("family", lexeme, null, event, "all");
       families.add(concept);
     } else {
       family = { ...family, event, givenBy: null };
@@ -203,7 +282,7 @@ export function seedPersonNames(truth: WorldTruth, language: Language, seed: See
     const used = usedGiven.get(p.household) ?? new Set<string>();
     usedGiven.set(p.household, used);
     const sex: Sexed = p.sex === "female" ? "female" : "male";
-    const given = pickGiven(language, sex, rng, used);
+    const given = pickGiven(language, sex, rng, used, rules);
     used.add(given.text);
 
     truth.set(PERSON_NAME, id, {

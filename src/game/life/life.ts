@@ -266,8 +266,13 @@ export interface LifeSetup {
  * la tabla. La tabla `HEARD` sigue existiendo para el replay. Compatibilidad: un motor anterior a
  * `life-39` enciende `legacyHeardTable`; una vida guardada con `life-38` sigue desde su estado con
  * el límite de replay.
+ *
+ * `life-40`: los nombres de pila y los apellidos de menos de `MIN_NAME_LETTERS` letras («O», «Te»)
+ * se alargan con un segundo elemento de su propia rama del azar (play-names); los que ya eran largos
+ * no cambian. Compatibilidad: un motor anterior a `life-40` enciende `legacyShortNames`; una vida
+ * guardada con `life-39` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-39";
+export const LIFE_ENGINE = "life-40";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -316,6 +321,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 37 ? { legacyNoToldBeliefs: true } : {}),
     ...(n < 38 ? { legacyHeardReaders: true } : {}),
     ...(n < 39 ? { legacyHeardTable: true } : {}),
+    ...(n < 40 ? { legacyShortNames: true } : {}),
   };
 }
 
