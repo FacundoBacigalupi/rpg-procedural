@@ -127,8 +127,13 @@ export function aboutPanel(w: LifeWorld, ref: string, name: string): AboutPanel 
   return {
     kind: "person",
     name,
-    alive: lives === undefined ? "unknown" : lives.value === true ? "alive" : "dead",
-    aliveSurety: lives === undefined ? "vague" : suretyOf(beliefConfidenceAt(lives, now)),
+    // Si lo tiene delante, sabe que vive aunque no haya una creencia guardada.
+    ...(lives === undefined && where.state === "here"
+      ? { alive: "alive" as const, aliveSurety: "sure" as const }
+      : {
+          alive: lives === undefined ? "unknown" : lives.value === true ? "alive" : "dead",
+          aliveSurety: lives === undefined ? "vague" : suretyOf(beliefConfidenceAt(lives, now)),
+        }),
     where,
     book,
     ...(read !== undefined && readSurety > 0

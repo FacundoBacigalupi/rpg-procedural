@@ -334,6 +334,18 @@ const VERBS: readonly {
   build: (rest: string, ctx: Ctx, all: string) => Clause | null;
 }[] = [
   {
+    // Acercarse a alguien o a algo: «me acerco a la vieja», «acercarme al río». Sin decir qué es,
+    // lo resuelve lo que conoce (persona o lugar).
+    re: /^(?:me\s+)?(?:acerco|acercarme|acercarse|acercar|me\s+arrimo|arrimarme)\b/i,
+    build: (rest, ctx) => {
+      const said = nounPhrase(dropPreposition(tidy(rest.replace(MANNER_WORDS, " "))));
+      if (said.length === 0) return null;
+      const r = ref(said, undefined);
+      ctx.lastPlace = r;
+      return { node: act("move", [{ role: "to", ref: r }]) };
+    },
+  },
+  {
     // Moverse: voy, camino, corro, vuelo (sin vuelo en la Fase 1: queda sin verbo).
     re: /^(?:me\s+)?(?:voy|vamos|ir|camino|caminar|corro|correr|vuelvo|volver|entro|entrar|subo|bajo|cruzo|vuelo|volar|salgo|salir|sal[ií]|salimos|paseo|pasear|recorro|recorrer)\b/i,
     build: (rest, ctx, all) => {

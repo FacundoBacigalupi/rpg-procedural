@@ -43,7 +43,7 @@ export function panelsOf(session: Session): Panels {
   });
   const inventory = inventoryPanel(w);
   return {
-    now: renderStatus(session.life.now),
+    now: renderStatus(session.life.now, session.life.world.map.lonDeg),
     hud: hudPanel(w, character, inventory.coins, session.seen()),
     character: renderCharacter(character),
     inventory: renderInventory(inventory),
@@ -52,7 +52,7 @@ export function panelsOf(session: Session): Panels {
     hypotheses: renderHypotheses(hypothesesPanel(w)),
     weather: renderWeather(weatherPanel(w)),
     recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
-    journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
+    journal: renderJournal(session.store.narrations(JOURNAL_SHOWN), session.life.world.map.lonDeg),
     environment: renderEnvironment(
       session.environment(),
       substancePanel(w, session.panelOptions).others,
@@ -76,7 +76,11 @@ export function historyOf(session: Session, before?: number): History {
   const page = session.store.narrationPage(HISTORY_PAGE, before);
   return {
     more: page.more,
-    entries: page.entries.map((e) => ({ seq: e.seq, when: renderStatus(e.tick), text: e.text })),
+    entries: page.entries.map((e) => ({
+      seq: e.seq,
+      when: renderStatus(e.tick, session.life.world.map.lonDeg),
+      text: e.text,
+    })),
   };
 }
 

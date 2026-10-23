@@ -24,6 +24,12 @@ describe("la gramática para moverse adentro de la aldea", () => {
     expect(placeOf("voy a la casa de mi madre")).toBe("la casa de mi madre");
   });
 
+  it("acercarse a alguien o a algo es moverse hasta ahí, sin decir qué es", () => {
+    expect(placeOf("me acerco a la vieja")).toBe("la vieja");
+    expect(placeOf("acercarse a la vieja")).toBe("la vieja");
+    expect(placeOf("me acerco al río")).toBe("el río");
+  });
+
   it("«salir» solo sigue siendo el comando para dejar el juego", () => {
     expect(parseCommand("salir")).toMatchObject({ kind: "meta" });
     expect(parseCommand("salir a la plaza")).not.toMatchObject({ kind: "meta" });

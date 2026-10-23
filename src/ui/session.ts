@@ -354,7 +354,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...new Set(
         [...markedPhrases(told.marked)].flatMap(([id, phrases]) => {
           const entity = keys.get(id);
-          return entity !== undefined && here.has(entity) ? phrases : [];
+          if (entity !== undefined) return here.has(entity) ? phrases : [];
+          // Un desconocido de la escena (sin ref para el narrador): una figura que tiene delante.
+          const label = view.labels.find((l) => l.localId === id);
+          return label !== undefined && !label.known && label.figure !== undefined ? phrases : [];
         }),
       ),
     ];
@@ -365,7 +368,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
   // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
   const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
-  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now)}`;
+  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now, life.world.map.lonDeg)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
   const play = async (
@@ -430,7 +433,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
     ].join("\n");
     store.appendNarration(report.to, told);
-    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}`;
+    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
     if (report.over) {
       return {
         text: `${text}\nTu vida terminó.\n\n${endingOf(life, store, options.epilogue === true)}`,
@@ -526,7 +529,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return { text: await tell(null, life.now, thoughts), present };
       }
       if (/^bit[aá]cora/i.test(text)) {
-        return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
+        return { text: renderJournal(store.narrations(JOURNAL_SHOWN), life.world.map.lonDeg) };
       }
       if (/^(?:abrir el )?(?:inspector|god)\b/i.test(text)) {
         // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
