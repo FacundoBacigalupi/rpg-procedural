@@ -1,10 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { EventId } from "../../core/index.ts";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import type { Percept } from "../../sim/index.ts";
+import { CORE_NORMAL_C, EMOTIONS, type Percept, THERMAL } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { dayPhase, hudPanel } from "./hud.ts";
+import { dayPhase, hudPanel, warmthOf } from "./hud.ts";
 import { Life } from "./life.ts";
 import { characterPanel, inventoryPanel } from "./panels.ts";
 import { playerView } from "./view.ts";
@@ -50,5 +51,56 @@ describe("la barra de arriba (hudPanel)", () => {
     // Bajo techo el cielo no se ve: solo se oye si llueve o nieva.
     if (hud.place.indoor) expect(["unknown", "rain", "snow"]).toContain(hud.sky);
     expect(hudPanel(w, character, 0, [])).toMatchObject({ people: { around: 0, known: 0 } });
+  });
+
+  it("el frío o el calor sale del núcleo, en bandas; sin fila, normal", () => {
+    expect([undefined, 34, 36, 37, 38, 39.5].map(warmthOf)).toEqual([
+      "normal",
+      "freezing",
+      "cold",
+      "normal",
+      "hot",
+      "burning",
+    ]);
+  });
+
+  it("el ánimo es la emoción propia que todavía dura y se apaga con el tiempo", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const character = characterPanel(w);
+    expect(hudPanel(w, character, 0, []).mood).toEqual({
+      feeling: null,
+      strength: 0,
+      burden: null,
+    });
+    w.truth.set(EMOTIONS, w.player, {
+      signals: [
+        {
+          owner: w.player,
+          emotion: "sadness",
+          intensity: 0.9,
+          originEventId: "e:test" as EventId,
+          at: w.scheduler.now,
+          appraisalTheme: "loss",
+        },
+        {
+          owner: w.player,
+          emotion: "joy",
+          intensity: 0.3,
+          originEventId: "e:test" as EventId,
+          at: w.scheduler.now,
+          appraisalTheme: "success",
+        },
+      ],
+    });
+    w.truth.set(THERMAL, w.player, { coreC: CORE_NORMAL_C - 1, at: w.scheduler.now });
+    const hud = hudPanel(w, character, 0, []);
+    expect(hud.mood).toMatchObject({ feeling: "sadness", strength: 2 });
+    expect(hud.warmth).toBe("cold");
+    // Una semana después la tristeza ya no se nota.
+    const old = w.scheduler.now - 7 * 24 * 3600;
+    const signals = w.truth.get(EMOTIONS, w.player)?.signals ?? [];
+    w.truth.set(EMOTIONS, w.player, { signals: signals.map((x) => ({ ...x, at: old })) });
+    expect(hudPanel(w, character, 0, []).mood.feeling).toBeNull();
   });
 });

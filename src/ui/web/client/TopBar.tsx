@@ -1,4 +1,5 @@
-// La barra de arriba: lo básico de un vistazo (hora, cielo, aire, lugar, gente, cuerpo, monedas).
+// La barra de arriba: lo básico de un vistazo (hora, cielo, aire, lugar, gente, cuerpo, ánimo,
+// frío o calor, monedas).
 // Todo viene en bandas desde `Hud`; acá solo se elige ícono y palabra. Cada chip lleva texto además
 // del ícono, y lo grave se marca con borde, no solo con color.
 
@@ -75,6 +76,50 @@ interface Chip {
   readonly alert?: number;
 }
 
+const FEELING: Record<NonNullable<Hud["mood"]["feeling"]>, [string, string, string]> = {
+  fear: ["😨", "miedo", "con mucho miedo"],
+  anger: ["😠", "enojo", "mucho enojo"],
+  sadness: ["😢", "tristeza", "mucha tristeza"],
+  joy: ["😊", "alegría", "mucha alegría"],
+  shame: ["😳", "vergüenza", "mucha vergüenza"],
+  guilt: ["😔", "culpa", "mucha culpa"],
+  envy: ["😒", "envidia", "mucha envidia"],
+  love: ["💗", "cariño", "mucho amor"],
+};
+
+const BURDEN: Record<NonNullable<Hud["mood"]["burden"]>["kind"], [string, string]> = {
+  trauma: ["🌩️", "algo que no se va"],
+  guilt: ["⚖️", "una culpa"],
+  grief: ["🕯️", "duelo"],
+  depression: ["🌫️", "sin ganas de nada"],
+  addiction: ["🫙", "ansia"],
+};
+
+const WARMTH: Record<Exclude<Hud["warmth"], "normal">, [string, string, number]> = {
+  freezing: ["🥶", "te estás helando", 3],
+  cold: ["🥶", "tiritás", 1],
+  hot: ["🥵", "sudás de calor", 1],
+  burning: ["🥵", "el calor te ahoga", 3],
+};
+
+function moodChips(m: Hud["mood"], warmth: Hud["warmth"]): Chip[] {
+  const out: Chip[] = [];
+  if (warmth !== "normal") {
+    const [icon, text, alert] = WARMTH[warmth];
+    out.push({ icon, text, title: "Frío o calor en el cuerpo", alert });
+  }
+  if (m.feeling) {
+    const [icon, faint, strong] = FEELING[m.feeling];
+    out.push({ icon, text: m.strength >= 2 ? strong : faint, title: "Cómo te sentís" });
+  }
+  if (m.burden) {
+    const [icon, text] = BURDEN[m.burden.kind];
+    const alert = m.burden.weight === "crushing" ? 2 : m.burden.weight === "heavy" ? 1 : 0;
+    out.push({ icon, text, title: "Lo que cargás por dentro", alert });
+  }
+  return out;
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -124,7 +169,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
         ))}
       </div>
       <div className="chips body">
-        {bodyChips(hud.body).map((c) => (
+        {[...bodyChips(hud.body), ...moodChips(hud.mood, hud.warmth)].map((c) => (
           <span key={c.title} className={`chip alert-${c.alert ?? 0}`} title={c.title}>
             <span aria-hidden="true">{c.icon}</span>
             {c.text}
