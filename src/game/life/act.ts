@@ -357,6 +357,8 @@ export interface ActOptions {
   readonly legacyNoDeadCounterpartyGuard?: boolean;
   /** Replay de motores anteriores a `life-36`: `give` entrega bienes a un destinatario terminado. */
   readonly legacyNoDeadGiveGuard?: boolean;
+  /** Replay de motores anteriores a `life-41`: `speak` dura 300 s fijos, sea un saludo o una charla. */
+  readonly legacyFixedSpeech?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -1084,6 +1086,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
+    ...(o.legacyFixedSpeech === true ? { fixedSpeech: true } : {}),
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&

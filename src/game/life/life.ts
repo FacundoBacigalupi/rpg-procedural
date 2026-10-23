@@ -271,8 +271,13 @@ export interface LifeSetup {
  * se alargan con un segundo elemento de su propia rama del azar (play-names); los que ya eran largos
  * no cambian. Compatibilidad: un motor anterior a `life-40` enciende `legacyShortNames`; una vida
  * guardada con `life-39` sigue desde su estado con el límite de replay.
+ *
+ * `life-41`: hablar dura según lo que se dice (`ActionDef.speech`, dialogue §2): un saludo ~20 s,
+ * una pregunta ~1 min, palabras sin acto ~1 s por palabra, y la charla sin palabras sigue en los
+ * 300 s del catálogo (play-speak-duration). Compatibilidad: un motor anterior a `life-41` enciende
+ * `legacyFixedSpeech`; una vida guardada con `life-40` sigue desde su estado con el límite de replay.
  */
-export const LIFE_ENGINE = "life-40";
+export const LIFE_ENGINE = "life-41";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -322,6 +327,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 38 ? { legacyHeardReaders: true } : {}),
     ...(n < 39 ? { legacyHeardTable: true } : {}),
     ...(n < 40 ? { legacyShortNames: true } : {}),
+    ...(n < 41 ? { legacyFixedSpeech: true } : {}),
   };
 }
 
