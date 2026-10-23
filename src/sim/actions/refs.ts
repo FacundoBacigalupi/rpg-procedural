@@ -96,6 +96,8 @@ export type ResolvedRef =
 export const PRESENT_BONUS = 0.25;
 /** Dos candidatos a menos de esto del mejor son ambiguos. */
 export const AMBIGUITY_GAP = 0.2;
+/** Las palabras dichas tal cual (sin la raíz): «la nena» prefiere a la nena antes que al nene. */
+export const EXACT_BONUS = 0.3;
 
 /** Palabras con las que se pide más de uno: «los niños», «dos hombres», «todos». */
 const PLURAL_LEAD =
@@ -153,13 +155,17 @@ const STOPWORDS = new Set([
 
 /** Las palabras con contenido de un texto, normalizadas. */
 export function refTokens(text: string): string[] {
+  return plainTokens(text).map(stem);
+}
+
+/** Las palabras sin acentos ni palabras vacías, sin llevarlas a la raíz. */
+function plainTokens(text: string): string[] {
   return text
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .split(/[^a-z0-9ñ]+/u)
-    .filter((w) => w.length > 0 && !STOPWORDS.has(w))
-    .map(stem);
+    .filter((w) => w.length > 0 && !STOPWORDS.has(w));
 }
 
 function stem(w: string): string {
@@ -185,6 +191,12 @@ function bag(e: KnownEntity, byRef: ReadonlyMap<EntityRef, KnownEntity>): Set<st
   return out;
 }
 
+/** Cuántas de las palabras dichas tiene `e` tal cual entre sus nombres y rasgos. */
+function exactHits(e: KnownEntity, said: readonly string[]): number {
+  const words = new Set([...e.names, ...e.features].flatMap(plainTokens));
+  return said.filter((t) => words.has(t)).length;
+}
+
 /** Resuelve una descripción contra lo que el actor conoce. Determinista: no tira. */
 export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]): ResolvedRef {
   const byRef = new Map(known.map((k) => [k.ref, k]));
@@ -201,6 +213,8 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
   }
   const relWord = desc.relation ? refTokens(desc.relation.rel) : [];
   const query = [...new Set([...refTokens(desc.text), ...desc.features.flatMap(refTokens)])];
+  const said = [...new Set([...plainTokens(desc.text), ...desc.features.flatMap(plainTokens)])];
+  const plural = pluralWanted(desc);
 
   const scored: { e: KnownEntity; score: number }[] = [];
   for (const e of known) {
@@ -218,16 +232,25 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
     // Con relación, alcanza la relación; sin ella, algo de la descripción tiene que encajar.
     if (hits === 0 && relTo === undefined) continue;
     const coverage = query.length === 0 ? 1 : hits / query.length;
-    scored.push({ e, score: coverage + (e.present ? PRESENT_BONUS : 0) });
+    // En plural «los niños» abarca a las niñas: el desempate por la palabra exacta es en singular.
+    const exact = plural || said.length === 0 ? 0 : exactHits(e, said) / said.length;
+    scored.push({ e, score: coverage + exact * EXACT_BONUS + (e.present ? PRESENT_BONUS : 0) });
   }
   if (scored.length === 0) return { status: "unknown", desc, candidates: [] };
 
   scored.sort((a, b) => b.score - a.score || compareIds(a.e.ref, b.e.ref));
+  // Una misma persona puede estar dos veces (el familiar recordado y la figura que no reconoció):
+  // queda la que mejor encaja.
+  const seenRefs = new Set<EntityRef>();
+  for (let i = 0; i < scored.length; i++) {
+    const ref = (scored[i] as (typeof scored)[number]).e.ref;
+    if (seenRefs.has(ref)) scored.splice(i--, 1);
+    else seenRefs.add(ref);
+  }
   const candidates = scored.map(({ e, score }) => ({ ref: e.ref, score, via: e.via }));
   const best = (scored[0] as (typeof scored)[number]).score;
   const close = scored.filter((s) => best - s.score < AMBIGUITY_GAP);
   // En plural, los que encajan son el conjunto (hasta el número pedido): no hay a cuál preguntar.
-  const plural = pluralWanted(desc);
   if (plural && close.length > 1) {
     const members = close.slice(0, plural.n ?? close.length).map((c) => c.e.ref);
     return {
@@ -253,7 +276,8 @@ export function clarifyOptions(es: readonly KnownEntity[]): ClarifyOption[] {
       others.some((o) => [...o.names, ...o.features].some((x) => sameWords(x, s)));
     return {
       ref: e.ref,
-      label: e.names[0] ?? e.features[0] ?? e.ref,
+      // «persona» no distingue a nadie: el rótulo es la figura que se ve.
+      label: e.names[0] ?? e.features.find((f) => f !== "persona") ?? e.features[0] ?? e.ref,
       distinguishing: [...e.names, ...e.features].filter((s) => !shared(s)),
       present: e.present,
     };
@@ -272,8 +296,10 @@ export function clarifyQuestion(options: readonly ClarifyOption[]): string {
   const say = (o: ClarifyOption) => {
     const traits = o.distinguishing.filter((d) => d !== o.label).slice(0, 2);
     const base = traits.length > 0 ? `${o.label} (${traits.join(", ")})` : o.label;
-    return o.present ? `${base}, el que tenés delante` : base;
+    return o.present && !allHere ? `${base}, el que tenés delante` : base;
   };
+  // Si todos están delante, decirlo no distingue a ninguno.
+  const allHere = options.every((o) => o.present);
   const parts = options.map(say);
   if (parts.length === 0) return "¿A cuál te referís?";
   if (parts.length === 1) return `¿Te referís a ${parts[0]}?`;

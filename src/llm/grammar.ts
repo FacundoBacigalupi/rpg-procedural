@@ -334,10 +334,37 @@ const VERBS: readonly {
   build: (rest: string, ctx: Ctx, all: string) => Clause | null;
 }[] = [
   {
+    // Acercarse a alguien o a algo: «me acerco a la vieja», «acercarme al río». Sin decir qué es,
+    // lo resuelve lo que conoce (persona o lugar).
+    re: /^(?:me\s+)?(?:acerco|acercarme|acercarse|acercar|me\s+arrimo|arrimarme)\b/i,
+    build: (rest, ctx) => {
+      const said = nounPhrase(dropPreposition(tidy(rest.replace(MANNER_WORDS, " "))));
+      if (said.length === 0) return null;
+      const r = ref(said, undefined);
+      ctx.lastPlace = r;
+      return { node: act("move", [{ role: "to", ref: r }]) };
+    },
+  },
+  {
     // Moverse: voy, camino, corro, vuelo (sin vuelo en la Fase 1: queda sin verbo).
-    re: /^(?:me\s+)?(?:voy|vamos|ir|camino|caminar|corro|correr|vuelvo|volver|entro|entrar|subo|bajo|cruzo|vuelo|volar)\b/i,
+    re: /^(?:me\s+)?(?:voy|vamos|ir|camino|caminar|corro|correr|vuelvo|volver|entro|entrar|subo|bajo|cruzo|vuelo|volar|salgo|salir|sal[ií]|salimos|paseo|pasear|recorro|recorrer)\b/i,
     build: (rest, ctx, all) => {
-      const place = nounPhrase(dropPreposition(rest.replace(MANNER_WORDS, " ")));
+      // «Salgo a caminar por la aldea», «voy a dar una vuelta por el pueblo»: el lugar es el del final.
+      const said = tidy(
+        rest
+          .replace(/^\s*a\s+(?:caminar|pasear|dar\s+una\s+vuelta|recorrer|andar)\b/i, " ")
+          .replace(MANNER_WORDS, " "),
+      );
+      const leaving = /^(?:salgo|salir|sal[ií]|salimos)\b/i.test(all);
+      const entering = /^(?:me\s+)?(?:entro|entrar)\b/i.test(all);
+      const bare = said.length === 0 || /^(?:afuera\s+)?de\s+(?:mi\s+|la\s+)?casa$/i.test(said);
+      const place = bare
+        ? leaving
+          ? "afuera"
+          : entering
+            ? "adentro"
+            : ""
+        : nounPhrase(dropPreposition(said));
       if (place.length === 0) return null;
       const r = ref(place, "place");
       ctx.lastPlace = r;
@@ -563,7 +590,11 @@ function clause(raw: string, ctx: Ctx, catalog: ActionCatalog | undefined): Clau
     }
   }
   const lead = INFINITIVE_LEAD.exec(text);
-  const core = lead ? text.slice(lead[0].length) : text;
+  // «Voy a dar una vuelta por el pueblo» es caminar por el pueblo, no dar algo.
+  const core = (lead ? text.slice(lead[0].length) : text).replace(
+    /^(?:dar|doy)\s+una\s+vuelta\s+(?=por\b)/i,
+    "camino ",
+  );
   for (const v of VERBS) {
     const m = v.re.exec(core);
     if (!m) continue;
@@ -599,7 +630,7 @@ function pieces(text: string): { sep: string; text: string }[] {
 }
 
 const META =
-  /^(?:guardar|cargar|salir|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|cielo|clima|pron[oó]stico|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+  /^(?:guardar|cargar|salir(?=\s*$)|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|cielo|clima|pron[oó]stico|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const DIVINER =

@@ -3,7 +3,10 @@
     "id": "move",
     "name": "moverse",
     "domain": "movement",
-    "args": [{ "role": "to", "kind": "place", "required": true }],
+    "args": [
+      { "role": "to", "kind": "place", "required": true },
+      { "role": "space", "kind": "text", "required": false }
+    ],
     "manners": [
       { "id": "careful", "duration": 1.3, "ease": 0.5 },
       { "id": "fast", "duration": 0.7, "ease": -0.5, "emissions": 1.5 },

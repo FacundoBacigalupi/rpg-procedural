@@ -23,6 +23,7 @@ import {
   ledgerUnit,
   logistic,
   type PlaceRef,
+  type SpaceKey,
 } from "../../core/index.ts";
 import {
   defectsOf,
@@ -99,6 +100,15 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly destination?: number | undefined;
   /** El actor está detrás de una puerta trabada: de ahí no sale caminando (settlements §7). */
   readonly shut?: boolean | undefined;
+  /**
+   * `move` hacia un espacio del sitio (de la casa a la plaza, a la casa del vecino): al llegar al
+   * hex queda en `space`. Si ya está en ese hex es un paso de metros, sin rumbo que perder: no se
+   * tira, tarda `seconds` y solo lo frena no poder caminar o la puerta trabada (`leaving`: sale de
+   * un cuarto).
+   */
+  readonly withinSite?:
+    | { readonly space: SpaceKey; readonly seconds: number; readonly leaving: boolean }
+    | undefined;
   /** Cuánto más cuesta caminar hoy por el tiempo (1 = seco y templado; `walkingFactor`). */
   readonly walkFactor?: number | undefined;
   /** Qué tan fácil es torcer el rumbo hoy (1 = día claro; `bearingFactor`) y qué hitos se ven. */
@@ -253,6 +263,8 @@ export type VerbEffect =
       readonly stumbled: boolean;
       /** La puerta trabada no lo dejó salir: se queda donde estaba. */
       readonly blocked?: "jammed_door";
+      /** El espacio del sitio donde quedó (la plaza, una casa), si iba a uno. */
+      readonly space?: SpaceKey;
       /** Terminó un tramo bien y sigue hacia `to`: la misma hoja del plan sigue en el próximo. */
       readonly onTheWay?: boolean;
       /** Se torció del rumbo sin notarlo: el hex donde cree estar (`reached` es donde está). */
@@ -786,8 +798,27 @@ const move: Resolver = (c) => {
   });
   // El tramo termina donde termina el camino recortado; si no es el destino, sigue.
   const legEnd = path.length === 0 ? from : (path[path.length - 1] as number);
+  const within = c.input.withinSite;
   const at = (hex: number): StateChange[] =>
-    hex === from ? [] : [setComponent(LOCATION, c.input.actor.id, { hex })];
+    within !== undefined && hex === to
+      ? [setComponent(LOCATION, c.input.actor.id, { hex, space: within.space })]
+      : hex === from
+        ? []
+        : [setComponent(LOCATION, c.input.actor.id, { hex })];
+
+  if (within !== undefined && to === from) {
+    // Unos pasos adentro del sitio: no hay rumbo que perder ni tirada que valga.
+    if (c.input.shut === true && within.leaving) {
+      return { effect: { ...effect(from, false), blocked: "jammed_door" }, seconds: 10 };
+    }
+    if (roll.unmet) return { effect: effect(from, false), seconds: within.seconds };
+    return {
+      effect: { ...effect(from, false), space: within.space },
+      seconds: within.seconds,
+      changes: at(from),
+      verdict: { outcome: "success", failure: null, believed: "success" },
+    };
+  }
 
   if (c.input.shut === true && path.length > 0) {
     // Quiere salir y la puerta no cede: no hay tirada que valga, forcejea un rato y sigue adentro.

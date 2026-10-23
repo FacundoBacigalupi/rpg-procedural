@@ -16,6 +16,7 @@ import {
   type PlanetClock,
   Rng,
   type Seed,
+  type SpaceKey,
   type Tick,
 } from "../../core/index.ts";
 import {
@@ -146,6 +147,7 @@ import {
   skyLight,
   skyObserverOf,
   spaceLight,
+  spaceReach,
   standardize,
   TASTES_OF,
   type TapeEntry,
@@ -509,6 +511,33 @@ function placesOf(truth: ReadonlyWorldTruth) {
     const place = truth.get(PLACE, id);
     return place ? [{ id, place }] : [];
   });
+}
+
+/** Paso de caminante adentro de un sitio (m/s) y lo que tarda como mínimo cruzar una puerta. */
+const SITE_WALK_MS = 1.2;
+const SITE_MIN_SECONDS = 10;
+
+/**
+ * Ir a un espacio del sitio (`move` con `space`): cuánto tarda desde donde está (los metros del
+ * grafo a paso de caminante) y si sale de un cuarto. Desde el campo abierto del hex, un minuto.
+ * `undefined` si el espacio ya no existe (la casa se cayó).
+ */
+function siteWalk(
+  graph: SpaceGraph,
+  at: { hex: number; space?: SpaceKey | undefined } | undefined,
+  to: SpaceKey,
+): { space: SpaceKey; seconds: number; leaving: boolean } | undefined {
+  const target = graph.spaces.find((s) => s.key === to);
+  if (!target) return undefined;
+  const from = at?.space === undefined ? undefined : graph.spaces.find((s) => s.key === at.space);
+  const leaving = from?.indoor === true && from.key !== to;
+  if (!from || at?.hex !== target.hex) return { space: to, seconds: 60, leaving };
+  const meters = spaceReach(graph, from.key, to, "sound").meters;
+  return {
+    space: to,
+    seconds: Math.round(Math.max(SITE_MIN_SECONDS, meters / SITE_WALK_MS)),
+    leaving,
+  };
 }
 
 /** Qué tan fácil es torcer el rumbo ahora y qué hitos (la aldea, el agua) se distinguen (travel §11.3). */
@@ -967,7 +996,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       "entity" in a && a.entity.startsWith("agent:") ? [[a.role, partyOf(a.entity)]] : [],
     ),
   );
-  const destArg = node.args.find((a) => "entity" in a && a.entity.startsWith("place:"));
+  // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. El
+  // asentamiento cuenta como destino solo con un espacio del sitio (el jugador yendo a la plaza o
+  // a una casa): los `move` de los NPC a la aldea siguen sin caminar hasta medir ese cambio
+  // (ROADMAP play-npc-settlement-walk), que cambia los hashes.
+  const spaceArg = node.args.find((a) => a.role === "space");
+  const destArg = node.args.find(
+    (a) =>
+      "entity" in a &&
+      (a.entity.startsWith("place:") ||
+        (spaceArg !== undefined && a.entity.startsWith("settlement:"))),
+  );
   const destination =
     destArg && "entity" in destArg
       ? nearestHex(
@@ -1033,6 +1072,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     destination,
     shut:
       def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
+    withinSite:
+      def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
+        ? siteWalk(o.spaces, truth.get(LOCATION, me), spaceArg.text as SpaceKey)
+        : undefined,
     walkFactor:
       def.resolver === "move"
         ? walkingFactor(weatherAt(o.map, o.clock, o.seed, ctx.now)) *

@@ -300,7 +300,7 @@ describe("parseIntent", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.problems.join("\n")).toMatch(/unknown verb "fly"/);
-      expect(r.problems.join("\n")).toMatch(/move has no role "where" \(roles: to\)/);
+      expect(r.problems.join("\n")).toMatch(/move has no role "where" \(roles: to, space\)/);
     }
     expect(m.calls[1]?.messages.at(-1)?.content).toMatch(/unknown verb "fly"/);
 

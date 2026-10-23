@@ -7,6 +7,7 @@ import type { AddressInfo } from "node:net";
 import {
   bookPanel,
   characterPanel,
+  hudPanel,
   hypothesesPanel,
   inventoryPanel,
   peoplePanel,
@@ -35,22 +36,23 @@ import type { History, Panels, SayResponse, WebState } from "./api.ts";
 /** Los paneles del personaje con el texto de la CLI, sin números de la verdad (player-loop §9). */
 export function panelsOf(session: Session): Panels {
   const w = session.life.world;
+  const character = characterPanel(w, {
+    substances: true,
+    ...session.panelOptions,
+    ...(session.nickname ? { reputation: true } : {}),
+  });
+  const inventory = inventoryPanel(w);
   return {
-    now: renderStatus(session.life.now),
-    character: renderCharacter(
-      characterPanel(w, {
-        substances: true,
-        ...session.panelOptions,
-        ...(session.nickname ? { reputation: true } : {}),
-      }),
-    ),
-    inventory: renderInventory(inventoryPanel(w)),
+    now: renderStatus(session.life.now, session.life.world.map.lonDeg),
+    hud: hudPanel(w, character, inventory.coins, session.seen()),
+    character: renderCharacter(character),
+    inventory: renderInventory(inventory),
     book: renderBook(bookPanel(w)),
     people: renderPeople(peoplePanel(w)),
     hypotheses: renderHypotheses(hypothesesPanel(w)),
     weather: renderWeather(weatherPanel(w)),
     recap: renderRecap(recapOf(w)) || "No hay mucho que recordar todavía.",
-    journal: renderJournal(session.store.narrations(JOURNAL_SHOWN)),
+    journal: renderJournal(session.store.narrations(JOURNAL_SHOWN), session.life.world.map.lonDeg),
     environment: renderEnvironment(
       session.environment(),
       substancePanel(w, session.panelOptions).others,
@@ -74,7 +76,11 @@ export function historyOf(session: Session, before?: number): History {
   const page = session.store.narrationPage(HISTORY_PAGE, before);
   return {
     more: page.more,
-    entries: page.entries.map((e) => ({ seq: e.seq, when: renderStatus(e.tick), text: e.text })),
+    entries: page.entries.map((e) => ({
+      seq: e.seq,
+      when: renderStatus(e.tick, session.life.world.map.lonDeg),
+      text: e.text,
+    })),
   };
 }
 
@@ -107,6 +113,7 @@ export function apiHandler(session: Session) {
     if (path === "/api/state" && req.method === "GET") {
       const state: WebState = {
         opening: session.opening,
+        openingPeople: session.openingPeople,
         history: historyOf(session),
         ...panelsOf(session),
       };
@@ -145,6 +152,7 @@ export function apiHandler(session: Session) {
         const body: SayResponse = {
           text: reply.text,
           end: reply.end ?? null,
+          present: reply.present ?? [],
           ...panelsOf(session),
         };
         send(res, 200, body);

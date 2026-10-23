@@ -15,6 +15,7 @@ import {
   advance,
   attempt,
   type CursorEnv,
+  clarifyQuestion,
   FRESH_CURSOR,
   type IntentDraft,
   type KnownEntity,
@@ -312,7 +313,10 @@ describe("referencias", () => {
 
   it("ambigua: arma la aclaración con lo que distingue a cada uno", () => {
     const away = village.map((k) => ({ ...k, present: false }));
-    const r = resolveRef(desc("la vieja"), away);
+    // «la vieja» prefiere a la vieja; «el viejo» y «la vieja» solo empatan sin la palabra exacta.
+    const one = resolveRef(desc("la vieja"), away);
+    expect(one.status === "unique" && one.chosen).toBe(lin);
+    const r = resolveRef(desc("viejos"), away);
     expect(r.status).toBe("ambiguous");
     if (r.status !== "ambiguous") return;
     expect(r.clarify.map((c) => c.ref)).toEqual([wu, lin]);
@@ -343,6 +347,23 @@ describe("referencias", () => {
     expect(one.status).toBe("unique");
     expect(resolveRef(desc("el niño"), strangers).status).toBe("ambiguous");
     expect(resolveRef(desc("los gatos"), strangers).status).toBe("unknown");
+  });
+
+  it("la palabra exacta desempata nena y nene, y la pregunta rotula por la figura", () => {
+    const girl = "agent:104" as EntityRef;
+    const kids: KnownEntity[] = [
+      known(girl, [], { features: ["persona", "niña", "nena"], present: true }),
+      known(kid1, [], { features: ["persona", "niño", "nene"], present: true }),
+    ];
+    const r = resolveRef(desc("la nena"), kids);
+    expect(r.status === "unique" && r.chosen).toBe(girl);
+    const both = resolveRef(desc("el niño"), strangers);
+    expect(both.status).toBe("ambiguous");
+    if (both.status !== "ambiguous") return;
+    expect(both.clarify.map((c) => c.label)).toEqual(["niño", "niño"]);
+    const q = clarifyQuestion(both.clarify);
+    expect(q).not.toContain("persona");
+    expect(q).not.toContain("tenés delante");
   });
 
   it("el plural con relación conserva el conjunto filtrado por parentesco", () => {
@@ -554,7 +575,7 @@ describe("del borrador al plan", () => {
   it("ambiguo pide aclaración; desconocido lo dice; sin plan no inventa", () => {
     const away = village.map((k) => ({ ...k, present: false }));
     const amb = planFromDraft(
-      act({ kind: "do", verb: "speak", args: [{ role: "to", ref: desc("la vieja") }] }),
+      act({ kind: "do", verb: "speak", args: [{ role: "to", ref: desc("viejos") }] }),
       { ...ctx, known: away },
     );
     expect(amb.kind).toBe("clarify");

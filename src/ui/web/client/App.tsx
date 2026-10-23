@@ -2,8 +2,17 @@
 // personaje, el inventario y la bitácora. Todo el texto lo arma el servidor desde la `PlayerView`;
 // acá no se interpreta nada del mundo.
 
-import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { History, Panels, SayResponse, WebState } from "../api.ts";
+import { Scene, themeOf } from "./Scene.tsx";
+import { TopBar } from "./TopBar.tsx";
 
 interface Line {
   readonly who: "you" | "world";
@@ -11,6 +20,46 @@ interface Line {
   /** De la narración guardada: cuándo fue y su lugar en la bitácora. */
   readonly when?: string;
   readonly seq?: number;
+  /** Cómo nombra el texto a las personas que el personaje tiene delante. */
+  readonly people?: readonly string[];
+}
+
+/** «Un viejo» → «el viejo»: cómo se lo nombra para hablarle. */
+function addressed(words: string): string {
+  const lower = words.charAt(0).toLowerCase() + words.slice(1);
+  return lower.replace(/^una /u, "la ").replace(/^un /u, "el ");
+}
+
+/** El texto con las personas presentes pintadas; un clic en una escribe «hablo con …». */
+function Narration(props: {
+  text: string;
+  people: readonly string[];
+  onPick(words: string): void;
+}) {
+  const names = [...props.people].filter((n) => n !== "").sort((a, b) => b.length - a.length);
+  if (names.length === 0) return <>{props.text}</>;
+  const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const parts = props.text.split(new RegExp(`(${escaped.join("|")})`, "u"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: partes fijas de un texto que no cambia
+            key={i}
+            type="button"
+            className="person"
+            title={`Hablar con ${addressed(part)}`}
+            onClick={() => props.onPick(addressed(part))}
+          >
+            {part}
+          </button>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
 }
 
 const fromHistory = (h: History): Line[] =>
@@ -27,6 +76,22 @@ const TABS = [
   ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;
+
+/** Ancho de la columna de paneles: lo elige el jugador arrastrando el borde y queda en el navegador. */
+const ASIDE_KEY = "aside-width";
+const ASIDE_MIN = 240;
+const ASIDE_MAX = 900;
+const clampAside = (px: number) =>
+  Math.round(Math.min(Math.max(px, ASIDE_MIN), Math.min(ASIDE_MAX, window.innerWidth - 320)));
+
+function savedAside(): number {
+  try {
+    const n = Number(localStorage.getItem(ASIDE_KEY));
+    return Number.isFinite(n) && n > 0 ? clampAside(n) : 360;
+  } catch {
+    return 360;
+  }
+}
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -50,15 +115,44 @@ export function App() {
   const [more, setMore] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   // Al subir se piden entradas más viejas: se recuerda la altura para que la vista no salte.
   const prepended = useRef<number | null>(null);
   const loading = useRef(false);
+  const [aside, setAside] = useState(savedAside);
+
+  function dragAside(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => setAside(clampAside(window.innerWidth - ev.clientX));
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      setAside((w) => {
+        try {
+          localStorage.setItem(ASIDE_KEY, String(w));
+        } catch {
+          // sin almacenamiento el ancho dura lo que la página
+        }
+        return w;
+      });
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+  }
 
   useEffect(() => {
     call<WebState>("/api/state")
       .then((s) => {
         const past = fromHistory(s.history);
-        setLines(past.length > 0 ? past : [{ who: "world", text: s.opening }]);
+        // La última narración guardada es la escena de ahora: lleva a quienes nombra la apertura.
+        const last = past[past.length - 1];
+        setLines(
+          last
+            ? [...past.slice(0, -1), { ...last, people: s.openingPeople }]
+            : [{ who: "world", text: s.opening, people: s.openingPeople }],
+        );
         setMore(s.history.more);
         setPanels(s);
       })
@@ -107,7 +201,7 @@ export function App() {
     setLines((l) => [...l, { who: "you", text: shown }]);
     try {
       const r = await call<SayResponse>(path, body);
-      setLines((l) => [...l, { who: "world", text: r.text }]);
+      setLines((l) => [...l, { who: "world", text: r.text, people: r.present }]);
       setPanels(r);
       if (r.end !== null) setOver(true);
     } catch (err) {
@@ -118,9 +212,13 @@ export function App() {
   }
 
   return (
-    <div className="layout">
+    <div
+      className={`layout phase-${panels?.hud.phase ?? "day"}`}
+      style={{ ...themeOf(panels?.hud), gridTemplateColumns: `minmax(0, 1fr) 6px ${aside}px` }}
+    >
+      <Scene hud={panels?.hud} />
       <main className="chat">
-        <header>{panels?.now ?? "…"}</header>
+        <TopBar hud={panels?.hud} now={panels?.now ?? "…"} />
         <div
           className="lines"
           ref={box}
@@ -133,7 +231,14 @@ export function App() {
             // biome-ignore lint/suspicious/noArrayIndexKey: las líneas nuevas van al final y las viejas al principio, sin reordenar
             <p key={l.seq ?? `n${i}`} className={l.who}>
               {l.when && <span className="when">{`— ${l.when}\n`}</span>}
-              {l.text}
+              <Narration
+                text={l.text}
+                people={l.people ?? []}
+                onPick={(who) => {
+                  setInput(`hablo con ${who}`);
+                  field.current?.focus();
+                }}
+              />
             </p>
           ))}
           <div ref={bottom} />
@@ -166,6 +271,7 @@ export function App() {
         )}
         <form onSubmit={submit}>
           <input
+            ref={field}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (ayuda)"}
@@ -176,6 +282,22 @@ export function App() {
           </button>
         </form>
       </main>
+      {/* biome-ignore lint/a11y/useSemanticElements: un <hr> no toma foco ni arrastre; es un separador movible */}
+      <div
+        className="splitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ancho de los paneles"
+        aria-valuenow={aside}
+        aria-valuemin={ASIDE_MIN}
+        aria-valuemax={ASIDE_MAX}
+        tabIndex={0}
+        onPointerDown={dragAside}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") setAside((w) => clampAside(w + 24));
+          if (e.key === "ArrowRight") setAside((w) => clampAside(w - 24));
+        }}
+      />
       <aside>
         <nav>
           {TABS.map(([id, name]) => (

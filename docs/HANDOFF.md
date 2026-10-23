@@ -36,7 +36,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 **Un solo trabajo pesado a la vez.**
 - **Por commit:** typecheck, lint y tests del módulo tocado.
 - **Por lote (coordinador):** además tests afectados sobre el código integrado; si cambia RNG/hashes o se agrega un proceso, sumar `src/game`, `src/sim/scheduler` y `src/persistence`.
-- **`npm run check` completo** (≈17 min en la última corrida) solo al certificar un lote de integración, cerrar una fase o tras cambios transversales; no por cada commit ya cubierto.
+- **La suite completa corre en el CI de GitHub** en cada PR a `develop` y a `main`, con los archivos en paralelo (`CI=true` en `vitest.config.ts`). En la PC local va de a uno (más de 1 h 45 desde #681), así que localmente no se corre entera: typecheck, lint y tests dirigidos (los del módulo y, si puede cambiar el comportamiento, los de hash fijo, `state-hash`, replay y `engine-compat`). El PR se mergea cuando el CI da verde.
 - **Docs solos:** diff, enlaces y LF. **Núcleo puro nuevo sin consumidores** (sin efectos al cargar, procesos, RNG ni cambios de estado/contenido): typecheck, lint y tests del módulo.
 - **LLM real** solo si el cambio toca parser, narración o sus contratos. Corridas largas (calibración, conservación, rendimiento) solo si el criterio de cierre las pide.
 - Si una corrida amplia falla solo por un fixture y el arreglo toca solo ese fixture: registrar ambos resultados y repetir los archivos afectados y checks estáticos; no presentar la corrida original como aprobada.
@@ -69,6 +69,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **Un solo proceso pesado a la vez** (pedido del usuario, 2026-10-21): la PC se apagó sola con tres agentes corriendo `npm run check` en paralelo. Un agente/lote a la vez; no lanzar `check` ni vitest completo en simultáneo.
 
 ## 8. Estado de las líneas de trabajo
+**Lote play-web (2026-10-23, rama `feat/web-hud-ambient`):** primeros ítems de «Jugable primero» del ROADMAP: `play-quiet-presence` (la narración no repite a los presentes quietos) y `play-web-hud` (barra de arriba, fondo borroso del entorno, colores por la luz, paneles redimensionables). Después, en la misma rama: `play-site-move` (moverse entre espacios del sitio: afuera, plaza, casa, casa de X), `play-world-family` (`--world`, la familia se elige al empezar) más color en el fondo (`play-scene-more` parcial) y `play-people-addressable` (hablarle a quien se ve sin reconocerlo, personas presentes en color y con clic en la web, HUD que cuenta a la familia). Queda anotado `play-recognition-flicker`. Siguen `play-speak-duration` y el resto de «Jugable primero».
+
 **Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
 
 **Lote mortal-processes-wire (2026-10-21, rama `feat/mortal-processes-wire`):** `mortalTech` opt-in (siembra `tech.seeded`, enseñanza `life.tech-teach`, cosecha con `yieldFactor`); apagado conserva el hash. Ver ROADMAP `mortal-processes-wire`; pendientes `-profile`, `-act`, `-world`.

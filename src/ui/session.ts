@@ -37,6 +37,7 @@ import {
   hypothesesPanel,
   inventoryPanel,
   knownEntities,
+  knownSpaces,
   LIFE_ENGINE,
   Life,
   type LifeSetup,
@@ -47,6 +48,7 @@ import {
   panelOptionsOf,
   peoplePanel,
   playerView,
+  presenceKey,
   type ResumeAnchor,
   recapOf,
   renderChronicle,
@@ -62,6 +64,7 @@ import {
   topicText,
   WORLD_LEXICON,
   weatherPanel,
+  worldFamilyOf,
 } from "../game/index.ts";
 import {
   ActionWordBook,
@@ -70,6 +73,7 @@ import {
   DEFAULT_NARRATION,
   EMPTY_MEMORY,
   LlmJobs,
+  markedPhrases,
   type NarrationMemory,
   narrate,
   narrationRequest,
@@ -172,6 +176,8 @@ export interface Reply {
   readonly end?: "quit" | "dead";
   /** Pasó tiempo en el mundo: los paneles de la web se vuelven a pedir. */
   readonly turn?: boolean;
+  /** Cómo nombra el texto a las personas que tiene delante (la web las pinta y deja hablarles). */
+  readonly present?: readonly string[];
 }
 
 export interface Session {
@@ -179,6 +185,8 @@ export interface Session {
   readonly store: LifeStore;
   /** Lo que se muestra al abrir: los avisos y la escena. */
   readonly opening: string;
+  /** Las personas presentes que nombra la apertura (como `Reply.present`). */
+  readonly openingPeople: readonly string[];
   say(line: string): Promise<Reply>;
   /** Las opciones sugeridas de ahora (`all`: todas, para «ver más»). */
   suggested(all?: boolean): Suggestion[];
@@ -186,14 +194,13 @@ export interface Session {
   choose(id: string): Promise<Reply>;
   /** Lo que se nota del lugar ahora, con la habituación al día. */
   environment(): EnvironmentItem[];
+  /** Los percepts de personas de la última escena (lo que el personaje ve o nota ahora). */
+  seen(): readonly Percept[];
   /** Si el apodo con lugar está encendido (`--nickname`): paneles con fama y apodo, narración que lo cita. */
   readonly nickname: boolean;
   /** Las opciones de paneles de las opciones opt-in activas de la vida (residuo, ansia local, objetos); vacío por defecto. */
   readonly panelOptions: ReturnType<typeof panelOptionsOf>;
 }
-
-/** La familia metafísica del mundo (hoy solo xianxia; la elige el seed cuando haya más). */
-const WORLD_FAMILY = "xianxia";
 
 /** La clave de `meta` donde se guarda la memoria de continuidad de la narración. */
 const MEMORY_META = "narration_memory";
@@ -214,12 +221,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     options.llm ?? new LlmJobs({ config: offlineLlmConfig(), clientFor: () => undefined });
   const catalog = life.world.catalog;
   // Las opciones opt-in que la vida tiene activas (en el setup guardado) llegan a los paneles.
-  const panelOptions = panelOptionsOf(
-    optionsOf((store.getMeta("setup") as LifeSetup | undefined) ?? options.setup),
-  );
+  const setup = (store.getMeta("setup") as LifeSetup | undefined) ?? options.setup;
+  const panelOptions = panelOptionsOf(optionsOf(setup));
   const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
   const ambience = options.content.all(AMBIENCE);
-  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), WORLD_FAMILY);
+  const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), worldFamilyOf(setup.game));
   const recent: string[] = [];
   // «Me contengo» suelto (skills §9): mientras esté puesto, los planes que golpean van en modo
   // `hold_back`. Se manda en el borrador (así el replay lo ve igual) y se guarda con la vida, fuera
@@ -242,29 +248,25 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
+  // Cómo nombró la última narración a quienes tiene delante (`Reply.present`).
+  let present: readonly string[] = [];
   // La memoria de continuidad (narration §6) vive con la vida, fuera del estado de la sim: es solo
   // texto que el jugador ya leyó, así que no entra en el hash ni en el replay.
   const savedMemory = store.getMeta(MEMORY_META) as NarrationMemory | undefined;
   let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
   // Quienes ve ahora, para que «los niños» alcance a quienes la escena mostró (actions §4).
   let seenNow: readonly Percept[] = [];
+  // Quienes ya se contaron y dónde: si siguen ahí quietos, la escena siguiente no los repite.
+  let counted: { place: string | undefined; keys: ReadonlySet<string> } = {
+    place: undefined,
+    keys: new Set(),
+  };
   const tell = async (
     report: TurnReport | null,
     at: Tick,
     thinking?: readonly ThoughtInput[],
   ): Promise<string> => {
     const keys = new Map<string, string>();
-    const view = playerView(life.world, report?.steps ?? [], {
-      intro: report === null && thinking === undefined,
-      ...(options.nickname ? { nickname: true } : {}),
-      ...(thinking ? { thinking } : {}),
-      ...(report ? { heardSince: report.from } : {}),
-      heardTrades: options.content.all(TRADE_RECIPES),
-      onLabel: (localId, entity) => keys.set(localId, entity),
-      onSeen: (seen) => {
-        seenNow = seen;
-      },
-    });
     const loc = life.world.truth.get(LOCATION, life.player);
     const placeKey =
       loc === undefined
@@ -272,6 +274,20 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         : loc.space !== undefined
           ? `space:${loc.space}`
           : `hex:${loc.hex}`;
+    const view = playerView(life.world, report?.steps ?? [], {
+      intro: report === null && thinking === undefined,
+      ...(options.nickname ? { nickname: true } : {}),
+      ...(thinking ? { thinking } : {}),
+      ...(report ? { heardSince: report.from } : {}),
+      heardTrades: options.content.all(TRADE_RECIPES),
+      onLabel: (localId, entity) => keys.set(localId, entity),
+      ...(report !== null && counted.place === placeKey ? { quietPresence: counted.keys } : {}),
+      onSeen: (seen) => {
+        seenNow = seen;
+      },
+    });
+    if (thinking === undefined)
+      counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)) };
     // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).
     const hazy = new Set<string>(
       (view.thoughts ?? []).flatMap((t) => (t.hazy && t.about !== undefined ? [t.about] : [])),
@@ -329,13 +345,30 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       store.setMeta(MEMORY_META, memory);
     }
     if (thinking === undefined) scene = told.text;
+    const here = new Set<string>(
+      knownEntities(life.world, seenNow)
+        .filter((k) => k.kind === "person" && k.present && !k.phantom)
+        .map((k) => k.ref),
+    );
+    present = [
+      ...new Set(
+        [...markedPhrases(told.marked)].flatMap(([id, phrases]) => {
+          const entity = keys.get(id);
+          if (entity !== undefined) return here.has(entity) ? phrases : [];
+          // Un desconocido de la escena (sin ref para el narrador): una figura que tiene delante.
+          const label = view.labels.find((l) => l.localId === id);
+          return label !== undefined && !label.known && label.figure !== undefined ? phrases : [];
+        }),
+      ),
+    ];
     return told.text;
   };
   const intro = await tell(null, life.now);
+  const openingPeople = present;
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
   // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
   const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
-  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now)}`;
+  const opening = `${notices.join("")}${back === "" ? "" : `${back}\n`}${intro}\n${renderStatus(life.now, life.world.map.lonDeg)}`;
 
   /** Valida el borrador contra lo que el personaje cree, lo juega y cuenta qué pasó. */
   const play = async (
@@ -355,6 +388,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       clock: life.world.clock,
       causes: [{ kind: "state", entity: life.player, key: "intent" }],
       here: life.world.truth.get(LOCATION, life.player)?.hex,
+      spaces: knownSpaces(life.world, known),
     });
     if (made.kind === "clarify") {
       // La pregunta es del personaje: con lo que percibió de cada candidato (actions §4).
@@ -399,7 +433,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(report.interrupt ? [renderInterrupt(report.interrupt)] : []),
     ].join("\n");
     store.appendNarration(report.to, told);
-    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to)}`;
+    const text = `${told}\n${elapsed(report.to - report.from)}\n${renderStatus(report.to, life.world.map.lonDeg)}`;
     if (report.over) {
       return {
         text: `${text}\nTu vida terminó.\n\n${endingOf(life, store, options.epilogue === true)}`,
@@ -407,7 +441,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         turn: true,
       };
     }
-    return { text, turn: true };
+    return { text, turn: true, present };
   };
 
   const say = async (line: string): Promise<Reply> => {
@@ -492,10 +526,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const result = thinkOn(life.world, options.content.all(INFERENCE_RULES), ref);
         const thoughts = thoughtInputsOf(result);
         if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
-        return { text: await tell(null, life.now, thoughts) };
+        return { text: await tell(null, life.now, thoughts), present };
       }
       if (/^bit[aá]cora/i.test(text)) {
-        return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
+        return { text: renderJournal(store.narrations(JOURNAL_SHOWN), life.world.map.lonDeg) };
       }
       if (/^(?:abrir el )?(?:inspector|god)\b/i.test(text)) {
         // Mirar la verdad marca la vida (player-loop §11, tooling §5); el estado no cambia.
@@ -542,10 +576,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     life,
     store,
     opening,
+    openingPeople,
     say,
     suggested,
     choose,
     environment,
+    seen: () => seenNow,
     nickname: options.nickname === true,
     panelOptions,
   };

@@ -62,6 +62,34 @@ describe("lo que el personaje ve se puede nombrar al escribir", () => {
     const unknownParent = { ...perceivedParent, fields: { figure: perceivedFigure } };
     const remembered = knownEntities(w).find((k) => k.ref === parent);
     expect(knownEntities(w, [unknownParent]).find((k) => k.ref === parent)).toEqual(remembered);
+    // Sin reconocerla igual se le puede hablar por lo que se ve («la mujer»): una figura aparte,
+    // sin la relación, y una sola persona al resolver.
+    const asFigure = knownEntities(w, [unknownParent]).filter((k) => k.ref === parent)[1];
+    expect(asFigure).toMatchObject({ names: [], relations: [], present: true });
+    expect(asFigure?.features).toContain("mujer");
+    const spoken = planFromDraft(
+      {
+        kind: "act",
+        plan: {
+          kind: "do",
+          verb: "speak",
+          args: [
+            { role: "to", ref: { text: "la mujer", kind: "person", features: [] } },
+            { role: "content", text: "hola" },
+          ],
+        },
+      } as IntentDraft,
+      {
+        actor: w.player,
+        source: "player",
+        catalog: w.catalog,
+        known: knownEntities(w, [unknownParent]),
+        clock: w.clock,
+        causes: [{ kind: "state", entity: w.player, key: "intent" }],
+        here: w.truth.get(LOCATION, w.player)?.hex,
+      },
+    );
+    expect(spoken.kind).toBe("plan");
     const me = w.truth.get(PERSON, w.player);
     // Dos personas de otra casa, de la misma figura, que aparecen a su lado.
     const others = living(w.truth).filter(

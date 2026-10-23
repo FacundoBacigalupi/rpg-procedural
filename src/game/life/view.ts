@@ -192,7 +192,23 @@ export interface PlayerViewOptions {
    * de un vecino (`heardTrades`, creencia de oídas). Apagado: la vista no cambia ni gasta RNG.
    */
   readonly heardTrades?: readonly TradeRecipeDef[];
+  /**
+   * Quienes ya se contaron en este lugar (`presenceKey`): si siguen ahí sin hacer ni decir nada, no
+   * se vuelven a narrar (narration §7: se cuenta lo que cambia). Mirar a propósito y la primera
+   * escena los cuentan igual. `onSeen` recibe siempre a todos.
+   */
+  readonly quietPresence?: ReadonlySet<string>;
 }
+
+/** Con qué se reconoce a alguien ya contado: la identidad que leyó o, si no, la fuente del percept. */
+export function presenceKey(p: Percept): string {
+  const who = p.fields.identity?.value;
+  return typeof who === "string" ? who : String(p.sourceEntityId ?? p.id);
+}
+
+/** Solo está ahí: no se le leyó acción ni palabras. */
+const merelyPresent = (p: Percept): boolean =>
+  p.fields.action === undefined && p.fields.words === undefined;
 
 /** Los verbos con los que se prueba algo: ahí un gusto de comida viene al caso. */
 const TASTING = new Set(["eat", "drink", "cook"]);
@@ -483,6 +499,11 @@ export function playerView(
   const thoughtList = [...(options.thinking ?? []), ...(inner?.thoughts ?? [])];
   const digested = digest(percepts);
   options.onSeen?.(digested);
+  const quiet = glancing ? undefined : options.quietPresence;
+  const told =
+    quiet === undefined
+      ? digested
+      : digested.filter((p) => !(merelyPresent(p) && quiet.has(presenceKey(p))));
   return buildPlayerView({
     player: w.player,
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
@@ -512,7 +533,7 @@ export function playerView(
         rainBetween(w.map, w.clock, w.seed, made, now),
       ),
     },
-    percepts: digested,
+    percepts: told,
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
     steps: steps.map((s) => ({
       verb: s.verb,

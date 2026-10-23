@@ -1,4 +1,4 @@
-// Punto de entrada de la CLI: `npm run dev -- [--seed N] [--mode realista|novela]
+// Punto de entrada de la CLI: `npm run dev -- [--seed N] [--mode realista|novela] [--world xianxia]
 // [--sex mujer|hombre] [--age N] [--familia terrateniente|campesina|sirviente] (modo novela)
 // [--frequency N] [--save archivo] [--llm modelo [--runtime ollama] [--llm-url URL] [--think]] [--famine] [--nickname] [--epilogue]`.
 // Sin `--save` la vida va a `saves/vida.sqlite`; si ese archivo ya tiene una, se sigue esa.

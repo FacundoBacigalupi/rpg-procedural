@@ -42,8 +42,10 @@ export function elapsed(seconds: number): string {
   return `${verb} ${parts.join(" y ")}.`;
 }
 
-export function renderStatus(now: Tick): string {
-  return `— ${formatTick(EARTHLIKE_CLOCK, now)}`;
+export function renderStatus(now: Tick, lonDeg = 0): string {
+  // La hora del lugar (la del sol), no la del reloj absoluto del mundo.
+  const local = now + Math.round((lonDeg / 360) * EARTHLIKE_CLOCK.day);
+  return `— ${formatTick(EARTHLIKE_CLOCK, local)}`;
 }
 
 /** Quita las marcas `{{e1|tu madre}}` de la narración: queda el texto que se lee. */
@@ -488,9 +490,12 @@ export function renderInterrupt(i: Interrupt): string {
   return INTERRUPTS[i.kind];
 }
 
-export function renderJournal(entries: readonly { tick: Tick; text: string }[]): string {
+export function renderJournal(
+  entries: readonly { tick: Tick; text: string }[],
+  lonDeg = 0,
+): string {
   if (entries.length === 0) return "La bitácora está vacía.";
-  return entries.map((e) => `${renderStatus(e.tick)}\n${e.text}`).join("\n\n");
+  return entries.map((e) => `${renderStatus(e.tick, lonDeg)}\n${e.text}`).join("\n\n");
 }
 
 // --- Opciones sugeridas y entorno (player-loop, ampliación 2026-10-08) ---
