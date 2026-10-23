@@ -109,6 +109,7 @@ export function apiHandler(session: Session) {
     if (path === "/api/state" && req.method === "GET") {
       const state: WebState = {
         opening: session.opening,
+        openingPeople: session.openingPeople,
         history: historyOf(session),
         ...panelsOf(session),
       };
@@ -147,6 +148,7 @@ export function apiHandler(session: Session) {
         const body: SayResponse = {
           text: reply.text,
           end: reply.end ?? null,
+          present: reply.present ?? [],
           ...panelsOf(session),
         };
         send(res, 200, body);

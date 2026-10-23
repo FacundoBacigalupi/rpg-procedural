@@ -20,6 +20,46 @@ interface Line {
   /** De la narración guardada: cuándo fue y su lugar en la bitácora. */
   readonly when?: string;
   readonly seq?: number;
+  /** Cómo nombra el texto a las personas que el personaje tiene delante. */
+  readonly people?: readonly string[];
+}
+
+/** «Un viejo» → «el viejo»: cómo se lo nombra para hablarle. */
+function addressed(words: string): string {
+  const lower = words.charAt(0).toLowerCase() + words.slice(1);
+  return lower.replace(/^una /u, "la ").replace(/^un /u, "el ");
+}
+
+/** El texto con las personas presentes pintadas; un clic en una escribe «hablo con …». */
+function Narration(props: {
+  text: string;
+  people: readonly string[];
+  onPick(words: string): void;
+}) {
+  const names = [...props.people].filter((n) => n !== "").sort((a, b) => b.length - a.length);
+  if (names.length === 0) return <>{props.text}</>;
+  const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const parts = props.text.split(new RegExp(`(${escaped.join("|")})`, "u"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: partes fijas de un texto que no cambia
+            key={i}
+            type="button"
+            className="person"
+            title={`Hablar con ${addressed(part)}`}
+            onClick={() => props.onPick(addressed(part))}
+          >
+            {part}
+          </button>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
 }
 
 const fromHistory = (h: History): Line[] =>
@@ -75,6 +115,7 @@ export function App() {
   const [more, setMore] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   // Al subir se piden entradas más viejas: se recuerda la altura para que la vista no salte.
   const prepended = useRef<number | null>(null);
   const loading = useRef(false);
@@ -105,7 +146,13 @@ export function App() {
     call<WebState>("/api/state")
       .then((s) => {
         const past = fromHistory(s.history);
-        setLines(past.length > 0 ? past : [{ who: "world", text: s.opening }]);
+        // La última narración guardada es la escena de ahora: lleva a quienes nombra la apertura.
+        const last = past[past.length - 1];
+        setLines(
+          last
+            ? [...past.slice(0, -1), { ...last, people: s.openingPeople }]
+            : [{ who: "world", text: s.opening, people: s.openingPeople }],
+        );
         setMore(s.history.more);
         setPanels(s);
       })
@@ -154,7 +201,7 @@ export function App() {
     setLines((l) => [...l, { who: "you", text: shown }]);
     try {
       const r = await call<SayResponse>(path, body);
-      setLines((l) => [...l, { who: "world", text: r.text }]);
+      setLines((l) => [...l, { who: "world", text: r.text, people: r.present }]);
       setPanels(r);
       if (r.end !== null) setOver(true);
     } catch (err) {
@@ -184,7 +231,14 @@ export function App() {
             // biome-ignore lint/suspicious/noArrayIndexKey: las líneas nuevas van al final y las viejas al principio, sin reordenar
             <p key={l.seq ?? `n${i}`} className={l.who}>
               {l.when && <span className="when">{`— ${l.when}\n`}</span>}
-              {l.text}
+              <Narration
+                text={l.text}
+                people={l.people ?? []}
+                onPick={(who) => {
+                  setInput(`hablo con ${who}`);
+                  field.current?.focus();
+                }}
+              />
             </p>
           ))}
           <div ref={bottom} />
@@ -217,6 +271,7 @@ export function App() {
         )}
         <form onSubmit={submit}>
           <input
+            ref={field}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (ayuda)"}

@@ -73,6 +73,7 @@ import {
   DEFAULT_NARRATION,
   EMPTY_MEMORY,
   LlmJobs,
+  markedPhrases,
   type NarrationMemory,
   narrate,
   narrationRequest,
@@ -175,6 +176,8 @@ export interface Reply {
   readonly end?: "quit" | "dead";
   /** Pasó tiempo en el mundo: los paneles de la web se vuelven a pedir. */
   readonly turn?: boolean;
+  /** Cómo nombra el texto a las personas que tiene delante (la web las pinta y deja hablarles). */
+  readonly present?: readonly string[];
 }
 
 export interface Session {
@@ -182,6 +185,8 @@ export interface Session {
   readonly store: LifeStore;
   /** Lo que se muestra al abrir: los avisos y la escena. */
   readonly opening: string;
+  /** Las personas presentes que nombra la apertura (como `Reply.present`). */
+  readonly openingPeople: readonly string[];
   say(line: string): Promise<Reply>;
   /** Las opciones sugeridas de ahora (`all`: todas, para «ver más»). */
   suggested(all?: boolean): Suggestion[];
@@ -243,6 +248,8 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const habituation: EnvironmentMemory = new Map();
   let attended = false;
   let scene = "";
+  // Cómo nombró la última narración a quienes tiene delante (`Reply.present`).
+  let present: readonly string[] = [];
   // La memoria de continuidad (narration §6) vive con la vida, fuera del estado de la sim: es solo
   // texto que el jugador ya leyó, así que no entra en el hash ni en el replay.
   const savedMemory = store.getMeta(MEMORY_META) as NarrationMemory | undefined;
@@ -338,9 +345,23 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       store.setMeta(MEMORY_META, memory);
     }
     if (thinking === undefined) scene = told.text;
+    const here = new Set<string>(
+      knownEntities(life.world, seenNow)
+        .filter((k) => k.kind === "person" && k.present && !k.phantom)
+        .map((k) => k.ref),
+    );
+    present = [
+      ...new Set(
+        [...markedPhrases(told.marked)].flatMap(([id, phrases]) => {
+          const entity = keys.get(id);
+          return entity !== undefined && here.has(entity) ? phrases : [];
+        }),
+      ),
+    ];
     return told.text;
   };
   const intro = await tell(null, life.now);
+  const openingPeople = present;
   if (store.narrations(1).length === 0) store.appendNarration(life.now, intro);
   // Al retomar una vida, un recuento corto antes de la escena (player-loop §12).
   const back = notices[0]?.startsWith("Seguís") === true ? renderRecap(recapOf(life.world)) : "";
@@ -417,7 +438,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         turn: true,
       };
     }
-    return { text, turn: true };
+    return { text, turn: true, present };
   };
 
   const say = async (line: string): Promise<Reply> => {
@@ -502,7 +523,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const result = thinkOn(life.world, options.content.all(INFERENCE_RULES), ref);
         const thoughts = thoughtInputsOf(result);
         if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
-        return { text: await tell(null, life.now, thoughts) };
+        return { text: await tell(null, life.now, thoughts), present };
       }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN)) };
@@ -552,6 +573,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     life,
     store,
     opening,
+    openingPeople,
     say,
     suggested,
     choose,

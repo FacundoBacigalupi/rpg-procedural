@@ -75,6 +75,8 @@ export interface History {
 
 export interface WebState extends Panels {
   readonly opening: string;
+  /** Las personas presentes que nombra la apertura: la web las pinta y deja hablarles. */
+  readonly openingPeople: readonly string[];
   /** Lo último que se narró: al reabrir la página la charla sigue por acá. */
   readonly history: History;
 }
@@ -82,4 +84,6 @@ export interface WebState extends Panels {
 export interface SayResponse extends Panels {
   readonly text: string;
   readonly end: "quit" | "dead" | null;
+  /** Cómo nombra el texto a las personas que tiene delante. */
+  readonly present: readonly string[];
 }
