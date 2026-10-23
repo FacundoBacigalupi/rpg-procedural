@@ -12,6 +12,10 @@
 // propios). Las formas del voseo (mirás, juntaste) son del personaje y no cuentan. Las etiquetas
 // que la vista nombra fuera de los percepts (deudas, agravios, pensamientos, a quién se le habló)
 // no se juzgan: ahí el texto puede decir con razón lo que hicieron otro día.
+//
+// Las formas del voseo sí se miran para el personaje (`play-llm-invented-acts`, narration §8): una
+// que diga una acción del catálogo que no está entre sus pasos («te acercás» si solo miró) es un
+// acto inventado. Mirar, pensar y esperar no cuentan: son lo que hace cualquier escena.
 
 import type { ActionWords, PlayerView } from "../game/index.ts";
 import type { NarrationRequest } from "./narration.ts";
@@ -23,6 +27,27 @@ const SECOND_PERSON = /(?:ás|és|ís|aste|iste|abas|ías)$/u;
 /** Lo citado se dijo tal cual: no es narración de lo que alguien hace. */
 const QUOTED = /«[^»]*»|"[^"]*"|“[^”]*”/gu;
 /** Una oración que abre con un sujeto nuevo (artículo, posesivo, «hay»…): habla de otra cosa. */
+/** El presente del voseo: lo que hace ahora (el pasado puede ser un recuerdo de otro día). */
+const SECOND_PERSON_NOW = /(?:ás|és|ís)$/u;
+/** Lo que el personaje hace en cualquier escena sin que sea un paso: percibir, pensar, quedarse. */
+const ALWAYS_OWN = new Set(["look", "ponder", "wait"]);
+/** Lo que un paso trae consigo: hablarle a alguien es dirigirse a él, juntar es buscar primero. */
+const IMPLIES: Readonly<Record<string, readonly string[]>> = {
+  speak: ["move"],
+  consult: ["move", "speak"],
+  trade: ["move", "speak"],
+  hire: ["speak"],
+  give: ["move"],
+  take: ["move"],
+  search: ["move"],
+  gather: ["search", "move"],
+  hunt: ["search", "move"],
+  eat: ["search"],
+  drink: ["search"],
+  tend: ["move"],
+};
+/** Lo negado no pasó: «no llegás a entender» no es moverse. */
+const NEGATION = /(?:^|\s)(?:no|ni|nunca|jamás)\s+(?:\p{L}+\s+)?$/iu;
 const OWN_SUBJECT =
   /^[¡¿—(]*(?:el|los|las|un|una|unos|unas|su|sus|tu|tus|mi|mis|este|esta|ese|esa|aquel|aquella|hay|algo|alguien|nadie|nada|todo|afuera|adentro|arriba|abajo)(?![\p{L}])/iu;
 
@@ -121,6 +146,9 @@ export function groundingProblems(
     own.add(o.effect.kind);
     if (o.effect.kind === "observe") own.add("look");
   }
+  for (const d of view.stretch?.did ?? []) own.add(d.verb);
+  if ((view.stretch?.spoke ?? 0) > 0) own.add("speak");
+  for (const verb of [...own]) for (const v of IMPLIES[verb] ?? []) own.add(v);
 
   const problems = new Set<string>();
   const said = new Set<string>();
@@ -131,6 +159,20 @@ export function groundingProblems(
     .split(/(?<=[.!?…])\s+|\n+/u)
     .filter((s) => s.trim() !== "");
   for (const sentence of sentences) {
+    // (0) Lo que hizo el personaje: solo sus pasos.
+    const bareSentence = stripMarks(sentence);
+    for (const m of bareSentence.matchAll(WORD)) {
+      const word = m[0];
+      if (!SECOND_PERSON_NOW.test(word.toLowerCase())) continue;
+      if (NEGATION.test(bareSentence.slice(0, m.index))) continue;
+      const acts = book
+        .familiesOf(word)
+        .strong.filter((a) => !a.includes(".") && book.kindOf(a) === "action");
+      if (acts.length === 0 || acts.some((a) => own.has(a) || ALWAYS_OWN.has(a))) continue;
+      problems.add(
+        `the character did not ${acts.join(" or ")} ("${word}"): tell only what the character did`,
+      );
+    }
     const ids = markedIds(sentence);
     if (ids.length > 0) current = ids;
     if (current.length === 0) continue;

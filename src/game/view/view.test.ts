@@ -108,6 +108,16 @@ describe("buildPlayerView", () => {
     expect(v.lexicon).toEqual(["Lan"]);
   });
 
+  it("avisa de qué fuente salió cada desconocido, sin meterlo en la vista", () => {
+    const strangers: [string, EntityRef][] = [];
+    const v = buildPlayerView(input({ onStranger: (id, source) => strangers.push([id, source]) }));
+    expect(strangers).toEqual([
+      ["e2", stranger],
+      ["e3", stranger],
+    ]);
+    expect(JSON.stringify(v)).not.toContain("agent:");
+  });
+
   it("un extraño ya visto otro día queda marcado como «el desconocido de ayer»", () => {
     const base = input();
     const second = base.percepts[1] as Percept;
