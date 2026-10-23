@@ -86,7 +86,10 @@ export function historyOf(session: Session, before?: number): History {
 
 const MAX_BODY = 64 * 1024;
 
-async function readBody(req: IncomingMessage): Promise<string> {
+/** Atiende un pedido a `/api/*`; `false` si no es suyo (lo sirve Vite). */
+export type ApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
+
+export async function readBody(req: IncomingMessage): Promise<string> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -97,7 +100,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function send(res: ServerResponse, status: number, body: unknown): void {
+export function send(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
@@ -169,9 +172,12 @@ export function apiHandler(session: Session) {
   };
 }
 
-/** Levanta el servidor con el cliente de `clientRoot` servido por Vite; devuelve el puerto real. */
+/**
+ * Levanta el servidor con la API (`startedHandler` o `setupHandler`) y el cliente de `clientRoot`
+ * servido por Vite; devuelve el puerto real.
+ */
 export async function startWeb(
-  session: Session,
+  api: ApiHandler,
   options: { readonly port: number; readonly clientRoot: string },
 ): Promise<{ port: number; close(): Promise<void> }> {
   const { createServer: createVite } = await import("vite");
@@ -182,7 +188,6 @@ export async function startWeb(
     appType: "spa",
     server: { middlewareMode: true },
   });
-  const api = apiHandler(session);
   const http = createServer((req, res) => {
     api(req, res)
       .then((handled) => {

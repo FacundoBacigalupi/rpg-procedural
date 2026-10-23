@@ -7,8 +7,9 @@ import { type ContentSource, loadContent } from "../../core/index.ts";
 import { defaultGameSetup, GAME_CONTENT_KINDS } from "../../game/index.ts";
 import { LifeStore, openSqlite, type SqlDriver } from "../../persistence/index.ts";
 import { openSession } from "../session.ts";
-import type { History, SayResponse, WebState } from "./api.ts";
+import type { History, SayResponse, SetupChoice, SetupInfo, WebState } from "./api.ts";
 import { apiHandler } from "./server.ts";
+import { parseSetupChoice, setupHandler } from "./setup.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -116,5 +117,72 @@ describe("opciones sugeridas y entorno", { timeout: 60_000 }, () => {
     const base = await serve();
     const said = (await (await post(`${base}/api/choose`, { id: "nope" })).json()) as SayResponse;
     expect(said.text).toContain("ya no está");
+  });
+});
+
+describe("pantalla de inicio", { timeout: 60_000 }, () => {
+  const info: SetupInfo = {
+    families: ["xianxia"],
+    modes: ["realista", "novela"],
+    sexes: ["mujer", "hombre"],
+    familias: ["terrateniente", "campesina", "sirviente"],
+    defaults: { world: "xianxia", mode: "realista" },
+  };
+
+  it("valida la elección", () => {
+    expect(parseSetupChoice({ world: "xianxia", mode: "realista" }, info)).toEqual({
+      world: "xianxia",
+      mode: "realista",
+    });
+    expect(
+      parseSetupChoice({ world: "xianxia", mode: "novela", seed: 7, sex: "mujer", age: 16 }, info),
+    ).toEqual({ world: "xianxia", mode: "novela", seed: 7, sex: "mujer", age: 16 });
+    expect(typeof parseSetupChoice({ world: "magia", mode: "realista" }, info)).toBe("string");
+    expect(typeof parseSetupChoice({ world: "xianxia", mode: "otro" }, info)).toBe("string");
+    expect(typeof parseSetupChoice({ world: "xianxia", mode: "realista", seed: -1 }, info)).toBe(
+      "string",
+    );
+    // Elegir al personaje es del modo novela.
+    expect(
+      typeof parseSetupChoice({ world: "xianxia", mode: "realista", sex: "mujer" }, info),
+    ).toBe("string");
+  });
+
+  it("sin vida pregunta, empieza al elegir y después es la API de siempre", async () => {
+    const db: SqlDriver = openSqlite(":memory:");
+    closers.push(() => db.close());
+    const chosen: SetupChoice[] = [];
+    const api = setupHandler(info, (choice) => {
+      chosen.push(choice);
+      return openSession(LifeStore.open(db), {
+        seed: choice.seed ?? 5,
+        setup: { game: defaultGameSetup("realistic") },
+        content,
+      });
+    });
+    const http: Server = createServer((req, res) => {
+      void api(req, res).then((handled) => {
+        if (!handled) res.writeHead(404).end();
+      });
+    });
+    await new Promise<void>((ok) => http.listen(0, "127.0.0.1", ok));
+    closers.push(() => http.close());
+    const base = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
+
+    const before = (await (await fetch(`${base}/api/setup`)).json()) as SetupInfo;
+    expect(before.started).toBe(false);
+    expect((await fetch(`${base}/api/state`)).status).toBe(409);
+    expect((await post(`${base}/api/setup`, { world: "nada", mode: "realista" })).status).toBe(400);
+
+    const ok = await post(`${base}/api/setup`, { world: "xianxia", mode: "realista", seed: 5 });
+    expect(ok.status).toBe(200);
+    expect(chosen).toEqual([{ world: "xianxia", mode: "realista", seed: 5 }]);
+    const after = (await (await fetch(`${base}/api/setup`)).json()) as SetupInfo;
+    expect(after.started).toBe(true);
+    const state = (await (await fetch(`${base}/api/state`)).json()) as WebState;
+    expect(state.opening).toContain("Empieza una vida");
+    expect((await post(`${base}/api/setup`, { world: "xianxia", mode: "realista" })).status).toBe(
+      409,
+    );
   });
 });

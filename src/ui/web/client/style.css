@@ -362,3 +362,62 @@ aside pre {
     border-color: #ff7a73;
   }
 }
+
+/* La pantalla de inicio de una vida nueva. */
+.setup {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 24px 16px;
+  overflow: auto;
+}
+.setup form {
+  width: min(520px, 100%);
+}
+.setup h1 {
+  font-weight: normal;
+  color: var(--accent);
+  margin: 0 0 16px;
+}
+.setup fieldset {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 6px;
+  margin: 0 0 14px;
+  padding: 10px 14px 12px;
+}
+.setup legend {
+  padding: 0 6px;
+  color: var(--muted);
+}
+.setup label {
+  display: block;
+  margin: 6px 0;
+}
+.setup label.choice input {
+  margin-right: 8px;
+}
+.setup select,
+.setup input[type="number"] {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.setup .hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9em;
+}
+.setup .error,
+p.error {
+  color: #b33;
+}
+.setup button[type="submit"] {
+  width: 100%;
+}

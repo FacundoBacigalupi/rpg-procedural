@@ -87,3 +87,28 @@ export interface SayResponse extends Panels {
   /** Cómo nombra el texto a las personas que tiene delante. */
   readonly present: readonly string[];
 }
+
+/** Qué se puede elegir al empezar una vida (`GET /api/setup`); `started`: ya hay vida. */
+export interface SetupInfo {
+  readonly families: readonly string[];
+  readonly modes: readonly ("realista" | "novela")[];
+  readonly sexes: readonly string[];
+  readonly familias: readonly string[];
+  /** Lo que vino por argumentos, para dejarlo elegido. */
+  readonly defaults: {
+    readonly world: string;
+    readonly mode: "realista" | "novela";
+    readonly seed?: number;
+  };
+  readonly started?: boolean;
+}
+
+/** La elección de la pantalla de inicio (`POST /api/setup`); sin `seed`, uno al azar. */
+export interface SetupChoice {
+  readonly world: string;
+  readonly mode: "realista" | "novela";
+  readonly seed?: number;
+  readonly sex?: "mujer" | "hombre";
+  readonly familia?: "terrateniente" | "campesina" | "sirviente";
+  readonly age?: number;
+}
