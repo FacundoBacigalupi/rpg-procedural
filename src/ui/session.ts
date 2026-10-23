@@ -47,6 +47,7 @@ import {
   panelOptionsOf,
   peoplePanel,
   playerView,
+  presenceKey,
   type ResumeAnchor,
   recapOf,
   renderChronicle,
@@ -248,23 +249,17 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   let memory: NarrationMemory = savedMemory ?? EMPTY_MEMORY;
   // Quienes ve ahora, para que «los niños» alcance a quienes la escena mostró (actions §4).
   let seenNow: readonly Percept[] = [];
+  // Quienes ya se contaron y dónde: si siguen ahí quietos, la escena siguiente no los repite.
+  let counted: { place: string | undefined; keys: ReadonlySet<string> } = {
+    place: undefined,
+    keys: new Set(),
+  };
   const tell = async (
     report: TurnReport | null,
     at: Tick,
     thinking?: readonly ThoughtInput[],
   ): Promise<string> => {
     const keys = new Map<string, string>();
-    const view = playerView(life.world, report?.steps ?? [], {
-      intro: report === null && thinking === undefined,
-      ...(options.nickname ? { nickname: true } : {}),
-      ...(thinking ? { thinking } : {}),
-      ...(report ? { heardSince: report.from } : {}),
-      heardTrades: options.content.all(TRADE_RECIPES),
-      onLabel: (localId, entity) => keys.set(localId, entity),
-      onSeen: (seen) => {
-        seenNow = seen;
-      },
-    });
     const loc = life.world.truth.get(LOCATION, life.player);
     const placeKey =
       loc === undefined
@@ -272,6 +267,20 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         : loc.space !== undefined
           ? `space:${loc.space}`
           : `hex:${loc.hex}`;
+    const view = playerView(life.world, report?.steps ?? [], {
+      intro: report === null && thinking === undefined,
+      ...(options.nickname ? { nickname: true } : {}),
+      ...(thinking ? { thinking } : {}),
+      ...(report ? { heardSince: report.from } : {}),
+      heardTrades: options.content.all(TRADE_RECIPES),
+      onLabel: (localId, entity) => keys.set(localId, entity),
+      ...(report !== null && counted.place === placeKey ? { quietPresence: counted.keys } : {}),
+      onSeen: (seen) => {
+        seenNow = seen;
+      },
+    });
+    if (thinking === undefined)
+      counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)) };
     // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).
     const hazy = new Set<string>(
       (view.thoughts ?? []).flatMap((t) => (t.hazy && t.about !== undefined ? [t.about] : [])),
