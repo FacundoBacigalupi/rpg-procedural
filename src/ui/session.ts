@@ -263,9 +263,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   const knownNow = (): KnownEntity[] =>
     withNarratedWords(knownEntities(life.world, seenNow), narrated);
   // Quienes ya se contaron y dónde: si siguen ahí quietos, la escena siguiente no los repite.
-  let counted: { place: string | undefined; keys: ReadonlySet<string> } = {
+  let counted: {
+    place: string | undefined;
+    keys: ReadonlySet<string>;
+    seen: readonly Percept[];
+  } = {
     place: undefined,
     keys: new Set(),
+    seen: [],
   };
   const tell = async (
     report: TurnReport | null,
@@ -289,13 +294,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       heardTrades: options.content.all(TRADE_RECIPES),
       onLabel: (localId, entity) => keys.set(localId, entity),
       onStranger: (localId, source) => strangers.set(localId, source),
-      ...(report !== null && counted.place === placeKey ? { quietPresence: counted.keys } : {}),
+      ...(report !== null && counted.place === placeKey
+        ? { quietPresence: counted.keys, previousSeen: counted.seen }
+        : {}),
       onSeen: (seen) => {
         seenNow = seen;
       },
     });
     if (thinking === undefined)
-      counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)) };
+      counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)), seen: seenNow };
     // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).
     const hazy = new Set<string>(
       (view.thoughts ?? []).flatMap((t) => (t.hazy && t.about !== undefined ? [t.about] : [])),

@@ -290,6 +290,8 @@ export interface PerceptView {
   readonly action?: string;
   /** Lo que le oyó decir. */
   readonly words?: string;
+  /** No estaba a la vista en la escena anterior del mismo lugar (narration §7: se cuenta lo que cambia). */
+  readonly arrived?: true;
 }
 
 /** El efecto de un paso propio como lo cree el personaje, sin ids ni hexes. */
@@ -452,6 +454,8 @@ export interface PlayerView {
   readonly mode?: SpecialMode;
   /** Con el modo `montage`: lo que vivió en el salto. */
   readonly stretch?: StretchView;
+  /** Quienes estaban a la vista en la escena anterior del mismo lugar y ya no; casi siempre vacío. */
+  readonly gone?: readonly string[];
   readonly labels: readonly LocalLabel[];
   /** Los nombres y palabras que el personaje conoce y pueden aparecer en la narración (§4). */
   readonly lexicon: readonly string[];
@@ -480,6 +484,10 @@ export interface ViewInput {
   readonly percepts: readonly Percept[];
   /** Ids de los percepts de extraños que el personaje ya vio otro día (`strangersSeenBefore`). */
   readonly seenBefore?: ReadonlySet<string>;
+  /** Ids de los percepts de quienes no estaban a la vista en la escena anterior del mismo lugar. */
+  readonly arrived?: ReadonlySet<string>;
+  /** Los percepts de la escena anterior del mismo lugar de quienes ya no se ven. */
+  readonly gone?: readonly Percept[];
   readonly steps: readonly StepView[];
   readonly acquaintances: ReadonlyMap<EntityRef, Acquaintance>;
   readonly self?: readonly SelfCue[];
@@ -649,8 +657,18 @@ export function buildPlayerView(input: ViewInput): PlayerView {
       detail: p.detail,
       ...(typeof action === "string" ? { action: perceivedAction(action) } : {}),
       ...(typeof said === "string" && said.length > 0 ? { words: said } : {}),
+      ...(input.arrived?.has(p.id) === true ? { arrived: true as const } : {}),
     });
   }
+  // Quien se dejó de ver se nombra como se lo vio la última vez (no se sabe adónde fue).
+  const gone = (input.gone ?? []).map((p) => {
+    const identity = p.fields.identity;
+    const figure = p.fields.figure?.value as Figure | undefined;
+    const attire = p.fields.attire?.value as Attire | undefined;
+    return identity !== undefined && isAgent(identity.value)
+      ? known(identity.value, certaintyOf(identity.confidence), figure, attire)
+      : stranger(certaintyOf(p.fields.presence?.confidence ?? 0), figure, attire, false);
+  });
 
   const conclusionWho = (args: readonly EntityRef[]): string[] =>
     args.filter(isAgent).map((a) => known(a, "sure"));
@@ -684,6 +702,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     self: { cues: [...(input.self ?? [])] },
     scene: sceneView(input.scene),
     percepts,
+    ...(gone.length > 0 ? { gone } : {}),
     outcomes,
     thoughts,
     tastes: (input.tastes ?? []).map((t) => ({ name: t.name, stance: t.stance })),

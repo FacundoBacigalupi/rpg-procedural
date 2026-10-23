@@ -163,6 +163,7 @@ export function renderView(
 
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
+  for (const g of view.gone ?? []) say("percept.gone", { who: ref(g) });
   for (const c of view.self.cues) say(`self.${c}`);
   if (view.nickname !== undefined && (!s.familiar || arrived))
     say("reputation.nickname", { name: view.nickname });
@@ -464,5 +465,5 @@ function percept(
     say(book.has(id) ? id : "percept.action.other", { who });
   } else if (p.detail === "vague") {
     say(p.channels.includes("sight") ? "percept.vague.sight" : "percept.vague.sound", { who });
-  } else say("percept.presence", { who });
+  } else say(p.arrived ? "percept.arrived" : "percept.presence", { who });
 }

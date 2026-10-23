@@ -200,6 +200,39 @@ export interface PlayerViewOptions {
    * escena los cuentan igual. `onSeen` recibe siempre a todos.
    */
   readonly quietPresence?: ReadonlySet<string>;
+  /**
+   * Lo que vio (`onSeen`) en la escena anterior, si fue en este mismo lugar: quien está a la vista y
+   * antes no se cuenta como que aparece, y quien estaba y ya no se ve, como que se dejó de ver.
+   */
+  readonly previousSeen?: readonly Percept[];
+}
+
+/** A la vista: lo vio (no solo lo oyó) y con forma, no una sombra. */
+const inSight = (p: Percept): boolean => p.channels.includes("sight") && p.detail !== "vague";
+
+/**
+ * La diferencia entre dos escenas del mismo lugar: quién apareció a la vista (ids de percepts de
+ * ahora) y quién se dejó de ver (percepts de antes, uno por persona). Oírlo alcanza para no darlo
+ * por ido; una sombra no cuenta como llegada.
+ */
+export function sceneChange(
+  before: readonly Percept[],
+  now: readonly Percept[],
+): { readonly arrived: ReadonlySet<string>; readonly gone: readonly Percept[] } {
+  const was = new Set(before.filter(inSight).map(presenceKey));
+  const is = new Set(now.map(presenceKey));
+  const arrived = new Set(
+    now.filter((p) => inSight(p) && !was.has(presenceKey(p))).map((p) => p.id),
+  );
+  const gone: Percept[] = [];
+  const told = new Set<string>();
+  for (const p of before) {
+    const key = presenceKey(p);
+    if (!inSight(p) || is.has(key) || told.has(key)) continue;
+    told.add(key);
+    gone.push(p);
+  }
+  return { arrived, gone };
 }
 
 /** Con qué se reconoce a alguien ya contado: la identidad que leyó o, si no, la fuente del percept. */
@@ -506,6 +539,7 @@ export function playerView(
     quiet === undefined
       ? digested
       : digested.filter((p) => !(merelyPresent(p) && quiet.has(presenceKey(p))));
+  const change = options.previousSeen && sceneChange(options.previousSeen, digested);
   return buildPlayerView({
     player: w.player,
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
@@ -537,6 +571,8 @@ export function playerView(
     },
     percepts: told,
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
+    ...(change && change.arrived.size > 0 ? { arrived: change.arrived } : {}),
+    ...(change && change.gone.length > 0 ? { gone: change.gone } : {}),
     steps: steps.map((s) => ({
       verb: s.verb,
       self: s.self,

@@ -82,6 +82,7 @@ export function mustMentionOf(view: PlayerView): string[] {
   for (const p of view.percepts) {
     if (p.detail !== "vague" || p.action !== undefined || p.words !== undefined) ids.add(p.who);
   }
+  for (const g of view.gone ?? []) ids.add(g);
   return view.labels.map((l) => l.localId).filter((id) => ids.has(id));
 }
 
