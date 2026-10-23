@@ -1075,14 +1075,20 @@ function required<T>(x: T | undefined, what: string): T {
   return x;
 }
 
-/** Las condiciones duras de una búsqueda de nacimiento (la edad la pone `playerAge`). */
+/**
+ * Las condiciones duras de una búsqueda de nacimiento (la edad la pone `playerAge`): `true` o la
+ * condición que no cumple, para que el rechazo diga cuál fue.
+ */
 function birthFilter(q: BirthQuery, defs: readonly StatusDef[]) {
-  return (p: Person, alive: readonly Household[]): boolean => {
-    if (q.sex !== undefined && p.sex !== q.sex) return false;
+  return (p: Person, alive: readonly Household[]): true | string => {
+    if (q.sex !== undefined && p.sex !== q.sex)
+      return `el sexo (${q.sex === "female" ? "mujer" : "hombre"})`;
     if (q.position === undefined) return true;
     const seats = alive.map((h) => ({ id: h.id, members: h.members.length, since: h.since }));
     const status = assignStatuses(seats, defs).get(p.household)?.status;
-    return defs.find((d) => d.id === status)?.role === q.position;
+    return defs.find((d) => d.id === status)?.role === q.position
+      ? true
+      : `la posición (${q.position})`;
   };
 }
 

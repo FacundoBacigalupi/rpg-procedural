@@ -11,6 +11,7 @@
 import {
   type AgentId,
   type CauseRef,
+  compareStrings,
   daysInYear,
   EARTHLIKE_CLOCK,
   type EntityRef,
@@ -109,9 +110,10 @@ export interface VillagePopulationInput {
   /**
    * Condiciones duras sobre quién puede ser el jugador (modo novela, game-modes §2.2, paso 1:
    * buscar un nacimiento real). Con ella la edad también es dura: hasta `BIRTH_AGE_SLACK` años
-   * de la pedida. Si nadie cumple, tira `NoSuchBirth`.
+   * de la pedida, y si nadie cumple se busca más lejos (`BIRTH_AGE_SLACKS`). Si ni así, tira
+   * `NoSuchBirth` con la condición que faltó: devolver un texto en vez de `false` la nombra.
    */
-  readonly playerFits?: (p: Person, aliveHouseholds: readonly Household[]) => boolean;
+  readonly playerFits?: (p: Person, aliveHouseholds: readonly Household[]) => boolean | string;
   /**
    * Cuánto encaja un candidato con lo pedido, en (0, 1] (`temperamentFit`, game-modes §2.2 paso 1):
    * entre los que cumplen las condiciones duras gana el de mayor `encaje / (1 + distancia de edad)`;
@@ -122,6 +124,12 @@ export interface VillagePopulationInput {
 
 /** Años de diferencia con la edad pedida que todavía se aceptan al buscar un nacimiento. */
 export const BIRTH_AGE_SLACK = 2;
+
+/**
+ * Las ventanas de edad que se prueban en orden antes de rendirse (play-novel-entry-fallback): en
+ * una aldea de treinta nativos puede no haber ninguna mujer de 14 a 18, pero sí de 20.
+ */
+export const BIRTH_AGE_SLACKS: readonly number[] = [BIRTH_AGE_SLACK, 4, 6];
 
 /** Nadie de la población cumple lo pedido: el modo novela lo rechaza con esta razón (§2.4). */
 export class NoSuchBirth extends Error {
@@ -597,13 +605,38 @@ export function villagePopulation(input: VillagePopulationInput): VillagePopulat
   };
   const fits = input.playerFits;
   const aliveHouseholds = [...households.values()].filter((h) => h.end === null);
-  const wanted = fits
-    ? pool.filter((p) => distance(p) <= BIRTH_AGE_SLACK && fits(p, aliveHouseholds))
-    : pool;
-  if (wanted.length === 0) {
-    throw new NoSuchBirth(
-      `nadie de la aldea (${pool.length} nativos) cumple lo pedido a ${playerAge.min}-${playerAge.max} años`,
-    );
+  let wanted = pool;
+  if (fits) {
+    const verdict = new Map(pool.map((p) => [p, fits(p, aliveHouseholds)]));
+    const ok = (slack: number) =>
+      pool.filter((p) => distance(p) <= slack && verdict.get(p) === true);
+    wanted = [];
+    for (const slack of BIRTH_AGE_SLACKS) {
+      wanted = ok(slack);
+      if (wanted.length > 0) break;
+    }
+    if (wanted.length === 0) {
+      const slack = Math.max(...BIRTH_AGE_SLACKS);
+      const near = pool.filter((p) => distance(p) <= slack);
+      const missed = new Map<string, number>();
+      for (const p of near) {
+        const v = verdict.get(p);
+        const why = typeof v === "string" ? v : "lo pedido";
+        missed.set(why, (missed.get(why) ?? 0) + 1);
+      }
+      const lo = Math.max(0, playerAge.min - slack);
+      const hi = playerAge.max + slack;
+      const detail =
+        near.length === 0
+          ? "no hay nativos de esa edad"
+          : `de ${near.length} nativos de esa edad, ${[...missed]
+              .sort((a, b) => b[1] - a[1] || compareStrings(a[0], b[0]))
+              .map(([why, n]) => `${n} no cumplen ${why}`)
+              .join(", ")}`;
+      throw new NoSuchBirth(
+        `nadie de la aldea (${pool.length} nativos) cumple lo pedido entre ${lo} y ${hi} años: ${detail}`,
+      );
+    }
   }
   const fit = input.playerFit;
   const score = (p: Person) => (fit ? fit(p) : 1) / (1 + (fit ? distance(p) : 0));

@@ -15,7 +15,12 @@ import { checkInvariants, WorldTruth } from "../world/index.ts";
 import { DEMOGRAPHY } from "./demography.ts";
 import { expressInnate, founderGenome, type Genome, inheritGenome, TRAITS } from "./genome.ts";
 import { seedVillage } from "./tables.ts";
-import { BIRTH_AGE_SLACK, type VillagePopulation, villagePopulation } from "./village.ts";
+import {
+  BIRTH_AGE_SLACK,
+  NoSuchBirth,
+  type VillagePopulation,
+  villagePopulation,
+} from "./village.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 const content = loadContent(
@@ -169,6 +174,36 @@ describe("pre-corrida de la aldea", () => {
         expect(Math.abs(age - 15)).toBeLessThanOrEqual(BIRTH_AGE_SLACK + 1);
       }
       expect(v.households.find((h) => h.id === player?.household)?.members).toContain(v.player);
+    }
+  }, 120_000);
+
+  it("si nadie cumple cerca de la edad pedida, busca más lejos y si no, dice qué faltó", () => {
+    const planet = generatePlanet({ seed: 1, biomes: content.all(BIOMES) });
+    const base = { seed: 1, site: villageSite(planet), traits, demography };
+    const v = village(1);
+    // Alguien nacido en la aldea con al menos 4 años: se lo pide a 3 años de su edad.
+    const target = v.people.find(
+      (p) => p.end === null && p.mother !== null && ageAt(p.born, v.now) >= 4,
+    );
+    if (!target) throw new Error("la aldea de prueba no tiene nativos mayores de 4");
+    const age = ageAt(target.born, v.now);
+    const fits = (p: { id: AgentId }) => (p.id === target.id ? true : "ser el buscado");
+    const found = villagePopulation({
+      ...base,
+      playerAge: { min: age - 3, max: age - 3 },
+      playerFits: fits,
+    });
+    expect(found.player).toBe(target.id);
+    const far = age + 20;
+    expect(() =>
+      villagePopulation({ ...base, playerAge: { min: far, max: far }, playerFits: fits }),
+    ).toThrow(NoSuchBirth);
+    try {
+      villagePopulation({ ...base, playerAge: { min: far, max: far }, playerFits: fits });
+    } catch (e) {
+      expect(String(e)).toMatch(
+        /entre \d+ y \d+ años: (no hay nativos|de \d+ nativos de esa edad, \d+ no cumplen ser el buscado)/,
+      );
     }
   }, 120_000);
 
