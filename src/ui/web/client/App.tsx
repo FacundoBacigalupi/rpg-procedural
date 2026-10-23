@@ -2,8 +2,17 @@
 // personaje, el inventario y la bitácora. Todo el texto lo arma el servidor desde la `PlayerView`;
 // acá no se interpreta nada del mundo.
 
-import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { History, Panels, SayResponse, WebState } from "../api.ts";
+import { Scene, themeOf } from "./Scene.tsx";
+import { TopBar } from "./TopBar.tsx";
 
 interface Line {
   readonly who: "you" | "world";
@@ -27,6 +36,22 @@ const TABS = [
   ["environment", "Entorno"],
   ["journal", "Bitácora"],
 ] as const;
+
+/** Ancho de la columna de paneles: lo elige el jugador arrastrando el borde y queda en el navegador. */
+const ASIDE_KEY = "aside-width";
+const ASIDE_MIN = 240;
+const ASIDE_MAX = 900;
+const clampAside = (px: number) =>
+  Math.round(Math.min(Math.max(px, ASIDE_MIN), Math.min(ASIDE_MAX, window.innerWidth - 320)));
+
+function savedAside(): number {
+  try {
+    const n = Number(localStorage.getItem(ASIDE_KEY));
+    return Number.isFinite(n) && n > 0 ? clampAside(n) : 360;
+  } catch {
+    return 360;
+  }
+}
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -53,6 +78,28 @@ export function App() {
   // Al subir se piden entradas más viejas: se recuerda la altura para que la vista no salte.
   const prepended = useRef<number | null>(null);
   const loading = useRef(false);
+  const [aside, setAside] = useState(savedAside);
+
+  function dragAside(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => setAside(clampAside(window.innerWidth - ev.clientX));
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      setAside((w) => {
+        try {
+          localStorage.setItem(ASIDE_KEY, String(w));
+        } catch {
+          // sin almacenamiento el ancho dura lo que la página
+        }
+        return w;
+      });
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+  }
 
   useEffect(() => {
     call<WebState>("/api/state")
@@ -118,9 +165,13 @@ export function App() {
   }
 
   return (
-    <div className="layout">
+    <div
+      className={`layout phase-${panels?.hud.phase ?? "day"}`}
+      style={{ ...themeOf(panels?.hud), gridTemplateColumns: `minmax(0, 1fr) 6px ${aside}px` }}
+    >
+      <Scene hud={panels?.hud} />
       <main className="chat">
-        <header>{panels?.now ?? "…"}</header>
+        <TopBar hud={panels?.hud} now={panels?.now ?? "…"} />
         <div
           className="lines"
           ref={box}
@@ -176,6 +227,22 @@ export function App() {
           </button>
         </form>
       </main>
+      {/* biome-ignore lint/a11y/useSemanticElements: un <hr> no toma foco ni arrastre; es un separador movible */}
+      <div
+        className="splitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ancho de los paneles"
+        aria-valuenow={aside}
+        aria-valuemin={ASIDE_MIN}
+        aria-valuemax={ASIDE_MAX}
+        tabIndex={0}
+        onPointerDown={dragAside}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") setAside((w) => clampAside(w + 24));
+          if (e.key === "ArrowRight") setAside((w) => clampAside(w - 24));
+        }}
+      />
       <aside>
         <nav>
           {TABS.map(([id, name]) => (
