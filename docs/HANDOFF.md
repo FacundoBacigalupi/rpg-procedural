@@ -36,7 +36,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 **Un solo trabajo pesado a la vez.**
 - **Por commit:** typecheck, lint y tests del módulo tocado.
 - **Por lote (coordinador):** además tests afectados sobre el código integrado; si cambia RNG/hashes o se agrega un proceso, sumar `src/game`, `src/sim/scheduler` y `src/persistence`.
-- **`npm run check` completo** (≈17 min en la última corrida) solo al certificar un lote de integración, cerrar una fase o tras cambios transversales; no por cada commit ya cubierto.
+- **La suite completa corre en el CI de GitHub** en cada PR a `develop` y a `main`, con los archivos en paralelo (`CI=true` en `vitest.config.ts`). En la PC local va de a uno (más de 1 h 45 desde #681), así que localmente no se corre entera: typecheck, lint y tests dirigidos (los del módulo y, si puede cambiar el comportamiento, los de hash fijo, `state-hash`, replay y `engine-compat`). El PR se mergea cuando el CI da verde.
 - **Docs solos:** diff, enlaces y LF. **Núcleo puro nuevo sin consumidores** (sin efectos al cargar, procesos, RNG ni cambios de estado/contenido): typecheck, lint y tests del módulo.
 - **LLM real** solo si el cambio toca parser, narración o sus contratos. Corridas largas (calibración, conservación, rendimiento) solo si el criterio de cierre las pide.
 - Si una corrida amplia falla solo por un fixture y el arreglo toca solo ese fixture: registrar ambos resultados y repetir los archivos afectados y checks estáticos; no presentar la corrida original como aprobada.
