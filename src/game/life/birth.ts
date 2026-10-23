@@ -33,6 +33,7 @@ import {
   LOCATION,
   MIND,
   massOf,
+  type NameRules,
   nameNewborn,
   newBody,
   newMind,
@@ -96,6 +97,8 @@ export interface BirthOptions {
   readonly newborn?:
     | {
         readonly language: Language;
+        /** La forma de los nombres (el largo mínimo); por defecto, la de ahora. */
+        readonly names?: NameRules;
         readonly schemas: readonly SchemaDef[];
         readonly dims: readonly DimensionDef[];
         readonly bonds: readonly BondDef[];
@@ -244,6 +247,7 @@ export function birthProcess(o: BirthOptions): ProcessDef {
             used,
             raisedBy: f,
             event: birthEvent,
+            ...(n.names ? { rules: n.names } : {}),
           });
           const given = name.parts.find((x) => x.kind === "given")?.form;
           if (given) used.add(given.toLowerCase());

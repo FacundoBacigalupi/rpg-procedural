@@ -36,6 +36,7 @@ import {
   type MaterialDef,
   type MentalLabelDef,
   type NutrientProfileDef,
+  nameRules,
   oscillationYearOfMap,
   outdoorTempC,
   PERSON,
@@ -431,6 +432,8 @@ export interface LifeWorld {
   readonly legacyHeardReaders?: boolean;
   /** Replay de motores anteriores a `life-39`: lo oído se escribe en `HEARD`, no en `action.speak` + `BELIEFS`. */
   readonly legacyHeardTable?: boolean;
+  /** Replay de motores anteriores a `life-40`: los nombres de una o dos letras no se alargan. */
+  readonly legacyShortNames?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -1771,6 +1774,7 @@ export function lifeWorld(
                   ? {
                       newborn: {
                         language: parts.form.language,
+                        names: nameRules(parts),
                         schemas: parts.schemas,
                         dims: parts.relationDims,
                         bonds: parts.relationBonds,

@@ -74,6 +74,7 @@ import {
   MATERIALS,
   MENTAL_LABELS,
   NUTRIENT_PROFILES,
+  nameRules,
   OFFERING_ASH,
   PARCEL_SOIL,
   PERSON,
@@ -328,6 +329,8 @@ export interface LifeOptions {
   readonly legacyHeardReaders?: boolean;
   /** Solo el replay de un motor anterior a `life-39`: lo oído se escribe en `HEARD` (no en el evento + `BELIEFS`). */
   readonly legacyHeardTable?: boolean;
+  /** Solo el replay de un motor anterior a `life-40`: los nombres de una o dos letras no se alargan. */
+  readonly legacyShortNames?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -721,6 +724,7 @@ export function optInParts(
   | "legacyNoToldBeliefs"
   | "legacyHeardReaders"
   | "legacyHeardTable"
+  | "legacyShortNames"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
@@ -896,6 +900,7 @@ export function optInParts(
     ...(options.legacyNoToldBeliefs ? { legacyNoToldBeliefs: true } : {}),
     ...(options.legacyHeardReaders ? { legacyHeardReaders: true } : {}),
     ...(options.legacyHeardTable ? { legacyHeardTable: true } : {}),
+    ...(options.legacyShortNames ? { legacyShortNames: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
@@ -1448,7 +1453,7 @@ export function createLife(
     required(content.get(LANGUAGES, "village.hills"), "lengua village.hills"),
     content.all(CONCEPTS),
   );
-  seedPersonNames(truth, language, seed);
+  seedPersonNames(truth, language, seed, nameRules(options));
   const main = named.find((p) => !["fields", "forest"].includes(p.feature)) ?? named[0];
   seedPlaceNames(truth, language, seed, [
     ...(main ? [{ id: settlement, feature: main.feature, event: pop.foundedEvent }] : []),
