@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-recognition-flicker:** Rama `feat/play-recognition-flicker`: quien se reconoció hace un momento y sigue a la vista no se vuelve «un viejo» en la mirada siguiente (`heldRecognition` en la vista, ventana `RECENT_SIGHT_TICKS` de 15 min sobre la creencia `at`). Sin bump de motor: no toca la verdad. Siguen los sub-ítems del HUD y la escena.
+
 **play-hint-verbs (2026-10-23, rama `feat/play-verb-words`):** `ui/hints.ts` (`hintOf`, `suggestionPhrase`, `COMMANDS`) arma la línea y lo que se completa; `Session.hint()` lo expone, `Panels.hint` lo lleva a la web y la CLI imprime la línea antes de cada `>`. `ui/web/complete.ts` (sin imports, lo usa el cliente) completa la última palabra; `App.tsx` la muestra bajo el chat con Tab y flechas. `VerbWordBook.closest` da el «¿Quisiste decir…?». Tests en `ui/hints.test.ts` y `server.test.ts`. Siguen `play-refs-objects-loose` y `play-refs-objects-goods`.
 
 **play-help-verbs (2026-10-23, rama `feat/play-verb-words`):** `VerbWordBook.help`/`helpOf` (`llm/verb-words.ts`) arman «!verbos» y «!verbos X» desde la tabla; `ui/session.ts` los despacha con los nombres del catálogo y `HELP` lo nombra. Tests en `verb-words.test.ts` y `ui/cli/loop.test.ts`.

@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentId, Tick } from "../../core/index.ts";
 import { learn, type Percept } from "../../sim/index.ts";
-import { recognizedFromBeliefs } from "./view.ts";
+import { heldRecognition, RECENT_SIGHT_TICKS, recognizedFromBeliefs } from "./view.ts";
 
 const ana = "agent:1" as AgentId;
 const me = "agent:0" as AgentId;
@@ -53,5 +53,31 @@ describe("recognizedFromBeliefs", () => {
     const old = (now - 72 * 3_600) as Tick;
     const r = recognizedFromBeliefs(percept, believes(here, old), here, now);
     expect(r.fields.identity).toBeUndefined();
+  });
+});
+
+describe("heldRecognition", () => {
+  const { identity: _gone, ...fields } = percept.fields;
+  const unread: Percept = { ...percept, detail: "clear", fields };
+
+  it("quien reconoció hace un momento y sigue a la vista no se vuelve un desconocido", () => {
+    const r = heldRecognition(unread, believes(here, (now - 60) as Tick), ana, here, now);
+    expect(r.fields.identity?.value).toBe(ana);
+    expect(r.detail).toBe("identified");
+    expect(r.fields.figure).toEqual(percept.fields.figure);
+  });
+
+  it("si lo perdió de vista un rato, o lo cree en otro lado, depende de la mirada", () => {
+    const long = (now - RECENT_SIGHT_TICKS - 1) as Tick;
+    for (const beliefs of [undefined, believes(here, long), believes({ hex: 9 }, now)]) {
+      expect(heldRecognition(unread, beliefs, ana, here, now)).toBe(unread);
+    }
+  });
+
+  it("sin figura a la vista no sostiene nada, y una lectura con cara queda como estaba", () => {
+    const { figure: _f, ...bare } = fields;
+    const shadow: Percept = { ...unread, detail: "vague", fields: bare };
+    expect(heldRecognition(shadow, believes(here, now), ana, here, now)).toBe(shadow);
+    expect(heldRecognition(percept, believes(here, now), ana, here, now)).toBe(percept);
   });
 });

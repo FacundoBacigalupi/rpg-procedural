@@ -3,7 +3,14 @@
 // siente (los signos del cuerpo) y lo que cree que le pasó en los pasos del turno. Es el único
 // lugar donde la verdad del mundo se convierte en entrada del narrador.
 
-import { type AgentId, type EntityRef, ledgerUnit, Rng, type Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EntityRef,
+  ledgerUnit,
+  MINUTE,
+  Rng,
+  type Tick,
+} from "../../core/index.ts";
 import {
   ATTENTION,
   attireLook,
@@ -166,6 +173,41 @@ export function recognizedFromBeliefs(
   const { identity: _dropped, ...fields } = percept.fields;
   const detail = fields.figure !== undefined || fields.words !== undefined ? "clear" : "vague";
   return { ...percept, detail, fields };
+}
+
+/** Cuánto dura la memoria de corto plazo de quién está en la escena (play-recognition-flicker). */
+export const RECENT_SIGHT_TICKS = 15 * MINUTE;
+
+/**
+ * Lo que se reconoció hace un momento se sostiene (perception §5): si la mirada de ahora no leyó
+ * la cara de `who` pero lo sigue viendo (figura a la vista) y el personaje lo reconoció acá hace
+ * menos de `RECENT_SIGHT_TICKS` (su creencia de dónde está), sigue siendo él y no «un viejo». Si
+ * lo perdió de vista un rato, o cree que está en otro lado, vuelve a depender de la mirada.
+ */
+export function heldRecognition(
+  percept: Percept,
+  beliefs: Beliefs | undefined,
+  who: AgentId,
+  at: Location,
+  now: Tick,
+): Percept {
+  if (percept.fields.identity !== undefined || percept.fields.figure === undefined) return percept;
+  const b = believed(beliefs, who, "at");
+  if (
+    b === undefined ||
+    typeof b.value === "boolean" ||
+    !sameValue(b.value, at) ||
+    now - b.measured > RECENT_SIGHT_TICKS
+  ) {
+    return percept;
+  }
+  const confidence = beliefConfidenceAt(b, now);
+  if (confidence < RECOGNIZED_CONFIDENCE) return percept;
+  return {
+    ...percept,
+    detail: "identified",
+    fields: { ...percept.fields, identity: { value: who, confidence, mistaken: false } },
+  };
 }
 
 export interface PlayerViewOptions {
@@ -466,10 +508,11 @@ export function playerView(
     );
     // Lo no mirado a propósito se lee de lo que cree: quién es y cómo lo vio (figura y ropa).
     const believedSeen = (s: Percept): Percept => {
-      const r = recognizedFromBeliefs(s, mine, l, now);
+      const r = recognizedFromBeliefs(heldRecognition(s, mine, id, l, now), mine, l, now);
       return r.fields.identity === undefined ? r : withImpressions(r, id, mine, now);
     };
-    percepts.push(...(glancing ? seen : seen.map(believedSeen)));
+    const held = (s: Percept): Percept => heldRecognition(s, mine, id, l, now);
+    percepts.push(...(glancing ? seen.map(held) : seen.map(believedSeen)));
   }
 
   // Lo que otros dijeron mientras pasaba el turno (la respuesta de quien te escuchó).
