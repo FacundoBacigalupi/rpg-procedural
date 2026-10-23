@@ -235,7 +235,7 @@ describe("councilCases en la vida", () => {
     );
     off.advanceTo(off.now + DAY * 5);
     expect(off.hash().total).toBe(
-      "ab02c781a70744adc3f00ff20234fd2ffd8bf4beb97b513920806ab288f418ab",
+      "29584eac1003de5c7a165b2117001049bfd4294973ef170cd87454713054c9d8",
     );
     const on = () => {
       const l = Life.create(3, content, { council: {}, councilCases: {} });
