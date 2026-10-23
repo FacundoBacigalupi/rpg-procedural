@@ -280,6 +280,64 @@ describe("groundingProblems", () => {
     );
   });
 
+  it("el personaje no hace lo que no está entre sus pasos (actos inventados)", () => {
+    // Solo miró: «te acercás» o «le hablaste» son actos que no pasaron.
+    const looked = narrationRequest(
+      viewOf({
+        steps: [
+          {
+            verb: "look",
+            self: { believed: "success", cues: [], effect: { kind: "observe", acuity: 1 } },
+          },
+        ],
+      }),
+      style,
+    );
+    const own = (text: string) => groundingProblems(text, looked, words).join();
+    expect(own("Te acercás al pozo.")).toMatch(/did not move \("acercás"\)/);
+    expect(own("Le hablás a la nada.")).toMatch(/did not speak/);
+    // El pasado puede ser un recuerdo de otro día.
+    expect(own("Te acordás de cuando le hablaste.")).toBe("");
+    // Mirar, pensar y esperar son de cualquier escena; lo citado no es narración.
+    expect(own("Mirás alrededor y pensás en tu casa mientras esperás.")).toBe("");
+    expect(own("Alguien grita «¡te acercás demasiado!»")).toBe("");
+    // Con el paso de moverse, acercarse sí pasó.
+    const moved = narrationRequest(
+      viewOf({
+        steps: [
+          {
+            verb: "move",
+            self: { believed: "success", cues: [], effect: { kind: "observe", acuity: 1 } },
+          },
+        ],
+      }),
+      style,
+    );
+    expect(groundingProblems("Te acercás al pozo.", moved, words)).toEqual([]);
+  });
+
+  it("las plantillas de los pasos propios no inventan actos", () => {
+    for (const id of book.ids().filter((x) => x.startsWith("outcome."))) {
+      const verb = id.split(".")[1] as string;
+      const req = narrationRequest(
+        viewOf({
+          steps: [
+            {
+              verb,
+              self: { believed: "success", cues: [], effect: { kind: "observe", acuity: 1 } },
+            },
+          ],
+        }),
+        style,
+      );
+      for (const line of book.lines(id)) {
+        const text = line.replace(/\{[a-z]+\}/g, "algo");
+        const invented = groundingProblems(text, req, words).filter((p) => p.includes("did not"));
+        expect(invented, `${id}: ${line}`).toEqual([]);
+      }
+    }
+  });
+
   it("determinista: mismo texto, mismos problemas", () => {
     const text = "{{e1|Un chico}} se acerca, busca y tiembla.";
     expect(check(text)).toEqual(check(text));
