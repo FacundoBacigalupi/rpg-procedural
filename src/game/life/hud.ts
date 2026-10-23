@@ -8,17 +8,20 @@
 // verdad ajena. Puro: no escribe nada ni gasta RNG.
 
 import {
+  type AgeBand,
   CORE_NORMAL_C,
   type ConditionKind,
   EMOTION_HALF_LIFE_TICKS,
   EMOTIONS,
   type EmotionId,
   emotionIntensityAt,
+  HEARTH,
   INNATE,
   LOCATION,
   localHour,
   type Percept,
   type PlaceKind,
+  type Sex,
   type SpaceKind,
   skyLight,
   spaceLight,
@@ -55,6 +58,11 @@ export interface Hud {
     readonly home: boolean;
     readonly space: SpaceKind;
     readonly kinds: readonly PlaceKind[];
+    /**
+     * Adentro, un fuego encendido en el mismo cuarto (lo ve y lo siente). Sin fuegos simulados en la
+     * vida (`HEARTH` vacía: los hogares son opt-in) no se sabe: `undefined`, y el fondo pinta como antes.
+     */
+    readonly fire?: boolean;
   };
   readonly people: {
     /** A cuántos ve o nota ahora (de la escena). */
@@ -63,6 +71,11 @@ export interface Hud {
     readonly known: number;
     /** La escena se cortó en `MAX_CLEAR_PERCEPTS`: puede haber más. */
     readonly more: boolean;
+    /**
+     * Cómo se ve cada uno, en el orden de la escena: solo lo que leyó la mirada (edad y sexo de la
+     * figura, la ropa); de quien apenas nota, nada (una sombra).
+     */
+    readonly figures: readonly SeenFigure[];
   };
   readonly body: {
     readonly hunger: Level;
@@ -137,6 +150,39 @@ function moodOf(w: LifeWorld, character: CharacterPanel): Hud["mood"] {
   };
 }
 
+export interface SeenFigure {
+  readonly age?: AgeBand;
+  readonly sex?: Sex;
+  readonly attire?: string;
+  readonly known: boolean;
+}
+
+function figureOf(p: Percept): SeenFigure {
+  const fig = p.fields.figure?.value as { sex?: Sex; age?: AgeBand } | undefined;
+  const attire = p.fields.attire?.value;
+  return {
+    ...(fig?.age === undefined ? {} : { age: fig.age }),
+    ...(fig?.sex === undefined ? {} : { sex: fig.sex }),
+    ...(typeof attire === "string" ? { attire } : {}),
+    known: p.detail === "identified",
+  };
+}
+
+/**
+ * Un fuego que arde en el espacio donde está (con intensidad en el último paso); `undefined` si la
+ * vida no simula fuegos.
+ */
+function fireIn(w: LifeWorld, space: string | undefined, indoor: boolean): boolean | undefined {
+  const ids = w.truth.ids(HEARTH);
+  if (ids.length === 0) return undefined;
+  if (!indoor || space === undefined) return false;
+  for (const id of ids) {
+    const h = w.truth.get(HEARTH, id);
+    if (h && h.space === space && h.intensity > 0) return true;
+  }
+  return false;
+}
+
 export function dayPhase(hour: number): DayPhase {
   if (hour >= 7 && hour < 17) return "day";
   if (hour >= 5 && hour < 7) return "dawn";
@@ -193,6 +239,7 @@ export function hudPanel(
   const day = weatherAt(w.map, w.clock, w.seed, now);
   const weather = weatherPanel(w);
   const clear = seen.filter((p) => p.detail !== "vague");
+  const fire = fireIn(w, at?.space, indoor);
   return {
     hour,
     phase: dayPhase(hour),
@@ -206,11 +253,13 @@ export function hudPanel(
       home: character.where.home,
       space: node?.kind ?? "open",
       kinds: character.where.placeKinds as readonly PlaceKind[],
+      ...(fire === undefined ? {} : { fire }),
     },
     people: {
       around: seen.length,
       known: knownAround(w, seen),
       more: clear.length >= MAX_CLEAR_PERCEPTS,
+      figures: seen.map(figureOf),
     },
     body: bodyOf(character.body),
     coins,

@@ -14,8 +14,20 @@ export interface Hud {
     readonly home: boolean;
     readonly space: string;
     readonly kinds: readonly string[];
+    /** Sin definir: la vida no simula fuegos. */
+    readonly fire?: boolean;
   };
-  readonly people: { readonly around: number; readonly known: number; readonly more: boolean };
+  readonly people: {
+    readonly around: number;
+    readonly known: number;
+    readonly more: boolean;
+    readonly figures: readonly {
+      readonly age?: "child" | "youth" | "adult" | "elder";
+      readonly sex?: "female" | "male";
+      readonly attire?: string;
+      readonly known: boolean;
+    }[];
+  };
   readonly body: {
     readonly hunger: 0 | 1 | 2 | 3;
     readonly thirst: 0 | 1 | 2 | 3;
