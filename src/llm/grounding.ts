@@ -137,7 +137,7 @@ export function groundingProblems(
       if (p.words === undefined && book.has(p.action)) s.expected.add(p.action);
     }
     if (p.words !== undefined) s.allowed.add("speak");
-    if (p.detail === "vague") s.allowed.add("move");
+    if (p.detail === "vague" || p.arrived) s.allowed.add("move");
   }
   const elsewhere = labelsElsewhere(view);
   const own = new Set<string>();

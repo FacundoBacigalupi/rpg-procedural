@@ -52,6 +52,14 @@
   },
   { "id": "percept.presence", "lines": ["Ves a {who}.", "Está {who} ahí."] },
   {
+    "id": "percept.arrived",
+    "lines": ["Ahora ves también a {who}.", "{who} aparece a la vista."]
+  },
+  {
+    "id": "percept.gone",
+    "lines": ["Ya no ves a {who}.", "{who} ya no está a la vista."]
+  },
+  {
     "id": "percept.action.move",
     "lines": ["Ves a {who} que pasa caminando.", "{who} va de un lado a otro."]
   },
