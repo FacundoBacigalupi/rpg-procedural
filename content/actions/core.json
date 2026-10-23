@@ -260,6 +260,19 @@
     ],
     "occupies": { "voice": "full", "mind": "partial" },
     "duration": { "kind": "fixed", "seconds": 300 },
+    "speech": {
+      "role": "content",
+      "acts": {
+        "greet": 20,
+        "farewell": 15,
+        "ask": 60,
+        "request": 90,
+        "tell": 120,
+        "promise": 120
+      },
+      "wordSeconds": 1,
+      "min": 10
+    },
     "checkpoint": 30,
     "emissions": { "sight": 0.3, "sound": 0.6 },
     "serves": { "social": 0.6, "family": 0.1 },

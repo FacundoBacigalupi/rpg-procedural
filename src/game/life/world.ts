@@ -434,6 +434,8 @@ export interface LifeWorld {
   readonly legacyHeardTable?: boolean;
   /** Replay de motores anteriores a `life-40`: los nombres de una o dos letras no se alargan. */
   readonly legacyShortNames?: boolean;
+  /** Replay de motores anteriores a `life-41`: `speak` dura 300 s fijos. */
+  readonly legacyFixedSpeech?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -978,6 +980,7 @@ export function lifeWorld(
             ? { legacyNoDeadCounterpartyGuard: true }
             : {}),
           ...(parts.legacyNoDeadGiveGuard === true ? { legacyNoDeadGiveGuard: true } : {}),
+          ...(parts.legacyFixedSpeech === true ? { legacyFixedSpeech: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),

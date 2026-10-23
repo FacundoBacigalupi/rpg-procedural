@@ -96,6 +96,8 @@ export const LANDMARK_SIGHT_HEXES = 2;
 /** Lo que el mundo le da al resolver además de lo que necesita la tirada. */
 export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
+  /** Replay de motores viejos: `speak` dura lo fijo del catálogo, sin mirar el acto ni las palabras. */
+  readonly fixedSpeech?: boolean;
   /** El hex adonde va `move` (el del lugar del argumento, ya elegido por quien arma el paso). */
   readonly destination?: number | undefined;
   /** El actor está detrás de una puerta trabada: de ahí no sale caminando (settlements §7). */
@@ -588,7 +590,13 @@ export function resolve(input: ResolveInput): ActionResolution {
   const walk = input.walkFactor ?? 1;
   const path = legOf(input.map, fullPath, walk);
   const pathSeconds = path.reduce((s, h) => s + (input.map.crossSeconds[h] ?? 0) * walk, 0);
-  const nominal = actionDuration(def, node, input.planManner, pathSeconds);
+  const nominal = actionDuration(
+    def,
+    node,
+    input.planManner,
+    pathSeconds,
+    input.fixedSpeech !== true,
+  );
   const ctx: Ctx = {
     input,
     roll,
