@@ -513,7 +513,6 @@ function placesOf(truth: ReadonlyWorldTruth) {
   });
 }
 
-/** Qué tan fácil es torcer el rumbo ahora y qué hitos (la aldea, el agua) se distinguen (travel §11.3). */
 /** Paso de caminante adentro de un sitio (m/s) y lo que tarda como mínimo cruzar una puerta. */
 const SITE_WALK_MS = 1.2;
 const SITE_MIN_SECONDS = 10;
@@ -541,6 +540,7 @@ function siteWalk(
   };
 }
 
+/** Qué tan fácil es torcer el rumbo ahora y qué hitos (la aldea, el agua) se distinguen (travel §11.3). */
 function bearingOf(
   o: ActOptions,
   places: ReturnType<typeof placesOf>,
@@ -996,11 +996,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       "entity" in a && a.entity.startsWith("agent:") ? [[a.role, partyOf(a.entity)]] : [],
     ),
   );
-  // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`.
-  const destArg = node.args.find(
-    (a) => "entity" in a && (a.entity.startsWith("place:") || a.entity.startsWith("settlement:")),
-  );
+  // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. El
+  // asentamiento cuenta como destino solo con un espacio del sitio (el jugador yendo a la plaza o
+  // a una casa): los `move` de los NPC a la aldea siguen sin caminar hasta medir ese cambio
+  // (ROADMAP play-npc-settlement-walk), que cambia los hashes.
   const spaceArg = node.args.find((a) => a.role === "space");
+  const destArg = node.args.find(
+    (a) =>
+      "entity" in a &&
+      (a.entity.startsWith("place:") ||
+        (spaceArg !== undefined && a.entity.startsWith("settlement:"))),
+  );
   const destination =
     destArg && "entity" in destArg
       ? nearestHex(

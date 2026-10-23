@@ -69,7 +69,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **Un solo proceso pesado a la vez** (pedido del usuario, 2026-10-21): la PC se apagó sola con tres agentes corriendo `npm run check` en paralelo. Un agente/lote a la vez; no lanzar `check` ni vitest completo en simultáneo.
 
 ## 8. Estado de las líneas de trabajo
-**Lote play-web (2026-10-23, rama `feat/web-hud-ambient`):** primeros ítems de «Jugable primero» del ROADMAP: `play-quiet-presence` (la narración no repite a los presentes quietos) y `play-web-hud` (barra de arriba, fondo borroso del entorno, colores por la luz, paneles redimensionables). Sin tocar la sim ni el hash. Siguen `play-speak-duration` y el resto de «Jugable primero».
+**Lote play-web (2026-10-23, rama `feat/web-hud-ambient`):** primeros ítems de «Jugable primero» del ROADMAP: `play-quiet-presence` (la narración no repite a los presentes quietos) y `play-web-hud` (barra de arriba, fondo borroso del entorno, colores por la luz, paneles redimensionables). Después, en la misma rama: `play-site-move` (moverse entre espacios del sitio: afuera, plaza, casa, casa de X), `play-world-family` (`--world`, la familia se elige al empezar) y más color en el fondo (`play-scene-more` parcial). Siguen `play-speak-duration` y el resto de «Jugable primero».
 
 **Estado (2026-10-21):** develop en `f363690` (#655), ramas de trabajo retiradas. Rama `chore/workflow-cleanup`: ROADMAP depurado (cerrados en `history/`) y método unificado. Rama `feat/item-claims-take`: cadena `perfil2-item-claims-take` completa (loss, state, act, audit, give, replay-profile). Donación normativa integrada después (c7982cb). Siguiente: `perfil2-item-claims-profile-measure` y `perfil2-directed-coverage`. Fase 3 abierta.
 
