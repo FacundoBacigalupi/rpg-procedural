@@ -14,6 +14,18 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
+### Jugable primero (2026-10-23, pedido del usuario al jugar)
+El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sistemas apagados. Estos ítems van **antes** de la prioridad de arriba; cada uno se mide jugando (efecto visible en la partida).
+- [x] (play-quiet-presence, 2026-10-23) La narración no repite a los presentes quietos en cada turno: la sesión recuerda a quién contó por lugar y `playerView` los saca con `quietPresence`; mirar a propósito y la primera escena cuentan a todos. Sin tocar la sim ni el hash.
+- [x] (play-web-hud, 2026-10-23) Barra de arriba con íconos (hora, cielo, aire, estación, lugar, gente, monedas, cuerpo con alertas) desde `hudPanel` (`game/life/hud.ts`, solo lo percibido); fondo borroso del entorno (cielo por hora y nubes, aldea, bosque, agua, pieza con fuego, una figura por persona vista); colores claros u oscuros según la luz que ve el personaje; columna de paneles redimensionable.
+- [ ] (play-speak-duration) «Hablar» dura fijo 300 s (`content/actions/core.json`): un saludo gasta 5 minutos. Duración por acto de habla (saludo ~20 s, pregunta ~1 min, charla larga varios minutos; dialogue §2) para el jugador y los NPC; toca la sim: bump de `life-N`, hashes y comparación de 2 años (horas de charla por NPC-día, chismes).
+- [ ] (play-arrivals) Con `quietPresence` los quietos ya no se repiten, pero nadie avisa cuando alguien **llega** sin ser nuevo para la escena o **se va**: plantilla y `PerceptView` de partida/llegada desde la diferencia entre escenas.
+- [ ] (play-names) Los nombres salen de una sílaba («O», «Te», «Ka») y se leen como errores: revisar el largo mínimo y la fonotáctica del generador de nombres (language §6) y cómo los cita la narración.
+- [ ] (play-refs-figure) «Hablo con la figura desconocida» contesta «no sabés quién es» aunque la escena la acaba de nombrar: resolver referencias contra las etiquetas que usó la narración (actions §4).
+- [ ] (play-llm-invented-acts) El narrador con LLM agrega actos del personaje que no pasaron («Te hablás a O» al solo mirar): el validador tiene que rechazar acciones propias fuera de los `steps` (narration §8).
+- [ ] (play-hud-more) Lo que la barra todavía no puede mostrar porque el sistema no existe o no expone una vista del personaje: ánimo (condiciones mentales y emociones en palabras), qi y reino de cultivo (Fase 4), fase de la luna y estrellas (cosmology §2), peligro percibido, carga que lleva, abrigo y ropa, temperatura sentida adentro.
+- [ ] (play-scene-more) Fondo con más verdad percibida: siluetas por figura (niño/adulto, sexo, ropa), edificios reales del asentamiento e interiores por tipo de edificio (settlements), ciudad vs aldea, animales vistos, fuego del hogar solo si está encendido.
+
 ### Cómo se trabaja
 Reglas completas en [HANDOFF.md](HANDOFF.md) §2 (método) y §5 (verificación); son la única versión vigente.
 1. **Elegir:** el primer `[ ]` no bloqueado de la fase actual. Si no entra en un lote, partirlo en sub-ítems `[ ]` antes de codear.
