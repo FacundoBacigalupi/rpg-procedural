@@ -187,6 +187,8 @@ export interface Session {
   choose(id: string): Promise<Reply>;
   /** Lo que se nota del lugar ahora, con la habituación al día. */
   environment(): EnvironmentItem[];
+  /** Los percepts de personas de la última escena (lo que el personaje ve o nota ahora). */
+  seen(): readonly Percept[];
   /** Si el apodo con lugar está encendido (`--nickname`): paneles con fama y apodo, narración que lo cita. */
   readonly nickname: boolean;
   /** Las opciones de paneles de las opciones opt-in activas de la vida (residuo, ansia local, objetos); vacío por defecto. */
@@ -555,6 +557,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     suggested,
     choose,
     environment,
+    seen: () => seenNow,
     nickname: options.nickname === true,
     panelOptions,
   };

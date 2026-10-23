@@ -7,6 +7,7 @@ import type { AddressInfo } from "node:net";
 import {
   bookPanel,
   characterPanel,
+  hudPanel,
   hypothesesPanel,
   inventoryPanel,
   peoplePanel,
@@ -35,16 +36,17 @@ import type { History, Panels, SayResponse, WebState } from "./api.ts";
 /** Los paneles del personaje con el texto de la CLI, sin números de la verdad (player-loop §9). */
 export function panelsOf(session: Session): Panels {
   const w = session.life.world;
+  const character = characterPanel(w, {
+    substances: true,
+    ...session.panelOptions,
+    ...(session.nickname ? { reputation: true } : {}),
+  });
+  const inventory = inventoryPanel(w);
   return {
     now: renderStatus(session.life.now),
-    character: renderCharacter(
-      characterPanel(w, {
-        substances: true,
-        ...session.panelOptions,
-        ...(session.nickname ? { reputation: true } : {}),
-      }),
-    ),
-    inventory: renderInventory(inventoryPanel(w)),
+    hud: hudPanel(w, character, inventory.coins, session.seen()),
+    character: renderCharacter(character),
+    inventory: renderInventory(inventory),
     book: renderBook(bookPanel(w)),
     people: renderPeople(peoplePanel(w)),
     hypotheses: renderHypotheses(hypothesesPanel(w)),

@@ -25,6 +25,7 @@ export * from "./gathering-provider.ts";
 export * from "./goal-death.ts";
 export * from "./goal-evidence.ts";
 export * from "./hire.ts";
+export * from "./hud.ts";
 export * from "./hypotheses.ts";
 export * from "./identity.ts";
 export * from "./inference-metric.ts";
