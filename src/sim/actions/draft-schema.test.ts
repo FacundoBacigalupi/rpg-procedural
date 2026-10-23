@@ -48,7 +48,9 @@ const BAD: readonly [string, unknown, RegExp][] = [
   ["texto donde va una referencia", moveTo([{ role: "to", text: "al bosque" }]), /takes a ref/],
   [
     "rol repetido",
+    // Uno más que los roles de move: el esquema estructural solo acota la cantidad.
     moveTo([
+      { role: "to", ref: forest },
       { role: "to", ref: forest },
       { role: "to", ref: forest },
     ]),
