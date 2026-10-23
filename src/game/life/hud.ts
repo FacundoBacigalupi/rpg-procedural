@@ -15,6 +15,7 @@ import {
   spaceLight,
   weatherAt,
 } from "../../sim/index.ts";
+import { knownEntities } from "./known.ts";
 import type { CharacterPanel } from "./panels.ts";
 import { MAX_CLEAR_PERCEPTS } from "./view.ts";
 import { type AirFeel, type SeasonName, weatherPanel } from "./weather-panel.ts";
@@ -138,10 +139,24 @@ export function hudPanel(
     },
     people: {
       around: seen.length,
-      known: seen.filter((p) => p.detail === "identified").length,
+      known: knownAround(w, seen),
       more: clear.length >= MAX_CLEAR_PERCEPTS,
     },
     body: bodyOf(character.body),
     coins,
   };
+}
+
+/**
+ * Cuántos de los que tiene cerca conoce: los que reconoció en esta mirada y los de su familia que
+ * cree acá (de noche no siempre se distingue la cara, pero sabe que su madre está en la casa).
+ */
+function knownAround(w: LifeWorld, seen: readonly Percept[]): number {
+  const known = new Set<string>();
+  for (const p of seen)
+    if (p.detail === "identified" && p.sourceEntityId) known.add(p.sourceEntityId);
+  for (const k of knownEntities(w)) {
+    if (k.kind === "person" && k.relations.length > 0 && k.present && !k.phantom) known.add(k.ref);
+  }
+  return Math.min(known.size, seen.length);
 }

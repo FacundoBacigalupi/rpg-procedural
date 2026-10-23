@@ -223,6 +223,14 @@ export function resolveRef(desc: RefDescription, known: readonly KnownEntity[]):
   if (scored.length === 0) return { status: "unknown", desc, candidates: [] };
 
   scored.sort((a, b) => b.score - a.score || compareIds(a.e.ref, b.e.ref));
+  // Una misma persona puede estar dos veces (el familiar recordado y la figura que no reconoció):
+  // queda la que mejor encaja.
+  const seenRefs = new Set<EntityRef>();
+  for (let i = 0; i < scored.length; i++) {
+    const ref = (scored[i] as (typeof scored)[number]).e.ref;
+    if (seenRefs.has(ref)) scored.splice(i--, 1);
+    else seenRefs.add(ref);
+  }
   const candidates = scored.map(({ e, score }) => ({ ref: e.ref, score, via: e.via }));
   const best = (scored[0] as (typeof scored)[number]).score;
   const close = scored.filter((s) => best - s.score < AMBIGUITY_GAP);

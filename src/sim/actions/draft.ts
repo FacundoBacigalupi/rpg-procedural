@@ -452,7 +452,10 @@ function speakToPresent(
   w: Walk,
   act?: SpeakAct | undefined,
 ): PlanNode | null {
-  const here = w.ctx.known.filter((k) => k.kind === "person" && k.present);
+  // Por ref: el familiar y la figura sin reconocer pueden ser la misma persona.
+  const here = w.ctx.known
+    .filter((k) => k.kind === "person" && k.present)
+    .filter((k, i, all) => all.findIndex((o) => o.ref === k.ref) === i);
   const [only] = here;
   if (here.length === 1 && only) {
     return {

@@ -128,23 +128,18 @@ export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): Know
             ...(here === undefined ? {} : { at: here.hex }),
             phantom: false,
           };
+        continue;
       }
+      // Sin reconocerlo es una figura más («el viejo»): se le puede hablar con lo que se ve, con el
+      // mismo ref (lo resuelve la sim) pero sin vincularla al familiar en lo que el personaje cree.
+      out.push(figure(id, p, here));
       continue;
     }
     listed.add(id);
     const given = named
       ? callName(w.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] })
       : undefined;
-    out.push({
-      ref: id,
-      kind: "person",
-      names: given === undefined ? [] : [given],
-      features: featuresOfPercept(p),
-      relations: [],
-      present: true,
-      ...(here === undefined ? {} : { at: here.hex }),
-      via: [],
-    });
+    out.push(figure(id, p, here, given));
   }
   for (const id of w.truth.ids(PLACE)) {
     const p = w.truth.get(PLACE, id);
@@ -167,6 +162,20 @@ export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): Know
     });
   }
   return out;
+}
+
+/** Alguien visto ahora: con nombre si se lo reconoce, si no solo lo que se ve. */
+function figure(id: EntityRef, p: Percept, here: Where | undefined, given?: string): KnownEntity {
+  return {
+    ref: id,
+    kind: "person",
+    names: given === undefined ? [] : [given],
+    features: featuresOfPercept(p),
+    relations: [],
+    present: true,
+    ...(here === undefined ? {} : { at: here.hex }),
+    via: [],
+  };
 }
 
 /** La plaza y las calles: de acá se va a cualquier casa y al campo. */
