@@ -276,7 +276,7 @@ export function App() {
             onChange={(e) => setInput(e.target.value)}
             // Sin el autocompletado del navegador: la pista de frases es la del juego (play-hint-verbs).
             autoComplete="off"
-            placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (ayuda)"}
+            placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (!ayuda)"}
             disabled={busy || over}
           />
           <button type="submit" disabled={busy || over || input.trim() === ""}>

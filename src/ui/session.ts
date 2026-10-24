@@ -171,7 +171,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, cielo, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !ayuda, !salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -484,9 +484,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         { text: line, scene, recent },
         catalog,
       );
-      draft = parsed.ok ? parsed.draft : null;
+      // Sin «!» no hay comando: si el modelo igual lo lee así, no se entendió (play-bang-commands).
+      draft = parsed.ok && parsed.draft.kind !== "meta" ? parsed.draft : null;
     }
-    if (draft === null) return { text: "Eso todavía no se entiende. Escribí «ayuda»." };
+    if (draft === null) return { text: "Eso todavía no se entiende. Escribí «!ayuda»." };
     if (draft.kind === "meta") {
       const text = draft.text ?? "";
       if (text === "contenerse") {

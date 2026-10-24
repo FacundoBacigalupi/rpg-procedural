@@ -709,8 +709,8 @@ function pieces(text: string): { sep: string; text: string }[] {
   return out;
 }
 
-const META =
-  /^(?:guardar|cargar|salir(?=\s*$)|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|cielo|clima|pron[oó]stico|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+/** Los comandos fuera del personaje van con «!» adelante (`play-bang-commands`): «!salir», «!gente». */
+const BANG = /^!\s*/;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const DIVINER =
@@ -771,7 +771,9 @@ export function parseCommand(
 ): IntentDraft | null {
   const text = tidy(input);
   if (text.length === 0) return null;
-  if (META.test(text)) return { kind: "meta", text };
+  // Sin «!», todo es del personaje: «salir corriendo» o «gente de la plaza» no cortan la frase.
+  const bang = BANG.exec(text);
+  if (bang) return { kind: "meta", text: text.slice(bang[0].length) };
   if (/^¿/.test(text) || (/\?$/.test(text) && !SPEAK.test(text))) {
     return { kind: "question_ooc", text };
   }

@@ -30,9 +30,13 @@ describe("la gramática para moverse adentro de la aldea", () => {
     expect(placeOf("me acerco al río")).toBe("el río");
   });
 
-  it("«salir» solo sigue siendo el comando para dejar el juego", () => {
-    expect(parseCommand("salir")).toMatchObject({ kind: "meta" });
+  it("solo «!salir» deja el juego; sin «!» es del personaje (play-bang-commands)", () => {
+    expect(parseCommand("!salir")).toEqual({ kind: "meta", text: "salir" });
+    expect(parseCommand("! gente")).toEqual({ kind: "meta", text: "gente" });
+    expect(parseCommand("salir")).not.toMatchObject({ kind: "meta" });
+    expect(parseCommand("salir corriendo")).toMatchObject({ plan: { verb: "move" } });
     expect(parseCommand("salir a la plaza")).not.toMatchObject({ kind: "meta" });
+    expect(parseCommand("gente de la plaza, ¿me oyen?")).not.toMatchObject({ kind: "meta" });
   });
 });
 

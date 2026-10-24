@@ -85,7 +85,7 @@ describe("API web", { timeout: 60_000 }, () => {
     const base = await serve();
     const before = (await (await fetch(`${base}/api/state`)).json()) as WebState;
     const said = (await (
-      await post(`${base}/api/say`, { line: "inventario" })
+      await post(`${base}/api/say`, { line: "!inventario" })
     ).json()) as SayResponse;
     expect(said.now).toBe(before.now);
     expect(said.text).toContain("moneda");

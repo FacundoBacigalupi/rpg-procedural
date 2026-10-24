@@ -73,17 +73,17 @@ function jobsWith(client: MockLLM): LlmJobs {
   return new LlmJobs({ config, clientFor: (p) => (p.kind === "local" ? client : undefined) });
 }
 
-const SCRIPT = ["miro alrededor", "espero dos horas", "volar", "ayuda", "", "como", "descanso"];
+const SCRIPT = ["miro alrededor", "espero dos horas", "volar", "!ayuda", "", "como", "descanso"];
 const PLANS = 4;
 
 describe("runCli", () => {
   it("juega, guarda cada turno y el replay llega al mismo estado", async () => {
     const store = memory();
-    const out = await session(store, [...SCRIPT, "salir", "espero"]);
+    const out = await session(store, [...SCRIPT, "!salir", "espero"]);
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain(
-      "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, cielo, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
+      "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !ayuda, !salir.",
     );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
@@ -109,7 +109,7 @@ describe("runCli", () => {
 
   it("al volver sigue la misma vida, y da lo mismo que jugar de un tirón", async () => {
     const split = memory();
-    await session(split, [...SCRIPT.slice(0, 2), "salir"]);
+    await session(split, [...SCRIPT.slice(0, 2), "!salir"]);
     const back = await session(split, SCRIPT.slice(2), 999);
     expect(back).toMatch(/^Seguís donde quedaste\./);
 
@@ -123,11 +123,11 @@ describe("runCli", () => {
   it("los paneles no pasan el tiempo y la bitácora guarda lo narrado", async () => {
     const store = memory();
     const out = await session(store, [
-      "personaje",
-      "inventario",
-      "cielo",
+      "!personaje",
+      "!inventario",
+      "!cielo",
       "espero una hora",
-      "bitácora",
+      "!bitácora",
     ]);
     expect(out).toContain("Tenés ");
     expect(out).toContain("En la despensa:");
@@ -137,25 +137,25 @@ describe("runCli", () => {
     expect(journal).toHaveLength(2);
     expect(out).toContain(journal[1]?.text as string);
     // Al volver no se repite la escena inicial en la bitácora.
-    await session(store, ["salir"]);
+    await session(store, ["!salir"]);
     expect(store.narrations()).toHaveLength(2);
   }, 300_000);
 
   it("la memoria de continuidad se guarda, se retoma igual y no entra en el estado ni el replay", async () => {
     const store = memory();
-    await session(store, ["espero una hora", "salir"]);
+    await session(store, ["espero una hora", "!salir"]);
     const saved = store.getMeta("narration_memory") as NarrationMemory | undefined;
     expect(saved?.recent.length).toBeGreaterThan(0);
     const hash = hashState(store.load());
 
     // Retomar no anota otra vez la escena de apertura ni cambia el estado.
-    await session(store, ["salir"]);
+    await session(store, ["!salir"]);
     expect(store.getMeta("narration_memory")).toEqual(saved);
     expect(hashState(store.load())).toEqual(hash);
 
     // Una vida sin memoria guardada llega al mismo estado: la memoria no es verdad del mundo.
     const bare = memory();
-    await session(bare, ["espero una hora", "salir"]);
+    await session(bare, ["espero una hora", "!salir"]);
     expect(hashState(bare.load())).toEqual(hash);
     expect(bare.plans()).toEqual(store.plans());
 
@@ -173,7 +173,7 @@ describe("runCli", () => {
   it("el inspector no pasa el tiempo, no toca el estado y marca la vida", async () => {
     const store = memory();
     expect(store.getMeta("inspected")).toBeUndefined();
-    const out = await session(store, ["inspector tables", "god invariants"]);
+    const out = await session(store, ["!inspector tables", "!god invariants"]);
     expect(out).toContain("body.state");
     expect(out).toContain("Sin violaciones.");
     expect(store.plans()).toHaveLength(0);
@@ -182,21 +182,21 @@ describe("runCli", () => {
 
   it("guarda el modo y no lo cambia a mitad de la vida", async () => {
     const store = memory();
-    const out = await session(store, ["miro", "salir"], 5, "novel");
+    const out = await session(store, ["miro", "!salir"], 5, "novel");
     expect(out).toMatch(/^Empieza una vida en modo novela\./);
     expect(store.getMeta("mode")).toBe("novel");
     expect((store.getMeta("setup") as LifeSetup).game.mode).toBe("novel");
 
-    const back = await session(store, ["salir"], 5, "realistic");
+    const back = await session(store, ["!salir"], 5, "realistic");
     expect(back).toContain("Esta vida es en modo novela: el modo no se cambia");
     expect(store.getMeta("mode")).toBe("novel");
   }, 300_000);
 
   it("sigue una vida de un motor anterior y registra el límite de replay", async () => {
     const store = memory();
-    await session(store, ["salir"]);
+    await session(store, ["!salir"]);
     store.setMeta("versions", { ...VERSIONS, engine: "life-1" });
-    const out = await session(store, ["salir"]);
+    const out = await session(store, ["!salir"]);
     expect(out).toContain(`pasó del motor life-1 al ${LIFE_ENGINE}`);
     expect(store.getMeta("versions")).toEqual(VERSIONS);
     expect(store.getMeta("replayLimits")).toMatchObject([
@@ -206,7 +206,7 @@ describe("runCli", () => {
 
   it("no sigue una vida de otra versión", async () => {
     const store = memory();
-    await session(store, ["salir"]);
+    await session(store, ["!salir"]);
     store.setMeta("versions", { ...VERSIONS, engine: `${LIFE_ENGINE}-viejo` });
     await expect(session(store, [])).rejects.toThrow(/otra versión/);
   }, 300_000);
@@ -230,7 +230,7 @@ describe("runCli con el modelo", () => {
     const store = memory();
     const out = await session(
       store,
-      ["aguardo un par de horitas", "salir"],
+      ["aguardo un par de horitas", "!salir"],
       5,
       "realistic",
       jobsWith(model),
@@ -249,7 +249,7 @@ describe("runCli con el modelo", () => {
     const down = new MockLLM(() => new LlmError("network", "fetch failed"));
     const withModel = memory();
     const offline = memory();
-    const lines = ["espero dos horas", "como", "salir"];
+    const lines = ["espero dos horas", "como", "!salir"];
     const a = await session(withModel, lines, 5, "realistic", jobsWith(down));
     const b = await session(offline, lines);
     expect(a).toEqual(b);

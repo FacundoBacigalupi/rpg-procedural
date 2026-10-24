@@ -85,8 +85,9 @@ export const PARSER_RULES = [
   "  not as `repeat` with an invented times. If resolved, do not put those words in `unmapped`.",
   "  Use `if` with `cond`, `then` and optional `else` for a condition checked on arrival.",
   "  Its `cond.is` uses dark, light, succeeded or elapsed, as for `until`.",
-  '- Big life goals are `kind: "goal"`; questions to the game about the game are `question_ooc`;',
-  "  game commands (save, inspector, quit) are `meta`. Those carry `text` and no plan.",
+  '- Big life goals are `kind: "goal"`; questions to the game about the game are `question_ooc`.',
+  "  Those carry `text` and no plan. Game commands start with `!` and never reach you: never answer",
+  '  `meta`; a word like "salir" or "gente" without `!` is something the character does or says.',
   "Answer only with the JSON object.",
 ].join("\n");
 

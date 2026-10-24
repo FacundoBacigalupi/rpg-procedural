@@ -187,7 +187,8 @@ describe("el borrador según el catálogo", () => {
     for (const v of catalog.verbs) expect(used, v.id).toContain(v.id);
     for (const t of catalog.templates) expect(used, t.id).toContain(`template:${t.id}`);
     const kinds = new Set(examples.map((e) => e.expect.kind));
-    expect([...kinds].sort()).toEqual(["act", "goal", "meta", "plan", "question_ooc"]);
+    // `meta` no: los comandos van con «!» y no llegan al modelo (play-bang-commands).
+    expect([...kinds].sort()).toEqual(["act", "goal", "plan", "question_ooc"]);
     expect(examples.some((e) => e.expect.stripped)).toBe(true);
     expect(examples.some((e) => e.expect.unmapped)).toBe(true);
   });
