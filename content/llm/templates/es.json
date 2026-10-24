@@ -110,6 +110,14 @@
   { "id": "percept.action.use", "lines": ["{who} usa algo.", "Ves a {who} usando algo."] },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.boil", "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."] },
+  {
+    "id": "percept.action.kindle",
+    "lines": ["{who} enciende el fuego.", "Ves a {who} avivando el hogar."]
+  },
+  {
+    "id": "percept.action.douse",
+    "lines": ["{who} apaga el fuego.", "Ves a {who} apagando el hogar."]
+  },
   { "id": "percept.action.filter", "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."] },
   { "id": "percept.action.consume", "lines": ["{who} toma algo.", "Ves a {who} tomando algo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
@@ -491,6 +499,26 @@
   },
   { "id": "outcome.filter.none", "lines": ["No tenés con qué filtrar el agua."] },
   { "id": "outcome.boil.none", "lines": ["No tenés con qué hervir el agua."] },
+  {
+    "id": "outcome.kindle.done",
+    "lines": [
+      "Avivás el fuego del hogar hasta que agarra.",
+      "Encendés el hogar con la leña de la pila."
+    ]
+  },
+  {
+    "id": "outcome.kindle.fed",
+    "lines": [
+      "Dejás la leña junto al hogar y lo encendés.",
+      "Apilás la leña que traías y avivás el fuego."
+    ]
+  },
+  { "id": "outcome.kindle.none", "lines": ["No hay hogar ni leña con qué hacer fuego acá."] },
+  {
+    "id": "outcome.douse.done",
+    "lines": ["Apagás el fuego del hogar.", "Cubrís las brasas hasta que se apagan."]
+  },
+  { "id": "outcome.douse.none", "lines": ["No hay ningún fuego encendido acá."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
   {
     "id": "outcome.use.well.draw_water.done",

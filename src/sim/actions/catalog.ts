@@ -81,6 +81,8 @@ export const RESOLVERS = [
   "consume",
   "boil",
   "filter",
+  "kindle",
+  "douse",
   "cook",
   "drink",
   "use",

@@ -178,6 +178,18 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly boilFuel?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
   /** Opt-in: el material filtrante que gasta `filter` (unidad del ledger y gramos por tanda); sin esto no hay con qué filtrar. */
   readonly filterMaterial?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
+  /**
+   * Opt-in (`kindle`/`douse`): el hogar del espacio donde está el actor (fila de `HEARTH`, la cuenta
+   * de donde quema leña, la unidad, y si ya arde). Sin esto no hay hogar que encender ni apagar.
+   */
+  readonly hearthAt?:
+    | {
+        readonly hearth: string;
+        readonly holder: HolderRef;
+        readonly fuelUnit: LedgerUnit;
+        readonly lit: boolean;
+      }
+    | undefined;
   /** Opt-in: las unidades que son sustancias de consumo (`consume`: una unidad, una dosis); sin esto no hay qué tomar. */
   readonly consumables?: ReadonlySet<LedgerUnit> | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
@@ -437,6 +449,20 @@ export type VerbEffect =
       readonly material: LedgerUnit | null;
       /** Gramos gastados. */
       readonly grams: number;
+    }
+  | {
+      readonly kind: "kindle";
+      /** El hogar que encendió o avivó (null si no había hogar o leña). */
+      readonly hearth: string | null;
+      /** Gramos de leña que llevaba encima y dejó en la pila del hogar. */
+      readonly moved: number;
+      /** Gramos que tiene el hogar para quemar después (pila más lo que dejó). */
+      readonly fuelG: number;
+    }
+  | {
+      readonly kind: "douse";
+      /** El hogar que apagó (null si no había uno encendido). */
+      readonly hearth: string | null;
     }
   | {
       readonly kind: "consume";
@@ -1645,6 +1671,56 @@ const boil: Resolver = (c) => {
   };
 };
 
+/**
+ * Enciende o aviva el hogar de la casa donde está: la leña que lleva encima pasa a la pila del hogar
+ * (si el hogar es de otra cuenta) y el fuego arde de ahí. Sin hogar o sin leña en ningún lado, no
+ * hay fuego.
+ */
+const kindle: Resolver = (c) => {
+  const at = c.input.hearthAt;
+  const empty: VerbEffect = { kind: "kindle", hearth: null, moved: 0, fuelG: 0 };
+  if (c.roll.unmet) return { effect: empty, seconds: c.nominal };
+  const balance = (h: HolderRef) =>
+    at === undefined
+      ? 0
+      : (c.input.ledger.holdings(holderAccount(h)).find((x) => x.unit === at.fuelUnit)?.amount ??
+        0);
+  const me = c.input.actor.id as HolderRef;
+  const carried = Math.floor(balance(me));
+  const pile = at === undefined || at.holder === me ? 0 : Math.floor(balance(at.holder));
+  if (at === undefined || carried + pile <= 0) {
+    return {
+      effect: empty,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  const moved = at.holder === me ? 0 : carried;
+  return {
+    effect: { kind: "kindle", hearth: at.hearth, moved, fuelG: carried + pile },
+    seconds: c.nominal,
+    ...(moved > 0
+      ? {
+          transfers: [{ from: me, unit: at.fuelUnit, amount: moved, to: holderAccount(at.holder) }],
+        }
+      : {}),
+  };
+};
+
+/** Apaga el hogar encendido del espacio donde está; sin uno que arda, no hay qué apagar. */
+const douse: Resolver = (c) => {
+  const at = c.input.hearthAt;
+  if (c.roll.unmet) return { effect: { kind: "douse", hearth: null }, seconds: c.nominal };
+  if (at === undefined || !at.lit) {
+    return {
+      effect: { kind: "douse", hearth: null },
+      seconds: Math.min(c.nominal, 30),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return { effect: { kind: "douse", hearth: at.hearth }, seconds: c.nominal };
+};
+
 /** Toma una sustancia de consumo: lo que lleva encima o la despensa de la casa; gasta una unidad. */
 const consume: Resolver = (c) => {
   const kinds = c.input.consumables ?? new Set<LedgerUnit>();
@@ -2087,6 +2163,8 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   consume,
   boil,
   filter,
+  kindle,
+  douse,
   cook,
   drink,
   use,

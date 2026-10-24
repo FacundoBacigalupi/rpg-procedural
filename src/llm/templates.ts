@@ -453,6 +453,12 @@ function outcome(
     case "filter":
       say(e.filtered ? "outcome.filter.done" : "outcome.filter.none");
       break;
+    case "kindle":
+      say(e.lit ? (e.fed ? "outcome.kindle.fed" : "outcome.kindle.done") : "outcome.kindle.none");
+      break;
+    case "douse":
+      say(e.doused ? "outcome.douse.done" : "outcome.douse.none");
+      break;
     case "tend":
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });

@@ -7,6 +7,7 @@
 
 import {
   type AgentId,
+  compareStrings,
   type EntityRef,
   type HolderRef,
   holderAccount,
@@ -62,6 +63,8 @@ import {
   goodUnit,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
+  HEARTH,
+  hearthBurn,
   INNATE,
   ITEM_HOLD,
   ITEM_LOOK,
@@ -438,6 +441,12 @@ export interface ActOptions {
    */
   readonly filter?: FilterOptions;
   /**
+   * Opt-in (hearth-tend): `kindle` enciende o aviva el hogar del cuarto principal de la casa donde
+   * está el actor (fila de `HEARTH` con la cuenta del hogar de la casa como titular) y deja la leña
+   * que lleva en esa pila; `douse` lo apaga (borra la fila). Apagado, no hay hogar que tocar.
+   */
+  readonly hearthTend?: HearthTendOptions;
+  /**
    * Opt-in: la calidad del agua que bebe el verbo `drink` (la sal deshidrata, `netHydration`); la
    * hidratación neta puede ser negativa y entonces falta más agua. Sin él, agua limpia como siempre.
    */
@@ -477,6 +486,14 @@ export interface BoilOptions {
   readonly grams: number;
   readonly treatment: WaterTreatment;
   readonly validDays: number;
+}
+
+export interface HearthTendOptions {
+  /** Unidad del ledger que se quema (la leña). */
+  readonly fuel: string;
+  readonly burnGramsPerHour: number;
+  /** Horas por día que arde un hogar recién encendido. */
+  readonly litHoursPerDay: number;
 }
 
 export interface FilterOptions {
@@ -638,8 +655,10 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoDrawWater === true
         ? []
         : [WORK.name, WELL_DRAWN.name, CONTENTS.name, ITEM_HOLD.name, ITEM_LOOK.name]),
+      ...(o.hearthTend ? [HEARTH.name] : []),
     ],
     writes: [
+      ...(o.hearthTend ? [HEARTH.name] : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -739,6 +758,39 @@ function atHome(o: ActOptions, truth: ReadonlyWorldTruth, me: AgentId): boolean 
   if (household === undefined || space === undefined) return false;
   const node = o.spaces.spaces.find((s) => s.key === space);
   return node !== undefined && node.household === household && node.indoor;
+}
+
+/**
+ * El hogar al alcance de `me`: el del cuarto principal de la casa en pie donde está parado (la fila
+ * de `HEARTH` va por el id de la casa). Arde de la cuenta del hogar que vive ahí, o de la suya si la
+ * casa está vacía.
+ */
+function hearthAtOf(
+  o: HearthTendOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+):
+  | { hearth: string; holder: HolderRef; fuelUnit: LedgerUnit; lit: boolean; space: string }
+  | undefined {
+  const space = truth.get(LOCATION, me)?.space;
+  if (space === undefined) return undefined;
+  const house = truth
+    .ids(BUILDING)
+    .sort(compareStrings)
+    .find(
+      (id) =>
+        truth.get(ENTITY, id)?.endedAt === undefined &&
+        truth.get(BUILDING, id)?.graph.spaces[0]?.key === space,
+    );
+  if (house === undefined) return undefined;
+  const household = truth.get(BUILDING, house)?.household;
+  return {
+    hearth: house,
+    holder: (household ?? me) as unknown as HolderRef,
+    fuelUnit: ledgerUnit(o.fuel),
+    lit: truth.get(HEARTH, house) !== undefined,
+    space,
+  };
 }
 
 /** La despensa del hogar dueño del espacio cerrado donde está `me`, si no es el suyo. */
@@ -1236,6 +1288,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
         : undefined,
+    hearthAt:
+      o.hearthTend && (node.verb === "kindle" || node.verb === "douse")
+        ? hearthAtOf(o.hearthTend, truth, me)
+        : undefined,
     filterMaterial:
       o.filter && node.verb === "filter"
         ? { unit: ledgerUnit(o.filter.material), grams: o.filter.grams }
@@ -1326,6 +1382,25 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         until: ctx.now + Math.round(o.boil.validDays * o.clock.day),
       }),
     );
+  } else if (eff.kind === "kindle" && eff.hearth !== null && o.hearthTend) {
+    const at = hearthAtOf(o.hearthTend, truth, me);
+    const was = truth.get(HEARTH, eff.hearth as EntityRef);
+    if (at !== undefined) {
+      const row = {
+        space: at.space,
+        holder: holderAccount(at.holder) as string,
+        fuelUnit: o.hearthTend.fuel,
+        burnGramsPerHour: was?.burnGramsPerHour ?? o.hearthTend.burnGramsPerHour,
+        litHoursPerDay: Math.max(was?.litHoursPerDay ?? 0, o.hearthTend.litHoursPerDay),
+      };
+      // Arde desde ya: la intensidad del día que le da la leña que tiene (`life.hearth` la recalcula).
+      const { intensity } = hearthBurn(row, eff.fuelG, 1);
+      changes.push(
+        setComponent(HEARTH, eff.hearth as EntityRef, { ...row, intensity, at: ctx.now }),
+      );
+    }
+  } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
+    changes.push(deleteComponent(HEARTH, eff.hearth as EntityRef));
   } else if (eff.kind === "filter" && eff.material !== null && eff.grams > 0 && o.filter) {
     changes.push(
       setComponent(TREATED_WATER, me, {

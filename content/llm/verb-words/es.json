@@ -892,6 +892,35 @@
     ]
   },
   {
+    "id": "kindle",
+    "example": "enciendo el fuego",
+    "forms": ["enciendo el fuego", "encender el fuego"],
+    "synonyms": [
+      {
+        "as": "enciendo el fuego",
+        "words": [
+          "prendo el fuego",
+          "avivo el fuego",
+          "enciendo el hogar",
+          "prendo el hogar",
+          "hago fuego",
+          "atizo el fuego"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "douse",
+    "example": "apago el fuego",
+    "forms": ["apago el fuego", "apagar el fuego"],
+    "synonyms": [
+      {
+        "as": "apago el fuego",
+        "words": ["apago el hogar", "cubro las brasas", "ahogo el fuego", "sofoco el fuego"]
+      }
+    ]
+  },
+  {
     "id": "filter",
     "example": "filtro el agua",
     "forms": ["filtro", "filtrar"],
