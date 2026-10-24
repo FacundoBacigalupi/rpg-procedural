@@ -37,8 +37,7 @@
     "id": "firewood",
     "name": "leña",
     "form": "good",
-    "priceCopperPerKg": 1,
-    "halfLifeDays": 1500
+    "priceCopperPerKg": 1
   },
   {
     "id": "shellfish",

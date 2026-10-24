@@ -1373,8 +1373,6 @@ export function ledgerConfigOf(
         ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
           ? [LEATHER_UNIT]
           : []),
-        // La leña también se pudre (muy lento) donde esté apilada.
-        ...(wildHarvest && wildFirewood ? [FIREWOOD_UNIT] : []),
       ],
       seed: [
         ...units,
