@@ -25,6 +25,7 @@ import {
   type DimensionDef,
   type DivinationMethodDef,
   type FoodDef,
+  type GarmentDef,
   type GoodDef,
   goodUnit,
   type HabitDef,
@@ -234,6 +235,7 @@ import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
+import { wardrobeClothing, wardrobeOf } from "./wardrobe.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { wildProcess } from "./wild.ts";
@@ -258,6 +260,8 @@ export interface LifeWorld {
   readonly plans: readonly BodyPlanDef[];
   readonly foods: readonly FoodDef[];
   readonly goods: readonly GoodDef[];
+  /** Las prendas del contenido (clothing-garments): las lee `wardrobe`. */
+  readonly garments?: readonly GarmentDef[];
   /** Los materiales de los edificios (settlements §5): sin ellos no corre el mantenimiento. */
   readonly materials?: readonly MaterialDef[];
   /** Fuentes explícitas de patógenos (body-health §6); sin ellas el contagio no hace nada. */
@@ -574,6 +578,8 @@ export interface LifeWorld {
   readonly npcRoadCobbler?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire en el camino; la capa se gasta y se pierde (`life.cloak_wear`, `life.thermal`); apagado. */
   readonly npcCloak?: boolean;
+  /** Opt-in (con `garments`): cada uno se viste con sus prendas (`WARDROBE`; sin fila, el juego básico) y no con un abrigo a medida (`wardrobeClothing`); apagado. */
+  readonly wardrobe?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida, pagando cobre (`life.cloak_mend`); apagado. */
   readonly npcCloakMend?: boolean;
   /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`ForecastBeforeLeaving`); apagado: siempre la lleva. */
@@ -855,6 +861,7 @@ export function lifeWorld(
     parts.npcJourneyDays !== undefined &&
     parts.npcVerbs?.includes("speak") === true;
   const economicBatch = (parts.npcVerbs?.length ?? 0) > 0;
+  const wardrobe = parts.wardrobe === true ? parts.garments : undefined;
   const altitudeOf = parts.realAltitude
     ? parts.travelAltitude
       ? travelAltitudeOf(parts.map, parts.travelAltitude, parts.spaces)
@@ -1841,11 +1848,18 @@ export function lifeWorld(
           spaces: parts.spaces,
           seed: parts.seed,
           placeOf: placeOf(parts, village),
-          ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
+          ...((parts.npcCloak === true && parts.npcJourneyDays !== undefined) || wardrobe
             ? {
                 clothingOf: (t: ReadonlyWorldTruth, who: AgentId, airC: number) => {
-                  const trip = t.get(NPC_JOURNEY, who);
-                  if (!trip) return seasonalClothing(airC);
+                  const trip =
+                    parts.npcCloak === true && parts.npcJourneyDays !== undefined
+                      ? t.get(NPC_JOURNEY, who)
+                      : undefined;
+                  if (!trip) {
+                    return wardrobe
+                      ? wardrobeClothing(wardrobeOf(t, who, wardrobe), airC)
+                      : seasonalClothing(airC);
+                  }
                   return roadClothing(
                     airC,
                     outdoorTempC(parts.map, parts.clock, parts.seed, trip.since),

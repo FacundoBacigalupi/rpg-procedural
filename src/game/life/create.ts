@@ -53,6 +53,7 @@ import {
   EXCRETED,
   FIELD_MANURE,
   FOODS,
+  GARMENTS,
   GATHERED_SOURCE,
   GOODS,
   generateLanguage,
@@ -583,6 +584,8 @@ export interface LifeOptions {
   readonly npcRoadCobbler?: boolean;
   /** Opt-in (con `npcJourneyDays`): el viajero se viste a la salida y lleva una capa para lo que baje el aire; se gasta y se pierde (`LifeParts.npcCloak`); apagado. */
   readonly npcCloak?: boolean;
+  /** Opt-in: cada uno se viste con las prendas que tiene (`LifeParts.wardrobe`; sin fila, el juego básico de `content/garments`) en vez de un abrigo a medida del aire; apagado. */
+  readonly wardrobe?: boolean;
   /** Opt-in (con `npcCloak`): el NPC en la aldea remienda o compra capa nueva cuando la suya está gastada o perdida (`LifeParts.npcCloakMend`); apagado. */
   readonly npcCloakMend?: boolean;
   /** Opt-in (con `npcCloak`): al salir el viajero pronostica el frío del camino y solo carga la capa si cree que la va a necesitar (`LifeParts.npcForecast`); apagado: siempre la lleva. */
@@ -816,6 +819,7 @@ export function optInParts(
   | "npcRoadStops"
   | "npcRoadCobbler"
   | "npcCloak"
+  | "wardrobe"
   | "npcCloakMend"
   | "npcForecast"
   | "npcRainForecast"
@@ -991,6 +995,7 @@ export function optInParts(
     ...(options.npcRoadStops ? { npcRoadStops: true } : {}),
     ...(options.npcRoadCobbler ? { npcRoadCobbler: true } : {}),
     ...(options.npcCloak && !options.legacyNoCloak ? { npcCloak: true } : {}),
+    ...(options.wardrobe ? { wardrobe: true } : {}),
     ...(options.npcCloakMend && !options.legacyNoCloakMend ? { npcCloakMend: true } : {}),
     ...(options.npcForecast && !options.legacyNoForecast ? { npcForecast: true } : {}),
     ...(options.npcRainForecast && !options.legacyNoRainForecast ? { npcRainForecast: true } : {}),
@@ -1249,6 +1254,7 @@ export function resumeParts(
   | "nutrientProfiles"
   | "diets"
   | "goods"
+  | "garments"
   | "demography"
   | "recipes"
   | "tradeRecipes"
@@ -1282,6 +1288,7 @@ export function resumeParts(
     nutrientProfiles: content.all(NUTRIENT_PROFILES),
     diets: content.all(DIETS),
     goods: content.all(GOODS),
+    garments: content.all(GARMENTS),
     demography: required(
       content.get(DEMOGRAPHY, "human.preindustrial-village"),
       "demography human.preindustrial-village",
