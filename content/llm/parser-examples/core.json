@@ -1043,6 +1043,22 @@
     }
   },
   {
+    "id": "use-well",
+    "text": "saco agua del pozo",
+    "scene": "Estás en la plaza de la aldea, junto al pozo.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "use",
+        "args": [
+          { "role": "target", "ref": { "text": "el pozo", "kind": "object", "features": [] } },
+          { "role": "how", "text": "sacar agua" }
+        ]
+      }
+    }
+  },
+  {
     "id": "drink-jug",
     "text": "bebo agua del cántaro",
     "scene": "Estás en tu casa, a la hora de comer. Hay grano guardado y un cántaro de agua.",

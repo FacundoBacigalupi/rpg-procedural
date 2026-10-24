@@ -119,6 +119,7 @@ import {
   STATUSES,
   TRADE_RECIPES,
   unknownNote,
+  unusableTarget,
 } from "../sim/index.ts";
 import {
   INSPECTOR_HELP,
@@ -437,6 +438,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     // Un bien que nombra y no ve («la olla»): se le dice sin jugar el turno (play-refs-objects-goods).
     const missing = missingGoodsNote(life.world, plan.root);
     if (missing !== undefined) return { text: missing };
+    // Una cosa sin función para lo que pide («uso el granero»): se avisa sin jugar el turno.
+    const unusable = unusableTarget(plan.root);
+    if (unusable !== undefined) {
+      const name = known.find((k) => k.ref === unusable)?.names[0] ?? "eso";
+      return { text: `No sabés qué hacer con ${name} así.` };
+    }
     // Factibilidad creída: avisa desde lo que el personaje cree y, si insiste, se intenta.
     const heads = assessPlan(plan, life.world.catalog, beliefViewOf(life.world, known)).filter(
       (w) => w.weight >= WARN_WEIGHT,
