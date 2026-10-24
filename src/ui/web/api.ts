@@ -27,6 +27,24 @@ export interface Hud {
     readonly hurt: boolean;
   };
   readonly coins: number;
+  readonly mood: {
+    readonly feeling:
+      | "fear"
+      | "anger"
+      | "sadness"
+      | "joy"
+      | "shame"
+      | "guilt"
+      | "envy"
+      | "love"
+      | null;
+    readonly strength: 0 | 1 | 2;
+    readonly burden: {
+      readonly kind: "trauma" | "guilt" | "grief" | "depression" | "addiction";
+      readonly weight: "light" | "heavy" | "crushing";
+    } | null;
+  };
+  readonly warmth: "freezing" | "cold" | "normal" | "hot" | "burning";
 }
 
 export interface Panels {

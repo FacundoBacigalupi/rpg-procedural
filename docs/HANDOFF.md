@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-hud-more (2026-10-23, rama `feat/play-hud-more`):** `game/life/hud.ts` suma `mood` (emociones propias decaídas + carga de `conscience`) y `warmth` (`warmthOf` sobre `THERMAL`); `ui/web/api.ts` y `TopBar.tsx` los pintan como chips. Tests en `hud.test.ts`. Sin bump de motor. Lo que falta de la barra quedó en `play-hud-load`, `-clothing`, `-sky`, `-danger` y `play-hud-qi` (Fase 4).
+
 **play-stroll-duration:** Rama `feat/play-stroll-duration`: dar una vuelta por la aldea dura lo pedido o 15 min (`for` opcional de `move`, solo del parser del jugador; `siteWalk` toma el máximo). Sin bump: los NPC no lo usan. Siguen `play-refs-objects` y `play-npc-settlement-walk`.
 
 **play-speak-duration (2026-10-23, rama `feat/play-speak-duration`):** motor `life-41`; `sim/actions/attempt.ts` `actionDuration(…, speech)` con `speechSeconds`; `catalog.ts` `SpeechDuration`; `fixedSpeech` en `ResolveInput` y `legacyFixedSpeech` por `engineOptions`/LifeOptions/LifeParts/ActOptions. Test en `actions.test.ts`.
