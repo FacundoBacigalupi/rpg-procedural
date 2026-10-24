@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-source-tools (2026-10-24, rama `feat/play-refs-objects-tools`):** `sim/property/household-tools.ts` (`HOUSEHOLD_TOOLS`, `seedHouseholdTools`; vive en property porque property ya importa settlements), `content/household-tools/core.json`, opción `LifeOptions.householdTools` (también en el esquema de tuning) llamada en `createLife` después de `seedSettlement`. Test en `household-tools.test.ts`. Quedan `-drop`, `-flee` y `-enable`.
+
 **play-refs-objects-look (2026-10-24, rama `feat/play-refs-objects-look`, apilada sobre #708):** `content/actions/core.json` `look.args` = `target?: sight`; `sim/actions/catalog.ts` `ARG_KINDS` suma `sight` (draft: objeto o persona, reintenta sin la clase adivinada; plan: `agent:`/`item:`); `resolve.ts` `observe` lleva `target`; `game/view/view.ts` `ThingView` y `things` en `PlayerView`/`ViewInput`; `game/life/view.ts` `playerView` llama a `itemsSeen` y avisa por `onThings` (la sesión ya no lo calcula aparte); `llm/templates.ts` nombra las cosas, `llm/parser.ts` ayuda de `sight`, `narration.ts` pasa `things`. Tests: `known-things.test.ts` (mirar), `llm/things.test.ts`.
 
 **play-refs-objects-goods (2026-10-24, rama `feat/play-refs-objects-loose`):** `game/life/goods-sight.ts` (`goodsInSight`, `missingGoodsNote`, palabras genéricas que no cortan); la sesión lo llama después de `planFromDraft` y antes de los avisos de factibilidad. Test en `goods-sight.test.ts`. Queda `play-refs-objects-larder` (con bump).

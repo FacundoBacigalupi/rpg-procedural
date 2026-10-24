@@ -60,6 +60,7 @@ import {
   HABITS_CONTENT,
   HARVEST,
   HARVEST_GOOD,
+  HOUSEHOLD_TOOLS,
   type Household,
   houseKey,
   initialCell,
@@ -105,6 +106,7 @@ import {
   seedBodies,
   seedCommunityAccent,
   seedCulture,
+  seedHouseholdTools,
   seedMinds,
   seedParcels,
   seedPeopleCulture,
@@ -575,6 +577,8 @@ export interface LifeOptions {
   readonly npcRoadMend?: boolean;
   /** Opt-in: `take`/`give` de objetos con identidad se disputan como claims con resultado del perdedor (`ActOptions.itemClaims`); apagado, nada cambia. */
   readonly itemClaims?: boolean;
+  /** Opt-in: cada casa empieza con sus cosas como objetos con identidad (cuchillo, olla, canasta, herramientas; `sim/property/household-tools.ts`); apagado, no se crea ninguno. */
+  readonly householdTools?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
   readonly tasteDemand?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo ocurre en una parada real, la noche que el viajero para a dormir (`npcNightRest`), no en cualquier día de marcha (npc-b2b3b2b3c2a); apagado. */
@@ -1522,6 +1526,20 @@ export function createLife(
     map,
     content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
   });
+  // Opt-in: las cosas de cada casa, nacidas de su construcción (play-refs-objects-source-tools).
+  if (options.householdTools) {
+    const members = new Map<string, number>();
+    for (const id of truth.ids(PERSON)) {
+      if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+      const h = truth.get(PERSON, id)?.household;
+      if (h !== undefined) members.set(h, (members.get(h) ?? 0) + 1);
+    }
+    seedHouseholdTools(truth, ids, log, {
+      settlement,
+      tools: content.all(HOUSEHOLD_TOOLS),
+      members,
+    });
+  }
   const spaces = liveSettlementSpaces(
     truth,
     site.hex,
