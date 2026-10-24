@@ -444,6 +444,8 @@ export interface LifeWorld {
   readonly legacyNoSettlementWalk?: boolean;
   /** Replay de motores anteriores a `life-43`: `take` en casa no saca de la despensa. */
   readonly legacyNoLarderTake?: boolean;
+  /** Replay de motores anteriores a `life-44`: `take` en casa ajena no saca de su despensa. */
+  readonly legacyNoHostTake?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -994,6 +996,7 @@ export function lifeWorld(
           ...(parts.legacyFixedSpeech === true ? { legacyFixedSpeech: true } : {}),
           ...(parts.legacyNoSettlementWalk === true ? { legacyNoSettlementWalk: true } : {}),
           ...(parts.legacyNoLarderTake === true ? { legacyNoLarderTake: true } : {}),
+          ...(parts.legacyNoHostTake === true ? { legacyNoHostTake: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
