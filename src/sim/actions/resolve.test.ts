@@ -1184,3 +1184,26 @@ describe("cocinar", () => {
     for (const r of good) expect(r.attempt.outcome).toBe(r.outcome);
   });
 });
+
+describe("tomar un objeto con identidad (perfil2-item-claims-item-demand-player)", () => {
+  const pot = makeId("item", 8);
+  it("suelto alcanza con no errarle; de quien lo lleva pide un éxito", () => {
+    const take = (loose: boolean) =>
+      many(200, () =>
+        input(
+          "take",
+          { args: [{ role: "what", entity: pot }] },
+          { takeItem: { item: pot, available: true, ...(loose ? { loose: true } : {}) } },
+        ),
+      );
+    const claimedOf = (r: ActionResolution) =>
+      r.effect.kind === "take" && r.effect.claimed === true;
+    const loose = take(true);
+    const held = take(false);
+    // Misma tirada (mismo tick): lo que se arrebata también se levanta, no al revés.
+    held.forEach((r, i) => {
+      if (claimedOf(r)) expect(claimedOf(loose[i] as ActionResolution)).toBe(true);
+    });
+    expect(loose.filter(claimedOf).length).toBeGreaterThan(held.filter(claimedOf).length);
+  });
+});

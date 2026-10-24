@@ -448,6 +448,8 @@ export interface LifeWorld {
   readonly legacyNoHostTake?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
+  /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
+  readonly legacyFullTakeItem?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -1000,6 +1002,7 @@ export function lifeWorld(
           ...(parts.legacyNoLarderTake === true ? { legacyNoLarderTake: true } : {}),
           ...(parts.legacyNoHostTake === true ? { legacyNoHostTake: true } : {}),
           ...(parts.legacyNoFleeShed === true ? { legacyNoFleeShed: true } : {}),
+          ...(parts.legacyFullTakeItem === true ? { legacyFullTakeItem: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
