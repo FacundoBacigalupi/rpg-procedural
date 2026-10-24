@@ -1,0 +1,100 @@
+[
+  {
+    "id": "undershirt",
+    "name": "camisa de abajo",
+    "slot": "base",
+    "layer": 0,
+    "clo": 0.25,
+    "windproof": 0.05,
+    "coverage": 0.45,
+    "material": "hemp",
+    "basic": true
+  },
+  {
+    "id": "trousers",
+    "name": "pantalón",
+    "slot": "base",
+    "layer": 0,
+    "clo": 0.3,
+    "windproof": 0.1,
+    "coverage": 0.4,
+    "material": "hemp",
+    "basic": true
+  },
+  {
+    "id": "straw-sandals",
+    "name": "sandalias de paja",
+    "slot": "feet",
+    "layer": 1,
+    "clo": 0.05,
+    "windproof": 0,
+    "coverage": 0.05,
+    "material": "straw",
+    "basic": true
+  },
+  {
+    "id": "tunic",
+    "name": "túnica",
+    "slot": "body",
+    "layer": 2,
+    "clo": 0.45,
+    "windproof": 0.2,
+    "coverage": 0.55,
+    "material": "hemp",
+    "basic": true
+  },
+  {
+    "id": "padded-jacket",
+    "name": "chaqueta acolchada",
+    "slot": "body",
+    "layer": 3,
+    "clo": 0.9,
+    "windproof": 0.35,
+    "coverage": 0.5,
+    "material": "cotton",
+    "basic": true
+  },
+  {
+    "id": "felt-hat",
+    "name": "gorro de fieltro",
+    "slot": "head",
+    "layer": 4,
+    "clo": 0.15,
+    "windproof": 0.3,
+    "coverage": 0.05,
+    "material": "felt",
+    "basic": true
+  },
+  {
+    "id": "quilted-coat",
+    "name": "abrigo guateado",
+    "slot": "outer",
+    "layer": 5,
+    "clo": 0.85,
+    "windproof": 0.6,
+    "coverage": 0.7,
+    "material": "cotton",
+    "basic": true
+  },
+  {
+    "id": "mittens",
+    "name": "manoplas",
+    "slot": "hands",
+    "layer": 6,
+    "clo": 0.05,
+    "windproof": 0.4,
+    "coverage": 0.05,
+    "material": "felt",
+    "basic": true
+  },
+  {
+    "id": "fur-cloak",
+    "name": "capa de piel",
+    "slot": "outer",
+    "layer": 7,
+    "clo": 1.2,
+    "windproof": 0.8,
+    "coverage": 0.8,
+    "material": "fur"
+  }
+]
