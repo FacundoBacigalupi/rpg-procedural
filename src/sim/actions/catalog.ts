@@ -83,6 +83,7 @@ export const RESOLVERS = [
   "filter",
   "cook",
   "drink",
+  "use",
   "tend",
   "consult",
   "forge",
@@ -337,6 +338,7 @@ export const PLANS = defineContent("plans", PlanTemplate, (t) =>
  * Una función de una cosa (actions, «Ampliación: `use`»): a qué formas de ítem o tipos de fijo se
  * aplica (`on`), con qué palabras se pide («sacar agua») y, si es otro verbo con la cosa al lado,
  * cuál (`as`: el pozo sin recipiente es `drink` ahí). Sin `as`, la resuelve `use` con su id.
+ * `vessels`: las formas de ítem que la función llena y cuántos litros les caben (`draw_water`).
  */
 export const AffordanceDef = z.strictObject({
   id: contentId,
@@ -344,6 +346,9 @@ export const AffordanceDef = z.strictObject({
   on: z.array(z.string().min(1)).min(1),
   words: z.array(z.string().min(1)),
   as: contentId.optional(),
+  /** La que vale cuando no se dice cómo («uso el pozo»); si ninguna lo es, la de menor id. */
+  primary: z.boolean().optional(),
+  vessels: z.record(z.string().min(1), z.number().positive()).optional(),
 });
 export type AffordanceDef = z.infer<typeof AffordanceDef>;
 
@@ -367,9 +372,14 @@ export class ActionCatalog {
     this.#affordances = affordances;
   }
 
-  /** Las funciones de una cosa por su forma o tipo, en el orden del contenido (la primera manda). */
+  /** Las funciones de una cosa por su forma o tipo, en el orden en que llegan (por id). */
   affordances(shape: string): readonly AffordanceDef[] {
     return this.#affordances.filter((a) => a.on.includes(shape));
+  }
+
+  /** Una función por su id (la que quedó guardada en el `how` de un `use`). */
+  affordance(id: string): AffordanceDef | undefined {
+    return this.#affordances.find((a) => a.id === id);
   }
 
   verb(id: string): ActionDef | undefined {

@@ -12,6 +12,7 @@ import {
 import {
   BUILDING,
   CARRIED,
+  CONTENTS,
   type DraftResult,
   ENTITY,
   type IntentDraft,
@@ -22,9 +23,11 @@ import {
   planFromDraft,
   unusableTarget,
   VILLAGE_SQUARE,
+  WELL_DRAWN,
   WORK,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { WELL_WEAR } from "./act.ts";
 import { fixturesInSight } from "./fixtures.ts";
 import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
@@ -271,12 +274,70 @@ describe("usar lo fijo (play-refs-objects-fixtures-use-core)", () => {
   it("«uso el pozo» se reescribe a tomar agua por la función del pozo", () => {
     const w = Life.create(7, content, { frequency: 8 }).world;
     toSquare(w);
-    for (const made of [use(w, "el pozo"), use(w, "el pozo", "sacar agua")]) {
+    for (const made of [use(w, "el pozo"), use(w, "el pozo", "tomar agua")]) {
       expect(made.kind).toBe("plan");
       if (made.kind !== "plan") return;
       expect(made.plan.root).toMatchObject({ kind: "do", verb: "drink" });
       expect(unusableTarget(made.plan.root)).toBeUndefined();
     }
+  });
+
+  it("«uso el pozo para sacar agua» queda como `use` con `well.draw_water` (use-well)", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    const well = toSquare(w);
+    const made = use(w, "el pozo", "sacar agua");
+    expect(made.kind).toBe("plan");
+    if (made.kind !== "plan") return;
+    expect(made.plan.root).toMatchObject({
+      kind: "do",
+      verb: "use",
+      args: [{ entity: well }, { role: "how", text: "well.draw_water" }],
+    });
+    expect(unusableTarget(made.plan.root)).toBeUndefined();
+  });
+
+  it("con un cántaro en la mano, sacar agua lo llena y el pozo lo cuenta y se gasta (use-well)", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const well = toSquare(w);
+    const jar = drop(w, 5, { shape: "jar", material: "clay", size: "medium" }, w.player);
+    const before = w.truth.get(WORK, well)?.condition ?? 0;
+    const made = use(w, "el pozo", "sacar agua");
+    if (made.kind !== "plan") throw new Error("sin plan");
+    const report = life.turn(made.plan, 1);
+    const used = report.steps.findLast((s) => s.verb === "use");
+    expect(used?.self.effect).toMatchObject({ kind: "use", how: "well.draw_water", item: jar });
+    const liters = used?.self.effect.kind === "use" ? used.self.effect.liters : 0;
+    expect(liters).toBe(12);
+    expect(w.truth.get(CONTENTS, jar)).toEqual({ water: 12 });
+    expect(w.truth.get(WELL_DRAWN, well)?.liters).toBe(12);
+    expect(w.truth.get(WORK, well)?.condition).toBeCloseTo(before - WELL_WEAR);
+  });
+
+  it("sin recipiente no saca nada y falla por falta de medios (use-well)", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const well = toSquare(w);
+    const made = use(w, "el pozo", "sacar agua");
+    if (made.kind !== "plan") throw new Error("sin plan");
+    const report = life.turn(made.plan, 1);
+    const used = report.steps.findLast((s) => s.verb === "use");
+    expect(used?.self.effect).toMatchObject({ kind: "use", liters: 0 });
+    expect(used?.self.effect).not.toHaveProperty("item");
+    expect(w.truth.get(WELL_DRAWN, well)).toBeUndefined();
+  });
+
+  it("el replay de un motor anterior no saca agua (legacyNoDrawWater)", () => {
+    const life = Life.create(7, content, { frequency: 8, legacyNoDrawWater: true });
+    const w = life.world;
+    const well = toSquare(w);
+    const jar = drop(w, 5, { shape: "jar", material: "clay", size: "medium" }, w.player);
+    const made = use(w, "el pozo", "sacar agua");
+    if (made.kind !== "plan") throw new Error("sin plan");
+    const report = life.turn(made.plan, 1);
+    expect(report.steps.findLast((s) => s.verb === "use")?.self.effect.kind).toBe("none");
+    expect(w.truth.get(CONTENTS, jar)).toBeUndefined();
+    expect(w.truth.get(WELL_DRAWN, well)).toBeUndefined();
   });
 
   it("el granero no tiene función todavía: el plan queda sin `how` y se avisa", () => {

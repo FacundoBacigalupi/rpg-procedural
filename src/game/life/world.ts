@@ -446,6 +446,8 @@ export interface LifeWorld {
   readonly legacyNoLarderTake?: boolean;
   /** Replay de motores anteriores a `life-44`: `take` en casa ajena no saca de su despensa. */
   readonly legacyNoHostTake?: boolean;
+  /** Replay de motores anteriores a `life-47`: `use` con `well.draw_water` no saca agua. */
+  readonly legacyNoDrawWater?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -1001,6 +1003,7 @@ export function lifeWorld(
           ...(parts.legacyNoSettlementWalk === true ? { legacyNoSettlementWalk: true } : {}),
           ...(parts.legacyNoLarderTake === true ? { legacyNoLarderTake: true } : {}),
           ...(parts.legacyNoHostTake === true ? { legacyNoHostTake: true } : {}),
+          ...(parts.legacyNoDrawWater === true ? { legacyNoDrawWater: true } : {}),
           ...(parts.legacyNoFleeShed === true ? { legacyNoFleeShed: true } : {}),
           ...(parts.legacyFullTakeItem === true ? { legacyFullTakeItem: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),

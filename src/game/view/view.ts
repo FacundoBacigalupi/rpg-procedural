@@ -393,6 +393,13 @@ export type EffectView =
       readonly got: readonly { readonly good: string; readonly amount: number }[];
     }
   | { readonly kind: "drink"; readonly drank: boolean }
+  | {
+      /** Usó una cosa con una función (`well.draw_water`): cuántos litros juntó y si tenía en qué. */
+      readonly kind: "use";
+      readonly how: string;
+      readonly liters: number;
+      readonly vessel: boolean;
+    }
   | { readonly kind: "boil"; readonly boiled: boolean }
   | { readonly kind: "filter"; readonly filtered: boolean }
   | {
@@ -948,6 +955,13 @@ function effectView(
       return { kind: "filter", filtered: e.material !== null && e.grams > 0 };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
+    case "use":
+      return {
+        kind: "use",
+        how: e.how,
+        liters: Math.round(e.liters),
+        vessel: e.item !== undefined,
+      };
     case "cook":
       return {
         kind: "cook",

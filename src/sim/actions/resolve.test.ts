@@ -31,6 +31,7 @@ import {
   PLANS,
   type ResolveInput,
   resolve,
+  WELL_WORN,
 } from "./index.ts";
 
 const json = (file: string) => JSON.parse(readFileSync(file, "utf8"));
@@ -1182,6 +1183,62 @@ describe("cocinar", () => {
     const good = rs.filter((r) => r.effect.kind === "cook" && r.effect.quality >= 0.7);
     expect(good.length).toBeGreaterThan(20);
     for (const r of good) expect(r.attempt.outcome).toBe(r.outcome);
+  });
+});
+
+describe("use con función propia (use-well)", () => {
+  const well = makeId("work", 77);
+  const jar = makeId("item", 5);
+  const drawing = (drawWater: ResolveInput["drawWater"], how = "well.draw_water") =>
+    input(
+      "use",
+      {
+        args: [
+          { role: "target", entity: well },
+          { role: "how", text: how },
+        ],
+      },
+      drawWater === undefined ? {} : { drawWater },
+    );
+  const full = { well, left: 100, condition: 1, vessel: { item: jar, room: 12 } };
+
+  it("con recipiente llena lo que le cabe, sin pasar lo que le queda al pozo", () => {
+    const rs = many(50, () => drawing(full));
+    const done = rs.filter((r) => r.effect.kind === "use" && r.effect.liters > 0);
+    expect(done.length).toBeGreaterThan(0);
+    for (const r of done)
+      expect(r.effect).toEqual({
+        kind: "use",
+        how: "well.draw_water",
+        well,
+        item: jar,
+        liters: 12,
+      });
+    const low = resolve(drawing({ ...full, left: 3 }));
+    if (low.effect.kind === "use" && low.effect.liters > 0) expect(low.effect.liters).toBe(3);
+  });
+
+  it("sin recipiente, sin agua o con el pozo roto falla por falta de medios", () => {
+    for (const d of [
+      { well, left: 100, condition: 1 },
+      { ...full, vessel: { item: jar, room: 0 } },
+      { ...full, left: 0 },
+      { ...full, condition: WELL_WORN / 2 },
+    ]) {
+      const r = resolve(drawing(d));
+      expect(r.outcome).toBe("failure");
+      expect(r.failure).toBe("no_means");
+      expect(r.effect).toMatchObject({ kind: "use", liters: 0 });
+    }
+  });
+
+  it("sin datos del pozo u otra función, no hace nada (lo de antes)", () => {
+    expect(resolve(drawing(undefined)).effect).toEqual({ kind: "none" });
+    expect(resolve(drawing(full, "granary.take")).effect).toEqual({ kind: "none" });
+  });
+
+  it("es determinista", () => {
+    expect(resolve(drawing(full))).toEqual(resolve(drawing(full)));
   });
 });
 

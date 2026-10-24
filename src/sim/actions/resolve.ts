@@ -134,6 +134,19 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   /** Opt-in de claims de ítems: `give` entrega un objeto con identidad (solo la posesión física). */
   readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /**
+   * `use` con `well.draw_water` (use-well): el pozo, lo que le queda hoy (litros), su condición y
+   * el recipiente que el actor lleva con lo que le cabe todavía. Sin esto, `use` no hace nada (el
+   * replay de motores anteriores a `life-47`).
+   */
+  readonly drawWater?:
+    | {
+        readonly well: EntityRef;
+        readonly left: number;
+        readonly condition: number;
+        readonly vessel?: { readonly item: ItemId; readonly room: number };
+      }
+    | undefined;
+  /**
    * Opt-in de claims de ítems: `drop` suelta un objeto con identidad que lleva encima
    * (play-refs-objects-source-drop); `available` dice si de verdad lo lleva.
    */
@@ -447,6 +460,15 @@ export type VerbEffect =
       readonly dropped?: boolean;
     }
   | { readonly kind: "drink"; readonly liters: number }
+  | {
+      readonly kind: "use";
+      /** La función que se jugó (`well.draw_water`). */
+      readonly how: string;
+      readonly well: EntityRef;
+      /** El recipiente que llenó (o que quiso llenar). */
+      readonly item?: ItemId;
+      readonly liters: number;
+    }
   | {
       readonly kind: "cook";
       /** La receta que intentó (null si no hay o no tenía con qué). */
@@ -1858,6 +1880,37 @@ const drink: Resolver = (c) => ({
   seconds: c.nominal,
 });
 
+/** Debajo de esta condición la soga o el brocal del pozo ya no dan para sacar agua. */
+export const WELL_WORN = 0.15;
+
+/**
+ * Usar una cosa con una función que no es otro verbo (actions, «Ampliación: `use`»). Hoy solo
+ * `well.draw_water`: llena el recipiente con lo que le cabe y el pozo da hoy. Sin recipiente, con
+ * el pozo seco o gastado, no hay con qué; si la tirada no alcanza, se le vuelca y no junta nada.
+ */
+const use: Resolver = (c) => {
+  const d = c.input.drawWater;
+  if (d === undefined || argText(c, "how") !== "well.draw_water") {
+    return { effect: { kind: "none" }, seconds: c.nominal };
+  }
+  const effect = (liters: number): VerbEffect => ({
+    kind: "use",
+    how: "well.draw_water",
+    well: d.well,
+    ...(d.vessel ? { item: d.vessel.item } : {}),
+    liters,
+  });
+  if (d.vessel === undefined || d.vessel.room <= 0 || d.left <= 0 || d.condition < WELL_WORN) {
+    return {
+      effect: effect(0),
+      seconds: Math.min(c.nominal, 10),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  if (c.roll.unmet) return { effect: effect(0), seconds: c.nominal };
+  return { effect: effect(Math.min(d.vessel.room, d.left)), seconds: c.nominal };
+};
+
 const tend: Resolver = (c) => {
   const target = argEntity(c, "target") ?? c.input.actor.id;
   const m = c.roll.margin;
@@ -2011,6 +2064,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   filter,
   cook,
   drink,
+  use,
   tend,
   consult,
   forge,

@@ -116,4 +116,15 @@ export interface SettlementRecord {
 
 export const BUILDING = table<BuildingRecord>("settlement.building");
 export const WORK = table<WorkRecord>("settlement.work");
+
+/**
+ * Lo que se sacó de un pozo en el día `day` (días desde el tick 0), para compararlo con
+ * `WorkRecord.capacity` (actions, «Ampliación: `use`»). Otro día empieza de cero.
+ */
+export interface WellDrawn {
+  readonly day: number;
+  readonly liters: number;
+}
+
+export const WELL_DRAWN = table<WellDrawn>("settlement.well_drawn");
 export const SETTLEMENT = table<SettlementRecord>("settlement.state");
