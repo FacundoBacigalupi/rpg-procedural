@@ -1,5 +1,5 @@
-// La barra de arriba: lo básico de un vistazo (hora, cielo, aire, lugar, gente, cuerpo, ánimo,
-// frío o calor, monedas).
+// La barra de arriba: lo básico de un vistazo (hora, cielo, luna y estrellas, aire, lugar, gente,
+// cuerpo, ánimo, frío o calor, monedas).
 // Todo viene en bandas desde `Hud`; acá solo se elige ícono y palabra. Cada chip lleva texto además
 // del ícono, y lo grave se marca con borde, no solo con color.
 
@@ -20,6 +20,32 @@ const SKY: Record<Hud["sky"], [string, string] | null> = {
   snow: ["❄️", "nieva"],
   unknown: null,
 };
+
+const MOON: Record<NonNullable<Hud["moon"]>["phase"], [string, string]> = {
+  new: ["🌑", "luna nueva"],
+  waxing_crescent: ["🌒", "luna creciente"],
+  first_quarter: ["🌓", "cuarto creciente"],
+  waxing_gibbous: ["🌔", "luna casi llena"],
+  full: ["🌕", "luna llena"],
+  waning_gibbous: ["🌖", "luna menguante"],
+  last_quarter: ["🌗", "cuarto menguante"],
+  waning_crescent: ["🌘", "luna menguante fina"],
+};
+
+function skyChips(hud: Hud): Chip[] {
+  const out: Chip[] = [];
+  if (hud.moon) {
+    const [icon, text] = MOON[hud.moon.phase];
+    out.push({ icon, text: hud.moon.high ? `${text}, alta` : `${text}, baja`, title: "La luna" });
+  }
+  if (hud.stars !== "none")
+    out.push({
+      icon: "⭐",
+      text: hud.stars === "many" ? "muchas estrellas" : "algunas estrellas",
+      title: "Las estrellas",
+    });
+  return out;
+}
 
 const AIR: Record<Hud["air"], string> = {
   bitter: "frío que corta",
@@ -151,6 +177,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
   const chips: Chip[] = [
     { icon: phaseIcon, text: clock, title: phaseText },
     ...(sky ? [{ icon: sky[0], text: sky[1], title: "El cielo" }] : []),
+    ...skyChips(hud),
     ...(hud.windy ? [{ icon: "🌬️", text: "viento", title: "Viento fuerte" }] : []),
     { icon: "🌡️", text: AIR[hud.air], title: "Cómo sentís el aire afuera" },
     { icon: seasonIcon, text: seasonText, title: "Estación" },

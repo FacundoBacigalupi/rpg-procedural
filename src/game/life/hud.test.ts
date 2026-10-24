@@ -13,7 +13,15 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { dayPhase, hudPanel, MAX_SEEN_BUILDINGS, seenBuildings, warmthOf } from "./hud.ts";
+import {
+  dayPhase,
+  hudPanel,
+  MAX_SEEN_BUILDINGS,
+  moonPhaseName,
+  nightSky,
+  seenBuildings,
+  warmthOf,
+} from "./hud.ts";
 import { Life } from "./life.ts";
 import { characterPanel, inventoryPanel } from "./panels.ts";
 import { playerView } from "./view.ts";
@@ -120,6 +128,53 @@ describe("la barra de arriba (hudPanel)", () => {
     const signals = w.truth.get(EMOTIONS, w.player)?.signals ?? [];
     w.truth.set(EMOTIONS, w.player, { signals: signals.map((x) => ({ ...x, at: old })) });
     expect(hudPanel(w, character, 0, []).mood.feeling).toBeNull();
+  });
+
+  it("la fase de la luna en ocho tramos, con la llena en el medio", () => {
+    expect([0, 0.06, 0.13, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.95].map(moonPhaseName)).toEqual([
+      "new",
+      "new",
+      "waxing_crescent",
+      "first_quarter",
+      "waxing_gibbous",
+      "full",
+      "waning_gibbous",
+      "last_quarter",
+      "waning_crescent",
+      "new",
+    ]);
+  });
+
+  it("la luna y las estrellas solo se ven afuera, con el cielo abierto y la luna arriba", () => {
+    const full = { phase: 0.5, illumination: 1, altitude: 1 };
+    const night = { indoor: false, sky: "clear", phase: "night" } as const;
+    expect(nightSky(night, full)).toEqual({ moon: { phase: "full", high: true }, stars: "few" });
+    expect(nightSky(night, { ...full, altitude: 0.2 }).moon).toEqual({
+      phase: "full",
+      high: false,
+    });
+    // Bajo el horizonte no está; sin luna (o nueva), el cielo despejado se llena de estrellas.
+    expect(nightSky(night, { ...full, altitude: -0.1 })).toEqual({ moon: null, stars: "many" });
+    expect(nightSky(night, { phase: 0, illumination: 0, altitude: 1 })).toEqual({
+      moon: null,
+      stars: "many",
+    });
+    expect(nightSky(night, null)).toEqual({ moon: null, stars: "many" });
+    // Una luna fina no apaga las estrellas.
+    expect(nightSky(night, { phase: 0.15, illumination: 0.2, altitude: 1 }).stars).toBe("many");
+    // Con nubes, algunas; nublado, lloviendo o bajo techo, nada.
+    expect(nightSky({ ...night, sky: "cloudy" }, null).stars).toBe("few");
+    for (const look of [
+      { ...night, sky: "overcast" },
+      { ...night, sky: "rain" },
+      { ...night, indoor: true },
+    ] as const)
+      expect(nightSky(look, full)).toEqual({ moon: null, stars: "none" });
+    // De día la luna puede estar arriba; las estrellas no.
+    expect(nightSky({ ...night, phase: "day" }, full)).toEqual({
+      moon: { phase: "full", high: true },
+      stars: "none",
+    });
   });
 });
 

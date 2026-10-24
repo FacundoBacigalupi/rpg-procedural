@@ -499,6 +499,63 @@ function houseBoxes(hud: Hud): readonly HouseBox[] {
   return village ? HOUSES : [];
 }
 
+/** Estrellas en lugares fijos (sin azar en el cliente): las débiles solo cuando son muchas. */
+const STARS: readonly (readonly [number, number, number])[] = Array.from({ length: 90 }, (_, i) => [
+  (i * 397 + 53) % 1600,
+  (i * 211 + 17) % 470,
+  i % 3 === 0 ? 2.2 : i % 3 === 1 ? 1.5 : 1,
+]);
+
+function Stars({ many }: { many: boolean }) {
+  return (
+    <g fill="#e8ecff">
+      {STARS.filter((_, i) => many || i % 3 === 0).map(([x, y, r]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} opacity={r > 2 ? 0.9 : 0.6} />
+      ))}
+    </g>
+  );
+}
+
+/** La parte iluminada por fase: cuánto se corre la sombra (−1 llena a la izquierda, 1 a la derecha). */
+const MOON_SHADOW: Record<NonNullable<Hud["moon"]>["phase"], number | null> = {
+  new: 0,
+  waxing_crescent: -0.6,
+  first_quarter: -1,
+  waxing_gibbous: -1.5,
+  full: null,
+  waning_gibbous: 1.5,
+  last_quarter: 1,
+  waning_crescent: 0.6,
+};
+
+function Moon({ moon }: { moon: NonNullable<Hud["moon"]> }) {
+  const cx = 1180;
+  const cy = moon.high ? 150 : 420;
+  const r = 42;
+  const shift = MOON_SHADOW[moon.phase];
+  return (
+    <g>
+      <defs>
+        <clipPath id="moonDisc">
+          <circle cx={cx} cy={cy} r={r} />
+        </clipPath>
+      </defs>
+      <circle cx={cx} cy={cy} r={r * 1.8} fill="#cfd8ff" opacity="0.12" />
+      <circle cx={cx} cy={cy} r={r} fill="#f1f3ff" />
+      {shift !== null && (
+        <circle
+          cx={cx + shift * r}
+          cy={cy}
+          r={r}
+          fill="#060a1c"
+          opacity="0.92"
+          clipPath="url(#moonDisc)"
+        />
+      )}
+    </g>
+  );
+}
+
 function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
   const village = hud.place.kinds.includes("village") || hud.place.space !== "open";
   const boxes = houseBoxes(hud);
@@ -507,14 +564,16 @@ function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
   return (
     <>
       <rect width="1600" height="900" fill="url(#sky)" />
-      {sky.glow && (
+      {hud.stars !== "none" && <Stars many={hud.stars === "many"} />}
+      {sky.glow && hud.phase !== "night" && (
         <circle
           cx={hud.phase === "dusk" ? 1300 : hud.phase === "dawn" ? 260 : 1180}
           cy={hud.phase === "day" ? 170 : 470}
-          r={hud.phase === "night" ? 50 : 110}
+          r={110}
           fill={sky.glow}
         />
       )}
+      {hud.moon && hud.phase === "night" && <Moon moon={hud.moon} />}
       {(hud.sky === "cloudy" || hud.sky === "overcast" || hud.sky === "rain") && (
         <Clouds dense={hud.sky !== "cloudy"} />
       )}

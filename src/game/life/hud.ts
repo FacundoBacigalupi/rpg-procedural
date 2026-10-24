@@ -5,7 +5,8 @@
 // La gente sale de los percepts de la escena (los mismos que `onSeen`), no de quién está de verdad.
 // El ánimo es lo que siente de sí (emociones propias con su decaimiento y la carga más pesada) y el
 // frío o el calor, lo que el cuerpo le dice del núcleo (`THERMAL`): ambos son de adentro, no de la
-// verdad ajena.
+// verdad ajena. La luna y las estrellas, solo si las ve: afuera, con el cielo abierto y la luna sobre
+// el horizonte (cosmology §2, `moonAt`); la fase sale de mirarla, no de un calendario.
 // Los edificios son los del asentamiento (settlements): cosas grandes y quietas que se ven desde
 // donde está, afuera y con la luz que haya; de cada uno, el tipo, de qué se ven las paredes y el
 // techo, si está gastado, caído o ardiendo. Adentro, el edificio donde está.
@@ -26,11 +27,13 @@ import {
   INNATE,
   LOCATION,
   localHour,
+  moonAt,
   type Percept,
   type PlaceKind,
   type Sex,
   type SpaceKind,
   skyLight,
+  skyObserverOf,
   spaceLight,
   THERMAL,
   weatherAt,
@@ -113,6 +116,63 @@ export interface Hud {
   };
   /** El frío o el calor que siente en el cuerpo (el núcleo), no el aire: «normal» sin desvío. */
   readonly warmth: Warmth;
+  /** La luna que ve (la primera del planeta), con su fase y qué tan alta está; si no la ve, `null`. */
+  readonly moon: { readonly phase: MoonPhaseName; readonly high: boolean } | null;
+  /** Las estrellas que ve: ninguna (día, nubes, techo), algunas o muchas. */
+  readonly stars: "none" | "few" | "many";
+}
+
+/** La fase de la luna en ocho, como se nombra a ojo. */
+export type MoonPhaseName =
+  | "new"
+  | "waxing_crescent"
+  | "first_quarter"
+  | "waxing_gibbous"
+  | "full"
+  | "waning_gibbous"
+  | "last_quarter"
+  | "waning_crescent";
+
+const MOON_PHASES: readonly MoonPhaseName[] = [
+  "new",
+  "waxing_crescent",
+  "first_quarter",
+  "waxing_gibbous",
+  "full",
+  "waning_gibbous",
+  "last_quarter",
+  "waning_crescent",
+];
+
+/** La fase (0-1, 0 luna nueva) en ocho tramos centrados: 0.5 es llena. */
+export function moonPhaseName(phase: number): MoonPhaseName {
+  return MOON_PHASES[Math.floor(phase * 8 + 0.5) % 8] as MoonPhaseName;
+}
+
+/** Altura (radianes) desde la que la luna se cuenta alta: unos 30°. */
+const MOON_HIGH_RAD = Math.PI / 6;
+/** Iluminación desde la que la luna apaga las estrellas débiles. */
+const MOON_BRIGHT = 0.6;
+
+/** Lo que ve del cielo de noche: luna sobre el horizonte y estrellas, con el techo y las nubes. */
+export function nightSky(
+  look: { readonly indoor: boolean; readonly sky: SkyLook; readonly phase: DayPhase },
+  moon: { readonly phase: number; readonly illumination: number; readonly altitude: number } | null,
+): Pick<Hud, "moon" | "stars"> {
+  const open = !look.indoor && (look.sky === "clear" || look.sky === "cloudy");
+  const name = moon ? moonPhaseName(moon.phase) : "new";
+  const seen = open && moon !== null && moon.altitude > 0 && name !== "new" ? moon : null;
+  const dark = look.phase === "night";
+  const stars: Hud["stars"] =
+    !open || !dark
+      ? "none"
+      : look.sky === "clear" && (seen === null || seen.illumination < MOON_BRIGHT)
+        ? "many"
+        : "few";
+  return {
+    moon: seen ? { phase: name, high: seen.altitude >= MOON_HIGH_RAD } : null,
+    stars,
+  };
 }
 
 /** De helado (núcleo muy bajo) a ardiendo (muy alto). */
@@ -364,11 +424,14 @@ export function hudPanel(
   const clear = seen.filter((p) => p.detail !== "vague");
   const fire = fireIn(w, at?.space, indoor);
   const lightBand: Hud["light"] = light < 0.15 ? "dark" : light < 0.5 ? "dim" : "bright";
+  const phase = dayPhase(hour);
+  const look = skyLook(day.cloud, day.precip.kind, indoor);
+  const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(w.map), 0, now) : null;
   return {
     hour,
-    phase: dayPhase(hour),
+    phase,
     light: lightBand,
-    sky: skyLook(day.cloud, day.precip.kind, indoor),
+    sky: look,
     windy: day.windMs >= (indoor ? 12 : 8),
     air: weather.airNow,
     season: weather.season,
@@ -390,6 +453,7 @@ export function hudPanel(
     coins,
     mood: moodOf(w, character),
     warmth: warmthOf(w.truth.get(THERMAL, w.player)?.coreC),
+    ...nightSky({ indoor, sky: look, phase }, moon),
   };
 }
 
