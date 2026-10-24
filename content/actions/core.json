@@ -133,6 +133,12 @@
     "evidence": 0.4,
     "yields": [
       { "at": "forest", "good": "forage", "perHour": 400 },
+      {
+        "at": "forest",
+        "good": "firewood",
+        "perHour": 3000,
+        "words": ["leña", "rama", "palo", "madera seca", "astilla"]
+      },
       { "at": "fields", "good": "gleanings", "perHour": 250 },
       { "at": "water", "good": "shellfish", "perHour": 300 }
     ]

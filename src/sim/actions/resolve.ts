@@ -78,7 +78,7 @@ import {
   PARTIAL_MARGIN,
   SUCCESS_MARGIN,
 } from "./attempt.ts";
-import type { FactorKey, FailureModeId } from "./catalog.ts";
+import type { ActionDef, FactorKey, FailureModeId } from "./catalog.ts";
 import type { SpeakAct } from "./plan.ts";
 import { refTokens } from "./refs.ts";
 
@@ -119,6 +119,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly ledger: Pick<ReadonlyLedger, "holdings">;
   /** Opt-in económico: `take` sin bienes disponibles falla por medios reales y el actor lo sabe. */
   readonly takeEmptyFailure?: boolean | undefined;
+  /** Opt-in (`wildFirewood`): `gather` elige la salida que nombra `what` («junto leña»); apagado, la primera. */
+  readonly gatherByWords?: boolean | undefined;
   /**
    * Opt-in de claims de ítems: `take` va por un objeto con identidad. `available` es lo que el mundo
    * dice (existe y está al alcance); la tirada decide si el intento alcanza para disputarlo.
@@ -959,10 +961,33 @@ const search: Resolver = (c) => {
   return { effect: { ...base, found, glimpsed }, seconds };
 };
 
+/**
+ * Qué sale de `gather` en un lugar: la salida que el actor nombra («junto leña»), si la hay; si no,
+ * la primera del lugar sin palabras (lo de siempre). Sin `what`, las salidas con palabras no salen.
+ */
+export function gatherYield(
+  yields: ActionDef["yields"],
+  kinds: readonly string[],
+  what: string | null,
+): ActionDef["yields"][number] | undefined {
+  const here = yields.filter((y) => kinds.includes(y.at));
+  if (what !== null) {
+    const said = new Set(refTokens(what));
+    const named = here.find((y) =>
+      (y.words ?? []).some((w) => {
+        const need = refTokens(w);
+        return need.length > 0 && need.every((t) => said.has(t));
+      }),
+    );
+    if (named) return named;
+  }
+  return here.find((y) => y.words === undefined);
+}
+
 const gather: Resolver = (c) => {
   const kinds = c.input.scene.placeKinds;
-  const spec = c.input.def.yields.find((y) => kinds.includes(y.at));
   const what = argText(c, "what");
+  const spec = gatherYield(c.input.def.yields, kinds, c.input.gatherByWords === true ? what : null);
   if (c.roll.unmet || !spec) {
     return {
       effect: { kind: "gather", good: null, amount: 0, what, stumbled: false },

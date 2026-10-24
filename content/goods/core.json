@@ -34,6 +34,13 @@
     "halfLifeDays": 6
   },
   {
+    "id": "firewood",
+    "name": "leña",
+    "form": "good",
+    "priceCopperPerKg": 1,
+    "halfLifeDays": 1500
+  },
+  {
     "id": "shellfish",
     "name": "mariscos",
     "form": "good",

@@ -181,7 +181,7 @@ import { seedTechKnowledge } from "./techknow.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
-import { FORAGE_UNIT, WILD_SOURCE } from "./wild.ts";
+import { FIREWOOD_UNIT, FORAGE_UNIT, WILD_SOURCE } from "./wild.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
 
 /** Lo que se pide del personaje en modo novela: se busca entre los nacimientos (game-modes §2.2). */
@@ -463,6 +463,8 @@ export interface LifeOptions {
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda); para escenarios de monte pobre y tests. */
   readonly wildCapacityScale?: number;
+  /** Con `wildHarvest` (hearth-wood): la leña es un bien del monte; la madera muerta cae y se pudre, cada lugar de monte recibe su parte de lo alcanzable (`FIREWOOD_UNIT`, fuente `wild`) y `gather` elige lo que se nombra («junto leña»); apagado, hashes idénticos. */
+  readonly wildFirewood?: boolean;
   /** Opt-in: la gente caza herbívoros de la celda (`ECOLOGY.cell.populations`): salen individuos enteros con evento `wild.hunted` y causa, y su carne (`good:venison`, fuente `hunt`) llega a los montes; apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHunt?: boolean;
   /** Con `wildHunt`: multiplicador del esfuerzo diario de caza (1 = el de referencia); para tests y escenarios. */
@@ -799,6 +801,7 @@ export function optInParts(
   | "fieldManureDiet"
   | "wildHarvest"
   | "wildCapacityScale"
+  | "wildFirewood"
   | "wildHunt"
   | "wildHuntScale"
   | "funerals"
@@ -977,6 +980,7 @@ export function optInParts(
     ...(options.wildHarvest && options.wildCapacityScale !== undefined
       ? { wildCapacityScale: options.wildCapacityScale }
       : {}),
+    ...(options.wildHarvest && options.wildFirewood ? { wildFirewood: true } : {}),
     ...(options.wildHunt ? { wildHunt: true } : {}),
     ...(options.wildHunt && options.wildHuntScale !== undefined
       ? { wildHuntScale: options.wildHuntScale }
@@ -1346,6 +1350,7 @@ export function ledgerConfigOf(
   fieldManure = false,
   wildHarvest = false,
   wildHunt = false,
+  wildFirewood = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1385,7 +1390,9 @@ export function ledgerConfigOf(
       ...(sowSeed ? { [SOWN_FIELD]: [HARVEST_GOOD] } : {}),
       ...(offerings ? { [OFFERING_ASH]: units } : {}),
       ...(fieldManure ? { [EXCRETED]: [MANURE_UNIT], [FIELD_MANURE]: [MANURE_UNIT] } : {}),
-      ...(wildHarvest ? { [WILD_SOURCE]: [FORAGE_UNIT] } : {}),
+      ...(wildHarvest
+        ? { [WILD_SOURCE]: wildFirewood ? [FORAGE_UNIT, FIREWOOD_UNIT] : [FORAGE_UNIT] }
+        : {}),
       ...(wildHunt ? { [HUNT_SOURCE]: [GAME_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
@@ -1407,6 +1414,7 @@ export function withDeclaredExternals(
   fieldManure = false,
   wildHarvest = false,
   wildHunt = false,
+  wildFirewood = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
@@ -1421,6 +1429,7 @@ export function withDeclaredExternals(
       fieldManure,
       wildHarvest,
       wildHunt,
+      wildFirewood,
     ).externals,
   )) {
     const known = new Set(have[name] ?? []);
@@ -1540,6 +1549,7 @@ export function createLife(
       options.fieldManure === true,
       options.wildHarvest === true,
       options.wildHunt === true,
+      options.wildHarvest === true && options.wildFirewood === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).

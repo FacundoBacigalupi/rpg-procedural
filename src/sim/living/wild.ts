@@ -12,6 +12,8 @@ import { harvestStock } from "./trophic.ts";
 export interface WildStock {
   readonly standing: number;
   readonly day: number;
+  /** Con leña (`wildFirewood`): madera muerta caída en el monte de la celda (g). */
+  readonly deadwood?: number;
 }
 
 export const WILD = table<WildStock>("living.wild");
@@ -46,5 +48,37 @@ export function forageReach(standing: number): {
   readonly perHour: number;
 } {
   const h = harvestStock(standing, FORAGE_REACH_HOURS, FORAGE_CATCHABILITY);
+  return { grams: h.caught, perHour: h.perHour };
+}
+
+// Leña: la madera muerta que cae del monte (ramas, troncos secos) se junta en el suelo y se pudre
+// despacio; la gente alcanza por día una fracción con su esfuerzo, como el forraje.
+
+/** Fracción de la producción primaria diaria de la celda que cae como madera muerta a mano. */
+export const DEADWOOD_SHARE = 0.01;
+/** Fracción de la madera caída que se pudre por día (dura años en el suelo). */
+export const DEADWOOD_DECAY = 0.002;
+/** Horas-persona de búsqueda de leña que la celda ofrece por día, y fracción del stock que alcanza una. */
+export const DEADWOOD_REACH_HOURS = 40;
+export const DEADWOOD_CATCHABILITY = 0.002;
+
+/** Madera muerta (g) que cae por día con una productividad primaria de `productivityKg` kg/día. */
+export function deadwoodFall(productivityKg: number): number {
+  return Math.max(0, productivityKg) * 1000 * DEADWOOD_SHARE;
+}
+
+/** Madera caída tras `days` días: entra `fall` por día y se pudre `DEADWOOD_DECAY` (solución exacta). */
+export function accrueDeadwood(deadwood: number, fall: number, days: number): number {
+  const eq = fall / DEADWOOD_DECAY;
+  const k = exp(-DEADWOOD_DECAY * Math.max(0, days));
+  return eq + (Math.max(0, deadwood) - eq) * k;
+}
+
+/** Lo que la gente alcanza hoy de la madera caída y el rendimiento por hora-persona. */
+export function deadwoodReach(deadwood: number): {
+  readonly grams: number;
+  readonly perHour: number;
+} {
+  const h = harvestStock(deadwood, DEADWOOD_REACH_HOURS, DEADWOOD_CATCHABILITY);
   return { grams: h.caught, perHour: h.perHour };
 }

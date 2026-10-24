@@ -3,9 +3,14 @@
 // `harvestStock` con su esfuerzo de referencia. Eso entra (fuente `wild`) a la cuenta de cada lugar de
 // monte hasta completar su parte, y de ahí lo toma el verbo `gather`; el stock en pie baja por lo mismo
 // que entró. Si se recolecta de más, mañana alcanza menos por hora; si se deja, el monte se recupera.
+// Con `firewood` (opt-in `wildFirewood`), lo mismo para la leña: la madera muerta que cae y se pudre.
 
 import { externalAccount, holderAccount, ledgerUnit, type PlaceId } from "../../core/index.ts";
 import {
+  accrueDeadwood,
+  DEADWOOD_DECAY,
+  deadwoodFall,
+  deadwoodReach,
   draftEvent,
   ECOLOGY,
   forageCapacity,
@@ -22,6 +27,7 @@ export const WILD_PROCESS = "life.wild";
 /** Fuente del ledger de lo silvestre (el monte que rebrota). */
 export const WILD_SOURCE = "wild";
 export const FORAGE_UNIT = ledgerUnit("good:forage");
+export const FIREWOOD_UNIT = ledgerUnit("good:firewood");
 export const WILD_SUPPLIED_EVENT = "wild.supplied";
 
 export interface WildOptions {
@@ -29,6 +35,47 @@ export interface WildOptions {
   readonly dayTicks: number;
   /** Escala del techo del stock en pie (1 = el de la celda). */
   readonly capacityScale?: number;
+  /** Opt-in: también la leña (madera muerta) entra a la cuenta de cada lugar de monte. */
+  readonly firewood?: boolean;
+}
+
+type Transfer = NonNullable<ProcessResult["postings"]>[number]["transfers"][number];
+
+/**
+ * Completa la cuenta de cada lugar hasta `share` (o devuelve al monte lo que sobra de una ventana que
+ * se achicó). Devuelve lo que entró y lo que volvió.
+ */
+function topUp(
+  ledger: NonNullable<Parameters<ProcessDef["run"]>[0]["ledger"]>,
+  places: readonly string[],
+  unit: ReturnType<typeof ledgerUnit>,
+  share: number,
+  transfers: Transfer[],
+): { minted: number; returned: number } {
+  let minted = 0;
+  let returned = 0;
+  for (const p of places) {
+    const account = holderAccount({ kind: "place", place: p as unknown as PlaceId });
+    const held = Math.floor(ledger.balance(account, unit));
+    if (share > held) {
+      transfers.push({
+        unit,
+        from: externalAccount(WILD_SOURCE),
+        to: account,
+        amount: share - held,
+      });
+      minted += share - held;
+    } else if (held > share) {
+      transfers.push({
+        unit,
+        from: account,
+        to: externalAccount(WILD_SOURCE),
+        amount: held - share,
+      });
+      returned += held - share;
+    }
+  }
+  return { minted, returned };
 }
 
 export function wildProcess(o: WildOptions): ProcessDef {
@@ -59,33 +106,34 @@ export function wildProcess(o: WildOptions): ProcessDef {
       // La cuenta del lugar es la ventana de hoy sobre el stock: lo que `gather` tomó ayer ya no está (el
       // stock en pie baja por eso al reponer), y lo que sobra de una ventana que se achicó vuelve al monte.
       const share = Math.floor(reach.grams / forests.length);
-      const transfers: NonNullable<ProcessResult["postings"]>[number]["transfers"][number][] = [];
-      let minted = 0;
-      let returned = 0;
-      for (const p of forests) {
-        const account = holderAccount({ kind: "place", place: p as unknown as PlaceId });
-        const held = Math.floor(ctx.ledger.balance(account, FORAGE_UNIT));
-        if (share > held) {
-          transfers.push({
-            unit: FORAGE_UNIT,
-            from: externalAccount(WILD_SOURCE),
-            to: account,
-            amount: share - held,
-          });
-          minted += share - held;
-        } else if (held > share) {
-          transfers.push({
-            unit: FORAGE_UNIT,
-            from: account,
-            to: externalAccount(WILD_SOURCE),
-            amount: held - share,
-          });
-          returned += held - share;
-        }
-      }
+      const transfers: Transfer[] = [];
+      const { minted, returned } = topUp(ctx.ledger, forests, FORAGE_UNIT, share, transfers);
       const left = standing - minted + returned;
-      const changes = [setComponent(WILD, id, { standing: left, day: ctx.now })];
-      if (minted === 0 && returned === 0) return { changes };
+      // La leña: cae y se pudre; cada lugar completa su parte de lo alcanzable hoy, como el forraje.
+      let wood: { left: number; minted: number; returned: number; perHour: number } | undefined;
+      if (o.firewood === true) {
+        const fall = deadwoodFall(eco.cell.productivity) * (o.capacityScale ?? 1);
+        // La primera vez, el monte está en su equilibrio: lo que cae iguala lo que se pudre.
+        const before = prev?.deadwood ?? fall / DEADWOOD_DECAY;
+        const lying = accrueDeadwood(before, fall, prev?.deadwood !== undefined ? days : 0);
+        const woodReach = deadwoodReach(lying);
+        const got = topUp(
+          ctx.ledger,
+          forests,
+          FIREWOOD_UNIT,
+          Math.floor(woodReach.grams / forests.length),
+          transfers,
+        );
+        wood = { left: lying - got.minted + got.returned, ...got, perHour: woodReach.perHour };
+      }
+      const changes = [
+        setComponent(WILD, id, {
+          standing: left,
+          day: ctx.now,
+          ...(wood ? { deadwood: wood.left } : {}),
+        }),
+      ];
+      if (transfers.length === 0) return { changes };
       return {
         changes,
         events: [
@@ -93,7 +141,22 @@ export function wildProcess(o: WildOptions): ProcessDef {
             kind: WILD_SUPPLIED_EVENT,
             actors: [],
             place: { kind: "place", place: forests[0] as unknown as PlaceId },
-            data: { minted, returned, standing: Math.round(left), perHour: reach.perHour },
+            data: {
+              minted,
+              returned,
+              standing: Math.round(left),
+              perHour: reach.perHour,
+              ...(wood
+                ? {
+                    firewood: {
+                      minted: wood.minted,
+                      returned: wood.returned,
+                      lying: Math.round(wood.left),
+                      perHour: wood.perHour,
+                    },
+                  }
+                : {}),
+            },
             emissions: {},
             causes: [{ kind: "state", entity: id as never, key: "ecology" }],
           },

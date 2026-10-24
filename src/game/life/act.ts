@@ -306,6 +306,8 @@ export interface ActOptions {
    * asienta su fracaso (`ContestClaim.loss`). Apagado, `take` solo mueve cantidades del ledger.
    */
   readonly itemClaims?: boolean;
+  /** Opt-in (`wildFirewood`): `gather` elige la salida que nombra («junto leña»; `ResolveInput.gatherByWords`). */
+  readonly gatherByWords?: boolean;
   /**
    * Opt-in: los gustos de comida y bebida (`TASTES_OF`) corren lo máximo que cada parte paga en un
    * trato por los bienes que nombra `TasteDef.demandGoods` (`tasteDemandFactor`). Es el catálogo; apagado
@@ -1203,6 +1205,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     bearing: def.resolver === "move" ? bearingOf(o, places, e.hex, ctx.now) : undefined,
     ledger: { holdings: (a) => ctx.ledger?.holdings(a) ?? [] },
     ...(o.economicBatch && node.verb === "take" ? { takeEmptyFailure: true } : {}),
+    ...(o.gatherByWords === true && node.verb === "gather" ? { gatherByWords: true } : {}),
     ...(o.legacyFixedSpeech === true ? { fixedSpeech: true } : {}),
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
