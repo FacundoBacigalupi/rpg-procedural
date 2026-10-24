@@ -365,6 +365,8 @@ export interface ActOptions {
   readonly legacyNoLarderTake?: boolean;
   /** Replay de motores anteriores a `life-44`: `take` en casa ajena no saca de la despensa de ese hogar. */
   readonly legacyNoHostTake?: boolean;
+  /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
+  readonly legacyNoFleeShed?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -1462,6 +1464,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       start: ctx.now,
       rng: input.rng.fork("fight"),
       ...(o.coreEffects ? { coreEffects: true } : {}),
+      ...(o.legacyNoFleeShed === true ? {} : { shed: true }),
       day: o.clock.day,
       cause: draftEvent(0),
       place: input.place,
