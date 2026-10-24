@@ -528,6 +528,7 @@ function siteWalk(
   graph: SpaceGraph,
   at: { hex: number; space?: SpaceKey | undefined } | undefined,
   to: SpaceKey,
+  stroll = 0,
 ): { space: SpaceKey; seconds: number; leaving: boolean } | undefined {
   const target = graph.spaces.find((s) => s.key === to);
   if (!target) return undefined;
@@ -537,7 +538,7 @@ function siteWalk(
   const meters = spaceReach(graph, from.key, to, "sound").meters;
   return {
     space: to,
-    seconds: Math.round(Math.max(SITE_MIN_SECONDS, meters / SITE_WALK_MS)),
+    seconds: Math.round(Math.max(SITE_MIN_SECONDS, meters / SITE_WALK_MS, stroll)),
     leaving,
   };
 }
@@ -1003,6 +1004,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   // a una casa): los `move` de los NPC a la aldea siguen sin caminar hasta medir ese cambio
   // (ROADMAP play-npc-settlement-walk), que cambia los hashes.
   const spaceArg = node.args.find((a) => a.role === "space");
+  // Dar una vuelta por el sitio (play-stroll-duration): el `for` de `move` es lo que dura andar por
+  // ahí aunque el espacio esté a unos pasos. Solo lo arma el parser del jugador; los NPC no lo usan.
+  const forArg = node.args.find((a) => a.role === "for");
+  const strollSeconds = forArg !== undefined && "seconds" in forArg ? forArg.seconds : 0;
   const destArg = node.args.find(
     (a) =>
       "entity" in a &&
@@ -1076,7 +1081,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       def.resolver === "move" ? behindJammedDoor(truth, truth.get(LOCATION, me)?.space) : undefined,
     withinSite:
       def.resolver === "move" && spaceArg !== undefined && "text" in spaceArg
-        ? siteWalk(o.spaces, truth.get(LOCATION, me), spaceArg.text as SpaceKey)
+        ? siteWalk(o.spaces, truth.get(LOCATION, me), spaceArg.text as SpaceKey, strollSeconds)
         : undefined,
     walkFactor:
       def.resolver === "move"

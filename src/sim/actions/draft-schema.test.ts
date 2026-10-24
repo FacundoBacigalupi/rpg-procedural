@@ -53,6 +53,7 @@ const BAD: readonly [string, unknown, RegExp][] = [
       { role: "to", ref: forest },
       { role: "to", ref: forest },
       { role: "to", ref: forest },
+      { role: "to", ref: forest },
     ]),
     /twice/,
   ],
