@@ -127,20 +127,69 @@ const SASHES = ["#b5763c", "#3f4e63", "#8c3b30", "#c9b27a", "#3e5b45", "#5d3f52"
 const SKINS = ["#c99a72", "#b88760", "#d8ad85", "#a8774f", "#c08d66", "#d2a079"] as const;
 const HAIRS = ["#1e1712", "#2b211a", "#3a2c22", "#151110", "#5a5048", "#2a1d17"] as const;
 
-function Figure({ i, x, scale }: { i: number; x: number; scale: number }) {
-  const robe = ROBES[i % ROBES.length];
-  const sash = SASHES[(i * 2 + 1) % SASHES.length];
-  const skin = SKINS[(i * 5 + 2) % SKINS.length];
-  const hair = HAIRS[(i * 3) % HAIRS.length];
-  const lean = ((i % 3) - 1) * 4;
+type Look = Hud["people"]["figures"][number];
+
+/** Tamaño por edad: un niño llega a la cintura de un adulto. */
+const AGE_SCALE: Record<NonNullable<Look["age"]>, number> = {
+  child: 0.6,
+  youth: 0.9,
+  adult: 1,
+  elder: 0.95,
+};
+
+/** La ropa según se lee: fina con colores vivos y ribete, gastada apagada y con remiendo. */
+function robeOf(
+  i: number,
+  attire: string | undefined,
+): { robe: string; trim?: string; patch?: boolean } {
+  const robe = ROBES[i % ROBES.length] as string;
+  if (attire === "fine") return { robe: FINE[i % FINE.length] as string, trim: "#d8b65a" };
+  if (attire === "worn") return { robe: WORN[i % WORN.length] as string, patch: true };
+  return { robe };
+}
+
+const FINE = ["#7a2f3a", "#2f4f7a", "#3f6b4a", "#6a3f7a"] as const;
+const WORN = ["#6b6258", "#5c5a50", "#74685a", "#585248"] as const;
+
+/**
+ * Una persona vista, con lo que la mirada leyó de ella: tamaño y pelo por edad (canas en los
+ * viejos, el niño con dos rodetes), el peinado por sexo y la ropa por su marca. De quien apenas
+ * se nota no se sabe nada: queda una sombra sin rasgos.
+ */
+function Figure({
+  i,
+  x,
+  scale,
+  look,
+}: {
+  i: number;
+  x: number;
+  scale: number;
+  look: Look | undefined;
+}) {
+  const shadow = look?.age === undefined && look?.sex === undefined;
+  const { robe, trim, patch } = shadow ? { robe: "#1d1b22" } : robeOf(i, look?.attire);
+  const sash = shadow ? robe : SASHES[(i * 2 + 1) % SASHES.length];
+  const skin = shadow ? robe : SKINS[(i * 5 + 2) % SKINS.length];
+  const elder = look?.age === "elder";
+  const child = look?.age === "child";
+  const female = look?.sex === "female";
+  const hair = shadow ? robe : elder ? "#a9a49c" : HAIRS[(i * 3) % HAIRS.length];
+  const lean = elder ? 7 : ((i % 3) - 1) * 4;
+  const size = scale * (look?.age ? AGE_SCALE[look.age] : 1);
   return (
-    <g transform={`translate(${x * 1600} 860) scale(${scale}) rotate(${lean} 0 -120)`}>
+    <g
+      transform={`translate(${x * 1600} 860) scale(${size}) rotate(${lean} 0 -120)`}
+      opacity={shadow ? 0.55 : 1}
+    >
       <ellipse cx="0" cy="4" rx="70" ry="12" fill="#000" opacity="0.18" />
       {/* Túnica larga que se abre abajo, con las mangas anchas. */}
       <path
         d="M-62 0 C-66 -70 -58 -150 -42 -182 Q0 -204 42 -182 C58 -150 66 -70 62 0 Z"
         fill={robe}
       />
+      {trim && <path d="M-62 0 L62 0 L60 -10 L-60 -10 Z" fill={trim} />}
+      {patch && <rect x="12" y="-60" width="22" height="18" rx="3" fill="#000" opacity="0.18" />}
       <path
         d="M-44 -176 C-80 -150 -84 -96 -70 -70 L-50 -74 C-56 -110 -50 -146 -36 -164 Z"
         fill={robe}
@@ -158,10 +207,31 @@ function Figure({ i, x, scale }: { i: number; x: number; scale: number }) {
         fill="none"
       />
       <rect x="-9" y="-212" width="18" height="22" fill={skin} />
+      {female && !child && (
+        // Pelo largo que cae por la espalda.
+        <path
+          d="M-30 -240 C-40 -200 -36 -170 -26 -150 L26 -150 C36 -170 40 -200 30 -240 Z"
+          fill={hair}
+        />
+      )}
       <ellipse cx="0" cy="-236" rx="30" ry="34" fill={skin} />
-      {/* Pelo recogido arriba. */}
       <path d="M-31 -238 C-32 -276 32 -276 31 -238 C22 -258 -22 -258 -31 -238 Z" fill={hair} />
-      <circle cx="0" cy="-272" r="13" fill={hair} />
+      {child ? (
+        // Dos rodetes de niño.
+        <>
+          <circle cx="-22" cy="-266" r="10" fill={hair} />
+          <circle cx="22" cy="-266" r="10" fill={hair} />
+        </>
+      ) : female ? (
+        // Rodete bajo con una horquilla.
+        <>
+          <ellipse cx="0" cy="-262" rx="20" ry="12" fill={hair} />
+          {!shadow && <rect x="-24" y="-265" width="48" height="3" fill="#c9b27a" />}
+        </>
+      ) : (
+        // Moño arriba.
+        <circle cx="0" cy="-272" r="13" fill={hair} />
+      )}
     </g>
   );
 }
@@ -414,12 +484,12 @@ export function Scene({ hud }: { hud: Hud | undefined }) {
         {indoor ? <Room hud={hud} sky={sky} /> : <Outside hud={hud} sky={sky} />}
         {SPOTS.slice(0, people).map(([x, s], i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: las figuras son anónimas, por posición
-          <Figure key={i} i={i} x={x} scale={s} />
+          <Figure key={i} i={i} x={x} scale={s} look={hud.people.figures[i]} />
         ))}
         {shade.opacity > 0 && (
           <rect width="1600" height="900" fill={shade.color} opacity={shade.opacity} />
         )}
-        {indoor && <Hearth dark={dark} />}
+        {indoor && hud.place.fire !== false && <Hearth dark={dark} />}
         {!indoor && village && dark && <LitWindows />}
       </svg>
       {hud.sky === "rain" && <div className="weather rain" />}

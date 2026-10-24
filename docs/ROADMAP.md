@@ -42,7 +42,9 @@ El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sis
 - [ ] (play-hud-sky) Fase de la luna y estrellas visibles en la barra y el fondo (cosmology §2, cielo calculable).
 - [ ] (play-hud-danger) Peligro percibido en la barra: desde las amenazas que el personaje cree presentes (combat moral, perception), no desde la verdad.
 - Heredado de Fase 4 (play-hud-qi): qi y reino de cultivo en la barra cuando el cultivo del jugador exponga una vista.
-- [ ] (play-scene-more) (Hecho el 2026-10-23: figuras con ropa, piel y pelo de colores variados, casas con techo, puerta, ventanas y humo, árboles, nubes y una capa de luz por la hora.) Fondo con más verdad percibida: siluetas por figura (niño/adulto, sexo, ropa), edificios reales del asentamiento e interiores por tipo de edificio (settlements), ciudad vs aldea, animales vistos, fuego del hogar solo si está encendido.
+- [x] (play-scene-more, 2026-10-23) Fondo con más verdad percibida: figuras con ropa, piel y pelo variados, casas, árboles, nubes y luz por la hora; cada silueta sale de lo que leyó la mirada (`Hud.people.figures`: edad y sexo de la figura, la ropa fina o gastada; reconocido o no): un niño a media altura con dos rodetes, canas y espalda vencida en los viejos, pelo largo y rodete bajo en las mujeres, ribete en la ropa fina y remiendo en la gastada; de quien apenas se nota, una sombra sin rasgos. El fuego del hogar se pinta solo si hay uno encendido en el cuarto (`Hud.place.fire` desde `HEARTH`); sin fuegos simulados (opt-in) queda como antes. Sin tocar la sim ni el hash.
+- [ ] (play-scene-buildings) Edificios reales del asentamiento en el fondo (settlements: cuántas casas, de qué material, el templo, el mercado) e interiores por tipo de edificio; ciudad vs aldea.
+- [ ] (play-scene-animals) Animales vistos en el fondo (perros, gallinas, bueyes, bestias) desde los percepts, cuando la escena los perciba como figuras.
 
 ### Cómo se trabaja
 Reglas completas en [HANDOFF.md](HANDOFF.md) §2 (método) y §5 (verificación); son la única versión vigente.

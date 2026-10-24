@@ -51,6 +51,16 @@ describe("la barra de arriba (hudPanel)", () => {
     // Bajo techo el cielo no se ve: solo se oye si llueve o nieva.
     if (hud.place.indoor) expect(["unknown", "rain", "snow"]).toContain(hud.sky);
     expect(hudPanel(w, character, 0, [])).toMatchObject({ people: { around: 0, known: 0 } });
+    // Cada silueta lleva solo lo que leyó la mirada: sin figura leída, ni edad ni sexo.
+    expect(hud.people.figures).toHaveLength(seen.length);
+    seen.forEach((p, i) => {
+      const f = hud.people.figures[i];
+      expect(f?.known).toBe(p.detail === "identified");
+      if (p.fields.figure === undefined) expect(f?.age).toBeUndefined();
+      else expect(f?.age).toBe((p.fields.figure.value as { age: string }).age);
+    });
+    // La aldea por defecto no simula fuegos: no se sabe si hay uno encendido.
+    expect(hud.place.fire).toBeUndefined();
   });
 
   it("el frío o el calor sale del núcleo, en bandas; sin fila, normal", () => {
