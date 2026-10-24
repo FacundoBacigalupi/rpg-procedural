@@ -311,6 +311,7 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
     - `take` sin `from` en casa (motor `life-43`): si lo que nombra no está suelto en el lugar, sale de la despensa del hogar (`homeLarder`).
     - `take` sin `from` en casa ajena (motor `life-44`): solo lo que nombra y no está suelto sale de la despensa de ese hogar (`hostLarder`); el consentimiento del dueño queda para property.
     - `drop` de un objeto con identidad (con `itemClaims`): solo lo que el actor lleva; queda en el lugar con su `LOCATION` y conserva sus derechos. `take` no busca entre lo que uno lleva.
+    - Huir o caer en una pelea (`life-45`, play-refs-objects-source-flee): quien termina huido, caído o muerto suelta donde pasó lo que lleva y abulta (mediano o grande), con los derechos intactos; lo chico sigue encima.
     - `take` torpe: hace ruido.
     - Un crítico malo con alguien al lado: el otro lo nota.
     - Un golpe crítico malo lo deja desequilibrado.

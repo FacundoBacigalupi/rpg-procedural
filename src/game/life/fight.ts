@@ -33,6 +33,7 @@ import {
   STYLE_SHARE,
   type StateChange,
   setComponent,
+  shedCarried,
   standardize,
   styleKey,
   THERMAL,
@@ -96,7 +97,15 @@ export interface StrikeFightInput {
   readonly resume?: PausedFight;
   /** Opt-in: el núcleo de cada uno (`THERMAL`) entumece o deja inconsciente en la pelea (`applyCore`). */
   readonly coreEffects?: boolean;
+  /**
+   * Quien huye o cae suelta lo que lleva y abulta donde pasó (`shedCarried`,
+   * play-refs-objects-source-flee); apagado solo en el replay de motores anteriores a `life-45`.
+   */
+  readonly shed?: boolean;
 }
+
+/** Los finales en que a alguien se le cae lo que lleva: corrió o quedó en el suelo. */
+const SHEDS: ReadonlySet<FighterOutcome> = new Set(["fled", "down", "dead"]);
 
 export interface StrikeFight {
   /** Cuánto duró. */
@@ -369,6 +378,11 @@ export function strikeFight(i: StrikeFightInput): StrikeFight {
               event: i.cause,
             }),
           ]
+        : []),
+      ...(i.shed
+        ? [mine, theirs].flatMap((f) =>
+            SHEDS.has(f.outcome) ? shedCarried(i.truth, f.id as AgentId, i.place, i.cause) : [],
+          )
         : []),
     ],
     event,

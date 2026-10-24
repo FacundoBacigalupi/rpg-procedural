@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-44");
+    expect(LIFE_ENGINE).toBe("life-45");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -28,6 +28,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       verboseSteps: true,
       waitAwake: true,
       waitUntended: true,
@@ -71,6 +72,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       sleepUncapped: true,
       legacyFalls: true,
       legacyTend: true,
@@ -110,6 +112,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyFalls: true,
       legacyTend: true,
       legacyResume: true,
@@ -148,6 +151,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyTend: true,
       legacyResume: true,
       waitEatHomeOnly: true,
@@ -185,6 +189,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyResume: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
@@ -221,6 +226,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       waitEatHomeOnly: true,
       legacyNoCare: true,
       legacyNoFootSores: true,
@@ -256,6 +262,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoCare: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
@@ -290,6 +297,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoFootSores: true,
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
@@ -323,6 +331,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoFootwearMend: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
@@ -355,6 +364,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoCloak: true,
       legacyNoStrain: true,
       legacyNoCloakMend: true,
@@ -386,6 +396,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoStrain: true,
       legacyNoCloakMend: true,
       legacyNoForecast: true,
@@ -416,6 +427,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoCloakMend: true,
       legacyNoForecast: true,
       legacyNoRainForecast: true,
@@ -445,6 +457,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
@@ -472,6 +485,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoForecast: true,
       legacyNoRainForecast: true,
       legacyNoFieldWatering: true,
@@ -500,6 +514,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoFieldWatering: true,
       legacyNoFieldSowing: true,
       legacyNoFieldShared: true,
@@ -526,6 +541,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoFieldSowing: true,
       legacyNoFieldShared: true,
       legacyNoSowSeed: true,
@@ -551,6 +567,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoFieldShared: true,
       legacyNoSowSeed: true,
       legacyNoExhaustion: true,
@@ -575,6 +592,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoSowSeed: true,
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
@@ -598,6 +616,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoExhaustion: true,
       legacyNoCobbler: true,
       legacyNoPerceiveCascade: true,
@@ -620,6 +639,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoCobbler: true,
       legacyNoPerceiveCascade: true,
       legacyNoAppraiseCascade: true,
@@ -641,6 +661,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoPerceiveCascade: true,
       legacyNoAppraiseCascade: true,
       legacyNoOscillation: true,
@@ -661,6 +682,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoAppraiseCascade: true,
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
@@ -680,6 +702,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoOscillation: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
@@ -698,6 +721,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoLendPawnBatch: true,
       legacyNoDeadCounterpartyGuard: true,
       legacyNoRainWaitPersist: true,
@@ -715,6 +739,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoDeadCounterpartyGuard: true,
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
@@ -731,6 +756,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoRainWaitPersist: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
@@ -746,6 +772,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoGreetDecision: true,
       legacyNoOscillationCause: true,
       legacyNoOscillationEvents: true,
@@ -760,6 +787,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoOscillationCause: true,
       legacyNoOscillationEvents: true,
       legacyNoDeadGiveGuard: true,
@@ -773,6 +801,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoOscillationEvents: true,
       legacyNoDeadGiveGuard: true,
       legacyNoToldBeliefs: true,
@@ -785,6 +814,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoDeadGiveGuard: true,
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
@@ -796,6 +826,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
@@ -806,6 +837,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
     });
@@ -815,6 +847,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
       legacyHeardTable: true,
     });
     expect(engineOptions("life-39", {})).toEqual({
@@ -823,24 +856,32 @@ describe("motor de la espera nocturna", () => {
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
     });
     expect(engineOptions("life-40", {})).toEqual({
       legacyFixedSpeech: true,
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
     });
     expect(engineOptions("life-41", {})).toEqual({
       legacyNoSettlementWalk: true,
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
     });
     expect(engineOptions("life-42", {})).toEqual({
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
+      legacyNoFleeShed: true,
     });
-    expect(engineOptions("life-43", {})).toEqual({ legacyNoHostTake: true });
-    expect(engineOptions("life-44", {})).toEqual({});
+    expect(engineOptions("life-43", {})).toEqual({
+      legacyNoHostTake: true,
+      legacyNoFleeShed: true,
+    });
+    expect(engineOptions("life-44", {})).toEqual({ legacyNoFleeShed: true });
+    expect(engineOptions("life-45", {})).toEqual({});
   });
 });
 
