@@ -281,8 +281,12 @@ export interface LifeSetup {
  * cualquier otro lugar; antes solo el jugador con un espacio del sitio lo hacía y el NPC se quedaba
  * donde estaba (play-npc-settlement-walk). Compatibilidad: un motor anterior a `life-42` enciende
  * `legacyNoSettlementWalk`; una vida guardada con `life-41` sigue desde su estado con el límite de replay.
+ *
+ * `life-43`: en su casa, un `take` sin `from` que no encuentra suelto lo que nombra lo saca de la
+ * despensa del hogar (play-refs-objects-larder). Compatibilidad: un motor anterior a `life-43`
+ * enciende `legacyNoLarderTake`.
  */
-export const LIFE_ENGINE = "life-42";
+export const LIFE_ENGINE = "life-43";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -334,6 +338,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 40 ? { legacyShortNames: true } : {}),
     ...(n < 41 ? { legacyFixedSpeech: true } : {}),
     ...(n < 42 ? { legacyNoSettlementWalk: true } : {}),
+    ...(n < 43 ? { legacyNoLarderTake: true } : {}),
   };
 }
 

@@ -361,6 +361,8 @@ export interface ActOptions {
   readonly legacyFixedSpeech?: boolean;
   /** Replay de motores anteriores a `life-42`: un `move` a la aldea (`settlement:n`) camina solo con un espacio del sitio. */
   readonly legacyNoSettlementWalk?: boolean;
+  /** Replay de motores anteriores a `life-43`: `take` en casa no saca de la despensa del hogar. */
+  readonly legacyNoLarderTake?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -709,6 +711,15 @@ export function actProcess(o: ActOptions): ProcessDef {
       });
     },
   };
+}
+
+/** Si `me` está adentro de un espacio de su propio hogar (la despensa le queda a mano). */
+function atHome(o: ActOptions, truth: ReadonlyWorldTruth, me: AgentId): boolean {
+  const household = truth.get(PERSON, me)?.household;
+  const space = truth.get(LOCATION, me)?.space;
+  if (household === undefined || space === undefined) return false;
+  const node = o.spaces.spaces.find((s) => s.key === space);
+  return node !== undefined && node.household === household && node.indoor;
 }
 
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
@@ -1112,6 +1123,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     foods: e.foods,
     unitNames: new Map(o.goods.map((g) => [goodUnit(g), g.name] as const)),
     larder: person.household as unknown as HolderRef,
+    ...(node.verb === "take" && o.legacyNoLarderTake !== true && atHome(o, truth, me)
+      ? { homeLarder: person.household as unknown as HolderRef }
+      : {}),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
