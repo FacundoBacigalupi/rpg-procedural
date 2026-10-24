@@ -40,7 +40,7 @@ const take = (what: string): IntentDraft =>
     plan: { kind: "do", verb: "take", args: [{ role: "what", text: what }] },
   }) as IntentDraft;
 
-describe("agarrar en casa ajena (play-refs-objects-source)", () => {
+describe("agarrar en casa ajena (play-refs-objects-host)", () => {
   it("lo que nombra sale de la despensa de ese hogar, se ve antes y se conserva", () => {
     const life = Life.create(7, content, { frequency: 8 });
     const w = life.world;

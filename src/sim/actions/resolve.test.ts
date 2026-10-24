@@ -494,7 +494,7 @@ describe("tomar", () => {
       expect(r.effect).toMatchObject({ got: [] });
     });
 
-    it("en casa ajena saca de su despensa solo lo que nombra y no está suelto (play-refs-objects-source)", () => {
+    it("en casa ajena saca de su despensa solo lo que nombra y no está suelto (play-refs-objects-host)", () => {
       const host = makeId("household", 4) as unknown as HolderRef;
       const visit = (what: string | null, rows: Parameters<typeof ledgerWith>[0]) => {
         const { homeLarder: _, ...rest } = atHome(what, rows);

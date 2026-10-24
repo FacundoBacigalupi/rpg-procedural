@@ -71,7 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
-**play-refs-objects-source (2026-10-24, rama `feat/play-refs-objects-source`):** `sim/actions/resolve.ts` `ResolveInput.hostLarder` (al principio de `homeOrPlace`: solo lo nombrado y no suelto); `game/life/act.ts` `hostLarderOf` (espacio adentro de otro hogar; `legacyNoHostTake`); `goods-sight.ts` `where: "host"`. Motor `life-44`. Tests en `resolve.test.ts` y `host-take.test.ts`. Queda el consentimiento del dueño (property).
+**play-refs-objects-host (2026-10-24, rama `feat/play-refs-objects-source`):** `sim/actions/resolve.ts` `ResolveInput.hostLarder` (al principio de `homeOrPlace`: solo lo nombrado y no suelto); `game/life/act.ts` `hostLarderOf` (espacio adentro de otro hogar; `legacyNoHostTake`); `goods-sight.ts` `where: "host"`. Motor `life-44`. Tests en `resolve.test.ts` y `host-take.test.ts`. Queda el consentimiento del dueño (property).
 
 **play-refs-objects-look (2026-10-24, rama `feat/play-refs-objects-look`, apilada sobre #708):** `content/actions/core.json` `look.args` = `target?: sight`; `sim/actions/catalog.ts` `ARG_KINDS` suma `sight` (draft: objeto o persona, reintenta sin la clase adivinada; plan: `agent:`/`item:`); `resolve.ts` `observe` lleva `target`; `game/view/view.ts` `ThingView` y `things` en `PlayerView`/`ViewInput`; `game/life/view.ts` `playerView` llama a `itemsSeen` y avisa por `onThings` (la sesión ya no lo calcula aparte); `llm/templates.ts` nombra las cosas, `llm/parser.ts` ayuda de `sight`, `narration.ts` pasa `things`. Tests: `known-things.test.ts` (mirar), `llm/things.test.ts`.
 

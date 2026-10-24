@@ -143,7 +143,7 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly homeLarder?: HolderRef | undefined;
   /**
    * La despensa ajena a la vista: el actor está adentro de la casa de otro hogar
-   * (play-refs-objects-source). Un `take` sin `from` que nombra algo que no está suelto en el lugar
+   * (play-refs-objects-host). Un `take` sin `from` que nombra algo que no está suelto en el lugar
    * lo saca de acá (es de ese hogar: quien lo vea, lo ve llevárselo).
    */
   readonly hostLarder?: HolderRef | undefined;
