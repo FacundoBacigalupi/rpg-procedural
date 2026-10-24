@@ -13,6 +13,7 @@ function def(id: string, slot: GarmentDef["slot"], layer: number, clo: number): 
     coverage: 0.3,
     material: "hemp",
     basic: true,
+    wearDays: 365,
   };
 }
 const own = (d: GarmentDef, wear = 0): OwnedGarment => ({ def: d, wear });

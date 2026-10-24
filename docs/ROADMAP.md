@@ -198,7 +198,10 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] Ropa puesta como ítems (partido en sub-ítems):
     - [x] (clothing-garments) Prendas como contenido (`content/garments`, `GARMENTS`), `chooseGarments` (base siempre, capas en orden hasta el clo del aire, desgaste) y `life.wardrobe` con el juego básico implícito; `LifeOptions.wardrobe` cablea `clothingOf` a `dressed` sobre lo elegido (opt-in, sin bump). El viajero NPC sigue con `roadClothing` y su capa aparte.
     - [x] (clothing-player-hud) La ropa del jugador en la barra y en el panel (qué lleva puesto y si le alcanza): desbloquea `play-hud-clothing`.
-    - [ ] (clothing-wear) Desgaste de las prendas con los días de uso y de trabajo (escritor de `life.wardrobe`), unificar la capa de viaje (`life.cloak`) con la prenda `outer` del guardarropa.
+    - [x] (clothing-wear) Desgaste de las prendas con los días de uso y de trabajo: `life.wardrobe_wear` (único escritor de `life.wardrobe`, diario, con `wardrobe`, sin bump) gasta lo que cada uno se pone para el aire del día en `1 / wearDays` (contenido por prenda) por día, ×1,5 la ropa de abajo, pies y manos de quien trabaja y ×2 el calzado en camino; la deshecha queda en la fila (no se pone) con evento `garment.worn_out`.
+    - [ ] (clothing-wear-cloak) Unificar la capa de viaje (`life.cloak`, `CLOAK_ROAD_DAYS`) con la prenda `outer` del guardarropa cuando `wardrobe` esté encendido.
+    - [ ] (clothing-wear-stagger) Que la ropa de la aldea al empezar no sea toda nueva: el desgaste inicial de cada prenda con causa (cuándo se hizo o se heredó, desde la pre-corrida); hoy todos estrenan el día 0 y las prendas se deshacen a la vez.
+    - [ ] (clothing-wear-feet) El calzado puesto siempre (no solo con frío): hoy `chooseGarments` solo fija la capa `base` y las sandalias se ponen recién cuando hace falta abrigo.
     - [ ] (clothing-trade) Hacer, remendar y comprar ropa: tejedor/sastre como oficio con lotes de tela con origen, compra en la aldea y herencia de prendas; el recién nacido sin ropa propia.
     - [ ] (clothing-wet) Ropa mojada por lluvia y ríos (menos clo, más pérdida) y secado junto al fuego (hoy apagado porque la gente se refugia).
     - [ ] (clothing-enable) Encender `wardrobe` en `FULL_PROFILE` con bump de motor y recalibrar el frío de la aldea (2 años x 3 seeds).
