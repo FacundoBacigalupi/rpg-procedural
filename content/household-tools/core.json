@@ -1,11 +1,78 @@
 [
-  { "id": "kitchen-knife", "name": "cuchillo de cocina", "shape": "knife", "material": "iron", "size": "small", "room": "main" },
-  { "id": "cooking-pot", "name": "olla", "shape": "pot", "material": "clay", "size": "medium", "room": "main" },
-  { "id": "water-jar", "name": "cántaro", "shape": "jar", "material": "clay", "size": "medium", "room": "main" },
-  { "id": "bowl", "name": "cuenco", "shape": "bowl", "material": "wood", "size": "small", "room": "main" },
-  { "id": "basket", "name": "canasta", "shape": "basket", "material": "bamboo", "size": "medium", "room": "store" },
-  { "id": "hoe", "name": "azada", "shape": "hoe", "material": "iron", "size": "large", "room": "store", "minMembers": 2 },
-  { "id": "sickle", "name": "hoz", "shape": "sickle", "material": "iron", "size": "medium", "room": "store", "minMembers": 2 },
-  { "id": "axe", "name": "hacha", "shape": "axe", "material": "iron", "size": "medium", "room": "store", "minMembers": 3 },
-  { "id": "rope", "name": "soga", "shape": "rope", "material": "cloth", "size": "medium", "room": "store", "minMembers": 3 }
+  {
+    "id": "kitchen-knife",
+    "name": "cuchillo de cocina",
+    "shape": "knife",
+    "material": "iron",
+    "size": "small",
+    "room": "main"
+  },
+  {
+    "id": "cooking-pot",
+    "name": "olla",
+    "shape": "pot",
+    "material": "clay",
+    "size": "medium",
+    "room": "main"
+  },
+  {
+    "id": "water-jar",
+    "name": "cántaro",
+    "shape": "jar",
+    "material": "clay",
+    "size": "medium",
+    "room": "main"
+  },
+  {
+    "id": "bowl",
+    "name": "cuenco",
+    "shape": "bowl",
+    "material": "wood",
+    "size": "small",
+    "room": "main"
+  },
+  {
+    "id": "basket",
+    "name": "canasta",
+    "shape": "basket",
+    "material": "bamboo",
+    "size": "medium",
+    "room": "store"
+  },
+  {
+    "id": "hoe",
+    "name": "azada",
+    "shape": "hoe",
+    "material": "iron",
+    "size": "large",
+    "room": "store",
+    "minMembers": 2
+  },
+  {
+    "id": "sickle",
+    "name": "hoz",
+    "shape": "sickle",
+    "material": "iron",
+    "size": "medium",
+    "room": "store",
+    "minMembers": 2
+  },
+  {
+    "id": "axe",
+    "name": "hacha",
+    "shape": "axe",
+    "material": "iron",
+    "size": "medium",
+    "room": "store",
+    "minMembers": 3
+  },
+  {
+    "id": "rope",
+    "name": "soga",
+    "shape": "rope",
+    "material": "cloth",
+    "size": "medium",
+    "room": "store",
+    "minMembers": 3
+  }
 ]
