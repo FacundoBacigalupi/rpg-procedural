@@ -309,6 +309,7 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
     - `move` con `slip`: se cae a mitad de camino y sabe dónde quedó. Un `slip` parcial es solo un tropezón que llega más lento; el cuerpo lo lee distinto (cae de verdad solo bajo el margen parcial; ver body-health §4 "Caídas").
     - `take` con `wrong_target`: se lleva la mitad de otra cosa.
     - `take` sin `from` en casa (motor `life-43`): si lo que nombra no está suelto en el lugar, sale de la despensa del hogar (`homeLarder`).
+    - `take` sin `from` en casa ajena (motor `life-44`): solo lo que nombra y no está suelto sale de la despensa de ese hogar (`hostLarder`); el consentimiento del dueño queda para property.
     - `take` torpe: hace ruido.
     - Un crítico malo con alguien al lado: el otro lo nota.
     - Un golpe crítico malo lo deja desequilibrado.

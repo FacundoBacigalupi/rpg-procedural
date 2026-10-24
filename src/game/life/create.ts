@@ -338,6 +338,8 @@ export interface LifeOptions {
   readonly legacyNoSettlementWalk?: boolean;
   /** Solo el replay de un motor anterior a `life-43`: `take` en casa no saca de la despensa. */
   readonly legacyNoLarderTake?: boolean;
+  /** Solo el replay de un motor anterior a `life-44`: `take` en casa ajena no saca de su despensa. */
+  readonly legacyNoHostTake?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -737,6 +739,7 @@ export function optInParts(
   | "legacyFixedSpeech"
   | "legacyNoSettlementWalk"
   | "legacyNoLarderTake"
+  | "legacyNoHostTake"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
@@ -917,6 +920,7 @@ export function optInParts(
     ...(options.legacyFixedSpeech ? { legacyFixedSpeech: true } : {}),
     ...(options.legacyNoSettlementWalk ? { legacyNoSettlementWalk: true } : {}),
     ...(options.legacyNoLarderTake ? { legacyNoLarderTake: true } : {}),
+    ...(options.legacyNoHostTake ? { legacyNoHostTake: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
