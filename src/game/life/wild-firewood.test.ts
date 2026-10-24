@@ -99,6 +99,8 @@ describe("la leña del monte (hearth-wood)", () => {
     expect(w.ledger.balance(holderAccount(w.player), FIREWOOD_UNIT)).toBe(wood?.amount ?? -1);
     expect(wood?.amount ?? 0).toBeGreaterThan(0);
     expect(gatherAt(life, null)?.good).toBe(FORAGE_UNIT);
+    // La leña juntada se pudre muy lento en el bolsillo (fuente `rotted` declarada): los días siguen.
+    life.advanceTo(life.now + 3 * DAY);
     expect(w.ledger.audit()).toEqual([]);
   }, 300_000);
 
