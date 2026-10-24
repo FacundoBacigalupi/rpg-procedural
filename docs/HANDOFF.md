@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**clothing-wet-river (2026-10-24, rama `feat/clothing-wet-river`, encima de `feat/clothing-wet`):** `LocalMap.water` se arma en `map.ts` desde el terreno (siempre; el mapa no entra al hash). En `wet.ts`: `fordOf` puro, `WET_LAST_HEX`, opción `ford` de `wetClothesProcess` (cableada con `wardrobe`); el hex de salida y los hexes con espacios de la aldea no mojan. Sin calibrar: `FORD_WET` y la frecuencia de cruces diarios (ver `clothing-wet-paths`).
+
 **clothing-wet (2026-10-24, rama `feat/clothing-wet`, encima de `feat/clothing-wear-stagger`):** `game/life/wet.ts` (`WET_CLOTHES`, `wetAfter` puro, `wetClothesProcess` horario en `physics`, `wetEnv`); registrado en `world.ts` con `wardrobe`, y `thermalProcess` recibe `refineEnv`/`refineReads` de `thermalRefine` (world.ts), que compone el hogar (`hearthEnv`, con `hearths`) y después `wetEnv` (con guardarropa). Test de vida con seed 42 (llueve los días 2 y 3). Sigue `clothing-wet-river`.
 
 **clothing-wear-stagger (2026-10-24, rama `feat/clothing-wear-stagger`, encima de `feat/clothing-wear-cloak`):** `seedWardrobes` en `game/life/wardrobe.ts`, llamado en `create.ts` con `options.wardrobe` antes de `seedParcels`; desgaste inicial `Rng.root(seed).fork("wardrobe", persona, prenda)`. Los tests de vida comparan lo gastado en los días, no el valor absoluto.

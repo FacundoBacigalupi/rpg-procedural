@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent, type Tick } from "../../core/index.ts";
 import {
   checkInvariants,
+  LOCATION,
   PERSON,
   type ThermalEnv,
   WorldTruth,
@@ -14,10 +15,15 @@ import { Life } from "./life.ts";
 import {
   DRY_FIRE_PER_HOUR,
   DRY_INDOOR_PER_HOUR,
+  FORD_WET,
+  fordOf,
   outdoorDrying,
+  WADED_EVENT,
   WET_CLOTHES,
+  WET_LAST_HEX,
   WET_PER_HOUR,
   wetAfter,
+  wetClothesProcess,
   wetEnv,
 } from "./wet.ts";
 
@@ -99,4 +105,69 @@ describe("la ropa mojada (clothing-wet)", () => {
     expect(a.wetSeen).toBeGreaterThan(0);
     expect(run()).toEqual(a);
   }, 600_000);
+});
+
+describe("vadear ríos (clothing-wet-river)", () => {
+  // Cuatro hexes en fila: seco, río, seco, aldea (con un arroyo adentro, que tiene sus pasos).
+  const life = Life.create(42, content, { frequency: 8, wardrobe: true });
+  const real = life.world.map;
+  const map = {
+    ...real,
+    neighbors: [[1], [0, 2], [1, 3], [2]],
+    crossSeconds: [1000, 1000, 1000, 1000],
+    forest: [false, false, false, false],
+    water: [0, 2, 0, 1],
+  };
+  const spaces = {
+    spaces: [
+      {
+        key: "home",
+        kind: "house",
+        hex: 3,
+        area: 20,
+        indoor: true,
+        daylight: 0,
+        lamp: 0,
+        noise: 0,
+        clearSight: 1,
+      },
+    ],
+    edges: [],
+  } as never;
+  const settled = new Set([3]);
+
+  it("el mapa real trae el agua de cada hex", () => {
+    expect(real.water?.length).toBe(real.neighbors.length);
+  });
+
+  it("cruzar el río empapa; el agua de la aldea y el hex de salida no cuentan", () => {
+    expect(fordOf(map, 0, 2, settled)).toEqual({ hex: 1, wet: FORD_WET[2] });
+    expect(fordOf(map, 1, 2, settled)).toBeUndefined();
+    expect(fordOf(map, 2, 3, settled)).toBeUndefined();
+    expect(fordOf(real.water ? { ...real, water: [] } : real, 0, 2, settled)).toBeUndefined();
+  });
+
+  it("el proceso moja a quien vadeó, con su evento, y recuerda dónde lo vio", () => {
+    const truth = new WorldTruth();
+    const who = "agent:9" as AgentId;
+    const someone = life.world.truth.ids(PERSON)[0] as AgentId;
+    truth.set(PERSON, who, life.world.truth.get(PERSON, someone) as never);
+    truth.set(LOCATION, who, { hex: 2 });
+    truth.set(WET_LAST_HEX, who, { hex: 0 });
+    const p = wetClothesProcess({
+      map,
+      clock: life.world.clock,
+      seed: life.world.seed,
+      spaces,
+      ford: { placeOf: () => ({ kind: "cell", cell: map.cell }) },
+    });
+    const out = p.run({ truth, now: life.now, window: HOUR } as never) as unknown as {
+      events?: { kind: string; data: { hex: number } }[];
+      changes?: { table: string; value?: { wet?: number; hex?: number } }[];
+    };
+    expect(out.events?.map((e) => [e.kind, e.data.hex])).toEqual([[WADED_EVENT, 1]]);
+    const wet = out.changes?.find((c) => c.table === WET_CLOTHES.name)?.value?.wet ?? 0;
+    expect(wet).toBeGreaterThanOrEqual(FORD_WET[2] as number);
+    expect(out.changes?.find((c) => c.table === WET_LAST_HEX.name)?.value?.hex).toBe(2);
+  });
 });
