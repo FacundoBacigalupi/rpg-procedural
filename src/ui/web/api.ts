@@ -86,6 +86,7 @@ export interface Hud {
   } | null;
   readonly stars: "none" | "few" | "many";
   readonly danger: { readonly level: 0 | 1 | 2 | 3; readonly from: number };
+  readonly load: 0 | 1 | 2 | 3;
 }
 
 export interface Panels {

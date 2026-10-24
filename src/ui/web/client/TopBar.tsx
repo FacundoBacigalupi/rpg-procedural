@@ -158,6 +158,13 @@ function dangerChips(d: Hud["danger"]): Chip[] {
   return [{ icon: "⚠️", text, title: "Peligro que creés tener cerca", alert: d.level }];
 }
 
+const LOAD = ["", "cargado", "pesado", "al límite"] as const;
+
+function loadChips(load: Hud["load"]): Chip[] {
+  if (load === 0) return [];
+  return [{ icon: "🎒", text: LOAD[load], title: "Lo que pesa lo que llevás", alert: load }];
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -211,6 +218,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
         {[
           ...dangerChips(hud.danger),
           ...bodyChips(hud.body),
+          ...loadChips(hud.load),
           ...moodChips(hud.mood, hud.warmth),
         ].map((c) => (
           <span key={c.title} className={`chip alert-${c.alert ?? 0}`} title={c.title}>
