@@ -43,6 +43,7 @@ import {
   Life,
   type LifeSetup,
   lexiconOf,
+  missingGoodsNote,
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
@@ -432,6 +433,9 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       return { text: `No se puede armar ese plan (${made.problems.join("; ")}).` };
     }
     const plan: ActionPlan = made.plan;
+    // Un bien que nombra y no ve («la olla»): se le dice sin jugar el turno (play-refs-objects-goods).
+    const missing = missingGoodsNote(life.world, plan.root);
+    if (missing !== undefined) return { text: missing };
     // Factibilidad creída: avisa desde lo que el personaje cree y, si insiste, se intenta.
     const heads = assessPlan(plan, life.world.catalog, beliefViewOf(life.world, known)).filter(
       (w) => w.weight >= WARN_WEIGHT,
