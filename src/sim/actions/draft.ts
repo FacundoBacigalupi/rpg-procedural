@@ -483,7 +483,10 @@ function thingArg(
   at: string,
   w: Walk,
 ): ArgValue | null | undefined {
-  const things = w.ctx.known.filter((k) => k.kind === "object" && k.present);
+  // Lo fijo (el pozo, el granero) se mira pero no se lleva ni se da: solo las cosas sueltas.
+  const things = w.ctx.known.filter(
+    (k) => k.kind === "object" && k.present && k.ref.startsWith("item:"),
+  );
   if (things.length === 0) return undefined;
   const r = resolveRef({ ...ref, kind: "object" }, things);
   if (r.status === "unique" || r.status === "group" || r.status === "phantom") {

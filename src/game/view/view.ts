@@ -444,6 +444,15 @@ export interface ThingView {
   readonly material?: string;
   readonly size: "small" | "medium" | "large";
   readonly looked?: true;
+  /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado). */
+  readonly state?: "worn" | "poor";
+}
+
+/** Lo fijo del espacio (el pozo, el granero): entra a la vista solo si lo miró a propósito. */
+export interface FixtureInput {
+  readonly ref: EntityRef;
+  readonly shape: string;
+  readonly state?: "worn" | "poor";
 }
 
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
@@ -502,6 +511,8 @@ export interface ViewInput {
   readonly percepts: readonly Percept[];
   /** Las cosas sueltas que ve (percepts con `thing`, de `itemsSeen`). */
   readonly things?: readonly Percept[];
+  /** Lo fijo del espacio donde está (play-refs-objects-fixtures-look). */
+  readonly fixtures?: readonly FixtureInput[];
   /** Ids de los percepts de extraños que el personaje ya vio otro día (`strangersSeenBefore`). */
   readonly seenBefore?: ReadonlySet<string>;
   /** Ids de los percepts de quienes no estaban a la vista en la escena anterior del mismo lugar. */
@@ -718,7 +729,7 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     ...(t.taste !== undefined ? { taste: t.taste } : {}),
   }));
 
-  const things = thingViews(input.things ?? [], input.steps);
+  const things = thingViews(input.things ?? [], input.fixtures ?? [], input.steps);
   const view = {
     self: { cues: [...(input.self ?? [])] },
     scene: sceneView(input.scene),
@@ -760,7 +771,11 @@ export function buildPlayerView(input: ViewInput): PlayerView {
 }
 
 /** Las cosas vistas, con las que miró a propósito marcadas (lo eligió él: lo sabe). */
-function thingViews(percepts: readonly Percept[], steps: readonly StepView[]): ThingView[] {
+function thingViews(
+  percepts: readonly Percept[],
+  fixtures: readonly FixtureInput[],
+  steps: readonly StepView[],
+): ThingView[] {
   const looked = new Set(
     steps.flatMap((s) =>
       s.self.effect.kind === "observe" && s.self.effect.target !== undefined
@@ -768,7 +783,19 @@ function thingViews(percepts: readonly Percept[], steps: readonly StepView[]): T
         : [],
     ),
   );
-  return percepts.flatMap((p) => {
+  const fixed = fixtures.flatMap((f): ThingView[] =>
+    looked.has(f.ref)
+      ? [
+          {
+            shape: f.shape,
+            size: "large",
+            looked: true,
+            ...(f.state !== undefined ? { state: f.state } : {}),
+          },
+        ]
+      : [],
+  );
+  const loose = percepts.flatMap((p): ThingView[] => {
     const look = p.fields.thing?.value as
       | { shape?: unknown; material?: unknown; size?: unknown }
       | undefined;
@@ -785,6 +812,7 @@ function thingViews(percepts: readonly Percept[], steps: readonly StepView[]): T
       },
     ];
   });
+  return [...loose, ...fixed];
 }
 
 function sceneView(s: SceneInput): SceneView {
