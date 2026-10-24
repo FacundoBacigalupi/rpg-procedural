@@ -72,6 +72,20 @@ export interface Hud {
     } | null;
   };
   readonly warmth: "freezing" | "cold" | "normal" | "hot" | "burning";
+  readonly moon: {
+    readonly phase:
+      | "new"
+      | "waxing_crescent"
+      | "first_quarter"
+      | "waxing_gibbous"
+      | "full"
+      | "waning_gibbous"
+      | "last_quarter"
+      | "waning_crescent";
+    readonly high: boolean;
+  } | null;
+  readonly stars: "none" | "few" | "many";
+  readonly danger: { readonly level: 0 | 1 | 2 | 3; readonly from: number };
 }
 
 export interface Panels {

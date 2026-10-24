@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { EventId } from "../../core/index.ts";
+import type { AgentId, EventId } from "../../core/index.ts";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
   type BuildingRecord,
@@ -13,7 +13,16 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { dayPhase, hudPanel, MAX_SEEN_BUILDINGS, seenBuildings, warmthOf } from "./hud.ts";
+import {
+  dangerOf,
+  dayPhase,
+  hudPanel,
+  MAX_SEEN_BUILDINGS,
+  moonPhaseName,
+  nightSky,
+  seenBuildings,
+  warmthOf,
+} from "./hud.ts";
 import { Life } from "./life.ts";
 import { characterPanel, inventoryPanel } from "./panels.ts";
 import { playerView } from "./view.ts";
@@ -121,6 +130,53 @@ describe("la barra de arriba (hudPanel)", () => {
     w.truth.set(EMOTIONS, w.player, { signals: signals.map((x) => ({ ...x, at: old })) });
     expect(hudPanel(w, character, 0, []).mood.feeling).toBeNull();
   });
+
+  it("la fase de la luna en ocho tramos, con la llena en el medio", () => {
+    expect([0, 0.06, 0.13, 0.25, 0.4, 0.5, 0.6, 0.75, 0.88, 0.95].map(moonPhaseName)).toEqual([
+      "new",
+      "new",
+      "waxing_crescent",
+      "first_quarter",
+      "waxing_gibbous",
+      "full",
+      "waning_gibbous",
+      "last_quarter",
+      "waning_crescent",
+      "new",
+    ]);
+  });
+
+  it("la luna y las estrellas solo se ven afuera, con el cielo abierto y la luna arriba", () => {
+    const full = { phase: 0.5, illumination: 1, altitude: 1 };
+    const night = { indoor: false, sky: "clear", phase: "night" } as const;
+    expect(nightSky(night, full)).toEqual({ moon: { phase: "full", high: true }, stars: "few" });
+    expect(nightSky(night, { ...full, altitude: 0.2 }).moon).toEqual({
+      phase: "full",
+      high: false,
+    });
+    // Bajo el horizonte no está; sin luna (o nueva), el cielo despejado se llena de estrellas.
+    expect(nightSky(night, { ...full, altitude: -0.1 })).toEqual({ moon: null, stars: "many" });
+    expect(nightSky(night, { phase: 0, illumination: 0, altitude: 1 })).toEqual({
+      moon: null,
+      stars: "many",
+    });
+    expect(nightSky(night, null)).toEqual({ moon: null, stars: "many" });
+    // Una luna fina no apaga las estrellas.
+    expect(nightSky(night, { phase: 0.15, illumination: 0.2, altitude: 1 }).stars).toBe("many");
+    // Con nubes, algunas; nublado, lloviendo o bajo techo, nada.
+    expect(nightSky({ ...night, sky: "cloudy" }, null).stars).toBe("few");
+    for (const look of [
+      { ...night, sky: "overcast" },
+      { ...night, sky: "rain" },
+      { ...night, indoor: true },
+    ] as const)
+      expect(nightSky(look, full)).toEqual({ moon: null, stars: "none" });
+    // De día la luna puede estar arriba; las estrellas no.
+    expect(nightSky({ ...night, phase: "day" }, full)).toEqual({
+      moon: { phase: "full", high: true },
+      stars: "none",
+    });
+  });
 });
 
 describe("edificios en el fondo", () => {
@@ -189,5 +245,64 @@ describe("edificios en el fondo", () => {
     expect(out.place.building).toBeUndefined();
     expect(Array.isArray(out.place.buildings)).toBe(true);
     expect(out.place.buildings?.length ?? 0).toBeLessThanOrEqual(MAX_SEEN_BUILDINGS);
+  });
+});
+
+describe("peligro en la barra", () => {
+  const percept = (
+    id: string,
+    fields: Percept["fields"],
+    detail: Percept["detail"] = "clear",
+  ): Percept =>
+    ({
+      id,
+      observer: "agent:yo",
+      tick: 0,
+      channels: ["sight"],
+      detail,
+      fields,
+    }) as unknown as Percept;
+  const read = (value: unknown, confidence = 1) => ({ value, confidence, mistaken: false });
+  const risk = (a: string) => (a === "action.kill" ? 0.7 : a === "action.hit" ? 0.3 : 0);
+
+  it("sin nadie, o con gente tranquila, no hay peligro", () => {
+    expect(dangerOf([], () => 1, risk)).toEqual({ level: 0, from: 0 });
+    const calm = percept("p1", { presence: read(true), action: read("action.give") });
+    expect(dangerOf([calm], () => 0, risk)).toEqual({ level: 0, from: 0 });
+  });
+
+  it("lo que lee que hace un desconocido asusta por la apuesta del verbo y la confianza", () => {
+    const kill = percept("p1", { action: read("action.kill") });
+    expect(dangerOf([kill], () => 0, risk).level).toBe(3);
+    const blurry = percept("p1", { action: read("action.kill", 0.5) });
+    expect(dangerOf([blurry], () => 0, risk).level).toBe(1);
+    const hit = percept("p2", { action: read("action.hit") });
+    expect(dangerOf([hit], () => 0, risk)).toEqual({ level: 1, from: 1 });
+  });
+
+  it("a quien reconoce lo teme por lo que cree de él, no por quién es de verdad", () => {
+    const feared = percept(
+      "p1",
+      { identity: read("agent:malo"), action: read("action.give") },
+      "identified",
+    );
+    const threat = (who: AgentId) => ((who as string) === "agent:malo" ? 0.6 : 0);
+    expect(dangerOf([feared], threat, risk)).toEqual({ level: 2, from: 1 });
+    // El mismo conocido en dos percepts cuenta una vez; una cara que lee mal no asusta como tal.
+    const again = percept("p2", { identity: read("agent:malo") }, "identified");
+    expect(dangerOf([feared, again], threat, risk).from).toBe(1);
+    const unsure = percept("p3", { identity: read("agent:malo", 0.3) }, "identified");
+    expect(dangerOf([unsure], threat, risk).level).toBe(0);
+  });
+
+  it("la barra lee el catálogo: ver pelear es amenaza; un recado, nada", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const character = characterPanel(w);
+    expect(hudPanel(w, character, 0, []).danger).toEqual({ level: 0, from: 0 });
+    const strike = [percept("p1", { action: read("action.strike") })];
+    expect(hudPanel(w, character, 0, strike).danger).toEqual({ level: 2, from: 1 });
+    const work = [percept("p1", { action: read("action.work") })];
+    expect(hudPanel(w, character, 0, work).danger.level).toBe(0);
   });
 });
