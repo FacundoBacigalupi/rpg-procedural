@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-hud-danger (2026-10-23, rama `feat/play-hud-danger`, encima de `feat/play-hud-sky`):** `Hud.danger` (nivel 0-3 y de cuántos viene) desde `dangerOf` (life/hud): por percept, la apuesta del verbo leído (con pelear como amenaza, `COMBAT_SEEN_RISK`) y lo que teme del que reconoce (`otherBeliefFrom` con el miedo de la relación), por la confianza de cada lectura. Chip ⚠️ en `TopBar.tsx`. Tests en `hud.test.ts`. Sin bump de motor. Pendiente aparte: ningún verbo de `content/actions` declara `stakes`, así que `seenHarm` de decide queda en 0 (darle `harm` a `strike` cambia la sim: va con bump).
+
 **play-hud-sky (2026-10-23, rama `feat/play-hud-sky`, encima de `feat/play-hud-more`):** `Hud.moon` y `Hud.stars` desde `nightSky` (life/hud), luna y estrellas en `TopBar.tsx` y `Scene.tsx`. Tests en `hud.test.ts`.
 
 **play-scene-buildings (2026-10-23, rama `feat/play-scene-buildings`, encima de `feat/play-scene-more`):** `seenBuildings` y `buildingsOf` en life/hud (`BUILDING` de settlements, materiales por gramos, desgaste por `condition`), `boxesOf`, `Houses`, `LitWindows` y `Flames` en `Scene.tsx`, interior por `place.building`. Tests en `hud.test.ts`. Sin bump de motor.

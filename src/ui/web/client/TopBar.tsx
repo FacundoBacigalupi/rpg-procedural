@@ -1,5 +1,5 @@
 // La barra de arriba: lo básico de un vistazo (hora, cielo, luna y estrellas, aire, lugar, gente,
-// cuerpo, ánimo, frío o calor, monedas).
+// peligro que creés cerca, cuerpo, ánimo, frío o calor, monedas).
 // Todo viene en bandas desde `Hud`; acá solo se elige ícono y palabra. Cada chip lleva texto además
 // del ícono, y lo grave se marca con borde, no solo con color.
 
@@ -146,6 +146,18 @@ function moodChips(m: Hud["mood"], warmth: Hud["warmth"]): Chip[] {
   return out;
 }
 
+const DANGER: Record<1 | 2 | 3, string> = {
+  1: "algo te inquieta",
+  2: "te sentís amenazado",
+  3: "peligro",
+};
+
+function dangerChips(d: Hud["danger"]): Chip[] {
+  if (d.level === 0) return [];
+  const text = d.from > 1 ? `${DANGER[d.level]} (${d.from})` : DANGER[d.level];
+  return [{ icon: "⚠️", text, title: "Peligro que creés tener cerca", alert: d.level }];
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -196,7 +208,11 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
         ))}
       </div>
       <div className="chips body">
-        {[...bodyChips(hud.body), ...moodChips(hud.mood, hud.warmth)].map((c) => (
+        {[
+          ...dangerChips(hud.danger),
+          ...bodyChips(hud.body),
+          ...moodChips(hud.mood, hud.warmth),
+        ].map((c) => (
           <span key={c.title} className={`chip alert-${c.alert ?? 0}`} title={c.title}>
             <span aria-hidden="true">{c.icon}</span>
             {c.text}

@@ -6,12 +6,16 @@
 // El ánimo es lo que siente de sí (emociones propias con su decaimiento y la carga más pesada) y el
 // frío o el calor, lo que el cuerpo le dice del núcleo (`THERMAL`): ambos son de adentro, no de la
 // verdad ajena. La luna y las estrellas, solo si las ve: afuera, con el cielo abierto y la luna sobre
-// el horizonte (cosmology §2, `moonAt`); la fase sale de mirarla, no de un calendario.
+// el horizonte (cosmology §2, `moonAt`); la fase sale de mirarla, no de un calendario. El peligro es
+// el que cree tener cerca: lo que lee que hacen los que ve (la apuesta del verbo) y lo que teme de
+// los que reconoce (miedo de la relación y recuerdos que duelen, `otherBeliefFrom`), con la
+// confianza de lo leído; nunca quién es de verdad ni qué trama.
 // Los edificios son los del asentamiento (settlements): cosas grandes y quietas que se ven desde
 // donde está, afuera y con la luz que haya; de cada uno, el tipo, de qué se ven las paredes y el
 // techo, si está gastado, caído o ardiendo. Adentro, el edificio donde está.
 // Puro: no escribe nada ni gasta RNG.
 
+import type { AgentId } from "../../core/index.ts";
 import {
   type AgeBand,
   BUILDING,
@@ -27,11 +31,17 @@ import {
   INNATE,
   LOCATION,
   localHour,
+  MEMORIES,
+  MIND,
   moonAt,
+  otherBeliefFrom,
   type Percept,
   type PlaceKind,
+  RELATIONS,
+  relationship,
   type Sex,
   type SpaceKind,
+  STAKES_RISK,
   skyLight,
   skyObserverOf,
   spaceLight,
@@ -120,6 +130,11 @@ export interface Hud {
   readonly moon: { readonly phase: MoonPhaseName; readonly high: boolean } | null;
   /** Las estrellas que ve: ninguna (día, nubes, techo), algunas o muchas. */
   readonly stars: "none" | "few" | "many";
+  /**
+   * El peligro que cree tener cerca: 0 nada, 1 inquieta, 2 amenaza, 3 grave; y de cuántos de los que
+   * ve viene (desde la inquietud).
+   */
+  readonly danger: { readonly level: Level; readonly from: number };
 }
 
 /** La fase de la luna en ocho, como se nombra a ojo. */
@@ -173,6 +188,79 @@ export function nightSky(
     moon: seen ? { phase: name, high: seen.altitude >= MOON_HIGH_RAD } : null,
     stars,
   };
+}
+
+/** Desde qué amenaza creída (0-1) inquieta, amenaza y es grave. */
+export const DANGER_UNEASY = 0.2;
+export const DANGER_THREAT = 0.45;
+export const DANGER_ACUTE = 0.7;
+
+/**
+ * El peligro desde lo que ve: por cada percept, la apuesta de lo que lee que hace (`riskOf` de la
+ * acción leída) y lo que teme de quien cree que es (`threatOf` de la identidad leída), cada uno por
+ * la confianza de su lectura. Un mismo conocido en varios percepts cuenta una vez.
+ */
+export function dangerOf(
+  seen: readonly Percept[],
+  threatOf: (who: AgentId) => number,
+  riskOf: (action: string) => number,
+): Hud["danger"] {
+  let top = 0;
+  const from = new Set<string>();
+  for (const p of seen) {
+    let t = 0;
+    const action = p.fields.action;
+    if (typeof action?.value === "string" && action.confidence > 0)
+      t = riskOf(action.value) * action.confidence;
+    const id = p.fields.identity;
+    const who =
+      typeof id?.value === "string" && id.value.startsWith("agent:") && id.confidence > 0
+        ? (id.value as AgentId)
+        : undefined;
+    if (who && id) t = Math.max(t, threatOf(who) * id.confidence);
+    if (t >= DANGER_UNEASY) from.add(who ?? p.id);
+    top = Math.max(top, t);
+  }
+  const level: Level =
+    top >= DANGER_ACUTE ? 3 : top >= DANGER_THREAT ? 2 : top >= DANGER_UNEASY ? 1 : 0;
+  return { level, from: from.size };
+}
+
+/** Ver pelear asusta como una amenaza aunque el verbo no declare qué se juega. */
+export const COMBAT_SEEN_RISK = 0.5;
+
+/**
+ * La apuesta de un verbo leído (`action.<verbo>`) en el catálogo, y pelear como amenaza; lo demás
+ * no asusta.
+ */
+function riskOfIn(w: LifeWorld): (action: string) => number {
+  return (action) => {
+    if (!action.startsWith("action.")) return 0;
+    const def = w.catalog.verbs.find((v) => v.id === action.slice("action.".length));
+    if (!def) return 0;
+    return Math.max(STAKES_RISK[def.stakes].risk, def.domain === "combat" ? COMBAT_SEEN_RISK : 0);
+  };
+}
+
+/** Lo que teme de alguien que reconoce: el miedo de la relación y lo que le dolió con esa persona. */
+function threatOfIn(w: LifeWorld): (who: AgentId) => number {
+  const now = w.scheduler.now;
+  const rels = w.truth.get(RELATIONS, w.player);
+  const memories = w.truth.get(MEMORIES, w.player);
+  const mind = w.truth.get(MIND, w.player);
+  const ctx = {
+    dims: w.relationDims,
+    bonds: w.relationBonds,
+    schemaStrength: (s: string) => mind?.schemas[s]?.strength ?? 0,
+  };
+  return (who) =>
+    otherBeliefFrom({
+      who,
+      memories,
+      now,
+      relFear: relationship(rels, who, now, ctx).dims.fear,
+      confidence: 1,
+    }).threat;
 }
 
 /** De helado (núcleo muy bajo) a ardiendo (muy alto). */
@@ -454,6 +542,7 @@ export function hudPanel(
     mood: moodOf(w, character),
     warmth: warmthOf(w.truth.get(THERMAL, w.player)?.coreC),
     ...nightSky({ indoor, sky: look, phase }, moon),
+    danger: dangerOf(seen, threatOfIn(w), riskOfIn(w)),
   };
 }
 
