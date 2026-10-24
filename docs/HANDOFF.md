@@ -23,6 +23,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **Worktrees:** `C:\dev\rpg-procedural-wt\<slot>` (`v`, `w`, `x`) solo si hay trabajo paralelo real; si no, rama normal en el repo principal. Los 17 worktrees detached existentes se conservan (no son líneas activas).
 - **Cierre honesto:** distinguir núcleo puro, cableado opt-in y comportamiento observado en integración; pendientes con nombre y fase; no declarar terminado un sistema por tener funciones aisladas; no activar defaults como trámite.
 - **Medición:** por lote, base/final SHA, resultado probado, retrabajo y duración real de verificación; no inventar tiempos ni medir por cantidad de commits o checkboxes.
+- **Verbos nuevos:** agregar un verbo al catálogo (`content/actions`) es agregar su entrada en `content/llm/verb-words/` con formas, ejemplo y sinónimos; el test de contenido de `llm/verb-words.test.ts` falla si falta o si choca con otro verbo (actions §9).
 - **Docs compartidos:** ROADMAP «Ahora» solo tiene prioridad y siguiente trabajo; §8 de este archivo solo el estado vigente (lo reemplazado se archiva en `history/`).
 
 ## 3. Ahorro de tokens
@@ -69,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 - **Un solo proceso pesado a la vez** (pedido del usuario, 2026-10-21): la PC se apagó sola con tres agentes corriendo `npm run check` en paralelo. Un agente/lote a la vez; no lanzar `check` ni vitest completo en simultáneo.
 
 ## 8. Estado de las líneas de trabajo
+
+**play-verb-words + guard (2026-10-23, rama `feat/play-verb-words`):** `content/llm/verb-words/es.json` (schema `VERB_WORDS` en `game/view/content.ts`) con formas y sinónimos de los 27 verbos; `llm/verb-words.ts` `VerbWordBook` reescribe el comienzo de cada paso en `grammar.ts` y va como pista al prompt del parser (`parserSetup`); la gramática suma hunt, spare, consume, boil, filter, forge y hire. `verbWordProblems` es la guardia (mínimo 4 sinónimos, conflictos con el par, salida `shared`). Siguen `play-bang-commands`, `play-help-verbs`, `play-hint-verbs`.
 
 **play-hud-danger (2026-10-23, rama `feat/play-hud-danger`, encima de `feat/play-hud-sky`):** `Hud.danger` (nivel 0-3 y de cuántos viene) desde `dangerOf` (life/hud): por percept, la apuesta del verbo leído (con pelear como amenaza, `COMBAT_SEEN_RISK`) y lo que teme del que reconoce (`otherBeliefFrom` con el miedo de la relación), por la confianza de cada lectura. Chip ⚠️ en `TopBar.tsx`. Tests en `hud.test.ts`. Sin bump de motor. Pendiente aparte: ningún verbo de `content/actions` declara `stakes`, así que `seenHarm` de decide queda en 0 (darle `harm` a `strike` cambia la sim: va con bump).
 

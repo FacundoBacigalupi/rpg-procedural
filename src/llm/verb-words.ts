@@ -28,16 +28,21 @@ export class VerbWordBook {
 
   constructor(entries: readonly VerbWords[]) {
     const seen = new Set<string>();
+    // Una palabra de dos verbos la lee el que la declara en `shared`.
+    const wins = new Set<string>();
     for (const e of entries) {
       if (seen.has(e.id)) throw new RangeError(`sinónimos de verbo repetidos: ${e.id}`);
       seen.add(e.id);
+      const shared = new Set((e.shared ?? []).map((w) => fold(w.normalize("NFC"))));
       for (const g of e.synonyms) {
         for (const w of g.words) {
           const key = fold(w.normalize("NFC"));
           const before = this.#as.get(key);
           if (before !== undefined && before !== g.as) {
-            throw new RangeError(`sinónimo con dos lecturas: «${w}»`);
+            if (wins.has(key)) continue;
+            if (!shared.has(key)) throw new RangeError(`sinónimo con dos lecturas: «${w}»`);
           }
+          if (shared.has(key)) wins.add(key);
           this.#as.set(key, g.as);
         }
       }
@@ -82,6 +87,11 @@ export class VerbWordBook {
     return `${text.slice(0, at)}${as}${text.slice(at + matched.length)}`;
   }
 
+  /** Los sinónimos de un verbo, en el orden de la tabla. */
+  synonymsOf(verb: string): string[] {
+    return this.entries.find((e) => e.id === verb)?.synonyms.flatMap((g) => g.words) ?? [];
+  }
+
   /** La pista para el parser con LLM: por verbo, sus formas y sinónimos. */
   hint(): string {
     return this.entries
@@ -91,4 +101,58 @@ export class VerbWordBook {
       })
       .join("\n");
   }
+}
+
+/** Lo mínimo que tiene que traer cada verbo del catálogo (`play-verb-words-guard`). */
+export const MIN_VERB_SYNONYMS = 4;
+
+/**
+ * Lo que rompe la tabla al crecer (actions §9, `play-verb-words-guard`): un verbo del catálogo
+ * sin entrada o con menos de `MIN_VERB_SYNONYMS` sinónimos, una entrada que no es un verbo, una
+ * palabra que dice dos verbos (salvo que uno la declare en `shared`) y un sinónimo que es la
+ * forma o el id de otro verbo. Cada problema nombra el par; sin problemas, vacío.
+ */
+export function verbWordProblems(
+  entries: readonly VerbWords[],
+  verbs: readonly string[],
+): string[] {
+  const out: string[] = [];
+  for (const v of verbs) {
+    const e = entries.find((x) => x.id === v);
+    const n = e?.synonyms.reduce((s, g) => s + g.words.length, 0) ?? 0;
+    if (!e) out.push(`el verbo ${v} no tiene palabras en verb-words`);
+    else if (n < MIN_VERB_SYNONYMS) {
+      out.push(`el verbo ${v} tiene ${n} sinónimos (mínimo ${MIN_VERB_SYNONYMS})`);
+    }
+  }
+  for (const e of entries) {
+    if (!verbs.includes(e.id)) out.push(`verb-words ${e.id} no es un verbo del catálogo`);
+  }
+  // Cada palabra con los verbos que la dicen y cómo (sinónimo, forma, id).
+  const said = new Map<string, { verb: string; as: "sinónimo" | "forma" | "id" }[]>();
+  const put = (word: string, verb: string, as: "sinónimo" | "forma" | "id") => {
+    const key = fold(word.normalize("NFC").trim());
+    const list = said.get(key) ?? [];
+    if (!list.some((x) => x.verb === verb && x.as === as)) list.push({ verb, as });
+    said.set(key, list);
+  };
+  for (const e of entries) {
+    put(e.id, e.id, "id");
+    for (const f of e.forms) put(f, e.id, "forma");
+    for (const g of e.synonyms) for (const w of g.words) put(w, e.id, "sinónimo");
+  }
+  const sharedBy = (verb: string, key: string) =>
+    entries.find((e) => e.id === verb)?.shared?.some((w) => fold(w.normalize("NFC")) === key) ??
+    false;
+  for (const [key, list] of [...said].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const synonyms = list.filter((x) => x.as === "sinónimo");
+    for (const s of synonyms) {
+      for (const o of list) {
+        if (o.verb === s.verb || (o.as === "sinónimo" && o.verb < s.verb)) continue;
+        if (sharedBy(s.verb, key) || sharedBy(o.verb, key)) continue;
+        out.push(`«${key}» es sinónimo de ${s.verb} y ${o.as} de ${o.verb}`);
+      }
+    }
+  }
+  return out;
 }

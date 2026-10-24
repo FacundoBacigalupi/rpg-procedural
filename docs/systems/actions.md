@@ -245,6 +245,8 @@ interface IntentDraft {
 | Una pregunta al juego ("¿cuánto tiempo pasó?") | `question_ooc`: se responde con lo que el personaje sabe |
 | Comandos (guardar, inspector) | `meta`: fuera del mundo |
 
+**Palabras de cada verbo** (`play-verb-words`, `play-verb-words-guard`): `content/llm/verb-words/<lengua>.json` dice, por verbo del catálogo, sus formas y sus sinónimos con la forma como la que se leen («me dirijo a» → «voy a»). La gramática sin red reescribe el comienzo de cada paso con la tabla, el parser con LLM la recibe como pista y la ayuda la muestra. **Agregar un verbo es agregar sus sinónimos:** el test de contenido (`verbWordProblems` en `llm/verb-words.ts`) falla si un verbo del catálogo no tiene entrada o trae menos de `MIN_VERB_SYNONYMS`, si una entrada no es un verbo, si una palabra es sinónimo de dos verbos o si un sinónimo es la forma o el id de otro verbo; el mensaje nombra el par. Si el solapamiento es querido, la entrada que gana lo declara en `shared` y la gramática lee esa.
+
 ## 10. Acciones de NPCs y órdenes
 
 - **Utilidad sobre el catálogo** (npc-psychology §7): los candidatos salen de los objetivos activos, las plantillas conocidas y lo que la escena permite según sus creencias. Se puntúa con utilidad y se elige con softmax.

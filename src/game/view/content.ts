@@ -93,6 +93,11 @@ export const VerbWords = z.strictObject({
       tail: z.string().trim().optional(),
     }),
   ),
+  /**
+   * Palabras de esta entrada que también dice otro verbo a propósito: esta gana la lectura de
+   * la gramática y la guardia no la cuenta como conflicto (`play-verb-words-guard`).
+   */
+  shared: z.array(phrase).optional(),
 });
 export type VerbWords = z.infer<typeof VerbWords>;
 export const VERB_WORDS = defineContent("llm/verb-words", VerbWords);

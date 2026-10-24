@@ -13,7 +13,7 @@ import {
 } from "../sim/index.ts";
 import { parseCommand } from "./grammar.ts";
 import { parserSetup } from "./parser.ts";
-import { VerbWordBook } from "./verb-words.ts";
+import { VerbWordBook, verbWordProblems } from "./verb-words.ts";
 
 function load<T extends { readonly id: string }>(kind: ContentKind<T>): T[] {
   const dir = join("content", kind.name);
@@ -127,6 +127,40 @@ describe("los sinónimos de los verbos (play-verb-words)", () => {
     expect(withWords.system).toContain("Spanish words the player may use");
     expect(withWords.system).toContain("contemplo");
     expect(parserSetup(catalog, []).system).not.toContain("Spanish words");
+  });
+
+  it("guardia: la tabla del contenido no tiene huecos ni conflictos (play-verb-words-guard)", () => {
+    expect(
+      verbWordProblems(
+        entries,
+        catalog.verbs.map((v) => v.id),
+      ),
+    ).toEqual([]);
+  });
+
+  it("guardia: un verbo sin sinónimos y un choque fallan nombrando el par", () => {
+    const [a, b] = entries;
+    if (!a || !b) throw new Error("tabla vacía");
+    const verbs = [a.id, b.id, "nuevo"];
+    const bForm = b.forms[0] as string;
+    const problems = verbWordProblems(
+      [
+        { ...a, synonyms: [{ as: a.forms[0] as string, words: ["choco", bForm, "x"] }] },
+        { ...b, synonyms: [{ as: bForm, words: ["choco", "y"] }] },
+      ],
+      verbs,
+    );
+    expect(problems).toContain("el verbo nuevo no tiene palabras en verb-words");
+    const [first, second] = [a.id, b.id].sort();
+    expect(problems).toContain(`«choco» es sinónimo de ${first} y sinónimo de ${second}`);
+    expect(problems.some((p) => p.includes(`sinónimo de ${a.id} y forma de ${b.id}`))).toBe(true);
+    // Con `shared` el choque es a propósito: no falla y la gramática lee el que lo declara.
+    const shared = [
+      { ...a, synonyms: [{ as: a.forms[0] as string, words: ["choco", "x1", "x2", "x3"] }] },
+      { ...b, synonyms: [{ as: bForm, words: ["choco", "y1", "y2", "y3"] }], shared: ["choco"] },
+    ];
+    expect(verbWordProblems(shared, [a.id, b.id])).toEqual([]);
+    expect(new VerbWordBook(shared).rewrite("choco algo")).toBe(`${bForm} algo`);
   });
 
   it("un sinónimo con dos lecturas no carga", () => {
