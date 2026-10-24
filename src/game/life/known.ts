@@ -210,11 +210,13 @@ export function knownEntities(
     if (id === undefined || !id.startsWith("item:") || listed.has(id)) continue;
     listed.add(id);
     const { names, features } = thingWords(p);
+    const shape = (p.fields.thing?.value as { shape?: unknown } | undefined)?.shape;
     out.push({
       ref: id,
       kind: "object",
       names,
       features,
+      ...(typeof shape === "string" ? { shape } : {}),
       relations: [],
       present: true,
       ...(here === undefined ? {} : { at: here.hex }),
@@ -230,6 +232,7 @@ export function knownEntities(
       kind: "object",
       names: FIXTURE_WORDS[f.shape],
       features: [],
+      shape: f.shape,
       relations: [],
       present: true,
       ...(here === undefined ? {} : { at: here.hex }),

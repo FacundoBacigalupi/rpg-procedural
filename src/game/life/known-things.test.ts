@@ -10,6 +10,7 @@ import {
   makeId,
 } from "../../core/index.ts";
 import {
+  BUILDING,
   type DraftResult,
   ENTITY,
   type IntentDraft,
@@ -18,6 +19,7 @@ import {
   type ItemLook,
   LOCATION,
   planFromDraft,
+  unusableTarget,
   VILLAGE_SQUARE,
   WORK,
 } from "../../sim/index.ts";
@@ -176,16 +178,16 @@ describe("mirar una cosa (play-refs-objects-look)", () => {
   });
 });
 
-describe("mirar lo fijo (play-refs-objects-fixtures-look)", () => {
-  /** Lleva al personaje a la plaza, donde está el pozo. */
-  function toSquare(w: LifeWorld): EntityRef {
-    const well = [...w.truth.ids(WORK)].find((id) => w.truth.get(WORK, id)?.kind === "well");
-    const hex = well === undefined ? undefined : w.truth.get(WORK, well)?.hexes[0];
-    if (well === undefined || hex === undefined) throw new Error("sin pozo");
-    w.truth.set(LOCATION, w.player, { hex, space: VILLAGE_SQUARE });
-    return well as EntityRef;
-  }
+/** Lleva al personaje a la plaza, donde está el pozo. */
+function toSquare(w: LifeWorld): EntityRef {
+  const well = [...w.truth.ids(WORK)].find((id) => w.truth.get(WORK, id)?.kind === "well");
+  const hex = well === undefined ? undefined : w.truth.get(WORK, well)?.hexes[0];
+  if (well === undefined || hex === undefined) throw new Error("sin pozo");
+  w.truth.set(LOCATION, w.player, { hex, space: VILLAGE_SQUARE });
+  return well as EntityRef;
+}
 
+describe("mirar lo fijo (play-refs-objects-fixtures-look)", () => {
   it("en la plaza «miro el pozo» lo mira a él y la vista lo trae con su estado", () => {
     const life = Life.create(7, content, { frequency: 8 });
     const w = life.world;
@@ -234,5 +236,52 @@ describe("mirar lo fijo (play-refs-objects-fixtures-look)", () => {
       (t) => t.shape,
     );
     expect(shapes).not.toContain("well");
+  });
+});
+
+describe("usar lo fijo (play-refs-objects-fixtures-use-core)", () => {
+  /** Lleva al personaje adentro del granero comunal. */
+  function toGranary(w: LifeWorld): EntityRef {
+    const id = [...w.truth.ids(BUILDING)].find((b) => w.truth.get(BUILDING, b)?.type === "granary");
+    const b = id === undefined ? undefined : w.truth.get(BUILDING, id);
+    const space = b?.graph.spaces[0]?.key;
+    if (id === undefined || b === undefined || space === undefined) throw new Error("sin granero");
+    w.truth.set(LOCATION, w.player, { hex: b.hex, space });
+    return id as EntityRef;
+  }
+
+  function use(w: LifeWorld, text: string, how?: string): DraftResult {
+    const args: unknown[] = [{ role: "target", ref: { text, features: [] } }];
+    if (how !== undefined) args.push({ role: "how", text: how });
+    return planFromDraft({ kind: "act", plan: { kind: "do", verb: "use", args } } as IntentDraft, {
+      actor: w.player,
+      source: "player",
+      catalog: w.catalog,
+      known: knownEntities(w),
+      clock: w.clock,
+      causes: [{ kind: "state", entity: w.player, key: "intent" }],
+    });
+  }
+
+  it("«uso el pozo» se reescribe a tomar agua por la función del pozo", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    toSquare(w);
+    for (const made of [use(w, "el pozo"), use(w, "el pozo", "sacar agua")]) {
+      expect(made.kind).toBe("plan");
+      if (made.kind !== "plan") return;
+      expect(made.plan.root).toMatchObject({ kind: "do", verb: "drink" });
+      expect(unusableTarget(made.plan.root)).toBeUndefined();
+    }
+  });
+
+  it("el granero no tiene función todavía: el plan queda sin `how` y se avisa", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    const granary = toGranary(w);
+    for (const made of [use(w, "el granero"), use(w, "el granero", "sacar grano")]) {
+      expect(made.kind).toBe("plan");
+      if (made.kind !== "plan") return;
+      expect(made.plan.root).toMatchObject({ verb: "use", args: [{ entity: granary }] });
+      expect(unusableTarget(made.plan.root)).toBe(granary);
+    }
   });
 });
