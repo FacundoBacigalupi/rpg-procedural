@@ -287,7 +287,7 @@ export interface LifeSetup {
  * enciende `legacyNoLarderTake`.
  *
  * `life-44`: en casa ajena (un espacio cerrado de otro hogar), un `take` sin `from` que nombra algo
- * que no está suelto lo saca de la despensa de ese hogar (play-refs-objects-source). Compatibilidad:
+ * que no está suelto lo saca de la despensa de ese hogar (play-refs-objects-host). Compatibilidad:
  * un motor anterior a `life-44` enciende `legacyNoHostTake`.
  */
 export const LIFE_ENGINE = "life-44";
