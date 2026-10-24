@@ -248,7 +248,8 @@ export function validatePlan(plan: ActionPlan, catalog: ActionCatalog): string[]
         spec.kind === "duration"
           ? "seconds" in a
           : spec.kind === "text"
-            ? "text" in a
+            ? // Un texto también puede nombrar una cosa con identidad («el cuchillo del suelo»).
+              "text" in a || ("entity" in a && a.entity.startsWith("item:"))
             : "entity" in a && kindMatches(spec.kind, a.entity);
       if (!ok) problems.push(`${where}: ${a.role} no es un ${spec.kind}`);
     }

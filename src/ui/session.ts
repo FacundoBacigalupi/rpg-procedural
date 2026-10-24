@@ -36,6 +36,7 @@ import {
   environmentPanel,
   hypothesesPanel,
   inventoryPanel,
+  itemsSeen,
   knownEntities,
   knownSpaces,
   LIFE_ENGINE,
@@ -269,8 +270,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   let seenNow: readonly Percept[] = [];
   // Con qué palabras la última escena nombró a cada uno: «la figura desconocida» la señala.
   let narrated = new Map<string, string[]>();
+  // Las cosas sueltas que ve ahora: «el cuchillo del suelo» para agarrarlo (play-refs-objects-loose).
+  let thingsNow: readonly Percept[] = [];
   const knownNow = (): KnownEntity[] =>
-    withNarratedWords(knownEntities(life.world, seenNow), narrated);
+    withNarratedWords(knownEntities(life.world, seenNow, thingsNow), narrated);
   // Quienes ya se contaron y dónde: si siguen ahí quietos, la escena siguiente no los repite.
   let counted: {
     place: string | undefined;
@@ -310,6 +313,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         seenNow = seen;
       },
     });
+    thingsNow = itemsSeen(life.world, report?.steps ?? []);
     if (thinking === undefined)
       counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)), seen: seenNow };
     // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).

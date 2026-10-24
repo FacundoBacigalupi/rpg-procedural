@@ -20,6 +20,22 @@ export interface ItemHold {
 
 export const ITEM_HOLD = table<ItemHold>("property.item");
 
+/** Tamaño aparente de un objeto: cuánto se ve de lejos. */
+export type ItemSize = "small" | "medium" | "large";
+
+/**
+ * Lo que se ve de un objeto con identidad (perception §3): forma, material y tamaño, como claves
+ * (`knife`, `iron`); las palabras las pone quien lo nombra. Un ítem sin `ITEM_LOOK` no se percibe
+ * como cosa suelta.
+ */
+export interface ItemLook {
+  readonly shape: string;
+  readonly material?: string;
+  readonly size: ItemSize;
+}
+
+export const ITEM_LOOK = table<ItemLook>("property.look");
+
 const isItem = (id: string): id is ItemId => id.startsWith("item:");
 
 /** Snapshot desde ENTITY + ITEM_HOLD; `undefined` si el ítem no existe como entidad. */

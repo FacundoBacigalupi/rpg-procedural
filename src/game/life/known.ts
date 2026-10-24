@@ -52,6 +52,63 @@ const FIGURE_WORDS: Readonly<Record<string, Readonly<Record<string, readonly str
   },
 };
 
+/**
+ * Cómo se dice una cosa vista, por forma, material y tamaño (provisorio hasta `language`): «el
+ * cuchillo», «la canasta de bambú», «la olla grande».
+ */
+const THING_WORDS: Readonly<Record<string, readonly string[]>> = {
+  knife: ["cuchillo", "cuchilla", "faca"],
+  basket: ["canasta", "cesta", "canasto", "cesto"],
+  pot: ["olla", "cacerola", "marmita"],
+  jar: ["jarra", "cántaro", "vasija"],
+  bowl: ["cuenco", "tazón", "bol"],
+  sword: ["espada", "sable"],
+  hoe: ["azada", "azadón"],
+  sickle: ["hoz"],
+  axe: ["hacha"],
+  rope: ["soga", "cuerda"],
+  stick: ["palo", "vara", "bastón"],
+  bag: ["bolsa", "saco", "morral"],
+  box: ["caja", "cofre", "arcón"],
+  book: ["libro", "manual", "cuaderno"],
+  ring: ["anillo", "sortija"],
+  cloth: ["paño", "trapo", "tela"],
+};
+const MATERIAL_WORDS: Readonly<Record<string, readonly string[]>> = {
+  iron: ["de hierro", "hierro"],
+  bronze: ["de bronce", "bronce"],
+  wood: ["de madera", "madera"],
+  bamboo: ["de bambú", "bambú"],
+  clay: ["de barro", "barro"],
+  stone: ["de piedra", "piedra"],
+  cloth: ["de tela", "tela"],
+  jade: ["de jade", "jade"],
+  paper: ["de papel", "papel"],
+};
+const SIZE_WORDS: Readonly<Record<string, readonly string[]>> = {
+  small: ["chico", "chica", "pequeño", "pequeña"],
+  medium: [],
+  large: ["grande"],
+};
+
+/** Las palabras de una cosa vista: lo que es (nombres) y cómo es (rasgos), nunca de quién. */
+export function thingWords(p: Percept): { names: string[]; features: string[] } {
+  const look = p.fields.thing?.value as
+    | { shape?: string; material?: string; size?: string }
+    | undefined;
+  const names = [...(THING_WORDS[look?.shape ?? ""] ?? [])];
+  const features = [
+    "cosa",
+    "objeto",
+    // Suelta: está en el piso, a la vista («el cuchillo del suelo»).
+    "suelo",
+    "piso",
+    ...(MATERIAL_WORDS[look?.material ?? ""] ?? []),
+    ...(SIZE_WORDS[look?.size ?? ""] ?? []),
+  ];
+  return { names, features };
+}
+
 /** Lo que se ve de alguien que no se reconoce: su figura y su ropa, nunca quién es. */
 export function featuresOfPercept(p: Percept): string[] {
   const fig = p.fields.figure?.value as { sex?: string; age?: string } | undefined;
@@ -69,7 +126,11 @@ export function featuresOfPercept(p: Percept): string[] {
  * actual, `PlayerViewOptions.onSeen`) suma a quienes ve ahora aunque no sean de su familia: sin
  * nombre si no los reconoce, con lo que se ve (figura, ropa) y presentes.
  */
-export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): KnownEntity[] {
+export function knownEntities(
+  w: LifeWorld,
+  seen: readonly Percept[] = [],
+  things: readonly Percept[] = [],
+): KnownEntity[] {
   const me = w.truth.get(PERSON, w.player);
   const here = w.truth.get(LOCATION, w.player);
   const out: KnownEntity[] = [];
@@ -141,6 +202,23 @@ export function knownEntities(w: LifeWorld, seen: readonly Percept[] = []): Know
       ? callName(w.truth.get(PERSON_NAME, id as AgentId) ?? { language: "", parts: [] })
       : undefined;
     out.push(figure(id, p, here, given));
+  }
+  // Las cosas sueltas que ve ahora (`itemsSeen`): por lo que son, presentes y sin dueño a la vista.
+  for (const p of things) {
+    const id = p.sourceEntityId;
+    if (id === undefined || !id.startsWith("item:") || listed.has(id)) continue;
+    listed.add(id);
+    const { names, features } = thingWords(p);
+    out.push({
+      ref: id,
+      kind: "object",
+      names,
+      features,
+      relations: [],
+      present: true,
+      ...(here === undefined ? {} : { at: here.hex }),
+      via: [],
+    });
   }
   for (const id of w.truth.ids(PLACE)) {
     const p = w.truth.get(PLACE, id);
