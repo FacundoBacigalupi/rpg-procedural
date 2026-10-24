@@ -1791,6 +1791,7 @@ export function createLife(
       nutrientProfiles: content.all(NUTRIENT_PROFILES),
       diets: content.all(DIETS),
       goods: content.all(GOODS),
+      garments: content.all(GARMENTS),
       demography: required(
         content.get(DEMOGRAPHY, "human.preindustrial-village"),
         "demography human.preindustrial-village",

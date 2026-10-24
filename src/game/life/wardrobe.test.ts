@@ -52,6 +52,8 @@ describe("el guardarropa (clothing-garments)", () => {
   it("encendido en la vida corre y es determinista", () => {
     const run = () => {
       const l = Life.create(7, content, { frequency: 8, wardrobe: true });
+      // Una vida nueva trae las prendas del contenido, no solo la que se retoma.
+      expect(l.world.garments?.length).toBe(garments.length);
       l.advanceTo(l.now + 2 * DAY);
       return l.hash();
     };

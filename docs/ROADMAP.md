@@ -186,7 +186,7 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] Venenos en intrigas (schemes) y suministro en economía: el envenenador y la venta como dosis con causa **(c) bloqueado por «Intrigas F1-F2».**
   - [ ] Ropa puesta como ítems (partido en sub-ítems):
     - [x] (clothing-garments) Prendas como contenido (`content/garments`, `GARMENTS`), `chooseGarments` (base siempre, capas en orden hasta el clo del aire, desgaste) y `life.wardrobe` con el juego básico implícito; `LifeOptions.wardrobe` cablea `clothingOf` a `dressed` sobre lo elegido (opt-in, sin bump). El viajero NPC sigue con `roadClothing` y su capa aparte.
-    - [ ] (clothing-player-hud) La ropa del jugador en la barra y en el panel (qué lleva puesto y si le alcanza): desbloquea `play-hud-clothing`.
+    - [x] (clothing-player-hud) La ropa del jugador en la barra y en el panel (qué lleva puesto y si le alcanza): desbloquea `play-hud-clothing`.
     - [ ] (clothing-wear) Desgaste de las prendas con los días de uso y de trabajo (escritor de `life.wardrobe`), unificar la capa de viaje (`life.cloak`) con la prenda `outer` del guardarropa.
     - [ ] (clothing-trade) Hacer, remendar y comprar ropa: tejedor/sastre como oficio con lotes de tela con origen, compra en la aldea y herencia de prendas; el recién nacido sin ropa propia.
     - [ ] (clothing-wet) Ropa mojada por lluvia y ríos (menos clo, más pérdida) y secado junto al fuego (hoy apagado porque la gente se refugia).

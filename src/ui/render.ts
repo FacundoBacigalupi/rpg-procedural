@@ -300,6 +300,12 @@ export function renderCharacter(p: CharacterPanel): string {
   return lines.join("\n");
 }
 
+const SHORT = [
+  "",
+  "No te alcanza del todo para este aire.",
+  "Con esto no te alcanza: pasás frío.",
+] as const;
+
 export function renderInventory(p: InventoryPanel): string {
   const lines = [
     p.carried.length === 0
@@ -311,6 +317,11 @@ export function renderInventory(p: InventoryPanel): string {
       ? "No tenés monedas."
       : `Tenés ${p.coins} ${p.coins === 1 ? "moneda" : "monedas"} de cobre.`,
   );
+  if (p.worn) {
+    const pieces = p.worn.worn.map((g) => (g.frayed ? `${g.name} (gastada)` : g.name));
+    lines.push(`Tenés puesto: ${pieces.join(", ")}.`);
+    if (p.worn.short > 0) lines.push(SHORT[p.worn.short]);
+  }
   if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
   for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
   return lines.join("\n");

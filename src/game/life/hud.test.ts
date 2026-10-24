@@ -22,6 +22,7 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { ambientOf } from "./ambient.ts";
 import {
   dangerOf,
   dayPhase,
@@ -35,8 +36,11 @@ import {
   warmthOf,
 } from "./hud.ts";
 import { Life } from "./life.ts";
+import { outfitOf, SHORT_CLO } from "./outfit.ts";
 import { characterPanel, inventoryPanel } from "./panels.ts";
+import { seasonalClothing } from "./thermal.ts";
 import { playerView } from "./view.ts";
+import { WARDROBE, wardrobeClothing, wardrobeOf } from "./wardrobe.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -362,5 +366,38 @@ describe("la carga en la barra (play-hud-load)", () => {
     toward(0.5);
     expect(loadOf(w)).toBe(band());
     if (carried() / 1000 / massKg >= 0.45) expect(loadOf(w)).toBe(3);
+  });
+});
+
+describe("la ropa del jugador en la barra y en el panel (clothing-player-hud)", () => {
+  it("apagado no hay prendas: ni en la barra ni en el inventario", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    expect(outfitOf(w)).toBeUndefined();
+    expect(hudPanel(w, characterPanel(w), 0, []).clothing).toBeUndefined();
+    expect(inventoryPanel(w).worn).toBeUndefined();
+  });
+
+  it("con el juego básico le alcanza; sin abrigo, en el frío, le falta", () => {
+    const w = Life.create(7, content, { frequency: 8, wardrobe: true }).world;
+    const outfit = outfitOf(w);
+    expect(outfit?.short).toBe(0);
+    expect(outfit?.worn.some((g) => g.garment === "undershirt")).toBe(true);
+    expect(hudPanel(w, characterPanel(w), 0, []).clothing).toEqual(outfit);
+    expect(inventoryPanel(w).worn).toEqual(outfit);
+    // Solo la camisa de abajo y gastada: lo nota en la prenda y, si el aire pide más, en el abrigo.
+    w.truth.set(WARDROBE, w.player, { items: [{ garment: "undershirt", wear: 0.6 }] });
+    const thin = outfitOf(w);
+    expect(thin?.worn).toEqual([{ garment: "undershirt", name: expect.any(String), frayed: true }]);
+    const airC = ambientOf(w)(w.truth, w.player)(w.scheduler.now);
+    const missing =
+      seasonalClothing(airC).clo -
+      wardrobeClothing(wardrobeOf(w.truth, w.player, w.garments ?? []), airC).clo;
+    expect(thin?.short).toBe(missing >= SHORT_CLO[1] ? 2 : missing >= SHORT_CLO[0] ? 1 : 0);
+  });
+
+  it("la falta de abrigo sale del aire que pide la estación contra lo que tiene puesto", () => {
+    expect(SHORT_CLO[0]).toBeLessThan(SHORT_CLO[1]);
+    expect(wardrobeClothing([], -10).clo).toBe(0);
+    expect(seasonalClothing(-10).clo).toBeGreaterThan(SHORT_CLO[1]);
   });
 });
