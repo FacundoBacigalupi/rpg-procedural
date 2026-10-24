@@ -83,7 +83,7 @@ describe("runCli", () => {
     expect(out).toMatch(/^Empieza una vida en modo realista\./);
     expect(out).toContain("Eso todavía no se entiende.");
     expect(out).toContain(
-      "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !ayuda, !salir.",
+      "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
     );
     expect(out).toMatch(/La vida queda guardada\.\n$/);
     expect(out).not.toContain("{{");
@@ -126,9 +126,15 @@ describe("runCli", () => {
       "!personaje",
       "!inventario",
       "!cielo",
+      "!verbos",
+      "!verbos contemplo",
+      "!verbos volar",
       "espero una hora",
       "!bitácora",
     ]);
+    expect(out).toContain("Lo que tu personaje sabe hacer");
+    expect(out).toContain("observar: «miro alrededor»");
+    expect(out).toContain("«volar» no es una palabra de ningún verbo.");
     expect(out).toContain("Tenés ");
     expect(out).toContain("En la despensa:");
     expect(out).toContain("Para mañana creés que habrá ");

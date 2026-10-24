@@ -92,6 +92,43 @@ export class VerbWordBook {
     return this.entries.find((e) => e.id === verb)?.synonyms.flatMap((g) => g.words) ?? [];
   }
 
+  /**
+   * «!verbos» (`play-help-verbs`): un renglón por verbo con su nombre, una frase de ejemplo y
+   * los primeros `shown` sinónimos. `name` da el nombre del catálogo («moverse»).
+   */
+  help(name: (verb: string) => string | undefined, shown = 4): string {
+    const lines = this.entries.map((e) => {
+      const some = this.synonymsOf(e.id).slice(0, shown);
+      const also = some.length > 0 ? ` (también: ${some.join(", ")}…)` : "";
+      return `  ${name(e.id) ?? e.id}: «${e.example}»${also}`;
+    });
+    return [
+      "Lo que tu personaje sabe hacer, con un ejemplo de cada cosa:",
+      ...lines,
+      "«!verbos X» muestra todas las palabras de uno (X: el verbo o cualquiera de sus palabras).",
+    ].join("\n");
+  }
+
+  /**
+   * «!verbos X»: todas las formas y sinónimos del verbo que nombra X (su id, su nombre o
+   * cualquiera de sus palabras), con la forma como la que se lee cada grupo; `undefined` si X no
+   * es ninguno.
+   */
+  helpOf(query: string, name: (verb: string) => string | undefined): string | undefined {
+    const key = fold(query.normalize("NFC").trim());
+    const is = (w: string) => fold(w.normalize("NFC")) === key;
+    const e =
+      this.entries.find((x) => is(x.id) || is(name(x.id) ?? "")) ??
+      this.entries.find((x) => x.forms.some(is)) ??
+      this.entries.find((x) => x.synonyms.some((g) => g.words.some(is)));
+    if (!e) return undefined;
+    return [
+      `${name(e.id) ?? e.id}: «${e.example}»`,
+      `  Formas: ${e.forms.join(", ")}`,
+      ...e.synonyms.map((g) => `  Como «${g.as}»: ${g.words.join(", ")}`),
+    ].join("\n");
+  }
+
   /** La pista para el parser con LLM: por verbo, sus formas y sinónimos. */
   hint(): string {
     return this.entries

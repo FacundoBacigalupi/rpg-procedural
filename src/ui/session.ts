@@ -171,7 +171,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !ayuda, !salir.",
+  "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -549,6 +549,19 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         const thoughts = thoughtInputsOf(result);
         if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
         return { text: await tell(null, life.now, thoughts), present };
+      }
+      if (/^verbos?(?![\p{L}])/iu.test(text)) {
+        // De la misma tabla que lee la gramática: no se desactualiza (play-help-verbs).
+        const words = parser.words;
+        if (words === undefined) return { text: HELP };
+        const name = (id: string) => catalog.verb(id)?.name;
+        const what = text.replace(/^verbos?\s*/iu, "");
+        if (what === "") return { text: words.help(name) };
+        return {
+          text:
+            words.helpOf(what, name) ??
+            `«${what}» no es una palabra de ningún verbo. Probá «!verbos».`,
+        };
       }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN), life.world.map.lonDeg) };

@@ -178,6 +178,7 @@ Van con `!` adelante (`!salir`, `!gente`, `!qué sé de X`; `play-bang-commands`
 | `!qué sé de X` | consulta el diario de creencias del personaje sobre X |
 | `!más detalle` / `!más breve` | preferencias de narración (narration, aprobado 2026-10-06) |
 | `!interrupciones`, `!delegación`, `!posturas` | ver y editar las reglas |
+| `!verbos` / `!verbos X` | lo que la simulación sabe hacer: un renglón por verbo con un ejemplo y algunos sinónimos; con X (el verbo o cualquiera de sus palabras), todas sus formas y sinónimos. Sale de `content/llm/verb-words/`, la misma tabla que lee la gramática (`play-help-verbs`) |
 | `!ayuda` | cómo se escribe, qué comandos hay; nunca qué conviene hacer |
 | `!inspector` | el modo dios de tooling.md (§11) |
 | `!me gustó` / `!no me gustó` | marca el último texto narrado para el corpus del fine-tune ([tooling.md](tooling.md) §10, aprobado 2026-10-06) |

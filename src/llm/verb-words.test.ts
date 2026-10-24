@@ -163,6 +163,20 @@ describe("los sinónimos de los verbos (play-verb-words)", () => {
     expect(new VerbWordBook(shared).rewrite("choco algo")).toBe(`${bForm} algo`);
   });
 
+  it("«!verbos» sale de la tabla: un renglón por verbo y todas las palabras de uno (play-help-verbs)", () => {
+    const name = (id: string) => catalog.verb(id)?.name;
+    const all = words.help(name);
+    for (const e of entries) expect(all).toContain(`${name(e.id)}: «${e.example}»`);
+    expect(all.split("\n")).toHaveLength(entries.length + 2);
+    const look = words.helpOf("contemplo", name);
+    expect(look).toContain("observar: «");
+    for (const w of words.synonymsOf("look")) expect(look).toContain(w);
+    // Por id, por nombre y por forma, sin tildes: el mismo verbo.
+    expect(words.helpOf("look", name)).toBe(look);
+    expect(words.helpOf("OBSERVAR", name)).toBe(look);
+    expect(words.helpOf("volar", name)).toBeUndefined();
+  });
+
   it("un sinónimo con dos lecturas no carga", () => {
     const [a, b] = entries;
     if (!a || !b) throw new Error("tabla vacía");

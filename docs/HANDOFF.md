@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-help-verbs (2026-10-23, rama `feat/play-verb-words`):** `VerbWordBook.help`/`helpOf` (`llm/verb-words.ts`) arman «!verbos» y «!verbos X» desde la tabla; `ui/session.ts` los despacha con los nombres del catálogo y `HELP` lo nombra. Tests en `verb-words.test.ts` y `ui/cli/loop.test.ts`.
+
 **play-bang-commands (2026-10-23, rama `feat/play-verb-words`):** `llm/grammar.ts` cambia la regex `META` por `BANG` (solo una línea con `!` es `meta`, con el texto sin el `!`); `ui/session.ts` descarta un `meta` que venga del modelo, `HELP` y el placeholder de la web dicen `!ayuda`; las reglas del parser dicen que nunca conteste `meta` y salen los dos ejemplos `meta` de `parser-examples`. Tests en `site-move-grammar.test.ts` y `ui/cli/loop.test.ts`.
 
 **play-verb-words + guard (2026-10-23, rama `feat/play-verb-words`):** `content/llm/verb-words/es.json` (schema `VERB_WORDS` en `game/view/content.ts`) con formas y sinónimos de los 27 verbos; `llm/verb-words.ts` `VerbWordBook` reescribe el comienzo de cada paso en `grammar.ts` y va como pista al prompt del parser (`parserSetup`); la gramática suma hunt, spare, consume, boil, filter, forge y hire. `verbWordProblems` es la guardia (mínimo 4 sinónimos, conflictos con el par, salida `shared`). Siguen `play-bang-commands`, `play-help-verbs`, `play-hint-verbs`.
