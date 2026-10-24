@@ -86,6 +86,8 @@ export interface NpcVerbsOptions {
   readonly day: number;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia no mantiene viva la decisión `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
+  /** Replay de motores anteriores a `life-42`: una decisión de ir a la aldea (`settlement:n`) no arma plan. */
+  readonly legacyNoSettlementWalk?: boolean;
   /**
    * Opt-in (`life-33`, con `journeyDays` y `placeOf`; `speak` en `verbs`): el viajero saluda a quien
    * se cruzó y sigue en su hex con una acción `speak` de acto `greet` (`RoadGreetOptions`), en vez de
@@ -187,7 +189,9 @@ export const NPC_VERB_LOG = table<{
   readonly waited?: number;
 }>("life.npc_verb_log");
 
-const ENTITY_PART = /^(agent|place):/;
+const ENTITY_PART = /^(agent|place|settlement):/;
+/** Motores anteriores a `life-42`: la aldea (`settlement:n`) no era una parte de entidad. */
+const LEGACY_ENTITY_PART = /^(agent|place):/;
 /** Ids con partes propias de otro proceso (pedir prestado, empeñar, ir hacia): no son del catálogo. */
 const SPECIAL_PART = /^(borrow|pawn|toward):/;
 
@@ -202,7 +206,10 @@ export function planFromDecision(
   actor: AgentId,
   /** Modos del verbo (`careful`, `fast` en `move`): el ritmo del viaje. */
   manner: readonly string[] = [],
+  /** Replay de motores anteriores a `life-42`: la aldea no cuenta como destino. */
+  legacyNoSettlement = false,
 ): ActionPlan | undefined {
+  const entityPart = legacyNoSettlement ? LEGACY_ENTITY_PART : ENTITY_PART;
   const def = catalog.verb(decision.verb);
   const prefix = `${decision.verb}:`;
   if (!def || !decision.id.startsWith(prefix)) return undefined;
@@ -227,13 +234,13 @@ export function planFromDecision(
       continue;
     }
     if (a.kind === "text") {
-      if (ENTITY_PART.test(part)) {
+      if (entityPart.test(part)) {
         if (a.required) return undefined;
         continue;
       }
       args.push({ role: a.role, text: part });
     } else {
-      if (!ENTITY_PART.test(part)) {
+      if (!entityPart.test(part)) {
         if (a.required) return undefined;
         continue;
       }
@@ -637,6 +644,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           o.catalog,
           me,
           o.pace ? [o.pace] : [],
+          o.legacyNoSettlementWalk === true,
         );
         return plan ? startPlan(me, plan, going?.seq ?? 0, ctx.now) : {};
       }
@@ -767,7 +775,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
                   : {},
               ),
               me,
-              planFromDecision(decision, o.catalog, me),
+              planFromDecision(decision, o.catalog, me, [], o.legacyNoSettlementWalk === true),
             )
           : undefined;
       const plan =
@@ -777,6 +785,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
           o.catalog,
           me,
           decision.verb === "move" && journeyDays !== undefined && o.pace ? [o.pace] : [],
+          o.legacyNoSettlementWalk === true,
         );
       if (!plan) return {};
       const log = setComponent(NPC_VERB_LOG, me, { at: decision.at, id: decision.id });

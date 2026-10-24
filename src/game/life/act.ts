@@ -359,6 +359,8 @@ export interface ActOptions {
   readonly legacyNoDeadGiveGuard?: boolean;
   /** Replay de motores anteriores a `life-41`: `speak` dura 300 s fijos, sea un saludo o una charla. */
   readonly legacyFixedSpeech?: boolean;
+  /** Replay de motores anteriores a `life-42`: un `move` a la aldea (`settlement:n`) camina solo con un espacio del sitio. */
+  readonly legacyNoSettlementWalk?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -999,11 +1001,11 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       "entity" in a && a.entity.startsWith("agent:") ? [[a.role, partyOf(a.entity)]] : [],
     ),
   );
-  // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. El
-  // asentamiento cuenta como destino solo con un espacio del sitio (el jugador yendo a la plaza o
-  // a una casa): los `move` de los NPC a la aldea siguen sin caminar hasta medir ese cambio
-  // (ROADMAP play-npc-settlement-walk), que cambia los hashes.
+  // La aldea es el asentamiento mismo (`settlement:n`); los demás lugares, `place:n`. Desde
+  // `life-42` la aldea es destino para todos (play-npc-settlement-walk); antes, solo con un espacio
+  // del sitio (el jugador yendo a la plaza o a una casa).
   const spaceArg = node.args.find((a) => a.role === "space");
+  const settlementWalks = spaceArg !== undefined || o.legacyNoSettlementWalk !== true;
   // Dar una vuelta por el sitio (play-stroll-duration): el `for` de `move` es lo que dura andar por
   // ahí aunque el espacio esté a unos pasos. Solo lo arma el parser del jugador; los NPC no lo usan.
   const forArg = node.args.find((a) => a.role === "for");
@@ -1011,8 +1013,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const destArg = node.args.find(
     (a) =>
       "entity" in a &&
-      (a.entity.startsWith("place:") ||
-        (spaceArg !== undefined && a.entity.startsWith("settlement:"))),
+      (a.entity.startsWith("place:") || (settlementWalks && a.entity.startsWith("settlement:"))),
   );
   const destination =
     destArg && "entity" in destArg

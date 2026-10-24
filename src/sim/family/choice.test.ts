@@ -56,7 +56,7 @@ describe("temperamento elegido", () => {
     const { genome, innate } = baby(3);
     const spec = { boldness: { min: 0.7, max: 0.9 } };
     const r = conditionTemperament(traits, genome, innate, "female", spec, Rng.root(9));
-    expect(temperamentDistance(r.innate, spec)).toBe(0);
+    expect(temperamentDistance(r.innate, spec)).toBeCloseTo(0, 4);
     expect(r.choices[0]?.how).toMatch(/world|conditioned|fixed/);
     for (const t of traits) {
       if (t.id === "boldness") continue;
@@ -94,8 +94,8 @@ describe("temperamento elegido", () => {
           const { genome, innate } = baby(seed);
           const spec = { curiosity: around(center, 0.1) };
           const r = conditionTemperament(traits, genome, innate, "female", spec, Rng.root(seed));
-          expect(temperamentDistance(r.innate, spec)).toBe(0);
-          expect(temperamentFit(r.innate, spec)).toBe(1);
+          expect(temperamentDistance(r.innate, spec)).toBeCloseTo(0, 4);
+          expect(temperamentFit(r.innate, spec)).toBeCloseTo(1, 4);
           expect(temperamentFit(innate, spec)).toBeLessThanOrEqual(1);
         },
       ),

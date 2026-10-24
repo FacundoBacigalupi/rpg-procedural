@@ -436,6 +436,8 @@ export interface LifeWorld {
   readonly legacyShortNames?: boolean;
   /** Replay de motores anteriores a `life-41`: `speak` dura 300 s fijos. */
   readonly legacyFixedSpeech?: boolean;
+  /** Replay de motores anteriores a `life-42`: los `move` de los NPC a la aldea no caminan. */
+  readonly legacyNoSettlementWalk?: boolean;
   /** Replay de motores anteriores a `life-32`: la espera por lluvia pierde el recado `move` al vencer el día. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -981,6 +983,7 @@ export function lifeWorld(
             : {}),
           ...(parts.legacyNoDeadGiveGuard === true ? { legacyNoDeadGiveGuard: true } : {}),
           ...(parts.legacyFixedSpeech === true ? { legacyFixedSpeech: true } : {}),
+          ...(parts.legacyNoSettlementWalk === true ? { legacyNoSettlementWalk: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
           ...(parts.legacyResume === true ? { legacyResume: true } : {}),
           ...(parts.npcPace ? { effortByManner: true } : {}),
@@ -2187,6 +2190,7 @@ export function lifeWorld(
                 catalog: parts.catalog,
                 verbs: parts.npcVerbs,
                 day: parts.clock.day,
+                ...(parts.legacyNoSettlementWalk === true ? { legacyNoSettlementWalk: true } : {}),
                 ...(parts.legacyNoRainWaitPersist === true
                   ? { legacyNoRainWaitPersist: true }
                   : {}),
