@@ -100,10 +100,10 @@ describe("el desgaste de las prendas (clothing-wear)", () => {
   it("la que se deshace avisa una vez y no se pone más", () => {
     const sandals = byId("straw-sandals");
     const almost = basic.map((g) => (g.def.id === sandals.id ? { ...g, wear: 0.9999 } : g));
-    const day = wearDay(almost, -3, false, false);
+    const day = wearDay(almost, 25, false, false);
     expect(day.wornOut).toEqual([sandals.id]);
     const owned = day.items.map((i) => ({ def: byId(i.garment), wear: i.wear }));
-    expect(wearDay(owned, -3, false, false).wornOut).toEqual([]);
+    expect(wearDay(owned, 25, false, false).wornOut).toEqual([]);
     expect(owned.find((g) => g.def.id === sandals.id)?.wear).toBe(1);
   });
 
