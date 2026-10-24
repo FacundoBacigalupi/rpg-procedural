@@ -307,6 +307,7 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
     - `move` perdido: anda un tramo del camino y se desvía a un vecino (un crítico malo, tres pasos). Termina en otro hex y no sabe en cuál.
     - `move` con `slip`: se cae a mitad de camino y sabe dónde quedó. Un `slip` parcial es solo un tropezón que llega más lento; el cuerpo lo lee distinto (cae de verdad solo bajo el margen parcial; ver body-health §4 "Caídas").
     - `take` con `wrong_target`: se lleva la mitad de otra cosa.
+    - `take` sin `from` en casa (motor `life-43`): si lo que nombra no está suelto en el lugar, sale de la despensa del hogar (`homeLarder`).
     - `take` torpe: hace ruido.
     - Un crítico malo con alguien al lado: el otro lo nota.
     - Un golpe crítico malo lo deja desequilibrado.

@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-larder (2026-10-24, rama `feat/play-refs-objects-larder`):** motor `life-43`; `act.ts` pasa `homeLarder` (el hogar) a `take` cuando el actor está en un espacio adentro de su casa (`atHome`), y `homeOrPlace` (resolve) elige la despensa si lo que nombra no está suelto en el lugar o el lugar está vacío. `legacyNoLarderTake` cablea el replay (create, world, life). Tests: `sim/actions/resolve.test.ts` («de la despensa en casa») y `life/larder-take.test.ts` (vida real, conservación).
+
 **play-recognition-flicker:** Rama `feat/play-recognition-flicker`: quien se reconoció hace un momento y sigue a la vista no se vuelve «un viejo» en la mirada siguiente (`heldRecognition` en la vista, ventana `RECENT_SIGHT_TICKS` de 15 min sobre la creencia `at`). Sin bump de motor: no toca la verdad. Siguen los sub-ítems del HUD y la escena.
 
 **play-hint-verbs (2026-10-23, rama `feat/play-verb-words`):** `ui/hints.ts` (`hintOf`, `suggestionPhrase`, `COMMANDS`) arma la línea y lo que se completa; `Session.hint()` lo expone, `Panels.hint` lo lleva a la web y la CLI imprime la línea antes de cada `>`. `ui/web/complete.ts` (sin imports, lo usa el cliente) completa la última palabra; `App.tsx` la muestra bajo el chat con Tab y flechas. `VerbWordBook.closest` da el «¿Quisiste decir…?». Tests en `ui/hints.test.ts` y `server.test.ts`. Siguen `play-refs-objects-loose` y `play-refs-objects-goods`.

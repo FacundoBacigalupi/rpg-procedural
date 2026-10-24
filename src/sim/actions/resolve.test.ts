@@ -447,6 +447,53 @@ describe("tomar", () => {
     );
     expect(resolve({ ...base, takeEmptyFailure: true })).toEqual(resolve(base));
   });
+  describe("de la despensa en casa (play-refs-objects-larder)", () => {
+    const home = makeId("household", 3) as unknown as HolderRef;
+    const atHome = (what: string | null, rows: Parameters<typeof ledgerWith>[0]) =>
+      input(
+        "take",
+        { args: what === null ? [] : [{ role: "what", text: what }] },
+        {
+          def: { ...verb("take"), ease: 100 },
+          actor: actor({ capabilities: { manipulation: 1 } }),
+          ledger: ledgerWith(rows),
+          homeLarder: home,
+        },
+      );
+    const from = (r: ActionResolution) => (r.effect.kind === "take" ? r.effect.from : null);
+
+    it("lo que nombra y no está suelto sale de la despensa", () => {
+      const r = resolve(
+        atHome("jade", [
+          { holder: forestRef as unknown as HolderRef, unit: forage, amount: 500 },
+          { holder: home, unit: jade, amount: 2 },
+        ]),
+      );
+      expect(from(r)).toBe(home);
+      expect(r.effect).toMatchObject({ wanted: jade });
+      expect(r.postings[0]?.transfers[0]?.from).toBe(holderAccount(home));
+    });
+
+    it("lo suelto manda si también está ahí, y con el lugar vacío se busca en la despensa", () => {
+      const both = resolve(
+        atHome("forage", [
+          { holder: forestRef as unknown as HolderRef, unit: forage, amount: 500 },
+          { holder: home, unit: forage, amount: 900 },
+        ]),
+      );
+      expect(from(both)).toEqual(forestRef);
+      const empty = resolve(atHome(null, [{ holder: home, unit: forage, amount: 900 }]));
+      expect(from(empty)).toBe(home);
+    });
+
+    it("fuera de casa no la toca", () => {
+      const base = atHome("jade", [{ holder: home, unit: jade, amount: 2 }]);
+      const { homeLarder: _, ...away } = base;
+      const r = resolve(away);
+      expect(from(r)).toEqual(forestRef);
+      expect(r.effect).toMatchObject({ got: [] });
+    });
+  });
   const steal = (extra: Partial<ResolveInput> = {}, what?: string) =>
     input(
       "take",

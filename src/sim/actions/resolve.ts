@@ -136,6 +136,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly foods?: ReadonlyMap<LedgerUnit, Nutrition>;
   /** La despensa del hogar del actor: de ahí come si no lleva nada encima. */
   readonly larder?: HolderRef | undefined;
+  /**
+   * La despensa a mano: el actor está adentro de su casa (play-refs-objects-larder). Un `take` sin
+   * `from` que no encuentra lo que nombra suelto en el lugar lo saca de acá.
+   */
+  readonly homeLarder?: HolderRef | undefined;
   /** Opt-in: el combustible que gasta `boil` (unidad del ledger y gramos por tanda); sin esto no hay con qué hervir. */
   readonly boilFuel?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
   /** Opt-in: el material filtrante que gasta `filter` (unidad del ledger y gramos por tanda); sin esto no hay con qué filtrar. */
@@ -1361,9 +1366,10 @@ function bargain(
 const take: Resolver = (c) => {
   if (c.input.takeItem) return takeItem(c, c.input.takeItem);
   const fromEntity = argEntity(c, "from");
-  const from: HolderRef = (fromEntity as HolderRef | null) ?? c.input.place;
+  const what = argText(c, "what");
+  const from: HolderRef = (fromEntity as HolderRef | null) ?? homeOrPlace(c, what);
   const held = c.input.ledger.holdings(holderAccount(from));
-  const wantedRow = pickWanted(held, argText(c, "what"), c.input.unitNames);
+  const wantedRow = pickWanted(held, what, c.input.unitNames);
   const wanted = wantedRow?.unit ?? null;
   const effect = (got: Holding[]): VerbEffect => ({ kind: "take", from, wanted, got });
   if (c.roll.unmet) return { effect: effect([]), seconds: c.nominal };
@@ -1406,6 +1412,22 @@ const take: Resolver = (c) => {
     loud: c.roll.failure === "clumsy" && m < PARTIAL_MARGIN ? 2.5 : 1,
   };
 };
+
+/**
+ * De dónde sale un `take` sin `from`: lo suelto en el lugar, salvo que en casa lo que nombra (o
+ * cualquier cosa, si el lugar está vacío) solo esté en la despensa.
+ */
+function homeOrPlace(c: Ctx, what: string | null): HolderRef {
+  const place = c.input.place;
+  const home = c.input.homeLarder;
+  if (home === undefined) return place;
+  const loose = c.input.ledger.holdings(holderAccount(place));
+  const stored = c.input.ledger.holdings(holderAccount(home));
+  if (stored.length === 0) return place;
+  if (loose.length === 0) return home;
+  const names = c.input.unitNames;
+  return !namesAny(loose, what, names) && namesAny(stored, what, names) ? home : place;
+}
 
 function takeItem(c: Ctx, t: NonNullable<ResolveInput["takeItem"]>): VerbResult {
   const fromEntity = argEntity(c, "from");
@@ -1953,6 +1975,19 @@ function unitTokens(unit: LedgerUnit, names?: ReadonlyMap<LedgerUnit, string>): 
  * Lo que quiere llevarse: lo que nombra (por palabras, contra el nombre de la unidad) o, si no
  * nombra nada que haya, lo que más hay. Determinista: desempata por unidad.
  */
+/** Si alguna unidad de `held` responde a las palabras de `what`. */
+function namesAny(
+  held: readonly Holding[],
+  what: string | null,
+  names?: ReadonlyMap<LedgerUnit, string>,
+): boolean {
+  const words = what === null ? [] : refTokens(what);
+  return held.some((h) => {
+    const unit = unitTokens(h.unit, names);
+    return words.some((w) => unit.includes(w));
+  });
+}
+
 function pickWanted(
   held: readonly Holding[],
   what: string | null,
