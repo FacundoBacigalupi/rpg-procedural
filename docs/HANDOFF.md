@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-fixtures-move:** Rama `feat/play-refs-fixtures-move`: `game/life/known.ts` `knownSpaces` suma «el granero» (edificio `granary` vivo, su primer espacio), «el fogón»/«la cocina» en los nombres de la casa propia y «el depósito»/«la despensa»/«el almacén» para el cuarto `<casa>/store` propio. Test en `site-move.test.ts`. Sin bump. `look`/`use` sobre lo fijo quedan en `play-refs-objects-fixtures-look-use` (faltan los modos en actions).
+
 **play-refs-objects-larder (2026-10-24, rama `feat/play-refs-objects-larder`):** motor `life-43`; `act.ts` pasa `homeLarder` (el hogar) a `take` cuando el actor está en un espacio adentro de su casa (`atHome`), y `homeOrPlace` (resolve) elige la despensa si lo que nombra no está suelto en el lugar o el lugar está vacío. `legacyNoLarderTake` cablea el replay (create, world, life). Tests: `sim/actions/resolve.test.ts` («de la despensa en casa») y `life/larder-take.test.ts` (vida real, conservación).
 
 **play-recognition-flicker:** Rama `feat/play-recognition-flicker`: quien se reconoció hace un momento y sigue a la vista no se vuelve «un viejo» en la mirada siguiente (`heldRecognition` en la vista, ventana `RECENT_SIGHT_TICKS` de 15 min sobre la creencia `at`). Sin bump de motor: no toca la verdad. Siguen los sub-ítems del HUD y la escena.

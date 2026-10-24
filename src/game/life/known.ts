@@ -6,6 +6,7 @@ import type { AgentId, EntityRef, Tick } from "../../core/index.ts";
 import {
   BELIEFS,
   type Beliefs,
+  BUILDING,
   beliefConfidenceAt,
   believed,
   callName,
@@ -211,13 +212,29 @@ const SQUARE_NAMES = [
 ];
 /** Desde adentro, «afuera» es la plaza (las puertas de las casas dan ahí). */
 const OUT_NAMES = ["afuera", "fuera"];
-const HOME_NAMES = ["casa", "mi casa", "adentro", "dentro", "mi cuarto", "el cuarto", "mi hogar"];
+/** El fogón está en el cuarto principal de la casa (donde se vive y se cocina). */
+const HOME_NAMES = [
+  "casa",
+  "mi casa",
+  "adentro",
+  "dentro",
+  "mi cuarto",
+  "el cuarto",
+  "mi hogar",
+  "el fogón",
+  "la cocina",
+];
 const YARD_NAMES = ["el patio", "mi patio"];
+/** El cuarto de guardar de la propia casa (la casa de labranza lo tiene). */
+const STORE_NAMES = ["el depósito", "la despensa", "el almacén"];
+/** El granero de la aldea: comunal, todos saben dónde está (settlements). */
+const GRANARY_NAMES = ["el granero", "el granero comunal"];
 
 /**
  * Los espacios de la aldea que el personaje puede nombrar para ir (perception §3): la plaza (y
- * «afuera» si está bajo techo), su casa, su patio y la casa de cada persona que conoce (por ahora,
- * conocer a alguien es saber dónde vive: la creencia sobre casas llega con settlements).
+ * «afuera» si está bajo techo), su casa (y su fogón), su patio, su depósito, el granero de la aldea
+ * y la casa de cada persona que conoce (por ahora, conocer a alguien es saber dónde vive: la
+ * creencia sobre casas llega con settlements). Lo fijo del sitio lo sabe por vivir ahí, sin mirar.
  */
 export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownSpace[] {
   const square = w.spaces.spaces.find((s) => s.key === VILLAGE_SQUARE);
@@ -246,6 +263,11 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
       if (own) out.push({ key: s.key, place: village as EntityRef, names: YARD_NAMES, owners: [] });
       continue;
     }
+    if (s.key.endsWith("/store")) {
+      if (own)
+        out.push({ key: s.key, place: village as EntityRef, names: STORE_NAMES, owners: [] });
+      continue;
+    }
     // El primer cuarto de cada casa es por donde se entra y donde se vive.
     if (!s.indoor || housed.has(s.household)) continue;
     housed.add(s.household);
@@ -259,6 +281,14 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
       .map((k) => k.ref);
     if (!own && owners.length === 0) continue;
     out.push({ key: s.key, place: village as EntityRef, names: own ? HOME_NAMES : [], owners });
+  }
+  const live = new Set(w.spaces.spaces.map((s) => s.key));
+  for (const id of [...w.truth.ids(BUILDING)].sort()) {
+    const b = w.truth.get(BUILDING, id);
+    if (b?.type !== "granary" || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const main = b.graph.spaces[0];
+    if (main && live.has(main.key))
+      out.push({ key: main.key, place: village as EntityRef, names: GRANARY_NAMES, owners: [] });
   }
   return out;
 }

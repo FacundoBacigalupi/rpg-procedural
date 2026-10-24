@@ -109,6 +109,42 @@ describe("moverse adentro de la aldea (espacios del sitio)", () => {
     expect(w.truth.get(LOCATION, w.player)).toEqual(square);
   }, 300_000);
 
+  it("lo fijo de la aldea se nombra para ir: el granero, el fogón, el depósito", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const known = knownEntities(w);
+    const spaces = knownSpaces(w, known);
+    const target = (text: string) => {
+      const made = planFromDraft(go(text), {
+        actor: w.player,
+        source: "player",
+        catalog: w.catalog,
+        known,
+        clock: w.clock,
+        causes: [{ kind: "state", entity: w.player, key: "intent" }],
+        spaces,
+      });
+      if (made.kind !== "plan") throw new Error(`${text}: ${made.kind}`);
+      return (made.plan.root as unknown as { args: { role: string; text?: string }[] }).args.find(
+        (a) => a.role === "space",
+      )?.text;
+    };
+    const home = w.truth.get(LOCATION, w.player)?.space;
+    expect(target("el fogón")).toBe(home);
+    const granary = spaces.find((s) => s.names.includes("el granero"));
+    if (granary) {
+      expect(w.spaces.spaces.find((s) => s.key === granary.key)?.indoor).toBe(true);
+      expect(target("el granero")).toBe(granary.key);
+    }
+    const store = spaces.find((s) => s.names.includes("el depósito"));
+    if (store) {
+      expect(store.key.endsWith("/store")).toBe(true);
+      expect(target("el depósito")).toBe(store.key);
+    }
+    // El depósito ajeno no se nombra: solo el de la propia casa.
+    expect(spaces.filter((s) => s.names.includes("el depósito")).length).toBeLessThanOrEqual(1);
+  }, 300_000);
+
   it("la casa de un familiar se nombra por la relación", () => {
     const life = Life.create(7, content, { frequency: 8 });
     const w = life.world;
