@@ -850,6 +850,13 @@
   { "id": "thing.shape.book", "lines": ["un libro"] },
   { "id": "thing.shape.ring", "lines": ["un anillo"] },
   { "id": "thing.shape.cloth", "lines": ["un paño"] },
+  { "id": "thing.shape.well", "lines": ["el pozo"] },
+  { "id": "thing.shape.granary", "lines": ["el granero"] },
+  { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },
+  {
+    "id": "thing.state.poor",
+    "lines": ["Está descuidado, a medio caer.", "Se ve muy descuidado."]
+  },
   { "id": "thing.material.iron", "lines": ["de hierro"] },
   { "id": "thing.material.bronze", "lines": ["de bronce"] },
   { "id": "thing.material.wood", "lines": ["de madera"] },

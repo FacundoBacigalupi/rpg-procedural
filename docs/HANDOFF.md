@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-fixtures-look (2026-10-24, rama `feat/fixtures-look-use`):** `game/life/fixtures.ts` (`fixturesInSight`, `FIXTURE_WORDS`); `known.ts` suma lo fijo a `knownEntities`; `sim/actions/plan.ts` `sight` acepta `work:`/`building:`; `draft.ts` `thingArg` solo `item:`; `game/view/view.ts` `FixtureInput`, `ViewInput.fixtures`, `ThingView.state` (lo fijo entra solo si se miró); `game/life/view.ts` pasa `fixturesInSight(w)`; plantillas `thing.shape.well|granary`, `thing.state.*`. Tests en `known-things.test.ts` y `llm/things.test.ts`. Queda `play-refs-objects-fixtures-use` (bloqueado por el diseño de `use`).
+
 **play-refs-objects-look (2026-10-24, rama `feat/play-refs-objects-look`, apilada sobre #708):** `content/actions/core.json` `look.args` = `target?: sight`; `sim/actions/catalog.ts` `ARG_KINDS` suma `sight` (draft: objeto o persona, reintenta sin la clase adivinada; plan: `agent:`/`item:`); `resolve.ts` `observe` lleva `target`; `game/view/view.ts` `ThingView` y `things` en `PlayerView`/`ViewInput`; `game/life/view.ts` `playerView` llama a `itemsSeen` y avisa por `onThings` (la sesión ya no lo calcula aparte); `llm/templates.ts` nombra las cosas, `llm/parser.ts` ayuda de `sight`, `narration.ts` pasa `things`. Tests: `known-things.test.ts` (mirar), `llm/things.test.ts`.
 
 **play-refs-objects-goods (2026-10-24, rama `feat/play-refs-objects-loose`):** `game/life/goods-sight.ts` (`goodsInSight`, `missingGoodsNote`, palabras genéricas que no cortan); la sesión lo llama después de `planFromDraft` y antes de los avisos de factibilidad. Test en `goods-sight.test.ts`. Queda `play-refs-objects-larder` (con bump).
