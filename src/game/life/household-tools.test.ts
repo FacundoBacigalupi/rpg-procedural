@@ -58,8 +58,7 @@ describe("las cosas de cada casa (play-refs-objects-source-tools)", () => {
     expect(here?.space).toBeDefined();
     const seen = itemsSeen(w);
     const mine = seen.filter(
-      (p) =>
-        String(w.truth.get(ITEM_HOLD, p.sourceEntityId as never)?.possession) === String(home),
+      (p) => String(w.truth.get(ITEM_HOLD, p.sourceEntityId as never)?.possession) === String(home),
     );
     expect(mine.length).toBeGreaterThan(0);
     const known = knownEntities(w, [], seen);
