@@ -8,6 +8,7 @@ export * from "./asleep.ts";
 export * from "./capabilities.ts";
 export * from "./disease.ts";
 export * from "./epidemic.ts";
+export * from "./garments.ts";
 export * from "./hearth.ts";
 export * from "./injury.ts";
 export * from "./medicine.ts";
