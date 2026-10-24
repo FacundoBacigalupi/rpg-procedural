@@ -125,7 +125,7 @@ describe("moverse adentro de la aldea (espacios del sitio)", () => {
         spaces,
       });
       if (made.kind !== "plan") throw new Error(`${text}: ${made.kind}`);
-      return (made.plan.root as { args: { role: string; text?: string }[] }).args.find(
+      return (made.plan.root as unknown as { args: { role: string; text?: string }[] }).args.find(
         (a) => a.role === "space",
       )?.text;
     };
