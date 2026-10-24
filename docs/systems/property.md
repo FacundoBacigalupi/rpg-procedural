@@ -297,6 +297,13 @@ existencia/alcance de extremos y adjudicación; el helper comprueba el snapshot,
 posesión vigente y receptor agente vivo. Los 40 tests de property incluyen
 donación a hogar/organización, normas ajenas, cargas, rechazo e inmutabilidad.
 
+Primeros objetos en la vida (2026-10-24, `play-refs-objects-source-tools`): con
+`LifeOptions.householdTools`, `seedHouseholdTools` crea las cosas de cada casa
+(`content/household-tools/`) con un evento por casa causado por su construcción,
+`LOCATION` en su cuarto y `ITEM_HOLD.possession` del hogar. Los derechos formales
+(`rights`) quedan vacíos: la propiedad de lo de la casa como haz por norma sigue
+pendiente, y tomarlo de casa ajena todavía no se juzga como robo.
+
 ## 13. Entre cultivadores
 
 - **La norma de la fuerza:** entre cultivadores muchas culturas tienen una norma tácita de que el tesoro es de quien lo puede tomar y retener, y de que matar por un tesoro es normal (杀人夺宝). Es una norma, no una ley del mundo: hay sectas que la condenan y regiones donde un tratado entre sectas la limita. Su fuerza varía por mundo y por región (aprobado 2026-10-06): dura en zonas sin ley, atenuada donde hay tratados o un estado fuerte, así que cada seed da un mundo más duro o más civilizado.

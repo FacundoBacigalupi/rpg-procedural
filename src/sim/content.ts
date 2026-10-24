@@ -39,7 +39,7 @@ import {
   TASTES,
   VALUES,
 } from "./mind/index.ts";
-import { TENURES } from "./property/index.ts";
+import { HOUSEHOLD_TOOLS, TENURES } from "./property/index.ts";
 import { RELATION_BONDS, RELATION_DIMS } from "./relations/index.ts";
 import { DOCTRINES, RELIGIONS } from "./religion/index.ts";
 import { BUILDING_TYPES, MATERIALS, WORK_TYPES } from "./settlements/index.ts";
@@ -69,6 +69,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   MATERIALS,
   BUILDING_TYPES,
   WORK_TYPES,
+  HOUSEHOLD_TOOLS,
   LANGUAGES,
   CONCEPTS,
   REGISTERS,

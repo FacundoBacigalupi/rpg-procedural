@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-source-tools (2026-10-24, rama `feat/play-refs-objects-tools`):** `sim/property/household-tools.ts` (`HOUSEHOLD_TOOLS`, `seedHouseholdTools`; vive en property porque property ya importa settlements), `content/household-tools/core.json`, opción `LifeOptions.householdTools` (también en el esquema de tuning) llamada en `createLife` después de `seedSettlement`. Test en `household-tools.test.ts`. Quedan `-drop`, `-flee` y `-enable`.
+
 **play-refs-objects-fixtures-look (2026-10-24, rama `feat/fixtures-look-use`):** `game/life/fixtures.ts` (`fixturesInSight`, `FIXTURE_WORDS`); `known.ts` suma lo fijo a `knownEntities`; `sim/actions/plan.ts` `sight` acepta `work:`/`building:`; `draft.ts` `thingArg` solo `item:`; `game/view/view.ts` `FixtureInput`, `ViewInput.fixtures`, `ThingView.state` (lo fijo entra solo si se miró); `game/life/view.ts` pasa `fixturesInSight(w)`; plantillas `thing.shape.well|granary`, `thing.state.*`. Tests en `known-things.test.ts` y `llm/things.test.ts`. Queda `play-refs-objects-fixtures-use` (bloqueado por el diseño de `use`).
 
 **play-hud-clothing (2026-10-24, rama `feat/clothing-player-hud`):** `TopBar.tsx` `clothingChips`: 🧥 «poco abrigo» / «sin abrigo» por `Hud.clothing.short`, o «ropa gastada»; sin falta ni desgaste no ocupa lugar. El título lista lo puesto. Se ve recién con `wardrobe` (opt-in hasta `clothing-enable`).
