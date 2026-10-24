@@ -10,11 +10,13 @@
 
 import {
   type AgentId,
+  compareStrings,
   externalAccount,
   type HolderRef,
   holderAccount,
   type LedgerUnit,
   ledgerUnit,
+  type PlaceId,
   type PlaceRef,
   type PlanetClock,
   Rng,
@@ -38,6 +40,7 @@ import {
   HARVEST,
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
+  HEARTH,
   houseKey,
   ingest,
   LOCATION,
@@ -51,8 +54,10 @@ import {
   needsFrom,
   netHydration,
   PERSON,
+  type Person,
   PLACE,
   PROCESS_KNOWLEDGE,
+  type ProcessContext,
   type ProcessDef,
   planLeaves,
   type ReadonlyWorldTruth,
@@ -215,6 +220,13 @@ export interface RoutineOptions {
    * evento `routine.watered` con las dos personas). Sin cuidador, sigue sin beber. Apagado: nadie.
    */
   readonly careWater?: boolean;
+  /**
+   * Opt-in (hearth-npc, con hogares): cuando la pila de leña del hogar baja de `lowG`, en vez de ir
+   * al campo quien le toca (el mayor de diez años de menor id de la casa) va al monte más cercano a
+   * la casa y junta hasta `perHourG` por hora de lo que hay caído (la cuenta del lugar, que llena
+   * `life.wild`), que pasa a la pila (evento `routine.gathered_wood`). Esa hora no cosecha.
+   */
+  readonly firewood?: FirewoodRoutine;
   /** Opt-in: el dormido (`ASLEEP`, tier 1) no sigue la rutina hora por hora; lo pone al día `life.catch_up`. */
   readonly sleepers?: boolean;
   readonly map: LocalMap;
@@ -225,6 +237,18 @@ export interface RoutineOptions {
   readonly seed: Seed;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
 }
+
+export interface FirewoodRoutine {
+  /** Unidad del ledger de la leña. */
+  readonly unit: string;
+  /** Debajo de esta pila (g) la casa sale a buscar leña. */
+  readonly lowG: number;
+  /** Gramos que junta una persona en una hora de monte. */
+  readonly perHourG: number;
+}
+
+/** Event de quien junta leña para la casa en la rutina. */
+export const GATHERED_WOOD_EVENT = "routine.gathered_wood";
 
 /** Qué hace a esta hora quien sigue la rutina: dónde y con qué esfuerzo. */
 export function routineAt(
@@ -361,6 +385,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.boil ? [TREATED_WATER.name] : []),
       ...(o.fieldWatering ? [IRRIGATED.name] : []),
       ...(o.fieldSowing ? [SOWN.name] : []),
+      ...(o.firewood ? [HEARTH.name, PLACE.name] : []),
     ],
     writes: [
       LOCATION.name,
@@ -458,6 +483,35 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
         if (!inside && toHome) there = { hex: home.hex, space: VILLAGE_SQUARE };
         else if (inside && !toHome) there = undefined;
       }
+      // Leña para el hogar (opt-in `firewood`): la hora de campo de quien le toca se va al monte.
+      const wood =
+        o.firewood && want.at === "fields" && home && !tendOnly
+          ? woodHour(o, o.firewood, truth, ctx.ledger, me, person.household, home.hex, age, ctx.now)
+          : undefined;
+      if (wood) {
+        there = { hex: wood.hex };
+        const ev = draftEvent(events.length);
+        events.push({
+          kind: GATHERED_WOOD_EVENT,
+          actors: [me],
+          place: { kind: "place", place: wood.place },
+          data: { good: wood.unit, grams: wood.grams },
+          emissions: { sight: 0.3, sound: 0.2 },
+          causes: [{ kind: "state", entity: me, key: "routine" }],
+        });
+        postings.push({
+          event: ev,
+          transfers: [
+            {
+              from: holderAccount({ kind: "place", place: wood.place }),
+              to: holderAccount(person.household as unknown as HolderRef),
+              unit: wood.unit,
+              amount: wood.grams,
+            },
+          ],
+        });
+      }
+      const atFields = want.at === "fields" && wood === undefined;
       if (there && (here?.hex !== there.hex || here?.space !== there.space)) {
         changes.push(setComponent(LOCATION, me, there));
       }
@@ -471,7 +525,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       let waters = false;
       let sows = false;
       let sowYieldNow = 1;
-      if (o.fieldWatering && want.at === "fields" && there && season(day) > 0) {
+      if (o.fieldWatering && atFields && there && season(day) > 0) {
         const rained = rainOf(day);
         boost = fieldBoost(rained, truth, day);
         const start = o.fieldSowing ? cropStart(day) : undefined;
@@ -565,7 +619,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
                   ? yieldFactor(o.tech.catalog, truth.get(PROCESS_KNOWLEDGE, me), "grain")
                   : 1),
             );
-      if (want.at === "fields" && there && grams > 0) {
+      if (atFields && there && grams > 0) {
         const ev = draftEvent(events.length);
         events.push({
           kind: "routine.harvested",
@@ -848,4 +902,60 @@ function jammedHome(truth: ReadonlyWorldTruth, household: unknown): boolean {
     const b = truth.get(BUILDING, id);
     return b?.household === household && b?.doorState === "jammed";
   });
+}
+
+/**
+ * La hora de leña de `me`, si le toca (puro): la pila del hogar bajo `lowG`, `me` es el mayor de
+ * `ROUTINE.workAge` de menor id de la casa, y el monte más cercano a la casa tiene leña caída. Junta
+ * hasta `perHourG`, nunca más que lo que hay repartido entre todos los hogares (que corren en la
+ * misma fase contra el mismo saldo y no pueden dejarlo en negativo).
+ */
+function woodHour(
+  o: RoutineOptions,
+  f: FirewoodRoutine,
+  truth: ReadonlyWorldTruth,
+  ledger: ProcessContext["ledger"],
+  me: AgentId,
+  household: Person["household"],
+  homeHex: number,
+  age: number,
+  now: number,
+): { place: PlaceId; hex: number; unit: LedgerUnit; grams: number } | undefined {
+  if (!ledger || age < ROUTINE.workAge) return undefined;
+  const unit = ledgerUnit(f.unit);
+  const larder = holderAccount(household as unknown as HolderRef);
+  if (ledger.balance(larder, unit) >= f.lowG) return undefined;
+  const fetcher = truth
+    .ids(PERSON)
+    .filter((id) => {
+      const p = truth.get(PERSON, id);
+      return (
+        p?.household === household &&
+        p !== undefined &&
+        (now - p.born) / o.clock.year >= ROUTINE.workAge &&
+        truth.get(ENTITY, id)?.endedAt === undefined &&
+        !truth.get(BODY_STATE, id)?.death
+      );
+    })
+    .sort(compareStrings)[0];
+  if (fetcher !== me) return undefined;
+  const forests = truth
+    .ids(PLACE)
+    .sort(compareStrings)
+    .flatMap((id) => {
+      const p = truth.get(PLACE, id);
+      return p?.kind === "forest" && p.hexes.length > 0 ? [{ id, hexes: p.hexes }] : [];
+    });
+  if (forests.length === 0) return undefined;
+  const hex = nearestHex(
+    o.map,
+    homeHex,
+    forests.flatMap((p) => [...p.hexes]),
+  );
+  const place = forests.find((p) => p.hexes.includes(hex))?.id as unknown as PlaceId | undefined;
+  if (place === undefined) return undefined;
+  const stock = ledger.balance(holderAccount({ kind: "place", place }), unit);
+  const share = Math.floor(stock / Math.max(1, truth.ids(HEARTH).length));
+  const grams = Math.min(f.perHourG, share);
+  return grams > 0 ? { place, hex, unit, grams } : undefined;
 }

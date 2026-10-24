@@ -9,8 +9,8 @@ import { table } from "../world/index.ts";
 import { fireRadiantC } from "./thermal.ts";
 
 /**
- * Un fuego encendido en un espacio. Sin fila no hay fuego; se apaga (se borra la fila) al quedarse
- * sin leña. El combustible NO está en la fila: es el saldo de `holder` en `fuelUnit` en el ledger.
+ * Un hogar en un espacio. Sin fila no hay fuego (se borra al apagarlo del todo); sin leña queda
+ * frío (intensidad 0) y vuelve a arder cuando hay. El combustible NO está en la fila: es el saldo de `holder` en `fuelUnit` en el ledger.
  */
 export interface Hearth {
   /** Clave del espacio del grafo donde arde (quien está ahí lo siente). */

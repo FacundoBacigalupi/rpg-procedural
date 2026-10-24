@@ -70,9 +70,9 @@ describe("hogares en las casas (hearth-seed)", () => {
     const env = { airC: 5, radiantC: 5, windMs: 0, humidity: 0.5 } as never;
     const warmer = hearthEnv(w.spaces)(w.truth, w.player, env) as { radiantC: number };
     expect(warmer.radiantC).toBeGreaterThan(5);
-    // Sin traer más leña, la pila se termina y los fuegos se apagan (la fila se borra).
+    // Sin traer más leña, la pila se termina y los fuegos quedan fríos (la fila sigue).
     life.advanceTo(life.now + 12 * DAY);
-    expect(w.truth.ids(HEARTH).length).toBe(0);
+    expect(w.truth.ids(HEARTH).every((id) => w.truth.get(HEARTH, id)?.intensity === 0)).toBe(true);
     expect(w.ledger.balance(holderAccount(mine), WOOD)).toBe(0);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);

@@ -125,6 +125,8 @@ import {
   BURNED_SINK,
   HEARTH_FUEL_UNIT,
   HEARTH_LIT_HOURS,
+  HEARTH_WOOD_LOW_G,
+  HEARTH_WOOD_PER_HOUR_G,
   hearthEnv,
   hearthProcess,
 } from "./hearth.ts";
@@ -2402,6 +2404,15 @@ export function lifeWorld(
           : []),
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
+          ...(parts.hearths === true && parts.wildHarvest === true && parts.wildFirewood === true
+            ? {
+                firewood: {
+                  unit: HEARTH_FUEL_UNIT,
+                  lowG: HEARTH_WOOD_LOW_G,
+                  perHourG: HEARTH_WOOD_PER_HOUR_G,
+                },
+              }
+            : {}),
           ...(parts.boil && parts.npcBoil ? { boil: parts.boil } : {}),
           ...(parts.npcMove === true ? { npcMove: true } : {}),
           ...(parts.npcFieldWatering === true ? { fieldWatering: true } : {}),

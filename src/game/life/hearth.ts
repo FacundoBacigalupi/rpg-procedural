@@ -81,7 +81,16 @@ export function hearthProcess(o: HearthOptions): ProcessDef {
         const fuel = ctx.ledger?.balance(from, unit) ?? 0;
         const { burnedG, intensity } = hearthBurn(h, fuel, days);
         if (burnedG <= 0) {
-          changes.push({ op: "delete", table: HEARTH.name, id });
+          // Sin leña el hogar queda frío pero sigue ahí (lo apaga del todo `douse`): vuelve a
+          // arder cuando la pila tiene leña otra vez.
+          if (h.intensity !== 0) {
+            changes.push({
+              op: "set",
+              table: HEARTH.name,
+              id,
+              value: { ...h, intensity: 0, at: ctx.now },
+            });
+          }
           continue;
         }
         const k = events.length;
@@ -139,6 +148,11 @@ export const HEARTH_FUEL_UNIT = "good:firewood";
 export const HEARTH_LIT_HOURS = 5;
 /** Leña apilada que tiene cada casa al empezar (g): una semana larga de hogar. */
 export const HEARTH_WOODPILE_G = 60_000;
+
+/** Debajo de esta pila (g, dos días de hogar) la casa sale a buscar leña al monte (hearth-npc). */
+export const HEARTH_WOOD_LOW_G = 2 * HEARTH_LIT_HOURS * HEARTH_BURN_G_PER_H;
+/** Gramos de leña caída que junta una persona en una hora de monte (como `gather` «leña»). */
+export const HEARTH_WOOD_PER_HOUR_G = 3000;
 
 export interface SeedHearthsOptions {
   readonly now: Tick;
