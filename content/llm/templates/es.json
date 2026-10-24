@@ -173,6 +173,11 @@
   },
   { "id": "outcome.look.failure", "lines": ["Mirás, pero casi no distinguís nada."] },
   { "id": "outcome.look.unsure", "lines": ["Mirás alrededor, sin saber si se te escapa algo."] },
+  { "id": "outcome.look_at.success", "lines": ["Mirás a {target} con atención."] },
+  {
+    "id": "outcome.look_at.partial",
+    "lines": ["Mirás a {target}, aunque no lo ves del todo bien."]
+  },
   { "id": "outcome.search.found", "lines": ["Encontrás a {target}.", "Ahí está {target}."] },
   {
     "id": "outcome.search.glimpsed",
@@ -829,6 +834,37 @@
   { "id": "good.grain", "lines": ["grano"] },
   { "id": "good.rice", "lines": ["arroz"] },
   { "id": "good.unknown", "lines": ["algo"] },
+  { "id": "thing.shape.knife", "lines": ["un cuchillo"] },
+  { "id": "thing.shape.basket", "lines": ["una canasta"] },
+  { "id": "thing.shape.pot", "lines": ["una olla"] },
+  { "id": "thing.shape.jar", "lines": ["una jarra"] },
+  { "id": "thing.shape.bowl", "lines": ["un cuenco"] },
+  { "id": "thing.shape.sword", "lines": ["una espada"] },
+  { "id": "thing.shape.hoe", "lines": ["una azada"] },
+  { "id": "thing.shape.sickle", "lines": ["una hoz"] },
+  { "id": "thing.shape.axe", "lines": ["un hacha"] },
+  { "id": "thing.shape.rope", "lines": ["una soga"] },
+  { "id": "thing.shape.stick", "lines": ["un palo"] },
+  { "id": "thing.shape.bag", "lines": ["una bolsa"] },
+  { "id": "thing.shape.box", "lines": ["una caja"] },
+  { "id": "thing.shape.book", "lines": ["un libro"] },
+  { "id": "thing.shape.ring", "lines": ["un anillo"] },
+  { "id": "thing.shape.cloth", "lines": ["un paño"] },
+  { "id": "thing.material.iron", "lines": ["de hierro"] },
+  { "id": "thing.material.bronze", "lines": ["de bronce"] },
+  { "id": "thing.material.wood", "lines": ["de madera"] },
+  { "id": "thing.material.bamboo", "lines": ["de bambú"] },
+  { "id": "thing.material.clay", "lines": ["de barro"] },
+  { "id": "thing.material.stone", "lines": ["de piedra"] },
+  { "id": "thing.material.cloth", "lines": ["de tela"] },
+  { "id": "thing.material.jade", "lines": ["de jade"] },
+  { "id": "thing.material.paper", "lines": ["de papel"] },
+  { "id": "thing.unknown", "lines": ["una cosa"] },
+  { "id": "thing.seen", "lines": ["En el suelo hay {thing}.", "Ves {thing} por ahí."] },
+  {
+    "id": "thing.looked",
+    "lines": ["Te fijás bien en {thing}.", "Mirás de cerca {thing}."]
+  },
 
   { "id": "nothing", "lines": ["No pasa nada que notes.", "Todo sigue igual."] }
 ]

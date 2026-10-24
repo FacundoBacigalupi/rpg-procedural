@@ -281,6 +281,8 @@ export type VerbEffect =
       readonly kind: "observe";
       /** Cuán bien miró, 0-1: perception lo usa como atención sobre la escena. */
       readonly acuity: number;
+      /** Lo que miró en particular, si nombró algo («miro la canasta»). */
+      readonly target?: EntityRef;
     }
   | {
       readonly kind: "search";
@@ -882,10 +884,13 @@ const move: Resolver = (c) => {
   return { effect: effect(hex, false), seconds: c.nominal * 1.5, changes: at(hex) };
 };
 
-const observe: Resolver = (c) => ({
-  effect: { kind: "observe", acuity: c.degree },
-  seconds: c.nominal,
-});
+const observe: Resolver = (c) => {
+  const target = argEntity(c, "target");
+  return {
+    effect: { kind: "observe", acuity: c.degree, ...(target ? { target } : {}) },
+    seconds: c.nominal,
+  };
+};
 
 const search: Resolver = (c) => {
   const target = argEntity(c, "target");

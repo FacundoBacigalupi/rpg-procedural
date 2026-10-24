@@ -49,25 +49,19 @@ function drop(w: LifeWorld, n: number, look: ItemLook, holder?: EntityRef): Item
 }
 
 function take(w: LifeWorld, text: string, things = itemsSeen(w)): DraftResult {
-  return planFromDraft(
-    {
-      kind: "act",
-      plan: {
-        kind: "do",
-        verb: "take",
-        args: [{ role: "what", ref: { text, features: [] } }],
-      },
-    } as IntentDraft,
-    {
-      actor: w.player,
-      source: "player",
-      catalog: w.catalog,
-      known: knownEntities(w, [], things),
-      clock: w.clock,
-      causes: [{ kind: "state", entity: w.player, key: "intent" }],
-      here: w.truth.get(LOCATION, w.player)?.hex,
-    },
-  );
+  return draft(w, "take", { role: "what", ref: { text, features: [] } }, things);
+}
+
+function draft(w: LifeWorld, verb: string, arg: unknown, things = itemsSeen(w)): DraftResult {
+  return planFromDraft({ kind: "act", plan: { kind: "do", verb, args: [arg] } } as IntentDraft, {
+    actor: w.player,
+    source: "player",
+    catalog: w.catalog,
+    known: knownEntities(w, [], things),
+    clock: w.clock,
+    causes: [{ kind: "state", entity: w.player, key: "intent" }],
+    here: w.truth.get(LOCATION, w.player)?.hex,
+  });
 }
 
 /** El `what` del primer paso de un plan, entidad o texto. */
@@ -119,5 +113,62 @@ describe("cosas sueltas con identidad (play-refs-objects-loose)", () => {
     expect(after).toEqual(before);
     expect(take(w, "el cuchillo").kind).toBe("clarify");
     expect(whatOf(take(w, "el cuchillo de bronce"))).toBe(bronze);
+  });
+});
+
+describe("mirar una cosa (play-refs-objects-look)", () => {
+  it("«miro la canasta» la mira a ella y la vista la marca con sus rasgos", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const knife = drop(w, 1, { shape: "knife", material: "iron", size: "small" });
+    const basket = drop(w, 2, { shape: "basket", material: "bamboo", size: "medium" });
+    // El parser la adivinó como persona: el verbo acepta cosas y personas, se busca entre todas.
+    const made = draft(w, "look", {
+      role: "target",
+      ref: { text: "la canasta", kind: "person", features: [] },
+    });
+    expect(made.kind).toBe("plan");
+    if (made.kind !== "plan") return;
+    expect(made.plan.root).toMatchObject({
+      kind: "do",
+      verb: "look",
+      args: [{ role: "target", entity: basket }],
+    });
+    const report = life.turn(made.plan, 1);
+    const looked = report.steps.findLast((s) => s.verb === "look");
+    expect(looked?.self.effect).toMatchObject({ kind: "observe", target: basket });
+    const view = playerView(w, report.steps, { heardSince: report.from });
+    const things = view.things ?? [];
+    expect(things).toEqual(
+      expect.arrayContaining([
+        { shape: "basket", material: "bamboo", size: "medium", looked: true },
+        { shape: "knife", material: "iron", size: "small" },
+      ]),
+    );
+    expect(things.filter((t) => t.looked === true)).toHaveLength(1);
+    expect(knife).not.toBe(basket);
+  });
+
+  it("sin argumento sigue siendo mirar alrededor; sin cosas la vista no cambia", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const made = planFromDraft(
+      { kind: "act", plan: { kind: "do", verb: "look", args: [] } } as never,
+      {
+        actor: w.player,
+        source: "player",
+        catalog: w.catalog,
+        known: knownEntities(w),
+        clock: w.clock,
+        causes: [{ kind: "state", entity: w.player, key: "intent" }],
+      },
+    );
+    expect(made.kind).toBe("plan");
+    if (made.kind !== "plan") return;
+    const report = life.turn(made.plan, 1);
+    const looked = report.steps.findLast((s) => s.verb === "look");
+    expect(looked?.self.effect.kind).toBe("observe");
+    expect(looked?.self.effect).not.toHaveProperty("target");
+    expect(playerView(w, report.steps, { heardSince: report.from }).things).toBeUndefined();
   });
 });

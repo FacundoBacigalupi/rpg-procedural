@@ -36,7 +36,6 @@ import {
   environmentPanel,
   hypothesesPanel,
   inventoryPanel,
-  itemsSeen,
   knownEntities,
   knownSpaces,
   LIFE_ENGINE,
@@ -313,8 +312,10 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       onSeen: (seen) => {
         seenNow = seen;
       },
+      onThings: (things) => {
+        thingsNow = things;
+      },
     });
-    thingsNow = itemsSeen(life.world, report?.steps ?? []);
     if (thinking === undefined)
       counted = { place: placeKey, keys: new Set(seenNow.map(presenceKey)), seen: seenNow };
     // Un recuerdo deformado no se narra con el texto viejo de esa persona (narration §6).

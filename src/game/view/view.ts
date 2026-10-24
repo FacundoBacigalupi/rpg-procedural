@@ -305,7 +305,11 @@ export type EffectView =
       /** La puerta trabada no lo dejó salir. */
       readonly blocked?: boolean;
     }
-  | { readonly kind: "observe" }
+  | {
+      readonly kind: "observe";
+      /** A quién miró en particular, si nombró a alguien («miro a mi madre»). */
+      readonly target?: string;
+    }
   | {
       readonly kind: "search";
       readonly target?: string;
@@ -430,12 +434,26 @@ export interface PurposeView {
   readonly forWhom?: string;
 }
 
+/**
+ * Una cosa suelta a la vista (play-refs-objects-look): lo que se ve de ella como claves (forma,
+ * material, tamaño); el narrador la nombra con las palabras de las plantillas. `looked`: la miró a
+ * propósito este turno («miro la canasta»).
+ */
+export interface ThingView {
+  readonly shape: string;
+  readonly material?: string;
+  readonly size: "small" | "medium" | "large";
+  readonly looked?: true;
+}
+
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
 export interface PlayerView {
   readonly [viewBrand]: "PlayerView";
   readonly self: SelfView;
   readonly scene: SceneView;
   readonly percepts: readonly PerceptView[];
+  /** Las cosas sueltas que ve (no personas); casi siempre ausente. */
+  readonly things?: readonly ThingView[];
   readonly outcomes: readonly OutcomeView[];
   /** Lo que piensa, recuerda o siente; vacío casi siempre. */
   readonly thoughts: readonly ThoughtView[];
@@ -482,6 +500,8 @@ export interface ViewInput {
   readonly scene: SceneInput;
   /** Los percepts del jugador de este turno, en el orden en que llegaron. */
   readonly percepts: readonly Percept[];
+  /** Las cosas sueltas que ve (percepts con `thing`, de `itemsSeen`). */
+  readonly things?: readonly Percept[];
   /** Ids de los percepts de extraños que el personaje ya vio otro día (`strangersSeenBefore`). */
   readonly seenBefore?: ReadonlySet<string>;
   /** Ids de los percepts de quienes no estaban a la vista en la escena anterior del mismo lugar. */
@@ -698,10 +718,12 @@ export function buildPlayerView(input: ViewInput): PlayerView {
     ...(t.taste !== undefined ? { taste: t.taste } : {}),
   }));
 
+  const things = thingViews(input.things ?? [], input.steps);
   const view = {
     self: { cues: [...(input.self ?? [])] },
     scene: sceneView(input.scene),
     percepts,
+    ...(things.length > 0 ? { things } : {}),
     ...(gone.length > 0 ? { gone } : {}),
     outcomes,
     thoughts,
@@ -737,6 +759,34 @@ export function buildPlayerView(input: ViewInput): PlayerView {
   return view as unknown as PlayerView;
 }
 
+/** Las cosas vistas, con las que miró a propósito marcadas (lo eligió él: lo sabe). */
+function thingViews(percepts: readonly Percept[], steps: readonly StepView[]): ThingView[] {
+  const looked = new Set(
+    steps.flatMap((s) =>
+      s.self.effect.kind === "observe" && s.self.effect.target !== undefined
+        ? [s.self.effect.target]
+        : [],
+    ),
+  );
+  return percepts.flatMap((p) => {
+    const look = p.fields.thing?.value as
+      | { shape?: unknown; material?: unknown; size?: unknown }
+      | undefined;
+    if (typeof look?.shape !== "string") return [];
+    const size = look.size === "small" || look.size === "large" ? look.size : "medium";
+    return [
+      {
+        shape: look.shape,
+        ...(typeof look.material === "string" ? { material: look.material } : {}),
+        size,
+        ...(p.sourceEntityId !== undefined && looked.has(p.sourceEntityId)
+          ? { looked: true as const }
+          : {}),
+      },
+    ];
+  });
+}
+
 function sceneView(s: SceneInput): SceneView {
   return {
     placeKinds: [...s.placeKinds],
@@ -770,7 +820,7 @@ function effectView(
         ...(e.blocked !== undefined ? { blocked: true } : {}),
       };
     case "observe":
-      return { kind: "observe" };
+      return { kind: "observe", ...target(e.target) };
     case "search":
       return { kind: "search", ...target(e.target), found: e.found, glimpsed: e.glimpsed };
     case "gather":

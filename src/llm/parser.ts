@@ -95,6 +95,8 @@ const ARG_HELP: Record<string, string> = {
   person: 'ref (a person: {"role","ref":{"text","kind":"person","features"}})',
   place: 'ref (a place: {"role","ref":{"text","kind":"place","features"}})',
   thing: 'ref (a thing: {"role","ref":{"text","kind":"object","features"}})',
+  sight:
+    'ref (a thing or a person in sight: {"role","ref":{"text","kind":"object"|"person","features"}})',
   duration: 'duration ({"role","duration":{"amount","unit"}})',
   text: 'text ({"role","text"})',
 };

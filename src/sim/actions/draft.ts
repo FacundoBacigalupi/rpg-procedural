@@ -113,6 +113,7 @@ const ENTITY_KINDS_FOR: Partial<Record<ArgKind, readonly EntityKind[]>> = {
   person: ["person"],
   place: ["place"],
   thing: ["object", "lot"],
+  sight: ["object", "person"],
 };
 
 export function planFromDraft(draft: IntentDraft, ctx: DraftContext): DraftResult {
@@ -331,7 +332,9 @@ function approachPeople(
   if (r.status === "group") w.groups.push({ at, text: desc.text, members });
   const who = members.map((m) => people.find((k) => k.ref === m)).filter((k) => k !== undefined);
   if (who.every((k) => k.present)) {
-    return { kind: "do", verb: "look", args: [], manner: [...manner] };
+    // A uno solo lo mira a él (play-refs-objects-look); a un grupo, alrededor.
+    const args = r.status === "unique" ? [{ role: "target", entity: r.chosen }] : [];
+    return { kind: "do", verb: "look", args, manner: [...manner] };
   }
   const first = who.find((k) => !k.present) ?? who[0];
   const hex = first?.at;
@@ -438,10 +441,15 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
     w.problems.push(`${at}: una referencia no es un ${kind}`);
     return null;
   }
-  // El tipo del verbo manda sobre el que adivinó el parser.
+  // El tipo del verbo manda sobre el que adivinó el parser; si el verbo acepta varios y con el que
+  // adivinó no hay nada («la canasta» como persona), se busca entre todos los que acepta.
   const desc = kinds.length === 1 ? { ...a.ref, kind: kinds[0] } : a.ref;
   const known = w.ctx.known.filter((k) => kinds.includes(k.kind));
-  const r = resolveRef(desc, known);
+  const guessed = resolveRef(desc, known);
+  const r =
+    guessed.status === "unknown" && kinds.length > 1 && desc.kind !== undefined
+      ? resolveRef(anyKind(desc), known)
+      : guessed;
   if (r.status === "unique") return { role: a.role, entity: r.chosen };
   if (r.status === "group") {
     // Un verbo que toma una sola cosa va hacia el primero del conjunto; el conjunto queda anotado.
@@ -454,6 +462,11 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
   }
   (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({ at, role: a.role, resolved: r });
   return null;
+}
+
+function anyKind(ref: RefDescription): RefDescription {
+  const { kind: _, ...rest } = ref;
+  return rest;
 }
 
 /** Los verbos cuyo `what` puede ser una cosa suelta con identidad además de un bien por nombre. */

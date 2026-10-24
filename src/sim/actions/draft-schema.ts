@@ -144,10 +144,14 @@ export function intentDraftFor(catalog: ActionCatalog): z.ZodType<IntentDraft> {
 }
 
 /** Qué clases de entidad puede nombrar un argumento de cada tipo. */
-const REF_KINDS: Record<"person" | "place" | "thing", readonly [EntityKind, ...EntityKind[]]> = {
+const REF_KINDS: Record<
+  "person" | "place" | "thing" | "sight",
+  readonly [EntityKind, ...EntityKind[]]
+> = {
   person: ["person", "group"],
   place: ["place"],
   thing: ["object", "lot"],
+  sight: ["object", "person", "group"],
 };
 
 /**

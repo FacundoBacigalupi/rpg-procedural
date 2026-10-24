@@ -279,6 +279,8 @@ export interface PlayerViewOptions {
    * antes no se cuenta como que aparece, y quien estaba y ya no se ve, como que se dejó de ver.
    */
   readonly previousSeen?: readonly Percept[];
+  /** Recibe las cosas sueltas que ve (`itemsSeen`): lo que puede nombrar al escribir. */
+  readonly onThings?: (percepts: readonly Percept[]) => void;
 }
 
 /** A la vista: lo vio (no solo lo oyó) y con forma, no una sombra. */
@@ -615,6 +617,8 @@ export function playerView(
       ? digested
       : digested.filter((p) => !(merelyPresent(p) && quiet.has(presenceKey(p))));
   const change = options.previousSeen && sceneChange(options.previousSeen, digested);
+  const things = itemsSeen(w, steps);
+  options.onThings?.(things);
   return buildPlayerView({
     player: w.player,
     ...(thoughtList.length > 0 ? { thoughts: thoughtList } : {}),
@@ -645,6 +649,7 @@ export function playerView(
       ),
     },
     percepts: told,
+    ...(things.length > 0 ? { things } : {}),
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
     ...(change && change.arrived.size > 0 ? { arrived: change.arrived } : {}),
     ...(change && change.gone.length > 0 ? { gone: change.gone } : {}),

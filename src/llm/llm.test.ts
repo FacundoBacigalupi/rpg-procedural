@@ -224,7 +224,7 @@ describe("parseIntent", () => {
     expect(setup.system.startsWith(PARSER_RULES)).toBe(true);
     expect(setup.system).toMatch(/- move \("moverse"\): to: ref \(a place/);
     expect(setup.system).toMatch(/Manners: careful, fast, covert\./);
-    expect(setup.system).toMatch(/- look \("observar"\): no arguments\./);
+    expect(setup.system).toMatch(/- look \("observar"\): target\?: ref \(a thing or a person/);
     expect(setup.system).toMatch(/- steal \("robar"\): params victim: ref \(a person/);
     const shots = examples.filter((e) => e.shot);
     expect(shots.length).toBeGreaterThan(3);

@@ -91,7 +91,8 @@ export const RESOLVERS = [
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];
 
-export const ARG_KINDS = ["person", "place", "duration", "text", "thing"] as const;
+/** `sight`: algo que se mira, una persona o una cosa a la vista («miro la canasta»). */
+export const ARG_KINDS = ["person", "place", "duration", "text", "thing", "sight"] as const;
 export type ArgKind = (typeof ARG_KINDS)[number];
 
 const Unit = z.number().min(0).max(1);

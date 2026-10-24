@@ -227,6 +227,7 @@ export function validateNarration(
   const items =
     view.outcomes.length +
     view.percepts.length +
+    (view.things?.length ?? 0) +
     view.self.cues.length +
     view.thoughts.length +
     view.tastes.length +
