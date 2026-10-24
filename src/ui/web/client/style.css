@@ -296,6 +296,28 @@ aside pre {
   padding: 0.4rem 0;
 }
 
+/* La pista de frases y lo que se completa al escribir (play-hint-verbs). */
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-height: 1.6rem;
+  padding: 0.2rem 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.hint button {
+  font-size: 14px;
+  padding: 0.1rem 0.5rem;
+  background: none;
+  border: 1px solid var(--line);
+  color: inherit;
+}
+.hint button.picked {
+  border-color: currentColor;
+  color: var(--fg);
+}
+
 .lines .when {
   display: block;
   color: var(--muted);

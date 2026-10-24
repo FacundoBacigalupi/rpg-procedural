@@ -106,6 +106,8 @@ export interface Panels {
   readonly journal: string;
   /** Lo que se nota del lugar, por canal. */
   readonly environment: string;
+  /** La pista de frases y lo que se completa al escribir (`play-hint-verbs`). */
+  readonly hint: { readonly line: string; readonly complete: readonly string[] };
   /** Las opciones sugeridas; `choose` manda el `id`. */
   readonly options: readonly {
     readonly id: string;

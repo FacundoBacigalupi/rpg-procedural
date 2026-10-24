@@ -105,6 +105,9 @@ describe("opciones sugeridas y entorno", { timeout: 60_000 }, () => {
     const state = (await (await fetch(`${base}/api/state`)).json()) as WebState;
     expect(state.options.length).toBeGreaterThan(0);
     expect(state.options.length).toBeLessThanOrEqual(4);
+    // La pista de frases viaja con los paneles (play-hint-verbs).
+    expect(state.hint.line).toMatch(/^Podés escribir: /);
+    expect(state.hint.complete).toContain("!ayuda");
     expect(state.environment.length).toBeGreaterThan(0);
     const wait = state.options.find((o) => o.id === "look") ?? state.options[0];
     const res = await post(`${base}/api/choose`, { id: wait?.id });

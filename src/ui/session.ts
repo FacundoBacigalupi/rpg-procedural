@@ -128,6 +128,7 @@ import {
   replayInputFromStore,
   replayLifeAt,
 } from "../tools/index.ts";
+import { type Hint, hintOf } from "./hints.ts";
 import {
   elapsed,
   renderAbout,
@@ -194,6 +195,8 @@ export interface Session {
   say(line: string): Promise<Reply>;
   /** Las opciones sugeridas de ahora (`all`: todas, para «ver más»). */
   suggested(all?: boolean): Suggestion[];
+  /** La pista de frases y lo que se completa al escribir (`play-hint-verbs`). */
+  hint(): Hint;
   /** Juega la opción sugerida con ese id, sin pasar por el parser. */
   choose(id: string): Promise<Reply>;
   /** Lo que se nota del lugar ahora, con la habituación al día. */
@@ -487,7 +490,12 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       // Sin «!» no hay comando: si el modelo igual lo lee así, no se entendió (play-bang-commands).
       draft = parsed.ok && parsed.draft.kind !== "meta" ? parsed.draft : null;
     }
-    if (draft === null) return { text: "Eso todavía no se entiende. Escribí «!ayuda»." };
+    if (draft === null) {
+      // El verbo más parecido de la tabla, si lo hay (play-hint-verbs).
+      const near = parser.words?.closest(line);
+      const guess = near === undefined ? "" : ` ¿Quisiste decir «${near}»?`;
+      return { text: `Eso todavía no se entiende.${guess} Escribí «!verbos» o «!ayuda».` };
+    }
     if (draft.kind === "meta") {
       const text = draft.text ?? "";
       if (text === "contenerse") {
@@ -614,6 +622,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     openingPeople,
     say,
     suggested,
+    hint: () => hintOf(suggested(), knownNow(), parser.words),
     choose,
     environment,
     seen: () => seenNow,

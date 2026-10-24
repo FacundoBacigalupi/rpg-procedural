@@ -171,6 +171,8 @@ Paneles (en CLI, comandos; en la web, pestañas). **Ninguno muestra números de 
 
 Van con `!` adelante (`!salir`, `!gente`, `!qué sé de X`; `play-bang-commands`, 2026-10-23): sin `!`, todo lo escrito es del personaje, así una frase que empieza con la palabra de un comando («salir corriendo», «gente de la plaza…») no se corta. La gramática lee el comando solo con `!` y el parser con LLM nunca lo ve ni contesta `meta`.
 
+**Pista de frases** (`play-hint-verbs`): bajo el campo de texto (y antes de cada `>` en la CLI) una línea con frases que la simulación entiende, armadas con las sugerencias de ahora y un lugar que el personaje conoce y no tiene delante («Podés escribir: hablo con mi madre · como algo · voy al granero»). Al escribir, la web ofrece cómo seguir con los verbos y sinónimos de la tabla, los nombres que el personaje conoce y, con `!`, los comandos; Tab o un toque la pone en el campo sin mandarla. Si no se entiende, la respuesta propone la palabra de la tabla más parecida («¿Quisiste decir «miro»?»). Todo sale de lo que el personaje cree (`ui/hints.ts`, `ui/web/complete.ts`).
+
 | Comando | Qué hace |
 |---|---|
 | `!salir` | guarda y cierra; no hay cargar otra partida |

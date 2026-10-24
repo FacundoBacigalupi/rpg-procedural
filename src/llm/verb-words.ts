@@ -16,6 +16,26 @@ function fold(s: string): string {
     .join("");
 }
 
+/** Levenshtein: cuántas letras hay que cambiar, sacar o poner para ir de `a` a `b`. */
+function editDistance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      next.push(
+        Math.min(
+          (row[j] as number) + 1,
+          (next[j - 1] as number) + 1,
+          (row[j - 1] as number) + cost,
+        ),
+      );
+    }
+    row = next;
+  }
+  return row[b.length] as number;
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -127,6 +147,28 @@ export class VerbWordBook {
       `  Formas: ${e.forms.join(", ")}`,
       ...e.synonyms.map((g) => `  Como «${g.as}»: ${g.words.join(", ")}`),
     ].join("\n");
+  }
+
+  /**
+   * Cuando no se entendió (`play-hint-verbs`): la forma o el sinónimo más parecido al comienzo de
+   * `text` («mieo alrededor» → «miro»), por distancia de edición sin tildes, o `undefined` si nada
+   * se le parece lo bastante (hasta 1 letra en palabras cortas, 2 desde cinco letras).
+   */
+  closest(text: string): string | undefined {
+    const said = fold(text.normalize("NFC").trim()).split(/\s+/u);
+    let best: { word: string; d: number } | undefined;
+    for (const e of this.entries) {
+      for (const w of [...e.forms, ...e.synonyms.flatMap((g) => g.words)]) {
+        const target = fold(w.normalize("NFC"));
+        const n = target.split(" ").length;
+        const head = said.slice(0, n).join(" ");
+        if (head === target) return undefined;
+        const d = editDistance(head, target);
+        const limit = target.length >= 5 ? 2 : 1;
+        if (d <= limit && (best === undefined || d < best.d)) best = { word: w, d };
+      }
+    }
+    return best?.word;
   }
 
   /** La pista para el parser con LLM: por verbo, sus formas y sinónimos. */
