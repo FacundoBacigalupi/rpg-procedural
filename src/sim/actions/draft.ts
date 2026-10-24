@@ -236,9 +236,16 @@ function convert(
           w.problems.push(`${at}: ${node.verb} no tiene el rol ${a.role}`);
           continue;
         }
+        // «El cuchillo» como texto (la gramática sin red) también se prueba contra las cosas.
         const thing =
-          THING_VERBS.has(node.verb) && a.role === "what" && "ref" in a
-            ? thingArg(a.ref, a.role, `${at}.${a.role}`, w)
+          THING_VERBS.has(node.verb) && a.role === "what" && ("ref" in a || "text" in a)
+            ? thingArg(
+                "ref" in a ? a.ref : { text: a.text, features: [] },
+                a.role,
+                `${at}.${a.role}`,
+                w,
+                node.verb,
+              )
             : undefined;
         if (thing === null) continue;
         const v = thing ?? argValue(a, spec.kind, `${at}.${a.role}`, w);
@@ -470,7 +477,13 @@ function anyKind(ref: RefDescription): RefDescription {
 }
 
 /** Los verbos cuyo `what` puede ser una cosa suelta con identidad además de un bien por nombre. */
-const THING_VERBS: ReadonlySet<string> = new Set(["take", "give"]);
+const THING_VERBS: ReadonlySet<string> = new Set(["take", "give", "drop"]);
+
+/**
+ * La relación de lo que el actor lleva encima (`KnownEntity.relations`): `take` no lo busca entre
+ * lo suyo y `drop` solo entre lo suyo (play-refs-objects-source-drop).
+ */
+export const CARRIED = "carried";
 
 /**
  * «El cuchillo del suelo»: una cosa con identidad que el actor tiene a la vista (play-refs-objects-
@@ -482,10 +495,16 @@ function thingArg(
   role: string,
   at: string,
   w: Walk,
+  verb: string,
 ): ArgValue | null | undefined {
   // Lo fijo (el pozo, el granero) se mira pero no se lleva ni se da: solo las cosas sueltas.
+  const carried = (k: KnownEntity) => k.relations.some((r) => r.rel === CARRIED && r.of === "self");
   const things = w.ctx.known.filter(
-    (k) => k.kind === "object" && k.present && k.ref.startsWith("item:"),
+    (k) =>
+      k.kind === "object" &&
+      k.present &&
+      k.ref.startsWith("item:") &&
+      (verb === "take" ? !carried(k) : verb === "drop" ? carried(k) : true),
   );
   if (things.length === 0) return undefined;
   const r = resolveRef({ ...ref, kind: "object" }, things);
