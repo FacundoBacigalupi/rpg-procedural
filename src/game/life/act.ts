@@ -724,7 +724,7 @@ function atHome(o: ActOptions, truth: ReadonlyWorldTruth, me: AgentId): boolean 
 
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
 function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | undefined {
-  if (node.verb !== "take" && node.verb !== "give") return undefined;
+  if (node.verb !== "take" && node.verb !== "give" && node.verb !== "drop") return undefined;
   const a = node.args.find(
     (x) => x.role === "what" && "entity" in x && x.entity.startsWith("item:"),
   );
@@ -752,6 +752,18 @@ function itemGiveFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, to: E
     snapshot,
     from: itemEndpoint(truth, me, true),
     to: itemEndpoint(truth, (to as HolderRef | null) ?? null, true),
+    operation: "give",
+    cause: draftEvent(0),
+  });
+}
+
+/** Soltar `item` de `me` en el lugar `at`: solo la posesión física; los derechos no se tocan. */
+function itemDropFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, at: HolderRef) {
+  return transferItem({
+    item,
+    snapshot: itemSnapshot(truth, item),
+    from: itemEndpoint(truth, me, true),
+    to: itemEndpoint(truth, at, true),
     operation: "give",
     cause: draftEvent(0),
   });
@@ -1057,6 +1069,15 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
             (truth.get(LOCATION, giveTo)?.hex ?? -1) === e.hex &&
             itemGiveFor(truth, wantedItem, me, giveTo).accepted === true,
         };
+  const dropItem =
+    wantedItem === undefined || node.verb !== "drop"
+      ? undefined
+      : {
+          item: wantedItem,
+          available:
+            truth.get(ENTITY, wantedItem)?.endedAt === undefined &&
+            truth.get(ITEM_HOLD, wantedItem)?.possession === me,
+        };
   const takeItem =
     wantedItem === undefined || node.verb !== "take"
       ? undefined
@@ -1106,6 +1127,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(o.legacyFixedSpeech === true ? { fixedSpeech: true } : {}),
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
+    ...(dropItem ? { dropItem } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
     node.verb === "trade" &&
     parties["with"] !== undefined &&
@@ -1830,6 +1852,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     scope: me,
     reason: { kind: "state" as const, entity: me, key: planKey(state.seq) },
   };
+  // Soltar un objeto propio: queda en el lugar, con su LOCATION donde está el actor; nadie más
+  // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.
+  const myPlace = truth.get(LOCATION, me);
+  if (dropItem && eff.kind === "drop" && eff.dropped === true && myPlace !== undefined) {
+    const moved = itemTransferChanges(truth, itemDropFor(truth, dropItem.item, me, eff.at));
+    if (moved.length > 0) changes.push(...moved, setComponent(LOCATION, dropItem.item, myPlace));
+  }
   // Claim de ítem: la toma que alcanzó para disputar propone el cambio de posesión; si otro lo
   // toma en el mismo instante, el scheduler asienta este fracaso en vez de descartar el plan.
   let claim: ContestClaim | undefined;

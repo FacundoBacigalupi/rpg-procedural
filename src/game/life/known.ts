@@ -2,15 +2,18 @@
 // y los lugares de la aldea por lo que son. Con `sim/knowledge` (Fase 2) sale de sus creencias; por
 // ahora es lo que se sabe de nacimiento y de vivir ahí. Los nombres propios llegan con language.
 
-import type { AgentId, EntityRef, Tick } from "../../core/index.ts";
+import type { AgentId, EntityRef, ItemId, Tick } from "../../core/index.ts";
 import {
   BELIEFS,
   type Beliefs,
   BUILDING,
   beliefConfidenceAt,
   believed,
+  CARRIED,
   callName,
   ENTITY,
+  ITEM_HOLD,
+  ITEM_LOOK,
   type KnownEntity,
   type KnownSpace,
   LOCATION,
@@ -96,17 +99,46 @@ export function thingWords(p: Percept): { names: string[]; features: string[] } 
   const look = p.fields.thing?.value as
     | { shape?: string; material?: string; size?: string }
     | undefined;
+  // Suelta: está en el piso, a la vista («el cuchillo del suelo»).
+  return lookWords(look, ["suelo", "piso"]);
+}
+
+/** Las palabras de lo que es una cosa y cómo es, más las de dónde está (`where`). */
+function lookWords(
+  look: { shape?: string; material?: string; size?: string } | undefined,
+  where: readonly string[],
+): { names: string[]; features: string[] } {
   const names = [...(THING_WORDS[look?.shape ?? ""] ?? [])];
   const features = [
     "cosa",
     "objeto",
-    // Suelta: está en el piso, a la vista («el cuchillo del suelo»).
-    "suelo",
-    "piso",
+    ...where,
     ...(MATERIAL_WORDS[look?.material ?? ""] ?? []),
     ...(SIZE_WORDS[look?.size ?? ""] ?? []),
   ];
   return { names, features };
+}
+
+/** Lo que lleva encima (con claims de ítems): sabe qué es sin mirarlo («suelto el cuchillo»). */
+function carriedThings(w: LifeWorld, here: number | undefined): KnownEntity[] {
+  const out: KnownEntity[] = [];
+  for (const id of [...w.truth.ids(ITEM_HOLD)].sort()) {
+    if (w.truth.get(ITEM_HOLD, id as ItemId)?.possession !== w.player) continue;
+    const look = w.truth.get(ITEM_LOOK, id);
+    if (!look || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const { names, features } = lookWords(look, ["mío", "mía", "encima"]);
+    out.push({
+      ref: id as EntityRef,
+      kind: "object",
+      names,
+      features,
+      relations: [{ rel: CARRIED, of: "self" }],
+      present: true,
+      ...(here === undefined ? {} : { at: here }),
+      via: [],
+    });
+  }
+  return out;
 }
 
 /** Lo que se ve de alguien que no se reconoce: su figura y su ropa, nunca quién es. */
@@ -203,7 +235,11 @@ export function knownEntities(
       : undefined;
     out.push(figure(id, p, here, given));
   }
-  // Las cosas sueltas que ve ahora (`itemsSeen`): por lo que son, presentes y sin dueño a la vista.
+  // Lo que lleva encima, y las cosas sueltas que ve ahora (`itemsSeen`): por lo que son.
+  for (const k of carriedThings(w, here?.hex)) {
+    listed.add(k.ref);
+    out.push(k);
+  }
   for (const p of things) {
     const id = p.sourceEntityId;
     if (id === undefined || !id.startsWith("item:") || listed.has(id)) continue;

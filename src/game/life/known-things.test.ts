@@ -10,6 +10,7 @@ import {
   makeId,
 } from "../../core/index.ts";
 import {
+  CARRIED,
   type DraftResult,
   ENTITY,
   type IntentDraft,
@@ -79,13 +80,17 @@ describe("cosas sueltas con identidad (play-refs-objects-loose)", () => {
     const knife = drop(w, 1, { shape: "knife", material: "iron", size: "small" });
     const basket = drop(w, 2, { shape: "basket", material: "bamboo", size: "medium" });
     // En manos de alguien no es una cosa suelta: no se lista.
-    drop(w, 3, { shape: "sword", material: "iron", size: "medium" }, w.player);
+    const sword = drop(w, 3, { shape: "sword", material: "iron", size: "medium" }, w.player);
     const seen = itemsSeen(w);
     expect(seen.map((p) => p.sourceEntityId).sort()).toEqual([knife, basket].sort());
     expect(seen.every((p) => p.fields.thing !== undefined)).toBe(true);
     // Determinista: la misma escena da los mismos percepts.
     expect(itemsSeen(w)).toEqual(seen);
-    const things = knownEntities(w, [], seen).filter((k) => k.kind === "object");
+    const objects = knownEntities(w, [], seen).filter((k) => k.kind === "object");
+    // Lo que lleva lo conoce como suyo (play-refs-objects-source-drop), no como cosa suelta.
+    const carried = objects.filter((k) => k.relations.some((r) => r.rel === CARRIED));
+    expect(carried.map((k) => k.ref)).toEqual([sword]);
+    const things = objects.filter((k) => !carried.includes(k));
     expect(things.map((k) => k.ref).sort()).toEqual([knife, basket].sort());
     const k = things.find((t) => t.ref === knife);
     expect(k?.names).toContain("cuchillo");
