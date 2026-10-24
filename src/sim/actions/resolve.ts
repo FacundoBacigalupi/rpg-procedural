@@ -1365,6 +1365,15 @@ function bargain(
 
 const take: Resolver = (c) => {
   if (c.input.takeItem) return takeItem(c, c.input.takeItem);
+  // Una cosa con identidad sin el servicio de ítems (`itemClaims` apagado): no se elige otro bien.
+  if (argEntity(c, "what")?.startsWith("item:")) {
+    const from = (argEntity(c, "from") as HolderRef | null) ?? c.input.place;
+    return {
+      effect: { kind: "take", from, wanted: null, got: [] },
+      seconds: c.nominal,
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
   const fromEntity = argEntity(c, "from");
   const what = argText(c, "what");
   const from: HolderRef = (fromEntity as HolderRef | null) ?? homeOrPlace(c, what);
@@ -1844,6 +1853,8 @@ const give: Resolver = (c) => {
   if (c.roll.unmet)
     return { effect: { kind: "give", to, good: null, grams: 0 }, seconds: c.nominal };
   if (to === null || c.input.counterpartyGone) return none();
+  // Una cosa con identidad sin el servicio de ítems: no se da otro bien en su lugar.
+  if (argEntity(c, "what")?.startsWith("item:")) return none();
   const carried = c.input.ledger
     .holdings(holderAccount(c.input.actor.id as HolderRef))
     .filter((h) => h.amount > 0);

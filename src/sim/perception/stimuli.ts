@@ -99,6 +99,47 @@ export function presenceStimulus(person: {
   };
 }
 
+/** Lo que se ve de una cosa quieta: forma, material y tamaño (claves, sin palabras). */
+export interface ThingLook {
+  readonly shape: string;
+  readonly material?: string;
+  readonly size: "small" | "medium" | "large";
+}
+
+/** Cuánto se ve una cosa quieta según su tamaño: una canasta menos que una persona. */
+export const THING_SIGHT = { small: 0.2, medium: 0.5, large: 1 } as const;
+
+/**
+ * Una cosa suelta que está (perception §3): que hay algo y, mirándola, qué es. No suena ni se
+ * reconoce como alguien: el rasgo es lo que se ve.
+ */
+export function thingStimulus(thing: {
+  readonly id: EntityRef;
+  readonly at: Location;
+  readonly look: ThingLook;
+  readonly tick: Tick;
+}): Stimulus {
+  const sight = THING_SIGHT[thing.look.size];
+  return {
+    source: { entity: thing.id },
+    tick: thing.tick,
+    at: thing.at,
+    attributes: [
+      {
+        key: "presence",
+        value: true,
+        signal: { sight: { intensity: sight, legibility: LEGIBILITY.presence.sight } },
+      },
+      {
+        key: "thing",
+        value: thing.look,
+        requires: "presence",
+        signal: { sight: { intensity: sight, legibility: LEGIBILITY.figure.sight } },
+      },
+    ],
+  };
+}
+
 /** Lo que perception necesita de un paso resuelto (`ActionResolution` y su evento). */
 export interface ActionSight {
   readonly event: EventId;

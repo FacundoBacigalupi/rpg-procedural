@@ -71,6 +71,10 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-refs-objects-goods (2026-10-24, rama `feat/play-refs-objects-loose`):** `game/life/goods-sight.ts` (`goodsInSight`, `missingGoodsNote`, palabras genéricas que no cortan); la sesión lo llama después de `planFromDraft` y antes de los avisos de factibilidad. Test en `goods-sight.test.ts`. Queda `play-refs-objects-larder` (con bump).
+
+**play-refs-objects-loose (2026-10-24, rama `feat/play-refs-objects-loose`):** `sim/property/item-state.ts` `ITEM_LOOK`; `sim/perception/stimuli.ts` `thingStimulus` (clave `thing` al final de `PERCEPT_KEYS`, no corre tiradas de nadie); `game/life/view.ts` `itemsSeen` (fork `view-items`); `game/life/known.ts` `thingWords` y el tercer argumento `things` de `knownEntities` (la sesión lo guarda en `thingsNow`); `sim/actions/draft.ts` `thingArg` para `take`/`give`; `plan.ts` acepta un `item:` en un rol de texto; `resolve.ts` corta `take`/`give` de un ítem sin `itemClaims`. El `kind` es `object` (no `item`, que es el prefijo de id). Test en `known-things.test.ts`. Quedan `play-refs-objects-source` y `play-refs-objects-look`.
+
 **play-refs-objects-fixtures-move:** Rama `feat/play-refs-fixtures-move`: `game/life/known.ts` `knownSpaces` suma «el granero» (edificio `granary` vivo, su primer espacio), «el fogón»/«la cocina» en los nombres de la casa propia y «el depósito»/«la despensa»/«el almacén» para el cuarto `<casa>/store` propio. Test en `site-move.test.ts`. Sin bump. `look`/`use` sobre lo fijo quedan en `play-refs-objects-fixtures-look-use` (faltan los modos en actions).
 
 **play-refs-objects-larder (2026-10-24, rama `feat/play-refs-objects-larder`):** motor `life-43`; `act.ts` pasa `homeLarder` (el hogar) a `take` cuando el actor está en un espacio adentro de su casa (`atHome`), y `homeOrPlace` (resolve) elige la despensa si lo que nombra no está suelto en el lugar o el lugar está vacío. `legacyNoLarderTake` cablea el replay (create, world, life). Tests: `sim/actions/resolve.test.ts` («de la despensa en casa») y `life/larder-take.test.ts` (vida real, conservación).

@@ -42,6 +42,7 @@ export const PERCEPT_KEYS = [
   "identity",
   "action",
   "words",
+  "thing",
 ] as const;
 export type PerceptKey = (typeof PERCEPT_KEYS)[number];
 

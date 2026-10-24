@@ -235,7 +235,12 @@ function convert(
           w.problems.push(`${at}: ${node.verb} no tiene el rol ${a.role}`);
           continue;
         }
-        const v = argValue(a, spec.kind, `${at}.${a.role}`, w);
+        const thing =
+          THING_VERBS.has(node.verb) && a.role === "what" && "ref" in a
+            ? thingArg(a.ref, a.role, `${at}.${a.role}`, w)
+            : undefined;
+        if (thing === null) continue;
+        const v = thing ?? argValue(a, spec.kind, `${at}.${a.role}`, w);
         if (v) args.push(act && node.verb === "speak" && "text" in v ? { ...v, act } : v);
       }
       const step: PlanNode = {
@@ -449,6 +454,33 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
   }
   (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({ at, role: a.role, resolved: r });
   return null;
+}
+
+/** Los verbos cuyo `what` puede ser una cosa suelta con identidad además de un bien por nombre. */
+const THING_VERBS: ReadonlySet<string> = new Set(["take", "give"]);
+
+/**
+ * «El cuchillo del suelo»: una cosa con identidad que el actor tiene a la vista (play-refs-objects-
+ * loose). Única, la entidad; varias que encajan, se pregunta (`null`); ninguna, `undefined` y la
+ * descripción sigue como texto (los bienes del ledger se eligen por nombre).
+ */
+function thingArg(
+  ref: RefDescription,
+  role: string,
+  at: string,
+  w: Walk,
+): ArgValue | null | undefined {
+  const things = w.ctx.known.filter((k) => k.kind === "object" && k.present);
+  if (things.length === 0) return undefined;
+  const r = resolveRef({ ...ref, kind: "object" }, things);
+  if (r.status === "unique" || r.status === "group" || r.status === "phantom") {
+    return { role, entity: r.chosen };
+  }
+  if (r.status === "ambiguous") {
+    w.ambiguous.push({ at, role, resolved: r });
+    return null;
+  }
+  return undefined;
 }
 
 function condition(c: DraftCondition, at: string, w: Walk): Condition | null {

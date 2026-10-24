@@ -6,6 +6,7 @@
 import {
   type AgentId,
   type EntityRef,
+  type ItemId,
   ledgerUnit,
   MINUTE,
   Rng,
@@ -25,6 +26,8 @@ import {
   type Figure,
   houseKey,
   INFECTION,
+  ITEM_HOLD,
+  ITEM_LOOK,
   LOCATION,
   type Location,
   localHour,
@@ -46,6 +49,7 @@ import {
   TASTES_OF,
   TRACE,
   type TradeRecipeDef,
+  thingStimulus,
   traceStrength,
   traceVisible,
   watching,
@@ -125,6 +129,34 @@ function attentionOf(steps: readonly StepRecord[]): number {
   const looked = steps.findLast((s) => s.verb === "look");
   const effect = looked?.self.effect;
   return effect?.kind === "observe" ? watching(effect.acuity) : ATTENTION.relaxed;
+}
+
+/**
+ * Las cosas sueltas que el personaje ve ahora (play-refs-objects-loose): los ítems con aspecto
+ * (`ITEM_LOOK`) que no lleva nadie, percibidos como estímulo con su forma, material y tamaño. Van
+ * aparte de las personas (no cuentan como gente en la escena) y con su propio RNG: no corren las
+ * tiradas de la vista. Solo lo que se ve con forma (no una sombra).
+ */
+export function itemsSeen(w: LifeWorld, steps: readonly StepRecord[] = []): Percept[] {
+  const now = w.scheduler.now;
+  const observer = playerObserver(w, attentionOf(steps), now);
+  const day = skyLight(w.map, w.clock, w.seed, now);
+  const rng = Rng.root(w.seed).fork("view-items", now);
+  const out: Percept[] = [];
+  for (const id of w.truth.ids(ITEM_LOOK)) {
+    const look = w.truth.get(ITEM_LOOK, id);
+    const at = w.truth.get(LOCATION, id);
+    const holder = w.truth.get(ITEM_HOLD, id as ItemId)?.possession;
+    if (!look || !at || (typeof holder === "string" && holder.startsWith("agent:"))) continue;
+    const seen = perceive(
+      thingStimulus({ id: id as EntityRef, at, look, tick: now }),
+      [observer],
+      { graph: w.spaces, forest: w.map.forest, daylight: day },
+      rng,
+    );
+    out.push(...seen.filter((p) => p.fields.thing !== undefined));
+  }
+  return out;
 }
 
 /** Cuántos percepts claros llegan al narrador por turno (narration §5; calibración abierta). */
