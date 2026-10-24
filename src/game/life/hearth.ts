@@ -6,17 +6,27 @@
 // defecto no cambia. `HEARTH` la escribe solo este proceso (`life.thermal` solo la lee, en otra fase).
 
 import {
+  compareStrings,
   type EntityRef,
+  type EventId,
+  type EventLog,
   externalAccount,
+  holderAccount,
+  type IdAllocator,
+  type Ledger,
   type LedgerAccount,
   ledgerUnit,
   type PlaceRef,
   type PlanetClock,
+  type Tick,
 } from "../../core/index.ts";
 import {
+  BUILDING,
   draftEvent,
+  ENTITY,
   type EventDraft,
   HEARTH,
+  HEARTH_BURN_G_PER_H,
   hearthBurn,
   hearthRadiantC,
   LOCATION,
@@ -25,6 +35,7 @@ import {
   type SpaceGraph,
   type StateChange,
   type ThermalEnv,
+  type WorldTruth,
 } from "../../sim/index.ts";
 
 export const HEARTH_PROCESS = "life.hearth";
@@ -116,4 +127,83 @@ export function hearthEnv(
     const area = spaces.spaces.find((s) => s.key === space)?.area ?? 20;
     return { ...env, radiantC: Math.min(30, env.radiantC + hearthRadiantC(here, area)) };
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Los hogares de la aldea al empezar (hearth-seed, opt-in `hearths`).
+
+export const HEARTHS_LAID_EVENT = "life.hearths-laid";
+/** La unidad de la leña del ledger (la misma que junta `gather` en el monte con `wildFirewood`). */
+export const HEARTH_FUEL_UNIT = "good:firewood";
+/** Horas por día que una casa tiene el hogar encendido (cocinar a la mañana y a la noche). */
+export const HEARTH_LIT_HOURS = 5;
+/** Leña apilada que tiene cada casa al empezar (g): una semana larga de hogar. */
+export const HEARTH_WOODPILE_G = 60_000;
+
+export interface SeedHearthsOptions {
+  readonly now: Tick;
+  readonly place: PlaceRef;
+  readonly foundersEvent: EventId;
+}
+
+/**
+ * Un hogar en el cuarto principal de cada casa habitada (`BUILDING.household`): fila `HEARTH` con
+ * la cuenta del hogar como titular y la leña como combustible, y una pila de leña inicial desde la
+ * fuente `seed`, todo con un evento cuya causa es la fundación. Devuelve cuántos hogares puso.
+ */
+export function seedHearths(
+  truth: WorldTruth,
+  ids: IdAllocator,
+  log: EventLog,
+  ledger: Ledger,
+  o: SeedHearthsOptions,
+): number {
+  const houses = truth
+    .ids(BUILDING)
+    .filter((id) => truth.get(ENTITY, id)?.endedAt === undefined)
+    .sort(compareStrings)
+    .flatMap((id) => {
+      const b = truth.get(BUILDING, id);
+      const main = b?.graph.spaces[0];
+      return b?.household !== undefined && main !== undefined
+        ? [{ id, household: b.household, space: main.key }]
+        : [];
+    });
+  if (houses.length === 0) return 0;
+  const event = ids.next("event");
+  log.append({
+    id: event,
+    tick: o.now,
+    kind: HEARTHS_LAID_EVENT,
+    actors: [],
+    place: o.place,
+    data: { hearths: houses.length, woodpileG: HEARTH_WOODPILE_G },
+    emissions: {},
+    causes: [{ kind: "event", event: o.foundersEvent }],
+    resolution: "local",
+  });
+  const unit = ledgerUnit(HEARTH_FUEL_UNIT);
+  const households = [...new Set(houses.map((h) => h.household))];
+  ledger.post({
+    tick: o.now,
+    eventId: event,
+    transfers: households.map((h) => ({
+      unit,
+      from: externalAccount("seed"),
+      to: holderAccount(h),
+      amount: HEARTH_WOODPILE_G,
+    })),
+  });
+  for (const h of houses) {
+    truth.set(HEARTH, h.id, {
+      space: h.space,
+      holder: holderAccount(h.household),
+      fuelUnit: HEARTH_FUEL_UNIT,
+      burnGramsPerHour: HEARTH_BURN_G_PER_H,
+      litHoursPerDay: HEARTH_LIT_HOURS,
+      intensity: 0,
+      at: o.now,
+    });
+  }
+  return houses.length;
 }

@@ -29,6 +29,7 @@ import {
   type GoodDef,
   goodUnit,
   type HabitDef,
+  HEARTH,
   KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
@@ -119,6 +120,7 @@ import { goalDeathClosureProcess } from "./goal-death.ts";
 import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
+import { BURNED_SINK, hearthEnv, hearthProcess } from "./hearth.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
@@ -692,6 +694,8 @@ export interface LifeWorld {
   readonly wildCapacityScale?: number;
   /** Con `wildHarvest`: la leña del monte (`WildOptions.firewood`) y `gather` por lo que se nombra (`ActOptions.gatherByWords`); apagado. */
   readonly wildFirewood?: boolean;
+  /** Opt-in: `life.hearth` quema la leña de cada `HEARTH` (sumidero `burned`) y `life.thermal` suma su calor (`hearthEnv`); apagado. */
+  readonly hearths?: boolean;
   /** Opt-in: la gente caza herbívoros de la celda (cobro diario dentro de `life.ecology`, ledger `hunt` -> montes); apagado. */
   readonly wildHunt?: boolean;
   /** Con `wildHunt`: multiplicador del esfuerzo diario de caza. */
@@ -1462,6 +1466,9 @@ export function lifeWorld(
           trajectories: parts.trajectories ?? [],
           ...(parts.wildHunt ? { hunt: { effortScale: parts.wildHuntScale ?? 1 } } : {}),
         }),
+        ...(parts.hearths === true
+          ? [hearthProcess({ clock: parts.clock, placeOf: () => village, sink: BURNED_SINK })]
+          : []),
         ...(parts.wildHarvest
           ? [
               wildProcess({
@@ -1860,6 +1867,9 @@ export function lifeWorld(
           : []),
         thermalProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
+          ...(parts.hearths === true
+            ? { refineEnv: hearthEnv(parts.spaces), refineReads: [HEARTH.name] }
+            : {}),
           plans: parts.plans,
           clock: parts.clock,
           map: parts.map,

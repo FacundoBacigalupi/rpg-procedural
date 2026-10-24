@@ -154,6 +154,8 @@ export interface ThermalOptions {
    */
   readonly shelter?: boolean;
   readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
+  /** Las tablas que lee `refineEnv` (el scheduler las pide declaradas; p. ej. `HEARTH`). */
+  readonly refineReads?: readonly string[];
 }
 
 /** Pasos de cálculo por día (cada uno cubre `day / STEPS_PER_DAY`). */
@@ -276,6 +278,7 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
       FROSTBITE_CARE.name,
       FROSTBITE_ORDERS.name,
       ...(o.sleepers ? [ASLEEP.name] : []),
+      ...(o.refineReads ?? []),
     ],
     writes: [
       THERMAL.name,
