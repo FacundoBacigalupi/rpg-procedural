@@ -241,8 +241,14 @@ function convert(
             ? thingArg(a.ref, a.role, `${at}.${a.role}`, w)
             : undefined;
         if (thing === null) continue;
-        const v = thing ?? argValue(a, spec.kind, `${at}.${a.role}`, w);
+        // Mirar algo que no conoce («miro el cielo») es mirar alrededor, no una pregunta.
+        const optional = spec.kind === "sight" && !spec.required;
+        const v = thing ?? argValue(a, spec.kind, `${at}.${a.role}`, w, optional);
         if (v) args.push(act && node.verb === "speak" && "text" in v ? { ...v, act } : v);
+      }
+      if (node.verb === "use") {
+        const used = affordanceStep(args, node.manner ?? [], w);
+        if (used !== undefined) return used;
       }
       const step: PlanNode = {
         kind: "do",
@@ -420,7 +426,13 @@ function tripToListener(args: readonly ArgValue[], w: Walk): PlanNode | null {
   return { kind: "do", verb: "move", args: [{ role: "to", entity: place.ref }], manner: [] };
 }
 
-function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | null {
+function argValue(
+  a: DraftArg,
+  kind: ArgKind,
+  at: string,
+  w: Walk,
+  optional = false,
+): ArgValue | null {
   if ("duration" in a) {
     if (kind !== "duration") {
       w.problems.push(`${at}: una duración no es un ${kind}`);
@@ -460,8 +472,70 @@ function argValue(a: DraftArg, kind: ArgKind, at: string, w: Walk): ArgValue | n
     w.phantoms.push(at);
     return { role: a.role, entity: r.chosen };
   }
+  if (r.status === "unknown" && optional) return null;
   (r.status === "ambiguous" ? w.ambiguous : w.unknown).push({ at, role: a.role, resolved: r });
   return null;
+}
+
+/**
+ * «Saco agua del pozo», «uso el pozo» (actions, «Ampliación: `use`»): la cosa dice qué se puede. De
+ * sus funciones, la que nombra `how` por sus palabras o, si no, la primera del contenido. Una que es
+ * otro verbo con la cosa al lado (`as`) se vuelve ese paso; una propia queda como `use` con su id en
+ * `how`. Sin función, `undefined`: el `use` sigue sin `how` y el juego avisa sin jugar el turno
+ * (`unusableTarget`).
+ */
+function affordanceStep(
+  args: readonly ArgValue[],
+  manner: readonly string[],
+  w: Walk,
+): PlanNode | undefined {
+  const target = args.find((a) => a.role === "target");
+  if (target === undefined || !("entity" in target)) return undefined;
+  const shape = w.ctx.known.find((k) => k.ref === target.entity)?.shape;
+  const offers = shape === undefined ? [] : w.ctx.catalog.affordances(shape);
+  // Sin funciones, el `how` del jugador no se juega: queda sin él y se avisa (`unusableTarget`).
+  if (offers.length === 0) return { kind: "do", verb: "use", args: [target], manner: [...manner] };
+  const how = args.find((a) => a.role === "how");
+  const said = how !== undefined && "text" in how ? refTokens(how.text) : [];
+  const chosen =
+    offers.find((o) => o.words.some((word) => refTokens(word).some((t) => said.includes(t)))) ??
+    offers[0];
+  if (chosen === undefined) return undefined;
+  if (chosen.as !== undefined)
+    return { kind: "do", verb: chosen.as, args: [], manner: [...manner] };
+  return {
+    kind: "do",
+    verb: "use",
+    args: [target, { role: "how", text: chosen.id }],
+    manner: [...manner],
+  };
+}
+
+/** El primer `use` del plan que no encontró función: la cosa sobre la que se avisa. */
+export function unusableTarget(node: PlanNode): EntityRef | undefined {
+  switch (node.kind) {
+    case "do": {
+      if (node.verb !== "use") return undefined;
+      const target = node.args.find((a) => a.role === "target");
+      const how = node.args.find((a) => a.role === "how");
+      return how === undefined && target !== undefined && "entity" in target
+        ? target.entity
+        : undefined;
+    }
+    case "seq":
+      for (const s of node.steps) {
+        const t = unusableTarget(s);
+        if (t !== undefined) return t;
+      }
+      return undefined;
+    case "until":
+    case "repeat":
+      return unusableTarget(node.body);
+    case "if":
+      return unusableTarget(node.then) ?? (node.else ? unusableTarget(node.else) : undefined);
+    default:
+      return undefined;
+  }
 }
 
 function anyKind(ref: RefDescription): RefDescription {

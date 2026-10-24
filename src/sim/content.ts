@@ -3,7 +3,7 @@
 
 import type { ContentKind } from "../core/index.ts";
 import { BIOMES } from "../worldgen/index.ts";
-import { ACTIONS, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
+import { ACTIONS, AFFORDANCES, PARSER_EXAMPLES, PLANS } from "./actions/index.ts";
 import {
   BODY_PLANS,
   DIETS,
@@ -63,6 +63,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   PRESSURE_CURVES,
   ACTIONS,
   PLANS,
+  AFFORDANCES,
   PARSER_EXAMPLES,
   MATERIALS,
   BUILDING_TYPES,

@@ -28,6 +28,7 @@ import {
   ACTIONS,
   ActionCatalog,
   ADDRESSES,
+  AFFORDANCES,
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
@@ -1274,7 +1275,7 @@ export function resumeParts(
     seed,
     clock: EARTHLIKE_CLOCK,
     map: anchor.map,
-    catalog: new ActionCatalog(content.all(ACTIONS), content.all(PLANS)),
+    catalog: new ActionCatalog(content.all(ACTIONS), content.all(PLANS), content.all(AFFORDANCES)),
     skills: new SkillCatalog(content.all(SKILLS), content.all(ACTIONS)),
     traits: content.all(TRAITS),
     plans: content.all(BODY_PLANS),
@@ -1726,7 +1727,11 @@ export function createLife(
         .concat(tradeStock(pop, seed, content)),
     });
   }
-  const catalog = new ActionCatalog(content.all(ACTIONS), content.all(PLANS));
+  const catalog = new ActionCatalog(
+    content.all(ACTIONS),
+    content.all(PLANS),
+    content.all(AFFORDANCES),
+  );
   // Opt-in: el saber tácito de los procesos mortales que la geografía permite, con su evento.
   if (options.mortalTech) {
     seedTechKnowledge(truth, ids, log, {

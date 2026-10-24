@@ -38,6 +38,8 @@ export interface KnownEntity {
    * entidad como cualquier otra y recién se entera al fracasar (actions §4).
    */
   readonly phantom?: boolean | undefined;
+  /** Qué es una cosa (la forma de un ítem, el tipo de un fijo): sus funciones para `use`. */
+  readonly shape?: string | undefined;
 }
 
 export interface RefCandidate {

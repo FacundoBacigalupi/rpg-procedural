@@ -107,6 +107,7 @@
     "id": "percept.action.cook",
     "lines": ["{who} cocina.", "Ves a {who} atendiendo el fuego."]
   },
+  { "id": "percept.action.use", "lines": ["{who} usa algo.", "Ves a {who} usando algo."] },
   { "id": "percept.action.drink", "lines": ["{who} toma agua.", "Ves a {who} bebiendo."] },
   { "id": "percept.action.boil", "lines": ["{who} hierve agua.", "Ves a {who} hirviendo agua."] },
   { "id": "percept.action.filter", "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."] },
