@@ -57,6 +57,7 @@ export function panelsOf(session: Session): Panels {
       session.environment(),
       substancePanel(w, session.panelOptions).others,
     ),
+    hint: session.hint(),
     options: session.suggested().map((o) => ({
       id: o.id,
       label: renderSuggestion(o),

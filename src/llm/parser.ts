@@ -22,6 +22,7 @@ import {
 import type { LlmMessage } from "./client.ts";
 import { parseCommand } from "./grammar.ts";
 import type { JobResult, LlmJobs } from "./jobs.ts";
+import type { VerbWordBook } from "./verb-words.ts";
 
 export interface ParserInput {
   /** Lo que escribió el jugador, tal cual. */
@@ -39,6 +40,8 @@ export interface ParserSetup {
   readonly shots: readonly LlmMessage[];
   readonly schema: z.ZodType<IntentDraft>;
   readonly jsonSchema: { readonly name: string; readonly schema: Record<string, unknown> };
+  /** Los sinónimos de los verbos: van al prompt como pista y los usa la gramática de respaldo. */
+  readonly words?: VerbWordBook | undefined;
 }
 
 export const PARSER_RULES = [
@@ -82,8 +85,9 @@ export const PARSER_RULES = [
   "  not as `repeat` with an invented times. If resolved, do not put those words in `unmapped`.",
   "  Use `if` with `cond`, `then` and optional `else` for a condition checked on arrival.",
   "  Its `cond.is` uses dark, light, succeeded or elapsed, as for `until`.",
-  '- Big life goals are `kind: "goal"`; questions to the game about the game are `question_ooc`;',
-  "  game commands (save, inspector, quit) are `meta`. Those carry `text` and no plan.",
+  '- Big life goals are `kind: "goal"`; questions to the game about the game are `question_ooc`.',
+  "  Those carry `text` and no plan. Game commands start with `!` and never reach you: never answer",
+  '  `meta`; a word like "salir" or "gente" without `!` is something the character does or says.',
   "Answer only with the JSON object.",
 ].join("\n");
 
@@ -126,6 +130,7 @@ export function parserUserMessage(input: ParserInput): string {
 export function parserSetup(
   catalog: ActionCatalog,
   examples: readonly ParserExample[] = [],
+  words?: VerbWordBook,
 ): ParserSetup {
   const verbs = catalog.verbs.map(verbLine).join("\n");
   const templates = catalog.templates.map(templateLine).join("\n");
@@ -134,6 +139,9 @@ export function parserSetup(
     `Verbs (in \`do\` nodes: {"kind":"do","verb","args","manner"?}):\n${verbs}`,
     ...(templates
       ? [`Templates (known plans: {"kind":"template","template","params"}):\n${templates}`]
+      : []),
+    ...(words
+      ? [`Spanish words the player may use for each verb (forms and synonyms):\n${words.hint()}`]
       : []),
   ].join("\n\n");
   const shots = examples
@@ -147,6 +155,7 @@ export function parserSetup(
     shots,
     schema: intentDraftFor(catalog),
     jsonSchema: { name: "IntentDraft", schema: intentDraftJsonSchemaFor(catalog) },
+    ...(words ? { words } : {}),
   };
 }
 
@@ -194,7 +203,7 @@ export async function parseIntentOrGrammar(
 ): Promise<ParsedIntent> {
   const r = await parseIntent(jobs, setup, input);
   if (r.ok) return { ok: true, draft: r.value, source: "llm" };
-  const draft = parseCommand(input.text, catalog);
+  const draft = parseCommand(input.text, catalog, setup.words);
   const checked = draft === null ? null : setup.schema.safeParse(draft);
   if (checked?.success) return { ok: true, draft: checked.data, source: "grammar" };
   return {

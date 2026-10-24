@@ -5,6 +5,6 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "../api.ts"],
+  "include": ["./**/*.ts", "./**/*.tsx", "../api.ts", "../complete.ts"],
   "exclude": []
 }

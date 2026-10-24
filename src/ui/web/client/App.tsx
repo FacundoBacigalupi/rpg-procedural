@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import type { History, Panels, SayResponse, WebState } from "../api.ts";
+import { completionsOf } from "../complete.ts";
 import { Scene, themeOf } from "./Scene.tsx";
 import { TopBar } from "./TopBar.tsx";
 
@@ -110,6 +111,8 @@ export function App() {
   const [panels, setPanels] = useState<Panels | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("character");
   const [input, setInput] = useState("");
+  // La sugerencia elegida con las flechas entre las que ofrece la pista (play-hint-verbs).
+  const [pick, setPick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [more, setMore] = useState(false);
@@ -185,6 +188,14 @@ export function App() {
     } finally {
       loading.current = false;
     }
+  }
+
+  const offers = panels && !over ? completionsOf(input, panels.hint.complete) : [];
+  const chosen = Math.min(pick, Math.max(0, offers.length - 1));
+  function take(offer: string) {
+    setInput(offer);
+    setPick(0);
+    field.current?.focus();
   }
 
   async function submit(e: FormEvent) {
@@ -269,14 +280,47 @@ export function App() {
             ))}
           </div>
         )}
+        {!over && panels && (
+          <div className="hint" aria-live="polite">
+            {offers.length === 0
+              ? panels.hint.line
+              : offers.map((o, i) => (
+                  <button
+                    key={o}
+                    type="button"
+                    className={i === chosen ? "picked" : undefined}
+                    title="Tab la pone en el campo"
+                    onClick={() => take(o)}
+                  >
+                    {o}
+                  </button>
+                ))}
+          </div>
+        )}
         <form onSubmit={submit}>
           <input
             ref={field}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              setPick(0);
+            }}
+            onKeyDown={(e) => {
+              // Tab pone la sugerencia en el campo para editarla, sin mandarla.
+              if (e.key === "Tab" && offers.length > 0) {
+                e.preventDefault();
+                take(offers[chosen] as string);
+              } else if (e.key === "ArrowDown" && offers.length > 0) {
+                e.preventDefault();
+                setPick((chosen + 1) % offers.length);
+              } else if (e.key === "ArrowUp" && offers.length > 0) {
+                e.preventDefault();
+                setPick((chosen + offers.length - 1) % offers.length);
+              }
+            }}
             // Sin el autocompletado del navegador: la pista de frases es la del juego (play-hint-verbs).
             autoComplete="off"
-            placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (ayuda)"}
+            placeholder={over ? "La vida terminó." : "¿Qué hace tu personaje? (!ayuda)"}
             disabled={busy || over}
           />
           <button type="submit" disabled={busy || over || input.trim() === ""}>

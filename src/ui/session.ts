@@ -62,6 +62,7 @@ import {
   thoughtInputsOf,
   topicEntity,
   topicText,
+  VERB_WORDS,
   WORLD_LEXICON,
   weatherPanel,
   withNarratedWords,
@@ -86,6 +87,7 @@ import {
   remember,
   styleOf,
   TemplateBook,
+  VerbWordBook,
   voiceOf,
 } from "../llm/index.ts";
 import {
@@ -126,6 +128,7 @@ import {
   replayInputFromStore,
   replayLifeAt,
 } from "../tools/index.ts";
+import { type Hint, hintOf } from "./hints.ts";
 import {
   elapsed,
   renderAbout,
@@ -169,7 +172,7 @@ export const HELP = [
   "  espero una hora · como · bebo · miro alrededor · voy al río · busco leña",
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
-  "Fuera del personaje (no pasa el tiempo): personaje, inventario, deudas, gente, hipótesis, cielo, bitácora, pensar sobre X, qué sé de X, ayuda, salir.",
+  "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
 
 /** Lo que dice la sesión ante una línea. `end`: la sesión terminó (el jugador salió o murió). */
@@ -192,6 +195,8 @@ export interface Session {
   say(line: string): Promise<Reply>;
   /** Las opciones sugeridas de ahora (`all`: todas, para «ver más»). */
   suggested(all?: boolean): Suggestion[];
+  /** La pista de frases y lo que se completa al escribir (`play-hint-verbs`). */
+  hint(): Hint;
   /** Juega la opción sugerida con ese id, sin pasar por el parser. */
   choose(id: string): Promise<Reply>;
   /** Lo que se nota del lugar ahora, con la habituación al día. */
@@ -225,7 +230,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   // Las opciones opt-in que la vida tiene activas (en el setup guardado) llegan a los paneles.
   const setup = (store.getMeta("setup") as LifeSetup | undefined) ?? options.setup;
   const panelOptions = panelOptionsOf(optionsOf(setup));
-  const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
+  const parser = parserSetup(
+    catalog,
+    options.content.all(PARSER_EXAMPLES),
+    new VerbWordBook(options.content.all(VERB_WORDS)),
+  );
   const ambience = options.content.all(AMBIENCE);
   const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), worldFamilyOf(setup.game));
   const recent: string[] = [];
@@ -461,7 +470,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
 
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
-    let draft: IntentDraft | null = parseCommand(line, catalog);
+    let draft: IntentDraft | null = parseCommand(line, catalog, parser.words);
     if (pending !== null && draft?.kind !== "meta") {
       // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
       const chosen = answerClarify(line, pending.options);
@@ -478,9 +487,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         { text: line, scene, recent },
         catalog,
       );
-      draft = parsed.ok ? parsed.draft : null;
+      // Sin «!» no hay comando: si el modelo igual lo lee así, no se entendió (play-bang-commands).
+      draft = parsed.ok && parsed.draft.kind !== "meta" ? parsed.draft : null;
     }
-    if (draft === null) return { text: "Eso todavía no se entiende. Escribí «ayuda»." };
+    if (draft === null) {
+      // El verbo más parecido de la tabla, si lo hay (play-hint-verbs).
+      const near = parser.words?.closest(line);
+      const guess = near === undefined ? "" : ` ¿Quisiste decir «${near}»?`;
+      return { text: `Eso todavía no se entiende.${guess} Escribí «!verbos» o «!ayuda».` };
+    }
     if (draft.kind === "meta") {
       const text = draft.text ?? "";
       if (text === "contenerse") {
@@ -543,6 +558,19 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         if (thoughts.length === 0) return { text: renderThinking(result, about, name) };
         return { text: await tell(null, life.now, thoughts), present };
       }
+      if (/^verbos?(?![\p{L}])/iu.test(text)) {
+        // De la misma tabla que lee la gramática: no se desactualiza (play-help-verbs).
+        const words = parser.words;
+        if (words === undefined) return { text: HELP };
+        const name = (id: string) => catalog.verb(id)?.name;
+        const what = text.replace(/^verbos?\s*/iu, "");
+        if (what === "") return { text: words.help(name) };
+        return {
+          text:
+            words.helpOf(what, name) ??
+            `«${what}» no es una palabra de ningún verbo. Probá «!verbos».`,
+        };
+      }
       if (/^bit[aá]cora/i.test(text)) {
         return { text: renderJournal(store.narrations(JOURNAL_SHOWN), life.world.map.lonDeg) };
       }
@@ -594,6 +622,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     openingPeople,
     say,
     suggested,
+    hint: () => hintOf(suggested(), knownNow(), parser.words),
     choose,
     environment,
     seen: () => seenNow,

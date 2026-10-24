@@ -14,7 +14,12 @@ export async function runCli(
   options: CliOptions,
 ): Promise<void> {
   const session = await openSession(store, options);
-  write(`${session.opening}\n> `);
+  // La misma pista de frases que la web, antes de cada pedido (play-hint-verbs).
+  const prompt = () => {
+    const line = session.hint().line;
+    return line === "" ? "> " : `(${line})\n> `;
+  };
+  write(`${session.opening}\n${prompt()}`);
   for await (const line of lines) {
     if (line.trim() === "") {
       write("> ");
@@ -25,6 +30,6 @@ export async function runCli(
       write(`${reply.text}\n`);
       return;
     }
-    write(`${reply.text}\n> `);
+    write(`${reply.text}\n${prompt()}`);
   }
 }

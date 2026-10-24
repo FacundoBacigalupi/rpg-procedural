@@ -1,0 +1,1084 @@
+[
+  {
+    "id": "move",
+    "example": "voy al río",
+    "tail": "al río",
+    "forms": [
+      "voy",
+      "ir",
+      "camino",
+      "caminar",
+      "corro",
+      "correr",
+      "vuelvo",
+      "volver",
+      "entro",
+      "entrar",
+      "subo",
+      "bajo",
+      "cruzo",
+      "salgo",
+      "salir",
+      "paseo",
+      "pasear",
+      "recorro",
+      "recorrer",
+      "me acerco",
+      "acercarme",
+      "me arrimo"
+    ],
+    "synonyms": [
+      {
+        "as": "voy",
+        "words": [
+          "me dirijo",
+          "dirigirme",
+          "marcho",
+          "marchar",
+          "me marcho",
+          "avanzo",
+          "avanzar",
+          "me traslado",
+          "trasladarme",
+          "me muevo",
+          "moverme",
+          "acudo",
+          "acudir",
+          "llego",
+          "llegar",
+          "me encamino",
+          "encaminarme",
+          "me largo",
+          "viajo",
+          "viajar",
+          "asciendo",
+          "ascender",
+          "desciendo",
+          "descender",
+          "trepo",
+          "trepar",
+          "atravieso",
+          "atravesar",
+          "me alejo",
+          "alejarme",
+          "ando",
+          "andar",
+          "subir",
+          "bajar",
+          "cruzar",
+          "me mudo",
+          "mudarme"
+        ]
+      },
+      {
+        "as": "camino",
+        "words": [
+          "deambulo",
+          "deambular",
+          "vago",
+          "vagar",
+          "merodeo",
+          "merodear",
+          "doy una vuelta",
+          "dar una vuelta",
+          "doy un paseo",
+          "dar un paseo",
+          "doy una caminata",
+          "callejeo",
+          "callejear"
+        ]
+      },
+      {
+        "as": "corro",
+        "words": [
+          "troto",
+          "trotar",
+          "huyo",
+          "huir",
+          "escapo",
+          "escapar",
+          "me escapo",
+          "escaparme",
+          "me apuro",
+          "apurarme",
+          "me rajo"
+        ]
+      },
+      {
+        "as": "entro",
+        "words": ["ingreso", "ingresar", "me meto", "meterme", "me adentro", "adentrarme"]
+      },
+      {
+        "as": "vuelvo",
+        "words": ["regreso", "regresar", "retorno", "retornar"]
+      },
+      {
+        "as": "salgo",
+        "words": ["me retiro", "retirarme", "me voy afuera"]
+      },
+      {
+        "as": "acerco",
+        "words": ["me aproximo", "aproximarme"]
+      },
+      {
+        "as": "acerco",
+        "words": ["me arrimo a", "me pego a"],
+        "tail": "el río"
+      }
+    ]
+  },
+  {
+    "id": "look",
+    "example": "miro alrededor",
+    "forms": ["miro", "mirar", "observo", "observar", "echo un vistazo", "vigilo"],
+    "synonyms": [
+      {
+        "as": "miro",
+        "words": [
+          "contemplo",
+          "contemplar",
+          "examino",
+          "examinar",
+          "escudriño",
+          "escudriñar",
+          "oteo",
+          "otear",
+          "ojeo",
+          "ojear",
+          "echo una mirada",
+          "echo una ojeada",
+          "echo un ojo",
+          "le echo un ojo",
+          "doy un vistazo",
+          "vigilar",
+          "me fijo",
+          "fijarme",
+          "inspecciono",
+          "inspeccionar",
+          "atisbo",
+          "atisbar",
+          "espío",
+          "espiar",
+          "relojeo",
+          "relojear",
+          "chusmeo",
+          "chusmear",
+          "veo",
+          "ver"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "search",
+    "example": "busco a mi padre",
+    "tail": "a mi padre",
+    "forms": ["busco", "buscar", "rastreo", "sigo buscando"],
+    "synonyms": [
+      {
+        "as": "busco",
+        "words": [
+          "ando buscando",
+          "salgo a buscar",
+          "trato de encontrar",
+          "intento encontrar",
+          "rastrear",
+          "localizo",
+          "localizar",
+          "persigo",
+          "perseguir",
+          "rebusco",
+          "rebuscar",
+          "hurgo",
+          "hurgar"
+        ]
+      },
+      {
+        "as": "busco a",
+        "words": ["sigo el rastro de", "voy en busca de", "salgo en busca de"],
+        "tail": "mi padre"
+      }
+    ]
+  },
+  {
+    "id": "gather",
+    "example": "junto hierbas",
+    "tail": "hierbas",
+    "forms": [
+      "junto",
+      "juntar",
+      "recolecto",
+      "recolectar",
+      "recojo",
+      "recoger",
+      "cosecho",
+      "cosechar"
+    ],
+    "synonyms": [
+      {
+        "as": "junto",
+        "words": [
+          "reúno",
+          "reunir",
+          "acopio",
+          "acopiar",
+          "arranco",
+          "arrancar",
+          "forrajeo",
+          "forrajear",
+          "voy juntando",
+          "pizco",
+          "pizcar",
+          "vendimio",
+          "vendimiar"
+        ]
+      },
+      {
+        "as": "junto leña",
+        "words": ["corto leña", "hago leña", "parto leña"],
+        "tail": ""
+      },
+      {
+        "as": "cosecho",
+        "words": ["levanto la cosecha"],
+        "tail": ""
+      }
+    ]
+  },
+  {
+    "id": "hunt",
+    "example": "cazo conejos",
+    "tail": "conejos",
+    "forms": ["cazo", "cazar"],
+    "synonyms": [
+      {
+        "as": "cazo",
+        "words": [
+          "pesco",
+          "pescar",
+          "acecho",
+          "acechar",
+          "trampeo",
+          "trampear",
+          "pongo trampas",
+          "poner trampas",
+          "voy de caza",
+          "salgo de caza",
+          "me voy de caza",
+          "salgo a cazar",
+          "voy de pesca",
+          "salgo de pesca",
+          "salgo a pescar",
+          "rastreo presas",
+          "persigo presas"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "work",
+    "example": "trabajo dos horas",
+    "tail": "dos horas",
+    "forms": ["trabajo", "trabajar", "laburo", "laburar", "carpo", "carpir", "aro", "arar"],
+    "synonyms": [
+      {
+        "as": "trabajo",
+        "words": [
+          "siembro",
+          "sembrar",
+          "labro",
+          "labrar",
+          "escardo",
+          "escardar",
+          "desmalezo",
+          "desmalezar",
+          "riego",
+          "regar",
+          "rastrillo",
+          "rastrillar",
+          "cavo",
+          "cavar",
+          "chambeo",
+          "chambear",
+          "curro",
+          "currar",
+          "laboro",
+          "laborar",
+          "faeno",
+          "faenar",
+          "ordeño",
+          "ordeñar",
+          "pastoreo",
+          "pastorear",
+          "me ocupo del campo",
+          "hago changas",
+          "deshierbo",
+          "deshierbar",
+          "podo",
+          "podar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rest",
+    "example": "descanso una hora",
+    "tail": "una hora",
+    "forms": [
+      "descanso",
+      "descansar",
+      "duermo",
+      "dormir",
+      "reposo",
+      "me acuesto",
+      "medito",
+      "meditar"
+    ],
+    "synonyms": [
+      {
+        "as": "descanso",
+        "words": [
+          "reposar",
+          "me recuesto",
+          "recostarme",
+          "sesteo",
+          "sestear",
+          "echo una siesta",
+          "me echo una siesta",
+          "hago una siesta",
+          "me tomo un descanso",
+          "tomo un respiro",
+          "me tomo un respiro",
+          "me relajo",
+          "relajarme",
+          "hago una pausa",
+          "paro",
+          "me tumbo",
+          "tumbarme"
+        ]
+      },
+      {
+        "as": "duermo",
+        "words": ["me duermo", "dormirme", "dormito", "dormitar", "pego un sueño"]
+      },
+      {
+        "as": "medito",
+        "words": ["hago meditación", "entro en trance"]
+      }
+    ]
+  },
+  {
+    "id": "wait",
+    "example": "espero media hora",
+    "tail": "media hora",
+    "forms": ["espero", "esperar", "aguardo", "aguardar", "me quedo esperando"],
+    "synonyms": [
+      {
+        "as": "espero",
+        "words": [
+          "me quedo",
+          "quedarme",
+          "permanezco",
+          "permanecer",
+          "hago tiempo",
+          "dejo pasar el tiempo",
+          "no hago nada",
+          "me siento",
+          "me quedo quieto",
+          "me quedo quieta",
+          "aguanto",
+          "aguantar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "speak",
+    "example": "le digo a Wu: «buenas»",
+    "forms": [
+      "le digo",
+      "le pregunto",
+      "le pido",
+      "le cuento",
+      "le explico",
+      "le grito",
+      "hablo con",
+      "charlo con",
+      "converso con",
+      "saludo",
+      "me despido"
+    ],
+    "synonyms": [
+      {
+        "as": "le cuento",
+        "words": [
+          "le comento",
+          "le aviso",
+          "le advierto",
+          "le informo",
+          "le confieso",
+          "le menciono",
+          "le relato",
+          "le narro",
+          "le anuncio"
+        ]
+      },
+      {
+        "as": "le pido",
+        "words": ["le ruego", "le suplico", "le solicito", "le reclamo", "le exijo", "le encargo"]
+      },
+      {
+        "as": "le pregunto",
+        "words": ["le interrogo"]
+      },
+      {
+        "as": "hablo con",
+        "words": ["platico con", "dialogo con", "me comunico con", "parlo con", "chamuyo con"],
+        "tail": "Wu"
+      },
+      {
+        "as": "saludo",
+        "words": ["le doy la mano", "hago una reverencia", "le hago una reverencia"]
+      },
+      {
+        "as": "me despido",
+        "words": ["digo adiós", "le digo adiós", "le digo chau"],
+        "tail": ""
+      },
+      {
+        "as": "saludo a",
+        "words": ["me inclino ante", "hago una reverencia ante"],
+        "tail": "Wu"
+      }
+    ],
+    "tail": "a Wu"
+  },
+  {
+    "id": "strike",
+    "example": "le pego al bandido",
+    "tail": "al bandido",
+    "forms": [
+      "pego",
+      "ataco",
+      "atacar",
+      "golpeo",
+      "golpear",
+      "le doy",
+      "le tiro",
+      "peleo",
+      "pelear"
+    ],
+    "synonyms": [
+      {
+        "as": "ataco",
+        "words": [
+          "embisto",
+          "embestir",
+          "acometo",
+          "acometer",
+          "agredo",
+          "agredir",
+          "lastimo",
+          "lastimar",
+          "hiero",
+          "herir",
+          "apuñalo",
+          "apuñalar",
+          "acuchillo",
+          "acuchillar",
+          "pateo",
+          "patear",
+          "cacheteo",
+          "cachetear",
+          "abofeteo",
+          "abofetear",
+          "empujo",
+          "empujar",
+          "derribo",
+          "derribar",
+          "lucho",
+          "luchar",
+          "combato",
+          "combatir",
+          "enfrento",
+          "enfrentar",
+          "me enfrento",
+          "enfrentarme",
+          "fajo",
+          "fajar",
+          "mato",
+          "matar",
+          "pegar",
+          "asesino",
+          "asesinar",
+          "me bato",
+          "me trenzo",
+          "embosco",
+          "emboscar"
+        ]
+      },
+      {
+        "as": "ataco a",
+        "words": ["me lanzo sobre", "me tiro encima de", "me abalanzo sobre"],
+        "tail": "el bandido"
+      }
+    ]
+  },
+  {
+    "id": "spare",
+    "example": "perdono al bandido",
+    "tail": "al bandido",
+    "forms": ["perdono", "perdonar"],
+    "synonyms": [
+      {
+        "as": "perdono",
+        "words": [
+          "libero",
+          "liberar",
+          "dejo ir",
+          "dejo vivir",
+          "le perdono la vida",
+          "perdono la vida",
+          "dejo con vida",
+          "suelto con vida",
+          "indulto",
+          "indultar"
+        ]
+      },
+      {
+        "as": "perdono a",
+        "words": ["tengo piedad de", "tengo clemencia con", "me apiado de", "apiadarme de"],
+        "tail": "el bandido"
+      }
+    ]
+  },
+  {
+    "id": "trade",
+    "example": "le compro pan al panadero",
+    "tail": "pan al panadero",
+    "forms": ["ofrezco", "comercio", "negocio", "cambio", "regateo", "vendo", "compro"],
+    "synonyms": [
+      {
+        "as": "negocio",
+        "words": [
+          "trueco",
+          "truecar",
+          "intercambio",
+          "intercambiar",
+          "canjeo",
+          "canjear",
+          "permuto",
+          "permutar",
+          "mercadeo",
+          "mercadear",
+          "hago un trato",
+          "cierro un trato",
+          "negociar",
+          "comerciar",
+          "regatear",
+          "cambiar",
+          "ofrecer",
+          "transo",
+          "transar"
+        ]
+      },
+      {
+        "as": "compro",
+        "words": ["adquiero", "adquirir", "me compro", "comprar"]
+      },
+      {
+        "as": "vendo",
+        "words": ["vender", "remato", "rematar", "ofrezco en venta", "pongo en venta"]
+      }
+    ]
+  },
+  {
+    "id": "give",
+    "example": "le doy el grano a mi tío",
+    "tail": "el grano a mi tío",
+    "forms": [
+      "devuelvo",
+      "devolver",
+      "pago",
+      "pagar",
+      "doy",
+      "dar",
+      "entrego",
+      "entregar",
+      "regalo",
+      "regalar"
+    ],
+    "synonyms": [
+      {
+        "as": "doy",
+        "words": [
+          "obsequio",
+          "obsequiar",
+          "dono",
+          "donar",
+          "cedo",
+          "ceder",
+          "presto",
+          "prestar",
+          "reparto",
+          "repartir",
+          "convido",
+          "convidar",
+          "ofrendo",
+          "ofrendar",
+          "alcanzo",
+          "brindo",
+          "le paso",
+          "les paso",
+          "comparto",
+          "compartir",
+          "dejo de regalo"
+        ]
+      },
+      {
+        "as": "pago",
+        "words": ["saldo", "saldar", "liquido la deuda", "cancelo la deuda", "salgo de la deuda"]
+      },
+      {
+        "as": "devuelvo",
+        "words": ["restituyo", "restituir", "reintegro", "reintegrar"]
+      }
+    ]
+  },
+  {
+    "id": "take",
+    "example": "agarro la jarra",
+    "tail": "la jarra",
+    "forms": [
+      "agarro",
+      "agarrar",
+      "tomo",
+      "tomar",
+      "saco",
+      "sacar",
+      "me llevo",
+      "levanto",
+      "robo",
+      "robar"
+    ],
+    "synonyms": [
+      {
+        "as": "agarro",
+        "words": [
+          "levantar",
+          "llevarme",
+          "atrapo",
+          "atrapar",
+          "alzo",
+          "alzar",
+          "quito",
+          "quitar",
+          "le quito",
+          "arrebato",
+          "arrebatar",
+          "le arrebato",
+          "me quedo con",
+          "pillo",
+          "pillar",
+          "manoteo",
+          "manotear",
+          "cargo",
+          "me hago con",
+          "empuño",
+          "empuñar"
+        ]
+      },
+      {
+        "as": "robo",
+        "words": [
+          "hurto",
+          "hurtar",
+          "afano",
+          "afanar",
+          "choreo",
+          "chorear",
+          "birlo",
+          "birlar",
+          "sustraigo",
+          "sustraer",
+          "me robo",
+          "me afano",
+          "escamoteo",
+          "escamotear",
+          "saqueo",
+          "saquear",
+          "le robo",
+          "le afano",
+          "le birlo",
+          "le hurto"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "store",
+    "example": "guardo el grano",
+    "tail": "el grano",
+    "forms": ["guardo", "guardar", "almaceno", "almacenar"],
+    "synonyms": [
+      {
+        "as": "guardo",
+        "words": [
+          "atesoro",
+          "atesorar",
+          "deposito",
+          "depositar",
+          "resguardo",
+          "resguardar",
+          "conservo",
+          "conservar",
+          "estibo",
+          "estibar",
+          "acomodo",
+          "acomodar",
+          "pongo a resguardo",
+          "dejo guardado"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "drop",
+    "example": "suelto la piedra",
+    "tail": "la piedra",
+    "forms": ["suelto", "soltar", "arrojo", "arrojar", "tiro", "tirar", "dejo caer"],
+    "synonyms": [
+      {
+        "as": "suelto",
+        "words": [
+          "descarto",
+          "descartar",
+          "desecho",
+          "desechar",
+          "boto",
+          "botar",
+          "lanzo",
+          "lanzar",
+          "me deshago de",
+          "deshacerme de",
+          "largo",
+          "dejo tirado",
+          "dejo tirada",
+          "tiro al piso"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cook",
+    "example": "cocino pan",
+    "tail": "pan",
+    "forms": ["cocino", "cocinar", "horneo", "hornear", "amaso", "amasar"],
+    "synonyms": [
+      {
+        "as": "cocino",
+        "words": [
+          "guiso",
+          "guisar",
+          "preparo la comida",
+          "preparar la comida",
+          "hago la comida",
+          "hago de comer",
+          "aso",
+          "asar",
+          "cuezo",
+          "cocer",
+          "frío",
+          "freír",
+          "tuesto",
+          "tostar",
+          "ahumo",
+          "ahumar",
+          "estofo",
+          "estofar",
+          "preparo algo de comer"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "eat",
+    "example": "como pan",
+    "tail": "pan",
+    "forms": [
+      "como",
+      "comer",
+      "almuerzo",
+      "almorzar",
+      "ceno",
+      "cenar",
+      "desayuno",
+      "desayunar",
+      "me como"
+    ],
+    "synonyms": [
+      {
+        "as": "como",
+        "words": [
+          "merendo",
+          "merendar",
+          "devoro",
+          "devorar",
+          "mastico",
+          "masticar",
+          "engullo",
+          "engullir",
+          "me alimento",
+          "alimentarme",
+          "morfo",
+          "morfar",
+          "me morfo",
+          "lastro",
+          "lastrar",
+          "manduco",
+          "me zampo",
+          "zamparme",
+          "me engullo",
+          "pruebo un bocado de",
+          "pico algo de",
+          "me mando",
+          "me clavo"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "consume",
+    "example": "consumo la píldora",
+    "tail": "la píldora",
+    "forms": ["consumo", "consumir"],
+    "synonyms": [
+      {
+        "as": "consumo",
+        "words": [
+          "ingiero",
+          "ingerir",
+          "me trago",
+          "tragarme",
+          "fumo",
+          "fumar",
+          "me fumo",
+          "me administro",
+          "administrarme",
+          "me inyecto",
+          "inhalo",
+          "inhalar",
+          "me aplico",
+          "aplicarme"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "boil",
+    "example": "hiervo agua",
+    "forms": ["hiervo", "hervir"],
+    "synonyms": [
+      {
+        "as": "hiervo",
+        "words": [
+          "caliento agua",
+          "calentar agua",
+          "hago hervir",
+          "pongo agua al fuego",
+          "entibio el agua"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "filter",
+    "example": "filtro el agua",
+    "forms": ["filtro", "filtrar"],
+    "synonyms": [
+      {
+        "as": "filtro",
+        "words": [
+          "cuelo",
+          "colar",
+          "purifico",
+          "purificar",
+          "tamizo",
+          "tamizar",
+          "decanto",
+          "decantar",
+          "clarifico el agua"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "drink",
+    "example": "bebo agua",
+    "forms": ["bebo", "beber", "tomo agua", "me tomo un trago"],
+    "synonyms": [
+      {
+        "as": "bebo",
+        "words": [
+          "sorbo",
+          "sorber",
+          "tomo un trago",
+          "tomo un sorbo",
+          "me tomo un sorbo",
+          "me echo un trago",
+          "echo un trago",
+          "mato la sed",
+          "calmo la sed",
+          "sacio la sed",
+          "me hidrato",
+          "hidratarme",
+          "tomo mate",
+          "tomo un mate",
+          "tomo un vaso",
+          "tomo vino",
+          "tomo té",
+          "tomo un té",
+          "brindo con",
+          "me empino",
+          "empino el codo"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tend",
+    "example": "atiendo a mi madre",
+    "tail": "a mi madre",
+    "forms": [
+      "me curo",
+      "me vendo",
+      "curo",
+      "curar",
+      "vendo la herida",
+      "vendar",
+      "limpio la herida",
+      "atiendo",
+      "atender"
+    ],
+    "synonyms": [
+      {
+        "as": "atiendo",
+        "words": [
+          "cuido",
+          "cuidar",
+          "sano",
+          "sanar",
+          "asisto",
+          "asistir",
+          "socorro",
+          "socorrer",
+          "auxilio",
+          "auxiliar",
+          "doy primeros auxilios",
+          "entablillo",
+          "entablillar",
+          "desinfecto",
+          "desinfectar",
+          "coso la herida",
+          "suturo",
+          "suturar",
+          "pongo un emplasto",
+          "le pongo un emplasto"
+        ]
+      },
+      {
+        "as": "me curo",
+        "words": [
+          "me sano",
+          "sanarme",
+          "me atiendo",
+          "atenderme",
+          "me desinfecto",
+          "me cuido",
+          "me coso",
+          "me entablillo"
+        ],
+        "tail": ""
+      },
+      {
+        "as": "atiendo a",
+        "words": ["trato las heridas de", "me ocupo de las heridas de", "cuido de"],
+        "tail": "mi madre"
+      }
+    ]
+  },
+  {
+    "id": "consult",
+    "example": "consulto a la adivina",
+    "forms": ["consulto", "consultar"],
+    "synonyms": [
+      {
+        "as": "consulto",
+        "words": ["recurro", "recurrir", "acudo a consultar", "voy a ver"]
+      }
+    ],
+    "tail": "a la adivina"
+  },
+  {
+    "id": "forge",
+    "example": "falsifico una escritura",
+    "tail": "una escritura",
+    "forms": ["falsifico", "falsificar"],
+    "synonyms": [
+      {
+        "as": "falsifico",
+        "words": [
+          "falseo",
+          "falsear",
+          "amaño",
+          "amañar",
+          "adultero",
+          "adulterar",
+          "imito la firma de",
+          "fraguo un documento"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hire",
+    "example": "contrato a Wu para arar",
+    "tail": "a Wu",
+    "forms": ["contrato", "contratar"],
+    "synonyms": [
+      {
+        "as": "contrato",
+        "words": [
+          "empleo",
+          "emplear",
+          "conchabo",
+          "conchabar",
+          "tomo a sueldo",
+          "tomo como peón",
+          "tomo de peón"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ponder",
+    "example": "creo que rinde más en verano",
+    "tail": "que rinde más en verano",
+    "forms": ["creo", "supongo", "sospecho", "imagino", "me parece", "se me ocurre"],
+    "synonyms": [
+      {
+        "as": "supongo",
+        "words": [
+          "intuyo",
+          "presiento",
+          "deduzco",
+          "calculo",
+          "tengo la impresión de",
+          "me da la sensación de",
+          "me huelo",
+          "conjeturo"
+        ]
+      }
+    ]
+  }
+]

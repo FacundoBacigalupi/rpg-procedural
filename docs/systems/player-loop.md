@@ -169,17 +169,22 @@ Paneles (en CLI, comandos; en la web, pestañas). **Ninguno muestra números de 
 
 ## 10. Comandos fuera del personaje
 
+Van con `!` adelante (`!salir`, `!gente`, `!qué sé de X`; `play-bang-commands`, 2026-10-23): sin `!`, todo lo escrito es del personaje, así una frase que empieza con la palabra de un comando («salir corriendo», «gente de la plaza…») no se corta. La gramática lee el comando solo con `!` y el parser con LLM nunca lo ve ni contesta `meta`.
+
+**Pista de frases** (`play-hint-verbs`): bajo el campo de texto (y antes de cada `>` en la CLI) una línea con frases que la simulación entiende, armadas con las sugerencias de ahora y un lugar que el personaje conoce y no tiene delante («Podés escribir: hablo con mi madre · como algo · voy al granero»). Al escribir, la web ofrece cómo seguir con los verbos y sinónimos de la tabla, los nombres que el personaje conoce y, con `!`, los comandos; Tab o un toque la pone en el campo sin mandarla. Si no se entiende, la respuesta propone la palabra de la tabla más parecida («¿Quisiste decir «miro»?»). Todo sale de lo que el personaje cree (`ui/hints.ts`, `ui/web/complete.ts`).
+
 | Comando | Qué hace |
 |---|---|
-| `salir` | guarda y cierra; no hay cargar otra partida |
-| `resumen` | resumen de lo último, armado con la memoria de narración y las memorias del personaje |
-| `qué sé de X` | consulta el diario de creencias del personaje sobre X |
-| `más detalle` / `más breve` | preferencias de narración (narration, aprobado 2026-10-06) |
-| `interrupciones`, `delegación`, `posturas` | ver y editar las reglas |
-| `ayuda` | cómo se escribe, qué comandos hay; nunca qué conviene hacer |
-| `inspector` | el modo dios de tooling.md (§11) |
-| `me gustó` / `no me gustó` | marca el último texto narrado para el corpus del fine-tune ([tooling.md](tooling.md) §10, aprobado 2026-10-06) |
-| `restaurar` | recupera una copia de respaldo, con confirmación y marca "restaurada" ([tooling.md](tooling.md) §13) |
+| `!salir` | guarda y cierra; no hay cargar otra partida |
+| `!resumen` | resumen de lo último, armado con la memoria de narración y las memorias del personaje |
+| `!qué sé de X` | consulta el diario de creencias del personaje sobre X |
+| `!más detalle` / `!más breve` | preferencias de narración (narration, aprobado 2026-10-06) |
+| `!interrupciones`, `!delegación`, `!posturas` | ver y editar las reglas |
+| `!verbos` / `!verbos X` | lo que la simulación sabe hacer: un renglón por verbo con un ejemplo y algunos sinónimos; con X (el verbo o cualquiera de sus palabras), todas sus formas y sinónimos. Sale de `content/llm/verb-words/`, la misma tabla que lee la gramática (`play-help-verbs`) |
+| `!ayuda` | cómo se escribe, qué comandos hay; nunca qué conviene hacer |
+| `!inspector` | el modo dios de tooling.md (§11) |
+| `!me gustó` / `!no me gustó` | marca el último texto narrado para el corpus del fine-tune ([tooling.md](tooling.md) §10, aprobado 2026-10-06) |
+| `!restaurar` | recupera una copia de respaldo, con confirmación y marca "restaurada" ([tooling.md](tooling.md) §13) |
 | `abandonar` | termina la vida sin morir: se archiva como "vida sin terminar" con crónica parcial |
 
 ## 11. El inspector durante la partida

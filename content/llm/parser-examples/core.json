@@ -236,15 +236,6 @@
     "notes": "fuera del catálogo: lo más cercano y lo que sobra en unmapped"
   },
   {
-    "id": "shot-meta",
-    "shot": true,
-    "text": "guardar partida",
-    "expect": {
-      "kind": "meta",
-      "text": "guardar partida"
-    }
-  },
-  {
     "id": "look",
     "text": "miro alrededor",
     "scene": "Estás en la plaza de la aldea, al mediodía. Hay un pozo en el centro y un camino que sale hacia el bosque.",
@@ -734,14 +725,6 @@
     "expect": {
       "kind": "question_ooc",
       "text": "¿cuánto tiempo pasó desde que salí de casa?"
-    }
-  },
-  {
-    "id": "meta-inspector",
-    "text": "abrir el inspector",
-    "expect": {
-      "kind": "meta",
-      "text": "abrir el inspector"
     }
   },
   {

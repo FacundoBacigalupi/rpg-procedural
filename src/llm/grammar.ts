@@ -9,6 +9,9 @@
 // encontrar", habla entre comillas o con "que"/"si", "mi padre" como relación, metas, preguntas
 // fuera del personaje y comandos. Lo que el jugador escribe como resultado ("y me la da",
 // "encuentro...") va a `stripped`, como en el parser con LLM.
+//
+// Con la tabla de sinónimos (`VerbWordBook`, play-verb-words), cada paso que empieza con un
+// sinónimo se lee como la forma que la tabla dice («me dirijo al río» → «voy al río»).
 
 import type {
   ActionCatalog,
@@ -20,6 +23,7 @@ import type {
   RefDescription,
   SpeechDraft,
 } from "../sim/index.ts";
+import type { VerbWordBook } from "./verb-words.ts";
 
 const STOP = new Set([
   "a",
@@ -585,6 +589,52 @@ const VERBS: readonly {
       return { node: act("cook", what ? [{ role: "what", text: what }] : []) };
     },
   },
+  {
+    re: /^(?:cazo|cazar)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " ").replace(/^\s*algo\s*$/i, ""));
+      return { node: act("hunt", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
+    // Perdonar al vencido: «perdono al bandido», «lo perdono».
+    re: /^(?:(?:lo|la|le|los|las)\s+)?(?:perdono|perdonar)\b/i,
+    build: (rest) => {
+      const p = personAfterA(rest.replace(MANNER_WORDS, " "));
+      const said = p ? undefined : nounPhrase(dropPreposition(rest.replace(MANNER_WORDS, " ")));
+      const target = p?.ref ?? (said ? ref(said, "person") : undefined);
+      return { node: act("spare", target ? [{ role: "target", ref: target }] : []) };
+    },
+  },
+  {
+    re: /^(?:consumo|consumir)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("consume", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  { re: /^(?:hiervo|hervir)\b/i, build: () => ({ node: act("boil", []) }) },
+  { re: /^(?:filtro|filtrar)\b/i, build: () => ({ node: act("filter", []) }) },
+  {
+    re: /^(?:falsifico|falsificar)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("forge", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
+    // Contratar: «contrato a Wu para arar».
+    re: /^(?:contrato|contratar)\b/i,
+    build: (rest) => {
+      const clean = rest.replace(MANNER_WORDS, " ");
+      const purpose = /\s+para\s+(?:que\s+)?(.+)$/i.exec(clean);
+      const who = personAfterA(purpose ? clean.slice(0, purpose.index) : clean);
+      const args: DraftArg[] = [];
+      if (who) args.push({ role: "who", ref: who.ref });
+      if (purpose) args.push({ role: "what", text: tidy(purpose[1] as string) });
+      return { node: act("hire", args) };
+    },
+  },
 ];
 
 function mannersOf(text: string, verb: string, catalog: ActionCatalog | undefined): string[] {
@@ -599,9 +649,14 @@ function mannersOf(text: string, verb: string, catalog: ActionCatalog | undefine
   return out;
 }
 
-function clause(raw: string, ctx: Ctx, catalog: ActionCatalog | undefined): Clause | null {
+function clause(
+  raw: string,
+  ctx: Ctx,
+  catalog: ActionCatalog | undefined,
+  words: VerbWordBook | undefined,
+): Clause | null {
   let text = tidy(raw);
-  const speech = speakClause(text, ctx);
+  const speech = speakClause(words ? words.rewrite(text) : text, ctx);
   if (speech) return speech;
 
   let until: DraftCondition | undefined;
@@ -614,8 +669,9 @@ function clause(raw: string, ctx: Ctx, catalog: ActionCatalog | undefined): Clau
     }
   }
   const lead = INFINITIVE_LEAD.exec(text);
+  const led = lead ? text.slice(lead[0].length) : text;
   // «Voy a dar una vuelta por el pueblo» es caminar por el pueblo, no dar algo.
-  const core = (lead ? text.slice(lead[0].length) : text).replace(
+  const core = (words ? words.rewrite(led) : led).replace(
     /^(?:dar|doy)\s+una\s+vuelta\s+(?=por\b)/i,
     "camino ",
   );
@@ -653,8 +709,8 @@ function pieces(text: string): { sep: string; text: string }[] {
   return out;
 }
 
-const META =
-  /^(?:guardar|cargar|salir(?=\s*$)|abrir el inspector|inspector|god|ayuda|men[uú]|personaje|inventario|deudas|libro de deudas|gente|personas|creencias|hip[oó]tesis|cielo|clima|pron[oó]stico|recuento|resumen|bit[aá]cora|¿?qu[eé] s[eé] (?:yo )?(?:de|sobre|acerca de)|pens[aá]r?|pienso|reflexion[oa]r?|¿?qu[eé] hago (?:con|sobre))(?![\p{L}])/iu;
+/** Los comandos fuera del personaje van con «!» adelante (`play-bang-commands`): «!salir», «!gente». */
+const BANG = /^!\s*/;
 const IDEA = /^(?:creo|supongo|sospecho|imagino|me parece|se me ocurre)\s+que\s+(.+)$/i;
 const FIELD_TALK = /\b(?:rind\w*|rendi\w*|cosech\w*|campos?|cultiv\w*|siembra\w*)\b/i;
 const DIVINER =
@@ -705,16 +761,24 @@ const GOAL = /^(?:quiero|mi meta es|sueño con|alg[uú]n d[ií]a (?:voy a|quiero
 
 /**
  * El borrador de un texto del jugador, o `null` si la gramática no lo entiende. Con el catálogo,
- * solo pone los modos que cada verbo admite.
+ * solo pone los modos que cada verbo admite; con la tabla de sinónimos, entiende cada verbo por
+ * todas sus palabras.
  */
-export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraft | null {
+export function parseCommand(
+  input: string,
+  catalog?: ActionCatalog,
+  words?: VerbWordBook,
+): IntentDraft | null {
   const text = tidy(input);
   if (text.length === 0) return null;
-  if (META.test(text)) return { kind: "meta", text };
+  // Sin «!», todo es del personaje: «salir corriendo» o «gente de la plaza» no cortan la frase.
+  const bang = BANG.exec(text);
+  if (bang) return { kind: "meta", text: text.slice(bang[0].length) };
   if (/^¿/.test(text) || (/\?$/.test(text) && !SPEAK.test(text))) {
     return { kind: "question_ooc", text };
   }
-  const consult = consultDraft(text);
+  const said = words ? words.rewrite(text) : text;
+  const consult = consultDraft(said);
   if (consult) return consult;
   if (HOLD_STANCE_ON.test(text)) return { kind: "meta", text: "contenerse" };
   if (HOLD_STANCE_OFF.test(text)) return { kind: "meta", text: "no contenerse" };
@@ -722,7 +786,7 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   if (goal) return { kind: "goal", text: tidy(goal[1] as string) };
   // «Creo que rinde más en verano»: una idea sobre cómo anda el mundo; qué hipótesis del catálogo
   // es lo decide el juego (discovery §14), acá solo se la reconoce como suponer.
-  const idea = IDEA.exec(text);
+  const idea = IDEA.exec(said);
   if (idea && FIELD_TALK.test(idea[1] as string)) {
     return { kind: "act", plan: act("ponder", [{ role: "about", text: tidy(idea[1] as string) }]) };
   }
@@ -733,14 +797,14 @@ export function parseCommand(input: string, catalog?: ActionCatalog): IntentDraf
   const raws: string[] = [];
   const parsed: (Clause | null)[] = [];
   for (const p of pieces(text)) {
-    const c = clause(p.text, ctx, catalog);
+    const c = clause(p.text, ctx, catalog, words);
     const last = raws.length - 1;
     if (c && (last < 0 || parsed[last] !== null)) {
       raws.push(p.text);
       parsed.push(c);
     } else if (last >= 0) {
       raws[last] = `${raws[last]}${p.sep}${p.text}`;
-      parsed[last] = clause(raws[last] as string, ctx, catalog);
+      parsed[last] = clause(raws[last] as string, ctx, catalog, words);
     } else {
       raws.push(p.text);
       parsed.push(null);
