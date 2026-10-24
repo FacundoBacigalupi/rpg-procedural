@@ -72,6 +72,31 @@ export const ActionWords = z.strictObject({
 export type ActionWords = z.infer<typeof ActionWords>;
 export const ACTION_WORDS = defineContent("llm/action-words", ActionWords);
 
+const phrase = z.string().trim().min(1);
+
+/**
+ * Cómo dice el jugador cada verbo del catálogo (actions §9, `play-verb-words`): `forms` son las
+ * palabras que la gramática sin red ya entiende y cada grupo de `synonyms` se lee como su `as`
+ * (una de esas formas, con lo que haga falta detrás: «busco a»). Lo usan la gramática, el parser
+ * con LLM (como pista) y la ayuda. `example` es una frase entera para la ayuda; `tail` (por verbo
+ * o por grupo) lo que se agrega a cada sinónimo para probar que se entiende.
+ */
+export const VerbWords = z.strictObject({
+  id: contentId,
+  example: phrase,
+  tail: z.string().trim().optional(),
+  forms: z.array(phrase).min(1),
+  synonyms: z.array(
+    z.strictObject({
+      as: phrase,
+      words: z.array(phrase).min(1),
+      tail: z.string().trim().optional(),
+    }),
+  ),
+});
+export type VerbWords = z.infer<typeof VerbWords>;
+export const VERB_WORDS = defineContent("llm/verb-words", VerbWords);
+
 /** Todo `content/`: lo de la sim más lo del narrador. Quien carga la carpeta entera usa esta. */
 export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   ...CONTENT_KINDS,
@@ -79,6 +104,7 @@ export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   NARRATION_TEMPLATES,
   WORLD_LEXICON,
   ACTION_WORDS,
+  VERB_WORDS,
 ] as readonly ContentKind[];
 
 /** La paleta de ambiente de una escena percibida (narration §5, §8): lo que vale, en orden de id. */

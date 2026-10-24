@@ -62,6 +62,7 @@ import {
   thoughtInputsOf,
   topicEntity,
   topicText,
+  VERB_WORDS,
   WORLD_LEXICON,
   weatherPanel,
   withNarratedWords,
@@ -86,6 +87,7 @@ import {
   remember,
   styleOf,
   TemplateBook,
+  VerbWordBook,
   voiceOf,
 } from "../llm/index.ts";
 import {
@@ -225,7 +227,11 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   // Las opciones opt-in que la vida tiene activas (en el setup guardado) llegan a los paneles.
   const setup = (store.getMeta("setup") as LifeSetup | undefined) ?? options.setup;
   const panelOptions = panelOptionsOf(optionsOf(setup));
-  const parser = parserSetup(catalog, options.content.all(PARSER_EXAMPLES));
+  const parser = parserSetup(
+    catalog,
+    options.content.all(PARSER_EXAMPLES),
+    new VerbWordBook(options.content.all(VERB_WORDS)),
+  );
   const ambience = options.content.all(AMBIENCE);
   const lexicon = lexiconOf(options.content.all(WORLD_LEXICON), worldFamilyOf(setup.game));
   const recent: string[] = [];
@@ -461,7 +467,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
 
   const say = async (line: string): Promise<Reply> => {
     // Los comandos fuera del personaje no pasan por el modelo.
-    let draft: IntentDraft | null = parseCommand(line, catalog);
+    let draft: IntentDraft | null = parseCommand(line, catalog, parser.words);
     if (pending !== null && draft?.kind !== "meta") {
       // Respuesta a la aclaración: elige entre los candidatos y sigue con el mismo borrador.
       const chosen = answerClarify(line, pending.options);
