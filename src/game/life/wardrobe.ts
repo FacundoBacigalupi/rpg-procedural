@@ -53,6 +53,26 @@ export function wardrobeOf(
   });
 }
 
+/**
+ * La capa de viaje del guardarropa (clothing-wear-cloak): la prenda `outer` sana que más abriga
+ * como está. Sin ninguna, no tiene capa.
+ */
+export function wardrobeCloak(owned: readonly OwnedGarment[]): OwnedGarment | undefined {
+  return owned
+    .filter((g) => g.def.slot === "outer" && g.wear < 1)
+    .sort(
+      (a, b) =>
+        wornGarment(b).clo - wornGarment(a).clo ||
+        (a.def.id < b.def.id ? -1 : a.def.id > b.def.id ? 1 : 0),
+    )[0];
+}
+
+/** El abrigo (clo) que da esa capa como está; sin capa, ninguno. */
+export function wardrobeCloakClo(owned: readonly OwnedGarment[]): number {
+  const c = wardrobeCloak(owned);
+  return c ? wornGarment(c).clo : 0;
+}
+
 /** La ropa que se pone quien tiene `owned` con el aire en `airC`. */
 export function wardrobeClothing(owned: readonly OwnedGarment[], airC: number): Clothing {
   return dressed(chooseGarments(owned, seasonalClothing(airC).clo).map(wornGarment));
@@ -81,19 +101,24 @@ export function garmentDayWear(def: GarmentDef, work: boolean, road: boolean): n
 
 /**
  * Las prendas tras un día (puro): las que se puso para `airC` suman su desgaste del día; las demás
- * quedan igual. Devuelve las nuevas y cuáles se deshicieron hoy.
+ * quedan igual. En camino con la capa (`cloak`), la capa del guardarropa va puesta o cargada todo el
+ * día y se gasta como el calzado. Devuelve las nuevas y cuáles se deshicieron hoy.
  */
 export function wearDay(
   owned: readonly OwnedGarment[],
   airC: number,
   work: boolean,
   road: boolean,
+  cloak = false,
 ): { items: WardrobeItem[]; wornOut: string[] } {
   const worn = new Set(chooseGarments(owned, seasonalClothing(airC).clo));
+  const carried = road && cloak ? wardrobeCloak(owned) : undefined;
+  if (carried) worn.add(carried);
   const wornOut: string[] = [];
   const items = owned.map((g) => {
     if (!worn.has(g)) return { garment: g.def.id, wear: g.wear };
-    const wear = round(Math.min(1, g.wear + garmentDayWear(g.def, work, road)));
+    const day = garmentDayWear(g.def, work, road) * (g === carried ? ROAD_WEAR : 1);
+    const wear = round(Math.min(1, g.wear + day));
     if (wear >= 1 && g.wear < 1) wornOut.push(g.def.id);
     return { garment: g.def.id, wear };
   });
@@ -108,10 +133,10 @@ export interface WardrobeWearOptions {
   /** El aire de afuera en ese instante, para elegir lo que se pone el día. */
   readonly airC: (now: Tick) => number;
   readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
-  /** Si está de viaje (con `npcJourneyDays`): el calzado se gasta más. */
+  /** Si está de viaje (con `npcJourneyDays`) y si lleva la capa: el calzado y la capa se gastan más. */
   readonly onRoad?: {
     readonly reads: readonly string[];
-    readonly is: (t: ReadonlyWorldTruth, who: AgentId) => boolean;
+    readonly is: (t: ReadonlyWorldTruth, who: AgentId) => { readonly cloak: boolean } | undefined;
   };
 }
 
@@ -142,8 +167,8 @@ export function wardrobeWearProcess(o: WardrobeWearOptions): ProcessDef {
         const owned = wardrobeOf(ctx.truth, who, o.garments);
         if (owned.length === 0) continue;
         const work = (ctx.now - p.born) / o.year >= o.workAge;
-        const road = o.onRoad?.is(ctx.truth, who) === true;
-        const { items, wornOut } = wearDay(owned, airC, work, road);
+        const trip = o.onRoad?.is(ctx.truth, who);
+        const { items, wornOut } = wearDay(owned, airC, work, trip !== undefined, trip?.cloak);
         changes.push(setComponent(WARDROBE, who, { items }));
         for (const garment of wornOut) {
           events.push({
