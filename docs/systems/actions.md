@@ -310,6 +310,7 @@ sin reconocimiento no actualiza la ubicación del familiar recordado.
     - `take` con `wrong_target`: se lleva la mitad de otra cosa.
     - `take` sin `from` en casa (motor `life-43`): si lo que nombra no está suelto en el lugar, sale de la despensa del hogar (`homeLarder`).
     - `take` sin `from` en casa ajena (motor `life-44`): solo lo que nombra y no está suelto sale de la despensa de ese hogar (`hostLarder`); el consentimiento del dueño queda para property.
+    - `drop` de un objeto con identidad (con `itemClaims`): solo lo que el actor lleva; queda en el lugar con su `LOCATION` y conserva sus derechos. `take` no busca entre lo que uno lleva.
     - `take` torpe: hace ruido.
     - Un crítico malo con alguien al lado: el otro lo nota.
     - Un golpe crítico malo lo deja desequilibrado.

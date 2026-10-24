@@ -126,6 +126,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly takeItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /** Opt-in de claims de ítems: `give` entrega un objeto con identidad (solo la posesión física). */
   readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
+  /**
+   * Opt-in de claims de ítems: `drop` suelta un objeto con identidad que lleva encima
+   * (play-refs-objects-source-drop); `available` dice si de verdad lo lleva.
+   */
+  readonly dropItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /** La contraparte de `trade` (o el destinatario de `give`) ya terminó (`ENTITY.endedAt`): no hay trato ni regalo aunque su cuenta exista. */
   readonly counterpartyGone?: boolean | undefined;
   /** Dónde está el actor: el lugar del evento y el titular del stock que se recolecta. */
@@ -430,6 +435,9 @@ export type VerbEffect =
       readonly got: readonly Holding[];
       /** Dónde quedó: el mismo lugar del que `take` sin `from` levanta. */
       readonly at: HolderRef;
+      /** Opt-in (`dropItem`): el objeto con identidad que soltó, y si de verdad lo soltó. */
+      readonly item?: ItemId;
+      readonly dropped?: boolean;
     }
   | { readonly kind: "drink"; readonly liters: number }
   | {
@@ -1660,6 +1668,20 @@ const drop: Resolver = (c) => {
     seconds: Math.min(c.nominal, 5),
     override: { outcome: "failure", failure: "no_means", believed: "failure" },
   });
+  const item = c.input.dropItem;
+  if (item !== undefined) {
+    const effect = (dropped: boolean): VerbEffect => ({
+      kind: "drop",
+      got: [],
+      at,
+      item: item.item,
+      dropped,
+    });
+    if (!item.available) return { ...none(), effect: effect(false) };
+    return { effect: effect(!c.roll.unmet), seconds: c.nominal };
+  }
+  // Un objeto con identidad sin claims no se suelta como lote: soltaría todo lo demás.
+  if (argEntity(c, "what")?.startsWith("item:")) return none();
   if (c.roll.unmet) return { effect: { kind: "drop", got: [], at }, seconds: c.nominal };
   const carried = c.input.ledger
     .holdings(holderAccount(c.input.actor.id as HolderRef))
