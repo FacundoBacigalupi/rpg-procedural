@@ -68,6 +68,7 @@ import {
 import type { StepRecord } from "./act.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
+import { fixturesInSight } from "./fixtures.ts";
 import { heardClaimsForView } from "./heardclaims.ts";
 import { heardTradesForView } from "./heardtrades.ts";
 import { figureText, withImpressions } from "./impressions.ts";
@@ -650,6 +651,7 @@ export function playerView(
     },
     percepts: told,
     ...(things.length > 0 ? { things } : {}),
+    fixtures: fixturesInSight(w),
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
     ...(change && change.arrived.size > 0 ? { arrived: change.arrived } : {}),
     ...(change && change.gone.length > 0 ? { gone: change.gone } : {}),

@@ -82,3 +82,37 @@ describe("cosas a la vista en la narración (play-refs-objects-look)", () => {
     }
   });
 });
+
+describe("lo fijo en la narración (play-refs-objects-fixtures-look)", () => {
+  const well = makeId("work", 3) as unknown as EntityRef;
+  const view = (target?: EntityRef) =>
+    buildPlayerView({
+      player,
+      scene,
+      percepts: [],
+      fixtures: [{ ref: well, shape: "well", state: "poor" }],
+      steps: [
+        {
+          verb: "look",
+          self: {
+            believed: "success",
+            cues: [],
+            effect: { kind: "observe", acuity: 0.8, ...(target ? { target } : {}) },
+          } as never,
+        },
+      ],
+      acquaintances: new Map(),
+    });
+
+  it("el pozo mirado se nombra con su estado; sin mirarlo no aparece", () => {
+    expect(view(well).things).toEqual([
+      { shape: "well", size: "large", looked: true, state: "poor" },
+    ]);
+    expect(view().things).toBeUndefined();
+    for (let n = 0; n < 6; n++) {
+      const text = stripMarks(renderView(view(well), book, Rng.root(n).fork("narration", 1)));
+      expect(text).toMatch(/(Te fijás bien en|Mirás de cerca) el pozo/u);
+      expect(text).toMatch(/descuidado/u);
+    }
+  });
+});

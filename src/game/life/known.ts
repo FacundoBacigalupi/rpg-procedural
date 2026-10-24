@@ -21,6 +21,7 @@ import {
   PLACE_NAME,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
+import { FIXTURE_WORDS, fixturesInSight } from "./fixtures.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -214,6 +215,21 @@ export function knownEntities(
       kind: "object",
       names,
       features,
+      relations: [],
+      present: true,
+      ...(here === undefined ? {} : { at: here.hex }),
+      via: [],
+    });
+  }
+  // Lo fijo del espacio donde está (el pozo, el granero): lo sabe por vivir ahí, sin mirar.
+  for (const f of fixturesInSight(w)) {
+    if (listed.has(f.ref)) continue;
+    listed.add(f.ref);
+    out.push({
+      ref: f.ref,
+      kind: "object",
+      names: FIXTURE_WORDS[f.shape],
+      features: [],
       relations: [],
       present: true,
       ...(here === undefined ? {} : { at: here.hex }),
