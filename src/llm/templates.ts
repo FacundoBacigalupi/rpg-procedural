@@ -163,6 +163,18 @@ export function renderView(
 
   for (const o of view.outcomes) outcome(o, say, ref, good, book);
   for (const p of view.percepts) percept(p, say, ref, book);
+  // Las cosas sueltas: la que miró a propósito siempre; las demás al mirar o al describir el lugar.
+  const looking = view.outcomes.some((o) => o.effect.kind === "observe");
+  const described = !inward && (!s.familiar || arrived || idle);
+  for (const t of view.things ?? []) {
+    const shape = `thing.shape.${t.shape}`;
+    const noun = book.has(shape) ? first(shape) : first("thing.unknown");
+    const material = t.material === undefined ? undefined : `thing.material.${t.material}`;
+    const thing =
+      material !== undefined && book.has(material) ? `${noun} ${first(material)}` : noun;
+    if (t.looked === true) say("thing.looked", { thing });
+    else if (looking || described) say("thing.seen", { thing });
+  }
   for (const g of view.gone ?? []) say("percept.gone", { who: ref(g) });
   for (const c of view.self.cues) say(`self.${c}`);
   if (view.nickname !== undefined && (!s.familiar || arrived))
@@ -278,7 +290,9 @@ function outcome(
       if (e.stumbled) say("outcome.stumbled");
       break;
     case "observe":
-      say(`outcome.look.${o.believed}`);
+      if (e.target !== undefined && book.has(`outcome.look_at.${o.believed}`))
+        say(`outcome.look_at.${o.believed}`, { target: ref(e.target) });
+      else say(`outcome.look.${o.believed}`);
       break;
     case "search":
       if (e.target === undefined && !e.found && !e.glimpsed) say("outcome.search.missed_anyone");

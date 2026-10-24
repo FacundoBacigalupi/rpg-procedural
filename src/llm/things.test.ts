@@ -1,0 +1,84 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { type ContentKind, type EntityRef, makeId, Rng, z } from "../core/index.ts";
+import { buildPlayerView, NARRATION_TEMPLATES, type SceneInput } from "../game/index.ts";
+import type { Percept } from "../sim/index.ts";
+import { narratorUserMessage, renderView, stripMarks, TemplateBook } from "./index.ts";
+
+function load<T extends { readonly id: string }>(kind: ContentKind<T>): T[] {
+  const dir = join("content", kind.name);
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .flatMap((f) => z.array(kind.schema).parse(JSON.parse(readFileSync(join(dir, f), "utf8"))));
+}
+
+const book = new TemplateBook(load(NARRATION_TEMPLATES));
+const player = makeId("agent", 1);
+const basket = makeId("item", 7) as unknown as EntityRef;
+const knife = makeId("item", 8) as unknown as EntityRef;
+const field = (value: unknown) => ({ value, confidence: 0.95, mistaken: false });
+
+const thing = (id: string, source: EntityRef, look: unknown): Percept => ({
+  id,
+  observer: player,
+  sourceEntityId: source,
+  tick: 10,
+  channels: ["sight"],
+  detail: "clear",
+  fields: { presence: field(true), thing: field(look) },
+});
+
+const scene: SceneInput = {
+  placeKinds: ["village"],
+  space: "street",
+  indoor: false,
+  home: false,
+  familiar: true,
+  hour: 9,
+  light: 0.8,
+};
+
+const looked = (target?: EntityRef) =>
+  buildPlayerView({
+    player,
+    scene,
+    percepts: [],
+    things: [
+      thing("t1", basket, { shape: "basket", material: "bamboo", size: "medium" }),
+      thing("t2", knife, { shape: "knife", material: "iron", size: "small" }),
+    ],
+    steps: [
+      {
+        verb: "look",
+        self: {
+          believed: "success",
+          cues: [],
+          effect: { kind: "observe", acuity: 0.8, ...(target ? { target } : {}) },
+        } as never,
+      },
+    ],
+    acquaintances: new Map(),
+  });
+
+describe("cosas a la vista en la narración (play-refs-objects-look)", () => {
+  it("la vista lleva las cosas con sus rasgos y marca la que miró", () => {
+    expect(looked(basket).things).toEqual([
+      { shape: "basket", material: "bamboo", size: "medium", looked: true },
+      { shape: "knife", material: "iron", size: "small" },
+    ]);
+    expect(looked().things?.some((t) => t.looked === true)).toBe(false);
+    expect(JSON.parse(narratorUserMessage({ view: looked(basket) } as never)).things).toHaveLength(
+      2,
+    );
+  });
+
+  it("las plantillas nombran la cosa mirada y, al mirar, las demás", () => {
+    for (let n = 0; n < 6; n++) {
+      const text = stripMarks(renderView(looked(basket), book, Rng.root(n).fork("narration", 1)));
+      expect(text).toMatch(/(Te fijás bien en|Mirás de cerca) una canasta de bambú/u);
+      expect(text).toMatch(/un cuchillo de hierro/u);
+    }
+  });
+});

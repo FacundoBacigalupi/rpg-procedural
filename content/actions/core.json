@@ -41,7 +41,7 @@
     "id": "look",
     "name": "observar",
     "domain": "perception",
-    "args": [],
+    "args": [{ "role": "target", "kind": "sight", "required": false }],
     "manners": [{ "id": "careful", "duration": 3, "ease": 0.7 }],
     "requires": [],
     "occupies": { "eyes": "full" },
