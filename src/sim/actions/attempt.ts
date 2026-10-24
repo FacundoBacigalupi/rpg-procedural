@@ -121,12 +121,16 @@ export function activeManners(
   return def.manners.filter((m) => ids.has(m.id));
 }
 
-/** Cuánto dura el paso, en segundos. `pathSeconds` es lo que dice el camino para `path`. */
+/**
+ * Cuánto dura el paso, en segundos. `pathSeconds` es lo que dice el camino para `path`; con
+ * `speech` (por defecto) el habla dura según el acto o las palabras (`ActionDef.speech`).
+ */
 export function actionDuration(
   def: ActionDef,
   node: AttemptInput["node"],
   planManner: readonly string[],
   pathSeconds = 0,
+  speech = true,
 ): number {
   let base: number;
   const d = def.duration;
@@ -136,8 +140,23 @@ export function actionDuration(
     const a = node.args.find((x) => x.role === d.role);
     base = Math.min(d.max, a && "seconds" in a ? a.seconds : d.default);
   }
+  if (speech && def.speech) base = speechSeconds(def.speech, node, base);
   const k = activeManners(def, node, planManner).reduce((p, m) => p * m.duration, 1);
   return Math.max(1, Math.round(base * k));
+}
+
+/** Lo que dura decir el contenido de `speak`: por acto, por palabras o la charla (`base`). */
+function speechSeconds(
+  s: NonNullable<ActionDef["speech"]>,
+  node: AttemptInput["node"],
+  base: number,
+): number {
+  const content = node.args.find((x) => x.role === s.role);
+  if (!content || !("text" in content)) return base;
+  if (content.act) return s.acts[content.act.kind] ?? base;
+  const words = content.text.split(/\s+/).filter((w) => w.length > 0).length;
+  if (words === 0) return base;
+  return Math.min(base, Math.max(s.min, Math.round(words * s.wordSeconds)));
 }
 
 /** Los rasgos innatos en desvíos de la población (con el corrimiento de los varones). */

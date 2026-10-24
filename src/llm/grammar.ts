@@ -78,6 +78,9 @@ const UNITS: Readonly<Record<string, DraftDuration["unit"]>> = {
 const DURATION =
   /\b(media|\d+|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte|treinta)\s+(segundos?|minutos?|horas?|d[ií]as?|semanas?|mes(?:es)?|años?)\b/i;
 
+/** Lo que dura dar una vuelta si el jugador no dice cuánto. */
+const STROLL: DraftDuration = { amount: 15, unit: "minute" };
+
 function duration(text: string): { duration: DraftDuration; rest: string } | null {
   const m = DURATION.exec(text);
   if (!m) return null;
@@ -350,10 +353,17 @@ const VERBS: readonly {
     re: /^(?:me\s+)?(?:voy|vamos|ir|camino|caminar|corro|correr|vuelvo|volver|entro|entrar|subo|bajo|cruzo|vuelo|volar|salgo|salir|sal[ií]|salimos|paseo|pasear|recorro|recorrer)\b/i,
     build: (rest, ctx, all) => {
       // «Salgo a caminar por la aldea», «voy a dar una vuelta por el pueblo»: el lugar es el del final.
+      // «Camino media hora»: lo que dura el paseo no es un lugar.
+      const timed = duration(rest);
+      const walking =
+        /^\s*a\s+(?:caminar|pasear|dar\s+una\s+vuelta|recorrer|andar)\b/i.test(rest) ||
+        /^\s*un\s+(?:poco|rato)\b/i.test(rest) ||
+        /^(?:me\s+)?(?:camino|caminar|paseo|pasear|recorro|recorrer)\b/i.test(all);
       const said = tidy(
-        rest
+        (timed?.rest ?? rest)
           .replace(/^\s*a\s+(?:caminar|pasear|dar\s+una\s+vuelta|recorrer|andar)\b/i, " ")
-          .replace(/^\s*un\s+(?:poco|rato)\b/i, " ")
+          .replace(/^\s*(?:durante\s+|por\s+)?un\s+(?:poco|rato)\b/i, " ")
+          .replace(/(?:^|\s)(?:durante|por)\s*$/i, " ")
           .replace(MANNER_WORDS, " "),
       );
       const leaving = /^(?:salgo|salir|sal[ií]|salimos)\b/i.test(all);
@@ -377,8 +387,14 @@ const VERBS: readonly {
       const r = ref(place, "place");
       ctx.lastPlace = r;
       const unmapped = /^(?:vuelo|volar)\b/i.test(all) ? "volando" : undefined;
+      // Un paseo dura lo que dice el jugador o un rato (play-stroll-duration); ir a un lugar, lo
+      // que tarda llegar.
+      const stroll = strolling || walking || timed !== null;
       return {
-        node: act("move", [{ role: "to", ref: r }]),
+        node: act("move", [
+          { role: "to", ref: r },
+          ...(stroll ? [{ role: "for", duration: timed?.duration ?? STROLL }] : []),
+        ]),
         ...(unmapped ? { unmapped } : {}),
       };
     },

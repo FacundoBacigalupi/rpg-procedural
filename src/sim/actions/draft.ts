@@ -215,7 +215,12 @@ function convert(
       }
       if (node.verb === "move") {
         const to = node.args.find((a) => a.role === "to" && "ref" in a);
-        const step = to && "ref" in to ? siteStep(to.ref, w, node.manner ?? []) : undefined;
+        // Lo que dura dar una vuelta (play-stroll-duration) viaja con el paso dentro del sitio.
+        const lasts = node.args.flatMap((a) => {
+          const v = a.role === "for" ? argValue(a, "duration", `${at}.for`, w) : null;
+          return v ? [v] : [];
+        });
+        const step = to && "ref" in to ? siteStep(to.ref, w, node.manner ?? [], lasts) : undefined;
         if (step !== undefined) return step;
         const near =
           to && "ref" in to && node.args.length === 1
@@ -342,7 +347,12 @@ function approachPeople(
 }
 
 /** Un `move` a un espacio del sitio que el actor conoce, o `undefined` si no nombra ninguno. */
-function siteStep(desc: RefDescription, w: Walk, manner: readonly string[]): PlanNode | undefined {
+function siteStep(
+  desc: RefDescription,
+  w: Walk,
+  manner: readonly string[],
+  lasts: readonly ArgValue[] = [],
+): PlanNode | undefined {
   const spaces = w.ctx.spaces;
   if (spaces === undefined || spaces.length === 0) return undefined;
   const owner = /\bcasa\s+(?:de|del)\s+(.+)$/iu.exec(desc.text);
@@ -380,10 +390,7 @@ function siteStep(desc: RefDescription, w: Walk, manner: readonly string[]): Pla
   return {
     kind: "do",
     verb: "move",
-    args: [
-      { role: "to", entity: hit.place },
-      { role: "space", text: hit.key },
-    ],
+    args: [{ role: "to", entity: hit.place }, { role: "space", text: hit.key }, ...lasts],
     manner: [...manner],
   };
 }

@@ -165,6 +165,18 @@ const DurationModel = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("path"), role: contentId }),
 ]);
 
+/**
+ * Hablar dura lo que se dice (dialogue §2): un saludo unos segundos, una pregunta un minuto. Con un
+ * acto declarado manda `acts`; con palabras sin acto, `wordSeconds` por palabra (entre `min` y la
+ * duración base); sin palabras ni acto (la charla), la duración base.
+ */
+const SpeechDuration = z.strictObject({
+  role: contentId,
+  acts: z.record(z.string().min(1), z.number().int().positive()),
+  wordSeconds: z.number().positive(),
+  min: z.number().int().positive(),
+});
+
 export const ActionDef = z
   .strictObject({
     id: contentId,
@@ -182,6 +194,8 @@ export const ActionDef = z
       )
       .default({}),
     duration: DurationModel,
+    /** Solo `speak`: cuánto dura según el acto o las palabras (play-speak-duration). */
+    speech: SpeechDuration.optional(),
     /** Cada cuánto se puede interrumpir o re-decidir (Fase 3; por ahora se guarda). */
     checkpoint: z.number().int().positive(),
     emissions: z.strictObject({ sight: Unit, sound: Unit }),
@@ -232,6 +246,7 @@ export const ActionDef = z
       if (!roles.has(r)) ctx.addIssue({ code: "custom", path, message: `rol desconocido: ${r}` });
     };
     if (d.duration.kind !== "fixed") role(d.duration.role, ["duration", "role"]);
+    if (d.speech) role(d.speech.role, ["speech", "role"]);
     if (d.contest) role(d.contest.against, ["contest", "against"]);
     d.requires.forEach((r, i) => {
       if (r.kind === "position" && "near" in r) role(r.near, ["requires", i, "near"]);

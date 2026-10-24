@@ -976,4 +976,40 @@ describe("intento", () => {
       ),
     ).toBe(700);
   });
+
+  it("hablar dura según el acto o las palabras; la charla sin palabras, lo del catálogo", () => {
+    const speak = verb("speak");
+    const said = (content: {
+      text: string;
+      act?: { kind: "greet" } | { kind: "ask"; about: null };
+    }) =>
+      actionDuration(
+        speak,
+        { kind: "do", verb: "speak", args: [{ role: "content", ...content }], manner: [] },
+        [],
+      );
+    expect(said({ text: "hola", act: { kind: "greet" } })).toBe(20);
+    expect(said({ text: "¿qué pasó?", act: { kind: "ask", about: null } })).toBe(60);
+    expect(said({ text: "uno dos tres" })).toBe(10);
+    expect(said({ text: Array.from({ length: 40 }, () => "palabra").join(" ") })).toBe(40);
+    expect(said({ text: Array.from({ length: 900 }, () => "palabra").join(" ") })).toBe(300);
+    expect(said({ text: "" })).toBe(300);
+    expect(actionDuration(speak, { kind: "do", verb: "speak", args: [], manner: [] }, [])).toBe(
+      300,
+    );
+    expect(
+      actionDuration(
+        speak,
+        {
+          kind: "do",
+          verb: "speak",
+          args: [{ role: "content", text: "hola", act: { kind: "greet" } }],
+          manner: [],
+        },
+        [],
+        0,
+        false,
+      ),
+    ).toBe(300);
+  });
 });
