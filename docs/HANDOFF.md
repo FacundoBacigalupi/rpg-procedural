@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-hud-clothing (2026-10-24, rama `feat/clothing-player-hud`):** `TopBar.tsx` `clothingChips`: 🧥 «poco abrigo» / «sin abrigo» por `Hud.clothing.short`, o «ropa gastada»; sin falta ni desgaste no ocupa lugar. El título lista lo puesto. Se ve recién con `wardrobe` (opt-in hasta `clothing-enable`).
+
 **clothing-player-hud (2026-10-24, rama `feat/clothing-player-hud`):** `game/life/outfit.ts` `outfitOf` (prendas puestas con `frayed`, `short` 0-2 por `SHORT_CLO` contra `seasonalClothing` del aire de `ambientOf`), en archivo aparte para no cerrar un ciclo con `world.ts`; `Hud.clothing` y `InventoryPanel.worn` opcionales (solo con `wardrobe`); `renderInventory` dice «Tenés puesto: …» y avisa si no alcanza. **Arreglo:** la vida nueva no recibía `garments` (solo `resumeParts`), así que `wardrobe: true` no hacía nada en una vida recién creada; ahora `create.ts` las pasa. Tests en `hud.test.ts`, `wardrobe.test.ts` y `ui/render.test.ts`.
 
 **play-refs-objects-host (2026-10-24, rama `feat/play-refs-objects-source`):** `sim/actions/resolve.ts` `ResolveInput.hostLarder` (al principio de `homeOrPlace`: solo lo nombrado y no suelto); `game/life/act.ts` `hostLarderOf` (espacio adentro de otro hogar; `legacyNoHostTake`); `goods-sight.ts` `where: "host"`. Motor `life-44`. Tests en `resolve.test.ts` y `host-take.test.ts`. Queda el consentimiento del dueño (property).

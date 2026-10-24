@@ -165,6 +165,17 @@ function loadChips(load: Hud["load"]): Chip[] {
   return [{ icon: "🎒", text: LOAD[load], title: "Lo que pesa lo que llevás", alert: load }];
 }
 
+const SHORT = ["", "poco abrigo", "sin abrigo"] as const;
+
+function clothingChips(c: Hud["clothing"]): Chip[] {
+  if (c === undefined) return [];
+  const pieces = c.worn.map((g) => (g.frayed ? `${g.name} (gastada)` : g.name)).join(", ");
+  const frayed = c.worn.some((g) => g.frayed);
+  if (c.short === 0 && !frayed) return [];
+  const text = c.short > 0 ? SHORT[c.short] : "ropa gastada";
+  return [{ icon: "🧥", text, title: `Lo que tenés puesto: ${pieces}`, alert: c.short }];
+}
+
 function bodyChips(b: Hud["body"]): Chip[] {
   const out: Chip[] = [];
   const level = (n: number, icon: string, word: string, title: string) => {
@@ -219,6 +230,7 @@ export function TopBar({ hud, now }: { hud: Hud | undefined; now: string }) {
           ...dangerChips(hud.danger),
           ...bodyChips(hud.body),
           ...loadChips(hud.load),
+          ...clothingChips(hud.clothing),
           ...moodChips(hud.mood, hud.warmth),
         ].map((c) => (
           <span key={c.title} className={`chip alert-${c.alert ?? 0}`} title={c.title}>
