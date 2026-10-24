@@ -108,8 +108,11 @@ describe("la capa del viajero en la vida (opt-in)", () => {
       } as never);
       if (startWear > 0) w.truth.set(CLOAK, who, { wear: startWear });
     }
+    const before = new Map(
+      living(w.truth).map((x) => [x, w.truth.get(WARDROBE, x as AgentId)] as const),
+    );
     life.advanceTo(life.now + 3 * 86_400);
-    return { w, walkers };
+    return { w, walkers, before };
   }
 
   it("el viajero gasta la capa por día de camino; sin la opción nadie la lleva; se pierde al acabarse", () => {
@@ -136,8 +139,10 @@ describe("la capa del viajero en la vida (opt-in)", () => {
 
   it("con guardarropa la capa es su prenda de abrigo y se gasta más en camino (clothing-wear-cloak)", () => {
     const r = run(true, 0, true);
-    const coat = (x: AgentId) =>
-      r.w.truth.get(WARDROBE, x)?.items.find((i) => i.garment === "quilted-coat")?.wear ?? 0;
+    const coatIn = (row: { items: readonly { garment: string; wear: number }[] } | undefined) =>
+      row?.items.find((i) => i.garment === "quilted-coat")?.wear ?? 0;
+    // Lo que se gastó en estos días (cada uno arranca con el uso que traía).
+    const coat = (x: AgentId) => coatIn(r.w.truth.get(WARDROBE, x)) - coatIn(r.before.get(x));
     const travelers = r.walkers.filter((x) => r.w.truth.get(NPC_JOURNEY, x));
     expect(travelers.length).toBeGreaterThan(0);
     expect(r.walkers.every((x) => r.w.truth.get(CLOAK, x) === undefined)).toBe(true);

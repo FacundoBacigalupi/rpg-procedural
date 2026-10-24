@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**clothing-wear-stagger (2026-10-24, rama `feat/clothing-wear-stagger`, encima de `feat/clothing-wear-cloak`):** `seedWardrobes` en `game/life/wardrobe.ts`, llamado en `create.ts` con `options.wardrobe` antes de `seedParcels`; desgaste inicial `Rng.root(seed).fork("wardrobe", persona, prenda)`. Los tests de vida comparan lo gastado en los días, no el valor absoluto.
+
 **clothing-wear-cloak (2026-10-24, rama `feat/clothing-wear-cloak`, encima de `feat/clothing-wear-feet`):** `wardrobeCloak`/`wardrobeCloakClo` en `game/life/wardrobe.ts`; `clothingOf` del viajero usa la capa del guardarropa con `wardrobe`; `onRoad.is` devuelve `{cloak}`; `cloakWearProcess` y `cloakMendProcess` solo sin `wardrobe`. Tests en `wardrobe.test.ts` y `npc-cloak.test.ts`.
 
 **clothing-wear-feet (2026-10-24, rama `feat/clothing-wear-feet`, encima de `feat/clothing-wear`):** `chooseGarments` (sim/body/garments.ts) pone siempre un par de calzado además de la base; así las sandalias se gastan cada día. Test en `garments.test.ts`.
