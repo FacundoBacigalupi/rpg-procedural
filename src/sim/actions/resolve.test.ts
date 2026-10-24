@@ -493,6 +493,28 @@ describe("tomar", () => {
       expect(from(r)).toEqual(forestRef);
       expect(r.effect).toMatchObject({ got: [] });
     });
+
+    it("en casa ajena saca de su despensa solo lo que nombra y no está suelto (play-refs-objects-host)", () => {
+      const host = makeId("household", 4) as unknown as HolderRef;
+      const visit = (what: string | null, rows: Parameters<typeof ledgerWith>[0]) => {
+        const { homeLarder: _, ...rest } = atHome(what, rows);
+        return { ...rest, hostLarder: host };
+      };
+      const named = resolve(visit("jade", [{ holder: host, unit: jade, amount: 2 }]));
+      expect(from(named)).toBe(host);
+      expect(named.postings[0]?.transfers[0]?.from).toBe(holderAccount(host));
+      // Sin nombrar nada, o si lo nombrado está suelto, no se mete en lo ajeno.
+      expect(from(resolve(visit(null, [{ holder: host, unit: jade, amount: 2 }])))).toEqual(
+        forestRef,
+      );
+      const both = resolve(
+        visit("forage", [
+          { holder: forestRef as unknown as HolderRef, unit: forage, amount: 500 },
+          { holder: host, unit: forage, amount: 900 },
+        ]),
+      );
+      expect(from(both)).toEqual(forestRef);
+    });
   });
   const steal = (extra: Partial<ResolveInput> = {}, what?: string) =>
     input(

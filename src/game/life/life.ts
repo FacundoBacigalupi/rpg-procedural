@@ -285,8 +285,12 @@ export interface LifeSetup {
  * `life-43`: en su casa, un `take` sin `from` que no encuentra suelto lo que nombra lo saca de la
  * despensa del hogar (play-refs-objects-larder). Compatibilidad: un motor anterior a `life-43`
  * enciende `legacyNoLarderTake`.
+ *
+ * `life-44`: en casa ajena (un espacio cerrado de otro hogar), un `take` sin `from` que nombra algo
+ * que no está suelto lo saca de la despensa de ese hogar (play-refs-objects-host). Compatibilidad:
+ * un motor anterior a `life-44` enciende `legacyNoHostTake`.
  */
-export const LIFE_ENGINE = "life-43";
+export const LIFE_ENGINE = "life-44";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -339,6 +343,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 41 ? { legacyFixedSpeech: true } : {}),
     ...(n < 42 ? { legacyNoSettlementWalk: true } : {}),
     ...(n < 43 ? { legacyNoLarderTake: true } : {}),
+    ...(n < 44 ? { legacyNoHostTake: true } : {}),
   };
 }
 
