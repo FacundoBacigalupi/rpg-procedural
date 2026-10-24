@@ -172,8 +172,10 @@ export function renderView(
     const material = t.material === undefined ? undefined : `thing.material.${t.material}`;
     const thing =
       material !== undefined && book.has(material) ? `${noun} ${first(material)}` : noun;
-    if (t.looked === true) say("thing.looked", { thing });
-    else if (looking || described) say("thing.seen", { thing });
+    if (t.looked === true) {
+      say("thing.looked", { thing });
+      if (t.state !== undefined) say(`thing.state.${t.state}`);
+    } else if (looking || described) say("thing.seen", { thing });
   }
   for (const g of view.gone ?? []) say("percept.gone", { who: ref(g) });
   for (const c of view.self.cues) say(`self.${c}`);

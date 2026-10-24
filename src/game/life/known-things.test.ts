@@ -18,8 +18,11 @@ import {
   type ItemLook,
   LOCATION,
   planFromDraft,
+  VILLAGE_SQUARE,
+  WORK,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { fixturesInSight } from "./fixtures.ts";
 import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
 import { itemsSeen, playerView } from "./view.ts";
@@ -170,5 +173,66 @@ describe("mirar una cosa (play-refs-objects-look)", () => {
     expect(looked?.self.effect.kind).toBe("observe");
     expect(looked?.self.effect).not.toHaveProperty("target");
     expect(playerView(w, report.steps, { heardSince: report.from }).things).toBeUndefined();
+  });
+});
+
+describe("mirar lo fijo (play-refs-objects-fixtures-look)", () => {
+  /** Lleva al personaje a la plaza, donde está el pozo. */
+  function toSquare(w: LifeWorld): EntityRef {
+    const well = [...w.truth.ids(WORK)].find((id) => w.truth.get(WORK, id)?.kind === "well");
+    const hex = well === undefined ? undefined : w.truth.get(WORK, well)?.hexes[0];
+    if (well === undefined || hex === undefined) throw new Error("sin pozo");
+    w.truth.set(LOCATION, w.player, { hex, space: VILLAGE_SQUARE });
+    return well as EntityRef;
+  }
+
+  it("en la plaza «miro el pozo» lo mira a él y la vista lo trae con su estado", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const well = toSquare(w);
+    const fixtures = fixturesInSight(w);
+    expect(fixtures.map((f) => f.ref)).toEqual([well]);
+    const made = draft(w, "look", { role: "target", ref: { text: "el pozo", features: [] } });
+    expect(made.kind).toBe("plan");
+    if (made.kind !== "plan") return;
+    expect(made.plan.root).toMatchObject({
+      verb: "look",
+      args: [{ role: "target", entity: well }],
+    });
+    const report = life.turn(made.plan, 1);
+    const looked = report.steps.findLast((s) => s.verb === "look");
+    expect(looked?.self.effect).toMatchObject({ kind: "observe", target: well });
+    const view = playerView(w, report.steps, { heardSince: report.from });
+    const state = fixtures[0]?.state;
+    expect(view.things).toContainEqual({
+      shape: "well",
+      size: "large",
+      looked: true,
+      ...(state !== undefined ? { state } : {}),
+    });
+  });
+
+  it("lo fijo no se agarra y sin mirarlo no entra a la vista", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const well = toSquare(w);
+    expect(whatOf(take(w, "el pozo"))).not.toBe(well);
+    const made = planFromDraft(
+      { kind: "act", plan: { kind: "do", verb: "look", args: [] } } as never,
+      {
+        actor: w.player,
+        source: "player",
+        catalog: w.catalog,
+        known: knownEntities(w),
+        clock: w.clock,
+        causes: [{ kind: "state", entity: w.player, key: "intent" }],
+      },
+    );
+    if (made.kind !== "plan") throw new Error("sin plan");
+    const report = life.turn(made.plan, 1);
+    const shapes = (playerView(w, report.steps, { heardSince: report.from }).things ?? []).map(
+      (t) => t.shape,
+    );
+    expect(shapes).not.toContain("well");
   });
 });
