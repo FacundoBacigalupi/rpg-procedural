@@ -14,10 +14,19 @@ export const GoodDef = z
     priceCopperPerKg: z.number().positive().optional(),
     /** Días en que la mitad se echa a perder, guardado como se guarda en una casa de aldea. */
     halfLifeDays: z.number().positive().optional(),
+    /** Lo que pesa una pieza de una moneda, en gramos (lo que se siente al llevarla). */
+    pieceGrams: z.number().positive().optional(),
   })
   .superRefine((g, ctx) => {
     if (g.form === "coin" && (g.priceCopperPerKg !== undefined || g.halfLifeDays !== undefined)) {
       ctx.addIssue({ code: "custom", message: "una moneda no tiene precio por kilo ni se pudre" });
+    }
+    if (g.form === "good" && g.pieceGrams !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["pieceGrams"],
+        message: "un bien se cuenta en gramos",
+      });
     }
     if (g.form === "good" && g.priceCopperPerKg === undefined) {
       ctx.addIssue({ code: "custom", path: ["priceCopperPerKg"], message: "falta el precio" });
@@ -30,6 +39,16 @@ export const GOODS = defineContent("goods", GoodDef);
 /** La unidad del ledger de un bien o moneda. */
 export function goodUnit(g: Pick<GoodDef, "id" | "form">): LedgerUnit {
   return ledgerUnit(`${g.form === "coin" ? "coin" : "good"}:${g.id}`);
+}
+
+/**
+ * Cuántos gramos pesa lo que hay de una unidad: un bien ya se cuenta en gramos; una moneda, por
+ * pieza (`pieceGrams`, 0 si el contenido no lo dice).
+ */
+export function unitGrams(goods: readonly GoodDef[], unit: LedgerUnit, amount: number): number {
+  const g = goods.find((x) => goodUnit(x) === unit);
+  if (g === undefined) return unit.startsWith("good:") ? amount : 0;
+  return g.form === "good" ? amount : amount * (g.pieceGrams ?? 0);
 }
 
 /** La moneda de la aldea: piezas de cobre. */

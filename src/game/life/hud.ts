@@ -15,9 +15,10 @@
 // techo, si está gastado, caído o ardiendo. Adentro, el edificio donde está.
 // Puro: no escribe nada ni gasta RNG.
 
-import type { AgentId } from "../../core/index.ts";
+import { type AgentId, type HolderRef, holderAccount } from "../../core/index.ts";
 import {
   type AgeBand,
+  BODY_STATE,
   BUILDING,
   type BuildingRecord,
   CORE_NORMAL_C,
@@ -46,6 +47,7 @@ import {
   skyObserverOf,
   spaceLight,
   THERMAL,
+  unitGrams,
   weatherAt,
 } from "../../sim/index.ts";
 import { knownEntities } from "./known.ts";
@@ -135,6 +137,30 @@ export interface Hud {
    * ve viene (desde la inquietud).
    */
   readonly danger: { readonly level: Level; readonly from: number };
+  /**
+   * Lo que pesa lo que lleva encima, en bandas sobre su propio peso (`LOAD_BANDS`): 0 apenas nada,
+   * 1 cargado, 2 pesado, 3 al límite. El cuerpo lo siente aunque no lo haya contado.
+   */
+  readonly load: Level;
+}
+
+/**
+ * Fracción del peso del cuerpo desde la que la carga se siente (cargado, pesado, al límite): un
+ * cuarto del peso se lleva todo el día; la mitad, a duras penas. Calibración abierta.
+ */
+export const LOAD_BANDS = [0.1, 0.25, 0.45] as const;
+
+/** La banda de carga de lo que lleva el personaje, por los gramos de sus bienes y monedas. */
+export function loadOf(w: LifeWorld): Level {
+  const massKg = w.truth.get(BODY_STATE, w.player)?.massKg;
+  if (massKg === undefined || massKg <= 0) return 0;
+  let grams = 0;
+  for (const h of w.ledger.holdings(holderAccount(w.player as HolderRef))) {
+    if (h.amount > 0) grams += unitGrams(w.goods, h.unit, h.amount);
+  }
+  const fraction = grams / 1000 / massKg;
+  const band = LOAD_BANDS.filter((b) => fraction >= b).length;
+  return band as Level;
 }
 
 /** La fase de la luna en ocho, como se nombra a ojo. */
@@ -543,6 +569,7 @@ export function hudPanel(
     warmth: warmthOf(w.truth.get(THERMAL, w.player)?.coreC),
     ...nightSky({ indoor, sky: look, phase }, moon),
     danger: dangerOf(seen, threatOfIn(w), riskOfIn(w)),
+    load: loadOf(w),
   };
 }
 

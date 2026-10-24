@@ -1,15 +1,24 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { AgentId, EventId } from "../../core/index.ts";
-import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  type AgentId,
+  type ContentSource,
+  type EventId,
+  type HolderRef,
+  holderAccount,
+  loadContent,
+} from "../../core/index.ts";
+import {
+  BODY_STATE,
   type BuildingRecord,
   CORE_NORMAL_C,
   EMOTIONS,
+  goodUnit,
   LOCATION,
   type Percept,
   THERMAL,
+  unitGrams,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -17,6 +26,8 @@ import {
   dangerOf,
   dayPhase,
   hudPanel,
+  LOAD_BANDS,
+  loadOf,
   MAX_SEEN_BUILDINGS,
   moonPhaseName,
   nightSky,
@@ -304,5 +315,52 @@ describe("peligro en la barra", () => {
     expect(hudPanel(w, character, 0, strike).danger).toEqual({ level: 2, from: 1 });
     const work = [percept("p1", { action: read("action.work") })];
     expect(hudPanel(w, character, 0, work).danger.level).toBe(0);
+  });
+});
+
+describe("la carga en la barra (play-hud-load)", () => {
+  it("una moneda pesa por pieza; un bien ya está en gramos", () => {
+    const goods = Life.create(7, content, { frequency: 8 }).world.goods;
+    expect(unitGrams(goods, goodUnit({ id: "grain", form: "good" }), 500)).toBe(500);
+    expect(unitGrams(goods, goodUnit({ id: "copper", form: "coin" }), 10)).toBeCloseTo(37);
+  });
+
+  it("sube por bandas sobre el peso del cuerpo con lo que lleva encima", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const massKg = w.truth.get(BODY_STATE, w.player)?.massKg ?? 0;
+    expect(massKg).toBeGreaterThan(0);
+    const mine = holderAccount(w.player as unknown as HolderRef);
+    // Se le pasa de a poco el bien que más tiene otro (una casa con su granero).
+    const richest = w.ledger
+      .balances()
+      .filter(
+        (r) => r.account !== mine && r.unit.startsWith("good:") && !r.account.startsWith("ext:"),
+      )
+      .sort((a, b) => b.amount - a.amount)[0];
+    if (richest === undefined) throw new Error("nadie tiene bienes");
+    let evn = 900_000;
+    const give = (g: number) =>
+      w.ledger.post({
+        tick: 0,
+        eventId: `event:${++evn}` as EventId,
+        transfers: [{ from: richest.account, to: mine, unit: richest.unit, amount: g }],
+      });
+    const carried = () =>
+      w.ledger
+        .holdings(mine)
+        .reduce((n, h) => n + (h.amount > 0 ? unitGrams(w.goods, h.unit, h.amount) : 0), 0);
+    const band = () => LOAD_BANDS.filter((b) => carried() / 1000 / massKg >= b).length;
+    expect(loadOf(w)).toBe(band());
+    const toward = (fraction: number) => {
+      const missing = Math.ceil(fraction * massKg * 1000 - carried());
+      if (missing > 0) give(Math.min(missing, w.ledger.balance(richest.account, richest.unit)));
+    };
+    toward(0.3);
+    expect(loadOf(w)).toBe(band());
+    expect(hudPanel(w, characterPanel(w), 0, []).load).toBe(loadOf(w));
+    toward(0.5);
+    expect(loadOf(w)).toBe(band());
+    if (carried() / 1000 / massKg >= 0.45) expect(loadOf(w)).toBe(3);
   });
 });
