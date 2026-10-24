@@ -51,6 +51,7 @@ import {
   weatherAt,
 } from "../../sim/index.ts";
 import { knownEntities } from "./known.ts";
+import { type Outfit, outfitOf } from "./outfit.ts";
 import type { BurdenLevel, CharacterPanel } from "./panels.ts";
 import { MAX_CLEAR_PERCEPTS } from "./view.ts";
 import { type AirFeel, type SeasonName, weatherPanel } from "./weather-panel.ts";
@@ -142,6 +143,11 @@ export interface Hud {
    * 1 cargado, 2 pesado, 3 al límite. El cuerpo lo siente aunque no lo haya contado.
    */
   readonly load: Level;
+  /**
+   * Lo que tiene puesto y si le alcanza para el aire que siente (clothing-player-hud). Sin el
+   * guardarropa encendido no hay prendas: `undefined`.
+   */
+  readonly clothing?: Outfit;
 }
 
 /**
@@ -541,6 +547,7 @@ export function hudPanel(
   const phase = dayPhase(hour);
   const look = skyLook(day.cloud, day.precip.kind, indoor);
   const moon = w.clock.moons.length > 0 ? moonAt(w.clock, skyObserverOf(w.map), 0, now) : null;
+  const outfit = outfitOf(w);
   return {
     hour,
     phase,
@@ -570,6 +577,7 @@ export function hudPanel(
     ...nightSky({ indoor, sky: look, phase }, moon),
     danger: dangerOf(seen, threatOfIn(w), riskOfIn(w)),
     load: loadOf(w),
+    ...(outfit ? { clothing: outfit } : {}),
   };
 }
 

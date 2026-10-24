@@ -5,6 +5,7 @@ import {
   renderBook,
   renderCharacter,
   renderEnvironment,
+  renderInventory,
   renderWeather,
 } from "./render.ts";
 
@@ -129,5 +130,28 @@ describe("renderWeather", () => {
     expect(text).toContain("no lo jurarías");
     expect(text).toContain("lo que suele hacer en esta época");
     expect(text).not.toMatch(/\d/);
+  });
+});
+
+describe("renderInventory con la ropa puesta (clothing-player-hud)", () => {
+  const base = { coins: 0, carried: [], larder: [] };
+
+  it("sin guardarropa no dice nada de la ropa", () => {
+    expect(renderInventory(base)).not.toContain("puesto");
+  });
+
+  it("nombra lo puesto, marca lo gastado y avisa si no alcanza", () => {
+    const text = renderInventory({
+      ...base,
+      worn: {
+        worn: [
+          { garment: "undershirt", name: "camisa de lino", frayed: true },
+          { garment: "trousers", name: "pantalón", frayed: false },
+        ],
+        short: 2,
+      },
+    });
+    expect(text).toContain("Tenés puesto: camisa de lino (gastada), pantalón.");
+    expect(text).toContain("pasás frío");
   });
 });

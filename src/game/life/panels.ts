@@ -48,6 +48,7 @@ import type { ViewCues } from "./cue-local.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { playerNickname, REPUTATION_NOTICED } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
+import { type Outfit, outfitOf } from "./outfit.ts";
 import type { ResidueConfig } from "./residue.ts";
 import { type SubstancePanel, substancePanel } from "./substance-panel.ts";
 import { acquaintances } from "./view.ts";
@@ -162,6 +163,8 @@ export interface InventoryPanel {
   readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
   readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
+  /** La ropa que tiene puesta, con el guardarropa encendido (clothing-player-hud). */
+  readonly worn?: Outfit;
 }
 
 export interface CharacterPanelOptions {
@@ -450,6 +453,7 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
   const believed = w.truth.get(INVENTORY_BELIEF, w.player);
   const carriedNow = believed?.carried ?? holdings(w.player as HolderRef);
   const larderNow = believed?.larder ?? holdings(me.household as unknown as HolderRef);
+  const outfit = outfitOf(w);
   return {
     coins: carriedNow.find((h) => h.unit === COPPER)?.amount ?? 0,
     carried: carriedNow
@@ -459,5 +463,6 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
       good: name(h.unit),
       lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),
     })),
+    ...(outfit ? { worn: outfit } : {}),
   };
 }

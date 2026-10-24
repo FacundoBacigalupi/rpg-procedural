@@ -87,6 +87,14 @@ export interface Hud {
   readonly stars: "none" | "few" | "many";
   readonly danger: { readonly level: 0 | 1 | 2 | 3; readonly from: number };
   readonly load: 0 | 1 | 2 | 3;
+  readonly clothing?: {
+    readonly worn: readonly {
+      readonly garment: string;
+      readonly name: string;
+      readonly frayed: boolean;
+    }[];
+    readonly short: 0 | 1 | 2;
+  };
 }
 
 export interface Panels {
