@@ -2,7 +2,8 @@
   {
     "id": "copper",
     "name": "moneda de cobre",
-    "form": "coin"
+    "form": "coin",
+    "pieceGrams": 3.7
   },
   {
     "id": "grain",
