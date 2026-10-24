@@ -70,6 +70,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**play-scene-buildings (2026-10-23, rama `feat/play-scene-buildings`, encima de `feat/play-scene-more`):** `seenBuildings` y `buildingsOf` en life/hud (`BUILDING` de settlements, materiales por gramos, desgaste por `condition`), `boxesOf`, `Houses`, `LitWindows` y `Flames` en `Scene.tsx`, interior por `place.building`. Tests en `hud.test.ts`. Sin bump de motor.
+
 **play-npc-settlement-walk (2026-10-23, rama `feat/play-npc-settlement-walk`):** motor `life-42`; `act.ts` toma la aldea como destino de cualquier `move` y `planFromDecision` acepta `settlement:` como parte de entidad (`legacyNoSettlementWalk` por `engineOptions`/LifeOptions/LifeWorld hasta `act` y `npcVerbsProcess`). Tests en `site-move.test.ts` y `npc-verbs.test.ts`. Sin efecto medido a 2 años: nadie decide ir a la aldea todavía.
 
 **play-novel-entry-fallback (2026-10-23, rama `feat/play-novel-entry`):** `sim/family/village.ts` busca con `BIRTH_AGE_SLACKS` y explica el fallo (`NoSuchBirth` con el motivo de `playerFits`); `game/life/create.ts` `birthFilter` devuelve el motivo. Test en `family.test.ts`.

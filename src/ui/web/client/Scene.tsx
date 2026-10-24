@@ -6,9 +6,13 @@
 // Todo se pinta con los colores de día (varios tonos por cosa: piel, pelo, ropa, paredes, techos) y
 // encima va una capa de luz según la hora y el cielo; lo que alumbra (ventanas, el fuego del hogar)
 // se pinta después de esa capa para que brille.
+//
+// Las casas de afuera son las que ve (`Hud.place.buildings`): el tipo da la forma, el material de
+// paredes y techo el color, más chicas cuanto más lejos; las gastadas, oscurecidas y rajadas; las
+// caídas, sin techo; las que arden, con llamas. Sin edificios en la vida, las casas de siempre.
 
 import type { CSSProperties } from "react";
-import type { Hud } from "../api.ts";
+import type { Hud, SeenBuilding } from "../api.ts";
 
 interface Sky {
   readonly top: string;
@@ -239,78 +243,214 @@ function Figure({
 // ---------------------------------------------------------------------------------------------
 // Afuera
 
-const HOUSES = [
-  { x: 60, w: 260, h: 170, wall: "#c9b48f", roof: "#6b4a34" },
-  { x: 380, w: 200, h: 140, wall: "#b9a37d", roof: "#7a5a3a" },
-  { x: 640, w: 280, h: 190, wall: "#d2bf9b", roof: "#5e4a3e" },
-  { x: 1010, w: 220, h: 150, wall: "#bfa889", roof: "#80603f" },
-  { x: 1300, w: 260, h: 175, wall: "#c6b08a", roof: "#5a4335" },
-] as const;
+interface HouseBox {
+  readonly key: string;
+  readonly x: number;
+  readonly w: number;
+  readonly h: number;
+  readonly wall: string;
+  readonly roof: string;
+  readonly worn?: 0 | 1 | 2;
+  readonly ruin?: boolean;
+  readonly burning?: boolean;
+  /** Sin ventana ni chimenea (un granero). */
+  readonly blind?: boolean;
+}
 
-function Houses({ smoke }: { smoke: boolean }) {
+const HOUSES: readonly HouseBox[] = [
+  { key: "a", x: 60, w: 260, h: 170, wall: "#c9b48f", roof: "#6b4a34" },
+  { key: "b", x: 380, w: 200, h: 140, wall: "#b9a37d", roof: "#7a5a3a" },
+  { key: "c", x: 640, w: 280, h: 190, wall: "#d2bf9b", roof: "#5e4a3e" },
+  { key: "d", x: 1010, w: 220, h: 150, wall: "#bfa889", roof: "#80603f" },
+  { key: "e", x: 1300, w: 260, h: 175, wall: "#c6b08a", roof: "#5a4335" },
+];
+
+/** Ancho y alto (a la distancia más cercana) por tipo de edificio. */
+const SHAPE: Readonly<Record<string, readonly [number, number]>> = {
+  cottage: [230, 150],
+  farmhouse: [310, 185],
+  granary: [150, 195],
+};
+
+/** Color de pared y de techo por material (`content/materials`). */
+const WALL: Readonly<Record<string, string>> = {
+  clay: "#c9b28c",
+  timber: "#9a7550",
+  stone: "#a39f97",
+  thatch: "#b39a62",
+};
+const ROOF: Readonly<Record<string, string>> = {
+  thatch: "#7a5c3c",
+  timber: "#5e4a3e",
+  stone: "#6d6a66",
+  clay: "#8a5a40",
+};
+
+/** Las casas que ve, puestas de oeste a este; las lejanas, más chicas y pintadas primero. */
+export function boxesOf(seen: readonly SeenBuilding[]): HouseBox[] {
+  const span = Math.max(30, ...seen.map((b) => Math.abs(b.x)));
+  return seen
+    .map((b, i) => {
+      const [w0, h0] = SHAPE[b.type] ?? [230, 150];
+      const s = Math.min(1.1, Math.max(0.4, 1.15 - b.d / 220));
+      const w = w0 * s;
+      return {
+        key: `${i}:${b.x}:${b.d}`,
+        d: b.d,
+        x: 800 + (b.x / span) * 660 - w / 2,
+        w,
+        h: h0 * s,
+        wall: WALL[b.wall] ?? "#c2ad88",
+        roof: ROOF[b.roof] ?? "#6b4a34",
+        worn: b.worn,
+        ruin: b.ruin,
+        burning: b.burning,
+        blind: b.type === "granary",
+      };
+    })
+    .sort((a, b) => b.d - a.d)
+    .map(({ d: _, ...box }) => box);
+}
+
+function Houses({ boxes, smoke }: { boxes: readonly HouseBox[]; smoke: boolean }) {
   return (
     <g>
-      {HOUSES.map(({ x, w, h, wall, roof }, i) => (
-        <g key={x}>
-          {/* Paredes de barro con zócalo de piedra, techo de paja con alero. */}
-          <rect x={x} y={700 - h} width={w} height={h} fill={wall} />
-          <rect x={x} y={680} width={w} height={20} fill="#8d8478" />
-          <rect x={x} y={700 - h} width={w} height={h} fill="url(#wallShade)" />
-          <path
-            d={`M${x - 26} ${706 - h} L${x + w / 2} ${636 - h} L${x + w + 26} ${706 - h} Z`}
-            fill={roof}
-          />
-          <path
-            d={`M${x - 26} ${706 - h} L${x + w + 26} ${706 - h} L${x + w + 18} ${716 - h} L${x - 18} ${716 - h} Z`}
-            fill="#000"
-            opacity="0.2"
-          />
-          <rect
-            x={x + w * 0.12}
-            y={700 - h * 0.62}
-            width={w * 0.2}
-            height={h * 0.62}
-            fill="#4a3526"
-          />
-          <rect
-            x={x + w * 0.62}
-            y={700 - h * 0.7}
-            width={w * 0.17}
-            height={h * 0.22}
-            fill="#2a2420"
-          />
-          {i % 2 === 0 && (
-            <rect x={x + w * 0.74} y={650 - h} width={w * 0.07} height={44} fill="#7d7166" />
-          )}
-          {smoke && i % 2 === 0 && (
-            <g fill="#d8d8d8" opacity="0.35">
-              <circle cx={x + w * 0.78} cy={600 - h} r="16" />
-              <circle cx={x + w * 0.8} cy={565 - h} r="22" />
-              <circle cx={x + w * 0.76} cy={520 - h} r="28" />
-            </g>
-          )}
-        </g>
-      ))}
+      {boxes.map(({ key, x, w, h, wall, roof, worn = 0, ruin, burning, blind }, i) => {
+        // Una caída queda en pie a media altura, con el borde roto y sin techo.
+        const top = ruin ? 700 - h * 0.45 : 700 - h;
+        const chimney = !ruin && !blind && i % 2 === 0;
+        return (
+          <g key={key}>
+            {/* Paredes con zócalo de piedra, techo con alero. */}
+            {ruin ? (
+              <path
+                d={`M${x} 700 L${x} ${top} L${x + w * 0.2} ${top - 14} L${x + w * 0.38} ${top + 10} L${x + w * 0.6} ${top - 20} L${x + w * 0.8} ${top + 6} L${x + w} ${top - 8} L${x + w} 700 Z`}
+                fill={wall}
+              />
+            ) : (
+              <rect x={x} y={top} width={w} height={h} fill={wall} />
+            )}
+            <rect x={x} y={680} width={w} height={20} fill="#8d8478" />
+            <rect x={x} y={top} width={w} height={700 - top} fill="url(#wallShade)" />
+            {worn > 0 && (
+              <rect
+                x={x}
+                y={top}
+                width={w}
+                height={700 - top}
+                fill="#2a2018"
+                opacity={worn * 0.14}
+              />
+            )}
+            {worn === 2 && !ruin && (
+              <path
+                d={`M${x + w * 0.45} ${top + 8} L${x + w * 0.5} ${top + h * 0.3} L${x + w * 0.44} ${top + h * 0.5}`}
+                stroke="#3a2c20"
+                strokeWidth="4"
+                fill="none"
+              />
+            )}
+            {!ruin && (
+              <>
+                <path
+                  d={`M${x - 26} ${706 - h} L${x + w / 2} ${636 - h} L${x + w + 26} ${706 - h} Z`}
+                  fill={roof}
+                />
+                <path
+                  d={`M${x - 26} ${706 - h} L${x + w + 26} ${706 - h} L${x + w + 18} ${716 - h} L${x - 18} ${716 - h} Z`}
+                  fill="#000"
+                  opacity="0.2"
+                />
+                <rect
+                  x={x + w * 0.12}
+                  y={700 - h * 0.62}
+                  width={w * 0.2}
+                  height={h * 0.62}
+                  fill="#4a3526"
+                />
+              </>
+            )}
+            {!ruin && !blind && (
+              <rect
+                x={x + w * 0.62}
+                y={700 - h * 0.7}
+                width={w * 0.17}
+                height={h * 0.22}
+                fill="#2a2420"
+              />
+            )}
+            {chimney && (
+              <rect x={x + w * 0.74} y={650 - h} width={w * 0.07} height={44} fill="#7d7166" />
+            )}
+            {chimney && (smoke || burning) && (
+              <g fill={burning ? "#5a5550" : "#d8d8d8"} opacity={burning ? 0.6 : 0.35}>
+                <circle cx={x + w * 0.78} cy={600 - h} r="16" />
+                <circle cx={x + w * 0.8} cy={565 - h} r="22" />
+                <circle cx={x + w * 0.76} cy={520 - h} r="28" />
+              </g>
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }
 
 /** Las ventanas que alumbran de noche: van encima de la capa de luz. */
-function LitWindows() {
+function LitWindows({ boxes }: { boxes: readonly HouseBox[] }) {
   return (
     <g fill="#ffcf7a">
-      {HOUSES.map(({ x, w, h }) => (
-        <g key={x}>
-          <rect
-            x={x + w * 0.62}
-            y={700 - h * 0.7}
-            width={w * 0.17}
-            height={h * 0.22}
-            opacity="0.85"
-          />
-          <ellipse cx={x + w * 0.7} cy={700 - h * 0.6} rx={w * 0.3} ry={h * 0.35} opacity="0.12" />
-        </g>
-      ))}
+      {boxes
+        .filter((b) => !b.ruin && !b.blind && !b.burning)
+        .map(({ key, x, w, h }) => (
+          <g key={key}>
+            <rect
+              x={x + w * 0.62}
+              y={700 - h * 0.7}
+              width={w * 0.17}
+              height={h * 0.22}
+              opacity="0.85"
+            />
+            <ellipse
+              cx={x + w * 0.7}
+              cy={700 - h * 0.6}
+              rx={w * 0.3}
+              ry={h * 0.35}
+              opacity="0.12"
+            />
+          </g>
+        ))}
+    </g>
+  );
+}
+
+/** Las casas que arden: llamas sobre el techo, encima de la capa de luz. */
+function Flames({ boxes, dark }: { boxes: readonly HouseBox[]; dark: boolean }) {
+  return (
+    <g>
+      {boxes
+        .filter((b) => b.burning)
+        .map(({ key, x, w, h }) => (
+          <g key={key}>
+            <ellipse
+              cx={x + w / 2}
+              cy={690 - h}
+              rx={w * 0.9}
+              ry={h * 0.9}
+              fill="#ff8a2a"
+              opacity={dark ? 0.3 : 0.12}
+            />
+            <path
+              d={`M${x + w * 0.1} ${706 - h} C${x + w * 0.15} ${640 - h} ${x + w * 0.3} ${620 - h} ${x + w * 0.35} ${560 - h} C${x + w * 0.45} ${620 - h} ${x + w * 0.55} ${600 - h} ${x + w * 0.6} ${540 - h} C${x + w * 0.7} ${610 - h} ${x + w * 0.85} ${630 - h} ${x + w * 0.9} ${706 - h} Z`}
+              fill="#ff7a1a"
+              opacity="0.9"
+            />
+            <path
+              d={`M${x + w * 0.3} ${706 - h} C${x + w * 0.35} ${660 - h} ${x + w * 0.45} ${650 - h} ${x + w * 0.5} ${610 - h} C${x + w * 0.55} ${650 - h} ${x + w * 0.65} ${660 - h} ${x + w * 0.7} ${706 - h} Z`}
+              fill="#ffd27a"
+            />
+          </g>
+        ))}
     </g>
   );
 }
@@ -352,8 +492,16 @@ function Clouds({ dense }: { dense: boolean }) {
   );
 }
 
+/** Las casas a pintar: las que ve, o las de siempre si la vida no tiene edificios. */
+function houseBoxes(hud: Hud): readonly HouseBox[] {
+  if (hud.place.buildings) return boxesOf(hud.place.buildings);
+  const village = hud.place.kinds.includes("village") || hud.place.space !== "open";
+  return village ? HOUSES : [];
+}
+
 function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
   const village = hud.place.kinds.includes("village") || hud.place.space !== "open";
+  const boxes = houseBoxes(hud);
   const forest = hud.place.kinds.includes("forest");
   const water = hud.place.kinds.includes("water");
   return (
@@ -377,9 +525,10 @@ function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
       />
       <path d="M0 640 Q300 560 620 620 T1200 600 T1600 620 V900 H0 Z" fill="#6f8a64" />
       {forest && <Trees />}
-      {village && (
-        <Houses smoke={hud.air === "cold" || hud.air === "bitter" || hud.air === "cool"} />
-      )}
+      <Houses
+        boxes={boxes}
+        smoke={hud.air === "cold" || hud.air === "bitter" || hud.air === "cool"}
+      />
       <rect y="700" width="1600" height="200" fill={water ? "#4f86a8" : "#7a8a4e"} />
       <rect y="700" width="1600" height="200" fill="url(#groundShade)" />
       {village && !water && (
@@ -396,12 +545,26 @@ function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
 // ---------------------------------------------------------------------------------------------
 // Adentro
 
+/** El color de la pared por dentro, por material; sin dato, barro. */
+const ROOM_WALL: Readonly<Record<string, string>> = {
+  clay: "#a88a66",
+  timber: "#8a6646",
+  stone: "#8f8a82",
+};
+
 function Room({ hud, sky }: { hud: Hud; sky: Sky }) {
+  const building = hud.place.building;
+  const granary = building?.type === "granary";
+  const worn = building?.worn ?? 0;
   return (
     <>
-      {/* Paredes de barro, piso de tierra apisonada, vigas de madera. */}
-      <rect width="1600" height="900" fill="#a88a66" />
+      {/* Paredes del material del edificio, piso de tierra apisonada, vigas de madera. */}
+      <rect width="1600" height="900" fill={ROOM_WALL[building?.wall ?? "clay"] ?? "#a88a66"} />
       <rect width="1600" height="900" fill="url(#wallShade)" />
+      {worn > 0 && <rect width="1600" height="640" fill="#2a2018" opacity={worn * 0.12} />}
+      {worn === 2 && (
+        <path d="M420 90 L450 220 L425 330 L460 450" stroke="#3a2c20" strokeWidth="6" fill="none" />
+      )}
       <rect y="640" width="1600" height="260" fill="#6e5440" />
       <rect y="630" width="1600" height="18" fill="#4e3a2b" />
       {[0, 400, 800, 1200].map((x) => (
@@ -434,9 +597,21 @@ function Room({ hud, sky }: { hud: Hud; sky: Sky }) {
       <rect x="620" y="560" width="380" height="26" fill="#5b4330" />
       <rect x="650" y="586" width="20" height="70" fill="#4e3a2b" />
       <rect x="950" y="586" width="20" height="70" fill="#4e3a2b" />
-      {/* El hogar: piedras con el fuego adentro (el fuego va sobre la capa de luz). */}
-      <path d="M170 650 Q300 560 430 650 Z" fill="#6f6a64" />
-      <ellipse cx="300" cy="652" rx="140" ry="22" fill="#5a5550" />
+      {granary ? (
+        // Un granero no tiene hogar: bolsas y cestos apilados contra la pared.
+        <g fill="#c8b07c">
+          <ellipse cx="220" cy="610" rx="80" ry="50" />
+          <ellipse cx="350" cy="615" rx="75" ry="46" />
+          <ellipse cx="285" cy="545" rx="72" ry="44" fill="#b89f6c" />
+          <rect x="1300" y="520" width="140" height="120" rx="20" fill="#9a7a4c" />
+        </g>
+      ) : (
+        <>
+          {/* El hogar: piedras con el fuego adentro (el fuego va sobre la capa de luz). */}
+          <path d="M170 650 Q300 560 430 650 Z" fill="#6f6a64" />
+          <ellipse cx="300" cy="652" rx="140" ry="22" fill="#5a5550" />
+        </>
+      )}
     </>
   );
 }
@@ -461,7 +636,7 @@ export function Scene({ hud }: { hud: Hud | undefined }) {
   const indoor = hud.place.indoor;
   const shade = shadeOf(hud);
   const dark = hud.light !== "bright";
-  const village = hud.place.kinds.includes("village") || hud.place.space !== "open";
+  const boxes = indoor ? [] : houseBoxes(hud);
   const people = Math.min(SPOTS.length, hud.people.around);
   return (
     <div className="scene" aria-hidden="true">
@@ -489,8 +664,11 @@ export function Scene({ hud }: { hud: Hud | undefined }) {
         {shade.opacity > 0 && (
           <rect width="1600" height="900" fill={shade.color} opacity={shade.opacity} />
         )}
-        {indoor && hud.place.fire !== false && <Hearth dark={dark} />}
-        {!indoor && village && dark && <LitWindows />}
+        {indoor && hud.place.fire !== false && hud.place.building?.type !== "granary" && (
+          <Hearth dark={dark} />
+        )}
+        {!indoor && dark && <LitWindows boxes={boxes} />}
+        {!indoor && <Flames boxes={boxes} dark={dark} />}
       </svg>
       {hud.sky === "rain" && <div className="weather rain" />}
       {hud.sky === "snow" && <div className="weather snow" />}

@@ -3,9 +3,17 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EventId } from "../../core/index.ts";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import { CORE_NORMAL_C, EMOTIONS, type Percept, THERMAL } from "../../sim/index.ts";
+import {
+  type BuildingRecord,
+  CORE_NORMAL_C,
+  EMOTIONS,
+  LOCATION,
+  type Percept,
+  THERMAL,
+  VILLAGE_SQUARE,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { dayPhase, hudPanel, warmthOf } from "./hud.ts";
+import { dayPhase, hudPanel, MAX_SEEN_BUILDINGS, seenBuildings, warmthOf } from "./hud.ts";
 import { Life } from "./life.ts";
 import { characterPanel, inventoryPanel } from "./panels.ts";
 import { playerView } from "./view.ts";
@@ -112,5 +120,74 @@ describe("la barra de arriba (hudPanel)", () => {
     const signals = w.truth.get(EMOTIONS, w.player)?.signals ?? [];
     w.truth.set(EMOTIONS, w.player, { signals: signals.map((x) => ({ ...x, at: old })) });
     expect(hudPanel(w, character, 0, []).mood.feeling).toBeNull();
+  });
+});
+
+describe("edificios en el fondo", () => {
+  const building = (x: number, y: number, extra: Partial<BuildingRecord> = {}): BuildingRecord =>
+    ({
+      type: "cottage",
+      at: { x, y },
+      graph: { spaces: [], edges: [], entrance: "e", door: "doorway" },
+      components: [
+        {
+          part: "walls",
+          area: 30,
+          materials: [
+            { material: "clay", grams: 900, origin: "e:x" },
+            { material: "timber", grams: 100, origin: "e:x" },
+          ],
+          condition: 0.1,
+          quality: 0.5,
+          defects: [],
+        },
+        {
+          part: "roof",
+          area: 30,
+          materials: [{ material: "thatch", grams: 300, origin: "e:x" }],
+          condition: 0.7,
+          quality: 0.5,
+          defects: [],
+        },
+      ],
+      ...extra,
+    }) as unknown as BuildingRecord;
+
+  it("ve los cercanos a la luz que hay, de oeste a este, con material, desgaste, ruina y fuego", () => {
+    const rows = [
+      { id: "b:1", b: building(40, 0) },
+      { id: "b:2", b: building(-60, 10, { type: "granary" }) },
+      { id: "b:3", b: building(0, 300) },
+      {
+        id: "b:4",
+        b: building(10, -20, {
+          ruin: { cause: "fire", rebuild: "same" },
+          fire: { intensity: 0.5 } as NonNullable<BuildingRecord["fire"]>,
+        }),
+      },
+    ];
+    const seen = seenBuildings(rows, { x: 0, y: 0 }, 250);
+    expect(seen.map((b) => b.x)).toEqual([-60, 10, 40]);
+    expect(seen[0]).toMatchObject({ type: "granary", wall: "clay", roof: "thatch", worn: 2 });
+    expect(seen[1]).toMatchObject({ ruin: true, burning: true, d: 20 });
+    // De noche, solo lo que está encima; el propio no se cuenta.
+    expect(seenBuildings(rows, { x: 0, y: 0 }, 30).map((b) => b.x)).toEqual([10]);
+    expect(seenBuildings(rows, { x: 0, y: 0 }, 30, "b:4")).toEqual([]);
+  });
+
+  it("en la vida: adentro sabe en qué edificio está; en la plaza ve los de alrededor", () => {
+    const life = Life.create(7, content, { frequency: 8 });
+    const w = life.world;
+    const at = w.truth.get(LOCATION, w.player);
+    const character = characterPanel(w);
+    const hud = hudPanel(w, character, 0, []);
+    if (hud.place.indoor) expect(hud.place.building?.type).toBeTruthy();
+    if (!at) return;
+    w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    const out = hudPanel(w, characterPanel(w), 0, []);
+    expect(out.place.indoor).toBe(false);
+    expect(out.place.building).toBeUndefined();
+    expect(Array.isArray(out.place.buildings)).toBe(true);
+    expect(out.place.buildings?.length ?? 0).toBeLessThanOrEqual(MAX_SEEN_BUILDINGS);
   });
 });
