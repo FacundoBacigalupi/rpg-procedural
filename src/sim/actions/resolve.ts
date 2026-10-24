@@ -141,6 +141,12 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * `from` que no encuentra lo que nombra suelto en el lugar lo saca de acá.
    */
   readonly homeLarder?: HolderRef | undefined;
+  /**
+   * La despensa ajena a la vista: el actor está adentro de la casa de otro hogar
+   * (play-refs-objects-source). Un `take` sin `from` que nombra algo que no está suelto en el lugar
+   * lo saca de acá (es de ese hogar: quien lo vea, lo ve llevárselo).
+   */
+  readonly hostLarder?: HolderRef | undefined;
   /** Opt-in: el combustible que gasta `boil` (unidad del ledger y gramos por tanda); sin esto no hay con qué hervir. */
   readonly boilFuel?: { readonly unit: LedgerUnit; readonly grams: number } | undefined;
   /** Opt-in: el material filtrante que gasta `filter` (unidad del ledger y gramos por tanda); sin esto no hay con qué filtrar. */
@@ -1429,11 +1435,20 @@ const take: Resolver = (c) => {
 
 /**
  * De dónde sale un `take` sin `from`: lo suelto en el lugar, salvo que en casa lo que nombra (o
- * cualquier cosa, si el lugar está vacío) solo esté en la despensa.
+ * cualquier cosa, si el lugar está vacío) solo esté en la despensa, o que en casa ajena lo que
+ * nombra solo esté en la despensa de ese hogar.
  */
 function homeOrPlace(c: Ctx, what: string | null): HolderRef {
   const place = c.input.place;
   const home = c.input.homeLarder;
+  const host = c.input.hostLarder;
+  if (host !== undefined) {
+    // En casa ajena solo se saca de la despensa lo que se nombra y no está suelto.
+    const names = c.input.unitNames;
+    const loose = c.input.ledger.holdings(holderAccount(place));
+    const stored = c.input.ledger.holdings(holderAccount(host));
+    return !namesAny(loose, what, names) && namesAny(stored, what, names) ? host : place;
+  }
   if (home === undefined) return place;
   const loose = c.input.ledger.holdings(holderAccount(place));
   const stored = c.input.ledger.holdings(holderAccount(home));

@@ -363,6 +363,8 @@ export interface ActOptions {
   readonly legacyNoSettlementWalk?: boolean;
   /** Replay de motores anteriores a `life-43`: `take` en casa no saca de la despensa del hogar. */
   readonly legacyNoLarderTake?: boolean;
+  /** Replay de motores anteriores a `life-44`: `take` en casa ajena no saca de la despensa de ese hogar. */
+  readonly legacyNoHostTake?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -720,6 +722,20 @@ function atHome(o: ActOptions, truth: ReadonlyWorldTruth, me: AgentId): boolean 
   if (household === undefined || space === undefined) return false;
   const node = o.spaces.spaces.find((s) => s.key === space);
   return node !== undefined && node.household === household && node.indoor;
+}
+
+/** La despensa del hogar dueño del espacio cerrado donde está `me`, si no es el suyo. */
+function hostLarderOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+): { hostLarder?: HolderRef } {
+  const household = truth.get(PERSON, me)?.household;
+  const space = truth.get(LOCATION, me)?.space;
+  if (space === undefined) return {};
+  const node = o.spaces.spaces.find((s) => s.key === space);
+  if (node?.household === undefined || !node.indoor || node.household === household) return {};
+  return { hostLarder: node.household as unknown as HolderRef };
 }
 
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
@@ -1126,6 +1142,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(node.verb === "take" && o.legacyNoLarderTake !== true && atHome(o, truth, me)
       ? { homeLarder: person.household as unknown as HolderRef }
       : {}),
+    ...(node.verb === "take" && o.legacyNoHostTake !== true ? hostLarderOf(o, truth, me) : {}),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }

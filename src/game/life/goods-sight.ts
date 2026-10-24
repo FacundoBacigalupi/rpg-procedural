@@ -16,11 +16,14 @@ import {
 } from "../../sim/index.ts";
 import type { LifeWorld } from "./world.ts";
 
-/** Una unidad que se ve: de dónde (`place`, suelta en el lugar; `home`, la despensa de su casa). */
+/**
+ * Una unidad que se ve: de dónde (`place`, suelta en el lugar; `home`, la despensa de su casa;
+ * `host`, la despensa de la casa ajena donde está).
+ */
 export interface GoodInSight {
   readonly unit: LedgerUnit;
   readonly amount: number;
-  readonly where: "place" | "home";
+  readonly where: "place" | "home" | "host";
 }
 
 /** Lo que se agarra sin nombrar un bien: «agarro algo», «tomo lo que haya», «un puñado». */
@@ -48,7 +51,7 @@ const GENERIC = new Set(
   ].flatMap(refTokens),
 );
 
-/** Los bienes a la vista: lo suelto en el lugar donde está y, en su casa, la despensa. */
+/** Los bienes a la vista: lo suelto en el lugar donde está y, en una casa, su despensa. */
 export function goodsInSight(w: LifeWorld): GoodInSight[] {
   const at = w.truth.get(LOCATION, w.player);
   if (!at) return [];
@@ -65,8 +68,8 @@ export function goodsInSight(w: LifeWorld): GoodInSight[] {
   add(placeRefOf(w.map, placeAt(places, at.hex)), "place");
   const household = w.truth.get(PERSON, w.player)?.household;
   const node = at.space === undefined ? undefined : w.spaces.spaces.find((s) => s.key === at.space);
-  if (household !== undefined && node?.household === household && node.indoor) {
-    add(household as unknown as HolderRef, "home");
+  if (node?.household !== undefined && node.indoor) {
+    add(node.household as unknown as HolderRef, node.household === household ? "home" : "host");
   }
   return out;
 }
