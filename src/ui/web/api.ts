@@ -1,6 +1,18 @@
 // El contrato JSON entre el servidor local y el cliente: solo tipos, sin imports.
 
 /** La barra de arriba y el ambiente de la pantalla (`hudPanel`): bandas, sin números de la verdad. */
+/** Un edificio a la vista (de `game/life/hud.ts`). */
+export interface SeenBuilding {
+  readonly type: string;
+  readonly wall: string;
+  readonly roof: string;
+  readonly worn: 0 | 1 | 2;
+  readonly ruin: boolean;
+  readonly burning: boolean;
+  readonly x: number;
+  readonly d: number;
+}
+
 export interface Hud {
   readonly hour: number;
   readonly phase: "night" | "dawn" | "day" | "dusk";
@@ -16,6 +28,9 @@ export interface Hud {
     readonly kinds: readonly string[];
     /** Sin definir: la vida no simula fuegos. */
     readonly fire?: boolean;
+    /** Sin definir: la vida no tiene edificios (aldea de respaldo). */
+    readonly buildings?: readonly SeenBuilding[];
+    readonly building?: Omit<SeenBuilding, "x" | "d">;
   };
   readonly people: {
     readonly around: number;

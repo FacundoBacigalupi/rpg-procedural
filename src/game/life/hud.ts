@@ -5,15 +5,22 @@
 // La gente sale de los percepts de la escena (los mismos que `onSeen`), no de quién está de verdad.
 // El ánimo es lo que siente de sí (emociones propias con su decaimiento y la carga más pesada) y el
 // frío o el calor, lo que el cuerpo le dice del núcleo (`THERMAL`): ambos son de adentro, no de la
-// verdad ajena. Puro: no escribe nada ni gasta RNG.
+// verdad ajena.
+// Los edificios son los del asentamiento (settlements): cosas grandes y quietas que se ven desde
+// donde está, afuera y con la luz que haya; de cada uno, el tipo, de qué se ven las paredes y el
+// techo, si está gastado, caído o ardiendo. Adentro, el edificio donde está.
+// Puro: no escribe nada ni gasta RNG.
 
 import {
   type AgeBand,
+  BUILDING,
+  type BuildingRecord,
   CORE_NORMAL_C,
   type ConditionKind,
   EMOTION_HALF_LIFE_TICKS,
   EMOTIONS,
   type EmotionId,
+  ENTITY,
   emotionIntensityAt,
   HEARTH,
   INNATE,
@@ -63,6 +70,13 @@ export interface Hud {
      * vida (`HEARTH` vacía: los hogares son opt-in) no se sabe: `undefined`, y el fondo pinta como antes.
      */
     readonly fire?: boolean;
+    /**
+     * Los edificios que ve desde donde está (afuera, en el asentamiento), de oeste a este. Sin
+     * edificios en la vida (aldea de respaldo sin `BUILDING`), `undefined`: el fondo pinta como antes.
+     */
+    readonly buildings?: readonly SeenBuilding[];
+    /** Adentro de un edificio: cuál es. */
+    readonly building?: Omit<SeenBuilding, "x" | "d">;
   };
   readonly people: {
     /** A cuántos ve o nota ahora (de la escena). */
@@ -168,6 +182,115 @@ function figureOf(p: Percept): SeenFigure {
   };
 }
 
+/** Un edificio a la vista. */
+export interface SeenBuilding {
+  /** El tipo de `content/buildings` (cottage, farmhouse, granary…). */
+  readonly type: string;
+  /** El material que más se ve en las paredes y en el techo (`content/materials`). */
+  readonly wall: string;
+  readonly roof: string;
+  /** 0 entero, 1 gastado, 2 muy gastado. */
+  readonly worn: 0 | 1 | 2;
+  readonly ruin: boolean;
+  readonly burning: boolean;
+  /** Metros al este (negativo, al oeste) de donde mira, y a cuántos está; redondeados a 5 m. */
+  readonly x: number;
+  readonly d: number;
+}
+
+/** Hasta cuántos metros ve un edificio según la luz, y cuántos pinta como mucho. */
+export const BUILDING_SIGHT_M: Readonly<Record<Hud["light"], number>> = {
+  bright: 250,
+  dim: 100,
+  dark: 30,
+};
+export const MAX_SEEN_BUILDINGS = 6;
+
+/** El material con más gramos de una parte del edificio. */
+function mainMaterial(b: BuildingRecord, part: "walls" | "roof"): string {
+  let best = "";
+  let grams = -1;
+  for (const c of b.components)
+    if (c.part === part)
+      for (const m of c.materials)
+        if (m.grams > grams || (m.grams === grams && m.material < best)) {
+          best = m.material;
+          grams = m.grams;
+        }
+  return best;
+}
+
+function wornOf(b: BuildingRecord): 0 | 1 | 2 {
+  const visible = b.components.filter((c) => c.part === "walls" || c.part === "roof");
+  const worst = Math.max(0, ...visible.map((c) => c.condition));
+  return worst >= 0.6 ? 2 : worst >= 0.3 ? 1 : 0;
+}
+
+function lookOf(b: BuildingRecord): Omit<SeenBuilding, "x" | "d"> {
+  return {
+    type: b.type,
+    wall: mainMaterial(b, "walls"),
+    roof: mainMaterial(b, "roof"),
+    worn: wornOf(b),
+    ruin: b.ruin !== undefined,
+    burning: (b.fire?.intensity ?? 0) > 0,
+  };
+}
+
+const round5 = (m: number) => Math.round(m / 5) * 5;
+
+/**
+ * Los edificios a la vista desde `from` (metros respecto de la plaza): los que están a menos de
+ * `sightM`, los `MAX_SEEN_BUILDINGS` más cercanos, de oeste a este. `except` es el propio (desde su
+ * patio no se ve como uno más).
+ */
+export function seenBuildings(
+  buildings: readonly { readonly id: string; readonly b: BuildingRecord }[],
+  from: { readonly x: number; readonly y: number },
+  sightM: number,
+  except?: string,
+): SeenBuilding[] {
+  return buildings
+    .filter((e) => e.id !== except)
+    .map((e) => {
+      const dx = e.b.at.x - from.x;
+      const dy = e.b.at.y - from.y;
+      return { e, dx, d: Math.hypot(dx, dy) };
+    })
+    .filter((s) => s.d <= sightM)
+    .sort((a, b) => a.d - b.d || (a.e.id < b.e.id ? -1 : 1))
+    .slice(0, MAX_SEEN_BUILDINGS)
+    .sort((a, b) => a.dx - b.dx || (a.e.id < b.e.id ? -1 : 1))
+    .map((s) => ({ ...lookOf(s.e.b), x: round5(s.dx), d: round5(s.d) }));
+}
+
+/** Los edificios de la vida que se ven (en pie, o caídos como ruina). */
+function buildingRows(w: LifeWorld): { id: string; b: BuildingRecord }[] {
+  const out: { id: string; b: BuildingRecord }[] = [];
+  for (const id of [...w.truth.ids(BUILDING)].sort()) {
+    const b = w.truth.get(BUILDING, id);
+    if (!b) continue;
+    if (w.truth.get(ENTITY, id)?.endedAt !== undefined && b.ruin === undefined) continue;
+    out.push({ id, b });
+  }
+  return out;
+}
+
+/** Los edificios a la vista y en cuál está, para `Hud.place`. */
+function buildingsOf(
+  w: LifeWorld,
+  space: string | undefined,
+  indoor: boolean,
+  light: Hud["light"],
+): Pick<Hud["place"], "buildings" | "building"> {
+  const rows = buildingRows(w);
+  if (rows.length === 0 || space === undefined) return {};
+  const mine = rows.find((r) => r.b.graph.spaces.some((s) => s.key === space));
+  if (indoor) return mine ? { building: lookOf(mine.b) } : {};
+  const from = mine?.b.at ?? { x: 0, y: 0 };
+  return { buildings: seenBuildings(rows, from, BUILDING_SIGHT_M[light], mine?.id) };
+}
+
 /**
  * Un fuego que arde en el espacio donde está (con intensidad en el último paso); `undefined` si la
  * vida no simula fuegos.
@@ -240,10 +363,11 @@ export function hudPanel(
   const weather = weatherPanel(w);
   const clear = seen.filter((p) => p.detail !== "vague");
   const fire = fireIn(w, at?.space, indoor);
+  const lightBand: Hud["light"] = light < 0.15 ? "dark" : light < 0.5 ? "dim" : "bright";
   return {
     hour,
     phase: dayPhase(hour),
-    light: light < 0.15 ? "dark" : light < 0.5 ? "dim" : "bright",
+    light: lightBand,
     sky: skyLook(day.cloud, day.precip.kind, indoor),
     windy: day.windMs >= (indoor ? 12 : 8),
     air: weather.airNow,
@@ -254,6 +378,7 @@ export function hudPanel(
       space: node?.kind ?? "open",
       kinds: character.where.placeKinds as readonly PlaceKind[],
       ...(fire === undefined ? {} : { fire }),
+      ...buildingsOf(w, at?.space, indoor, lightBand),
     },
     people: {
       around: seen.length,
