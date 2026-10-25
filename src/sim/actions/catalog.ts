@@ -250,7 +250,9 @@ export const ActionDef = z
     /**
      * Herramientas que sirven de instrumento (`with`, use-tools): por forma de ítem (`ITEM_LOOK.shape`),
      * cuánto rinde más el trabajo (`rate` ×) y cuánto más fácil sale (`ease`, en desvíos). Con `good`,
-     * solo para esa salida de `yields` (el hacha sirve para la leña, no para los hongos).
+     * solo para esa salida de `yields` (el hacha sirve para la leña, no para los hongos). `hours`
+     * es cuánto uso aguanta hasta quedar gastada (use-tools-wear): lo que rinde de más se va
+     * perdiendo con el desgaste y, gastada del todo, se trabaja como a mano.
      */
     instruments: z
       .array(
@@ -259,6 +261,7 @@ export const ActionDef = z
           good: contentId.optional(),
           rate: z.number().positive(),
           ease: z.number().default(0),
+          hours: z.number().positive(),
         }),
       )
       .default([]),

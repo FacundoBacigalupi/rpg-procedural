@@ -447,7 +447,7 @@ describe("con herramienta (use-tools-arg)", () => {
       manner: [],
     });
     const on = { def: gather, scene: forest, gatherByWords: true };
-    expect(toolFor({ ...on, node: node("leña"), instrument: axe })).toEqual({
+    expect(toolFor({ ...on, node: node("leña"), instrument: axe })).toMatchObject({
       item: axe.item,
       rate: 2,
       ease: 0.3,
@@ -511,6 +511,54 @@ describe("con herramienta (use-tools-arg)", () => {
         Math.round(r.seconds * Math.min(1.5, 2 * r.degree) * 1.3),
       );
     }
+  });
+
+  it("gastada rinde menos y del todo gastada, nada (use-tools-wear)", () => {
+    const gather = verb("gather");
+    const node = {
+      kind: "do" as const,
+      verb: "gather",
+      args: [{ role: "what", text: "leña" }],
+      manner: [],
+    };
+    const on = { def: gather, scene: forest, gatherByWords: true, node };
+    const axe = (wear?: number) => ({
+      item: makeId("item", 6),
+      shape: "axe",
+      ...(wear !== undefined ? { wear } : {}),
+    });
+    expect(toolFor({ ...on, instrument: axe(0.5) })).toMatchObject({ rate: 1.5, ease: 0.15 });
+    expect(toolFor({ ...on, instrument: axe(0) })).toMatchObject({ rate: 2, ease: 0.3, wear: 0 });
+    expect(toolFor({ ...on, instrument: axe(1) })).toBeUndefined();
+    expect(toolFor({ ...on, instrument: axe() })).not.toHaveProperty("wear");
+  });
+
+  it("el paso gasta la herramienta según el tiempo de uso y avisa si la terminó", () => {
+    const ledger = () => ledgerWith([{ holder: forestRef, unit: forage, amount: 1e7 }]);
+    const run = (wear?: number) =>
+      resolve(
+        input(
+          "gather",
+          {},
+          {
+            scene: forest,
+            ledger: ledger(),
+            instrument: { ...knife, ...(wear !== undefined ? { wear } : {}) },
+          },
+        ),
+      );
+    const fresh = run(0);
+    if (fresh.effect.kind !== "gather") throw new Error("no es gather");
+    expect(fresh.effect.tool).toBe(knife.item);
+    expect(fresh.effect.toolWear).toBeGreaterThan(0);
+    expect(fresh.effect.toolWear).toBeCloseTo(fresh.seconds / (800 * 3600), 6);
+    expect(fresh.effect.toolWorn).toBeUndefined();
+    const last = run(1 - 1e-7);
+    expect(last.effect).toMatchObject({ tool: knife.item, toolWorn: true });
+    // Sin desgaste conocido (motor viejo), rinde pero no se gasta.
+    const old = run();
+    expect(old.effect).toMatchObject({ tool: knife.item });
+    expect(old.effect).not.toHaveProperty("toolWear");
   });
 
   it("misma entrada, misma resolución", () => {

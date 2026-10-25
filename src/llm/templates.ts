@@ -317,11 +317,13 @@ function outcome(
       else
         say(o.believed === "success" ? "outcome.gather.some" : "outcome.gather.little", { what });
       if (e.stumbled) say("outcome.stumbled");
+      if (e.toolWorn) say("outcome.tool.worn");
       break;
     }
     case "work":
       say(`outcome.work.${o.believed}`);
       if (e.hurt) say("outcome.work.hurt");
+      if (e.toolWorn) say("outcome.tool.worn");
       break;
     case "speak":
       if (e.text !== null && e.text.length > 0) {

@@ -47,6 +47,16 @@ export interface ItemContents {
 
 export const CONTENTS = table<ItemContents>("property.contents");
 
+/**
+ * El desgaste de una herramienta con identidad (actions, use-tools-wear): 0 nueva, 1 gastada del
+ * todo (ya no rinde de más). Sin fila, está entera. La escribe el paso que la usa.
+ */
+export interface ItemWear {
+  readonly wear: number;
+}
+
+export const ITEM_WEAR = table<ItemWear>("property.wear");
+
 const isItem = (id: string): id is ItemId => id.startsWith("item:");
 
 /** Snapshot desde ENTITY + ITEM_HOLD; `undefined` si el ítem no existe como entidad. */

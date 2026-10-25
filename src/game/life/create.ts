@@ -347,6 +347,8 @@ export interface LifeOptions {
   readonly legacyNoHostTake?: boolean;
   /** Solo el replay de un motor anterior a `life-47`: `use` con `well.draw_water` no saca agua. */
   readonly legacyNoDrawWater?: boolean;
+  /** Solo el replay de un motor anterior a `life-48`: la herramienta de instrumento no se gasta. */
+  readonly legacyNoToolWear?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -758,6 +760,7 @@ export function optInParts(
   | "legacyNoLarderTake"
   | "legacyNoHostTake"
   | "legacyNoDrawWater"
+  | "legacyNoToolWear"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -944,6 +947,7 @@ export function optInParts(
     ...(options.legacyNoLarderTake ? { legacyNoLarderTake: true } : {}),
     ...(options.legacyNoHostTake ? { legacyNoHostTake: true } : {}),
     ...(options.legacyNoDrawWater ? { legacyNoDrawWater: true } : {}),
+    ...(options.legacyNoToolWear ? { legacyNoToolWear: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),

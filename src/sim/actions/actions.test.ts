@@ -133,9 +133,9 @@ describe("catálogo", () => {
       ActionDef.safeParse({ ...gather, ...patch }).success;
     expect(tool({})).toBe(true);
     expect(tool({ args: gather.args.filter((a) => a.role !== "with") })).toBe(false);
-    expect(tool({ instruments: [{ shapes: ["axe"], good: "jade", rate: 2, ease: 0 }] })).toBe(
-      false,
-    );
+    expect(
+      tool({ instruments: [{ shapes: ["axe"], good: "jade", rate: 2, ease: 0, hours: 10 }] }),
+    ).toBe(false);
   });
 
   it("una plantilla que nombra un verbo inexistente no carga", () => {
