@@ -247,6 +247,21 @@ export const ActionDef = z
         }),
       )
       .default([]),
+    /**
+     * Herramientas que sirven de instrumento (`with`, use-tools): por forma de ítem (`ITEM_LOOK.shape`),
+     * cuánto rinde más el trabajo (`rate` ×) y cuánto más fácil sale (`ease`, en desvíos). Con `good`,
+     * solo para esa salida de `yields` (el hacha sirve para la leña, no para los hongos).
+     */
+    instruments: z
+      .array(
+        z.strictObject({
+          shapes: z.array(contentId).min(1),
+          good: contentId.optional(),
+          rate: z.number().positive(),
+          ease: z.number().default(0),
+        }),
+      )
+      .default([]),
   })
   .superRefine((d, ctx) => {
     const roles = new Set(d.args.map((a) => a.role));
@@ -257,6 +272,16 @@ export const ActionDef = z
     if (d.duration.kind !== "fixed") role(d.duration.role, ["duration", "role"]);
     if (d.speech) role(d.speech.role, ["speech", "role"]);
     if (d.contest) role(d.contest.against, ["contest", "against"]);
+    if (d.instruments.length > 0) role("with", ["instruments"]);
+    d.instruments.forEach((t, i) => {
+      if (t.good !== undefined && !d.yields.some((y) => y.good === t.good)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["instruments", i, "good"],
+          message: "sin esa salida",
+        });
+      }
+    });
     d.requires.forEach((r, i) => {
       if (r.kind === "position" && "near" in r) role(r.near, ["requires", i, "near"]);
       if (r.kind === "means" && r.holder !== "self") role(r.holder, ["requires", i, "holder"]);

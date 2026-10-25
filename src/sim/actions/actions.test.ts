@@ -127,6 +127,15 @@ describe("catálogo", () => {
     );
     expect(bad({ requires: [{ kind: "position", near: "nobody" }] })).toBe(false);
     expect(bad({ manners: [...base.manners, ...base.manners] })).toBe(false);
+    // Las herramientas (use-tools-arg) piden el rol `with` y una salida que el verbo tenga.
+    const gather = verb("gather");
+    const tool = (patch: Partial<ActionDef>) =>
+      ActionDef.safeParse({ ...gather, ...patch }).success;
+    expect(tool({})).toBe(true);
+    expect(tool({ args: gather.args.filter((a) => a.role !== "with") })).toBe(false);
+    expect(tool({ instruments: [{ shapes: ["axe"], good: "jade", rate: 2, ease: 0 }] })).toBe(
+      false,
+    );
   });
 
   it("una plantilla que nombra un verbo inexistente no carga", () => {

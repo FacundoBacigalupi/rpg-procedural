@@ -248,6 +248,22 @@ function convert(
               )
             : undefined;
         if (thing === null) continue;
+        // La herramienta de instrumento (use-tools) es algo que lleva encima; si no lleva nada que
+        // encaje, el paso sigue sin ella (trabaja con las manos) en vez de preguntar.
+        if (a.role === "with" && spec.kind === "thing") {
+          const tool =
+            "ref" in a || "text" in a
+              ? thingArg(
+                  "ref" in a ? a.ref : { text: a.text, features: [] },
+                  a.role,
+                  `${at}.with`,
+                  w,
+                  "with",
+                )
+              : undefined;
+          if (tool) args.push(tool);
+          continue;
+        }
         // Mirar algo que no conoce («miro el cielo») es mirar alrededor, no una pregunta.
         const optional = spec.kind === "sight" && !spec.required;
         const v = thing ?? argValue(a, spec.kind, `${at}.${a.role}`, w, optional);
@@ -570,6 +586,7 @@ function thingArg(
   role: string,
   at: string,
   w: Walk,
+  /** El verbo, o `with` para la herramienta de instrumento (solo lo que lleva). */
   verb: string,
 ): ArgValue | null | undefined {
   // Lo fijo (el pozo, el granero) se mira pero no se lleva ni se da: solo las cosas sueltas.
@@ -579,7 +596,7 @@ function thingArg(
       k.kind === "object" &&
       k.present &&
       k.ref.startsWith("item:") &&
-      (verb === "take" ? !carried(k) : verb === "drop" ? carried(k) : true),
+      (verb === "take" ? !carried(k) : verb === "drop" || verb === "with" ? carried(k) : true),
   );
   if (things.length === 0) return undefined;
   const r = resolveRef({ ...ref, kind: "object" }, things);

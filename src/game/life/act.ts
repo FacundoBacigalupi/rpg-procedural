@@ -860,6 +860,27 @@ function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | 
   return a && "entity" in a ? (a.entity as ItemId) : undefined;
 }
 
+/**
+ * La herramienta con la que se hace el paso (arg `with` con una entidad `item:`): solo si `me`
+ * la tiene en la mano y sigue entera; su forma decide qué instrumento del verbo es (use-tools-arg).
+ * Sin ella el paso se hace a mano.
+ */
+function instrumentOf(
+  truth: ReadonlyWorldTruth,
+  node: { args: readonly ArgValue[] },
+  me: AgentId,
+): { item: ItemId; shape: string } | undefined {
+  const a = node.args.find(
+    (x) => x.role === "with" && "entity" in x && x.entity.startsWith("item:"),
+  );
+  if (a === undefined || !("entity" in a)) return undefined;
+  const item = a.entity as ItemId;
+  if (truth.get(ENTITY, item)?.endedAt !== undefined) return undefined;
+  if (truth.get(ITEM_HOLD, item)?.possession !== me) return undefined;
+  const shape = truth.get(ITEM_LOOK, item)?.shape;
+  return shape === undefined ? undefined : { item, shape };
+}
+
 /** La toma de `item` por `me` según el núcleo de property, con el estado actual (causa provisional). */
 /**
  * La entrega de `item` de `me` a `to`: la posesión física y, si los haces de `me` lo permiten
@@ -1207,6 +1228,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
             truth.get(ENTITY, wantedItem)?.endedAt === undefined &&
             truth.get(ITEM_HOLD, wantedItem)?.possession === me,
         };
+  const instrument = o.legacyNoDrawWater === true ? undefined : instrumentOf(truth, node, me);
   const takeItem =
     wantedItem === undefined || node.verb !== "take"
       ? undefined
@@ -1262,6 +1284,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
     ...(dropItem ? { dropItem } : {}),
+    ...(instrument ? { instrument } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
     node.verb === "trade" &&
     parties["with"] !== undefined &&

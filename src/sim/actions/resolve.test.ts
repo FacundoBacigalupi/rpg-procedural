@@ -32,6 +32,7 @@ import {
   PLANS,
   type ResolveInput,
   resolve,
+  toolFor,
   WELL_WORN,
 } from "./index.ts";
 
@@ -427,6 +428,105 @@ describe("recolectar", () => {
     expect(r.effect).toMatchObject({ amount: 0 });
     expect(r.postings).toEqual([]);
     expect(r.failure).toBe("poor_yield");
+  });
+});
+
+describe("con herramienta (use-tools-arg)", () => {
+  const forest = { light: 1, terrain: 0, placeKinds: ["forest" as const] };
+  const fields = { light: 1, terrain: 0, placeKinds: ["fields" as const] };
+  const knife = { item: makeId("item", 5), shape: "knife" };
+  const amount = (r: ActionResolution) => (r.effect.kind === "gather" ? r.effect.amount : 0);
+
+  it("el instrumento se elige por forma y por la salida que se busca", () => {
+    const gather = verb("gather");
+    const axe = { item: makeId("item", 6), shape: "axe" };
+    const node = (what: string) => ({
+      kind: "do" as const,
+      verb: "gather",
+      args: [{ role: "what", text: what }],
+      manner: [],
+    });
+    const on = { def: gather, scene: forest, gatherByWords: true };
+    expect(toolFor({ ...on, node: node("leña"), instrument: axe })).toEqual({
+      item: axe.item,
+      rate: 2,
+      ease: 0.3,
+    });
+    // El hacha no sirve para juntar hongos, ni el cuchillo para la leña.
+    expect(toolFor({ ...on, node: node("hongos"), instrument: axe })).toBeUndefined();
+    expect(toolFor({ ...on, node: node("leña"), instrument: knife })).toBeUndefined();
+    expect(toolFor({ ...on, node: node("hongos"), instrument: knife })?.rate).toBe(1.25);
+    // Una forma que el verbo no conoce, y sin herramienta: a mano.
+    const pot = { item: makeId("item", 7), shape: "pot" };
+    expect(toolFor({ ...on, node: node("hongos"), instrument: pot })).toBeUndefined();
+    expect(toolFor({ ...on, node: node("hongos") })).toBeUndefined();
+    expect(
+      toolFor({ def: verb("work"), node: node(""), scene: fields, instrument: knife }),
+    ).toBeUndefined();
+  });
+
+  it("el cuchillo rinde más hongos y facilita la tirada, del mismo stock", () => {
+    const run = (withKnife: boolean) => {
+      const ledger = ledgerWith([{ holder: forestRef, unit: forage, amount: 1e7 }]);
+      return many(200, (i) =>
+        input(
+          "gather",
+          {},
+          {
+            scene: forest,
+            ledger,
+            rng: Rng.root(100 + i),
+            ...(withKnife ? { instrument: knife } : {}),
+          },
+        ),
+      );
+    };
+    const bare = run(false);
+    const tooled = run(true);
+    const total = (rs: ActionResolution[]) => rs.reduce((s, r) => s + amount(r), 0);
+    expect(total(tooled)).toBeGreaterThan(total(bare) * 1.2);
+    tooled.forEach((r, i) => {
+      const b = bare[i] as ActionResolution;
+      if (r.attempt.margin !== null && b.attempt.margin !== null) {
+        expect(r.attempt.margin).toBeGreaterThanOrEqual(b.attempt.margin);
+      }
+      if (r.effect.kind === "gather" && r.effect.amount > 0) expect(r.effect.tool).toBe(knife.item);
+    });
+    expect(bare.every((r) => r.effect.kind === "gather" && r.effect.tool === undefined)).toBe(true);
+  });
+
+  it("la azada estira el trabajo del campo", () => {
+    const hoe = { item: makeId("item", 8), shape: "hoe" };
+    const rs = many(100, (i) =>
+      input(
+        "work",
+        { args: [{ role: "for", seconds: 3600 }] },
+        { scene: fields, instrument: hoe, rng: Rng.root(i) },
+      ),
+    );
+    for (const r of rs) {
+      if (r.effect.kind !== "work") throw new Error("no es work");
+      expect(r.effect.tool).toBe(hoe.item);
+      expect(r.effect.effectiveSeconds).toBe(
+        Math.round(r.seconds * Math.min(1.5, 2 * r.degree) * 1.3),
+      );
+    }
+  });
+
+  it("misma entrada, misma resolución", () => {
+    const go = () =>
+      resolve(
+        input(
+          "gather",
+          {},
+          {
+            scene: forest,
+            ledger: ledgerWith([{ holder: forestRef, unit: forage, amount: 5000 }]),
+            instrument: knife,
+          },
+        ),
+      );
+    expect(go()).toEqual(go());
   });
 });
 

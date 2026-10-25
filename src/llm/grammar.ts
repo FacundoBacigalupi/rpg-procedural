@@ -177,6 +177,22 @@ function nounPhrase(s: string): string {
   return tidy(cut >= 0 ? s.slice(0, cut) : s);
 }
 
+/**
+ * "con el hacha": la herramienta con la que se hace el paso (arg `with`, use-tools-arg), sacada
+ * del resto. Se llama después de quitar los modos ("con cuidado" no es una herramienta).
+ */
+function toolClause(s: string): { rest: string; tool?: DraftArg } {
+  const m = /(?:^|\s)con\s+(?:(?:el|la|los|las|un|una|mi|mis)\s+)?(.+)$/iu.exec(s);
+  if (!m) return { rest: s };
+  const tool = nounPhrase(m[1] as string);
+  if (tool === "") return { rest: s };
+  const after = (m[1] as string).slice((m[1] as string).indexOf(tool) + tool.length);
+  return {
+    rest: tidy(`${s.slice(0, m.index)} ${after}`),
+    tool: { role: "with", ref: ref(tool, "object") },
+  };
+}
+
 function ref(text: string, kind: RefDescription["kind"]): RefDescription {
   const t = tidy(text);
   const rel = /^(?:mi|mis)\s+(\p{L}+)$/iu.exec(t);
@@ -454,8 +470,14 @@ const VERBS: readonly {
   {
     re: /^(?:junto|juntar|recolecto|recolectar|recojo|recoger|cosecho|cosechar|recolecto)\b/i,
     build: (rest) => {
-      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
-      return { node: act("gather", what ? [{ role: "what", text: what }] : []) };
+      const t = toolClause(rest.replace(MANNER_WORDS, " "));
+      const what = nounPhrase(t.rest);
+      return {
+        node: act("gather", [
+          ...(what ? [{ role: "what", text: what }] : []),
+          ...(t.tool ? [t.tool] : []),
+        ]),
+      };
     },
   },
   {
@@ -473,7 +495,13 @@ const VERBS: readonly {
     re: /^(?:trabajo|trabajar|laburo|laburar|carpo|carpir|aro|arar)\b/i,
     build: (rest) => {
       const d = duration(rest);
-      return { node: act("work", d ? [{ role: "for", duration: d.duration }] : []) };
+      const t = toolClause((d ? d.rest : rest).replace(MANNER_WORDS, " "));
+      return {
+        node: act("work", [
+          ...(d ? [{ role: "for", duration: d.duration }] : []),
+          ...(t.tool ? [t.tool] : []),
+        ]),
+      };
     },
   },
   {
