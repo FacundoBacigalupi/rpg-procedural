@@ -1,0 +1,9 @@
+[
+  {
+    "id": "well.drink",
+    "name": "tomar agua del pozo",
+    "on": ["well"],
+    "words": ["agua", "beber", "tomar", "sacar", "trago", "sed"],
+    "as": "drink"
+  }
+]

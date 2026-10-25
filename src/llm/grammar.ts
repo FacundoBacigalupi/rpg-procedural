@@ -405,7 +405,35 @@ const VERBS: readonly {
   },
   {
     re: /^(?:miro|mirar|observo|observar|echo un vistazo|vigilo)\b/i,
-    build: () => ({ node: act("look", []) }),
+    build: (rest) => {
+      // «Miro el pozo», «miro a mi madre»: lo que mira (play-refs-objects-fixtures-look). Si no lo
+      // conoce, el borrador lo deja en mirar alrededor.
+      const clean = rest.replace(MANNER_WORDS, " ").trim();
+      if (/^(?:alrededor|a\s+mi\s+alrededor|por\s+ah[ií])?$/i.test(clean)) {
+        return { node: act("look", []) };
+      }
+      const person = /^(?:a|al|a\s+la)\s/i.test(clean);
+      const what = nounPhrase(dropPreposition(clean));
+      if (!what) return { node: act("look", []) };
+      return {
+        node: act("look", [{ role: "target", ref: ref(what, person ? "person" : "object") }]),
+      };
+    },
+  },
+  {
+    // «Uso el pozo», «saco agua del pozo»: la cosa dice qué se puede (actions, «Ampliación: use»).
+    re: /^(?:uso|usar|utilizo|utilizar|me\s+sirvo\s+de|(?:saco|sacar)\s+agua(?=\s+(?:del|de)\s))/i,
+    build: (rest, _ctx, all) => {
+      const what = nounPhrase(dropPreposition(rest.replace(MANNER_WORDS, " ")));
+      if (!what) return null;
+      const water = /^(?:saco|sacar)\s+agua\b/i.test(all);
+      return {
+        node: act("use", [
+          { role: "target", ref: ref(what, "object") },
+          ...(water ? [{ role: "how", text: "sacar agua" }] : []),
+        ]),
+      };
+    },
   },
   {
     re: /^(?:sigo\s+buscando|busco|buscar|rastreo)\b/i,

@@ -659,6 +659,28 @@
     "evidence": 1
   },
   {
+    "id": "use",
+    "name": "usar",
+    "domain": "manipulation",
+    "args": [
+      { "role": "target", "kind": "sight", "required": true },
+      { "role": "how", "kind": "text", "required": false }
+    ],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 60 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "resolver": "none",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.5
+  },
+  {
     "id": "tend",
     "name": "curar",
     "domain": "body",

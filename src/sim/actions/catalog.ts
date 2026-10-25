@@ -333,14 +333,43 @@ export const PLANS = defineContent("plans", PlanTemplate, (t) =>
   templateVerbs(t.root, "root").map(({ verb, at }) => ({ kind: "actions", id: verb, at })),
 );
 
-/** El catálogo cargado: verbos y plantillas por id. */
+/**
+ * Una función de una cosa (actions, «Ampliación: `use`»): a qué formas de ítem o tipos de fijo se
+ * aplica (`on`), con qué palabras se pide («sacar agua») y, si es otro verbo con la cosa al lado,
+ * cuál (`as`: el pozo sin recipiente es `drink` ahí). Sin `as`, la resuelve `use` con su id.
+ */
+export const AffordanceDef = z.strictObject({
+  id: contentId,
+  name: z.string().min(1),
+  on: z.array(z.string().min(1)).min(1),
+  words: z.array(z.string().min(1)),
+  as: contentId.optional(),
+});
+export type AffordanceDef = z.infer<typeof AffordanceDef>;
+
+export const AFFORDANCES = defineContent("affordances", AffordanceDef, (a) =>
+  a.as === undefined ? [] : [{ kind: "actions", id: a.as, at: "as" }],
+);
+
+/** El catálogo cargado: verbos, plantillas y funciones de las cosas por id. */
 export class ActionCatalog {
   readonly #verbs: ReadonlyMap<string, ActionDef>;
   readonly #templates: ReadonlyMap<string, PlanTemplate>;
+  readonly #affordances: readonly AffordanceDef[];
 
-  constructor(verbs: readonly ActionDef[], templates: readonly PlanTemplate[] = []) {
+  constructor(
+    verbs: readonly ActionDef[],
+    templates: readonly PlanTemplate[] = [],
+    affordances: readonly AffordanceDef[] = [],
+  ) {
     this.#verbs = new Map(verbs.map((v) => [v.id, v]));
     this.#templates = new Map(templates.map((t) => [t.id, t]));
+    this.#affordances = affordances;
+  }
+
+  /** Las funciones de una cosa por su forma o tipo, en el orden del contenido (la primera manda). */
+  affordances(shape: string): readonly AffordanceDef[] {
+    return this.#affordances.filter((a) => a.on.includes(shape));
   }
 
   verb(id: string): ActionDef | undefined {
