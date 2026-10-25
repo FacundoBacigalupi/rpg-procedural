@@ -30,6 +30,7 @@ import {
   goodUnit,
   type HabitDef,
   HEARTH,
+  HEARTH_BURN_G_PER_H,
   KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
@@ -120,7 +121,13 @@ import { goalDeathClosureProcess } from "./goal-death.ts";
 import { debtGoalProgress, ownGoalProgress } from "./goal-evidence.ts";
 import { gossipProcess } from "./gossip.ts";
 import { growthSequelaeProcess } from "./growthSequelae.ts";
-import { BURNED_SINK, hearthEnv, hearthProcess } from "./hearth.ts";
+import {
+  BURNED_SINK,
+  HEARTH_FUEL_UNIT,
+  HEARTH_LIT_HOURS,
+  hearthEnv,
+  hearthProcess,
+} from "./hearth.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
 import { inventoryProcess } from "./inventory-belief.ts";
@@ -1030,6 +1037,15 @@ export function lifeWorld(
           ...(parts.residue ? { residue: parts.residue } : {}),
           ...(parts.drinkSubstance ? { drinkSubstance: parts.drinkSubstance } : {}),
           ...(parts.boil ? { boil: parts.boil } : {}),
+          ...(parts.hearths === true
+            ? {
+                hearthTend: {
+                  fuel: HEARTH_FUEL_UNIT,
+                  burnGramsPerHour: HEARTH_BURN_G_PER_H,
+                  litHoursPerDay: HEARTH_LIT_HOURS,
+                },
+              }
+            : {}),
           ...(parts.filter ? { filter: parts.filter } : {}),
           ...(parts.waterSources?.netDrink === true
             ? {

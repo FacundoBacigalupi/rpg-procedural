@@ -65,12 +65,13 @@ const roll = (over: Partial<Attempt>): Attempt => ({
 const hoursOf = (s: SkillState | undefined) => s?.hours ?? 0;
 
 describe("catálogo", () => {
-  it("el contenido carga y todo verbo que tira usa una habilidad, salvo comer, consumir, hervir, filtrar, beber, consultar, falsificar, contratar, dar, suponer, perdonar, guardar, soltar, usar (despacha a otro verbo), esperar y descansar", () => {
+  it("el contenido carga y todo verbo que tira usa una habilidad, salvo comer, consumir, hervir, filtrar, encender, apagar, beber, consultar, falsificar, contratar, dar, suponer, perdonar, guardar, soltar, usar (despacha a otro verbo), esperar y descansar", () => {
     const without = verbs.filter((v) => !catalog.forVerb(v.id)).map((v) => v.id);
     expect(without.sort()).toEqual([
       "boil",
       "consult",
       "consume",
+      "douse",
       "drink",
       "drop",
       "eat",
@@ -78,6 +79,7 @@ describe("catálogo", () => {
       "forge",
       "give",
       "hire",
+      "kindle",
       "ponder",
       "rest",
       "spare",

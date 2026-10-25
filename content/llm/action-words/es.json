@@ -195,6 +195,20 @@
     "weak": ["agua"]
   },
   {
+    "id": "kindle",
+    "kind": "action",
+    "stems": ["enciend", "encend", "aviv", "prend"],
+    "forms": [],
+    "weak": ["fuego", "hogar", "leña"]
+  },
+  {
+    "id": "douse",
+    "kind": "action",
+    "stems": ["apag"],
+    "forms": [],
+    "weak": ["fuego", "hogar", "brasa"]
+  },
+  {
     "id": "filter",
     "kind": "action",
     "stems": ["filtr"],

@@ -402,6 +402,8 @@ export type EffectView =
     }
   | { readonly kind: "boil"; readonly boiled: boolean }
   | { readonly kind: "filter"; readonly filtered: boolean }
+  | { readonly kind: "kindle"; readonly lit: boolean; readonly fed: boolean }
+  | { readonly kind: "douse"; readonly doused: boolean }
   | {
       readonly kind: "cook";
       /** Lo que sacó (null si no cocinó nada). */
@@ -953,6 +955,11 @@ function effectView(
       return { kind: "boil", boiled: e.fuel !== null && e.grams > 0 };
     case "filter":
       return { kind: "filter", filtered: e.material !== null && e.grams > 0 };
+    case "kindle":
+      // Si dejó leña en la pila se nota; los gramos no se cuentan.
+      return { kind: "kindle", lit: e.hearth !== null, fed: e.moved > 0 };
+    case "douse":
+      return { kind: "douse", doused: e.hearth !== null };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
     case "use":

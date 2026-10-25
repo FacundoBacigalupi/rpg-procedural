@@ -622,6 +622,46 @@
     "evidence": 1
   },
   {
+    "id": "kindle",
+    "name": "encender el fuego",
+    "domain": "body",
+    "args": [],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": {},
+    "resolver": "kindle",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
+    "id": "douse",
+    "name": "apagar el fuego",
+    "domain": "body",
+    "args": [],
+    "manners": [],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.1 }],
+    "occupies": { "handR": "partial" },
+    "duration": { "kind": "fixed", "seconds": 120 },
+    "checkpoint": 60,
+    "emissions": { "sight": 0.2, "sound": 0.05 },
+    "serves": {},
+    "resolver": "douse",
+    "ease": 3,
+    "failureModes": [
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 1
+  },
+  {
     "id": "filter",
     "name": "filtrar",
     "domain": "body",

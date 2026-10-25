@@ -264,8 +264,8 @@ describe("el borrador según el catálogo", () => {
     expect(a).toContain('"const":"take"');
     // Exclusión plan/speech y actos cerrados: 34 212 inline; referencias compartidas: 25 411.
     // El `target` opcional de `look` (play-refs-objects-look) lo lleva a ~27 040; el verbo `use`
-    // (use-core), a ~27 930.
-    expect(a.length).toBeLessThan(28_500);
+    // (use-core), a ~27 930; `kindle` y `douse` (hearth-tend), a ~28 780.
+    expect(a.length).toBeLessThan(29_000);
     expect(a).toContain('"anyOf"');
     expect(a).toContain('"$defs"');
   });

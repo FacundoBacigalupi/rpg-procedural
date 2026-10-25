@@ -1081,6 +1081,24 @@
     }
   },
   {
+    "id": "kindle-hearth",
+    "text": "enciendo el fuego del hogar con la leña",
+    "scene": "Estás en tu casa; hay un hogar frío y una pila de leña.",
+    "expect": {
+      "kind": "act",
+      "plan": { "kind": "do", "verb": "kindle", "args": [] }
+    }
+  },
+  {
+    "id": "douse-hearth",
+    "text": "apago el fuego antes de dormir",
+    "scene": "Estás en tu casa; el hogar arde.",
+    "expect": {
+      "kind": "act",
+      "plan": { "kind": "do", "verb": "douse", "args": [] }
+    }
+  },
+  {
     "id": "filter-water",
     "text": "filtro el agua antes de beberla",
     "scene": "Estás en tu casa; hay un balde con agua turbia y un filtro de arena.",

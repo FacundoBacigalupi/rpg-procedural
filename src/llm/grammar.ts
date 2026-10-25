@@ -642,6 +642,15 @@ const VERBS: readonly {
     },
   },
   { re: /^(?:hiervo|hervir)\b/i, build: () => ({ node: act("boil", []) }) },
+  {
+    re: /^(?:enciendo|encender|prendo|prender|avivo|avivar|atizo|atizar)\s+(?:el\s+)?(?:fuego|hogar)\b/i,
+    build: () => ({ node: act("kindle", []) }),
+  },
+  { re: /^hago\s+fuego\b/i, build: () => ({ node: act("kindle", []) }) },
+  {
+    re: /^(?:apago|apagar|ahogo|ahogar)\s+(?:el\s+)?(?:fuego|hogar)\b/i,
+    build: () => ({ node: act("douse", []) }),
+  },
   { re: /^(?:filtro|filtrar)\b/i, build: () => ({ node: act("filter", []) }) },
   {
     re: /^(?:falsifico|falsificar)\b/i,
