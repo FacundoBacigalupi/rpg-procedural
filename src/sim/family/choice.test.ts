@@ -94,8 +94,10 @@ describe("temperamento elegido", () => {
           const { genome, innate } = baby(seed);
           const spec = { curiosity: around(center, 0.1) };
           const r = conditionTemperament(traits, genome, innate, "female", spec, Rng.root(seed));
-          expect(temperamentDistance(r.innate, spec)).toBeCloseTo(0, 4);
-          expect(temperamentFit(r.innate, spec)).toBeCloseTo(1, 4);
+          // Los rasgos se redondean a milésimas (`round3`): un borde del pedido que no cae en una
+          // milésima queda a lo sumo a media milésima.
+          expect(temperamentDistance(r.innate, spec)).toBeCloseTo(0, 3);
+          expect(temperamentFit(r.innate, spec)).toBeCloseTo(1, 3);
           expect(temperamentFit(innate, spec)).toBeLessThanOrEqual(1);
         },
       ),
