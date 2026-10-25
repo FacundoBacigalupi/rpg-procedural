@@ -2,14 +2,19 @@
 // moja la ropa de a poco según cuánto cae; adentro se seca despacio, junto a un fuego encendido
 // rápido y afuera sin lluvia según el aire y el viento. El mojado pasa al ambiente de `life.thermal`
 // como `wet` (`wetEnv`): la ropa abriga menos y la evaporación se lleva calor. Opt-in (con
-// `wardrobe`); el único escritor de `WET_CLOTHES` es `life.wet_clothes`.
+// `wardrobe`); el único escritor de `WET_CLOTHES` es `life.wet_clothes`. Con `ford`
+// (clothing-wet-river), quien cruza a pie un arroyo, un río o agua quieta fuera de la aldea se moja
+// según lo hondo (`FORD_WET`), con un evento `life.waded`.
 
-import type { AgentId, PlanetClock, Seed, Tick } from "../../core/index.ts";
+import type { AgentId, PlaceRef, PlanetClock, Seed, Tick } from "../../core/index.ts";
 import {
   BODY_STATE,
   type DayWeather,
+  deleteComponent,
   ENTITY,
+  type EventDraft,
   HEARTH,
+  hexPath,
   LOCATION,
   type LocalMap,
   outdoorTempC,
@@ -81,6 +86,39 @@ export function wetAfter(
   return round(clamp01(wet - dry * hours));
 }
 
+/**
+ * Lo que moja cruzar a pie cada agua (`LocalMap.water`): el arroyo hasta el tobillo (se pasa por
+ * piedras), el río y el agua quieta hasta empaparse. Sin calibrar.
+ */
+export const FORD_WET: Readonly<Record<number, number>> = { 1: 0.2, 2: 0.9, 3: 1 };
+export const WADED_EVENT = "life.waded";
+
+/** El último hex donde lo vio `life.wet_clothes` (para saber qué cruzó desde entonces). */
+export interface WetLastHex {
+  readonly hex: number;
+}
+export const WET_LAST_HEX = table<WetLastHex>("life.wet_last_hex");
+
+/**
+ * Lo más hondo que vadeó quien fue de `from` a `to` a pie (puro): los hexes del camino sin el de
+ * salida, salvo los de la aldea (`settled`, que tiene sus pasos). Devuelve el hex y cuánto moja.
+ */
+export function fordOf(
+  map: LocalMap,
+  from: number,
+  to: number,
+  settled: ReadonlySet<number>,
+): { readonly hex: number; readonly wet: number } | undefined {
+  if (!map.water) return undefined;
+  let best: { hex: number; wet: number } | undefined;
+  for (const h of hexPath(map, from, to)) {
+    if (settled.has(h)) continue;
+    const wet = FORD_WET[map.water[h] ?? 0] ?? 0;
+    if (wet > (best?.wet ?? 0)) best = { hex: h, wet };
+  }
+  return best;
+}
+
 export interface WetClothesOptions {
   readonly map: LocalMap;
   readonly clock: PlanetClock;
@@ -88,6 +126,8 @@ export interface WetClothesOptions {
   readonly spaces: SpaceGraph;
   /** Si los fuegos de `HEARTH` secan (con `hearths`). */
   readonly fires?: boolean;
+  /** Vados (clothing-wet-river): dónde se ve un vado en los eventos. */
+  readonly ford?: { readonly placeOf: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef };
 }
 
 /** El fuego encendido más fuerte en el espacio `space` (0 sin fuego). */
@@ -117,9 +157,12 @@ export function wetClothesProcess(o: WetClothesOptions): ProcessDef {
       BODY_STATE.name,
       LOCATION.name,
       ...(o.fires ? [HEARTH.name] : []),
+      ...(o.ford ? [WET_LAST_HEX.name] : []),
     ],
-    writes: [WET_CLOTHES.name],
+    writes: [WET_CLOTHES.name, ...(o.ford ? [WET_LAST_HEX.name] : [])],
     run(ctx) {
+      const settled = new Set(o.spaces.spaces.map((s) => s.hex));
+      const events: EventDraft[] = [];
       const hours = Math.max(1, ctx.window) / (o.clock.day / 24);
       const day = weatherAt(o.map, o.clock, o.seed, ctx.now as Tick);
       const airC = outdoorTempC(o.map, o.clock, o.seed, ctx.now as Tick);
@@ -132,21 +175,37 @@ export function wetClothesProcess(o: WetClothesOptions): ProcessDef {
         if (!loc) continue;
         const outdoors = o.spaces.spaces.find((s) => s.key === loc.space)?.indoor !== true;
         const had = ctx.truth.get(WET_CLOTHES, who)?.wet ?? 0;
-        const wet = wetAfter(had, hours, {
+        let waded = 0;
+        if (o.ford) {
+          const last = ctx.truth.get(WET_LAST_HEX, who)?.hex;
+          if (last !== loc.hex) changes.push(setComponent(WET_LAST_HEX, who, { hex: loc.hex }));
+          const ford = last === undefined ? undefined : fordOf(o.map, last, loc.hex, settled);
+          if (ford) {
+            waded = ford.wet;
+            events.push({
+              kind: WADED_EVENT,
+              actors: [who],
+              place: o.ford.placeOf(ctx.truth, who),
+              data: { hex: ford.hex, water: o.map.water?.[ford.hex] ?? 0 },
+              emissions: {},
+              causes: [{ kind: "state", entity: who as never, key: LOCATION.name }],
+            });
+          }
+        }
+        const aired = wetAfter(had, hours, {
           outdoors,
           precip: day.precip,
           airC,
           windMs: day.windMs,
           fire: o.fires && !outdoors ? fireIn(ctx.truth, loc.space) : 0,
         });
+        const wet = Math.max(aired, waded);
         if (wet === had) continue;
         changes.push(
-          wet > 0
-            ? setComponent(WET_CLOTHES, who, { wet })
-            : { op: "delete", table: WET_CLOTHES.name, id: who },
+          wet > 0 ? setComponent(WET_CLOTHES, who, { wet }) : deleteComponent(WET_CLOTHES, who),
         );
       }
-      return changes.length === 0 ? {} : { changes };
+      return changes.length === 0 ? {} : { events, changes };
     },
   };
 }

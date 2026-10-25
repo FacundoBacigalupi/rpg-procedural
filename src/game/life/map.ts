@@ -55,6 +55,9 @@ export function localMapOf(
     crossSeconds,
     forest: patch.hexes.map((_, h) => tr.forest[h] === 1),
     elevationM: patch.hexes.map((_, h) => tr.elevation[h] as number),
+    water: patch.hexes.map((_, h) =>
+      tr.sea[h] || tr.lake[h] ? 3 : tr.water[h] === 2 ? 2 : tr.water[h] === 1 ? 1 : 0,
+    ),
     baseElevationM: tr.elevation.reduce((s, e) => s + e, 0) / Math.max(1, patch.hexes.length),
     ...(osc?.basin != null
       ? {

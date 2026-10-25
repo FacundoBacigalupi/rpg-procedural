@@ -72,6 +72,11 @@ export interface LocalMap {
   readonly forest: readonly boolean[];
   /** m sobre el nivel del mar de cada hex (planet-gen); opcional: sin esto la altitud es 0. */
   readonly elevationM?: readonly number[];
+  /**
+   * El agua de cada hex (planet-gen): 0 seco, 1 arroyo, 2 río, 3 lago o mar. Opcional: sin esto no
+   * hay vados (clothing-wet-river).
+   */
+  readonly water?: readonly number[];
   /** Elevación media de la celda (m): la altura a la que valen las normales del clima. */
   readonly baseElevationM?: number;
   /** Las normales de la celda: de acá sale el tiempo de cada día (`sim/weather`). */

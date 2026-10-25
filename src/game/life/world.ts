@@ -1205,6 +1205,7 @@ export function lifeWorld(
                 seed: parts.seed,
                 spaces: parts.spaces,
                 fires: true,
+                ford: { placeOf: placeOf(parts, village) },
               }),
               wardrobeWearProcess({
                 garments: wardrobe,
