@@ -246,7 +246,7 @@ import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
-import { wardrobeClothing, wardrobeOf } from "./wardrobe.ts";
+import { wardrobeClothing, wardrobeOf, wardrobeWearProcess } from "./wardrobe.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { wildProcess } from "./wild.ts";
@@ -1173,6 +1173,26 @@ export function lifeWorld(
           : []),
         ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
           ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
+          : []),
+        ...(wardrobe
+          ? [
+              wardrobeWearProcess({
+                garments: wardrobe,
+                workAge: ROUTINE.workAge,
+                year: parts.clock.year,
+                airC: (now) => outdoorTempC(parts.map, parts.clock, parts.seed, now),
+                placeOf: placeOf(parts, village),
+                ...(parts.npcJourneyDays !== undefined
+                  ? {
+                      onRoad: {
+                        reads: [NPC_JOURNEY.name],
+                        is: (t: ReadonlyWorldTruth, who: AgentId) =>
+                          t.get(NPC_JOURNEY, who) !== undefined,
+                      },
+                    }
+                  : {}),
+              }),
+            ]
           : []),
         ...(parts.npcCloak === true &&
         parts.npcJourneyDays !== undefined &&

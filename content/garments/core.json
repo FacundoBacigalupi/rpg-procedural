@@ -8,6 +8,7 @@
     "windproof": 0.05,
     "coverage": 0.45,
     "material": "hemp",
+    "wearDays": 300,
     "basic": true
   },
   {
@@ -19,6 +20,7 @@
     "windproof": 0.1,
     "coverage": 0.4,
     "material": "hemp",
+    "wearDays": 300,
     "basic": true
   },
   {
@@ -30,6 +32,7 @@
     "windproof": 0,
     "coverage": 0.05,
     "material": "straw",
+    "wearDays": 60,
     "basic": true
   },
   {
@@ -41,6 +44,7 @@
     "windproof": 0.2,
     "coverage": 0.55,
     "material": "hemp",
+    "wearDays": 400,
     "basic": true
   },
   {
@@ -52,6 +56,7 @@
     "windproof": 0.35,
     "coverage": 0.5,
     "material": "cotton",
+    "wearDays": 700,
     "basic": true
   },
   {
@@ -63,6 +68,7 @@
     "windproof": 0.3,
     "coverage": 0.05,
     "material": "felt",
+    "wearDays": 900,
     "basic": true
   },
   {
@@ -74,6 +80,7 @@
     "windproof": 0.6,
     "coverage": 0.7,
     "material": "cotton",
+    "wearDays": 800,
     "basic": true
   },
   {
@@ -85,6 +92,7 @@
     "windproof": 0.4,
     "coverage": 0.05,
     "material": "felt",
+    "wearDays": 400,
     "basic": true
   },
   {
@@ -95,6 +103,7 @@
     "clo": 1.2,
     "windproof": 0.8,
     "coverage": 0.8,
-    "material": "fur"
+    "material": "fur",
+    "wearDays": 1500
   }
 ]

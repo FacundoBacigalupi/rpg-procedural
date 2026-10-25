@@ -23,6 +23,8 @@ export const GarmentDef = z.strictObject({
   material: z.string().min(1),
   /** Si es parte del juego de ropa que tiene cualquiera de la aldea. */
   basic: z.boolean().default(false),
+  /** Días de uso diario (sin trabajo pesado) hasta deshacerse (clothing-wear, sin calibrar). */
+  wearDays: z.number().positive().default(365),
 });
 export type GarmentDef = z.infer<typeof GarmentDef>;
 
