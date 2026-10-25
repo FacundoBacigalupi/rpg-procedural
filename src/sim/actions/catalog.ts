@@ -237,6 +237,11 @@ export const ActionDef = z
           at: z.enum(PLACE_KINDS),
           good: contentId,
           perHour: z.number().int().positive(),
+          /**
+           * Palabras que eligen esta salida cuando el actor nombra qué junta («junto leña»). Una salida
+           * con palabras solo sale si se la nombra; sin nombrarla, la primera sin palabras del lugar.
+           */
+          words: z.array(z.string().min(1)).min(1).optional(),
         }),
       )
       .default([]),

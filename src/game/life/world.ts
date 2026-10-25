@@ -690,6 +690,8 @@ export interface LifeWorld {
   readonly wildHarvest?: boolean;
   /** Con `wildHarvest`: escala del techo del stock en pie (1 = el de la celda). */
   readonly wildCapacityScale?: number;
+  /** Con `wildHarvest`: la leña del monte (`WildOptions.firewood`) y `gather` por lo que se nombra (`ActOptions.gatherByWords`); apagado. */
+  readonly wildFirewood?: boolean;
   /** Opt-in: la gente caza herbívoros de la celda (cobro diario dentro de `life.ecology`, ledger `hunt` -> montes); apagado. */
   readonly wildHunt?: boolean;
   /** Con `wildHunt`: multiplicador del esfuerzo diario de caza. */
@@ -1012,6 +1014,9 @@ export function lifeWorld(
           ...(parts.npcPace && parts.npcStrain === true ? { strain: true } : {}),
           ...(parts.npcFootwear === true ? { footwear: true } : {}),
           ...(parts.itemClaims === true ? { itemClaims: true } : {}),
+          ...(parts.wildHarvest === true && parts.wildFirewood === true
+            ? { gatherByWords: true }
+            : {}),
           ...(parts.tasteDemand === true ? { tasteDemand: parts.tastes } : {}),
           ...(parts.npcFootwear === true && parts.npcFootSores === true ? { footSores: true } : {}),
           ...(parts.coreEffects === true ? { coreEffects: true } : {}),
@@ -1462,6 +1467,7 @@ export function lifeWorld(
               wildProcess({
                 dayTicks: parts.clock.day,
                 capacityScale: parts.wildCapacityScale ?? 1,
+                ...(parts.wildFirewood === true ? { firewood: true } : {}),
               }),
             ]
           : []),

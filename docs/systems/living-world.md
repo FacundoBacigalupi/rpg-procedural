@@ -159,6 +159,8 @@ interface VegetationState {               // por celda (fracciones) o por parche
 - **Fauna con la etapa.** Cada población vive en ciertas etapas (`Niche.habitat`): los herbívoros de pastizal siguen a los claros y a los incendios; los de bosque viejo se van cuando se tala. El paisaje en mosaico (parches de distintas edades) sostiene más especies que uno uniforme.
 - **Paisajes hechos por la gente.** El pastoreo mantiene praderas que sin él serían bosque; la roza crea mosaicos; un coto de caza de un noble conserva un bosque que los campesinos no pueden tocar (law: caza furtiva). Quitar a la gente también cambia el paisaje.
 
+**Hecho (hearth-wood):** la leña es la madera muerta del monte: cae una fracción de la producción primaria de la celda por día (`DEADWOOD_SHARE`) y se pudre despacio (`DEADWOOD_DECAY`, dura años), con solución exacta por tramos (`accrueDeadwood`); la gente alcanza por día lo que da `harvestStock` sobre lo caído (`deadwoodReach`), y `life.wild` lo pone en la cuenta de cada lugar de monte (`good:firewood`, fuente `wild`) como el forraje. `gather` saca leña si se la nombra («junto leña», `yields[].words`). La leña juntada no tiene vida media (estacionada dura años; además `life.spoilage` y `life.hearth` corren en la misma fase contra la misma foto del ledger). Opt-in `wildFirewood`; falta quemarla en los hogares (`hearth-seed`, `hearth-tend`).
+
 ## 10. Especies que llegan: dispersión, contacto e invasoras
 
 ```ts

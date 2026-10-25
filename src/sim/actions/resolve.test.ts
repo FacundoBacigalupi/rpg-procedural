@@ -25,6 +25,7 @@ import {
   type ActionResolution,
   type AttemptActor,
   degreeOf,
+  gatherYield,
   isMoney,
   legOf,
   type Market,
@@ -409,6 +410,16 @@ describe("recolectar", () => {
     const low = sorted.slice(0, 50).reduce((s, r) => s + amount(r), 0);
     const high = sorted.slice(-50).reduce((s, r) => s + amount(r), 0);
     expect(high).toBeGreaterThan(low * 2);
+  });
+
+  it("lo que se nombra elige la salida («junto leña»); sin nombrarla, la de siempre", () => {
+    const ys = verb("gather").yields;
+    expect(gatherYield(ys, ["forest"], "leña")?.good).toBe("firewood");
+    expect(gatherYield(ys, ["forest"], "unas ramas secas")?.good).toBe("firewood");
+    expect(gatherYield(ys, ["forest"], "hongos")?.good).toBe("forage");
+    expect(gatherYield(ys, ["forest"], null)?.good).toBe("forage");
+    // La leña es del monte: en el campo, nombrarla no la hace aparecer.
+    expect(gatherYield(ys, ["fields"], "leña")?.good).toBe("gleanings");
   });
 
   it("donde no hay qué sacar, no saca", () => {
