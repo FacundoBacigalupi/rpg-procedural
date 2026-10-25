@@ -15,6 +15,7 @@ import {
   type IntentDraft,
   ITEM_HOLD,
   ITEM_LOOK,
+  ITEM_WEAR,
   LOCATION,
   planFromDraft,
 } from "../../sim/index.ts";
@@ -89,8 +90,25 @@ describe("la herramienta como instrumento (use-tools-arg)", () => {
     // Juntó con el cuchillo (o no había nada que juntar), y el cuchillo sigue en su mano.
     if (effect.amount > 0) expect(effect.tool).toBe(knife);
     expect(w.truth.get(ITEM_HOLD, knife)?.possession).toBe(w.player);
+    // Si la usó, se gastó lo que dice el paso (use-tools-wear).
+    if (effect.tool !== undefined) {
+      expect(effect.toolWear).toBeGreaterThan(0);
+      expect(w.truth.get(ITEM_WEAR, knife)?.wear).toBe(effect.toolWear);
+    } else expect(w.truth.get(ITEM_WEAR, knife)).toBeUndefined();
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+  }, 300_000);
+
+  it("el replay de un motor anterior no gasta la herramienta (legacyNoToolWear)", () => {
+    const life = Life.create(7, content, { frequency: 8, legacyNoToolWear: true });
+    const w = life.world;
+    const knife = knifeOf(w, true);
+    const made = gather(w);
+    if (made.kind !== "plan") throw new Error(made.kind);
+    const report = life.turn(made.plan, 1);
+    const effect = report.steps.find((s) => s.verb === "gather")?.self.effect;
+    expect(effect).not.toHaveProperty("toolWear");
+    expect(w.truth.get(ITEM_WEAR, knife)).toBeUndefined();
   }, 300_000);
 
   it("si no lleva el cuchillo, junta a mano en vez de preguntar", () => {

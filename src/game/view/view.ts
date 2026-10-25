@@ -322,8 +322,10 @@ export type EffectView =
       readonly what: string | null;
       readonly amount: number;
       readonly stumbled: boolean;
+      /** La herramienta quedó gastada del todo en el paso (use-tools-wear): se nota en la mano. */
+      readonly toolWorn?: boolean;
     }
-  | { readonly kind: "work"; readonly hurt: boolean }
+  | { readonly kind: "work"; readonly hurt: boolean; readonly toolWorn?: boolean }
   | {
       readonly kind: "speak";
       readonly to?: string;
@@ -867,9 +869,10 @@ function effectView(
         what: e.what,
         amount: Math.round(e.amount),
         stumbled: e.stumbled,
+        ...(e.toolWorn === true ? { toolWorn: true } : {}),
       };
     case "work":
-      return { kind: "work", hurt: e.hurt };
+      return { kind: "work", hurt: e.hurt, ...(e.toolWorn === true ? { toolWorn: true } : {}) };
     case "speak": {
       const to = target(e.to).target;
       return {

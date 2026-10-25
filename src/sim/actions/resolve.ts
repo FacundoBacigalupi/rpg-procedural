@@ -129,7 +129,14 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * La herramienta que el actor lleva y usa de instrumento (`with`, use-tools) y su forma. Solo la
    * pone quien la vio en la mano del actor; sin esto, el verbo rinde lo de siempre.
    */
-  readonly instrument?: { readonly item: ItemId; readonly shape: string } | undefined;
+  readonly instrument?:
+    | {
+        readonly item: ItemId;
+        readonly shape: string;
+        /** Su desgaste (0 nueva, 1 gastada; use-tools-wear). Sin él, la herramienta no se gasta. */
+        readonly wear?: number;
+      }
+    | undefined;
   readonly takeItem?:
     | {
         readonly item: ItemId;
@@ -351,6 +358,9 @@ export type VerbEffect =
       readonly stumbled: boolean;
       /** La herramienta que rindió (use-tools). */
       readonly tool?: ItemId;
+      /** Cuánto se gastó la herramienta en el paso y si quedó gastada del todo (use-tools-wear). */
+      readonly toolWear?: number;
+      readonly toolWorn?: boolean;
     }
   | {
       readonly kind: "work";
@@ -360,6 +370,9 @@ export type VerbEffect =
       readonly hurt: boolean;
       /** La herramienta que rindió (use-tools). */
       readonly tool?: ItemId;
+      /** Cuánto se gastó la herramienta en el paso y si quedó gastada del todo (use-tools-wear). */
+      readonly toolWear?: number;
+      readonly toolWorn?: boolean;
     }
   | {
       readonly kind: "speak";
@@ -655,7 +668,28 @@ interface Ctx {
   readonly path: readonly number[];
   readonly rng: AttemptInput["rng"];
   /** La herramienta que sirve de instrumento en este paso, con lo que multiplica el rinde. */
-  readonly tool?: { readonly item: ItemId; readonly rate: number } | undefined;
+  readonly tool?: Tool | undefined;
+}
+
+/** La herramienta en uso: lo que multiplica, su desgaste y cuánto se gasta por segundo. */
+interface Tool {
+  readonly item: ItemId;
+  readonly rate: number;
+  readonly ease: number;
+  readonly wear?: number;
+  readonly perSecond: number;
+}
+
+/** Lo que el paso le deja a la herramienta: el desgaste sumado (a millonésimas) y si se terminó. */
+function toolMark(tool: Tool | undefined, seconds: number) {
+  if (tool === undefined) return {};
+  if (tool.wear === undefined) return { tool: tool.item };
+  const toolWear = Math.round(seconds * tool.perSecond * 1e6) / 1e6;
+  return {
+    tool: tool.item,
+    toolWear,
+    ...(tool.wear + toolWear >= 1 ? { toolWorn: true } : {}),
+  };
 }
 
 type Resolver = (c: Ctx) => VerbResult;
@@ -694,7 +728,7 @@ export function resolve(input: ResolveInput): ActionResolution {
     nominal,
     path,
     rng: input.rng.fork("resolve", actor.id, def.id, input.tick),
-    ...(tool ? { tool: { item: tool.item, rate: tool.rate } } : {}),
+    ...(tool ? { tool } : {}),
   };
   const run = RESOLVE[def.resolver];
   const truth = run(ctx);
@@ -1029,9 +1063,12 @@ export function gatherYield(
  */
 export function toolFor(
   input: Pick<ResolveInput, "def" | "node" | "instrument" | "scene" | "gatherByWords">,
-): { readonly item: ItemId; readonly rate: number; readonly ease: number } | undefined {
+): Tool | undefined {
   const inst = input.instrument;
   if (inst === undefined) return undefined;
+  // Gastada del todo, ya no rinde de más: se trabaja como a mano.
+  const wear = inst.wear;
+  if (wear !== undefined && wear >= 1) return undefined;
   const { def } = input;
   const good =
     def.resolver === "gather"
@@ -1044,7 +1081,16 @@ export function toolFor(
   const spec = def.instruments.find(
     (t) => t.shapes.includes(inst.shape) && (t.good === undefined || t.good === good),
   );
-  return spec ? { item: inst.item, rate: spec.rate, ease: spec.ease } : undefined;
+  if (!spec) return undefined;
+  // Lo que da de más se va perdiendo con el desgaste (el filo que se va, el mango flojo).
+  const left = 1 - (wear ?? 0);
+  return {
+    item: inst.item,
+    rate: 1 + (spec.rate - 1) * left,
+    ease: spec.ease * left,
+    ...(wear !== undefined ? { wear } : {}),
+    perSecond: 1 / (spec.hours * 3600),
+  };
 }
 
 const gather: Resolver = (c) => {
@@ -1072,7 +1118,7 @@ const gather: Resolver = (c) => {
     amount,
     what,
     stumbled,
-    ...(c.tool ? { tool: c.tool.item } : {}),
+    ...toolMark(c.tool, c.nominal),
   };
   if (amount === 0) {
     // Lo que el lugar tenía ya se lo llevaron (o se juntó tan mal que no hay nada): se ve.
@@ -1098,7 +1144,7 @@ const work: Resolver = (c) => {
     kind: "work",
     effectiveSeconds,
     hurt: m <= -CRITICAL_MARGIN,
-    ...(c.tool ? { tool: c.tool.item } : {}),
+    ...toolMark(c.tool, c.nominal),
     ...(mk?.harvestGood && mk.harvestGramsPerHour ? { gramsPerHour: mk.harvestGramsPerHour } : {}),
   };
   // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.

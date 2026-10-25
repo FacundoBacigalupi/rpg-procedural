@@ -68,6 +68,7 @@ import {
   INNATE,
   ITEM_HOLD,
   ITEM_LOOK,
+  ITEM_WEAR,
   ingest,
   injure,
   isScam,
@@ -376,6 +377,8 @@ export interface ActOptions {
   readonly legacyNoHostTake?: boolean;
   /** Replay de motores anteriores a `life-47`: `use` con `well.draw_water` no saca agua. */
   readonly legacyNoDrawWater?: boolean;
+  /** Replay de motores anteriores a `life-48`: la herramienta de instrumento no se gasta. */
+  readonly legacyNoToolWear?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -655,6 +658,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoDrawWater === true
         ? []
         : [WORK.name, WELL_DRAWN.name, CONTENTS.name, ITEM_HOLD.name, ITEM_LOOK.name]),
+      ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
       ...(o.hearthTend ? [HEARTH.name] : []),
     ],
     writes: [
@@ -667,6 +671,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.itemClaims ? [ITEM_HOLD.name] : []),
       // Sacar agua del pozo (use-well): el recipiente, lo sacado hoy y el desgaste del pozo.
       ...(o.legacyNoDrawWater === true ? [] : [CONTENTS.name, WELL_DRAWN.name, WORK.name]),
+      // La herramienta que se usó de instrumento se gasta (use-tools-wear).
+      ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -869,7 +875,9 @@ function instrumentOf(
   truth: ReadonlyWorldTruth,
   node: { args: readonly ArgValue[] },
   me: AgentId,
-): { item: ItemId; shape: string } | undefined {
+  /** Si la herramienta se gasta (motor ≥ 48): entonces lleva su desgaste. */
+  wears: boolean,
+): { item: ItemId; shape: string; wear?: number } | undefined {
   const a = node.args.find(
     (x) => x.role === "with" && "entity" in x && x.entity.startsWith("item:"),
   );
@@ -878,7 +886,8 @@ function instrumentOf(
   if (truth.get(ENTITY, item)?.endedAt !== undefined) return undefined;
   if (truth.get(ITEM_HOLD, item)?.possession !== me) return undefined;
   const shape = truth.get(ITEM_LOOK, item)?.shape;
-  return shape === undefined ? undefined : { item, shape };
+  if (shape === undefined) return undefined;
+  return wears ? { item, shape, wear: truth.get(ITEM_WEAR, item)?.wear ?? 0 } : { item, shape };
 }
 
 /** La toma de `item` por `me` según el núcleo de property, con el estado actual (causa provisional). */
@@ -1228,7 +1237,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
             truth.get(ENTITY, wantedItem)?.endedAt === undefined &&
             truth.get(ITEM_HOLD, wantedItem)?.possession === me,
         };
-  const instrument = o.legacyNoDrawWater === true ? undefined : instrumentOf(truth, node, me);
+  const instrument =
+    o.legacyNoDrawWater === true
+      ? undefined
+      : instrumentOf(truth, node, me, o.legacyNoToolWear !== true);
   const takeItem =
     wantedItem === undefined || node.verb !== "take"
       ? undefined
@@ -2054,6 +2066,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         }),
       );
     }
+  }
+  // La herramienta que sirvió de instrumento se gasta con el uso (use-tools-wear).
+  if ((eff.kind === "gather" || eff.kind === "work") && eff.tool && (eff.toolWear ?? 0) > 0) {
+    const before = truth.get(ITEM_WEAR, eff.tool)?.wear ?? 0;
+    const wear = Math.min(1, Math.round((before + (eff.toolWear as number)) * 1e6) / 1e6);
+    changes.push(setComponent(ITEM_WEAR, eff.tool, { wear }));
   }
   // Soltar un objeto propio: queda en el lugar, con su LOCATION donde está el actor; nadie más
   // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.

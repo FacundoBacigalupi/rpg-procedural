@@ -146,9 +146,9 @@
       { "at": "water", "good": "shellfish", "perHour": 300 }
     ],
     "instruments": [
-      { "shapes": ["axe"], "good": "firewood", "rate": 2, "ease": 0.3 },
-      { "shapes": ["knife"], "good": "forage", "rate": 1.25, "ease": 0.2 },
-      { "shapes": ["sickle"], "good": "gleanings", "rate": 1.5, "ease": 0.2 }
+      { "shapes": ["axe"], "good": "firewood", "rate": 2, "ease": 0.3, "hours": 600 },
+      { "shapes": ["knife"], "good": "forage", "rate": 1.25, "ease": 0.2, "hours": 800 },
+      { "shapes": ["sickle"], "good": "gleanings", "rate": 1.5, "ease": 0.2, "hours": 500 }
     ]
   },
   {
@@ -225,8 +225,8 @@
     ],
     "evidence": 0.5,
     "instruments": [
-      { "shapes": ["hoe"], "rate": 1.3, "ease": 0.2 },
-      { "shapes": ["sickle"], "rate": 1.2, "ease": 0.1 }
+      { "shapes": ["hoe"], "rate": 1.3, "ease": 0.2, "hours": 1000 },
+      { "shapes": ["sickle"], "rate": 1.2, "ease": 0.1, "hours": 500 }
     ]
   },
   {

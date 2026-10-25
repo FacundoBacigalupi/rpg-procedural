@@ -230,6 +230,13 @@
     "lines": ["En un descuido te lastimás.", "Te hacés daño trabajando."]
   },
   {
+    "id": "outcome.tool.worn",
+    "lines": [
+      "La herramienta ya no da más: está gastada y rinde como las manos.",
+      "Se nota que la herramienta está gastada: ya no ayuda."
+    ]
+  },
+  {
     "id": "outcome.rest.success",
     "lines": ["Descansás y te hace bien.", "Dormís un rato y te levantás mejor."]
   },

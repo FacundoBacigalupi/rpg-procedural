@@ -300,8 +300,12 @@ export interface LifeSetup {
  *
  * `life-47`: `use` con `well.draw_water` saca agua del pozo a un recipiente que se lleva (use-well).
  * Compatibilidad: un motor anterior a `life-47` enciende `legacyNoDrawWater`.
+ *
+ * `life-48`: la herramienta que sirve de instrumento en `gather` y `work` se gasta con las horas de
+ * uso (`ITEM_WEAR`) y rinde menos cuanto más gastada (use-tools-wear). Compatibilidad:
+ * `legacyNoToolWear`.
  */
-export const LIFE_ENGINE = "life-47";
+export const LIFE_ENGINE = "life-48";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -358,6 +362,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 45 ? { legacyNoFleeShed: true } : {}),
     ...(n < 46 ? { legacyFullTakeItem: true } : {}),
     ...(n < 47 ? { legacyNoDrawWater: true } : {}),
+    ...(n < 48 ? { legacyNoToolWear: true } : {}),
   };
 }
 
