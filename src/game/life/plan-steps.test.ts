@@ -62,7 +62,7 @@ describe("appendStep", () => {
 
 describe("motor y pasos", () => {
   it("los motores anteriores a life-4 piden pasos sin compactar; life-4 en adelante no", () => {
-    expect(LIFE_ENGINE).toBe("life-46");
+    expect(LIFE_ENGINE).toBe("life-47");
     expect(engineOptions("life-3", {}).verboseSteps).toBe(true);
     expect(engineOptions("life-1", { frequency: 8 })).toEqual({
       legacyShortNames: true,
@@ -109,6 +109,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-4", {})).toEqual({
       legacyShortNames: true,
@@ -153,6 +154,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       legacyShortNames: true,
@@ -194,6 +196,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyShortNames: true,
@@ -234,6 +237,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyShortNames: true,
@@ -273,6 +277,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyShortNames: true,
@@ -311,6 +316,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       legacyShortNames: true,
@@ -348,6 +354,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyShortNames: true,
@@ -384,6 +391,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyShortNames: true,
@@ -419,6 +427,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyShortNames: true,
@@ -453,6 +462,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-15", {})).toEqual({
       legacyShortNames: true,
@@ -486,6 +496,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-16", {})).toEqual({
       legacyShortNames: true,
@@ -518,6 +529,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-17", {})).toEqual({
       legacyShortNames: true,
@@ -549,6 +561,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-19", {})).toEqual({
       legacyShortNames: true,
@@ -578,6 +591,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-18", {})).toEqual({
       legacyShortNames: true,
@@ -608,6 +622,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-20", {})).toEqual({
       legacyShortNames: true,
@@ -636,6 +651,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-21", {})).toEqual({
       legacyShortNames: true,
@@ -663,6 +679,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-22", {})).toEqual({
       legacyShortNames: true,
@@ -689,6 +706,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-23", {})).toEqual({
       legacyShortNames: true,
@@ -714,6 +732,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-24", {})).toEqual({
       legacyShortNames: true,
@@ -738,6 +757,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-25", {})).toEqual({
       legacyShortNames: true,
@@ -761,6 +781,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-26", {})).toEqual({
       legacyShortNames: true,
@@ -783,6 +804,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-27", {})).toEqual({
       legacyShortNames: true,
@@ -804,6 +826,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-28", {})).toEqual({
       legacyShortNames: true,
@@ -824,6 +847,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-29", {})).toEqual({
       legacyShortNames: true,
@@ -843,6 +867,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-30", {})).toEqual({
       legacyShortNames: true,
@@ -861,6 +886,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-31", {})).toEqual({
       legacyShortNames: true,
@@ -878,6 +904,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-32", {})).toEqual({
       legacyShortNames: true,
@@ -894,6 +921,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-33", {})).toEqual({
       legacyShortNames: true,
@@ -909,6 +937,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-34", {})).toEqual({
       legacyShortNames: true,
@@ -923,6 +952,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-35", {})).toEqual({
       legacyShortNames: true,
@@ -936,6 +966,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-36", {})).toEqual({
       legacyShortNames: true,
@@ -948,6 +979,7 @@ describe("motor y pasos", () => {
       legacyNoToldBeliefs: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-37", {})).toEqual({
       legacyShortNames: true,
@@ -959,6 +991,7 @@ describe("motor y pasos", () => {
       legacyFullTakeItem: true,
       legacyHeardReaders: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-38", {})).toEqual({
       legacyShortNames: true,
@@ -969,6 +1002,7 @@ describe("motor y pasos", () => {
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
       legacyHeardTable: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-39", {})).toEqual({
       legacyShortNames: true,
@@ -978,6 +1012,7 @@ describe("motor y pasos", () => {
       legacyNoHostTake: true,
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-40", {})).toEqual({
       legacyFixedSpeech: true,
@@ -986,6 +1021,7 @@ describe("motor y pasos", () => {
       legacyNoHostTake: true,
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-41", {})).toEqual({
       legacyNoSettlementWalk: true,
@@ -993,24 +1029,32 @@ describe("motor y pasos", () => {
       legacyNoHostTake: true,
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-42", {})).toEqual({
       legacyNoLarderTake: true,
       legacyNoHostTake: true,
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-43", {})).toEqual({
       legacyNoHostTake: true,
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
     expect(engineOptions("life-44", {})).toEqual({
       legacyNoFleeShed: true,
       legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
     });
-    expect(engineOptions("life-45", {})).toEqual({ legacyFullTakeItem: true });
-    expect(engineOptions("life-46", {})).toEqual({});
+    expect(engineOptions("life-45", {})).toEqual({
+      legacyFullTakeItem: true,
+      legacyNoDrawWater: true,
+    });
+    expect(engineOptions("life-46", {})).toEqual({ legacyNoDrawWater: true });
+    expect(engineOptions("life-47", {})).toEqual({});
   });
 
   /** El personaje agotado quiere ir al monte: reintenta el camino cada tick sin poder darlo. */

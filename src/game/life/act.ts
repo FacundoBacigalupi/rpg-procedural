@@ -39,6 +39,7 @@ import {
   beliefAbout,
   blowFromMishap,
   blowFromStrike,
+  CONTENTS,
   type ContestClaim,
   CREDIT,
   capabilitiesOf,
@@ -63,6 +64,7 @@ import {
   HARVEST_GRAMS_PER_HOUR,
   INNATE,
   ITEM_HOLD,
+  ITEM_LOOK,
   ingest,
   injure,
   isScam,
@@ -163,6 +165,8 @@ import {
   verbSkill,
   type WaterQuality,
   type WaterTreatment,
+  WELL_DRAWN,
+  WORK,
   walkingFactor,
   weatherAt,
   withReceipt,
@@ -365,6 +369,8 @@ export interface ActOptions {
   readonly legacyNoLarderTake?: boolean;
   /** Replay de motores anteriores a `life-44`: `take` en casa ajena no saca de la despensa de ese hogar. */
   readonly legacyNoHostTake?: boolean;
+  /** Replay de motores anteriores a `life-47`: `use` con `well.draw_water` no saca agua. */
+  readonly legacyNoDrawWater?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -627,6 +633,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.residue ? [LOT_ESSENCE.name] : []),
       ...(o.fieldWatering ? [IRRIGATED.name] : []),
       ...(o.fieldWatering && o.fieldSowing ? [SOWN.name] : []),
+      ...(o.legacyNoDrawWater === true
+        ? []
+        : [WORK.name, WELL_DRAWN.name, CONTENTS.name, ITEM_HOLD.name, ITEM_LOOK.name]),
     ],
     writes: [
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
@@ -635,6 +644,8 @@ export function actProcess(o: ActOptions): ProcessDef {
         ? [PERSON_SUBSTANCE.name, SUBSTANCE.name, ENTITY.name]
         : []),
       ...(o.itemClaims ? [ITEM_HOLD.name] : []),
+      // Sacar agua del pozo (use-well): el recipiente, lo sacado hoy y el desgaste del pozo.
+      ...(o.legacyNoDrawWater === true ? [] : [CONTENTS.name, WELL_DRAWN.name, WORK.name]),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -740,6 +751,50 @@ function hostLarderOf(
   const node = o.spaces.spaces.find((s) => s.key === space);
   if (node?.household === undefined || !node.indoor || node.household === household) return {};
   return { hostLarder: node.household as unknown as HolderRef };
+}
+
+/** Cuánto gasta la soga y el brocal cada vez que se saca agua (la condición del `WORK`). */
+export const WELL_WEAR = 0.001;
+
+/**
+ * `use` con `well.draw_water` (use-well): el pozo nombrado, lo que le queda hoy (nada si el actor
+ * no está en su hex), su condición y el primer recipiente que lleva con lugar todavía.
+ */
+function drawWaterOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+  now: Tick,
+): { drawWater?: NonNullable<ResolveInput["drawWater"]> } {
+  if (o.legacyNoDrawWater === true || node.verb !== "use") return {};
+  const how = node.args.find((a) => a.role === "how");
+  if (how === undefined || !("text" in how) || how.text !== "well.draw_water") return {};
+  const target = node.args.find((a) => a.role === "target");
+  if (target === undefined || !("entity" in target)) return {};
+  const well = target.entity;
+  const work = truth.get(WORK, well);
+  if (work === undefined || work.kind !== "well") return {};
+  const here = truth.get(LOCATION, me)?.hex;
+  const drawn = truth.get(WELL_DRAWN, well);
+  const today = drawn?.day === Math.floor(now / o.clock.day) ? drawn.liters : 0;
+  const left =
+    here !== undefined && work.hexes.includes(here) ? Math.max(0, work.capacity - today) : 0;
+  const vessels = o.catalog.affordance("well.draw_water")?.vessels ?? {};
+  let vessel: { item: ItemId; room: number } | undefined;
+  for (const id of [...truth.ids(ITEM_HOLD)].sort()) {
+    const item = id as ItemId;
+    if (truth.get(ITEM_HOLD, item)?.possession !== me) continue;
+    if (truth.get(ENTITY, item)?.endedAt !== undefined) continue;
+    const holds = vessels[truth.get(ITEM_LOOK, item)?.shape ?? ""];
+    if (holds === undefined) continue;
+    const room = holds - (truth.get(CONTENTS, item)?.water ?? 0);
+    if (room > 0) {
+      vessel = { item, room };
+      break;
+    }
+  }
+  return { drawWater: { well, left, condition: work.condition, ...(vessel ? { vessel } : {}) } };
 }
 
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
@@ -1173,6 +1228,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ? { homeLarder: person.household as unknown as HolderRef }
       : {}),
     ...(node.verb === "take" && o.legacyNoHostTake !== true ? hostLarderOf(o, truth, me) : {}),
+    ...drawWaterOf(o, truth, me, node, ctx.now),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -1878,6 +1934,26 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     scope: me,
     reason: { kind: "state" as const, entity: me, key: planKey(state.seq) },
   };
+  // Sacar agua del pozo: el recipiente guarda los litros, el pozo cuenta lo sacado hoy y se gasta.
+  if (eff.kind === "use" && eff.liters > 0 && eff.item !== undefined) {
+    const work = truth.get(WORK, eff.well);
+    if (work !== undefined) {
+      const day = Math.floor(ctx.now / o.clock.day);
+      const drawn = truth.get(WELL_DRAWN, eff.well);
+      const before = truth.get(CONTENTS, eff.item)?.water ?? 0;
+      changes.push(
+        setComponent(CONTENTS, eff.item, { water: before + eff.liters }),
+        setComponent(WELL_DRAWN, eff.well, {
+          day,
+          liters: (drawn?.day === day ? drawn.liters : 0) + eff.liters,
+        }),
+        setComponent(WORK, eff.well, {
+          ...work,
+          condition: Math.max(0, work.condition - WELL_WEAR),
+        }),
+      );
+    }
+  }
   // Soltar un objeto propio: queda en el lugar, con su LOCATION donde está el actor; nadie más
   // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.
   const myPlace = truth.get(LOCATION, me);

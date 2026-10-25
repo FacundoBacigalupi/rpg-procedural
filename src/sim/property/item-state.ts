@@ -36,6 +36,17 @@ export interface ItemLook {
 
 export const ITEM_LOOK = table<ItemLook>("property.look");
 
+/**
+ * Lo que tiene adentro un recipiente con identidad (actions, «Ampliación: `use`»): litros de agua.
+ * El agua todavía no está en el ledger (como en `drink`); cuando weather §4 la cuente, pasa a ser
+ * una cuenta del recipiente.
+ */
+export interface ItemContents {
+  readonly water: number;
+}
+
+export const CONTENTS = table<ItemContents>("property.contents");
+
 const isItem = (id: string): id is ItemId => id.startsWith("item:");
 
 /** Snapshot desde ENTITY + ITEM_HOLD; `undefined` si el ítem no existe como entidad. */

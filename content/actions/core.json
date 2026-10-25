@@ -672,7 +672,7 @@
     "duration": { "kind": "fixed", "seconds": 60 },
     "checkpoint": 60,
     "emissions": { "sight": 0.2, "sound": 0.05 },
-    "resolver": "none",
+    "resolver": "use",
     "ease": 3,
     "failureModes": [
       { "id": "no_means", "factor": "means" },

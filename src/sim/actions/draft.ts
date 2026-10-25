@@ -486,7 +486,7 @@ function argValue(
 
 /**
  * «Saco agua del pozo», «uso el pozo» (actions, «Ampliación: `use`»): la cosa dice qué se puede. De
- * sus funciones, la que nombra `how` por sus palabras o, si no, la primera del contenido. Una que es
+ * sus funciones, la que nombra `how` por sus palabras o, si no, la `primary` (o la primera). Una que es
  * otro verbo con la cosa al lado (`as`) se vuelve ese paso; una propia queda como `use` con su id en
  * `how`. Sin función, `undefined`: el `use` sigue sin `how` y el juego avisa sin jugar el turno
  * (`unusableTarget`).
@@ -506,6 +506,7 @@ function affordanceStep(
   const said = how !== undefined && "text" in how ? refTokens(how.text) : [];
   const chosen =
     offers.find((o) => o.words.some((word) => refTokens(word).some((t) => said.includes(t)))) ??
+    offers.find((o) => o.primary === true) ??
     offers[0];
   if (chosen === undefined) return undefined;
   if (chosen.as !== undefined)

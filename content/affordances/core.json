@@ -3,7 +3,15 @@
     "id": "well.drink",
     "name": "tomar agua del pozo",
     "on": ["well"],
-    "words": ["agua", "beber", "tomar", "sacar", "trago", "sed"],
-    "as": "drink"
+    "words": ["beber", "tomar", "trago", "sed"],
+    "as": "drink",
+    "primary": true
+  },
+  {
+    "id": "well.draw_water",
+    "name": "sacar agua del pozo",
+    "on": ["well"],
+    "words": ["sacar", "llenar", "cargar", "acarrear", "cántaro", "balde", "olla", "recipiente"],
+    "vessels": { "jar": 12, "pot": 6, "bowl": 0.5 }
   }
 ]
