@@ -123,7 +123,14 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * Opt-in de claims de ítems: `take` va por un objeto con identidad. `available` es lo que el mundo
    * dice (existe y está al alcance); la tirada decide si el intento alcanza para disputarlo.
    */
-  readonly takeItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
+  readonly takeItem?:
+    | {
+        readonly item: ItemId;
+        readonly available: boolean;
+        /** Nadie la tiene encima (está en un lugar o guardada): alcanza un resultado parcial. */
+        readonly loose?: boolean;
+      }
+    | undefined;
   /** Opt-in de claims de ítems: `give` entrega un objeto con identidad (solo la posesión física). */
   readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /**
@@ -1484,7 +1491,9 @@ function takeItem(c: Ctx, t: NonNullable<ResolveInput["takeItem"]>): VerbResult 
       override: { outcome: "failure", failure: "no_means", believed: "failure" },
     };
   }
-  const claimed = !c.roll.unmet && (c.roll.margin as number) >= SUCCESS_MARGIN;
+  // Arrebatarla de quien la lleva pide un éxito; levantarla de donde está, solo no errarle.
+  const needs = t.loose === true ? PARTIAL_MARGIN : SUCCESS_MARGIN;
+  const claimed = !c.roll.unmet && (c.roll.margin as number) >= needs;
   return { effect: effect(claimed), seconds: c.nominal };
 }
 

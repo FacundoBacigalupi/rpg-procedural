@@ -367,6 +367,8 @@ export interface ActOptions {
   readonly legacyNoHostTake?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
+  /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
+  readonly legacyFullTakeItem?: boolean;
   /**
    * Motores anteriores a `life-10`: `tend` trata solo la herida más grave (limpia si está infectada,
    * si no venda), sin entablillar. Solo lo enciende el replay de un guardado viejo.
@@ -1104,6 +1106,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           available:
             itemHex(truth, wantedItem) === e.hex &&
             itemTakeFor(truth, wantedItem, me).accepted === true,
+          ...(o.legacyFullTakeItem !== true &&
+          !String(truth.get(ITEM_HOLD, wantedItem)?.possession ?? "").startsWith("agent:")
+            ? { loose: true }
+            : {}),
         };
   const input: ResolveInput = {
     def,

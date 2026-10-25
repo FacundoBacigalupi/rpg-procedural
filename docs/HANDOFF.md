@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**perfil2-item-claims-item-demand-player (2026-10-24, rama `feat/item-demand-player`, apilada sobre #721):** `game/life/item-demand.test.ts` (vida con `itemClaims` + `householdTools`: «agarro la olla» en su casa la toma y «la suelto» la deja). `sim/actions/resolve.ts` `takeItem.loose` baja el umbral a `PARTIAL_MARGIN`; `act.ts` lo pone cuando la posesión no es un agente. Motor `life-46` (`legacyFullTakeItem`); use-well (#720, `life-45` en su rama) se renumera al rebasar. Sigue `-npc` con `use-tools`.
+
 **play-refs-objects-source-enable (2026-10-24, rama `feat/source-enable`, apilada sobre flee #719):** `game/life/profile.ts` suma `itemClaims` y `householdTools` a `FULL_PROFILE`. Medición base contra objetos (2 seeds x 1 año): 0 problemas, mismo tiempo, `sim:diff` sin diferencias >5 %. Sin bump (las vidas guardadas conservan su `setup.life`). Queda que los NPC usen los objetos.
 
 **play-refs-objects-source-flee (2026-10-24, rama `feat/play-refs-objects-flee`, apilada sobre `-drop`):** `sim/property/item-shed.ts` `shedCarried` (transferencia `give` al lugar más `LOCATION` del portador, solo `SHED_SIZES` mediano/grande, orden por id); `game/life/fight.ts` `StrikeFightInput.shed` aplica a cada peleador con final `fled`/`down`/`dead`, causa el golpe; `act.ts` lo enciende salvo `legacyNoFleeShed`. Motor `life-45`. Tests en `item-shed.test.ts` y `flee-shed.test.ts`. Sin modelo de manos: el tamaño decide qué se cae.

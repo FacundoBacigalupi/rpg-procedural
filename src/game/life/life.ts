@@ -293,8 +293,12 @@ export interface LifeSetup {
  * `life-45`: quien huye o cae en una pelea suelta lo que lleva y abulta (tamaño mediano o grande)
  * donde pasó (play-refs-objects-source-flee). Compatibilidad: un motor anterior a `life-45`
  * enciende `legacyNoFleeShed`.
+ *
+ * `life-46`: levantar un objeto que nadie lleva encima (en un lugar o guardado) se logra con un
+ * resultado parcial; arrebatarlo de quien lo lleva sigue pidiendo un éxito
+ * (perfil2-item-claims-item-demand-player). Compatibilidad: `legacyFullTakeItem`.
  */
-export const LIFE_ENGINE = "life-45";
+export const LIFE_ENGINE = "life-46";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -349,6 +353,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 43 ? { legacyNoLarderTake: true } : {}),
     ...(n < 44 ? { legacyNoHostTake: true } : {}),
     ...(n < 45 ? { legacyNoFleeShed: true } : {}),
+    ...(n < 46 ? { legacyFullTakeItem: true } : {}),
   };
 }
 

@@ -344,6 +344,8 @@ export interface LifeOptions {
   readonly legacyNoHostTake?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
+  /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
+  readonly legacyFullTakeItem?: boolean;
   /** Solo el replay de un motor anterior a `life-32`: la espera por lluvia no mantiene el recado `move`. */
   readonly legacyNoRainWaitPersist?: boolean;
   /** Solo el replay de un motor anterior a `life-33`: el saludo al cruzarse lo hace `life.npc_greetings` con efecto directo, no la decisión `speak`. */
@@ -747,6 +749,7 @@ export function optInParts(
   | "legacyNoLarderTake"
   | "legacyNoHostTake"
   | "legacyNoFleeShed"
+  | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
   | "legacyNoGreetDecision"
   | "legacyNoOscillationCause"
@@ -929,6 +932,7 @@ export function optInParts(
     ...(options.legacyNoLarderTake ? { legacyNoLarderTake: true } : {}),
     ...(options.legacyNoHostTake ? { legacyNoHostTake: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
+    ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
     ...(options.legacyNoGreetDecision ? { legacyNoGreetDecision: true } : {}),
     ...(options.legacyNoOscillationCause ? { legacyNoOscillationCause: true } : {}),
