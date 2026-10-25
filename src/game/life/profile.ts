@@ -7,6 +7,8 @@ import type { LifeOptions } from "./create.ts";
  * `births` aumenta población, tablas y log; metas, rumores y viajes retienen más estado.
  * `sleepers` reduce llamadas, pero su catch-up no corporal todavía no está completo.
  * Estable en perfil2d (3 seeds x 2 años, 0 problemas); sin jugador real medido (perfil5).
+ * `itemClaims` y `householdTools` entraron en play-refs-objects-source-enable (2 seeds x 1 año: 0
+ * problemas, mismo tiempo por año y ninguna métrica del batch movida más de 5 %).
  *
  * Exclusiones: birth/playerAge/tastes/frequency son elecciones de partida, runProbe y runClock son
  * instrumentación; loanSeeds/enforcement/usury/interestNorm y pawn necesitan entidades,
@@ -83,6 +85,9 @@ export const FULL_PROFILE = {
   births: true,
   speakActs: { minFamiliarity: 0.3, quietSeconds: 86400, weight: 0.4, chance: 0.9 },
   takeBelieved: { minConfidence: 0.5, perDeed: 0.1, maxPenalty: 0.8 },
+  // Cosas con identidad (play-refs-objects-source-enable): las de cada casa y su toma disputada.
+  itemClaims: true,
+  householdTools: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
   errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
 } satisfies LifeOptions;
