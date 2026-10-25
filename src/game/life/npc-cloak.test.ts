@@ -19,6 +19,7 @@ import { engineOptions, Life } from "./life.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { FULL_PROFILE, validateLifeDependencies } from "./profile.ts";
 import { seasonalClothing } from "./thermal.ts";
+import { WARDROBE } from "./wardrobe.ts";
 import { living } from "./world.ts";
 
 describe("abrigo del viajero (puro)", () => {
@@ -76,11 +77,12 @@ function sources(dir: string, root = dir): ContentSource[] {
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("la capa del viajero en la vida (opt-in)", () => {
-  function run(cloak: boolean, startWear: number) {
+  function run(cloak: boolean, startWear: number, wardrobe = false) {
     const life = Life.create(7, content, {
       npcVerbs: ["move"],
       npcJourneyDays: 6,
       ...(cloak ? { npcCloak: true } : {}),
+      ...(wardrobe ? { wardrobe: true } : {}),
     });
     const w = life.world;
     const adults = living(w.truth).filter(
@@ -130,6 +132,22 @@ describe("la capa del viajero en la vida (opt-in)", () => {
     const lost = worn.w.log.all().filter((e) => e.kind === CLOAK_LOST);
     expect(lost.length).toBeGreaterThan(0);
     for (const e of lost) expect(e.causes.length).toBeGreaterThan(0);
+  }, 300_000);
+
+  it("con guardarropa la capa es su prenda de abrigo y se gasta más en camino (clothing-wear-cloak)", () => {
+    const r = run(true, 0, true);
+    const coat = (x: AgentId) =>
+      r.w.truth.get(WARDROBE, x)?.items.find((i) => i.garment === "quilted-coat")?.wear ?? 0;
+    const travelers = r.walkers.filter((x) => r.w.truth.get(NPC_JOURNEY, x));
+    expect(travelers.length).toBeGreaterThan(0);
+    expect(r.walkers.every((x) => r.w.truth.get(CLOAK, x) === undefined)).toBe(true);
+    const home = living(r.w.truth).find(
+      (x) => !r.walkers.includes(x as AgentId) && r.w.truth.get(WARDROBE, x as AgentId),
+    ) as AgentId | undefined;
+    if (home === undefined) throw new Error("nadie en casa");
+    for (const x of travelers) expect(coat(x)).toBeGreaterThan(coat(home));
+    expect(r.w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: r.w.truth, log: r.w.log, ledger: r.w.ledger })).toEqual([]);
   }, 300_000);
 
   it("es determinista", () => {

@@ -10,6 +10,8 @@ import {
   GARMENT_WORN_OUT,
   garmentDayWear,
   WARDROBE,
+  wardrobeCloak,
+  wardrobeCloakClo,
   wardrobeClothing,
   wardrobeOf,
   wearDay,
@@ -95,6 +97,19 @@ describe("el desgaste de las prendas (clothing-wear)", () => {
     expect(garmentDayWear(sandals, false, true)).toBeGreaterThan(
       garmentDayWear(sandals, false, false),
     );
+  });
+
+  it("la capa de viaje es la prenda de abrigo que más abriga; en camino se gasta aunque haga calor", () => {
+    expect(wardrobeCloak(basic)?.def.id).toBe("quilted-coat");
+    const withFur = [...basic, { def: byId("fur-cloak"), wear: 0 }];
+    expect(wardrobeCloak(withFur)?.def.id).toBe("fur-cloak");
+    const rotten = withFur.map((g) => (g.def.id === "fur-cloak" ? { ...g, wear: 1 } : g));
+    expect(wardrobeCloak(rotten)?.def.id).toBe("quilted-coat");
+    expect(wardrobeCloakClo([])).toBe(0);
+    const coatWear = (cloak: boolean) =>
+      wearDay(basic, 30, false, true, cloak).items.find((i) => i.garment === "quilted-coat")?.wear;
+    expect(coatWear(false)).toBe(0);
+    expect(coatWear(true)).toBeCloseTo(2 / byId("quilted-coat").wearDays, 5);
   });
 
   it("la que se deshace avisa una vez y no se pone más", () => {

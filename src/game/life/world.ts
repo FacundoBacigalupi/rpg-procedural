@@ -246,7 +246,7 @@ import { transitProcess } from "./transit.ts";
 import { upbringingProcess } from "./upbringing.ts";
 import { upkeepProcess } from "./upkeep.ts";
 import { usuryGossipProcess } from "./usurygossip.ts";
-import { wardrobeClothing, wardrobeOf, wardrobeWearProcess } from "./wardrobe.ts";
+import { wardrobeCloakClo, wardrobeClothing, wardrobeOf, wardrobeWearProcess } from "./wardrobe.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
 import { wildProcess } from "./wild.ts";
@@ -1171,7 +1171,8 @@ export function lifeWorld(
               }),
             ]
           : []),
-        ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined
+        // Con guardarropa, la capa de viaje es su prenda de abrigo y la gasta `life.wardrobe_wear`.
+        ...(parts.npcCloak === true && parts.npcJourneyDays !== undefined && !wardrobe
           ? [cloakWearProcess({ placeOf: placeOf(parts, village) })]
           : []),
         ...(wardrobe
@@ -1186,8 +1187,11 @@ export function lifeWorld(
                   ? {
                       onRoad: {
                         reads: [NPC_JOURNEY.name],
-                        is: (t: ReadonlyWorldTruth, who: AgentId) =>
-                          t.get(NPC_JOURNEY, who) !== undefined,
+                        is: (t: ReadonlyWorldTruth, who: AgentId) => {
+                          const trip = t.get(NPC_JOURNEY, who);
+                          if (!trip) return undefined;
+                          return { cloak: parts.npcCloak === true && trip.cloak !== false };
+                        },
                       },
                     }
                   : {}),
@@ -1196,7 +1200,8 @@ export function lifeWorld(
           : []),
         ...(parts.npcCloak === true &&
         parts.npcJourneyDays !== undefined &&
-        parts.npcCloakMend === true
+        parts.npcCloakMend === true &&
+        !wardrobe
           ? [cloakMendProcess({ player, placeOf: placeOf(parts, village) })]
           : []),
         ...(parts.hire
@@ -1929,7 +1934,11 @@ export function lifeWorld(
                   return roadClothing(
                     airC,
                     outdoorTempC(parts.map, parts.clock, parts.seed, trip.since),
-                    carriedCloakClo(trip.cloak, t.get(CLOAK, who)?.wear),
+                    wardrobe
+                      ? trip.cloak === false
+                        ? 0
+                        : wardrobeCloakClo(wardrobeOf(t, who, wardrobe))
+                      : carriedCloakClo(trip.cloak, t.get(CLOAK, who)?.wear),
                   );
                 },
               }

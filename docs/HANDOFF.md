@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**clothing-wear-cloak (2026-10-24, rama `feat/clothing-wear-cloak`, encima de `feat/clothing-wear-feet`):** `wardrobeCloak`/`wardrobeCloakClo` en `game/life/wardrobe.ts`; `clothingOf` del viajero usa la capa del guardarropa con `wardrobe`; `onRoad.is` devuelve `{cloak}`; `cloakWearProcess` y `cloakMendProcess` solo sin `wardrobe`. Tests en `wardrobe.test.ts` y `npc-cloak.test.ts`.
+
 **clothing-wear-feet (2026-10-24, rama `feat/clothing-wear-feet`, encima de `feat/clothing-wear`):** `chooseGarments` (sim/body/garments.ts) pone siempre un par de calzado además de la base; así las sandalias se gastan cada día. Test en `garments.test.ts`.
 
 **clothing-wear (2026-10-24, rama `feat/clothing-wear`):** `GarmentDef.wearDays` (default 365; valores en `content/garments/core.json`), `wearDay`/`garmentDayWear` puros y `wardrobeWearProcess` en `game/life/wardrobe.ts` (fase settle, diario, con `wardrobe`, sin bump; lee `NPC_JOURNEY` solo con `npcJourneyDays`). El primer día escribe la fila de todos desde el juego básico. Tests en `wardrobe.test.ts`. Abiertos: `clothing-wear-cloak`, `clothing-wear-stagger`, `clothing-wear-feet`.
