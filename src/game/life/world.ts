@@ -249,6 +249,7 @@ import { usuryGossipProcess } from "./usurygossip.ts";
 import { wardrobeCloakClo, wardrobeClothing, wardrobeOf, wardrobeWearProcess } from "./wardrobe.ts";
 import { watchingProjectionProcess } from "./watching-project.ts";
 import { resolveWaterSources, type WaterSourcesConfig, waterHooks } from "./waterSources.ts";
+import { WET_CLOTHES, wetClothesProcess, wetEnv } from "./wet.ts";
 import { wildProcess } from "./wild.ts";
 import { witnessingProcess } from "./witnessing.ts";
 import { workoutProcess } from "./workout.ts";
@@ -862,6 +863,27 @@ export const PERCEIVE_CASCADE: ReadonlySet<string> = new Set([
 /** Lo que `life.appraise` recibe de la segunda ronda: solo la falsificación descubierta. */
 export const APPRAISE_CASCADE = { kinds: ["scam.discovered"] } as const;
 
+type ThermalRefine = Pick<Parameters<typeof thermalProcess>[0], "refineEnv" | "refineReads">;
+
+/** Los retoques del ambiente térmico por persona: el hogar de su espacio y la ropa mojada. */
+function thermalRefine(hearthSpaces: SpaceGraph | undefined, wet: boolean): ThermalRefine {
+  const steps: NonNullable<ThermalRefine["refineEnv"]>[] = [];
+  const reads: string[] = [];
+  if (hearthSpaces) {
+    steps.push(hearthEnv(hearthSpaces));
+    reads.push(HEARTH.name);
+  }
+  if (wet) {
+    steps.push(wetEnv);
+    reads.push(WET_CLOTHES.name);
+  }
+  if (steps.length === 0) return {};
+  return {
+    refineEnv: (truth, who, env) => steps.reduce((e, step) => step(truth, who, e), env),
+    refineReads: reads,
+  };
+}
+
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
     const at = truth.get(LOCATION, who);
@@ -1177,6 +1199,13 @@ export function lifeWorld(
           : []),
         ...(wardrobe
           ? [
+              wetClothesProcess({
+                map: parts.map,
+                clock: parts.clock,
+                seed: parts.seed,
+                spaces: parts.spaces,
+                fires: true,
+              }),
               wardrobeWearProcess({
                 garments: wardrobe,
                 workAge: ROUTINE.workAge,
@@ -1910,9 +1939,12 @@ export function lifeWorld(
           : []),
         thermalProcess({
           ...(parts.sleepers ? { sleepers: true } : {}),
-          ...(parts.hearths === true
-            ? { refineEnv: hearthEnv(parts.spaces), refineReads: [HEARTH.name] }
-            : {}),
+          // El hogar encendido calienta su espacio; con guardarropa, la ropa mojada por la lluvia
+          // (`life.wet_clothes`) abriga menos. Se aplican en ese orden.
+          ...thermalRefine(
+            parts.hearths === true ? parts.spaces : undefined,
+            wardrobe !== undefined,
+          ),
           plans: parts.plans,
           clock: parts.clock,
           map: parts.map,
