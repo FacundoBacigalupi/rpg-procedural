@@ -50,8 +50,8 @@ export function wornGarment(g: OwnedGarment): Garment {
 }
 
 /**
- * Qué se pone quien tiene `owned` para un abrigo buscado de `wantedClo`: la base entera (aunque haga
- * calor) y encima, por capa y luego por id, las prendas que hagan falta hasta llegar. Una prenda
+ * Qué se pone quien tiene `owned` para un abrigo buscado de `wantedClo`: la base entera y un par de
+ * calzado (aunque haga calor) y encima, por capa y luego por id, las prendas que hagan falta hasta llegar. Una prenda
  * deshecha (`wear` 1) no se pone. Si no alcanza, se pone todo lo que tiene.
  */
 export function chooseGarments(owned: readonly OwnedGarment[], wantedClo: number): OwnedGarment[] {
@@ -62,8 +62,10 @@ export function chooseGarments(owned: readonly OwnedGarment[], wantedClo: number
         a.def.layer - b.def.layer ||
         (a.def.id < b.def.id ? -1 : a.def.id > b.def.id ? 1 : a.wear - b.wear),
     );
-  const base = usable.filter((g) => g.def.slot === "base");
-  const extra = usable.filter((g) => g.def.slot !== "base");
+  // El calzado también va siempre (un par: el primero por capa, id y menos desgaste).
+  const shoes = usable.find((g) => g.def.slot === "feet");
+  const base = usable.filter((g) => g.def.slot === "base" || g === shoes);
+  const extra = usable.filter((g) => !base.includes(g));
   const chosen = [...base];
   let clo = chosen.reduce((s, g) => s + wornGarment(g).clo, 0);
   for (const g of extra) {

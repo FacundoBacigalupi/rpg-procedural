@@ -56,6 +56,18 @@ describe("elegir qué ponerse (clothing-garments)", () => {
     expect(c.clo).toBeCloseTo(1.1);
   });
 
+  it("el calzado va siempre, un solo par (el primero por capa e id); otro par queda de abrigo", () => {
+    const sandals = def("sandals", "feet", 1, 0.05);
+    const boots = def("boots", "feet", 1, 0.2);
+    expect(ids(chooseGarments([...all, own(sandals)], 0))).toEqual(["pants", "shirt", "sandals"]);
+    expect(ids(chooseGarments([...all, own(sandals), own(boots)], 0))).toEqual([
+      "pants",
+      "shirt",
+      "boots",
+    ]);
+    expect(ids(chooseGarments([...all, own(sandals, 1)], 0))).toEqual(["pants", "shirt"]);
+  });
+
   it("no depende del orden en que se listan", () => {
     expect(ids(chooseGarments([...all].reverse(), 1.2))).toEqual(ids(chooseGarments(all, 1.2)));
   });
