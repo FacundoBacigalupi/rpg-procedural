@@ -181,6 +181,7 @@ import type { TakeBelievedOptions } from "./takeillicit.ts";
 import { seedTechKnowledge } from "./techknow.ts";
 import { TRADE_START_BATCHES, tradeOfHousehold } from "./trades.ts";
 import { deriveUsury, eyeByPerception } from "./usuryderive.ts";
+import { seedWardrobes } from "./wardrobe.ts";
 import { hexKindsFromTerrain, type WaterSourcesConfig } from "./waterSources.ts";
 import { FIREWOOD_UNIT, FORAGE_UNIT, WILD_SOURCE } from "./wild.ts";
 import { type LifeParts, type LifeWorld, lifeWorld, PLAYER } from "./world.ts";
@@ -1726,6 +1727,16 @@ export function createLife(
     dims: content.all(RELATION_DIMS),
     bonds: content.all(RELATION_BONDS),
   });
+  // La ropa de cada uno con el uso que ya traía (clothing-wear-stagger), solo con guardarropa.
+  if (options.wardrobe) {
+    seedWardrobes(truth, ids, log, {
+      seed,
+      now: pop.now,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+      garments: content.all(GARMENTS),
+    });
+  }
   // Quién tiene qué tierra, con sus testigos y lo que cada vecino cree (property §3, §9).
   seedParcels(truth, ids, log, {
     seed,

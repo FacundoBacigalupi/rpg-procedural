@@ -6,7 +6,16 @@
 // de siempre (`seasonalClothing`). El único escritor de `WARDROBE` es `life.wardrobe_wear`
 // (clothing-wear): cada día gasta lo que cada uno se puso; la compra y el oficio vienen después.
 
-import type { AgentId, PlaceRef, Tick } from "../../core/index.ts";
+import {
+  type AgentId,
+  type EventId,
+  type EventLog,
+  type IdAllocator,
+  type PlaceRef,
+  Rng,
+  type Seed,
+  type Tick,
+} from "../../core/index.ts";
 import {
   BODY_STATE,
   type Clothing,
@@ -22,6 +31,7 @@ import {
   type StateChange,
   setComponent,
   table,
+  type WorldTruth,
   wornGarment,
 } from "../../sim/index.ts";
 import { seasonalClothing } from "./thermal.ts";
@@ -184,4 +194,61 @@ export function wardrobeWearProcess(o: WardrobeWearOptions): ProcessDef {
       return changes.length === 0 ? {} : { events, changes };
     },
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// La ropa al empezar (clothing-wear-stagger).
+
+export const WARDROBES_LAID_EVENT = "life.wardrobes-laid";
+/** Lo más gastada que puede estar una prenda al empezar (nadie arranca con harapos deshechos). */
+export const START_WEAR_MAX = 0.85;
+
+export interface SeedWardrobesOptions {
+  readonly seed: Seed;
+  readonly now: Tick;
+  readonly place: PlaceRef;
+  readonly foundersEvent: EventId;
+  readonly garments: readonly GarmentDef[];
+}
+
+/**
+ * El juego básico de cada persona viva con el uso que ya tiene: cada prenda se hizo o se heredó en
+ * algún momento de su vida útil antes del día 0 (RNG con seed por persona y prenda), así no se
+ * deshacen todas a la vez. Un evento con causa en la fundación. Devuelve a cuántos vistió.
+ */
+export function seedWardrobes(
+  truth: WorldTruth,
+  ids: IdAllocator,
+  log: EventLog,
+  o: SeedWardrobesOptions,
+): number {
+  const basic = o.garments.filter((g) => g.basic);
+  const people = truth
+    .ids(PERSON)
+    .filter(
+      (id) => truth.get(ENTITY, id)?.endedAt === undefined && !truth.get(BODY_STATE, id)?.death,
+    )
+    .sort();
+  if (basic.length === 0 || people.length === 0) return 0;
+  const root = Rng.root(o.seed);
+  for (const id of people) {
+    truth.set(WARDROBE, id as AgentId, {
+      items: basic.map((g) => ({
+        garment: g.id,
+        wear: round(root.fork("wardrobe", id, g.id).float() * START_WEAR_MAX),
+      })),
+    });
+  }
+  log.append({
+    id: ids.next("event"),
+    tick: o.now,
+    kind: WARDROBES_LAID_EVENT,
+    actors: [],
+    place: o.place,
+    data: { people: people.length, garments: basic.length },
+    emissions: {},
+    causes: [{ kind: "event", event: o.foundersEvent }],
+    resolution: "local",
+  });
+  return people.length;
 }

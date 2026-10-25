@@ -9,7 +9,9 @@ import { seasonalClothing } from "./thermal.ts";
 import {
   GARMENT_WORN_OUT,
   garmentDayWear,
+  START_WEAR_MAX,
   WARDROBE,
+  WARDROBES_LAID_EVENT,
   wardrobeCloak,
   wardrobeCloakClo,
   wardrobeClothing,
@@ -125,13 +127,21 @@ describe("el desgaste de las prendas (clothing-wear)", () => {
   it("en la vida cada uno gasta su ropa día a día, con auditoría e invariantes limpios", () => {
     const life = Life.create(7, content, { frequency: 8, wardrobe: true });
     const w = life.world;
-    life.advanceTo(life.now + 3 * DAY);
+    // Al empezar cada uno trae su ropa con el uso que ya tenía, distinto por prenda y persona.
     const people = w.truth.ids(PERSON).filter((id) => w.truth.get(WARDROBE, id as AgentId));
-    expect(people.length).toBeGreaterThan(0);
-    const row = w.truth.get(WARDROBE, people[0] as AgentId);
-    const shirt = row?.items.find((i) => i.garment === "undershirt")?.wear ?? 0;
-    expect(shirt).toBeGreaterThan(0);
-    expect(shirt).toBeLessThan(0.05);
+    expect(people.length).toBeGreaterThan(1);
+    expect(w.log.all().find((e) => e.kind === WARDROBES_LAID_EVENT)?.causes.length).toBe(1);
+    const shirtOf = (id: string) =>
+      w.truth.get(WARDROBE, id as AgentId)?.items.find((i) => i.garment === "undershirt")?.wear ??
+      -1;
+    const start = people.map(shirtOf);
+    expect(new Set(start).size).toBeGreaterThan(1);
+    expect(start.every((x) => x >= 0 && x <= START_WEAR_MAX)).toBe(true);
+    life.advanceTo(life.now + 3 * DAY);
+    const after = people.map(shirtOf);
+    const grew = after.map((x, i) => x - (start[i] ?? 0));
+    expect(grew.some((d) => d > 0)).toBe(true);
+    expect(grew.every((d) => d >= 0 && d < 0.05)).toBe(true);
     expect(w.log.all().some((e) => e.kind === GARMENT_WORN_OUT)).toBe(false);
     expect(w.ledger.audit()).toEqual([]);
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
