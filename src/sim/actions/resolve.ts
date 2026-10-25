@@ -125,6 +125,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * Opt-in de claims de ítems: `take` va por un objeto con identidad. `available` es lo que el mundo
    * dice (existe y está al alcance); la tirada decide si el intento alcanza para disputarlo.
    */
+  /**
+   * La herramienta que el actor lleva y usa de instrumento (`with`, use-tools) y su forma. Solo la
+   * pone quien la vio en la mano del actor; sin esto, el verbo rinde lo de siempre.
+   */
+  readonly instrument?: { readonly item: ItemId; readonly shape: string } | undefined;
   readonly takeItem?:
     | {
         readonly item: ItemId;
@@ -344,6 +349,8 @@ export type VerbEffect =
       readonly amount: number;
       readonly what: string | null;
       readonly stumbled: boolean;
+      /** La herramienta que rindió (use-tools). */
+      readonly tool?: ItemId;
     }
   | {
       readonly kind: "work";
@@ -351,6 +358,8 @@ export type VerbEffect =
       readonly effectiveSeconds: number;
       /** Se lastimó trabajando. */
       readonly hurt: boolean;
+      /** La herramienta que rindió (use-tools). */
+      readonly tool?: ItemId;
     }
   | {
       readonly kind: "speak";
@@ -645,6 +654,8 @@ interface Ctx {
   readonly nominal: number;
   readonly path: readonly number[];
   readonly rng: AttemptInput["rng"];
+  /** La herramienta que sirve de instrumento en este paso, con lo que multiplica el rinde. */
+  readonly tool?: { readonly item: ItemId; readonly rate: number } | undefined;
 }
 
 type Resolver = (c: Ctx) => VerbResult;
@@ -659,7 +670,8 @@ export function resolve(input: ResolveInput): ActionResolution {
     input.ledger
       .holdings(holderAccount(holder as HolderRef))
       .some((h) => isMoney(h.unit) === (what === "money"));
-  const roll = attempt({ ...input, has });
+  const tool = toolFor(input);
+  const roll = attempt({ ...input, has, ...(tool ? { toolEase: tool.ease } : {}) });
 
   const fullPath =
     def.resolver === "move" && input.destination !== undefined
@@ -682,6 +694,7 @@ export function resolve(input: ResolveInput): ActionResolution {
     nominal,
     path,
     rng: input.rng.fork("resolve", actor.id, def.id, input.tick),
+    ...(tool ? { tool: { item: tool.item, rate: tool.rate } } : {}),
   };
   const run = RESOLVE[def.resolver];
   const truth = run(ctx);
@@ -1010,6 +1023,30 @@ export function gatherYield(
   return here.find((y) => y.words === undefined);
 }
 
+/**
+ * La herramienta de instrumento que vale para este paso (use-tools): la que el actor lleva, si el
+ * verbo la acepta por su forma y, cuando la ata a una salida, si es la que se va a juntar.
+ */
+export function toolFor(
+  input: Pick<ResolveInput, "def" | "node" | "instrument" | "scene" | "gatherByWords">,
+): { readonly item: ItemId; readonly rate: number; readonly ease: number } | undefined {
+  const inst = input.instrument;
+  if (inst === undefined) return undefined;
+  const { def } = input;
+  const good =
+    def.resolver === "gather"
+      ? gatherYield(
+          def.yields,
+          input.scene.placeKinds,
+          input.gatherByWords === true ? nodeText(input.node, "what") : null,
+        )?.good
+      : undefined;
+  const spec = def.instruments.find(
+    (t) => t.shapes.includes(inst.shape) && (t.good === undefined || t.good === good),
+  );
+  return spec ? { item: inst.item, rate: spec.rate, ease: spec.ease } : undefined;
+}
+
 const gather: Resolver = (c) => {
   const kinds = c.input.scene.placeKinds;
   const what = argText(c, "what");
@@ -1024,12 +1061,19 @@ const gather: Resolver = (c) => {
   const stumbled = c.roll.failure === "slip" && (c.roll.margin as number) < SUCCESS_MARGIN;
   // Un resultado medio rinde lo de tabla; uno muy bueno, casi el doble; una caída pierde la mitad.
   const hours = (c.nominal / 3600) * (stumbled ? 0.5 : 1);
-  const wanted = Math.round(spec.perHour * hours * 2 * c.degree);
+  const wanted = Math.round(spec.perHour * hours * 2 * c.degree * (c.tool?.rate ?? 1));
   const stock = c.input.ledger
     .holdings(holderAccount(c.input.place))
     .find((h) => h.unit === good)?.amount;
   const amount = Math.min(wanted, stock ?? 0);
-  const effect: VerbEffect = { kind: "gather", good, amount, what, stumbled };
+  const effect: VerbEffect = {
+    kind: "gather",
+    good,
+    amount,
+    what,
+    stumbled,
+    ...(c.tool ? { tool: c.tool.item } : {}),
+  };
   if (amount === 0) {
     // Lo que el lugar tenía ya se lo llevaron (o se juntó tan mal que no hay nada): se ve.
     return {
@@ -1046,12 +1090,15 @@ const work: Resolver = (c) => {
     return { effect: { kind: "work", effectiveSeconds: 0, hurt: false }, seconds: 0 };
   const m = c.roll.margin as number;
   // Un resultado medio rinde el tiempo trabajado; el mejor, la mitad más; un desastre lastima.
-  const effectiveSeconds = Math.round(c.nominal * Math.min(1.5, 2 * c.degree));
+  // Con herramienta (use-tools), la misma hora rinde más: la azada abre surco más rápido que las manos.
+  const rate = c.tool?.rate ?? 1;
+  const effectiveSeconds = Math.round(c.nominal * Math.min(1.5, 2 * c.degree) * rate);
   const mk = c.input.market;
   const effect: VerbEffect = {
     kind: "work",
     effectiveSeconds,
     hurt: m <= -CRITICAL_MARGIN,
+    ...(c.tool ? { tool: c.tool.item } : {}),
     ...(mk?.harvestGood && mk.harvestGramsPerHour ? { gramsPerHour: mk.harvestGramsPerHour } : {}),
   };
   // La tierra paga lo trabajado: el grano sale de la cosecha (fuente externa) y queda en el bolsillo.
@@ -2228,7 +2275,11 @@ function argEntity(c: Ctx, role: string): EntityRef | null {
 }
 
 function argText(c: Ctx, role: string): string | null {
-  const a = c.input.node.args.find((x) => x.role === role);
+  return nodeText(c.input.node, role);
+}
+
+function nodeText(node: ResolveInput["node"], role: string): string | null {
+  const a = node.args.find((x) => x.role === role);
   return a && "text" in a ? a.text : null;
 }
 

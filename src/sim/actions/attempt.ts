@@ -79,6 +79,8 @@ export interface AttemptInput {
   readonly scene: Scene;
   /** Si alguien tiene algo que ofrecer o que sacarle. */
   readonly has: (holder: EntityRef, what: "goods" | "money") => boolean;
+  /** Lo que facilita la herramienta que se usa de instrumento (use-tools), en desvíos. */
+  readonly toolEase?: number | undefined;
   readonly tick: Tick;
   readonly rng: Rng;
 }
@@ -227,7 +229,7 @@ function failureBy(def: ActionDef, factors: readonly FactorValue[]): FailureMode
  * (`actor.skill`), la autoimagen al decidir (skills §9). Lo comparten `attempt` y la chance creída.
  */
 export function baseMargin(
-  input: Pick<AttemptInput, "def" | "node" | "planManner" | "actor" | "scene">,
+  input: Pick<AttemptInput, "def" | "node" | "planManner" | "actor" | "scene" | "toolEase">,
   skillLevel: number,
 ): { expected: number; factors: FactorValue[]; skill: number } {
   const { def, node, actor, scene } = input;
@@ -246,7 +248,7 @@ export function baseMargin(
   if (caps.length > 0) {
     push("capability", -2 * (1 - Math.min(...caps.map((c) => actor.capabilities[c] ?? 1))));
   }
-  const ease = def.ease + manners.reduce((s, m) => s + m.ease, 0);
+  const ease = def.ease + manners.reduce((s, m) => s + m.ease, 0) + (input.toolEase ?? 0);
   return { expected: ease + factors.reduce((s, x) => s + x.value, 0), factors, skill };
 }
 
