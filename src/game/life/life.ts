@@ -505,6 +505,7 @@ export class Life {
         options.wildHarvest === true,
         options.wildHunt === true,
         options.wildHarvest === true && options.wildFirewood === true,
+        options.hearths === true,
       ),
     };
     if (anchor === undefined) {

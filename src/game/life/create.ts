@@ -163,6 +163,7 @@ import { HIDES_SOURCE, LEATHER_SCRAP, LEATHER_UNIT } from "./cobbler.ts";
 import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
+import { BURNED_SINK, seedHearths } from "./hearth.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
@@ -465,6 +466,8 @@ export interface LifeOptions {
   readonly wildCapacityScale?: number;
   /** Con `wildHarvest` (hearth-wood): la leña es un bien del monte; la madera muerta cae y se pudre, cada lugar de monte recibe su parte de lo alcanzable (`FIREWOOD_UNIT`, fuente `wild`) y `gather` elige lo que se nombra («junto leña»); apagado, hashes idénticos. */
   readonly wildFirewood?: boolean;
+  /** Opt-in (hearth-seed): un hogar (`HEARTH`) en el cuarto principal de cada casa con una pila de leña inicial (fuente `seed`); `life.hearth` la quema cada día hacia el sumidero `burned` y calienta a quien está en el cuarto (`hearthEnv` en `life.thermal`); sin leña, el fuego se apaga. Apagado, hashes idénticos. */
+  readonly hearths?: boolean;
   /** Opt-in: la gente caza herbívoros de la celda (`ECOLOGY.cell.populations`): salen individuos enteros con evento `wild.hunted` y causa, y su carne (`good:venison`, fuente `hunt`) llega a los montes; apagado, hashes idénticos; fuera del perfil completo. */
   readonly wildHunt?: boolean;
   /** Con `wildHunt`: multiplicador del esfuerzo diario de caza (1 = el de referencia); para tests y escenarios. */
@@ -802,6 +805,7 @@ export function optInParts(
   | "wildHarvest"
   | "wildCapacityScale"
   | "wildFirewood"
+  | "hearths"
   | "wildHunt"
   | "wildHuntScale"
   | "funerals"
@@ -981,6 +985,7 @@ export function optInParts(
       ? { wildCapacityScale: options.wildCapacityScale }
       : {}),
     ...(options.wildHarvest && options.wildFirewood ? { wildFirewood: true } : {}),
+    ...(options.hearths ? { hearths: true } : {}),
     ...(options.wildHunt ? { wildHunt: true } : {}),
     ...(options.wildHunt && options.wildHuntScale !== undefined
       ? { wildHuntScale: options.wildHuntScale }
@@ -1351,6 +1356,7 @@ export function ledgerConfigOf(
   wildHarvest = false,
   wildHunt = false,
   wildFirewood = false,
+  hearths = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1379,6 +1385,7 @@ export function ledgerConfigOf(
         ...tradeUnits.filter((u) => !units.includes(u)),
         COPPER,
         ...settlementUnits(content.all(MATERIALS)),
+        ...(hearths ? [FIREWOOD_UNIT] : []),
       ],
       [WORKSHOP]: tradeUnits,
       [WORKSHOP_WASTE]: tradeUnits,
@@ -1394,6 +1401,7 @@ export function ledgerConfigOf(
         ? { [WILD_SOURCE]: wildFirewood ? [FORAGE_UNIT, FIREWOOD_UNIT] : [FORAGE_UNIT] }
         : {}),
       ...(wildHunt ? { [HUNT_SOURCE]: [GAME_UNIT] } : {}),
+      ...(hearths ? { [BURNED_SINK]: [FIREWOOD_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
     },
   };
@@ -1415,6 +1423,7 @@ export function withDeclaredExternals(
   wildHarvest = false,
   wildHunt = false,
   wildFirewood = false,
+  hearths = false,
 ): Ledger {
   const have = ledger.config.externals;
   const merged: Record<string, string[]> = {};
@@ -1430,6 +1439,7 @@ export function withDeclaredExternals(
       wildHarvest,
       wildHunt,
       wildFirewood,
+      hearths,
     ).externals,
   )) {
     const known = new Set(have[name] ?? []);
@@ -1550,6 +1560,7 @@ export function createLife(
       options.wildHarvest === true,
       options.wildHunt === true,
       options.wildHarvest === true && options.wildFirewood === true,
+      options.hearths === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -1802,6 +1813,15 @@ export function createLife(
     seedDevelopment(truth, ids, log, {
       stages: content.all(LIFE_STAGES),
       clock,
+      now: pop.now,
+      place: terrain.village,
+      foundersEvent: pop.foundersEvent,
+    });
+  }
+
+  // Opt-in: un hogar con su pila de leña en cada casa habitada.
+  if (options.hearths) {
+    seedHearths(truth, ids, log, ledger, {
       now: pop.now,
       place: terrain.village,
       foundersEvent: pop.foundersEvent,
