@@ -375,16 +375,27 @@ export const PLANS = defineContent("plans", PlanTemplate, (t) =>
  * cuál (`as`: el pozo sin recipiente es `drink` ahí). Sin `as`, la resuelve `use` con su id.
  * `vessels`: las formas de ítem que la función llena y cuántos litros les caben (`draw_water`).
  */
-export const AffordanceDef = z.strictObject({
-  id: contentId,
-  name: z.string().min(1),
-  on: z.array(z.string().min(1)).min(1),
-  words: z.array(z.string().min(1)),
-  as: contentId.optional(),
-  /** La que vale cuando no se dice cómo («uso el pozo»); si ninguna lo es, la de menor id. */
-  primary: z.boolean().optional(),
-  vessels: z.record(z.string().min(1), z.number().positive()).optional(),
-});
+export const AffordanceDef = z
+  .strictObject({
+    id: contentId,
+    name: z.string().min(1),
+    on: z.array(z.string().min(1)).min(1),
+    words: z.array(z.string().min(1)),
+    as: contentId.optional(),
+    /**
+     * Con `as`, el rol del verbo nuevo en que entra la cosa (`with`: «uso el hacha» es juntar leña con
+     * el hacha, use-tools-rewrite); sin él, la cosa queda al lado (beber del pozo).
+     */
+    asRole: z.string().min(1).optional(),
+    /** Con `as`, lo que se dice del `what` del verbo nuevo («leña»), para elegir la salida. */
+    asWhat: z.string().min(1).optional(),
+    /** La que vale cuando no se dice cómo («uso el pozo»); si ninguna lo es, la de menor id. */
+    primary: z.boolean().optional(),
+    vessels: z.record(z.string().min(1), z.number().positive()).optional(),
+  })
+  .refine((a) => a.as !== undefined || (a.asRole === undefined && a.asWhat === undefined), {
+    message: "asRole y asWhat solo con as",
+  });
 export type AffordanceDef = z.infer<typeof AffordanceDef>;
 
 export const AFFORDANCES = defineContent("affordances", AffordanceDef, (a) =>

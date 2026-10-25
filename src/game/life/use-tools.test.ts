@@ -76,6 +76,91 @@ function withOf(r: DraftResult): string | undefined {
   return a !== undefined && "entity" in a ? a.entity : undefined;
 }
 
+/** Una herramienta de la forma `shape` en manos del personaje. */
+function hold(w: LifeWorld, n: number, shape: string): ItemId {
+  const id = makeId("item", 960 + n);
+  w.truth.set(ENTITY, id, { id, createdAt: 0, originEventId: "event:1" as EventId });
+  w.truth.set(ITEM_LOOK, id, { shape, material: "iron", size: "medium" });
+  w.truth.set(ITEM_HOLD, id, { possession: w.player as never, rights: [] });
+  return id;
+}
+
+/** «uso X [para how]» como lo deja la gramática. */
+function use(w: LifeWorld, noun: string, how?: string): DraftResult {
+  return planFromDraft(
+    {
+      kind: "act",
+      plan: {
+        kind: "do",
+        verb: "use",
+        args: [
+          { role: "target", ref: { text: `el ${noun}`, kind: "object", features: [noun] } },
+          ...(how !== undefined ? [{ role: "how", text: how }] : []),
+        ],
+      },
+    } as IntentDraft,
+    {
+      actor: w.player,
+      source: "player",
+      catalog: w.catalog,
+      known: knownEntities(w, [], itemsSeen(w)),
+      clock: w.clock,
+      causes: [{ kind: "state", entity: w.player, key: "intent" }],
+      here: w.truth.get(LOCATION, w.player)?.hex,
+    },
+  );
+}
+
+function stepOf(r: DraftResult): { verb: string; args: unknown[] } {
+  if (r.kind !== "plan" || r.plan.root.kind !== "do") throw new Error(r.kind);
+  return { verb: r.plan.root.verb, args: [...r.plan.root.args] };
+}
+
+describe("«uso el hacha» se vuelve su verbo (use-tools-rewrite)", () => {
+  it("cada herramienta va a su oficio, con ella de instrumento", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    const axe = hold(w, 1, "axe");
+    const hoe = hold(w, 2, "hoe");
+    const sickle = hold(w, 3, "sickle");
+    expect(stepOf(use(w, "hacha"))).toEqual({
+      verb: "gather",
+      args: [
+        { role: "what", text: "leña" },
+        { role: "with", entity: axe },
+      ],
+    });
+    expect(stepOf(use(w, "azada"))).toEqual({
+      verb: "work",
+      args: [{ role: "with", entity: hoe }],
+    });
+    // La hoz siega por defecto; «para juntar espigas» la lleva a juntar.
+    expect(stepOf(use(w, "hoz")).verb).toBe("work");
+    expect(stepOf(use(w, "hoz", "juntar espigas"))).toEqual({
+      verb: "gather",
+      args: [{ role: "with", entity: sickle }],
+    });
+  }, 300_000);
+
+  it("los roles que nombran las funciones existen en su verbo", () => {
+    const w = Life.create(7, content, { frequency: 8 }).world;
+    for (const shape of ["axe", "hoe", "knife", "sickle"]) {
+      const offers = w.catalog.affordances(shape);
+      expect(offers.length, shape).toBeGreaterThan(0);
+      for (const a of offers) {
+        const verb = w.catalog.verb(a.as ?? "");
+        expect(
+          verb?.args.some((x) => x.role === a.asRole),
+          a.id,
+        ).toBe(true);
+        expect(
+          verb?.instruments.some((t) => t.shapes.includes(shape)),
+          a.id,
+        ).toBe(true);
+      }
+    }
+  }, 300_000);
+});
+
 describe("la herramienta como instrumento (use-tools-arg)", () => {
   it("«junto hongos con el cuchillo» usa el que lleva encima", () => {
     const life = Life.create(7, content, { frequency: 8 });

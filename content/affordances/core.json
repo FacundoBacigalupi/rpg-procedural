@@ -1,5 +1,51 @@
 [
   {
+    "id": "axe.chop",
+    "name": "cortar leña con el hacha",
+    "on": ["axe"],
+    "words": ["cortar", "leña", "hachar", "partir", "talar", "rama"],
+    "as": "gather",
+    "asRole": "with",
+    "asWhat": "leña",
+    "primary": true
+  },
+  {
+    "id": "hoe.dig",
+    "name": "carpir con la azada",
+    "on": ["hoe"],
+    "words": ["carpir", "cavar", "arar", "trabajar", "surco", "campo"],
+    "as": "work",
+    "asRole": "with",
+    "primary": true
+  },
+  {
+    "id": "knife.cut",
+    "name": "cortar hongos y hierbas con el cuchillo",
+    "on": ["knife"],
+    "words": ["cortar", "hongos", "hierbas", "yuyos", "juntar"],
+    "as": "gather",
+    "asRole": "with",
+    "asWhat": "hongos",
+    "primary": true
+  },
+  {
+    "id": "sickle.glean",
+    "name": "juntar espigas con la hoz",
+    "on": ["sickle"],
+    "words": ["espigas", "espigar", "rastrojo", "juntar"],
+    "as": "gather",
+    "asRole": "with"
+  },
+  {
+    "id": "sickle.reap",
+    "name": "segar con la hoz",
+    "on": ["sickle"],
+    "words": ["segar", "cosechar", "trabajar", "campo"],
+    "as": "work",
+    "asRole": "with",
+    "primary": true
+  },
+  {
     "id": "well.drink",
     "name": "tomar agua del pozo",
     "on": ["well"],
