@@ -475,6 +475,8 @@ export interface LifeWorld {
   readonly legacyNoForgeBuy?: boolean;
   /** Replay de motores anteriores a `life-54`: no se compran ni venden herramientas usadas entre personas (`trade` no mueve el objeto). */
   readonly legacyNoUsedTrade?: boolean;
+  /** Replay de motores anteriores a `life-55`: los NPC no afilan ni llevan al herrero la herramienta de la casa. */
+  readonly legacyNoNpcMend?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -2499,6 +2501,12 @@ export function lifeWorld(
           ...(economicBatch ? { economicBatch: true } : {}),
           ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
             ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
+            : {}),
+          ...(parts.itemClaims === true &&
+          parts.legacyNoRoutineTools !== true &&
+          parts.legacyNoSmith !== true &&
+          parts.legacyNoNpcMend !== true
+            ? { toolCare: true }
             : {}),
           ...(parts.hearths === true && parts.wildHarvest === true && parts.wildFirewood === true
             ? {

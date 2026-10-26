@@ -92,6 +92,7 @@ import {
 import { harvestSeasonOf } from "./map.ts";
 import { PLAYER } from "./player.ts";
 import { routineToolStep } from "./routine-tools.ts";
+import { SMITH } from "./smith.ts";
 import {
   cropStarts,
   fieldSowYield,
@@ -156,6 +157,11 @@ export interface RoutineOptions {
    * volver (`routineToolStep`).
    */
   readonly fieldTools?: ActionDef["instruments"];
+  /**
+   * Opt-in (`life-55`, con `fieldTools` y herrero): al dejar la herramienta en la casa la afila con la
+   * piedra o la lleva al herrero y le paga el arreglo (`careForTool`, use-tools-mend-npc).
+   */
+  readonly toolCare?: boolean;
   /** Opt-in: comidas, cosecha y combustible comparten saldos con los demás procesos económicos. */
   readonly economicBatch?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -398,10 +404,12 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldSowing ? [SOWN.name] : []),
       ...(o.firewood ? [HEARTH.name, PLACE.name] : []),
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
+      ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
     ],
     writes: [
       LOCATION.name,
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_WEAR.name] : []),
+      ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       BODY_STATE.name,
       MEALS.name,
       ...(o.waitSkin ? [WATER_SKIN.name] : []),
@@ -541,11 +549,18 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
               working: age >= ROUTINE.workAge && season(dayOf(o.clock, ctx.now)) > 0,
               instruments: o.fieldTools,
               place: o.placeOf(truth, me),
+              ...(o.toolCare && ctx.ledger
+                ? { mend: { balance: (a, u) => ctx.ledger?.balance(a, u) ?? 0 } }
+                : {}),
             })
           : undefined;
       if (toolStep) {
+        const base = events.length;
         changes.push(...toolStep.changes);
         events.push(...toolStep.events);
+        for (const p of toolStep.postings ?? []) {
+          postings.push({ event: draftEvent(base + p.at), transfers: [...p.transfers] });
+        }
       }
 
       let next = setActivity(body, want.activity);

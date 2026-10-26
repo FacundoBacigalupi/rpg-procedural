@@ -328,8 +328,12 @@ export interface LifeSetup {
  * `life-54`: `trade` nombrando una herramienta que alguno de los dos lleva en la mano («le vendo mi
  * hoz a Wu», «le compro el hacha a Li») la cambia de dueño por cobre, a un precio que baja con el
  * desgaste (use-tools-mend-trade-sell). Compatibilidad: `legacyNoUsedTrade`.
+ *
+ * `life-55`: con la herramienta de la casa en la rutina, el NPC que la deja al volver la afila con la
+ * piedra si está mellada y la lleva al herrero (pagando de su bolsa) cuando la piedra ya no alcanza
+ * (use-tools-mend-npc). Compatibilidad: `legacyNoNpcMend`.
  */
-export const LIFE_ENGINE = "life-54";
+export const LIFE_ENGINE = "life-55";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -393,6 +397,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 52 ? { legacyNoSmith: true } : {}),
     ...(n < 53 ? { legacyNoForgeBuy: true } : {}),
     ...(n < 54 ? { legacyNoUsedTrade: true } : {}),
+    ...(n < 55 ? { legacyNoNpcMend: true } : {}),
   };
 }
 
