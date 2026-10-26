@@ -18,6 +18,7 @@
     "name": "el santuario",
     "culture": "village",
     "setting": "temple",
+    "building": "shrine",
     "formality": 0.8
   }
 ]

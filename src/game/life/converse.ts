@@ -6,6 +6,7 @@
 
 import {
   type AgentId,
+  type BuildingId,
   type Duration,
   type EntityRef,
   type EventId,
@@ -31,6 +32,7 @@ import {
   type Belief,
   BODY_STATE,
   type BondDef,
+  BUILDING,
   bargainFace,
   beliefAbout,
   beliefConfidenceAt,
@@ -404,6 +406,8 @@ function formOf(
     text: string;
     now: Tick;
     indoor: boolean;
+    /** El espacio donde está el oyente: si es un edificio con su registro (el santuario), manda ese. */
+    space?: string | undefined;
     hearerRank: number;
     /** Lo que el oyente cree del rango de quien habla. */
     readRank: number;
@@ -418,7 +422,15 @@ function formOf(
 ): { spoken: SpokenForm; judge: FormJudgeInput } | undefined {
   const { me, speaker, text } = ctx;
   const setting = ctx.indoor ? "home" : "market";
-  const register = f.registers.find((r) => r.culture === f.culture && r.setting === setting);
+  const type =
+    ctx.space === undefined
+      ? undefined
+      : truth.get(BUILDING, ctx.space.split("/")[0] as BuildingId)?.type;
+  const register =
+    (type === undefined
+      ? undefined
+      : f.registers.find((r) => r.culture === f.culture && r.building === type)) ??
+    f.registers.find((r) => r.culture === f.culture && r.setting === setting && !r.building);
   if (!register) return undefined;
   const kin = householdOf(truth, me) === householdOf(truth, speaker);
   const norm = normalize(text);
@@ -1302,6 +1314,7 @@ export function converseProcess(o: ConverseOptions): ProcessDef {
             text: pending.text,
             now: ctx.now,
             indoor: o.spaces.spaces.find((s) => s.key === here)?.indoor ?? false,
+            space: here,
             hearerRank: myRank,
             // Sin lectura del otro se lo supone de su mismo rango (no hay distancia).
             readRank: readRank ?? myRank,

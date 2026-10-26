@@ -143,6 +143,7 @@ interface SoundChange {
 ## 7. Registros, tratamientos y tabúes
 
 - **Registros:** la misma lengua tiene formas distintas para la corte, el templo, la secta, el mercado y la casa. Hablar en el registro equivocado es una falta de etiqueta (dialogue §10, social-structure).
+  - **Hecho (shrine-register, 2026-10-26):** un registro puede atarse a un tipo de edificio (`RegisterDef.building`); adentro del santuario de la aldea rige el del templo, si no casa o mercado por adentro o afuera.
 - **Tratamientos y honoríficos:** cómo se nombra a un superior, a un anciano o a un maestro (formas de "usted", títulos, autodesprecio cortés). Son contenido de la cultura con forma en la lengua.
 - **Jergas:** sectas, gremios, ladrones y soldados tienen vocabulario propio. Es marca de pertenencia y a veces un código: quien no la conoce no entiende y queda marcado como de afuera. La jerga de los bajos fondos sirve para hablar delante de la guardia.
 - **Tabúes de palabra:** el nombre de un muerto, de un emperador (避讳), de una bestia temida o de un dios no se dice. Se reemplaza por un rodeo ("el de la montaña") que con el tiempo se vuelve la palabra normal, y la vieja se pierde. Decir la palabra prohibida tiene consecuencias sociales y, si la ley del mundo lo permite, metafísicas (heaven-karma, spirits).
