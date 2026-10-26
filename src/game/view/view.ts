@@ -1016,13 +1016,17 @@ function effectView(
               ? (e.honed ?? 0) > 0
               : e.how === "hearth.warm"
                 ? e.warmed === true
-                : e.liters > 0,
+                : e.how === "bench.sit"
+                  ? e.sat === true
+                  : e.liters > 0,
         means:
           e.how === "tool.mend"
             ? e.lack === undefined
             : e.how === "tool.sharpen" || e.how === "hearth.warm"
               ? e.means === true
-              : e.item !== undefined,
+              : e.how === "bench.sit"
+                ? true
+                : e.item !== undefined,
         ...(e.lack !== undefined ? { lack: e.lack } : {}),
       };
     case "cook":

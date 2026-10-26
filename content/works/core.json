@@ -10,6 +10,15 @@
     "decayPerYear": 0.01
   },
   {
+    "id": "square-bench",
+    "name": "banco de la plaza",
+    "kind": "bench",
+    "material": "timber",
+    "grams": 40000,
+    "repairYears": 5,
+    "decayPerYear": 0.05
+  },
+  {
     "id": "dirt-road",
     "name": "camino de tierra",
     "kind": "road",

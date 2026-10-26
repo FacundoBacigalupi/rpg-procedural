@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseCommand } from "./grammar.ts";
 
 function planOf(input: string): unknown {
-  return (parseCommand(input) as unknown as { plan?: unknown }).plan;
+  return (parseCommand(input) as unknown as { plan?: unknown } | null)?.plan;
 }
 
 describe("la gramática de use y del target de look (use-core)", () => {
@@ -70,5 +70,26 @@ describe("la gramática de use y del target de look (use-core)", () => {
       verb: "look",
       args: [{ role: "target", ref: { kind: "person" } }],
     });
+  });
+
+  it("«me siento en el banco» y «me caliento junto al fogón» arman use con su función (fixtures-bench)", () => {
+    expect(planOf("me siento en el banco")).toMatchObject({
+      verb: "use",
+      args: [
+        { role: "target", ref: { text: "el banco", kind: "object" } },
+        { role: "how", text: "sentarme" },
+      ],
+    });
+    for (const text of ["me caliento junto al fogón", "me caliento", "me caliento al fuego"]) {
+      expect(planOf(text), text).toMatchObject({
+        verb: "use",
+        args: [
+          { role: "target", ref: { text: "el fogón", kind: "object" } },
+          { role: "how", text: "calentarme" },
+        ],
+      });
+    }
+    // «Me siento cansado» no es sentarse en nada.
+    expect((planOf("me siento cansado") as { verb?: string } | undefined)?.verb).not.toBe("use");
   });
 });

@@ -622,6 +622,9 @@ export type VerbEffect =
       /** `hearth.warm`: el fogón y si se quedó arrimado al fuego. */
       readonly hearth?: EntityRef;
       readonly warmed?: boolean;
+      /** `bench.sit`: el banco donde se sentó. */
+      readonly bench?: EntityRef;
+      readonly sat?: boolean;
     }
   | {
       readonly kind: "cook";
@@ -2331,6 +2334,23 @@ function sharpenTool(c: Ctx): VerbResult {
   return { effect: { ...base, wear, ground, honed, means: true }, seconds };
 }
 
+/** Cuánto se queda sentado en el banco quien se sienta (s). */
+export const BENCH_SECONDS = 900;
+
+/**
+ * `bench.sit` (fixtures-bench): se sienta en el banco nombrado un rato (`BENCH_SECONDS`), o lo que
+ * diga `for`. El banco lo eligió la función de la cosa (el despacho de `use`), así que no falla.
+ */
+function sitOnBench(c: Ctx): VerbResult {
+  const target = c.input.node.args.find((a) => a.role === "target");
+  const bench = target !== undefined && "entity" in target ? target.entity : undefined;
+  if (bench === undefined) return { effect: { kind: "none" }, seconds: c.nominal };
+  return {
+    effect: { kind: "use", how: "bench.sit", liters: 0, bench, sat: true },
+    seconds: BENCH_SECONDS,
+  };
+}
+
 /** Cuánto se queda arrimado al fuego quien sale a calentarse (s). */
 export const WARM_SECONDS = 1800;
 
@@ -2456,6 +2476,7 @@ function mendTool(c: Ctx): VerbResult {
  */
 const use: Resolver = (c) => {
   if (argText(c, "how") === "hearth.warm") return warmAtHearth(c);
+  if (argText(c, "how") === "bench.sit") return sitOnBench(c);
   if (argText(c, "how") === "tool.sharpen") return sharpenTool(c);
   if (argText(c, "how") === "tool.mend") return mendTool(c);
   const d = c.input.drawWater;

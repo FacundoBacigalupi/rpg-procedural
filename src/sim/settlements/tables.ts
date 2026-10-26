@@ -86,9 +86,9 @@ export type RebuildChoiceName = "same" | "better" | "different" | "elsewhere";
 
 export interface WorkRecord {
   readonly type: string;
-  readonly kind: "well" | "road";
+  readonly kind: "well" | "road" | "bench";
   readonly settlement: SettlementId;
-  /** Los hexes que cubre: el del pozo, o el trazado del camino. */
+  /** Los hexes que cubre: el del pozo o el banco, o el trazado del camino. */
   readonly hexes: readonly number[];
   /** Litros por día (pozo); sin capacidad, 0. */
   readonly capacity: number;
