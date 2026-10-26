@@ -30,7 +30,7 @@ import {
   TABOOS,
   TONE_CONTRASTS,
 } from "./language/index.ts";
-import { LINEAGES, TRAJECTORIES } from "./living/index.ts";
+import { LINEAGES, LIVESTOCK, TRAJECTORIES } from "./living/index.ts";
 import {
   HABITS_CONTENT,
   LIFE_STAGES,
@@ -71,6 +71,7 @@ export const CONTENT_KINDS: readonly ContentKind[] = [
   BUILDING_TYPES,
   WORK_TYPES,
   HOUSEHOLD_TOOLS,
+  LIVESTOCK,
   LANGUAGES,
   CONCEPTS,
   REGISTERS,
