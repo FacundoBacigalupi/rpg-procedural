@@ -26,20 +26,20 @@
     "web": "node src/ui/web/main.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@types/node": "^24.19.1",
+    "@biomejs/biome": "^2.6.2",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "dependency-cruiser": "^18.6.0",
+    "dependency-cruiser": "^18.7.0",
     "fast-check": "^4.10.2",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "zod": "^4.6.7"
   }
 }
