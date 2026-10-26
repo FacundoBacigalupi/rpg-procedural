@@ -396,11 +396,15 @@ export type EffectView =
     }
   | { readonly kind: "drink"; readonly drank: boolean }
   | {
-      /** Usó una cosa con una función (`well.draw_water`): cuántos litros juntó y si tenía en qué. */
+      /**
+       * Usó una cosa con una función (`well.draw_water`, `tool.sharpen`): si le salió (juntó agua,
+       * le sacó filo), si tenía con qué (recipiente, herramienta y piedra) y los litros juntados.
+       */
       readonly kind: "use";
       readonly how: string;
       readonly liters: number;
-      readonly vessel: boolean;
+      readonly done: boolean;
+      readonly means: boolean;
     }
   | { readonly kind: "boil"; readonly boiled: boolean }
   | { readonly kind: "filter"; readonly filtered: boolean }
@@ -970,7 +974,8 @@ function effectView(
         kind: "use",
         how: e.how,
         liters: Math.round(e.liters),
-        vessel: e.item !== undefined,
+        done: e.how === "tool.sharpen" ? (e.honed ?? 0) > 0 : e.liters > 0,
+        means: e.how === "tool.sharpen" ? e.means === true : e.item !== undefined,
       };
     case "cook":
       return {

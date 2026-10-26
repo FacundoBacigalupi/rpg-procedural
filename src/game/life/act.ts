@@ -382,6 +382,8 @@ export interface ActOptions {
   readonly legacyNoToolWear?: boolean;
   /** Replay de motores anteriores a `life-49`: soltar algo en un cuarto de la propia casa no lo devuelve al hogar. */
   readonly legacyNoHomeDrop?: boolean;
+  /** Replay de motores anteriores a `life-51`: no hay piedra de afilar en las casas y `use` con `tool.sharpen` no afila. */
+  readonly legacyNoSharpen?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -860,6 +862,39 @@ function drawWaterOf(
   return { drawWater: { well, left, condition: work.condition, ...(vessel ? { vessel } : {}) } };
 }
 
+/**
+ * `use` con `tool.sharpen` (use-tools-mend-sharpen): la herramienta nombrada, si `me` la lleva y
+ * sigue entera, su desgaste y el metal comido, y si lleva una piedra (las `hones` de la función).
+ */
+function sharpenOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+): { sharpen?: NonNullable<ResolveInput["sharpen"]> } {
+  if (o.legacyNoSharpen === true || o.legacyNoDrawWater === true || node.verb !== "use") return {};
+  const how = node.args.find((a) => a.role === "how");
+  if (how === undefined || !("text" in how) || how.text !== "tool.sharpen") return {};
+  const target = node.args.find((a) => a.role === "target");
+  if (target === undefined || !("entity" in target) || !target.entity.startsWith("item:")) {
+    return {};
+  }
+  const tool = target.entity as ItemId;
+  const mine = (item: ItemId) =>
+    truth.get(ITEM_HOLD, item)?.possession === me && truth.get(ENTITY, item)?.endedAt === undefined;
+  const hones = o.catalog.affordance("tool.sharpen")?.hones ?? [];
+  const stone = [...truth.ids(ITEM_HOLD)].some(
+    (id) =>
+      id !== tool &&
+      hones.includes(truth.get(ITEM_LOOK, id as ItemId)?.shape ?? "") &&
+      mine(id as ItemId),
+  );
+  const row = truth.get(ITEM_WEAR, tool);
+  return {
+    sharpen: { tool, held: mine(tool), wear: row?.wear ?? 0, ground: row?.ground ?? 0, stone },
+  };
+}
+
 /** El `ItemId` que un `take` quiere llevarse (arg `what` con una entidad `item:`), si lo nombra. */
 function itemArgOf(node: { verb: string; args: readonly ArgValue[] }): ItemId | undefined {
   if (node.verb !== "take" && node.verb !== "give" && node.verb !== "drop") return undefined;
@@ -1335,6 +1370,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       : {}),
     ...(node.verb === "take" && o.legacyNoHostTake !== true ? hostLarderOf(o, truth, me) : {}),
     ...drawWaterOf(o, truth, me, node, ctx.now),
+    ...sharpenOf(o, truth, me, node),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -2064,7 +2100,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     reason: { kind: "state" as const, entity: me, key: planKey(state.seq) },
   };
   // Sacar agua del pozo: el recipiente guarda los litros, el pozo cuenta lo sacado hoy y se gasta.
-  if (eff.kind === "use" && eff.liters > 0 && eff.item !== undefined) {
+  if (eff.kind === "use" && eff.liters > 0 && eff.item !== undefined && eff.well !== undefined) {
     const work = truth.get(WORK, eff.well);
     if (work !== undefined) {
       const day = Math.floor(ctx.now / o.clock.day);
@@ -2083,11 +2119,23 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       );
     }
   }
+  // Afilar: la herramienta recupera filo y pierde un poco de metal (use-tools-mend-sharpen).
+  if (eff.kind === "use" && eff.tool !== undefined && (eff.honed ?? 0) > 0) {
+    const row = truth.get(ITEM_WEAR, eff.tool);
+    changes.push(
+      setComponent(ITEM_WEAR, eff.tool, {
+        ...row,
+        wear: eff.wear ?? row?.wear ?? 0,
+        ground: eff.ground ?? row?.ground ?? 0,
+      }),
+    );
+  }
   // La herramienta que sirvió de instrumento se gasta con el uso (use-tools-wear).
   if ((eff.kind === "gather" || eff.kind === "work") && eff.tool && (eff.toolWear ?? 0) > 0) {
-    const before = truth.get(ITEM_WEAR, eff.tool)?.wear ?? 0;
+    const row = truth.get(ITEM_WEAR, eff.tool);
+    const before = row?.wear ?? 0;
     const wear = Math.min(1, Math.round((before + (eff.toolWear as number)) * 1e6) / 1e6);
-    changes.push(setComponent(ITEM_WEAR, eff.tool, { wear }));
+    changes.push(setComponent(ITEM_WEAR, eff.tool, { ...row, wear }));
   }
   // Soltar un objeto propio: queda en el lugar, con su LOCATION donde está el actor; nadie más
   // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.

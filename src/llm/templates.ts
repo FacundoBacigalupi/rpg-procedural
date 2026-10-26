@@ -445,7 +445,7 @@ function outcome(
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
       break;
     case "use": {
-      const id = `outcome.use.${e.how}.${e.liters > 0 ? "done" : e.vessel ? "none" : "no_vessel"}`;
+      const id = `outcome.use.${e.how}.${e.done ? "done" : e.means ? "none" : "no_means"}`;
       say(book.has(id) ? id : "outcome.none");
       break;
     }

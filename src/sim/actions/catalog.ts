@@ -392,6 +392,8 @@ export const AffordanceDef = z
     /** La que vale cuando no se dice cómo («uso el pozo»); si ninguna lo es, la de menor id. */
     primary: z.boolean().optional(),
     vessels: z.record(z.string().min(1), z.number().positive()).optional(),
+    /** Afilar (use-tools-mend-sharpen): las formas que le sacan filo (la piedra), que se llevan encima. */
+    hones: z.array(z.string().min(1)).min(1).optional(),
   })
   .refine((a) => a.as !== undefined || (a.asRole === undefined && a.asWhat === undefined), {
     message: "asRole y asWhat solo con as",

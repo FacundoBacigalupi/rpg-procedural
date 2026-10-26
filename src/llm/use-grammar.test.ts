@@ -32,6 +32,18 @@ describe("la gramática de use y del target de look (use-core)", () => {
     expect(mine.args[0]?.ref).toEqual({ text: "mi azada", kind: "object", features: ["azada"] });
   });
 
+  it("«afilo la hoz con la piedra» es use sobre la hoz para afilar (use-tools-mend-sharpen)", () => {
+    for (const text of ["afilo la hoz", "afilo la hoz con la piedra", "amolar la hoz"]) {
+      expect(planOf(text), text).toMatchObject({
+        verb: "use",
+        args: [
+          { role: "target", ref: { text: "la hoz", kind: "object" } },
+          { role: "how", text: "afilar" },
+        ],
+      });
+    }
+  });
+
   it("«miro alrededor» sigue sin target y «miro a Wu» busca una persona", () => {
     for (const text of ["miro", "miro alrededor", "miro por ahí"]) {
       expect(planOf(text), text).toMatchObject({ verb: "look", args: [] });

@@ -440,14 +440,23 @@ const VERBS: readonly {
   },
   {
     // «Uso el pozo», «saco agua del pozo»: la cosa dice qué se puede (actions, «Ampliación: use»).
-    re: /^(?:uso|usar|utilizo|utilizar|me\s+sirvo\s+de|(?:saco|sacar)\s+agua(?=\s+(?:del|de)\s))/i,
+    // «Afilo la hoz [con la piedra]»: la función de afilar de la herramienta (use-tools-mend-sharpen).
+    re: /^(?:uso|usar|utilizo|utilizar|me\s+sirvo\s+de|(?:saco|sacar)\s+agua(?=\s+(?:del|de)\s)|afilo|afilar|amolo|amolar)/i,
     build: (rest, _ctx, all) => {
-      const what = nounPhrase(dropPreposition(rest.replace(MANNER_WORDS, " ")));
+      const sharpen = /^(?:afilo|afilar|amolo|amolar)\b/i.test(all);
+      const object = sharpen ? rest.replace(/\s+con\s+.*$/i, "") : rest;
+      const what = nounPhrase(dropPreposition(object.replace(MANNER_WORDS, " ")));
       if (!what) return null;
       const water = /^(?:saco|sacar)\s+agua\b/i.test(all);
       // «uso el hacha para cortar leña»: para qué, como el cómo que elige la función.
       const purpose = /\spara\s+(.+)$/i.exec(rest)?.[1];
-      const how = water ? "sacar agua" : purpose !== undefined ? tidy(purpose) : undefined;
+      const how = sharpen
+        ? "afilar"
+        : water
+          ? "sacar agua"
+          : purpose !== undefined
+            ? tidy(purpose)
+            : undefined;
       return {
         node: act("use", [
           { role: "target", ref: ref(what, "object") },

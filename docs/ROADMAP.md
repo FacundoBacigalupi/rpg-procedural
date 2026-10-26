@@ -8,9 +8,9 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**Prioridad vigente (2026-10-25):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
-están cerradas (la rutina de campo ya lleva la herramienta de la casa); sigue `use-tools-mend`
-(afilar, reparar o reponer la herramienta gastada) y luego lo jugable de `use-*`. Un solo lote,
+**Prioridad vigente (2026-10-26):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
+están cerradas y ya se afila con la piedra de la casa; sigue `use-tools-mend-smith`
+(reparar en la herrería lo que la piedra ya no salva) y luego lo jugable de `use-*`. Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
@@ -35,7 +35,11 @@ El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sis
 - (use-tools) La herramienta como instrumento, partido en tres:
     - [x] (use-tools-arg) Argumento opcional `with: thing` en `gather` y `work` (no existen `fell` ni `farm`: la leña es `gather` en el monte y el campo es `work`), con la tabla `instruments` del verbo (forma, salida, rinde, facilidad). Solo vale lo que lleva encima; si no, se hace a mano. Sin bump (ningún NPC lo usa todavía).
     - [x] (use-tools-wear) La herramienta se gasta con las horas de uso (`ITEM_WEAR`, `hours` por instrumento): rinde menos cuanto más gastada y, gastada del todo, como a mano; el narrador avisa. Motor `life-48`.
-    - [ ] (use-tools-mend) Afilar o reparar la herramienta gastada (oficio con piedra de afilar o herrero) y venderla o comprarla nueva; sin esto, una herramienta gastada queda inútil.
+    - (use-tools-mend) Afilar o reparar la herramienta gastada (oficio con piedra de afilar o herrero) y venderla o comprarla nueva; sin esto, una herramienta gastada queda inútil. Partido el 2026-10-26 en:
+        - [x] (use-tools-mend-sharpen) «afilo la hoz [con la piedra]»: función `tool.sharpen` (`use` propio, `hones: whetstone`) en hacha, azada, cuchillo y hoz; piedra de afilar en las casas de dos o más. Con la herramienta y la piedra en la mano, devuelve filo según la tirada (más tiempo cuanto más gastada), pero nunca por debajo de `ITEM_WEAR.ground`, el metal comido, que sube con cada afilada. Motor `life-51` (`legacyNoSharpen`). Hecho.
+        - [ ] (use-tools-mend-smith) Reparar en la herrería: un herrero (oficio y fragua) baja `ground` y `wear` a cambio de material, tiempo y paga; sin herrería en la aldea mínima, decidir si la hay en el pueblo del mercado o si entra con settlements.
+        - [ ] (use-tools-mend-trade) Comprar o vender una herramienta en el mercado (economy: el ítem con identidad como mercancía, precio según el desgaste creído).
+        - [ ] (use-tools-mend-npc) Los NPC afilan la herramienta de la casa cuando rinde poco (rutina o plantilla) y la llevan al herrero cuando la piedra ya no alcanza.
     - [x] (use-tools-rewrite) «uso el hacha [para cortar leña]» se reescribe a su verbo: funciones de herramienta en `content/affordances/` con `as`, `asRole` (la herramienta entra como `with`) y `asWhat`; la hoz siega o junta espigas según el para qué. Sin bump.
 - [ ] (use-hearth-station) `warm` con el fogón (`HEARTH`) y `operate` con estaciones de crafts (telar, rueca), cuando existan como cosas. Depende de `use-core`.
 - [x] (play-refs-objects-loose) Objetos sueltos con identidad: `ITEM_LOOK` (forma, material, tamaño como claves), `thingStimulus` y la clave de percept `thing`; `itemsSeen` los percibe aparte de la gente (RNG propio, no toca la escena ni el HUD) y `knownEntities(w, seen, things)` los lista como `kind: "object"` (el enum de actions) con palabras en castellano y «suelo». `planFromDraft` resuelve el `what` de `take`/`give` contra las cosas presentes (única → entidad, varias → pregunta, ninguna → texto de bienes); sin `itemClaims` un `take`/`give` de un `item:` fracasa por `no_means` en vez de elegir otro bien. Sin bump: el mundo de la vida todavía no crea cosas sueltas.

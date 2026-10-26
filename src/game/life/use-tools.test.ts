@@ -146,7 +146,8 @@ describe("«uso el hacha» se vuelve su verbo (use-tools-rewrite)", () => {
     for (const shape of ["axe", "hoe", "knife", "sickle"]) {
       const offers = w.catalog.affordances(shape);
       expect(offers.length, shape).toBeGreaterThan(0);
-      for (const a of offers) {
+      // Las que son otro verbo (afilar es `use` propio: use-tools-mend-sharpen).
+      for (const a of offers.filter((o) => o.as !== undefined)) {
         const verb = w.catalog.verb(a.as ?? "");
         expect(
           verb?.args.some((x) => x.role === a.asRole),

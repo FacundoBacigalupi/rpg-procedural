@@ -312,8 +312,12 @@ export interface LifeSetup {
  * `life-50`: con `itemClaims`, la rutina de campo agarra la azada o la hoz de la casa al salir, cada
  * hora con ella rinde más y la gasta, y la deja al volver (perfil2-item-claims-item-demand-routine).
  * Compatibilidad: `legacyNoRoutineTools`.
+ *
+ * `life-51`: cada casa de dos o más tiene una piedra de afilar, y `use` con `tool.sharpen` («afilo la
+ * hoz») le saca filo a la herramienta gastada comiéndole un poco de metal (use-tools-mend-sharpen).
+ * Compatibilidad: `legacyNoSharpen`.
  */
-export const LIFE_ENGINE = "life-50";
+export const LIFE_ENGINE = "life-51";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -373,6 +377,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 48 ? { legacyNoToolWear: true } : {}),
     ...(n < 49 ? { legacyNoNpcTools: true } : {}),
     ...(n < 50 ? { legacyNoRoutineTools: true } : {}),
+    ...(n < 51 ? { legacyNoSharpen: true } : {}),
   };
 }
 

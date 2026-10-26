@@ -46,6 +46,13 @@
     "primary": true
   },
   {
+    "id": "tool.sharpen",
+    "name": "afilar la herramienta con la piedra",
+    "on": ["axe", "hoe", "knife", "sickle"],
+    "words": ["afilar", "afilo", "amolar", "asentar", "filo"],
+    "hones": ["whetstone"]
+  },
+  {
     "id": "well.drink",
     "name": "tomar agua del pozo",
     "on": ["well"],
