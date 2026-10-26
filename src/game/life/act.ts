@@ -65,6 +65,7 @@ import {
   HARVEST_GRAMS_PER_HOUR,
   HEARTH,
   hearthBurn,
+  houseKey,
   INNATE,
   ITEM_HOLD,
   ITEM_LOOK,
@@ -379,6 +380,8 @@ export interface ActOptions {
   readonly legacyNoDrawWater?: boolean;
   /** Replay de motores anteriores a `life-48`: la herramienta de instrumento no se gasta. */
   readonly legacyNoToolWear?: boolean;
+  /** Replay de motores anteriores a `life-49`: soltar algo en un cuarto de la propia casa no lo devuelve al hogar. */
+  readonly legacyNoHomeDrop?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -914,6 +917,19 @@ function itemGiveFor(truth: ReadonlyWorldTruth, item: ItemId, me: AgentId, to: E
     operation: "give",
     cause: draftEvent(0),
   });
+}
+
+/** El hogar de `person` si `space` es un cuarto de su casa; si no, nadie. */
+function homeHolder(
+  person: { readonly household?: string | undefined } | undefined,
+  space: string | undefined,
+): HolderRef | undefined {
+  const household = person?.household;
+  if (household === undefined || space === undefined) return undefined;
+  const home = houseKey(household as never);
+  return space === home || space.startsWith(`${home}/`)
+    ? (household as unknown as HolderRef)
+    : undefined;
 }
 
 /** Soltar `item` de `me` en el lugar `at`: solo la posesión física; los derechos no se tocan. */
@@ -2077,7 +2093,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.
   const myPlace = truth.get(LOCATION, me);
   if (dropItem && eff.kind === "drop" && eff.dropped === true && myPlace !== undefined) {
-    const moved = itemTransferChanges(truth, itemDropFor(truth, dropItem.item, me, eff.at));
+    // Dejarlo en un cuarto de la propia casa lo devuelve al hogar (la azada que vuelve del campo).
+    const home =
+      o.legacyNoHomeDrop === true ? undefined : homeHolder(truth.get(PERSON, me), myPlace.space);
+    const moved = itemTransferChanges(truth, itemDropFor(truth, dropItem.item, me, home ?? eff.at));
     if (moved.length > 0) changes.push(...moved, setComponent(LOCATION, dropItem.item, myPlace));
   }
   // Claim de ítem: la toma que alcanzó para disputar propone el cambio de posesión; si otro lo

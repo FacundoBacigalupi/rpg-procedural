@@ -69,6 +69,7 @@ import { alarmingSignsOf } from "./alarms.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
 import { MAX_RAIN_WAITS, type RoadForecast } from "./forecast.ts";
 import { GREET_CHANCE, NPC_GREETED, NPC_MET, refusesGreeting } from "./npc-met.ts";
+import { NPC_TOOL_READS, withHouseholdTool } from "./npc-tools.ts";
 import { ROUTINE } from "./routine.ts";
 import { TRANSIT } from "./transit-state.ts";
 
@@ -118,6 +119,12 @@ export interface NpcVerbsOptions {
     readonly map: LocalMap;
   };
   readonly placeOf?: (truth: ReadonlyWorldTruth, who: AgentId) => PlaceRef;
+  /**
+   * Opt-in (`life-49`, con `templates` e `itemClaims`): el plan de una plantilla que vuelve a casa
+   * agarra antes la herramienta de la casa que sirve para el trabajo, la usa como `with` y la deja al
+   * volver (`withHouseholdTool`).
+   */
+  readonly householdTools?: boolean;
   /**
    * Opt-in (con `journeyDays`): el ritmo del viaje es el modo `careful` (más lento, más cuidado) o
    * `fast` (más rápido, peor tirada y más ruido) del `move`; sin esto, el modo por defecto.
@@ -497,6 +504,7 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
       })
         ? [BELIEFS.name]
         : []),
+      ...(o.householdTools && o.templates ? NPC_TOOL_READS : []),
     ],
     writes: [
       PLAN_STATE.name,
@@ -778,8 +786,12 @@ export function npcVerbsProcess(o: NpcVerbsOptions): ProcessDef {
               planFromDecision(decision, o.catalog, me, [], o.legacyNoSettlementWalk === true),
             )
           : undefined;
+      const tooled =
+        fromTemplate && o.householdTools
+          ? withHouseholdTool(fromTemplate, o.catalog, truth, me)
+          : fromTemplate;
       const plan =
-        fromTemplate ??
+        tooled ??
         planFromDecision(
           decision,
           o.catalog,

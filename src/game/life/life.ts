@@ -304,8 +304,12 @@ export interface LifeSetup {
  * `life-48`: la herramienta que sirve de instrumento en `gather` y `work` se gasta con las horas de
  * uso (`ITEM_WEAR`) y rinde menos cuanto más gastada (use-tools-wear). Compatibilidad:
  * `legacyNoToolWear`.
+ *
+ * `life-49`: con `itemClaims`, el NPC que sale a trabajar con plantilla agarra la herramienta de su
+ * casa, la usa y la deja al volver; soltar algo en un cuarto de la propia casa lo devuelve al hogar
+ * (perfil2-item-claims-item-demand-npc). Compatibilidad: `legacyNoNpcTools`.
  */
-export const LIFE_ENGINE = "life-48";
+export const LIFE_ENGINE = "life-49";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -363,6 +367,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 46 ? { legacyFullTakeItem: true } : {}),
     ...(n < 47 ? { legacyNoDrawWater: true } : {}),
     ...(n < 48 ? { legacyNoToolWear: true } : {}),
+    ...(n < 49 ? { legacyNoNpcTools: true } : {}),
   };
 }
 
