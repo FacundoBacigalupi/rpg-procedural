@@ -56,5 +56,25 @@
       { "part": "roof", "area": 56, "materials": [{ "material": "thatch", "weight": 1 }] },
       { "part": "door", "area": 3, "materials": [{ "material": "timber", "weight": 1 }] }
     ]
+  },
+  {
+    "id": "shrine",
+    "name": "santuario de la tierra",
+    "tenure": "community",
+    "perPeople": 1000,
+    "optIn": true,
+    "repairYears": 6,
+    "rooms": [
+      { "id": "main", "kind": "room", "area": 6, "daylight": 0.15, "lamp": 0.05, "noise": 0.01 }
+    ],
+    "components": [
+      { "part": "foundation", "area": 6, "materials": [{ "material": "stone", "weight": 1 }] },
+      {
+        "part": "walls",
+        "area": 18,
+        "materials": [{ "material": "clay", "weight": 2 }, { "material": "timber", "weight": 1 }]
+      },
+      { "part": "roof", "area": 9, "materials": [{ "material": "thatch", "weight": 1 }] }
+    ]
   }
 ]

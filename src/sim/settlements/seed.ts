@@ -87,6 +87,8 @@ export interface SeedSettlementInput {
   readonly content: SettlementContent;
   /** Opt-in (fixtures-bench): un banco de madera en la plaza, puesto por los fundadores. */
   readonly bench?: boolean;
+  /** Los edificios `optIn` del contenido que se levantan (village-shrine: `shrine`). */
+  readonly optIn?: readonly string[];
 }
 
 /** Ángulo áureo: reparte las casas alrededor de la plaza sin filas. */
@@ -179,8 +181,9 @@ export function seedSettlement(
 
   // --- Edificios: primero lo comunal (con los fundadores), después una casa por hogar. -----------
   const living = pop.people.filter((p) => p.end === null).length;
+  const wanted = (b: BuildingDef) => b.optIn !== true || (input.optIn ?? []).includes(b.id);
   const dwellings = content.buildings
-    .filter((b) => b.tenure === "household")
+    .filter((b) => b.tenure === "household" && wanted(b))
     .sort((a, b) => (a.minMembers ?? 1) - (b.minMembers ?? 1));
   const plans: {
     def: BuildingDef;
@@ -190,17 +193,27 @@ export function seedSettlement(
     cause: EventId;
   }[] = [];
   const foundersAt = tick(pop.foundersEvent);
-  for (const def of content.buildings.filter((b) => b.tenure === "community")) {
-    const n = Math.max(1, Math.ceil(living / (def.perPeople ?? 1)));
+  const community = (b: BuildingDef) => {
+    const n = Math.max(1, Math.ceil(living / (b.perPeople ?? 1)));
     for (let i = 0; i < n; i++) {
-      plans.push({ def, at: foundersAt, owner: village, cause: pop.foundersEvent });
+      plans.push({ def: b, at: foundersAt, owner: village, cause: pop.foundersEvent });
     }
+  };
+  for (const def of content.buildings.filter((b) => b.tenure === "community" && !b.optIn)) {
+    community(def);
   }
   for (const h of pop.households.filter((x) => x.end === null)) {
     const fits = dwellings.filter((d) => (d.minMembers ?? 1) <= h.members.length);
     const def = fits[fits.length - 1] ?? dwellings[0];
     if (!def) throw new Error("falta contenido: ningún edificio de vivienda");
     plans.push({ def, at: h.since, owner: h.id, household: h, cause: h.origin });
+  }
+  // Los comunales opt-in (el santuario, village-shrine) van al final: así no corren los ids ni el
+  // lugar de las casas de siempre; quedan en el anillo de afuera.
+  for (const def of content.buildings.filter(
+    (b) => b.tenure === "community" && b.optIn === true && wanted(b),
+  )) {
+    community(def);
   }
 
   plans.forEach((plan, index) => {

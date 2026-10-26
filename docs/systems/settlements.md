@@ -74,6 +74,7 @@ type SettlementAnchor =
 ```
 
 - **Implementado (Fase 1, Hito 1a):** la aldea inicial sale del terreno real (decisión aprobada 2026-10-06): `worldgen/local/site.ts` puntúa los hexes de la celda que eligió `pickVillageSite` y devuelve las anclas que el terreno puede dar (`water` de río, arroyo, laguna, mar o napa; `farmland`; `resource` madera; `harbor`), cada una con su evento causa del planeta, y el evento `settlement.founded` con esas causas. Las anclas que vienen de la historia (secta, mercado, estado) llegan con la Fase 7. Ver planet-gen §Implementación.
+- **Hecho (village-shrine, 2026-10-26):** edificios `optIn` en el contenido (solo se levantan si la vida los pide); el primero es el santuario de la tierra (`shrine`), comunal, levantado por los fundadores después de las casas. Opt-in `villageShrine`.
 - **Cada ancla tiene fuerza** (cuánta gente sostiene) y **se puede perder** (el río cambia de cauce, la mina se agota, la secta se muda, la ruta se desvía). La fuerza total de las anclas da la capacidad del lugar (§3).
 
 ### 2.2 Fundar
