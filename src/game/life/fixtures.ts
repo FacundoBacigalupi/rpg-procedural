@@ -1,24 +1,26 @@
 // Lo fijo de la aldea a la vista (play-refs-objects-fixtures-look): el pozo de la plaza y el granero
 // comunal son entidades de settlements (`WORK`, `BUILDING`) que el personaje sabe dónde están por vivir
 // ahí. Estando en su espacio los puede nombrar y mirar («miro el pozo»); lo que se ve al mirarlo es su
-// estado a grandes rasgos (gastado, descuidado). Solo lee: no cambia la verdad.
+// estado a grandes rasgos (gastado, descuidado). El fogón del cuarto principal de cada casa
+// (use-hearth-warm) se ve encendido o frío y se usa para calentarse. Solo lee: no cambia la verdad.
 
 import type { EntityRef } from "../../core/index.ts";
-import { BUILDING, ENTITY, LOCATION, VILLAGE_SQUARE, WORK } from "../../sim/index.ts";
+import { BUILDING, ENTITY, HEARTH, LOCATION, VILLAGE_SQUARE, WORK } from "../../sim/index.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** Una cosa fija a la vista: qué es (`shape`, la clave de las plantillas) y cómo está. */
 export interface FixtureInSight {
   readonly ref: EntityRef;
-  readonly shape: "well" | "granary";
-  /** El estado que se nota al mirarlo; sin él, está bien. */
-  readonly state?: "worn" | "poor";
+  readonly shape: "well" | "granary" | "hearth";
+  /** El estado que se nota al mirarlo; sin él, está bien. El fogón: encendido o frío. */
+  readonly state?: "worn" | "poor" | "lit" | "cold";
 }
 
 /** Cómo se lo nombra (provisorio hasta `language`). */
 export const FIXTURE_WORDS: Readonly<Record<FixtureInSight["shape"], readonly string[]>> = {
   well: ["el pozo", "pozo", "aljibe", "brocal"],
   granary: ["el granero", "granero", "troje"],
+  hearth: ["el fogón", "fogón", "lumbre"],
 };
 
 /** De la condición (0-1) a lo que se nota: bien, gastado, descuidado. */
@@ -48,6 +50,13 @@ export function fixturesInSight(w: LifeWorld): FixtureInSight[] {
       b.components.length === 0 ? 1 : Math.min(...b.components.map((c) => c.condition));
     const state = stateOf(condition);
     out.push({ ref: id, shape: "granary", ...(state ? { state } : {}) });
+  }
+  // El fogón de la casa: va por el id del edificio, como la fila de `HEARTH` que lo enciende.
+  for (const id of [...w.truth.ids(BUILDING)].sort()) {
+    const b = w.truth.get(BUILDING, id);
+    if (b?.household === undefined || b.graph.spaces[0]?.key !== here.space || !live(id)) continue;
+    const lit = (w.truth.get(HEARTH, id)?.intensity ?? 0) > 0;
+    out.push({ ref: id, shape: "hearth", state: lit ? "lit" : "cold" });
   }
   return out;
 }

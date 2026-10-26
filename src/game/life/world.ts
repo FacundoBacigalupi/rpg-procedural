@@ -31,6 +31,7 @@ import {
   type HabitDef,
   HEARTH,
   HEARTH_BURN_G_PER_H,
+  HEARTH_WARMING,
   type HouseholdToolDef,
   KNOWN_DEEDS,
   type LineageDef,
@@ -890,7 +891,7 @@ function thermalRefine(hearthSpaces: SpaceGraph | undefined, wet: boolean): Ther
   const reads: string[] = [];
   if (hearthSpaces) {
     steps.push(hearthEnv(hearthSpaces));
-    reads.push(HEARTH.name);
+    reads.push(HEARTH.name, HEARTH_WARMING.name);
   }
   if (wet) {
     steps.push(wetEnv);
@@ -898,7 +899,7 @@ function thermalRefine(hearthSpaces: SpaceGraph | undefined, wet: boolean): Ther
   }
   if (steps.length === 0) return {};
   return {
-    refineEnv: (truth, who, env) => steps.reduce((e, step) => step(truth, who, e), env),
+    refineEnv: (truth, who, env, span) => steps.reduce((e, step) => step(truth, who, e, span), env),
     refineReads: reads,
   };
 }

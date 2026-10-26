@@ -618,6 +618,17 @@
     "lines": ["No tenés en qué llevar el agua."]
   },
   {
+    "id": "outcome.use.hearth.warm.done",
+    "lines": [
+      "Te arrimás al fogón y dejás que el calor te entre en las manos.",
+      "Te sentás pegado al fuego un rato hasta que se te va el frío."
+    ]
+  },
+  {
+    "id": "outcome.use.hearth.warm.no_means",
+    "lines": ["El fogón está frío: no hay fuego al que arrimarse."]
+  },
+  {
     "id": "outcome.use.tool.sharpen.done",
     "lines": [
       "Pasás la piedra por el filo hasta que vuelve a morder.",
@@ -1027,6 +1038,9 @@
   { "id": "thing.shape.cloth", "lines": ["un paño"] },
   { "id": "thing.shape.well", "lines": ["el pozo"] },
   { "id": "thing.shape.granary", "lines": ["el granero"] },
+  { "id": "thing.shape.hearth", "lines": ["el fogón"] },
+  { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
+  { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
   { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },
   {
     "id": "thing.state.poor",

@@ -98,7 +98,8 @@ describe("cosas sueltas con identidad (play-refs-objects-loose)", () => {
     // Lo que lleva lo conoce como suyo (play-refs-objects-source-drop), no como cosa suelta.
     const carried = objects.filter((k) => k.relations.some((r) => r.rel === CARRIED));
     expect(carried.map((k) => k.ref)).toEqual([sword]);
-    const things = objects.filter((k) => !carried.includes(k));
+    // Lo fijo de la casa (el fogón, use-hearth-warm) también es un objeto, pero no un ítem suelto.
+    const things = objects.filter((k) => !carried.includes(k) && k.ref.startsWith("item:"));
     expect(things.map((k) => k.ref).sort()).toEqual([knife, basket].sort());
     const k = things.find((t) => t.ref === knife);
     expect(k?.names).toContain("cuchillo");
