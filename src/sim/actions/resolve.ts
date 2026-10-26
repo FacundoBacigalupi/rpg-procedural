@@ -161,6 +161,20 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
       }
     | undefined;
   /**
+   * `use` con `tool.sharpen` (use-tools-mend-sharpen): la herramienta nombrada, si la lleva, su
+   * desgaste y el metal ya comido, y si lleva con qué afilarla. Sin esto, `use` no afila (el replay
+   * de motores anteriores a `life-51`).
+   */
+  readonly sharpen?:
+    | {
+        readonly tool: ItemId;
+        readonly held: boolean;
+        readonly wear: number;
+        readonly ground: number;
+        readonly stone: boolean;
+      }
+    | undefined;
+  /**
    * Opt-in de claims de ítems: `drop` suelta un objeto con identidad que lleva encima
    * (play-refs-objects-source-drop); `available` dice si de verdad lo lleva.
    */
@@ -512,12 +526,20 @@ export type VerbEffect =
   | { readonly kind: "drink"; readonly liters: number }
   | {
       readonly kind: "use";
-      /** La función que se jugó (`well.draw_water`). */
+      /** La función que se jugó (`well.draw_water`, `tool.sharpen`). */
       readonly how: string;
-      readonly well: EntityRef;
+      /** El pozo del que sacó (`well.draw_water`). */
+      readonly well?: EntityRef;
       /** El recipiente que llenó (o que quiso llenar). */
       readonly item?: ItemId;
       readonly liters: number;
+      /** `tool.sharpen`: la herramienta, cómo quedó (desgaste y metal comido) y cuánto filo recuperó. */
+      readonly tool?: ItemId;
+      readonly wear?: number;
+      readonly ground?: number;
+      readonly honed?: number;
+      /** `tool.sharpen`: si tenía la herramienta y con qué afilarla. */
+      readonly means?: boolean;
     }
   | {
       readonly kind: "cook";
@@ -2077,12 +2099,44 @@ const drink: Resolver = (c) => ({
 /** Debajo de esta condición la soga o el brocal del pozo ya no dan para sacar agua. */
 export const WELL_WORN = 0.15;
 
+/** Cuánto metal se come el afilado por cada unidad de filo que recupera (sin calibrar). */
+export const SHARPEN_GRIND = 0.05;
+/** Los segundos de afilar una herramienta gastada del todo (sin calibrar); a una apenas mellada, poco. */
+export const SHARPEN_SECONDS = 1800;
+
 /**
- * Usar una cosa con una función que no es otro verbo (actions, «Ampliación: `use`»). Hoy solo
- * `well.draw_water`: llena el recipiente con lo que le cabe y el pozo da hoy. Sin recipiente, con
- * el pozo seco o gastado, no hay con qué; si la tirada no alcanza, se le vuelca y no junta nada.
+ * `tool.sharpen` (use-tools-mend-sharpen): con la herramienta y la piedra encima, le saca filo. Lo
+ * que recupera es lo gastado sobre el metal ya comido por el grado de la tirada (una buena afilada lo
+ * deja casi como el metal da; una mala, a medias), y el metal comido sube `SHARPEN_GRIND` por cada
+ * unidad recuperada: a fuerza de afiladas se acaba y pide herrero. Tarda según lo mellada que esté.
+ */
+function sharpenTool(c: Ctx): VerbResult {
+  const s = c.input.sharpen;
+  if (s === undefined) return { effect: { kind: "none" }, seconds: c.nominal };
+  const base = { kind: "use" as const, how: "tool.sharpen", liters: 0, tool: s.tool };
+  if (!s.held || !s.stone) {
+    return {
+      effect: { ...base, wear: s.wear, ground: s.ground, honed: 0, means: false },
+      seconds: Math.min(c.nominal, 10),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  const dull = Math.max(0, s.wear - s.ground);
+  const seconds = c.nominal + SHARPEN_SECONDS * dull;
+  const honed = c.roll.unmet ? 0 : Math.round(dull * Math.min(1, 0.5 + c.degree) * 1e6) / 1e6;
+  const ground = Math.min(1, Math.round((s.ground + SHARPEN_GRIND * honed) * 1e6) / 1e6);
+  const wear = Math.max(ground, Math.round((s.wear - honed) * 1e6) / 1e6);
+  return { effect: { ...base, wear, ground, honed, means: true }, seconds };
+}
+
+/**
+ * Usar una cosa con una función que no es otro verbo (actions, «Ampliación: `use`»):
+ * `well.draw_water` llena el recipiente con lo que le cabe y el pozo da hoy (sin recipiente, con
+ * el pozo seco o gastado, no hay con qué; si la tirada no alcanza, se le vuelca y no junta nada), y
+ * `tool.sharpen` afila (`sharpenTool`).
  */
 const use: Resolver = (c) => {
+  if (argText(c, "how") === "tool.sharpen") return sharpenTool(c);
   const d = c.input.drawWater;
   if (d === undefined || argText(c, "how") !== "well.draw_water") {
     return { effect: { kind: "none" }, seconds: c.nominal };

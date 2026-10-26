@@ -53,6 +53,11 @@ export const CONTENTS = table<ItemContents>("property.contents");
  */
 export interface ItemWear {
   readonly wear: number;
+  /**
+   * El metal que se comió el afilado (use-tools-mend-sharpen), 0-1: afilar no la deja por debajo de
+   * esto, y cada afilada lo sube un poco. Sin campo, 0.
+   */
+  readonly ground?: number;
 }
 
 export const ITEM_WEAR = table<ItemWear>("property.wear");

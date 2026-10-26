@@ -353,6 +353,8 @@ export interface LifeOptions {
   readonly legacyNoNpcTools?: boolean;
   /** Replay de motores anteriores a `life-50`: la rutina de campo trabaja a mano, sin la herramienta de la casa. */
   readonly legacyNoRoutineTools?: boolean;
+  /** Replay de motores anteriores a `life-51`: no hay piedra de afilar en las casas y `use` con `tool.sharpen` no afila. */
+  readonly legacyNoSharpen?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -767,6 +769,7 @@ export function optInParts(
   | "legacyNoToolWear"
   | "legacyNoNpcTools"
   | "legacyNoRoutineTools"
+  | "legacyNoSharpen"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -956,6 +959,7 @@ export function optInParts(
     ...(options.legacyNoToolWear ? { legacyNoToolWear: true } : {}),
     ...(options.legacyNoNpcTools ? { legacyNoNpcTools: true } : {}),
     ...(options.legacyNoRoutineTools ? { legacyNoRoutineTools: true } : {}),
+    ...(options.legacyNoSharpen ? { legacyNoSharpen: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
@@ -1594,7 +1598,10 @@ export function createLife(
     }
     seedHouseholdTools(truth, ids, log, {
       settlement,
-      tools: content.all(HOUSEHOLD_TOOLS),
+      // La piedra de afilar llegó en `life-51` (use-tools-mend-sharpen).
+      tools: content
+        .all(HOUSEHOLD_TOOLS)
+        .filter((t) => options.legacyNoSharpen !== true || t.id !== "whetstone"),
       members,
     });
   }

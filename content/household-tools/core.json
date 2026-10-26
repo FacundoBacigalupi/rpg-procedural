@@ -67,6 +67,15 @@
     "minMembers": 3
   },
   {
+    "id": "whetstone",
+    "name": "piedra de afilar",
+    "shape": "whetstone",
+    "material": "stone",
+    "size": "small",
+    "room": "store",
+    "minMembers": 2
+  },
+  {
     "id": "rope",
     "name": "soga",
     "shape": "rope",

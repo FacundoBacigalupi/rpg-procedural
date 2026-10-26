@@ -539,8 +539,26 @@
     "lines": ["No llegás a juntar agua del pozo.", "El balde sube casi vacío y no juntás nada."]
   },
   {
-    "id": "outcome.use.well.draw_water.no_vessel",
+    "id": "outcome.use.well.draw_water.no_means",
     "lines": ["No tenés en qué llevar el agua."]
+  },
+  {
+    "id": "outcome.use.tool.sharpen.done",
+    "lines": [
+      "Pasás la piedra por el filo hasta que vuelve a morder.",
+      "Asentás el filo con la piedra; la herramienta queda otra vez afilada."
+    ]
+  },
+  {
+    "id": "outcome.use.tool.sharpen.none",
+    "lines": [
+      "Le pasás la piedra, pero no le sacás más filo.",
+      "Por más que le pasás la piedra, el filo no mejora."
+    ]
+  },
+  {
+    "id": "outcome.use.tool.sharpen.no_means",
+    "lines": ["No tenés con qué afilarla: hace falta la herramienta en la mano y una piedra."]
   },
   {
     "id": "outcome.tend.self",

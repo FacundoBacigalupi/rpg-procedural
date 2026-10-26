@@ -70,6 +70,7 @@ const THING_WORDS: Readonly<Record<string, readonly string[]>> = {
   hoe: ["azada", "azadón"],
   sickle: ["hoz"],
   axe: ["hacha"],
+  whetstone: ["piedra de afilar", "afiladera", "asentador"],
   rope: ["soga", "cuerda"],
   stick: ["palo", "vara", "bastón"],
   bag: ["bolsa", "saco", "morral"],

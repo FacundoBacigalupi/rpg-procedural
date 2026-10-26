@@ -100,10 +100,11 @@ export function routineToolStep(input: {
     if (tool === undefined) return { changes, events, rate: 1 };
     const shape = truth.get(ITEM_LOOK, tool)?.shape ?? "";
     const spec = instruments.find((t) => t.shapes.includes(shape));
-    const wear = truth.get(ITEM_WEAR, tool)?.wear ?? 0;
+    const row = truth.get(ITEM_WEAR, tool);
+    const wear = row?.wear ?? 0;
     if (spec === undefined || wear >= 1) return { changes, events, rate: 1 };
     const worn = Math.min(1, Math.round((wear + 1 / spec.hours) * 1e6) / 1e6);
-    changes.push(setComponent(ITEM_WEAR, tool, { wear: worn }));
+    changes.push(setComponent(ITEM_WEAR, tool, { ...row, wear: worn }));
     return { changes, events, rate: 1 + (spec.rate - 1) * (1 - wear), tool };
   }
   const there = input.there;
