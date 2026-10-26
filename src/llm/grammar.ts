@@ -196,6 +196,8 @@ function toolClause(s: string): { rest: string; tool?: DraftArg } {
 function ref(text: string, kind: RefDescription["kind"]): RefDescription {
   const t = tidy(text);
   const rel = /^(?:mi|mis)\s+(\p{L}+)$/iu.exec(t);
+  // «mi azada» es una cosa que lleva, no un pariente: se busca por lo que es.
+  if (rel && kind === "object") return { text: t, kind, features: [rel[1] as string] };
   if (rel) {
     return { text: t, kind, features: [], relation: { to: "self", rel: rel[1] as string } };
   }
@@ -443,10 +445,13 @@ const VERBS: readonly {
       const what = nounPhrase(dropPreposition(rest.replace(MANNER_WORDS, " ")));
       if (!what) return null;
       const water = /^(?:saco|sacar)\s+agua\b/i.test(all);
+      // «uso el hacha para cortar leña»: para qué, como el cómo que elige la función.
+      const purpose = /\spara\s+(.+)$/i.exec(rest)?.[1];
+      const how = water ? "sacar agua" : purpose !== undefined ? tidy(purpose) : undefined;
       return {
         node: act("use", [
           { role: "target", ref: ref(what, "object") },
-          ...(water ? [{ role: "how", text: "sacar agua" }] : []),
+          ...(how ? [{ role: "how", text: how }] : []),
         ]),
       };
     },

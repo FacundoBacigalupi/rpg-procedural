@@ -526,7 +526,15 @@ function affordanceStep(
     offers[0];
   if (chosen === undefined) return undefined;
   if (chosen.as !== undefined)
-    return { kind: "do", verb: chosen.as, args: [], manner: [...manner] };
+    return {
+      kind: "do",
+      verb: chosen.as,
+      args: [
+        ...(chosen.asWhat !== undefined ? [{ role: "what", text: chosen.asWhat }] : []),
+        ...(chosen.asRole !== undefined ? [{ role: chosen.asRole, entity: target.entity }] : []),
+      ],
+      manner: [...manner],
+    };
   return {
     kind: "do",
     verb: "use",

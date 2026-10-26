@@ -133,6 +133,8 @@ function carriedThings(w: LifeWorld, here: number | undefined): KnownEntity[] {
       kind: "object",
       names,
       features,
+      // La forma dice qué se puede hacer con ella («uso el hacha», use-tools-rewrite).
+      shape: look.shape,
       relations: [{ rel: CARRIED, of: "self" }],
       present: true,
       ...(here === undefined ? {} : { at: here }),
