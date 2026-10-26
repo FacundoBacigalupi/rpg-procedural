@@ -462,6 +462,8 @@ export interface LifeWorld {
   readonly legacyNoDrawWater?: boolean;
   /** Replay de motores anteriores a `life-48`: la herramienta de instrumento no se gasta. */
   readonly legacyNoToolWear?: boolean;
+  /** Replay de motores anteriores a `life-49`: el NPC no lleva la herramienta de la casa y soltar en casa no la devuelve al hogar. */
+  readonly legacyNoNpcTools?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -1044,6 +1046,7 @@ export function lifeWorld(
           ...(parts.legacyNoHostTake === true ? { legacyNoHostTake: true } : {}),
           ...(parts.legacyNoDrawWater === true ? { legacyNoDrawWater: true } : {}),
           ...(parts.legacyNoToolWear === true ? { legacyNoToolWear: true } : {}),
+          ...(parts.legacyNoNpcTools === true ? { legacyNoHomeDrop: true } : {}),
           ...(parts.legacyNoFleeShed === true ? { legacyNoFleeShed: true } : {}),
           ...(parts.legacyFullTakeItem === true ? { legacyFullTakeItem: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),
@@ -2336,6 +2339,11 @@ export function lifeWorld(
                   : {}),
                 ...(parts.npcTemplates
                   ? { templates: { byVerb: parts.npcTemplates, map: parts.map } }
+                  : {}),
+                ...(parts.npcTemplates &&
+                parts.itemClaims === true &&
+                parts.legacyNoNpcTools !== true
+                  ? { householdTools: true }
                   : {}),
                 ...(parts.npcJourneyDays !== undefined
                   ? {
