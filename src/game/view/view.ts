@@ -361,6 +361,10 @@ export type EffectView =
       };
       /** El otro anda apretado de plata o en la ruina (se le nota): pesó en el trato. */
       readonly strain?: "tight" | "broke";
+      /** Herramienta nueva del herrero: cuál y cuánto pagó (use-tools-mend-trade-buy). */
+      readonly forged?: { readonly what: string; readonly coins: number };
+      /** Herramienta que no se pudo comprar: cuál y qué faltó (cobre suyo, hierro del herrero). */
+      readonly unforged?: { readonly what: string; readonly lack: "copper" | "iron" };
     }
   | {
       readonly kind: "give";
@@ -909,6 +913,12 @@ function effectView(
         deal: e.deal,
         terms: termsOf(e.edge),
         ...(e.strain !== undefined ? { strain: e.strain } : {}),
+        ...(e.deal && e.forgedName !== undefined
+          ? { forged: { what: e.forgedName, coins: e.coins } }
+          : {}),
+        ...(!e.deal && e.forgedName !== undefined && e.lack !== undefined
+          ? { unforged: { what: e.forgedName, lack: e.lack } }
+          : {}),
         ...(e.direction !== null && e.good !== null
           ? {
               moved: {

@@ -46,6 +46,7 @@ import {
   type ContestClaim,
   CREDIT,
   capabilitiesOf,
+  createEntity,
   DEFICIENCY_EFFECTS,
   type DealBudget,
   dayOf,
@@ -66,6 +67,7 @@ import {
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
   HEARTH,
+  type HouseholdToolDef,
   hearthBurn,
   houseKey,
   INNATE,
@@ -390,6 +392,10 @@ export interface ActOptions {
   readonly legacyNoSharpen?: boolean;
   /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
   readonly legacyNoSmith?: boolean;
+  /** Replay de motores anteriores a `life-53`: el herrero no vende herramientas nuevas (`trade` con él no forja). */
+  readonly legacyNoForgeBuy?: boolean;
+  /** Las herramientas que el herrero forja nuevas (use-tools-mend-trade-buy); sin esto no vende. */
+  readonly forgeTools?: readonly HouseholdToolDef[];
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -687,6 +693,10 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
       // El herrero gana oficio con cada arreglo (use-tools-mend-smith).
       ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
+      // La herramienta nueva que forja el herrero (use-tools-mend-trade-buy).
+      ...(o.legacyNoForgeBuy === true || o.forgeTools === undefined
+        ? []
+        : [ENTITY.name, ITEM_LOOK.name, ITEM_HOLD.name]),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -901,6 +911,64 @@ function sharpenOf(
   const row = truth.get(ITEM_WEAR, tool);
   return {
     sharpen: { tool, held: mine(tool), wear: row?.wear ?? 0, ground: row?.ground ?? 0, stone },
+  };
+}
+
+/** La herramienta forjable que nombra un texto («una hoz», «el hacha nueva»), por su nombre. */
+export function forgeToolNamed(
+  tools: readonly HouseholdToolDef[],
+  text: string | undefined,
+): HouseholdToolDef | undefined {
+  if (text === undefined) return undefined;
+  const words = new Set(
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .split(/[^a-zñ]+/)
+      .filter((w) => w.length > 0),
+  );
+  const head = (t: HouseholdToolDef) =>
+    (t.name.split(" ")[0] ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return [...tools].sort((a, b) => compareStrings(a.id, b.id)).find((t) => words.has(head(t)));
+}
+
+/**
+ * `trade` con el herrero nombrando una herramienta que forja (use-tools-mend-trade-buy): cuál, lo
+ * que cobra, el hierro que lleva y el de su hogar, y el cobre del actor.
+ */
+function forgeOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+  other: EntityRef | undefined,
+  ledger:
+    | { balance(account: ReturnType<typeof holderAccount>, unit: LedgerUnit): number }
+    | undefined,
+): { forge?: NonNullable<ResolveInput["forge"]> } {
+  if (o.legacyNoForgeBuy === true || o.legacyNoSmith === true || node.verb !== "trade") return {};
+  if (ledger === undefined || other === undefined || o.forgeTools === undefined) return {};
+  const smith = smithOf(truth);
+  if (smith === undefined || other !== smith) return {};
+  const what = node.args.find((a) => a.role === "what");
+  const tool = forgeToolNamed(o.forgeTools, what && "text" in what ? what.text : undefined);
+  if (tool?.forge === undefined) return {};
+  const home = truth.get(PERSON, smith)?.household;
+  if (home === undefined) return {};
+  const ironFrom = home as unknown as HolderRef;
+  return {
+    forge: {
+      tool: tool.id,
+      name: tool.name,
+      price: tool.forge.copper,
+      ironNeed: tool.forge.iron,
+      ironHave: ledger.balance(holderAccount(ironFrom), IRON_UNIT),
+      ironFrom,
+      copper: Math.floor(ledger.balance(holderAccount(me as unknown as HolderRef), COPPER)),
+      units: { copper: COPPER, iron: IRON_UNIT },
+      ironSink: externalAccount(WORKSHOP_WASTE),
+    },
   };
 }
 
@@ -1436,6 +1504,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...drawWaterOf(o, truth, me, node, ctx.now),
     ...sharpenOf(o, truth, me, node),
     ...mendOf(o, truth, me, node, ctx.ledger),
+    ...forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -2208,6 +2277,22 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     const smithRow = eff.smith === undefined ? undefined : truth.get(SMITH, eff.smith);
     if (eff.smith !== undefined && smithRow !== undefined) {
       changes.push(setComponent(SMITH, eff.smith, { level: smithLevelAfterJob(smithRow.level) }));
+    }
+  }
+  // Herramienta nueva del herrero: nace del trato y queda en manos de quien la compró (use-tools-mend-trade-buy).
+  if (eff.kind === "trade" && eff.deal && eff.forged !== undefined) {
+    const def = o.forgeTools?.find((t) => t.id === eff.forged);
+    if (def !== undefined) {
+      const item = ctx.newId("item");
+      changes.push(
+        createEntity(item, draftEvent(0), ctx.now),
+        setComponent(ITEM_LOOK, item, {
+          shape: def.shape,
+          size: def.size,
+          ...(def.material === undefined ? {} : { material: def.material }),
+        }),
+        setComponent(ITEM_HOLD, item, { possession: me as unknown as HolderRef, rights: [] }),
+      );
     }
   }
   // La herramienta que sirvió de instrumento se gasta con el uso (use-tools-wear).

@@ -176,6 +176,24 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
       }
     | undefined;
   /**
+   * `trade` con el herrero nombrando una herramienta que forja (use-tools-mend-trade-buy): cuál, lo
+   * que cobra, el hierro que lleva y el que hay en su hogar, y el cobre del actor.
+   */
+  readonly forge?:
+    | {
+        readonly tool: string;
+        /** Cómo se llama la herramienta (para narrarla). */
+        readonly name: string;
+        readonly price: number;
+        readonly ironNeed: number;
+        readonly ironHave: number;
+        readonly ironFrom: HolderRef;
+        readonly copper: number;
+        readonly units: { readonly copper: LedgerUnit; readonly iron: LedgerUnit };
+        readonly ironSink: LedgerAccount;
+      }
+    | undefined;
+  /**
    * `use` con `tool.mend` (use-tools-mend-smith): la herramienta, si la lleva, cómo está, y el herrero
    * si está en el mismo espacio, con lo bueno que es, el hierro de su hogar y lo que cobra.
    */
@@ -466,6 +484,12 @@ export type VerbEffect =
       readonly unsold?: Unsold;
       /** El otro anda apretado o en la ruina: pesó en el precio o en lo que podía pagar. */
       readonly strain?: "tight" | "broke";
+      /** Compra al herrero: la herramienta (id de contenido) que forjó y el hierro que puso. */
+      readonly forged?: string;
+      readonly forgedName?: string;
+      readonly iron?: number;
+      /** Compra al herrero que no se hizo: qué faltó. */
+      readonly lack?: "copper" | "iron";
     }
   | {
       readonly kind: "give";
@@ -1292,6 +1316,11 @@ const trade: Resolver = (c) => {
     grams: 0,
     coins: 0,
   });
+  if (c.input.forge !== undefined && other !== null) {
+    return deal
+      ? forgeBuy(c, other, c.input.forge, edge)
+      : { effect: idle(false), seconds: c.nominal / 2 };
+  }
   const mk = c.input.market;
   if (!deal || !mk || other === null) {
     return {
@@ -1336,6 +1365,63 @@ const trade: Resolver = (c) => {
     transfers: found.transfers,
   };
 };
+
+/** Segundos que tarda el herrero en forjar una herramienta mientras el comprador espera (sin calibrar). */
+export const FORGE_SECONDS = 3600;
+
+/** Lo que paga por una herramienta nueva según la ventaja del trato (`edge`, -0,3 a 0,3). Puro. */
+export function forgePrice(base: number, edge: number): number {
+  return Math.max(1, Math.round(base * (1 - edge)));
+}
+
+/**
+ * Comprarle una herramienta nueva al herrero (use-tools-mend-trade-buy): cerrado el trato, la forja
+ * con hierro de su hogar y la cobra en cobre según la ventaja. Sin cobre para pagarla o sin hierro
+ * para hacerla no hay trato. El objeto nuevo lo crea quien aplica el efecto (`forged`).
+ */
+function forgeBuy(
+  c: Ctx,
+  other: EntityRef,
+  f: NonNullable<ResolveInput["forge"]>,
+  edge: number,
+): VerbResult {
+  const price = forgePrice(f.price, edge);
+  const base = {
+    kind: "trade" as const,
+    with: other,
+    edge,
+    good: null,
+    grams: 0,
+  };
+  const fail = (lack: "copper" | "iron"): VerbResult => ({
+    effect: { ...base, deal: false, edge: 0, direction: null, coins: 0, forgedName: f.name, lack },
+    seconds: c.nominal / 2,
+    override: { outcome: "failure", failure: "no_means", believed: "failure" },
+  });
+  if (f.copper < price) return fail("copper");
+  if (f.ironHave < f.ironNeed) return fail("iron");
+  return {
+    effect: {
+      ...base,
+      deal: true,
+      direction: "buy",
+      coins: price,
+      forged: f.tool,
+      forgedName: f.name,
+      iron: f.ironNeed,
+    },
+    seconds: c.nominal + FORGE_SECONDS,
+    transfers: [
+      {
+        from: c.input.actor.id as HolderRef,
+        unit: f.units.copper,
+        amount: price,
+        to: holderAccount(other as HolderRef),
+      },
+      { from: f.ironFrom, unit: f.units.iron, amount: f.ironNeed, to: f.ironSink },
+    ],
+  };
+}
 
 /** Lo que come una casa en días: cuánta comida tiene (kcal) sobre lo que gasta por día. */
 function foodDays(

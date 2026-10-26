@@ -32,6 +32,13 @@ export const HouseholdToolDef = z.strictObject({
   room: z.string().min(1),
   /** Desde cuántos miembros lo tiene un hogar (las herramientas del campo, en los grandes). */
   minMembers: z.number().int().min(1).optional(),
+  /**
+   * Si el herrero la forja nueva (use-tools-mend-trade-buy): el hierro que lleva (g) y lo que cobra
+   * en cobre. Sin esto no se vende nueva.
+   */
+  forge: z
+    .strictObject({ iron: z.number().int().positive(), copper: z.number().int().positive() })
+    .optional(),
 });
 export type HouseholdToolDef = z.infer<typeof HouseholdToolDef>;
 export const HOUSEHOLD_TOOLS = defineContent("household-tools", HouseholdToolDef);
