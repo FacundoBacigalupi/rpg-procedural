@@ -358,6 +358,8 @@ export interface LifeOptions {
   readonly legacyNoSharpen?: boolean;
   /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
   readonly legacyNoSmith?: boolean;
+  /** Replay de motores anteriores a `life-53`: el herrero no vende herramientas nuevas (`trade` con él no forja). */
+  readonly legacyNoForgeBuy?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -774,6 +776,7 @@ export function optInParts(
   | "legacyNoRoutineTools"
   | "legacyNoSharpen"
   | "legacyNoSmith"
+  | "legacyNoForgeBuy"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -965,6 +968,7 @@ export function optInParts(
     ...(options.legacyNoRoutineTools ? { legacyNoRoutineTools: true } : {}),
     ...(options.legacyNoSharpen ? { legacyNoSharpen: true } : {}),
     ...(options.legacyNoSmith ? { legacyNoSmith: true } : {}),
+    ...(options.legacyNoForgeBuy ? { legacyNoForgeBuy: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
@@ -1328,6 +1332,7 @@ export function resumeParts(
   | "demography"
   | "recipes"
   | "tradeRecipes"
+  | "forgeTools"
   | "statuses"
   | "cultureTraits"
   | "speech"
@@ -1366,6 +1371,7 @@ export function resumeParts(
     materials: content.all(MATERIALS),
     recipes: content.all(RECIPES),
     tradeRecipes: content.all(TRADE_RECIPES),
+    forgeTools: content.all(HOUSEHOLD_TOOLS).filter((t) => t.forge !== undefined),
     statuses: content.all(STATUSES),
     cultureTraits: content.all(CULTURE_TRAITS),
     speech: content.all(SPEECH_LINES),
@@ -1929,6 +1935,7 @@ export function createLife(
       ),
       recipes: content.all(RECIPES),
       tradeRecipes: content.all(TRADE_RECIPES),
+      forgeTools: content.all(HOUSEHOLD_TOOLS).filter((t) => t.forge !== undefined),
       statuses: content.all(STATUSES),
       cultureTraits: content.all(CULTURE_TRAITS),
       speech: content.all(SPEECH_LINES),

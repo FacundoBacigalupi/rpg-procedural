@@ -5,7 +5,8 @@
     "shape": "knife",
     "material": "iron",
     "size": "small",
-    "room": "main"
+    "room": "main",
+    "forge": { "iron": 300, "copper": 12 }
   },
   {
     "id": "cooking-pot",
@@ -46,7 +47,8 @@
     "material": "iron",
     "size": "large",
     "room": "store",
-    "minMembers": 2
+    "minMembers": 2,
+    "forge": { "iron": 1200, "copper": 35 }
   },
   {
     "id": "sickle",
@@ -55,7 +57,8 @@
     "material": "iron",
     "size": "medium",
     "room": "store",
-    "minMembers": 2
+    "minMembers": 2,
+    "forge": { "iron": 600, "copper": 20 }
   },
   {
     "id": "axe",
@@ -64,7 +67,8 @@
     "material": "iron",
     "size": "medium",
     "room": "store",
-    "minMembers": 3
+    "minMembers": 3,
+    "forge": { "iron": 1500, "copper": 40 }
   },
   {
     "id": "whetstone",

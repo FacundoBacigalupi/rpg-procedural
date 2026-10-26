@@ -31,6 +31,7 @@ import {
   type HabitDef,
   HEARTH,
   HEARTH_BURN_G_PER_H,
+  type HouseholdToolDef,
   KNOWN_DEEDS,
   type LineageDef,
   LOCATION,
@@ -470,6 +471,8 @@ export interface LifeWorld {
   readonly legacyNoSharpen?: boolean;
   /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
   readonly legacyNoSmith?: boolean;
+  /** Replay de motores anteriores a `life-53`: el herrero no vende herramientas nuevas (`trade` con él no forja). */
+  readonly legacyNoForgeBuy?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -750,6 +753,8 @@ export interface LifeWorld {
   readonly recipes: readonly RecipeDef[];
   /** Recetas de oficio y los hogares que las practican (economy §3); sin asignaciones no producen. */
   readonly tradeRecipes?: readonly TradeRecipeDef[];
+  /** Las herramientas que el herrero forja nuevas (con `forge`; use-tools-mend-trade-buy). */
+  readonly forgeTools?: readonly HouseholdToolDef[];
   readonly householdTrades?: readonly TradeAssignment[];
   /** Opt-in: cada hogar elige oficio por habilidad y necesidad (`tradeSkills`: receta a habilidad) y lo guarda; sin esto sale del seed. */
   readonly tradeChoice?: { readonly tradeSkills: Readonly<Record<string, string>> };
@@ -1055,6 +1060,10 @@ export function lifeWorld(
           ...(parts.legacyNoNpcTools === true ? { legacyNoHomeDrop: true } : {}),
           ...(parts.legacyNoSharpen === true ? { legacyNoSharpen: true } : {}),
           ...(parts.legacyNoSmith === true ? { legacyNoSmith: true } : {}),
+          ...(parts.legacyNoForgeBuy === true ? { legacyNoForgeBuy: true } : {}),
+          ...(parts.forgeTools && parts.forgeTools.length > 0
+            ? { forgeTools: parts.forgeTools }
+            : {}),
           ...(parts.legacyNoFleeShed === true ? { legacyNoFleeShed: true } : {}),
           ...(parts.legacyFullTakeItem === true ? { legacyFullTakeItem: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),

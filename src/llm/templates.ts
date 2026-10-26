@@ -370,7 +370,18 @@ function outcome(
       break;
     }
     case "trade":
-      if (e.moved !== undefined && e.deal) {
+      if (e.forged !== undefined) {
+        say(`outcome.trade.forged.${e.terms}`, {
+          with: ref(e.with),
+          what: e.forged.what,
+          coins: `${e.forged.coins} ${e.forged.coins === 1 ? "moneda" : "monedas"}`,
+        });
+      } else if (e.unforged !== undefined) {
+        say(`outcome.trade.unforged.no_${e.unforged.lack}`, {
+          with: ref(e.with),
+          what: e.unforged.what,
+        });
+      } else if (e.moved !== undefined && e.deal) {
         const kilos = e.moved.grams / 1000;
         const grams =
           e.moved.grams >= 1000 ? `${Number(kilos.toFixed(1))} kilos` : `${e.moved.grams} gramos`;

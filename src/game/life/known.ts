@@ -240,6 +240,15 @@ export function knownEntities(
       : undefined;
     out.push(figure(id, p, here, given));
   }
+  // El herrero se nombra por su oficio: toda la aldea sabe quién tiene la fragua (use-tools-mend-trade-buy).
+  const smith = smithOf(w.truth);
+  if (smith !== undefined) {
+    const title = w.truth.get(PERSON, smith)?.sex === "female" ? "herrera" : "herrero";
+    for (const [i, k] of out.entries()) {
+      if (k.ref !== smith || k.names.includes(title)) continue;
+      out[i] = { ...k, names: [...k.names, title], features: [...new Set([...k.features, title])] };
+    }
+  }
   // Lo que lleva encima, y las cosas sueltas que ve ahora (`itemsSeen`): por lo que son.
   for (const k of carriedThings(w, here?.hex)) {
     listed.add(k.ref);

@@ -320,8 +320,12 @@ export interface LifeSetup {
  * `life-52`: con `householdTools`, la aldea tiene herrero desde el principio (`SMITH`, de un hogar del
  * oficio si hay) y, con él presente, `use` con `tool.mend` («hago arreglar la hoz») repara la
  * herramienta a cambio de cobre y hierro (use-tools-mend-smith). Compatibilidad: `legacyNoSmith`.
+ *
+ * `life-53`: `trade` con el herrero nombrando una herramienta que se forja («le compro una hoz al
+ * herrero») la forja con hierro de su hogar y el personaje la paga en cobre; nace un objeto nuevo
+ * (use-tools-mend-trade-buy). Compatibilidad: `legacyNoForgeBuy`.
  */
-export const LIFE_ENGINE = "life-52";
+export const LIFE_ENGINE = "life-53";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -383,6 +387,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 50 ? { legacyNoRoutineTools: true } : {}),
     ...(n < 51 ? { legacyNoSharpen: true } : {}),
     ...(n < 52 ? { legacyNoSmith: true } : {}),
+    ...(n < 53 ? { legacyNoForgeBuy: true } : {}),
   };
 }
 
