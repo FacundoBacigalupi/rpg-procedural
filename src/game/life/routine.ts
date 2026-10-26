@@ -23,6 +23,7 @@ import {
   type Seed,
 } from "../../core/index.ts";
 import {
+  type ActionDef,
   type Activity,
   ASLEEP,
   BODY_STATE,
@@ -42,6 +43,9 @@ import {
   HARVEST_GRAMS_PER_HOUR,
   HEARTH,
   houseKey,
+  ITEM_HOLD,
+  ITEM_LOOK,
+  ITEM_WEAR,
   ingest,
   LOCATION,
   type LocalMap,
@@ -87,6 +91,7 @@ import {
 } from "./irrigation.ts";
 import { harvestSeasonOf } from "./map.ts";
 import { PLAYER } from "./player.ts";
+import { routineToolStep } from "./routine-tools.ts";
 import {
   cropStarts,
   fieldSowYield,
@@ -145,6 +150,12 @@ export interface WaterSkin {
 export const WATER_SKIN = table<WaterSkin>("life.water_skin");
 
 export interface RoutineOptions {
+  /**
+   * Opt-in (`life-50`, con `itemClaims` y las cosas de cada casa): la hora de campo se trabaja con la
+   * azada o la hoz de la casa (los `instruments` de `work`), que se agarra al salir y se deja al
+   * volver (`routineToolStep`).
+   */
+  readonly fieldTools?: ActionDef["instruments"];
   /** Opt-in: comidas, cosecha y combustible comparten saldos con los demás procesos económicos. */
   readonly economicBatch?: boolean;
   /** Registrar lo comido en `MEALS` (para `life.nutrition` con `useEaten`). */
@@ -386,9 +397,11 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.fieldWatering ? [IRRIGATED.name] : []),
       ...(o.fieldSowing ? [SOWN.name] : []),
       ...(o.firewood ? [HEARTH.name, PLACE.name] : []),
+      ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
     ],
     writes: [
       LOCATION.name,
+      ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_WEAR.name] : []),
       BODY_STATE.name,
       MEALS.name,
       ...(o.waitSkin ? [WATER_SKIN.name] : []),
@@ -515,6 +528,25 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       if (there && (here?.hex !== there.hex || here?.space !== there.space)) {
         changes.push(setComponent(LOCATION, me, there));
       }
+      const toolStep =
+        o.fieldTools && home
+          ? routineToolStep({
+              truth,
+              me,
+              household: person.household,
+              home: home.key,
+              here,
+              there,
+              atFields: atFields && there !== undefined,
+              working: age >= ROUTINE.workAge && season(dayOf(o.clock, ctx.now)) > 0,
+              instruments: o.fieldTools,
+              place: o.placeOf(truth, me),
+            })
+          : undefined;
+      if (toolStep) {
+        changes.push(...toolStep.changes);
+        events.push(...toolStep.events);
+      }
 
       let next = setActivity(body, want.activity);
       // Trabajar la tierra rinde: una hora de campo es grano para la despensa del hogar (fuente
@@ -615,6 +647,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
                 boost *
                 sowYieldNow *
                 fieldFertility(truth) *
+                (toolStep?.rate ?? 1) *
                 (o.tech
                   ? yieldFactor(o.tech.catalog, truth.get(PROCESS_KNOWLEDGE, me), "grain")
                   : 1),
@@ -625,7 +658,11 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           kind: "routine.harvested",
           actors: [me],
           place: o.placeOf(truth, me),
-          data: { good: HARVEST_GOOD, grams },
+          data: {
+            good: HARVEST_GOOD,
+            grams,
+            ...(toolStep?.tool !== undefined ? { tool: toolStep.tool } : {}),
+          },
           emissions: { sight: 0.3, sound: 0.1 },
           causes: [{ kind: "state", entity: me, key: "routine" }],
         });

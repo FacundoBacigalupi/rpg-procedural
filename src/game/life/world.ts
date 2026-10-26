@@ -464,6 +464,8 @@ export interface LifeWorld {
   readonly legacyNoToolWear?: boolean;
   /** Replay de motores anteriores a `life-49`: el NPC no lleva la herramienta de la casa y soltar en casa no la devuelve al hogar. */
   readonly legacyNoNpcTools?: boolean;
+  /** Replay de motores anteriores a `life-50`: la rutina de campo trabaja a mano, sin la herramienta de la casa. */
+  readonly legacyNoRoutineTools?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -2477,6 +2479,9 @@ export function lifeWorld(
           : []),
         routineProcess({
           ...(economicBatch ? { economicBatch: true } : {}),
+          ...(parts.itemClaims === true && parts.legacyNoRoutineTools !== true
+            ? { fieldTools: parts.catalog.verb("work")?.instruments ?? [] }
+            : {}),
           ...(parts.hearths === true && parts.wildHarvest === true && parts.wildFirewood === true
             ? {
                 firewood: {
