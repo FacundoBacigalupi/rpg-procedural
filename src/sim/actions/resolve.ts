@@ -162,6 +162,11 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
       }
     | undefined;
   /**
+   * `use` con `hearth.warm` (use-hearth-warm): el fogón nombrado (id de la fila de `HEARTH`) y si
+   * arde en el espacio del actor. Sin esto, `use` no calienta.
+   */
+  readonly warmHearth?: { readonly hearth: EntityRef; readonly lit: boolean } | undefined;
+  /**
    * `use` con `tool.sharpen` (use-tools-mend-sharpen): la herramienta nombrada, si la lleva, su
    * desgaste y el metal ya comido, y si lleva con qué afilarla. Sin esto, `use` no afila (el replay
    * de motores anteriores a `life-51`).
@@ -614,6 +619,9 @@ export type VerbEffect =
       readonly iron?: number;
       readonly mended?: boolean;
       readonly lack?: "tool" | "smith" | "copper" | "iron";
+      /** `hearth.warm`: el fogón y si se quedó arrimado al fuego. */
+      readonly hearth?: EntityRef;
+      readonly warmed?: boolean;
     }
   | {
       readonly kind: "cook";
@@ -2323,6 +2331,27 @@ function sharpenTool(c: Ctx): VerbResult {
   return { effect: { ...base, wear, ground, honed, means: true }, seconds };
 }
 
+/** Cuánto se queda arrimado al fuego quien sale a calentarse (s). */
+export const WARM_SECONDS = 1800;
+
+/**
+ * `hearth.warm` (use-hearth-warm): con el fogón encendido, se queda arrimado `WARM_SECONDS`; el
+ * calor lo pone `life.thermal` en ese tramo. Apagado, no hay de qué calentarse (lo nota enseguida).
+ */
+function warmAtHearth(c: Ctx): VerbResult {
+  const h = c.input.warmHearth;
+  if (h === undefined) return { effect: { kind: "none" }, seconds: c.nominal };
+  const base = { kind: "use" as const, how: "hearth.warm", liters: 0, hearth: h.hearth };
+  if (!h.lit) {
+    return {
+      effect: { ...base, warmed: false, means: false },
+      seconds: Math.min(c.nominal, 10),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  return { effect: { ...base, warmed: true, means: true }, seconds: WARM_SECONDS };
+}
+
 /** Qué parte del metal comido repone el herrero según su oficio (0,5 torpe, 0,9 maestro). */
 export function mendRestores(level: number): number {
   return Math.round((0.5 + 0.4 * Math.min(1, Math.max(0, level))) * 1e6) / 1e6;
@@ -2426,6 +2455,7 @@ function mendTool(c: Ctx): VerbResult {
  * `tool.sharpen` afila (`sharpenTool`) y `tool.mend` la hace reparar al herrero (`mendTool`).
  */
 const use: Resolver = (c) => {
+  if (argText(c, "how") === "hearth.warm") return warmAtHearth(c);
   if (argText(c, "how") === "tool.sharpen") return sharpenTool(c);
   if (argText(c, "how") === "tool.mend") return mendTool(c);
   const d = c.input.drawWater;

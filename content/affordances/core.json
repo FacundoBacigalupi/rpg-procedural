@@ -81,5 +81,20 @@
     "on": ["well"],
     "words": ["sacar", "llenar", "cargar", "acarrear", "cántaro", "balde", "olla", "recipiente"],
     "vessels": { "jar": 12, "pot": 6, "bowl": 0.5 }
+  },
+  {
+    "id": "hearth.warm",
+    "name": "calentarse junto al fogón",
+    "on": ["hearth"],
+    "words": [
+      "calentar",
+      "calentarme",
+      "calentarse",
+      "entibiar",
+      "arrimarme",
+      "arrimarse",
+      "abrigarme",
+      "frío"
+    ]
   }
 ]

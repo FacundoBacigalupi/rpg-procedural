@@ -67,6 +67,7 @@ import {
   HARVEST_GOOD,
   HARVEST_GRAMS_PER_HOUR,
   HEARTH,
+  HEARTH_WARMING,
   type HouseholdToolDef,
   hearthBurn,
   houseKey,
@@ -683,7 +684,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.hearthTend ? [HEARTH.name] : []),
     ],
     writes: [
-      ...(o.hearthTend ? [HEARTH.name] : []),
+      // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
+      ...(o.hearthTend ? [HEARTH.name, HEARTH_WARMING.name] : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -826,6 +828,27 @@ function hearthAtOf(
     lit: truth.get(HEARTH, house) !== undefined,
     space,
   };
+}
+
+/**
+ * `use` con `hearth.warm` (use-hearth-warm): el fogón nombrado si es el de la casa donde está `me`,
+ * y si arde (fila de `HEARTH` con intensidad).
+ */
+function warmHearthOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+): { warmHearth?: NonNullable<ResolveInput["warmHearth"]> } {
+  if (o.hearthTend === undefined || node.verb !== "use") return {};
+  const how = node.args.find((a) => a.role === "how");
+  if (how === undefined || !("text" in how) || how.text !== "hearth.warm") return {};
+  const at = hearthAtOf(o.hearthTend, truth, me);
+  if (at === undefined) return {};
+  const target = node.args.find((a) => a.role === "target");
+  if (target !== undefined && "entity" in target && target.entity !== at.hearth) return {};
+  const hearth = at.hearth as EntityRef;
+  return { warmHearth: { hearth, lit: (truth.get(HEARTH, hearth)?.intensity ?? 0) > 0 } };
 }
 
 /** La despensa del hogar dueño del espacio cerrado donde está `me`, si no es el suyo. */
@@ -1605,6 +1628,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(node.verb === "take" && o.legacyNoHostTake !== true ? hostLarderOf(o, truth, me) : {}),
     ...drawWaterOf(o, truth, me, node, ctx.now),
     ...sharpenOf(o, truth, me, node),
+    ...warmHearthOf(o, truth, me, node),
     ...mendOf(o, truth, me, node, ctx.ledger),
     ...(usedTool === undefined
       ? forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger)
@@ -2356,6 +2380,12 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         }),
       );
     }
+  }
+  // Arrimarse al fuego: el tramo en que estuvo pegado al fogón, que lee `life.thermal` (use-hearth-warm).
+  if (eff.kind === "use" && eff.warmed === true && eff.hearth !== undefined && o.hearthTend) {
+    changes.push(
+      setComponent(HEARTH_WARMING, me, { hearth: eff.hearth, from: ctx.now, until: end }),
+    );
   }
   // Afilar: la herramienta recupera filo y pierde un poco de metal (use-tools-mend-sharpen).
   if (eff.kind === "use" && eff.tool !== undefined && (eff.honed ?? 0) > 0) {

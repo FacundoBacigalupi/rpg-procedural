@@ -480,14 +480,14 @@ export interface ThingView {
   readonly size: "small" | "medium" | "large";
   readonly looked?: true;
   /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado). */
-  readonly state?: "worn" | "poor";
+  readonly state?: "worn" | "poor" | "lit" | "cold";
 }
 
 /** Lo fijo del espacio (el pozo, el granero): entra a la vista solo si lo miró a propósito. */
 export interface FixtureInput {
   readonly ref: EntityRef;
   readonly shape: string;
-  readonly state?: "worn" | "poor";
+  readonly state?: "worn" | "poor" | "lit" | "cold";
 }
 
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
@@ -1014,11 +1014,13 @@ function effectView(
             ? e.mended === true
             : e.how === "tool.sharpen"
               ? (e.honed ?? 0) > 0
-              : e.liters > 0,
+              : e.how === "hearth.warm"
+                ? e.warmed === true
+                : e.liters > 0,
         means:
           e.how === "tool.mend"
             ? e.lack === undefined
-            : e.how === "tool.sharpen"
+            : e.how === "tool.sharpen" || e.how === "hearth.warm"
               ? e.means === true
               : e.item !== undefined,
         ...(e.lack !== undefined ? { lack: e.lack } : {}),

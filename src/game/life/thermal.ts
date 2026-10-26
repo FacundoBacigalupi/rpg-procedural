@@ -153,7 +153,13 @@ export interface ThermalOptions {
    * siguen igual. Por defecto apagado: la aldea no cambia.
    */
   readonly shelter?: boolean;
-  readonly refineEnv?: (truth: ReadonlyWorldTruth, who: AgentId, env: ThermalEnv) => ThermalEnv;
+  /** `span`: el tramo de ticks que cubre el paso (para lo que dura menos que un paso, p. ej. arrimarse al fuego). */
+  readonly refineEnv?: (
+    truth: ReadonlyWorldTruth,
+    who: AgentId,
+    env: ThermalEnv,
+    span?: { readonly from: number; readonly to: number },
+  ) => ThermalEnv;
   /** Las tablas que lee `refineEnv` (el scheduler las pide declaradas; p. ej. `HEARTH`). */
   readonly refineReads?: readonly string[];
 }
@@ -404,7 +410,9 @@ export function thermalProcess(o: ThermalOptions): ProcessDef {
                 indoor ? INDOOR_LEAK : 1,
               )
             : flat;
-          const env = o.refineEnv ? o.refineEnv(ctx.truth, agent, base0) : base0;
+          const env = o.refineEnv
+            ? o.refineEnv(ctx.truth, agent, base0, { from: at - stepTicks, to: at })
+            : base0;
           const clothing = (o.clothingOf ?? ((_t, _w, c) => seasonalClothing(c)))(
             ctx.truth,
             agent,

@@ -30,6 +30,20 @@ export interface Hearth {
 }
 export const HEARTH = table<Hearth>("body.hearth");
 
+/**
+ * Alguien que se arrimó a un fuego (use-hearth-warm): qué hogar (id de la fila de `HEARTH`) y el
+ * tramo en que estuvo pegado a él. `life.thermal` le suma el calor de cerca solo en ese tramo.
+ */
+export interface HearthWarming {
+  readonly hearth: string;
+  readonly from: number;
+  readonly until: number;
+}
+export const HEARTH_WARMING = table<HearthWarming>("body.hearth_warming");
+
+/** A cuántos metros del fuego queda quien se arrima a calentarse. */
+export const WARM_DISTANCE_M = 1;
+
 /** Gramos por hora de un hogar común a fuego pleno (~1,5 kg/h). */
 export const HEARTH_BURN_G_PER_H = 1500;
 

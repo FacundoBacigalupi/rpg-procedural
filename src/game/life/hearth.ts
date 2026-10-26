@@ -25,8 +25,10 @@ import {
   draftEvent,
   ENTITY,
   type EventDraft,
+  fireRadiantC,
   HEARTH,
   HEARTH_BURN_G_PER_H,
+  HEARTH_WARMING,
   hearthBurn,
   hearthRadiantC,
   LOCATION,
@@ -35,6 +37,7 @@ import {
   type SpaceGraph,
   type StateChange,
   type ThermalEnv,
+  WARM_DISTANCE_M,
   type WorldTruth,
 } from "../../sim/index.ts";
 
@@ -120,12 +123,19 @@ export function hearthProcess(o: HearthOptions): ProcessDef {
 
 /**
  * `refineEnv` para `life.thermal`: suma al `radiantC` de quien está en un espacio con fuegos
- * encendidos lo que le llega a esa distancia. Sin fuegos, el ambiente vuelve igual.
+ * encendidos lo que le llega a esa distancia. Si en el tramo `span` del paso estuvo arrimado a uno
+ * (`HEARTH_WARMING`, use-hearth-warm), suma además lo que le da estar pegado al fuego, en proporción
+ * a la parte del tramo que estuvo ahí. Sin fuegos, el ambiente vuelve igual.
  */
 export function hearthEnv(
   spaces: SpaceGraph,
-): (truth: ReadonlyWorldTruth, who: EntityRef, env: ThermalEnv) => ThermalEnv {
-  return (truth, who, env) => {
+): (
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  env: ThermalEnv,
+  span?: { readonly from: number; readonly to: number },
+) => ThermalEnv {
+  return (truth, who, env, span) => {
     const space = truth.get(LOCATION, who)?.space;
     if (space === undefined) return env;
     const here = truth.ids(HEARTH).flatMap((id) => {
@@ -134,8 +144,33 @@ export function hearthEnv(
     });
     if (here.length === 0) return env;
     const area = spaces.spaces.find((s) => s.key === space)?.area ?? 20;
-    return { ...env, radiantC: Math.min(30, env.radiantC + hearthRadiantC(here, area)) };
+    const room = hearthRadiantC(here, area);
+    const near = warmingC(truth, who, space, room, span);
+    return { ...env, radiantC: Math.min(30, env.radiantC + room + near) };
   };
+}
+
+/**
+ * Lo que suma estar arrimado al fuego sobre lo que ya da el cuarto, por la fracción del tramo que
+ * se quedó ahí. Cero sin fila de `HEARTH_WARMING`, sin tramo o si el fuego no está en su espacio.
+ */
+function warmingC(
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  space: string,
+  roomC: number,
+  span: { readonly from: number; readonly to: number } | undefined,
+): number {
+  if (span === undefined || span.to <= span.from) return 0;
+  const w = truth.get(HEARTH_WARMING, who);
+  if (w === undefined) return 0;
+  const h = truth.get(HEARTH, w.hearth as EntityRef);
+  if (h === undefined || h.space !== space || h.intensity <= 0) return 0;
+  const overlap = Math.min(span.to, w.until) - Math.max(span.from, w.from);
+  if (overlap <= 0) return 0;
+  const fed = Math.min(1, (h.intensity * 24) / Math.max(1, h.litHoursPerDay));
+  const close = fireRadiantC([{ intensity: fed, distanceM: WARM_DISTANCE_M }]);
+  return (Math.max(0, close - roomC) * overlap) / (span.to - span.from);
 }
 
 // ---------------------------------------------------------------------------------------------
