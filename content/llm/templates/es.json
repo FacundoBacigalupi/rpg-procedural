@@ -561,6 +561,37 @@
     "lines": ["No tenés con qué afilarla: hace falta la herramienta en la mano y una piedra."]
   },
   {
+    "id": "outcome.use.tool.mend.done",
+    "lines": [
+      "El herrero calienta la herramienta, le pone hierro donde se había comido y te la devuelve con filo.",
+      "Le dejás la herramienta al herrero; la martilla en la fragua y te la devuelve arreglada."
+    ]
+  },
+  {
+    "id": "outcome.use.tool.mend.none",
+    "lines": ["El herrero la mira, pero no llega a arreglarla."]
+  },
+  {
+    "id": "outcome.use.tool.mend.no_tool",
+    "lines": ["No tenés esa herramienta encima para que te la arreglen."]
+  },
+  {
+    "id": "outcome.use.tool.mend.no_smith",
+    "lines": ["El herrero no está acá; hay que llevársela a la herrería."]
+  },
+  {
+    "id": "outcome.use.tool.mend.no_copper",
+    "lines": ["No te alcanza el cobre para pagarle al herrero."]
+  },
+  {
+    "id": "outcome.use.tool.mend.no_iron",
+    "lines": ["Al herrero no le queda hierro para arreglarla."]
+  },
+  {
+    "id": "outcome.use.tool.mend.no_means",
+    "lines": ["No se puede arreglar ahora."]
+  },
+  {
     "id": "outcome.tend.self",
     "lines": ["Te curás lo mejor que podés.", "Te atendés la herida con cuidado."]
   },

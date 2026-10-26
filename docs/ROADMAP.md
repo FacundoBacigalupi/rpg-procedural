@@ -9,8 +9,8 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 ## Ahora (en orden)
 
 **Prioridad vigente (2026-10-26):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
-están cerradas y ya se afila con la piedra de la casa; sigue `use-tools-mend-smith`
-(reparar en la herrería lo que la piedra ya no salva) y luego lo jugable de `use-*`. Un solo lote,
+están cerradas, ya se afila con la piedra de la casa y el herrero de la aldea repara; sigue
+`use-tools-mend-trade` (comprar o vender la herramienta) y luego lo jugable de `use-*`. Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
@@ -37,7 +37,7 @@ El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sis
     - [x] (use-tools-wear) La herramienta se gasta con las horas de uso (`ITEM_WEAR`, `hours` por instrumento): rinde menos cuanto más gastada y, gastada del todo, como a mano; el narrador avisa. Motor `life-48`.
     - (use-tools-mend) Afilar o reparar la herramienta gastada (oficio con piedra de afilar o herrero) y venderla o comprarla nueva; sin esto, una herramienta gastada queda inútil. Partido el 2026-10-26 en:
         - [x] (use-tools-mend-sharpen) «afilo la hoz [con la piedra]»: función `tool.sharpen` (`use` propio, `hones: whetstone`) en hacha, azada, cuchillo y hoz; piedra de afilar en las casas de dos o más. Con la herramienta y la piedra en la mano, devuelve filo según la tirada (más tiempo cuanto más gastada), pero nunca por debajo de `ITEM_WEAR.ground`, el metal comido, que sube con cada afilada. Motor `life-51` (`legacyNoSharpen`). Hecho.
-        - [ ] (use-tools-mend-smith) Reparar en la herrería: un herrero (oficio y fragua) baja `ground` y `wear` a cambio de material, tiempo y paga; sin herrería en la aldea mínima, decidir si la hay en el pueblo del mercado o si entra con settlements.
+        - [x] (use-tools-mend-smith) Reparar en la herrería: un herrero (oficio y fragua) baja `ground` y `wear` a cambio de material, tiempo y paga. Decidido: la aldea tiene su herrero (`life.smith`, con `householdTools`), un adulto de preferencia de un hogar `forge-tools`; su casa es «la herrería». «Arreglo la hoz» / «llevo la hoz al herrero» con él en el mismo espacio: cobra cobre, pone hierro de su hogar y repone metal según su oficio, que mejora con cada arreglo. Motor `life-52` (`legacyNoSmith`). Hecho.
         - [ ] (use-tools-mend-trade) Comprar o vender una herramienta en el mercado (economy: el ítem con identidad como mercancía, precio según el desgaste creído).
         - [ ] (use-tools-mend-npc) Los NPC afilan la herramienta de la casa cuando rinde poco (rutina o plantilla) y la llevan al herrero cuando la piedra ya no alcanza.
     - [x] (use-tools-rewrite) «uso el hacha [para cortar leña]» se reescribe a su verbo: funciones de herramienta en `content/affordances/` con `as`, `asRole` (la herramienta entra como `with`) y `asWhat`; la hoz siega o junta espigas según el para qué. Sin bump.

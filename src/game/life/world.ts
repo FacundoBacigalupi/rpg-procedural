@@ -468,6 +468,8 @@ export interface LifeWorld {
   readonly legacyNoRoutineTools?: boolean;
   /** Replay de motores anteriores a `life-51`: no hay piedra de afilar en las casas y `use` con `tool.sharpen` no afila. */
   readonly legacyNoSharpen?: boolean;
+  /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
+  readonly legacyNoSmith?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -1052,6 +1054,7 @@ export function lifeWorld(
           ...(parts.legacyNoToolWear === true ? { legacyNoToolWear: true } : {}),
           ...(parts.legacyNoNpcTools === true ? { legacyNoHomeDrop: true } : {}),
           ...(parts.legacyNoSharpen === true ? { legacyNoSharpen: true } : {}),
+          ...(parts.legacyNoSmith === true ? { legacyNoSmith: true } : {}),
           ...(parts.legacyNoFleeShed === true ? { legacyNoFleeShed: true } : {}),
           ...(parts.legacyFullTakeItem === true ? { legacyFullTakeItem: true } : {}),
           ...(parts.legacyTend === true ? { legacyTend: true } : {}),

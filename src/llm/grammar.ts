@@ -439,6 +439,27 @@ const VERBS: readonly {
     },
   },
   {
+    // «Arreglo la hoz», «hago arreglar el hacha», «llevo la hoz al herrero»: la función de hacerla
+    // reparar con el herrero (use-tools-mend-smith); el herrero lo pone la sim, no la frase.
+    re: /^(?:(?:hago\s+)?(?:arreglo|arreglar|reparo|reparar|compongo|componer)|hago\s+(?:arreglar|reparar|componer)|(?:llevo|llevar)(?=\s.+\s(?:al\s+herrero|a\s+la\s+herrer[ií]a|a\s+la\s+fragua)\b))/i,
+    build: (rest) => {
+      const object = rest
+        .replace(
+          /\s+(?:al\s+herrero|a\s+la\s+herrer[ií]a|a\s+la\s+fragua|con\s+el\s+herrero)\b.*$/i,
+          "",
+        )
+        .replace(MANNER_WORDS, " ");
+      const what = nounPhrase(dropPreposition(object));
+      if (!what) return null;
+      return {
+        node: act("use", [
+          { role: "target", ref: ref(what, "object") },
+          { role: "how", text: "arreglar" },
+        ]),
+      };
+    },
+  },
+  {
     // «Uso el pozo», «saco agua del pozo»: la cosa dice qué se puede (actions, «Ampliación: use»).
     // «Afilo la hoz [con la piedra]»: la función de afilar de la herramienta (use-tools-mend-sharpen).
     re: /^(?:uso|usar|utilizo|utilizar|me\s+sirvo\s+de|(?:saco|sacar)\s+agua(?=\s+(?:del|de)\s)|afilo|afilar|amolo|amolar)/i,

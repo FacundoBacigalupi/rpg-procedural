@@ -9,6 +9,7 @@ import {
   type AgentId,
   compareStrings,
   type EntityRef,
+  externalAccount,
   type HolderRef,
   holderAccount,
   type ItemId,
@@ -41,6 +42,7 @@ import {
   blowFromMishap,
   blowFromStrike,
   CONTENTS,
+  COPPER,
   type ContestClaim,
   CREDIT,
   capabilitiesOf,
@@ -172,6 +174,7 @@ import {
   type WaterTreatment,
   WELL_DRAWN,
   WORK,
+  WORKSHOP_WASTE,
   walkingFactor,
   weatherAt,
   withReceipt,
@@ -201,6 +204,7 @@ import { loansOf } from "./loans.ts";
 import { harvestSeasonOf } from "./map.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
+import { IRON_UNIT, SMITH, smithLevelAfterJob, smithOf } from "./smith.ts";
 import { cropStarts, fieldCropFactor, SOWN } from "./sowing.ts";
 import { strainBlow } from "./strain.ts";
 import {
@@ -384,6 +388,8 @@ export interface ActOptions {
   readonly legacyNoHomeDrop?: boolean;
   /** Replay de motores anteriores a `life-51`: no hay piedra de afilar en las casas y `use` con `tool.sharpen` no afila. */
   readonly legacyNoSharpen?: boolean;
+  /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
+  readonly legacyNoSmith?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -664,6 +670,7 @@ export function actProcess(o: ActOptions): ProcessDef {
         ? []
         : [WORK.name, WELL_DRAWN.name, CONTENTS.name, ITEM_HOLD.name, ITEM_LOOK.name]),
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
+      ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
       ...(o.hearthTend ? [HEARTH.name] : []),
     ],
     writes: [
@@ -678,6 +685,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoDrawWater === true ? [] : [CONTENTS.name, WELL_DRAWN.name, WORK.name]),
       // La herramienta que se usó de instrumento se gasta (use-tools-wear).
       ...(o.legacyNoToolWear === true ? [] : [ITEM_WEAR.name]),
+      // El herrero gana oficio con cada arreglo (use-tools-mend-smith).
+      ...(o.legacyNoSmith === true ? [] : [SMITH.name]),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -892,6 +901,61 @@ function sharpenOf(
   const row = truth.get(ITEM_WEAR, tool);
   return {
     sharpen: { tool, held: mine(tool), wear: row?.wear ?? 0, ground: row?.ground ?? 0, stone },
+  };
+}
+
+/**
+ * `use` con `tool.mend` (use-tools-mend-smith): la herramienta nombrada, si `me` la lleva, cómo
+ * está, el cobre de su bolsa y el herrero si está en su mismo espacio, con su oficio y el hierro de
+ * su hogar.
+ */
+function mendOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+  ledger:
+    | { balance(account: ReturnType<typeof holderAccount>, unit: LedgerUnit): number }
+    | undefined,
+): { mend?: NonNullable<ResolveInput["mend"]> } {
+  if (o.legacyNoSmith === true || o.legacyNoSharpen === true || node.verb !== "use") return {};
+  if (ledger === undefined) return {};
+  const how = node.args.find((a) => a.role === "how");
+  if (how === undefined || !("text" in how) || how.text !== "tool.mend") return {};
+  const target = node.args.find((a) => a.role === "target");
+  if (target === undefined || !("entity" in target) || !target.entity.startsWith("item:")) {
+    return {};
+  }
+  const tool = target.entity as ItemId;
+  const held =
+    truth.get(ITEM_HOLD, tool)?.possession === me && truth.get(ENTITY, tool)?.endedAt === undefined;
+  const row = truth.get(ITEM_WEAR, tool);
+  const who = smithOf(truth);
+  const space = truth.get(LOCATION, me)?.space;
+  const home = who === undefined ? undefined : truth.get(PERSON, who)?.household;
+  const present =
+    who !== undefined && space !== undefined && truth.get(LOCATION, who)?.space === space;
+  const ironFrom = home as unknown as HolderRef;
+  return {
+    mend: {
+      tool,
+      held,
+      wear: row?.wear ?? 0,
+      ground: row?.ground ?? 0,
+      ...(present && home !== undefined
+        ? {
+            smith: {
+              who,
+              level: truth.get(SMITH, who)?.level ?? 0,
+              ironFrom,
+              iron: ledger.balance(holderAccount(ironFrom), IRON_UNIT),
+            },
+          }
+        : {}),
+      copper: Math.floor(ledger.balance(holderAccount(me as unknown as HolderRef), COPPER)),
+      units: { copper: COPPER, iron: IRON_UNIT },
+      ironSink: externalAccount(WORKSHOP_WASTE),
+    },
   };
 }
 
@@ -1371,6 +1435,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(node.verb === "take" && o.legacyNoHostTake !== true ? hostLarderOf(o, truth, me) : {}),
     ...drawWaterOf(o, truth, me, node, ctx.now),
     ...sharpenOf(o, truth, me, node),
+    ...mendOf(o, truth, me, node, ctx.ledger),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -2129,6 +2194,21 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         ground: eff.ground ?? row?.ground ?? 0,
       }),
     );
+  }
+  // Arreglo del herrero: la herramienta recupera metal y filo; el herrero gana oficio (use-tools-mend-smith).
+  if (eff.kind === "use" && eff.tool !== undefined && eff.mended === true) {
+    const row = truth.get(ITEM_WEAR, eff.tool);
+    changes.push(
+      setComponent(ITEM_WEAR, eff.tool, {
+        ...row,
+        wear: eff.wear ?? row?.wear ?? 0,
+        ground: eff.ground ?? row?.ground ?? 0,
+      }),
+    );
+    const smithRow = eff.smith === undefined ? undefined : truth.get(SMITH, eff.smith);
+    if (eff.smith !== undefined && smithRow !== undefined) {
+      changes.push(setComponent(SMITH, eff.smith, { level: smithLevelAfterJob(smithRow.level) }));
+    }
   }
   // La herramienta que sirvió de instrumento se gasta con el uso (use-tools-wear).
   if ((eff.kind === "gather" || eff.kind === "work") && eff.tool && (eff.toolWear ?? 0) > 0) {

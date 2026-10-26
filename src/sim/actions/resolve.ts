@@ -12,6 +12,7 @@
 // efecto con grado en el evento, para que lo lea el sistema que llegue (body, economy, dialogue).
 
 import {
+  type AgentId,
   type CauseRef,
   type EntityRef,
   externalAccount,
@@ -172,6 +173,30 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
         readonly wear: number;
         readonly ground: number;
         readonly stone: boolean;
+      }
+    | undefined;
+  /**
+   * `use` con `tool.mend` (use-tools-mend-smith): la herramienta, si la lleva, cómo está, y el herrero
+   * si está en el mismo espacio, con lo bueno que es, el hierro de su hogar y lo que cobra.
+   */
+  readonly mend?:
+    | {
+        readonly tool: ItemId;
+        readonly held: boolean;
+        readonly wear: number;
+        readonly ground: number;
+        readonly smith?: {
+          readonly who: AgentId;
+          readonly level: number;
+          /** De dónde sale el hierro (el hogar del herrero) y cuánto hay. */
+          readonly ironFrom: HolderRef;
+          readonly iron: number;
+        };
+        /** El cobre que el actor tiene en la bolsa. */
+        readonly copper: number;
+        readonly units: { readonly copper: LedgerUnit; readonly iron: LedgerUnit };
+        /** Adonde va el hierro que queda en la herramienta (fuera del ledger). */
+        readonly ironSink: LedgerAccount;
       }
     | undefined;
   /**
@@ -540,6 +565,12 @@ export type VerbEffect =
       readonly honed?: number;
       /** `tool.sharpen`: si tenía la herramienta y con qué afilarla. */
       readonly means?: boolean;
+      /** `tool.mend`: el herrero, lo que cobró, el hierro que puso y, si no se pudo, qué faltó. */
+      readonly smith?: AgentId;
+      readonly paid?: number;
+      readonly iron?: number;
+      readonly mended?: boolean;
+      readonly lack?: "tool" | "smith" | "copper" | "iron";
     }
   | {
       readonly kind: "cook";
@@ -2129,14 +2160,111 @@ function sharpenTool(c: Ctx): VerbResult {
   return { effect: { ...base, wear, ground, honed, means: true }, seconds };
 }
 
+/** Qué parte del metal comido repone el herrero según su oficio (0,5 torpe, 0,9 maestro). */
+export function mendRestores(level: number): number {
+  return Math.round((0.5 + 0.4 * Math.min(1, Math.max(0, level))) * 1e6) / 1e6;
+}
+/** Hierro (g) que pone por unidad de metal repuesto y lo mínimo de un arreglo (sin calibrar). */
+export const MEND_IRON = 600;
+export const MEND_IRON_MIN = 50;
+/** Cobre de un arreglo: lo fijo más lo que crece con el metal comido (sin calibrar). */
+export const MEND_BASE_COST = 2;
+export const MEND_GROUND_COST = 6;
+/** Segundos del arreglo por unidad de filo y de metal a reponer (sin calibrar). */
+export const MEND_EDGE_SECONDS = 1800;
+export const MEND_METAL_SECONDS = 7200;
+
+/** Lo que cobra y el hierro que pone el herrero por arreglar una herramienta así. Puro. */
+export function mendQuote(
+  wear: number,
+  ground: number,
+  level: number,
+): { cost: number; iron: number; ground: number } {
+  const after = Math.round(ground * (1 - mendRestores(level)) * 1e6) / 1e6;
+  return {
+    cost: MEND_BASE_COST + Math.ceil(MEND_GROUND_COST * ground - 1e-9),
+    iron: Math.max(MEND_IRON_MIN, Math.round(MEND_IRON * (ground - after))),
+    ground: after,
+  };
+}
+
+/**
+ * `tool.mend` (use-tools-mend-smith): el herrero repara la herramienta que el actor le lleva. Sin la
+ * herramienta, sin herrero presente, sin cobre para pagarle o sin hierro en su hogar no se hace. Si
+ * se hace, el resultado es el oficio del herrero y no la tirada del actor: repone parte del metal
+ * comido (`mendRestores`) y le deja el filo entero (el desgaste baja hasta el metal que queda
+ * comido); el cobre pasa del actor al herrero y el hierro queda en la herramienta.
+ */
+function mendTool(c: Ctx): VerbResult {
+  const m = c.input.mend;
+  if (m === undefined) return { effect: { kind: "none" }, seconds: c.nominal };
+  const base = { kind: "use" as const, how: "tool.mend", liters: 0, tool: m.tool };
+  const smith = m.smith;
+  const fail = (lack: "tool" | "smith" | "copper" | "iron"): VerbResult => ({
+    effect: {
+      ...base,
+      wear: m.wear,
+      ground: m.ground,
+      mended: false,
+      lack,
+      ...(smith ? { smith: smith.who } : {}),
+    },
+    seconds: Math.min(c.nominal, 10),
+    override: {
+      outcome: "failure",
+      failure: lack === "smith" ? "not_here" : "no_means",
+      believed: "failure",
+    },
+  });
+  if (!m.held) return fail("tool");
+  if (smith === undefined) return fail("smith");
+  const quote = mendQuote(m.wear, m.ground, smith.level);
+  const self = smith.who === c.input.actor.id;
+  const cost = self ? 0 : quote.cost;
+  if (m.copper < cost) return fail("copper");
+  if (smith.iron < quote.iron) return fail("iron");
+  const seconds = Math.round(
+    c.nominal +
+      MEND_EDGE_SECONDS * Math.max(0, m.wear - m.ground) +
+      MEND_METAL_SECONDS * (m.ground - quote.ground),
+  );
+  return {
+    effect: {
+      ...base,
+      wear: quote.ground,
+      ground: quote.ground,
+      mended: true,
+      smith: smith.who,
+      paid: cost,
+      iron: quote.iron,
+    },
+    seconds,
+    verdict: { outcome: "success", failure: null, believed: "success" },
+    transfers: [
+      ...(cost > 0
+        ? [
+            {
+              from: c.input.actor.id as HolderRef,
+              unit: m.units.copper,
+              amount: cost,
+              to: holderAccount(smith.who as unknown as HolderRef),
+            },
+          ]
+        : []),
+      { from: smith.ironFrom, unit: m.units.iron, amount: quote.iron, to: m.ironSink },
+    ],
+  };
+}
+
 /**
  * Usar una cosa con una función que no es otro verbo (actions, «Ampliación: `use`»):
  * `well.draw_water` llena el recipiente con lo que le cabe y el pozo da hoy (sin recipiente, con
- * el pozo seco o gastado, no hay con qué; si la tirada no alcanza, se le vuelca y no junta nada), y
- * `tool.sharpen` afila (`sharpenTool`).
+ * el pozo seco o gastado, no hay con qué; si la tirada no alcanza, se le vuelca y no junta nada),
+ * `tool.sharpen` afila (`sharpenTool`) y `tool.mend` la hace reparar al herrero (`mendTool`).
  */
 const use: Resolver = (c) => {
   if (argText(c, "how") === "tool.sharpen") return sharpenTool(c);
+  if (argText(c, "how") === "tool.mend") return mendTool(c);
   const d = c.input.drawWater;
   if (d === undefined || argText(c, "how") !== "well.draw_water") {
     return { effect: { kind: "none" }, seconds: c.nominal };

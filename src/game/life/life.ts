@@ -316,8 +316,12 @@ export interface LifeSetup {
  * `life-51`: cada casa de dos o más tiene una piedra de afilar, y `use` con `tool.sharpen` («afilo la
  * hoz») le saca filo a la herramienta gastada comiéndole un poco de metal (use-tools-mend-sharpen).
  * Compatibilidad: `legacyNoSharpen`.
+ *
+ * `life-52`: con `householdTools`, la aldea tiene herrero desde el principio (`SMITH`, de un hogar del
+ * oficio si hay) y, con él presente, `use` con `tool.mend` («hago arreglar la hoz») repara la
+ * herramienta a cambio de cobre y hierro (use-tools-mend-smith). Compatibilidad: `legacyNoSmith`.
  */
-export const LIFE_ENGINE = "life-51";
+export const LIFE_ENGINE = "life-52";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -378,6 +382,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 49 ? { legacyNoNpcTools: true } : {}),
     ...(n < 50 ? { legacyNoRoutineTools: true } : {}),
     ...(n < 51 ? { legacyNoSharpen: true } : {}),
+    ...(n < 52 ? { legacyNoSmith: true } : {}),
   };
 }
 

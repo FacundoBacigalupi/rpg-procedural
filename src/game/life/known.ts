@@ -25,6 +25,7 @@ import {
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
 import { FIXTURE_WORDS, fixturesInSight } from "./fixtures.ts";
+import { smithOf } from "./smith.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -365,11 +366,13 @@ const YARD_NAMES = ["el patio", "mi patio"];
 const STORE_NAMES = ["el depósito", "la despensa", "el almacén"];
 /** El granero de la aldea: comunal, todos saben dónde está (settlements). */
 const GRANARY_NAMES = ["el granero", "el granero comunal"];
+/** La casa del herrero: toda la aldea sabe dónde está la fragua (use-tools-mend-smith). */
+const SMITHY_NAMES = ["la herrería", "la fragua", "la casa del herrero"];
 
 /**
  * Los espacios de la aldea que el personaje puede nombrar para ir (perception §3): la plaza (y
  * «afuera» si está bajo techo), su casa (y su fogón), su patio, su depósito, el granero de la aldea
- * y la casa de cada persona que conoce (por ahora, conocer a alguien es saber dónde vive: la
+ * la herrería (la casa del herrero, si hay) y la casa de cada persona que conoce (por ahora, conocer a alguien es saber dónde vive: la
  * creencia sobre casas llega con settlements). Lo fijo del sitio lo sabe por vivir ahí, sin mirar.
  */
 export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownSpace[] {
@@ -383,6 +386,8 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
   const here = w.truth.get(LOCATION, w.player);
   const node = w.spaces.spaces.find((s) => s.key === here?.space);
   const mine = w.truth.get(PERSON, w.player)?.household;
+  const smith = smithOf(w.truth);
+  const forge = smith === undefined ? undefined : w.truth.get(PERSON, smith)?.household;
   const out: KnownSpace[] = [
     {
       key: square.key,
@@ -415,8 +420,10 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
           w.truth.get(PERSON, k.ref as AgentId)?.household === s.household,
       )
       .map((k) => k.ref);
-    if (!own && owners.length === 0) continue;
-    out.push({ key: s.key, place: village as EntityRef, names: own ? HOME_NAMES : [], owners });
+    const smithy = s.household === forge;
+    if (!own && !smithy && owners.length === 0) continue;
+    const names = [...(own ? HOME_NAMES : []), ...(smithy ? SMITHY_NAMES : [])];
+    out.push({ key: s.key, place: village as EntityRef, names, owners });
   }
   const live = new Set(w.spaces.spaces.map((s) => s.key));
   for (const id of [...w.truth.ids(BUILDING)].sort()) {

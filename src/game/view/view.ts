@@ -397,14 +397,16 @@ export type EffectView =
   | { readonly kind: "drink"; readonly drank: boolean }
   | {
       /**
-       * Usó una cosa con una función (`well.draw_water`, `tool.sharpen`): si le salió (juntó agua,
-       * le sacó filo), si tenía con qué (recipiente, herramienta y piedra) y los litros juntados.
+       * Usó una cosa con una función (`well.draw_water`, `tool.sharpen`, `tool.mend`): si le salió
+       * (juntó agua, le sacó filo, se la arreglaron), si tenía con qué (recipiente, herramienta y
+       * piedra) y los litros juntados; en un arreglo que no se hizo, qué faltó.
        */
       readonly kind: "use";
       readonly how: string;
       readonly liters: number;
       readonly done: boolean;
       readonly means: boolean;
+      readonly lack?: "tool" | "smith" | "copper" | "iron";
     }
   | { readonly kind: "boil"; readonly boiled: boolean }
   | { readonly kind: "filter"; readonly filtered: boolean }
@@ -974,8 +976,19 @@ function effectView(
         kind: "use",
         how: e.how,
         liters: Math.round(e.liters),
-        done: e.how === "tool.sharpen" ? (e.honed ?? 0) > 0 : e.liters > 0,
-        means: e.how === "tool.sharpen" ? e.means === true : e.item !== undefined,
+        done:
+          e.how === "tool.mend"
+            ? e.mended === true
+            : e.how === "tool.sharpen"
+              ? (e.honed ?? 0) > 0
+              : e.liters > 0,
+        means:
+          e.how === "tool.mend"
+            ? e.lack === undefined
+            : e.how === "tool.sharpen"
+              ? e.means === true
+              : e.item !== undefined,
+        ...(e.lack !== undefined ? { lack: e.lack } : {}),
       };
     case "cook":
       return {
