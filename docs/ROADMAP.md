@@ -15,7 +15,7 @@ de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto 
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo y
-desbloquea el registro `temple` (Fase 3, `shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
+donde se habla con el registro del templo (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
 `use-station` y los nombres de lo fijo por cultura esperan a crafts y a language. Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
@@ -476,7 +476,8 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
 - [ ] Heredado de Fase 2: Cultura de los que nacen en la vida (hoy no hay nacimientos en juego): `seedPersonCulture` con los padres al nacer el hijo, cuando exista el parto en `game/life`
 - [ ] Heredado de Fase 2: `groupBias` en el resto: confianza en `appraise`/diálogo (`trustDelta`), estereotipo como creencia que se transmite, y la utilidad de los NPC (hoy solo el personaje adscribe)
 - [ ] Heredado de Fase 2: `informalSanction` sobre la reputación creída (chisme, burla, exclusión) en `game/life`, con `PERSON_CULTURE` del observador y de la norma violada. **Bloqueado (2026-10-09):** no existe todavía un almacén de reputación creída (`life` no guarda lo que cada uno cree de la fama de otro; information §reputación, Fase 3); hay que crearlo primero (o aplicar la sanción como `trustDelta`/afecto en `RELATIONS`, a decidir)
-- [ ] Heredado de Fase 2: Registro `temple` del santuario (`shrine-register`): desbloqueado por `village-shrine` (2026-10-26, edificio `shrine` con su cuarto); antes no había un espacio de santuario en la aldea (`SPACE_KINDS` no tiene lugar de culto, `converse` solo distingue `home`/`market` por adentro o afuera); cuando haya, elegir el registro por el espacio. Y `knowsTaboos` desde lo oído (se une a «Rodeos que dicen los NPC»)
+- [x] (shrine-register, 2026-10-26) Heredado de Fase 2: registro `temple` del santuario. `RegisterDef.building` (el tipo de edificio donde rige esa situación; `village.shrine` → `shrine`) y `converse` elige el registro por el edificio del espacio donde está el oyente antes de caer en casa/mercado por adentro o afuera. Sin santuario (vidas sin `villageShrine`) todo sigue igual. Hecho.
+- [ ] Heredado de Fase 2: `knowsTaboos` desde lo oído (se une a «Rodeos que dicen los NPC»)
 - [ ] Heredado de Fase 2: Identidad religiosa de los que nacen en la vida (hoy no hay nacimientos en juego): `seedAffiliation` con los padres al nacer el hijo, cuando exista el parto en `game/life`
 - [ ] Heredado de Fase 2: Sumar `sanctionWeight` a la utilidad de tomar lo tabú (la primera gavilla): hoy `game/life` no tiene ninguna decisión que tome grano tabú, así que primero hace falta esa decisión (cosecha/siega) y luego restar `penalty` de su utilidad
 - [ ] Heredado de Fase 2: Evento de romper el tabú (la primera gavilla) que, con la identidad cableada, aplica `appraiseGuilt(guiltAfter(sanctionWeight(..), seen))` en `life.appraise` y deja memoria de la culpa **(c) bloqueado por «Sumar `sanctionWeight` a la utilidad de tomar lo tabú».**

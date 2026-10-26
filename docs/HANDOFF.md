@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**shrine-register (2026-10-26, rama `feat/shrine-register`, apilada sobre `village-shrine`):** `RegisterDef.building` en `sim/language/register.ts`; `content/language-registers/village.json` con `"building": "shrine"` en `village.shrine`; `formOf` en `converse.ts` recibe `space` y busca el `BUILDING` de ese espacio (la llave del cuarto principal de un comunal es el id del edificio) antes de casa/mercado. Test `shrine-register.test.ts`. Sin bump: solo cambia donde hay santuario (opt-in).
+
 **village-shrine (2026-10-26, rama `feat/village-shrine`):** `BuildingDef.optIn` en `settlements/defs.ts`; `seedSettlement` recibe `optIn: string[]` y levanta los comunales opt-in después de las casas (ids y lugares de siempre intactos); `shrine` en `content/buildings/core.json`; `LifeOptions.villageShrine` (perfil y esquema de tuning); `Scene.tsx` con su tamaño. Test `village-shrine.test.ts`. Sin bump: solo vidas nuevas con la opción. Desbloquea `shrine-register`.
 
 **play-scene-animals (2026-10-26, rama `feat/play-scene-animals`):** `hud.ts`: `SeenAnimal {species, x, d}`, `ANIMAL_SIGHT_M` (80/30/6 m), `MAX_SEEN_ANIMALS` 8, `yardSpot(id, casa)` (lugar fijo en el patio derivado del número de id, solo para pintar), `seenAnimals` (como `seenBuildings`, en metros enteros) y `animalRows` desde `ANIMAL` vivos; `buildingsOf` suma `animals` afuera si la vida tiene ganado. `api.ts` copia el tipo; `Scene.tsx` con `Animals` (siluetas `Hen`, `Dog`, `Ox` por especie, escala y altura por distancia, mirando a un lado u otro). Tests en `hud.test.ts`. Sin tocar la sim ni el hash.

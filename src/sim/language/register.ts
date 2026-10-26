@@ -27,6 +27,11 @@ export const RegisterDef = z.strictObject({
   setting: z.enum(REGISTER_SETTINGS),
   /** 0-1: cuánta formalidad pide hablar en esta situación, sea quien sea el otro. */
   formality: unit,
+  /**
+   * El tipo de edificio (`content/buildings`) donde rige esta situación (shrine-register: el
+   * santuario es `temple`); adentro de ese edificio pisa a la casa y al mercado.
+   */
+  building: contentId.optional(),
 });
 export type RegisterDef = z.infer<typeof RegisterDef>;
 export const REGISTERS = defineContent("language-registers", RegisterDef, (r) => [
