@@ -324,8 +324,12 @@ export interface LifeSetup {
  * `life-53`: `trade` con el herrero nombrando una herramienta que se forja («le compro una hoz al
  * herrero») la forja con hierro de su hogar y el personaje la paga en cobre; nace un objeto nuevo
  * (use-tools-mend-trade-buy). Compatibilidad: `legacyNoForgeBuy`.
+ *
+ * `life-54`: `trade` nombrando una herramienta que alguno de los dos lleva en la mano («le vendo mi
+ * hoz a Wu», «le compro el hacha a Li») la cambia de dueño por cobre, a un precio que baja con el
+ * desgaste (use-tools-mend-trade-sell). Compatibilidad: `legacyNoUsedTrade`.
  */
-export const LIFE_ENGINE = "life-53";
+export const LIFE_ENGINE = "life-54";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -388,6 +392,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 51 ? { legacyNoSharpen: true } : {}),
     ...(n < 52 ? { legacyNoSmith: true } : {}),
     ...(n < 53 ? { legacyNoForgeBuy: true } : {}),
+    ...(n < 54 ? { legacyNoUsedTrade: true } : {}),
   };
 }
 

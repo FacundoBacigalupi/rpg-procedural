@@ -376,8 +376,14 @@ function outcome(
           what: e.forged.what,
           coins: `${e.forged.coins} ${e.forged.coins === 1 ? "moneda" : "monedas"}`,
         });
+      } else if (e.used !== undefined) {
+        say(`outcome.trade.used.${e.used.direction}.${e.terms}`, {
+          with: ref(e.with),
+          what: e.used.what,
+          coins: `${e.used.coins} ${e.used.coins === 1 ? "moneda" : "monedas"}`,
+        });
       } else if (e.unforged !== undefined) {
-        say(`outcome.trade.unforged.no_${e.unforged.lack}`, {
+        say(`outcome.trade.${e.unforged.used ? "unused" : "unforged"}.no_${e.unforged.lack}`, {
           with: ref(e.with),
           what: e.unforged.what,
         });

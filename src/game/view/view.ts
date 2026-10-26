@@ -363,8 +363,22 @@ export type EffectView =
       readonly strain?: "tight" | "broke";
       /** Herramienta nueva del herrero: cuál y cuánto pagó (use-tools-mend-trade-buy). */
       readonly forged?: { readonly what: string; readonly coins: number };
-      /** Herramienta que no se pudo comprar: cuál y qué faltó (cobre suyo, hierro del herrero). */
-      readonly unforged?: { readonly what: string; readonly lack: "copper" | "iron" };
+      /**
+       * Herramienta que no se pudo comprar o vender: cuál y qué faltó (cobre de quien compra, hierro
+       * del herrero, ganas del comprador, otra en la casa del vendedor).
+       */
+      readonly unforged?: {
+        readonly what: string;
+        readonly lack: "copper" | "iron" | "want" | "spare";
+        /** Era una herramienta usada (use-tools-mend-trade-sell), no una nueva del herrero. */
+        readonly used?: true;
+      };
+      /** Herramienta usada que cambió de manos: cuál, para qué lado y por cuánto (use-tools-mend-trade-sell). */
+      readonly used?: {
+        readonly what: string;
+        readonly direction: "buy" | "sell";
+        readonly coins: number;
+      };
     }
   | {
       readonly kind: "give";
@@ -913,11 +927,20 @@ function effectView(
         deal: e.deal,
         terms: termsOf(e.edge),
         ...(e.strain !== undefined ? { strain: e.strain } : {}),
-        ...(e.deal && e.forgedName !== undefined
+        ...(e.deal && e.forgedName !== undefined && e.usedItem === undefined
           ? { forged: { what: e.forgedName, coins: e.coins } }
           : {}),
+        ...(e.deal && e.forgedName !== undefined && e.usedItem !== undefined && e.direction !== null
+          ? { used: { what: e.forgedName, direction: e.direction, coins: e.coins } }
+          : {}),
         ...(!e.deal && e.forgedName !== undefined && e.lack !== undefined
-          ? { unforged: { what: e.forgedName, lack: e.lack } }
+          ? {
+              unforged: {
+                what: e.forgedName,
+                lack: e.lack,
+                ...(e.usedItem !== undefined ? { used: true as const } : {}),
+              },
+            }
           : {}),
         ...(e.direction !== null && e.good !== null
           ? {

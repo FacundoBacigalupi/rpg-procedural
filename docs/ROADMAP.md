@@ -10,7 +10,8 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 **Prioridad vigente (2026-10-26):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
 están cerradas, ya se afila con la piedra de la casa, el herrero de la aldea repara y vende
-herramientas nuevas; sigue `use-tools-mend-trade-sell` (vender la herramienta usada) y luego lo jugable de `use-*`. Un solo lote,
+herramientas nuevas, y las usadas se compran y venden entre personas; sigue `use-tools-mend-npc`
+(los NPC afilan y llevan al herrero) y luego lo jugable de `use-*`. Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
 
@@ -40,7 +41,7 @@ El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sis
         - [x] (use-tools-mend-smith) Reparar en la herrería: un herrero (oficio y fragua) baja `ground` y `wear` a cambio de material, tiempo y paga. Decidido: la aldea tiene su herrero (`life.smith`, con `householdTools`), un adulto de preferencia de un hogar `forge-tools`; su casa es «la herrería». «Arreglo la hoz» / «llevo la hoz al herrero» con él en el mismo espacio: cobra cobre, pone hierro de su hogar y repone metal según su oficio, que mejora con cada arreglo. Motor `life-52` (`legacyNoSmith`). Hecho.
         - (use-tools-mend-trade) Comprar o vender una herramienta en el mercado (economy: el ítem con identidad como mercancía, precio según el desgaste creído). Partido el 2026-10-26 en:
             - [x] (use-tools-mend-trade-buy) «le compro una hoz al herrero»: `trade` con el herrero nombrando una herramienta con `forge` (hierro y cobre en `content/household-tools/`) la forja con hierro de su hogar y la cobra según la ventaja del trato; la herramienta nueva nace en manos del comprador. Sin cobre o sin hierro no hay trato (`lack`). El herrero se llama «herrero»/«herrera» para quien lo conoce. Motor `life-53` (`legacyNoForgeBuy`). Hecho.
-            - [ ] (use-tools-mend-trade-sell) Vender o comprar una herramienta usada entre personas: el ítem con identidad como mercancía, precio según el desgaste creído (`ITEM_WEAR` visto), y el ítem cambia de dueño en `ITEM_HOLD`.
+            - [x] (use-tools-mend-trade-sell) Vender o comprar una herramienta usada entre personas: `trade` nombrando una herramienta que lleva en la mano uno de los dos (si la lleva el actor, vende; si la lleva el otro, compra). Precio `usedPrice` (siete décimos de nueva menos el desgaste, visto con la herramienta en la mano) movido por la ventaja; el cobre va del comprador al vendedor y el ítem cambia de manos (`itemGiveFor`). El NPC comprador no la quiere si su casa tiene una igual menos gastada (`want`), el NPC vendedor no suelta la única de su casa (`spare`). Motor `life-54` (`legacyNoUsedTrade`). Hecho.
         - [ ] (use-tools-mend-npc) Los NPC afilan la herramienta de la casa cuando rinde poco (rutina o plantilla) y la llevan al herrero cuando la piedra ya no alcanza.
     - [x] (use-tools-rewrite) «uso el hacha [para cortar leña]» se reescribe a su verbo: funciones de herramienta en `content/affordances/` con `as`, `asRole` (la herramienta entra como `with`) y `asWhat`; la hoz siega o junta espigas según el para qué. Sin bump.
 - [ ] (use-hearth-station) `warm` con el fogón (`HEARTH`) y `operate` con estaciones de crafts (telar, rueca), cuando existan como cosas. Depende de `use-core`.

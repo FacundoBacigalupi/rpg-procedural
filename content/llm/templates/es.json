@@ -433,6 +433,48 @@
       "A {with} le falta hierro: no hay herramienta nueva ({what})."
     ]
   },
+  {
+    "id": "outcome.trade.used.sell.good",
+    "lines": ["Le vendés la herramienta ({what}) a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.used.sell.fair",
+    "lines": ["Le vendés la herramienta ({what}) a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.used.sell.poor",
+    "lines": ["Le vendés la herramienta ({what}) a {with} por {coins}, aunque te pagan poco."]
+  },
+  {
+    "id": "outcome.trade.used.buy.good",
+    "lines": ["Le comprás la herramienta ({what}) a {with} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.used.buy.fair",
+    "lines": ["Le comprás la herramienta ({what}) a {with} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.used.buy.poor",
+    "lines": ["Le comprás la herramienta ({what}) a {with} por {coins}, aunque te la cobran cara."]
+  },
+  {
+    "id": "outcome.trade.unused.no_copper",
+    "lines": ["No alcanza el cobre para la herramienta ({what}): no hay trato con {with}."]
+  },
+  {
+    "id": "outcome.trade.unused.no_want",
+    "lines": [
+      "{with} no la quiere: en su casa ya hay una mejor ({what}).",
+      "A {with} no le hace falta otra ({what})."
+    ]
+  },
+  {
+    "id": "outcome.trade.unused.no_spare",
+    "lines": [
+      "{with} no se desprende de la herramienta ({what}): es la única que tiene su casa.",
+      "{with} no la vende ({what}); no tiene otra."
+    ]
+  },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
   {
