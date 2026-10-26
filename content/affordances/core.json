@@ -96,5 +96,11 @@
       "abrigarme",
       "frío"
     ]
+  },
+  {
+    "id": "bench.sit",
+    "name": "sentarse en el banco",
+    "on": ["bench"],
+    "words": ["sentar", "sentarme", "sentarse", "siento", "descansar", "mirar", "pasar"]
   }
 ]

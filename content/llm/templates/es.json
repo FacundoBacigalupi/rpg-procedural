@@ -618,6 +618,13 @@
     "lines": ["No tenés en qué llevar el agua."]
   },
   {
+    "id": "outcome.use.bench.sit.done",
+    "lines": [
+      "Te sentás en el banco y te quedás un rato mirando pasar la gente.",
+      "Te sentás en el banco de la plaza a descansar las piernas."
+    ]
+  },
+  {
     "id": "outcome.use.hearth.warm.done",
     "lines": [
       "Te arrimás al fogón y dejás que el calor te entre en las manos.",
@@ -1039,6 +1046,7 @@
   { "id": "thing.shape.well", "lines": ["el pozo"] },
   { "id": "thing.shape.granary", "lines": ["el granero"] },
   { "id": "thing.shape.hearth", "lines": ["el fogón"] },
+  { "id": "thing.shape.bench", "lines": ["el banco"] },
   { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
   { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
   { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },

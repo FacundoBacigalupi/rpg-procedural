@@ -89,6 +89,7 @@ export const ScenarioLife = z.strictObject({
   npcRoadMend: z.boolean().optional(),
   itemClaims: z.boolean().optional(),
   householdTools: z.boolean().optional(),
+  squareBench: z.boolean().optional(),
   mortalTech: z.boolean().optional(),
   tasteDemand: z.boolean().optional(),
   npcRoadStops: z.boolean().optional(),

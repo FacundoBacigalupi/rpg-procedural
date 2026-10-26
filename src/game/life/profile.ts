@@ -88,6 +88,7 @@ export const FULL_PROFILE = {
   // Cosas con identidad (play-refs-objects-source-enable): las de cada casa y su toma disputada.
   itemClaims: true,
   householdTools: true,
+  squareBench: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
   errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
 } satisfies LifeOptions;

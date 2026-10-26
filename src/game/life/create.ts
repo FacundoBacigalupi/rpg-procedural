@@ -612,6 +612,8 @@ export interface LifeOptions {
   readonly itemClaims?: boolean;
   /** Opt-in: cada casa empieza con sus cosas como objetos con identidad (cuchillo, olla, canasta, herramientas; `sim/property/household-tools.ts`); apagado, no se crea ninguno. */
   readonly householdTools?: boolean;
+  /** Opt-in (fixtures-bench): la plaza tiene un banco de madera puesto por los fundadores; apagado, no existe. */
+  readonly squareBench?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
   readonly tasteDemand?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo ocurre en una parada real, la noche que el viajero para a dormir (`npcNightRest`), no en cualquier día de marcha (npc-b2b3b2b3c2a); apagado. */
@@ -1624,6 +1626,7 @@ export function createLife(
     site,
     map,
     content: { materials, buildings: content.all(BUILDING_TYPES), works: content.all(WORK_TYPES) },
+    ...(options.squareBench === true ? { bench: true } : {}),
   });
   // Opt-in: las cosas de cada casa, nacidas de su construcción (play-refs-objects-source-tools).
   if (options.householdTools) {

@@ -101,6 +101,14 @@ export const WorkDef = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     ...WorkBase,
+    kind: z.literal("bench"),
+    material: contentId,
+    grams: z.number().int().positive(),
+    repairYears: z.number().positive(),
+    decayPerYear: z.number().min(0).max(1),
+  }),
+  z.strictObject({
+    ...WorkBase,
     kind: z.literal("road"),
     repairYears: z.number().positive(),
     decayPerYear: z.number().min(0).max(1),
@@ -108,5 +116,7 @@ export const WorkDef = z.discriminatedUnion("kind", [
 ]);
 export type WorkDef = z.infer<typeof WorkDef>;
 export const WORK_TYPES = defineContent("works", WorkDef, (w) =>
-  w.kind === "well" ? [{ kind: "materials", id: w.material, at: "material" }] : [],
+  w.kind === "well" || w.kind === "bench"
+    ? [{ kind: "materials", id: w.material, at: "material" }]
+    : [],
 );

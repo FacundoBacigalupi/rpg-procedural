@@ -85,6 +85,8 @@ export interface SeedSettlementInput {
   readonly site: VillageSite;
   readonly map: LocalMap;
   readonly content: SettlementContent;
+  /** Opt-in (fixtures-bench): un banco de madera en la plaza, puesto por los fundadores. */
+  readonly bench?: boolean;
 }
 
 /** Ángulo áureo: reparte las casas alrededor de la plaza sin filas. */
@@ -321,6 +323,34 @@ export function seedSettlement(
       capacity: well.litersPerDay,
       source: "groundwater",
       condition: Math.round(exp(-well.decayPerYear * r.float() * well.repairYears) * 1000) / 1000,
+      owner: village,
+      maintainer: village,
+      materials: lines(grams, built),
+      builtBy: built,
+    });
+    ledger.post({ tick: foundersAt, eventId: built, transfers: transfers(village, grams) });
+  }
+
+  // El banco de la plaza (fixtures-bench, opt-in): lo ponen los fundadores junto al pozo.
+  const bench = input.bench === true ? content.works.find((w) => w.kind === "bench") : undefined;
+  if (bench?.kind === "bench") {
+    const id = ids.next("work");
+    const built = append({
+      tick: foundersAt,
+      kind: "settlement.built",
+      data: { work: id, type: bench.id },
+      causes: caused(pop.foundersEvent),
+    });
+    const grams = new Map([[bench.material, bench.grams]]);
+    const r = root.fork("settlement", "work", id).stream();
+    truth.set(ENTITY, id, { id, originEventId: built, createdAt: foundersAt });
+    truth.set(WORK, id, {
+      type: bench.id,
+      kind: "bench",
+      settlement,
+      hexes: [site.hex],
+      capacity: 0,
+      condition: Math.round(exp(-bench.decayPerYear * r.float() * bench.repairYears) * 1000) / 1000,
       owner: village,
       maintainer: village,
       materials: lines(grams, built),

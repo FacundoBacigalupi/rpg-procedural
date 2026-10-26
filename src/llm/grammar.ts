@@ -460,6 +460,29 @@ const VERBS: readonly {
     },
   },
   {
+    // «Me siento en el banco» (fixtures-bench), «me caliento junto al fogón» o «al fuego»
+    // (use-hearth-warm): `use` de lo fijo con la función que dice el verbo.
+    re: /^(?:me\s+siento\s+(?=en\b|sobre\b)|sentarme\s+(?=en\b|sobre\b)|me\s+caliento|calentarme)/i,
+    build: (rest, _ctx, all) => {
+      const sit = /^(?:me\s+siento|sentarme)\b/i.test(all);
+      const object = rest
+        .replace(MANNER_WORDS, " ")
+        .replace(/^\s*(?:junto|cerca|al\s+lado)\s+(?=a\b|al\b|del?\b)/i, " ")
+        .replace(/^\s*(?:en|sobre)\s+/i, " ");
+      const said = nounPhrase(dropPreposition(object));
+      // «al fuego», «a la lumbre»: el fuego al que uno se arrima es el del fogón.
+      const fire = /^(?:el\s+|la\s+)?(?:fuego|lumbre|hogar|brasas)$/i.test(said);
+      const what = !said || fire ? (sit ? "" : "el fogón") : said;
+      if (!what) return null;
+      return {
+        node: act("use", [
+          { role: "target", ref: ref(what, "object") },
+          { role: "how", text: sit ? "sentarme" : "calentarme" },
+        ]),
+      };
+    },
+  },
+  {
     // «Uso el pozo», «saco agua del pozo»: la cosa dice qué se puede (actions, «Ampliación: use»).
     // «Afilo la hoz [con la piedra]»: la función de afilar de la herramienta (use-tools-mend-sharpen).
     re: /^(?:uso|usar|utilizo|utilizar|me\s+sirvo\s+de|(?:saco|sacar)\s+agua(?=\s+(?:del|de)\s)|afilo|afilar|amolo|amolar)/i,
