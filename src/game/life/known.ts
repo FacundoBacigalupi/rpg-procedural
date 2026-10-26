@@ -375,13 +375,20 @@ const YARD_NAMES = ["el patio", "mi patio"];
 const STORE_NAMES = ["el depósito", "la despensa", "el almacén"];
 /** El granero de la aldea: comunal, todos saben dónde está (settlements). */
 const GRANARY_NAMES = ["el granero", "el granero comunal"];
+/** El santuario de la tierra (village-shrine): comunal, toda la aldea sabe dónde está. */
+const SHRINE_NAMES = ["el santuario", "el santuario de la tierra", "el templo", "el altar"];
+/** Los edificios comunales que se nombran para ir, por tipo. */
+const COMMUNAL_NAMES: Readonly<Record<string, readonly string[]>> = {
+  granary: GRANARY_NAMES,
+  shrine: SHRINE_NAMES,
+};
 /** La casa del herrero: toda la aldea sabe dónde está la fragua (use-tools-mend-smith). */
 const SMITHY_NAMES = ["la herrería", "la fragua", "la casa del herrero"];
 
 /**
  * Los espacios de la aldea que el personaje puede nombrar para ir (perception §3): la plaza (y
- * «afuera» si está bajo techo), su casa (y su fogón), su patio, su depósito, el granero de la aldea
- * la herrería (la casa del herrero, si hay) y la casa de cada persona que conoce (por ahora, conocer a alguien es saber dónde vive: la
+ * «afuera» si está bajo techo), su casa (y su fogón), su patio, su depósito, el granero de la aldea,
+ * el santuario (si hay), la herrería (la casa del herrero, si hay) y la casa de cada persona que conoce (por ahora, conocer a alguien es saber dónde vive: la
  * creencia sobre casas llega con settlements). Lo fijo del sitio lo sabe por vivir ahí, sin mirar.
  */
 export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownSpace[] {
@@ -437,10 +444,11 @@ export function knownSpaces(w: LifeWorld, known: readonly KnownEntity[]): KnownS
   const live = new Set(w.spaces.spaces.map((s) => s.key));
   for (const id of [...w.truth.ids(BUILDING)].sort()) {
     const b = w.truth.get(BUILDING, id);
-    if (b?.type !== "granary" || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const names = b === undefined ? undefined : COMMUNAL_NAMES[b.type];
+    if (!b || !names || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const main = b.graph.spaces[0];
     if (main && live.has(main.key))
-      out.push({ key: main.key, place: village as EntityRef, names: GRANARY_NAMES, owners: [] });
+      out.push({ key: main.key, place: village as EntityRef, names: [...names], owners: [] });
   }
   return out;
 }
