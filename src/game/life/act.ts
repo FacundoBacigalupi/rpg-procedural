@@ -171,6 +171,7 @@ import {
   transferItem,
   treat,
   updateSelfImage,
+  usedPrice,
   verbSkill,
   type WaterQuality,
   type WaterTreatment,
@@ -396,6 +397,8 @@ export interface ActOptions {
   readonly legacyNoForgeBuy?: boolean;
   /** Las herramientas que el herrero forja nuevas (use-tools-mend-trade-buy); sin esto no vende. */
   readonly forgeTools?: readonly HouseholdToolDef[];
+  /** Replay de motores anteriores a `life-54`: no se compran ni venden herramientas usadas entre personas (`trade` no mueve el objeto). */
+  readonly legacyNoUsedTrade?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -697,6 +700,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.legacyNoForgeBuy === true || o.forgeTools === undefined
         ? []
         : [ENTITY.name, ITEM_LOOK.name, ITEM_HOLD.name]),
+      // La herramienta usada que cambia de dueño en un trato (use-tools-mend-trade-sell).
+      ...(o.legacyNoUsedTrade === true || o.forgeTools === undefined ? [] : [ITEM_HOLD.name]),
       ...(o.scam ? [SCAM_DEALS.name] : []),
       ...(o.footwear ? [FOOTWEAR.name] : []),
       ...(o.residue ? [RESIDUE.name, LOT_ESSENCE.name] : []),
@@ -969,6 +974,95 @@ function forgeOf(
       units: { copper: COPPER, iron: IRON_UNIT },
       ironSink: externalAccount(WORKSHOP_WASTE),
     },
+  };
+}
+
+/** Lo que `who` lleva en la mano (sin lugar propio) con la forma `shape`, por id. */
+function carriedOfShape(truth: ReadonlyWorldTruth, who: EntityRef, shape: string): ItemId[] {
+  return truth
+    .ids(ITEM_HOLD)
+    .filter(
+      (id) =>
+        String(id).startsWith("item:") &&
+        truth.get(ITEM_HOLD, id)?.possession === (who as unknown as HolderRef) &&
+        truth.get(LOCATION, id) === undefined &&
+        truth.get(ENTITY, id)?.endedAt === undefined &&
+        truth.get(ITEM_LOOK, id)?.shape === shape,
+    )
+    .sort(compareStrings) as ItemId[];
+}
+
+/** Lo de la forma `shape` que tienen `who` o su hogar (en la mano o guardado), menos `except`. */
+function ownedOfShape(
+  truth: ReadonlyWorldTruth,
+  who: EntityRef,
+  shape: string,
+  except: ItemId,
+): ItemId[] {
+  const home = truth.get(PERSON, who as AgentId)?.household as unknown as HolderRef | undefined;
+  return truth
+    .ids(ITEM_HOLD)
+    .filter((id) => {
+      if (id === except || !String(id).startsWith("item:")) return false;
+      const by = truth.get(ITEM_HOLD, id)?.possession;
+      return (
+        (by === (who as unknown as HolderRef) || (home !== undefined && by === home)) &&
+        truth.get(ENTITY, id)?.endedAt === undefined &&
+        truth.get(ITEM_LOOK, id)?.shape === shape
+      );
+    })
+    .sort(compareStrings) as ItemId[];
+}
+
+/**
+ * `trade` nombrando una herramienta que lleva en la mano uno de los dos (use-tools-mend-trade-sell):
+ * si la lleva el actor la vende, si la lleva el otro se la compra. El precio sale de lo que cuesta
+ * nueva y del desgaste que se ve con la herramienta en la mano; el comprador que no es el actor no
+ * la quiere si en su casa ya hay una igual menos gastada, y el vendedor que no es el actor no vende
+ * la única que tiene su casa.
+ */
+function usedToolOf(
+  o: ActOptions,
+  truth: ReadonlyWorldTruth,
+  me: AgentId,
+  node: { verb: string; args: readonly ArgValue[] },
+  other: EntityRef | undefined,
+  ledger:
+    | { balance(account: ReturnType<typeof holderAccount>, unit: LedgerUnit): number }
+    | undefined,
+): NonNullable<ResolveInput["usedTool"]> | undefined {
+  if (o.legacyNoUsedTrade === true || node.verb !== "trade") return undefined;
+  if (ledger === undefined || other === undefined || o.forgeTools === undefined) return undefined;
+  if (!String(other).startsWith("agent:")) return undefined;
+  const what = node.args.find((a) => a.role === "what");
+  const tool = forgeToolNamed(o.forgeTools, what && "text" in what ? what.text : undefined);
+  if (tool?.forge === undefined) return undefined;
+  const self = me as unknown as EntityRef;
+  const mine = carriedOfShape(truth, self, tool.shape)[0];
+  const theirs = mine === undefined ? carriedOfShape(truth, other, tool.shape)[0] : undefined;
+  const item = mine ?? theirs;
+  if (item === undefined) return undefined;
+  const direction = mine !== undefined ? "sell" : "buy";
+  const buyer = direction === "sell" ? other : self;
+  const seller = direction === "sell" ? self : other;
+  const wear = truth.get(ITEM_WEAR, item)?.wear ?? 0;
+  // El comprador que no es el actor: ¿ya tiene en su casa una igual que rinde más?
+  const wants =
+    buyer === self ||
+    !ownedOfShape(truth, buyer, tool.shape, item).some(
+      (id) => (truth.get(ITEM_WEAR, id)?.wear ?? 0) < wear,
+    );
+  // El vendedor que no es el actor: ¿le queda otra en la casa?
+  const spare = seller === self || ownedOfShape(truth, seller, tool.shape, item).length > 0;
+  return {
+    item,
+    name: tool.name,
+    direction,
+    price: usedPrice(tool.forge.copper, wear),
+    buyerCopper: Math.floor(ledger.balance(holderAccount(buyer as HolderRef), COPPER)),
+    wants,
+    spare,
+    unit: COPPER,
   };
 }
 
@@ -1424,6 +1518,14 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     o.legacyNoDrawWater === true
       ? undefined
       : instrumentOf(truth, node, me, o.legacyNoToolWear !== true);
+  const usedTool = usedToolOf(
+    o,
+    truth,
+    me,
+    node,
+    parties["with"]?.id as EntityRef | undefined,
+    ctx.ledger,
+  );
   const takeItem =
     wantedItem === undefined || node.verb !== "take"
       ? undefined
@@ -1504,7 +1606,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...drawWaterOf(o, truth, me, node, ctx.now),
     ...sharpenOf(o, truth, me, node),
     ...mendOf(o, truth, me, node, ctx.ledger),
-    ...forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger),
+    ...(usedTool === undefined
+      ? forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger)
+      : { usedTool }),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -2294,6 +2398,17 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         setComponent(ITEM_HOLD, item, { possession: me as unknown as HolderRef, rights: [] }),
       );
     }
+  }
+  // Herramienta usada: cambia de manos con el trato (use-tools-mend-trade-sell).
+  if (eff.kind === "trade" && eff.deal && eff.usedItem !== undefined && eff.with !== null) {
+    const sellsMine = eff.direction === "sell";
+    const move = itemGiveFor(
+      truth,
+      eff.usedItem,
+      (sellsMine ? me : eff.with) as AgentId,
+      sellsMine ? eff.with : (me as unknown as EntityRef),
+    );
+    changes.push(...itemTransferChanges(truth, move));
   }
   // La herramienta que sirvió de instrumento se gasta con el uso (use-tools-wear).
   if ((eff.kind === "gather" || eff.kind === "work") && eff.tool && (eff.toolWear ?? 0) > 0) {

@@ -176,6 +176,23 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
       }
     | undefined;
   /**
+   * `trade` nombrando una herramienta que lleva en la mano uno de los dos (use-tools-mend-trade-sell):
+   * cuál, quién la vende, lo que vale según el desgaste visto, el cobre de quien compra y si el otro
+   * la quiere (comprador) o puede soltarla (vendedor).
+   */
+  readonly usedTool?:
+    | {
+        readonly item: ItemId;
+        readonly name: string;
+        readonly direction: "buy" | "sell";
+        readonly price: number;
+        readonly buyerCopper: number;
+        readonly wants: boolean;
+        readonly spare: boolean;
+        readonly unit: LedgerUnit;
+      }
+    | undefined;
+  /**
    * `trade` con el herrero nombrando una herramienta que forja (use-tools-mend-trade-buy): cuál, lo
    * que cobra, el hierro que lleva y el que hay en su hogar, y el cobre del actor.
    */
@@ -489,7 +506,9 @@ export type VerbEffect =
       readonly forgedName?: string;
       readonly iron?: number;
       /** Compra al herrero que no se hizo: qué faltó. */
-      readonly lack?: "copper" | "iron";
+      readonly lack?: "copper" | "iron" | "want" | "spare";
+      /** Herramienta usada que cambió (o no) de manos (use-tools-mend-trade-sell). */
+      readonly usedItem?: ItemId;
     }
   | {
       readonly kind: "give";
@@ -1316,6 +1335,11 @@ const trade: Resolver = (c) => {
     grams: 0,
     coins: 0,
   });
+  if (c.input.usedTool !== undefined && other !== null) {
+    return deal
+      ? usedTrade(c, other, c.input.usedTool, edge)
+      : { effect: idle(false), seconds: c.nominal / 2 };
+  }
   if (c.input.forge !== undefined && other !== null) {
     return deal
       ? forgeBuy(c, other, c.input.forge, edge)
@@ -1368,6 +1392,59 @@ const trade: Resolver = (c) => {
 
 /** Segundos que tarda el herrero en forjar una herramienta mientras el comprador espera (sin calibrar). */
 export const FORGE_SECONDS = 3600;
+
+/** Una herramienta usada vale esta fracción de una nueva antes del desgaste (sin calibrar). */
+export const USED_FACTOR = 0.7;
+
+/** Lo que vale una herramienta usada: lo que cuesta nueva, con descuento de usada y menos el desgaste. Puro. */
+export function usedPrice(newPrice: number, wear: number): number {
+  return Math.max(1, Math.round(newPrice * USED_FACTOR * (1 - Math.min(1, Math.max(0, wear)))));
+}
+
+/**
+ * Comprar o vender una herramienta usada (use-tools-mend-trade-sell): cerrado el trato, la ventaja
+ * mueve el precio a favor del actor (vendiendo cobra más, comprando paga menos) y el cobre va de
+ * quien compra a quien vende; el objeto lo cambia de manos quien aplica el efecto (`usedItem`). Sin
+ * ganas del comprador, sin otra en la casa del vendedor o sin cobre no hay trato.
+ */
+function usedTrade(
+  c: Ctx,
+  other: EntityRef,
+  u: NonNullable<ResolveInput["usedTool"]>,
+  edge: number,
+): VerbResult {
+  const price = Math.max(1, Math.round(u.price * (u.direction === "sell" ? 1 + edge : 1 - edge)));
+  const base = {
+    kind: "trade" as const,
+    with: other,
+    good: null,
+    grams: 0,
+    usedItem: u.item,
+    forgedName: u.name,
+  };
+  const lack: "copper" | "want" | "spare" | undefined = !u.wants
+    ? "want"
+    : !u.spare
+      ? "spare"
+      : u.buyerCopper < price
+        ? "copper"
+        : undefined;
+  if (lack !== undefined) {
+    return {
+      effect: { ...base, deal: false, edge: 0, direction: null, coins: 0, lack },
+      seconds: c.nominal / 2,
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  const actor = c.input.actor.id as HolderRef;
+  const buyer = u.direction === "sell" ? (other as HolderRef) : actor;
+  const seller = u.direction === "sell" ? actor : (other as HolderRef);
+  return {
+    effect: { ...base, deal: true, edge, direction: u.direction, coins: price },
+    seconds: c.nominal,
+    transfers: [{ from: buyer, unit: u.unit, amount: price, to: holderAccount(seller) }],
+  };
+}
 
 /** Lo que paga por una herramienta nueva según la ventaja del trato (`edge`, -0,3 a 0,3). Puro. */
 export function forgePrice(base: number, edge: number): number {

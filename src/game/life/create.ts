@@ -360,6 +360,8 @@ export interface LifeOptions {
   readonly legacyNoSmith?: boolean;
   /** Replay de motores anteriores a `life-53`: el herrero no vende herramientas nuevas (`trade` con él no forja). */
   readonly legacyNoForgeBuy?: boolean;
+  /** Replay de motores anteriores a `life-54`: no se compran ni venden herramientas usadas entre personas (`trade` no mueve el objeto). */
+  readonly legacyNoUsedTrade?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -777,6 +779,7 @@ export function optInParts(
   | "legacyNoSharpen"
   | "legacyNoSmith"
   | "legacyNoForgeBuy"
+  | "legacyNoUsedTrade"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -969,6 +972,7 @@ export function optInParts(
     ...(options.legacyNoSharpen ? { legacyNoSharpen: true } : {}),
     ...(options.legacyNoSmith ? { legacyNoSmith: true } : {}),
     ...(options.legacyNoForgeBuy ? { legacyNoForgeBuy: true } : {}),
+    ...(options.legacyNoUsedTrade ? { legacyNoUsedTrade: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),

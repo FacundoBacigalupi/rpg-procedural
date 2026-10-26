@@ -473,6 +473,8 @@ export interface LifeWorld {
   readonly legacyNoSmith?: boolean;
   /** Replay de motores anteriores a `life-53`: el herrero no vende herramientas nuevas (`trade` con él no forja). */
   readonly legacyNoForgeBuy?: boolean;
+  /** Replay de motores anteriores a `life-54`: no se compran ni venden herramientas usadas entre personas (`trade` no mueve el objeto). */
+  readonly legacyNoUsedTrade?: boolean;
   /** Replay de motores anteriores a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Replay de motores anteriores a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -1061,6 +1063,7 @@ export function lifeWorld(
           ...(parts.legacyNoSharpen === true ? { legacyNoSharpen: true } : {}),
           ...(parts.legacyNoSmith === true ? { legacyNoSmith: true } : {}),
           ...(parts.legacyNoForgeBuy === true ? { legacyNoForgeBuy: true } : {}),
+          ...(parts.legacyNoUsedTrade === true ? { legacyNoUsedTrade: true } : {}),
           ...(parts.forgeTools && parts.forgeTools.length > 0
             ? { forgeTools: parts.forgeTools }
             : {}),
