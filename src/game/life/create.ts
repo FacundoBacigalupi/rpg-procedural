@@ -70,6 +70,7 @@ import {
   type Language,
   LIFE_STAGES,
   LINEAGES,
+  LIVESTOCK,
   LOCATION,
   type LocalMap,
   liveSettlementSpaces,
@@ -109,6 +110,7 @@ import {
   seedCommunityAccent,
   seedCulture,
   seedHouseholdTools,
+  seedLivestock,
   seedMinds,
   seedParcels,
   seedPeopleCulture,
@@ -614,6 +616,8 @@ export interface LifeOptions {
   readonly householdTools?: boolean;
   /** Opt-in (fixtures-bench): la plaza tiene un banco de madera puesto por los fundadores; apagado, no existe. */
   readonly squareBench?: boolean;
+  /** Opt-in (livestock-herd): cada casa trae sus gallinas, su perro y su buey; apagado, no hay ganado. */
+  readonly villageLivestock?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
   readonly tasteDemand?: boolean;
   /** Opt-in (con `npcRoadMend`): el arreglo de camino solo ocurre en una parada real, la noche que el viajero para a dormir (`npcNightRest`), no en cualquier día de marcha (npc-b2b3b2b3c2a); apagado. */
@@ -1643,6 +1647,22 @@ export function createLife(
         .all(HOUSEHOLD_TOOLS)
         .filter((t) => options.legacyNoSharpen !== true || t.id !== "whetstone"),
       members,
+    });
+  }
+  // Opt-in: el ganado de cada casa, traído al levantarla (livestock-herd).
+  if (options.villageLivestock) {
+    const members = new Map<string, number>();
+    for (const id of truth.ids(PERSON)) {
+      if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+      const h = truth.get(PERSON, id)?.household;
+      if (h !== undefined) members.set(h, (members.get(h) ?? 0) + 1);
+    }
+    seedLivestock(truth, ids, log, {
+      seed,
+      settlement,
+      species: content.all(LIVESTOCK),
+      members,
+      yearTicks: clock.year,
     });
   }
   const spaces = liveSettlementSpaces(

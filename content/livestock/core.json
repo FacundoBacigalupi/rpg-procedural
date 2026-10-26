@@ -1,0 +1,31 @@
+[
+  {
+    "id": "hen",
+    "name": "gallina",
+    "shape": "chicken",
+    "massKg": 2,
+    "lifespanYears": 6,
+    "count": 3,
+    "femaleShare": 0.85
+  },
+  {
+    "id": "dog",
+    "name": "perro",
+    "shape": "dog",
+    "massKg": 18,
+    "lifespanYears": 12,
+    "count": 1,
+    "minMembers": 3,
+    "femaleShare": 0.5
+  },
+  {
+    "id": "ox",
+    "name": "buey",
+    "shape": "ox",
+    "massKg": 450,
+    "lifespanYears": 18,
+    "count": 1,
+    "minMembers": 5,
+    "femaleShare": 0
+  }
+]
