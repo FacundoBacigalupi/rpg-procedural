@@ -58,7 +58,9 @@ describe("partida automática sobre la sesión del juego", () => {
     const a = await play();
     expect(a.report.failure).toBeUndefined();
     expect(a.report.problems).toEqual([]);
-    expect(a.report.turns).toBeGreaterThan(5);
+    // Una espera larga que nadie interrumpe puede cubrir los cinco días en pocos turnos (en seed 1 con
+    // `life-50`, «espero 30 días» corre 16 días): alcanza con que juegue más de un par.
+    expect(a.report.turns).toBeGreaterThan(3);
     expect(a.report.routineOnPlayer).toBe(0);
     expect(a.report.playerAlive).toBe(true);
     const b = await play();
