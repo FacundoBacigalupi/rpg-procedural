@@ -445,8 +445,10 @@ function outcome(
       say(e.drank ? "outcome.drink.done" : "outcome.drink.none");
       break;
     case "use": {
-      const id = `outcome.use.${e.how}.${e.done ? "done" : e.means ? "none" : "no_means"}`;
-      say(book.has(id) ? id : "outcome.none");
+      const base = `outcome.use.${e.how}.`;
+      const id = base + (e.done ? "done" : e.means ? "none" : "no_means");
+      const lacked = e.lack === undefined ? undefined : `${base}no_${e.lack}`;
+      say(lacked !== undefined && book.has(lacked) ? lacked : book.has(id) ? id : "outcome.none");
       break;
     }
     case "boil":

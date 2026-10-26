@@ -53,6 +53,21 @@
     "hones": ["whetstone"]
   },
   {
+    "id": "tool.mend",
+    "name": "hacer arreglar la herramienta con el herrero",
+    "on": ["axe", "hoe", "knife", "sickle"],
+    "words": [
+      "arreglar",
+      "arreglo",
+      "reparar",
+      "reparo",
+      "componer",
+      "herrero",
+      "herrería",
+      "fragua"
+    ]
+  },
+  {
     "id": "well.drink",
     "name": "tomar agua del pozo",
     "on": ["well"],

@@ -174,6 +174,7 @@ import type { PawnLots, PawnOpenOptions, PawnWantOptions } from "./pawn.ts";
 import { type ResidueConfig, residueExternals } from "./residue.ts";
 import { ROUTINE } from "./routine.ts";
 import { type PlayerEntry, seedNeighborCommunities, seedPlayerOrigin } from "./seed-origins.ts";
+import { FORGE_TRADE, seedSmith } from "./smith.ts";
 import { SOWN_FIELD } from "./sowing.ts";
 import type { SpeakActsOptions } from "./speakacts.ts";
 import { seedDevelopment } from "./stages.ts";
@@ -355,6 +356,8 @@ export interface LifeOptions {
   readonly legacyNoRoutineTools?: boolean;
   /** Replay de motores anteriores a `life-51`: no hay piedra de afilar en las casas y `use` con `tool.sharpen` no afila. */
   readonly legacyNoSharpen?: boolean;
+  /** Replay de motores anteriores a `life-52`: la aldea no tiene herrero y `use` con `tool.mend` no repara. */
+  readonly legacyNoSmith?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -770,6 +773,7 @@ export function optInParts(
   | "legacyNoNpcTools"
   | "legacyNoRoutineTools"
   | "legacyNoSharpen"
+  | "legacyNoSmith"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -960,6 +964,7 @@ export function optInParts(
     ...(options.legacyNoNpcTools ? { legacyNoNpcTools: true } : {}),
     ...(options.legacyNoRoutineTools ? { legacyNoRoutineTools: true } : {}),
     ...(options.legacyNoSharpen ? { legacyNoSharpen: true } : {}),
+    ...(options.legacyNoSmith ? { legacyNoSmith: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
@@ -1225,6 +1230,24 @@ function tradeStock(pop: LifeTerrain["population"], seed: Seed, content: Content
         amount: i.amount * TRADE_START_BATCHES,
       });
     }
+  }
+  return out;
+}
+
+/** Los hogares cuyo oficio derivado de la población es herrar herramientas (como `tradeStock`). */
+function forgeHouseholds(
+  pop: LifeTerrain["population"],
+  seed: Seed,
+  content: Content,
+): ReadonlySet<string> {
+  const recipes = content.all(TRADE_RECIPES);
+  const born = new Map(pop.people.map((p) => [p.id, p.born]));
+  const out = new Set<string>();
+  for (const h of pop.households.filter((x) => x.end === null)) {
+    const adults = h.members.filter(
+      (m) => (pop.now - (born.get(m) ?? pop.now)) / EARTHLIKE_CLOCK.year >= ROUTINE.workAge,
+    ).length;
+    if (tradeOfHousehold(seed, h.id, adults, recipes)?.id === FORGE_TRADE) out.add(h.id);
   }
   return out;
 }
@@ -1817,6 +1840,19 @@ export function createLife(
             ),
         )
         .concat(tradeStock(pop, seed, content)),
+    });
+  }
+  // Opt-in con las cosas de cada casa: el herrero de la aldea, de un hogar del oficio si hay
+  // (use-tools-mend-smith); después del lote inicial, así sabe si su hogar ya tenía hierro.
+  if (options.householdTools && options.legacyNoSmith !== true) {
+    seedSmith(truth, ids, log, ledger, {
+      seed,
+      player: pop.player,
+      now: pop.now,
+      year: clock.year,
+      place: terrain.village,
+      cause: pop.foundersEvent,
+      forgeHouseholds: forgeHouseholds(pop, seed, content),
     });
   }
   const catalog = new ActionCatalog(

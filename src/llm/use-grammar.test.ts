@@ -44,6 +44,24 @@ describe("la gramática de use y del target de look (use-core)", () => {
     }
   });
 
+  it("«arreglo la hoz» y «llevo la hoz al herrero» son use para arreglar (use-tools-mend-smith)", () => {
+    for (const text of [
+      "arreglo la hoz",
+      "hago arreglar la hoz",
+      "reparo la hoz",
+      "llevo la hoz al herrero",
+      "llevo la hoz a la herrería",
+    ]) {
+      expect(planOf(text), text).toMatchObject({
+        verb: "use",
+        args: [
+          { role: "target", ref: { text: "la hoz", kind: "object" } },
+          { role: "how", text: "arreglar" },
+        ],
+      });
+    }
+  });
+
   it("«miro alrededor» sigue sin target y «miro a Wu» busca una persona", () => {
     for (const text of ["miro", "miro alrededor", "miro por ahí"]) {
       expect(planOf(text), text).toMatchObject({ verb: "look", args: [] });
