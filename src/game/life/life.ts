@@ -308,8 +308,12 @@ export interface LifeSetup {
  * `life-49`: con `itemClaims`, el NPC que sale a trabajar con plantilla agarra la herramienta de su
  * casa, la usa y la deja al volver; soltar algo en un cuarto de la propia casa lo devuelve al hogar
  * (perfil2-item-claims-item-demand-npc). Compatibilidad: `legacyNoNpcTools`.
+ *
+ * `life-50`: con `itemClaims`, la rutina de campo agarra la azada o la hoz de la casa al salir, cada
+ * hora con ella rinde más y la gasta, y la deja al volver (perfil2-item-claims-item-demand-routine).
+ * Compatibilidad: `legacyNoRoutineTools`.
  */
-export const LIFE_ENGINE = "life-49";
+export const LIFE_ENGINE = "life-50";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -368,6 +372,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 47 ? { legacyNoDrawWater: true } : {}),
     ...(n < 48 ? { legacyNoToolWear: true } : {}),
     ...(n < 49 ? { legacyNoNpcTools: true } : {}),
+    ...(n < 50 ? { legacyNoRoutineTools: true } : {}),
   };
 }
 

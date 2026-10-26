@@ -351,6 +351,8 @@ export interface LifeOptions {
   readonly legacyNoToolWear?: boolean;
   /** Replay de motores anteriores a `life-49`: el NPC no lleva la herramienta de la casa y soltar en casa no la devuelve al hogar. */
   readonly legacyNoNpcTools?: boolean;
+  /** Replay de motores anteriores a `life-50`: la rutina de campo trabaja a mano, sin la herramienta de la casa. */
+  readonly legacyNoRoutineTools?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -764,6 +766,7 @@ export function optInParts(
   | "legacyNoDrawWater"
   | "legacyNoToolWear"
   | "legacyNoNpcTools"
+  | "legacyNoRoutineTools"
   | "legacyNoFleeShed"
   | "legacyFullTakeItem"
   | "legacyNoRainWaitPersist"
@@ -952,6 +955,7 @@ export function optInParts(
     ...(options.legacyNoDrawWater ? { legacyNoDrawWater: true } : {}),
     ...(options.legacyNoToolWear ? { legacyNoToolWear: true } : {}),
     ...(options.legacyNoNpcTools ? { legacyNoNpcTools: true } : {}),
+    ...(options.legacyNoRoutineTools ? { legacyNoRoutineTools: true } : {}),
     ...(options.legacyNoFleeShed ? { legacyNoFleeShed: true } : {}),
     ...(options.legacyFullTakeItem ? { legacyFullTakeItem: true } : {}),
     ...(options.legacyNoRainWaitPersist ? { legacyNoRainWaitPersist: true } : {}),
