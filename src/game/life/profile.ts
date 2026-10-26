@@ -90,6 +90,7 @@ export const FULL_PROFILE = {
   householdTools: true,
   squareBench: true,
   villageLivestock: true,
+  villageShrine: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
   errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
 } satisfies LifeOptions;

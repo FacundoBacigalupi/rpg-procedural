@@ -59,6 +59,11 @@ export const BuildingDef = z
     minMembers: z.number().int().min(1).optional(),
     /** Comunal: uno cada tantas personas (al menos uno). */
     perPeople: z.number().int().min(1).optional(),
+    /**
+     * Solo se levanta si la vida lo pide (`SeedSettlementInput.optIn`): así sumar un edificio al
+     * contenido no cambia las aldeas que ya existían.
+     */
+    optIn: z.boolean().optional(),
     /** Cada cuántos años se repara en promedio. */
     repairYears: z.number().positive(),
     /** El primer cuarto es el principal: donde vive el hogar. Un patio es por donde se entra. */

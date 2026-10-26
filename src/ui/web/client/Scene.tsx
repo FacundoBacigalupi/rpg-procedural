@@ -273,6 +273,7 @@ const SHAPE: Readonly<Record<string, readonly [number, number]>> = {
   cottage: [230, 150],
   farmhouse: [310, 185],
   granary: [150, 195],
+  shrine: [110, 120],
 };
 
 /** Color de pared y de techo por material (`content/materials`). */
