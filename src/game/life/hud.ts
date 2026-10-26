@@ -18,6 +18,7 @@
 import { type AgentId, type HolderRef, holderAccount } from "../../core/index.ts";
 import {
   type AgeBand,
+  ANIMAL,
   BODY_STATE,
   BUILDING,
   type BuildingRecord,
@@ -93,6 +94,11 @@ export interface Hud {
     readonly buildings?: readonly SeenBuilding[];
     /** Adentro de un edificio: cuál es. */
     readonly building?: Omit<SeenBuilding, "x" | "d">;
+    /**
+     * Los animales de las casas que ve desde donde está (afuera), de oeste a este (play-scene-animals).
+     * Sin ganado en la vida (`ANIMAL` vacía: es opt-in), `undefined`.
+     */
+    readonly animals?: readonly SeenAnimal[];
   };
   readonly people: {
     /** A cuántos ve o nota ahora (de la escena). */
@@ -456,19 +462,87 @@ function buildingRows(w: LifeWorld): { id: string; b: BuildingRecord }[] {
   return out;
 }
 
-/** Los edificios a la vista y en cuál está, para `Hud.place`. */
+/** Un animal a la vista (play-scene-animals). */
+export interface SeenAnimal {
+  /** La especie de `content/livestock` (hen, dog, ox…): da la silueta. */
+  readonly species: string;
+  /** Al este (+) u oeste (−) de donde mira (m), y a qué distancia. */
+  readonly x: number;
+  readonly d: number;
+}
+
+/** Hasta dónde distingue un animal según la luz (m): son más chicos que una casa. */
+export const ANIMAL_SIGHT_M: Readonly<Record<Hud["light"], number>> = {
+  bright: 80,
+  dim: 30,
+  dark: 6,
+};
+export const MAX_SEEN_ANIMALS = 8;
+
+/**
+ * Dónde anda en el patio de su casa: unos metros alrededor de la casa, fijo por animal (no hay
+ * posiciones dentro del hex todavía; es solo para pintarlo).
+ */
+export function yardSpot(
+  id: string,
+  house: { readonly x: number; readonly y: number },
+): { x: number; y: number } {
+  const n = Number(id.slice(id.indexOf(":") + 1)) || 0;
+  return { x: house.x + (((n * 37) % 13) - 6), y: house.y + 3 + ((n * 17) % 5) };
+}
+
+/** Los animales a la vista desde `from`, los más cercanos, puestos de oeste a este. */
+export function seenAnimals(
+  animals: readonly {
+    readonly id: string;
+    readonly species: string;
+    readonly at: { x: number; y: number };
+  }[],
+  from: { readonly x: number; readonly y: number },
+  sightM: number,
+): SeenAnimal[] {
+  return animals
+    .map((a) => {
+      const dx = a.at.x - from.x;
+      return { a, dx, d: Math.hypot(dx, a.at.y - from.y) };
+    })
+    .filter((s) => s.d <= sightM)
+    .sort((a, b) => a.d - b.d || (a.a.id < b.a.id ? -1 : 1))
+    .slice(0, MAX_SEEN_ANIMALS)
+    .sort((a, b) => a.dx - b.dx || (a.a.id < b.a.id ? -1 : 1))
+    .map((s) => ({ species: s.a.species, x: Math.round(s.dx), d: Math.round(s.d) }));
+}
+
+/** Los animales vivos de la vida con su lugar en el patio. */
+function animalRows(w: LifeWorld): { id: string; species: string; at: { x: number; y: number } }[] {
+  const out: { id: string; species: string; at: { x: number; y: number } }[] = [];
+  for (const id of [...w.truth.ids(ANIMAL)].sort()) {
+    const a = w.truth.get(ANIMAL, id);
+    if (!a || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const house = w.truth.get(BUILDING, a.home);
+    if (!house) continue;
+    out.push({ id, species: a.species, at: yardSpot(id, house.at) });
+  }
+  return out;
+}
+
+/** Los edificios y animales a la vista y en cuál está, para `Hud.place`. */
 function buildingsOf(
   w: LifeWorld,
   space: string | undefined,
   indoor: boolean,
   light: Hud["light"],
-): Pick<Hud["place"], "buildings" | "building"> {
+): Pick<Hud["place"], "buildings" | "building" | "animals"> {
   const rows = buildingRows(w);
   if (rows.length === 0 || space === undefined) return {};
   const mine = rows.find((r) => r.b.graph.spaces.some((s) => s.key === space));
   if (indoor) return mine ? { building: lookOf(mine.b) } : {};
   const from = mine?.b.at ?? { x: 0, y: 0 };
-  return { buildings: seenBuildings(rows, from, BUILDING_SIGHT_M[light], mine?.id) };
+  const animals = animalRows(w);
+  return {
+    buildings: seenBuildings(rows, from, BUILDING_SIGHT_M[light], mine?.id),
+    ...(animals.length === 0 ? {} : { animals: seenAnimals(animals, from, ANIMAL_SIGHT_M[light]) }),
+  };
 }
 
 /**

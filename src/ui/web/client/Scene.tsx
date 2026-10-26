@@ -10,9 +10,12 @@
 // Las casas de afuera son las que ve (`Hud.place.buildings`): el tipo da la forma, el material de
 // paredes y techo el color, más chicas cuanto más lejos; las gastadas, oscurecidas y rajadas; las
 // caídas, sin techo; las que arden, con llamas. Sin edificios en la vida, las casas de siempre.
+//
+// Los animales de las casas que ve (`Hud.place.animals`: gallinas, perros, bueyes) andan por el
+// suelo delante de las casas, más chicos y más arriba cuanto más lejos. Sin ganado, ninguno.
 
-import type { CSSProperties } from "react";
-import type { Hud, SeenBuilding } from "../api.ts";
+import type { CSSProperties, ReactElement } from "react";
+import type { Hud, SeenAnimal, SeenBuilding } from "../api.ts";
 
 interface Sky {
   readonly top: string;
@@ -597,7 +600,114 @@ function Outside({ hud, sky }: { hud: Hud; sky: Sky }) {
           opacity="0.7"
         />
       )}
+      {hud.place.animals && !water && <Animals seen={hud.place.animals} />}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Animales
+
+const HENS = ["#efe6d4", "#8a5a3a", "#2e2622", "#b0703c"] as const;
+const DOGS = ["#8b6b48", "#3a302a", "#c9b08a", "#5e4636"] as const;
+const OXEN = ["#6b4f3a", "#8e7a62", "#3d332c", "#a08466"] as const;
+
+/** Una gallina, con los pies en (0, 0) y mirando a la derecha. */
+function Hen({ i }: { i: number }) {
+  const c = HENS[i % HENS.length];
+  return (
+    <>
+      <ellipse cx="0" cy="3" rx="30" ry="6" fill="#000" opacity="0.15" />
+      <path d="M-6 -12 L-8 0 M6 -12 L8 0" stroke="#c98a3a" strokeWidth="4" />
+      <path d="M-30 -36 L-44 -60 L-20 -44 Z" fill={c} />
+      <ellipse cx="0" cy="-30" rx="28" ry="20" fill={c} />
+      <circle cx="24" cy="-52" r="11" fill={c} />
+      <path d="M20 -62 Q24 -72 30 -62 Z" fill="#b8352b" />
+      <path d="M34 -52 L42 -49 L34 -46 Z" fill="#d9a03a" />
+    </>
+  );
+}
+
+/** Un perro, con los pies en (0, 0) y mirando a la derecha. */
+function Dog({ i }: { i: number }) {
+  const c = DOGS[i % DOGS.length];
+  return (
+    <>
+      <ellipse cx="0" cy="4" rx="70" ry="9" fill="#000" opacity="0.16" />
+      <rect x="-46" y="-60" width="10" height="60" rx="4" fill={c} />
+      <rect x="-30" y="-60" width="10" height="60" rx="4" fill={c} />
+      <rect x="24" y="-60" width="10" height="60" rx="4" fill={c} />
+      <rect x="38" y="-60" width="10" height="60" rx="4" fill={c} />
+      <ellipse cx="0" cy="-70" rx="56" ry="22" fill={c} />
+      <path d="M-52 -76 Q-80 -100 -70 -116" stroke={c} strokeWidth="8" fill="none" />
+      <circle cx="62" cy="-96" r="20" fill={c} />
+      <path d="M74 -100 L96 -92 L74 -84 Z" fill={c} />
+      <path d="M52 -112 L58 -132 L68 -112 Z" fill={c} />
+    </>
+  );
+}
+
+/** Un buey, con los pies en (0, 0) y mirando a la derecha. */
+function Ox({ i }: { i: number }) {
+  const c = OXEN[i % OXEN.length];
+  return (
+    <>
+      <ellipse cx="0" cy="5" rx="140" ry="14" fill="#000" opacity="0.18" />
+      <rect x="-96" y="-80" width="22" height="80" rx="6" fill={c} />
+      <rect x="-66" y="-80" width="22" height="80" rx="6" fill={c} />
+      <rect x="54" y="-80" width="22" height="80" rx="6" fill={c} />
+      <rect x="82" y="-80" width="22" height="80" rx="6" fill={c} />
+      <rect x="-110" y="-190" width="230" height="120" rx="50" fill={c} />
+      <path d="M-108 -160 Q-130 -110 -122 -70" stroke={c} strokeWidth="8" fill="none" />
+      <rect x="100" y="-200" width="64" height="70" rx="24" fill={c} />
+      <path
+        d="M110 -196 Q90 -226 104 -236 M154 -196 Q174 -226 160 -236"
+        stroke="#e8dcc0"
+        strokeWidth="9"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <ellipse cx="152" cy="-140" rx="16" ry="11" fill="#000" opacity="0.2" />
+    </>
+  );
+}
+
+const ANIMAL_SHAPES: Readonly<Record<string, (p: { i: number }) => ReactElement>> = {
+  hen: Hen,
+  dog: Dog,
+  ox: Ox,
+};
+
+/**
+ * Los animales que ve, de oeste a este: los cercanos más abajo y más grandes, pintados después de
+ * los lejanos; cada uno mira para un lado según su lugar en la fila.
+ */
+function Animals({ seen }: { seen: readonly SeenAnimal[] }) {
+  const span = Math.max(20, ...seen.map((a) => Math.abs(a.x)));
+  const far = Math.max(30, ...seen.map((a) => a.d));
+  return (
+    <g>
+      {seen
+        .map((a, i) => ({ a, i }))
+        .sort((p, q) => q.a.d - p.a.d)
+        .map(({ a, i }) => {
+          const Shape = ANIMAL_SHAPES[a.species];
+          if (!Shape) return null;
+          const near = 1 - a.d / far;
+          const s = Math.max(0.2, 0.25 + 0.55 * near);
+          const x = 800 + (a.x / span) * 640;
+          const y = 712 + 150 * near;
+          const flip = i % 2 === 0 ? 1 : -1;
+          return (
+            <g
+              key={`${i}:${a.species}:${a.x}:${a.d}`}
+              transform={`translate(${x} ${y}) scale(${s * flip} ${s})`}
+            >
+              <Shape i={i} />
+            </g>
+          );
+        })}
+    </g>
   );
 }
 
