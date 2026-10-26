@@ -24,16 +24,20 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { ambientOf } from "./ambient.ts";
 import {
+  ANIMAL_SIGHT_M,
   dangerOf,
   dayPhase,
   hudPanel,
   LOAD_BANDS,
   loadOf,
+  MAX_SEEN_ANIMALS,
   MAX_SEEN_BUILDINGS,
   moonPhaseName,
   nightSky,
+  seenAnimals,
   seenBuildings,
   warmthOf,
+  yardSpot,
 } from "./hud.ts";
 import { Life } from "./life.ts";
 import { outfitOf, SHORT_CLO } from "./outfit.ts";
@@ -400,4 +404,45 @@ describe("la ropa del jugador en la barra y en el panel (clothing-player-hud)", 
     expect(wardrobeClothing([], -10).clo).toBe(0);
     expect(seasonalClothing(-10).clo).toBeGreaterThan(SHORT_CLO[1]);
   });
+});
+
+describe("animales en el fondo (play-scene-animals)", () => {
+  it("los más cercanos dentro de la vista, de oeste a este, y cada uno con su lugar fijo en el patio", () => {
+    const rows = [
+      { id: "animal:1", species: "hen", at: { x: 12, y: 0 } },
+      { id: "animal:2", species: "ox", at: { x: -20, y: 5 } },
+      { id: "animal:3", species: "dog", at: { x: 200, y: 0 } },
+    ];
+    expect(seenAnimals(rows, { x: 0, y: 0 }, ANIMAL_SIGHT_M.bright)).toEqual([
+      { species: "ox", x: -20, d: 21 },
+      { species: "hen", x: 12, d: 12 },
+    ]);
+    expect(seenAnimals(rows, { x: 0, y: 0 }, ANIMAL_SIGHT_M.dark)).toEqual([]);
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      id: `animal:${i + 1}`,
+      species: "hen",
+      at: { x: i, y: 0 },
+    }));
+    expect(seenAnimals(many, { x: 0, y: 0 }, 80)).toHaveLength(MAX_SEEN_ANIMALS);
+    expect(yardSpot("animal:4", { x: 10, y: 10 })).toEqual(yardSpot("animal:4", { x: 10, y: 10 }));
+    const spot = yardSpot("animal:4", { x: 10, y: 10 });
+    expect(Math.hypot(spot.x - 10, spot.y - 10)).toBeLessThan(12);
+  });
+
+  it("en la vida: sin ganado no hay animales; con ganado, afuera se ven los del patio", () => {
+    const plain = Life.create(7, content, { frequency: 8 }).world;
+    const at0 = plain.truth.get(LOCATION, plain.player);
+    if (!at0) throw new Error("sin lugar");
+    plain.truth.set(LOCATION, plain.player, { ...at0, space: VILLAGE_SQUARE });
+    expect(hudPanel(plain, characterPanel(plain), 0, []).place.animals).toBeUndefined();
+
+    const w = Life.create(7, content, { frequency: 8, villageLivestock: true }).world;
+    const at = w.truth.get(LOCATION, w.player);
+    if (!at) throw new Error("sin lugar");
+    w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    const out = hudPanel(w, characterPanel(w), 0, []);
+    expect(Array.isArray(out.place.animals)).toBe(true);
+    expect(out.place.animals?.length ?? 0).toBeLessThanOrEqual(MAX_SEEN_ANIMALS);
+    for (const a of out.place.animals ?? []) expect(["hen", "dog", "ox"]).toContain(a.species);
+  }, 300_000);
 });

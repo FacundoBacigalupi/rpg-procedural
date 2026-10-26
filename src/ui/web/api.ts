@@ -13,6 +13,13 @@ export interface SeenBuilding {
   readonly d: number;
 }
 
+/** Un animal a la vista (de `game/life/hud.ts`). */
+export interface SeenAnimal {
+  readonly species: string;
+  readonly x: number;
+  readonly d: number;
+}
+
 export interface Hud {
   readonly hour: number;
   readonly phase: "night" | "dawn" | "day" | "dusk";
@@ -31,6 +38,8 @@ export interface Hud {
     /** Sin definir: la vida no tiene edificios (aldea de respaldo). */
     readonly buildings?: readonly SeenBuilding[];
     readonly building?: Omit<SeenBuilding, "x" | "d">;
+    /** Sin definir: la vida no tiene ganado. */
+    readonly animals?: readonly SeenAnimal[];
   };
   readonly people: {
     readonly around: number;
