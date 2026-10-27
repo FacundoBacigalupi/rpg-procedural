@@ -13,7 +13,8 @@
 // Lo que dan en vida (livestock-yield, `livestockYieldProcess`): por ahora los huevos de las
 // gallinas, unidades enteras que cada hembra adulta pone con una chance diaria y entran a la comida
 // del hogar desde `LAID_SOURCE`. Con `daylightHours` (livestock-yield-season) ponen menos con los
-// días cortos (`daylightFactor`); comer poco todavía no las frena (livestock-yield-feed).
+// días cortos (`daylightFactor`); con `tempC` y `hunger` (livestock-yield-feed), también con frío
+// (`coldFactor`) y si pasan hambre (`hungerFactor`).
 //
 // Comen (livestock-feed, `livestockFeedProcess`): cada día la ración que da la casa (`feed`: gramos
 // por día de un adulto, de las categorías de comida que acepta, en orden) sale de la cuenta del
@@ -109,6 +110,18 @@ export const YieldDef = z.strictObject({
   daylightHours: z.tuple([z.number().min(0), z.number().max(24)]).optional(),
   /** Qué parte da con los días más cortos (la gallina en invierno pone poco, no nada). */
   daylightFloor: z.number().min(0).max(1).default(0),
+  /**
+   * Temperatura media del día (°C) bajo la que da lo mínimo y desde la que da todo
+   * (livestock-yield-feed: con frío la gallina gasta en calentarse); sin esto, el frío no importa.
+   */
+  coldC: z.tuple([z.number(), z.number()]).optional(),
+  /** Qué parte da con el frío más fuerte. */
+  coldFloor: z.number().min(0).max(1).default(0),
+  /**
+   * Hambre (`ANIMAL_HUNGER`, 0-1) en la que deja de dar; baja lineal desde 0 (livestock-yield-feed).
+   * Sin esto, el hambre no la frena.
+   */
+  hungerStop: z.number().positive().max(1).optional(),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -620,12 +633,33 @@ export function daylightFactor(y: YieldDef, hours: number | undefined): number {
   return y.daylightFloor + (1 - y.daylightFloor) * x;
 }
 
+/**
+ * Pura: qué parte de lo suyo da con una media de `tempC` °C: todo desde el máximo de `coldC`, el
+ * piso bajo el mínimo y lineal entre los dos; sin `coldC` o sin temperatura, todo.
+ */
+export function coldFactor(y: YieldDef, tempC: number | undefined): number {
+  if (y.coldC === undefined || tempC === undefined) return 1;
+  const [lo, hi] = y.coldC;
+  const x = hi > lo ? Math.min(1, Math.max(0, (tempC - lo) / (hi - lo))) : tempC >= hi ? 1 : 0;
+  return y.coldFloor + (1 - y.coldFloor) * x;
+}
+
+/** Pura: qué parte de lo suyo da con hambre `level` (0-1): baja lineal hasta 0 en `hungerStop`. */
+export function hungerFactor(y: YieldDef, level: number): number {
+  if (y.hungerStop === undefined || level <= 0) return 1;
+  return Math.max(0, 1 - level / y.hungerStop);
+}
+
 export interface LivestockYieldOptions {
   readonly species: readonly LivestockDef[];
   /** Duración del año (ticks). */
   readonly year: Duration;
   /** Horas de luz del día en la aldea (livestock-yield-season); sin esto, la luz no importa. */
   readonly daylightHours?: (t: Tick) => number;
+  /** Temperatura media del día en la aldea, °C (livestock-yield-feed); sin esto, el frío no importa. */
+  readonly tempC?: (t: Tick) => number;
+  /** Lee el hambre de cada animal (`ANIMAL_HUNGER`, livestock-yield-feed); sin esto, no la frena. */
+  readonly hunger?: boolean;
 }
 
 /**
@@ -642,12 +676,13 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ANIMAL.name, ENTITY.name],
+    reads: [ANIMAL.name, ENTITY.name, ...(o.hunger === true ? [ANIMAL_HUNGER.name] : [])],
     writes: [],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const step = ctx.window > 0 ? ctx.window : 1;
       const hours = o.daylightHours?.(ctx.now);
+      const tempC = o.tempC?.(ctx.now);
       // hogar|bien -> animales que dieron hoy y gramos.
       const got = new Map<
         string,
@@ -658,9 +693,11 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
         if (!a || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
         const yields = byId.get(a.species)?.yields ?? [];
         const age = (ctx.now - a.bornAt) / o.year;
+        const hunger = o.hunger === true ? (ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0) : 0;
         yields.forEach((y, i) => {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
-          const chance = Math.min(1, (y.perYear * daylightFactor(y, hours) * step) / o.year);
+          const factor = daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
+          const chance = Math.min(1, (y.perYear * factor * step) / o.year);
           if (ctx.rng.fork("yield", id, i).float() >= chance) return;
           const key = `${a.owner}|${y.good}`;
           const g = got.get(key) ?? {

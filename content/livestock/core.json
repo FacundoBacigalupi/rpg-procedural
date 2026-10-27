@@ -23,7 +23,10 @@
         "sex": "female",
         "minAgeYears": 0.5,
         "daylightHours": [9, 14],
-        "daylightFloor": 0.15
+        "daylightFloor": 0.15,
+        "coldC": [0, 12],
+        "coldFloor": 0.3,
+        "hungerStop": 0.5
       }
     ],
     "feed": { "gramsPerDay": 40, "categories": ["cereal", "wild", "legume"], "starveDays": 10 }
