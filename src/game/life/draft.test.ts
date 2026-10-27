@@ -20,7 +20,7 @@ function sources(dir: string, root = dir): ContentSource[] {
 }
 const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 const DAY = 86_400;
-// Seed 3: un buey de más de 2 años al empezar (seed 7 los trae jóvenes).
+// Seed 3: con `herdAgeYears` (life-57) todos los bueyes empiezan adultos en cualquier seed.
 const SEED = 3;
 const OPTS = { frequency: 8, villageLivestock: true } as const;
 const harvestGrams = (l: Life) =>

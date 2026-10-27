@@ -336,8 +336,12 @@ export interface LifeSetup {
  * `life-56`: con `villageLivestock`, el ganado de cada casa es el que hay al empezar la vida (evento
  * y edad desde el comienzo), no el que llegó al levantarla: en las casas viejas ya no muere todo de
  * viejo el primer día (livestock-feed). Compatibilidad: `legacyLivestockFoundingAge`.
+ *
+ * `life-57`: con `villageLivestock`, el ganado del comienzo tiene las edades de su función
+ * (`herdAgeYears`: el buey de la casa entre 3 y 10 años, ya tira) (livestock-herd-ages).
+ * Compatibilidad: `legacyLivestockHerdAges`.
  */
-export const LIFE_ENGINE = "life-56";
+export const LIFE_ENGINE = "life-57";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -403,6 +407,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 54 ? { legacyNoUsedTrade: true } : {}),
     ...(n < 55 ? { legacyNoNpcMend: true } : {}),
     ...(n < 56 ? { legacyLivestockFoundingAge: true } : {}),
+    ...(n < 57 ? { legacyLivestockHerdAges: true } : {}),
   };
 }
 

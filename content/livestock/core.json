@@ -62,6 +62,7 @@
     "lifespanYears": 18,
     "count": 1,
     "minMembers": 5,
+    "herdAgeYears": [3, 10],
     "femaleShare": 0,
     "carcass": { "meat": "beef", "meatShare": 0.45, "hide": "hide", "hideShare": 0.07 },
     "feed": {

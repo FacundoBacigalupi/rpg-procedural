@@ -75,6 +75,26 @@ describe("el ganado envejece, muere y pare (livestock-life)", () => {
     expect(alive.length).toBeGreaterThan(ids.length / 2);
   }, 300_000);
 
+  it("el buey del comienzo ya está en edad de tirar; con el motor anterior, no siempre (life-57)", () => {
+    const oxAges = (o: object) => {
+      const life = Life.create(7, content, { ...OPTS, ...o });
+      const t = life.world.truth;
+      return t
+        .ids(ANIMAL)
+        .map((id) => t.get(ANIMAL, id))
+        .filter((a) => a?.species === "ox")
+        .map((a) => (life.now - (a?.bornAt ?? 0)) / (365 * DAY));
+    };
+    const now = oxAges({});
+    expect(now.length).toBeGreaterThan(0);
+    for (const age of now) {
+      expect(age).toBeGreaterThanOrEqual(3);
+      expect(age).toBeLessThanOrEqual(10);
+    }
+    // Seed 7 con el motor anterior trae los dos bueyes por debajo de los 2 años.
+    expect(oxAges({ legacyLivestockHerdAges: true }).every((age) => age < 2)).toBe(true);
+  }, 300_000);
+
   it("el animal viejo muere con evento causado por su edad y deja de estar", () => {
     const life = Life.create(7, content, OPTS);
     const w = life.world;

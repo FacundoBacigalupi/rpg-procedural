@@ -161,6 +161,11 @@ export const LivestockDef = z.strictObject({
   count: z.number().int().min(1),
   /** Desde cuántos miembros lo tiene un hogar (el buey, en las casas grandes). */
   minMembers: z.number().int().min(1).optional(),
+  /**
+   * Entre qué edades (años) están los que hay en la casa al empezar (livestock-herd-ages: el buey de
+   * la casa ya tira); sin esto, entre 0 y las tres quintas partes de su vida.
+   */
+  herdAgeYears: z.tuple([z.number().min(0), z.number().min(0)]).optional(),
   /** Qué parte son hembras (las gallinas: casi todas). */
   femaleShare: z.number().min(0).max(1),
   /** Cómo se reproduce (livestock-life); sin esto, no pare. */
@@ -211,6 +216,8 @@ export interface SeedLivestockInput {
    * la edad se cuenta desde que se levantó la casa y en una casa vieja mueren de viejos al empezar.
    */
   readonly now?: Tick;
+  /** Motores anteriores a `life-57`: ignora `herdAgeYears` (todos entre 0 y 0,6 de su vida). */
+  readonly legacyHerdAges?: boolean;
 }
 
 /** Siembra el ganado de cada casa viva del asentamiento. Devuelve cuántos animales creó. */
@@ -251,8 +258,13 @@ export function seedLivestock(
         const animal: AnimalId = ids.next("animal");
         const r = root.fork("living", "animal", animal).stream();
         const sex: Sex = r.float() < s.femaleShare ? "female" : "male";
-        // Llegan jóvenes o adultos: hasta las tres quintas partes de su vida.
-        const age = Math.floor(r.float() * 0.6 * s.lifespanYears * input.yearTicks);
+        // Llegan jóvenes o adultos: hasta las tres quintas partes de su vida, o en las edades de su
+        // función (`herdAgeYears`); la misma tirada en los dos casos.
+        const [lo, hi] =
+          s.herdAgeYears !== undefined && input.legacyHerdAges !== true
+            ? s.herdAgeYears
+            : [0, 0.6 * s.lifespanYears];
+        const age = Math.floor((lo + r.float() * Math.max(0, hi - lo)) * input.yearTicks);
         truth.set(ENTITY, animal, { id: animal, originEventId: event, createdAt: at });
         truth.set(ANIMAL, animal, {
           species: s.id,
