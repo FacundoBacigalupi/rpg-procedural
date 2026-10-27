@@ -6,6 +6,7 @@ import {
   EATEN,
   EXCRETED,
   EXCRETED_FRACTION,
+  FED_SINK,
   FIELD_MANURE,
   MANURE_QUALITY,
   MANURE_QUALITY_MAX,
@@ -93,6 +94,28 @@ describe("abono de los campos (fieldManure)", () => {
     expect(a.world.ledger.audit()).toEqual([]);
     expect(a.hash().total).not.toBe(go({ fieldManure: true }).hash().total);
   });
+
+  it("livestockManure: lo que come el ganado de la casa también deja abono (livestock-yield-manure)", () => {
+    const herd = { villageLivestock: true, livestockFeed: true } as const;
+    const go = (o: { fieldManure?: boolean; livestockManure?: boolean }) => {
+      const l = Life.create(3, content, { ...herd, ...o });
+      l.advanceTo(l.now + DAY * 20);
+      return l;
+    };
+    // Sin fieldManure se ignora.
+    expect(go({ livestockManure: true }).hash().total).toBe(go({}).hash().total);
+    const on = go({ fieldManure: true, livestockManure: true });
+    const plain = go({ fieldManure: true });
+    expect(on.world.ledger.audit()).toEqual([]);
+    const total = (l: Life, sink: string) =>
+      l.world.ledger.holdings(externalAccount(sink)).reduce((n, h) => n + h.amount, 0);
+    const made = (l: Life) => -l.world.ledger.balance(externalAccount(EXCRETED), MANURE_UNIT);
+    expect(total(on, FED_SINK)).toBeGreaterThan(0);
+    expect(made(on)).toBeGreaterThan(made(plain));
+    expect(made(on)).toBeLessThanOrEqual(
+      (total(on, EATEN) + total(on, FED_SINK)) * EXCRETED_FRACTION,
+    );
+  }, 300_000);
 
   it("el abono sube la fertilidad del campo frente a no abonar", () => {
     const on = run(true, 120);

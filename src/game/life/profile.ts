@@ -142,6 +142,8 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["livestockYield", "villageLivestock"],
     ["livestockSeason", "livestockYield"],
     ["livestockFeed", "villageLivestock"],
+    ["livestockManure", "livestockFeed"],
+    ["livestockManure", "fieldManure"],
     ["nutritionNeeds", "eatenNutrition"],
     ["lendBorrowed", "borrowCraving"],
     ["repayDoses", "consumables"],

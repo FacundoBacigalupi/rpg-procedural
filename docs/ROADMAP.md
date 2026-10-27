@@ -16,7 +16,8 @@ de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto 
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`) y
 envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`), y
 las gallinas ponen huevos, menos con días cortos (`livestock-yield-eggs`, `-season`), y el
-ganado come de la comida del hogar y pasa hambre si falta (`livestock-feed-household`). Sigue
+ganado come de la comida del hogar y pasa hambre si falta (`livestock-feed-household`), dejando
+abono para el campo (`livestock-yield-manure`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
 adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
 (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
@@ -417,7 +418,7 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - [x] (livestock-yield-season, 2026-10-27) Días cortos: `daylightHours`/`daylightFloor` en el `yields` (gallina: todo desde 14 h de luz, 15 % bajo 9 h, lineal entre medio; sin calibrar), `daylightFactor` puro y `LivestockYieldOptions.daylightHours` (desde `sunAt` en el observador de la aldea: latitud, inclinación del eje y día del año). Opt-in `LifeOptions.livestockSeason` (con `livestockYield`), en `FULL_PROFILE`. Hecho.
     - [ ] (livestock-yield-feed) Que pongan menos si comen poco y con frío: espera a `livestock-feed` (comida) y a la temperatura del día (weather).
     - [ ] (livestock-yield-draft) Tiro para arar: el buey como capacidad de trabajo que rinde más el campo (economy, cosecha).
-    - [ ] (livestock-yield-manure) Abono al suelo (planet-gen §9): lo que el ganado deja en el patio y el corral va al campo, como `fieldManure`.
+    - [x] (livestock-yield-manure, 2026-10-27) Abono: con `livestockManure` (requiere `fieldManure` y `livestockFeed`; no entra en FULL_PROFILE, como `fieldManure`), `life.soil` suma lo acumulado en el sumidero `fed` (lo que comió el ganado de la casa) a lo comido por la gente: la misma `EXCRETED_FRACTION` sale como desecho a la aldea y de ahí al campo, y con `fieldManureDiet` entra a la calidad. Apagado, hash igual. Lo que deja pastando por su cuenta espera a `livestock-feed-pasture`. Hecho.
     - [ ] (livestock-yield-milk) Leche: espera especies lecheras (vaca, cabra, oveja) en `content/livestock`, por cultura.
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.

@@ -18,6 +18,7 @@ import {
   ENTITY,
   EXCRETED,
   EXCRETED_FRACTION,
+  FED_SINK,
   FIELD_MANURE,
   fieldYield,
   HARVEST,
@@ -61,6 +62,11 @@ export interface SoilOptions {
      * calidad del abono sale de la dieta acumulada en `eaten`, no de `MANURE_QUALITY`.
      */
     readonly proteinOf?: ReadonlyMap<string, number>;
+    /**
+     * Opt-in (`livestockManure`, livestock-yield-manure): lo que comió el ganado de la casa
+     * (sumidero `FED_SINK`) también deja desecho, con la misma fracción que lo comido por la gente.
+     */
+    readonly livestock?: boolean;
   };
 }
 
@@ -124,9 +130,10 @@ export function soilProcess(o: SoilOptions): ProcessDef {
       if (o.manure && ctx.ledger && first !== undefined) {
         const village = holderAccount(id as unknown as HolderRef);
         const pile = ctx.ledger.balance(village, MANURE_UNIT);
-        const eaten = ctx.ledger
-          .holdings(externalAccount(EATEN))
-          .reduce((n, h) => n + Math.max(0, h.amount), 0);
+        const ledger = ctx.ledger;
+        const sinks = [EATEN, ...(o.manure.livestock === true ? [FED_SINK] : [])];
+        const consumed = sinks.flatMap((s) => ledger.holdings(externalAccount(s)));
+        const eaten = consumed.reduce((n, h) => n + Math.max(0, h.amount), 0);
         const made = -ctx.ledger.balance(externalAccount(EXCRETED), MANURE_UNIT);
         const fresh = Math.max(0, Math.floor(eaten * EXCRETED_FRACTION) - made);
         const transfers = [
@@ -149,9 +156,10 @@ export function soilProcess(o: SoilOptions): ProcessDef {
           const proteinOf = o.manure.proteinOf;
           if (proteinOf) {
             manureQuality = manureQualityOf(
-              ctx.ledger
-                .holdings(externalAccount(EATEN))
-                .map((h) => ({ grams: h.amount, proteinPerGram: proteinOf.get(h.unit) ?? 0 })),
+              consumed.map((h) => ({
+                grams: h.amount,
+                proteinPerGram: proteinOf.get(h.unit) ?? 0,
+              })),
             );
           }
           manureEvents = [
