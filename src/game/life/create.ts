@@ -68,6 +68,7 @@ import {
   type Household,
   houseKey,
   initialCell,
+  LAID_SOURCE,
   LANGUAGES,
   type Language,
   LIFE_STAGES,
@@ -152,6 +153,7 @@ import {
   WORKSHOP,
   WORKSHOP_WASTE,
   WorldTruth,
+  yieldUnits,
 } from "../../sim/index.ts";
 import {
   BIOMES,
@@ -622,6 +624,8 @@ export interface LifeOptions {
   readonly villageLivestock?: boolean;
   /** Opt-in (livestock-life, con `villageLivestock`): el ganado envejece, muere y pare (`LifeParts.livestockLife`); apagado, no cambia. */
   readonly livestockLife?: boolean;
+  /** Opt-in (livestock-yield, con `villageLivestock`): las gallinas ponen huevos para el hogar (`LifeParts.livestockYield`); apagado, no dan nada. */
+  readonly livestockYield?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
   readonly villageShrine?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
@@ -1424,6 +1428,7 @@ export function ledgerConfigOf(
   wildFirewood = false,
   hearths = false,
   livestockCarcass = false,
+  livestockYield = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1436,6 +1441,8 @@ export function ledgerConfigOf(
   ];
   // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
   const carcass = livestockCarcass ? carcassUnits(content.all(LIVESTOCK)) : [];
+  // Lo que pone el ganado (livestock-yield): huevos, ya comida.
+  const laid = livestockYield ? yieldUnits(content.all(LIVESTOCK)) : [];
   return {
     externals: {
       [COOKED]: units,
@@ -1474,6 +1481,7 @@ export function ledgerConfigOf(
       ...(hearths ? { [BURNED_SINK]: [FIREWOOD_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
       ...(carcass.length > 0 ? { [CARCASS_SOURCE]: carcass } : {}),
+      ...(laid.length > 0 ? { [LAID_SOURCE]: laid } : {}),
     },
   };
 }
@@ -1633,6 +1641,7 @@ export function createLife(
       options.wildHarvest === true && options.wildFirewood === true,
       options.hearths === true,
       options.villageLivestock === true && options.livestockLife === true,
+      options.villageLivestock === true && options.livestockYield === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -2001,6 +2010,9 @@ export function createLife(
       ...optInParts(options, site.terrain),
       ...(options.villageLivestock && options.livestockLife
         ? { livestockLife: content.all(LIVESTOCK) }
+        : {}),
+      ...(options.villageLivestock && options.livestockYield
+        ? { livestockYield: content.all(LIVESTOCK) }
         : {}),
       ...mortalTechParts(options, content),
       ...conditionLabelParts(options, content),

@@ -91,6 +91,7 @@ export const FULL_PROFILE = {
   squareBench: true,
   villageLivestock: true,
   livestockLife: true,
+  livestockYield: true,
   villageShrine: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
   errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
@@ -136,6 +137,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["borrowCraving", "moldHintsFromCatalog"],
     ["gradualGrowth", "adultGrowth"],
     ["livestockLife", "villageLivestock"],
+    ["livestockYield", "villageLivestock"],
     ["nutritionNeeds", "eatenNutrition"],
     ["lendBorrowed", "borrowCraving"],
     ["repayDoses", "consumables"],

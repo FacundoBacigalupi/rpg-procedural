@@ -39,6 +39,7 @@ import {
   LOCATION,
   type LocalMap,
   livestockLifeProcess,
+  livestockYieldProcess,
   localHour,
   type MaterialDef,
   type MentalLabelDef,
@@ -396,6 +397,8 @@ export interface LifeWorld {
   readonly adultGrowth?: boolean;
   /** Opt-in (livestock-life): las especies del ganado, que envejece, muere y pare; sin esto, el ganado no cambia. */
   readonly livestockLife?: readonly LivestockDef[];
+  /** Opt-in (livestock-yield): las especies del ganado, que da lo suyo en vida (huevos); sin esto, nada. */
+  readonly livestockYield?: readonly LivestockDef[];
   /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
   readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
@@ -1963,6 +1966,9 @@ export function lifeWorld(
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
         ...(parts.livestockLife !== undefined
           ? [livestockLifeProcess({ species: parts.livestockLife, year: parts.clock.year })]
+          : []),
+        ...(parts.livestockYield !== undefined
+          ? [livestockYieldProcess({ species: parts.livestockYield, year: parts.clock.year })]
           : []),
         ...(parts.adultGrowth === true
           ? [

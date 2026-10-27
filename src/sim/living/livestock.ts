@@ -9,6 +9,10 @@
 // (livestock-feed), el tope de animales por casa hace las veces de lo que el patio puede mantener.
 // El cuerpo muerto queda para el hogar dueño como carne y piel cruda (livestock-carcass,
 // `carcassYield`): lotes del ledger que entran desde `CARCASS_SOURCE` con el evento de la muerte.
+//
+// Lo que dan en vida (livestock-yield, `livestockYieldProcess`): por ahora los huevos de las
+// gallinas, unidades enteras que cada hembra adulta pone con una chance diaria y entran a la comida
+// del hogar desde `LAID_SOURCE`. Sin estaciones ni comida todavía: ponen igual en invierno.
 
 import {
   type AnimalId,
@@ -66,6 +70,21 @@ export const BreedingDef = z.strictObject({
 });
 export type BreedingDef = z.infer<typeof BreedingDef>;
 
+/** Algo que el animal da en vida (livestock-yield): los huevos de la gallina. */
+export const YieldDef = z.strictObject({
+  /** El bien (`content/goods`). */
+  good: contentId,
+  /** Gramos de una unidad (un huevo). */
+  unitGrams: z.number().int().min(1),
+  /** Cuántas unidades por año da un animal que puede (sin calibrar). */
+  perYear: z.number().positive(),
+  /** Qué sexo lo da (las gallinas, no el gallo); sin esto, ambos. */
+  sex: z.enum(["female", "male"]).optional(),
+  /** Desde qué edad (años). */
+  minAgeYears: z.number().min(0).default(0),
+});
+export type YieldDef = z.infer<typeof YieldDef>;
+
 /** Qué deja el cuerpo muerto (livestock-carcass); sin esto no deja nada que se guarde. */
 export const CarcassDef = z.strictObject({
   /** El bien de la carne (`content/goods`) y qué parte de la masa viva es carne. */
@@ -96,6 +115,8 @@ export const LivestockDef = z.strictObject({
   breeding: BreedingDef.optional(),
   /** Qué deja el cuerpo muerto (livestock-carcass). */
   carcass: CarcassDef.optional(),
+  /** Lo que da en vida (livestock-yield). */
+  yields: z.array(YieldDef).optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);
@@ -362,6 +383,103 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       }
       if (events.length === 0) return {};
       return postings.length > 0 ? { events, changes, postings } : { events, changes };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Lo que dan en vida (livestock-yield)
+
+export const LIVESTOCK_YIELD_PROCESS = "living.livestock_yield";
+/** De donde entra al ledger lo que pone el ganado (lo que comen todavía no está en el ledger). */
+export const LAID_SOURCE = "laid";
+
+/** Las unidades del ledger que puede dar el ganado en vida (para declarar `LAID_SOURCE`). */
+export function yieldUnits(species: readonly LivestockDef[]): LedgerUnit[] {
+  const goods = species.flatMap((s) => (s.yields ?? []).map((y) => y.good));
+  return [...new Set(goods)].sort().map((g) => ledgerUnit(`good:${g}`));
+}
+
+export interface LivestockYieldOptions {
+  readonly species: readonly LivestockDef[];
+  /** Duración del año (ticks). */
+  readonly year: Duration;
+}
+
+/**
+ * Cada día: cada animal vivo que da algo (la gallina adulta, huevos) tiene una chance de dar una
+ * unidad (`perYear` repartido en el año); lo de cada hogar y bien entra junto, en un evento
+ * `living.animal_yield` causado por los animales que dieron, a la cuenta del hogar dueño.
+ */
+export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
+  const byId = new Map(o.species.map((s) => [s.id, s]));
+  return {
+    id: LIVESTOCK_YIELD_PROCESS,
+    system: "living",
+    scope: "world",
+    cadence: { local: "day", scene: "day" },
+    representation: "individual",
+    phase: "settle",
+    reads: [ANIMAL.name, ENTITY.name],
+    writes: [],
+    scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
+    run(ctx) {
+      const step = ctx.window > 0 ? ctx.window : 1;
+      // hogar|bien -> animales que dieron hoy y gramos.
+      const got = new Map<
+        string,
+        { owner: HouseholdId; home: BuildingId; good: string; from: AnimalId[]; grams: number }
+      >();
+      for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
+        const a = ctx.truth.get(ANIMAL, id);
+        if (!a || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+        const yields = byId.get(a.species)?.yields ?? [];
+        const age = (ctx.now - a.bornAt) / o.year;
+        yields.forEach((y, i) => {
+          if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
+          const chance = Math.min(1, (y.perYear * step) / o.year);
+          if (ctx.rng.fork("yield", id, i).float() >= chance) return;
+          const key = `${a.owner}|${y.good}`;
+          const g = got.get(key) ?? {
+            owner: a.owner,
+            home: a.home,
+            good: y.good,
+            from: [],
+            grams: 0,
+          };
+          g.from.push(id);
+          g.grams += y.unitGrams;
+          got.set(key, g);
+        });
+      }
+      if (got.size === 0) return {};
+      const events: EventDraft[] = [];
+      const postings: PostingDraft[] = [];
+      for (const key of [...got.keys()].sort()) {
+        const g = got.get(key);
+        if (!g) continue;
+        const event = draftEvent(events.length);
+        events.push({
+          kind: "living.animal_yield",
+          actors: [],
+          place: { kind: "building", building: g.home },
+          data: { owner: g.owner, good: g.good, grams: g.grams, from: g.from },
+          causes: g.from.map((id) => ({ kind: "state" as const, entity: id, key: "yield" })),
+          emissions: null,
+        });
+        postings.push({
+          event,
+          transfers: [
+            {
+              unit: ledgerUnit(`good:${g.good}`),
+              from: externalAccount(LAID_SOURCE),
+              to: holderAccount(g.owner),
+              amount: g.grams,
+            },
+          ],
+        });
+      }
+      return { events, postings };
     },
   };
 }

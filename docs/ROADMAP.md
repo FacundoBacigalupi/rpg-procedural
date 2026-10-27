@@ -14,7 +14,8 @@ herramientas nuevas, las usadas se compran y venden entre personas y los NPC cui
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`) y
-envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`). Sigue
+envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`), y
+las gallinas ponen huevos (`livestock-yield-eggs`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
 adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
 (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
@@ -407,7 +408,12 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [x] (livestock-life, 2026-10-26) Envejecen, mueren y paren: `livestockLifeProcess` (`sim/living/livestock.ts`, diario, fase settle) mata por edad (mortalidad anual 0,03 + 0,5·(edad/vida)^5, sin calibrar; evento `living.animal_died` causado por la edad, `endEntity` y sin `LOCATION`) y hace parir a la hembra madura con macho maduro a mano (`breeding` en `content/livestock`: gallina con gallo de la casa, perra con perro de la aldea, el buey no pare; evento `living.animal_born` causado por la madre, crías nacidas de ese evento con su dueño, casa y lugar), con un tope por casa y especie (`maxPerHousehold`) mientras no coman. Opt-in `LifeOptions.livestockLife` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
   - [x] (livestock-carcass, 2026-10-27) El cuerpo muerto como carne y piel: `carcass` en `content/livestock` (gallina: pollo; perro: piel; buey: carne de vaca y piel), `carcassYield` (masa adulta por la parte de cada bien, menos en las crías) y un asiento desde `CARCASS_SOURCE` al hogar dueño con el evento de la muerte; bien nuevo `hide` (piel cruda, se pudre en 20 días). Va con `livestockLife`. La carne entra a la comida del hogar como cualquier otra. Sin bump (BASE_HASH intacto). Hecho.
   - [ ] (livestock-slaughter) La matanza deliberada como acto (verbo con el animal como blanco, del dueño o robado) y curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`).
-  - [ ] (livestock-yield) Lo que dan: huevos, leche, tiro para arar, abono al suelo (planet-gen §9).
+  - (livestock-yield) Lo que dan, partido (2026-10-27):
+    - [x] (livestock-yield-eggs, 2026-10-27) Huevos: `yields` en `content/livestock` (gallina adulta: 120 huevos de 50 g por año, sin calibrar), `livestockYieldProcess` diario: cada animal que puede da una unidad con chance `perYear`/año; lo de cada hogar entra junto en un evento `living.animal_yield` causado por los animales, desde `LAID_SOURCE` a la cuenta del hogar (se come y se pudre como cualquier comida). Opt-in `LifeOptions.livestockYield` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
+    - [ ] (livestock-yield-season) Que pongan menos con días cortos y frío (weather) y menos si comen poco (`livestock-feed`).
+    - [ ] (livestock-yield-draft) Tiro para arar: el buey como capacidad de trabajo que rinde más el campo (economy, cosecha).
+    - [ ] (livestock-yield-manure) Abono al suelo (planet-gen §9): lo que el ganado deja en el patio y el corral va al campo, como `fieldManure`.
+    - [ ] (livestock-yield-milk) Leche: espera especies lecheras (vaca, cabra, oveja) en `content/livestock`, por cultura.
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.
   - [ ] (livestock-zoonosis) Zoonosis y epizootias: patógenos que corren en el ganado y saltan a la gente (body-health §6), y en las poblaciones del monte.
