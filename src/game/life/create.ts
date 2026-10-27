@@ -32,6 +32,7 @@ import {
   assignStatuses,
   BODY_PLANS,
   BUILDING_TYPES,
+  CARCASS_SOURCE,
   type ChosenTaste,
   CONCEPTS,
   COOKED,
@@ -39,6 +40,7 @@ import {
   CULTURE_TRAITS,
   CULTURES,
   type CultureDef,
+  carcassUnits,
   DEBRIS_SINK,
   DEMOGRAPHY,
   DIETS,
@@ -1421,6 +1423,7 @@ export function ledgerConfigOf(
   wildHunt = false,
   wildFirewood = false,
   hearths = false,
+  livestockCarcass = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1431,6 +1434,8 @@ export function ledgerConfigOf(
         .map((g) => ledgerUnit(`good:${g}`)),
     ),
   ];
+  // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
+  const carcass = livestockCarcass ? carcassUnits(content.all(LIVESTOCK)) : [];
   return {
     externals: {
       [COOKED]: units,
@@ -1439,6 +1444,7 @@ export function ledgerConfigOf(
       [ROTTED]: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),
+        ...carcass.filter((u) => !units.includes(u) && !tradeUnits.includes(u)),
         // El cuero del zapatero también se echa a perder (lento) en su bolsillo.
         ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
           ? [LEATHER_UNIT]
@@ -1467,6 +1473,7 @@ export function ledgerConfigOf(
       ...(wildHunt ? { [HUNT_SOURCE]: [GAME_UNIT] } : {}),
       ...(hearths ? { [BURNED_SINK]: [FIREWOOD_UNIT] } : {}),
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
+      ...(carcass.length > 0 ? { [CARCASS_SOURCE]: carcass } : {}),
     },
   };
 }
@@ -1625,6 +1632,7 @@ export function createLife(
       options.wildHunt === true,
       options.wildHarvest === true && options.wildFirewood === true,
       options.hearths === true,
+      options.villageLivestock === true && options.livestockLife === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).

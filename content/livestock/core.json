@@ -13,7 +13,8 @@
       "litter": [3, 8],
       "mate": "household",
       "maxPerHousehold": 10
-    }
+    },
+    "carcass": { "meat": "chicken", "meatShare": 0.6 }
   },
   {
     "id": "dog",
@@ -30,7 +31,8 @@
       "litter": [2, 6],
       "mate": "settlement",
       "maxPerHousehold": 3
-    }
+    },
+    "carcass": { "hide": "hide", "hideShare": 0.08 }
   },
   {
     "id": "ox",
@@ -40,6 +42,7 @@
     "lifespanYears": 18,
     "count": 1,
     "minMembers": 5,
-    "femaleShare": 0
+    "femaleShare": 0,
+    "carcass": { "meat": "beef", "meatShare": 0.45, "hide": "hide", "hideShare": 0.07 }
   }
 ]

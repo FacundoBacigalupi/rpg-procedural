@@ -1,11 +1,20 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AnimalId, type ContentSource, loadContent } from "../../core/index.ts";
+import {
+  type AnimalId,
+  type ContentSource,
+  externalAccount,
+  holderAccount,
+  loadContent,
+} from "../../core/index.ts";
 import {
   ANIMAL,
+  CARCASS_SOURCE,
+  carcassYield,
   checkInvariants,
   ENTITY,
+  LIVESTOCK,
   LOCATION,
   stepChance,
   yearlyMortality,
@@ -65,6 +74,31 @@ describe("el ganado envejece, muere y pare (livestock-life)", () => {
     expect(w.truth.get(LOCATION, old)).toBeUndefined();
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(FULL_PROFILE).toMatchObject({ livestockLife: true });
+  }, 300_000);
+
+  it("el buey muerto deja carne y piel en su casa, con el evento de la muerte (livestock-carcass)", () => {
+    const life = Life.create(7, content, OPTS);
+    const w = life.world;
+    const ox = [...w.truth.ids(ANIMAL)]
+      .sort()
+      .find((id) => w.truth.get(ANIMAL, id)?.species === "ox") as AnimalId | undefined;
+    const row = ox === undefined ? undefined : w.truth.get(ANIMAL, ox);
+    if (ox === undefined || row === undefined) throw new Error("sin buey");
+    w.truth.set(ANIMAL, ox, { ...row, bornAt: life.now - 100 * 365 * DAY });
+    life.advanceTo(life.now + 2 * DAY);
+    const end = w.truth.get(ENTITY, ox)?.endEventId;
+    const got = w.ledger.journal().filter((j) => j.eventId === end);
+    const ofSource = got.filter((j) => j.from === externalAccount(CARCASS_SOURCE));
+    expect(ofSource.map((j) => [j.unit, j.to, j.amount])).toEqual([
+      ["good:beef", holderAccount(row.owner), 202_500],
+      ["good:hide", holderAccount(row.owner), 31_500],
+    ]);
+    expect(w.ledger.audit()).toEqual([]);
+    const ox0 = content.all(LIVESTOCK).find((s) => s.id === "ox");
+    const hen = content.all(LIVESTOCK).find((s) => s.id === "hen");
+    if (!ox0 || !hen) throw new Error("sin especies");
+    expect(carcassYield(hen, 0.05)).toEqual([{ good: "chicken", grams: 120 }]);
+    expect(carcassYield({ ...ox0, carcass: undefined }, 10)).toEqual([]);
   }, 300_000);
 
   it("la gallina con gallo pare una camada con origen en ella, en su casa y del mismo dueño", () => {

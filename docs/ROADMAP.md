@@ -14,7 +14,7 @@ herramientas nuevas, las usadas se compran y venden entre personas y los NPC cui
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`) y
-envejece, muere y pare (`livestock-life`; sigue `livestock-carcass`). Sigue
+envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
 adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
 (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
@@ -160,7 +160,7 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - (npc-b2b3b2) Equipo del viajero y salud al forzar, partido (2026-10-11):
       - [ ] (npc-b2b3b2b3) Oficio de calzado entre los NPC, partido (2026-10-15):
         - [ ] (npc-b2b3b2b3b) Que el cuero salga de pieles reales, partido (2026-10-15):
-          - [ ] (npc-b2b3b2b3b2) Que la piel salga de animales reales (matanza, caza, ganado de la aldea) y no de `hides`, y que se curta. **Bloqueado** por la caza contra `harvestStock` y el ganado como bien vivo (Fase 3, líneas «Caza, pesca, recolección y tala…» y «Ganado como bien vivo…»); hasta entonces `hides` sigue como fuente externa.
+          - [ ] (npc-b2b3b2b3b2) Que la piel salga de animales reales (matanza, caza, ganado de la aldea) y no de `hides`, y que se curta. **Bloqueado** por la caza contra `harvestStock` y el curtido (Fase 3, «Caza, pesca, recolección y tala…» y `livestock-slaughter`; el ganado muerto ya deja piel cruda, `livestock-carcass`); hasta entonces `hides` sigue como fuente externa.
         - [ ] (npc-b2b3b2b3c) Arreglar el calzado de camino (posada, posta) con el zapatero del lugar o un remendón ambulante, además de en la aldea. Partido (2026-10-15):
           - [ ] (npc-b2b3b2b3c2) Que el arreglo ocurra solo en paradas reales (posada, posta de `Journey`/`transit`) y no en cualquier día de camino, y que el zapatero del lugar (si el asentamiento tiene) lo haga con su oficio y cuero en vez del remendón de fuera. Partido (2026-10-15): hoy el mundo no tiene posadas ni postas (los `PLACE` son aldea, agua, campos y bosque; no hay caminos con nodos), así que primero la parada es la noche que el viajero duerme:
           - [ ] (npc-b2b3b2b3c2b) Posadas y postas como lugares reales con causa (fundadas por el uso del camino, [travel.md](systems/travel.md) §4) y que la parada sea una de ellas, no cualquier noche.
@@ -405,7 +405,8 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [x] (livestock-herd) El ganado de cada casa como entidades `animal:n` (tipo nuevo de id, ARCHITECTURE §4.1): `content/livestock` (gallina, perro en casas de 3+, buey en casas de 5+; masa, vida, sexo), tabla `ANIMAL` {especie, sexo, nacimiento, hogar dueño, casa}, `seedLivestock` (`sim/living/livestock.ts`) con un evento `settlement.livestock_brought` por hogar causado por la construcción de la casa; viven en el patio (el hex abierto de la casa). Opt-in `LifeOptions.villageLivestock`, en `FULL_PROFILE` (vidas nuevas). Sin bump. Hecho.
   - [ ] (livestock-feed) Comen: forraje del campo o del granero del hogar (lotes de economy con conservación), hambre y flaqueza si falta; competencia con la fauna por el pasto.
   - [x] (livestock-life, 2026-10-26) Envejecen, mueren y paren: `livestockLifeProcess` (`sim/living/livestock.ts`, diario, fase settle) mata por edad (mortalidad anual 0,03 + 0,5·(edad/vida)^5, sin calibrar; evento `living.animal_died` causado por la edad, `endEntity` y sin `LOCATION`) y hace parir a la hembra madura con macho maduro a mano (`breeding` en `content/livestock`: gallina con gallo de la casa, perra con perro de la aldea, el buey no pare; evento `living.animal_born` causado por la madre, crías nacidas de ese evento con su dueño, casa y lugar), con un tope por casa y especie (`maxPerHousehold`) mientras no coman. Opt-in `LifeOptions.livestockLife` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
-  - [ ] (livestock-carcass) El cuerpo muerto como carne y cuero (lotes de economy con origen en la muerte, para la casa dueña): desbloquea `npc-b2b3b2b3b2`; la matanza deliberada como acto.
+  - [x] (livestock-carcass, 2026-10-27) El cuerpo muerto como carne y piel: `carcass` en `content/livestock` (gallina: pollo; perro: piel; buey: carne de vaca y piel), `carcassYield` (masa adulta por la parte de cada bien, menos en las crías) y un asiento desde `CARCASS_SOURCE` al hogar dueño con el evento de la muerte; bien nuevo `hide` (piel cruda, se pudre en 20 días). Va con `livestockLife`. La carne entra a la comida del hogar como cualquier otra. Sin bump (BASE_HASH intacto). Hecho.
+  - [ ] (livestock-slaughter) La matanza deliberada como acto (verbo con el animal como blanco, del dueño o robado) y curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`).
   - [ ] (livestock-yield) Lo que dan: huevos, leche, tiro para arar, abono al suelo (planet-gen §9).
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.

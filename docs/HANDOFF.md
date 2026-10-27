@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-carcass (2026-10-27, rama `feat/livestock-carcass`):** `sim/living/livestock.ts`: `CarcassDef` opcional, `carcassYield`, `CARCASS_SOURCE`/`carcassUnits`; la muerte del proceso de `livestock-life` asienta carne y piel al hogar dueño (`holderAccount(owner)`, donde come y se pudre). `ledgerConfigOf` toma un último parámetro `livestockCarcass` (declara la fuente y suma la piel a `ROTTED`); la migración de ledgers viejos no lo pasa (solo vidas nuevas). Bien `hide` en `content/goods/core.json`. Sigue `livestock-slaughter`.
+
 **livestock-life (2026-10-26, rama `feat/livestock-life`):** `sim/living/livestock.ts`: `BreedingDef` opcional en `LivestockDef`, `yearlyMortality`/`stepChance` puras y `livestockLifeProcess` (muertes por edad y partos con tope por casa; rng por animal). Cableado: `LifeOptions.livestockLife` → `LifeParts.livestockLife` (las especies, desde `create.ts` al lado de `optInParts`), `FULL_PROFILE` (requiere `villageLivestock`) y `ScenarioLife`. Test `livestock-life.test.ts`. Sigue `livestock-carcass` (carne y cuero).
 
 **shrine-move (2026-10-26, rama `feat/shrine-move`):** `known.ts`: `COMMUNAL_NAMES` por tipo de edificio (granary, shrine) en lugar del granero fijo en `knownSpaces`. Test `shrine-move.test.ts` (nombrarlo, ir, quedar adentro). Sin tocar la sim ni el hash.

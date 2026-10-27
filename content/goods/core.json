@@ -61,6 +61,13 @@
     "halfLifeDays": 3000
   },
   {
+    "id": "hide",
+    "name": "piel cruda",
+    "form": "good",
+    "priceCopperPerKg": 4,
+    "halfLifeDays": 20
+  },
+  {
     "id": "leather",
     "name": "cuero curtido",
     "form": "good",
