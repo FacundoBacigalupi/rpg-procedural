@@ -259,6 +259,7 @@ interface Breed {                           // una raza: variante doméstica con
 - **Hecho (livestock-yield-manure, 2026-10-27):** lo que come el ganado de la casa deja desecho como lo de la gente, y va al campo como abono (opt-in, con `fieldManure`).
 - **Hecho (livestock-yield-feed, 2026-10-27):** las gallinas ponen menos con frío (media del día) y con hambre, hasta dejar de poner (opt-in).
 - **Hecho (livestock-yield-draft, 2026-10-27):** el buey adulto y comido tira del arado: la gente del hogar se reparte la ganancia en la hora de campo, y la cosecha cita al animal (opt-in). Lo que le cuesta al buey queda para `livestock-draft-cost`.
+- **Hecho (livestock-draft-cost, 2026-10-27):** los días de campo el buey en edad de tirar come la mitad más de la casa, y esa comida cita el tiro (opt-in). El cansancio queda para `livestock-draft-fatigue`.
 - **Hecho (livestock-herd-ages, 2026-10-27):** el ganado del comienzo tiene las edades de su función: el buey de la casa ya tira.
 - **Ganado como bien vivo.** Un buey es un lote de economy con cuerpo (body-health): come, envejece, enferma, pare, se roba (law: abigeato) y se hereda. En culturas pastoras es riqueza, dote y moneda (economy §2: bienes-moneda). Da tiro, leche, lana, abono para el suelo (planet-gen §9), carne y prestigio.
 - **Costos que vienen con el animal.** Las zoonosis (body-health §6: los rebaños densos crían patógenos que saltan a la gente), el sobrepastoreo que erosiona y desertifica (planet-gen §9), la competencia con la fauna salvaje por el pasto, los depredadores que bajan a los corrales.

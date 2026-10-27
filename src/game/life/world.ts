@@ -24,6 +24,7 @@ import {
   type DietDef,
   type DimensionDef,
   type DivinationMethodDef,
+  dayOf,
   type FoodDef,
   type GarmentDef,
   type GoodDef,
@@ -410,6 +411,8 @@ export interface LifeWorld {
   readonly livestockYieldFeed?: { readonly hunger: boolean };
   /** Opt-in (con `villageLivestock`): las especies que tiran del arado (livestock-yield-draft). */
   readonly livestockDraft?: readonly LivestockDef[];
+  /** Opt-in (livestock-draft-cost, con `livestockDraft` y `livestockFeed`): el buey come más los días de campo. */
+  readonly livestockDraftCost?: boolean;
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -1998,6 +2001,14 @@ export function lifeWorld(
                 ...parts.livestockFeed,
                 year: parts.clock.year,
                 day: parts.clock.day,
+                ...(parts.livestockDraftCost === true
+                  ? (() => {
+                      // Los días de campo son los de la estación de cosecha (la misma que la rutina).
+                      const season = harvestSeasonOf(parts.map, parts.clock, parts.seed);
+                      const offset = Math.round((parts.map.lonDeg / 360) * parts.clock.day);
+                      return { working: (t: number) => season(dayOf(parts.clock, t + offset)) > 0 };
+                    })()
+                  : {}),
               }),
             ]
           : []),

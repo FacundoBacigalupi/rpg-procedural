@@ -70,6 +70,12 @@
       "categories": ["cereal", "legume", "tuber", "vegetable"],
       "starveDays": 30
     },
-    "draft": { "fieldRate": 1.5, "workers": 1, "minAgeYears": 2, "hungerStop": 0.5 }
+    "draft": {
+      "fieldRate": 1.5,
+      "workers": 1,
+      "minAgeYears": 2,
+      "hungerStop": 0.5,
+      "workFeedFactor": 1.5
+    }
   }
 ]
