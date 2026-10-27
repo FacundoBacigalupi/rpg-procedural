@@ -35,8 +35,10 @@ import {
   type HouseholdToolDef,
   KNOWN_DEEDS,
   type LineageDef,
+  type LivestockDef,
   LOCATION,
   type LocalMap,
+  livestockLifeProcess,
   localHour,
   type MaterialDef,
   type MentalLabelDef,
@@ -392,6 +394,8 @@ export interface LifeWorld {
   readonly growthSequelae?: boolean;
   /** Opt-in: al cumplir 18 la masa del cuerpo se reconstruye con la talla final (genética y secuelas de hambre infantil); apagado por defecto: sin escrituras. */
   readonly adultGrowth?: boolean;
+  /** Opt-in (livestock-life): las especies del ganado, que envejece, muere y pare; sin esto, el ganado no cambia. */
+  readonly livestockLife?: readonly LivestockDef[];
   /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
   readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
@@ -1957,6 +1961,9 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
+        ...(parts.livestockLife !== undefined
+          ? [livestockLifeProcess({ species: parts.livestockLife, year: parts.clock.year })]
+          : []),
         ...(parts.adultGrowth === true
           ? [
               adultGrowthProcess({

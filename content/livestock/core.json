@@ -6,7 +6,14 @@
     "massKg": 2,
     "lifespanYears": 6,
     "count": 3,
-    "femaleShare": 0.85
+    "femaleShare": 0.85,
+    "breeding": {
+      "maturityYears": 0.5,
+      "littersPerYear": 1,
+      "litter": [3, 8],
+      "mate": "household",
+      "maxPerHousehold": 10
+    }
   },
   {
     "id": "dog",
@@ -16,7 +23,14 @@
     "lifespanYears": 12,
     "count": 1,
     "minMembers": 3,
-    "femaleShare": 0.5
+    "femaleShare": 0.5,
+    "breeding": {
+      "maturityYears": 1,
+      "littersPerYear": 1,
+      "litter": [2, 6],
+      "mate": "settlement",
+      "maxPerHousehold": 3
+    }
   },
   {
     "id": "ox",

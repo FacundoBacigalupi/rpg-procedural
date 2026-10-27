@@ -13,7 +13,8 @@ están cerradas, ya se afila con la piedra de la casa, el herrero de la aldea re
 herramientas nuevas, las usadas se compran y venden entre personas y los NPC cuidan la herramienta
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
-ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`). Sigue
+ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`) y
+envejece, muere y pare (`livestock-life`; sigue `livestock-carcass`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
 adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
 (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
@@ -403,7 +404,8 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
 - [ ] Ganado como bien vivo con cuerpo, dueño y zoonosis; epizootias en poblaciones; selección de rasgos y especiación por aislamiento ([living-world.md](systems/living-world.md) §8, §12). Partido el 2026-10-26 en:
   - [x] (livestock-herd) El ganado de cada casa como entidades `animal:n` (tipo nuevo de id, ARCHITECTURE §4.1): `content/livestock` (gallina, perro en casas de 3+, buey en casas de 5+; masa, vida, sexo), tabla `ANIMAL` {especie, sexo, nacimiento, hogar dueño, casa}, `seedLivestock` (`sim/living/livestock.ts`) con un evento `settlement.livestock_brought` por hogar causado por la construcción de la casa; viven en el patio (el hex abierto de la casa). Opt-in `LifeOptions.villageLivestock`, en `FULL_PROFILE` (vidas nuevas). Sin bump. Hecho.
   - [ ] (livestock-feed) Comen: forraje del campo o del granero del hogar (lotes de economy con conservación), hambre y flaqueza si falta; competencia con la fauna por el pasto.
-  - [ ] (livestock-life) Envejecen, mueren (evento con causa, el cuerpo como carne y cuero: desbloquea `npc-b2b3b2b3b2`) y paren (cría con origen en la madre).
+  - [x] (livestock-life, 2026-10-26) Envejecen, mueren y paren: `livestockLifeProcess` (`sim/living/livestock.ts`, diario, fase settle) mata por edad (mortalidad anual 0,03 + 0,5·(edad/vida)^5, sin calibrar; evento `living.animal_died` causado por la edad, `endEntity` y sin `LOCATION`) y hace parir a la hembra madura con macho maduro a mano (`breeding` en `content/livestock`: gallina con gallo de la casa, perra con perro de la aldea, el buey no pare; evento `living.animal_born` causado por la madre, crías nacidas de ese evento con su dueño, casa y lugar), con un tope por casa y especie (`maxPerHousehold`) mientras no coman. Opt-in `LifeOptions.livestockLife` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
+  - [ ] (livestock-carcass) El cuerpo muerto como carne y cuero (lotes de economy con origen en la muerte, para la casa dueña): desbloquea `npc-b2b3b2b3b2`; la matanza deliberada como acto.
   - [ ] (livestock-yield) Lo que dan: huevos, leche, tiro para arar, abono al suelo (planet-gen §9).
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.
