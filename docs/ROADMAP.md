@@ -15,7 +15,7 @@ de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto 
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`) y
 envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`), y
-las gallinas ponen huevos (`livestock-yield-eggs`). Sigue
+las gallinas ponen huevos, menos con días cortos (`livestock-yield-eggs`, `-season`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
 adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
 (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
@@ -410,7 +410,8 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] (livestock-slaughter) La matanza deliberada como acto (verbo con el animal como blanco, del dueño o robado) y curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`).
   - (livestock-yield) Lo que dan, partido (2026-10-27):
     - [x] (livestock-yield-eggs, 2026-10-27) Huevos: `yields` en `content/livestock` (gallina adulta: 120 huevos de 50 g por año, sin calibrar), `livestockYieldProcess` diario: cada animal que puede da una unidad con chance `perYear`/año; lo de cada hogar entra junto en un evento `living.animal_yield` causado por los animales, desde `LAID_SOURCE` a la cuenta del hogar (se come y se pudre como cualquier comida). Opt-in `LifeOptions.livestockYield` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
-    - [ ] (livestock-yield-season) Que pongan menos con días cortos y frío (weather) y menos si comen poco (`livestock-feed`).
+    - [x] (livestock-yield-season, 2026-10-27) Días cortos: `daylightHours`/`daylightFloor` en el `yields` (gallina: todo desde 14 h de luz, 15 % bajo 9 h, lineal entre medio; sin calibrar), `daylightFactor` puro y `LivestockYieldOptions.daylightHours` (desde `sunAt` en el observador de la aldea: latitud, inclinación del eje y día del año). Opt-in `LifeOptions.livestockSeason` (con `livestockYield`), en `FULL_PROFILE`. Hecho.
+    - [ ] (livestock-yield-feed) Que pongan menos si comen poco y con frío: espera a `livestock-feed` (comida) y a la temperatura del día (weather).
     - [ ] (livestock-yield-draft) Tiro para arar: el buey como capacidad de trabajo que rinde más el campo (economy, cosecha).
     - [ ] (livestock-yield-manure) Abono al suelo (planet-gen §9): lo que el ganado deja en el patio y el corral va al campo, como `fieldManure`.
     - [ ] (livestock-yield-milk) Leche: espera especies lecheras (vaca, cabra, oveja) en `content/livestock`, por cultura.

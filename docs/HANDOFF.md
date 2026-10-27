@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-yield-season (2026-10-27, rama `feat/livestock-season`):** `YieldDef.daylightHours`/`daylightFloor`, `daylightFactor` y la opción `daylightHours` de `livestockYieldProcess`; `world.ts` la arma con `sunAt(parts.clock, skyObserverOf(parts.map), t).dayFraction` si `LifeParts.livestockSeason`. Sin la opción el proceso no cambia (vidas con `livestockYield` sin `livestockSeason` siguen igual). Test en `livestock-yield.test.ts`.
+
 **livestock-yield-eggs (2026-10-27, rama `feat/livestock-eggs`):** `sim/living/livestock.ts`: `YieldDef`/`yields` opcional, `LAID_SOURCE`/`yieldUnits`, `livestockYieldProcess` (un evento por hogar y bien por día con causas en los animales). Cableado como `livestockLife`: `LifeOptions.livestockYield` → `LifeParts.livestockYield` (las especies), `ledgerConfigOf` último parámetro `livestockYield`, `FULL_PROFILE`, `ScenarioLife`. Test `livestock-yield.test.ts`. Quedan `livestock-yield-season`/`-draft`/`-manure`/`-milk`.
 
 **livestock-carcass (2026-10-27, rama `feat/livestock-carcass`):** `sim/living/livestock.ts`: `CarcassDef` opcional, `carcassYield`, `CARCASS_SOURCE`/`carcassUnits`; la muerte del proceso de `livestock-life` asienta carne y piel al hogar dueño (`holderAccount(owner)`, donde come y se pudre). `ledgerConfigOf` toma un último parámetro `livestockCarcass` (declara la fuente y suma la piel a `ROTTED`); la migración de ledgers viejos no lo pasa (solo vidas nuevas). Bien `hide` en `content/goods/core.json`. Sigue `livestock-slaughter`.
