@@ -191,6 +191,7 @@ import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
+import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
@@ -296,6 +297,8 @@ export interface ActOptions {
   readonly fieldWatering?: boolean;
   /** Opt-in (con `fieldWatering`, `npcFieldSowing`): y el rinde de la siembra de la temporada. */
   readonly fieldSowing?: boolean;
+  /** Opt-in (livestock-yield-draft): el buey del hogar en su turno sube la hora de campo del jugador. */
+  readonly draft?: DraftOptions;
   /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
@@ -647,6 +650,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       STANDING_BELIEFS.name,
       CREDIT.name,
       SOIL.name,
+      ...(o.draft ? DRAFT_READS : []),
       ENTITY.name,
       LOCATION.name,
       BUILDING.name,
@@ -1513,7 +1517,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const cropFactor = o.fieldWatering
     ? fieldCropFactor(truth, day, e.rainOf(day), o.fieldSowing ? e.cropStart(day) : undefined)
     : 1;
-  const harvestRate = HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth);
+  const draftRate = o.draft ? (draftFor(truth, me, ctx.now, o.draft)?.rate ?? 1) : 1;
+  const harvestRate =
+    HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth) * draftRate;
   // Claims de ítems: lo que el mundo permite (existe, al alcance, la toma es físicamente válida).
   const wantedItem = o.itemClaims ? itemArgOf(node) : undefined;
   const giveTo = parties["to"]?.id as EntityRef | undefined;

@@ -635,6 +635,8 @@ export interface LifeOptions {
   readonly livestockSeason?: boolean;
   /** Opt-in (livestock-yield-feed, con `livestockYield`): ponen menos con frío y, con `livestockFeed`, si pasan hambre. */
   readonly livestockYieldFeed?: boolean;
+  /** Opt-in (livestock-yield-draft, con `villageLivestock`): el buey del hogar tira del arado y la hora de campo de quien lo usa rinde más. */
+  readonly livestockDraft?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
   readonly livestockFeed?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
@@ -2033,6 +2035,9 @@ export function createLife(
       ...optInParts(options, site.terrain),
       ...(options.villageLivestock && options.livestockLife
         ? { livestockLife: content.all(LIVESTOCK) }
+        : {}),
+      ...(options.villageLivestock && options.livestockDraft
+        ? { livestockDraft: content.all(LIVESTOCK) }
         : {}),
       ...(options.villageLivestock && options.livestockYield
         ? {

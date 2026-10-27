@@ -80,6 +80,7 @@ import {
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
+import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import {
   fieldBoost,
@@ -209,6 +210,11 @@ export interface RoutineOptions {
    * sabe del campo (`PROCESS_KNOWLEDGE`, technology §4). Apagado: nada cambia.
    */
   readonly tech?: { readonly catalog: TechCatalog };
+  /**
+   * Opt-in (`LifeOptions.livestockDraft`, livestock-yield-draft): la hora de campo de quien tiene un
+   * buey del hogar en su turno (`draftFor`) rinde `fieldRate` veces y el evento cita al animal.
+   */
+  readonly draft?: DraftOptions;
   /** Opt-in: el personaje del jugador sin plan en curso sigue la rutina como un NPC (corridas sin jugador). */
   readonly idlePlayer?: boolean;
   /**
@@ -405,6 +411,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.firewood ? [HEARTH.name, PLACE.name] : []),
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
+      ...(o.draft ? DRAFT_READS : []),
     ],
     writes: [
       LOCATION.name,
@@ -653,11 +660,16 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
           }
         }
       }
+      const draft =
+        o.draft && atFields && there && !waters && !sows
+          ? draftFor(truth, me, ctx.now, o.draft)
+          : undefined;
       const grams =
         waters || sows
           ? 0
           : Math.round(
-              HARVEST_GRAMS_PER_HOUR *
+              (draft?.rate ?? 1) *
+                HARVEST_GRAMS_PER_HOUR *
                 season(day) *
                 boost *
                 sowYieldNow *
@@ -677,9 +689,15 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
             good: HARVEST_GOOD,
             grams,
             ...(toolStep?.tool !== undefined ? { tool: toolStep.tool } : {}),
+            ...(draft !== undefined ? { draft: draft.animals } : {}),
           },
           emissions: { sight: 0.3, sound: 0.1 },
-          causes: [{ kind: "state", entity: me, key: "routine" }],
+          causes: [
+            { kind: "state", entity: me, key: "routine" },
+            ...(draft !== undefined
+              ? draft.animals.map((a) => ({ kind: "state" as const, entity: a, key: "draft" }))
+              : []),
+          ],
         });
         postings.push({
           event: ev,

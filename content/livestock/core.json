@@ -68,6 +68,7 @@
       "gramsPerDay": 800,
       "categories": ["cereal", "legume", "tuber", "vegetable"],
       "starveDays": 30
-    }
+    },
+    "draft": { "fieldRate": 1.5, "workers": 1, "minAgeYears": 2, "hungerStop": 0.5 }
   }
 ]

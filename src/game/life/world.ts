@@ -117,6 +117,7 @@ import { debtorRepairProcess } from "./debtorrepair.ts";
 import { decideProcess } from "./decide.ts";
 import { DEEDS_PROCESS, deedsProcess } from "./deeds.ts";
 import { consultProcess, divinersProcess, retoldProcess, visitsProcess } from "./divine.ts";
+import { type DraftOptions, draftDefsOf } from "./draft.ts";
 import { ecologyProcess } from "./ecology.ts";
 import type { ErrandOptions } from "./errands.ts";
 import { exposureProcess, type PathogenSeed } from "./exposure.ts";
@@ -407,6 +408,8 @@ export interface LifeWorld {
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
   readonly livestockYieldFeed?: { readonly hunger: boolean };
+  /** Opt-in (con `villageLivestock`): las especies que tiran del arado (livestock-yield-draft). */
+  readonly livestockDraft?: readonly LivestockDef[];
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -948,6 +951,14 @@ export function lifeWorld(
     parts.npcJourneyDays !== undefined &&
     parts.npcVerbs?.includes("speak") === true;
   const economicBatch = (parts.npcVerbs?.length ?? 0) > 0;
+  const draftOpts: DraftOptions | undefined =
+    parts.livestockDraft === undefined
+      ? undefined
+      : {
+          defs: draftDefsOf(parts.livestockDraft),
+          year: parts.clock.year,
+          workAge: ROUTINE.workAge,
+        };
   const wardrobe = parts.wardrobe === true ? parts.garments : undefined;
   const altitudeOf = parts.realAltitude
     ? parts.travelAltitude
@@ -1031,6 +1042,7 @@ export function lifeWorld(
             : { nightRest: (at: number) => localHour(parts.clock, at, parts.map.lonDeg) }),
         }),
         actProcess({
+          ...(draftOpts ? { draft: draftOpts } : {}),
           ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
             ? {
                 fieldWatering: true,
@@ -2534,6 +2546,7 @@ export function lifeWorld(
                 },
                 player,
                 placeOf: placeOf(parts, village),
+                ...(draftOpts ? { draft: draftOpts } : {}),
                 // Los dormidos también cosechan en sus horas de campo (misma estación que la rutina).
                 harvest: {
                   season: harvestSeasonOf(parts.map, parts.clock, parts.seed),
@@ -2586,6 +2599,7 @@ export function lifeWorld(
             ? { sowSeed: true }
             : {}),
           ...(parts.mortalTech ? { tech: parts.mortalTech } : {}),
+          ...(draftOpts ? { draft: draftOpts } : {}),
           ...(parts.idlePlayerRoutine === true ? { idlePlayer: true } : {}),
           ...(parts.waitUntended === true ? {} : { waitTend: true }),
           ...(parts.waitUntended === true || parts.waitNoSkin === true ? {} : { waitSkin: true }),
