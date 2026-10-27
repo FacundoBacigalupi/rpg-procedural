@@ -626,6 +626,8 @@ export interface LifeOptions {
   readonly livestockLife?: boolean;
   /** Opt-in (livestock-yield, con `villageLivestock`): las gallinas ponen huevos para el hogar (`LifeParts.livestockYield`); apagado, no dan nada. */
   readonly livestockYield?: boolean;
+  /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
+  readonly livestockSeason?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
   readonly villageShrine?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
@@ -2012,7 +2014,10 @@ export function createLife(
         ? { livestockLife: content.all(LIVESTOCK) }
         : {}),
       ...(options.villageLivestock && options.livestockYield
-        ? { livestockYield: content.all(LIVESTOCK) }
+        ? {
+            livestockYield: content.all(LIVESTOCK),
+            ...(options.livestockSeason ? { livestockSeason: true } : {}),
+          }
         : {}),
       ...mortalTechParts(options, content),
       ...conditionLabelParts(options, content),

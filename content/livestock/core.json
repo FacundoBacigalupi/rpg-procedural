@@ -16,7 +16,15 @@
     },
     "carcass": { "meat": "chicken", "meatShare": 0.6 },
     "yields": [
-      { "good": "egg", "unitGrams": 50, "perYear": 120, "sex": "female", "minAgeYears": 0.5 }
+      {
+        "good": "egg",
+        "unitGrams": 50,
+        "perYear": 120,
+        "sex": "female",
+        "minAgeYears": 0.5,
+        "daylightHours": [9, 14],
+        "daylightFloor": 0.15
+      }
     ]
   },
   {

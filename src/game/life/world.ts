@@ -62,6 +62,8 @@ import {
   type SpeechLine,
   type StageDef,
   type StatusDef,
+  skyObserverOf,
+  sunAt,
   type TasteDef,
   type TechCatalog,
   type TradeRecipeDef,
@@ -399,6 +401,8 @@ export interface LifeWorld {
   readonly livestockLife?: readonly LivestockDef[];
   /** Opt-in (livestock-yield): las especies del ganado, que da lo suyo en vida (huevos); sin esto, nada. */
   readonly livestockYield?: readonly LivestockDef[];
+  /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
+  readonly livestockSeason?: boolean;
   /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
   readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
@@ -1968,7 +1972,18 @@ export function lifeWorld(
           ? [livestockLifeProcess({ species: parts.livestockLife, year: parts.clock.year })]
           : []),
         ...(parts.livestockYield !== undefined
-          ? [livestockYieldProcess({ species: parts.livestockYield, year: parts.clock.year })]
+          ? [
+              livestockYieldProcess({
+                species: parts.livestockYield,
+                year: parts.clock.year,
+                ...(parts.livestockSeason === true
+                  ? {
+                      daylightHours: (t: Tick) =>
+                        24 * sunAt(parts.clock, skyObserverOf(parts.map), t).dayFraction,
+                    }
+                  : {}),
+              }),
+            ]
           : []),
         ...(parts.adultGrowth === true
           ? [

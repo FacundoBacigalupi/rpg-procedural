@@ -12,7 +12,8 @@
 //
 // Lo que dan en vida (livestock-yield, `livestockYieldProcess`): por ahora los huevos de las
 // gallinas, unidades enteras que cada hembra adulta pone con una chance diaria y entran a la comida
-// del hogar desde `LAID_SOURCE`. Sin estaciones ni comida todavía: ponen igual en invierno.
+// del hogar desde `LAID_SOURCE`. Con `daylightHours` (livestock-yield-season) ponen menos con los
+// días cortos (`daylightFactor`); sin comida todavía (livestock-feed), comer poco no las frena.
 
 import {
   type AnimalId,
@@ -82,6 +83,13 @@ export const YieldDef = z.strictObject({
   sex: z.enum(["female", "male"]).optional(),
   /** Desde qué edad (años). */
   minAgeYears: z.number().min(0).default(0),
+  /**
+   * Horas de luz bajo las que da lo mínimo y desde las que da todo (livestock-yield-season: la
+   * gallina pone con días largos); sin esto, la luz no importa.
+   */
+  daylightHours: z.tuple([z.number().min(0), z.number().max(24)]).optional(),
+  /** Qué parte da con los días más cortos (la gallina en invierno pone poco, no nada). */
+  daylightFloor: z.number().min(0).max(1).default(0),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -400,10 +408,23 @@ export function yieldUnits(species: readonly LivestockDef[]): LedgerUnit[] {
   return [...new Set(goods)].sort().map((g) => ledgerUnit(`good:${g}`));
 }
 
+/**
+ * Pura: qué parte de lo suyo da con `hours` horas de luz: todo desde el máximo de `daylightHours`,
+ * el piso bajo el mínimo y lineal entre los dos; sin `daylightHours` o sin horas, todo.
+ */
+export function daylightFactor(y: YieldDef, hours: number | undefined): number {
+  if (y.daylightHours === undefined || hours === undefined) return 1;
+  const [lo, hi] = y.daylightHours;
+  const x = hi > lo ? Math.min(1, Math.max(0, (hours - lo) / (hi - lo))) : hours >= hi ? 1 : 0;
+  return y.daylightFloor + (1 - y.daylightFloor) * x;
+}
+
 export interface LivestockYieldOptions {
   readonly species: readonly LivestockDef[];
   /** Duración del año (ticks). */
   readonly year: Duration;
+  /** Horas de luz del día en la aldea (livestock-yield-season); sin esto, la luz no importa. */
+  readonly daylightHours?: (t: Tick) => number;
 }
 
 /**
@@ -425,6 +446,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const step = ctx.window > 0 ? ctx.window : 1;
+      const hours = o.daylightHours?.(ctx.now);
       // hogar|bien -> animales que dieron hoy y gramos.
       const got = new Map<
         string,
@@ -437,7 +459,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
         const age = (ctx.now - a.bornAt) / o.year;
         yields.forEach((y, i) => {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
-          const chance = Math.min(1, (y.perYear * step) / o.year);
+          const chance = Math.min(1, (y.perYear * daylightFactor(y, hours) * step) / o.year);
           if (ctx.rng.fork("yield", id, i).float() >= chance) return;
           const key = `${a.owner}|${y.good}`;
           const g = got.get(key) ?? {
