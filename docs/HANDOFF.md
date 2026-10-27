@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-yield-draft (2026-10-27, rama `feat/livestock-draft`):** `DraftDef` en `LivestockDef.draft`; `draftFor`/`draftDefsOf`/`DRAFT_READS` en `src/game/life/draft.ts`; `RoutineOptions.draft`, `CatchUpProcessOptions.draft` y `ActOptions.draft` multiplican la hora de campo; `LifeParts.livestockDraft` (las especies) arma `draftOpts` en `world.ts`. Opt-in `livestockDraft`, en FULL_PROFILE. Test en `draft.test.ts` (seed 3: seed 7 trae los bueyes jóvenes, ver `livestock-herd-ages`).
+
 **livestock-yield-feed (2026-10-27, rama `feat/livestock-yield-feed`):** la chance diaria de dar se multiplica por `daylightFactor * coldFactor * hungerFactor` en `livestockYieldProcess`; `LifeParts.livestockYieldFeed = {hunger}` cablea `tempC` desde `weatherAt(...).tempMeanC`. Opt-in `livestockYieldFeed`, en FULL_PROFILE. Test en `livestock-yield.test.ts`.
 
 **livestock-yield-manure (2026-10-27, rama `feat/livestock-manure`):** `SoilOptions.manure.livestock` suma los holdings de `FED_SINK` a los de `EATEN` en `life.soil` (cantidad y dieta). Opt-in `LifeOptions.livestockManure` (con `fieldManure`, `villageLivestock` y `livestockFeed`), fuera de FULL_PROFILE como `fieldManure`. Test en `soil.test.ts`.

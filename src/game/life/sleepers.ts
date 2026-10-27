@@ -41,6 +41,7 @@ import {
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
+import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
 import { IRRIGATED, rainWindow } from "./irrigation.ts";
 import { living } from "./living.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
@@ -72,6 +73,8 @@ export interface CatchUpProcessOptions {
    * (`catchUpDue`). Sin `mode`, un solo proceso por hora que decide solo (como antes).
    */
   readonly mode?: "wake" | "daily";
+  /** Opt-in (livestock-yield-draft, con `harvest`): el buey del hogar en su turno sube la hora de campo. */
+  readonly draft?: DraftOptions;
   /**
    * La cosecha del dormido: sus horas de campo de la rutina rinden grano para la despensa de su
    * hogar (fuente `harvest`, como `life.routine`). Sin esto, al dormirse todos el hogar sigue
@@ -138,6 +141,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       ...(o.harvest ? [SOIL.name] : []),
       ...(o.harvest?.field ? [IRRIGATED.name] : []),
       ...(o.harvest?.field?.sowing ? [SOWN.name] : []),
+      ...(o.harvest && o.draft ? DRAFT_READS : []),
     ],
     writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PENDING_FACTS.name],
     run(ctx) {
@@ -180,6 +184,9 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const due = pending.filter((f) => f.at <= ctx.now);
       const later = pending.filter((f) => f.at > ctx.now);
       const fertility = o.harvest ? fieldFertility(truth) : 0;
+      // El tiro se mira una vez por tramo (al despertar el proceso), no por hora.
+      const draftRate =
+        o.harvest && o.draft ? (draftFor(truth, me, ctx.now, o.draft)?.rate ?? 1) : 1;
       // El factor de riego y siembra del campo por día (se pide por hora y por dormido).
       const cropByDay = new Map<number, number>();
       const cropFactor = (day: number): number => {
@@ -205,7 +212,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
                   HARVEST_GRAMS_PER_HOUR *
                     (o.harvest as { season: (day: number) => number }).season(day) *
                     cropFactor(day) *
-                    fertility,
+                    fertility *
+                    draftRate,
                 );
               },
             }

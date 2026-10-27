@@ -125,6 +125,18 @@ export const YieldDef = z.strictObject({
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
+/**
+ * El tiro (livestock-yield-draft): el animal adulto tira del arado y la hora de campo de quien lo
+ * usa rinde `fieldRate` veces; sirve a `workers` personas a la vez y con hambre `hungerStop` no tira.
+ */
+export const DraftDef = z.strictObject({
+  fieldRate: z.number().min(1),
+  workers: z.number().int().min(1).default(1),
+  minAgeYears: z.number().min(0).default(0),
+  hungerStop: z.number().positive().max(1).default(0.5),
+});
+export type DraftDef = z.infer<typeof DraftDef>;
+
 /** Qué deja el cuerpo muerto (livestock-carcass); sin esto no deja nada que se guarde. */
 export const CarcassDef = z.strictObject({
   /** El bien de la carne (`content/goods`) y qué parte de la masa viva es carne. */
@@ -159,6 +171,8 @@ export const LivestockDef = z.strictObject({
   yields: z.array(YieldDef).optional(),
   /** Lo que le da de comer la casa (livestock-feed); sin esto, no come de la casa. */
   feed: FeedDef.optional(),
+  /** Si tira del arado (livestock-yield-draft); sin esto, no. */
+  draft: DraftDef.optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);
