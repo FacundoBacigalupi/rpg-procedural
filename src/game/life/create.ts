@@ -641,6 +641,8 @@ export interface LifeOptions {
   readonly livestockDraft?: boolean;
   /** Opt-in (livestock-draft-cost, con `livestockDraft` y `livestockFeed`): el buey come la mitad más los días de campo. */
   readonly livestockDraftCost?: boolean;
+  /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
+  readonly livestockPredators?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
   readonly livestockFeed?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
@@ -2057,6 +2059,9 @@ export function createLife(
               ? { livestockYieldFeed: { hunger: options.livestockFeed === true } }
               : {}),
           }
+        : {}),
+      ...(options.villageLivestock && options.livestockPredators
+        ? { livestockPredators: content.all(LIVESTOCK) }
         : {}),
       ...(options.villageLivestock && options.livestockFeed
         ? {

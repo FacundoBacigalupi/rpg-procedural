@@ -26,6 +26,11 @@ export const LineageDef = z.strictObject({
   }),
   /** Individuos por km² de celda con productividad media al arrancar (la celda lo escala por su comida). */
   density: z.number().min(0),
+  /**
+   * Si baja a los corrales (livestock-predators): asaltos por individuo y día con hambre plena y el
+   * animal más pesado (kg) que se lleva; sin esto, no asalta.
+   */
+  raid: z.strictObject({ perDay: z.number().min(0), maxPreyKg: z.number().positive() }).optional(),
 });
 export type LineageDef = z.infer<typeof LineageDef>;
 export const LINEAGES = defineContent("lineages", LineageDef, (l) =>
