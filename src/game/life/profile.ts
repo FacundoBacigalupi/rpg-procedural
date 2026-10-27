@@ -93,6 +93,7 @@ export const FULL_PROFILE = {
   livestockLife: true,
   livestockYield: true,
   livestockSeason: true,
+  livestockFeed: true,
   villageShrine: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
   errands: { kinds: ["fields", "forest", "water"], chance: 0.15, weight: 0.5, minAgeYears: 10 },
@@ -140,6 +141,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["livestockLife", "villageLivestock"],
     ["livestockYield", "villageLivestock"],
     ["livestockSeason", "livestockYield"],
+    ["livestockFeed", "villageLivestock"],
     ["nutritionNeeds", "eatenNutrition"],
     ["lendBorrowed", "borrowCraving"],
     ["repayDoses", "consumables"],

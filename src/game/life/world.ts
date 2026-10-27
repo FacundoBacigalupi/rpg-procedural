@@ -38,6 +38,7 @@ import {
   type LivestockDef,
   LOCATION,
   type LocalMap,
+  livestockFeedProcess,
   livestockLifeProcess,
   livestockYieldProcess,
   localHour,
@@ -403,6 +404,11 @@ export interface LifeWorld {
   readonly livestockYield?: readonly LivestockDef[];
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
+  /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
+  readonly livestockFeed?: {
+    readonly species: readonly LivestockDef[];
+    readonly foods: readonly { readonly id: string; readonly category: string }[];
+  };
   /** Opt-in (con `adultGrowth`): los menores de 18 crecen un paso por año cumplido; apagado por defecto. */
   readonly gradualGrowth?: boolean;
   /** Opt-in: carencias (`vigor`, `oxygen`, `cognition`) y secuela cognitiva bajan las capacidades al decidir y actuar; apagado por defecto. */
@@ -1968,6 +1974,15 @@ export function lifeWorld(
           placeOf: placeOf(parts, village),
         }),
         ...(parts.growthSequelae === true ? [growthSequelaeProcess({ clock: parts.clock })] : []),
+        ...(parts.livestockFeed !== undefined
+          ? [
+              livestockFeedProcess({
+                ...parts.livestockFeed,
+                year: parts.clock.year,
+                day: parts.clock.day,
+              }),
+            ]
+          : []),
         ...(parts.livestockLife !== undefined
           ? [livestockLifeProcess({ species: parts.livestockLife, year: parts.clock.year })]
           : []),

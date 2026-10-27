@@ -332,8 +332,12 @@ export interface LifeSetup {
  * `life-55`: con la herramienta de la casa en la rutina, el NPC que la deja al volver la afila con la
  * piedra si está mellada y la lleva al herrero (pagando de su bolsa) cuando la piedra ya no alcanza
  * (use-tools-mend-npc). Compatibilidad: `legacyNoNpcMend`.
+ *
+ * `life-56`: con `villageLivestock`, el ganado de cada casa es el que hay al empezar la vida (evento
+ * y edad desde el comienzo), no el que llegó al levantarla: en las casas viejas ya no muere todo de
+ * viejo el primer día (livestock-feed). Compatibilidad: `legacyLivestockFoundingAge`.
  */
-export const LIFE_ENGINE = "life-55";
+export const LIFE_ENGINE = "life-56";
 
 /**
  * Las opciones de la vida para el replay de un motor: los anteriores a `life-4` no compactan pasos;
@@ -398,6 +402,7 @@ export function engineOptions(engine: string, options: LifeOptions): LifeOptions
     ...(n < 53 ? { legacyNoForgeBuy: true } : {}),
     ...(n < 54 ? { legacyNoUsedTrade: true } : {}),
     ...(n < 55 ? { legacyNoNpcMend: true } : {}),
+    ...(n < 56 ? { legacyLivestockFoundingAge: true } : {}),
   };
 }
 
