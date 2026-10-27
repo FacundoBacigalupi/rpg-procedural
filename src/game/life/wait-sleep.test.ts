@@ -19,7 +19,7 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 
 describe("motor de la espera nocturna", () => {
   it("los motores anteriores a life-5 piden waitAwake; life-5 no", () => {
-    expect(LIFE_ENGINE).toBe("life-56");
+    expect(LIFE_ENGINE).toBe("life-57");
     expect(engineOptions("life-4", {}).waitAwake).toBe(true);
     expect(engineOptions("life-4", {}).verboseSteps).toBeUndefined();
     expect(engineOptions("life-3", {})).toEqual({
@@ -76,6 +76,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-7", {})).toEqual({
       legacyShortNames: true,
@@ -127,6 +128,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-8", {})).toEqual({
       legacyShortNames: true,
@@ -177,6 +179,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-9", {})).toEqual({
       legacyShortNames: true,
@@ -226,6 +229,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-10", {})).toEqual({
       legacyShortNames: true,
@@ -274,6 +278,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-11", {})).toEqual({
       legacyShortNames: true,
@@ -321,6 +326,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-12", {})).toEqual({
       legacyShortNames: true,
@@ -367,6 +373,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-13", {})).toEqual({
       legacyShortNames: true,
@@ -412,6 +419,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-14", {})).toEqual({
       legacyShortNames: true,
@@ -456,6 +464,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-15", {})).toEqual({
       legacyShortNames: true,
@@ -499,6 +508,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-16", {})).toEqual({
       legacyShortNames: true,
@@ -541,6 +551,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-17", {})).toEqual({
       legacyShortNames: true,
@@ -582,6 +593,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-19", {})).toEqual({
       legacyShortNames: true,
@@ -621,6 +633,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-18", {})).toEqual({
       legacyShortNames: true,
@@ -661,6 +674,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-20", {})).toEqual({
       legacyShortNames: true,
@@ -699,6 +713,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-21", {})).toEqual({
       legacyShortNames: true,
@@ -736,6 +751,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-22", {})).toEqual({
       legacyShortNames: true,
@@ -772,6 +788,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-23", {})).toEqual({
       legacyShortNames: true,
@@ -807,6 +824,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-24", {})).toEqual({
       legacyShortNames: true,
@@ -841,6 +859,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-25", {})).toEqual({
       legacyShortNames: true,
@@ -874,6 +893,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-26", {})).toEqual({
       legacyShortNames: true,
@@ -906,6 +926,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-27", {})).toEqual({
       legacyShortNames: true,
@@ -937,6 +958,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-28", {})).toEqual({
       legacyShortNames: true,
@@ -967,6 +989,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-29", {})).toEqual({
       legacyShortNames: true,
@@ -996,6 +1019,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-30", {})).toEqual({
       legacyShortNames: true,
@@ -1024,6 +1048,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-31", {})).toEqual({
       legacyShortNames: true,
@@ -1051,6 +1076,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-32", {})).toEqual({
       legacyShortNames: true,
@@ -1077,6 +1103,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-33", {})).toEqual({
       legacyShortNames: true,
@@ -1102,6 +1129,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-34", {})).toEqual({
       legacyShortNames: true,
@@ -1126,6 +1154,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-35", {})).toEqual({
       legacyShortNames: true,
@@ -1149,6 +1178,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-36", {})).toEqual({
       legacyShortNames: true,
@@ -1171,6 +1201,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-37", {})).toEqual({
       legacyShortNames: true,
@@ -1192,6 +1223,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-38", {})).toEqual({
       legacyShortNames: true,
@@ -1212,6 +1244,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-39", {})).toEqual({
       legacyShortNames: true,
@@ -1231,6 +1264,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-40", {})).toEqual({
       legacyFixedSpeech: true,
@@ -1249,6 +1283,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-41", {})).toEqual({
       legacyNoSettlementWalk: true,
@@ -1266,6 +1301,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-42", {})).toEqual({
       legacyNoLarderTake: true,
@@ -1282,6 +1318,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-43", {})).toEqual({
       legacyNoHostTake: true,
@@ -1297,6 +1334,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-44", {})).toEqual({
       legacyNoFleeShed: true,
@@ -1311,6 +1349,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-45", {})).toEqual({
       legacyFullTakeItem: true,
@@ -1324,6 +1363,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-46", {})).toEqual({
       legacyNoDrawWater: true,
@@ -1336,6 +1376,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-47", {})).toEqual({
       legacyNoToolWear: true,
@@ -1347,6 +1388,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-48", {})).toEqual({
       legacyNoNpcTools: true,
@@ -1357,6 +1399,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-49", {})).toEqual({
       legacyNoRoutineTools: true,
@@ -1366,6 +1409,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-50", {})).toEqual({
       legacyNoSharpen: true,
@@ -1374,6 +1418,7 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-51", {})).toEqual({
       legacyNoSmith: true,
@@ -1381,24 +1426,32 @@ describe("motor de la espera nocturna", () => {
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-52", {})).toEqual({
       legacyNoForgeBuy: true,
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-53", {})).toEqual({
       legacyNoUsedTrade: true,
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
     expect(engineOptions("life-54", {})).toEqual({
       legacyNoNpcMend: true,
       legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
     });
-    expect(engineOptions("life-55", {})).toEqual({ legacyLivestockFoundingAge: true });
-    expect(engineOptions("life-56", {})).toEqual({});
+    expect(engineOptions("life-55", {})).toEqual({
+      legacyLivestockFoundingAge: true,
+      legacyLivestockHerdAges: true,
+    });
+    expect(engineOptions("life-56", {})).toEqual({ legacyLivestockHerdAges: true });
+    expect(engineOptions("life-57", {})).toEqual({});
   });
 });
 

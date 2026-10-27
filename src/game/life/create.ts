@@ -373,6 +373,8 @@ export interface LifeOptions {
   readonly legacyNoNpcMend?: boolean;
   /** Replay de motores anteriores a `life-56`: el ganado sembrado cuenta su edad desde que se levantó la casa (en una casa vieja, muere de viejo al empezar). */
   readonly legacyLivestockFoundingAge?: boolean;
+  /** Replay de motores anteriores a `life-57`: el ganado sembrado ignora `herdAgeYears` (el buey puede empezar joven). */
+  readonly legacyLivestockHerdAges?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -1710,6 +1712,7 @@ export function createLife(
       members,
       yearTicks: clock.year,
       ...(options.legacyLivestockFoundingAge ? {} : { now: pop.now }),
+      ...(options.legacyLivestockHerdAges ? { legacyHerdAges: true } : {}),
     });
   }
   const spaces = liveSettlementSpaces(

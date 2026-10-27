@@ -51,7 +51,7 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     expect(setupOf([]).life).toEqual(FULL_PROFILE);
     expect(setupOf(["--profile", "full"]).life).toEqual(FULL_PROFILE);
     expect(setupOf(["--profile", "basic"]).life).toBeUndefined();
-    expect(LIFE_ENGINE).toBe("life-56");
+    expect(LIFE_ENGINE).toBe("life-57");
   });
 
   it("una vida guardada sin perfil (life-1/life-2) se rehace igual con el motor nuevo", () => {
@@ -70,7 +70,7 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     expect(a).not.toEqual(replayHash(setupOf(["--profile", "basic"]), LIFE_ENGINE));
   }, 240_000);
 
-  it("las vidas de motores anteriores pasan a life-56 con límite de replay; no al revés", () => {
+  it("las vidas de motores anteriores pasan a life-57 con límite de replay; no al revés", () => {
     for (const engine of [
       "life-2",
       "life-3",
@@ -114,6 +114,8 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
       "life-52",
       "life-53",
       "life-54",
+      "life-55",
+      "life-56",
     ]) {
       const saved = { engine, content: "none", format: 1 };
       const current = { ...saved, engine: LIFE_ENGINE };
@@ -125,6 +127,6 @@ describe("motor life-3: perfil completo por defecto en vidas nuevas", () => {
     const saved = { engine: "life-3", content: "none", format: 1 };
     const current = { ...saved, engine: LIFE_ENGINE };
     expect(upgradeVersions(current, saved, 100).kind).toBe("incompatible");
-    expect(engineNumber(LIFE_ENGINE)).toBe(56);
+    expect(engineNumber(LIFE_ENGINE)).toBe(57);
   });
 });
