@@ -102,3 +102,50 @@ describe("el buey tira del arado (livestock-yield-draft)", () => {
     expect(FULL_PROFILE).toMatchObject({ livestockDraft: true });
   }, 600_000);
 });
+
+describe("lo que le cuesta al buey (livestock-draft-cost)", () => {
+  it("encendido: los días de campo el buey come más y su comida cita el tiro; determinista", () => {
+    const run = (cost: boolean) => {
+      const l = Life.create(SEED, content, {
+        ...OPTS,
+        livestockFeed: true,
+        livestockDraft: true,
+        livestockDraftCost: cost,
+      });
+      l.advanceTo(l.now + 10 * DAY);
+      return l;
+    };
+    const fed = (l: Life) => l.world.log.all().filter((e) => e.kind === "living.animal_fed");
+    const grams = (l: Life) =>
+      fed(l).reduce(
+        (n, e) =>
+          n +
+          Object.values((e.data as { grams: Record<string, number> }).grams).reduce(
+            (a, b) => a + b,
+            0,
+          ),
+        0,
+      );
+    const on = run(true);
+    const pulling = fed(on).flatMap((e) =>
+      e.causes.filter((c) => c.kind === "state" && c.key === "draft"),
+    );
+    expect(pulling.length).toBeGreaterThan(0);
+    for (const c of pulling) {
+      expect(on.world.truth.get(ANIMAL, (c as { entity: string }).entity as never)?.species).toBe(
+        "ox",
+      );
+    }
+    expect(on.world.ledger.audit()).toEqual([]);
+    expect(
+      checkInvariants({ truth: on.world.truth, log: on.world.log, ledger: on.world.ledger }),
+    ).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    const off = run(false);
+    expect(
+      fed(off).some((e) => e.causes.some((c) => c.kind === "state" && c.key === "draft")),
+    ).toBe(false);
+    expect(grams(on)).toBeGreaterThan(grams(off));
+    expect(FULL_PROFILE).toMatchObject({ livestockDraftCost: true });
+  }, 600_000);
+});

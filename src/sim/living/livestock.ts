@@ -128,12 +128,14 @@ export type YieldDef = z.infer<typeof YieldDef>;
 /**
  * El tiro (livestock-yield-draft): el animal adulto tira del arado y la hora de campo de quien lo
  * usa rinde `fieldRate` veces; sirve a `workers` personas a la vez y con hambre `hungerStop` no tira.
+ * Los días de campo come `workFeedFactor` veces su ración (livestock-draft-cost).
  */
 export const DraftDef = z.strictObject({
   fieldRate: z.number().min(1),
   workers: z.number().int().min(1).default(1),
   minAgeYears: z.number().min(0).default(0),
   hungerStop: z.number().positive().max(1).default(0.5),
+  workFeedFactor: z.number().min(1).default(1),
 });
 export type DraftDef = z.infer<typeof DraftDef>;
 
@@ -526,6 +528,11 @@ export interface LivestockFeedOptions {
   readonly year: Duration;
   /** Duración del día (ticks), para la ración. */
   readonly day: Duration;
+  /**
+   * Opt-in (livestock-draft-cost): si `t` es un día de campo. Ese día el animal de tiro en edad
+   * de tirar come `draft.workFeedFactor` veces su ración y su comida queda causada por el tiro.
+   */
+  readonly working?: (t: Tick) => boolean;
 }
 
 /**
@@ -561,14 +568,24 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
         { home: BuildingId; eaters: AnimalId[]; grams: Map<string, number> }
       >();
       const changes: StateChange[] = [];
+      const working = o.working?.(ctx.now) === true;
+      const pulling = new Set<AnimalId>();
       for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
         const a = ctx.truth.get(ANIMAL, id);
         if (!a || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
         const def = byId.get(a.species);
         const f = def?.feed;
         if (!def || !f) continue;
-        const ration = feedRation(def, (ctx.now - a.bornAt) / o.year, step, o.day);
+        const ageYears = (ctx.now - a.bornAt) / o.year;
+        const pulls =
+          working &&
+          def.draft !== undefined &&
+          def.draft.workFeedFactor > 1 &&
+          ageYears >= def.draft.minAgeYears;
+        const base = feedRation(def, ageYears, step, o.day);
+        const ration = pulls ? Math.round(base * (def.draft?.workFeedFactor ?? 1)) : base;
         if (ration <= 0) continue;
+        if (pulls) pulling.add(id);
         let need = ration;
         for (const cat of f.categories) {
           for (const food of byCategory.get(cat) ?? []) {
@@ -616,7 +633,10 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
             eaters: m.eaters,
             grams: Object.fromEntries(foods.map((g) => [g, m.grams.get(g) ?? 0])),
           },
-          causes: m.eaters.map((id) => ({ kind: "state" as const, entity: id, key: "hunger" })),
+          causes: m.eaters.flatMap((id) => [
+            { kind: "state" as const, entity: id, key: "hunger" },
+            ...(pulling.has(id) ? [{ kind: "state" as const, entity: id, key: "draft" }] : []),
+          ]),
           emissions: null,
         });
         postings.push({
