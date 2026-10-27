@@ -14,8 +14,9 @@ herramientas nuevas, las usadas se compran y venden entre personas y los NPC cui
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
 (`use-hearth-warm`); la plaza tiene su banco para sentarse (`fixtures-bench`) y cada casa su
 ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-scene-animals`). Sigue
-lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo y
-donde se habla con el registro del templo (`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
+lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
+adonde se va por su nombre (`shrine-move`) y donde se habla con el registro del templo
+(`shrine-register`); el mercado y la ciudad esperan a Fase 5/8;
 `use-station` y los nombres de lo fijo por cultura esperan a crafts y a language. Un solo lote,
 un commit por ítem; la suite completa una vez al certificar el lote. Estado de
 ramas, SHA y validación: HANDOFF §8. Archivo: [retomas anteriores](history/roadmap-now-through-2026-10-17.md).
@@ -83,6 +84,7 @@ El usuario jugó la web y pidió que se sienta mejor antes de seguir sumando sis
 - [x] (play-scene-buildings, 2026-10-23) Edificios reales del asentamiento en el fondo: `Hud.place.buildings` con los que ve desde donde está (afuera, hasta 250/100/30 m según la luz, los 6 más cercanos), cada uno con tipo, material de paredes y techo, desgaste, ruina y fuego; el fondo los pone de oeste a este, más chicos de lejos (granero alto sin ventana, caídas sin techo, llamas encima). Adentro, `Hud.place.building` da el color de la pared y el granero sin hogar. Sin edificios en la vida, las casas de siempre. Sin tocar la sim.
 - [ ] (play-scene-city) Heredado de `play-scene-buildings`: templo, mercado y ciudad vs aldea en el fondo. Partido:
   - [x] (village-shrine, 2026-10-26) El santuario de la tierra de la aldea: `BuildingDef.optIn` (un edificio del contenido que solo se levanta si la vida lo pide, para no cambiar las aldeas de siempre) y `shrine` en `content/buildings` (comunal, cimiento de piedra, muros de barro y madera, techo de paja, un cuarto de 6 m²), levantado por los fundadores con `settlement.built` y dueño la aldea; va después de las casas, así no corren sus ids ni su lugar. Opt-in `LifeOptions.villageShrine` (en `FULL_PROFILE`). Se ve en el fondo como los demás edificios. Hecho.
+  - [x] (shrine-move, 2026-10-26) Ir al santuario por su nombre: `knownSpaces` nombra los comunales por tipo (`COMMUNAL_NAMES`: el granero y el santuario, «el santuario», «el templo», «el altar»), así «voy al santuario» lleva adentro; sin santuario, como antes. Hecho.
   - [ ] (play-scene-market) Mercado en el fondo: espera a un edificio o lugar de mercado en settlements (hoy el mercado es un espacio sin edificio).
   - [ ] (play-scene-town) Ciudad vs aldea en el fondo: espera a que haya ciudades (Fase 5/8).
 - [x] (play-scene-animals, 2026-10-26) Animales vistos en el fondo: con el ganado de `livestock-herd`, `Hud.place.animals` da los que ve desde donde está afuera (hasta 80/30/6 m según la luz, los 8 más cercanos, de oeste a este), cada uno en un lugar fijo del patio de su casa (`yardSpot`); `Scene.tsx` pinta gallina, perro y buey sobre el suelo, más chicos y más arriba de lejos. Sin ganado, `undefined` y el fondo como antes. Sin tocar la sim. Hecho.

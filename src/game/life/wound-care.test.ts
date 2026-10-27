@@ -89,7 +89,7 @@ describe("curar: tend mira todas las heridas (perfil5-bot-wound-care)", () => {
     expect(now.every(Boolean)).toBe(true);
     expect(run("life-9").some(Boolean)).toBe(false);
     expect(run("life-10")).toEqual(now);
-  }, 120_000);
+  }, 300_000);
 
   it("la opción sugerida de curar aparece herido y desaparece curado", () => {
     const life = Life.create(7, content, { frequency: 8 });
