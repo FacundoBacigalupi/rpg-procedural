@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-yield-eggs (2026-10-27, rama `feat/livestock-eggs`):** `sim/living/livestock.ts`: `YieldDef`/`yields` opcional, `LAID_SOURCE`/`yieldUnits`, `livestockYieldProcess` (un evento por hogar y bien por día con causas en los animales). Cableado como `livestockLife`: `LifeOptions.livestockYield` → `LifeParts.livestockYield` (las especies), `ledgerConfigOf` último parámetro `livestockYield`, `FULL_PROFILE`, `ScenarioLife`. Test `livestock-yield.test.ts`. Quedan `livestock-yield-season`/`-draft`/`-manure`/`-milk`.
+
 **livestock-carcass (2026-10-27, rama `feat/livestock-carcass`):** `sim/living/livestock.ts`: `CarcassDef` opcional, `carcassYield`, `CARCASS_SOURCE`/`carcassUnits`; la muerte del proceso de `livestock-life` asienta carne y piel al hogar dueño (`holderAccount(owner)`, donde come y se pudre). `ledgerConfigOf` toma un último parámetro `livestockCarcass` (declara la fuente y suma la piel a `ROTTED`); la migración de ledgers viejos no lo pasa (solo vidas nuevas). Bien `hide` en `content/goods/core.json`. Sigue `livestock-slaughter`.
 
 **livestock-life (2026-10-26, rama `feat/livestock-life`):** `sim/living/livestock.ts`: `BreedingDef` opcional en `LivestockDef`, `yearlyMortality`/`stepChance` puras y `livestockLifeProcess` (muertes por edad y partos con tope por casa; rng por animal). Cableado: `LifeOptions.livestockLife` → `LifeParts.livestockLife` (las especies, desde `create.ts` al lado de `optInParts`), `FULL_PROFILE` (requiere `villageLivestock`) y `ScenarioLife`. Test `livestock-life.test.ts`. Sigue `livestock-carcass` (carne y cuero).
