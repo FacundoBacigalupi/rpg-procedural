@@ -618,6 +618,8 @@ export interface LifeOptions {
   readonly squareBench?: boolean;
   /** Opt-in (livestock-herd): cada casa trae sus gallinas, su perro y su buey; apagado, no hay ganado. */
   readonly villageLivestock?: boolean;
+  /** Opt-in (livestock-life, con `villageLivestock`): el ganado envejece, muere y pare (`LifeParts.livestockLife`); apagado, no cambia. */
+  readonly livestockLife?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
   readonly villageShrine?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
@@ -1989,6 +1991,9 @@ export function createLife(
       form: villageForm(seed, content, language),
       ...defaultParts(options),
       ...optInParts(options, site.terrain),
+      ...(options.villageLivestock && options.livestockLife
+        ? { livestockLife: content.all(LIVESTOCK) }
+        : {}),
       ...mortalTechParts(options, content),
       ...conditionLabelParts(options, content),
       ...(options.medicalSchools
