@@ -11,8 +11,10 @@ import {
 import {
   ANIMAL,
   checkInvariants,
+  coldFactor,
   daylightFactor,
   ENTITY,
+  hungerFactor,
   LAID_SOURCE,
   LIVESTOCK,
 } from "../../sim/index.ts";
@@ -81,6 +83,39 @@ describe("las gallinas ponen huevos (livestock-yield)", () => {
     const seasonal = eggs(true);
     expect(seasonal).toBeLessThanOrEqual(plain);
     expect(FULL_PROFILE).toMatchObject({ livestockSeason: true });
+  }, 600_000);
+
+  it("con frío y con hambre ponen menos (livestock-yield-feed)", () => {
+    const hen = content.all(LIVESTOCK).find((s) => s.id === "hen")?.yields?.[0];
+    if (!hen) throw new Error("sin huevos");
+    expect(coldFactor(hen, undefined)).toBe(1);
+    expect(coldFactor(hen, 20)).toBe(1);
+    expect(coldFactor(hen, -10)).toBeCloseTo(0.3);
+    expect(coldFactor(hen, 6)).toBeCloseTo(0.65);
+    expect(coldFactor({ ...hen, coldC: undefined }, -10)).toBe(1);
+    expect(hungerFactor(hen, 0)).toBe(1);
+    expect(hungerFactor(hen, 0.25)).toBeCloseTo(0.5);
+    expect(hungerFactor(hen, 0.8)).toBe(0);
+    expect(hungerFactor({ ...hen, hungerStop: undefined }, 0.8)).toBe(1);
+    const run = (feed: boolean) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockFeed: true,
+        livestockYieldFeed: feed,
+      });
+      l.advanceTo(l.now + 20 * DAY);
+      return l;
+    };
+    const eggs = (l: Life) =>
+      l.world.log
+        .all()
+        .filter((e) => e.kind === "living.animal_yield")
+        .reduce((n, e) => n + (e.data as { grams: number }).grams, 0);
+    // La misma tirada por gallina y día con una chance igual o menor: pone un subconjunto.
+    const fed = run(true);
+    expect(eggs(fed)).toBeLessThanOrEqual(eggs(run(false)));
+    expect(fed.world.ledger.audit()).toEqual([]);
+    expect(FULL_PROFILE).toMatchObject({ livestockYieldFeed: true });
   }, 600_000);
 
   it("es determinista, y sin la opción no ponen", () => {

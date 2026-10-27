@@ -73,6 +73,7 @@ import {
   type TrajectoryDef,
   type ValueDef,
   type WorldTruth,
+  weatherAt,
 } from "../../sim/index.ts";
 import { accentProcess } from "./accent.ts";
 import { actProcess, type BoilOptions, type FilterOptions } from "./act.ts";
@@ -404,6 +405,8 @@ export interface LifeWorld {
   readonly livestockYield?: readonly LivestockDef[];
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
+  /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
+  readonly livestockYieldFeed?: { readonly hunger: boolean };
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -1998,6 +2001,13 @@ export function lifeWorld(
                   ? {
                       daylightHours: (t: Tick) =>
                         24 * sunAt(parts.clock, skyObserverOf(parts.map), t).dayFraction,
+                    }
+                  : {}),
+                ...(parts.livestockYieldFeed !== undefined
+                  ? {
+                      tempC: (t: Tick) =>
+                        weatherAt(parts.map, parts.clock, parts.seed, t).tempMeanC,
+                      ...(parts.livestockYieldFeed.hunger ? { hunger: true } : {}),
                     }
                   : {}),
               }),

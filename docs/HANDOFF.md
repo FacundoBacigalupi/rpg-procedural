@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-yield-feed (2026-10-27, rama `feat/livestock-yield-feed`):** la chance diaria de dar se multiplica por `daylightFactor * coldFactor * hungerFactor` en `livestockYieldProcess`; `LifeParts.livestockYieldFeed = {hunger}` cablea `tempC` desde `weatherAt(...).tempMeanC`. Opt-in `livestockYieldFeed`, en FULL_PROFILE. Test en `livestock-yield.test.ts`.
+
 **livestock-yield-manure (2026-10-27, rama `feat/livestock-manure`):** `SoilOptions.manure.livestock` suma los holdings de `FED_SINK` a los de `EATEN` en `life.soil` (cantidad y dieta). Opt-in `LifeOptions.livestockManure` (con `fieldManure`, `villageLivestock` y `livestockFeed`), fuera de FULL_PROFILE como `fieldManure`. Test en `soil.test.ts`.
 
 **livestock-feed-household (2026-10-27, rama `feat/livestock-feed`):** `FeedDef`, `ANIMAL_HUNGER`, `feedRation`, `nextHunger`, `livestockFeedProcess` y `FED_SINK` en `sim/living/livestock.ts`; `livestockLifeProcess` lee el hambre (flaqueza, sin preñez, muerte por hambre). `ledgerConfigOf` declara `FED_SINK` para toda la comida con `livestockFeed`. Bump `life-56`: `seedLivestock` toma `now` (el ganado del comienzo); `legacyLivestockFoundingAge` para el replay de antes. Los tests de `livestock-yield` no lo vieron porque iban sin `livestockLife`. Tests: `livestock-feed.test.ts`, uno nuevo en `livestock-life.test.ts`. Quedan `livestock-feed-pasture` y `livestock-feed-choice`.
