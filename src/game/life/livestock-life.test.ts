@@ -59,6 +59,22 @@ describe("el ganado envejece, muere y pare (livestock-life)", () => {
     expect(stepChance(0.5, 365 * DAY, 365 * DAY)).toBeCloseTo(0.5);
   });
 
+  it("el ganado del comienzo tiene la edad contada desde el comienzo y no muere todo de viejo (life-56)", () => {
+    const life = Life.create(7, content, OPTS);
+    const w = life.world;
+    const start = life.now;
+    const ids = w.truth.ids(ANIMAL);
+    for (const id of ids) {
+      const a = w.truth.get(ANIMAL, id);
+      const def = content.all(LIVESTOCK).find((s) => s.id === a?.species);
+      if (!a || !def) throw new Error("animal sin especie");
+      expect((start - a.bornAt) / (365 * 86_400)).toBeLessThanOrEqual(0.6 * def.lifespanYears);
+    }
+    life.advanceTo(start + 5 * 86_400);
+    const alive = ids.filter((id) => w.truth.get(ENTITY, id)?.endedAt === undefined);
+    expect(alive.length).toBeGreaterThan(ids.length / 2);
+  }, 300_000);
+
   it("el animal viejo muere con evento causado por su edad y deja de estar", () => {
     const life = Life.create(7, content, OPTS);
     const w = life.world;

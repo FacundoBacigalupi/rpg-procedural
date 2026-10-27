@@ -54,6 +54,7 @@ import {
   ENTITY,
   ETIQUETTE,
   EXCRETED,
+  FED_SINK,
   FIELD_MANURE,
   FOODS,
   GARMENTS,
@@ -370,6 +371,8 @@ export interface LifeOptions {
   readonly legacyNoUsedTrade?: boolean;
   /** Replay de motores anteriores a `life-55`: los NPC no afilan ni llevan al herrero la herramienta de la casa. */
   readonly legacyNoNpcMend?: boolean;
+  /** Replay de motores anteriores a `life-56`: el ganado sembrado cuenta su edad desde que se levantó la casa (en una casa vieja, muere de viejo al empezar). */
+  readonly legacyLivestockFoundingAge?: boolean;
   /** Solo el replay de un motor anterior a `life-45`: quien huye o cae en una pelea no suelta lo que lleva. */
   readonly legacyNoFleeShed?: boolean;
   /** Solo el replay de un motor anterior a `life-46`: levantar un objeto suelto pide un éxito pleno. */
@@ -628,6 +631,8 @@ export interface LifeOptions {
   readonly livestockYield?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
   readonly livestockSeason?: boolean;
+  /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
+  readonly livestockFeed?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
   readonly villageShrine?: boolean;
   /** Opt-in: el gusto de cada parte corre lo máximo que paga en un trato por los bienes de `TasteDef.demandGoods` (`ActOptions.tasteDemand`); apagado, nada cambia. */
@@ -1431,6 +1436,7 @@ export function ledgerConfigOf(
   hearths = false,
   livestockCarcass = false,
   livestockYield = false,
+  livestockFeed = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1484,6 +1490,8 @@ export function ledgerConfigOf(
       ...(cobbler ? { [HIDES_SOURCE]: [LEATHER_UNIT], [LEATHER_SCRAP]: [LEATHER_UNIT] } : {}),
       ...(carcass.length > 0 ? { [CARCASS_SOURCE]: carcass } : {}),
       ...(laid.length > 0 ? { [LAID_SOURCE]: laid } : {}),
+      // Lo que come el ganado de la casa (livestock-feed): cualquier comida.
+      ...(livestockFeed ? { [FED_SINK]: units } : {}),
     },
   };
 }
@@ -1644,6 +1652,7 @@ export function createLife(
       options.hearths === true,
       options.villageLivestock === true && options.livestockLife === true,
       options.villageLivestock === true && options.livestockYield === true,
+      options.villageLivestock === true && options.livestockFeed === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -1687,6 +1696,7 @@ export function createLife(
       species: content.all(LIVESTOCK),
       members,
       yearTicks: clock.year,
+      ...(options.legacyLivestockFoundingAge ? {} : { now: pop.now }),
     });
   }
   const spaces = liveSettlementSpaces(
@@ -2017,6 +2027,14 @@ export function createLife(
         ? {
             livestockYield: content.all(LIVESTOCK),
             ...(options.livestockSeason ? { livestockSeason: true } : {}),
+          }
+        : {}),
+      ...(options.villageLivestock && options.livestockFeed
+        ? {
+            livestockFeed: {
+              species: content.all(LIVESTOCK),
+              foods: content.all(FOODS).map((f) => ({ id: f.id, category: f.category })),
+            },
           }
         : {}),
       ...mortalTechParts(options, content),
