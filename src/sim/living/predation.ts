@@ -123,7 +123,11 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
           const total = prey.reduce((s, [, , def]) => s + def.exposure, 0);
           if (total <= 0) break;
           let pick = r.float() * total;
-          const chosen = prey.find(([, , def]) => (pick -= def.exposure) < 0) ?? prey.at(-1);
+          const chosen =
+            prey.find(([, , def]) => {
+              pick -= def.exposure;
+              return pick < 0;
+            }) ?? prey.at(-1);
           if (!chosen) break;
           const [id, a] = chosen;
           const base = ctx.truth.get(ENTITY, id);
