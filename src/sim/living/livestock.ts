@@ -7,7 +7,8 @@
 // los años (sin hambre ni enfermedad todavía), y la hembra madura con un macho a mano (de la casa o
 // de la aldea, según la especie) pare una camada con origen en ella. Mientras no coman
 // (livestock-feed), el tope de animales por casa hace las veces de lo que el patio puede mantener.
-// El cuerpo muerto todavía no queda como carne y cuero (livestock-carcass).
+// El cuerpo muerto queda para el hogar dueño como carne y piel cruda (livestock-carcass,
+// `carcassYield`): lotes del ledger que entran desde `CARCASS_SOURCE` con el evento de la muerte.
 
 import {
   type AnimalId,
@@ -17,8 +18,12 @@ import {
   defineContent,
   type EventId,
   type EventLog,
+  externalAccount,
   type HouseholdId,
+  holderAccount,
   type IdAllocator,
+  type LedgerUnit,
+  ledgerUnit,
   pow,
   Rng,
   type SettlementId,
@@ -32,6 +37,7 @@ import {
   draftEvent,
   type EventDraft,
   endEntity,
+  type PostingDraft,
   type ProcessDef,
   type StateChange,
   setComponent,
@@ -60,6 +66,17 @@ export const BreedingDef = z.strictObject({
 });
 export type BreedingDef = z.infer<typeof BreedingDef>;
 
+/** Qué deja el cuerpo muerto (livestock-carcass); sin esto no deja nada que se guarde. */
+export const CarcassDef = z.strictObject({
+  /** El bien de la carne (`content/goods`) y qué parte de la masa viva es carne. */
+  meat: contentId.optional(),
+  meatShare: z.number().min(0).max(1).default(0),
+  /** El bien de la piel cruda y qué parte de la masa viva es piel. */
+  hide: contentId.optional(),
+  hideShare: z.number().min(0).max(1).default(0),
+});
+export type CarcassDef = z.infer<typeof CarcassDef>;
+
 export const LivestockDef = z.strictObject({
   id: contentId,
   name: z.string().min(1),
@@ -77,6 +94,8 @@ export const LivestockDef = z.strictObject({
   femaleShare: z.number().min(0).max(1),
   /** Cómo se reproduce (livestock-life); sin esto, no pare. */
   breeding: BreedingDef.optional(),
+  /** Qué deja el cuerpo muerto (livestock-carcass). */
+  carcass: CarcassDef.optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);
@@ -186,6 +205,40 @@ export function stepChance(yearly: number, step: Duration, year: Duration): numb
   return 1 - pow(1 - yearly, step / year);
 }
 
+/** De donde entra al ledger lo que deja un animal muerto (su cuerpo, que el ledger no llevaba). */
+export const CARCASS_SOURCE = "carcass";
+
+/** Las unidades del ledger que puede dejar el ganado muerto (para declarar `CARCASS_SOURCE`). */
+export function carcassUnits(species: readonly LivestockDef[]): LedgerUnit[] {
+  const goods = species.flatMap((s) => [s.carcass?.meat, s.carcass?.hide]);
+  return [...new Set(goods.filter((g) => g !== undefined))]
+    .sort()
+    .map((g) => ledgerUnit(`good:${g}`));
+}
+
+/**
+ * Pura: los gramos de cada bien que deja el cuerpo de un animal de `ageYears`: la masa adulta por
+ * la parte de cada bien, menos en las crías (crecen hasta su madurez, o hasta el año sin ella;
+ * nunca menos de un décimo). Sin `carcass`, nada.
+ */
+export function carcassYield(
+  def: LivestockDef,
+  ageYears: number,
+): { good: string; grams: number }[] {
+  const c = def.carcass;
+  if (!c) return [];
+  const grown = Math.min(1, Math.max(0.1, ageYears / (def.breeding?.maturityYears ?? 1)));
+  const out: { good: string; grams: number }[] = [];
+  for (const [good, share] of [
+    [c.meat, c.meatShare],
+    [c.hide, c.hideShare],
+  ] as const) {
+    const grams = Math.round(def.massKg * 1000 * share * grown);
+    if (good !== undefined && grams > 0) out.push({ good, grams });
+  }
+  return out;
+}
+
 export interface LivestockLifeOptions {
   readonly species: readonly LivestockDef[];
   /** Duración del año (ticks). */
@@ -226,6 +279,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       const ageYears = (a: AnimalRecord) => (ctx.now - a.bornAt) / o.year;
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
+      const postings: PostingDraft[] = [];
       const dead = new Set<AnimalId>();
       // Primero las muertes: quien muere hoy no pare ni cubre.
       for (const [id, a] of alive) {
@@ -247,6 +301,14 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
         });
         changes.push(endEntity(base, end, ctx.now), deleteComponent(LOCATION, id));
         dead.add(id);
+        // El cuerpo queda en la casa dueña como carne y piel.
+        const transfers = carcassYield(def, ageYears(a)).map((y) => ({
+          unit: ledgerUnit(`good:${y.good}`),
+          from: externalAccount(CARCASS_SOURCE),
+          to: holderAccount(a.owner),
+          amount: y.grams,
+        }));
+        if (transfers.length > 0) postings.push({ event: end, transfers });
       }
       // Cuántos de cada especie hay por casa (para el tope) y qué machos maduros hay dónde.
       const count = new Map<string, number>();
@@ -298,7 +360,8 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
         });
         count.set(key, (count.get(key) ?? 0) + size);
       }
-      return events.length === 0 ? {} : { events, changes };
+      if (events.length === 0) return {};
+      return postings.length > 0 ? { events, changes, postings } : { events, changes };
     },
   };
 }
