@@ -10,9 +10,11 @@ import {
   loadContent,
 } from "../../core/index.ts";
 import {
+  ANIMAL,
   BODY_STATE,
   type BuildingRecord,
   CORE_NORMAL_C,
+  DRAFT_FATIGUE,
   EMOTIONS,
   goodUnit,
   LOCATION,
@@ -36,6 +38,8 @@ import {
   nightSky,
   seenAnimals,
   seenBuildings,
+  TIRED_LOOK_LEVEL,
+  TIRED_SIGHT_M,
   warmthOf,
   yardSpot,
 } from "./hud.ts";
@@ -444,5 +448,48 @@ describe("animales en el fondo (play-scene-animals)", () => {
     expect(Array.isArray(out.place.animals)).toBe(true);
     expect(out.place.animals?.length ?? 0).toBeLessThanOrEqual(MAX_SEEN_ANIMALS);
     for (const a of out.place.animals ?? []) expect(["hen", "dog", "ox"]).toContain(a.species);
+  }, 300_000);
+});
+
+describe("el buey cansado se ve (livestock-draft-rest-look)", () => {
+  it("solo el cansado y de cerca lleva `tired`; sin luz no se nota", () => {
+    const rows = [
+      { id: "animal:1", species: "ox", at: { x: 10, y: 0 }, tired: true },
+      { id: "animal:2", species: "ox", at: { x: -10, y: 0 } },
+      { id: "animal:3", species: "ox", at: { x: 60, y: 0 }, tired: true },
+    ];
+    expect(seenAnimals(rows, { x: 0, y: 0 }, ANIMAL_SIGHT_M.bright)).toEqual([
+      { species: "ox", x: -10, d: 10 },
+      { species: "ox", x: 10, d: 10, tired: true },
+      { species: "ox", x: 60, d: 60 },
+    ]);
+    expect(seenAnimals(rows, { x: 0, y: 0 }, ANIMAL_SIGHT_M.bright, 0).some((a) => a.tired)).toBe(
+      false,
+    );
+    expect(TIRED_SIGHT_M).toBeLessThan(ANIMAL_SIGHT_M.bright);
+  });
+
+  it("en la vida: los bueyes con el cansancio alto se ven cansados de cerca; sin cansancio, ninguno", () => {
+    const w = Life.create(7, content, {
+      frequency: 8,
+      villageLivestock: true,
+      livestockDraft: true,
+      livestockDraftFatigue: true,
+    }).world;
+    const at = w.truth.get(LOCATION, w.player);
+    if (!at) throw new Error("sin lugar");
+    w.truth.set(LOCATION, w.player, { ...at, space: VILLAGE_SQUARE });
+    const before = hudPanel(w, characterPanel(w), 0, []).place.animals ?? [];
+    expect(before.some((a) => a.tired)).toBe(false);
+    for (const id of w.truth.ids(ANIMAL)) {
+      if (w.truth.get(ANIMAL, id)?.species !== "ox") continue;
+      w.truth.set(DRAFT_FATIGUE, id, { hours: 0, level: TIRED_LOOK_LEVEL + 0.3 });
+    }
+    const out = hudPanel(w, characterPanel(w), 0, []);
+    const light = out.light;
+    const near = light === "bright" ? TIRED_SIGHT_M : light === "dim" ? TIRED_SIGHT_M / 2 : 0;
+    for (const a of out.place.animals ?? []) {
+      expect(a.tired === true).toBe(a.species === "ox" && a.d <= near);
+    }
   }, 300_000);
 });
