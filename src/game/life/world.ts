@@ -41,6 +41,7 @@ import {
   type LocalMap,
   livestockFeedProcess,
   livestockLifeProcess,
+  livestockPredationProcess,
   livestockYieldProcess,
   localHour,
   type MaterialDef,
@@ -413,6 +414,8 @@ export interface LifeWorld {
   readonly livestockDraft?: readonly LivestockDef[];
   /** Opt-in (livestock-draft-cost, con `livestockDraft` y `livestockFeed`): el buey come más los días de campo. */
   readonly livestockDraftCost?: boolean;
+  /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
+  readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -2014,6 +2017,16 @@ export function lifeWorld(
           : []),
         ...(parts.livestockLife !== undefined
           ? [livestockLifeProcess({ species: parts.livestockLife, year: parts.clock.year })]
+          : []),
+        ...(parts.livestockPredators !== undefined
+          ? [
+              livestockPredationProcess({
+                species: parts.livestockPredators,
+                lineages: parts.lineages ?? [],
+                year: parts.clock.year,
+                day: parts.clock.day,
+              }),
+            ]
           : []),
         ...(parts.livestockYield !== undefined
           ? [

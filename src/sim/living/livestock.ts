@@ -180,6 +180,8 @@ export const LivestockDef = z.strictObject({
   feed: FeedDef.optional(),
   /** Si tira del arado (livestock-yield-draft); sin esto, no. */
   draft: DraftDef.optional(),
+  /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
+  exposure: z.number().min(0).max(1).default(1),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);

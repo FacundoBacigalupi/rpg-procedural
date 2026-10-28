@@ -17,7 +17,8 @@ ganado con dueño y origen (`livestock-herd`), que ya se ve en el fondo (`play-s
 envejece, muere y pare (`livestock-life`) dejando carne y piel al hogar (`livestock-carcass`), y
 las gallinas ponen huevos, menos con días cortos, con frío y con hambre (`livestock-yield-eggs`,
 `-season`, `-feed`), el buey tira del arado (`livestock-yield-draft`) y ya llega en edad de tirar
-(`livestock-herd-ages`) comiendo más los días de campo (`livestock-draft-cost`), y el
+(`livestock-herd-ages`) comiendo más los días de campo (`livestock-draft-cost`); los lobos y zorros con hambre bajan a
+los corrales (`livestock-predators`), y el
 ganado come de la comida del hogar y pasa hambre si falta (`livestock-feed-household`), dejando
 abono para el campo (`livestock-yield-manure`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
@@ -428,7 +429,9 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.
   - [ ] (livestock-zoonosis) Zoonosis y epizootias: patógenos que corren en el ganado y saltan a la gente (body-health §6), y en las poblaciones del monte.
-  - [ ] (livestock-predators) Los lobos que bajan a los corrales cuando falta caza (trophic).
+  - [x] (livestock-predators, 2026-10-27) `LineageDef.raid` (lobo: 0,01 asaltos por día con hambre plena, hasta 150 kg; zorro: 0,004, hasta 4 kg) y `LivestockDef.exposure` (perro 0,3, buey 0,5); `predatorHunger` sale de la respuesta funcional de `trophic.ts` con las presas silvestres de la celda, y `livestockPredationProcess` (fase `physics`) se lleva animales con `living.animal_taken` causado por la ecología, sin cuerpo para el hogar. Opt-in `livestockPredators`, en el perfil. Hecho.
+    - [ ] (livestock-predators-credit) Que lo que se llevan del corral engorde a la población del monte (hoy la ecología no lo cuenta), con la ganancia por masa de `trophicStep`.
+    - [ ] (livestock-predators-guard) El perro que cuida y ladra, el corral cerrado de noche y la gente que caza o envenena al lobo que baja (con recompensa y la cadena de living-world §12); que los vecinos vean y crean lo que pasó (percepción, rumores).
   - La selección de rasgos, las razas y la especiación por aislamiento van a la Fase 7.
 - [ ] Oficios de culto 2a, catálogo opcional (Fase 3): recetas y bienes de incienso, papel de ofrenda, velas y tablillas con Zod y referencias; primero diseñar carga opcional, porque registrar un `CONTENT_KINDS` vacío también altera `Content.hash` y el contrato de replay. Sin activar contenido por defecto ([crafts.md](systems/crafts.md)).
 - [ ] Oficios de culto 2b, taller y lotes en la vida (Fase 3): fuentes reales de cera/fibra/resina/madera con origen, registro persistido de lotes y cuentas exclusivas no reutilizables, duración y mano del artesano, venta y elección de productos al ofrendar; hoy la vida solo ofrenda bienes `GoodDef` por hogar, no productos compuestos con unidades materiales conservadas. Depende de 2a y del contrato de conversión/registro de productos ([spirits.md](systems/spirits.md) §11, [crafts.md](systems/crafts.md)).

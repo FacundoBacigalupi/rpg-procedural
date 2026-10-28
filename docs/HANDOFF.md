@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-predators (2026-10-27, rama `feat/livestock-predators`):** `src/sim/living/predation.ts` (`predatorHunger`, `animalMassKg`, `livestockPredationProcess` en `physics` para no chocar con las escrituras de `settle`); `LineageDef.raid`, `LivestockDef.exposure`; `LifeOptions.livestockPredators` en el perfil. Sin bump. Tests en `predation.test.ts` y `livestock-predators.test.ts` (seed 4: con `frequency: 8` las aldeas caen en celdas sin fauna). Quedan `livestock-predators-credit` y `-guard`.
+
 **livestock-draft-cost (2026-10-27, rama `feat/livestock-draft-cost`):** `DraftDef.workFeedFactor` y `LivestockFeedOptions.working` (en `world.ts`, la estación de cosecha con el desfase por longitud); `LifeOptions.livestockDraftCost` en el perfil con dependencias en `livestockDraft` y `livestockFeed`. Sin bump (opt-in). Test en `draft.test.ts`. Queda `livestock-draft-fatigue`.
 
 **livestock-herd-ages (2026-10-27, rama `feat/livestock-herd-ages`):** `LivestockDef.herdAgeYears` y `SeedLivestockInput.legacyHerdAges`; `LIFE_ENGINE = "life-57"` con `legacyLivestockHerdAges` para `n < 57` (expectativas en `plan-steps`, `wait-sleep` y `src/ui/engine-compat`). Test en `livestock-life.test.ts`.
