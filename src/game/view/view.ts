@@ -481,7 +481,7 @@ export interface ThingView {
   readonly size: "small" | "medium" | "large";
   readonly looked?: true;
   /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado; el buey cansado). */
-  readonly state?: "worn" | "poor" | "lit" | "cold" | "tired";
+  readonly state?: "worn" | "poor" | "lit" | "cold" | "tired" | "soaking" | "almost";
   /** Lo demás que se le nota a un animal de cerca (livestock-look-more): edad, hambre, cría. */
   readonly marks?: readonly ("young" | "old" | "thin" | "starving" | "nursing")[];
 }
@@ -490,7 +490,7 @@ export interface ThingView {
 export interface FixtureInput {
   readonly ref: EntityRef;
   readonly shape: string;
-  readonly state?: "worn" | "poor" | "lit" | "cold" | "tired";
+  readonly state?: ThingView["state"];
   readonly marks?: ThingView["marks"];
   /** Sin definir: grande (el pozo, el granero). Un animal chico, mediano. */
   readonly size?: "small" | "medium" | "large";

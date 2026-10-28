@@ -155,3 +155,20 @@ describe("renderInventory con la ropa puesta (clothing-player-hud)", () => {
     expect(text).toContain("pasás frío");
   });
 });
+
+describe("renderInventory con la piel y la tina (livestock-hide-tan-look)", () => {
+  it("lo que no se come dice cuánto hay; la tina, qué se curte y cuánto falta", () => {
+    const text = renderInventory({
+      coins: 0,
+      carried: [],
+      larder: [
+        { good: "grano", lasts: "weeks" },
+        { good: "piel cruda", amount: "some" },
+      ],
+      vats: [{ good: "piel cruda", into: "cuero curtido", left: "soon" }],
+    });
+    expect(text).toContain("En la despensa: grano; alcanza para unas semanas.");
+    expect(text).toContain("En la despensa: algo de piel cruda.");
+    expect(text).toContain("En la tina: piel cruda curtiéndose en cuero curtido; le falta poco.");
+  });
+});

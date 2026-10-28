@@ -184,3 +184,34 @@ describe("lo demás que se le nota al animal en la narración (livestock-look-mo
     }
   });
 });
+
+describe("la tina mirada en la narración (livestock-hide-tan-look)", () => {
+  const vat = makeId("building", 9) as unknown as EntityRef;
+  const view = (state: "soaking" | "almost") =>
+    buildPlayerView({
+      player,
+      scene,
+      percepts: [],
+      fixtures: [{ ref: vat, shape: "vat", state }],
+      steps: [
+        {
+          verb: "look",
+          self: {
+            believed: "success",
+            cues: [],
+            effect: { kind: "observe", acuity: 0.8, target: vat },
+          } as never,
+        },
+      ],
+      acquaintances: new Map(),
+    });
+
+  it("la tina se nombra con su tanda: en remojo o casi curtida", () => {
+    for (let n = 0; n < 6; n++) {
+      const rng = () => Rng.root(n).fork("narration", 1);
+      expect(stripMarks(renderView(view("soaking"), book, rng()))).toMatch(/la tina de curtir/u);
+      expect(stripMarks(renderView(view("soaking"), book, rng()))).toMatch(/remoj/u);
+      expect(stripMarks(renderView(view("almost"), book, rng()))).toMatch(/cuero|curtidos/u);
+    }
+  });
+});

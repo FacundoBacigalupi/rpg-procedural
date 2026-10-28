@@ -1063,6 +1063,21 @@
   { "id": "thing.shape.granary", "lines": ["el granero"] },
   { "id": "thing.shape.hearth", "lines": ["el fogón"] },
   { "id": "thing.shape.bench", "lines": ["el banco"] },
+  { "id": "thing.shape.vat", "lines": ["la tina de curtir"] },
+  {
+    "id": "thing.state.soaking",
+    "lines": [
+      "Los cueros están en remojo; el agua es oscura y huele fuerte.",
+      "Adentro remojan las pieles; falta para que estén curtidas."
+    ]
+  },
+  {
+    "id": "thing.state.almost",
+    "lines": [
+      "Los cueros ya están casi curtidos: firmes y del color de la corteza.",
+      "Falta poco: las pieles ya tienen color de cuero."
+    ]
+  },
   { "id": "thing.shape.hen", "lines": ["la gallina"] },
   { "id": "thing.shape.dog", "lines": ["el perro"] },
   { "id": "thing.shape.ox", "lines": ["el buey"] },

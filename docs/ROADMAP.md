@@ -20,7 +20,7 @@ las gallinas ponen huevos, menos con días cortos, con frío y con hambre (`live
 (`livestock-herd-ages`) comiendo más los días de campo (`livestock-draft-cost`) y cansándose si trabaja de más
 (`livestock-draft-fatigue`), también con las horas del jugador y de los dormidos
 (`livestock-draft-fatigue-player`) y descansándolo la casa cuando ya está cansado (`livestock-draft-rest`), que se le ve en la escena (`livestock-draft-rest-look`) y al mirarlo (`livestock-draft-rest-say`), junto con la edad, el hambre y la cría (`livestock-look-more`), y el jugador puede carnear un animal de su casa
-(`livestock-slaughter`), cuya piel la casa curte en cuero (`livestock-hide-tan`); los lobos y zorros con hambre bajan a
+(`livestock-slaughter`), cuya piel la casa curte en cuero (`livestock-hide-tan`), con la tina a la vista en el patio y en el inventario (`livestock-hide-tan-look`); los lobos y zorros con hambre bajan a
 los corrales (`livestock-predators`) salvo que el perro los espante (`livestock-predators-dog`); el buey y las gallinas pastan y la
 casa pone el resto (`livestock-feed-pasture`); las cabras dan leche después de parir
 (`livestock-yield-milk`), y el
@@ -426,7 +426,8 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - [ ] (livestock-slaughter-npc) Que el hogar NPC decida carnear (fiesta, hambre, animal viejo o que no puede mantener), con `livestock-feed-choice`.
     - [x] (livestock-hide-tan) Curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`). Hecho (2026-10-28): el bien dice si se curte (`GoodDef.tan`: en qué, rinde, días, desde cuántos gramos; la piel cruda, 0.3 de cuero en 45 días desde 500 g, sin calibrar); `living/tanning.ts` (`tanningProcess`, fila `TANNING` por edificio): la casa que junta la piel la pone toda en la tina (`TAN_VAT`, sale de la despensa y deja de pudrirse) y a los días vuelve cuero. Opt-in `livestockTan` (con `livestockLife`), sin cambio de hashes apagado. Quedan:
       - [ ] (livestock-hide-tan-bark) La corteza o el tanino que gasta la tina, el trabajo de quien la atiende (horas del día) y el oficio (skill de curtidor) que mueve el rinde y la calidad del cuero.
-      - [ ] (livestock-hide-tan-look) Ver la tina y la tanda en la escena y en los paneles de la casa (hoy la piel solo desaparece de la despensa).
+      - [x] (livestock-hide-tan-look) Ver la tina y la tanda en la escena y en los paneles de la casa (hoy la piel solo desaparece de la despensa). Hecho (2026-10-28): con una tanda, la tina es una cosa fija del patio de la casa (`fixturesInSight`, forma `vat`) que se nombra y se mira («miro la tina»): en remojo o casi curtida (`TAN_ALMOST_SHARE`); el inventario dice qué se curte y si falta poco o semanas (`InventoryPanel.vats`), y lo que no se come de la despensa (la piel, el cuero) dice cuánto hay en vez de cuánto alcanza, con su nombre de `goods`. Solo vista: sin cambio de hashes.
+        - [ ] (livestock-hide-tan-vat-thing) La tina como cosa propia de la casa (un componente del edificio o un objeto con desgaste, crafts), que se ve vacía, se hace o se compra, y en la escena web.
       - [ ] (livestock-hide-tan-sell) Que el cuero de las casas llegue al zapatero (compra o trueque) en vez de `hides`: es el cierre de `npc-b2b3b2b3b2`.
     - Carnear el animal ajeno es robo: va con `livestock-tenure`.
   - (livestock-yield) Lo que dan, partido (2026-10-27):

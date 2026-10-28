@@ -141,6 +141,8 @@ export function narratorSystem(style: StyleSettings): string {
     "  An animal (hen, dog, ox, goat) is in the yard, not on the ground; `tired` means it looks worn",
     "  out (head low, heavy breathing): say only that, not why. Its `marks` are what shows up close:",
     "  `young` (a calf, chick or kid), `old`, `thin`, `starving` (skin and bones), `nursing`.",
+    "  A `vat` is the household's tanning vat in the yard: `soaking` (hides still soaking),",
+    "  `almost` (nearly tanned).",
     "- Preserve each percept's `action` exactly in meaning; never replace it with another action.",
     "  `gather` means collecting (recolectar/juntar), `search` means searching (buscar),",
     "  `look` means looking (mirar), and `move` means moving (desplazarse). Collecting is not",
