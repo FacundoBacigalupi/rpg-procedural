@@ -116,3 +116,35 @@ describe("lo fijo en la narración (play-refs-objects-fixtures-look)", () => {
     }
   });
 });
+
+describe("el animal mirado en la narración (livestock-draft-rest-say)", () => {
+  const ox = makeId("animal", 4) as unknown as EntityRef;
+  const view = (tired: boolean) =>
+    buildPlayerView({
+      player,
+      scene,
+      percepts: [],
+      fixtures: [{ ref: ox, shape: "ox", size: "large", ...(tired ? { state: "tired" } : {}) }],
+      steps: [
+        {
+          verb: "look",
+          self: {
+            believed: "success",
+            cues: [],
+            effect: { kind: "observe", acuity: 0.8, target: ox },
+          } as never,
+        },
+      ],
+      acquaintances: new Map(),
+    });
+
+  it("el buey cansado se nombra con su cansancio; descansado, sin él", () => {
+    for (let n = 0; n < 6; n++) {
+      const rng = () => Rng.root(n).fork("narration", 1);
+      const tired = stripMarks(renderView(view(true), book, rng()));
+      expect(tired).toMatch(/(Te fijás bien en|Mirás de cerca) el buey/u);
+      expect(tired).toMatch(/cansado/u);
+      expect(stripMarks(renderView(view(false), book, rng()))).not.toMatch(/cansado/u);
+    }
+  });
+});

@@ -270,7 +270,7 @@ function kindMatches(kind: string, entity: EntityRef): boolean {
   if (kind === "person") return entity.startsWith("agent:");
   if (kind === "place") return entity.startsWith("place:") || entity.startsWith("settlement:");
   if (kind === "sight")
-    return ["agent:", "item:", "work:", "building:"].some((p) => entity.startsWith(p));
+    return ["agent:", "item:", "work:", "building:", "animal:"].some((p) => entity.startsWith(p));
   return true;
 }
 

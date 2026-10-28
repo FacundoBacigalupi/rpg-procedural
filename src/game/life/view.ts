@@ -66,6 +66,7 @@ import {
   type ThoughtInput,
 } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
+import { animalsInSight } from "./animals.ts";
 import { creditRows } from "./credit.ts";
 import { READING_EVENT } from "./divine.ts";
 import { fixturesInSight } from "./fixtures.ts";
@@ -651,7 +652,16 @@ export function playerView(
     },
     percepts: told,
     ...(things.length > 0 ? { things } : {}),
-    fixtures: fixturesInSight(w),
+    fixtures: [
+      ...fixturesInSight(w),
+      // Los animales a la vista se miran como lo fijo (livestock-draft-rest-say).
+      ...animalsInSight(w).map((a) => ({
+        ref: a.ref,
+        shape: a.species,
+        size: a.species === "ox" ? ("large" as const) : ("medium" as const),
+        ...(a.tired === true ? { state: "tired" as const } : {}),
+      })),
+    ],
     ...(seenBefore.size > 0 ? { seenBefore } : {}),
     ...(change && change.arrived.size > 0 ? { arrived: change.arrived } : {}),
     ...(change && change.gone.length > 0 ? { gone: change.gone } : {}),
