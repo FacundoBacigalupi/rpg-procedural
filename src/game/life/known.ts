@@ -24,6 +24,7 @@ import {
   PLACE_NAME,
   VILLAGE_SQUARE,
 } from "../../sim/index.ts";
+import { ANIMAL_WORDS, animalsInSight } from "./animals.ts";
 import { FIXTURE_WORDS, fixturesInSight } from "./fixtures.ts";
 import { smithOf } from "./smith.ts";
 import { RECOGNIZED_CONFIDENCE } from "./view.ts";
@@ -282,6 +283,23 @@ export function knownEntities(
       names: FIXTURE_WORDS[f.shape],
       features: [],
       shape: f.shape,
+      relations: [],
+      present: true,
+      ...(here === undefined ? {} : { at: here.hex }),
+      via: [],
+    });
+  }
+  // Los animales que ve ahora (livestock-draft-rest-say): por su especie, para mirarlos.
+  for (const a of animalsInSight(w)) {
+    const names = ANIMAL_WORDS[a.species];
+    if (names === undefined || listed.has(a.ref)) continue;
+    listed.add(a.ref);
+    out.push({
+      ref: a.ref,
+      kind: "object",
+      names,
+      features: a.tired === true ? ["cansado"] : [],
+      shape: a.species,
       relations: [],
       present: true,
       ...(here === undefined ? {} : { at: here.hex }),

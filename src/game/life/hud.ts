@@ -18,13 +18,11 @@
 import { type AgentId, type HolderRef, holderAccount } from "../../core/index.ts";
 import {
   type AgeBand,
-  ANIMAL,
   BODY_STATE,
   BUILDING,
   type BuildingRecord,
   CORE_NORMAL_C,
   type ConditionKind,
-  DRAFT_FATIGUE,
   EMOTION_HALF_LIFE_TICKS,
   EMOTIONS,
   type EmotionId,
@@ -52,6 +50,13 @@ import {
   unitGrams,
   weatherAt,
 } from "../../sim/index.ts";
+import {
+  ANIMAL_SIGHT_M,
+  animalRows,
+  type SeenAnimal,
+  seenAnimals,
+  tiredSightOf,
+} from "./animals.ts";
 import { knownEntities } from "./known.ts";
 import { type Outfit, outfitOf } from "./outfit.ts";
 import type { BurdenLevel, CharacterPanel } from "./panels.ts";
@@ -463,94 +468,15 @@ function buildingRows(w: LifeWorld): { id: string; b: BuildingRecord }[] {
   return out;
 }
 
-/** Un animal a la vista (play-scene-animals). */
-export interface SeenAnimal {
-  /** La especie de `content/livestock` (hen, dog, ox…): da la silueta. */
-  readonly species: string;
-  /** Al este (+) u oeste (−) de donde mira (m), y a qué distancia. */
-  readonly x: number;
-  readonly d: number;
-  /**
-   * Se le nota el cansancio del tiro (livestock-draft-rest-look): la cabeza gacha, solo de cerca
-   * (`TIRED_SIGHT_M`) y con luz. Sin definir: descansado, lejos o sin `DRAFT_FATIGUE`.
-   */
-  readonly tired?: true;
-}
-
-/** Desde qué cansancio del tiro (`DRAFT_FATIGUE.level`) se le nota al animal. */
-export const TIRED_LOOK_LEVEL = 0.2;
-/** Hasta dónde se le nota el cansancio a un animal (m), con luz de día. */
-export const TIRED_SIGHT_M = 25;
-
-/** Hasta dónde distingue un animal según la luz (m): son más chicos que una casa. */
-export const ANIMAL_SIGHT_M: Readonly<Record<Hud["light"], number>> = {
-  bright: 80,
-  dim: 30,
-  dark: 6,
-};
-export const MAX_SEEN_ANIMALS = 8;
-
-/**
- * Dónde anda en el patio de su casa: unos metros alrededor de la casa, fijo por animal (no hay
- * posiciones dentro del hex todavía; es solo para pintarlo).
- */
-export function yardSpot(
-  id: string,
-  house: { readonly x: number; readonly y: number },
-): { x: number; y: number } {
-  const n = Number(id.slice(id.indexOf(":") + 1)) || 0;
-  return { x: house.x + (((n * 37) % 13) - 6), y: house.y + 3 + ((n * 17) % 5) };
-}
-
-/** Los animales a la vista desde `from`, los más cercanos, puestos de oeste a este. */
-export function seenAnimals(
-  animals: readonly {
-    readonly id: string;
-    readonly species: string;
-    readonly at: { x: number; y: number };
-    readonly tired?: boolean;
-  }[],
-  from: { readonly x: number; readonly y: number },
-  sightM: number,
-  tiredSightM = TIRED_SIGHT_M,
-): SeenAnimal[] {
-  return animals
-    .map((a) => {
-      const dx = a.at.x - from.x;
-      return { a, dx, d: Math.hypot(dx, a.at.y - from.y) };
-    })
-    .filter((s) => s.d <= sightM)
-    .sort((a, b) => a.d - b.d || (a.a.id < b.a.id ? -1 : 1))
-    .slice(0, MAX_SEEN_ANIMALS)
-    .sort((a, b) => a.dx - b.dx || (a.a.id < b.a.id ? -1 : 1))
-    .map((s) => ({
-      species: s.a.species,
-      x: Math.round(s.dx),
-      d: Math.round(s.d),
-      ...(s.a.tired === true && s.d <= tiredSightM ? { tired: true as const } : {}),
-    }));
-}
-
-/** Los animales vivos de la vida con su lugar en el patio. */
-function animalRows(
-  w: LifeWorld,
-): { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] {
-  const out: { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] = [];
-  for (const id of [...w.truth.ids(ANIMAL)].sort()) {
-    const a = w.truth.get(ANIMAL, id);
-    if (!a || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
-    const house = w.truth.get(BUILDING, a.home);
-    if (!house) continue;
-    const level = w.truth.get(DRAFT_FATIGUE, id)?.level ?? 0;
-    out.push({
-      id,
-      species: a.species,
-      at: yardSpot(id, house.at),
-      ...(level >= TIRED_LOOK_LEVEL ? { tired: true } : {}),
-    });
-  }
-  return out;
-}
+export {
+  ANIMAL_SIGHT_M,
+  MAX_SEEN_ANIMALS,
+  type SeenAnimal,
+  seenAnimals,
+  TIRED_LOOK_LEVEL,
+  TIRED_SIGHT_M,
+  yardSpot,
+} from "./animals.ts";
 
 /** Los edificios y animales a la vista y en cuál está, para `Hud.place`. */
 function buildingsOf(
@@ -570,12 +496,7 @@ function buildingsOf(
     ...(animals.length === 0
       ? {}
       : {
-          animals: seenAnimals(
-            animals,
-            from,
-            ANIMAL_SIGHT_M[light],
-            light === "bright" ? TIRED_SIGHT_M : light === "dim" ? TIRED_SIGHT_M / 2 : 0,
-          ),
+          animals: seenAnimals(animals, from, ANIMAL_SIGHT_M[light], tiredSightOf(light)),
         }),
   };
 }

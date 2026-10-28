@@ -138,6 +138,8 @@ export function narratorSystem(style: StyleSettings): string {
     "- `things` are loose objects in sight (shape, material, size as keys). Name them plainly in",
     "  Spanish; one with `looked: true` is what the character looked at closely this turn. A",
     "  `state` (worn, poor) is how run-down it looks; a well or granary is fixed, not on the ground.",
+    "  An animal (hen, dog, ox, goat) is in the yard, not on the ground; `tired` means it looks worn",
+    "  out (head low, heavy breathing): say only that, not why.",
     "- Preserve each percept's `action` exactly in meaning; never replace it with another action.",
     "  `gather` means collecting (recolectar/juntar), `search` means searching (buscar),",
     "  `look` means looking (mirar), and `move` means moving (desplazarse). Collecting is not",

@@ -480,15 +480,17 @@ export interface ThingView {
   readonly material?: string;
   readonly size: "small" | "medium" | "large";
   readonly looked?: true;
-  /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado). */
-  readonly state?: "worn" | "poor" | "lit" | "cold";
+  /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado; el buey cansado). */
+  readonly state?: "worn" | "poor" | "lit" | "cold" | "tired";
 }
 
 /** Lo fijo del espacio (el pozo, el granero): entra a la vista solo si lo miró a propósito. */
 export interface FixtureInput {
   readonly ref: EntityRef;
   readonly shape: string;
-  readonly state?: "worn" | "poor" | "lit" | "cold";
+  readonly state?: "worn" | "poor" | "lit" | "cold" | "tired";
+  /** Sin definir: grande (el pozo, el granero). Un animal chico, mediano. */
+  readonly size?: "small" | "medium" | "large";
 }
 
 /** Tipo con marca: solo `buildPlayerView` lo crea (narration §2). */
@@ -824,7 +826,7 @@ function thingViews(
       ? [
           {
             shape: f.shape,
-            size: "large",
+            size: f.size ?? "large",
             looked: true,
             ...(f.state !== undefined ? { state: f.state } : {}),
           },

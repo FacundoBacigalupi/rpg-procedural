@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-draft-rest-say (2026-10-28, rama `feat/livestock-draft-rest-say`):** `game/life/animals.ts` junta lo de los animales a la vista (antes en `hud.ts`, que lo reexporta) y suma `animalsInSight` y `ANIMAL_WORDS`; `known.ts` los agrega como objetos con `shape` = especie; `view.ts` los pasa como `fixtures` (con `size` y `state: "tired"`); `plan.ts` acepta `animal:` como `sight`; plantillas `thing.shape.{hen,dog,ox,goat}` y `thing.state.tired`, y una línea en el prompt del narrador. Tests en `livestock-look.test.ts` y `src/llm/things.test.ts`. Quedan `livestock-draft-rest-ask` y `livestock-look-more`.
+
 **livestock-draft-rest-look (2026-10-28, rama `feat/livestock-draft-rest-look`):** `SeenAnimal.tired` en `game/life/hud.ts` (lee `DRAFT_FATIGUE.level` ≥ `TIRED_LOOK_LEVEL`; `seenAnimals` recibe hasta dónde se nota según la luz, `TIRED_SIGHT_M`), `src/ui/web/api.ts` y `Scene.tsx` (el `Ox` con la cabeza gacha). Tests en `hud.test.ts`. Quedan `livestock-draft-rest-choice` y `-say`.
 
 **livestock-hide-tan (2026-10-28, rama `feat/livestock-hide-tan`):** `GoodDef.tan` (la piel cruda: cuero, 0.3, 45 días, 500 g), `sim/living/tanning.ts` (`tanningProcess` diario en `settle`, fila `TANNING` por edificio con la tanda; la piel va de la despensa a `TAN_VAT` y vuelve cuero desde ahí; el evento de salida cita el de entrada), `tanRulesOf(content)` y el sumidero en `ledgerConfigOf` (último parámetro `livestockTan`; el cuero entra a `ROTTED` si no estaba). Opt-in `livestockTan` (con `livestockLife`). Test en `livestock-slaughter.test.ts` (carnear la cabra y esperar 52 días). Quedan `-bark`, `-look` y `-sell`.

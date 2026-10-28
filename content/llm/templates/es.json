@@ -1063,6 +1063,17 @@
   { "id": "thing.shape.granary", "lines": ["el granero"] },
   { "id": "thing.shape.hearth", "lines": ["el fogón"] },
   { "id": "thing.shape.bench", "lines": ["el banco"] },
+  { "id": "thing.shape.hen", "lines": ["la gallina"] },
+  { "id": "thing.shape.dog", "lines": ["el perro"] },
+  { "id": "thing.shape.ox", "lines": ["el buey"] },
+  { "id": "thing.shape.goat", "lines": ["la cabra"] },
+  {
+    "id": "thing.state.tired",
+    "lines": [
+      "Resopla con la cabeza gacha: está cansado.",
+      "Se lo ve cansado, las patas flojas y la cabeza baja."
+    ]
+  },
   { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
   { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
   { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },
