@@ -25,6 +25,7 @@ import {
   type DimensionDef,
   type DivinationMethodDef,
   dayOf,
+  draftFatigueProcess,
   type FoodDef,
   type GarmentDef,
   type GoodDef,
@@ -417,6 +418,8 @@ export interface LifeWorld {
   readonly livestockDraft?: readonly LivestockDef[];
   /** Opt-in (livestock-draft-cost, con `livestockDraft` y `livestockFeed`): el buey come más los días de campo. */
   readonly livestockDraftCost?: boolean;
+  /** Opt-in (livestock-draft-fatigue, con `livestockDraft`): el buey se cansa con las horas de más (`DRAFT_FATIGUE`). */
+  readonly livestockDraftFatigue?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
@@ -971,6 +974,7 @@ export function lifeWorld(
           defs: draftDefsOf(parts.livestockDraft),
           year: parts.clock.year,
           workAge: ROUTINE.workAge,
+          ...(parts.livestockDraftFatigue === true ? { fatigue: true } : {}),
         };
   const wardrobe = parts.wardrobe === true ? parts.garments : undefined;
   const altitudeOf = parts.realAltitude
@@ -2034,6 +2038,9 @@ export function lifeWorld(
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
               }),
             ]
+          : []),
+        ...(parts.livestockDraft !== undefined && parts.livestockDraftFatigue === true
+          ? [draftFatigueProcess({ species: parts.livestockDraft, year: parts.clock.year })]
           : []),
         ...(parts.livestockPredators !== undefined
           ? [

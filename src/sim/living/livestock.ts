@@ -158,6 +158,17 @@ export const DraftDef = z.strictObject({
   minAgeYears: z.number().min(0).default(0),
   hungerStop: z.number().positive().max(1).default(0.5),
   workFeedFactor: z.number().min(1).default(1),
+  /**
+   * El cansancio (livestock-draft-fatigue): las horas por día que tira sin cansarse, cuánto del
+   * cansancio se va (y se acerca al de hoy) por día, y desde cuántas horas en el día no tira más.
+   */
+  fatigue: z
+    .strictObject({
+      hoursPerDay: z.number().positive(),
+      recoveryPerDay: z.number().min(0).max(1),
+      maxHoursPerDay: z.number().positive(),
+    })
+    .optional(),
 });
 export type DraftDef = z.infer<typeof DraftDef>;
 
