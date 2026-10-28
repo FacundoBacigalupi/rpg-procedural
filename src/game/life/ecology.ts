@@ -17,6 +17,7 @@ import {
   draftEvent,
   ECOLOGY,
   fireHazard,
+  GRAZED,
   HUNT,
   huntStep,
   type LineageDef,
@@ -49,6 +50,8 @@ export interface EcologyOptions {
   readonly trajectories: readonly TrajectoryDef[];
   /** Opt-in (`wildHunt`): la gente caza herbívoros de la celda; `effortScale` multiplica el esfuerzo diario. */
   readonly hunt?: { readonly effortScale: number };
+  /** Opt-in (livestock-feed-pasture): lo que pastó el ganado (`GRAZED`) no lo comen los herbívoros del monte. */
+  readonly grazed?: boolean;
 }
 
 /** Cuántos hexes del mapa local cuenta la celda ecológica de la aldea (su zona de caza y monte). */
@@ -67,7 +70,12 @@ export function ecologyProcess(o: EcologyOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ECOLOGY.name, SOIL.name, ...(o.hunt ? [PLACE.name, HUNT.name] : [])],
+    reads: [
+      ECOLOGY.name,
+      SOIL.name,
+      ...(o.hunt ? [PLACE.name, HUNT.name] : []),
+      ...(o.grazed ? [GRAZED.name] : []),
+    ],
     writes: [ECOLOGY.name, ...(o.hunt ? [HUNT.name] : [])],
     run(ctx) {
       const [id] = ctx.truth.ids(ECOLOGY);
@@ -77,12 +85,15 @@ export function ecologyProcess(o: EcologyOptions): ProcessDef {
       const weather = weatherAt(o.map, o.clock, o.seed, ctx.now);
       const soil = id === undefined ? undefined : ctx.truth.get(SOIL, id);
       const hexes = ecologyHexes(o.map);
-      const productivity = dailyProductivity({
+      const grown = dailyProductivity({
         tempMeanC: weather.tempMeanC,
         annualPrecipMm: o.map.climate.annualPrecipMm,
         soilFertility: soil?.fertility ?? 1,
         hexes,
       });
+      // Lo que pastó el ganado ayer ya no está para el monte.
+      const grazed = o.grazed ? (ctx.truth.get(GRAZED, id)?.kgPerDay ?? 0) : 0;
+      const productivity = Math.max(0, grown - grazed);
       // Pasos de <= 5 días (estabilidad de la integración); un tramo largo se topa en 60 pasos.
       const steps = Math.min(60, Math.max(1, Math.ceil(days / 5)));
       let cell = { ...eco.cell, productivity };

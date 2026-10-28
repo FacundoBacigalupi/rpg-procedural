@@ -29,7 +29,12 @@
         "hungerStop": 0.5
       }
     ],
-    "feed": { "gramsPerDay": 40, "categories": ["cereal", "wild", "legume"], "starveDays": 10 }
+    "feed": {
+      "gramsPerDay": 40,
+      "categories": ["cereal", "wild", "legume"],
+      "starveDays": 10,
+      "graze": { "share": 0.5, "kgPerDay": 0.05 }
+    }
   },
   {
     "id": "dog",
@@ -71,7 +76,8 @@
     "feed": {
       "gramsPerDay": 800,
       "categories": ["cereal", "legume", "tuber", "vegetable"],
-      "starveDays": 30
+      "starveDays": 30,
+      "graze": { "share": 0.75, "kgPerDay": 10 }
     },
     "draft": {
       "fieldRate": 1.5,

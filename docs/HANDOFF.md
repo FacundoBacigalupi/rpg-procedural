@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-feed-pasture (2026-10-28, rama `feat/livestock-feed-pasture`):** `FeedDef.graze`, `GRAZED`, `LIVESTOCK_PASTURE_SHARE`, `pastureCover`, `grownShare` en `src/sim/living/livestock.ts`; `LivestockFeedOptions.pasture` y `EcologyOptions.grazed` (desfase de un día: los dos corren en `settle`). `LifeOptions.livestockPasture` en el perfil. Test en `livestock-pasture.test.ts` (seed 4). Queda `livestock-pasture-land`.
+
 **livestock-predators-dog (2026-10-27, rama `feat/livestock-predators-dog`):** `LivestockDef.guard` y `LivestockPredationOptions.guard`; el guardián del hogar es el primero por id de los adultos comidos de una especie que cuida, y no se cuida a sí mismo. `LifeOptions.livestockGuard` en el perfil con dependencia en `livestockPredators`. Test en `livestock-predators.test.ts`. Queda `livestock-predators-guard` (corral, gente contra el lobo, creencias).
 
 **livestock-predators-credit (2026-10-27, rama `feat/livestock-predators-credit`):** `livestockPredationProcess` ahora también escribe `ECOLOGY` (suma lo comido a la población del depredador); sin conflicto con `ecologyProcess` porque corre en otra fase. Assert en `livestock-predators.test.ts`.
