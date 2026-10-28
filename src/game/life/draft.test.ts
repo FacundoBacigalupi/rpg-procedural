@@ -305,3 +305,42 @@ describe("el buey se cansa (livestock-draft-fatigue)", () => {
     expect(grams(on)).toBeLessThan(grams(run(false)));
   }, 900_000);
 });
+
+describe("el hogar descansa al buey cansado (livestock-draft-rest)", () => {
+  it("pura: el cansado descansa al llegar a sus horas; el fresco sigue hasta el tope", () => {
+    const ox = content.all(LIVESTOCK).find((s) => s.id === "ox")?.draft;
+    if (!ox?.fatigue?.restAbove) throw new Error("el buey sin descanso");
+    expect(draftFatigueFactor(ox, { hours: 6, level: 0.3 }, true)).toBe(0);
+    expect(draftFatigueFactor(ox, { hours: 6, level: 0.3 })).toBeCloseTo(0.7);
+    expect(draftFatigueFactor(ox, { hours: 5, level: 0.3 }, true)).toBeCloseTo(0.7);
+    expect(draftFatigueFactor(ox, { hours: 7, level: 0.1 }, true)).toBeCloseTo(0.9);
+  });
+
+  it("encendido: los bueyes quedan menos cansados; determinista; el ledger cuadra", () => {
+    const run = (rest: boolean) => {
+      const l = Life.create(SEED, content, {
+        ...OPTS,
+        livestockDraft: true,
+        livestockDraftFatigue: true,
+        livestockDraftRest: rest,
+      });
+      l.advanceTo(l.now + 10 * DAY);
+      return l;
+    };
+    const tiredness = (l: Life) =>
+      (l.world.truth.ids(DRAFT_FATIGUE) as string[]).reduce(
+        (n, id) => n + (l.world.truth.get(DRAFT_FATIGUE, id as never)?.level ?? 0),
+        0,
+      );
+    const on = run(true);
+    const off = run(false);
+    expect(tiredness(off)).toBeGreaterThan(0);
+    expect(tiredness(on)).toBeLessThan(tiredness(off));
+    expect(on.world.ledger.audit()).toEqual([]);
+    expect(
+      checkInvariants({ truth: on.world.truth, log: on.world.log, ledger: on.world.ledger }),
+    ).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockDraftRest: true });
+  }, 600_000);
+});

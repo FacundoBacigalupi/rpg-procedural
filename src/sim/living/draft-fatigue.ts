@@ -38,11 +38,22 @@ export function draftFatigueStep(level: number, hours: number, def: DraftDef): n
   return Math.min(1, Math.max(0, level * (1 - f.recoveryPerDay) + f.recoveryPerDay * over));
 }
 
-/** Pura: qué parte de su tiro da un animal con `row` (cansancio y horas del día). */
-export function draftFatigueFactor(def: DraftDef, row: DraftFatigue | undefined): number {
+/**
+ * Pura: qué parte de su tiro da un animal con `row` (cansancio y horas del día). Con `rest`
+ * (livestock-draft-rest), el que ya está cansado (`restAbove`) descansa al llegar a `hoursPerDay`:
+ * la casa pierde su tiro hoy para no cansarlo más.
+ */
+export function draftFatigueFactor(
+  def: DraftDef,
+  row: DraftFatigue | undefined,
+  rest = false,
+): number {
   const f = def.fatigue;
   if (!f || !row) return 1;
   if (row.hours >= f.maxHoursPerDay) return 0;
+  if (rest && f.restAbove !== undefined && row.level >= f.restAbove && row.hours >= f.hoursPerDay) {
+    return 0;
+  }
   return 1 - row.level;
 }
 

@@ -85,7 +85,7 @@
       "minAgeYears": 2,
       "hungerStop": 0.5,
       "workFeedFactor": 1.5,
-      "fatigue": { "hoursPerDay": 6, "recoveryPerDay": 0.5, "maxHoursPerDay": 8 }
+      "fatigue": { "hoursPerDay": 6, "recoveryPerDay": 0.5, "maxHoursPerDay": 8, "restAbove": 0.2 }
     }
   },
   {

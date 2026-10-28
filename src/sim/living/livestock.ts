@@ -161,12 +161,15 @@ export const DraftDef = z.strictObject({
   /**
    * El cansancio (livestock-draft-fatigue): las horas por día que tira sin cansarse, cuánto del
    * cansancio se va (y se acerca al de hoy) por día, y desde cuántas horas en el día no tira más.
+   * `restAbove` (livestock-draft-rest): desde qué cansancio el hogar lo descansa al llegar a
+   * `hoursPerDay`, en vez de seguir hasta el tope; sin esto, sigue.
    */
   fatigue: z
     .strictObject({
       hoursPerDay: z.number().positive(),
       recoveryPerDay: z.number().min(0).max(1),
       maxHoursPerDay: z.number().positive(),
+      restAbove: z.number().min(0).max(1).optional(),
     })
     .optional(),
 });
