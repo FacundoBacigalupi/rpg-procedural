@@ -67,6 +67,7 @@ import {
   HARVEST_GOOD,
   HOUSEHOLD_TOOLS,
   type Household,
+  herdSpecies,
   houseKey,
   initialCell,
   LAID_SOURCE,
@@ -75,6 +76,7 @@ import {
   LIFE_STAGES,
   LINEAGES,
   LIVESTOCK,
+  type LivestockDef,
   LOCATION,
   type LocalMap,
   liveSettlementSpaces,
@@ -633,6 +635,8 @@ export interface LifeOptions {
   readonly livestockLife?: boolean;
   /** Opt-in (livestock-yield, con `villageLivestock`): las gallinas ponen huevos para el hogar (`LifeParts.livestockYield`); apagado, no dan nada. */
   readonly livestockYield?: boolean;
+  /** Opt-in (livestock-yield-milk, con `villageLivestock`): algunas casas tienen cabras, que dan leche los meses después de parir (con `livestockLife` y `livestockYield`). */
+  readonly livestockDairy?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
   readonly livestockSeason?: boolean;
   /** Opt-in (livestock-yield-feed, con `livestockYield`): ponen menos con frío y, con `livestockFeed`, si pasan hambre. */
@@ -1460,6 +1464,7 @@ export function ledgerConfigOf(
   livestockCarcass = false,
   livestockYield = false,
   livestockFeed = false,
+  livestockDairy = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1471,9 +1476,9 @@ export function ledgerConfigOf(
     ),
   ];
   // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
-  const carcass = livestockCarcass ? carcassUnits(content.all(LIVESTOCK)) : [];
+  const carcass = livestockCarcass ? carcassUnits(livestockOf(content, livestockDairy)) : [];
   // Lo que pone el ganado (livestock-yield): huevos, ya comida.
-  const laid = livestockYield ? yieldUnits(content.all(LIVESTOCK)) : [];
+  const laid = livestockYield ? yieldUnits(livestockOf(content, livestockDairy)) : [];
   return {
     externals: {
       [COOKED]: units,
@@ -1676,6 +1681,7 @@ export function createLife(
       options.villageLivestock === true && options.livestockLife === true,
       options.villageLivestock === true && options.livestockYield === true,
       options.villageLivestock === true && options.livestockFeed === true,
+      options.villageLivestock === true && options.livestockDairy === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -1716,7 +1722,7 @@ export function createLife(
     seedLivestock(truth, ids, log, {
       seed,
       settlement,
-      species: content.all(LIVESTOCK),
+      species: livestockOf(content, options.livestockDairy === true),
       members,
       yearTicks: clock.year,
       ...(options.legacyLivestockFoundingAge ? {} : { now: pop.now }),
@@ -2045,11 +2051,14 @@ export function createLife(
       ...defaultParts(options),
       ...optInParts(options, site.terrain),
       ...(options.villageLivestock && options.livestockLife
-        ? { livestockLife: content.all(LIVESTOCK) }
+        ? {
+            livestockLife: livestockOf(content, options.livestockDairy === true),
+            ...(options.livestockDairy ? { livestockDairy: true } : {}),
+          }
         : {}),
       ...(options.villageLivestock && options.livestockDraft
         ? {
-            livestockDraft: content.all(LIVESTOCK),
+            livestockDraft: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockFeed && options.livestockDraftCost
               ? { livestockDraftCost: true }
               : {}),
@@ -2057,7 +2066,7 @@ export function createLife(
         : {}),
       ...(options.villageLivestock && options.livestockYield
         ? {
-            livestockYield: content.all(LIVESTOCK),
+            livestockYield: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockSeason ? { livestockSeason: true } : {}),
             ...(options.livestockYieldFeed
               ? { livestockYieldFeed: { hunger: options.livestockFeed === true } }
@@ -2066,14 +2075,14 @@ export function createLife(
         : {}),
       ...(options.villageLivestock && options.livestockPredators
         ? {
-            livestockPredators: content.all(LIVESTOCK),
+            livestockPredators: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockGuard ? { livestockGuard: true } : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockFeed
         ? {
             livestockFeed: {
-              species: content.all(LIVESTOCK),
+              species: livestockOf(content, options.livestockDairy === true),
               foods: content.all(FOODS).map((f) => ({ id: f.id, category: f.category })),
             },
             ...(options.livestockPasture ? { livestockPasture: true } : {}),
@@ -2114,4 +2123,9 @@ export function createLife(
     );
   }
   return { world, terrain };
+}
+
+/** Las especies del ganado de la aldea: las de siempre y, con `dairy`, las lecheras (livestock-yield-milk). */
+function livestockOf(content: Content, dairy: boolean): LivestockDef[] {
+  return herdSpecies(content.all(LIVESTOCK), new Set(dairy ? ["dairy"] : []));
 }

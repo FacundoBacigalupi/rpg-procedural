@@ -99,6 +99,7 @@ export const FULL_PROFILE = {
   livestockPredators: true,
   livestockGuard: true,
   livestockPasture: true,
+  livestockDairy: true,
   livestockFeed: true,
   villageShrine: true,
   // Sin consumibles nadie decide `move`: sin recados no hay viajes de NPC ni lejanos que dormir.
@@ -154,6 +155,7 @@ export function validateLifeDependencies(options: LifeOptions): readonly LifeDep
     ["livestockPredators", "villageLivestock"],
     ["livestockGuard", "livestockPredators"],
     ["livestockPasture", "livestockFeed"],
+    ["livestockDairy", "villageLivestock"],
     ["livestockFeed", "villageLivestock"],
     ["livestockManure", "livestockFeed"],
     ["livestockManure", "fieldManure"],
