@@ -4,9 +4,10 @@
 // `raid.perDay` asaltos por día y cada asalto se lleva un animal de la aldea que pueda cargar
 // (`raid.maxPreyKg`, con la masa que tiene a su edad), elegido según lo expuesto que está
 // (`LivestockDef.exposure`). El animal muere sin cuerpo para el hogar (se lo comen), con un evento
-// `living.animal_taken` causado por la ecología de la celda. Lo comido todavía no engorda a la
-// población del monte (queda para livestock-predators-credit), y el perro que cuida, el corral
-// cerrado y la caza de lobos por la gente quedan para livestock-predators-guard.
+// `living.animal_taken` causado por la ecología de la celda. Lo comido engorda a la población del
+// monte como en `trophicStep` (livestock-predators-credit: masa · eficiencia / masa del depredador),
+// y el perro que cuida, el corral cerrado y la caza de lobos por la gente quedan para
+// livestock-predators-guard.
 
 import type { AnimalId, Duration } from "../../core/index.ts";
 import {
@@ -16,6 +17,7 @@ import {
   endEntity,
   type ProcessDef,
   type StateChange,
+  setComponent,
 } from "../scheduler/index.ts";
 import { ENTITY, LOCATION } from "../world/index.ts";
 import { ECOLOGY, type LineageDef, lineageOf } from "./ecology.ts";
@@ -68,8 +70,9 @@ export interface LivestockPredationOptions {
 /**
  * Cada día: por cada linaje que asalta y vive en la celda de la aldea (por id), los asaltos del paso
  * (`count · perDay · hambre · paso/día`: la parte entera y la fracción como chance, con su rama del
- * rng) se llevan cada uno un animal vivo que pueda cargar, elegido con peso `exposure`. Corre en la
- * fase `physics`, antes de que el ganado coma, pare o muera de viejo en `settle`.
+ * rng) se llevan cada uno un animal vivo que pueda cargar, elegido con peso `exposure`; lo comido
+ * suma a la población del depredador en la celda. Corre en la fase `physics`, antes de que el ganado
+ * coma, pare o muera de viejo y de que la ecología dé su paso en `settle`.
  */
 export function livestockPredationProcess(o: LivestockPredationOptions): ProcessDef {
   const byId = new Map(o.species.map((s) => [s.id, s]));
@@ -85,7 +88,7 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
     representation: "individual",
     phase: "physics",
     reads: [ANIMAL.name, ENTITY.name, ECOLOGY.name, ANIMAL_HUNGER.name],
-    writes: [ENTITY.name, LOCATION.name, ANIMAL_HUNGER.name],
+    writes: [ENTITY.name, LOCATION.name, ANIMAL_HUNGER.name, ECOLOGY.name],
     scopeGuard: (truth) =>
       raiders.length > 0 && truth.ids(ANIMAL).length > 0 && truth.ids(ECOLOGY).length > 0,
     run(ctx) {
@@ -102,6 +105,7 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
       const taken = new Set<AnimalId>();
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
+      const gain = new Map<string, number>();
       for (const d of raiders) {
         const raid = d.raid;
         const l = lineages[d.id];
@@ -129,10 +133,12 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
               return pick < 0;
             }) ?? prey.at(-1);
           if (!chosen) break;
-          const [id, a] = chosen;
+          const [id, a, def] = chosen;
           const base = ctx.truth.get(ENTITY, id);
           if (!base) continue;
           taken.add(id);
+          const kg = animalMassKg(def, (ctx.now - a.bornAt) / o.year);
+          gain.set(d.id, (gain.get(d.id) ?? 0) + (kg * l.efficiency) / l.bodyMass);
           const end = draftEvent(events.length);
           events.push({
             kind: "living.animal_taken",
@@ -147,6 +153,18 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
         }
       }
       if (events.length === 0) return {};
+      changes.push(
+        setComponent(ECOLOGY, ecoId, {
+          ...eco,
+          cell: {
+            ...eco.cell,
+            populations: eco.cell.populations.map((p) => ({
+              ...p,
+              count: p.count + (gain.get(p.lineage) ?? 0),
+            })),
+          },
+        }),
+      );
       return { events, changes };
     },
   };
