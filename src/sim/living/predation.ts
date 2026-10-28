@@ -6,7 +6,9 @@
 // (`LivestockDef.exposure`). El animal muere sin cuerpo para el hogar (se lo comen), con un evento
 // `living.animal_taken` causado por la ecología de la celda. Lo comido engorda a la población del
 // monte como en `trophicStep` (livestock-predators-credit: masa · eficiencia / masa del depredador),
-// y el perro que cuida, el corral cerrado y la caza de lobos por la gente quedan para
+// y el perro adulto y comido de la casa (`LivestockDef.guard`, livestock-predators-dog) espanta con
+// chance `repel` al que viene por otro animal del hogar (`living.raid_repelled`, causado también
+// por el perro). El corral cerrado y la caza de lobos por la gente quedan para
 // livestock-predators-guard.
 
 import type { AnimalId, Duration } from "../../core/index.ts";
@@ -65,6 +67,8 @@ export interface LivestockPredationOptions {
   readonly year: Duration;
   /** Duración del día (ticks), para los asaltos por paso. */
   readonly day: Duration;
+  /** Opt-in (livestock-predators-dog): el que cuida la casa espanta al depredador. */
+  readonly guard?: boolean;
 }
 
 /**
@@ -103,6 +107,14 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
         if (a && def && ctx.truth.get(ENTITY, id)?.endedAt === undefined) alive.push([id, a, def]);
       }
       const taken = new Set<AnimalId>();
+      // El que cuida cada hogar: el primero por id de los adultos comidos de una especie que cuida.
+      const guards = new Map<string, [AnimalId, number]>();
+      for (const [id, a, def] of alive) {
+        const g = o.guard === true ? def.guard : undefined;
+        if (!g || guards.has(a.owner) || (ctx.now - a.bornAt) / o.year < g.minAgeYears) continue;
+        if ((ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0) >= g.hungerStop) continue;
+        guards.set(a.owner, [id, g.repel]);
+      }
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
       const gain = new Map<string, number>();
@@ -136,6 +148,21 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
           const [id, a, def] = chosen;
           const base = ctx.truth.get(ENTITY, id);
           if (!base) continue;
+          const guard = guards.get(a.owner);
+          if (guard && guard[0] !== id && !taken.has(guard[0]) && r.float() < guard[1]) {
+            events.push({
+              kind: "living.raid_repelled",
+              actors: [],
+              place: { kind: "building", building: a.home },
+              data: { animal: id, guard: guard[0], owner: a.owner, predator: d.id },
+              causes: [
+                { kind: "state", entity: ecoId as never, key: "ecology" },
+                { kind: "state", entity: guard[0], key: "guard" },
+              ],
+              emissions: null,
+            });
+            continue;
+          }
           taken.add(id);
           const kg = animalMassKg(def, (ctx.now - a.bornAt) / o.year);
           gain.set(d.id, (gain.get(d.id) ?? 0) + (kg * l.efficiency) / l.bodyMass);
@@ -153,6 +180,7 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
         }
       }
       if (events.length === 0) return {};
+      if (gain.size === 0) return { events };
       changes.push(
         setComponent(ECOLOGY, ecoId, {
           ...eco,
