@@ -209,7 +209,6 @@
     "duration": { "kind": "fixed", "seconds": 1800 },
     "checkpoint": 300,
     "emissions": { "sight": 0.6, "sound": 0.5 },
-    "serves": { "hunger": 0.3, "wealth": 0.2 },
     "resolver": "slaughter",
     "ease": 0.6,
     "factors": {
