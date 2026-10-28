@@ -7,6 +7,7 @@
 
 import {
   type AgentId,
+  type AnimalId,
   compareStrings,
   type EntityRef,
   externalAccount,
@@ -211,6 +212,13 @@ import { loansOf } from "./loans.ts";
 import { harvestSeasonOf } from "./map.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
+import {
+  SLAUGHTER_READS,
+  SLAUGHTER_WRITES,
+  type SlaughterOptions,
+  slaughterChanges,
+  slaughterTargetOf,
+} from "./slaughter.ts";
 import { IRON_UNIT, SMITH, smithLevelAfterJob, smithOf } from "./smith.ts";
 import { cropStarts, fieldCropFactor, SOWN } from "./sowing.ts";
 import { strainBlow } from "./strain.ts";
@@ -301,6 +309,8 @@ export interface ActOptions {
   readonly fieldSowing?: boolean;
   /** Opt-in (livestock-yield-draft): el buey del hogar en su turno sube la hora de campo del jugador. */
   readonly draft?: DraftOptions;
+  /** Opt-in (livestock-slaughter): carnear un animal de la casa que tiene al lado. */
+  readonly slaughter?: SlaughterOptions;
   /** Opt-in al ejecutar trade de NPC: una proyección única acumula los registros compartidos. */
   readonly projectTrades?: boolean;
   /** Opt-in: las hojas trade se atienden en orden canónico con saldos y diffs actualizados. */
@@ -653,6 +663,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       CREDIT.name,
       SOIL.name,
       ...(o.draft ? DRAFT_READS : []),
+      ...(o.slaughter ? SLAUGHTER_READS : []),
       ENTITY.name,
       LOCATION.name,
       BUILDING.name,
@@ -694,6 +705,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.hearthTend ? [HEARTH.name, HEARTH_WARMING.name] : []),
       // El buey que tira con el jugador suma sus horas (livestock-draft-fatigue-player).
       ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
+      // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
+      ...(o.slaughter ? SLAUGHTER_WRITES : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -857,6 +870,12 @@ function warmHearthOf(
   if (target !== undefined && "entity" in target && target.entity !== at.hearth) return {};
   const hearth = at.hearth as EntityRef;
   return { warmHearth: { hearth, lit: (truth.get(HEARTH, hearth)?.intensity ?? 0) > 0 } };
+}
+
+/** El texto del argumento `role` del nodo, si lo tiene. */
+function textArg(node: { args: readonly ArgValue[] }, role: string): string | undefined {
+  const a = node.args.find((x) => x.role === role);
+  return a !== undefined && "text" in a ? a.text : undefined;
 }
 
 /** La despensa del hogar dueño del espacio cerrado donde está `me`, si no es el suyo. */
@@ -1656,6 +1675,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       o.filter && node.verb === "filter"
         ? { unit: ledgerUnit(o.filter.material), grams: o.filter.grams }
         : undefined,
+    slaughterTarget:
+      o.slaughter && node.verb === "slaughter"
+        ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
+        : undefined,
     consumables:
       o.consumables && node.verb === "consume"
         ? new Set(o.consumables.map((c) => GOOD(c.good)))
@@ -1759,6 +1782,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         setComponent(HEARTH, eff.hearth as EntityRef, { ...row, intensity, at: ctx.now }),
       );
     }
+  } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
+    changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
     changes.push(deleteComponent(HEARTH, eff.hearth as EntityRef));
   } else if (eff.kind === "filter" && eff.material !== null && eff.grams > 0 && o.filter) {

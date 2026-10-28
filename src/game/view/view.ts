@@ -430,6 +430,7 @@ export type EffectView =
   | { readonly kind: "filter"; readonly filtered: boolean }
   | { readonly kind: "kindle"; readonly lit: boolean; readonly fed: boolean }
   | { readonly kind: "douse"; readonly doused: boolean }
+  | { readonly kind: "slaughter"; readonly done: boolean; readonly had: boolean }
   | {
       readonly kind: "cook";
       /** Lo que sacó (null si no cocinó nada). */
@@ -1002,6 +1003,9 @@ function effectView(
       return { kind: "kindle", lit: e.hearth !== null, fed: e.moved > 0 };
     case "douse":
       return { kind: "douse", doused: e.hearth !== null };
+    case "slaughter":
+      // Lo que dejó se ve en la despensa; los gramos no se cuentan.
+      return { kind: "slaughter", done: e.done, had: e.animal !== null };
     case "drink":
       return { kind: "drink", drank: e.liters > 0 };
     case "use":

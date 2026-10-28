@@ -90,6 +90,7 @@ export const RESOLVERS = [
   "consult",
   "forge",
   "hire",
+  "slaughter",
   "ponder",
 ] as const;
 export type ResolverKey = (typeof RESOLVERS)[number];

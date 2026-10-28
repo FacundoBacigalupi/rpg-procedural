@@ -892,6 +892,18 @@
     ]
   },
   {
+    "id": "slaughter",
+    "example": "carneo la cabra",
+    "tail": "la cabra",
+    "forms": ["carneo", "carnear"],
+    "synonyms": [
+      {
+        "as": "carneo",
+        "words": ["sacrifico", "sacrificar", "degüello", "degollar", "desposto", "despostar"]
+      }
+    ]
+  },
+  {
     "id": "kindle",
     "example": "enciendo el fuego",
     "forms": ["enciendo el fuego", "encender el fuego"],

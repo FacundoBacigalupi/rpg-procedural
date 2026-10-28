@@ -711,6 +711,14 @@ const VERBS: readonly {
     },
   },
   {
+    // Carnear un animal de la casa: «carneo la cabra», «sacrifico una gallina».
+    re: /^(?:carneo|carnear|sacrifico|sacrificar|degüello|degollar|desposto|despostar)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("slaughter", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
     // Perdonar al vencido: «perdono al bandido», «lo perdono».
     re: /^(?:(?:lo|la|le|los|las)\s+)?(?:perdono|perdonar)\b/i,
     build: (rest) => {

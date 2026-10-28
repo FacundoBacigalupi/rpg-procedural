@@ -647,6 +647,8 @@ export interface LifeOptions {
   readonly livestockDraftCost?: boolean;
   /** Opt-in (livestock-draft-fatigue, con `livestockDraft`): el buey se cansa con las horas de campo de más y rinde menos al día siguiente. */
   readonly livestockDraftFatigue?: boolean;
+  /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador puede carnear un animal de su casa («carneo la cabra»): termina y deja carne y piel en la despensa. */
+  readonly livestockSlaughter?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
@@ -2056,6 +2058,9 @@ export function createLife(
         ? {
             livestockLife: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockDairy ? { livestockDairy: true } : {}),
+            ...(options.livestockSlaughter
+              ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
+              : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockDraft
