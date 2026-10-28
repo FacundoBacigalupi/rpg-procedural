@@ -1074,6 +1074,23 @@
       "Se lo ve cansado, las patas flojas y la cabeza baja."
     ]
   },
+  { "id": "thing.mark.young", "lines": ["Todavía es una cría.", "Es chico todavía, una cría."] },
+  {
+    "id": "thing.mark.old",
+    "lines": ["Se le notan los años.", "Tiene los años encima: se mueve lento."]
+  },
+  {
+    "id": "thing.mark.thin",
+    "lines": ["Está flaco: se le marcan las costillas.", "Se lo ve flaco, mal comido."]
+  },
+  {
+    "id": "thing.mark.starving",
+    "lines": ["Está en los huesos, consumido de hambre.", "Se le ven los huesos: pasa hambre."]
+  },
+  {
+    "id": "thing.mark.nursing",
+    "lines": ["Da de mamar: tiene la ubre llena.", "Está criando: da de mamar."]
+  },
   { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
   { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
   { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },

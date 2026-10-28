@@ -175,6 +175,7 @@ export function renderView(
     if (t.looked === true) {
       say("thing.looked", { thing });
       if (t.state !== undefined) say(`thing.state.${t.state}`);
+      for (const m of t.marks ?? []) say(`thing.mark.${m}`);
     } else if (looking || described) say("thing.seen", { thing });
   }
   for (const g of view.gone ?? []) say("percept.gone", { who: ref(g) });

@@ -148,3 +148,39 @@ describe("el animal mirado en la narración (livestock-draft-rest-say)", () => {
     }
   });
 });
+
+describe("lo demás que se le nota al animal en la narración (livestock-look-more)", () => {
+  const goat = makeId("animal", 5) as unknown as EntityRef;
+  const view = (marks: readonly ("young" | "old" | "thin" | "starving" | "nursing")[]) =>
+    buildPlayerView({
+      player,
+      scene,
+      percepts: [],
+      fixtures: [{ ref: goat, shape: "goat", size: "medium", marks }],
+      steps: [
+        {
+          verb: "look",
+          self: {
+            believed: "success",
+            cues: [],
+            effect: { kind: "observe", acuity: 0.8, target: goat },
+          } as never,
+        },
+      ],
+      acquaintances: new Map(),
+    });
+
+  it("cada marca tiene su frase y sin marcas no se dice nada de eso", () => {
+    for (const m of ["young", "old", "thin", "starving", "nursing"] as const) {
+      expect(book.has(`thing.mark.${m}`)).toBe(true);
+    }
+    for (let n = 0; n < 6; n++) {
+      const rng = () => Rng.root(n).fork("narration", 1);
+      const said = stripMarks(renderView(view(["starving", "nursing"]), book, rng()));
+      expect(said).toMatch(/la cabra/u);
+      expect(said).toMatch(/huesos/u);
+      expect(said).toMatch(/mamar/u);
+      expect(stripMarks(renderView(view([]), book, rng()))).not.toMatch(/huesos|mamar|cría|años/u);
+    }
+  });
+});

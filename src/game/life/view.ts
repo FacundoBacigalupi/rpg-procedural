@@ -660,6 +660,7 @@ export function playerView(
         shape: a.species,
         size: a.species === "ox" ? ("large" as const) : ("medium" as const),
         ...(a.tired === true ? { state: "tired" as const } : {}),
+        ...(a.marks !== undefined ? { marks: a.marks } : {}),
       })),
     ],
     ...(seenBefore.size > 0 ? { seenBefore } : {}),

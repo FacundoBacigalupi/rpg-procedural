@@ -4,14 +4,23 @@ import { describe, expect, it } from "vitest";
 import { type ContentSource, type EntityRef, loadContent } from "../../core/index.ts";
 import {
   ANIMAL,
+  ANIMAL_HUNGER,
   BUILDING,
   DRAFT_FATIGUE,
   type IntentDraft,
+  LACTATING,
   LOCATION,
   planFromDraft,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { ANIMAL_WORDS, animalsInSight, TIRED_LOOK_LEVEL } from "./animals.ts";
+import {
+  ANIMAL_WORDS,
+  animalsInSight,
+  OLD_LOOK_SHARE,
+  STARVING_LOOK_LEVEL,
+  THIN_LOOK_LEVEL,
+  TIRED_LOOK_LEVEL,
+} from "./animals.ts";
 import { knownEntities } from "./known.ts";
 import { Life } from "./life.ts";
 import { itemsSeen, playerView } from "./view.ts";
@@ -112,5 +121,56 @@ describe("mirar al animal (livestock-draft-rest-say)", () => {
     expect(thing).toMatchObject({ shape: "ox", size: "large", looked: true });
     const tiredNow = animalsInSight(w).some((a) => a.ref === target && a.tired === true);
     expect(thing?.state === "tired").toBe(tiredNow);
+  }, 300_000);
+});
+
+describe("lo demás que se le nota al animal (livestock-look-more)", () => {
+  it("de cerca se le ven los años, el hambre y la cría; la vista lo lleva al mirarlo", () => {
+    const l = Life.create(7, content, {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockDraft: true,
+      livestockDraftFatigue: true,
+    });
+    const w = l.world;
+    const ox = oxInSight(l);
+    const lifespan = w.livestockLife?.find((d) => d.id === "ox")?.lifespanYears ?? 0;
+    expect(lifespan).toBeGreaterThan(0);
+    const mark = (hunger: number) => {
+      const a = w.truth.get(ANIMAL, ox);
+      if (!a) throw new Error("sin buey");
+      const bornAt = w.scheduler.now - Math.ceil((OLD_LOOK_SHARE * lifespan + 0.5) * w.clock.year);
+      w.truth.set(ANIMAL, ox, { ...a, bornAt });
+      w.truth.set(ANIMAL_HUNGER, ox, { level: hunger });
+      w.truth.set(LACTATING, ox, { since: w.scheduler.now });
+    };
+    mark(THIN_LOOK_LEVEL + 0.1);
+    expect(animalsInSight(w).find((a) => a.ref === ox)?.marks).toEqual(["old", "thin", "nursing"]);
+    mark(STARVING_LOOK_LEVEL + 0.1);
+    expect(animalsInSight(w).find((a) => a.ref === ox)?.marks).toEqual([
+      "old",
+      "starving",
+      "nursing",
+    ]);
+    // Recién nacido y comido: solo cría.
+    const a = w.truth.get(ANIMAL, ox);
+    if (!a) throw new Error("sin buey");
+    w.truth.set(ANIMAL, ox, { ...a, bornAt: w.scheduler.now });
+    w.truth.deleteRaw(ANIMAL_HUNGER.name, ox);
+    w.truth.deleteRaw(LACTATING.name, ox);
+    expect(animalsInSight(w).find((a) => a.ref === ox)?.marks).toEqual(["young"]);
+
+    mark(STARVING_LOOK_LEVEL + 0.1);
+    const made = look(w, "el buey");
+    expect(made.kind).toBe("plan");
+    if (made.kind !== "plan") return;
+    const report = l.turn(made.plan, 1);
+    tire(w);
+    if (w.truth.get(ANIMAL, ox) !== undefined) mark(STARVING_LOOK_LEVEL + 0.1);
+    const view = playerView(w, report.steps, { heardSince: report.from });
+    const thing = view.things?.find((t) => t.shape === "ox" && t.looked === true);
+    const seen = animalsInSight(w).find((s) => s.ref === ox);
+    expect(thing?.marks ?? []).toEqual(seen?.marks ?? []);
   }, 300_000);
 });
