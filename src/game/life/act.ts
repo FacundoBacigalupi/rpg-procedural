@@ -28,6 +28,7 @@ import {
   type Activity,
   AMPUTATIONS,
   type ArgValue,
+  addToField,
   adulterate,
   advance,
   applyAcute,
@@ -49,6 +50,7 @@ import {
   createEntity,
   DEFICIENCY_EFFECTS,
   type DealBudget,
+  DRAFT_FATIGUE,
   dayOf,
   deleteComponent,
   draftEvent,
@@ -690,6 +692,8 @@ export function actProcess(o: ActOptions): ProcessDef {
     writes: [
       // Encender y apagar el fogón; arrimarse a calentarse (use-hearth-warm).
       ...(o.hearthTend ? [HEARTH.name, HEARTH_WARMING.name] : []),
+      // El buey que tira con el jugador suma sus horas (livestock-draft-fatigue-player).
+      ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -1517,7 +1521,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const cropFactor = o.fieldWatering
     ? fieldCropFactor(truth, day, e.rainOf(day), o.fieldSowing ? e.cropStart(day) : undefined)
     : 1;
-  const draftRate = o.draft ? (draftFor(truth, me, ctx.now, o.draft)?.rate ?? 1) : 1;
+  const draft = o.draft ? draftFor(truth, me, ctx.now, o.draft) : undefined;
+  const draftRate = draft?.rate ?? 1;
   const harvestRate =
     HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth) * draftRate;
   // Claims de ítems: lo que el mundo permite (existe, al alcance, la toma es físicamente válida).
@@ -2452,6 +2457,13 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     const before = row?.wear ?? 0;
     const wear = Math.min(1, Math.round((before + (eff.toolWear as number)) * 1e6) / 1e6);
     changes.push(setComponent(ITEM_WEAR, eff.tool, { ...row, wear }));
+  }
+  // El buey del hogar tiró del arado mientras el jugador trabajaba el campo: suma esas horas a
+  // su cansancio del día (livestock-draft-fatigue-player).
+  if (o.draft?.fatigue === true && eff.kind === "work" && eff.effectiveSeconds > 0) {
+    for (const u of draft?.use ?? []) {
+      changes.push(addToField(DRAFT_FATIGUE, u.animal, "hours", (u.hours * r.seconds) / 3600));
+    }
   }
   // Soltar un objeto propio: queda en el lugar, con su LOCATION donde está el actor; nadie más
   // lo disputa (solo el que lo lleva puede soltarlo), así que no hay claim.

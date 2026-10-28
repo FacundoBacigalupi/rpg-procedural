@@ -11,8 +11,10 @@ import { externalAccount, holderAccount, ledgerUnit } from "../../core/index.ts"
 import {
   ASLEEP,
   type Asleep,
+  addToField,
   BODY_STATE,
   type BodyPlanDef,
+  DRAFT_FATIGUE,
   dayOf,
   deleteComponent,
   draftEvent,
@@ -143,7 +145,13 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       ...(o.harvest?.field?.sowing ? [SOWN.name] : []),
       ...(o.harvest && o.draft ? DRAFT_READS : []),
     ],
-    writes: [ASLEEP.name, BODY_STATE.name, ENTITY.name, PENDING_FACTS.name],
+    writes: [
+      ASLEEP.name,
+      BODY_STATE.name,
+      ENTITY.name,
+      PENDING_FACTS.name,
+      ...(o.harvest && o.draft?.fatigue ? [DRAFT_FATIGUE.name] : []),
+    ],
     run(ctx) {
       const me = ctx.scope as AgentId;
       const truth = ctx.truth;
@@ -185,8 +193,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const later = pending.filter((f) => f.at > ctx.now);
       const fertility = o.harvest ? fieldFertility(truth) : 0;
       // El tiro se mira una vez por tramo (al despertar el proceso), no por hora.
-      const draftRate =
-        o.harvest && o.draft ? (draftFor(truth, me, ctx.now, o.draft)?.rate ?? 1) : 1;
+      const draft = o.harvest && o.draft ? draftFor(truth, me, ctx.now, o.draft) : undefined;
+      const draftRate = draft?.rate ?? 1;
       // El factor de riego y siembra del campo por día (se pide por hora y por dormido).
       const cropByDay = new Map<number, number>();
       const cropFactor = (day: number): number => {
@@ -327,6 +335,15 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
           emissions: {},
           causes: [{ kind: "state", entity: me, key: "routine" }],
         });
+        // El buey cuenta las horas de un día (livestock-draft-fatigue-player): el tramo puede ser de
+        // varios días y el cansancio se mide por día, así que se toma la parte de uno.
+        if (o.draft?.fatigue && draft) {
+          const perDay = Math.min(1, o.clock.day / Math.max(1, ctx.now - sleep.lastAdvanced));
+          const hours = (fieldHours + rest.fieldHours) * perDay;
+          for (const u of draft.use) {
+            changes.push(addToField(DRAFT_FATIGUE, u.animal, "hours", u.hours * hours));
+          }
+        }
         postings.push({
           event: draftEvent(events.length - 1),
           transfers: [
