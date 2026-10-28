@@ -19,7 +19,8 @@ las gallinas ponen huevos, menos con días cortos, con frío y con hambre (`live
 `-season`, `-feed`), el buey tira del arado (`livestock-yield-draft`) y ya llega en edad de tirar
 (`livestock-herd-ages`) comiendo más los días de campo (`livestock-draft-cost`); los lobos y zorros con hambre bajan a
 los corrales (`livestock-predators`) salvo que el perro los espante (`livestock-predators-dog`); el buey y las gallinas pastan y la
-casa pone el resto (`livestock-feed-pasture`), y el
+casa pone el resto (`livestock-feed-pasture`); las cabras dan leche después de parir
+(`livestock-yield-milk`), y el
 ganado come de la comida del hogar y pasa hambre si falta (`livestock-feed-household`), dejando
 abono para el campo (`livestock-yield-manure`). Sigue
 lo jugable: la aldea ya tiene su santuario de la tierra (`village-shrine`), que se ve en el fondo,
@@ -427,7 +428,9 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
     - [ ] (livestock-draft-fatigue) El cansancio del tiro: el buey que trabajó de más (varios en un mismo día, o días seguidos) rinde menos al día siguiente; hoy el tiro es compartido y no lleva la cuenta de horas por animal.
     - [x] (livestock-herd-ages, 2026-10-27) Edades por función: `herdAgeYears` en `content/livestock` (buey: entre 3 y 10 años; las demás especies siguen entre 0 y 0,6 de su vida), con la misma tirada. Cambia la creación con `villageLivestock`: bump a `life-57`, compatibilidad `legacyLivestockHerdAges`. Hecho.
     - [x] (livestock-yield-manure, 2026-10-27) Abono: con `livestockManure` (requiere `fieldManure` y `livestockFeed`; no entra en FULL_PROFILE, como `fieldManure`), `life.soil` suma lo acumulado en el sumidero `fed` (lo que comió el ganado de la casa) a lo comido por la gente: la misma `EXCRETED_FRACTION` sale como desecho a la aldea y de ahí al campo, y con `fieldManureDiet` entra a la calidad. Apagado, hash igual. Lo que deja pastando por su cuenta espera a `livestock-feed-pasture`. Hecho.
-    - [ ] (livestock-yield-milk) Leche: espera especies lecheras (vaca, cabra, oveja) en `content/livestock`, por cultura.
+    - [x] (livestock-yield-milk, 2026-10-28) La cabra (`content/livestock`, `optIn: "dairy"`, en las casas de 4 o más) y `YieldDef.lactationDays` (240 días): con `livestockDairy` (con `villageLivestock`; la leche pide `livestockLife` y `livestockYield`), la que pare queda en `LACTATING` y da un litro por día esos meses, frenado por el hambre; sin cría reciente no da. `herdSpecies` deja fuera a las lecheras sin la opción, también en las unidades del ledger. Opt-in, en el perfil. Hecho.
+    - [ ] (livestock-milk-culture) Quién tiene qué ganado según la cultura y el bioma (cabras y ovejas en las pastoras y de montaña, vacas lecheras, ninguna donde la leche es tabú: culture §dominios), en vez de una opción para toda la aldea; ovejas (lana) y vacas como especies.
+    - [ ] (livestock-milk-curve) La curva de lactancia (sube, pico, baja) y lo que mama la cría (la leche de los primeros meses se la reparte con ella; sin madre que dé leche, la cría pasa hambre); el ordeñe como trabajo del hogar y el queso como oficio (crafts) para guardar lo que se pudre.
   - [ ] (livestock-body) Cuerpo por partes (un `body-plan` por especie) para heridas y enfermedad.
   - [ ] (livestock-tenure) Comprar, vender, robar (abigeato, law) y heredar el animal como bien con derechos (property), dote y bien-moneda en culturas pastoras.
   - [ ] (livestock-zoonosis) Zoonosis y epizootias: patógenos que corren en el ganado y saltan a la gente (body-health §6), y en las poblaciones del monte.

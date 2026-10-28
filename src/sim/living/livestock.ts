@@ -27,6 +27,10 @@
 // `graze.share` de la ración de cada animal que pasta o escarba, repartido entre todos según lo que
 // piden (`graze.kgPerDay`); la casa pone el resto. Lo pastado queda en `GRAZED` y la ecología lo
 // descuenta de lo que comen los herbívoros del monte al día siguiente.
+//
+// Leche (livestock-yield-milk, `lactationDays`): la hembra que parió da leche los días que siguen
+// (`LACTATING`, que escribe `livestockLifeProcess` con `lactation`); sin cría reciente no da. Las
+// especies lecheras llegan con su propia opción de vida (`optIn`, `herdSpecies`).
 
 import {
   type AnimalId,
@@ -135,6 +139,11 @@ export const YieldDef = z.strictObject({
    * Sin esto, el hambre no la frena.
    */
   hungerStop: z.number().positive().max(1).optional(),
+  /**
+   * Días después de parir en que lo da (livestock-yield-milk: la leche); sin esto, lo da sin parir.
+   * Sin `LACTATING` (cría reciente), no lo da.
+   */
+  lactationDays: z.number().int().positive().optional(),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -206,9 +215,22 @@ export const LivestockDef = z.strictObject({
     .optional(),
   /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
   exposure: z.number().min(0).max(1).default(1),
+  /**
+   * La opción de vida que trae a la especie (livestock-yield-milk: `dairy`, las lecheras); sin esto,
+   * llega con el ganado de siempre.
+   */
+  optIn: z.enum(["dairy"]).optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);
+
+/** Pura: las especies que tiene la aldea con las opciones `optIns` (las de siempre, más esas). */
+export function herdSpecies(
+  all: readonly LivestockDef[],
+  optIns: ReadonlySet<string>,
+): LivestockDef[] {
+  return all.filter((s) => s.optIn === undefined || optIns.has(s.optIn));
+}
 
 /** Un animal de la casa: de qué especie es, su sexo, cuándo nació y de quién es. */
 export interface AnimalRecord {
@@ -229,6 +251,13 @@ export interface AnimalHunger {
 }
 
 export const ANIMAL_HUNGER = table<AnimalHunger>("living.animal_hunger");
+
+/** La hembra que parió (livestock-yield-milk): desde cuándo da de mamar; sin fila, no. */
+export interface Lactating {
+  readonly since: Tick;
+}
+
+export const LACTATING = table<Lactating>("living.lactating");
 
 /** Lo que pastó el ganado de la aldea el último día (livestock-feed-pasture), en la entidad de la ecología. */
 export interface Grazed {
@@ -395,6 +424,8 @@ export interface LivestockLifeOptions {
   readonly species: readonly LivestockDef[];
   /** Duración del año (ticks). */
   readonly year: Duration;
+  /** Opt-in (livestock-yield-milk): la que pare queda en `LACTATING` si su especie da leche. */
+  readonly lactation?: boolean;
 }
 
 /** El hogar y la aldea de un animal, para buscar macho. */
@@ -417,8 +448,21 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ANIMAL.name, ENTITY.name, BUILDING.name, LOCATION.name, ANIMAL_HUNGER.name],
-    writes: [ANIMAL.name, ENTITY.name, LOCATION.name, ANIMAL_HUNGER.name],
+    reads: [
+      ANIMAL.name,
+      ENTITY.name,
+      BUILDING.name,
+      LOCATION.name,
+      ANIMAL_HUNGER.name,
+      ...(o.lactation === true ? [LACTATING.name] : []),
+    ],
+    writes: [
+      ANIMAL.name,
+      ENTITY.name,
+      LOCATION.name,
+      ANIMAL_HUNGER.name,
+      ...(o.lactation === true ? [LACTATING.name] : []),
+    ],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const step = ctx.window > 0 ? ctx.window : 1;
@@ -462,6 +506,9 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
         });
         changes.push(endEntity(base, end, ctx.now), deleteComponent(LOCATION, id));
         if (ctx.truth.get(ANIMAL_HUNGER, id)) changes.push(deleteComponent(ANIMAL_HUNGER, id));
+        if (o.lactation === true && ctx.truth.get(LACTATING, id)) {
+          changes.push(deleteComponent(LACTATING, id));
+        }
         dead.add(id);
         // El cuerpo queda en la casa dueña como carne y piel.
         const transfers = carcassYield(def, ageYears(a)).map((y) => ({
@@ -522,6 +569,9 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
           causes: [{ kind: "state", entity: id, key: "pregnancy" }],
           emissions: null,
         });
+        if (o.lactation === true && def?.yields?.some((y) => y.lactationDays !== undefined)) {
+          changes.push(setComponent(LACTATING, id, { since: ctx.now }));
+        }
         count.set(key, (count.get(key) ?? 0) + size);
       }
       if (events.length === 0) return {};
@@ -789,6 +839,8 @@ export interface LivestockYieldOptions {
   readonly tempC?: (t: Tick) => number;
   /** Lee el hambre de cada animal (`ANIMAL_HUNGER`, livestock-yield-feed); sin esto, no la frena. */
   readonly hunger?: boolean;
+  /** Lee `LACTATING` (livestock-yield-milk); sin esto, lo que pide parir no se da. */
+  readonly lactation?: boolean;
 }
 
 /**
@@ -805,7 +857,12 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ANIMAL.name, ENTITY.name, ...(o.hunger === true ? [ANIMAL_HUNGER.name] : [])],
+    reads: [
+      ANIMAL.name,
+      ENTITY.name,
+      ...(o.hunger === true ? [ANIMAL_HUNGER.name] : []),
+      ...(o.lactation === true ? [LACTATING.name] : []),
+    ],
     writes: [],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
@@ -825,6 +882,10 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
         const hunger = o.hunger === true ? (ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0) : 0;
         yields.forEach((y, i) => {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
+          if (y.lactationDays !== undefined) {
+            const since = o.lactation === true ? ctx.truth.get(LACTATING, id)?.since : undefined;
+            if (since === undefined || ctx.now - since > (y.lactationDays * o.year) / 365) return;
+          }
           const factor = daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
           const chance = Math.min(1, (y.perYear * factor * step) / o.year);
           if (ctx.rng.fork("yield", id, i).float() >= chance) return;

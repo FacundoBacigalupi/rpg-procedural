@@ -86,5 +86,42 @@
       "hungerStop": 0.5,
       "workFeedFactor": 1.5
     }
+  },
+  {
+    "id": "goat",
+    "name": "cabra",
+    "shape": "goat",
+    "massKg": 40,
+    "lifespanYears": 12,
+    "count": 2,
+    "minMembers": 4,
+    "herdAgeYears": [1, 6],
+    "femaleShare": 0.5,
+    "optIn": "dairy",
+    "breeding": {
+      "maturityYears": 1,
+      "littersPerYear": 1,
+      "litter": [1, 2],
+      "mate": "settlement",
+      "maxPerHousehold": 6
+    },
+    "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
+    "yields": [
+      {
+        "good": "milk",
+        "unitGrams": 1000,
+        "perYear": 365,
+        "sex": "female",
+        "minAgeYears": 1,
+        "lactationDays": 240,
+        "hungerStop": 0.5
+      }
+    ],
+    "feed": {
+      "gramsPerDay": 300,
+      "categories": ["cereal", "legume", "vegetable", "wild"],
+      "starveDays": 20,
+      "graze": { "share": 0.8, "kgPerDay": 2 }
+    }
   }
 ]
