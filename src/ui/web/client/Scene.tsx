@@ -648,8 +648,8 @@ function Dog({ i }: { i: number }) {
   );
 }
 
-/** Un buey, con los pies en (0, 0) y mirando a la derecha. */
-function Ox({ i }: { i: number }) {
+/** Un buey, con los pies en (0, 0) y mirando a la derecha; cansado, con la cabeza gacha. */
+function Ox({ i, tired }: { i: number; tired?: boolean }) {
   const c = OXEN[i % OXEN.length];
   return (
     <>
@@ -660,24 +660,27 @@ function Ox({ i }: { i: number }) {
       <rect x="82" y="-80" width="22" height="80" rx="6" fill={c} />
       <rect x="-110" y="-190" width="230" height="120" rx="50" fill={c} />
       <path d="M-108 -160 Q-130 -110 -122 -70" stroke={c} strokeWidth="8" fill="none" />
-      <rect x="100" y="-200" width="64" height="70" rx="24" fill={c} />
-      <path
-        d="M110 -196 Q90 -226 104 -236 M154 -196 Q174 -226 160 -236"
-        stroke="#e8dcc0"
-        strokeWidth="9"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <ellipse cx="152" cy="-140" rx="16" ry="11" fill="#000" opacity="0.2" />
+      <g transform={tired ? "translate(0 70) rotate(14 110 -170)" : undefined}>
+        <rect x="100" y="-200" width="64" height="70" rx="24" fill={c} />
+        <path
+          d="M110 -196 Q90 -226 104 -236 M154 -196 Q174 -226 160 -236"
+          stroke="#e8dcc0"
+          strokeWidth="9"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <ellipse cx="152" cy="-140" rx="16" ry="11" fill="#000" opacity="0.2" />
+      </g>
     </>
   );
 }
 
-const ANIMAL_SHAPES: Readonly<Record<string, (p: { i: number }) => ReactElement>> = {
-  hen: Hen,
-  dog: Dog,
-  ox: Ox,
-};
+const ANIMAL_SHAPES: Readonly<Record<string, (p: { i: number; tired?: boolean }) => ReactElement>> =
+  {
+    hen: Hen,
+    dog: Dog,
+    ox: Ox,
+  };
 
 /**
  * Los animales que ve, de oeste a este: los cercanos más abajo y más grandes, pintados después de
@@ -701,10 +704,10 @@ function Animals({ seen }: { seen: readonly SeenAnimal[] }) {
           const flip = i % 2 === 0 ? 1 : -1;
           return (
             <g
-              key={`${i}:${a.species}:${a.x}:${a.d}`}
+              key={`${i}:${a.species}:${a.x}:${a.d}:${a.tired === true}`}
               transform={`translate(${x} ${y}) scale(${s * flip} ${s})`}
             >
-              <Shape i={i} />
+              <Shape i={i} tired={a.tired === true} />
             </g>
           );
         })}

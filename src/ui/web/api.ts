@@ -18,6 +18,8 @@ export interface SeenAnimal {
   readonly species: string;
   readonly x: number;
   readonly d: number;
+  /** Se le nota cansado (cabeza gacha). */
+  readonly tired?: true;
 }
 
 export interface Hud {

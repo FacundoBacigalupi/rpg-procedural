@@ -24,6 +24,7 @@ import {
   type BuildingRecord,
   CORE_NORMAL_C,
   type ConditionKind,
+  DRAFT_FATIGUE,
   EMOTION_HALF_LIFE_TICKS,
   EMOTIONS,
   type EmotionId,
@@ -469,7 +470,17 @@ export interface SeenAnimal {
   /** Al este (+) u oeste (−) de donde mira (m), y a qué distancia. */
   readonly x: number;
   readonly d: number;
+  /**
+   * Se le nota el cansancio del tiro (livestock-draft-rest-look): la cabeza gacha, solo de cerca
+   * (`TIRED_SIGHT_M`) y con luz. Sin definir: descansado, lejos o sin `DRAFT_FATIGUE`.
+   */
+  readonly tired?: true;
 }
+
+/** Desde qué cansancio del tiro (`DRAFT_FATIGUE.level`) se le nota al animal. */
+export const TIRED_LOOK_LEVEL = 0.2;
+/** Hasta dónde se le nota el cansancio a un animal (m), con luz de día. */
+export const TIRED_SIGHT_M = 25;
 
 /** Hasta dónde distingue un animal según la luz (m): son más chicos que una casa. */
 export const ANIMAL_SIGHT_M: Readonly<Record<Hud["light"], number>> = {
@@ -497,9 +508,11 @@ export function seenAnimals(
     readonly id: string;
     readonly species: string;
     readonly at: { x: number; y: number };
+    readonly tired?: boolean;
   }[],
   from: { readonly x: number; readonly y: number },
   sightM: number,
+  tiredSightM = TIRED_SIGHT_M,
 ): SeenAnimal[] {
   return animals
     .map((a) => {
@@ -510,18 +523,31 @@ export function seenAnimals(
     .sort((a, b) => a.d - b.d || (a.a.id < b.a.id ? -1 : 1))
     .slice(0, MAX_SEEN_ANIMALS)
     .sort((a, b) => a.dx - b.dx || (a.a.id < b.a.id ? -1 : 1))
-    .map((s) => ({ species: s.a.species, x: Math.round(s.dx), d: Math.round(s.d) }));
+    .map((s) => ({
+      species: s.a.species,
+      x: Math.round(s.dx),
+      d: Math.round(s.d),
+      ...(s.a.tired === true && s.d <= tiredSightM ? { tired: true as const } : {}),
+    }));
 }
 
 /** Los animales vivos de la vida con su lugar en el patio. */
-function animalRows(w: LifeWorld): { id: string; species: string; at: { x: number; y: number } }[] {
-  const out: { id: string; species: string; at: { x: number; y: number } }[] = [];
+function animalRows(
+  w: LifeWorld,
+): { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] {
+  const out: { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] = [];
   for (const id of [...w.truth.ids(ANIMAL)].sort()) {
     const a = w.truth.get(ANIMAL, id);
     if (!a || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const house = w.truth.get(BUILDING, a.home);
     if (!house) continue;
-    out.push({ id, species: a.species, at: yardSpot(id, house.at) });
+    const level = w.truth.get(DRAFT_FATIGUE, id)?.level ?? 0;
+    out.push({
+      id,
+      species: a.species,
+      at: yardSpot(id, house.at),
+      ...(level >= TIRED_LOOK_LEVEL ? { tired: true } : {}),
+    });
   }
   return out;
 }
@@ -541,7 +567,16 @@ function buildingsOf(
   const animals = animalRows(w);
   return {
     buildings: seenBuildings(rows, from, BUILDING_SIGHT_M[light], mine?.id),
-    ...(animals.length === 0 ? {} : { animals: seenAnimals(animals, from, ANIMAL_SIGHT_M[light]) }),
+    ...(animals.length === 0
+      ? {}
+      : {
+          animals: seenAnimals(
+            animals,
+            from,
+            ANIMAL_SIGHT_M[light],
+            light === "bright" ? TIRED_SIGHT_M : light === "dim" ? TIRED_SIGHT_M / 2 : 0,
+          ),
+        }),
   };
 }
 
