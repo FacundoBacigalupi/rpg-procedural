@@ -49,6 +49,7 @@
       "maxPerHousehold": 3
     },
     "carcass": { "hide": "hide", "hideShare": 0.08 },
+    "guard": { "repel": 0.6, "minAgeYears": 1, "hungerStop": 0.5 },
     "feed": {
       "gramsPerDay": 300,
       "categories": ["meat", "fish", "cereal", "tuber", "legume"],

@@ -260,6 +260,7 @@ interface Breed {                           // una raza: variante doméstica con
 - **Hecho (livestock-yield-feed, 2026-10-27):** las gallinas ponen menos con frío (media del día) y con hambre, hasta dejar de poner (opt-in).
 - **Hecho (livestock-yield-draft, 2026-10-27):** el buey adulto y comido tira del arado: la gente del hogar se reparte la ganancia en la hora de campo, y la cosecha cita al animal (opt-in). Lo que le cuesta al buey queda para `livestock-draft-cost`.
 - **Hecho (livestock-predators, 2026-10-27):** los lobos y zorros de la celda, con el hambre que les deja la caza silvestre, bajan a los corrales y se llevan el animal que pueden cargar, elegido por lo expuesto que está; el evento cita la ecología (opt-in). Que el perro o la gente lo impidan queda para `livestock-predators-guard`.
+- **Hecho (livestock-predators-dog, 2026-10-27):** el perro adulto y comido de la casa espanta a parte de los lobos y zorros que vienen por otro animal del hogar; el evento cita al perro (opt-in).
 - **Hecho (livestock-predators-credit, 2026-10-27):** lo que se llevan del corral engorda a la población del monte, con la misma conversión de masa que la red trófica.
 - **Hecho (livestock-draft-cost, 2026-10-27):** los días de campo el buey en edad de tirar come la mitad más de la casa, y esa comida cita el tiro (opt-in). El cansancio queda para `livestock-draft-fatigue`.
 - **Hecho (livestock-herd-ages, 2026-10-27):** el ganado del comienzo tiene las edades de su función: el buey de la casa ya tira.

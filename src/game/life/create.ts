@@ -643,6 +643,8 @@ export interface LifeOptions {
   readonly livestockDraftCost?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
   readonly livestockPredators?: boolean;
+  /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
+  readonly livestockGuard?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
   readonly livestockFeed?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
@@ -2061,7 +2063,10 @@ export function createLife(
           }
         : {}),
       ...(options.villageLivestock && options.livestockPredators
-        ? { livestockPredators: content.all(LIVESTOCK) }
+        ? {
+            livestockPredators: content.all(LIVESTOCK),
+            ...(options.livestockGuard ? { livestockGuard: true } : {}),
+          }
         : {}),
       ...(options.villageLivestock && options.livestockFeed
         ? {

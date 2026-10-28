@@ -416,6 +416,8 @@ export interface LifeWorld {
   readonly livestockDraftCost?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
   readonly livestockPredators?: readonly LivestockDef[];
+  /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
+  readonly livestockGuard?: boolean;
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -2025,6 +2027,7 @@ export function lifeWorld(
                 lineages: parts.lineages ?? [],
                 year: parts.clock.year,
                 day: parts.clock.day,
+                ...(parts.livestockGuard === true ? { guard: true } : {}),
               }),
             ]
           : []),

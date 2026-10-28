@@ -180,6 +180,17 @@ export const LivestockDef = z.strictObject({
   feed: FeedDef.optional(),
   /** Si tira del arado (livestock-yield-draft); sin esto, no. */
   draft: DraftDef.optional(),
+  /**
+   * Si cuida la casa (livestock-predators-dog): el adulto comido espanta con chance `repel` al
+   * depredador que viene por otro animal del mismo hogar; sin esto, no cuida.
+   */
+  guard: z
+    .strictObject({
+      repel: z.number().min(0).max(1),
+      minAgeYears: z.number().min(0).default(0),
+      hungerStop: z.number().positive().max(1).default(0.5),
+    })
+    .optional(),
   /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
   exposure: z.number().min(0).max(1).default(1),
 });

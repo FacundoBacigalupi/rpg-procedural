@@ -24,8 +24,12 @@ const OPTS = { villageLivestock: true } as const;
 
 describe("los depredadores bajan a los corrales (livestock-predators)", () => {
   it("sin caza en el monte, lobos y zorros se llevan animales con causa; determinista", () => {
-    const run = (predators: boolean) => {
-      const l = Life.create(SEED, content, { ...OPTS, livestockPredators: predators });
+    const run = (predators: boolean, guard = false) => {
+      const l = Life.create(SEED, content, {
+        ...OPTS,
+        livestockPredators: predators,
+        livestockGuard: guard,
+      });
       // Se vacía el monte de presas: los depredadores pasan hambre plena.
       const t = l.world.truth;
       const [id] = t.ids(ECOLOGY);
@@ -73,5 +77,25 @@ describe("los depredadores bajan a los corrales (livestock-predators)", () => {
     const raiders = new Set(taken.map((e) => (e.data as { predator: string }).predator));
     for (const lineage of raiders) expect(count(on, lineage)).toBeGreaterThan(count(off, lineage));
     expect(FULL_PROFILE).toMatchObject({ livestockPredators: true });
+
+    // El perro adulto de la casa espanta a parte de los que bajan (livestock-predators-dog).
+    const guarded = run(true, true);
+    const repelled = guarded.world.log.all().filter((e) => e.kind === "living.raid_repelled");
+    expect(repelled.length).toBeGreaterThan(0);
+    for (const e of repelled) {
+      const { animal, guard, owner } = e.data as { animal: string; guard: string; owner: string };
+      const dog = guarded.world.truth.get(ANIMAL, guard as never);
+      expect(dog?.species).toBe("dog");
+      expect(dog?.owner).toBe(owner);
+      expect(guarded.world.truth.get(ANIMAL, animal as never)?.owner).toBe(owner);
+      expect(animal).not.toBe(guard);
+      expect(e.causes).toContainEqual({ kind: "state", entity: guard, key: "guard" });
+    }
+    const takenIn = (l: Life) =>
+      l.world.log.all().filter((e) => e.kind === "living.animal_taken").length;
+    expect(takenIn(guarded)).toBeLessThan(takenIn(on));
+    expect(on.world.log.all().some((e) => e.kind === "living.raid_repelled")).toBe(false);
+    expect(guarded.world.ledger.audit()).toEqual([]);
+    expect(FULL_PROFILE).toMatchObject({ livestockGuard: true });
   }, 600_000);
 });
