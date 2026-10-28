@@ -42,6 +42,8 @@ export interface DraftOptions {
   readonly workAge: number;
   /** Opt-in (livestock-draft-fatigue): el cansancio de `DRAFT_FATIGUE` baja el tiro. */
   readonly fatigue?: boolean;
+  /** Opt-in (livestock-draft-rest, con `fatigue`): el hogar descansa al cansado en vez de seguir. */
+  readonly rest?: boolean;
 }
 
 /**
@@ -73,7 +75,7 @@ export function draftFor(
     if (def === undefined || (now - a.bornAt) / o.year < def.minAgeYears) continue;
     if ((truth.get(ANIMAL_HUNGER, id)?.level ?? 0) >= def.hungerStop) continue;
     const row = o.fatigue === true ? truth.get(DRAFT_FATIGUE, id) : undefined;
-    const factor = draftFatigueFactor(def, row);
+    const factor = draftFatigueFactor(def, row, o.rest === true);
     if (factor <= 0) continue;
     animals.push({ id, def, factor, tracked: row !== undefined });
   }

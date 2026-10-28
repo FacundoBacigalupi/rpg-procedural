@@ -420,6 +420,8 @@ export interface LifeWorld {
   readonly livestockDraftCost?: boolean;
   /** Opt-in (livestock-draft-fatigue, con `livestockDraft`): el buey se cansa con las horas de más (`DRAFT_FATIGUE`). */
   readonly livestockDraftFatigue?: boolean;
+  /** Opt-in (livestock-draft-rest, con `livestockDraftFatigue`): el hogar descansa al buey cansado al llegar a sus horas. */
+  readonly livestockDraftRest?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
   readonly livestockSlaughter?: readonly LivestockDef[];
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
@@ -977,6 +979,9 @@ export function lifeWorld(
           year: parts.clock.year,
           workAge: ROUTINE.workAge,
           ...(parts.livestockDraftFatigue === true ? { fatigue: true } : {}),
+          ...(parts.livestockDraftFatigue === true && parts.livestockDraftRest === true
+            ? { rest: true }
+            : {}),
         };
   const wardrobe = parts.wardrobe === true ? parts.garments : undefined;
   const altitudeOf = parts.realAltitude
