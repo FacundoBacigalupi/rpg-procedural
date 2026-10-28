@@ -26,11 +26,13 @@ import {
   type ActionDef,
   type Activity,
   ASLEEP,
+  addToField,
   BODY_STATE,
   type Body,
   type BodyPlanDef,
   BUILDING,
   BURNED,
+  DRAFT_FATIGUE,
   dayOf,
   draftEvent,
   EATEN,
@@ -415,6 +417,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
     ],
     writes: [
       LOCATION.name,
+      ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
       BODY_STATE.name,
@@ -699,6 +702,10 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
               : []),
           ],
         });
+        // El cansancio del tiro (livestock-draft-fatigue): la hora suma a las del animal.
+        for (const u of draft?.use ?? []) {
+          changes.push(addToField(DRAFT_FATIGUE, u.animal, "hours", u.hours));
+        }
         postings.push({
           event: ev,
           transfers: [

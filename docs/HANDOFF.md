@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-draft-fatigue (2026-10-28, rama `feat/livestock-draft-fatigue`):** `src/sim/living/draft-fatigue.ts` (`DRAFT_FATIGUE`, `draftFatigueStep`, `draftFatigueFactor`, `draftFatigueProcess` en `settle`); `DraftOptions.fatigue` y `draftFor(...).use`; la rutina suma con `addToField` (la fila la crea el proceso diario; sin fila no suma). `LifeOptions.livestockDraftFatigue` en el perfil. Test en `draft.test.ts`. Queda `livestock-draft-fatigue-player`.
+
 **livestock-yield-milk (2026-10-28, rama `feat/livestock-yield-milk`):** `LivestockDef.optIn` y `herdSpecies` (create.ts usa `livestockOf` en todos lados, incluido `ledgerConfigOf`, para no cambiar las vidas sin la opción); `YieldDef.lactationDays`, `LACTATING` (lo escribe `livestockLifeProcess` con `lactation`, lo lee `livestockYieldProcess`). `LifeOptions.livestockDairy` en el perfil. Test en `livestock-milk.test.ts` (seed 7, 150 días). Quedan `livestock-milk-culture` y `-curve`.
 
 **livestock-feed-pasture (2026-10-28, rama `feat/livestock-feed-pasture`):** `FeedDef.graze`, `GRAZED`, `LIVESTOCK_PASTURE_SHARE`, `pastureCover`, `grownShare` en `src/sim/living/livestock.ts`; `LivestockFeedOptions.pasture` y `EcologyOptions.grazed` (desfase de un día: los dos corren en `settle`). `LifeOptions.livestockPasture` en el perfil. Test en `livestock-pasture.test.ts` (seed 4). Queda `livestock-pasture-land`.

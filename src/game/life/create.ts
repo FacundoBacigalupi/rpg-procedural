@@ -645,6 +645,8 @@ export interface LifeOptions {
   readonly livestockDraft?: boolean;
   /** Opt-in (livestock-draft-cost, con `livestockDraft` y `livestockFeed`): el buey come la mitad más los días de campo. */
   readonly livestockDraftCost?: boolean;
+  /** Opt-in (livestock-draft-fatigue, con `livestockDraft`): el buey se cansa con las horas de campo de más y rinde menos al día siguiente. */
+  readonly livestockDraftFatigue?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
@@ -2062,6 +2064,7 @@ export function createLife(
             ...(options.livestockFeed && options.livestockDraftCost
               ? { livestockDraftCost: true }
               : {}),
+            ...(options.livestockDraftFatigue ? { livestockDraftFatigue: true } : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockYield
