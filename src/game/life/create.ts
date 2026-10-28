@@ -623,6 +623,8 @@ export interface LifeOptions {
   readonly npcCobbler?: boolean;
   /** Opt-in (con `npcCobbler`): el zapatero paga con su cobre la piel que junta y sin cobre no arregla (`cobbler.ts`, npc-b2b3b2b3b1); apagado, fuera del perfil completo. */
   readonly npcCobblerHides?: boolean;
+  /** Opt-in (con `npcCobbler`, livestock-hide-tan-sell): el zapatero les compra el cuero curtido a las casas de la aldea antes de traerlo de fuera (`localLeatherBuys`); apagado. */
+  readonly npcCobblerLocalLeather?: boolean;
   /** Opt-in (con `npcFootwearMend`): el viajero de camino arregla el calzado gastado en una posada o posta, más caro y peor (`LifeParts.npcRoadMend`); apagado. */
   readonly npcRoadMend?: boolean;
   /** Opt-in: `take`/`give` de objetos con identidad se disputan como claims con resultado del perdedor (`ActOptions.itemClaims`); apagado, nada cambia. */
@@ -916,6 +918,7 @@ export function optInParts(
   | "npcFootwearMend"
   | "npcCobbler"
   | "npcCobblerHides"
+  | "npcCobblerLocalLeather"
   | "npcRoadMend"
   | "itemClaims"
   | "mortalTech"
@@ -1113,6 +1116,7 @@ export function optInParts(
     ...(options.npcFootwearMend && !options.legacyNoFootwearMend ? { npcFootwearMend: true } : {}),
     ...(options.npcCobbler && !options.legacyNoCobbler ? { npcCobbler: true } : {}),
     ...(options.npcCobblerHides ? { npcCobblerHides: true } : {}),
+    ...(options.npcCobblerLocalLeather ? { npcCobblerLocalLeather: true } : {}),
     ...(options.npcRoadMend ? { npcRoadMend: true } : {}),
     ...(options.itemClaims ? { itemClaims: true } : {}),
     ...(options.tasteDemand ? { tasteDemand: true } : {}),

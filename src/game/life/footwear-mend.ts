@@ -18,6 +18,7 @@ import {
   type PlanetClock,
 } from "../../core/index.ts";
 import {
+  BUILDING,
   COPPER,
   draftEvent,
   ENTITY,
@@ -36,11 +37,13 @@ import {
   COBBLER_MIN_AGE,
   HIDES_SOURCE,
   hideBuy,
+  hidePrice,
   LEATHER_SCRAP,
   LEATHER_UNIT,
   leatherFor,
   leatherToFetch,
   levelAfterJob,
+  localLeatherBuys,
   mendKeeps,
   startLevel,
 } from "./cobbler.ts";
@@ -50,6 +53,7 @@ export const FOOTWEAR_MEND_PROCESS = "life.footwear_mend";
 export const FOOTWEAR_MENDED = "footwear.mended";
 export const COBBLER_CHOSEN = "cobbler.chosen";
 export const LEATHER_FETCHED = "cobbler.leather_fetched";
+export const LEATHER_BOUGHT = "cobbler.leather_bought";
 
 /** Chance diaria de que quien tiene el calzado gastado vaya a arreglarlo (sin calibrar). */
 export const MEND_CHANCE = 0.3;
@@ -86,6 +90,11 @@ export interface FootwearMendOptions {
     readonly clock: PlanetClock;
     /** Con `npcCobblerHides`: la piel que junta la paga con su cobre (al sumidero) y sin cobre no arregla. */
     readonly hideCost?: boolean;
+    /**
+     * Con `npcCobblerLocalLeather` (livestock-hide-tan-sell): antes de traer cuero de fuera se lo
+     * compra a las casas de la aldea que lo curtieron, con su cobre.
+     */
+    readonly localLeather?: boolean;
   };
 }
 
@@ -98,7 +107,14 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
     representation: "individual",
     phase: "settle",
     reads: o.cobbler
-      ? [FOOTWEAR.name, PERSON.name, ENTITY.name, LOCATION.name, COBBLER.name]
+      ? [
+          FOOTWEAR.name,
+          PERSON.name,
+          ENTITY.name,
+          LOCATION.name,
+          COBBLER.name,
+          ...(o.cobbler.localLeather ? [BUILDING.name] : []),
+        ]
       : [FOOTWEAR.name, PERSON.name, ENTITY.name, LOCATION.name],
     writes: o.cobbler ? [FOOTWEAR.name, COBBLER.name] : [FOOTWEAR.name],
     run(ctx) {
@@ -116,6 +132,23 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
       // hoy no está en la aldea, nadie arregla nada hoy), o, si no hay ninguno vivo, el adulto de
       // menor tirada. `null`: no hay quién (sin la opción, o nadie en edad), y paga al sumidero.
       let shop: Shop | null | undefined;
+      // Lo que ya vendió cada casa hoy (el ledger no se mueve hasta el final del proceso).
+      const sold = new Map<HolderRef, number>();
+      const leatherOffers = (): { holder: HolderRef; grams: number }[] => {
+        const seen = new Set<HolderRef>();
+        const out: { holder: HolderRef; grams: number }[] = [];
+        for (const id of [...ctx.truth.ids(BUILDING)].sort()) {
+          const h = ctx.truth.get(BUILDING, id)?.household as HolderRef | undefined;
+          if (h === undefined || seen.has(h) || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) {
+            continue;
+          }
+          seen.add(h);
+          const grams =
+            Math.floor(ledger.balance(holderAccount(h), LEATHER_UNIT)) - (sold.get(h) ?? 0);
+          if (grams > 0) out.push({ holder: h, grams });
+        }
+        return out;
+      };
       const findShop = (): Shop | null => {
         if (!o.cobbler) return null;
         for (const id of [...ctx.truth.ids(COBBLER)].sort()) {
@@ -190,6 +223,64 @@ export function footwearMendProcess(o: FootwearMendOptions): ProcessDef {
             if (buy === null) continue;
             fetch = buy.grams;
             hideCopper = buy.cost;
+          }
+          // Lo que tienen curtido las casas, primero; de fuera, solo lo que falta.
+          const bought =
+            fetch > 0 && o.cobbler?.localLeather
+              ? localLeatherBuys(leatherOffers(), fetch, shop.copper)
+              : [];
+          if (bought.length > 0) {
+            const local = bought.reduce((s, b) => s + b.grams, 0);
+            const paid = bought.reduce((s, b) => s + b.cost, 0);
+            let outside = fetch - local;
+            if (o.cobbler?.hideCost && outside > 0) {
+              // La compra en partes puede redondear un cobre de más: trae solo lo que falta.
+              const purse = shop.copper - paid;
+              if (hidePrice(outside) > purse) {
+                const missing = Math.max(0, need - shop.leather - local);
+                if (hidePrice(missing) > purse) continue;
+                outside = missing;
+              }
+              hideCopper = hidePrice(outside);
+            }
+            for (const b of bought) {
+              events.push({
+                kind: LEATHER_BOUGHT,
+                actors: [shop.who],
+                place: o.placeOf(ctx.truth, shop.who),
+                data: { from: b.holder, grams: b.grams, paid: b.cost },
+                emissions: {},
+                causes: [
+                  { kind: "state", entity: shop.who as unknown as EntityRef, key: COBBLER.name },
+                  { kind: "state", entity: b.holder as unknown as EntityRef, key: "leather" },
+                ],
+              });
+              postings.push({
+                event: draftEvent(events.length - 1),
+                transfers: [
+                  {
+                    unit: LEATHER_UNIT,
+                    from: holderAccount(b.holder),
+                    to: shop.account,
+                    amount: b.grams,
+                  },
+                  ...(b.cost > 0
+                    ? [
+                        {
+                          unit: COPPER,
+                          from: shop.account,
+                          to: holderAccount(b.holder),
+                          amount: b.cost,
+                        },
+                      ]
+                    : []),
+                ],
+              });
+              sold.set(b.holder, (sold.get(b.holder) ?? 0) + b.grams);
+            }
+            shop.leather += local;
+            shop.copper -= paid;
+            fetch = outside;
           }
           if (fetch > 0) {
             events.push({
