@@ -3,20 +3,26 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  type ActionPlan,
   ANIMAL,
+  ASLEEP,
   checkInvariants,
   DRAFT_FATIGUE,
   draftFatigueFactor,
   draftFatigueStep,
   ENTITY,
+  hexPath,
   LIVESTOCK,
+  LOCATION,
   PERSON,
+  PLACE,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { draftDefsOf, draftFor } from "./draft.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { ROUTINE } from "./routine.ts";
+import { NPC_HARVESTED_EVENT } from "./sleepers.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -198,4 +204,104 @@ describe("el buey se cansa (livestock-draft-fatigue)", () => {
     expect(harvestGrams(on)).toBeLessThan(harvestGrams(off));
     expect(FULL_PROFILE).toMatchObject({ livestockDraftFatigue: true });
   }, 600_000);
+
+  it("el jugador que trabaja el campo suma horas al buey de su hogar; esperando, no", () => {
+    const hoursAfter = (verb: "work" | "wait") => {
+      const l = Life.create(SEED, content, {
+        ...OPTS,
+        livestockDraft: true,
+        livestockDraftFatigue: true,
+      });
+      // Un día para que el proceso diario abra el registro de cada buey.
+      l.advanceTo(l.now + DAY);
+      const w = l.world;
+      const t = w.truth;
+      const year = w.clock.year;
+      const ox = (t.ids(DRAFT_FATIGUE) as string[]).find(
+        (id) => (l.now - (t.get(ANIMAL, id as never)?.bornAt ?? 0)) / year >= 2,
+      );
+      const owner = ox === undefined ? undefined : t.get(ANIMAL, ox as never)?.owner;
+      const me = t.get(PERSON, l.player);
+      if (ox === undefined || owner === undefined || me === undefined) throw new Error("sin buey");
+      // El personaje pasa a ser de la casa del buey y se para en el campo.
+      t.set(PERSON, l.player, { ...me, household: owner });
+      const field = t.ids(PLACE).flatMap((id) => {
+        const p = t.get(PLACE, id);
+        return p?.kind === "fields" ? [...p.hexes] : [];
+      })[0];
+      if (field === undefined) throw new Error("sin campos");
+      t.set(LOCATION, l.player, { hex: field });
+      const plan: ActionPlan = {
+        actor: l.player,
+        source: "player",
+        root: {
+          kind: "do",
+          verb,
+          args: [{ role: "for", seconds: 2 * 3600 }],
+          manner: [],
+        },
+        manner: [],
+        causes: [{ kind: "state", entity: l.player, key: "intent" }],
+      };
+      l.turn(plan, 1);
+      expect(w.ledger.audit()).toEqual([]);
+      return t.get(DRAFT_FATIGUE, ox as never)?.hours ?? 0;
+    };
+    expect(hoursAfter("work")).toBeGreaterThan(hoursAfter("wait"));
+  }, 600_000);
+
+  it("los dormidos cansan al buey con sus horas de campo; determinista", () => {
+    const run = (fatigue: boolean) => {
+      const l = Life.create(SEED, content, {
+        ...OPTS,
+        livestockDraft: true,
+        livestockDraftFatigue: fatigue,
+        sleepers: { near: 0, food: "grain" },
+      });
+      // El personaje se va lejos: la aldea entera (salvo su casa) se duerme y vive por tramos.
+      const w = l.world;
+      const place = w.truth.ids(PLACE)[0] as string;
+      const hexes = (w.truth.get(PLACE, place as never)?.hexes ?? []) as number[];
+      let far = hexes[0] as number;
+      for (let i = 0; i < 6; i++) {
+        far =
+          (w.map.neighbors[far] ?? []).find(
+            (n) => !hexes.includes(n) && hexPath(w.map, n, hexes[0] as number).length > i,
+          ) ?? far;
+      }
+      w.truth.set(LOCATION, l.player, { hex: far });
+      l.advanceTo(l.now + 10 * DAY);
+      return l;
+    };
+    const on = run(true);
+    const t = on.world.truth;
+    const slept = on.world.log.all().filter((e) => e.kind === NPC_HARVESTED_EVENT);
+    expect(slept.length).toBeGreaterThan(0);
+    // Un buey cuya casa entera duerme solo se cansa con las horas de los tramos.
+    const asleepHouse = (household: string | undefined) => {
+      const members = (t.ids(PERSON) as AgentId[]).filter(
+        (id) =>
+          t.get(PERSON, id)?.household === household && t.get(ENTITY, id)?.endedAt === undefined,
+      );
+      return members.length > 0 && members.every((id) => t.get(ASLEEP, id) !== undefined);
+    };
+    const tired = t
+      .ids(DRAFT_FATIGUE)
+      .filter(
+        (id) =>
+          asleepHouse(t.get(ANIMAL, id as never)?.owner) &&
+          (t.get(DRAFT_FATIGUE, id)?.level ?? 0) > 0,
+      );
+    expect(tired.length).toBeGreaterThan(0);
+    expect(on.world.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: t, log: on.world.log, ledger: on.world.ledger })).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    const grams = (l: Life) =>
+      harvestGrams(l) +
+      l.world.log
+        .all()
+        .filter((e) => e.kind === NPC_HARVESTED_EVENT)
+        .reduce((n, e) => n + (e.data as { grams: number }).grams, 0);
+    expect(grams(on)).toBeLessThan(grams(run(false)));
+  }, 900_000);
 });
