@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-hide-tan (2026-10-28, rama `feat/livestock-hide-tan`):** `GoodDef.tan` (la piel cruda: cuero, 0.3, 45 días, 500 g), `sim/living/tanning.ts` (`tanningProcess` diario en `settle`, fila `TANNING` por edificio con la tanda; la piel va de la despensa a `TAN_VAT` y vuelve cuero desde ahí; el evento de salida cita el de entrada), `tanRulesOf(content)` y el sumidero en `ledgerConfigOf` (último parámetro `livestockTan`; el cuero entra a `ROTTED` si no estaba). Opt-in `livestockTan` (con `livestockLife`). Test en `livestock-slaughter.test.ts` (carnear la cabra y esperar 52 días). Quedan `-bark`, `-look` y `-sell`.
+
 **livestock-draft-rest (2026-10-28, rama `feat/livestock-draft-rest`):** `DraftDef.fatigue.restAbove` y `draftFatigueFactor(def, row, rest)`; `DraftOptions.rest` desde `LifeParts.livestockDraftRest` (con `livestockDraftFatigue`). Test en `draft.test.ts`. Queda `livestock-draft-rest-look`.
 
 **livestock-slaughter (2026-10-28, rama `feat/livestock-slaughter`):** verbo `slaughter` (resolver en `resolve.ts` con `ResolveInput.slaughterTarget`, transfers desde `CARCASS_SOURCE` a la despensa), `game/life/slaughter.ts` (`slaughterTargetOf`, `slaughterChanges`: `endEntity` con el evento del acto, sin `LOCATION`, borra hambre/lactancia/cansancio), cableado en `act.ts` con `ActOptions.slaughter`; `LifeOptions.livestockSlaughter` (con `livestockLife`). Las cabras solo están con `livestockDairy`. Test en `livestock-slaughter.test.ts`. Quedan `livestock-slaughter-refs`, `-npc` y `livestock-hide-tan`.

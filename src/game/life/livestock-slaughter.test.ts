@@ -16,6 +16,7 @@ import {
   LIVESTOCK,
   LOCATION,
   PERSON,
+  TANNING,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -35,6 +36,8 @@ const content = loadContent(GAME_CONTENT_KINDS, sources("content"));
 const SEED = 3;
 const MUTTON = ledgerUnit("good:mutton");
 const HIDE = ledgerUnit("good:hide");
+const LEATHER = ledgerUnit("good:leather");
+const DAY = 24 * 3600;
 
 const plan = (actor: string, what: string): ActionPlan => ({
   actor: actor as never,
@@ -133,4 +136,49 @@ describe("carnear un animal de la casa (livestock-slaughter)", () => {
     expect(off.l.world.ledger.balance(off.larder, MUTTON)).toBe(off.before.mutton);
     expect(FULL_PROFILE).toMatchObject({ livestockSlaughter: true });
   }, 600_000);
+
+  it("curtido: la piel de la cabra pasa a la tina y a los días vuelve cuero; determinista", () => {
+    const run = (tan: boolean) => {
+      const l = Life.create(SEED, content, {
+        frequency: 8,
+        villageLivestock: true,
+        livestockDairy: true,
+        livestockLife: true,
+        livestockSlaughter: true,
+        livestockTan: tan,
+      });
+      const { owner } = nextToGoat(l);
+      const larder = holderAccount(owner as HolderRef);
+      const leather0 = l.world.ledger.balance(larder, LEATHER);
+      l.turn(plan(l.player, "la cabra"), 1);
+      const hide = l.world.ledger.balance(larder, HIDE);
+      l.advanceTo(l.now + 2 * DAY);
+      const t = l.world.truth;
+      const batch = (t.ids(TANNING) as string[])
+        .map((id) => t.get(TANNING, id as never))
+        .find((b) => b?.household === owner);
+      const hideInVat = l.world.ledger.balance(larder, HIDE);
+      l.advanceTo(l.now + 50 * DAY);
+      return { l, larder, leather0, hide, batch, hideInVat };
+    };
+    const on = run(true);
+    const w = on.l.world;
+    expect(on.hide).toBeGreaterThanOrEqual(500);
+    // Al otro día la piel ya no está en la despensa: está en la tina de la casa.
+    expect(on.batch?.grams).toBeGreaterThanOrEqual(500);
+    expect(on.hideInVat).toBeLessThan(500);
+    // Pasados los días del curtido, la casa tiene cuero (un tercio, más o menos, de la piel).
+    const leather = w.ledger.balance(on.larder, LEATHER) - on.leather0;
+    expect(leather).toBeGreaterThan(0);
+    expect(leather).toBeLessThan(on.batch?.grams ?? 0);
+    expect(w.log.all().some((e) => e.kind === "living.hide_tanned")).toBe(true);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    // Apagado: no hay tinas y la piel se queda en la despensa (pudriéndose).
+    const off = run(false);
+    expect(off.batch).toBeUndefined();
+    expect([...off.l.world.truth.ids(TANNING)]).toEqual([]);
+    expect(FULL_PROFILE).toMatchObject({ livestockTan: true });
+  }, 900_000);
 });

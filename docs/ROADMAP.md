@@ -20,7 +20,7 @@ las gallinas ponen huevos, menos con días cortos, con frío y con hambre (`live
 (`livestock-herd-ages`) comiendo más los días de campo (`livestock-draft-cost`) y cansándose si trabaja de más
 (`livestock-draft-fatigue`), también con las horas del jugador y de los dormidos
 (`livestock-draft-fatigue-player`) y descansándolo la casa cuando ya está cansado (`livestock-draft-rest`), y el jugador puede carnear un animal de su casa
-(`livestock-slaughter`); los lobos y zorros con hambre bajan a
+(`livestock-slaughter`), cuya piel la casa curte en cuero (`livestock-hide-tan`); los lobos y zorros con hambre bajan a
 los corrales (`livestock-predators`) salvo que el perro los espante (`livestock-predators-dog`); el buey y las gallinas pastan y la
 casa pone el resto (`livestock-feed-pasture`); las cabras dan leche después de parir
 (`livestock-yield-milk`), y el
@@ -424,7 +424,10 @@ _Los ítems cerrados de esta fase están en [history/roadmap-fase3-cerrados.md](
   - [x] (livestock-slaughter, 2026-10-28) Carnear como acto del jugador: verbo `slaughter` («carneo la cabra», `content/actions`, gramática, plantillas), `slaughterTargetOf` (`game/life/slaughter.ts`) elige por especie, en orden canónico, un animal vivo de su casa en su hex; bien hecho, termina con el evento del acto y su cuerpo (`carcassYield`) entra a la despensa desde `CARCASS_SOURCE`; a medias, sigue vivo; sin uno a mano, `no_means`. Sin `serves`: los NPC no lo eligen (eso es `livestock-slaughter-npc`; con `serves` cambiaba el hash apagado). Opt-in `LifeOptions.livestockSlaughter` (con `livestockLife`), en `FULL_PROFILE`. Sin bump. Hecho. Partido:
     - [ ] (livestock-slaughter-refs) Los animales como entidades conocidas (creencias, ids locales): nombrar uno en particular («la cabra blanca») y no solo la especie.
     - [ ] (livestock-slaughter-npc) Que el hogar NPC decida carnear (fiesta, hambre, animal viejo o que no puede mantener), con `livestock-feed-choice`.
-    - [ ] (livestock-hide-tan) Curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`).
+    - [x] (livestock-hide-tan) Curtir la piel cruda en cuero (crafts): con eso la piel del zapatero puede salir del ganado (`npc-b2b3b2b3b2`). Hecho (2026-10-28): el bien dice si se curte (`GoodDef.tan`: en qué, rinde, días, desde cuántos gramos; la piel cruda, 0.3 de cuero en 45 días desde 500 g, sin calibrar); `living/tanning.ts` (`tanningProcess`, fila `TANNING` por edificio): la casa que junta la piel la pone toda en la tina (`TAN_VAT`, sale de la despensa y deja de pudrirse) y a los días vuelve cuero. Opt-in `livestockTan` (con `livestockLife`), sin cambio de hashes apagado. Quedan:
+      - [ ] (livestock-hide-tan-bark) La corteza o el tanino que gasta la tina, el trabajo de quien la atiende (horas del día) y el oficio (skill de curtidor) que mueve el rinde y la calidad del cuero.
+      - [ ] (livestock-hide-tan-look) Ver la tina y la tanda en la escena y en los paneles de la casa (hoy la piel solo desaparece de la despensa).
+      - [ ] (livestock-hide-tan-sell) Que el cuero de las casas llegue al zapatero (compra o trueque) en vez de `hides`: es el cierre de `npc-b2b3b2b3b2`.
     - Carnear el animal ajeno es robo: va con `livestock-tenure`.
   - (livestock-yield) Lo que dan, partido (2026-10-27):
     - [x] (livestock-yield-eggs, 2026-10-27) Huevos: `yields` en `content/livestock` (gallina adulta: 120 huevos de 50 g por año, sin calibrar), `livestockYieldProcess` diario: cada animal que puede da una unidad con chance `perYear`/año; lo de cada hogar entra junto en un evento `living.animal_yield` causado por los animales, desde `LAID_SOURCE` a la cuenta del hogar (se come y se pudre como cualquier comida). Opt-in `LifeOptions.livestockYield` (con `villageLivestock`), en `FULL_PROFILE`. Sin bump. Hecho.
