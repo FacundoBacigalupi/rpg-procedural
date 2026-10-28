@@ -420,6 +420,8 @@ export interface LifeWorld {
   readonly livestockDraftCost?: boolean;
   /** Opt-in (livestock-draft-fatigue, con `livestockDraft`): el buey se cansa con las horas de más (`DRAFT_FATIGUE`). */
   readonly livestockDraftFatigue?: boolean;
+  /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
+  readonly livestockSlaughter?: readonly LivestockDef[];
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
@@ -1060,6 +1062,9 @@ export function lifeWorld(
         }),
         actProcess({
           ...(draftOpts ? { draft: draftOpts } : {}),
+          ...(parts.livestockSlaughter !== undefined
+            ? { slaughter: { species: parts.livestockSlaughter, year: parts.clock.year } }
+            : {}),
           ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
             ? {
                 fieldWatering: true,

@@ -118,6 +118,10 @@
     "id": "percept.action.douse",
     "lines": ["{who} apaga el fuego.", "Ves a {who} apagando el hogar."]
   },
+  {
+    "id": "percept.action.slaughter",
+    "lines": ["{who} carnea un animal.", "Ves a {who} carneando en el patio."]
+  },
   { "id": "percept.action.filter", "lines": ["{who} filtra agua.", "Ves a {who} filtrando agua."] },
   { "id": "percept.action.consume", "lines": ["{who} toma algo.", "Ves a {who} tomando algo."] },
   { "id": "percept.action.tend", "lines": ["{who} cura una herida.", "Ves a {who} vendando."] },
@@ -601,6 +605,18 @@
     "lines": ["Apagás el fuego del hogar.", "Cubrís las brasas hasta que se apagan."]
   },
   { "id": "outcome.douse.none", "lines": ["No hay ningún fuego encendido acá."] },
+  {
+    "id": "outcome.slaughter.done",
+    "lines": [
+      "Lo carneás y dejás la carne y el cuero en la despensa.",
+      "Terminás de carnearlo; lo que dio queda guardado en casa."
+    ]
+  },
+  {
+    "id": "outcome.slaughter.failed",
+    "lines": ["El animal se te escapa de las manos.", "No llegás a carnearlo; sigue vivo."]
+  },
+  { "id": "outcome.slaughter.none", "lines": ["No tenés acá ningún animal tuyo para carnear."] },
   { "id": "outcome.drink.none", "lines": ["No llegás a tomar nada."] },
   {
     "id": "outcome.use.well.draw_water.done",

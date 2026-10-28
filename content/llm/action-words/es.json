@@ -195,6 +195,13 @@
     "weak": ["agua"]
   },
   {
+    "id": "slaughter",
+    "kind": "action",
+    "stems": ["carneo", "carnea", "carneé", "sacrific", "degoll", "degüell", "despost"],
+    "forms": [],
+    "weak": ["gallina", "cabra", "buey", "animal"]
+  },
+  {
     "id": "kindle",
     "kind": "action",
     "stems": ["enciend", "encend", "aviv", "prend"],

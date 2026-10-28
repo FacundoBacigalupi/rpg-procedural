@@ -1081,6 +1081,19 @@
     }
   },
   {
+    "id": "slaughter-goat",
+    "text": "carneo la cabra vieja",
+    "scene": "Estás en el patio de tu casa; las cabras de la casa andan sueltas.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "slaughter",
+        "args": [{ "role": "what", "text": "cabra vieja" }]
+      }
+    }
+  },
+  {
     "id": "kindle-hearth",
     "text": "enciendo el fuego del hogar con la leña",
     "scene": "Estás en tu casa; hay un hogar frío y una pila de leña.",

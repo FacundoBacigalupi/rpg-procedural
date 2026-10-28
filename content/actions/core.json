@@ -193,6 +193,40 @@
     "yields": [{ "at": "forest", "good": "venison", "perHour": 1500 }]
   },
   {
+    "id": "slaughter",
+    "name": "carnear",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.5 },
+      { "id": "fast", "duration": 0.6, "ease": -0.6 }
+    ],
+    "requires": [
+      { "kind": "capability", "cap": "manipulation", "min": 0.3 },
+      { "kind": "capability", "cap": "strength", "min": 0.2 }
+    ],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "full", "legs": "partial" },
+    "duration": { "kind": "fixed", "seconds": 1800 },
+    "checkpoint": 300,
+    "emissions": { "sight": 0.6, "sound": 0.5 },
+    "resolver": "slaughter",
+    "ease": 0.6,
+    "factors": {
+      "light": 0.6,
+      "nerve": 0.4,
+      "skill": [{ "trait": "control", "weight": 0.4 }, { "trait": "constitution", "weight": 0.3 }]
+    },
+    "skill": { "id": "cooking", "facets": { "execution": 0.6, "reading": 0.2, "judgment": 0.2 } },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "clumsy", "factor": "light" },
+      { "id": "hesitate", "factor": "nerve" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.8
+  },
+  {
     "id": "work",
     "name": "trabajar",
     "domain": "work",

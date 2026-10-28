@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-slaughter (2026-10-28, rama `feat/livestock-slaughter`):** verbo `slaughter` (resolver en `resolve.ts` con `ResolveInput.slaughterTarget`, transfers desde `CARCASS_SOURCE` a la despensa), `game/life/slaughter.ts` (`slaughterTargetOf`, `slaughterChanges`: `endEntity` con el evento del acto, sin `LOCATION`, borra hambre/lactancia/cansancio), cableado en `act.ts` con `ActOptions.slaughter`; `LifeOptions.livestockSlaughter` (con `livestockLife`). Las cabras solo están con `livestockDairy`. Test en `livestock-slaughter.test.ts`. Quedan `livestock-slaughter-refs`, `-npc` y `livestock-hide-tan`.
+
 **livestock-draft-fatigue-player (2026-10-28, rama `feat/livestock-draft-fatigue-player`):** `act.ts` suma `u.hours * r.seconds / 3600` a `DRAFT_FATIGUE` cuando el `work` del jugador rinde horas efectivas; `sleepers.ts` suma las horas de campo del tramo escaladas a un día (`day / (now - lastAdvanced)`). Ambos escriben `DRAFT_FATIGUE` solo con `draft.fatigue`. Tests en `draft.test.ts`. Queda `livestock-draft-rest`.
 
 **livestock-draft-fatigue (2026-10-28, rama `feat/livestock-draft-fatigue`):** `src/sim/living/draft-fatigue.ts` (`DRAFT_FATIGUE`, `draftFatigueStep`, `draftFatigueFactor`, `draftFatigueProcess` en `settle`); `DraftOptions.fatigue` y `draftFor(...).use`; la rutina suma con `addToField` (la fila la crea el proceso diario; sin fila no suma). `LifeOptions.livestockDraftFatigue` en el perfil. Test en `draft.test.ts`. Queda `livestock-draft-fatigue-player`.

@@ -283,6 +283,18 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
     | undefined;
   /** Opt-in: las unidades que son sustancias de consumo (`consume`: una unidad, una dosis); sin esto no hay qué tomar. */
   readonly consumables?: ReadonlySet<LedgerUnit> | undefined;
+  /**
+   * Opt-in (`slaughter`, livestock-slaughter): el animal de su casa que nombró y tiene al lado, la
+   * despensa adonde va lo que deja y los gramos de cada bien (carne, piel). Sin esto no hay qué carnear.
+   */
+  readonly slaughterTarget?:
+    | {
+        readonly animal: string;
+        readonly holder: HolderRef;
+        readonly source: LedgerAccount;
+        readonly yields: readonly { readonly unit: LedgerUnit; readonly grams: number }[];
+      }
+    | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
   readonly market?: Market | undefined;
   /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
@@ -572,6 +584,15 @@ export type VerbEffect =
       readonly kind: "douse";
       /** El hogar que apagó (null si no había uno encendido). */
       readonly hearth: string | null;
+    }
+  | {
+      readonly kind: "slaughter";
+      /** El animal que quiso carnear (null si no había uno suyo al lado). */
+      readonly animal: string | null;
+      /** Lo carneó: si sale mal, el animal sigue vivo. */
+      readonly done: boolean;
+      /** Gramos que dejó en la despensa, sumando todos los bienes. */
+      readonly grams: number;
     }
   | {
       readonly kind: "consume";
@@ -2041,6 +2062,46 @@ const douse: Resolver = (c) => {
   return { effect: { kind: "douse", hearth: at.hearth }, seconds: c.nominal };
 };
 
+/**
+ * Carnea el animal de su casa que tiene al lado: lo que deja el cuerpo va a la despensa. Si sale
+ * mal (se le escapa, no se anima), el animal sigue vivo; sin uno suyo a mano, no hay qué carnear.
+ */
+const slaughter: Resolver = (c) => {
+  const t = c.input.slaughterTarget;
+  const none: VerbEffect = { kind: "slaughter", animal: null, done: false, grams: 0 };
+  if (c.roll.unmet) return { effect: none, seconds: c.nominal };
+  if (t === undefined) {
+    return {
+      effect: none,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  if ((c.roll.margin as number) < PARTIAL_MARGIN) {
+    return {
+      effect: { kind: "slaughter", animal: t.animal, done: false, grams: 0 },
+      seconds: c.nominal / 2,
+    };
+  }
+  const yields = t.yields.filter((y) => y.grams > 0);
+  return {
+    effect: {
+      kind: "slaughter",
+      animal: t.animal,
+      done: true,
+      grams: yields.reduce((n, y) => n + y.grams, 0),
+    },
+    seconds: c.nominal,
+    transfers: yields.map((y) => ({
+      from: t.holder,
+      source: t.source,
+      to: holderAccount(t.holder),
+      unit: y.unit,
+      amount: y.grams,
+    })),
+  };
+};
+
 /** Toma una sustancia de consumo: lo que lleva encima o la despensa de la casa; gasta una unidad. */
 const consume: Resolver = (c) => {
   const kinds = c.input.consumables ?? new Set<LedgerUnit>();
@@ -2661,6 +2722,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   consult,
   forge,
   hire,
+  slaughter,
   ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];

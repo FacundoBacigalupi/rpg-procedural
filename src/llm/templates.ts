@@ -480,6 +480,15 @@ function outcome(
     case "douse":
       say(e.doused ? "outcome.douse.done" : "outcome.douse.none");
       break;
+    case "slaughter":
+      say(
+        e.done
+          ? "outcome.slaughter.done"
+          : e.had
+            ? "outcome.slaughter.failed"
+            : "outcome.slaughter.none",
+      );
+      break;
     case "tend":
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });
