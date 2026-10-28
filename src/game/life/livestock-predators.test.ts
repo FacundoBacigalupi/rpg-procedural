@@ -64,6 +64,14 @@ describe("los depredadores bajan a los corrales (livestock-predators)", () => {
     expect(run(true).hash().total).toBe(on.hash().total);
     const off = run(false);
     expect(off.world.log.all().some((e) => e.kind === "living.animal_taken")).toBe(false);
+    // Lo que se llevaron del corral engorda a los depredadores del monte (livestock-predators-credit).
+    const count = (l: Life, lineage: string) => {
+      const [id] = l.world.truth.ids(ECOLOGY);
+      const eco = id === undefined ? undefined : l.world.truth.get(ECOLOGY, id);
+      return eco?.cell.populations.find((p) => p.lineage === lineage)?.count ?? 0;
+    };
+    const raiders = new Set(taken.map((e) => (e.data as { predator: string }).predator));
+    for (const lineage of raiders) expect(count(on, lineage)).toBeGreaterThan(count(off, lineage));
     expect(FULL_PROFILE).toMatchObject({ livestockPredators: true });
   }, 600_000);
 });
