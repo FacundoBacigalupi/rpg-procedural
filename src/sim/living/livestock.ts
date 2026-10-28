@@ -20,8 +20,13 @@
 // por día de un adulto, de las categorías de comida que acepta, en orden) sale de la cuenta del
 // hogar dueño al sumidero `FED_SINK`. Lo que falta sube el hambre (`ANIMAL_HUNGER`, de 0 a 1 en
 // `starveDays` sin comer nada), lo que come la baja al mismo ritmo; con hambre muere más
-// (flaqueza), no pare si pasa de la mitad y muere de hambre al llegar a 1. Lo que pasta o escarba
-// por su cuenta (el pasto del campo, la competencia con la fauna) queda para livestock-feed-pasture.
+// (flaqueza), no pare si pasa de la mitad y muere de hambre al llegar a 1.
+//
+// Pastan (livestock-feed-pasture, `graze`): con `pasture`, lo que crece al alcance de la aldea (una
+// parte `pasture.share` de la producción de la celda, `ECOLOGY.cell.productivity`) cubre hasta
+// `graze.share` de la ración de cada animal que pasta o escarba, repartido entre todos según lo que
+// piden (`graze.kgPerDay`); la casa pone el resto. Lo pastado queda en `GRAZED` y la ecología lo
+// descuenta de lo que comen los herbívoros del monte al día siguiente.
 
 import {
   type AnimalId,
@@ -63,6 +68,7 @@ import {
   table,
   type WorldTruth,
 } from "../world/index.ts";
+import { ECOLOGY } from "./ecology.ts";
 
 /** Cómo se reproduce una especie (livestock-life); sin esto no pare (el buey, castrado). */
 export const BreedingDef = z.strictObject({
@@ -88,6 +94,13 @@ export const FeedDef = z.strictObject({
   categories: z.array(z.string().min(1)).min(1),
   /** Días sin comer nada hasta morir de hambre (y los mismos, comiendo todo, para reponerse). */
   starveDays: z.number().positive().default(20),
+  /**
+   * Lo que pasta o escarba (livestock-feed-pasture): con pasto de sobra cubre `share` de la ración
+   * comiendo `kgPerDay` kg de planta un adulto; sin esto, todo sale de la casa.
+   */
+  graze: z
+    .strictObject({ share: z.number().min(0).max(1), kgPerDay: z.number().positive() })
+    .optional(),
 });
 export type FeedDef = z.infer<typeof FeedDef>;
 
@@ -216,6 +229,25 @@ export interface AnimalHunger {
 }
 
 export const ANIMAL_HUNGER = table<AnimalHunger>("living.animal_hunger");
+
+/** Lo que pastó el ganado de la aldea el último día (livestock-feed-pasture), en la entidad de la ecología. */
+export interface Grazed {
+  /** Kg de planta por día que el ganado sacó de la celda. */
+  readonly kgPerDay: number;
+}
+export const GRAZED = table<Grazed>("living.grazed");
+
+/** Parte de la producción de la celda que crece al alcance del ganado de la aldea (sin calibrar). */
+export const LIVESTOCK_PASTURE_SHARE = 0.02;
+
+/**
+ * Pura: qué parte (0-1) de lo que piden los que pastan cubre el pasto: `availableKg / demandKg`
+ * hasta 1; sin demanda, 0.
+ */
+export function pastureCover(availableKg: number, demandKg: number): number {
+  if (demandKg <= 0 || availableKg <= 0) return 0;
+  return Math.min(1, availableKg / demandKg);
+}
 
 export interface SeedLivestockInput {
   readonly seed: number;
@@ -514,8 +546,12 @@ export function feedRation(
 ): number {
   const f = def.feed;
   if (!f) return 0;
-  const grown = Math.min(1, Math.max(0.1, ageYears / (def.breeding?.maturityYears ?? 1)));
-  return Math.round((f.gramsPerDay * grown * step) / day);
+  return Math.round((f.gramsPerDay * grownShare(def, ageYears) * step) / day);
+}
+
+/** Pura: qué parte de un adulto come a su edad: lineal hasta la madurez desde un décimo. */
+export function grownShare(def: LivestockDef, ageYears: number): number {
+  return Math.min(1, Math.max(0.1, ageYears / (def.breeding?.maturityYears ?? 1)));
 }
 
 /**
@@ -546,6 +582,8 @@ export interface LivestockFeedOptions {
    * de tirar come `draft.workFeedFactor` veces su ración y su comida queda causada por el tiro.
    */
   readonly working?: (t: Tick) => boolean;
+  /** Opt-in (livestock-feed-pasture): la parte de la producción de la celda al alcance del ganado. */
+  readonly pasture?: { readonly share: number };
 }
 
 /**
@@ -567,13 +605,29 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ANIMAL.name, ENTITY.name, ANIMAL_HUNGER.name],
-    writes: [ANIMAL_HUNGER.name],
+    reads: [ANIMAL.name, ENTITY.name, ANIMAL_HUNGER.name, ...(o.pasture ? [ECOLOGY.name] : [])],
+    writes: [ANIMAL_HUNGER.name, ...(o.pasture ? [GRAZED.name] : [])],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const ledger = ctx.ledger;
       if (!ledger) return {};
       const step = ctx.window > 0 ? ctx.window : 1;
+      // El pasto: cuánto piden hoy los que pastan y qué parte cubre lo que crece a su alcance.
+      const [ecoId] = o.pasture ? ctx.truth.ids(ECOLOGY) : [];
+      const eco = ecoId === undefined ? undefined : ctx.truth.get(ECOLOGY, ecoId);
+      let demandKg = 0;
+      if (o.pasture && eco) {
+        for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
+          const a = ctx.truth.get(ANIMAL, id);
+          const g = a ? byId.get(a.species)?.feed?.graze : undefined;
+          if (!a || !g || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+          const def = byId.get(a.species);
+          if (!def) continue;
+          demandKg += g.kgPerDay * grownShare(def, (ctx.now - a.bornAt) / o.year);
+        }
+      }
+      const cover =
+        o.pasture && eco ? pastureCover(eco.cell.productivity * o.pasture.share, demandKg) : 0;
       // Lo que queda hoy en cada hogar por bien (lo que se comió un animal no lo come el siguiente).
       const left = new Map<string, number>();
       const meal = new Map<
@@ -583,6 +637,7 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
       const changes: StateChange[] = [];
       const working = o.working?.(ctx.now) === true;
       const pulling = new Set<AnimalId>();
+      const grazers = new Set<AnimalId>();
       for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
         const a = ctx.truth.get(ANIMAL, id);
         if (!a || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
@@ -596,9 +651,13 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
           def.draft.workFeedFactor > 1 &&
           ageYears >= def.draft.minAgeYears;
         const base = feedRation(def, ageYears, step, o.day);
-        const ration = pulls ? Math.round(base * (def.draft?.workFeedFactor ?? 1)) : base;
-        if (ration <= 0) continue;
+        const full = pulls ? Math.round(base * (def.draft?.workFeedFactor ?? 1)) : base;
+        if (full <= 0) continue;
         if (pulls) pulling.add(id);
+        // Lo que cubre el pasto no sale de la casa.
+        const grazed = f.graze ? Math.round(full * f.graze.share * cover) : 0;
+        if (grazed > 0) grazers.add(id);
+        const ration = full - grazed;
         let need = ration;
         for (const cat of f.categories) {
           for (const food of byCategory.get(cat) ?? []) {
@@ -622,7 +681,7 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
           }
         }
         const before = ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0;
-        const after = nextHunger(before, (ration - need) / ration, step, o.day, f.starveDays);
+        const after = nextHunger(before, (full - need) / full, step, o.day, f.starveDays);
         if (after === before) continue;
         changes.push(
           after > 0
@@ -646,10 +705,16 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
             eaters: m.eaters,
             grams: Object.fromEntries(foods.map((g) => [g, m.grams.get(g) ?? 0])),
           },
-          causes: m.eaters.flatMap((id) => [
-            { kind: "state" as const, entity: id, key: "hunger" },
-            ...(pulling.has(id) ? [{ kind: "state" as const, entity: id, key: "draft" }] : []),
-          ]),
+          causes: [
+            ...m.eaters.flatMap((id) => [
+              { kind: "state" as const, entity: id, key: "hunger" },
+              ...(pulling.has(id) ? [{ kind: "state" as const, entity: id, key: "draft" }] : []),
+            ]),
+            // Lo que puso la casa depende de cuánto pasto hubo.
+            ...(ecoId !== undefined && m.eaters.some((id) => grazers.has(id))
+              ? [{ kind: "state" as const, entity: ecoId as never, key: "pasture" }]
+              : []),
+          ],
           emissions: null,
         });
         postings.push({
@@ -661,6 +726,11 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
             amount: m.grams.get(g) ?? 0,
           })),
         });
+      }
+      if (o.pasture && ecoId !== undefined) {
+        const kgPerDay = demandKg * cover;
+        const prev = ctx.truth.get(GRAZED, ecoId)?.kgPerDay;
+        if (prev !== kgPerDay) changes.push(setComponent(GRAZED, ecoId, { kgPerDay }));
       }
       if (events.length === 0 && changes.length === 0) return {};
       return { events, changes, postings };

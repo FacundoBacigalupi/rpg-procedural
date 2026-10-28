@@ -645,6 +645,8 @@ export interface LifeOptions {
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
   readonly livestockGuard?: boolean;
+  /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
+  readonly livestockPasture?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
   readonly livestockFeed?: boolean;
   /** Opt-in (village-shrine): los fundadores levantan un santuario de la tierra; apagado, no existe. */
@@ -2074,6 +2076,7 @@ export function createLife(
               species: content.all(LIVESTOCK),
               foods: content.all(FOODS).map((f) => ({ id: f.id, category: f.category })),
             },
+            ...(options.livestockPasture ? { livestockPasture: true } : {}),
           }
         : {}),
       ...mortalTechParts(options, content),

@@ -35,6 +35,7 @@ import {
   HEARTH_WARMING,
   type HouseholdToolDef,
   KNOWN_DEEDS,
+  LIVESTOCK_PASTURE_SHARE,
   type LineageDef,
   type LivestockDef,
   LOCATION,
@@ -418,6 +419,8 @@ export interface LifeWorld {
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
   readonly livestockGuard?: boolean;
+  /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el ganado pasta y la casa le da el resto. */
+  readonly livestockPasture?: boolean;
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
   readonly livestockFeed?: {
     readonly species: readonly LivestockDef[];
@@ -1610,6 +1613,7 @@ export function lifeWorld(
           lineages: parts.lineages ?? [],
           trajectories: parts.trajectories ?? [],
           ...(parts.wildHunt ? { hunt: { effortScale: parts.wildHuntScale ?? 1 } } : {}),
+          ...(parts.livestockPasture === true ? { grazed: true } : {}),
         }),
         ...(parts.hearths === true
           ? [hearthProcess({ clock: parts.clock, placeOf: () => village, sink: BURNED_SINK })]
@@ -2006,6 +2010,9 @@ export function lifeWorld(
                 ...parts.livestockFeed,
                 year: parts.clock.year,
                 day: parts.clock.day,
+                ...(parts.livestockPasture === true
+                  ? { pasture: { share: LIVESTOCK_PASTURE_SHARE } }
+                  : {}),
                 ...(parts.livestockDraftCost === true
                   ? (() => {
                       // Los días de campo son los de la estación de cosecha (la misma que la rutina).
