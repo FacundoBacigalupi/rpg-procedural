@@ -65,7 +65,8 @@
     "name": "piel cruda",
     "form": "good",
     "priceCopperPerKg": 4,
-    "halfLifeDays": 20
+    "halfLifeDays": 20,
+    "tan": { "into": "leather", "yield": 0.3, "days": 45, "minGrams": 500 }
   },
   {
     "id": "leather",

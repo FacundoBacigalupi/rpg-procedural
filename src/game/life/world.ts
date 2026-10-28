@@ -69,12 +69,14 @@ import {
   type StatusDef,
   skyObserverOf,
   sunAt,
+  type TanRule,
   type TasteDef,
   type TechCatalog,
   type TradeRecipeDef,
   type Trait,
   type TraitDef,
   type TrajectoryDef,
+  tanningProcess,
   type ValueDef,
   type WorldTruth,
   weatherAt,
@@ -424,6 +426,8 @@ export interface LifeWorld {
   readonly livestockDraftRest?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
   readonly livestockSlaughter?: readonly LivestockDef[];
+  /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
+  readonly livestockTan?: readonly TanRule[];
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
@@ -2048,6 +2052,9 @@ export function lifeWorld(
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
               }),
             ]
+          : []),
+        ...(parts.livestockTan !== undefined
+          ? [tanningProcess({ rules: parts.livestockTan, day: parts.clock.day })]
           : []),
         ...(parts.livestockDraft !== undefined && parts.livestockDraftFatigue === true
           ? [draftFatigueProcess({ species: parts.livestockDraft, year: parts.clock.year })]

@@ -16,6 +16,18 @@ export const GoodDef = z
     halfLifeDays: z.number().positive().optional(),
     /** Lo que pesa una pieza de una moneda, en gramos (lo que se siente al llevarla). */
     pieceGrams: z.number().positive().optional(),
+    /**
+     * Si una casa lo curte (livestock-hide-tan): en qué bien se vuelve, qué parte de los gramos
+     * queda, cuántos días pasa en la tina y desde cuántos gramos se arma una tanda.
+     */
+    tan: z
+      .strictObject({
+        into: contentId,
+        yield: z.number().gt(0).max(1),
+        days: z.number().int().positive(),
+        minGrams: z.number().int().positive(),
+      })
+      .optional(),
   })
   .superRefine((g, ctx) => {
     if (g.form === "coin" && (g.priceCopperPerKg !== undefined || g.halfLifeDays !== undefined)) {

@@ -133,7 +133,9 @@ import {
   settlementUnits,
   startingParcel,
   TABOOS,
+  TAN_VAT,
   TASTES,
+  type TanRule,
   type TasteDef,
   type TasteSpec,
   TECH_PROCESSES,
@@ -651,6 +653,8 @@ export interface LifeOptions {
   readonly livestockDraftRest?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador puede carnear un animal de su casa («carneo la cabra»): termina y deja carne y piel en la despensa. */
   readonly livestockSlaughter?: boolean;
+  /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
+  readonly livestockTan?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
@@ -1455,6 +1459,23 @@ export function resumeParts(
   };
 }
 
+/** Cómo se curten los bienes que dicen `tan` (livestock-hide-tan), en el orden del contenido. */
+export function tanRulesOf(content: Content): TanRule[] {
+  return content.all(GOODS).flatMap((g) =>
+    g.tan
+      ? [
+          {
+            from: goodUnit(g),
+            into: ledgerUnit(`good:${g.tan.into}`),
+            yield: g.tan.yield,
+            days: g.tan.days,
+            minGrams: g.tan.minGrams,
+          },
+        ]
+      : [],
+  );
+}
+
 /** Las fuentes y sumideros que la vida declara (conservación: nada entra ni sale por otro lado). */
 export function ledgerConfigOf(
   content: Content,
@@ -1471,6 +1492,7 @@ export function ledgerConfigOf(
   livestockYield = false,
   livestockFeed = false,
   livestockDairy = false,
+  livestockTan = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1485,20 +1507,24 @@ export function ledgerConfigOf(
   const carcass = livestockCarcass ? carcassUnits(livestockOf(content, livestockDairy)) : [];
   // Lo que pone el ganado (livestock-yield): huevos, ya comida.
   const laid = livestockYield ? yieldUnits(livestockOf(content, livestockDairy)) : [];
+  // Lo que entra y sale de la tina (livestock-hide-tan): la piel cruda y el cuero.
+  const tan = livestockTan ? tanRulesOf(content) : [];
+  const tanUnits = [...new Set(tan.flatMap((r) => [r.from, r.into]))];
+  const rottedBase = [
+    ...units,
+    ...tradeUnits.filter((u) => !units.includes(u)),
+    ...carcass.filter((u) => !units.includes(u) && !tradeUnits.includes(u)),
+    // El cuero del zapatero también se echa a perder (lento) en su bolsillo.
+    ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
+      ? [LEATHER_UNIT]
+      : []),
+  ];
   return {
     externals: {
       [COOKED]: units,
       [EATEN]: units,
       [HARVEST]: [HARVEST_GOOD],
-      [ROTTED]: [
-        ...units,
-        ...tradeUnits.filter((u) => !units.includes(u)),
-        ...carcass.filter((u) => !units.includes(u) && !tradeUnits.includes(u)),
-        // El cuero del zapatero también se echa a perder (lento) en su bolsillo.
-        ...(cobbler && !units.includes(LEATHER_UNIT) && !tradeUnits.includes(LEATHER_UNIT)
-          ? [LEATHER_UNIT]
-          : []),
-      ],
+      [ROTTED]: [...rottedBase, ...tanUnits.filter((u) => !rottedBase.includes(u))],
       seed: [
         ...units,
         ...tradeUnits.filter((u) => !units.includes(u)),
@@ -1526,6 +1552,7 @@ export function ledgerConfigOf(
       ...(laid.length > 0 ? { [LAID_SOURCE]: laid } : {}),
       // Lo que come el ganado de la casa (livestock-feed): cualquier comida.
       ...(livestockFeed ? { [FED_SINK]: units } : {}),
+      ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
     },
   };
 }
@@ -1688,6 +1715,9 @@ export function createLife(
       options.villageLivestock === true && options.livestockYield === true,
       options.villageLivestock === true && options.livestockFeed === true,
       options.villageLivestock === true && options.livestockDairy === true,
+      options.villageLivestock === true &&
+        options.livestockLife === true &&
+        options.livestockTan === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -2063,6 +2093,7 @@ export function createLife(
             ...(options.livestockSlaughter
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
               : {}),
+            ...(options.livestockTan ? { livestockTan: tanRulesOf(content) } : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockDraft
