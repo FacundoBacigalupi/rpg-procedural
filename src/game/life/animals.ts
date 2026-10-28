@@ -6,9 +6,12 @@
 import type { EntityRef } from "../../core/index.ts";
 import {
   ANIMAL,
+  ANIMAL_HUNGER,
   BUILDING,
   DRAFT_FATIGUE,
   ENTITY,
+  LACTATING,
+  type LivestockDef,
   LOCATION,
   skyLight,
   spaceLight,
@@ -36,6 +39,18 @@ export interface SeenAnimal {
 export const TIRED_LOOK_LEVEL = 0.2;
 /** Hasta dónde se le nota el cansancio a un animal (m), con luz de día. */
 export const TIRED_SIGHT_M = 25;
+
+/**
+ * Lo que se le nota de cerca a un animal al mirarlo (livestock-look-more): cría o viejo por la edad,
+ * flaco o consumido por el hambre, y si da de mamar. Se nota hasta donde se nota el cansancio.
+ */
+export type AnimalMark = "young" | "old" | "thin" | "starving" | "nursing";
+
+/** Desde qué hambre (`ANIMAL_HUNGER.level`) se lo ve flaco, y desde cuál consumido. */
+export const THIN_LOOK_LEVEL = 0.3;
+export const STARVING_LOOK_LEVEL = 0.7;
+/** Desde qué parte de la vida de su especie (`lifespanYears`) se lo ve viejo. */
+export const OLD_LOOK_SHARE = 0.7;
 
 /** Hasta dónde distingue un animal según la luz (m): son más chicos que una casa. */
 export const ANIMAL_SIGHT_M: Readonly<Record<LightLook, number>> = {
@@ -73,6 +88,7 @@ export interface AnimalRow {
   readonly species: string;
   readonly at: { x: number; y: number };
   readonly tired?: boolean;
+  readonly marks?: readonly AnimalMark[];
 }
 
 function seenAnimalRows(
@@ -80,7 +96,7 @@ function seenAnimalRows(
   from: { readonly x: number; readonly y: number },
   sightM: number,
   tiredSightM: number,
-): { id: string; view: SeenAnimal }[] {
+): { id: string; view: SeenAnimal; marks: readonly AnimalMark[] }[] {
   return animals
     .map((a) => {
       const dx = a.at.x - from.x;
@@ -98,28 +114,54 @@ function seenAnimalRows(
         d: Math.round(s.d),
         ...(s.a.tired === true && s.d <= tiredSightM ? { tired: true as const } : {}),
       },
+      marks: s.d <= tiredSightM ? (s.a.marks ?? []) : [],
     }));
 }
 
 /** Los animales vivos de la vida con su lugar en el patio. */
-export function animalRows(
-  w: LifeWorld,
-): { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] {
-  const out: { id: string; species: string; at: { x: number; y: number }; tired?: boolean }[] = [];
+export function animalRows(w: LifeWorld): AnimalRow[] {
+  const out: AnimalRow[] = [];
+  const defs = new Map((w.livestockLife ?? []).map((d) => [d.id, d]));
   for (const id of [...w.truth.ids(ANIMAL)].sort()) {
     const a = w.truth.get(ANIMAL, id);
     if (!a || w.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const house = w.truth.get(BUILDING, a.home);
     if (!house) continue;
     const level = w.truth.get(DRAFT_FATIGUE, id)?.level ?? 0;
+    const marks = animalMarks(w, id as EntityRef, a.bornAt, defs.get(a.species));
     out.push({
       id,
       species: a.species,
       at: yardSpot(id, house.at),
       ...(level >= TIRED_LOOK_LEVEL ? { tired: true } : {}),
+      ...(marks.length > 0 ? { marks } : {}),
     });
   }
   return out;
+}
+
+/**
+ * Lo que se le nota por edad, hambre y cría. La edad solo con las especies de `livestockLife` (sin
+ * ellas no hay vida que comparar): cría antes de madurar (`breeding.maturityYears`, o un año), viejo
+ * desde `OLD_LOOK_SHARE` de su vida.
+ */
+function animalMarks(
+  w: LifeWorld,
+  id: EntityRef,
+  bornAt: number,
+  def: LivestockDef | undefined,
+): AnimalMark[] {
+  const marks: AnimalMark[] = [];
+  if (def) {
+    const age = (w.scheduler.now - bornAt) / w.clock.year;
+    if (age < (def.breeding?.maturityYears ?? 1)) marks.push("young");
+    else if (age >= OLD_LOOK_SHARE * def.lifespanYears) marks.push("old");
+  }
+  const hunger = w.truth.get(ANIMAL_HUNGER, id)?.level ?? 0;
+  if (hunger >= STARVING_LOOK_LEVEL) marks.push("starving");
+  else if (hunger >= THIN_LOOK_LEVEL) marks.push("thin");
+  if (w.truth.get(LACTATING, id) !== undefined) marks.push("nursing");
+  return marks;
 }
 
 /** Hasta dónde se nota el cansancio según la luz: de día `TIRED_SIGHT_M`, la mitad en penumbra. */
@@ -141,6 +183,8 @@ export interface AnimalInSight {
   readonly species: string;
   /** Se le nota el cansancio (de cerca y con luz). */
   readonly tired?: true;
+  /** Lo demás que se le nota de cerca (livestock-look-more). */
+  readonly marks?: readonly AnimalMark[];
 }
 
 /**
@@ -169,5 +213,6 @@ export function animalsInSight(w: LifeWorld): AnimalInSight[] {
     ref: r.id as EntityRef,
     species: r.view.species,
     ...(r.view.tired === true ? { tired: true as const } : {}),
+    ...(r.marks.length > 0 ? { marks: r.marks } : {}),
   }));
 }
