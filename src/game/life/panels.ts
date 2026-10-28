@@ -40,11 +40,13 @@ import {
   STATUS,
   seedSelfImage,
   skillStandingOf,
+  TANNING,
   TASTES_OF,
   villageReligion,
 } from "../../sim/index.ts";
 import { creditRows } from "./credit.ts";
 import type { ViewCues } from "./cue-local.ts";
+import { TAN_ALMOST_SHARE } from "./fixtures.ts";
 import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { playerNickname, REPUTATION_NOTICED } from "./nickname.ts";
 import { deficiencyStagesOf } from "./nutrition.ts";
@@ -162,7 +164,21 @@ export interface InventoryPanel {
   /** Monedas de cobre que lleva (se cuentan, no se estiman). */
   readonly coins: number;
   readonly carried: readonly { readonly good: string; readonly amount: Amount }[];
-  readonly larder: readonly { readonly good: string; readonly lasts: Lasts }[];
+  /** Lo comestible dice cuánto alcanza; lo demás (la piel, el cuero), cuánto hay. */
+  readonly larder: readonly {
+    readonly good: string;
+    readonly lasts?: Lasts;
+    readonly amount?: Amount;
+  }[];
+  /**
+   * Las tandas en la tina de las casas del hogar (livestock-hide-tan-look): qué se curte, en qué
+   * se vuelve y si falta poco (`soon`, desde `TAN_ALMOST_SHARE` de los días) o mucho.
+   */
+  readonly vats?: readonly {
+    readonly good: string;
+    readonly into: string;
+    readonly left: "soon" | "weeks";
+  }[];
   /** La ropa que tiene puesta, con el guardarropa encendido (clothing-player-hud). */
   readonly worn?: Outfit;
 }
@@ -437,7 +453,9 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
   const me = w.truth.get(PERSON, w.player);
   if (!me) throw new Error("el personaje no tiene persona");
   const name = (unit: LedgerUnit) =>
-    w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.name ?? unit.replace(/^good:/, "");
+    w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.name ??
+    w.goods.find((g) => ledgerUnit(`good:${g.id}`) === unit)?.name ??
+    unit.replace(/^good:/, "");
   const kcal = (unit: LedgerUnit) =>
     w.foods.find((f) => ledgerUnit(`good:${f.id}`) === unit)?.kcalPerGram ?? 0;
   const holdings = (h: HolderRef) =>
@@ -459,10 +477,38 @@ export function inventoryPanel(w: LifeWorld): InventoryPanel {
     carried: carriedNow
       .filter((h) => h.unit !== COPPER)
       .map((h) => ({ good: name(h.unit), amount: amountOf(h.amount) })),
-    larder: larderNow.map((h) => ({
-      good: name(h.unit),
-      lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),
-    })),
+    larder: larderNow.map((h) =>
+      kcal(h.unit) > 0
+        ? {
+            good: name(h.unit),
+            lasts: lastsOf((h.amount * kcal(h.unit)) / (3 * MEAL_KCAL * Math.max(1, mouths))),
+          }
+        : { good: name(h.unit), amount: amountOf(h.amount) },
+    ),
     ...(outfit ? { worn: outfit } : {}),
+    ...vatsOf(w, me.household as unknown as HolderRef, name),
   };
+}
+
+/** Las tandas de la tina del hogar: lo sabe por vivir ahí (la casa las pone y las saca). */
+function vatsOf(
+  w: LifeWorld,
+  household: HolderRef,
+  name: (unit: LedgerUnit) => string,
+): Pick<InventoryPanel, "vats"> {
+  const vats = [...w.truth.ids(TANNING)].sort().flatMap((id) => {
+    const batch = w.truth.get(TANNING, id);
+    if (batch?.household !== household) return [];
+    const rule = w.livestockTan?.find((r) => r.from === batch.from);
+    if (!rule) return [];
+    const share = (w.scheduler.now - batch.startedAt) / (rule.days * w.clock.day);
+    return [
+      {
+        good: name(batch.from),
+        into: name(rule.into),
+        left: share >= TAN_ALMOST_SHARE ? ("soon" as const) : ("weeks" as const),
+      },
+    ];
+  });
+  return vats.length > 0 ? { vats } : {};
 }

@@ -111,7 +111,7 @@ const AMOUNT: Readonly<Record<InventoryPanel["carried"][number]["amount"], strin
   plenty: "bastante",
 };
 
-const LASTS: Readonly<Record<InventoryPanel["larder"][number]["lasts"], string>> = {
+const LASTS: Readonly<Record<NonNullable<InventoryPanel["larder"][number]["lasts"]>, string>> = {
   empty: "casi no queda",
   days: "alcanza para unos días",
   weeks: "alcanza para unas semanas",
@@ -323,7 +323,18 @@ export function renderInventory(p: InventoryPanel): string {
     if (p.worn.short > 0) lines.push(SHORT[p.worn.short]);
   }
   if (p.larder.length === 0) lines.push("En la despensa de tu casa no hay nada.");
-  for (const l of p.larder) lines.push(`En la despensa: ${l.good}; ${LASTS[l.lasts]}.`);
+  for (const l of p.larder) {
+    lines.push(
+      l.lasts !== undefined
+        ? `En la despensa: ${l.good}; ${LASTS[l.lasts]}.`
+        : `En la despensa: ${AMOUNT[l.amount ?? "a_little"]} ${l.good}.`,
+    );
+  }
+  for (const v of p.vats ?? []) {
+    lines.push(
+      `En la tina: ${v.good} curtiéndose en ${v.into}; ${v.left === "soon" ? "le falta poco" : "le faltan semanas"}.`,
+    );
+  }
   return lines.join("\n");
 }
 
