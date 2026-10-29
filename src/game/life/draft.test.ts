@@ -23,6 +23,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { draftDefsOf, draftFor, larderPress, seasonPress } from "./draft.ts";
+import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { ROUTINE } from "./routine.ts";
@@ -456,7 +457,24 @@ describe("con la despensa corta se sigue arando (livestock-draft-rest-press)", (
     expect(pulls(1e9, true)).toBe(false);
     expect(pulls(0, true)).toBe(true);
     expect(pulls(0, false)).toBe(false);
-    expect(FULL_PROFILE).toMatchObject({ livestockDraftRestPress: true });
+    // Con `restBelief` cuenta lo que cree tener (livestock-draft-rest-belief); sin foto, el saldo.
+    const believes = (real: number, believed: number | undefined) => {
+      if (believed === undefined) t.deleteRaw(INVENTORY_BELIEF.name, worker);
+      else {
+        const larder = believed > 0 ? [{ unit: HARVEST_GOOD, amount: believed }] : [];
+        t.set(INVENTORY_BELIEF, worker, { asOf: life.now, carried: [], larder });
+      }
+      const opts = { ...o, restPress: true, restBelief: true };
+      return draftFor(t, worker, life.now, opts, larder(real))?.animals.includes(ox) === true;
+    };
+    expect(believes(1e9, 0)).toBe(true);
+    expect(believes(0, 1e9)).toBe(false);
+    expect(believes(0, undefined)).toBe(true);
+    expect(believes(1e9, undefined)).toBe(false);
+    expect(FULL_PROFILE).toMatchObject({
+      livestockDraftRestPress: true,
+      livestockDraftRestBelief: true,
+    });
   }, 300_000);
 });
 

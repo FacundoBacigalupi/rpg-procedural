@@ -31,6 +31,7 @@ import {
   type ReadonlyLedger,
   type ReadonlyWorldTruth,
 } from "../../sim/index.ts";
+import { INVENTORY_BELIEF } from "./inventory-belief.ts";
 
 /** Las calorías por gramo del grano de la despensa (el cereal del catálogo, ~3.5). */
 const GRAIN_KCAL_PER_GRAM = 3.5;
@@ -44,6 +45,11 @@ export const DRAFT_READS = [
   DRAFT_FATIGUE.name,
   INNATE.name,
 ] as const;
+
+/** Las tablas que lee `draftFor` con estas opciones (con `restBelief`, también lo que cree tener). */
+export function draftReads(o: DraftOptions): readonly string[] {
+  return o.restBelief === true ? [...DRAFT_READS, INVENTORY_BELIEF.name] : DRAFT_READS;
+}
 
 /** Las especies que tiran, por id (las que tienen `draft`). */
 export function draftDefsOf(species: readonly LivestockDef[]): ReadonlyMap<string, DraftDef> {
@@ -71,6 +77,11 @@ export interface DraftOptions {
    * Necesita el ledger.
    */
   readonly restPress?: boolean;
+  /**
+   * Opt-in (livestock-draft-rest-belief, con `restPress`): el grano que cuenta es el que cree tener
+   * quien decide (`INVENTORY_BELIEF.larder`, la última vez que revisó la despensa); sin foto, el saldo.
+   */
+  readonly restBelief?: boolean;
   /**
    * Opt-in (livestock-draft-rest-season, con `restChoice`): el rinde del campo de hoy contra el de
    * los próximos `SEASON_AHEAD_DAYS` (`seasonPress`): si la temporada se termina, se sigue arando.
@@ -131,12 +142,15 @@ export function draftFor(
   if (household === undefined) return undefined;
   const animals: { id: AnimalId; def: DraftDef; factor: number; tracked: boolean }[] = [];
   const warmth = o.restChoice === true ? (truth.get(INNATE, me)?.["warmth"] ?? 0) : undefined;
+  const believed = o.restBelief === true ? truth.get(INVENTORY_BELIEF, me) : undefined;
   const larder =
     o.restChoice === true && o.restPress === true && ledger !== undefined
       ? larderPress(
-          ledger
-            .holdings(holderAccount(household as unknown as HolderRef))
-            .find((h) => h.unit === HARVEST_GOOD)?.amount ?? 0,
+          believed !== undefined
+            ? (believed.larder.find((h) => h.unit === HARVEST_GOOD)?.amount ?? 0)
+            : (ledger
+                .holdings(holderAccount(household as unknown as HolderRef))
+                .find((h) => h.unit === HARVEST_GOOD)?.amount ?? 0),
           (truth.ids(PERSON) as AgentId[]).filter(
             (id) =>
               truth.get(PERSON, id)?.household === household &&

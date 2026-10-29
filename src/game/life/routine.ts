@@ -82,7 +82,7 @@ import {
 } from "../../sim/index.ts";
 import { type BoilOptions, PLAN_STATE } from "./act.ts";
 import { type Decision, NPC_DECISION } from "./decide.ts";
-import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
+import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import {
   fieldBoost,
@@ -413,7 +413,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       ...(o.firewood ? [HEARTH.name, PLACE.name] : []),
       ...(o.fieldTools ? [ITEM_HOLD.name, ITEM_LOOK.name, ITEM_WEAR.name] : []),
       ...(o.fieldTools && o.toolCare ? [SMITH.name] : []),
-      ...(o.draft ? DRAFT_READS : []),
+      ...(o.draft ? draftReads(o.draft) : []),
     ],
     writes: [
       LOCATION.name,
