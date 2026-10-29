@@ -71,6 +71,31 @@ export interface DraftOptions {
    * Necesita el ledger.
    */
   readonly restPress?: boolean;
+  /**
+   * Opt-in (livestock-draft-rest-season, con `restChoice`): el rinde del campo de hoy contra el de
+   * los próximos `SEASON_AHEAD_DAYS` (`seasonPress`): si la temporada se termina, se sigue arando.
+   * `dayAt` da el día del campo (con la hora local) de un tick.
+   */
+  readonly restSeason?: {
+    readonly season: (day: number) => number;
+    readonly dayAt: (now: Tick) => number;
+  };
+}
+
+/** Cuántos días adelante mira el que decide si la temporada se le va. */
+export const SEASON_AHEAD_DAYS = 14;
+
+/**
+ * Pura: el apuro (0-1) de la temporada: lo que rinde hoy el campo contra el promedio de los
+ * próximos `SEASON_AHEAD_DAYS` días (`1 − adelante / hoy`). Hoy sin rinde, o lo que viene igual o
+ * mejor, 0.
+ */
+export function seasonPress(season: (day: number) => number, day: number): number {
+  const today = season(day);
+  if (today <= 0) return 0;
+  let ahead = 0;
+  for (let d = 1; d <= SEASON_AHEAD_DAYS; d++) ahead += season(day + d);
+  return Math.min(1, Math.max(0, 1 - ahead / SEASON_AHEAD_DAYS / today));
 }
 
 /** Con cuántos días de grano en la despensa la casa ya no se apura. */
@@ -106,7 +131,7 @@ export function draftFor(
   if (household === undefined) return undefined;
   const animals: { id: AnimalId; def: DraftDef; factor: number; tracked: boolean }[] = [];
   const warmth = o.restChoice === true ? (truth.get(INNATE, me)?.["warmth"] ?? 0) : undefined;
-  const press =
+  const larder =
     o.restChoice === true && o.restPress === true && ledger !== undefined
       ? larderPress(
           ledger
@@ -119,6 +144,11 @@ export function draftFor(
           ).length,
         )
       : 0;
+  const harvest =
+    o.restChoice === true && o.restSeason !== undefined
+      ? seasonPress(o.restSeason.season, o.restSeason.dayAt(now))
+      : 0;
+  const press = Math.max(larder, harvest);
   for (const id of [...truth.ids(ANIMAL)].sort() as AnimalId[]) {
     const a = truth.get(ANIMAL, id);
     if (!a || a.owner !== household || truth.get(ENTITY, id)?.endedAt !== undefined) continue;

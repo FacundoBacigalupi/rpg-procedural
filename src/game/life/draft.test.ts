@@ -22,7 +22,7 @@ import {
   type ReadonlyLedger,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { draftDefsOf, draftFor, larderPress } from "./draft.ts";
+import { draftDefsOf, draftFor, larderPress, seasonPress } from "./draft.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { ROUTINE } from "./routine.ts";
@@ -457,5 +457,56 @@ describe("con la despensa corta se sigue arando (livestock-draft-rest-press)", (
     expect(pulls(0, true)).toBe(true);
     expect(pulls(0, false)).toBe(false);
     expect(FULL_PROFILE).toMatchObject({ livestockDraftRestPress: true });
+  }, 300_000);
+});
+
+describe("la temporada que se termina apura al buey (livestock-draft-rest-season)", () => {
+  it("pura: rinde hoy contra los días que vienen", () => {
+    const flat = () => 1;
+    expect(seasonPress(flat, 10)).toBe(0);
+    expect(seasonPress(() => 0, 10)).toBe(0);
+    // Se termina en 7 días: la mitad de lo que viene.
+    const ending = (d: number) => (d <= 17 ? 1 : 0);
+    expect(seasonPress(ending, 10)).toBeCloseTo(0.5);
+    // Lo que viene es mejor: nada.
+    expect(seasonPress((d) => d, 10)).toBe(0);
+  });
+
+  it("el mismo buey cansado tira si la temporada se termina y descansa si sigue", () => {
+    const life = Life.create(SEED, content, OPTS);
+    const t = life.world.truth;
+    const year = life.world.clock.year;
+    const o0 = { defs: draftDefsOf(content.all(LIVESTOCK)), year, workAge: ROUTINE.workAge };
+    const workerOf = (owner: string) =>
+      (t.ids(PERSON) as AgentId[]).sort().find((id) => {
+        const p = t.get(PERSON, id);
+        return (
+          p !== undefined &&
+          p.household === owner &&
+          t.get(ENTITY, id)?.endedAt === undefined &&
+          (life.now - p.born) / year >= ROUTINE.workAge
+        );
+      }) as AgentId;
+    const ox = (t.ids(ANIMAL) as AnimalId[]).find((id) => {
+      const a = t.get(ANIMAL, id);
+      return (
+        a !== undefined &&
+        t.get(ENTITY, id)?.endedAt === undefined &&
+        draftFor(t, workerOf(a.owner), life.now, o0)?.animals.includes(id) === true
+      );
+    });
+    if (ox === undefined) throw new Error("sin buey que tire");
+    const worker = workerOf(t.get(ANIMAL, ox)?.owner as string);
+    t.set(INNATE, worker, { ...t.get(INNATE, worker), warmth: 0 });
+    t.set(DRAFT_FATIGUE, ox, { hours: 6, level: 0.3 });
+    const o = { ...o0, fatigue: true, rest: true, restChoice: true };
+    const pulls = (season: (day: number) => number) =>
+      draftFor(t, worker, life.now, {
+        ...o,
+        restSeason: { season, dayAt: () => 100 },
+      })?.animals.includes(ox) === true;
+    expect(pulls(() => 1)).toBe(false);
+    expect(pulls((d) => (d <= 101 ? 1 : 0))).toBe(true);
+    expect(FULL_PROFILE).toMatchObject({ livestockDraftRestSeason: true });
   }, 300_000);
 });
