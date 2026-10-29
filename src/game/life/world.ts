@@ -426,6 +426,8 @@ export interface LifeWorld {
   readonly livestockDraftRest?: boolean;
   /** Opt-in (livestock-draft-rest-choice, con `livestockDraftRest`): cuándo descansa al buey depende de la calidez de quien lo trabaja. */
   readonly livestockDraftRestChoice?: boolean;
+  /** Opt-in (livestock-draft-rest-press, con `livestockDraftRestChoice`): la despensa corta de grano hace seguir con el buey cansado. */
+  readonly livestockDraftRestPress?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
   readonly livestockSlaughter?: readonly LivestockDef[];
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
@@ -991,6 +993,10 @@ export function lifeWorld(
             ? {
                 rest: true,
                 ...(parts.livestockDraftRestChoice === true ? { restChoice: true } : {}),
+                ...(parts.livestockDraftRestChoice === true &&
+                parts.livestockDraftRestPress === true
+                  ? { restPress: true }
+                  : {}),
               }
             : {}),
         };

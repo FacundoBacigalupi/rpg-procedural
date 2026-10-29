@@ -193,7 +193,8 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       const later = pending.filter((f) => f.at > ctx.now);
       const fertility = o.harvest ? fieldFertility(truth) : 0;
       // El tiro se mira una vez por tramo (al despertar el proceso), no por hora.
-      const draft = o.harvest && o.draft ? draftFor(truth, me, ctx.now, o.draft) : undefined;
+      const draft =
+        o.harvest && o.draft ? draftFor(truth, me, ctx.now, o.draft, ctx.ledger) : undefined;
       const draftRate = draft?.rate ?? 1;
       // El factor de riego y siembra del campo por día (se pide por hora y por dormido).
       const cropByDay = new Map<number, number>();

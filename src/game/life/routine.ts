@@ -665,7 +665,7 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       }
       const draft =
         o.draft && atFields && there && !waters && !sows
-          ? draftFor(truth, me, ctx.now, o.draft)
+          ? draftFor(truth, me, ctx.now, o.draft, ctx.ledger)
           : undefined;
       const grams =
         waters || sows

@@ -1540,7 +1540,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
   const cropFactor = o.fieldWatering
     ? fieldCropFactor(truth, day, e.rainOf(day), o.fieldSowing ? e.cropStart(day) : undefined)
     : 1;
-  const draft = o.draft ? draftFor(truth, me, ctx.now, o.draft) : undefined;
+  const draft = o.draft ? draftFor(truth, me, ctx.now, o.draft, ctx.ledger) : undefined;
   const draftRate = draft?.rate ?? 1;
   const harvestRate =
     HARVEST_GRAMS_PER_HOUR * e.season(day) * cropFactor * fieldFertility(truth) * draftRate;

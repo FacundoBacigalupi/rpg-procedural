@@ -62,16 +62,20 @@ export function draftFatigueFactor(
 
 /** Cuánto baja el umbral de descanso por unidad de calidez de quien trabaja al animal. */
 export const REST_WARMTH_SHIFT = 0.25;
+/** Cuánto sube el umbral de descanso con el apuro máximo de la casa (livestock-draft-rest-press). */
+export const REST_PRESS_SHIFT = 0.4;
 
 /**
  * Pura (livestock-draft-rest-choice): desde qué cansancio descansa al animal quien lo trabaja: el
  * `restAbove` de la especie, más bajo para el cálido (le duele verlo así) y más alto para el frío
- * (lo sigue arreando), entre 0.05 y 0.95. Sin `restAbove`, nada.
+ * (lo sigue arreando), entre 0.05 y 0.95. `press` (0-1, livestock-draft-rest-press) es el apuro de
+ * la casa: lo sube hasta `REST_PRESS_SHIFT`. Sin `restAbove`, nada.
  */
-export function draftRestThreshold(def: DraftDef, warmth: number): number | undefined {
+export function draftRestThreshold(def: DraftDef, warmth: number, press = 0): number | undefined {
   const base = def.fatigue?.restAbove;
   if (base === undefined) return undefined;
-  return Math.min(0.95, Math.max(0.05, base - REST_WARMTH_SHIFT * warmth));
+  const pressed = REST_PRESS_SHIFT * Math.min(1, Math.max(0, press));
+  return Math.min(0.95, Math.max(0.05, base - REST_WARMTH_SHIFT * warmth + pressed));
 }
 
 export interface DraftFatigueOptions {
