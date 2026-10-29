@@ -645,6 +645,8 @@ export interface LifeOptions {
   readonly livestockMilkCurve?: boolean;
   /** Opt-in (livestock-milk-suckle, con `livestockDairy`, `livestockLife` y `livestockYield`): los primeros 75 días cada cabrito vivo se toma su parte de la leche de la madre y a la casa le llega el resto. */
   readonly livestockSuckle?: boolean;
+  /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): el cabrito que mama no come de la casa; el huérfano toma la leche de la casa o pasa hambre (de lo sólido come poco). */
+  readonly livestockOrphan?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
   readonly livestockSeason?: boolean;
   /** Opt-in (livestock-yield-feed, con `livestockYield`): ponen menos con frío y, con `livestockFeed`, si pasan hambre. */
@@ -2105,6 +2107,9 @@ export function createLife(
             livestockLife: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockDairy ? { livestockDairy: true } : {}),
             ...(options.livestockDairy && options.livestockSuckle ? { livestockSuckle: true } : {}),
+            ...(options.livestockDairy && options.livestockSuckle && options.livestockOrphan
+              ? { livestockOrphan: true }
+              : {}),
             ...(options.livestockSlaughter
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
               : {}),

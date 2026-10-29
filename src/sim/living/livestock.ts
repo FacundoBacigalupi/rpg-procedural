@@ -679,6 +679,37 @@ export interface LivestockFeedOptions {
   readonly working?: (t: Tick) => boolean;
   /** Opt-in (livestock-feed-pasture): la parte de la producción de la celda al alcance del ganado. */
   readonly pasture?: { readonly share: number };
+  /**
+   * Opt-in (livestock-milk-orphan, con `LACTATING.young`): la cría en sus días de mamar no come de
+   * la casa si su madre vive y la amamanta; huérfana, toma la leche de la casa (`suckle` de su
+   * especie) y de lo sólido solo puede comer `ORPHAN_SOLID_SHARE` de su ración.
+   */
+  readonly orphan?: boolean;
+}
+
+/** Qué parte de su ración puede comer de lo sólido la cría huérfana en sus días de mamar. */
+export const ORPHAN_SOLID_SHARE = 0.3;
+
+/**
+ * Pura (livestock-milk-orphan): las crías que maman hoy: las de `LACTATING.young` de cada madre viva
+ * dentro de los `suckle.days` de su especie desde el parto.
+ */
+export function nursedYoung(
+  truth: ReadonlyWorldTruth,
+  now: Tick,
+  year: Duration,
+  byId: ReadonlyMap<string, LivestockDef>,
+): Set<AnimalId> {
+  const out = new Set<AnimalId>();
+  for (const id of [...truth.ids(LACTATING)].sort() as AnimalId[]) {
+    const l = truth.get(LACTATING, id);
+    const a = truth.get(ANIMAL, id);
+    if (!l?.young || !a || truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    const days = byId.get(a.species)?.yields?.find((y) => y.suckle)?.suckle?.days;
+    if (days === undefined || ((now - l.since) * 365) / year > days) continue;
+    for (const k of l.young) out.add(k);
+  }
+  return out;
 }
 
 /**
@@ -700,7 +731,13 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "settle",
-    reads: [ANIMAL.name, ENTITY.name, ANIMAL_HUNGER.name, ...(o.pasture ? [ECOLOGY.name] : [])],
+    reads: [
+      ANIMAL.name,
+      ENTITY.name,
+      ANIMAL_HUNGER.name,
+      ...(o.pasture ? [ECOLOGY.name] : []),
+      ...(o.orphan === true ? [LACTATING.name] : []),
+    ],
     writes: [ANIMAL_HUNGER.name, ...(o.pasture ? [GRAZED.name] : [])],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
@@ -733,6 +770,27 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
       const working = o.working?.(ctx.now) === true;
       const pulling = new Set<AnimalId>();
       const grazers = new Set<AnimalId>();
+      const nursed =
+        o.orphan === true ? nursedYoung(ctx.truth, ctx.now, o.year, byId) : new Set<AnimalId>();
+      // Saca hasta `max` gramos de `food` de la casa del animal; devuelve lo que sacó.
+      const take = (a: AnimalRecord, id: AnimalId, food: string, max: number): number => {
+        const key = `${a.owner}|${food}`;
+        const have =
+          left.get(key) ??
+          Math.floor(ledger.balance(holderAccount(a.owner), ledgerUnit(`good:${food}`)));
+        const got = Math.min(have, max);
+        left.set(key, have - got);
+        if (got <= 0) return 0;
+        const m = meal.get(a.owner) ?? {
+          home: a.home,
+          eaters: [] as AnimalId[],
+          grams: new Map(),
+        };
+        if (m.eaters.at(-1) !== id) m.eaters.push(id);
+        m.grams.set(food, (m.grams.get(food) ?? 0) + got);
+        meal.set(a.owner, m);
+        return got;
+      };
       for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
         const a = ctx.truth.get(ANIMAL, id);
         if (!a || ctx.truth.get(ENTITY, id)?.endedAt !== undefined) continue;
@@ -749,30 +807,30 @@ export function livestockFeedProcess(o: LivestockFeedOptions): ProcessDef {
         const full = pulls ? Math.round(base * (def.draft?.workFeedFactor ?? 1)) : base;
         if (full <= 0) continue;
         if (pulls) pulling.add(id);
-        // Lo que cubre el pasto no sale de la casa.
-        const grazed = f.graze ? Math.round(full * f.graze.share * cover) : 0;
-        if (grazed > 0) grazers.add(id);
-        const ration = full - grazed;
-        let need = ration;
-        for (const cat of f.categories) {
-          for (const food of byCategory.get(cat) ?? []) {
-            if (need <= 0) break;
-            const key = `${a.owner}|${food}`;
-            const have =
-              left.get(key) ??
-              Math.floor(ledger.balance(holderAccount(a.owner), ledgerUnit(`good:${food}`)));
-            const take = Math.min(have, need);
-            left.set(key, have - take);
-            if (take <= 0) continue;
-            need -= take;
-            const m = meal.get(a.owner) ?? {
-              home: a.home,
-              eaters: [] as AnimalId[],
-              grams: new Map(),
-            };
-            if (m.eaters.at(-1) !== id) m.eaters.push(id);
-            m.grams.set(food, (m.grams.get(food) ?? 0) + take);
-            meal.set(a.owner, m);
+        // La cría en sus días de mamar: con madre, la leche la cubre; huérfana, poco sólido.
+        const milk =
+          o.orphan === true ? def.yields?.find((y) => y.suckle !== undefined) : undefined;
+        const suckling =
+          milk?.suckle !== undefined && ageYears * 365 < milk.suckle.days ? milk : undefined;
+        let need = full;
+        if (suckling && nursed.has(id)) {
+          need = 0;
+        } else {
+          let solid = suckling ? Math.round(full * ORPHAN_SOLID_SHARE) : full;
+          if (suckling) need -= take(a, id, suckling.good, need);
+          // Lo que cubre el pasto no sale de la casa.
+          const grazed = f.graze ? Math.min(solid, Math.round(full * f.graze.share * cover)) : 0;
+          if (grazed > 0) grazers.add(id);
+          need -= Math.min(need, grazed);
+          solid -= grazed;
+          for (const cat of f.categories) {
+            for (const food of byCategory.get(cat) ?? []) {
+              const max = Math.min(need, solid);
+              if (max <= 0) break;
+              const got = take(a, id, food, max);
+              need -= got;
+              solid -= got;
+            }
           }
         }
         const before = ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0;

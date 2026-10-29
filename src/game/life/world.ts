@@ -416,6 +416,8 @@ export interface LifeWorld {
   readonly livestockMilkCurve?: boolean;
   /** Opt-in (livestock-milk-suckle, con `livestockDairy`): las crías vivas se toman su parte de la leche los primeros meses. */
   readonly livestockSuckle?: boolean;
+  /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): la cría que mama no come de la casa; la huérfana toma la leche de la casa o pasa hambre. */
+  readonly livestockOrphan?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
@@ -2064,6 +2066,7 @@ export function lifeWorld(
                 ...(parts.livestockPasture === true
                   ? { pasture: { share: LIVESTOCK_PASTURE_SHARE } }
                   : {}),
+                ...(parts.livestockOrphan === true ? { orphan: true } : {}),
                 ...(parts.livestockDraftCost === true
                   ? (() => {
                       // Los días de campo son los de la estación de cosecha (la misma que la rutina).
