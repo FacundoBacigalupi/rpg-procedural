@@ -41,20 +41,37 @@ export function draftFatigueStep(level: number, hours: number, def: DraftDef): n
 /**
  * Pura: qué parte de su tiro da un animal con `row` (cansancio y horas del día). Con `rest`
  * (livestock-draft-rest), el que ya está cansado (`restAbove`) descansa al llegar a `hoursPerDay`:
- * la casa pierde su tiro hoy para no cansarlo más.
+ * la casa pierde su tiro hoy para no cansarlo más. `restAbove` cambia el umbral de la especie por el
+ * de quien lo trabaja (livestock-draft-rest-choice, `draftRestThreshold`).
  */
 export function draftFatigueFactor(
   def: DraftDef,
   row: DraftFatigue | undefined,
   rest = false,
+  restAbove?: number,
 ): number {
   const f = def.fatigue;
   if (!f || !row) return 1;
   if (row.hours >= f.maxHoursPerDay) return 0;
-  if (rest && f.restAbove !== undefined && row.level >= f.restAbove && row.hours >= f.hoursPerDay) {
+  const above = f.restAbove === undefined ? undefined : (restAbove ?? f.restAbove);
+  if (rest && above !== undefined && row.level >= above && row.hours >= f.hoursPerDay) {
     return 0;
   }
   return 1 - row.level;
+}
+
+/** Cuánto baja el umbral de descanso por unidad de calidez de quien trabaja al animal. */
+export const REST_WARMTH_SHIFT = 0.25;
+
+/**
+ * Pura (livestock-draft-rest-choice): desde qué cansancio descansa al animal quien lo trabaja: el
+ * `restAbove` de la especie, más bajo para el cálido (le duele verlo así) y más alto para el frío
+ * (lo sigue arreando), entre 0.05 y 0.95. Sin `restAbove`, nada.
+ */
+export function draftRestThreshold(def: DraftDef, warmth: number): number | undefined {
+  const base = def.fatigue?.restAbove;
+  if (base === undefined) return undefined;
+  return Math.min(0.95, Math.max(0.05, base - REST_WARMTH_SHIFT * warmth));
 }
 
 export interface DraftFatigueOptions {

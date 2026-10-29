@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AgentId, type ContentSource, loadContent } from "../../core/index.ts";
+import { type AgentId, type AnimalId, type ContentSource, loadContent } from "../../core/index.ts";
 import {
   type ActionPlan,
   ANIMAL,
@@ -10,8 +10,10 @@ import {
   DRAFT_FATIGUE,
   draftFatigueFactor,
   draftFatigueStep,
+  draftRestThreshold,
   ENTITY,
   hexPath,
+  INNATE,
   LIVESTOCK,
   LOCATION,
   PERSON,
@@ -343,4 +345,59 @@ describe("el hogar descansa al buey cansado (livestock-draft-rest)", () => {
     expect(run(true).hash().total).toBe(on.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockDraftRest: true });
   }, 600_000);
+});
+
+describe("quien trabaja al buey decide cuándo descansarlo (livestock-draft-rest-choice)", () => {
+  it("pura: el cálido lo descansa antes y el frío lo sigue arreando, dentro de un margen", () => {
+    const ox = content.all(LIVESTOCK).find((s) => s.id === "ox")?.draft;
+    if (!ox?.fatigue?.restAbove) throw new Error("el buey sin descanso");
+    expect(draftRestThreshold(ox, 0)).toBeCloseTo(ox.fatigue.restAbove);
+    expect(draftRestThreshold(ox, 0.6)).toBeLessThan(ox.fatigue.restAbove);
+    expect(draftRestThreshold(ox, -0.6)).toBeGreaterThan(ox.fatigue.restAbove);
+    expect(draftRestThreshold(ox, 10)).toBe(0.05);
+    expect(draftRestThreshold(ox, -10)).toBe(0.95);
+    expect(draftRestThreshold({ ...ox, fatigue: undefined }, 1)).toBeUndefined();
+    const row = { hours: 6, level: 0.3 };
+    expect(draftFatigueFactor(ox, row, true, draftRestThreshold(ox, -0.6))).toBeCloseTo(0.7);
+    expect(draftFatigueFactor(ox, row, true, draftRestThreshold(ox, 0.6))).toBe(0);
+  });
+
+  it("con el mismo buey cansado, el cálido de la casa lo deja y el frío lo usa; apagado, el fijo", () => {
+    const life = Life.create(SEED, content, OPTS);
+    const t = life.world.truth;
+    const year = life.world.clock.year;
+    const o0 = { defs: draftDefsOf(content.all(LIVESTOCK)), year, workAge: ROUTINE.workAge };
+    const worker0 = (owner: string) =>
+      (t.ids(PERSON) as AgentId[]).sort().find((id) => {
+        const p = t.get(PERSON, id);
+        return (
+          p !== undefined &&
+          p.household === owner &&
+          t.get(ENTITY, id)?.endedAt === undefined &&
+          (life.now - p.born) / year >= ROUTINE.workAge
+        );
+      }) as AgentId;
+    const ox = (t.ids(ANIMAL) as AnimalId[]).find((id) => {
+      const a = t.get(ANIMAL, id);
+      return (
+        a?.species === "ox" &&
+        (life.now - a.bornAt) / year >= 2 &&
+        t.get(ENTITY, id)?.endedAt === undefined &&
+        draftFor(t, worker0(a.owner), life.now, o0)?.animals.includes(id) === true
+      );
+    });
+    if (ox === undefined) throw new Error("sin buey adulto");
+    const worker = worker0(t.get(ANIMAL, ox)?.owner as string);
+    if (worker === undefined) throw new Error("sin gente");
+    t.set(DRAFT_FATIGUE, ox, { hours: 6, level: 0.3 });
+    const o = { ...o0, fatigue: true, rest: true };
+    const pulls = (warmth: number, restChoice: boolean) => {
+      t.set(INNATE, worker, { ...t.get(INNATE, worker), warmth });
+      return draftFor(t, worker, life.now, { ...o, restChoice })?.animals.includes(ox) === true;
+    };
+    expect(pulls(0.6, true)).toBe(false);
+    expect(pulls(-0.6, true)).toBe(true);
+    expect(pulls(-0.6, false)).toBe(false);
+    expect(FULL_PROFILE).toMatchObject({ livestockDraftRestChoice: true });
+  }, 300_000);
 });
