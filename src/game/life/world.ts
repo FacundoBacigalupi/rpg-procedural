@@ -651,6 +651,8 @@ export interface LifeWorld {
   /** Opt-in (con `npcFootwearMend`): un zapatero de la aldea cobra los arreglos con su oficio y cuero del ledger (`cobbler.ts`); apagado. */
   readonly npcCobbler?: boolean;
   readonly npcCobblerHides?: boolean;
+  /** Opt-in (con `npcCobbler`): el zapatero compra primero el cuero de las casas (livestock-hide-tan-sell). */
+  readonly npcCobblerLocalLeather?: boolean;
   /** Opt-in (con `npcFootwearMend`): el viajero de camino con el calzado gastado lo hace arreglar en una posada o posta, más caro y peor (`life.footwear_road_mend`); apagado. */
   readonly npcRoadMend?: boolean;
   /** Opt-in: claims de ítems con identidad en `life.act` (`ActOptions.itemClaims`); apagado, nada cambia. */
@@ -1267,6 +1269,7 @@ export function lifeWorld(
                       cobbler: {
                         clock: parts.clock,
                         ...(parts.npcCobblerHides === true ? { hideCost: true } : {}),
+                        ...(parts.npcCobblerLocalLeather === true ? { localLeather: true } : {}),
                       },
                     }
                   : {}),

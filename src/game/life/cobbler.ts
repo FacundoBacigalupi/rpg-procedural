@@ -6,7 +6,7 @@
 // npc-b2b3b2b3b) con un evento que lo cita, y lo que gasta el arreglo va a `LEATHER_SCRAP`. Opt-in
 // (`LifeParts.npcCobbler`, con `npcFootwearMend`): apagado todo sigue como en `life-25`.
 
-import { type LedgerUnit, ledgerUnit } from "../../core/index.ts";
+import { type HolderRef, type LedgerUnit, ledgerUnit } from "../../core/index.ts";
 import { table } from "../../sim/index.ts";
 
 /** El zapatero y qué tan bueno es (0 torpe, 1 maestro). Una fila por persona que lo fue. */
@@ -68,6 +68,35 @@ export const HIDE_COPPER_PER_KG = 1;
 /** Cobre que cuestan `grams` de piel (redondeado hacia arriba, entero). Puro. */
 export function hidePrice(grams: number): number {
   return Math.ceil((grams / 1000) * HIDE_COPPER_PER_KG);
+}
+
+/**
+ * El cuero que el zapatero les compra a las casas de la aldea (livestock-hide-tan-sell), en el orden
+ * de `offers`, hasta `want` gramos y con lo que le alcanza de `copper` al mismo precio que la piel de
+ * fuera (`hidePrice`, sin calibrar). Lo que no cubren las casas lo trae de fuera. Puro.
+ */
+export function localLeatherBuys(
+  offers: readonly { readonly holder: HolderRef; readonly grams: number }[],
+  want: number,
+  copper: number,
+): { holder: HolderRef; grams: number; cost: number }[] {
+  const out: { holder: HolderRef; grams: number; cost: number }[] = [];
+  let left = want;
+  let purse = copper;
+  for (const o of offers) {
+    if (left <= 0) break;
+    const grams = Math.min(
+      Math.floor(o.grams),
+      left,
+      Math.floor((purse * 1000) / HIDE_COPPER_PER_KG),
+    );
+    if (grams <= 0) continue;
+    const cost = hidePrice(grams);
+    out.push({ holder: o.holder, grams, cost });
+    left -= grams;
+    purse -= cost;
+  }
+  return out;
 }
 
 /**
