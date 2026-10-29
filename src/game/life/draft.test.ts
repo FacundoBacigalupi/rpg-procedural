@@ -12,15 +12,17 @@ import {
   draftFatigueStep,
   draftRestThreshold,
   ENTITY,
+  HARVEST_GOOD,
   hexPath,
   INNATE,
   LIVESTOCK,
   LOCATION,
   PERSON,
   PLACE,
+  type ReadonlyLedger,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
-import { draftDefsOf, draftFor } from "./draft.ts";
+import { draftDefsOf, draftFor, larderPress } from "./draft.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { ROUTINE } from "./routine.ts";
@@ -399,5 +401,61 @@ describe("quien trabaja al buey decide cuándo descansarlo (livestock-draft-rest
     expect(pulls(-0.6, true)).toBe(true);
     expect(pulls(-0.6, false)).toBe(false);
     expect(FULL_PROFILE).toMatchObject({ livestockDraftRestChoice: true });
+  }, 300_000);
+});
+
+describe("con la despensa corta se sigue arando (livestock-draft-rest-press)", () => {
+  it("pura: el apuro sale de los días de grano y sube el umbral de descanso", () => {
+    expect(larderPress(0, 4)).toBe(1);
+    expect(larderPress(1e9, 4)).toBe(0);
+    const half = larderPress(1e5, 4);
+    expect(half).toBeGreaterThan(0);
+    expect(half).toBeLessThan(1);
+    expect(larderPress(1e5, 8)).toBeGreaterThan(half);
+    const ox = content.all(LIVESTOCK).find((s) => s.id === "ox")?.draft;
+    if (!ox?.fatigue?.restAbove) throw new Error("el buey sin descanso");
+    expect(draftRestThreshold(ox, 0, 1)).toBeGreaterThan(draftRestThreshold(ox, 0, 0) ?? 1);
+    expect(draftRestThreshold(ox, 0, 0.5)).toBeLessThan(draftRestThreshold(ox, 0, 1) ?? 0);
+  });
+
+  it("el mismo buey cansado descansa con la despensa llena y tira con la vacía", () => {
+    const life = Life.create(SEED, content, OPTS);
+    const t = life.world.truth;
+    const year = life.world.clock.year;
+    const o0 = { defs: draftDefsOf(content.all(LIVESTOCK)), year, workAge: ROUTINE.workAge };
+    const workerOf = (owner: string) =>
+      (t.ids(PERSON) as AgentId[]).sort().find((id) => {
+        const p = t.get(PERSON, id);
+        return (
+          p !== undefined &&
+          p.household === owner &&
+          t.get(ENTITY, id)?.endedAt === undefined &&
+          (life.now - p.born) / year >= ROUTINE.workAge
+        );
+      }) as AgentId;
+    const ox = (t.ids(ANIMAL) as AnimalId[]).find((id) => {
+      const a = t.get(ANIMAL, id);
+      return (
+        a !== undefined &&
+        t.get(ENTITY, id)?.endedAt === undefined &&
+        draftFor(t, workerOf(a.owner), life.now, o0)?.animals.includes(id) === true
+      );
+    });
+    if (ox === undefined) throw new Error("sin buey que tire");
+    const worker = workerOf(t.get(ANIMAL, ox)?.owner as string);
+    t.set(INNATE, worker, { ...t.get(INNATE, worker), warmth: 0 });
+    t.set(DRAFT_FATIGUE, ox, { hours: 6, level: 0.3 });
+    const larder = (grams: number) =>
+      ({
+        holdings: () => (grams > 0 ? [{ unit: HARVEST_GOOD, amount: grams }] : []),
+      }) as unknown as ReadonlyLedger;
+    const o = { ...o0, fatigue: true, rest: true, restChoice: true };
+    const pulls = (grams: number, restPress: boolean) =>
+      draftFor(t, worker, life.now, { ...o, restPress }, larder(grams))?.animals.includes(ox) ===
+      true;
+    expect(pulls(1e9, true)).toBe(false);
+    expect(pulls(0, true)).toBe(true);
+    expect(pulls(0, false)).toBe(false);
+    expect(FULL_PROFILE).toMatchObject({ livestockDraftRestPress: true });
   }, 300_000);
 });
