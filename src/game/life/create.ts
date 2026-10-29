@@ -649,6 +649,8 @@ export interface LifeOptions {
   readonly livestockSuckle?: boolean;
   /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): el cabrito que mama no come de la casa; el huérfano toma la leche de la casa o pasa hambre (de lo sólido come poco). */
   readonly livestockOrphan?: boolean;
+  /** Opt-in (livestock-milk-foster, con `livestockSuckle`): otra madre de la casa que todavía amamanta puede adoptar a la cría huérfana (menos cuantas más crías ya tiene). */
+  readonly livestockFoster?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
   readonly livestockSeason?: boolean;
   /** Opt-in (livestock-yield-feed, con `livestockYield`): ponen menos con frío y, con `livestockFeed`, si pasan hambre. */
@@ -2115,6 +2117,9 @@ export function createLife(
             ...(options.livestockDairy && options.livestockSuckle ? { livestockSuckle: true } : {}),
             ...(options.livestockDairy && options.livestockSuckle && options.livestockOrphan
               ? { livestockOrphan: true }
+              : {}),
+            ...(options.livestockDairy && options.livestockSuckle && options.livestockFoster
+              ? { livestockFoster: true }
               : {}),
             ...(options.livestockSlaughter
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
