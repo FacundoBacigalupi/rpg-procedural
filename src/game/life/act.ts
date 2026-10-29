@@ -194,7 +194,7 @@ import { masterCorrects } from "./correct.ts";
 import { debtsTo } from "./credit.ts";
 import { cueLocalOf } from "./cue-local.ts";
 import { applyDeficiency } from "./deficiencyCaps.ts";
-import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
+import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { ECONOMIC_SERIAL_DOMAIN, ECONOMIC_SERIAL_GROUP } from "./economic-batch.ts";
 import { pricePushOf } from "./famineRow.ts";
 import {
@@ -662,7 +662,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       STANDING_BELIEFS.name,
       CREDIT.name,
       SOIL.name,
-      ...(o.draft ? DRAFT_READS : []),
+      ...(o.draft ? draftReads(o.draft) : []),
       ...(o.slaughter ? SLAUGHTER_READS : []),
       ENTITY.name,
       LOCATION.name,

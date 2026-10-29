@@ -436,6 +436,8 @@ export interface LifeWorld {
   readonly livestockDraftRestChoice?: boolean;
   /** Opt-in (livestock-draft-rest-press, con `livestockDraftRestChoice`): la despensa corta de grano hace seguir con el buey cansado. */
   readonly livestockDraftRestPress?: boolean;
+  /** Opt-in (livestock-draft-rest-belief, con `livestockDraftRestPress`): el apuro sale del grano que cree tener quien decide. */
+  readonly livestockDraftRestBelief?: boolean;
   /** Opt-in (livestock-draft-rest-season, con `livestockDraftRestChoice`): la temporada que se termina hace seguir con el buey cansado. */
   readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
@@ -1012,7 +1014,10 @@ export function lifeWorld(
                 ...(parts.livestockDraftRestChoice === true ? { restChoice: true } : {}),
                 ...(parts.livestockDraftRestChoice === true &&
                 parts.livestockDraftRestPress === true
-                  ? { restPress: true }
+                  ? {
+                      restPress: true,
+                      ...(parts.livestockDraftRestBelief === true ? { restBelief: true } : {}),
+                    }
                   : {}),
                 ...(parts.livestockDraftRestChoice === true &&
                 parts.livestockDraftRestSeason === true

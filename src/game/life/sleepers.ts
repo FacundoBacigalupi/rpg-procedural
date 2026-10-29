@@ -43,7 +43,7 @@ import {
 } from "../../sim/index.ts";
 import { PLAN_STATE } from "./act.ts";
 import { type CatchUpOptions, catchUpRoutine } from "./catchup.ts";
-import { DRAFT_READS, type DraftOptions, draftFor } from "./draft.ts";
+import { type DraftOptions, draftFor, draftReads } from "./draft.ts";
 import { IRRIGATED, rainWindow } from "./irrigation.ts";
 import { living } from "./living.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
@@ -143,7 +143,7 @@ export function catchUpProcess(o: CatchUpProcessOptions): ProcessDef {
       ...(o.harvest ? [SOIL.name] : []),
       ...(o.harvest?.field ? [IRRIGATED.name] : []),
       ...(o.harvest?.field?.sowing ? [SOWN.name] : []),
-      ...(o.harvest && o.draft ? DRAFT_READS : []),
+      ...(o.harvest && o.draft ? draftReads(o.draft) : []),
     ],
     writes: [
       ASLEEP.name,

@@ -665,6 +665,8 @@ export interface LifeOptions {
   readonly livestockDraftRestChoice?: boolean;
   /** Opt-in (livestock-draft-rest-press, con `livestockDraftRestChoice`): con poco grano en la despensa la casa sigue arando con el buey cansado (sube el umbral de descanso). */
   readonly livestockDraftRestPress?: boolean;
+  /** Opt-in (livestock-draft-rest-belief, con `livestockDraftRestPress`): el grano que apura es el que cree tener quien decide (lo que contó la última vez), no el saldo; sin foto (los NPC hoy), el saldo. */
+  readonly livestockDraftRestBelief?: boolean;
   /** Opt-in (livestock-draft-rest-season, con `livestockDraftRestChoice`): cuando el campo rinde hoy más que en las próximas dos semanas (la temporada se termina), la casa sigue arando con el buey cansado. */
   readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador puede carnear un animal de su casa («carneo la cabra»): termina y deja carne y piel en la despensa. */
@@ -2128,6 +2130,7 @@ export function createLife(
             ...(options.livestockDraftRest ? { livestockDraftRest: true } : {}),
             ...(options.livestockDraftRestChoice ? { livestockDraftRestChoice: true } : {}),
             ...(options.livestockDraftRestPress ? { livestockDraftRestPress: true } : {}),
+            ...(options.livestockDraftRestBelief ? { livestockDraftRestBelief: true } : {}),
             ...(options.livestockDraftRestSeason ? { livestockDraftRestSeason: true } : {}),
           }
         : {}),
