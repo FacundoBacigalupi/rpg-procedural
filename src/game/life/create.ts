@@ -671,6 +671,8 @@ export interface LifeOptions {
   readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador puede carnear un animal de su casa («carneo la cabra»): termina y deja carne y piel en la despensa. */
   readonly livestockSlaughter?: boolean;
+  /** Opt-in (livestock-slaughter-refs, con `livestockSlaughter`): «la vieja», «el cabrito», «la flaca», «el macho» eligen un animal al que se le note eso, no solo la especie. */
+  readonly livestockSlaughterRefs?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
@@ -2116,6 +2118,9 @@ export function createLife(
               : {}),
             ...(options.livestockSlaughter
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
+              : {}),
+            ...(options.livestockSlaughter && options.livestockSlaughterRefs
+              ? { livestockSlaughterRefs: true }
               : {}),
             ...(options.livestockTan ? { livestockTan: tanRulesOf(content) } : {}),
           }

@@ -31,11 +31,56 @@ import {
   type ResolveInput,
   type StateChange,
 } from "../../sim/index.ts";
+import { type AnimalMark, animalMarksOf } from "./animal-marks.ts";
 
 export interface SlaughterOptions {
   readonly species: readonly LivestockDef[];
   /** Duración del año (ticks). */
   readonly year: Duration;
+  /**
+   * Opt-in (livestock-slaughter-refs): las palabras que dicen algo del animal («la vieja», «el
+   * cabrito», «la flaca», «la que da de mamar», «el macho») eligen uno al que se le note eso
+   * (`animalMarksOf`, sexo); si ninguno encaja, no hay a cuál. Sin esto, solo la especie.
+   */
+  readonly refs?: boolean;
+}
+
+/** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
+const QUALIFIERS: Readonly<Record<string, AnimalMark | "male" | "female">> = {
+  cria: "young",
+  crias: "young",
+  cabrito: "young",
+  cabritos: "young",
+  pollito: "young",
+  pollitos: "young",
+  cachorro: "young",
+  ternero: "young",
+  joven: "young",
+  chico: "young",
+  chica: "young",
+  viejo: "old",
+  vieja: "old",
+  viejos: "old",
+  viejas: "old",
+  flaco: "thin",
+  flaca: "thin",
+  consumido: "starving",
+  consumida: "starving",
+  parida: "nursing",
+  lechera: "nursing",
+  mamar: "nursing",
+  amamanta: "nursing",
+  macho: "male",
+  gallo: "male",
+  hembra: "female",
+  perra: "female",
+};
+
+/** Pura: si al animal se le nota `q` (el consumido también está flaco). */
+function fits(q: AnimalMark | "male" | "female", sex: string, marks: readonly AnimalMark[]) {
+  if (q === "male" || q === "female") return sex === q;
+  if (q === "thin") return marks.includes("thin") || marks.includes("starving");
+  return marks.includes(q);
 }
 
 /** Las tablas que lee `slaughterTargetOf` (para declararlas en el proceso). */
@@ -101,8 +146,15 @@ export function slaughterTargetOf(
   };
   const byId = new Map(o.species.map((s) => [s.id, s]));
   const anyNamed = o.species.some(named);
+  const wanted =
+    o.refs === true
+      ? [...words].flatMap((w) => {
+          const q = QUALIFIERS[w];
+          return q === undefined ? [] : [q];
+        })
+      : [];
   // Nombró algo que no es una especie de la casa («el cerdo»): no hay a cuál.
-  const vague = [...words].every((w) => VAGUE.has(w));
+  const vague = [...words].every((w) => VAGUE.has(w) || (o.refs === true && w in QUALIFIERS));
   if (!anyNamed && !vague) return undefined;
   for (const id of [...truth.ids(ANIMAL)].sort(compareStrings) as AnimalId[]) {
     const a = truth.get(ANIMAL, id);
@@ -110,6 +162,10 @@ export function slaughterTargetOf(
     if (truth.get(LOCATION, id)?.hex !== hex) continue;
     const def = byId.get(a.species);
     if (def === undefined || (anyNamed && !named(def))) continue;
+    if (wanted.length > 0) {
+      const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year);
+      if (!wanted.every((q) => fits(q, a.sex, marks))) continue;
+    }
     const yields: { unit: LedgerUnit; grams: number }[] = carcassYield(
       def,
       (now - a.bornAt) / o.year,

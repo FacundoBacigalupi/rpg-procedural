@@ -6,16 +6,15 @@
 import type { EntityRef } from "../../core/index.ts";
 import {
   ANIMAL,
-  ANIMAL_HUNGER,
   BUILDING,
   DRAFT_FATIGUE,
   ENTITY,
-  LACTATING,
   type LivestockDef,
   LOCATION,
   skyLight,
   spaceLight,
 } from "../../sim/index.ts";
+import { type AnimalMark, animalMarksOf } from "./animal-marks.ts";
 import type { LifeWorld } from "./world.ts";
 
 /** La luz a grandes rasgos, como la barra (`Hud.light`). */
@@ -40,17 +39,13 @@ export const TIRED_LOOK_LEVEL = 0.2;
 /** Hasta dónde se le nota el cansancio a un animal (m), con luz de día. */
 export const TIRED_SIGHT_M = 25;
 
-/**
- * Lo que se le nota de cerca a un animal al mirarlo (livestock-look-more): cría o viejo por la edad,
- * flaco o consumido por el hambre, y si da de mamar. Se nota hasta donde se nota el cansancio.
- */
-export type AnimalMark = "young" | "old" | "thin" | "starving" | "nursing";
-
-/** Desde qué hambre (`ANIMAL_HUNGER.level`) se lo ve flaco, y desde cuál consumido. */
-export const THIN_LOOK_LEVEL = 0.3;
-export const STARVING_LOOK_LEVEL = 0.7;
-/** Desde qué parte de la vida de su especie (`lifespanYears`) se lo ve viejo. */
-export const OLD_LOOK_SHARE = 0.7;
+export {
+  type AnimalMark,
+  animalMarksOf,
+  OLD_LOOK_SHARE,
+  STARVING_LOOK_LEVEL,
+  THIN_LOOK_LEVEL,
+} from "./animal-marks.ts";
 
 /** Hasta dónde distingue un animal según la luz (m): son más chicos que una casa. */
 export const ANIMAL_SIGHT_M: Readonly<Record<LightLook, number>> = {
@@ -151,17 +146,7 @@ function animalMarks(
   bornAt: number,
   def: LivestockDef | undefined,
 ): AnimalMark[] {
-  const marks: AnimalMark[] = [];
-  if (def) {
-    const age = (w.scheduler.now - bornAt) / w.clock.year;
-    if (age < (def.breeding?.maturityYears ?? 1)) marks.push("young");
-    else if (age >= OLD_LOOK_SHARE * def.lifespanYears) marks.push("old");
-  }
-  const hunger = w.truth.get(ANIMAL_HUNGER, id)?.level ?? 0;
-  if (hunger >= STARVING_LOOK_LEVEL) marks.push("starving");
-  else if (hunger >= THIN_LOOK_LEVEL) marks.push("thin");
-  if (w.truth.get(LACTATING, id) !== undefined) marks.push("nursing");
-  return marks;
+  return animalMarksOf(w.truth, id, bornAt, def, w.scheduler.now, w.clock.year);
 }
 
 /** Hasta dónde se nota el cansancio según la luz: de día `TIRED_SIGHT_M`, la mitad en penumbra. */
