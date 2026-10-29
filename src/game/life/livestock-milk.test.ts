@@ -9,6 +9,7 @@ import {
   LACTATING,
   LIVESTOCK,
   lactationFactor,
+  sucklingShare,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -133,5 +134,54 @@ describe("la leche sigue la curva de lactancia (livestock-milk-curve)", () => {
     expect(on.world.ledger.audit()).toEqual([]);
     expect(run(true).hash().total).toBe(on.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockMilkCurve: true });
+  }, 600_000);
+});
+
+describe("la cría mama su parte (livestock-milk-suckle)", () => {
+  it("pura: cada cría viva se toma su parte los primeros días; después, nada", () => {
+    const milk = content
+      .all(LIVESTOCK)
+      .find((s) => s.id === "goat")
+      ?.yields?.find((y) => y.good === "milk");
+    if (!milk?.suckle) throw new Error("la cabra sin cría que mame");
+    expect(sucklingShare(milk, 0, 1)).toBeCloseTo(milk.suckle.sharePerYoung);
+    expect(sucklingShare(milk, 10, 2)).toBeCloseTo(Math.min(1, 2 * milk.suckle.sharePerYoung));
+    expect(sucklingShare(milk, 10, 0)).toBe(0);
+    expect(sucklingShare(milk, milk.suckle.days, 1)).toBe(0);
+    expect(sucklingShare(milk, 0, 10)).toBe(1);
+    expect(sucklingShare({ ...milk, suckle: undefined }, 0, 1)).toBe(0);
+  });
+
+  it("encendido: a la casa le llega menos leche y lo mamado queda en el evento; determinista", () => {
+    const run = (suckle: boolean) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockDairy: true,
+        livestockSuckle: suckle,
+      });
+      l.advanceTo(l.now + 150 * DAY);
+      return l;
+    };
+    const milkOf = (l: Life) =>
+      l.world.log
+        .all()
+        .filter(
+          (e) => e.kind === "living.animal_yield" && (e.data as { good: string }).good === "milk",
+        )
+        .map((e) => e.data as { grams: number; from: string[]; suckled?: number });
+    const on = run(true);
+    const got = milkOf(on);
+    expect(got.some((e) => (e.suckled ?? 0) > 0)).toBe(true);
+    for (const e of got) expect(e.grams + (e.suckled ?? 0)).toBe(e.from.length * 1000);
+    const w = on.world;
+    const withYoung = w.truth
+      .ids(LACTATING)
+      .filter((id) => (w.truth.get(LACTATING, id)?.young?.length ?? 0) > 0);
+    expect(withYoung.length).toBeGreaterThan(0);
+    expect(milkOf(run(false)).every((e) => e.suckled === undefined)).toBe(true);
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockSuckle: true });
   }, 600_000);
 });

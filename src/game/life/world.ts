@@ -414,6 +414,8 @@ export interface LifeWorld {
   readonly livestockDairy?: boolean;
   /** Opt-in (livestock-milk-curve, con `livestockDairy` y `livestockYield`): la leche sigue la curva de lactancia (sube, pico, baja). */
   readonly livestockMilkCurve?: boolean;
+  /** Opt-in (livestock-milk-suckle, con `livestockDairy`): las crías vivas se toman su parte de la leche los primeros meses. */
+  readonly livestockSuckle?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
@@ -2079,6 +2081,9 @@ export function lifeWorld(
                 species: parts.livestockLife,
                 year: parts.clock.year,
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
+                ...(parts.livestockDairy === true && parts.livestockSuckle === true
+                  ? { suckle: true }
+                  : {}),
               }),
             ]
           : []),
@@ -2107,6 +2112,9 @@ export function lifeWorld(
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
                 ...(parts.livestockDairy === true && parts.livestockMilkCurve === true
                   ? { milkCurve: true }
+                  : {}),
+                ...(parts.livestockDairy === true && parts.livestockSuckle === true
+                  ? { suckle: true }
                   : {}),
                 ...(parts.livestockSeason === true
                   ? {
