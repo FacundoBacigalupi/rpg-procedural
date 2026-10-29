@@ -416,6 +416,8 @@ export interface LifeWorld {
   readonly livestockMilkCurve?: boolean;
   /** Opt-in (livestock-milk-suckle, con `livestockDairy`): las crías vivas se toman su parte de la leche los primeros meses. */
   readonly livestockSuckle?: boolean;
+  /** Opt-in (livestock-milk-work, con `livestockDairy`): la leche llega solo si alguien del hogar la ordeña; la que no, se pierde y la cabra se seca. */
+  readonly livestockMilkWork?: boolean;
   /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): la cría que mama no come de la casa; la huérfana toma la leche de la casa o pasa hambre. */
   readonly livestockOrphan?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
@@ -2118,6 +2120,9 @@ export function lifeWorld(
                   : {}),
                 ...(parts.livestockDairy === true && parts.livestockSuckle === true
                   ? { suckle: true }
+                  : {}),
+                ...(parts.livestockDairy === true && parts.livestockMilkWork === true
+                  ? { milking: { minAgeYears: ROUTINE.workAge } }
                   : {}),
                 ...(parts.livestockSeason === true
                   ? {

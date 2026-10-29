@@ -33,6 +33,7 @@
 // especies lecheras llegan con su propia opción de vida (`optIn`, `herdSpecies`).
 
 import {
+  type AgentId,
   type AnimalId,
   type BuildingId,
   contentId,
@@ -53,7 +54,7 @@ import {
   type Tick,
   z,
 } from "../../core/index.ts";
-import type { Sex } from "../family/index.ts";
+import { PERSON, type Sex } from "../family/index.ts";
 import {
   createEntity,
   deleteComponent,
@@ -164,6 +165,16 @@ export const YieldDef = z.strictObject({
     .strictObject({
       days: z.number().int().positive(),
       sharePerYoung: z.number().min(0).max(1),
+    })
+    .optional(),
+  /**
+   * El ordeñe (livestock-milk-work): alguien del hogar ordeña `headPerHour` por hora; lo que no se
+   * ordeña no llega a la casa y la que pasa `dryAfterDays` días seguidos sin ordeñar se seca.
+   */
+  milking: z
+    .strictObject({
+      headPerHour: z.number().positive(),
+      dryAfterDays: z.number().int().positive(),
     })
     .optional(),
 });
@@ -293,6 +304,8 @@ export interface Lactating {
   readonly since: Tick;
   /** Las crías de ese parto (livestock-milk-suckle, con `suckle`): las que maman. */
   readonly young?: readonly AnimalId[];
+  /** Días seguidos que dio sin que nadie la ordeñara (livestock-milk-work); sin esto, 0. */
+  readonly missed?: number;
 }
 
 export const LACTATING = table<Lactating>("living.lactating");
@@ -962,7 +975,16 @@ export interface LivestockYieldOptions {
   readonly milkCurve?: boolean;
   /** Opt-in (livestock-milk-suckle, con `lactation`): las crías vivas se toman su parte (`sucklingShare`). */
   readonly suckle?: boolean;
+  /**
+   * Opt-in (livestock-milk-work, con `lactation`): lo que pide ordeñe (`YieldDef.milking`) llega a
+   * la casa solo si alguien del hogar vivo y de `minAgeYears` o más tiene tiempo en sus
+   * `MILKING_HOURS` de la mañana; si no, se pierde y cuenta para secarla.
+   */
+  readonly milking?: { readonly minAgeYears: number };
 }
+
+/** Horas de la mañana que cada uno del hogar puede dar al ordeñe. */
+export const MILKING_HOURS = 1;
 
 /**
  * Pura (livestock-milk-suckle): qué parte de lo que da la madre se toman sus `alive` crías vivas
@@ -1003,11 +1025,25 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
       ENTITY.name,
       ...(o.hunger === true ? [ANIMAL_HUNGER.name] : []),
       ...(o.lactation === true ? [LACTATING.name] : []),
+      ...(o.milking ? [PERSON.name] : []),
     ],
-    writes: [],
+    writes: o.milking && o.lactation === true ? [LACTATING.name] : [],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const step = ctx.window > 0 ? ctx.window : 1;
+      const changes: StateChange[] = [];
+      // El ordeñe: quiénes de cada hogar pueden ordeñar y los minutos que les quedan hoy.
+      const milkers = new Map<string, AgentId[]>();
+      const minutes = new Map<string, number>();
+      if (o.milking && o.lactation === true) {
+        for (const p of [...ctx.truth.ids(PERSON)].sort() as AgentId[]) {
+          const r = ctx.truth.get(PERSON, p);
+          if (!r || ctx.truth.get(ENTITY, p)?.endedAt !== undefined) continue;
+          if ((ctx.now - r.born) / o.year < o.milking.minAgeYears) continue;
+          milkers.set(r.household, [...(milkers.get(r.household) ?? []), p]);
+        }
+        for (const [h, ps] of milkers) minutes.set(h, ps.length * MILKING_HOURS * 60);
+      }
       const hours = o.daylightHours?.(ctx.now);
       const tempC = o.tempC?.(ctx.now);
       // hogar|bien -> animales que dieron hoy y gramos.
@@ -1020,6 +1056,9 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           from: AnimalId[];
           grams: number;
           suckled: number;
+          lost: number;
+          unmilked: AnimalId[];
+          milkedMinutes: number;
         }
       >();
       for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
@@ -1032,8 +1071,9 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
           let weight = 1;
           let suckled = 0;
+          let lact: Lactating | undefined;
           if (y.lactationDays !== undefined) {
-            const lact = o.lactation === true ? ctx.truth.get(LACTATING, id) : undefined;
+            lact = o.lactation === true ? ctx.truth.get(LACTATING, id) : undefined;
             const since = lact?.since;
             if (since === undefined || ctx.now - since > (y.lactationDays * o.year) / 365) return;
             const day = Math.floor(((ctx.now - since) * 365) / o.year);
@@ -1056,25 +1096,57 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
             from: [],
             grams: 0,
             suckled: 0,
+            lost: 0,
+            unmilked: [],
+            milkedMinutes: 0,
           };
           g.from.push(id);
           const all = Math.round(y.unitGrams * weight);
           const kept = Math.round(all * (1 - suckled));
-          g.grams += kept;
           g.suckled += all - kept;
           got.set(key, g);
+          const m = o.milking && lact ? y.milking : undefined;
+          if (m && lact) {
+            // Lo que mama la cría no pide ordeñe; lo de la casa sí.
+            const cost = 60 / m.headPerHour;
+            const left = minutes.get(a.owner) ?? 0;
+            if (kept > 0 && left >= cost) {
+              minutes.set(a.owner, left - cost);
+              g.milkedMinutes += cost;
+              if ((lact.missed ?? 0) > 0) {
+                const { missed: _, ...rest } = lact;
+                changes.push(setComponent(LACTATING, id, rest));
+              }
+            } else if (kept > 0) {
+              g.lost += kept;
+              g.unmilked.push(id);
+              const missed = (lact.missed ?? 0) + 1;
+              changes.push(
+                missed >= m.dryAfterDays
+                  ? deleteComponent(LACTATING, id)
+                  : setComponent(LACTATING, id, { ...lact, missed }),
+              );
+              return;
+            }
+          }
+          g.grams += kept;
         });
       }
-      if (got.size === 0) return {};
+      if (got.size === 0) return changes.length > 0 ? { changes } : {};
       const events: EventDraft[] = [];
       const postings: PostingDraft[] = [];
       for (const key of [...got.keys()].sort()) {
         const g = got.get(key);
         if (!g) continue;
         const event = draftEvent(events.length);
+        // Los que ordeñaron: los primeros del hogar, una hora cada uno.
+        const milkedBy = (milkers.get(g.owner) ?? []).slice(
+          0,
+          Math.ceil(g.milkedMinutes / (MILKING_HOURS * 60) - 1e-9),
+        );
         events.push({
           kind: "living.animal_yield",
-          actors: [],
+          actors: milkedBy,
           place: { kind: "building", building: g.home },
           data: {
             owner: g.owner,
@@ -1082,6 +1154,8 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
             grams: g.grams,
             from: g.from,
             ...(g.suckled > 0 ? { suckled: g.suckled } : {}),
+            ...(milkedBy.length > 0 ? { milkedBy } : {}),
+            ...(g.unmilked.length > 0 ? { unmilked: g.unmilked, lost: g.lost } : {}),
           },
           causes: g.from.map((id) => ({ kind: "state" as const, entity: id, key: "yield" })),
           emissions: null,
@@ -1100,7 +1174,11 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           ],
         });
       }
-      return postings.length > 0 ? { events, postings } : { events };
+      return {
+        events,
+        ...(postings.length > 0 ? { postings } : {}),
+        ...(changes.length > 0 ? { changes } : {}),
+      };
     },
   };
 }

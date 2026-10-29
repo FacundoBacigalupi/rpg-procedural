@@ -10,6 +10,7 @@ import {
   LIVESTOCK,
   lactationFactor,
   nursedYoung,
+  PERSON,
   sucklingShare,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -230,5 +231,72 @@ describe("la cría que mama no come de la casa; la huérfana pasa hambre (livest
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(run(true).l.hash().total).toBe(on.l.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockOrphan: true });
+  }, 600_000);
+});
+
+describe("el ordeñe es trabajo del hogar (livestock-milk-work)", () => {
+  it("encendido: alguien del hogar ordeña; sin nadie que ordeñe, se pierde y la cabra se seca", () => {
+    const run = (work: boolean, owner?: string) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockDairy: true,
+        livestockSuckle: true,
+        livestockMilkWork: work,
+      });
+      const w = l.world;
+      if (owner !== undefined) {
+        // Ese hogar se queda sin nadie que ordeñe (se mudan a otro).
+        const people = w.truth.ids(PERSON).sort();
+        const other = people
+          .map((p) => w.truth.get(PERSON, p)?.household)
+          .find((h) => h !== undefined && h !== owner);
+        if (!other) throw new Error("sin otro hogar");
+        for (const p of people) {
+          const r = w.truth.get(PERSON, p);
+          if (r?.household === owner) w.truth.set(PERSON, p, { ...r, household: other });
+        }
+      }
+      l.advanceTo(l.now + 150 * DAY);
+      return l;
+    };
+    const milkOf = (l: Life) =>
+      l.world.log
+        .all()
+        .filter(
+          (e) => e.kind === "living.animal_yield" && (e.data as { good: string }).good === "milk",
+        )
+        .map(
+          (e) =>
+            e.data as {
+              owner: string;
+              grams: number;
+              from: string[];
+              suckled?: number;
+              lost?: number;
+              unmilked?: string[];
+              milkedBy?: string[];
+            },
+        );
+    const on = run(true);
+    const got = milkOf(on);
+    expect(got.some((e) => (e.milkedBy?.length ?? 0) > 0)).toBe(true);
+    for (const e of got) {
+      expect(e.grams + (e.suckled ?? 0) + (e.lost ?? 0)).toBe(e.from.length * 1000);
+    }
+    const owner = got[0]?.owner;
+    if (owner === undefined) throw new Error("sin leche");
+    const theirs = milkOf(run(true, owner)).filter((e) => e.owner === owner);
+    expect(theirs.length).toBeGreaterThan(0);
+    for (const e of theirs) {
+      expect(e.grams).toBe(0);
+      expect(e.milkedBy).toBeUndefined();
+    }
+    expect(theirs.some((e) => (e.lost ?? 0) > 0)).toBe(true);
+    expect(milkOf(run(false)).every((e) => e.milkedBy === undefined)).toBe(true);
+    const w = on.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkWork: true });
   }, 600_000);
 });
