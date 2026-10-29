@@ -653,6 +653,8 @@ export interface LifeOptions {
   readonly livestockDraftFatigue?: boolean;
   /** Opt-in (livestock-draft-rest, con `livestockDraftFatigue`): el hogar descansa al buey ya cansado cuando llega a sus horas del día (cosecha menos hoy, se repone). */
   readonly livestockDraftRest?: boolean;
+  /** Opt-in (livestock-draft-rest-choice, con `livestockDraftRest`): el umbral de descanso del buey sale de la calidez de quien lo trabaja, no del fijo de la especie. */
+  readonly livestockDraftRestChoice?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador puede carnear un animal de su casa («carneo la cabra»): termina y deja carne y piel en la despensa. */
   readonly livestockSlaughter?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
@@ -2108,6 +2110,7 @@ export function createLife(
               : {}),
             ...(options.livestockDraftFatigue ? { livestockDraftFatigue: true } : {}),
             ...(options.livestockDraftRest ? { livestockDraftRest: true } : {}),
+            ...(options.livestockDraftRestChoice ? { livestockDraftRestChoice: true } : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockYield
