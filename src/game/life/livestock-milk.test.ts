@@ -9,6 +9,7 @@ import {
   LACTATING,
   LIVESTOCK,
   lactationFactor,
+  nursedYoung,
   sucklingShare,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -183,5 +184,51 @@ describe("la cría mama su parte (livestock-milk-suckle)", () => {
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(run(true).hash().total).toBe(on.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockSuckle: true });
+  }, 600_000);
+});
+
+describe("la cría que mama no come de la casa; la huérfana pasa hambre (livestock-milk-orphan)", () => {
+  it("encendido: los cabritos que maman no comen de la casa; menos comida al ganado; determinista", () => {
+    const species = new Map(content.all(LIVESTOCK).map((s) => [s.id, s]));
+    const run = (orphan: boolean, check = false) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockFeed: true,
+        livestockDairy: true,
+        livestockSuckle: true,
+        livestockOrphan: orphan,
+      });
+      let seen = 0;
+      for (let d = 0; d < 150; d++) {
+        const from = l.now;
+        const before = check ? nursedYoung(l.world.truth, from, l.world.clock.year, species) : null;
+        l.advanceTo(from + DAY);
+        if (!before) continue;
+        const after = nursedYoung(l.world.truth, l.now, l.world.clock.year, species);
+        const both = [...before].filter((k) => after.has(k));
+        seen += both.length;
+        for (const e of l.world.log.all()) {
+          if (e.tick <= from || e.kind !== "living.animal_fed") continue;
+          const eaters = (e.data as { eaters: string[] }).eaters;
+          for (const k of both) expect(eaters).not.toContain(k);
+        }
+      }
+      return { l, seen };
+    };
+    const fedGrams = (l: Life) =>
+      l.world.log
+        .all()
+        .filter((e) => e.kind === "living.animal_fed")
+        .flatMap((e) => Object.values((e.data as { grams: Record<string, number> }).grams))
+        .reduce((n, g) => n + g, 0);
+    const on = run(true, true);
+    expect(on.seen).toBeGreaterThan(0);
+    const off = run(false);
+    expect(fedGrams(on.l)).toBeLessThan(fedGrams(off.l));
+    const w = on.l.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockOrphan: true });
   }, 600_000);
 });
