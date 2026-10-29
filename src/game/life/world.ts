@@ -412,6 +412,8 @@ export interface LifeWorld {
   readonly livestockYield?: readonly LivestockDef[];
   /** Opt-in (livestock-yield-milk, con `livestockLife`): la que pare da de mamar (`LACTATING`) y la leche lo pide. */
   readonly livestockDairy?: boolean;
+  /** Opt-in (livestock-milk-curve, con `livestockDairy` y `livestockYield`): la leche sigue la curva de lactancia (sube, pico, baja). */
+  readonly livestockMilkCurve?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
@@ -2103,6 +2105,9 @@ export function lifeWorld(
                 species: parts.livestockYield,
                 year: parts.clock.year,
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
+                ...(parts.livestockDairy === true && parts.livestockMilkCurve === true
+                  ? { milkCurve: true }
+                  : {}),
                 ...(parts.livestockSeason === true
                   ? {
                       daylightHours: (t: Tick) =>

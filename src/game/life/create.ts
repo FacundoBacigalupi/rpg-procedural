@@ -641,6 +641,8 @@ export interface LifeOptions {
   readonly livestockYield?: boolean;
   /** Opt-in (livestock-yield-milk, con `villageLivestock`): algunas casas tienen cabras, que dan leche los meses después de parir (con `livestockLife` y `livestockYield`). */
   readonly livestockDairy?: boolean;
+  /** Opt-in (livestock-milk-curve, con `livestockDairy` y `livestockYield`): la cabra da poca leche al parir, más hacia el pico (~50 días) y menos al final; lo de la temporada no cambia. */
+  readonly livestockMilkCurve?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
   readonly livestockSeason?: boolean;
   /** Opt-in (livestock-yield-feed, con `livestockYield`): ponen menos con frío y, con `livestockFeed`, si pasan hambre. */
@@ -2123,6 +2125,7 @@ export function createLife(
         ? {
             livestockYield: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockSeason ? { livestockSeason: true } : {}),
+            ...(options.livestockMilkCurve ? { livestockMilkCurve: true } : {}),
             ...(options.livestockYieldFeed
               ? { livestockYieldFeed: { hunger: options.livestockFeed === true } }
               : {}),

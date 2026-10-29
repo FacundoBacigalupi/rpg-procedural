@@ -2,7 +2,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import { ANIMAL, checkInvariants, herdSpecies, LACTATING, LIVESTOCK } from "../../sim/index.ts";
+import {
+  ANIMAL,
+  checkInvariants,
+  herdSpecies,
+  LACTATING,
+  LIVESTOCK,
+  lactationFactor,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
@@ -79,5 +86,52 @@ describe("las cabras dan leche después de parir (livestock-yield-milk)", () => 
     expect(offGoats).toEqual([]);
     expect(off.world.truth.ids(LACTATING)).toEqual([]);
     expect(FULL_PROFILE).toMatchObject({ livestockDairy: true });
+  }, 600_000);
+});
+
+describe("la leche sigue la curva de lactancia (livestock-milk-curve)", () => {
+  it("pura: poca al parir, el pico a los 50 días, baja al final; media 1 en la temporada", () => {
+    const milk = content
+      .all(LIVESTOCK)
+      .find((s) => s.id === "goat")
+      ?.yields?.find((y) => y.good === "milk");
+    if (!milk?.lactationDays || !milk.lactationCurve) throw new Error("la cabra sin curva");
+    const f = (d: number) => lactationFactor(milk, d);
+    let sum = 0;
+    for (let d = 1; d <= milk.lactationDays; d++) sum += f(d);
+    expect(sum / milk.lactationDays).toBeCloseTo(1, 6);
+    expect(f(1)).toBeLessThan(f(50));
+    expect(f(49)).toBeLessThanOrEqual(f(50));
+    expect(f(51)).toBeLessThanOrEqual(f(50));
+    expect(f(240)).toBeLessThan(f(50));
+    expect(f(0)).toBe(f(1));
+    expect(lactationFactor({ ...milk, lactationCurve: undefined }, 50)).toBe(1);
+  });
+
+  it("encendido: cada litro pesa según los días desde el parto; determinista", () => {
+    const run = (curve: boolean) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockDairy: true,
+        livestockMilkCurve: curve,
+      });
+      l.advanceTo(l.now + 150 * DAY);
+      return l;
+    };
+    const milkOf = (l: Life) =>
+      l.world.log
+        .all()
+        .filter(
+          (e) => e.kind === "living.animal_yield" && (e.data as { good: string }).good === "milk",
+        )
+        .map((e) => e.data as { grams: number; from: string[] });
+    const on = run(true);
+    const got = milkOf(on);
+    expect(got.length).toBeGreaterThan(0);
+    expect(got.some((e) => e.grams !== e.from.length * 1000)).toBe(true);
+    for (const e of milkOf(run(false))) expect(e.grams).toBe(e.from.length * 1000);
+    expect(on.world.ledger.audit()).toEqual([]);
+    expect(run(true).hash().total).toBe(on.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkCurve: true });
   }, 600_000);
 });

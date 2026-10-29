@@ -40,6 +40,7 @@ import {
   defineContent,
   type EventId,
   type EventLog,
+  exp,
   externalAccount,
   type HouseholdId,
   holderAccount,
@@ -144,6 +145,17 @@ export const YieldDef = z.strictObject({
    * Sin `LACTATING` (cría reciente), no lo da.
    */
   lactationDays: z.number().int().positive().optional(),
+  /**
+   * La curva de lactancia (livestock-milk-curve, curva de Wood `t^shape · e^(−shape·t/peakDay)`):
+   * sube después del parto, llega al pico el día `peakDay` y baja; cada unidad pesa lo que dice la
+   * curva en ese día, con media 1 en los `lactationDays` (lo de la temporada no cambia).
+   */
+  lactationCurve: z
+    .strictObject({
+      peakDay: z.number().positive(),
+      shape: z.number().positive().default(0.3),
+    })
+    .optional(),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -837,6 +849,20 @@ export function coldFactor(y: YieldDef, tempC: number | undefined): number {
   return y.coldFloor + (1 - y.coldFloor) * x;
 }
 
+/**
+ * Pura (livestock-milk-curve): cuánto pesa lo que da `day` días después de parir respecto de la
+ * media de la temporada (`lactationCurve` sobre `lactationDays`). Sin curva, 1.
+ */
+export function lactationFactor(y: YieldDef, day: number): number {
+  const c = y.lactationCurve;
+  if (c === undefined || y.lactationDays === undefined) return 1;
+  const wood = (t: number) => pow(t, c.shape) * exp((-c.shape * t) / c.peakDay);
+  let sum = 0;
+  for (let t = 1; t <= y.lactationDays; t++) sum += wood(t);
+  const mean = sum / y.lactationDays;
+  return mean > 0 ? wood(Math.max(1, day)) / mean : 1;
+}
+
 /** Pura: qué parte de lo suyo da con hambre `level` (0-1): baja lineal hasta 0 en `hungerStop`. */
 export function hungerFactor(y: YieldDef, level: number): number {
   if (y.hungerStop === undefined || level <= 0) return 1;
@@ -855,6 +881,8 @@ export interface LivestockYieldOptions {
   readonly hunger?: boolean;
   /** Lee `LACTATING` (livestock-yield-milk); sin esto, lo que pide parir no se da. */
   readonly lactation?: boolean;
+  /** Opt-in (livestock-milk-curve, con `lactation`): lo que da pesa según `lactationFactor`. */
+  readonly milkCurve?: boolean;
 }
 
 /**
@@ -864,6 +892,16 @@ export interface LivestockYieldOptions {
  */
 export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
   const byId = new Map(o.species.map((s) => [s.id, s]));
+  // La curva por especie y bien, con los días de la temporada ya sumados una vez.
+  const curves = new Map<YieldDef, number[]>();
+  const curveAt = (y: YieldDef, day: number): number => {
+    let c = curves.get(y);
+    if (c === undefined) {
+      c = Array.from({ length: (y.lactationDays ?? 0) + 1 }, (_, t) => lactationFactor(y, t));
+      curves.set(y, c);
+    }
+    return c[Math.min(c.length - 1, Math.max(0, day))] ?? 1;
+  };
   return {
     id: LIVESTOCK_YIELD_PROCESS,
     system: "living",
@@ -896,9 +934,13 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
         const hunger = o.hunger === true ? (ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0) : 0;
         yields.forEach((y, i) => {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
+          let weight = 1;
           if (y.lactationDays !== undefined) {
             const since = o.lactation === true ? ctx.truth.get(LACTATING, id)?.since : undefined;
             if (since === undefined || ctx.now - since > (y.lactationDays * o.year) / 365) return;
+            if (o.milkCurve === true && y.lactationCurve !== undefined) {
+              weight = curveAt(y, Math.floor(((ctx.now - since) * 365) / o.year));
+            }
           }
           const factor = daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
           const chance = Math.min(1, (y.perYear * factor * step) / o.year);
@@ -912,7 +954,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
             grams: 0,
           };
           g.from.push(id);
-          g.grams += y.unitGrams;
+          g.grams += Math.round(y.unitGrams * weight);
           got.set(key, g);
         });
       }
