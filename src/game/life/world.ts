@@ -428,6 +428,8 @@ export interface LifeWorld {
   readonly livestockDraftRestChoice?: boolean;
   /** Opt-in (livestock-draft-rest-press, con `livestockDraftRestChoice`): la despensa corta de grano hace seguir con el buey cansado. */
   readonly livestockDraftRestPress?: boolean;
+  /** Opt-in (livestock-draft-rest-season, con `livestockDraftRestChoice`): la temporada que se termina hace seguir con el buey cansado. */
+  readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
   readonly livestockSlaughter?: readonly LivestockDef[];
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
@@ -959,6 +961,13 @@ function thermalRefine(hearthSpaces: SpaceGraph | undefined, wet: boolean): Ther
   };
 }
 
+/** La temporada del campo y el día local de un tick, para el apuro del tiro (livestock-draft-rest-season). */
+function draftSeasonOf(parts: LifeParts): NonNullable<DraftOptions["restSeason"]> {
+  const season = harvestSeasonOf(parts.map, parts.clock, parts.seed);
+  const offset = Math.round((parts.map.lonDeg / 360) * parts.clock.day);
+  return { season, dayAt: (t) => dayOf(parts.clock, t + offset) };
+}
+
 function placeOf(parts: LifeParts, village: PlaceRef) {
   return (truth: ReadonlyWorldTruth, who: AgentId): PlaceRef => {
     const at = truth.get(LOCATION, who);
@@ -996,6 +1005,10 @@ export function lifeWorld(
                 ...(parts.livestockDraftRestChoice === true &&
                 parts.livestockDraftRestPress === true
                   ? { restPress: true }
+                  : {}),
+                ...(parts.livestockDraftRestChoice === true &&
+                parts.livestockDraftRestSeason === true
+                  ? { restSeason: draftSeasonOf(parts) }
                   : {}),
               }
             : {}),
