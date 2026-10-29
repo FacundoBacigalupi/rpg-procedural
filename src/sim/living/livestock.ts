@@ -156,6 +156,16 @@ export const YieldDef = z.strictObject({
       shape: z.number().positive().default(0.3),
     })
     .optional(),
+  /**
+   * Lo que mama la cría (livestock-milk-suckle): los primeros `days` días después de parir, cada
+   * cría viva se toma `sharePerYoung` de lo que da la madre (la casa recibe el resto).
+   */
+  suckle: z
+    .strictObject({
+      days: z.number().int().positive(),
+      sharePerYoung: z.number().min(0).max(1),
+    })
+    .optional(),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -281,6 +291,8 @@ export const ANIMAL_HUNGER = table<AnimalHunger>("living.animal_hunger");
 /** La hembra que parió (livestock-yield-milk): desde cuándo da de mamar; sin fila, no. */
 export interface Lactating {
   readonly since: Tick;
+  /** Las crías de ese parto (livestock-milk-suckle, con `suckle`): las que maman. */
+  readonly young?: readonly AnimalId[];
 }
 
 export const LACTATING = table<Lactating>("living.lactating");
@@ -452,6 +464,8 @@ export interface LivestockLifeOptions {
   readonly year: Duration;
   /** Opt-in (livestock-yield-milk): la que pare queda en `LACTATING` si su especie da leche. */
   readonly lactation?: boolean;
+  /** Opt-in (livestock-milk-suckle, con `lactation`): `LACTATING` guarda las crías del parto. */
+  readonly suckle?: boolean;
 }
 
 /** El hogar y la aldea de un animal, para buscar macho. */
@@ -596,7 +610,12 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
           emissions: null,
         });
         if (o.lactation === true && def?.yields?.some((y) => y.lactationDays !== undefined)) {
-          changes.push(setComponent(LACTATING, id, { since: ctx.now }));
+          changes.push(
+            setComponent(LACTATING, id, {
+              since: ctx.now,
+              ...(o.suckle === true ? { young } : {}),
+            }),
+          );
         }
         count.set(key, (count.get(key) ?? 0) + size);
       }
@@ -883,6 +902,18 @@ export interface LivestockYieldOptions {
   readonly lactation?: boolean;
   /** Opt-in (livestock-milk-curve, con `lactation`): lo que da pesa según `lactationFactor`. */
   readonly milkCurve?: boolean;
+  /** Opt-in (livestock-milk-suckle, con `lactation`): las crías vivas se toman su parte (`sucklingShare`). */
+  readonly suckle?: boolean;
+}
+
+/**
+ * Pura (livestock-milk-suckle): qué parte de lo que da la madre se toman sus `alive` crías vivas
+ * `day` días después de parir: `sharePerYoung` cada una hasta todo, solo los primeros `suckle.days`.
+ */
+export function sucklingShare(y: YieldDef, day: number, alive: number): number {
+  const s = y.suckle;
+  if (s === undefined || alive <= 0 || day >= s.days) return 0;
+  return Math.min(1, alive * s.sharePerYoung);
 }
 
 /**
@@ -924,7 +955,14 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
       // hogar|bien -> animales que dieron hoy y gramos.
       const got = new Map<
         string,
-        { owner: HouseholdId; home: BuildingId; good: string; from: AnimalId[]; grams: number }
+        {
+          owner: HouseholdId;
+          home: BuildingId;
+          good: string;
+          from: AnimalId[];
+          grams: number;
+          suckled: number;
+        }
       >();
       for (const id of [...ctx.truth.ids(ANIMAL)].sort() as AnimalId[]) {
         const a = ctx.truth.get(ANIMAL, id);
@@ -935,11 +973,18 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
         yields.forEach((y, i) => {
           if ((y.sex !== undefined && y.sex !== a.sex) || age < y.minAgeYears) return;
           let weight = 1;
+          let suckled = 0;
           if (y.lactationDays !== undefined) {
-            const since = o.lactation === true ? ctx.truth.get(LACTATING, id)?.since : undefined;
+            const lact = o.lactation === true ? ctx.truth.get(LACTATING, id) : undefined;
+            const since = lact?.since;
             if (since === undefined || ctx.now - since > (y.lactationDays * o.year) / 365) return;
-            if (o.milkCurve === true && y.lactationCurve !== undefined) {
-              weight = curveAt(y, Math.floor(((ctx.now - since) * 365) / o.year));
+            const day = Math.floor(((ctx.now - since) * 365) / o.year);
+            if (o.milkCurve === true && y.lactationCurve !== undefined) weight = curveAt(y, day);
+            if (o.suckle === true && lact?.young !== undefined) {
+              const alive = lact.young.filter(
+                (k) => ctx.truth.get(ENTITY, k)?.endedAt === undefined,
+              ).length;
+              suckled = sucklingShare(y, day, alive);
             }
           }
           const factor = daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
@@ -952,9 +997,13 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
             good: y.good,
             from: [],
             grams: 0,
+            suckled: 0,
           };
           g.from.push(id);
-          g.grams += Math.round(y.unitGrams * weight);
+          const all = Math.round(y.unitGrams * weight);
+          const kept = Math.round(all * (1 - suckled));
+          g.grams += kept;
+          g.suckled += all - kept;
           got.set(key, g);
         });
       }
@@ -969,10 +1018,18 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           kind: "living.animal_yield",
           actors: [],
           place: { kind: "building", building: g.home },
-          data: { owner: g.owner, good: g.good, grams: g.grams, from: g.from },
+          data: {
+            owner: g.owner,
+            good: g.good,
+            grams: g.grams,
+            from: g.from,
+            ...(g.suckled > 0 ? { suckled: g.suckled } : {}),
+          },
           causes: g.from.map((id) => ({ kind: "state" as const, entity: id, key: "yield" })),
           emissions: null,
         });
+        // Todo lo mamó la cría: hay evento (la madre dio) pero nada entra a la casa.
+        if (g.grams <= 0) continue;
         postings.push({
           event,
           transfers: [
@@ -985,7 +1042,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           ],
         });
       }
-      return { events, postings };
+      return postings.length > 0 ? { events, postings } : { events };
     },
   };
 }
