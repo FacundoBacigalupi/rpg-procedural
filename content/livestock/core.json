@@ -115,6 +115,7 @@
         "sex": "female",
         "minAgeYears": 1,
         "lactationDays": 240,
+        "lactationCurve": { "peakDay": 50, "shape": 0.3 },
         "hungerStop": 0.5
       }
     ],
