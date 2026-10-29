@@ -19,6 +19,7 @@ import {
   TANNING,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
+import { animalMarksOf } from "./animal-marks.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
 import { slaughterTargetOf } from "./slaughter.ts";
@@ -92,6 +93,48 @@ describe("carnear un animal de la casa (livestock-slaughter)", () => {
     expect(slaughterTargetOf(t, l.player, "cabra", l.now, o)).toBeUndefined();
     t.set(PERSON, l.player, { ...me, household: owner as never });
     expect(goat).toBeDefined();
+  }, 300_000);
+
+  it("con refs, «la vieja», «la cría», «el macho» eligen un animal al que se le note eso (livestock-slaughter-refs)", () => {
+    const l = Life.create(SEED, content, {
+      frequency: 8,
+      villageLivestock: true,
+      livestockDairy: true,
+    });
+    const { owner } = nextToGoat(l);
+    const t = l.world.truth;
+    const species = content.all(LIVESTOCK);
+    const o = { species, year: l.world.clock.year, refs: true };
+    const year = l.world.clock.year;
+    const hex = t.get(LOCATION, l.player)?.hex;
+    const herd = [...t.ids(ANIMAL)].filter((id) => {
+      const a = t.get(ANIMAL, id as never);
+      return a?.owner === owner && t.get(LOCATION, id as never)?.hex === hex;
+    });
+    const marksOf = (id: string) => {
+      const a = t.get(ANIMAL, id as never);
+      const def = species.find((s) => s.id === a?.species);
+      return a === undefined ? [] : animalMarksOf(t, id as never, a.bornAt, def, l.now, year);
+    };
+    const check = (text: string, ok: (id: string) => boolean) => {
+      const got = slaughterTargetOf(t, l.player, text, l.now, o);
+      if (herd.some(ok)) expect(ok(got?.animal as string)).toBe(true);
+      else expect(got).toBeUndefined();
+    };
+    check("la cabra vieja", (id) => marksOf(id).includes("old"));
+    check("la cría", (id) => marksOf(id).includes("young"));
+    check("el macho", (id) => t.get(ANIMAL, id as never)?.sex === "male");
+    check("la hembra", (id) => t.get(ANIMAL, id as never)?.sex === "female");
+    // Una cría vieja no existe: no hay a cuál.
+    expect(slaughterTargetOf(t, l.player, "la cría vieja", l.now, o)).toBeUndefined();
+    // Sin refs, la palabra de más no elige y una que no conoce sigue sin dar nada.
+    expect(
+      slaughterTargetOf(t, l.player, "la cría vieja", l.now, { species, year }),
+    ).toBeUndefined();
+    expect(
+      slaughterTargetOf(t, l.player, "la cabra vieja", l.now, { species, year }),
+    ).toBeDefined();
+    expect(FULL_PROFILE).toMatchObject({ livestockSlaughterRefs: true });
   }, 300_000);
 
   it("encendido: la cabra termina y su carne y su piel quedan en la despensa; determinista", () => {

@@ -442,6 +442,8 @@ export interface LifeWorld {
   readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
   readonly livestockSlaughter?: readonly LivestockDef[];
+  /** Opt-in (livestock-slaughter-refs, con `livestockSlaughter`): las palabras que dicen algo del animal eligen uno en particular. */
+  readonly livestockSlaughterRefs?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
   readonly livestockTan?: readonly TanRule[];
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
@@ -1111,7 +1113,13 @@ export function lifeWorld(
         actProcess({
           ...(draftOpts ? { draft: draftOpts } : {}),
           ...(parts.livestockSlaughter !== undefined
-            ? { slaughter: { species: parts.livestockSlaughter, year: parts.clock.year } }
+            ? {
+                slaughter: {
+                  species: parts.livestockSlaughter,
+                  year: parts.clock.year,
+                  ...(parts.livestockSlaughterRefs === true ? { refs: true } : {}),
+                },
+              }
             : {}),
           ...(parts.npcFieldWatering === true && parts.npcFieldShared === true
             ? {
