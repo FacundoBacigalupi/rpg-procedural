@@ -150,7 +150,7 @@ import {
 } from "./hearth.ts";
 import { hireProcess } from "./hire.ts";
 import { intrusionProcess } from "./intrusion.ts";
-import { inventoryProcess } from "./inventory-belief.ts";
+import { inventoryProcess, npcLarderProcess } from "./inventory-belief.ts";
 import { type AfflictedOrigin, journeySeeds } from "./journey-arrivals.ts";
 import { keepProcess } from "./keep.ts";
 import { knowingProcess, toldClaimsProcess } from "./knowing.ts";
@@ -233,6 +233,7 @@ import {
   ASLEEP,
   CATCH_UP_DAILY_PROCESS,
   CATCH_UP_WAKE_PROCESS,
+  CAUGHT_UP_EVENT,
   catchUpDue,
   catchUpProcess,
   sleepPolicyProcess,
@@ -442,6 +443,8 @@ export interface LifeWorld {
   readonly livestockDraftRestPress?: boolean;
   /** Opt-in (livestock-draft-rest-belief, con `livestockDraftRestPress`): el apuro sale del grano que cree tener quien decide. */
   readonly livestockDraftRestBelief?: boolean;
+  /** Opt-in (livestock-draft-rest-npc-larder, con `livestockDraftRestBelief`): los NPC revisan la despensa al comer y el apuro de ellos sale de esa foto. */
+  readonly livestockDraftRestNpcLarder?: boolean;
   /** Opt-in (livestock-draft-rest-season, con `livestockDraftRestChoice`): la temporada que se termina hace seguir con el buey cansado. */
   readonly livestockDraftRestSeason?: boolean;
   /** Opt-in (livestock-slaughter, con `livestockLife`): el jugador carnea un animal de su casa y la carne va a la despensa. */
@@ -2356,6 +2359,9 @@ export function lifeWorld(
           bonds: parts.relationBonds,
         }),
         inventoryProcess({ player }),
+        ...(parts.livestockDraftRestNpcLarder === true
+          ? [npcLarderProcess({ player, kinds: ["routine.ate", CAUGHT_UP_EVENT] })]
+          : []),
         knowingProcess({
           player,
           map: parts.map,
