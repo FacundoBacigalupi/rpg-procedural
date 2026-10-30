@@ -687,6 +687,8 @@ export interface LifeOptions {
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
   readonly livestockGuard?: boolean;
+  /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado de noche por alguien de la casa ataja al lobo o al zorro con la chance `pen` de cada especie. */
+  readonly livestockPen?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
   readonly livestockPasture?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
@@ -2198,6 +2200,7 @@ export function createLife(
         ? {
             livestockPredators: livestockOf(content, options.livestockDairy === true),
             ...(options.livestockGuard ? { livestockGuard: true } : {}),
+            ...(options.livestockPen ? { livestockPen: true } : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockFeed

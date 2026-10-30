@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import { ANIMAL, checkInvariants, ECOLOGY, ENTITY } from "../../sim/index.ts";
+import { ANIMAL, BUILDING, checkInvariants, ECOLOGY, ENTITY } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
@@ -24,11 +24,12 @@ const OPTS = { villageLivestock: true } as const;
 
 describe("los depredadores bajan a los corrales (livestock-predators)", () => {
   it("sin caza en el monte, lobos y zorros se llevan animales con causa; determinista", () => {
-    const run = (predators: boolean, guard = false) => {
+    const run = (predators: boolean, guard = false, pen = false) => {
       const l = Life.create(SEED, content, {
         ...OPTS,
         livestockPredators: predators,
         livestockGuard: guard,
+        livestockPen: pen,
       });
       // Se vacía el monte de presas: los depredadores pasan hambre plena.
       const t = l.world.truth;
@@ -97,5 +98,22 @@ describe("los depredadores bajan a los corrales (livestock-predators)", () => {
     expect(on.world.log.all().some((e) => e.kind === "living.raid_repelled")).toBe(false);
     expect(guarded.world.ledger.audit()).toEqual([]);
     expect(FULL_PROFILE).toMatchObject({ livestockGuard: true });
+
+    // El patio cerrado de noche ataja a parte de los que bajan (livestock-predators-pen).
+    const penned = run(true, false, true);
+    const blocked = penned.world.log.all().filter((e) => e.kind === "living.raid_blocked");
+    expect(blocked.length).toBeGreaterThan(0);
+    for (const e of blocked) {
+      const { animal } = e.data as { animal: string };
+      const a = penned.world.truth.get(ANIMAL, animal as never);
+      expect(["hen", "goat", "ox"]).toContain(a?.species);
+      const home = penned.world.truth.get(BUILDING, a?.home as never);
+      expect(home?.graph.spaces.some((s) => s.kind === "yard")).toBe(true);
+      expect(e.causes).toContainEqual({ kind: "state", entity: a?.home, key: "pen" });
+    }
+    expect(takenIn(penned)).toBeLessThan(takenIn(on));
+    expect(on.world.log.all().some((e) => e.kind === "living.raid_blocked")).toBe(false);
+    expect(penned.world.ledger.audit()).toEqual([]);
+    expect(FULL_PROFILE).toMatchObject({ livestockPen: true });
   }, 600_000);
 });

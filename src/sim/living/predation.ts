@@ -8,10 +8,13 @@
 // monte como en `trophicStep` (livestock-predators-credit: masa · eficiencia / masa del depredador),
 // y el perro adulto y comido de la casa (`LivestockDef.guard`, livestock-predators-dog) espanta con
 // chance `repel` al que viene por otro animal del hogar (`living.raid_repelled`, causado también
-// por el perro). El corral cerrado y la caza de lobos por la gente quedan para
+// por el perro). Con el corral (livestock-predators-pen), el patio de la casa cerrado de noche por
+// alguien vivo del hogar ataja con chance `LivestockDef.pen` al que viene por ese animal
+// (`living.raid_blocked`, causado también por el patio). La caza de lobos por la gente queda para
 // livestock-predators-guard.
 
-import type { AnimalId, Duration } from "../../core/index.ts";
+import type { AnimalId, BuildingId, Duration, HouseholdId } from "../../core/index.ts";
+import { PERSON } from "../family/index.ts";
 import {
   deleteComponent,
   draftEvent,
@@ -21,6 +24,7 @@ import {
   type StateChange,
   setComponent,
 } from "../scheduler/index.ts";
+import { BUILDING } from "../settlements/index.ts";
 import { ENTITY, LOCATION } from "../world/index.ts";
 import { ECOLOGY, type LineageDef, lineageOf } from "./ecology.ts";
 import { ANIMAL, ANIMAL_HUNGER, type AnimalRecord, type LivestockDef } from "./livestock.ts";
@@ -69,6 +73,8 @@ export interface LivestockPredationOptions {
   readonly day: Duration;
   /** Opt-in (livestock-predators-dog): el que cuida la casa espanta al depredador. */
   readonly guard?: boolean;
+  /** Opt-in (livestock-predators-pen): el patio cerrado de noche ataja al depredador. */
+  readonly pen?: boolean;
 }
 
 /**
@@ -91,7 +97,13 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
     cadence: { local: "day", scene: "day" },
     representation: "individual",
     phase: "physics",
-    reads: [ANIMAL.name, ENTITY.name, ECOLOGY.name, ANIMAL_HUNGER.name],
+    reads: [
+      ANIMAL.name,
+      ENTITY.name,
+      ECOLOGY.name,
+      ANIMAL_HUNGER.name,
+      ...(o.pen === true ? [BUILDING.name, PERSON.name] : []),
+    ],
     writes: [ENTITY.name, LOCATION.name, ANIMAL_HUNGER.name, ECOLOGY.name],
     scopeGuard: (truth) =>
       raiders.length > 0 && truth.ids(ANIMAL).length > 0 && truth.ids(ECOLOGY).length > 0,
@@ -115,6 +127,27 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
         if ((ctx.truth.get(ANIMAL_HUNGER, id)?.level ?? 0) >= g.hungerStop) continue;
         guards.set(a.owner, [id, g.repel]);
       }
+      // Los hogares con alguien vivo que cierre el patio, y los edificios que tienen patio.
+      const closers = new Set<HouseholdId>();
+      const yards = new Map<BuildingId, boolean>();
+      if (o.pen === true) {
+        for (const id of [...ctx.truth.ids(PERSON)].sort()) {
+          const h = ctx.truth.get(PERSON, id)?.household;
+          if (h !== undefined && ctx.truth.get(ENTITY, id)?.endedAt === undefined) closers.add(h);
+        }
+      }
+      const hasYard = (b: BuildingId): boolean => {
+        let y = yards.get(b);
+        if (y === undefined) {
+          const rec = ctx.truth.get(BUILDING, b);
+          y =
+            rec !== undefined &&
+            ctx.truth.get(ENTITY, b)?.endedAt === undefined &&
+            rec.graph.spaces.some((s) => s.kind === "yard");
+          yards.set(b, y);
+        }
+        return y;
+      };
       const events: EventDraft[] = [];
       const changes: StateChange[] = [];
       const gain = new Map<string, number>();
@@ -158,6 +191,21 @@ export function livestockPredationProcess(o: LivestockPredationOptions): Process
               causes: [
                 { kind: "state", entity: ecoId as never, key: "ecology" },
                 { kind: "state", entity: guard[0], key: "guard" },
+              ],
+              emissions: null,
+            });
+            continue;
+          }
+          const pen = o.pen === true ? (def.pen ?? 0) : 0;
+          if (pen > 0 && closers.has(a.owner) && hasYard(a.home) && r.float() < pen) {
+            events.push({
+              kind: "living.raid_blocked",
+              actors: [],
+              place: { kind: "building", building: a.home },
+              data: { animal: id, owner: a.owner, predator: d.id },
+              causes: [
+                { kind: "state", entity: ecoId as never, key: "ecology" },
+                { kind: "state", entity: a.home, key: "pen" },
               ],
               emissions: null,
             });
