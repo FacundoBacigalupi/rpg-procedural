@@ -479,6 +479,42 @@
       "{with} no la vende ({what}); no tiene otra."
     ]
   },
+  {
+    "id": "outcome.trade.animal.sell.good",
+    "lines": ["Le vendés a {with} tu {what} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.animal.sell.fair",
+    "lines": ["Le vendés a {with} tu {what} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.animal.sell.poor",
+    "lines": ["Le vendés a {with} tu {what} por {coins}, aunque te pagan poco."]
+  },
+  {
+    "id": "outcome.trade.animal.buy.good",
+    "lines": ["Le comprás a {with} su {what} por {coins}, y te parece buen precio."]
+  },
+  {
+    "id": "outcome.trade.animal.buy.fair",
+    "lines": ["Le comprás a {with} su {what} por {coins}."]
+  },
+  {
+    "id": "outcome.trade.animal.buy.poor",
+    "lines": ["Le comprás a {with} su {what} por {coins}, aunque te lo cobran caro."]
+  },
+  {
+    "id": "outcome.trade.noanimal.no_copper",
+    "lines": ["No alcanza el cobre para el animal ({what}): no hay trato con {with}."]
+  },
+  {
+    "id": "outcome.trade.noanimal.no_want",
+    "lines": ["{with} no lo quiere ({what}): en su casa ya no hay lugar para otro."]
+  },
+  {
+    "id": "outcome.trade.noanimal.no_spare",
+    "lines": ["{with} no se desprende del animal ({what}): es el único que tiene su casa."]
+  },
   { "id": "outcome.trade.no_deal_anyone", "lines": ["No hay trato."] },
   { "id": "outcome.trade.deal_anyone", "lines": ["Cerrás un trato."] },
   {

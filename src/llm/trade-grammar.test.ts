@@ -33,6 +33,17 @@ describe("comerciar con cantidades", () => {
     expect(out).toContain("tío");
   });
 
+  it("comprar o vender con artículo dice de quién es (livestock-tenure-sell)", () => {
+    const buy = JSON.stringify(parseCommand("le compro la cabra a mi vecino", catalog));
+    expect(buy).toContain('"trade"');
+    expect(buy).toContain("su cabra");
+    const sell = JSON.stringify(parseCommand("le vendo la oveja a mi vecino", catalog));
+    expect(sell).toContain("mi oveja");
+    expect(JSON.stringify(parseCommand("cambio la cabra con mi vecino", catalog))).toContain(
+      "la cabra",
+    );
+  });
+
   it("comerciar sin más sigue siendo solo con quién", () => {
     const out = JSON.stringify(parseCommand("comercio con mi madre", catalog));
     expect(out).toContain('"with"');
