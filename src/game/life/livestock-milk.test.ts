@@ -234,6 +234,65 @@ describe("la cría que mama no come de la casa; la huérfana pasa hambre (livest
   }, 600_000);
 });
 
+describe("otra madre adopta a la huérfana (livestock-milk-foster)", () => {
+  it("encendido: la cría que su madre deja de amamantar pasa a otra de la casa; apagado, no; determinista", () => {
+    const run = (foster: boolean) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockFeed: true,
+        livestockDairy: true,
+        livestockSuckle: true,
+        livestockOrphan: true,
+        livestockFoster: foster,
+      });
+      const t = l.world.truth;
+      // El primer día con dos madres de la misma casa amamantando: una deja a sus crías.
+      let orphans: string[] = [];
+      for (let d = 0; d < 400 && orphans.length === 0; d++) {
+        l.advanceTo(l.now + DAY);
+        const nursing = [...t.ids(LACTATING)].sort().filter((id) => {
+          const k = t.get(LACTATING, id as never);
+          return (
+            (k?.young?.length ?? 0) > 0 &&
+            ((l.now - (k?.since ?? 0)) * 365) / l.world.clock.year < 20
+          );
+        });
+        for (const m of nursing) {
+          const owner = t.get(ANIMAL, m as never)?.owner;
+          const other = nursing.find((n) => n !== m && t.get(ANIMAL, n as never)?.owner === owner);
+          if (other === undefined) continue;
+          orphans = [...(t.get(LACTATING, m as never)?.young ?? [])];
+          t.deleteRaw(LACTATING.name, m);
+          break;
+        }
+      }
+      expect(orphans.length).toBeGreaterThan(0);
+      const from = l.now;
+      l.advanceTo(from + 60 * DAY);
+      const fostered = l.world.log
+        .all()
+        .filter((e) => e.tick > from && e.kind === "living.animal_fostered");
+      return { l, orphans, fostered };
+    };
+    const on = run(true);
+    expect(on.fostered.length).toBeGreaterThan(0);
+    const t = on.l.world.truth;
+    for (const e of on.fostered) {
+      const { mother, young } = e.data as { mother: string; young: string };
+      expect(on.orphans).toContain(young);
+      expect(t.get(LACTATING, mother as never)?.young ?? []).toContain(young);
+    }
+    const adopted = new Set(on.fostered.map((e) => (e.data as { young: string }).young));
+    expect(adopted.size).toBe(on.fostered.length);
+    expect(run(false).fostered).toEqual([]);
+    const w = on.l.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockFoster: true });
+  }, 600_000);
+});
+
 describe("el ordeñe es trabajo del hogar (livestock-milk-work)", () => {
   it("encendido: alguien del hogar ordeña; sin nadie que ordeñe, se pierde y la cabra se seca", () => {
     const run = (work: boolean, owner?: string) => {

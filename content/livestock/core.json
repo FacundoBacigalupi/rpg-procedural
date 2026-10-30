@@ -116,7 +116,7 @@
         "minAgeYears": 1,
         "lactationDays": 240,
         "lactationCurve": { "peakDay": 50, "shape": 0.3 },
-        "suckle": { "days": 75, "sharePerYoung": 0.35 },
+        "suckle": { "days": 75, "sharePerYoung": 0.35, "fosterPerDay": 0.08 },
         "milking": { "headPerHour": 6, "dryAfterDays": 3 },
         "hungerStop": 0.5
       }

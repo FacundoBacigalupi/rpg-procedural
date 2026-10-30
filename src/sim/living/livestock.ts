@@ -160,11 +160,14 @@ export const YieldDef = z.strictObject({
   /**
    * Lo que mama la cría (livestock-milk-suckle): los primeros `days` días después de parir, cada
    * cría viva se toma `sharePerYoung` de lo que da la madre (la casa recibe el resto).
+   * `fosterPerDay` (livestock-milk-foster): la chance por día de que otra madre de la casa acepte
+   * a una huérfana (se divide por uno más las crías que ya amamanta); sin esto, nunca.
    */
   suckle: z
     .strictObject({
       days: z.number().int().positive(),
       sharePerYoung: z.number().min(0).max(1),
+      fosterPerDay: z.number().min(0).max(1).optional(),
     })
     .optional(),
   /**
@@ -479,6 +482,12 @@ export interface LivestockLifeOptions {
   readonly lactation?: boolean;
   /** Opt-in (livestock-milk-suckle, con `lactation`): `LACTATING` guarda las crías del parto. */
   readonly suckle?: boolean;
+  /**
+   * Opt-in (livestock-milk-foster, con `suckle`): la cría huérfana en sus días de mamar puede ser
+   * adoptada por otra madre de su especie y su casa que todavía amamanta (`suckle.fosterPerDay`,
+   * menos cuantas más crías ya tiene); pasa a su `LACTATING.young` (evento `living.animal_fostered`).
+   */
+  readonly foster?: boolean;
 }
 
 /** El hogar y la aldea de un animal, para buscar macho. */
@@ -531,6 +540,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       const changes: StateChange[] = [];
       const postings: PostingDraft[] = [];
       const dead = new Set<AnimalId>();
+      const mothersToday = new Set<AnimalId>();
       // Primero las muertes: quien muere hoy no pare ni cubre.
       for (const [id, a] of alive) {
         const def = byId.get(a.species);
@@ -631,11 +641,75 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
           );
         }
         count.set(key, (count.get(key) ?? 0) + size);
+        mothersToday.add(id);
+      }
+      if (o.foster === true && o.suckle === true) {
+        fosterOrphans(ctx, o.year, byId, alive, dead, mothersToday, events, changes);
       }
       if (events.length === 0) return {};
       return postings.length > 0 ? { events, changes, postings } : { events, changes };
     },
   };
+}
+
+/**
+ * Las huérfanas (livestock-milk-foster): cada cría viva en sus días de mamar que ninguna madre viva
+ * amamanta prueba, por id, con cada madre de su especie y su casa que amamanta dentro de sus días
+ * (no la que murió o parió hoy); la acepta con `fosterPerDay / (1 + crías vivas que ya tiene)`.
+ * Una madre adopta a lo sumo una por día.
+ */
+function fosterOrphans(
+  ctx: { readonly truth: ReadonlyWorldTruth; readonly now: Tick; readonly rng: Rng },
+  year: Duration,
+  byId: ReadonlyMap<string, LivestockDef>,
+  alive: readonly (readonly [AnimalId, AnimalRecord])[],
+  dead: ReadonlySet<AnimalId>,
+  mothersToday: ReadonlySet<AnimalId>,
+  events: EventDraft[],
+  changes: StateChange[],
+): void {
+  const suckleOf = (species: string) => byId.get(species)?.yields?.find((y) => y.suckle)?.suckle;
+  const nursed = nursedYoung(ctx.truth, ctx.now, year, byId);
+  for (const id of dead) {
+    for (const k of ctx.truth.get(LACTATING, id)?.young ?? []) nursed.delete(k);
+  }
+  const mothers: { id: AnimalId; a: AnimalRecord; l: Lactating; young: AnimalId[] }[] = [];
+  for (const [id, a] of alive) {
+    const l = ctx.truth.get(LACTATING, id);
+    const s = suckleOf(a.species);
+    if (!l?.young || !s || dead.has(id) || mothersToday.has(id)) continue;
+    if (((ctx.now - l.since) * 365) / year > s.days) continue;
+    mothers.push({ id, a, l, young: [...l.young] });
+  }
+  if (mothers.length === 0) return;
+  const living = new Set(alive.filter(([id]) => !dead.has(id)).map(([id]) => id));
+  const adopted = new Set<AnimalId>();
+  for (const [id, a] of alive) {
+    const s = suckleOf(a.species);
+    if (dead.has(id) || nursed.has(id) || !s?.fosterPerDay) continue;
+    if (((ctx.now - a.bornAt) * 365) / year >= s.days) continue;
+    for (const m of mothers) {
+      if (adopted.has(m.id) || m.a.species !== a.species || m.a.owner !== a.owner) continue;
+      const own = m.young.filter((k) => living.has(k)).length;
+      const r = ctx.rng.fork("foster", id, m.id).stream();
+      if (r.float() >= s.fosterPerDay / (1 + own)) continue;
+      adopted.add(m.id);
+      m.young.push(id);
+      events.push({
+        kind: "living.animal_fostered",
+        actors: [],
+        place: { kind: "building", building: m.a.home },
+        data: { mother: m.id, young: id, species: a.species, owner: a.owner },
+        causes: [
+          { kind: "state", entity: id, key: "orphan" },
+          { kind: "state", entity: m.id, key: "lactating" },
+        ],
+        emissions: null,
+      });
+      changes.push(setComponent(LACTATING, m.id, { ...m.l, young: m.young }));
+      break;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
