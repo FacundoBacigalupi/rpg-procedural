@@ -683,6 +683,8 @@ export interface LifeOptions {
   readonly livestockSlaughterRefs?: boolean;
   /** Opt-in (livestock-tenure-gift, con `livestockSlaughter`): el jugador puede regalar un animal de su casa a alguien de otro hogar que tiene al lado («le doy la gallina a Lin»): pasa a ser de ese hogar y de su casa. */
   readonly livestockGift?: boolean;
+  /** Opt-in (livestock-tenure-theft, con `livestockSlaughter`): el jugador puede llevarse un animal ajeno que tiene al lado («tomo la gallina»): pasa a su hogar y a su casa, y es robo al hogar dueño. */
+  readonly livestockSteal?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
   /** Opt-in (livestock-milk-cheese, con `livestockDairy` y `livestockYield`): la casa cuaja en queso la leche que le sobra de lo que toma su gente. */
@@ -2164,6 +2166,9 @@ export function createLife(
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
               : {}),
             ...(options.livestockSlaughter && options.livestockGift ? { livestockGift: true } : {}),
+            ...(options.livestockSlaughter && options.livestockSteal
+              ? { livestockSteal: true }
+              : {}),
             ...(options.livestockSlaughter && options.livestockSlaughterRefs
               ? { livestockSlaughterRefs: true }
               : {}),
