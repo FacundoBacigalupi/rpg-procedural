@@ -2,14 +2,18 @@
 // cabra») y se elige, en orden canónico, uno vivo de su hogar que esté en su mismo hex. Lo que deja
 // el cuerpo (`carcassYield`) entra a la despensa del hogar desde `CARCASS_SOURCE`, como cuando
 // muere de viejo; el animal termina. Solo los de su casa: tomar el ajeno es robo (livestock-tenure).
+// Regalarlo (livestock-tenure-gift): «le doy la gallina a Lin» elige igual el animal (la especie
+// tiene que estar nombrada) y, si sale bien, pasa a ser del hogar del otro y de su casa.
 
 import {
   type AnimalId,
+  type BuildingId,
   compareStrings,
   type Duration,
   type EventId,
   externalAccount,
   type HolderRef,
+  type HouseholdId,
   type LedgerUnit,
   ledgerUnit,
   type Tick,
@@ -17,6 +21,7 @@ import {
 import {
   ANIMAL,
   ANIMAL_HUNGER,
+  BUILDING,
   CARCASS_SOURCE,
   carcassYield,
   DRAFT_FATIGUE,
@@ -30,6 +35,7 @@ import {
   type ReadonlyWorldTruth,
   type ResolveInput,
   type StateChange,
+  setComponent,
 } from "../../sim/index.ts";
 import { type AnimalMark, animalMarksOf } from "./animal-marks.ts";
 
@@ -43,6 +49,8 @@ export interface SlaughterOptions {
    * (`animalMarksOf`, sexo); si ninguno encaja, no hay a cuál. Sin esto, solo la especie.
    */
   readonly refs?: boolean;
+  /** Opt-in (livestock-tenure-gift): «dar» un animal de la casa lo pasa al hogar de quien lo recibe. */
+  readonly gift?: boolean;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -123,15 +131,16 @@ const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 
 /**
  * Pura: el animal vivo del hogar de `me`, en su hex, cuya especie nombra `text` (sin texto, el primero
- * que haya), con la despensa adonde va y lo que deja. Sin uno así, nada.
+ * que haya; con `mustName`, solo si nombra una especie). Sin uno así, nada.
  */
-export function slaughterTargetOf(
+function animalOf(
   truth: ReadonlyWorldTruth,
   me: string,
   text: string | undefined,
   now: Tick,
   o: SlaughterOptions,
-): NonNullable<ResolveInput["slaughterTarget"]> | undefined {
+  mustName = false,
+): { id: AnimalId; def: LivestockDef; bornAt: Tick; household: string } | undefined {
   const household = truth.get(PERSON, me as never)?.household;
   const hex = truth.get(LOCATION, me as never)?.hex;
   if (household === undefined || hex === undefined) return undefined;
@@ -155,7 +164,7 @@ export function slaughterTargetOf(
       : [];
   // Nombró algo que no es una especie de la casa («el cerdo»): no hay a cuál.
   const vague = [...words].every((w) => VAGUE.has(w) || (o.refs === true && w in QUALIFIERS));
-  if (!anyNamed && !vague) return undefined;
+  if (!anyNamed && (!vague || mustName)) return undefined;
   for (const id of [...truth.ids(ANIMAL)].sort(compareStrings) as AnimalId[]) {
     const a = truth.get(ANIMAL, id);
     if (!a || a.owner !== household || truth.get(ENTITY, id)?.endedAt !== undefined) continue;
@@ -166,18 +175,75 @@ export function slaughterTargetOf(
       const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year);
       if (!wanted.every((q) => fits(q, a.sex, marks))) continue;
     }
-    const yields: { unit: LedgerUnit; grams: number }[] = carcassYield(
-      def,
-      (now - a.bornAt) / o.year,
-    ).map((y) => ({ unit: ledgerUnit(`good:${y.good}`), grams: y.grams }));
-    return {
-      animal: id,
-      holder: household as unknown as HolderRef,
-      source: externalAccount(CARCASS_SOURCE),
-      yields,
-    };
+    return { id, def, bornAt: a.bornAt, household };
   }
   return undefined;
+}
+
+/**
+ * Pura: el animal de su casa que nombra `text` (`animalOf`), con la despensa adonde va y lo que
+ * deja. Sin uno así, nada.
+ */
+export function slaughterTargetOf(
+  truth: ReadonlyWorldTruth,
+  me: string,
+  text: string | undefined,
+  now: Tick,
+  o: SlaughterOptions,
+): NonNullable<ResolveInput["slaughterTarget"]> | undefined {
+  const t = animalOf(truth, me, text, now, o);
+  if (t === undefined) return undefined;
+  const yields: { unit: LedgerUnit; grams: number }[] = carcassYield(
+    t.def,
+    (now - t.bornAt) / o.year,
+  ).map((y) => ({ unit: ledgerUnit(`good:${y.good}`), grams: y.grams }));
+  return {
+    animal: t.id,
+    holder: t.household as unknown as HolderRef,
+    source: externalAccount(CARCASS_SOURCE),
+    yields,
+  };
+}
+
+/** El animal que se regala y adónde va: el hogar de quien lo recibe y su primera casa. */
+export interface AnimalGift {
+  readonly animal: AnimalId;
+  readonly household: HouseholdId;
+  readonly home: BuildingId;
+}
+
+/**
+ * Pura (livestock-tenure-gift): el animal de su casa que nombra `text` (la especie tiene que estar
+ * dicha) para dárselo a `to`, si `to` vive, está en su hex y es de otro hogar con casa. Sin eso, nada.
+ */
+export function giftTargetOf(
+  truth: ReadonlyWorldTruth,
+  me: string,
+  to: string | undefined,
+  text: string | undefined,
+  now: Tick,
+  o: SlaughterOptions,
+): AnimalGift | undefined {
+  if (to === undefined || truth.get(ENTITY, to as never)?.endedAt !== undefined) return undefined;
+  const theirs = truth.get(PERSON, to as never)?.household;
+  const mine = truth.get(PERSON, me as never)?.household;
+  if (theirs === undefined || theirs === mine) return undefined;
+  if (truth.get(LOCATION, to as never)?.hex !== truth.get(LOCATION, me as never)?.hex) {
+    return undefined;
+  }
+  const home = ([...truth.ids(BUILDING)].sort(compareStrings) as BuildingId[]).find(
+    (b) =>
+      truth.get(BUILDING, b)?.household === theirs && truth.get(ENTITY, b)?.endedAt === undefined,
+  );
+  if (home === undefined) return undefined;
+  const t = animalOf(truth, me, text, now, o, true);
+  return t === undefined ? undefined : { animal: t.id, household: theirs, home };
+}
+
+/** Pura: el animal regalado pasa a ser del otro hogar y de su casa. */
+export function giftChanges(truth: ReadonlyWorldTruth, g: AnimalGift): StateChange[] {
+  const a = truth.get(ANIMAL, g.animal);
+  return a ? [setComponent(ANIMAL, g.animal, { ...a, owner: g.household, home: g.home })] : [];
 }
 
 /** Pura: lo que cambia al carnear `animal`: termina con `event` y se borran sus filas de vida. */

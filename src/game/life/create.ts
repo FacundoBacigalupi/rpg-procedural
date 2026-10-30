@@ -681,6 +681,8 @@ export interface LifeOptions {
   readonly livestockSlaughter?: boolean;
   /** Opt-in (livestock-slaughter-refs, con `livestockSlaughter`): «la vieja», «el cabrito», «la flaca», «el macho» eligen un animal al que se le note eso, no solo la especie. */
   readonly livestockSlaughterRefs?: boolean;
+  /** Opt-in (livestock-tenure-gift, con `livestockSlaughter`): el jugador puede regalar un animal de su casa a alguien de otro hogar que tiene al lado («le doy la gallina a Lin»): pasa a ser de ese hogar y de su casa. */
+  readonly livestockGift?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
   /** Opt-in (livestock-milk-cheese, con `livestockDairy` y `livestockYield`): la casa cuaja en queso la leche que le sobra de lo que toma su gente. */
@@ -2161,6 +2163,7 @@ export function createLife(
             ...(options.livestockSlaughter
               ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
               : {}),
+            ...(options.livestockSlaughter && options.livestockGift ? { livestockGift: true } : {}),
             ...(options.livestockSlaughter && options.livestockSlaughterRefs
               ? { livestockSlaughterRefs: true }
               : {}),

@@ -148,6 +148,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
     | undefined;
   /** Opt-in de claims de ítems: `give` entrega un objeto con identidad (solo la posesión física). */
   readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
+  /** Opt-in (livestock-tenure-gift): `give` entrega un animal de la casa que nombró y tiene al lado. */
+  readonly giveAnimal?: { readonly animal: string } | undefined;
   /**
    * `use` con `well.draw_water` (use-well): el pozo, lo que le queda hoy (litros), su condición y
    * el recipiente que el actor lleva con lo que le cabe todavía. Sin esto, `use` no hace nada (el
@@ -535,6 +537,8 @@ export type VerbEffect =
       readonly grams: number;
       /** Opt-in (`giveItem`): el ítem con identidad entregado; la donación normativa no va acá. */
       readonly item?: ItemId;
+      /** Opt-in (`giveAnimal`): el animal entregado. */
+      readonly animal?: string;
       readonly delivered?: boolean;
     }
   | {
@@ -826,9 +830,12 @@ export function resolve(input: ResolveInput): ActionResolution {
   const { def, node, actor } = input;
   if (input.causes.length === 0) throw new RangeError(`${def.id}: un paso sin causas`);
 
-  // Un ítem con identidad en la mano cuenta como bien aunque no tenga cuenta en el ledger.
+  // Un ítem con identidad en la mano (o el animal de la casa que se regala) cuenta como bien
+  // aunque no tenga cuenta en el ledger.
   const has = (holder: EntityRef, what: "goods" | "money") =>
-    (what === "goods" && input.giveItem?.available === true && holder === actor.id) ||
+    (what === "goods" &&
+      (input.giveItem?.available === true || input.giveAnimal !== undefined) &&
+      holder === actor.id) ||
     input.ledger
       .holdings(holderAccount(holder as HolderRef))
       .some((h) => isMoney(h.unit) === (what === "money"));
@@ -2599,6 +2606,26 @@ const give: Resolver = (c) => {
       };
     }
     return { effect: effect((c.roll.margin as number) >= SUCCESS_MARGIN), seconds: c.nominal };
+  }
+  if (c.input.giveAnimal) {
+    const a = c.input.giveAnimal.animal;
+    const effect = (delivered: boolean): VerbEffect => ({
+      kind: "give",
+      to,
+      good: null,
+      grams: 0,
+      animal: a,
+      delivered,
+    });
+    if (c.roll.unmet) return { effect: effect(false), seconds: c.nominal };
+    if (to === null || c.input.counterpartyGone) {
+      return {
+        effect: effect(false),
+        seconds: Math.min(c.nominal, 60),
+        override: { outcome: "failure", failure: "no_means", believed: "failure" },
+      };
+    }
+    return { effect: effect((c.roll.margin as number) >= PARTIAL_MARGIN), seconds: c.nominal };
   }
   const none = (): VerbResult => ({
     effect: { kind: "give", to, good: null, grams: 0 },

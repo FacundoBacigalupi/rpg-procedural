@@ -452,6 +452,8 @@ export interface LifeWorld {
   readonly livestockSlaughter?: readonly LivestockDef[];
   /** Opt-in (livestock-slaughter-refs, con `livestockSlaughter`): las palabras que dicen algo del animal eligen uno en particular. */
   readonly livestockSlaughterRefs?: boolean;
+  /** Opt-in (livestock-tenure-gift, con `livestockSlaughter`): dar un animal de la casa lo pasa al hogar del otro. */
+  readonly livestockGift?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
   readonly livestockTan?: readonly TanRule[];
   /** Opt-in (livestock-milk-cheese): cómo cuaja la casa la leche que le sobra. */
@@ -1132,6 +1134,7 @@ export function lifeWorld(
                   species: parts.livestockSlaughter,
                   year: parts.clock.year,
                   ...(parts.livestockSlaughterRefs === true ? { refs: true } : {}),
+                  ...(parts.livestockGift === true ? { gift: true } : {}),
                 },
               }
             : {}),

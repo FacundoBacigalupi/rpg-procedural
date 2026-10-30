@@ -28,6 +28,7 @@ import {
   type ActionPlan,
   type Activity,
   AMPUTATIONS,
+  ANIMAL,
   type ArgValue,
   addToField,
   adulterate,
@@ -213,6 +214,8 @@ import { harvestSeasonOf } from "./map.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
 import {
+  giftChanges,
+  giftTargetOf,
   SLAUGHTER_READS,
   SLAUGHTER_WRITES,
   type SlaughterOptions,
@@ -664,6 +667,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       SOIL.name,
       ...(o.draft ? draftReads(o.draft) : []),
       ...(o.slaughter ? SLAUGHTER_READS : []),
+      ...(o.slaughter?.gift === true ? [BUILDING.name] : []),
       ENTITY.name,
       LOCATION.name,
       BUILDING.name,
@@ -707,6 +711,8 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
+      // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
+      ...(o.slaughter?.gift === true ? [ANIMAL.name] : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -1558,6 +1564,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
             (truth.get(LOCATION, giveTo)?.hex ?? -1) === e.hex &&
             itemGiveFor(truth, wantedItem, me, giveTo).accepted === true,
         };
+  const giveAnimal =
+    o.slaughter?.gift === true && giveItem === undefined && node.verb === "give"
+      ? giftTargetOf(truth, me, giveTo, textArg(node, "what"), ctx.now, o.slaughter)
+      : undefined;
   const dropItem =
     wantedItem === undefined || node.verb !== "drop"
       ? undefined
@@ -1633,6 +1643,7 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(o.legacyFixedSpeech === true ? { fixedSpeech: true } : {}),
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
+    ...(giveAnimal ? { giveAnimal: { animal: giveAnimal.animal } } : {}),
     ...(dropItem ? { dropItem } : {}),
     ...(instrument ? { instrument } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
@@ -1782,6 +1793,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
         setComponent(HEARTH, eff.hearth as EntityRef, { ...row, intensity, at: ctx.now }),
       );
     }
+  } else if (giveAnimal && eff.kind === "give" && eff.delivered === true) {
+    changes.push(...giftChanges(truth, giveAnimal));
   } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
