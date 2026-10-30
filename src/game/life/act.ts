@@ -221,6 +221,7 @@ import {
   type SlaughterOptions,
   slaughterChanges,
   slaughterTargetOf,
+  theftTargetOf,
 } from "./slaughter.ts";
 import { IRON_UNIT, SMITH, smithLevelAfterJob, smithOf } from "./smith.ts";
 import { cropStarts, fieldCropFactor, SOWN } from "./sowing.ts";
@@ -667,7 +668,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       SOIL.name,
       ...(o.draft ? draftReads(o.draft) : []),
       ...(o.slaughter ? SLAUGHTER_READS : []),
-      ...(o.slaughter?.gift === true ? [BUILDING.name] : []),
+      ...(o.slaughter?.gift === true || o.slaughter?.steal === true ? [BUILDING.name] : []),
       ENTITY.name,
       LOCATION.name,
       BUILDING.name,
@@ -712,7 +713,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
       // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
-      ...(o.slaughter?.gift === true ? [ANIMAL.name] : []),
+      ...(o.slaughter?.gift === true || o.slaughter?.steal === true ? [ANIMAL.name] : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -1602,6 +1603,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
             ? { loose: true }
             : {}),
         };
+  const takeAnimal =
+    o.slaughter?.steal === true && takeItem === undefined && node.verb === "take"
+      ? theftTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
+      : undefined;
   const input: ResolveInput = {
     def,
     node,
@@ -1644,6 +1649,9 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(takeItem ? { takeItem } : {}),
     ...(giveItem ? { giveItem } : {}),
     ...(giveAnimal ? { giveAnimal: { animal: giveAnimal.animal } } : {}),
+    ...(takeAnimal
+      ? { takeAnimal: { animal: takeAnimal.animal, from: takeAnimal.victim as HolderRef } }
+      : {}),
     ...(dropItem ? { dropItem } : {}),
     ...(instrument ? { instrument } : {}),
     ...(o.legacyNoDeadCounterpartyGuard !== true &&
@@ -1795,6 +1803,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     }
   } else if (giveAnimal && eff.kind === "give" && eff.delivered === true) {
     changes.push(...giftChanges(truth, giveAnimal));
+  } else if (takeAnimal && eff.kind === "take" && eff.claimed === true) {
+    changes.push(...giftChanges(truth, takeAnimal));
   } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {

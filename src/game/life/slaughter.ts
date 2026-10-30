@@ -3,9 +3,12 @@
 // el cuerpo (`carcassYield`) entra a la despensa del hogar desde `CARCASS_SOURCE`, como cuando
 // muere de viejo; el animal termina. Solo los de su casa: tomar el ajeno es robo (livestock-tenure).
 // Regalarlo (livestock-tenure-gift): «le doy la gallina a Lin» elige igual el animal (la especie
-// tiene que estar nombrada) y, si sale bien, pasa a ser del hogar del otro y de su casa.
+// tiene que estar nombrada) y, si sale bien, pasa a ser del hogar del otro y de su casa. Robarlo
+// (livestock-tenure-theft): «tomo la gallina» con una ajena al lado se la lleva a su casa, y
+// `deeds.ts` lo cuenta como robo al hogar dueño.
 
 import {
+  type AgentId,
   type AnimalId,
   type BuildingId,
   compareStrings,
@@ -51,6 +54,8 @@ export interface SlaughterOptions {
   readonly refs?: boolean;
   /** Opt-in (livestock-tenure-gift): «dar» un animal de la casa lo pasa al hogar de quien lo recibe. */
   readonly gift?: boolean;
+  /** Opt-in (livestock-tenure-theft): «tomar» el animal ajeno que tiene al lado se lo lleva a su casa. */
+  readonly steal?: boolean;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -140,6 +145,7 @@ function animalOf(
   now: Tick,
   o: SlaughterOptions,
   mustName = false,
+  others = false,
 ): { id: AnimalId; def: LivestockDef; bornAt: Tick; household: string } | undefined {
   const household = truth.get(PERSON, me as never)?.household;
   const hex = truth.get(LOCATION, me as never)?.hex;
@@ -167,7 +173,8 @@ function animalOf(
   if (!anyNamed && (!vague || mustName)) return undefined;
   for (const id of [...truth.ids(ANIMAL)].sort(compareStrings) as AnimalId[]) {
     const a = truth.get(ANIMAL, id);
-    if (!a || a.owner !== household || truth.get(ENTITY, id)?.endedAt !== undefined) continue;
+    if (!a || (a.owner === household) === others) continue;
+    if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     if (truth.get(LOCATION, id)?.hex !== hex) continue;
     const def = byId.get(a.species);
     if (def === undefined || (anyNamed && !named(def))) continue;
@@ -175,7 +182,7 @@ function animalOf(
       const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year);
       if (!wanted.every((q) => fits(q, a.sex, marks))) continue;
     }
-    return { id, def, bornAt: a.bornAt, household };
+    return { id, def, bornAt: a.bornAt, household: a.owner };
   }
   return undefined;
 }
@@ -231,13 +238,47 @@ export function giftTargetOf(
   if (truth.get(LOCATION, to as never)?.hex !== truth.get(LOCATION, me as never)?.hex) {
     return undefined;
   }
-  const home = ([...truth.ids(BUILDING)].sort(compareStrings) as BuildingId[]).find(
-    (b) =>
-      truth.get(BUILDING, b)?.household === theirs && truth.get(ENTITY, b)?.endedAt === undefined,
-  );
+  const home = homeOf(truth, theirs);
   if (home === undefined) return undefined;
   const t = animalOf(truth, me, text, now, o, true);
   return t === undefined ? undefined : { animal: t.id, household: theirs, home };
+}
+
+/** La primera casa en pie del hogar. */
+function homeOf(truth: ReadonlyWorldTruth, h: HouseholdId): BuildingId | undefined {
+  return ([...truth.ids(BUILDING)].sort(compareStrings) as BuildingId[]).find(
+    (b) => truth.get(BUILDING, b)?.household === h && truth.get(ENTITY, b)?.endedAt === undefined,
+  );
+}
+
+/** El animal ajeno que se roba: adónde va (su hogar y su casa) y a quién se le roba. */
+export interface AnimalTheft extends AnimalGift {
+  /** El primero vivo (por id) del hogar dueño: la víctima del robo. */
+  readonly victim: AgentId;
+}
+
+/**
+ * Pura (livestock-tenure-theft): el animal vivo de otro hogar, en su hex, cuya especie nombra
+ * `text`, si el hogar dueño tiene a alguien vivo y el suyo, casa. Sin eso, nada.
+ */
+export function theftTargetOf(
+  truth: ReadonlyWorldTruth,
+  me: string,
+  text: string | undefined,
+  now: Tick,
+  o: SlaughterOptions,
+): AnimalTheft | undefined {
+  const mine = truth.get(PERSON, me as never)?.household;
+  const home = mine === undefined ? undefined : homeOf(truth, mine);
+  if (mine === undefined || home === undefined) return undefined;
+  const t = animalOf(truth, me, text, now, o, true, true);
+  if (t === undefined) return undefined;
+  const victim = ([...truth.ids(PERSON)].sort(compareStrings) as AgentId[]).find(
+    (p) =>
+      truth.get(PERSON, p)?.household === t.household &&
+      truth.get(ENTITY, p)?.endedAt === undefined,
+  );
+  return victim === undefined ? undefined : { animal: t.id, household: mine, home, victim };
 }
 
 /** Pura: el animal regalado pasa a ser del otro hogar y de su casa. */

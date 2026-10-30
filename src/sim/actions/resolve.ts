@@ -150,6 +150,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly giveItem?: { readonly item: ItemId; readonly available: boolean } | undefined;
   /** Opt-in (livestock-tenure-gift): `give` entrega un animal de la casa que nombró y tiene al lado. */
   readonly giveAnimal?: { readonly animal: string } | undefined;
+  /** Opt-in (livestock-tenure-theft): `take` se lleva el animal ajeno que nombró y tiene al lado. */
+  readonly takeAnimal?: { readonly animal: string; readonly from: HolderRef } | undefined;
   /**
    * `use` con `well.draw_water` (use-well): el pozo, lo que le queda hoy (litros), su condición y
    * el recipiente que el actor lleva con lo que le cabe todavía. Sin esto, `use` no hace nada (el
@@ -550,6 +552,8 @@ export type VerbEffect =
       /** Opt-in (`takeItem`): el ítem con identidad que fue por, y si su intento alcanzó para disputarlo. */
       readonly item?: ItemId;
       readonly claimed?: boolean;
+      /** Opt-in (`takeAnimal`): el animal ajeno que fue por; `claimed` dice si se lo llevó. */
+      readonly animal?: string;
     }
   | {
       readonly kind: "eat";
@@ -1812,6 +1816,24 @@ function bargain(
 
 const take: Resolver = (c) => {
   if (c.input.takeItem) return takeItem(c, c.input.takeItem);
+  if (c.input.takeAnimal) {
+    const t = c.input.takeAnimal;
+    const effect = (claimed: boolean): VerbEffect => ({
+      kind: "take",
+      from: t.from,
+      wanted: null,
+      got: [],
+      animal: t.animal,
+      claimed,
+    });
+    if (c.roll.unmet) return { effect: effect(false), seconds: c.nominal };
+    const m = c.roll.margin as number;
+    return {
+      effect: effect(m >= PARTIAL_MARGIN),
+      seconds: c.nominal,
+      loud: c.roll.failure === "clumsy" && m < PARTIAL_MARGIN ? 2.5 : 1,
+    };
+  }
   // Una cosa con identidad sin el servicio de ítems (`itemClaims` apagado): no se elige otro bien.
   if (argEntity(c, "what")?.startsWith("item:")) {
     const from = (argEntity(c, "from") as HolderRef | null) ?? c.input.place;

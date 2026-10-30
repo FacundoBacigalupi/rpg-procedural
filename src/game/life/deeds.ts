@@ -110,7 +110,13 @@ export function offenseOf(e: Event): {
   const [first, second] = e.actors as AgentId[];
   if (!first) return null;
   const data = e.data as {
-    effect?: { kind?: string; from?: string; got?: readonly unknown[] };
+    effect?: {
+      kind?: string;
+      from?: string;
+      got?: readonly unknown[];
+      animal?: string;
+      claimed?: boolean;
+    };
     noticedBy?: readonly string[];
     creditors?: readonly string[];
   } | null;
@@ -156,7 +162,13 @@ export function offenseOf(e: Event): {
       };
   }
   const eff = data?.effect;
-  if (e.kind === "action.take" && eff?.kind === "take" && (eff.got?.length ?? 0) > 0) {
+  // El animal ajeno que se llevó (livestock-tenure-theft) es robo aunque no pase por el ledger.
+  const tookAnimal = eff?.animal !== undefined && eff?.claimed === true;
+  if (
+    e.kind === "action.take" &&
+    eff?.kind === "take" &&
+    ((eff.got?.length ?? 0) > 0 || tookAnimal)
+  ) {
     const from: unknown = eff.from;
     // Agarrar lo que lleva otra persona encima es robarle; lo del suelo o del lugar no (ahí `from`
     // es el `PlaceRef` del lugar, un objeto, no un id).
