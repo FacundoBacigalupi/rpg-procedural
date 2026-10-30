@@ -700,6 +700,8 @@ export interface LifeOptions {
   readonly livestockHeir?: boolean;
   /** Opt-in (livestock-milk-culture-terrain, con `villageLivestock`): qué casas tienen cabras y cuáles bueyes sale de cuánta tierra quebrada hay alrededor (`LivestockDef.keeps`), en vez de tenerlos todas. */
   readonly livestockTerrain?: boolean;
+  /** Opt-in (livestock-milk-culture-species, con `villageLivestock`): algunas casas tienen ovejas, que dan lana una vez al año (con `livestockYield`), carne y piel. */
+  readonly livestockSheep?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
   readonly livestockPasture?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
@@ -1554,6 +1556,7 @@ export function ledgerConfigOf(
   livestockDairy = false,
   livestockTan = false,
   livestockCheese = false,
+  livestockSheep = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1565,9 +1568,13 @@ export function ledgerConfigOf(
     ),
   ];
   // Lo que deja el ganado muerto (livestock-carcass): la carne ya es comida; la piel, no.
-  const carcass = livestockCarcass ? carcassUnits(livestockOf(content, livestockDairy)) : [];
+  const carcass = livestockCarcass
+    ? carcassUnits(livestockOf(content, livestockDairy, livestockSheep))
+    : [];
   // Lo que pone el ganado (livestock-yield): huevos, ya comida.
-  const laid = livestockYield ? yieldUnits(livestockOf(content, livestockDairy)) : [];
+  const laid = livestockYield
+    ? yieldUnits(livestockOf(content, livestockDairy, livestockSheep))
+    : [];
   // Lo que entra y sale de la tina (livestock-hide-tan): la piel cruda y el cuero.
   const tan = livestockTan ? tanRulesOf(content) : [];
   const tanUnits = [...new Set(tan.flatMap((r) => [r.from, r.into]))];
@@ -1788,6 +1795,7 @@ export function createLife(
         options.livestockDairy === true &&
         options.livestockYield === true &&
         options.livestockCheese === true,
+      options.villageLivestock === true && options.livestockSheep === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -1828,7 +1836,11 @@ export function createLife(
     seedLivestock(truth, ids, log, {
       seed,
       settlement,
-      species: livestockOf(content, options.livestockDairy === true),
+      species: livestockOf(
+        content,
+        options.livestockDairy === true,
+        options.livestockSheep === true,
+      ),
       members,
       yearTicks: clock.year,
       ...(options.legacyLivestockFoundingAge ? {} : { now: pop.now }),
@@ -2159,7 +2171,11 @@ export function createLife(
       ...optInParts(options, site.terrain),
       ...(options.villageLivestock && options.livestockLife
         ? {
-            livestockLife: livestockOf(content, options.livestockDairy === true),
+            livestockLife: livestockOf(
+              content,
+              options.livestockDairy === true,
+              options.livestockSheep === true,
+            ),
             ...(options.livestockDairy ? { livestockDairy: true } : {}),
             ...(options.livestockDairy && options.livestockSuckle ? { livestockSuckle: true } : {}),
             ...(options.livestockDairy && options.livestockSuckle && options.livestockOrphan
@@ -2169,7 +2185,13 @@ export function createLife(
               ? { livestockFoster: true }
               : {}),
             ...(options.livestockSlaughter
-              ? { livestockSlaughter: livestockOf(content, options.livestockDairy === true) }
+              ? {
+                  livestockSlaughter: livestockOf(
+                    content,
+                    options.livestockDairy === true,
+                    options.livestockSheep === true,
+                  ),
+                }
               : {}),
             ...(options.livestockSlaughter && options.livestockGift ? { livestockGift: true } : {}),
             ...(options.livestockSlaughter && options.livestockSteal
@@ -2186,7 +2208,11 @@ export function createLife(
         : {}),
       ...(options.villageLivestock && options.livestockDraft
         ? {
-            livestockDraft: livestockOf(content, options.livestockDairy === true),
+            livestockDraft: livestockOf(
+              content,
+              options.livestockDairy === true,
+              options.livestockSheep === true,
+            ),
             ...(options.livestockFeed && options.livestockDraftCost
               ? { livestockDraftCost: true }
               : {}),
@@ -2203,7 +2229,11 @@ export function createLife(
         : {}),
       ...(options.villageLivestock && options.livestockYield
         ? {
-            livestockYield: livestockOf(content, options.livestockDairy === true),
+            livestockYield: livestockOf(
+              content,
+              options.livestockDairy === true,
+              options.livestockSheep === true,
+            ),
             ...(options.livestockSeason ? { livestockSeason: true } : {}),
             ...(options.livestockMilkCurve ? { livestockMilkCurve: true } : {}),
             ...(options.livestockMilkWork ? { livestockMilkWork: true } : {}),
@@ -2215,7 +2245,11 @@ export function createLife(
         : {}),
       ...(options.villageLivestock && options.livestockPredators
         ? {
-            livestockPredators: livestockOf(content, options.livestockDairy === true),
+            livestockPredators: livestockOf(
+              content,
+              options.livestockDairy === true,
+              options.livestockSheep === true,
+            ),
             ...(options.livestockGuard ? { livestockGuard: true } : {}),
             ...(options.livestockPen ? { livestockPen: true } : {}),
           }
@@ -2224,7 +2258,11 @@ export function createLife(
       ...(options.villageLivestock && options.livestockFeed
         ? {
             livestockFeed: {
-              species: livestockOf(content, options.livestockDairy === true),
+              species: livestockOf(
+                content,
+                options.livestockDairy === true,
+                options.livestockSheep === true,
+              ),
               foods: content.all(FOODS).map((f) => ({ id: f.id, category: f.category })),
             },
             ...(options.livestockPasture ? { livestockPasture: true } : {}),
@@ -2268,6 +2306,9 @@ export function createLife(
 }
 
 /** Las especies del ganado de la aldea: las de siempre y, con `dairy`, las lecheras (livestock-yield-milk). */
-function livestockOf(content: Content, dairy: boolean): LivestockDef[] {
-  return herdSpecies(content.all(LIVESTOCK), new Set(dairy ? ["dairy"] : []));
+function livestockOf(content: Content, dairy: boolean, sheep = false): LivestockDef[] {
+  return herdSpecies(
+    content.all(LIVESTOCK),
+    new Set([...(dairy ? ["dairy"] : []), ...(sheep ? ["sheep"] : [])]),
+  );
 }

@@ -98,3 +98,36 @@ describe("qué casas tienen cabras y bueyes según la tierra (livestock-milk-cul
     expect(FULL_PROFILE).toMatchObject({ livestockTerrain: true });
   }, 300_000);
 });
+
+describe("ovejas que dan lana (livestock-milk-culture-species)", () => {
+  it("encendido: hay ovejas y dan lana a la casa; apagado, ninguna; determinista", () => {
+    const opts = {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockYield: true,
+    } as const;
+    const sheep = (l: ReturnType<typeof Life.create>) =>
+      [...l.world.truth.ids(ANIMAL)].filter(
+        (id) => l.world.truth.get(ANIMAL, id)?.species === "sheep",
+      );
+    const off = Life.create(7, content, opts);
+    expect(sheep(off)).toEqual([]);
+    const on = Life.create(7, content, { ...opts, livestockSheep: true });
+    expect(sheep(on).length).toBeGreaterThan(0);
+    on.advanceTo(on.now + 400 * 86_400);
+    const wool = on.world.log
+      .all()
+      .filter(
+        (e) => e.kind === "living.animal_yield" && (e.data as { good?: string }).good === "wool",
+      );
+    expect(wool.length).toBeGreaterThan(0);
+    const w = on.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(Life.create(7, content, { ...opts, livestockSheep: true }).hash().total).toBe(
+      Life.create(7, content, { ...opts, livestockSheep: true }).hash().total,
+    );
+    expect(FULL_PROFILE).toMatchObject({ livestockSheep: true });
+  }, 600_000);
+});
