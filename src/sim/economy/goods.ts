@@ -28,6 +28,18 @@ export const GoodDef = z
         minGrams: z.number().int().positive(),
       })
       .optional(),
+    /**
+     * Si una casa lo cuaja (livestock-milk-cheese): en qué bien se vuelve, qué parte de los gramos
+     * queda, desde cuántos gramos de sobra y cuánto guarda la casa para tomar por persona.
+     */
+    curd: z
+      .strictObject({
+        into: contentId,
+        yield: z.number().gt(0).max(1),
+        minGrams: z.number().int().positive(),
+        keepGramsPerPerson: z.number().int().nonnegative(),
+      })
+      .optional(),
   })
   .superRefine((g, ctx) => {
     if (g.form === "coin" && (g.priceCopperPerKg !== undefined || g.halfLifeDays !== undefined)) {

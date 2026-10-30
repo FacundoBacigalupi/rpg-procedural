@@ -249,7 +249,8 @@
     "name": "leche",
     "form": "good",
     "priceCopperPerKg": 6,
-    "halfLifeDays": 1.5
+    "halfLifeDays": 1.5,
+    "curd": { "into": "cheese", "yield": 0.12, "minGrams": 1000, "keepGramsPerPerson": 300 }
   },
   {
     "id": "cheese",
