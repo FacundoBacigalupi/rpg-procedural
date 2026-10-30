@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
   ANIMAL,
+  BODY_STATE,
   checkInvariants,
   herdSpecies,
   LACTATING,
@@ -15,6 +16,8 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
+import { ableToMilk } from "./milkers.ts";
+import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { FULL_PROFILE } from "./profile.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
@@ -357,5 +360,62 @@ describe("el ordeñe es trabajo del hogar (livestock-milk-work)", () => {
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(run(true).hash().total).toBe(on.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockMilkWork: true });
+  }, 600_000);
+});
+
+describe("no ordeña el que no está o no puede (livestock-milk-hours)", () => {
+  it("encendido: con todo el hogar de viaje la leche se pierde; apagado, se ordeña igual; determinista", () => {
+    const run = (hours: boolean, away?: string) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockDairy: true,
+        livestockSuckle: true,
+        livestockMilkWork: true,
+        livestockMilkHours: hours,
+      });
+      const w = l.world;
+      if (away !== undefined) {
+        for (const p of w.truth.ids(PERSON).sort()) {
+          if (w.truth.get(PERSON, p)?.household !== away) continue;
+          w.truth.set(NPC_JOURNEY, p, { place: "lejos", since: l.now, decision: "test" });
+        }
+      }
+      l.advanceTo(l.now + 150 * DAY);
+      return l;
+    };
+    const milkOf = (l: Life) =>
+      l.world.log
+        .all()
+        .filter(
+          (e) => e.kind === "living.animal_yield" && (e.data as { good: string }).good === "milk",
+        )
+        .map((e) => e.data as { owner: string; grams: number; milkedBy?: string[] });
+    const base = milkOf(run(true));
+    const owner = base.find((e) => (e.milkedBy?.length ?? 0) > 0)?.owner;
+    if (owner === undefined) throw new Error("sin ordeñe");
+    const on = run(true, owner);
+    const theirs = milkOf(on).filter((e) => e.owner === owner);
+    expect(theirs.length).toBeGreaterThan(0);
+    for (const e of theirs) {
+      expect(e.grams).toBe(0);
+      expect(e.milkedBy).toBeUndefined();
+    }
+    const off = milkOf(run(false, owner)).filter((e) => e.owner === owner);
+    expect(off.some((e) => (e.milkedBy?.length ?? 0) > 0)).toBe(true);
+    expect(on.world.ledger.audit()).toEqual([]);
+    expect(run(true, owner).hash().total).toBe(on.hash().total);
+    // El cuerpo que no da (inconsciente) tampoco ordeña.
+    const w = on.world;
+    const can = ableToMilk(w.plans);
+    const someone = w.truth
+      .ids(PERSON)
+      .sort()
+      .find((p) => w.truth.get(BODY_STATE, p) && !w.truth.get(NPC_JOURNEY, p));
+    const body = someone === undefined ? undefined : w.truth.get(BODY_STATE, someone);
+    if (someone === undefined || !body) throw new Error("sin cuerpo");
+    expect(can(w.truth, someone as never)).toBe(true);
+    w.truth.set(BODY_STATE, someone, { ...body, consciousness: "unconscious" });
+    expect(can(w.truth, someone as never)).toBe(false);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkHours: true });
   }, 600_000);
 });

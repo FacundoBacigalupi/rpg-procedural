@@ -1060,7 +1060,16 @@ export interface LivestockYieldOptions {
    * la casa solo si alguien del hogar vivo y de `minAgeYears` o más tiene tiempo en sus
    * `MILKING_HOURS` de la mañana; si no, se pierde y cuenta para secarla.
    */
-  readonly milking?: { readonly minAgeYears: number };
+  readonly milking?: {
+    readonly minAgeYears: number;
+    /**
+     * Opt-in (livestock-milk-hours): si la persona puede ordeñar hoy (en casa, el cuerpo le da);
+     * sin esto, cuenta todo el que tiene la edad.
+     */
+    readonly can?: (truth: ReadonlyWorldTruth, id: AgentId) => boolean;
+    /** Las tablas que lee `can`. */
+    readonly reads?: readonly string[];
+  };
 }
 
 /** Horas de la mañana que cada uno del hogar puede dar al ordeñe. */
@@ -1105,7 +1114,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
       ENTITY.name,
       ...(o.hunger === true ? [ANIMAL_HUNGER.name] : []),
       ...(o.lactation === true ? [LACTATING.name] : []),
-      ...(o.milking ? [PERSON.name] : []),
+      ...(o.milking ? [PERSON.name, ...(o.milking.reads ?? [])] : []),
     ],
     writes: o.milking && o.lactation === true ? [LACTATING.name] : [],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
@@ -1120,6 +1129,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
           const r = ctx.truth.get(PERSON, p);
           if (!r || ctx.truth.get(ENTITY, p)?.endedAt !== undefined) continue;
           if ((ctx.now - r.born) / o.year < o.milking.minAgeYears) continue;
+          if (o.milking.can && !o.milking.can(ctx.truth, p)) continue;
           milkers.set(r.household, [...(milkers.get(r.household) ?? []), p]);
         }
         for (const [h, ps] of milkers) minutes.set(h, ps.length * MILKING_HOURS * 60);
