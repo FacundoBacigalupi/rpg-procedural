@@ -658,7 +658,7 @@ export function playerView(
       ...animalsInSight(w).map((a) => ({
         ref: a.ref,
         shape: a.species,
-        size: a.species === "ox" ? ("large" as const) : ("medium" as const),
+        size: a.species === "ox" || a.species === "cow" ? ("large" as const) : ("medium" as const),
         ...(a.tired === true ? { state: "tired" as const } : {}),
         ...(a.marks !== undefined ? { marks: a.marks } : {}),
       })),

@@ -131,3 +131,43 @@ describe("ovejas que dan lana (livestock-milk-culture-species)", () => {
     expect(FULL_PROFILE).toMatchObject({ livestockSheep: true });
   }, 600_000);
 });
+
+describe("la vaca lechera (livestock-milk-culture-cow)", () => {
+  it("encendido: hay vacas grandes que dan leche; sin la lechería, ninguna; determinista", () => {
+    const opts = {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockYield: true,
+      livestockDairy: true,
+    } as const;
+    const cows = (l: ReturnType<typeof Life.create>) =>
+      [...l.world.truth.ids(ANIMAL)].filter(
+        (id) => l.world.truth.get(ANIMAL, id)?.species === "cow",
+      );
+    expect(cows(Life.create(7, content, opts))).toEqual([]);
+    expect(
+      cows(Life.create(7, content, { ...opts, livestockDairy: false, livestockCow: true })),
+    ).toEqual([]);
+    const on = Life.create(7, content, { ...opts, livestockCow: true });
+    const herd = cows(on);
+    expect(herd.length).toBeGreaterThan(0);
+    on.advanceTo(on.now + 400 * 86_400);
+    const milk = on.world.log
+      .all()
+      .filter(
+        (e) =>
+          e.kind === "living.animal_yield" &&
+          (e.data as { good?: string }).good === "milk" &&
+          ((e.data as { from?: string[] }).from ?? []).some((a) => herd.includes(a as never)),
+      );
+    expect(milk.length).toBeGreaterThan(0);
+    const w = on.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(Life.create(7, content, { ...opts, livestockCow: true }).hash().total).toBe(
+      Life.create(7, content, { ...opts, livestockCow: true }).hash().total,
+    );
+    expect(FULL_PROFILE).toMatchObject({ livestockCow: true });
+  }, 600_000);
+});

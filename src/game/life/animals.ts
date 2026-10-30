@@ -161,6 +161,7 @@ export const ANIMAL_WORDS: Readonly<Record<string, readonly string[]>> = {
   ox: ["el buey", "buey", "bueyes"],
   goat: ["la cabra", "cabra", "cabras", "chivo"],
   sheep: ["la oveja", "oveja", "ovejas", "carnero", "cordero"],
+  cow: ["la vaca", "vaca", "vacas", "toro", "ternero"],
 };
 
 /** Un animal que el personaje ve ahora (para nombrarlo y mirarlo). */

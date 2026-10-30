@@ -138,7 +138,7 @@ export function narratorSystem(style: StyleSettings): string {
     "- `things` are loose objects in sight (shape, material, size as keys). Name them plainly in",
     "  Spanish; one with `looked: true` is what the character looked at closely this turn. A",
     "  `state` (worn, poor) is how run-down it looks; a well or granary is fixed, not on the ground.",
-    "  An animal (hen, dog, ox, goat, sheep) is in the yard, not on the ground; `tired` means it looks worn",
+    "  An animal (hen, dog, ox, goat, sheep, cow) is in the yard, not on the ground; `tired` means it looks worn",
     "  out (head low, heavy breathing): say only that, not why. Its `marks` are what shows up close:",
     "  `young` (a calf, chick or kid), `old`, `thin`, `starving` (skin and bones), `nursing`.",
     "  A `vat` is the household's tanning vat in the yard: `soaking` (hides still soaking),",

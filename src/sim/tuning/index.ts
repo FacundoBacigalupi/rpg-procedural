@@ -113,6 +113,7 @@ export const ScenarioLife = z.strictObject({
   livestockHeir: z.boolean().optional(),
   livestockTerrain: z.boolean().optional(),
   livestockSheep: z.boolean().optional(),
+  livestockCow: z.boolean().optional(),
   livestockTan: z.boolean().optional(),
   livestockCheese: z.boolean().optional(),
   livestockPredators: z.boolean().optional(),
