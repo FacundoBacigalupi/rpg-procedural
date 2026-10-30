@@ -177,6 +177,7 @@ import type { ConverseForm } from "./converse.ts";
 import type { ViewCues } from "./cue-local.ts";
 import { ecologyHexes, GAME_UNIT, HUNT_SOURCE } from "./ecology.ts";
 import { BURNED_SINK, seedHearths } from "./hearth.ts";
+import { roughShareOf } from "./herd-land.ts";
 import { checkInventory, INVENTORY_BELIEF } from "./inventory-belief.ts";
 import { larderNeeded } from "./larder.ts";
 import type { UsuryOptions } from "./loans.ts";
@@ -697,6 +698,8 @@ export interface LifeOptions {
   readonly livestockPen?: boolean;
   /** Opt-in (livestock-tenure-heir, con `villageLivestock`): cuando muere el último vivo de un hogar, sus animales pasan al hogar del pariente vivo más cercano (cónyuge, hijos, padres, hermanos) y a su casa. */
   readonly livestockHeir?: boolean;
+  /** Opt-in (livestock-milk-culture-terrain, con `villageLivestock`): qué casas tienen cabras y cuáles bueyes sale de cuánta tierra quebrada hay alrededor (`LivestockDef.keeps`), en vez de tenerlos todas. */
+  readonly livestockTerrain?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
   readonly livestockPasture?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
@@ -1830,6 +1833,7 @@ export function createLife(
       yearTicks: clock.year,
       ...(options.legacyLivestockFoundingAge ? {} : { now: pop.now }),
       ...(options.legacyLivestockHerdAges ? { legacyHerdAges: true } : {}),
+      ...(options.livestockTerrain ? { roughShare: roughShareOf(site) } : {}),
     });
   }
   const spaces = liveSettlementSpaces(
