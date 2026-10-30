@@ -44,6 +44,7 @@ import {
   LOCATION,
   type LocalMap,
   livestockFeedProcess,
+  livestockInheritProcess,
   livestockLifeProcess,
   livestockPredationProcess,
   livestockYieldProcess,
@@ -468,6 +469,8 @@ export interface LifeWorld {
   readonly livestockMilkHours?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
   readonly livestockPen?: boolean;
+  /** Opt-in (livestock-tenure-heir): los animales del hogar que se quedó sin nadie pasan al pariente. */
+  readonly livestockHeir?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el ganado pasta y la casa le da el resto. */
   readonly livestockPasture?: boolean;
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
@@ -2134,6 +2137,7 @@ export function lifeWorld(
         ...(parts.livestockDraft !== undefined && parts.livestockDraftFatigue === true
           ? [draftFatigueProcess({ species: parts.livestockDraft, year: parts.clock.year })]
           : []),
+        ...(parts.livestockHeir === true ? [livestockInheritProcess()] : []),
         ...(parts.livestockPredators !== undefined
           ? [
               livestockPredationProcess({

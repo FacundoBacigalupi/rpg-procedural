@@ -695,6 +695,8 @@ export interface LifeOptions {
   readonly livestockGuard?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado de noche por alguien de la casa ataja al lobo o al zorro con la chance `pen` de cada especie. */
   readonly livestockPen?: boolean;
+  /** Opt-in (livestock-tenure-heir, con `villageLivestock`): cuando muere el último vivo de un hogar, sus animales pasan al hogar del pariente vivo más cercano (cónyuge, hijos, padres, hermanos) y a su casa. */
+  readonly livestockHeir?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
   readonly livestockPasture?: boolean;
   /** Opt-in (livestock-feed, con `villageLivestock`): el ganado come de la comida del hogar y pasa hambre si falta (`LifeParts.livestockFeed`). */
@@ -2214,6 +2216,7 @@ export function createLife(
             ...(options.livestockPen ? { livestockPen: true } : {}),
           }
         : {}),
+      ...(options.villageLivestock && options.livestockHeir ? { livestockHeir: true } : {}),
       ...(options.villageLivestock && options.livestockFeed
         ? {
             livestockFeed: {

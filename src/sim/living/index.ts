@@ -2,6 +2,7 @@ export * from "./cheese.ts";
 export * from "./draft-fatigue.ts";
 export * from "./ecology.ts";
 export * from "./hunt.ts";
+export * from "./inheritance.ts";
 export * from "./livestock.ts";
 export * from "./predation.ts";
 export * from "./succession.ts";
