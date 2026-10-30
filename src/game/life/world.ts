@@ -459,6 +459,8 @@ export interface LifeWorld {
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
   readonly livestockGuard?: boolean;
+  /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
+  readonly livestockPen?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el ganado pasta y la casa le da el resto. */
   readonly livestockPasture?: boolean;
   /** Opt-in: el ganado come de la comida del hogar (`species` con `feed`; `foods` con su categoría). */
@@ -2131,6 +2133,7 @@ export function lifeWorld(
                 year: parts.clock.year,
                 day: parts.clock.day,
                 ...(parts.livestockGuard === true ? { guard: true } : {}),
+                ...(parts.livestockPen === true ? { pen: true } : {}),
               }),
             ]
           : []),

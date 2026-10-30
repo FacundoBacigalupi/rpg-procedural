@@ -263,6 +263,12 @@ export const LivestockDef = z.strictObject({
       hungerStop: z.number().positive().max(1).default(0.5),
     })
     .optional(),
+  /**
+   * Lo que la ataja el corral cerrado de noche (livestock-predators-pen), 0-1: chance de que el
+   * depredador que viene por este animal no pueda entrar si su casa tiene patio y alguien vivo que
+   * lo cierre; sin esto, el patio no lo guarda.
+   */
+  pen: z.number().min(0).max(1).optional(),
   /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
   exposure: z.number().min(0).max(1).default(1),
   /**
