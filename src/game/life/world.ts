@@ -20,6 +20,8 @@ import {
   type BondDef,
   bodyProcess,
   type ConcernWords,
+  type CurdRule,
+  cheeseProcess,
   type Demography,
   type DietDef,
   type DimensionDef,
@@ -448,6 +450,8 @@ export interface LifeWorld {
   readonly livestockSlaughterRefs?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
   readonly livestockTan?: readonly TanRule[];
+  /** Opt-in (livestock-milk-cheese): cómo cuaja la casa la leche que le sobra. */
+  readonly livestockCheese?: readonly CurdRule[];
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre bajan a los corrales. */
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
@@ -2109,6 +2113,9 @@ export function lifeWorld(
           : []),
         ...(parts.livestockTan !== undefined
           ? [tanningProcess({ rules: parts.livestockTan, day: parts.clock.day })]
+          : []),
+        ...(parts.livestockCheese !== undefined
+          ? [cheeseProcess({ rules: parts.livestockCheese })]
           : []),
         ...(parts.livestockDraft !== undefined && parts.livestockDraftFatigue === true
           ? [draftFatigueProcess({ species: parts.livestockDraft, year: parts.clock.year })]

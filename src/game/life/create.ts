@@ -33,6 +33,7 @@ import {
   BODY_PLANS,
   BUILDING_TYPES,
   CARCASS_SOURCE,
+  CHEESE_PRESS,
   type ChosenTaste,
   CONCEPTS,
   COOKED,
@@ -40,6 +41,7 @@ import {
   CULTURE_TRAITS,
   CULTURES,
   type CultureDef,
+  type CurdRule,
   carcassUnits,
   DEBRIS_SINK,
   DEMOGRAPHY,
@@ -677,6 +679,8 @@ export interface LifeOptions {
   readonly livestockSlaughterRefs?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
+  /** Opt-in (livestock-milk-cheese, con `livestockDairy` y `livestockYield`): la casa cuaja en queso la leche que le sobra de lo que toma su gente. */
+  readonly livestockCheese?: boolean;
   /** Opt-in (livestock-predators, con `villageLivestock`): los lobos y zorros con hambre de la celda bajan a los corrales y se llevan animales (`LifeParts.livestockPredators`). */
   readonly livestockPredators?: boolean;
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto y comido de la casa espanta al lobo o al zorro que viene por otro animal. */
@@ -1483,6 +1487,23 @@ export function resumeParts(
   };
 }
 
+/** Cómo se cuajan los bienes que dicen `curd` (livestock-milk-cheese), en el orden del contenido. */
+export function curdRulesOf(content: Content): CurdRule[] {
+  return content.all(GOODS).flatMap((g) =>
+    g.curd
+      ? [
+          {
+            from: goodUnit(g),
+            into: ledgerUnit(`good:${g.curd.into}`),
+            yield: g.curd.yield,
+            minGrams: g.curd.minGrams,
+            keepGramsPerPerson: g.curd.keepGramsPerPerson,
+          },
+        ]
+      : [],
+  );
+}
+
 /** Cómo se curten los bienes que dicen `tan` (livestock-hide-tan), en el orden del contenido. */
 export function tanRulesOf(content: Content): TanRule[] {
   return content.all(GOODS).flatMap((g) =>
@@ -1517,6 +1538,7 @@ export function ledgerConfigOf(
   livestockFeed = false,
   livestockDairy = false,
   livestockTan = false,
+  livestockCheese = false,
 ): LedgerConfig {
   const units = content.all(FOODS).map((f) => ledgerUnit(`good:${f.id}`));
   const tradeUnits = [
@@ -1534,6 +1556,10 @@ export function ledgerConfigOf(
   // Lo que entra y sale de la tina (livestock-hide-tan): la piel cruda y el cuero.
   const tan = livestockTan ? tanRulesOf(content) : [];
   const tanUnits = [...new Set(tan.flatMap((r) => [r.from, r.into]))];
+  // Lo que entra y sale de la prensa (livestock-milk-cheese): la leche y el queso.
+  const curdUnits = livestockCheese
+    ? [...new Set(curdRulesOf(content).flatMap((r) => [r.from, r.into]))]
+    : [];
   const rottedBase = [
     ...units,
     ...tradeUnits.filter((u) => !units.includes(u)),
@@ -1577,6 +1603,7 @@ export function ledgerConfigOf(
       // Lo que come el ganado de la casa (livestock-feed): cualquier comida.
       ...(livestockFeed ? { [FED_SINK]: units } : {}),
       ...(tanUnits.length > 0 ? { [TAN_VAT]: tanUnits } : {}),
+      ...(curdUnits.length > 0 ? { [CHEESE_PRESS]: curdUnits } : {}),
     },
   };
 }
@@ -1742,6 +1769,10 @@ export function createLife(
       options.villageLivestock === true &&
         options.livestockLife === true &&
         options.livestockTan === true,
+      options.villageLivestock === true &&
+        options.livestockDairy === true &&
+        options.livestockYield === true &&
+        options.livestockCheese === true,
     ),
   );
   // La aldea como edificios con componentes, el pozo y los caminos (settlements §5, §8).
@@ -2128,6 +2159,9 @@ export function createLife(
               ? { livestockSlaughterRefs: true }
               : {}),
             ...(options.livestockTan ? { livestockTan: tanRulesOf(content) } : {}),
+            ...(options.livestockDairy && options.livestockYield && options.livestockCheese
+              ? { livestockCheese: curdRulesOf(content) }
+              : {}),
           }
         : {}),
       ...(options.villageLivestock && options.livestockDraft
