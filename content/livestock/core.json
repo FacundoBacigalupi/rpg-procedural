@@ -132,5 +132,36 @@
       "starveDays": 20,
       "graze": { "share": 0.8, "kgPerDay": 2 }
     }
+  },
+  {
+    "id": "sheep",
+    "name": "oveja",
+    "shape": "sheep",
+    "pen": 0.6,
+    "keeps": { "base": 0.5, "rough": 0.3 },
+    "massKg": 45,
+    "lifespanYears": 10,
+    "count": 3,
+    "minMembers": 3,
+    "herdAgeYears": [1, 6],
+    "femaleShare": 0.7,
+    "optIn": "sheep",
+    "breeding": {
+      "maturityYears": 1,
+      "littersPerYear": 1,
+      "litter": [1, 2],
+      "mate": "settlement",
+      "maxPerHousehold": 8
+    },
+    "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
+    "yields": [
+      { "good": "wool", "unitGrams": 2500, "perYear": 1, "minAgeYears": 1, "hungerStop": 0.6 }
+    ],
+    "feed": {
+      "gramsPerDay": 200,
+      "categories": ["cereal", "legume", "vegetable", "wild"],
+      "starveDays": 20,
+      "graze": { "share": 0.9, "kgPerDay": 1.8 }
+    }
   }
 ]

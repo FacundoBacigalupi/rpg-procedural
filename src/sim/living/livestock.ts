@@ -280,10 +280,11 @@ export const LivestockDef = z.strictObject({
   /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
   exposure: z.number().min(0).max(1).default(1),
   /**
-   * La opción de vida que trae a la especie (livestock-yield-milk: `dairy`, las lecheras); sin esto,
+   * La opción de vida que trae a la especie (livestock-yield-milk: `dairy`, las lecheras;
+   * livestock-milk-culture-species: `sheep`, las ovejas); sin esto,
    * llega con el ganado de siempre.
    */
-  optIn: z.enum(["dairy"]).optional(),
+  optIn: z.enum(["dairy", "sheep"]).optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);

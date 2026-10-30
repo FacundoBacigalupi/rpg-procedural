@@ -199,7 +199,7 @@
     "kind": "action",
     "stems": ["carneo", "carnea", "carneé", "sacrific", "degoll", "degüell", "despost"],
     "forms": [],
-    "weak": ["gallina", "cabra", "buey", "animal"]
+    "weak": ["gallina", "cabra", "oveja", "buey", "animal"]
   },
   {
     "id": "kindle",
