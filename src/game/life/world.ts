@@ -177,6 +177,7 @@ import {
 } from "./medicine.ts";
 import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
+import { ableToMilk, MILKER_READS } from "./milkers.ts";
 import {
   catalogMoldHints,
   type HouseholdNeeds,
@@ -459,6 +460,8 @@ export interface LifeWorld {
   readonly livestockPredators?: readonly LivestockDef[];
   /** Opt-in (livestock-predators-dog, con `livestockPredators`): el perro adulto de la casa espanta al depredador. */
   readonly livestockGuard?: boolean;
+  /** Opt-in (livestock-milk-hours, con `livestockMilkWork`): no ordeña el que está de viaje ni el que el cuerpo no le da. */
+  readonly livestockMilkHours?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
   readonly livestockPen?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el ganado pasta y la casa le da el resto. */
@@ -2150,7 +2153,14 @@ export function lifeWorld(
                   ? { suckle: true }
                   : {}),
                 ...(parts.livestockDairy === true && parts.livestockMilkWork === true
-                  ? { milking: { minAgeYears: ROUTINE.workAge } }
+                  ? {
+                      milking: {
+                        minAgeYears: ROUTINE.workAge,
+                        ...(parts.livestockMilkHours === true
+                          ? { can: ableToMilk(parts.plans), reads: MILKER_READS }
+                          : {}),
+                      },
+                    }
                   : {}),
                 ...(parts.livestockSeason === true
                   ? {

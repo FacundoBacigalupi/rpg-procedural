@@ -71,6 +71,8 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+**livestock-milk-hours (2026-10-30, rama `feat/livestock-milk-hours`):** opt-in `livestockMilkHours` (par con `livestockMilkWork`, en `FULL_PROFILE`, schema de tuning) → `milking.can`/`milking.reads` en `LivestockYieldOptions`; el predicado sale de `ableToMilk(plans)` en `src/game/life/milkers.ts` (fuera de `NPC_JOURNEY` y con `manipulation` ≥ 0,5 y `locomotion` ≥ 0,3). Test en `livestock-milk.test.ts` (`-t livestock-milk-hours`). Queda `livestock-milk-hours-day`.
+
 **livestock-predators-pen (2026-10-29, rama `feat/livestock-predators-pen`):** opt-in `livestockPen` (par con `livestockPredators`, en `FULL_PROFILE`, schema de tuning) → `LivestockPredationOptions.pen`: antes de llevarse el animal elegido, si su `home` tiene un espacio `yard` y el hogar dueño tiene una persona viva, la chance `LivestockDef.pen` (contenido: gallina 0,8, cabra 0,6, buey 0,4) lo ataja con `living.raid_blocked` (causas: ecología y `{state, home, "pen"}`). Test en `livestock-predators.test.ts`. Quedan `livestock-predators-pen-more` y el resto de `livestock-predators-guard` (caza, veneno, percepción).
 
 **livestock-draft-rest-npc-larder (2026-10-29, rama `feat/livestock-draft-rest-npc-larder`):** opt-in `livestockDraftRestNpcLarder` (par con `livestockDraftRestBelief`, en `FULL_PROFILE`, schema de tuning) → `npcLarderProcess` en `inventory-belief.ts` (perceive, onEvent): el NPC que come de la casa (`routine.ate`, o `npc.caught_up` con `meals` > 0) escribe su `INVENTORY_BELIEF` con la despensa y lo que lleva de ese momento; `larderPress` ya leía la foto de quien decide. Test en `npc-larder.test.ts`. Queda `livestock-draft-rest-npc-larder-more`.
