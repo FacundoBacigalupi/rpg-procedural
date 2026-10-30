@@ -5,7 +5,14 @@
 
 import type { AgentId, Event, HolderRef, LedgerUnit, Tick } from "../../core/index.ts";
 import { holderAccount } from "../../core/index.ts";
-import { COPPER, PERSON, type ProcessDef, setComponent, table } from "../../sim/index.ts";
+import {
+  COPPER,
+  PERSON,
+  type ProcessDef,
+  type StateChange,
+  setComponent,
+  table,
+} from "../../sim/index.ts";
 
 export interface BelievedHolding {
   readonly unit: LedgerUnit;
@@ -171,6 +178,59 @@ export function inventoryProcess(o: InventoryOptions): ProcessDef {
         }
       }
       return { changes: [setComponent(INVENTORY_BELIEF, o.player, belief)] };
+    },
+  };
+}
+
+export const NPC_LARDER_PROCESS = "life.npc_larder";
+
+export interface NpcLarderOptions {
+  readonly player: AgentId;
+  /**
+   * Los eventos en que alguien come de la despensa de su casa (`routine.ate`, la puesta al día
+   * de los dormidos con `meals`): al servirse ve lo que hay.
+   */
+  readonly kinds: readonly string[];
+}
+
+/**
+ * Opt-in (livestock-draft-rest-npc-larder): los NPC también tienen una foto de la despensa. Cada
+ * vez que uno come de la casa (`kinds`; en la puesta al día, si comió algo) la revisa entera: lo
+ * que hay pasa a ser lo que cree (y lo que lleva encima). El jugador la lleva `inventoryProcess`.
+ */
+export function npcLarderProcess(o: NpcLarderOptions): ProcessDef {
+  const kinds = new Set(o.kinds);
+  return {
+    id: NPC_LARDER_PROCESS,
+    system: "life",
+    scope: "world",
+    cadence: { local: "onEvent", scene: "onEvent" },
+    representation: "individual",
+    phase: "perceive",
+    reads: [PERSON.name, INVENTORY_BELIEF.name],
+    writes: [INVENTORY_BELIEF.name],
+    run(ctx) {
+      const ledger = ctx.ledger;
+      if (!ledger) return {};
+      const who = new Set<AgentId>();
+      for (const e of ctx.recent) {
+        if (!kinds.has(e.kind)) continue;
+        const meals = (e.data as { meals?: unknown } | null)?.meals;
+        if (typeof meals === "number" && meals <= 0) continue;
+        for (const a of e.actors) if (a !== o.player) who.add(a as AgentId);
+      }
+      const changes: StateChange[] = [];
+      for (const id of [...who].sort()) {
+        const me = ctx.truth.get(PERSON, id);
+        if (!me) continue;
+        const belief = checkInventory(
+          ledger.holdings(holderAccount(id as HolderRef)),
+          ledger.holdings(holderAccount(me.household as unknown as HolderRef)),
+          ctx.now,
+        );
+        changes.push(setComponent(INVENTORY_BELIEF, id, belief));
+      }
+      return changes.length > 0 ? { changes } : {};
     },
   };
 }
