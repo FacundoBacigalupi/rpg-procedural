@@ -202,6 +202,22 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
       }
     | undefined;
   /**
+   * `trade` nombrando un animal (livestock-tenure-sell): cuál, quién lo vende, lo que vale, el cobre
+   * de quien compra y si el otro lo quiere (comprador) o puede largarlo (vendedor).
+   */
+  readonly animalSale?:
+    | {
+        readonly animal: string;
+        readonly name: string;
+        readonly direction: "buy" | "sell";
+        readonly price: number;
+        readonly buyerCopper: number;
+        readonly wants: boolean;
+        readonly spare: boolean;
+        readonly unit: LedgerUnit;
+      }
+    | undefined;
+  /**
    * `trade` con el herrero nombrando una herramienta que forja (use-tools-mend-trade-buy): cuál, lo
    * que cobra, el hierro que lleva y el que hay en su hogar, y el cobre del actor.
    */
@@ -530,6 +546,8 @@ export type VerbEffect =
       readonly lack?: "copper" | "iron" | "want" | "spare";
       /** Herramienta usada que cambió (o no) de manos (use-tools-mend-trade-sell). */
       readonly usedItem?: ItemId;
+      /** Animal que cambió (o no) de manos (livestock-tenure-sell). */
+      readonly animal?: string;
     }
   | {
       readonly kind: "give";
@@ -1380,7 +1398,12 @@ const trade: Resolver = (c) => {
   });
   if (c.input.usedTool !== undefined && other !== null) {
     return deal
-      ? usedTrade(c, other, c.input.usedTool, edge)
+      ? usedTrade(c, other, c.input.usedTool, edge, { usedItem: c.input.usedTool.item })
+      : { effect: idle(false), seconds: c.nominal / 2 };
+  }
+  if (c.input.animalSale !== undefined && other !== null) {
+    return deal
+      ? usedTrade(c, other, c.input.animalSale, edge, { animal: c.input.animalSale.animal })
       : { effect: idle(false), seconds: c.nominal / 2 };
   }
   if (c.input.forge !== undefined && other !== null) {
@@ -1448,13 +1471,15 @@ export function usedPrice(newPrice: number, wear: number): number {
  * Comprar o vender una herramienta usada (use-tools-mend-trade-sell): cerrado el trato, la ventaja
  * mueve el precio a favor del actor (vendiendo cobra más, comprando paga menos) y el cobre va de
  * quien compra a quien vende; el objeto lo cambia de manos quien aplica el efecto (`usedItem`). Sin
- * ganas del comprador, sin otra en la casa del vendedor o sin cobre no hay trato.
+ * ganas del comprador, sin otra en la casa del vendedor o sin cobre no hay trato. Igual con un
+ * animal (livestock-tenure-sell), que cambia de casa con `animal`.
  */
 function usedTrade(
   c: Ctx,
   other: EntityRef,
-  u: NonNullable<ResolveInput["usedTool"]>,
+  u: Omit<NonNullable<ResolveInput["usedTool"]>, "item">,
   edge: number,
+  what: { readonly usedItem: ItemId } | { readonly animal: string },
 ): VerbResult {
   const price = Math.max(1, Math.round(u.price * (u.direction === "sell" ? 1 + edge : 1 - edge)));
   const base = {
@@ -1462,7 +1487,7 @@ function usedTrade(
     with: other,
     good: null,
     grams: 0,
-    usedItem: u.item,
+    ...what,
     forgedName: u.name,
   };
   const lack: "copper" | "want" | "spare" | undefined = !u.wants

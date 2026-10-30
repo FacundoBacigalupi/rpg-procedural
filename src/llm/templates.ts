@@ -378,13 +378,14 @@ function outcome(
           coins: `${e.forged.coins} ${e.forged.coins === 1 ? "moneda" : "monedas"}`,
         });
       } else if (e.used !== undefined) {
-        say(`outcome.trade.used.${e.used.direction}.${e.terms}`, {
+        say(`outcome.trade.${e.used.animal ? "animal" : "used"}.${e.used.direction}.${e.terms}`, {
           with: ref(e.with),
           what: e.used.what,
           coins: `${e.used.coins} ${e.used.coins === 1 ? "moneda" : "monedas"}`,
         });
       } else if (e.unforged !== undefined) {
-        say(`outcome.trade.${e.unforged.used ? "unused" : "unforged"}.no_${e.unforged.lack}`, {
+        const kind = e.unforged.animal ? "noanimal" : e.unforged.used ? "unused" : "unforged";
+        say(`outcome.trade.${kind}.no_${e.unforged.lack}`, {
           with: ref(e.with),
           what: e.unforged.what,
         });

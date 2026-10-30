@@ -372,12 +372,16 @@ export type EffectView =
         readonly lack: "copper" | "iron" | "want" | "spare";
         /** Era una herramienta usada (use-tools-mend-trade-sell), no una nueva del herrero. */
         readonly used?: true;
+        /** Era un animal (livestock-tenure-sell). */
+        readonly animal?: true;
       };
       /** Herramienta usada que cambió de manos: cuál, para qué lado y por cuánto (use-tools-mend-trade-sell). */
       readonly used?: {
         readonly what: string;
         readonly direction: "buy" | "sell";
         readonly coins: number;
+        /** Era un animal (livestock-tenure-sell), no una herramienta. */
+        readonly animal?: true;
       };
     }
   | {
@@ -934,11 +938,24 @@ function effectView(
         deal: e.deal,
         terms: termsOf(e.edge),
         ...(e.strain !== undefined ? { strain: e.strain } : {}),
-        ...(e.deal && e.forgedName !== undefined && e.usedItem === undefined
+        ...(e.deal &&
+        e.forgedName !== undefined &&
+        e.usedItem === undefined &&
+        e.animal === undefined
           ? { forged: { what: e.forgedName, coins: e.coins } }
           : {}),
-        ...(e.deal && e.forgedName !== undefined && e.usedItem !== undefined && e.direction !== null
-          ? { used: { what: e.forgedName, direction: e.direction, coins: e.coins } }
+        ...(e.deal &&
+        e.forgedName !== undefined &&
+        (e.usedItem !== undefined || e.animal !== undefined) &&
+        e.direction !== null
+          ? {
+              used: {
+                what: e.forgedName,
+                direction: e.direction,
+                coins: e.coins,
+                ...(e.animal !== undefined ? { animal: true as const } : {}),
+              },
+            }
           : {}),
         ...(!e.deal && e.forgedName !== undefined && e.lack !== undefined
           ? {
@@ -946,6 +963,7 @@ function effectView(
                 what: e.forgedName,
                 lack: e.lack,
                 ...(e.usedItem !== undefined ? { used: true as const } : {}),
+                ...(e.animal !== undefined ? { animal: true as const } : {}),
               },
             }
           : {}),

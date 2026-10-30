@@ -625,12 +625,20 @@ const VERBS: readonly {
   },
   {
     re: /^(?:le\s+)?(?:ofrezco|comercio|negocio|cambio|regateo|vendo|compro)\b/i,
-    build: (rest) => {
+    build: (rest, _ctx, all) => {
       const clean = rest.replace(MANNER_WORDS, " ");
       const p = personAfterA(clean.replace(/^\s*con\s+/i, " a ").replace(/\scon\s/i, " a "));
       // Lo que se trata es lo que viene antes de la persona: "2 kilos de grano a Wu".
       const goods = tidy((p ? p.before : clean).replace(/^(?:un\s+poco\s+de|algo\s+de)\s+/i, ""));
-      const what = /^\s*(?:con|al|a la|a)\s/i.test(goods) ? "" : goods;
+      // De quién es lo que se trata (livestock-tenure-sell): "le compro la cabra" es la suya y
+      // "le vendo la cabra", la mía; el artículo pasa a posesivo para que el trato sepa el lado.
+      const side = /^(?:le\s+)?compro\b/i.test(all)
+        ? "su "
+        : /^(?:le\s+)?vendo\b/i.test(all)
+          ? "mi "
+          : "";
+      const owned = side ? goods.replace(/^(?:el|la|los|las|un|una|unos|unas)\s+/i, side) : goods;
+      const what = /^\s*(?:con|al|a la|a)\s/i.test(owned) ? "" : owned;
       const args: DraftArg[] = [];
       if (p) args.push({ role: "with", ref: p.ref });
       if (what) args.push({ role: "what", text: what });

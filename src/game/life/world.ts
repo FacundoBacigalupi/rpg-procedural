@@ -457,6 +457,8 @@ export interface LifeWorld {
   readonly livestockGift?: boolean;
   /** Opt-in (livestock-tenure-theft, con `livestockSlaughter`): tomar un animal ajeno lo pasa a la casa propia. */
   readonly livestockSteal?: boolean;
+  /** Opt-in (livestock-tenure-sell, con `livestockSlaughter`): vender o comprar un animal con `trade`. */
+  readonly livestockSell?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
   readonly livestockTan?: readonly TanRule[];
   /** Opt-in (livestock-milk-cheese): cómo cuaja la casa la leche que le sobra. */
@@ -1141,6 +1143,7 @@ export function lifeWorld(
                   ...(parts.livestockSlaughterRefs === true ? { refs: true } : {}),
                   ...(parts.livestockGift === true ? { gift: true } : {}),
                   ...(parts.livestockSteal === true ? { steal: true } : {}),
+                  ...(parts.livestockSell === true ? { sell: true } : {}),
                 },
               }
             : {}),

@@ -214,6 +214,7 @@ import { harvestSeasonOf } from "./map.ts";
 import { rentsOf } from "./rents.ts";
 import { type ResidueConfig, takeEssence } from "./residue.ts";
 import {
+  animalSaleOf,
   giftChanges,
   giftTargetOf,
   SLAUGHTER_READS,
@@ -668,7 +669,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       SOIL.name,
       ...(o.draft ? draftReads(o.draft) : []),
       ...(o.slaughter ? SLAUGHTER_READS : []),
-      ...(o.slaughter?.gift === true || o.slaughter?.steal === true ? [BUILDING.name] : []),
+      ...(o.slaughter?.gift === true || o.slaughter?.steal === true || o.slaughter?.sell === true
+        ? [BUILDING.name]
+        : []),
       ENTITY.name,
       LOCATION.name,
       BUILDING.name,
@@ -713,7 +716,9 @@ export function actProcess(o: ActOptions): ProcessDef {
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
       // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
-      ...(o.slaughter?.gift === true || o.slaughter?.steal === true ? [ANIMAL.name] : []),
+      ...(o.slaughter?.gift === true || o.slaughter?.steal === true || o.slaughter?.sell === true
+        ? [ANIMAL.name]
+        : []),
       // Tomar una dosis (consumir, comer o beber con sustancia) escribe el cuerpo y, la primera
       // vez, la entidad de la sustancia.
       ...(o.consumables || o.foodSubstances || o.drinkSubstance
@@ -1607,6 +1612,19 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     o.slaughter?.steal === true && takeItem === undefined && node.verb === "take"
       ? theftTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
       : undefined;
+  // Vender o comprar un animal (livestock-tenure-sell): el cobre lo mueve el trato; el animal, abajo.
+  const animalSale =
+    o.slaughter?.sell === true && usedTool === undefined && node.verb === "trade" && ctx.ledger
+      ? animalSaleOf(
+          truth,
+          me,
+          parties["with"]?.id,
+          textArg(node, "what"),
+          ctx.now,
+          o.goods,
+          o.slaughter,
+        )
+      : undefined;
   const input: ResolveInput = {
     def,
     node,
@@ -1682,6 +1700,27 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     ...(usedTool === undefined
       ? forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger)
       : { usedTool }),
+    ...(animalSale && ctx.ledger
+      ? {
+          animalSale: {
+            animal: animalSale.animal,
+            name: animalSale.name,
+            direction: animalSale.direction,
+            price: animalSale.price,
+            buyerCopper: Math.floor(
+              ctx.ledger.balance(
+                holderAccount(
+                  (animalSale.direction === "sell" ? parties["with"]?.id : me) as HolderRef,
+                ),
+                COPPER,
+              ),
+            ),
+            wants: animalSale.wants,
+            spare: animalSale.spare,
+            unit: COPPER,
+          },
+        }
+      : {}),
     boilFuel:
       o.boil && node.verb === "boil"
         ? { unit: ledgerUnit(o.boil.fuel), grams: o.boil.grams }
@@ -1805,6 +1844,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...giftChanges(truth, giveAnimal));
   } else if (takeAnimal && eff.kind === "take" && eff.claimed === true) {
     changes.push(...giftChanges(truth, takeAnimal));
+  } else if (animalSale && eff.kind === "trade" && eff.deal && eff.animal !== undefined) {
+    changes.push(...giftChanges(truth, animalSale));
   } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {
