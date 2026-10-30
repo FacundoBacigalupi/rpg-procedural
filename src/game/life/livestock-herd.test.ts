@@ -2,7 +2,15 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type ContentSource, loadContent } from "../../core/index.ts";
-import { ANIMAL, BUILDING, checkInvariants, ENTITY, LOCATION } from "../../sim/index.ts";
+import {
+  ANIMAL,
+  BUILDING,
+  checkInvariants,
+  ENTITY,
+  keepChance,
+  LIVESTOCK,
+  LOCATION,
+} from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
@@ -48,5 +56,45 @@ describe("el ganado de la aldea (livestock-herd)", () => {
     const b = Life.create(7, content, { frequency: 8, villageLivestock: true }).world;
     const rows = (w: typeof a) => [...w.truth.ids(ANIMAL)].map((id) => w.truth.get(ANIMAL, id));
     expect(rows(b)).toEqual(rows(a));
+  }, 300_000);
+});
+
+describe("qué casas tienen cabras y bueyes según la tierra (livestock-milk-culture-terrain)", () => {
+  it("pura: la cabra sube en la loma y el buey baja; sin `keeps`, siempre", () => {
+    const def = (id: string) => content.all(LIVESTOCK).find((s) => s.id === id);
+    const goat = def("goat");
+    const ox = def("ox");
+    const hen = def("hen");
+    if (!goat || !ox || !hen) throw new Error("sin especies");
+    expect(keepChance(goat, 1)).toBeGreaterThan(keepChance(goat, 0));
+    expect(keepChance(ox, 1)).toBeLessThan(keepChance(ox, 0));
+    expect(keepChance(hen, 1)).toBe(1);
+    expect(keepChance(goat, 5)).toBe(1);
+  });
+
+  it("encendido: algunas casas no traen cabras o bueyes, con la tierra como causa; determinista", () => {
+    const opts = { frequency: 8, villageLivestock: true, livestockDairy: true } as const;
+    const owners = (w: ReturnType<typeof Life.create>["world"], species: string) =>
+      new Set(
+        [...w.truth.ids(ANIMAL)]
+          .map((id) => w.truth.get(ANIMAL, id))
+          .filter((a) => a?.species === species)
+          .map((a) => a?.owner),
+      );
+    const off = Life.create(7, content, opts).world;
+    const on = Life.create(7, content, { ...opts, livestockTerrain: true }).world;
+    const fewer = ["goat", "ox"].map((s) => owners(off, s).size - owners(on, s).size);
+    expect(fewer.every((d) => d >= 0)).toBe(true);
+    expect(fewer.some((d) => d > 0)).toBe(true);
+    const brought = on.log.all().filter((e) => e.kind === "settlement.livestock_brought");
+    expect(brought.some((e) => e.causes.some((c) => c.kind === "state" && c.key === "land"))).toBe(
+      true,
+    );
+    expect(checkInvariants({ truth: on.truth, log: on.log, ledger: on.ledger })).toEqual([]);
+    const again = Life.create(7, content, { ...opts, livestockTerrain: true });
+    expect(again.hash().total).toBe(
+      Life.create(7, content, { ...opts, livestockTerrain: true }).hash().total,
+    );
+    expect(FULL_PROFILE).toMatchObject({ livestockTerrain: true });
   }, 300_000);
 });

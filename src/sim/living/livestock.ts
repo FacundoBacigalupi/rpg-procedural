@@ -269,6 +269,14 @@ export const LivestockDef = z.strictObject({
    * lo cierre; sin esto, el patio no lo guarda.
    */
   pen: z.number().min(0).max(1).optional(),
+  /**
+   * Qué casas lo tienen según la tierra (livestock-milk-culture-terrain): la chance de que una casa
+   * lo traiga es `base + rough · (parte quebrada de la tierra de alrededor)`, entre 0 y 1 (la cabra
+   * en la loma, el buey en el llano); sin esto, lo tienen todas.
+   */
+  keeps: z
+    .strictObject({ base: z.number().min(0).max(1), rough: z.number().min(-1).max(1) })
+    .optional(),
   /** Lo expuesto que está a los depredadores que bajan (livestock-predators), 0-1: peso al elegir presa. */
   exposure: z.number().min(0).max(1).default(1),
   /**
@@ -286,6 +294,15 @@ export function herdSpecies(
   optIns: ReadonlySet<string>,
 ): LivestockDef[] {
   return all.filter((s) => s.optIn === undefined || optIns.has(s.optIn));
+}
+
+/**
+ * Pura (livestock-milk-culture-terrain): la chance de que una casa tenga la especie con
+ * `roughShare` (0-1) de tierra quebrada alrededor; sin `keeps`, 1.
+ */
+export function keepChance(def: LivestockDef, roughShare: number): number {
+  if (def.keeps === undefined) return 1;
+  return Math.min(1, Math.max(0, def.keeps.base + def.keeps.rough * roughShare));
 }
 
 /** Un animal de la casa: de qué especie es, su sexo, cuándo nació y de quién es. */
@@ -354,6 +371,11 @@ export interface SeedLivestockInput {
   readonly now?: Tick;
   /** Motores anteriores a `life-57`: ignora `herdAgeYears` (todos entre 0 y 0,6 de su vida). */
   readonly legacyHerdAges?: boolean;
+  /**
+   * Opt-in (livestock-milk-culture-terrain): la parte quebrada (0-1) de la tierra de alrededor;
+   * con esto, cada casa tira por cada especie con `keeps` si la tiene (`keepChance`).
+   */
+  readonly roughShare?: number;
 }
 
 /** Siembra el ganado de cada casa viva del asentamiento. Devuelve cuántos animales creó. */
@@ -374,7 +396,14 @@ export function seedLivestock(
     if (truth.get(ENTITY, id)?.endedAt !== undefined) continue;
     const members = input.members.get(household) ?? 0;
     if (members === 0) continue;
-    const kept = species.filter((s) => (s.minMembers ?? 1) <= members);
+    const rough = input.roughShare;
+    const kept = species.filter(
+      (s) =>
+        (s.minMembers ?? 1) <= members &&
+        (rough === undefined ||
+          s.keeps === undefined ||
+          root.fork("living", "herd", household, s.id).stream().float() < keepChance(s, rough)),
+    );
     if (kept.length === 0) continue;
     const at: Tick = input.now ?? truth.get(ENTITY, id)?.createdAt ?? 0;
     const event: EventId = ids.next("event");
@@ -383,7 +412,12 @@ export function seedLivestock(
       tick: at,
       kind: "settlement.livestock_brought",
       data: { building: id, household, species: kept.map((s) => s.id) },
-      causes: [{ kind: "event", event: b.builtBy }],
+      causes: [
+        { kind: "event", event: b.builtBy },
+        ...(rough !== undefined && kept.some((s) => s.keeps !== undefined)
+          ? [{ kind: "state" as const, entity: input.settlement, key: "land" }]
+          : []),
+      ],
       actors: [],
       place: { kind: "settlement", settlement: input.settlement },
       emissions: null,
