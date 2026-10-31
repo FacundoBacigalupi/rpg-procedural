@@ -63,6 +63,8 @@ export interface SlaughterOptions {
   readonly sell?: boolean;
   /** Opt-in (livestock-tenure-sell-household, con `sell`): el cobre lo junta toda la casa del que compra (`householdPayers`). */
   readonly sellHousehold?: boolean;
+  /** Opt-in (livestock-tenure-sell-barter, con `sellHousehold`): lo que falta de cobre la casa lo pone en bienes (`householdBarter`). */
+  readonly sellBarter?: boolean;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -435,4 +437,33 @@ export function householdPayers(
   return holders
     .map((holder) => ({ holder, copper: Math.max(0, Math.floor(copperOf(holder))) }))
     .filter((p) => p.copper > 0);
+}
+
+/**
+ * Pura (livestock-tenure-sell-barter): lo que la casa de `buyer` puede poner en bienes cuando el
+ * cobre no alcanza: cada bien con precio que tiene la bolsa del hogar, con lo que vale (al precio de
+ * referencia) y cuántos gramos por cobre; del que más vale al que menos, y por id.
+ */
+export function householdBarter(
+  truth: ReadonlyWorldTruth,
+  buyer: AgentId,
+  holdings: (holder: HolderRef) => readonly { unit: LedgerUnit; amount: number }[],
+  goods: readonly GoodDef[],
+): { holder: HolderRef; copper: number; unit: LedgerUnit; gramsPerCopper: number }[] {
+  const h = truth.get(PERSON, buyer)?.household as unknown as HolderRef | undefined;
+  if (h === undefined) return [];
+  const price = new Map(
+    goods
+      .filter((g) => g.form === "good" && (g.priceCopperPerKg ?? 0) > 0)
+      .map((g) => [`good:${g.id}`, g.priceCopperPerKg as number]),
+  );
+  return holdings(h)
+    .flatMap((r) => {
+      const p = price.get(r.unit as string);
+      if (p === undefined) return [];
+      const gramsPerCopper = 1000 / p;
+      const copper = Math.floor(r.amount / gramsPerCopper);
+      return copper > 0 ? [{ holder: h, copper, unit: r.unit, gramsPerCopper }] : [];
+    })
+    .sort((a, b) => b.copper - a.copper || compareStrings(a.unit, b.unit));
 }

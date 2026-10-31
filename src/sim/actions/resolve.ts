@@ -95,6 +95,18 @@ export interface Bearing {
 export const LANDMARK_SIGHT_HEXES = 2;
 
 /** Lo que el mundo le da al resolver además de lo que necesita la tirada. */
+/**
+ * De quién sale parte del pago de un animal (livestock-tenure-sell-household): `copper`, lo que
+ * pone (o lo que vale lo que tiene); con `unit` y `gramsPerCopper` (livestock-tenure-sell-barter)
+ * lo pone en ese bien.
+ */
+export interface AnimalPayer {
+  readonly holder: HolderRef;
+  readonly copper: number;
+  readonly unit?: LedgerUnit;
+  readonly gramsPerCopper?: number;
+}
+
 export interface ResolveInput extends Omit<AttemptInput, "has"> {
   readonly map: LocalMap;
   /** Replay de motores viejos: `speak` dura lo fijo del catálogo, sin mirar el acto ni las palabras. */
@@ -205,7 +217,8 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
    * `trade` nombrando un animal (livestock-tenure-sell): cuál, quién lo vende, lo que vale, el cobre
    * de quien compra y si el otro lo quiere (comprador) o puede largarlo (vendedor). `payers`
    * (livestock-tenure-sell-household): de quiénes sale el cobre, en orden, con lo que tiene cada
-   * uno (`buyerCopper` es la suma); sin esto, todo de quien compra.
+   * uno (`buyerCopper` es la suma); sin esto, todo de quien compra. Con `unit` y `gramsPerCopper`
+   * (livestock-tenure-sell-barter), lo paga en ese bien: `copper` es lo que vale lo que tiene.
    */
   readonly animalSale?:
     | {
@@ -217,7 +230,7 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
         readonly wants: boolean;
         readonly spare: boolean;
         readonly unit: LedgerUnit;
-        readonly payers?: readonly { readonly holder: HolderRef; readonly copper: number }[];
+        readonly payers?: readonly AnimalPayer[];
       }
     | undefined;
   /**
@@ -551,6 +564,8 @@ export type VerbEffect =
       readonly usedItem?: ItemId;
       /** Animal que cambió (o no) de manos (livestock-tenure-sell). */
       readonly animal?: string;
+      /** Lo que se pagó en bienes y no en cobre (livestock-tenure-sell-barter). */
+      readonly barter?: readonly { readonly good: string; readonly grams: number }[];
     }
   | {
       readonly kind: "give";
@@ -1481,7 +1496,7 @@ function usedTrade(
   c: Ctx,
   other: EntityRef,
   u: Omit<NonNullable<ResolveInput["usedTool"]>, "item"> & {
-    readonly payers?: readonly { readonly holder: HolderRef; readonly copper: number }[];
+    readonly payers?: readonly AnimalPayer[];
   },
   edge: number,
   what: { readonly usedItem: ItemId } | { readonly animal: string },
@@ -1512,15 +1527,29 @@ function usedTrade(
   const actor = c.input.actor.id as HolderRef;
   const buyer = u.direction === "sell" ? (other as HolderRef) : actor;
   const seller = u.direction === "sell" ? actor : (other as HolderRef);
-  // Lo paga quien compra o, con `payers`, cada uno lo que tiene hasta juntar el precio.
+  // Lo paga quien compra o, con `payers`, cada uno lo que tiene hasta juntar el precio; lo que va
+  // en bienes, al gramo para arriba.
   let left = price;
   const transfers = (u.payers ?? [{ holder: buyer, copper: price }]).flatMap((p) => {
-    const amount = Math.min(left, Math.max(0, Math.floor(p.copper)));
-    left -= amount;
-    return amount > 0 ? [{ from: p.holder, unit: u.unit, amount, to: holderAccount(seller) }] : [];
+    const worth = Math.min(left, Math.max(0, Math.floor(p.copper)));
+    left -= worth;
+    const amount = p.unit === undefined ? worth : Math.ceil(worth * (p.gramsPerCopper ?? 0) - 1e-9);
+    return amount > 0
+      ? [{ from: p.holder, unit: p.unit ?? u.unit, amount, to: holderAccount(seller) }]
+      : [];
   });
+  const barter = transfers
+    .filter((t) => t.unit !== u.unit)
+    .map((t) => ({ good: (t.unit as string).replace(/^good:/, ""), grams: t.amount }));
   return {
-    effect: { ...base, deal: true, edge, direction: u.direction, coins: price },
+    effect: {
+      ...base,
+      deal: true,
+      edge,
+      direction: u.direction,
+      coins: price,
+      ...(barter.length > 0 ? { barter } : {}),
+    },
     seconds: c.nominal,
     transfers,
   };

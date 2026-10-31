@@ -383,6 +383,13 @@ function outcome(
           what: e.used.what,
           coins: `${e.used.coins} ${e.used.coins === 1 ? "moneda" : "monedas"}`,
         });
+        if (e.used.barter !== undefined && e.used.barter.length > 0) {
+          const goods = e.used.barter.map((b) => {
+            const kilos = Number((b.grams / 1000).toFixed(1));
+            return `${b.grams >= 1000 ? `${kilos} kilos` : `${b.grams} gramos`} de ${good(b.good)}`;
+          });
+          say(`outcome.trade.animal.barter.${e.used.direction}`, { goods: goods.join(" y ") });
+        }
       } else if (e.unforged !== undefined) {
         const kind = e.unforged.animal ? "noanimal" : e.unforged.used ? "unused" : "unforged";
         say(`outcome.trade.${kind}.no_${e.unforged.lack}`, {

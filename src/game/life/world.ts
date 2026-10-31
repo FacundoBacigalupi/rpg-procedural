@@ -461,6 +461,8 @@ export interface LifeWorld {
   readonly livestockSell?: boolean;
   /** Opt-in (livestock-tenure-sell-household, con `livestockSell`): el cobre de la compra lo junta toda la casa. */
   readonly livestockSellHousehold?: boolean;
+  /** Opt-in (livestock-tenure-sell-barter, con `livestockSellHousehold`): lo que falta de cobre se paga en bienes. */
+  readonly livestockSellBarter?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): cómo curte la casa la piel cruda en su tina. */
   readonly livestockTan?: readonly TanRule[];
   /** Opt-in (livestock-milk-cheese): cómo cuaja la casa la leche que le sobra. */
@@ -1150,6 +1152,11 @@ export function lifeWorld(
                   ...(parts.livestockSell === true ? { sell: true } : {}),
                   ...(parts.livestockSell === true && parts.livestockSellHousehold === true
                     ? { sellHousehold: true }
+                    : {}),
+                  ...(parts.livestockSell === true &&
+                  parts.livestockSellHousehold === true &&
+                  parts.livestockSellBarter === true
+                    ? { sellBarter: true }
                     : {}),
                 },
               }
