@@ -203,7 +203,9 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
     | undefined;
   /**
    * `trade` nombrando un animal (livestock-tenure-sell): cuál, quién lo vende, lo que vale, el cobre
-   * de quien compra y si el otro lo quiere (comprador) o puede largarlo (vendedor).
+   * de quien compra y si el otro lo quiere (comprador) o puede largarlo (vendedor). `payers`
+   * (livestock-tenure-sell-household): de quiénes sale el cobre, en orden, con lo que tiene cada
+   * uno (`buyerCopper` es la suma); sin esto, todo de quien compra.
    */
   readonly animalSale?:
     | {
@@ -215,6 +217,7 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
         readonly wants: boolean;
         readonly spare: boolean;
         readonly unit: LedgerUnit;
+        readonly payers?: readonly { readonly holder: HolderRef; readonly copper: number }[];
       }
     | undefined;
   /**
@@ -1477,7 +1480,9 @@ export function usedPrice(newPrice: number, wear: number): number {
 function usedTrade(
   c: Ctx,
   other: EntityRef,
-  u: Omit<NonNullable<ResolveInput["usedTool"]>, "item">,
+  u: Omit<NonNullable<ResolveInput["usedTool"]>, "item"> & {
+    readonly payers?: readonly { readonly holder: HolderRef; readonly copper: number }[];
+  },
   edge: number,
   what: { readonly usedItem: ItemId } | { readonly animal: string },
 ): VerbResult {
@@ -1507,10 +1512,17 @@ function usedTrade(
   const actor = c.input.actor.id as HolderRef;
   const buyer = u.direction === "sell" ? (other as HolderRef) : actor;
   const seller = u.direction === "sell" ? actor : (other as HolderRef);
+  // Lo paga quien compra o, con `payers`, cada uno lo que tiene hasta juntar el precio.
+  let left = price;
+  const transfers = (u.payers ?? [{ holder: buyer, copper: price }]).flatMap((p) => {
+    const amount = Math.min(left, Math.max(0, Math.floor(p.copper)));
+    left -= amount;
+    return amount > 0 ? [{ from: p.holder, unit: u.unit, amount, to: holderAccount(seller) }] : [];
+  });
   return {
     effect: { ...base, deal: true, edge, direction: u.direction, coins: price },
     seconds: c.nominal,
-    transfers: [{ from: buyer, unit: u.unit, amount: price, to: holderAccount(seller) }],
+    transfers,
   };
 }
 

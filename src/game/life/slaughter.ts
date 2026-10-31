@@ -61,6 +61,8 @@ export interface SlaughterOptions {
   readonly steal?: boolean;
   /** Opt-in (livestock-tenure-sell): `trade` nombrando un animal lo vende o lo compra por cobre. */
   readonly sell?: boolean;
+  /** Opt-in (livestock-tenure-sell-household, con `sell`): el cobre lo junta toda la casa del que compra (`householdPayers`). */
+  readonly sellHousehold?: boolean;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -408,4 +410,29 @@ export function slaughterChanges(
   if (truth.get(LACTATING, animal)) changes.push(deleteComponent(LACTATING, animal));
   if (truth.get(DRAFT_FATIGUE, animal)) changes.push(deleteComponent(DRAFT_FATIGUE, animal));
   return changes;
+}
+
+/**
+ * Pura (livestock-tenure-sell-household): de quiénes sale el cobre de una compra de `buyer`: él
+ * primero, después la bolsa del hogar y los demás vivos del hogar por id, solo los que tienen.
+ */
+export function householdPayers(
+  truth: ReadonlyWorldTruth,
+  buyer: AgentId,
+  copperOf: (holder: HolderRef) => number,
+): { holder: HolderRef; copper: number }[] {
+  const h = truth.get(PERSON, buyer)?.household;
+  const others = (truth.ids(PERSON) as AgentId[])
+    .filter(
+      (id) =>
+        id !== buyer &&
+        h !== undefined &&
+        truth.get(PERSON, id)?.household === h &&
+        truth.get(ENTITY, id)?.endedAt === undefined,
+    )
+    .sort(compareStrings);
+  const holders = [buyer, ...(h === undefined ? [] : [h]), ...others] as unknown as HolderRef[];
+  return holders
+    .map((holder) => ({ holder, copper: Math.max(0, Math.floor(copperOf(holder))) }))
+    .filter((p) => p.copper > 0);
 }

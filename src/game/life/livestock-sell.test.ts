@@ -17,7 +17,7 @@ import {
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
 import { FULL_PROFILE } from "./profile.ts";
-import { animalPrice, animalSaleOf, LIVE_FACTOR } from "./slaughter.ts";
+import { animalPrice, animalSaleOf, householdPayers, LIVE_FACTOR } from "./slaughter.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -169,5 +169,84 @@ describe("vender y comprar un animal (livestock-tenure-sell)", () => {
     const off = run(false);
     expect(off.l.world.truth.get(ANIMAL, off.goat as never)?.owner).toBe(off.owner);
     expect(FULL_PROFILE).toMatchObject({ livestockSell: true });
+  }, 600_000);
+});
+
+describe("la casa junta el cobre (livestock-tenure-sell-household)", () => {
+  it("pura: primero el que compra, después la bolsa de la casa y los suyos; solo los que tienen", () => {
+    const l = Life.create(SEED, content, { frequency: 8 });
+    const t = l.world.truth;
+    const h = t.get(PERSON, l.player)?.household as string;
+    const kin = (t.ids(PERSON) as string[])
+      .filter(
+        (p) =>
+          p !== l.player &&
+          t.get(PERSON, p as never)?.household === h &&
+          t.get(ENTITY, p as never)?.endedAt === undefined,
+      )
+      .sort();
+    const got = householdPayers(t, l.player, (x) => (x === (kin[0] as never) ? 0 : 5));
+    expect(got.map((p) => p.holder)).toEqual([l.player, h, ...kin.slice(1)]);
+    expect(got.every((p) => p.copper === 5)).toBe(true);
+  }, 300_000);
+
+  it("encendido: la cabra la paga la casa; apagado, no le alcanza; determinista", () => {
+    const run = (household: boolean) => {
+      const l = Life.create(SEED, content, {
+        frequency: 8,
+        villageLivestock: true,
+        livestockDairy: true,
+        livestockLife: true,
+        livestockSlaughter: true,
+        livestockSell: true,
+        livestockSellHousehold: household,
+      });
+      const { seller, owner, goat } = besideSeller(l, "goat");
+      const w = l.world;
+      const t = w.truth;
+      const coins = (p: string) => w.ledger.balance(holderAccount(p as never), COPPER);
+      const h = t.get(PERSON, l.player)?.household as string;
+      // Que le alcance a la casa y no a él: el cobre de los de afuera va a la bolsa de la casa.
+      const last = w.log.all().at(-1);
+      if (last === undefined) throw new Error("sin eventos");
+      const outside = (t.ids(PERSON) as string[])
+        .filter((p) => p !== seller && t.get(PERSON, p as never)?.household !== h)
+        .sort()
+        .filter((p) => Math.floor(coins(p)) > 0);
+      w.ledger.post({
+        tick: last.tick,
+        eventId: last.id,
+        transfers: outside.map((p) => ({
+          unit: COPPER,
+          from: holderAccount(p as never),
+          to: holderAccount(h as never),
+          amount: Math.floor(coins(p)),
+        })),
+      });
+      const before = { mine: coins(l.player), home: coins(h), seller: coins(seller) };
+      const from = w.log.all().length;
+      l.turn(plan(l.player, seller, "su cabra"), 1);
+      const traded = w.log
+        .all()
+        .slice(from)
+        .find((e) => e.kind === "action.trade");
+      const eff = (traded?.data as { effect?: { deal?: boolean; coins?: number } })?.effect;
+      return { l, owner, goat, seller, before, eff, coins, h };
+    };
+    const on = run(true);
+    const t = on.l.world.truth;
+    expect(on.before.mine).toBeLessThan(on.eff?.coins ?? 0);
+    expect(on.eff?.deal).toBe(true);
+    expect(t.get(ANIMAL, on.goat as never)?.owner).toBe(on.h);
+    expect(on.coins(on.seller) - on.before.seller).toBe(on.eff?.coins);
+    expect(on.coins(on.h)).toBeLessThan(on.before.home);
+    const w = on.l.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    const off = run(false);
+    expect(off.eff?.deal).toBe(false);
+    expect(off.l.world.truth.get(ANIMAL, off.goat as never)?.owner).toBe(off.owner);
+    expect(FULL_PROFILE).toMatchObject({ livestockSellHousehold: true });
   }, 600_000);
 });
