@@ -214,7 +214,8 @@ describe("semilla del ledger y helada creída (opt-in)", () => {
     expect(kinds(off, "routine.seed_returned")).toHaveLength(0);
     expect(off.world.ledger.config.externals[SOWN_FIELD]).toBeUndefined();
     expect(run(true).hash()).toEqual(run(true).hash());
-  }, 360_000);
+    // Tres vidas: en el runner de Windows pasó los 6 minutos.
+  }, 900_000);
 
   it("quien cree que va a helar no siembra, y sin la opción no mira la helada", () => {
     const { map } = lifeTerrain(4, content);
