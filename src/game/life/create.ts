@@ -690,6 +690,8 @@ export interface LifeOptions {
   readonly livestockSell?: boolean;
   /** Opt-in (livestock-tenure-sell-household, con `livestockSell`): el que compra un animal junta el cobre con la bolsa de la casa y la de los suyos, no solo con la propia. */
   readonly livestockSellHousehold?: boolean;
+  /** Opt-in (livestock-tenure-sell-barter, con `livestockSellHousehold`): si el cobre de la casa no alcanza, lo que falta lo pone en bienes de su despensa (grano, lana, queso) a su precio. */
+  readonly livestockSellBarter?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
   /** Opt-in (livestock-milk-cheese, con `livestockDairy` y `livestockYield`): la casa cuaja en queso la leche que le sobra de lo que toma su gente. */
@@ -2200,6 +2202,12 @@ export function createLife(
             options.livestockSell &&
             options.livestockSellHousehold
               ? { livestockSellHousehold: true }
+              : {}),
+            ...(options.livestockSlaughter &&
+            options.livestockSell &&
+            options.livestockSellHousehold &&
+            options.livestockSellBarter
+              ? { livestockSellBarter: true }
               : {}),
             ...(options.livestockSlaughter && options.livestockSlaughterRefs
               ? { livestockSlaughterRefs: true }
