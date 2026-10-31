@@ -180,6 +180,18 @@ export const YieldDef = z.strictObject({
       dryAfterDays: z.number().int().positive(),
     })
     .optional(),
+  /**
+   * La esquila (livestock-milk-culture-sheep-shear): con `shear` en el proceso, en vez de un día al
+   * azar se esquila el primer día con media de `warmC` °C o más, pasados `intervalDays` desde la
+   * última (`SHORN`; sin fila, desde que nació); da la lana que creció (`unitGrams` por año, hasta
+   * un año).
+   */
+  shear: z
+    .strictObject({
+      warmC: z.number(),
+      intervalDays: z.number().int().positive().default(300),
+    })
+    .optional(),
 });
 export type YieldDef = z.infer<typeof YieldDef>;
 
@@ -336,6 +348,21 @@ export interface Lactating {
 }
 
 export const LACTATING = table<Lactating>("living.lactating");
+
+/** El animal esquilado (livestock-milk-culture-sheep-shear): cuándo fue la última esquila. */
+export interface Shorn {
+  readonly at: Tick;
+}
+
+export const SHORN = table<Shorn>("living.shorn");
+
+/**
+ * Pura (livestock-milk-culture-sheep-shear): qué parte del vellón de un año tiene el animal
+ * esquilado hace `days` días: crece parejo hasta el año.
+ */
+export function fleeceShare(days: number): number {
+  return Math.min(1, Math.max(0, days / 365));
+}
 
 /** Lo que pastó el ganado de la aldea el último día (livestock-feed-pasture), en la entidad de la ecología. */
 export interface Grazed {
@@ -1105,6 +1132,11 @@ export interface LivestockYieldOptions {
     /** Las tablas que lee `can`. */
     readonly reads?: readonly string[];
   };
+  /**
+   * Opt-in (livestock-milk-culture-sheep-shear): lo que tiene `YieldDef.shear` se esquila en su
+   * temporada con la temperatura media del día en la aldea (°C), no un día al azar.
+   */
+  readonly shear?: { readonly tempC: (t: Tick) => number };
 }
 
 /** Horas de la mañana que cada uno del hogar puede dar al ordeñe. */
@@ -1150,8 +1182,12 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
       ...(o.hunger === true ? [ANIMAL_HUNGER.name] : []),
       ...(o.lactation === true ? [LACTATING.name] : []),
       ...(o.milking ? [PERSON.name, ...(o.milking.reads ?? [])] : []),
+      ...(o.shear ? [SHORN.name] : []),
     ],
-    writes: o.milking && o.lactation === true ? [LACTATING.name] : [],
+    writes: [
+      ...(o.milking && o.lactation === true ? [LACTATING.name] : []),
+      ...(o.shear ? [SHORN.name] : []),
+    ],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
       const step = ctx.window > 0 ? ctx.window : 1;
@@ -1171,6 +1207,7 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
       }
       const hours = o.daylightHours?.(ctx.now);
       const tempC = o.tempC?.(ctx.now);
+      const warm = o.shear?.tempC(ctx.now);
       // hogar|bien -> animales que dieron hoy y gramos.
       const got = new Map<
         string,
@@ -1210,9 +1247,20 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
               suckled = sucklingShare(y, day, alive);
             }
           }
-          const factor = daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
-          const chance = Math.min(1, (y.perYear * factor * step) / o.year);
-          if (ctx.rng.fork("yield", id, i).float() >= chance) return;
+          if (y.shear !== undefined && warm !== undefined) {
+            // La esquila: el primer día templado pasado el intervalo, con la lana que creció.
+            if (warm < y.shear.warmC) return;
+            const days = ((ctx.now - (ctx.truth.get(SHORN, id)?.at ?? a.bornAt)) * 365) / o.year;
+            if (days < y.shear.intervalDays) return;
+            // Con hambre el vellón sale ralo.
+            weight = fleeceShare(days) * hungerFactor(y, hunger);
+            changes.push(setComponent(SHORN, id, { at: ctx.now }));
+          } else {
+            const factor =
+              daylightFactor(y, hours) * coldFactor(y, tempC) * hungerFactor(y, hunger);
+            const chance = Math.min(1, (y.perYear * factor * step) / o.year);
+            if (ctx.rng.fork("yield", id, i).float() >= chance) return;
+          }
           const key = `${a.owner}|${y.good}`;
           const g = got.get(key) ?? {
             owner: a.owner,

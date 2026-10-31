@@ -155,7 +155,14 @@
     },
     "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
     "yields": [
-      { "good": "wool", "unitGrams": 2500, "perYear": 1, "minAgeYears": 1, "hungerStop": 0.6 }
+      {
+        "good": "wool",
+        "unitGrams": 2500,
+        "perYear": 1,
+        "minAgeYears": 1,
+        "hungerStop": 0.6,
+        "shear": { "warmC": 14 }
+      }
     ],
     "feed": {
       "gramsPerDay": 200,
