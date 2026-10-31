@@ -7,9 +7,11 @@ import {
   BUILDING,
   checkInvariants,
   ENTITY,
+  fleeceShare,
   keepChance,
   LIVESTOCK,
   LOCATION,
+  SHORN,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
@@ -169,5 +171,53 @@ describe("la vaca lechera (livestock-milk-culture-cow)", () => {
       Life.create(7, content, { ...opts, livestockCow: true }).hash().total,
     );
     expect(FULL_PROFILE).toMatchObject({ livestockCow: true });
+  }, 600_000);
+});
+
+describe("la esquila en su temporada (livestock-milk-culture-sheep-shear)", () => {
+  it("pura: el vellón crece parejo hasta el año", () => {
+    expect(fleeceShare(0)).toBe(0);
+    expect(fleeceShare(182.5)).toBeCloseTo(0.5);
+    expect(fleeceShare(500)).toBe(1);
+  });
+
+  it("encendido: cada oveja adulta se esquila una vez y queda esquilada; apagado, nunca; determinista", () => {
+    const opts = {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockYield: true,
+      livestockSheep: true,
+    } as const;
+    const off = Life.create(7, content, opts);
+    off.advanceTo(off.now + 400 * 86_400);
+    expect(off.world.truth.ids(SHORN)).toEqual([]);
+    const on = Life.create(7, content, { ...opts, livestockShear: true });
+    on.advanceTo(on.now + 400 * 86_400);
+    const w = on.world;
+    const shorn = [...w.truth.ids(SHORN)];
+    expect(shorn.length).toBeGreaterThan(0);
+    for (const id of shorn) expect(w.truth.get(ANIMAL, id)?.species).toBe("sheep");
+    const wool = w.log
+      .all()
+      .filter(
+        (e) => e.kind === "living.animal_yield" && (e.data as { good?: string }).good === "wool",
+      );
+    expect(wool.length).toBeGreaterThan(0);
+    // Ninguna se esquila dos veces en menos de 300 días.
+    const last = new Map<string, number>();
+    for (const e of wool) {
+      for (const id of (e.data as { from: string[] }).from) {
+        const was = last.get(id);
+        if (was !== undefined) expect(e.tick - was).toBeGreaterThanOrEqual(300 * 86_400);
+        last.set(id, e.tick);
+      }
+    }
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(Life.create(7, content, { ...opts, livestockShear: true }).hash().total).toBe(
+      Life.create(7, content, { ...opts, livestockShear: true }).hash().total,
+    );
+    expect(FULL_PROFILE).toMatchObject({ livestockShear: true });
   }, 600_000);
 });
