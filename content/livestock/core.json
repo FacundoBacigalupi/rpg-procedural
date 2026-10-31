@@ -163,5 +163,48 @@
       "starveDays": 20,
       "graze": { "share": 0.9, "kgPerDay": 1.8 }
     }
+  },
+  {
+    "id": "cow",
+    "name": "vaca",
+    "shape": "cow",
+    "massKg": 400,
+    "exposure": 0.5,
+    "pen": 0.4,
+    "keeps": { "base": 0.5, "rough": -0.5 },
+    "lifespanYears": 18,
+    "count": 2,
+    "minMembers": 5,
+    "herdAgeYears": [2, 9],
+    "femaleShare": 0.6,
+    "optIn": "cow",
+    "breeding": {
+      "maturityYears": 2,
+      "littersPerYear": 0.8,
+      "litter": [1, 1],
+      "mate": "settlement",
+      "maxPerHousehold": 4
+    },
+    "carcass": { "meat": "beef", "meatShare": 0.45, "hide": "hide", "hideShare": 0.07 },
+    "yields": [
+      {
+        "good": "milk",
+        "unitGrams": 1000,
+        "perYear": 1460,
+        "sex": "female",
+        "minAgeYears": 2,
+        "lactationDays": 300,
+        "lactationCurve": { "peakDay": 50, "shape": 0.3 },
+        "suckle": { "days": 180, "sharePerYoung": 0.5, "fosterPerDay": 0.05 },
+        "milking": { "headPerHour": 3, "dryAfterDays": 3 },
+        "hungerStop": 0.5
+      }
+    ],
+    "feed": {
+      "gramsPerDay": 800,
+      "categories": ["cereal", "legume", "tuber", "vegetable"],
+      "starveDays": 30,
+      "graze": { "share": 0.8, "kgPerDay": 11 }
+    }
   }
 ]

@@ -281,10 +281,10 @@ export const LivestockDef = z.strictObject({
   exposure: z.number().min(0).max(1).default(1),
   /**
    * La opción de vida que trae a la especie (livestock-yield-milk: `dairy`, las lecheras;
-   * livestock-milk-culture-species: `sheep`, las ovejas); sin esto,
-   * llega con el ganado de siempre.
+   * livestock-milk-culture-species: `sheep`, las ovejas; livestock-milk-culture-cow: `cow`, la
+   * vaca lechera); sin esto, llega con el ganado de siempre.
    */
-  optIn: z.enum(["dairy", "sheep"]).optional(),
+  optIn: z.enum(["dairy", "sheep", "cow"]).optional(),
 });
 export type LivestockDef = z.infer<typeof LivestockDef>;
 export const LIVESTOCK = defineContent("livestock", LivestockDef);

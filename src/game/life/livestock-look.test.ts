@@ -92,7 +92,7 @@ describe("mirar al animal (livestock-draft-rest-say)", () => {
   it("sin ganado no hay animales que nombrar; adentro tampoco", () => {
     const w = Life.create(7, content, { frequency: 8 }).world;
     expect(animalsInSight(w)).toEqual([]);
-    expect(Object.keys(ANIMAL_WORDS).sort()).toEqual(["dog", "goat", "hen", "ox", "sheep"]);
+    expect(Object.keys(ANIMAL_WORDS).sort()).toEqual(["cow", "dog", "goat", "hen", "ox", "sheep"]);
   });
 
   it("«miro el buey» lo mira a él y la vista y las plantillas dicen que está cansado", () => {
