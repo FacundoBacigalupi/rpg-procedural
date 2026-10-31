@@ -704,6 +704,8 @@ export interface LifeOptions {
   readonly livestockTerrain?: boolean;
   /** Opt-in (livestock-milk-culture-species, con `villageLivestock`): algunas casas tienen ovejas, que dan lana una vez al año (con `livestockYield`), carne y piel. */
   readonly livestockSheep?: boolean;
+  /** Opt-in (livestock-milk-culture-sheep-shear, con `livestockSheep` y `livestockYield`): la oveja se esquila una vez por año, el primer día templado, con la lana que creció desde la última esquila, en vez de un día al azar. */
+  readonly livestockShear?: boolean;
   /** Opt-in (livestock-milk-culture-cow, con `villageLivestock` y `livestockDairy`): algunas casas del llano tienen una vaca lechera (o un toro), que da más leche que la cabra y come como el buey. */
   readonly livestockCow?: boolean;
   /** Opt-in (livestock-feed-pasture, con `livestockFeed`): el buey y las gallinas pastan o escarban lo que crece cerca de la aldea, la casa pone el resto y el monte pierde lo pastado. */
@@ -2225,6 +2227,7 @@ export function createLife(
             ...(options.livestockMilkCurve ? { livestockMilkCurve: true } : {}),
             ...(options.livestockMilkWork ? { livestockMilkWork: true } : {}),
             ...(options.livestockMilkHours ? { livestockMilkHours: true } : {}),
+            ...(options.livestockSheep && options.livestockShear ? { livestockShear: true } : {}),
             ...(options.livestockYieldFeed
               ? { livestockYieldFeed: { hunger: options.livestockFeed === true } }
               : {}),

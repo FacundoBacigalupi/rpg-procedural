@@ -469,6 +469,8 @@ export interface LifeWorld {
   readonly livestockGuard?: boolean;
   /** Opt-in (livestock-milk-hours, con `livestockMilkWork`): no ordeña el que está de viaje ni el que el cuerpo no le da. */
   readonly livestockMilkHours?: boolean;
+  /** Opt-in (livestock-milk-culture-sheep-shear): la oveja se esquila el primer día templado pasado el intervalo, con la lana que creció. */
+  readonly livestockShear?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
   readonly livestockPen?: boolean;
   /** Opt-in (livestock-tenure-heir): los animales del hogar que se quedó sin nadie pasan al pariente. */
@@ -2172,6 +2174,14 @@ export function lifeWorld(
                         ...(parts.livestockMilkHours === true
                           ? { can: ableToMilk(parts.plans), reads: MILKER_READS }
                           : {}),
+                      },
+                    }
+                  : {}),
+                ...(parts.livestockShear === true
+                  ? {
+                      shear: {
+                        tempC: (t: Tick) =>
+                          weatherAt(parts.map, parts.clock, parts.seed, t).tempMeanC,
                       },
                     }
                   : {}),
