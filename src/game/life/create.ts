@@ -688,6 +688,8 @@ export interface LifeOptions {
   readonly livestockSteal?: boolean;
   /** Opt-in (livestock-tenure-sell, con `livestockSlaughter`): el jugador puede venderle un animal de su casa a alguien de otro hogar que tiene al lado, o comprarle uno de la suya («le vendo la cabra a Lin», «le compro la oveja a Lin»): el cobre va de quien compra a quien vende y el animal, a la casa del que compra. */
   readonly livestockSell?: boolean;
+  /** Opt-in (livestock-tenure-sell-household, con `livestockSell`): el que compra un animal junta el cobre con la bolsa de la casa y la de los suyos, no solo con la propia. */
+  readonly livestockSellHousehold?: boolean;
   /** Opt-in (livestock-hide-tan, con `livestockLife`): la casa que junta piel cruda la curte en cuero en su tina (`TANNING`). */
   readonly livestockTan?: boolean;
   /** Opt-in (livestock-milk-cheese, con `livestockDairy` y `livestockYield`): la casa cuaja en queso la leche que le sobra de lo que toma su gente. */
@@ -2194,6 +2196,11 @@ export function createLife(
               ? { livestockSteal: true }
               : {}),
             ...(options.livestockSlaughter && options.livestockSell ? { livestockSell: true } : {}),
+            ...(options.livestockSlaughter &&
+            options.livestockSell &&
+            options.livestockSellHousehold
+              ? { livestockSellHousehold: true }
+              : {}),
             ...(options.livestockSlaughter && options.livestockSlaughterRefs
               ? { livestockSlaughterRefs: true }
               : {}),

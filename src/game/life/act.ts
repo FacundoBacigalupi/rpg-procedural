@@ -217,6 +217,7 @@ import {
   animalSaleOf,
   giftChanges,
   giftTargetOf,
+  householdPayers,
   SLAUGHTER_READS,
   SLAUGHTER_WRITES,
   type SlaughterOptions,
@@ -1701,25 +1702,31 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       ? forgeOf(o, truth, me, node, parties["with"]?.id as EntityRef | undefined, ctx.ledger)
       : { usedTool }),
     ...(animalSale && ctx.ledger
-      ? {
-          animalSale: {
-            animal: animalSale.animal,
-            name: animalSale.name,
-            direction: animalSale.direction,
-            price: animalSale.price,
-            buyerCopper: Math.floor(
-              ctx.ledger.balance(
-                holderAccount(
-                  (animalSale.direction === "sell" ? parties["with"]?.id : me) as HolderRef,
-                ),
-                COPPER,
-              ),
-            ),
-            wants: animalSale.wants,
-            spare: animalSale.spare,
-            unit: COPPER,
-          },
-        }
+      ? (() => {
+          const ledger = ctx.ledger;
+          const buyer = (animalSale.direction === "sell" ? parties["with"]?.id : me) as HolderRef;
+          const copperOf = (h: HolderRef) => ledger.balance(holderAccount(h), COPPER);
+          // Con `sellHousehold` el cobre lo junta toda la casa del que compra.
+          const payers =
+            o.slaughter?.sellHousehold === true
+              ? householdPayers(truth, buyer as unknown as AgentId, copperOf)
+              : undefined;
+          return {
+            animalSale: {
+              animal: animalSale.animal,
+              name: animalSale.name,
+              direction: animalSale.direction,
+              price: animalSale.price,
+              buyerCopper: payers
+                ? payers.reduce((s, p) => s + p.copper, 0)
+                : Math.floor(copperOf(buyer)),
+              wants: animalSale.wants,
+              spare: animalSale.spare,
+              unit: COPPER,
+              ...(payers ? { payers } : {}),
+            },
+          };
+        })()
       : {}),
     boilFuel:
       o.boil && node.verb === "boil"
