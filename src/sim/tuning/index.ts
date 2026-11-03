@@ -128,6 +128,7 @@ export const ScenarioLife = z.strictObject({
   livestockMilkWork: z.boolean().optional(),
   livestockMilkHours: z.boolean().optional(),
   livestockMilkAway: z.boolean().optional(),
+  livestockMilkHand: z.boolean().optional(),
   livestockSuckle: z.boolean().optional(),
   livestockOrphan: z.boolean().optional(),
   livestockFoster: z.boolean().optional(),

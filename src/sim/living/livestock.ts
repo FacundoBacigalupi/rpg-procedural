@@ -350,6 +350,12 @@ export interface Lactating {
   readonly young?: readonly AnimalId[];
   /** Días seguidos que dio sin que nadie la ordeñara (livestock-milk-work); sin esto, 0. */
   readonly missed?: number;
+  /**
+   * La leche que quedó sin ordeñar hoy (livestock-milk-hand, con `milking.hand`): cuándo y cuántos
+   * gramos. Si alguien la ordeña a mano en el día, entra a la casa y no cuenta para secarla; al día
+   * siguiente ya se perdió.
+   */
+  readonly pending?: { readonly at: Tick; readonly grams: number };
 }
 
 export const LACTATING = table<Lactating>("living.lactating");
@@ -1215,6 +1221,11 @@ export interface LivestockYieldOptions {
     readonly can?: (truth: ReadonlyWorldTruth, id: AgentId) => boolean;
     /** Las tablas que lee `can`. */
     readonly reads?: readonly string[];
+    /**
+     * Opt-in (livestock-milk-hand): la leche de la casa que nadie ordeñó queda en
+     * `LACTATING.pending` hasta el día siguiente, para que alguien la ordeñe a mano.
+     */
+    readonly hand?: boolean;
   };
   /**
    * Opt-in (livestock-milk-culture-sheep-shear): lo que tiene `YieldDef.shear` se esquila en su
@@ -1370,18 +1381,25 @@ export function livestockYieldProcess(o: LivestockYieldOptions): ProcessDef {
             if (kept > 0 && left >= cost) {
               minutes.set(a.owner, left - cost);
               g.milkedMinutes += cost;
-              if ((lact.missed ?? 0) > 0) {
-                const { missed: _, ...rest } = lact;
+              if ((lact.missed ?? 0) > 0 || lact.pending !== undefined) {
+                const { missed: _, pending: __, ...rest } = lact;
                 changes.push(setComponent(LACTATING, id, rest));
               }
             } else if (kept > 0) {
               g.lost += kept;
               g.unmilked.push(id);
               const missed = (lact.missed ?? 0) + 1;
+              const { pending: _, ...rest } = lact;
               changes.push(
                 missed >= m.dryAfterDays
                   ? deleteComponent(LACTATING, id)
-                  : setComponent(LACTATING, id, { ...lact, missed }),
+                  : setComponent(LACTATING, id, {
+                      ...rest,
+                      missed,
+                      ...(o.milking?.hand === true
+                        ? { pending: { at: ctx.now, grams: kept } }
+                        : {}),
+                    }),
               );
               return;
             }

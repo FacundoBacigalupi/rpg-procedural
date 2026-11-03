@@ -498,6 +498,9 @@ function outcome(
             : "outcome.slaughter.none",
       );
       break;
+    case "milk":
+      say(e.done ? "outcome.milk.done" : e.had ? "outcome.milk.failed" : "outcome.milk.none");
+      break;
     case "tend":
       if (e.self) say(e.done ? "outcome.tend.self" : "outcome.tend.self_failed");
       else say(e.done ? "outcome.tend.other" : "outcome.tend.other_failed", { who: ref(e.target) });

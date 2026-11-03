@@ -331,6 +331,19 @@ export interface ResolveInput extends Omit<AttemptInput, "has"> {
         readonly yields: readonly { readonly unit: LedgerUnit; readonly grams: number }[];
       }
     | undefined;
+  /**
+   * Opt-in (`milk`, livestock-milk-hand): la hembra de su casa que nombró, tiene al lado y quedó hoy
+   * sin ordeñar, la despensa adonde va la leche y cuánta. Sin esto no hay qué ordeñar.
+   */
+  readonly milkTarget?:
+    | {
+        readonly animal: string;
+        readonly holder: HolderRef;
+        readonly source: LedgerAccount;
+        readonly unit: LedgerUnit;
+        readonly grams: number;
+      }
+    | undefined;
   /** Con qué se comercia y se cosecha: sin esto `trade` no mueve nada y `work` no rinde grano. */
   readonly market?: Market | undefined;
   /** Cómo se llama cada unidad en la lengua del jugador: «grano» tiene que dar `good:grain`. */
@@ -636,6 +649,15 @@ export type VerbEffect =
       /** Lo carneó: si sale mal, el animal sigue vivo. */
       readonly done: boolean;
       /** Gramos que dejó en la despensa, sumando todos los bienes. */
+      readonly grams: number;
+    }
+  | {
+      readonly kind: "milk";
+      /** La hembra que quiso ordeñar (null si no había una suya al lado con leche sin ordeñar). */
+      readonly animal: string | null;
+      /** La ordeñó: si sale mal (patea, se vuelca el balde), la leche se pierde igual. */
+      readonly done: boolean;
+      /** Gramos de leche que dejó en la despensa. */
       readonly grams: number;
     }
   | {
@@ -2197,6 +2219,42 @@ const slaughter: Resolver = (c) => {
   };
 };
 
+/**
+ * Ordeña la hembra de su casa que tiene al lado y que hoy nadie ordeñó: la leche va a la despensa.
+ * Si sale mal, no saca nada (sigue sin ordeñar); sin una así a mano, no hay qué ordeñar.
+ */
+const milk: Resolver = (c) => {
+  const t = c.input.milkTarget;
+  const none: VerbEffect = { kind: "milk", animal: null, done: false, grams: 0 };
+  if (c.roll.unmet) return { effect: none, seconds: c.nominal };
+  if (t === undefined) {
+    return {
+      effect: none,
+      seconds: Math.min(c.nominal, 60),
+      override: { outcome: "failure", failure: "no_means", believed: "failure" },
+    };
+  }
+  if ((c.roll.margin as number) < PARTIAL_MARGIN || t.grams <= 0) {
+    return {
+      effect: { kind: "milk", animal: t.animal, done: false, grams: 0 },
+      seconds: c.nominal,
+    };
+  }
+  return {
+    effect: { kind: "milk", animal: t.animal, done: true, grams: t.grams },
+    seconds: c.nominal,
+    transfers: [
+      {
+        from: t.holder,
+        source: t.source,
+        to: holderAccount(t.holder),
+        unit: t.unit,
+        amount: t.grams,
+      },
+    ],
+  };
+};
+
 /** Toma una sustancia de consumo: lo que lleva encima o la despensa de la casa; gasta una unidad. */
 const consume: Resolver = (c) => {
   const kinds = c.input.consumables ?? new Set<LedgerUnit>();
@@ -2838,6 +2896,7 @@ const RESOLVE: Readonly<Record<ResolveKey, Resolver>> = {
   forge,
   hire,
   slaughter,
+  milk,
   ponder,
 };
 type ResolveKey = ResolveInput["def"]["resolver"];

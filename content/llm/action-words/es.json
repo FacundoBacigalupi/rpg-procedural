@@ -202,6 +202,22 @@
     "weak": ["gallina", "cabra", "oveja", "vaca", "buey", "animal"]
   },
   {
+    "id": "milk",
+    "kind": "action",
+    "stems": [],
+    "forms": [
+      "ordeño",
+      "ordeña",
+      "ordeñás",
+      "ordeñar",
+      "ordeñando",
+      "ordeñó",
+      "ordeñan",
+      "ordeñaste"
+    ],
+    "weak": ["cabra", "oveja", "vaca", "leche", "balde"]
+  },
+  {
     "id": "kindle",
     "kind": "action",
     "stems": ["enciend", "encend", "aviv", "prend"],

@@ -97,6 +97,7 @@ describe("catálogo", () => {
       "hunt",
       "kindle",
       "look",
+      "milk",
       "move",
       "ponder",
       "rest",
