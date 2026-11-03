@@ -13,7 +13,8 @@
       "littersPerYear": 1,
       "litter": [3, 8],
       "mate": "household",
-      "maxPerHousehold": 10
+      "maxPerHousehold": 10,
+      "gestationDays": 21
     },
     "carcass": { "meat": "chicken", "meatShare": 0.6 },
     "yields": [
@@ -52,7 +53,8 @@
       "littersPerYear": 1,
       "litter": [2, 6],
       "mate": "settlement",
-      "maxPerHousehold": 3
+      "maxPerHousehold": 3,
+      "gestationDays": 63
     },
     "carcass": { "hide": "hide", "hideShare": 0.08 },
     "guard": { "repel": 0.6, "minAgeYears": 1, "hungerStop": 0.5 },
@@ -109,7 +111,8 @@
       "littersPerYear": 1,
       "litter": [1, 2],
       "mate": "settlement",
-      "maxPerHousehold": 6
+      "maxPerHousehold": 6,
+      "gestationDays": 150
     },
     "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
     "yields": [
@@ -151,7 +154,8 @@
       "littersPerYear": 1,
       "litter": [1, 2],
       "mate": "settlement",
-      "maxPerHousehold": 8
+      "maxPerHousehold": 8,
+      "gestationDays": 147
     },
     "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
     "yields": [
@@ -190,7 +194,8 @@
       "littersPerYear": 0.8,
       "litter": [1, 1],
       "mate": "settlement",
-      "maxPerHousehold": 4
+      "maxPerHousehold": 4,
+      "gestationDays": 283
     },
     "carcass": { "meat": "beef", "meatShare": 0.45, "hide": "hide", "hideShare": 0.07 },
     "yields": [

@@ -6,11 +6,13 @@ import {
   ANIMAL,
   BUILDING,
   checkInvariants,
+  conceptionPerDay,
   ENTITY,
   fleeceShare,
   keepChance,
   LIVESTOCK,
   LOCATION,
+  PREGNANT,
   SHORN,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -220,4 +222,65 @@ describe("la esquila en su temporada (livestock-milk-culture-sheep-shear)", () =
     );
     expect(FULL_PROFILE).toMatchObject({ livestockShear: true });
   }, 600_000);
+});
+
+describe("la preñez que dura (livestock-gestation)", () => {
+  it("pura: la chance de quedar preñada deja el mismo ritmo de partos", () => {
+    expect(conceptionPerDay(1, 150)).toBeCloseTo(1 / 215);
+    expect(conceptionPerDay(0.8, 283)).toBeCloseTo(1 / (365 / 0.8 - 283));
+    expect(conceptionPerDay(2, 200)).toBe(1);
+  });
+
+  it("encendido: las cabras quedan preñadas y paren a los 150 días; apagado, nunca; determinista", () => {
+    const opts = {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockDairy: true,
+    } as const;
+    const run = (gestation: boolean) => {
+      const l = Life.create(7, content, { ...opts, livestockGestation: gestation });
+      const seen = new Map<string, { since: number; due: number }>();
+      const start = l.now;
+      for (let d = 30; d <= 360; d += 30) {
+        l.advanceTo(start + d * 86_400);
+        for (const id of [...l.world.truth.ids(PREGNANT)].sort()) {
+          const p = l.world.truth.get(PREGNANT, id);
+          if (p && !seen.has(id)) seen.set(id, p);
+        }
+      }
+      return { l, seen, start };
+    };
+    const on = run(true);
+    const t = on.l.world.truth;
+    const goats = [...on.seen].filter(([id]) => t.get(ANIMAL, id as never)?.species === "goat");
+    expect(goats.length).toBeGreaterThan(0);
+    const year = on.l.world.clock.year;
+    for (const [, p] of goats) expect(p.due - p.since).toBe(Math.round((150 * year) / 365));
+    // Algunas paren adentro de la corrida: el parto de cada una cae en su `due`.
+    const births = on.l.world.log
+      .all()
+      .filter((e) => e.kind === "living.animal_born" && e.tick > on.start)
+      .map((e) => ({ tick: e.tick, mother: (e.data as { mother: string }).mother }));
+    const due = goats.filter(([, p]) => p.due <= on.l.now);
+    expect(due.length).toBeGreaterThan(0);
+    for (const [id, p] of due) {
+      const b = births.find((x) => x.mother === id && x.tick >= p.due);
+      const lost = on.l.world.log
+        .all()
+        .some(
+          (e) =>
+            (e.kind === "living.animal_miscarried" || e.kind === "living.animal_died") &&
+            ((e.data as { mother?: string; animal?: string }).mother ??
+              (e.data as { animal?: string }).animal) === id,
+        );
+      expect(b !== undefined || lost).toBe(true);
+    }
+    const w = on.l.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    expect(run(false).seen.size).toBe(0);
+    expect(FULL_PROFILE).toMatchObject({ livestockGestation: true });
+  }, 900_000);
 });

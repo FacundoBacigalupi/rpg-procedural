@@ -38,6 +38,7 @@ import {
   type LivestockDef,
   LOCATION,
   PERSON,
+  PREGNANT,
   type ReadonlyWorldTruth,
   type ResolveInput,
   type StateChange,
@@ -113,6 +114,7 @@ export const SLAUGHTER_READS = [
   LOCATION.name,
   ANIMAL_HUNGER.name,
   LACTATING.name,
+  PREGNANT.name,
   DRAFT_FATIGUE.name,
 ] as const;
 
@@ -122,6 +124,7 @@ export const SLAUGHTER_WRITES = [
   LOCATION.name,
   ANIMAL_HUNGER.name,
   LACTATING.name,
+  PREGNANT.name,
   DRAFT_FATIGUE.name,
 ] as const;
 
@@ -410,6 +413,7 @@ export function slaughterChanges(
   const changes: StateChange[] = [endEntity(base, event, now), deleteComponent(LOCATION, animal)];
   if (truth.get(ANIMAL_HUNGER, animal)) changes.push(deleteComponent(ANIMAL_HUNGER, animal));
   if (truth.get(LACTATING, animal)) changes.push(deleteComponent(LACTATING, animal));
+  if (truth.get(PREGNANT, animal)) changes.push(deleteComponent(PREGNANT, animal));
   if (truth.get(DRAFT_FATIGUE, animal)) changes.push(deleteComponent(DRAFT_FATIGUE, animal));
   return changes;
 }

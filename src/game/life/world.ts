@@ -427,6 +427,8 @@ export interface LifeWorld {
   readonly livestockOrphan?: boolean;
   /** Opt-in (livestock-milk-foster, con `livestockSuckle`): otra madre de la casa puede adoptar a la cría huérfana. */
   readonly livestockFoster?: boolean;
+  /** Opt-in (livestock-gestation, con `livestockLife`): la preñez dura los días de la especie. */
+  readonly livestockGestation?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
@@ -2144,6 +2146,7 @@ export function lifeWorld(
                 ...(parts.livestockDairy === true && parts.livestockSuckle === true
                   ? { suckle: true, ...(parts.livestockFoster === true ? { foster: true } : {}) }
                   : {}),
+                ...(parts.livestockGestation === true ? { gestation: true } : {}),
               }),
             ]
           : []),
