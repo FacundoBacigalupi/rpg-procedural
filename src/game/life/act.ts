@@ -217,6 +217,7 @@ import {
   animalSaleOf,
   giftChanges,
   giftTargetOf,
+  householdBarter,
   householdPayers,
   SLAUGHTER_READS,
   SLAUGHTER_WRITES,
@@ -1709,7 +1710,18 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
           // Con `sellHousehold` el cobre lo junta toda la casa del que compra.
           const payers =
             o.slaughter?.sellHousehold === true
-              ? householdPayers(truth, buyer as unknown as AgentId, copperOf)
+              ? [
+                  ...householdPayers(truth, buyer as unknown as AgentId, copperOf),
+                  // Con `sellBarter`, lo que falta lo pone la casa en bienes.
+                  ...(o.slaughter.sellBarter === true
+                    ? householdBarter(
+                        truth,
+                        buyer as unknown as AgentId,
+                        (h) => ledger.holdings(holderAccount(h)),
+                        o.goods,
+                      )
+                    : []),
+                ]
               : undefined;
           return {
             animalSale: {

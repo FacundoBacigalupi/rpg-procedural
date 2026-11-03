@@ -382,6 +382,8 @@ export type EffectView =
         readonly coins: number;
         /** Era un animal (livestock-tenure-sell), no una herramienta. */
         readonly animal?: true;
+        /** Lo que se pagó en bienes (livestock-tenure-sell-barter). */
+        readonly barter?: readonly { readonly good: string; readonly grams: number }[];
       };
     }
   | {
@@ -954,6 +956,7 @@ function effectView(
                 direction: e.direction,
                 coins: e.coins,
                 ...(e.animal !== undefined ? { animal: true as const } : {}),
+                ...(e.barter !== undefined ? { barter: e.barter } : {}),
               },
             }
           : {}),

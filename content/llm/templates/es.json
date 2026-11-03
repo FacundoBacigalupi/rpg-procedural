@@ -504,6 +504,14 @@
     "lines": ["Le comprás a {with} su {what} por {coins}, aunque te lo cobran caro."]
   },
   {
+    "id": "outcome.trade.animal.barter.buy",
+    "lines": ["Como el cobre no alcanza, parte se paga con {goods}."]
+  },
+  {
+    "id": "outcome.trade.animal.barter.sell",
+    "lines": ["Como no tienen todo el cobre, parte te lo pagan con {goods}."]
+  },
+  {
     "id": "outcome.trade.noanimal.no_copper",
     "lines": ["No alcanza el cobre para el animal ({what}): no hay trato con {with}."]
   },
