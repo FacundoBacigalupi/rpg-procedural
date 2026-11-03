@@ -43,6 +43,7 @@ export {
   type AnimalMark,
   animalMarksOf,
   OLD_LOOK_SHARE,
+  PREGNANT_LOOK_SHARE,
   STARVING_LOOK_LEVEL,
   THIN_LOOK_LEVEL,
 } from "./animal-marks.ts";

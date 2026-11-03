@@ -1150,6 +1150,10 @@
     "id": "thing.mark.nursing",
     "lines": ["Da de mamar: tiene la ubre llena.", "Está criando: da de mamar."]
   },
+  {
+    "id": "thing.mark.pregnant",
+    "lines": ["Tiene la panza grande: está preñada.", "Se la ve pesada, con cría adentro."]
+  },
   { "id": "thing.state.lit", "lines": ["Arde con buena llama.", "El fuego está prendido."] },
   { "id": "thing.state.cold", "lines": ["Está frío, sin fuego.", "No hay fuego: solo ceniza."] },
   { "id": "thing.state.worn", "lines": ["Se nota gastado por los años.", "Está gastado."] },

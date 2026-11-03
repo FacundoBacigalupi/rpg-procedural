@@ -10,6 +10,7 @@ import {
   type IntentDraft,
   LACTATING,
   LOCATION,
+  PREGNANT,
   planFromDraft,
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
@@ -17,6 +18,7 @@ import {
   ANIMAL_WORDS,
   animalsInSight,
   OLD_LOOK_SHARE,
+  PREGNANT_LOOK_SHARE,
   STARVING_LOOK_LEVEL,
   THIN_LOOK_LEVEL,
   TIRED_LOOK_LEVEL,
@@ -172,5 +174,31 @@ describe("lo demás que se le nota al animal (livestock-look-more)", () => {
     const thing = view.things?.find((t) => t.shape === "ox" && t.looked === true);
     const seen = animalsInSight(w).find((s) => s.ref === ox);
     expect(thing?.marks ?? []).toEqual(seen?.marks ?? []);
+  }, 300_000);
+});
+
+describe("la preñez que se nota (livestock-look-pregnant)", () => {
+  it("de cerca se le ve la panza en la segunda mitad de la preñez; antes, no", () => {
+    const l = Life.create(7, content, {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockDraft: true,
+      livestockDraftFatigue: true,
+    });
+    const w = l.world;
+    const ox = oxInSight(l);
+    const a = w.truth.get(ANIMAL, ox);
+    if (!a) throw new Error("sin buey");
+    // Adulto, comido y sin cría: solo cuenta la preñez.
+    w.truth.set(ANIMAL, ox, { ...a, bornAt: w.scheduler.now - 3 * w.clock.year });
+    const now = w.scheduler.now;
+    const span = 150 * 86_400;
+    const at = (since: number) =>
+      w.truth.set(PREGNANT, ox, { since: since as never, due: (since + span) as never, size: 1 });
+    at(now - Math.floor(PREGNANT_LOOK_SHARE * span) + 86_400);
+    expect(animalsInSight(w).find((s) => s.ref === ox)?.marks ?? []).not.toContain("pregnant");
+    at(now - Math.ceil(PREGNANT_LOOK_SHARE * span));
+    expect(animalsInSight(w).find((s) => s.ref === ox)?.marks).toContain("pregnant");
   }, 300_000);
 });
