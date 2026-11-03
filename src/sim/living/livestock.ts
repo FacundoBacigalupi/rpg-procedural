@@ -88,6 +88,11 @@ export const BreedingDef = z.strictObject({
   mate: z.enum(["household", "settlement"]),
   /** Cuántos de la especie mantiene una casa: más allá, no se crían (el patio no da para más). */
   maxPerHousehold: z.number().int().min(1),
+  /**
+   * Cuántos días dura la preñez (livestock-gestation, con `gestation`): queda preñada y pare a los
+   * días; sin esto, o sin la opción, pare el día que la cubren.
+   */
+  gestationDays: z.number().positive().optional(),
 });
 export type BreedingDef = z.infer<typeof BreedingDef>;
 
@@ -349,6 +354,28 @@ export interface Lactating {
 
 export const LACTATING = table<Lactating>("living.lactating");
 
+/** La hembra preñada (livestock-gestation): desde cuándo, cuándo pare y cuántas crías trae. */
+export interface Pregnant {
+  readonly since: Tick;
+  readonly due: Tick;
+  readonly size: number;
+}
+
+export const PREGNANT = table<Pregnant>("living.pregnant");
+
+/** Desde qué hambre la preñada pierde la cría (livestock-gestation). */
+export const MISCARRY_HUNGER = 0.9;
+
+/**
+ * Pura (livestock-gestation): la chance diaria de que una hembra abierta quede preñada, para que
+ * con la preñez de `gestationDays` siga pariendo `littersPerYear` por año: un parto cada
+ * `365 / littersPerYear` días, de los que la preñez se come `gestationDays`.
+ */
+export function conceptionPerDay(littersPerYear: number, gestationDays: number): number {
+  const open = 365 / littersPerYear - gestationDays;
+  return open <= 1 ? 1 : 1 / open;
+}
+
 /** El animal esquilado (livestock-milk-culture-sheep-shear): cuándo fue la última esquila. */
 export interface Shorn {
   readonly at: Tick;
@@ -556,6 +583,12 @@ export interface LivestockLifeOptions {
    * menos cuantas más crías ya tiene); pasa a su `LACTATING.young` (evento `living.animal_fostered`).
    */
   readonly foster?: boolean;
+  /**
+   * Opt-in (livestock-gestation): la especie con `breeding.gestationDays` queda preñada (`PREGNANT`)
+   * y pare a los días; la preñada no vuelve a quedar, cuenta para el tope de la casa con sus crías
+   * por nacer, y con hambre de `MISCARRY_HUNGER` o más la pierde (`living.animal_miscarried`).
+   */
+  readonly gestation?: boolean;
 }
 
 /** El hogar y la aldea de un animal, para buscar macho. */
@@ -585,6 +618,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       LOCATION.name,
       ANIMAL_HUNGER.name,
       ...(o.lactation === true ? [LACTATING.name] : []),
+      ...(o.gestation === true ? [PREGNANT.name] : []),
     ],
     writes: [
       ANIMAL.name,
@@ -592,6 +626,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       LOCATION.name,
       ANIMAL_HUNGER.name,
       ...(o.lactation === true ? [LACTATING.name] : []),
+      ...(o.gestation === true ? [PREGNANT.name] : []),
     ],
     scopeGuard: (truth) => truth.ids(ANIMAL).length > 0,
     run(ctx) {
@@ -640,6 +675,9 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
         if (o.lactation === true && ctx.truth.get(LACTATING, id)) {
           changes.push(deleteComponent(LACTATING, id));
         }
+        if (o.gestation === true && ctx.truth.get(PREGNANT, id)) {
+          changes.push(deleteComponent(PREGNANT, id));
+        }
         dead.add(id);
         // El cuerpo queda en la casa dueña como carne y piel.
         const transfers = carcassYield(def, ageYears(a)).map((y) => ({
@@ -656,7 +694,8 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       for (const [id, a] of alive) {
         if (dead.has(id)) continue;
         const key = `${a.owner}|${a.species}`;
-        count.set(key, (count.get(key) ?? 0) + 1);
+        const unborn = o.gestation === true ? (ctx.truth.get(PREGNANT, id)?.size ?? 0) : 0;
+        count.set(key, (count.get(key) ?? 0) + 1 + unborn);
         const b = byId.get(a.species)?.breeding;
         if (a.sex === "male" && b && ageYears(a) >= b.maturityYears) {
           males.add(key);
@@ -665,19 +704,64 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       }
       for (const [id, a] of alive) {
         const b = byId.get(a.species)?.breeding;
-        if (dead.has(id) || a.sex !== "female" || !b || ageYears(a) < b.maturityYears) continue;
-        // Una hembra con más de media hambre no queda preñada.
-        if (hunger(id) > 0.5) continue;
+        if (dead.has(id) || a.sex !== "female" || !b) continue;
         const key = `${a.owner}|${a.species}`;
-        const mate = b.mate === "household" ? key : `${settlementOf(ctx.truth, a)}|${a.species}`;
-        if (!males.has(mate)) continue;
-        const room = b.maxPerHousehold - (count.get(key) ?? 0);
-        if (room <= 0) continue;
-        const r = ctx.rng.fork("birth", id).stream();
-        if (r.float() >= stepChance(Math.min(1, b.littersPerYear / 365), step, o.year / 365))
-          continue;
-        const [lo, hi] = b.litter;
-        const size = Math.min(room, lo + Math.floor(r.float() * (hi - lo + 1)));
+        const gestationDays = o.gestation === true ? b.gestationDays : undefined;
+        const pregnant = gestationDays !== undefined ? ctx.truth.get(PREGNANT, id) : undefined;
+        let size: number;
+        let r: ReturnType<ReturnType<Rng["fork"]>["stream"]>;
+        if (pregnant) {
+          if (hunger(id) >= MISCARRY_HUNGER) {
+            events.push({
+              kind: "living.animal_miscarried",
+              actors: [],
+              place: { kind: "building", building: a.home },
+              data: { mother: id, species: a.species, owner: a.owner, size: pregnant.size },
+              causes: [
+                { kind: "state", entity: id, key: "hunger" },
+                { kind: "state", entity: id, key: "pregnancy" },
+              ],
+              emissions: null,
+            });
+            changes.push(deleteComponent(PREGNANT, id));
+            count.set(key, (count.get(key) ?? 0) - pregnant.size);
+            continue;
+          }
+          if (ctx.now < pregnant.due) continue;
+          changes.push(deleteComponent(PREGNANT, id));
+          size = pregnant.size;
+          r = ctx.rng.fork("born", id).stream();
+        } else {
+          if (ageYears(a) < b.maturityYears) continue;
+          // Una hembra con más de media hambre no queda preñada.
+          if (hunger(id) > 0.5) continue;
+          const mate = b.mate === "household" ? key : `${settlementOf(ctx.truth, a)}|${a.species}`;
+          if (!males.has(mate)) continue;
+          const room = b.maxPerHousehold - (count.get(key) ?? 0);
+          if (room <= 0) continue;
+          r = ctx.rng.fork("birth", id).stream();
+          const daily =
+            gestationDays !== undefined
+              ? conceptionPerDay(b.littersPerYear, gestationDays)
+              : Math.min(1, b.littersPerYear / 365);
+          if (r.float() >= stepChance(daily, step, o.year / 365)) continue;
+          const [lo, hi] = b.litter;
+          size = Math.min(room, lo + Math.floor(r.float() * (hi - lo + 1)));
+          if (gestationDays !== undefined) {
+            const due = (ctx.now + Math.round((gestationDays * o.year) / 365)) as Tick;
+            events.push({
+              kind: "living.animal_conceived",
+              actors: [],
+              place: { kind: "building", building: a.home },
+              data: { mother: id, species: a.species, owner: a.owner, due, size },
+              causes: [{ kind: "state", entity: id, key: "mating" }],
+              emissions: null,
+            });
+            changes.push(setComponent(PREGNANT, id, { since: ctx.now, due, size }));
+            count.set(key, (count.get(key) ?? 0) + size);
+            continue;
+          }
+        }
         const def = byId.get(a.species);
         const born = draftEvent(events.length);
         const hex = ctx.truth.get(LOCATION, id)?.hex ?? 0;
@@ -708,7 +792,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
             }),
           );
         }
-        count.set(key, (count.get(key) ?? 0) + size);
+        if (!pregnant) count.set(key, (count.get(key) ?? 0) + size);
         mothersToday.add(id);
       }
       if (o.foster === true && o.suckle === true) {

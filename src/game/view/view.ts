@@ -489,7 +489,7 @@ export interface ThingView {
   /** Lo que se nota de su estado al mirarlo (lo fijo: el pozo gastado, el granero descuidado; el buey cansado). */
   readonly state?: "worn" | "poor" | "lit" | "cold" | "tired" | "soaking" | "almost";
   /** Lo demás que se le nota a un animal de cerca (livestock-look-more): edad, hambre, cría. */
-  readonly marks?: readonly ("young" | "old" | "thin" | "starving" | "nursing")[];
+  readonly marks?: readonly ("young" | "old" | "thin" | "starving" | "nursing" | "pregnant")[];
 }
 
 /** Lo fijo del espacio (el pozo, el granero): entra a la vista solo si lo miró a propósito. */
