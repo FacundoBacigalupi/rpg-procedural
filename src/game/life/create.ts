@@ -650,6 +650,8 @@ export interface LifeOptions {
   readonly livestockMilkWork?: boolean;
   /** Opt-in (livestock-milk-hours, con `livestockMilkWork`): no ordeña el que está de viaje ni el que no puede por el cuerpo (inconsciente, manos o piernas que no responden). */
   readonly livestockMilkHours?: boolean;
+  /** Opt-in (livestock-milk-hours-away, con `livestockMilkHours`): tampoco ordeña el que al cambio de día no está en el hex de su casa (el jugador de viaje, que no tiene `NPC_JOURNEY`). */
+  readonly livestockMilkAway?: boolean;
   /** Opt-in (livestock-milk-suckle, con `livestockDairy`, `livestockLife` y `livestockYield`): los primeros 75 días cada cabrito vivo se toma su parte de la leche de la madre y a la casa le llega el resto. */
   readonly livestockSuckle?: boolean;
   /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): el cabrito que mama no come de la casa; el huérfano toma la leche de la casa o pasa hambre (de lo sólido come poco). */
@@ -2242,6 +2244,9 @@ export function createLife(
             ...(options.livestockMilkCurve ? { livestockMilkCurve: true } : {}),
             ...(options.livestockMilkWork ? { livestockMilkWork: true } : {}),
             ...(options.livestockMilkHours ? { livestockMilkHours: true } : {}),
+            ...(options.livestockMilkHours && options.livestockMilkAway
+              ? { livestockMilkAway: true }
+              : {}),
             ...(options.livestockSheep && options.livestockShear ? { livestockShear: true } : {}),
             ...(options.livestockYieldFeed
               ? { livestockYieldFeed: { hunger: options.livestockFeed === true } }
