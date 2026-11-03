@@ -5,10 +5,12 @@ import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
   ANIMAL,
   BODY_STATE,
+  BUILDING,
   checkInvariants,
   herdSpecies,
   LACTATING,
   LIVESTOCK,
+  LOCATION,
   lactationFactor,
   nursedYoung,
   PERSON,
@@ -16,7 +18,7 @@ import {
 } from "../../sim/index.ts";
 import { GAME_CONTENT_KINDS } from "../view/index.ts";
 import { Life } from "./life.ts";
-import { ableToMilk } from "./milkers.ts";
+import { ableToMilk, atHome } from "./milkers.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { FULL_PROFILE } from "./profile.ts";
 
@@ -418,4 +420,31 @@ describe("no ordeña el que no está o no puede (livestock-milk-hours)", () => {
     expect(can(w.truth, someone as never)).toBe(false);
     expect(FULL_PROFILE).toMatchObject({ livestockMilkHours: true });
   }, 600_000);
+});
+
+describe("no ordeña el que está lejos de su casa (livestock-milk-hours-away)", () => {
+  it("pura: fuera del hex de su casa no ordeña; sin `away`, sí", () => {
+    const l = Life.create(7, content, { ...OPTS, livestockDairy: true });
+    const w = l.world;
+    const t = w.truth;
+    const p = l.player;
+    const h = t.get(PERSON, p)?.household;
+    const home = t
+      .ids(BUILDING)
+      .map((b) => t.get(BUILDING, b))
+      .find((b) => b?.household === h)?.hex;
+    if (home === undefined) throw new Error("sin casa");
+    t.set(LOCATION, p, { hex: home });
+    expect(atHome(t, p)).toBe(true);
+    expect(ableToMilk(w.plans, { away: true })(t, p)).toBe(true);
+    const far = t
+      .ids(BUILDING)
+      .map((b) => t.get(BUILDING, b)?.hex)
+      .find((x) => x !== undefined && x !== home);
+    t.set(LOCATION, p, { hex: far ?? home + 1 });
+    expect(atHome(t, p)).toBe(false);
+    expect(ableToMilk(w.plans, { away: true })(t, p)).toBe(false);
+    expect(ableToMilk(w.plans)(t, p)).toBe(true);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkAway: true });
+  }, 300_000);
 });

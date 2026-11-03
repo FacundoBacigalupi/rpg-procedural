@@ -178,7 +178,7 @@ import {
 } from "./medicine.ts";
 import { type Labor, laborProcess, puerperalSeeds } from "./midwife.ts";
 import { type MigrationOptions, migrationProcess } from "./migration.ts";
-import { ableToMilk, MILKER_READS } from "./milkers.ts";
+import { ableToMilk, MILKER_AWAY_READS, MILKER_READS } from "./milkers.ts";
 import {
   catalogMoldHints,
   type HouseholdNeeds,
@@ -473,6 +473,8 @@ export interface LifeWorld {
   readonly livestockGuard?: boolean;
   /** Opt-in (livestock-milk-hours, con `livestockMilkWork`): no ordeña el que está de viaje ni el que el cuerpo no le da. */
   readonly livestockMilkHours?: boolean;
+  /** Opt-in (livestock-milk-hours-away, con `livestockMilkHours`): no ordeña el que no está en el hex de su casa. */
+  readonly livestockMilkAway?: boolean;
   /** Opt-in (livestock-milk-culture-sheep-shear): la oveja se esquila el primer día templado pasado el intervalo, con la lana que creció. */
   readonly livestockShear?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
@@ -2184,7 +2186,12 @@ export function lifeWorld(
                       milking: {
                         minAgeYears: ROUTINE.workAge,
                         ...(parts.livestockMilkHours === true
-                          ? { can: ableToMilk(parts.plans), reads: MILKER_READS }
+                          ? parts.livestockMilkAway === true
+                            ? {
+                                can: ableToMilk(parts.plans, { away: true }),
+                                reads: [...MILKER_READS, ...MILKER_AWAY_READS],
+                              }
+                            : { can: ableToMilk(parts.plans), reads: MILKER_READS }
                           : {}),
                       },
                     }
