@@ -479,6 +479,8 @@ export interface LifeWorld {
   readonly livestockMilkAway?: boolean;
   /** Opt-in (livestock-milk-hand, con `livestockMilkWork` y `livestockSlaughter`): la leche que nadie ordeñó queda en el día y el jugador puede ordeñarla a mano. */
   readonly livestockMilkHand?: boolean;
+  /** Opt-in (livestock-milk-self, con `livestockMilkHand` y `livestockMilkHours`): el jugador no cuenta solo entre los que ordeñan a la mañana; ordeña si lo hace a mano. */
+  readonly livestockMilkSelf?: boolean;
   /** Opt-in (livestock-milk-culture-sheep-shear): la oveja se esquila el primer día templado pasado el intervalo, con la lana que creció. */
   readonly livestockShear?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
@@ -2193,12 +2195,16 @@ export function lifeWorld(
                         minAgeYears: ROUTINE.workAge,
                         ...(parts.livestockMilkHand === true ? { hand: true } : {}),
                         ...(parts.livestockMilkHours === true
-                          ? parts.livestockMilkAway === true
-                            ? {
-                                can: ableToMilk(parts.plans, { away: true }),
-                                reads: [...MILKER_READS, ...MILKER_AWAY_READS],
-                              }
-                            : { can: ableToMilk(parts.plans), reads: MILKER_READS }
+                          ? {
+                              can: ableToMilk(parts.plans, {
+                                ...(parts.livestockMilkAway === true ? { away: true } : {}),
+                                ...(parts.livestockMilkSelf === true ? { except: player } : {}),
+                              }),
+                              reads:
+                                parts.livestockMilkAway === true
+                                  ? [...MILKER_READS, ...MILKER_AWAY_READS]
+                                  : MILKER_READS,
+                            }
                           : {}),
                       },
                     }
