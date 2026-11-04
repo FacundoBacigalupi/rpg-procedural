@@ -2,7 +2,8 @@
 // hora por persona del hogar; con esto no cuenta al que está de viaje (`NPC_JOURNEY`) ni al que el
 // cuerpo no le da (inconsciente, o con las manos o las piernas que no responden). Con `away`
 // (livestock-milk-hours-away) tampoco al que al cambio de día no está en el hex de su casa: el que
-// viaja sin `NPC_JOURNEY` (el jugador) no vuelve a la mañana a ordeñar.
+// viaja sin `NPC_JOURNEY` (el jugador) no vuelve a la mañana a ordeñar. Con `except`
+// (livestock-milk-self) el jugador no ordeña solo: si quiere, ordeña a mano (`milk`).
 
 import type { AgentId } from "../../core/index.ts";
 import {
@@ -41,12 +42,13 @@ export function atHome(truth: ReadonlyWorldTruth, id: AgentId): boolean {
   return homes.length === 0 || homes.some((b) => b?.hex === at);
 }
 
-/** Si la persona está en casa y el cuerpo le da para ordeñar. */
+/** Si la persona está en casa y el cuerpo le da para ordeñar; `except` nunca ordeña solo. */
 export function ableToMilk(
   plans: readonly BodyPlanDef[],
-  options: { readonly away?: boolean } = {},
+  options: { readonly away?: boolean; readonly except?: AgentId } = {},
 ): (truth: ReadonlyWorldTruth, id: AgentId) => boolean {
   return (truth, id) => {
+    if (id === options.except) return false;
     if (truth.get(NPC_JOURNEY, id)) return false;
     if (options.away === true && !atHome(truth, id)) return false;
     const body = truth.get(BODY_STATE, id);

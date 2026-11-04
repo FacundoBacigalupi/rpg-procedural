@@ -654,6 +654,8 @@ export interface LifeOptions {
   readonly livestockMilkAway?: boolean;
   /** Opt-in (livestock-milk-hand, con `livestockMilkWork` y `livestockSlaughter`): la leche que la casa no llegó a ordeñar queda ese día, y el jugador puede ordeñar a mano la hembra de su casa que tiene al lado («ordeño la cabra»): la leche va a la despensa y no cuenta para secarla. */
   readonly livestockMilkHand?: boolean;
+  /** Opt-in (livestock-milk-self, con `livestockMilkHand` y `livestockMilkHours`): el jugador ya no ordeña solo a la mañana con los de su casa; si nadie más ordeña, la leche queda sin ordeñar hasta que él lo haga a mano («ordeño la cabra»). */
+  readonly livestockMilkSelf?: boolean;
   /** Opt-in (livestock-milk-suckle, con `livestockDairy`, `livestockLife` y `livestockYield`): los primeros 75 días cada cabrito vivo se toma su parte de la leche de la madre y a la casa le llega el resto. */
   readonly livestockSuckle?: boolean;
   /** Opt-in (livestock-milk-orphan, con `livestockSuckle` y `livestockFeed`): el cabrito que mama no come de la casa; el huérfano toma la leche de la casa o pasa hambre (de lo sólido come poco). */
@@ -2254,6 +2256,13 @@ export function createLife(
               : {}),
             ...(options.livestockMilkWork && options.livestockSlaughter && options.livestockMilkHand
               ? { livestockMilkHand: true }
+              : {}),
+            ...(options.livestockMilkWork &&
+            options.livestockSlaughter &&
+            options.livestockMilkHand &&
+            options.livestockMilkHours &&
+            options.livestockMilkSelf
+              ? { livestockMilkSelf: true }
               : {}),
             ...(options.livestockSheep && options.livestockShear ? { livestockShear: true } : {}),
             ...(options.livestockYieldFeed

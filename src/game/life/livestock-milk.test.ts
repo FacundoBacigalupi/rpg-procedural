@@ -548,3 +548,70 @@ describe("ordeñar a mano lo que quedó sin ordeñar (livestock-milk-hand)", () 
     expect(FULL_PROFILE).toMatchObject({ livestockMilkHand: true });
   }, 600_000);
 });
+
+describe("el jugador no ordeña solo (livestock-milk-self)", () => {
+  it("pura: con `except` no cuenta entre los que ordeñan; los demás, sí", () => {
+    const l = Life.create(7, content, { ...OPTS, livestockDairy: true });
+    const w = l.world;
+    const t = w.truth;
+    const other = t
+      .ids(PERSON)
+      .sort()
+      .find((p) => p !== l.player && t.get(BODY_STATE, p));
+    if (other === undefined) throw new Error("sin otro");
+    expect(ableToMilk(w.plans)(t, l.player)).toBe(true);
+    expect(ableToMilk(w.plans, { except: l.player })(t, l.player)).toBe(false);
+    expect(ableToMilk(w.plans, { except: l.player })(t, other as never)).toBe(true);
+  }, 300_000);
+
+  it("encendido: el jugador no figura entre los que ordeñaron; apagado, sí; determinista", () => {
+    const run = (self: boolean) => {
+      const l = Life.create(7, content, {
+        ...OPTS,
+        livestockDairy: true,
+        livestockMilkWork: true,
+        livestockMilkHours: true,
+        livestockSlaughter: true,
+        livestockMilkHand: true,
+        livestockMilkSelf: self,
+      });
+      const t = l.world.truth;
+      const year = l.world.clock.year;
+      // Una cabra del hogar del jugador que parió hace un mes.
+      const h = t.get(PERSON, l.player)?.household;
+      const goat = t
+        .ids(ANIMAL)
+        .sort()
+        .find((id) => {
+          const g = t.get(ANIMAL, id);
+          return g?.species === "goat" && g.sex === "female" && (l.now - g.bornAt) / year > 2;
+        });
+      const a = goat === undefined ? undefined : t.get(ANIMAL, goat);
+      if (goat === undefined || !a || h === undefined) throw new Error("sin cabra");
+      t.set(ANIMAL, goat, { ...a, owner: h });
+      t.set(LACTATING, goat, { since: (l.now - 30 * DAY) as never });
+      // Los demás del hogar, de viaje: solo queda el jugador.
+      for (const p of t.ids(PERSON).sort()) {
+        if (p === l.player || t.get(PERSON, p)?.household !== h) continue;
+        t.set(NPC_JOURNEY, p, { place: "lejos", since: l.now, decision: "test" });
+      }
+      l.advanceTo(l.now + DAY);
+      const milkedBy = l.world.log
+        .all()
+        .filter((e) => e.kind === "living.animal_yield")
+        .flatMap((e) => (e.data as { milkedBy?: string[] }).milkedBy ?? []);
+      return { l, goat, milkedBy };
+    };
+    const on = run(true);
+    expect(on.milkedBy).not.toContain(on.l.player);
+    // La cabra queda con su leche pendiente para que el jugador la ordeñe a mano.
+    expect(on.l.world.truth.get(LACTATING, on.goat as never)?.pending?.grams ?? 0).toBeGreaterThan(
+      0,
+    );
+    const off = run(false);
+    expect(off.milkedBy).toContain(off.l.player);
+    expect(on.l.world.ledger.audit()).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkSelf: true });
+  }, 600_000);
+});
