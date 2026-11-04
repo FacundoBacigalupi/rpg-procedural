@@ -219,6 +219,8 @@ import {
   giftTargetOf,
   householdBarter,
   householdPayers,
+  milkChanges,
+  milkTargetOf,
   SLAUGHTER_READS,
   SLAUGHTER_WRITES,
   type SlaughterOptions,
@@ -717,6 +719,7 @@ export function actProcess(o: ActOptions): ProcessDef {
       ...(o.draft?.fatigue === true ? [DRAFT_FATIGUE.name] : []),
       // El animal carneado termina y pierde sus filas de vida (livestock-slaughter).
       ...(o.slaughter ? SLAUGHTER_WRITES : []),
+      // La ordeñada a mano ya no tiene leche pendiente (livestock-milk-hand); `LACTATING` ya está.
       // El animal regalado cambia de hogar y de casa (livestock-tenure-gift).
       ...(o.slaughter?.gift === true || o.slaughter?.steal === true || o.slaughter?.sell === true
         ? [ANIMAL.name]
@@ -1752,6 +1755,10 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
       o.filter && node.verb === "filter"
         ? { unit: ledgerUnit(o.filter.material), grams: o.filter.grams }
         : undefined,
+    milkTarget:
+      o.slaughter?.milk === true && node.verb === "milk"
+        ? milkTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
+        : undefined,
     slaughterTarget:
       o.slaughter && node.verb === "slaughter"
         ? slaughterTargetOf(truth, me, textArg(node, "what"), ctx.now, o.slaughter)
@@ -1865,6 +1872,8 @@ function step(ctx: ProcessContext, o: ActOptions, e: StepEnv): ProcessResult {
     changes.push(...giftChanges(truth, takeAnimal));
   } else if (animalSale && eff.kind === "trade" && eff.deal && eff.animal !== undefined) {
     changes.push(...giftChanges(truth, animalSale));
+  } else if (eff.kind === "milk" && eff.done && eff.animal !== null && o.slaughter?.milk === true) {
+    changes.push(...milkChanges(truth, eff.animal as AnimalId));
   } else if (eff.kind === "slaughter" && eff.done && eff.animal !== null && o.slaughter) {
     changes.push(...slaughterChanges(truth, eff.animal as AnimalId, draftEvent(0), ctx.now));
   } else if (eff.kind === "douse" && eff.hearth !== null && o.hearthTend) {

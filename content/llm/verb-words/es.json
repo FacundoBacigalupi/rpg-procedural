@@ -306,8 +306,6 @@
           "laborar",
           "faeno",
           "faenar",
-          "ordeño",
-          "ordeñar",
           "pastoreo",
           "pastorear",
           "me ocupo del campo",
@@ -901,6 +899,15 @@
         "as": "carneo",
         "words": ["sacrifico", "sacrificar", "degüello", "degollar", "desposto", "despostar"]
       }
+    ]
+  },
+  {
+    "id": "milk",
+    "example": "ordeño la cabra",
+    "tail": "la cabra",
+    "forms": ["ordeño", "ordeñar"],
+    "synonyms": [
+      { "as": "ordeño", "words": ["saco la leche", "sacar la leche", "saco leche", "sacar leche"] }
     ]
   },
   {

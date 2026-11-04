@@ -8,6 +8,8 @@
 // `deeds.ts` lo cuenta como robo al hogar dueño. Venderlo o comprarlo (livestock-tenure-sell):
 // «le vendo la cabra a Lin» o «le compro la oveja a Lin» con `trade` elige igual el animal (de su
 // casa o de la del otro), con un precio que sale de lo que deja su cuerpo y un recargo por vivo.
+// Ordeñarla a mano (livestock-milk-hand): «ordeño la cabra» elige igual una hembra de su casa, pero
+// solo la que hoy quedó sin ordeñar (`LACTATING.pending`), y esa leche va a la despensa.
 
 import {
   type AgentId,
@@ -35,6 +37,7 @@ import {
   endEntity,
   type GoodDef,
   LACTATING,
+  LAID_SOURCE,
   type LivestockDef,
   LOCATION,
   PERSON,
@@ -66,6 +69,8 @@ export interface SlaughterOptions {
   readonly sellHousehold?: boolean;
   /** Opt-in (livestock-tenure-sell-barter, con `sellHousehold`): lo que falta de cobre la casa lo pone en bienes (`householdBarter`). */
   readonly sellBarter?: boolean;
+  /** Opt-in (livestock-milk-hand): `milk` ordeña la hembra de la casa que hoy quedó sin ordeñar. */
+  readonly milk?: boolean;
 }
 
 /** Palabras que dicen algo de un animal en particular (livestock-slaughter-refs). */
@@ -161,6 +166,7 @@ function animalOf(
   o: SlaughterOptions,
   mustName = false,
   others: boolean | HouseholdId = false,
+  accept: (id: AnimalId) => boolean = () => true,
 ): { id: AnimalId; def: LivestockDef; bornAt: Tick; household: string } | undefined {
   const household = truth.get(PERSON, me as never)?.household;
   const hex = truth.get(LOCATION, me as never)?.hex;
@@ -196,6 +202,7 @@ function animalOf(
     if (truth.get(LOCATION, id)?.hex !== hex) continue;
     const def = byId.get(a.species);
     if (def === undefined || (anyNamed && !named(def))) continue;
+    if (!accept(id)) continue;
     if (wanted.length > 0) {
       const marks = animalMarksOf(truth, id, a.bornAt, def, now, o.year);
       if (!wanted.every((q) => fits(q, a.sex, marks))) continue;
@@ -228,6 +235,59 @@ export function slaughterTargetOf(
     source: externalAccount(CARCASS_SOURCE),
     yields,
   };
+}
+
+/** Pura (livestock-milk-hand): la leche que `animal` tiene hoy sin ordeñar; sin esa, nada. */
+export function pendingMilkOf(
+  truth: ReadonlyWorldTruth,
+  animal: AnimalId,
+  now: Tick,
+  year: Duration,
+): { readonly at: Tick; readonly grams: number } | undefined {
+  const p = truth.get(LACTATING, animal)?.pending;
+  return p !== undefined && now - p.at < year / 365 && p.grams > 0 ? p : undefined;
+}
+
+/**
+ * Pura (livestock-milk-hand): la hembra de su casa que nombra `text` (`animalOf`) y hoy quedó sin
+ * ordeñar, con la despensa adonde va su leche. Sin una así, nada.
+ */
+export function milkTargetOf(
+  truth: ReadonlyWorldTruth,
+  me: string,
+  text: string | undefined,
+  now: Tick,
+  o: SlaughterOptions,
+): NonNullable<ResolveInput["milkTarget"]> | undefined {
+  const t = animalOf(
+    truth,
+    me,
+    text,
+    now,
+    o,
+    false,
+    false,
+    (id) => pendingMilkOf(truth, id, now, o.year) !== undefined,
+  );
+  if (t === undefined) return undefined;
+  const good = t.def.yields?.find((y) => y.lactationDays !== undefined)?.good;
+  const p = pendingMilkOf(truth, t.id, now, o.year);
+  if (good === undefined || p === undefined) return undefined;
+  return {
+    animal: t.id,
+    holder: t.household as unknown as HolderRef,
+    source: externalAccount(LAID_SOURCE),
+    unit: ledgerUnit(`good:${good}`),
+    grams: p.grams,
+  };
+}
+
+/** Pura (livestock-milk-hand): la ordeñada ya no tiene leche pendiente ni cuenta para secarse. */
+export function milkChanges(truth: ReadonlyWorldTruth, animal: AnimalId): StateChange[] {
+  const lact = truth.get(LACTATING, animal);
+  if (!lact) return [];
+  const { pending: _, missed: __, ...rest } = lact;
+  return [setComponent(LACTATING, animal, rest)];
 }
 
 /** El animal que se regala y adónde va: el hogar de quien lo recibe y su primera casa. */

@@ -227,6 +227,35 @@
     "evidence": 0.8
   },
   {
+    "id": "milk",
+    "name": "ordeñar",
+    "domain": "work",
+    "args": [{ "role": "what", "kind": "text", "required": false }],
+    "manners": [
+      { "id": "careful", "duration": 1.5, "ease": 0.4 },
+      { "id": "fast", "duration": 0.6, "ease": -0.5 }
+    ],
+    "requires": [{ "kind": "capability", "cap": "manipulation", "min": 0.5 }],
+    "occupies": { "handL": "full", "handR": "full", "eyes": "partial", "legs": "partial" },
+    "duration": { "kind": "fixed", "seconds": 600 },
+    "checkpoint": 120,
+    "emissions": { "sight": 0.3, "sound": 0.2 },
+    "resolver": "milk",
+    "ease": 0.8,
+    "factors": {
+      "light": 0.3,
+      "skill": [{ "trait": "control", "weight": 0.5 }]
+    },
+    "skill": { "id": "farming", "facets": { "execution": 0.7, "reading": 0.3 } },
+    "failureModes": [
+      { "id": "clumsy", "factor": "skill" },
+      { "id": "clumsy", "factor": "light" },
+      { "id": "no_means", "factor": "means" },
+      { "id": "too_weak", "factor": "capability" }
+    ],
+    "evidence": 0.4
+  },
+  {
     "id": "work",
     "name": "trabajar",
     "domain": "work",

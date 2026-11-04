@@ -1,8 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type ContentSource, loadContent } from "../../core/index.ts";
 import {
+  type ContentSource,
+  type HolderRef,
+  holderAccount,
+  ledgerUnit,
+  loadContent,
+} from "../../core/index.ts";
+import {
+  type ActionPlan,
   ANIMAL,
   BODY_STATE,
   BUILDING,
@@ -21,6 +28,7 @@ import { Life } from "./life.ts";
 import { ableToMilk, atHome } from "./milkers.ts";
 import { NPC_JOURNEY } from "./npc-verbs.ts";
 import { FULL_PROFILE } from "./profile.ts";
+import { milkTargetOf } from "./slaughter.ts";
 
 function sources(dir: string, root = dir): ContentSource[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -447,4 +455,96 @@ describe("no ordeña el que está lejos de su casa (livestock-milk-hours-away)",
     expect(ableToMilk(w.plans)(t, p)).toBe(true);
     expect(FULL_PROFILE).toMatchObject({ livestockMilkAway: true });
   }, 300_000);
+});
+
+describe("ordeñar a mano lo que quedó sin ordeñar (livestock-milk-hand)", () => {
+  const MILK = ledgerUnit("good:milk");
+  const milkPlan = (actor: string, what: string): ActionPlan => ({
+    actor: actor as never,
+    source: "player",
+    root: { kind: "do", verb: "milk", args: [{ role: "what", text: what }], manner: [] },
+    manner: [],
+    causes: [{ kind: "state", entity: actor as never, key: "intent" }],
+  });
+  const run = (hand: boolean) => {
+    const l = Life.create(7, content, {
+      ...OPTS,
+      livestockDairy: true,
+      livestockMilkWork: true,
+      livestockMilkHours: true,
+      livestockSlaughter: true,
+      livestockMilkHand: hand,
+    });
+    const t = l.world.truth;
+    const year = l.world.clock.year;
+    // Una cabra adulta que parió hace un mes (sin `livestockSuckle`, la cría no se lleva su parte).
+    const goat = t
+      .ids(ANIMAL)
+      .sort()
+      .find((id) => {
+        const g = t.get(ANIMAL, id);
+        return g?.species === "goat" && g.sex === "female" && (l.now - g.bornAt) / year > 2;
+      });
+    const a = goat === undefined ? undefined : t.get(ANIMAL, goat);
+    const hex = goat === undefined ? undefined : t.get(LOCATION, goat)?.hex;
+    const me = t.get(PERSON, l.player);
+    if (goat === undefined || !a || hex === undefined || !me) throw new Error("sin cabra");
+    t.set(LACTATING, goat, { since: (l.now - 30 * DAY) as never });
+    // Nadie del hogar ordeña ese día: los demás de viaje y el jugador, de otro hogar.
+    for (const p of t.ids(PERSON).sort()) {
+      if (p === l.player || t.get(PERSON, p)?.household !== a.owner) continue;
+      t.set(NPC_JOURNEY, p, { place: "lejos", since: l.now, decision: "test" });
+    }
+    const other = t
+      .ids(PERSON)
+      .sort()
+      .map((p) => t.get(PERSON, p)?.household)
+      .find((h) => h !== undefined && h !== a.owner);
+    if (other === undefined) throw new Error("sin otro hogar");
+    t.set(PERSON, l.player, { ...me, household: other });
+    l.advanceTo(l.now + DAY);
+    const pending = t.get(LACTATING, goat)?.pending;
+    // El jugador vuelve a la casa y se para al lado de la cabra.
+    t.set(PERSON, l.player, { ...me, household: a.owner });
+    t.set(LOCATION, l.player, { hex });
+    const larder = holderAccount(a.owner as unknown as HolderRef);
+    const before = l.world.ledger.balance(larder, MILK);
+    const target = milkTargetOf(t, l.player, "la cabra", l.now, {
+      species: content.all(LIVESTOCK),
+      year,
+      milk: true,
+    });
+    l.turn(milkPlan(l.player, "la cabra"), 1);
+    return { l, goat, pending, target, larder, before };
+  };
+
+  it("encendido: la leche que nadie ordeñó queda en el día y al ordeñarla va a la despensa; determinista", () => {
+    const on = run(true);
+    const w = on.l.world;
+    expect(on.pending?.grams ?? 0).toBeGreaterThan(0);
+    expect(on.target?.animal).toBeDefined();
+    expect(on.target?.grams).toBeGreaterThan(0);
+    // Con el seed fijo la tirada sale bien: la leche entra y la cabra ya no tiene pendiente.
+    expect(w.ledger.balance(on.larder, MILK) - on.before).toBe(on.target?.grams);
+    const lact = on.target ? w.truth.get(LACTATING, on.target.animal as never) : undefined;
+    expect(lact?.pending).toBeUndefined();
+    expect(lact?.missed).toBeUndefined();
+    // Lo ordeñado ya no se puede volver a ordeñar.
+    expect(
+      milkTargetOf(w.truth, on.l.player, "la cabra", on.l.now, {
+        species: content.all(LIVESTOCK),
+        year: w.clock.year,
+        milk: true,
+      }),
+    ).toBeUndefined();
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    // Apagado: no queda leche pendiente y no hay qué ordeñar.
+    const off = run(false);
+    expect(off.pending).toBeUndefined();
+    expect(off.target).toBeUndefined();
+    expect(off.l.world.ledger.balance(off.larder, MILK)).toBe(off.before);
+    expect(FULL_PROFILE).toMatchObject({ livestockMilkHand: true });
+  }, 600_000);
 });

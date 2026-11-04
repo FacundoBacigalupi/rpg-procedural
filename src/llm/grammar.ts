@@ -727,6 +727,14 @@ const VERBS: readonly {
     },
   },
   {
+    // Ordeñar un animal de la casa: «ordeño la cabra».
+    re: /^(?:ordeño|ordeñar)\b/i,
+    build: (rest) => {
+      const what = nounPhrase(rest.replace(MANNER_WORDS, " "));
+      return { node: act("milk", what ? [{ role: "what", text: what }] : []) };
+    },
+  },
+  {
     // Perdonar al vencido: «perdono al bandido», «lo perdono».
     re: /^(?:(?:lo|la|le|los|las)\s+)?(?:perdono|perdonar)\b/i,
     build: (rest) => {

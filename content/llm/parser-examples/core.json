@@ -1094,6 +1094,19 @@
     }
   },
   {
+    "id": "milk-goat",
+    "text": "ordeño la cabra parida",
+    "scene": "Estás en el corral de tu casa; la cabra que parió hace poco está atada al poste.",
+    "expect": {
+      "kind": "act",
+      "plan": {
+        "kind": "do",
+        "verb": "milk",
+        "args": [{ "role": "what", "text": "cabra parida" }]
+      }
+    }
+  },
+  {
     "id": "kindle-hearth",
     "text": "enciendo el fuego del hogar con la leña",
     "scene": "Estás en tu casa; hay un hogar frío y una pila de leña.",

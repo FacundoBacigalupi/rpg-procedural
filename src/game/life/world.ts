@@ -477,6 +477,8 @@ export interface LifeWorld {
   readonly livestockMilkHours?: boolean;
   /** Opt-in (livestock-milk-hours-away, con `livestockMilkHours`): no ordeña el que no está en el hex de su casa. */
   readonly livestockMilkAway?: boolean;
+  /** Opt-in (livestock-milk-hand, con `livestockMilkWork` y `livestockSlaughter`): la leche que nadie ordeñó queda en el día y el jugador puede ordeñarla a mano. */
+  readonly livestockMilkHand?: boolean;
   /** Opt-in (livestock-milk-culture-sheep-shear): la oveja se esquila el primer día templado pasado el intervalo, con la lana que creció. */
   readonly livestockShear?: boolean;
   /** Opt-in (livestock-predators-pen, con `livestockPredators`): el patio cerrado ataja al depredador. */
@@ -1162,6 +1164,7 @@ export function lifeWorld(
                   parts.livestockSellBarter === true
                     ? { sellBarter: true }
                     : {}),
+                  ...(parts.livestockMilkHand === true ? { milk: true } : {}),
                 },
               }
             : {}),
@@ -2188,6 +2191,7 @@ export function lifeWorld(
                   ? {
                       milking: {
                         minAgeYears: ROUTINE.workAge,
+                        ...(parts.livestockMilkHand === true ? { hand: true } : {}),
                         ...(parts.livestockMilkHours === true
                           ? parts.livestockMilkAway === true
                             ? {
