@@ -431,6 +431,8 @@ export interface LifeWorld {
   readonly livestockFosterHelp?: boolean;
   /** Opt-in (livestock-gestation, con `livestockLife`): la preñez dura los días de la especie. */
   readonly livestockGestation?: boolean;
+  /** Opt-in (livestock-gestation-heat, con `livestockGestation`): la cabra y la oveja entran en celo con los días cortos. */
+  readonly livestockHeat?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
   readonly livestockSeason?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado baja con el frío del día y, si `hunger`, con el hambre. */
@@ -2173,6 +2175,14 @@ export function lifeWorld(
                     }
                   : {}),
                 ...(parts.livestockGestation === true ? { gestation: true } : {}),
+                ...(parts.livestockGestation === true && parts.livestockHeat === true
+                  ? {
+                      heat: {
+                        daylightHours: (t: Tick) =>
+                          24 * sunAt(parts.clock, skyObserverOf(parts.map), t).dayFraction,
+                      },
+                    }
+                  : {}),
               }),
             ]
           : []),

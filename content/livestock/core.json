@@ -112,7 +112,8 @@
       "litter": [1, 2],
       "mate": "settlement",
       "maxPerHousehold": 6,
-      "gestationDays": 150
+      "gestationDays": 150,
+      "heat": { "daylightBelow": 12.5, "perDay": 0.035 }
     },
     "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
     "yields": [
@@ -155,7 +156,8 @@
       "litter": [1, 2],
       "mate": "settlement",
       "maxPerHousehold": 8,
-      "gestationDays": 147
+      "gestationDays": 147,
+      "heat": { "daylightBelow": 12.5, "perDay": 0.035 }
     },
     "carcass": { "meat": "mutton", "meatShare": 0.45, "hide": "hide", "hideShare": 0.08 },
     "yields": [

@@ -93,6 +93,17 @@ export const BreedingDef = z.strictObject({
    * días; sin esto, o sin la opción, pare el día que la cubren.
    */
   gestationDays: z.number().positive().optional(),
+  /**
+   * El celo por estación (livestock-gestation-heat, con `gestationDays`): la hembra entra en celo
+   * solo con menos de `daylightBelow` horas de luz (la cabra y la oveja, con los días cortos) y,
+   * en celo, queda preñada con `perDay` por día; sin esto, todo el año con `conceptionPerDay`.
+   */
+  heat: z
+    .strictObject({
+      daylightBelow: z.number().min(0).max(24),
+      perDay: z.number().min(0).max(1),
+    })
+    .optional(),
 });
 export type BreedingDef = z.infer<typeof BreedingDef>;
 
@@ -609,6 +620,12 @@ export interface LivestockLifeOptions {
    * por nacer, y con hambre de `MISCARRY_HUNGER` o más la pierde (`living.animal_miscarried`).
    */
   readonly gestation?: boolean;
+  /**
+   * Opt-in (livestock-gestation-heat, con `gestation`): las horas de luz del día en la aldea; la
+   * especie con `breeding.heat` queda preñada solo en su estación (`living.animal_conceived` lleva
+   * las horas de luz de ese día).
+   */
+  readonly heat?: { readonly daylightHours: (t: Tick) => number };
 }
 
 /** El hogar y la aldea de un animal, para buscar macho. */
@@ -665,6 +682,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       const postings: PostingDraft[] = [];
       const dead = new Set<AnimalId>();
       const mothersToday = new Set<AnimalId>();
+      const daylight = o.gestation === true ? o.heat?.daylightHours(ctx.now) : undefined;
       // Primero las muertes: quien muere hoy no pare ni cubre.
       for (const [id, a] of alive) {
         const def = byId.get(a.species);
@@ -760,9 +778,13 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
           if (!males.has(mate)) continue;
           const room = b.maxPerHousehold - (count.get(key) ?? 0);
           if (room <= 0) continue;
+          // Fuera de su estación no entra en celo (livestock-gestation-heat).
+          const heat = gestationDays !== undefined && daylight !== undefined ? b.heat : undefined;
+          if (heat && daylight !== undefined && daylight >= heat.daylightBelow) continue;
           r = ctx.rng.fork("birth", id).stream();
-          const daily =
-            gestationDays !== undefined
+          const daily = heat
+            ? heat.perDay
+            : gestationDays !== undefined
               ? conceptionPerDay(b.littersPerYear, gestationDays)
               : Math.min(1, b.littersPerYear / 365);
           if (r.float() >= stepChance(daily, step, o.year / 365)) continue;
@@ -774,8 +796,18 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
               kind: "living.animal_conceived",
               actors: [],
               place: { kind: "building", building: a.home },
-              data: { mother: id, species: a.species, owner: a.owner, due, size },
-              causes: [{ kind: "state", entity: id, key: "mating" }],
+              data: {
+                mother: id,
+                species: a.species,
+                owner: a.owner,
+                due,
+                size,
+                ...(heat && daylight !== undefined ? { daylight } : {}),
+              },
+              causes: [
+                { kind: "state", entity: id, key: "mating" },
+                ...(heat ? [{ kind: "state" as const, entity: id, key: "heat" }] : []),
+              ],
               emissions: null,
             });
             changes.push(setComponent(PREGNANT, id, { since: ctx.now, due, size }));
