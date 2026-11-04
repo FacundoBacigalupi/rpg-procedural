@@ -71,6 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **livestock-milk-foster-help (2026-11-03)**: opt-in `livestockFosterHelp`; con alguien del hogar que puede, la adopción del huérfano sube `suckle.fosterHelp` veces (`helpedBy` en el evento). Sigue `livestock-milk-foster-help-more` (horas reales, verbo del jugador, entre casas).
 - **livestock-milk-self (2026-11-03)**: opt-in `livestockMilkSelf`; el jugador no ordeña solo a la mañana (`ableToMilk({ except })`); ordeña a mano con `milk`. Sigue `livestock-milk-hours-day` (la hora sale del día y delegar «que ordeñe mi hermana»).
 - **livestock-milk-hand (2026-11-03, rama `feat/livestock-milk-hand`):** opt-in `livestockMilkHand`: `livestockYieldProcess` con `milking.hand` deja la leche sin ordeñar en `LACTATING.pending` por un día; verbo `milk` (`content/actions`, resolver `milk` con `ResolveInput.milkTarget`, gramática «ordeño», palabras, plantillas `outcome.milk.*`) y `milkTargetOf`/`milkChanges` en `slaughter.ts`. Test en `livestock-milk.test.ts`. Sigue abierto `livestock-milk-hours-day` (que el jugador no cuente solo como ordeñador y lo delegue).
 

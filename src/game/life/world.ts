@@ -427,6 +427,8 @@ export interface LifeWorld {
   readonly livestockOrphan?: boolean;
   /** Opt-in (livestock-milk-foster, con `livestockSuckle`): otra madre de la casa puede adoptar a la cría huérfana. */
   readonly livestockFoster?: boolean;
+  /** Opt-in (livestock-milk-foster-help, con `livestockFoster`): alguien del hogar ayuda a la adopción. */
+  readonly livestockFosterHelp?: boolean;
   /** Opt-in (livestock-gestation, con `livestockLife`): la preñez dura los días de la especie. */
   readonly livestockGestation?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
@@ -2150,6 +2152,25 @@ export function lifeWorld(
                 ...(parts.livestockDairy === true ? { lactation: true } : {}),
                 ...(parts.livestockDairy === true && parts.livestockSuckle === true
                   ? { suckle: true, ...(parts.livestockFoster === true ? { foster: true } : {}) }
+                  : {}),
+                ...(parts.livestockFosterHelp === true
+                  ? {
+                      fosterHelp: {
+                        minAgeYears: ROUTINE.workAge,
+                        ...(parts.livestockMilkHours === true
+                          ? {
+                              can: ableToMilk(parts.plans, {
+                                ...(parts.livestockMilkAway === true ? { away: true } : {}),
+                                ...(parts.livestockMilkSelf === true ? { except: player } : {}),
+                              }),
+                              reads:
+                                parts.livestockMilkAway === true
+                                  ? [...MILKER_READS, ...MILKER_AWAY_READS]
+                                  : MILKER_READS,
+                            }
+                          : {}),
+                      },
+                    }
                   : {}),
                 ...(parts.livestockGestation === true ? { gestation: true } : {}),
               }),
