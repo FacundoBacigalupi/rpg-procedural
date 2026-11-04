@@ -167,12 +167,15 @@ export const YieldDef = z.strictObject({
    * cría viva se toma `sharePerYoung` de lo que da la madre (la casa recibe el resto).
    * `fosterPerDay` (livestock-milk-foster): la chance por día de que otra madre de la casa acepte
    * a una huérfana (se divide por uno más las crías que ya amamanta); sin esto, nunca.
+   * `fosterHelp` (livestock-milk-foster-help): cuánto sube esa chance si alguien del hogar ayuda
+   * (frota a la cría con la leche de la madre, la ata para que la deje mamar).
    */
   suckle: z
     .strictObject({
       days: z.number().int().positive(),
       sharePerYoung: z.number().min(0).max(1),
       fosterPerDay: z.number().min(0).max(1).optional(),
+      fosterHelp: z.number().min(1).optional(),
     })
     .optional(),
   /**
@@ -590,6 +593,17 @@ export interface LivestockLifeOptions {
    */
   readonly foster?: boolean;
   /**
+   * Opt-in (livestock-milk-foster-help, con `foster`): si alguien vivo del hogar de `minAgeYears` o
+   * más puede (`can`, como el ordeñe) ayuda a la adopción: la chance se multiplica por
+   * `suckle.fosterHelp` (tope 1) y el evento lleva quién ayudó (`helpedBy`).
+   */
+  readonly fosterHelp?: {
+    readonly minAgeYears: number;
+    readonly can?: (truth: ReadonlyWorldTruth, id: AgentId) => boolean;
+    /** Las tablas que lee `can`. */
+    readonly reads?: readonly string[];
+  };
+  /**
    * Opt-in (livestock-gestation): la especie con `breeding.gestationDays` queda preñada (`PREGNANT`)
    * y pare a los días; la preñada no vuelve a quedar, cuenta para el tope de la casa con sus crías
    * por nacer, y con hambre de `MISCARRY_HUNGER` o más la pierde (`living.animal_miscarried`).
@@ -625,6 +639,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
       ANIMAL_HUNGER.name,
       ...(o.lactation === true ? [LACTATING.name] : []),
       ...(o.gestation === true ? [PREGNANT.name] : []),
+      ...(o.fosterHelp ? [PERSON.name, ...(o.fosterHelp.reads ?? [])] : []),
     ],
     writes: [
       ANIMAL.name,
@@ -802,7 +817,7 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
         mothersToday.add(id);
       }
       if (o.foster === true && o.suckle === true) {
-        fosterOrphans(ctx, o.year, byId, alive, dead, mothersToday, events, changes);
+        fosterOrphans(ctx, o.year, byId, alive, dead, mothersToday, events, changes, o.fosterHelp);
       }
       if (events.length === 0) return {};
       return postings.length > 0 ? { events, changes, postings } : { events, changes };
@@ -814,7 +829,8 @@ export function livestockLifeProcess(o: LivestockLifeOptions): ProcessDef {
  * Las huérfanas (livestock-milk-foster): cada cría viva en sus días de mamar que ninguna madre viva
  * amamanta prueba, por id, con cada madre de su especie y su casa que amamanta dentro de sus días
  * (no la que murió o parió hoy); la acepta con `fosterPerDay / (1 + crías vivas que ya tiene)`.
- * Una madre adopta a lo sumo una por día.
+ * Una madre adopta a lo sumo una por día. Con `help` (livestock-milk-foster-help), si alguien del
+ * hogar puede ayudar, la chance se multiplica por `fosterHelp`.
  */
 function fosterOrphans(
   ctx: { readonly truth: ReadonlyWorldTruth; readonly now: Tick; readonly rng: Rng },
@@ -825,6 +841,7 @@ function fosterOrphans(
   mothersToday: ReadonlySet<AnimalId>,
   events: EventDraft[],
   changes: StateChange[],
+  help?: LivestockLifeOptions["fosterHelp"],
 ): void {
   const suckleOf = (species: string) => byId.get(species)?.yields?.find((y) => y.suckle)?.suckle;
   const nursed = nursedYoung(ctx.truth, ctx.now, year, byId);
@@ -842,6 +859,18 @@ function fosterOrphans(
   if (mothers.length === 0) return;
   const living = new Set(alive.filter(([id]) => !dead.has(id)).map(([id]) => id));
   const adopted = new Set<AnimalId>();
+  // Quién de cada hogar puede ayudar hoy (el primero por id).
+  const helpers = new Map<string, AgentId>();
+  if (help) {
+    for (const p of [...ctx.truth.ids(PERSON)].sort() as AgentId[]) {
+      const r = ctx.truth.get(PERSON, p);
+      if (!r || helpers.has(r.household) || ctx.truth.get(ENTITY, p)?.endedAt !== undefined)
+        continue;
+      if ((ctx.now - r.born) / year < help.minAgeYears) continue;
+      if (help.can && !help.can(ctx.truth, p)) continue;
+      helpers.set(r.household, p);
+    }
+  }
   for (const [id, a] of alive) {
     const s = suckleOf(a.species);
     if (dead.has(id) || nursed.has(id) || !s?.fosterPerDay) continue;
@@ -849,18 +878,27 @@ function fosterOrphans(
     for (const m of mothers) {
       if (adopted.has(m.id) || m.a.species !== a.species || m.a.owner !== a.owner) continue;
       const own = m.young.filter((k) => living.has(k)).length;
+      const helper = s.fosterHelp ? helpers.get(a.owner) : undefined;
       const r = ctx.rng.fork("foster", id, m.id).stream();
-      if (r.float() >= s.fosterPerDay / (1 + own)) continue;
+      const chance = Math.min(1, (s.fosterPerDay * (helper ? (s.fosterHelp ?? 1) : 1)) / (1 + own));
+      if (r.float() >= chance) continue;
       adopted.add(m.id);
       m.young.push(id);
       events.push({
         kind: "living.animal_fostered",
         actors: [],
         place: { kind: "building", building: m.a.home },
-        data: { mother: m.id, young: id, species: a.species, owner: a.owner },
+        data: {
+          mother: m.id,
+          young: id,
+          species: a.species,
+          owner: a.owner,
+          ...(helper ? { helpedBy: helper } : {}),
+        },
         causes: [
           { kind: "state", entity: id, key: "orphan" },
           { kind: "state", entity: m.id, key: "lactating" },
+          ...(helper ? [{ kind: "state" as const, entity: helper, key: "foster_help" }] : []),
         ],
         emissions: null,
       });

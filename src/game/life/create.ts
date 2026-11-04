@@ -662,6 +662,8 @@ export interface LifeOptions {
   readonly livestockOrphan?: boolean;
   /** Opt-in (livestock-milk-foster, con `livestockSuckle`): otra madre de la casa que todavía amamanta puede adoptar a la cría huérfana (menos cuantas más crías ya tiene). */
   readonly livestockFoster?: boolean;
+  /** Opt-in (livestock-milk-foster-help, con `livestockFoster`): si alguien del hogar en edad de trabajar puede (con `livestockMilkHours`, el que está en casa y el cuerpo le da), ayuda a que la madre acepte al huérfano: la chance se multiplica por `suckle.fosterHelp`. */
+  readonly livestockFosterHelp?: boolean;
   /** Opt-in (livestock-gestation, con `livestockLife`): la hembra cubierta queda preñada y pare a los días de su especie (`breeding.gestationDays`: la cabra 150, la vaca 283); con mucha hambre pierde la cría. */
   readonly livestockGestation?: boolean;
   /** Opt-in (livestock-yield-season, con `livestockYield`): las gallinas ponen menos con días cortos (`LifeParts.livestockSeason`). */
@@ -2195,6 +2197,12 @@ export function createLife(
               : {}),
             ...(options.livestockDairy && options.livestockSuckle && options.livestockFoster
               ? { livestockFoster: true }
+              : {}),
+            ...(options.livestockDairy &&
+            options.livestockSuckle &&
+            options.livestockFoster &&
+            options.livestockFosterHelp
+              ? { livestockFosterHelp: true }
               : {}),
             ...(options.livestockGestation ? { livestockGestation: true } : {}),
             ...(options.livestockSlaughter

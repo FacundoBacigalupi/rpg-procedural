@@ -249,7 +249,7 @@ describe("la cría que mama no come de la casa; la huérfana pasa hambre (livest
 
 describe("otra madre adopta a la huérfana (livestock-milk-foster)", () => {
   it("encendido: la cría que su madre deja de amamantar pasa a otra de la casa; apagado, no; determinista", () => {
-    const run = (foster: boolean) => {
+    const run = (foster: boolean, help = false) => {
       const l = Life.create(7, content, {
         ...OPTS,
         livestockFeed: true,
@@ -257,6 +257,7 @@ describe("otra madre adopta a la huérfana (livestock-milk-foster)", () => {
         livestockSuckle: true,
         livestockOrphan: true,
         livestockFoster: foster,
+        livestockFosterHelp: help,
       });
       const t = l.world.truth;
       // El primer día con dos madres de la misma casa amamantando: una deja a sus crías.
@@ -303,6 +304,17 @@ describe("otra madre adopta a la huérfana (livestock-milk-foster)", () => {
     expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
     expect(run(true).l.hash().total).toBe(on.l.hash().total);
     expect(FULL_PROFILE).toMatchObject({ livestockFoster: true });
+    expect(on.fostered.some((e) => (e.data as { helpedBy?: string }).helpedBy)).toBe(false);
+    // livestock-milk-foster-help: con ayuda del hogar, cada adopción dice quién ayudó (de esa casa).
+    const helped = run(true, true);
+    expect(helped.fostered.length).toBeGreaterThan(0);
+    for (const e of helped.fostered) {
+      const { helpedBy, owner } = e.data as { helpedBy?: string; owner: string };
+      expect(helpedBy).toBeDefined();
+      expect(helped.l.world.truth.get(PERSON, helpedBy as never)?.household).toBe(owner);
+    }
+    expect(run(true, true).l.hash().total).toBe(helped.l.hash().total);
+    expect(FULL_PROFILE).toMatchObject({ livestockFosterHelp: true });
   }, 600_000);
 });
 
