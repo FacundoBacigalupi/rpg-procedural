@@ -31,6 +31,16 @@ const QUOTED = /«[^»]*»|"[^"]*"|“[^”]*”/gu;
 const SECOND_PERSON_NOW = /(?:ás|és|ís)$/u;
 /** Lo que el personaje hace en cualquier escena sin que sea un paso: percibir, pensar, quedarse. */
 const ALWAYS_OWN = new Set(["look", "ponder", "wait"]);
+/** Lo que la rutina del hogar hizo por el personaje (`stretch.kept`) cuenta como pasos suyos. */
+const KEPT_VERBS: Readonly<Record<string, readonly string[]>> = {
+  harvested: ["work", "gather", "move"],
+  sown: ["work", "move"],
+  irrigated: ["work", "move"],
+  watered: ["work", "move"],
+  ate: ["eat"],
+  drank: ["drink"],
+  boiled: ["cook"],
+};
 /** Lo que un paso trae consigo: hablarle a alguien es dirigirse a él, juntar es buscar primero. */
 const IMPLIES: Readonly<Record<string, readonly string[]>> = {
   speak: ["move"],
@@ -147,6 +157,7 @@ export function groundingProblems(
     if (o.effect.kind === "observe") own.add("look");
   }
   for (const d of view.stretch?.did ?? []) own.add(d.verb);
+  for (const k of view.stretch?.kept ?? []) for (const v of KEPT_VERBS[k.kind] ?? []) own.add(v);
   if ((view.stretch?.spoke ?? 0) > 0) own.add("speak");
   for (const verb of [...own]) for (const v of IMPLIES[verb] ?? []) own.add(v);
 

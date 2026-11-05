@@ -26,6 +26,9 @@ describe("saltar tiempo desde la sesión (novel-montage-parse)", () => {
     expect(days).toBeGreaterThanOrEqual(14);
     expect(worked.length).toBeGreaterThan(0);
     expect(reply.text).toContain("Pasan 14 días");
+    // El montaje cuenta la rutina, no la espera (novel-montage-while).
+    expect(reply.text).toMatch(/campo|tierra/);
+    expect(reply.text).not.toMatch(/inquieto/);
     const last = store.plans().at(-1)?.plan as { source?: string } | undefined;
     expect(last?.source).toBe("routine");
   }, 300_000);

@@ -80,6 +80,7 @@ import { STRANGERS, strangersSeenBefore } from "./strangers.ts";
 import { stretchOf } from "./stretch.ts";
 import { TASTE_RECALL_VALENCE, tasteRecall } from "./taste-recall.ts";
 import { thoughtsOf } from "./thoughts.ts";
+import { seasonOf } from "./weather-panel.ts";
 import { acquaintances, knownWords, playerObserver, type Witness } from "./witness.ts";
 import { type LifeWorld, living } from "./world.ts";
 
@@ -635,6 +636,13 @@ export function playerView(
             now,
             w.clock.day,
             signs.zones,
+            {
+              memories: w.truth.get(MEMORIES, w.player)?.items ?? [],
+              seasons: {
+                from: seasonOf(yearPhase(w.clock, options.heardSince), w.map.climate.latDeg),
+                to: seasonOf(yearPhase(w.clock, now), w.map.climate.latDeg),
+              },
+            },
           ),
         }
       : {}),
@@ -690,4 +698,9 @@ export function playerView(
         }
       : {}),
   });
+}
+
+/** La fase del año (0-1) en que cae el tick. */
+function yearPhase(clock: { readonly year: number }, t: number): number {
+  return (((t % clock.year) + clock.year) % clock.year) / clock.year;
 }

@@ -905,6 +905,36 @@
     "lines": ["En esos días hablás con {who}.", "Compartís palabras con {who}."]
   },
   { "id": "stretch.hurt", "lines": ["Te lastimás en el medio de todo."] },
+  {
+    "id": "stretch.kept.harvested",
+    "lines": ["Los días se te van en el campo, de sol a sol.", "Trabajás la tierra día tras día."]
+  },
+  { "id": "stretch.kept.sown", "lines": ["Sembrás cuando toca."] },
+  { "id": "stretch.kept.irrigated", "lines": ["Llevás agua a los surcos."] },
+  { "id": "stretch.kept.watered", "lines": ["Regás lo sembrado."] },
+  {
+    "id": "stretch.kept.ate",
+    "lines": ["Comés en casa lo que hay.", "A la noche, la comida de siempre."]
+  },
+  { "id": "stretch.by.someone", "lines": ["alguien"] },
+  { "id": "stretch.meanwhile.body.died", "lines": ["Ves morir a {who}."] },
+  {
+    "id": "stretch.meanwhile.body.died.told",
+    "lines": ["Te enterás por {by} de que murió {who}."]
+  },
+  { "id": "stretch.meanwhile.family.birth", "lines": ["Ves nacer una criatura."] },
+  {
+    "id": "stretch.meanwhile.family.birth.told",
+    "lines": ["{by} te cuenta que nació una criatura."]
+  },
+  { "id": "stretch.meanwhile.combat.fight", "lines": ["Ves una pelea en la que anda {who}."] },
+  { "id": "stretch.meanwhile.combat.fight.told", "lines": ["{by} te cuenta de una pelea."] },
+  { "id": "stretch.meanwhile.band.raided", "lines": ["Ves llegar a los saqueadores."] },
+  { "id": "stretch.meanwhile.band.raided.told", "lines": ["{by} te cuenta de un saqueo."] },
+  { "id": "stretch.season.spring", "lines": ["Cuando te das cuenta, ya es primavera."] },
+  { "id": "stretch.season.summer", "lines": ["Llega el verano."] },
+  { "id": "stretch.season.autumn", "lines": ["El otoño ya está encima."] },
+  { "id": "stretch.season.winter", "lines": ["Entra el invierno."] },
   { "id": "stretch.zone.head", "lines": ["la cabeza"] },
   { "id": "stretch.zone.neck", "lines": ["el cuello"] },
   { "id": "stretch.zone.chest", "lines": ["el pecho"] },

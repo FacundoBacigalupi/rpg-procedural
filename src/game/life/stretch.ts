@@ -4,6 +4,7 @@
 // nada de lo que pasó en el mundo sin que él lo viera. Puro sobre sus entradas, no toca el estado.
 
 import type { AgentId, Event, Tick } from "../../core/index.ts";
+import type { Memory } from "../../sim/index.ts";
 import type { StretchInput } from "../view/index.ts";
 import type { StepRecord } from "./act.ts";
 
@@ -11,6 +12,11 @@ import type { StepRecord } from "./act.ts";
 export const STRETCH_VERBS = 3;
 /** Verbos que no cuentan como «algo que hizo» en un salto (esperar es el salto mismo). */
 const IDLE_VERBS: ReadonlySet<string> = new Set(["wait", "observe", "look"]);
+
+/** Cuántas cosas de «qué pasó mientras» llegan a la vista (las que más le pesaron). */
+export const STRETCH_MEANWHILE = 6;
+/** Prefijo de lo que la rutina del hogar hace por el personaje en un salto delegado. */
+const ROUTINE_PREFIX = "routine.";
 
 /** Cuántas heridas sentidas se cuentan en un salto. */
 export const STRETCH_WOUNDS = 2;
@@ -53,6 +59,14 @@ export function stretchOf(
   now: Tick,
   dayLength: number,
   zones: readonly { readonly zone: string; readonly signs: readonly string[] }[] = [],
+  /**
+   * Lo del salto delegado (novel-montage-while): sus memorias (lo que vio o le contaron) y la
+   * estación al empezar y al terminar.
+   */
+  extra: {
+    readonly memories?: readonly Memory[];
+    readonly seasons?: { readonly from: string; readonly to: string };
+  } = {},
 ): StretchInput {
   const wounds = feltWounds(zones);
   const tally = new Map<string, { times: number; failed: number }>();
@@ -73,6 +87,33 @@ export function stretchOf(
   const fought = events.some(
     (e) => e.tick >= since && e.kind.startsWith("combat.") && e.actors.includes(me),
   );
+  // Lo que la rutina hizo por él (solo existe si delegó los días).
+  const chores = new Map<string, number>();
+  for (const e of events) {
+    if (e.tick < since || e.actors[0] !== me || !e.kind.startsWith(ROUTINE_PREFIX)) continue;
+    const kind = e.kind.slice(ROUTINE_PREFIX.length);
+    chores.set(kind, (chores.get(kind) ?? 0) + 1);
+  }
+  const kept = [...chores]
+    .map(([kind, times]) => ({ kind, times }))
+    .sort((a, b) => b.times - a.times || (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
+  // Qué pasó mientras: sus memorias del salto, menos las de su propia rutina.
+  const meanwhile = (extra.memories ?? [])
+    .filter((m) => m.at >= since && !m.perceived.kind.startsWith(ROUTINE_PREFIX))
+    .sort(
+      (a, b) =>
+        b.intensity - a.intensity ||
+        a.at - b.at ||
+        (a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0),
+    )
+    .slice(0, STRETCH_MEANWHILE)
+    .map((m) => ({
+      kind: m.perceived.kind,
+      source: m.source,
+      with: [...m.perceived.with],
+      ...(m.toldBy !== undefined ? { toldBy: m.toldBy } : {}),
+    }));
+  const seasons = extra.seasons;
   const did = [...tally]
     .map(([verb, r]) => ({ verb, ...r }))
     .sort((a, b) => b.times - a.times || (a.verb < b.verb ? -1 : a.verb > b.verb ? 1 : 0))
@@ -85,5 +126,8 @@ export function stretchOf(
     hurt: hurt || fought || wounds.length > 0,
     fought,
     ...(wounds.length > 0 ? { wounds } : {}),
+    ...(kept.length > 0 ? { kept } : {}),
+    ...(meanwhile.length > 0 ? { meanwhile } : {}),
+    ...(seasons !== undefined && seasons.from !== seasons.to ? { season: seasons.to } : {}),
   };
 }

@@ -182,12 +182,16 @@ export function thoughtsOf(w: LifeWorld, input: ThoughtsIn): ThoughtsOut {
   }
 
   const opened = mental?.conditions.some((c) => c.onset > since) === true;
-  const mode: SpecialMode | undefined = dreamt
-    ? "dream"
-    : opened
+  // Un salto largo se cuenta como montaje aunque haya terminado durmiendo (novel-montage-while).
+  const long = now - since >= MONTAGE_DAYS * w.clock.day;
+  const mode: SpecialMode | undefined = long
+    ? opened
       ? "aftermath"
-      : now - since >= MONTAGE_DAYS * w.clock.day
-        ? "montage"
+      : "montage"
+    : dreamt
+      ? "dream"
+      : opened
+        ? "aftermath"
         : undefined;
   return { thoughts: out.slice(0, MAX_THOUGHTS), ...(mode ? { mode } : {}) };
 }
