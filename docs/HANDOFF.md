@@ -71,6 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **livestock-look-pregnant-skill (2026-11-04)**: opt-in `livestockLookSkill`; la panza se nota según `farming` de quien mira (`pregnantLookShareFor` en `animal-marks.ts`). Sigue `livestock-look-pregnant-more` (la panza que confunde, con `livestock-body`; el NPC que la nota).
 - **livestock-gestation-heat (2026-11-04)**: opt-in `livestockHeat`; cabra y oveja quedan preñadas solo con menos de `breeding.heat.daylightBelow` horas de luz. Sigue `livestock-gestation-more` (preñez que se pierde por enfermedad o golpe, parto difícil, la casa que decide cuándo echar el macho).
 - **livestock-milk-foster-help (2026-11-03)**: opt-in `livestockFosterHelp`; con alguien del hogar que puede, la adopción del huérfano sube `suckle.fosterHelp` veces (`helpedBy` en el evento). Sigue `livestock-milk-foster-help-more` (horas reales, verbo del jugador, entre casas).
 - **livestock-milk-self (2026-11-03)**: opt-in `livestockMilkSelf`; el jugador no ordeña solo a la mañana (`ableToMilk({ except })`); ordeña a mano con `milk`. Sigue `livestock-milk-hours-day` (la hora sale del día y delegar «que ordeñe mi hermana»).

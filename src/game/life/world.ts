@@ -431,6 +431,8 @@ export interface LifeWorld {
   readonly livestockFosterHelp?: boolean;
   /** Opt-in (livestock-gestation, con `livestockLife`): la preñez dura los días de la especie. */
   readonly livestockGestation?: boolean;
+  /** Opt-in (livestock-look-pregnant-skill): la panza se nota antes o después según la habilidad de quien mira. */
+  readonly livestockLookSkill?: boolean;
   /** Opt-in (livestock-gestation-heat, con `livestockGestation`): la cabra y la oveja entran en celo con los días cortos. */
   readonly livestockHeat?: boolean;
   /** Opt-in (con `livestockYield`): lo que da el ganado sigue las horas de luz del día; sin esto, no. */
@@ -1171,6 +1173,9 @@ export function lifeWorld(
                     ? { sellBarter: true }
                     : {}),
                   ...(parts.livestockMilkHand === true ? { milk: true } : {}),
+                  ...(parts.livestockSlaughterRefs === true && parts.livestockLookSkill === true
+                    ? { lookSkill: parts.skills }
+                    : {}),
                 },
               }
             : {}),
