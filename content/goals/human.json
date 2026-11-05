@@ -13,7 +13,11 @@
       "camino del",
       "qi"
     ],
-    "target": "none"
+    "target": "none",
+    "watch": {
+      "events": ["cultivation."],
+      "action": "stop"
+    }
   },
   {
     "id": "wealth",
@@ -45,7 +49,11 @@
       "mi propia casa",
       "una casa"
     ],
-    "target": "none"
+    "target": "none",
+    "watch": {
+      "events": ["property."],
+      "action": "note"
+    }
   },
   {
     "id": "family",
@@ -63,14 +71,22 @@
       "novia",
       "novio"
     ],
-    "target": "optional"
+    "target": "optional",
+    "watch": {
+      "person": "note",
+      "events": ["family."],
+      "action": "note"
+    }
   },
   {
     "id": "revenge",
     "value": "justice",
     "label": "vengarse",
     "words": ["vengar", "venganza", "matar a", "hacer pagar", "que pague", "castigar"],
-    "target": "required"
+    "target": "required",
+    "watch": {
+      "person": "stop"
+    }
   },
   {
     "id": "craft",
@@ -106,14 +122,21 @@
       "recorrer",
       "la ciudad"
     ],
-    "target": "none"
+    "target": "none",
+    "watch": {
+      "events": ["migration."],
+      "action": "note"
+    }
   },
   {
     "id": "protect",
     "value": "family",
     "label": "proteger a los suyos",
     "words": ["proteger", "cuidar", "defender", "que no les pase", "que no le pase"],
-    "target": "optional"
+    "target": "optional",
+    "watch": {
+      "person": "note"
+    }
   },
   {
     "id": "knowledge",

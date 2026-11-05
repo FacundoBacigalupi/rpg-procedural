@@ -524,12 +524,27 @@ const WATCHED_NOTED: Readonly<Record<string, string>> = {
   "combat.fight": "hubo una pelea",
 };
 
-/** `nameOf`: cómo llama el personaje a quien vigila (lo eligió él, así que lo conoce). */
-export function renderInterrupt(i: Interrupt, nameOf?: (who: AgentId) => string): string {
+/**
+ * `nameOf`: cómo llama el personaje a quien vigila (lo eligió él, así que lo conoce); `goalOf`, el
+ * texto de una meta por su número (novel-goals-watch).
+ */
+export function renderInterrupt(
+  i: Interrupt,
+  nameOf?: (who: AgentId) => string,
+  goalOf?: (goal: number) => string | undefined,
+): string {
   if (i.kind === "watched" && i.rule !== undefined) {
-    if (i.rule.kind === "person")
-      return `Dejás lo que hacías: ves a ${nameOf?.(i.rule.who) ?? "quien esperabas"}.`;
-    const what = WATCHED_NOW[i.rule.event];
+    const rule = i.rule;
+    if (rule.kind === "person")
+      return `Dejás lo que hacías: ves a ${nameOf?.(rule.who) ?? "quien esperabas"}.`;
+    if (rule.kind === "goal") {
+      const goal = goalOf?.(rule.goal);
+      const why = goal !== undefined ? ` (lo que querés: ${goal})` : "";
+      return rule.who !== undefined
+        ? `Dejás lo que hacías: ves a ${nameOf?.(rule.who) ?? "quien tenés en la cabeza"}${why}.`
+        : `Dejás lo que hacías: pasa algo que tiene que ver con lo que querés${goal !== undefined ? ` (${goal})` : ""}.`;
+    }
+    const what = WATCHED_NOW[rule.event];
     if (what !== undefined) return `Dejás lo que hacías: ${what}.`;
   }
   return INTERRUPTS[i.kind];
@@ -539,15 +554,25 @@ export function renderInterrupt(i: Interrupt, nameOf?: (who: AgentId) => string)
  * Lo anotado sin cortar en un salto (los avisos `note`, player-loop §6): una línea por persona o
  * suceso, con en cuántos días pasó. Vacío si no hay nada.
  */
-export function renderNotes(notes: readonly Interrupt[], nameOf: (who: AgentId) => string): string {
+export function renderNotes(
+  notes: readonly Interrupt[],
+  nameOf: (who: AgentId) => string,
+  goalOf?: (goal: number) => string | undefined,
+): string {
   const rows = new Map<string, { text: string; days: number }>();
   for (const n of notes) {
     if (n.kind !== "watched" || n.rule === undefined) continue;
     const key = JSON.stringify(n.rule);
+    const rule = n.rule;
+    const goal = rule.kind === "goal" ? goalOf?.(rule.goal) : undefined;
     const text =
-      n.rule.kind === "person"
-        ? `viste a ${nameOf(n.rule.who)}`
-        : (WATCHED_NOTED[n.rule.event] ?? "pasó algo");
+      rule.kind === "person"
+        ? `viste a ${nameOf(rule.who)}`
+        : rule.kind === "goal"
+          ? rule.who !== undefined
+            ? `viste a ${nameOf(rule.who)}${goal !== undefined ? ` (por «${goal}»)` : ""}`
+            : `algo que tiene que ver con ${goal !== undefined ? `«${goal}»` : "lo que querés"}`
+          : (WATCHED_NOTED[rule.event] ?? "pasó algo");
     const row = rows.get(key) ?? { text, days: 0 };
     rows.set(key, { text, days: row.days + 1 });
   }
@@ -565,8 +590,13 @@ const DELEGATION_TEXT: Readonly<Record<DelegationLevel, string>> = {
 /** Las reglas de los saltos: delegación y avisos. */
 export function renderRoutineRules(rules: RoutineRules, nameOf: (who: AgentId) => string): string {
   const watch = rules.watch.map((r) => {
+    const on = r.on;
     const what =
-      r.on.kind === "person" ? nameOf(r.on.who) : (WATCHED_NOTED[r.on.event] ?? r.on.event);
+      on.kind === "person"
+        ? nameOf(on.who)
+        : on.kind === "goal"
+          ? `la meta ${on.goal}`
+          : (WATCHED_NOTED[on.event] ?? on.event);
     return `  ${r.action === "stop" ? "avisar" : "anotar"}: ${what}`;
   });
   return [

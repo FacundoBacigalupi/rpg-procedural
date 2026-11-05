@@ -113,6 +113,17 @@ export const GoalSketch = z.strictObject({
   label: phrase,
   words: z.array(phrase).min(1),
   target: z.enum(["none", "optional", "required"]),
+  /**
+   * Qué corta o anota un salto por esta meta (novel-goals-watch): ver a la persona de la meta y
+   * sucesos percibidos cuya clase empieza con `events`, con `action`.
+   */
+  watch: z
+    .strictObject({
+      person: z.enum(["stop", "note"]).optional(),
+      events: z.array(phrase).min(1).optional(),
+      action: z.enum(["stop", "note"]).optional(),
+    })
+    .optional(),
 });
 export type GoalSketch = z.infer<typeof GoalSketch>;
 export const GOAL_SKETCHES = defineContent("goals", GoalSketch, (g) => [

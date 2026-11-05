@@ -6,6 +6,8 @@ import {
   GOAL_SKETCHES,
   goalSketches,
   goalTarget,
+  goalWatch,
+  parseSkip,
   sketchOf,
 } from "../game/index.ts";
 import { LifeStore, loadContentDir, openSqlite } from "../persistence/index.ts";
@@ -86,5 +88,40 @@ describe("metas del personaje (novel-goals-set)", () => {
       expect.objectContaining({ id: 1, sketch: "cultivate", status: "active" }),
       expect.objectContaining({ id: 2, sketch: "revenge", status: "abandoned" }),
     ]);
+  }, 300_000);
+
+  it("puro (novel-goals-watch): las metas ponen avisos y «hasta que pase algo» es un salto abierto", () => {
+    expect(parseSkip("sigo con mi vida hasta que pase algo con mi meta")).toEqual({
+      target: { kind: "open", goal: true },
+    });
+    expect(parseSkip("sigo con mi vida hasta que pase algo")).toEqual({
+      target: { kind: "open", goal: false },
+    });
+    const known = [{ ref: "agent:7", names: ["mi padre"] }];
+    const one = addGoal([], "vengar a mi padre", sketches, known, 0).goals;
+    const two = addGoal(one, "entrar a una secta", sketches, known, 0).goals;
+    expect(goalWatch(two, sketches)).toEqual([
+      { on: { kind: "goal", goal: 1, who: "agent:7" }, action: "stop" },
+      { on: { kind: "goal", goal: 2, events: ["cultivation."] }, action: "stop" },
+    ]);
+    const kin = addGoal([], "cuidar a mi padre", sketches, known, 0).goals;
+    expect(goalWatch(kin, sketches).map((r) => r.action)).toEqual(["note"]);
+    expect(goalWatch(kin, sketches, true).map((r) => r.action)).toEqual(["stop"]);
+    expect(goalWatch(dropGoal(kin, "1", sketches).goals, sketches)).toEqual([]);
+  });
+
+  it("seed 1: la venganza corta el salto al ver a la persona", async () => {
+    const config = lifeConfig({ ...base, seed: "1" });
+    const store = LifeStore.open(openSqlite(":memory:"));
+    const session = await openSession(store, { seed: config.seed, setup: config.setup, content });
+    const life = session.life;
+    expect((await session.say("sigo con mi vida hasta que pase algo con mi meta")).text).toMatch(
+      /No tenés una meta/,
+    );
+    await session.say("quiero vengar a mi madre");
+    const from = life.now;
+    const reply = await session.say("sigo con mi vida hasta que pase algo con mi meta");
+    expect((life.now - from) / life.world.clock.day).toBeLessThan(14);
+    expect(reply.text).toMatch(/ves a Langdang \(lo que querés: vengar a mi madre\)/);
   }, 300_000);
 });

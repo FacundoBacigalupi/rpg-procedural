@@ -44,7 +44,17 @@ export type DelegationLevel = (typeof DELEGATION_LEVELS)[number];
 /** Qué mira una regla del usuario: alguien de su lista que aparece, o una clase de suceso. */
 export type WatchOn =
   | { readonly kind: "person"; readonly who: AgentId }
-  | { readonly kind: "event"; readonly event: WatchedEvent };
+  | { readonly kind: "event"; readonly event: WatchedEvent }
+  /**
+   * Lo ligado a una meta del personaje (novel-goals-watch): la persona de la meta, o sucesos cuya
+   * clase empieza con alguno de `events` (`cultivation.`, `property.`).
+   */
+  | {
+      readonly kind: "goal";
+      readonly goal: number;
+      readonly who?: AgentId;
+      readonly events?: readonly string[];
+    };
 
 /** Los sucesos que se pueden pedir que avisen (los que el personaje percibe como evento). */
 export const WATCHED_EVENTS = ["body.died", "family.birth", "combat.fight"] as const;
@@ -94,9 +104,10 @@ export const DELEGATION_STOPPING_ACTS: Readonly<
 
 /** Si el evento es lo que mira la regla (sin mirar si lo percibió). */
 function matches(on: WatchOn, e: Event, me: AgentId): boolean {
-  return on.kind === "person"
-    ? on.who !== me && e.actors.includes(on.who)
-    : e.kind === on.event && !e.actors.includes(me);
+  if (on.kind === "person") return on.who !== me && e.actors.includes(on.who);
+  if (on.kind === "event") return e.kind === on.event && !e.actors.includes(me);
+  if (on.who !== undefined) return on.who !== me && e.actors.includes(on.who);
+  return !e.actors.includes(me) && (on.events ?? []).some((p) => e.kind.startsWith(p));
 }
 
 /** Los signos graves que el personaje siente ahora. */

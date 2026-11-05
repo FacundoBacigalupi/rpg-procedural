@@ -41,6 +41,7 @@ import {
   environmentPanel,
   GOAL_SKETCHES,
   goalSketches,
+  goalWatch,
   hypothesesPanel,
   inventoryPanel,
   knownEntities,
@@ -317,6 +318,23 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   };
   const sketches = options.content.all(GOAL_SKETCHES);
   const sketchLabel = (id: string) => sketches.find((s) => s.id === id)?.label;
+  const goalText = (id: number) => goals.find((g) => g.id === id)?.text;
+  // Los avisos del próximo salto: los del usuario más los de sus metas (novel-goals-watch); con
+  // «hasta que pase algo» todo corta.
+  let openSkip: "any" | "goal" | null = null;
+  const rulesNow = (): RoutineRules => {
+    const mine =
+      openSkip === "any"
+        ? routineRules.watch.map((r) => ({ ...r, action: "stop" as const }))
+        : routineRules.watch;
+    return {
+      ...routineRules,
+      watch: [
+        ...(openSkip === "goal" ? [] : mine),
+        ...goalWatch(goals, sketches, openSkip !== null),
+      ],
+    };
+  };
   const setRules = (next: RoutineRules) => {
     routineRules = next;
     store.setMeta(ROUTINE_RULES_META, next);
@@ -549,15 +567,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       store.saveSnapshot(life.state());
       lastSnapshot = tick;
     }
-    const report = life.turn(plan, seq, routineRules);
+    const report = life.turn(plan, seq, rulesNow());
+    openSkip = null;
     store.saveTurn(life.state(), { seq, tick, plan, sourceTextHash: sha256(line) });
     recent.push(line.trim());
     if (recent.length > RECENT_INTENTS) recent.shift();
     const told = [
       await tell(report, report.to),
-      ...(report.interrupt ? [renderInterrupt(report.interrupt, nameOf)] : []),
-      ...(report.notes !== undefined && renderNotes(report.notes, nameOf) !== ""
-        ? [renderNotes(report.notes, nameOf)]
+      ...(report.interrupt ? [renderInterrupt(report.interrupt, nameOf, goalText)] : []),
+      ...(report.notes !== undefined && renderNotes(report.notes, nameOf, goalText) !== ""
+        ? [renderNotes(report.notes, nameOf, goalText)]
         : []),
     ].join("\n");
     store.appendNarration(report.to, told);
@@ -579,6 +598,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
     // modelo; la fecha sale del calendario del personaje.
     const skip = draft?.kind === "meta" ? null : parseSkip(line);
     if (skip !== null) {
+      if (
+        skip.target.kind === "open" &&
+        skip.target.goal &&
+        goalWatch(goals, sketches).length === 0
+      )
+        return {
+          text: "No tenés una meta de la que pueda llegarte algo. Escribí «quiero …» o «sigo con mi vida hasta la primavera».",
+        };
+      openSkip = skip.target.kind === "open" ? (skip.target.goal ? "goal" : "any") : null;
       pending = null;
       warned = "";
       attended = false;

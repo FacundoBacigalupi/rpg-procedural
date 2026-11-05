@@ -16,7 +16,12 @@ export type SkipTarget =
       readonly unit: "day" | "week" | "month" | "year";
     }
   /** Hasta que empiece la estación (la próxima vez: si ya es esa estación, la del año que viene). */
-  | { readonly kind: "until"; readonly season: SeasonName };
+  | { readonly kind: "until"; readonly season: SeasonName }
+  /**
+   * «Hasta que pase algo (con mi meta)»: el tope del salto, cortado por los avisos; `goal`, si lo
+   * pedido es lo de sus metas (novel-goals-watch).
+   */
+  | { readonly kind: "open"; readonly goal: boolean };
 
 export interface SkipRequest {
   readonly target: SkipTarget;
@@ -80,6 +85,9 @@ export function parseSkip(text: string): SkipRequest | null {
   const lead = LIVE.exec(t);
   if (!lead) return null;
   const rest = t.slice(lead[0].length).trim();
+  // «hasta que pase algo», «hasta que pase algo con mi meta».
+  const open = /\bhasta que (?:pase|haya|ocurra|suceda) algo\b(.*)$/.exec(rest);
+  if (open) return { target: { kind: "open", goal: /\bmetas?\b/.test(open[1] ?? "") } };
   const seasonWord = "(primavera|verano|otono|invierno)";
   // «hasta la primavera», «hasta la cosecha».
   const until = new RegExp(`\\bhasta (?:la |el )?(?:${seasonWord}|cosecha)\\b`).exec(rest);
@@ -127,6 +135,7 @@ export function skipTicks(
   waitMax = Number.POSITIVE_INFINITY,
 ): number {
   const cap = Math.min(MAX_ROUTINE_DAYS * clock.day, waitMax);
+  if (target.kind === "open") return cap;
   if (target.kind === "for") {
     const per =
       target.unit === "day"

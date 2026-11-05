@@ -71,6 +71,7 @@ este handoff. Preparación del 2026-10-10: documentación, sin avance de Fase 3.
 
 ## 8. Estado de las líneas de trabajo
 
+- **novel-goals-watch (2026-11-05)**: las metas ponen avisos en los saltos (`goalWatch`, `watch` por bosquejo en `content/goals/`, `WatchOn {kind: "goal"}`); «sigo con mi vida hasta que pase algo con mi meta» (`SkipTarget` `open`). Sigue `novel-goals-hooks`.
 - **novel-goals-set (2026-11-05)**: «quiero X» → `PlayerGoal` con bosquejo de `content/goals/` y persona si la nombra (`game/life/goals.ts`), en `meta` `player_goals`; `!metas`, `!abandonar N`, «ya no quiero …»; el montaje piensa en la meta (`stretch.goals`). Sigue `novel-goals-watch`.
 - **novel-montage-rules (2026-11-05)**: delegación y avisos de los saltos (`RoutineRules`, `!delegar`, `!avisar`, `!anotar`, `!avisos`), en `meta` `routine_rules`; `novel-montage` cerrado. Sigue `novel-goals`.
 - **novel-montage-while (2026-11-05)**: el montaje cuenta la rutina (`stretch.kept`), lo que vio o le contaron (`stretch.meanwhile`, de sus memorias) y la estación nueva; sin «Esperás, inquieto». Sigue `novel-montage-rules`.
