@@ -102,6 +102,23 @@ export const VerbWords = z.strictObject({
 export type VerbWords = z.infer<typeof VerbWords>;
 export const VERB_WORDS = defineContent("llm/verb-words", VerbWords);
 
+/**
+ * Un bosquejo de meta del jugador (player-loop §8, `novel-goals-set`): la clase de cosa que quiere
+ * el personaje, el valor de npc-psychology que la mueve, las palabras con que se la reconoce
+ * (prefijos de palabra, sin tildes), cómo se la muestra en el panel y si es sobre alguien.
+ */
+export const GoalSketch = z.strictObject({
+  id: contentId,
+  value: contentId,
+  label: phrase,
+  words: z.array(phrase).min(1),
+  target: z.enum(["none", "optional", "required"]),
+});
+export type GoalSketch = z.infer<typeof GoalSketch>;
+export const GOAL_SKETCHES = defineContent("goals", GoalSketch, (g) => [
+  { kind: "values", id: g.value, at: "value" },
+]);
+
 /** Todo `content/`: lo de la sim más lo del narrador. Quien carga la carpeta entera usa esta. */
 export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   ...CONTENT_KINDS,
@@ -110,6 +127,7 @@ export const GAME_CONTENT_KINDS: readonly ContentKind[] = [
   WORLD_LEXICON,
   ACTION_WORDS,
   VERB_WORDS,
+  GOAL_SKETCHES,
 ] as readonly ContentKind[];
 
 /** La paleta de ambiente de una escena percibida (narration §5, §8): lo que vale, en orden de id. */

@@ -24,6 +24,7 @@ export * from "./gathering.ts";
 export * from "./gathering-provider.ts";
 export * from "./goal-death.ts";
 export * from "./goal-evidence.ts";
+export * from "./goals.ts";
 export * from "./goods-sight.ts";
 export * from "./hire.ts";
 export * from "./hud.ts";

@@ -222,6 +222,11 @@ export interface StretchView {
   readonly meanwhile?: readonly StretchHeardView[];
   /** La estación en que termina el salto, si no es la misma en que empezó. */
   readonly season?: string;
+  /**
+   * Los bosquejos de las metas activas del personaje (`cultivate`, `revenge`…, player-loop §8):
+   * en qué piensa entre una cosa y otra. Nunca un avance hacia ellas.
+   */
+  readonly goals?: readonly string[];
 }
 
 export interface StretchHeardView {
@@ -857,6 +862,9 @@ export function buildPlayerView(input: ViewInput): PlayerView {
                 }
               : {}),
             ...(input.stretch.season !== undefined ? { season: input.stretch.season } : {}),
+            ...(input.stretch.goals !== undefined && input.stretch.goals.length > 0
+              ? { goals: [...input.stretch.goals] }
+              : {}),
           },
         }
       : {}),

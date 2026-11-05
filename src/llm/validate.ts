@@ -238,7 +238,8 @@ export function validateNarration(
         2 +
         (view.stretch.kept?.length ?? 0) +
         (view.stretch.meanwhile?.length ?? 0) +
-        (view.stretch.season !== undefined ? 1 : 0)
+        (view.stretch.season !== undefined ? 1 : 0) +
+        (view.stretch.goals !== undefined && view.stretch.goals.length > 0 ? 1 : 0)
       : 0);
   const max = MAX_CHARS[request.mode][request.style.detail] + PER_ITEM * items;
   if (n < MIN_CHARS) problems.push("the narration is empty");

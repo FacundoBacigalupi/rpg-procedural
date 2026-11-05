@@ -154,6 +154,7 @@ interface PlayerGoal {
 }
 ```
 
+- **Hecho (2026-11-05, `novel-goals-set`):** el catálogo cerrado de bosquejos vive en `content/goals/` (`GOAL_SKETCHES`: id, valor de npc-psychology, etiqueta, palabras, si es sobre alguien); `sketchOf` elige por la primera palabra que aparece y `goalTarget` toma a la persona conocida que nombra. Las metas van en `meta` (`player_goals`, fuera del hash: todavía no tocan la verdad) y el montaje las recibe como `stretch.goals`. «Quiero comer» no es una meta: si no nombra bosquejo y se lee como acción, se juega.
 - **Las metas son del personaje,** no misiones del juego: no hay marcadores, pasos sugeridos ni recompensas. Entran a sus objetivos como los de cualquier NPC.
 - **Sirven para:** la atención del personaje (perception: lo que le importa lo nota más), las interrupciones (§6), la delegación (decide lo chico a favor de sus metas), el diario y la crónica ("quería entrar a una secta; nunca lo logró").
 - **Cambian** cuando el usuario las cambia; el personaje también puede ganar objetivos propios por lo que le pasa (un trauma, una deuda) que aparecen en su panel como "lo que sentís que tenés que hacer".

@@ -22,6 +22,7 @@ import {
   AMBIENCE,
   aboutPanel,
   aboutTopicText,
+  addGoal,
   ambienceOf,
   beliefViewOf,
   believedConcepts,
@@ -34,9 +35,12 @@ import {
   DEFAULT_SUGGESTIONS,
   DELEGATION_LEVELS,
   type DelegationLevel,
+  dropGoal,
   type EnvironmentItem,
   type EnvironmentMemory,
   environmentPanel,
+  GOAL_SKETCHES,
+  goalSketches,
   hypothesesPanel,
   inventoryPanel,
   knownEntities,
@@ -49,9 +53,11 @@ import {
   NARRATION_TEMPLATES,
   optionsOf,
   PLAYER,
+  type PlayerGoal,
   panelOptionsOf,
   parseSkip,
   peoplePanel,
+  playerGoalsOf,
   playerView,
   presenceKey,
   type ResumeAnchor,
@@ -61,6 +67,7 @@ import {
   renderEpilogue,
   runEpilogue,
   type Suggestion,
+  sketchOf,
   skipPlan,
   skipTicks,
   suggestions,
@@ -146,6 +153,7 @@ import {
   renderAbout,
   renderBook,
   renderCharacter,
+  renderGoals,
   renderHypotheses,
   renderInterrupt,
   renderInventory,
@@ -187,6 +195,7 @@ export const HELP = [
   "  hablo con mi madre · trabajo en el campo hasta que anochezca · descanso",
   "  guardo el grano en la despensa · compro 2 kilos de grano a mi vecino · vendo grano a mi tío",
   "Para que pase el tiempo viviendo tu rutina: paso el invierno · trabajo el campo un mes · sigo con mi vida hasta la primavera · dejo pasar tres semanas",
+  "Para proponerte algo de tu vida: quiero entrar a una secta · quiero vengar a mi padre · !metas · !abandonar 1 · ya no quiero …",
   "  qué corta el salto: !delegar mínima|normal|amplia · !avisar mi madre · !anotar nacimientos · !no avisar X · !avisos",
   "Fuera del personaje (no pasa el tiempo), con «!» adelante: !personaje, !inventario, !deudas, !gente, !hipótesis, !cielo, !bitácora, !pensar sobre X, !qué sé de X, !verbos, !ayuda, !salir.",
 ].join("\n");
@@ -236,6 +245,9 @@ const HOLD_STANCE_META = "hold_stance";
  * deciden dónde corta un turno; el replay sigue los planes guardados, así que van fuera del hash.
  */
 const ROUTINE_RULES_META = "routine_rules";
+
+/** La clave de `meta` con las metas del personaje (player-loop §8, novel-goals-set), fuera del hash. */
+const PLAYER_GOALS_META = "player_goals";
 
 /** «!delegar amplia»: las palabras de cada nivel. */
 const DELEGATION_WORDS: Readonly<Record<string, DelegationLevel>> = {
@@ -297,6 +309,14 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
   let holdStance = store.getMeta(HOLD_STANCE_META) === true;
   // Delegación y avisos de los saltos (novel-montage-rules), guardados con la vida.
   let routineRules = routineRulesOf(store.getMeta(ROUTINE_RULES_META));
+  // Las metas del personaje (novel-goals-set): el panel y el montaje las leen.
+  let goals: PlayerGoal[] = playerGoalsOf(store.getMeta(PLAYER_GOALS_META));
+  const setGoals = (next: PlayerGoal[]) => {
+    goals = next;
+    store.setMeta(PLAYER_GOALS_META, next);
+  };
+  const sketches = options.content.all(GOAL_SKETCHES);
+  const sketchLabel = (id: string) => sketches.find((s) => s.id === id)?.label;
   const setRules = (next: RoutineRules) => {
     routineRules = next;
     store.setMeta(ROUTINE_RULES_META, next);
@@ -363,6 +383,7 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       ...(options.nickname ? { nickname: true } : {}),
       ...(thinking ? { thinking } : {}),
       ...(report ? { heardSince: report.from } : {}),
+      goals: goalSketches(goals),
       heardTrades: options.content.all(TRADE_RECIPES),
       onLabel: (localId, entity) => keys.set(localId, entity),
       onStranger: (localId, source) => strangers.set(localId, source),
@@ -581,6 +602,15 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
       }
       pending = null;
     }
+    // «Ya no quiero entrar a la secta»: deja una meta si nombra una de las activas.
+    const giveUp = draft?.kind === "meta" ? null : /^ya no quiero\s+(.+)$/iu.exec(line.trim());
+    if (giveUp) {
+      const out = dropGoal(goals, giveUp[1] as string, sketches);
+      if (out.dropped !== undefined) {
+        setGoals(out.goals);
+        return { text: `Lo dejás: ${out.dropped.text}.` };
+      }
+    }
     if (draft?.kind !== "meta") {
       const parsed = await parseIntentOrGrammar(
         jobs,
@@ -612,6 +642,16 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return { text: "Vas a pelear con todo lo que tenés." };
       }
       if (/^salir/i.test(text)) return { text: "La vida queda guardada.", end: "quit" };
+      // Las metas del personaje (player-loop §8, novel-goals-set).
+      if (/^metas?$/iu.test(text.trim())) return { text: renderGoals(goals, sketchLabel, nameOf) };
+      const drop = /^(?:abandonar|dejar)(?: la)?(?: meta)?\s+(.+)$/iu.exec(text.trim());
+      if (drop) {
+        const out = dropGoal(goals, drop[1] as string, sketches);
+        if (out.dropped === undefined)
+          return { text: `No tenés esa meta.\n${renderGoals(goals, sketchLabel, nameOf)}` };
+        setGoals(out.goals);
+        return { text: `Lo dejás: ${out.dropped.text}.` };
+      }
       // Delegación y avisos de los saltos (player-loop §6-§7, novel-montage-rules).
       const plain = text
         .toLowerCase()
@@ -733,6 +773,30 @@ export async function openSession(store: LifeStore, options: SessionOptions): Pr
         return { text: rest === "" ? INSPECTOR_HELP : inspect(life, rest, past) };
       }
       return { text: HELP };
+    }
+    // «Quiero comer»: un deseo de ahora, no de la vida. Si no nombra un bosquejo y se lee como
+    // acción, se juega como acción.
+    if (draft.kind === "goal" && sketchOf(draft.text ?? "", sketches) === undefined) {
+      const now = parseCommand(draft.text ?? "", catalog, parser.words);
+      if (now !== null && (now.kind === "act" || now.kind === "plan")) draft = now;
+    }
+    if (draft.kind === "goal") {
+      const out = addGoal(goals, draft.text ?? line, sketches, knownNow(), life.now);
+      if (out.same) return { text: `Ya te lo habías propuesto: ${out.goal.text}.` };
+      setGoals(out.goals);
+      const sketch = sketches.find((s) => s.id === out.goal.sketch);
+      const who = out.goal.target !== undefined ? nameOf(out.goal.target) : undefined;
+      const unsure = sketch?.target === "required" && who === undefined;
+      return {
+        text: [
+          `Te lo proponés: ${out.goal.text}.`,
+          ...(sketch !== undefined
+            ? [`Lo vas a tener presente (${sketch.label}${who !== undefined ? `: ${who}` : ""}).`]
+            : []),
+          ...(unsure ? ["Todavía no tenés claro contra quién."] : []),
+          "Lo ves con !metas.",
+        ].join("\n"),
+      };
     }
     if (draft.kind !== "act" && draft.kind !== "plan") {
       return { text: "Eso todavía no lo entiendo como algo que hace tu personaje." };

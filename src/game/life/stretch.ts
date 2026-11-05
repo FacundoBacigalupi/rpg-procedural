@@ -66,6 +66,8 @@ export function stretchOf(
   extra: {
     readonly memories?: readonly Memory[];
     readonly seasons?: { readonly from: string; readonly to: string };
+    /** Los bosquejos de las metas activas del personaje (novel-goals-set). */
+    readonly goals?: readonly string[];
   } = {},
 ): StretchInput {
   const wounds = feltWounds(zones);
@@ -129,5 +131,6 @@ export function stretchOf(
     ...(kept.length > 0 ? { kept } : {}),
     ...(meanwhile.length > 0 ? { meanwhile } : {}),
     ...(seasons !== undefined && seasons.from !== seasons.to ? { season: seasons.to } : {}),
+    ...(extra.goals !== undefined && extra.goals.length > 0 ? { goals: [...extra.goals] } : {}),
   };
 }

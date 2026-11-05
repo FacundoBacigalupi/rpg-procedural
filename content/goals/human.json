@@ -1,0 +1,141 @@
+[
+  {
+    "id": "cultivate",
+    "value": "immortality",
+    "label": "cultivar y entrar a una secta",
+    "words": [
+      "cultiv",
+      "secta",
+      "inmortal",
+      "discipul",
+      "ascender",
+      "inmortales",
+      "camino del",
+      "qi"
+    ],
+    "target": "none"
+  },
+  {
+    "id": "wealth",
+    "value": "wealth",
+    "label": "hacerse rico",
+    "words": [
+      "rico",
+      "rica",
+      "riqueza",
+      "fortuna",
+      "plata",
+      "dinero",
+      "comerci",
+      "negocio",
+      "mercader"
+    ],
+    "target": "none"
+  },
+  {
+    "id": "land",
+    "value": "wealth",
+    "label": "tener tierra o casa propia",
+    "words": [
+      "tierra",
+      "campo propio",
+      "mi propio campo",
+      "parcela",
+      "casa propia",
+      "mi propia casa",
+      "una casa"
+    ],
+    "target": "none"
+  },
+  {
+    "id": "family",
+    "value": "family",
+    "label": "formar una familia",
+    "words": [
+      "casarme",
+      "casar",
+      "esposa",
+      "esposo",
+      "marido",
+      "mujer",
+      "hijos",
+      "familia",
+      "novia",
+      "novio"
+    ],
+    "target": "optional"
+  },
+  {
+    "id": "revenge",
+    "value": "justice",
+    "label": "vengarse",
+    "words": ["vengar", "venganza", "matar a", "hacer pagar", "que pague", "castigar"],
+    "target": "required"
+  },
+  {
+    "id": "craft",
+    "value": "status",
+    "label": "dominar un oficio",
+    "words": [
+      "herrer",
+      "alquimi",
+      "curander",
+      "medico",
+      "carpinter",
+      "tejedor",
+      "alfarer",
+      "cocinero",
+      "oficio",
+      "artesan",
+      "maestro en"
+    ],
+    "target": "none"
+  },
+  {
+    "id": "leave",
+    "value": "freedom",
+    "label": "irse a ver el mundo",
+    "words": [
+      "irme",
+      "viajar",
+      "conocer el mundo",
+      "ver el mundo",
+      "salir de la aldea",
+      "salir del pueblo",
+      "ver el mar",
+      "recorrer",
+      "la ciudad"
+    ],
+    "target": "none"
+  },
+  {
+    "id": "protect",
+    "value": "family",
+    "label": "proteger a los suyos",
+    "words": ["proteger", "cuidar", "defender", "que no les pase", "que no le pase"],
+    "target": "optional"
+  },
+  {
+    "id": "knowledge",
+    "value": "knowledge",
+    "label": "saber más",
+    "words": ["leer", "escribir", "estudiar", "saber"],
+    "target": "none"
+  },
+  {
+    "id": "status",
+    "value": "status",
+    "label": "ser alguien respetado",
+    "words": [
+      "respet",
+      "ser jefe",
+      "jefe",
+      "famoso",
+      "importante",
+      "funcionari",
+      "examen",
+      "noble"
+    ],
+    "target": "none"
+  }
+]

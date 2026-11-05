@@ -176,6 +176,9 @@ export function renderView(
     }
     if (stretch.season !== undefined && book.has(`stretch.season.${stretch.season}`))
       say(`stretch.season.${stretch.season}`);
+    // En qué piensa entre una cosa y otra: la primera meta que tenga frase (novel-goals-set).
+    const goal = (stretch.goals ?? []).find((g) => book.has(`stretch.goal.${g}`));
+    if (goal !== undefined) say(`stretch.goal.${goal}`);
   }
   if (!inward && (!s.familiar || arrived || idle)) {
     say(s.home ? "scene.home" : `scene.${s.space}`);

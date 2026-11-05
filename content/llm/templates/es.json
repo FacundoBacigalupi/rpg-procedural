@@ -935,6 +935,46 @@
   { "id": "stretch.season.summer", "lines": ["Llega el verano."] },
   { "id": "stretch.season.autumn", "lines": ["El otoño ya está encima."] },
   { "id": "stretch.season.winter", "lines": ["Entra el invierno."] },
+  {
+    "id": "stretch.goal.cultivate",
+    "lines": [
+      "Entre una cosa y otra, pensás en las sectas y en lo que sería cultivar.",
+      "Más de una noche te quedás pensando en los inmortales."
+    ]
+  },
+  {
+    "id": "stretch.goal.wealth",
+    "lines": ["Más de una vez sacás cuentas de cómo salir de pobre."]
+  },
+  {
+    "id": "stretch.goal.land",
+    "lines": ["Mirás la tierra de otros y pensás en la tuya, la que todavía no tenés."]
+  },
+  {
+    "id": "stretch.goal.family",
+    "lines": ["A veces te imaginás con una casa llena de gente tuya."]
+  },
+  {
+    "id": "stretch.goal.revenge",
+    "lines": [
+      "Lo que te hicieron no se te va de la cabeza.",
+      "No te olvidás de a quién le debés una."
+    ]
+  },
+  {
+    "id": "stretch.goal.craft",
+    "lines": ["Mirás cómo trabajan los que saben y te fijás en cada gesto."]
+  },
+  { "id": "stretch.goal.leave", "lines": ["Más de una tarde mirás el camino que sale de acá."] },
+  { "id": "stretch.goal.protect", "lines": ["No perdés de vista a los tuyos."] },
+  {
+    "id": "stretch.goal.knowledge",
+    "lines": ["Te quedás con ganas de saber más de lo que sabés."]
+  },
+  {
+    "id": "stretch.goal.status",
+    "lines": ["Pensás en cómo te miran los demás, y en cómo te gustaría que te miraran."]
+  },
   { "id": "stretch.zone.head", "lines": ["la cabeza"] },
   { "id": "stretch.zone.neck", "lines": ["el cuello"] },
   { "id": "stretch.zone.chest", "lines": ["el pecho"] },

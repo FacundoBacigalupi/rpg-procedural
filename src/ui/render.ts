@@ -13,6 +13,7 @@ import {
   type Interrupt,
   type InventoryPanel,
   type PeoplePanel,
+  type PlayerGoal,
   type Recap,
   type RoutineRules,
   type Suggestion,
@@ -571,6 +572,34 @@ export function renderRoutineRules(rules: RoutineRules, nameOf: (who: AgentId) =
   return [
     `Delegación ${DELEGATION_TEXT[rules.delegation]}.`,
     ...(watch.length > 0 ? ["Avisos:", ...watch] : ["Sin avisos propios."]),
+  ].join("\n");
+}
+
+/**
+ * Las metas del personaje (player-loop §8): las activas con su número y, si las hay, las dejadas.
+ * `labelOf` dice cómo se entendió cada bosquejo; `nameOf`, cómo llama a la persona de la meta.
+ */
+export function renderGoals(
+  goals: readonly PlayerGoal[],
+  labelOf: (sketch: string) => string | undefined,
+  nameOf: (who: AgentId) => string,
+): string {
+  const line = (g: PlayerGoal): string => {
+    const label = g.sketch !== undefined ? labelOf(g.sketch) : undefined;
+    const who = g.target !== undefined ? nameOf(g.target) : undefined;
+    const how = [label, who].filter((x) => x !== undefined).join(": ");
+    return `${g.text}${how !== "" ? ` (${how})` : ""}`;
+  };
+  const active = goals.filter((g) => g.status === "active");
+  const left = goals.filter((g) => g.status === "abandoned");
+  if (active.length === 0 && left.length === 0)
+    return "No te propusiste nada todavía. Escribí «quiero …» (por ejemplo: quiero entrar a una secta).";
+  return [
+    ...(active.length > 0
+      ? ["Lo que querés:", ...active.map((g) => `  ${g.id}. ${line(g)}`)]
+      : ["Ahora no te proponés nada."]),
+    ...(left.length > 0 ? ["Lo que dejaste:", ...left.map((g) => `  ${line(g)}`)] : []),
+    "Para dejar una: !abandonar <número> o «ya no quiero …».",
   ].join("\n");
 }
 

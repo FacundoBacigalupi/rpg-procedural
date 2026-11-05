@@ -250,6 +250,8 @@ export interface PlayerViewOptions {
   readonly intro?: boolean;
   /** Lo que se dijo cerca desde este tick (lo guardado por la fase `perceive`) entra en la escena. */
   readonly heardSince?: Tick;
+  /** Los bosquejos de las metas activas del personaje, para el montaje (player-loop §8). */
+  readonly goals?: readonly string[];
   /** Qué entidad hay detrás de cada etiqueta local (para la memoria de continuidad, del motor). */
   readonly onLabel?: (localId: string, entity: EntityRef) => void;
   /** De qué fuente salió cada etiqueta de desconocido (para resolver «la figura» que se narró). */
@@ -643,6 +645,7 @@ export function playerView(
                 from: seasonOf(yearPhase(w.clock, options.heardSince), w.map.climate.latDeg),
                 to: seasonOf(yearPhase(w.clock, now), w.map.climate.latDeg),
               },
+              ...(options.goals !== undefined ? { goals: options.goals } : {}),
             },
           ),
         }
