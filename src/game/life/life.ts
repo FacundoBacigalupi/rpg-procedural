@@ -44,6 +44,8 @@ import { type LifeParts, type LifeWorld, lifeWorld } from "./world.ts";
 
 /** El largo máximo de un turno: más que eso es una rutina (player-loop §5), que llega después. */
 export const MAX_TURN_DAYS = 30;
+/** Tope de un salto de tiempo delegado (novel-montage-live): un año y un día. */
+export const MAX_ROUTINE_DAYS = 366;
 
 /** Lo que se elige antes de empezar y entra al replay como el seed (tooling §3). */
 export interface LifeSetup {
@@ -665,7 +667,8 @@ export class Life {
     const from = this.now;
     this.submit(plan, seq);
     const events: Event[] = [];
-    const cap = from + MAX_TURN_DAYS * w.clock.day;
+    const days = plan.source === "routine" ? MAX_ROUTINE_DAYS : MAX_TURN_DAYS;
+    const cap = from + days * w.clock.day;
     const known = alarmingSigns(w);
     let interrupt: Interrupt | null = null;
     const result = w.scheduler.advanceUntil(cap, (report) => {
@@ -674,7 +677,7 @@ export class Life {
       }
       if (!this.alive) return true;
       if (w.truth.get(PLAN_STATE, this.player)?.done ?? true) return true;
-      interrupt = fixedInterrupt(w, report.events, known);
+      interrupt = fixedInterrupt(w, report.events, known, plan.source === "routine");
       return interrupt !== null;
     });
     const state = w.truth.get(PLAN_STATE, this.player);

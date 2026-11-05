@@ -114,6 +114,7 @@ interface Routine {
 - **Una rutina es una política del agente del personaje** que el scheduler ejecuta con `advanceUntil`. El mundo sigue al mismo ritmo para todos.
 - **Lo que consume es real:** comida, dinero, salud, relaciones (una rutina que ignora a la familia la desgasta). Si algo de la rutina se vuelve imposible (se termina la comida, cierra la herrería), la rutina se interrumpe o se adapta según la delegación.
 - **Al terminar o interrumpirse,** se narra un montaje con lo que el personaje vivió y percibió, y se ofrece **"qué pasó mientras"**: la lista de cosas que el personaje se enteró en ese tiempo (rumores, cambios de precio, cartas), con su fuente.
+- **Hecho (novel-montage-live, 2026-11-05):** el salto delegado es un plan `source: "routine"` de solo esperas; mientras dura, la rutina del hogar mueve al personaje como a un NPC (duerme, trabaja el campo, come y bebe), el turno llega hasta 366 días y el cansancio de un día de trabajo no lo corta (`ROUTINE_TOLERATED_SIGNS`). Las interrupciones fijas siguen.
 - **Encierros largos** (cultivo de años o décadas): igual, con zona de resolución baja alrededor del personaje (simulation §4) y el mundo corriendo en agregado. Lo que pasa afuera llega solo por lo que el personaje percibe o arregló para percibir (un discípulo que le avisa, una formación de alarma, una ficha de jade que se rompe si su maestro muere).
 
 ## 6. Interrupciones

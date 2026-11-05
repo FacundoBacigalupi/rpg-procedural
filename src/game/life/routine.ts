@@ -140,6 +140,18 @@ export function onlyWaits(plan: { readonly root: Parameters<typeof planLeaves>[0
 const MAX_DRINK_L = 1.5;
 
 /** Litros del odre con que el jugador sale a la espera (como `JourneyDrinkOptions.carryLiters` de los viajeros). */
+/**
+ * Si el plan en curso es un salto de tiempo delegado (novel-montage-live, player-loop §5): fuente
+ * `routine` y solo esperas. Mientras dura, el personaje vive la rutina del hogar como un NPC; lo
+ * arma solo la sesión cuando el jugador pide pasar días («paso el invierno»), nunca un NPC.
+ */
+export function delegatedPlan(state: {
+  readonly done: boolean;
+  readonly plan: { readonly source: string; readonly root: Parameters<typeof planLeaves>[0] };
+}): boolean {
+  return !state.done && state.plan.source === "routine" && onlyWaits(state.plan);
+}
+
 export const SKIN_CAPACITY_L = 3;
 
 /**
@@ -432,17 +444,21 @@ export function routineProcess(o: RoutineOptions): ProcessDef {
       const truth = ctx.truth;
       // El personaje decide él; quien tiene un plan en curso lo sigue.
       const plan = truth.get(PLAN_STATE, me);
+      // El jugador que delegó sus días (novel-montage-live: un plan `routine` de solo esperas) vive
+      // la rutina entera como cualquiera: duerme, trabaja el campo, come y bebe.
+      const delegated = truth.has(PLAYER, me) && plan !== undefined && delegatedPlan(plan);
       // Quien espera (el jugador con un plan de solo `wait`) solo recibe lo chico: comer y beber.
       const tendOnly =
+        !delegated &&
         o.waitTend === true &&
         truth.has(PLAYER, me) &&
         plan !== undefined &&
         !plan.done &&
         onlyWaits(plan.plan);
-      if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly) return {};
+      if (truth.has(PLAYER, me) && o.idlePlayer !== true && !tendOnly && !delegated) return {};
       // El dormido (tier 1) no corre: `life.catch_up` lo pone al día por tramos.
       if (o.sleepers && truth.get(ASLEEP, me)) return {};
-      if (plan && !plan.done && !tendOnly) return {};
+      if (plan && !plan.done && !tendOnly && !delegated) return {};
       const person = truth.get(PERSON, me);
       const body = truth.get(BODY_STATE, me);
       if (!person || !body || truth.get(ENTITY, me)?.endedAt !== undefined) return {};

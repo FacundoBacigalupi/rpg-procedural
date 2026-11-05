@@ -35,6 +35,13 @@ export interface Interrupt {
 
 export { ALARMING_SIGNS, alarmingSignsOf };
 
+/**
+ * Los signos que no cortan un salto de tiempo delegado (novel-montage-live): el cansancio de un día
+ * de campo lo resuelve la rutina durmiendo. La sed, el hambre, la fiebre y las heridas sí cortan:
+ * dicen que la rutina no alcanza.
+ */
+export const ROUTINE_TOLERATED_SIGNS: ReadonlySet<string> = new Set(["exhausted"]);
+
 /** Los signos graves que el personaje siente ahora. */
 export function alarmingSigns(w: LifeWorld): Set<string> {
   const body = w.truth.get(BODY_STATE, w.player);
@@ -62,6 +69,8 @@ export function fixedInterrupt(
   w: LifeWorld,
   events: readonly Event[],
   known: Set<string>,
+  /** Un salto delegado: los signos de `ROUTINE_TOLERATED_SIGNS` no alarman. */
+  routine = false,
 ): Interrupt | null {
   const me = w.player;
   const close = acquaintances(w);
@@ -81,6 +90,7 @@ export function fixedInterrupt(
     }
   }
   const now = alarmingSigns(w);
+  if (routine) for (const s of ROUTINE_TOLERATED_SIGNS) now.delete(s);
   const fresh = [...now].filter((s) => !known.has(s));
   // Lo que ya no siente vuelve a poder alarmarlo si reaparece.
   for (const s of [...known]) if (!now.has(s)) known.delete(s);
