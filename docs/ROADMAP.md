@@ -8,7 +8,20 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[>]` movido a otra 
 
 ## Ahora (en orden)
 
-**Prioridad vigente (2026-10-26):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
+### Novela jugable primero (2026-11-05, pedido del usuario)
+El usuario quiere **jugar una novela: tomar decisiones y avanzar** (años, reinos, secta), no
+administrar la aldea día por día. Se **congela** el detalle fino de ganado y economía (las líneas
+`livestock-*`, herramientas, despensa): no se borra, queda opt-in y pasa a ser **materia prima del
+montaje** («qué pasó mientras»: la cabra parió, el buey se cansó, se vendió el cuero). Sus `-more`
+quedan abiertos pero no se toman hasta terminar esta lista. Orden:
+- [ ] (novel-montage) Saltos de tiempo jugables: «trabajo el campo hasta la cosecha», «paso el invierno», «entreno un mes» con rutina y `until` ([player-loop.md](systems/player-loop.md) §4-§7): la sim corre, se corta con interrupciones (fijas y configurables) y vuelve un montaje de «qué pasó mientras» con lo que el personaje percibió (gente, cuerpo, casa, animales, estación). Se parte en sub-ítems antes de codear.
+- [ ] (novel-goals) Metas del jugador y ganchos: `PlayerGoal` (§8) que el narrador recuerda y los saltos respetan («hasta que pase algo con mi meta»); ganchos que ya existen en la sim (rumores, gente que pide, sectas que reclutan) traídos al frente cuando el personaje los percibe.
+- [ ] (novel-cultivation-min) Cultivo mínimo jugable (adelanto de Fase 4): sentir el qi, meditar con absorción que respeta el ledger, primera ruptura con riesgo, y una secta cercana con prueba de ingreso que te puede aceptar o no. Lo justo para que «quiero cultivar» tenga un camino.
+- [ ] (novel-narration) Narración de novela: capítulos por salto, voz por modo, recapitulación al retomar, que el montaje se lea como prosa y no como lista.
+- [ ] (novel-flags-group) Agrupar los opt-in en pocos interruptores (`village`, `livestock`, `economy`, `body`…) con dependencias resueltas, en vez de decenas de flags sueltos.
+- [ ] (novel-full-profile-default) El perfil completo por defecto para una vida nueva, cuando el lote de `sim:batch --scenario full-profile` dé invariantes limpias y tiempos aceptables.
+
+**Prioridad anterior (2026-10-26, congelada el 2026-11-05 por la de arriba):** Fase 3. Las cadenas `perfil2-item-claims` y `use-tools`
 están cerradas, ya se afila con la piedra de la casa, el herrero de la aldea repara y vende
 herramientas nuevas, las usadas se compran y venden entre personas y los NPC cuidan la herramienta
 de la casa; la cadena `use-tools-mend` está cerrada y uno ya se calienta junto al fogón
