@@ -284,3 +284,38 @@ describe("la preñez que dura (livestock-gestation)", () => {
     expect(FULL_PROFILE).toMatchObject({ livestockGestation: true });
   }, 900_000);
 });
+
+describe("el celo con los días cortos (livestock-gestation-heat)", () => {
+  it("encendido: cabras y ovejas quedan preñadas solo con pocas horas de luz; apagado, sin horas; determinista", () => {
+    const opts = {
+      frequency: 8,
+      villageLivestock: true,
+      livestockLife: true,
+      livestockDairy: true,
+      livestockGestation: true,
+    } as const;
+    const run = (heat: boolean) => {
+      const l = Life.create(7, content, { ...opts, livestockHeat: heat });
+      const start = l.now;
+      l.advanceTo(start + 400 * 86_400);
+      const conceived = l.world.log
+        .all()
+        .filter((e) => e.kind === "living.animal_conceived" && e.tick > start)
+        .map((e) => e.data as { species: string; daylight?: number });
+      return { l, conceived };
+    };
+    const on = run(true);
+    const seasonal = on.conceived.filter((c) => c.species === "goat" || c.species === "sheep");
+    expect(seasonal.length).toBeGreaterThan(0);
+    for (const c of seasonal) expect(c.daylight).toBeLessThan(12.5);
+    for (const c of on.conceived) {
+      if (c.species !== "goat" && c.species !== "sheep") expect(c.daylight).toBeUndefined();
+    }
+    const w = on.l.world;
+    expect(w.ledger.audit()).toEqual([]);
+    expect(checkInvariants({ truth: w.truth, log: w.log, ledger: w.ledger })).toEqual([]);
+    expect(run(true).l.hash().total).toBe(on.l.hash().total);
+    expect(run(false).conceived.every((c) => c.daylight === undefined)).toBe(true);
+    expect(FULL_PROFILE).toMatchObject({ livestockHeat: true });
+  }, 900_000);
+});
